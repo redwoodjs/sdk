@@ -20,6 +20,7 @@
     "wrangler": "^3.60.3"
   },
   "devDependencies": {
+    "miniflare": "^3.20241106.0",
     "vite": "^5.4.11"
   }
 }
