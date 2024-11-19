@@ -16,11 +16,17 @@
   "private": true,
   "dependencies": {
     "@cloudflare/workers-types": "^4.20241112.0",
+    "react-dom": "^18.3.1",
+    "react-server-dom-webpack": "^0.0.1",
+    "rsc-html-stream": "^0.0.3",
     "typescript": "^5.5.2",
     "wrangler": "^3.60.3"
   },
   "devDependencies": {
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
     "miniflare": "^3.20241106.0",
+    "react": "^18.3.1",
     "vite": "^5.4.11"
   }
 }
