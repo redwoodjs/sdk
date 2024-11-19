@@ -1,0 +1,25 @@
+{
+  "name": "rsc-experiment",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "build": "pnpm clean && vite build",
+    "deploy": "wrangler deploy",
+    "clean": "rm -rf dist",
+    "dev": "vite dev",
+    "types": "wrangler types && tsc"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "private": true,
+  "dependencies": {
+    "@cloudflare/workers-types": "^4.20241112.0",
+    "typescript": "^5.5.2",
+    "wrangler": "^3.60.3"
+  },
+  "devDependencies": {
+    "vite": "^5.4.11"
+  }
+}
