@@ -113,7 +113,7 @@ declare module 'react-server-dom-webpack/client' {
 }
 
 declare module 'react-server-dom-webpack/server' {
-  import type { Writable } from 'stream'
+  import type { Writable } from 'node:stream'
   import type { Busboy } from 'busboy'
 
   // It's difficult to know the true type of `ServerManifest`.
@@ -152,6 +152,7 @@ declare module 'react-server-dom-webpack/server' {
   ): Promise<T>
 
   type PipeableStream = {
+    // biome-ignore lint/suspicious/noExplicitAny: <explanation>
     abort(reason: any): void
     pipe<T extends Writable>(destination: T): T
   }
