@@ -1,8 +1,8 @@
 import { createServer as createViteServer } from "vite";
-import { Miniflare, RequestInfo } from 'miniflare';
-import { ViteDevServer } from 'vite';
-import { IncomingMessage, ServerResponse } from 'http';
-import http from 'http';
+import { Miniflare, type RequestInfo } from 'miniflare';
+import type { ViteDevServer } from 'vite';
+import type { IncomingMessage, ServerResponse } from 'node:http';
+import http from 'node:http';
 
 export const DEV_SERVER_PORT = 2332;
 export const CLIENT_DEV_SERVER_PORT = 5173;
@@ -35,7 +35,7 @@ const createServers = async () => {
 
   const server = http.createServer(async (req, res) => {
     try {
-      const url = new URL(req.url!, `http://${req.headers.host}`);
+      const url = new URL(req.url as string, `http://${req.headers.host}`);
 
       if (url.pathname.startsWith('/static')) {
         clientDevServer.middlewares(req, res);
@@ -57,14 +57,10 @@ const createServers = async () => {
   })
 
   server.listen(DEV_SERVER_PORT, () => {
-    console.log('\n' + [
-      '🚀 Dev server fired up and ready to rock! 🔥',
-      `   ⭐️ Local:    http://localhost:${DEV_SERVER_PORT}`,
-      `   🌍 Network:  http://${require('os').hostname()}:${DEV_SERVER_PORT}`,
-      '',
-      '   🛠  HMR:      Enabled',
-      '   🔄 RSC:      Ready',
-    ].join('\n') + '\n');
+    console.log(`
+🚀 Dev server fired up and ready to rock! 🔥
+⭐️ Local: http://localhost:${DEV_SERVER_PORT}
+`)
   })
 }
 
@@ -86,7 +82,7 @@ const nodeToWebRequest = (req: IncomingMessage, url: URL): Request => {
   return new Request(url, {
     method: req.method,
     headers: req.headers as HeadersInit,
-    body: req.method !== 'GET' && req.method !== 'HEAD' ? req as any : undefined,
+    body: req.method !== 'GET' && req.method !== 'HEAD' ? req as unknown as BodyInit : undefined,
   });
 };
 
