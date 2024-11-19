@@ -65,7 +65,7 @@ const createServers = async () => {
 }
 
 const buildWorkerScript = async (server: ViteDevServer) => {
-  return (await server.transformRequest('/src/worker.ts'))?.code ?? '';
+  return (await server.transformRequest('/src/worker.tsx'))?.code ?? '';
 }
 
 const workerHMRPlugin = ({ getMiniflare }: { getMiniflare: () => Miniflare }) => ({

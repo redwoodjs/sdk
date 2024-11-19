@@ -198,5 +198,10 @@ declare module 'react-server-dom-webpack/client.edge' {
    * Used in conjunction with server-side rendering functions to process RSC output.
    * @see https://timtech.blog/posts/react-server-components-rsc-no-framework/#createfromreadablestream-from-react-server-dom-webpackclient
    */
-  export function createFromReadableStream<T>(stream: ReadableStream, webpackMap: ClientManifest): Thenable<T>
+  export function createFromReadableStream<T>(stream: ReadableStream, options: {
+    ssrManifest: {
+      moduleMap: ClientManifest
+      moduleLoading: null
+    }
+  }): Thenable<T>
 }

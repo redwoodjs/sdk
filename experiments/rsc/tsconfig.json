@@ -17,7 +17,7 @@
 		"types": [
 			"@cloudflare/workers-types/2023-07-01",
 			"./src/types/react.d.ts",
-			"./src/types/globals.d.ts"
+			"./src/types/global.d.ts"
 		],
 		/* Enable importing .json files */
 		"resolveJsonModule": true,
