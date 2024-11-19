@@ -1,32 +1,31 @@
 {
-  "name": "rsc-experiment",
-  "version": "1.0.0",
-  "description": "",
-  "main": "index.js",
-  "scripts": {
-    "build": "pnpm clean && vite build",
-    "deploy": "wrangler deploy",
-    "clean": "rm -rf dist",
-    "dev": "vite dev",
-    "types": "wrangler types && tsc"
-  },
-  "keywords": [],
-  "author": "",
-  "license": "UNLICENSED",
-  "private": true,
-  "dependencies": {
-    "@cloudflare/workers-types": "^4.20241112.0",
-    "react-dom": "^18.3.1",
-    "react-server-dom-webpack": "^0.0.1",
-    "rsc-html-stream": "^0.0.3",
-    "typescript": "^5.5.2",
-    "wrangler": "^3.60.3"
-  },
-  "devDependencies": {
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
-    "miniflare": "^3.20241106.0",
-    "react": "^18.3.1",
-    "vite": "^5.4.11"
-  }
+	"name": "rsc-experiment",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"dev": "npx tsx ./src/dev/server.ts",
+		"types": "wrangler types && tsc"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "UNLICENSED",
+	"private": true,
+	"dependencies": {
+		"react": "19.0.0-rc-f2df5694-20240916",
+		"react-dom": "19.0.0-rc-f2df5694-20240916",
+		"react-server-dom-webpack": "19.0.0-rc-f2df5694-20240916",
+		"@cloudflare/workers-types": "^4.20241112.0",
+		"rsc-html-stream": "^0.0.3",
+		"typescript": "^5.5.2",
+		"wrangler": "^3.60.3"
+	},
+	"devDependencies": {
+		"@types/react": "^18.3.12",
+		"@types/react-dom": "^18.3.1",
+		"miniflare": "^3.20241106.0",
+		"react": "^18.3.1",
+		"tsx": "^4.19.2",
+		"vite": "^5.4.11"
+	}
 }
