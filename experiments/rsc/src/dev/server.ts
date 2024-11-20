@@ -1,6 +1,6 @@
 import { build, createServer as createViteServer, } from "vite";
 import { Miniflare, type RequestInit } from 'miniflare';
-import type { InlineConfig, ViteDevServer } from 'vite';
+import type { InlineConfig, Plugin, ViteDevServer } from 'vite';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import http from 'node:http';
 import { resolve } from 'node:path';
@@ -14,7 +14,7 @@ export const WORKER_DEV_SERVER_PORT = 5174;
 export const WORKER_URL = '/src/worker.tsx';
 
 const configs = {
-  client: () => ({
+  client: (): InlineConfig => ({
     server: {
       middlewareMode: true,
       port: CLIENT_DEV_SERVER_PORT,
@@ -23,11 +23,37 @@ const configs = {
     clearScreen: false,
     plugins: [],
   }),
-  workerDevServer: ({ getMiniflare }: { getMiniflare: () => Miniflare }) => ({
+  workerBase: (): InlineConfig => ({
+    resolve: {
+      conditions: ['react-server'],
+      alias: {
+        // todo(justinvdm, 2024-11-20): Use node modules resolution instead of absolute path
+        // context(justinvdm, 2024-11-20): This is a hack to get around the fact that
+        // react-dom has a package.json#exports with a react-server condition causing it to
+        // prevent us from importing the edge version of server. In our case, we do in fact
+        // want to import the edge version of react-dom in addition to react-server-dom-webpack's
+        // RSC analogous renderToReadableStream, since we convert from the RSC payload to HTML.
+        'react-dom/server.edge': resolve(__dirname, '../../node_modules/react-dom/server.edge.js'),
+      }
+    }
+  }),
+  workerDevServer: ({ getMiniflare }: { getMiniflare: () => Miniflare }): InlineConfig => ({
+    ...configs.workerBase(),
     plugins: [workerHMRPlugin({ getMiniflare })],
   }),
-  workerBuild: () => ({
+  workerBuild: (): InlineConfig => ({
+    ...configs.workerBase(),
+    plugins: [createPatchPlugin()],
+    optimizeDeps: {
+      include: [
+        "react",
+        "react/jsx-runtime",
+        "react/jsx-dev-runtime",
+        "react-server-dom-webpack/server.edge",
+      ],
+    },
     build: {
+      sourcemap: 'inline',
       rollupOptions: {
         input: {
           worker: RESOLVED_WORKER_PATHNAME,
@@ -36,7 +62,7 @@ const configs = {
       },
     },
   }),
-} satisfies Record<string, (...args: any) => InlineConfig>
+}
 
 const createServers = async () => {
   const clientDevServer = await createViteServer(configs.client())
@@ -44,7 +70,8 @@ const createServers = async () => {
 
   const miniflare = new Miniflare({
     modules: true,
-    script: await buildWorkerScript()
+    script: await buildWorkerScript(),
+    compatibilityFlags: ['streams_enable_constructors'],
   });
 
   const server = http.createServer(async (req, res) => {
@@ -105,6 +132,32 @@ const workerHMRPlugin = ({ getMiniflare }: { getMiniflare: () => Miniflare }) =>
     // todo(justinvdm, 2024-11-19): Send RSC update to client
   },
 })
+
+const createPatchPlugin = (): Plugin => ({
+  name: "patch-react-server-dom-webpack",
+  transform(code, id, _options) {
+    if (id.includes("react-server-dom-webpack")) {
+      // rename webpack markers in react server runtime
+      // to avoid conflict with ssr runtime which shares same globals
+      code = code.replaceAll(
+        "__webpack_require__",
+        "__vite_react_server_webpack_require__",
+      );
+      code = code.replaceAll(
+        "__webpack_chunk_load__",
+        "__vite_react_server_webpack_chunk_load__",
+      );
+
+      // make server reference async for simplicity (stale chunkCache, etc...)
+      // see TODO in https://github.com/facebook/react/blob/33a32441e991e126e5e874f831bd3afc237a3ecf/packages/react-server-dom-webpack/src/ReactFlightClientConfigBundlerWebpack.js#L131-L132
+      code = code.replaceAll("if (isAsyncImport(metadata))", "if (true)");
+      code = code.replaceAll("4 === metadata.length", "true");
+
+      return { code, map: null };
+    }
+    return;
+  },
+});
 
 const nodeToWebRequest = (req: IncomingMessage, url: URL): Request => {
   return new Request(url.href, {

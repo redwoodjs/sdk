@@ -2,3 +2,4 @@
 name = "reloaded-experiments-rsc"
 main = "src/index.ts"
 compatibility_date = "2024-11-12"
+compatibility_flags = ["streams_enable_constructors"]

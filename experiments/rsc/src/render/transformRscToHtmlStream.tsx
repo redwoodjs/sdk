@@ -1,18 +1,21 @@
-import { use as reactUse } from "react";
+import React from "react";
 import { createFromReadableStream } from "react-server-dom-webpack/client.edge";
-import { createClientManifest } from "./createClientManifest.js";
+import { createModuleMap } from "./createModuleMap.js";
 import { renderToReadableStream } from "react-dom/server.edge";
 
-export const transformRscToHtmlStream = (stream: ReadableStream) => {
-	const Component = () =>
-		reactUse<React.ReactElement>(
-			createFromReadableStream(stream, {
-				ssrManifest: {
-					moduleMap: createClientManifest(),
-					moduleLoading: null,
-				},
-			}),
-		);
+export const transformRscToHtmlStream = async (stream: ReadableStream) => {
+	const thenable = createFromReadableStream(stream, {
+		ssrManifest: {
+			moduleMap: createModuleMap(),
+			moduleLoading: null,
+		},
+	})
 
-	return renderToReadableStream(<Component />);
+	const Component = () => <>{React.use(thenable)}</>
+
+	//const r = renderToString(<Component />)
+	//console.log('####',r)
+	const r = await renderToReadableStream(<Component />, { onError: (e) => console.error('###############',e) });
+	console.log('####',r)
+	return r
 };
