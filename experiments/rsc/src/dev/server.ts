@@ -29,8 +29,10 @@ const configs = {
   workerBuild: () => ({
     build: {
       rollupOptions: {
-        input: RESOLVED_WORKER_PATHNAME,
-
+        input: {
+          worker: RESOLVED_WORKER_PATHNAME,
+        },
+        preserveEntrySignatures: 'exports-only'
       },
     },
   }),
@@ -41,6 +43,7 @@ const createServers = async () => {
   await createViteServer(configs.workerDevServer({ getMiniflare: () => miniflare }))
 
   const miniflare = new Miniflare({
+    modules: true,
     script: await buildWorkerScript()
   });
 
@@ -76,10 +79,8 @@ const createServers = async () => {
 }
 
 const buildWorkerScript = async () => {
-  // todo(justinvdm, 2024-11-20): If we are going to continue to bundle using vite for each update,
-  // see if we can get at a `rebuild()` api for vite like esbuild and rollup provide
   const result = await build(configs.workerBuild())
-  return (result as unknown as { code: string }[])[0]?.code as string ?? ''
+  return (result as { output: { code: string }[] }).output[0].code
 }
 
 const workerHMRPlugin = ({ getMiniflare }: { getMiniflare: () => Miniflare }) => ({
