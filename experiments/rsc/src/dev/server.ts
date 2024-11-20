@@ -83,6 +83,10 @@ const buildWorkerScript = async () => {
   return (result as { output: { code: string }[] }).output[0].code
 }
 
+// context(justinvdm, 2024-11-20): While it may seem odd to use the dev server and HMR only to do full rebuilds,
+// we leverage the dev server's module graph to efficiently determine if the worker bundle needs to be
+// rebuilt. This allows us to avoid unnecessary rebuilds when changes don't affect the worker.
+// Still, first prize would be to not need to rebundle at all.
 const workerHMRPlugin = ({ getMiniflare }: { getMiniflare: () => Miniflare }) => ({
   name: 'worker-hmr',
   handleHotUpdate: async ({ file, server }: { file: string, server: ViteDevServer }) => {
@@ -91,6 +95,7 @@ const workerHMRPlugin = ({ getMiniflare }: { getMiniflare: () => Miniflare }) =>
     const isImportedByWorkerFile = [...(module?.importers || [])].some(
       (importer) => importer.file === WORKER_URL
     );
+
 
     if (isImportedByWorkerFile) {
       const script = await buildWorkerScript();
