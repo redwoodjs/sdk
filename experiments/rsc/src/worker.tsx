@@ -2,7 +2,7 @@
 //import { renderToRscStream } from "./render/renderToRscStream";
 //import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 //import { injectRSCPayload } from "rsc-html-stream/server";
-//
+
 export default {
 	async fetch(_request: Request) {
 		// todo(justinvdm, 2024-11-19): Handle RSC actions here
@@ -12,8 +12,8 @@ export default {
 		//const htmlStream = await transformRscToHtmlStream(rscPayloadStream1);
 		//const html = htmlStream.pipeThrough(injectRSCPayload(rscPayloadStream2));
 
-		//return new Response(html, {
-		//	headers: { "content-type": "text/html" },
-		//});
+		return new Response('wassuup', {
+			headers: { "content-type": "text/html" },
+		});
 	},
 };

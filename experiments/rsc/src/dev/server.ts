@@ -1,5 +1,5 @@
 import { build, createServer as createViteServer, } from "vite";
-import { Miniflare, type RequestInfo } from 'miniflare';
+import { Miniflare, type RequestInit } from 'miniflare';
 import type { InlineConfig, ViteDevServer } from 'vite';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import http from 'node:http';
@@ -51,12 +51,12 @@ const createServers = async () => {
     try {
       const url = new URL(req.url as string, `http://${req.headers.host}`);
 
-      if (url.pathname.startsWith('/static')) {
+      if (url.pathname.startsWith('/static') || url.pathname === '/favicon.ico') {
         clientDevServer.middlewares(req, res);
       } else {
         const webRequest = nodeToWebRequest(req, url);
         // context(justinvdm, 2024-11-19): Type assertions needed because Miniflare's Request and Responses types have additional Cloudflare-specific properties
-        const webResponse = await miniflare.dispatchFetch(webRequest as unknown as RequestInfo);
+        const webResponse = await miniflare.dispatchFetch(webRequest.url, webRequest as RequestInit);
         await webToNodeResponse(webResponse as unknown as Response, res);
       }
     } catch (error) {
@@ -107,7 +107,7 @@ const workerHMRPlugin = ({ getMiniflare }: { getMiniflare: () => Miniflare }) =>
 })
 
 const nodeToWebRequest = (req: IncomingMessage, url: URL): Request => {
-  return new Request(url, {
+  return new Request(url.href, {
     method: req.method,
     headers: req.headers as HeadersInit,
     body: req.method !== 'GET' && req.method !== 'HEAD' ? req as unknown as BodyInit : undefined,
