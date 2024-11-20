@@ -1,15 +1,20 @@
-import { createServer as createViteServer } from "vite";
+import { build, createServer as createViteServer, } from "vite";
 import { Miniflare, type RequestInfo } from 'miniflare';
-import type { ViteDevServer } from 'vite';
+import type { InlineConfig, ViteDevServer } from 'vite';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import http from 'node:http';
+import { resolve } from 'node:path';
+
+const __dirname = new URL('.', import.meta.url).pathname;
+export const RESOLVED_WORKER_PATHNAME = resolve(__dirname, '../worker.tsx')
 
 export const DEV_SERVER_PORT = 2332;
 export const CLIENT_DEV_SERVER_PORT = 5173;
 export const WORKER_DEV_SERVER_PORT = 5174;
+export const WORKER_URL = '/src/worker.tsx';
 
-const createServers = async () => {
-  const clientDevServer = await createViteServer({
+const configs = {
+  client: () => ({
     server: {
       middlewareMode: true,
       port: CLIENT_DEV_SERVER_PORT,
@@ -17,20 +22,26 @@ const createServers = async () => {
     base: "/static/",
     clearScreen: false,
     plugins: [],
-  })
+  }),
+  workerDevServer: ({ getMiniflare }: { getMiniflare: () => Miniflare }) => ({
+    plugins: [workerHMRPlugin({ getMiniflare })],
+  }),
+  workerBuild: () => ({
+    build: {
+      rollupOptions: {
+        input: RESOLVED_WORKER_PATHNAME,
 
-  const workerDevServer = await createViteServer({
-    server: {
-      middlewareMode: true,
-      port: WORKER_DEV_SERVER_PORT,
+      },
     },
-    base: "/",
-    clearScreen: false,
-    plugins: [workerHMRPlugin({ getMiniflare: () => miniflare })],
-  })
+  }),
+} satisfies Record<string, (...args: any) => InlineConfig>
+
+const createServers = async () => {
+  const clientDevServer = await createViteServer(configs.client())
+  await createViteServer(configs.workerDevServer({ getMiniflare: () => miniflare }))
 
   const miniflare = new Miniflare({
-    script: await buildWorkerScript(workerDevServer)
+    script: await buildWorkerScript()
   });
 
   const server = http.createServer(async (req, res) => {
@@ -64,15 +75,26 @@ const createServers = async () => {
   })
 }
 
-const buildWorkerScript = async (server: ViteDevServer) => {
-  return (await server.transformRequest('/src/worker.tsx'))?.code ?? '';
+const buildWorkerScript = async () => {
+  // todo(justinvdm, 2024-11-20): If we are going to continue to bundle using vite for each update,
+  // see if we can get at a `rebuild()` api for vite like esbuild and rollup provide
+  const result = await build(configs.workerBuild())
+  return (result as unknown as { code: string }[])[0]?.code as string ?? ''
 }
 
 const workerHMRPlugin = ({ getMiniflare }: { getMiniflare: () => Miniflare }) => ({
   name: 'worker-hmr',
-  handleHotUpdate: async ({ server }: { server: ViteDevServer }) => {
-    const script = await buildWorkerScript(server);
-    getMiniflare().setOptions({ script });
+  handleHotUpdate: async ({ file, server }: { file: string, server: ViteDevServer }) => {
+    const module = server.moduleGraph.getModuleById(file);
+
+    const isImportedByWorkerFile = [...(module?.importers || [])].some(
+      (importer) => importer.file === WORKER_URL
+    );
+
+    if (isImportedByWorkerFile) {
+      const script = await buildWorkerScript();
+      getMiniflare().setOptions({ script });
+    }
 
     // todo(justinvdm, 2024-11-19): Send RSC update to client
   },
