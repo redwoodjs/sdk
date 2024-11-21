@@ -43,7 +43,6 @@ const configs = {
   }),
   workerBuild: (): InlineConfig => ({
     ...configs.workerBase(),
-    plugins: [createPatchPlugin()],
     optimizeDeps: {
       include: [
         "react",
@@ -132,32 +131,6 @@ const workerHMRPlugin = ({ getMiniflare }: { getMiniflare: () => Miniflare }) =>
     // todo(justinvdm, 2024-11-19): Send RSC update to client
   },
 })
-
-const createPatchPlugin = (): Plugin => ({
-  name: "patch-react-server-dom-webpack",
-  transform(code, id, _options) {
-    if (id.includes("react-server-dom-webpack")) {
-      // rename webpack markers in react server runtime
-      // to avoid conflict with ssr runtime which shares same globals
-      code = code.replaceAll(
-        "__webpack_require__",
-        "__vite_react_server_webpack_require__",
-      );
-      code = code.replaceAll(
-        "__webpack_chunk_load__",
-        "__vite_react_server_webpack_chunk_load__",
-      );
-
-      // make server reference async for simplicity (stale chunkCache, etc...)
-      // see TODO in https://github.com/facebook/react/blob/33a32441e991e126e5e874f831bd3afc237a3ecf/packages/react-server-dom-webpack/src/ReactFlightClientConfigBundlerWebpack.js#L131-L132
-      code = code.replaceAll("if (isAsyncImport(metadata))", "if (true)");
-      code = code.replaceAll("4 === metadata.length", "true");
-
-      return { code, map: null };
-    }
-    return;
-  },
-});
 
 const nodeToWebRequest = (req: IncomingMessage, url: URL): Request => {
   return new Request(url.href, {
