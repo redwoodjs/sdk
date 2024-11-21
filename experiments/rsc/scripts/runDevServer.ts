@@ -1,6 +1,6 @@
 import { build, createServer as createViteServer, } from "vite";
 import { Miniflare, type RequestInit } from 'miniflare';
-import type { InlineConfig, Plugin, ViteDevServer } from 'vite';
+import type { InlineConfig, ViteDevServer } from 'vite';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import http from 'node:http';
 import { resolve } from 'node:path';
@@ -25,15 +25,9 @@ const configs = {
   }),
   workerBase: (): InlineConfig => ({
     resolve: {
-      conditions: ['react-server'],
       alias: {
-        // todo(justinvdm, 2024-11-20): Use node modules resolution instead of absolute path
-        // context(justinvdm, 2024-11-20): This is a hack to get around the fact that
-        // react-dom has a package.json#exports with a react-server condition causing it to
-        // prevent us from importing the edge version of server. In our case, we do in fact
-        // want to import the edge version of react-dom in addition to react-server-dom-webpack's
-        // RSC analogous renderToReadableStream, since we convert from the RSC payload to HTML.
-        'react-dom/server.edge': resolve(__dirname, '../../node_modules/react-dom/server.edge.js'),
+        'react-ssr': resolve(__dirname, '../vendor/react-ssr.js'),
+        'react-rsc-worker': resolve(__dirname, '../vendor/react-rsc-worker.js'),
       }
     }
   }),
@@ -43,14 +37,6 @@ const configs = {
   }),
   workerBuild: (): InlineConfig => ({
     ...configs.workerBase(),
-    optimizeDeps: {
-      include: [
-        "react",
-        "react/jsx-runtime",
-        "react/jsx-dev-runtime",
-        "react-server-dom-webpack/server.edge",
-      ],
-    },
     build: {
       sourcemap: 'inline',
       rollupOptions: {

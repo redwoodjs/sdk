@@ -4,7 +4,8 @@
 	"description": "",
 	"main": "index.js",
 	"scripts": {
-		"dev": "npx tsx ./src/dev/server.ts",
+		"dev": "pnpm build:vendor && npx tsx ./src/dev/server.ts",
+		"build:vendor": "npx tsx ./scripts/buildVendorBundles.mts",
 		"types": "wrangler types && tsc"
 	},
 	"keywords": [],
