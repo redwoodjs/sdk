@@ -10,6 +10,7 @@ import { buildVendorBundles } from './buildVendorBundles.mjs';
 // harryhcs - I could not get this config improt working as it was, but I did not spend any time on that 
 import { config as viteConfig } from '../miniflare.config.mjs';
 import { viteConfigs } from './viteConfigs.mjs';
+import { $ } from 'execa';
 
 const __dirname = new URL('.', import.meta.url).pathname;
 export const RESOLVED_WORKER_PATHNAME = resolve(__dirname, '../src/worker.tsx')
@@ -38,6 +39,7 @@ const configs = {
 const createServers = async () => {
   if (process.env.FORCE_BUILD_VENDOR || !(await pathExists(VENDOR_DIST_DIR))) {
     await buildVendorBundles()
+    await $`pnpm prisma generate`
   }
 
   const clientDevServer = await createViteServer(configs.clientDevServer())

@@ -2,6 +2,7 @@ import { App } from "./app/App";
 import { renderToRscStream } from "./render/renderToRscStream";
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 import { injectRSCPayload } from "rsc-html-stream/server";
+import { db } from './db'
 
 export interface Env {
 	DB: D1Database;
@@ -14,8 +15,8 @@ export default {
 		// harryhcs just loging the data out here
 		// useing npx wrangler tail to get the logs inmy terminal
 		
-		const { results } = await env.DB.prepare("SELECT * FROM User").all();
-		console.log('###', results);
+		const results = await db.user.findMany()
+		console.log('###', results)
 
 		const rscPayloadStream = renderToRscStream(<App />);
 		const [rscPayloadStream1, rscPayloadStream2] = rscPayloadStream.tee();
