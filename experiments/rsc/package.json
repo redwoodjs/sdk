@@ -16,6 +16,7 @@
 	"private": true,
 	"dependencies": {
 		"@cloudflare/workers-types": "^4.20241112.0",
+		"@prisma/adapter-d1": "^5.22.0",
 		"@prisma/client": "5.22.0",
 		"@types/lodash": "^4.17.13",
 		"lodash": "^4.17.21",

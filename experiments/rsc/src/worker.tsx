@@ -1,8 +1,8 @@
 import { App } from "./app/App";
+import { createDbClient } from './db';
 import { renderToRscStream } from "./render/renderToRscStream";
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 import { injectRSCPayload } from "rsc-html-stream/server";
-import { db } from './db'
 
 export interface Env {
 	DB: D1Database;
@@ -14,7 +14,8 @@ export default {
 
 		// harryhcs just loging the data out here
 		// useing npx wrangler tail to get the logs inmy terminal
-		
+
+		const db = createDbClient(env)
 		const results = await db.user.findMany()
 		console.log('###', results)
 

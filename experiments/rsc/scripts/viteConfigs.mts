@@ -20,7 +20,7 @@ export const viteConfigs = {
       alias: {
         'vendor/react-ssr': resolve(VENDOR_DIST_DIR, 'react-ssr.mjs'),
         'vendor/react-rsc-worker': resolve(VENDOR_DIST_DIR, 'react-rsc-worker.mjs'),
-        '@prisma/client': resolve(VENDOR_DIST_DIR, 'prisma-client/edge.js')
+        '@prisma/client': resolve(VENDOR_DIST_DIR, 'prisma-client')
       }
     }
   }),
