@@ -7,6 +7,7 @@ import http from 'node:http';
 import { resolve } from 'node:path';
 
 import { buildVendorBundles } from './buildVendorBundles.mjs';
+import { config as miniflareConfig } from '../miniflare.config';
 
 const __dirname = new URL('.', import.meta.url).pathname;
 export const RESOLVED_WORKER_PATHNAME = resolve(__dirname, '../src/worker.tsx')
@@ -64,10 +65,10 @@ const createServers = async () => {
   await createViteServer(configs.workerDevServer({ getMiniflare: () => miniflare }))
 
   const miniflare = new Miniflare({
+    ...miniflareConfig,
     modules: true,
     script: await buildWorkerScript(),
-    // @ts-ignore: Miniflare's types are incorrect
-    wranglerConfigPath: true,
+    compatibilityFlags: ["streams_enable_constructors", "transformstream_enable_standard_constructor"],
   });
 
   const server = http.createServer(async (req, res) => {
