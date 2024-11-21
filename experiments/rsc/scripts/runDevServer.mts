@@ -8,7 +8,7 @@ import { resolve } from 'node:path';
 
 import { buildVendorBundles } from './buildVendorBundles.mjs';
 // harryhcs - I could not get this config improt working as it was, but I did not spend any time on that 
-import config from '../miniflare.config';
+import { config as viteConfig } from '../miniflare.config.mjs';
 import { viteConfigs } from './viteConfigs.mjs';
 
 const __dirname = new URL('.', import.meta.url).pathname;
@@ -44,11 +44,9 @@ const createServers = async () => {
   await createViteServer(configs.workerDevServer({ getMiniflare: () => miniflare }))
 
   const miniflare = new Miniflare({
-    ...config,
-    // harryhcs - add this here because I could not get the config to work from the config import
-    d1Databases: {
-      DB: "08100d07-03e7-49b0-92e1-fa05569c370e",
-    },
+    ...viteConfig,
+    // context(justinvdm, 2024-11-21): `npx wrangler d1 migrations apply` creates a sqlite file in `.wrangler/state/v3/d1`
+    d1Persist: resolve(__dirname, '../.wrangler/state/v3/d1'),
     modules: true,
     script: await buildWorkerScript(),
     compatibilityFlags: ["streams_enable_constructors", "transformstream_enable_standard_constructor", "nodejs_compat"],
