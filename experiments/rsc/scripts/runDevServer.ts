@@ -1,12 +1,16 @@
-import { build, createServer as createViteServer, } from "vite";
+import { build, createServer as createViteServer, mergeConfig } from "vite";
+import { pathExists } from 'fs-extra';
 import { Miniflare, type RequestInit } from 'miniflare';
 import type { InlineConfig, ViteDevServer } from 'vite';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import http from 'node:http';
 import { resolve } from 'node:path';
 
+import { buildVendorBundles } from './buildVendorBundles';
+
 const __dirname = new URL('.', import.meta.url).pathname;
-export const RESOLVED_WORKER_PATHNAME = resolve(__dirname, '../worker.tsx')
+export const RESOLVED_WORKER_PATHNAME = resolve(__dirname, '../src/worker.tsx')
+export const VENDOR_DIST_DIR = resolve(__dirname, '../vendor/dist')
 
 export const DEV_SERVER_PORT = 2332;
 export const CLIENT_DEV_SERVER_PORT = 5173;
@@ -26,17 +30,15 @@ const configs = {
   workerBase: (): InlineConfig => ({
     resolve: {
       alias: {
-        'react-ssr': resolve(__dirname, '../vendor/react-ssr.js'),
-        'react-rsc-worker': resolve(__dirname, '../vendor/react-rsc-worker.js'),
+        'vendor/react-ssr': resolve(VENDOR_DIST_DIR, 'react-ssr.mjs'),
+        'vendor/react-rsc-worker': resolve(VENDOR_DIST_DIR, 'react-rsc-worker.mjs'),
       }
     }
   }),
-  workerDevServer: ({ getMiniflare }: { getMiniflare: () => Miniflare }): InlineConfig => ({
-    ...configs.workerBase(),
+  workerDevServer: ({ getMiniflare }: { getMiniflare: () => Miniflare }): InlineConfig => mergeConfig(configs.workerBase(), {
     plugins: [workerHMRPlugin({ getMiniflare })],
   }),
-  workerBuild: (): InlineConfig => ({
-    ...configs.workerBase(),
+  workerBuild: (): InlineConfig => mergeConfig(configs.workerBase(), {
     build: {
       sourcemap: 'inline',
       rollupOptions: {
@@ -50,6 +52,10 @@ const configs = {
 }
 
 const createServers = async () => {
+  if (process.env.FORCE_BUILD_VENDOR || !(await pathExists(VENDOR_DIST_DIR))) {
+    await buildVendorBundles()
+  }
+
   const clientDevServer = await createViteServer(configs.client())
   await createViteServer(configs.workerDevServer({ getMiniflare: () => miniflare }))
 

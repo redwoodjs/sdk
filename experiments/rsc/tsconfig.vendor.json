@@ -1,4 +1,5 @@
 {
+	"files": ["vendor/src/**/*.ts"],
 	"compilerOptions": {
 		/* Visit https://aka.ms/tsconfig.json to read more about this file */
 
@@ -19,9 +20,6 @@
 			"./types/react.d.ts",
 			"./types/global.d.ts"
 		],
-		"paths": {
-			"vendor/*": ["./vendor/dist/*"],
-		},
 		/* Enable importing .json files */
 		"resolveJsonModule": true,
 

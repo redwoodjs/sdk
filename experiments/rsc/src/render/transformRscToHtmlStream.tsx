@@ -1,7 +1,6 @@
-import React from "react";
-import { createFromReadableStream } from "react-server-dom-webpack/client.edge";
 import { createModuleMap } from "./createModuleMap.js";
-import { renderToReadableStream } from "react-dom/server.edge";
+import { use, renderToHtmlStream } from "vendor/react-ssr";
+import { createFromReadableStream } from 'vendor/react-rsc-worker';
 
 export const transformRscToHtmlStream = async (stream: ReadableStream) => {
 	const thenable = createFromReadableStream(stream, {
@@ -11,11 +10,12 @@ export const transformRscToHtmlStream = async (stream: ReadableStream) => {
 		},
 	})
 
-	const Component = () => <>{React.use(thenable)}</>
+	//const Component = () => <>{use(thenable)}</>
+  const Component = () => <div>hello</div>
 
 	//const r = renderToString(<Component />)
 	//console.log('####',r)
-	const r = await renderToReadableStream(<Component />, { onError: (e) => console.error('###############',e) });
+	const r = await renderToHtmlStream(<Component />, { onError: (e) => console.error('###############',e) });
 	console.log('####',r)
 	return r
 };
