@@ -20,6 +20,7 @@ const configs = {
     ],
     build: {
       sourcemap: true,
+      minify: MODE === 'production',
     }
   }),
   reactRSCWorker: (): InlineConfig => mergeConfig(configs.common(), {

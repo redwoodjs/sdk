@@ -62,7 +62,7 @@ const createServers = async () => {
   const miniflare = new Miniflare({
     modules: true,
     script: await buildWorkerScript(),
-    compatibilityFlags: ['streams_enable_constructors'],
+    compatibilityFlags: ['streams_enable_constructors', 'transformstream_enable_standard_constructor'],
   });
 
   const server = http.createServer(async (req, res) => {
