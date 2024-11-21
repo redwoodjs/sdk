@@ -8,6 +8,7 @@ import { resolve } from 'node:path';
 
 import { buildVendorBundles } from './buildVendorBundles.mjs';
 import { config as miniflareConfig } from '../miniflare.config';
+import { viteConfigs } from './viteConfigs.mjs';
 
 const __dirname = new URL('.', import.meta.url).pathname;
 export const RESOLVED_WORKER_PATHNAME = resolve(__dirname, '../src/worker.tsx')
@@ -19,7 +20,7 @@ export const WORKER_DEV_SERVER_PORT = 5174;
 export const WORKER_URL = '/src/worker.tsx';
 
 const configs = {
-  client: (): InlineConfig => ({
+  clientDevServer: (): InlineConfig => ({
     server: {
       middlewareMode: true,
       port: CLIENT_DEV_SERVER_PORT,
@@ -28,31 +29,8 @@ const configs = {
     clearScreen: false,
     plugins: [],
   }),
-  workerBase: (): InlineConfig => ({
-    resolve: {
-      alias: {
-        'vendor/react-ssr': resolve(VENDOR_DIST_DIR, 'react-ssr.mjs'),
-        'vendor/react-rsc-worker': resolve(VENDOR_DIST_DIR, 'react-rsc-worker.mjs'),
-      }
-    }
-  }),
-  workerDevServer: ({ getMiniflare }: { getMiniflare: () => Miniflare }): InlineConfig => mergeConfig(configs.workerBase(), {
+  workerDevServer: ({ getMiniflare }: { getMiniflare: () => Miniflare }): InlineConfig => mergeConfig(viteConfigs.workerBase(), {
     plugins: [workerHMRPlugin({ getMiniflare })],
-  }),
-  workerBuild: (): InlineConfig => mergeConfig(configs.workerBase(), {
-    build: {
-      sourcemap: 'inline',
-      rollupOptions: {
-        input: {
-          worker: RESOLVED_WORKER_PATHNAME,
-        },
-        preserveEntrySignatures: 'exports-only'
-      },
-
-      // todo(justinvdm, 2024-11-21): Figure out what is making our bundle so large. React SSR and SRC bundles account for ~1.5MB.
-      // todo(justinvdm, 2024-11-21): Figure out if we can do some kind of code-splitting with Miniflare
-      chunkSizeWarningLimit: 4_000,
-    },
   }),
 }
 
@@ -61,7 +39,7 @@ const createServers = async () => {
     await buildVendorBundles()
   }
 
-  const clientDevServer = await createViteServer(configs.client())
+  const clientDevServer = await createViteServer(configs.clientDevServer())
   await createViteServer(configs.workerDevServer({ getMiniflare: () => miniflare }))
 
   const miniflare = new Miniflare({
@@ -103,32 +81,9 @@ const createServers = async () => {
 }
 
 const buildWorkerScript = async () => {
-  const result = await build(configs.workerBuild())
+  const result = await build(viteConfigs.workerBuild())
   return (result as { output: { code: string }[] }).output[0].code
 }
-
-// context(justinvdm, 2024-11-20): While it may seem odd to use the dev server and HMR only to do full rebuilds,
-// we leverage the dev server's module graph to efficiently determine if the worker bundle needs to be
-// rebuilt. This allows us to avoid unnecessary rebuilds when changes don't affect the worker.
-// Still, first prize would be to not need to rebundle at all.
-const workerHMRPlugin = ({ getMiniflare }: { getMiniflare: () => Miniflare }) => ({
-  name: 'worker-hmr',
-  handleHotUpdate: async ({ file, server }: { file: string, server: ViteDevServer }) => {
-    const module = server.moduleGraph.getModuleById(file);
-
-    const isImportedByWorkerFile = [...(module?.importers || [])].some(
-      (importer) => importer.file === WORKER_URL
-    );
-
-
-    if (isImportedByWorkerFile) {
-      const script = await buildWorkerScript();
-      getMiniflare().setOptions({ script });
-    }
-
-    // todo(justinvdm, 2024-11-19): Send RSC update to client
-  },
-})
 
 const nodeToWebRequest = (req: IncomingMessage, url: URL): Request => {
   return new Request(url.href, {
@@ -161,5 +116,27 @@ const webToNodeResponse = async (webResponse: Response, nodeResponse: ServerResp
   nodeResponse.end();
 };
 
+// context(justinvdm, 2024-11-20): While it may seem odd to use the dev server and HMR only to do full rebuilds,
+// we leverage the dev server's module graph to efficiently determine if the worker bundle needs to be
+// rebuilt. This allows us to avoid unnecessary rebuilds when changes don't affect the worker.
+// Still, first prize would be to not need to rebundle at all.
+const workerHMRPlugin = ({ getMiniflare }: { getMiniflare: () => Miniflare }) => ({
+  name: 'worker-hmr',
+  handleHotUpdate: async ({ file, server }: { file: string, server: ViteDevServer }) => {
+    const module = server.moduleGraph.getModuleById(file);
+
+    const isImportedByWorkerFile = [...(module?.importers || [])].some(
+      (importer) => importer.file === WORKER_URL
+    );
+
+
+    if (isImportedByWorkerFile) {
+      const script = await buildWorkerScript();
+      getMiniflare().setOptions({ script });
+    }
+
+    // todo(justinvdm, 2024-11-19): Send RSC update to client
+  },
+})
 
 createServers()
