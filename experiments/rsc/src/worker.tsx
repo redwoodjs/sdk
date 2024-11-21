@@ -3,9 +3,23 @@ import { renderToRscStream } from "./render/renderToRscStream";
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 import { injectRSCPayload } from "rsc-html-stream/server";
 
+export interface Env {
+	DB: D1Database;
+  }
+
 export default {
-	async fetch(_request: Request) {
+	async fetch(_request: Request, env: Env): Promise<Response> {
 		// todo(justinvdm, 2024-11-19): Handle RSC actions here
+
+		// harryhcs just loging the data out here
+		// useing npx wrangler tail to get the logs inmy terminal
+		
+		const { results } = await env.DB.prepare(
+			"SELECT * FROM User",
+		  ).all();
+		  console.log(results);
+
+			
 
 		const rscPayloadStream = renderToRscStream(<App />);
 		const [rscPayloadStream1, rscPayloadStream2] = rscPayloadStream.tee();
