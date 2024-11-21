@@ -4,7 +4,7 @@
 	"description": "",
 	"main": "index.js",
 	"scripts": {
-		"dev": "NODE_ENV=development npx tsx ./scripts/runDevServer.ts",
+		"dev": "NODE_ENV=development npx tsx ./scripts/runDevServer.mts",
 		"types": "wrangler types && tsc"
 	},
 	"keywords": [],

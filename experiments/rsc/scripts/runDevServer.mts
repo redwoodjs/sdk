@@ -6,7 +6,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http';
 import http from 'node:http';
 import { resolve } from 'node:path';
 
-import { buildVendorBundles } from './buildVendorBundles';
+import { buildVendorBundles } from './buildVendorBundles.mjs';
 
 const __dirname = new URL('.', import.meta.url).pathname;
 export const RESOLVED_WORKER_PATHNAME = resolve(__dirname, '../src/worker.tsx')
@@ -47,6 +47,10 @@ const configs = {
         },
         preserveEntrySignatures: 'exports-only'
       },
+
+      // todo(justinvdm, 2024-11-21): Figure out what is making our bundle so large. React SSR and SRC bundles account for ~1.5MB.
+      // todo(justinvdm, 2024-11-21): Figure out if we can do some kind of code-splitting with Miniflare
+      chunkSizeWarningLimit: 4_000,
     },
   }),
 }
@@ -62,7 +66,8 @@ const createServers = async () => {
   const miniflare = new Miniflare({
     modules: true,
     script: await buildWorkerScript(),
-    compatibilityFlags: ['streams_enable_constructors', 'transformstream_enable_standard_constructor'],
+    // @ts-ignore: Miniflare's types are incorrect
+    wranglerConfigPath: true,
   });
 
   const server = http.createServer(async (req, res) => {
