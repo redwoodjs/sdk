@@ -1,0 +1,38 @@
+{
+	"name": "rsc-experiment",
+	"version": "1.0.0",
+	"description": "",
+	"main": "index.js",
+	"scripts": {
+		"build": "npx tsx ./scripts/build.mts",
+		"dev": "NODE_ENV=development npx tsx ./scripts/runDevServer.mts",
+		"types": "wrangler types && tsc",
+		"deploy": "wrangler deploy"
+	},
+	"keywords": [],
+	"author": "",
+	"license": "UNLICENSED",
+	"private": true,
+	"dependencies": {
+		"@cloudflare/workers-types": "^4.20241112.0",
+		"@types/lodash": "^4.17.13",
+		"lodash": "^4.17.21",
+		"react": "19.0.0-rc-f2df5694-20240916",
+		"react-dom": "19.0.0-rc-f2df5694-20240916",
+		"react-server-dom-webpack": "19.0.0-rc-f2df5694-20240916",
+		"rsc-html-stream": "^0.0.3",
+		"typescript": "^5.5.2",
+		"wrangler": "^3.60.3"
+	},
+	"devDependencies": {
+		"@types/fs-extra": "^11.0.4",
+		"@types/react": "^18.3.12",
+		"@types/react-dom": "^18.3.1",
+		"fs-extra": "^11.2.0",
+		"miniflare": "^3.20241106.0",
+		"react": "^18.3.1",
+		"tsx": "^4.19.2",
+		"vite": "^5.4.11",
+		"vite-plugin-dts": "^4.3.0"
+	}
+}
