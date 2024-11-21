@@ -6,7 +6,8 @@
 	"scripts": {
 		"build": "npx tsx ./scripts/build.mts",
 		"dev": "NODE_ENV=development npx tsx ./scripts/runDevServer.mts",
-		"types": "wrangler types && tsc"
+		"types": "wrangler types && tsc",
+		"deploy": "wrangler deploy"
 	},
 	"keywords": [],
 	"author": "",

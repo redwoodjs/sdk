@@ -3,3 +3,6 @@ name = "reloaded-experiments-rsc"
 main = "dist/worker.mjs"
 compatibility_date = "2024-11-12"
 compatibilityFlags = ["streams_enable_constructors", "transformstream_enable_standard_constructor"]
+
+[build]
+command = "pnpm build"
