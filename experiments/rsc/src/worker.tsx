@@ -2,7 +2,6 @@ import { App } from "./app/App";
 import { renderToRscStream } from "./render/renderToRscStream";
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 import { injectRSCPayload } from "rsc-html-stream/server";
-import memoize from 'lodash/memoize.js'
 
 export default {
 	async fetch(_request: Request) {
