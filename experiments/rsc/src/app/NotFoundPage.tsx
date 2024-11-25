@@ -1,4 +1,4 @@
-export const NotFoundPage = (): React.ReactNode => {
+export default function NotFoundPage(): React.ReactNode {
     return (
         <div>
             <h1>404 - Page Not Found</h1>

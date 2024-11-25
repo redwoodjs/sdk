@@ -1,3 +1,3 @@
-export const AdminPage = (): React.ReactNode => {
+export default function AdminPage(): React.ReactNode {
     return 'admin page'
 }

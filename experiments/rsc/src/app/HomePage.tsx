@@ -1,3 +1,3 @@
-export const HomePage = (): React.ReactNode => {
+export default function HomePage(): React.ReactNode {
     return 'home'
 }
