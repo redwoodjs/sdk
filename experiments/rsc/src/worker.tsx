@@ -1,5 +1,6 @@
 import AdminPage from "./app/AdminPage";
 import { App } from "./app/App";
+import { db, setupDb } from './db';
 import HomePage from "./app/HomePage";
 import { renderToRscStream } from "./render/renderToRscStream";
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
@@ -12,7 +13,9 @@ const routes = {
 }
 
 export default {
-	async fetch(request: Request) {
+	async fetch(request: Request, env: Env) {
+		setupDb(env)
+
 		// todo(justinvdm, 2024-11-19): Handle RSC actions here
 
 		const pathname = new URL(request.url).pathname as keyof typeof routes
