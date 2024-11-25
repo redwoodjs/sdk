@@ -9,12 +9,10 @@ import { resolve } from 'node:path';
 import { buildVendorBundles } from './buildVendorBundles.mjs';
 // harryhcs - I could not get this config improt working as it was, but I did not spend any time on that 
 import { config as viteConfig } from '../miniflare.config.mjs';
-import { viteConfigs } from './viteConfigs.mjs';
+import { DIST_DIR, VENDOR_DIST_DIR, viteConfigs } from './viteConfigs.mjs';
 import { $ } from 'execa';
 
 const __dirname = new URL('.', import.meta.url).pathname;
-export const RESOLVED_WORKER_PATHNAME = resolve(__dirname, '../src/worker.tsx')
-export const VENDOR_DIST_DIR = resolve(__dirname, '../vendor/dist')
 
 export const DEV_SERVER_PORT = 2332;
 export const CLIENT_DEV_SERVER_PORT = 5173;
@@ -50,7 +48,7 @@ const createServers = async () => {
     // context(justinvdm, 2024-11-21): `npx wrangler d1 migrations apply` creates a sqlite file in `.wrangler/state/v3/d1`
     d1Persist: resolve(__dirname, '../.wrangler/state/v3/d1'),
     modules: true,
-    script: await buildWorkerScript(),
+    scriptPath: await buildWorkerScript(),
     compatibilityFlags: ["streams_enable_constructors", "transformstream_enable_standard_constructor", "nodejs_compat"],
   });
 
@@ -87,7 +85,8 @@ const createServers = async () => {
 
 const buildWorkerScript = async () => {
   const result = await build(viteConfigs.workerBuild())
-  return (result as { output: { code: string }[] }).output[0].code
+  const { fileName } = (result as { output: { fileName: string }[] }).output[0]
+  return resolve(DIST_DIR, fileName)
 }
 
 const nodeToWebRequest = (req: IncomingMessage, url: URL): Request => {
@@ -136,8 +135,9 @@ const workerHMRPlugin = ({ getMiniflare }: { getMiniflare: () => Miniflare }) =>
 
 
     if (isImportedByWorkerFile) {
-      const script = await buildWorkerScript();
-      getMiniflare().setOptions({ script });
+      getMiniflare().setOptions({
+        scriptPath: await buildWorkerScript(),
+      });
     }
 
     // todo(justinvdm, 2024-11-19): Send RSC update to client

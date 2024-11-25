@@ -2,8 +2,10 @@ import { mergeConfig, type InlineConfig } from 'vite';
 import { resolve } from 'node:path';
 
 const __dirname = new URL('.', import.meta.url).pathname;
-export const RESOLVED_WORKER_PATHNAME = resolve(__dirname, '../src/worker.tsx')
-export const VENDOR_DIST_DIR = resolve(__dirname, '../vendor/dist')
+export const ROOT_DIR = resolve(__dirname, '..')
+export const DIST_DIR = resolve(ROOT_DIR, 'dist')
+export const RESOLVED_WORKER_PATHNAME = resolve(ROOT_DIR, 'src/worker.tsx')
+export const VENDOR_DIST_DIR = resolve(ROOT_DIR, 'vendor/dist')
 
 export const DEV_SERVER_PORT = 2332;
 export const CLIENT_DEV_SERVER_PORT = 5173;
@@ -15,12 +17,17 @@ const MODE = process.env.NODE_ENV === 'development' ? 'development' : 'productio
 export const viteConfigs = {
   workerBase: (): InlineConfig => ({
     mode: MODE,
+    build: {
+      rollupOptions: {
+        external: (filepath: string) => !filepath.startsWith(ROOT_DIR)
+      }
+    },
     resolve: {
       conditions: ['workerd'],
       alias: {
         'vendor/react-ssr': resolve(VENDOR_DIST_DIR, 'react-ssr.mjs'),
         'vendor/react-rsc-worker': resolve(VENDOR_DIST_DIR, 'react-rsc-worker.mjs'),
-        '@prisma/client': resolve(VENDOR_DIST_DIR, 'prisma-client')
+        //'@prisma/client': resolve(VENDOR_DIST_DIR, 'prisma-client')
       }
     }
   }),
