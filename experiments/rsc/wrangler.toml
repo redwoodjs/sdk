@@ -2,7 +2,7 @@
 name = "reloaded-experiments-rsc"
 main = "dist/worker.mjs"
 compatibility_date = "2024-03-12"
-compatibility_flags = ["streams_enable_constructors", "transformstream_enable_standard_constructor", "nodejs_compat"]
+compatibility_flags = ["nodejs_compat"]
 
 [observability]
 enabled = true
