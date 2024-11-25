@@ -5,6 +5,7 @@ import type { InlineConfig, ViteDevServer } from 'vite';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import http from 'node:http';
 import { resolve } from 'node:path';
+import { unstable_DevEnv} from 'wrangler'
 
 import { buildVendorBundles } from './buildVendorBundles.mjs';
 // harryhcs - I could not get this config improt working as it was, but I did not spend any time on that 
@@ -19,6 +20,13 @@ export const CLIENT_DEV_SERVER_PORT = 5173;
 export const WORKER_DEV_SERVER_PORT = 5174;
 export const WORKER_URL = '/src/worker.tsx';
 
+interface DevServerContext {
+  miniflare: Miniflare
+  wranglerDevEnv: unstable_DevEnv
+  viteWorkerDevServer: ViteDevServer
+  viteClientDevServer: ViteDevServer
+}
+
 const configs = {
   clientDevServer: (): InlineConfig => ({
     server: {
@@ -29,9 +37,36 @@ const configs = {
     clearScreen: false,
     plugins: [],
   }),
-  workerDevServer: ({ getMiniflare }: { getMiniflare: () => Miniflare }): InlineConfig => mergeConfig(viteConfigs.workerBase(), {
-    plugins: [workerHMRPlugin({ getMiniflare })],
+  workerDevServer: ({ context }: { context: DevServerContext }): InlineConfig => mergeConfig(viteConfigs.workerBase(), {
+    plugins: [workerHMRPlugin({ context })],
   }),
+}
+
+const setup = async (): Promise<DevServerContext> => {
+  let context: Partial<DevServerContext> = {}
+  const wranglerDevEnv = new unstable_DevEnv({})
+
+  const viteClientDevServer = await createViteServer(configs.clientDevServer())
+
+  const viteWorkerDevServer = await createViteServer(configs.workerDevServer({ context: context as DevServerContext }))
+
+  const miniflare = new Miniflare({
+    ...viteConfig,
+    // context(justinvdm, 2024-11-21): `npx wrangler d1 migrations apply` creates a sqlite file in `.wrangler/state/v3/d1`
+    d1Persist: resolve(__dirname, '../.wrangler/state/v3/d1'),
+    modules: true,
+    scriptPath: '',
+    compatibilityFlags: ["streams_enable_constructors", "transformstream_enable_standard_constructor", "nodejs_compat"],
+  });
+
+  Object.assign(context, {
+    miniflare,
+    wranglerDevEnv,
+    viteClientDevServer,
+    viteWorkerDevServer
+  })
+
+  return context as DevServerContext
 }
 
 const createServers = async () => {
@@ -40,28 +75,19 @@ const createServers = async () => {
     await $`pnpm prisma generate`
   }
 
-  const clientDevServer = await createViteServer(configs.clientDevServer())
-  await createViteServer(configs.workerDevServer({ getMiniflare: () => miniflare }))
-
-  const miniflare = new Miniflare({
-    ...viteConfig,
-    // context(justinvdm, 2024-11-21): `npx wrangler d1 migrations apply` creates a sqlite file in `.wrangler/state/v3/d1`
-    d1Persist: resolve(__dirname, '../.wrangler/state/v3/d1'),
-    modules: true,
-    scriptPath: await buildWorkerScript(),
-    compatibilityFlags: ["streams_enable_constructors", "transformstream_enable_standard_constructor", "nodejs_compat"],
-  });
+  const context = await setup()
+  await rebuildWorkerScript(context)
 
   const server = http.createServer(async (req, res) => {
     try {
       const url = new URL(req.url as string, `http://${req.headers.host}`);
 
       if (url.pathname.startsWith('/static') || url.pathname === '/favicon.ico') {
-        clientDevServer.middlewares(req, res);
+        context.viteClientDevServer.middlewares(req, res);
       } else {
         const webRequest = nodeToWebRequest(req, url);
         // context(justinvdm, 2024-11-19): Type assertions needed because Miniflare's Request and Responses types have additional Cloudflare-specific properties
-        const webResponse = await miniflare.dispatchFetch(webRequest.url, webRequest as RequestInit);
+        const webResponse = await context.miniflare.dispatchFetch(webRequest.url, webRequest as RequestInit);
         await webToNodeResponse(webResponse as unknown as Response, res);
       }
     } catch (error) {
@@ -72,7 +98,7 @@ const createServers = async () => {
   });
 
   process.on('beforeExit', async () => {
-    await miniflare.dispose();
+    await context.miniflare.dispose();
   })
 
   server.listen(DEV_SERVER_PORT, () => {
@@ -83,10 +109,39 @@ const createServers = async () => {
   })
 }
 
-const buildWorkerScript = async () => {
+const rebuildWorkerScript = async (context: DevServerContext) => {
   const result = await build(viteConfigs.workerBuild())
-  const { fileName } = (result as { output: { fileName: string }[] }).output[0]
-  return resolve(DIST_DIR, fileName)
+  const { fileName: viteBundlePath } = (result as { output: { fileName: string }[] }).output[0]
+
+  context.wranglerDevEnv.bundler.onConfigUpdate({
+    type: "configUpdate",
+    config: {
+      entrypoint: viteBundlePath,
+      directory: DIST_DIR,
+      build: {
+        nodejsCompatMode: 'v2',
+        format: 'modules',
+        moduleRoot: '',
+        moduleRules: [],
+        define: {},
+        additionalModules: [],
+        exports: [],
+        processEntrypoint: false,
+      },
+      legacy: {},
+      dev: {
+        persist: '',
+      },
+    }
+  })
+
+  await new Promise(resolve => context.wranglerDevEnv.bundler.once('bundleComplete', event => {
+    context.miniflare.setOptions({
+      scriptPath: event.bundle.path
+    });
+
+    resolve(null)
+  }))
 }
 
 const nodeToWebRequest = (req: IncomingMessage, url: URL): Request => {
@@ -124,7 +179,7 @@ const webToNodeResponse = async (webResponse: Response, nodeResponse: ServerResp
 // we leverage the dev server's module graph to efficiently determine if the worker bundle needs to be
 // rebuilt. This allows us to avoid unnecessary rebuilds when changes don't affect the worker.
 // Still, first prize would be to not need to rebundle at all.
-const workerHMRPlugin = ({ getMiniflare }: { getMiniflare: () => Miniflare }) => ({
+const workerHMRPlugin = ({ context }: { context: DevServerContext }) => ({
   name: 'worker-hmr',
   handleHotUpdate: async ({ file, server }: { file: string, server: ViteDevServer }) => {
     const module = server.moduleGraph.getModuleById(file);
@@ -135,9 +190,7 @@ const workerHMRPlugin = ({ getMiniflare }: { getMiniflare: () => Miniflare }) =>
 
 
     if (isImportedByWorkerFile) {
-      getMiniflare().setOptions({
-        scriptPath: await buildWorkerScript(),
-      });
+      await rebuildWorkerScript(context)
     }
 
     // todo(justinvdm, 2024-11-19): Send RSC update to client
