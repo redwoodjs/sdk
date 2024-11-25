@@ -19,7 +19,7 @@ export const viteConfigs = {
     mode: MODE,
     build: {
       rollupOptions: {
-        external: (filepath: string) => !filepath.startsWith(ROOT_DIR)
+        external: ['@prisma/client']
       }
     },
     resolve: {
