@@ -1,19 +1,17 @@
 import { build, createServer as createViteServer, mergeConfig } from "vite";
 import { pathExists } from 'fs-extra';
+import { readFile } from 'fs/promises'
 import { Miniflare, type RequestInit } from 'miniflare';
 import type { InlineConfig, ViteDevServer } from 'vite';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import http from 'node:http';
 import { resolve } from 'node:path';
-import { unstable_DevEnv} from 'wrangler'
 
 import { buildVendorBundles } from './buildVendorBundles.mjs';
 // harryhcs - I could not get this config improt working as it was, but I did not spend any time on that 
 import { config as viteConfig } from '../miniflare.config.mjs';
-import { DIST_DIR, VENDOR_DIST_DIR, viteConfigs } from './viteConfigs.mjs';
+import { PRISMA_CLIENT_ENTRY_POINT, PRISMA_CLIENT_RUNTIME_WASM_PATH, PRISMA_QUERY_ENGINE_WASM_PATH, ROOT_DIR, VENDOR_DIST_DIR, viteConfigs } from './configs.mjs';
 import { $ } from 'execa';
-
-const __dirname = new URL('.', import.meta.url).pathname;
 
 export const DEV_SERVER_PORT = 2332;
 export const CLIENT_DEV_SERVER_PORT = 5173;
@@ -22,7 +20,6 @@ export const WORKER_URL = '/src/worker.tsx';
 
 interface DevServerContext {
   miniflare: Miniflare
-  wranglerDevEnv: unstable_DevEnv
   viteWorkerDevServer: ViteDevServer
   viteClientDevServer: ViteDevServer
 }
@@ -44,7 +41,6 @@ const configs = {
 
 const setup = async (): Promise<DevServerContext> => {
   let context: Partial<DevServerContext> = {}
-  const wranglerDevEnv = new unstable_DevEnv({})
 
   const viteClientDevServer = await createViteServer(configs.clientDevServer())
 
@@ -53,15 +49,14 @@ const setup = async (): Promise<DevServerContext> => {
   const miniflare = new Miniflare({
     ...viteConfig,
     // context(justinvdm, 2024-11-21): `npx wrangler d1 migrations apply` creates a sqlite file in `.wrangler/state/v3/d1`
-    d1Persist: resolve(__dirname, '../.wrangler/state/v3/d1'),
+    d1Persist: resolve(ROOT_DIR, '../.wrangler/state/v3/d1'),
     modules: true,
-    scriptPath: '',
+    script: '',
     compatibilityFlags: ["streams_enable_constructors", "transformstream_enable_standard_constructor", "nodejs_compat"],
   });
 
   Object.assign(context, {
     miniflare,
-    wranglerDevEnv,
     viteClientDevServer,
     viteWorkerDevServer
   })
@@ -111,37 +106,27 @@ const createServers = async () => {
 
 const rebuildWorkerScript = async (context: DevServerContext) => {
   const result = await build(viteConfigs.workerBuild())
-  const { fileName: viteBundlePath } = (result as { output: { fileName: string }[] }).output[0]
+  const { fileName: workerBundlePath, code: workerBundleContents } = (result as { output: { fileName: string, code: string }[] }).output[0]
 
-  context.wranglerDevEnv.bundler.onConfigUpdate({
-    type: "configUpdate",
-    config: {
-      entrypoint: viteBundlePath,
-      directory: DIST_DIR,
-      build: {
-        nodejsCompatMode: 'v2',
-        format: 'modules',
-        moduleRoot: '',
-        moduleRules: [],
-        define: {},
-        additionalModules: [],
-        exports: [],
-        processEntrypoint: false,
-      },
-      legacy: {},
-      dev: {
-        persist: '',
-      },
-    }
-  })
-
-  await new Promise(resolve => context.wranglerDevEnv.bundler.once('bundleComplete', event => {
-    context.miniflare.setOptions({
-      scriptPath: event.bundle.path
-    });
-
-    resolve(null)
-  }))
+  context.miniflare.setOptions({
+    modules: [{
+      type: 'ESModule',
+      path: workerBundlePath,
+      contents: workerBundleContents
+    }, {
+      type: 'CommonJS',
+      path: 'assets/@prisma/client',
+      contents: await readFile(PRISMA_CLIENT_ENTRY_POINT, 'utf-8'),
+    }, {
+      type: 'CommonJS',
+      path: 'assets/@prisma/@prisma/client/runtime/wasm.js',
+      contents: await readFile(PRISMA_CLIENT_RUNTIME_WASM_PATH),
+    }, {
+      type: 'CompiledWasm',
+      path: 'assets/@prisma/.prisma/client/wasm',
+      contents: await readFile(PRISMA_QUERY_ENGINE_WASM_PATH),
+    }]
+  });
 }
 
 const nodeToWebRequest = (req: IncomingMessage, url: URL): Request => {

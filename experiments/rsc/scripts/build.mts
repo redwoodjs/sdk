@@ -1,5 +1,5 @@
 import { build } from 'vite';
-import { viteConfigs } from './viteConfigs.mjs';
+import { viteConfigs } from './configs.mjs';
 import { buildVendorBundles } from './buildVendorBundles.mjs';
 import { $ } from 'execa';
 

@@ -1,11 +1,22 @@
 import { mergeConfig, type InlineConfig } from 'vite';
-import { resolve } from 'node:path';
+import { resolve, dirname } from 'node:path';
+import { resolve as importMetaResolve } from 'import-meta-resolve'
+import { createRequire } from 'node:module';
 
 const __dirname = new URL('.', import.meta.url).pathname;
+
 export const ROOT_DIR = resolve(__dirname, '..')
 export const DIST_DIR = resolve(ROOT_DIR, 'dist')
 export const RESOLVED_WORKER_PATHNAME = resolve(ROOT_DIR, 'src/worker.tsx')
 export const VENDOR_DIST_DIR = resolve(ROOT_DIR, 'vendor/dist')
+
+export const PRISMA_CLIENT_ENTRY_POINT_URL = importMetaResolve('@prisma/client', import.meta.url)
+export const PRISMA_CLIENT_DIR_PATH = dirname(new URL(PRISMA_CLIENT_ENTRY_POINT_URL).pathname)
+export const PRISMA_CLIENT_GENERATE_ENTRY_POINT = createRequire(PRISMA_CLIENT_ENTRY_POINT_URL).resolve('.prisma/client/default.js')
+export const PRISMA_CLIENT_GENERATE_DIR = dirname(PRISMA_CLIENT_GENERATE_ENTRY_POINT)
+export const PRISMA_CLIENT_ENTRY_POINT = resolve(PRISMA_CLIENT_GENERATE_DIR, 'wasm.js')
+export const PRISMA_CLIENT_RUNTIME_WASM_PATH = resolve(PRISMA_CLIENT_DIR_PATH, 'runtime', 'wasm.js')
+export const PRISMA_QUERY_ENGINE_WASM_PATH = resolve(PRISMA_CLIENT_GENERATE_DIR, 'query_engine_bg.wasm');
 
 export const DEV_SERVER_PORT = 2332;
 export const CLIENT_DEV_SERVER_PORT = 5173;
@@ -19,7 +30,15 @@ export const viteConfigs = {
     mode: MODE,
     build: {
       rollupOptions: {
-        external: (filepath: string) => !filepath.startsWith(ROOT_DIR)
+        external: (filepath: string) => {
+          if (filepath === '@prisma/client') {
+            return true
+          }
+          if(filepath.endsWith('.wasm')) {
+            console.log('######',filepath)
+          }
+          return filepath.endsWith('.wasm')
+        }
       }
     },
     resolve: {
@@ -27,7 +46,7 @@ export const viteConfigs = {
       alias: {
         'vendor/react-ssr': resolve(VENDOR_DIST_DIR, 'react-ssr.mjs'),
         'vendor/react-rsc-worker': resolve(VENDOR_DIST_DIR, 'react-rsc-worker.mjs'),
-        //'@prisma/client': resolve(VENDOR_DIST_DIR, 'prisma-client')
+        //'@prisma/client': PRISMA_CLIENT_PATH
       }
     }
   }),

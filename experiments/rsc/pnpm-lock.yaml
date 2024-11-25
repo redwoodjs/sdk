@@ -55,6 +55,9 @@ devDependencies:
   fs-extra:
     specifier: ^11.2.0
     version: 11.2.0
+  import-meta-resolve:
+    specifier: ^4.1.0
+    version: 4.1.0
   miniflare:
     specifier: ^3.20241106.0
     version: 3.20241106.0
@@ -1897,6 +1900,10 @@ packages:
   /import-lazy@4.0.0:
     resolution: {integrity: sha512-rKtvo6a868b5Hu3heneU+L4yEQ4jYKLtjpnPeUdK7h0yzXGmyBTypknlkCvHFBqfX9YlorEiMM6Dnq/5atfHkw==}
     engines: {node: '>=8'}
+    dev: true
+
+  /import-meta-resolve@4.1.0:
+    resolution: {integrity: sha512-I6fiaX09Xivtk+THaMfAwnA3MVA5Big1WHF1Dfx9hFuvNIWpXnorlkzhcQf6ehrqQiiZECRt1poOAkPmer3ruw==}
     dev: true
 
   /is-core-module@2.15.1:
