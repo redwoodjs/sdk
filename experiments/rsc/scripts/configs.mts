@@ -35,12 +35,7 @@ export const viteConfigs = {
     },
     build: {
       rollupOptions: {
-        external: (filepath: string) => {
-          if (filepath.endsWith('.wasm')) {
-            console.log('####################3#3', filepath)
-          }
-          return filepath.endsWith('.wasm')
-        }
+        external: (filepath: string) => filepath.endsWith('.wasm')
       }
     },
     resolve: {
@@ -49,7 +44,6 @@ export const viteConfigs = {
         '.prisma/client/default': PRISMA_CLIENT_ENTRY_POINT,
         'vendor/react-ssr': resolve(VENDOR_DIST_DIR, 'react-ssr.mjs'),
         'vendor/react-rsc-worker': resolve(VENDOR_DIST_DIR, 'react-rsc-worker.mjs'),
-        //'@prisma/client': PRISMA_CLIENT_PATH
       }
     }
   }),
