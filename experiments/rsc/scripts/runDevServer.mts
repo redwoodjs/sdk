@@ -10,7 +10,7 @@ import { resolve } from 'node:path';
 import { buildVendorBundles } from './buildVendorBundles.mjs';
 // harryhcs - I could not get this config improt working as it was, but I did not spend any time on that 
 import { config as viteConfig } from '../miniflare.config.mjs';
-import { PRISMA_CLIENT_ENTRY_POINT, PRISMA_CLIENT_RUNTIME_WASM_PATH, PRISMA_QUERY_ENGINE_WASM_PATH, ROOT_DIR, VENDOR_DIST_DIR, viteConfigs } from './configs.mjs';
+import { PRISMA_QUERY_ENGINE_WASM_RELATIVE_PATH, ROOT_DIR, VENDOR_DIST_DIR, viteConfigs } from './configs.mjs';
 import { $ } from 'execa';
 
 export const DEV_SERVER_PORT = 2332;
@@ -22,6 +22,14 @@ interface DevServerContext {
   miniflare: Miniflare
   viteWorkerDevServer: ViteDevServer
   viteClientDevServer: ViteDevServer
+}
+
+const miniflareOptions = {
+  ...viteConfig,
+  // context(justinvdm, 2024-11-21): `npx wrangler d1 migrations apply` creates a sqlite file in `.wrangler/state/v3/d1`
+  d1Persist: resolve(ROOT_DIR, '.wrangler/state/v3/d1'),
+  modules: true,
+  compatibilityFlags: ["streams_enable_constructors", "transformstream_enable_standard_constructor", "nodejs_compat"],
 }
 
 const configs = {
@@ -47,12 +55,8 @@ const setup = async (): Promise<DevServerContext> => {
   const viteWorkerDevServer = await createViteServer(configs.workerDevServer({ context: context as DevServerContext }))
 
   const miniflare = new Miniflare({
-    ...viteConfig,
-    // context(justinvdm, 2024-11-21): `npx wrangler d1 migrations apply` creates a sqlite file in `.wrangler/state/v3/d1`
-    d1Persist: resolve(ROOT_DIR, '../.wrangler/state/v3/d1'),
-    modules: true,
+    ...miniflareOptions,
     script: '',
-    compatibilityFlags: ["streams_enable_constructors", "transformstream_enable_standard_constructor", "nodejs_compat"],
   });
 
   Object.assign(context, {
@@ -105,27 +109,30 @@ const createServers = async () => {
 }
 
 const rebuildWorkerScript = async (context: DevServerContext) => {
-  const result = await build(viteConfigs.workerBuild())
-  const { fileName: workerBundlePath, code: workerBundleContents } = (result as { output: { fileName: string, code: string }[] }).output[0]
+  const result = (await build(viteConfigs.workerDevBuild())) as {
+    output: ({
+      type: 'asset'
+    } | {
+      type: 'chunk',
+      fileName: string,
+      code: string
+    })[]
+  }
+  const bundles = result.output.filter(output => output.type === 'chunk').map(({ fileName, code }) => ({
+    type: 'ESModule' as const,
+    path: resolve('dist', fileName),
+    contents: code,
+  }))
 
   context.miniflare.setOptions({
-    modules: [{
-      type: 'ESModule',
-      path: workerBundlePath,
-      contents: workerBundleContents
-    }, {
-      type: 'CommonJS',
-      path: 'assets/@prisma/client',
-      contents: await readFile(PRISMA_CLIENT_ENTRY_POINT, 'utf-8'),
-    }, {
-      type: 'CommonJS',
-      path: 'assets/@prisma/@prisma/client/runtime/wasm.js',
-      contents: await readFile(PRISMA_CLIENT_RUNTIME_WASM_PATH),
-    }, {
-      type: 'CompiledWasm',
-      path: 'assets/@prisma/.prisma/client/wasm',
-      contents: await readFile(PRISMA_QUERY_ENGINE_WASM_PATH),
-    }]
+    ...miniflareOptions,
+    modules: [
+      ...bundles,
+      {
+        type: 'CompiledWasm',
+        path: PRISMA_QUERY_ENGINE_WASM_RELATIVE_PATH,
+      }
+    ]
   });
 }
 

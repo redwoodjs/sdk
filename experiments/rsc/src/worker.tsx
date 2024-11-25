@@ -12,6 +12,7 @@ export default {
 		// harryhcs just loging the data out here
 		// useing npx wrangler tail to get the logs inmy terminal
 
+		console.log(await env.DB.prepare('select * from User').run())
 		const results = await db.user.findMany()
 		console.log('##', results)
 

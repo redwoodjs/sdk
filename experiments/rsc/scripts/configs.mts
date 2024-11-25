@@ -1,5 +1,5 @@
 import { mergeConfig, type InlineConfig } from 'vite';
-import { resolve, dirname } from 'node:path';
+import { resolve, dirname, relative } from 'node:path';
 import { resolve as importMetaResolve } from 'import-meta-resolve'
 import { createRequire } from 'node:module';
 
@@ -15,8 +15,8 @@ export const PRISMA_CLIENT_DIR_PATH = dirname(new URL(PRISMA_CLIENT_ENTRY_POINT_
 export const PRISMA_CLIENT_GENERATE_ENTRY_POINT = createRequire(PRISMA_CLIENT_ENTRY_POINT_URL).resolve('.prisma/client/default.js')
 export const PRISMA_CLIENT_GENERATE_DIR = dirname(PRISMA_CLIENT_GENERATE_ENTRY_POINT)
 export const PRISMA_CLIENT_ENTRY_POINT = resolve(PRISMA_CLIENT_GENERATE_DIR, 'wasm.js')
-export const PRISMA_CLIENT_RUNTIME_WASM_PATH = resolve(PRISMA_CLIENT_DIR_PATH, 'runtime', 'wasm.js')
-export const PRISMA_QUERY_ENGINE_WASM_PATH = resolve(PRISMA_CLIENT_GENERATE_DIR, 'query_engine_bg.wasm');
+export const PRISMA_QUERY_ENGINE_WASM_PATH = resolve(PRISMA_CLIENT_GENERATE_DIR, 'query_engine_bg.wasm')
+export const PRISMA_QUERY_ENGINE_WASM_RELATIVE_PATH = relative(ROOT_DIR, PRISMA_QUERY_ENGINE_WASM_PATH);
 
 export const DEV_SERVER_PORT = 2332;
 export const CLIENT_DEV_SERVER_PORT = 5173;
@@ -28,14 +28,16 @@ const MODE = process.env.NODE_ENV === 'development' ? 'development' : 'productio
 export const viteConfigs = {
   workerBase: (): InlineConfig => ({
     mode: MODE,
+    define: {
+      // todo(justinvdm, 25 November 2024): Investigate why Prisma Client references `window` even though
+      // we are using workerd import condition
+      'window': 'globalThis'
+    },
     build: {
       rollupOptions: {
         external: (filepath: string) => {
-          if (filepath === '@prisma/client') {
-            return true
-          }
-          if(filepath.endsWith('.wasm')) {
-            console.log('######',filepath)
+          if (filepath.endsWith('.wasm')) {
+            console.log('####################3#3', filepath)
           }
           return filepath.endsWith('.wasm')
         }
@@ -44,16 +46,17 @@ export const viteConfigs = {
     resolve: {
       conditions: ['workerd'],
       alias: {
+        '.prisma/client/default': PRISMA_CLIENT_ENTRY_POINT,
         'vendor/react-ssr': resolve(VENDOR_DIST_DIR, 'react-ssr.mjs'),
         'vendor/react-rsc-worker': resolve(VENDOR_DIST_DIR, 'react-rsc-worker.mjs'),
         //'@prisma/client': PRISMA_CLIENT_PATH
       }
     }
   }),
-  workerBuild: (): InlineConfig => mergeConfig(viteConfigs.workerBase(), {
+  workerDevBuild: (): InlineConfig => mergeConfig(viteConfigs.workerBase(), {
     mode: MODE,
     build: {
-      sourcemap: true,
+      sourcemap: 'inline',
       rollupOptions: {
         input: {
           worker: RESOLVED_WORKER_PATHNAME,
@@ -66,9 +69,10 @@ export const viteConfigs = {
       chunkSizeWarningLimit: 4_000,
     },
   }),
-  workerDeploymentBuild: (): InlineConfig => mergeConfig(viteConfigs.workerBuild(), {
+  workerDeploymentBuild: (): InlineConfig => mergeConfig(viteConfigs.workerBase(), {
     mode: MODE,
     build: {
+      sourcemap: true,
       outDir: resolve(__dirname, '../dist'),
       lib: {
         entry: RESOLVED_WORKER_PATHNAME,
