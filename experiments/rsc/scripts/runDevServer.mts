@@ -1,5 +1,5 @@
 import { build, createServer as createViteServer, mergeConfig } from "vite";
-import { copy, copyFileSync, copySync, pathExists } from 'fs-extra';
+import { pathExists } from 'fs-extra';
 import { Miniflare, type RequestInit } from 'miniflare';
 import type { InlineConfig, ViteDevServer } from 'vite';
 import type { IncomingMessage, ServerResponse } from 'node:http';
@@ -10,7 +10,7 @@ import { unstable_DevEnv} from 'wrangler'
 import { buildVendorBundles } from './buildVendorBundles.mjs';
 // harryhcs - I could not get this config improt working as it was, but I did not spend any time on that 
 import { config as viteConfig } from '../miniflare.config.mjs';
-import { DIST_DIR, ROOT_DIR, VENDOR_DIST_DIR, viteConfigs } from './viteConfigs.mjs';
+import { DIST_DIR, VENDOR_DIST_DIR, viteConfigs } from './viteConfigs.mjs';
 import { $ } from 'execa';
 
 const __dirname = new URL('.', import.meta.url).pathname;
@@ -55,7 +55,7 @@ const setup = async (): Promise<DevServerContext> => {
     // context(justinvdm, 2024-11-21): `npx wrangler d1 migrations apply` creates a sqlite file in `.wrangler/state/v3/d1`
     d1Persist: resolve(__dirname, '../.wrangler/state/v3/d1'),
     modules: true,
-    script: '',
+    scriptPath: '',
     compatibilityFlags: ["streams_enable_constructors", "transformstream_enable_standard_constructor", "nodejs_compat"],
   });
 
@@ -113,49 +113,35 @@ const rebuildWorkerScript = async (context: DevServerContext) => {
   const result = await build(viteConfigs.workerBuild())
   const { fileName: viteBundlePath } = (result as { output: { fileName: string }[] }).output[0]
 
-  context.wranglerDevEnv.bundler.once('bundleComplete', event => console.log('###c', event))
-  context.wranglerDevEnv.bundler.once('bundleStart', event => console.log('###st', event))
-  context.wranglerDevEnv.bundler.once('error', event => console.log('###e', event))
-
   context.wranglerDevEnv.bundler.onConfigUpdate({
     type: "configUpdate",
     config: {
-      entrypoint: resolve(DIST_DIR, viteBundlePath),
-      directory: ROOT_DIR,
+      entrypoint: viteBundlePath,
+      directory: DIST_DIR,
       build: {
-        nodejsCompatMode: 'legacy',
+        nodejsCompatMode: 'v2',
         format: 'modules',
-        moduleRoot: ROOT_DIR,
+        moduleRoot: '',
         moduleRules: [],
         define: {},
         additionalModules: [],
-        bundle: true,
         exports: [],
         processEntrypoint: false,
       },
       legacy: {},
       dev: {
-        persist: '_',
+        persist: '',
       },
     }
   })
 
-  await new Promise((resolve, reject) => {
-    context.wranglerDevEnv.bundler.once('bundleComplete', event => {
-      console.log('###', event.bundle)
-      context.miniflare.setOptions({
-        script: undefined,
-        modules: true,
-        scriptPath: event.bundle.path
-      });
+  await new Promise(resolve => context.wranglerDevEnv.bundler.once('bundleComplete', event => {
+    context.miniflare.setOptions({
+      scriptPath: event.bundle.path
+    });
 
-      resolve(null)
-    })
-
-    context.wranglerDevEnv.bundler.once('error', e => {
-      reject(new Error(JSON.stringify(e, null, 2)))
-    })
-  })
+    resolve(null)
+  }))
 }
 
 const nodeToWebRequest = (req: IncomingMessage, url: URL): Request => {

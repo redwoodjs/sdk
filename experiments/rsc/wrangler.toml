@@ -1,9 +1,8 @@
 #:schema node_modules/wrangler/config-schema.json
 name = "reloaded-experiments-rsc"
-#main = "dist/worker.mjs"
-main = "src/worker.tsx"
+main = "dist/worker.mjs"
 compatibility_date = "2024-03-12"
-compatibility_flags = ["nodejs_compat"]
+compatibility_flags = ["streams_enable_constructors", "transformstream_enable_standard_constructor", "nodejs_compat"]
 
 [observability]
 enabled = true
@@ -14,4 +13,4 @@ database_name = "prisma-demo-db"
 database_id = "08100d07-03e7-49b0-92e1-fa05569c370e"
 
 [build]
-#command = "pnpm build"
+command = "pnpm build"
