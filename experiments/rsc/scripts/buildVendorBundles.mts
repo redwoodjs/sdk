@@ -56,3 +56,7 @@ export const buildVendorBundles = async () => {
     build(configs.reactSSR()),
   ])
 }
+
+if (import.meta.url === new URL(process.argv[1], import.meta.url).href) {
+  buildVendorBundles()
+}
