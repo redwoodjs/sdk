@@ -64,6 +64,9 @@ devDependencies:
   miniflare:
     specifier: ^3.20241106.0
     version: 3.20241106.0
+  prettier:
+    specifier: ^3.4.1
+    version: 3.4.1
   toml:
     specifier: ^3.0.0
     version: 3.0.0
@@ -2481,6 +2484,12 @@ packages:
       simple-get: 4.0.1
       tar-fs: 2.1.1
       tunnel-agent: 0.6.0
+    dev: true
+
+  /prettier@3.4.1:
+    resolution: {integrity: sha512-G+YdqtITVZmOJje6QkXQWzl3fSfMxFwm1tjTyo9exhkmWSqC4Yhd1+lug++IlR2mvRVAxEDDWYkQdeSztajqgg==}
+    engines: {node: '>=14'}
+    hasBin: true
     dev: true
 
   /pretty-ms@9.2.0:

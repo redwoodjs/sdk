@@ -11,11 +11,10 @@ export const createModuleMap = () =>
                 id,
                 name,
                 chunks: [],
-              }
+              };
             },
           },
-        )
+        );
       },
     },
-  )
-
+  );
