@@ -1,6 +1,6 @@
 import AdminPage from "./app/AdminPage";
 import { App } from "./app/App";
-import { setupDb } from './db';
+import { db, setupDb } from './db';
 import HomePage from "./app/HomePage";
 import { renderToRscStream } from "./render/renderToRscStream";
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
@@ -15,8 +15,31 @@ const routes = {
 export default {
 	async fetch(request: Request, env: Env) {
 		setupDb(env)
-
+		console.log(request.url, request.method)
 		// todo(justinvdm, 2024-11-19): Handle RSC actions here
+
+		if (request.method === 'POST' && request.url.includes('/api/login')) {
+			console.log('Login request received');
+			return new Response('Login successful', { status: 200 });
+		}
+
+		if (request.method === 'POST' && request.url.includes('/api/create-user')) {
+			const formData = await request.formData();
+			const name = formData.get('name');
+			const cell = formData.get('cell') as string;
+
+			const user = await db.insertInto('User').values({
+				name: name as string,
+				cellnumber: cell 
+			}).execute()
+
+			if (!user) {
+				return new Response('User creation failed', { status: 500 });
+			}
+			
+			const referer = request.headers.get('Referer') || '/admin';
+			return Response.redirect(referer, 303);
+		}
 
 		const pathname = new URL(request.url).pathname as keyof typeof routes
 		const Page = routes[pathname]
