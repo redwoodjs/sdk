@@ -1,7 +1,7 @@
 import { db } from '../db';
 
 export default async function HomePage() {
-    let users = await db.selectFrom('User').selectAll().execute();
+    let users = await db.selectFrom('User').select(['name', 'cellnumber']).execute();
 
     if (users.length === 0) {
         await db.insertInto('User')
@@ -11,7 +11,7 @@ export default async function HomePage() {
           })
           .execute();
 
-        users = await db.selectFrom('User').selectAll().execute();
+        users = await db.selectFrom('User').select(['name', 'cellnumber']).execute();
     }
 
     return ['home', JSON.stringify(users)].join('\n');
