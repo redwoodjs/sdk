@@ -1,17 +1,13 @@
 import { build, createServer as createViteServer, mergeConfig } from "vite";
-import { pathExists } from 'fs-extra';
-import { readFile } from 'fs/promises'
-import { Miniflare, type RequestInit } from 'miniflare';
+import { Miniflare, MiniflareOptions, type RequestInit } from 'miniflare';
 import type { InlineConfig, ViteDevServer } from 'vite';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import http from 'node:http';
 import { resolve } from 'node:path';
 
-import { buildVendorBundles } from './buildVendorBundles.mjs';
-// harryhcs - I could not get this config improt working as it was, but I did not spend any time on that 
-import { config as viteConfig } from '../miniflare.config.mjs';
-import { PRISMA_QUERY_ENGINE_WASM_RELATIVE_PATH, ROOT_DIR, VENDOR_DIST_DIR, viteConfigs } from './configs.mjs';
-import { $ } from 'execa';
+import { ROOT_DIR, viteConfigs } from './configs.mjs';
+import { prepareDev } from './prepareDev.mjs';
+import { getD1Databases } from './lib/getD1Databases';
 
 export const DEV_SERVER_PORT = 2332;
 export const CLIENT_DEV_SERVER_PORT = 5173;
@@ -24,12 +20,12 @@ interface DevServerContext {
   viteClientDevServer: ViteDevServer
 }
 
-const miniflareOptions = {
-  ...viteConfig,
+const miniflareOptions: Partial<MiniflareOptions> = {
   // context(justinvdm, 2024-11-21): `npx wrangler d1 migrations apply` creates a sqlite file in `.wrangler/state/v3/d1`
   d1Persist: resolve(ROOT_DIR, '.wrangler/state/v3/d1'),
   modules: true,
   compatibilityFlags: ["streams_enable_constructors", "transformstream_enable_standard_constructor", "nodejs_compat"],
+  d1Databases: await getD1Databases(),
 }
 
 const configs = {
@@ -69,10 +65,7 @@ const setup = async (): Promise<DevServerContext> => {
 }
 
 const createServers = async () => {
-  if (process.env.FORCE_BUILD_VENDOR || !(await pathExists(VENDOR_DIST_DIR))) {
-    await buildVendorBundles()
-    await $`pnpm prisma generate`
-  }
+  await prepareDev()
 
   const context = await setup()
   await rebuildWorkerScript(context)
@@ -126,13 +119,7 @@ const rebuildWorkerScript = async (context: DevServerContext) => {
 
   context.miniflare.setOptions({
     ...miniflareOptions,
-    modules: [
-      ...bundles,
-      {
-        type: 'CompiledWasm',
-        path: PRISMA_QUERY_ENGINE_WASM_RELATIVE_PATH,
-      }
-    ]
+    modules: bundles
   });
 }
 

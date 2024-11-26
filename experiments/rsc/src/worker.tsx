@@ -27,12 +27,12 @@ export default {
 			const formData = await request.formData();
 			const name = formData.get('name');
 			const cell = formData.get('cell') as string;
-			const user = await db.user.create({
-				data: { 
-					name: name as string,
-					cellnumber: cell 
-				},
-			});
+
+			const user = await db.insertInto('User').values({
+				name: name as string,
+				cellnumber: cell 
+			}).execute()
+
 			if (!user) {
 				return new Response('User creation failed', { status: 500 });
 			}

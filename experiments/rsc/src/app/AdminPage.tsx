@@ -3,7 +3,7 @@ import Login from "./components/Login";
 import { db } from "../db";
 
 export default async function AdminPage() {
-    let users = await db.user.findMany();
+    const users = await db.selectFrom('User').select(['id', 'name', 'cellnumber']).execute();
     const isAuthenticated = true;
     return (
         <div>
