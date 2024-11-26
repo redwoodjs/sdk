@@ -1,6 +1,6 @@
 import AdminPage from "./app/AdminPage";
 import { App } from "./app/App";
-import { db, setupDb } from './db';
+import { setupDb } from './db';
 import HomePage from "./app/HomePage";
 import { renderToRscStream } from "./render/renderToRscStream";
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
