@@ -5,6 +5,6 @@ export const createClientManifest = () => {
       get(_, key) {
         return { id: key, name: key, chunks: [] };
       },
-    }
+    },
   );
 };

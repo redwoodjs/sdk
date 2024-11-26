@@ -10,7 +10,8 @@
 		"migrate:prd": "npx wrangler d1 migrations apply DB --remote",
 		"codegen": "npx tsx ./scripts/codegen.mts",
 		"types": "pnpm codegen && pnpm wrangler types && tsc",
-		"deploy": "wrangler deploy"
+		"deploy": "wrangler deploy",
+		"format": "npx prettier --write ./src ./scripts"
 	},
 	"keywords": [],
 	"author": "",
@@ -38,6 +39,7 @@
 		"fs-extra": "^11.2.0",
 		"kysely-codegen": "^0.17.0",
 		"miniflare": "^3.20241106.0",
+		"prettier": "^3.4.1",
 		"react": "^18.3.1",
 		"toml": "^3.0.0",
 		"tsx": "^4.19.2",
