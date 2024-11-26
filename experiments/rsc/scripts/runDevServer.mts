@@ -141,6 +141,8 @@ const nodeToWebRequest = (req: IncomingMessage, url: URL): Request => {
     method: req.method,
     headers: req.headers as HeadersInit,
     body: req.method !== 'GET' && req.method !== 'HEAD' ? req as unknown as BodyInit : undefined,
+    // @ts-ignore
+    duplex: "half"
   });
 };
 

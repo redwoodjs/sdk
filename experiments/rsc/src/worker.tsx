@@ -15,8 +15,31 @@ const routes = {
 export default {
 	async fetch(request: Request, env: Env) {
 		setupDb(env)
-
+		console.log(request.url, request.method)
 		// todo(justinvdm, 2024-11-19): Handle RSC actions here
+
+		if (request.method === 'POST' && request.url.includes('/api/login')) {
+			console.log('Login request received');
+			return new Response('Login successful', { status: 200 });
+		}
+
+		if (request.method === 'POST' && request.url.includes('/api/create-user')) {
+			const formData = await request.formData();
+			const name = formData.get('name');
+			const cell = formData.get('cell') as string;
+			const user = await db.user.create({
+				data: { 
+					name: name as string,
+					cellnumber: cell 
+				},
+			});
+			if (!user) {
+				return new Response('User creation failed', { status: 500 });
+			}
+			
+			const referer = request.headers.get('Referer') || '/admin';
+			return Response.redirect(referer, 303);
+		}
 
 		const pathname = new URL(request.url).pathname as keyof typeof routes
 		const Page = routes[pathname]
