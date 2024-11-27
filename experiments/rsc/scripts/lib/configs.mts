@@ -27,9 +27,7 @@ export const viteConfigs = {
     environments: {
       client: {
         consumer: "client",
-        resolve: {
-          conditions: ["react-server"],
-        },
+
         build: {
           rollupOptions: {
             input: {
