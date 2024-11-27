@@ -1,9 +1,13 @@
-import { type InlineConfig, mergeConfig, Plugin, ViteDevServer } from "vite";
+import {
+  type InlineConfig,
+  type Plugin,
+  type ViteDevServer,
+  mergeConfig,
+} from "vite";
 import { resolve } from "node:path";
 import {
   CLIENT_DIST_DIR,
   DEV_SERVER_PORT,
-  DIST_DIR,
   RELATIVE_CLIENT_PATHNAME,
   RELATIVE_WORKER_PATHNAME,
   VENDOR_DIST_DIR,
