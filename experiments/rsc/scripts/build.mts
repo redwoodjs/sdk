@@ -4,7 +4,7 @@ import { buildVendorBundles } from "./buildVendorBundles.mjs";
 
 const main = async () => {
   await buildVendorBundles();
-  await (await createBuilder(viteConfigs.main())).buildApp();
+  await (await createBuilder(viteConfigs.deploy())).buildApp();
 };
 
 main();

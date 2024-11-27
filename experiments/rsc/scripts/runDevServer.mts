@@ -7,11 +7,7 @@ import express from "express";
 import { viteConfigs } from "./lib/configs.mjs";
 import { prepareDev } from "./prepareDev.mjs";
 import { getD1Databases } from "./lib/getD1Databases";
-import {
-  ASSETS_DIR,
-  D1_PERSIST_PATH,
-  DEV_SERVER_PORT,
-} from "./lib/constants.mjs";
+import { D1_PERSIST_PATH, DEV_SERVER_PORT } from "./lib/constants.mjs";
 
 const miniflareOptions: Partial<MiniflareOptions> = {
   // context(justinvdm, 2024-11-21): `npx wrangler d1 migrations apply` creates a sqlite file in `.wrangler/state/v3/d1`
