@@ -14,8 +14,14 @@ const routes = {
 
 export default {
   async fetch(request: Request, env: Env) {
+    const url = new URL(request.url);
+
+    if (url.pathname.startsWith("/assets/")) {
+      url.pathname = url.pathname.slice("/assets/".length);
+      return env.ASSETS.fetch(new Request(url.toString(), request));
+    }
+
     setupDb(env);
-    // todo(justinvdm, 2024-11-19): Handle RSC actions here
 
     if (request.method === "POST" && request.url.includes("/api/login")) {
       console.log("Login request received");

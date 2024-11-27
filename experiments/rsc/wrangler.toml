@@ -3,7 +3,7 @@ name = "reloaded-experiments-rsc"
 main = "dist/worker.mjs"
 compatibility_date = "2024-03-12"
 compatibility_flags = ["nodejs_compat"]
-assets = { directory = "dist/assets" }
+assets = { directory = "./assets/", binding = "ASSETS" }
 
 [observability]
 enabled = true
