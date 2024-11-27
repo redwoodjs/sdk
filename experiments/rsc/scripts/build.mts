@@ -1,11 +1,10 @@
-import { build } from "vite";
-import { viteConfigs } from "./configs.mjs";
+import { createBuilder } from "vite";
+import { viteConfigs } from "./lib/configs.mjs";
 import { buildVendorBundles } from "./buildVendorBundles.mjs";
-import { $ } from "execa";
 
 const main = async () => {
   await buildVendorBundles();
-  await build(viteConfigs.workerDeploymentBuild());
+  await (await createBuilder(viteConfigs.main())).buildApp();
 };
 
 main();
