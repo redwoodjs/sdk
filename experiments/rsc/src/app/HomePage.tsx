@@ -1,4 +1,5 @@
 import { db } from "../db";
+import { Like } from "./components/Like";
 
 export default async function HomePage() {
   let users = await db
@@ -21,5 +22,9 @@ export default async function HomePage() {
       .execute();
   }
 
-  return ["home", JSON.stringify(users)].join("\n");
+  return <div>
+      {JSON.stringify(users)}
+      <br />
+      <Like />
+    </div>
 }

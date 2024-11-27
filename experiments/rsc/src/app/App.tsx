@@ -4,6 +4,6 @@ export const App: React.FC<{ children: React.ReactNode }> = ({ children }) => (
       <title>RSC FTW</title>
       <script type="module" src="/src/client.tsx"></script>
     </head>
-    <body>{children}</body>
+    <body><div id="root">{children}</div></body>
   </html>
 );
