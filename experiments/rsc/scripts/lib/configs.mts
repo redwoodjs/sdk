@@ -70,6 +70,12 @@ export const viteConfigs = {
     define: {
       "process.env.NODE_ENV": JSON.stringify(MODE),
     },
+    builder: {
+      async buildApp(builder) {
+        await builder.build(builder.environments["client"]!);
+        await builder.build(builder.environments["worker"]!);
+      },
+    },
   }),
   dev: (context: DevConfigContext): InlineConfig =>
     mergeConfig(viteConfigs.main(), {

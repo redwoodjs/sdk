@@ -81,15 +81,24 @@ const setup = async () => {
 const createServers = async () => {
   await prepareDev();
 
-  const { miniflare } = await setup();
+  const { miniflare, viteDevServer } = await setup();
 
   const app = express();
 
-  app.use("/assets", express.static(ASSETS_DIR));
-
   app.use(async (req, res) => {
+    const url = new URL(req.url as string, `http://${req.headers.host}`);
+
+    if (
+      url.pathname.startsWith("/src") ||
+      url.pathname.startsWith("/node_modules") ||
+      url.pathname.startsWith("/@") ||
+      url.pathname.startsWith("/__vite")
+    ) {
+      viteDevServer.middlewares(req, res);
+      return;
+    }
+
     try {
-      const url = new URL(req.url as string, `http://${req.headers.host}`);
       const webRequest = nodeToWebRequest(req, url);
 
       // context(justinvdm, 2024-11-19): Type assertions needed because Miniflare's Request and Responses types have additional Cloudflare-specific properties
