@@ -15,7 +15,6 @@ const routes = {
 export default {
   async fetch(request: Request, env: Env) {
     setupDb(env);
-    console.log(request.url, request.method);
     // todo(justinvdm, 2024-11-19): Handle RSC actions here
 
     if (request.method === "POST" && request.url.includes("/api/login")) {

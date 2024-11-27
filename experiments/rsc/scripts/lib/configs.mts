@@ -1,8 +1,10 @@
 import { mergeConfig, ViteDevServer, type InlineConfig } from "vite";
 import { resolve } from "node:path";
 import {
+  DEV_SERVER_PORT,
+  DIST_DIR,
+  RELATIVE_CLIENT_PATHNAME,
   RELATIVE_WORKER_PATHNAME,
-  ROOT_DIR,
   VENDOR_DIST_DIR,
 } from "./constants.mjs";
 
@@ -14,12 +16,38 @@ export type DevConfigContext = {
 };
 
 export const viteConfigs = {
-  common: (): InlineConfig => ({
+  main: (): InlineConfig => ({
     mode: MODE,
+    build: {
+      assetsInlineLimit: 0,
+      minify: MODE === "development",
+      ssrEmitAssets: true,
+      emitAssets: true,
+    },
     environments: {
+      client: {
+        consumer: "client",
+        build: {
+          rollupOptions: {
+            input: {
+              client: RELATIVE_CLIENT_PATHNAME,
+            },
+          },
+        },
+      },
       worker: {
         resolve: {
-          conditions: ["workerd"],
+          conditions: ["module", "workerd"],
+          noExternal: true,
+        },
+        build: {
+          outDir: DIST_DIR,
+          ssr: true,
+          rollupOptions: {
+            input: {
+              worker: RELATIVE_WORKER_PATHNAME,
+            },
+          },
         },
       },
     },
@@ -32,43 +60,17 @@ export const viteConfigs = {
         ),
       },
     },
-    plugins: [],
     server: {
       middlewareMode: true,
+      port: DEV_SERVER_PORT,
+    },
+    define: {
+      "process.env.NODE_ENV": JSON.stringify(MODE),
     },
   }),
   dev: (context: DevConfigContext): InlineConfig =>
-    mergeConfig(viteConfigs.common(), {
-      mode: "development",
-      build: {
-        minify: false,
-        sourcemap: true,
-        rollupOptions: {
-          input: {
-            worker: resolve(ROOT_DIR, RELATIVE_WORKER_PATHNAME),
-          },
-          preserveEntrySignatures: "exports-only",
-        },
-
-        // todo(justinvdm, 2024-11-21): Figure out what is making our bundle so large. React SSR and SRC bundles account for ~1.5MB.
-        // todo(justinvdm, 2024-11-21): Figure out if we can do some kind of code-splitting with Miniflare
-        chunkSizeWarningLimit: 4_000,
-      },
+    mergeConfig(viteConfigs.main(), {
       plugins: [hmrPlugin(context)],
-    }),
-  deploy: (): InlineConfig =>
-    mergeConfig(viteConfigs.common(), {
-      mode: MODE,
-      build: {
-        sourcemap: true,
-        outDir: resolve(__dirname, "../dist"),
-        lib: {
-          entry: resolve(ROOT_DIR, RELATIVE_WORKER_PATHNAME),
-          name: "worker",
-          formats: ["es"],
-          fileName: "worker",
-        },
-      },
     }),
 };
 
@@ -91,9 +93,9 @@ const hmrPlugin = ({ rebuildWorker }: DevConfigContext) => ({
       (importer) => importer.file === resolve("/", RELATIVE_WORKER_PATHNAME),
     );
 
+    // todo(justinvdm, 2024-11-19): Send RSC update to client
     if (isImportedByWorkerFile) {
       await rebuildWorker();
-      // todo(justinvdm, 2024-11-19): Send RSC update to client
     }
   },
 });

@@ -1,13 +1,17 @@
-import { build, createServer as createViteServer, mergeConfig } from "vite";
+import { createBuilder, createServer as createViteServer } from "vite";
 import { Miniflare, MiniflareOptions, type RequestInit } from "miniflare";
 import type { IncomingMessage, ServerResponse } from "node:http";
-import http from "node:http";
 import { resolve } from "node:path";
+import express from "express";
 
 import { viteConfigs } from "./lib/configs.mjs";
 import { prepareDev } from "./prepareDev.mjs";
 import { getD1Databases } from "./lib/getD1Databases";
-import { D1_PERSIST_PATH, DEV_SERVER_PORT } from "./lib/constants.mjs";
+import {
+  ASSETS_DIR,
+  D1_PERSIST_PATH,
+  DEV_SERVER_PORT,
+} from "./lib/constants.mjs";
 
 const miniflareOptions: Partial<MiniflareOptions> = {
   // context(justinvdm, 2024-11-21): `npx wrangler d1 migrations apply` creates a sqlite file in `.wrangler/state/v3/d1`
@@ -23,7 +27,7 @@ const miniflareOptions: Partial<MiniflareOptions> = {
 
 const setup = async () => {
   const rebuildWorker = async () => {
-    const result = (await build(viteConfig)) as {
+    const result = (await builder.build(builder.environments["worker"])) as {
       output: (
         | {
             type: "asset";
@@ -50,9 +54,11 @@ const setup = async () => {
     });
   };
 
-  const viteConfig = viteConfigs.dev({
-    rebuildWorker,
-  });
+  const builder = await createBuilder(
+    viteConfigs.dev({
+      rebuildWorker,
+    }),
+  );
 
   const viteDevServer = await createViteServer(
     viteConfigs.dev({
@@ -64,6 +70,7 @@ const setup = async () => {
     ...miniflareOptions,
     script: "",
   });
+  await rebuildWorker();
 
   return {
     miniflare,
@@ -74,28 +81,24 @@ const setup = async () => {
 const createServers = async () => {
   await prepareDev();
 
-  const { viteDevServer, miniflare } = await setup();
+  const { miniflare } = await setup();
 
-  const server = http.createServer(async (req, res) => {
+  const app = express();
+
+  app.use("/assets", express.static(ASSETS_DIR));
+
+  app.use(async (req, res) => {
     try {
       const url = new URL(req.url as string, `http://${req.headers.host}`);
+      const webRequest = nodeToWebRequest(req, url);
 
-      if (
-        url.pathname.startsWith("/static") ||
-        url.pathname === "/favicon.ico"
-      ) {
-        viteDevServer.middlewares(req, res);
-      } else {
-        const webRequest = nodeToWebRequest(req, url);
+      // context(justinvdm, 2024-11-19): Type assertions needed because Miniflare's Request and Responses types have additional Cloudflare-specific properties
+      const webResponse = await miniflare.dispatchFetch(
+        webRequest.url,
+        webRequest as RequestInit,
+      );
 
-        // context(justinvdm, 2024-11-19): Type assertions needed because Miniflare's Request and Responses types have additional Cloudflare-specific properties
-        const webResponse = await miniflare.dispatchFetch(
-          webRequest.url,
-          webRequest as RequestInit,
-        );
-
-        await webToNodeResponse(webResponse as unknown as Response, res);
-      }
+      await webToNodeResponse(webResponse as unknown as Response, res);
     } catch (error) {
       console.error("Request handling error:", error);
       res.statusCode = 500;
@@ -107,7 +110,7 @@ const createServers = async () => {
     await miniflare.dispose();
   });
 
-  server.listen(DEV_SERVER_PORT, () => {
+  app.listen(DEV_SERVER_PORT, () => {
     console.log(`
 🚀 Dev server fired up and ready to rock! 🔥
 ⭐️ Local: http://localhost:${DEV_SERVER_PORT}
