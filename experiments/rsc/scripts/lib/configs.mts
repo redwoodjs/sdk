@@ -1,12 +1,19 @@
-import { mergeConfig, ViteDevServer, type InlineConfig } from "vite";
+import {
+  type InlineConfig,
+  type Plugin,
+  type ViteDevServer,
+  mergeConfig,
+} from "vite";
 import { resolve } from "node:path";
 import {
+  CLIENT_DIST_DIR,
   DEV_SERVER_PORT,
-  DIST_DIR,
   RELATIVE_CLIENT_PATHNAME,
   RELATIVE_WORKER_PATHNAME,
   VENDOR_DIST_DIR,
+  WORKER_DIST_DIR,
 } from "./constants.mjs";
+import { transformJsxScriptTagsPlugin } from "./transformJsxScriptTagsPlugin.mjs";
 
 const MODE =
   process.env.NODE_ENV === "development" ? "development" : "production";
@@ -19,16 +26,14 @@ export const viteConfigs = {
   main: (): InlineConfig => ({
     mode: MODE,
     build: {
-      assetsInlineLimit: 0,
-      minify: MODE === "development",
-      ssrEmitAssets: true,
-      emitAssets: true,
+      minify: MODE !== "development",
     },
     environments: {
       client: {
         consumer: "client",
-
         build: {
+          outDir: CLIENT_DIST_DIR,
+          manifest: true,
           rollupOptions: {
             input: {
               client: RELATIVE_CLIENT_PATHNAME,
@@ -42,7 +47,7 @@ export const viteConfigs = {
           noExternal: true,
         },
         build: {
-          outDir: DIST_DIR,
+          outDir: WORKER_DIST_DIR,
           ssr: true,
           rollupOptions: {
             input: {
@@ -70,8 +75,8 @@ export const viteConfigs = {
     },
     builder: {
       async buildApp(builder) {
-        await builder.build(builder.environments["client"]!);
-        await builder.build(builder.environments["worker"]!);
+        await builder.build(builder.environments["client"]);
+        await builder.build(builder.environments["worker"]);
       },
     },
   }),
@@ -79,13 +84,21 @@ export const viteConfigs = {
     mergeConfig(viteConfigs.main(), {
       plugins: [hmrPlugin(context)],
     }),
+  deploy: (): InlineConfig =>
+    mergeConfig(viteConfigs.main(), {
+      plugins: [
+        transformJsxScriptTagsPlugin({
+          manifestPath: resolve(CLIENT_DIST_DIR, ".vite/manifest.json"),
+        }),
+      ],
+    }),
 };
 
 // context(justinvdm, 2024-11-20): While it may seem odd to use the dev server and HMR only to do full rebuilds,
 // we leverage the dev server's module graph to efficiently determine if the worker bundle needs to be
 // rebuilt. This allows us to avoid unnecessary rebuilds when changes don't affect the worker.
 // Still, first prize would be to not need to rebundle at all.
-const hmrPlugin = ({ rebuildWorker }: DevConfigContext) => ({
+const hmrPlugin = ({ rebuildWorker }: DevConfigContext): Plugin => ({
   name: "rw-reloaded-hmr",
   handleHotUpdate: async ({
     file,

@@ -4,7 +4,8 @@ const __dirname = new URL(".", import.meta.url).pathname;
 
 export const ROOT_DIR = resolve(__dirname, "..", "..");
 export const DIST_DIR = resolve(ROOT_DIR, "dist");
-export const ASSETS_DIR = resolve(DIST_DIR, "assets");
+export const CLIENT_DIST_DIR = resolve(DIST_DIR, "client");
+export const WORKER_DIST_DIR = resolve(DIST_DIR, "worker");
 
 export const VENDOR_DIST_DIR = resolve(ROOT_DIR, "vendor/dist");
 
