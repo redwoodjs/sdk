@@ -1,18 +1,15 @@
 import { Plugin } from "vite";
 import { parse } from "es-module-lexer";
-
-const createState = () = ({
-})
-
-let state
+import { relative } from "node:path";
 
 export const useServerPlugin = (): Plugin => ({
   name: "rw-reloaded-use-server",
-  footer() {},
   async transform(code, id) {
     if (id.includes(".vite/deps") || id.includes("node_modules")) {
       return;
     }
+
+    const relativeId = `/${relative(this.environment.getTopLevelConfig().root, id)}`;
 
     if (code.includes('"use server"') || code.includes("'use server'")) {
       if (this.environment.name === "worker") {
@@ -23,7 +20,7 @@ import { registerServerReference } from "/src/register/rsc.ts";
         const [_, exports] = parse(code);
         for (const e of exports) {
           newCode += `\
-registerServerReference(${e.ln}, ${JSON.stringify(id)}, ${JSON.stringify(e.ln)});
+registerServerReference(${e.ln}, ${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)});
 `;
         }
 
@@ -36,7 +33,7 @@ import { createServerReference } from "/src/register/client.ts";
         const [_, exports] = parse(code);
         for (const e of exports) {
           newCode += `\
-export const ${e.ln} = createServerReference(${JSON.stringify(id)}, ${JSON.stringify(e.ln)})
+export const ${e.ln} = createServerReference(${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)})
 `;
         }
         return newCode;

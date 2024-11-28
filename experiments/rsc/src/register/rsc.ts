@@ -3,7 +3,7 @@ import {
   decodeReply,
 } from "react-server-dom-webpack/server.edge";
 
-const actions = new Map<string, Function>();
+const modules = import.meta.glob("/src/**/*.ts");
 
 export function registerServerReference(
   action: Function,
@@ -14,9 +14,14 @@ export function registerServerReference(
     return action;
   }
 
-  actions.set(id, action);
   return baseRegisterServerReference(action, id, name);
 }
+
+const getAction = async (actionId: string) => {
+  const [file, name] = actionId.split("#");
+  const module = await modules[file]();
+  return module[name];
+};
 
 export async function rscActionHandler(req: Request): Promise<unknown> {
   const url = new URL(req.url);
@@ -28,16 +33,7 @@ export async function rscActionHandler(req: Request): Promise<unknown> {
 
   const args = (await decodeReply(data, null)) as unknown[];
   const actionId = url.searchParams.get("__rsc_action_id");
-
-  if (!actionId) {
-    throw new Error('"__rsc_action_id" is undefined.');
-  }
-
-  if (!actions.has(actionId)) {
-    throw new Error(`Action ${actionId} not found`);
-  }
-
-  const action = actions.get(actionId);
+  const action = await getAction(actionId!);
 
   if (typeof action !== "function") {
     throw new Error(`Action ${actionId} is not a function`);
