@@ -1,9 +1,9 @@
 import { increment } from "../counter";
 
-// todo(peterp, 2024-11-27): Add interactivity.
 export function Like() {
+  // todo(justinvdm, 2024-11-28): Replace with 'use client' equivalent
   return (
-    <form action={increment}>
+    <form action={increment as any}>
       <button type="submit">+</button>
     </form>
   );

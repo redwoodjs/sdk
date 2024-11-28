@@ -24,7 +24,7 @@ async function init() {
 
     setRscPayload(streamData);
     const result = await streamData;
-    return result.actionResult;
+    return (result as { actionResult: unknown }).actionResult;
   };
 
   const rootEl = document.getElementById("root");
@@ -50,7 +50,7 @@ async function init() {
     const [streamData, setStreamData] = React.useState(rscPayload);
     const [_isPending, startTransition] = React.useTransition();
     setRscPayload = (v) => startTransition(() => setStreamData(v));
-    return React.use(streamData);
+    return <>React.use(streamData)</>;
   }
 
   globalThis.__rsc_callServer = callServer;
