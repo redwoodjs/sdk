@@ -1,8 +1,12 @@
 import { $ } from "execa";
 
 export const codegen = async () => {
+  const $$ = $({
+    stdio: process.env.VERBOSE ? "inherit" : "pipe",
+  });
+
   console.log("Generating wrangler types...");
-  await $`pnpm wrangler types`;
+  await $$`pnpm wrangler types`;
 
   console.log("Generating db types...");
 
@@ -14,9 +18,7 @@ export const codegen = async () => {
 
   // context(justinvdm, 26 Nov 2024): This will actually use better-sqlite3 on the .sqlite file
   // This may / may not hold up well depending on how close d1 is to sqlite
-  await $({
-    stdio: "inherit",
-  })`pnpm kysely-codegen --dialect sqlite --url ${latestSqliteFile}`;
+  await $$`pnpm kysely-codegen --dialect sqlite --url ${latestSqliteFile}`;
 };
 
 if (import.meta.url === new URL(process.argv[1], import.meta.url).href) {

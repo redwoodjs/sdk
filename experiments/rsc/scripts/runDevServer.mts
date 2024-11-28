@@ -9,6 +9,8 @@ import { prepareDev } from "./prepareDev.mjs";
 import { getD1Databases } from "./lib/getD1Databases";
 import { D1_PERSIST_PATH, DEV_SERVER_PORT } from "./lib/constants.mjs";
 
+let promisedSetupComplete = Promise.resolve();
+
 const miniflareOptions: Partial<MiniflareOptions> = {
   // context(justinvdm, 2024-11-21): `npx wrangler d1 migrations apply` creates a sqlite file in `.wrangler/state/v3/d1`
   d1Persist: D1_PERSIST_PATH,
@@ -66,7 +68,8 @@ const setup = async () => {
     ...miniflareOptions,
     script: "",
   });
-  await rebuildWorker();
+
+  promisedSetupComplete = prepareDev().then(rebuildWorker);
 
   return {
     miniflare,
@@ -75,8 +78,6 @@ const setup = async () => {
 };
 
 const createServers = async () => {
-  await prepareDev();
-
   const { miniflare, viteDevServer } = await setup();
 
   const app = express();
@@ -96,6 +97,7 @@ const createServers = async () => {
 
     try {
       const webRequest = nodeToWebRequest(req, url);
+      await promisedSetupComplete;
 
       // context(justinvdm, 2024-11-19): Type assertions needed because Miniflare's Request and Responses types have additional Cloudflare-specific properties
       const webResponse = await miniflare.dispatchFetch(

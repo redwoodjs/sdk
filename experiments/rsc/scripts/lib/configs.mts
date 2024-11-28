@@ -25,6 +25,7 @@ export type DevConfigContext = {
 export const viteConfigs = {
   main: (): InlineConfig => ({
     mode: MODE,
+    logLevel: process.env.VERBOSE ? "info" : "warn",
     build: {
       minify: MODE !== "development",
     },
@@ -43,7 +44,7 @@ export const viteConfigs = {
       },
       worker: {
         resolve: {
-          conditions: ["module", "workerd"],
+          conditions: ["module", "workerd", "react-server"],
           noExternal: true,
         },
         build: {

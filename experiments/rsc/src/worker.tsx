@@ -2,7 +2,7 @@ import AdminPage from "./app/AdminPage";
 import { App } from "./app/App";
 import { db, setupDb } from "./db";
 import HomePage from "./app/HomePage";
-import { renderToRscStream } from "./render/renderToRscStream";
+import { renderToReadableStream as renderToRscStream } from "react-server-dom-webpack/server.edge";
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 import { injectRSCPayload } from "rsc-html-stream/server";
 
