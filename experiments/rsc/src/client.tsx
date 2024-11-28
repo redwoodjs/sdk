@@ -1,7 +1,6 @@
 import { memoize } from "lodash";
 
 async function init() {
-
   // NOTE: `react-server-dom-webpack` uses this global to load modules,
   // so we need to define it here before importing "react-server-dom-webpack."
   globalThis.__webpack_require__ = memoize(function (id: string) {
@@ -17,7 +16,8 @@ async function init() {
   const React = await import("react");
   const { hydrateRoot } = await import("react-dom/client");
   // @ts-ignore: todo(peterp, 2024-11-27): Type these properly.
-  const {createFromReadableStream, createFromFetch, encodeReply} = await import("react-server-dom-webpack/client.browser");
+  const { createFromReadableStream, createFromFetch, encodeReply } =
+    await import("react-server-dom-webpack/client.browser");
   const { rscStream } = await import("rsc-html-stream/client");
 
   let rscPayload: any;
@@ -42,7 +42,7 @@ async function init() {
         method: "POST",
         body: await encodeReply(args),
       }),
-      { callServer: globalThis.__rsc_callServer }
+      { callServer: globalThis.__rsc_callServer },
     );
 
     setRscPayload(streamData);
@@ -53,4 +53,4 @@ async function init() {
   hydrateRoot(rootEl, <Content />);
 }
 
-init()
+init();

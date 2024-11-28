@@ -50,24 +50,10 @@ const setup = async () => {
         contents: code,
       }));
 
-    miniflare.setOptions({
+    await miniflare.setOptions({
       ...miniflareOptions,
       modules: bundles as any,
     });
-
-    //const bundles = [
-    //  {
-    //    type: "ESModule",
-    //    path: "/Users/justin/rw/reloaded/experiments/rsc/dist/worker/worker.mjs",
-    //    contents: await readFile(
-    //      "/Users/justin/rw/reloaded/experiments/rsc/dist/worker/worker.mjs",
-    //    ),
-    //  },
-    //];
-    //miniflare.setOptions({
-    //  ...miniflareOptions,
-    //  modules: bundles as any,
-    //});
   };
 
   const builder = await createBuilder(

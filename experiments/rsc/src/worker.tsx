@@ -15,6 +15,7 @@ const routes = {
 export default {
   async fetch(request: Request, env: Env) {
     const url = new URL(request.url);
+    console.log("###", request.method, request.url);
 
     if (url.pathname.startsWith("/assets/")) {
       url.pathname = url.pathname.slice("/assets/".length);
