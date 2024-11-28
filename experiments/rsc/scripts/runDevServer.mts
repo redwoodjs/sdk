@@ -47,7 +47,7 @@ const setup = async () => {
         contents: code,
       }));
 
-    miniflare.setOptions({
+    await miniflare.setOptions({
       ...miniflareOptions,
       modules: bundles,
     });
@@ -71,12 +71,12 @@ const setup = async () => {
   });
 
   // context(justinvdm, 2024-11-28): We don't need to wait for the initial bundle builds to complete before starting the dev server, we only need to have this complete by the first request
-  promisedSetupComplete = new Promise(setImmediate).then(() => {
-    buildVendorBundles().then(rebuildWorker);
-
-    // context(justinvdm, 2024-11-28): Types don't affect runtime, so we don't need to block the dev server on them
-    void codegenTypes();
-  });
+  promisedSetupComplete = new Promise(setImmediate)
+    .then(() => buildVendorBundles().then(rebuildWorker))
+    .then(() => {
+      // context(justinvdm, 2024-11-28): Types don't affect runtime, so we don't need to block the dev server on them
+      void codegenTypes();
+    });
 
   return {
     miniflare,
