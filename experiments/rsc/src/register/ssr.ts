@@ -1,4 +1,4 @@
-import { createServerReference as baseCreateServerReference } from "react-server-dom-webpack/client.browser";
+import { createServerReference as baseCreateServerReference } from "react-server-dom-webpack/client.edge";
 
 export function createServerReference(id: string, name: string) {
   id = id + "#" + name;

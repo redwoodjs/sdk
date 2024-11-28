@@ -252,4 +252,9 @@ declare module "react-server-dom-webpack/client.edge" {
       };
     },
   ): Thenable<T>;
+
+  export function createServerReference<A, T>(
+    id: string,
+    callServer: (id: string, args: A) => Promise<T>,
+  );
 }
