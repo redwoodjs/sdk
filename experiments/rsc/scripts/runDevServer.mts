@@ -5,9 +5,10 @@ import { resolve } from "node:path";
 import express from "express";
 
 import { viteConfigs } from "./lib/configs.mjs";
-import { prepareDev } from "./prepareDev.mjs";
 import { getD1Databases } from "./lib/getD1Databases";
 import { D1_PERSIST_PATH, DEV_SERVER_PORT } from "./lib/constants.mjs";
+import { buildVendorBundles } from "./buildVendorBundles.mjs";
+import { codegenTypes } from "./codegenTypes.mjs";
 
 let promisedSetupComplete = Promise.resolve();
 
@@ -69,7 +70,13 @@ const setup = async () => {
     script: "",
   });
 
-  promisedSetupComplete = prepareDev().then(rebuildWorker);
+  // context(justinvdm, 2024-11-28): We don't need to wait for the initial bundle builds to complete before starting the dev server, we only need to have this complete by the first request
+  promisedSetupComplete = new Promise(setImmediate).then(() => {
+    buildVendorBundles().then(rebuildWorker);
+
+    // context(justinvdm, 2024-11-28): Types don't affect runtime, so we don't need to block the dev server on them
+    void codegenTypes();
+  });
 
   return {
     miniflare,

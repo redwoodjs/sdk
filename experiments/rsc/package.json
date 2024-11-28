@@ -8,8 +8,8 @@
     "dev": "NODE_ENV=development npx tsx ./scripts/runDevServer.mts",
     "migrate:dev": "npx wrangler d1 migrations apply DB --local",
     "migrate:prd": "npx wrangler d1 migrations apply DB --remote",
-    "codegen": "npx tsx ./scripts/codegen.mts",
-    "types": "pnpm codegen && pnpm wrangler types && tsc",
+    "codegen:types": "npx tsx ./scripts/codegenTypes.mts",
+    "types": "pnpm codegen:types && tsc",
     "deploy": "wrangler deploy",
     "format": "npx prettier --write ./src ./scripts"
   },
