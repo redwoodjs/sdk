@@ -215,21 +215,32 @@ declare module "react-server-dom-webpack/server" {
   ): PipeableStream;
 }
 
+// From https://github.com/hi-ogawa/vite-plugins/blob/ca3f97ec09c2549d98779acbf9a24e97706c125d/packages/react-server/src/types/react-lib.d.ts#L64-L87
+// https://github.com/facebook/react/blob/89021fb4ec9aa82194b0788566e736a4cedfc0e4/packages/react-server-dom-webpack/src/ReactFlightDOMClientBrowser.js
 declare module "react-server-dom-webpack/client.browser" {
-  /**
-   * Creates a server action reference on the client.
-   * Enables Client Components to call Server Actions by:
-   * - Creating a client-side proxy for the server function
-   * - Handling argument serialization
-   * - Managing the network request to the server
-   * - Processing the server's response
-   * Key part of the Server Actions system for client-server interaction.
-   * @see https://timtech.blog/posts/react-server-components-rsc-no-framework/#server-actions
-   */
-  export function createServerReference<A, T>(
+  export type CallServerCallback = (id: any, args: any) => Promise<unknown>;
+
+  export function createServerReference(
     id: string,
-    callServer: (id: string, args: A) => Promise<T>,
-  );
+    callServer: CallServerCallback,
+    encodeFormAction?: unknown,
+  ): Function;
+
+  export function createFromReadableStream<T>(
+    stream: ReadableStream<Uint8Array>,
+    options?: {
+      callServer?: CallServerCallback;
+    },
+  ): Promise<T>;
+
+  export function createFromFetch<T>(
+    promiseForResponse: Promise<Response>,
+    options?: {
+      callServer?: import("./react").CallServerCallback;
+    },
+  ): Promise<T>;
+
+  export function encodeReply(v: unknown[]): Promise<string | FormData>;
 }
 
 declare module "react-server-dom-webpack/client.edge" {

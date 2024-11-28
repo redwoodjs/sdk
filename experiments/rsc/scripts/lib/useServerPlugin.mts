@@ -1,8 +1,14 @@
 import { Plugin } from "vite";
 import { parse } from "es-module-lexer";
 
+const createState = () = ({
+})
+
+let state
+
 export const useServerPlugin = (): Plugin => ({
   name: "rw-reloaded-use-server",
+  footer() {},
   async transform(code, id) {
     if (id.includes(".vite/deps") || id.includes("node_modules")) {
       return;

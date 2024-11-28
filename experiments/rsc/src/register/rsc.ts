@@ -3,6 +3,8 @@ import {
   decodeReply,
 } from "react-server-dom-webpack/server.edge";
 
+const actions = new Map<string, Function>();
+
 export function registerServerReference(
   action: Function,
   id: string,
@@ -12,21 +14,34 @@ export function registerServerReference(
     return action;
   }
 
+  actions.set(id, action);
   return baseRegisterServerReference(action, id, name);
 }
 
-export async function rscActionHandler(req: Request) {
+export async function rscActionHandler(req: Request): Promise<unknown> {
   const url = new URL(req.url);
-  const body = await req.text();
-  const args = (await decodeReply(body, null)) as unknown[];
+  const contentType = req.headers.get("content-type");
 
+  const data = contentType?.startsWith("multipart/form-data")
+    ? await req.formData()
+    : await req.text();
+
+  const args = (await decodeReply(data, null)) as unknown[];
   const actionId = url.searchParams.get("__rsc_action_id");
+
   if (!actionId) {
     throw new Error('"__rsc_action_id" is undefined.');
   }
 
-  const [file, name] = actionId.split("#");
-  const module = await import(/* @vite-ignore */ file!);
-  const result = await module[name!](...args);
-  return result;
+  if (!actions.has(actionId)) {
+    throw new Error(`Action ${actionId} not found`);
+  }
+
+  const action = actions.get(actionId);
+
+  if (typeof action !== "function") {
+    throw new Error(`Action ${actionId} is not a function`);
+  }
+
+  return action(...args);
 }
