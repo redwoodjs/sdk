@@ -14,6 +14,8 @@ import {
   WORKER_DIST_DIR,
 } from "./constants.mjs";
 import { transformJsxScriptTagsPlugin } from "./transformJsxScriptTagsPlugin.mjs";
+import { useServerPlugin } from "./useServerPlugin.mjs";
+import commonjsPlugin from "vite-plugin-commonjs";
 
 const MODE =
   process.env.NODE_ENV === "development" ? "development" : "production";
@@ -29,6 +31,14 @@ export const viteConfigs = {
     build: {
       minify: MODE !== "development",
     },
+    plugins: [
+      commonjsPlugin({
+        filter: (id) => {
+          return id.includes("react-server-dom-webpack-server.edge");
+        },
+      }),
+      useServerPlugin(),
+    ],
     environments: {
       client: {
         consumer: "client",
