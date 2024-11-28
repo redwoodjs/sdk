@@ -3,7 +3,7 @@ import {
   decodeReply,
 } from "react-server-dom-webpack/server.edge";
 
-const modules = import.meta.glob("/src/**/*.ts");
+const modules = import.meta.glob("/src/app/**/*.ts");
 
 export function registerServerReference(
   action: Function,

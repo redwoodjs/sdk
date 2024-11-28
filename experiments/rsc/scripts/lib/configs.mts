@@ -61,6 +61,9 @@ export const viteConfigs = {
           outDir: WORKER_DIST_DIR,
           ssr: true,
           rollupOptions: {
+            output: {
+              inlineDynamicImports: true,
+            },
             input: {
               worker: RELATIVE_WORKER_PATHNAME,
             },
