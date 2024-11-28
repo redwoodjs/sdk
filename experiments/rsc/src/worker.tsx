@@ -2,9 +2,9 @@ import AdminPage from "./app/AdminPage";
 import { App } from "./app/App";
 import { db, setupDb } from "./db";
 import HomePage from "./app/HomePage";
-import { renderToRscStream } from "./render/renderToRscStream";
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 import { injectRSCPayload } from "rsc-html-stream/server";
+import { renderToRscStream } from "./render/renderToRscStream";
 
 // todo(peterp, 2024-11-25): Make these lazy.
 const routes = {

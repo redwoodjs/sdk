@@ -21,26 +21,12 @@ const configs = {
         }),
       ],
     ],
+    logLevel: process.env.VERBOSE ? "info" : "warn",
     build: {
       sourcemap: true,
       minify: MODE === "production",
     },
   }),
-  reactRSCWorker: (): InlineConfig =>
-    mergeConfig(configs.common(), {
-      build: {
-        outDir: DEST_DIR,
-        lib: {
-          entry: resolve(SRC_DIR, "react-rsc-worker.ts"),
-          name: "react-rsc-worker",
-          formats: ["es"],
-          fileName: "react-rsc-worker",
-        },
-      },
-      resolve: {
-        conditions: ["react-server"],
-      },
-    }),
   reactSSR: (): InlineConfig =>
     mergeConfig(configs.common(), {
       build: {
@@ -56,10 +42,8 @@ const configs = {
 };
 
 export const buildVendorBundles = async () => {
-  await Promise.all([
-    build(configs.reactRSCWorker()),
-    build(configs.reactSSR()),
-  ]);
+  console.log("Building vendor bundles...");
+  await build(configs.reactSSR());
 };
 
 if (import.meta.url === new URL(process.argv[1], import.meta.url).href) {
