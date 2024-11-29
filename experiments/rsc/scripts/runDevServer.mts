@@ -1,12 +1,16 @@
+import express from "express";
 import { createBuilder, createServer as createViteServer } from "vite";
 import { Miniflare, MiniflareOptions, type RequestInit } from "miniflare";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { resolve } from "node:path";
-import express from "express";
 
 import { viteConfigs } from "./lib/configs.mjs";
 import { getD1Databases } from "./lib/getD1Databases";
-import { D1_PERSIST_PATH, DEV_SERVER_PORT } from "./lib/constants.mjs";
+import {
+  D1_PERSIST_PATH,
+  DEV_SERVER_PORT,
+  WORKER_DIST_DIR,
+} from "./lib/constants.mjs";
 import { buildVendorBundles } from "./buildVendorBundles.mjs";
 import { codegenTypes } from "./codegenTypes.mjs";
 
@@ -38,18 +42,17 @@ const setup = async () => {
           }
       )[];
     };
-
     const bundles = result.output
       .filter((output) => output.type === "chunk")
       .map(({ fileName, code }) => ({
         type: "ESModule" as const,
-        path: resolve("dist", fileName),
+        path: resolve(WORKER_DIST_DIR, fileName),
         contents: code,
       }));
 
     await miniflare.setOptions({
       ...miniflareOptions,
-      modules: bundles,
+      modules: bundles as any,
     });
   };
 

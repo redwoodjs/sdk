@@ -1,4 +1,10 @@
-// todo(peterp, 2024-11-27): Add interactivity.
+import { increment } from "../counter";
+
 export function Like() {
-  return <button>+</button>
+  // todo(justinvdm, 2024-11-28): Replace with 'use client' equivalent
+  return (
+    <form action={increment as any}>
+      <button type="submit">+</button>
+    </form>
+  );
 }

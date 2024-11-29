@@ -8,13 +8,13 @@
  * @see https://timtech.blog/posts/react-server-components-rsc-no-framework/#react-server-dom-webpackplugin
  */
 type ImportManifestEntry = {
-  id: string
+  id: string;
   // chunks is a double indexed array of chunkId / chunkFilename pairs
-  chunks: string[]
-  name: string
-}
+  chunks: string[];
+  name: string;
+};
 
-type ClientReferenceManifestEntry = ImportManifestEntry
+type ClientReferenceManifestEntry = ImportManifestEntry;
 
 /**
  * Maps client component IDs to their manifest entries for RSC bundling.
@@ -22,17 +22,17 @@ type ClientReferenceManifestEntry = ImportManifestEntry
  * of client components and their dependencies in the RSC architecture.
  */
 type ClientManifest = {
-  [id: string]: ClientReferenceManifestEntry
-}
+  [id: string]: ClientReferenceManifestEntry;
+};
 
-declare module 'react-server-dom-webpack/server.edge' {
+declare module "react-server-dom-webpack/server.edge" {
   type Options = {
-    environmentName?: string
-    identifierPrefix?: string
-    signal?: AbortSignal
-    onError?: (error: mixed) => void
-    onPostpone?: (reason: string) => void
-  }
+    environmentName?: string;
+    identifierPrefix?: string;
+    signal?: AbortSignal;
+    onError?: (error: mixed) => void;
+    onPostpone?: (reason: string) => void;
+  };
 
   /**
    * Edge runtime version of renderToReadableStream for RSC rendering.
@@ -49,7 +49,7 @@ declare module 'react-server-dom-webpack/server.edge' {
     model: ReactClientValue,
     webpackMap: ClientManifest,
     options?: Options,
-  ): ReadableStream
+  ): ReadableStream;
 
   /**
    * Registers a client component reference for use in RSC.
@@ -65,20 +65,20 @@ declare module 'react-server-dom-webpack/server.edge' {
     proxyImplementation: T,
     id: string,
     exportName: string,
-  ): T
+  ): T;
 }
 
 // Should be able to use just react-dom/server, but right now we can't
 // See https://github.com/facebook/react/issues/26906
-declare module 'react-dom/server.edge' {
-  export * from 'react-dom/server'
+declare module "react-dom/server.edge" {
+  export * from "react-dom/server";
 }
 
-declare module 'react-server-dom-webpack/client' {
+declare module "react-server-dom-webpack/client" {
   // https://github.com/facebook/react/blob/dfaed5582550f11b27aae967a8e7084202dd2d90/packages/react-server-dom-webpack/src/ReactFlightDOMClientBrowser.js#L31
   export type Options<A, T> = {
-    callServer?: (id: string, args: A) => Promise<T>
-  }
+    callServer?: (id: string, args: A) => Promise<T>;
+  };
 
   /**
    * Creates a Promise-like structure from a fetch Response containing RSC data.
@@ -95,7 +95,7 @@ declare module 'react-server-dom-webpack/client' {
     // https://developer.mozilla.org/en-US/docs/Web/API/Response
     promiseForResponse: Promise<Response>,
     options?: Options<A, T>,
-  ): Thenable<T>
+  ): Thenable<T>;
 
   /**
    * Encodes client-side values to be sent to the server.
@@ -109,19 +109,61 @@ declare module 'react-server-dom-webpack/client' {
   export function encodeReply(
     // https://github.com/facebook/react/blob/dfaed5582550f11b27aae967a8e7084202dd2d90/packages/react-client/src/ReactFlightReplyClient.js#L65
     value: ReactServerValue,
-  ): Promise<string | URLSearchParams | FormData>
+  ): Promise<string | URLSearchParams | FormData>;
 }
 
-declare module 'react-server-dom-webpack/server' {
-  import type { Writable } from 'node:stream'
-  import type { Busboy } from 'busboy'
+// From https://github.com/hi-ogawa/vite-plugins/blob/ca3f97ec09c2549d98779acbf9a24e97706c125d/packages/react-server/src/types/react-lib.d.ts#L6
+// https://github.com/facebook/react/blob/89021fb4ec9aa82194b0788566e736a4cedfc0e4/packages/react-server-dom-webpack/src/ReactFlightDOMServerEdge.js
+declare module "react-server-dom-webpack/server.edge" {
+  // TODO: branded stream type?
+  export function renderToReadableStream<T>(
+    node: T,
+    bundlerConfig: import("./react").BundlerConfig,
+    opitons?: {
+      onError: import("react-dom/server").RenderToReadableStreamOptions["onError"];
+    },
+  ): ReadableStream<Uint8Array>;
+
+  export function registerClientReference<T>(
+    ref: T,
+    id: string,
+    name: string,
+  ): T;
+
+  export function registerServerReference<T>(
+    ref: T,
+    id: string,
+    name: string,
+  ): T;
+
+  export function decodeReply(
+    body: string | FormData,
+    bundlerConfig: import("./react").BundlerConfig,
+    // TODO: temporaryReferences
+  ): Promise<unknown[]>;
+
+  export function decodeAction(
+    body: FormData,
+    bundlerConfig: import("./react").BundlerConfig,
+  ): Promise<() => Promise<unknown>>;
+
+  export function decodeFormState(
+    actionResult: unknown,
+    body: FormData,
+    serverManifest?: unknown,
+  ): Promise<unknown>;
+}
+
+declare module "react-server-dom-webpack/server" {
+  import type { Writable } from "node:stream";
+  import type { Busboy } from "busboy";
 
   // It's difficult to know the true type of `ServerManifest`.
   // A lot of react's source files are stubs that are replaced at build time.
   // Going off this reference for now: https://github.com/facebook/react/blob/b09e102ff1e2aaaf5eb6585b04609ac7ff54a5c8/packages/react-server-dom-webpack/src/ReactFlightClientConfigBundlerWebpack.js#L40
   type ServerManifest = {
-    [id: string]: ImportManifestEntry
-  }
+    [id: string]: ImportManifestEntry;
+  };
 
   /**
    * Decodes client replies in RSC server actions.
@@ -135,7 +177,7 @@ declare module 'react-server-dom-webpack/server' {
   export function decodeReply<T>(
     body: string | FormData,
     webpackMap?: ServerManifest,
-  ): Promise<T>
+  ): Promise<T>;
 
   /**
    * Decodes multipart form data replies in RSC server actions.
@@ -149,13 +191,13 @@ declare module 'react-server-dom-webpack/server' {
   export function decodeReplyFromBusboy<T>(
     busboyStream: Busboy,
     webpackMap?: ServerManifest,
-  ): Promise<T>
+  ): Promise<T>;
 
   type PipeableStream = {
     // biome-ignore lint/suspicious/noExplicitAny: <explanation>
-    abort(reason: any): void
-    pipe<T extends Writable>(destination: T): T
-  }
+    abort(reason: any): void;
+    pipe<T extends Writable>(destination: T): T;
+  };
 
   /**
    * Renders React Server Components to a pipeable stream format.
@@ -170,24 +212,38 @@ declare module 'react-server-dom-webpack/server' {
   export function renderToPipeableStream(
     model: ReactClientValue,
     webpackMap: ClientManifest,
-  ): PipeableStream
+  ): PipeableStream;
 }
 
-declare module 'react-server-dom-webpack/client.browser' {
-  /**
-   * Creates a server action reference on the client.
-   * Enables Client Components to call Server Actions by:
-   * - Creating a client-side proxy for the server function
-   * - Handling argument serialization
-   * - Managing the network request to the server
-   * - Processing the server's response
-   * Key part of the Server Actions system for client-server interaction.
-   * @see https://timtech.blog/posts/react-server-components-rsc-no-framework/#server-actions
-   */
-  export function createServerReference<A, T>(id: string, callServer: (id: string, args: A) => Promise<T>)
+// From https://github.com/hi-ogawa/vite-plugins/blob/ca3f97ec09c2549d98779acbf9a24e97706c125d/packages/react-server/src/types/react-lib.d.ts#L64-L87
+// https://github.com/facebook/react/blob/89021fb4ec9aa82194b0788566e736a4cedfc0e4/packages/react-server-dom-webpack/src/ReactFlightDOMClientBrowser.js
+declare module "react-server-dom-webpack/client.browser" {
+  export type CallServerCallback = (id: any, args: any) => Promise<unknown>;
+
+  export function createServerReference(
+    id: string,
+    callServer: CallServerCallback,
+    encodeFormAction?: unknown,
+  ): Function;
+
+  export function createFromReadableStream<T>(
+    stream: ReadableStream<Uint8Array>,
+    options?: {
+      callServer?: CallServerCallback;
+    },
+  ): Promise<T>;
+
+  export function createFromFetch<T>(
+    promiseForResponse: Promise<Response>,
+    options?: {
+      callServer?: import("./react").CallServerCallback;
+    },
+  ): Promise<T>;
+
+  export function encodeReply(v: unknown[]): Promise<string | FormData>;
 }
 
-declare module 'react-server-dom-webpack/client.edge' {
+declare module "react-server-dom-webpack/client.edge" {
   /**
    * Creates a Promise-like structure from a ReadableStream of RSC data.
    * Core client-side RSC processing function that:
@@ -198,10 +254,18 @@ declare module 'react-server-dom-webpack/client.edge' {
    * Used in conjunction with server-side rendering functions to process RSC output.
    * @see https://timtech.blog/posts/react-server-components-rsc-no-framework/#createfromreadablestream-from-react-server-dom-webpackclient
    */
-  export function createFromReadableStream<T>(stream: ReadableStream, options: {
-    ssrManifest: {
-      moduleMap: ClientManifest
-      moduleLoading: null
-    }
-  }): Thenable<T>
+  export function createFromReadableStream<T>(
+    stream: ReadableStream,
+    options: {
+      ssrManifest: {
+        moduleMap: ClientManifest;
+        moduleLoading: null;
+      };
+    },
+  ): Thenable<T>;
+
+  export function createServerReference<A, T>(
+    id: string,
+    callServer: (id: string, args: A) => Promise<T>,
+  );
 }
