@@ -30,6 +30,7 @@ const miniflareOptions: Partial<MiniflareOptions> = {
 
 const setup = async () => {
   const rebuildWorker = async () => {
+    console.log("Rebuilding worker...");
     const result = (await builder.build(builder.environments["worker"])) as {
       output: (
         | {
@@ -42,6 +43,7 @@ const setup = async () => {
           }
       )[];
     };
+
     const bundles = result.output
       .filter((output) => output.type === "chunk")
       .map(({ fileName, code }) => ({

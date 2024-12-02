@@ -15,6 +15,7 @@ import {
 } from "./constants.mjs";
 import { transformJsxScriptTagsPlugin } from "./transformJsxScriptTagsPlugin.mjs";
 import { useServerPlugin } from "./useServerPlugin.mjs";
+import { useClientPlugin } from "./useClientPlugin.mjs";
 import commonjsPlugin from "vite-plugin-commonjs";
 
 const MODE =
@@ -38,6 +39,7 @@ export const viteConfigs = {
         },
       }),
       useServerPlugin(),
+      useClientPlugin(),
     ],
     environments: {
       client: {

@@ -1,5 +1,5 @@
 import { memoize } from "lodash";
-import { CallServerCallback } from "react-server-dom-webpack/client.browser";
+import { type CallServerCallback } from "react-server-dom-webpack/client.browser";
 
 async function init() {
   // NOTE: `react-server-dom-webpack` uses this global to load modules,

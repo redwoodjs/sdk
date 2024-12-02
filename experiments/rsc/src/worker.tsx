@@ -1,3 +1,4 @@
+import "./bootstrap/bootstrapWorker";
 import AdminPage from "./app/AdminPage";
 import { App } from "./app/App";
 import { db, setupDb } from "./db";
