@@ -1,6 +1,6 @@
 #:schema node_modules/wrangler/config-schema.json
 name = "reloaded-experiments-rsc"
-main = "dist/worker/worker.mjs"
+main = "dist/worker/worker.js"
 compatibility_date = "2024-03-12"
 compatibility_flags = ["nodejs_compat"]
 assets = { directory = "./dist/client/assets/", binding = "ASSETS" }
