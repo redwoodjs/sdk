@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "type": "module",
   "scripts": {
     "build": "npx tsx ./scripts/build.mts",
     "dev": "NODE_ENV=development npx tsx ./scripts/runDevServer.mts",
@@ -49,5 +50,6 @@
     "vite-plugin-commonjs": "^0.10.4",
     "vite-plugin-dts": "^4.3.0",
     "wrangler": "^3.91.0"
-  }
+  },
+  "packageManager": "pnpm@8.10.2+sha512.0782093d5ba6c7ad9462081bc1ef0775016a4b4109eca1e1fedcea6f110143af5f50993db36c427d4fa8c62be3920a3224db12da719d246ca19dd9f18048c33c"
 }

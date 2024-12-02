@@ -73,11 +73,7 @@ export const viteConfigs = {
     },
     resolve: {
       alias: {
-        "vendor/react-ssr": resolve(VENDOR_DIST_DIR, "react-ssr.mjs"),
-        "vendor/react-rsc-worker": resolve(
-          VENDOR_DIST_DIR,
-          "react-rsc-worker.mjs",
-        ),
+        "vendor/react-ssr": resolve(VENDOR_DIST_DIR, "react-ssr.js"),
       },
     },
     server: {

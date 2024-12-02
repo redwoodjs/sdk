@@ -5,7 +5,7 @@ import type { IncomingMessage, ServerResponse } from "node:http";
 import { resolve } from "node:path";
 
 import { viteConfigs } from "./lib/configs.mjs";
-import { getD1Databases } from "./lib/getD1Databases";
+import { getD1Databases } from "./lib/getD1Databases.js";
 import {
   D1_PERSIST_PATH,
   DEV_SERVER_PORT,
