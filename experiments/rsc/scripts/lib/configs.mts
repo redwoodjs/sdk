@@ -13,10 +13,11 @@ import {
   VENDOR_DIST_DIR,
   WORKER_DIST_DIR,
 } from "./constants.mjs";
-import { transformJsxScriptTagsPlugin } from "./transformJsxScriptTagsPlugin.mjs";
-import { useServerPlugin } from "./useServerPlugin.mjs";
-import { useClientPlugin } from "./useClientPlugin.mjs";
+import { transformJsxScriptTagsPlugin } from "./vitePlugins/transformJsxScriptTagsPlugin.mjs";
+import { useServerPlugin } from "./vitePlugins/useServerPlugin.mjs";
+import { useClientPlugin } from "./vitePlugins/useClientPlugin.mjs";
 import commonjsPlugin from "vite-plugin-commonjs";
+import { useClientLookupPlugin } from "./vitePlugins/useClientLookupPlugin.mjs";
 
 const MODE =
   process.env.NODE_ENV === "development" ? "development" : "production";
@@ -98,11 +99,18 @@ export const viteConfigs = {
     mergeConfig(viteConfigs.main(), {
       plugins: [hmrPlugin(context)],
     }),
-  deploy: (): InlineConfig =>
+  deploy: ({
+    filesContainingUseClient,
+  }: {
+    filesContainingUseClient: string[];
+  }): InlineConfig =>
     mergeConfig(viteConfigs.main(), {
       plugins: [
         transformJsxScriptTagsPlugin({
           manifestPath: resolve(CLIENT_DIST_DIR, ".vite/manifest.json"),
+        }),
+        useClientLookupPlugin({
+          filesContainingUseClient,
         }),
       ],
     }),
