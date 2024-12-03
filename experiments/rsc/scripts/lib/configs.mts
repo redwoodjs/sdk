@@ -97,7 +97,12 @@ export const viteConfigs = {
   }),
   dev: (context: DevConfigContext): InlineConfig =>
     mergeConfig(viteConfigs.main(), {
-      plugins: [hmrPlugin(context)],
+      plugins: [
+        hmrPlugin(context),
+        // context(justinvdm, 2024-12-03): vite needs the virtual module created by this plugin to be around,
+        // even if the code path that use the virtual module are not reached in dev
+        useClientLookupPlugin({ filesContainingUseClient: [] }),
+      ],
     }),
   deploy: ({
     filesContainingUseClient,

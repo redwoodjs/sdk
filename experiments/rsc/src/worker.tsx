@@ -1,4 +1,3 @@
-import "./bootstrap/bootstrapWorker";
 import AdminPage from "./app/AdminPage";
 import { App } from "./app/App";
 import { db, setupDb } from "./db";
@@ -6,7 +5,8 @@ import HomePage from "./app/HomePage";
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 import { injectRSCPayload } from "rsc-html-stream/server";
 import { renderToRscStream } from "./render/renderToRscStream";
-import { rscActionHandler } from "./register/rsc";
+import { rscActionHandler } from "./register/worker";
+import { ssrWebpackRequire } from "./imports/worker";
 
 // todo(peterp, 2024-11-25): Make these lazy.
 const routes = {
@@ -16,6 +16,8 @@ const routes = {
 
 export default {
   async fetch(request: Request, env: Env) {
+    globalThis.__webpack_require__ = ssrWebpackRequire;
+
     try {
       const url = new URL(request.url);
 

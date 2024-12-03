@@ -1,13 +1,10 @@
-import { memoize } from "lodash";
+import { clientWebpackRequire } from "./imports/client";
 import { type CallServerCallback } from "react-server-dom-webpack/client.browser";
 
 async function init() {
   // NOTE: `react-server-dom-webpack` uses this global to load modules,
   // so we need to define it here before importing "react-server-dom-webpack."
-  globalThis.__webpack_require__ = memoize(function (id: string) {
-    const module = import(/* @vite-ignore */ id);
-    return module;
-  });
+  globalThis.__webpack_require__ = clientWebpackRequire;
 
   const callServer: CallServerCallback = async (id, args) => {
     const url = new URL(window.location.href);

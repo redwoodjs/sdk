@@ -14,7 +14,7 @@ export const useClientPlugin = (): Plugin => ({
     if (code.includes('"use client"') || code.includes("'use client'")) {
       if (this.environment.name === "worker") {
         let newCode = `
-import { registerClientReference } from "/src/register/rsc.ts";
+import { registerClientReference } from "/src/register/worker.ts";
 `;
         const [_, exports] = parse(code);
         for (const e of exports) {
