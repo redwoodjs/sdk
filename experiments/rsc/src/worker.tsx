@@ -6,7 +6,7 @@ import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 import { injectRSCPayload } from "rsc-html-stream/server";
 import { renderToRscStream } from "./render/renderToRscStream";
 import { rscActionHandler } from "./register/rsc";
-import { setupTwilioClient } from "./twilio";
+// import { setupTwilioClient } from "./twilio";
 // import vCards from "vcard-creator";
 
 // todo(peterp, 2024-11-25): Make these lazy.
@@ -59,8 +59,8 @@ export default {
     try {
       setupDb(env);
       // todo(harryhcs, 2024-12-02): Setup Twilio client
-      const client = setupTwilioClient(env);
-      console.log(client);
+      // const client = setupTwilioClient();
+      console.log(env.TWILIO_ACCOUNT_SID, env.TWILIO_AUTH_TOKEN);
 
       const url = new URL(request.url);
 
@@ -92,7 +92,7 @@ export default {
         );
 
         if (matchingTradesmen.length > 0) {
-          // we will need to twilio client message here
+          // we will need to use twilio client to send vcard here
           return new Response(
             `Glad we can help! Here are the contact details for ${matchingTradesmen.length} ${matchingTradesmen.length === 1 ? "tradesman" : "tradesmen"} you requested:`,
             { status: 200 },

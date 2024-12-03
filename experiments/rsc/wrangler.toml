@@ -13,6 +13,9 @@ binding = "DB"
 database_name = "prisma-demo-db"
 database_id = "08100d07-03e7-49b0-92e1-fa05569c370e"
 
+[vars]
+TWILIO_ACCOUNT_SID = "AC0000000000000000000000000000000"
+TWILIO_AUTH_TOKEN = "00000000000000000000000000000000"
 
 [build]
 command = "pnpm build"
