@@ -48,6 +48,8 @@ type WhatsAppMessageData = {
   MediaUrl?: string;
 };
 
+// This is a helper function to generate a vCard string
+// It also needs to upload to R2 storage and return the url
 export function generateVCard(data: {
   fullName: string;
   phone: string;

@@ -96,6 +96,7 @@ export default {
             from,
             `Glad we can help! Here are the contact details for ${matchingTradesmen.length} ${matchingTradesmen.length === 1 ? "tradesman" : "tradesmen"} you requested:`,
           );
+          // todo(harryhcs, 2024-12-03): Add R2 storage and vCards - sending a image atm to test this (this url will come from our R2 bucket)
           await twilioClient.sendWhatsAppMessage(
             from,
             "",
