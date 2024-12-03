@@ -87,8 +87,10 @@ export const viteConfigs = {
     },
     builder: {
       async buildApp(builder) {
-        await builder.build(builder.environments["client"]);
-        await builder.build(builder.environments["worker"]);
+        if (!process.env.NO_BUILD) {
+          await builder.build(builder.environments["client"]);
+          await builder.build(builder.environments["worker"]);
+        }
       },
     },
   }),

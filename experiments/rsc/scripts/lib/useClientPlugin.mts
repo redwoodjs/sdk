@@ -18,12 +18,14 @@ import { registerClientReference } from "/src/register/rsc.ts";
 `;
         const [_, exports] = parse(code);
         for (const e of exports) {
+          code = code.replaceAll(e.ln!, `${e.ln}SSR`);
+
           newCode += `\
 export const ${e.ln} = registerClientReference(${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)});
 `;
         }
 
-        return newCode;
+        return [code, newCode].join("\n");
       }
     }
   },

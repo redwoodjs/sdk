@@ -1,3 +1,3 @@
-import { getModuleExport } from "../register/rsc";
+import { ssrWebpackRequire } from "../register/rsc";
 
-globalThis.__webpack_require__ = getModuleExport;
+globalThis.__webpack_require__ = ssrWebpackRequire;

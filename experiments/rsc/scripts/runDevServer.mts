@@ -13,6 +13,7 @@ import {
 } from "./lib/constants.mjs";
 import { buildVendorBundles } from "./buildVendorBundles.mjs";
 import { codegenTypes } from "./codegenTypes.mjs";
+import { readFile } from "fs/promises";
 
 let promisedSetupComplete = Promise.resolve();
 
@@ -30,27 +31,42 @@ const miniflareOptions: Partial<MiniflareOptions> = {
 
 const setup = async () => {
   const rebuildWorker = async () => {
-    console.log("Rebuilding worker...");
-    const result = (await builder.build(builder.environments["worker"])) as {
-      output: (
-        | {
-            type: "asset";
-          }
-        | {
-            type: "chunk";
-            fileName: string;
-            code: string;
-          }
-      )[];
-    };
+    let bundles;
 
-    const bundles = result.output
-      .filter((output) => output.type === "chunk")
-      .map(({ fileName, code }) => ({
-        type: "ESModule" as const,
-        path: resolve(WORKER_DIST_DIR, fileName),
-        contents: code,
-      }));
+    if (process.env.NO_BUILD) {
+      bundles = [
+        {
+          type: "ESModule" as const,
+          path: resolve(WORKER_DIST_DIR, "worker.js"),
+          contents: await readFile(
+            resolve(WORKER_DIST_DIR, "worker.js"),
+            "utf-8",
+          ),
+        },
+      ];
+    } else {
+      console.log("Rebuilding worker...");
+      const result = (await builder.build(builder.environments["worker"])) as {
+        output: (
+          | {
+              type: "asset";
+            }
+          | {
+              type: "chunk";
+              fileName: string;
+              code: string;
+            }
+        )[];
+      };
+
+      bundles = result.output
+        .filter((output) => output.type === "chunk")
+        .map(({ fileName, code }) => ({
+          type: "ESModule" as const,
+          path: resolve(WORKER_DIST_DIR, fileName),
+          contents: code,
+        }));
+    }
 
     await miniflare.setOptions({
       ...miniflareOptions,

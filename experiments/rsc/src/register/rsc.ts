@@ -40,11 +40,17 @@ export const loadModule = memoize(async (moduleName: string) => {
   return await modules[moduleName]();
 });
 
-// context(justinvdm, 2 Dec 2024): re memoize(): React relies on the same promise instance being returned for the same id
-export const getModuleExport = memoize(async (id: string) => {
+export const getModuleExport = async (id: string) => {
   const [file, name] = id.split("#");
   const module = await loadModule(file);
   return module[name];
+};
+
+// context(justinvdm, 2 Dec 2024): re memoize(): React relies on the same promise instance being returned for the same id
+export const ssrWebpackRequire = memoize(async (id: string) => {
+  const [file, name] = id.split("#");
+  const module = await loadModule(file);
+  return { [id]: module[`${name}SSR`] };
 });
 
 export async function rscActionHandler(req: Request): Promise<unknown> {
