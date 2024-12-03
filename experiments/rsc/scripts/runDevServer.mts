@@ -11,7 +11,6 @@ import {
 } from "./lib/constants.mjs";
 import { buildVendorBundles } from "./buildVendorBundles.mjs";
 import { codegenTypes } from "./codegenTypes.mjs";
-import { readFile } from "fs/promises";
 import { dispatchNodeRequestToMiniflare } from "./lib/requestUtils.mjs";
 
 let promisedSetupComplete = Promise.resolve();

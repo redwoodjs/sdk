@@ -42,9 +42,7 @@ const createServers = async () => {
   const { miniflare } = await setup();
   const app = express();
 
-  if (process.env.PREVIEW) {
-    app.use("/static", express.static(resolve(DIST_DIR, "client", "assets")));
-  }
+  app.use("/assets", express.static(resolve(DIST_DIR, "client", "assets")));
 
   app.use(async (req, res) => {
     try {
