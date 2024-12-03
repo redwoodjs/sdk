@@ -4,19 +4,19 @@ export const loadModule = memoize(async (id: string) => {
   if (import.meta.env.DEV) {
     return await import(/* @vite-ignore */ id);
   } else {
-    const clientDirectiveLookup = await import(
+    const { useClientLookup } = await import(
       "virtual:use-client-lookup" as string
     );
 
-    const module = clientDirectiveLookup[id];
+    const moduleFn = useClientLookup[id];
 
-    if (!module) {
+    if (!moduleFn) {
       throw new Error(
         `No module found for '${id}' in module lookup for "use client" directive`,
       );
     }
 
-    return await module[id]();
+    return await moduleFn();
   }
 });
 

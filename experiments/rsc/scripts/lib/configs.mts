@@ -32,6 +32,7 @@ export const viteConfigs = {
     logLevel: process.env.VERBOSE ? "info" : "warn",
     build: {
       minify: MODE !== "development",
+      sourcemap: true,
     },
     plugins: [
       commonjsPlugin({
