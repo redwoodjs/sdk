@@ -7,6 +7,7 @@ import {
 import { resolve } from "node:path";
 import {
   CLIENT_DIST_DIR,
+  D1_PERSIST_PATH,
   DEV_SERVER_PORT,
   RELATIVE_CLIENT_PATHNAME,
   RELATIVE_WORKER_PATHNAME,
@@ -18,6 +19,8 @@ import { useServerPlugin } from "./vitePlugins/useServerPlugin.mjs";
 import { useClientPlugin } from "./vitePlugins/useClientPlugin.mjs";
 import commonjsPlugin from "vite-plugin-commonjs";
 import { useClientLookupPlugin } from "./vitePlugins/useClientLookupPlugin.mjs";
+import { MiniflareOptions } from "miniflare";
+import { getD1Databases } from "./getD1Databases";
 
 const MODE =
   process.env.NODE_ENV === "development" ? "development" : "production";
@@ -33,6 +36,12 @@ export const viteConfigs = {
     build: {
       minify: MODE !== "development",
       sourcemap: true,
+    },
+    define: {
+      "process.env.PREVIEW": JSON.stringify(
+        Boolean(process.env.PREVIEW ?? false),
+      ),
+      "process.env.NODE_ENV": JSON.stringify(MODE),
     },
     plugins: [
       commonjsPlugin({
@@ -84,15 +93,10 @@ export const viteConfigs = {
       middlewareMode: true,
       port: DEV_SERVER_PORT,
     },
-    define: {
-      "process.env.NODE_ENV": JSON.stringify(MODE),
-    },
     builder: {
       async buildApp(builder) {
-        if (!process.env.NO_BUILD) {
-          await builder.build(builder.environments["client"]);
-          await builder.build(builder.environments["worker"]);
-        }
+        await builder.build(builder.environments["client"]);
+        await builder.build(builder.environments["worker"]);
       },
     },
   }),
@@ -147,3 +151,15 @@ const hmrPlugin = ({ updateWorker }: DevConfigContext): Plugin => ({
     }
   },
 });
+
+export const miniflareOptions: Partial<MiniflareOptions> = {
+  // context(justinvdm, 2024-11-21): `npx wrangler d1 migrations apply` creates a sqlite file in `.wrangler/state/v3/d1`
+  d1Persist: D1_PERSIST_PATH,
+  modules: true,
+  compatibilityFlags: [
+    "streams_enable_constructors",
+    "transformstream_enable_standard_constructor",
+    "nodejs_compat",
+  ],
+  d1Databases: await getD1Databases(),
+};

@@ -3,7 +3,8 @@ import { viteConfigs } from "./lib/configs.mjs";
 import { buildVendorBundles } from "./buildVendorBundles.mjs";
 import { findFilesContainingUseClient } from "./lib/findFilesContainingUseClient.mjs";
 
-const main = async () => {
+export const build = async () => {
+  console.log("Building...");
   await buildVendorBundles();
   const filesContainingUseClient = await findFilesContainingUseClient();
 
@@ -14,6 +15,9 @@ const main = async () => {
   );
 
   await builder.buildApp();
+  console.log("Build done!");
 };
 
-main();
+if (import.meta.url === new URL(process.argv[1], import.meta.url).href) {
+  build();
+}

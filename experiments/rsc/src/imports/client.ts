@@ -1,7 +1,7 @@
 import memoize from "lodash/memoize";
 
 export const loadModule = memoize(async (id: string) => {
-  if (import.meta.env.DEV) {
+  if (import.meta.env.DEV && !process.env.PREVIEW) {
     return await import(/* @vite-ignore */ id);
   } else {
     const { useClientLookup } = await import(
