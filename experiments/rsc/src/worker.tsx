@@ -6,7 +6,7 @@ import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 import { injectRSCPayload } from "rsc-html-stream/server";
 import { renderToRscStream } from "./render/renderToRscStream";
 import { rscActionHandler } from "./register/rsc";
-// import { setupTwilioClient } from "./twilio";
+import { TwilioClient } from "./twilio";
 // import vCards from "vcard-creator";
 
 // todo(peterp, 2024-11-25): Make these lazy.
@@ -58,9 +58,6 @@ export default {
   async fetch(request: Request, env: Env) {
     try {
       setupDb(env);
-      // todo(harryhcs, 2024-12-02): Setup Twilio client
-      // const client = setupTwilioClient();
-      console.log(env.TWILIO_ACCOUNT_SID, env.TWILIO_AUTH_TOKEN);
 
       const url = new URL(request.url);
 
@@ -83,21 +80,28 @@ export default {
 
       // incoming twilio request
       if (request.method === "POST" && request.url.includes("/incoming")) {
+        const twilioClient = new TwilioClient(env);
+
         const body = await request.text();
         const bodyData = new URLSearchParams(body);
         const messageBody = bodyData.get("Body");
+        const from = bodyData.get("From");
 
         const matchingTradesmen = tradesmen.filter((tradesman) =>
           messageBody?.toLowerCase().includes(tradesman.jobTitle.toLowerCase()),
         );
 
-        if (matchingTradesmen.length > 0) {
-          // we will need to use twilio client to send vcard here
-          return new Response(
+        if (matchingTradesmen.length > 0 && from) {
+          await twilioClient.sendWhatsAppMessage(
+            from,
             `Glad we can help! Here are the contact details for ${matchingTradesmen.length} ${matchingTradesmen.length === 1 ? "tradesman" : "tradesmen"} you requested:`,
-            { status: 200 },
           );
-
+          await twilioClient.sendWhatsAppMessage(
+            from,
+            "",
+            "https://www.lead2team.com/wp-content/uploads/2023/08/tarjeta-visita-digital-mobile-11.jpg",
+          );
+          return;
           // send vCards
         }
 

@@ -6,6 +6,8 @@ import { resolve } from "node:path";
 
 import { viteConfigs } from "./lib/configs.mjs";
 import { getD1Databases } from "./lib/getD1Databases.js";
+import "dotenv/config";
+
 import {
   D1_PERSIST_PATH,
   DEV_SERVER_PORT,
@@ -26,6 +28,11 @@ const miniflareOptions: Partial<MiniflareOptions> = {
     "nodejs_compat",
   ],
   d1Databases: await getD1Databases(),
+  bindings: Object.fromEntries(
+    Object.entries(process.env)
+      .filter(([_, v]) => v !== undefined)
+      .map(([k, v]) => [k, v!]),
+  ),
 };
 
 const setup = async () => {
