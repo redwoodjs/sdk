@@ -30,7 +30,7 @@ const miniflareOptions: Partial<MiniflareOptions> = {
 };
 
 const setup = async () => {
-  const rebuildWorker = async () => {
+  const updateWorker = async () => {
     let bundles;
 
     if (process.env.NO_BUILD) {
@@ -46,6 +46,7 @@ const setup = async () => {
       ];
     } else {
       console.log("Rebuilding worker...");
+
       const result = (await builder.build(builder.environments["worker"])) as {
         output: (
           | {
@@ -76,13 +77,13 @@ const setup = async () => {
 
   const builder = await createBuilder(
     viteConfigs.dev({
-      rebuildWorker,
+      updateWorker,
     }),
   );
 
   const viteDevServer = await createViteServer(
     viteConfigs.dev({
-      rebuildWorker,
+      updateWorker,
     }),
   );
 
@@ -93,7 +94,7 @@ const setup = async () => {
 
   // context(justinvdm, 2024-11-28): We don't need to wait for the initial bundle builds to complete before starting the dev server, we only need to have this complete by the first request
   promisedSetupComplete = new Promise(setImmediate)
-    .then(() => buildVendorBundles().then(rebuildWorker))
+    .then(() => buildVendorBundles().then(updateWorker))
     .then(() => {
       // context(justinvdm, 2024-11-28): Types don't affect runtime, so we don't need to block the dev server on them
       void codegenTypes();

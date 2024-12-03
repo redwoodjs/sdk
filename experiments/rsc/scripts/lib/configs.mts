@@ -22,7 +22,7 @@ const MODE =
   process.env.NODE_ENV === "development" ? "development" : "production";
 
 export type DevConfigContext = {
-  rebuildWorker: () => Promise<void>;
+  updateWorker: () => Promise<void>;
 };
 
 export const viteConfigs = {
@@ -112,7 +112,7 @@ export const viteConfigs = {
 // we leverage the dev server's module graph to efficiently determine if the worker bundle needs to be
 // rebuilt. This allows us to avoid unnecessary rebuilds when changes don't affect the worker.
 // Still, first prize would be to not need to rebundle at all.
-const hmrPlugin = ({ rebuildWorker }: DevConfigContext): Plugin => ({
+const hmrPlugin = ({ updateWorker }: DevConfigContext): Plugin => ({
   name: "rw-reloaded-hmr",
   handleHotUpdate: async ({
     file,
@@ -129,7 +129,7 @@ const hmrPlugin = ({ rebuildWorker }: DevConfigContext): Plugin => ({
 
     // todo(justinvdm, 2024-11-19): Send RSC update to client
     if (isImportedByWorkerFile) {
-      await rebuildWorker();
+      await updateWorker();
     }
   },
 });
