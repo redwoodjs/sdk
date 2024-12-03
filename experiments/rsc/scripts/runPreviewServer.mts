@@ -39,13 +39,15 @@ const setup = async () => {
 };
 
 const createServers = async () => {
-  const { miniflare } = await setup();
+  const promisedSetupComplete = setup();
   const app = express();
 
   app.use("/assets", express.static(resolve(DIST_DIR, "client", "assets")));
 
   app.use(async (req, res) => {
     try {
+      const { miniflare } = await promisedSetupComplete;
+
       return await dispatchNodeRequestToMiniflare({
         miniflare,
         request: req,
@@ -59,6 +61,7 @@ const createServers = async () => {
   });
 
   process.on("beforeExit", async () => {
+    const { miniflare } = await promisedSetupComplete;
     await miniflare.dispose();
   });
 
