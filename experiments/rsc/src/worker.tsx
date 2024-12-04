@@ -5,9 +5,9 @@ import HomePage from "./app/HomePage";
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 import { injectRSCPayload } from "rsc-html-stream/server";
 import { renderToRscStream } from "./render/renderToRscStream";
+import { TwilioClient, quickReplyMessage, saveVCardToR2 } from "./twilio";
 import { ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
-import { TwilioClient, tradesmen, quickReplyMessage } from "./twilio";
 
 // todo(peterp, 2024-11-25): Make these lazy.
 const routes = {
@@ -36,8 +36,34 @@ export default {
 
       setupDb(env);
 
-      // incoming twilio request
+      // The worker access the bucket and returns it to the user, we dont let them access the bucket directly
+      if (request.method === "GET" && url.pathname.startsWith("/bucket/")) {
+        const filename = url.pathname.slice("/bucket/".length);
+        const object = await env.valley_directory_r2.get(filename);
+
+        if (object === null) {
+          return new Response("Object Not Found", { status: 404 });
+        }
+
+        const headers = new Headers();
+        // set the content toye for vcard else its seen as plain text
+        if (filename.endsWith(".vcf")) {
+          headers.set("content-type", "application/vcard");
+        }
+        object.writeHttpMetadata(headers);
+        headers.set("etag", object.httpEtag);
+
+        return new Response(object.body, {
+          headers,
+        });
+      }
+
       if (request.method === "POST" && request.url.includes("/incoming")) {
+        const tradesmen = await db
+          .selectFrom("Tradesman")
+          .select(["id", "name", "cellnumber", "profession", "email"])
+          .execute();
+
         const twilioClient = new TwilioClient(env);
 
         const body = await request.text();
@@ -46,7 +72,9 @@ export default {
         const from = bodyData.get("From");
 
         const matchingTradesmen = tradesmen.filter((tradesman) =>
-          messageBody?.toLowerCase().includes(tradesman.jobTitle.toLowerCase()),
+          messageBody
+            ?.toLowerCase()
+            .includes(tradesman.profession.toLowerCase()),
         );
 
         if (matchingTradesmen.length > 0 && from) {
@@ -54,17 +82,29 @@ export default {
             from,
             `Glad we can help! Here are the contact details for ${matchingTradesmen.length} ${matchingTradesmen.length === 1 ? "tradesman" : "tradesmen"} you requested:`,
           );
-          // todo(harryhcs, 2024-12-03): Add R2 storage and vCards - sending a image atm to test this (this url will come from our R2 bucket)
-          await twilioClient.sendWhatsAppMessage(
-            from,
-            "",
-            "https://www.lead2team.com/wp-content/uploads/2023/08/tarjeta-visita-digital-mobile-11.jpg",
-          );
+
+          for (const tradesman of matchingTradesmen) {
+            // save the vcard to the bucket
+            const vcard = await saveVCardToR2(
+              {
+                fullName: tradesman.name,
+                phone: tradesman.cellnumber,
+                email: tradesman.email,
+              },
+              env,
+            );
+            if (vcard) {
+              await twilioClient.sendWhatsAppMessage(
+                from,
+                "",
+                `https://wildcode.ngrok.app/bucket/${vcard}`,
+              );
+            }
+          }
           return;
-          // send vCards
         }
 
-        return new Response(quickReplyMessage, { status: 200 });
+        return new Response(await quickReplyMessage(), { status: 200 });
       }
 
       if (request.method === "POST" && request.url.includes("/api/login")) {
