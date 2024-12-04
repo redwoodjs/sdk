@@ -1,15 +1,9 @@
 import {
   registerServerReference as baseRegisterServerReference,
+  registerClientReference as baseRegisterClientReference,
   decodeReply,
 } from "react-server-dom-webpack/server.edge";
-
-const modules = (
-  import.meta as object as {
-    glob: (
-      pattern: string,
-    ) => Record<string, () => Promise<Record<string, unknown>>>;
-  }
-).glob("/src/app/**/*.ts");
+import { getModuleExport } from "../imports/worker";
 
 export function registerServerReference(
   action: Function,
@@ -23,12 +17,16 @@ export function registerServerReference(
   return baseRegisterServerReference(action, id, name);
 }
 
-const getAction = async (actionId: string) => {
-  const [file, name] = actionId.split("#");
-  const module = await modules[file]();
-  return module[name];
-};
-
+export function registerClientReference(id: string, exportName: string) {
+  const reference = baseRegisterClientReference({}, id, exportName);
+  return Object.defineProperties(
+    {},
+    {
+      ...Object.getOwnPropertyDescriptors(reference),
+      $$async: { value: true },
+    },
+  );
+}
 export async function rscActionHandler(req: Request): Promise<unknown> {
   const url = new URL(req.url);
   const contentType = req.headers.get("content-type");
@@ -39,7 +37,7 @@ export async function rscActionHandler(req: Request): Promise<unknown> {
 
   const args = (await decodeReply(data, null)) as unknown[];
   const actionId = url.searchParams.get("__rsc_action_id");
-  const action = await getAction(actionId!);
+  const action = await getModuleExport(actionId!);
 
   if (typeof action !== "function") {
     throw new Error(`Action ${actionId} is not a function`);

@@ -12,16 +12,18 @@ import {
   RELATIVE_WORKER_PATHNAME,
   VENDOR_DIST_DIR,
   WORKER_DIST_DIR,
-} from "./constants.mjs";
-import { transformJsxScriptTagsPlugin } from "./transformJsxScriptTagsPlugin.mjs";
-import { useServerPlugin } from "./useServerPlugin.mjs";
+} from "../lib/constants.mjs";
+import { transformJsxScriptTagsPlugin } from "../lib/vitePlugins/transformJsxScriptTagsPlugin.mjs";
+import { useServerPlugin } from "../lib/vitePlugins/useServerPlugin.mjs";
+import { useClientPlugin } from "../lib/vitePlugins/useClientPlugin.mjs";
 import commonjsPlugin from "vite-plugin-commonjs";
+import { useClientLookupPlugin } from "../lib/vitePlugins/useClientLookupPlugin.mjs";
 
 const MODE =
   process.env.NODE_ENV === "development" ? "development" : "production";
 
 export type DevConfigContext = {
-  rebuildWorker: () => Promise<void>;
+  updateWorker: () => Promise<void>;
 };
 
 export const viteConfigs = {
@@ -30,6 +32,13 @@ export const viteConfigs = {
     logLevel: process.env.VERBOSE ? "info" : "warn",
     build: {
       minify: MODE !== "development",
+      sourcemap: true,
+    },
+    define: {
+      "process.env.PREVIEW": JSON.stringify(
+        Boolean(process.env.PREVIEW ?? false),
+      ),
+      "process.env.NODE_ENV": JSON.stringify(MODE),
     },
     plugins: [
       commonjsPlugin({
@@ -38,6 +47,7 @@ export const viteConfigs = {
         },
       }),
       useServerPlugin(),
+      useClientPlugin(),
     ],
     environments: {
       client: {
@@ -80,9 +90,6 @@ export const viteConfigs = {
       middlewareMode: true,
       port: DEV_SERVER_PORT,
     },
-    define: {
-      "process.env.NODE_ENV": JSON.stringify(MODE),
-    },
     builder: {
       async buildApp(builder) {
         await builder.build(builder.environments["client"]);
@@ -92,13 +99,25 @@ export const viteConfigs = {
   }),
   dev: (context: DevConfigContext): InlineConfig =>
     mergeConfig(viteConfigs.main(), {
-      plugins: [hmrPlugin(context)],
+      plugins: [
+        hmrPlugin(context),
+        // context(justinvdm, 2024-12-03): vite needs the virtual module created by this plugin to be around,
+        // even if the code path that use the virtual module are not reached in dev
+        useClientLookupPlugin({ filesContainingUseClient: [] }),
+      ],
     }),
-  deploy: (): InlineConfig =>
+  deploy: ({
+    filesContainingUseClient,
+  }: {
+    filesContainingUseClient: string[];
+  }): InlineConfig =>
     mergeConfig(viteConfigs.main(), {
       plugins: [
         transformJsxScriptTagsPlugin({
           manifestPath: resolve(CLIENT_DIST_DIR, ".vite/manifest.json"),
+        }),
+        useClientLookupPlugin({
+          filesContainingUseClient,
         }),
       ],
     }),
@@ -108,7 +127,7 @@ export const viteConfigs = {
 // we leverage the dev server's module graph to efficiently determine if the worker bundle needs to be
 // rebuilt. This allows us to avoid unnecessary rebuilds when changes don't affect the worker.
 // Still, first prize would be to not need to rebundle at all.
-const hmrPlugin = ({ rebuildWorker }: DevConfigContext): Plugin => ({
+const hmrPlugin = ({ updateWorker }: DevConfigContext): Plugin => ({
   name: "rw-reloaded-hmr",
   handleHotUpdate: async ({
     file,
@@ -125,7 +144,7 @@ const hmrPlugin = ({ rebuildWorker }: DevConfigContext): Plugin => ({
 
     // todo(justinvdm, 2024-11-19): Send RSC update to client
     if (isImportedByWorkerFile) {
-      await rebuildWorker();
+      await updateWorker();
     }
   },
 });

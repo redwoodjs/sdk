@@ -12,6 +12,7 @@
     "codegen:types": "npx tsx ./scripts/codegenTypes.mts",
     "types": "pnpm codegen:types && tsc",
     "deploy": "wrangler deploy",
+    "preview": "NODE_ENV=${NODE_ENV:-development} PREVIEW=1 npx tsx ./scripts/runPreviewServer.mts",
     "format": "npx prettier --write ./src ./scripts"
   },
   "keywords": [],
@@ -37,6 +38,7 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "better-sqlite3": "^11.6.0",
+    "dotenv": "^16.4.7",
     "es-module-lexer": "^1.5.4",
     "execa": "^9.5.1",
     "express": "^4.21.1",

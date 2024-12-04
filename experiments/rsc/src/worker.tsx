@@ -5,7 +5,8 @@ import HomePage from "./app/HomePage";
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 import { injectRSCPayload } from "rsc-html-stream/server";
 import { renderToRscStream } from "./render/renderToRscStream";
-import { rscActionHandler } from "./register/rsc";
+import { ssrWebpackRequire } from "./imports/worker";
+import { rscActionHandler } from "./register/worker";
 import { TwilioClient, tradesmen, quickReplyMessage } from "./twilio";
 
 // todo(peterp, 2024-11-25): Make these lazy.
@@ -16,6 +17,8 @@ const routes = {
 
 export default {
   async fetch(request: Request, env: Env) {
+    globalThis.__webpack_require__ = ssrWebpackRequire;
+
     try {
       const url = new URL(request.url);
 
