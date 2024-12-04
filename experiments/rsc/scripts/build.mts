@@ -1,5 +1,5 @@
 import { createBuilder } from "vite";
-import { viteConfigs } from "./lib/configs.mjs";
+import { viteConfigs } from "./configs/vite.mjs";
 import { buildVendorBundles } from "./buildVendorBundles.mjs";
 import { findFilesContainingUseClient } from "./lib/findFilesContainingUseClient.mjs";
 

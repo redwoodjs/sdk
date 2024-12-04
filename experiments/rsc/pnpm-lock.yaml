@@ -52,6 +52,9 @@ devDependencies:
   better-sqlite3:
     specifier: ^11.6.0
     version: 11.6.0
+  dotenv:
+    specifier: ^16.4.7
+    version: 16.4.7
   es-module-lexer:
     specifier: ^1.5.4
     version: 1.5.4
@@ -1890,11 +1893,11 @@ packages:
     resolution: {integrity: sha512-zIHwmZPRshsCdpMDyVsqGmgyP0yT8GAgXUnkdAoJisxvf33k7yO6OuoKmcTGuXPWSsm8Oh88nZicRLA9Y0rUeA==}
     engines: {node: '>=12'}
     dependencies:
-      dotenv: 16.4.5
+      dotenv: 16.4.7
     dev: true
 
-  /dotenv@16.4.5:
-    resolution: {integrity: sha512-ZmdL2rui+eB2YwhsWzjInR8LldtZHGDoQ1ugH85ppHKwpUHL7j7rN0Ti9NCnGiQbhaZ11FpR+7ao1dNsmduNUg==}
+  /dotenv@16.4.7:
+    resolution: {integrity: sha512-47qPchRCykZC03FhkYAhrvwU4xDBFIj1QPqaarj6mdM/hgUzfPHcpkHJOn3mJAufFeeAxAzeGsr5X0M4k6fLZQ==}
     engines: {node: '>=12'}
     dev: true
 
@@ -2576,7 +2579,7 @@ packages:
     dependencies:
       better-sqlite3: 11.6.0
       chalk: 4.1.2
-      dotenv: 16.4.5
+      dotenv: 16.4.7
       dotenv-expand: 11.0.7
       git-diff: 2.0.6
       kysely: 0.27.4

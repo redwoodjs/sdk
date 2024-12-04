@@ -2,7 +2,7 @@ import express from "express";
 import { Miniflare, MiniflareOptions } from "miniflare";
 import { resolve } from "node:path";
 
-import { miniflareOptions } from "./lib/configs.mjs";
+import { miniflareConfig } from "./configs/miniflare.mjs";
 import {
   DEV_SERVER_PORT,
   DIST_DIR,
@@ -14,7 +14,7 @@ import { readFile } from "fs/promises";
 
 const setup = async () => {
   const miniflare = new Miniflare({
-    ...miniflareOptions,
+    ...miniflareConfig,
     script: "",
   } as MiniflareOptions);
 
@@ -31,7 +31,7 @@ const setup = async () => {
   ];
 
   await miniflare.setOptions({
-    ...miniflareOptions,
+    ...miniflareConfig,
     modules: bundles,
   });
 
