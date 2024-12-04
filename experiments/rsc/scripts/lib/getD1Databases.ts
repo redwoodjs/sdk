@@ -1,4 +1,5 @@
-import { readWranglerConfig } from "./readWranglerConfig";
+import { readWranglerConfig } from "./readWranglerConfig.mjs";
+import { dotenv } from "./dotenv.mjs";
 
 export const getD1Databases = async () => {
   const config = await readWranglerConfig();
@@ -7,6 +8,6 @@ export const getD1Databases = async () => {
   const db0 = config.d1_databases[0];
 
   return {
-    [db0.binding]: db0.database_id,
+    [db0.binding]: dotenv.DATABASE_ID ?? db0.database_id,
   };
 };

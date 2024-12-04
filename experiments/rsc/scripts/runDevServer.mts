@@ -1,43 +1,27 @@
 import express from "express";
 import { createBuilder, createServer as createViteServer } from "vite";
-import { Miniflare, MiniflareOptions, type RequestInit } from "miniflare";
-import type { IncomingMessage, ServerResponse } from "node:http";
+import { Miniflare, MiniflareOptions } from "miniflare";
 import { resolve } from "node:path";
 import "dotenv/config";
 
-import { viteConfigs } from "./lib/configs.mjs";
-import { getD1Databases } from "./lib/getD1Databases.js";
+import { viteConfigs } from "./configs/vite.mjs";
+import { miniflareConfig } from "./configs/miniflare.mjs";
 import {
-  D1_PERSIST_PATH,
   DEV_SERVER_PORT,
+  DIST_DIR,
   WORKER_DIST_DIR,
 } from "./lib/constants.mjs";
 import { buildVendorBundles } from "./buildVendorBundles.mjs";
 import { codegenTypes } from "./codegenTypes.mjs";
+import { dispatchNodeRequestToMiniflare } from "./lib/requestUtils.mjs";
 import { getR2Buckets } from "./lib/getR2Nuckets.js";
 
 let promisedSetupComplete = Promise.resolve();
 
-const miniflareOptions: Partial<MiniflareOptions> = {
-  // context(justinvdm, 2024-11-21): `npx wrangler d1 migrations apply` creates a sqlite file in `.wrangler/state/v3/d1`
-  d1Persist: D1_PERSIST_PATH,
-  modules: true,
-  compatibilityFlags: [
-    "streams_enable_constructors",
-    "transformstream_enable_standard_constructor",
-    "nodejs_compat",
-  ],
-  d1Databases: await getD1Databases(),
-  r2Buckets: await getR2Buckets(),
-  bindings: Object.fromEntries(
-    Object.entries(process.env)
-      .filter(([_, v]) => v !== undefined)
-      .map(([k, v]) => [k, v!]),
-  ),
-};
-
 const setup = async () => {
-  const rebuildWorker = async () => {
+  const updateWorker = async () => {
+    console.log("Rebuilding worker...");
+
     const result = (await builder.build(builder.environments["worker"])) as {
       output: (
         | {
@@ -50,6 +34,7 @@ const setup = async () => {
           }
       )[];
     };
+
     const bundles = result.output
       .filter((output) => output.type === "chunk")
       .map(({ fileName, code }) => ({
@@ -59,31 +44,31 @@ const setup = async () => {
       }));
 
     await miniflare.setOptions({
-      ...miniflareOptions,
-      modules: bundles as any,
+      ...miniflareConfig,
+      modules: bundles,
     });
   };
 
   const builder = await createBuilder(
     viteConfigs.dev({
-      rebuildWorker,
+      updateWorker,
     }),
   );
 
   const viteDevServer = await createViteServer(
     viteConfigs.dev({
-      rebuildWorker,
+      updateWorker,
     }),
   );
 
   const miniflare = new Miniflare({
-    ...miniflareOptions,
+    ...miniflareConfig,
     script: "",
-  });
+  } as MiniflareOptions);
 
   // context(justinvdm, 2024-11-28): We don't need to wait for the initial bundle builds to complete before starting the dev server, we only need to have this complete by the first request
   promisedSetupComplete = new Promise(setImmediate)
-    .then(() => buildVendorBundles().then(rebuildWorker))
+    .then(() => buildVendorBundles().then(updateWorker))
     .then(() => {
       // context(justinvdm, 2024-11-28): Types don't affect runtime, so we don't need to block the dev server on them
       void codegenTypes();
@@ -100,6 +85,10 @@ const createServers = async () => {
 
   const app = express();
 
+  if (process.env.PREVIEW) {
+    app.use("/static", express.static(resolve(DIST_DIR, "client", "assets")));
+  }
+
   app.use(async (req, res) => {
     const url = new URL(req.url as string, `http://${req.headers.host}`);
 
@@ -114,16 +103,12 @@ const createServers = async () => {
     }
 
     try {
-      const webRequest = nodeToWebRequest(req, url);
       await promisedSetupComplete;
-
-      // context(justinvdm, 2024-11-19): Type assertions needed because Miniflare's Request and Responses types have additional Cloudflare-specific properties
-      const webResponse = await miniflare.dispatchFetch(
-        webRequest.url,
-        webRequest as RequestInit,
-      );
-
-      await webToNodeResponse(webResponse as unknown as Response, res);
+      return await dispatchNodeRequestToMiniflare({
+        miniflare,
+        request: req,
+        response: res,
+      });
     } catch (error) {
       console.error("Request handling error:", error);
       res.statusCode = 500;
@@ -141,45 +126,6 @@ const createServers = async () => {
 ⭐️ Local: http://localhost:${DEV_SERVER_PORT}
 `);
   });
-};
-
-const nodeToWebRequest = (req: IncomingMessage, url: URL): Request => {
-  return new Request(url.href, {
-    method: req.method,
-    headers: req.headers as HeadersInit,
-    body:
-      req.method !== "GET" && req.method !== "HEAD"
-        ? (req as unknown as BodyInit)
-        : undefined,
-    // @ts-ignore
-    duplex: "half",
-  });
-};
-
-const webToNodeResponse = async (
-  webResponse: Response,
-  nodeResponse: ServerResponse,
-) => {
-  // Copy status and headers
-  nodeResponse.statusCode = webResponse.status;
-  webResponse.headers.forEach((value, key) => {
-    nodeResponse.setHeader(key, value);
-  });
-
-  // Stream the response
-  if (webResponse.body) {
-    const reader = webResponse.body.getReader();
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) break;
-        nodeResponse.write(value);
-      }
-    } finally {
-      reader.releaseLock();
-    }
-  }
-  nodeResponse.end();
 };
 
 createServers();

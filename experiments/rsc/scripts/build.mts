@@ -1,10 +1,23 @@
 import { createBuilder } from "vite";
-import { viteConfigs } from "./lib/configs.mjs";
+import { viteConfigs } from "./configs/vite.mjs";
 import { buildVendorBundles } from "./buildVendorBundles.mjs";
+import { findFilesContainingUseClient } from "./lib/findFilesContainingUseClient.mjs";
 
-const main = async () => {
+export const build = async () => {
+  console.log("Building...");
   await buildVendorBundles();
-  await (await createBuilder(viteConfigs.deploy())).buildApp();
+  const filesContainingUseClient = await findFilesContainingUseClient();
+
+  const builder = await createBuilder(
+    viteConfigs.deploy({
+      filesContainingUseClient,
+    }),
+  );
+
+  await builder.buildApp();
+  console.log("Build done!");
 };
 
-main();
+if (import.meta.url === new URL(process.argv[1], import.meta.url).href) {
+  build();
+}

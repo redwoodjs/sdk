@@ -15,7 +15,7 @@ export const useServerPlugin = (): Plugin => ({
       if (this.environment.name === "worker") {
         // TODO: Rewrite the code, but register the "function" against
         let newCode = `
-import { registerServerReference } from "/src/register/rsc.ts";
+import { registerServerReference } from "/src/register/worker.ts";
 `;
         const [_, exports] = parse(code);
         for (const e of exports) {
