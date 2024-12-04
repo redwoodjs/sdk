@@ -14,6 +14,7 @@ import {
 } from "./lib/constants.mjs";
 import { buildVendorBundles } from "./buildVendorBundles.mjs";
 import { codegenTypes } from "./codegenTypes.mjs";
+import { getR2Buckets } from "./lib/getR2Nuckets.js";
 
 let promisedSetupComplete = Promise.resolve();
 
@@ -27,6 +28,7 @@ const miniflareOptions: Partial<MiniflareOptions> = {
     "nodejs_compat",
   ],
   d1Databases: await getD1Databases(),
+  r2Buckets: await getR2Buckets(),
   bindings: Object.fromEntries(
     Object.entries(process.env)
       .filter(([_, v]) => v !== undefined)

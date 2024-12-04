@@ -35,6 +35,12 @@ export default {
 
       // incoming twilio request
       if (request.method === "POST" && request.url.includes("/incoming")) {
+
+        const tradesmen = await db
+          .selectFrom("Tradesman")
+          .select(["id", "name", "cellnumber", "profession", "email"])
+          .execute();
+
         const twilioClient = new TwilioClient(env);
 
         const body = await request.text();
@@ -43,7 +49,7 @@ export default {
         const from = bodyData.get("From");
 
         const matchingTradesmen = tradesmen.filter((tradesman) =>
-          messageBody?.toLowerCase().includes(tradesman.jobTitle.toLowerCase()),
+          messageBody?.toLowerCase().includes(tradesman.profession.toLowerCase()),
         );
 
         if (matchingTradesmen.length > 0 && from) {
@@ -61,7 +67,7 @@ export default {
           // send vCards
         }
 
-        return new Response(quickReplyMessage, { status: 200 });
+        return new Response(await quickReplyMessage(), { status: 200 });
       }
 
       if (request.method === "POST" && request.url.includes("/api/login")) {

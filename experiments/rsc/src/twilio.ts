@@ -1,3 +1,5 @@
+import { db } from "./db";
+
 export class TwilioClient {
   private apiUrl: string;
   private accountSid: string;
@@ -41,41 +43,26 @@ export class TwilioClient {
   }
 }
 
-// This will come from the DB
-export const tradesmen = [
-  {
-    name: "Jack Parrow",
-    phone: "+27724217253",
-    email: "jackparrow@gmail.com",
-    address: "123 Main Street, Springfield, USA",
-    jobTitle: "Plumber",
-  },
-  {
-    name: "John Doe",
-    phone: "+27724378171",
-    email: "john.doe@example.com",
-    address: "123 Main Street, Springfield, USA",
-    jobTitle: "Plumber",
-  },
-  {
-    name: "Jane Doe",
-    phone: "+27724378172",
-    email: "jane.doe@example.com",
-    address: "123 Main Street, Springfield, USA",
-    jobTitle: "Electrician",
-  },
-];
 
-// Keeping it simple, we just get the unique professions from the tradesmen, but we can also make a professions table in the DB
-export const tradeProfessions = [
-  ...new Set(tradesmen.map((tradesman) => tradesman.jobTitle)),
-];
 
-// todo(harryhcs, 2024-12-02): Add vCards
-// todo(harryhcs, 2024-12-02): Remove all this twilio stuff from the main worker file
-export const quickReplyMessage = `
-    Welcome to *The Valley Directory!* We have the following tradesmen available:\n\n${formatQuickReply(tradeProfessions)}\n\nPlease reply with the name of the profession you would like to contact and we will send you the contact details for the tradesmen available in your area.`;
 
+
+export async function getUniqueProfessions(): Promise<string[]> {
+  const professions = await db
+    .selectFrom("Tradesman")
+    .select("profession")
+    .distinct()
+    .execute()
+
+  return professions.map((p) => p.profession);
+}
+
+// Replace the static array with a function that loads from DB
+export const quickReplyMessage = async (): Promise<string> => {
+  const tradeProfessions = await getUniqueProfessions();
+  console.log(tradeProfessions)
+  return `Welcome to *The Valley Directory!* We have the following tradesmen available:\n\n${formatQuickReply(tradeProfessions)}\n\nPlease reply with the name of the profession you would like to contact and we will send you the contact details for the tradesmen available in your area.`;
+};
 export function formatQuickReply(tradeProfessions: string[]): string {
   return tradeProfessions.map((profession) => `*${profession}*`).join("\n");
 }

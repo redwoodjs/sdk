@@ -13,5 +13,9 @@ binding = "DB"
 database_name = "prisma-demo-db"
 database_id = "08100d07-03e7-49b0-92e1-fa05569c370e"
 
+[[r2_buckets]]
+bucket_name = "valley-directory-r2"
+binding = "valley_directory_r2"
+
 [build]
 command = "pnpm build"

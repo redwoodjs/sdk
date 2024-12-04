@@ -3,4 +3,5 @@
 interface Env {
 	DB: D1Database;
 	ASSETS: Fetcher;
+	valley_directory_r2: R2Bucket;
 }
