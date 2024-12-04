@@ -82,13 +82,16 @@ type vCardData = {
 }
 // This is a helper function to generate a vCard string
 // It also needs to upload to R2 storage and return the url
+
 export function generateVCard(data: vCardData): string {
   const { fullName, phone, email, address } = data;
 
   // Build the vCard string
   let vCard = `BEGIN:VCARD\nVERSION:3.0\n`;
-  vCard += `FN:${fullName}\n`; // Full name
-  vCard += `TEL;TYPE=CELL:${phone}\n`; // Phone number
+  vCard += `FN;CHARSET=UTF-8:${fullName}\n`; // Full name
+  vCard += `N;CHARSET=UTF-8:${fullName.split(" ").reverse().join(";")}\n`;
+  vCard += `TEL;TYPE=VOICE:${phone}\n`; // Phone number
+  vCard += `REV:${new Date().toISOString()}\n`;
 
   // Optional fields
   if (email) {

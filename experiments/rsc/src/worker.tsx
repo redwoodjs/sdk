@@ -45,7 +45,7 @@ export default {
         const headers = new Headers();
         // set the content toye for vcard else its seen as plain text
         if (filename.endsWith(".vcf")) {
-          headers.set("content-type", "text/x-vcard");
+          headers.set("content-type", "application/vcard");
         }
         object.writeHttpMetadata(headers);
         headers.set("etag", object.httpEtag);
@@ -89,6 +89,7 @@ export default {
             if (vcard) {
               await twilioClient.sendWhatsAppMessage(
                 from,
+                "",
                 `https://wildcode.ngrok.app/bucket/${vcard}`,
               );
             }
