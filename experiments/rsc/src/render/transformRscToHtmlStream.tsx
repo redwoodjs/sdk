@@ -2,7 +2,13 @@ import { createModuleMap } from "./createModuleMap.js";
 import { use, renderToHtmlStream } from "vendor/react-ssr";
 import { createFromReadableStream } from "react-server-dom-webpack/client.edge";
 
-export const transformRscToHtmlStream = async (stream: ReadableStream) => {
+export const transformRscToHtmlStream = async ({
+  stream,
+  Parent = ({ children }) => <>{children}</>,
+}: {
+  stream: ReadableStream;
+  Parent?: React.ComponentType<{ children: React.ReactNode }>;
+}) => {
   const thenable = createFromReadableStream(stream, {
     ssrManifest: {
       moduleMap: createModuleMap(),
@@ -10,7 +16,7 @@ export const transformRscToHtmlStream = async (stream: ReadableStream) => {
     },
   });
 
-  const Component = () => <>{use(thenable)}</>;
+  const Component = () => <Parent>{use(thenable)}</Parent>;
 
   return await renderToHtmlStream(<Component />);
 };
