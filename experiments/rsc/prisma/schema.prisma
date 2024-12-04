@@ -16,3 +16,10 @@ model User {
   cellnumber String  @unique
   name  String?
 }
+
+model Tradesman {
+  id Int @id @default(autoincrement())
+  name String
+  cellnumber String @unique
+  profession String
+}
