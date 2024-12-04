@@ -14,7 +14,6 @@ import {
 import { buildVendorBundles } from "./buildVendorBundles.mjs";
 import { codegenTypes } from "./codegenTypes.mjs";
 import { dispatchNodeRequestToMiniflare } from "./lib/requestUtils.mjs";
-import { getR2Buckets } from "./lib/getR2Nuckets.js";
 
 let promisedSetupComplete = Promise.resolve();
 

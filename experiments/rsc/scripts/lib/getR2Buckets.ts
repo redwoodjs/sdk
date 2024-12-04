@@ -1,4 +1,4 @@
-import { readWranglerConfig } from "./readWranglerConfig";
+import { readWranglerConfig } from "./readWranglerConfig.mjs";
 
 export const getR2Buckets = async () => {
   const config = await readWranglerConfig();
