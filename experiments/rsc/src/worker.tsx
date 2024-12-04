@@ -143,11 +143,7 @@ export default {
         return new Response("Not found", { status: 404 });
       }
 
-      const rscPayloadStream = renderToRscStream(
-        <App>
-          <Page />
-        </App>,
-      );
+      const rscPayloadStream = renderToRscStream(<Page />);
 
       if (isRSCRequest) {
         return new Response(rscPayloadStream, {
@@ -156,7 +152,12 @@ export default {
       }
 
       const [rscPayloadStream1, rscPayloadStream2] = rscPayloadStream.tee();
-      const htmlStream = await transformRscToHtmlStream(rscPayloadStream1);
+
+      const htmlStream = await transformRscToHtmlStream({
+        stream: rscPayloadStream1,
+        Parent: App,
+      });
+
       const html = htmlStream.pipeThrough(injectRSCPayload(rscPayloadStream2));
       return new Response(html, {
         headers: { "content-type": "text/html" },

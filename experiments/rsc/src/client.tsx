@@ -24,7 +24,10 @@ async function init() {
     return (result as { actionResult: unknown }).actionResult;
   };
 
+  globalThis.__rsc_callServer = callServer;
+
   const rootEl = document.getElementById("root");
+
   if (!rootEl) {
     throw new Error('no element with id "root"');
   }
@@ -49,8 +52,6 @@ async function init() {
     setRscPayload = (v) => startTransition(() => setStreamData(v));
     return <>{React.use(streamData)}</>;
   }
-
-  globalThis.__rsc_callServer = callServer;
 
   hydrateRoot(rootEl, <Content />);
 }
