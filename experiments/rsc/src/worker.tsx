@@ -6,6 +6,7 @@ import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 import { injectRSCPayload } from "rsc-html-stream/server";
 import { renderToRscStream } from "./render/renderToRscStream";
 import { rscActionHandler } from "./register/rsc";
+import { TwilioClient, tradesmen, quickReplyMessage } from "./twilio";
 
 // todo(peterp, 2024-11-25): Make these lazy.
 const routes = {
@@ -31,6 +32,37 @@ export default {
       }
 
       setupDb(env);
+
+      // incoming twilio request
+      if (request.method === "POST" && request.url.includes("/incoming")) {
+        const twilioClient = new TwilioClient(env);
+
+        const body = await request.text();
+        const bodyData = new URLSearchParams(body);
+        const messageBody = bodyData.get("Body");
+        const from = bodyData.get("From");
+
+        const matchingTradesmen = tradesmen.filter((tradesman) =>
+          messageBody?.toLowerCase().includes(tradesman.jobTitle.toLowerCase()),
+        );
+
+        if (matchingTradesmen.length > 0 && from) {
+          await twilioClient.sendWhatsAppMessage(
+            from,
+            `Glad we can help! Here are the contact details for ${matchingTradesmen.length} ${matchingTradesmen.length === 1 ? "tradesman" : "tradesmen"} you requested:`,
+          );
+          // todo(harryhcs, 2024-12-03): Add R2 storage and vCards - sending a image atm to test this (this url will come from our R2 bucket)
+          await twilioClient.sendWhatsAppMessage(
+            from,
+            "",
+            "https://www.lead2team.com/wp-content/uploads/2023/08/tarjeta-visita-digital-mobile-11.jpg",
+          );
+          return;
+          // send vCards
+        }
+
+        return new Response(quickReplyMessage, { status: 200 });
+      }
 
       if (request.method === "POST" && request.url.includes("/api/login")) {
         console.log("Login request received");

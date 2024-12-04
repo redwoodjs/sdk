@@ -3,6 +3,7 @@ import { createBuilder, createServer as createViteServer } from "vite";
 import { Miniflare, MiniflareOptions, type RequestInit } from "miniflare";
 import type { IncomingMessage, ServerResponse } from "node:http";
 import { resolve } from "node:path";
+import "dotenv/config";
 
 import { viteConfigs } from "./lib/configs.mjs";
 import { getD1Databases } from "./lib/getD1Databases.js";
@@ -26,6 +27,11 @@ const miniflareOptions: Partial<MiniflareOptions> = {
     "nodejs_compat",
   ],
   d1Databases: await getD1Databases(),
+  bindings: Object.fromEntries(
+    Object.entries(process.env)
+      .filter(([_, v]) => v !== undefined)
+      .map(([k, v]) => [k, v!]),
+  ),
 };
 
 const setup = async () => {
