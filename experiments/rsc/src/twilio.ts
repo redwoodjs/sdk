@@ -42,16 +42,12 @@ export class TwilioClient {
   }
 }
 
-
-
-
-
 export async function getUniqueProfessions(): Promise<string[]> {
   const professions = await db
     .selectFrom("Tradesman")
     .select("profession")
     .distinct()
-    .execute()
+    .execute();
 
   return professions.map((p) => p.profession);
 }
@@ -59,7 +55,7 @@ export async function getUniqueProfessions(): Promise<string[]> {
 // Replace the static array with a function that loads from DB
 export const quickReplyMessage = async (): Promise<string> => {
   const tradeProfessions = await getUniqueProfessions();
-  console.log(tradeProfessions)
+  console.log(tradeProfessions);
   return `Welcome to *The Valley Directory!* We have the following tradesmen available:\n\n${formatQuickReply(tradeProfessions)}\n\nPlease reply with the name of the profession you would like to contact and we will send you the contact details for the tradesmen available in your area.`;
 };
 export function formatQuickReply(tradeProfessions: string[]): string {
@@ -73,13 +69,12 @@ type WhatsAppMessageData = {
   MediaUrl?: string;
 };
 
-
 type vCardData = {
   fullName: string;
   phone: string;
   email?: string;
   address?: string;
-}
+};
 // This is a helper function to generate a vCard string
 // It also needs to upload to R2 storage and return the url
 
@@ -107,7 +102,10 @@ export function generateVCard(data: vCardData): string {
 }
 
 // Save the vCard to R2 storage and return the filename - filename is the cellnumber
-export async function saveVCardToR2(vCard: vCardData, env: Env): Promise<string> {
+export async function saveVCardToR2(
+  vCard: vCardData,
+  env: Env,
+): Promise<string> {
   const filename = `${vCard.phone}.vcf`;
   const vCardString = generateVCard(vCard);
   await env.valley_directory_r2.put(filename, vCardString);

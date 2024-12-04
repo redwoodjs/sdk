@@ -8,7 +8,7 @@ export default function CreateTradesman() {
         <input type="text" name="name" placeholder="Name" />
         <input type="text" name="cellnumber" placeholder="Cell Number" />
         <input type="text" name="profession" placeholder="Profession" />
-        <button type="submit">Create</button>   
+        <button type="submit">Create</button>
       </form>
     </div>
   );

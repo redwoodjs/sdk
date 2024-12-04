@@ -5,7 +5,6 @@ import { db } from "../db";
 import CreateTradesman from "./components/CreateTradesman";
 
 export default async function AdminPage() {
-
   let tradesmen = await db
     .selectFrom("Tradesman")
     .select(["id", "name", "cellnumber", "profession"])
@@ -26,8 +25,6 @@ export default async function AdminPage() {
     .selectFrom("User")
     .select(["id", "name", "cellnumber"])
     .execute();
-
-  
 
   const isAuthenticated = true;
   return (

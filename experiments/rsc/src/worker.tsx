@@ -59,7 +59,6 @@ export default {
       }
 
       if (request.method === "POST" && request.url.includes("/incoming")) {
-
         const tradesmen = await db
           .selectFrom("Tradesman")
           .select(["id", "name", "cellnumber", "profession", "email"])
@@ -73,7 +72,9 @@ export default {
         const from = bodyData.get("From");
 
         const matchingTradesmen = tradesmen.filter((tradesman) =>
-          messageBody?.toLowerCase().includes(tradesman.profession.toLowerCase()),
+          messageBody
+            ?.toLowerCase()
+            .includes(tradesman.profession.toLowerCase()),
         );
 
         if (matchingTradesmen.length > 0 && from) {
@@ -84,11 +85,14 @@ export default {
 
           for (const tradesman of matchingTradesmen) {
             // save the vcard to the bucket
-            const vcard = await saveVCardToR2({
-              fullName: tradesman.name,
-              phone: tradesman.cellnumber,
-              email: tradesman.email,
-            }, env);
+            const vcard = await saveVCardToR2(
+              {
+                fullName: tradesman.name,
+                phone: tradesman.cellnumber,
+                email: tradesman.email,
+              },
+              env,
+            );
             if (vcard) {
               await twilioClient.sendWhatsAppMessage(
                 from,
