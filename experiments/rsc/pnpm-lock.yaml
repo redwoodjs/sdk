@@ -11,6 +11,9 @@ dependencies:
   '@types/lodash':
     specifier: ^4.17.13
     version: 4.17.13
+  dotenv:
+    specifier: ^16.4.6
+    version: 16.4.7
   kysely:
     specifier: ^0.27.4
     version: 0.27.4
@@ -52,9 +55,6 @@ devDependencies:
   better-sqlite3:
     specifier: ^11.6.0
     version: 11.6.0
-  dotenv:
-    specifier: ^16.4.7
-    version: 16.4.7
   es-module-lexer:
     specifier: ^1.5.4
     version: 1.5.4
@@ -1899,7 +1899,6 @@ packages:
   /dotenv@16.4.7:
     resolution: {integrity: sha512-47qPchRCykZC03FhkYAhrvwU4xDBFIj1QPqaarj6mdM/hgUzfPHcpkHJOn3mJAufFeeAxAzeGsr5X0M4k6fLZQ==}
     engines: {node: '>=12'}
-    dev: true
 
   /ee-first@1.1.1:
     resolution: {integrity: sha512-WMwm9LhRUo+WUaRN+vRuETqG89IgZphVSNkdFgeb6sS/E4OrDIN7t48CAewSHXc6C8lefD8KKfr5vY61brQlow==}

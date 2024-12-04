@@ -2,6 +2,7 @@ import express from "express";
 import { createBuilder, createServer as createViteServer } from "vite";
 import { Miniflare, MiniflareOptions } from "miniflare";
 import { resolve } from "node:path";
+import "dotenv/config";
 
 import { viteConfigs } from "./configs/vite.mjs";
 import { miniflareConfig } from "./configs/miniflare.mjs";
