@@ -38,7 +38,6 @@ export class TwilioClient {
       },
       body: new URLSearchParams(data),
     });
-    console.log(response);
     return response.json();
   }
 }
@@ -74,14 +73,16 @@ type WhatsAppMessageData = {
   MediaUrl?: string;
 };
 
-// This is a helper function to generate a vCard string
-// It also needs to upload to R2 storage and return the url
-export function generateVCard(data: {
+
+type vCardData = {
   fullName: string;
   phone: string;
   email?: string;
   address?: string;
-}): string {
+}
+// This is a helper function to generate a vCard string
+// It also needs to upload to R2 storage and return the url
+export function generateVCard(data: vCardData): string {
   const { fullName, phone, email, address } = data;
 
   // Build the vCard string
@@ -100,4 +101,12 @@ export function generateVCard(data: {
   vCard += `END:VCARD`;
 
   return vCard;
+}
+
+// Save the vCard to R2 storage and return the filename - filename is the cellnumber
+export async function saveVCardToR2(vCard: vCardData, env: Env): Promise<string> {
+  const filename = `${vCard.phone}.vcf`;
+  const vCardString = generateVCard(vCard);
+  await env.valley_directory_r2.put(filename, vCardString);
+  return filename;
 }
