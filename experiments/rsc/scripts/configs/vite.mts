@@ -37,6 +37,20 @@ export const viteConfigs = {
     build: {
       minify: MODE !== "development",
       sourcemap: true,
+      rollupOptions: {
+        onwarn(warning, defaultHandler) {
+          // context(justinvdm, 2024-12-05): Rollup throws away the directives since they won't work once the code is bundled. This is fine, because we only need them at build time
+          if (
+            warning.code === "MODULE_LEVEL_DIRECTIVE" &&
+            (warning.message.includes("use client") ||
+              warning.message.includes("use server"))
+          ) {
+            return;
+          }
+
+          return defaultHandler(warning);
+        },
+      },
     },
     define: {
       "process.env.PREVIEW": JSON.stringify(
@@ -102,8 +116,8 @@ export const viteConfigs = {
     },
     css: {
       postcss: {
-        plugins: [tailwind, autoprefixer]
-      }
+        plugins: [tailwind, autoprefixer],
+      },
     },
   }),
   dev: (context: DevConfigContext): InlineConfig =>
@@ -148,11 +162,11 @@ const hmrPlugin = ({ updateWorker }: DevConfigContext): Plugin => ({
   }) => {
     // todo(peterp, 2024-12-05): Use proper exclude, filter pattern,
     // as documented here: https://vite.dev/guide/api-plugin.html#filtering-include-exclude-pattern
-    if (file.endsWith('.d.ts') || file.includes('/.wrangler/')) {
-      return []
+    if (file.endsWith(".d.ts") || file.includes("/.wrangler/")) {
+      return [];
     }
 
-    console.log('[HMR]', file)
+    console.log("[HMR]", file);
     const module = server.moduleGraph.getModuleById(file);
 
     const isImportedByWorkerFile = [...(module?.importers || [])].some(
@@ -164,7 +178,7 @@ const hmrPlugin = ({ updateWorker }: DevConfigContext): Plugin => ({
     } catch (e: any) {
       // todo(peterp, 2024-12-05): Figure out what to do with errors.
     }
-    server.ws.send({ type: 'full-reload' })
-    return []
+    server.ws.send({ type: "full-reload" });
+    return [];
   },
 });

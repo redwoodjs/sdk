@@ -21,7 +21,7 @@ const configs = {
         }),
       ],
     ],
-    logLevel: process.env.VERBOSE ? "info" : "warn",
+    logLevel: process.env.VERBOSE ? "info" : "error",
     build: {
       sourcemap: true,
       minify: MODE === "production",

@@ -1,6 +1,7 @@
+import { relative } from "node:path";
 import { Plugin } from "vite";
 import { parse } from "es-module-lexer";
-import { relative } from "node:path";
+import MagicString from "magic-string";
 
 export const useServerPlugin = (): Plugin => ({
   name: "rw-reloaded-use-server",
@@ -14,29 +15,38 @@ export const useServerPlugin = (): Plugin => ({
     if (code.includes('"use server"') || code.includes("'use server'")) {
       if (this.environment.name === "worker") {
         // TODO: Rewrite the code, but register the "function" against
-        let newCode = `
+        const s = new MagicString(code);
+
+        s.prepend(`\
 import { registerServerReference } from "/src/register/worker.ts";
-`;
+`);
         const [_, exports] = parse(code);
+
         for (const e of exports) {
-          newCode += `\
+          s.append(`\
 registerServerReference(${e.ln}, ${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)});
-`;
+`);
         }
 
-        return [code, newCode].join("\n");
+        return {
+          code: s.toString(),
+          map: s.generateMap(),
+        };
       }
       if (this.environment.name === "client") {
-        let newCode = `\
+        const s = new MagicString(`\
 import { createServerReference } from "/src/register/client.ts";
-`;
+`);
         const [_, exports] = parse(code);
         for (const e of exports) {
-          newCode += `\
+          s.append(`\
 export const ${e.ln} = createServerReference(${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)})
-`;
+`);
         }
-        return newCode;
+        return {
+          code: s.toString(),
+          map: s.generateMap(),
+        };
       }
     }
   },
