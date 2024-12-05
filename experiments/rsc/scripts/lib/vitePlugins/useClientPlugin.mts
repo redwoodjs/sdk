@@ -12,9 +12,15 @@ export const useClientPlugin = (): Plugin => ({
 
     const relativeId = `/${relative(this.environment.getTopLevelConfig().root, id)}`;
     if (code.includes('"use client"') || code.includes("'use client'")) {
-      if (this.environment.name === "worker") {
-        const s = new MagicString(code);
+      const s = new MagicString(code);
 
+      // context(justinvdm, 5 Dec 2024): they've served their purpose at this point, keeping them around just causes rollup warnings since module level directives can't easily be applied to bundled
+      // modules
+      s.replaceAll("'use client'", "");
+      s.replaceAll('"use client"', "");
+      s.trim();
+
+      if (this.environment.name === "worker") {
         s.prepend(`
 import { registerClientReference } from "/src/register/worker.ts";
 `);
@@ -30,12 +36,12 @@ export const ${e.ln} = registerClientReference(${JSON.stringify(relativeId)}, ${
 `);
           }
         }
-
-        return {
-          code: s.toString(),
-          map: s.generateMap(),
-        };
       }
+
+      return {
+        code: s.toString(),
+        map: s.generateMap(),
+      };
     }
   },
 });

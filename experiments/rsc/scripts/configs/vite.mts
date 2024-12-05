@@ -37,20 +37,6 @@ export const viteConfigs = {
     build: {
       minify: MODE !== "development",
       sourcemap: true,
-      rollupOptions: {
-        onwarn(warning, defaultHandler) {
-          // context(justinvdm, 2024-12-05): Rollup throws away the directives since they won't work once the code is bundled. This is fine, because we only need them at build time
-          if (
-            warning.code === "MODULE_LEVEL_DIRECTIVE" &&
-            (warning.message.includes("use client") ||
-              warning.message.includes("use server"))
-          ) {
-            return;
-          }
-
-          return defaultHandler(warning);
-        },
-      },
     },
     define: {
       "process.env.PREVIEW": JSON.stringify(

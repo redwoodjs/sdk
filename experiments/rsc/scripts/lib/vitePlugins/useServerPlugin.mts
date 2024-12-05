@@ -13,6 +13,13 @@ export const useServerPlugin = (): Plugin => ({
     const relativeId = `/${relative(this.environment.getTopLevelConfig().root, id)}`;
 
     if (code.includes('"use server"') || code.includes("'use server'")) {
+      // context(justinvdm, 5 Dec 2024): they've served their purpose at this point, keeping them around just causes rollup warnings since module level directives can't easily be applied to bundled
+      // modules
+      let s = new MagicString(code);
+      s.replaceAll("'use server'", "");
+      s.replaceAll('"use server"', "");
+      s.trim();
+
       if (this.environment.name === "worker") {
         // TODO: Rewrite the code, but register the "function" against
         const s = new MagicString(code);
@@ -27,14 +34,9 @@ import { registerServerReference } from "/src/register/worker.ts";
 registerServerReference(${e.ln}, ${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)});
 `);
         }
-
-        return {
-          code: s.toString(),
-          map: s.generateMap(),
-        };
       }
       if (this.environment.name === "client") {
-        const s = new MagicString(`\
+        s = new MagicString(`\
 import { createServerReference } from "/src/register/client.ts";
 `);
         const [_, exports] = parse(code);
@@ -43,11 +45,12 @@ import { createServerReference } from "/src/register/client.ts";
 export const ${e.ln} = createServerReference(${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)})
 `);
         }
-        return {
-          code: s.toString(),
-          map: s.generateMap(),
-        };
       }
+
+      return {
+        code: s.toString(),
+        map: s.generateMap(),
+      };
     }
   },
 });
