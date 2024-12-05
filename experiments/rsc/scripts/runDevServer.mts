@@ -124,7 +124,7 @@ const createServers = async () => {
   });
 
   app.listen(DEV_SERVER_PORT, () => {
-    console.log(`
+    console.log(`\
 🚀 Dev server ready!
 ⭐️ Local: http://localhost:${DEV_SERVER_PORT}
 `);
