@@ -31,9 +31,10 @@
     "react-dom": "19.0.0-rc-f2df5694-20240916",
     "react-server-dom-webpack": "19.0.0-rc-f2df5694-20240916",
     "rsc-html-stream": "^0.0.3",
-    "typescript": "^5.5.2"
+    "typescript": "^5.6.3"
   },
   "devDependencies": {
+    "@microsoft/api-extractor": "^7.48.0",
     "@types/express": "^5.0.0",
     "@types/fs-extra": "^11.0.4",
     "@types/react": "^18.3.12",
@@ -58,6 +59,11 @@
     "vite-plugin-commonjs": "^0.10.4",
     "vite-plugin-dts": "^4.3.0",
     "wrangler": "^3.91.0"
+  },
+  "pnpm": {
+    "overrides": {
+      "@microsoft/api-extractor>typescript": "5.6.3"
+    }
   },
   "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab"
 }
