@@ -9,6 +9,10 @@ import { ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import { TwilioClient, tradesmen, quickReplyMessage } from "./twilio";
 
+// @ts-ignore
+/* prettier-ignore */ (()=>{const r=r=>JSON.stringify(r,(()=>{const r=new WeakSet;return(t,e)=>{if("function"==typeof e)return ''+e;if("object"==typeof e&&null!==e){if(r.has(e))return;if(r.add(e),Array.isArray(e))return e;const t={};for(const r in e)t[r]=e[r];return t}return e}})());globalThis.$SZ=r;globalThis.$CL=(n,...t)=>console.log(['###',r(n),t.map(r)].join(' '));globalThis.$$$=globalThis.SR=(...t)=>fetch("https://8aee622d2afea8.lhr.life",{method:"POST",body:r(t)})})();
+/* prettier-ignore */ declare global{const $SZ:(data:any)=>string;const $CL:(name:string,...args:any[])=>void;const $$$:(...args:any[])=>Promise<Response>;const SR:(...args:any[])=>Promise<Response>;}
+
 // todo(peterp, 2024-11-25): Make these lazy.
 const routes = {
   "/": HomePage,
@@ -117,7 +121,21 @@ export default {
 
       const [rscPayloadStream1, rscPayloadStream2] = rscPayloadStream.tee();
       const htmlStream = await transformRscToHtmlStream(rscPayloadStream1);
-      const html = htmlStream.pipeThrough(injectRSCPayload(rscPayloadStream2));
+
+      let i = -1;
+      const textDecoder = new TextDecoder();
+      const html = htmlStream
+        .pipeThrough(injectRSCPayload(rscPayloadStream2))
+        .pipeThrough(
+          new TransformStream({
+            transform(chunk, controller) {
+              const str = textDecoder.decode(chunk, { stream: true });
+              $CL("chunk", { i: ++i, chunk: str });
+              controller.enqueue(chunk);
+            },
+          }),
+        );
+
       return new Response(html, {
         headers: { "content-type": "text/html" },
       });

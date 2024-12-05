@@ -22,5 +22,10 @@ export const getModuleExport = async (id: string) => {
 export const ssrWebpackRequire = memoize(async (id: string) => {
   const [file, name] = id.split("#");
   const module = await loadModule(file);
+  $CL("ssrWebpackRequire module", {
+    id,
+    module,
+    modules,
+  });
   return { [id]: module[`${name}SSR`] };
 });
