@@ -39,7 +39,8 @@ const setup = async () => {
 };
 
 const createServers = async () => {
-  const promisedSetupComplete = setup();
+  // context(justinvdm, 2024-11-28): We don't need to wait for the initial bundle builds to complete before starting the dev server, we only need to have this complete by the first request
+  const promisedSetupComplete = new Promise(setImmediate).then(setup);
   const app = express();
 
   app.use("/assets", express.static(resolve(DIST_DIR, "client", "assets")));
@@ -66,8 +67,8 @@ const createServers = async () => {
   });
 
   app.listen(DEV_SERVER_PORT, () => {
-    console.log(`
-🚀 Preview server up and running! 🔥
+    console.log(`\
+🚀 Preview server ready!
 ⭐️ Local: http://localhost:${DEV_SERVER_PORT}
 `);
   });
