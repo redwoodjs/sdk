@@ -32,7 +32,7 @@ export default function CreateTradesman() {
           className="w-full p-2 rounded-md bg-blue-500 text-white"
           type="submit"
         >
-          Create
+          Save Tradesman
         </button>
       </form>
     </div>
