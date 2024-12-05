@@ -1,6 +1,7 @@
 import { $ } from "./lib/$.mjs";
 
 export const codegenTypes = async () => {
+  console.log("Generating types...");
   console.log("Generating db types...");
 
   // context(justinvdm, 26 Nov 2024): Get the latest sqlite file
@@ -15,6 +16,9 @@ export const codegenTypes = async () => {
 
   console.log("Generating wrangler types...");
   await $`pnpm wrangler types`;
+
+  console.log("Types generated!");
+  console.log();
 };
 
 if (import.meta.url === new URL(process.argv[1], import.meta.url).href) {
