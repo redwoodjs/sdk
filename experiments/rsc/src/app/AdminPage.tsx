@@ -10,16 +10,6 @@ export default async function AdminPage() {
     .select(["id", "name", "cellnumber", "profession"])
     .execute();
 
-  // if (tradesmen.length === 0) {
-  //   await db
-  //     .insertInto("Tradesman")
-  //     .values({
-  //       name: "Steve Jones",
-  //       cellnumber: "1234567890",
-  //       profession: "plumber"
-  //     })
-  //     .execute();
-  // }
   const users = await db
     .selectFrom("User")
     .select(["id", "name", "cellnumber"])
@@ -27,7 +17,7 @@ export default async function AdminPage() {
 
   const isAuthenticated = true;
   return (
-    <div>
+    <div className="p-4">
       <h1>Admin Page</h1>
       {isAuthenticated ? (
         <>
