@@ -46,6 +46,8 @@ const setup = async () => {
       ...miniflareConfig,
       modules: bundles,
     });
+
+    console.log("Worker built");
   };
 
   const builder = await createBuilder(
