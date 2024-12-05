@@ -1,5 +1,3 @@
-import CreateUser from "./components/CreateUser";
-import Login from "./components/Login";
 import { db } from "../db";
 
 import CreateTradesman from "./components/CreateTradesman";
@@ -9,48 +7,32 @@ export default async function AdminPage() {
     .selectFrom("Tradesman")
     .select(["id", "name", "cellnumber", "profession"])
     .execute();
-
-  if (tradesmen.length === 0) {
-    await db
-      .insertInto("Tradesman")
-      .values({
-        name: "Steve Jones",
-        cellnumber: "1234567890",
-        profession: "Plumber",
-        email: "steve@jones.com",
-      })
-      .execute();
-  }
-  const users = await db
-    .selectFrom("User")
-    .select(["id", "name", "cellnumber"])
-    .execute();
-
-  const isAuthenticated = true;
   return (
-    <div>
-      <h1>Admin Page</h1>
-      {isAuthenticated ? (
-        <>
-          <h2>Users</h2>
-          {users.map((user) => (
-            <div key={user.id}>
-              {user.name} ({user.cellnumber})
-            </div>
-          ))}
-          <hr />
-          <CreateUser />
-          <hr />
-          {tradesmen.map((tradesman) => (
-            <div key={tradesman.id}>
-              {tradesman.name} ({tradesman.cellnumber})
-            </div>
-          ))}
-          <CreateTradesman />
-        </>
-      ) : (
-        <Login />
-      )}
+    <div className="max-w-sm mx-auto">
+      <h1 className="text-2xl font-bold text-center py-4">Tradesmen</h1>
+      <CreateTradesman />
+      <hr className="my-4" />
+      {Object.entries(
+        tradesmen.reduce((acc, tradesman) => {
+          const { profession } = tradesman;
+          if (!acc[profession]) {
+            acc[profession] = [];
+          }
+          acc[profession].push(tradesman);
+          return acc;
+        }, {} as Record<string, typeof tradesmen>)
+      ).map(([profession, groupedTradesmen]) => {
+        return (
+          <div key={profession}>
+            <h2 className="text-xl font-bold">{profession}</h2>
+            {groupedTradesmen.map((tradesman) => (
+              <div key={tradesman.id}>
+                {tradesman.name} ({tradesman.cellnumber})
+              </div>
+            ))}
+          </div>
+        );
+      })}
     </div>
   );
 }
