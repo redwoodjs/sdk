@@ -13,6 +13,10 @@ import {
   VENDOR_DIST_DIR,
   WORKER_DIST_DIR,
 } from "../lib/constants.mjs";
+
+import tailwind from "tailwindcss";
+import autoprefixer from "autoprefixer";
+
 import { transformJsxScriptTagsPlugin } from "../lib/vitePlugins/transformJsxScriptTagsPlugin.mjs";
 import { useServerPlugin } from "../lib/vitePlugins/useServerPlugin.mjs";
 import { useClientPlugin } from "../lib/vitePlugins/useClientPlugin.mjs";
@@ -96,6 +100,11 @@ export const viteConfigs = {
         await builder.build(builder.environments["worker"]);
       },
     },
+    css: {
+      postcss: {
+        plugins: [tailwind, autoprefixer]
+      }
+    }
   }),
   dev: (context: DevConfigContext): InlineConfig =>
     mergeConfig(viteConfigs.main(), {
