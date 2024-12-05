@@ -10,17 +10,16 @@ export default async function AdminPage() {
     .select(["id", "name", "cellnumber", "profession"])
     .execute();
 
-  if (tradesmen.length === 0) {
-    await db
-      .insertInto("Tradesman")
-      .values({
-        name: "Steve Jones",
-        cellnumber: "1234567890",
-        profession: "Plumber",
-        email: "steve@jones.com",
-      })
-      .execute();
-  }
+  // if (tradesmen.length === 0) {
+  //   await db
+  //     .insertInto("Tradesman")
+  //     .values({
+  //       name: "Steve Jones",
+  //       cellnumber: "1234567890",
+  //       profession: "plumber"
+  //     })
+  //     .execute();
+  // }
   const users = await db
     .selectFrom("User")
     .select(["id", "name", "cellnumber"])
