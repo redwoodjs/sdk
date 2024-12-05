@@ -1,6 +1,7 @@
+import { relative } from "node:path";
 import { Plugin } from "vite";
 import { parse } from "es-module-lexer";
-import { relative } from "node:path";
+import MagicString from "magic-string";
 
 export const useServerPlugin = (): Plugin => ({
   name: "rw-reloaded-use-server",
@@ -12,32 +13,44 @@ export const useServerPlugin = (): Plugin => ({
     const relativeId = `/${relative(this.environment.getTopLevelConfig().root, id)}`;
 
     if (code.includes('"use server"') || code.includes("'use server'")) {
+      // context(justinvdm, 5 Dec 2024): they've served their purpose at this point, keeping them around just causes rollup warnings since module level directives can't easily be applied to bundled
+      // modules
+      let s = new MagicString(code);
+      s.replaceAll("'use server'", "");
+      s.replaceAll('"use server"', "");
+      s.trim();
+
       if (this.environment.name === "worker") {
         // TODO: Rewrite the code, but register the "function" against
-        let newCode = `
-import { registerServerReference } from "/src/register/worker.ts";
-`;
-        const [_, exports] = parse(code);
-        for (const e of exports) {
-          newCode += `\
-registerServerReference(${e.ln}, ${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)});
-`;
-        }
+        const s = new MagicString(code);
 
-        return [code, newCode].join("\n");
+        s.prepend(`\
+import { registerServerReference } from "/src/register/worker.ts";
+`);
+        const [_, exports] = parse(code);
+
+        for (const e of exports) {
+          s.append(`\
+registerServerReference(${e.ln}, ${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)});
+`);
+        }
       }
       if (this.environment.name === "client") {
-        let newCode = `\
+        s = new MagicString(`\
 import { createServerReference } from "/src/register/client.ts";
-`;
+`);
         const [_, exports] = parse(code);
         for (const e of exports) {
-          newCode += `\
+          s.append(`\
 export const ${e.ln} = createServerReference(${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)})
-`;
+`);
         }
-        return newCode;
       }
+
+      return {
+        code: s.toString(),
+        map: s.generateMap(),
+      };
     }
   },
 });

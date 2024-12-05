@@ -11,9 +11,9 @@ import {
   DIST_DIR,
   WORKER_DIST_DIR,
 } from "./lib/constants.mjs";
-import { buildVendorBundles } from "./buildVendorBundles.mjs";
 import { codegenTypes } from "./codegenTypes.mjs";
 import { dispatchNodeRequestToMiniflare } from "./lib/requestUtils.mjs";
+import { $ } from "./lib/$.mjs";
 
 let promisedSetupComplete = Promise.resolve();
 
@@ -46,6 +46,8 @@ const setup = async () => {
       ...miniflareConfig,
       modules: bundles,
     });
+
+    console.log("Worker built");
   };
 
   const builder = await createBuilder(
@@ -67,7 +69,9 @@ const setup = async () => {
 
   // context(justinvdm, 2024-11-28): We don't need to wait for the initial bundle builds to complete before starting the dev server, we only need to have this complete by the first request
   promisedSetupComplete = new Promise(setImmediate)
-    .then(() => buildVendorBundles().then(updateWorker))
+    // context(justinvdm, 2024-12-05): Call indirectly to silence verbose output when VERBOSE is not set
+    .then(() => $`npx tsx ./scripts/buildVendorBundles.mts`)
+    .then(updateWorker)
     .then(() => {
       // context(justinvdm, 2024-11-28): Types don't affect runtime, so we don't need to block the dev server on them
       void codegenTypes();
@@ -121,7 +125,7 @@ const createServers = async () => {
 
   app.listen(DEV_SERVER_PORT, () => {
     console.log(`
-🚀 Dev server fired up and ready to rock! 🔥
+🚀 Dev server ready!
 ⭐️ Local: http://localhost:${DEV_SERVER_PORT}
 `);
   });

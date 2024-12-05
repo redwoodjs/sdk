@@ -1,16 +1,8 @@
-import { type Plugin, normalizePath } from "vite";
-import { join, dirname, basename, relative } from "node:path";
+import MagicString from "magic-string";
+import { type Plugin } from "vite";
 import { readFile } from "node:fs/promises";
 import memoize from "lodash/memoize";
 import { pathExists } from "fs-extra";
-
-type ObjectHook<Fn> = Fn & { handler?: Fn };
-
-type ExtractFnFromObjectHook<T> = T extends ObjectHook<infer Fn> ? Fn : never;
-
-type TransformPluginContext = ThisParameterType<
-  ExtractFnFromObjectHook<Plugin["transform"]>
->;
 
 const readManifest = memoize(async (manifestPath: string) => {
   return (await pathExists(manifestPath))
@@ -35,15 +27,20 @@ export const transformJsxScriptTagsPlugin = ({
     }
 
     const manifest = await readManifest(manifestPath);
+    const s = new MagicString(code);
+
     for (const match of matches) {
       const src = match[2].slice("/".length);
 
       if (manifest[src]) {
         const transformedSrc = manifest[src].file;
-        code = code.replace(src, transformedSrc);
+        s.replaceAll(src, transformedSrc);
       }
     }
 
-    return { code };
+    return {
+      code: s.toString(),
+      map: s.generateMap(),
+    };
   },
 });
