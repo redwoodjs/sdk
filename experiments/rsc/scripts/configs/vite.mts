@@ -13,6 +13,10 @@ import {
   VENDOR_DIST_DIR,
   WORKER_DIST_DIR,
 } from "../lib/constants.mjs";
+
+import tailwind from "tailwindcss";
+import autoprefixer from "autoprefixer";
+
 import { transformJsxScriptTagsPlugin } from "../lib/vitePlugins/transformJsxScriptTagsPlugin.mjs";
 import { useServerPlugin } from "../lib/vitePlugins/useServerPlugin.mjs";
 import { useClientPlugin } from "../lib/vitePlugins/useClientPlugin.mjs";
@@ -96,6 +100,11 @@ export const viteConfigs = {
         await builder.build(builder.environments["worker"]);
       },
     },
+    css: {
+      postcss: {
+        plugins: [tailwind, autoprefixer]
+      }
+    },
   }),
   dev: (context: DevConfigContext): InlineConfig =>
     mergeConfig(viteConfigs.main(), {
@@ -127,6 +136,7 @@ export const viteConfigs = {
 // we leverage the dev server's module graph to efficiently determine if the worker bundle needs to be
 // rebuilt. This allows us to avoid unnecessary rebuilds when changes don't affect the worker.
 // Still, first prize would be to not need to rebundle at all.
+// https://vite.dev/guide/api-plugin.html#handlehotupdate
 const hmrPlugin = ({ updateWorker }: DevConfigContext): Plugin => ({
   name: "rw-reloaded-hmr",
   handleHotUpdate: async ({
@@ -136,15 +146,25 @@ const hmrPlugin = ({ updateWorker }: DevConfigContext): Plugin => ({
     file: string;
     server: ViteDevServer;
   }) => {
+    // todo(peterp, 2024-12-05): Use proper exclude, filter pattern,
+    // as documented here: https://vite.dev/guide/api-plugin.html#filtering-include-exclude-pattern
+    if (file.endsWith('.d.ts') || file.includes('/.wrangler/')) {
+      return []
+    }
+
+    console.log('[HMR]', file)
     const module = server.moduleGraph.getModuleById(file);
 
     const isImportedByWorkerFile = [...(module?.importers || [])].some(
       (importer) => importer.file === resolve("/", RELATIVE_WORKER_PATHNAME),
     );
 
-    // todo(justinvdm, 2024-11-19): Send RSC update to client
-    if (isImportedByWorkerFile) {
+    try {
       await updateWorker();
+    } catch (e: any) {
+      // todo(peterp, 2024-12-05): Figure out what to do with errors.
     }
+    server.ws.send({ type: 'full-reload' })
+    return []
   },
 });
