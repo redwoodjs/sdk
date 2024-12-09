@@ -12,8 +12,8 @@ export default async function TradesmanPage(props: { id: number }) {
   return (
     <div className="flex flex-col items-center justify-start h-screen w-full mx-auto">
       <NavBar to={`/tradesmen/${tradesman?.profession}`} />
-      <div className="flex flex-col items-center justify-center max-w-md mx-auto">
-        <div className="min-w-full bg-white border border-gray-200 rounded-lg shadow p-4 flex flex-col items-center justify-center">
+      <div className="flex flex-col items-center justify-center max-w-md w-full mx-auto">
+        <div className="w-full bg-white border border-gray-200 rounded-lg shadow p-4 flex flex-col items-center justify-center">
           <div className="w-24 h-24 rounded-full bg-gray-200 mb-4">
             <img
               src={`http://localhost:2332/bucket/${tradesman?.profilePicture}`}
