@@ -48,7 +48,7 @@
     "fs-extra": "^11.2.0",
     "kysely-codegen": "^0.17.0",
     "magic-string": "^0.30.14",
-    "miniflare": "^3.20241106.1",
+    "miniflare": "^3.20241205.0",
     "postcss": "^8.4.49",
     "prettier": "^3.4.1",
     "react": "^18.3.1",
