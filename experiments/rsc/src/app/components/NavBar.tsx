@@ -1,6 +1,6 @@
 export default function NavBar(props: { to: string }) {
   return (
-    <div className="bg-white border border-gray-200 rounded-lg shadow p-4 w-full mb-4">
+    <div className="bg-white border border-gray-200 shadow p-4 w-full mb-4">
       <div className="flex flex-row items-center justify-between  max-w-md mx-auto">
         <a href={props.to} className="text-sm text-gray-500 flex flex-row items-center justify-center">
           <svg

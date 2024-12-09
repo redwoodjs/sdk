@@ -16,7 +16,7 @@ export default async function TradesmenPage(props: { profession: string }) {
   return (
     <div className="flex flex-col items-center justify-start h-screen w-full mx-auto">
       <NavBar to="/professions" />
-      <div className="flex flex-col items-center justify-center h-screen max-w-md mx-auto">
+      <div className="flex flex-col items-center justify-center max-w-md mx-auto">
         <h1 className="text-3xl text-gray-800 font-bold text-center mb-4">
           We have the following {lowerCase(props.profession)}'s in our directory{" "}
         </h1>
