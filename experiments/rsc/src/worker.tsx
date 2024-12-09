@@ -12,6 +12,8 @@ import WelcomePage from "./app/WelcomePage";
 import TradesmenPage from "./app/TradesmenPage";
 import ProfessionsPage from "./app/ProfessionsPage";
 import AddTradesmanPage from "./app/AddTradesmanPage";
+import TradesmanPage from "./app/TradesmanPage";
+import { setupR2Storage } from "./r2storage";
 // todo(peterp, 2024-11-25): Make these lazy.
 const routes = {
   "/": HomePage,
@@ -19,6 +21,9 @@ const routes = {
   "/admin": AdminPage,
   "/tradesmen/:profession": (props: { params: { profession: string } }) => (
     <TradesmenPage profession={props.params.profession} />
+  ),
+  "/tradesman/:id": (props: { params: { id: number } }) => (
+    <TradesmanPage id={props.params.id} />
   ),
   "/professions": ProfessionsPage,
   "/add-tradesman": AddTradesmanPage,
@@ -44,6 +49,7 @@ export default {
       }
 
       setupDb(env);
+      setupR2Storage(env);
 
       // The worker access the bucket and returns it to the user, we dont let them access the bucket directly
       if (request.method === "GET" && url.pathname.startsWith("/bucket/")) {
@@ -59,6 +65,11 @@ export default {
         if (filename.endsWith(".vcf")) {
           headers.set("content-type", "application/vcard");
         }
+
+        if (filename.endsWith(".jpg") || filename.endsWith(".png")) {
+          headers.set("content-type", "image/jpeg");
+        }
+
         object.writeHttpMetadata(headers);
         headers.set("etag", object.httpEtag);
 
@@ -173,10 +184,17 @@ export default {
       if (!Page) {
         // Check if it matches the tradesmen dynamic route pattern
         const tradesmenMatch = pathname.match(/^\/tradesmen\/(.+)$/);
+        const tradesmanMatch = pathname.match(/^\/tradesman\/(.+)$/);
         if (tradesmenMatch) {
           const profession = tradesmenMatch[1];
           return renderPage(routes["/tradesmen/:profession"], {
             params: { profession },
+          });
+        }
+        if (tradesmanMatch) {
+          const id = tradesmanMatch[1];
+          return renderPage(routes["/tradesman/:id"], {
+            params: { id: parseInt(id) },
           });
         }
         return new Response("Not found", { status: 404 });

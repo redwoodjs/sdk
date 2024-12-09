@@ -12,6 +12,7 @@ export default function CreateTradesman() {
           required
           className="w-full p-2 rounded-md border-[1px] border-gray-300 mb-2"
         />
+        <input type="file" name="profilePicture" className="w-full p-2 rounded-md border-[1px] border-gray-300 mb-2" />
         <input
           type="text"
           name="cellnumber"
