@@ -11,14 +11,17 @@ import { rscActionHandler } from "./register/worker";
 import WelcomePage from "./app/WelcomePage";
 import TradesmenPage from "./app/TradesmenPage";
 import ProfessionsPage from "./app/ProfessionsPage";
-
+import AddTradesmanPage from "./app/AddTradesmanPage";
 // todo(peterp, 2024-11-25): Make these lazy.
 const routes = {
   "/": HomePage,
   "/welcome": WelcomePage,
   "/admin": AdminPage,
-  "/tradesmen/:profession": TradesmenPage,
+  "/tradesmen/:profession": (props: { params: { profession: string } }) => (
+    <TradesmenPage profession={props.params.profession} />
+  ),
   "/professions": ProfessionsPage,
+  "/add-tradesman": AddTradesmanPage,
 };
 
 export default {
@@ -142,32 +145,44 @@ export default {
         return Response.redirect(referer, 303);
       }
 
+      const renderPage = async (Page: any, props = {}) => {
+        const rscPayloadStream = renderToRscStream(<Page {...props} />);
+
+        if (isRSCRequest) {
+          return new Response(rscPayloadStream, {
+            headers: { "content-type": "text/x-component; charset=utf-8" },
+          });
+        }
+        const [rscPayloadStream1, rscPayloadStream2] = rscPayloadStream.tee();
+
+        const htmlStream = await transformRscToHtmlStream({
+          stream: rscPayloadStream1,
+          Parent: App,
+        });
+
+        const html = htmlStream.pipeThrough(
+          injectRSCPayload(rscPayloadStream2),
+        );
+        return new Response(html, {
+          headers: { "content-type": "text/html" },
+        });
+      };
+
       const pathname = new URL(request.url).pathname as keyof typeof routes;
       const Page = routes[pathname];
       if (!Page) {
-        // todo(peterp, 2024-11-25): Return not found page, if exists
+        // Check if it matches the tradesmen dynamic route pattern
+        const tradesmenMatch = pathname.match(/^\/tradesmen\/(.+)$/);
+        if (tradesmenMatch) {
+          const profession = tradesmenMatch[1];
+          return renderPage(routes["/tradesmen/:profession"], {
+            params: { profession },
+          });
+        }
         return new Response("Not found", { status: 404 });
       }
 
-      const rscPayloadStream = renderToRscStream(<Page />);
-
-      if (isRSCRequest) {
-        return new Response(rscPayloadStream, {
-          headers: { "content-type": "text/x-component; charset=utf-8" },
-        });
-      }
-
-      const [rscPayloadStream1, rscPayloadStream2] = rscPayloadStream.tee();
-
-      const htmlStream = await transformRscToHtmlStream({
-        stream: rscPayloadStream1,
-        Parent: App,
-      });
-
-      const html = htmlStream.pipeThrough(injectRSCPayload(rscPayloadStream2));
-      return new Response(html, {
-        headers: { "content-type": "text/html" },
-      });
+      return renderPage(Page);
     } catch (e) {
       console.error("Unhandled error", e);
       throw e;
