@@ -10,13 +10,15 @@ import { ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import WelcomePage from "./app/WelcomePage";
 import TradesmenPage from "./app/TradesmenPage";
+import ProfessionsPage from "./app/ProfessionsPage";
 
 // todo(peterp, 2024-11-25): Make these lazy.
 const routes = {
   "/": HomePage,
   "/welcome": WelcomePage,
   "/admin": AdminPage,
-  "/tradesmen": TradesmenPage,
+  "/tradesmen/:profession": TradesmenPage,
+  "/professions": ProfessionsPage,
 };
 
 export default {

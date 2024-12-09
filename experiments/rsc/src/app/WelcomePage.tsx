@@ -8,7 +8,7 @@ export default function WelcomePage() {
         We want to make it easier for you to find the right tradesman for your
         needs.
       </p>
-      <a href="/tradesmen" className="text-sm text-center bg-blue-500 p-4 rounded-md text-white font-bold w-full mb-2" >
+      <a href="/professions" className="text-sm text-center bg-blue-500 p-4 rounded-md text-white font-bold w-full mb-2" >
         Click here to see available tradesmen
       </a>
       <a href="/add-tradesman" className="text-sm text-center bg-gray-800 p-4 rounded-md text-white font-bold w-full">
