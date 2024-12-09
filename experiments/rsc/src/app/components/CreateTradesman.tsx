@@ -1,6 +1,5 @@
 import { createTradesman } from "../createTradesman";
-
-const professions = ["Electrician", "Plumber", "Carpenter", "Painter"];
+const professions = ["Electrician", "Plumber", "Carpenter", "Painter", "Welder"];
 
 export default function CreateTradesman() {
   return (

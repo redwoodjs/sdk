@@ -8,10 +8,12 @@ import { renderToRscStream } from "./render/renderToRscStream";
 import { TwilioClient, quickReplyMessage, saveVCardToR2 } from "./twilio";
 import { ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
+import WelcomePage from "./app/WelcomePage";
 
 // todo(peterp, 2024-11-25): Make these lazy.
 const routes = {
   "/": HomePage,
+  "/welcome": WelcomePage,
   "/admin": AdminPage,
 };
 
