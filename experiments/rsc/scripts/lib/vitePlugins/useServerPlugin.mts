@@ -22,8 +22,6 @@ export const useServerPlugin = (): Plugin => ({
 
       if (this.environment.name === "worker") {
         // TODO: Rewrite the code, but register the "function" against
-        const s = new MagicString(code);
-
         s.prepend(`\
 import { registerServerReference } from "/src/register/worker.ts";
 `);
