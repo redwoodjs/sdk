@@ -1,4 +1,4 @@
-INSERT INTO Tradesman (name, cellnumber, profession) VALUES
+INSERT INTO "Tradesman" (name, cellnumber, profession) VALUES
   ('John Smith', '+27821234567', 'Plumber'),
   ('David Brown', ' +27829876543', 'Electrician'),
   ('Michael Wilson', '+27823456789', 'Carpenter'),
