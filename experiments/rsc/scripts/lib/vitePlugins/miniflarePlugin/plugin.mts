@@ -9,7 +9,13 @@ import {
   WorkerOptions,
 } from "miniflare";
 import type { SourcelessWorkerOptions } from "wrangler";
-import { Connect, DevEnvironment, Plugin, ResolvedConfig } from "vite";
+import {
+  Connect,
+  DevEnvironment,
+  HotChannel,
+  Plugin,
+  ResolvedConfig,
+} from "vite";
 import { dispatchNodeRequestToMiniflare } from "./requestUtils.mjs";
 
 type UserMiniflareOptions = SharedOptions & SourcelessWorkerOptions;
@@ -57,13 +63,24 @@ const createMiniflareOptions = async ({
 const createDevEnv = async ({
   name,
   config,
+  context,
 }: {
   name: string;
   config: ResolvedConfig;
+  context: MiniflarePluginContext;
 }) => {
-  const transport = {};
+  const { miniflare } = context;
 
-  const devEnv = new DevEnvironment(name, config, {
+  const transport: HotChannel = {};
+
+  class MiniflareDevEnvironment extends DevEnvironment {
+    async close() {
+      await super.close();
+      await miniflare.dispose();
+    }
+  }:
+
+  const devEnv = new MiniflareDevEnvironment(name, config, {
     hot: true,
     transport,
   });
