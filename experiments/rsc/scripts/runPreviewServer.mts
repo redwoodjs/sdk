@@ -8,7 +8,7 @@ import {
   DIST_DIR,
   WORKER_DIST_DIR,
 } from "./lib/constants.mjs";
-import { dispatchNodeRequestToMiniflare } from "./lib/requestUtils.mjs";
+import { dispatchNodeRequestToMiniflare } from "./lib/vitePlugins/miniflarePlugin/requestUtils.mjs";
 import { build } from "./build.mjs";
 import { readFile } from "fs/promises";
 

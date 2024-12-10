@@ -12,7 +12,7 @@ import {
   WORKER_DIST_DIR,
 } from "./lib/constants.mjs";
 import { codegenTypes } from "./codegenTypes.mjs";
-import { dispatchNodeRequestToMiniflare } from "./lib/requestUtils.mjs";
+import { dispatchNodeRequestToMiniflare } from "./lib/vitePlugins/miniflarePlugin/requestUtils.mjs";
 import { $ } from "./lib/$.mjs";
 
 let promisedSetupComplete = Promise.resolve();

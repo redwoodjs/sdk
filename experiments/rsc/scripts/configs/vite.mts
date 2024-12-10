@@ -25,13 +25,10 @@ import { useClientPlugin } from "../lib/vitePlugins/useClientPlugin.mjs";
 import commonjsPlugin from "vite-plugin-commonjs";
 import { useClientLookupPlugin } from "../lib/vitePlugins/useClientLookupPlugin.mjs";
 import { transformJsxLinksTagsPlugin } from "../lib/vitePlugins/transformJsxLinksTagsPlugin.mjs";
+import { miniflarePlugin } from "../lib/vitePlugins/miniflarePlugin/plugin.mjs";
 
 const MODE =
   process.env.NODE_ENV === "development" ? "development" : "production";
-
-export type DevConfigContext = {
-  updateWorker: () => Promise<void>;
-};
 
 export const viteConfigs = {
   main: (): InlineConfig => ({
@@ -110,10 +107,10 @@ export const viteConfigs = {
       },
     },
   }),
-  dev: (context: DevConfigContext): InlineConfig =>
+  dev: (): InlineConfig =>
     mergeConfig(viteConfigs.main(), {
       plugins: [
-        hmrPlugin(context),
+        miniflarePlugin({ environment: "worker" }),
         // context(justinvdm, 2024-12-03): vite needs the virtual module created by this plugin to be around,
         // even if the code path that use the virtual module are not reached in dev
         useClientLookupPlugin({ filesContainingUseClient: [] }),
@@ -138,40 +135,3 @@ export const viteConfigs = {
       ],
     }),
 };
-
-// context(justinvdm, 2024-11-20): While it may seem odd to use the dev server and HMR only to do full rebuilds,
-// we leverage the dev server's module graph to efficiently determine if the worker bundle needs to be
-// rebuilt. This allows us to avoid unnecessary rebuilds when changes don't affect the worker.
-// Still, first prize would be to not need to rebundle at all.
-// https://vite.dev/guide/api-plugin.html#handlehotupdate
-const hmrPlugin = ({ updateWorker }: DevConfigContext): Plugin => ({
-  name: "rw-reloaded-hmr",
-  handleHotUpdate: async ({
-    file,
-    server,
-  }: {
-    file: string;
-    server: ViteDevServer;
-  }) => {
-    // todo(peterp, 2024-12-05): Use proper exclude, filter pattern,
-    // as documented here: https://vite.dev/guide/api-plugin.html#filtering-include-exclude-pattern
-    if (file.endsWith(".d.ts") || file.includes("/.wrangler/")) {
-      return [];
-    }
-
-    console.log("[HMR]", file);
-    const module = server.moduleGraph.getModuleById(file);
-
-    const isImportedByWorkerFile = [...(module?.importers || [])].some(
-      (importer) => importer.file === resolve("/", RELATIVE_WORKER_PATHNAME),
-    );
-
-    try {
-      await updateWorker();
-    } catch (e: any) {
-      // todo(peterp, 2024-12-05): Figure out what to do with errors.
-    }
-    server.ws.send({ type: "full-reload" });
-    return [];
-  },
-});

@@ -78,6 +78,9 @@ importers:
       fs-extra:
         specifier: ^11.2.0
         version: 11.2.0
+      import-meta-resolve:
+        specifier: ^4.1.0
+        version: 4.1.0
       kysely-codegen:
         specifier: ^0.17.0
         version: 0.17.0(better-sqlite3@11.6.0)(kysely@0.27.4)
@@ -1605,6 +1608,9 @@ packages:
   import-lazy@4.0.0:
     resolution: {integrity: sha512-rKtvo6a868b5Hu3heneU+L4yEQ4jYKLtjpnPeUdK7h0yzXGmyBTypknlkCvHFBqfX9YlorEiMM6Dnq/5atfHkw==}
     engines: {node: '>=8'}
+
+  import-meta-resolve@4.1.0:
+    resolution: {integrity: sha512-I6fiaX09Xivtk+THaMfAwnA3MVA5Big1WHF1Dfx9hFuvNIWpXnorlkzhcQf6ehrqQiiZECRt1poOAkPmer3ruw==}
 
   inflight@1.0.6:
     resolution: {integrity: sha512-k92I/b08q4wvFscXCLvqfsHCrjrF7yiXsQuIVvVE7N82W3+aqpzuUdBbfhWcy/FZR3/4IgflMgKLOsvPDrGCJA==}
@@ -4012,6 +4018,8 @@ snapshots:
   ieee754@1.2.1: {}
 
   import-lazy@4.0.0: {}
+
+  import-meta-resolve@4.1.0: {}
 
   inflight@1.0.6:
     dependencies:
