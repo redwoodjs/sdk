@@ -16,3 +16,4 @@ export const RELATIVE_WORKER_PATHNAME = "src/worker.tsx";
 export const RELATIVE_CLIENT_PATHNAME = "src/client.tsx";
 
 export const D1_PERSIST_PATH = resolve(ROOT_DIR, ".wrangler/state/v3/d1");
+export const R2_PERSIST_PATH = resolve(ROOT_DIR, ".wrangler/state/v3/r2")
