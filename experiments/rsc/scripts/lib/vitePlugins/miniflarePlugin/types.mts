@@ -7,4 +7,10 @@ export type RunnerRpc = {
 
 export type RunnerEnv = {
   __viteRoot: string;
+  __viteInvoke: {
+    fetch: (request: Request) => Promise<Response>;
+  };
+  __viteSendToServer: {
+    fetch: (request: Request) => Promise<Response>;
+  };
 };

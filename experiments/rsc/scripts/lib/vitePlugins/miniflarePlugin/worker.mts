@@ -16,25 +16,46 @@ export class Runner extends DurableObject<RunnerEnv> implements RunnerRpc {
     this.#runner = new ModuleRunner({
       root: this.env.__viteRoot,
       sourcemapInterceptor: "prepareStackTrace",
+      hmr: true,
       transport: {
-        hmr: true,
-        async invoke(payload) {},
+        invoke: (payload) =>
+          callBinding({
+            binding: this.env.__viteInvoke,
+            payload,
+          }),
         connect: (handlers) => {
           this.#handlers = handlers;
         },
-        async send(payload) {},
+        send: (payload) =>
+          callBinding({ binding: this.env.__viteSendToServer, payload }),
       },
     });
   }
 
   async sendToWorker(payload: HotPayload): Promise<void> {
+    // context(justinvdm, 10 Dec 2024): This is the handler side of the `sendToWorker` rpc method.
+    // We're telling the runner: "here's a message from the server, do something with it".
     this.#handlers?.onMessage(payload);
   }
 }
 
-export function requestJson(data: unknown) {
-  return new Request("https://any.local", {
+export async function callBinding<Result>({
+  binding,
+  payload,
+}: {
+  binding: { fetch: (request: Request) => Promise<Response> };
+  payload: HotPayload;
+}) {
+  const request = new Request("https://any.local", {
     method: "POST",
-    body: JSON.stringify(data),
+    body: JSON.stringify(payload),
   });
+
+  const response = await binding.fetch(request);
+
+  if (!response.ok) {
+    throw new Error(`Failed to call binding: ${response.statusText}`);
+  }
+
+  return response.json() as Result;
 }
