@@ -4,6 +4,7 @@ import { fileURLToPath } from "node:url";
 import { resolve as importMetaResolve } from "import-meta-resolve";
 
 import {
+  DispatchFetch,
   Miniflare,
   MiniflareOptions,
   SharedOptions,
@@ -26,11 +27,6 @@ import {
   ServiceBindings,
 } from "./types.mjs";
 
-type HotDispatcher = (
-  payload: HotPayload,
-  client: { send: (payload: HotPayload) => void },
-) => void;
-
 interface MiniflarePluginOptions {
   entry: string;
   environment?: string;
@@ -38,6 +34,15 @@ interface MiniflarePluginOptions {
 }
 
 type MiniflarePluginOptionsFull = NoOptionals<MiniflarePluginOptions>;
+
+type HotDispatcher = (
+  payload: HotPayload,
+  client: { send: (payload: HotPayload) => void },
+) => void;
+
+type DevEnvApi = {
+  dispatchFetch: DispatchFetch;
+};
 
 interface MiniflarePluginContext {
   options: NoOptionals<MiniflarePluginOptions>;
@@ -123,6 +128,8 @@ const createDevEnv = async ({
   config: ResolvedConfig;
   options: MiniflarePluginOptionsFull;
 }) => {
+  const { entry } = options;
+
   const serviceBindings: ServiceBindings = {
     __viteInvoke: async (request) => {
       const payload = (await request.json()) as HotPayload;
@@ -148,7 +155,22 @@ const createDevEnv = async ({
 
   const { hotDispatch, transport } = createTransport({ runnerWorker });
 
+  const dispatchFetch: DispatchFetch = async (input, init = {}) => {
+    init.headers = new Headers(init.headers as HeadersInit | undefined);
+
+    init.headers.set(
+      "x-vite-fetch",
+      JSON.stringify({ entry } satisfies FetchMetadata),
+    );
+
+    return await miniflare.dispatchFetch(input, init);
+  };
+
   class MiniflareDevEnvironment extends DevEnvironment {
+    api: DevEnvApi = {
+      dispatchFetch,
+    };
+
     async close() {
       await super.close();
       await miniflare.dispose();
@@ -165,25 +187,13 @@ const createDevEnv = async ({
   return devEnv;
 };
 
-const createServerMiddleware = ({
-  miniflare,
-  options: { entry },
-}: MiniflarePluginContext) => {
+const createServerMiddleware = ({ dispatchFetch }: DevEnvApi) => {
   const miniflarePluginMiddleware: Connect.NextHandleFunction = async (
     request,
     response,
   ) => {
     const webRequest = nodeToWebRequest(request);
-
-    webRequest.headers.set(
-      "x-vite-fetch",
-      JSON.stringify({ entry } satisfies FetchMetadata),
-    );
-
-    const webResponse = await miniflare.dispatchFetch(
-      webRequest.url,
-      webRequest,
-    );
+    const webResponse = await dispatchFetch(webRequest.url, webRequest);
     await webToNodeResponse(webResponse, response);
   };
 
@@ -218,6 +228,11 @@ export const miniflarePlugin = async (
       },
     }),
     configureServer: (server) => () =>
-      server.middlewares.use(createServerMiddleware(pluginContext)),
+      server.middlewares.use(
+        createServerMiddleware(
+          (server.environments[environment] as unknown as { api: DevEnvApi })
+            .api,
+        ),
+      ),
   };
 };
