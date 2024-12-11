@@ -32,7 +32,7 @@ export class Runner extends DurableObject<RunnerEnv> implements RunnerRpc {
     });
   }
 
-  async sendToWorker(payload: HotPayload): Promise<void> {
+  async sendToRunner(payload: HotPayload): Promise<void> {
     // context(justinvdm, 10 Dec 2024): This is the handler side of the `sendToWorker` rpc method.
     // We're telling the runner: "here's a message from the server, do something with it".
     this.#handlers?.onMessage(payload);
