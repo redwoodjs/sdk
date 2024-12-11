@@ -5,15 +5,19 @@ export type RunnerRpc = {
   sendToRunner: (payload: HotPayload) => Promise<void>;
 };
 
+export type ServiceBindings = {
+  __viteInvoke: (request: Request) => Promise<Response>;
+  __viteSendToServer: (request: Request) => Promise<Response>;
+};
+
+export type EnvServiceBindings = Record<
+  keyof ServiceBindings,
+  { fetch: (request: Request) => Promise<Response> }
+>;
+
 export type RunnerEnv = {
   __viteRoot: string;
-  __viteInvoke: {
-    fetch: (request: Request) => Promise<Response>;
-  };
-  __viteSendToServer: {
-    fetch: (request: Request) => Promise<Response>;
-  };
-};
+} & EnvServiceBindings;
 
 export type FetchMetadata = {
   entry: string;

@@ -1,4 +1,5 @@
 import { readFile } from "node:fs/promises";
+import { EventEmitter } from "node:events";
 import { fileURLToPath } from "node:url";
 import { resolve as importMetaResolve } from "import-meta-resolve";
 
@@ -13,11 +14,22 @@ import {
   Connect,
   DevEnvironment,
   HotChannel,
+  HotPayload,
   Plugin,
   ResolvedConfig,
 } from "vite";
 import { nodeToWebRequest, webToNodeResponse } from "./requestUtils.mjs";
-import { FetchMetadata, NoOptionals, RunnerWorkerApi } from "./types.mjs";
+import {
+  FetchMetadata,
+  NoOptionals,
+  RunnerWorkerApi,
+  ServiceBindings,
+} from "./types.mjs";
+
+type HotDispatcher = (
+  payload: HotPayload,
+  client: { send: (payload: HotPayload) => void },
+) => void;
 
 interface MiniflarePluginOptions {
   entry: string;
@@ -31,14 +43,19 @@ interface MiniflarePluginContext {
   options: NoOptionals<MiniflarePluginOptions>;
   miniflare: Miniflare;
   runnerWorker: RunnerWorkerApi;
+  hotDispatch?: HotDispatcher;
 }
 
 const readModule = (id: string) =>
   readFile(fileURLToPath(importMetaResolve(id, import.meta.url)), "utf8");
 
 const createMiniflareOptions = async ({
-  miniflare: userOptions,
-}: MiniflarePluginOptionsFull): Promise<MiniflareOptions> => {
+  serviceBindings,
+  options: { miniflare: userOptions },
+}: {
+  serviceBindings: ServiceBindings;
+  options: MiniflarePluginOptionsFull;
+}): Promise<MiniflareOptions> => {
   // todo(justinvdm, 2024-12-10): Figure out what we can get from wrangler's unstable_getMiniflareWorkerOptions(),
   // and if it means we can avoid having both a wrangler.toml and miniflare config
 
@@ -59,6 +76,7 @@ const createMiniflareOptions = async ({
     durableObjects: {
       __viteRunner: "RunnerWorker",
     },
+    serviceBindings,
   };
 
   return {
@@ -67,18 +85,68 @@ const createMiniflareOptions = async ({
   } as MiniflareOptions & SharedOptions & SourcelessWorkerOptions;
 };
 
+const createTransport = ({
+  runnerWorker,
+}: {
+  runnerWorker: RunnerWorkerApi;
+}): {
+  hotDispatch: HotDispatcher;
+  transport: HotChannel;
+} => {
+  const events = new EventEmitter();
+
+  const hotDispatch: HotDispatcher = (payload, client) => {
+    if (payload.type === "custom") {
+      events.emit(payload.event, payload.data, client);
+    }
+  };
+
+  return {
+    hotDispatch,
+    transport: {
+      // todo(justinvdm, 11 Dec 2024): Figure out if we need to implement these stubs
+      listen: () => {},
+      close: () => {},
+      on: events.on.bind(events),
+      off: events.off.bind(events),
+      send: runnerWorker.sendToRunner.bind(runnerWorker),
+    },
+  };
+};
+
 const createDevEnv = async ({
   name,
   config,
-  pluginContext,
+  options,
 }: {
   name: string;
   config: ResolvedConfig;
-  pluginContext: MiniflarePluginContext;
+  options: MiniflarePluginOptionsFull;
 }) => {
-  const { miniflare, runnerWorker } = pluginContext;
+  const serviceBindings: ServiceBindings = {
+    __viteInvoke: async (request) => {
+      const payload = (await request.json()) as HotPayload;
+      const result = await devEnv.hot.handleInvoke(payload);
+      return Response.json(result);
+    },
+    __viteSendToServer: async (request) => {
+      const payload = (await request.json()) as HotPayload;
+      hotDispatch(payload, { send: runnerWorker.sendToRunner });
+      return Response.json(null);
+    },
+  };
 
-  const transport: HotChannel = {};
+  const miniflare = new Miniflare(
+    await createMiniflareOptions({
+      options,
+      serviceBindings,
+    }),
+  );
+
+  const ns = await miniflare.getDurableObjectNamespace("__viteRunner");
+  const runnerWorker = ns.get(ns.idFromName("")) as unknown as RunnerWorkerApi;
+
+  const { hotDispatch, transport } = createTransport({ runnerWorker });
 
   class MiniflareDevEnvironment extends DevEnvironment {
     async close() {
@@ -95,28 +163,6 @@ const createDevEnv = async ({
   await runnerWorker.initRunner();
 
   return devEnv;
-};
-
-const createPluginContext = async ({
-  pluginOptions: givenPluginOptions,
-}: {
-  pluginOptions: MiniflarePluginOptions;
-}): Promise<MiniflarePluginContext> => {
-  const options = {
-    environment: "worker",
-    miniflare: {},
-    ...givenPluginOptions,
-  };
-
-  const miniflare = new Miniflare(await createMiniflareOptions(options));
-  const ns = await miniflare.getDurableObjectNamespace("__viteRunner");
-  const runnerWorker = ns.get(ns.idFromName("")) as unknown as RunnerWorkerApi;
-
-  return {
-    miniflare,
-    runnerWorker,
-    options,
-  };
 };
 
 const createServerMiddleware = ({
@@ -145,12 +191,15 @@ const createServerMiddleware = ({
 };
 
 export const miniflarePlugin = async (
-  pluginOptions: MiniflarePluginOptions,
+  givenOptions: MiniflarePluginOptions,
 ): Promise<Plugin> => {
-  const pluginContext = await createPluginContext({ pluginOptions });
-  const {
-    options: { environment },
-  } = pluginContext;
+  const options = {
+    environment: "worker",
+    miniflare: {},
+    ...givenOptions,
+  };
+
+  const { environment } = options;
 
   return {
     name: "rw-reloaded-transform-jsx-script-tags",
@@ -162,7 +211,7 @@ export const miniflarePlugin = async (
               createDevEnv({
                 name,
                 config,
-                pluginContext,
+                options,
               }),
           },
         },
