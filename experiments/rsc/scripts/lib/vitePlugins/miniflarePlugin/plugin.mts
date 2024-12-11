@@ -16,7 +16,8 @@ import {
   Plugin,
   ResolvedConfig,
 } from "vite";
-import { dispatchNodeRequestToMiniflare } from "./requestUtils.mjs";
+import { nodeToWebRequest, webToNodeResponse } from "./requestUtils.mjs";
+import { FetchMetadata } from './types.mjs';
 
 type UserMiniflareOptions = SharedOptions & SourcelessWorkerOptions;
 
@@ -63,13 +64,13 @@ const createMiniflareOptions = async ({
 const createDevEnv = async ({
   name,
   config,
-  context,
+  pluginContext,
 }: {
   name: string;
   config: ResolvedConfig;
-  context: MiniflarePluginContext;
+  pluginContext: MiniflarePluginContext;
 }) => {
-  const { miniflare } = context;
+  const { miniflare } = pluginContext;
 
   const transport: HotChannel = {};
 
@@ -101,15 +102,19 @@ const createPluginContext = async ({
 };
 
 const createServerMiddleware = ({ miniflare }: MiniflarePluginContext) => {
-  const miniflarePluginMiddleware: Connect.NextHandleFunction = (
+  const miniflarePluginMiddleware: Connect.NextHandleFunction = async (
     request,
     response,
   ) => {
-    dispatchNodeRequestToMiniflare({
-      miniflare,
-      request,
-      response,
-    });
+    const webRequest = nodeToWebRequest(request);
+
+    webRequest.headers.set(
+      'x-vite-fetch',
+      JSON.stringify({ entry } satisfies FetchMetadata)
+    );
+
+    const webResponse = await miniflare.dispatchFetch(webRequest.url, webRequest);
+    await webToNodeResponse(webResponse, response);
   };
 
   return miniflarePluginMiddleware;
@@ -131,6 +136,7 @@ export const miniflarePlugin = async (
               createDevEnv({
                 name,
                 config,
+                pluginContext,
               }),
           },
         },

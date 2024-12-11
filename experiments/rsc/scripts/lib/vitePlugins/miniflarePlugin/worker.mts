@@ -1,16 +1,56 @@
 import { DurableObject } from "cloudflare:workers";
-import { RunnerEnv, RunnerRpc } from "./types.mjs";
+import { FetchMetadata, RunnerEnv, RunnerRpc } from "./types.mjs";
 import {
   ModuleRunner,
   type ModuleRunnerTransportHandlers,
 } from "vite/module-runner";
 import { HotPayload } from "vite";
 
+type IncomingRequest = Request<unknown, IncomingRequestCfProperties<unknown>>;
+
 export class Runner extends DurableObject<RunnerEnv> implements RunnerRpc {
   #runner?: ModuleRunner;
   #handlers?: ModuleRunnerTransportHandlers;
 
-  async fetch(request: Request) {}
+  override async fetch(request: IncomingRequest) {
+    try {
+      return await this.#fetch(request);
+    } catch (e) {
+      console.error(e);
+      let body = "[vite workerd runner error]\n";
+      if (e instanceof Error) {
+        body += `${e.stack ?? e.message}`;
+      }
+      return new Response(body, { status: 500 });
+    }
+  }
+
+  async #fetch(request: IncomingRequest) {
+    if (!this.#runner) {
+      throw new Error("Runner not initialized");
+    }
+
+    const options = JSON.parse(
+      request.headers.get("x-vite-fetch")!,
+    ) as FetchMetadata;
+
+    const mod = await this.#runner.import(options.entry);
+
+    const handler = mod.default as ExportedHandler;
+
+    if (!handler.fetch) {
+      throw new Error("Worker does not have a fetch method");
+    }
+
+    const env = Object.fromEntries(
+      Object.entries(this.env).filter(([key]) => !key.startsWith("__vite")),
+    );
+
+    return handler.fetch(request, env, {
+      waitUntil(_promise: Promise<any>) {},
+      passThroughOnException() {},
+    });
+  }
 
   async initRunner() {
     this.#runner = new ModuleRunner({

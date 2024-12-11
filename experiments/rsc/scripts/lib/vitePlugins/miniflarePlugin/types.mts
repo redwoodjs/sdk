@@ -14,3 +14,7 @@ export type RunnerEnv = {
     fetch: (request: Request) => Promise<Response>;
   };
 };
+
+export type FetchMetadata = {
+  entry: string;
+};

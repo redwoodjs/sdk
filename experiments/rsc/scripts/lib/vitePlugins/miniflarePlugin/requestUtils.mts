@@ -1,7 +1,15 @@
 import { Miniflare, type RequestInit } from "miniflare";
 import type { IncomingMessage, ServerResponse } from "node:http";
 
-export const nodeToWebRequest = (req: IncomingMessage, url: URL): Request => {
+type MiniflareResponse = Awaited<
+  ReturnType<typeof Miniflare.prototype.dispatchFetch>
+>;
+
+export const nodeToWebRequest = (
+  req: IncomingMessage,
+): Request & RequestInit => {
+  const url = new URL(req.url as string, `http://${req.headers.host}`);
+
   return new Request(url.href, {
     method: req.method,
     headers: req.headers as HeadersInit,
@@ -11,11 +19,11 @@ export const nodeToWebRequest = (req: IncomingMessage, url: URL): Request => {
         : undefined,
     // @ts-ignore
     duplex: "half",
-  });
+  }) as Request & RequestInit;
 };
 
 export const webToNodeResponse = async (
-  webResponse: Response,
+  webResponse: Response | MiniflareResponse,
   nodeResponse: ServerResponse,
 ) => {
   // Copy status and headers
@@ -38,25 +46,4 @@ export const webToNodeResponse = async (
     }
   }
   nodeResponse.end();
-};
-
-export const dispatchNodeRequestToMiniflare = async ({
-  miniflare,
-  request,
-  response,
-}: {
-  miniflare: Miniflare;
-  request: IncomingMessage;
-  response: ServerResponse;
-}) => {
-  const url = new URL(request.url as string, `http://${request.headers.host}`);
-  const webRequest = nodeToWebRequest(request, url);
-
-  // context(justinvdm, 2024-11-19): Type assertions needed because Miniflare's Request and Responses types have additional Cloudflare-specific properties
-  const webResponse = await miniflare.dispatchFetch(
-    webRequest.url,
-    webRequest as RequestInit,
-  );
-
-  await webToNodeResponse(webResponse as unknown as Response, response);
 };
