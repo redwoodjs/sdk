@@ -17,7 +17,7 @@ import {
   ResolvedConfig,
 } from "vite";
 import { nodeToWebRequest, webToNodeResponse } from "./requestUtils.mjs";
-import { FetchMetadata, NoOptionals } from "./types.mjs";
+import { FetchMetadata, NoOptionals, RunnerWorkerApi } from "./types.mjs";
 
 interface MiniflarePluginOptions {
   entry: string;
@@ -30,6 +30,7 @@ type MiniflarePluginOptionsFull = NoOptionals<MiniflarePluginOptions>;
 interface MiniflarePluginContext {
   options: NoOptionals<MiniflarePluginOptions>;
   miniflare: Miniflare;
+  runnerWorker: RunnerWorkerApi;
 }
 
 const readModule = (id: string) =>
@@ -55,6 +56,9 @@ const createMiniflareOptions = async ({
         contents: await readModule("./worker.mjs"),
       },
     ],
+    durableObjects: {
+      __viteRunner: "RunnerWorker",
+    },
   };
 
   return {
@@ -72,7 +76,7 @@ const createDevEnv = async ({
   config: ResolvedConfig;
   pluginContext: MiniflarePluginContext;
 }) => {
-  const { miniflare } = pluginContext;
+  const { miniflare, runnerWorker } = pluginContext;
 
   const transport: HotChannel = {};
 
@@ -87,6 +91,8 @@ const createDevEnv = async ({
     hot: true,
     transport,
   });
+
+  await runnerWorker.initRunner();
 
   return devEnv;
 };
@@ -103,9 +109,12 @@ const createPluginContext = async ({
   };
 
   const miniflare = new Miniflare(await createMiniflareOptions(options));
+  const ns = await miniflare.getDurableObjectNamespace("__viteRunner");
+  const runnerWorker = ns.get(ns.idFromName("")) as unknown as RunnerWorkerApi;
 
   return {
     miniflare,
+    runnerWorker,
     options,
   };
 };

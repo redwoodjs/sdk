@@ -8,7 +8,10 @@ import { HotPayload } from "vite";
 
 type IncomingRequest = Request<unknown, IncomingRequestCfProperties<unknown>>;
 
-export class Runner extends DurableObject<RunnerEnv> implements RunnerRpc {
+export class RunnerWorker
+  extends DurableObject<RunnerEnv>
+  implements RunnerRpc
+{
   #runner?: ModuleRunner;
   #handlers?: ModuleRunnerTransportHandlers;
 
