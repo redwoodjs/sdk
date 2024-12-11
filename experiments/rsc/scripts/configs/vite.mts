@@ -26,6 +26,7 @@ import commonjsPlugin from "vite-plugin-commonjs";
 import { useClientLookupPlugin } from "../lib/vitePlugins/useClientLookupPlugin.mjs";
 import { transformJsxLinksTagsPlugin } from "../lib/vitePlugins/transformJsxLinksTagsPlugin.mjs";
 import { miniflarePlugin } from "../lib/vitePlugins/miniflarePlugin/plugin.mjs";
+import { miniflareConfig } from "./miniflare.mjs";
 
 const MODE =
   process.env.NODE_ENV === "development" ? "development" : "production";
@@ -112,6 +113,7 @@ export const viteConfigs = {
       plugins: [
         miniflarePlugin({
           environment: "worker",
+          miniflare: miniflareConfig,
         }),
         // context(justinvdm, 2024-12-03): vite needs the virtual module created by this plugin to be around,
         // even if the code path that use the virtual module are not reached in dev

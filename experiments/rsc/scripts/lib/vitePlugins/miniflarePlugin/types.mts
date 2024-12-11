@@ -18,3 +18,7 @@ export type RunnerEnv = {
 export type FetchMetadata = {
   entry: string;
 };
+
+export type NoOptionals<T> = {
+  [K in keyof T]-?: T[K];
+};

@@ -17,16 +17,18 @@ import {
   ResolvedConfig,
 } from "vite";
 import { nodeToWebRequest, webToNodeResponse } from "./requestUtils.mjs";
-import { FetchMetadata } from './types.mjs';
-
-type UserMiniflareOptions = SharedOptions & SourcelessWorkerOptions;
+import { FetchMetadata, NoOptionals } from './types.mjs';
 
 interface MiniflarePluginOptions {
-  environment: string;
-  miniflare?: Partial<UserMiniflareOptions>;
+  entry: string;
+  environment?: string;
+  miniflare?: Partial<MiniflareOptions>;
 }
 
+type MiniflarePluginOptionsFull = NoOptionals<MiniflarePluginOptions>;
+
 interface MiniflarePluginContext {
+  options: NoOptionals<MiniflarePluginOptions>;
   miniflare: Miniflare;
 }
 
@@ -34,8 +36,8 @@ const readModule = (id: string) =>
   readFile(fileURLToPath(importMetaResolve(id, import.meta.url)), "utf8");
 
 const createMiniflareOptions = async ({
-  miniflare: userOptions = {},
-}: MiniflarePluginOptions): Promise<MiniflareOptions> => {
+  miniflare: userOptions,
+}: MiniflarePluginOptionsFull): Promise<MiniflareOptions> => {
   // todo(justinvdm, 2024-12-10): Figure out what we can get from wrangler's unstable_getMiniflareWorkerOptions(),
   // and if it means we can avoid having both a wrangler.toml and miniflare config
 
@@ -58,7 +60,7 @@ const createMiniflareOptions = async ({
   return {
     ...userOptions,
     workers: [worker],
-  };
+  } as MiniflareOptions & SharedOptions & SourcelessWorkerOptions;
 };
 
 const createDevEnv = async ({
@@ -90,18 +92,25 @@ const createDevEnv = async ({
 };
 
 const createPluginContext = async ({
-  pluginOptions,
+  pluginOptions: givenPluginOptions,
 }: {
   pluginOptions: MiniflarePluginOptions;
-}) => {
-  const miniflare = new Miniflare(await createMiniflareOptions(pluginOptions));
+}): Promise<MiniflarePluginContext> => {
+  const options = {
+    environment: 'worker',
+    miniflare: {},
+    ...givenPluginOptions
+  }
+
+  const miniflare = new Miniflare(await createMiniflareOptions(options));
 
   return {
     miniflare,
+    options
   };
 };
 
-const createServerMiddleware = ({ miniflare }: MiniflarePluginContext) => {
+const createServerMiddleware = ({ miniflare, options: { entry } }:  MiniflarePluginContext) => {
   const miniflarePluginMiddleware: Connect.NextHandleFunction = async (
     request,
     response,
@@ -123,8 +132,8 @@ const createServerMiddleware = ({ miniflare }: MiniflarePluginContext) => {
 export const miniflarePlugin = async (
   pluginOptions: MiniflarePluginOptions,
 ): Promise<Plugin> => {
-  const { environment } = pluginOptions;
   const pluginContext = await createPluginContext({ pluginOptions });
+  const { options: { environment } } = pluginContext;
 
   return {
     name: "rw-reloaded-transform-jsx-script-tags",
