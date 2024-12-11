@@ -17,7 +17,7 @@ import {
   ResolvedConfig,
 } from "vite";
 import { nodeToWebRequest, webToNodeResponse } from "./requestUtils.mjs";
-import { FetchMetadata, NoOptionals } from './types.mjs';
+import { FetchMetadata, NoOptionals } from "./types.mjs";
 
 interface MiniflarePluginOptions {
   entry: string;
@@ -81,7 +81,7 @@ const createDevEnv = async ({
       await super.close();
       await miniflare.dispose();
     }
-  }:
+  }
 
   const devEnv = new MiniflareDevEnvironment(name, config, {
     hot: true,
@@ -97,20 +97,23 @@ const createPluginContext = async ({
   pluginOptions: MiniflarePluginOptions;
 }): Promise<MiniflarePluginContext> => {
   const options = {
-    environment: 'worker',
+    environment: "worker",
     miniflare: {},
-    ...givenPluginOptions
-  }
+    ...givenPluginOptions,
+  };
 
   const miniflare = new Miniflare(await createMiniflareOptions(options));
 
   return {
     miniflare,
-    options
+    options,
   };
 };
 
-const createServerMiddleware = ({ miniflare, options: { entry } }:  MiniflarePluginContext) => {
+const createServerMiddleware = ({
+  miniflare,
+  options: { entry },
+}: MiniflarePluginContext) => {
   const miniflarePluginMiddleware: Connect.NextHandleFunction = async (
     request,
     response,
@@ -118,11 +121,14 @@ const createServerMiddleware = ({ miniflare, options: { entry } }:  MiniflarePlu
     const webRequest = nodeToWebRequest(request);
 
     webRequest.headers.set(
-      'x-vite-fetch',
-      JSON.stringify({ entry } satisfies FetchMetadata)
+      "x-vite-fetch",
+      JSON.stringify({ entry } satisfies FetchMetadata),
     );
 
-    const webResponse = await miniflare.dispatchFetch(webRequest.url, webRequest);
+    const webResponse = await miniflare.dispatchFetch(
+      webRequest.url,
+      webRequest,
+    );
     await webToNodeResponse(webResponse, response);
   };
 
@@ -133,7 +139,9 @@ export const miniflarePlugin = async (
   pluginOptions: MiniflarePluginOptions,
 ): Promise<Plugin> => {
   const pluginContext = await createPluginContext({ pluginOptions });
-  const { options: { environment } } = pluginContext;
+  const {
+    options: { environment },
+  } = pluginContext;
 
   return {
     name: "rw-reloaded-transform-jsx-script-tags",

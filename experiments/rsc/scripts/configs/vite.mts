@@ -112,6 +112,7 @@ export const viteConfigs = {
     mergeConfig(viteConfigs.main(), {
       plugins: [
         miniflarePlugin({
+          entry: RELATIVE_WORKER_PATHNAME,
           environment: "worker",
           miniflare: miniflareConfig,
         }),
