@@ -102,7 +102,8 @@ export const viteConfigs = {
     },
     css: {
       postcss: {
-        plugins: [tailwind, autoprefixer()],
+        // todo(justinvdm, 2024-12-03): Figure out why autoprefixer breaks HMR
+        plugins: [tailwind /*autoprefixer()*/],
       },
     },
   }),
