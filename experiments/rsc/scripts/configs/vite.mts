@@ -97,7 +97,6 @@ export const viteConfigs = {
       },
     },
     server: {
-      middlewareMode: true,
       port: DEV_SERVER_PORT,
     },
     builder: {
