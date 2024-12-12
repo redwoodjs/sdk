@@ -27,6 +27,10 @@ import { useClientLookupPlugin } from "../lib/vitePlugins/useClientLookupPlugin.
 import { transformJsxLinksTagsPlugin } from "../lib/vitePlugins/transformJsxLinksTagsPlugin.mjs";
 import { miniflarePlugin } from "../lib/vitePlugins/miniflarePlugin/plugin.mjs";
 import { miniflareConfig } from "./miniflare.mjs";
+import {
+  asyncSetupPlugin,
+  lazySetupPlugin,
+} from "../lib/vitePlugins/asyncSetupPlugin.mjs";
 
 const MODE =
   process.env.NODE_ENV === "development" ? "development" : "production";
@@ -108,9 +112,10 @@ export const viteConfigs = {
       },
     },
   }),
-  dev: (): InlineConfig =>
+  dev: ({ setup }: { setup: () => Promise<unknown> }): InlineConfig =>
     mergeConfig(viteConfigs.main(), {
       plugins: [
+        asyncSetupPlugin({ setup }),
         miniflarePlugin({
           entry: RELATIVE_WORKER_PATHNAME,
           environment: "worker",
