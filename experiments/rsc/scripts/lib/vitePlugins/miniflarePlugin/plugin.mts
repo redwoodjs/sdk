@@ -269,18 +269,26 @@ export const miniflarePlugin = async (
           ),
         );
 
+      // This isn't a worker update, and the hot check is for this environment
+      // => Short circuit HMR
       if (!isWorkerUpdate && this.environment.name === environment) {
         return [];
       }
 
+      // This is a worker update, but the hot check is for a different environment
+      // => Short circuit HMR
       if (isWorkerUpdate && this.environment.name !== environment) {
         return [];
       }
 
+      // This isn't worker update, and the hot check is for a different environment
+      // => Pass on the HMR check to the next plugin
       if (!isWorkerUpdate && this.environment.name !== environment) {
         return;
       }
 
+      // This is a worker update, and the hot check is for this environment
+      // => Notify for HMR update, then short circuit HMR
       if (isWorkerUpdate && this.environment.name === environment) {
         const shortName = getShortName(ctx.file, ctx.server.config.root);
 
