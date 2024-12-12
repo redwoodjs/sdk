@@ -256,9 +256,21 @@ export const miniflarePlugin = async (
         return;
       }
 
-      if (process.env.VERBOSE) {
-        console.log("[hmr]", ctx.file);
+      const module = ctx.server.moduleGraph.getModuleById(ctx.file);
+
+      const shouldUpdateWorker =
+        ctx.file === entry ||
+        ctx.modules.some((module) =>
+          Array.from(module.importers).some(
+            (importer) => importer.file === entry,
+          ),
+        );
+
+      if (!shouldUpdateWorker) {
+        return;
       }
+
+      console.log("[worker:hmr]", ctx.file);
 
       ctx.server.environments.client.hot.send({
         type: "custom",
