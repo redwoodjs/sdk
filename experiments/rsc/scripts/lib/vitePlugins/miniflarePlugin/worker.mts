@@ -89,12 +89,21 @@ export class RunnerWorker
 
 export const createEvaluator = (env: RunnerEnv): ModuleEvaluator => ({
   async runInlinedModule(context, transformed, module) {
-    const codeDefinition = `'use strict';async (${Object.keys(context).join(
+    // todo(justinvdm, 12 Dec 2024): Prevent external modules from being evaluated here
+
+    const code = `'use strict';async (${Object.keys(context).join(
       ",",
-    )})=>{{`;
-    const code = `${codeDefinition}${transformed}\n}}`;
+    )})=>{{${transformed}\n\n}}`;
+
     const fn = env.__viteUnsafeEval.eval(code, module.id);
-    await fn(...Object.values(context));
+
+    try {
+      await fn(...Object.values(context));
+    } catch (e) {
+      console.error("Error running", module.id);
+      throw e;
+    }
+
     Object.freeze(context[ssrModuleExportsKey]);
   },
   async runExternalModule(filepath) {

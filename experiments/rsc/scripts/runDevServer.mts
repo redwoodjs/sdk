@@ -10,7 +10,7 @@ const setup = async () => {
   await $`npx tsx ./scripts/buildVendorBundles.mts`;
 
   // context(justinvdm, 2024-11-28): Types don't affect runtime, so we don't need to block the dev server on them
-  void codegenTypes();
+  //void codegenTypes();
 };
 
 const runDevServer = async () => {

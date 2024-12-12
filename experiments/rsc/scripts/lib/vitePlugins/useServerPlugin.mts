@@ -22,13 +22,13 @@ export const useServerPlugin = (): Plugin => ({
 
       if (this.environment.name === "worker") {
         // TODO: Rewrite the code, but register the "function" against
-        s.prepend(`\
+        s.prepend(`
 import { registerServerReference } from "/src/register/worker.ts";
 `);
         const [_, exports] = parse(code);
 
         for (const e of exports) {
-          s.append(`\
+          s.append(`
 registerServerReference(${e.ln}, ${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)});
 `);
         }

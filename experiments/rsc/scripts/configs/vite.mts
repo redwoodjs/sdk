@@ -52,7 +52,7 @@ export const viteConfigs = {
     plugins: [
       commonjsPlugin({
         filter: (id) => {
-          return id.includes("react-server-dom-webpack-server.edge");
+          return id.includes("react") || id.includes("kysely-d1");
         },
       }),
       useServerPlugin(),
