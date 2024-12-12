@@ -51,9 +51,8 @@ export const viteConfigs = {
     },
     plugins: [
       commonjsPlugin({
-        filter: (id) => {
-          return id.includes("react") || id.includes("kysely-d1");
-        },
+        filter: (id) =>
+          ["react", "kysely-d1", "lodash"].some((dep) => id.includes(dep)),
       }),
       useServerPlugin(),
       useClientPlugin(),
