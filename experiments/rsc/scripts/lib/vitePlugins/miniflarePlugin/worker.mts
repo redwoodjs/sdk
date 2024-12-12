@@ -93,7 +93,7 @@ export const createEvaluator = (env: RunnerEnv): ModuleEvaluator => ({
       ",",
     )})=>{{`;
     const code = `${codeDefinition}${transformed}\n}}`;
-    const fn = env.__unsafeEval.eval(code, module.id);
+    const fn = env.__viteUnsafeEval.eval(code, module.id);
     await fn(...Object.values(context));
     Object.freeze(context[ssrModuleExportsKey]);
   },
