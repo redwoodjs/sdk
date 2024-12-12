@@ -162,14 +162,17 @@ const createDevEnv = async ({
   const { hotDispatch, transport } = createTransport({ runnerWorker });
 
   const dispatchFetch: DispatchFetch = async (input, init = {}) => {
-    init.headers = new Headers(init.headers as HeadersInit | undefined);
+    const headers = new Headers(init.headers as HeadersInit | undefined);
 
-    init.headers.set(
+    headers.set(
       "x-vite-fetch",
       JSON.stringify({ entry } satisfies FetchMetadata),
     );
 
-    return await miniflare.dispatchFetch(input, init);
+    return await miniflare.dispatchFetch(input, {
+      ...init,
+      headers,
+    });
   };
 
   class MiniflareDevEnvironment extends DevEnvironment {
