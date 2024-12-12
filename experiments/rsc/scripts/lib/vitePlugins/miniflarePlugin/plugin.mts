@@ -50,9 +50,7 @@ const readModule = (id: string) =>
 
 const readTsModule = async (id: string) => {
   const tsCode = await readModule(id);
-  const r = compileTsModule(tsCode);
-  console.log("##", r);
-  return r;
+  return compileTsModule(tsCode);
 };
 
 const createMiniflareOptions = async ({
@@ -71,14 +69,14 @@ const createMiniflareOptions = async ({
     modules: [
       {
         type: "ESModule",
-        path: "vite/module-runner",
-        // todo(justinvdm, 2024-12-10): Figure out if we need to avoid new AsyncFunction during import side effect
-        contents: await readModule("vite/module-runner"),
+        path: "__vite_worker__",
+        contents: await readTsModule("./worker.mts"),
       },
       {
         type: "ESModule",
-        path: "__vite_worker__",
-        contents: await readTsModule("./worker.mts"),
+        path: "vite/module-runner",
+        // todo(justinvdm, 2024-12-10): Figure out if we need to avoid new AsyncFunction during import side effect
+        contents: await readModule("vite/module-runner"),
       },
     ],
     durableObjects: {
