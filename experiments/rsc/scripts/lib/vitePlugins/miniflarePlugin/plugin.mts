@@ -165,17 +165,12 @@ const createDevEnv = async ({
   const { hotDispatch, transport } = createTransport({ runnerWorker });
 
   const dispatchFetch: DevEnvApi["dispatchFetch"] = async (request) => {
-    const headers = new Headers(request.headers as HeadersInit | undefined);
-
-    headers.set(
+    request.headers.set(
       "x-vite-fetch",
       JSON.stringify({ entry } satisfies FetchMetadata),
     );
 
-    return await runnerWorker.fetch(request.url, {
-      ...request,
-      headers,
-    });
+    return await runnerWorker.fetch(request.url, request);
   };
 
   class MiniflareDevEnvironment extends DevEnvironment {
@@ -255,12 +250,13 @@ export const miniflarePlugin = async (
         },
       },
     }),
-    configureServer: (server) => () =>
+    configureServer: (server) => () => {
       server.middlewares.use(
         createServerMiddleware(
           (server.environments[environment] as unknown as { api: DevEnvApi })
             .api,
         ),
-      ),
+      );
+    },
   };
 };
