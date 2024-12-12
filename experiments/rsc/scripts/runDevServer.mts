@@ -1,5 +1,4 @@
 import { createServer as createViteServer } from "vite";
-import "dotenv/config";
 
 import { viteConfigs } from "./configs/vite.mjs";
 import { codegenTypes } from "./codegenTypes.mjs";
