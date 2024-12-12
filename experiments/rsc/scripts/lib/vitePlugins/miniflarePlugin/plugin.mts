@@ -10,6 +10,7 @@ import {
   SharedOptions,
   WorkerOptions,
 } from "miniflare";
+import { unstable_readConfig } from "wrangler";
 import type { SourcelessWorkerOptions } from "wrangler";
 import {
   Connect,

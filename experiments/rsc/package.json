@@ -59,7 +59,7 @@
     "vite": "^6.0.0",
     "vite-plugin-commonjs": "^0.10.4",
     "vite-plugin-dts": "^4.3.0",
-    "wrangler": "^3.91.0"
+    "wrangler": "^3.95.0"
   },
   "pnpm": {
     "overrides": {
