@@ -102,7 +102,7 @@ export const viteConfigs = {
     },
     css: {
       postcss: {
-        plugins: [tailwind, autoprefixer],
+        plugins: [tailwind, autoprefixer()],
       },
     },
   }),
