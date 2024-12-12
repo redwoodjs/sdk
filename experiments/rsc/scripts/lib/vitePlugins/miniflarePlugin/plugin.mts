@@ -1,7 +1,10 @@
 import { readFile } from "node:fs/promises";
 import { EventEmitter } from "node:events";
 import { fileURLToPath } from "node:url";
+import { relative } from "node:path";
+
 import { resolve as importMetaResolve } from "import-meta-resolve";
+import colors from "picocolors";
 
 import {
   mergeWorkerOptions,
@@ -10,7 +13,6 @@ import {
   SharedOptions,
   WorkerOptions,
 } from "miniflare";
-import { unstable_readConfig } from "wrangler";
 import type { SourcelessWorkerOptions } from "wrangler";
 import {
   Connect,
@@ -252,11 +254,9 @@ export const miniflarePlugin = async (
     }),
     hotUpdate(ctx) {
       // todo(justinvdm, 12 Dec 2024): Skip client references
-      if (this.environment.name !== environment) {
+      if (this.environment.name === environment) {
         return;
       }
-
-      const module = ctx.server.moduleGraph.getModuleById(ctx.file);
 
       const shouldUpdateWorker =
         ctx.file === entry ||
@@ -270,7 +270,15 @@ export const miniflarePlugin = async (
         return;
       }
 
-      console.log("[worker:hmr]", ctx.file);
+      const shortName = getShortName(ctx.file, ctx.server.config.root);
+
+      this.environment.logger.info(
+        colors.green(`worker update `) + colors.dim(shortName),
+        {
+          clear: true,
+          timestamp: true,
+        },
+      );
 
       ctx.server.environments.client.hot.send({
         type: "custom",
@@ -292,3 +300,6 @@ export const miniflarePlugin = async (
     },
   };
 };
+
+const getShortName = (file: string, root: string): string =>
+  file.startsWith(root) ? relative(root, file) : file;

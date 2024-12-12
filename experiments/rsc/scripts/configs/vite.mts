@@ -31,7 +31,7 @@ export const viteConfigs = {
   main: (): InlineConfig => ({
     appType: "custom",
     mode: MODE,
-    logLevel: process.env.VERBOSE ? "info" : "warn",
+    logLevel: "info",
     build: {
       minify: MODE !== "development",
       sourcemap: true,
