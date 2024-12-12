@@ -279,6 +279,8 @@ export const miniflarePlugin = async (
           file: ctx.file,
         },
       });
+
+      return [];
     },
     configureServer: (server) => () => {
       server.middlewares.use(

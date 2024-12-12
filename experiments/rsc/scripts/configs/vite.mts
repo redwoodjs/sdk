@@ -1,9 +1,4 @@
-import {
-  type InlineConfig,
-  type Plugin,
-  type ViteDevServer,
-  mergeConfig,
-} from "vite";
+import { type InlineConfig, mergeConfig } from "vite";
 import { resolve } from "node:path";
 import {
   CLIENT_DIST_DIR,
@@ -18,6 +13,7 @@ import {
 
 import tailwind from "tailwindcss";
 import autoprefixer from "autoprefixer";
+import reactPlugin from "@vitejs/plugin-react";
 
 import { transformJsxScriptTagsPlugin } from "../lib/vitePlugins/transformJsxScriptTagsPlugin.mjs";
 import { useServerPlugin } from "../lib/vitePlugins/useServerPlugin.mjs";
@@ -46,7 +42,7 @@ export const viteConfigs = {
       ),
       "process.env.NODE_ENV": JSON.stringify(MODE),
     },
-    plugins: [useServerPlugin(), useClientPlugin()],
+    plugins: [reactPlugin(), useServerPlugin(), useClientPlugin()],
     environments: {
       client: {
         consumer: "client",
@@ -95,6 +91,7 @@ export const viteConfigs = {
       },
     },
     server: {
+      hmr: true,
       port: DEV_SERVER_PORT,
     },
     builder: {
