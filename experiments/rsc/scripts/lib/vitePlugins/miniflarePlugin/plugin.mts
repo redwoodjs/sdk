@@ -42,7 +42,7 @@ type HotDispatcher = (
 ) => void;
 
 type DevEnvApi = {
-  dispatchFetch: DispatchFetch;
+  dispatchFetch: (request: Request) => Promise<Response>;
 };
 
 const readModule = (id: string) =>
@@ -161,16 +161,16 @@ const createDevEnv = async ({
 
   const { hotDispatch, transport } = createTransport({ runnerWorker });
 
-  const dispatchFetch: DispatchFetch = async (input, init = {}) => {
-    const headers = new Headers(init.headers as HeadersInit | undefined);
+  const dispatchFetch: DevEnvApi["dispatchFetch"] = async (request) => {
+    const headers = new Headers(request.headers as HeadersInit | undefined);
 
     headers.set(
       "x-vite-fetch",
       JSON.stringify({ entry } satisfies FetchMetadata),
     );
 
-    return await miniflare.dispatchFetch(input, {
-      ...init,
+    return await runnerWorker.fetch(request.url, {
+      ...request,
       headers,
     });
   };
@@ -202,7 +202,7 @@ const createServerMiddleware = ({ dispatchFetch }: DevEnvApi) => {
     response,
   ) => {
     const webRequest = nodeToWebRequest(request);
-    const webResponse = await dispatchFetch(webRequest.url, webRequest);
+    const webResponse = await dispatchFetch(webRequest);
     await webToNodeResponse(webResponse, response);
   };
 
