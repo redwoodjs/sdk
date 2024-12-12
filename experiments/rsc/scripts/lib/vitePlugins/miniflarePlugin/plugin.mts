@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { EventEmitter } from "node:events";
 import { fileURLToPath } from "node:url";
 import { resolve as importMetaResolve } from "import-meta-resolve";
+import ts from "typescript";
 
 import {
   DispatchFetch,
@@ -26,6 +27,7 @@ import {
   RunnerWorkerApi,
   ServiceBindings,
 } from "./types.mjs";
+import { compileTsModule } from "../../compileTsModule.mjs";
 
 interface MiniflarePluginOptions {
   entry: string;
@@ -54,6 +56,11 @@ interface MiniflarePluginContext {
 const readModule = (id: string) =>
   readFile(fileURLToPath(importMetaResolve(id, import.meta.url)), "utf8");
 
+const readTsModule = async (id: string) => {
+  const tsCode = await readModule(id);
+  return compileTsModule(tsCode);
+};
+
 const createMiniflareOptions = async ({
   serviceBindings,
   options: { miniflare: userOptions },
@@ -75,7 +82,7 @@ const createMiniflareOptions = async ({
       {
         type: "ESModule",
         path: "__vite_worker__",
-        contents: await readModule("./worker.mjs"),
+        contents: await readTsModule("./worker.mts"),
       },
     ],
     durableObjects: {
