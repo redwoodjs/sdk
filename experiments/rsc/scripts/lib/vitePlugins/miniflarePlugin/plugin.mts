@@ -2,7 +2,6 @@ import { readFile } from "node:fs/promises";
 import { EventEmitter } from "node:events";
 import { fileURLToPath } from "node:url";
 import { resolve as importMetaResolve } from "import-meta-resolve";
-import ts from "typescript";
 
 import {
   DispatchFetch,
@@ -46,19 +45,14 @@ type DevEnvApi = {
   dispatchFetch: DispatchFetch;
 };
 
-interface MiniflarePluginContext {
-  options: NoOptionals<MiniflarePluginOptions>;
-  miniflare: Miniflare;
-  runnerWorker: RunnerWorkerApi;
-  hotDispatch?: HotDispatcher;
-}
-
 const readModule = (id: string) =>
   readFile(fileURLToPath(importMetaResolve(id, import.meta.url)), "utf8");
 
 const readTsModule = async (id: string) => {
   const tsCode = await readModule(id);
-  return compileTsModule(tsCode);
+  const r = compileTsModule(tsCode);
+  console.log("##", r);
+  return r;
 };
 
 const createMiniflareOptions = async ({

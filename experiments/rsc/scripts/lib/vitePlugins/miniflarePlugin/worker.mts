@@ -82,7 +82,7 @@ export class RunnerWorker
   }
 }
 
-export async function callBinding<Result>({
+async function callBinding<Result>({
   binding,
   payload,
 }: {
