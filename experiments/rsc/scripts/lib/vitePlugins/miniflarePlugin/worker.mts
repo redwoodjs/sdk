@@ -3,6 +3,8 @@ import { FetchMetadata, RunnerEnv, RunnerRpc } from "./types.mjs";
 import {
   ModuleEvaluator,
   ModuleRunner,
+  ModuleRunnerOptions,
+  ssrModuleExportsKey,
   type ModuleRunnerTransportHandlers,
 } from "vite/module-runner";
 import { HotPayload } from "vite";
@@ -57,7 +59,7 @@ export class RunnerWorker
   }
 
   async initRunner() {
-    this.#runner = new ModuleRunner({
+    const options: ModuleRunnerOptions = {
       root: this.env.__viteRoot,
       sourcemapInterceptor: "prepareStackTrace",
       hmr: true,
@@ -73,7 +75,9 @@ export class RunnerWorker
         send: (payload) =>
           callBinding({ binding: this.env.__viteSendToServer, payload }),
       },
-    });
+    };
+
+    this.#runner = new ModuleRunner(options, createEvaluator(this.env));
   }
 
   async sendToRunner(payload: HotPayload): Promise<void> {
@@ -89,15 +93,9 @@ export const createEvaluator = (env: RunnerEnv): ModuleEvaluator => ({
       ",",
     )})=>{{`;
     const code = `${codeDefinition}${transformed}\n}}`;
-    try {
-      const fn = env.__VITE_UNSAFE_EVAL__.eval(code, module.id);
-      await fn(...Object.values(context));
-      Object.freeze(context.__vite_ssr_exports__);
-    } catch (e) {
-      console.error("error running", module.id);
-      console.error(e instanceof Error ? e.stack : e);
-      throw e;
-    }
+    const fn = env.__unsafeEval.eval(code, module.id);
+    await fn(...Object.values(context));
+    Object.freeze(context[ssrModuleExportsKey]);
   },
   async runExternalModule(filepath) {
     return import(filepath);
