@@ -62,9 +62,11 @@ const readTsModule = async (id: string) => {
 };
 
 const createMiniflareOptions = async ({
+  config,
   serviceBindings,
   options: { miniflare: userOptions },
 }: {
+  config: ResolvedConfig;
   serviceBindings: ServiceBindings;
   options: MiniflarePluginOptionsFull;
 }): Promise<MiniflareOptions> => {
@@ -89,6 +91,9 @@ const createMiniflareOptions = async ({
       __viteRunner: "RunnerWorker",
     },
     serviceBindings,
+    bindings: {
+      __viteRoot: config.root,
+    },
   };
 
   return {
@@ -153,6 +158,7 @@ const createDevEnv = async ({
   const miniflare = new Miniflare(
     await createMiniflareOptions({
       options,
+      config,
       serviceBindings,
     }),
   );
