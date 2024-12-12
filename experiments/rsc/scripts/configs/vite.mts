@@ -33,6 +33,7 @@ const MODE =
 
 export const viteConfigs = {
   main: (): InlineConfig => ({
+    appType: "custom",
     mode: MODE,
     logLevel: process.env.VERBOSE ? "info" : "warn",
     build: {
@@ -67,6 +68,12 @@ export const viteConfigs = {
         },
         optimizeDeps: {
           noDiscovery: false,
+          include: [
+            "react",
+            "react/jsx-runtime",
+            "react/jsx-dev-runtime",
+            "react-dom/server.edge",
+          ],
         },
         build: {
           outDir: WORKER_DIST_DIR,

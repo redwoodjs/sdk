@@ -20,4 +20,6 @@ export const RELATIVE_CLIENT_PATHNAME = resolve(SRC_DIR, "client.tsx");
 export const MANIFEST_PATH = resolve(CLIENT_DIST_DIR, ".vite", "manifest.json");
 
 export const D1_PERSIST_PATH = resolve(ROOT_DIR, ".wrangler/state/v3/d1");
-export const R2_PERSIST_PATH = resolve(ROOT_DIR, ".wrangler/state/v3/r2")
+export const R2_PERSIST_PATH = resolve(ROOT_DIR, ".wrangler/state/v3/r2");
+
+export const WRANGLER_TOML_PATH = resolve(ROOT_DIR, "wrangler.toml");

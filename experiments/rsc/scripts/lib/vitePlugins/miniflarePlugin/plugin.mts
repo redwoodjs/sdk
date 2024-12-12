@@ -4,7 +4,7 @@ import { fileURLToPath } from "node:url";
 import { resolve as importMetaResolve } from "import-meta-resolve";
 
 import {
-  DispatchFetch,
+  mergeWorkerOptions,
   Miniflare,
   MiniflareOptions,
   SharedOptions,
@@ -65,7 +65,7 @@ const createMiniflareOptions = async ({
   // todo(justinvdm, 2024-12-10): Figure out what we can get from wrangler's unstable_getMiniflareWorkerOptions(),
   // and if it means we can avoid having both a wrangler.toml and miniflare config
 
-  const worker: WorkerOptions = {
+  const runnerOptions: WorkerOptions = {
     modules: [
       {
         type: "ESModule",
@@ -89,9 +89,11 @@ const createMiniflareOptions = async ({
     },
   };
 
+  const workerOptions = mergeWorkerOptions(userOptions, runnerOptions);
+
   return {
     ...userOptions,
-    workers: [worker],
+    workers: [workerOptions],
   } as MiniflareOptions & SharedOptions & SourcelessWorkerOptions;
 };
 
@@ -218,7 +220,7 @@ export const miniflarePlugin = async (
     ...givenOptions,
   };
 
-  const { environment } = options;
+  const { environment, entry } = options;
 
   return {
     name: "rw-reloaded-transform-jsx-script-tags",
@@ -232,6 +234,22 @@ export const miniflarePlugin = async (
                 config,
                 options,
               }),
+          },
+          keepProcessEnv: false,
+          optimizeDeps: {
+            // context(justinvdm, 12 Dec 2024): Prevents `import { createRequire } from "node:module"` for pre-bundled CJS deps
+            esbuildOptions: {
+              platform: "browser",
+              banner: undefined,
+            },
+          },
+          build: {
+            ssr: true,
+            rollupOptions: {
+              input: {
+                index: entry,
+              },
+            },
           },
         },
       },
