@@ -22,15 +22,11 @@ import autoprefixer from "autoprefixer";
 import { transformJsxScriptTagsPlugin } from "../lib/vitePlugins/transformJsxScriptTagsPlugin.mjs";
 import { useServerPlugin } from "../lib/vitePlugins/useServerPlugin.mjs";
 import { useClientPlugin } from "../lib/vitePlugins/useClientPlugin.mjs";
-import commonjsPlugin from "vite-plugin-commonjs";
 import { useClientLookupPlugin } from "../lib/vitePlugins/useClientLookupPlugin.mjs";
 import { transformJsxLinksTagsPlugin } from "../lib/vitePlugins/transformJsxLinksTagsPlugin.mjs";
 import { miniflarePlugin } from "../lib/vitePlugins/miniflarePlugin/plugin.mjs";
 import { miniflareConfig } from "./miniflare.mjs";
-import {
-  asyncSetupPlugin,
-  lazySetupPlugin,
-} from "../lib/vitePlugins/asyncSetupPlugin.mjs";
+import { asyncSetupPlugin } from "../lib/vitePlugins/asyncSetupPlugin.mjs";
 
 const MODE =
   process.env.NODE_ENV === "development" ? "development" : "production";
@@ -49,14 +45,7 @@ export const viteConfigs = {
       ),
       "process.env.NODE_ENV": JSON.stringify(MODE),
     },
-    plugins: [
-      commonjsPlugin({
-        filter: (id) =>
-          ["react", "kysely-d1", "lodash"].some((dep) => id.includes(dep)),
-      }),
-      useServerPlugin(),
-      useClientPlugin(),
-    ],
+    plugins: [useServerPlugin(), useClientPlugin()],
     environments: {
       client: {
         consumer: "client",
@@ -75,6 +64,9 @@ export const viteConfigs = {
         resolve: {
           conditions: ["module", "workerd", "react-server"],
           noExternal: true,
+        },
+        optimizeDeps: {
+          noDiscovery: false,
         },
         build: {
           outDir: WORKER_DIST_DIR,

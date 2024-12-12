@@ -89,7 +89,15 @@ export class RunnerWorker
 
 export const createEvaluator = (env: RunnerEnv): ModuleEvaluator => ({
   async runInlinedModule(context, transformed, module) {
-    // todo(justinvdm, 12 Dec 2024): Prevent external modules from being evaluated here
+    if (
+      module.file.includes("/node_modules") &&
+      !module.file.includes("/node_modules/.vite")
+    ) {
+      throw new Error(
+        `[Error] Trying to import non-prebundled module (only prebundled modules are allowed): ${module.id}` +
+          "\n\n(have you excluded the module via `optimizeDeps.exclude`?)",
+      );
+    }
 
     const code = `'use strict';async (${Object.keys(context).join(
       ",",
@@ -107,7 +115,16 @@ export const createEvaluator = (env: RunnerEnv): ModuleEvaluator => ({
     Object.freeze(context[ssrModuleExportsKey]);
   },
   async runExternalModule(filepath) {
-    return import(filepath);
+    if (
+      filepath.includes("/node_modules") &&
+      !filepath.includes("/node_modules/.vite")
+    ) {
+      throw new Error(
+        `[Error] Trying to import non-prebundled module (only prebundled modules are allowed): ${filepath}` +
+          "\n\n(have you externalized the module via `resolve.external`?)",
+      );
+    }
+    return import(filepath.replace(/^file:\/\//, ""));
   },
 });
 
