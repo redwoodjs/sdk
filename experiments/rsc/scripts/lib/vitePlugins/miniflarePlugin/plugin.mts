@@ -250,6 +250,24 @@ export const miniflarePlugin = async (
         },
       },
     }),
+    hotUpdate(ctx) {
+      // todo(justinvdm, 12 Dec 2024): Skip client references
+      if (this.environment.name !== environment) {
+        return;
+      }
+
+      if (process.env.VERBOSE) {
+        console.log("[hmr]", ctx.file);
+      }
+
+      ctx.server.environments.client.hot.send({
+        type: "custom",
+        event: "rsc:update",
+        data: {
+          file: ctx.file,
+        },
+      });
+    },
     configureServer: (server) => () => {
       server.middlewares.use(
         createServerMiddleware(
