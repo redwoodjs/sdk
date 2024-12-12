@@ -254,41 +254,54 @@ export const miniflarePlugin = async (
     }),
     hotUpdate(ctx) {
       // todo(justinvdm, 12 Dec 2024): Skip client references
-      if (this.environment.name === environment) {
-        return;
-      }
 
-      const shouldUpdateWorker =
+      const modules = Array.from(
+        ctx.server.environments[environment].moduleGraph.getModulesByFile(
+          ctx.file,
+        ) ?? [],
+      );
+
+      const isWorkerUpdate =
         ctx.file === entry ||
-        ctx.modules.some((module) =>
+        modules.some((module) =>
           Array.from(module.importers).some(
             (importer) => importer.file === entry,
           ),
         );
 
-      if (!shouldUpdateWorker) {
+      if (!isWorkerUpdate && this.environment.name === environment) {
+        return [];
+      }
+
+      if (isWorkerUpdate && this.environment.name !== environment) {
+        return [];
+      }
+
+      if (!isWorkerUpdate && this.environment.name !== environment) {
         return;
       }
 
-      const shortName = getShortName(ctx.file, ctx.server.config.root);
+      if (isWorkerUpdate && this.environment.name === environment) {
+        const shortName = getShortName(ctx.file, ctx.server.config.root);
 
-      this.environment.logger.info(
-        colors.green(`worker update `) + colors.dim(shortName),
-        {
-          clear: true,
-          timestamp: true,
-        },
-      );
+        this.environment.logger.info(
+          colors.green(`worker update `) + colors.dim(shortName),
+          {
+            clear: true,
+            timestamp: true,
+          },
+        );
 
-      ctx.server.environments.client.hot.send({
-        type: "custom",
-        event: "rsc:update",
-        data: {
-          file: ctx.file,
-        },
-      });
+        ctx.server.environments.client.hot.send({
+          type: "custom",
+          event: "rsc:update",
+          data: {
+            file: ctx.file,
+          },
+        });
 
-      return [];
+        return [];
+      }
     },
     configureServer: (server) => () => {
       server.middlewares.use(
