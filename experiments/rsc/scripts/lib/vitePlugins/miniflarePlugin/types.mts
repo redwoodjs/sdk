@@ -17,6 +17,9 @@ export type EnvServiceBindings = Record<
 
 export type RunnerEnv = {
   __viteRoot: string;
+  __unsafeEval: {
+    eval: (code: string, filename?: string) => any;
+  };
 } & EnvServiceBindings;
 
 export type FetchMetadata = {

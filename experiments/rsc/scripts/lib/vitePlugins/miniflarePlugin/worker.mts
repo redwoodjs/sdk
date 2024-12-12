@@ -1,6 +1,7 @@
 import { DurableObject } from "cloudflare:workers";
 import { FetchMetadata, RunnerEnv, RunnerRpc } from "./types.mjs";
 import {
+  ModuleEvaluator,
   ModuleRunner,
   type ModuleRunnerTransportHandlers,
 } from "vite/module-runner";
@@ -81,6 +82,27 @@ export class RunnerWorker
     this.#handlers?.onMessage(payload);
   }
 }
+
+export const createEvaluator = (env: RunnerEnv): ModuleEvaluator => ({
+  async runInlinedModule(context, transformed, module) {
+    const codeDefinition = `'use strict';async (${Object.keys(context).join(
+      ",",
+    )})=>{{`;
+    const code = `${codeDefinition}${transformed}\n}}`;
+    try {
+      const fn = env.__VITE_UNSAFE_EVAL__.eval(code, module.id);
+      await fn(...Object.values(context));
+      Object.freeze(context.__vite_ssr_exports__);
+    } catch (e) {
+      console.error("error running", module.id);
+      console.error(e instanceof Error ? e.stack : e);
+      throw e;
+    }
+  },
+  async runExternalModule(filepath) {
+    return import(filepath);
+  },
+});
 
 async function callBinding<Result>({
   binding,

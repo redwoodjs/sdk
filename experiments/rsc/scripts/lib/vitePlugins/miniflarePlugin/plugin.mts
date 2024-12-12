@@ -79,6 +79,7 @@ const createMiniflareOptions = async ({
         contents: await readModule("vite/module-runner"),
       },
     ],
+    unsafeEvalBinding: "__viteUnsafeEval",
     durableObjects: {
       __viteRunner: "RunnerWorker",
     },
