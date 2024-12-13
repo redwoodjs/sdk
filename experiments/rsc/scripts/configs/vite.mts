@@ -24,10 +24,7 @@ import { transformJsxLinksTagsPlugin } from "../lib/vitePlugins/transformJsxLink
 import { miniflarePlugin } from "../lib/vitePlugins/miniflarePlugin/plugin.mjs";
 import { miniflareConfig } from "./miniflare.mjs";
 import { asyncSetupPlugin } from "../lib/vitePlugins/asyncSetupPlugin.mjs";
-import {
-  onUpdatePlugin,
-  restartPlugin,
-} from "../lib/vitePlugins/restartPlugin.mjs";
+import { restartPlugin } from "../lib/vitePlugins/restartPlugin.mjs";
 
 const MODE =
   process.env.NODE_ENV === "development" ? "development" : "production";
@@ -118,6 +115,13 @@ export const viteConfigs = {
         restartPlugin({
           filter: (filepath: string) =>
             !filepath.endsWith(".d.ts") &&
+            (filepath.endsWith(".ts") ||
+              filepath.endsWith(".tsx") ||
+              filepath.endsWith(".mts") ||
+              filepath.endsWith(".js") ||
+              filepath.endsWith(".mjs") ||
+              filepath.endsWith(".jsx") ||
+              filepath.endsWith(".json")) &&
             (filepath.startsWith(resolve(ROOT_DIR, "scripts")) ||
               dirname(filepath) === ROOT_DIR),
         }),
