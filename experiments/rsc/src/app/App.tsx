@@ -1,3 +1,5 @@
+import stylesUrl from "./style.css?url";
+
 const vitePreamble = `\
   import RefreshRuntime from "/@react-refresh"
   RefreshRuntime.injectIntoGlobalHook(window)
@@ -10,14 +12,14 @@ export const App: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <html lang="en">
     <head>
       <title>RSC FTW</title>
-      {import.meta.env.DEV ? (
+      {import.meta.env.DEV && !process.env.PREVIEW ? (
         <script
           type="module"
           dangerouslySetInnerHTML={{ __html: vitePreamble }}
         />
       ) : null}
       <script type="module" src="/src/client.tsx"></script>
-      <link rel="stylesheet" href="/src/app/style.css" />
+      <link rel="stylesheet" href={stylesUrl} />
     </head>
     <body>
       <div id="root">{children}</div>

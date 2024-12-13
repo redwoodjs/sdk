@@ -1,6 +1,6 @@
 import { createBuilder } from "vite";
 import { viteConfigs } from "./configs/vite.mjs";
-import { $ } from "./lib/$.mjs";
+import { $, $sh } from "./lib/$.mjs";
 import { findFilesContainingUseClient } from "./lib/findFilesContainingUseClient.mjs";
 
 export const build = async () => {
@@ -18,6 +18,11 @@ export const build = async () => {
   );
 
   await builder.buildApp();
+
+  await $sh`mkdir -p dist/assets`;
+  await $sh`mv dist/{client,worker}/assets/* dist/assets/`;
+  await $sh`rmdir dist/{client,worker}/assets`;
+
   console.log("Build done!");
   console.log();
 };
