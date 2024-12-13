@@ -9,12 +9,15 @@ async function init() {
   const callServer: CallServerCallback = async (id, args) => {
     const url = new URL(window.location.href);
     url.searchParams.set("__rsc", "");
-    url.searchParams.set("__rsc_action_id", id);
+
+    if (id != null) {
+      url.searchParams.set("__rsc_action_id", id);
+    }
 
     const streamData = createFromFetch(
       fetch(url, {
         method: "POST",
-        body: await encodeReply(args),
+        body: args != null ? await encodeReply(args) : null,
       }),
       { callServer: globalThis.__rsc_callServer },
     );
@@ -54,6 +57,13 @@ async function init() {
   }
 
   hydrateRoot(rootEl, <Content />);
+
+  if (import.meta.hot) {
+    import.meta.hot.on("rsc:update", (e) => {
+      console.log("[rw-reloaded] hot update", e.file);
+      callServer(null, null);
+    });
+  }
 }
 
 init();

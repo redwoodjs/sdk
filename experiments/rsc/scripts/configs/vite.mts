@@ -1,9 +1,4 @@
-import {
-  type InlineConfig,
-  type Plugin,
-  type ViteDevServer,
-  mergeConfig,
-} from "vite";
+import { type InlineConfig, mergeConfig } from "vite";
 import { resolve } from "node:path";
 import {
   CLIENT_DIST_DIR,
@@ -18,25 +13,25 @@ import {
 
 import tailwind from "tailwindcss";
 import autoprefixer from "autoprefixer";
+import reactPlugin from "@vitejs/plugin-react";
 
 import { transformJsxScriptTagsPlugin } from "../lib/vitePlugins/transformJsxScriptTagsPlugin.mjs";
 import { useServerPlugin } from "../lib/vitePlugins/useServerPlugin.mjs";
 import { useClientPlugin } from "../lib/vitePlugins/useClientPlugin.mjs";
-import commonjsPlugin from "vite-plugin-commonjs";
 import { useClientLookupPlugin } from "../lib/vitePlugins/useClientLookupPlugin.mjs";
 import { transformJsxLinksTagsPlugin } from "../lib/vitePlugins/transformJsxLinksTagsPlugin.mjs";
+import { miniflarePlugin } from "../lib/vitePlugins/miniflarePlugin/plugin.mjs";
+import { miniflareConfig } from "./miniflare.mjs";
+import { asyncSetupPlugin } from "../lib/vitePlugins/asyncSetupPlugin.mjs";
 
 const MODE =
   process.env.NODE_ENV === "development" ? "development" : "production";
 
-export type DevConfigContext = {
-  updateWorker: () => Promise<void>;
-};
-
 export const viteConfigs = {
   main: (): InlineConfig => ({
+    appType: "custom",
     mode: MODE,
-    logLevel: process.env.VERBOSE ? "info" : "warn",
+    logLevel: "info",
     build: {
       minify: MODE !== "development",
       sourcemap: true,
@@ -47,15 +42,7 @@ export const viteConfigs = {
       ),
       "process.env.NODE_ENV": JSON.stringify(MODE),
     },
-    plugins: [
-      commonjsPlugin({
-        filter: (id) => {
-          return id.includes("react-server-dom-webpack-server.edge");
-        },
-      }),
-      useServerPlugin(),
-      useClientPlugin(),
-    ],
+    plugins: [reactPlugin(), useServerPlugin(), useClientPlugin()],
     environments: {
       client: {
         consumer: "client",
@@ -74,6 +61,15 @@ export const viteConfigs = {
         resolve: {
           conditions: ["module", "workerd", "react-server"],
           noExternal: true,
+        },
+        optimizeDeps: {
+          noDiscovery: false,
+          include: [
+            "react",
+            "react/jsx-runtime",
+            "react/jsx-dev-runtime",
+            "react-dom/server.edge",
+          ],
         },
         build: {
           outDir: WORKER_DIST_DIR,
@@ -95,7 +91,7 @@ export const viteConfigs = {
       },
     },
     server: {
-      middlewareMode: true,
+      hmr: true,
       port: DEV_SERVER_PORT,
     },
     builder: {
@@ -106,14 +102,19 @@ export const viteConfigs = {
     },
     css: {
       postcss: {
-        plugins: [tailwind, autoprefixer],
+        plugins: [tailwind, autoprefixer()],
       },
     },
   }),
-  dev: (context: DevConfigContext): InlineConfig =>
+  dev: ({ setup }: { setup: () => Promise<unknown> }): InlineConfig =>
     mergeConfig(viteConfigs.main(), {
       plugins: [
-        hmrPlugin(context),
+        asyncSetupPlugin({ setup }),
+        miniflarePlugin({
+          entry: RELATIVE_WORKER_PATHNAME,
+          environment: "worker",
+          miniflare: miniflareConfig,
+        }),
         // context(justinvdm, 2024-12-03): vite needs the virtual module created by this plugin to be around,
         // even if the code path that use the virtual module are not reached in dev
         useClientLookupPlugin({ filesContainingUseClient: [] }),
@@ -138,40 +139,3 @@ export const viteConfigs = {
       ],
     }),
 };
-
-// context(justinvdm, 2024-11-20): While it may seem odd to use the dev server and HMR only to do full rebuilds,
-// we leverage the dev server's module graph to efficiently determine if the worker bundle needs to be
-// rebuilt. This allows us to avoid unnecessary rebuilds when changes don't affect the worker.
-// Still, first prize would be to not need to rebundle at all.
-// https://vite.dev/guide/api-plugin.html#handlehotupdate
-const hmrPlugin = ({ updateWorker }: DevConfigContext): Plugin => ({
-  name: "rw-reloaded-hmr",
-  handleHotUpdate: async ({
-    file,
-    server,
-  }: {
-    file: string;
-    server: ViteDevServer;
-  }) => {
-    // todo(peterp, 2024-12-05): Use proper exclude, filter pattern,
-    // as documented here: https://vite.dev/guide/api-plugin.html#filtering-include-exclude-pattern
-    if (file.endsWith(".d.ts") || file.includes("/.wrangler/")) {
-      return [];
-    }
-
-    console.log("[HMR]", file);
-    const module = server.moduleGraph.getModuleById(file);
-
-    const isImportedByWorkerFile = [...(module?.importers || [])].some(
-      (importer) => importer.file === resolve("/", RELATIVE_WORKER_PATHNAME),
-    );
-
-    try {
-      await updateWorker();
-    } catch (e: any) {
-      // todo(peterp, 2024-12-05): Figure out what to do with errors.
-    }
-    server.ws.send({ type: "full-reload" });
-    return [];
-  },
-});
