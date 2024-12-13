@@ -145,9 +145,6 @@ export const viteConfigs = {
         transformJsxScriptTagsPlugin({
           manifestPath: MANIFEST_PATH,
         }),
-        transformJsxLinksTagsPlugin({
-          manifestPath: MANIFEST_PATH,
-        }),
         useClientLookupPlugin({
           filesContainingUseClient,
         }),
