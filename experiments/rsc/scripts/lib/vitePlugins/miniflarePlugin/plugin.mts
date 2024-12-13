@@ -1,6 +1,7 @@
 import { readFile } from "node:fs/promises";
 import { EventEmitter } from "node:events";
 import { fileURLToPath } from "node:url";
+import { resolve } from "node:path";
 
 import { resolve as importMetaResolve } from "import-meta-resolve";
 import colors from "picocolors";
@@ -30,6 +31,7 @@ import {
 } from "./types.mjs";
 import { compileTsModule } from "../../compileTsModule.mjs";
 import { getShortName } from "../../getShortName.mjs";
+import { SRC_DIR } from "../../constants.mjs";
 
 interface MiniflarePluginOptions {
   entry: string;
@@ -279,6 +281,10 @@ export const miniflarePlugin = async (
       },
     }),
     hotUpdate(ctx) {
+      if (!["client", environment].includes(this.environment.name)) {
+        return;
+      }
+
       // todo(justinvdm, 12 Dec 2024): Skip client references
 
       const modules = Array.from(
@@ -295,26 +301,40 @@ export const miniflarePlugin = async (
           ),
         );
 
-      // This isn't a worker update, and the hot check is for this environment
+      // The worker doesnt need an update
       // => Short circuit HMR
-      if (!isWorkerUpdate && this.environment.name === environment) {
+      if (!isWorkerUpdate) {
         return [];
       }
 
-      // This is a worker update, but the hot check is for a different environment
-      // => Short circuit HMR
-      if (isWorkerUpdate && this.environment.name !== environment) {
-        return [];
+      // The worker needs an update, but this is the client environment
+      // => Notify for HMR update of any css files imported by in worker, that are also in the client module graph
+      // Why: There may have been changes to css classes referenced, which might css modules to change
+      if (this.environment.name === "client") {
+        const cssModules = [];
+
+        for (const [_, module] of ctx.server.environments[environment]
+          .moduleGraph.idToModuleMap) {
+          // todo(justinvdm, 13 Dec 2024): We check+update _all_ css files in worker module graph,
+          // but it could just be a subset of css files that are actually affected, depending
+          // on the importers and imports of the changed file. We should be smarter about this.
+          if (module.file && module.file.endsWith(".css")) {
+            const clientModules =
+              ctx.server.environments.client.moduleGraph.getModulesByFile(
+                module.file,
+              );
+
+            if (clientModules) {
+              cssModules.push(...clientModules.values());
+            }
+          }
+        }
+
+        return cssModules;
       }
 
-      // This isn't worker update, and the hot check is for a different environment
-      // => Pass on the HMR check to the next plugin
-      if (!isWorkerUpdate && this.environment.name !== environment) {
-        return;
-      }
-
-      // This is a worker update, and the hot check is for this environment
-      // => Notify for HMR update, then short circuit HMR
+      // The worker needs an update, and the hot check is for the worker environment
+      // => Notify for custom RSC-based HMR update, then short circuit HMR
       if (isWorkerUpdate && this.environment.name === environment) {
         const shortName = getShortName(ctx.file, ctx.server.config.root);
 
@@ -324,6 +344,18 @@ export const miniflarePlugin = async (
             clear: true,
             timestamp: true,
           },
+        );
+
+        const m = ctx.server.environments.client.moduleGraph
+          .getModulesByFile(resolve(SRC_DIR, "app", "style.css"))
+          ?.values()
+          .next().value!;
+
+        ctx.server.environments.client.moduleGraph.invalidateModule(
+          m,
+          new Set(),
+          ctx.timestamp,
+          true,
         );
 
         ctx.server.environments.client.hot.send({
