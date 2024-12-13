@@ -1,11 +1,12 @@
 import { type InlineConfig, mergeConfig } from "vite";
-import { resolve } from "node:path";
+import { dirname, resolve } from "node:path";
 import {
   CLIENT_DIST_DIR,
   DEV_SERVER_PORT,
   MANIFEST_PATH,
   RELATIVE_CLIENT_PATHNAME,
   RELATIVE_WORKER_PATHNAME,
+  ROOT_DIR,
   SRC_DIR,
   VENDOR_DIST_DIR,
   WORKER_DIST_DIR,
@@ -23,6 +24,7 @@ import { transformJsxLinksTagsPlugin } from "../lib/vitePlugins/transformJsxLink
 import { miniflarePlugin } from "../lib/vitePlugins/miniflarePlugin/plugin.mjs";
 import { miniflareConfig } from "./miniflare.mjs";
 import { asyncSetupPlugin } from "../lib/vitePlugins/asyncSetupPlugin.mjs";
+import { restartPlugin } from "../lib/vitePlugins/restartPlugin.mjs";
 
 const MODE =
   process.env.NODE_ENV === "development" ? "development" : "production";
@@ -110,6 +112,19 @@ export const viteConfigs = {
     mergeConfig(viteConfigs.main(), {
       plugins: [
         asyncSetupPlugin({ setup }),
+        restartPlugin({
+          filter: (filepath: string) =>
+            !filepath.endsWith(".d.ts") &&
+            (filepath.endsWith(".ts") ||
+              filepath.endsWith(".tsx") ||
+              filepath.endsWith(".mts") ||
+              filepath.endsWith(".js") ||
+              filepath.endsWith(".mjs") ||
+              filepath.endsWith(".jsx") ||
+              filepath.endsWith(".json")) &&
+            (filepath.startsWith(resolve(ROOT_DIR, "scripts")) ||
+              dirname(filepath) === ROOT_DIR),
+        }),
         miniflarePlugin({
           entry: RELATIVE_WORKER_PATHNAME,
           environment: "worker",
