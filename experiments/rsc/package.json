@@ -6,7 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "npx tsx ./scripts/build.mts",
-    "dev": "NODE_ENV=development npx tsx ./scripts/runDevServer.mts",
+    "dev": "while true; do NODE_ENV=development npx tsx ./scripts/runDevServer.mts; [ $? -eq 0 ] || break; done",
     "seed": "pnpm wrangler d1 execute DB --file ./migrations/seed.sql",
     "migrate:dev": "npx wrangler d1 migrations apply DB --local",
     "migrate:prd": "npx wrangler d1 migrations apply DB --remote",

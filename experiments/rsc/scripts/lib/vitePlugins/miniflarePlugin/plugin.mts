@@ -1,7 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { EventEmitter } from "node:events";
 import { fileURLToPath } from "node:url";
-import { relative } from "node:path";
 
 import { resolve as importMetaResolve } from "import-meta-resolve";
 import colors from "picocolors";
@@ -30,6 +29,7 @@ import {
   ServiceBindings,
 } from "./types.mjs";
 import { compileTsModule } from "../../compileTsModule.mjs";
+import { getShortName } from "../../getShortName.mjs";
 
 interface MiniflarePluginOptions {
   entry: string;
@@ -166,21 +166,47 @@ const createDevEnv = async ({
 
   const { hotDispatch, transport } = createTransport({ runnerWorker });
 
+  const redirectToSelf = async (req: Request) => {
+    await new Promise((resolve) => setTimeout(resolve, 200));
+
+    return new Response(null, {
+      status: 302,
+      headers: {
+        Location: req.url,
+      },
+    });
+  };
+
   const dispatchFetch: DevEnvApi["dispatchFetch"] = async (request) => {
+    if (devEnv.discarded) {
+      return redirectToSelf(request);
+    }
+
     request.headers.set(
       "x-vite-fetch",
       JSON.stringify({ entry } satisfies FetchMetadata),
     );
 
-    return await runnerWorker.fetch(request.url, request);
+    try {
+      return await runnerWorker.fetch(request.url, request);
+    } catch (e) {
+      if (devEnv.discarded) {
+        return redirectToSelf(request);
+      }
+
+      throw e;
+    }
   };
 
   class MiniflareDevEnvironment extends DevEnvironment {
+    discarded: boolean = false;
+
     api: DevEnvApi = {
       dispatchFetch,
     };
 
     async close() {
+      this.discarded = true;
       await super.close();
       await miniflare.dispose();
     }
@@ -293,7 +319,7 @@ export const miniflarePlugin = async (
         const shortName = getShortName(ctx.file, ctx.server.config.root);
 
         this.environment.logger.info(
-          colors.green(`worker update `) + colors.dim(shortName),
+          `${colors.green(`worker update`)} ${colors.dim(shortName)}`,
           {
             clear: true,
             timestamp: true,
@@ -321,6 +347,3 @@ export const miniflarePlugin = async (
     },
   };
 };
-
-const getShortName = (file: string, root: string): string =>
-  file.startsWith(root) ? relative(root, file) : file;

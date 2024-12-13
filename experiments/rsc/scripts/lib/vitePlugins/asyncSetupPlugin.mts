@@ -8,7 +8,7 @@ export const asyncSetupPlugin = ({
   let taskPromise = Promise.resolve(null as unknown);
 
   return {
-    name: "my-async-task-plugin",
+    name: "rw-reloaded-async-setup",
 
     // Hook into the configureServer to add middleware
     configureServer(server) {
