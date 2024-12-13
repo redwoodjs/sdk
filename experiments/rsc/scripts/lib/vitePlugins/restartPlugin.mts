@@ -37,7 +37,7 @@ export const restartPlugin = ({
         );
 
         // context(justinvdm, 2024-12-13):
-        // * This plugin assumes the dev server script will rerun if closed with a non-zero exit code
+        // * This plugin assumes the dev server script will rerun if closed with a zero exit code
         // (e.g. `while true; do NODE_ENV=development npx tsx dev.mts; [ $? -eq 0 ] || break; done`)
         // * In the browser, the vite's HMR client will keeping retry reconnecting to the dev server
         await ctx.server.close();
