@@ -54,7 +54,6 @@ export const viteConfigs = {
           rollupOptions: {
             input: {
               client: RELATIVE_CLIENT_PATHNAME,
-              style: resolve(SRC_DIR, "app", "style.css"),
             },
           },
         },
@@ -75,6 +74,7 @@ export const viteConfigs = {
         },
         build: {
           outDir: WORKER_DIST_DIR,
+          emitAssets: true,
           ssr: true,
           rollupOptions: {
             output: {

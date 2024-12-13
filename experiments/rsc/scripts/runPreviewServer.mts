@@ -8,7 +8,11 @@ import {
   DIST_DIR,
   WORKER_DIST_DIR,
 } from "./lib/constants.mjs";
-import { dispatchNodeRequestToMiniflare } from "./lib/vitePlugins/miniflarePlugin/requestUtils.mjs";
+import {
+  dispatchNodeRequestToMiniflare,
+  nodeToWebRequest,
+  webToNodeResponse,
+} from "./lib/vitePlugins/requestUtils.mjs";
 import { build } from "./build.mjs";
 import { readFile } from "fs/promises";
 
@@ -43,17 +47,17 @@ const createServers = async () => {
   const promisedSetupComplete = new Promise(setImmediate).then(setup);
   const app = express();
 
-  app.use("/assets", express.static(resolve(DIST_DIR, "client", "assets")));
+  app.use("/assets", express.static(resolve(DIST_DIR, "assets")));
 
   app.use(async (req, res) => {
     try {
       const { miniflare } = await promisedSetupComplete;
-
-      return await dispatchNodeRequestToMiniflare({
-        miniflare,
-        request: req,
-        response: res,
-      });
+      const webRequest = nodeToWebRequest(req);
+      const webResponse = await miniflare.dispatchFetch(
+        webRequest.url,
+        webRequest,
+      );
+      await webToNodeResponse(webResponse, res);
     } catch (error) {
       console.error("Request handling error:", error);
       res.statusCode = 500;

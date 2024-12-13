@@ -22,7 +22,7 @@ import {
   Plugin,
   ResolvedConfig,
 } from "vite";
-import { nodeToWebRequest, webToNodeResponse } from "./requestUtils.mjs";
+import { nodeToWebRequest, webToNodeResponse } from "../requestUtils.mjs";
 import {
   FetchMetadata,
   NoOptionals,
