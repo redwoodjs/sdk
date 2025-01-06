@@ -154,5 +154,12 @@ export const viteConfigs = {
           filesContainingUseClient,
         }),
       ],
+      environments: {
+        worker: {
+          resolve: {
+            external: ['@prisma/client']
+          }
+        }
+      }
     }),
 };
