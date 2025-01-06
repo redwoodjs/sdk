@@ -60,6 +60,17 @@ const readTsModule = async (id: string) => {
   return compileTsModule(tsCode);
 };
 
+
+const loadGeneratedPrismaModule = async (id: string) => {
+  // context(justinvdm, 2025-01-06): Resolve relative to @prisma/client since pnpm places it relative to @prisma/client in node_modules/.pnpm
+  const resolvedId = createRequire(importMetaResolve('@prisma/client', import.meta.url)).resolve(id)
+
+  return {
+    path: resolvedId.slice(1),
+    contents: await readFile(resolvedId)
+  }
+}
+
 const createMiniflareOptions = async ({
   config,
   serviceBindings,
@@ -71,16 +82,6 @@ const createMiniflareOptions = async ({
 }): Promise<MiniflareOptions> => {
   // todo(justinvdm, 2024-12-10): Figure out what we can get from wrangler's unstable_getMiniflareWorkerOptions(),
   // and if it means we can avoid having both a wrangler.toml and miniflare config
-
-  const loadGeneratedPrismaModule = async (id: string) => {
-    // context(justinvdm, 2025-01-06): Resolve relative to @prisma/client since pnpm places it relative to @prisma/client in node_modules/.pnpm
-    const resolvedId = createRequire(importMetaResolve('@prisma/client', import.meta.url)).resolve(id)
-
-    return {
-      path: resolvedId.slice(1),
-      contents: await readFile(resolvedId)
-    }
-  }
 
   const runnerOptions: WorkerOptions = {
     modules: [
