@@ -14,13 +14,12 @@ export async function createTradesman(formData: FormData) {
   const file = new File([profilePicture], filename, { type: "image/jpeg" });
   const profilePictureUrl = await R2Storage.uploadFile(file, filename);
 
-  await db
-    .insertInto("Tradesman")
-    .values({
+  await db.tradesman.create({
+    data: {
       name: name as string,
       cellnumber: cellnumber as string,
       profession: profession as string,
       profilePicture: profilePictureUrl as string,
-    })
-    .execute();
+    },
+  });
 }

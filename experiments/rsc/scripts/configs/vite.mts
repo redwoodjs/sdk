@@ -7,7 +7,6 @@ import {
   RELATIVE_CLIENT_PATHNAME,
   RELATIVE_WORKER_PATHNAME,
   ROOT_DIR,
-  SRC_DIR,
   VENDOR_DIST_DIR,
   WORKER_DIST_DIR,
 } from "../lib/constants.mjs";
@@ -20,7 +19,6 @@ import { transformJsxScriptTagsPlugin } from "../lib/vitePlugins/transformJsxScr
 import { useServerPlugin } from "../lib/vitePlugins/useServerPlugin.mjs";
 import { useClientPlugin } from "../lib/vitePlugins/useClientPlugin.mjs";
 import { useClientLookupPlugin } from "../lib/vitePlugins/useClientLookupPlugin.mjs";
-import { transformJsxLinksTagsPlugin } from "../lib/vitePlugins/transformJsxLinksTagsPlugin.mjs";
 import { miniflarePlugin } from "../lib/vitePlugins/miniflarePlugin/plugin.mjs";
 import { miniflareConfig } from "./miniflare.mjs";
 import { asyncSetupPlugin } from "../lib/vitePlugins/asyncSetupPlugin.mjs";
@@ -61,15 +59,22 @@ export const viteConfigs = {
       worker: {
         resolve: {
           conditions: ["module", "workerd", "react-server"],
-          noExternal: true,
+          // context(justinvdm, 2025-01-06): We rely on vite's prebundling and then let vite provide us with this prebundled code:
+          // - we shouldn't needing to evaluate each and every module of each and every dependency in the module runner (prebundle avoids this)
+          // - we can't rely on dynamic imports from within the miniflare sandbox (without teaching it about each and every module of each and every dependency)
+          noExternal: true
         },
         optimizeDeps: {
           noDiscovery: false,
+          esbuildOptions: {
+            conditions: ["module", "workerd"],
+          },
           include: [
             "react",
             "react/jsx-runtime",
             "react/jsx-dev-runtime",
             "react-dom/server.edge",
+            "@prisma/client",
           ],
         },
         build: {

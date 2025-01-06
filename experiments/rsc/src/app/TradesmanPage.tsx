@@ -2,11 +2,11 @@ import { db } from "../db";
 import NavBar from "./components/NavBar";
 
 export default async function TradesmanPage(props: { id: number }) {
-  const tradesman = await db
-    .selectFrom("Tradesman")
-    .selectAll()
-    .where("id", "=", props.id)
-    .executeTakeFirst();
+  const tradesman = await db.tradesman.findUnique({
+    where: {
+      id: props.id,
+    },
+  });
 
 
   return (

@@ -3,24 +3,17 @@ import { Like } from "./components/Like";
 import { getCount } from "./counterState";
 
 export default async function HomePage() {
-  let users = await db
-    .selectFrom("User")
-    .select(["name", "cellnumber"])
-    .execute();
+  let users = await db.user.findMany();
 
   if (users.length === 0) {
-    await db
-      .insertInto("User")
-      .values({
+    await db.user.create({
+      data: {
         name: "Steve",
         cellnumber: "1234567890",
-      })
-      .execute();
+      },
+    });
 
-    users = await db
-      .selectFrom("User")
-      .select(["name", "cellnumber"])
-      .execute();
+    users = await db.user.findMany();
   }
 
   return (

@@ -3,11 +3,11 @@ import { db } from "../db";
 import NavBar from "./components/NavBar";
 
 export default async function TradesmenPage(props: { profession: string }) {
-  const tradesmen = await db
-    .selectFrom("Tradesman")
-    .selectAll()
-    .where("profession", "=", props.profession)
-    .execute();
+  const tradesmen = await db.tradesman.findMany({
+    where: {
+      profession: props.profession,
+    },
+  });
 
   if (tradesmen.length === 0) {
     return <div>No tradesmen found for {props.profession}</div>;
