@@ -1,5 +1,5 @@
 
-import { App } from "./app/App";
+import { App } from "./app/App"
 import { db, setupDb } from "./db";
 
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
@@ -10,15 +10,14 @@ import { ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import { setupR2Storage } from "./r2storage";
 import InvoiceListPage from "./app/InvoiceListPage";
+import InvoiceDetailPage from "./app/InvoiceDetailPage";
 
 
-// txxodo(peterp, 2024-11-25): Make these lazy.
-// todo(peterp, 2025-01-06): Invoice page
-
+// todo(peterp, 2024-11-25): Make these lazy.
 const routes = {
-  "/invoices": InvoiceListPage,
-  // "/invoice/:id": InvoiceDetailPage,
-};
+  "/": InvoiceListPage,
+  "/invoice/:id": InvoiceDetailPage,
+}
 
 export default {
   async fetch(request: Request, env: Env) {
@@ -52,11 +51,6 @@ export default {
         }
 
         const headers = new Headers();
-        // set the content toye for vcard else its seen as plain text
-        if (filename.endsWith(".vcf")) {
-          headers.set("content-type", "application/vcard");
-        }
-
         if (filename.endsWith(".jpg") || filename.endsWith(".png")) {
           headers.set("content-type", "image/jpeg");
         }
@@ -69,35 +63,6 @@ export default {
         });
       }
 
-
-      // if (request.method === "POST" && request.url.includes("/api/login")) {
-      //   console.log("Login request received");
-      //   return new Response("Login successful", { status: 200 });
-      // }
-
-      // if (
-      //   request.method === "POST" &&
-      //   request.url.includes("/api/create-user")
-      // ) {
-      //   const formData = await request.formData();
-      //   const name = formData.get("name");
-      //   const cell = formData.get("cell") as string;
-
-      //   const user = await db
-      //     .insertInto("User")
-      //     .values({
-      //       name: name as string,
-      //       cellnumber: cell,
-      //     })
-      //     .execute();
-
-      //   if (!user) {
-      //     return new Response("User creation failed", { status: 500 });
-      //   }
-
-      //   const referer = request.headers.get("Referer") || "/admin";
-      //   return Response.redirect(referer, 303);
-      // }
 
       const renderPage = async (Page: any, props = {}) => {
         const rscPayloadStream = renderToRscStream(<Page {...props} />);
@@ -128,26 +93,15 @@ export default {
         return renderPage(Page)
       }
 
-      if (!Page) {
-        // // Check if it matches the tradesmen dynamic route pattern
-        // const tradesmenMatch = pathname.match(/^\/tradesmen\/(.+)$/);
-        // const tradesmanMatch = pathname.match(/^\/tradesman\/(.+)$/);
-        // if (tradesmenMatch) {
-        //   const profession = tradesmenMatch[1];
-        //   return renderPage(routes["/tradesmen/:profession"], {
-        //     params: { profession },
-        //   });
-        // }
-        // if (tradesmanMatch) {
-        //   const id = tradesmanMatch[1];
-        //   return renderPage(routes["/tradesman/:id"], {
-        //     params: { id: parseInt(id) },
-        //   });
-        // }
-        // return new Response("Not found", { status: 404 });
+      if (pathname.startsWith("/invoice/")) {
+        const id = pathname.slice("/invoice/".length);
+        return renderPage(InvoiceDetailPage, { id });
       }
 
-      // return renderPage(Page);
+      if (!Page) {
+        return new Response("Not found", { status: 404 });
+      }
+
     } catch (e) {
       console.error("Unhandled error", e);
       throw e;
