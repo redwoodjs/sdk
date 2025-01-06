@@ -73,7 +73,9 @@ const createMiniflareOptions = async ({
   // and if it means we can avoid having both a wrangler.toml and miniflare config
 
   const loadGeneratedPrismaModule = async (id: string) => {
+    // context(justinvdm, 2025-01-06): Resolve relative to @prisma/client since pnpm places it relative to @prisma/client in node_modules/.pnpm
     const resolvedId = createRequire(importMetaResolve('@prisma/client', import.meta.url)).resolve(id)
+
     return {
       path: resolvedId.slice(1),
       contents: await readFile(resolvedId)
