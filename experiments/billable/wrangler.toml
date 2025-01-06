@@ -11,11 +11,7 @@ enabled = true
 [[d1_databases]]
 binding = "DB"
 database_name = "valley-directory"
-database_id = "c14f29c8-60e1-4004-a7df-c3a18be3f558"
-
-[[r2_buckets]]
-bucket_name = "valley-directory-r2"
-binding = "valley_directory_r2"
+database_id = "9ab2836e-0a2d-499c-8063-22d90264e086"
 
 [build]
 command = "pnpm build"
