@@ -72,6 +72,14 @@ const createMiniflareOptions = async ({
   // todo(justinvdm, 2024-12-10): Figure out what we can get from wrangler's unstable_getMiniflareWorkerOptions(),
   // and if it means we can avoid having both a wrangler.toml and miniflare config
 
+  const loadGeneratedPrismaModule = async (id: string) => {
+    const resolvedId = createRequire(importMetaResolve('@prisma/client', import.meta.url)).resolve(id)
+    return {
+      path: resolvedId.slice(1),
+      contents: await readFile(resolvedId)
+    }
+  }
+
   const runnerOptions: WorkerOptions = {
     modules: [
       {
@@ -85,15 +93,15 @@ const createMiniflareOptions = async ({
         // todo(justinvdm, 2024-12-10): Figure out if we need to avoid new AsyncFunction during import side effect
         contents: await readModule("vite/module-runner"),
       },
+      // todo(justinvdm, 2025-01-06): Clean this up - we should support loading specific modules directly from miniflare in general
+      // rather than hardcoded prisma wasm case only
       {
         type: "CommonJS",
-        path: createRequire(importMetaResolve('@prisma/client', import.meta.url)).resolve('.prisma/client/query_engine_bg.js').slice(1),
-        contents: readFileSync(createRequire(importMetaResolve('@prisma/client', import.meta.url)).resolve('.prisma/client/query_engine_bg.js')),
+        ...await loadGeneratedPrismaModule('.prisma/client/query_engine_bg.js'),
       },
       {
         type: "CompiledWasm",
-        path: createRequire(importMetaResolve('@prisma/client', import.meta.url)).resolve('.prisma/client/query_engine_bg.wasm').slice(1),
-        contents: readFileSync(createRequire(importMetaResolve('@prisma/client', import.meta.url)).resolve('.prisma/client/query_engine_bg.wasm')),
+        ...await loadGeneratedPrismaModule('.prisma/client/query_engine_bg.wasm'),
       }
     ],
     unsafeEvalBinding: "__viteUnsafeEval",
