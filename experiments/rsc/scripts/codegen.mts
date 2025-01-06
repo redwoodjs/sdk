@@ -1,10 +1,10 @@
 import { $ } from "./lib/$.mjs";
 
-export const codegenTypes = async () => {
+export const codegen = async () => {
   console.log("Generating types...");
   console.log("Generating db types...");
 
-  //await $`pnpm prisma generate`;
+  await $`pnpm prisma generate`;
 
   console.log("Generating wrangler types...");
   await $`pnpm wrangler types`;
@@ -14,5 +14,5 @@ export const codegenTypes = async () => {
 };
 
 if (import.meta.url === new URL(process.argv[1], import.meta.url).href) {
-  codegenTypes();
+  codegen();
 }

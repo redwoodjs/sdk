@@ -1,7 +1,7 @@
 import { createServer as createViteServer } from "vite";
 
 import { viteConfigs } from "./configs/vite.mjs";
-import { codegenTypes } from "./codegenTypes.mjs";
+import { codegen } from "./codegen.mjs";
 import { $ } from "./lib/$.mjs";
 import { DEV_SERVER_PORT } from "./lib/constants.mjs";
 
@@ -10,7 +10,7 @@ const setup = async () => {
   await $`npx tsx ./scripts/buildVendorBundles.mts`;
 
   // context(justinvdm, 2024-11-28): Types don't affect runtime, so we don't need to block the dev server on them
-  void codegenTypes();
+  void codegen();
 };
 
 export const runDevServer = async () => {

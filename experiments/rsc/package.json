@@ -10,7 +10,7 @@
     "seed": "pnpm wrangler d1 execute DB --file ./migrations/seed.sql",
     "migrate:dev": "npx wrangler d1 migrations apply DB --local",
     "migrate:prd": "npx wrangler d1 migrations apply DB --remote",
-    "codegen:types": "npx tsx ./scripts/codegenTypes.mts",
+    "codegen": "npx tsx ./scripts/codegen.mts",
     "types": "pnpm codegen:types && tsc",
     "deploy": "wrangler deploy",
     "preview": "NODE_ENV=${NODE_ENV:-development} PREVIEW=1 npx tsx ./scripts/runPreviewServer.mts",

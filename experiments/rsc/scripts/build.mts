@@ -9,6 +9,8 @@ export const build = async () => {
   // context(justinvdm, 2024-12-05): Call indirectly to silence verbose output when VERBOSE is not set
   await $`npx tsx ./scripts/buildVendorBundles.mts`;
 
+  await $`pnpm prisma generate`;
+
   const filesContainingUseClient = await findFilesContainingUseClient();
 
   const builder = await createBuilder(
