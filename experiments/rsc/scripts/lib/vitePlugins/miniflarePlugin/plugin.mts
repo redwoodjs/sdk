@@ -1,7 +1,9 @@
 import { readFile } from "node:fs/promises";
+import { readFileSync } from 'fs';
 import { EventEmitter } from "node:events";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
+import { createRequire } from "node:module";
 
 import { resolve as importMetaResolve } from "import-meta-resolve";
 import colors from "picocolors";
@@ -58,6 +60,17 @@ const readTsModule = async (id: string) => {
   return compileTsModule(tsCode);
 };
 
+
+const loadGeneratedPrismaModule = async (id: string) => {
+  // context(justinvdm, 2025-01-06): Resolve relative to @prisma/client since pnpm places it relative to @prisma/client in node_modules/.pnpm
+  const resolvedId = createRequire(importMetaResolve('@prisma/client', import.meta.url)).resolve(id)
+
+  return {
+    path: resolvedId.slice(1),
+    contents: await readFile(resolvedId)
+  }
+}
+
 const createMiniflareOptions = async ({
   config,
   serviceBindings,
@@ -83,6 +96,16 @@ const createMiniflareOptions = async ({
         // todo(justinvdm, 2024-12-10): Figure out if we need to avoid new AsyncFunction during import side effect
         contents: await readModule("vite/module-runner"),
       },
+      // todo(justinvdm, 2025-01-06): Clean this up - we should support loading specific modules directly from miniflare in general
+      // rather than hardcoded prisma wasm case only
+      {
+        type: "CommonJS",
+        ...await loadGeneratedPrismaModule('.prisma/client/query_engine_bg.js'),
+      },
+      {
+        type: "CompiledWasm",
+        ...await loadGeneratedPrismaModule('.prisma/client/query_engine_bg.wasm'),
+      }
     ],
     unsafeEvalBinding: "__viteUnsafeEval",
     durableObjects: {
@@ -122,8 +145,8 @@ const createTransport = ({
     hotDispatch,
     transport: {
       // todo(justinvdm, 11 Dec 2024): Figure out if we need to implement these stubs
-      listen: () => {},
-      close: () => {},
+      listen: () => { },
+      close: () => { },
       on: events.on.bind(events),
       off: events.off.bind(events),
       send: runnerWorker.sendToRunner.bind(runnerWorker),
@@ -280,6 +303,13 @@ export const miniflarePlugin = async (
         },
       },
     }),
+    load: async (id) => {
+      // context(justinvdm, 2025-01-06): Avoid vite throwing an error for WASM modules
+      // The actual loading of these modules happens in the module runner
+      if (id.endsWith(".wasm")) {
+        return ''
+      }
+    },
     hotUpdate(ctx) {
       if (!["client", environment].includes(this.environment.name)) {
         return;

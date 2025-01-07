@@ -2,7 +2,8 @@ import { db } from "../db";
 import NavBar from "./components/NavBar";
 
 export default async function ProfessionsPage() {
-  const tradesmen = await db.selectFrom("Tradesman").selectAll().execute();
+  const tradesmen = await db.tradesman.findMany();
+
   const uniqueProfessions = [
     ...new Set(
       tradesmen
@@ -10,6 +11,7 @@ export default async function ProfessionsPage() {
         .filter((profession) => profession !== null),
     ),
   ];
+
   return (
     <div className="flex flex-col items-center justify-start h-screen w-full mx-auto">
       <NavBar to="/welcome" />

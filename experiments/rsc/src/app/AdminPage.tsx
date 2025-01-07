@@ -4,10 +4,7 @@ import { R2Storage } from "../r2storage";
 import CreateTradesman from "./components/CreateTradesman";
 
 export default async function AdminPage() {
-  let tradesmen = await db
-    .selectFrom("Tradesman")
-    .select(["id", "name", "cellnumber", "profession", "profilePicture"])
-    .execute();
+  let tradesmen = await db.tradesman.findMany();
 
   const files = await R2Storage.listFiles();
   console.log(files);

@@ -13,8 +13,7 @@ type IncomingRequest = Request<unknown, IncomingRequestCfProperties<unknown>>;
 
 export class RunnerWorker
   extends DurableObject<RunnerEnv>
-  implements RunnerRpc
-{
+  implements RunnerRpc {
   #runner?: ModuleRunner;
   #handlers?: ModuleRunnerTransportHandlers;
 
@@ -53,8 +52,8 @@ export class RunnerWorker
     );
 
     return handler.fetch(request, env, {
-      waitUntil(_promise: Promise<any>) {},
-      passThroughOnException() {},
+      waitUntil(_promise: Promise<any>) { },
+      passThroughOnException() { },
     });
   }
 
@@ -64,11 +63,12 @@ export class RunnerWorker
       sourcemapInterceptor: "prepareStackTrace",
       hmr: true,
       transport: {
-        invoke: (payload) =>
-          callBinding({
+        invoke: (payload) => {
+          return callBinding({
             binding: this.env.__viteInvoke,
             payload,
-          }),
+          })
+        },
         connect: (handlers) => {
           this.#handlers = handlers;
         },
@@ -89,13 +89,32 @@ export class RunnerWorker
 
 export const createEvaluator = (env: RunnerEnv): ModuleEvaluator => ({
   async runInlinedModule(context, transformed, module) {
+    // context(justinvdm, 2025-01-06): Sometimes we need to rely on miniflare to load modules (e.g. for WASM modules) instead
+    // of evaluating code transformed by vite.
+    // To do this, we:
+    // 1. import() the module - this relies on these modules' contents having been provided to miniflare when instantiting it
+    // 2. mimic the way vite collects exports for a module so that dependant modules can access it
+    // todo(justinvdm, 2025-01-06): Clean this up: should work for things other than Prisma WASM, and exports other than default export
+    if (module.file.includes('query_engine_bg')) {
+      const result = await import(module.file)
+
+      Object.defineProperty(context[ssrModuleExportsKey], "default", {
+        enumerable: true,
+        configurable: true,
+        get() { return result.default }
+      });
+
+      Object.freeze(context[ssrModuleExportsKey]);
+      return
+    }
+
     if (
       module.file.includes("/node_modules") &&
       !module.file.includes("/node_modules/.vite")
     ) {
       throw new Error(
         `[Error] Trying to import non-prebundled module (only prebundled modules are allowed): ${module.id}` +
-          "\n\n(have you excluded the module via `optimizeDeps.exclude`?)",
+        "\n\n(have you excluded the module via `optimizeDeps.exclude`?)",
       );
     }
 
@@ -121,10 +140,10 @@ export const createEvaluator = (env: RunnerEnv): ModuleEvaluator => ({
     ) {
       throw new Error(
         `[Error] Trying to import non-prebundled module (only prebundled modules are allowed): ${filepath}` +
-          "\n\n(have you externalized the module via `resolve.external`?)",
+        "\n\n(have you externalized the module via `resolve.external`?)",
       );
     }
-    return import(filepath.replace(/^file:\/\//, ""));
+    return import(filepath.slice('file://'.length));
   },
 });
 

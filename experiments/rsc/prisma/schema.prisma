@@ -21,7 +21,6 @@ model Tradesman {
   id Int @id @default(autoincrement())
   profilePicture String?
   name String
-  email String @unique
   cellnumber String @unique
   profession String
 }
