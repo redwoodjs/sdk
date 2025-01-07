@@ -2,7 +2,7 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client-js"
+  provider        = "prisma-client-js"
   previewFeatures = ["driverAdapters"]
 }
 
@@ -11,17 +11,33 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model User {
-  id    Int     @id @default(autoincrement())
-  cellnumber String  @unique
-  name  String?
+model Invoice {
+  id             Int              @id @default(autoincrement())
+  title          String
+  number         String
+  date           DateTime         @default(now())
+  status         String           @default("draft")
+  supplier       String
+  customer       String
+  notesA         String?
+  notesB         String?
+  InvoiceItem    InvoiceItem[]
+  InvoiceTaxItem InvoiceTaxItem[]
 }
 
-model Tradesman {
-  id Int @id @default(autoincrement())
-  profilePicture String?
-  name String
-  email String @unique
-  cellnumber String @unique
-  profession String
+model InvoiceItem {
+  id          Int     @id @default(autoincrement())
+  invoiceId   Int
+  invoice     Invoice @relation(fields: [invoiceId], references: [id])
+  description String
+  quantity    Int
+  price       Float
+}
+
+model InvoiceTaxItem {
+  id          Int     @id @default(autoincrement())
+  invoiceId   Int
+  invoice     Invoice @relation(fields: [invoiceId], references: [id])
+  description String
+  amount      Float
 }
