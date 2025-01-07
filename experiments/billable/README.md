@@ -13,8 +13,16 @@ https://www.prisma.io/docs/orm/overview/databases/cloudflare-d1#evolve-your-sche
 
 ## Installation
 
+Create your database:
+```terminal
+npx wrangler d1 create billable
+```
+
+Copy the ID that's spat out by this command, and update the wrangler.toml file.
+
 ```terminal
 pnpm install
+
 pnpm migrate:dev
 pnpm dev
 ```
@@ -25,8 +33,6 @@ You'll need a cloudflare account.
 
 <!-- note(2025-01-06, peterp):
   Is it possible to create a cloudlfare account programatically.
-  Another thing I don't understand how to do is dynamically creating resources in cloudflare,
-  the database is a static string.
 -->
 
 ```terminal
