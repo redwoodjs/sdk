@@ -1,7 +1,14 @@
+'use server'
+
 import React from "react";
 import { Layout } from "./Layout";
+import { getInvoices } from "./services/invoices";
 
-export default function InvoiceListPage() {
+
+export default async function InvoiceListPage() {
+
+  await getInvoices(1)
+
   return (
     <Layout>
       <div className="px-4 sm:px-6 lg:px-8">
