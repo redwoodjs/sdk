@@ -12,17 +12,21 @@ datasource db {
 }
 
 model Invoice {
-  id             Int              @id @default(autoincrement())
-  title          String
-  number         String
-  date           DateTime         @default(now())
-  status         String           @default("draft")
-  supplier       String
-  customer       String
-  notesA         String?
-  notesB         String?
-  InvoiceItem    InvoiceItem[]
-  InvoiceTaxItem InvoiceTaxItem[]
+  id              Int              @id @default(autoincrement())
+  title           String           @default("invoice")
+  userId          Int
+  user            User             @relation(fields: [userId], references: [id])
+  number          String
+  date            DateTime         @default(now())
+  status          String           @default("draft")
+  supplierName    String
+  supplierContact String
+  customer        String
+  notesA          String?
+  notesB          String?
+  items           InvoiceItem[]
+  taxes           InvoiceTaxItem[]
+  @@unique([userId, number])
 }
 
 model InvoiceItem {
@@ -43,7 +47,7 @@ model InvoiceTaxItem {
 }
 
 model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
+  id      Int       @id @default(autoincrement())
+  email   String    @unique
+  Invoice Invoice[]
 }
-
