@@ -42,3 +42,9 @@ model InvoiceTaxItem {
   description String
   amount      Float
 }
+
+model User {
+  id    Int     @id @default(autoincrement())
+  email String  @unique
+}
+
