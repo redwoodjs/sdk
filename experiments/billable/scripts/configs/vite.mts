@@ -28,10 +28,10 @@ const MODE =
   process.env.NODE_ENV === "development" ? "development" : "production";
 
 export const viteConfigs = {
-  main: (): InlineConfig => ({
+  main: ({ silent = false, port }: { silent?: boolean, port?: number } = {}): InlineConfig => ({
     appType: "custom",
     mode: MODE,
-    logLevel: "info",
+    logLevel: silent ? "silent" : "info",
     build: {
       minify: MODE !== "development",
       sourcemap: true,
@@ -99,7 +99,7 @@ export const viteConfigs = {
     },
     server: {
       hmr: true,
-      port: DEV_SERVER_PORT,
+      port: port ?? DEV_SERVER_PORT,
     },
     builder: {
       async buildApp(builder) {
@@ -113,11 +113,11 @@ export const viteConfigs = {
       },
     },
   }),
-  dev: ({ setup }: { setup: () => Promise<unknown> }): InlineConfig =>
-    mergeConfig(viteConfigs.main(), {
+  dev: ({ setup, restartOnChanges = true, ...opts }: { setup: () => Promise<unknown>, silent?: boolean, port?: number, restartOnChanges?: boolean }): InlineConfig =>
+    mergeConfig(viteConfigs.main(opts), {
       plugins: [
         asyncSetupPlugin({ setup }),
-        restartPlugin({
+        restartOnChanges ? restartPlugin({
           filter: (filepath: string) =>
             !filepath.endsWith(".d.ts") &&
             (filepath.endsWith(".ts") ||
@@ -129,7 +129,7 @@ export const viteConfigs = {
               filepath.endsWith(".json")) &&
             (filepath.startsWith(resolve(ROOT_DIR, "scripts")) ||
               dirname(filepath) === ROOT_DIR),
-        }),
+        }) : null,
         miniflarePlugin({
           entry: RELATIVE_WORKER_PATHNAME,
           environment: "worker",
