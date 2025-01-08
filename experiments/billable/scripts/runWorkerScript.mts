@@ -8,7 +8,7 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
     console.log('\nUsage:');
     console.log('  pnpm worker:run <script-path>');
     console.log('\nExample:');
-    console.log('  pnpm worker:run src/workers/myScript.ts\n');
+    console.log('  pnpm worker:run src/scripts/seed.ts\n');
     process.exit(1);
   }
 
