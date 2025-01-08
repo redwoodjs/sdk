@@ -14,6 +14,8 @@ datasource db {
 model Invoice {
   id              Int              @id @default(autoincrement())
   title           String           @default("invoice")
+  userId          Int
+  user            User             @relation(fields: [userId], references: [id])
   number          String
   date            DateTime         @default(now())
   status          String           @default("draft")
@@ -24,6 +26,7 @@ model Invoice {
   notesB          String?
   items           InvoiceItem[]
   taxes           InvoiceTaxItem[]
+  @@unique([userId, number])
 }
 
 model InvoiceItem {
@@ -44,7 +47,7 @@ model InvoiceTaxItem {
 }
 
 model User {
-  id    Int     @id @default(autoincrement())
-  email String  @unique
+  id      Int       @id @default(autoincrement())
+  email   String    @unique
+  Invoice Invoice[]
 }
-
