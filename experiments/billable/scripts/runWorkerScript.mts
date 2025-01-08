@@ -14,21 +14,25 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
 
   const scriptPath = resolve(ROOT_DIR, relativeScriptPath);
   const server = await runDevServer();
-  const address = server.httpServer?.address();
 
-  if (!address || typeof address === 'string') {
-    throw new Error('Dev server address is invalid');
+  try {
+    const address = server.httpServer?.address();
+
+    if (!address || typeof address === 'string') {
+      throw new Error('Dev server address is invalid');
+    }
+
+    await fetch(`http://localhost:${address.port}/`, {
+      headers: {
+        'x-vite-fetch': JSON.stringify({
+          entry: scriptPath,
+        }),
+      },
+    })
+
+  } finally {
+    await server.close()
   }
-
-  await fetch(`http://localhost:${address.port}/`, {
-    headers: {
-      'x-vite-fetch': JSON.stringify({
-        entry: scriptPath,
-      }),
-    },
-  })
-
-  await server.close()
 };
 
 if (import.meta.url === new URL(process.argv[1], import.meta.url).href) {
