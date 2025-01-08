@@ -1,14 +1,29 @@
-'use server'
+"use server";
 
 import React from "react";
 import { Layout } from "./Layout";
-import { getInvoices } from "./services/invoices";
+import { getInvoiceListSummary } from "./services/invoices";
 
+
+
+function InvoiceItem(invoice: Awaited<ReturnType<typeof getInvoiceListSummary>>[number]) {
+  return (
+    <tr key={invoice.id}>
+      <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-0">
+        <a href={`/invoice/${invoice.id}`}>{invoice.date.toString()}</a>
+      </td>
+      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+        {invoice.customer}
+      </td>
+      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+        {invoice.total}
+      </td>
+    </tr>
+  );
+}
 
 export default async function InvoiceListPage() {
-
-  await getInvoices(1)
-
+  const invoices = await getInvoiceListSummary(1);
   return (
     <Layout>
       <div className="px-4 sm:px-6 lg:px-8">
@@ -48,21 +63,7 @@ export default async function InvoiceListPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {/* TODO: Replace with real data */}
-
-                    <tr>
-                      <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-0">
-                        <a href="/invoice/1">2024-01-15</a>
-
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                        Acme Corp
-                      </td>
-                      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-                        $2,000.00
-                      </td>
-                    </tr>
-
+                  {invoices.map(i => <InvoiceItem {...i} />)}
                 </tbody>
               </table>
             </div>

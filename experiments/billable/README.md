@@ -22,8 +22,8 @@ Copy the ID that's spat out by this command, and update the wrangler.toml file.
 
 ```terminal
 pnpm install
-
 pnpm migrate:dev
+npx prisma db seed
 pnpm dev
 ```
 
