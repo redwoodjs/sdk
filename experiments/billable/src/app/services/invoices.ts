@@ -1,4 +1,3 @@
-import { dmmfToRuntimeDataModel } from '@prisma/client/runtime/library'
 import { db } from '../../db'
 import { calculateSubtotal, calculateTaxes } from '../shared/invoice'
 import { InvoiceItem, InvoiceTaxItem } from '@prisma/client'
