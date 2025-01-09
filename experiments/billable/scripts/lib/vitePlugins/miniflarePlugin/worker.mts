@@ -134,6 +134,10 @@ export const createEvaluator = (env: RunnerEnv): ModuleEvaluator => ({
     Object.freeze(context[ssrModuleExportsKey]);
   },
   async runExternalModule(filepath) {
+    if (filepath.startsWith('cloudflare:')) {
+      return import(filepath);
+    }
+
     if (
       filepath.includes("/node_modules") &&
       !filepath.includes("/node_modules/.vite")

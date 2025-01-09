@@ -1,3 +1,4 @@
+import { DurableObject } from "cloudflare:workers";
 
 import { App } from "./app/App"
 import { db, setupDb } from "./db";
@@ -12,7 +13,6 @@ import { setupR2Storage } from "./r2storage";
 import InvoiceListPage from "./app/InvoiceListPage";
 import InvoiceDetailPage from "./app/InvoiceDetailPage";
 
-
 // todo(peterp, 2024-11-25): Make these lazy.
 const routes = {
   "/": InvoiceListPage,
@@ -22,6 +22,11 @@ const routes = {
 export default {
   async fetch(request: Request, env: Env) {
     globalThis.__webpack_require__ = ssrWebpackRequire;
+
+    const id = env.SESSION_DO.idFromName("default");
+    const obj = env.SESSION_DO.get(id);
+
+    console.log(await obj.cowsay());
 
     try {
       const url = new URL(request.url);
@@ -106,5 +111,5 @@ export default {
       console.error("Unhandled error", e);
       throw e;
     }
-  },
-};
+  }
+}

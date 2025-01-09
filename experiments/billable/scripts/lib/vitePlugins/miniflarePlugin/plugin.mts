@@ -167,6 +167,23 @@ const createDevEnv = async ({
   const serviceBindings: ServiceBindings = {
     __viteInvoke: async (request) => {
       const payload = (await request.json()) as HotPayload;
+
+      if (payload.type === 'custom' && payload.event === 'vite:invoke') {
+        const { name } = payload.data as { name: string }
+
+        if (name === 'fetchModule') {
+          const { data: [moduleId] } = payload.data as { data: [string] }
+          if (moduleId.startsWith('cloudflare:')) {
+            return Response.json({
+              r: {
+                externalize: moduleId,
+                type: 'builtin',
+              }
+            })
+          }
+        }
+      }
+
       const result = await devEnv.hot.handleInvoke(payload);
       return Response.json(result);
     },
@@ -261,6 +278,12 @@ const createServerMiddleware = ({ dispatchFetch }: DevEnvApi) => {
   return miniflarePluginMiddleware;
 };
 
+const cloudflareBuiltInModules = [
+  'cloudflare:email',
+  'cloudflare:sockets',
+  'cloudflare:workers',
+];
+
 export const miniflarePlugin = async (
   givenOptions: MiniflarePluginOptions,
 ): Promise<Plugin> => {
@@ -287,6 +310,7 @@ export const miniflarePlugin = async (
           },
           keepProcessEnv: false,
           optimizeDeps: {
+            external: cloudflareBuiltInModules,
             // context(justinvdm, 12 Dec 2024): Prevents `import { createRequire } from "node:module"` for pre-bundled CJS deps
             esbuildOptions: {
               platform: "browser",
@@ -295,10 +319,12 @@ export const miniflarePlugin = async (
           },
           build: {
             ssr: true,
+            external: cloudflareBuiltInModules,
             rollupOptions: {
               input: {
                 index: entry,
               },
+              external: cloudflareBuiltInModules,
             },
           },
         },

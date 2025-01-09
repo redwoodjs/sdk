@@ -17,5 +17,10 @@ database_id = "2dde5875-59a9-46b4-b48a-a3198733a2d5"
 bucket_name = "billable"
 binding = "billable"
 
+[durable_objects]
+bindings = [
+  { name = "SESSION_DO", class_name = "SessionDO" }
+]
+
 [build]
 command = "pnpm build"

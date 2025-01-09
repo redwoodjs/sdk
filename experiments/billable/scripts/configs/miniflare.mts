@@ -13,9 +13,13 @@ export const miniflareConfig: Partial<MiniflareOptions> = {
     "streams_enable_constructors",
     "transformstream_enable_standard_constructor",
     "nodejs_compat",
+    "rpc"
   ],
   bindings: dotenv,
   // todo(justinvdm, 12 Dec 2024): use wrangler unstable_readConfig() instead
   d1Databases: await getD1Databases(),
   r2Buckets: await getR2Buckets(),
+  durableObjects: {
+    SESSION_DO: 'SessionDO',
+  },
 };

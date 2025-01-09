@@ -62,7 +62,7 @@ export const viteConfigs = {
           // context(justinvdm, 2025-01-06): We rely on vite's prebundling and then let vite provide us with this prebundled code:
           // - we shouldn't needing to evaluate each and every module of each and every dependency in the module runner (prebundle avoids this)
           // - we can't rely on dynamic imports from within the miniflare sandbox (without teaching it about each and every module of each and every dependency)
-          noExternal: true
+          noExternal: true,
         },
         optimizeDeps: {
           noDiscovery: false,
