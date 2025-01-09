@@ -6,17 +6,17 @@ import { getInvoiceListSummary } from "./services/invoices";
 
 
 
-function InvoiceItem(invoice: Awaited<ReturnType<typeof getInvoiceListSummary>>[number]) {
+function InvoiceItem(props: Awaited<ReturnType<typeof getInvoiceListSummary>>[number]) {
   return (
-    <tr key={invoice.id}>
+    <tr key={'invoice-' + props.id}>
       <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-0">
-        <a href={`/invoice/${invoice.id}`}>{invoice.date.toString()}</a>
+        <a href={`/invoice/${props.id}`}>{props.date.toString()}</a>
       </td>
       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-        {invoice.customer}
+        {props.customer}
       </td>
       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-        {invoice.total}
+        {props.total}
       </td>
     </tr>
   );

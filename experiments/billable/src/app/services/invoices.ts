@@ -1,4 +1,7 @@
+import { dmmfToRuntimeDataModel } from '@prisma/client/runtime/library'
 import { db } from '../../db'
+import { calculateSubtotal, calculateTaxes } from '../shared/invoice'
+import { InvoiceItem, InvoiceTaxItem } from '@prisma/client'
 
 export async function getInvoiceListSummary(userId: number) {
 
@@ -27,27 +30,33 @@ export async function getInvoiceListSummary(userId: number) {
   })
   return invoices.map((invoice) => {
 
-    const { id, date, number, customer, status, items, taxes} = invoice
+    const { id, date, number, customer, status} = invoice
 
-    let subtotal = 0
-    for (const item of items) {
-      subtotal = item.price * item.quantity
-    }
-    let taxTotal = 0
-    for (const tax of taxes) {
-      taxTotal += subtotal * tax.amount
-    }
-    const total = subtotal + taxTotal
+    const subtotal = calculateSubtotal(invoice.items as InvoiceItem[])
+    const taxes = calculateTaxes(subtotal, invoice.taxes as InvoiceTaxItem[])
 
     return {
       id,
       date,
       number,
-      customer,
+      customer: customer.split('\n')[0] || '',
       status,
       subtotal,
-      taxTotal,
-      total,
+      taxes,
+      total: subtotal + taxes,
+    }
+  })
+}
+
+export async function getInvoice(id: number, userId: number) {
+  return await db.invoice.findUniqueOrThrow({
+    include: {
+      items: true,
+      taxes: true,
+    },
+    where: {
+      id,
+      userId
     }
   })
 }
