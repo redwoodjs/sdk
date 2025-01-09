@@ -67,7 +67,7 @@ export const viteConfigs = {
         optimizeDeps: {
           noDiscovery: false,
           esbuildOptions: {
-            conditions: ["module", "workerd"],
+            conditions: ["module", "workerd", "react-server"],
           },
           include: [
             "react",
@@ -93,9 +93,13 @@ export const viteConfigs = {
       },
     },
     resolve: {
-      alias: {
-        "vendor/react-ssr": resolve(VENDOR_DIST_DIR, "react-ssr.js"),
-      },
+      alias: [{
+        find: "vendor/react-ssr",
+        replacement: resolve(VENDOR_DIST_DIR, "react-ssr.js"),
+      }, {
+        find: /^react$/,
+        replacement: resolve(VENDOR_DIST_DIR, "react-rsc.js"),
+      }]
     },
     server: {
       hmr: true,

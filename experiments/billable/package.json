@@ -6,6 +6,7 @@
   "type": "module",
   "scripts": {
     "build": "npx tsx ./scripts/build.mts",
+    "build:vendor": "npx tsx ./scripts/buildVendorBundles.mts",
     "dev": "while true; do NODE_ENV=development npx tsx ./scripts/runDevServer.mts; [ $? -eq 0 ] || break; done",
     "seed": "pnpm worker:run ./src/scripts/seed.ts",
     "migrate:dev": "npx wrangler d1 migrations apply DB --local",
