@@ -1,15 +1,35 @@
 "use client";
 
+import React from "react";
 import { getInvoice } from "../../services/invoices";
 import { calculateSubtotal, calculateTaxes } from "../../shared/invoice";
+// import { saveInvoice } from "./functions";
 
-export function InvoiceForm({
-  invoice,
-}: {
+export function InvoiceForm(props: {
   invoice: Awaited<ReturnType<typeof getInvoice>>;
 }) {
+
+  let invoice = props.invoice;
+  let items = props.invoice.items;
+  let taxes = props.invoice.taxes;
+
+  const x = React.useState(props.invoice);
+  console.log(x)
+  // const [items, setItems] = useState(props.invoice.items);
+  // const [taxes, setTaxes] = useState(props.invoice.taxes);
+
+  function onChangeItem(item: Awaited<ReturnType<typeof getInvoice>>["items"][number]) {
+    // const index = items.findIndex((i) => i.id === item.id);
+    // const newItems = [...items];
+    // newItems[index] = item;
+    // setItems(newItems);
+  }
+
   return (
     <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
+      <div className="col-span-full">
+        {/* <button onClick={() => saveInvoice(invoice.id, invoice, items, taxes)}>Save</button> */}
+      </div>
       <div className="sm:col-span-3">
         <label
           htmlFor="invoice-number"
@@ -24,6 +44,7 @@ export function InvoiceForm({
             id="invoice-number"
             className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
             value={invoice.number}
+
           />
         </div>
       </div>
@@ -107,7 +128,7 @@ export function InvoiceForm({
           Items
         </label>
         <div className="mt-2 space-y-4">
-          {invoice.items.map(Item)}
+          {items.map((item) => <Item {...item} onChange={onChangeItem} />)}
           <button
             type="button"
             className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
@@ -118,7 +139,7 @@ export function InvoiceForm({
       </div>
 
       <div className="col-span-full">
-        <Summary {...invoice} />
+        <Summary items={items} taxes={taxes} />
       </div>
 
       <div className="col-span-full">
@@ -149,7 +170,7 @@ export function InvoiceForm({
   );
 }
 
-function Item(props: Awaited<ReturnType<typeof getInvoice>>["items"][number]) {
+function Item(props: Awaited<ReturnType<typeof getInvoice>>["items"][number] & { onChange: (item: Awaited<ReturnType<typeof getInvoice>>["items"][number]) => void }) {
   return (
     <div className="grid grid-cols-12 gap-4" key={"invoice-item-" + props.id}>
       <div className="col-span-6">
@@ -158,6 +179,7 @@ function Item(props: Awaited<ReturnType<typeof getInvoice>>["items"][number]) {
           placeholder="Description"
           className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
           value={props.description}
+          onChange={(e) => props.onChange({ ...props, description: e.target.value })}
         />
       </div>
       <div className="col-span-2">
@@ -166,6 +188,7 @@ function Item(props: Awaited<ReturnType<typeof getInvoice>>["items"][number]) {
           placeholder="Quantity"
           className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
           value={props.quantity}
+          onChange={(e) => props.onChange({ ...props, quantity: Number(e.target.value) })}
         />
       </div>
       <div className="col-span-2">
@@ -174,6 +197,7 @@ function Item(props: Awaited<ReturnType<typeof getInvoice>>["items"][number]) {
           placeholder="Price"
           className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
           value={props.price}
+          onChange={(e) => props.onChange({ ...props, price: Number(e.target.value) })}
         />
       </div>
       <div className="col-span-1">
@@ -186,10 +210,11 @@ function Item(props: Awaited<ReturnType<typeof getInvoice>>["items"][number]) {
   );
 }
 
-function Summary(props: Awaited<ReturnType<typeof getInvoice>>) {
-  // calculate the total
+function Summary(props: {items: Awaited<ReturnType<typeof getInvoice>>["items"], taxes: Awaited<ReturnType<typeof getInvoice>>["taxes"]}) {
+
   const subtotal = calculateSubtotal(props.items);
   const taxes = calculateTaxes(subtotal, props.taxes);
+
   return (
     <div className="space-y-4 bg-red-50">
       <div className="grid grid-cols-12 gap-4">

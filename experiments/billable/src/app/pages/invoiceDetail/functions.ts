@@ -1,19 +1,50 @@
 "use server";
-import { data } from "autoprefixer";
+import {
+  type Invoice,
+  type InvoiceItem,
+  type InvoiceTaxItem,
+} from "@prisma/client";
 import { db } from "../../../db";
 
-// this needs context? E.g.: We need to be able to get the current user "anywhere", instead of passing it in as
-// a variable.
-export async function saveInvoice(id: number, invoice) {
-  // validate that the user has access to this invoice.
+export async function saveInvoice(
+  id: number,
+  invoice: Partial<Invoice>,
+  items: InvoiceItem[],
+  taxes: InvoiceTaxItem[],
+) {
 
-  await db.invoice.update({
-    data: {
-      notesB: "heylldoksopdksap",
-    },
-    where: {
-      id,
-    },
-  });
+  // validate that the user can actually modify this invoice.
 
+  console.log("saving...", invoice);
+
+  // use zod to validate?
+  const {
+    title,
+    number,
+    date,
+    supplierName,
+    supplierContact,
+    customer,
+    notesA,
+    notesB,
+  } = invoice;
+  await db.$transaction([
+    db.invoice.update({
+      data: {
+        title,
+        number,
+        date,
+        supplierName,
+        supplierContact,
+        customer,
+        notesA,
+        notesB,
+      },
+      where: {
+        id,
+      },
+    }),
+    db.invoiceItem.updateMany({ data: items }),
+    db.invoiceTaxItem.updateMany({ data: taxes })
+  ]);
 }
