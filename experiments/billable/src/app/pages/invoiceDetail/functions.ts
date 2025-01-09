@@ -12,11 +12,6 @@ export async function saveInvoice(
   items: InvoiceItem[],
   taxes: InvoiceTaxItem[],
 ) {
-
-  // validate that the user can actually modify this invoice.
-
-  console.log("saving...", invoice);
-
   // use zod to validate?
   const {
     title,
@@ -28,8 +23,35 @@ export async function saveInvoice(
     notesA,
     notesB,
   } = invoice;
-  await db.$transaction([
-    db.invoice.update({
+
+  // is this a new invoice?
+  let exists = false
+  const n = await db.invoice.count({ where: { id }})
+  if (n > 0) {
+    exists = true
+  }
+
+  if (!exists) {
+    // get next invoice number
+    const numOfInvoices = await db.invoice.count({ where: { userId: 1 }})
+    const invoice = await db.invoice.create({
+      data: {
+        title,
+        number: number ?? (numOfInvoices + 1).toString(),
+        date,
+        supplierName,
+        supplierContact,
+        customer,
+        notesA,
+        notesB,
+      }
+    })
+
+    // create invoices
+    // create taxes
+  } else {
+
+    const invoice = await db.invoice.update({
       data: {
         title,
         number,
@@ -38,8 +60,9 @@ export async function saveInvoice(
         supplierContact,
         customer,
         notesA,
-        notesB,
+        notesB
       },
+<<<<<<< HEAD
       where: {
         id,
       },
@@ -47,4 +70,30 @@ export async function saveInvoice(
     // db.invoiceItem.updateMany({ data: items }),
     // db.invoiceTaxItem.updateMany({ data: taxes })
   ]);
+=======
+      where:
+        { id }
+      })
+
+    for (const item of items) {
+      if (item.id) {
+        await db.invoiceItem.update({
+          data: item,
+          where: {
+            id: item.id
+          }
+        })
+      } else {
+        await db.invoiceItem.create({
+          data: { ...item, invoiceId: invoice.id, id: undefined },
+        })
+      }
+    }
+  }
+}
+
+export async function deleteInvoiceItem(id: number) {
+  // validate that the user can actually do this.
+  await db.invoiceItem.delete({ where: { id }})
+>>>>>>> 463dc97 (Remove errors.)
 }
