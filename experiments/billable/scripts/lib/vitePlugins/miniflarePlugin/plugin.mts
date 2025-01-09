@@ -1,5 +1,4 @@
 import { readFile } from "node:fs/promises";
-import { readFileSync } from 'fs';
 import { EventEmitter } from "node:events";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
@@ -207,10 +206,12 @@ const createDevEnv = async ({
       return redirectToSelf(request);
     }
 
-    request.headers.set(
-      "x-vite-fetch",
-      JSON.stringify({ entry } satisfies FetchMetadata),
-    );
+    if (!request.headers.has("x-vite-fetch")) {
+      request.headers.set(
+        "x-vite-fetch",
+        JSON.stringify({ entry } satisfies FetchMetadata),
+      );
+    }
 
     try {
       return await runnerWorker.fetch(request.url, request);
