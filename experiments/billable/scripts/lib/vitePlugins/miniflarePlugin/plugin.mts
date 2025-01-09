@@ -37,7 +37,7 @@ import { SRC_DIR } from "../../constants.mjs";
 interface MiniflarePluginOptions {
   entry: string;
   environment?: string;
-  miniflare?: Partial<MiniflareOptions>;
+  miniflare?: Partial<MiniflareOptions & { durableObjects: Record<string, { scriptName: string, className: string }> }>;
 }
 
 type MiniflarePluginOptionsFull = NoOptionals<MiniflarePluginOptions>;
@@ -73,7 +73,10 @@ const loadGeneratedPrismaModule = async (id: string) => {
 const createMiniflareOptions = async ({
   config,
   serviceBindings,
-  options: { miniflare: userOptions },
+  options: {
+    miniflare: userOptions,
+    entry,
+  },
 }: {
   config: ResolvedConfig;
   serviceBindings: ServiceBindings;
@@ -116,11 +119,28 @@ const createMiniflareOptions = async ({
     },
   };
 
-  const workerOptions = mergeWorkerOptions(userOptions, runnerOptions);
+  const baseWorkerOptions = mergeWorkerOptions(userOptions, runnerOptions);
+
+  const workers = [
+    {
+      ...baseWorkerOptions,
+      name: '__DEFAULT',
+      env: {
+        __viteEntry: entry,
+      }
+    },
+    ...Object.entries(userOptions.durableObjects ?? {}).map(([name, { scriptName, className }]) => ({
+      name,
+      env: {
+        __viteEntry: scriptName,
+        __viteClassName: className,
+      }
+    })),
+  ]
 
   return {
     ...userOptions,
-    workers: [workerOptions],
+    workers,
   } as MiniflareOptions & SharedOptions & SourcelessWorkerOptions;
 };
 
@@ -221,13 +241,6 @@ const createDevEnv = async ({
   const dispatchFetch: DevEnvApi["dispatchFetch"] = async (request) => {
     if (devEnv.discarded) {
       return redirectToSelf(request);
-    }
-
-    if (!request.headers.has("x-vite-fetch")) {
-      request.headers.set(
-        "x-vite-fetch",
-        JSON.stringify({ entry } satisfies FetchMetadata),
-      );
     }
 
     try {

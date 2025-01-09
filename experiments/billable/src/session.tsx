@@ -6,6 +6,6 @@ export class SessionDO extends DurableObject {
   }
 
   async cowsay() {
-    return 'moo'
+    return 'im a teapot'
   }
 }

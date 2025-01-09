@@ -20,6 +20,9 @@ export const miniflareConfig: Partial<MiniflareOptions> = {
   d1Databases: await getD1Databases(),
   r2Buckets: await getR2Buckets(),
   durableObjects: {
-    SESSION_DO: 'SessionDO',
+    SESSION_DO: {
+      scriptName: './src/worker.tsx',
+      className: 'SessionDO',
+    },
   },
 };

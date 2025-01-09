@@ -39,7 +39,18 @@ export class RunnerWorker
       request.headers.get("x-vite-fetch")!,
     ) as FetchMetadata;
 
-    const mod = await this.#runner.import(options.entry);
+    let entry: string;
+    let className: string | undefined;
+
+    if (options.entry) {
+      entry = options.entry;
+      className = options.className;
+    } else {
+      entry = this.env.__viteWorkerEntry;
+      className = this.env.__viteClassName;
+    }
+
+    const mod = await this.#runner.import(entry);
 
     const handler = mod.default as ExportedHandler;
 
