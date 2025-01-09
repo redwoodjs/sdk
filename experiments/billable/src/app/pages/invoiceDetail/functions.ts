@@ -44,7 +44,7 @@ export async function saveInvoice(
         id,
       },
     }),
-    db.invoiceItem.updateMany({ data: items }),
-    db.invoiceTaxItem.updateMany({ data: taxes })
+    // db.invoiceItem.updateMany({ data: items }),
+    // db.invoiceTaxItem.updateMany({ data: taxes })
   ]);
 }
