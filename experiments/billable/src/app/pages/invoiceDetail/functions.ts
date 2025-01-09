@@ -62,15 +62,6 @@ export async function saveInvoice(
         notesA,
         notesB
       },
-<<<<<<< HEAD
-      where: {
-        id,
-      },
-    }),
-    // db.invoiceItem.updateMany({ data: items }),
-    // db.invoiceTaxItem.updateMany({ data: taxes })
-  ]);
-=======
       where:
         { id }
       })
@@ -95,5 +86,4 @@ export async function saveInvoice(
 export async function deleteInvoiceItem(id: number) {
   // validate that the user can actually do this.
   await db.invoiceItem.delete({ where: { id }})
->>>>>>> 463dc97 (Remove errors.)
 }
