@@ -64,6 +64,7 @@
   "scripts": {
     "build": "npx tsx ./scripts/build.mts",
     "build:vendor": "npx tsx ./scripts/buildVendorBundles.mts",
+    "build:clean": "rm -f clean:vendor && rm -f clean:vite",
     "dev": "while true; do NODE_ENV=development npx tsx ./scripts/runDevServer.mts; [ $? -eq 0 ] || break; done",
     "seed": "pnpm worker:run ./src/scripts/seed.ts",
     "migrate:dev": "npx wrangler d1 migrations apply DB --local",
@@ -72,6 +73,8 @@
     "worker:run": "npx tsx ./scripts/runWorkerScript.mts",
     "codegen": "npx tsx ./scripts/codegen.mts",
     "types": "pnpm codegen:types && tsc",
+    "clean:vite": "rm -rf ./node_modules/.vite",
+    "clean:vendor": "rm -rf ./vendor/dist",
     "deploy": "wrangler deploy",
     "preview": "NODE_ENV=${NODE_ENV:-development} PREVIEW=1 npx tsx ./scripts/runPreviewServer.mts",
     "format": "npx prettier --write ./src ./scripts"

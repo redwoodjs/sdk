@@ -5,6 +5,8 @@ import { codegen } from "./codegen.mjs";
 import { $ } from "./lib/$.mjs";
 
 const setup = ({ silent = false } = {}) => async () => {
+  await $`pnpm build:clean`;
+
   // context(justinvdm, 2024-12-05): Call indirectly to silence verbose output when VERBOSE is not set
   await $`pnpm build:vendor`;
 

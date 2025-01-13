@@ -15,10 +15,10 @@ export async function getInvoiceListSummary(userId: number) {
     where: {
       userId
     }
-  })
+  }) ?? []
   return invoices.map((invoice) => {
 
-    const { id, date, number, customer, status} = invoice
+    const { id, date, number, customer, status } = invoice
 
     // const subtotal = calculateSubtotal(invoice.items as InvoiceItem[])
     // const taxes = calculateTaxes(subtotal, invoice.taxes as InvoiceTaxItem[])
