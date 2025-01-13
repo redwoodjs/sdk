@@ -7,8 +7,8 @@ import {
   RELATIVE_CLIENT_PATHNAME,
   RELATIVE_WORKER_PATHNAME,
   ROOT_DIR,
-  VENDOR_DIST_DIR,
   WORKER_DIST_DIR,
+  VENDOR_REACT_SSR_PATH,
 } from "../lib/constants.mjs";
 
 import tailwind from "tailwindcss";
@@ -43,11 +43,8 @@ export const viteConfigs = {
       ),
       "process.env.NODE_ENV": JSON.stringify(MODE),
     },
-    plugins: [reactPlugin(), useServerPlugin(), useClientPlugin(), aliasByEnvPlugin({
-      worker: {
-        react: resolve(VENDOR_DIST_DIR, "react-rsc.js"),
-        'vendor/react-ssr': resolve(VENDOR_DIST_DIR, "react-ssr.js"),
-      }
+    plugins: [reactPlugin(), useServerPlugin(), useClientPlugin({
+      reactSSRImportPath: VENDOR_REACT_SSR_PATH,
     })],
     environments: {
       client: {
@@ -113,6 +110,11 @@ export const viteConfigs = {
         plugins: [tailwind, autoprefixer()],
       },
     },
+    resolve: {
+      alias: {
+        'vendor/react-ssr': VENDOR_REACT_SSR_PATH,
+      }
+    }
   }),
   dev: ({ setup, restartOnChanges = true, ...opts }: { setup: () => Promise<unknown>, silent?: boolean, port?: number, restartOnChanges?: boolean }): InlineConfig =>
     mergeConfig(viteConfigs.main(opts), {

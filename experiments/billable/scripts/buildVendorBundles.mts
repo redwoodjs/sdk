@@ -40,33 +40,11 @@ const configs = {
         },
       },
     }),
-  reactRSC: (): InlineConfig =>
-    mergeConfig(configs.common(), {
-      resolve: {
-        conditions: ["react-server"],
-      },
-      build: {
-        outDir: DEST_DIR,
-        optimizeDeps: {
-          noDiscovery: false,
-          esbuildOptions: {
-            conditions: ["react-server"],
-          },
-        },
-        lib: {
-          entry: resolve(SRC_DIR, "react-rsc.ts"),
-          name: "react-rsc",
-          formats: ["es"],
-          fileName: "react-rsc",
-        },
-      },
-    }),
 };
 
 export const buildVendorBundles = async () => {
   console.log("Building vendor bundles...");
   await build(configs.reactSSR());
-  await build(configs.reactRSC());
 };
 
 if (import.meta.url === new URL(process.argv[1], import.meta.url).href) {
