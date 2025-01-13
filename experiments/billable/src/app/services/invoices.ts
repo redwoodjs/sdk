@@ -1,3 +1,4 @@
+"use server"
 import { db } from '../../db'
 import { calculateSubtotal, calculateTaxes } from '../shared/invoice'
 

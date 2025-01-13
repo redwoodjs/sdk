@@ -3,17 +3,21 @@ import { Plugin } from "vite";
 import { parse } from "es-module-lexer";
 import MagicString from "magic-string";
 
-export const useClientPlugin = (): Plugin => ({
+interface UseClientPluginOptions {
+  reactSSRImportPath?: string;
+}
+
+export const useClientPlugin = (options: UseClientPluginOptions = {}): Plugin => ({
   name: "rw-reloaded-use-client",
   async transform(code, id) {
     if (id.includes(".vite/deps") || id.includes("node_modules")) {
       return;
     }
 
+    const s = new MagicString(code);
     const relativeId = `/${relative(this.environment.getTopLevelConfig().root, id)}`;
-    if (code.includes('"use client"') || code.includes("'use client'")) {
-      const s = new MagicString(code);
 
+    if (code.includes('"use client"') || code.includes("'use client'")) {
       // context(justinvdm, 5 Dec 2024): they've served their purpose at this point, keeping them around just causes rollup warnings since module level directives can't easily be applied to bundled
       // modules
       s.replaceAll("'use client'", "");
@@ -24,6 +28,13 @@ export const useClientPlugin = (): Plugin => ({
         s.prepend(`
 import { registerClientReference } from "/src/register/worker.ts";
 `);
+
+        if (options.reactSSRImportPath) {
+          s.replaceAll(
+            /from ['"]react['"]/g,
+            `from "${options.reactSSRImportPath}"`
+          );
+        }
 
         const [_, exports] = parse(code);
 
