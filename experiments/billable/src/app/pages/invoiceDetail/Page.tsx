@@ -9,12 +9,8 @@ import { InvoiceForm } from "./InvoiceForm";
 
 
 
-// This component fetch the data from the server and render the page.
-// Can it run a  server action to update the invoice?
-
 export default async function InvoiceDetailPage({ id }: { id: number }) {
   id = Number(id);
-  // const invoice = await getInvoice(id, 1);
 
   return (
     <Layout>

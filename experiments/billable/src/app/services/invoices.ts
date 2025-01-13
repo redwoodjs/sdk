@@ -1,6 +1,6 @@
 import { db } from '../../db'
 import { calculateSubtotal, calculateTaxes } from '../shared/invoice'
-import { InvoiceItem, InvoiceTaxItem } from '@prisma/client'
+import { type InvoiceItem, type InvoiceTaxItem } from '@prisma/client'
 
 export async function getInvoiceListSummary(userId: number) {
 
