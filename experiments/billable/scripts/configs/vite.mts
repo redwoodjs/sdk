@@ -15,6 +15,7 @@ import tailwind from "tailwindcss";
 import autoprefixer from "autoprefixer";
 import reactPlugin from "@vitejs/plugin-react";
 
+import { aliasByEnvPlugin } from "../lib/vitePlugins/aliasByEnvPlugin.mjs";
 import { transformJsxScriptTagsPlugin } from "../lib/vitePlugins/transformJsxScriptTagsPlugin.mjs";
 import { useServerPlugin } from "../lib/vitePlugins/useServerPlugin.mjs";
 import { useClientPlugin } from "../lib/vitePlugins/useClientPlugin.mjs";
@@ -42,7 +43,12 @@ export const viteConfigs = {
       ),
       "process.env.NODE_ENV": JSON.stringify(MODE),
     },
-    plugins: [reactPlugin(), useServerPlugin(), useClientPlugin()],
+    plugins: [reactPlugin(), useServerPlugin(), useClientPlugin(), aliasByEnvPlugin({
+      worker: {
+        react: resolve(VENDOR_DIST_DIR, "react-rsc.js"),
+        'vendor/react-ssr': resolve(VENDOR_DIST_DIR, "react-ssr.js"),
+      }
+    })],
     environments: {
       client: {
         consumer: "client",
@@ -91,15 +97,6 @@ export const viteConfigs = {
           },
         },
       },
-    },
-    resolve: {
-      alias: [{
-        find: "vendor/react-ssr",
-        replacement: resolve(VENDOR_DIST_DIR, "react-ssr.js"),
-      }, {
-        find: /^react$/,
-        replacement: resolve(VENDOR_DIST_DIR, "react-rsc.js"),
-      }]
     },
     server: {
       hmr: true,
