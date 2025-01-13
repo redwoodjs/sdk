@@ -1,21 +1,21 @@
-"use client"
+"use client";
 
 import { useState } from "react";
 import { getInvoice } from "../../services/invoices";
-import { calculateSubtotal, calculateTaxes } from "../../shared/invoice";
-import { deleteInvoiceItem, saveInvoice } from "./functions";
+// import { calculateSubtotal, calculateTaxes } from "../../shared/invoice";
+// import { deleteInvoiceItem, saveInvoice } from "./functions";
 
 export function InvoiceForm(props: {
   invoice: Awaited<ReturnType<typeof getInvoice>>;
 }) {
   const [invoice, setInvoice] = useState(props.invoice);
-  const [items, setItems] = useState(props.invoice.items);
-  const [taxes, setTaxes] = useState(props.invoice.taxes);
+
+  const [items, setItems] = useState(JSON.parse(props.invoice.items));
 
   return (
     <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
       <div className="col-span-full">
-        <button onClick={() => saveInvoice(invoice.id, invoice, items, taxes)}>
+        <button onClick={() => {}}>
           Save
         </button>
       </div>
@@ -128,7 +128,7 @@ export function InvoiceForm(props: {
         <div className="mt-2 space-y-4">
           {items.map((item, index) => (
             <Item
-              key={"invoiceItem" + item.id}
+              key={"invoiceItem" + index}
               item={item}
               onChange={(newItem) => {
                 const newItems = [...items];
@@ -136,7 +136,8 @@ export function InvoiceForm(props: {
                 setItems(newItems);
               }}
               onDelete={() => {
-                deleteInvoiceItem(item.id);
+                console.log("delete")
+                // todo update total
                 const newItems = [...items]
                 delete newItems[index]
                 setItems(newItems);
@@ -146,7 +147,10 @@ export function InvoiceForm(props: {
           <button
             type="button"
             className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-            onClick={() => setItems([...items, { id: 0, invoiceId: invoice.id, description: '', quantity: 1, price: 1 }])}
+            onClick={() => {
+              // todo update total
+              setItems([...items, { description: '', quantity: 1, price: 1 }])
+            }}
           >
             Add Item
           </button>
@@ -183,6 +187,10 @@ export function InvoiceForm(props: {
       </div>
     </div>
   );
+}
+
+export function InvoiceItems() {
+
 }
 
 function Item({

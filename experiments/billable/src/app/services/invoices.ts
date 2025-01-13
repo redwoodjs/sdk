@@ -1,6 +1,6 @@
 import { db } from '../../db'
 import { calculateSubtotal, calculateTaxes } from '../shared/invoice'
-import { type InvoiceItem, type InvoiceTaxItem } from '@prisma/client'
+
 
 export async function getInvoiceListSummary(userId: number) {
 
@@ -11,17 +11,6 @@ export async function getInvoiceListSummary(userId: number) {
       date: true,
       status: true,
       customer: true,
-      items: {
-        select: {
-          price: true,
-          quantity: true,
-        }
-      },
-      taxes: {
-        select: {
-          amount: true,
-        }
-      }
     },
     where: {
       userId
@@ -31,8 +20,8 @@ export async function getInvoiceListSummary(userId: number) {
 
     const { id, date, number, customer, status} = invoice
 
-    const subtotal = calculateSubtotal(invoice.items as InvoiceItem[])
-    const taxes = calculateTaxes(subtotal, invoice.taxes as InvoiceTaxItem[])
+    // const subtotal = calculateSubtotal(invoice.items as InvoiceItem[])
+    // const taxes = calculateTaxes(subtotal, invoice.taxes as InvoiceTaxItem[])
 
     return {
       id,
@@ -40,19 +29,14 @@ export async function getInvoiceListSummary(userId: number) {
       number,
       customer: customer.split('\n')[0] || '',
       status,
-      subtotal,
-      taxes,
-      total: subtotal + taxes,
     }
   })
 }
 
+// NOTE (peterp, 2025-01-13): The userID will be optional, since we should have that available "somewhere" in the context.
 export async function getInvoice(id: number, userId: number) {
-  return await db.invoice.findUniqueOrThrow({
-    include: {
-      items: true,
-      taxes: true,
-    },
+
+  return await db.invoice.findFirstOrThrow({
     where: {
       id,
       userId
