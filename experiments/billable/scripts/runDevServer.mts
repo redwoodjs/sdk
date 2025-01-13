@@ -6,7 +6,7 @@ import { $ } from "./lib/$.mjs";
 
 const setup = ({ silent = false } = {}) => async () => {
   // context(justinvdm, 2024-12-05): Call indirectly to silence verbose output when VERBOSE is not set
-  await $`npx tsx ./scripts/buildVendorBundles.mts`;
+  await $`pnpm build:vendor`;
 
   // context(justinvdm, 2024-11-28): Types don't affect runtime, so we don't need to block the dev server on them
   void codegen({ silent });
