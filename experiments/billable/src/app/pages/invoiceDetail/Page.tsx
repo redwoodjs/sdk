@@ -24,7 +24,7 @@ export default async function InvoiceDetailPage({ id }: { id: string }) {
 
             <Suspense fallback={<div>Loading...</div>}>
               <FetchInvoice id={id}>
-                {(invoice) => <InvoiceForm invoice={invoice} />}
+                {(invoice: any) => <InvoiceForm invoice={invoice} />}
               </FetchInvoice>
             </Suspense>
           </div>

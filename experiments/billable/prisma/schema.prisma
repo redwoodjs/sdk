@@ -12,26 +12,30 @@ datasource db {
 }
 
 model Invoice {
-  id              String   @id @default(uuid())
-  title           String   @default("invoice")
+  id              String    @id @default(uuid())
+  title           String    @default("invoice")
   userId          String
-  user            User     @relation(fields: [userId], references: [id])
+  user            User      @relation(fields: [userId], references: [id])
   number          String
-  date            DateTime @default(now())
-  status          String   @default("draft")
+  date            DateTime  @default(now())
+  status          String    @default("draft")
   supplierName    String?
   supplierContact String?
   customer        String?
   notesA          String?
   notesB          String?
-  items           String   @default("[]")
-  taxes           String   @default("[]")
+  items           String    @default("[]")
+  taxes           String    @default("[]")
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime? @updatedAt
 
   @@unique([userId, number])
 }
 
 model User {
-  id      String    @id @default(uuid())
-  email   String    @unique
-  Invoice Invoice[]
+  id        String    @id @default(uuid())
+  email     String    @unique
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+  Invoice   Invoice[]
 }

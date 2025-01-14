@@ -16,7 +16,7 @@ import InvoiceDetailPage from "./app/pages/invoiceDetail/Page";
 // todo(peterp, 2024-11-25): Make these lazy.
 const routes = {
   "/": InvoiceListPage,
-  "/invoice/:id": InvoiceDetailPage,
+  "/invoice/:id": InvoiceDetailPage
 }
 
 export default {
@@ -43,30 +43,29 @@ export default {
 
       // The worker access the bucket and returns it to the user, we dont let them access the bucket directly
       if (request.method === "GET" && url.pathname.startsWith("/bucket/")) {
-        const filename = url.pathname.slice("/bucket/".length);
-        const object = await env.valley_directory_r2.get(filename);
+        // const filename = url.pathname.slice("/bucket/".length);
+        // const object = await env.valley_directory_r2.get(filename);
 
-        if (object === null) {
-          return new Response("Object Not Found", { status: 404 });
-        }
+        // if (object === null) {
+        //   return new Response("Object Not Found", { status: 404 });
+        // }
 
-        const headers = new Headers();
-        if (filename.endsWith(".jpg") || filename.endsWith(".png")) {
-          headers.set("content-type", "image/jpeg");
-        }
+        // const headers = new Headers();
+        // if (filename.endsWith(".jpg") || filename.endsWith(".png")) {
+        //   headers.set("content-type", "image/jpeg");
+        // }
 
-        object.writeHttpMetadata(headers);
-        headers.set("etag", object.httpEtag);
+        // object.writeHttpMetadata(headers);
+        // headers.set("etag", object.httpEtag);
 
-        return new Response(object.body, {
-          headers,
-        });
+        // return new Response(object.body, {
+        //   headers,
+        // });
       }
 
 
       const renderPage = async (Page: any, props = {}) => {
         const rscPayloadStream = renderToRscStream(<Page {...props} />);
-
         if (isRSCRequest) {
           return new Response(rscPayloadStream, {
             headers: { "content-type": "text/x-component; charset=utf-8" },
