@@ -42,7 +42,7 @@ export async function getInvoiceListSummary() {
       id,
       date,
       number,
-      customer: customer.split('\n')[0] || '',
+      customer: customer?.split('\n')[0] || '',
       status,
     }
   })

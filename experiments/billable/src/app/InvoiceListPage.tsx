@@ -3,7 +3,7 @@
 import React from "react";
 import { Layout } from "./Layout";
 import { getInvoiceListSummary } from "./services/invoices";
-import { createInvoice } from "./pages/invoiceDetail/functions";
+import { CreateInvoiceButton } from "./CreateInvoiceButton";
 
 
 // todo: fix the total
@@ -27,7 +27,6 @@ function InvoiceItem(props: Awaited<ReturnType<typeof getInvoiceListSummary>>[nu
 // todo: add a button to create a new invoice
 export default async function InvoiceListPage() {
   const invoices = await getInvoiceListSummary();
-
   return (
     <Layout>
       <div className="px-4 sm:px-6 lg:px-8">
@@ -40,9 +39,7 @@ export default async function InvoiceListPage() {
             </p>
           </div>
           <div className="mt-2">
-            <button>
-              Create New Invoice
-            </button>
+            <CreateInvoiceButton />
           </div>
         </div>
         <div className="mt-8 flow-root">

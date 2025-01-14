@@ -257,7 +257,7 @@ function Item({
 }
 
 // split out the taxes part.
-
+// todo(peterp, 2025-01-14): add currency.
 function Summary(props: {
   items: Awaited<ReturnType<typeof getInvoice>>["items"];
   taxes: Awaited<ReturnType<typeof getInvoice>>["taxes"];

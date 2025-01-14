@@ -27,7 +27,6 @@ export async function saveInvoice(id: string, invoice: Omit<Invoice, 'items' | '
 
 export async function createInvoice() {
 
-
   // grab the supplier name
   // and the contact information
   // what if the user doesn't have any invoices?
@@ -37,24 +36,20 @@ export async function createInvoice() {
       userId: '1',
     },
     orderBy: {
-      date: 'desc',
+      createdAt: 'desc',
     }
   })
-  if (!lastInvoice) {
-    // lastInvoice = {
-    //   number: "1",
-    //   supplierName: "Your company name",
-    //   supplierContact: "Your company details",
-    // }
-  }
 
-
-  await db.invoice.create({
+  const newInvoice = await db.invoice.create({
     data: {
-      // determine next invoice number.
-
-      number: 'todo',
+      number: (Number(lastInvoice?.number || 0) + 1).toString(),
+      supplierName: lastInvoice?.supplierName,
+      supplierContact: lastInvoice?.supplierContact,
+      notesA: lastInvoice?.notesA,
+      notesB: lastInvoice?.notesB,
+      taxes: lastInvoice?.taxes,
       userId: '1'
     }
   })
+  return newInvoice
 }
