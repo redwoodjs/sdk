@@ -372,7 +372,10 @@ export const miniflarePlugin = async (
           }
         }
 
-        return cssModules;
+        return [
+          ...ctx.modules,
+          ...cssModules,
+        ];
       }
 
       // The worker needs an update, and the hot check is for the worker environment
