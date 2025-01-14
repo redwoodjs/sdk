@@ -12,9 +12,9 @@ datasource db {
 }
 
 model Invoice {
-  id              Int      @id @default(autoincrement())
+  id              String   @id @default(uuid())
   title           String   @default("invoice")
-  userId          Int
+  userId          String
   user            User     @relation(fields: [userId], references: [id])
   number          String
   date            DateTime @default(now())
@@ -31,7 +31,7 @@ model Invoice {
 }
 
 model User {
-  id      Int       @id @default(autoincrement())
+  id      String    @id @default(uuid())
   email   String    @unique
   Invoice Invoice[]
 }
