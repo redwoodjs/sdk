@@ -11,7 +11,7 @@ import { ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import { setupR2Storage } from "./r2storage";
 import InvoiceListPage from "./app/InvoiceListPage";
-import InvoiceDetailPage from "./app/InvoiceDetailPage";
+import InvoiceDetailPage from "./app/pages/invoiceDetail/Page";
 
 // todo(peterp, 2024-11-25): Make these lazy.
 const routes = {

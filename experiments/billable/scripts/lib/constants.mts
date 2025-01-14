@@ -23,3 +23,5 @@ export const D1_PERSIST_PATH = resolve(ROOT_DIR, ".wrangler/state/v3/d1");
 export const R2_PERSIST_PATH = resolve(ROOT_DIR, ".wrangler/state/v3/r2");
 
 export const WRANGLER_TOML_PATH = resolve(ROOT_DIR, "wrangler.toml");
+
+export const VENDOR_REACT_SSR_PATH = resolve(VENDOR_DIST_DIR, "react-ssr.js");

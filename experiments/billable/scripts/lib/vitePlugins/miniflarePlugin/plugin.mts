@@ -297,6 +297,21 @@ const cloudflareBuiltInModules = [
   'cloudflare:workers',
 ];
 
+const hasEntryAsAncestor = (module: any, entryFile: string, seen = new Set()): boolean => {
+  // Prevent infinite recursion
+  if (seen.has(module)) return false;
+  seen.add(module);
+
+  // Check direct importers
+  for (const importer of module.importers) {
+    if (importer.file === entryFile) return true;
+
+    // Recursively check importers
+    if (hasEntryAsAncestor(importer, entryFile, seen)) return true;
+  }
+  return false;
+};
+
 export const miniflarePlugin = async (
   givenOptions: MiniflarePluginOptions,
 ): Promise<Plugin> => {
@@ -365,11 +380,7 @@ export const miniflarePlugin = async (
 
       const isWorkerUpdate =
         ctx.file === entry ||
-        modules.some((module) =>
-          Array.from(module.importers).some(
-            (importer) => importer.file === entry,
-          ),
-        );
+        modules.some(module => hasEntryAsAncestor(module, entry));
 
       // The worker doesnt need an update
       // => Short circuit HMR
@@ -400,7 +411,10 @@ export const miniflarePlugin = async (
           }
         }
 
-        return cssModules;
+        return [
+          ...ctx.modules,
+          ...cssModules,
+        ];
       }
 
       // The worker needs an update, and the hot check is for the worker environment

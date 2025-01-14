@@ -23,6 +23,7 @@ const configs = {
     ],
     logLevel: process.env.VERBOSE ? "info" : "error",
     build: {
+      emptyOutDir: false,
       sourcemap: true,
       minify: MODE === "production",
     },

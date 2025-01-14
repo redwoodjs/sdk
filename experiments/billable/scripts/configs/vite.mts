@@ -7,14 +7,15 @@ import {
   RELATIVE_CLIENT_PATHNAME,
   RELATIVE_WORKER_PATHNAME,
   ROOT_DIR,
-  VENDOR_DIST_DIR,
   WORKER_DIST_DIR,
+  VENDOR_REACT_SSR_PATH,
 } from "../lib/constants.mjs";
 
 import tailwind from "tailwindcss";
 import autoprefixer from "autoprefixer";
 import reactPlugin from "@vitejs/plugin-react";
 
+import { aliasByEnvPlugin } from "../lib/vitePlugins/aliasByEnvPlugin.mjs";
 import { transformJsxScriptTagsPlugin } from "../lib/vitePlugins/transformJsxScriptTagsPlugin.mjs";
 import { useServerPlugin } from "../lib/vitePlugins/useServerPlugin.mjs";
 import { useClientPlugin } from "../lib/vitePlugins/useClientPlugin.mjs";
@@ -42,7 +43,9 @@ export const viteConfigs = {
       ),
       "process.env.NODE_ENV": JSON.stringify(MODE),
     },
-    plugins: [reactPlugin(), useServerPlugin(), useClientPlugin()],
+    plugins: [reactPlugin(), useServerPlugin(), useClientPlugin({
+      reactSSRImportPath: VENDOR_REACT_SSR_PATH,
+    })],
     environments: {
       client: {
         consumer: "client",
@@ -67,7 +70,7 @@ export const viteConfigs = {
         optimizeDeps: {
           noDiscovery: false,
           esbuildOptions: {
-            conditions: ["module", "workerd"],
+            conditions: ["module", "workerd", "react-server"],
           },
           include: [
             "react",
@@ -92,11 +95,6 @@ export const viteConfigs = {
         },
       },
     },
-    resolve: {
-      alias: {
-        "vendor/react-ssr": resolve(VENDOR_DIST_DIR, "react-ssr.js"),
-      },
-    },
     server: {
       hmr: true,
       port: port ?? DEV_SERVER_PORT,
@@ -112,6 +110,11 @@ export const viteConfigs = {
         plugins: [tailwind, autoprefixer()],
       },
     },
+    resolve: {
+      alias: {
+        'vendor/react-ssr': VENDOR_REACT_SSR_PATH,
+      }
+    }
   }),
   dev: ({ setup, restartOnChanges = true, ...opts }: { setup: () => Promise<unknown>, silent?: boolean, port?: number, restartOnChanges?: boolean }): InlineConfig =>
     mergeConfig(viteConfigs.main(opts), {
@@ -137,21 +140,18 @@ export const viteConfigs = {
         }),
         // context(justinvdm, 2024-12-03): vite needs the virtual module created by this plugin to be around,
         // even if the code path that use the virtual module are not reached in dev
-        useClientLookupPlugin({ filesContainingUseClient: [] }),
+        useClientLookupPlugin({ rootDir: ROOT_DIR, containingPath: './src/app' }),
       ],
     }),
-  deploy: ({
-    filesContainingUseClient,
-  }: {
-    filesContainingUseClient: string[];
-  }): InlineConfig =>
+  deploy: (): InlineConfig =>
     mergeConfig(viteConfigs.main(), {
       plugins: [
         transformJsxScriptTagsPlugin({
           manifestPath: MANIFEST_PATH,
         }),
         useClientLookupPlugin({
-          filesContainingUseClient,
+          rootDir: ROOT_DIR,
+          containingPath: './src/app',
         }),
       ],
       environments: {
