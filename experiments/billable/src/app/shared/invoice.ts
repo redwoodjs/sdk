@@ -1,4 +1,5 @@
-import { InvoiceTaxItem, type InvoiceItem } from "@prisma/client";
+import { InvoiceItem, InvoiceTaxes } from "../services/invoices";
+
 
 export function calculateSubtotal(items: InvoiceItem[]) {
   let sum = 0;
@@ -8,7 +9,7 @@ export function calculateSubtotal(items: InvoiceItem[]) {
   return sum;
 }
 
-export function calculateTaxes(subtotal: number, taxes: InvoiceTaxItem[]) {
+export function calculateTaxes(subtotal: number, taxes: InvoiceTaxes[]) {
   let sum = 0;
   for (const tax of taxes) {
     sum += subtotal * tax.amount;
