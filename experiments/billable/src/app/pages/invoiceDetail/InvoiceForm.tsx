@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { getInvoice } from "../../services/invoices";
 import { calculateSubtotal, calculateTaxes } from "../../shared/invoice";
+import { saveInvoice } from "./functions";
 
 export function InvoiceForm(props: {
   invoice: Awaited<ReturnType<typeof getInvoice>>;
@@ -15,7 +16,7 @@ export function InvoiceForm(props: {
   return (
     <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
       <div className="col-span-full">
-        <button onClick={() => {}}>
+        <button onClick={() => saveInvoice(invoice.id, invoice, items, taxes)}>
           Save
         </button>
       </div>
@@ -148,7 +149,6 @@ export function InvoiceForm(props: {
             type="button"
             className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
             onClick={() => {
-              // todo update total
               setItems([...items, { description: '', quantity: 1, price: 1 }])
             }}
           >
