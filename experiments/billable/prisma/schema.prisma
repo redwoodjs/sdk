@@ -19,9 +19,9 @@ model Invoice {
   number          String
   date            DateTime @default(now())
   status          String   @default("draft")
-  supplierName    String
-  supplierContact String
-  customer        String
+  supplierName    String?
+  supplierContact String?
+  customer        String?
   notesA          String?
   notesB          String?
   items           String   @default("[]")

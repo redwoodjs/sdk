@@ -34,18 +34,18 @@ export async function createInvoice() {
   // we will eventually include an invoice template... maybe I should just shove that in a seperate function for now?
   let lastInvoice = await db.invoice.findFirst({
     where: {
-      userId: 1,
+      userId: '1',
     },
     orderBy: {
       date: 'desc',
     }
   })
   if (!lastInvoice) {
-    lastInvoice = {
-      number: "1",
-      supplierName: "Your company name",
-      supplierContact: "Your company details",
-    }
+    // lastInvoice = {
+    //   number: "1",
+    //   supplierName: "Your company name",
+    //   supplierContact: "Your company details",
+    // }
   }
 
 
@@ -53,8 +53,8 @@ export async function createInvoice() {
     data: {
       // determine next invoice number.
 
-      number: lastInvoice?.number + 1
-      userId: 1
+      number: 'todo',
+      userId: '1'
     }
   })
 }
