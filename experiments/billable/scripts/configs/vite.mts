@@ -140,21 +140,18 @@ export const viteConfigs = {
         }),
         // context(justinvdm, 2024-12-03): vite needs the virtual module created by this plugin to be around,
         // even if the code path that use the virtual module are not reached in dev
-        useClientLookupPlugin({ filesContainingUseClient: [] }),
+        useClientLookupPlugin({ rootDir: ROOT_DIR, containingPath: './src/app' }),
       ],
     }),
-  deploy: ({
-    filesContainingUseClient,
-  }: {
-    filesContainingUseClient: string[];
-  }): InlineConfig =>
+  deploy: (): InlineConfig =>
     mergeConfig(viteConfigs.main(), {
       plugins: [
         transformJsxScriptTagsPlugin({
           manifestPath: MANIFEST_PATH,
         }),
         useClientLookupPlugin({
-          filesContainingUseClient,
+          rootDir: ROOT_DIR,
+          containingPath: './src/app',
         }),
       ],
       environments: {

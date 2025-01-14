@@ -1,7 +1,6 @@
 import { createBuilder } from "vite";
 import { viteConfigs } from "./configs/vite.mjs";
 import { $, $sh } from "./lib/$.mjs";
-import { findFilesContainingUseClient } from "./lib/findFilesContainingUseClient.mjs";
 
 export const build = async () => {
   console.log("Building...");
@@ -11,12 +10,8 @@ export const build = async () => {
 
   await $`pnpm prisma generate`;
 
-  const filesContainingUseClient = await findFilesContainingUseClient();
-
   const builder = await createBuilder(
-    viteConfigs.deploy({
-      filesContainingUseClient,
-    }),
+    viteConfigs.deploy(),
   );
 
   await builder.buildApp();
