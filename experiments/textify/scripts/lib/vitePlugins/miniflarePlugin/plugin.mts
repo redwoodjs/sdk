@@ -1,5 +1,5 @@
+import { config as dotEnvConfig } from "dotenv";
 import { readFile } from "node:fs/promises";
-import { readFileSync } from 'fs';
 import { EventEmitter } from "node:events";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
@@ -15,7 +15,7 @@ import {
   SharedOptions,
   WorkerOptions,
 } from "miniflare";
-import type { SourcelessWorkerOptions } from "wrangler";
+import { unstable_readConfig, unstable_getMiniflareWorkerOptions, type SourcelessWorkerOptions, type Unstable_MiniflareWorkerOptions, unstable_dev } from "wrangler";
 import {
   Connect,
   DevEnvironment,
@@ -35,10 +35,13 @@ import { compileTsModule } from "../../compileTsModule.mjs";
 import { getShortName } from "../../getShortName.mjs";
 import { SRC_DIR } from "../../constants.mjs";
 
+const __dirname = new URL(".", import.meta.url).pathname;
+
 interface MiniflarePluginOptions {
   entry: string;
   environment?: string;
   miniflare?: Partial<MiniflareOptions>;
+  rootDir?: string;
 }
 
 type MiniflarePluginOptionsFull = NoOptionals<MiniflarePluginOptions>;
@@ -71,17 +74,57 @@ const loadGeneratedPrismaModule = async (id: string) => {
   }
 }
 
+export const setupAiWorker = async (workerOptions: SourcelessWorkerOptions | undefined) => {
+  // context(justinvdm, 2025-01-15): Do similar to what wrangler does to hook up the AI worker, except we delegate to
+  // a wrangler dev worker specific to doing AI worker tasks
+  // https://github.com/cloudflare/workers-sdk/blob/6fe9533897b61ae9ef6566b5d2bdf09698566c24/packages/wrangler/src/dev/miniflare.ts#L579
+  const aiDevWorker = await unstable_dev(resolve(__dirname, 'aiScript.js'), {
+    port: 0,
+    ai: {
+      binding: 'AI'
+    },
+  })
+
+  process.on('exit', () => {
+    aiDevWorker.stop()
+  })
+
+  return {
+    name: '__WRANGLER_EXTERNAL_AI_WORKER',
+    modules: [
+      {
+        type: "ESModule",
+        path: "index.mjs",
+        contents: `
+import { Ai } from 'cloudflare-internal:ai-api'
+
+export default function (env) {
+    return new Ai(env.FETCHER);
+}
+`,
+      },
+    ],
+    serviceBindings: {
+      FETCHER: aiDevWorker.fetch,
+    },
+  };
+}
+
 const createMiniflareOptions = async ({
   config,
   serviceBindings,
-  options: { miniflare: userOptions },
+  options: { miniflare: userOptions, rootDir },
 }: {
   config: ResolvedConfig;
   serviceBindings: ServiceBindings;
   options: MiniflarePluginOptionsFull;
 }): Promise<MiniflareOptions> => {
-  // todo(justinvdm, 2024-12-10): Figure out what we can get from wrangler's unstable_getMiniflareWorkerOptions(),
-  // and if it means we can avoid having both a wrangler.toml and miniflare config
+  let configWorkerOptions: SourcelessWorkerOptions | undefined;
+
+  if (rootDir) {
+    const config = unstable_readConfig({ config: resolve(rootDir, "wrangler.toml") }, {});
+    configWorkerOptions = unstable_getMiniflareWorkerOptions(config).workerOptions
+  }
 
   const runnerOptions: WorkerOptions = {
     modules: [
@@ -105,7 +148,7 @@ const createMiniflareOptions = async ({
       {
         type: "CompiledWasm",
         ...await loadGeneratedPrismaModule('.prisma/client/query_engine_bg.wasm'),
-      }
+      },
     ],
     unsafeEvalBinding: "__viteUnsafeEval",
     durableObjects: {
@@ -117,11 +160,27 @@ const createMiniflareOptions = async ({
     },
   };
 
-  const workerOptions = mergeWorkerOptions(userOptions, runnerOptions);
+  const baseOptions = {
+    modules: true,
+    d1Persist: resolve(rootDir, ".wrangler/state/v3/d1"),
+    r2Persist: resolve(rootDir, ".wrangler/state/v3/r2"),
+    bindings: dotEnvConfig({
+      path: resolve(rootDir, ".env"),
+    }).parsed ?? {},
+  } as MiniflareOptions
+
+  const workerOptions = mergeWorkerOptions(configWorkerOptions ?? {}, mergeWorkerOptions(userOptions, runnerOptions));
+
+  const workers: SourcelessWorkerOptions[] = [workerOptions]
+
+  if (configWorkerOptions?.wrappedBindings?.AI) {
+    const aiWorker = await setupAiWorker(configWorkerOptions)
+    workers.push(aiWorker)
+  }
 
   return {
-    ...userOptions,
-    workers: [workerOptions],
+    ...baseOptions,
+    workers
   } as MiniflareOptions & SharedOptions & SourcelessWorkerOptions;
 };
 
@@ -207,10 +266,12 @@ const createDevEnv = async ({
       return redirectToSelf(request);
     }
 
-    request.headers.set(
-      "x-vite-fetch",
-      JSON.stringify({ entry } satisfies FetchMetadata),
-    );
+    if (!request.headers.has("x-vite-fetch")) {
+      request.headers.set(
+        "x-vite-fetch",
+        JSON.stringify({ entry } satisfies FetchMetadata),
+      );
+    }
 
     try {
       return await runnerWorker.fetch(request.url, request);
@@ -260,12 +321,28 @@ const createServerMiddleware = ({ dispatchFetch }: DevEnvApi) => {
   return miniflarePluginMiddleware;
 };
 
+const hasEntryAsAncestor = (module: any, entryFile: string, seen = new Set()): boolean => {
+  // Prevent infinite recursion
+  if (seen.has(module)) return false;
+  seen.add(module);
+
+  // Check direct importers
+  for (const importer of module.importers) {
+    if (importer.file === entryFile) return true;
+
+    // Recursively check importers
+    if (hasEntryAsAncestor(importer, entryFile, seen)) return true;
+  }
+  return false;
+};
+
 export const miniflarePlugin = async (
   givenOptions: MiniflarePluginOptions,
 ): Promise<Plugin> => {
   const options = {
     environment: "worker",
     miniflare: {},
+    rootDir: process.cwd(),
     ...givenOptions,
   };
 
@@ -325,11 +402,7 @@ export const miniflarePlugin = async (
 
       const isWorkerUpdate =
         ctx.file === entry ||
-        modules.some((module) =>
-          Array.from(module.importers).some(
-            (importer) => importer.file === entry,
-          ),
-        );
+        modules.some(module => hasEntryAsAncestor(module, entry));
 
       // The worker doesnt need an update
       // => Short circuit HMR
@@ -360,7 +433,10 @@ export const miniflarePlugin = async (
           }
         }
 
-        return cssModules;
+        return [
+          ...ctx.modules,
+          ...cssModules,
+        ];
       }
 
       // The worker needs an update, and the hot check is for the worker environment

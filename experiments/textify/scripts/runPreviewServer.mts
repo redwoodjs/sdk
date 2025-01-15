@@ -1,20 +1,20 @@
 import express from "express";
 import { Miniflare, MiniflareOptions } from "miniflare";
 import { resolve } from "node:path";
+import { readdir } from "fs/promises";
 
 import { miniflareConfig } from "./configs/miniflare.mjs";
 import {
   DEV_SERVER_PORT,
   DIST_DIR,
-  WORKER_DIST_DIR,
+  ROOT_DIR,
 } from "./lib/constants.mjs";
 import {
-  dispatchNodeRequestToMiniflare,
   nodeToWebRequest,
   webToNodeResponse,
 } from "./lib/vitePlugins/requestUtils.mjs";
-import { build } from "./build.mjs";
 import { readFile } from "fs/promises";
+import { $ } from './lib/$.mjs';
 
 const setup = async () => {
   const miniflare = new Miniflare({
@@ -23,35 +23,40 @@ const setup = async () => {
   } as MiniflareOptions);
 
   if (!process.env.NO_BUILD) {
-    await build();
+    await $`pnpm wrangler build`
+    console.log("Wrangler build complete!");
   }
 
-  const bundles = [
-    {
-      type: "ESModule" as const,
-      path: resolve(WORKER_DIST_DIR, "worker.js"),
-      contents: await readFile(resolve(WORKER_DIST_DIR, "worker.js"), "utf-8"),
-    },
-  ];
+  const distFiles = await readdir(DIST_DIR);
+  const wasmFiles = distFiles.filter(file => file.endsWith('.wasm'));
 
   await miniflare.setOptions({
     ...miniflareConfig,
-    modules: bundles,
+    modules: [
+      {
+        type: "ESModule" as const,
+        path: resolve(DIST_DIR, "worker.js"),
+        contents: await readFile(resolve(DIST_DIR, "worker.js"), "utf-8"),
+      },
+      ...await Promise.all(wasmFiles.map(async (file) => ({
+        type: "CompiledWasm" as const,
+        path: resolve(DIST_DIR, file),
+        contents: await readFile(resolve(DIST_DIR, file)),
+      }))),
+    ],
   });
 
   return { miniflare };
 };
 
 const createServers = async () => {
-  // context(justinvdm, 2024-11-28): We don't need to wait for the initial bundle builds to complete before starting the dev server, we only need to have this complete by the first request
-  const promisedSetupComplete = new Promise(setImmediate).then(setup);
+  const { miniflare } = await setup();
   const app = express();
 
   app.use("/assets", express.static(resolve(DIST_DIR, "assets")));
 
   app.use(async (req, res) => {
     try {
-      const { miniflare } = await promisedSetupComplete;
       const webRequest = nodeToWebRequest(req);
       const webResponse = await miniflare.dispatchFetch(
         webRequest.url,
@@ -66,7 +71,6 @@ const createServers = async () => {
   });
 
   process.on("beforeExit", async () => {
-    const { miniflare } = await promisedSetupComplete;
     await miniflare.dispose();
   });
 
