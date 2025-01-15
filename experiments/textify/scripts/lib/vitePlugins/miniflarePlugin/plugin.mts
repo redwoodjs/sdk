@@ -126,6 +126,10 @@ const createMiniflareOptions = async ({
     configWorkerOptions = unstable_getMiniflareWorkerOptions(config).workerOptions
   }
 
+  const envVars = dotEnvConfig({
+    path: resolve(rootDir, ".env"),
+  }).parsed ?? {}
+
   const runnerOptions: WorkerOptions = {
     modules: [
       {
@@ -156,6 +160,7 @@ const createMiniflareOptions = async ({
     },
     serviceBindings,
     bindings: {
+      ...envVars,
       __viteRoot: config.root,
     },
   };
@@ -164,9 +169,7 @@ const createMiniflareOptions = async ({
     modules: true,
     d1Persist: resolve(rootDir, ".wrangler/state/v3/d1"),
     r2Persist: resolve(rootDir, ".wrangler/state/v3/r2"),
-    bindings: dotEnvConfig({
-      path: resolve(rootDir, ".env"),
-    }).parsed ?? {},
+    bindings: envVars,
   } as MiniflareOptions
 
   const workerOptions = mergeWorkerOptions(configWorkerOptions ?? {}, mergeWorkerOptions(userOptions, runnerOptions));
