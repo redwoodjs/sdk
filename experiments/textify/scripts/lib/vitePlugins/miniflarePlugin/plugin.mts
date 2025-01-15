@@ -69,6 +69,7 @@ export const setupAiWorker = async () => {
   // a wrangler dev worker specific to doing AI worker tasks
   // https://github.com/cloudflare/workers-sdk/blob/6fe9533897b61ae9ef6566b5d2bdf09698566c24/packages/wrangler/src/dev/miniflare.ts#L579
   const aiDevWorker = await unstable_dev(resolve(__dirname, 'aiScript.js'), {
+    config: resolve(__dirname, 'aiDevConfig.json'),
     port: 0,
     ai: {
       binding: 'AI'
