@@ -12,32 +12,26 @@ datasource db {
 }
 
 model Invoice {
-  id             Int              @id @default(autoincrement())
-  title          String
-  number         String
-  date           DateTime         @default(now())
-  status         String           @default("draft")
-  supplier       String
-  customer       String
-  notesA         String?
-  notesB         String?
-  InvoiceItem    InvoiceItem[]
-  InvoiceTaxItem InvoiceTaxItem[]
+  id              Int      @id @default(autoincrement())
+  title           String   @default("invoice")
+  userId          Int
+  user            User     @relation(fields: [userId], references: [id])
+  number          String
+  date            DateTime @default(now())
+  status          String   @default("draft")
+  supplierName    String
+  supplierContact String
+  customer        String
+  notesA          String?
+  notesB          String?
+  items           String   @default("[]")
+  taxes           String   @default("[]")
+
+  @@unique([userId, number])
 }
 
-model InvoiceItem {
-  id          Int     @id @default(autoincrement())
-  invoiceId   Int
-  invoice     Invoice @relation(fields: [invoiceId], references: [id])
-  description String
-  quantity    Int
-  price       Float
-}
-
-model InvoiceTaxItem {
-  id          Int     @id @default(autoincrement())
-  invoiceId   Int
-  invoice     Invoice @relation(fields: [invoiceId], references: [id])
-  description String
-  amount      Float
+model User {
+  id      Int       @id @default(autoincrement())
+  email   String    @unique
+  Invoice Invoice[]
 }

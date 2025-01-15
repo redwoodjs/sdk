@@ -1,4 +1,4 @@
-import { HotUpdateOptions, Plugin } from "vite";
+import { Plugin } from "vite";
 import colors from "picocolors";
 import { getShortName } from "../getShortName.mjs";
 

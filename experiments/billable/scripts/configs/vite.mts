@@ -7,14 +7,15 @@ import {
   RELATIVE_CLIENT_PATHNAME,
   RELATIVE_WORKER_PATHNAME,
   ROOT_DIR,
-  VENDOR_DIST_DIR,
   WORKER_DIST_DIR,
+  VENDOR_REACT_SSR_PATH,
 } from "../lib/constants.mjs";
 
 import tailwind from "tailwindcss";
 import autoprefixer from "autoprefixer";
 import reactPlugin from "@vitejs/plugin-react";
 
+import { aliasByEnvPlugin } from "../lib/vitePlugins/aliasByEnvPlugin.mjs";
 import { transformJsxScriptTagsPlugin } from "../lib/vitePlugins/transformJsxScriptTagsPlugin.mjs";
 import { useServerPlugin } from "../lib/vitePlugins/useServerPlugin.mjs";
 import { useClientPlugin } from "../lib/vitePlugins/useClientPlugin.mjs";
@@ -28,10 +29,10 @@ const MODE =
   process.env.NODE_ENV === "development" ? "development" : "production";
 
 export const viteConfigs = {
-  main: (): InlineConfig => ({
+  main: ({ silent = false, port }: { silent?: boolean, port?: number } = {}): InlineConfig => ({
     appType: "custom",
     mode: MODE,
-    logLevel: "info",
+    logLevel: silent ? "silent" : "info",
     build: {
       minify: MODE !== "development",
       sourcemap: true,
@@ -42,7 +43,9 @@ export const viteConfigs = {
       ),
       "process.env.NODE_ENV": JSON.stringify(MODE),
     },
-    plugins: [reactPlugin(), useServerPlugin(), useClientPlugin()],
+    plugins: [reactPlugin(), useServerPlugin(), useClientPlugin({
+      reactSSRImportPath: VENDOR_REACT_SSR_PATH,
+    })],
     environments: {
       client: {
         consumer: "client",
@@ -67,7 +70,7 @@ export const viteConfigs = {
         optimizeDeps: {
           noDiscovery: false,
           esbuildOptions: {
-            conditions: ["module", "workerd"],
+            conditions: ["module", "workerd", "react-server"],
           },
           include: [
             "react",
@@ -92,14 +95,9 @@ export const viteConfigs = {
         },
       },
     },
-    resolve: {
-      alias: {
-        "vendor/react-ssr": resolve(VENDOR_DIST_DIR, "react-ssr.js"),
-      },
-    },
     server: {
       hmr: true,
-      port: DEV_SERVER_PORT,
+      port: port ?? DEV_SERVER_PORT,
     },
     builder: {
       async buildApp(builder) {
@@ -112,12 +110,17 @@ export const viteConfigs = {
         plugins: [tailwind, autoprefixer()],
       },
     },
+    resolve: {
+      alias: {
+        'vendor/react-ssr': VENDOR_REACT_SSR_PATH,
+      }
+    }
   }),
-  dev: ({ setup }: { setup: () => Promise<unknown> }): InlineConfig =>
-    mergeConfig(viteConfigs.main(), {
+  dev: ({ setup, restartOnChanges = true, ...opts }: { setup: () => Promise<unknown>, silent?: boolean, port?: number, restartOnChanges?: boolean }): InlineConfig =>
+    mergeConfig(viteConfigs.main(opts), {
       plugins: [
         asyncSetupPlugin({ setup }),
-        restartPlugin({
+        restartOnChanges ? restartPlugin({
           filter: (filepath: string) =>
             !filepath.endsWith(".d.ts") &&
             (filepath.endsWith(".ts") ||
@@ -129,7 +132,7 @@ export const viteConfigs = {
               filepath.endsWith(".json")) &&
             (filepath.startsWith(resolve(ROOT_DIR, "scripts")) ||
               dirname(filepath) === ROOT_DIR),
-        }),
+        }) : null,
         miniflarePlugin({
           entry: RELATIVE_WORKER_PATHNAME,
           environment: "worker",
@@ -137,21 +140,18 @@ export const viteConfigs = {
         }),
         // context(justinvdm, 2024-12-03): vite needs the virtual module created by this plugin to be around,
         // even if the code path that use the virtual module are not reached in dev
-        useClientLookupPlugin({ filesContainingUseClient: [] }),
+        useClientLookupPlugin({ rootDir: ROOT_DIR, containingPath: './src/app' }),
       ],
     }),
-  deploy: ({
-    filesContainingUseClient,
-  }: {
-    filesContainingUseClient: string[];
-  }): InlineConfig =>
+  deploy: (): InlineConfig =>
     mergeConfig(viteConfigs.main(), {
       plugins: [
         transformJsxScriptTagsPlugin({
           manifestPath: MANIFEST_PATH,
         }),
         useClientLookupPlugin({
-          filesContainingUseClient,
+          rootDir: ROOT_DIR,
+          containingPath: './src/app',
         }),
       ],
       environments: {

@@ -1,21 +1,10 @@
 {
-"name": "redwoodjs-billable",
+  "name": "redwoodjs-billable",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
   "type": "module",
-  "scripts": {
-    "build": "npx tsx ./scripts/build.mts",
-    "dev": "while true; do NODE_ENV=development npx tsx ./scripts/runDevServer.mts; [ $? -eq 0 ] || break; done",
-    "seed": "pnpm wrangler d1 execute DB --file ./migrations/seed.sql",
-    "migrate:dev": "npx wrangler d1 migrations apply DB --local",
-    "migrate:prd": "npx wrangler d1 migrations apply DB --remote",
-    "codegen": "npx tsx ./scripts/codegen.mts",
-    "types": "pnpm codegen:types && tsc",
-    "deploy": "wrangler deploy",
-    "preview": "NODE_ENV=${NODE_ENV:-development} PREVIEW=1 npx tsx ./scripts/runPreviewServer.mts",
-    "format": "npx prettier --write ./src ./scripts"
-  },
+
   "keywords": [],
   "author": "",
   "license": "UNLICENSED",
@@ -68,5 +57,26 @@
       "@microsoft/api-extractor>typescript": "5.6.3"
     }
   },
-  "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab"
+  "prisma": {
+    "seed": "npx wrangler d1 execute billable --file prisma/seed.sql --local"
+  },
+  "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab",
+  "scripts": {
+    "build": "npx tsx ./scripts/build.mts",
+    "build:vendor": "npx tsx ./scripts/buildVendorBundles.mts",
+    "build:clean": "rm -f clean:vendor && rm -f clean:vite",
+    "dev": "while true; do NODE_ENV=development npx tsx ./scripts/runDevServer.mts; [ $? -eq 0 ] || break; done",
+    "seed": "pnpm worker:run ./src/scripts/seed.ts",
+    "migrate:dev": "npx wrangler d1 migrations apply DB --local",
+    "migrate:prd": "npx wrangler d1 migrations apply DB --remote",
+    "migrate:new": "npx tsx ./scripts/migrateNew.mts",
+    "worker:run": "npx tsx ./scripts/runWorkerScript.mts",
+    "codegen": "npx tsx ./scripts/codegen.mts",
+    "types": "pnpm codegen:types && tsc",
+    "clean:vite": "rm -rf ./node_modules/.vite",
+    "clean:vendor": "rm -rf ./vendor/dist",
+    "deploy": "wrangler deploy",
+    "preview": "NODE_ENV=${NODE_ENV:-development} PREVIEW=1 npx tsx ./scripts/runPreviewServer.mts",
+    "format": "npx prettier --write ./src ./scripts"
+  }
 }
