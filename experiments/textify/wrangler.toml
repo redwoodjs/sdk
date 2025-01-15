@@ -1,0 +1,15 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "valley-directory"
+main = "dist/worker/worker.js"
+compatibility_date = "2024-03-12"
+compatibility_flags = ["nodejs_compat"]
+assets = { directory = "./dist/assets/", binding = "ASSETS" }
+
+[observability]
+enabled = true
+
+[ai]
+binding = "AI"
+
+[build]
+command = "pnpm build"
