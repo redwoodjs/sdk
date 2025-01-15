@@ -14,7 +14,7 @@ import {
   SharedOptions,
   WorkerOptions,
 } from "miniflare";
-import type { SourcelessWorkerOptions } from "wrangler";
+import { unstable_readConfig, unstable_getMiniflareWorkerOptions, type SourcelessWorkerOptions, type Unstable_MiniflareWorkerOptions } from "wrangler";
 import {
   Connect,
   DevEnvironment,
@@ -38,6 +38,7 @@ interface MiniflarePluginOptions {
   entry: string;
   environment?: string;
   miniflare?: Partial<MiniflareOptions>;
+  rootDir?: string;
 }
 
 type MiniflarePluginOptionsFull = NoOptionals<MiniflarePluginOptions>;
@@ -73,15 +74,12 @@ const loadGeneratedPrismaModule = async (id: string) => {
 const createMiniflareOptions = async ({
   config,
   serviceBindings,
-  options: { miniflare: userOptions },
+  options: { miniflare: userOptions, rootDir },
 }: {
   config: ResolvedConfig;
   serviceBindings: ServiceBindings;
   options: MiniflarePluginOptionsFull;
 }): Promise<MiniflareOptions> => {
-  // todo(justinvdm, 2024-12-10): Figure out what we can get from wrangler's unstable_getMiniflareWorkerOptions(),
-  // and if it means we can avoid having both a wrangler.toml and miniflare config
-
   const runnerOptions: WorkerOptions = {
     modules: [
       {
@@ -116,10 +114,19 @@ const createMiniflareOptions = async ({
     },
   };
 
-  const workerOptions = mergeWorkerOptions(userOptions, runnerOptions);
+  let configWorkerOptions: Unstable_MiniflareWorkerOptions | undefined;
+
+  if (rootDir) {
+    const config = unstable_readConfig({ config: resolve(rootDir, "wrangler.toml") }, {});
+    configWorkerOptions = unstable_getMiniflareWorkerOptions(config)
+  }
+
+  const workerOptions = mergeWorkerOptions(configWorkerOptions?.workerOptions ?? {}, mergeWorkerOptions(userOptions, runnerOptions));
 
   return {
-    ...userOptions,
+    ...workerOptions,
+    d1Persist: resolve(rootDir, ".wrangler/state/v3/d1"),
+    r2Persist: resolve(rootDir, ".wrangler/state/v3/r2"),
     workers: [workerOptions],
   } as MiniflareOptions & SharedOptions & SourcelessWorkerOptions;
 };
