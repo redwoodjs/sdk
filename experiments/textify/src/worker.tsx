@@ -1,13 +1,7 @@
-import { App } from "./app/App";
-import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
-import { injectRSCPayload } from "rsc-html-stream/server";
-import { renderToRscStream } from "./render/renderToRscStream";
 import { ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import { TwilioClient } from "./twilio";
 import { AI, setupAI } from "./ai";
-// import { setupAI } from "./ai";
-// import { TwilioClient } from "./twilio";
 export default {
   async fetch(request: Request, env: Env) {
     globalThis.__webpack_require__ = ssrWebpackRequire;
@@ -29,10 +23,6 @@ export default {
 
       setupAI(env);
 
-      const response = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
-        prompt: "What is the origin of the phrase Hello, World",
-      });
-      console.log('###', response);
 
       if (request.method === "POST" && request.url.includes("/incoming")) {
         console.log("Incoming request received");
@@ -42,11 +32,13 @@ export default {
         const originalMessageSid = bodyData.get("MessageSid");
         console.log("MessageSid", originalMessageSid);
         console.log("AttachmentUrl", attachmentUrl);
+        
         if (attachmentUrl) {
           const twilioClient = new TwilioClient(env);
           const mediaUrl = await twilioClient.getMediaUrlFromTwilio(
             attachmentUrl,
           );
+          console.log("MediaUrl", mediaUrl);
           const blob = await fetch(mediaUrl).then((res) => res.blob()); // fetch the audio blob
           //while waiting for the audio to be transcribed, send a message to the user
           await twilioClient.sendWhatsAppMessage(
