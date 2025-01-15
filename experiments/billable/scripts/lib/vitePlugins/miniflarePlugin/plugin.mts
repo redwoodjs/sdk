@@ -72,21 +72,83 @@ const loadGeneratedPrismaModule = async (id: string) => {
   }
 }
 
+const normalizeDurableObjectDescriptors = ({ workerOptions, options }: { workerOptions: SourcelessWorkerOptions, options: MiniflarePluginOptionsFull }) => {
+  const durableObjectDescriptors: {
+    name: string;
+    scriptName: string;
+    className: string;
+  }[] = [];
+
+  for (const [key, value] of Object.entries(workerOptions.durableObjects ?? {})) {
+    if (typeof value === 'string') {
+      durableObjectDescriptors.push({
+        name: key,
+        scriptName: options.entry,
+        className: value,
+      });
+    } else {
+      durableObjectDescriptors.push({
+        name: key,
+        scriptName: value.scriptName ?? options.entry,
+        className: value.className,
+      });
+    }
+  }
+
+  return durableObjectDescriptors;
+}
+
+const generateViteWorkerScript = async ({ workerOptions, options }: { workerOptions: SourcelessWorkerOptions, options: MiniflarePluginOptionsFull }) => {
+  const contents = await readTsModule("./worker.mts");
+  const durableObjectDescriptors = normalizeDurableObjectDescriptors({ workerOptions, options });
+
+  const code = [
+    contents,
+    ...durableObjectDescriptors.map(({ scriptName, className }) => `export const ${className} = createDurableObjectProxy(${JSON.stringify(scriptName)}, ${JSON.stringify(className)});`),
+  ].join('\n')
+
+  const durableObjects = Object.fromEntries(durableObjectDescriptors.map(({ name, className }) => [name, className]))
+
+  return {
+    code,
+    durableObjects: {
+      ...durableObjects,
+      __viteRunner: "RunnerWorker",
+    },
+  }
+}
+
 const createMiniflareOptions = async ({
   config,
   serviceBindings,
-  options: { miniflare: userOptions, rootDir },
+  options,
 }: {
   config: ResolvedConfig;
   serviceBindings: ServiceBindings;
   options: MiniflarePluginOptionsFull;
 }): Promise<MiniflareOptions> => {
+  const { miniflare: userOptions, rootDir } = options
+  let workerOptions: SourcelessWorkerOptions = {}
+
+  if (rootDir) {
+    const config = unstable_readConfig({ config: resolve(rootDir, "wrangler.toml") }, {});
+    workerOptions = unstable_getMiniflareWorkerOptions(config).workerOptions
+  }
+
+  workerOptions = mergeWorkerOptions(workerOptions, userOptions);
+
+  const envVars = dotEnvConfig({
+    path: resolve(rootDir, ".env"),
+  }).parsed ?? {}
+
+  const { code, durableObjects } = await generateViteWorkerScript({ workerOptions, options })
+
   const runnerOptions: WorkerOptions = {
     modules: [
       {
         type: "ESModule",
         path: "__vite_worker__",
-        contents: await readTsModule("./worker.mts"),
+        contents: code,
       },
       {
         type: "ESModule",
@@ -106,36 +168,25 @@ const createMiniflareOptions = async ({
       }
     ],
     unsafeEvalBinding: "__viteUnsafeEval",
-    durableObjects: {
-      __viteRunner: "RunnerWorker",
-    },
+    durableObjects,
     serviceBindings,
     bindings: {
+      ...envVars,
       __viteRoot: config.root,
     },
   };
-
-  let configWorkerOptions: Unstable_MiniflareWorkerOptions | undefined;
-
-  if (rootDir) {
-    const config = unstable_readConfig({ config: resolve(rootDir, "wrangler.toml") }, {});
-    configWorkerOptions = unstable_getMiniflareWorkerOptions(config)
-  }
 
   const baseOptions = {
     modules: true,
     d1Persist: resolve(rootDir, ".wrangler/state/v3/d1"),
     r2Persist: resolve(rootDir, ".wrangler/state/v3/r2"),
-    bindings: dotEnvConfig({
-      path: resolve(rootDir, ".env"),
-    }).parsed ?? {},
+    bindings: envVars,
   } as MiniflareOptions
 
-  const workerOptions = mergeWorkerOptions(configWorkerOptions?.workerOptions ?? {}, mergeWorkerOptions(userOptions, runnerOptions));
+  workerOptions = mergeWorkerOptions(workerOptions, runnerOptions);
 
   return {
     ...baseOptions,
-    ...workerOptions,
     workers: [workerOptions],
   } as MiniflareOptions & SharedOptions & SourcelessWorkerOptions;
 };
@@ -183,6 +234,22 @@ const createDevEnv = async ({
   const serviceBindings: ServiceBindings = {
     __viteInvoke: async (request) => {
       const payload = (await request.json()) as HotPayload;
+      if (payload.type === 'custom' && payload.event === 'vite:invoke') {
+        const { name } = payload.data as { name: string }
+
+        if (name === 'fetchModule') {
+          const { data: [moduleId] } = payload.data as { data: [string] }
+          if (moduleId.startsWith('cloudflare:')) {
+            return Response.json({
+              r: {
+                externalize: moduleId,
+                type: 'builtin',
+              }
+            })
+          }
+        }
+      }
+
       const result = await devEnv.hot.handleInvoke(payload);
       return Response.json(result);
     },

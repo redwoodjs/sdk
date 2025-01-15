@@ -1,6 +1,6 @@
-
 import { App } from "./app/App"
-import { db, setupDb } from "./db";
+import { type SessionDO } from "./session";
+import { setupDb } from "./db";
 
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 import { injectRSCPayload } from "rsc-html-stream/server";
@@ -12,16 +12,22 @@ import { setupR2Storage } from "./r2storage";
 import InvoiceListPage from "./app/InvoiceListPage";
 import InvoiceDetailPage from "./app/pages/invoiceDetail/Page";
 
-
 // todo(peterp, 2024-11-25): Make these lazy.
 const routes = {
   "/": InvoiceListPage,
   "/invoice/:id": InvoiceDetailPage,
 }
 
+export { SessionDO } from "./session";
+
 export default {
   async fetch(request: Request, env: Env) {
     globalThis.__webpack_require__ = ssrWebpackRequire;
+
+    const id = env.SESSION_DO.idFromName("default");
+    // todo(justinvdm, 2025-01-15): Get codegen working for DO classes
+    const obj = env.SESSION_DO.get(id) as DurableObjectStub<SessionDO>;
+    console.log(await obj.cowsay());
 
     try {
       const url = new URL(request.url);
@@ -106,5 +112,5 @@ export default {
       console.error("Unhandled error", e);
       throw e;
     }
-  },
-};
+  }
+}
