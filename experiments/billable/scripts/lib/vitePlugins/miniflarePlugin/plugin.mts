@@ -75,12 +75,26 @@ const loadGeneratedPrismaModule = async (id: string) => {
 const createMiniflareOptions = async ({
   config,
   serviceBindings,
-  options: { miniflare: userOptions, rootDir },
+  options,
 }: {
   config: ResolvedConfig;
   serviceBindings: ServiceBindings;
   options: MiniflarePluginOptionsFull;
 }): Promise<MiniflareOptions> => {
+  const { miniflare: userOptions, rootDir } = options
+  let workerOptions: SourcelessWorkerOptions = {}
+
+  if (rootDir) {
+    const config = unstable_readConfig({ config: resolve(rootDir, "wrangler.toml") }, {});
+    workerOptions = unstable_getMiniflareWorkerOptions(config).workerOptions
+  }
+
+  workerOptions = mergeWorkerOptions(workerOptions, userOptions);
+
+  const envVars = dotEnvConfig({
+    path: resolve(rootDir, ".env"),
+  }).parsed ?? {}
+
   const runnerOptions: WorkerOptions = {
     modules: [
       {
@@ -111,6 +125,7 @@ const createMiniflareOptions = async ({
     },
     serviceBindings,
     bindings: {
+      ...envVars,
       __viteRoot: config.root,
     },
   };
@@ -126,16 +141,13 @@ const createMiniflareOptions = async ({
     modules: true,
     d1Persist: resolve(rootDir, ".wrangler/state/v3/d1"),
     r2Persist: resolve(rootDir, ".wrangler/state/v3/r2"),
-    bindings: dotEnvConfig({
-      path: resolve(rootDir, ".env"),
-    }).parsed ?? {},
+    bindings: envVars,
   } as MiniflareOptions
 
-  const workerOptions = mergeWorkerOptions(configWorkerOptions?.workerOptions ?? {}, mergeWorkerOptions(userOptions, runnerOptions));
+  workerOptions = mergeWorkerOptions(workerOptions, runnerOptions);
 
   return {
     ...baseOptions,
-    ...workerOptions,
     workers: [workerOptions],
   } as MiniflareOptions & SharedOptions & SourcelessWorkerOptions;
 };
