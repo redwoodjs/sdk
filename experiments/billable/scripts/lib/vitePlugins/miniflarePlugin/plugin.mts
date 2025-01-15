@@ -1,3 +1,4 @@
+import { config as dotEnvConfig } from "dotenv";
 import { readFile } from "node:fs/promises";
 import { EventEmitter } from "node:events";
 import { fileURLToPath } from "node:url";
@@ -121,12 +122,20 @@ const createMiniflareOptions = async ({
     configWorkerOptions = unstable_getMiniflareWorkerOptions(config)
   }
 
+  const baseOptions = {
+    modules: true,
+    d1Persist: resolve(rootDir, ".wrangler/state/v3/d1"),
+    r2Persist: resolve(rootDir, ".wrangler/state/v3/r2"),
+    bindings: dotEnvConfig({
+      path: resolve(rootDir, ".env"),
+    }).parsed ?? {},
+  } as MiniflareOptions
+
   const workerOptions = mergeWorkerOptions(configWorkerOptions?.workerOptions ?? {}, mergeWorkerOptions(userOptions, runnerOptions));
 
   return {
+    ...baseOptions,
     ...workerOptions,
-    d1Persist: resolve(rootDir, ".wrangler/state/v3/d1"),
-    r2Persist: resolve(rootDir, ".wrangler/state/v3/r2"),
     workers: [workerOptions],
   } as MiniflareOptions & SharedOptions & SourcelessWorkerOptions;
 };
