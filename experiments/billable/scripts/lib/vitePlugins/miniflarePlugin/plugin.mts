@@ -61,6 +61,7 @@ const readTsModule = async (id: string) => {
   return compileTsModule(tsCode);
 };
 
+
 const loadGeneratedPrismaModule = async (id: string) => {
   // context(justinvdm, 2025-01-06): Resolve relative to @prisma/client since pnpm places it relative to @prisma/client in node_modules/.pnpm
   const resolvedId = createRequire(importMetaResolve('@prisma/client', import.meta.url)).resolve(id)
@@ -68,6 +69,52 @@ const loadGeneratedPrismaModule = async (id: string) => {
   return {
     path: resolvedId.slice(1),
     contents: await readFile(resolvedId)
+  }
+}
+
+const normalizeDurableObjectDescriptors = ({ workerOptions, options }: { workerOptions: SourcelessWorkerOptions, options: MiniflarePluginOptionsFull }) => {
+  const durableObjectDescriptors: {
+    name: string;
+    scriptName: string;
+    className: string;
+  }[] = [];
+
+  for (const [key, value] of Object.entries(workerOptions.durableObjects ?? {})) {
+    if (typeof value === 'string') {
+      durableObjectDescriptors.push({
+        name: key,
+        scriptName: options.entry,
+        className: value,
+      });
+    } else {
+      durableObjectDescriptors.push({
+        name: key,
+        scriptName: value.scriptName ?? options.entry,
+        className: value.className,
+      });
+    }
+  }
+
+  return durableObjectDescriptors;
+}
+
+const generateViteWorkerScript = async ({ workerOptions, options }: { workerOptions: SourcelessWorkerOptions, options: MiniflarePluginOptionsFull }) => {
+  const contents = await readTsModule("./worker.mts");
+  const durableObjectDescriptors = normalizeDurableObjectDescriptors({ workerOptions, options });
+
+  const code = [
+    contents,
+    ...durableObjectDescriptors.map(({ scriptName, className }) => `export const ${className} = createDurableObjectProxy(${JSON.stringify(scriptName)}, ${JSON.stringify(className)});`),
+  ].join('\n')
+
+  const durableObjects = Object.fromEntries(durableObjectDescriptors.map(({ name, className }) => [name, className]))
+
+  return {
+    code,
+    durableObjects: {
+      ...durableObjects,
+      __viteRunner: "RunnerWorker",
+    },
   }
 }
 
@@ -94,12 +141,14 @@ const createMiniflareOptions = async ({
     path: resolve(rootDir, ".env"),
   }).parsed ?? {}
 
+  const { code, durableObjects } = await generateViteWorkerScript({ workerOptions, options })
+
   const runnerOptions: WorkerOptions = {
     modules: [
       {
         type: "ESModule",
         path: "__vite_worker__",
-        contents: await readTsModule("./worker.mts"),
+        contents: code,
       },
       {
         type: "ESModule",
@@ -119,9 +168,7 @@ const createMiniflareOptions = async ({
       }
     ],
     unsafeEvalBinding: "__viteUnsafeEval",
-    durableObjects: {
-      __viteRunner: "RunnerWorker",
-    },
+    durableObjects,
     serviceBindings,
     bindings: {
       ...envVars,
@@ -187,7 +234,6 @@ const createDevEnv = async ({
   const serviceBindings: ServiceBindings = {
     __viteInvoke: async (request) => {
       const payload = (await request.json()) as HotPayload;
-
       if (payload.type === 'custom' && payload.event === 'vite:invoke') {
         const { name } = payload.data as { name: string }
 
@@ -243,6 +289,13 @@ const createDevEnv = async ({
       return redirectToSelf(request);
     }
 
+    if (!request.headers.has("x-vite-fetch")) {
+      request.headers.set(
+        "x-vite-fetch",
+        JSON.stringify({ entry } satisfies FetchMetadata),
+      );
+    }
+
     try {
       return await runnerWorker.fetch(request.url, request);
     } catch (e) {
@@ -291,12 +344,6 @@ const createServerMiddleware = ({ dispatchFetch }: DevEnvApi) => {
   return miniflarePluginMiddleware;
 };
 
-const cloudflareBuiltInModules = [
-  'cloudflare:email',
-  'cloudflare:sockets',
-  'cloudflare:workers',
-];
-
 const hasEntryAsAncestor = (module: any, entryFile: string, seen = new Set()): boolean => {
   // Prevent infinite recursion
   if (seen.has(module)) return false;
@@ -339,7 +386,6 @@ export const miniflarePlugin = async (
           },
           keepProcessEnv: false,
           optimizeDeps: {
-            external: cloudflareBuiltInModules,
             // context(justinvdm, 12 Dec 2024): Prevents `import { createRequire } from "node:module"` for pre-bundled CJS deps
             esbuildOptions: {
               platform: "browser",
@@ -348,12 +394,10 @@ export const miniflarePlugin = async (
           },
           build: {
             ssr: true,
-            external: cloudflareBuiltInModules,
             rollupOptions: {
               input: {
                 index: entry,
               },
-              external: cloudflareBuiltInModules,
             },
           },
         },

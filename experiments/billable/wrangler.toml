@@ -2,7 +2,7 @@
 name = "billable"
 main = "dist/worker/worker.js"
 compatibility_date = "2024-03-12"
-compatibility_flags = ["nodejs_compat"]
+compatibility_flags = ["nodejs_compat", "rpc"]
 assets = { directory = "./dist/assets/", binding = "ASSETS" }
 
 [observability]
@@ -21,6 +21,10 @@ binding = "billable"
 bindings = [
   { name = "SESSION_DO", class_name = "SessionDO" }
 ]
+
+[[migrations]]
+tag = "v1"
+new_classes = [ "SessionDO" ]
 
 [build]
 command = "pnpm build"

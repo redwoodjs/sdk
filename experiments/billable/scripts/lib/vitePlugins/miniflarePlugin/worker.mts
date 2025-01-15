@@ -188,7 +188,7 @@ async function callBinding<Result>({
   return response.json() as Result;
 }
 
-export const createDynamicDurableObject = (scriptName: string, className: string) => {
+export const createDurableObjectProxy = (scriptName: string, className: string) => {
   let instance: DurableObject
 
   const ensureExists = async (state: DurableObjectState, env: RunnerEnv) => {
@@ -209,9 +209,10 @@ export const createDynamicDurableObject = (scriptName: string, className: string
       return new Proxy(this, {
         get(_target, prop, receiver) {
           const fn = async (...args: any[]) => {
-            const instance = await ensureExists(receiver.state, receiver.env)
-            return Reflect.get(instance, prop, receiver)
+            const instance = await ensureExists(state, env)
+            return Reflect.get(instance, prop, receiver)(...args)
           }
+
           return fn
         }
       })
