@@ -28,9 +28,11 @@ export default {
       }
 
       setupAI(env);
-      console.log(env)
-      console.log(env.AI);
 
+      const response = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
+        prompt: "What is the origin of the phrase Hello, World",
+      });
+      console.log('###', response);
 
       if (request.method === "POST" && request.url.includes("/incoming")) {
         console.log("Incoming request received");

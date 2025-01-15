@@ -13,6 +13,7 @@ import {
   mergeWorkerOptions,
   Miniflare,
   MiniflareOptions,
+  RequestInit,
   SharedOptions,
   WorkerOptions,
 } from "miniflare";
@@ -96,7 +97,13 @@ export default function (env) {
       },
     ],
     serviceBindings: {
-      FETCHER: aiDevWorker.fetch,
+      FETCHER: async (request: Request) => {
+        try {
+          return await aiDevWorker.fetch(request.url, request as RequestInit);
+        } catch (e) {
+          throw e;
+        }
+      }
     }
   }
 }
