@@ -210,7 +210,7 @@ export const createDurableObjectProxy = (scriptName: string, className: string) 
         get(_target, prop, receiver) {
           const fn = async (...args: any[]) => {
             const instance = await ensureExists(state, env)
-            return Reflect.get(instance, prop, receiver)(...args)
+            return Reflect.get(instance, prop, receiver).call(instance, ...args)
           }
 
           return fn

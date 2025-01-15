@@ -28,3 +28,6 @@ new_classes = [ "SessionDO" ]
 
 [build]
 command = "pnpm build"
+
+[vars]
+SECRET_KEY = "secret"
