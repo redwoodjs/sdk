@@ -51,5 +51,6 @@ export async function createInvoice() {
       userId: '1'
     }
   })
+
   return newInvoice
 }

@@ -16,7 +16,7 @@ export const transformRscToHtmlStream = async ({
     },
   });
 
-  const Component = () => <Parent>{use(thenable)}</Parent>;
+  const Component = () => <Parent>{use(thenable).node}</Parent>;
 
   return await renderToHtmlStream(<Component />);
 };
