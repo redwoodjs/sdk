@@ -3,17 +3,17 @@ import { ErrorResponse } from './error';
 import { SessionDO } from './session';
 
 interface SessionIdParts {
-  sessionId: string;
+  unsignedSessionId: string;
   signature: string;
 }
 
 const packSessionId = (parts: SessionIdParts): string => {
-  return btoa([parts.sessionId, parts.signature].join(':'));
+  return btoa([parts.unsignedSessionId, parts.signature].join(':'));
 }
 
 const unpackSessionId = (packed: string): SessionIdParts => {
-  const [sessionId, signature] = atob(packed).split(':');
-  return { sessionId, signature };
+  const [unsignedSessionId, signature] = atob(packed).split(':');
+  return { unsignedSessionId, signature };
 }
 
 export const performLogin = async (request: Request, env: Env) => {
@@ -62,11 +62,11 @@ const arrayBufferToHex = (buffer: ArrayBuffer): string => {
 export const generateSessionId = async (env: Env) => {
   const unsignedSessionId = crypto.randomUUID();
   const signature = await signSessionId(unsignedSessionId, env);
-  return packSessionId({ sessionId: unsignedSessionId, signature });
+  return packSessionId({ unsignedSessionId, signature });
 }
 
 export const isValidSessionId = async (sessionId: string, env: Env) => {
-  const { sessionId: unsignedSessionId, signature } = unpackSessionId(sessionId);
+  const { unsignedSessionId, signature } = unpackSessionId(sessionId);
   const computedSignature = await signSessionId(unsignedSessionId, env);
   return computedSignature === signature;
 }
