@@ -74,7 +74,7 @@ const loadGeneratedPrismaModule = async (id: string) => {
   }
 }
 
-export const setupAiWorker = async (workerOptions: SourcelessWorkerOptions | undefined) => {
+export const setupAiWorker = async () => {
   // context(justinvdm, 2025-01-15): Do similar to what wrangler does to hook up the AI worker, except we delegate to
   // a wrangler dev worker specific to doing AI worker tasks
   // https://github.com/cloudflare/workers-sdk/blob/6fe9533897b61ae9ef6566b5d2bdf09698566c24/packages/wrangler/src/dev/miniflare.ts#L579
@@ -174,7 +174,7 @@ const createMiniflareOptions = async ({
   const workers: SourcelessWorkerOptions[] = [workerOptions]
 
   if (configWorkerOptions?.wrappedBindings?.AI) {
-    const aiWorker = await setupAiWorker(configWorkerOptions)
+    const aiWorker = await setupAiWorker()
     workers.push(aiWorker)
   }
 
