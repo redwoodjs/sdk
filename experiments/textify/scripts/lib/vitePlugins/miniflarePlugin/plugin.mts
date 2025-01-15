@@ -4,6 +4,7 @@ import { EventEmitter } from "node:events";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import { createRequire } from "node:module";
+import { unstable_dev } from "wrangler";
 
 import { resolve as importMetaResolve } from "import-meta-resolve";
 import colors from "picocolors";
@@ -15,7 +16,7 @@ import {
   SharedOptions,
   WorkerOptions,
 } from "miniflare";
-import { unstable_readConfig, unstable_getMiniflareWorkerOptions, type SourcelessWorkerOptions, type Unstable_MiniflareWorkerOptions, unstable_dev } from "wrangler";
+import { unstable_readConfig, unstable_getMiniflareWorkerOptions, type SourcelessWorkerOptions, type Unstable_MiniflareWorkerOptions } from "wrangler";
 import {
   Connect,
   DevEnvironment,
@@ -63,17 +64,6 @@ const readTsModule = async (id: string) => {
   return compileTsModule(tsCode);
 };
 
-
-const loadGeneratedPrismaModule = async (id: string) => {
-  // context(justinvdm, 2025-01-06): Resolve relative to @prisma/client since pnpm places it relative to @prisma/client in node_modules/.pnpm
-  const resolvedId = createRequire(importMetaResolve('@prisma/client', import.meta.url)).resolve(id)
-
-  return {
-    path: resolvedId.slice(1),
-    contents: await readFile(resolvedId)
-  }
-}
-
 export const setupAiWorker = async () => {
   // context(justinvdm, 2025-01-15): Do similar to what wrangler does to hook up the AI worker, except we delegate to
   // a wrangler dev worker specific to doing AI worker tasks
@@ -97,7 +87,7 @@ export const setupAiWorker = async () => {
         path: "index.mjs",
         contents: `
 import { Ai } from 'cloudflare-internal:ai-api'
-
+           
 export default function (env) {
     return new Ai(env.FETCHER);
 }
@@ -106,36 +96,97 @@ export default function (env) {
     ],
     serviceBindings: {
       FETCHER: aiDevWorker.fetch,
+    }
+  }
+}
+
+const loadGeneratedPrismaModule = async (id: string) => {
+  // context(justinvdm, 2025-01-06): Resolve relative to @prisma/client since pnpm places it relative to @prisma/client in node_modules/.pnpm
+  const resolvedId = createRequire(importMetaResolve('@prisma/client', import.meta.url)).resolve(id)
+
+  return {
+    path: resolvedId.slice(1),
+    contents: await readFile(resolvedId)
+  }
+}
+
+const normalizeDurableObjectDescriptors = ({ workerOptions, options }: { workerOptions: SourcelessWorkerOptions, options: MiniflarePluginOptionsFull }) => {
+  const durableObjectDescriptors: {
+    name: string;
+    scriptName: string;
+    className: string;
+  }[] = [];
+
+  for (const [key, value] of Object.entries(workerOptions.durableObjects ?? {})) {
+    if (typeof value === 'string') {
+      durableObjectDescriptors.push({
+        name: key,
+        scriptName: options.entry,
+        className: value,
+      });
+    } else {
+      durableObjectDescriptors.push({
+        name: key,
+        scriptName: value.scriptName ?? options.entry,
+        className: value.className,
+      });
+    }
+  }
+
+  return durableObjectDescriptors;
+}
+
+const generateViteWorkerScript = async ({ workerOptions, options }: { workerOptions: SourcelessWorkerOptions, options: MiniflarePluginOptionsFull }) => {
+  const contents = await readTsModule("./worker.mts");
+  const durableObjectDescriptors = normalizeDurableObjectDescriptors({ workerOptions, options });
+
+  const code = [
+    contents,
+    ...durableObjectDescriptors.map(({ scriptName, className }) => `export const ${className} = createDurableObjectProxy(${JSON.stringify(scriptName)}, ${JSON.stringify(className)});`),
+  ].join('\n')
+
+  const durableObjects = Object.fromEntries(durableObjectDescriptors.map(({ name, className }) => [name, className]))
+
+  return {
+    code,
+    durableObjects: {
+      ...durableObjects,
+      __viteRunner: "RunnerWorker",
     },
-  };
+  }
 }
 
 const createMiniflareOptions = async ({
   config,
   serviceBindings,
-  options: { miniflare: userOptions, rootDir },
+  options,
 }: {
   config: ResolvedConfig;
   serviceBindings: ServiceBindings;
   options: MiniflarePluginOptionsFull;
 }): Promise<MiniflareOptions> => {
-  let configWorkerOptions: SourcelessWorkerOptions | undefined;
+  const { miniflare: userOptions, rootDir } = options
+  let workerOptions: SourcelessWorkerOptions = {}
 
   if (rootDir) {
     const config = unstable_readConfig({ config: resolve(rootDir, "wrangler.toml") }, {});
-    configWorkerOptions = unstable_getMiniflareWorkerOptions(config).workerOptions
+    workerOptions = unstable_getMiniflareWorkerOptions(config).workerOptions
   }
+
+  workerOptions = mergeWorkerOptions(workerOptions, userOptions);
 
   const envVars = dotEnvConfig({
     path: resolve(rootDir, ".env"),
   }).parsed ?? {}
+
+  const { code, durableObjects } = await generateViteWorkerScript({ workerOptions, options })
 
   const runnerOptions: WorkerOptions = {
     modules: [
       {
         type: "ESModule",
         path: "__vite_worker__",
-        contents: await readTsModule("./worker.mts"),
+        contents: code,
       },
       {
         type: "ESModule",
@@ -152,12 +203,10 @@ const createMiniflareOptions = async ({
       {
         type: "CompiledWasm",
         ...await loadGeneratedPrismaModule('.prisma/client/query_engine_bg.wasm'),
-      },
+      }
     ],
     unsafeEvalBinding: "__viteUnsafeEval",
-    durableObjects: {
-      __viteRunner: "RunnerWorker",
-    },
+    durableObjects,
     serviceBindings,
     bindings: {
       ...envVars,
@@ -172,11 +221,11 @@ const createMiniflareOptions = async ({
     bindings: envVars,
   } as MiniflareOptions
 
-  const workerOptions = mergeWorkerOptions(configWorkerOptions ?? {}, mergeWorkerOptions(userOptions, runnerOptions));
+  workerOptions = mergeWorkerOptions(workerOptions, runnerOptions);
 
-  const workers: SourcelessWorkerOptions[] = [workerOptions]
+  const workers = [workerOptions]
 
-  if (configWorkerOptions?.wrappedBindings?.AI) {
+  if (workerOptions?.wrappedBindings?.AI) {
     const aiWorker = await setupAiWorker()
     workers.push(aiWorker)
   }
@@ -230,6 +279,22 @@ const createDevEnv = async ({
   const serviceBindings: ServiceBindings = {
     __viteInvoke: async (request) => {
       const payload = (await request.json()) as HotPayload;
+      if (payload.type === 'custom' && payload.event === 'vite:invoke') {
+        const { name } = payload.data as { name: string }
+
+        if (name === 'fetchModule') {
+          const { data: [moduleId] } = payload.data as { data: [string] }
+          if (moduleId.startsWith('cloudflare:')) {
+            return Response.json({
+              r: {
+                externalize: moduleId,
+                type: 'builtin',
+              }
+            })
+          }
+        }
+      }
+
       const result = await devEnv.hot.handleInvoke(payload);
       return Response.json(result);
     },

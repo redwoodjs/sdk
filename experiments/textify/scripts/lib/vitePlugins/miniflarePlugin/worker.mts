@@ -11,6 +11,10 @@ import { HotPayload } from "vite";
 
 type IncomingRequest = Request<unknown, IncomingRequestCfProperties<unknown>>;
 
+declare global {
+  var __viteModuleRunner: ModuleRunner
+}
+
 export class RunnerWorker
   extends DurableObject<RunnerEnv>
   implements RunnerRpc {
@@ -39,7 +43,18 @@ export class RunnerWorker
       request.headers.get("x-vite-fetch")!,
     ) as FetchMetadata;
 
-    const mod = await this.#runner.import(options.entry);
+    let entry: string;
+    let className: string | undefined;
+
+    if (options.entry) {
+      entry = options.entry;
+      className = options.className;
+    } else {
+      entry = this.env.__viteWorkerEntry;
+      className = this.env.__viteClassName;
+    }
+
+    const mod = await this.#runner.import(entry);
 
     const handler = mod.default as ExportedHandler;
 
@@ -78,6 +93,7 @@ export class RunnerWorker
     };
 
     this.#runner = new ModuleRunner(options, createEvaluator(this.env));
+    globalThis.__viteModuleRunner = this.#runner
   }
 
   async sendToRunner(payload: HotPayload): Promise<void> {
@@ -134,6 +150,10 @@ export const createEvaluator = (env: RunnerEnv): ModuleEvaluator => ({
     Object.freeze(context[ssrModuleExportsKey]);
   },
   async runExternalModule(filepath) {
+    if (filepath.startsWith('cloudflare:')) {
+      return import(filepath);
+    }
+
     if (
       filepath.includes("/node_modules") &&
       !filepath.includes("/node_modules/.vite")
@@ -166,4 +186,36 @@ async function callBinding<Result>({
   }
 
   return response.json() as Result;
+}
+
+export const createDurableObjectProxy = (scriptName: string, className: string) => {
+  let instance: DurableObject
+
+  const ensureExists = async (state: DurableObjectState, env: RunnerEnv) => {
+    if (instance) {
+      return instance
+    }
+
+    const mod = await globalThis.__viteModuleRunner.import(scriptName)
+    const Constructor = mod[className]
+    instance = new Constructor(state, env)
+    return instance
+  }
+
+  return class DurableObjectProxy extends DurableObject<RunnerEnv> {
+    constructor(public state: DurableObjectState, public env: RunnerEnv) {
+      super(state, env);
+
+      return new Proxy(this, {
+        get(_target, prop, receiver) {
+          const fn = async (...args: any[]) => {
+            const instance = await ensureExists(state, env)
+            return Reflect.get(instance, prop, receiver)(...args)
+          }
+
+          return fn
+        }
+      })
+    }
+  }
 }
