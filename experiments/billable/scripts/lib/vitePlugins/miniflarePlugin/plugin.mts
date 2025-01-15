@@ -298,6 +298,7 @@ export const miniflarePlugin = async (
   const options = {
     environment: "worker",
     miniflare: {},
+    rootDir: process.cwd(),
     ...givenOptions,
   };
 
