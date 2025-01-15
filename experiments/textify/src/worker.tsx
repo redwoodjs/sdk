@@ -1,5 +1,4 @@
 import { App } from "./app/App";
-import HomePage from "./app/HomePage";
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 import { injectRSCPayload } from "rsc-html-stream/server";
 import { renderToRscStream } from "./render/renderToRscStream";
@@ -9,11 +8,6 @@ import { TwilioClient } from "./twilio";
 import { AI, setupAI } from "./ai";
 // import { setupAI } from "./ai";
 // import { TwilioClient } from "./twilio";
-
-const routes = {
-  "/": HomePage,
-};
-
 export default {
   async fetch(request: Request, env: Env) {
     globalThis.__webpack_require__ = ssrWebpackRequire;
@@ -34,6 +28,8 @@ export default {
       }
 
       setupAI(env);
+      console.log(env)
+      console.log(env.AI);
 
 
       if (request.method === "POST" && request.url.includes("/incoming")) {
@@ -75,32 +71,7 @@ export default {
         // return new Response("No audio attachment", { status: 400 });
       }
 
-      const renderPage = async (Page: any, props = {}) => {
-        const rscPayloadStream = renderToRscStream(<Page {...props} />);
-
-        if (isRSCRequest) {
-          return new Response(rscPayloadStream, {
-            headers: { "content-type": "text/x-component; charset=utf-8" },
-          });
-        }
-        const [rscPayloadStream1, rscPayloadStream2] = rscPayloadStream.tee();
-
-        const htmlStream = await transformRscToHtmlStream({
-          stream: rscPayloadStream1,
-          Parent: App,
-        });
-
-        const html = htmlStream.pipeThrough(
-          injectRSCPayload(rscPayloadStream2),
-        );
-        return new Response(html, {
-          headers: { "content-type": "text/html" },
-        });
-      };
-
-      const pathname = new URL(request.url).pathname as keyof typeof routes;
-      const Page = routes[pathname];
-      return renderPage(Page);
+      return new Response("OK", { status: 200 });
     } catch (e) {
       console.error("Unhandled error", e);
       throw e;
