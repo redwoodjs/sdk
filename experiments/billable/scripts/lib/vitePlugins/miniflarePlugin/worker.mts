@@ -11,6 +11,10 @@ import { HotPayload } from "vite";
 
 type IncomingRequest = Request<unknown, IncomingRequestCfProperties<unknown>>;
 
+declare global {
+  var __viteModuleRunner: ModuleRunner
+}
+
 export class RunnerWorker
   extends DurableObject<RunnerEnv>
   implements RunnerRpc {
@@ -89,6 +93,7 @@ export class RunnerWorker
     };
 
     this.#runner = new ModuleRunner(options, createEvaluator(this.env));
+    globalThis.__viteModuleRunner = this.#runner
   }
 
   async sendToRunner(payload: HotPayload): Promise<void> {
@@ -181,4 +186,35 @@ async function callBinding<Result>({
   }
 
   return response.json() as Result;
+}
+
+export const createDynamicDurableObject = (scriptName: string, className: string) => {
+  let instance: DurableObject
+
+  const ensureExists = async (state: DurableObjectState, env: RunnerEnv) => {
+    if (instance) {
+      return instance
+    }
+
+    const mod = await globalThis.__viteModuleRunner.import(scriptName)
+    const Constructor = mod[className]
+    instance = new Constructor(state, env)
+    return instance
+  }
+
+  return class DurableObjectProxy extends DurableObject<RunnerEnv> {
+    constructor(public state: DurableObjectState, public env: RunnerEnv) {
+      super(state, env);
+
+      return new Proxy(this, {
+        get(_target, prop, receiver) {
+          const fn = async (...args: any[]) => {
+            const instance = await ensureExists(receiver.state, receiver.env)
+            return Reflect.get(instance, prop, receiver)
+          }
+          return fn
+        }
+      })
+    }
+  }
 }

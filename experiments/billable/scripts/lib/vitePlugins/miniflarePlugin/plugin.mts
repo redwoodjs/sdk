@@ -59,7 +59,6 @@ const readTsModule = async (id: string) => {
   return compileTsModule(tsCode);
 };
 
-
 const loadGeneratedPrismaModule = async (id: string) => {
   // context(justinvdm, 2025-01-06): Resolve relative to @prisma/client since pnpm places it relative to @prisma/client in node_modules/.pnpm
   const resolvedId = createRequire(importMetaResolve('@prisma/client', import.meta.url)).resolve(id)
