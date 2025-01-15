@@ -11,7 +11,8 @@ import { rscActionHandler } from "./register/worker";
 import { setupR2Storage } from "./r2storage";
 import InvoiceListPage from "./app/InvoiceListPage";
 import InvoiceDetailPage from "./app/pages/invoiceDetail/Page";
-
+import { ErrorResponse } from './error';
+import { enforceUserLoggedIn, getSession, performLogin } from './auth';
 // todo(peterp, 2024-11-25): Make these lazy.
 const routes = {
   "/": InvoiceListPage,
@@ -23,11 +24,6 @@ export { SessionDO } from "./session";
 export default {
   async fetch(request: Request, env: Env) {
     globalThis.__webpack_require__ = ssrWebpackRequire;
-
-    const id = env.SESSION_DO.idFromName("default");
-    // todo(justinvdm, 2025-01-15): Get codegen working for DO classes
-    const obj = env.SESSION_DO.get(id) as DurableObjectStub<SessionDO>;
-    console.log(await obj.cowsay());
 
     try {
       const url = new URL(request.url);
@@ -69,6 +65,12 @@ export default {
         });
       }
 
+      if (request.method === 'GET' && url.pathname === '/test/login') {
+        return performLogin(request, env);
+      } else if (request.method === 'GET' && url.pathname === '/test/auth') {
+        const session = await getSession(request, env);
+        return new Response(`You are logged in as user ${session.userId}!`, { status: 200 });
+      }
 
       const renderPage = async (Page: any, props = {}) => {
         const rscPayloadStream = renderToRscStream(<Page {...props} />);
@@ -109,6 +111,10 @@ export default {
       }
 
     } catch (e) {
+      if (e instanceof ErrorResponse) {
+        return new Response(e.message, { status: e.code });
+      }
+
       console.error("Unhandled error", e);
       throw e;
     }
