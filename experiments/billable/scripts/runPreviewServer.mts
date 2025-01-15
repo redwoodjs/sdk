@@ -1,5 +1,7 @@
 import express from "express";
+import { config as dotEnvConfig } from "dotenv";
 import { Miniflare, MiniflareOptions } from "miniflare";
+import { unstable_readConfig, unstable_getMiniflareWorkerOptions } from "wrangler";
 import { resolve } from "node:path";
 import { readdir } from "fs/promises";
 
@@ -17,34 +19,43 @@ import { readFile } from "fs/promises";
 import { $ } from './lib/$.mjs';
 
 const setup = async () => {
-  const miniflare = new Miniflare({
-    ...miniflareConfig,
-    script: "",
-  } as MiniflareOptions);
-
   if (!process.env.NO_BUILD) {
-    await $`pnpm wrangler build`
+    await $({ stdio: "inherit" })`pnpm wrangler deploy --dry-run --outdir=${DIST_DIR}`
     console.log("Wrangler build complete!");
   }
+
+  const config = unstable_readConfig({ config: resolve(ROOT_DIR, "wrangler.toml") }, {});
+  const workerOptions = unstable_getMiniflareWorkerOptions(config).workerOptions
 
   const distFiles = await readdir(DIST_DIR);
   const wasmFiles = distFiles.filter(file => file.endsWith('.wasm'));
 
-  await miniflare.setOptions({
+  const modules = [
+    {
+      type: "ESModule" as const,
+      path: resolve(DIST_DIR, "worker.js"),
+      contents: await readFile(resolve(DIST_DIR, "worker.js"), "utf-8"),
+    },
+    ...await Promise.all(wasmFiles.map(async (file) => ({
+      type: "CompiledWasm" as const,
+      path: resolve(DIST_DIR, file),
+      contents: await readFile(resolve(DIST_DIR, file)),
+    }))),
+  ]
+
+  const miniflare = new Miniflare({
     ...miniflareConfig,
-    modules: [
-      {
-        type: "ESModule" as const,
-        path: resolve(DIST_DIR, "worker.js"),
-        contents: await readFile(resolve(DIST_DIR, "worker.js"), "utf-8"),
+    d1Persist: resolve(ROOT_DIR, ".wrangler/state/v3/d1"),
+    r2Persist: resolve(ROOT_DIR, ".wrangler/state/v3/r2"),
+    workers: [{
+      ...workerOptions,
+      bindings: {
+        ...workerOptions.bindings,
+        ...dotEnvConfig({ path: resolve(ROOT_DIR, ".env") }).parsed,
       },
-      ...await Promise.all(wasmFiles.map(async (file) => ({
-        type: "CompiledWasm" as const,
-        path: resolve(DIST_DIR, file),
-        contents: await readFile(resolve(DIST_DIR, file)),
-      }))),
-    ],
-  });
+      modules,
+    }]
+  } as MiniflareOptions);
 
   return { miniflare };
 };

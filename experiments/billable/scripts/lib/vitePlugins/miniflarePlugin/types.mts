@@ -20,10 +20,13 @@ export type RunnerEnv = {
   __viteUnsafeEval: {
     eval: (code: string, filename?: string) => any;
   };
+  __viteWorkerEntry: string;
+  __viteClassName?: string;
 } & EnvServiceBindings;
 
 export type FetchMetadata = {
-  entry: string;
+  entry?: string;
+  className?: string;
 };
 
 export type NoOptionals<T> = {
