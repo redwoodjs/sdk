@@ -129,13 +129,6 @@ const createMiniflareOptions = async ({
     },
   };
 
-  let configWorkerOptions: Unstable_MiniflareWorkerOptions | undefined;
-
-  if (rootDir) {
-    const config = unstable_readConfig({ config: resolve(rootDir, "wrangler.toml") }, {});
-    configWorkerOptions = unstable_getMiniflareWorkerOptions(config)
-  }
-
   const baseOptions = {
     modules: true,
     d1Persist: resolve(rootDir, ".wrangler/state/v3/d1"),
