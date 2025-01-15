@@ -1,4 +1,3 @@
-
 import { App } from "./app/App"
 import { db, setupDb } from "./db";
 
@@ -29,8 +28,11 @@ export default {
       const isRSCRequest = url.searchParams.has("__rsc");
       const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 
+      let rscActionResult: any;
       if (isRSCActionHandler) {
-        await rscActionHandler(request);
+        // todo(peterp, 2025-01-15): How do I return both the rendered page,
+        // as well as the action result.
+        rscActionResult = await rscActionHandler(request);
       }
 
       if (url.pathname.startsWith("/assets/")) {
@@ -65,7 +67,7 @@ export default {
 
 
       const renderPage = async (Page: any, props = {}) => {
-        const rscPayloadStream = renderToRscStream(<Page {...props} />);
+        const rscPayloadStream = renderToRscStream({ node: <Page {...props} />, actionResult: rscActionResult });
         if (isRSCRequest) {
           return new Response(rscPayloadStream, {
             headers: { "content-type": "text/x-component; charset=utf-8" },
