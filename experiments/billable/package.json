@@ -4,7 +4,6 @@
   "description": "",
   "main": "index.js",
   "type": "module",
-
   "keywords": [],
   "author": "",
   "license": "UNLICENSED",
@@ -13,6 +12,7 @@
     "@cloudflare/workers-types": "^4.20241112.0",
     "@prisma/adapter-d1": "^6.1.0",
     "@prisma/client": "^6.1.0",
+    "@react-pdf/renderer": "^4.1.6",
     "@types/lodash": "^4.17.13",
     "dotenv": "^16.4.6",
     "lodash": "^4.17.21",
