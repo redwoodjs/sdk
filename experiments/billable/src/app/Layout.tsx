@@ -8,7 +8,7 @@ export function Layout({ children }: { children: React.ReactNode }) {
           <div className="flex justify-between h-16">
             <div className="flex">
               <div className="flex-shrink-0 flex items-center">
-                <span className="text-xl font-bold text-gray-900">billable.</span>
+                <span className="text-xl font-bold text-gray-900"><a href="/">Billable</a></span>
               </div>
             </div>
           </div>

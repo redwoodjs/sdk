@@ -8,7 +8,6 @@ import { saveInvoice } from "./functions";
 export function InvoiceForm(props: {
   invoice: Awaited<ReturnType<typeof getInvoice>>;
 }) {
-
   const [invoice, setInvoice] = useState(props.invoice);
   const [items, setItems] = useState(props.invoice.items);
   const [taxes, setTaxes] = useState(props.invoice.taxes);
@@ -16,7 +15,12 @@ export function InvoiceForm(props: {
   return (
     <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
       <div className="col-span-full">
-        <button onClick={() => saveInvoice(invoice.id, invoice, items, taxes)}>
+        <button
+          onClick={async () => {
+            await saveInvoice(invoice.id, invoice, items, taxes);
+            window.location.href = "/";
+          }}
+        >
           Save
         </button>
       </div>
@@ -137,10 +141,10 @@ export function InvoiceForm(props: {
                 setItems(newItems);
               }}
               onDelete={() => {
-                console.log("delete")
+                console.log("delete");
                 // todo update total
-                const newItems = [...items]
-                delete newItems[index]
+                const newItems = [...items];
+                delete newItems[index];
                 setItems(newItems);
               }}
             />
@@ -149,7 +153,7 @@ export function InvoiceForm(props: {
             type="button"
             className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
             onClick={() => {
-              setItems([...items, { description: '', quantity: 1, price: 1 }])
+              setItems([...items, { description: "", quantity: 1, price: 1 }]);
             }}
           >
             Add Item
@@ -158,21 +162,24 @@ export function InvoiceForm(props: {
       </div>
 
       <div className="col-span-full">
-        <Summary items={items} taxes={taxes} onChange={(tax, index) => {
-          const newTaxes = [...taxes]
-          newTaxes[index] = tax
-          setTaxes(newTaxes)
-
-        }} onDelete={(index) => {
-          if (taxes.length === 1) {
-            setTaxes([])
-            return
-          }
-          const newTaxes = [...taxes]
-          delete newTaxes[index]
-          setTaxes(newTaxes)
-
-        }} />
+        <Summary
+          items={items}
+          taxes={taxes}
+          onChange={(tax, index) => {
+            const newTaxes = [...taxes];
+            newTaxes[index] = tax;
+            setTaxes(newTaxes);
+          }}
+          onDelete={(index) => {
+            if (taxes.length === 1) {
+              setTaxes([]);
+              return;
+            }
+            const newTaxes = [...taxes];
+            delete newTaxes[index];
+            setTaxes(newTaxes);
+          }}
+        />
       </div>
 
       <div className="col-span-full">
@@ -214,7 +221,6 @@ function Item({
   ) => void;
   onDelete: () => void;
 }) {
-
   return (
     <div className="grid grid-cols-12 gap-4">
       <div className="col-span-6">
@@ -261,8 +267,11 @@ function Item({
 function Summary(props: {
   items: Awaited<ReturnType<typeof getInvoice>>["items"];
   taxes: Awaited<ReturnType<typeof getInvoice>>["taxes"];
-  onChange: (tax: Awaited<ReturnType<typeof getInvoice>>["taxes"][0], index:number) => void;
-  onDelete: (index:number) => void
+  onChange: (
+    tax: Awaited<ReturnType<typeof getInvoice>>["taxes"][0],
+    index: number,
+  ) => void;
+  onDelete: (index: number) => void;
 }) {
   const subtotal = calculateSubtotal(props.items);
   const taxes = calculateTaxes(subtotal, props.taxes);
@@ -276,10 +285,26 @@ function Summary(props: {
       {props.taxes.map((tax, index) => (
         <div className="grid grid-cols-12 gap-4" key={`tax-${index}`}>
           <div className="col-span-4 text-right">
-            <input type="text" value={tax.description} onChange={(e) => props.onChange({ ...tax, description: e.target.value }, index)}/>
+            <input
+              type="text"
+              value={tax.description}
+              onChange={(e) =>
+                props.onChange({ ...tax, description: e.target.value }, index)
+              }
+            />
           </div>
           <div className="col-span-1">
-            <input type="number" value={tax.amount} onChange={(e) => props.onChange({ ...tax, amount: Number(e.target.value) }, index)}/>%
+            <input
+              type="number"
+              value={tax.amount}
+              onChange={(e) =>
+                props.onChange(
+                  { ...tax, amount: Number(e.target.value) },
+                  index,
+                )
+              }
+            />
+            %
           </div>
           <div className="col-span-1">{(subtotal * tax.amount).toFixed(2)}</div>
           <div className="col-span-1">
