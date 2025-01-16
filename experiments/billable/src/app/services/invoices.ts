@@ -14,7 +14,7 @@ export type InvoiceTaxes = {
 }
 
 
-export async function getInvoiceListSummary(userId: number) {
+export async function getInvoiceListSummary() {
 
   const invoices = await db.invoice.findMany({
     select: {
@@ -25,7 +25,7 @@ export async function getInvoiceListSummary(userId: number) {
       customer: true,
     },
     where: {
-      userId
+      userId: '1',
     }
   }) ?? []
 
@@ -42,19 +42,19 @@ export async function getInvoiceListSummary(userId: number) {
       id,
       date,
       number,
-      customer: customer.split('\n')[0] || '',
+      customer: customer?.split('\n')[0] || '',
       status,
     }
   })
 }
 
 // NOTE (peterp, 2025-01-13): The userID will be optional, since we should have that available "somewhere" in the context.
-export async function getInvoice(id: number, userId: number) {
+export async function getInvoice(id: string) {
 
   const invoice =  await db.invoice.findFirstOrThrow({
     where: {
       id,
-      userId
+      userId: '1',
     }
   })
 

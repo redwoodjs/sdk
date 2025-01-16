@@ -9,9 +9,7 @@ import { InvoiceForm } from "./InvoiceForm";
 
 
 
-export default async function InvoiceDetailPage({ id }: { id: number }) {
-  id = Number(id);
-
+export default async function InvoiceDetailPage({ id }: { id: string }) {
   return (
     <Layout>
       <div className="px-4 sm:px-6 lg:px-8">
@@ -26,7 +24,7 @@ export default async function InvoiceDetailPage({ id }: { id: number }) {
 
             <Suspense fallback={<div>Loading...</div>}>
               <FetchInvoice id={id}>
-                {(invoice) => <InvoiceForm invoice={invoice} />}
+                {(invoice: any) => <InvoiceForm invoice={invoice} />}
               </FetchInvoice>
             </Suspense>
           </div>

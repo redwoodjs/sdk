@@ -16,7 +16,7 @@ import { enforceUserLoggedIn, getSession, performLogin } from './auth';
 // todo(peterp, 2024-11-25): Make these lazy.
 const routes = {
   "/": InvoiceListPage,
-  "/invoice/:id": InvoiceDetailPage,
+  "/invoice/:id": InvoiceDetailPage
 }
 
 export { SessionDO } from "./session";
@@ -31,8 +31,11 @@ export default {
       const isRSCRequest = url.searchParams.has("__rsc");
       const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 
+      let rscActionResult: any;
       if (isRSCActionHandler) {
-        await rscActionHandler(request);
+        // todo(peterp, 2025-01-15): How do I return both the rendered page,
+        // as well as the action result.
+        rscActionResult = await rscActionHandler(request);
       }
 
       if (url.pathname.startsWith("/assets/")) {
@@ -45,24 +48,24 @@ export default {
 
       // The worker access the bucket and returns it to the user, we dont let them access the bucket directly
       if (request.method === "GET" && url.pathname.startsWith("/bucket/")) {
-        const filename = url.pathname.slice("/bucket/".length);
-        const object = await env.valley_directory_r2.get(filename);
+        // const filename = url.pathname.slice("/bucket/".length);
+        // const object = await env.valley_directory_r2.get(filename);
 
-        if (object === null) {
-          return new Response("Object Not Found", { status: 404 });
-        }
+        // if (object === null) {
+        //   return new Response("Object Not Found", { status: 404 });
+        // }
 
-        const headers = new Headers();
-        if (filename.endsWith(".jpg") || filename.endsWith(".png")) {
-          headers.set("content-type", "image/jpeg");
-        }
+        // const headers = new Headers();
+        // if (filename.endsWith(".jpg") || filename.endsWith(".png")) {
+        //   headers.set("content-type", "image/jpeg");
+        // }
 
-        object.writeHttpMetadata(headers);
-        headers.set("etag", object.httpEtag);
+        // object.writeHttpMetadata(headers);
+        // headers.set("etag", object.httpEtag);
 
-        return new Response(object.body, {
-          headers,
-        });
+        // return new Response(object.body, {
+        //   headers,
+        // });
       }
 
       if (request.method === 'GET' && url.pathname === '/test/login') {
@@ -73,8 +76,7 @@ export default {
       }
 
       const renderPage = async (Page: any, props = {}) => {
-        const rscPayloadStream = renderToRscStream(<Page {...props} />);
-
+        const rscPayloadStream = renderToRscStream({ node: <Page {...props} />, actionResult: rscActionResult });
         if (isRSCRequest) {
           return new Response(rscPayloadStream, {
             headers: { "content-type": "text/x-component; charset=utf-8" },

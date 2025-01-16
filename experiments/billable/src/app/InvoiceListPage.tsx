@@ -3,9 +3,11 @@
 import React from "react";
 import { Layout } from "./Layout";
 import { getInvoiceListSummary } from "./services/invoices";
+import { CreateInvoiceButton } from "./CreateInvoiceButton";
 
 
-
+// todo: fix the total
+// todo: make the entire row clickable
 function InvoiceItem(props: Awaited<ReturnType<typeof getInvoiceListSummary>>[number]) {
   return (
     <tr key={'invoice-' + props.id}>
@@ -22,8 +24,9 @@ function InvoiceItem(props: Awaited<ReturnType<typeof getInvoiceListSummary>>[nu
   );
 }
 
+// todo: add a button to create a new invoice
 export default async function InvoiceListPage() {
-  const invoices = await getInvoiceListSummary(1);
+  const invoices = await getInvoiceListSummary();
   return (
     <Layout>
       <div className="px-4 sm:px-6 lg:px-8">
@@ -34,6 +37,9 @@ export default async function InvoiceListPage() {
               A list of all invoices including their date, customer name and
               amount.
             </p>
+          </div>
+          <div className="mt-2">
+            <CreateInvoiceButton />
           </div>
         </div>
         <div className="mt-8 flow-root">
