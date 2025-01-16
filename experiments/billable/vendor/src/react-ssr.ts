@@ -54,11 +54,13 @@ export {
   useOptimistic,
   useSyncExternalStore,
   useReducer,
-  useRef,
+  // useRef,
   useState,
   useTransition,
   useActionState,
   version,
 } from "react";
+
+export function useRef() {}
 
 export { renderToReadableStream as renderToHtmlStream } from "react-dom/server.edge";

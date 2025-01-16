@@ -11,12 +11,16 @@ import { rscActionHandler } from "./register/worker";
 import { setupR2Storage } from "./r2storage";
 import InvoiceListPage from "./app/InvoiceListPage";
 import InvoiceDetailPage from "./app/pages/invoiceDetail/Page";
+import InvoicePdfPage from "./app/pages/invoicePdf/Page"
 import { ErrorResponse } from './error';
 import { enforceUserLoggedIn, getSession, performLogin } from './auth';
+
+
 // todo(peterp, 2024-11-25): Make these lazy.
 const routes = {
   "/": InvoiceListPage,
-  "/invoice/:id": InvoiceDetailPage
+  "/invoice/:id": InvoiceDetailPage,
+  "/invoice/:id/pdf": InvoicePdfPage,
 }
 
 export { SessionDO } from "./session";
@@ -103,6 +107,10 @@ export default {
 
       if (pathname.startsWith("/invoice/")) {
         const id = pathname.slice("/invoice/".length);
+        if (pathname.endsWith("/pdf")) {
+          // remove "/pdf" from the end of the pathname
+          return renderPage(InvoicePdfPage, { id: id.slice(0, -4) });
+        }
         return renderPage(InvoiceDetailPage, { id });
       }
 
