@@ -1,17 +1,15 @@
 "use client";
 
-import { useActionState, useTransition } from "react";
+import { useTransition } from "react";
 import { createInvoice } from "./pages/invoiceDetail/functions";
 
 export function CreateInvoiceButton() {
   const [isPending, startTransition] = useTransition();
 
-
   const onClick = () => {
     startTransition(async () => {
       const newInvoice = await createInvoice();
-      // todo(peterp, 2025-01-14): figure out why this isn't returning
-      console.log("new invoice", newInvoice);
+      window.location.href = `/invoice/${newInvoice.id}`;
     });
   };
 
