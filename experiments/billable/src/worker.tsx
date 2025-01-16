@@ -31,11 +31,9 @@ export default {
       const isRSCRequest = url.searchParams.has("__rsc");
       const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 
-      let rscActionResult: any;
+      let actionResult: any;
       if (isRSCActionHandler) {
-        // todo(peterp, 2025-01-15): How do I return both the rendered page,
-        // as well as the action result.
-        rscActionResult = await rscActionHandler(request);
+        actionResult = await rscActionHandler(request);
       }
 
       if (url.pathname.startsWith("/assets/")) {
@@ -76,7 +74,7 @@ export default {
       }
 
       const renderPage = async (Page: any, props = {}) => {
-        const rscPayloadStream = renderToRscStream({ node: <Page {...props} />, actionResult: rscActionResult });
+        const rscPayloadStream = renderToRscStream({ node: <Page {...props} />, actionResult: actionResult });
         if (isRSCRequest) {
           return new Response(rscPayloadStream, {
             headers: { "content-type": "text/x-component; charset=utf-8" },
