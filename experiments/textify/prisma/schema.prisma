@@ -14,13 +14,5 @@ datasource db {
 model User {
   id    Int     @id @default(autoincrement())
   cellnumber String  @unique
-  name  String?
+  language String?
 }
-
-// model Tradesman {
-//   id Int @id @default(autoincrement())
-//   profilePicture String?
-//   name String
-//   cellnumber String @unique
-//   profession String
-// }

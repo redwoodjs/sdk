@@ -4,9 +4,14 @@ export const createAI = (env: Env) => {
   const ai = {
     transcribeAudio: async (blob: Blob) => {
       try {
+        console.log("Trying to transcribe audio");
+        console.log(blob);
+        const arrayBuffer = await blob.arrayBuffer();
+        const uint8Array = new Uint8Array(arrayBuffer);
         const response = await env.AI.run("@cf/openai/whisper", {
-          audio: [...new Uint8Array(await blob.arrayBuffer())],
+          audio: [...uint8Array],
         });
+        console.log(response);
         return response.text;
       } catch (error) {
         console.error("Error transcribing audio", error);

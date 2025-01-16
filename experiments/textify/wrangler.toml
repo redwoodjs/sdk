@@ -11,5 +11,10 @@ enabled = true
 [ai]
 binding = "AI"
 
+[[d1_databases]]
+binding = "DB"
+database_name = "prod-textify"
+database_id = "998b486f-e799-4741-abb5-09068c15a6a5"
+
 [build]
 command = "pnpm build"
