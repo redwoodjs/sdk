@@ -1,6 +1,6 @@
-import Doit from "./Document";
+"use server";
 
-
+import GeneratePdf from "./GeneratePdf";
 
 
 export default function InvoicePdfPage() {
@@ -8,7 +8,7 @@ export default function InvoicePdfPage() {
 
   return (
     <div>
-      <Doit />
+      <GeneratePdf />
     </div>
   );
 }

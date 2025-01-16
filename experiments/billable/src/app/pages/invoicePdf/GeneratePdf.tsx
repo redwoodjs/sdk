@@ -5,14 +5,14 @@ import { useReactToPrint } from "react-to-print";
 
 
 
-export default function Doit() {
+export default function GeneratePdf() {
 
   const contentRef = useRef<HTMLDivElement>(null);
   const reactToPrintFn = useReactToPrint({ contentRef });
 
   return (
     <div>
-      {/* <button onClick={() => reactToPrintFn()}>Print</button> */}
+      <button onClick={() => reactToPrintFn()}>Print</button>
       <div ref={contentRef}>Content to print</div>
     </div>
   );
