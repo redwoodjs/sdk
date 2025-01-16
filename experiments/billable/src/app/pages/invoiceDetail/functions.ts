@@ -54,3 +54,7 @@ export async function createInvoice() {
 
   return newInvoice
 }
+
+export async function generatePdf(id: string) {
+  return 'x'
+}

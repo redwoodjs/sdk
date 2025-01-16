@@ -10,7 +10,7 @@ import { CreateInvoiceButton } from "./CreateInvoiceButton";
 // todo: make the entire row clickable
 function InvoiceItem(props: Awaited<ReturnType<typeof getInvoiceListSummary>>[number]) {
   return (
-    <tr key={'invoice-' + props.id}>
+    <tr>
       <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-0">
         <a href={`/invoice/${props.id}`}>{props.date.toString()}</a>
       </td>
@@ -69,7 +69,7 @@ export default async function InvoiceListPage() {
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {invoices.map(i => <InvoiceItem {...i} />)}
+                  {invoices.map(i => <InvoiceItem {...i} key={'invoice-' + i.id} />)}
                 </tbody>
               </table>
             </div>
