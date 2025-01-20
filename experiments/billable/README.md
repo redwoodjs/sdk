@@ -34,5 +34,5 @@ You'll need a cloudflare account.
 -->
 
 ```terminal
-npm wrangler deploy
+npx wrangler deploy
 ```
