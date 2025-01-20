@@ -21,11 +21,7 @@ npx wrangler d1 create billable
 Copy the ID that's spat out by this command, and update the wrangler.toml file.
 
 ```terminal
-pnpm install
-pnpm migrate:dev
-npx prisma generate
-pnpm build
-pnpm seed
+pnpm dev:init
 pnpm dev
 ```
 
