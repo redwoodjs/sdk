@@ -2,5 +2,6 @@ import { renderToReadableStream as baseRenderToRscStream } from "react-server-do
 import { createClientManifest } from "./createClientManifest.js";
 import { runInReactRuntime } from 'vendor/react';
 
-export const renderToRscStream = (app: React.ReactElement) => runInReactRuntime("rsc", () =>
-  baseRenderToRscStream(app, createClientManifest()));
+export const renderToRscStream = (app: { node: React.ReactElement, actionResult: any }) =>
+  runInReactRuntime("rsc", () => baseRenderToRscStream(app, createClientManifest()));
+
