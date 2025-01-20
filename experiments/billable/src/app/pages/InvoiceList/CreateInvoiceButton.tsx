@@ -1,29 +1,8 @@
-"use server";
-import {
-  type Invoice,
-} from "@prisma/client";
+"use client";
+
+import { useTransition } from "react";
 import { db } from "../../../db";
-import { InvoiceItem, InvoiceTaxes } from "../../services/invoices";
 
-export async function saveInvoice(id: string, invoice: Omit<Invoice, 'items' | 'taxes'>, items: InvoiceItem[], taxes: InvoiceTaxes[]) {
-
-  // validate input with zod
-  // validate user id.
-
-  const data: Invoice = {
-    ...invoice,
-    items: JSON.stringify(items),
-    taxes: JSON.stringify(taxes),
-  }
-
-  await db.invoice.upsert({
-    create: data,
-    update: data,
-    where: {
-      id,
-    }
-  })
-}
 
 export async function createInvoice() {
 
@@ -53,4 +32,28 @@ export async function createInvoice() {
   })
 
   return newInvoice
+}
+
+
+export function CreateInvoiceButton() {
+  const [isPending, startTransition] = useTransition();
+
+  const onClick = () => {
+    startTransition(async () => {
+      const newInvoice = await createInvoice();
+      window.location.href = `/invoice/${newInvoice.id}`;
+    });
+  };
+
+  return (
+
+      <button
+        onClick={onClick}
+        className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+        disabled={isPending}
+      >
+        Create New Invoice
+      </button>
+
+  );
 }

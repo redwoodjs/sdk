@@ -30,6 +30,7 @@ export default defineScript(async () => {
         { description: "Technical Support Hours", price: 75.0, quantity: 10 },
       ]),
       taxes: JSON.stringify([{ description: "VAT", amount: 0.14 }]),
+      currency: '$',
       createdAt: new Date("2024-01-01T10:00:00Z"),
     },
   });
@@ -50,6 +51,7 @@ export default defineScript(async () => {
         { description: "VAT", amount: 0.15 },
         { description: "City Tax", amount: 0.02 },
       ]),
+      currency: '$',
       createdAt: new Date("2024-01-02T10:00:00Z"),
     },
   });
@@ -67,6 +69,7 @@ export default defineScript(async () => {
         { description: "Content Creation", price: 450.0, quantity: 5 },
       ]),
       taxes: JSON.stringify([{ description: "VAT", amount: 0.14 }]),
+      currency: '$',
       createdAt: new Date("2024-01-03T10:00:00Z"),
     },
   });
@@ -88,6 +91,7 @@ export default defineScript(async () => {
         { description: "VAT", amount: 0.14 },
         { description: "Service Tax", amount: 0.03 },
       ]),
+      currency: '$',
       createdAt: new Date("2024-01-04T10:00:00Z"),
     },
   });

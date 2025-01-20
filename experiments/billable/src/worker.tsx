@@ -9,14 +9,17 @@ import { renderToRscStream } from "./render/renderToRscStream";
 import { ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import { setupR2Storage } from "./r2storage";
-import InvoiceListPage from "./app/InvoiceListPage";
-import InvoiceDetailPage from "./app/pages/invoiceDetail/Page";
+import InvoiceListPage from "./app/pages/InvoiceList/InvoiceListPage";
+import InvoiceDetailPage from "./app/pages/InvoiceDetail/InvoiceDetailPage";
+import InvoicePdfPage from "./app/pages/invoicePdf/Page"
 import { ErrorResponse } from './error';
 import { enforceUserLoggedIn, getSession, performLogin } from './auth';
+
+
 // todo(peterp, 2024-11-25): Make these lazy.
 const routes = {
   "/": InvoiceListPage,
-  "/invoice/:id": InvoiceDetailPage
+  "/invoice/:id": InvoiceDetailPage,
 }
 
 export { SessionDO } from "./session";
@@ -31,11 +34,9 @@ export default {
       const isRSCRequest = url.searchParams.has("__rsc");
       const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 
-      let rscActionResult: any;
+      let actionResult: any;
       if (isRSCActionHandler) {
-        // todo(peterp, 2025-01-15): How do I return both the rendered page,
-        // as well as the action result.
-        rscActionResult = await rscActionHandler(request);
+        actionResult = await rscActionHandler(request);
       }
 
       if (url.pathname.startsWith("/assets/")) {
@@ -76,7 +77,7 @@ export default {
       }
 
       const renderPage = async (Page: any, props = {}) => {
-        const rscPayloadStream = renderToRscStream({ node: <Page {...props} />, actionResult: rscActionResult });
+        const rscPayloadStream = renderToRscStream({ node: <Page {...props} />, actionResult: actionResult });
         if (isRSCRequest) {
           return new Response(rscPayloadStream, {
             headers: { "content-type": "text/x-component; charset=utf-8" },
@@ -105,6 +106,10 @@ export default {
 
       if (pathname.startsWith("/invoice/")) {
         const id = pathname.slice("/invoice/".length);
+        if (pathname.endsWith("/pdf")) {
+          // remove "/pdf" from the end of the pathname
+          return renderPage(InvoicePdfPage, { id: id.slice(0, -4) });
+        }
         return renderPage(InvoiceDetailPage, { id });
       }
 

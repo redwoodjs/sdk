@@ -4,7 +4,6 @@
   "description": "",
   "main": "index.js",
   "type": "module",
-
   "keywords": [],
   "author": "",
   "license": "UNLICENSED",
@@ -19,6 +18,7 @@
     "react": "19.0.0-rc-f2df5694-20240916",
     "react-dom": "19.0.0-rc-f2df5694-20240916",
     "react-server-dom-webpack": "19.0.0-rc-f2df5694-20240916",
+    "react-to-print": "^3.0.4",
     "rsc-html-stream": "^0.0.3",
     "typescript": "^5.6.3"
   },
@@ -65,6 +65,7 @@
     "build": "npx tsx ./scripts/build.mts",
     "build:vendor": "npx tsx ./scripts/buildVendorBundles.mts",
     "build:clean": "rm -f clean:vendor && rm -f clean:vite",
+    "dev:init": "npx tsx ./scripts/firstRun.mts",
     "dev": "while true; do NODE_ENV=development npx tsx ./scripts/runDevServer.mts; [ $? -eq 0 ] || break; done",
     "seed": "pnpm worker:run ./src/scripts/seed.ts",
     "migrate:dev": "npx wrangler d1 migrations apply DB --local",
