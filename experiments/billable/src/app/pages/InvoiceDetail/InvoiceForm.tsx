@@ -139,6 +139,7 @@ export function InvoiceForm(props: {
             <Item
               key={"invoiceItem" + index}
               item={item}
+              currency={invoice.currency}
               onChange={(newItem) => {
                 const newItems = [...items];
                 newItems[index] = newItem;
@@ -230,10 +231,12 @@ export function InvoiceForm(props: {
 
 function Item({
   item,
+  currency,
   onChange,
   onDelete,
 }: {
   item: Awaited<ReturnType<typeof getInvoice>>["items"][number];
+  currency: Awaited<ReturnType<typeof getInvoice>>["currency"];
   onChange: (
     item: Awaited<ReturnType<typeof getInvoice>>["items"][number],
   ) => void;
@@ -271,7 +274,7 @@ function Item({
         />
       </div>
       <div className="col-span-1">
-        {Number(item.quantity * item.price).toFixed(2)}
+        {currency} {Number(item.quantity * item.price).toFixed(2)}
       </div>
       <div className="col-span-1">
         <button onClick={onDelete}>Delete</button>
