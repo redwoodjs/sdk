@@ -20,7 +20,6 @@ import { enforceUserLoggedIn, getSession, performLogin } from './auth';
 const routes = {
   "/": InvoiceListPage,
   "/invoice/:id": InvoiceDetailPage,
-  "/invoice/:id/pdf": InvoicePdfPage,
 }
 
 export { SessionDO } from "./session";

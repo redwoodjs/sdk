@@ -1,14 +1,15 @@
 "use server";
 
-import GeneratePdf from "./GeneratePdf";
+import { PrintPdf } from "./PrintPdf";
 
 
 export default function InvoicePdfPage() {
 
 
+
   return (
     <div>
-      <GeneratePdf />
+      <PrintPdf />
     </div>
   );
 }
