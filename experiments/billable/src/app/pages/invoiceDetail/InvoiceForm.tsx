@@ -144,7 +144,7 @@ export function InvoiceForm(props: {
                 console.log("delete");
                 // todo update total
                 const newItems = [...items];
-                delete newItems[index];
+                newItems.splice(index, 1);
                 setItems(newItems);
               }}
             />
@@ -176,7 +176,7 @@ export function InvoiceForm(props: {
               return;
             }
             const newTaxes = [...taxes];
-            delete newTaxes[index];
+            newTaxes.splice(index, 1);
             setTaxes(newTaxes);
           }}
           onAdd={() => {
@@ -265,7 +265,6 @@ function Item({
   );
 }
 
-// split out the taxes part.
 // todo(peterp, 2025-01-14): add currency.
 function Summary(props: {
   items: Awaited<ReturnType<typeof getInvoice>>["items"];
