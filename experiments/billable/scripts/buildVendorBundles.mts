@@ -64,7 +64,7 @@ const configs = {
         },
         rollupOptions: {
           conditions: ['react-server'],
-          external: ['vendor/react-ssr'],
+          external: ['vendor/react-ssr', 'node:async_hooks'],
         },
       },
     }),

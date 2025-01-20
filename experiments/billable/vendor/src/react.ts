@@ -1,9 +1,12 @@
 import ReactRSC from "react"
 import { ReactSSR } from "vendor/react-ssr"
 
-let __CURRENT_REACT_RUNTIME: "rsc" | "ssr" = "rsc"
+// @ts-ignore
+import { AsyncLocalStorage } from 'node:async_hooks';
 
 const React = {}
+
+const reactStorage = new AsyncLocalStorage();
 
 type BothRuntimeProperties = keyof typeof ReactRSC | keyof typeof ReactSSR
 
@@ -18,8 +21,7 @@ for (const key of Array.from(new Set(Object.keys(ReactRSC).concat(Object.keys(Re
   Object.defineProperty(React, key, {
     enumerable: true,
     get() {
-      console.log('### getting on react', { __CURRENT_REACT_RUNTIME, key })
-      return __CURRENT_REACT_RUNTIME === "rsc" ? (ReactRSC as any)[key] : (ReactSSR as any)[key]
+      return reactStorage.getStore() === "rsc" ? (ReactRSC as any)[key] : (ReactSSR as any)[key]
     }
   })
 }
@@ -33,8 +35,7 @@ const defineObject = <Name extends BothRuntimeProperties>(name: Name): GetReactP
     Object.defineProperty(wrapper, key, {
       enumerable: true,
       get() {
-        console.log('### getting object', { __CURRENT_REACT_RUNTIME, name, key })
-        return __CURRENT_REACT_RUNTIME === "rsc" ? (ReactRSC as any)[name][key] : (ReactSSR as any)[name][key]
+        return reactStorage.getStore() === "rsc" ? (ReactRSC as any)[name][key] : (ReactSSR as any)[name][key]
       }
     })
   }
@@ -43,8 +44,7 @@ const defineObject = <Name extends BothRuntimeProperties>(name: Name): GetReactP
 }
 
 const defineMethod = <Name extends BothRuntimeProperties>(name: Name): GetReactProperty<Name> => ((...args: any[]) => {
-  console.log('### calling method', { __CURRENT_REACT_RUNTIME, name })
-  return __CURRENT_REACT_RUNTIME === "rsc" ? (ReactRSC as any)[name](...args) : (ReactSSR as any)[name](...args)
+  return reactStorage.getStore() === "rsc" ? (ReactRSC as any)[name](...args) : (ReactSSR as any)[name](...args)
 }) as GetReactProperty<Name>
 
 export const defineExport = <Name extends BothRuntimeProperties>(name: Name): GetReactProperty<Name> => {
@@ -61,9 +61,8 @@ export const defineExport = <Name extends BothRuntimeProperties>(name: Name): Ge
   return original
 }
 
-export const __switchReactRuntime = (runtime: "rsc" | "ssr") => {
-  console.log('### switching react runtime', { runtime })
-  __CURRENT_REACT_RUNTIME = runtime
+export const runInReactRuntime = (runtime: "rsc" | "ssr", callback: () => unknown | Promise<unknown>) => {
+  return reactStorage.run(runtime, callback);
 }
 
 export default (React as typeof ReactRSC & typeof ReactSSR)

@@ -1,8 +1,6 @@
 import { renderToReadableStream as baseRenderToRscStream } from "react-server-dom-webpack/server.edge";
-import { __switchReactRuntime } from "vendor/react";
 import { createClientManifest } from "./createClientManifest.js";
+import { runInReactRuntime } from 'vendor/react';
 
-export const renderToRscStream = (app: React.ReactElement) => {
-  __switchReactRuntime("ssr");
-  return baseRenderToRscStream(app, createClientManifest());
-}
+export const renderToRscStream = (app: React.ReactElement) => runInReactRuntime("rsc", () =>
+  baseRenderToRscStream(app, createClientManifest()));
