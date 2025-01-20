@@ -5,9 +5,6 @@ import { useReactToPrint } from "react-to-print";
 
 
 export function PrintPdf() {
-
-
-
   const contentRef = useRef<HTMLDivElement>(null);
   const reactToPrintContent = () => {
     return contentRef.current;

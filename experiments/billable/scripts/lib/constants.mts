@@ -1,5 +1,4 @@
 import { resolve } from "node:path";
-import { builtinModules } from 'node:module';
 
 const __dirname = new URL(".", import.meta.url).pathname;
 
@@ -23,14 +22,3 @@ export const MANIFEST_PATH = resolve(CLIENT_DIST_DIR, ".vite", "manifest.json");
 export const WRANGLER_TOML_PATH = resolve(ROOT_DIR, "wrangler.toml");
 
 export const VENDOR_REACT_SSR_PATH = resolve(VENDOR_DIST_DIR, "react-ssr.js");
-
-export const CLOUDFLARE_BUILT_IN_MODULES = [
-  'cloudflare:email',
-  'cloudflare:sockets',
-  'cloudflare:workers',
-];
-
-export const NODE_BUILT_IN_MODULES = [
-  ...builtinModules,
-  ...builtinModules.map(module => `node:${module}`)
-]

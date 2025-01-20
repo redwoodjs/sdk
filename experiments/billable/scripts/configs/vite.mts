@@ -74,12 +74,16 @@ export const viteConfigs = {
           noDiscovery: false,
           esbuildOptions: {
             conditions: ["module", "workerd", "react-server"],
+            //alias: {
+            //  'react': resolve(VENDOR_DIST_DIR, "react.js"),
+            //  'vendor/react-ssr': resolve(VENDOR_DIST_DIR, "react-ssr.js"),
+            //}
           },
           include: [
-            "react",
-            "react/jsx-runtime",
-            "react/jsx-dev-runtime",
-            "react-dom/server.edge",
+            //"react",
+            //"react/jsx-runtime",
+            //"react/jsx-dev-runtime",
+            //"react-dom/server.edge",
             "@prisma/client",
           ],
         },
