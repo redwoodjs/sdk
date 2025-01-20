@@ -4,7 +4,6 @@ import { parse } from "es-module-lexer";
 import MagicString from "magic-string";
 
 interface UseClientPluginOptions {
-  reactSSRImportPath?: string;
 }
 
 export const useClientPlugin = (options: UseClientPluginOptions = {}): Plugin => ({
@@ -28,13 +27,6 @@ export const useClientPlugin = (options: UseClientPluginOptions = {}): Plugin =>
         s.prepend(`
 import { registerClientReference } from "/src/register/worker.ts";
 `);
-
-        if (options.reactSSRImportPath) {
-          s.replaceAll(
-            /from ['"]react['"]/g,
-            `from "${options.reactSSRImportPath}"`
-          );
-        }
 
         const [_, exports] = parse(code);
 

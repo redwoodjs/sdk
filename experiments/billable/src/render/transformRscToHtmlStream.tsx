@@ -1,5 +1,6 @@
 import { createModuleMap } from "./createModuleMap.js";
-import { use, renderToHtmlStream } from "vendor/react-ssr";
+import { __switchReactRuntime } from "vendor/react";
+import { ReactSSR, ReactDOMSSR } from "vendor/react-ssr";
 import { createFromReadableStream } from "react-server-dom-webpack/client.edge";
 
 export const transformRscToHtmlStream = async ({
@@ -16,7 +17,13 @@ export const transformRscToHtmlStream = async ({
     },
   });
 
-  const Component = () => <Parent>{use(thenable).node}</Parent>;
+  const Component = () => <Parent>{(ReactSSR.use(thenable) as { node: React.ReactNode }).node}</Parent>;
 
-  return await renderToHtmlStream(<Component />);
+  try {
+    console.log('## rendering with ssr')
+    __switchReactRuntime("ssr");
+    return await ReactDOMSSR.renderToReadableStream(<Component />);
+  } finally {
+    __switchReactRuntime("rsc");
+  }
 };

@@ -12,7 +12,7 @@ import { setupR2Storage } from "./r2storage";
 import InvoiceListPage from "./app/InvoiceListPage";
 import InvoiceDetailPage from "./app/pages/invoiceDetail/Page";
 import { ErrorResponse } from './error';
-import { enforceUserLoggedIn, getSession, performLogin } from './auth';
+import { getSession, performLogin } from './auth';
 // todo(peterp, 2024-11-25): Make these lazy.
 const routes = {
   "/": InvoiceListPage,
