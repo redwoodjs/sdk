@@ -111,12 +111,7 @@ export default async function InvoiceListPage() {
                     >
                       Customer
                     </th>
-                    <th
-                      scope="col"
-                      className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-                    >
-                      Amount
-                    </th>
+
                     <th
                       scope="col"
                       className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
@@ -149,7 +144,11 @@ function InvoiceListItem(
       className="cursor-pointer"
     >
       <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-0">
-        <a href={`/invoice/${props.id}`}>{props.date.toString()}</a>
+        <a href={`/invoice/${props.id}`}>{props.date.toLocaleDateString(undefined, {
+          year: 'numeric',
+          month: 'long',
+          day: 'numeric'
+        })}</a>
       </td>
       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
         {props.customer}
