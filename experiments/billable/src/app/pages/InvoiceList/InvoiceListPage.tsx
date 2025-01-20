@@ -1,31 +1,84 @@
 "use server";
 
-import React from "react";
 import { Layout } from "../Layout";
-import { getInvoiceListSummary } from "../../services/invoices";
-import { CreateInvoiceButton } from "../../CreateInvoiceButton";
 
-// todo: fix the total
-// todo: make the entire row clickable
-function InvoiceItem(
-  props: Awaited<ReturnType<typeof getInvoiceListSummary>>[number],
-) {
-  return (
-    <tr
-      className="cursor-pointer"
-    >
-      <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-0">
-        {props.date.toString()}
-      </td>
-      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-        {props.customer}
-      </td>
-      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-        {props.number}
-      </td>
-    </tr>
-  );
+import { CreateInvoiceButton } from "./CreateInvoiceButton";
+import { db } from "../../../db";
+
+export type InvoiceItem = {
+  description: string,
+  price: number,
+  quantity: number,
 }
+
+export type InvoiceTaxes = {
+  description: string,
+  amount: number
+}
+
+
+async function getInvoiceListSummary() {
+
+  const invoices = await db.invoice.findMany({
+    select: {
+      id: true,
+      number: true,
+      date: true,
+      status: true,
+      customer: true,
+    },
+    where: {
+      userId: '1',
+    }
+  }) ?? []
+
+  return invoices.map((invoice) => {
+
+    const { id, date, number, customer, status } = invoice
+
+    // const subtotal = calculateSubtotal(invoice.items as InvoiceItem[])
+    // const taxes = calculateTaxes(subtotal, invoice.taxes as InvoiceTaxItem[])
+
+    return {
+      id,
+      date,
+      number,
+      customer: customer?.split('\n')[0] || '',
+      status,
+    }
+  })
+}
+
+export async function createInvoice() {
+
+  // grab the supplier name
+  // and the contact information
+  // what if the user doesn't have any invoices?
+  // we will eventually include an invoice template... maybe I should just shove that in a seperate function for now?
+  let lastInvoice = await db.invoice.findFirst({
+    where: {
+      userId: '1',
+    },
+    orderBy: {
+      createdAt: 'desc',
+    }
+  })
+
+  const newInvoice = await db.invoice.create({
+    data: {
+      number: (Number(lastInvoice?.number || 0) + 1).toString(),
+      supplierName: lastInvoice?.supplierName,
+      supplierContact: lastInvoice?.supplierContact,
+      notesA: lastInvoice?.notesA,
+      notesB: lastInvoice?.notesB,
+      taxes: lastInvoice?.taxes,
+      userId: '1'
+    }
+  })
+
+  return newInvoice
+}
+
 
 export default async function InvoiceListPage() {
   const invoices = await getInvoiceListSummary();
@@ -74,7 +127,7 @@ export default async function InvoiceListPage() {
                 </thead>
                 <tbody className="divide-y divide-gray-200">
                   {invoices.map((i) => (
-                    <InvoiceItem {...i} key={"invoice-" + i.id} />
+                    <InvoiceListItem {...i} key={"invoice-" + i.id} />
                   ))}
                 </tbody>
               </table>
@@ -83,5 +136,27 @@ export default async function InvoiceListPage() {
         </div>
       </div>
     </Layout>
+  );
+}
+
+// todo: fix the total
+// todo: make the entire row clickable
+function InvoiceListItem(
+  props: Awaited<ReturnType<typeof getInvoiceListSummary>>[number],
+) {
+  return (
+    <tr
+      className="cursor-pointer"
+    >
+      <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-0">
+        <a href={`/invoice/${props.id}`}>{props.date.toString()}</a>
+      </td>
+      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+        {props.customer}
+      </td>
+      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+        {props.number}
+      </td>
+    </tr>
   );
 }
