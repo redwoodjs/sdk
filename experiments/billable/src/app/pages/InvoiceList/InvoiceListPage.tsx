@@ -1,30 +1,32 @@
 "use server";
 
 import React from "react";
-import { Layout } from "./Layout";
-import { getInvoiceListSummary } from "./services/invoices";
-import { CreateInvoiceButton } from "./CreateInvoiceButton";
-
+import { Layout } from "../Layout";
+import { getInvoiceListSummary } from "../../services/invoices";
+import { CreateInvoiceButton } from "../../CreateInvoiceButton";
 
 // todo: fix the total
 // todo: make the entire row clickable
-function InvoiceItem(props: Awaited<ReturnType<typeof getInvoiceListSummary>>[number]) {
+function InvoiceItem(
+  props: Awaited<ReturnType<typeof getInvoiceListSummary>>[number],
+) {
   return (
-    <tr>
+    <tr
+      className="cursor-pointer"
+    >
       <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-0">
-        <a href={`/invoice/${props.id}`}>{props.date.toString()}</a>
+        {props.date.toString()}
       </td>
       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
         {props.customer}
       </td>
       <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
-        {props.total}
+        {props.number}
       </td>
     </tr>
   );
 }
 
-// todo: add a button to create a new invoice
 export default async function InvoiceListPage() {
   const invoices = await getInvoiceListSummary();
   return (
@@ -33,10 +35,6 @@ export default async function InvoiceListPage() {
         <div className="sm:flex sm:items-center">
           <div className="sm:flex-auto">
             <h1 className="text-2xl font-semibold text-gray-900">Invoices</h1>
-            <p className="mt-2 text-sm text-gray-700">
-              A list of all invoices including their date, customer name and
-              amount.
-            </p>
           </div>
           <div className="mt-2">
             <CreateInvoiceButton />
@@ -66,10 +64,18 @@ export default async function InvoiceListPage() {
                     >
                       Amount
                     </th>
+                    <th
+                      scope="col"
+                      className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
+                    >
+                      Invoice #
+                    </th>
                   </tr>
                 </thead>
                 <tbody className="divide-y divide-gray-200">
-                  {invoices.map(i => <InvoiceItem {...i} key={'invoice-' + i.id} />)}
+                  {invoices.map((i) => (
+                    <InvoiceItem {...i} key={"invoice-" + i.id} />
+                  ))}
                 </tbody>
               </table>
             </div>

@@ -9,7 +9,7 @@ import { renderToRscStream } from "./render/renderToRscStream";
 import { ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import { setupR2Storage } from "./r2storage";
-import InvoiceListPage from "./app/InvoiceListPage";
+import InvoiceListPage from "./app/pages/InvoiceList/InvoiceListPage";
 import InvoiceDetailPage from "./app/pages/invoiceDetail/Page";
 import InvoicePdfPage from "./app/pages/invoicePdf/Page"
 import { ErrorResponse } from './error';

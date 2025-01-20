@@ -1,7 +1,7 @@
 "use server";
 
 import React, { Suspense } from "react";
-import { Layout } from "../../Layout";
+import { Layout } from "../Layout";
 
 
 import { FetchInvoice } from "./FetchInvoice";
