@@ -12,6 +12,10 @@ export function InvoiceForm(props: {
   const [items, setItems] = useState(props.invoice.items);
   const [taxes, setTaxes] = useState(props.invoice.taxes);
 
+  const subtotal = calculateSubtotal(items);
+  const taxTotal = calculateTaxes(subtotal, taxes);
+  const total = subtotal + taxTotal;
+
   return (
     <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
       <div className="col-span-full">
@@ -162,8 +166,13 @@ export function InvoiceForm(props: {
       </div>
 
       <div className="col-span-full">
-        <Summary
-          items={items}
+
+        <div className="grid grid-cols-12 gap-4">
+          <div className="col-span-9 text-right">Subtotal:</div>
+          <div className="col-span-2">{invoice.currency} {subtotal.toFixed(2)}</div>
+        </div>
+        <Taxes
+          subtotal={subtotal}
           taxes={taxes}
           onChange={(tax, index) => {
             const newTaxes = [...taxes];
@@ -183,6 +192,12 @@ export function InvoiceForm(props: {
             setTaxes([...taxes, { description: "", amount: 0 }]);
           }}
         />
+        <div className="grid grid-cols-12 gap-4">
+          <div className="col-span-9 text-right">Total:</div>
+          <div className="col-span-2">
+            <input type="text" value={invoice.currency} onChange={(e) => setInvoice({ ...invoice, currency: e.target.value })} />
+            {total.toFixed(2)}</div>
+        </div>
       </div>
 
       <div className="col-span-full">
@@ -266,8 +281,8 @@ function Item({
 }
 
 // todo(peterp, 2025-01-14): add currency.
-function Summary(props: {
-  items: Awaited<ReturnType<typeof getInvoice>>["items"];
+function Taxes(props: {
+  subtotal: number;
   taxes: Awaited<ReturnType<typeof getInvoice>>["taxes"];
   onChange: (
     tax: Awaited<ReturnType<typeof getInvoice>>["taxes"][0],
@@ -276,15 +291,10 @@ function Summary(props: {
   onDelete: (index: number) => void;
   onAdd: () => void;
 }) {
-  const subtotal = calculateSubtotal(props.items);
-  const taxes = calculateTaxes(subtotal, props.taxes);
+  const taxes = calculateTaxes(props.subtotal, props.taxes);
 
   return (
     <div className="space-y-4 bg-red-50">
-      <div className="grid grid-cols-12 gap-4">
-        <div className="col-span-9 text-right">Subtotal:</div>
-        <div className="col-span-2">{subtotal.toFixed(2)}</div>
-      </div>
       {props.taxes.map((tax, index) => (
         <div className="grid grid-cols-12 gap-4" key={`tax-${index}`}>
           <div className="col-span-4 text-right">
@@ -309,7 +319,7 @@ function Summary(props: {
             />
             %
           </div>
-          <div className="col-span-1">{(subtotal * tax.amount).toFixed(2)}</div>
+          <div className="col-span-1">{(props.subtotal * tax.amount).toFixed(2)}</div>
           <div className="col-span-1">
             <button onClick={() => props.onDelete(index)}>Delete</button>
           </div>
@@ -319,10 +329,6 @@ function Summary(props: {
         <div className="col-span-4 text-right">
           <button onClick={props.onAdd}>Add</button>
         </div>
-      </div>
-      <div className="grid grid-cols-12 gap-4 font-bold">
-        <div className="col-span-9 text-right">Total:</div>
-        <div className="col-span-2">{(subtotal + taxes).toFixed(2)}</div>
       </div>
     </div>
   );
