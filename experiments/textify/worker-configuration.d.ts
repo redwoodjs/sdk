@@ -2,6 +2,7 @@
 
 interface Env {
 	DB: D1Database;
+	ai_que: Queue;
 	AI: Ai;
 	ASSETS: Fetcher;
 }
