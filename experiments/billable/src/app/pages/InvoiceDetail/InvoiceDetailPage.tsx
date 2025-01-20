@@ -1,13 +1,10 @@
 "use server";
 
-import React, { Suspense } from "react";
+import { Suspense } from "react";
 import { Layout } from "../Layout";
-
 
 import { FetchInvoice } from "./FetchInvoice";
 import { InvoiceForm } from "./InvoiceForm";
-
-
 
 export default async function InvoiceDetailPage({ id }: { id: string }) {
   return (
