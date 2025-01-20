@@ -19,11 +19,8 @@ export const transformRscToHtmlStream = async ({
 
   const Component = () => <Parent>{(ReactSSR.use(thenable) as { node: React.ReactNode }).node}</Parent>;
 
-  try {
-    console.log('## rendering with ssr')
-    __switchReactRuntime("ssr");
-    return await ReactDOMSSR.renderToReadableStream(<Component />);
-  } finally {
-    __switchReactRuntime("rsc");
-  }
+  const el = <Component />
+  console.log('## rendering with ssr', el)
+  __switchReactRuntime("ssr");
+  return await ReactDOMSSR.renderToReadableStream(el);
 };

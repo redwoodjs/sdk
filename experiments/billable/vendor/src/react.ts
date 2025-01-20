@@ -16,7 +16,9 @@ type GetReactProperty<Name extends BothRuntimeProperties> =
 
 for (const key of Array.from(new Set(Object.keys(ReactRSC).concat(Object.keys(ReactSSR))))) {
   Object.defineProperty(React, key, {
+    enumerable: true,
     get() {
+      console.log('### getting on react', { __CURRENT_REACT_RUNTIME, key })
       return __CURRENT_REACT_RUNTIME === "rsc" ? (ReactRSC as any)[key] : (ReactSSR as any)[key]
     }
   })
@@ -29,7 +31,9 @@ const defineObject = <Name extends BothRuntimeProperties>(name: Name): GetReactP
 
   for (const key of Array.from(keys)) {
     Object.defineProperty(wrapper, key, {
+      enumerable: true,
       get() {
+        console.log('### getting object', { __CURRENT_REACT_RUNTIME, name, key })
         return __CURRENT_REACT_RUNTIME === "rsc" ? (ReactRSC as any)[name][key] : (ReactSSR as any)[name][key]
       }
     })
@@ -39,64 +43,78 @@ const defineObject = <Name extends BothRuntimeProperties>(name: Name): GetReactP
 }
 
 const defineMethod = <Name extends BothRuntimeProperties>(name: Name): GetReactProperty<Name> => ((...args: any[]) => {
-  console.log('#################### method call', __CURRENT_REACT_RUNTIME, name, args)
+  console.log('### calling method', { __CURRENT_REACT_RUNTIME, name })
   return __CURRENT_REACT_RUNTIME === "rsc" ? (ReactRSC as any)[name](...args) : (ReactSSR as any)[name](...args)
 }) as GetReactProperty<Name>
 
+export const defineExport = <Name extends BothRuntimeProperties>(name: Name): GetReactProperty<Name> => {
+  const original = (ReactRSC as any)[name] ?? (ReactSSR as any)[name]
+
+  if (typeof original === "function") {
+    return defineMethod(name)
+  }
+
+  if (original != null && typeof original === "object") {
+    return defineObject(name)
+  }
+
+  return original
+}
+
 export const __switchReactRuntime = (runtime: "rsc" | "ssr") => {
-  console.log('#################### switchReactRuntime', runtime)
+  console.log('### switching react runtime', { runtime })
   __CURRENT_REACT_RUNTIME = runtime
 }
 
 export default (React as typeof ReactRSC & typeof ReactSSR)
-export const Children = defineObject("Children")
-export const Component = defineObject("Component")
-export const Fragment = defineObject("Fragment")
-export const Profiler = defineObject("Profiler")
-export const PureComponent = defineObject("PureComponent")
-export const StrictMode = defineObject("StrictMode")
-export const Suspense = defineObject("Suspense")
-export const cloneElement = defineMethod("cloneElement")
-export const createContext = defineMethod("createContext")
-export const createElement = defineMethod("createElement")
-export const createRef = defineMethod("createRef")
-export const use = defineMethod("use")
-export const forwardRef = defineMethod("forwardRef")
-export const isValidElement = defineMethod("isValidElement")
-export const lazy = defineMethod("lazy")
-export const memo = defineMethod("memo")
-export const cache = defineMethod("cache")
-export const startTransition = defineMethod("startTransition")
+export const Children = defineExport("Children")
+export const Component = defineExport("Component")
+export const Fragment = defineExport("Fragment")
+export const Profiler = defineExport("Profiler")
+export const PureComponent = defineExport("PureComponent")
+export const StrictMode = defineExport("StrictMode")
+export const Suspense = defineExport("Suspense")
+export const cloneElement = defineExport("cloneElement")
+export const createContext = defineExport("createContext")
+export const createElement = defineExport("createElement")
+export const createRef = defineExport("createRef")
+export const use = defineExport("use")
+export const forwardRef = defineExport("forwardRef")
+export const isValidElement = defineExport("isValidElement")
+export const lazy = defineExport("lazy")
+export const memo = defineExport("memo")
+export const cache = defineExport("cache")
+export const startTransition = defineExport("startTransition")
 // @ts-expect-error React doesn't expose type for this property
-export const unstable_DebugTracingMode = defineMethod("unstable_DebugTracingMode")
+export const unstable_DebugTracingMode = defineExport("unstable_DebugTracingMode")
 // @ts-expect-error React doesn't expose type for this property
-export const unstable_LegacyHidden = defineMethod("unstable_LegacyHidden")
+export const unstable_LegacyHidden = defineExport("unstable_LegacyHidden")
 // @ts-expect-error React doesn't expose type for this property
-export const unstable_Activity = defineMethod("unstable_Activity")
+export const unstable_Activity = defineExport("unstable_Activity")
 // @ts-expect-error React doesn't expose type for this property
 export const unstable_Scope = defineMethod("unstable_Scope")
 export const unstable_SuspenseList = defineMethod("unstable_SuspenseList")
 // @ts-expect-error React doesn't expose type for this property
-export const unstable_TracingMarker = defineMethod("unstable_TracingMarker")
+export const unstable_TracingMarker = defineExport("unstable_TracingMarker")
 // @ts-expect-error React doesn't expose type for this property
-export const unstable_getCacheForType = defineMethod("unstable_getCacheForType")
-export const unstable_useCacheRefresh = defineMethod("unstable_useCacheRefresh")
-export const useId = defineMethod("useId")
-export const useCallback = defineMethod("useCallback")
-export const useContext = defineMethod("useContext")
-export const useDebugValue = defineMethod("useDebugValue")
-export const useDeferredValue = defineMethod("useDeferredValue")
-export const useEffect = defineMethod("useEffect")
-export const experimental_useEffectEvent = defineMethod("experimental_useEffectEvent")
-export const useImperativeHandle = defineMethod("useImperativeHandle")
-export const useInsertionEffect = defineMethod("useInsertionEffect")
-export const useLayoutEffect = defineMethod("useLayoutEffect")
-export const useMemo = defineMethod("useMemo")
-export const useOptimistic = defineMethod("useOptimistic")
-export const useSyncExternalStore = defineMethod("useSyncExternalStore")
-export const useReducer = defineMethod("useReducer")
-export const useRef = defineMethod("useRef")
-export const useState = defineMethod("useState")
-export const useTransition = defineMethod("useTransition")
-export const useActionState = defineMethod("useActionState")
-export const version = ReactRSC.version
+export const unstable_getCacheForType = defineExport("unstable_getCacheForType")
+export const unstable_useCacheRefresh = defineExport("unstable_useCacheRefresh")
+export const useId = defineExport("useId")
+export const useCallback = defineExport("useCallback")
+export const useContext = defineExport("useContext")
+export const useDebugValue = defineExport("useDebugValue")
+export const useDeferredValue = defineExport("useDeferredValue")
+export const useEffect = defineExport("useEffect")
+export const experimental_useEffectEvent = defineExport("experimental_useEffectEvent")
+export const useImperativeHandle = defineExport("useImperativeHandle")
+export const useInsertionEffect = defineExport("useInsertionEffect")
+export const useLayoutEffect = defineExport("useLayoutEffect")
+export const useMemo = defineExport("useMemo")
+export const useOptimistic = defineExport("useOptimistic")
+export const useSyncExternalStore = defineExport("useSyncExternalStore")
+export const useReducer = defineExport("useReducer")
+export const useRef = defineExport("useRef")
+export const useState = defineExport("useState")
+export const useTransition = defineExport("useTransition")
+export const useActionState = defineExport("useActionState")
+export const version = defineExport("version")

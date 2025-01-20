@@ -5,10 +5,10 @@ import { codegen } from "./codegen.mjs";
 import { $ } from "./lib/$.mjs";
 
 const setup = ({ silent = false } = {}) => async () => {
-  await $`pnpm build:clean`;
+  //await $`pnpm build:clean`;
 
   // context(justinvdm, 2024-12-05): Call indirectly to silence verbose output when VERBOSE is not set
-  await $`pnpm build:vendor`;
+  //await $`pnpm build:vendor`;
 
   // context(justinvdm, 2024-11-28): Types don't affect runtime, so we don't need to block the dev server on them
   void codegen({ silent });

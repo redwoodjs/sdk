@@ -25,7 +25,8 @@ const configs = {
     logLevel: process.env.VERBOSE ? "info" : "error",
     build: {
       emptyOutDir: false,
-      sourcemap: true,
+      //sourcemap: true,
+      sourcemap: false,
       minify: MODE === "production",
     },
     optimizeDeps: {
