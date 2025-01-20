@@ -1,9 +1,20 @@
 import { readFile } from "node:fs/promises";
-import { readFileSync } from 'fs';
 import { EventEmitter } from "node:events";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import { createRequire } from "node:module";
+import { builtinModules } from 'node:module';
+
+export const CLOUDFLARE_BUILT_IN_MODULES = [
+  'cloudflare:email',
+  'cloudflare:sockets',
+  'cloudflare:workers',
+];
+
+export const NODE_BUILT_IN_MODULES = [
+  ...builtinModules,
+  ...builtinModules.map(module => `node:${module}`)
+]
 
 import { resolve as importMetaResolve } from "import-meta-resolve";
 import colors from "picocolors";
@@ -291,6 +302,10 @@ export const miniflarePlugin = async (
               platform: "browser",
               banner: undefined,
             },
+            exclude: [
+              ...NODE_BUILT_IN_MODULES,
+              ...CLOUDFLARE_BUILT_IN_MODULES,
+            ]
           },
           build: {
             ssr: true,

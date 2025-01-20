@@ -44,6 +44,7 @@ const defineObject = <Name extends BothRuntimeProperties>(name: Name): GetReactP
 }
 
 const defineMethod = <Name extends BothRuntimeProperties>(name: Name): GetReactProperty<Name> => ((...args: any[]) => {
+  console.log('### calling method', reactStorage.getStore(), name)
   return reactStorage.getStore() === "rsc" ? (ReactRSC as any)[name](...args) : (ReactSSR as any)[name](...args)
 }) as GetReactProperty<Name>
 

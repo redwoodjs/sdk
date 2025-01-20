@@ -4,4 +4,3 @@ import { runInReactRuntime } from 'vendor/react';
 
 export const renderToRscStream = (app: { node: React.ReactElement, actionResult: any }) =>
   runInReactRuntime("rsc", () => baseRenderToRscStream(app, createClientManifest()));
-

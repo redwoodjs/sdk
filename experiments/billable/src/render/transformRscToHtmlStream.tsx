@@ -10,14 +10,16 @@ export const transformRscToHtmlStream = async ({
   stream: ReadableStream;
   Parent?: React.ComponentType<{ children: React.ReactNode }>;
 }) => {
-  const thenable = createFromReadableStream(stream, {
-    ssrManifest: {
-      moduleMap: createModuleMap(),
-      moduleLoading: null,
-    },
-  });
+  return runInReactRuntime("ssr", () => {
+    const thenable = createFromReadableStream(stream, {
+      ssrManifest: {
+        moduleMap: createModuleMap(),
+        moduleLoading: null,
+      },
+    });
 
-  const Component = () => <Parent>{(ReactSSR.use(thenable) as { node: React.ReactNode }).node}</Parent>;
-  const el = <Component />
-  return runInReactRuntime("ssr", () => ReactDOMSSR.renderToReadableStream(el));
+    const Component = () => <Parent>{(ReactSSR.use(thenable) as { node: React.ReactNode }).node}</Parent>;
+    const el = <Component />
+    return ReactDOMSSR.renderToReadableStream(el);
+  });
 };
