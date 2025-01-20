@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { getInvoice } from "../../services/invoices";
+import { type getInvoice } from "./FetchInvoice";
 import { calculateSubtotal, calculateTaxes } from "../../shared/invoice";
 import { saveInvoice } from "./functions";
 

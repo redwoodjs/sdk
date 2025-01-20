@@ -3,7 +3,7 @@ import {
   type Invoice,
 } from "@prisma/client";
 import { db } from "../../../db";
-import { InvoiceItem, InvoiceTaxes } from "../../services/invoices";
+import type { InvoiceItem, InvoiceTaxes } from './FetchInvoice';
 
 export async function saveInvoice(id: string, invoice: Omit<Invoice, 'items' | 'taxes'>, items: InvoiceItem[], taxes: InvoiceTaxes[]) {
 
