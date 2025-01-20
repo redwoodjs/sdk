@@ -76,7 +76,7 @@ export function InvoiceForm(props: {
             name="customer"
             id="customer"
             className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-            defaultValue={invoice.customer}
+            defaultValue={invoice.customer ?? ""}
             onChange={(e) =>
               setInvoice({ ...invoice, customer: e.target.value })
             }
@@ -97,7 +97,7 @@ export function InvoiceForm(props: {
             name="supplierName"
             rows={3}
             className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-            defaultValue={invoice.supplierName}
+            defaultValue={invoice.supplierName ?? ""}
             onChange={(e) =>
               setInvoice({ ...invoice, supplierName: e.target.value })
             }
@@ -118,7 +118,7 @@ export function InvoiceForm(props: {
             name="client-info"
             rows={3}
             className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-            defaultValue={invoice.supplierContact}
+            defaultValue={invoice.supplierContact ?? ""}
             onChange={(e) =>
               setInvoice({ ...invoice, supplierContact: e.target.value })
             }
@@ -178,6 +178,9 @@ export function InvoiceForm(props: {
             const newTaxes = [...taxes];
             delete newTaxes[index];
             setTaxes(newTaxes);
+          }}
+          onAdd={() => {
+            setTaxes([...taxes, { description: "", amount: 0 }]);
           }}
         />
       </div>
@@ -272,6 +275,7 @@ function Summary(props: {
     index: number,
   ) => void;
   onDelete: (index: number) => void;
+  onAdd: () => void;
 }) {
   const subtotal = calculateSubtotal(props.items);
   const taxes = calculateTaxes(subtotal, props.taxes);
@@ -312,6 +316,11 @@ function Summary(props: {
           </div>
         </div>
       ))}
+      <div className="grid grid-cols-12 gap-4">
+        <div className="col-span-4 text-right">
+          <button onClick={props.onAdd}>Add</button>
+        </div>
+      </div>
       <div className="grid grid-cols-12 gap-4 font-bold">
         <div className="col-span-9 text-right">Total:</div>
         <div className="col-span-2">{(subtotal + taxes).toFixed(2)}</div>
