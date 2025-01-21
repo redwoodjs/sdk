@@ -8,8 +8,8 @@ import {
   RELATIVE_WORKER_PATHNAME,
   ROOT_DIR,
   WORKER_DIST_DIR,
-  VENDOR_REACT_SSR_PATH,
   VENDOR_DIST_DIR,
+  VENDOR_ROOT_DIR,
 } from "../lib/constants.mjs";
 
 import tailwind from "tailwindcss";
@@ -44,11 +44,7 @@ export const viteConfigs = {
       ),
       "process.env.NODE_ENV": JSON.stringify(MODE),
     },
-    plugins: [reactPlugin(), useServerPlugin(), useClientPlugin(), aliasByEnvPlugin({
-      worker: {
-        'react': resolve(VENDOR_DIST_DIR, "react.js"),
-      }
-    })],
+    plugins: [reactPlugin(), useServerPlugin(), useClientPlugin()],
     environments: {
       client: {
         consumer: "client",
@@ -61,6 +57,9 @@ export const viteConfigs = {
             },
           },
         },
+        resolve: {
+          external: ['react']
+        }
       },
       worker: {
         resolve: {
@@ -80,10 +79,10 @@ export const viteConfigs = {
             //}
           },
           include: [
-            //"react",
-            //"react/jsx-runtime",
-            //"react/jsx-dev-runtime",
-            //"react-dom/server.edge",
+            "react",
+            "react/jsx-runtime",
+            "react/jsx-dev-runtime",
+            "react-dom/server.edge",
             "@prisma/client",
           ],
         },
@@ -118,10 +117,17 @@ export const viteConfigs = {
       },
     },
     resolve: {
-      alias: {
-        'vendor/react-ssr': resolve(VENDOR_DIST_DIR, "react-ssr.js"),
-        'vendor/react': resolve(VENDOR_DIST_DIR, "react.js"),
-      }
+      dedupe: ['react'],
+      alias: [{
+        find: /^react$/,
+        replacement: resolve(VENDOR_DIST_DIR, 'react.js'),
+      }, {
+        find: "vendor/react",
+        replacement: resolve(VENDOR_DIST_DIR, 'react.js'),
+      }, {
+        find: "vendor/react-ssr",
+        replacement: resolve(VENDOR_DIST_DIR, "react-ssr.js"),
+      }]
     }
   }),
   dev: ({ setup, restartOnChanges = true, ...opts }: { setup: () => Promise<unknown>, silent?: boolean, port?: number, restartOnChanges?: boolean }): InlineConfig =>

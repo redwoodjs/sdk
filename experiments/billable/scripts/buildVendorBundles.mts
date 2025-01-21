@@ -28,9 +28,13 @@ const configs = {
       //sourcemap: true,
       sourcemap: false,
       minify: MODE === "production",
+      rollupOptions: {
+        external: ['node:async_hooks']
+      }
     },
     optimizeDeps: {
       noDiscovery: false,
+      exclude: ['node:async_hooks'],
       include: [
         "react",
         "react/jsx-runtime",
@@ -63,10 +67,12 @@ const configs = {
           fileName: "react",
         },
         rollupOptions: {
-          conditions: ['react-server'],
           external: ['vendor/react-ssr', 'node:async_hooks'],
         },
       },
+      resolve: {
+        conditions: ['react-server'],
+      }
     }),
 };
 

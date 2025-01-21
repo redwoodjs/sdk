@@ -22,9 +22,15 @@ const configs = {
       ],
     ],
     logLevel: process.env.VERBOSE ? "info" : "error",
+    optimizeDeps: {
+      exclude: ['node:async_hooks']
+    },
     build: {
       sourcemap: true,
       minify: MODE === "production",
+      rollupOptions: {
+        external: ['node:async_hooks']
+      }
     },
   }),
   reactSSR: (): InlineConfig =>

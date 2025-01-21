@@ -1,12 +1,24 @@
-import ReactRSC from "react"
+import * as ReactRSC from "react"
 import { ReactSSR } from "vendor/react-ssr"
 
-// @ts-ignore
 import { AsyncLocalStorage } from 'node:async_hooks';
 
 const React = {}
 
-const reactStorage = new AsyncLocalStorage();
+const reactStorage = new AsyncLocalStorage<Map<'runtime', 'rsc' | 'ssr'>>();
+
+// context(justinvdm, 2025-01-21): React's own event loop implementation seems to make us lose AsyncLocalStorage context.
+// Accessing a global that gets the store appears to work around this. Inspecting the current context returned by the global 
+// as react does work (performWork, retryNode, renderElement) suggests the context is being tracked correctly this way
+// but I still need to understand why it works and if it is in fact robust enough a solution
+(globalThis as any).__getCurrentReactRuntime = () => reactStorage.getStore()?.get('runtime')
+
+export const getReactProperty = <Name extends BothRuntimeProperties>(name: Name): GetReactProperty<Name> => {
+  console.log('## getReactProperty', name, (globalThis as any).__getCurrentReactRuntime())
+  const runtime = (globalThis as any).__getCurrentReactRuntime() ?? 'rsc'
+  const v = runtime === "rsc" ? (ReactRSC as any)[name] : (ReactSSR as any)[name]
+  return v
+}
 
 type BothRuntimeProperties = keyof typeof ReactRSC | keyof typeof ReactSSR
 
@@ -21,7 +33,7 @@ for (const key of Array.from(new Set(Object.keys(ReactRSC).concat(Object.keys(Re
   Object.defineProperty(React, key, {
     enumerable: true,
     get() {
-      return reactStorage.getStore() === "rsc" ? (ReactRSC as any)[key] : (ReactSSR as any)[key]
+      return getReactProperty(key as BothRuntimeProperties)
     }
   })
 }
@@ -34,8 +46,12 @@ const defineObject = <Name extends BothRuntimeProperties>(name: Name): GetReactP
   for (const key of Array.from(keys)) {
     Object.defineProperty(wrapper, key, {
       enumerable: true,
+      configurable: true,
+      set(value) {
+        (getReactProperty(name) as any)[key] = value
+      },
       get() {
-        return reactStorage.getStore() === "rsc" ? (ReactRSC as any)[name][key] : (ReactSSR as any)[name][key]
+        return (getReactProperty(name) as any)[key]
       }
     })
   }
@@ -43,14 +59,13 @@ const defineObject = <Name extends BothRuntimeProperties>(name: Name): GetReactP
   return wrapper as GetReactProperty<Name>
 }
 
-const defineMethod = <Name extends BothRuntimeProperties>(name: Name): GetReactProperty<Name> => ((...args: any[]) => {
-  console.log('### calling method', reactStorage.getStore(), name)
-  return reactStorage.getStore() === "rsc" ? (ReactRSC as any)[name](...args) : (ReactSSR as any)[name](...args)
-}) as GetReactProperty<Name>
+const defineMethod = <Name extends BothRuntimeProperties>(name: Name): GetReactProperty<Name> => (
+  (...args: any[]) => (getReactProperty(name) as any)(...args)
+) as GetReactProperty<Name>
 
 export const defineExport = <Name extends BothRuntimeProperties>(name: Name): GetReactProperty<Name> => {
   const original = (ReactRSC as any)[name] ?? (ReactSSR as any)[name]
-
+  // @ts-ignore
   if (typeof original === "function") {
     return defineMethod(name)
   }
@@ -62,11 +77,22 @@ export const defineExport = <Name extends BothRuntimeProperties>(name: Name): Ge
   return original
 }
 
-export const runInReactRuntime = (runtime: "rsc" | "ssr", callback: () => unknown | Promise<unknown>) => {
-  return reactStorage.run(runtime, callback);
+export const runInReactRuntime = async <Result>(runtime: "rsc" | "ssr", callback: () => Result | Promise<Result>) => {
+  const { promise, resolve } = Promise.withResolvers<Result>()
+  await reactStorage.run(new Map(), async () => {
+    reactStorage.getStore()?.set('runtime', runtime)
+    return await Promise.resolve().then(callback).then(resolve)
+  });
+  return await promise
 }
+export const getReactRuntime = () => reactStorage.getStore()
 
 export default (React as typeof ReactRSC & typeof ReactSSR)
+
+// @ts-expect-error
+export const __SERVER_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE = ReactRSC.__SERVER_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+// @ts-expect-error
+export const __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE = ReactSSR.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
 export const Children = defineExport("Children")
 export const Component = defineExport("Component")
 export const Fragment = defineExport("Fragment")

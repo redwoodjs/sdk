@@ -19,7 +19,8 @@ export const transformRscToHtmlStream = async ({
     });
 
     const Component = () => <Parent>{(ReactSSR.use(thenable) as { node: React.ReactNode }).node}</Parent>;
-    const el = <Component />
+    const el = <Component />;
+
     return ReactDOMSSR.renderToReadableStream(el);
   });
 };
