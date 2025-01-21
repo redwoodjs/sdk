@@ -1,9 +1,11 @@
 "use server";
+
 import {
+  Prisma,
   type Invoice,
 } from "@prisma/client";
 import { db } from "../../../db";
-import { InvoiceItem, InvoiceTaxes } from "../../services/invoices";
+import type { InvoiceItem, InvoiceTaxes } from './FetchInvoice';
 
 export async function saveInvoice(id: string, invoice: Omit<Invoice, 'items' | 'taxes'>, items: InvoiceItem[], taxes: InvoiceTaxes[]) {
 
@@ -29,3 +31,15 @@ export async function saveInvoice(id: string, invoice: Omit<Invoice, 'items' | '
 export async function generatePdf(id: string) {
   return 'x'
 }
+
+export async function deleteLogo(id: string) {
+  await db.invoice.update({
+    data: {
+      supplierLogo: null,
+    },
+    where: {
+      id
+    }
+  })
+}
+

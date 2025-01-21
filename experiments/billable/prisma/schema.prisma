@@ -19,6 +19,7 @@ model Invoice {
   number          String
   date            DateTime  @default(now())
   status          String    @default("draft")
+  supplierLogo    String?
   supplierName    String?
   supplierContact String?
   customer        String?

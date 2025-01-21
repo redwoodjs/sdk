@@ -1,9 +1,9 @@
 "use client";
 
 import { useState } from "react";
-import { getInvoice } from "../../services/invoices";
+import { type getInvoice } from "./FetchInvoice";
 import { calculateSubtotal, calculateTaxes } from "../../shared/invoice";
-import { saveInvoice } from "./functions";
+import { deleteLogo, saveInvoice } from "./functions";
 
 export function InvoiceForm(props: {
   invoice: Awaited<ReturnType<typeof getInvoice>>;
@@ -96,15 +96,9 @@ export function InvoiceForm(props: {
           Supplier Name
         </label>
         <div className="mt-2">
-          <textarea
-            id="supplierName"
-            name="supplierName"
-            rows={3}
-            className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-            defaultValue={invoice.supplierName ?? ""}
-            onChange={(e) =>
-              setInvoice({ ...invoice, supplierName: e.target.value })
-            }
+          <SupplierName
+            invoice={invoice}
+            setInvoice={(newInvoice) => setInvoice(newInvoice)}
           />
         </div>
       </div>
@@ -167,10 +161,11 @@ export function InvoiceForm(props: {
       </div>
 
       <div className="col-span-full">
-
         <div className="grid grid-cols-12 gap-4">
           <div className="col-span-9 text-right">Subtotal:</div>
-          <div className="col-span-2">{invoice.currency} {subtotal.toFixed(2)}</div>
+          <div className="col-span-2">
+            {invoice.currency} {subtotal.toFixed(2)}
+          </div>
         </div>
         <Taxes
           subtotal={subtotal}
@@ -196,8 +191,15 @@ export function InvoiceForm(props: {
         <div className="grid grid-cols-12 gap-4">
           <div className="col-span-9 text-right">Total:</div>
           <div className="col-span-2">
-            <input type="text" value={invoice.currency} onChange={(e) => setInvoice({ ...invoice, currency: e.target.value })} />
-            {total.toFixed(2)}</div>
+            <input
+              type="text"
+              value={invoice.currency}
+              onChange={(e) =>
+                setInvoice({ ...invoice, currency: e.target.value })
+              }
+            />
+            {total.toFixed(2)}
+          </div>
         </div>
       </div>
 
@@ -322,7 +324,9 @@ function Taxes(props: {
             />
             %
           </div>
-          <div className="col-span-1">{(props.subtotal * tax.amount).toFixed(2)}</div>
+          <div className="col-span-1">
+            {(props.subtotal * tax.amount).toFixed(2)}
+          </div>
           <div className="col-span-1">
             <button onClick={() => props.onDelete(index)}>Delete</button>
           </div>
@@ -333,6 +337,97 @@ function Taxes(props: {
           <button onClick={props.onAdd}>Add</button>
         </div>
       </div>
+    </div>
+  );
+}
+
+export function SupplierName({
+  invoice,
+  setInvoice,
+}: {
+  invoice: Awaited<ReturnType<typeof getInvoice>>;
+  setInvoice: (invoice: Awaited<ReturnType<typeof getInvoice>>) => void;
+}) {
+  if (invoice.supplierLogo) {
+    return (
+      <div>
+        <img
+          src={invoice.supplierLogo}
+          alt={invoice.supplierName ?? "Logo"}
+          className="max-w-100"
+        />
+        <button
+          onClick={async () => {
+            await deleteLogo(invoice.id);
+            setInvoice({ ...invoice, supplierLogo: null });
+          }}
+        >
+          Remove Logo
+        </button>
+      </div>
+    );
+  } else {
+    // add option to add logo
+    return (
+      <div>
+        <textarea
+          value={invoice.supplierName ?? ""}
+          placeholder="Michael Scott Paper Company"
+          onChange={(e) =>
+            setInvoice({ ...invoice, supplierName: e.target.value })
+          }
+        ></textarea>
+        <UploadLogo userId="1" invoiceId={invoice.id} onSuccess={(supplierLogo) => {
+          setInvoice({ ...invoice, supplierLogo });
+        }} />
+      </div>
+    );
+  }
+}
+
+export function UploadLogo({
+  userId,
+  invoiceId,
+  onSuccess,
+}: {
+  userId: string;
+  invoiceId: string;
+  onSuccess: (supplierLogo: string) => void;
+}) {
+  return (
+    <div>
+      <input
+        type="file"
+        accept="image/*"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+
+          const formData = new FormData();
+          formData.append("file", file);
+          formData.append("userId", userId);
+          formData.append("invoiceId", invoiceId);
+
+          try {
+            const response = await fetch(`/invoice/${invoiceId}/upload`, {
+              method: "POST",
+              body: formData,
+            });
+
+            if (!response.ok) {
+              throw new Error("Upload failed");
+            }
+
+            // Handle successful upload
+            console.log("Upload successful");
+            const data = await response.json() as { key: string };
+            console.log('data', data)
+            onSuccess(data.key);
+          } catch (error) {
+            console.error("Error uploading file:", error);
+          }
+        }}
+      />
     </div>
   );
 }
