@@ -26,7 +26,6 @@ export default {
       setupAI(env);
       setupDb(env);
 
-
       if (request.method === "POST" && request.url.includes("/incoming")) {
         console.log("Incoming request received");
         const body = await request.text();
@@ -35,7 +34,11 @@ export default {
         const originalMessageSid = bodyData.get("MessageSid");
         const twilioClient = new TwilioClient(env);
         // send a message to the user that we are thinking
-        await twilioClient.sendWhatsAppMessage("...", bodyData.get("From")!, originalMessageSid);
+        await twilioClient.sendWhatsAppMessage(
+          "...",
+          bodyData.get("From")!,
+          originalMessageSid,
+        );
         // do we have a record of this number in the db?
         const user = await db.user.findFirst({
           where: {
@@ -51,7 +54,7 @@ export default {
               cellnumber: bodyData.get("From")!,
             },
           });
-          await env.ai_que.send({ 
+          await env.ai_que.send({
             from: bodyData.get("From")!,
             messageSid: bodyData.get("MessageSid")!,
             queue: "message-que",
@@ -62,8 +65,6 @@ export default {
         }
 
         if (attachmentUrl) {
-          
-
           const mediaUrl =
             await twilioClient.getMediaUrlFromTwilio(attachmentUrl);
           console.log("MediaUrl", mediaUrl);
@@ -82,7 +83,7 @@ export default {
           // convert to base64 for model
           base64String = btoa(base64String);
 
-          // TODO: harryhcs - the queue cant take messages of over 128kb, 
+          // TODO: harryhcs - the queue cant take messages of over 128kb,
           // I need to find a way to split the audio into chunks, and send them to the queue one by one
           const input = {
             audio: base64String,
@@ -100,12 +101,10 @@ export default {
 
           return new Response(null, { status: 200 });
         }
-
         // if its text we will have a conversation with the user
-
         if (bodyData.get("Body")?.includes("@help")) {
           // the user has replied with a language
-          await env.ai_que.send({ 
+          await env.ai_que.send({
             from: bodyData.get("From")!,
             messageSid: bodyData.get("MessageSid")!,
             queue: "message-que",
@@ -142,12 +141,12 @@ export default {
             },
           });
 
-          await env.ai_que.send({ 
+          await env.ai_que.send({
             from: bodyData.get("From")!,
             messageSid: bodyData.get("MessageSid")!,
             queue: "message-que",
             input: {
-              text: `Great! I'll now translate your messages to ${language}. ${languages.find(lang => lang.code === languageCode)?.symbol} You can update your language preference anytime by replying with '@language <language>'`,
+              text: `Great! I'll now translate your messages to ${language}. ${languages.find((lang) => lang.code === languageCode)?.symbol} You can update your language preference anytime by replying with '@language <language>'`,
             },
           });
 
@@ -173,11 +172,7 @@ export default {
   },
 
   async queue(batch: any, env: Env): Promise<void> {
-    console.log("Que worker received batch: ", batch.messages.length);
-
-
     for (const message of batch.messages) {
-
       if (message.body.queue == "message-que") {
         // send a message to the user
         const twilioClient = new TwilioClient(env);
@@ -225,7 +220,7 @@ export default {
             },
             {
               role: "user",
-              content: message.body.input.text
+              content: message.body.input.text,
             },
           ],
         });
