@@ -152,7 +152,7 @@ export default {
             messageSid: bodyData.get("MessageSid")!,
             queue: "message-que",
             input: {
-              text: `Great! I'll now translate your messages to ${language}. You can update your language preference anytime by replying with '@language <language>'`,
+              text: `Great! I'll now translate your messages to ${language}. ${languages.find(lang => lang.code === languageCode)?.symbol} You can update your language preference anytime by replying with '@language <language>'`,
             },
           });
 
