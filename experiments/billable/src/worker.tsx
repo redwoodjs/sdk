@@ -1,6 +1,6 @@
 import { App } from "./app/App"
 import { type SessionDO } from "./session";
-import { setupDb } from "./db";
+import { db, setupDb } from "./db";
 
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 import { injectRSCPayload } from "rsc-html-stream/server";
@@ -44,27 +44,19 @@ export default {
 
       setupDb(env);
 
-      // // The worker access the bucket and returns it to the user, we dont let them access the bucket directly
-      // if (request.method === "GET" && url.pathname.startsWith("/bucket/")) {
-      //   // const filename = url.pathname.slice("/bucket/".length);
-      //   // const object = await env.valley_directory_r2.get(filename);
+      // grab the image if it's requested.
+      if (request.method === "GET" && url.pathname.startsWith("/logos/")) {
+        const object = await env.R2.get(url.pathname);
+        if (object === null) {
+          return new Response("Object Not Found", { status: 404 });
+        }
+        return new Response(object.body, {
+          headers: {
+            'Content-Type': object.httpMetadata?.contentType as string,
+          },
+        });
+      }
 
-      //   // if (object === null) {
-      //   //   return new Response("Object Not Found", { status: 404 });
-      //   // }
-
-      //   // const headers = new Headers();
-      //   // if (filename.endsWith(".jpg") || filename.endsWith(".png")) {
-      //   //   headers.set("content-type", "image/jpeg");
-      //   // }
-
-      //   // object.writeHttpMetadata(headers);
-      //   // headers.set("etag", object.httpEtag);
-
-      //   // return new Response(object.body, {
-      //   //   headers,
-      //   // });
-      // }
 
       if (request.method === 'GET' && url.pathname === '/test/login') {
         return performLogin(request, env);
@@ -114,12 +106,19 @@ export default {
             const file = formData.get("file") as File;
 
             // Stream the file directly to R2
-            const r2ObjectKey = `logos/${userId}/${invoiceId}-${Date.now()}-${file.name}`;
+            const r2ObjectKey = `/logos/${userId}/${invoiceId}-${Date.now()}-${file.name}`;
             await env.R2.put(r2ObjectKey, file.stream(), {
               httpMetadata: {
                 contentType: file.type,
               },
             });
+
+            await db.invoice.update({
+              where: { id: invoiceId },
+              data: {
+                supplierLogo: r2ObjectKey,
+              }
+            })
 
             return new Response(JSON.stringify({ key: r2ObjectKey }), {
               status: 200,
