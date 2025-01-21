@@ -64,7 +64,6 @@
   "scripts": {
     "build": "npx tsx ./scripts/build.mts",
     "build:vendor": "npx tsx ./scripts/buildVendorBundles.mts",
-    "build:clean": "pnpm clean:vendor && pnpm clean:vite",
     "dev:init": "npx tsx ./scripts/firstRun.mts",
     "dev": "while true; do NODE_ENV=development npx tsx ./scripts/runDevServer.mts; [ $? -eq 0 ] || break; done",
     "seed": "pnpm worker:run ./src/scripts/seed.ts",
