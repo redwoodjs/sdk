@@ -33,13 +33,9 @@ export default {
         const bodyData = new URLSearchParams(body);
         const attachmentUrl = bodyData.get("MediaUrl0");
         const originalMessageSid = bodyData.get("MessageSid");
-        console.log("MessageSid", originalMessageSid);
-        console.log("AttachmentUrl", attachmentUrl);
         const twilioClient = new TwilioClient(env);
-
         // send a message to the user that we are thinking
         await twilioClient.sendWhatsAppMessage("...", bodyData.get("From")!, originalMessageSid);
-
         // do we have a record of this number in the db?
         const user = await db.user.findFirst({
           where: {
@@ -123,7 +119,6 @@ export default {
         if (bodyData.get("Body")?.includes("@language")) {
           // the user has replied with a language
           const language = bodyData.get("Body")?.split(" ")[1].toLowerCase();
-          console.log("Language", language);
           const languageCode = languages.find(
             (lang) => lang.name.toLowerCase() === language,
           )?.code;
@@ -133,7 +128,7 @@ export default {
               messageSid: bodyData.get("MessageSid")!,
               queue: "message-que",
               input: {
-                text: "I don't support that language. Please try again with a supported language.",
+                text: "I don't support that language. Please try again with a supported language or check your spelling.",
               },
             });
             return new Response(null, { status: 200 });
