@@ -9,8 +9,7 @@ export const DIST_DIR = resolve(ROOT_DIR, "dist");
 export const CLIENT_DIST_DIR = resolve(DIST_DIR, "client");
 export const WORKER_DIST_DIR = resolve(DIST_DIR, "worker");
 
-export const VENDOR_ROOT_DIR = resolve(ROOT_DIR, "vendor");
-export const VENDOR_DIST_DIR = resolve(ROOT_DIR, "dist");
+export const VENDOR_DIST_DIR = resolve(ROOT_DIR, "vendor/dist");
 
 export const DEV_SERVER_PORT = 2332;
 export const WORKER_DEV_SERVER_PORT = 5174;
