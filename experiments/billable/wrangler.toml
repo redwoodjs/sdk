@@ -15,7 +15,7 @@ database_id = "2dde5875-59a9-46b4-b48a-a3198733a2d5"
 
 [[r2_buckets]]
 bucket_name = "billable"
-binding = "billable"
+binding = "R2"
 
 [durable_objects]
 bindings = [

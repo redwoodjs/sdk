@@ -8,13 +8,11 @@ import { renderToRscStream } from "./render/renderToRscStream";
 
 import { ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
-import { setupR2Storage } from "./r2storage";
 import InvoiceListPage from "./app/pages/InvoiceList/InvoiceListPage";
 import InvoiceDetailPage from "./app/pages/InvoiceDetail/InvoiceDetailPage";
 import InvoicePdfPage from "./app/pages/invoicePdf/Page"
 import { ErrorResponse } from './error';
 import { enforceUserLoggedIn, getSession, performLogin } from './auth';
-
 
 // todo(peterp, 2024-11-25): Make these lazy.
 const routes = {
@@ -27,6 +25,9 @@ export { SessionDO } from "./session";
 export default {
   async fetch(request: Request, env: Env) {
     globalThis.__webpack_require__ = ssrWebpackRequire;
+
+    const billable = await env.billable.list();
+    console.log('files', billable);
 
     try {
       const url = new URL(request.url);
@@ -45,29 +46,28 @@ export default {
       }
 
       setupDb(env);
-      setupR2Storage(env);
 
-      // The worker access the bucket and returns it to the user, we dont let them access the bucket directly
-      if (request.method === "GET" && url.pathname.startsWith("/bucket/")) {
-        // const filename = url.pathname.slice("/bucket/".length);
-        // const object = await env.valley_directory_r2.get(filename);
+      // // The worker access the bucket and returns it to the user, we dont let them access the bucket directly
+      // if (request.method === "GET" && url.pathname.startsWith("/bucket/")) {
+      //   // const filename = url.pathname.slice("/bucket/".length);
+      //   // const object = await env.valley_directory_r2.get(filename);
 
-        // if (object === null) {
-        //   return new Response("Object Not Found", { status: 404 });
-        // }
+      //   // if (object === null) {
+      //   //   return new Response("Object Not Found", { status: 404 });
+      //   // }
 
-        // const headers = new Headers();
-        // if (filename.endsWith(".jpg") || filename.endsWith(".png")) {
-        //   headers.set("content-type", "image/jpeg");
-        // }
+      //   // const headers = new Headers();
+      //   // if (filename.endsWith(".jpg") || filename.endsWith(".png")) {
+      //   //   headers.set("content-type", "image/jpeg");
+      //   // }
 
-        // object.writeHttpMetadata(headers);
-        // headers.set("etag", object.httpEtag);
+      //   // object.writeHttpMetadata(headers);
+      //   // headers.set("etag", object.httpEtag);
 
-        // return new Response(object.body, {
-        //   headers,
-        // });
-      }
+      //   // return new Response(object.body, {
+      //   //   headers,
+      //   // });
+      // }
 
       if (request.method === 'GET' && url.pathname === '/test/login') {
         return performLogin(request, env);

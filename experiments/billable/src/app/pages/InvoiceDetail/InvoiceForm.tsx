@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { type getInvoice } from "./FetchInvoice";
 import { calculateSubtotal, calculateTaxes } from "../../shared/invoice";
-import { saveInvoice } from "./functions";
+import { getLogoUploadURL, saveInvoice } from "./functions";
 
 export function InvoiceForm(props: {
   invoice: Awaited<ReturnType<typeof getInvoice>>;
@@ -96,6 +96,7 @@ export function InvoiceForm(props: {
           Supplier Name
         </label>
         <div className="mt-2">
+          <UploadLogo userId="1" />
           <textarea
             id="supplierName"
             name="supplierName"
@@ -336,3 +337,22 @@ function Taxes(props: {
     </div>
   );
 }
+
+export function UploadLogo({ userId }: { userId: string }) {
+  // consider generating a random filename, maybe based on the invoice id... then always just select
+  // the latest, at least until the template system is defined.
+
+  return (
+    <div>
+      <button
+        onClick={async () => {
+          const url = await getLogoUploadURL(userId);
+          console.log(url);
+        }}
+      >
+        HERE IS A URL
+      </button>
+    </div>
+  );
+}
+
