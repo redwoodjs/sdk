@@ -3,7 +3,7 @@
 import { useState } from "react";
 import { type getInvoice } from "./FetchInvoice";
 import { calculateSubtotal, calculateTaxes } from "../../shared/invoice";
-import { getLogoUploadURL, saveInvoice } from "./functions";
+import { saveInvoice } from "./functions";
 
 export function InvoiceForm(props: {
   invoice: Awaited<ReturnType<typeof getInvoice>>;
@@ -96,7 +96,7 @@ export function InvoiceForm(props: {
           Supplier Name
         </label>
         <div className="mt-2">
-          <UploadLogo userId="1" />
+          <UploadLogo userId="1" invoiceId={invoice.id} />
           <textarea
             id="supplierName"
             name="supplierName"
@@ -338,20 +338,40 @@ function Taxes(props: {
   );
 }
 
-export function UploadLogo({ userId }: { userId: string }) {
-  // consider generating a random filename, maybe based on the invoice id... then always just select
-  // the latest, at least until the template system is defined.
-
+export function UploadLogo({ userId, invoiceId }: { userId: string, invoiceId: string }) {
   return (
     <div>
-      <button
-        onClick={async () => {
-          const url = await getLogoUploadURL(userId);
-          console.log(url);
+      <input
+        type="file"
+        accept="image/*"
+        onChange={async (e) => {
+          const file = e.target.files?.[0];
+          if (!file) return;
+
+          const formData = new FormData();
+          formData.append('file', file);
+          formData.append('userId', userId);
+          formData.append('invoiceId', invoiceId);
+
+          try {
+            const response = await fetch(`/invoice/${invoiceId}/upload`, {
+              method: 'POST',
+              body: formData,
+            });
+
+            if (!response.ok) {
+              throw new Error('Upload failed');
+            }
+
+            // Handle successful upload
+            console.log('Upload successful');
+
+
+          } catch (error) {
+            console.error('Error uploading file:', error);
+          }
         }}
-      >
-        HERE IS A URL
-      </button>
+      />
     </div>
   );
 }

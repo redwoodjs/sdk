@@ -5,7 +5,6 @@ import {
 } from "@prisma/client";
 import { db } from "../../../db";
 import type { InvoiceItem, InvoiceTaxes } from './FetchInvoice';
-import { generateUploadUrl } from "../../lib/storage";
 
 export async function saveInvoice(id: string, invoice: Omit<Invoice, 'items' | 'taxes'>, items: InvoiceItem[], taxes: InvoiceTaxes[]) {
 
@@ -33,6 +32,3 @@ export async function generatePdf(id: string) {
 }
 
 
-export async function getLogoUploadURL(userId: string) {
-  return await generateUploadUrl(userId)
-}

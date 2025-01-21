@@ -26,9 +26,6 @@ export default {
   async fetch(request: Request, env: Env) {
     globalThis.__webpack_require__ = ssrWebpackRequire;
 
-    const billable = await env.billable.list();
-    console.log('files', billable);
-
     try {
       const url = new URL(request.url);
 
@@ -109,8 +106,33 @@ export default {
         if (pathname.endsWith("/pdf")) {
           // remove "/pdf" from the end of the pathname
           return renderPage(InvoicePdfPage, { id: id.slice(0, -4) });
+        } else if (pathname.endsWith("/upload")) {
+          if (request.method === "POST" && request.headers.get("content-type")?.includes("multipart/form-data")) {
+            const formData = await request.formData();
+            const userId = formData.get('userId') as string;
+            const invoiceId = formData.get('invoiceId') as string;
+            const file = formData.get("file") as File;
+
+            // Stream the file directly to R2
+            const r2ObjectKey = `logos/${userId}/${invoiceId}-${Date.now()}-${file.name}`;
+            await env.R2.put(r2ObjectKey, file.stream(), {
+              httpMetadata: {
+                contentType: file.type,
+              },
+            });
+
+            return new Response(JSON.stringify({ key: r2ObjectKey }), {
+              status: 200,
+              headers: {
+                'Content-Type': 'application/json'
+              }
+            });
+          }
+          return new Response("Method not allowed", { status: 405 });
+        } else {
+          return renderPage(InvoiceDetailPage, { id });
         }
-        return renderPage(InvoiceDetailPage, { id });
+
       }
 
       if (!Page) {
