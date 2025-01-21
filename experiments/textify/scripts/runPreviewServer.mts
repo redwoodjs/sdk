@@ -57,8 +57,6 @@ const setup = async () => {
     }]
   } as MiniflareOptions);
 
-  console.log(miniflare);
-
   return { miniflare };
 };
 
