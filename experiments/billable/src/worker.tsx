@@ -76,7 +76,7 @@ export default {
       }
 
       const renderPage = async (Page: any, props = {}) => {
-        const rscPayloadStream = await renderToRscStream({ node: <Page {...props} />, actionResult: actionResult });
+        const rscPayloadStream = renderToRscStream({ node: <Page {...props} />, actionResult: actionResult });
         if (isRSCRequest) {
           return new Response(rscPayloadStream, {
             headers: { "content-type": "text/x-component; charset=utf-8" },

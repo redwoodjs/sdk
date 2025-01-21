@@ -74,8 +74,8 @@ export const viteConfigs = {
           esbuildOptions: {
             conditions: ["module", "workerd", "react-server"],
             //alias: {
-            //  'react': resolve(VENDOR_DIST_DIR, "react.js"),
-            //  'vendor/react-ssr': resolve(VENDOR_DIST_DIR, "react-ssr.js"),
+            //  //'react': resolve(VENDOR_DIST_DIR, "react.js"),
+            //  //'vendor/react-ssr': resolve(VENDOR_DIST_DIR, "react-ssr.js"),
             //}
           },
           include: [

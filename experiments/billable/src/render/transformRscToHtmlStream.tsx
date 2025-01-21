@@ -1,7 +1,7 @@
+import { runInReactRuntime, getCurrentReactRuntime } from 'vendor/react';
 import { createModuleMap } from "./createModuleMap.js";
 import { ReactSSR, ReactDOMSSR } from "vendor/react-ssr";
 import { createFromReadableStream } from "react-server-dom-webpack/client.edge";
-import { runInReactRuntime } from 'vendor/react';
 
 export const transformRscToHtmlStream = async ({
   stream,
@@ -10,17 +10,19 @@ export const transformRscToHtmlStream = async ({
   stream: ReadableStream;
   Parent?: React.ComponentType<{ children: React.ReactNode }>;
 }) => {
+  const thenable = createFromReadableStream(stream, {
+    ssrManifest: {
+      moduleMap: createModuleMap(),
+      moduleLoading: null,
+    },
+  });
+
+  const Component = () => <Parent>{(ReactSSR.use(thenable) as { node: React.ReactNode }).node}</Parent>;
+  const el = <Component />;
+
   return runInReactRuntime("ssr", () => {
-    const thenable = createFromReadableStream(stream, {
-      ssrManifest: {
-        moduleMap: createModuleMap(),
-        moduleLoading: null,
-      },
-    });
-
-    const Component = () => <Parent>{(ReactSSR.use(thenable) as { node: React.ReactNode }).node}</Parent>;
-    const el = <Component />;
-
-    return ReactDOMSSR.renderToReadableStream(el);
+    console.log('## in ssr', getCurrentReactRuntime())
+    const stream = ReactDOMSSR.renderToReadableStream(el);
+    return stream;
   });
 };

@@ -5,17 +5,13 @@ import { AsyncLocalStorage } from 'node:async_hooks';
 
 const React = {}
 
-const reactStorage = new AsyncLocalStorage<Map<'runtime', 'rsc' | 'ssr'>>();
+const reactStorage = new AsyncLocalStorage<'rsc' | 'ssr'>();
 
-// context(justinvdm, 2025-01-21): React's own event loop implementation seems to make us lose AsyncLocalStorage context.
-// Accessing a global that gets the store appears to work around this. Inspecting the current context returned by the global 
-// as react does work (performWork, retryNode, renderElement) suggests the context is being tracked correctly this way
-// but I still need to understand why it works and if it is in fact robust enough a solution
-(globalThis as any).__getCurrentReactRuntime = () => reactStorage.getStore()?.get('runtime')
+export const getCurrentReactRuntime = () => reactStorage.getStore()
 
 export const getReactProperty = <Name extends BothRuntimeProperties>(name: Name): GetReactProperty<Name> => {
-  console.log('## getReactProperty', name, (globalThis as any).__getCurrentReactRuntime())
-  const runtime = (globalThis as any).__getCurrentReactRuntime() ?? 'rsc'
+  console.log('## getReactProperty', { name, runtime: getCurrentReactRuntime() })
+  const runtime = getCurrentReactRuntime() ?? 'rsc'
   const v = runtime === "rsc" ? (ReactRSC as any)[name] : (ReactSSR as any)[name]
   return v
 }
@@ -48,7 +44,7 @@ const defineObject = <Name extends BothRuntimeProperties>(name: Name): GetReactP
       enumerable: true,
       configurable: true,
       set(value) {
-        (getReactProperty(name) as any)[key] = value
+        return (getReactProperty(name) as any)[key] = value
       },
       get() {
         return (getReactProperty(name) as any)[key]
@@ -78,21 +74,19 @@ export const defineExport = <Name extends BothRuntimeProperties>(name: Name): Ge
 }
 
 export const runInReactRuntime = async <Result>(runtime: "rsc" | "ssr", callback: () => Result | Promise<Result>) => {
-  const { promise, resolve } = Promise.withResolvers<Result>()
-  await reactStorage.run(new Map(), async () => {
-    reactStorage.getStore()?.set('runtime', runtime)
-    return await Promise.resolve().then(callback).then(resolve)
+  return await reactStorage.run(runtime, () => {
+    return callback()
   });
-  return await promise
 }
+
 export const getReactRuntime = () => reactStorage.getStore()
 
 export default (React as typeof ReactRSC & typeof ReactSSR)
 
 // @ts-expect-error
-export const __SERVER_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE = ReactRSC.__SERVER_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+export const __SERVER_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE = defineExport('__SERVER_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE')
 // @ts-expect-error
-export const __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE = ReactSSR.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE;
+export const __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE = defineExport('__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE')
 export const Children = defineExport("Children")
 export const Component = defineExport("Component")
 export const Fragment = defineExport("Fragment")
