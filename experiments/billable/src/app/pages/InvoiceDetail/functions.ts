@@ -1,6 +1,7 @@
 "use server";
 
 import {
+  Prisma,
   type Invoice,
 } from "@prisma/client";
 import { db } from "../../../db";
@@ -31,4 +32,14 @@ export async function generatePdf(id: string) {
   return 'x'
 }
 
+export async function deleteLogo(id: string) {
+  await db.invoice.update({
+    data: {
+      supplierLogo: null,
+    },
+    where: {
+      id
+    }
+  })
+}
 
