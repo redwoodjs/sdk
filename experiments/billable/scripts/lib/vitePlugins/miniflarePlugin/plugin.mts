@@ -3,7 +3,8 @@ import { readFile } from "node:fs/promises";
 import { EventEmitter } from "node:events";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
-import { createRequire } from "node:module";
+import { createRequire, builtinModules } from "node:module";
+import { unstable_dev } from "wrangler";
 
 import { resolve as importMetaResolve } from "import-meta-resolve";
 import colors from "picocolors";
@@ -12,6 +13,7 @@ import {
   mergeWorkerOptions,
   Miniflare,
   MiniflareOptions,
+  RequestInit,
   SharedOptions,
   WorkerOptions,
 } from "miniflare";
@@ -34,6 +36,19 @@ import {
 import { compileTsModule } from "../../compileTsModule.mjs";
 import { getShortName } from "../../getShortName.mjs";
 import { SRC_DIR } from "../../constants.mjs";
+
+export const CLOUDFLARE_BUILT_IN_MODULES = [
+  'cloudflare:email',
+  'cloudflare:sockets',
+  'cloudflare:workers',
+];
+
+export const NODE_BUILT_IN_MODULES = [
+  ...builtinModules,
+  ...builtinModules.map(module => `node:${module}`)
+]
+
+const __dirname = new URL(".", import.meta.url).pathname;
 
 interface MiniflarePluginOptions {
   entry: string;
@@ -61,6 +76,48 @@ const readTsModule = async (id: string) => {
   return compileTsModule(tsCode);
 };
 
+export const setupAiWorker = async () => {
+  // context(justinvdm, 2025-01-15): Do similar to what wrangler does to hook up the AI worker, except we delegate to
+  // a wrangler dev worker specific to doing AI worker tasks
+  // https://github.com/cloudflare/workers-sdk/blob/6fe9533897b61ae9ef6566b5d2bdf09698566c24/packages/wrangler/src/dev/miniflare.ts#L579
+  const aiDevWorker = await unstable_dev(resolve(__dirname, 'aiScript.js'), {
+    config: resolve(__dirname, 'aiDevConfig.json'),
+    port: 0,
+    ai: {
+      binding: 'AI'
+    },
+  })
+
+  process.on('exit', () => {
+    aiDevWorker.stop()
+  })
+
+  return {
+    name: '__WRANGLER_EXTERNAL_AI_WORKER',
+    modules: [
+      {
+        type: "ESModule",
+        path: "index.mjs",
+        contents: `
+import { Ai } from 'cloudflare-internal:ai-api'
+           
+export default function (env) {
+    return new Ai(env.FETCHER);
+}
+`,
+      },
+    ],
+    serviceBindings: {
+      FETCHER: async (request: Request) => {
+        try {
+          return await aiDevWorker.fetch(request.url, request as RequestInit);
+        } catch (e) {
+          throw e;
+        }
+      }
+    }
+  }
+}
 
 const loadGeneratedPrismaModule = async (id: string) => {
   // context(justinvdm, 2025-01-06): Resolve relative to @prisma/client since pnpm places it relative to @prisma/client in node_modules/.pnpm
@@ -185,9 +242,16 @@ const createMiniflareOptions = async ({
 
   workerOptions = mergeWorkerOptions(workerOptions, runnerOptions);
 
+  const workers = [workerOptions]
+
+  if (workerOptions?.wrappedBindings?.AI) {
+    const aiWorker = await setupAiWorker()
+    workers.push(aiWorker)
+  }
+
   return {
     ...baseOptions,
-    workers: [workerOptions],
+    workers
   } as MiniflareOptions & SharedOptions & SourcelessWorkerOptions;
 };
 
@@ -391,6 +455,7 @@ export const miniflarePlugin = async (
               platform: "browser",
               banner: undefined,
             },
+            exclude: [...CLOUDFLARE_BUILT_IN_MODULES, ...NODE_BUILT_IN_MODULES],
           },
           build: {
             ssr: true,
@@ -398,6 +463,7 @@ export const miniflarePlugin = async (
               input: {
                 index: entry,
               },
+              external: [...CLOUDFLARE_BUILT_IN_MODULES, ...NODE_BUILT_IN_MODULES],
             },
           },
         },

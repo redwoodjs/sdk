@@ -3,11 +3,7 @@
 import { Suspense, useRef } from "react";
 import { useReactToPrint } from "react-to-print";
 
-
 export function PrintPdf() {
-
-
-
   const contentRef = useRef<HTMLDivElement>(null);
   const reactToPrintContent = () => {
     return contentRef.current;

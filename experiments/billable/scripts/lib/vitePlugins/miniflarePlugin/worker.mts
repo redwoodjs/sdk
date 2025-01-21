@@ -150,7 +150,7 @@ export const createEvaluator = (env: RunnerEnv): ModuleEvaluator => ({
     Object.freeze(context[ssrModuleExportsKey]);
   },
   async runExternalModule(filepath) {
-    if (filepath.startsWith('cloudflare:')) {
+    if (filepath.startsWith('cloudflare:') || filepath.startsWith('node:')) {
       return import(filepath);
     }
 

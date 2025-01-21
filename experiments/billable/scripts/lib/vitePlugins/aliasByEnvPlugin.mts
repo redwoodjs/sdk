@@ -5,11 +5,11 @@ export const aliasByEnvPlugin = (aliasesByEnv: Record<string, Record<string, str
 
   enforce: 'pre',
 
-  resolveId(id) {
+  resolveId(id, importer) {
     const aliases = aliasesByEnv[this.environment.name] ?? {};
     const alias = aliases[id];
     if (alias) {
       return alias;
     }
-  }
+  },
 });
