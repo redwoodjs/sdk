@@ -86,6 +86,8 @@ export default {
           // convert to base64 for model
           base64String = btoa(base64String);
 
+          // TODO: harryhcs - the queue cant take messages of over 128kb, 
+          // I need to find a way to split the audio into chunks, and send them to the queue one by one
           const input = {
             audio: base64String,
             task: "translate",
