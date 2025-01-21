@@ -2,11 +2,8 @@
 
 import { Suspense, useRef } from "react";
 import { useReactToPrint } from "react-to-print";
-import { getCurrentReactRuntime } from 'vendor/react';
-
 
 export function PrintPdf() {
-  console.log('## in PrintPdf', getCurrentReactRuntime())
   const contentRef = useRef<HTMLDivElement>(null);
   const reactToPrintContent = () => {
     return contentRef.current;

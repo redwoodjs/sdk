@@ -1,6 +1,5 @@
 import { resolve } from "node:path";
-import dts from "vite-plugin-dts";
-import { build, mergeConfig, type InlineConfig } from "vite";
+import { build, mergeConfig, optimizeDeps, type InlineConfig } from "vite";
 import { $ } from './lib/$.mjs';
 
 const __dirname = new URL(".", import.meta.url).pathname;
@@ -14,46 +13,28 @@ const MODE =
 const configs = {
   common: (): InlineConfig => ({
     mode: MODE,
-    plugins: [
-      [
-        dts({
-          rollupTypes: true,
-          tsconfigPath: resolve(__dirname, "../tsconfig.vendor.json"),
-        }),
-      ],
-    ],
+    plugins: [],
     logLevel: process.env.VERBOSE ? "info" : "error",
     build: {
       emptyOutDir: false,
       //sourcemap: true,
       sourcemap: false,
       minify: MODE === "production",
-      rollupOptions: {
-        external: ['node:async_hooks']
-      }
-    },
-    optimizeDeps: {
-      noDiscovery: false,
-      exclude: ['node:async_hooks'],
-      include: [
-        "react",
-        "react/jsx-runtime",
-        "react/jsx-dev-runtime",
-        "react-dom/server.edge",
-        "@prisma/client",
-      ],
     },
   }),
-  reactSSR: (): InlineConfig =>
+  reactServerInternals: (): InlineConfig =>
     mergeConfig(configs.common(), {
       build: {
         outDir: DEST_DIR,
         lib: {
-          entry: resolve(SRC_DIR, "react-ssr.ts"),
-          name: "react-ssr",
+          entry: resolve(SRC_DIR, "react-server-internals.js"),
+          name: "react-server-internals",
           formats: ["es"],
-          fileName: "react-ssr",
+          fileName: "react-server-internals",
         },
+      },
+      resolve: {
+        conditions: ['react-server'],
       },
     }),
   react: (): InlineConfig =>
@@ -61,26 +42,42 @@ const configs = {
       build: {
         outDir: DEST_DIR,
         lib: {
-          entry: resolve(SRC_DIR, "react.ts"),
+          entry: resolve(SRC_DIR, "react.js"),
           name: "react",
           formats: ["es"],
           fileName: "react",
         },
-        rollupOptions: {
-          external: ['vendor/react-ssr', 'node:async_hooks'],
-        },
       },
       resolve: {
-        conditions: ['react-server'],
-      }
+        alias: {
+          'react-server-internals': resolve(DEST_DIR, 'react-server-internals.js'),
+        },
+      },
     }),
+  reactDomServerEdge: (): InlineConfig =>
+    mergeConfig(configs.common(), {
+      build: {
+        outDir: DEST_DIR,
+        lib: {
+          entry: resolve(SRC_DIR, "react-dom-server-edge.js"),
+          name: "react-dom-server-edge",
+          formats: ["es"],
+          fileName: "react-dom-server-edge",
+        },
+        rollupOptions: {
+          external: ['react'],
+        },
+      },
+    }),
+
 };
 
 export const buildVendorBundles = async () => {
   console.log("Building vendor bundles...");
   await $`pnpm clean:vendor`;
-  await build(configs.reactSSR());
+  await build(configs.reactServerInternals());
   await build(configs.react());
+  await build(configs.reactDomServerEdge());
 };
 
 if (import.meta.url === new URL(process.argv[1], import.meta.url).href) {
