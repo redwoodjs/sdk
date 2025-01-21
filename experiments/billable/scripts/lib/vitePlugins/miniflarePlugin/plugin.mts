@@ -3,7 +3,7 @@ import { readFile } from "node:fs/promises";
 import { EventEmitter } from "node:events";
 import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
-import { createRequire } from "node:module";
+import { createRequire, builtinModules } from "node:module";
 import { unstable_dev } from "wrangler";
 
 import { resolve as importMetaResolve } from "import-meta-resolve";
@@ -36,6 +36,17 @@ import {
 import { compileTsModule } from "../../compileTsModule.mjs";
 import { getShortName } from "../../getShortName.mjs";
 import { SRC_DIR } from "../../constants.mjs";
+
+export const CLOUDFLARE_BUILT_IN_MODULES = [
+  'cloudflare:email',
+  'cloudflare:sockets',
+  'cloudflare:workers',
+];
+
+export const NODE_BUILT_IN_MODULES = [
+  ...builtinModules,
+  ...builtinModules.map(module => `node:${module}`)
+]
 
 const __dirname = new URL(".", import.meta.url).pathname;
 
@@ -444,6 +455,7 @@ export const miniflarePlugin = async (
               platform: "browser",
               banner: undefined,
             },
+            exclude: [...CLOUDFLARE_BUILT_IN_MODULES, ...NODE_BUILT_IN_MODULES],
           },
           build: {
             ssr: true,
@@ -451,6 +463,7 @@ export const miniflarePlugin = async (
               input: {
                 index: entry,
               },
+              external: [...CLOUDFLARE_BUILT_IN_MODULES, ...NODE_BUILT_IN_MODULES],
             },
           },
         },
