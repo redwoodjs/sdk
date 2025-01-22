@@ -362,7 +362,7 @@ const createDevEnv = async ({
     }
 
     try {
-      return await runnerDO.fetch(request.url, request);
+      return await miniflare.dispatchFetch(request.url, request as any)
     } catch (e) {
       if (devEnv.discarded) {
         return redirectToSelf(request);
