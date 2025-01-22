@@ -96,8 +96,6 @@ export default {
               throw new Error("Audio chunk not created");
             }
           }
-
-    
           console.log("Sent to voice-que");
 
           return new Response(null, { status: 200 });
