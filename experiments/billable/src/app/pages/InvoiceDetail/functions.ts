@@ -1,7 +1,6 @@
 "use server";
 
 import {
-  Prisma,
   type Invoice,
 } from "@prisma/client";
 import { db } from "../../../db";
@@ -25,11 +24,6 @@ export async function saveInvoice(id: string, invoice: Omit<Invoice, 'items' | '
       id,
     }
   })
-}
-
-
-export async function generatePdf(id: string) {
-  return 'x'
 }
 
 export async function deleteLogo(id: string) {

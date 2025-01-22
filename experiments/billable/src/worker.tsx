@@ -10,7 +10,6 @@ import { ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import InvoiceListPage from "./app/pages/InvoiceList/InvoiceListPage";
 import InvoiceDetailPage from "./app/pages/InvoiceDetail/InvoiceDetailPage";
-import InvoicePdfPage from "./app/pages/invoicePdf/Page"
 import { ErrorResponse } from './error';
 import { getSession, performLogin } from './auth';
 
@@ -95,10 +94,7 @@ export default {
 
       if (pathname.startsWith("/invoice/")) {
         const id = pathname.slice("/invoice/".length);
-        if (pathname.endsWith("/pdf")) {
-          // remove "/pdf" from the end of the pathname
-          return renderPage(InvoicePdfPage, { id: id.slice(0, -4) });
-        } else if (pathname.endsWith("/upload")) {
+        if (pathname.endsWith("/upload")) {
           if (request.method === "POST" && request.headers.get("content-type")?.includes("multipart/form-data")) {
             const formData = await request.formData();
             const userId = formData.get('userId') as string;

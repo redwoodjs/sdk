@@ -1,9 +1,10 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { type getInvoice } from "./FetchInvoice";
 import { calculateSubtotal, calculateTaxes } from "../../shared/invoice";
 import { deleteLogo, saveInvoice } from "./functions";
+import { PrintPdf } from "./PrintToPdf";
 
 export function InvoiceForm(props: {
   invoice: Awaited<ReturnType<typeof getInvoice>>;
@@ -16,8 +17,10 @@ export function InvoiceForm(props: {
   const taxTotal = calculateTaxes(subtotal, taxes);
   const total = subtotal + taxTotal;
 
+  const pdfContentRef = useRef<HTMLDivElement>(null);
+
   return (
-    <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6">
+    <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6" ref={pdfContentRef}>
       <div className="col-span-full">
         <button
           onClick={async () => {
@@ -27,7 +30,9 @@ export function InvoiceForm(props: {
         >
           Save
         </button>
+        <PrintPdf contentRef={pdfContentRef} />
       </div>
+
       <div className="sm:col-span-3">
         <label
           htmlFor="invoice-number"
@@ -140,8 +145,6 @@ export function InvoiceForm(props: {
                 setItems(newItems);
               }}
               onDelete={() => {
-                console.log("delete");
-                // todo update total
                 const newItems = [...items];
                 newItems.splice(index, 1);
                 setItems(newItems);
@@ -421,7 +424,6 @@ export function UploadLogo({
             // Handle successful upload
             console.log("Upload successful");
             const data = await response.json() as { key: string };
-            console.log('data', data)
             onSuccess(data.key);
           } catch (error) {
             console.error("Error uploading file:", error);
