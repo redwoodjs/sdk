@@ -544,14 +544,16 @@ export const miniflarePlugin = async (
         const m = ctx.server.environments.client.moduleGraph
           .getModulesByFile(resolve(SRC_DIR, "app", "style.css"))
           ?.values()
-          .next().value!;
+          .next().value;
 
-        ctx.server.environments.client.moduleGraph.invalidateModule(
-          m,
-          new Set(),
-          ctx.timestamp,
-          true,
-        );
+        if (m) {
+          ctx.server.environments.client.moduleGraph.invalidateModule(
+            m,
+            new Set(),
+            ctx.timestamp,
+            true,
+          );
+        }
 
         ctx.server.environments.client.hot.send({
           type: "custom",
