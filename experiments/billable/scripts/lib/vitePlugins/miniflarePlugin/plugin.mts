@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import { createRequire, builtinModules } from "node:module";
 import { unstable_dev } from "wrangler";
+import fnv from 'fnv-plus';
 
 import { resolve as importMetaResolve } from "import-meta-resolve";
 import colors from "picocolors";
@@ -28,9 +29,7 @@ import {
 } from "vite";
 import { nodeToWebRequest, webToNodeResponse } from "../requestUtils.mjs";
 import {
-  FetchMetadata,
   NoOptionals,
-  RunnerWorkerApi,
   ServiceBindings,
 } from "./types.mjs";
 import { compileTsModule } from "../../compileTsModule.mjs";
@@ -155,23 +154,22 @@ const normalizeDurableObjectDescriptors = ({ workerOptions, options }: { workerO
   return durableObjectDescriptors;
 }
 
-const generateViteWorkerScript = async ({ workerOptions, options }: { workerOptions: SourcelessWorkerOptions, options: MiniflarePluginOptionsFull }) => {
-  const contents = await readTsModule("./worker.mts");
+const generateViteRunnerScript = async ({ workerOptions, options }: { workerOptions: SourcelessWorkerOptions, options: MiniflarePluginOptionsFull }) => {
+  const contents = await readTsModule("./runner.mts");
   const durableObjectDescriptors = normalizeDurableObjectDescriptors({ workerOptions, options });
+
+  const getDOIdentifier = (scriptName: string, className: string) => `__DO_${fnv.fast1a64([scriptName, className].join(':'))}`
 
   const code = [
     contents,
-    ...durableObjectDescriptors.map(({ scriptName, className }) => `export const ${className} = createDurableObjectProxy(${JSON.stringify(scriptName)}, ${JSON.stringify(className)});`),
+    ...durableObjectDescriptors.map(({ scriptName, className }) => `export const ${getDOIdentifier(scriptName, className)} = createDurableObjectProxy(${JSON.stringify(scriptName)}, ${JSON.stringify(className)});`),
   ].join('\n')
 
-  const durableObjects = Object.fromEntries(durableObjectDescriptors.map(({ name, className }) => [name, className]))
+  const durableObjects = Object.fromEntries(durableObjectDescriptors.map(({ name, scriptName, className }) => [name, getDOIdentifier(scriptName, className)]))
 
   return {
     code,
-    durableObjects: {
-      ...durableObjects,
-      __viteRunner: "RunnerWorker",
-    },
+    durableObjects,
   }
 }
 
@@ -198,7 +196,7 @@ const createMiniflareOptions = async ({
     path: resolve(rootDir, ".env"),
   }).parsed ?? {}
 
-  const { code, durableObjects } = await generateViteWorkerScript({ workerOptions, options })
+  const { code, durableObjects } = await generateViteRunnerScript({ workerOptions, options })
 
   const runnerOptions: WorkerOptions = {
     modules: [
@@ -230,6 +228,7 @@ const createMiniflareOptions = async ({
     bindings: {
       ...envVars,
       __viteRoot: config.root,
+      __viteWorkerEntry: options.entry,
     },
   };
 
@@ -256,9 +255,9 @@ const createMiniflareOptions = async ({
 };
 
 const createTransport = ({
-  runnerWorker,
+  sendToRunner,
 }: {
-  runnerWorker: RunnerWorkerApi;
+  sendToRunner: (data: HotPayload) => Promise<unknown>;
 }): {
   hotDispatch: HotDispatcher;
   transport: HotChannel;
@@ -279,7 +278,7 @@ const createTransport = ({
       close: () => { },
       on: events.on.bind(events),
       off: events.off.bind(events),
-      send: runnerWorker.sendToRunner.bind(runnerWorker),
+      send: sendToRunner,
     },
   };
 };
@@ -319,7 +318,7 @@ const createDevEnv = async ({
     },
     __viteSendToServer: async (request) => {
       const payload = (await request.json()) as HotPayload;
-      hotDispatch(payload, { send: runnerWorker.sendToRunner });
+      hotDispatch(payload, { send: sendToRunner });
       return Response.json(null);
     },
   };
@@ -331,11 +330,33 @@ const createDevEnv = async ({
       serviceBindings,
     }),
   );
+  const sendInstruction = async ({ instruction, entry, data }: { instruction: string, entry?: string, data?: unknown }) => {
+    return await miniflare.dispatchFetch("https://any.local", {
+      method: "POST",
+      body: JSON.stringify(data),
+      headers: {
+        "x-vite-fetch": JSON.stringify({
+          instruction,
+          entry,
+        }),
+      },
+    });
+  }
 
-  const ns = await miniflare.getDurableObjectNamespace("__viteRunner");
-  const runnerWorker = ns.get(ns.idFromName("")) as unknown as RunnerWorkerApi;
+  const sendToRunner = async (data: HotPayload) => {
+    return await sendInstruction({
+      instruction: "send",
+      data,
+    });
+  }
 
-  const { hotDispatch, transport } = createTransport({ runnerWorker });
+  const initRunner = async () => {
+    return await sendInstruction({
+      instruction: "init",
+    });
+  }
+
+  const { hotDispatch, transport } = createTransport({ sendToRunner });
 
   const redirectToSelf = async (req: Request) => {
     await new Promise((resolve) => setTimeout(resolve, 200));
@@ -356,12 +377,15 @@ const createDevEnv = async ({
     if (!request.headers.has("x-vite-fetch")) {
       request.headers.set(
         "x-vite-fetch",
-        JSON.stringify({ entry } satisfies FetchMetadata),
+        JSON.stringify({
+          entry,
+          instruction: "proxy",
+        }),
       );
     }
 
     try {
-      return await runnerWorker.fetch(request.url, request);
+      return await miniflare.dispatchFetch(request.url, request as any) as unknown as Response
     } catch (e) {
       if (devEnv.discarded) {
         return redirectToSelf(request);
@@ -390,7 +414,7 @@ const createDevEnv = async ({
     transport,
   });
 
-  await runnerWorker.initRunner();
+  await initRunner();
 
   return devEnv;
 };

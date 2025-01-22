@@ -26,6 +26,7 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
       headers: {
         'x-vite-fetch': JSON.stringify({
           entry: scriptPath,
+          instruction: "proxy",
         }),
       },
     })

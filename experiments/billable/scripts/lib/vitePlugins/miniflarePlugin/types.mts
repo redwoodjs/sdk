@@ -24,13 +24,6 @@ export type RunnerEnv = {
   __viteClassName?: string;
 } & EnvServiceBindings;
 
-export type FetchMetadata = {
-  entry?: string;
-  className?: string;
-};
-
 export type NoOptionals<T> = {
   [K in keyof T]-?: T[K];
 };
-
-export type RunnerWorkerApi = Fetcher & RunnerRpc;

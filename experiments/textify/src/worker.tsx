@@ -26,6 +26,17 @@ export default {
       setupAI(env);
       setupDb(env);
 
+      if (request.url.includes("/test")) {
+        await env.ai_que.send({ 
+          from: "test",
+          messageSid: "test",
+          queue: "message-que",
+          input: {
+            text: "test",
+          },
+        });
+        return new Response('OK', { status: 200 });
+      }
 
       if (request.method === "POST" && request.url.includes("/incoming")) {
         console.log("Incoming request received");
@@ -168,7 +179,7 @@ export default {
         }
       }
 
-      return new Response(null, { status: 200 });
+      return new Response('OK', { status: 200 });
     } catch (e) {
       console.error("Unhandled error", e);
       throw e;
