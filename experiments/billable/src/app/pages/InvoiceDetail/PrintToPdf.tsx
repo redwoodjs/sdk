@@ -1,26 +1,15 @@
-"use client";
-
-import { Suspense, useRef } from "react";
 import { useReactToPrint } from "react-to-print";
 
-export function PrintPdf() {
-  const contentRef = useRef<HTMLDivElement>(null);
+export function PrintPdf({ contentRef }: { contentRef: React.RefObject<HTMLDivElement> }) {
   const reactToPrintFn = useReactToPrint({ contentRef });
 
   return (
     <div>
-
-      <Suspense fallback={<div>Loading...</div>}>
-      <>
         <button
-
           onClick={() =>reactToPrintFn()}
         >
-          Print.
+          Print
         </button>
-        <div ref={contentRef}>Content to print</div>
-        </>
-      </Suspense>
     </div>
   );
 }
