@@ -24,7 +24,6 @@ const fetch = async (request: Request<any, any>, env: RunnerEnv, ctx: ExecutionC
     entry?: string
     instruction: string
   } = request.headers.get("x-vite-fetch") ? JSON.parse(request.headers.get("x-vite-fetch")!) : {}
-  console.log("### instruction", instruction)
 
   if (instruction === "proxy") {
     return proxyWorkerHandlerMethod({ methodName: "fetch" as const, entry, env, run: fn => fn(request, env, ctx) })
@@ -45,18 +44,15 @@ const fetch = async (request: Request<any, any>, env: RunnerEnv, ctx: ExecutionC
 
 export default {
   fetch,
-  tail: (events: TraceItem[], env: RunnerEnv, ctx: ExecutionContext) => {
-    return proxyWorkerHandlerMethod({ methodName: "tail" as const, env, run: fn => fn(events as any, env, ctx) })
-  },
-  trace: (traces: TraceItem[], env: RunnerEnv, ctx: ExecutionContext) => {
-    return proxyWorkerHandlerMethod({ methodName: "trace" as const, env, run: fn => fn(traces as any, env, ctx) })
-  },
-  scheduled: (controller: ScheduledController, env: RunnerEnv, ctx: ExecutionContext) => {
-    return proxyWorkerHandlerMethod({ methodName: "scheduled" as const, env, run: fn => fn(controller, env, ctx) })
-  },
-  test: (controller: TestController, env: RunnerEnv, ctx: ExecutionContext) => {
-    return proxyWorkerHandlerMethod({ methodName: "test" as const, env, run: fn => fn(controller, env, ctx) })
-  },
+  ...Object.fromEntries(
+    (["tail", "trace", "scheduled", "test", "email", "queue"] as const)
+      .map(methodName => [
+        methodName,
+        (arg0: any, env: RunnerEnv, ctx: ExecutionContext) => {
+          return proxyWorkerHandlerMethod({ methodName, env, run: fn => fn(arg0 as any, env, ctx) })
+        }
+      ])
+  ),
 }
 
 const initRunner = (env: RunnerEnv) => {
