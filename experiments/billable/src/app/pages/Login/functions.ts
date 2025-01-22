@@ -4,8 +4,6 @@ import { Resend } from 'resend';
 import { getEnv } from '../../../lib';
 import { db } from '../../../db';
 
-
-
 export async function generateAuthToken(email: string) {
 
   const token = crypto.randomUUID()
