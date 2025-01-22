@@ -150,7 +150,7 @@ export const createEvaluator = (env: RunnerEnv): ModuleEvaluator => ({
     Object.freeze(context[ssrModuleExportsKey]);
   },
   async runExternalModule(filepath) {
-    if (filepath.startsWith('cloudflare:')) {
+    if (filepath.startsWith('cloudflare:') || filepath.startsWith('node:')) {
       return import(filepath);
     }
 
@@ -210,7 +210,7 @@ export const createDurableObjectProxy = (scriptName: string, className: string) 
         get(_target, prop, receiver) {
           const fn = async (...args: any[]) => {
             const instance = await ensureExists(state, env)
-            return Reflect.get(instance, prop, receiver)(...args)
+            return Reflect.get(instance, prop, receiver).call(instance, ...args)
           }
 
           return fn

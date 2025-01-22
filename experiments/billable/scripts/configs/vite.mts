@@ -24,7 +24,6 @@ import { miniflarePlugin } from "../lib/vitePlugins/miniflarePlugin/plugin.mjs";
 import { miniflareConfig } from "./miniflare.mjs";
 import { asyncSetupPlugin } from "../lib/vitePlugins/asyncSetupPlugin.mjs";
 import { restartPlugin } from "../lib/vitePlugins/restartPlugin.mjs";
-import { aliasByEnvPlugin } from '../lib/vitePlugins/aliasByEnvPlugin.mjs';
 
 const MODE =
   process.env.NODE_ENV === "development" ? "development" : "production";
@@ -73,10 +72,6 @@ export const viteConfigs = {
           noDiscovery: false,
           esbuildOptions: {
             conditions: ["module", "workerd", "react-server"],
-            //alias: {
-            //  //'react': resolve(VENDOR_DIST_DIR, "react.js"),
-            //  //'vendor/react-ssr': resolve(VENDOR_DIST_DIR, "react-ssr.js"),
-            //}
           },
           include: [
             "react",
