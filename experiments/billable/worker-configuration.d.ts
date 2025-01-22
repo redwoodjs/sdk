@@ -2,7 +2,7 @@
 
 interface Env {
 	SECRET_KEY: "secret";
-	SESSION_DO: DurableObjectNamespace<import("./dist/worker/worker").SessionDO>;
+	SESSION_DO: DurableObjectNamespace /* SessionDO */;
 	R2: R2Bucket;
 	DB: D1Database;
 	ASSETS: Fetcher;
