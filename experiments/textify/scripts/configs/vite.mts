@@ -8,14 +8,14 @@ import {
   RELATIVE_WORKER_PATHNAME,
   ROOT_DIR,
   WORKER_DIST_DIR,
-  VENDOR_REACT_SSR_PATH,
+  VENDOR_DIST_DIR,
+  VENDOR_ROOT_DIR,
 } from "../lib/constants.mjs";
 
 import tailwind from "tailwindcss";
 import autoprefixer from "autoprefixer";
 import reactPlugin from "@vitejs/plugin-react";
 
-import { aliasByEnvPlugin } from "../lib/vitePlugins/aliasByEnvPlugin.mjs";
 import { transformJsxScriptTagsPlugin } from "../lib/vitePlugins/transformJsxScriptTagsPlugin.mjs";
 import { useServerPlugin } from "../lib/vitePlugins/useServerPlugin.mjs";
 import { useClientPlugin } from "../lib/vitePlugins/useClientPlugin.mjs";
@@ -43,9 +43,7 @@ export const viteConfigs = {
       ),
       "process.env.NODE_ENV": JSON.stringify(MODE),
     },
-    plugins: [reactPlugin(), useServerPlugin(), useClientPlugin({
-      reactSSRImportPath: VENDOR_REACT_SSR_PATH,
-    })],
+    plugins: [reactPlugin(), useServerPlugin(), useClientPlugin()],
     environments: {
       client: {
         consumer: "client",
@@ -58,6 +56,9 @@ export const viteConfigs = {
             },
           },
         },
+        resolve: {
+          external: ['react']
+        }
       },
       worker: {
         resolve: {
@@ -111,9 +112,14 @@ export const viteConfigs = {
       },
     },
     resolve: {
-      alias: {
-        'vendor/react-ssr': VENDOR_REACT_SSR_PATH,
-      }
+      dedupe: ['react'],
+      alias: [{
+        find: /^react$/,
+        replacement: resolve(VENDOR_DIST_DIR, 'react.js'),
+      }, {
+        find: 'react-dom/server.edge',
+        replacement: resolve(VENDOR_DIST_DIR, 'react-dom-server-edge.js'),
+      }]
     }
   }),
   dev: ({ setup, restartOnChanges = true, ...opts }: { setup: () => Promise<unknown>, silent?: boolean, port?: number, restartOnChanges?: boolean }): InlineConfig =>
