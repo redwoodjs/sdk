@@ -5,14 +5,7 @@ import { useReactToPrint } from "react-to-print";
 
 export function PrintPdf() {
   const contentRef = useRef<HTMLDivElement>(null);
-  const reactToPrintContent = () => {
-    return contentRef.current;
-  };
-
-  const handlePrint = useReactToPrint({
-    documentTitle: "SuperFileName"
-  });
-
+  const reactToPrintFn = useReactToPrint({ contentRef });
 
   return (
     <div>
@@ -21,11 +14,7 @@ export function PrintPdf() {
       <>
         <button
 
-          onClick={() => {
-
-            console.log("clicked");
-            handlePrint()
-          }}
+          onClick={() =>reactToPrintFn()}
         >
           Print.
         </button>
