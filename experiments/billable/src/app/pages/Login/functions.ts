@@ -4,11 +4,11 @@ import { Resend } from 'resend';
 import { getEnv } from '../../../lib';
 import { db } from '../../../db';
 
-import crypto from 'node:crypto'
+
 
 export async function generateAuthToken(email: string) {
 
-  const token = crypto.randomBytes(32).toString('hex');
+  const token = crypto.randomUUID()
   const expiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
   await db.user.upsert({
     where: { email },

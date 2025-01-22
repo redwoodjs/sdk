@@ -5,7 +5,7 @@ import { sendEmail } from "./functions";
 
 
 export function LoginPage() {
-  const [email, setEmail] = useState("");
+  const [email, setEmail] = useState("peter@redwoodjs.com");
 
   return (
     <div>
