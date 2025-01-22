@@ -145,8 +145,6 @@ export function InvoiceForm(props: {
                 setItems(newItems);
               }}
               onDelete={() => {
-                console.log("delete");
-                // todo update total
                 const newItems = [...items];
                 newItems.splice(index, 1);
                 setItems(newItems);
@@ -426,7 +424,6 @@ export function UploadLogo({
             // Handle successful upload
             console.log("Upload successful");
             const data = await response.json() as { key: string };
-            console.log('data', data)
             onSuccess(data.key);
           } catch (error) {
             console.error("Error uploading file:", error);

@@ -24,9 +24,6 @@ async function init() {
 
     setRscPayload(streamData);
     const result = await streamData;
-
-    console.log("result", result);
-
     return (result as { actionResult: unknown }).actionResult;
   };
 
