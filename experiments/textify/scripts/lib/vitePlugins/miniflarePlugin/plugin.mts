@@ -30,7 +30,7 @@ import { nodeToWebRequest, webToNodeResponse } from "../requestUtils.mjs";
 import {
   FetchMetadata,
   NoOptionals,
-  RunnerWorkerApi,
+  RunnerDOApi,
   ServiceBindings,
 } from "./types.mjs";
 import { compileTsModule } from "../../compileTsModule.mjs";
@@ -155,8 +155,8 @@ const normalizeDurableObjectDescriptors = ({ workerOptions, options }: { workerO
   return durableObjectDescriptors;
 }
 
-const generateViteWorkerScript = async ({ workerOptions, options }: { workerOptions: SourcelessWorkerOptions, options: MiniflarePluginOptionsFull }) => {
-  const contents = await readTsModule("./worker.mts");
+const generateViteRunnerScript = async ({ workerOptions, options }: { workerOptions: SourcelessWorkerOptions, options: MiniflarePluginOptionsFull }) => {
+  const contents = await readTsModule("./runner.mts");
   const durableObjectDescriptors = normalizeDurableObjectDescriptors({ workerOptions, options });
 
   const code = [
@@ -170,7 +170,7 @@ const generateViteWorkerScript = async ({ workerOptions, options }: { workerOpti
     code,
     durableObjects: {
       ...durableObjects,
-      __viteRunner: "RunnerWorker",
+      __viteRunner: "RunnerDO",
     },
   }
 }
@@ -198,7 +198,7 @@ const createMiniflareOptions = async ({
     path: resolve(rootDir, ".env"),
   }).parsed ?? {}
 
-  const { code, durableObjects } = await generateViteWorkerScript({ workerOptions, options })
+  const { code, durableObjects } = await generateViteRunnerScript({ workerOptions, options })
 
   const runnerOptions: WorkerOptions = {
     modules: [
@@ -230,6 +230,7 @@ const createMiniflareOptions = async ({
     bindings: {
       ...envVars,
       __viteRoot: config.root,
+      __viteWorkerEntry: options.entry,
     },
   };
 
@@ -256,9 +257,9 @@ const createMiniflareOptions = async ({
 };
 
 const createTransport = ({
-  runnerWorker,
+  runnerDO,
 }: {
-  runnerWorker: RunnerWorkerApi;
+  runnerDO: RunnerDOApi;
 }): {
   hotDispatch: HotDispatcher;
   transport: HotChannel;
@@ -279,7 +280,7 @@ const createTransport = ({
       close: () => { },
       on: events.on.bind(events),
       off: events.off.bind(events),
-      send: runnerWorker.sendToRunner.bind(runnerWorker),
+      send: runnerDO.sendToRunner.bind(runnerDO),
     },
   };
 };
@@ -319,7 +320,7 @@ const createDevEnv = async ({
     },
     __viteSendToServer: async (request) => {
       const payload = (await request.json()) as HotPayload;
-      hotDispatch(payload, { send: runnerWorker.sendToRunner });
+      hotDispatch(payload, { send: runnerDO.sendToRunner });
       return Response.json(null);
     },
   };
@@ -333,9 +334,9 @@ const createDevEnv = async ({
   );
 
   const ns = await miniflare.getDurableObjectNamespace("__viteRunner");
-  const runnerWorker = ns.get(ns.idFromName("")) as unknown as RunnerWorkerApi;
+  const runnerDO = ns.get(ns.idFromName("")) as unknown as RunnerDOApi;
 
-  const { hotDispatch, transport } = createTransport({ runnerWorker });
+  const { hotDispatch, transport } = createTransport({ runnerDO });
 
   const redirectToSelf = async (req: Request) => {
     await new Promise((resolve) => setTimeout(resolve, 200));
@@ -361,7 +362,7 @@ const createDevEnv = async ({
     }
 
     try {
-      return await runnerWorker.fetch(request.url, request);
+      return await runnerDO.fetch(request.url, request);
     } catch (e) {
       if (devEnv.discarded) {
         return redirectToSelf(request);
@@ -390,7 +391,7 @@ const createDevEnv = async ({
     transport,
   });
 
-  await runnerWorker.initRunner();
+  await runnerDO.initRunner();
 
   return devEnv;
 };

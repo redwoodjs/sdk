@@ -33,4 +33,4 @@ export type NoOptionals<T> = {
   [K in keyof T]-?: T[K];
 };
 
-export type RunnerWorkerApi = Fetcher & RunnerRpc;
+export type RunnerDOApi = Fetcher & RunnerRpc;

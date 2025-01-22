@@ -1,5 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
-import { FetchMetadata, RunnerEnv, RunnerRpc } from "./types.mjs";
+import { RunnerEnv, RunnerRpc } from "./types.mjs";
 import {
   ModuleEvaluator,
   ModuleRunner,
@@ -9,67 +9,19 @@ import {
 } from "vite/module-runner";
 import { HotPayload } from "vite";
 
-type IncomingRequest = Request<unknown, IncomingRequestCfProperties<unknown>>;
+let __viteModuleRunner: ModuleRunner | undefined = undefined
 
-declare global {
-  var __viteModuleRunner: ModuleRunner
-}
-
-export class RunnerWorker
+export class RunnerDO
   extends DurableObject<RunnerEnv>
   implements RunnerRpc {
   #runner?: ModuleRunner;
   #handlers?: ModuleRunnerTransportHandlers;
 
-  override async fetch(request: IncomingRequest) {
-    try {
-      return await this.#fetch(request);
-    } catch (e) {
-      console.error(e);
-      let body = "[vite workerd runner error]\n";
-      if (e instanceof Error) {
-        body += `${e.stack ?? e.message}`;
-      }
-      return new Response(body, { status: 500 });
-    }
-  }
-
-  async #fetch(request: IncomingRequest) {
-    if (!this.#runner) {
-      throw new Error("Runner not initialized");
-    }
-
-    const options = JSON.parse(
-      request.headers.get("x-vite-fetch")!,
-    ) as FetchMetadata;
-
-    let entry: string;
-    let className: string | undefined;
-
-    if (options.entry) {
-      entry = options.entry;
-      className = options.className;
-    } else {
-      entry = this.env.__viteWorkerEntry;
-      className = this.env.__viteClassName;
-    }
-
-    const mod = await this.#runner.import(entry);
-
-    const handler = mod.default as ExportedHandler;
-
-    if (!handler.fetch) {
-      throw new Error("Worker does not have a fetch method");
-    }
-
-    const env = Object.fromEntries(
-      Object.entries(this.env).filter(([key]) => !key.startsWith("__vite")),
-    );
-
-    return handler.fetch(request, env, {
+  async fetch(request: Request<any, any>) {
+    return fetch(request, this.env, {
       waitUntil(_promise: Promise<any>) { },
       passThroughOnException() { },
-    });
+    })
   }
 
   async initRunner() {
@@ -93,7 +45,7 @@ export class RunnerWorker
     };
 
     this.#runner = new ModuleRunner(options, createEvaluator(this.env));
-    globalThis.__viteModuleRunner = this.#runner
+    __viteModuleRunner = this.#runner
   }
 
   async sendToRunner(payload: HotPayload): Promise<void> {
@@ -188,6 +140,53 @@ async function callBinding<Result>({
   return response.json() as Result;
 }
 
+export const proxyWorkerHandlerMethod = async <Env extends Record<string, unknown>, MethodName extends keyof ExportedHandler<Env>>({
+  methodName,
+  entry: entryOverride,
+  env, run
+}: {
+  methodName: MethodName,
+  entry?: string,
+  env: Env,
+  run: (method: NonNullable<ExportedHandler<Env>[MethodName]>) => ReturnType<NonNullable<ExportedHandler<Env>[MethodName]>>
+}) => {
+  if (!__viteModuleRunner) {
+    throw new Error("Runner not initialized");
+  }
+
+  const entry = entryOverride ?? env.__viteWorkerEntry as string;
+  const mod = await __viteModuleRunner.import(entry);
+
+  const handler = mod.default as ExportedHandler;
+
+  if (!handler[methodName]) {
+    throw new Error(`Worker does not have a ${methodName} method`);
+  }
+
+  return run(handler[methodName]);
+}
+
+const fetch = (request: Request<any, any>, env: RunnerEnv, ctx: ExecutionContext) => {
+  const options = request.headers.get("x-vite-fetch") ? JSON.parse(request.headers.get("x-vite-fetch")!) : undefined
+  return proxyWorkerHandlerMethod({ methodName: "fetch" as const, entry: options?.entry, env, run: fn => fn(request, env, ctx) })
+}
+
+export default {
+  fetch,
+  tail: (events: TraceItem[], env: RunnerEnv, ctx: ExecutionContext) => {
+    return proxyWorkerHandlerMethod({ methodName: "tail" as const, env, run: fn => fn(events as any, env, ctx) })
+  },
+  trace: (traces: TraceItem[], env: RunnerEnv, ctx: ExecutionContext) => {
+    return proxyWorkerHandlerMethod({ methodName: "trace" as const, env, run: fn => fn(traces as any, env, ctx) })
+  },
+  scheduled: (controller: ScheduledController, env: RunnerEnv, ctx: ExecutionContext) => {
+    return proxyWorkerHandlerMethod({ methodName: "scheduled" as const, env, run: fn => fn(controller, env, ctx) })
+  },
+  test: (controller: TestController, env: RunnerEnv, ctx: ExecutionContext) => {
+    return proxyWorkerHandlerMethod({ methodName: "test" as const, env, run: fn => fn(controller, env, ctx) })
+  },
+}
+
 export const createDurableObjectProxy = (scriptName: string, className: string) => {
   let instance: DurableObject
 
@@ -196,7 +195,11 @@ export const createDurableObjectProxy = (scriptName: string, className: string) 
       return instance
     }
 
-    const mod = await globalThis.__viteModuleRunner.import(scriptName)
+    if (!__viteModuleRunner) {
+      throw new Error("Runner not initialized");
+    }
+
+    const mod = await __viteModuleRunner.import(scriptName)
     const Constructor = mod[className]
     instance = new Constructor(state, env)
     return instance
