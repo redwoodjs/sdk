@@ -1,10 +1,26 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { type getInvoice } from "./FetchInvoice";
-import { calculateSubtotal, calculateTaxes } from "../../shared/invoice";
+import { type InvoiceTaxes, type InvoiceItem, type getInvoice } from "./FetchInvoice";
 import { deleteLogo, saveInvoice } from "./functions";
 import { PrintPdf } from "./PrintToPdf";
+
+export function calculateSubtotal(items: InvoiceItem[]) {
+  let sum = 0;
+  for (const item of items) {
+    sum += item.quantity * item.price;
+  }
+  return sum;
+}
+
+export function calculateTaxes(subtotal: number, taxes: InvoiceTaxes[]) {
+  let sum = 0;
+  for (const tax of taxes) {
+    sum += subtotal * tax.amount;
+  }
+  return sum;
+}
+
 
 export function InvoiceForm(props: {
   invoice: Awaited<ReturnType<typeof getInvoice>>;
