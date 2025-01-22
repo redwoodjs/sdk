@@ -1,5 +1,4 @@
-import { DurableObject } from "cloudflare:workers";
-import { RunnerEnv, RunnerRpc } from "./types.mjs";
+import { RunnerEnv } from "./types.mjs";
 import {
   ModuleEvaluator,
   ModuleRunner,
@@ -9,50 +8,84 @@ import {
 } from "vite/module-runner";
 import { HotPayload } from "vite";
 
-let __viteModuleRunner: ModuleRunner | undefined = undefined
+const STATE: {
+  runner: ModuleRunner | undefined
+  handlers: ModuleRunnerTransportHandlers | undefined
+} = {
+  runner: undefined,
+  handlers: undefined,
+}
 
-export class RunnerDO
-  extends DurableObject<RunnerEnv>
-  implements RunnerRpc {
-  #runner?: ModuleRunner;
-  #handlers?: ModuleRunnerTransportHandlers;
+const fetch = async (request: Request<any, any>, env: RunnerEnv, ctx: ExecutionContext) => {
+  const {
+    entry,
+    instruction,
+  }: {
+    entry?: string
+    instruction: string
+  } = request.headers.get("x-vite-fetch") ? JSON.parse(request.headers.get("x-vite-fetch")!) : {}
+  console.log("### instruction", instruction)
 
-  async fetch(request: Request<any, any>) {
-    return fetch(request, this.env, {
-      waitUntil(_promise: Promise<any>) { },
-      passThroughOnException() { },
-    })
+  if (instruction === "proxy") {
+    return proxyWorkerHandlerMethod({ methodName: "fetch" as const, entry, env, run: fn => fn(request, env, ctx) })
   }
 
-  async initRunner() {
-    const options: ModuleRunnerOptions = {
-      root: this.env.__viteRoot,
-      sourcemapInterceptor: "prepareStackTrace",
-      hmr: true,
-      transport: {
-        invoke: (payload) => {
-          return callBinding({
-            binding: this.env.__viteInvoke,
-            payload,
-          })
-        },
-        connect: (handlers) => {
-          this.#handlers = handlers;
-        },
-        send: (payload) =>
-          callBinding({ binding: this.env.__viteSendToServer, payload }),
+  if (instruction === "init") {
+    initRunner(env)
+    return new Response("OK")
+  }
+
+  if (instruction === "send") {
+    sendToRunner(await request.json())
+    return new Response("OK")
+  }
+
+  throw new Error(`Unknown instruction: ${instruction}`)
+}
+
+export default {
+  fetch,
+  tail: (events: TraceItem[], env: RunnerEnv, ctx: ExecutionContext) => {
+    return proxyWorkerHandlerMethod({ methodName: "tail" as const, env, run: fn => fn(events as any, env, ctx) })
+  },
+  trace: (traces: TraceItem[], env: RunnerEnv, ctx: ExecutionContext) => {
+    return proxyWorkerHandlerMethod({ methodName: "trace" as const, env, run: fn => fn(traces as any, env, ctx) })
+  },
+  scheduled: (controller: ScheduledController, env: RunnerEnv, ctx: ExecutionContext) => {
+    return proxyWorkerHandlerMethod({ methodName: "scheduled" as const, env, run: fn => fn(controller, env, ctx) })
+  },
+  test: (controller: TestController, env: RunnerEnv, ctx: ExecutionContext) => {
+    return proxyWorkerHandlerMethod({ methodName: "test" as const, env, run: fn => fn(controller, env, ctx) })
+  },
+}
+
+const initRunner = (env: RunnerEnv) => {
+  const options: ModuleRunnerOptions = {
+    root: env.__viteRoot,
+    sourcemapInterceptor: "prepareStackTrace",
+    hmr: true,
+    transport: {
+      invoke: (payload) => {
+        return callBinding({
+          binding: env.__viteInvoke,
+          payload,
+        })
       },
-    };
+      connect: (handlers) => {
+        STATE.handlers = handlers;
+      },
+      send: (payload) =>
+        callBinding({ binding: env.__viteSendToServer, payload }),
+    },
+  };
 
-    this.#runner = new ModuleRunner(options, createEvaluator(this.env));
-    __viteModuleRunner = this.#runner
-  }
+  STATE.runner = new ModuleRunner(options, createEvaluator(env));
+}
 
-  async sendToRunner(payload: HotPayload): Promise<void> {
-    // context(justinvdm, 10 Dec 2024): This is the handler side of the `sendToWorker` rpc method.
-    // We're telling the runner: "here's a message from the server, do something with it".
-    this.#handlers?.onMessage(payload);
-  }
+const sendToRunner = (payload: HotPayload) => {
+  // context(justinvdm, 10 Dec 2024): This is the handler side of the `sendToWorker` rpc method.
+  // We're telling the runner: "here's a message from the server, do something with it".
+  STATE.handlers?.onMessage(payload);
 }
 
 export const createEvaluator = (env: RunnerEnv): ModuleEvaluator => ({
@@ -150,12 +183,12 @@ export const proxyWorkerHandlerMethod = async <Env extends Record<string, unknow
   env: Env,
   run: (method: NonNullable<ExportedHandler<Env>[MethodName]>) => ReturnType<NonNullable<ExportedHandler<Env>[MethodName]>>
 }) => {
-  if (!__viteModuleRunner) {
+  if (!STATE.runner) {
     throw new Error("Runner not initialized");
   }
 
   const entry = entryOverride ?? env.__viteWorkerEntry as string;
-  const mod = await __viteModuleRunner.import(entry);
+  const mod = await STATE.runner?.import(entry);
 
   const handler = mod.default as ExportedHandler;
 
@@ -164,61 +197,4 @@ export const proxyWorkerHandlerMethod = async <Env extends Record<string, unknow
   }
 
   return run(handler[methodName]);
-}
-
-const fetch = (request: Request<any, any>, env: RunnerEnv, ctx: ExecutionContext) => {
-  const options = request.headers.get("x-vite-fetch") ? JSON.parse(request.headers.get("x-vite-fetch")!) : undefined
-  return proxyWorkerHandlerMethod({ methodName: "fetch" as const, entry: options?.entry, env, run: fn => fn(request, env, ctx) })
-}
-
-export default {
-  fetch,
-  tail: (events: TraceItem[], env: RunnerEnv, ctx: ExecutionContext) => {
-    return proxyWorkerHandlerMethod({ methodName: "tail" as const, env, run: fn => fn(events as any, env, ctx) })
-  },
-  trace: (traces: TraceItem[], env: RunnerEnv, ctx: ExecutionContext) => {
-    return proxyWorkerHandlerMethod({ methodName: "trace" as const, env, run: fn => fn(traces as any, env, ctx) })
-  },
-  scheduled: (controller: ScheduledController, env: RunnerEnv, ctx: ExecutionContext) => {
-    return proxyWorkerHandlerMethod({ methodName: "scheduled" as const, env, run: fn => fn(controller, env, ctx) })
-  },
-  test: (controller: TestController, env: RunnerEnv, ctx: ExecutionContext) => {
-    return proxyWorkerHandlerMethod({ methodName: "test" as const, env, run: fn => fn(controller, env, ctx) })
-  },
-}
-
-export const createDurableObjectProxy = (scriptName: string, className: string) => {
-  let instance: DurableObject
-
-  const ensureExists = async (state: DurableObjectState, env: RunnerEnv) => {
-    if (instance) {
-      return instance
-    }
-
-    if (!__viteModuleRunner) {
-      throw new Error("Runner not initialized");
-    }
-
-    const mod = await __viteModuleRunner.import(scriptName)
-    const Constructor = mod[className]
-    instance = new Constructor(state, env)
-    return instance
-  }
-
-  return class DurableObjectProxy extends DurableObject<RunnerEnv> {
-    constructor(public state: DurableObjectState, public env: RunnerEnv) {
-      super(state, env);
-
-      return new Proxy(this, {
-        get(_target, prop, receiver) {
-          const fn = async (...args: any[]) => {
-            const instance = await ensureExists(state, env)
-            return Reflect.get(instance, prop, receiver).call(instance, ...args)
-          }
-
-          return fn
-        }
-      })
-    }
-  }
 }
