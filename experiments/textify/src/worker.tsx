@@ -1,9 +1,9 @@
 import { ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import { TwilioClient } from "./twilio";
-import { setupAI } from "./ai";
 import { db, setupDb } from "./db";
 import languages from "./languages";
+
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     globalThis.__webpack_require__ = ssrWebpackRequire;
@@ -23,8 +23,8 @@ export default {
         return env.ASSETS.fetch(new Request(url.toString(), request));
       }
 
-      setupAI(env);
       setupDb(env);
+
 
       if (request.method === "POST" && request.url.includes("/incoming")) {
         console.log("Incoming request received");
@@ -46,9 +46,6 @@ export default {
           },
         });
         if (!user) {
-          // we dont know this user yet, so we will create a new record
-          // we need to ask the user what language they would want to translate to, default is english
-          console.log("Creating new user record");
           await db.user.create({
             data: {
               cellnumber: bodyData.get("From")!,
@@ -65,37 +62,42 @@ export default {
         }
 
         if (attachmentUrl) {
-          const mediaUrl =
-            await twilioClient.getMediaUrlFromTwilio(attachmentUrl);
-          console.log("MediaUrl", mediaUrl);
-          const res = await fetch(mediaUrl);
-          const arrayBuffer = await res.arrayBuffer();
+          const mediaUrl = await twilioClient.getMediaUrlFromTwilio(attachmentUrl);
+          const response = await fetch(mediaUrl);
+          const arrayBuffer = await response.arrayBuffer();
           const uint8Array = new Uint8Array(arrayBuffer);
-
-          // Convert to base64 in chunks, so we dont exeed the max stack size
-          const chunkSize = 0x8000; // 32KB chunks
-          let base64String = "";
-
-          for (let i = 0; i < uint8Array.length; i += chunkSize) {
-            const chunk = Array.from(uint8Array.slice(i, i + chunkSize));
-            base64String += String.fromCharCode.apply(null, chunk);
+          
+          // Process in chunks of 32KB for better performance while staying safe
+          const CHUNK_SIZE = 32 * 1024; // 32KB
+          let base64AudioString = '';
+          
+          for (let i = 0; i < uint8Array.length; i += CHUNK_SIZE) {
+            const chunk = uint8Array.slice(i, Math.min(i + CHUNK_SIZE, uint8Array.length));
+            const binaryString = Array.from(chunk)
+              .map(byte => String.fromCharCode(byte))
+              .join('');
+            base64AudioString += btoa(binaryString);
           }
-          // convert to base64 for model
-          base64String = btoa(base64String);
-          // TODO: harryhcs - the queue cant take messages of over 128kb,
-          // I need to find a way to split the audio into chunks, and send them to the queue one by one
-          const input = {
-            audio: base64String,
-            task: "translate",
-            language: user?.language || "en",
-          };
-          await env.ai_que.send({
-            input,
-            from: bodyData.get("From")!,
-            messageSid: bodyData.get("MessageSid")!,
-            queue: "voice-que",
-          });
 
+          if (user) {
+            const audioChunk = await db.audioChunk.create({
+              data: {
+                user_id: user.id,
+                chunk: base64AudioString,
+              },
+            });
+            
+            if (audioChunk) {
+              await env.ai_que.send({
+                audioChunkId: audioChunk.id,
+                queue: "voice-que",
+              });
+            } else {
+              throw new Error("Audio chunk not created");
+            }
+          }
+
+    
           console.log("Sent to voice-que");
 
           return new Response(null, { status: 200 });
@@ -171,6 +173,7 @@ export default {
   },
 
   async queue(batch: any, env: Env): Promise<void> {
+    setupDb(env);
     for (const message of batch.messages) {
       if (message.body.queue == "message-que") {
         // send a message to the user
@@ -194,18 +197,86 @@ export default {
 
       if (message.body.queue === "voice-que") {
         console.log("Running whisper model");
-        const response = await env.AI.run("@cf/openai/whisper-large-v3-turbo", {
-          audio: message.body.input.audio,
-          task: message.body.input.task,
-          language: message.body.input.language,
+        let response = "I could not translate your message, sorry!";
+        const audioChunk = await db.audioChunk.findUnique({
+          where: {
+            id: message.body.audioChunkId,
+          },
         });
+        console.log("audioChunk", audioChunk);
+        const user = await db.user.findUnique({
+          where: {
+            id: audioChunk?.user_id,
+          },
+        });
+        console.log("user", user);
+        let sent = true;
+        try {
+          if (!user) {
+            throw new Error("User not found");
+          }
+          
+          const result = await env.AI.run("@cf/openai/whisper-large-v3-turbo", {
+            audio: audioChunk?.chunk,
+            task: "translate",
+            language: user.language,
+          });
+          
+          if (!result || !result.text) {
+            sent = false;
+            throw new Error("No text in whisper response");
+          }
+          
+          response = result.text;
+        } catch (e) {
+          sent = false;
+          console.error("Error running whisper model:", {
+            error: e,
+            errorMessage: e.message,
+            errorStack: e.stack,
+            inputLength: message.body.input.audio?.length,
+            task: message.body.input.task,
+            language: message.body.input.language
+          });
+          response = "Sorry, I encountered an error while processing your audio message. Please try again.";
+        } 
+        try {
+          const twilioClient = new TwilioClient(env);
+          // we need to get the user from the db
+          if (!user) {
+            throw new Error("User not found");
+          }
+          await twilioClient.sendWhatsAppMessage(
+            response,
+            user?.cellnumber,
+            null,
+          );
+        } catch (e) {
+          sent = false;
+          console.error("Error sending WhatsApp message:", {
+            error: e,
+            errorMessage: e.message,
+            errorStack: e.stack,
+            to: message.body.from,
+            messageSid: message.body.messageSid,
+            responseLength: response?.length
+          });
+          // Re-throw to ensure the message isn't acked if sending failed
+          throw e;
+        }
 
-        const twilioClient = new TwilioClient(env);
-        await twilioClient.sendWhatsAppMessage(
-          response.text!,
-          message.body.from,
-          message.body.messageSid,
-        );
+        if (sent) {
+          message.ack();
+          await db.audioChunk.delete({
+            where: {
+              id: message.body.audioChunkId,
+            },
+          });
+        } else {
+          message.retry();
+        }
+        
+        
       }
 
       if (message.body.queue === "text-que") {
