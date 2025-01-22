@@ -5,6 +5,7 @@ import { fileURLToPath } from "node:url";
 import { resolve } from "node:path";
 import { createRequire, builtinModules } from "node:module";
 import { unstable_dev } from "wrangler";
+import fnv from 'fnv-plus';
 
 import { resolve as importMetaResolve } from "import-meta-resolve";
 import colors from "picocolors";
@@ -157,11 +158,11 @@ const generateViteRunnerScript = async ({ workerOptions, options }: { workerOpti
   const contents = await readTsModule("./runner.mts");
   const durableObjectDescriptors = normalizeDurableObjectDescriptors({ workerOptions, options });
 
-  const getDOIdentifier = (scriptName: string, className: string) => `${scriptName}__${className}`
+  const getDOIdentifier = (scriptName: string, className: string) => `__DO_${fnv.fast1a64([scriptName, className].join(':'))}`
 
   const code = [
     contents,
-    ...durableObjectDescriptors.map(({ name, scriptName, className }) => `export const ${getDOIdentifier(scriptName, className)} = createDurableObjectProxy(${JSON.stringify(scriptName)}, ${JSON.stringify(className)});`),
+    ...durableObjectDescriptors.map(({ scriptName, className }) => `export const ${getDOIdentifier(scriptName, className)} = createDurableObjectProxy(${JSON.stringify(scriptName)}, ${JSON.stringify(className)});`),
   ].join('\n')
 
   const durableObjects = Object.fromEntries(durableObjectDescriptors.map(({ name, scriptName, className }) => [name, getDOIdentifier(scriptName, className)]))
@@ -329,7 +330,6 @@ const createDevEnv = async ({
       serviceBindings,
     }),
   );
-
   const sendInstruction = async ({ instruction, entry, data }: { instruction: string, entry?: string, data?: unknown }) => {
     return await miniflare.dispatchFetch("https://any.local", {
       method: "POST",

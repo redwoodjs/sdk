@@ -1,3 +1,4 @@
+import { DurableObject } from "cloudflare:workers"
 import { RunnerEnv } from "./types.mjs";
 import {
   ModuleEvaluator,
@@ -26,7 +27,7 @@ const fetch = async (request: Request<any, any>, env: RunnerEnv, ctx: ExecutionC
   } = request.headers.get("x-vite-fetch") ? JSON.parse(request.headers.get("x-vite-fetch")!) : {}
 
   if (instruction === "proxy") {
-    return proxyWorkerHandlerMethod({ methodName: "fetch" as const, entry, env, run: fn => fn(request, env, ctx) })
+    return await proxyWorkerHandlerMethod({ methodName: "fetch" as const, entry, env, run: fn => fn(request, env, ctx) })
   }
 
   if (instruction === "init") {
@@ -192,5 +193,41 @@ export const proxyWorkerHandlerMethod = async <Env extends Record<string, unknow
     throw new Error(`Worker does not have a ${methodName} method`);
   }
 
-  return run(handler[methodName]);
+  return await run(handler[methodName]);
+}
+
+export const createDurableObjectProxy = (scriptName: string, className: string) => {
+  let instance: DurableObject
+
+  const ensureExists = async (state: DurableObjectState, env: RunnerEnv) => {
+    if (instance) {
+      return instance
+    }
+
+    if (!STATE.runner) {
+      throw new Error("Runner not initialized");
+    }
+
+    const mod = await STATE.runner.import(scriptName)
+    const Constructor = mod[className]
+    instance = new Constructor(state, env)
+    return instance
+  }
+
+  return class DurableObjectProxy extends DurableObject<RunnerEnv> {
+    constructor(public state: DurableObjectState, public env: RunnerEnv) {
+      super(state, env);
+
+      return new Proxy(this, {
+        get(_target, prop, receiver) {
+          const fn = async (...args: any[]) => {
+            const instance = await ensureExists(state, env)
+            return Reflect.get(instance, prop, receiver).call(instance, ...args)
+          }
+
+          return fn
+        }
+      })
+    }
+  }
 }
