@@ -35,7 +35,7 @@ import { registerClientReference } from "/src/register/worker.ts";
             s.replaceAll(e.ln, `${e.ln}SSR`);
 
             s.append(`\
-export const ${e.ln} = registerClientReference(${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)});
+export const ${e.ln} = registerClientReference(${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)}, ${e.ln}SSR);
 `);
           }
         }

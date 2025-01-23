@@ -331,7 +331,7 @@ const createDevEnv = async ({
     }),
   );
   const sendInstruction = async ({ instruction, entry, data }: { instruction: string, entry?: string, data?: unknown }) => {
-    return await miniflare.dispatchFetch("https://any.local", {
+    return await miniflare.dispatchFetch("http://localhost:0", {
       method: "POST",
       body: JSON.stringify(data),
       headers: {

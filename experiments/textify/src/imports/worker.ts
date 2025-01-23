@@ -9,7 +9,7 @@ const modules = (
 ).glob("/src/app/**/*.{ts,tsx}");
 
 export const loadModule = memoize(async (moduleName: string) => {
-  return await modules[moduleName]();
+  return await modules[moduleName]()
 });
 
 export const getModuleExport = async (id: string) => {
@@ -22,5 +22,5 @@ export const getModuleExport = async (id: string) => {
 export const ssrWebpackRequire = memoize(async (id: string) => {
   const [file, name] = id.split("#");
   const module = await loadModule(file);
-  return { [id]: module[`${name}SSR`] };
+  return { [id]: module[name] };
 });
