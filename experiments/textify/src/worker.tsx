@@ -194,16 +194,6 @@ export default {
         );
       }
 
-      if (message.body.queue === "thinking") {
-        // send a message to the user
-        const twilioClient = new TwilioClient(env);
-        await twilioClient.sendWhatsAppMessage(
-          "..",
-          message.body.from,
-          message.body.messageSid,
-        );
-      }
-
       if (message.body.queue === "voice-que") {
         console.log("Running whisper model");
         let response = "I could not translate your message, sorry!";
@@ -212,13 +202,11 @@ export default {
             id: message.body.audioChunkId,
           },
         });
-        console.log("audioChunk", audioChunk);
         const user = await db.user.findUnique({
           where: {
             id: audioChunk?.user_id,
           },
         });
-        console.log("user", user);
         let sent = true;
         try {
           if (!user) {
