@@ -31,7 +31,7 @@ const fetch = async (request: Request<any, any>, env: RunnerEnv, ctx: ExecutionC
   }
 
   if (instruction === "init") {
-    initRunner(env)
+    await initRunner(env)
     return new Response("OK")
   }
 

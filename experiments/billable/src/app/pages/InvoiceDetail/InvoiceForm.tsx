@@ -5,6 +5,7 @@ import { type getInvoice } from "./FetchInvoice";
 import { calculateSubtotal, calculateTaxes } from "../../shared/invoice";
 import { deleteLogo, saveInvoice } from "./functions";
 import { PrintPdf } from "./PrintToPdf";
+import { NestedClientComponent } from './NestedClientComponent';
 
 export function InvoiceForm(props: {
   invoice: Awaited<ReturnType<typeof getInvoice>>;
@@ -230,6 +231,8 @@ export function InvoiceForm(props: {
           />
         </div>
       </div>
+
+      <NestedClientComponent />
     </div>
   );
 }
