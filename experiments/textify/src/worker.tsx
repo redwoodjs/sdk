@@ -27,7 +27,7 @@ export default {
 
       if (request.url.includes("/test")) {
         await env.ai_que.send({ 
-          from: "test",
+          from: "whatsapp:+27724217253",
           messageSid: "test",
           queue: "message-que",
           input: {
