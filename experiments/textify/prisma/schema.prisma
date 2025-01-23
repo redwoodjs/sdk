@@ -16,3 +16,14 @@ model User {
   cellnumber String  @unique
   language String?
 }
+
+// add a new model for storing temporary base64 strings of audio chunks and the user id
+// clean up once sent
+model AudioChunk {
+  id    Int     @id @default(autoincrement())
+  user_id Int
+  chunk String
+  sent Boolean @default(false)
+  created_at DateTime @default(now())
+  updated_at DateTime @updatedAt
+}
