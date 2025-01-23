@@ -13,7 +13,7 @@ import InvoiceDetailPage from "./app/pages/InvoiceDetail/InvoiceDetailPage";
 import { ErrorResponse } from './error';
 import { getSession, performLogin } from './auth';
 import { LoginPage } from "./app/pages/Login/LoginPage";
-import { setupEnv } from "./lib";
+import { setupEnv } from "./env";
 
 // todo(peterp, 2024-11-25): Make these lazy.
 const routes = {

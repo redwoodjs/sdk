@@ -1,7 +1,7 @@
 'use server';
 
 import { Resend } from 'resend';
-import { getEnv } from '../../../lib';
+import { getEnv } from '../../../env';
 import { db } from '../../../db';
 
 export async function generateAuthToken(email: string) {
