@@ -51,13 +51,13 @@ export default {
           originalMessageSid,
         );
         // do we have a record of this number in the db?
-        const user = await db.user.findFirst({
+        let user = await db.user.findFirst({
           where: {
             cellnumber: bodyData.get("From")!,
           },
         });
         if (!user) {
-          await db.user.create({
+          user = await db.user.create({
             data: {
               cellnumber: bodyData.get("From")!,
             },
