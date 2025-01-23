@@ -4,6 +4,8 @@ import { TwilioClient } from "./twilio";
 import { db, setupDb } from "./db";
 import languages from "./languages";
 
+const VOICE_MODEL = "@cf/openai/whisper-large-v3-turbo";
+const TEXT_MODEL = "@cf/meta/llama-2-7b-chat-fp16";
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     globalThis.__webpack_require__ = ssrWebpackRequire;
@@ -106,6 +108,8 @@ export default {
             } else {
               throw new Error("Audio chunk not created");
             }
+          } else {
+            throw new Error("User not found");
           }
           console.log("Sent to voice-que");
 
@@ -213,7 +217,7 @@ export default {
             throw new Error("User not found");
           }
           
-          const result = await env.AI.run("@cf/openai/whisper-large-v3-turbo", {
+          const result = await env.AI.run(VOICE_MODEL, {
             audio: audioChunk?.chunk,
             task: "translate",
             language: user.language,
@@ -278,7 +282,7 @@ export default {
 
       if (message.body.queue === "text-que") {
         console.log("Running text model");
-        const response = await env.AI.run("@cf/meta/llama-2-7b-chat-fp16", {
+        const response = await env.AI.run(TEXT_MODEL, {
           messages: [
             {
               role: "system",
