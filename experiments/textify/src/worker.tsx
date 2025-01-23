@@ -26,7 +26,7 @@ export default {
       }
 
       setupDb(env);
-
+      // for testing
       if (request.url.includes("/test")) {
         await env.ai_que.send({ 
           from: "whatsapp:+27724217253",
@@ -39,6 +39,7 @@ export default {
         return new Response('OK', { status: 200 });
       }
 
+      // for incoming messages from twilio
       if (request.method === "POST" && request.url.includes("/incoming")) {
         console.log("Incoming request received");
         const body = await request.text();
