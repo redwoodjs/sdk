@@ -12,11 +12,14 @@ import InvoiceListPage from "./app/pages/InvoiceList/InvoiceListPage";
 import InvoiceDetailPage from "./app/pages/InvoiceDetail/InvoiceDetailPage";
 import { ErrorResponse } from './error';
 import { getSession, performLogin } from './auth';
+import { LoginPage } from "./app/pages/Login/LoginPage";
+import { setupEnv } from "./env";
 
 // todo(peterp, 2024-11-25): Make these lazy.
 const routes = {
   "/": InvoiceListPage,
   "/invoice/:id": InvoiceDetailPage,
+  "/login": LoginPage,
 }
 
 export { SessionDO } from "./session";
@@ -24,6 +27,8 @@ export { SessionDO } from "./session";
 export default {
   async fetch(request: Request, env: Env) {
     globalThis.__webpack_require__ = ssrWebpackRequire;
+
+
 
     try {
       const url = new URL(request.url);
@@ -42,6 +47,7 @@ export default {
       }
 
       setupDb(env);
+      setupEnv(env);
 
       // grab the image if it's requested.
       if (request.method === "GET" && url.pathname.startsWith("/logos/")) {
@@ -62,6 +68,39 @@ export default {
       } else if (request.method === 'GET' && url.pathname === '/test/auth') {
         const session = await getSession(request, env);
         return new Response(`You are logged in as user ${session.userId}!`, { status: 200 });
+      } else if (url.pathname === '/auth' && request.method === 'GET') {
+        const token = url.searchParams.get('token');
+        const email = url.searchParams.get('email');
+
+        if (!token || !email) {
+          return new Response('Invalid token or email', { status: 400 });
+        }
+
+        const user = await db.user.findFirst({
+          where: {
+            email,
+            authToken: token,
+            authTokenExpiresAt: {
+              gt: new Date()
+            }
+          }
+        });
+
+        if (!user) {
+          return new Response('Invalid or expired token', { status: 400 });
+        }
+
+        // Clear the auth token
+        await db.user.update({
+          where: { id: user.id },
+          data: {
+            authToken: null,
+            authTokenExpiresAt: null
+          }
+        });
+
+        // Use your existing session creation logic
+        return performLogin(request, env);
       }
 
       const renderPage = async (Page: any, props = {}) => {

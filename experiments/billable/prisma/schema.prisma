@@ -35,9 +35,11 @@ model Invoice {
 }
 
 model User {
-  id        String    @id @default(uuid())
-  email     String    @unique
-  createdAt DateTime  @default(now())
-  updatedAt DateTime? @updatedAt
-  Invoice   Invoice[]
+  id                String    @id @default(uuid())
+  email             String    @unique
+  authToken         String?
+  authTokenExpiresAt DateTime?
+  createdAt         DateTime  @default(now())
+  updatedAt         DateTime? @updatedAt
+  Invoice           Invoice[]
 }
