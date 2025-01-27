@@ -5,7 +5,7 @@ import { sendEmail } from "./functions";
 import { Layout } from "../Layout";
 
 export function LoginPage() {
-  const [email, setEmail] = useState("peter@redwoodjs.com");
+  const [email, setEmail] = useState('');
   const [isPending, startTransition] = useTransition();
   const [success, setSuccess] = useState(false);
 
