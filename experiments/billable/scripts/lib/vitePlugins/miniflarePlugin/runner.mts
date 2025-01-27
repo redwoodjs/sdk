@@ -17,6 +17,12 @@ const STATE: {
   handlers: undefined,
 }
 
+interface DurableObjectConstructor<T = unknown> {
+  new(
+    ...args: ConstructorParameters<typeof DurableObject<T>>
+  ): DurableObject<T>;
+}
+
 const fetch = async (request: Request<any, any>, env: RunnerEnv, ctx: ExecutionContext) => {
   const {
     entry,
@@ -197,32 +203,42 @@ export const proxyWorkerHandlerMethod = async <Env extends Record<string, unknow
 }
 
 export const createDurableObjectProxy = (scriptName: string, className: string) => {
-  let instance: DurableObject
-
-  const ensureExists = async (state: DurableObjectState, env: RunnerEnv) => {
-    if (instance) {
-      return instance
-    }
-
+  async function ensureExists(host: DurableObject & { __instance?: DurableObject, __Constructor?: DurableObjectConstructor }, state: DurableObjectState, env: RunnerEnv) {
     if (!STATE.runner) {
       throw new Error("Runner not initialized");
     }
 
     const mod = await STATE.runner.import(scriptName)
     const Constructor = mod[className]
-    instance = new Constructor(state, env)
-    return instance
+
+    if (host.__instance && host.__Constructor === Constructor) {
+      return host.__instance
+    }
+
+    host.__Constructor = Constructor
+    host.__instance = new Constructor(state, env)
+
+    return host.__instance
   }
 
   return class DurableObjectProxy extends DurableObject<RunnerEnv> {
+    __instance: DurableObject | undefined
+    __Constructor: DurableObjectConstructor | undefined
+
     constructor(public state: DurableObjectState, public env: RunnerEnv) {
       super(state, env);
 
       return new Proxy(this, {
-        get(_target, prop, receiver) {
+        get(target, key, receiver) {
+          const value = Reflect.get(target, key, receiver)
+
+          if (value !== undefined) {
+            return value
+          }
+
           const fn = async (...args: any[]) => {
-            const instance = await ensureExists(state, env)
-            return Reflect.get(instance, prop, receiver).call(instance, ...args)
+            const instance = await ensureExists(receiver, state, env)
+            return (instance as any)[key].call(instance, ...args)
           }
 
           return fn

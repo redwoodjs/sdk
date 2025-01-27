@@ -78,11 +78,7 @@ export const getSession = async (request: Request, env: Env) => {
     throw new ErrorResponse(401, "No cookie found");
   }
 
-  const cookies = Object.fromEntries(
-    cookieHeader.split("; ").map((c) => c.split("="))
-  );
-
-  const sessionId = cookies["session_id"];
+  const sessionId = cookieHeader.split("=").slice(1).join("=")
 
   if (sessionId == null) {
     throw new ErrorResponse(401, "No session id found");
@@ -96,5 +92,9 @@ export const getSession = async (request: Request, env: Env) => {
   const sessionDO = env.SESSION_DO.get(doId) as DurableObjectStub<SessionDO>;
   const session = await sessionDO.getSession();
 
-  return session;
+  if ('error' in session) {
+    throw new ErrorResponse(401, session.error);
+  }
+
+  return session.value;
 }
