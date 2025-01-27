@@ -370,6 +370,10 @@ const createDevEnv = async ({
   };
 
   const dispatchFetch: DevEnvApi["dispatchFetch"] = async (request) => {
+    if (new URL(request.url).pathname === "/__vite_ping") {
+      return new Response("pong", { status: 200 });
+    }
+
     if (devEnv.discarded) {
       return redirectToSelf(request);
     }
