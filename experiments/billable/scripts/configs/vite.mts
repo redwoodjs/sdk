@@ -166,9 +166,10 @@ export const viteConfigs = {
           resolve: {
             external: ['@prisma/client']
           },
+
           build: {
             rollupOptions: {
-              external: ['cloudflare:workers']
+              external: ['cloudflare:workers', 'node:stream']
             }
           }
         }
