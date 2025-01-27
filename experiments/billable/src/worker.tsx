@@ -1,4 +1,4 @@
-import { App } from "./app/App"
+import { App } from "./app/App";
 import { type SessionDO } from "./session";
 import { db, setupDb } from "./db";
 
@@ -10,25 +10,25 @@ import { ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import InvoiceListPage from "./app/pages/InvoiceList/InvoiceListPage";
 import InvoiceDetailPage from "./app/pages/InvoiceDetail/InvoiceDetailPage";
-import { ErrorResponse } from './error';
-import { getSession, performLogin } from './auth';
+import { ErrorResponse } from "./error";
+import { getSession, performLogin } from "./auth";
 import { LoginPage } from "./app/pages/Login/LoginPage";
 import { setupEnv } from "./env";
+import HomePage from "./app/pages/Home/HomePage";
 
 // todo(peterp, 2024-11-25): Make these lazy.
 const routes = {
-  "/": InvoiceListPage,
+  "/": HomePage,
+  "/invoices": InvoiceListPage,
   "/invoice/:id": InvoiceDetailPage,
   "/login": LoginPage,
-}
+};
 
 export { SessionDO } from "./session";
 
 export default {
   async fetch(request: Request, env: Env) {
     globalThis.__webpack_require__ = ssrWebpackRequire;
-
-
 
     try {
       const url = new URL(request.url);
@@ -37,6 +37,8 @@ export default {
       const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 
       let actionResult: any;
+      // Think about this - How do we ensure that the action is callable by non logged in users?
+      // I secure "per route"
       if (isRSCActionHandler) {
         actionResult = await rscActionHandler(request);
       }
@@ -49,6 +51,15 @@ export default {
       setupDb(env);
       setupEnv(env);
 
+      // let's determine if the user is logged in.
+      try {
+        const session = await getSession(request, env);
+        console.log("logged in.");
+      } catch (e) {
+        console.log("not logged in.");
+        console.log(e);
+      }
+
       // grab the image if it's requested.
       if (request.method === "GET" && url.pathname.startsWith("/logos/")) {
         const object = await env.R2.get(url.pathname);
@@ -57,23 +68,17 @@ export default {
         }
         return new Response(object.body, {
           headers: {
-            'Content-Type': object.httpMetadata?.contentType as string,
+            "Content-Type": object.httpMetadata?.contentType as string,
           },
         });
       }
 
-
-      if (request.method === 'GET' && url.pathname === '/test/login') {
-        return performLogin(request, env);
-      } else if (request.method === 'GET' && url.pathname === '/test/auth') {
-        const session = await getSession(request, env);
-        return new Response(`You are logged in as user ${session.userId}!`, { status: 200 });
-      } else if (url.pathname === '/auth' && request.method === 'GET') {
-        const token = url.searchParams.get('token');
-        const email = url.searchParams.get('email');
+      if (url.pathname === "/auth" && request.method === "GET") {
+        const token = url.searchParams.get("token");
+        const email = url.searchParams.get("email");
 
         if (!token || !email) {
-          return new Response('Invalid token or email', { status: 400 });
+          return new Response("Invalid token or email", { status: 400 });
         }
 
         const user = await db.user.findFirst({
@@ -81,13 +86,13 @@ export default {
             email,
             authToken: token,
             authTokenExpiresAt: {
-              gt: new Date()
-            }
-          }
+              gt: new Date(),
+            },
+          },
         });
 
         if (!user) {
-          return new Response('Invalid or expired token', { status: 400 });
+          return new Response("Invalid or expired token", { status: 400 });
         }
 
         // Clear the auth token
@@ -95,16 +100,19 @@ export default {
           where: { id: user.id },
           data: {
             authToken: null,
-            authTokenExpiresAt: null
-          }
+            authTokenExpiresAt: null,
+          },
         });
 
-        // Use your existing session creation logic
         return performLogin(request, env);
       }
+      // add logout.
 
       const renderPage = async (Page: any, props = {}) => {
-        const rscPayloadStream = renderToRscStream({ node: <Page {...props} />, actionResult: actionResult });
+        const rscPayloadStream = renderToRscStream({
+          node: <Page {...props} />,
+          actionResult: actionResult,
+        });
         if (isRSCRequest) {
           return new Response(rscPayloadStream, {
             headers: { "content-type": "text/x-component; charset=utf-8" },
@@ -127,52 +135,74 @@ export default {
 
       const pathname = new URL(request.url).pathname as keyof typeof routes;
       const Page = routes[pathname];
-      if (Page) {
-        return renderPage(Page)
+      if (pathname === "/" || pathname === "/login") {
+        console.log("renderPage", Page);
+        return renderPage(Page);
       }
 
-      if (pathname.startsWith("/invoice/")) {
-        const id = pathname.slice("/invoice/".length);
-        if (pathname.endsWith("/upload")) {
-          if (request.method === "POST" && request.headers.get("content-type")?.includes("multipart/form-data")) {
-            const formData = await request.formData();
-            const userId = formData.get('userId') as string;
-            const invoiceId = formData.get('invoiceId') as string;
-            const file = formData.get("file") as File;
+      // check that the user is authenticated.
+      const session = await getSession(request, env);
 
-            // Stream the file directly to R2
-            const r2ObjectKey = `/logos/${userId}/${invoiceId}-${Date.now()}-${file.name}`;
-            await env.R2.put(r2ObjectKey, file.stream(), {
-              httpMetadata: {
-                contentType: file.type,
-              },
-            });
-
-            await db.invoice.update({
-              where: { id: invoiceId },
-              data: {
-                supplierLogo: r2ObjectKey,
-              }
-            })
-
-            return new Response(JSON.stringify({ key: r2ObjectKey }), {
-              status: 200,
-              headers: {
-                'Content-Type': 'application/json'
-              }
-            });
-          }
-          return new Response("Method not allowed", { status: 405 });
-        } else {
-          return renderPage(InvoiceDetailPage, { id });
+      if (session.userId !== null) {
+        // @ts-ignore TypeScript thinks this is wrong.
+        if (pathname === "/") {
+          return new Response("Redirecting to /invoices", {
+            status: 302,
+            headers: {
+              Location: "/invoices",
+            },
+          });
         }
 
+        if (Page) {
+          return renderPage(Page);
+        }
+        if (pathname.startsWith("/invoice/")) {
+          const id = pathname.slice("/invoice/".length);
+          if (pathname.endsWith("/upload")) {
+            if (
+              request.method === "POST" &&
+              request.headers
+                .get("content-type")
+                ?.includes("multipart/form-data")
+            ) {
+              const formData = await request.formData();
+              const userId = formData.get("userId") as string;
+              const invoiceId = formData.get("invoiceId") as string;
+              const file = formData.get("file") as File;
+
+              // Stream the file directly to R2
+              const r2ObjectKey = `/logos/${userId}/${invoiceId}-${Date.now()}-${file.name}`;
+              await env.R2.put(r2ObjectKey, file.stream(), {
+                httpMetadata: {
+                  contentType: file.type,
+                },
+              });
+
+              await db.invoice.update({
+                where: { id: invoiceId },
+                data: {
+                  supplierLogo: r2ObjectKey,
+                },
+              });
+
+              return new Response(JSON.stringify({ key: r2ObjectKey }), {
+                status: 200,
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              });
+            }
+            return new Response("Method not allowed", { status: 405 });
+          } else {
+            return renderPage(InvoiceDetailPage, { id });
+          }
+        }
       }
 
       if (!Page) {
         return new Response("Not found", { status: 404 });
       }
-
     } catch (e) {
       if (e instanceof ErrorResponse) {
         return new Response(e.message, { status: e.code });
@@ -181,5 +211,5 @@ export default {
       console.error("Unhandled error", e);
       throw e;
     }
-  }
-}
+  },
+};
