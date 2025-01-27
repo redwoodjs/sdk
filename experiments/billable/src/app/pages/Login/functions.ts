@@ -26,6 +26,7 @@ export async function generateAuthToken(email: string) {
 
 export async function sendEmail(email: string) {
   const token = await generateAuthToken(email);
+
   const loginUrl = `${process.env.APP_URL}/auth?token=${token}&email=${encodeURIComponent(email)}`;
 
   const resend = new Resend(getEnv().RESEND_API_KEY);
