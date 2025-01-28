@@ -90,10 +90,6 @@ export default {
         if (!token || !email) {
           return new Response("Invalid token or email", { status: 400 });
         }
-
-        console.log('abc')
-
-
         const user = await db.user.findFirst({
           where: {
             email,
@@ -109,13 +105,13 @@ export default {
         }
 
         // Clear the auth token
-        // await db.user.update({
-        //   where: { id: user.id },
-        //   data: {
-        //     authToken: null,
-        //     authTokenExpiresAt: null,
-        //   },
-        // });
+        await db.user.update({
+          where: { id: user.id },
+          data: {
+            authToken: null,
+            authTokenExpiresAt: null,
+          },
+        });
 
         console.log('performing login')
 
