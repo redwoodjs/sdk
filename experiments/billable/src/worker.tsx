@@ -33,6 +33,15 @@ export default {
     try {
       const url = new URL(request.url);
 
+      // Determine if the user is or was authenticated.
+      try {
+        const s = await getSession(request, env);
+        console.log('## session', s)
+      } catch (e) {
+        console.log("not logged in.");
+        console.log(e);
+      }
+
       const isRSCRequest = url.searchParams.has("__rsc");
       const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 

@@ -9,7 +9,7 @@ interface Session {
 
 export class SessionDO extends DurableObject {
   session: Session | undefined = undefined;
-  constructor(state: DurableObjectState, env: Env) {
+  constructor(public state: DurableObjectState, public env: Env) {
     super(state, env);
     this.session = undefined;
   }
@@ -20,41 +20,37 @@ export class SessionDO extends DurableObject {
       createdAt: Date.now(),
     }
 
-    await this.ctx.storage.put<Session>("session", session);
+    await this.state.storage.put<Session>("session", session);
     this.session = session;
     return session;
   }
 
-  async getSession(): Promise<{ value: Session } | { error: string }> {
+  async getSession(): Promise<Session> {
     if (this.session) {
-      return { value: this.session };
+      return this.session;
     }
 
-    const session = await this.ctx.storage.get<Session>("session");
+    const session = await this.state.storage.get<Session>("session");
 
     // context(justinvdm, 2025-01-15): If the session DO exists but there's no session state
     // it means we received a valid session id (it passed the signature check), but the session
     // has been revoked.
     if (!session) {
-      return {
-        error: 'Invalid session'
-      }
+      throw new ErrorResponse(401, "Invalid session");
     }
 
     // context(justinvdm, 2025-01-15): If the session is expired, we need to revoke it.
     if (session.createdAt + MAX_TOKEN_DURATION < Date.now()) {
       await this.revokeSession();
-      return {
-        error: 'Session expired'
-      }
+      throw new ErrorResponse(401, "Session expired");
     }
 
     this.session = session;
-    return { value: session };
+    return session;
   }
 
   async revokeSession() {
-    await this.ctx.storage.delete("session");
+    await this.state.storage.delete("session");
     this.session = undefined;
   }
 }
