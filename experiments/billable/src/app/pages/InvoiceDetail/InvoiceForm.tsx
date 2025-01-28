@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { type InvoiceTaxes, type InvoiceItem, type getInvoice } from "./FetchInvoice";
 import { deleteLogo, saveInvoice } from "./functions";
 import { PrintPdf } from "./PrintToPdf";
-import { NestedClientComponent } from './NestedClientComponent';
+
 
 export function calculateSubtotal(items: InvoiceItem[]) {
   let sum = 0;
@@ -42,7 +42,7 @@ export function InvoiceForm(props: {
         <button
           onClick={async () => {
             await saveInvoice(invoice.id, invoice, items, taxes);
-            window.location.href = "/";
+            // window.location.href = "/";
           }}
         >
           Save
@@ -247,8 +247,6 @@ export function InvoiceForm(props: {
           />
         </div>
       </div>
-
-      <NestedClientComponent />
     </div>
   );
 }

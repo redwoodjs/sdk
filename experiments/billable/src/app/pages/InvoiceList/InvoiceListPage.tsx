@@ -17,7 +17,7 @@ export type InvoiceTaxes = {
 }
 
 
-async function getInvoiceListSummary() {
+async function getInvoiceListSummary(userId) {
 
   const invoices = await db.invoice.findMany({
     select: {
@@ -35,10 +35,6 @@ async function getInvoiceListSummary() {
   return invoices.map((invoice) => {
 
     const { id, date, number, customer, status } = invoice
-
-    // const subtotal = calculateSubtotal(invoice.items as InvoiceItem[])
-    // const taxes = calculateTaxes(subtotal, invoice.taxes as InvoiceTaxItem[])
-
     return {
       id,
       date,
@@ -49,41 +45,10 @@ async function getInvoiceListSummary() {
   })
 }
 
-export async function createInvoice() {
-
-  // grab the supplier name
-  // and the contact information
-  // what if the user doesn't have any invoices?
-  // we will eventually include an invoice template... maybe I should just shove that in a seperate function for now?
-  let lastInvoice = await db.invoice.findFirst({
-    where: {
-      userId: '1',
-    },
-    orderBy: {
-      createdAt: 'desc',
-    }
-  })
-
-  const newInvoice = await db.invoice.create({
-    data: {
-      number: (Number(lastInvoice?.number || 0) + 1).toString(),
-      supplierName: lastInvoice?.supplierName,
-      supplierContact: lastInvoice?.supplierContact,
-      notesA: lastInvoice?.notesA,
-      notesB: lastInvoice?.notesB,
-      taxes: lastInvoice?.taxes,
-      userId: '1'
-    }
-  })
-
-  return newInvoice
-}
-
-
-export default async function InvoiceListPage() {
-  const invoices = await getInvoiceListSummary();
+export default async function InvoiceListPage({ ctx }: { ctx: any }) {
+  const invoices = await getInvoiceListSummary(ctx.user.id);
   return (
-    <Layout>
+    <Layout ctx={ctx}>
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="sm:flex sm:items-center">
           <div className="sm:flex-auto">
@@ -96,36 +61,28 @@ export default async function InvoiceListPage() {
         <div className="mt-8 flow-root">
           <div className="-mx-4 -my-2 overflow-x-auto sm:-mx-6 lg:-mx-8">
             <div className="inline-block min-w-full py-2 align-middle sm:px-6 lg:px-8">
-              <table className="min-w-full divide-y divide-gray-300">
-                <thead>
-                  <tr>
-                    <th
-                      scope="col"
-                      className="py-3.5 pl-4 pr-3 text-left text-sm font-semibold text-gray-900 sm:pl-0"
-                    >
+              <div className="table min-w-full">
+                {/* Header */}
+                <div className="table-header-group border-b border-gray-300">
+                  <div className="table-row">
+                    <div className="table-cell text-left text-sm font-semibold text-gray-900 py-3.5 pl-4 pr-3 sm:pl-0">
                       Date
-                    </th>
-                    <th
-                      scope="col"
-                      className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-                    >
+                    </div>
+                    <div className="table-cell text-left text-sm font-semibold text-gray-900 px-3 py-3.5">
                       Customer
-                    </th>
-
-                    <th
-                      scope="col"
-                      className="px-3 py-3.5 text-left text-sm font-semibold text-gray-900"
-                    >
+                    </div>
+                    <div className="table-cell text-left text-sm font-semibold text-gray-900 px-3 py-3.5">
                       Invoice #
-                    </th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-gray-200">
+                    </div>
+                  </div>
+                </div>
+                {/* Rows */}
+                <div className="table-row-group divide-y divide-gray-200">
                   {invoices.map((i) => (
                     <InvoiceListItem {...i} key={"invoice-" + i.id} />
                   ))}
-                </tbody>
-              </table>
+                </div>
+              </div>
             </div>
           </div>
         </div>
@@ -134,28 +91,24 @@ export default async function InvoiceListPage() {
   );
 }
 
-// todo: fix the total
-// todo: make the entire row clickable
 function InvoiceListItem(
   props: Awaited<ReturnType<typeof getInvoiceListSummary>>[number],
 ) {
   return (
-    <tr
-      className="cursor-pointer"
-    >
-      <td className="whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-0">
-        <a href={`/invoice/${props.id}`}>{props.date.toLocaleDateString(undefined, {
+    <a href={`/invoice/${props.id}`} className="table-row hover:bg-gray-50 cursor-pointer">
+      <div className="table-cell whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-0">
+        {props.date.toLocaleDateString(undefined, {
           year: 'numeric',
           month: 'long',
           day: 'numeric'
-        })}</a>
-      </td>
-      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+        })}
+      </div>
+      <div className="table-cell whitespace-nowrap px-3 py-4 text-sm text-gray-500">
         {props.customer}
-      </td>
-      <td className="whitespace-nowrap px-3 py-4 text-sm text-gray-500">
+      </div>
+      <div className="table-cell whitespace-nowrap px-3 py-4 text-sm text-gray-500">
         {props.number}
-      </td>
-    </tr>
+      </div>
+    </a>
   );
 }

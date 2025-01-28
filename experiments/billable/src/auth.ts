@@ -16,9 +16,7 @@ const unpackSessionId = (packed: string): SessionIdParts => {
   return { unsignedSessionId, signature };
 }
 
-export const performLogin = async (request: Request, env: Env) => {
-  const userId = "1";
-
+export const performLogin = async (request: Request, env: Env, userId: string) => {
   const sessionId = await generateSessionId(env);
   const doId = env.SESSION_DO.idFromName(sessionId);
   const sessionDO = env.SESSION_DO.get(doId) as DurableObjectStub<SessionDO>;
@@ -26,9 +24,20 @@ export const performLogin = async (request: Request, env: Env) => {
 
   const cookie = `session_id=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${MAX_TOKEN_DURATION}`;
 
-  return new Response("Login successful", {
+  return new Response(`
+    <html>
+      <head>
+        <meta http-equiv="refresh" content="0;url=/invoices">
+      </head>
+      <body>
+        Redirecting to invoices...
+      </body>
+    </html>`, {
     status: 200,
-    headers: { "Set-Cookie": cookie },
+    headers: {
+      "Set-Cookie": cookie,
+      "Content-Type": "text/html"
+    },
   });
 }
 

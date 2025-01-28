@@ -6,9 +6,9 @@ import { Layout } from "../Layout";
 import { FetchInvoice } from "./FetchInvoice";
 import { InvoiceForm } from "./InvoiceForm";
 
-export default async function InvoiceDetailPage({ id }: { id: string }) {
+export default async function InvoiceDetailPage({ id, ctx }: { id: string, ctx: any}) {
   return (
-    <Layout>
+    <Layout ctx={ctx}>
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="space-y-12">
           <div className="border-b border-gray-900/10 pb-12">
