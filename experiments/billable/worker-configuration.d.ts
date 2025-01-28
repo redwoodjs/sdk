@@ -2,6 +2,7 @@
 
 interface Env {
 	SECRET_KEY: "secret";
+	RESEND_API_KEY: "123";
 	SESSION_DO: DurableObjectNamespace<import("./src/worker").SessionDO>;
 	R2: R2Bucket;
 	DB: D1Database;
