@@ -102,7 +102,7 @@ export default {
           },
         });
 
-        return performLogin(request, env);
+        return performLogin(request, env, user.id);
       }
       // add logout.
 

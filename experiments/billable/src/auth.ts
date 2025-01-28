@@ -16,9 +16,7 @@ const unpackSessionId = (packed: string): SessionIdParts => {
   return { unsignedSessionId, signature };
 }
 
-export const performLogin = async (request: Request, env: Env) => {
-  const userId = "1";
-
+export const performLogin = async (request: Request, env: Env, userId: string) => {
   const sessionId = await generateSessionId(env);
   const doId = env.SESSION_DO.idFromName(sessionId);
   const sessionDO = env.SESSION_DO.get(doId) as DurableObjectStub<SessionDO>;
