@@ -9,7 +9,6 @@ import {
   ROOT_DIR,
   WORKER_DIST_DIR,
   VENDOR_DIST_DIR,
-  VENDOR_ROOT_DIR,
 } from "../lib/constants.mjs";
 
 import tailwind from "tailwindcss";
@@ -20,7 +19,7 @@ import { transformJsxScriptTagsPlugin } from "../lib/vitePlugins/transformJsxScr
 import { useServerPlugin } from "../lib/vitePlugins/useServerPlugin.mjs";
 import { useClientPlugin } from "../lib/vitePlugins/useClientPlugin.mjs";
 import { useClientLookupPlugin } from "../lib/vitePlugins/useClientLookupPlugin.mjs";
-import { miniflarePlugin } from "../lib/vitePlugins/miniflarePlugin/plugin.mjs";
+import { miniflarePlugin } from "../lib/vitePlugins/miniflarePlugin.mjs";
 import { miniflareConfig } from "./miniflare.mjs";
 import { asyncSetupPlugin } from "../lib/vitePlugins/asyncSetupPlugin.mjs";
 import { restartPlugin } from "../lib/vitePlugins/restartPlugin.mjs";
@@ -62,7 +61,7 @@ export const viteConfigs = {
       },
       worker: {
         resolve: {
-          conditions: ["module", "workerd", "react-server"],
+          conditions: ["workerd", "react-server"],
           // context(justinvdm, 2025-01-06): We rely on vite's prebundling and then let vite provide us with this prebundled code:
           // - we shouldn't needing to evaluate each and every module of each and every dependency in the module runner (prebundle avoids this)
           // - we can't rely on dynamic imports from within the miniflare sandbox (without teaching it about each and every module of each and every dependency)
@@ -71,7 +70,7 @@ export const viteConfigs = {
         optimizeDeps: {
           noDiscovery: false,
           esbuildOptions: {
-            conditions: ["module", "workerd", "react-server"],
+            conditions: ["workerd", "react-server"],
           },
           include: [
             "react",
@@ -140,10 +139,9 @@ export const viteConfigs = {
               dirname(filepath) === ROOT_DIR),
         }) : null,
         miniflarePlugin({
-          entry: RELATIVE_WORKER_PATHNAME,
-          environment: "worker",
-          miniflare: miniflareConfig,
-          rootDir: ROOT_DIR,
+          viteEnvironment: {
+            name: 'worker',
+          }
         }),
         // context(justinvdm, 2024-12-03): vite needs the virtual module created by this plugin to be around,
         // even if the code path that use the virtual module are not reached in dev

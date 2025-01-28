@@ -1,9 +1,9 @@
 #:schema node_modules/wrangler/config-schema.json
 name = "billable"
-main = "dist/worker/worker.js"
+main = "src/worker.tsx"
 compatibility_date = "2024-03-12"
 compatibility_flags = ["nodejs_compat", "rpc"]
-assets = { directory = "./dist/assets/", binding = "ASSETS" }
+#assets = { directory = "./dist/assets/", binding = "ASSETS" }
 
 workers_dev = false
 route = { pattern = "billable.me/*", zone_name = "billable.me" }
@@ -28,9 +28,6 @@ bindings = [
 [[migrations]]
 tag = "v1"
 new_classes = [ "SessionDO" ]
-
-[build]
-command = "pnpm build"
 
 [vars]
 SECRET_KEY = "secret"
