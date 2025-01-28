@@ -1,5 +1,4 @@
 import { App } from "./app/App";
-import { type SessionDO } from "./session";
 import { db, setupDb } from "./db";
 
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
@@ -33,21 +32,20 @@ export default {
     try {
       const url = new URL(request.url);
 
-      // Determine if the user is or was authenticated.
+      //Determine if the user is or was authenticated.
+      let session: Awaited<ReturnType<typeof getSession>> | undefined;
+      let authenticated: boolean = false;
       try {
-        const s = await getSession(request, env);
-        console.log('## session', s)
+        session = await getSession(request, env);
+        authenticated = true;
       } catch (e) {
-        console.log("not logged in.");
-        console.log(e);
+        authenticated = false;
       }
 
       const isRSCRequest = url.searchParams.has("__rsc");
       const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 
       let actionResult: any;
-      // Think about this - How do we ensure that the action is callable by non logged in users?
-      // I secure "per route"
       if (isRSCActionHandler) {
         actionResult = await rscActionHandler(request);
       }
@@ -59,15 +57,6 @@ export default {
 
       setupDb(env);
       setupEnv(env);
-
-      // let's determine if the user is logged in.
-      try {
-        const session = await getSession(request, env);
-        console.log("logged in.");
-      } catch (e) {
-        console.log("not logged in.");
-        console.log(e);
-      }
 
       // grab the image if it's requested.
       if (request.method === "GET" && url.pathname.startsWith("/logos/")) {
@@ -145,14 +134,11 @@ export default {
       const pathname = new URL(request.url).pathname as keyof typeof routes;
       const Page = routes[pathname];
       if (pathname === "/" || pathname === "/login") {
-        console.log("renderPage", Page);
         return renderPage(Page);
       }
 
-      // check that the user is authenticated.
-      const session = await getSession(request, env);
 
-      if (session.userId !== null) {
+      if (!authenticated) {
         // @ts-ignore TypeScript thinks this is wrong.
         if (pathname === "/") {
           return new Response("Redirecting to /invoices", {
@@ -166,6 +152,7 @@ export default {
         if (Page) {
           return renderPage(Page);
         }
+
         if (pathname.startsWith("/invoice/")) {
           const id = pathname.slice("/invoice/".length);
           if (pathname.endsWith("/upload")) {
