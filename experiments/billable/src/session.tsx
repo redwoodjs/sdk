@@ -1,6 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
 import { MAX_TOKEN_DURATION } from './constants';
-import { ErrorResponse } from './error';
 
 interface Session {
   userId: string;
