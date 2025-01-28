@@ -17,7 +17,7 @@ export type InvoiceTaxes = {
 }
 
 
-async function getInvoiceListSummary() {
+async function getInvoiceListSummary(userId) {
 
   const invoices = await db.invoice.findMany({
     select: {
@@ -45,41 +45,10 @@ async function getInvoiceListSummary() {
   })
 }
 
-export async function createInvoice() {
-
-  // grab the supplier name
-  // and the contact information
-  // what if the user doesn't have any invoices?
-  // we will eventually include an invoice template... maybe I should just shove that in a seperate function for now?
-  let lastInvoice = await db.invoice.findFirst({
-    where: {
-      userId: '1',
-    },
-    orderBy: {
-      createdAt: 'desc',
-    }
-  })
-
-  const newInvoice = await db.invoice.create({
-    data: {
-      number: (Number(lastInvoice?.number || 0) + 1).toString(),
-      supplierName: lastInvoice?.supplierName,
-      supplierContact: lastInvoice?.supplierContact,
-      notesA: lastInvoice?.notesA,
-      notesB: lastInvoice?.notesB,
-      taxes: lastInvoice?.taxes,
-      userId: '1'
-    }
-  })
-
-  return newInvoice
-}
-
-
-export default async function InvoiceListPage() {
-  const invoices = await getInvoiceListSummary();
+export default async function InvoiceListPage({ ctx }: { ctx: any }) {
+  const invoices = await getInvoiceListSummary(ctx.user.id);
   return (
-    <Layout>
+    <Layout ctx={ctx}>
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="sm:flex sm:items-center">
           <div className="sm:flex-auto">

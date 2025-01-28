@@ -42,7 +42,7 @@ export function InvoiceForm(props: {
         <button
           onClick={async () => {
             await saveInvoice(invoice.id, invoice, items, taxes);
-            window.location.href = "/";
+            // window.location.href = "/";
           }}
         >
           Save

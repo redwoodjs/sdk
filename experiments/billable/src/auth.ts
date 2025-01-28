@@ -24,9 +24,20 @@ export const performLogin = async (request: Request, env: Env, userId: string) =
 
   const cookie = `session_id=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${MAX_TOKEN_DURATION}`;
 
-  return new Response("Login successful", {
+  return new Response(`
+    <html>
+      <head>
+        <meta http-equiv="refresh" content="0;url=/invoices">
+      </head>
+      <body>
+        Redirecting to invoices...
+      </body>
+    </html>`, {
     status: 200,
-    headers: { "Set-Cookie": cookie },
+    headers: {
+      "Set-Cookie": cookie,
+      "Content-Type": "text/html"
+    },
   });
 }
 

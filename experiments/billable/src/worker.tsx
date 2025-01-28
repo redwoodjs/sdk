@@ -25,14 +25,16 @@ const routes = {
 
 export { SessionDO } from "./session";
 
-const getContext = async (request: Request, env: Env, session: Awaited<ReturnType<typeof getSession>> | undefined) => {
-  console.log('getContext')
-  const user = await db.user.findFirstOrThrow({ where: {id: session?.userId}})
-  console.log('user', user)
+export const getContext = async (
+  session: Awaited<ReturnType<typeof getSession>> | undefined,
+) => {
+  const user = await db.user.findFirstOrThrow({
+    where: { id: session?.userId },
+  });
   return {
     user,
-  }
-}
+  };
+};
 
 export default {
   async fetch(request: Request, env: Env) {
@@ -48,7 +50,7 @@ export default {
       let authenticated: boolean = false;
       try {
         session = await getSession(request, env);
-        ctx = await getContext(request, env, session);
+        ctx = await getContext(session);
         authenticated = true;
       } catch (e) {
         authenticated = false;
@@ -59,7 +61,7 @@ export default {
 
       let actionResult: any;
       if (isRSCActionHandler) {
-        actionResult = await rscActionHandler(request);
+        actionResult = await rscActionHandler(request, ctx);
       }
 
       if (url.pathname.startsWith("/assets/")) {
@@ -84,9 +86,13 @@ export default {
         const token = url.searchParams.get("token");
         const email = url.searchParams.get("email");
 
+
         if (!token || !email) {
           return new Response("Invalid token or email", { status: 400 });
         }
+
+        console.log('abc')
+
 
         const user = await db.user.findFirst({
           where: {
@@ -103,13 +109,15 @@ export default {
         }
 
         // Clear the auth token
-        await db.user.update({
-          where: { id: user.id },
-          data: {
-            authToken: null,
-            authTokenExpiresAt: null,
-          },
-        });
+        // await db.user.update({
+        //   where: { id: user.id },
+        //   data: {
+        //     authToken: null,
+        //     authTokenExpiresAt: null,
+        //   },
+        // });
+
+        console.log('performing login')
 
         return performLogin(request, env, user.id);
       }
@@ -142,66 +150,78 @@ export default {
 
       const pathname = new URL(request.url).pathname as keyof typeof routes;
       const Page = routes[pathname];
-      if (pathname === "/" || pathname === "/login") {
-        return renderPage(Page, { ctx });
+
+      if (!authenticated) {
+        if (!Page) {
+          return new Response("Not found", { status: 404 });
+        }
+
+        if (pathname === "/" || pathname === "/login") {
+          return renderPage(Page, { ctx });
+        } else {
+          return new Response('No access', { status: 401 });
+        }
       }
 
 
-      if (!authenticated) {
-        // @ts-ignore TypeScript thinks this is wrong.
-        if (pathname === "/") {
-          return new Response("Redirecting to /invoices", {
-            status: 302,
-            headers: {
-              Location: "/invoices",
-            },
-          });
-        }
+      if (pathname === "/") {
+        return new Response(`
+          <html>
+            <head>
+              <meta http-equiv="refresh" content="0;url=/invoices">
+            </head>
+            <body>
+              Redirecting to invoices...
+            </body>
+          </html>`, {
+          status: 200,
+          headers: {
+            "Content-Type": "text/html"
+          },
+        });
+      }
 
-        if (Page) {
-          return renderPage(Page, { ctx });
-        }
+      if (Page) {
+        return renderPage(Page, { ctx });
+      }
 
-        if (pathname.startsWith("/invoice/")) {
-          const id = pathname.slice("/invoice/".length);
-          if (pathname.endsWith("/upload")) {
-            if (
-              request.method === "POST" &&
-              request.headers
-                .get("content-type")
-                ?.includes("multipart/form-data")
-            ) {
-              const formData = await request.formData();
-              const userId = formData.get("userId") as string;
-              const invoiceId = formData.get("invoiceId") as string;
-              const file = formData.get("file") as File;
+      if (pathname.startsWith("/invoice/")) {
+        const id = pathname.slice("/invoice/".length);
+        if (pathname.endsWith("/upload")) {
+          if (
+            request.method === "POST" &&
+            request.headers.get("content-type")?.includes("multipart/form-data")
+          ) {
+            const formData = await request.formData();
+            const userId = formData.get("userId") as string;
+            const invoiceId = formData.get("invoiceId") as string;
+            const file = formData.get("file") as File;
 
-              // Stream the file directly to R2
-              const r2ObjectKey = `/logos/${userId}/${invoiceId}-${Date.now()}-${file.name}`;
-              await env.R2.put(r2ObjectKey, file.stream(), {
-                httpMetadata: {
-                  contentType: file.type,
-                },
-              });
+            // Stream the file directly to R2
+            const r2ObjectKey = `/logos/${userId}/${invoiceId}-${Date.now()}-${file.name}`;
+            await env.R2.put(r2ObjectKey, file.stream(), {
+              httpMetadata: {
+                contentType: file.type,
+              },
+            });
 
-              await db.invoice.update({
-                where: { id: invoiceId },
-                data: {
-                  supplierLogo: r2ObjectKey,
-                },
-              });
+            await db.invoice.update({
+              where: { id: invoiceId },
+              data: {
+                supplierLogo: r2ObjectKey,
+              },
+            });
 
-              return new Response(JSON.stringify({ key: r2ObjectKey }), {
-                status: 200,
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              });
-            }
-            return new Response("Method not allowed", { status: 405 });
-          } else {
-            return renderPage(InvoiceDetailPage, { id, ctx });
+            return new Response(JSON.stringify({ key: r2ObjectKey }), {
+              status: 200,
+              headers: {
+                "Content-Type": "application/json",
+              },
+            });
           }
+          return new Response("Method not allowed", { status: 405 });
+        } else {
+          return renderPage(InvoiceDetailPage, { id, ctx });
         }
       }
 

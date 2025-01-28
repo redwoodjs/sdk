@@ -30,12 +30,12 @@ export async function generateAuthToken(email: string) {
 
 export async function sendEmail(email: string) {
   const token = await generateAuthToken(email);
-  const loginUrl = `${process.env.APP_URL}/auth?token=${token}&email=${encodeURIComponent(email)}`;
+  const loginUrl = `${getEnv().APP_URL}/auth?token=${token}&email=${encodeURIComponent(email)}`;
   const resend = new Resend(getEnv().RESEND_API_KEY);
   await resend.emails.send({
     from: "auth@billable.me",
     to: email,
-    subject: "Login to Billable",
+    subject: `Login to Billable ${new Date().toLocaleTimeString()}`,
     html: `
     <h1>Login to Billable</h1>
     <p>Click the link below to log in to your account:</p>

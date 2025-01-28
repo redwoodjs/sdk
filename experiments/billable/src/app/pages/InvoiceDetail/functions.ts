@@ -6,8 +6,9 @@ import {
 import { db } from "../../../db";
 import type { InvoiceItem, InvoiceTaxes } from './FetchInvoice';
 
-export async function saveInvoice(id: string, invoice: Omit<Invoice, 'items' | 'taxes'>, items: InvoiceItem[], taxes: InvoiceTaxes[]) {
+export async function saveInvoice(id: string, invoice: Omit<Invoice, 'items' | 'taxes'>, items: InvoiceItem[], taxes: InvoiceTaxes[], x) {
 
+  console.log(x, x)
   // validate input with zod
   // validate user id.
 

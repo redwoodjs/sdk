@@ -1,16 +1,20 @@
 'use server';
 
+
 import { db } from "../../../db";
+import { getContext } from "../../../worker";
 
-export async function createInvoice() {
 
-  // grab the supplier name
-  // and the contact information
-  // what if the user doesn't have any invoices?
-  // we will eventually include an invoice template... maybe I should just shove that in a seperate function for now?
+
+// We need to pass the context to these somehow?
+export async function createInvoice({ ctx }: { ctx: Awaited<ReturnType<typeof getContext>>}) {
+
+  const userId = ctx.user.id
+
+  // todo(peterp, 28-01-2025): Implement templates.
   let lastInvoice = await db.invoice.findFirst({
     where: {
-      userId: '1',
+      userId,
     },
     orderBy: {
       createdAt: 'desc',
@@ -26,7 +30,7 @@ export async function createInvoice() {
       notesA: lastInvoice?.notesA,
       notesB: lastInvoice?.notesB,
       taxes: lastInvoice?.taxes,
-      userId: '1'
+      userId
     }
   })
 
