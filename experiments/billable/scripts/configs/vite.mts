@@ -20,7 +20,6 @@ import { useServerPlugin } from "../lib/vitePlugins/useServerPlugin.mjs";
 import { useClientPlugin } from "../lib/vitePlugins/useClientPlugin.mjs";
 import { useClientLookupPlugin } from "../lib/vitePlugins/useClientLookupPlugin.mjs";
 import { miniflarePlugin } from "../lib/vitePlugins/miniflarePlugin.mjs";
-import { miniflareConfig } from "./miniflare.mjs";
 import { asyncSetupPlugin } from "../lib/vitePlugins/asyncSetupPlugin.mjs";
 import { restartPlugin } from "../lib/vitePlugins/restartPlugin.mjs";
 

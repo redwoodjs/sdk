@@ -7,7 +7,8 @@ import { db } from "../../../db";
 export async function generateAuthToken(email: string) {
   const authToken = crypto.randomUUID();
   const authTokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
-  const user = await db.user.findUnique({ where: { email }})
+  console.log('##', db)
+  const user = await db.user.findUnique({ where: { email } })
   if (user) {
     await db.user.update({
       where: { email },
@@ -18,7 +19,7 @@ export async function generateAuthToken(email: string) {
     })
   } else {
     await db.user.create({
-      data :{
+      data: {
         email,
         authToken,
         authTokenExpiresAt,
@@ -29,9 +30,13 @@ export async function generateAuthToken(email: string) {
 }
 
 export async function sendEmail(email: string) {
+  console.log('### generateAuthToken')
   const token = await generateAuthToken(email);
+  console.log('### generateAuthToken done')
   const loginUrl = `${getEnv().APP_URL}/auth?token=${token}&email=${encodeURIComponent(email)}`;
+  console.log('### loginUrl', loginUrl)
   const resend = new Resend(getEnv().RESEND_API_KEY);
+  console.log('### resend')
   await resend.emails.send({
     from: "auth@billable.me",
     to: email,
@@ -43,4 +48,5 @@ export async function sendEmail(email: string) {
     <p>This link will expire in 24 hours.</p>
   `,
   });
+  console.log('### resend done')
 }

@@ -38,7 +38,6 @@ export const getContext = async (
 
 export default {
   async fetch(request: Request, env: Env) {
-    console.log('################################## worker fetch')
     globalThis.__webpack_require__ = ssrWebpackRequire;
 
     try {
