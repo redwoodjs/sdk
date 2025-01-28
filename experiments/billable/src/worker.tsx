@@ -25,6 +25,13 @@ const routes = {
 
 export { SessionDO } from "./session";
 
+const getContext = async (request: Request, env: Env, session: Awaited<ReturnType<typeof getSession>> | undefined) => {
+  const user = await db.user.findFirstOrThrow({ where: {id: session?.userId}})
+  return {
+    user,
+  }
+}
+
 export default {
   async fetch(request: Request, env: Env) {
     globalThis.__webpack_require__ = ssrWebpackRequire;
@@ -32,11 +39,12 @@ export default {
     try {
       const url = new URL(request.url);
 
-      //Determine if the user is or was authenticated.
+      let ctx: Awaited<ReturnType<typeof getContext>> | undefined;
       let session: Awaited<ReturnType<typeof getSession>> | undefined;
       let authenticated: boolean = false;
       try {
         session = await getSession(request, env);
+        ctx = await getContext(request, env, session);
         authenticated = true;
       } catch (e) {
         authenticated = false;
@@ -134,7 +142,7 @@ export default {
       const pathname = new URL(request.url).pathname as keyof typeof routes;
       const Page = routes[pathname];
       if (pathname === "/" || pathname === "/login") {
-        return renderPage(Page);
+        return renderPage(Page, { ctx });
       }
 
 
@@ -150,7 +158,7 @@ export default {
         }
 
         if (Page) {
-          return renderPage(Page);
+          return renderPage(Page, { ctx });
         }
 
         if (pathname.startsWith("/invoice/")) {
@@ -191,7 +199,7 @@ export default {
             }
             return new Response("Method not allowed", { status: 405 });
           } else {
-            return renderPage(InvoiceDetailPage, { id });
+            return renderPage(InvoiceDetailPage, { id, ctx });
           }
         }
       }
