@@ -26,7 +26,9 @@ const routes = {
 export { SessionDO } from "./session";
 
 const getContext = async (request: Request, env: Env, session: Awaited<ReturnType<typeof getSession>> | undefined) => {
+  console.log('getContext')
   const user = await db.user.findFirstOrThrow({ where: {id: session?.userId}})
+  console.log('user', user)
   return {
     user,
   }
@@ -37,8 +39,10 @@ export default {
     globalThis.__webpack_require__ = ssrWebpackRequire;
 
     try {
-      const url = new URL(request.url);
+      setupDb(env);
+      setupEnv(env);
 
+      const url = new URL(request.url);
       let ctx: Awaited<ReturnType<typeof getContext>> = {};
       let session: Awaited<ReturnType<typeof getSession>> | undefined;
       let authenticated: boolean = false;
@@ -62,9 +66,6 @@ export default {
         url.pathname = url.pathname.slice("/assets/".length);
         return env.ASSETS.fetch(new Request(url.toString(), request));
       }
-
-      setupDb(env);
-      setupEnv(env);
 
       // grab the image if it's requested.
       if (request.method === "GET" && url.pathname.startsWith("/logos/")) {
