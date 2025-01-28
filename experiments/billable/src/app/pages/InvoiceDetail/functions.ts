@@ -6,11 +6,14 @@ import {
 import { db } from "../../../db";
 import type { InvoiceItem, InvoiceTaxes } from './FetchInvoice';
 
-export async function saveInvoice(id: string, invoice: Omit<Invoice, 'items' | 'taxes'>, items: InvoiceItem[], taxes: InvoiceTaxes[], x) {
+export async function saveInvoice(id: string, invoice: Omit<Invoice, 'items' | 'taxes'>, items: InvoiceItem[], taxes: InvoiceTaxes[], { ctx }) {
 
-  console.log(x, x)
-  // validate input with zod
-  // validate user id.
+  await db.invoice.findFirstOrThrow({
+    where: {
+      id,
+      userId: ctx.user.id
+    }
+  })
 
   const data: Invoice = {
     ...invoice,
@@ -27,7 +30,15 @@ export async function saveInvoice(id: string, invoice: Omit<Invoice, 'items' | '
   })
 }
 
-export async function deleteLogo(id: string) {
+export async function deleteLogo(id: string, { ctx }) {
+
+  await db.invoice.findFirstOrThrow({
+    where: {
+      id,
+      userId: ctx.user.id
+    }
+  })
+
   await db.invoice.update({
     data: {
       supplierLogo: null,
