@@ -44,6 +44,10 @@ export default {
       setupDb(env);
       setupEnv(env);
 
+      console.log('## test db')
+      const r = await db.$queryRaw`SELECT 1`
+      console.log('## test db result', r)
+
       const url = new URL(request.url);
       let ctx: Awaited<ReturnType<typeof getContext>> = {};
       let session: Awaited<ReturnType<typeof getSession>> | undefined;

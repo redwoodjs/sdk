@@ -7,7 +7,6 @@ import { db } from "../../../db";
 export async function generateAuthToken(email: string) {
   const authToken = crypto.randomUUID();
   const authTokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
-  console.log('##', db)
   const user = await db.user.findUnique({ where: { email } })
   if (user) {
     await db.user.update({

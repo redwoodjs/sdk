@@ -22,6 +22,7 @@ import { useClientLookupPlugin } from "../lib/vitePlugins/useClientLookupPlugin.
 import { miniflarePlugin } from "../lib/vitePlugins/miniflarePlugin.mjs";
 import { asyncSetupPlugin } from "../lib/vitePlugins/asyncSetupPlugin.mjs";
 import { restartPlugin } from "../lib/vitePlugins/restartPlugin.mjs";
+import { wasmPlugin } from "../lib/vitePlugins/wasmPlugin.mjs";
 
 const MODE =
   process.env.NODE_ENV === "development" ? "development" : "production";
@@ -41,7 +42,11 @@ export const viteConfigs = {
       ),
       "process.env.NODE_ENV": JSON.stringify(MODE),
     },
-    plugins: [reactPlugin(), useServerPlugin(), useClientPlugin()],
+    plugins: [
+      reactPlugin(),
+      useServerPlugin(),
+      useClientPlugin(),
+    ],
     environments: {
       client: {
         consumer: "client",
@@ -64,7 +69,7 @@ export const viteConfigs = {
           // context(justinvdm, 2025-01-06): We rely on vite's prebundling and then let vite provide us with this prebundled code:
           // - we shouldn't needing to evaluate each and every module of each and every dependency in the module runner (prebundle avoids this)
           // - we can't rely on dynamic imports from within the miniflare sandbox (without teaching it about each and every module of each and every dependency)
-          noExternal: true,
+          //noExternal: true,
         },
         optimizeDeps: {
           noDiscovery: false,
@@ -123,6 +128,7 @@ export const viteConfigs = {
   dev: ({ setup, restartOnChanges = true, ...opts }: { setup: () => Promise<unknown>, silent?: boolean, port?: number, restartOnChanges?: boolean }): InlineConfig =>
     mergeConfig(viteConfigs.main(opts), {
       plugins: [
+        wasmPlugin(),
         asyncSetupPlugin({ setup }),
         restartOnChanges ? restartPlugin({
           filter: (filepath: string) =>
