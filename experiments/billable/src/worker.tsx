@@ -39,7 +39,7 @@ export default {
     try {
       const url = new URL(request.url);
 
-      let ctx: Awaited<ReturnType<typeof getContext>> | undefined;
+      let ctx: Awaited<ReturnType<typeof getContext>> = {};
       let session: Awaited<ReturnType<typeof getSession>> | undefined;
       let authenticated: boolean = false;
       try {

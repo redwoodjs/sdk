@@ -3,9 +3,10 @@
 import { useState, useTransition } from "react";
 import { sendEmail } from "./functions";
 import { Layout } from "../Layout";
+import type { User } from "@prisma/client";
 
-export function LoginPage() {
-  const [email, setEmail] = useState('');
+export function LoginPage({ ctx }: { ctx: { user?: User }   }) {
+  const [email, setEmail] = useState('peter@redwoodjs.com');
   const [isPending, startTransition] = useTransition();
   const [success, setSuccess] = useState(false);
 
@@ -17,7 +18,7 @@ export function LoginPage() {
   };
 
   return (
-    <Layout>
+    <Layout ctx={ctx}>
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="space-y-12">
           <div className="border-b border-gray-900/10 pb-12">

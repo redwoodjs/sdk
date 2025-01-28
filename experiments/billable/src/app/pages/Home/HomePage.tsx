@@ -1,8 +1,9 @@
+import { User } from "@prisma/client";
 import { Layout } from "../Layout";
 
-export default function HomePage() {
+export default function HomePage({ ctx }: { ctx: { user: User } }) {
   return (
-    <Layout>
+    <Layout ctx={ctx}>
       <div className="px-4 sm:px-6 lg:px-8">
         <div className="space-y-12">
           <div className="border-b border-gray-900/10 pb-12">
