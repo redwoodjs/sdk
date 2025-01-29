@@ -22,7 +22,6 @@ import { useClientLookupPlugin } from "../lib/vitePlugins/useClientLookupPlugin.
 import { miniflarePlugin } from "../lib/vitePlugins/miniflarePlugin.mjs";
 import { asyncSetupPlugin } from "../lib/vitePlugins/asyncSetupPlugin.mjs";
 import { restartPlugin } from "../lib/vitePlugins/restartPlugin.mjs";
-import { wasmPlugin } from "../lib/vitePlugins/wasmPlugin.mjs";
 
 const MODE =
   process.env.NODE_ENV === "development" ? "development" : "production";
@@ -128,7 +127,6 @@ export const viteConfigs = {
   dev: ({ setup, restartOnChanges = true, ...opts }: { setup: () => Promise<unknown>, silent?: boolean, port?: number, restartOnChanges?: boolean }): InlineConfig =>
     mergeConfig(viteConfigs.main(opts), {
       plugins: [
-        wasmPlugin(),
         asyncSetupPlugin({ setup }),
         restartOnChanges ? restartPlugin({
           filter: (filepath: string) =>
