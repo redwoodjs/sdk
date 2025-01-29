@@ -127,7 +127,7 @@ export const viteConfigs = {
         find: /^react$/,
         replacement: resolve(VENDOR_DIST_DIR, 'react.js'),
       }, {
-        find: 'react-dom/server.edge',
+        find: /^react-dom\/(server|server\.edge)$/,
         replacement: resolve(VENDOR_DIST_DIR, 'react-dom-server-edge.js'),
       }]
     }
