@@ -1,5 +1,11 @@
 import { type InlineConfig, mergeConfig } from "vite";
 import { dirname, resolve } from "node:path";
+import { createRequire } from "node:module";
+
+import tailwind from "tailwindcss";
+import autoprefixer from "autoprefixer";
+import reactPlugin from "@vitejs/plugin-react";
+
 import {
   CLIENT_DIST_DIR,
   DEV_SERVER_PORT,
@@ -10,11 +16,6 @@ import {
   WORKER_DIST_DIR,
   VENDOR_DIST_DIR,
 } from "../lib/constants.mjs";
-
-import tailwind from "tailwindcss";
-import autoprefixer from "autoprefixer";
-import reactPlugin from "@vitejs/plugin-react";
-
 import { transformJsxScriptTagsPlugin } from "../lib/vitePlugins/transformJsxScriptTagsPlugin.mjs";
 import { useServerPlugin } from "../lib/vitePlugins/useServerPlugin.mjs";
 import { useClientPlugin } from "../lib/vitePlugins/useClientPlugin.mjs";
@@ -44,6 +45,11 @@ export const viteConfigs = {
     },
     plugins: [
       acceptWasmPlugin(),
+      miniflarePlugin({
+        viteEnvironment: {
+          name: 'worker',
+        }
+      }),
       reactPlugin(),
       useServerPlugin(),
       useClientPlugin(),
@@ -143,11 +149,6 @@ export const viteConfigs = {
             (filepath.startsWith(resolve(ROOT_DIR, "scripts")) ||
               dirname(filepath) === ROOT_DIR),
         }) : null,
-        miniflarePlugin({
-          viteEnvironment: {
-            name: 'worker',
-          }
-        }),
         // context(justinvdm, 2024-12-03): vite needs the virtual module created by this plugin to be around,
         // even if the code path that use the virtual module are not reached in dev
         useClientLookupPlugin({ rootDir: ROOT_DIR, containingPath: './src/app' }),
@@ -166,15 +167,16 @@ export const viteConfigs = {
       ],
       environments: {
         worker: {
-          resolve: {
-            external: ['@prisma/client']
-          },
-
           build: {
             rollupOptions: {
               external: ['cloudflare:workers', 'node:stream']
             }
           }
+        }
+      },
+      resolve: {
+        alias: {
+          '.prisma/client/default': createRequire(createRequire(import.meta.url).resolve('@prisma/client')).resolve('.prisma/client/default'),
         }
       }
     }),

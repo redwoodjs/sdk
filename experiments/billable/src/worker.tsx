@@ -44,9 +44,13 @@ export default {
       setupDb(env);
       setupEnv(env);
 
-      console.log('## test db')
-      const r = await db.$queryRaw`SELECT 1`
-      console.log('## test db result', r)
+      if (request.url.includes('/db_test')) {
+        console.log('## test db')
+        const r = await db.$queryRaw`SELECT 1`
+        console.log('## test db result', r)
+        return new Response(JSON.stringify(r), { status: 200 })
+      }
+
 
       const url = new URL(request.url);
       let ctx: Awaited<ReturnType<typeof getContext>> = {};

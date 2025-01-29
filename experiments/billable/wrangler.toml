@@ -1,9 +1,9 @@
 #:schema node_modules/wrangler/config-schema.json
-name = "billable"
+name = "billable-justin-test"
 main = "src/worker.tsx"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
-#assets = { directory = "./dist/assets/", binding = "ASSETS" }
+assets = { directory = "./dist/assets/", binding = "ASSETS" }
 
 workers_dev = false
 route = { pattern = "billable.me/*", zone_name = "billable.me" }
@@ -13,7 +13,7 @@ enabled = true
 
 [[d1_databases]]
 binding = "DB"
-database_name = "billable"
+database_name = "billable_justin_test"
 database_id = "2dde5875-59a9-46b4-b48a-a3198733a2d5"
 
 [[r2_buckets]]

@@ -86,7 +86,7 @@
     "types": "pnpm codegen:types && tsc",
     "clean:vite": "rm -rf ./node_modules/.vite",
     "clean:vendor": "rm -rf ./vendor/dist",
-    "deploy": "wrangler deploy",
+    "cf:deploy": "pnpm build && pnpm wrangler deploy",
     "preview": "NODE_ENV=${NODE_ENV:-development} PREVIEW=1 npx tsx ./scripts/runPreviewServer.mts",
     "format": "npx prettier --write ./src ./scripts"
   }
