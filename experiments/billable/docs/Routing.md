@@ -2,30 +2,31 @@
 
 A route matches the path part of a URL to an endpoint. An endpoint is a function that returns a JSX component (A page), or a `Response`. The endpoint function receives the parsed parameters of the path, the context, as well as the `Request`.
 
-## Defining routes
+## Quickstart
 
-The interface to our router is based off of Remix-Router v7. It is very simplified in that we don't allow nesting or layouts. This might be something we consider in the future, but seems out of scope for routing.
-
-We will use Hono's Routing API: https://hono.dev/docs/api/routing
+The interface to our router is based off of Remix-Router v7. It is very simplified in that we don't allow nesting or layouts.
 
 ```ts
 
-import { defineRouter, route } from '@redwoodjs/router'
+import { defineRoutes, index, route } from 'router.ts'
+
+
+import { HomePage } from './pages/HomePage'
+import { InvoiceListPage } from './pages/InvoiceListPage'
+import { InvoiceDetailPage } from './pages/InvoiceDetailPage'
+
 
 export default defineRoutes([
-  index(import("./index.tsx")),
+  // The `index` route matches "/"
+  index(HomePage),
 
-  route('auth/login', import('./pages/auth/Login.tsx')),
-  route('auth/register', import('./pages/auth/Login.tsx')),
-  route('auth/logout', (req, res) => {
-    // remove session cookie
-    res.redirect('/', 307, {
-      'Set-Cookie': `sessionId=${new Date().toString()}; Expires=0`
-    })
-  }),
+  route("invoices", InvoiceListPage),
+  // named parameters
+  route("invoice/:id", InvoiceDetailPage),
 
-  route("invoices", import("./pages/InvoiceList.tsx")),
-  route("invoice/:id", import("./pages/InvoiceDetail.tsx")),
+  route('/api/test', function(req) {
+    return new Response('hello world')
+  })
 
   // wildcard
   route("assets/*", (req, res) => {
@@ -36,7 +37,9 @@ export default defineRoutes([
 ])
 ```
 
-## Things to consider?
+## TODO
+
+- Implement lazy loading of routes.
 
 - Type safety. How do we ensure that the params have types? Maybe the route array has some sort of response... Like the type that it returns is a function that returns a thing... That's interesting.
 
@@ -52,8 +55,6 @@ Loaders. Stick with Suspense boundary. I kinda see the benefit of been able to d
 
 - Can we chain requests, middleware is awesome? is it?
 ```ts
-
-
 export function auth(req, res, next) {
   // do some auth handling stuff...
   if (req.headers.authorization !== '') {
