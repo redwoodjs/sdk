@@ -7,6 +7,11 @@ settings:
 overrides:
   '@microsoft/api-extractor>typescript': 5.6.3
 
+patchedDependencies:
+  '@cloudflare/vite-plugin':
+    hash: rz7r7x4v33wz6cdeelt5iohdai
+    path: patches/@cloudflare__vite-plugin.patch
+
 importers:
 
   .:
@@ -59,7 +64,7 @@ importers:
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: ^0.0.4
-        version: 0.0.4(vite@6.0.11(@types/node@22.9.0)(jiti@1.21.6)(terser@5.36.0)(tsx@4.19.2)(yaml@2.6.1))(wrangler@3.105.1(@cloudflare/workers-types@4.20241112.0))
+        version: 0.0.4(patch_hash=rz7r7x4v33wz6cdeelt5iohdai)(vite@6.0.11(@types/node@22.9.0)(jiti@1.21.6)(terser@5.36.0)(tsx@4.19.2)(yaml@2.6.1))(wrangler@3.105.1(@cloudflare/workers-types@4.20241112.0))
       '@microsoft/api-extractor':
         specifier: ^7.48.0
         version: 7.48.0(@types/node@22.9.0)
@@ -3178,7 +3183,7 @@ snapshots:
     dependencies:
       mime: 3.0.0
 
-  '@cloudflare/vite-plugin@0.0.4(vite@6.0.11(@types/node@22.9.0)(jiti@1.21.6)(terser@5.36.0)(tsx@4.19.2)(yaml@2.6.1))(wrangler@3.105.1(@cloudflare/workers-types@4.20241112.0))':
+  '@cloudflare/vite-plugin@0.0.4(patch_hash=rz7r7x4v33wz6cdeelt5iohdai)(vite@6.0.11(@types/node@22.9.0)(jiti@1.21.6)(terser@5.36.0)(tsx@4.19.2)(yaml@2.6.1))(wrangler@3.105.1(@cloudflare/workers-types@4.20241112.0))':
     dependencies:
       '@hattip/adapter-node': 0.0.49
       miniflare: 3.20250124.0

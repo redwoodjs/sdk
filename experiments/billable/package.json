@@ -63,6 +63,9 @@
   "pnpm": {
     "overrides": {
       "@microsoft/api-extractor>typescript": "5.6.3"
+    },
+    "patchedDependencies": {
+      "@cloudflare/vite-plugin": "patches/@cloudflare__vite-plugin.patch"
     }
   },
   "prisma": {
