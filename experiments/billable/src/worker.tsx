@@ -15,13 +15,8 @@ import { LoginPage } from "./app/pages/Login/LoginPage";
 import { setupEnv } from "./env";
 import HomePage from "./app/pages/Home/HomePage";
 
-// todo(peterp, 2024-11-25): Make these lazy.
-const routes = {
-  "/": HomePage,
-  "/invoices": InvoiceListPage,
-  "/invoice/:id": InvoiceDetailPage,
-  "/login": LoginPage,
-};
+import { defineRoutes, index, route } from "./router";
+import type { ReactElement } from 'react';
 
 export { SessionDO } from "./session";
 
@@ -35,6 +30,9 @@ export const getContext = async (
     user,
   };
 };
+
+// Update the PageComponent type definition
+type PageComponent = ({ ctx }: { ctx: any }) => Promise<ReactElement> | ReactElement;
 
 export default {
   async fetch(request: Request, env: Env) {
@@ -61,63 +59,10 @@ export default {
 
       let actionResult: any;
       if (isRSCActionHandler) {
+        console.log("isRSCActionHandler", isRSCActionHandler);
         actionResult = await rscActionHandler(request, ctx);
+        console.log("-".repeat(80));
       }
-
-      if (url.pathname.startsWith("/assets/")) {
-        url.pathname = url.pathname.slice("/assets/".length);
-        return env.ASSETS.fetch(new Request(url.toString(), request));
-      }
-
-      // grab the image if it's requested.
-      if (request.method === "GET" && url.pathname.startsWith("/logos/")) {
-        const object = await env.R2.get(url.pathname);
-        if (object === null) {
-          return new Response("Object Not Found", { status: 404 });
-        }
-        return new Response(object.body, {
-          headers: {
-            "Content-Type": object.httpMetadata?.contentType as string,
-          },
-        });
-      }
-
-      if (url.pathname === "/auth" && request.method === "GET") {
-        const token = url.searchParams.get("token");
-        const email = url.searchParams.get("email");
-
-
-        if (!token || !email) {
-          return new Response("Invalid token or email", { status: 400 });
-        }
-        const user = await db.user.findFirst({
-          where: {
-            email,
-            authToken: token,
-            authTokenExpiresAt: {
-              gt: new Date(),
-            },
-          },
-        });
-
-        if (!user) {
-          return new Response("Invalid or expired token", { status: 400 });
-        }
-
-        // Clear the auth token
-        await db.user.update({
-          where: { id: user.id },
-          data: {
-            authToken: null,
-            authTokenExpiresAt: null,
-          },
-        });
-
-        console.log('performing login')
-
-        return performLogin(request, env, user.id);
-      }
-      // add logout.
 
       const renderPage = async (Page: any, props = {}) => {
         const rscPayloadStream = renderToRscStream({
@@ -144,86 +89,110 @@ export default {
         });
       };
 
-      const pathname = new URL(request.url).pathname as keyof typeof routes;
-      const Page = routes[pathname];
+      const r = defineRoutes(
+        [
+          index(HomePage),
 
-      if (!authenticated) {
-        if (!Page) {
-          return new Response("Not found", { status: 404 });
-        }
+          route("/login", LoginPage),
+          route("/auth", async (req) => {
+            // when it's async then react-is thinks it's a react component.
+            const url = new URL(req.url);
+            const token = url.searchParams.get("token");
+            const email = url.searchParams.get("email");
 
-        if (pathname === "/" || pathname === "/login") {
-          return renderPage(Page, { ctx });
-        } else {
-          return new Response('No access', { status: 401 });
-        }
-      }
-
-
-      if (pathname === "/") {
-        return new Response(`
-          <html>
-            <head>
-              <meta http-equiv="refresh" content="0;url=/invoices">
-            </head>
-            <body>
-              Redirecting to invoices...
-            </body>
-          </html>`, {
-          status: 200,
-          headers: {
-            "Content-Type": "text/html"
-          },
-        });
-      }
-
-      if (Page) {
-        return renderPage(Page, { ctx });
-      }
-
-      if (pathname.startsWith("/invoice/")) {
-        const id = pathname.slice("/invoice/".length);
-        if (pathname.endsWith("/upload")) {
-          if (
-            request.method === "POST" &&
-            request.headers.get("content-type")?.includes("multipart/form-data")
-          ) {
-            const formData = await request.formData();
-            const userId = formData.get("userId") as string;
-            const invoiceId = formData.get("invoiceId") as string;
-            const file = formData.get("file") as File;
-
-            // Stream the file directly to R2
-            const r2ObjectKey = `/logos/${userId}/${invoiceId}-${Date.now()}-${file.name}`;
-            await env.R2.put(r2ObjectKey, file.stream(), {
-              httpMetadata: {
-                contentType: file.type,
+            if (!token || !email) {
+              return new Response("Invalid token or email", { status: 400 });
+            }
+            const user = await db.user.findFirst({
+              where: {
+                email,
+                authToken: token,
+                authTokenExpiresAt: {
+                  gt: new Date(),
+                },
               },
             });
 
-            await db.invoice.update({
-              where: { id: invoiceId },
+            if (!user) {
+              return new Response("Invalid or expired token", { status: 400 });
+            }
+
+            // Clear the auth token
+            await db.user.update({
+              where: { id: user.id },
               data: {
-                supplierLogo: r2ObjectKey,
+                authToken: null,
+                authTokenExpiresAt: null,
               },
             });
 
-            return new Response(JSON.stringify({ key: r2ObjectKey }), {
-              status: 200,
+            console.log("performing login");
+
+            return performLogin(request, env, user.id);
+          }),
+
+          route("/invoices", InvoiceListPage),
+          route("/invoice/:id", InvoiceDetailPage),
+          route("/invoice/:id/upload", async (req) => {
+            if (
+              req.method === "POST" &&
+              req.headers.get("content-type")?.includes("multipart/form-data")
+            ) {
+              // todo get userId from context.
+
+              const formData = await req.formData();
+              const userId = formData.get("userId") as string;
+              const invoiceId = formData.get("invoiceId") as string;
+              const file = formData.get("file") as File;
+
+              // Stream the file directly to R2
+              const r2ObjectKey = `/logos/${userId}/${invoiceId}-${Date.now()}-${file.name}`;
+              await env.R2.put(r2ObjectKey, file.stream(), {
+                httpMetadata: {
+                  contentType: file.type,
+                },
+              });
+
+              await db.invoice.update({
+                where: { id: invoiceId },
+                data: {
+                  supplierLogo: r2ObjectKey,
+                },
+              });
+
+              return new Response(JSON.stringify({ key: r2ObjectKey }), {
+                status: 200,
+                headers: {
+                  "Content-Type": "application/json",
+                },
+              });
+            }
+            return new Response("Method not allowed", { status: 405 });
+          }),
+          route("/logos/*", async (req) => {
+            const object = await env.R2.get(url.pathname);
+            if (object === null) {
+              return new Response("Object Not Found", { status: 404 });
+            }
+            return new Response(object.body, {
               headers: {
-                "Content-Type": "application/json",
+                "Content-Type": object.httpMetadata?.contentType as string,
               },
             });
-          }
-          return new Response("Method not allowed", { status: 405 });
-        } else {
-          return renderPage(InvoiceDetailPage, { id, ctx });
-        }
-      }
+          }),
+          route("/assets/*", (req) => {
+            const u = new URL(req.url);
+            u.pathname = u.pathname.slice("/assets/".length);
+            return env.ASSETS.fetch(new Request(u.toString(), req));
+          }),
+        ],
+        {
+          ctx,
+          renderPage,
+        },
+      );
 
-      if (!Page) {
-        return new Response("Not found", { status: 404 });
-      }
+      return await r.handle(request);
     } catch (e) {
       if (e instanceof ErrorResponse) {
         return new Response(e.message, { status: e.code });

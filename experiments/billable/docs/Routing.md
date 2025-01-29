@@ -10,9 +10,9 @@ We will use Hono's Routing API: https://hono.dev/docs/api/routing
 
 ```ts
 
-import { router } from '@redwoodjs/router'
+import { defineRouter, route } from '@redwoodjs/router'
 
-export default router([
+export default defineRoutes([
   index(import("./index.tsx")),
 
   route('auth/login', import('./pages/auth/Login.tsx')),
