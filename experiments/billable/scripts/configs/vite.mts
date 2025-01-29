@@ -22,6 +22,7 @@ import { useClientLookupPlugin } from "../lib/vitePlugins/useClientLookupPlugin.
 import { miniflarePlugin } from "../lib/vitePlugins/miniflarePlugin.mjs";
 import { asyncSetupPlugin } from "../lib/vitePlugins/asyncSetupPlugin.mjs";
 import { restartPlugin } from "../lib/vitePlugins/restartPlugin.mjs";
+import { acceptWasmPlugin } from '../lib/vitePlugins/acceptWasmPlugin.mjs';
 
 const MODE =
   process.env.NODE_ENV === "development" ? "development" : "production";
@@ -42,6 +43,7 @@ export const viteConfigs = {
       "process.env.NODE_ENV": JSON.stringify(MODE),
     },
     plugins: [
+      acceptWasmPlugin(),
       reactPlugin(),
       useServerPlugin(),
       useClientPlugin(),
@@ -68,7 +70,7 @@ export const viteConfigs = {
           // context(justinvdm, 2025-01-06): We rely on vite's prebundling and then let vite provide us with this prebundled code:
           // - we shouldn't needing to evaluate each and every module of each and every dependency in the module runner (prebundle avoids this)
           // - we can't rely on dynamic imports from within the miniflare sandbox (without teaching it about each and every module of each and every dependency)
-          //noExternal: true,
+          noExternal: true,
         },
         optimizeDeps: {
           noDiscovery: false,
