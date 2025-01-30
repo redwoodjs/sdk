@@ -24,6 +24,7 @@ import { miniflarePlugin } from "../lib/vitePlugins/miniflarePlugin.mjs";
 import { asyncSetupPlugin } from "../lib/vitePlugins/asyncSetupPlugin.mjs";
 import { restartPlugin } from "../lib/vitePlugins/restartPlugin.mjs";
 import { acceptWasmPlugin } from '../lib/vitePlugins/acceptWasmPlugin.mjs';
+import { preserveWasmImport } from '../lib/vitePlugins/preserveWasmImport.mjs';
 
 const MODE =
   process.env.NODE_ENV === "development" ? "development" : "production";
@@ -44,7 +45,6 @@ export const viteConfigs = {
       "process.env.NODE_ENV": JSON.stringify(MODE),
     },
     plugins: [
-      acceptWasmPlugin(),
       miniflarePlugin({
         viteEnvironment: {
           name: 'worker',
@@ -135,6 +135,7 @@ export const viteConfigs = {
   dev: ({ setup, restartOnChanges = true, ...opts }: { setup: () => Promise<unknown>, silent?: boolean, port?: number, restartOnChanges?: boolean }): InlineConfig =>
     mergeConfig(viteConfigs.main(opts), {
       plugins: [
+        acceptWasmPlugin(),
         asyncSetupPlugin({ setup }),
         restartOnChanges ? restartPlugin({
           filter: (filepath: string) =>
@@ -164,19 +165,20 @@ export const viteConfigs = {
           rootDir: ROOT_DIR,
           containingPath: './src/app',
         }),
+        preserveWasmImport()
       ],
       environments: {
         worker: {
           build: {
             rollupOptions: {
-              external: ['cloudflare:workers', 'node:stream']
+              external: ['cloudflare:workers', 'node:stream'],
             }
           }
         }
       },
       resolve: {
         alias: {
-          '.prisma/client/default': createRequire(createRequire(import.meta.url).resolve('@prisma/client')).resolve('.prisma/client/default'),
+          '.prisma/client/default': createRequire(createRequire(import.meta.url).resolve('@prisma/client')).resolve('.prisma/client/wasm'),
         }
       }
     }),

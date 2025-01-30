@@ -15,8 +15,7 @@ export const build = async () => {
     viteConfigs.deploy(),
   );
   await builder.buildApp();
-  await $sh`mv dist/{client,worker}/assets/* dist/client/`;
-  await $sh`rmdir dist/{client,worker}/assets`;
+  await $sh`cp dist/{client,worker}/assets/* dist/client/`;
 
   console.log("Build done!");
   console.log();
