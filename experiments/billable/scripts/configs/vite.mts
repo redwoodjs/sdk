@@ -24,7 +24,7 @@ import { miniflarePlugin } from "../lib/vitePlugins/miniflarePlugin.mjs";
 import { asyncSetupPlugin } from "../lib/vitePlugins/asyncSetupPlugin.mjs";
 import { restartPlugin } from "../lib/vitePlugins/restartPlugin.mjs";
 import { acceptWasmPlugin } from '../lib/vitePlugins/acceptWasmPlugin.mjs';
-import { preserveWasmImport } from '../lib/vitePlugins/preserveWasmImport.mjs';
+import { copyPrismaWasmPlugin } from '../lib/vitePlugins/copyPrismaWasmPlugin.mjs';
 
 const MODE =
   process.env.NODE_ENV === "development" ? "development" : "production";
@@ -165,13 +165,13 @@ export const viteConfigs = {
           rootDir: ROOT_DIR,
           containingPath: './src/app',
         }),
-        preserveWasmImport()
+        copyPrismaWasmPlugin()
       ],
       environments: {
         worker: {
           build: {
             rollupOptions: {
-              external: ['cloudflare:workers', 'node:stream'],
+              external: ['cloudflare:workers', 'node:stream', /\.wasm$/],
             }
           }
         }
