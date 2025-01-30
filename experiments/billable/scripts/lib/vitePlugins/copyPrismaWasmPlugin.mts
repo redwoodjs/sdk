@@ -3,6 +3,7 @@ import MagicString from "magic-string";
 import path from 'path';
 import { Plugin } from 'vite';
 import { createRequire } from 'module';
+
 import { ROOT_DIR } from '../constants.mjs';
 
 export const copyPrismaWasmPlugin = (): Plugin => ({
@@ -38,21 +39,4 @@ export const copyPrismaWasmPlugin = (): Plugin => ({
       map: s.generateMap(),
     }
   }
-  //async load(id) {
-  //  if (id.endsWith('.wasm')) {
-  //    const filePath = path.resolve(id);
-  //    const fileName = path.basename(id);
-
-  //    if (await pathExists(filePath)) {
-  //      const referenceId = this.emitFile({
-  //        type: 'asset',
-  //        fileName,
-  //        source: await readFile(filePath),
-  //      });
-  //      return `export default import.meta.ROLLUP_FILE_URL_${referenceId};`;
-
-  //    }
-  //    return null;
-  //  }
-  //},
 });
