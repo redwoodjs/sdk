@@ -143,7 +143,7 @@ export default {
           }),
 
           ...prefix("/invoices", [
-            route("/", InvoiceListPage),
+            index(InvoiceListPage),
             route("/:id", InvoiceDetailPage), // can we type the params here?
             route("/:id/upload", async ({ request }) => {
             if (
