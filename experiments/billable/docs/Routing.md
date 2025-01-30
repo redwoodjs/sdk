@@ -12,30 +12,42 @@ import { defineRoutes, index, route } from 'router.ts'
 
 
 import { HomePage } from './pages/HomePage'
-import { InvoiceListPage } from './pages/InvoiceListPage'
-import { InvoiceDetailPage } from './pages/InvoiceDetailPage'
+import { PageOne } from './pages/PageOne'
+import { PageTwo } from './pages/PageTwo'
 
 
 export default defineRoutes([
   // The `index` route matches "/"
   index(HomePage),
 
-  route("invoices", InvoiceListPage),
-  // named parameters
-  route("invoice/:id", InvoiceDetailPage),
+  route("/one", PageOne),
+  route("/two", PageTwo),
 
-  route('/api/test', function(req) {
+  // Named parameters
+  route('/number/:number', function({ params }) => {
+    return new Response(params.number)
+  })
+
+  route('/api/test', function({ request }) {
     return new Response('hello world')
   })
 
-  // wildcard
-  route("assets/*", (req, res) => {
-    // find file on filesystem
-    // stream file back
+  // wildcard parameters
+  route("assets/*", ({ request, params }) => {
+
+    // Log out the first wildcard.
+    console.log(params.$0)
+
+    // Grab file from R2, and return it.
     return res.send(filestream, 200)
   })
-])
+], {
+  // getContext: passed as `ctx` to each handler
+  // renderPage: renders the JSX element.
+})
 ```
+
+
 
 ## TODO
 
