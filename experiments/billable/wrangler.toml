@@ -1,19 +1,19 @@
 #:schema node_modules/wrangler/config-schema.json
-name = "billable-justin-test"
+name = "billable"
 main = "src/worker.tsx"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 assets = { binding = "ASSETS" }
 
-#workers_dev = false
-#route = { pattern = "billable.me/*", zone_name = "billable.me" }
+workers_dev = false
+route = { pattern = "billable.me/*", zone_name = "billable.me" }
 
 [observability]
 enabled = true
 
 [[d1_databases]]
 binding = "DB"
-database_name = "billable_justin_test"
+database_name = "billable"
 database_id = "2dde5875-59a9-46b4-b48a-a3198733a2d5"
 
 [[r2_buckets]]
@@ -31,5 +31,5 @@ new_classes = [ "SessionDO" ]
 
 [vars]
 SECRET_KEY = "secret"
-RESEND_API_KEY="re_AJKg3qQA_HZNWkE2wVC9hFHm645mD9bQj"
+RESEND_API_KEY="123"
 APP_URL="http://localhost:5173"
