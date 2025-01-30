@@ -142,8 +142,9 @@ export default {
             return performLogin(request, env, user.id);
           }),
 
-          ...prefix("/invoices", [
-            index(InvoiceListPage),
+          route("/invoices", InvoiceListPage),
+
+          ...prefix("/invoice", [
             route("/:id", InvoiceDetailPage), // can we type the params here?
             route("/:id/upload", async ({ request }) => {
             if (

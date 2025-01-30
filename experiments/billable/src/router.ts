@@ -159,6 +159,11 @@ export function route(
   path: string,
   handler: RouteDefinition['handler']
 ) {
+
+  if (!path.endsWith('/')) {
+    path = path + '/'
+  }
+
   return {
     path,
     handler,
