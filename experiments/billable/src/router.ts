@@ -70,12 +70,19 @@ export function defineRoutes(
     ctx: any;
     renderPage: (page: any, props: Record<string, any>) => Promise<Response>;
   },
-): RouterInstance {
+): {
+  routes: RouteDefinition[],
+  handle: (request: Request) => Response | Promise<Response>
+} {
   return {
     routes,
     async handle(request) {
       const url = new URL(request.url);
-      const path = url.pathname;
+      let path = url.pathname;
+      // strip trailing slash
+      if (path.endsWith('/')) {
+        path = path.slice(0, -1);
+      }
 
       // Find matching route
       let match: RouteMatch | null = null;
@@ -141,15 +148,11 @@ export function defineRoutes(
         // return next()
         return new Response("not implemented...");
       } else if (typeof handler === "function") {
-        // note(peterp, 2025-12-29): I am not sure how to accurately determine if a function is a react function.
-        // I get a false positive for an async function, and am using this latter check to figure this out.
         if (isValidElementType(handler) && handler.toString().includes("jsx")) {
-          console.log("[debug] rendering react component");
-          return await renderPage(handler as unknown as RouteComponent, { request, params, ctx });
+          return await renderPage(handler as RouteComponent, { request, params, ctx });
         } else {
-          // Route handler
-          console.log("[debug] request handler");
-          return handler({ request, params, ctx }) as unknown as RouteFunction;
+          // Execute the route handler and ensure we get a Response
+          return await (handler({ request, params, ctx }) as Promise<Response>);
         }
       }
       return new Response("handler not implemented.");
@@ -171,4 +174,13 @@ export function index(
   handler: RouteDefinition['handler']
 ) {
   return route("/", handler);
+}
+
+export function prefix(prefix: string, routes: ReturnType<typeof route>[]) {
+  return routes.map((r) => {
+      return {
+        path: prefix + r.path,
+        handler: r.handler
+      }
+  })
 }
