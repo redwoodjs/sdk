@@ -54,6 +54,13 @@ export default {
       await db.$queryRaw`SELECT 1`
 
       const url = new URL(request.url);
+      if (url.pathname === '/test/db') {
+        console.log('## test db')
+        const r = await db.$queryRaw`SELECT 1`
+        console.log('## test db result', r)
+        return new Response(JSON.stringify(r), { status: 200 })
+      }
+
       let ctx: Awaited<ReturnType<typeof getContext>> = {};
       let session: Awaited<ReturnType<typeof getSession>> | undefined;
       let authenticated: boolean = false;
