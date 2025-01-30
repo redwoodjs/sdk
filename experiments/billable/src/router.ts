@@ -8,15 +8,18 @@ export type RouteContext<TParams = Record<string, string>> = {
 
 type RouteFunction = (ctx: RouteContext) => Response | Promise<Response>;
 type RouteComponent = (ctx: RouteContext) => JSX.Element | Promise<JSX.Element>;
+type RouteMiddleware = (ctx: RouteContext) => Response | Promise<Response> | void;
+
+type RouteHandler = RouteFunction | RouteComponent | [...RouteMiddleware[], RouteFunction | RouteComponent ]
 
 type RouteDefinition = {
   path: string;
-  handler: RouteFunction | RouteComponent;
+  handler: RouteHandler
 };
 
 type RouteMatch = {
   params: Record<string, string>;
-  handler: RouteDefinition["handler"];
+  handler: RouteHandler;
 };
 
 function matchPath(
@@ -101,7 +104,7 @@ export function defineRoutes(
       if (Array.isArray(handler)) {
 
         const handlers = handler;
-        handler = handlers.pop()
+        handler = handlers.pop() as RouteFunction | RouteComponent
 
         // loop over each function. Only the last function can be a page function.
         for (const h of handlers) {
@@ -128,7 +131,7 @@ export function defineRoutes(
 
 export function route(
   path: string,
-  handler: RouteDefinition['handler']
+  handler: RouteHandler
 ) {
 
   if (!path.endsWith('/')) {

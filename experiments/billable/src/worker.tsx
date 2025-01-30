@@ -188,7 +188,7 @@ export default {
             function({ request, ctx }) {
               console.log('we come here.')
             },
-            function() {
+            async function() {
               return new Response('not authenticated', { status: 401 })
             },
             function({ request, ctx }) {
