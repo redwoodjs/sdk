@@ -1,10 +1,12 @@
-import { Plugin } from "vite";
+import { HotUpdateOptions, Plugin } from "vite";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import { resolve } from "node:path";
 import colors from "picocolors";
+import { readFile } from "node:fs/promises";
 
 import { ROOT_DIR, SRC_DIR } from "../constants.mjs";
 import { getShortName } from '../getShortName.mjs';
+import { pathExists } from 'fs-extra';
 
 type BasePluginOptions = Parameters<typeof cloudflare>[0];
 
@@ -26,13 +28,66 @@ const hasEntryAsAncestor = (module: any, entryFile: string, seen = new Set()): b
   return false;
 };
 
+// Cache for "use client" status results
+const useClientCache = new Map<string, boolean>();
+
+// Function to invalidate cache for a file
+const invalidateUseClientCache = (file: string) => {
+  useClientCache.delete(file);
+};
+
+const isUseClientModule = async (ctx: HotUpdateOptions, file: string, seen = new Set<string>()): Promise<boolean> => {
+  // Prevent infinite recursion
+  if (seen.has(file)) return false;
+  seen.add(file);
+
+  try {
+    // Check cache first
+    if (useClientCache.has(file)) {
+      return useClientCache.get(file)!;
+    }
+
+    // Read and check the file
+    const content = await pathExists(file) ? await readFile(file, 'utf-8') : '';
+
+    const hasUseClient = content.includes("'use client'") ||
+      content.includes('"use client"');
+
+    if (hasUseClient) {
+      useClientCache.set(file, true);
+      return true;
+    }
+
+    // Get the module from the module graph to find importers
+    const module = ctx.server.moduleGraph.getModuleById(file);
+    if (!module) {
+      useClientCache.set(file, false);
+      return false;
+    }
+
+    // Check all importers recursively
+    for (const importer of module.importers) {
+      if (await isUseClientModule(ctx, importer.url, seen)) {
+        useClientCache.set(file, true);
+        return true;
+      }
+    }
+
+    useClientCache.set(file, false);
+    return false;
+  } catch (error) {
+    useClientCache.set(file, false);
+    return false;
+  }
+};
+
 export const miniflarePlugin = (
   givenOptions: MiniflarePluginOptions,
 ): Plugin[] => [
     cloudflare(givenOptions),
     {
       name: 'miniflare-plugin-hmr',
-      hotUpdate(ctx) {
+      async hotUpdate(ctx) {
         const environment = givenOptions.viteEnvironment?.name ?? 'worker';
         const entry = resolve(ROOT_DIR, 'src', 'worker.tsx');
 
@@ -81,10 +136,12 @@ export const miniflarePlugin = (
             }
           }
 
-          return [
+          invalidateUseClientCache(ctx.file);
+
+          return (await isUseClientModule(ctx, ctx.file)) ? [
             ...ctx.modules,
             ...cssModules,
-          ];
+          ] : cssModules
         }
 
         // The worker needs an update, and the hot check is for the worker environment

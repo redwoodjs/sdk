@@ -16,8 +16,8 @@ export const useClientPlugin = (): Plugin => ({
 
       // context(justinvdm, 5 Dec 2024): they've served their purpose at this point, keeping them around just causes rollup warnings since module level directives can't easily be applied to bundled
       // modules
-      s.replaceAll("'use client'", "");
-      s.replaceAll('"use client"', "");
+      s.replaceAll("'use client'", "// 'use client'");
+      s.replaceAll('"use client"', "// 'use client'");
       s.trim();
 
       if (this.environment.name === "worker") {
