@@ -19,11 +19,6 @@ type RouteMatch = {
   handler: RouteDefinition["handler"];
 };
 
-type RouterInstance = {
-  routes: RouteDefinition[];
-  handle: (request: Request) => Response | Promise<Response>;
-};
-
 function matchPath(
   routePath: string,
   requestPath: string,
@@ -79,9 +74,9 @@ export function defineRoutes(
     async handle(request) {
       const url = new URL(request.url);
       let path = url.pathname;
-      // strip trailing slash
-      if (path.endsWith('/')) {
-        path = path.slice(0, -1);
+
+      if (path !== '/' && !path.endsWith('/')) {
+        path = path + '/'
       }
 
       // Find matching route
@@ -149,7 +144,7 @@ export function defineRoutes(
         return new Response("not implemented...");
       } else if (typeof handler === "function") {
         if (isValidElementType(handler) && handler.toString().includes("jsx")) {
-          return await renderPage(handler as RouteComponent, { request, params, ctx });
+          return await renderPage(handler as RouteComponent, { params, ctx });
         } else {
           // Execute the route handler and ensure we get a Response
           return await (handler({ request, params, ctx }) as Promise<Response>);
