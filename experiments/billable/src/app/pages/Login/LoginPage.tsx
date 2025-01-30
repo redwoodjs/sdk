@@ -3,9 +3,9 @@
 import { useState, useTransition } from "react";
 import { sendEmail } from "./functions";
 import { Layout } from "../Layout";
-import type { User } from "@prisma/client";
+import { RouteContext } from "../../../router";
 
-export function LoginPage({ ctx }: { ctx: { user?: User }   }) {
+export function LoginPage({ ctx }: RouteContext) {
   const [email, setEmail] = useState('peter@redwoodjs.com');
   const [isPending, startTransition] = useTransition();
   const [success, setSuccess] = useState(false);

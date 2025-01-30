@@ -1,7 +1,7 @@
-import { User } from "@prisma/client";
 import { Layout } from "../Layout";
+import { RouteContext } from "../../../router";
 
-export default function HomePage({ ctx }: { ctx: { user: User } }) {
+export default function HomePage({ ctx}: RouteContext) {
   return (
     <Layout ctx={ctx}>
       <div className="px-4 sm:px-6 lg:px-8">
