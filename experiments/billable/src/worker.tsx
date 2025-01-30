@@ -15,7 +15,7 @@ import { LoginPage } from "./app/pages/Login/LoginPage";
 import { setupEnv } from "./env";
 import HomePage from "./app/pages/Home/HomePage";
 
-import { defineRoutes, index, route } from "./router";
+import { defineRoutes, index, prefix, route } from "./router";
 
 export { SessionDO } from "./session";
 
@@ -150,8 +150,10 @@ export default {
           }),
 
           route("/invoices", InvoiceListPage),
-          route("/invoice/:id", InvoiceDetailPage),
-          route("/invoice/:id/upload", async ({ request }) => {
+
+          ...prefix("/invoice", [
+            route("/:id", InvoiceDetailPage), // can we type the params here?
+            route("/:id/upload", async ({ request }) => {
             if (
               request.method === "POST" &&
               request.headers.get("content-type")?.includes("multipart/form-data")
@@ -185,8 +187,23 @@ export default {
                 },
               });
             }
-            return new Response("Method not allowed", { status: 405 });
-          }),
+              return new Response("Method not allowed", { status: 405 });
+            }),
+          ]),
+
+          route('/test',[
+            function({ request, ctx }) {
+              console.log('we come here.')
+            },
+            async function() {
+              return new Response('not authenticated', { status: 401 })
+            },
+            function({ request, ctx }) {
+              console.log('we did not come here.')
+              return new Response('hello world')
+            }
+          ]),
+
           route("/logos/*", async (req) => {
             const object = await env.R2.get(url.pathname);
             if (object === null) {

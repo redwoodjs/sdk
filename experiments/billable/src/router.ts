@@ -6,22 +6,20 @@ export type RouteContext<TParams = Record<string, string>> = {
   ctx?: any;
 };
 
+type RouteMiddleware = (ctx: RouteContext) => Response | Promise<Response> | void;
 type RouteFunction = (ctx: RouteContext) => Response | Promise<Response>;
 type RouteComponent = (ctx: RouteContext) => JSX.Element | Promise<JSX.Element>;
 
+type RouteHandler = RouteFunction | RouteComponent | [...RouteMiddleware[], RouteFunction | RouteComponent ]
+
 type RouteDefinition = {
   path: string;
-  handler: RouteFunction | RouteComponent;
+  handler: RouteHandler
 };
 
 type RouteMatch = {
   params: Record<string, string>;
-  handler: RouteDefinition["handler"];
-};
-
-type RouterInstance = {
-  routes: RouteDefinition[];
-  handle: (request: Request) => Response | Promise<Response>;
+  handler: RouteHandler;
 };
 
 function matchPath(
@@ -70,12 +68,19 @@ export function defineRoutes(
     ctx: any;
     renderPage: (page: any, props: Record<string, any>) => Promise<Response>;
   },
-): RouterInstance {
+): {
+  routes: RouteDefinition[],
+  handle: (request: Request) => Response | Promise<Response>
+} {
   return {
     routes,
     async handle(request) {
       const url = new URL(request.url);
-      const path = url.pathname;
+      let path = url.pathname;
+
+      if (path !== '/' && !path.endsWith('/')) {
+        path = path + '/'
+      }
 
       // Find matching route
       let match: RouteMatch | null = null;
@@ -89,78 +94,50 @@ export function defineRoutes(
       }
 
       if (!match) {
-        // todo(peterp, 2025-01-28): Allow the user to define the own not found route.
+        // todo(peterp, 2025-01-28): Allow the user to define their own "not found" route.
         return new Response("Not Found", { status: 404 });
       }
 
-      const { params, handler } = match;
+      let { params, handler } = match;
 
-      // Handle array of handlers (middleware chain)
+      // Array of handlers (middleware chain)
       if (Array.isArray(handler)) {
-        // todo: fix this later.
-        // let response: Response | undefined
-        // let currentIndex = 0
 
-        // const next = async () => {
-        //   const currentHandler = handler[currentIndex]
-        //   currentIndex++
+        const handlers = handler;
+        handler = handlers.pop() as RouteFunction | RouteComponent
 
-        //   if (!currentHandler) {
-        //     return response
-        //   }
+        // loop over each function. Only the last function can be a page function.
+        for (const h of handlers) {
+          if (isRouteComponent(h)) {
+            throw new Error('Only the last handler in an array of routes can a React component.')
+          }
 
-        //   if (typeof currentHandler === 'function') {
-        //     if ('$$typeof' in currentHandler) {
-        //       // Page component
-        //       return new Response(
-        //         `<div id="root">${await renderToString(
-        //           currentHandler({ params })
-        //         )}</div>`,
-        //         {
-        //           headers: { 'Content-Type': 'text/html' },
-        //         }
-        //       )
-        //     } else {
-        //       // Route handler
-        //       return currentHandler(request, response!, next)
-        //     }
-        //   }
-
-        //   // Handle async imports
-        //   const mod = await currentHandler
-        //   // return new Response(
-        //   //   `<div id="root">${await renderToString(
-        //   //     mod.default({ params })
-        //   //   )}</div>`,
-        //   //   {
-        //   //     headers: { 'Content-Type': 'text/html' },
-        //   //   }
-        //   // )
-        // }
-
-        // return next()
-        return new Response("not implemented...");
-      } else if (typeof handler === "function") {
-        // note(peterp, 2025-12-29): I am not sure how to accurately determine if a function is a react function.
-        // I get a false positive for an async function, and am using this latter check to figure this out.
-        if (isValidElementType(handler) && handler.toString().includes("jsx")) {
-          console.log("[debug] rendering react component");
-          return await renderPage(handler as unknown as RouteComponent, { request, params, ctx });
-        } else {
-          // Route handler
-          console.log("[debug] request handler");
-          return handler({ request, params, ctx }) as unknown as RouteFunction;
+          const r = await h({ request, params, ctx })
+          if (r instanceof Response) {
+            return r
+          }
         }
       }
-      return new Response("handler not implemented.");
+
+      if (isRouteComponent(handler)) {
+        // TODO(peterp, 2025-01-30): Serialize the request
+        return await renderPage(handler as RouteComponent, { params, ctx });
+      } else {
+        return await (handler({ request, params, ctx }) as Promise<Response>);
+      }
     },
   };
 }
 
 export function route(
   path: string,
-  handler: RouteDefinition['handler']
+  handler: RouteHandler
 ) {
+
+  if (!path.endsWith('/')) {
+    path = path + '/'
+  }
+
   return {
     path,
     handler,
@@ -171,4 +148,17 @@ export function index(
   handler: RouteDefinition['handler']
 ) {
   return route("/", handler);
+}
+
+export function prefix(prefix: string, routes: ReturnType<typeof route>[]) {
+  return routes.map((r) => {
+      return {
+        path: prefix + r.path,
+        handler: r.handler
+      }
+  })
+}
+
+function isRouteComponent(handler: any) {
+  return isValidElementType(handler) && handler.toString().includes("jsx")
 }

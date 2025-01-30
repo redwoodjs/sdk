@@ -4,11 +4,11 @@ A route matches the path part of a URL to an endpoint. An endpoint is a function
 
 ## Quickstart
 
-The interface to our router is based off of Remix-Router v7. It is very simplified in that we don't allow nesting or layouts.
+The interface to our router is based off of Remix-Router v7.
 
 ```ts
 
-import { defineRoutes, index, route } from 'router.ts'
+import { defineRoutes, index, route, prefix } from 'router.ts'
 
 
 import { HomePage } from './pages/HomePage'
@@ -17,27 +17,24 @@ import { PageTwo } from './pages/PageTwo'
 
 
 export default defineRoutes([
-  // The `index` route matches "/"
+  // matches `/`
   index(HomePage),
 
-  route("/one", PageOne),
-  route("/two", PageTwo),
-
-  // Named parameters
-  route('/number/:number', function({ params }) => {
-    return new Response(params.number)
-  })
-
-  route('/api/test', function({ request }) {
-    return new Response('hello world')
-  })
+  ...prefix('/number', [
+     // static, matches `/number/one`
+    route("/one", PageOne),
+     // static, matches `/number/two`
+    route("/two", PageTwo),
+    //  named parameters, matches `/number/${anything}`
+    route("/:any", function({ params }) => {
+      return new Response(params.any)
+    }
+  ])
 
   // wildcard parameters
   route("assets/*", ({ request, params }) => {
-
-    // Log out the first wildcard.
+    // Log out the first wildcard param.
     console.log(params.$0)
-
     // Grab file from R2, and return it.
     return res.send(filestream, 200)
   })
@@ -48,8 +45,17 @@ export default defineRoutes([
 ```
 
 
+# API
+
+- `defineRoutes`
+- `route`
+- `index`
+- `prefix`
+
 
 ## TODO
+
+- Remove trailing slash
 
 - Implement lazy loading of routes.
 
