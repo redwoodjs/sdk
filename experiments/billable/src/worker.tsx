@@ -16,7 +16,6 @@ import { setupEnv } from "./env";
 import HomePage from "./app/pages/Home/HomePage";
 
 import { defineRoutes, index, route } from "./router";
-import type { ReactElement } from 'react';
 
 export { SessionDO } from "./session";
 
@@ -32,7 +31,6 @@ export const getContext = async (
 };
 
 // Update the PageComponent type definition
-type PageComponent = ({ ctx }: { ctx: any }) => Promise<ReactElement> | ReactElement;
 
 export default {
   async fetch(request: Request, env: Env) {
@@ -107,9 +105,9 @@ export default {
           index(HomePage),
 
           route("/login", LoginPage),
-          route("/auth", async (req) => {
+          route("/auth", async ({ request }) => {
             // when it's async then react-is thinks it's a react component.
-            const url = new URL(req.url);
+            const url = new URL(request.url);
             const token = url.searchParams.get("token");
             const email = url.searchParams.get("email");
 
@@ -146,14 +144,14 @@ export default {
 
           route("/invoices", InvoiceListPage),
           route("/invoice/:id", InvoiceDetailPage),
-          route("/invoice/:id/upload", async (req) => {
+          route("/invoice/:id/upload", async ({ request }) => {
             if (
-              req.method === "POST" &&
-              req.headers.get("content-type")?.includes("multipart/form-data")
+              request.method === "POST" &&
+              request.headers.get("content-type")?.includes("multipart/form-data")
             ) {
               // todo get userId from context.
 
-              const formData = await req.formData();
+              const formData = await request.formData();
               const userId = formData.get("userId") as string;
               const invoiceId = formData.get("invoiceId") as string;
               const file = formData.get("file") as File;
@@ -193,10 +191,10 @@ export default {
               },
             });
           }),
-          route("/assets/*", (req) => {
-            const u = new URL(req.url);
+          route("/assets/*", ({ request }) => {
+            const u = new URL(request.url);
             u.pathname = u.pathname.slice("/assets/".length);
-            return env.ASSETS.fetch(new Request(u.toString(), req));
+            return env.ASSETS.fetch(new Request(u.toString(), request));
           }),
         ],
         {
