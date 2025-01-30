@@ -4,6 +4,7 @@ import { Layout } from "../Layout";
 
 import { CreateInvoiceButton } from "./CreateInvoiceButton";
 import { db } from "../../../db";
+import { RouteContext } from "../../../router";
 
 export type InvoiceItem = {
   description: string,
@@ -45,7 +46,7 @@ async function getInvoiceListSummary(userId) {
   })
 }
 
-export default async function InvoiceListPage({ ctx }: { ctx: any }) {
+export default async function InvoiceListPage({ ctx }: RouteContext) {
   const invoices = await getInvoiceListSummary(ctx.user.id);
   return (
     <Layout ctx={ctx}>

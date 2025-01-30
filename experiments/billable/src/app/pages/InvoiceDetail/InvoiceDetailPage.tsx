@@ -5,8 +5,9 @@ import { Layout } from "../Layout";
 
 import { FetchInvoice } from "./FetchInvoice";
 import { InvoiceForm } from "./InvoiceForm";
+import { RouteContext } from "../../../router";
 
-export default async function InvoiceDetailPage({ id, ctx }: { id: string, ctx: any}) {
+export default async function InvoiceDetailPage({ params, ctx }: RouteContext<{ id: string }>) {
   return (
     <Layout ctx={ctx}>
       <div className="px-4 sm:px-6 lg:px-8">
@@ -20,7 +21,7 @@ export default async function InvoiceDetailPage({ id, ctx }: { id: string, ctx: 
             </p>
 
             <Suspense fallback={<div>Loading...</div>}>
-              <FetchInvoice id={id}>
+              <FetchInvoice id={params.id}>
                 {(invoice: any) => <InvoiceForm invoice={invoice} />}
               </FetchInvoice>
             </Suspense>

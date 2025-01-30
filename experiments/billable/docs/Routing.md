@@ -2,41 +2,56 @@
 
 A route matches the path part of a URL to an endpoint. An endpoint is a function that returns a JSX component (A page), or a `Response`. The endpoint function receives the parsed parameters of the path, the context, as well as the `Request`.
 
-## Defining routes
+## Quickstart
 
-The interface to our router is based off of Remix-Router v7. It is very simplified in that we don't allow nesting or layouts. This might be something we consider in the future, but seems out of scope for routing.
-
-We will use Hono's Routing API: https://hono.dev/docs/api/routing
+The interface to our router is based off of Remix-Router v7. It is very simplified in that we don't allow nesting or layouts.
 
 ```ts
 
-import { router } from '@redwoodjs/router'
+import { defineRoutes, index, route } from 'router.ts'
 
-export default router([
-  index(import("./index.tsx")),
 
-  route('auth/login', import('./pages/auth/Login.tsx')),
-  route('auth/register', import('./pages/auth/Login.tsx')),
-  route('auth/logout', (req, res) => {
-    // remove session cookie
-    res.redirect('/', 307, {
-      'Set-Cookie': `sessionId=${new Date().toString()}; Expires=0`
-    })
-  }),
+import { HomePage } from './pages/HomePage'
+import { PageOne } from './pages/PageOne'
+import { PageTwo } from './pages/PageTwo'
 
-  route("invoices", import("./pages/InvoiceList.tsx")),
-  route("invoice/:id", import("./pages/InvoiceDetail.tsx")),
 
-  // wildcard
-  route("assets/*", (req, res) => {
-    // find file on filesystem
-    // stream file back
+export default defineRoutes([
+  // The `index` route matches "/"
+  index(HomePage),
+
+  route("/one", PageOne),
+  route("/two", PageTwo),
+
+  // Named parameters
+  route('/number/:number', function({ params }) => {
+    return new Response(params.number)
+  })
+
+  route('/api/test', function({ request }) {
+    return new Response('hello world')
+  })
+
+  // wildcard parameters
+  route("assets/*", ({ request, params }) => {
+
+    // Log out the first wildcard.
+    console.log(params.$0)
+
+    // Grab file from R2, and return it.
     return res.send(filestream, 200)
   })
-])
+], {
+  // getContext: passed as `ctx` to each handler
+  // renderPage: renders the JSX element.
+})
 ```
 
-## Things to consider?
+
+
+## TODO
+
+- Implement lazy loading of routes.
 
 - Type safety. How do we ensure that the params have types? Maybe the route array has some sort of response... Like the type that it returns is a function that returns a thing... That's interesting.
 
@@ -52,8 +67,6 @@ Loaders. Stick with Suspense boundary. I kinda see the benefit of been able to d
 
 - Can we chain requests, middleware is awesome? is it?
 ```ts
-
-
 export function auth(req, res, next) {
   // do some auth handling stuff...
   if (req.headers.authorization !== '') {
