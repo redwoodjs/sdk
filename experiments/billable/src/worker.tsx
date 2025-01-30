@@ -184,6 +184,19 @@ export default {
             }),
           ]),
 
+          route('/test',[
+            function({ request, ctx }) {
+              console.log('we come here.')
+            },
+            function() {
+              return new Response('not authenticated', { status: 401 })
+            },
+            function({ request, ctx }) {
+              console.log('we did not come here.')
+              return new Response('hello world')
+            }
+          ]),
+
           route("/logos/*", async (req) => {
             const object = await env.R2.get(url.pathname);
             if (object === null) {

@@ -91,66 +91,37 @@ export function defineRoutes(
       }
 
       if (!match) {
-        // todo(peterp, 2025-01-28): Allow the user to define the own not found route.
+        // todo(peterp, 2025-01-28): Allow the user to define their own "not found" route.
         return new Response("Not Found", { status: 404 });
       }
 
-      const { params, handler } = match;
+      let { params, handler } = match;
 
-      // Handle array of handlers (middleware chain)
+      // Array of handlers (middleware chain)
       if (Array.isArray(handler)) {
-        // todo: fix this later.
-        // let response: Response | undefined
-        // let currentIndex = 0
 
-        // const next = async () => {
-        //   const currentHandler = handler[currentIndex]
-        //   currentIndex++
+        const handlers = handler;
+        handler = handlers.pop()
 
-        //   if (!currentHandler) {
-        //     return response
-        //   }
+        // loop over each function. Only the last function can be a page function.
+        for (const h of handlers) {
+          if (isRouteComponent(h)) {
+            throw new Error('Only the last handler in an array of routes can a React component.')
+          }
 
-        //   if (typeof currentHandler === 'function') {
-        //     if ('$$typeof' in currentHandler) {
-        //       // Page component
-        //       return new Response(
-        //         `<div id="root">${await renderToString(
-        //           currentHandler({ params })
-        //         )}</div>`,
-        //         {
-        //           headers: { 'Content-Type': 'text/html' },
-        //         }
-        //       )
-        //     } else {
-        //       // Route handler
-        //       return currentHandler(request, response!, next)
-        //     }
-        //   }
-
-        //   // Handle async imports
-        //   const mod = await currentHandler
-        //   // return new Response(
-        //   //   `<div id="root">${await renderToString(
-        //   //     mod.default({ params })
-        //   //   )}</div>`,
-        //   //   {
-        //   //     headers: { 'Content-Type': 'text/html' },
-        //   //   }
-        //   // )
-        // }
-
-        // return next()
-        return new Response("not implemented...");
-      } else if (typeof handler === "function") {
-        if (isValidElementType(handler) && handler.toString().includes("jsx")) {
-          return await renderPage(handler as RouteComponent, { params, ctx });
-        } else {
-          // Execute the route handler and ensure we get a Response
-          return await (handler({ request, params, ctx }) as Promise<Response>);
+          const r = await h({ request, params, ctx })
+          if (r instanceof Response) {
+            return r
+          }
         }
       }
-      return new Response("handler not implemented.");
+
+      if (isRouteComponent(handler)) {
+        // TODO(peterp, 2025-01-30): Serialize the request
+        return await renderPage(handler as RouteComponent, { params, ctx });
+      } else {
+        return await (handler({ request, params, ctx }) as Promise<Response>);
+      }
     },
   };
 }
@@ -183,4 +154,8 @@ export function prefix(prefix: string, routes: ReturnType<typeof route>[]) {
         handler: r.handler
       }
   })
+}
+
+function isRouteComponent(handler: any) {
+  return isValidElementType(handler) && handler.toString().includes("jsx")
 }

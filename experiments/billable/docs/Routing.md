@@ -33,10 +33,8 @@ export default defineRoutes([
 
   // wildcard parameters
   route("assets/*", ({ request, params }) => {
-
-    // Log out the first wildcard.
+    // Log out the first wildcard param.
     console.log(params.$0)
-
     // Grab file from R2, and return it.
     return res.send(filestream, 200)
   })
@@ -46,6 +44,13 @@ export default defineRoutes([
 })
 ```
 
+
+# API
+
+- `defineRoutes`
+- `route`
+- `index`
+- `prefix`
 
 
 ## TODO
