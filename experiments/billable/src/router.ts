@@ -6,9 +6,9 @@ export type RouteContext<TParams = Record<string, string>> = {
   ctx?: any;
 };
 
+type RouteMiddleware = (ctx: RouteContext) => Response | Promise<Response> | void;
 type RouteFunction = (ctx: RouteContext) => Response | Promise<Response>;
 type RouteComponent = (ctx: RouteContext) => JSX.Element | Promise<JSX.Element>;
-type RouteMiddleware = (ctx: RouteContext) => Response | Promise<Response> | void;
 
 type RouteHandler = RouteFunction | RouteComponent | [...RouteMiddleware[], RouteFunction | RouteComponent ]
 
