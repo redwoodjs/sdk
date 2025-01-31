@@ -30,7 +30,11 @@ export const getContext = async (
   };
 };
 
-// Update the PageComponent type definition
+function authRequired({ ctx }: any) {
+  if (!ctx.user) {
+    return new Response("Unauthorized", { status: 401 });
+  }
+}
 
 export default {
   async fetch(request: Request, env: Env) {
@@ -51,14 +55,14 @@ export default {
       // (from experimentation, it is not in node_modules/.vite). This means that if you were to subsequently
       // change the code to _not_ have Prisma used after the initial request, the WASM will still be cached and
       // the request will not hang. This makes this issue particularly hard to debug.
-      await db.$queryRaw`SELECT 1`
+      await db.$queryRaw`SELECT 1`;
 
       const url = new URL(request.url);
-      if (url.pathname === '/test/db') {
-        console.log('## test db')
-        const r = await db.$queryRaw`SELECT 1`
-        console.log('## test db result', r)
-        return new Response(JSON.stringify(r), { status: 200 })
+      if (url.pathname === "/test/db") {
+        console.log("## test db");
+        const r = await db.$queryRaw`SELECT 1`;
+        console.log("## test db result", r);
+        return new Response(JSON.stringify(r), { status: 200 });
       }
 
       let ctx: Awaited<ReturnType<typeof getContext>> = {};
@@ -107,14 +111,19 @@ export default {
         });
       };
 
-      // It would be really nice to have a way to get the links,
-      // like how do I validate in my react components that I'm not
-      // using a link that doesn't exist?
-
-      // todo: auth middleware
       const r = defineRoutes(
         [
-          index(HomePage),
+          index([
+            function ({ ctx }) {
+              if (ctx.user) {
+                return new Response(null, {
+                  status: 302,
+                  headers: { Location: "/invoices" },
+                });
+              }
+            },
+            HomePage,
+          ]),
 
           // Let's nest this under something...
           route("/login", LoginPage),
@@ -155,59 +164,51 @@ export default {
             return performLogin(request, env, user.id);
           }),
 
-          route("/invoices", InvoiceListPage),
+          route("/invoices", [authRequired, InvoiceListPage]),
 
           ...prefix("/invoice", [
-            route("/:id", InvoiceDetailPage), // can we type the params here?
-            route("/:id/upload", async ({ request }) => {
-            if (
-              request.method === "POST" &&
-              request.headers.get("content-type")?.includes("multipart/form-data")
-            ) {
-              // todo get userId from context.
+            route("/:id", [authRequired, InvoiceDetailPage]), // can we type the params here?
+            route("/:id/upload", [
+              authRequired,
+              async ({ request }) => {
+                if (
+                  request.method === "POST" &&
+                  request.headers
+                    .get("content-type")
+                    ?.includes("multipart/form-data")
+                ) {
+                  // todo get userId from context.
 
-              const formData = await request.formData();
-              const userId = formData.get("userId") as string;
-              const invoiceId = formData.get("invoiceId") as string;
-              const file = formData.get("file") as File;
+                  const formData = await request.formData();
+                  const userId = formData.get("userId") as string;
+                  const invoiceId = formData.get("invoiceId") as string;
+                  const file = formData.get("file") as File;
 
-              // Stream the file directly to R2
-              const r2ObjectKey = `/logos/${userId}/${invoiceId}-${Date.now()}-${file.name}`;
-              await env.R2.put(r2ObjectKey, file.stream(), {
-                httpMetadata: {
-                  contentType: file.type,
-                },
-              });
+                  // Stream the file directly to R2
+                  const r2ObjectKey = `/logos/${userId}/${invoiceId}-${Date.now()}-${file.name}`;
+                  await env.R2.put(r2ObjectKey, file.stream(), {
+                    httpMetadata: {
+                      contentType: file.type,
+                    },
+                  });
 
-              await db.invoice.update({
-                where: { id: invoiceId },
-                data: {
-                  supplierLogo: r2ObjectKey,
-                },
-              });
+                  await db.invoice.update({
+                    where: { id: invoiceId },
+                    data: {
+                      supplierLogo: r2ObjectKey,
+                    },
+                  });
 
-              return new Response(JSON.stringify({ key: r2ObjectKey }), {
-                status: 200,
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              });
-            }
-              return new Response("Method not allowed", { status: 405 });
-            }),
-          ]),
-
-          route('/test',[
-            function({ request, ctx }) {
-              console.log('we come here.')
-            },
-            async function() {
-              return new Response('not authenticated', { status: 401 })
-            },
-            function({ request, ctx }) {
-              console.log('we did not come here.')
-              return new Response('hello world')
-            }
+                  return new Response(JSON.stringify({ key: r2ObjectKey }), {
+                    status: 200,
+                    headers: {
+                      "Content-Type": "application/json",
+                    },
+                  });
+                }
+                return new Response("Method not allowed", { status: 405 });
+              },
+            ]),
           ]),
 
           // rename this to something a bit more explicit.
@@ -222,6 +223,7 @@ export default {
               },
             });
           }),
+
           // I don't thin I actually use this, but maybe we should upload a logo or something?
           route("/assets/*", ({ request }) => {
             const u = new URL(request.url);

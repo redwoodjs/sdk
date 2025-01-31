@@ -143,7 +143,7 @@ export function route(
 }
 
 export function index(
-  handler: RouteDefinition['handler']
+  handler: RouteHandler
 ) {
   return route("/", handler);
 }
