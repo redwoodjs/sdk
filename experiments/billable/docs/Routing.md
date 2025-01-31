@@ -21,6 +21,10 @@ export default defineRoutes([
   index(HomePage),
 
   ...prefix('/number', [
+    // matches `/number`
+    index(function() {
+      return new Response('Pick one, two, or anything really...')
+    }),
      // static, matches `/number/one`
     route("/one", PageOne),
      // static, matches `/number/two`
@@ -36,7 +40,6 @@ export default defineRoutes([
     // Log out the first wildcard param.
     console.log(params.$0)
     // Grab file from R2, and return it.
-    return res.send(filestream, 200)
   })
 ], {
   // getContext: passed as `ctx` to each handler

@@ -29,7 +29,7 @@ async function getInvoiceListSummary(userId) {
       customer: true,
     },
     where: {
-      userId: '1',
+      userId
     }
   }) ?? []
 

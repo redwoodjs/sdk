@@ -107,10 +107,16 @@ export default {
         });
       };
 
+      // It would be really nice to have a way to get the links,
+      // like how do I validate in my react components that I'm not
+      // using a link that doesn't exist?
+
+      // todo: auth middleware
       const r = defineRoutes(
         [
           index(HomePage),
 
+          // Let's nest this under something...
           route("/login", LoginPage),
           route("/auth", async ({ request }) => {
             // when it's async then react-is thinks it's a react component.
@@ -204,6 +210,7 @@ export default {
             }
           ]),
 
+          // rename this to something a bit more explicit.
           route("/logos/*", async (req) => {
             const object = await env.R2.get(url.pathname);
             if (object === null) {
@@ -215,6 +222,7 @@ export default {
               },
             });
           }),
+          // I don't thin I actually use this, but maybe we should upload a logo or something?
           route("/assets/*", ({ request }) => {
             const u = new URL(request.url);
             u.pathname = u.pathname.slice("/assets/".length);

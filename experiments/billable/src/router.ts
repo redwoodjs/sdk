@@ -26,7 +26,6 @@ function matchPath(
   routePath: string,
   requestPath: string,
 ): RouteContext["params"] | null {
-  // Convert route path to regex pattern
   const pattern = routePath
     .replace(/:[a-zA-Z]+/g, "([^/]+)") // Convert :param to capture group
     .replace(/\*/g, "(.*)"); // Convert * to wildcard capture group
@@ -88,7 +87,6 @@ export function defineRoutes(
         const params = matchPath(route.path, path);
         if (params) {
           match = { params, handler: route.handler };
-          console.log("[debug] route matched ", route.path);
           break;
         }
       }
@@ -109,7 +107,7 @@ export function defineRoutes(
         // loop over each function. Only the last function can be a page function.
         for (const h of handlers) {
           if (isRouteComponent(h)) {
-            throw new Error('Only the last handler in an array of routes can a React component.')
+            throw new Error('Only the last handler in an array of routes can be a React component.')
           }
 
           const r = await h({ request, params, ctx })

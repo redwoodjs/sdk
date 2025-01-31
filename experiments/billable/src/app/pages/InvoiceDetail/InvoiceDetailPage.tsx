@@ -3,11 +3,43 @@
 import { Suspense } from "react";
 import { Layout } from "../Layout";
 
-import { FetchInvoice } from "./FetchInvoice";
 import { InvoiceForm } from "./InvoiceForm";
 import { RouteContext } from "../../../router";
+import { db } from "../../../db";
+
+export type InvoiceItem = {
+  description: string,
+  price: number,
+  quantity: number,
+}
+
+export type InvoiceTaxes = {
+  description: string,
+  amount: number
+}
+
+
+export async function getInvoice(id: string, userId: string) {
+
+  const invoice =  await db.invoice.findFirstOrThrow({
+    where: {
+      id,
+      userId,
+    }
+  })
+
+  return {
+    ...invoice,
+    items: JSON.parse(invoice.items) as InvoiceItem[],
+    taxes: JSON.parse(invoice.taxes) as InvoiceTaxes[]
+  }
+}
+
 
 export default async function InvoiceDetailPage({ params, ctx }: RouteContext<{ id: string }>) {
+
+  const invoice = await getInvoice(params.id, ctx.user.id)
+
   return (
     <Layout ctx={ctx}>
       <div className="px-4 sm:px-6 lg:px-8">
@@ -19,12 +51,7 @@ export default async function InvoiceDetailPage({ params, ctx }: RouteContext<{ 
             <p className="mt-1 text-sm leading-6 text-gray-600">
               Create or edit an invoice by filling out the information below.
             </p>
-
-            <Suspense fallback={<div>Loading...</div>}>
-              <FetchInvoice id={params.id}>
-                {(invoice: any) => <InvoiceForm invoice={invoice} />}
-              </FetchInvoice>
-            </Suspense>
+            <InvoiceForm invoice={invoice} />
           </div>
         </div>
       </div>

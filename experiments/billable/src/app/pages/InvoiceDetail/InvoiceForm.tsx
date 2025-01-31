@@ -1,7 +1,7 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { type InvoiceTaxes, type InvoiceItem, type getInvoice } from "./FetchInvoice";
+import { type InvoiceTaxes, type InvoiceItem, type getInvoice } from "./InvoiceDetailPage";
 import { deleteLogo, saveInvoice } from "./functions";
 import { PrintPdf } from "./PrintToPdf";
 
