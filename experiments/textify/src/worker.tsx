@@ -80,15 +80,18 @@ export default {
           
           // Process in chunks of 32KB for better performance while staying safe
           const CHUNK_SIZE = 32 * 1024; // 32KB
-          let base64AudioString = '';
+          let binaryString = '';
           
+          // First combine all chunks into a single binary string
           for (let i = 0; i < uint8Array.length; i += CHUNK_SIZE) {
             const chunk = uint8Array.slice(i, Math.min(i + CHUNK_SIZE, uint8Array.length));
-            const binaryString = Array.from(chunk)
+            binaryString += Array.from(chunk)
               .map(byte => String.fromCharCode(byte))
               .join('');
-            base64AudioString += btoa(binaryString);
           }
+          
+          // Then do a single base64 encoding of the complete binary string
+          const base64AudioString = btoa(binaryString);
 
           if (user) {
             const audioChunk = await db.audioChunk.create({
