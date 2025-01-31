@@ -5,6 +5,7 @@ import { Layout } from "../../Layout";
 import { CreateInvoiceButton } from "./CreateInvoiceButton";
 import { db } from "../../../../db";
 import { RouteContext } from "../../../../router";
+import { link } from "../../../../shared/links";
 
 export type InvoiceItem = {
   description: string,
@@ -96,7 +97,7 @@ function InvoiceListItem(
   props: Awaited<ReturnType<typeof getInvoiceListSummary>>[number],
 ) {
   return (
-    <a href={`/invoice/${props.id}`} className="table-row hover:bg-gray-50 cursor-pointer">
+    <a href={link('/invoice/:id', { id: props.id })} className="table-row hover:bg-gray-50 cursor-pointer">
       <div className="table-cell whitespace-nowrap py-4 pl-4 pr-3 text-sm text-gray-900 sm:pl-0">
         {props.date.toLocaleDateString(undefined, {
           year: 'numeric',

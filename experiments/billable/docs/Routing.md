@@ -53,12 +53,40 @@ router.handle({ request, ctx, env, renderPage })
 ```
 
 
-# API
+# API Reference
 
 - `defineRoutes`
 - `route`
 - `index`
 - `prefix`
+
+
+# Links
+
+We also include an interface to generate paths in a typesafe way. This allows you to confidently
+refactor your links.
+
+```ts
+
+import { defineLinks } from 'links.ts'
+
+
+const link = defineLinks([
+  '/',
+  '/user/auth',
+  '/user/login',
+  '/user/logout',
+  '/invoice/all/',
+  '/invoice/:id/'
+  '/invoice/:id/upload'
+  '/invoice/logos/*'
+])
+
+
+link('/invoice/:id', { id: 1 })
+
+
+```
 
 
 ## TODO

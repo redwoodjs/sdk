@@ -1,6 +1,6 @@
 import { performLogin } from "../../../auth";
 import { db } from "../../../db";
-import { prefix, route } from "../../../router";
+import { route } from "../../../router";
 import { LoginPage } from "./LoginPage";
 
 

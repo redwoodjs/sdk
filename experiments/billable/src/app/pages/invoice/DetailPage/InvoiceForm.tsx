@@ -4,6 +4,7 @@ import { useState, useRef } from "react";
 import { type InvoiceTaxes, type InvoiceItem, type getInvoice } from "./InvoiceDetailPage";
 import { deleteLogo, saveInvoice } from "./functions";
 import { PrintPdf } from "./PrintToPdf";
+import { link } from "../../../../shared/links";
 
 
 function calculateSubtotal(items: InvoiceItem[]) {
@@ -25,6 +26,7 @@ function calculateTaxes(subtotal: number, taxes: InvoiceTaxes[]) {
 
 export function InvoiceForm(props: {
   invoice: Awaited<ReturnType<typeof getInvoice>>;
+  ctx: RouteContext;
 }) {
   const [invoice, setInvoice] = useState(props.invoice);
   const [items, setItems] = useState(props.invoice.items);
@@ -41,8 +43,8 @@ export function InvoiceForm(props: {
       <div className="col-span-full">
         <button
           onClick={async () => {
-            // await saveInvoice(invoice.id, invoice, items, taxes);
-            // window.location.href = "/";
+            await saveInvoice(invoice.id, invoice, items, taxes, ctx.user.id);
+            window.location.href = "/invoice/list";
           }}
         >
           Save
@@ -397,7 +399,7 @@ export function SupplierName({
             setInvoice({ ...invoice, supplierName: e.target.value })
           }
         ></textarea>
-        <UploadLogo userId="1" invoiceId={invoice.id} onSuccess={(supplierLogo) => {
+        <UploadLogo invoiceId={invoice.id} onSuccess={(supplierLogo) => {
           setInvoice({ ...invoice, supplierLogo });
         }} />
       </div>
@@ -406,11 +408,9 @@ export function SupplierName({
 }
 
 export function UploadLogo({
-  userId,
   invoiceId,
   onSuccess,
 }: {
-  userId: string;
   invoiceId: string;
   onSuccess: (supplierLogo: string) => void;
 }) {
@@ -425,11 +425,9 @@ export function UploadLogo({
 
           const formData = new FormData();
           formData.append("file", file);
-          formData.append("userId", userId);
-          formData.append("invoiceId", invoiceId);
 
           try {
-            const response = await fetch(`/invoice/${invoiceId}/upload`, {
+            const response = await fetch(link('/invoice/:id/upload', { id: invoiceId }), {
               method: "POST",
               body: formData,
             });

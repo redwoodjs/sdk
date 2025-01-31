@@ -1,5 +1,6 @@
 import { User } from "@prisma/client";
 import React from "react";
+import { link } from "../../shared/links";
 
 export function Layout({ children, ctx }: { children: React.ReactNode, ctx: { user?: User } }) {
   if (typeof ctx === "undefined") {
@@ -17,8 +18,8 @@ export function Layout({ children, ctx }: { children: React.ReactNode, ctx: { us
             <div className="flex items-center">
               {ctx?.user ? (
                 <span className="text-sm font-medium text-gray-900">
-                  <a href="/invoice/list">{ctx.user.email}</a>{' '}
-                  <a href="/user/logout">Logout</a>
+                  <a href={link('/invoice/list')}>{ctx.user.email}</a>{' '}
+                  <a href={link('/user/logout')}>Logout</a>
                 </span>
               ) : (
                 <span className="text-sm font-medium text-gray-900"><a href="/user/login">Not logged in</a></span>

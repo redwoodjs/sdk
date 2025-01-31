@@ -1,5 +1,6 @@
 import { Layout } from "../Layout";
 import { RouteContext } from "../../../router";
+import { link } from "../../../shared/links";
 
 export default function HomePage({ ctx}: RouteContext) {
   return (
@@ -33,7 +34,7 @@ export default function HomePage({ ctx}: RouteContext) {
               </div>
               <div className="mt-10 flex justify-center">
                 <a
-                  href="/login"
+                  href={link('/user/login')}
                   className="rounded-md bg-indigo-600 px-8 py-3 text-base font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
                 >
                   Login to get started
