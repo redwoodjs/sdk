@@ -3,6 +3,7 @@
 import { Resend } from "resend";
 import { getEnv } from "../../../env";
 import { db } from "../../../db";
+import { link } from "../../../shared/links";
 
 export async function generateAuthToken(email: string) {
   const authToken = crypto.randomUUID();
@@ -32,7 +33,9 @@ export async function emailLoginLink(email: string) {
   console.log('### generateAuthToken')
   const token = await generateAuthToken(email);
   console.log('### generateAuthToken done')
-  const loginUrl = `${getEnv().APP_URL}/user/auth?token=${token}&email=${encodeURIComponent(email)}`;
+
+
+  const loginUrl = `${getEnv().APP_URL}${link('/user/auth')}?token=${token}&email=${encodeURIComponent(email)}`;
   console.log('### loginUrl', loginUrl)
   const resend = new Resend(getEnv().RESEND_API_KEY);
   console.log('### resend')
