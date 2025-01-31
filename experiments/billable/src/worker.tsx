@@ -36,6 +36,124 @@ function authRequired({ ctx }: any) {
   }
 }
 
+const router = defineRoutes([
+  index([
+    function ({ ctx }) {
+      if (ctx.user) {
+        return new Response(null, {
+          status: 302,
+          headers: { Location: "/invoices" },
+        });
+      }
+    },
+    HomePage,
+  ]),
+
+  // Let's nest this under something...
+  route("/login", LoginPage),
+  route("/auth", async ({ request, env }) => {
+    // when it's async then react-is thinks it's a react component.
+    const url = new URL(request.url);
+    const token = url.searchParams.get("token");
+    const email = url.searchParams.get("email");
+
+    if (!token || !email) {
+      return new Response("Invalid token or email", { status: 400 });
+    }
+    const user = await db.user.findFirst({
+      where: {
+        email,
+        authToken: token,
+        authTokenExpiresAt: {
+          gt: new Date(),
+        },
+      },
+    });
+
+    if (!user) {
+      return new Response("Invalid or expired token", { status: 400 });
+    }
+
+    // Clear the auth token
+    await db.user.update({
+      where: { id: user.id },
+      data: {
+        authToken: null,
+        authTokenExpiresAt: null,
+      },
+    });
+
+    console.log("performing login");
+
+    return performLogin(request, env, user.id);
+  }),
+
+  route("/invoices", [authRequired, InvoiceListPage]),
+
+  ...prefix("/invoice", [
+    route("/:id", [authRequired, InvoiceDetailPage]), // can we type the params here?
+    route("/:id/upload", [
+      authRequired,
+      async ({ request, env }) => {
+        if (
+          request.method === "POST" &&
+          request.headers.get("content-type")?.includes("multipart/form-data")
+        ) {
+          // todo get userId from context.
+
+          const formData = await request.formData();
+          const userId = formData.get("userId") as string;
+          const invoiceId = formData.get("invoiceId") as string;
+          const file = formData.get("file") as File;
+
+          // Stream the file directly to R2
+          const r2ObjectKey = `/logos/${userId}/${invoiceId}-${Date.now()}-${file.name}`;
+          await env.R2.put(r2ObjectKey, file.stream(), {
+            httpMetadata: {
+              contentType: file.type,
+            },
+          });
+
+          await db.invoice.update({
+            where: { id: invoiceId },
+            data: {
+              supplierLogo: r2ObjectKey,
+            },
+          });
+
+          return new Response(JSON.stringify({ key: r2ObjectKey }), {
+            status: 200,
+            headers: {
+              "Content-Type": "application/json",
+            },
+          });
+        }
+        return new Response("Method not allowed", { status: 405 });
+      },
+    ]),
+  ]),
+
+  // rename this to something a bit more explicit.
+  route("/logos/*", async ({ params, env }) => {
+    const object = await env.R2.get(params.$0);
+    if (object === null) {
+      return new Response("Object Not Found", { status: 404 });
+    }
+    return new Response(object.body, {
+      headers: {
+        "Content-Type": object.httpMetadata?.contentType as string,
+      },
+    });
+  }),
+
+  // I don't thin I actually use this, but maybe we should upload a logo or something?
+  route("/assets/*", ({ request, env }) => {
+    const u = new URL(request.url);
+    u.pathname = u.pathname.slice("/assets/".length);
+    return env.ASSETS.fetch(new Request(u.toString(), request));
+  }),
+]);
+
 export default {
   async fetch(request: Request, env: Env) {
     globalThis.__webpack_require__ = ssrWebpackRequire;
@@ -43,7 +161,6 @@ export default {
     try {
       setupDb(env);
       setupEnv(env);
-
       // todo(justinvdm, 30 Jan 2025): Figure out how to avoid this.
       //
       // ## Context:
@@ -57,32 +174,23 @@ export default {
       // the request will not hang. This makes this issue particularly hard to debug.
       await db.$queryRaw`SELECT 1`;
 
-      const url = new URL(request.url);
-      if (url.pathname === "/test/db") {
-        console.log("## test db");
-        const r = await db.$queryRaw`SELECT 1`;
-        console.log("## test db result", r);
-        return new Response(JSON.stringify(r), { status: 200 });
-      }
-
       let ctx: Awaited<ReturnType<typeof getContext>> = {};
       let session: Awaited<ReturnType<typeof getSession>> | undefined;
-      let authenticated: boolean = false;
       try {
         session = await getSession(request, env);
         ctx = await getContext(session);
-        authenticated = true;
       } catch (e) {
-        authenticated = false;
+        console.error("Error getting session", e);
       }
 
+      const url = new URL(request.url);
       const isRSCRequest = url.searchParams.has("__rsc");
       const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 
       let actionResult: any;
       if (isRSCActionHandler) {
         console.log("isRSCActionHandler", isRSCActionHandler);
-        actionResult = await rscActionHandler(request, ctx);
+        actionResult = await rscActionHandler(request, ctx); // maybe we should include params and ctx in the action handler?
         console.log("-".repeat(80));
       }
 
@@ -110,134 +218,13 @@ export default {
           headers: { "content-type": "text/html" },
         });
       };
+      return await router.handle({
+        request,
+        ctx,
+        env,
+        renderPage,
+      });
 
-      const r = defineRoutes(
-        [
-          index([
-            function ({ ctx }) {
-              if (ctx.user) {
-                return new Response(null, {
-                  status: 302,
-                  headers: { Location: "/invoices" },
-                });
-              }
-            },
-            HomePage,
-          ]),
-
-          // Let's nest this under something...
-          route("/login", LoginPage),
-          route("/auth", async ({ request }) => {
-            // when it's async then react-is thinks it's a react component.
-            const url = new URL(request.url);
-            const token = url.searchParams.get("token");
-            const email = url.searchParams.get("email");
-
-            if (!token || !email) {
-              return new Response("Invalid token or email", { status: 400 });
-            }
-            const user = await db.user.findFirst({
-              where: {
-                email,
-                authToken: token,
-                authTokenExpiresAt: {
-                  gt: new Date(),
-                },
-              },
-            });
-
-            if (!user) {
-              return new Response("Invalid or expired token", { status: 400 });
-            }
-
-            // Clear the auth token
-            await db.user.update({
-              where: { id: user.id },
-              data: {
-                authToken: null,
-                authTokenExpiresAt: null,
-              },
-            });
-
-            console.log("performing login");
-
-            return performLogin(request, env, user.id);
-          }),
-
-          route("/invoices", [authRequired, InvoiceListPage]),
-
-          ...prefix("/invoice", [
-            route("/:id", [authRequired, InvoiceDetailPage]), // can we type the params here?
-            route("/:id/upload", [
-              authRequired,
-              async ({ request }) => {
-                if (
-                  request.method === "POST" &&
-                  request.headers
-                    .get("content-type")
-                    ?.includes("multipart/form-data")
-                ) {
-                  // todo get userId from context.
-
-                  const formData = await request.formData();
-                  const userId = formData.get("userId") as string;
-                  const invoiceId = formData.get("invoiceId") as string;
-                  const file = formData.get("file") as File;
-
-                  // Stream the file directly to R2
-                  const r2ObjectKey = `/logos/${userId}/${invoiceId}-${Date.now()}-${file.name}`;
-                  await env.R2.put(r2ObjectKey, file.stream(), {
-                    httpMetadata: {
-                      contentType: file.type,
-                    },
-                  });
-
-                  await db.invoice.update({
-                    where: { id: invoiceId },
-                    data: {
-                      supplierLogo: r2ObjectKey,
-                    },
-                  });
-
-                  return new Response(JSON.stringify({ key: r2ObjectKey }), {
-                    status: 200,
-                    headers: {
-                      "Content-Type": "application/json",
-                    },
-                  });
-                }
-                return new Response("Method not allowed", { status: 405 });
-              },
-            ]),
-          ]),
-
-          // rename this to something a bit more explicit.
-          route("/logos/*", async (req) => {
-            const object = await env.R2.get(url.pathname);
-            if (object === null) {
-              return new Response("Object Not Found", { status: 404 });
-            }
-            return new Response(object.body, {
-              headers: {
-                "Content-Type": object.httpMetadata?.contentType as string,
-              },
-            });
-          }),
-
-          // I don't thin I actually use this, but maybe we should upload a logo or something?
-          route("/assets/*", ({ request }) => {
-            const u = new URL(request.url);
-            u.pathname = u.pathname.slice("/assets/".length);
-            return env.ASSETS.fetch(new Request(u.toString(), request));
-          }),
-        ],
-        {
-          ctx,
-          renderPage,
-        },
-      );
-
-      return await r.handle(request);
     } catch (e) {
       if (e instanceof ErrorResponse) {
         return new Response(e.message, { status: e.code });
