@@ -49,7 +49,7 @@ const router = defineRoutes([
   })
 ])
 
-router.handle(request, { ctx, renderPage, env })
+router.handle({ request, ctx, env, renderPage })
 ```
 
 

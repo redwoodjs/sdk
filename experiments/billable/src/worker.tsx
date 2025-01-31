@@ -188,12 +188,9 @@ export default {
       const url = new URL(request.url);
       const isRSCRequest = url.searchParams.has("__rsc");
       const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
-
       let actionResult: any;
       if (isRSCActionHandler) {
-        console.log("isRSCActionHandler", isRSCActionHandler);
         actionResult = await rscActionHandler(request, ctx); // maybe we should include params and ctx in the action handler?
-        console.log("-".repeat(80));
       }
 
       const renderPage = async (Page: any, props = {}) => {
