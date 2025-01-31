@@ -27,7 +27,7 @@ export const performLogin = async (request: Request, env: Env, userId: string) =
   return new Response(`
     <html>
       <head>
-        <meta http-equiv="refresh" content="0;url=/invoices">
+        <meta http-equiv="refresh" content="0;url=/invoice/list">
       </head>
       <body>
         Redirecting to invoices...

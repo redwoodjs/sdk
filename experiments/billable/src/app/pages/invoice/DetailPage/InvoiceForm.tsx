@@ -6,7 +6,7 @@ import { deleteLogo, saveInvoice } from "./functions";
 import { PrintPdf } from "./PrintToPdf";
 
 
-export function calculateSubtotal(items: InvoiceItem[]) {
+function calculateSubtotal(items: InvoiceItem[]) {
   let sum = 0;
   for (const item of items) {
     sum += item.quantity * item.price;
@@ -14,7 +14,7 @@ export function calculateSubtotal(items: InvoiceItem[]) {
   return sum;
 }
 
-export function calculateTaxes(subtotal: number, taxes: InvoiceTaxes[]) {
+function calculateTaxes(subtotal: number, taxes: InvoiceTaxes[]) {
   let sum = 0;
   for (const tax of taxes) {
     sum += subtotal * tax.amount;
@@ -41,7 +41,7 @@ export function InvoiceForm(props: {
       <div className="col-span-full">
         <button
           onClick={async () => {
-            await saveInvoice(invoice.id, invoice, items, taxes);
+            // await saveInvoice(invoice.id, invoice, items, taxes);
             // window.location.href = "/";
           }}
         >

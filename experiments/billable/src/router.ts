@@ -124,7 +124,6 @@ export function defineRoutes(routes: RouteDefinition[]): {
 
           const r = await h({ request, params, ctx, env });
           if (r instanceof Response) {
-            console.log('returning response...')
             return r;
           }
         }
@@ -132,10 +131,8 @@ export function defineRoutes(routes: RouteDefinition[]): {
 
       if (isRouteComponent(handler)) {
         // TODO(peterp, 2025-01-30): Serialize the request
-        console.log('rendering the page')
         return await renderPage(handler as RouteComponent, { params, ctx });
       } else {
-        console.log('rendering the response')
         return await (handler({ request, params, ctx, env }) as Promise<Response>);
       }
     },

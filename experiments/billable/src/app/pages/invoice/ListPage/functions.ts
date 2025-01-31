@@ -1,8 +1,8 @@
 'use server';
 
 
-import { db } from "../../../db";
-import { getContext } from "../../../worker";
+import { db } from "../../../../db";
+import { getContext } from "../../../../worker";
 
 
 

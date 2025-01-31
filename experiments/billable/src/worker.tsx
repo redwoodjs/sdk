@@ -7,16 +7,14 @@ import { renderToRscStream } from "./render/renderToRscStream";
 
 import { ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
-import InvoiceListPage from "./app/pages/InvoiceList/InvoiceListPage";
-import InvoiceDetailPage from "./app/pages/InvoiceDetail/InvoiceDetailPage";
 import { ErrorResponse } from "./error";
-import { getSession, performLogin } from "./auth";
-import { LoginPage } from "./app/pages/Login/LoginPage";
+import { getSession } from "./auth";
 import { setupEnv } from "./env";
 import HomePage from "./app/pages/Home/HomePage";
 
 import { defineRoutes, index, prefix, route } from "./router";
 import { authRoutes } from "./app/pages/auth/routes";
+import { invoiceRoutes } from "./app/pages/invoice/routes";
 
 export { SessionDO } from "./session";
 
@@ -51,83 +49,23 @@ export default {
           if (ctx.user) {
             return new Response(null, {
               status: 302,
-              headers: { Location: "/invoices" },
+              headers: { Location: "/invoice/list" },
             });
           }
         },
         HomePage,
       ]),
-
-
       ...prefix("/user", authRoutes),
-
-      route("/invoices", [authRequired, InvoiceListPage]),
-
-      ...prefix("/invoice", [
-        route("/:id", [authRequired, InvoiceDetailPage]), // can we type the params here?
-        route("/:id/upload", [
-          authRequired,
-          async ({ request, env }) => {
-            if (
-              request.method === "POST" &&
-              request.headers
-                .get("content-type")
-                ?.includes("multipart/form-data")
-            ) {
-              // todo get userId from context.
-
-              const formData = await request.formData();
-              const userId = formData.get("userId") as string;
-              const invoiceId = formData.get("invoiceId") as string;
-              const file = formData.get("file") as File;
-
-              // Stream the file directly to R2
-              const r2ObjectKey = `/logos/${userId}/${invoiceId}-${Date.now()}-${file.name}`;
-              await env.R2.put(r2ObjectKey, file.stream(), {
-                httpMetadata: {
-                  contentType: file.type,
-                },
-              });
-
-              await db.invoice.update({
-                where: { id: invoiceId },
-                data: {
-                  supplierLogo: r2ObjectKey,
-                },
-              });
-
-              return new Response(JSON.stringify({ key: r2ObjectKey }), {
-                status: 200,
-                headers: {
-                  "Content-Type": "application/json",
-                },
-              });
-            }
-            return new Response("Method not allowed", { status: 405 });
-          },
-        ]),
-      ]),
-
-      // rename this to something a bit more explicit.
-      route("/logos/*", async ({ params, env }) => {
-        const object = await env.R2.get(params.$0);
-        if (object === null) {
-          return new Response("Object Not Found", { status: 404 });
-        }
-        return new Response(object.body, {
-          headers: {
-            "Content-Type": object.httpMetadata?.contentType as string,
-          },
-        });
-      }),
-
-      // I don't thin I actually use this, but maybe we should upload a logo or something?
-      route("/assets/*", ({ request, env }) => {
-        const u = new URL(request.url);
-        u.pathname = u.pathname.slice("/assets/".length);
-        return env.ASSETS.fetch(new Request(u.toString(), request));
-      }),
+      ...prefix("/invoice", invoiceRoutes),
     ]);
+
+    // I don't thin I actually use this, but maybe we should upload a logo or something?
+    //   route("/assets/*", ({ request, env }) => {
+    //     const u = new URL(request.url);
+    //     u.pathname = u.pathname.slice("/assets/".length);
+    //     return env.ASSETS.fetch(new Request(u.toString(), request));
+    //   }),
+    // ]);
 
     try {
       setupDb(env);
@@ -192,7 +130,6 @@ export default {
         env,
         renderPage,
       });
-      console.log("response", response);
       return response;
     } catch (e) {
       if (e instanceof ErrorResponse) {

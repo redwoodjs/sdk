@@ -17,7 +17,7 @@ export function Layout({ children, ctx }: { children: React.ReactNode, ctx: { us
             <div className="flex items-center">
               {ctx?.user ? (
                 <span className="text-sm font-medium text-gray-900">
-                  <a href="/invoices">{ctx.user.email}</a>{' '}
+                  <a href="/invoice/list">{ctx.user.email}</a>{' '}
                   <a href="/user/logout">Logout</a>
                 </span>
               ) : (
