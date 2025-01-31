@@ -4,6 +4,8 @@ import { TwilioClient } from "./twilio";
 import { db, setupDb } from "./db";
 import languages from "./languages";
 
+const VOICE_MODEL = "@cf/openai/whisper-large-v3-turbo";
+const TEXT_MODEL = "@cf/meta/llama-2-7b-chat-fp16";
 export default {
   async fetch(request: Request, env: Env): Promise<Response> {
     globalThis.__webpack_require__ = ssrWebpackRequire;
@@ -24,10 +26,10 @@ export default {
       }
 
       setupDb(env);
-
+      // for testing
       if (request.url.includes("/test")) {
         await env.ai_que.send({ 
-          from: "test",
+          from: "whatsapp:+27724217253",
           messageSid: "test",
           queue: "message-que",
           input: {
@@ -37,6 +39,7 @@ export default {
         return new Response('OK', { status: 200 });
       }
 
+      // for incoming messages from twilio
       if (request.method === "POST" && request.url.includes("/incoming")) {
         console.log("Incoming request received");
         const body = await request.text();
@@ -51,13 +54,13 @@ export default {
           originalMessageSid,
         );
         // do we have a record of this number in the db?
-        const user = await db.user.findFirst({
+        let user = await db.user.findFirst({
           where: {
             cellnumber: bodyData.get("From")!,
           },
         });
         if (!user) {
-          await db.user.create({
+          user = await db.user.create({
             data: {
               cellnumber: bodyData.get("From")!,
             },
@@ -106,6 +109,8 @@ export default {
             } else {
               throw new Error("Audio chunk not created");
             }
+          } else {
+            throw new Error("User not found");
           }
           console.log("Sent to voice-que");
 
@@ -194,16 +199,6 @@ export default {
         );
       }
 
-      if (message.body.queue === "thinking") {
-        // send a message to the user
-        const twilioClient = new TwilioClient(env);
-        await twilioClient.sendWhatsAppMessage(
-          "..",
-          message.body.from,
-          message.body.messageSid,
-        );
-      }
-
       if (message.body.queue === "voice-que") {
         console.log("Running whisper model");
         let response = "I could not translate your message, sorry!";
@@ -212,20 +207,18 @@ export default {
             id: message.body.audioChunkId,
           },
         });
-        console.log("audioChunk", audioChunk);
         const user = await db.user.findUnique({
           where: {
             id: audioChunk?.user_id,
           },
         });
-        console.log("user", user);
         let sent = true;
         try {
           if (!user) {
             throw new Error("User not found");
           }
           
-          const result = await env.AI.run("@cf/openai/whisper-large-v3-turbo", {
+          const result = await env.AI.run(VOICE_MODEL, {
             audio: audioChunk?.chunk,
             task: "translate",
             language: user.language,
@@ -290,7 +283,7 @@ export default {
 
       if (message.body.queue === "text-que") {
         console.log("Running text model");
-        const response = await env.AI.run("@cf/meta/llama-2-7b-chat-fp16", {
+        const response = await env.AI.run(TEXT_MODEL, {
           messages: [
             {
               role: "system",
