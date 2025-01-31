@@ -16,6 +16,7 @@ import { setupEnv } from "./env";
 import HomePage from "./app/pages/Home/HomePage";
 
 import { defineRoutes, index, prefix, route } from "./router";
+import { authRoutes } from "./app/pages/auth/routes";
 
 export { SessionDO } from "./session";
 
@@ -23,6 +24,10 @@ export const getContext = async (
   session: Awaited<ReturnType<typeof getSession>> | undefined,
 ) => {
   const user = await db.user.findFirstOrThrow({
+    select: {
+      id: true,
+      email: true,
+    },
     where: { id: session?.userId },
   });
   return {
@@ -53,44 +58,8 @@ export default {
         HomePage,
       ]),
 
-      // Let's nest this under something...
-      route("/login", LoginPage),
-      route("/auth", async ({ request, env }) => {
-        // when it's async then react-is thinks it's a react component.
-        const url = new URL(request.url);
-        const token = url.searchParams.get("token");
-        const email = url.searchParams.get("email");
 
-        if (!token || !email) {
-          return new Response("Invalid token or email", { status: 400 });
-        }
-        const user = await db.user.findFirst({
-          where: {
-            email,
-            authToken: token,
-            authTokenExpiresAt: {
-              gt: new Date(),
-            },
-          },
-        });
-
-        if (!user) {
-          return new Response("Invalid or expired token", { status: 400 });
-        }
-
-        // Clear the auth token
-        await db.user.update({
-          where: { id: user.id },
-          data: {
-            authToken: null,
-            authTokenExpiresAt: null,
-          },
-        });
-
-        console.log("performing login");
-
-        return performLogin(request, env, user.id);
-      }),
+      ...prefix("/user", authRoutes),
 
       route("/invoices", [authRequired, InvoiceListPage]),
 
