@@ -3,7 +3,7 @@
 import { Resend } from "resend";
 import { getEnv } from "../../../env";
 import { db } from "../../../db";
-import { link } from "../../../shared/links";
+import { link } from "../../shared/links";
 
 export async function generateAuthToken(email: string) {
   const authToken = crypto.randomUUID();

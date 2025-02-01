@@ -5,7 +5,7 @@ import { Layout } from "../../Layout";
 import { CreateInvoiceButton } from "./CreateInvoiceButton";
 import { db } from "../../../../db";
 import { RouteContext } from "../../../../lib/router";
-import { link } from "../../../../shared/links";
+import { link } from "../../../shared/links";
 
 export type InvoiceItem = {
   description: string,

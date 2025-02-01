@@ -1,4 +1,4 @@
-import { defineLinks } from "../lib/links";
+import { defineLinks } from "../../lib/links";
 
 export const link = defineLinks([
   '/',

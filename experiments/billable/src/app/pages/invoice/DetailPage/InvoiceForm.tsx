@@ -4,7 +4,7 @@ import { useState, useRef } from "react";
 import { type InvoiceTaxes, type InvoiceItem, type getInvoice } from "./InvoiceDetailPage";
 import { deleteLogo, saveInvoice } from "./functions";
 import { PrintPdf } from "./PrintToPdf";
-import { link } from "../../../../shared/links";
+import { link } from "../../../shared/links";
 
 
 function calculateSubtotal(items: InvoiceItem[]) {

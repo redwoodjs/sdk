@@ -124,6 +124,7 @@ export default {
           headers: { "content-type": "text/html" },
         });
       };
+
       const response = await router.handle({
         request,
         ctx,
