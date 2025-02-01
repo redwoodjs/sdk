@@ -4,7 +4,7 @@ import { Layout } from "../../Layout";
 
 import { CreateInvoiceButton } from "./CreateInvoiceButton";
 import { db } from "../../../../db";
-import { RouteContext } from "../../../../router";
+import { RouteContext } from "../../../../lib/router";
 import { link } from "../../../../shared/links";
 
 export type InvoiceItem = {

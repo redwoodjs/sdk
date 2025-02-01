@@ -1,5 +1,5 @@
 import { db } from "../../../db";
-import { index, route } from "../../../router";
+import { index, route } from "../../../lib/router";
 import InvoiceDetailPage from "./DetailPage/InvoiceDetailPage";
 import InvoiceListPage from "./ListPage/InvoiceListPage";
 

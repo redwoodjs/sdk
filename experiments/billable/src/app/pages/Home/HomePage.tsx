@@ -1,5 +1,5 @@
 import { Layout } from "../Layout";
-import { RouteContext } from "../../../router";
+import { RouteContext } from "../../../lib/router";
 import { link } from "../../../shared/links";
 
 export default function HomePage({ ctx}: RouteContext) {

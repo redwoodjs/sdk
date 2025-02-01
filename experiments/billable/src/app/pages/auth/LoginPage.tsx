@@ -3,7 +3,7 @@
 import { useState, useTransition } from "react";
 import { emailLoginLink } from "./functions";
 import { Layout } from "../Layout";
-import { RouteContext } from "../../../router";
+import { RouteContext } from "../../../lib/router";
 
 export function LoginPage({ ctx }: RouteContext) {
   const [email, setEmail] = useState('peter@redwoodjs.com');
