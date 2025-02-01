@@ -2,6 +2,7 @@ import { MAX_TOKEN_DURATION } from './constants';
 import { ErrorResponse } from './error';
 import { SessionDO } from './session';
 
+import { link } from './app/shared/links'
 interface SessionIdParts {
   unsignedSessionId: string;
   signature: string;
@@ -24,17 +25,10 @@ export const performLogin = async (request: Request, env: Env, userId: string) =
 
   const cookie = `session_id=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${MAX_TOKEN_DURATION}`;
 
-  return new Response(`
-    <html>
-      <head>
-        <meta http-equiv="refresh" content="0;url=/invoice/list">
-      </head>
-      <body>
-        Redirecting to invoices...
-      </body>
-    </html>`, {
-    status: 200,
+  return new Response(null, {
+    status: 301,
     headers: {
+      'Location': link('/invoice/list'),
       "Set-Cookie": cookie,
       "Content-Type": "text/html"
     },
