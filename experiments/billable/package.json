@@ -71,26 +71,26 @@
     }
   },
   "prisma": {
-    "seed": "npx wrangler d1 execute billable --file prisma/seed.sql --local"
+    "seed": "pnpm seed"
   },
   "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab",
   "scripts": {
-    "build": "npx tsx ./scripts/build.mts",
-    "build:vendor": "npx tsx ./scripts/buildVendorBundles.mts",
-    "dev:init": "npx tsx ./scripts/firstRun.mts",
-    "dev": "pnpm build:vendor && while true; do NODE_ENV=development npx tsx ./scripts/runDevServer.mts; [ $? -eq 0 ] || break; done",
+    "build": "pnpm dlx tsx ./scripts/build.mts",
+    "build:vendor": "pnpm dlx tsx ./scripts/buildVendorBundles.mts",
+    "dev:init": "pnpm dlx tsx ./scripts/firstRun.mts",
+    "dev": "pnpm build:vendor && while true; do NODE_ENV=development pnpm dlx tsx ./scripts/runDevServer.mts; [ $? -eq 0 ] || break; done",
     "seed": "pnpm worker:run ./src/scripts/seed.ts",
-    "migrate:dev": "npx wrangler d1 migrations apply DB --local",
-    "migrate:prd": "npx wrangler d1 migrations apply DB --remote",
-    "migrate:new": "npx tsx ./scripts/migrateNew.mts",
-    "worker:run": "npx tsx ./scripts/runWorkerScript.mts",
-    "codegen": "npx tsx ./scripts/codegen.mts",
+    "migrate:dev": "pnpm dlx wrangler d1 migrations apply DB --local",
+    "migrate:prd": "pnpm dlx wrangler d1 migrations apply DB --remote",
+    "migrate:new": "pnpm dlx tsx ./scripts/migrateNew.mts",
+    "worker:run": "pnpm dlx tsx ./scripts/runWorkerScript.mts",
+    "codegen": "pnpm dlx tsx ./scripts/codegen.mts",
     "types": "pnpm codegen:types && tsc",
     "clean": "pnpm clean:vite && pnpm clean:vendor",
     "clean:vite": "rm -rf ./node_modules/.vite",
     "clean:vendor": "rm -rf ./vendor/dist",
     "cf:deploy": "pnpm build && pnpm wrangler deploy",
-    "preview": "NODE_ENV=${NODE_ENV:-development} PREVIEW=1 npx tsx ./scripts/runPreviewServer.mts",
-    "format": "npx prettier --write ./src ./scripts"
+    "preview": "NODE_ENV=${NODE_ENV:-development} PREVIEW=1 pnpm dlx tsx ./scripts/runPreviewServer.mts",
+    "format": "pnpm dlx prettier --write ./src ./scripts"
   }
 }
