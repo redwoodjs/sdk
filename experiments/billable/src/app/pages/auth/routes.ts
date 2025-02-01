@@ -48,7 +48,7 @@ export const authRoutes = [
       status: 302,
       headers: {
         'Location': '/',
-        'Set-Cookie': 'session_id=0; Path=/; HttpOnly; Secure; SameSite=Lax;',
+        'Set-Cookie': `session_id=""; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`,
       }
     });
   }),
