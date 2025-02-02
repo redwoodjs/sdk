@@ -9,7 +9,7 @@ function Logo() {
     id="svg"
     version="1.1"
     width="auto"
-    height="40"
+    height="28"
     viewBox="66.43 78.77 250.78 88.62"
   >
     <g id="svgg">
@@ -27,7 +27,7 @@ function Logo() {
 
 function Header({ user }: { user?: User }) {
   return (
-    <div className="p-4 flex justify-between border-b-neutral-800">
+    <div className="px-8 py-4 flex justify-between items-center border-b">
       <a href="/"><Logo /></a>
       <div>
         {user ? (
@@ -37,6 +37,7 @@ function Header({ user }: { user?: User }) {
             <a href={link("/user/logout")}>Logout</a>
           </>
         ) : (
+
           <a href={link("/user/login")}>Not logged in</a>
         )}
       </div>

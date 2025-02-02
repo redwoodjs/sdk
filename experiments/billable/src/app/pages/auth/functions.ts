@@ -6,26 +6,20 @@ import { db } from "../../../db";
 import { link } from "../../shared/links";
 
 export async function generateAuthToken(email: string) {
-  const authToken = crypto.randomUUID();
+  const authToken = Math.floor(100000 + Math.random() * 900000).toString();
   const authTokenExpiresAt = new Date(Date.now() + 24 * 60 * 60 * 1000); // 24 hours from now
-  const user = await db.user.findUnique({ where: { email } })
-  if (user) {
-    await db.user.update({
-      where: { email },
-      data: {
-        authToken,
-        authTokenExpiresAt
-      }
-    })
-  } else {
-    await db.user.create({
-      data: {
-        email,
-        authToken,
-        authTokenExpiresAt,
-      }
-    })
-  }
+  await db.user.upsert({
+    where: { email },
+    update: {
+      authToken,
+      authTokenExpiresAt
+    },
+    create: {
+      email,
+      authToken,
+      authTokenExpiresAt,
+    }
+  })
   return authToken;
 }
 
@@ -40,12 +34,12 @@ export async function emailLoginLink(email: string) {
   const resend = new Resend(getEnv().RESEND_API_KEY);
   console.log('### resend')
   await resend.emails.send({
-    from: "auth@billable.me",
+    from: "Billable <auth@billable.me>",
     to: email,
     subject: `Login to Billable ${new Date().toLocaleTimeString()}`,
     html: `
     <h1>Login to Billable</h1>
-    <p>Click the link below to log in to your account:</p>
+    <p>Click the link to log in to your account:</p>
     <a href="${loginUrl}">Login to Billable</a>
     <p>This link will expire in 24 hours.</p>
   `,
