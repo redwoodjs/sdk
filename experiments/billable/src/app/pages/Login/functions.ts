@@ -29,13 +29,9 @@ export async function generateAuthToken(email: string) {
 }
 
 export async function sendEmail(email: string) {
-  console.log('### generateAuthToken')
   const token = await generateAuthToken(email);
-  console.log('### generateAuthToken done')
   const loginUrl = `${getEnv().APP_URL}/auth?token=${token}&email=${encodeURIComponent(email)}`;
-  console.log('### loginUrl', loginUrl)
   const resend = new Resend(getEnv().RESEND_API_KEY);
-  console.log('### resend')
   await resend.emails.send({
     from: "auth@billable.me",
     to: email,
@@ -47,5 +43,4 @@ export async function sendEmail(email: string) {
     <p>This link will expire in 24 hours.</p>
   `,
   });
-  console.log('### resend done')
 }
