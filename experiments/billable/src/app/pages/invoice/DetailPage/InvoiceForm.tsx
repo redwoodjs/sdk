@@ -5,6 +5,9 @@ import { type InvoiceTaxes, type InvoiceItem, type getInvoice } from "./InvoiceD
 import { deleteLogo, saveInvoice } from "./functions";
 import { PrintPdf } from "./PrintToPdf";
 import { link } from "../../../shared/links";
+import { Button } from "src/components/ui/button";
+import { Input } from "src/components/ui/input";
+import { Textarea } from "src/components/ui/textarea";
 
 
 function calculateSubtotal(items: InvoiceItem[]) {
@@ -39,32 +42,33 @@ export function InvoiceForm(props: {
   const pdfContentRef = useRef<HTMLDivElement>(null);
 
   return (
-    <div className="mt-10 grid grid-cols-1 gap-x-6 gap-y-8 sm:grid-cols-6" ref={pdfContentRef}>
-      <div className="col-span-full">
-        <button
+    <div>
+      <div className="flex gap-2 py-4 justify-end">
+        <PrintPdf contentRef={pdfContentRef} />
+        <Button
           onClick={async () => {
             await saveInvoice(invoice.id, invoice, items, taxes, ctx.user.id);
             window.location.href = "/invoice/list";
           }}
         >
           Save
-        </button>
-        <PrintPdf contentRef={pdfContentRef} />
+        </Button>
       </div>
+    <div ref={pdfContentRef}>
+
 
       <div className="sm:col-span-3">
         <label
           htmlFor="invoice-number"
           className="block text-sm font-medium leading-6 text-gray-900"
         >
-          Invoice Number
+          Invoice #
         </label>
         <div className="mt-2">
-          <input
+          <Input
             type="text"
             name="invoice-number"
             id="invoice-number"
-            className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
             value={invoice.number}
             onChange={(e) => setInvoice({ ...invoice, number: e.target.value })}
           />
@@ -79,11 +83,10 @@ export function InvoiceForm(props: {
           Date
         </label>
         <div className="mt-2">
-          <input
+          <Input
             type="date"
             name="date"
             id="date"
-            className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
             value={invoice.date.toISOString().split("T")[0]}
             onChange={(e) =>
               setInvoice({ ...invoice, date: new Date(e.target.value) })
@@ -100,10 +103,11 @@ export function InvoiceForm(props: {
           Customer
         </label>
         <div className="mt-2">
-          <textarea
+          <Textarea
             name="customer"
             id="customer"
-            className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+            placeholder="Michael Scott Paper Company, Inc."
+            className="font-serif font text-5xl"
             defaultValue={invoice.customer ?? ""}
             onChange={(e) =>
               setInvoice({ ...invoice, customer: e.target.value })
@@ -249,6 +253,7 @@ export function InvoiceForm(props: {
           />
         </div>
       </div>
+    </div>
     </div>
   );
 }
