@@ -5,6 +5,7 @@ import { createRequire } from "node:module";
 import tailwind from "tailwindcss";
 import autoprefixer from "autoprefixer";
 import reactPlugin from "@vitejs/plugin-react";
+import tsconfigPaths from "vite-tsconfig-paths";
 
 import {
   CLIENT_DIST_DIR,
@@ -23,14 +24,17 @@ import { useClientLookupPlugin } from "../lib/vitePlugins/useClientLookupPlugin.
 import { miniflarePlugin } from "../lib/vitePlugins/miniflarePlugin.mjs";
 import { asyncSetupPlugin } from "../lib/vitePlugins/asyncSetupPlugin.mjs";
 import { restartPlugin } from "../lib/vitePlugins/restartPlugin.mjs";
-import { acceptWasmPlugin } from '../lib/vitePlugins/acceptWasmPlugin.mjs';
-import { copyPrismaWasmPlugin } from '../lib/vitePlugins/copyPrismaWasmPlugin.mjs';
+import { acceptWasmPlugin } from "../lib/vitePlugins/acceptWasmPlugin.mjs";
+import { copyPrismaWasmPlugin } from "../lib/vitePlugins/copyPrismaWasmPlugin.mjs";
 
 const MODE =
   process.env.NODE_ENV === "development" ? "development" : "production";
 
 export const viteConfigs = {
-  main: ({ silent = false, port }: { silent?: boolean, port?: number } = {}): InlineConfig => ({
+  main: ({
+    silent = false,
+    port,
+  }: { silent?: boolean; port?: number } = {}): InlineConfig => ({
     appType: "custom",
     mode: MODE,
     logLevel: silent ? "silent" : "info",
@@ -45,10 +49,13 @@ export const viteConfigs = {
       "process.env.NODE_ENV": JSON.stringify(MODE),
     },
     plugins: [
+      tsconfigPaths({
+        root: ROOT_DIR,
+      }),
       miniflarePlugin({
         viteEnvironment: {
-          name: 'worker',
-        }
+          name: "worker",
+        },
       }),
       reactPlugin(),
       useServerPlugin(),
@@ -67,8 +74,8 @@ export const viteConfigs = {
           },
         },
         resolve: {
-          external: ['react']
-        }
+          external: ["react"],
+        },
       },
       worker: {
         resolve: {
@@ -122,37 +129,54 @@ export const viteConfigs = {
       },
     },
     resolve: {
-      dedupe: ['react'],
-      alias: [{
-        find: /^react$/,
-        replacement: resolve(VENDOR_DIST_DIR, 'react.js'),
-      }, {
-        find: /^react-dom\/(server|server\.edge)$/,
-        replacement: resolve(VENDOR_DIST_DIR, 'react-dom-server-edge.js'),
-      }]
-    }
+      dedupe: ["react"],
+      alias: [
+        {
+          find: /^react$/,
+          replacement: resolve(VENDOR_DIST_DIR, "react.js"),
+        },
+        {
+          find: /^react-dom\/(server|server\.edge)$/,
+          replacement: resolve(VENDOR_DIST_DIR, "react-dom-server-edge.js"),
+        },
+      ],
+    },
   }),
-  dev: ({ setup, restartOnChanges = true, ...opts }: { setup: () => Promise<unknown>, silent?: boolean, port?: number, restartOnChanges?: boolean }): InlineConfig =>
+  dev: ({
+    setup,
+    restartOnChanges = true,
+    ...opts
+  }: {
+    setup: () => Promise<unknown>;
+    silent?: boolean;
+    port?: number;
+    restartOnChanges?: boolean;
+  }): InlineConfig =>
     mergeConfig(viteConfigs.main(opts), {
       plugins: [
         acceptWasmPlugin(),
         asyncSetupPlugin({ setup }),
-        restartOnChanges ? restartPlugin({
-          filter: (filepath: string) =>
-            !filepath.endsWith(".d.ts") &&
-            (filepath.endsWith(".ts") ||
-              filepath.endsWith(".tsx") ||
-              filepath.endsWith(".mts") ||
-              filepath.endsWith(".js") ||
-              filepath.endsWith(".mjs") ||
-              filepath.endsWith(".jsx") ||
-              filepath.endsWith(".json")) &&
-            (filepath.startsWith(resolve(ROOT_DIR, "scripts")) ||
-              dirname(filepath) === ROOT_DIR),
-        }) : null,
+        restartOnChanges
+          ? restartPlugin({
+              filter: (filepath: string) =>
+                !filepath.endsWith(".d.ts") &&
+                (filepath.endsWith(".ts") ||
+                  filepath.endsWith(".tsx") ||
+                  filepath.endsWith(".mts") ||
+                  filepath.endsWith(".js") ||
+                  filepath.endsWith(".mjs") ||
+                  filepath.endsWith(".jsx") ||
+                  filepath.endsWith(".json")) &&
+                (filepath.startsWith(resolve(ROOT_DIR, "scripts")) ||
+                  dirname(filepath) === ROOT_DIR),
+            })
+          : null,
         // context(justinvdm, 2024-12-03): vite needs the virtual module created by this plugin to be around,
         // even if the code path that use the virtual module are not reached in dev
-        useClientLookupPlugin({ rootDir: ROOT_DIR, containingPath: './src/app' }),
+        useClientLookupPlugin({
+          rootDir: ROOT_DIR,
+          containingPath: "./src/app",
+        }),
       ],
     }),
   deploy: (): InlineConfig =>
@@ -163,23 +187,25 @@ export const viteConfigs = {
         }),
         useClientLookupPlugin({
           rootDir: ROOT_DIR,
-          containingPath: './src/app',
+          containingPath: "./src/app",
         }),
-        copyPrismaWasmPlugin()
+        copyPrismaWasmPlugin(),
       ],
       environments: {
         worker: {
           build: {
             rollupOptions: {
-              external: ['cloudflare:workers', 'node:stream', /\.wasm$/],
-            }
-          }
-        }
+              external: ["cloudflare:workers", "node:stream", /\.wasm$/],
+            },
+          },
+        },
       },
       resolve: {
         alias: {
-          '.prisma/client/default': createRequire(createRequire(import.meta.url).resolve('@prisma/client')).resolve('.prisma/client/wasm'),
-        }
-      }
+          ".prisma/client/default": createRequire(
+            createRequire(import.meta.url).resolve("@prisma/client"),
+          ).resolve(".prisma/client/wasm"),
+        },
+      },
     }),
 };
