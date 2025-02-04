@@ -82,10 +82,7 @@ export default {
       // (from experimentation, it is not in node_modules/.vite). This means that if you were to subsequently
       // change the code to _not_ have Prisma used after the initial request, the WASM will still be cached and
       // the request will not hang. This makes this issue particularly hard to debug.
-<<<<<<< Updated upstream
       await db.$queryRaw`SELECT 1`;
-=======
-      //await db.$queryRaw`SELECT 1`
 
       const url = new URL(request.url);
       if (url.pathname === '/test/db') {
@@ -94,7 +91,6 @@ export default {
         console.log('## test db result', r)
         return new Response(JSON.stringify(r), { status: 200 })
       }
->>>>>>> Stashed changes
 
       let ctx: Awaited<ReturnType<typeof getContext>> = {};
       let session: Awaited<ReturnType<typeof getSession>> | undefined;

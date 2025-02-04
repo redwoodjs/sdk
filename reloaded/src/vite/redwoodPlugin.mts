@@ -124,11 +124,11 @@ export function redwoodPlugin(options: {
           alias: [
             {
               find: /^react$/,
-              replacement: resolve(VENDOR_DIST_DIR, "react.js"),
+              replacement: resolve(VENDOR_DIST_DIR, "react.mjs"),
             },
             {
               find: /^react-dom\/(server|server\.edge)$/,
-              replacement: resolve(VENDOR_DIST_DIR, "react-dom-server-edge.js"),
+              replacement: resolve(VENDOR_DIST_DIR, "react-dom-server-edge.mjs"),
             },
           ],
         },
