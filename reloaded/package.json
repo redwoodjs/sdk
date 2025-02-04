@@ -7,12 +7,12 @@
     "rw": "./bin/rw.mjs"
   },
   "scripts": {
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "build": "tsc"
   },
   "keywords": [],
   "author": "",
   "license": "UNLICENSED",
-  "devDependencies": {
+  "dependencies": {
     "@cloudflare/vite-plugin": "^0.0.4",
     "@microsoft/api-extractor": "^7.48.0",
     "@prisma/client": "^6.3.0",
@@ -32,6 +32,7 @@
     "fs-extra": "^11.2.0",
     "import-meta-resolve": "^4.1.0",
     "kysely-codegen": "^0.17.0",
+    "lodash": "^4.17.21",
     "magic-string": "^0.30.14",
     "miniflare": "^3.20241205.0",
     "picocolors": "^1.1.1",
@@ -42,12 +43,18 @@
     "tailwindcss": "^3.4.16",
     "toml": "^3.0.0",
     "tsx": "^4.19.2",
+    "typescript": "^5.6.3",
     "vite": "^6.0.11",
     "vite-plugin-commonjs": "^0.10.4",
     "vite-plugin-dts": "^4.3.0",
     "vite-plugin-top-level-await": "^1.4.4",
     "vite-plugin-wasm": "^3.4.1",
+    "vite-tsconfig-paths": "^5.1.4",
+    "workers-types": "link:@cloudflare/workers-types",
     "wrangler": "^3.105.1"
   },
-  "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab"
+  "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab",
+  "devDependencies": {
+    "@types/lodash": "^4.17.13"
+  }
 }

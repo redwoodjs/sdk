@@ -1,8 +1,8 @@
 import snakeCase from 'lodash/snakeCase';
-import { $ } from './lib/$.mjs';
+import { $ } from '../lib/$.mjs';
 import { readdir } from 'fs/promises';
 import { resolve } from 'path'
-import { ROOT_DIR } from './lib/constants.mjs';
+import { ROOT_DIR } from '../lib/constants.mjs';
 
 const getNextMigrationNumber = async (): Promise<string> => {
   const files = await readdir(resolve(ROOT_DIR, './migrations'));

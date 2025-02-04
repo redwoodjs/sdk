@@ -1,6 +1,6 @@
 import { resolve } from "node:path";
 import { build, mergeConfig, optimizeDeps, type InlineConfig } from "vite";
-import { $ } from './lib/$.mjs';
+import { $ } from '../lib/$.mjs';
 
 const __dirname = new URL(".", import.meta.url).pathname;
 

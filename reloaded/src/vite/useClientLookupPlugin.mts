@@ -1,7 +1,7 @@
 import MagicString from "magic-string";
 import { virtualPlugin } from "./virtualPlugin.mjs";
 import { Plugin } from 'vite';
-import { $ } from '../$.mjs';
+import { $ } from '../lib/$.mjs';
 
 export const findFilesContainingUseClient = async ({
   rootDir,

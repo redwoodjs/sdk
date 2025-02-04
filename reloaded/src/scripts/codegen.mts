@@ -1,4 +1,4 @@
-import { $ } from "./lib/$.mjs";
+import { $ } from "../lib/$.mjs";
 
 export const codegen = async ({ silent = false }: { silent?: boolean } = {}) => {
   const log = silent ? () => { } : console.log;

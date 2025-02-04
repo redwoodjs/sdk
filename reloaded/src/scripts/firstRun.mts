@@ -1,4 +1,4 @@
-import { $ } from "./lib/$.mjs";
+import { $ } from "../lib/$.mjs";
 
 export const initDev = async () => {
   console.log("Initializing development environment...");

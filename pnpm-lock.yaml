@@ -93,7 +93,7 @@ importers:
         version: link:../../reloaded
 
   reloaded:
-    devDependencies:
+    dependencies:
       '@cloudflare/vite-plugin':
         specifier: ^0.0.4
         version: 0.0.4(patch_hash=rz7r7x4v33wz6cdeelt5iohdai)(vite@6.0.11(@types/node@22.10.6)(jiti@1.21.7)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))(wrangler@3.107.3)
@@ -151,6 +151,9 @@ importers:
       kysely-codegen:
         specifier: ^0.17.0
         version: 0.17.0(kysely@0.27.5)
+      lodash:
+        specifier: ^4.17.21
+        version: 4.17.21
       magic-string:
         specifier: ^0.30.14
         version: 0.30.17
@@ -181,6 +184,9 @@ importers:
       tsx:
         specifier: ^4.19.2
         version: 4.19.2
+      typescript:
+        specifier: ^5.6.3
+        version: 5.7.3
       vite:
         specifier: ^6.0.11
         version: 6.0.11(@types/node@22.10.6)(jiti@1.21.7)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
@@ -196,9 +202,19 @@ importers:
       vite-plugin-wasm:
         specifier: ^3.4.1
         version: 3.4.1(vite@6.0.11(@types/node@22.10.6)(jiti@1.21.7)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+      vite-tsconfig-paths:
+        specifier: ^5.1.4
+        version: 5.1.4(typescript@5.7.3)(vite@6.0.11(@types/node@22.10.6)(jiti@1.21.7)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))
+      workers-types:
+        specifier: link:@cloudflare/workers-types
+        version: link:@cloudflare/workers-types
       wrangler:
         specifier: ^3.105.1
         version: 3.107.3
+    devDependencies:
+      '@types/lodash':
+        specifier: ^4.17.13
+        version: 4.17.14
 
 packages:
 

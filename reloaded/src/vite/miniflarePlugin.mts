@@ -4,8 +4,8 @@ import { resolve } from "node:path";
 import colors from "picocolors";
 import { readFile } from "node:fs/promises";
 
-import { ROOT_DIR, SRC_DIR } from "../constants.mjs";
-import { getShortName } from '../getShortName.mjs';
+import { ROOT_DIR, SRC_DIR } from "../lib/constants.mjs";
+import { getShortName } from '../lib/getShortName.mjs';
 import { pathExists } from 'fs-extra';
 
 type BasePluginOptions = Parameters<typeof cloudflare>[0];

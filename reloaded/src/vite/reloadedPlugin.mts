@@ -16,7 +16,7 @@ import {
   ROOT_DIR,
   WORKER_DIST_DIR,
   VENDOR_DIST_DIR,
-} from "../constants.mjs";
+} from "../lib/constants.mjs";
 import { transformJsxScriptTagsPlugin } from "./transformJsxScriptTagsPlugin.mjs";
 import { useServerPlugin } from "./useServerPlugin.mjs";
 import { useClientPlugin } from "./useClientPlugin.mjs";
@@ -26,8 +26,8 @@ import { asyncSetupPlugin } from "./asyncSetupPlugin.mjs";
 import { restartPlugin } from "./restartPlugin.mjs";
 import { acceptWasmPlugin } from "./acceptWasmPlugin.mjs";
 import { copyPrismaWasmPlugin } from "./copyPrismaWasmPlugin.mjs";
-import { codegen } from '../../codegen.mjs';
-import { $ } from '../$.mjs';
+import { codegen } from '../scripts/codegen.mjs';
+import { $ } from '../lib/$.mjs';
 
 export function reloadedPlugin(options: {
   mode?: 'main' | 'dev' | 'deploy';

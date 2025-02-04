@@ -1,6 +1,6 @@
 import { resolve } from 'path'
-import { ROOT_DIR } from './lib/constants.mjs';
-import { runDevServer } from './runDevServer.mjs';
+import { ROOT_DIR } from '../lib/constants.mjs';
+import { createServer as createViteServer } from "vite";
 
 export const runWorkerScript = async (relativeScriptPath: string) => {
   if (!relativeScriptPath) {
@@ -13,7 +13,13 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
   }
 
   const scriptPath = resolve(ROOT_DIR, relativeScriptPath);
-  const server = await runDevServer();
+  const server = await createViteServer({
+    root: ROOT_DIR,
+    mode: 'dev',
+    server: {
+      port: 0,
+    },
+  });
 
   try {
     const address = server.httpServer?.address();

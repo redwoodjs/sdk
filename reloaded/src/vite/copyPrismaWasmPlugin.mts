@@ -4,7 +4,7 @@ import path from 'path';
 import { Plugin } from 'vite';
 import { createRequire } from 'module';
 
-import { ROOT_DIR } from '../constants.mjs';
+import { ROOT_DIR } from '../lib/constants.mjs';
 
 export const copyPrismaWasmPlugin = (): Plugin => ({
   name: 'copy-prisma-wasm',

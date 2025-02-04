@@ -1,6 +1,5 @@
 import { createBuilder } from "vite";
-import { viteConfigs } from "./lib/vitePlugins/reloadedPlugin.mjs";
-import { $, $sh } from "./lib/$.mjs";
+import { $, $sh } from "../lib/$.mjs";
 
 export const build = async () => {
   // context(justinvdm, 2024-12-05): Call indirectly to silence verbose output when VERBOSE is not set
@@ -12,7 +11,7 @@ export const build = async () => {
 
   console.log("Building app...");
   const builder = await createBuilder(
-    viteConfigs.deploy(),
+    /* todo */
   );
   await builder.buildApp();
   await $sh`mv dist/{client,worker}/assets/* dist/client/`;
