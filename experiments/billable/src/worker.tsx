@@ -85,6 +85,7 @@ export default {
       await db.$queryRaw`SELECT 1`;
 
       const url = new URL(request.url);
+
       if (url.pathname === '/test/db') {
         console.log('## test db')
         const r = await db.$queryRaw`SELECT 1`
@@ -101,7 +102,6 @@ export default {
         console.error("Error getting session", e);
       }
 
-      const url = new URL(request.url);
       const isRSCRequest = url.searchParams.has("__rsc");
       const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
       let actionResult: any;

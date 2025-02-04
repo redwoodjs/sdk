@@ -30,14 +30,16 @@ export function redwoodPlugin(options: {
   silent?: boolean;
   port?: number;
   restartOnChanges?: boolean;
+  rootDir?: string;
   entry?: {
     client?: string;
     worker?: string;
   };
 }): Plugin {
+  const PROJECT_ROOT_DIR = process.cwd();
   const MODE = process.env.NODE_ENV === "development" ? "development" : "production";
-  const clientEntryPathname = resolve(process.cwd(), options?.entry?.client ?? 'src/client.tsx');
-  const workerEntryPathname = resolve(process.cwd(), options?.entry?.worker ?? 'src/worker.tsx');
+  const clientEntryPathname = resolve(PROJECT_ROOT_DIR, options?.entry?.client ?? 'src/client.tsx');
+  const workerEntryPathname = resolve(PROJECT_ROOT_DIR, options?.entry?.worker ?? 'src/worker.tsx');
 
   return {
     name: 'vite-plugin-reloaded',
@@ -55,7 +57,7 @@ export function redwoodPlugin(options: {
           "process.env.NODE_ENV": JSON.stringify(MODE),
         },
         plugins: [
-          tsconfigPaths({ root: ROOT_DIR }),
+          tsconfigPaths({ root: PROJECT_ROOT_DIR }),
           miniflarePlugin({
             viteEnvironment: { name: "worker" },
           }),
@@ -124,11 +126,11 @@ export function redwoodPlugin(options: {
           alias: [
             {
               find: /^react$/,
-              replacement: resolve(VENDOR_DIST_DIR, "react.mjs"),
+              replacement: resolve(VENDOR_DIST_DIR, "react.js"),
             },
             {
               find: /^react-dom\/(server|server\.edge)$/,
-              replacement: resolve(VENDOR_DIST_DIR, "react-dom-server-edge.mjs"),
+              replacement: resolve(VENDOR_DIST_DIR, "react-dom-server-edge.js"),
             },
           ],
         },
@@ -155,12 +157,11 @@ export function redwoodPlugin(options: {
                     filepath.endsWith(".mjs") ||
                     filepath.endsWith(".jsx") ||
                     filepath.endsWith(".json")) &&
-                  (filepath.startsWith(resolve(ROOT_DIR, "scripts")) ||
-                    dirname(filepath) === ROOT_DIR),
+                  dirname(filepath) === PROJECT_ROOT_DIR,
               })
               : null,
             useClientLookupPlugin({
-              rootDir: ROOT_DIR,
+              rootDir: PROJECT_ROOT_DIR,
               containingPath: "./src/app",
             }),
           ],
@@ -174,7 +175,7 @@ export function redwoodPlugin(options: {
               manifestPath: MANIFEST_PATH,
             }),
             useClientLookupPlugin({
-              rootDir: ROOT_DIR,
+              rootDir: PROJECT_ROOT_DIR,
               containingPath: "./src/app",
             }),
             copyPrismaWasmPlugin(),

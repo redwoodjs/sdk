@@ -3,6 +3,7 @@
   "version": "1.0.0",
   "description": "",
   "main": "index.js",
+  "type": "module",
   "bin": {
     "rw": "./bin/rw.mjs"
   },
@@ -13,7 +14,10 @@
     "clean:vendor": "rm -rf ./vendor/dist"
   },
   "exports": {
-    "./vite": "./dist/vite/index.mjs"
+    "./vite": {
+      "default": "./dist/vite/index.mjs",
+      "types": "./dist/vite/index.d.mts"
+    }
   },
   "keywords": [],
   "author": "",

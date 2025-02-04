@@ -24,7 +24,7 @@ const configs = {
       build: {
         outDir: VENDOR_DIST_DIR,
         lib: {
-          entry: resolve(VENDOR_SRC_DIR, "react-server-internals.mjs"),
+          entry: resolve(VENDOR_SRC_DIR, "react-server-internals.js"),
           name: "react-server-internals",
           formats: ["es"],
           fileName: "react-server-internals",
@@ -39,7 +39,7 @@ const configs = {
       build: {
         outDir: VENDOR_DIST_DIR,
         lib: {
-          entry: resolve(VENDOR_SRC_DIR, "react.mjs"),
+          entry: resolve(VENDOR_SRC_DIR, "react.js"),
           name: "react",
           formats: ["es"],
           fileName: "react",
@@ -47,7 +47,7 @@ const configs = {
       },
       resolve: {
         alias: {
-          'react-server-internals': resolve(VENDOR_DIST_DIR, 'react-server-internals.mjs'),
+          'react-server-internals': resolve(VENDOR_DIST_DIR, 'react-server-internals.js'),
         },
       },
     }),
@@ -56,7 +56,7 @@ const configs = {
       build: {
         outDir: VENDOR_DIST_DIR,
         lib: {
-          entry: resolve(VENDOR_SRC_DIR, "react-dom-server-edge.mjs"),
+          entry: resolve(VENDOR_SRC_DIR, "react-dom-server-edge.js"),
           name: "react-dom-server-edge",
           formats: ["es"],
           fileName: "react-dom-server-edge",
