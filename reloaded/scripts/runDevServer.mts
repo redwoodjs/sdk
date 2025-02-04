@@ -1,6 +1,6 @@
 import { createServer as createViteServer } from "vite";
 
-import { viteConfigs } from "./configs/vite.mjs";
+import { viteConfigs } from "./lib/vitePlugins/reloadedPlugin.mjs";
 import { codegen } from "./codegen.mjs";
 import { $ } from "./lib/$.mjs";
 

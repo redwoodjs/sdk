@@ -6,7 +6,7 @@ export const codegen = async ({ silent = false }: { silent?: boolean } = {}) => 
   log("Generating types...");
   log("Generating db types...");
 
-  await $`pnpm prisma generate`;
+  //await $`pnpm prisma generate`;
 
   log("Generating wrangler types...");
   await $`pnpm wrangler types`;

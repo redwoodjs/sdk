@@ -1,5 +1,5 @@
 import { createBuilder } from "vite";
-import { viteConfigs } from "./configs/vite.mjs";
+import { viteConfigs } from "./lib/vitePlugins/reloadedPlugin.mjs";
 import { $, $sh } from "./lib/$.mjs";
 
 export const build = async () => {
