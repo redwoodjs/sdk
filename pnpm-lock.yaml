@@ -87,6 +87,10 @@ importers:
       zod:
         specifier: ^3.24.1
         version: 3.24.1
+    devDependencies:
+      reloaded:
+        specifier: workspace:*
+        version: link:../../reloaded
 
   reloaded:
     devDependencies:
