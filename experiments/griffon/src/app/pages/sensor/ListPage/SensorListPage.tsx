@@ -70,6 +70,10 @@ export default async function SensorListPage({ ctx }: RouteContext) {
         <CreateSensorButton />
       </div>
 
+      <div className="text-sm text-gray-500">
+        Post data to: /api/sensor/{ctx.user.id}/data
+      </div>
+
       <Table>
         <TableHeader>
           <TableRow>

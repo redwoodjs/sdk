@@ -1,27 +1,24 @@
 "use server";
 
 import {
-  type Invoice,
+  type Sensor,
 } from "@prisma/client";
 import { db } from "../../../../db";
-import type { InvoiceItem, InvoiceTaxes } from './SensorDetailPage';
 
-export async function saveInvoice(id: string, invoice: Omit<Invoice, 'items' | 'taxes'>, items: InvoiceItem[], taxes: InvoiceTaxes[], { ctx }) {
-
-  await db.invoice.findFirstOrThrow({
+export async function saveSensor(id: string, sensor: Omit<Sensor, 'data'>, userId: string) {
+  console.log("saveSensor", id, sensor, userId);
+  await db.sensor.findFirstOrThrow({
     where: {
       id,
-      userId: ctx.user.id
+      userId
     }
   })
 
-  const data: Invoice = {
-    ...invoice,
-    items: JSON.stringify(items),
-    taxes: JSON.stringify(taxes),
+  const data: Sensor = {
+    ...sensor,
   }
 
-  await db.invoice.upsert({
+  await db.sensor.upsert({
     create: data,
     update: data,
     where: {
@@ -30,22 +27,18 @@ export async function saveInvoice(id: string, invoice: Omit<Invoice, 'items' | '
   })
 }
 
-export async function deleteLogo(id: string, { ctx }) {
-
-  await db.invoice.findFirstOrThrow({
+export async function deleteSensor(id: string, userId: string) {
+  await db.sensor.findFirstOrThrow({
     where: {
       id,
-      userId: ctx.user.id
+      userId
     }
   })
 
-  await db.invoice.update({
-    data: {
-      supplierLogo: null,
-    },
+  await db.sensor.delete({
     where: {
-      id
+      id,
+      userId
     }
   })
 }
-

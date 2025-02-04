@@ -60,14 +60,6 @@ export default {
       ...prefix("/sensor", sensorRoutes),
     ]);
 
-    // I don't thin I actually use this, but maybe we should upload a logo or something?
-    //   route("/assets/*", ({ request, env }) => {
-    //     const u = new URL(request.url);
-    //     u.pathname = u.pathname.slice("/assets/".length);
-    //     return env.ASSETS.fetch(new Request(u.toString(), request));
-    //   }),
-    // ]);
-
     try {
       setupDb(env);
       setupEnv(env);
@@ -125,6 +117,51 @@ export default {
           headers: { "content-type": "text/html" },
         });
       };
+
+      // sample iot data from temp and humd sensor:
+      // {
+      //   "sensorUid": "123",
+      //   "temperature": 20,
+      //   "humidity": 50
+      // }
+
+      // match /api/sensor/<userId>/data - user id is a uuid
+      const match = url.pathname.match(/^\/api\/sensor\/([0-9a-f-]{36})\/data$/);
+      if (request.method === "POST" && match) {
+        const userId = match[1];
+        const data = await request.json();
+        
+        // Common field names that might contain a sensor identifier
+        const possibleUidFields = ['sensorUid', 'sensor_id', 'id', 'deviceId', 'device_id', 'uid', 'identifier'];
+        
+        // Find the first field that exists in the data object
+        const sensorUid = possibleUidFields
+          .map(field => (data as any)[field])
+          .find(value => value !== undefined);
+          
+        if (!sensorUid) {
+          console.error('Could not find sensor identifier in data:', data);
+          return new Response("Missing sensor identifier in data, try adding a field like 'sensorUid' or 'sensor_id' or 'id' or 'deviceId' or 'device_id' or 'uid' or 'identifier'", { status: 400 });
+        }
+
+        const sensor = await db.sensor.findFirst({
+          where: {
+            uniqueId: sensorUid,
+            userId: userId,
+          },
+        });
+        if (!sensor) {
+          return new Response("Sensor not found", { status: 404 });
+        }   
+        return new Response(JSON.stringify(sensor), { status: 200 });
+        // save the data to the sensor
+        // await db.sensorDataLog.create({
+        //   data: {
+        //     sensorId: sensor.id,
+        //     data: JSON.stringify(data),
+        //   },
+        // });
+      }
 
       const response = await router.handle({
         request,

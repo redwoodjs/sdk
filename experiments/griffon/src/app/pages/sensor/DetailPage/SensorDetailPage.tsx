@@ -6,7 +6,7 @@ import { RouteContext } from "../../../../lib/router";
 import { db } from "../../../../db";
 import { BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "src/components/ui/breadcrumb";
 import { link } from "src/shared/links";
-
+import { SensorForm } from "./SensorForm";
 
 export async function getSensor(id: string, userId: string) {
   const sensor = await db.sensor.findFirstOrThrow({
@@ -39,7 +39,7 @@ export default async function SensorDetailPage({
         </BreadcrumbPage>
       </BreadcrumbList>
 
-      {/* <SensorForm sensor={sensor} /> */}
+      <SensorForm sensor={sensor} ctx={ctx} />
     </Layout>
   );
 }
