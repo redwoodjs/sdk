@@ -3,8 +3,6 @@ import { redwoodPlugin } from "@redwoodjs/reloaded/vite";
 
 export default defineConfig({
   plugins: [
-    redwoodPlugin({
-      mode: "main",
-    }),
+    redwoodPlugin(),
   ],
 });
