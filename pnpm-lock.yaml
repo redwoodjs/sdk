@@ -88,7 +88,7 @@ importers:
         specifier: ^3.24.1
         version: 3.24.1
     devDependencies:
-      reloaded:
+      '@redwoodjs/reloaded':
         specifier: workspace:*
         version: link:../../reloaded
 
@@ -173,8 +173,11 @@ importers:
         specifier: ^6.3.0
         version: 6.3.1(typescript@5.7.3)
       react:
-        specifier: ^18.3.1
-        version: 18.3.1
+        specifier: 19.0.0-rc-f2df5694-20240916
+        version: 19.0.0-rc-f2df5694-20240916
+      react-dom:
+        specifier: 19.0.0-rc-f2df5694-20240916
+        version: 19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916)
       tailwindcss:
         specifier: ^3.4.16
         version: 3.4.17
@@ -2221,10 +2224,6 @@ packages:
     resolution: {integrity: sha512-HgMmCqIJSAKqo68l0rS2AanEWfkxaZ5wNiEFb5ggm08lDs9Xl2KxBlX3PTcaD2chBM1gXAYf491/M2Rv8Jwayg==}
     engines: {node: '>= 0.6.0'}
 
-  loose-envify@1.4.0:
-    resolution: {integrity: sha512-lyuxPGr/Wfhrlem2CL/UcnUc1zcqKAImBDzukY7Y5F/yQiNdko6+fRLevlw1HgMySw7f611UIY408EtxRSoK3Q==}
-    hasBin: true
-
   lru-cache@10.4.3:
     resolution: {integrity: sha512-JNAzZcXrCt42VGLuYz0zfAzDfAvJWW6AfYlDBQyDV5DClI2m5sAmK+OIO7s59XfsRsWHp02jAJrRadPRGTt6SQ==}
 
@@ -2598,10 +2597,6 @@ packages:
     resolution: {integrity: sha512-Z15MwMOzYCHWi26CZeFNwflAg7Nr8uWD6FTj+EkfIOjYyjr0MXGbI0c7rF4Fgrbj3XG9hFndb1ourxpPz2RAiA==}
     peerDependencies:
       react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ~19
-
-  react@18.3.1:
-    resolution: {integrity: sha512-wS+hAgJShR0KhEvPJArfuPVN1+Hz1t0Y6n5jLrGQbkb4urgPE/0Rve+1kMB1v/oWgHgm4WIcV+i7F2pTVj+2iQ==}
-    engines: {node: '>=0.10.0'}
 
   react@19.0.0-rc-f2df5694-20240916:
     resolution: {integrity: sha512-nGf0C1nmtK44uZVBGB1i320+oZpIL4YibvcDUpKQu/2wR/giIydwzVyx4mjsWRXbYDoyX240F04tHoYLTT2a2w==}
@@ -4998,10 +4993,6 @@ snapshots:
 
   loglevel@1.9.2: {}
 
-  loose-envify@1.4.0:
-    dependencies:
-      js-tokens: 4.0.0
-
   lru-cache@10.4.3: {}
 
   lru-cache@5.1.1:
@@ -5345,10 +5336,6 @@ snapshots:
   react-to-print@3.0.5(react@19.0.0-rc-f2df5694-20240916):
     dependencies:
       react: 19.0.0-rc-f2df5694-20240916
-
-  react@18.3.1:
-    dependencies:
-      loose-envify: 1.4.0
 
   react@19.0.0-rc-f2df5694-20240916: {}
 

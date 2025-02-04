@@ -1,1 +1,1 @@
-export { reloadedPlugin } from "./reloadedPlugin.mjs";
+export { redwoodPlugin } from "./redwoodPlugin.mjs";

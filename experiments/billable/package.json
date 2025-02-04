@@ -35,7 +35,7 @@
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "reloaded": "workspace:*"
+    "@redwoodjs/reloaded": "workspace:*"
   },
   "prisma": {
     "seed": "pnpm seed"

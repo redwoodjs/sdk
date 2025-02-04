@@ -11,8 +11,6 @@ import {
   CLIENT_DIST_DIR,
   DEV_SERVER_PORT,
   MANIFEST_PATH,
-  RELATIVE_CLIENT_PATHNAME,
-  RELATIVE_WORKER_PATHNAME,
   ROOT_DIR,
   WORKER_DIST_DIR,
   VENDOR_DIST_DIR,
@@ -27,20 +25,23 @@ import { restartPlugin } from "./restartPlugin.mjs";
 import { acceptWasmPlugin } from "./acceptWasmPlugin.mjs";
 import { copyPrismaWasmPlugin } from "./copyPrismaWasmPlugin.mjs";
 import { codegen } from '../scripts/codegen.mjs';
-import { $ } from '../lib/$.mjs';
 
-export function reloadedPlugin(options: {
-  mode?: 'main' | 'dev' | 'deploy';
+export function redwoodPlugin(options: {
   silent?: boolean;
   port?: number;
-  setup?: () => Promise<unknown>;
   restartOnChanges?: boolean;
+  entry?: {
+    client?: string;
+    worker?: string;
+  };
 }): Plugin {
   const MODE = process.env.NODE_ENV === "development" ? "development" : "production";
+  const clientEntryPathname = resolve(process.cwd(), options?.entry?.client ?? 'src/client.tsx');
+  const workerEntryPathname = resolve(process.cwd(), options?.entry?.worker ?? 'src/worker.tsx');
 
   return {
     name: 'vite-plugin-reloaded',
-    config: () => {
+    config: (_, { command }) => {
       const baseConfig: InlineConfig = {
         appType: "custom",
         mode: MODE,
@@ -69,7 +70,7 @@ export function reloadedPlugin(options: {
               outDir: CLIENT_DIST_DIR,
               manifest: true,
               rollupOptions: {
-                input: { client: RELATIVE_CLIENT_PATHNAME },
+                input: { client: clientEntryPathname },
               },
             },
             resolve: {
@@ -103,7 +104,7 @@ export function reloadedPlugin(options: {
                   inlineDynamicImports: true,
                 },
                 input: {
-                  worker: RELATIVE_WORKER_PATHNAME,
+                  worker: workerEntryPathname,
                 },
               },
             },
@@ -133,15 +134,12 @@ export function reloadedPlugin(options: {
         },
       };
 
-      if (options.mode === 'dev') {
+      if (command === 'serve') {
         return mergeConfig(baseConfig, {
           plugins: [
             acceptWasmPlugin(),
             asyncSetupPlugin({
               async setup() {
-                // context(justinvdm, 2024-12-05): Call indirectly to silence verbose output when VERBOSE is not set
-                await $`pnpm build:vendor`;
-
                 // context(justinvdm, 2024-11-28): Types don't affect runtime, so we don't need to block the dev server on them
                 void codegen({ silent: false });
               }
@@ -169,7 +167,7 @@ export function reloadedPlugin(options: {
         });
       }
 
-      if (options.mode === 'deploy') {
+      if (command === 'build') {
         return mergeConfig(baseConfig, {
           plugins: [
             transformJsxScriptTagsPlugin({

@@ -1,14 +1,21 @@
 import MagicString from "magic-string";
 import { type Plugin } from "vite";
 import { readFile } from "node:fs/promises";
-import memoize from "lodash/memoize";
 import { pathExists } from "fs-extra";
 
-const readManifest = memoize(async (manifestPath: string) => {
-  return (await pathExists(manifestPath))
-    ? readFile(manifestPath, "utf-8").then(JSON.parse)
-    : {};
-});
+const manifestCache = new Map<string, Promise<any>>();
+
+const readManifest = async (manifestPath: string) => {
+  if (!manifestCache.has(manifestPath)) {
+    manifestCache.set(
+      manifestPath,
+      (await pathExists(manifestPath))
+        ? readFile(manifestPath, "utf-8").then(JSON.parse)
+        : Promise.resolve({})
+    );
+  }
+  return manifestCache.get(manifestPath)!;
+};
 
 export const transformJsxScriptTagsPlugin = ({
   manifestPath,
