@@ -35,7 +35,7 @@ export function redwoodPlugin(options: {
     client?: string;
     worker?: string;
   };
-}): Plugin {
+} = {}): Plugin {
   const PROJECT_ROOT_DIR = process.cwd();
   const MODE = process.env.NODE_ENV === "development" ? "development" : "production";
   const clientEntryPathname = resolve(PROJECT_ROOT_DIR, options?.entry?.client ?? 'src/client.tsx');
