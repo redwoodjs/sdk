@@ -1,6 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
 import { MAX_TOKEN_DURATION } from './constants';
-import { ErrorResponse } from './error';
 
 interface Session {
   userId: string;
@@ -9,7 +8,7 @@ interface Session {
 
 export class SessionDO extends DurableObject {
   session: Session | undefined = undefined;
-  constructor(public state: DurableObjectState, public env: Env) {
+  constructor(state: DurableObjectState, env: Env) {
     super(state, env);
     this.session = undefined;
   }
@@ -20,37 +19,41 @@ export class SessionDO extends DurableObject {
       createdAt: Date.now(),
     }
 
-    await this.state.storage.put<Session>("session", session);
+    await this.ctx.storage.put<Session>("session", session);
     this.session = session;
     return session;
   }
 
-  async getSession(): Promise<Session> {
+  async getSession(): Promise<{ value: Session } | { error: string }> {
     if (this.session) {
-      return this.session;
+      return { value: this.session };
     }
 
-    const session = await this.state.storage.get<Session>("session");
+    const session = await this.ctx.storage.get<Session>("session");
 
     // context(justinvdm, 2025-01-15): If the session DO exists but there's no session state
     // it means we received a valid session id (it passed the signature check), but the session
     // has been revoked.
     if (!session) {
-      throw new ErrorResponse(401, "Invalid session");
+      return {
+        error: 'Invalid session'
+      }
     }
 
     // context(justinvdm, 2025-01-15): If the session is expired, we need to revoke it.
     if (session.createdAt + MAX_TOKEN_DURATION < Date.now()) {
       await this.revokeSession();
-      throw new ErrorResponse(401, "Session expired");
+      return {
+        error: 'Session expired'
+      }
     }
 
     this.session = session;
-    return session;
+    return { value: session };
   }
 
   async revokeSession() {
-    await this.state.storage.delete("session");
+    await this.ctx.storage.delete("session");
     this.session = undefined;
   }
 }

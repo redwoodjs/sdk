@@ -2,41 +2,94 @@
 
 A route matches the path part of a URL to an endpoint. An endpoint is a function that returns a JSX component (A page), or a `Response`. The endpoint function receives the parsed parameters of the path, the context, as well as the `Request`.
 
-## Defining routes
+## Quickstart
 
-The interface to our router is based off of Remix-Router v7. It is very simplified in that we don't allow nesting or layouts. This might be something we consider in the future, but seems out of scope for routing.
-
-We will use Hono's Routing API: https://hono.dev/docs/api/routing
+The interface to our router is based off of Remix-Router v7.
 
 ```ts
 
-import { router } from '@redwoodjs/router'
+import { defineRoutes, index, route, prefix } from 'router.ts'
 
-export default router([
-  index(import("./index.tsx")),
 
-  route('auth/login', import('./pages/auth/Login.tsx')),
-  route('auth/register', import('./pages/auth/Login.tsx')),
-  route('auth/logout', (req, res) => {
-    // remove session cookie
-    res.redirect('/', 307, {
-      'Set-Cookie': `sessionId=${new Date().toString()}; Expires=0`
-    })
-  }),
+import { HomePage } from './pages/HomePage'
+import { PageOne } from './pages/PageOne'
+import { PageTwo } from './pages/PageTwo'
 
-  route("invoices", import("./pages/InvoiceList.tsx")),
-  route("invoice/:id", import("./pages/InvoiceDetail.tsx")),
 
-  // wildcard
-  route("assets/*", (req, res) => {
-    // find file on filesystem
-    // stream file back
-    return res.send(filestream, 200)
+const router = defineRoutes([
+  // matches `/`
+  index(HomePage),
+  ...prefix('/number', [
+    // matches `/number`
+    index(function() {
+      return new Response('Pick one, two, or anything really...')
+    }),
+     // static, matches `/number/one`
+    route("/one", PageOne),
+     // static, matches `/number/two`
+    route("/two", PageTwo),
+    //  named parameters, matches `/number/${anything}`
+    route("/:any", function({ params }) => {
+      return new Response(params.any)
+    }
+  ])
+
+  // wildcard parameters
+  route("bucket/*", ({ params }) => {
+    // Log out the first wildcard param.
+    const object = await env.R2.get(params.$0);
+    if (object === null) {
+      return new Response("Object Not Found", { status: 404 });
+    }
+    return new Response(object.body, {
+      headers: {
+        "Content-Type": object.httpMetadata?.contentType as string,
+      },
+    });
   })
 ])
+
+router.handle({ request, ctx, env, renderPage })
 ```
 
-## Things to consider?
+
+# API Reference
+
+- `defineRoutes`
+- `route`
+- `index`
+- `prefix`
+
+
+# Links
+
+We also include an interface to generate paths in a typesafe way. This allows you to confidently
+refactor your links.
+
+```ts
+
+import { defineLinks } from 'links.ts'
+
+
+const link = defineLinks([
+  '/',
+  '/user/auth',
+  '/user/login',
+  '/user/logout',
+  '/invoice/all/',
+  '/invoice/:id/'
+  '/invoice/:id/upload'
+  '/invoice/logos/*'
+])
+
+
+link('/invoice/:id', { id: 1 })
+
+
+```
+
+
+## TODO
 
 - Type safety. How do we ensure that the params have types? Maybe the route array has some sort of response... Like the type that it returns is a function that returns a thing... That's interesting.
 
@@ -49,22 +102,3 @@ Loaders. Stick with Suspense boundary. I kinda see the benefit of been able to d
 - We should expose the express (or something else) part of the framework. The user should invoke a function to pass the request off to Reloaded
 
 - Do not use "magic exports" to surface functionality of the frameworL: E.g.: Loader or fetchData, etc.
-
-- Can we chain requests, middleware is awesome? is it?
-```ts
-
-
-export function auth(req, res, next) {
-  // do some auth handling stuff...
-  if (req.headers.authorization !== '') {
-    return new Response('auth error', 403)
-  }
-  next()
-}
-
-export const r = router([
-  route("invoices", [auth, import("./pages/InvoiceList.tsx")]),
-])
-```
-
-I personally prefer using an array rather than splatting params, but I don't want to move to far from express.

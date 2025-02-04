@@ -5,7 +5,8 @@ let ENV: ParsedEnv | undefined
 
 // define zod schema for env-vars
 export const envSchema = z.object({
-  
+  RESEND_API_KEY: z.string(),
+  APP_URL: z.string(),
 });
 
 export type ParsedEnv = z.infer<typeof envSchema>;

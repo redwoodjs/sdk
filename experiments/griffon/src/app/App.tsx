@@ -11,7 +11,7 @@ const vitePreamble = `\
 export const App: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <html lang="en">
     <head>
-      <title>Griffon: Command and Control.</title>
+      <title>Griffon: Modern Conservation Technology</title>
       {import.meta.env.DEV && !process.env.PREVIEW ? (
         <script
           type="module"

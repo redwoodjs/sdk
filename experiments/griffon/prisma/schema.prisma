@@ -14,9 +14,32 @@ datasource db {
 model User {
   id                String    @id @default(uuid())
   email             String    @unique
-  name              String?
+  authToken         String?
+  authTokenExpiresAt DateTime?
   createdAt         DateTime  @default(now())
   updatedAt         DateTime? @updatedAt
+  sensors           Sensor[]
 }
 
-// 
+model Sensor {
+  id              String    @id @default(uuid())
+  name           String    @default("sensor")
+  userId          String
+  user            User      @relation(fields: [userId], references: [id])
+  uniqueId        String    @unique
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime? @updatedAt
+  sensorDataLogs  SensorDataLog[]
+
+  @@unique([userId, uniqueId])
+}
+
+model SensorDataLog {
+  id              String    @id @default(uuid())
+  sensorId        String
+  sensor          Sensor    @relation(fields: [sensorId], references: [id])
+  data            Json
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime? @updatedAt
+}

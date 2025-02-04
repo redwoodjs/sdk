@@ -1,6 +1,6 @@
-# Griffon: Command and Control.
+# Billable: Billing Made Simple. Period.
 
-Griffon is gateway application to transform sensory data into usable objects for many command and control applications.
+Billable is personal invoicing software that allows a user to input information about their business entity, the client, and items, quanitities and prices. It calculates the total, and includes the ability to add tax.
 
 The technical stack is Redwood Reloaded, React Server Components, Prisma, Tailwind, ShadCDN/UI and Cloudflare.
 
@@ -15,7 +15,7 @@ https://www.prisma.io/docs/orm/overview/databases/cloudflare-d1#evolve-your-sche
 
 Create your database:
 ```terminal
-npx wrangler d1 create griffon
+npx wrangler d1 create billable
 ```
 
 Copy the ID that's spat out by this command, and update the wrangler.toml file.

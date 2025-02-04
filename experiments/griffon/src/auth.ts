@@ -2,6 +2,7 @@ import { MAX_TOKEN_DURATION } from './constants';
 import { ErrorResponse } from './error';
 import { SessionDO } from './session';
 
+import { link } from './app/shared/links'
 interface SessionIdParts {
   unsignedSessionId: string;
   signature: string;
@@ -16,9 +17,7 @@ const unpackSessionId = (packed: string): SessionIdParts => {
   return { unsignedSessionId, signature };
 }
 
-export const performLogin = async (request: Request, env: Env) => {
-  const userId = "1";
-
+export const performLogin = async (request: Request, env: Env, userId: string) => {
   const sessionId = await generateSessionId(env);
   const doId = env.SESSION_DO.idFromName(sessionId);
   const sessionDO = env.SESSION_DO.get(doId) as DurableObjectStub<SessionDO>;
@@ -26,9 +25,13 @@ export const performLogin = async (request: Request, env: Env) => {
 
   const cookie = `session_id=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=${MAX_TOKEN_DURATION}`;
 
-  return new Response("Login successful", {
-    status: 200,
-    headers: { "Set-Cookie": cookie },
+  return new Response(null, {
+    status: 301,
+    headers: {
+      'Location': link('/sensor/list'),
+      "Set-Cookie": cookie,
+      "Content-Type": "text/html"
+    },
   });
 }
 
@@ -78,11 +81,7 @@ export const getSession = async (request: Request, env: Env) => {
     throw new ErrorResponse(401, "No cookie found");
   }
 
-  const cookies = Object.fromEntries(
-    cookieHeader.split("; ").map((c) => c.split("="))
-  );
-
-  const sessionId = cookies["session_id"];
+  const sessionId = cookieHeader.split("=").slice(1).join("=")
 
   if (sessionId == null) {
     throw new ErrorResponse(401, "No session id found");
@@ -96,5 +95,9 @@ export const getSession = async (request: Request, env: Env) => {
   const sessionDO = env.SESSION_DO.get(doId) as DurableObjectStub<SessionDO>;
   const session = await sessionDO.getSession();
 
-  return session;
+  if ('error' in session) {
+    throw new ErrorResponse(401, session.error);
+  }
+
+  return session.value;
 }
