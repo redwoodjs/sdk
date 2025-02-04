@@ -25,8 +25,6 @@ export const authRoutes = [
       },
     });
 
-    console.log("### user", user);
-
     if (!user) {
       return new Response("Invalid or expired token", { status: 400 });
     }

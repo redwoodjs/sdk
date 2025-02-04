@@ -47,7 +47,6 @@ export default {
     const router = defineRoutes([
       index([
         function ({ ctx }) {
-          console.log("###=> ctx", ctx);
           if (ctx.user) {
             return new Response(null, {
               status: 302,
@@ -89,9 +88,7 @@ export default {
       let session: Awaited<ReturnType<typeof getSession>> | undefined;
       try {
         session = await getSession(request, env);
-        console.log("Session:", session);
         ctx = await getContext(session);
-        console.log("Context after getContext:", ctx);
       } catch (e) {
         console.error("Error getting session", e);
       }

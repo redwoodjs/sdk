@@ -63,8 +63,6 @@ async function getSensorListSummary(userId: string) {
 }
 
 export default async function SensorListPage({ ctx }: RouteContext) {
-  console.log("### ctx", ctx);
-  return <div>Hello</div>;
   const sensors = await getSensorListSummary(ctx.user.id);
   return (
     <Layout ctx={ctx}>

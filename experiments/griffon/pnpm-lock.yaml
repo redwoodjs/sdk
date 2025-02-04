@@ -64,9 +64,6 @@ importers:
       react-server-dom-webpack:
         specifier: 19.0.0-rc-f2df5694-20240916
         version: 19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.96.1(esbuild@0.17.19))
-      react-to-print:
-        specifier: ^3.0.4
-        version: 3.0.4(react@19.0.0-rc-f2df5694-20240916)
       resend:
         specifier: ^4.1.1
         version: 4.1.1(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)
@@ -2607,11 +2604,6 @@ packages:
       react: 19.0.0-rc-f2df5694-20240916
       react-dom: 19.0.0-rc-f2df5694-20240916
       webpack: ^5.59.0
-
-  react-to-print@3.0.4:
-    resolution: {integrity: sha512-33opQsuskUs0UyK1OLAAN2Ziy1GPneeTLvypRYjT6E9bl2NDxZtEr0KYMOxszcBY0bs+XlWOkGNlyla55GQjuA==}
-    peerDependencies:
-      react: ^16.8.0 || ^17.0.0 || ^18.0.0 || ~19
 
   react@19.0.0-rc-f2df5694-20240916:
     resolution: {integrity: sha512-nGf0C1nmtK44uZVBGB1i320+oZpIL4YibvcDUpKQu/2wR/giIydwzVyx4mjsWRXbYDoyX240F04tHoYLTT2a2w==}
@@ -5475,10 +5467,6 @@ snapshots:
       react-dom: 19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916)
       webpack: 5.96.1(esbuild@0.17.19)
       webpack-sources: 3.2.3
-
-  react-to-print@3.0.4(react@19.0.0-rc-f2df5694-20240916):
-    dependencies:
-      react: 19.0.0-rc-f2df5694-20240916
 
   react@19.0.0-rc-f2df5694-20240916: {}
 

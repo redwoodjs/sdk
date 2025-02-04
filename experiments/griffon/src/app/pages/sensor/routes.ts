@@ -14,5 +14,5 @@ export const  sensorRoutes = [
     });
   }),
   route("/list", SensorListPage),
-  // route("/:id", SensorDetailPage),
+  route("/:id", SensorDetailPage),
 ];
