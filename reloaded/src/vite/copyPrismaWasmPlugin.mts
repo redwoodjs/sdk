@@ -4,16 +4,14 @@ import path from 'path';
 import { Plugin } from 'vite';
 import { createRequire } from 'module';
 
-import { ROOT_DIR } from '../lib/constants.mjs';
-
-export const copyPrismaWasmPlugin = (): Plugin => ({
+export const copyPrismaWasmPlugin = ({ rootDir }: { rootDir: string }): Plugin => ({
   name: 'copy-prisma-wasm',
   enforce: 'post',
   async writeBundle() {
     const wasmFilePath = createRequire(createRequire(import.meta.url).resolve('@prisma/client')).resolve('.prisma/client/query_engine_bg.wasm');
 
     const fileName = path.basename(wasmFilePath);
-    const outputPath = path.resolve(ROOT_DIR, 'dist', 'worker', fileName);
+    const outputPath = path.resolve(rootDir, 'dist', 'worker', fileName);
 
     if (await pathExists(wasmFilePath)) {
       await copy(wasmFilePath, outputPath);

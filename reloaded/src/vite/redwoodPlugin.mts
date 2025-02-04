@@ -59,6 +59,7 @@ export function redwoodPlugin(options: {
         plugins: [
           tsconfigPaths({ root: PROJECT_ROOT_DIR }),
           miniflarePlugin({
+            rootDir: PROJECT_ROOT_DIR,
             viteEnvironment: { name: "worker" },
           }),
           reactPlugin(),
@@ -161,7 +162,7 @@ export function redwoodPlugin(options: {
               })
               : null,
             useClientLookupPlugin({
-              rootDir: PROJECT_ROOT_DIR,
+              rootDir: ROOT_DIR,
               containingPath: "./src/app",
             }),
           ],
@@ -175,10 +176,10 @@ export function redwoodPlugin(options: {
               manifestPath: MANIFEST_PATH,
             }),
             useClientLookupPlugin({
-              rootDir: PROJECT_ROOT_DIR,
+              rootDir: ROOT_DIR,
               containingPath: "./src/app",
             }),
-            copyPrismaWasmPlugin(),
+            copyPrismaWasmPlugin({ rootDir: PROJECT_ROOT_DIR }),
           ],
           environments: {
             worker: {
