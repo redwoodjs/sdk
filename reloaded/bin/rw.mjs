@@ -9,6 +9,9 @@ const ROOT_DIR = path.resolve(__dirname, "..");
 const SCRIPTS_DIR = path.resolve(ROOT_DIR, "scripts");
 const BIN_DIR = path.resolve(ROOT_DIR, "node_modules", ".bin");
 
+const ARGS = process.argv.slice(2);
+const SCRIPT_NAME = ARGS[0];
+
 const $ = baseSh({
   stdio: "inherit",
   reject: false,
@@ -37,16 +40,13 @@ const SCRIPTS = {
 }
 
 
-const args = process.argv.slice(2);
-const scriptName = args[0];
-
-if (!scriptName) {
+if (!SCRIPT_NAME) {
   console.error("No script name provided");
   process.exitCode = 1;
-} else if (!SCRIPTS[scriptName]) {
-  console.error(`Unknown script: ${scriptName}`);
+} else if (!SCRIPTS[SCRIPT_NAME]) {
+  console.error(`Unknown script: ${SCRIPT_NAME}`);
   process.exitCode = 1;
 } else {
-  const script = SCRIPTS[scriptName];
-  $`${script} ${args.slice(1).join(" ")}`;
+  const script = SCRIPTS[SCRIPT_NAME];
+  $`${script} ${ARGS.slice(1).join(" ")}`;
 }
