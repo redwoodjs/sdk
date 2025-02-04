@@ -16,11 +16,14 @@ import { PageOne } from './pages/PageOne'
 import { PageTwo } from './pages/PageTwo'
 
 
-export default defineRoutes([
+const router = defineRoutes([
   // matches `/`
   index(HomePage),
-
   ...prefix('/number', [
+    // matches `/number`
+    index(function() {
+      return new Response('Pick one, two, or anything really...')
+    }),
      // static, matches `/number/one`
     route("/one", PageOne),
      // static, matches `/number/two`
@@ -32,20 +35,25 @@ export default defineRoutes([
   ])
 
   // wildcard parameters
-  route("assets/*", ({ request, params }) => {
+  route("bucket/*", ({ params }) => {
     // Log out the first wildcard param.
-    console.log(params.$0)
-    // Grab file from R2, and return it.
-    return res.send(filestream, 200)
+    const object = await env.R2.get(params.$0);
+    if (object === null) {
+      return new Response("Object Not Found", { status: 404 });
+    }
+    return new Response(object.body, {
+      headers: {
+        "Content-Type": object.httpMetadata?.contentType as string,
+      },
+    });
   })
-], {
-  // getContext: passed as `ctx` to each handler
-  // renderPage: renders the JSX element.
-})
+])
+
+router.handle({ request, ctx, env, renderPage })
 ```
 
 
-# API
+# API Reference
 
 - `defineRoutes`
 - `route`
@@ -53,11 +61,35 @@ export default defineRoutes([
 - `prefix`
 
 
+# Links
+
+We also include an interface to generate paths in a typesafe way. This allows you to confidently
+refactor your links.
+
+```ts
+
+import { defineLinks } from 'links.ts'
+
+
+const link = defineLinks([
+  '/',
+  '/user/auth',
+  '/user/login',
+  '/user/logout',
+  '/invoice/all/',
+  '/invoice/:id/'
+  '/invoice/:id/upload'
+  '/invoice/logos/*'
+])
+
+
+link('/invoice/:id', { id: 1 })
+
+
+```
+
+
 ## TODO
-
-- Remove trailing slash
-
-- Implement lazy loading of routes.
 
 - Type safety. How do we ensure that the params have types? Maybe the route array has some sort of response... Like the type that it returns is a function that returns a thing... That's interesting.
 
@@ -70,20 +102,3 @@ Loaders. Stick with Suspense boundary. I kinda see the benefit of been able to d
 - We should expose the express (or something else) part of the framework. The user should invoke a function to pass the request off to Reloaded
 
 - Do not use "magic exports" to surface functionality of the frameworL: E.g.: Loader or fetchData, etc.
-
-- Can we chain requests, middleware is awesome? is it?
-```ts
-export function auth(req, res, next) {
-  // do some auth handling stuff...
-  if (req.headers.authorization !== '') {
-    return new Response('auth error', 403)
-  }
-  next()
-}
-
-export const r = router([
-  route("invoices", [auth, import("./pages/InvoiceList.tsx")]),
-])
-```
-
-I personally prefer using an array rather than splatting params, but I don't want to move to far from express.

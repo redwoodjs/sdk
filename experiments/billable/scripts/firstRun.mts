@@ -5,7 +5,7 @@ export const initDev = async () => {
 
   // context(justinvdm, 2024-12-05): Call indirectly to silence verbose output when VERBOSE is not set
   await $`pnpm migrate:dev`;
-  await $`npx prisma generate`;
+  await $`pnpm dlx prisma generate`;
   await $`pnpm build`;
   await $`pnpm seed`;
 

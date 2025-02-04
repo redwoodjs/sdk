@@ -15,3 +15,5 @@ npx wrangler [command to create a bucket]
 
 Focus on web standards. That means uploading via a multipart form.
 Streaming the uploaded file into R2.
+
+Show example.

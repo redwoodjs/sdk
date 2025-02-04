@@ -3,18 +3,24 @@ import { isValidElementType } from "react-is";
 export type RouteContext<TParams = Record<string, string>> = {
   request: Request;
   params: TParams;
+  env: Env;
   ctx?: any;
 };
 
-type RouteMiddleware = (ctx: RouteContext) => Response | Promise<Response> | void;
+type RouteMiddleware = (
+  ctx: RouteContext,
+) => Response | Promise<Response> | void;
 type RouteFunction = (ctx: RouteContext) => Response | Promise<Response>;
 type RouteComponent = (ctx: RouteContext) => JSX.Element | Promise<JSX.Element>;
 
-type RouteHandler = RouteFunction | RouteComponent | [...RouteMiddleware[], RouteFunction | RouteComponent ]
+type RouteHandler =
+  | RouteFunction
+  | RouteComponent
+  | [...RouteMiddleware[], RouteFunction | RouteComponent];
 
 type RouteDefinition = {
   path: string;
-  handler: RouteHandler
+  handler: RouteHandler;
 };
 
 type RouteMatch = {
@@ -26,7 +32,6 @@ function matchPath(
   routePath: string,
   requestPath: string,
 ): RouteContext["params"] | null {
-  // Convert route path to regex pattern
   const pattern = routePath
     .replace(/:[a-zA-Z]+/g, "([^/]+)") // Convert :param to capture group
     .replace(/\*/g, "(.*)"); // Convert * to wildcard capture group
@@ -59,27 +64,32 @@ function matchPath(
   return params;
 }
 
-export function defineRoutes(
-  routes: RouteDefinition[],
-  {
-    ctx,
-    renderPage,
-  }: {
-    ctx: any;
-    renderPage: (page: any, props: Record<string, any>) => Promise<Response>;
-  },
-): {
-  routes: RouteDefinition[],
-  handle: (request: Request) => Response | Promise<Response>
+export function defineRoutes(routes: RouteDefinition[]): {
+  routes: RouteDefinition[];
+  handle: (
+    {
+      request,
+      ctx,
+      env,
+      renderPage,
+
+    }: {
+      request: Request;
+      ctx: any;
+      env: Env;
+      renderPage: (page: any, props: Record<string, any>) => Promise<Response>;
+    },
+  ) => Response | Promise<Response>;
 } {
   return {
     routes,
-    async handle(request) {
+    async handle({request, ctx, env, renderPage }) {
       const url = new URL(request.url);
       let path = url.pathname;
 
-      if (path !== '/' && !path.endsWith('/')) {
-        path = path + '/'
+      // Must end with a trailing slash.
+      if (path !== "/" && !path.endsWith("/")) {
+        path = path + "/";
       }
 
       // Find matching route
@@ -88,7 +98,6 @@ export function defineRoutes(
         const params = matchPath(route.path, path);
         if (params) {
           match = { params, handler: route.handler };
-          console.log("[debug] route matched ", route.path);
           break;
         }
       }
@@ -102,19 +111,20 @@ export function defineRoutes(
 
       // Array of handlers (middleware chain)
       if (Array.isArray(handler)) {
-
         const handlers = handler;
-        handler = handlers.pop() as RouteFunction | RouteComponent
+        handler = handlers.pop() as RouteFunction | RouteComponent;
 
         // loop over each function. Only the last function can be a page function.
         for (const h of handlers) {
           if (isRouteComponent(h)) {
-            throw new Error('Only the last handler in an array of routes can a React component.')
+            throw new Error(
+              "Only the last handler in an array of routes can be a React component.",
+            );
           }
 
-          const r = await h({ request, params, ctx })
+          const r = await h({ request, params, ctx, env });
           if (r instanceof Response) {
-            return r
+            return r;
           }
         }
       }
@@ -123,19 +133,15 @@ export function defineRoutes(
         // TODO(peterp, 2025-01-30): Serialize the request
         return await renderPage(handler as RouteComponent, { params, ctx });
       } else {
-        return await (handler({ request, params, ctx }) as Promise<Response>);
+        return await (handler({ request, params, ctx, env }) as Promise<Response>);
       }
     },
   };
 }
 
-export function route(
-  path: string,
-  handler: RouteHandler
-) {
-
-  if (!path.endsWith('/')) {
-    path = path + '/'
+export function route(path: string, handler: RouteHandler) {
+  if (!path.endsWith("/")) {
+    path = path + "/";
   }
 
   return {
@@ -144,21 +150,19 @@ export function route(
   };
 }
 
-export function index(
-  handler: RouteDefinition['handler']
-) {
+export function index(handler: RouteHandler) {
   return route("/", handler);
 }
 
 export function prefix(prefix: string, routes: ReturnType<typeof route>[]) {
   return routes.map((r) => {
-      return {
-        path: prefix + r.path,
-        handler: r.handler
-      }
-  })
+    return {
+      path: prefix + r.path,
+      handler: r.handler,
+    };
+  });
 }
 
 function isRouteComponent(handler: any) {
-  return isValidElementType(handler) && handler.toString().includes("jsx")
+  return isValidElementType(handler) && handler.toString().includes("jsx");
 }

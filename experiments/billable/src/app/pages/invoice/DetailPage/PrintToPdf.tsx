@@ -1,15 +1,17 @@
 import { useReactToPrint } from "react-to-print";
+import { Button } from "src/components/ui/button";
 
 export function PrintPdf({ contentRef }: { contentRef: React.RefObject<HTMLDivElement> }) {
-  const reactToPrintFn = useReactToPrint({ contentRef });
+  const reactToPrintFn = useReactToPrint({ contentRef,  });
 
   return (
     <div>
-        <button
+        <Button
+          variant="secondary"
           onClick={() =>reactToPrintFn()}
         >
           Print
-        </button>
+        </Button>
     </div>
   );
 }
