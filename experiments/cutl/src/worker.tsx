@@ -14,7 +14,7 @@ import HomePage from "./app/pages/Home/HomePage";
 
 import { defineRoutes, index, prefix, route } from "./lib/router";
 import { authRoutes } from "./app/pages/auth/routes";
-import { cutlistRoutes } from "./app/pages/project/routes";
+import { projectRoutes } from "./app/pages/project/routes";
 import { link } from "src/shared/links";
 
 export { SessionDO } from "./session";
@@ -57,7 +57,7 @@ export default {
         HomePage,
       ]),
       ...prefix("/auth", authRoutes),
-      ...prefix("/project", cutlistRoutes),
+      ...prefix("/project", projectRoutes),
     ]);
 
     // I don't thin I actually use this, but maybe we should upload a logo or something?

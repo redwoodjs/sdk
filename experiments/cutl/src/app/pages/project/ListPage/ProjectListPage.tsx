@@ -2,7 +2,7 @@
 
 import { Layout } from "../../Layout";
 
-import { CreateInvoiceButton, CreateProjectButton } from "./CreateProjectButton";
+import { CreateProjectButton } from "./CreateProjectButton";
 import { db } from "../../../../db";
 import { RouteContext } from "../../../../lib/router";
 import { link } from "src/shared/links";
@@ -75,7 +75,7 @@ export default async function ProjectListPage({ ctx }: RouteContext) {
           </TableRow>
         </TableHeader>
         <TableBody>
-          {projects.map((i) => (
+          {projects.map((i: Project) => (
             <ProjectListItem {...i} key={"project-" + i.id} />
           ))}
         </TableBody>

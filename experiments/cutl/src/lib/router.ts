@@ -84,56 +84,71 @@ export function defineRoutes(routes: RouteDefinition[]): {
   return {
     routes,
     async handle({request, ctx, env, renderPage }) {
-      const url = new URL(request.url);
-      let path = url.pathname;
+      try {
+        const url = new URL(request.url);
+        let path = url.pathname;
 
-      // Must end with a trailing slash.
-      if (path !== "/" && !path.endsWith("/")) {
-        path = path + "/";
-      }
-
-      // Find matching route
-      let match: RouteMatch | null = null;
-      for (const route of routes) {
-        const params = matchPath(route.path, path);
-        if (params) {
-          match = { params, handler: route.handler };
-          break;
+        // Must end with a trailing slash.
+        if (path !== "/" && !path.endsWith("/")) {
+          path = path + "/";
         }
-      }
 
-      if (!match) {
-        // todo(peterp, 2025-01-28): Allow the user to define their own "not found" route.
-        return new Response("Not Found", { status: 404 });
-      }
-
-      let { params, handler } = match;
-
-      // Array of handlers (middleware chain)
-      if (Array.isArray(handler)) {
-        const handlers = handler;
-        handler = handlers.pop() as RouteFunction | RouteComponent;
-
-        // loop over each function. Only the last function can be a page function.
-        for (const h of handlers) {
-          if (isRouteComponent(h)) {
-            throw new Error(
-              "Only the last handler in an array of routes can be a React component.",
-            );
-          }
-
-          const r = await h({ request, params, ctx, env });
-          if (r instanceof Response) {
-            return r;
+        // Find matching route
+        let match: RouteMatch | null = null;
+        for (const route of routes) {
+          const params = matchPath(route.path, path);
+          if (params) {
+            match = { params, handler: route.handler };
+            break;
           }
         }
-      }
 
-      if (isRouteComponent(handler)) {
-        // TODO(peterp, 2025-01-30): Serialize the request
-        return await renderPage(handler as RouteComponent, { params, ctx });
-      } else {
-        return await (handler({ request, params, ctx, env }) as Promise<Response>);
+        if (!match) {
+          // todo(peterp, 2025-01-28): Allow the user to define their own "not found" route.
+          return new Response("Not Found", { status: 404 });
+        }
+
+        let { params, handler } = match;
+
+        // Array of handlers (middleware chain)
+        if (Array.isArray(handler)) {
+          const handlers = handler;
+          handler = handlers.pop() as RouteFunction | RouteComponent;
+
+          // loop over each function. Only the last function can be a page function.
+          for (const h of handlers) {
+            if (isRouteComponent(h)) {
+              throw new Error(
+                "Only the last handler in an array of routes can be a React component.",
+              );
+            }
+
+            const r = await h({ request, params, ctx, env });
+            if (r instanceof Response) {
+              return r;
+            }
+          }
+        }
+
+        if (isRouteComponent(handler)) {
+          // TODO(peterp, 2025-01-30): Serialize the request
+          return await renderPage(handler as RouteComponent, { params, ctx });
+        } else {
+          return await (handler({ request, params, ctx, env }) as Promise<Response>);
+        }
+
+      } catch (error) {
+        console.error('Router Error:', {
+          url: request.url,
+          error: error instanceof Error ? error.message : error
+        });
+        
+        return new Response(JSON.stringify({
+          error: error instanceof Error ? error.message : 'An unexpected error occurred'
+        }), {
+          status: 500,
+          headers: { 'Content-Type': 'application/json' }
+        });
       }
     },
   };
