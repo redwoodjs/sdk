@@ -4,13 +4,8 @@ import { link } from "../shared/links";
 
 function Logo() {
   return (
-    // svg logo that looks like a saw blade
-    <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24">
-      <path d="M12 2L2 22h20L12 2z" />
-      <path d="M12 2L2 22h20L12 2z" />
-      <path d="M12 2L2 22h20L12 2z" />
-      <path d="M12 2L2 22h20L12 2z" />
-    </svg>
+    // TODO: add a logo
+    <h1 className="text-2xl font-bold text-blue-500">CutL</h1>
   );
 }
 

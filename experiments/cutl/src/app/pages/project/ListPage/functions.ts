@@ -11,19 +11,10 @@ export async function createProject({ ctx }: { ctx: Awaited<ReturnType<typeof ge
 
   const userId = ctx.user.id
 
-  // todo(peterp, 28-01-2025): Implement templates.
-  let lastProject = await db.project.findFirst({
-    where: {
-      userId,
-    },
-    orderBy: {
-      createdAt: 'desc',
-    }
-  })
-
   const newProject = await db.project.create({
     data: {
-      title: lastProject?.title || "New Project",
+      title: "New Project",
+      cutlistItems: JSON.stringify([]),
       userId,
       total: 0,
       currency: "ZAR",
@@ -36,3 +27,10 @@ export async function createProject({ ctx }: { ctx: Awaited<ReturnType<typeof ge
 
   return newProject
 }
+
+export async function deleteProject(id: string) {
+
+  await db.project.deleteMany({
+    where: { id },
+  });
+} 

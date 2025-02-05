@@ -22,12 +22,9 @@ export async function getProject(id: string, userId: string) {
       userId,
     },
   });
-
-  console.log(project);
-
+  
   return {
     ...project,
-    // cutlistItems: project.cutlistItems as ProjectItem[],
   };
 }
 

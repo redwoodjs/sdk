@@ -4,11 +4,9 @@ import { BreadcrumbLink } from "src/components/ui/breadcrumb";
 import { BreadcrumbSeparator } from "src/components/ui/breadcrumb";
 import { BreadcrumbPage } from "src/components/ui/breadcrumb";
 import { Layout } from "src/pages/Layout";
-import { ProjectForm } from "./ProjectForm";
 import { BreadcrumbList } from "src/components/ui/breadcrumb";
 import { link } from "src/shared/links";
 import { calculateBoards } from "./functions";
-import { useEffect, useState } from "react";
 import { BoardRenderer } from "./BoardRenderer";
 
 export default async function CutlistDetailPage({

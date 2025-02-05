@@ -1,7 +1,7 @@
 "use client";
 
 import { useTransition } from "react";
-import { createProject } from "./functions";
+import { createProject, deleteProject } from "./functions";
 import { Button } from "src/components/ui/button";
 
 export function CreateProjectButton() {
