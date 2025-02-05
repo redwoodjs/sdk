@@ -81,14 +81,14 @@ const isUseClientModule = async (ctx: HotUpdateOptions, file: string, seen = new
 };
 
 export const miniflarePlugin = (
-  givenOptions: MiniflarePluginOptions & { rootDir: string },
+  givenOptions: MiniflarePluginOptions & { rootDir: string, workerEntryPathname: string },
 ): (Plugin | Plugin[])[] => [
     cloudflare(givenOptions),
     {
       name: 'miniflare-plugin-hmr',
       async hotUpdate(ctx) {
         const environment = givenOptions.viteEnvironment?.name ?? 'worker';
-        const entry = resolve(givenOptions.rootDir, 'src', 'worker.tsx');
+        const entry = givenOptions.workerEntryPathname;
 
         if (!["client", environment].includes(this.environment.name)) {
           return;

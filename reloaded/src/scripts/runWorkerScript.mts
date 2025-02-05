@@ -1,6 +1,10 @@
 import { resolve } from 'path'
-import { ROOT_DIR } from '../lib/constants.mjs';
+import { readFile, writeFile } from 'fs/promises';
+import { unstable_readConfig } from 'wrangler';
 import { createServer as createViteServer } from "vite";
+import tmp from 'tmp-promise'
+
+import { redwood } from '../vite/index.mjs';
 
 export const runWorkerScript = async (relativeScriptPath: string) => {
   if (!relativeScriptPath) {
@@ -12,33 +16,56 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
     process.exit(1);
   }
 
-  const scriptPath = resolve(ROOT_DIR, relativeScriptPath);
-  const server = await createViteServer({
-    root: ROOT_DIR,
-    mode: 'dev',
-    server: {
-      port: 0,
-    },
+  const scriptPath = resolve(process.cwd(), relativeScriptPath);
+
+  const workerTomlPath = resolve(process.cwd(), 'wrangler.toml');
+
+  const workerConfig = unstable_readConfig({
+    config: workerTomlPath,
   });
 
+  const tmpWorkerPath = await tmp.file({
+    postfix: '.json',
+
+  });
+  const scriptWorkerConfig = {
+    ...workerConfig,
+    configPath: tmpWorkerPath.path,
+    userConfigPath: tmpWorkerPath.path,
+    main: scriptPath,
+  };
+
   try {
-    const address = server.httpServer?.address();
+    await writeFile(tmpWorkerPath.path, JSON.stringify(scriptWorkerConfig, null, 2));
 
-    if (!address || typeof address === 'string') {
-      throw new Error('Dev server address is invalid');
+    const server = await createViteServer({
+      configFile: false,
+      plugins: [
+        redwood({
+          port: 0,
+          configPath: tmpWorkerPath.path,
+          entry: {
+            worker: scriptPath,
+          }
+        })
+      ],
+    });
+
+    try {
+      await server.listen();
+      const address = server.httpServer?.address();
+
+      if (!address || typeof address === 'string') {
+        throw new Error('Dev server address is invalid');
+      }
+
+      await fetch(`http://localhost:${address.port}/`)
+
+    } finally {
+      await server.close()
     }
-
-    await fetch(`http://localhost:${address.port}/`, {
-      headers: {
-        'x-vite-fetch': JSON.stringify({
-          entry: scriptPath,
-          instruction: "proxy",
-        }),
-      },
-    })
-
   } finally {
-    await server.close()
+    await tmpWorkerPath.cleanup();
   }
 };
 

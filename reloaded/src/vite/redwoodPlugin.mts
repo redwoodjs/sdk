@@ -27,6 +27,7 @@ export type RedwoodPluginOptions = {
   restartOnChanges?: boolean;
   rootDir?: string;
   mode?: 'development' | 'production';
+  configPath?: string;
   entry?: {
     client?: string;
     worker?: string;
@@ -52,7 +53,8 @@ export const redwoodPlugin = (options: RedwoodPluginOptions = {}): InlineConfig[
     miniflarePlugin({
       rootDir: projectRootDir,
       viteEnvironment: { name: "worker" },
-      configPath: resolve(projectRootDir, "wrangler.toml"),
+      workerEntryPathname,
+      configPath: options.configPath ?? resolve(projectRootDir, "wrangler.toml"),
     }),
     reactPlugin(),
     useServerPlugin(),
