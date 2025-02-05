@@ -4,6 +4,8 @@ import { $sh } from "../lib/$.mjs";
 export const moveStaticAssetsPlugin = ({ rootDir }: { rootDir: string }): Plugin => ({
   name: 'rw-reloaded-move-static-assets',
 
+  apply: 'build',
+
   async closeBundle() {
     if (this.environment.name === 'client') {
       await $sh({ cwd: rootDir })`mv dist/client/assets/* dist/client/`;

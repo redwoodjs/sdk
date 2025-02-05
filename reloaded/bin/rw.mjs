@@ -4,8 +4,8 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { $ as $base } from 'execa';
 
-// todo(justinvdm, 5 Feb 2025): Remove this once we are publishing the package
-process.env.RW_DEV = "1";
+const SEEN = Boolean(process.env.RW_SEEN);
+process.env.RW_SEEN = "1";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -18,7 +18,7 @@ const SCRIPT_NAME = ARGS[0];
 
 const SCRIPTS = {
   "build": 'vite build',
-  "dev:init": `node ${SCRIPTS_DIR}/firstRun.mts`,
+  "dev:init": `node ${SCRIPTS_DIR}/firstRun.mjs`,
   "dev": `while true; do NODE_ENV=development vite dev; [ $? -eq 0 ] || break; done`,
   "seed": `rw worker:run ./src/scripts/seed.ts`,
   "migrate:dev": "wrangler d1 migrations apply DB --local",
@@ -55,7 +55,7 @@ if (!SCRIPT_NAME) {
   console.error(`Unknown script: ${SCRIPT_NAME}`);
   process.exitCode = 1;
 } else {
-  if (process.env.RW_DEV) {
+  if (process.env.RW_DEV && !SEEN) {
     await $internal`pnpm build`
   }
   const script = SCRIPTS[SCRIPT_NAME];
