@@ -25,19 +25,3 @@ export function CreateProjectButton() {
 
   );
 }
-
-export function DeleteProjectButton({ id }: { id: string }) {
-  const [isPending, startTransition] = useTransition();
-
-  const onClick = () => {
-    startTransition(async () => {
-      await deleteProject(id);
-    });
-  };
-
-  return (
-    <Button onClick={onClick} disabled={isPending}>
-      Delete Project
-    </Button>
-  );
-}

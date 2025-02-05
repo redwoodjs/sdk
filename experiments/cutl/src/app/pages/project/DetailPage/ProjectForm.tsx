@@ -6,6 +6,7 @@ import { saveProject } from "./functions";
 import { PrintPdf } from "./PrintToPdf";
 import { Button } from "src/components/ui/button";
 import { Input } from "src/components/ui/input";
+import { DeleteProjectButton } from "./DeleteProjectButton";
 
 
 export function ProjectForm(props: {
@@ -24,7 +25,7 @@ export function ProjectForm(props: {
   return (
     <div>
       <div className="flex gap-2 py-4 justify-end">
-        <PrintPdf contentRef={pdfContentRef} />
+        <DeleteProjectButton id={project.id} />
         <Button
           onClick={async () => {
             await saveProject(project.id, project, items, project.userId);
