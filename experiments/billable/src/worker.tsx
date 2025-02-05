@@ -12,7 +12,7 @@ import { getSession } from "./auth";
 import { setupEnv } from "./env";
 import HomePage from "./app/pages/Home/HomePage";
 
-import { defineRoutes, index, prefix, route } from "./lib/router";
+import { defineRoutes, index, prefix } from "./lib/router";
 import { authRoutes } from "./app/pages/auth/routes";
 import { invoiceRoutes } from "./app/pages/invoice/routes";
 import { link } from "src/shared/links";

@@ -3,19 +3,19 @@ import { Plugin } from "vite";
 export const asyncSetupPlugin = ({
   setup,
 }: {
-  setup: () => Promise<unknown>;
+  setup: ({ command }: { command: 'serve' | 'build' }) => Promise<unknown>;
 }): Plugin => {
   let taskPromise = Promise.resolve(null as unknown);
 
   return {
     name: "rw-reloaded-async-setup",
     apply: 'serve',
-    // Hook into the configureServer to add middleware
+    async buildStart() {
+      await setup({ command: 'build' as const });
+    },
     configureServer(server) {
-      // Start the async task when the server is configured
-      taskPromise = setup();
+      taskPromise = setup({ command: 'serve' as const });
 
-      // Add middleware to block requests until the task is completed
       server.middlewares.use(async (_req, _res, next) => {
         await taskPromise;
         next();

@@ -21,6 +21,7 @@ import { restartPlugin } from "./restartPlugin.mjs";
 import { acceptWasmPlugin } from "./acceptWasmPlugin.mjs";
 import { copyPrismaWasmPlugin } from "./copyPrismaWasmPlugin.mjs";
 import { codegen } from '../scripts/codegen.mjs';
+import { $ } from '../lib/$.mjs';
 
 export const redwoodPlugin = (options: {
   silent?: boolean;
@@ -158,8 +159,14 @@ export const redwoodPlugin = (options: {
   useClientPlugin(),
   acceptWasmPlugin(),
   asyncSetupPlugin({
-    async setup() {
-      void codegen({ silent: false });
+    async setup({ command }) {
+      console.log('Generating prisma client...')
+      await $`pnpm prisma generate`;
+
+      if (command !== 'build') {
+        console.log('Generating wrangler types...')
+        await $`pnpm wrangler types`;
+      }
     }
   }),
   ...options.restartOnChanges
