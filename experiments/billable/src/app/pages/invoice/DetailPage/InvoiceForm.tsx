@@ -1,14 +1,19 @@
 "use client";
 
 import { useState, useRef } from "react";
-import { type InvoiceTaxes, type InvoiceItem, type getInvoice } from "./InvoiceDetailPage";
+import {
+  type InvoiceTaxes,
+  type InvoiceItem,
+  type getInvoice,
+} from "./InvoiceDetailPage";
 import { deleteLogo, saveInvoice } from "./functions";
 import { PrintPdf } from "./PrintToPdf";
 import { link } from "../../../shared/links";
 import { Button } from "src/components/ui/button";
 import { Input } from "src/components/ui/input";
 import { Textarea } from "src/components/ui/textarea";
-
+import { RouteContext } from "../../../../lib/router";
+import { PlusIcon, Trash2Icon } from 'lucide-react'
 
 function calculateSubtotal(items: InvoiceItem[]) {
   let sum = 0;
@@ -25,7 +30,6 @@ function calculateTaxes(subtotal: number, taxes: InvoiceTaxes[]) {
   }
   return sum;
 }
-
 
 export function InvoiceForm(props: {
   invoice: Awaited<ReturnType<typeof getInvoice>>;
@@ -47,213 +51,174 @@ export function InvoiceForm(props: {
         <PrintPdf contentRef={pdfContentRef} />
         <Button
           onClick={async () => {
-            await saveInvoice(invoice.id, invoice, items, taxes, ctx.user.id);
-            window.location.href = "/invoice/list";
+            await saveInvoice(invoice.id, invoice, items, taxes);
+            window.location.href = link("/invoice/list");
           }}
         >
           Save
         </Button>
       </div>
-    <div ref={pdfContentRef}>
 
-
-      <div className="sm:col-span-3">
-        <label
-          htmlFor="invoice-number"
-          className="block text-sm font-medium leading-6 text-gray-900"
-        >
-          Invoice #
-        </label>
-        <div className="mt-2">
-          <Input
-            type="text"
-            name="invoice-number"
-            id="invoice-number"
-            value={invoice.number}
-            onChange={(e) => setInvoice({ ...invoice, number: e.target.value })}
-          />
-        </div>
-      </div>
-
-      <div className="sm:col-span-3">
-        <label
-          htmlFor="date"
-          className="block text-sm font-medium leading-6 text-gray-900"
-        >
-          Date
-        </label>
-        <div className="mt-2">
-          <Input
-            type="date"
-            name="date"
-            id="date"
-            value={invoice.date.toISOString().split("T")[0]}
-            onChange={(e) =>
-              setInvoice({ ...invoice, date: new Date(e.target.value) })
-            }
-          />
-        </div>
-      </div>
-
-      <div className="col-span-full">
-        <label
-          htmlFor="customer"
-          className="block text-sm font-medium leading-6 text-gray-900"
-        >
-          Customer
-        </label>
-        <div className="mt-2">
-          <Textarea
-            name="customer"
-            id="customer"
-            placeholder="Michael Scott Paper Company, Inc."
-            className="font-serif font text-5xl"
-            defaultValue={invoice.customer ?? ""}
-            onChange={(e) =>
-              setInvoice({ ...invoice, customer: e.target.value })
-            }
-          />
-        </div>
-      </div>
-
-      <div className="col-span-full">
-        <label
-          htmlFor="client-info"
-          className="block text-sm font-medium leading-6 text-gray-900"
-        >
-          Supplier Name
-        </label>
-        <div className="mt-2">
-          <SupplierName
-            invoice={invoice}
-            setInvoice={(newInvoice) => setInvoice(newInvoice)}
-          />
-        </div>
-      </div>
-
-      <div className="col-span-full">
-        <label
-          htmlFor="client-info"
-          className="block text-sm font-medium leading-6 text-gray-900"
-        >
-          Supplier Contact
-        </label>
-        <div className="mt-2">
-          <textarea
-            id="client-info"
-            name="client-info"
-            rows={3}
-            className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-            defaultValue={invoice.supplierContact ?? ""}
-            onChange={(e) =>
-              setInvoice({ ...invoice, supplierContact: e.target.value })
-            }
-          />
-        </div>
-      </div>
-
-      <div className="col-span-full">
-        <label className="block text-sm font-medium leading-6 text-gray-900">
-          Items
-        </label>
-        <div className="mt-2 space-y-4">
-          {items.map((item, index) => (
-            <Item
-              key={"invoiceItem" + index}
-              item={item}
-              currency={invoice.currency}
-              onChange={(newItem) => {
-                const newItems = [...items];
-                newItems[index] = newItem;
-                setItems(newItems);
-              }}
-              onDelete={() => {
-                const newItems = [...items];
-                newItems.splice(index, 1);
-                setItems(newItems);
-              }}
+      <div ref={pdfContentRef}>
+        <div className="grid grid-cols-12 gap-4">
+          {/* SupplierName */}
+          <div className="col-span-7">
+            <SupplierName
+              invoice={invoice}
+              setInvoice={(newInvoice) => setInvoice(newInvoice)}
             />
-          ))}
-          <button
-            type="button"
-            className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-            onClick={() => {
-              setItems([...items, { description: "", quantity: 1, price: 1 }]);
-            }}
-          >
-            Add Item
-          </button>
-        </div>
-      </div>
-
-      <div className="col-span-full">
-        <div className="grid grid-cols-12 gap-4">
-          <div className="col-span-9 text-right">Subtotal:</div>
-          <div className="col-span-2">
-            {invoice.currency} {subtotal.toFixed(2)}
           </div>
-        </div>
-        <Taxes
-          subtotal={subtotal}
-          taxes={taxes}
-          onChange={(tax, index) => {
-            const newTaxes = [...taxes];
-            newTaxes[index] = tax;
-            setTaxes(newTaxes);
-          }}
-          onDelete={(index) => {
-            if (taxes.length === 1) {
-              setTaxes([]);
-              return;
-            }
-            const newTaxes = [...taxes];
-            newTaxes.splice(index, 1);
-            setTaxes(newTaxes);
-          }}
-          onAdd={() => {
-            setTaxes([...taxes, { description: "", amount: 0 }]);
-          }}
-        />
-        <div className="grid grid-cols-12 gap-4">
-          <div className="col-span-9 text-right">Total:</div>
-          <div className="col-span-2">
-            <input
-              type="text"
-              value={invoice.currency}
+          {/* SupplierContact */}
+          <div className="col-span-5">
+            <Textarea
+              defaultValue={invoice.supplierContact ?? ""}
+              className="text-right"
               onChange={(e) =>
-                setInvoice({ ...invoice, currency: e.target.value })
+                setInvoice({ ...invoice, supplierContact: e.target.value })
               }
             />
-            {total.toFixed(2)}
+          </div>
+
+          {/* Customer */}
+          <div className="col-span-7">
+            <Textarea
+              placeholder=""
+              className=" font text-5xl"
+              defaultValue={invoice.customer ?? ""}
+              onChange={(e) =>
+                setInvoice({ ...invoice, customer: e.target.value })
+              }
+            />
+          </div>
+          {/* Invoice Number + Date */}
+          <div className="col-span-5">
+            <Input
+              type="text"
+              name="invoice-number"
+              id="invoice-number"
+              value={invoice.number}
+              onChange={(e) =>
+                setInvoice({ ...invoice, number: e.target.value })
+              }
+            />
+
+            <Input
+              type="date"
+              name="date"
+              id="date"
+              value={invoice.date.toISOString().split("T")[0]}
+              onChange={(e) =>
+                setInvoice({ ...invoice, date: new Date(e.target.value) })
+              }
+            />
+          </div>
+
+          {/* Items */}
+          <div className="col-span-full text-right py-2">
+            {items.map((item, index) => (
+              <Item
+                key={"invoiceItem" + index}
+                item={item}
+                currency={invoice.currency}
+                onChange={(newItem) => {
+                  const newItems = [...items];
+                  newItems[index] = newItem;
+                  setItems(newItems);
+                }}
+                onDelete={() => {
+                  const newItems = [...items];
+                  newItems.splice(index, 1);
+                  setItems(newItems);
+                }}
+              />
+            ))}
+            <Button
+              variant="outline"
+              size="icon"
+              onClick={() => {
+                setItems([
+                  ...items,
+                  { description: "", quantity: 1, price: 1 },
+                ]);
+              }}
+            >
+              <PlusIcon />
+            </Button>
+          </div>
+
+          {/* Taxes */}
+          <div className="col-start-8 col-span-5">
+
+            {/* Subtotal */}
+            <div className="grid grid-cols-5 gap-4 py-4">
+              <div className="col-span-2 text-right font-semibold">Subtotal:</div>
+              <div className="col-span-2 text-right">
+                {invoice.currency} {subtotal.toFixed(2)}
+              </div>
+            </div>
+
+            <Taxes
+              subtotal={subtotal}
+              taxes={taxes}
+              onChange={(tax, index) => {
+                const newTaxes = [...taxes];
+                newTaxes[index] = tax;
+                setTaxes(newTaxes);
+              }}
+              onDelete={(index) => {
+                if (taxes.length === 1) {
+                  setTaxes([]);
+                  return;
+                }
+                const newTaxes = [...taxes];
+                newTaxes.splice(index, 1);
+                setTaxes(newTaxes);
+              }}
+              onAdd={() => {
+                setTaxes([...taxes, { description: "", amount: 0 }]);
+              }}
+            />
+            <div className="grid grid-cols-5 gap-4 py-4">
+              <div className="col-span-2 text-right font-semibold">Total:</div>
+              <div className="col-span-2 text-right flex items-center justify-end">
+                <Input
+                  type="text"
+                  className="text-right"
+                  value={invoice.currency}
+                  onChange={(e) =>
+                    setInvoice({ ...invoice, currency: e.target.value })
+                  }
+                />
+
+                  {total.toFixed(2)}
+
+              </div>
+            </div>
+          </div>
+
+          <div className="col-span-full border-b" />
+          {/* NotesA */}
+          <div className="col-span-6">
+            <Textarea
+              defaultValue={invoice.notesA ?? ""}
+              onChange={(e) =>
+                setInvoice({ ...invoice, notesA: e.target.value })
+              }
+            />
+          </div>
+
+          {/* NotesB */}
+          <div className="col-span-6">
+            <Textarea
+              className="text-right"
+              defaultValue={invoice.notesB ?? ""}
+              onChange={(e) =>
+                setInvoice({ ...invoice, notesB: e.target.value })
+              }
+            />
           </div>
         </div>
       </div>
-
-      <div className="col-span-full">
-        <div className="mt-2">
-          <textarea
-            id="banking-details"
-            name="banking-details"
-            rows={3}
-            className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-            defaultValue={invoice.notesA ?? ""}
-            onChange={(e) => setInvoice({ ...invoice, notesA: e.target.value })}
-          />
-        </div>
-      </div>
-      <div className="col-span-full">
-        <div className="mt-2">
-          <textarea
-            id="banking-details"
-            name="banking-details"
-            rows={3}
-            className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
-            defaultValue={invoice.notesB ?? ""}
-            onChange={(e) => setInvoice({ ...invoice, notesB: e.target.value })}
-          />
-        </div>
-      </div>
-    </div>
     </div>
   );
 }
@@ -272,21 +237,15 @@ function Item({
   onDelete: () => void;
 }) {
   return (
-    <div className="grid grid-cols-12 gap-4">
-      <div className="col-span-6">
-        <input
-          type="text"
-          placeholder="Description"
-          className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+    <div className="grid grid-cols-12 gap-4 py-2 border">
+      <div className="col-span-7">
+        <Textarea
           value={item.description}
           onChange={(e) => onChange({ ...item, description: e.target.value })}
         />
       </div>
       <div className="col-span-2">
-        <input
-          type="number"
-          placeholder="Quantity"
-          className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
+        <Input
           value={item.quantity}
           onChange={(e) =>
             onChange({ ...item, quantity: Number(e.target.value) })
@@ -294,25 +253,20 @@ function Item({
         />
       </div>
       <div className="col-span-2">
-        <input
+        <Input
           type="number"
-          placeholder="Price"
-          className="block w-full rounded-md border-0 py-1.5 text-gray-900 shadow-sm ring-1 ring-inset ring-gray-300 placeholder:text-gray-400 focus:ring-2 focus:ring-inset focus:ring-indigo-600 sm:text-sm sm:leading-6"
           value={item.price}
           onChange={(e) => onChange({ ...item, price: Number(e.target.value) })}
         />
       </div>
       <div className="col-span-1">
-        {currency} {Number(item.quantity * item.price).toFixed(2)}
-      </div>
-      <div className="col-span-1">
-        <button onClick={onDelete}>Delete</button>
+
+        <Button onClick={onDelete} variant="outline" size="icon"><Trash2Icon /></Button>
       </div>
     </div>
   );
 }
 
-// todo(peterp, 2025-01-14): add currency.
 function Taxes(props: {
   subtotal: number;
   taxes: Awaited<ReturnType<typeof getInvoice>>["taxes"];
@@ -326,45 +280,47 @@ function Taxes(props: {
   const taxes = calculateTaxes(props.subtotal, props.taxes);
 
   return (
-    <div className="space-y-4 bg-red-50">
+    <>
       {props.taxes.map((tax, index) => (
-        <div className="grid grid-cols-12 gap-4" key={`tax-${index}`}>
-          <div className="col-span-4 text-right">
-            <input
+        <div className="grid grid-cols-5 gap-4 py-2" key={`tax-${index}`}>
+          <div className="col-span-2">
+            <Input
               type="text"
+              className="text-right font-semibold"
               value={tax.description}
               onChange={(e) =>
                 props.onChange({ ...tax, description: e.target.value }, index)
               }
             />
           </div>
-          <div className="col-span-1">
-            <input
+          <div className="col-span-2 flex items-center">
+            <Input
               type="number"
-              value={tax.amount}
+              className="text-right"
+              value={Math.floor(tax.amount * 100)}
               onChange={(e) =>
                 props.onChange(
-                  { ...tax, amount: Number(e.target.value) },
+                  { ...tax, amount: Number(e.target.value) / 100 },
                   index,
                 )
               }
             />
             %
           </div>
-          <div className="col-span-1">
-            {(props.subtotal * tax.amount).toFixed(2)}
-          </div>
-          <div className="col-span-1">
-            <button onClick={() => props.onDelete(index)}>Delete</button>
+          <div className="col-span-1 text-right">
+            <Button onClick={() => props.onDelete(index)} variant="outline" size="icon">
+              <Trash2Icon />
+            </Button>
           </div>
         </div>
       ))}
-      <div className="grid grid-cols-12 gap-4">
-        <div className="col-span-4 text-right">
-          <button onClick={props.onAdd}>Add</button>
-        </div>
+
+      <div className="col-span-5 py-2 text-right">
+        <Button onClick={props.onAdd} variant="outline" size="icon">
+          <PlusIcon />
+        </Button>
       </div>
-    </div>
+    </>
   );
 }
 
@@ -394,19 +350,21 @@ export function SupplierName({
       </div>
     );
   } else {
-    // add option to add logo
     return (
       <div>
-        <textarea
+        <Textarea
           value={invoice.supplierName ?? ""}
-          placeholder="Michael Scott Paper Company"
+          placeholder="Michael Scott Paper Company, Inc."
           onChange={(e) =>
             setInvoice({ ...invoice, supplierName: e.target.value })
           }
-        ></textarea>
-        <UploadLogo invoiceId={invoice.id} onSuccess={(supplierLogo) => {
-          setInvoice({ ...invoice, supplierLogo });
-        }} />
+        />
+        <UploadLogo
+          invoiceId={invoice.id}
+          onSuccess={(supplierLogo) => {
+            setInvoice({ ...invoice, supplierLogo });
+          }}
+        />
       </div>
     );
   }
@@ -432,10 +390,13 @@ export function UploadLogo({
           formData.append("file", file);
 
           try {
-            const response = await fetch(link('/invoice/:id/upload', { id: invoiceId }), {
-              method: "POST",
-              body: formData,
-            });
+            const response = await fetch(
+              link("/invoice/:id/upload", { id: invoiceId }),
+              {
+                method: "POST",
+                body: formData,
+              },
+            );
 
             if (!response.ok) {
               throw new Error("Upload failed");
@@ -443,7 +404,7 @@ export function UploadLogo({
 
             // Handle successful upload
             console.log("Upload successful");
-            const data = await response.json() as { key: string };
+            const data = (await response.json()) as { key: string };
             onSuccess(data.key);
           } catch (error) {
             console.error("Error uploading file:", error);

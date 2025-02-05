@@ -52,7 +52,7 @@ export default async function InvoiceDetailPage({
         </BreadcrumbPage>
       </BreadcrumbList>
 
-      <InvoiceForm invoice={invoice} />
+      <InvoiceForm invoice={invoice} ctx={ctx} />
     </Layout>
   );
 }
