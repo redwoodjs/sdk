@@ -14,8 +14,7 @@ const ARGS = process.argv.slice(2);
 const SCRIPT_NAME = ARGS[0];
 
 const SCRIPTS = {
-  "build": `node ${SCRIPTS_DIR}/build.mts`,
-  "build:vendor": `node ${SCRIPTS_DIR}/buildVendorBundles.mts`,
+  "build": 'vite build',
   "dev:init": `node ${SCRIPTS_DIR}/firstRun.mts`,
   "dev": `while true; do NODE_ENV=development vite dev; [ $? -eq 0 ] || break; done`,
   "seed": `node ${SCRIPTS_DIR}/runWorkerScript.mts ./src/scripts/seed.ts`,

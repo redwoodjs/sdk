@@ -3,8 +3,16 @@ import { $sh } from "../lib/$.mjs";
 
 export const moveStaticAssetsPlugin = ({ rootDir }: { rootDir: string }): Plugin => ({
   name: 'rw-reloaded-move-static-assets',
-  writeBundle() {
-    $sh({ cwd: rootDir })`mv dist/{client,worker}/assets/* dist/client/`;
-    $sh({ cwd: rootDir })`rmdir dist/{client,worker}/assets`;
+
+  async closeBundle() {
+    if (this.environment.name === 'client') {
+      await $sh({ cwd: rootDir })`mv dist/client/assets/* dist/client/`;
+      await $sh({ cwd: rootDir })`rmdir dist/client/assets`;
+    }
+
+    if (this.environment.name === 'worker') {
+      await $sh({ cwd: rootDir })`mv dist/worker/assets/* dist/worker/`;
+      await $sh({ cwd: rootDir })`rmdir dist/worker/assets`;
+    }
   },
 });
