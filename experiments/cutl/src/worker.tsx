@@ -84,7 +84,9 @@ export default {
       // the request will not hang. This makes this issue particularly hard to debug.
       await db.$queryRaw`SELECT 1`;
 
-      let ctx: Awaited<ReturnType<typeof getContext>> = {};
+      let ctx: Awaited<ReturnType<typeof getContext>> = {
+        user: { id: '', email: '' }
+      };
       let session: Awaited<ReturnType<typeof getSession>> | undefined;
       try {
         session = await getSession(request, env);
