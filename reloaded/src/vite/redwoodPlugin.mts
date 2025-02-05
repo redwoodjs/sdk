@@ -1,6 +1,6 @@
 import { dirname, resolve } from "node:path";
 import { createRequire } from "node:module";
-import { Plugin, mergeConfig, InlineConfig } from 'vite';
+import { mergeConfig, InlineConfig } from 'vite';
 
 import tailwind from "tailwindcss";
 import autoprefixer from "autoprefixer";
@@ -20,176 +20,78 @@ import { asyncSetupPlugin } from "./asyncSetupPlugin.mjs";
 import { restartPlugin } from "./restartPlugin.mjs";
 import { acceptWasmPlugin } from "./acceptWasmPlugin.mjs";
 import { copyPrismaWasmPlugin } from "./copyPrismaWasmPlugin.mjs";
-import { codegen } from '../scripts/codegen.mjs';
+import { configPlugin } from "./configPlugin.mjs";
 import { $ } from '../lib/$.mjs';
 
-export const redwoodPlugin = (options: {
+export type RedwoodPluginOptions = {
   silent?: boolean;
   port?: number;
   restartOnChanges?: boolean;
   rootDir?: string;
+  mode?: 'development' | 'production';
   entry?: {
     client?: string;
     worker?: string;
   };
-} = {}): InlineConfig['plugins'] => {
+}
+
+export const redwoodPlugin = (options: RedwoodPluginOptions): InlineConfig['plugins'] => {
   const projectRootDir = process.cwd();
-  const MODE = process.env.NODE_ENV === "development" ? "development" : "production";
+  const mode = options.mode ?? (process.env.NODE_ENV === "development" ? "development" : "production");
   const clientEntryPathname = resolve(projectRootDir, options?.entry?.client ?? 'src/client.tsx');
   const workerEntryPathname = resolve(projectRootDir, options?.entry?.worker ?? 'src/worker.tsx');
 
-  return [{
-    name: 'rw-reloaded',
-    config: (_, { command }) => {
-      const baseConfig: InlineConfig = {
-        appType: "custom",
-        mode: MODE,
-        logLevel: options.silent ? "silent" : "info",
-        build: {
-          minify: MODE !== "development",
-          sourcemap: true,
-        },
-        define: {
-          "process.env.PREVIEW": JSON.stringify(Boolean(process.env.PREVIEW ?? false)),
-          "process.env.NODE_ENV": JSON.stringify(MODE),
-        },
-        environments: {
-          client: {
-            consumer: "client",
-            build: {
-              outDir: resolve(projectRootDir, "dist", "client"),
-              manifest: true,
-              rollupOptions: {
-                input: { client: clientEntryPathname },
-              },
-            },
-            resolve: {
-              external: ["react"],
-            },
-          },
-          worker: {
-            resolve: {
-              conditions: ["workerd", "react-server"],
-              noExternal: true,
-            },
-            optimizeDeps: {
-              noDiscovery: false,
-              esbuildOptions: {
-                conditions: ["workerd", "react-server"],
-              },
-              include: [
-                "react",
-                "react/jsx-runtime",
-                "react/jsx-dev-runtime",
-                "react-dom/server.edge",
-                "@prisma/client",
-              ],
-            },
-            build: {
-              outDir: resolve(projectRootDir, "dist", "worker"),
-              emitAssets: true,
-              ssr: true,
-              rollupOptions: {
-                output: {
-                  inlineDynamicImports: true,
-                },
-                input: {
-                  worker: workerEntryPathname,
-                },
-              },
-            },
-          },
-        },
-        server: {
-          hmr: true,
-          port: options.port ?? DEV_SERVER_PORT,
-        },
-        css: {
-          postcss: {
-            plugins: [tailwind, autoprefixer()],
-          },
-        },
-        resolve: {
-          dedupe: ["react"],
-          alias: [
-            {
-              find: /^react$/,
-              replacement: resolve(VENDOR_DIST_DIR, "react.js"),
-            },
-            {
-              find: /^react-dom\/(server|server\.edge)$/,
-              replacement: resolve(VENDOR_DIST_DIR, "react-dom-server-edge.js"),
-            },
-          ],
-        },
-      };
+  return [
+    configPlugin({
+      mode,
+      silent: options.silent ?? false,
+      projectRootDir,
+      clientEntryPathname,
+      workerEntryPathname,
+      port: options.port ?? DEV_SERVER_PORT,
+    }),
+    tsconfigPaths({ root: projectRootDir }),
+    miniflarePlugin({
+      rootDir: projectRootDir,
+      viteEnvironment: { name: "worker" },
+      configPath: resolve(projectRootDir, "wrangler.toml"),
+    }),
+    reactPlugin(),
+    useServerPlugin(),
+    useClientPlugin(),
+    acceptWasmPlugin(),
+    asyncSetupPlugin({
+      async setup({ command }) {
+        console.log('Generating prisma client...')
+        await $`pnpm prisma generate`;
 
-      if (command === 'build') {
-        return mergeConfig(baseConfig, {
-          environments: {
-            worker: {
-              build: {
-                rollupOptions: {
-                  external: ["cloudflare:workers", "node:stream", /\.wasm$/],
-                },
-              },
-            },
-          },
-          resolve: {
-            alias: {
-              ".prisma/client/default": createRequire(
-                createRequire(import.meta.url).resolve("@prisma/client"),
-              ).resolve(".prisma/client/wasm"),
-            },
-          },
-        });
+        if (command !== 'build') {
+          console.log('Generating wrangler types...')
+          await $`pnpm wrangler types`;
+        }
       }
-
-      return baseConfig;
-    },
-  },
-  tsconfigPaths({ root: projectRootDir }),
-  miniflarePlugin({
-    rootDir: projectRootDir,
-    viteEnvironment: { name: "worker" },
-    configPath: resolve(projectRootDir, "wrangler.toml"),
-  }),
-  reactPlugin(),
-  useServerPlugin(),
-  useClientPlugin(),
-  acceptWasmPlugin(),
-  asyncSetupPlugin({
-    async setup({ command }) {
-      console.log('Generating prisma client...')
-      await $`pnpm prisma generate`;
-
-      if (command !== 'build') {
-        console.log('Generating wrangler types...')
-        await $`pnpm wrangler types`;
-      }
-    }
-  }),
-  ...options.restartOnChanges
-    ? [restartPlugin({
-      filter: (filepath: string) =>
-        !filepath.endsWith(".d.ts") &&
-        (filepath.endsWith(".ts") ||
-          filepath.endsWith(".tsx") ||
-          filepath.endsWith(".mts") ||
-          filepath.endsWith(".js") ||
-          filepath.endsWith(".mjs") ||
-          filepath.endsWith(".jsx") ||
-          filepath.endsWith(".json")) &&
-        dirname(filepath) === projectRootDir,
-    })]
-    : [],
-  useClientLookupPlugin({
-    rootDir: projectRootDir,
-    containingPath: "./src/app",
-  }),
-  transformJsxScriptTagsPlugin({
-    manifestPath: resolve(projectRootDir, "dist", "client", ".vite", "manifest.json"),
-  }),
-  copyPrismaWasmPlugin({ rootDir: projectRootDir }),
+    }),
+    ...options.restartOnChanges
+      ? [restartPlugin({
+        filter: (filepath: string) =>
+          !filepath.endsWith(".d.ts") &&
+          (filepath.endsWith(".ts") ||
+            filepath.endsWith(".tsx") ||
+            filepath.endsWith(".mts") ||
+            filepath.endsWith(".js") ||
+            filepath.endsWith(".mjs") ||
+            filepath.endsWith(".jsx") ||
+            filepath.endsWith(".json")) &&
+          dirname(filepath) === projectRootDir,
+      })]
+      : [],
+    useClientLookupPlugin({
+      rootDir: projectRootDir,
+      containingPath: "./src/app",
+    }),
+    transformJsxScriptTagsPlugin({
+      manifestPath: resolve(projectRootDir, "dist", "client", ".vite", "manifest.json"),
+    }),
+    copyPrismaWasmPlugin({ rootDir: projectRootDir }),
   ];
 }
