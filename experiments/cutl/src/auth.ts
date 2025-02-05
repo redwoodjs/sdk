@@ -9,12 +9,37 @@ interface SessionIdParts {
 }
 
 const packSessionId = (parts: SessionIdParts): string => {
-  return btoa([parts.unsignedSessionId, parts.signature].join(':'));
+  const str = [parts.unsignedSessionId, parts.signature].join(':');
+  // Replace URL-unsafe characters in base64
+  return btoa(str)
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
 }
 
 const unpackSessionId = (packed: string): SessionIdParts => {
-  const [unsignedSessionId, signature] = atob(packed).split(':');
-  return { unsignedSessionId, signature };
+  try {
+    // Restore base64 padding
+    const base64 = packed
+      .replace(/-/g, '+')
+      .replace(/_/g, '/')
+      .padEnd(packed.length + (4 - (packed.length % 4)) % 4, '=');
+    
+    const decoded = atob(base64);
+    const [unsignedSessionId, signature] = decoded.split(':');
+    
+    if (!unsignedSessionId || !signature) {
+      throw new Error('Invalid session format');
+    }
+    
+    return { unsignedSessionId, signature };
+  } catch (error) {
+    console.error('Session decode error:', {
+      packed,
+      error: error instanceof Error ? error.message : error
+    });
+    throw new ErrorResponse(401, 'Invalid session format');
+  }
 }
 
 export const performLogin = async (request: Request, env: Env, userId: string) => {
@@ -81,9 +106,14 @@ export const getSession = async (request: Request, env: Env) => {
     throw new ErrorResponse(401, "No cookie found");
   }
 
-  const sessionId = cookieHeader.split("=").slice(1).join("=")
+  // Parse the session_id from cookies properly
+  const sessionId = cookieHeader
+    .split(';')
+    .map(cookie => cookie.trim())
+    .find(cookie => cookie.startsWith('session_id='))
+    ?.split('=')[1];
 
-  if (sessionId == null) {
+  if (!sessionId) {
     throw new ErrorResponse(401, "No session id found");
   }
 

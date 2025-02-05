@@ -4,15 +4,22 @@ import { Layout } from "../../Layout";
 import { ProjectForm } from "./ProjectForm";
 import { RouteContext } from "../../../../lib/router";
 import { db } from "../../../../db";
-import { BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "src/components/ui/breadcrumb";
+import { BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "src/components/ui/breadcrumb";
 import { link } from "src/shared/links";
-import { Project } from "@prisma/client";
 
 export type ProjectItem = {
   width: number;
   length: number;
   quantity: number;
 };
+
+type Project = {
+  id: string;
+  title: string;
+  total: number;
+  boardsNeeded: number;
+  createdAt: Date;
+}
 
 
 export async function getProject(id: string, userId: string) {
