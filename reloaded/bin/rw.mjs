@@ -4,6 +4,9 @@ import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { $ as $base } from 'execa';
 
+// todo(justinvdm, 5 Feb 2025): Remove this once we are publishing the package
+process.env.RW_DEV = "1";
+
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const ROOT_DIR = path.resolve(__dirname, "..");
@@ -27,7 +30,7 @@ const SCRIPTS = {
   "clean": "rw clean:vite && rw clean:vendor",
   "clean:vite": "rm -rf ./node_modules/.vite",
   "clean:vendor": "rm -rf ./vendor/dist",
-  "cf:deploy": "rw build && wrangler deploy",
+  "deploy": "rw build && wrangler deploy",
   "format": "prettier --write ./src"
 }
 

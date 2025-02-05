@@ -27,6 +27,9 @@ importers:
       '@radix-ui/react-slot':
         specifier: ^1.1.1
         version: 1.1.1(@types/react@18.3.18)(react@19.0.0-rc-f2df5694-20240916)
+      '@redwoodjs/reloaded':
+        specifier: workspace:*
+        version: link:../../reloaded
       '@types/lodash':
         specifier: ^4.17.13
         version: 4.17.14
@@ -62,7 +65,7 @@ importers:
         version: 19.0.0
       react-server-dom-webpack:
         specifier: 19.0.0-rc-f2df5694-20240916
-        version: 19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1)
+        version: 19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.17.19))
       react-to-print:
         specifier: ^3.0.4
         version: 3.0.5(react@19.0.0-rc-f2df5694-20240916)
@@ -85,12 +88,12 @@ importers:
         specifier: ^3.24.1
         version: 3.24.1
     devDependencies:
-      '@redwoodjs/reloaded':
-        specifier: workspace:*
-        version: link:../../reloaded
       vite:
         specifier: ^6.0.11
         version: 6.0.11(@types/node@22.10.6)(jiti@1.21.7)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
+      wrangler:
+        specifier: ^3.105.1
+        version: 3.107.3(@cloudflare/workers-types@4.20250109.0)
 
   reloaded:
     dependencies:
@@ -213,7 +216,7 @@ importers:
         version: link:@cloudflare/workers-types
       wrangler:
         specifier: ^3.105.1
-        version: 3.107.3
+        version: 3.107.3(@cloudflare/workers-types@4.20250109.0)
     devDependencies:
       '@types/lodash':
         specifier: ^4.17.13
@@ -3263,7 +3266,7 @@ snapshots:
       miniflare: 3.20250124.0
       unenv: unenv-nightly@2.0.0-20241218-183400-5d6aec3
       vite: 6.0.11(@types/node@22.10.6)(jiti@1.21.7)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
-      wrangler: 3.107.3
+      wrangler: 3.107.3(@cloudflare/workers-types@4.20250109.0)
       ws: 8.18.0
     transitivePeerDependencies:
       - bufferutil
@@ -5324,13 +5327,13 @@ snapshots:
 
   react-refresh@0.14.2: {}
 
-  react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1):
+  react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.17.19)):
     dependencies:
       acorn-loose: 8.4.0
       neo-async: 2.6.2
       react: 19.0.0-rc-f2df5694-20240916
       react-dom: 19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916)
-      webpack: 5.97.1
+      webpack: 5.97.1(esbuild@0.17.19)
       webpack-sources: 3.2.3
 
   react-to-print@3.0.5(react@19.0.0-rc-f2df5694-20240916):
@@ -5628,14 +5631,16 @@ snapshots:
 
   tapable@2.2.1: {}
 
-  terser-webpack-plugin@5.3.11(webpack@5.97.1):
+  terser-webpack-plugin@5.3.11(esbuild@0.17.19)(webpack@5.97.1(esbuild@0.17.19)):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.25
       jest-worker: 27.5.1
       schema-utils: 4.3.0
       serialize-javascript: 6.0.2
       terser: 5.37.0
-      webpack: 5.97.1
+      webpack: 5.97.1(esbuild@0.17.19)
+    optionalDependencies:
+      esbuild: 0.17.19
 
   terser@5.37.0:
     dependencies:
@@ -5815,7 +5820,7 @@ snapshots:
 
   webpack-sources@3.2.3: {}
 
-  webpack@5.97.1:
+  webpack@5.97.1(esbuild@0.17.19):
     dependencies:
       '@types/eslint-scope': 3.7.7
       '@types/estree': 1.0.6
@@ -5837,7 +5842,7 @@ snapshots:
       neo-async: 2.6.2
       schema-utils: 3.3.0
       tapable: 2.2.1
-      terser-webpack-plugin: 5.3.11(webpack@5.97.1)
+      terser-webpack-plugin: 5.3.11(esbuild@0.17.19)(webpack@5.97.1(esbuild@0.17.19))
       watchpack: 2.4.2
       webpack-sources: 3.2.3
     transitivePeerDependencies:
@@ -5873,7 +5878,7 @@ snapshots:
       '@cloudflare/workerd-linux-arm64': 1.20250129.0
       '@cloudflare/workerd-windows-64': 1.20250129.0
 
-  wrangler@3.107.3:
+  wrangler@3.107.3(@cloudflare/workers-types@4.20250109.0):
     dependencies:
       '@cloudflare/kv-asset-handler': 0.3.4
       '@esbuild-plugins/node-globals-polyfill': 0.2.3(esbuild@0.17.19)
@@ -5885,6 +5890,7 @@ snapshots:
       unenv: 2.0.0-rc.1
       workerd: 1.20250129.0
     optionalDependencies:
+      '@cloudflare/workers-types': 4.20250109.0
       fsevents: 2.3.3
     transitivePeerDependencies:
       - bufferutil

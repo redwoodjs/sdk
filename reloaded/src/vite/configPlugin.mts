@@ -91,11 +91,6 @@ export const configPlugin = ({ mode,
         hmr: true,
         port: port ?? DEV_SERVER_PORT,
       },
-      css: {
-        postcss: {
-          plugins: [tailwind, autoprefixer()],
-        },
-      },
       resolve: {
         dedupe: ["react"],
         alias: [
