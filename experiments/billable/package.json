@@ -31,11 +31,11 @@
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.6.3",
-    "vite-tsconfig-paths": "^5.1.4",
     "zod": "^3.24.1"
   },
   "devDependencies": {
-    "@redwoodjs/reloaded": "workspace:*"
+    "@redwoodjs/reloaded": "workspace:*",
+    "vite": "^6.0.11"
   },
   "prisma": {
     "seed": "pnpm seed"

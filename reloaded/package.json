@@ -55,7 +55,6 @@
     "toml": "^3.0.0",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
-    "vite": "^6.0.11",
     "vite-plugin-commonjs": "^0.10.4",
     "vite-plugin-dts": "^4.3.0",
     "vite-plugin-top-level-await": "^1.4.4",
@@ -63,6 +62,9 @@
     "vite-tsconfig-paths": "^5.1.4",
     "workers-types": "link:@cloudflare/workers-types",
     "wrangler": "^3.105.1"
+  },
+  "peerDependencies": {
+    "vite": "^6.0.11"
   },
   "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab",
   "devDependencies": {
