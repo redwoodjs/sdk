@@ -22,7 +22,7 @@ import { acceptWasmPlugin } from "./acceptWasmPlugin.mjs";
 import { copyPrismaWasmPlugin } from "./copyPrismaWasmPlugin.mjs";
 import { codegen } from '../scripts/codegen.mjs';
 
-export function redwoodPlugin(options: {
+export const redwoodPlugin = (options: {
   silent?: boolean;
   port?: number;
   restartOnChanges?: boolean;
@@ -31,14 +31,14 @@ export function redwoodPlugin(options: {
     client?: string;
     worker?: string;
   };
-} = {}): Plugin {
+} = {}): InlineConfig['plugins'] => {
   const projectRootDir = process.cwd();
   const MODE = process.env.NODE_ENV === "development" ? "development" : "production";
   const clientEntryPathname = resolve(projectRootDir, options?.entry?.client ?? 'src/client.tsx');
   const workerEntryPathname = resolve(projectRootDir, options?.entry?.worker ?? 'src/worker.tsx');
 
-  return {
-    name: 'vite-plugin-reloaded',
+  return [{
+    name: 'rw-reloaded',
     config: (_, { command }) => {
       const baseConfig: InlineConfig = {
         appType: "custom",
@@ -52,17 +52,6 @@ export function redwoodPlugin(options: {
           "process.env.PREVIEW": JSON.stringify(Boolean(process.env.PREVIEW ?? false)),
           "process.env.NODE_ENV": JSON.stringify(MODE),
         },
-        plugins: [
-          tsconfigPaths({ root: projectRootDir }),
-          miniflarePlugin({
-            rootDir: projectRootDir,
-            viteEnvironment: { name: "worker" },
-            configPath: resolve(projectRootDir, "wrangler.toml"),
-          }),
-          reactPlugin(),
-          useServerPlugin(),
-          useClientPlugin(),
-        ],
         environments: {
           client: {
             consumer: "client",
@@ -134,50 +123,8 @@ export function redwoodPlugin(options: {
         },
       };
 
-      if (command === 'serve') {
-        return mergeConfig(baseConfig, {
-          plugins: [
-            acceptWasmPlugin(),
-            asyncSetupPlugin({
-              async setup() {
-                // context(justinvdm, 2024-11-28): Types don't affect runtime, so we don't need to block the dev server on them
-                void codegen({ silent: false });
-              }
-            }),
-            options.restartOnChanges
-              ? restartPlugin({
-                filter: (filepath: string) =>
-                  !filepath.endsWith(".d.ts") &&
-                  (filepath.endsWith(".ts") ||
-                    filepath.endsWith(".tsx") ||
-                    filepath.endsWith(".mts") ||
-                    filepath.endsWith(".js") ||
-                    filepath.endsWith(".mjs") ||
-                    filepath.endsWith(".jsx") ||
-                    filepath.endsWith(".json")) &&
-                  dirname(filepath) === projectRootDir,
-              })
-              : null,
-            useClientLookupPlugin({
-              rootDir: projectRootDir,
-              containingPath: "./src/app",
-            }),
-          ],
-        });
-      }
-
       if (command === 'build') {
         return mergeConfig(baseConfig, {
-          plugins: [
-            transformJsxScriptTagsPlugin({
-              manifestPath: resolve(projectRootDir, "dist", "client", ".vite", "manifest.json"),
-            }),
-            useClientLookupPlugin({
-              rootDir: projectRootDir,
-              containingPath: "./src/app",
-            }),
-            copyPrismaWasmPlugin({ rootDir: projectRootDir }),
-          ],
           environments: {
             worker: {
               build: {
@@ -199,5 +146,43 @@ export function redwoodPlugin(options: {
 
       return baseConfig;
     },
-  };
+  },
+  tsconfigPaths({ root: projectRootDir }),
+  miniflarePlugin({
+    rootDir: projectRootDir,
+    viteEnvironment: { name: "worker" },
+    configPath: resolve(projectRootDir, "wrangler.toml"),
+  }),
+  reactPlugin(),
+  useServerPlugin(),
+  useClientPlugin(),
+  acceptWasmPlugin(),
+  asyncSetupPlugin({
+    async setup() {
+      void codegen({ silent: false });
+    }
+  }),
+  ...options.restartOnChanges
+    ? [restartPlugin({
+      filter: (filepath: string) =>
+        !filepath.endsWith(".d.ts") &&
+        (filepath.endsWith(".ts") ||
+          filepath.endsWith(".tsx") ||
+          filepath.endsWith(".mts") ||
+          filepath.endsWith(".js") ||
+          filepath.endsWith(".mjs") ||
+          filepath.endsWith(".jsx") ||
+          filepath.endsWith(".json")) &&
+        dirname(filepath) === projectRootDir,
+    })]
+    : [],
+  useClientLookupPlugin({
+    rootDir: projectRootDir,
+    containingPath: "./src/app",
+  }),
+  transformJsxScriptTagsPlugin({
+    manifestPath: resolve(projectRootDir, "dist", "client", ".vite", "manifest.json"),
+  }),
+  copyPrismaWasmPlugin({ rootDir: projectRootDir }),
+  ];
 }

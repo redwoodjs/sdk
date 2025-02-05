@@ -82,7 +82,7 @@ const isUseClientModule = async (ctx: HotUpdateOptions, file: string, seen = new
 
 export const miniflarePlugin = (
   givenOptions: MiniflarePluginOptions & { rootDir: string },
-): Plugin[] => [
+): (Plugin | Plugin[])[] => [
     cloudflare(givenOptions),
     {
       name: 'miniflare-plugin-hmr',

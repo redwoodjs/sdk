@@ -13,6 +13,8 @@ export const restartPlugin = ({
   return {
     name: "rw-reloaded-restart-dev-server",
 
+    apply: 'serve',
+
     async hotUpdate(ctx) {
       // context(justinvdm, 12 Dec 2024): We're already restarting, so stop all hmr
       if (restarting) {

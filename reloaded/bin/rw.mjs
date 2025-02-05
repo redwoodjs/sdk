@@ -43,7 +43,7 @@ const $ = $base({
 
 const $internal = $base({
   shell: true,
-  stdio: 'ignore',
+  stdio: 'inherit',
   cwd: ROOT_DIR,
 })
 

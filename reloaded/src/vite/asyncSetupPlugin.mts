@@ -9,7 +9,7 @@ export const asyncSetupPlugin = ({
 
   return {
     name: "rw-reloaded-async-setup",
-
+    apply: 'serve',
     // Hook into the configureServer to add middleware
     configureServer(server) {
       // Start the async task when the server is configured

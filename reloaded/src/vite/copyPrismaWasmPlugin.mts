@@ -7,6 +7,7 @@ import { createRequire } from 'module';
 export const copyPrismaWasmPlugin = ({ rootDir }: { rootDir: string }): Plugin => ({
   name: 'copy-prisma-wasm',
   enforce: 'post',
+  apply: 'build',
   async writeBundle() {
     const wasmFilePath = createRequire(createRequire(import.meta.url).resolve('@prisma/client')).resolve('.prisma/client/query_engine_bg.wasm');
 
