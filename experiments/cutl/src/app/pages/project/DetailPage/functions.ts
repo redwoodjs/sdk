@@ -1,27 +1,26 @@
 "use server";
 
 import {
-  type Invoice,
+  type Project,
 } from "@prisma/client";
 import { db } from "../../../../db";
-import type { InvoiceItem, InvoiceTaxes } from './ProjectDetailPage';
+import type { ProjectItem } from './ProjectDetailPage';
 
-export async function saveInvoice(id: string, invoice: Omit<Invoice, 'items' | 'taxes'>, items: InvoiceItem[], taxes: InvoiceTaxes[], { ctx }) {
+export async function saveProject(id: string, project: Omit<Project, 'cutlistItems'>, cutlistItems: ProjectItem[], { ctx }) {
 
-  await db.invoice.findFirstOrThrow({
+  await db.project.findFirstOrThrow({
     where: {
       id,
       userId: ctx.user.id
     }
   })
 
-  const data: Invoice = {
-    ...invoice,
-    items: JSON.stringify(items),
-    taxes: JSON.stringify(taxes),
+  const data: Project = {
+    ...project,
+    cutlistItems: JSON.stringify(cutlistItems),
   }
 
-  await db.invoice.upsert({
+  await db.project.upsert({
     create: data,
     update: data,
     where: {
@@ -29,23 +28,3 @@ export async function saveInvoice(id: string, invoice: Omit<Invoice, 'items' | '
     }
   })
 }
-
-export async function deleteLogo(id: string, { ctx }) {
-
-  await db.invoice.findFirstOrThrow({
-    where: {
-      id,
-      userId: ctx.user.id
-    }
-  })
-
-  await db.invoice.update({
-    data: {
-      supplierLogo: null,
-    },
-    where: {
-      id
-    }
-  })
-}
-

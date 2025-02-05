@@ -140,11 +140,20 @@ export function defineRoutes(routes: RouteDefinition[]): {
       } catch (error) {
         console.error('Router Error:', {
           url: request.url,
-          error: error instanceof Error ? error.message : error
+          error: error instanceof Error ? {
+            message: error.message,
+            stack: error.stack,
+            name: error.name,
+            // Some errors might have a 'cause' property with additional details
+            cause: (error as any).cause
+          } : error
         });
         
         return new Response(JSON.stringify({
-          error: error instanceof Error ? error.message : 'An unexpected error occurred'
+          error: error instanceof Error ? {
+            message: error.message,
+            location: error.stack?.split('\n')[1]?.trim() // This will show the first line of the stack trace
+          } : 'An unexpected error occurred'
         }), {
           status: 500,
           headers: { 'Content-Type': 'application/json' }

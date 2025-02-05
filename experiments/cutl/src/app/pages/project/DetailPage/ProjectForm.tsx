@@ -17,7 +17,7 @@ function calculateSubtotal(items: ProjectItem[]) {
     sum += item.quantity * item.price;
   }
   return sum;
-}     
+}
 
 
 export function ProjectForm(props: {
@@ -44,108 +44,165 @@ export function ProjectForm(props: {
           Save
         </Button>
       </div>
-    <div ref={pdfContentRef}>
+      <div ref={pdfContentRef}>
 
 
-      <div className="sm:col-span-3">
-        <label
-          htmlFor="title"
-          className="block text-sm font-medium leading-6 text-gray-900"
-        >
-          Title
-        </label>
-        <div className="mt-2">
-          <Input
-            type="text"
-            name="title"
-            id="title"
-            value={project.title}
-            onChange={(e) => setProject({ ...project, title: e.target.value })}
-          />
+        <div className="sm:col-span-3">
+          <label
+            htmlFor="title"
+            className="block text-sm font-medium leading-6 text-gray-900"
+          >
+            Title
+          </label>
+          <div className="mt-2">
+            <Input
+              type="text"
+              name="title"
+              id="title"
+              value={project.title}
+              onChange={(e) => setProject({ ...project, title: e.target.value })}
+            />
+          </div>
         </div>
-      </div>
 
-      <div className="sm:col-span-3">
+        <div className="sm:col-span-3">
+          <label
+            htmlFor="date"
+            className="block text-sm font-medium leading-6 text-gray-900"
+          >
+            Width
+          </label>
+          <div className="mt-2">
+            <Input
+              type="number"
+              name="width"
+              id="width"
+              value={project.boardWidth}
+              onChange={(e) =>
+                setProject({ ...project, boardWidth: Number(e.target.value) })
+              }
+            />
+          </div>
+        </div>
+        <div className="sm:col-span-3">
+          <label
+            htmlFor="date"
+            className="block text-sm font-medium leading-6 text-gray-900"
+          >
+            Length
+          </label>
+          <div className="mt-2">
+            <Input
+              type="number"
+              name="length"
+              id="length"
+              value={project.boardLength}
+              onChange={(e) =>
+                setProject({ ...project, boardLength: Number(e.target.value) })
+              }
+            />
+          </div>
+          <div className="sm:col-span-3">
+            <label
+              htmlFor="date"
+              className="block text-sm font-medium leading-6 text-gray-900"
+            >
+              Blade Thickness
+            </label>
+            <div className="mt-2">
+              <Input
+                type="number"
+                name="bladeWidth"
+                id="bladeWidth"
+                value={project.bladeWidth}
+                onChange={(e) =>
+                  setProject({ ...project, bladeWidth: Number(e.target.value) })
+                }
+              />
+            </div>
+          </div>
+          <div className="sm:col-span-3">
         <label
           htmlFor="date"
           className="block text-sm font-medium leading-6 text-gray-900"
         >
-          Width
+          Board Price
         </label>
         <div className="mt-2">
           <Input
             type="number"
-            name="width"
-            id="width"
-            value={project.width}
+            name="boardPrice"
+            id="boardPrice"
+            value={project.boardPrice}
             onChange={(e) =>
-              setProject({ ...project, width: Number(e.target.value) })
+              setProject({ ...project, boardPrice: Number(e.target.value) })
             }
           />
         </div>
       </div>
-
-      
-
-      
-
-      <div className="col-span-full">
-        <label className="block text-sm font-medium leading-6 text-gray-900">
-          Items
-        </label>
-        <div className="mt-2 space-y-4">
-          {items.map((item, index) => (
-            <Item
-              key={"cutlistItem" + index}
-              item={item}
-              currency={project.currency}
-              onChange={(newItem) => {
-                const newItems = [...items];
-                newItems[index] = newItem;
-                setItems(newItems);
-              }}
-              onDelete={() => {
-                const newItems = [...items];
-                newItems.splice(index, 1);
-                setItems(newItems);
-              }}
-            />
-          ))}
-          <button
-            type="button"
-            className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
-            onClick={() => {
-              setItems([...items, { description: "", quantity: 1, price: 1 }]);
-            }}
-          >
-            Add Item
-          </button>
         </div>
-      </div>
 
-      <div className="col-span-full">
-        <div className="grid grid-cols-12 gap-4">
-          <div className="col-span-9 text-right">Subtotal:</div>
-          <div className="col-span-2">
-            {project.currency} {subtotal.toFixed(2)}
+
+
+
+
+        <div className="col-span-full">
+          <label className="block text-sm font-medium leading-6 text-gray-900">
+            Items
+          </label>
+          <div className="mt-2 space-y-4">
+            {items.map((item, index) => (
+              <Item
+                key={"cutlistItem" + index}
+                item={item}
+                currency={project.currency}
+                onChange={(newItem) => {
+                  const newItems = [...items];
+                  newItems[index] = newItem;
+                  setItems(newItems);
+                }}
+                onDelete={() => {
+                  const newItems = [...items];
+                  newItems.splice(index, 1);
+                  setItems(newItems);
+                }}
+              />
+            ))}
+            <button
+              type="button"
+              className="rounded-md bg-indigo-600 px-3 py-2 text-sm font-semibold text-white shadow-sm hover:bg-indigo-500 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-indigo-600"
+              onClick={() => {
+                setItems([...items, { description: "", quantity: 1, price: 1 }]);
+              }}
+            >
+              Add Item
+            </button>
           </div>
         </div>
-        
-        <div className="grid grid-cols-12 gap-4">
-          <div className="col-span-9 text-right">Total:</div>
-          <div className="col-span-2">
-            <input
-              type="text"
-              value={project.currency}
-              onChange={(e) =>
-                setProject({ ...project, currency: e.target.value })
-              }
-            />
-            {subtotal.toFixed(2)}
+
+        <div className="col-span-full">
+          <div className="grid grid-cols-12 gap-4">
+            <div className="col-span-9 text-right">Subtotal:</div>
+            <div className="col-span-2">
+              {project.currency} {subtotal.toFixed(2)}
+            </div>
+          </div>
+
+          <div className="grid grid-cols-12 gap-4">
+            <div className="col-span-9 text-right">Total:</div>
+            <div className="col-span-2">
+              <input
+                type="text"
+                value={project.currency}
+                onChange={(e) =>
+                  setProject({ ...project, currency: e.target.value })
+                }
+              />
+              {subtotal.toFixed(2)}
+            </div>
           </div>
         </div>
       </div>
-    </div>
     </div>
   );
 }
@@ -164,7 +221,7 @@ function Item({
 }) {
   return (
     <div className="grid grid-cols-12 gap-4">
-       <div className="col-span-2">
+      <div className="col-span-2">
         <input
           type="number"
           placeholder="Quantity"

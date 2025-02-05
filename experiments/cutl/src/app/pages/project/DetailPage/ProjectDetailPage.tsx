@@ -30,7 +30,7 @@ export async function getProject(id: string, userId: string) {
 
   return {
     ...project,
-    cutlistItems: JSON.parse(project.cutlistItems) as ProjectItem[],
+    cutlistItems: project.cutlistItems as ProjectItem[],
   };
 }
 
@@ -38,7 +38,7 @@ export default async function ProjectDetailPage({
   params,
   ctx,
 }: RouteContext<{ id: string }>) {
-  // const project = await getProject(params.id, ctx.user.id);
+  const project = await getProject(params.id, ctx.user.id);
 
   return (
     <Layout ctx={ctx}>
