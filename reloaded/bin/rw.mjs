@@ -2,7 +2,7 @@
 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { $sh as baseSh} from "../dist/lib/$.mjs";
+import { $ as $base } from 'execa';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -12,14 +12,6 @@ const BIN_DIR = path.resolve(ROOT_DIR, "node_modules", ".bin");
 
 const ARGS = process.argv.slice(2);
 const SCRIPT_NAME = ARGS[0];
-
-const $ = baseSh({
-  stdio: "inherit",
-  reject: false,
-  env: {
-    PATH: `${process.env.PATH}:${BIN_DIR}`,
-  }
-})
 
 const SCRIPTS = {
   "build": `node ${SCRIPTS_DIR}/build.mts`,
@@ -40,6 +32,20 @@ const SCRIPTS = {
   "format": "prettier --write ./src"
 }
 
+const $ = $base({
+  shell: true,
+  stdio: "inherit",
+  reject: false,
+  env: {
+    PATH: `${process.env.PATH}:${BIN_DIR}`,
+  }
+})
+
+const $internal = $base({
+  shell: true,
+  stdio: 'ignore',
+  cwd: ROOT_DIR,
+})
 
 if (!SCRIPT_NAME) {
   console.error("No script name provided");
@@ -48,6 +54,9 @@ if (!SCRIPT_NAME) {
   console.error(`Unknown script: ${SCRIPT_NAME}`);
   process.exitCode = 1;
 } else {
+  if (process.env.RW_DEV) {
+    await $internal`pnpm build`
+  }
   const script = SCRIPTS[SCRIPT_NAME];
   $`${script} ${ARGS.slice(1).join(" ")}`;
 }
