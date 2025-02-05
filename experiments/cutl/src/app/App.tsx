@@ -11,7 +11,7 @@ const vitePreamble = `\
 export const App: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <html lang="en">
     <head>
-      <title>Billable: Billing Made Simple. Period.</title>
+      <title>Cutlist: Cutlist Made Simple. Period.</title>
       {import.meta.env.DEV && !process.env.PREVIEW ? (
         <script
           type="module"
