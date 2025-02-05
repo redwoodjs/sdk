@@ -8,11 +8,7 @@ import reactPlugin from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 import {
-  CLIENT_DIST_DIR,
   DEV_SERVER_PORT,
-  MANIFEST_PATH,
-  ROOT_DIR,
-  WORKER_DIST_DIR,
   VENDOR_DIST_DIR,
 } from "../lib/constants.mjs";
 import { transformJsxScriptTagsPlugin } from "./transformJsxScriptTagsPlugin.mjs";
@@ -36,10 +32,10 @@ export function redwoodPlugin(options: {
     worker?: string;
   };
 } = {}): Plugin {
-  const PROJECT_ROOT_DIR = process.cwd();
+  const projectRootDir = process.cwd();
   const MODE = process.env.NODE_ENV === "development" ? "development" : "production";
-  const clientEntryPathname = resolve(PROJECT_ROOT_DIR, options?.entry?.client ?? 'src/client.tsx');
-  const workerEntryPathname = resolve(PROJECT_ROOT_DIR, options?.entry?.worker ?? 'src/worker.tsx');
+  const clientEntryPathname = resolve(projectRootDir, options?.entry?.client ?? 'src/client.tsx');
+  const workerEntryPathname = resolve(projectRootDir, options?.entry?.worker ?? 'src/worker.tsx');
 
   return {
     name: 'vite-plugin-reloaded',
@@ -57,10 +53,11 @@ export function redwoodPlugin(options: {
           "process.env.NODE_ENV": JSON.stringify(MODE),
         },
         plugins: [
-          tsconfigPaths({ root: PROJECT_ROOT_DIR }),
+          tsconfigPaths({ root: projectRootDir }),
           miniflarePlugin({
-            rootDir: PROJECT_ROOT_DIR,
+            rootDir: projectRootDir,
             viteEnvironment: { name: "worker" },
+            configPath: resolve(projectRootDir, "wrangler.toml"),
           }),
           reactPlugin(),
           useServerPlugin(),
@@ -70,7 +67,7 @@ export function redwoodPlugin(options: {
           client: {
             consumer: "client",
             build: {
-              outDir: CLIENT_DIST_DIR,
+              outDir: resolve(projectRootDir, "dist", "client"),
               manifest: true,
               rollupOptions: {
                 input: { client: clientEntryPathname },
@@ -99,7 +96,7 @@ export function redwoodPlugin(options: {
               ],
             },
             build: {
-              outDir: WORKER_DIST_DIR,
+              outDir: resolve(projectRootDir, "dist", "worker"),
               emitAssets: true,
               ssr: true,
               rollupOptions: {
@@ -158,11 +155,11 @@ export function redwoodPlugin(options: {
                     filepath.endsWith(".mjs") ||
                     filepath.endsWith(".jsx") ||
                     filepath.endsWith(".json")) &&
-                  dirname(filepath) === PROJECT_ROOT_DIR,
+                  dirname(filepath) === projectRootDir,
               })
               : null,
             useClientLookupPlugin({
-              rootDir: ROOT_DIR,
+              rootDir: projectRootDir,
               containingPath: "./src/app",
             }),
           ],
@@ -173,13 +170,13 @@ export function redwoodPlugin(options: {
         return mergeConfig(baseConfig, {
           plugins: [
             transformJsxScriptTagsPlugin({
-              manifestPath: MANIFEST_PATH,
+              manifestPath: resolve(projectRootDir, "dist", "client", ".vite", "manifest.json"),
             }),
             useClientLookupPlugin({
-              rootDir: ROOT_DIR,
+              rootDir: projectRootDir,
               containingPath: "./src/app",
             }),
-            copyPrismaWasmPlugin({ rootDir: PROJECT_ROOT_DIR }),
+            copyPrismaWasmPlugin({ rootDir: projectRootDir }),
           ],
           environments: {
             worker: {
