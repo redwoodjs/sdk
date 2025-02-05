@@ -60,13 +60,6 @@ export default {
       ...prefix("/project", projectRoutes),
     ]);
 
-    // I don't thin I actually use this, but maybe we should upload a logo or something?
-    //   route("/assets/*", ({ request, env }) => {
-    //     const u = new URL(request.url);
-    //     u.pathname = u.pathname.slice("/assets/".length);
-    //     return env.ASSETS.fetch(new Request(u.toString(), request));
-    //   }),
-    // ]);
 
     try {
       setupDb(env);
@@ -101,6 +94,11 @@ export default {
       let actionResult: any;
       if (isRSCActionHandler) {
         actionResult = await rscActionHandler(request, ctx); // maybe we should include params and ctx in the action handler?
+      }
+
+      if (url.pathname.startsWith("/assets/")) {
+        url.pathname = url.pathname.slice("/assets/".length);
+        return env.ASSETS.fetch(new Request(url.toString(), request));
       }
 
       const renderPage = async (Page: any, props = {}) => {
