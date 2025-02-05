@@ -38,7 +38,6 @@ export const configPlugin = ({ mode,
         sourcemap: true,
       },
       define: {
-        "process.env.PREVIEW": JSON.stringify(Boolean(process.env.PREVIEW ?? false)),
         "process.env.NODE_ENV": JSON.stringify(mode),
       },
       environments: {
