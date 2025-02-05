@@ -17,7 +17,7 @@ const $ = baseSh({
   stdio: "inherit",
   reject: false,
   env: {
-    BIN: `${process.env.BIN}:${BIN_DIR}`,
+    PATH: `${process.env.PATH}:${BIN_DIR}`,
   }
 })
 
