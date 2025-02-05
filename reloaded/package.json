@@ -8,8 +8,8 @@
     "rw": "./bin/rw.mjs"
   },
   "scripts": {
-    "build": "tsc && pnpm build:vendor",
-    "build:src": "tsc",
+    "build": "pnpm build:src && pnpm build:vendor",
+    "build:src": "tsc --build --clean && tsc",
     "build:vendor": "node ./dist/scripts/buildVendorBundles.mjs",
     "clean:vendor": "rm -rf ./vendor/dist"
   },
