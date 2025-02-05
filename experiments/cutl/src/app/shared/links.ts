@@ -9,6 +9,7 @@ export const link = defineLinks([
 
   '/project/list',
   '/project/:id',
+  '/project/:id/detail',
 ])
 
 

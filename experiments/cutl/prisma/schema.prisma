@@ -11,17 +11,6 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
-model CutlistItem {
-  id              String    @id @default(uuid())
-  projectId       String
-  project         Project   @relation(fields: [projectId], references: [id])
-  quantity        Float
-  width           Float
-  length          Float
-  createdAt       DateTime  @default(now())
-  updatedAt       DateTime? @updatedAt
-}
-
 model Project {
   id              String    @id @default(uuid())
   title           String    @default("My Cutlist")
@@ -31,7 +20,8 @@ model Project {
   boardWidth      Float     @default(1220)
   boardLength     Float     @default(2440)
   boardPrice      Float     @default(0)
-  cutlistItems    CutlistItem[]
+  boardsNeeded    Float     @default(0)
+  cutlistItems    Json
   currency        String    @default("R")
   total           Float
   createdAt       DateTime  @default(now())

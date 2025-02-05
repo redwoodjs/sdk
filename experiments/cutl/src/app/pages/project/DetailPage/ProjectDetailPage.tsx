@@ -6,14 +6,12 @@ import { RouteContext } from "../../../../lib/router";
 import { db } from "../../../../db";
 import { BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "src/components/ui/breadcrumb";
 import { link } from "src/shared/links";
+import { Project } from "@prisma/client";
 
 export type ProjectItem = {
-  title: string;
   width: number;
   length: number;
   quantity: number;
-  price: number;
-  currency: string;
 };
 
 
@@ -23,15 +21,21 @@ export async function getProject(id: string, userId: string) {
       id,
       userId,
     },
-    include: {
-      cutlistItems: true,
-    },
   });
+
+  console.log(project);
 
   return {
     ...project,
-    cutlistItems: project.cutlistItems as ProjectItem[],
+    // cutlistItems: project.cutlistItems as ProjectItem[],
   };
+}
+
+export async function updateProject(id: string, data: Partial<Omit<Project, 'userId' | 'cutlistItems'>>) {
+  return await db.project.update({
+    where: { id },
+    data
+  });
 }
 
 export default async function ProjectDetailPage({

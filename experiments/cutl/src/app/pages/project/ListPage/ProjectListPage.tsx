@@ -18,8 +18,9 @@ import {
 } from "src/components/ui/table";
 
 export type CutlistItem = {
-  title: string;
-  total: number;
+  width: number;
+  length: number;
+  quantity: number;
 };
 
 export type Project = {
@@ -27,6 +28,7 @@ export type Project = {
   createdAt: Date;
   title: string;
   total: number;
+  boardsNeeded: number;
 };
 
 async function getProjectListSummary(userId: string) {
@@ -37,6 +39,7 @@ async function getProjectListSummary(userId: string) {
         title: true,
         createdAt: true,
         total: true,
+        boardsNeeded: true,
       },
       where: {
         userId,
@@ -47,12 +50,13 @@ async function getProjectListSummary(userId: string) {
     })) ?? [];
 
   return projects.map((project: Project) => {
-    const { id, createdAt, title, total } = project;
+    const { id, createdAt, title, total, boardsNeeded } = project;
     return {
       id,
       createdAt,
       title,
       total,
+      boardsNeeded,
     };
   });
 }
@@ -70,6 +74,7 @@ export default async function ProjectListPage({ ctx }: RouteContext) {
           <TableRow>
             <TableHead>Project</TableHead>
             <TableHead>Created</TableHead>
+            <TableHead>Boards Needed</TableHead>
             <TableHead>Total</TableHead>
             <TableHead></TableHead>
           </TableRow>
@@ -99,6 +104,7 @@ function ProjectListItem(
           day: "numeric",
         })}
       </TableCell>
+      <TableCell>{props.boardsNeeded}</TableCell>
       <TableCell>{props.total}</TableCell>
       <TableCell className="text-right">
       <a href={link("/project/:id", { id: props.id })}>Edit</a>
