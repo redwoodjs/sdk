@@ -24,13 +24,14 @@ export function BoardRenderer({
     boards.forEach((board, index) => {
       const canvas = document.createElement('canvas');
       const scale = Math.min(
-        (window.innerWidth * 0.8) / boardHeight, // Using boardHeight as width
+        (containerRef.current?.clientWidth ?? 0) * 0.95 / boardHeight, // 95% of container width
         400 // maximum scale
       );
       
-      // Set canvas dimensions swapped
       canvas.width = boardHeight * scale;
       canvas.height = boardWidth * scale;
+      canvas.style.maxWidth = '100%';  // Ensure canvas doesn't overflow
+      
       const ctx = canvas.getContext('2d');
       if (!ctx || !containerRef.current) return;
 
@@ -72,5 +73,9 @@ export function BoardRenderer({
     });
   }, [boards, boardWidth, boardHeight]);
 
-  return <div ref={containerRef} className="flex flex-wrap gap-4 p-4" />;
+  return (
+    <div ref={containerRef} className="flex flex-wrap gap-4 p-4 overflow-auto max-w-full">
+      {/* canvas will be appended here */}
+    </div>
+  );
 } 

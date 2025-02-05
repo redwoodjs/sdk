@@ -43,14 +43,36 @@ export default async function CutlistDetailPage({
           <BreadcrumbPage>Cutlist</BreadcrumbPage>
         </BreadcrumbList>
 
-        <p id="boardCount">Boards needed: {boardCount}</p>
-        <p id="totalCost">Total Cost: ${totalCost}</p>
+        <div className="grid grid-cols-2 gap-4 mb-6 mt-6">
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+              Boards Needed
+            </h3>
+            <p className="mt-2 text-3xl font-semibold text-gray-900">
+              {boardCount}
+            </p>
+          </div>
+          
+          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+              Total Cost
+            </h3>
+            <p className="mt-2 text-3xl font-semibold text-gray-900">
+              {project.currency} {totalCost.toFixed(2)}
+            </p>
+          </div>
+        </div>
 
-        <BoardRenderer 
-          boards={boards} 
-          boardWidth={project.boardWidth} 
-          boardHeight={project.boardLength} 
-        />
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">
+            Cut Layout
+          </h3>
+          <BoardRenderer 
+            boards={boards} 
+            boardWidth={project.boardWidth} 
+            boardHeight={project.boardLength} 
+          />
+        </div>
       </Layout>
     );
 }
