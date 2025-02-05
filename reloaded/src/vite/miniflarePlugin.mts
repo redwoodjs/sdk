@@ -4,8 +4,7 @@ import { resolve } from "node:path";
 import colors from "picocolors";
 import { readFile } from "node:fs/promises";
 
-import { ROOT_DIR, SRC_DIR } from "../constants.mjs";
-import { getShortName } from '../getShortName.mjs';
+import { getShortName } from '../lib/getShortName.mjs';
 import { pathExists } from 'fs-extra';
 
 type BasePluginOptions = Parameters<typeof cloudflare>[0];
@@ -82,14 +81,14 @@ const isUseClientModule = async (ctx: HotUpdateOptions, file: string, seen = new
 };
 
 export const miniflarePlugin = (
-  givenOptions: MiniflarePluginOptions,
-): Plugin[] => [
+  givenOptions: MiniflarePluginOptions & { rootDir: string, workerEntryPathname: string },
+): (Plugin | Plugin[])[] => [
     cloudflare(givenOptions),
     {
       name: 'miniflare-plugin-hmr',
       async hotUpdate(ctx) {
         const environment = givenOptions.viteEnvironment?.name ?? 'worker';
-        const entry = resolve(ROOT_DIR, 'src', 'worker.tsx');
+        const entry = givenOptions.workerEntryPathname;
 
         if (!["client", environment].includes(this.environment.name)) {
           return;
@@ -158,7 +157,7 @@ export const miniflarePlugin = (
           );
 
           const m = ctx.server.environments.client.moduleGraph
-            .getModulesByFile(resolve(SRC_DIR, "app", "style.css"))
+            .getModulesByFile(resolve(givenOptions.rootDir, "src", "app", "style.css"))
             ?.values()
             .next().value;
 

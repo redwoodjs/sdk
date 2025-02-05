@@ -1,11 +1,9 @@
 import { resolve } from "node:path";
-import { build, mergeConfig, optimizeDeps, type InlineConfig } from "vite";
-import { $ } from './lib/$.mjs';
+import { build, mergeConfig, type InlineConfig } from "vite";
+import { $ } from '../lib/$.mjs';
+import { VENDOR_DIST_DIR, VENDOR_SRC_DIR } from '../lib/constants.mjs';
 
 const __dirname = new URL(".", import.meta.url).pathname;
-
-const DEST_DIR = resolve(__dirname, "../vendor/dist");
-const SRC_DIR = resolve(__dirname, "../vendor/src");
 
 const MODE =
   process.env.NODE_ENV === "development" ? "development" : "production";
@@ -24,9 +22,9 @@ const configs = {
   reactServerInternals: (): InlineConfig =>
     mergeConfig(configs.common(), {
       build: {
-        outDir: DEST_DIR,
+        outDir: VENDOR_DIST_DIR,
         lib: {
-          entry: resolve(SRC_DIR, "react-server-internals.js"),
+          entry: resolve(VENDOR_SRC_DIR, "react-server-internals.js"),
           name: "react-server-internals",
           formats: ["es"],
           fileName: "react-server-internals",
@@ -39,9 +37,9 @@ const configs = {
   react: (): InlineConfig =>
     mergeConfig(configs.common(), {
       build: {
-        outDir: DEST_DIR,
+        outDir: VENDOR_DIST_DIR,
         lib: {
-          entry: resolve(SRC_DIR, "react.js"),
+          entry: resolve(VENDOR_SRC_DIR, "react.js"),
           name: "react",
           formats: ["es"],
           fileName: "react",
@@ -49,16 +47,16 @@ const configs = {
       },
       resolve: {
         alias: {
-          'react-server-internals': resolve(DEST_DIR, 'react-server-internals.js'),
+          'react-server-internals': resolve(VENDOR_DIST_DIR, 'react-server-internals.js'),
         },
       },
     }),
   reactDomServerEdge: (): InlineConfig =>
     mergeConfig(configs.common(), {
       build: {
-        outDir: DEST_DIR,
+        outDir: VENDOR_DIST_DIR,
         lib: {
-          entry: resolve(SRC_DIR, "react-dom-server-edge.js"),
+          entry: resolve(VENDOR_SRC_DIR, "react-dom-server-edge.js"),
           name: "react-dom-server-edge",
           formats: ["es"],
           fileName: "react-dom-server-edge",
@@ -72,7 +70,6 @@ const configs = {
 };
 
 export const buildVendorBundles = async () => {
-  console.log("Building vendor bundles...");
   await $`pnpm clean:vendor`;
   await build(configs.reactServerInternals());
   await build(configs.react());

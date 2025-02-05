@@ -12,7 +12,7 @@ import { getSession } from "./auth";
 import { setupEnv } from "./env";
 import HomePage from "./app/pages/Home/HomePage";
 
-import { defineRoutes, index, prefix, route } from "./lib/router";
+import { defineRoutes, index, prefix } from "./lib/router";
 import { authRoutes } from "./app/pages/auth/routes";
 import { invoiceRoutes } from "./app/pages/invoice/routes";
 import { link } from "src/shared/links";
@@ -44,6 +44,15 @@ export default {
   async fetch(request: Request, env: Env) {
     globalThis.__webpack_require__ = ssrWebpackRequire;
 
+    // context(justinvdm, 5 Feb 2025): Serve assets requests using the assets service binding
+    // todo(justinvdm, 5 Feb 2025): Find a way to avoid this so asset requests are served directly
+    // rather than first needing to go through the worker
+    if (request.url.includes("/assets/")) {
+      const url = new URL(request.url);
+      url.pathname = url.pathname.slice("/assets/".length);
+      return env.ASSETS.fetch(new Request(url.toString(), request));
+    }
+
     const router = defineRoutes([
       index([
         function ({ ctx }) {
@@ -60,13 +69,6 @@ export default {
       ...prefix("/invoice", invoiceRoutes),
     ]);
 
-    // I don't thin I actually use this, but maybe we should upload a logo or something?
-    //   route("/assets/*", ({ request, env }) => {
-    //     const u = new URL(request.url);
-    //     u.pathname = u.pathname.slice("/assets/".length);
-    //     return env.ASSETS.fetch(new Request(u.toString(), request));
-    //   }),
-    // ]);
 
     try {
       setupDb(env);
@@ -84,6 +86,15 @@ export default {
       // the request will not hang. This makes this issue particularly hard to debug.
       await db.$queryRaw`SELECT 1`;
 
+      const url = new URL(request.url);
+
+      if (url.pathname === '/test/db') {
+        console.log('## test db')
+        const r = await db.$queryRaw`SELECT 1`
+        console.log('## test db result', r)
+        return new Response(JSON.stringify(r), { status: 200 })
+      }
+
       let ctx: Awaited<ReturnType<typeof getContext>> = {};
       let session: Awaited<ReturnType<typeof getSession>> | undefined;
       try {
@@ -93,7 +104,6 @@ export default {
         console.error("Error getting session", e);
       }
 
-      const url = new URL(request.url);
       const isRSCRequest = url.searchParams.has("__rsc");
       const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
       let actionResult: any;

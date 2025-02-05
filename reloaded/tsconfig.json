@@ -12,26 +12,13 @@
     /* Specify what module code is generated. */
     "module": "es2022",
     /* Specify how TypeScript looks up a file from a given module specifier. */
-    "moduleResolution": "bundler",
+    "moduleResolution": "node",
     /* Specify type package names to be included without being referenced in a source file. */
-    "types": [
-      "@cloudflare/workers-types/2023-07-01",
-      "./types/react.d.ts",
-      "./types/global.d.ts",
-      "./types/vite.d.ts"
-    ],
-    "paths": {
-      "vendor/*": ["./vendor/dist/*"],
-      "src/*": ["./src/app/*"],
-    },
     /* Enable importing .json files */
     "resolveJsonModule": true,
 
     /* Enable error reporting in type-checked JavaScript files. */
     "checkJs": false,
-
-    /* Disable emitting files from a compilation. */
-    "noEmit": true,
 
     /* Ensure that each file can be safely transpiled without relying on other imports. */
     "isolatedModules": true,
@@ -44,6 +31,10 @@
     "strict": true,
 
     /* Skip type checking all .d.ts files. */
-    "skipLibCheck": true
-  }
+    "skipLibCheck": true,
+    
+    "declaration": true,
+    
+    "outDir": "./dist"
+  },
 }

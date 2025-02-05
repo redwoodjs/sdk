@@ -1,6 +1,6 @@
 import { Plugin } from "vite";
 import colors from "picocolors";
-import { getShortName } from "../getShortName.mjs";
+import { getShortName } from "../lib/getShortName.mjs";
 
 export const restartPlugin = ({
   filter,
@@ -12,6 +12,8 @@ export const restartPlugin = ({
 
   return {
     name: "rw-reloaded-restart-dev-server",
+
+    apply: 'serve',
 
     async hotUpdate(ctx) {
       // context(justinvdm, 12 Dec 2024): We're already restarting, so stop all hmr
