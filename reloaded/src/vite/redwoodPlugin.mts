@@ -1,9 +1,6 @@
 import { dirname, resolve } from "node:path";
-import { createRequire } from "node:module";
-import { mergeConfig, InlineConfig } from 'vite';
+import { InlineConfig } from 'vite';
 
-import tailwind from "tailwindcss";
-import autoprefixer from "autoprefixer";
 import reactPlugin from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 
@@ -20,6 +17,7 @@ import { asyncSetupPlugin } from "./asyncSetupPlugin.mjs";
 import { restartPlugin } from "./restartPlugin.mjs";
 import { acceptWasmPlugin } from "./acceptWasmPlugin.mjs";
 import { copyPrismaWasmPlugin } from "./copyPrismaWasmPlugin.mjs";
+import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
 import { configPlugin } from "./configPlugin.mjs";
 import { $ } from '../lib/$.mjs';
 
@@ -35,7 +33,7 @@ export type RedwoodPluginOptions = {
   };
 }
 
-export const redwoodPlugin = (options: RedwoodPluginOptions): InlineConfig['plugins'] => {
+export const redwoodPlugin = (options: RedwoodPluginOptions = {}): InlineConfig['plugins'] => {
   const projectRootDir = process.cwd();
   const mode = options.mode ?? (process.env.NODE_ENV === "development" ? "development" : "production");
   const clientEntryPathname = resolve(projectRootDir, options?.entry?.client ?? 'src/client.tsx');
@@ -93,5 +91,6 @@ export const redwoodPlugin = (options: RedwoodPluginOptions): InlineConfig['plug
       manifestPath: resolve(projectRootDir, "dist", "client", ".vite", "manifest.json"),
     }),
     copyPrismaWasmPlugin({ rootDir: projectRootDir }),
+    moveStaticAssetsPlugin({ rootDir: projectRootDir }),
   ];
 }
