@@ -107,7 +107,7 @@ function ProjectListItem(
       <TableCell>{props.boardsNeeded}</TableCell>
       <TableCell>{props.total}</TableCell>
       <TableCell className="text-right">
-      <a href={link("/project/:id", { id: props.id })}>Edit</a>
+        <a href={link("/project/:id", { id: props.id })}>Edit</a>
       </TableCell>
     </TableRow>
   );

@@ -4,33 +4,21 @@ import { useState, useRef } from "react";
 import { type ProjectItem, type getProject } from "./ProjectDetailPage";
 import { saveProject } from "./functions";
 import { PrintPdf } from "./PrintToPdf";
-import { link } from "../../../shared/links";
 import { Button } from "src/components/ui/button";
 import { Input } from "src/components/ui/input";
-import { Textarea } from "src/components/ui/textarea";
-import { RouteContext } from "../../../../lib/router";
-
-
-function calculateBoardsNeededAndPrice(items: ProjectItem[], boardPrice: number, boardWidth: number, boardLength: number) {
-  let sum = 0;
-  for (const item of items) {
-    sum += item.quantity * item.width * item.length;
-  }
-  return {
-    boardsNeeded: sum / (boardWidth * boardLength),
-    price: sum * boardPrice
-  };
-}
 
 
 export function ProjectForm(props: {
   project: Awaited<ReturnType<typeof getProject>>;
 }) {
   const [project, setProject] = useState(props.project);
-  const [items, setItems] = useState<ProjectItem[]>(
-    JSON.parse(props.project.cutlistItems as string)
-  );
-  const boardsNeededAndPrice = calculateBoardsNeededAndPrice(items, project.boardPrice, project.boardWidth, project.boardLength);
+  const [items, setItems] = useState<ProjectItem[]>(() => {
+    const cutlistItems = props.project.cutlistItems;
+    if (typeof cutlistItems === 'string') {
+      return JSON.parse(cutlistItems);
+    }
+    return cutlistItems as ProjectItem[] || [];
+  });
   const pdfContentRef = useRef<HTMLDivElement>(null);
 
   return (

@@ -24,6 +24,7 @@ export async function createProject({ ctx }: { ctx: Awaited<ReturnType<typeof ge
   const newProject = await db.project.create({
     data: {
       title: lastProject?.title || "New Project",
+      cutlistItems: JSON.stringify([]),
       userId,
       total: 0,
       currency: "ZAR",
@@ -36,3 +37,12 @@ export async function createProject({ ctx }: { ctx: Awaited<ReturnType<typeof ge
 
   return newProject
 }
+
+export async function deleteProject({ ctx }: { ctx: Awaited<ReturnType<typeof getContext>>}) {
+  const userId = ctx.user.id
+
+  await db.project.deleteMany({
+    where: { userId },
+  });
+  // TODO: refresh the project list
+} 
