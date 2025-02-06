@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        border: "hsl(var(--border))",
+        border: "#333",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
