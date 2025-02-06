@@ -13,7 +13,7 @@ import { Button } from "src/components/ui/button";
 import { Input as OGInput } from "src/components/ui/input";
 import { Textarea as OGTextarea } from "src/components/ui/textarea";
 import { RouteContext } from "../../../../lib/router";
-import { PlusIcon, Trash2Icon } from 'lucide-react'
+import { PlusIcon, Trash2Icon } from "lucide-react";
 import { cn } from "src/components/cn";
 
 function calculateSubtotal(items: InvoiceItem[]) {
@@ -94,27 +94,39 @@ export function InvoiceForm(props: {
           </div>
           {/* Invoice Number + Date */}
           <div className="col-span-5">
-            <Input
-              type="text"
-              className="my-2"
-              value={invoice.number}
-              onChange={(e) =>
-                setInvoice({ ...invoice, number: e.target.value })
-              }
-            />
-
-            <Input
-              type="date"
-              className="my-2"
-              value={invoice.date.toISOString().split("T")[0]}
-              onChange={(e) =>
-                setInvoice({ ...invoice, date: new Date(e.target.value) })
-              }
-            />
+            <div className="grid grid-cols-5 border">
+              <div className="col-span-3 border-r border-b">
+                <Input
+                  type="text"
+                  placeholder="Invoice #"
+                />
+              </div>
+              <div className="col-span-2 border-b">
+                <Input
+                  type="text"
+                  value={invoice.number}
+                  onChange={(e) =>
+                    setInvoice({ ...invoice, number: e.target.value })
+                  }
+                />
+              </div>
+              <div className="col-span-3 border-r">
+                <Input type="text" placeholder="Date" />
+              </div>
+              <div className="col-span-2">
+                <Input
+                  type="date"
+                  value={invoice.date.toISOString().split("T")[0]}
+                  onChange={(e) =>
+                    setInvoice({ ...invoice, date: new Date(e.target.value) })
+                  }
+                />
+              </div>
+            </div>
           </div>
 
           {/* Items */}
-          <div className="col-span-full text-right py-2">
+          <div className="col-span-full">
             {items.map((item, index) => (
               <Item
                 key={"invoiceItem" + index}
@@ -148,15 +160,15 @@ export function InvoiceForm(props: {
 
           {/* Taxes */}
           <div className="col-start-8 col-span-5">
-
             {/* Subtotal */}
-            <div className="grid grid-cols-5 gap-4 py-4">
-              <div className="col-span-2 text-right font-semibold">Subtotal:</div>
-              <div className="col-span-2 text-right">
+            <div className="grid grid-cols-5 gap-4 border border-b-0">
+              <div className="col-span-2 border-r">
+                Subtotal:
+              </div>
+              <div className="col-span-2">
                 {invoice.currency} {subtotal.toFixed(2)}
               </div>
             </div>
-
             <Taxes
               subtotal={subtotal}
               taxes={taxes}
@@ -178,9 +190,11 @@ export function InvoiceForm(props: {
                 setTaxes([...taxes, { description: "", amount: 0 }]);
               }}
             />
-            <div className="grid grid-cols-5 gap-4 py-4">
-              <div className="col-span-2 text-right font-semibold">Total:</div>
-              <div className="col-span-2 text-right flex items-center justify-end">
+            <div className="grid grid-cols-5 gap-4 border border-t-0">
+              <div className="col-span-2 border-r">
+                Total:
+              </div>
+              <div className="col-span-2 flex items-center justify-end">
                 <Input
                   type="text"
                   className="text-right"
@@ -189,9 +203,7 @@ export function InvoiceForm(props: {
                     setInvoice({ ...invoice, currency: e.target.value })
                   }
                 />
-
-                  {total.toFixed(2)}
-
+                {total.toFixed(2)}
               </div>
             </div>
           </div>
@@ -225,26 +237,24 @@ export function InvoiceForm(props: {
 
 function Item({
   item,
-  currency,
   onChange,
   onDelete,
 }: {
   item: Awaited<ReturnType<typeof getInvoice>>["items"][number];
-  currency: Awaited<ReturnType<typeof getInvoice>>["currency"];
   onChange: (
     item: Awaited<ReturnType<typeof getInvoice>>["items"][number],
   ) => void;
   onDelete: () => void;
 }) {
   return (
-    <div className="grid grid-cols-12 gap-4 py-2 border">
-      <div className="col-span-7">
+    <div className="grid grid-cols-12 gap-4 border">
+      <div className="col-span-7 border-r">
         <Textarea
           value={item.description}
           onChange={(e) => onChange({ ...item, description: e.target.value })}
         />
       </div>
-      <div className="col-span-2">
+      <div className="col-span-2 border-r">
         <Input
           value={item.quantity}
           onChange={(e) =>
@@ -252,7 +262,7 @@ function Item({
           }
         />
       </div>
-      <div className="col-span-2">
+      <div className="col-span-2 border-r">
         <Input
           type="number"
           value={item.price}
@@ -260,8 +270,9 @@ function Item({
         />
       </div>
       <div className="col-span-1">
-
-        <Button onClick={onDelete} variant="outline" size="icon"><Trash2Icon /></Button>
+        <Button onClick={onDelete} variant="outline" size="icon">
+          <Trash2Icon />
+        </Button>
       </div>
     </div>
   );
@@ -277,23 +288,23 @@ function Taxes(props: {
   onDelete: (index: number) => void;
   onAdd: () => void;
 }) {
-  const taxes = calculateTaxes(props.subtotal, props.taxes);
-
   return (
     <>
       {props.taxes.map((tax, index) => (
-        <div className="grid grid-cols-5 gap-4 py-2" key={`tax-${index}`}>
-          <div className="col-span-2">
+        <div
+          className="grid grid-cols-5 gap-4 border border-b-0"
+          key={`tax-${index}`}
+        >
+          <div className="col-span-2 border-r">
             <Input
               type="text"
-              className="text-right font-semibold"
               value={tax.description}
               onChange={(e) =>
                 props.onChange({ ...tax, description: e.target.value }, index)
               }
             />
           </div>
-          <div className="col-span-2 flex items-center">
+          <div className="col-span-2 flex items-center border-r">
             <Input
               type="number"
               className="text-right"
@@ -308,14 +319,18 @@ function Taxes(props: {
             %
           </div>
           <div className="col-span-1 text-right">
-            <Button onClick={() => props.onDelete(index)} variant="outline" size="icon">
+            <Button
+              onClick={() => props.onDelete(index)}
+              variant="outline"
+              size="icon"
+            >
               <Trash2Icon />
             </Button>
           </div>
         </div>
       ))}
 
-      <div className="col-span-5 py-2 text-right">
+      <div className="col-span-5 text-right border">
         <Button onClick={props.onAdd} variant="outline" size="icon">
           <PlusIcon />
         </Button>
@@ -324,7 +339,7 @@ function Taxes(props: {
   );
 }
 
-export function SupplierName({
+function SupplierName({
   invoice,
   setInvoice,
 }: {
@@ -418,12 +433,35 @@ function UploadLogo({
 
 function Input(props: React.ComponentProps<typeof OGInput>) {
   return (
-    <OGInput {...props} className="border-none shadow-none rounded-none p-2" />
+    <OGInput
+      {...props}
+      className={cn(
+        "border-none shadow-none rounded-none p-2",
+        props.className,
+      )}
+    />
   );
 }
 
 function Textarea(props: React.ComponentProps<typeof OGTextarea>) {
   return (
-    <OGTextarea {...props} className={cn("border-none shadow-none rounded-none p-2 min-h-[100px] resize-none", props.className)} />
+    <OGTextarea
+      {...props}
+      className={cn(
+        "border-none shadow-none rounded-none p-2 min-h-[100px] resize-none overflow-hidden",
+        props.className,
+      )}
+      onInput={e => {
+        const target = e.currentTarget;
+        target.style.height = 'auto';
+        target.style.height = `${target.scrollHeight}px`;
+      }}
+      ref={textareaRef => {
+        if (textareaRef) {
+          textareaRef.style.height = 'auto';
+          textareaRef.style.height = `${textareaRef.scrollHeight}px`;
+        }
+      }}
+    />
   );
 }
