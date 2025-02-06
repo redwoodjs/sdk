@@ -61,7 +61,7 @@ export function InvoiceForm(props: {
       </div>
 
       <div ref={pdfContentRef}>
-        <div className="grid grid-cols-12 gap-4">
+        <div className="grid grid-cols-12">
           {/* SupplierName */}
           <div className="col-span-7">
             <SupplierName
@@ -247,7 +247,7 @@ function Item({
   onDelete: () => void;
 }) {
   return (
-    <div className="grid grid-cols-12 gap-4 border">
+    <div className="grid grid-cols-12 border">
       <div className="col-span-7 border-r">
         <Textarea
           value={item.description}
@@ -269,7 +269,7 @@ function Item({
           onChange={(e) => onChange({ ...item, price: Number(e.target.value) })}
         />
       </div>
-      <div className="col-span-1">
+      <div className="col-span-1 flex items-start justify-end">
         <Button onClick={onDelete} variant="outline" size="icon">
           <Trash2Icon />
         </Button>
