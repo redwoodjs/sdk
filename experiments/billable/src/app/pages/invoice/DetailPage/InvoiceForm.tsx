@@ -10,10 +10,11 @@ import { deleteLogo, saveInvoice } from "./functions";
 import { PrintPdf } from "./PrintToPdf";
 import { link } from "../../../shared/links";
 import { Button } from "src/components/ui/button";
-import { Input } from "src/components/ui/input";
-import { Textarea } from "src/components/ui/textarea";
+import { Input as OGInput } from "src/components/ui/input";
+import { Textarea as OGTextarea } from "src/components/ui/textarea";
 import { RouteContext } from "../../../../lib/router";
 import { PlusIcon, Trash2Icon } from 'lucide-react'
+import { cn } from "src/components/cn";
 
 function calculateSubtotal(items: InvoiceItem[]) {
   let sum = 0;
@@ -79,11 +80,12 @@ export function InvoiceForm(props: {
             />
           </div>
 
+          <div className="col-span-full h-11" />
+
           {/* Customer */}
           <div className="col-span-7">
             <Textarea
               placeholder=""
-              className=" font text-5xl"
               defaultValue={invoice.customer ?? ""}
               onChange={(e) =>
                 setInvoice({ ...invoice, customer: e.target.value })
@@ -94,8 +96,7 @@ export function InvoiceForm(props: {
           <div className="col-span-5">
             <Input
               type="text"
-              name="invoice-number"
-              id="invoice-number"
+              className="my-2"
               value={invoice.number}
               onChange={(e) =>
                 setInvoice({ ...invoice, number: e.target.value })
@@ -104,8 +105,7 @@ export function InvoiceForm(props: {
 
             <Input
               type="date"
-              name="date"
-              id="date"
+              className="my-2"
               value={invoice.date.toISOString().split("T")[0]}
               onChange={(e) =>
                 setInvoice({ ...invoice, date: new Date(e.target.value) })
@@ -355,6 +355,7 @@ export function SupplierName({
         <Textarea
           value={invoice.supplierName ?? ""}
           placeholder="Michael Scott Paper Company, Inc."
+          className="text-5xl"
           onChange={(e) =>
             setInvoice({ ...invoice, supplierName: e.target.value })
           }
@@ -370,7 +371,7 @@ export function SupplierName({
   }
 }
 
-export function UploadLogo({
+function UploadLogo({
   invoiceId,
   onSuccess,
 }: {
@@ -412,5 +413,17 @@ export function UploadLogo({
         }}
       />
     </div>
+  );
+}
+
+function Input(props: React.ComponentProps<typeof OGInput>) {
+  return (
+    <OGInput {...props} className="border-none shadow-none rounded-none p-2" />
+  );
+}
+
+function Textarea(props: React.ComponentProps<typeof OGTextarea>) {
+  return (
+    <OGTextarea {...props} className={cn("border-none shadow-none rounded-none p-2 min-h-[100px] resize-none", props.className)} />
   );
 }
