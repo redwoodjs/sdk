@@ -5,7 +5,7 @@
   "main": "index.js",
   "type": "module",
   "bin": {
-    "rw": "./bin/rw.mjs"
+    "rw-scripts": "./bin/rw-scripts.mjs"
   },
   "scripts": {
     "build": "pnpm build:src && pnpm build:vendor",

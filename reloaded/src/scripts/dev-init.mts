@@ -3,9 +3,9 @@ import { $ } from "../lib/$.mjs";
 export const initDev = async () => {
   console.log("Initializing development environment...");
 
-  await $`rw migrate:dev`;
-  await $`prisma generate`;
-  await $`rw seed`;
+  await $`pnpm migrate:dev`;
+  await $`pnpm prisma generate`;
+  await $`pnpm seed`;
 
   console.log("Done.");
   console.log("Run `pnpm dev` to get started...")
