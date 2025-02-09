@@ -10,7 +10,7 @@ export const App: React.FC<{ children: React.ReactNode, head?: React.ReactNode }
   <html lang="en">
     <head>
       {head}
-      {import.meta.env.DEV && !process.env.PREVIEW ? (
+      {import.meta.env.DEV ? (
         <script
           type="module"
           dangerouslySetInnerHTML={{ __html: vitePreamble }}
