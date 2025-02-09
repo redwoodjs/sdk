@@ -65,16 +65,13 @@ importers:
         version: 19.0.0
       react-server-dom-webpack:
         specifier: 19.0.0-rc-f2df5694-20240916
-        version: 19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1)
+        version: 19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.17.19))
       react-to-print:
         specifier: ^3.0.4
         version: 3.0.5(react@19.0.0-rc-f2df5694-20240916)
       resend:
         specifier: ^4.1.1
         version: 4.1.2(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)
-      rsc-html-stream:
-        specifier: ^0.0.3
-        version: 0.0.3
       tailwind-merge:
         specifier: ^3.0.1
         version: 3.0.1
@@ -181,6 +178,9 @@ importers:
       react-dom:
         specifier: 19.0.0-rc-f2df5694-20240916
         version: 19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916)
+      rsc-html-stream:
+        specifier: ^0.0.3
+        version: 0.0.3
       tailwindcss:
         specifier: ^3.4.16
         version: 3.4.17
@@ -5337,13 +5337,13 @@ snapshots:
 
   react-refresh@0.14.2: {}
 
-  react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1):
+  react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.17.19)):
     dependencies:
       acorn-loose: 8.4.0
       neo-async: 2.6.2
       react: 19.0.0-rc-f2df5694-20240916
       react-dom: 19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916)
-      webpack: 5.97.1
+      webpack: 5.97.1(esbuild@0.17.19)
       webpack-sources: 3.2.3
 
   react-to-print@3.0.5(react@19.0.0-rc-f2df5694-20240916):
@@ -5641,14 +5641,16 @@ snapshots:
 
   tapable@2.2.1: {}
 
-  terser-webpack-plugin@5.3.11(webpack@5.97.1):
+  terser-webpack-plugin@5.3.11(esbuild@0.17.19)(webpack@5.97.1(esbuild@0.17.19)):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.25
       jest-worker: 27.5.1
       schema-utils: 4.3.0
       serialize-javascript: 6.0.2
       terser: 5.37.0
-      webpack: 5.97.1
+      webpack: 5.97.1(esbuild@0.17.19)
+    optionalDependencies:
+      esbuild: 0.17.19
 
   terser@5.37.0:
     dependencies:
@@ -5834,7 +5836,7 @@ snapshots:
 
   webpack-sources@3.2.3: {}
 
-  webpack@5.97.1:
+  webpack@5.97.1(esbuild@0.17.19):
     dependencies:
       '@types/eslint-scope': 3.7.7
       '@types/estree': 1.0.6
@@ -5856,7 +5858,7 @@ snapshots:
       neo-async: 2.6.2
       schema-utils: 3.3.0
       tapable: 2.2.1
-      terser-webpack-plugin: 5.3.11(webpack@5.97.1)
+      terser-webpack-plugin: 5.3.11(esbuild@0.17.19)(webpack@5.97.1(esbuild@0.17.19))
       watchpack: 2.4.2
       webpack-sources: 3.2.3
     transitivePeerDependencies:

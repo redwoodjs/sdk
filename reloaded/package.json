@@ -23,6 +23,7 @@
   "author": "",
   "license": "UNLICENSED",
   "dependencies": {
+    "rsc-html-stream": "^0.0.3",
     "@cloudflare/vite-plugin": "^0.0.4",
     "@microsoft/api-extractor": "^7.48.0",
     "@prisma/client": "^6.3.0",
