@@ -1,5 +1,3 @@
-import type { Fetcher } from "@cloudflare/workers-types";
-
 import { App } from "./App";
 import { db, setupDb } from "./db";
 
@@ -13,8 +11,9 @@ import { ErrorResponse } from "./error";
 
 import { RouteDefinition, defineRoutes } from "./lib/router";
 
-type BaseEnv = {
+export type BaseEnv = {
   ASSETS: Fetcher;
+  DB: D1Database;
 }
 
 type DefineAppOptions<Context> = {
