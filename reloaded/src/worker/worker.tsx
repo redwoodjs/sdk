@@ -105,9 +105,9 @@ export const defineApp = <Context,>(options: DefineAppOptions<Context>) => {
         return new Response(e.message, { status: e.code });
       }
 
-      console.error("Unhandled error", e);
-      throw e;
-    }
+        console.error("Unhandled error", e);
+        throw e;
+      }
     }
   }
 }
