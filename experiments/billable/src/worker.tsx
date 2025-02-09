@@ -25,22 +25,24 @@ export const getContext = async (
   };
 };
 
+const routes = [
+  index([
+    function ({ ctx }) {
+      if (ctx.user) {
+        return new Response(null, {
+          status: 302,
+          headers: { Location: link('/invoice/list') },
+        });
+      }
+    },
+    HomePage,
+  ]),
+  ...prefix("/user", authRoutes),
+  ...prefix("/invoice", invoiceRoutes),
+]
+
 export default defineApp<ReturnType<typeof getContext>>({
   Head,
   getContext,
-  routes: [
-      index([
-        function ({ ctx }) {
-          if (ctx.user) {
-            return new Response(null, {
-              status: 302,
-              headers: { Location: link('/invoice/list') },
-            });
-          }
-        },
-        HomePage,
-      ]),
-      ...prefix("/user", authRoutes),
-      ...prefix("/invoice", invoiceRoutes),
-    ],
+  routes,
 })
