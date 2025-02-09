@@ -66,6 +66,12 @@ export function InvoiceForm(props: {
 
       <div ref={pdfContentRef}>
         <div className="grid grid-cols-12">
+
+          <div className="col-span-full border-b border-t">
+            <Input type="text" value="Invoice" className="tracking-widest text-center uppercase md:text-lg" />
+          </div>
+          <Spacer />
+
           {/* SupplierName */}
           <div className="col-span-7">
             <SupplierName
@@ -100,10 +106,7 @@ export function InvoiceForm(props: {
           <div className="col-span-5">
             <div className="grid grid-cols-5 border">
               <div className="col-span-2 border-r border-b">
-                <Input
-                  type="text"
-                  placeholder="Invoice #"
-                />
+                <Input type="text" placeholder="Invoice #" />
               </div>
               <div className="col-span-3 border-b">
                 <Input
@@ -132,7 +135,19 @@ export function InvoiceForm(props: {
           <Spacer />
 
           {/* Items */}
-          <div className="col-span-full border border-gray-300 text-right">
+          <div className="col-span-full">
+            <div className="grid grid-cols-12 border border-b-0">
+              <div className="col-span-7 border-r">
+                <Input type="text" placeholder="Description" className="font-bold" />
+              </div>
+              <div className="col-span-2 border-r">
+                <Input type="number" placeholder="Quantity" className="font-bold" />
+              </div>
+              <div className="col-span-2 border-r">
+                <Input type="number" placeholder="Price" className="font-bold" />
+              </div>
+            </div>
+
             {items.map((item, index) => (
               <Item
                 key={"invoiceItem" + index}
@@ -149,19 +164,21 @@ export function InvoiceForm(props: {
                 }}
               />
             ))}
-            <Button
-              variant="outline"
-              size="icon"
-              className="m-1"
-              onClick={() => {
-                setItems([
-                  ...items,
-                  { description: "", quantity: 1, price: 1 },
-                ]);
-              }}
-            >
-              <PlusIcon />
-            </Button>
+            <div className="border text-right">
+              <Button
+                variant="outline"
+                size="icon"
+                className="m-1"
+                onClick={() => {
+                  setItems([
+                    ...items,
+                    { description: "", quantity: 1, price: 1 },
+                  ]);
+                }}
+              >
+                <PlusIcon />
+              </Button>
+            </div>
           </div>
 
           <Spacer />
@@ -170,13 +187,11 @@ export function InvoiceForm(props: {
           <div className="col-start-8 col-span-5">
             {/* Subtotal */}
             <div className="grid grid-cols-5 border border-b-0">
-              <div className="col-span-2 border-r p-2 flex items-center">
-                <div className="w-full">Subtotal:</div>
-                <div className="w-full text-right">{invoice.currency}</div>
+              <div className="col-span-2 border-r flex items-center">
+                <Input type="text" placeholder="Subtotal" className="font-bold" />
+                <div className="w-full text-right pr-2">{invoice.currency}</div>
               </div>
-              <div className="col-span-2 p-2">
-                 {subtotal.toFixed(2)}
-              </div>
+              <div className="col-span-2 p-2">{subtotal.toFixed(2)}</div>
             </div>
             <Taxes
               subtotal={subtotal}
@@ -199,10 +214,10 @@ export function InvoiceForm(props: {
                 setTaxes([...taxes, { description: "", amount: 0 }]);
               }}
             />
-            
+
             <div className="grid grid-cols-5 border border-t-0">
               <div className="col-span-2 border-r flex items-center">
-                <Input type="text" value="Total:" />
+                <Input type="text" placeholder="Total" className="font-bold" />
                 <Input
                   type="text"
                   className="text-right"
@@ -212,10 +227,7 @@ export function InvoiceForm(props: {
                   }
                 />
               </div>
-              <div className="col-span-1 p-2">
-                
-                {total.toFixed(2)}
-              </div>
+              <div className="col-span-1 p-2">{total.toFixed(2)}</div>
             </div>
           </div>
 
@@ -261,7 +273,7 @@ function Item({
   onDelete: () => void;
 }) {
   return (
-    <div className="grid grid-cols-12 border">
+    <div className="grid grid-cols-12 border border-b-0">
       <div className="col-span-7 border-r">
         <Textarea
           value={item.description}
@@ -284,7 +296,12 @@ function Item({
         />
       </div>
       <div className="col-span-1 flex items-start justify-end">
-        <Button onClick={onDelete} variant="outline" size="icon" className="m-1">
+        <Button
+          onClick={onDelete}
+          variant="outline"
+          size="icon"
+          className="m-1"
+        >
           <Trash2Icon />
         </Button>
       </div>
@@ -313,9 +330,11 @@ function Taxes(props: {
             <Input
               type="text"
               value={tax.description}
+              className="font-bold"
               onChange={(e) =>
                 props.onChange({ ...tax, description: e.target.value }, index)
               }
+
             />
             <Input
               type="number"
@@ -327,13 +346,10 @@ function Taxes(props: {
                   index,
                 )
               }
-            /> 
+            />
             <div className="text-left pr-2">%</div>
           </div>
-          <div className="col-span-2 flex items-center">
-            
-            
-          </div>
+          <div className="col-span-2 flex items-center"></div>
           <div className="col-span-1 text-right">
             <Button
               onClick={() => props.onDelete(index)}
@@ -348,7 +364,12 @@ function Taxes(props: {
       ))}
 
       <div className="col-span-5 text-right border">
-        <Button onClick={props.onAdd} variant="outline" size="icon" className="m-1">
+        <Button
+          onClick={props.onAdd}
+          variant="outline"
+          size="icon"
+          className="m-1"
+        >
           <PlusIcon />
         </Button>
       </div>
@@ -468,14 +489,14 @@ function Textarea(props: React.ComponentProps<typeof OGTextarea>) {
         "border-none shadow-none rounded-none p-2 min-h-[100px] resize-none overflow-hidden",
         props.className,
       )}
-      onInput={e => {
+      onInput={(e) => {
         const target = e.currentTarget;
-        target.style.height = 'auto';
+        target.style.height = "auto";
         target.style.height = `${target.scrollHeight}px`;
       }}
-      ref={textareaRef => {
+      ref={(textareaRef) => {
         if (textareaRef) {
-          textareaRef.style.height = 'auto';
+          textareaRef.style.height = "auto";
           textareaRef.style.height = `${textareaRef.scrollHeight}px`;
         }
       }}
