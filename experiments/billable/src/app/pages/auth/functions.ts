@@ -2,8 +2,8 @@
 
 import { Resend } from "resend";
 import { getEnv } from "../../../env";
-import { db } from "../../../db";
 import { link } from "../../shared/links";
+import { db } from "@redwoodjs/reloaded/worker";
 
 export async function generateAuthToken(email: string) {
   const authToken = Math.floor(100000 + Math.random() * 900000).toString();

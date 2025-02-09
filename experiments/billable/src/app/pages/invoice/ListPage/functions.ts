@@ -1,13 +1,12 @@
 'use server';
 
 
-import { db } from "../../../../db";
+import { db } from "@redwoodjs/reloaded/worker";
 import { getContext } from "../../../../worker";
 
 
-
 // We need to pass the context to these somehow?
-export async function createInvoice({ ctx }: { ctx: Awaited<ReturnType<typeof getContext>>}) {
+export async function createInvoice({ ctx }: { ctx: Awaited<ReturnType<typeof getContext>> }) {
 
   const userId = ctx.user.id
 
