@@ -32,6 +32,10 @@ function calculateTaxes(subtotal: number, taxes: InvoiceTaxes[]) {
   return sum;
 }
 
+function Spacer() {
+  return <div className="col-span-full h-11" />;
+}
+
 export function InvoiceForm(props: {
   invoice: Awaited<ReturnType<typeof getInvoice>>;
   ctx: RouteContext;
@@ -80,7 +84,7 @@ export function InvoiceForm(props: {
             />
           </div>
 
-          <div className="col-span-full h-11" />
+          <Spacer />
 
           {/* Customer */}
           <div className="col-span-7">
@@ -95,13 +99,13 @@ export function InvoiceForm(props: {
           {/* Invoice Number + Date */}
           <div className="col-span-5">
             <div className="grid grid-cols-5 border">
-              <div className="col-span-3 border-r border-b">
+              <div className="col-span-2 border-r border-b">
                 <Input
                   type="text"
                   placeholder="Invoice #"
                 />
               </div>
-              <div className="col-span-2 border-b">
+              <div className="col-span-3 border-b">
                 <Input
                   type="text"
                   value={invoice.number}
@@ -110,10 +114,10 @@ export function InvoiceForm(props: {
                   }
                 />
               </div>
-              <div className="col-span-3 border-r">
+              <div className="col-span-2 border-r">
                 <Input type="text" placeholder="Date" />
               </div>
-              <div className="col-span-2">
+              <div className="col-span-3">
                 <Input
                   type="date"
                   value={invoice.date.toISOString().split("T")[0]}
@@ -125,13 +129,14 @@ export function InvoiceForm(props: {
             </div>
           </div>
 
+          <Spacer />
+
           {/* Items */}
-          <div className="col-span-full">
+          <div className="col-span-full border border-gray-300 text-right">
             {items.map((item, index) => (
               <Item
                 key={"invoiceItem" + index}
                 item={item}
-                currency={invoice.currency}
                 onChange={(newItem) => {
                   const newItems = [...items];
                   newItems[index] = newItem;
@@ -147,6 +152,7 @@ export function InvoiceForm(props: {
             <Button
               variant="outline"
               size="icon"
+              className="m-1"
               onClick={() => {
                 setItems([
                   ...items,
@@ -158,15 +164,18 @@ export function InvoiceForm(props: {
             </Button>
           </div>
 
+          <Spacer />
+
           {/* Taxes */}
           <div className="col-start-8 col-span-5">
             {/* Subtotal */}
-            <div className="grid grid-cols-5 gap-4 border border-b-0">
-              <div className="col-span-2 border-r">
-                Subtotal:
+            <div className="grid grid-cols-5 border border-b-0">
+              <div className="col-span-2 border-r p-2 flex items-center">
+                <div className="w-full">Subtotal:</div>
+                <div className="w-full text-right">{invoice.currency}</div>
               </div>
-              <div className="col-span-2">
-                {invoice.currency} {subtotal.toFixed(2)}
+              <div className="col-span-2 p-2">
+                 {subtotal.toFixed(2)}
               </div>
             </div>
             <Taxes
@@ -190,11 +199,10 @@ export function InvoiceForm(props: {
                 setTaxes([...taxes, { description: "", amount: 0 }]);
               }}
             />
-            <div className="grid grid-cols-5 gap-4 border border-t-0">
-              <div className="col-span-2 border-r">
-                Total:
-              </div>
-              <div className="col-span-2 flex items-center justify-end">
+            
+            <div className="grid grid-cols-5 border border-t-0">
+              <div className="col-span-2 border-r flex items-center">
+                <Input type="text" value="Total:" />
                 <Input
                   type="text"
                   className="text-right"
@@ -203,12 +211,18 @@ export function InvoiceForm(props: {
                     setInvoice({ ...invoice, currency: e.target.value })
                   }
                 />
+              </div>
+              <div className="col-span-1 p-2">
+                
                 {total.toFixed(2)}
               </div>
             </div>
           </div>
 
+          <Spacer />
+
           <div className="col-span-full border-b" />
+
           {/* NotesA */}
           <div className="col-span-6">
             <Textarea
@@ -220,7 +234,7 @@ export function InvoiceForm(props: {
           </div>
 
           {/* NotesB */}
-          <div className="col-span-6">
+          <div className="col-start-8 col-span-5">
             <Textarea
               className="text-right"
               defaultValue={invoice.notesB ?? ""}
@@ -270,7 +284,7 @@ function Item({
         />
       </div>
       <div className="col-span-1 flex items-start justify-end">
-        <Button onClick={onDelete} variant="outline" size="icon">
+        <Button onClick={onDelete} variant="outline" size="icon" className="m-1">
           <Trash2Icon />
         </Button>
       </div>
@@ -292,10 +306,10 @@ function Taxes(props: {
     <>
       {props.taxes.map((tax, index) => (
         <div
-          className="grid grid-cols-5 gap-4 border border-b-0"
+          className="grid grid-cols-5 border border-b-0"
           key={`tax-${index}`}
         >
-          <div className="col-span-2 border-r">
+          <div className="col-span-2 border-r flex items-center">
             <Input
               type="text"
               value={tax.description}
@@ -303,11 +317,9 @@ function Taxes(props: {
                 props.onChange({ ...tax, description: e.target.value }, index)
               }
             />
-          </div>
-          <div className="col-span-2 flex items-center border-r">
             <Input
               type="number"
-              className="text-right"
+              className="text-right pr-0"
               value={Math.floor(tax.amount * 100)}
               onChange={(e) =>
                 props.onChange(
@@ -315,14 +327,19 @@ function Taxes(props: {
                   index,
                 )
               }
-            />
-            %
+            /> 
+            <div className="text-left pr-2">%</div>
+          </div>
+          <div className="col-span-2 flex items-center">
+            
+            
           </div>
           <div className="col-span-1 text-right">
             <Button
               onClick={() => props.onDelete(index)}
               variant="outline"
               size="icon"
+              className="m-1"
             >
               <Trash2Icon />
             </Button>
@@ -331,7 +348,7 @@ function Taxes(props: {
       ))}
 
       <div className="col-span-5 text-right border">
-        <Button onClick={props.onAdd} variant="outline" size="icon">
+        <Button onClick={props.onAdd} variant="outline" size="icon" className="m-1">
           <PlusIcon />
         </Button>
       </div>
