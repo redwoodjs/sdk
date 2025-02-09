@@ -11,18 +11,21 @@ import { ErrorResponse } from "./error";
 
 import { RouteDefinition, defineRoutes } from "./lib/router";
 
-export type BaseEnv = {
-  ASSETS: Fetcher;
-  DB: D1Database;
+declare global {
+  type Env = {
+    ASSETS: Fetcher;
+    DB: D1Database;
+  }
 }
+
 
 type DefineAppOptions<Context> = {
   routes: RouteDefinition[];
-  getContext: () => Context | Promise<Context>;
+  getContext: (request: Request, env: Env) => Context | Promise<Context>;
   Head?: React.FC<{}>;
 }
 
-export const defineApp = <Context, Env extends BaseEnv,>(options: DefineAppOptions<Context>) => {
+export const defineApp = <Context,>(options: DefineAppOptions<Context>) => {
   const { getContext, routes, Head } = options;
 
   return {
@@ -56,7 +59,7 @@ export const defineApp = <Context, Env extends BaseEnv,>(options: DefineAppOptio
 
       const url = new URL(request.url);
 
-      const ctx = await getContext()
+      const ctx = await getContext(request, env);
 
       const isRSCRequest = url.searchParams.has("__rsc");
       const isRSCActionHandler = url.searchParams.has("__rsc_action_id");

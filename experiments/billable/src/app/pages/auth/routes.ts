@@ -1,11 +1,9 @@
+import { db, route } from '@redwoodjs/reloaded/worker';
 import { performLogin } from "../../../auth";
-import { db } from "../../../db";
-import { route } from "../../../lib/router";
 import { LoginPage } from "./LoginPage";
 
-
 export const authRoutes = [
-  route('/auth', async function({ request, env }) {
+  route('/auth', async function ({ request, env }) {
     // when it's async then react-is thinks it's a react component.
     const url = new URL(request.url);
     const token = url.searchParams.get("token");
@@ -15,15 +13,15 @@ export const authRoutes = [
       return new Response("Invalid token or email", { status: 400 });
     }
     const user = await db
-    .user.findFirst({
-      where: {
-        email,
-        authToken: token,
-        authTokenExpiresAt: {
-          gt: new Date(),
+      .user.findFirst({
+        where: {
+          email,
+          authToken: token,
+          authTokenExpiresAt: {
+            gt: new Date(),
+          },
         },
-      },
-    });
+      });
 
     if (!user) {
       return new Response("Invalid or expired token", { status: 400 });
@@ -43,7 +41,7 @@ export const authRoutes = [
     return performLogin(request, env, user.id);
   }),
   route('/login', LoginPage),
-  route('/logout', function({ request, env }) {
+  route('/logout', function ({ request, env }) {
     return new Response(null, {
       status: 302,
       headers: {

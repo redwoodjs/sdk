@@ -1,11 +1,11 @@
 "use client";
 
+import { RouteContext } from "@redwoodjs/reloaded/worker";
 import { Loader2 } from "lucide-react";
 
 import { useState, useTransition } from "react";
 import { emailLoginLink } from "./functions";
 import { Layout } from "../Layout";
-import { RouteContext } from "../../../lib/router";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import {

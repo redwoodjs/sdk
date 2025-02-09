@@ -1,7 +1,6 @@
 import { isValidElementType } from "react-is";
-import { BaseEnv } from "../worker";
 
-export type RouteContext<Env extends BaseEnv = BaseEnv, TParams = Record<string, string>> = {
+export type RouteContext<TParams = Record<string, string>> = {
   request: Request;
   params: TParams;
   env: Env;
@@ -65,7 +64,7 @@ function matchPath(
   return params;
 }
 
-export function defineRoutes<Env extends BaseEnv>(routes: RouteDefinition[]): {
+export function defineRoutes(routes: RouteDefinition[]): {
   routes: RouteDefinition[];
   handle: (
     {
@@ -73,7 +72,6 @@ export function defineRoutes<Env extends BaseEnv>(routes: RouteDefinition[]): {
       ctx,
       env,
       renderPage,
-
     }: {
       request: Request;
       ctx: any;

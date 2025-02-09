@@ -85,6 +85,12 @@ importers:
         specifier: ^3.24.1
         version: 3.24.1
     devDependencies:
+      '@types/react':
+        specifier: ^18.3.12
+        version: 18.3.18
+      '@types/react-dom':
+        specifier: ^18.3.1
+        version: 18.3.5(@types/react@18.3.18)
       vite:
         specifier: ^6.0.11
         version: 6.0.11(@types/node@22.10.6)(jiti@1.21.7)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)

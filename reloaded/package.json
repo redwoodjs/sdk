@@ -17,6 +17,10 @@
     "./vite": {
       "default": "./dist/vite/index.mjs",
       "types": "./dist/vite/index.d.mts"
+    },
+    "./worker": {
+      "default": "./dist/worker/index.mjs",
+      "types": "./dist/worker/index.d.ts"
     }
   },
   "keywords": [],
