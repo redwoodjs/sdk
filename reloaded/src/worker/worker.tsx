@@ -1,4 +1,6 @@
-import { App } from "./app/App";
+import type { Fetcher } from "@cloudflare/workers-types";
+
+import { App } from "./App";
 import { db, setupDb } from "./db";
 
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
@@ -9,18 +11,17 @@ import { ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import { ErrorResponse } from "./error";
 
-import { defineRoutes } from "./lib/router";
+import { RouteDefinition, defineRoutes } from "./lib/router";
 
 type BaseEnv = {
   ASSETS: Fetcher;
 }
 
 type DefineAppOptions<Context> = {
-  routes: Route[];
+  routes: RouteDefinition[];
   getContext: () => Context | Promise<Context>;
   Head?: React.FC<{}>;
 }
-
 
 export const defineApp = <Context, Env extends BaseEnv,>(options: DefineAppOptions<Context>) => {
   const { getContext, routes, Head } = options;

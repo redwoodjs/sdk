@@ -18,7 +18,7 @@ type RouteHandler =
   | RouteComponent
   | [...RouteMiddleware[], RouteFunction | RouteComponent];
 
-type RouteDefinition = {
+export type RouteDefinition = {
   path: string;
   handler: RouteHandler;
 };
@@ -83,7 +83,7 @@ export function defineRoutes(routes: RouteDefinition[]): {
 } {
   return {
     routes,
-    async handle({request, ctx, env, renderPage }) {
+    async handle({ request, ctx, env, renderPage }) {
       const url = new URL(request.url);
       let path = url.pathname;
 
