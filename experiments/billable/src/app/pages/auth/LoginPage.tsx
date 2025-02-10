@@ -16,21 +16,21 @@ import {
 } from "../../components/ui/input-otp";
 import { link } from "../../shared/links";
 
-export function LoginPage({ ctx }: RouteContext) {
+export function LoginPage(ctx: RouteContext) {
   const [email, setEmail] = useState("peter@redwoodjs.com");
   const [isPending, startTransition] = useTransition();
   const [success, setSuccess] = useState(false);
 
   const handleSendEmail = () => {
     startTransition(async () => {
-      await emailLoginLink(email);
+      await emailLoginLink(email, ctx);
       console.log("### emailLoginLink done");
       setSuccess(true);
     });
   };
 
   return (
-    <Layout ctx={ctx}>
+    <Layout ctx={ctx.ctx}>
       <div className="space-y-2 py-4">
         <h4 className="font-medium leading-none">
           Continue with Email Address

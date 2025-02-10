@@ -3,7 +3,7 @@
 import { Resend } from "resend";
 import { getEnv } from "../../../env";
 import { link } from "../../shared/links";
-import { db } from "@redwoodjs/reloaded/worker";
+import { db, RouteContext } from "@redwoodjs/reloaded/worker";
 
 export async function generateAuthToken(email: string) {
   const authToken = Math.floor(100000 + Math.random() * 900000).toString();
@@ -23,15 +23,18 @@ export async function generateAuthToken(email: string) {
   return authToken;
 }
 
-export async function emailLoginLink(email: string) {
+export async function emailLoginLink(email: string, ctx: RouteContext) {
   console.log('### generateAuthToken')
   const token = await generateAuthToken(email);
   console.log('### generateAuthToken done')
 
 
-  const loginUrl = `${getEnv().APP_URL}${link('/user/auth')}?token=${token}&email=${encodeURIComponent(email)}`;
+  console.log('### ctx', ctx)
+  const { env } = ctx;
+  console.log('### env', env)
+  const loginUrl = `${env.APP_URL}${link('/user/auth')}?token=${token}&email=${encodeURIComponent(email)}`;
   console.log('### loginUrl', loginUrl)
-  const resend = new Resend(getEnv().RESEND_API_KEY);
+  const resend = new Resend(env.RESEND_API_KEY);
   console.log('### resend')
   await resend.emails.send({
     from: "Billable <auth@billable.me>",

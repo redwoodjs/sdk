@@ -28,7 +28,7 @@ export function registerClientReference<Target extends Record<string, any>>(id: 
   );
 }
 
-export async function rscActionHandler(req: Request, ctx: any): Promise<unknown> {
+export async function rscActionHandler(req: Request, ctx: any, env: Env): Promise<unknown> {
   const url = new URL(req.url);
   const contentType = req.headers.get("content-type");
 
@@ -44,5 +44,5 @@ export async function rscActionHandler(req: Request, ctx: any): Promise<unknown>
     throw new Error(`Action ${actionId} is not a function`);
   }
 
-  return action(...args, { ctx });
+  return action(...args, { ctx, env });
 }

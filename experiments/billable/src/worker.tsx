@@ -1,4 +1,4 @@
-import { db, defineApp, index, prefix } from '@redwoodjs/reloaded/worker';
+import { db, defineApp, ErrorResponse, index, prefix } from '@redwoodjs/reloaded/worker';
 
 import { link } from "src/shared/links";
 import { Head } from 'src/Head';
@@ -12,17 +12,23 @@ export const getContext = async (
   request: Request,
   env: Env,
 ) => {
-  const session = await getSession(request, env);
-  const user = await db.user.findFirstOrThrow({
-    select: {
-      id: true,
-      email: true,
-    },
-    where: { id: session?.userId },
-  });
-  return {
-    user,
-  };
+  try {
+    const session = await getSession(request, env);
+    const user = await db.user.findFirstOrThrow({
+      select: {
+        id: true,
+        email: true,
+      },
+      where: { id: session?.userId },
+    });
+    return {
+      user,
+      };
+  } catch (e) {
+    return {
+      user: null,
+    };
+  }
 };
 
 const routes = [
