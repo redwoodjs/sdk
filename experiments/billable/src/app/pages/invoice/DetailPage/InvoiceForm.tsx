@@ -57,7 +57,7 @@ export function InvoiceForm(props: {
         <Button
           onClick={async () => {
             await saveInvoice(invoice.id, invoice, items, taxes);
-            window.location.href = link("/invoice/list");
+            // window.location.href = link("/invoice/list");
           }}
         >
           Save
@@ -66,9 +66,15 @@ export function InvoiceForm(props: {
 
       <div ref={pdfContentRef}>
         <div className="grid grid-cols-12">
-
           <div className="col-span-full border-b border-t">
-            <Input type="text" value="Invoice" className="tracking-widest text-center uppercase md:text-lg" />
+            <Input
+              type="text"
+              value={invoice.title}
+              className="tracking-widest text-center uppercase md:text-lg"
+              onChange={(e) =>
+                setInvoice({ ...invoice, title: e.target.value })
+              }
+            />
           </div>
           <Spacer />
 
@@ -106,7 +112,21 @@ export function InvoiceForm(props: {
           <div className="col-span-5">
             <div className="grid grid-cols-5 border">
               <div className="col-span-2 border-r border-b">
-                <Input type="text" placeholder="Invoice #" />
+                <Input
+                  type="text"
+                  value={invoice.labels.invoiceNumber}
+                  placeholder="Invoice #"
+                  className="font-bold"
+                  onChange={(e) =>
+                    setInvoice({
+                      ...invoice,
+                      labels: {
+                        ...invoice.labels,
+                        invoiceNumber: e.target.value,
+                      },
+                    })
+                  }
+                />
               </div>
               <div className="col-span-3 border-b">
                 <Input
@@ -118,7 +138,21 @@ export function InvoiceForm(props: {
                 />
               </div>
               <div className="col-span-2 border-r">
-                <Input type="text" placeholder="Date" />
+                <Input
+                  type="text"
+                  value={invoice.labels.invoiceDate}
+                  placeholder="Date"
+                  className="font-bold"
+                  onChange={(e) =>
+                    setInvoice({
+                      ...invoice,
+                      labels: {
+                        ...invoice.labels,
+                        invoiceDate: e.target.value,
+                      },
+                    })
+                  }
+                />
               </div>
               <div className="col-span-3">
                 <Input
@@ -138,13 +172,52 @@ export function InvoiceForm(props: {
           <div className="col-span-full">
             <div className="grid grid-cols-12 border border-b-0">
               <div className="col-span-7 border-r">
-                <Input type="text" placeholder="Description" className="font-bold" />
+                <Input
+                  type="text"
+                  placeholder="Description"
+                  className="font-bold"
+                  value={invoice.labels.itemDescription}
+                  onChange={(e) =>
+                    setInvoice({
+                      ...invoice,
+                      labels: {
+                        ...invoice.labels,
+                        itemDescription: e.target.value,
+                      },
+                    })
+                  }
+                />
               </div>
               <div className="col-span-2 border-r">
-                <Input type="number" placeholder="Quantity" className="font-bold" />
+                <Input
+                  type="number"
+                  placeholder="Quantity"
+                  className="font-bold"
+                  value={invoice.labels.itemQuantity}
+                  onChange={(e) =>
+                    setInvoice({
+                      ...invoice,
+                      labels: {
+                        ...invoice.labels,
+                        itemQuantity: e.target.value,
+                      },
+                    })
+                  }
+                />
               </div>
               <div className="col-span-2 border-r">
-                <Input type="number" placeholder="Price" className="font-bold" />
+                <Input
+                  type="number"
+                  placeholder="Price"
+                  className="font-bold"
+                  value={invoice.labels.itemPrice}
+                  onChange={(e) => {
+                    setInvoice({
+                      ...invoice,
+                      labels: { ...invoice.labels, itemPrice: e.target.value },
+                    });
+                  }}
+                />
               </div>
             </div>
 
@@ -188,7 +261,18 @@ export function InvoiceForm(props: {
             {/* Subtotal */}
             <div className="grid grid-cols-5 border border-b-0">
               <div className="col-span-2 border-r flex items-center">
-                <Input type="text" placeholder="Subtotal" className="font-bold" />
+                <Input
+                  type="text"
+                  placeholder="Subtotal"
+                  className="font-bold"
+                  value={invoice.labels.subtotal}
+                  onChange={(e) =>
+                    setInvoice({
+                      ...invoice,
+                      labels: { ...invoice.labels, subtotal: e.target.value },
+                    })
+                  }
+                />
                 <div className="w-full text-right pr-2">{invoice.currency}</div>
               </div>
               <div className="col-span-2 p-2">{subtotal.toFixed(2)}</div>
@@ -217,7 +301,13 @@ export function InvoiceForm(props: {
 
             <div className="grid grid-cols-5 border border-t-0">
               <div className="col-span-2 border-r flex items-center">
-                <Input type="text" placeholder="Total" className="font-bold" />
+                <Input type="text" placeholder="Total" className="font-bold" onChange={(e) =>
+                    setInvoice({
+                      ...invoice,
+                      labels: { ...invoice.labels, total: e.target.value },
+                    })
+                  }
+                />
                 <Input
                   type="text"
                   className="text-right"
@@ -334,7 +424,6 @@ function Taxes(props: {
               onChange={(e) =>
                 props.onChange({ ...tax, description: e.target.value }, index)
               }
-
             />
             <Input
               type="number"

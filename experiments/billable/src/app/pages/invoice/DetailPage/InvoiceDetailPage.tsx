@@ -19,6 +19,16 @@ export type InvoiceTaxes = {
   amount: number;
 };
 
+export type InvoiceLabels = {
+  invoiceNumber: string;
+  invoiceDate: string;
+  itemDescription: string;
+  itemQuantity: string;
+  itemPrice: string;
+  subtotal: string;
+  total: string;
+};
+
 export async function getInvoice(id: string, userId: string) {
   const invoice = await db.invoice.findFirstOrThrow({
     where: {
@@ -31,6 +41,7 @@ export async function getInvoice(id: string, userId: string) {
     ...invoice,
     items: JSON.parse(invoice.items) as InvoiceItem[],
     taxes: JSON.parse(invoice.taxes) as InvoiceTaxes[],
+    labels: JSON.parse(invoice.labels || '{}') as InvoiceLabels
   };
 }
 

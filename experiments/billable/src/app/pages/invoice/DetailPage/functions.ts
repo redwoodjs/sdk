@@ -19,6 +19,7 @@ export async function saveInvoice(id: string, invoice: Omit<Invoice, 'items' | '
     ...invoice,
     items: JSON.stringify(items),
     taxes: JSON.stringify(taxes),
+    labels: JSON.stringify(invoice.labels)
   }
 
   await db.invoice.upsert({
