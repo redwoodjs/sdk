@@ -1,5 +1,3 @@
-import stylesUrl from "./style.css?url";
-
 const vitePreamble = `\
   import RefreshRuntime from "/@react-refresh"
   RefreshRuntime.injectIntoGlobalHook(window)
@@ -8,18 +6,18 @@ const vitePreamble = `\
   window.__vite_plugin_react_preamble_installed__ = true
 `;
 
-export const App: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+export const App: React.FC<{ children: React.ReactNode, head?: React.ReactNode }> = ({ head, children }) => (
   <html lang="en">
     <head>
-      <title>Billable: Billing Made Simple. Period.</title>
+      {head}
       {import.meta.env.DEV && !process.env.PREVIEW ? (
         <script
           type="module"
           dangerouslySetInnerHTML={{ __html: vitePreamble }}
         />
       ) : null}
+      {/* TODO(justinvdm, 10 Feb 2025): Figure out how to get this script to live in the reloaded package. */}
       <script type="module" src="/src/client.tsx"></script>
-      <link rel="stylesheet" href={stylesUrl} />
     </head>
     <body>
       <div id="root">{children}</div>

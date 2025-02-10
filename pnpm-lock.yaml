@@ -60,12 +60,9 @@ importers:
       react-dom:
         specifier: 19.0.0-rc-f2df5694-20240916
         version: 19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916)
-      react-is:
-        specifier: ^19.0.0
-        version: 19.0.0
       react-server-dom-webpack:
         specifier: 19.0.0-rc-f2df5694-20240916
-        version: 19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1)
+        version: 19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.17.19))
       react-to-print:
         specifier: ^3.0.4
         version: 3.0.5(react@19.0.0-rc-f2df5694-20240916)
@@ -88,6 +85,12 @@ importers:
         specifier: ^3.24.1
         version: 3.24.1
     devDependencies:
+      '@types/react':
+        specifier: ^18.3.12
+        version: 18.3.18
+      '@types/react-dom':
+        specifier: ^18.3.1
+        version: 18.3.5(@types/react@18.3.18)
       vite:
         specifier: ^6.0.11
         version: 6.0.11(@types/node@22.10.6)(jiti@1.21.7)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0)
@@ -99,10 +102,16 @@ importers:
     dependencies:
       '@cloudflare/vite-plugin':
         specifier: ^0.0.4
-        version: 0.0.4(patch_hash=rz7r7x4v33wz6cdeelt5iohdai)(vite@6.0.11(@types/node@22.10.6)(jiti@1.21.7)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))(wrangler@3.107.3)
+        version: 0.0.4(patch_hash=rz7r7x4v33wz6cdeelt5iohdai)(vite@6.0.11(@types/node@22.10.6)(jiti@1.21.7)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))(wrangler@3.107.3(@cloudflare/workers-types@4.20250109.0))
+      '@cloudflare/workers-types':
+        specifier: ^4.20241112.0
+        version: 4.20250109.0
       '@microsoft/api-extractor':
         specifier: ^7.48.0
         version: 7.49.1(@types/node@22.10.6)
+      '@prisma/adapter-d1':
+        specifier: ^6.3.0
+        version: 6.3.1
       '@prisma/client':
         specifier: ^6.3.0
         version: 6.3.1(prisma@6.3.1(typescript@5.7.3))(typescript@5.7.3)
@@ -181,6 +190,15 @@ importers:
       react-dom:
         specifier: 19.0.0-rc-f2df5694-20240916
         version: 19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916)
+      react-is:
+        specifier: ^19.0.0
+        version: 19.0.0
+      react-server-dom-webpack:
+        specifier: 19.0.0-rc-f2df5694-20240916
+        version: 19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1)
+      rsc-html-stream:
+        specifier: ^0.0.3
+        version: 0.0.3
       tailwindcss:
         specifier: ^3.4.16
         version: 3.4.17
@@ -3270,7 +3288,7 @@ snapshots:
     dependencies:
       mime: 3.0.0
 
-  '@cloudflare/vite-plugin@0.0.4(patch_hash=rz7r7x4v33wz6cdeelt5iohdai)(vite@6.0.11(@types/node@22.10.6)(jiti@1.21.7)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))(wrangler@3.107.3)':
+  '@cloudflare/vite-plugin@0.0.4(patch_hash=rz7r7x4v33wz6cdeelt5iohdai)(vite@6.0.11(@types/node@22.10.6)(jiti@1.21.7)(terser@5.37.0)(tsx@4.19.2)(yaml@2.7.0))(wrangler@3.107.3(@cloudflare/workers-types@4.20250109.0))':
     dependencies:
       '@hattip/adapter-node': 0.0.49
       miniflare: 3.20250124.0
@@ -5337,6 +5355,15 @@ snapshots:
 
   react-refresh@0.14.2: {}
 
+  react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.17.19)):
+    dependencies:
+      acorn-loose: 8.4.0
+      neo-async: 2.6.2
+      react: 19.0.0-rc-f2df5694-20240916
+      react-dom: 19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916)
+      webpack: 5.97.1(esbuild@0.17.19)
+      webpack-sources: 3.2.3
+
   react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1):
     dependencies:
       acorn-loose: 8.4.0
@@ -5641,6 +5668,17 @@ snapshots:
 
   tapable@2.2.1: {}
 
+  terser-webpack-plugin@5.3.11(esbuild@0.17.19)(webpack@5.97.1(esbuild@0.17.19)):
+    dependencies:
+      '@jridgewell/trace-mapping': 0.3.25
+      jest-worker: 27.5.1
+      schema-utils: 4.3.0
+      serialize-javascript: 6.0.2
+      terser: 5.37.0
+      webpack: 5.97.1(esbuild@0.17.19)
+    optionalDependencies:
+      esbuild: 0.17.19
+
   terser-webpack-plugin@5.3.11(webpack@5.97.1):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.25
@@ -5857,6 +5895,36 @@ snapshots:
       schema-utils: 3.3.0
       tapable: 2.2.1
       terser-webpack-plugin: 5.3.11(webpack@5.97.1)
+      watchpack: 2.4.2
+      webpack-sources: 3.2.3
+    transitivePeerDependencies:
+      - '@swc/core'
+      - esbuild
+      - uglify-js
+
+  webpack@5.97.1(esbuild@0.17.19):
+    dependencies:
+      '@types/eslint-scope': 3.7.7
+      '@types/estree': 1.0.6
+      '@webassemblyjs/ast': 1.14.1
+      '@webassemblyjs/wasm-edit': 1.14.1
+      '@webassemblyjs/wasm-parser': 1.14.1
+      acorn: 8.14.0
+      browserslist: 4.24.4
+      chrome-trace-event: 1.0.4
+      enhanced-resolve: 5.18.0
+      es-module-lexer: 1.6.0
+      eslint-scope: 5.1.1
+      events: 3.3.0
+      glob-to-regexp: 0.4.1
+      graceful-fs: 4.2.11
+      json-parse-even-better-errors: 2.3.1
+      loader-runner: 4.3.0
+      mime-types: 2.1.35
+      neo-async: 2.6.2
+      schema-utils: 3.3.0
+      tapable: 2.2.1
+      terser-webpack-plugin: 5.3.11(esbuild@0.17.19)(webpack@5.97.1(esbuild@0.17.19))
       watchpack: 2.4.2
       webpack-sources: 3.2.3
     transitivePeerDependencies:

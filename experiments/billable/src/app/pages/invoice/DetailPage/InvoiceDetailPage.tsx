@@ -3,8 +3,7 @@
 import { Layout } from "../../Layout";
 
 import { InvoiceForm } from "./InvoiceForm";
-import { RouteContext } from "../../../../lib/router";
-import { db } from "../../../../db";
+import { RouteContext, db } from "@redwoodjs/reloaded/worker";
 import { BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "src/components/ui/breadcrumb";
 import { link } from "src/shared/links";
 
@@ -52,7 +51,7 @@ export default async function InvoiceDetailPage({
         </BreadcrumbPage>
       </BreadcrumbList>
 
-      <InvoiceForm invoice={invoice} />
+      <InvoiceForm invoice={invoice} ctx={ctx} />
     </Layout>
   );
 }

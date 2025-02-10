@@ -70,6 +70,7 @@ export const configPlugin = ({ mode,
               "react/jsx-dev-runtime",
               "react-dom/server.edge",
               "@prisma/client",
+              "@redwoodjs/reloaded/worker",
             ],
           },
           build: {

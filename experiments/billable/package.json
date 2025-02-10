@@ -31,6 +31,7 @@
     "@types/lodash": "^4.17.13",
     "aws4fetch": "^1.0.20",
     "class-variance-authority": "^0.7.1",
+    "rsc-html-stream": "^0.0.3",
     "clsx": "^2.1.1",
     "dotenv": "^16.4.6",
     "input-otp": "^1.4.2",
@@ -38,11 +39,9 @@
     "lucide-react": "^0.474.0",
     "react": "19.0.0-rc-f2df5694-20240916",
     "react-dom": "19.0.0-rc-f2df5694-20240916",
-    "react-is": "^19.0.0",
     "react-server-dom-webpack": "19.0.0-rc-f2df5694-20240916",
     "react-to-print": "^3.0.4",
     "resend": "^4.1.1",
-    "rsc-html-stream": "^0.0.3",
     "tailwind-merge": "^3.0.1",
     "tailwindcss-animate": "^1.0.7",
     "typescript": "^5.6.3",
@@ -51,7 +50,9 @@
   },
   "devDependencies": {
     "vite": "^6.0.11",
-    "wrangler": "^3.105.1"
+    "wrangler": "^3.105.1",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1"
   },
   "prisma": {
     "seed": "pnpm seed"
