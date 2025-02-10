@@ -57,7 +57,7 @@ async function getInvoiceListSummary(userId: string) {
   });
 }
 
-export default async function InvoiceListPage({ ctx }: RouteContext) {
+export async function InvoiceListPage({ ctx }: RouteContext) {
   const invoices = await getInvoiceListSummary(ctx.user.id);
   return (
     <Layout ctx={ctx}>
