@@ -75,7 +75,11 @@ export default async function InvoiceListPage({ ctx }: RouteContext) {
             <TableHead></TableHead>
           </TableRow>
         </TableHeader>
+        {invoices.length === 0 && <TableCaption>
+          No invoices found
+        </TableCaption>}
         <TableBody>
+
           {invoices.map((i) => (
             <InvoiceListItem {...i} key={"invoice-" + i.id} />
           ))}

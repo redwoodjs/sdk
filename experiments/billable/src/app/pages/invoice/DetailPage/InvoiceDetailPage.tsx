@@ -5,7 +5,7 @@ import { Layout } from "../../Layout";
 import { InvoiceForm } from "./InvoiceForm";
 import { RouteContext } from "../../../../lib/router";
 import { db } from "../../../../db";
-import { BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "src/components/ui/breadcrumb";
+import { BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "src/components/ui/breadcrumb";
 import { link } from "src/shared/links";
 
 export type InvoiceItem = {
@@ -63,6 +63,7 @@ export default async function InvoiceDetailPage({
         </BreadcrumbPage>
       </BreadcrumbList>
 
+      {/* Add onSave functionality. */}
       <InvoiceForm invoice={invoice} ctx={ctx} />
     </Layout>
   );

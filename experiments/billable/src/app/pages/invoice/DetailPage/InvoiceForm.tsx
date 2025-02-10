@@ -15,6 +15,7 @@ import { Textarea as OGTextarea } from "src/components/ui/textarea";
 import { RouteContext } from "../../../../lib/router";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 import { cn } from "src/components/cn";
+import { toast, Toaster } from "sonner";
 
 function calculateSubtotal(items: InvoiceItem[]) {
   let sum = 0;
@@ -48,12 +49,17 @@ export function InvoiceForm(props: {
 
   return (
     <div>
+      <Toaster />
       <div className="flex gap-2 py-4 justify-end">
         <PrintPdf contentRef={pdfContentRef} />
         <Button
           onClick={async () => {
-            await saveInvoice(invoice.id, invoice, items, taxes);
-            // window.location.href = link("/invoice/list");
+            if (props.ctx?.user) {
+              await saveInvoice(invoice.id, invoice, items, taxes);
+              window.location.href = link("/invoice/list");
+            } else {
+              toast.error("You must be logged in to save an invoice.");
+            }
           }}
         >
           Save
@@ -65,7 +71,7 @@ export function InvoiceForm(props: {
           <div className="col-span-full border-b border-t">
             <Input
               type="text"
-              value={invoice.title}
+              value={invoice.title ?? "INVOICE"}
               className="tracking-widest text-center uppercase md:text-lg"
               onChange={(e) =>
                 setInvoice({ ...invoice, title: e.target.value })
@@ -334,7 +340,8 @@ export function InvoiceForm(props: {
           {/* NotesA */}
           <div className="col-span-6">
             <Textarea
-              defaultValue={invoice.notesA ?? ""}
+              defaultValue={invoice.notesA}
+              placeholder="Bank: First National Bank&#10;Account Name: Dunder Mifflin Paper Co.&#10;Account Number: 1234-5678-9012&#10;Routing: 987654321&#10;SWIFT: FNBUS12345"
               onChange={(e) =>
                 setInvoice({ ...invoice, notesA: e.target.value })
               }
@@ -345,6 +352,7 @@ export function InvoiceForm(props: {
           <div className="col-start-8 col-span-5">
             <Textarea
               className="text-right"
+              placeholder="Payment Terms: 30 days"
               defaultValue={invoice.notesB ?? ""}
               onChange={(e) =>
                 setInvoice({ ...invoice, notesB: e.target.value })
