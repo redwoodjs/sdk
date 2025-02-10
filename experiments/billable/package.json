@@ -49,7 +49,7 @@
     "@redwoodjs/reloaded": "workspace:*"
   },
   "devDependencies": {
-    "vite": "^6.0.11",
+    "vite": "^6.1.0",
     "wrangler": "^3.105.1",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1"
