@@ -1,4 +1,4 @@
-import { db, defineApp, ErrorResponse, index, prefix } from '@redwoodjs/reloaded/worker';
+import { db, defineApp, index, prefix } from '@redwoodjs/reloaded/worker';
 
 import { link } from "src/shared/links";
 import { Head } from 'src/Head';
