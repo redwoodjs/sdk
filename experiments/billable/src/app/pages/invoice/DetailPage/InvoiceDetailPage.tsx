@@ -33,7 +33,7 @@ export async function getInvoice(id: string, userId: string) {
   };
 }
 
-export default async function InvoiceDetailPage({
+export async function InvoiceDetailPage({
   params,
   ctx,
 }: RouteContext<{ id: string }>) {
