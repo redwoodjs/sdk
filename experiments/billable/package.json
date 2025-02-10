@@ -51,7 +51,6 @@
     "@redwoodjs/reloaded": "workspace:*"
   },
   "devDependencies": {
-    "prisma": "^6.3.1",
     "vite": "^6.0.11",
     "wrangler": "^3.105.1",
     "@types/react": "^18.3.12",
