@@ -4,7 +4,7 @@ import { Layout } from "../../Layout";
 
 import { InvoiceForm } from "./InvoiceForm";
 import { RouteContext, db } from "@redwoodjs/reloaded/worker";
-import { BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "src/components/ui/breadcrumb";
+import { BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "src/components/ui/breadcrumb";
 import { link } from "src/shared/links";
 
 export type InvoiceItem = {

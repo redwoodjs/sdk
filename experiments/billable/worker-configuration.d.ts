@@ -2,8 +2,8 @@
 
 interface Env {
 	SECRET_KEY: "secret";
-	APP_URL: string;
-	RESEND_API_KEY: string;
+	RESEND_API_KEY: "123";
+	APP_URL: "http://localhost:5173";
 	SESSION_DO: DurableObjectNamespace<import("./src/worker").SessionDO>;
 	R2: R2Bucket;
 	DB: D1Database;
