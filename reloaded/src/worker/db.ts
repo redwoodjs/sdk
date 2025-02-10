@@ -1,3 +1,4 @@
+// @ts-expect-error PrismaClient is generated in the application codebase
 import { PrismaClient } from '@prisma/client'
 import { PrismaD1 } from '@prisma/adapter-d1'
 
