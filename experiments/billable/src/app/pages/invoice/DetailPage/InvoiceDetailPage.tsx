@@ -4,7 +4,7 @@ import { Layout } from "../../Layout";
 
 import { InvoiceForm } from "./InvoiceForm";
 import { RouteContext, db } from "@redwoodjs/reloaded/worker";
-import { BreadcrumbItem, BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "src/components/ui/breadcrumb";
+import { BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "src/components/ui/breadcrumb";
 import { link } from "src/shared/links";
 
 export type InvoiceItem = {
@@ -16,6 +16,16 @@ export type InvoiceItem = {
 export type InvoiceTaxes = {
   description: string;
   amount: number;
+};
+
+export type InvoiceLabels = {
+  invoiceNumber: string;
+  invoiceDate: string;
+  itemDescription: string;
+  itemQuantity: string;
+  itemPrice: string;
+  subtotal: string;
+  total: string;
 };
 
 export async function getInvoice(id: string, userId: string) {
@@ -30,6 +40,7 @@ export async function getInvoice(id: string, userId: string) {
     ...invoice,
     items: JSON.parse(invoice.items) as InvoiceItem[],
     taxes: JSON.parse(invoice.taxes) as InvoiceTaxes[],
+    labels: JSON.parse(invoice.labels || '{}') as InvoiceLabels
   };
 }
 

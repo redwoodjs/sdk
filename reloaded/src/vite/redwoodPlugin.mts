@@ -62,8 +62,8 @@ export const redwoodPlugin = (options: RedwoodPluginOptions = {}): InlineConfig[
     acceptWasmPlugin(),
     asyncSetupPlugin({
       async setup({ command }) {
-        console.log('Generating prisma client...')
-        await $`pnpm prisma generate`;
+        // console.log('Generating prisma client...')
+        // await $`pnpm prisma generate`;
 
         if (command !== 'build') {
           console.log('Generating wrangler types...')

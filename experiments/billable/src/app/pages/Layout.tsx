@@ -1,4 +1,4 @@
-import { User } from "@prisma/client";
+import type { User } from "@prisma/client";
 import React from "react";
 import { link } from "../shared/links";
 

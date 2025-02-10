@@ -7,7 +7,7 @@ export default {
   theme: {
     extend: {
       colors: {
-        border: "hsl(var(--border))",
+        border: "#333",
         input: "hsl(var(--input))",
         ring: "hsl(var(--ring))",
         background: "hsl(var(--background))",
@@ -40,6 +40,9 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        screens: {
+          print: { raw: 'print' },
+        }
       },
       borderRadius: {
         lg: `var(--radius)`,
