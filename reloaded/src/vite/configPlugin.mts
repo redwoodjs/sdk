@@ -3,11 +3,6 @@ import { resolve } from "node:path";
 import { createRequire } from "node:module";
 import { mergeConfig, InlineConfig } from 'vite';
 
-import tailwind from "tailwindcss";
-import autoprefixer from "autoprefixer";
-import reactPlugin from "@vitejs/plugin-react";
-import tsconfigPaths from "vite-tsconfig-paths";
-
 import {
   DEV_SERVER_PORT,
   VENDOR_DIST_DIR,
@@ -68,6 +63,7 @@ export const configPlugin = ({ mode,
               "react",
               "react/jsx-runtime",
               "react/jsx-dev-runtime",
+              "react-server-dom-webpack/server.edge",
               "react-dom/server.edge",
               "@prisma/client",
               "@redwoodjs/reloaded/worker",
