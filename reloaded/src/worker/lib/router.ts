@@ -18,7 +18,7 @@ type RouteHandler =
   | RouteComponent
   | [...RouteMiddleware[], RouteFunction | RouteComponent];
 
-type RouteDefinition = {
+export type RouteDefinition = {
   path: string;
   handler: RouteHandler;
 };
@@ -64,6 +64,14 @@ function matchPath(
   return params;
 }
 
+function serializeEnv(env: Record<string, any>): Record<string, string | number | boolean> {
+  return Object.fromEntries(
+    Object.entries(env).filter(([_, value]) =>
+      ['string', 'number', 'boolean'].includes(typeof value)
+    )
+  );
+}
+
 export function defineRoutes(routes: RouteDefinition[]): {
   routes: RouteDefinition[];
   handle: (
@@ -72,7 +80,6 @@ export function defineRoutes(routes: RouteDefinition[]): {
       ctx,
       env,
       renderPage,
-
     }: {
       request: Request;
       ctx: any;
@@ -83,7 +90,7 @@ export function defineRoutes(routes: RouteDefinition[]): {
 } {
   return {
     routes,
-    async handle({request, ctx, env, renderPage }) {
+    async handle({ request, ctx, env, renderPage }) {
       const url = new URL(request.url);
       let path = url.pathname;
 
@@ -130,8 +137,8 @@ export function defineRoutes(routes: RouteDefinition[]): {
       }
 
       if (isRouteComponent(handler)) {
-        // TODO(peterp, 2025-01-30): Serialize the request
-        return await renderPage(handler as RouteComponent, { params, ctx });
+        const serializedEnv = serializeEnv(env);
+        return await renderPage(handler as RouteComponent, { params, ctx, env: serializedEnv });
       } else {
         return await (handler({ request, params, ctx, env }) as Promise<Response>);
       }

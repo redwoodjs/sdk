@@ -1,7 +1,6 @@
-import { db } from "../../../db";
-import { index, route } from "../../../lib/router";
-import InvoiceDetailPage from "./DetailPage/InvoiceDetailPage";
-import InvoiceListPage from "./ListPage/InvoiceListPage";
+import { db, index, route } from "@redwoodjs/reloaded/worker";
+import { InvoiceDetailPage } from "./DetailPage/InvoiceDetailPage";
+import { InvoiceListPage } from "./ListPage/InvoiceListPage";
 
 export const invoiceRoutes = [
   index(function () {

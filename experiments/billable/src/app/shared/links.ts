@@ -1,4 +1,4 @@
-import { defineLinks } from "../../lib/links";
+import { defineLinks } from "@redwoodjs/reloaded/worker";
 
 export const link = defineLinks([
   '/',

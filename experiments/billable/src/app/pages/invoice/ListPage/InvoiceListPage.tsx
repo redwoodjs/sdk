@@ -3,8 +3,7 @@
 import { Layout } from "../../Layout";
 
 import { CreateInvoiceButton } from "./CreateInvoiceButton";
-import { db } from "../../../../db";
-import { RouteContext } from "../../../../lib/router";
+import { RouteContext, db } from "@redwoodjs/reloaded/worker";
 import { link } from "src/shared/links";
 
 import {
@@ -28,7 +27,7 @@ export type InvoiceTaxes = {
   amount: number;
 };
 
-async function getInvoiceListSummary(userId) {
+async function getInvoiceListSummary(userId: string) {
   const invoices =
     (await db.invoice.findMany({
       select: {
@@ -58,7 +57,7 @@ async function getInvoiceListSummary(userId) {
   });
 }
 
-export default async function InvoiceListPage({ ctx }: RouteContext) {
+export async function InvoiceListPage({ ctx }: RouteContext) {
   const invoices = await getInvoiceListSummary(ctx.user.id);
   return (
     <Layout ctx={ctx}>

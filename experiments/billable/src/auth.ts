@@ -1,8 +1,8 @@
 import { MAX_TOKEN_DURATION } from './constants';
-import { ErrorResponse } from './error';
 import { SessionDO } from './session';
-
+import { ErrorResponse } from '@redwoodjs/reloaded/worker';
 import { link } from './app/shared/links'
+
 interface SessionIdParts {
   unsignedSessionId: string;
   signature: string;
