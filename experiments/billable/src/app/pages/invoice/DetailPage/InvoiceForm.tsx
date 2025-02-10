@@ -88,6 +88,7 @@ export function InvoiceForm(props: {
           {/* SupplierContact */}
           <div className="col-span-5">
             <Textarea
+              placeholder="Scranton Business Park&#10;1725 Slough Avenue&#10;Scranton, PA"
               defaultValue={invoice.supplierContact ?? ""}
               className="text-right"
               onChange={(e) =>
@@ -101,8 +102,8 @@ export function InvoiceForm(props: {
           {/* Customer */}
           <div className="col-span-7">
             <Textarea
-              placeholder=""
-              defaultValue={invoice.customer ?? ""}
+              placeholder="Flexopolis Gym&#10;1234 Main St&#10;Scranton, PA"
+              defaultValue={invoice.customer}
               onChange={(e) =>
                 setInvoice({ ...invoice, customer: e.target.value })
               }
@@ -190,7 +191,7 @@ export function InvoiceForm(props: {
               </div>
               <div className="col-span-2 border-r">
                 <Input
-                  type="number"
+                  type="text"
                   placeholder="Quantity"
                   className="font-bold"
                   value={invoice.labels.itemQuantity}
@@ -207,7 +208,7 @@ export function InvoiceForm(props: {
               </div>
               <div className="col-span-2 border-r">
                 <Input
-                  type="number"
+                  type="text"
                   placeholder="Price"
                   className="font-bold"
                   value={invoice.labels.itemPrice}
@@ -301,7 +302,12 @@ export function InvoiceForm(props: {
 
             <div className="grid grid-cols-5 border border-t-0">
               <div className="col-span-2 border-r flex items-center">
-                <Input type="text" placeholder="Total" className="font-bold" onChange={(e) =>
+                <Input
+                  type="text"
+                  placeholder="Total"
+                  className="font-bold"
+                  value={invoice.labels.total}
+                  onChange={(e) =>
                     setInvoice({
                       ...invoice,
                       labels: { ...invoice.labels, total: e.target.value },
@@ -366,6 +372,7 @@ function Item({
     <div className="grid grid-cols-12 border border-b-0">
       <div className="col-span-7 border-r">
         <Textarea
+          placeholder="Item purchased or description of completed work"
           value={item.description}
           onChange={(e) => onChange({ ...item, description: e.target.value })}
         />
@@ -419,6 +426,7 @@ function Taxes(props: {
           <div className="col-span-2 border-r flex items-center">
             <Input
               type="text"
+              placeholder="Tax name"
               value={tax.description}
               className="font-bold"
               onChange={(e) =>
@@ -496,7 +504,7 @@ function SupplierName({
       <div>
         <Textarea
           value={invoice.supplierName ?? ""}
-          placeholder="Michael Scott Paper Company, Inc."
+          placeholder="Michael Scott&#10;Paper Company Inc."
           className="text-5xl"
           onChange={(e) =>
             setInvoice({ ...invoice, supplierName: e.target.value })
