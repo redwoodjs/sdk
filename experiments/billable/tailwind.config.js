@@ -40,6 +40,9 @@ export default {
           DEFAULT: "hsl(var(--card))",
           foreground: "hsl(var(--card-foreground))",
         },
+        screens: {
+          print: { raw: 'print' },
+        }
       },
       borderRadius: {
         lg: `var(--radius)`,

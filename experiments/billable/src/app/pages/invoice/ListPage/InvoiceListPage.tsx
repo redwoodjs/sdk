@@ -102,7 +102,7 @@ function InvoiceListItem(
       </TableCell>
       <TableCell>{props.customer}</TableCell>
       <TableCell className="text-right">
-      <a href={link("/invoice/:id", { id: props.id })}>Edit</a>
+        <a href={link("/invoice/:id", { id: props.id })}>Edit</a>
       </TableCell>
     </TableRow>
   );

@@ -32,13 +32,6 @@ function calculateTaxes(subtotal: number, taxes: InvoiceTaxes[]) {
   return sum;
 }
 
-function Spacer() {
-  return <div className="col-span-full h-11" />;
-}
-function ColumnGap() {
-  return <div className="col-span-1 h-11" />;
-}
-
 export function InvoiceForm(props: {
   invoice: Awaited<ReturnType<typeof getInvoice>>;
   ctx: RouteContext;
@@ -67,7 +60,7 @@ export function InvoiceForm(props: {
         </Button>
       </div>
 
-      <div ref={pdfContentRef}>
+      <div ref={pdfContentRef} className="print:p-4">
         <div className="grid grid-cols-12">
           <div className="col-span-full border-b border-t">
             <Input
@@ -245,11 +238,11 @@ export function InvoiceForm(props: {
                 }}
               />
             ))}
-            <div className="border text-right">
+            <div className="border text-right print:border-b-0">
               <Button
                 variant="outline"
                 size="icon"
-                className="m-1"
+                className="m-1 print:hidden"
                 onClick={() => {
                   setItems([
                     ...items,
@@ -404,7 +397,7 @@ function Item({
           onClick={onDelete}
           variant="outline"
           size="icon"
-          className="m-1"
+          className="m-1 print:hidden"
         >
           <Trash2Icon />
         </Button>
@@ -459,7 +452,7 @@ function Taxes(props: {
               onClick={() => props.onDelete(index)}
               variant="outline"
               size="icon"
-              className="m-1"
+              className="m-1 print:hidden"
             >
               <Trash2Icon />
             </Button>
@@ -472,7 +465,7 @@ function Taxes(props: {
           onClick={props.onAdd}
           variant="outline"
           size="icon"
-          className="m-1"
+          className="m-1 print:hidden"
         >
           <PlusIcon />
         </Button>
@@ -499,6 +492,7 @@ function SupplierName({
         <div className="flex p-2">
           <Button
             variant="outline"
+            className="print:hidden"
             onClick={async () => {
               await deleteLogo(invoice.id);
               setInvoice({ ...invoice, supplierLogo: null });
@@ -607,4 +601,11 @@ function Textarea(props: React.ComponentProps<typeof OGTextarea>) {
       }}
     />
   );
+}
+
+function Spacer() {
+  return <div className="col-span-full h-11" />;
+}
+function ColumnGap() {
+  return <div className="col-span-1 h-11" />;
 }
