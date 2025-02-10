@@ -6,71 +6,95 @@ import { BreadcrumbPage } from "src/components/ui/breadcrumb";
 import { Layout } from "src/pages/Layout";
 import { BreadcrumbList } from "src/components/ui/breadcrumb";
 import { link } from "src/shared/links";
-import { calculateBoards } from "./functions";
 import { BoardRenderer } from "./BoardRenderer";
+import { findOptimalPacking } from "./functions";
 
 export default async function CutlistDetailPage({
-    params,
-    ctx,
-  }: RouteContext<{ id: string }>) {
-    const project = await getProject(params.id, ctx.user.id);
-    const cutlistItems = JSON.parse(project.cutlistItems as string) as ProjectItem[];
-    const { boards, boardCount, totalCost } = calculateBoards(
-      cutlistItems,
-      project.boardWidth, 
-      project.boardLength, 
-      project.boardPrice, 
-      project.bladeWidth
-    );
+  params,
+  ctx,
+}: RouteContext<{ id: string }>) {
+  const project = await getProject(params.id, ctx.user.id);
+  const cutlistItems = JSON.parse(project.cutlistItems as string) as ProjectItem[];
 
-    // lets update the project with the boards needed and price if not 0
-    if (boardCount > 0 && totalCost > 0) {
-      await updateProject(params.id, {
-        boardsNeeded: boardCount,
-        total: totalCost
-      });
-    }
+  const SHEET_WIDTH = project.boardWidth;
+  const SHEET_HEIGHT = project.boardLength;
+  const BLADE_WIDTH = 0;
 
-    return (
-      <Layout ctx={ctx}>
-        <BreadcrumbList>
-          <BreadcrumbLink href={link('/project/list')}>Projects</BreadcrumbLink>
-          <BreadcrumbSeparator />
-          <BreadcrumbLink href={`/project/${params.id}`}>Edit Project</BreadcrumbLink>
-          <BreadcrumbSeparator />
-          <BreadcrumbPage>Cutlist</BreadcrumbPage>
-        </BreadcrumbList>
+  const panels = cutlistItems.flatMap(item =>
+    Array(item.quantity).fill({
+      width: item.width,
+      height: item.length
+    })
+  );
 
-        <div className="grid grid-cols-2 gap-4 mb-6 mt-6">
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-              Boards Needed
-            </h3>
-            <p className="mt-2 text-3xl font-semibold text-gray-900">
-              {boardCount}
-            </p>
-          </div>
-          
-          <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-            <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
-              Total Cost
-            </h3>
-            <p className="mt-2 text-3xl font-semibold text-gray-900">
-              {project.currency} {totalCost.toFixed(2)}
-            </p>
-          </div>
+  console.log("panels: ", panels)
+  console.log("boardWidth: ", SHEET_WIDTH)
+  console.log("boardHeight: ", SHEET_HEIGHT)
+  console.log("bladeWidth: ", BLADE_WIDTH)
+
+  // 
+  let packer = await findOptimalPacking(panels, SHEET_WIDTH, SHEET_HEIGHT, BLADE_WIDTH)
+  console.log(packer)
+  const boards = packer?.map((board: any) => ({
+    width: board.width,
+    height: board.height,
+    usedRects: board.map((rect: any) => ({
+      x: rect.x,
+      y: rect.y,
+      width: rect.width,
+      height: rect.height
+    }))
+  }))
+
+  const boardCount = packer?.length ?? 0;
+  const totalCost = boardCount * project.boardPrice;
+
+
+  // boards?
+
+
+  return (
+    <Layout ctx={ctx}>
+      <BreadcrumbList>
+        <BreadcrumbLink href={link('/project/list')}>Projects</BreadcrumbLink>
+        <BreadcrumbSeparator />
+        <BreadcrumbLink href={`/project/${params.id}`}>Edit Project</BreadcrumbLink>
+        <BreadcrumbSeparator />
+        <BreadcrumbPage>Cutlist</BreadcrumbPage>
+      </BreadcrumbList>
+
+      <div className="grid grid-cols-2 gap-4 mb-6 mt-6">
+        <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+          <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+            Boards Needed
+          </h3>
+          <p className="mt-2 text-3xl font-semibold text-gray-900">
+            {boardCount}
+          </p>
         </div>
 
         <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
-          <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">
-            Cut Layout
+          <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide">
+            Total Cost
           </h3>
-          <BoardRenderer 
-            boards={boards} 
-            boardWidth={project.boardWidth} 
-            boardHeight={project.boardLength} 
-          />
+          <p className="mt-2 text-3xl font-semibold text-gray-900">
+            {project.currency} {totalCost.toFixed(2)}
+          </p>
         </div>
-      </Layout>
-    );
+      </div>
+
+      <div className="bg-white p-6 rounded-lg shadow-sm border border-gray-200">
+        <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">
+          Cut Layout
+        </h3>
+        {boards && (
+          <BoardRenderer
+            boards={boards}
+            boardWidth={project.boardWidth}
+            boardHeight={project.boardLength}
+          />
+        )}
+      </div>
+    </Layout>
+  );
 }

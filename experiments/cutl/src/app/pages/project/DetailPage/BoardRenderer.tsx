@@ -1,81 +1,63 @@
 'use client';
 
 import { useEffect, useRef } from 'react';
-import { type BoardPiece } from './functions';
 
-export function BoardRenderer({ 
-  boards, 
-  boardWidth, 
-  boardHeight 
-}: {
-  boards: BoardPiece[][];
-  boardWidth: number;
-  boardHeight: number;
-}) {
-  const containerRef = useRef<HTMLDivElement>(null);
+export function BoardRenderer({ boards, boardWidth, boardHeight }) {
+  const containerRef = useRef(null);
 
   useEffect(() => {
-    if (!containerRef.current) return;
+    if (!containerRef.current || !boards || boards.length === 0) return;
 
-    // Clear previous canvases
+    // Clear previous canvas elements
     containerRef.current.innerHTML = '';
 
-    // Draw each board on its own canvas
     boards.forEach((board, index) => {
-      const canvas = document.createElement('canvas');
-      const scale = Math.min(
-        (containerRef.current?.clientWidth ?? 0) * 0.95 / boardHeight, // 95% of container width
-        400 // maximum scale
-      );
-      
-      canvas.width = boardHeight * scale;
-      canvas.height = boardWidth * scale;
-      canvas.style.maxWidth = '100%';  // Ensure canvas doesn't overflow
-      
-      const ctx = canvas.getContext('2d');
-      if (!ctx || !containerRef.current) return;
+      if (!board || !board.usedRects) return; // Ensure bin has usedRects
 
-      // Draw board background (rotated)
-      ctx.fillStyle = '#f4f4f4';
+      const canvas = document.createElement('canvas');
+      const ctx = canvas.getContext('2d');
+      if (!ctx) return;
+
+      // Set canvas dimensions
+      const scaleFactor = 400 / boardWidth;
+      canvas.width = boardWidth * scaleFactor;
+      canvas.height = boardHeight * scaleFactor;
+      canvas.style.border = '1px solid #ccc';
+
+      // Draw board background
+      ctx.fillStyle = '#f8f9fa';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw pieces (rotated)
-      board.forEach(piece => {
-        ctx.fillStyle = '#4a5568';
-        ctx.fillRect(
-          piece.y * scale,  // Swap x and y
-          piece.x * scale,  // Swap x and y
-          piece.height * scale,  // Swap width and height
-          piece.width * scale   // Swap width and height
-        );
-        ctx.strokeStyle = '#000';
-        ctx.strokeRect(
-          piece.y * scale,
-          piece.x * scale,
-          piece.height * scale,
-          piece.width * scale
-        );
+      // Draw cut panels
+      board.usedRects.forEach(rect => {
+        if (!rect) return;
 
-        // Add dimensions text (rotated)
-        ctx.fillStyle = '#ffffff';
-        ctx.font = '22px Arial';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        const text = `${piece.width}x${piece.height}`;
-        ctx.fillText(
-          text,
-          (piece.y + piece.height/2) * scale,
-          (piece.x + piece.width/2) * scale
-        );
+        const x = rect.x * scaleFactor;
+        const y = rect.y * scaleFactor;
+        const width = rect.width * scaleFactor;
+        const height = rect.height * scaleFactor;
+
+        ctx.fillStyle = '#6c757d'; // Panel color
+        ctx.fillRect(x, y, width, height);
+        
+        ctx.strokeStyle = '#000'; // Panel outline
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, width, height);
+        
+        // Add text to indicate size
+        ctx.fillStyle = '#000';
+        ctx.font = `${10 * scaleFactor}px Arial`;
+        ctx.fillText(`${rect.width} x ${rect.height}`, x + 5, y + 15);
       });
 
+      // Append canvas to the container
       containerRef.current.appendChild(canvas);
     });
   }, [boards, boardWidth, boardHeight]);
 
   return (
     <div ref={containerRef} className="flex flex-wrap gap-4 p-4 overflow-auto max-w-full">
-      {/* canvas will be appended here */}
+      {/* Canvases will be appended here dynamically */}
     </div>
   );
-} 
+}
