@@ -27,6 +27,7 @@ model Invoice {
   notesB          String?
   items           String    @default("[]")
   taxes           String    @default("[]")
+  labels          String    @default("{\"invoiceNumber\":\"Invoice #\",\"invoiceDate\":\"Date\",\"itemDescription\":\"Description\",\"itemQuantity\":\"Quantity\",\"itemPrice\":\"Price\",\"subtotal\":\"Subtotal\",\"total\":\"Total\"}")
   currency        String    @default("$")
   createdAt       DateTime  @default(now())
   updatedAt       DateTime? @updatedAt
