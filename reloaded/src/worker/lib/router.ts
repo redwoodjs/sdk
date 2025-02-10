@@ -118,7 +118,7 @@ export function defineRoutes(routes: RouteDefinition[]): {
 
       // Array of handlers (middleware chain)
       if (Array.isArray(handler)) {
-        const handlers = handler;
+        const handlers = [...handler]
         handler = handlers.pop() as RouteFunction | RouteComponent;
 
         // loop over each function. Only the last function can be a page function.
