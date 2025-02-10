@@ -52,7 +52,8 @@
     "vite": "^6.0.11",
     "wrangler": "^3.105.1",
     "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1"
+    "@types/react-dom": "^18.3.1",
+    "prisma": "^6.3.1"
   },
   "prisma": {
     "seed": "pnpm seed"
