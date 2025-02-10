@@ -35,6 +35,9 @@ function calculateTaxes(subtotal: number, taxes: InvoiceTaxes[]) {
 function Spacer() {
   return <div className="col-span-full h-11" />;
 }
+function ColumnGap() {
+  return <div className="col-span-1 h-11" />;
+}
 
 export function InvoiceForm(props: {
   invoice: Awaited<ReturnType<typeof getInvoice>>;
@@ -79,12 +82,13 @@ export function InvoiceForm(props: {
           <Spacer />
 
           {/* SupplierName */}
-          <div className="col-span-7">
+          <div className="col-span-6 col-end-7">
             <SupplierName
               invoice={invoice}
               setInvoice={(newInvoice) => setInvoice(newInvoice)}
             />
           </div>
+          <ColumnGap />
           {/* SupplierContact */}
           <div className="col-span-5">
             <Textarea
@@ -100,7 +104,7 @@ export function InvoiceForm(props: {
           <Spacer />
 
           {/* Customer */}
-          <div className="col-span-7">
+          <div className="col-span-6">
             <Textarea
               placeholder="Flexopolis Gym&#10;1234 Main St&#10;Scranton, PA"
               defaultValue={invoice.customer}
@@ -109,6 +113,9 @@ export function InvoiceForm(props: {
               }
             />
           </div>
+
+          <ColumnGap />
+
           {/* Invoice Number + Date */}
           <div className="col-span-5">
             <div className="grid grid-cols-5 border">
@@ -426,7 +433,7 @@ function Taxes(props: {
           <div className="col-span-2 border-r flex items-center">
             <Input
               type="text"
-              placeholder="Tax name"
+              placeholder="Tax "
               value={tax.description}
               className="font-bold"
               onChange={(e) =>
@@ -489,14 +496,18 @@ function SupplierName({
           alt={invoice.supplierName ?? "Logo"}
           className="max-w-100"
         />
-        <button
-          onClick={async () => {
-            await deleteLogo(invoice.id);
-            setInvoice({ ...invoice, supplierLogo: null });
-          }}
-        >
-          Remove Logo
-        </button>
+        <div className="flex p-2">
+          <Button
+            variant="outline"
+            onClick={async () => {
+              await deleteLogo(invoice.id);
+              setInvoice({ ...invoice, supplierLogo: null });
+            }}
+          >
+            <Trash2Icon />
+            Delete logo
+          </Button>
+        </div>
       </div>
     );
   } else {
@@ -529,7 +540,7 @@ function UploadLogo({
   onSuccess: (supplierLogo: string) => void;
 }) {
   return (
-    <div>
+    <div className="flex p-2 border border-gray-200">
       <input
         type="file"
         accept="image/*"
@@ -552,9 +563,6 @@ function UploadLogo({
             if (!response.ok) {
               throw new Error("Upload failed");
             }
-
-            // Handle successful upload
-            console.log("Upload successful");
             const data = (await response.json()) as { key: string };
             onSuccess(data.key);
           } catch (error) {
