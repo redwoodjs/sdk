@@ -42,68 +42,68 @@ export function BoardRenderer({ boards, boardWidth, boardHeight }) {
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       // Draw panels first
-board.usedRects.forEach(rect => {
-  const x = rect.y * scaleFactor;
-  const y = rect.x * scaleFactor;
-  const width = rect.height * scaleFactor;
-  const height = rect.width * scaleFactor;
+      board.usedRects.forEach(rect => {
+        const x = rect.y * scaleFactor;
+        const y = rect.x * scaleFactor;
+        const width = rect.height * scaleFactor;
+        const height = rect.width * scaleFactor;
 
-  ctx.fillStyle = getColorForSize(rect.width, rect.height);
-  ctx.fillRect(x, y, width, height);
+        ctx.fillStyle = getColorForSize(rect.width, rect.height);
+        ctx.fillRect(x, y, width, height);
 
-  ctx.strokeStyle = '#000';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(x, y, width, height);
+        ctx.strokeStyle = '#000';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, width, height);
 
-  // Adjust font size to fit inside small panels
-  const fontSize = Math.min(48 * scaleFactor, width * 0.3, height * 0.3);
-  ctx.font = `${fontSize}px Arial`;
-  ctx.fillStyle = '#000';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
+        // Adjust font size to fit inside small panels
+        const fontSize = Math.min(48 * scaleFactor, width * 0.3, height * 0.3);
+        ctx.font = `${fontSize}px Arial`;
+        ctx.fillStyle = '#000';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
 
-  // Place height text in the center
-  ctx.fillText(`${rect.height}`, x + width / 2, y + fontSize);
+        // Place height text in the center
+        ctx.fillText(`${rect.height}`, x + width / 2, y + fontSize);
 
-  // Rotate and place width text
-  ctx.save();
-  ctx.translate(x + fontSize, y + height / 2);
-  ctx.rotate(-Math.PI / 2);
-  ctx.fillText(`${rect.width}`, 0, 0);
-  ctx.restore();
-});
+        // Rotate and place width text
+        ctx.save();
+        ctx.translate(x + fontSize, y + height / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText(`${rect.width}`, 0, 0);
+        ctx.restore();
+      });
 
-// Draw free spaces
-board.freeRects.forEach(rect => {
-  const x = rect.y * scaleFactor;
-  const y = rect.x * scaleFactor;
-  const width = rect.height * scaleFactor;
-  const height = rect.width * scaleFactor;
+      // Draw free spaces
+      board.freeRects.forEach(rect => {
+        const x = rect.y * scaleFactor;
+        const y = rect.x * scaleFactor;
+        const width = rect.height * scaleFactor;
+        const height = rect.width * scaleFactor;
 
-  ctx.fillStyle = 'rgba(200, 200, 200, 0.5)'; // Light gray for free spaces
-  ctx.fillRect(x, y, width, height);
+        ctx.fillStyle = 'rgba(200, 200, 200, 0.5)'; // Light gray for free spaces
+        ctx.fillRect(x, y, width, height);
 
-  ctx.strokeStyle = '#999';
-  ctx.lineWidth = 1;
-  ctx.strokeRect(x, y, width, height);
+        ctx.strokeStyle = '#999';
+        ctx.lineWidth = 1;
+        ctx.strokeRect(x, y, width, height);
 
-  // Adjust font size for free space labels
-  const fontSize = Math.min(48 * scaleFactor, width * 0.3, height * 0.3);
-  ctx.font = `${fontSize}px Arial`;
-  ctx.fillStyle = '#555';
-  ctx.textAlign = 'center';
-  ctx.textBaseline = 'middle';
+        // Adjust font size for free space labels
+        const fontSize = Math.min(48 * scaleFactor, width * 0.3, height * 0.3);
+        ctx.font = `${fontSize}px Arial`;
+        ctx.fillStyle = '#555';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
 
-  // Ensure text is inside the free space
-  ctx.fillText(`${rect.height}`, x + width / 2, y + fontSize);
+        // Ensure text is inside the free space
+        ctx.fillText(`${rect.height}`, x + width / 2, y + fontSize);
 
-  // Rotate and place width text
-  ctx.save();
-  ctx.translate(x + fontSize, y + height / 2);
-  ctx.rotate(-Math.PI / 2);
-  ctx.fillText(`${rect.width}`, 0, 0);
-  ctx.restore();
-});
+        // Rotate and place width text
+        ctx.save();
+        ctx.translate(x + fontSize, y + height / 2);
+        ctx.rotate(-Math.PI / 2);
+        ctx.fillText(`${rect.width}`, 0, 0);
+        ctx.restore();
+      });
 
 
 
