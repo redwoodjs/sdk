@@ -1,7 +1,6 @@
 "use server";
 
 import { Resend } from "resend";
-import { getEnv } from "../../../env";
 import { link } from "../../shared/links";
 import { db } from "@redwoodjs/reloaded/worker";
 import { RouteContext } from "@redwoodjs/reloaded/router";
@@ -25,16 +24,18 @@ export async function generateAuthToken(email: string) {
 }
 
 export async function emailLoginLink(email: string, ctx: RouteContext) {
-  console.log('### generateAuthToken')
+  
   const token = await generateAuthToken(email);
-  console.log('### generateAuthToken done')
-
-
-  console.log('### ctx', ctx)
-  const { env } = ctx;
-  console.log('### env', env)
+  const { env } = ctx;  
   const loginUrl = `${env.APP_URL}${link('/user/auth')}?token=${token}&email=${encodeURIComponent(email)}`;
-  console.log('### loginUrl', loginUrl)
+
+  // TODO (peterp, 2025-02-11): Fix this better.
+  if (!env.RESEND_API_KEY) {
+    console.log("In development mode, not sending email.")
+    console.log('token', token)
+    return
+  }
+
   const resend = new Resend(env.RESEND_API_KEY);
   console.log('### resend')
   await resend.emails.send({
