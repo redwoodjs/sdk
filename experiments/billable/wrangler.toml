@@ -5,10 +5,10 @@ compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 assets = { binding = "ASSETS" }
 
-#workers_dev = false
-#routes = [
-#  { pattern = "billable.me", custom_domain = true }
-#]
+workers_dev = false
+routes = [
+  { pattern = "billable.me", custom_domain = true }
+]
 
 [observability]
 enabled = true
