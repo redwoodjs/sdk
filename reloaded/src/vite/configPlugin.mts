@@ -46,13 +46,12 @@ export const configPlugin = ({ mode,
             },
           },
           optimizeDeps: {
-            noDiscovery: true,
-            esbuildOptions: {
-              conditions: ["react-server"],
-            },
+            noDiscovery: false,
             include: [
+              "lodash",
+              "lodash/memoize",
               "react",
-              "react-dom",
+              "react-dom/client",
               "react/jsx-runtime",
               "react/jsx-dev-runtime",
               "react-server-dom-webpack/client.browser",
