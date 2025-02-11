@@ -19,6 +19,7 @@ import { copyPrismaWasmPlugin } from "./copyPrismaWasmPlugin.mjs";
 import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
 import { configPlugin } from "./configPlugin.mjs";
 import { $ } from '../lib/$.mjs';
+import { customReactBuildPlugin } from './customReactBuildPlugin.mjs';
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -47,6 +48,7 @@ export const redwoodPlugin = (options: RedwoodPluginOptions = {}): InlineConfig[
       workerEntryPathname,
       port: options.port ?? DEV_SERVER_PORT,
     }),
+    customReactBuildPlugin(),
     tsconfigPaths({ root: projectRootDir }),
     miniflarePlugin({
       rootDir: projectRootDir,

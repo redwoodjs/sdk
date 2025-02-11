@@ -60,10 +60,8 @@ export const configPlugin = ({ mode,
               conditions: ["workerd", "react-server"],
             },
             include: [
-              "react",
               "react/jsx-runtime",
               "react/jsx-dev-runtime",
-              "react-dom/server.edge",
               "@prisma/client",
             ],
           },
@@ -88,16 +86,6 @@ export const configPlugin = ({ mode,
       },
       resolve: {
         dedupe: ["react", 'react-dom/server.edge', 'react-server-dom-webpack/server.edge'],
-        alias: [
-          {
-            find: /^react$/,
-            replacement: resolve(VENDOR_DIST_DIR, "react.js"),
-          },
-          {
-            find: /^react-dom\/(server|server\.edge)$/,
-            replacement: resolve(VENDOR_DIST_DIR, "react-dom-server-edge.js"),
-          },
-        ],
       },
     };
 
