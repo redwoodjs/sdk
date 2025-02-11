@@ -14,7 +14,6 @@ import { useClientPlugin } from "./useClientPlugin.mjs";
 import { useClientLookupPlugin } from "./useClientLookupPlugin.mjs";
 import { miniflarePlugin } from "./miniflarePlugin.mjs";
 import { asyncSetupPlugin } from "./asyncSetupPlugin.mjs";
-import { restartPlugin } from "./restartPlugin.mjs";
 import { acceptWasmPlugin } from "./acceptWasmPlugin.mjs";
 import { copyPrismaWasmPlugin } from "./copyPrismaWasmPlugin.mjs";
 import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
