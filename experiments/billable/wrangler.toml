@@ -6,7 +6,9 @@ compatibility_flags = ["nodejs_compat"]
 assets = { binding = "ASSETS" }
 
 workers_dev = false
-route = { pattern = "billable.me/*", zone_name = "billable.me" }
+routes = [
+  { pattern = "billable.me", custom_domain = true }
+]
 
 [observability]
 enabled = true
@@ -30,6 +32,5 @@ tag = "v1"
 new_classes = [ "SessionDO" ]
 
 [vars]
-SECRET_KEY = "secret"
 RESEND_API_KEY="123"
 APP_URL="http://localhost:5173"
