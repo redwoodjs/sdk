@@ -57,3 +57,32 @@
     @apply font-sans antialiased bg-background text-foreground;
   }
 }
+
+
+@media print {
+  .print-container {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+  }
+  
+  .print-page {
+    page-break-before: always;
+    width: 210mm;
+    height: 297mm;
+    padding: 15mm;
+    background: white;
+    box-shadow: 0 0 5px rgba(0, 0, 0, 0.2);
+  }
+
+  table {
+    width: 100%;
+    border-collapse: collapse;
+  }
+
+  th, td {
+    border: 1px solid #ccc;
+    padding: 8px;
+    text-align: center;
+  }
+}

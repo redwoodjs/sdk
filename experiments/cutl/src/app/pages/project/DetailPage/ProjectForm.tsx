@@ -2,7 +2,7 @@
 
 import { useState, useRef } from "react";
 import { type ProjectItem, type getProject } from "./ProjectDetailPage";
-import { saveProject } from "./functions";
+import { saveProject } from "./serverFunctions";
 import { PrintPdf } from "./PrintToPdf";
 import { Button } from "src/components/ui/button";
 import { Input } from "src/components/ui/input";
