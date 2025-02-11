@@ -56,7 +56,7 @@ export const defineApp = <Context,>(options: DefineAppOptions<Context>) => {
         // (from experimentation, it is not in node_modules/.vite). This means that if you were to subsequently
         // change the code to _not_ have Prisma used after the initial request, the WASM will still be cached and
         // the request will not hang. This makes this issue particularly hard to debug.
-        await db.$queryRaw`SELECT 1`;
+        //await db.$queryRaw`SELECT 1`;
 
         try {
           renderToReadableStream(<div>Hello</div>);

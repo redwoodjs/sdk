@@ -1,15 +1,15 @@
 import { copy, pathExists } from 'fs-extra';
+import { resolve } from 'node:path';
 import MagicString from "magic-string";
 import path from 'path';
 import { Plugin } from 'vite';
-import { createRequire } from 'module';
 
 export const copyPrismaWasmPlugin = ({ rootDir }: { rootDir: string }): Plugin => ({
   name: 'copy-prisma-wasm',
   enforce: 'post',
   apply: 'build',
   async writeBundle() {
-    const wasmFilePath = createRequire(createRequire(import.meta.url).resolve('@prisma/client')).resolve('.prisma/client/query_engine_bg.wasm');
+    const wasmFilePath = resolve(rootDir, "node_modules/.prisma/client/query_engine_bg.wasm");
 
     const fileName = path.basename(wasmFilePath);
     const outputPath = path.resolve(rootDir, 'dist', 'worker', fileName);
