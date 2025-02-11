@@ -3,7 +3,8 @@
 import { Layout } from "../../Layout";
 
 import { CreateInvoiceButton } from "./CreateInvoiceButton";
-import { RouteContext, db } from "@redwoodjs/reloaded/worker";
+import { db } from "@redwoodjs/reloaded/worker";
+import { RouteContext } from "@redwoodjs/reloaded/router";
 import { link } from "src/shared/links";
 
 import {

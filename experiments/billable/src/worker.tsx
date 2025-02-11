@@ -1,8 +1,5 @@
-import "react";
-import "react-dom/server.edge";
-import "react-server-dom-webpack/server.edge";
-import "react-server-dom-webpack/client.edge";
-import { db, defineApp, index, prefix } from '@redwoodjs/reloaded/worker';
+import { db, defineApp } from '@redwoodjs/reloaded/worker';
+import { index, prefix } from '@redwoodjs/reloaded/router';
 
 import { link } from "src/shared/links";
 import { Head } from 'src/Head';

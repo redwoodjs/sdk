@@ -1,4 +1,5 @@
-import { db, route } from '@redwoodjs/reloaded/worker';
+import { db } from '@redwoodjs/reloaded/worker';
+import { route } from '@redwoodjs/reloaded/router';
 import { performLogin } from "../../../auth";
 import { LoginPage } from "./LoginPage";
 

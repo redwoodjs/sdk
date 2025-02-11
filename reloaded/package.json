@@ -19,8 +19,12 @@
       "types": "./dist/vite/index.d.mts"
     },
     "./worker": {
-      "default": "./dist/worker/index.js",
-      "types": "./dist/worker/index.d.ts"
+      "default": "./dist/runtime/entries/worker.js",
+      "types": "./dist/runtime/entries/worker.d.ts"
+    },
+    "./router": {
+      "default": "./dist/runtime/entries/router.js",
+      "types": "./dist/runtime/entries/router.d.ts"
     }
   },
   "keywords": [],

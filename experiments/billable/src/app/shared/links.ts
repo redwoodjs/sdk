@@ -1,4 +1,4 @@
-import { defineLinks } from "@redwoodjs/reloaded/worker";
+import { defineLinks } from "@redwoodjs/reloaded/router";
 
 export const link = defineLinks([
   '/',

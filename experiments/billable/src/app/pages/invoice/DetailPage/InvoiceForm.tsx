@@ -15,7 +15,8 @@ import { Textarea as OGTextarea } from "src/components/ui/textarea";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 import { cn } from "src/components/cn";
 import { toast, Toaster } from "sonner";
-import { RouteContext } from "@redwoodjs/reloaded/worker";
+import { RouteContext } from "@redwoodjs/reloaded/router";
+
 function calculateSubtotal(items: InvoiceItem[]) {
   let sum = 0;
   for (const item of items) {
