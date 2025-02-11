@@ -28,7 +28,6 @@ export default async function CutlistDetailPage({
   );
 
   let packer = await findOptimalPacking(panels, SHEET_WIDTH, SHEET_HEIGHT, BLADE_WIDTH)
-  console.log(packer)
   const boards = packer?.map((board: any) => {
     let usedRects = board.map((rect: any) => ({
       x: rect.x,
@@ -36,9 +35,9 @@ export default async function CutlistDetailPage({
       width: rect.width,
       height: rect.height
     }));
-  
+
     let freeRects = calculateFreeSpaces(board, SHEET_WIDTH, SHEET_HEIGHT);
-  
+
     return {
       width: board.width,
       height: board.height,
