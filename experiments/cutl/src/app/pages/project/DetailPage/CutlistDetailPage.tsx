@@ -7,7 +7,7 @@ import { Layout } from "src/pages/Layout";
 import { BreadcrumbList } from "src/components/ui/breadcrumb";
 import { link } from "src/shared/links";
 import { BoardRenderer } from "./BoardRenderer";
-import { findOptimalPacking } from "./functions";
+import { calculateFreeSpaces, findOptimalPacking } from "./functions";
 
 export default async function CutlistDetailPage({
   params,
@@ -27,24 +27,25 @@ export default async function CutlistDetailPage({
     })
   );
 
-  console.log("panels: ", panels)
-  console.log("boardWidth: ", SHEET_WIDTH)
-  console.log("boardHeight: ", SHEET_HEIGHT)
-  console.log("bladeWidth: ", BLADE_WIDTH)
-
-  // 
   let packer = await findOptimalPacking(panels, SHEET_WIDTH, SHEET_HEIGHT, BLADE_WIDTH)
   console.log(packer)
-  const boards = packer?.map((board: any) => ({
-    width: board.width,
-    height: board.height,
-    usedRects: board.map((rect: any) => ({
+  const boards = packer?.map((board: any) => {
+    let usedRects = board.map((rect: any) => ({
       x: rect.x,
       y: rect.y,
       width: rect.width,
       height: rect.height
-    }))
-  }))
+    }));
+  
+    let freeRects = calculateFreeSpaces(board, SHEET_WIDTH, SHEET_HEIGHT);
+  
+    return {
+      width: board.width,
+      height: board.height,
+      usedRects,
+      freeRects, // Store free spaces
+    };
+  });
 
   const boardCount = packer?.length ?? 0;
   const totalCost = boardCount * project.boardPrice;

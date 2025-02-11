@@ -31,52 +31,86 @@ export function BoardRenderer({ boards, boardWidth, boardHeight }) {
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      // Set canvas dimensions
-      const scaleFactor = 400 / boardWidth;
-      canvas.width = boardWidth * scaleFactor;
-      canvas.height = boardHeight * scaleFactor;
+      // Swap width and height for a horizontal layout
+      const scaleFactor = 550 / boardHeight;
+      canvas.width = boardHeight * scaleFactor; // Swapped width with height
+      canvas.height = boardWidth * scaleFactor; // Swapped height with width
       canvas.style.border = '1px solid #ccc';
 
       // Draw board background
       ctx.fillStyle = '#f8f9fa';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // Draw cut panels with colors assigned by size
-      board.usedRects.forEach(rect => {
-        if (!rect) return;
+      // Draw panels first
+board.usedRects.forEach(rect => {
+  const x = rect.y * scaleFactor;
+  const y = rect.x * scaleFactor;
+  const width = rect.height * scaleFactor;
+  const height = rect.width * scaleFactor;
 
-        const x = rect.x * scaleFactor;
-        const y = rect.y * scaleFactor;
-        const width = rect.width * scaleFactor;
-        const height = rect.height * scaleFactor;
+  ctx.fillStyle = getColorForSize(rect.width, rect.height);
+  ctx.fillRect(x, y, width, height);
 
-        ctx.fillStyle = getColorForSize(rect.width, rect.height);
-        ctx.fillRect(x, y, width, height);
-        
-        ctx.strokeStyle = '#000'; // Panel outline
-        ctx.lineWidth = 1;
-        ctx.strokeRect(x, y, width, height);
-        
-        // Set text properties
-        ctx.fillStyle = '#000';
-        ctx.font = `${48 * scaleFactor}px Arial`;
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
+  ctx.strokeStyle = '#000';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x, y, width, height);
 
-        // Draw width label on the top edge
-        ctx.fillText(`${rect.width}`, x + width / 2, y + 48 * scaleFactor);
+  // Adjust font size to fit inside small panels
+  const fontSize = Math.min(48 * scaleFactor, width * 0.3, height * 0.3);
+  ctx.font = `${fontSize}px Arial`;
+  ctx.fillStyle = '#000';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
 
-        // Rotate and draw height label on the left edge
-        ctx.save();
-        ctx.translate(x + 48 * scaleFactor, y + height / 2);
-        ctx.rotate(-Math.PI / 2);
-        ctx.fillText(`${rect.height}`, 0, 0);
-        ctx.restore();
-      });
+  // Place height text in the center
+  ctx.fillText(`${rect.height}`, x + width / 2, y + fontSize);
+
+  // Rotate and place width text
+  ctx.save();
+  ctx.translate(x + fontSize, y + height / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText(`${rect.width}`, 0, 0);
+  ctx.restore();
+});
+
+// Draw free spaces
+board.freeRects.forEach(rect => {
+  const x = rect.y * scaleFactor;
+  const y = rect.x * scaleFactor;
+  const width = rect.height * scaleFactor;
+  const height = rect.width * scaleFactor;
+
+  ctx.fillStyle = 'rgba(200, 200, 200, 0.5)'; // Light gray for free spaces
+  ctx.fillRect(x, y, width, height);
+
+  ctx.strokeStyle = '#999';
+  ctx.lineWidth = 1;
+  ctx.strokeRect(x, y, width, height);
+
+  // Adjust font size for free space labels
+  const fontSize = Math.min(48 * scaleFactor, width * 0.3, height * 0.3);
+  ctx.font = `${fontSize}px Arial`;
+  ctx.fillStyle = '#555';
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+
+  // Ensure text is inside the free space
+  ctx.fillText(`${rect.height}`, x + width / 2, y + fontSize);
+
+  // Rotate and place width text
+  ctx.save();
+  ctx.translate(x + fontSize, y + height / 2);
+  ctx.rotate(-Math.PI / 2);
+  ctx.fillText(`${rect.width}`, 0, 0);
+  ctx.restore();
+});
+
+
 
       // Append canvas to the container
       containerRef.current.appendChild(canvas);
     });
+
   }, [boards, boardWidth, boardHeight, getColorForSize]);
 
   return (
