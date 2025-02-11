@@ -3,7 +3,7 @@ import { createFromReadableStream } from "react-server-dom-webpack/client.edge";
 import { use } from 'react';
 import { renderToReadableStream } from 'react-dom/server.edge';
 
-export const transformRscToHtmlStream = async ({
+export const transformRscToHtmlStream = ({
   stream,
   Parent = ({ children }) => <>{children}</>,
 }: {
