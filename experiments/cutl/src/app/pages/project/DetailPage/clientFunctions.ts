@@ -7,7 +7,13 @@ export async function findOptimalPacking(
     bladeWidth: number
   ) {
     // Import Guillotine Packer dynamically for Cloudflare Workers
-    const Packer = await import('guillotine-packer');
+     // **Ensure we only import on the server**
+     let Packer;
+     if (import.meta.env.SSR) {
+        Packer = await import('guillotine-packer');
+    } else {
+        throw new Error("findOptimalPacking should only be called on the server");
+    }
     const packer = Packer.packer;
   
     const totalPanelArea = panels.reduce((sum, panel) => sum + (panel.width * panel.height), 0);
