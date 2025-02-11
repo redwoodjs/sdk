@@ -2,12 +2,12 @@ import { RouteContext } from '@redwoodjs/reloaded/worker';
 import { Layout } from "../Layout";
 import { InvoiceForm } from "../invoice/DetailPage/InvoiceForm";
 export default function HomePage({ ctx }: RouteContext) {
-  // We will make the invoice save to a local database.
   return (
     <Layout ctx={ctx}>
       <InvoiceForm
         invoice={{
           items: [{
+            description: "",
             quantity: 1,
             price: 1,
           }],
