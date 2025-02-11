@@ -18,6 +18,9 @@ const configs = {
       sourcemap: true,
       minify: MODE === "production",
     },
+    define: {
+      "process.env.NODE_ENV": JSON.stringify(MODE),
+    },
   }),
   reactServerInternals: (): InlineConfig =>
     mergeConfig(configs.common(), {

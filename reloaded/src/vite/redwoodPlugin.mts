@@ -24,7 +24,6 @@ import { $ } from '../lib/$.mjs';
 export type RedwoodPluginOptions = {
   silent?: boolean;
   port?: number;
-  restartOnChanges?: boolean;
   rootDir?: string;
   mode?: 'development' | 'production';
   configPath?: string;
@@ -71,20 +70,6 @@ export const redwoodPlugin = (options: RedwoodPluginOptions = {}): InlineConfig[
         }
       }
     }),
-    ...options.restartOnChanges
-      ? [restartPlugin({
-        filter: (filepath: string) =>
-          !filepath.endsWith(".d.ts") &&
-          (filepath.endsWith(".ts") ||
-            filepath.endsWith(".tsx") ||
-            filepath.endsWith(".mts") ||
-            filepath.endsWith(".js") ||
-            filepath.endsWith(".mjs") ||
-            filepath.endsWith(".jsx") ||
-            filepath.endsWith(".json")) &&
-          dirname(filepath) === projectRootDir,
-      })]
-      : [],
     useClientLookupPlugin({
       rootDir: projectRootDir,
       containingPath: "./src/app",

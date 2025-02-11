@@ -46,7 +46,7 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
           configPath: tmpWorkerPath.path,
           entry: {
             worker: scriptPath,
-          }
+          },
         })
       ],
     });

@@ -10,6 +10,7 @@ import { rscActionHandler } from "./register/worker";
 import { ErrorResponse } from "./error";
 
 import { RouteDefinition, defineRoutes } from "./lib/router";
+import { renderToReadableStream } from 'react-dom/server.edge';
 
 declare global {
   type Env = {
@@ -56,6 +57,15 @@ export const defineApp = <Context,>(options: DefineAppOptions<Context>) => {
         // change the code to _not_ have Prisma used after the initial request, the WASM will still be cached and
         // the request will not hang. This makes this issue particularly hard to debug.
         await db.$queryRaw`SELECT 1`;
+        // @ts-ignore
+        console.log('###', (await import('react'))?.__CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE?.H === null)
+
+        try {
+          renderToReadableStream(<div>Hello</div>);
+        } catch {}
+        //try {
+        //  renderToReadableStream(<div>Hello</div>);
+        //} catch {}
 
         const url = new URL(request.url);
 

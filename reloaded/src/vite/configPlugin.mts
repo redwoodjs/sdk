@@ -63,10 +63,8 @@ export const configPlugin = ({ mode,
               "react",
               "react/jsx-runtime",
               "react/jsx-dev-runtime",
-              "react-server-dom-webpack/server.edge",
               "react-dom/server.edge",
               "@prisma/client",
-              "@redwoodjs/reloaded/worker",
             ],
           },
           build: {
@@ -89,7 +87,7 @@ export const configPlugin = ({ mode,
         port: port ?? DEV_SERVER_PORT,
       },
       resolve: {
-        dedupe: ["react"],
+        dedupe: ["react", 'react-dom/server.edge', 'react-server-dom-webpack/server.edge'],
         alias: [
           {
             find: /^react$/,
