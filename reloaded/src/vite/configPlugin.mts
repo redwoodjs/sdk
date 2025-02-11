@@ -45,8 +45,18 @@ export const configPlugin = ({ mode,
               input: { client: clientEntryPathname },
             },
           },
-          resolve: {
-            external: ["react"],
+          optimizeDeps: {
+            noDiscovery: true,
+            esbuildOptions: {
+              conditions: ["react-server"],
+            },
+            include: [
+              "react",
+              "react-dom",
+              "react/jsx-runtime",
+              "react/jsx-dev-runtime",
+              "react-server-dom-webpack/client.browser",
+            ],
           },
         },
         worker: {
@@ -62,6 +72,8 @@ export const configPlugin = ({ mode,
             include: [
               "react/jsx-runtime",
               "react/jsx-dev-runtime",
+              "react-server-dom-webpack/client.edge",
+              "react-server-dom-webpack/server.edge",
               "@prisma/client",
             ],
           },
@@ -83,9 +95,6 @@ export const configPlugin = ({ mode,
       server: {
         hmr: true,
         port: port ?? DEV_SERVER_PORT,
-      },
-      resolve: {
-        dedupe: ["react", 'react-dom/server.edge', 'react-server-dom-webpack/server.edge'],
       },
     };
 

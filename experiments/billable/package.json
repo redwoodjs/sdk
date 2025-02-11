@@ -22,7 +22,8 @@
     "clean:vendor": "rm -rf ./vendor/dist",
     "release": "pnpm build && wrangler deploy",
     "format": "prettier --write ./src",
-    "__reset": "(cd ../../ && (cd reloaded && NODE_ENV=development pnpm build) && (cd experiments/billable && pnpm prisma generate && pnpm clean:vite))",
+    "__reset:reinstall": "(cd ../../ && rm -rf node_modules && rm -rf reloaded/node_modules && rm -rf experiments/billable/node_modules && pnpm install)",
+    "__reset": "(cd ../../reloaded && NODE_ENV=development pnpm build) && pnpm prisma generate && pnpm clean:vite",
     "__reset:dev": "pnpm __reset && pnpm dev",
     "__reset:build": "pnpm __reset && pnpm build",
     "__reset:release": "pnpm __reset && pnpm release"

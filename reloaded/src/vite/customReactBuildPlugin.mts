@@ -8,11 +8,11 @@ export const customReactBuildPlugin = (): Plugin => {
     name: "custom-react-build-plugin",
     enforce: "pre",
 
-    resolveId(id) {
-      if (this.environment.name !== "worker") {
-        return;
-      }
+    applyToEnvironment: (environment) => {
+      return environment.name === "worker";
+    },
 
+    resolveId(id) {
       if (id === "react") {
         return resolve(VENDOR_DIST_DIR, "react.js");
       }
