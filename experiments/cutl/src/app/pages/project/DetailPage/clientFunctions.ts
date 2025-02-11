@@ -1,67 +1,81 @@
 "use client"
 
+// 🛑 Use a WeakMap for per-request caching (Cloudflare-Safe)
+const REQUEST_CACHE = new WeakMap<object, Map<string, any>>();
+
 export async function findOptimalPacking(
     panels: { width: number; height: number }[],
     boardWidth: number,
     boardHeight: number,
     bladeWidth: number
-  ) {
+) {
+    const cacheKey = JSON.stringify({ panels, boardWidth, boardHeight, bladeWidth });
+
+    // Ensure cache is created for each request
+    let cache = REQUEST_CACHE.get(globalThis);
+    if (!cache) {
+        cache = new Map<string, any>();
+        REQUEST_CACHE.set(globalThis, cache);
+    }
+
+    // ⚡ Check cache first (per request)
+    if (cache.has(cacheKey)) {
+        console.log("⚡ Using Cached Packing Result");
+        return cache.get(cacheKey);
+    }
+
     // Import Guillotine Packer dynamically for Cloudflare Workers
-     // **Ensure we only import on the server**
-     let Packer;
-     if (import.meta.env.SSR) {
+    let Packer;
+    // @ts-ignore
+    if (import.meta.env.SSR) {
         Packer = await import('guillotine-packer');
     } else {
         throw new Error("findOptimalPacking should only be called on the server");
     }
     const packer = Packer.packer;
-  
-    const totalPanelArea = panels.reduce((sum, panel) => sum + (panel.width * panel.height), 0);
-    const boardArea = boardWidth * boardHeight;
-  
-    console.log("📏 Total Panel Area:", totalPanelArea);
-    console.log("📐 Board Area:", boardArea);
+
+    console.log("📏 Total Panel Area:", panels.reduce((sum, panel) => sum + (panel.width * panel.height), 0));
+    console.log("📐 Board Area:", boardWidth * boardHeight);
     console.log("🔪 Blade Width:", bladeWidth);
-    console.log("📝 Expected Board Usage:", totalPanelArea / boardArea);
-  
-  
-  
-  
-    const forcedSortStrategy = Packer.SortStrategy.Area;  // Sort by area for better utilization
-    const forcedSplitStrategy = Packer.SplitStrategy.ShortLeftoverAxisSplit; // Favor short leftover areas
-    const forcedSelectionStrategy = Packer.SelectionStrategy.BEST_AREA_FIT; // Prioritize maximizing fit
-  
+
+    const forcedSortStrategy = Packer.SortStrategy.Area;  
+    const forcedSplitStrategy = Packer.SplitStrategy.ShortLeftoverAxisSplit;
+    const forcedSelectionStrategy = Packer.SelectionStrategy.BEST_AREA_FIT;
+
     console.log("🔧 Forcing Strategies:");
     console.log("Sort Strategy:", forcedSortStrategy);
     console.log("Split Strategy:", forcedSplitStrategy);
     console.log("Selection Strategy:", forcedSelectionStrategy);
-  
-  
+
+    // 🛠 Run the packing algorithm
     const result = await packer(
-      {
-        binHeight: boardHeight,
-        binWidth: boardWidth,
-        items: panels.map((panel) => ({
-          name: "panel",
-          width: panel.width,
-          height: panel.height,
-        })),
-      },
-      {
-        allowRotation: true, // Ensure rotation is enabled
-        kerfSize: bladeWidth,
-        sortStrategy: forcedSortStrategy,
-        splitStrategy: forcedSplitStrategy,
-        selectionStrategy: forcedSelectionStrategy
-      }
+        {
+            binHeight: boardHeight,
+            binWidth: boardWidth,
+            items: panels.map((panel) => ({
+                name: "panel",
+                width: panel.width,
+                height: panel.height,
+            })),
+        },
+        {
+            allowRotation: true,
+            kerfSize: bladeWidth,
+            sortStrategy: forcedSortStrategy,
+            splitStrategy: forcedSplitStrategy,
+            selectionStrategy: forcedSelectionStrategy
+        }
     );
+
+    // ✅ Store in per-request cache
+    cache.set(cacheKey, result);
+
     return result;
-  }
+}
+
   
-  export function calculateFreeSpaces(usedRects, boardWidth, boardHeight, bladeWidth) {
-    let freeRects = [];
-  
-    // Sort panels by position (top-left first)
+  export function calculateFreeSpaces(usedRects:{x:number, y:number, width:number, height:number}[], boardWidth:number, boardHeight:number, bladeWidth:number) {
+      // Sort panels by position (top-left first)
     usedRects.sort((a, b) => Math.round(a.y) - Math.round(b.y) || Math.round(a.x) - Math.round(b.x));
   
     let occupiedGrid = Array.from({ length: Math.round(boardHeight) }, () =>
@@ -118,7 +132,7 @@ export async function findOptimalPacking(
     }
   
     // **Step 2: Keep Only One Large Free Space Instead of Splitting**
-    let optimizedFreeRects = [];
+    let optimizedFreeRects: {x:number, y:number, width:number, height:number}[] = [];
     rawFreeRects.sort((a, b) => (b.width * b.height) - (a.width * a.height)); // Sort by area (largest first)
   
     rawFreeRects.forEach(rect => {

@@ -28,23 +28,31 @@ export default async function CutlistDetailPage({
   );
 
   let packer = await findOptimalPacking(panels, SHEET_WIDTH, SHEET_HEIGHT, BLADE_WIDTH);
-const boards = packer?.map((board: any) => {
-  let usedRects = board.map((rect: any) => ({
-    x: rect.x,
-    y: rect.y,
-    width: rect.width,
-    height: rect.height
-  }));
+  const boards = packer?.map((board: any) => {
+    let usedRects = board.map((rect: any) => ({
+      x: rect.x,
+      y: rect.y,
+      width: rect.width,
+      height: rect.height
+    }));
 
-  let freeRects = calculateFreeSpaces(board, SHEET_WIDTH, SHEET_HEIGHT, BLADE_WIDTH); // Pass blade width
+    let freeRects = calculateFreeSpaces(board, SHEET_WIDTH, SHEET_HEIGHT, BLADE_WIDTH); // Pass blade width
 
-  return {
-    width: board.width,
-    height: board.height,
-    usedRects,
-    freeRects,
-  };
-});
+    return {
+      width: board.width,
+      height: board.height,
+      usedRects,
+      freeRects,
+    };
+  });
+
+  if (boards.length > 0) {
+    // update the project with the new needed and cost
+    await updateProject(params.id, {
+      boardsNeeded: boards.length,
+      total: boards.length * project.boardPrice
+    });
+  }
 
 
   const boardCount = packer?.length ?? 0;
@@ -88,13 +96,12 @@ const boards = packer?.map((board: any) => {
         <h3 className="text-sm font-medium text-gray-500 uppercase tracking-wide mb-4">
           Cut Layout
         </h3>
-        {boards && (
-          <BoardRenderer
-            boards={boards}
-            boardWidth={project.boardWidth}
-            boardHeight={project.boardLength}
-          />
+        {boards ? (
+          <BoardRenderer boards={boards} boardWidth={project.boardWidth} boardHeight={project.boardLength} />
+        ) : (
+          <p>Loading cutting layout...</p> // Placeholder while waiting for data
         )}
+
       </div>
     </Layout>
   );

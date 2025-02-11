@@ -2,14 +2,14 @@
 
 import { useEffect, useRef, useMemo } from 'react';
 
-export function BoardRenderer({ boards, boardWidth, boardHeight }) {
-  const containerRef = useRef(null);
-
+export function BoardRenderer({ boards, boardWidth, boardHeight }: { boards: any, boardWidth: any, boardHeight: any }) {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const prevBoardsRef = useRef<any[]>([]);
   // Generate a unique color for each distinct rectangle size
   const getColorForSize = useMemo(() => {
     const colorMap = new Map();
     const generateColor = () => `hsl(${Math.random() * 360}, 70%, 60%)`;
-    return (width, height) => {
+    return (width: number, height: number) => {
       const key = `${width}x${height}`;
       if (!colorMap.has(key)) {
         colorMap.set(key, generateColor());
@@ -21,28 +21,30 @@ export function BoardRenderer({ boards, boardWidth, boardHeight }) {
   useEffect(() => {
     if (!containerRef.current || !boards || boards.length === 0) return;
 
-    // Clear previous canvas elements
-    containerRef.current.innerHTML = '';
+    // Prevent unnecessary re-renders
+    if (JSON.stringify(boards) === JSON.stringify(prevBoardsRef.current)) {
+      return;
+    }
+    prevBoardsRef.current = boards; // Store previous boards
 
-    boards.forEach((board) => {
+    containerRef.current.innerHTML = ''; // Clear previous canvas
+
+    boards.forEach((board: any) => {
       if (!board || !board.usedRects) return;
-
       const canvas = document.createElement('canvas');
       const ctx = canvas.getContext('2d');
       if (!ctx) return;
 
-      // Swap width and height for a horizontal layout
       const scaleFactor = 550 / boardHeight;
-      canvas.width = boardHeight * scaleFactor; // Swapped width with height
-      canvas.height = boardWidth * scaleFactor; // Swapped height with width
+      canvas.width = boardHeight * scaleFactor;
+      canvas.height = boardWidth * scaleFactor;
       canvas.style.border = '1px solid #ccc';
 
-      // Draw board background
       ctx.fillStyle = '#f8f9fa';
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
       // Draw panels first
-      board.usedRects.forEach(rect => {
+      board.usedRects.forEach((rect:any) => {
         const x = rect.y * scaleFactor;
         const y = rect.x * scaleFactor;
         const width = rect.height * scaleFactor;
@@ -74,7 +76,7 @@ export function BoardRenderer({ boards, boardWidth, boardHeight }) {
       });
 
       // Draw free spaces
-      board.freeRects.forEach(rect => {
+      board.freeRects.forEach((rect:any) => {
         const x = rect.y * scaleFactor;
         const y = rect.x * scaleFactor;
         const width = rect.height * scaleFactor;
@@ -104,18 +106,19 @@ export function BoardRenderer({ boards, boardWidth, boardHeight }) {
         ctx.fillText(`${rect.width}`, 0, 0);
         ctx.restore();
       });
+      
 
-
-
-      // Append canvas to the container
-      containerRef.current.appendChild(canvas);
+      if (containerRef.current) {
+        containerRef.current.appendChild(canvas);
+      }
     });
 
-  }, [boards, boardWidth, boardHeight, getColorForSize]);
+  }, [boards, boardWidth, boardHeight]);
+
 
   return (
     <div ref={containerRef} className="flex flex-wrap gap-4 p-4 overflow-auto max-w-full">
-      {/* Canvases will be appended here dynamically */}
+      Loading...
     </div>
   );
 }
