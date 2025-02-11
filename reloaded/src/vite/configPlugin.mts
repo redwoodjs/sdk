@@ -73,7 +73,6 @@ export const configPlugin = ({ mode,
               "react/jsx-dev-runtime",
               "react-server-dom-webpack/client.edge",
               "react-server-dom-webpack/server.edge",
-              "@prisma/client",
             ],
           },
           build: {
@@ -95,6 +94,14 @@ export const configPlugin = ({ mode,
         hmr: true,
         port: port ?? DEV_SERVER_PORT,
       },
+      resolve: {
+        conditions: ["workerd"],
+        alias: {
+          ".prisma/client/default": createRequire(
+            createRequire(import.meta.url).resolve("@prisma/client"),
+          ).resolve(".prisma/client/wasm"),
+        },
+      },
     };
 
     if (command === 'build') {
@@ -106,13 +113,6 @@ export const configPlugin = ({ mode,
                 external: ["cloudflare:workers", "node:stream", /\.wasm$/],
               },
             },
-          },
-        },
-        resolve: {
-          alias: {
-            ".prisma/client/default": createRequire(
-              createRequire(import.meta.url).resolve("@prisma/client"),
-            ).resolve(".prisma/client/wasm"),
           },
         },
       });
