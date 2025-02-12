@@ -47,6 +47,8 @@ export function InvoiceForm(props: {
 
   const pdfContentRef = useRef<HTMLDivElement>(null);
 
+  const isLoggedIn = props.ctx?.user;
+
   return (
     <div>
       <Toaster />
@@ -54,11 +56,11 @@ export function InvoiceForm(props: {
         <PrintPdf contentRef={pdfContentRef} />
         <Button
           onClick={async () => {
-            if (props.ctx?.user) {
+            if (isLoggedIn) {
               await saveInvoice(invoice.id, invoice, items, taxes);
               window.location.href = link("/invoice/list");
             } else {
-              toast.error("You must be logged in to save an invoice.");
+              toast.error("You must be logged in to save an invoice");
             }
           }}
         >
@@ -85,6 +87,7 @@ export function InvoiceForm(props: {
             <SupplierName
               invoice={invoice}
               setInvoice={(newInvoice) => setInvoice(newInvoice)}
+              isLoggedIn={isLoggedIn}
             />
           </div>
           <ColumnGap />
@@ -485,6 +488,7 @@ function Taxes(props: {
 function SupplierName({
   invoice,
   setInvoice,
+  isLoggedIn,
 }: {
   invoice: Awaited<ReturnType<typeof getInvoice>>;
   setInvoice: (invoice: Awaited<ReturnType<typeof getInvoice>>) => void;
@@ -523,12 +527,12 @@ function SupplierName({
             setInvoice({ ...invoice, supplierName: e.target.value })
           }
         />
-        <UploadLogo
+        {isLoggedIn && <UploadLogo
           invoiceId={invoice.id}
           onSuccess={(supplierLogo) => {
             setInvoice({ ...invoice, supplierLogo });
           }}
-        />
+        />}
       </div>
     );
   }
