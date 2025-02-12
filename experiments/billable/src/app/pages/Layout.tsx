@@ -59,7 +59,7 @@ export function Layout({
 
 
       <div className="px-8 py-4 flex justify-between items-center border-t">
-        Built with RedwoodJS.
+        Built with <a href="https://redwoodjs.com">RedwoodJS</a>
       </div>
     </div>
   );
