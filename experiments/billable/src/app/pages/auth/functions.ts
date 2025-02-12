@@ -46,6 +46,9 @@ export async function emailLoginLink(email: string, ctx: RouteContext) {
     <h1>Login to Billable</h1>
     <p>Click the link to log in to your account:</p>
     <a href="${loginUrl}">Login to Billable</a>
+
+    <p>If you wish to enter the token manually, it is ${token}.</p>
+
     <p>This link will expire in 24 hours.</p>
   `,
   });
