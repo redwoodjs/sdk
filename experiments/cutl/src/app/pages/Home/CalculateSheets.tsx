@@ -51,6 +51,7 @@ export function CalculateSheets() {
     const [currentConfig, setCurrentConfig] = useState<string | null>("Demo")
     const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([])
     const printRef = useRef<HTMLDivElement>(null)
+    const [isCalculating, setIsCalculating] = useState(false)
 
     // Load saved configurations and set first one as current on mount
     useEffect(() => {
@@ -211,15 +212,20 @@ export function CalculateSheets() {
     }
 
     const calculateCuts = async () => {
-        const flatPanels = panels.flatMap(item =>
-            Array(item.quantity).fill({
-                width: item.width,
-                length: item.length
-            })
-        );
-        const boards = await calculateCutsAction(flatPanels, sheetWidth, sheetLength, bladeWidth);
-        if (boards) {
-            setCalculatedSheets(boards);
+        setIsCalculating(true)
+        try {
+            const flatPanels = panels.flatMap(item =>
+                Array(item.quantity).fill({
+                    width: item.width,
+                    length: item.length
+                })
+            );
+            const boards = await calculateCutsAction(flatPanels, sheetWidth, sheetLength, bladeWidth);
+            if (boards) {
+                setCalculatedSheets(boards);
+            }
+        } finally {
+            setIsCalculating(false)
         }
     }
 
@@ -628,8 +634,20 @@ export function CalculateSheets() {
                 </div>
 
                 <div className="flex gap-2">
-                    <Button variant="color" className="flex-1" onClick={calculateCuts}>
-                        Calculate Cuts
+                    <Button 
+                        variant="color" 
+                        className="flex-1" 
+                        onClick={calculateCuts}
+                        disabled={isCalculating}
+                    >
+                        {isCalculating ? (
+                            <>
+                                <div className="mr-2 h-4 w-4 animate-spin rounded-full border-2 border-b-transparent"></div>
+                                Calculating...
+                            </>
+                        ) : (
+                            'Calculate Cuts'
+                        )}
                     </Button>
                     <DropdownMenu>
                         <DropdownMenuTrigger asChild>
