@@ -16,6 +16,7 @@ import { defineRoutes, index, prefix, route } from "./lib/router";
 import { authRoutes } from "./app/pages/auth/routes";
 import { projectRoutes } from "./app/pages/project/routes";
 import { link } from "src/shared/links";
+import { TestDropdown } from "src/components/TestDropdown";
 
 export { SessionDO } from "./session";
 
@@ -45,19 +46,21 @@ export default {
     globalThis.__webpack_require__ = ssrWebpackRequire;
 
     const router = defineRoutes([
-      index([
-        function ({ ctx }) {
-          if (ctx.user) {
-            return new Response(null, {
-              status: 302,
-              headers: { Location: link('/project/list') },
-            });
-          }
-        },
-        HomePage,
-      ]),
-      ...prefix("/auth", authRoutes),
-      ...prefix("/project", projectRoutes),
+      // index([
+      //   function ({ ctx }) {
+      //     if (ctx.user.id) {
+      //       return new Response(null, {
+      //         status: 302,
+      //         headers: { Location: link('/project/list') },
+      //       });
+      //     }
+      //   },
+      //   HomePage,
+      // ]),
+      index(HomePage),
+      // Will add user back later
+      // ...prefix("/auth", authRoutes),
+      // ...prefix("/project", projectRoutes),
     ]);
 
 

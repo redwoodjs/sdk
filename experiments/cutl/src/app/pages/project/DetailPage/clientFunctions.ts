@@ -4,12 +4,12 @@
 const REQUEST_CACHE = new WeakMap<object, Map<string, any>>();
 
 export async function findOptimalPacking(
-    panels: { width: number; height: number }[],
+    panels: { width: number; length: number }[],
     boardWidth: number,
-    boardHeight: number,
+    boardLength: number,
     bladeWidth: number
 ) {
-    const cacheKey = JSON.stringify({ panels, boardWidth, boardHeight, bladeWidth });
+    const cacheKey = JSON.stringify({ panels, boardWidth, boardLength, bladeWidth });
 
     // Ensure cache is created for each request
     let cache = REQUEST_CACHE.get(globalThis);
@@ -34,8 +34,8 @@ export async function findOptimalPacking(
     }
     const packer = Packer.packer;
 
-    console.log("📏 Total Panel Area:", panels.reduce((sum, panel) => sum + (panel.width * panel.height), 0));
-    console.log("📐 Board Area:", boardWidth * boardHeight);
+    console.log("📏 Total Panel Area:", panels.reduce((sum, panel) => sum + (panel.width * panel.length), 0));
+    console.log("📐 Board Area:", boardWidth * boardLength);
     console.log("🔪 Blade Width:", bladeWidth);
 
     const forcedSortStrategy = Packer.SortStrategy.Area;  
@@ -50,12 +50,12 @@ export async function findOptimalPacking(
     // 🛠 Run the packing algorithm
     const result = await packer(
         {
-            binHeight: boardHeight,
+            binHeight: boardLength,
             binWidth: boardWidth,
             items: panels.map((panel) => ({
                 name: "panel",
                 width: panel.width,
-                height: panel.height,
+                height: panel.length,
             })),
         },
         {
@@ -74,11 +74,11 @@ export async function findOptimalPacking(
 }
 
   
-  export function calculateFreeSpaces(usedRects:{x:number, y:number, width:number, height:number}[], boardWidth:number, boardHeight:number, bladeWidth:number) {
+  export function calculateFreeSpaces(usedRects:{x:number, y:number, width:number, length:number}[], boardWidth:number, boardLength:number, bladeWidth:number) {
       // Sort panels by position (top-left first)
     usedRects.sort((a, b) => Math.round(a.y) - Math.round(b.y) || Math.round(a.x) - Math.round(b.x));
   
-    let occupiedGrid = Array.from({ length: Math.round(boardHeight) }, () =>
+    let occupiedGrid = Array.from({ length: Math.round(boardLength) }, () =>
       Array(Math.round(boardWidth)).fill(false)
     );
   
@@ -87,7 +87,7 @@ export async function findOptimalPacking(
       let startX = Math.round(rect.x);
       let startY = Math.round(rect.y);
       let endX = Math.round(rect.x + rect.width);
-      let endY = Math.round(rect.y + rect.height);
+      let endY = Math.round(rect.y + rect.length);
   
       for (let y = startY; y < endY; y++) {
         for (let x = startX; x < endX; x++) {
@@ -98,31 +98,31 @@ export async function findOptimalPacking(
   
     // **Detect Free Spaces (Prioritize Larger Blocks)**
     let rawFreeRects = [];
-    for (let y = 0; y < Math.round(boardHeight); y++) {
+    for (let y = 0; y < Math.round(boardLength); y++) {
       for (let x = 0; x < Math.round(boardWidth); x++) {
         if (!occupiedGrid[y][x]) {
           let width = 1;
-          let height = 1;
+          let length = 1;
   
           while (x + width < Math.round(boardWidth) && !occupiedGrid[y][x + width]) {
             width++;
           }
   
-          while (y + height < Math.round(boardHeight) && !occupiedGrid[y + height][x]) {
-            height++;
+          while (y + length < Math.round(boardLength) && !occupiedGrid[y + length][x]) {
+            length++;
           }
   
           let adjustedWidth = width - Math.round(bladeWidth);
-          let adjustedHeight = height - Math.round(bladeWidth);
+          let adjustedLength = length - Math.round(bladeWidth);
   
           rawFreeRects.push({
             x: Math.round(x),
             y: Math.round(y),
             width: adjustedWidth,
-            height: adjustedHeight
+            length: adjustedLength
           });
   
-          for (let fy = y; fy < y + height; fy++) {
+          for (let fy = y; fy < y + length; fy++) {
             for (let fx = x; fx < x + width; fx++) {
               occupiedGrid[fy][fx] = true;
             }
@@ -132,8 +132,8 @@ export async function findOptimalPacking(
     }
   
     // **Step 2: Keep Only One Large Free Space Instead of Splitting**
-    let optimizedFreeRects: {x:number, y:number, width:number, height:number}[] = [];
-    rawFreeRects.sort((a, b) => (b.width * b.height) - (a.width * a.height)); // Sort by area (largest first)
+    let optimizedFreeRects: {x:number, y:number, width:number, length:number}[] = [];
+    rawFreeRects.sort((a, b) => (b.width * b.length) - (a.width * a.length)); // Sort by area (largest first)
   
     rawFreeRects.forEach(rect => {
       let isMerged = false;
@@ -142,14 +142,14 @@ export async function findOptimalPacking(
         let existing = optimizedFreeRects[i];
   
         // **Merge if touching vertically**
-        if (existing.x === rect.x && existing.width === rect.width && existing.y + existing.height + bladeWidth === rect.y) {
-          optimizedFreeRects[i].height += rect.height + bladeWidth;
+        if (existing.x === rect.x && existing.width === rect.width && existing.y + existing.length + bladeWidth === rect.y) {
+          optimizedFreeRects[i].length += rect.length + bladeWidth;
           isMerged = true;
           break;
         }
   
         // **Merge if touching horizontally**
-        if (existing.y === rect.y && existing.height === rect.height && existing.x + existing.width + bladeWidth === rect.x) {
+        if (existing.y === rect.y && existing.length === rect.length && existing.x + existing.width + bladeWidth === rect.x) {
           optimizedFreeRects[i].width += rect.width + bladeWidth;
           isMerged = true;
           break;

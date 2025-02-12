@@ -1,9 +1,14 @@
 #:schema node_modules/wrangler/config-schema.json
-name = "cutl"
+name = "cutable"
 main = "src/worker.tsx"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 assets = { binding = "ASSETS" }
+
+routes = [
+  { pattern = "cutable.app", custom_domain = true }
+]
+
 
 [observability]
 enabled = true
@@ -25,4 +30,4 @@ new_classes = [ "SessionDO" ]
 [vars]
 SECRET_KEY = "secret"
 RESEND_API_KEY="123"
-APP_URL="http://localhost:5173"
+APP_URL="http://cutable.app"
