@@ -1,0 +1,19 @@
+{
+  "name": "redwoodjs-calldrop",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "@redwoodjs/reloaded": "workspace:*",
+    "@tsconfig/recommended": "^1.0.8",
+    "typescript": "^5.6.3",
+    "vite": "^6.0.11",
+    "wrangler": "^3.105.1"
+  }
+}
