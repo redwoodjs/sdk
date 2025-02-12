@@ -8,13 +8,13 @@ export const moveStaticAssetsPlugin = ({ rootDir }: { rootDir: string }): Plugin
 
   async closeBundle() {
     if (this.environment.name === 'client') {
-      await $sh({ cwd: rootDir })`mv dist/client/assets/* dist/client/`;
-      await $sh({ cwd: rootDir })`rmdir dist/client/assets`;
+      await $sh({ cwd: rootDir })`mv dist/client/assets/* dist/client/ || true`;
+      await $sh({ cwd: rootDir })`rmdir dist/client/assets || true`;
     }
 
     if (this.environment.name === 'worker') {
-      await $sh({ cwd: rootDir })`mv dist/worker/assets/* dist/client/`;
-      await $sh({ cwd: rootDir })`rmdir dist/worker/assets`;
+      await $sh({ cwd: rootDir })`mv dist/worker/assets/* dist/client/ || true`;
+      await $sh({ cwd: rootDir })`rmdir dist/worker/assets || true`;
     }
   },
 });
