@@ -1,30 +1,77 @@
-# Quickstart
+# Start from scratch
 
-Note, the package names are wrong.
+This guide aims to give you all the parts you need to use Redwood. It is a bit more involved than using the quickstart (which doesn't exist yet), but allows you to clearly see all the moving parts in an incremental fashion.
 
-<!-- we should make this package manager agnostic? -->
+
+Install the dependencies.
+
 ```terminal
 pnpm init
-pnpm install vite @redwoodjs/origin
+pnpm install vite @redwoodjs/reloaded typescript wrangler
 ```
 
-## Initial setup
+Create a TypeScript configuration file.
+
+```terminal
+pnpm install @tsconfig/recommended
+touch tsconfig.json
+```
+
+```json(tsconfig.json)
+{ 
+    "extends": "@tsconfig/vite-react/tsconfig.json"
+}
+```
+
+Create a Wrangler configuration file:
+
+```toml(wrangler.toml)
+#:schema node_modules/wrangler/config-schema.json
+name = "<name>"
+main = "src/worker.tsx"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+assets = { binding = "ASSETS" }
+
+workers_dev = false
+
+[observability]
+enabled = true
+
+
+[durable_objects]
+bindings = [
+  { name = "SESSION_DO", class_name = "SessionDO" }
+]
+
+[[migrations]]
+tag = "v1"
+new_classes = [ "SessionDO" ]
+```
+
+
+
+Create a Vite configuration file:
 
 ```terminal
 touch vite.config.mts
 ```
 
-```typescript
-// vite.config.mts
+```typescript(vite.config.mts)
 import { defineConfig } from 'vite'
-import { redwoodJS } from '@redwoodjs/origin'
+import { redwood } from '@redwoodjs/reloaded`
 
 export default defineConfig({
     plugins: [
-        redwoodJS()
+        redwood(),
     ]
 })
 ```
+
+
+
+
+
 
 ## Entry file
 
