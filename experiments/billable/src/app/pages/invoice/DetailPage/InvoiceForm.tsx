@@ -16,6 +16,7 @@ import { PlusIcon, Trash2Icon } from "lucide-react";
 import { cn } from "src/components/cn";
 import { toast, Toaster } from "sonner";
 import { RouteContext } from "@redwoodjs/reloaded/router";
+import type { User } from "@prisma/client";
 
 function calculateSubtotal(items: InvoiceItem[]) {
   let sum = 0;
@@ -47,6 +48,8 @@ export function InvoiceForm(props: {
 
   const pdfContentRef = useRef<HTMLDivElement>(null);
 
+  const isLoggedIn = props.ctx?.user
+
   return (
     <div>
       <Toaster />
@@ -54,11 +57,11 @@ export function InvoiceForm(props: {
         <PrintPdf contentRef={pdfContentRef} />
         <Button
           onClick={async () => {
-            if (props.ctx?.user) {
+            if (isLoggedIn) {
               await saveInvoice(invoice.id, invoice, items, taxes);
               window.location.href = link("/invoice/list");
             } else {
-              toast.error("You must be logged in to save an invoice.");
+              toast.error("You must be logged in to save an invoice");
             }
           }}
         >
@@ -85,6 +88,7 @@ export function InvoiceForm(props: {
             <SupplierName
               invoice={invoice}
               setInvoice={(newInvoice) => setInvoice(newInvoice)}
+              isLoggedIn={isLoggedIn}
             />
           </div>
           <ColumnGap />
@@ -106,7 +110,7 @@ export function InvoiceForm(props: {
           <div className="col-span-6">
             <Textarea
               placeholder="Flexopolis Gym&#10;1234 Main St&#10;Scranton, PA"
-              defaultValue={invoice.customer}
+              defaultValue={invoice.customer ?? ""}
               onChange={(e) =>
                 setInvoice({ ...invoice, customer: e.target.value })
               }
@@ -340,7 +344,7 @@ export function InvoiceForm(props: {
           {/* NotesA */}
           <div className="col-span-6">
             <Textarea
-              defaultValue={invoice.notesA}
+              defaultValue={invoice.notesA ?? ""}
               placeholder="Bank: First National Bank&#10;Account Name: Dunder Mifflin Paper Co.&#10;Account Number: 1234-5678-9012&#10;Routing: 987654321&#10;SWIFT: FNBUS12345"
               onChange={(e) =>
                 setInvoice({ ...invoice, notesA: e.target.value })
@@ -485,9 +489,11 @@ function Taxes(props: {
 function SupplierName({
   invoice,
   setInvoice,
+  isLoggedIn,
 }: {
   invoice: Awaited<ReturnType<typeof getInvoice>>;
   setInvoice: (invoice: Awaited<ReturnType<typeof getInvoice>>) => void;
+  isLoggedIn: boolean;
 }) {
   if (invoice.supplierLogo) {
     return (
@@ -497,10 +503,9 @@ function SupplierName({
           alt={invoice.supplierName ?? "Logo"}
           className="max-w-100"
         />
-        <div className="flex p-2">
+        <div className="flex p-2 print:hidden">
           <Button
             variant="outline"
-            className="print:hidden"
             onClick={async () => {
               await deleteLogo(invoice.id);
               setInvoice({ ...invoice, supplierLogo: null });
@@ -523,12 +528,12 @@ function SupplierName({
             setInvoice({ ...invoice, supplierName: e.target.value })
           }
         />
-        <UploadLogo
+        {isLoggedIn && <UploadLogo
           invoiceId={invoice.id}
           onSuccess={(supplierLogo) => {
             setInvoice({ ...invoice, supplierLogo });
           }}
-        />
+        />}
       </div>
     );
   }
@@ -542,7 +547,7 @@ function UploadLogo({
   onSuccess: (supplierLogo: string) => void;
 }) {
   return (
-    <div className="flex p-2 border border-gray-200">
+    <div className="flex p-2 border border-gray-200 print:hidden">
       <input
         type="file"
         accept="image/*"

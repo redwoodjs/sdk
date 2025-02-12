@@ -32,5 +32,5 @@ tag = "v1"
 new_classes = [ "SessionDO" ]
 
 [vars]
-RESEND_API_KEY="123"
-APP_URL="http://localhost:5173"
+SECRET_KEY = "secret"
+APP_URL="http://billable.me"
