@@ -65,6 +65,24 @@ export function CalculateSheets() {
                 loadConfiguration(lastConfig)
                 setCurrentConfig(lastConfig.name)
             }
+        } else {
+            // Create initial Demo configuration if no configs exist
+            const demoConfig: SavedConfig = {
+                name: "Demo",
+                sheetWidth: 1220,
+                sheetLength: 2440,
+                bladeWidth: 3,
+                sheetPrice: 60,
+                panels: [
+                    { width: 600, length: 400, quantity: 2 },
+                    { width: 800, length: 600, quantity: 1 },
+                    { width: 400, length: 300, quantity: 3 },
+                    { width: 500, length: 350, quantity: 2 }
+                ]
+            }
+            setSavedConfigs([demoConfig])
+            localStorage.setItem("cutlConfigs", JSON.stringify([demoConfig]))
+            loadConfiguration(demoConfig)
         }
     }, [])
 
@@ -83,50 +101,27 @@ export function CalculateSheets() {
     }, []);
 
     const drawSheets = () => {
-        console.log('Starting drawSheets with:', {
-            calculatedSheets,
-            sheetWidth,
-            sheetLength,
-            canvasRefs: canvasRefs.current
-        });
-
         calculatedSheets.forEach((board, index) => {
-            console.log('Drawing board:', index, board);
             const canvas = canvasRefs.current[index];
-            console.log('Canvas:', canvas);
-
-            if (!canvas) {
-                console.log('No canvas found for index:', index);
-                return;
-            }
+            if (!canvas) return;
 
             const ctx = canvas.getContext('2d');
-            if (!ctx) {
-                console.log('No context found for canvas:', index);
-                return;
-            }
+            if (!ctx) return;
 
             const scaleFactor = 550 / sheetLength;
             canvas.width = sheetLength * scaleFactor;
             canvas.height = sheetWidth * scaleFactor;
             canvas.style.border = '1px solid #ccc';
 
-            console.log('Canvas dimensions:', canvas.width, canvas.height);
-            console.log('Board used rects:', board.usedRects);
-            console.log('Board free rects:', board.freeRects);
-
             ctx.fillStyle = '#f8f9fa';
             ctx.fillRect(0, 0, canvas.width, canvas.height);
 
             // Draw panels first
             board.usedRects.forEach((rect: any) => {
-                console.log('Drawing rect:', rect);
                 const x = rect.y * scaleFactor;
                 const y = rect.x * scaleFactor;
                 const width = rect.length * scaleFactor;
                 const height = rect.width * scaleFactor;
-
-                console.log('Drawing rect:', x, y, width, height);
 
                 ctx.fillStyle = getColorForSize(rect.width, rect.length);
                 ctx.fillRect(x, y, width, height);
@@ -160,24 +155,21 @@ export function CalculateSheets() {
                 const width = rect.length * scaleFactor;
                 const height = rect.width * scaleFactor;
 
-                ctx.fillStyle = 'rgba(200, 200, 200, 0.5)'; // Light gray for free spaces
+                ctx.fillStyle = 'rgba(200, 200, 200, 0.5)';
                 ctx.fillRect(x, y, width, height);
 
                 ctx.strokeStyle = '#999';
                 ctx.lineWidth = 1;
                 ctx.strokeRect(x, y, width, height);
 
-                // Adjust font size for free space labels
                 const fontSize = Math.min(48 * scaleFactor, width * 0.3, height * 0.3);
                 ctx.font = `${fontSize}px Arial`;
                 ctx.fillStyle = '#555';
                 ctx.textAlign = 'center';
                 ctx.textBaseline = 'middle';
 
-                // Ensure text is inside the free space
                 ctx.fillText(`${rect.length}`, x + width / 2, y + fontSize);
 
-                // Rotate and place width text
                 ctx.save();
                 ctx.translate(x + fontSize, y + height / 2);
                 ctx.rotate(-Math.PI / 2);
@@ -189,10 +181,6 @@ export function CalculateSheets() {
 
     useEffect(() => {
         if (!calculatedSheets || calculatedSheets.length === 0) return;
-
-        if (calculatedSheets.length > 0) {
-            console.log("Drawing sheets:", calculatedSheets);  // Debug log
-        }
 
         // Prevent unnecessary re-renders
         if (JSON.stringify(calculatedSheets) === JSON.stringify(prevBoardsRef.current)) {
@@ -223,8 +211,6 @@ export function CalculateSheets() {
     }
 
     const calculateCuts = async () => {
-        console.log("Calculating cuts...")
-
         const flatPanels = panels.flatMap(item =>
             Array(item.quantity).fill({
                 width: item.width,
@@ -232,8 +218,6 @@ export function CalculateSheets() {
             })
         );
         const boards = await calculateCutsAction(flatPanels, sheetWidth, sheetLength, bladeWidth);
-        console.log(boards)
-
         if (boards) {
             setCalculatedSheets(boards);
         }
@@ -296,6 +280,8 @@ export function CalculateSheets() {
             title: "Configuration loaded",
             description: `Loaded "${config.name}"`,
         })
+        // Calculate cuts after loading configuration
+        setTimeout(calculateCuts, 100); // Small delay to ensure state is updated
     }
 
     const exportCuttingPlan = () => {
@@ -480,6 +466,18 @@ export function CalculateSheets() {
         })
     }
 
+    const generateRandomPanels = async () => {
+        const randomPanels: Panel[] = Array.from({ length: 6 }, () => ({
+            width: Math.round(Math.random() * (1000 - 200) + 200) - (Math.round(Math.random() * (1000 - 200) + 200) % 50),
+            length: Math.round(Math.random() * (1200 - 200) + 200) - (Math.round(Math.random() * (1200 - 200) + 200) % 50),
+            quantity: Math.floor(Math.random() * 3) + 1
+        }));
+
+        setPanels(randomPanels);
+        await new Promise(resolve => setTimeout(resolve, 100));
+        await calculateCuts();
+    };
+
     return (
         <div className="flex min-h-screen">
             {/* Settings Panel */}
@@ -500,7 +498,9 @@ export function CalculateSheets() {
                                 Load
                             </Button>
                         </DropdownMenuTrigger>
-                        <DropdownMenuContent>
+                        <DropdownMenuContent 
+                            className="w-[200px] bg-white rounded-md shadow-lg border border-gray-200 p-1 z-50"
+                        >
                             {savedConfigs.map((config) => (
                                 <div key={config.name} className="flex items-center justify-between px-2 py-1 hover:bg-accent">
                                     <DropdownMenuItem
@@ -573,10 +573,16 @@ export function CalculateSheets() {
                 <div className="space-y-4">
                     <div className="flex items-center justify-between">
                         <h2 className="text-md font-semibold">Panel Requirements</h2>
-                        <Button variant="outline" size="sm" onClick={addPanel}>
-                            <Plus className="w-4 h-4 mr-1" />
-                            Add Panel
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button variant="outline" size="sm" onClick={generateRandomPanels}>
+                                <div className="w-4 h-4 mr-1">🎲</div>
+                                Random
+                            </Button>
+                            <Button variant="outline" size="sm" onClick={addPanel}>
+                                <Plus className="w-4 h-4 mr-1" />
+                                Add Panel
+                            </Button>
+                        </div>
                     </div>
 
                     <div className="space-y-2">
@@ -625,9 +631,52 @@ export function CalculateSheets() {
                     <Button variant="color" className="flex-1" onClick={calculateCuts}>
                         Calculate Cuts
                     </Button>
-                    <Button variant="color2" onClick={saveConfiguration}>
-                        <Save className="w-4 h-4" />
-                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild>
+                            <Button variant="color2">
+                                <Save className="w-4 h-4" />
+                            </Button>
+                        </DropdownMenuTrigger>
+                        <DropdownMenuContent 
+                            className="w-[200px] bg-white rounded-md shadow-lg border border-gray-200 p-1 z-50"
+                        >
+                            <DropdownMenuItem 
+                                onClick={saveConfiguration}
+                                className="flex items-center gap-2 cursor-pointer px-2 py-1.5 rounded hover:bg-accent"
+                            >
+                                <Save className="w-4 h-4" />
+                                {currentConfig ? `Update "${currentConfig}"` : "Save New"}
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                                onClick={() => {
+                                    const name = prompt("Enter a name for this configuration:")
+                                    if (!name) return
+
+                                    const newConfig: SavedConfig = {
+                                        name,
+                                        sheetWidth,
+                                        sheetLength,
+                                        bladeWidth,
+                                        sheetPrice,
+                                        panels,
+                                    }
+
+                                    const updatedConfigs = [...savedConfigs, newConfig]
+                                    setSavedConfigs(updatedConfigs)
+                                    localStorage.setItem("cutlConfigs", JSON.stringify(updatedConfigs))
+                                    setCurrentConfig(name)
+                                    toast({
+                                        title: "Configuration saved",
+                                        description: `Saved as "${name}"`,
+                                    })
+                                }}
+                                className="flex items-center gap-2 cursor-pointer px-2 py-1.5 rounded hover:bg-accent"
+                            >
+                                <Copy className="w-4 h-4" />
+                                Save As New...
+                            </DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
                 </div>
 
                 {calculatedSheets.length > 0 && (
