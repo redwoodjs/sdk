@@ -58,8 +58,9 @@ export default {
       //   HomePage,
       // ]),
       index(HomePage),
-      ...prefix("/auth", authRoutes),
-      ...prefix("/project", projectRoutes),
+      // Will add user back later
+      // ...prefix("/auth", authRoutes),
+      // ...prefix("/project", projectRoutes),
     ]);
 
 
