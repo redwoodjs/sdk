@@ -25,6 +25,10 @@
     "./router": {
       "default": "./dist/runtime/entries/router.js",
       "types": "./dist/runtime/entries/router.d.ts"
+    },
+    "./client": {
+      "default": "./dist/runtime/entries/client.js",
+      "types": "./dist/runtime/entries/client.d.ts"
     }
   },
   "keywords": [],
