@@ -53,9 +53,14 @@ export function Layout({
     <div className="min-h-screen bg-white">
       <Header user={ctx?.user} />
 
-      <main>
+      <main className="min-h-screen">
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">{children}</div>
       </main>
+
+
+      <div className="px-8 py-4 flex justify-between items-center border-t">
+        Built with <a href="https://redwoodjs.com">RedwoodJS</a>
+      </div>
     </div>
   );
 }

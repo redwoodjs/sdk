@@ -1,4 +1,5 @@
-import { db, index, route } from "@redwoodjs/reloaded/worker";
+import { db } from "@redwoodjs/reloaded/worker";
+import { index, route } from "@redwoodjs/reloaded/router";
 import { InvoiceDetailPage } from "./DetailPage/InvoiceDetailPage";
 import { InvoiceListPage } from "./ListPage/InvoiceListPage";
 import { link } from "src/shared/links";
