@@ -44,6 +44,7 @@ export const authRoutes = [
   }),
   route('/login', LoginPage),
   route('/logout', function({ request, env }) {
+    console.log('### logout')
     return new Response(null, {
       status: 302,
       headers: {
