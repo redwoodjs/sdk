@@ -40,10 +40,15 @@ export function CalculateSheets() {
     const [sheetLength, setSheetLength] = useState(2440)
     const [bladeWidth, setBladeWidth] = useState(3)
     const [sheetPrice, setSheetPrice] = useState(60)
-    const [panels, setPanels] = useState<Panel[]>([{ width: 600, length: 400, quantity: 1 }])
+    const [panels, setPanels] = useState<Panel[]>([
+        { width: 600, length: 400, quantity: 2 },
+        { width: 800, length: 600, quantity: 2 },
+        { width: 400, length: 300, quantity: 4 },
+        { width: 500, length: 350, quantity: 3 }
+    ])
     const [calculatedSheets, setCalculatedSheets] = useState<Sheet[]>([])
     const [savedConfigs, setSavedConfigs] = useState<SavedConfig[]>([])
-    const [currentConfig, setCurrentConfig] = useState<string | null>(null)
+    const [currentConfig, setCurrentConfig] = useState<string | null>("Demo")
     const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([])
     const printRef = useRef<HTMLDivElement>(null)
 
@@ -63,7 +68,6 @@ export function CalculateSheets() {
         }
     }, [])
 
-    const containerRef = useRef<HTMLDivElement>(null);
     const prevBoardsRef = useRef<any[]>([]);
     // Generate a unique color for each distinct rectangle size
     const getColorForSize = useMemo(() => {
@@ -295,147 +299,147 @@ export function CalculateSheets() {
     }
 
     const exportCuttingPlan = () => {
-        const doc = new jsPDF({
-            orientation: 'landscape',
-            unit: 'mm',
-            format: 'a4'
+    const doc = new jsPDF({
+        orientation: 'landscape',
+        unit: 'mm',
+        format: 'a4'
+    });
+
+    const pageWidth = doc.internal.pageSize.getWidth();
+    const pageHeight = doc.internal.pageSize.getHeight();
+    const margin = 10;
+
+    // 📌 **Shrink Table to Make More Room for Image**
+    const tableWidth = 70; // Reduced from 90mm → 70mm
+    const availableWidth = pageWidth - tableWidth - (margin * 3);
+    const availableHeight = pageHeight - (margin * 2);
+
+    calculatedSheets.forEach((board, index) => {
+        if (index > 0) {
+            doc.addPage();
+        }
+
+        // Title & Sheet Info
+        doc.setFontSize(14);
+        doc.text(`Sheet ${index + 1}`, margin, margin + 4);
+
+        doc.setFontSize(10);
+        doc.text([
+            `Dimensions: ${sheetWidth}mm × ${sheetLength}mm`,
+            `Efficiency: ${(board.efficiency * 100).toFixed(1)}%`
+        ], margin, margin + 12);
+
+        // 📌 **New: Place Table on the Left (Narrower)**
+        (doc as any).autoTable({
+            startY: margin + 20,
+            margin: { left: margin },
+            tableWidth: tableWidth, // Shrunk from 90 → 70
+            head: [['#', 'W', 'L']], // Shorter column headers
+            body: board.usedRects.map((rect, i) => [
+                i + 1,
+                `${rect.width}mm`,
+                `${rect.length}mm`
+            ]),
+            theme: 'grid',
+            headStyles: { fillColor: [75, 75, 75] }
         });
-    
-        const pageWidth = doc.internal.pageSize.getWidth();
-        const pageHeight = doc.internal.pageSize.getHeight();
-        const margin = 10;
-    
-        // 📌 **Shrink Table to Make More Room for Image**
-        const tableWidth = 70; // Reduced from 90mm → 70mm
-        const availableWidth = pageWidth - tableWidth - (margin * 3);
-        const availableHeight = pageHeight - (margin * 2);
-    
-        calculatedSheets.forEach((board, index) => {
-            if (index > 0) {
-                doc.addPage();
-            }
-    
-            // Title & Sheet Info
-            doc.setFontSize(14);
-            doc.text(`Sheet ${index + 1}`, margin, margin + 4);
-    
-            doc.setFontSize(10);
-            doc.text([
-                `Dimensions: ${sheetWidth}mm × ${sheetLength}mm`,
-                `Efficiency: ${(board.efficiency * 100).toFixed(1)}%`
-            ], margin, margin + 12);
-    
-            // 📌 **New: Place Table on the Left (Narrower)**
-            (doc as any).autoTable({
-                startY: margin + 20,
-                margin: { left: margin },
-                tableWidth: tableWidth, // Shrunk from 90 → 70
-                head: [['#', 'W', 'L']], // Shorter column headers
-                body: board.usedRects.map((rect, i) => [
-                    i + 1,
-                    `${rect.width}mm`,
-                    `${rect.length}mm`
-                ]),
-                theme: 'grid',
-                headStyles: { fillColor: [75, 75, 75] }
+
+        // 🎨 **Create High-Resolution Canvas**
+        const pdfCanvas = document.createElement('canvas');
+        const ctx = pdfCanvas.getContext('2d');
+        if (ctx) {
+            // 📌 **Reduce High-Res Scale to Prevent Crashes**
+            const highResScale = 2;
+            pdfCanvas.width = sheetLength * highResScale;
+            pdfCanvas.height = sheetWidth * highResScale;
+            ctx.scale(highResScale, highResScale);
+
+            // 🟫 **Draw the Board Background**
+            ctx.fillStyle = '#cccccc';
+            ctx.fillRect(0, 0, sheetLength, sheetWidth);
+
+            // 🔄 **Ensure the correct horizontal layout**
+            ctx.translate(sheetLength, 0);
+            ctx.rotate(Math.PI / 2);
+
+            // 🔲 **Draw Free Rectangles (Unused Spaces)**
+            board.freeRects.forEach((rect) => {
+                ctx.fillStyle = 'rgba(200, 200, 200, 0.5)';
+                ctx.strokeStyle = '#999';
+                ctx.lineWidth = 1;
+
+                ctx.fillRect(rect.x, rect.y, rect.width, rect.length);
+                ctx.strokeRect(rect.x, rect.y, rect.width, rect.length);
+
+                // 🖍 **Label Free Spaces (Bigger Font, Edge Aligned)**
+                const fontSize = Math.max(18, rect.width * 0.15);
+                ctx.font = `bold ${fontSize}px Arial`;
+                ctx.fillStyle = '#000000';
+                ctx.textAlign = 'center';
+
+                ctx.fillText(`${rect.width}`, rect.x + rect.width / 2, rect.y + fontSize + 2);
+
+                ctx.save();
+                ctx.translate(rect.x + fontSize + 2, rect.y + rect.length / 2);
+                ctx.rotate(-Math.PI / 2);
+                ctx.fillText(`${rect.length}`, 0, 0);
+                ctx.restore();
             });
-    
-            // 🎨 **Create High-Resolution Canvas**
-            const pdfCanvas = document.createElement('canvas');
-            const ctx = pdfCanvas.getContext('2d');
-            if (ctx) {
-                // 📌 **Reduce High-Res Scale to Prevent Crashes**
-                const highResScale = 2;
-                pdfCanvas.width = sheetLength * highResScale;
-                pdfCanvas.height = sheetWidth * highResScale;
-                ctx.scale(highResScale, highResScale);
-    
-                // 🟫 **Draw the Board Background**
-                ctx.fillStyle = '#cccccc';
-                ctx.fillRect(0, 0, sheetLength, sheetWidth);
-    
-                // 🔄 **Ensure the correct horizontal layout**
-                ctx.translate(sheetLength, 0);
-                ctx.rotate(Math.PI / 2);
-    
-                // 🔲 **Draw Free Rectangles (Unused Spaces)**
-                board.freeRects.forEach((rect) => {
-                    ctx.fillStyle = 'rgba(200, 200, 200, 0.5)';
-                    ctx.strokeStyle = '#999';
-                    ctx.lineWidth = 1;
-    
-                    ctx.fillRect(rect.x, rect.y, rect.width, rect.length);
-                    ctx.strokeRect(rect.x, rect.y, rect.width, rect.length);
-    
-                    // 🖍 **Label Free Spaces (Bigger Font, Edge Aligned)**
-                    const fontSize = Math.max(18, rect.width * 0.15);
-                    ctx.font = `bold ${fontSize}px Arial`;
-                    ctx.fillStyle = '#000000';
-                    ctx.textAlign = 'center';
-    
-                    ctx.fillText(`${rect.width}`, rect.x + rect.width / 2, rect.y + fontSize + 2);
-    
-                    ctx.save();
-                    ctx.translate(rect.x + fontSize + 2, rect.y + rect.length / 2);
-                    ctx.rotate(-Math.PI / 2);
-                    ctx.fillText(`${rect.length}`, 0, 0);
-                    ctx.restore();
-                });
-    
-                // ✂️ **Draw Cut Pieces Correctly**
-                board.usedRects.forEach((rect, i) => {
-                    ctx.fillStyle = `hsla(${(i * 37) % 360}, 70%, 70%, 0.8)`;
-                    ctx.strokeStyle = '#000000';
-                    ctx.lineWidth = 2;
-    
-                    ctx.fillRect(rect.x, rect.y, rect.width, rect.length);
-                    ctx.strokeRect(rect.x, rect.y, rect.width, rect.length);
-    
-                    // 🔠 **Fix Dimension Text Positioning**
-                    const fontSize = Math.max(22, rect.width * 0.15);
-                    ctx.font = `bold ${fontSize}px Arial`;
-                    ctx.fillStyle = '#000000';
-                    ctx.textAlign = 'center';
-    
-                    ctx.fillText(`${rect.width}`, rect.x + rect.width / 2, rect.y + fontSize + 2);
-    
-                    ctx.save();
-                    ctx.translate(rect.x + fontSize + 2, rect.y + rect.length / 2);
-                    ctx.rotate(-Math.PI / 2);
-                    ctx.fillText(`${rect.length}`, 0, 0);
-                    ctx.restore();
-                });
-    
-                // 📸 **Calculate Aspect Ratio & Fit Image Properly**
-                const boardAspectRatio = sheetLength / sheetWidth;
-                const imageAspectRatio = availableWidth / availableHeight;
-    
-                let finalWidth = availableWidth;
-                let finalHeight = availableHeight;
-    
-                if (boardAspectRatio > imageAspectRatio) {
-                    // Board is wider than available space
-                    finalWidth = availableWidth;
-                    finalHeight = availableWidth / boardAspectRatio;
-                } else {
-                    // Board is taller than available space
-                    finalHeight = availableHeight;
-                    finalWidth = availableHeight * boardAspectRatio;
-                }
-    
-                const imageX = tableWidth + (margin * 2);
-                const imageY = margin + (availableHeight - finalHeight) / 2; // Center vertically
-    
-                // 📸 **Convert to High-Quality JPEG to Reduce File Size**
-                const imgData = pdfCanvas.toDataURL('image/jpeg', 0.8);
-                doc.addImage(imgData, 'JPEG', imageX, imageY, finalWidth, finalHeight);
+
+            // ✂️ **Draw Cut Pieces Correctly**
+            board.usedRects.forEach((rect, i) => {
+                ctx.fillStyle = `hsla(${(i * 37) % 360}, 70%, 70%, 0.8)`;
+                ctx.strokeStyle = '#000000';
+                ctx.lineWidth = 2;
+
+                ctx.fillRect(rect.x, rect.y, rect.width, rect.length);
+                ctx.strokeRect(rect.x, rect.y, rect.width, rect.length);
+
+                // 🔠 **Fix Dimension Text Positioning**
+                const fontSize = Math.max(22, rect.width * 0.15);
+                ctx.font = `bold ${fontSize}px Arial`;
+                ctx.fillStyle = '#000000';
+                ctx.textAlign = 'center';
+
+                ctx.fillText(`${rect.width}`, rect.x + rect.width / 2, rect.y + fontSize + 2);
+
+                ctx.save();
+                ctx.translate(rect.x + fontSize + 2, rect.y + rect.length / 2);
+                ctx.rotate(-Math.PI / 2);
+                ctx.fillText(`${rect.length}`, 0, 0);
+                ctx.restore();
+            });
+
+            // 📸 **Calculate Aspect Ratio & Fit Image Properly**
+            const boardAspectRatio = sheetLength / sheetWidth;
+            const imageAspectRatio = availableWidth / availableHeight;
+
+            let finalWidth = availableWidth;
+            let finalHeight = availableHeight;
+
+            if (boardAspectRatio > imageAspectRatio) {
+                // Board is wider than available space
+                finalWidth = availableWidth;
+                finalHeight = availableWidth / boardAspectRatio;
+            } else {
+                // Board is taller than available space
+                finalHeight = availableHeight;
+                finalWidth = availableHeight * boardAspectRatio;
             }
-        });
-    
-        // 📂 **Save the final PDF**
-        doc.save('cutting-plan.pdf');
-    };
-    
+
+            const imageX = tableWidth + (margin * 2);
+            const imageY = margin + (availableHeight - finalHeight) / 2; // Center vertically
+
+            // 📸 **Convert to High-Quality JPEG to Reduce File Size**
+            const imgData = pdfCanvas.toDataURL('image/jpeg', 0.8);
+            doc.addImage(imgData, 'JPEG', imageX, imageY, finalWidth, finalHeight);
+        }
+    });
+
+    // 📂 **Save the final PDF**
+    doc.save('cutting-plan.pdf');
+};
+
 
     const totalCost = calculatedSheets.length * sheetPrice
     const averageEfficiency = calculatedSheets.length
@@ -461,7 +465,12 @@ export function CalculateSheets() {
                 setSheetLength(2440)
                 setBladeWidth(3)
                 setSheetPrice(60)
-                setPanels([{ width: 600, length: 400, quantity: 10 }])
+                setPanels([
+                    { width: 600, length: 400, quantity: 2 },
+                    { width: 800, length: 600, quantity: 1 },
+                    { width: 400, length: 300, quantity: 3 },
+                    { width: 500, length: 350, quantity: 2 }
+                ])
             }
         }
 
@@ -613,10 +622,10 @@ export function CalculateSheets() {
                 </div>
 
                 <div className="flex gap-2">
-                    <Button className="flex-1" onClick={calculateCuts}>
+                    <Button variant="color" className="flex-1" onClick={calculateCuts}>
                         Calculate Cuts
                     </Button>
-                    <Button variant="outline" onClick={saveConfiguration}>
+                    <Button variant="color2" onClick={saveConfiguration}>
                         <Save className="w-4 h-4" />
                     </Button>
                 </div>

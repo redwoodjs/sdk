@@ -3,7 +3,7 @@
 interface Env {
 	SECRET_KEY: "secret";
 	RESEND_API_KEY: "123";
-	APP_URL: "http://localhost:5173";
+	APP_URL: "http://cutable.app";
 	SESSION_DO: DurableObjectNamespace<import("./src/worker").SessionDO>;
 	DB: D1Database;
 	ASSETS: Fetcher;
