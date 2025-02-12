@@ -1,5 +1,4 @@
-import { db } from "@redwoodjs/reloaded/worker";
-import { defineScript } from "./defineScript";
+import { db, defineScript } from "@redwoodjs/reloaded/worker";
 
 export default defineScript(async () => {
   await db.$executeRawUnsafe(`\

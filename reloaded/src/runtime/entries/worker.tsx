@@ -7,3 +7,4 @@ export * from "../register/worker";
 export * from "../worker";
 export * from "../db";
 export * from "../error";
+export * from "../script";

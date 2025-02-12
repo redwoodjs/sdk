@@ -1,4 +1,4 @@
-import { setupDb } from '@redwoodjs/reloaded/worker';
+import { setupDb } from "./db"
 
 export const defineScript = (fn: ({ env }: { env?: Env }) => Promise<unknown>) => {
   return {
