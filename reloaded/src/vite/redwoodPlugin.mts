@@ -14,7 +14,6 @@ import { useClientPlugin } from "./useClientPlugin.mjs";
 import { useClientLookupPlugin } from "./useClientLookupPlugin.mjs";
 import { miniflarePlugin } from "./miniflarePlugin.mjs";
 import { asyncSetupPlugin } from "./asyncSetupPlugin.mjs";
-import { acceptWasmPlugin } from "./acceptWasmPlugin.mjs";
 import { copyPrismaWasmPlugin } from "./copyPrismaWasmPlugin.mjs";
 import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
 import { configPlugin } from "./configPlugin.mjs";
@@ -59,7 +58,6 @@ export const redwoodPlugin = (options: RedwoodPluginOptions = {}): InlineConfig[
     reactPlugin(),
     useServerPlugin(),
     useClientPlugin(),
-    acceptWasmPlugin(),
     asyncSetupPlugin({
       async setup({ command }) {
         // console.log('Generating prisma client...')
