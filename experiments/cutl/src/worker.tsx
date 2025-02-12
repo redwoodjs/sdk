@@ -60,9 +60,6 @@ export default {
       index(HomePage),
       ...prefix("/auth", authRoutes),
       ...prefix("/project", projectRoutes),
-      ...prefix("/test", [
-        route("/dropdown", TestDropdown),
-      ]),
     ]);
 
 
