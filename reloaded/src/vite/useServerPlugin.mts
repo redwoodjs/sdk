@@ -23,7 +23,7 @@ export const useServerPlugin = (): Plugin => ({
       if (this.environment.name === "worker") {
         // TODO: Rewrite the code, but register the "function" against
         s.prepend(`
-import { registerServerReference } from "/src/register/worker.ts";
+import { registerServerReference } from "@redwoodjs/reloaded/worker";
 `);
         const [_, exports] = parse(code);
 
@@ -35,7 +35,7 @@ registerServerReference(${e.ln}, ${JSON.stringify(relativeId)}, ${JSON.stringify
       }
       if (this.environment.name === "client") {
         s = new MagicString(`\
-import { createServerReference } from "/src/register/client.ts";
+import { createServerReference } from "@redwoodjs/reloaded/client";
 `);
         const [_, exports] = parse(code);
         for (const e of exports) {
