@@ -2,6 +2,8 @@
 
 import { Download, Plus, Save, Trash2, Copy, Upload } from "lucide-react"
 import { useState, useEffect, useRef, useMemo } from "react"
+import { jsPDF } from 'jspdf';
+import 'jspdf-autotable';  // For nice tables
 
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
@@ -43,6 +45,7 @@ export function CalculateSheets() {
     const [savedConfigs, setSavedConfigs] = useState<SavedConfig[]>([])
     const [currentConfig, setCurrentConfig] = useState<string | null>(null)
     const canvasRefs = useRef<(HTMLCanvasElement | null)[]>([])
+    const printRef = useRef<HTMLDivElement>(null)
 
     // Load saved configurations and set first one as current on mount
     useEffect(() => {
@@ -292,36 +295,172 @@ export function CalculateSheets() {
     }
 
     const exportCuttingPlan = () => {
-        const totalSheets = calculatedSheets.length
-        const totalCost = totalSheets * sheetPrice
-        const averageEfficiency = calculatedSheets.reduce((acc, sheet) => acc + sheet.efficiency, 0) / totalSheets
-
-        const plan = {
-            sheetSettings: {
-                width: sheetWidth,
-                length: sheetLength,
-                bladeWidth,
-                pricePerSheet: sheetPrice,
-            },
-            panels,
-            results: {
-                totalSheets,
-                totalCost,
-                averageEfficiency,
-                sheets: calculatedSheets,
-            },
-        }
-
-        const blob = new Blob([JSON.stringify(plan, null, 2)], { type: "application/json" })
-        const url = URL.createObjectURL(blob)
-        const a = document.createElement("a")
-        a.href = url
-        a.download = "cutting-plan.json"
-        document.body.appendChild(a)
-        a.click()
-        document.body.removeChild(a)
-        URL.revokeObjectURL(url)
-    }
+        const doc = new jsPDF({
+            orientation: 'landscape', // Keep the PDF in landscape mode
+            unit: 'mm',
+            format: 'a4'
+        });
+    
+        const pageWidth = doc.internal.pageSize.getWidth(); // A4 landscape width (297mm)
+        const pageHeight = doc.internal.pageSize.getHeight(); // A4 landscape height (210mm)
+        const margin = 15; // Standard margin
+    
+        calculatedSheets.forEach((board, index) => {
+            if (index > 0) {
+                doc.addPage();
+            }
+    
+            // Title & Sheet Info
+            doc.setFontSize(18);
+            doc.text(`Sheet ${index + 1}`, margin, margin);
+    
+            doc.setFontSize(12);
+            doc.text([
+                `Dimensions: ${sheetWidth}mm × ${sheetLength}mm`,
+                `Efficiency: ${(board.efficiency * 100).toFixed(1)}%`
+            ], margin, margin + 10);
+    
+            // Cut List Table
+            const tableStartY = margin + 20;
+            (doc as any).autoTable({
+                startY: tableStartY,
+                head: [['Piece', 'Width', 'Length', 'Position']],
+                body: board.usedRects.map((rect, i) => [
+                    i + 1,
+                    `${rect.width}mm`,
+                    `${rect.length}mm`,
+                    `(${rect.x}mm, ${rect.y}mm)`
+                ]),
+                theme: 'grid',
+                headStyles: { fillColor: [75, 75, 75] },
+                margin: { left: margin, right: margin }
+            });
+    
+            const tableEndY = (doc as any).autoTable.previous.finalY;
+            const availableHeight = pageHeight - tableEndY - margin * 2; // Space for image
+            const availableWidth = pageWidth - margin * 2; // Full width minus margins
+    
+            // 📌 **Ensure correct aspect ratio**
+            const scaleX = availableWidth / sheetLength;
+            const scaleY = availableHeight / sheetWidth;
+            const scaleFactor = Math.min(scaleX, scaleY) * 0.98; // Maximize size
+    
+            // 🛠 **Fit the entire board inside the available space**
+            const imageWidth = sheetLength * scaleFactor;
+            const imageHeight = sheetWidth * scaleFactor;
+            const imageX = margin + (availableWidth - imageWidth) / 2; // Center horizontally
+            const imageY = tableEndY + 10; // Place below table
+    
+            // 🎨 **Create High-Resolution Canvas**
+            const pdfCanvas = document.createElement('canvas');
+            const ctx = pdfCanvas.getContext('2d');
+            if (ctx) {
+                // 📌 **Increase Resolution for Crisp Text**
+                const highResScale = 4; // Even sharper text
+                pdfCanvas.width = sheetLength * scaleFactor * highResScale;
+                pdfCanvas.height = sheetWidth * scaleFactor * highResScale;
+                ctx.scale(scaleFactor * highResScale, scaleFactor * highResScale);
+    
+                // 🟫 **Draw the Board Background**
+                ctx.fillStyle = '#cccccc'; // Light gray background
+                ctx.fillRect(0, 0, sheetLength, sheetWidth);
+    
+                // 🔄 **Ensure the correct horizontal layout**
+                ctx.translate(sheetLength, 0); // Move to correct position
+                ctx.rotate(Math.PI / 2); // Rotate correctly
+    
+                // 🔲 **Draw Free Rectangles (Unused Spaces)**
+                board.freeRects.forEach((rect) => {
+                    ctx.fillStyle = 'rgba(200, 200, 200, 0.5)'; // Semi-transparent gray
+                    ctx.strokeStyle = '#999'; // Light gray border
+                    ctx.lineWidth = 1;
+    
+                    ctx.fillRect(rect.x, rect.y, rect.width, rect.length);
+                    ctx.strokeRect(rect.x, rect.y, rect.width, rect.length);
+    
+                    // 🔠 **Label Free Spaces Correctly**
+                    const fontSize = Math.max(22, Math.min(30, rect.width * 0.15)); // Bigger for readability
+                    ctx.fillStyle = '#000000';
+                    ctx.font = `bold ${fontSize}px Arial`;
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+    
+                    // 🖍 **Fix White Outline Rotation**
+                    ctx.save();
+                    ctx.translate(rect.x + rect.width / 2, rect.y + fontSize + 2);
+    
+                    ctx.strokeStyle = '#FFFFFF';
+                    ctx.lineWidth = 8;
+                    ctx.strokeText(`${rect.width}`, 0, 0);
+                    ctx.fillStyle = '#000000';
+                    ctx.fillText(`${rect.width}`, 0, 0);
+                    
+                    ctx.restore();
+    
+                    ctx.save();
+                    ctx.translate(rect.x + fontSize + 2, rect.y + rect.length / 2);
+                    ctx.rotate(-Math.PI / 2);
+    
+                    ctx.strokeStyle = '#FFFFFF';
+                    ctx.lineWidth = 8;
+                    ctx.strokeText(`${rect.length}`, 0, 0);
+                    ctx.fillStyle = '#000000';
+                    ctx.fillText(`${rect.length}`, 0, 0);
+                    
+                    ctx.restore();
+                });
+    
+                // ✂️ **Draw Cut Pieces Correctly**
+                board.usedRects.forEach((rect, i) => {
+                    ctx.fillStyle = `hsla(${(i * 37) % 360}, 70%, 70%, 0.8)`;
+                    ctx.strokeStyle = '#000000';
+                    ctx.lineWidth = 2;
+    
+                    ctx.fillRect(rect.x, rect.y, rect.width, rect.length);
+                    ctx.strokeRect(rect.x, rect.y, rect.width, rect.length);
+    
+                    // 🔠 **Fix Dimension Text Positioning**
+                    const fontSize = Math.max(26, Math.min(34, rect.width * 0.2));
+                    ctx.font = `bold ${fontSize}px Arial`;
+                    ctx.fillStyle = '#000000';
+                    ctx.textAlign = 'center';
+                    ctx.textBaseline = 'middle';
+    
+                    // 🖍 **Fix White Outline Rotation for Cut Pieces**
+                    ctx.save();
+                    ctx.translate(rect.x + rect.width / 2, rect.y + fontSize + 2);
+    
+                    ctx.strokeStyle = '#FFFFFF';
+                    ctx.lineWidth = 8;
+                    ctx.strokeText(`${rect.width}`, 0, 0);
+                    ctx.fillStyle = '#000000';
+                    ctx.fillText(`${rect.width}`, 0, 0);
+                    
+                    ctx.restore();
+    
+                    ctx.save();
+                    ctx.translate(rect.x + fontSize + 2, rect.y + rect.length / 2);
+                    ctx.rotate(-Math.PI / 2);
+    
+                    ctx.strokeStyle = '#FFFFFF';
+                    ctx.lineWidth = 8;
+                    ctx.strokeText(`${rect.length}`, 0, 0);
+                    ctx.fillStyle = '#000000';
+                    ctx.fillText(`${rect.length}`, 0, 0);
+                    
+                    ctx.restore();
+                });
+    
+                // 📸 **Convert to High-Quality PNG & Add to PDF**
+                const imgData = pdfCanvas.toDataURL('image/png');
+                doc.addImage(imgData, 'PNG', imageX, imageY, imageWidth, imageHeight);
+            }
+        });
+    
+        // 📂 **Save the final PDF**
+        doc.save('cutting-plan.pdf');
+    };
+    
 
     const totalCost = calculatedSheets.length * sheetPrice
     const averageEfficiency = calculatedSheets.length
@@ -506,6 +645,23 @@ export function CalculateSheets() {
                         <Save className="w-4 h-4" />
                     </Button>
                 </div>
+
+                {calculatedSheets.length > 0 && (
+                    <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                            <span>Total Sheets:</span>
+                            <span>{calculatedSheets.length}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span>Total Cost:</span>
+                            <span>${totalCost.toFixed(2)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                            <span>Average Efficiency:</span>
+                            <span>{(averageEfficiency * 100).toFixed(1)}%</span>
+                        </div>
+                    </div>
+                )}
             </div>
 
             {/* Visualization Area */}
@@ -513,26 +669,28 @@ export function CalculateSheets() {
                 <div className="flex items-center justify-between">
                     <h2 className="text-lg font-semibold">Cut Sheets</h2>
                     {calculatedSheets.length > 0 && (
-                        <Button variant="outline" onClick={exportCuttingPlan}>
-                            <Download className="w-4 h-4 mr-2" />
-                            Export Plan
-                        </Button>
+                        <div className="flex gap-2">
+                            <Button variant="outline" onClick={exportCuttingPlan}>
+                                <Download className="w-4 h-4 mr-2" />
+                                Export Plan
+                            </Button>
+                        </div>
                     )}
                 </div>
 
                 {calculatedSheets.length > 0 && (
-                    <div className="grid grid-cols-2 gap-4 text-sm">
-                        <div className="flex items-center gap-2">
-                            <span className="font-medium">Total Sheets:</span>
-                            <span>{calculatedSheets.length}</span>
+                    <div className="grid grid-cols-3 gap-4 p-4 bg-muted rounded-lg">
+                        <div className="text-sm">
+                            <span className="text-muted-foreground">Total Sheets:</span>
+                            <span className="font-medium ml-2">{calculatedSheets.length}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <span className="font-medium">Total Cost:</span>
-                            <span>${totalCost.toFixed(2)}</span>
+                        <div className="text-sm">
+                            <span className="text-muted-foreground">Total Cost:</span>
+                            <span className="font-medium ml-2">${totalCost.toFixed(2)}</span>
                         </div>
-                        <div className="flex items-center gap-2">
-                            <span className="font-medium">Average Efficiency:</span>
-                            <span>{(averageEfficiency * 100).toFixed(1)}%</span>
+                        <div className="text-sm">
+                            <span className="text-muted-foreground">Average Efficiency:</span>
+                            <span className="font-medium ml-2">{(averageEfficiency * 100).toFixed(1)}%</span>
                         </div>
                     </div>
                 )}
@@ -554,6 +712,137 @@ export function CalculateSheets() {
                             />
                         </div>
                     ))}
+                </div>
+            </div>
+
+            {/* Hidden printable content */}
+            <div ref={printRef} className="hidden">
+                {calculatedSheets.map((board, index) => (
+                    <div key={index} style={{ pageBreakAfter: 'always' }} className="p-4">
+                        <div className="mb-4">
+                            <h2 className="text-xl font-bold mb-2">Sheet {index + 1}</h2>
+                            <div className="grid grid-cols-2 gap-4 text-sm mb-4">
+                                <div>
+                                    <span className="text-muted-foreground">Dimensions:</span>
+                                    <span className="font-medium ml-2">{sheetWidth}mm × {sheetLength}mm</span>
+                                </div>
+                                <div>
+                                    <span className="text-muted-foreground">Efficiency:</span>
+                                    <span className="font-medium ml-2">{(board.efficiency * 100).toFixed(1)}%</span>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div className="border rounded-lg p-4">
+                            <h3 className="font-semibold mb-2">Cut List</h3>
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="border-b">
+                                        <th className="text-left py-2">Piece</th>
+                                        <th className="text-left py-2">Width</th>
+                                        <th className="text-left py-2">Length</th>
+                                        <th className="text-left py-2">Position (X, Y)</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {board.usedRects.map((rect, rectIndex) => (
+                                        <tr key={rectIndex} className="border-b last:border-0">
+                                            <td className="py-2">{rectIndex + 1}</td>
+                                            <td className="py-2">{rect.width}mm</td>
+                                            <td className="py-2">{rect.width}mm</td>
+                                            <td className="py-2">({rect.x}mm, {rect.y}mm)</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+
+                        {/* Summary for this sheet */}
+                        <div className="mt-4 text-sm text-muted-foreground">
+                            <div>Total pieces on this sheet: {board.usedRects.length}</div>
+                            <div>Sheet cost: ${sheetPrice.toFixed(2)}</div>
+                        </div>
+
+                        {/* Add the canvas visualization */}
+                        <div className="mt-6">
+                            <h3 className="font-semibold mb-2">Visual Layout</h3>
+                            <canvas
+                                ref={el => {
+                                    if (el) {
+                                        const ctx = el.getContext('2d');
+                                        if (ctx) {
+                                            // Scale to fit A4 width while maintaining aspect ratio
+                                            const a4Width = 210; // mm
+                                            const scale = (a4Width - 40) / sheetWidth; // 40mm for margins
+                                            
+                                            el.width = sheetWidth * scale;
+                                            el.height = sheetLength * scale;
+                                            ctx.scale(scale, scale);
+                                            
+                                            // Use the same drawing logic as before
+                                            ctx.fillStyle = '#ffffff';
+                                            ctx.fillRect(0, 0, sheetWidth, sheetLength);
+                                            
+                                            // Draw grid, free rects, used rects as before...
+                                            // ... (copy the drawing code from the main canvas)
+                                        }
+                                    }
+                                }}
+                                style={{
+                                    width: '100%',
+                                    height: 'auto',
+                                    maxHeight: '60vh'
+                                }}
+                            />
+                        </div>
+                    </div>
+                ))}
+
+                {/* Final summary page */}
+                <div style={{ pageBreakBefore: 'always' }} className="p-4">
+                    <h2 className="text-xl font-bold mb-4">Cutting Plan Summary</h2>
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-2 gap-4 text-sm">
+                            <div>
+                                <span className="text-muted-foreground">Total Sheets:</span>
+                                <span className="font-medium ml-2">{calculatedSheets.length}</span>
+                            </div>
+                            <div>
+                                <span className="text-muted-foreground">Total Cost:</span>
+                                <span className="font-medium ml-2">${totalCost.toFixed(2)}</span>
+                            </div>
+                            <div>
+                                <span className="text-muted-foreground">Average Efficiency:</span>
+                                <span className="font-medium ml-2">{(averageEfficiency * 100).toFixed(1)}%</span>
+                            </div>
+                            <div>
+                                <span className="text-muted-foreground">Sheet Dimensions:</span>
+                                <span className="font-medium ml-2">{sheetWidth}mm × {sheetLength}mm</span>
+                            </div>
+                        </div>
+
+                        <div className="border rounded-lg p-4 mt-4">
+                            <h3 className="font-semibold mb-2">Required Panels</h3>
+                            <table className="w-full text-sm">
+                                <thead>
+                                    <tr className="border-b">
+                                        <th className="text-left py-2">Width</th>
+                                        <th className="text-left py-2">Length</th>
+                                        <th className="text-left py-2">Quantity</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {panels.map((panel, index) => (
+                                        <tr key={index} className="border-b last:border-0">
+                                            <td className="py-2">{panel.width}mm</td>
+                                            <td className="py-2">{panel.length}mm</td>
+                                            <td className="py-2">{panel.quantity}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
                 </div>
             </div>
         </div>
