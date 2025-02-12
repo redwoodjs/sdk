@@ -461,7 +461,7 @@ export function CalculateSheets() {
                 setSheetLength(2440)
                 setBladeWidth(3)
                 setSheetPrice(60)
-                setPanels([{ width: 600, length: 400, quantity: 1 }])
+                setPanels([{ width: 600, length: 400, quantity: 10 }])
             }
         }
 
