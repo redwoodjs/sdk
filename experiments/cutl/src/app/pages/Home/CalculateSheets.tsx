@@ -296,14 +296,19 @@ export function CalculateSheets() {
 
     const exportCuttingPlan = () => {
         const doc = new jsPDF({
-            orientation: 'landscape', // Keep the PDF in landscape mode
+            orientation: 'landscape',
             unit: 'mm',
             format: 'a4'
         });
     
-        const pageWidth = doc.internal.pageSize.getWidth(); // A4 landscape width (297mm)
-        const pageHeight = doc.internal.pageSize.getHeight(); // A4 landscape height (210mm)
-        const margin = 15; // Standard margin
+        const pageWidth = doc.internal.pageSize.getWidth();
+        const pageHeight = doc.internal.pageSize.getHeight();
+        const margin = 10;
+    
+        // 📌 **Shrink Table to Make More Room for Image**
+        const tableWidth = 70; // Reduced from 90mm → 70mm
+        const availableWidth = pageWidth - tableWidth - (margin * 3);
+        const availableHeight = pageHeight - (margin * 2);
     
         calculatedSheets.forEach((board, index) => {
             if (index > 0) {
@@ -311,102 +316,69 @@ export function CalculateSheets() {
             }
     
             // Title & Sheet Info
-            doc.setFontSize(18);
-            doc.text(`Sheet ${index + 1}`, margin, margin);
+            doc.setFontSize(14);
+            doc.text(`Sheet ${index + 1}`, margin, margin + 4);
     
-            doc.setFontSize(12);
+            doc.setFontSize(10);
             doc.text([
                 `Dimensions: ${sheetWidth}mm × ${sheetLength}mm`,
                 `Efficiency: ${(board.efficiency * 100).toFixed(1)}%`
-            ], margin, margin + 10);
+            ], margin, margin + 12);
     
-            // Cut List Table
-            const tableStartY = margin + 20;
+            // 📌 **New: Place Table on the Left (Narrower)**
             (doc as any).autoTable({
-                startY: tableStartY,
-                head: [['Piece', 'Width', 'Length', 'Position']],
+                startY: margin + 20,
+                margin: { left: margin },
+                tableWidth: tableWidth, // Shrunk from 90 → 70
+                head: [['#', 'W', 'L']], // Shorter column headers
                 body: board.usedRects.map((rect, i) => [
                     i + 1,
                     `${rect.width}mm`,
-                    `${rect.length}mm`,
-                    `(${rect.x}mm, ${rect.y}mm)`
+                    `${rect.length}mm`
                 ]),
                 theme: 'grid',
-                headStyles: { fillColor: [75, 75, 75] },
-                margin: { left: margin, right: margin }
+                headStyles: { fillColor: [75, 75, 75] }
             });
-    
-            const tableEndY = (doc as any).autoTable.previous.finalY;
-            const availableHeight = pageHeight - tableEndY - margin * 2; // Space for image
-            const availableWidth = pageWidth - margin * 2; // Full width minus margins
-    
-            // 📌 **Ensure correct aspect ratio**
-            const scaleX = availableWidth / sheetLength;
-            const scaleY = availableHeight / sheetWidth;
-            const scaleFactor = Math.min(scaleX, scaleY) * 0.98; // Maximize size
-    
-            // 🛠 **Fit the entire board inside the available space**
-            const imageWidth = sheetLength * scaleFactor;
-            const imageHeight = sheetWidth * scaleFactor;
-            const imageX = margin + (availableWidth - imageWidth) / 2; // Center horizontally
-            const imageY = tableEndY + 10; // Place below table
     
             // 🎨 **Create High-Resolution Canvas**
             const pdfCanvas = document.createElement('canvas');
             const ctx = pdfCanvas.getContext('2d');
             if (ctx) {
-                // 📌 **Increase Resolution for Crisp Text**
-                const highResScale = 4; // Even sharper text
-                pdfCanvas.width = sheetLength * scaleFactor * highResScale;
-                pdfCanvas.height = sheetWidth * scaleFactor * highResScale;
-                ctx.scale(scaleFactor * highResScale, scaleFactor * highResScale);
+                // 📌 **Reduce High-Res Scale to Prevent Crashes**
+                const highResScale = 2;
+                pdfCanvas.width = sheetLength * highResScale;
+                pdfCanvas.height = sheetWidth * highResScale;
+                ctx.scale(highResScale, highResScale);
     
                 // 🟫 **Draw the Board Background**
-                ctx.fillStyle = '#cccccc'; // Light gray background
+                ctx.fillStyle = '#cccccc';
                 ctx.fillRect(0, 0, sheetLength, sheetWidth);
     
                 // 🔄 **Ensure the correct horizontal layout**
-                ctx.translate(sheetLength, 0); // Move to correct position
-                ctx.rotate(Math.PI / 2); // Rotate correctly
+                ctx.translate(sheetLength, 0);
+                ctx.rotate(Math.PI / 2);
     
                 // 🔲 **Draw Free Rectangles (Unused Spaces)**
                 board.freeRects.forEach((rect) => {
-                    ctx.fillStyle = 'rgba(200, 200, 200, 0.5)'; // Semi-transparent gray
-                    ctx.strokeStyle = '#999'; // Light gray border
+                    ctx.fillStyle = 'rgba(200, 200, 200, 0.5)';
+                    ctx.strokeStyle = '#999';
                     ctx.lineWidth = 1;
     
                     ctx.fillRect(rect.x, rect.y, rect.width, rect.length);
                     ctx.strokeRect(rect.x, rect.y, rect.width, rect.length);
     
-                    // 🔠 **Label Free Spaces Correctly**
-                    const fontSize = Math.max(22, Math.min(30, rect.width * 0.15)); // Bigger for readability
-                    ctx.fillStyle = '#000000';
+                    // 🖍 **Label Free Spaces (Bigger Font, Edge Aligned)**
+                    const fontSize = Math.max(18, rect.width * 0.15);
                     ctx.font = `bold ${fontSize}px Arial`;
-                    ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
-    
-                    // 🖍 **Fix White Outline Rotation**
-                    ctx.save();
-                    ctx.translate(rect.x + rect.width / 2, rect.y + fontSize + 2);
-    
-                    ctx.strokeStyle = '#FFFFFF';
-                    ctx.lineWidth = 8;
-                    ctx.strokeText(`${rect.width}`, 0, 0);
                     ctx.fillStyle = '#000000';
-                    ctx.fillText(`${rect.width}`, 0, 0);
-                    
-                    ctx.restore();
+                    ctx.textAlign = 'center';
+    
+                    ctx.fillText(`${rect.width}`, rect.x + rect.width / 2, rect.y + fontSize + 2);
     
                     ctx.save();
                     ctx.translate(rect.x + fontSize + 2, rect.y + rect.length / 2);
                     ctx.rotate(-Math.PI / 2);
-    
-                    ctx.strokeStyle = '#FFFFFF';
-                    ctx.lineWidth = 8;
-                    ctx.strokeText(`${rect.length}`, 0, 0);
-                    ctx.fillStyle = '#000000';
                     ctx.fillText(`${rect.length}`, 0, 0);
-                    
                     ctx.restore();
                 });
     
@@ -420,40 +392,43 @@ export function CalculateSheets() {
                     ctx.strokeRect(rect.x, rect.y, rect.width, rect.length);
     
                     // 🔠 **Fix Dimension Text Positioning**
-                    const fontSize = Math.max(26, Math.min(34, rect.width * 0.2));
+                    const fontSize = Math.max(22, rect.width * 0.15);
                     ctx.font = `bold ${fontSize}px Arial`;
                     ctx.fillStyle = '#000000';
                     ctx.textAlign = 'center';
-                    ctx.textBaseline = 'middle';
     
-                    // 🖍 **Fix White Outline Rotation for Cut Pieces**
-                    ctx.save();
-                    ctx.translate(rect.x + rect.width / 2, rect.y + fontSize + 2);
-    
-                    ctx.strokeStyle = '#FFFFFF';
-                    ctx.lineWidth = 8;
-                    ctx.strokeText(`${rect.width}`, 0, 0);
-                    ctx.fillStyle = '#000000';
-                    ctx.fillText(`${rect.width}`, 0, 0);
-                    
-                    ctx.restore();
+                    ctx.fillText(`${rect.width}`, rect.x + rect.width / 2, rect.y + fontSize + 2);
     
                     ctx.save();
                     ctx.translate(rect.x + fontSize + 2, rect.y + rect.length / 2);
                     ctx.rotate(-Math.PI / 2);
-    
-                    ctx.strokeStyle = '#FFFFFF';
-                    ctx.lineWidth = 8;
-                    ctx.strokeText(`${rect.length}`, 0, 0);
-                    ctx.fillStyle = '#000000';
                     ctx.fillText(`${rect.length}`, 0, 0);
-                    
                     ctx.restore();
                 });
     
-                // 📸 **Convert to High-Quality PNG & Add to PDF**
-                const imgData = pdfCanvas.toDataURL('image/png');
-                doc.addImage(imgData, 'PNG', imageX, imageY, imageWidth, imageHeight);
+                // 📸 **Calculate Aspect Ratio & Fit Image Properly**
+                const boardAspectRatio = sheetLength / sheetWidth;
+                const imageAspectRatio = availableWidth / availableHeight;
+    
+                let finalWidth = availableWidth;
+                let finalHeight = availableHeight;
+    
+                if (boardAspectRatio > imageAspectRatio) {
+                    // Board is wider than available space
+                    finalWidth = availableWidth;
+                    finalHeight = availableWidth / boardAspectRatio;
+                } else {
+                    // Board is taller than available space
+                    finalHeight = availableHeight;
+                    finalWidth = availableHeight * boardAspectRatio;
+                }
+    
+                const imageX = tableWidth + (margin * 2);
+                const imageY = margin + (availableHeight - finalHeight) / 2; // Center vertically
+    
+                // 📸 **Convert to High-Quality JPEG to Reduce File Size**
+                const imgData = pdfCanvas.toDataURL('image/jpeg', 0.8);
+                doc.addImage(imgData, 'JPEG', imageX, imageY, finalWidth, finalHeight);
             }
         });
     
