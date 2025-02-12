@@ -1,5 +1,5 @@
 #:schema node_modules/wrangler/config-schema.json
-name = "cuttable"
+name = "cutable"
 main = "src/worker.tsx"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
@@ -7,7 +7,7 @@ assets = { binding = "ASSETS" }
 
 workers_dev = false
 routes = [
-  { pattern = "cuttable.app", custom_domain = true }
+  { pattern = "cutable.app", custom_domain = true }
 ]
 
 
