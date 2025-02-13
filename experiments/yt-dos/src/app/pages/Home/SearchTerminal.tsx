@@ -3,8 +3,6 @@
 import { useState, useEffect, useRef, use } from "react";
 import { fetchYoutubeVideos } from "./serverFunctions";
 import { RouteContext } from "@redwoodjs/reloaded/router";
-const YOUTUBE_API_KEY = "AIzaSyBexaBunzHsr8oMwfJa2L8n8e0PKGp-2-c";
-const YOUTUBE_SEARCH_URL = "https://www.googleapis.com/youtube/v3/search";
 
 interface VideoItem {
   id: {
