@@ -132,35 +132,24 @@ export function SearchTerminal({ ctx }: { ctx: RouteContext }) {
   }, [searchResults]);
 
   return (
-    <div className="flex flex-col min-h-screen font-mono bg-black text-green-400">
+    <div className="flex flex-col min-h-screen font-mono bg-[#282a36] text-[#f8f8f2]">
       <div className="flex-grow p-6">
         {error ? (
-          <pre className="text-white bg-blue-900 p-4">
+          <pre className="text-[#ff5555] bg-[#44475a] p-4">
             {`A fatal exception has occurred at YT-DOS.
             System halted.
             Press any key to restart...`}
           </pre>
         ) : (
           <>
-            <pre className="text-green-400 text-lg">
+            <pre className="text-[#bd93f9] text-lg">
               {`
-
-Y88b   d88P 88888888888      8888888b.   .d88888b.   .d8888b.  
-Y88b d88P      888          888  "Y88b d88P" "Y88b d88P  Y88b 
- Y88o88P       888          888    888 888     888 Y88b.      
-  Y888P        888          888    888 888     888  "Y888b.   
-   888         888          888    888 888     888     "Y88b. 
-   888         888   888888 888    888 888     888       "888 
-   888         888          888  .d88P Y88b. .d88P Y88b  d88P 
-   888         888          8888888P"   "Y88888P"   "Y8888P"  
-                                                              
-
 YT-DOS v1.0 - The Minimalist YouTube Experience
               `}
             </pre>
             <div className="w-full max-w-2xl">
               <div className="flex items-center relative w-full">
-                <span className="text-lg">C:\YT-DOS\SEARCH&gt;</span>
+                <span className="text-lg text-[#50fa7b]">C:\YT-DOS\SEARCH&gt;</span>
                 <div className="relative flex-1">
                   <input
                     ref={inputRef}
@@ -174,10 +163,10 @@ YT-DOS v1.0 - The Minimalist YouTube Experience
                         if (videos[index]) setSelectedVideo(videos[index].id.videoId);
                       }
                     }}
-                    className="ml-2 w-full bg-black text-green-400 border-none outline-none caret-transparent focus:ring-0"
+                    className="ml-2 w-full bg-[#282a36] text-[#f8f8f2] border-none outline-none caret-transparent focus:ring-0"
                   />
                   <span
-                    className={`absolute top-0 text-green-400 ${blink ? "inline" : "invisible"}`}
+                    className={`absolute top-0 text-[#f8f8f2] ${blink ? "inline" : "invisible"}`}
                     style={{ left: `${query.length * 10}px` }}
                   >_</span>
                 </div>
@@ -185,7 +174,7 @@ YT-DOS v1.0 - The Minimalist YouTube Experience
             </div>
             <div className="mt-4 w-full max-w-2xl">
               {isLoading ? (
-                <pre className="text-green-400">
+                <pre className="text-[#f1fa8c]">
                   Searching{loadingChar}
                 </pre>
               ) : selectedVideo ? (
@@ -203,15 +192,17 @@ YT-DOS v1.0 - The Minimalist YouTube Experience
                   </p>
                 </div>
               ) : (
-                <pre className="mt-2 w-full max-w-2xl text-green-400">
+                <pre className="mt-2 w-full max-w-2xl text-[#f8f8f2]">
                   {videos.map((video, index) => (
                     <div
                       key={video.id.videoId}
-                      className="cursor-pointer"
+                      className="cursor-pointer hover:text-[#bd93f9]"
                       onClick={() => setSelectedVideo(video.id.videoId)}
                     >
                       [{index + 1}] {video.snippet.title}  <br/>
-                      &nbsp;&nbsp;&nbsp;&nbsp;by {video.snippet.channelTitle}
+                      <span className="text-[#6272a4]">
+                        &nbsp;&nbsp;&nbsp;&nbsp;by {video.snippet.channelTitle}
+                      </span>
                     </div>
                   ))}
                 </pre>
@@ -220,12 +211,12 @@ YT-DOS v1.0 - The Minimalist YouTube Experience
           </>
         )}
       </div>
-      <footer className="p-4 border-t border-green-400 text-center">
+      <footer className="p-4 border-t border-[#44475a] text-center">
         <a 
           href="https://redwoodjs.com" 
           target="_blank" 
           rel="noopener noreferrer"
-          className="hover:text-green-300"
+          className="text-[#8be9fd] hover:text-[#bd93f9]"
         >
           [BUILT WITH REDWOODJS]
         </a>
