@@ -176,11 +176,10 @@ YT-DOS v1.0 - The Minimalist YouTube Experience
                     }}
                     className="ml-2 w-full bg-black text-green-400 border-none outline-none caret-transparent focus:ring-0"
                   />
-                  {/* <span
-                    ref={cursorRef}
+                  <span
                     className={`absolute top-0 text-green-400 ${blink ? "inline" : "invisible"}`}
                     style={{ left: `${query.length * 10}px` }}
-                  >_</span> */}
+                  >_</span>
                 </div>
               </div>
             </div>
