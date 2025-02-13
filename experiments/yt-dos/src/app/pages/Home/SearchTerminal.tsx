@@ -182,7 +182,7 @@ YT-DOS v1.0 - The Minimalist YouTube Experience
                   <iframe
                     width="100%"
                     height="400"
-                    src={`https://www.youtube.com/embed/${selectedVideo}?rel=0`}
+                    src={`https://www.youtube.com/embed/${selectedVideo}?rel=0&modestbranding=1&autoplay=1&controls=1&showinfo=0`}
                     frameBorder="0"
                     allowFullScreen
                     className="border border-green-400"
