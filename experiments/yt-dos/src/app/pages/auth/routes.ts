@@ -1,7 +1,7 @@
 import { db } from '@redwoodjs/reloaded/worker';
 import { route } from '@redwoodjs/reloaded/router';
 import { performLogin } from "../../../auth";
-import { LoginPage } from "./LoginPage";
+import LoginPage from "./LoginPage";
 
 export const authRoutes = [
   route('/auth', async function ({ request, env }) {
