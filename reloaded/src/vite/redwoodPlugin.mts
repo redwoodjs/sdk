@@ -19,6 +19,7 @@ import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
 import { configPlugin } from "./configPlugin.mjs";
 import { $ } from '../lib/$.mjs';
 import { customReactBuildPlugin } from './customReactBuildPlugin.mjs';
+import { injectHmrPreambleJsxPlugin } from "./injectHmrPreambleJsxPlugin.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -69,6 +70,7 @@ export const redwoodPlugin = (options: RedwoodPluginOptions = {}): InlineConfig[
         }
       }
     }),
+    injectHmrPreambleJsxPlugin(),
     useClientLookupPlugin({
       rootDir: projectRootDir,
       containingPath: "./src/app",

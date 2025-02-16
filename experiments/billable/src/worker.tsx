@@ -1,8 +1,9 @@
 import { db, defineApp } from '@redwoodjs/reloaded/worker';
 import { index, prefix } from '@redwoodjs/reloaded/router';
+import { ExecutionContext } from '@cloudflare/workers-types';
 
 import { link } from "src/shared/links";
-import { Head } from 'src/Head';
+import { Document } from 'src/pages/Document';
 import { getSession } from './auth';
 import { authRoutes } from 'src/pages/auth/routes';
 import { invoiceRoutes } from 'src/pages/invoice/routes';
@@ -37,6 +38,7 @@ const routes = [
     function ({ ctx }) {
       if (ctx.user) {
         return new Response(null, {
+
           status: 302,
           headers: { Location: link('/invoice/list') },
         });
@@ -48,8 +50,15 @@ const routes = [
   ...prefix("/invoice", invoiceRoutes),
 ]
 
-export default defineApp<ReturnType<typeof getContext>>({
-  Head,
-  getContext,
+
+const app = defineApp<ReturnType<typeof getContext>>({
   routes,
+  getContext,
+  Document,
 })
+
+export default {
+  fetch(request: Request, env: Env, ctx: ExecutionContext) {
+    return app.fetch(request, env, ctx);
+  },
+}

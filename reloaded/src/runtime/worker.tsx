@@ -1,5 +1,4 @@
-import { App } from "./App";
-import { db, setupDb } from "./db";
+import { setupDb } from "./db";
 
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 import { injectRSCPayload } from "rsc-html-stream/server";
@@ -10,7 +9,6 @@ import { rscActionHandler } from "./register/worker";
 import { ErrorResponse } from "./error";
 
 import { RouteDefinition, defineRoutes } from "./lib/router";
-import { renderToReadableStream } from 'react-dom/server.edge';
 
 declare global {
   type Env = {
@@ -23,14 +21,14 @@ declare global {
 type DefineAppOptions<Context> = {
   routes: RouteDefinition[];
   getContext: (request: Request, env: Env) => Context | Promise<Context>;
-  Head?: React.FC<{}>;
+  Document: React.FC<{ children: React.ReactNode }>;
 }
 
 export const defineApp = <Context,>(options: DefineAppOptions<Context>) => {
-  const { getContext, routes, Head } = options;
+  const { getContext, routes, Document } = options;
 
   return {
-    fetch: async (request: Request, env: Env) => {
+    fetch: async (request: Request, env: Env, _ctx: ExecutionContext) => {
       globalThis.__webpack_require__ = ssrWebpackRequire;
       const router = defineRoutes(routes);
 
@@ -71,12 +69,11 @@ export const defineApp = <Context,>(options: DefineAppOptions<Context>) => {
 
           const htmlStream = await transformRscToHtmlStream({
             stream: rscPayloadStream1,
-            Parent: ({ children }) => <App head={Head ? <Head /> : null}>{children}</App>,
+            Parent: Document,
           });
 
-          const html = htmlStream.pipeThrough(
-            injectRSCPayload(rscPayloadStream2),
-          );
+          const html = htmlStream.pipeThrough(injectRSCPayload(rscPayloadStream2))
+
           return new Response(html, {
             headers: { "content-type": "text/html" },
           });
@@ -88,6 +85,7 @@ export const defineApp = <Context,>(options: DefineAppOptions<Context>) => {
           env,
           renderPage,
         });
+
         return response;
       } catch (e) {
         if (e instanceof ErrorResponse) {
