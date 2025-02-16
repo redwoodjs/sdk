@@ -10,11 +10,8 @@
   "private": true,
   "scripts": {
     "build": "vite build",
-    "migrate:dev": "wrangler d1 migrations apply DB --local",
-    "migrate:prd": "wrangler d1 migrations apply DB --remote",
     "dev": "while true; do NODE_ENV=development vite dev; [ $? -eq 0 ] || break; done",
     "dev:init": "rw-scripts dev-init",
-    "migrate:new": "rw-scripts migrate-new",
     "worker:run": "rw-scripts worker-run",
     "clean": "pnpm build && pnpm clean:vendor",
     "clean:vite": "rm -rf ./node_modules/.vite",
