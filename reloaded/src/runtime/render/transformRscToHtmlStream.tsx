@@ -8,7 +8,7 @@ export const transformRscToHtmlStream = ({
   Parent = ({ children }) => <>{children}</>,
 }: {
   stream: ReadableStream;
-  Parent?: React.ComponentType<{ children: React.ReactNode }>;
+  Parent: React.ComponentType<{ children: React.ReactNode }>;
 }) => {
   const thenable = createFromReadableStream(stream, {
     ssrManifest: {

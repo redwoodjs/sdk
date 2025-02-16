@@ -2,8 +2,7 @@
 
 interface Env {
 	SECRET_KEY: "secret";
-	APP_URL: string;
-	RESEND_API_KEY: string;
+	APP_URL: "http://billable.me";
 	SESSION_DO: DurableObjectNamespace<import("./src/worker").SessionDO>;
 	R2: R2Bucket;
 	DB: D1Database;
