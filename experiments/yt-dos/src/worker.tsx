@@ -1,6 +1,5 @@
 import { defineApp } from '@redwoodjs/reloaded/worker';
-import { index, prefix } from '@redwoodjs/reloaded/router';
-import { authRoutes } from "src/pages/auth/routes";
+import { index } from '@redwoodjs/reloaded/router';
 import { Document } from 'src/Document';
 import HomePage from 'src/pages/Home/HomePage';
 export { SessionDO } from "./session";
@@ -20,7 +19,6 @@ const routes = [
   index([
     HomePage,
   ]),
-  ...prefix("/user", authRoutes),
 ]
 
 export default defineApp<ReturnType<typeof getContext>>({
