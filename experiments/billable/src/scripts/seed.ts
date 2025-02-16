@@ -1,6 +1,9 @@
-import { db, defineScript } from "@redwoodjs/reloaded/worker";
+import { defineScript } from "@redwoodjs/reloaded/worker";
+import { db, setupDb } from "../db";
 
-export default defineScript(async () => {
+export default defineScript(async ({ env }) => {
+  setupDb(env);
+
   await db.$executeRawUnsafe(`\
     DELETE FROM Invoice;
     DELETE FROM User;

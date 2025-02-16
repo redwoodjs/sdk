@@ -1,23 +1,19 @@
 import { defineApp } from '@redwoodjs/reloaded/worker';
 import { index } from '@redwoodjs/reloaded/router';
 import { Document } from 'src/Document';
-import HomePage from 'src/pages/Home/HomePage';
-export { SessionDO } from "./session";
+import { Home } from 'src/pages/Home';
 
 export const getContext = async (
-  request: Request,
-  env: Env,
+  _request: Request,
+  _env: Env,
 ) => {
-  return {
-    user: null,
-    YT_API_KEY: env.YT_API_KEY,
-  };
+  return {};
 };
 
 
 const routes = [
   index([
-    HomePage,
+    Home,
   ]),
 ]
 

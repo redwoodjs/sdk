@@ -5,6 +5,5 @@ import "react-server-dom-webpack/client.edge";
 
 export * from "../register/worker";
 export * from "../worker";
-export * from "../db";
 export * from "../error";
 export * from "../script";

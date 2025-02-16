@@ -2,7 +2,7 @@
 
 import { Resend } from "resend";
 import { link } from "../../shared/links";
-import { db } from "@redwoodjs/reloaded/worker";
+import { db } from "src/db";
 import { RouteContext } from "@redwoodjs/reloaded/router";
 
 export async function generateAuthToken(email: string) {

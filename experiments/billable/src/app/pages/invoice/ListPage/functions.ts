@@ -1,7 +1,7 @@
 'use server';
 
 
-import { db } from "@redwoodjs/reloaded/worker";
+import { db } from "src/db";
 import { getContext } from "../../../../worker";
 
 

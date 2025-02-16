@@ -33,11 +33,14 @@ export type RedwoodPluginOptions = {
   };
 }
 
-export const redwoodPlugin = (options: RedwoodPluginOptions = {}): InlineConfig['plugins'] => {
+export const redwoodPlugin = async (options: RedwoodPluginOptions = {}): Promise<InlineConfig['plugins']> => {
   const projectRootDir = process.cwd();
   const mode = options.mode ?? (process.env.NODE_ENV === "development" ? "development" : "production");
   const clientEntryPathname = resolve(projectRootDir, options?.entry?.client ?? 'src/client.tsx');
   const workerEntryPathname = resolve(projectRootDir, options?.entry?.worker ?? 'src/worker.tsx');
+
+  const usesPrisma = await $({ reject: false })`pnpm prisma --version`;
+  const isUsingPrisma = usesPrisma.exitCode === 0;
 
   return [
     configPlugin({
@@ -47,6 +50,7 @@ export const redwoodPlugin = (options: RedwoodPluginOptions = {}): InlineConfig[
       clientEntryPathname,
       workerEntryPathname,
       port: options.port ?? DEV_SERVER_PORT,
+      isUsingPrisma,
     }),
     customReactBuildPlugin(),
     tsconfigPaths({ root: projectRootDir }),
@@ -61,9 +65,6 @@ export const redwoodPlugin = (options: RedwoodPluginOptions = {}): InlineConfig[
     useClientPlugin(),
     asyncSetupPlugin({
       async setup({ command }) {
-        // console.log('Generating prisma client...')
-        // await $`pnpm prisma generate`;
-
         if (command !== 'build') {
           console.log('Generating wrangler types...')
           await $`pnpm wrangler types`;
@@ -78,7 +79,7 @@ export const redwoodPlugin = (options: RedwoodPluginOptions = {}): InlineConfig[
     transformJsxScriptTagsPlugin({
       manifestPath: resolve(projectRootDir, "dist", "client", ".vite", "manifest.json"),
     }),
-    copyPrismaWasmPlugin({ rootDir: projectRootDir }),
+    ...(isUsingPrisma ? [copyPrismaWasmPlugin({ rootDir: projectRootDir })] : []),
     moveStaticAssetsPlugin({ rootDir: projectRootDir }),
   ];
 }
