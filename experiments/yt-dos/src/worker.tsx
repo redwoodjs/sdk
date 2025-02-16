@@ -1,7 +1,7 @@
 import { defineApp } from '@redwoodjs/reloaded/worker';
 import { index, prefix } from '@redwoodjs/reloaded/router';
 import { authRoutes } from "src/pages/auth/routes";
-import { Document } from 'src/pages/Document';
+import { Document } from 'src/Document';
 import HomePage from 'src/pages/Home/HomePage';
 export { SessionDO } from "./session";
 

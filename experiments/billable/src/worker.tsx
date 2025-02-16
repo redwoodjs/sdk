@@ -3,7 +3,7 @@ import { index, prefix } from '@redwoodjs/reloaded/router';
 import { ExecutionContext } from '@cloudflare/workers-types';
 
 import { link } from "src/shared/links";
-import { Document } from 'src/pages/Document';
+import { Document } from 'src/Document';
 import { getSession } from './auth';
 import { authRoutes } from 'src/pages/auth/routes';
 import { invoiceRoutes } from 'src/pages/invoice/routes';
