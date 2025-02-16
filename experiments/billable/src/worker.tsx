@@ -1,4 +1,4 @@
-import { db, defineApp } from '@redwoodjs/reloaded/worker';
+import { defineApp } from '@redwoodjs/reloaded/worker';
 import { index, prefix } from '@redwoodjs/reloaded/router';
 import { ExecutionContext } from '@cloudflare/workers-types';
 
@@ -8,6 +8,9 @@ import { getSession } from './auth';
 import { authRoutes } from 'src/pages/auth/routes';
 import { invoiceRoutes } from 'src/pages/invoice/routes';
 import HomePage from 'src/pages/Home/HomePage';
+import { setup } from './setup';
+import { db } from './db';
+
 export { SessionDO } from "./session";
 
 export const getContext = async (
@@ -52,6 +55,7 @@ const routes = [
 
 
 const app = defineApp<ReturnType<typeof getContext>>({
+  setup,
   routes,
   getContext,
   Document,

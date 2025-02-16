@@ -6,19 +6,22 @@ import {
   DEV_SERVER_PORT,
 } from "../lib/constants.mjs";
 
-export const configPlugin = ({ mode,
+export const configPlugin = ({
+  mode,
   silent,
   projectRootDir,
   clientEntryPathname,
   workerEntryPathname,
   port,
+  isUsingPrisma,
 }: {
   mode: 'development' | 'production',
   silent: boolean,
   projectRootDir: string,
   clientEntryPathname: string,
   workerEntryPathname: string,
-  port: number
+  port: number,
+  isUsingPrisma: boolean,
 }): Plugin => ({
   name: 'rw-reloaded-config',
   config: (_, { command }) => {
@@ -46,8 +49,6 @@ export const configPlugin = ({ mode,
           optimizeDeps: {
             noDiscovery: false,
             include: [
-              "lodash",
-              "lodash/memoize",
               "react",
               "react-dom/client",
               "react/jsx-runtime",
@@ -66,16 +67,16 @@ export const configPlugin = ({ mode,
             esbuildOptions: {
               conditions: ["workerd", "react-server"],
               plugins: [
-                {
+                ...(isUsingPrisma ? [{
                   name: 'prisma-client-wasm',
-                  setup(build) {
-                    build.onResolve({ filter: /.prisma\/client\/default/ }, async (args) => {
+                  setup(build: any) {
+                    build.onResolve({ filter: /.prisma\/client\/default/ }, async (args: any) => {
                       return {
                         path: resolve(projectRootDir, "node_modules/.prisma/client/wasm.js"),
                       }
                     })
                   }
-                }
+                }] : []),
               ],
             },
             include: [
@@ -107,7 +108,9 @@ export const configPlugin = ({ mode,
       resolve: {
         conditions: ["workerd"],
         alias: {
-          ".prisma/client/default": resolve(projectRootDir, "node_modules/.prisma/client/wasm.js"),
+          ...(isUsingPrisma ? {
+            ".prisma/client/default": resolve(projectRootDir, "node_modules/.prisma/client/wasm.js"),
+          } : {}),
         },
       },
     };

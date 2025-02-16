@@ -2,3 +2,4 @@ packages:
   - 'reloaded'
   - 'experiments/billable'
   - 'experiments/yt-dos'
+  - 'starters/minimal'

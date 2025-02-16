@@ -1,5 +1,3 @@
-import { setupDb } from "./db";
-
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 import { injectRSCPayload } from "rsc-html-stream/server";
 import { renderToRscStream } from "./render/renderToRscStream";
@@ -19,13 +17,14 @@ declare global {
 
 
 type DefineAppOptions<Context> = {
+  setup?: (env: Env) => void | Promise<void>;
   routes: RouteDefinition[];
   getContext: (request: Request, env: Env) => Context | Promise<Context>;
   Document: React.FC<{ children: React.ReactNode }>;
 }
 
 export const defineApp = <Context,>(options: DefineAppOptions<Context>) => {
-  const { getContext, routes, Document } = options;
+  const { getContext, routes, Document, setup } = options;
 
   return {
     fetch: async (request: Request, env: Env, _ctx: ExecutionContext) => {
@@ -42,7 +41,7 @@ export const defineApp = <Context,>(options: DefineAppOptions<Context>) => {
       }
 
       try {
-        setupDb(env);
+        await setup?.(env);
 
         const url = new URL(request.url);
 
