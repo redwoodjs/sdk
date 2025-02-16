@@ -23,6 +23,7 @@
     "paths": {
       "vendor/*": ["./vendor/dist/*"],
       "src/*": ["./src/app/*"],
+      "src/db": ["./src/db.ts"]
     },
     /* Enable importing .json files */
     "resolveJsonModule": true,
