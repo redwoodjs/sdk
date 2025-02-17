@@ -15,17 +15,14 @@ declare global {
   }
 }
 
-
-type DefineAppOptions<Context> = {
+type LegacyDefineAppOptions<Context> = {
   setup?: (env: Env) => void | Promise<void>;
   routes: RouteDefinition[];
   getContext: (request: Request, env: Env) => Context | Promise<Context>;
   Document: React.FC<{ children: React.ReactNode }>;
 }
 
-export const defineApp = <Context,>(options: DefineAppOptions<Context>) => {
-  const { getContext, routes, Document, setup } = options;
-
+export const defineApp = <Context,>(routes: RouteDefinition<Context>[]) => {
   return {
     fetch: async (request: Request, env: Env, _ctx: ExecutionContext) => {
       globalThis.__webpack_require__ = ssrWebpackRequire;
@@ -41,20 +38,28 @@ export const defineApp = <Context,>(options: DefineAppOptions<Context>) => {
       }
 
       try {
-        await setup?.(env);
-
         const url = new URL(request.url);
-
-        const ctx = await getContext(request, env);
-
         const isRSCRequest = url.searchParams.has("__rsc");
-        const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
-        let actionResult: any;
-        if (isRSCActionHandler) {
-          actionResult = await rscActionHandler(request, ctx, env); // maybe we should include params and ctx in the action handler?
+
+        const handleAction = async (ctx: Context) => {
+          const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
+
+          if (isRSCActionHandler) {
+            return await rscActionHandler(request, ctx, env); // maybe we should include params and ctx in the action handler?
+          }
         }
 
-        const renderPage = async (Page: any, props = {}) => {
+        const renderPage = async ({
+          Page,
+          props,
+          actionResult,
+          Layout,
+        }: {
+          Page: React.FC<Record<string, any>>,
+          props: Record<string, any>,
+          actionResult: unknown,
+          Layout: React.FC<{ children: React.ReactNode }>
+        }) => {
           const rscPayloadStream = renderToRscStream({
             node: <Page {...props} />,
             actionResult: actionResult,
@@ -68,7 +73,7 @@ export const defineApp = <Context,>(options: DefineAppOptions<Context>) => {
 
           const htmlStream = await transformRscToHtmlStream({
             stream: rscPayloadStream1,
-            Parent: Document,
+            Parent: Layout,
           });
 
           const html = htmlStream.pipeThrough(injectRSCPayload(rscPayloadStream2))
@@ -80,9 +85,13 @@ export const defineApp = <Context,>(options: DefineAppOptions<Context>) => {
 
         const response = await router.handle({
           request,
-          ctx,
+          ctx: {} as Context,
           env,
-          renderPage,
+          rw: {
+            Layout: DefaultLayout,
+            handleAction,
+            renderPage,
+          },
         });
 
         return response;
@@ -97,3 +106,17 @@ export const defineApp = <Context,>(options: DefineAppOptions<Context>) => {
     }
   }
 }
+
+export const DefaultLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <html lang="en">
+    <head>
+      <meta charSet="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>@redwoodjs/starter-minimal</title>
+      <script type="module" src="/src/client.tsx"></script>
+    </head>
+    <body>
+      <div id="root">{children}</div>
+    </body>
+  </html>
+);

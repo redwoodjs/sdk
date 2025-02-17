@@ -13,10 +13,10 @@ import { db } from './db';
 
 export { SessionDO } from "./session";
 
-export const getContext = async (
+export const getUser = async (
   request: Request,
   env: Env,
-) => {
+}) => {
   try {
     const session = await getSession(request, env);
     const user = await db.user.findFirstOrThrow({
@@ -26,40 +26,36 @@ export const getContext = async (
       },
       where: { id: session?.userId },
     });
-    return {
-      user,
-      };
+    return user;
   } catch (e) {
-    return {
-      user: null,
-    };
+    return null;
   }
 };
 
-const routes = [
-  index([
-    function ({ ctx }) {
-      if (ctx.user) {
-        return new Response(null, {
-
-          status: 302,
-          headers: { Location: link('/invoice/list') },
-        });
-      }
+const app = defineApp(
+  middleware([
+    async ({ request, ctx, env }) => {
+      setupDb(env)
+      ctx.user = await getUser(request, env)
     },
-    HomePage,
+  ], [
+    layout(Document, [
+      index([
+          function ({ ctx }) {
+            if (ctx.user) {
+              return new Response(null, {
+                status: 302,
+                headers: { Location: link('/invoice/list') },
+              });
+            }
+          },
+          HomePage,
+      ]),
+      ...prefix("/user", authRoutes),
+      ...prefix("/invoice", invoiceRoutes),
+    ])
   ]),
-  ...prefix("/user", authRoutes),
-  ...prefix("/invoice", invoiceRoutes),
-]
-
-
-const app = defineApp<ReturnType<typeof getContext>>({
-  setup,
-  routes,
-  getContext,
-  Document,
-})
+)
 
 export default {
   fetch(request: Request, env: Env, ctx: ExecutionContext) {
