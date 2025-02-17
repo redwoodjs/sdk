@@ -2,11 +2,11 @@
 
 
 import { db } from "src/db";
-import { getContext } from "../../../../worker";
+import { Context } from "../../../../worker";
 
 
 // We need to pass the context to these somehow?
-export async function createInvoice({ ctx }: { ctx: Awaited<ReturnType<typeof getContext>> }) {
+export async function createInvoice({ ctx }: { ctx: Context }) {
 
   const userId = ctx.user.id
 

@@ -6,7 +6,7 @@ import { ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import { ErrorResponse } from "./error";
 
-import { RouteDefinition, defineRoutes } from "./lib/router";
+import { Route, defineRoutes } from "./lib/router";
 
 declare global {
   type Env = {
@@ -15,14 +15,7 @@ declare global {
   }
 }
 
-type LegacyDefineAppOptions<Context> = {
-  setup?: (env: Env) => void | Promise<void>;
-  routes: RouteDefinition[];
-  getContext: (request: Request, env: Env) => Context | Promise<Context>;
-  Document: React.FC<{ children: React.ReactNode }>;
-}
-
-export const defineApp = <Context,>(routes: RouteDefinition<Context>[]) => {
+export const defineApp = <Context,>(routes: Route<Context>[]) => {
   return {
     fetch: async (request: Request, env: Env, _ctx: ExecutionContext) => {
       globalThis.__webpack_require__ = ssrWebpackRequire;
