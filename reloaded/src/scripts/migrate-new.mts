@@ -2,10 +2,12 @@ import snakeCase from 'lodash/snakeCase';
 import { $ } from '../lib/$.mjs';
 import { readdir } from 'fs/promises';
 import { resolve } from 'path'
-import { ROOT_DIR } from '../lib/constants.mjs';
+import { mkdirp } from 'fs-extra';
 
 const getNextMigrationNumber = async (): Promise<string> => {
-  const files = await readdir(resolve(ROOT_DIR, './migrations'));
+  await mkdirp(resolve(process.cwd(), './migrations'));
+  const files = await readdir(resolve(process.cwd(), './migrations'));
+
   const numbers = files
     .map(file => parseInt(file.split('_')[0]))
     .filter(num => !isNaN(num));
