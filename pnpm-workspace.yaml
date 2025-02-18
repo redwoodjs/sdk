@@ -1,5 +1,5 @@
 packages:
-  - 'reloaded'
+  - 'sdk'
   - 'experiments/billable'
   - 'experiments/yt-dos'
   - 'starters/minimal'

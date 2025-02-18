@@ -3,7 +3,7 @@
 import { Resend } from "resend";
 import { link } from "../../shared/links";
 import { db } from "src/db";
-import { RouteContext } from "@redwoodjs/reloaded/router";
+import { RouteContext } from "@redwoodjs/sdk/router";
 
 export async function generateAuthToken(email: string) {
   const authToken = Math.floor(100000 + Math.random() * 900000).toString();
