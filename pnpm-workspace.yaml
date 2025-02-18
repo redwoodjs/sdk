@@ -3,4 +3,4 @@ packages:
   - 'experiments/billable'
   - 'experiments/yt-dos'
   - 'starters/minimal'
-  - 'starters/db'
+  - 'starters/prisma'
