@@ -15,11 +15,58 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+model Application {
+  id             String            @id @default(uuid())
+  userId         String
+  user           User              @relation(fields: [userId], references: [id])
+  status         ApplicationStatus @relation(fields: [statusId], references: [id])
+  statusId       Int
+  salaryMin      Int?
+  salaryMax      Int?
+  dateApplied    DateTime?
+  jobTitle       String?
+  jobDescription String?
+  postingUrl     String?
+  submissionDate DateTime?
+  createdAt      DateTime          @default(now())
+  updatedAt      DateTime?         @updatedAt
+  companyId      String
+  company        Company           @relation(fields: [companyId], references: [id])
+}
+
+model ApplicationStatus {
+  id           Int           @id @default(autoincrement())
+  status       String
+  applications Application[]
+}
+
+model Company {
+  id           String        @id @default(uuid())
+  name         String
+  applications Application[]
+  contacts     Contact[]
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime?     @updatedAt
+}
+
+model Contact {
+  id        String    @id @default(uuid())
+  firstName String
+  lastName  String
+  email     String?
+  phone     String?
+  companyId String
+  company   Company   @relation(fields: [companyId], references: [id])
+  createdAt DateTime  @default(now())
+  updatedAt DateTime? @updatedAt
+}
+
 model User {
-  id                 String    @id @default(uuid())
-  email              String    @unique
+  id                 String        @id @default(uuid())
+  email              String        @unique
   authToken          String?
   authTokenExpiresAt DateTime?
-  createdAt          DateTime  @default(now())
-  updatedAt          DateTime? @updatedAt
+  createdAt          DateTime      @default(now())
+  updatedAt          DateTime?     @updatedAt
+  applications       Application[]
 }
