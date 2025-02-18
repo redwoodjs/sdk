@@ -2,6 +2,10 @@
 
 This starter will make it easy to start up a project with database using Prisma
 
+If video is your thing:
+
+<div style="position: relative; padding-bottom: 64.5933014354067%; height: 0;"><iframe src="https://www.loom.com/embed/019f4a52e47e4bb28dbfc1a98847e3a3?sid=3efd61df-413b-4e37-8947-1c6605c54479" frameborder="0" webkitallowfullscreen mozallowfullscreen allowfullscreen style="position: absolute; top: 0; left: 0; width: 100%; height: 100%;"></iframe></div>
+
 Clone the repo
 
 ```shell
