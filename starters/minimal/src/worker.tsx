@@ -8,8 +8,8 @@ type Context = {
 
 export default defineApp<Context>([
   ({ ctx }) => {
-    ctx;
     // setup ctx here
+    ctx;
   },
   layout(Document, [
     index([
