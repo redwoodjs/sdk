@@ -8,9 +8,11 @@ export type RouteContext<TContext = Record<string, any>, TParams = Record<string
   rw: RwContext<TContext>;
 };
 
+type PageProps<TContext> = Omit<RouteContext<TContext>, "rw" | "request">
+
 export type RwContext<TContext> = {
   Layout: React.FC<{ children: React.ReactNode }>;
-  renderPage: (params: { Page: React.FC<Record<string, any>>, props: RouteContext<TContext>, actionResult: unknown, Layout: React.FC<{ children: React.ReactNode }> } ) => Promise<Response>;
+  renderPage: (params: { Page: React.FC<Record<string, any>>, props: PageProps<TContext>, actionResult: unknown, Layout: React.FC<{ children: React.ReactNode }> } ) => Promise<Response>;
   handleAction: (ctx: TContext) => Promise<unknown>;
 }
 
@@ -169,7 +171,7 @@ export function defineRoutes<TContext = Record<string, any>>(routes: Route<TCont
       if (isRouteComponent(handler)) {
         const actionResult = await rw.handleAction(ctx);
         const serializedEnv = serializeEnv(env);
-        const props = { request, params, env: serializedEnv, ctx, rw };
+        const props = { params, env: serializedEnv, ctx };
         return await rw.renderPage({ Page: handler as React.FC<Record<string, any>>, props, actionResult, Layout: rw.Layout});
       } else {
         return await (handler({ request, params, ctx, env, rw }) as Promise<Response>);
