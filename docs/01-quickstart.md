@@ -1,96 +1,134 @@
 # Quickstart
 
-Note, the package names are wrong.
+Note: This will not currently work. We have not yet published the packages. Therefore you must
+run this command in the `redwoodjs/reloaded` repo.
 
-<!-- we should make this package manager agnostic? -->
+<!-- This will eventually become a vite starter -->
 ```terminal
-pnpm init
-pnpm install vite @redwoodjs/origin
+npx degit redwoodjs/reloaded/starters/minimal my-project
+cd my-project
+
+npm install
+npm run dev
 ```
 
-## Initial setup
+Open http://localhost:8910 where you'll be be greeted by "Hello, world!"
 
-```terminal
-touch vite.config.mts
-```
+## Routing
 
-```typescript
-// vite.config.mts
-import { defineConfig } from 'vite'
-import { redwoodJS } from '@redwoodjs/origin'
+The fundemental law of your software is the request/ response cycle. 
 
-export default defineConfig({
-    plugins: [
-        redwoodJS()
-    ]
-})
-```
+```jsx (src/worker.tsx)
+import { defineApp } from '@redwoodjs/reloaded/worker'
+import { route } from '@redwoodjs/reloaded/router'
 
-## Entry file
-
-```terminal
-mkdir src
-mkdir src/worker.tsx
-```
-<!-- I wonder what an ordinary worker looks like? -->
-<!-- I wonder why we name it ".tsx?" -->
-<!-- I am not a fan of HEAD.tsx, but I guess that's because we don't programatically inject the vite stuff during development. -->
-```typescript
-// src/worker.ts
-
-import { defineApp, index } from '@redwoodjs/reloaded/worker';
-
-const routes = [
-    index(function() {
+defineApp([
+    route('/', function({ request }: { request: Request }) {
         return new Response('Hello, world!')
-    })
-]
-
-export default defineApp({
-  routes,
-})
+    }
+])
 ```
 
-Now run it!
+In this example a request is made to "/" which is matched by the `/` route, passed on to the route function, and a plain/text Response with `Hello, world!` is returned.
 
-```
-pnpm dev
-```
 
-## How to render pages
+### Responding with JSX
 
-A JSX component can be returned from any route. Server components are the default, so if you need interactivity remember to specify "use client" in the component.
+The route function can either return a `Response` object or a JSX element. The JSX element is statically rendered (as html) and then hydrated by React's client side. Both Server and Client components are supported. (More on client components later...)
 
-<!-- Show example or rendering a page -->
+```jsx (src/worker.tsx)
+import { defineApp } from '@redwoodjs/reloaded/worker'
+import { route } from '@redwoodjs/reloaded/router'
 
-## How to database
++ function HomePage() {
++   return <div>Hello, world!</div>
++ }
 
-We suggest using Prisma. We've already setup most of the things required to get it working. (It was difficult.)
-
-```terminal
-mkdir prisma
-touch prisma/schema.prisma
-
-```
-<!-- Show example field -->
-```prisma
-// prisma/schema.prisma
+defineApp([
+    route('/', function({ request }: { request: Request }) {
+-       return new Response('Hello, world!')
++       return HomePage
+    }
+])
 ```
 
+### Layouts
 
-### Migrations
+You may have noticed that Redwood does not ship with a default template. You'll have to create one yourself, and use the the `layout` function to nest your routes.
 
-Unfortunately Prisma needs to know where the Cloudflare D1 database is located on your development machine, it cannot know this unless the miniflare environment is present, because of this we had to "hack" the Prisma migration system. We expect this is temporary.
+```jsx (src/worker.tsx)
+import { defineApp } from '@redwoodjs/reloaded/worker'
++ import { route, layout } from '@redwoodjs/reloaded/router'
 
-To create a migration
-```terminal
-pnpm migrate:new "migration summary"
+
++ function Document({ children }) {
++   return (
++       <html>
++           <head><title>RedwoodJS</title></head>
++           <body>{children}</body>
++        </html>
++   )
++ }
++
+
+function HomePage() {
+  return <div>Hello, world!</div>
+}
+
+defineApp([
++   layout(Document, [
+        route('/', function({request }: { request: Request }) {
+            return HomePage
+        },
++   ])
+])
 ```
 
-To apply a migration
-```terminal
-pnpm migrate:dev
+## Interactivity
+
+Redwood JSX components default to the `"use server"` directive. This means that in order to enable interactivity you must use the `"use client"` directive and you must enable client side React hydration in your default HTML document.
+
+```jsx (src/worker.tsx)
+function Document({ children }) {
+return (
+    <html>
+        <head>
++           <title>RedwoodJS</title>
++           <script type="module" src="/src/client.tsx"></script>
++       </head>
+        <body>{children}</body>
+    </html>
+    )
+}
 ```
 
-## How to JSX and RSC?
+```jsx (src/client.tsx)
+import { initClient } from "@redwoodjs/reloaded/client";
 
+initClient();
+```
+
+
+### Route Matchers
+
+There are three matching strategies that can be mixed and matched: static, parameters (`:`), and wildcards (`*`).
+
+```tsx
+    defineApp([
+        route('/static/', /* ... */),
+        route('/parameter/:paramter1/:paramter1', /* ... */),
+        route('/wildcard/*', /* ... */),
+        route('/static/:parameter/*', /* ... */)
+    ])
+```
+
+The parameter and wildcard values are available under the `params` object in the route function.
+
+```tsx
+    defineApp([
+        route('/static/:parameter1/*', function({ request, params }) {
+            console.log(params.parameter1) // named parameters ":"
+            console.log(params.$0) // first wildcard value
+        })
+    ])
+```
