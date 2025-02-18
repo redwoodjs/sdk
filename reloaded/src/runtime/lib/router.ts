@@ -1,31 +1,42 @@
 import { isValidElementType } from "react-is";
 
-export type RouteContext<TParams = Record<string, string>> = {
+export type RouteContext<TContext = Record<string, any>, TParams = Record<string, string>> = {
   request: Request;
   params: TParams;
   env: Env;
-  ctx?: any;
+  ctx: TContext;
+  rw: RwContext<TContext>;
 };
 
-type RouteMiddleware = (
-  ctx: RouteContext,
-) => Response | Promise<Response> | void;
-type RouteFunction = (ctx: RouteContext) => Response | Promise<Response>;
-type RouteComponent = (ctx: RouteContext) => JSX.Element | Promise<JSX.Element>;
+type PageProps<TContext> = Omit<RouteContext<TContext>, "rw" | "request">
 
-type RouteHandler =
-  | RouteFunction
-  | RouteComponent
-  | [...RouteMiddleware[], RouteFunction | RouteComponent];
+export type RwContext<TContext> = {
+  Layout: React.FC<{ children: React.ReactNode }>;
+  renderPage: (params: { Page: React.FC<Record<string, any>>, props: PageProps<TContext>, actionResult: unknown, Layout: React.FC<{ children: React.ReactNode }> } ) => Promise<Response>;
+  handleAction: (ctx: TContext) => Promise<unknown>;
+}
 
-export type RouteDefinition = {
+type RouteMiddleware<TContext> = (
+  ctx: RouteContext<TContext>,
+) => Response | Promise<Response> | void | Promise<void>;
+type RouteFunction<TContext> = (ctx: RouteContext<TContext>) => Response | Promise<Response>;
+type RouteComponent<TContext> = (ctx: RouteContext<TContext>) => JSX.Element | Promise<JSX.Element>;
+
+type RouteHandler<TContext> =
+  | RouteFunction<TContext>
+  | RouteComponent<TContext>
+  | [...RouteMiddleware<TContext>[], RouteFunction<TContext> | RouteComponent<TContext>];
+
+export type Route<TContext> = RouteMiddleware<TContext> | RouteDefinition<TContext> | Array<Route<TContext>>;
+
+export type RouteDefinition<TContext = Record<string, any>> = {
   path: string;
-  handler: RouteHandler;
+  handler: RouteHandler<TContext>;
 };
 
-type RouteMatch = {
+type RouteMatch<TContext = Record<string, any>> = {
   params: Record<string, string>;
-  handler: RouteHandler;
+  handler: RouteHandler<TContext>;
 };
 
 function matchPath(
@@ -64,33 +75,43 @@ function matchPath(
   return params;
 }
 
-function serializeEnv(env: Record<string, any>): Record<string, string | number | boolean> {
+function serializeEnv(env: Env): Env {
   return Object.fromEntries(
     Object.entries(env).filter(([_, value]) =>
       ['string', 'number', 'boolean'].includes(typeof value)
     )
-  );
+  ) as Env;
 }
 
-export function defineRoutes(routes: RouteDefinition[]): {
-  routes: RouteDefinition[];
+function flattenRoutes<TContext>(routes: Route<TContext>[]): (RouteMiddleware<TContext> | RouteDefinition<TContext>)[] {
+  return routes.reduce((acc: Route<TContext>[], route) => {
+    if (Array.isArray(route)) {
+      return [...acc, ...flattenRoutes(route)];
+    }
+    return [...acc, route];
+  }, []) as (RouteMiddleware<TContext> | RouteDefinition<TContext>)[];
+}
+
+export function defineRoutes<TContext = Record<string, any>>(routes: Route<TContext>[]): {
+  routes: Route<TContext>[];
   handle: (
     {
       request,
       ctx,
       env,
-      renderPage,
+      rw,
     }: {
       request: Request;
-      ctx: any;
+      ctx: TContext;
       env: Env;
-      renderPage: (page: any, props: Record<string, any>) => Promise<Response>;
+      rw: RwContext<TContext>;
     },
   ) => Response | Promise<Response>;
 } {
+  const flattenedRoutes = flattenRoutes(routes);
   return {
-    routes,
-    async handle({ request, ctx, env, renderPage }) {
+    routes: flattenedRoutes,
+    async handle({ request, ctx, env, rw }) {
       const url = new URL(request.url);
       let path = url.pathname;
 
@@ -100,8 +121,19 @@ export function defineRoutes(routes: RouteDefinition[]): {
       }
 
       // Find matching route
-      let match: RouteMatch | null = null;
-      for (const route of routes) {
+      let match: RouteMatch<TContext> | null = null;
+
+      for (const route of flattenedRoutes) {
+        if (typeof route === "function") {
+          const r = await route({ request, params: {}, ctx, env, rw });
+
+          if (r instanceof Response) {
+            return r;
+          }
+
+          continue
+        }
+
         const params = matchPath(route.path, path);
         if (params) {
           match = { params, handler: route.handler };
@@ -119,7 +151,7 @@ export function defineRoutes(routes: RouteDefinition[]): {
       // Array of handlers (middleware chain)
       if (Array.isArray(handler)) {
         const handlers = [...handler]
-        handler = handlers.pop() as RouteFunction | RouteComponent;
+        handler = handlers.pop() as RouteFunction<TContext> | RouteComponent<TContext>;
 
         // loop over each function. Only the last function can be a page function.
         for (const h of handlers) {
@@ -129,7 +161,7 @@ export function defineRoutes(routes: RouteDefinition[]): {
             );
           }
 
-          const r = await h({ request, params, ctx, env });
+          const r = await h({ request, params, ctx, env, rw });
           if (r instanceof Response) {
             return r;
           }
@@ -137,16 +169,18 @@ export function defineRoutes(routes: RouteDefinition[]): {
       }
 
       if (isRouteComponent(handler)) {
+        const actionResult = await rw.handleAction(ctx);
         const serializedEnv = serializeEnv(env);
-        return await renderPage(handler as RouteComponent, { params, ctx, env: serializedEnv });
+        const props = { params, env: serializedEnv, ctx };
+        return await rw.renderPage({ Page: handler as React.FC<Record<string, any>>, props, actionResult, Layout: rw.Layout});
       } else {
-        return await (handler({ request, params, ctx, env }) as Promise<Response>);
+        return await (handler({ request, params, ctx, env, rw }) as Promise<Response>);
       }
     },
   };
 }
 
-export function route(path: string, handler: RouteHandler) {
+export function route<TContext>(path: string, handler: RouteHandler<TContext>): RouteDefinition<TContext> {
   if (!path.endsWith("/")) {
     path = path + "/";
   }
@@ -157,17 +191,25 @@ export function route(path: string, handler: RouteHandler) {
   };
 }
 
-export function index(handler: RouteHandler) {
+export function index<TContext>(handler: RouteHandler<TContext>): RouteDefinition<TContext> {
   return route("/", handler);
 }
 
-export function prefix(prefix: string, routes: ReturnType<typeof route>[]) {
+export function prefix<TContext>(prefix: string, routes: ReturnType<typeof route<TContext>>[]): RouteDefinition<TContext>[] {
   return routes.map((r) => {
     return {
       path: prefix + r.path,
       handler: r.handler,
     };
   });
+}
+
+export function layout<TContext>(Layout: React.FC<{ children: React.ReactNode }>, routes: Route<TContext>[]): Route<TContext>[] {
+  const layoutMiddleware: RouteMiddleware<TContext> = ({ rw }) => {
+    rw.Layout = Layout;
+  }
+
+  return [layoutMiddleware, ...routes];
 }
 
 function isRouteComponent(handler: any) {

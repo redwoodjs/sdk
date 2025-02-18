@@ -1,10 +1,10 @@
-import { RouteContext } from "@redwoodjs/reloaded/router";
 import { Layout } from "../Layout";
-import {SearchTerminal} from "./SearchTerminal";
+import { SearchTerminal } from "./SearchTerminal";
+import { Context } from "../../../worker";
 
-export default function HomePage({ ctx }: RouteContext) {
+export default function HomePage({ ctx }: { ctx: Context }) {
   return (
-    <Layout ctx={ctx}>
+    <Layout>
       <SearchTerminal ctx={ctx} />
     </Layout>
   );

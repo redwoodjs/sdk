@@ -1,5 +1,5 @@
 import { defineApp } from '@redwoodjs/reloaded/worker';
-import { index, prefix } from '@redwoodjs/reloaded/router';
+import { index, layout, prefix } from '@redwoodjs/reloaded/router';
 import { ExecutionContext } from '@cloudflare/workers-types';
 
 import { link } from "src/shared/links";
@@ -9,11 +9,15 @@ import { authRoutes } from 'src/pages/auth/routes';
 import { invoiceRoutes } from 'src/pages/invoice/routes';
 import HomePage from 'src/pages/Home/HomePage';
 import { setup } from './setup';
-import { db } from './db';
+import { db, setupDb } from './db';
 
 export { SessionDO } from "./session";
 
-export const getContext = async (
+export type Context = {
+  user: Awaited<ReturnType<typeof getUser>>;
+}
+
+export const getUser = async (
   request: Request,
   env: Env,
 ) => {
@@ -26,40 +30,33 @@ export const getContext = async (
       },
       where: { id: session?.userId },
     });
-    return {
-      user,
-      };
+    return user;
   } catch (e) {
-    return {
-      user: null,
-    };
+    return null;
   }
 };
 
-const routes = [
-  index([
-    function ({ ctx }) {
-      if (ctx.user) {
-        return new Response(null, {
-
-          status: 302,
-          headers: { Location: link('/invoice/list') },
-        });
-      }
-    },
-    HomePage,
-  ]),
-  ...prefix("/user", authRoutes),
-  ...prefix("/invoice", invoiceRoutes),
-]
-
-
-const app = defineApp<ReturnType<typeof getContext>>({
-  setup,
-  routes,
-  getContext,
-  Document,
-})
+const app = defineApp<Context>([
+  async ({ request, ctx, env }) => {
+    await setupDb(env)
+    ctx.user = await getUser(request, env)
+  },
+  layout(Document, [
+    index([
+        ({ ctx }) => {
+          if (ctx.user) {
+            return new Response(null, {
+              status: 302,
+              headers: { Location: link('/invoice/list') },
+            });
+          }
+        },
+        HomePage,
+    ]),
+    prefix("/user", authRoutes),
+    prefix("/invoice", invoiceRoutes),
+  ])
+])
 
 export default {
   fetch(request: Request, env: Env, ctx: ExecutionContext) {

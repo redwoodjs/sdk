@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef, use } from "react";
 import { fetchYoutubeVideos } from "./serverFunctions";
-import { RouteContext } from "@redwoodjs/reloaded/router";
+import { Context } from "../../../worker";
 
 interface VideoItem {
   id: {
@@ -14,7 +14,7 @@ interface VideoItem {
   };
 }
 
-export function SearchTerminal({ ctx }: { ctx: RouteContext }) {
+export function SearchTerminal({ ctx }: { ctx: Context }) {
   const [query, setQuery] = useState("");
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [selectedVideo, setSelectedVideo] = useState<string | null>(null);
