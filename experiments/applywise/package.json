@@ -13,6 +13,7 @@
     "migrate:dev": "wrangler d1 migrations apply DB --local",
     "migrate:prd": "wrangler d1 migrations apply DB --remote",
     "migrate:new": "rw-scripts migrate-new",
+    "seed": "pnpm worker:run ./src/scripts/seed.ts",
     "dev": "while true; do NODE_ENV=development vite dev; [ $? -eq 0 ] || break; done",
     "dev:init": "rw-scripts dev-init",
     "worker:run": "rw-scripts worker-run",

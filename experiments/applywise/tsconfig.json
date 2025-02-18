@@ -22,6 +22,7 @@
     ],
     "paths": {
       "src/*": ["./src/app/*"],
+      "@/*": ["./src/*"]
     },
     /* Enable importing .json files */
     "resolveJsonModule": true,

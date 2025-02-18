@@ -1,19 +1,15 @@
+import { User } from "@prisma/client";
 import { db } from "../../db";
 
-interface User {
-  id: string;
-  email: string;
-}
-
 export async function Home() {
+
   const getUsers = async (): Promise<User[]> => {
-    const users =
-      (await db.user.findMany({
-        select: {
-          id: true,
-          email: true
-        },
-      })) ?? [];
+    const users = await db.user.findMany({
+      select: {
+        id: true,
+        email: true,
+      },
+    });
     return users;
   }
 
