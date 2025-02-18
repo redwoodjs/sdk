@@ -1,4 +1,4 @@
-import { defineScript } from "@redwoodjs/reloaded/worker";
+import { defineScript } from "@redwoodjs/sdk/worker";
 import { db, setupDb } from "../db";
 
 export default defineScript(async ({ env }) => {
