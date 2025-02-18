@@ -4,7 +4,7 @@ import { parse } from "es-module-lexer";
 import MagicString from "magic-string";
 
 export const useServerPlugin = (): Plugin => ({
-  name: "rw-reloaded-use-server",
+  name: "rw-sdk-use-server",
   async transform(code, id) {
     if (id.includes(".vite/deps") || id.includes("node_modules")) {
       return;

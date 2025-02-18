@@ -1,8 +1,8 @@
 {
-  "name": "reloaded-monorepo",
+  "name": "rw-sdk-monorepo",
   "version": "1.0.0",
   "private": true,
-  "description": "Reloaded monorepo",
+  "description": "Redwood SDK monorepo",
   "engines": {
     "node": ">=18.0.0",
     "pnpm": ">=8.0.0"

@@ -23,7 +23,7 @@ export const configPlugin = ({
   port: number,
   isUsingPrisma: boolean,
 }): Plugin => ({
-  name: 'rw-reloaded-config',
+  name: 'rw-sdk-config',
   config: (_, { command }) => {
     const baseConfig: InlineConfig = {
       appType: "custom",
