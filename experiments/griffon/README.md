@@ -2,7 +2,7 @@
 
 Griffon is gateway application to transform sensory data into usable objects for many command and control applications.
 
-The technical stack is Redwood Reloaded, React Server Components, Prisma, Tailwind, ShadCDN/UI and Cloudflare.
+The technical stack is Redwood SDK, React Server Components, Prisma, Tailwind, ShadCDN/UI and Cloudflare.
 
 ## Development
 

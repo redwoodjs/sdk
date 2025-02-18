@@ -7,7 +7,7 @@ interface UseClientPluginOptions {
 }
 
 export const useClientPlugin = (options: UseClientPluginOptions = {}): Plugin => ({
-  name: "rw-reloaded-use-client",
+  name: "rw-sdk-use-client",
   async transform(code, id) {
     if (id.includes(".vite/deps") || id.includes("node_modules")) {
       return;

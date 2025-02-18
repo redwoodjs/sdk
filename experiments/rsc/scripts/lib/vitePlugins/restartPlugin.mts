@@ -11,7 +11,7 @@ export const restartPlugin = ({
   let ready = false;
 
   return {
-    name: "rw-reloaded-restart-dev-server",
+    name: "rw-sdk-restart-dev-server",
 
     async hotUpdate(ctx) {
       // context(justinvdm, 12 Dec 2024): We're already restarting, so stop all hmr

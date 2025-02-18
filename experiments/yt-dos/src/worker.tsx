@@ -1,5 +1,5 @@
-import { defineApp } from '@redwoodjs/reloaded/worker';
-import { index, layout } from '@redwoodjs/reloaded/router';
+import { defineApp } from '@redwoodjs/sdk/worker';
+import { index, layout } from '@redwoodjs/sdk/router';
 import HomePage from 'src/pages/Home/HomePage';
 import { Document } from 'src/Document';
 export { SessionDO } from "./session";
