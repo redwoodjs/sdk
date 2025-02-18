@@ -1,5 +1,6 @@
 packages:
   - 'reloaded'
   - 'experiments/billable'
+  - 'experiments/applywise'
   - 'experiments/yt-dos'
   - 'starters/minimal'
