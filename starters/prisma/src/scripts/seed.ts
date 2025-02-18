@@ -9,12 +9,12 @@ export default defineScript(async ({ env }) => {
     DELETE FROM sqlite_sequence;
   `);
 
-  const user = await db.user.create({
+  await db.user.create({
     data: {
       id: '1',
       email: "__change_me__",
     },
   });
 
-  console.log(`🌱 Finished seeding!`);
+  console.log("🌱 Finished seeding");
 });
