@@ -4,7 +4,6 @@ main = "src/worker.tsx"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 assets = { binding = "ASSETS", directory = "public" }
-migrations_dir = "./migrations"
 
 workers_dev = false
 routes = [
@@ -17,7 +16,7 @@ enabled = true
 [[d1_databases]]
 binding = "DB"
 database_name = "applywise"
-database_id = "a0d2809d-8cfe-4d42-a94d-a97664e142b7"
+database_id = "6b422a1f-e1b0-4429-85ee-9c07f261bb3b"
 
 [[r2_buckets]]
 bucket_name = "applywise"
