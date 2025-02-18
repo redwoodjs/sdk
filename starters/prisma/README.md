@@ -9,7 +9,7 @@ https://www.loom.com/embed/019f4a52e47e4bb28dbfc1a98847e3a3?sid=3efd61df-413b-4e
 Clone the repo
 
 ```shell
-git clone https://github.com/redwoodjs/reloaded.git
+git clone https://github.com/redwoodjs/sdk.git
 ```
 
 Run
@@ -18,10 +18,10 @@ Run
 pnpm install
 ```
 
-Go into the `reloaded` directory and build the project
+Go into the `sdk` directory and build the project
 
 ```shell
-cd reloaded
+cd sdk
 pnpm build
 ```
 
@@ -33,7 +33,7 @@ Add your new project to the `pnpm-workspace.yaml` file:
 
 ```yaml
 packages:
-  - "reloaded"
+  - "sdk"
   - "experiments/billable"
   - "experiments/yt-dos"
   - "experiments/showofhands"
@@ -54,7 +54,7 @@ Change the name of your experiment’s `package.json`. For example:
 Update the path in this script:
 
 ```json
-"__reset:reinstall": "(cd ../../ && rm -rf node_modules && rm -rf reloaded/node_modules && rm -rf experiments/showofhands/node_modules && pnpm install)",
+"__reset:reinstall": "(cd ../../ && rm -rf node_modules && rm -rf sdk/node_modules && rm -rf experiments/showofhands/node_modules && pnpm install)",
 ```
 
 - [ ] Update path in starter

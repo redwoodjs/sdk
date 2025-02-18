@@ -377,9 +377,9 @@ importers:
       '@prisma/client':
         specifier: ^6.3.1
         version: 6.4.0(prisma@6.4.0(typescript@5.7.3))(typescript@5.7.3)
-      '@redwoodjs/reloaded':
+      '@redwoodjs/sdk':
         specifier: workspace:*
-        version: link:../../reloaded
+        version: link:../../sdk
       prisma:
         specifier: ^6.3.1
         version: 6.4.0(typescript@5.7.3)
