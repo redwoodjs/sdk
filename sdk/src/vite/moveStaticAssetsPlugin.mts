@@ -2,7 +2,7 @@ import { Plugin } from "vite";
 import { $sh } from "../lib/$.mjs";
 
 export const moveStaticAssetsPlugin = ({ rootDir }: { rootDir: string }): Plugin => ({
-  name: 'rw-reloaded-move-static-assets',
+  name: 'rw-sdk-move-static-assets',
 
   apply: 'build',
 

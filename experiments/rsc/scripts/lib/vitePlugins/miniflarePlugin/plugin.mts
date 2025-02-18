@@ -272,7 +272,7 @@ export const miniflarePlugin = async (
   const { environment, entry } = options;
 
   return {
-    name: "rw-reloaded-transform-jsx-script-tags",
+    name: "rw-sdk-transform-jsx-script-tags",
     config: () => ({
       environments: {
         [environment]: {

@@ -4,7 +4,7 @@ import { parse } from "es-module-lexer";
 import MagicString from "magic-string";
 
 export const useClientPlugin = (): Plugin => ({
-  name: "rw-reloaded-use-client",
+  name: "rw-sdk-use-client",
   async transform(code, id) {
     if (id.includes(".vite/deps") || id.includes("node_modules")) {
       return;

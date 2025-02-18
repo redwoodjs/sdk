@@ -8,7 +8,7 @@ export const asyncSetupPlugin = ({
   let taskPromise = Promise.resolve(null as unknown);
 
   return [{
-    name: "rw-reloaded-async-setup:serve",
+    name: "rw-sdk-async-setup:serve",
     apply: 'serve',
     configureServer(server) {
       taskPromise = setup({ command: 'serve' as const });
@@ -19,7 +19,7 @@ export const asyncSetupPlugin = ({
       });
     },
   }, {
-    name: "rw-reloaded-async-setup:build",
+    name: "rw-sdk-async-setup:build",
     apply: 'build',
     async buildStart() {
       await setup({ command: 'build' as const });

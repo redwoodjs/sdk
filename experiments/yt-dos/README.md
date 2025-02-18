@@ -2,7 +2,7 @@
 
 Billable is personal invoicing software that allows a user to input information about their business entity, the client, and items, quanitities and prices. It calculates the total, and includes the ability to add tax.
 
-The technical stack is Redwood Reloaded, React Server Components, Prisma, Tailwind, ShadCDN/UI and Cloudflare.
+The technical stack is Redwood SDK, React Server Components, Prisma, Tailwind, ShadCDN/UI and Cloudflare.
 
 ## Development
 
