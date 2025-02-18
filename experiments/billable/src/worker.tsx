@@ -38,7 +38,7 @@ export const getUser = async (
 
 const app = defineApp<Context>([
   async ({ request, ctx, env }) => {
-    setupDb(env)
+    await setupDb(env)
     ctx.user = await getUser(request, env)
   },
   layout(Document, [

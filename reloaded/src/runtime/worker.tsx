@@ -19,6 +19,7 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
   return {
     fetch: async (request: Request, env: Env, _ctx: ExecutionContext) => {
       globalThis.__webpack_require__ = ssrWebpackRequire;
+
       const router = defineRoutes(routes);
 
       // context(justinvdm, 5 Feb 2025): Serve assets requests using the assets service binding
