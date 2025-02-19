@@ -26,7 +26,8 @@
     "__reset": "(cd ../../reloaded && NODE_ENV=development pnpm build) && pnpm clean:vite",
     "__reset:dev": "pnpm __reset && pnpm dev",
     "__reset:build": "pnpm __reset && pnpm build",
-    "__reset:release": "pnpm __reset && pnpm release"
+    "__reset:release": "pnpm __reset && pnpm release",
+    "icons": "lemon-lime-svgs"
   },
   "dependencies": {
     "@hookform/resolvers": "^4.1.0",
@@ -39,6 +40,7 @@
     "@tailwindcss/vite": "^4.0.7",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
+    "lemon-lime-svgs": "^1.0.0",
     "lucide-react": "^0.474.0",
     "next-themes": "^0.4.4",
     "prisma": "^6.3.1",
