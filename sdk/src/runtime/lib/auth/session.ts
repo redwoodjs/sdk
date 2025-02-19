@@ -131,7 +131,7 @@ export const defineSessionStore = <Session>({
   };
 };
 
-export const defineDOSession = <Session>({
+export const defineDurableSession = <Session>({
   secretKey,
   sessionDO,
 }: {
