@@ -18,14 +18,14 @@ binding = "DB"
 database_name = "cutable"
 database_id = "ab1ce3ee-f7c9-4695-acbd-366fdad67f4f"
 
-[durable_objects]
-bindings = [
-  { name = "SESSION_DO", class_name = "SessionDO" }
-]
-
 [[migrations]]
-tag = "v1"
-new_classes = [ "SessionDO" ]
+tag = "v2"
+new_classes = ["SessionDO"]
+
+[[durable_objects.bindings]]
+name = "SESSION_DO"
+class_name = "SessionDO"
+
 
 [vars]
 SECRET_KEY = "secret"
