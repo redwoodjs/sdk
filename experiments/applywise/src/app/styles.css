@@ -102,3 +102,50 @@
   }
 }
 
+
+/* my theme */
+@theme {
+  /* fonts */
+  --font-display: "Poppins", sans-serif;
+  --font-body: "Inter", sans-serif;
+
+  /* colors */
+  --color-bg: #e4e3d4;
+  --color-border: #eeeef0;
+
+  --color-primary: #f7b736;
+  --color-secondary: #f1f1e8;
+  --color-destructive: #ef533f;
+
+  --color-tag-applied: #b1c7c0;
+  --color-tag-interview: #da9b7c;
+  --color-tag-new: #db9a9f;
+  --color-tag-rejected: #e4e3d4;
+  --color-tag-offer: #aae198;
+
+  /* padding */
+  --spacing-page-side: 40px;
+}
+
+h1,
+h2,
+h3 {
+  @apply font-display font-bold;
+}
+
+.page-title {
+  @apply text-3xl
+}
+
+.page-description {
+  @apply text-zinc-500;
+}
+
+nav {
+  @apply font-display font-medium;
+}
+
+/* table */
+th {
+  @apply text-zinc-500 font-bold font-display
+}
