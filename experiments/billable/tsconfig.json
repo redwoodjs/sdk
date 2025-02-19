@@ -18,7 +18,8 @@
       "@cloudflare/workers-types/2023-07-01",
       "./types/react.d.ts",
       "./types/global.d.ts",
-      "./types/vite.d.ts"
+      "./types/vite.d.ts",
+      "@cloudflare/workers-types"
     ],
     "paths": {
       "vendor/*": ["./vendor/dist/*"],

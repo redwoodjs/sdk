@@ -9,6 +9,10 @@ type Context = {
 
 export default defineApp<Context>([
   async ({ ctx, env, request }) => {
+    // Try assets first
+    // const assetResponse = await handleAssets(request, env);
+    // if (assetResponse) return assetResponse;
+
     await setupDb(env)
     // ctx.user = await getUser(request, env)
   },

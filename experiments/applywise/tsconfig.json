@@ -18,10 +18,11 @@
       "@cloudflare/workers-types/2023-07-01",
       "./types/react.d.ts",
       "./types/global.d.ts",
-      "./types/vite.d.ts"
+      "./types/vite.d.ts",
+      "./types/icons.d.ts",
     ],
     "paths": {
-      "src/*": ["./src/app/*"],
+      "app/*": ["./src/app/*"],
       "@/*": ["./src/*"]
     },
     /* Enable importing .json files */
