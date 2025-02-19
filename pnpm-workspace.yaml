@@ -2,4 +2,5 @@ packages:
   - 'sdk'
   - 'experiments/billable'
   - 'experiments/yt-dos'
+  - 'experiments/cutable'
   - 'starters/minimal'

@@ -5,7 +5,17 @@ compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
 assets = { binding = "ASSETS" }
 
+routes = [
+  { pattern = "cutable.app", custom_domain = true }
+]
+
 [observability]
 enabled = true
+
+
+[[d1_databases]]
+binding = "DB"
+database_name = "cutable"
+database_id = "ab1ce3ee-f7c9-4695-acbd-366fdad67f4f"
 
 [vars]

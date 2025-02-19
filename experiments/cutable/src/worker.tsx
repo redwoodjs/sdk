@@ -1,7 +1,7 @@
 import { defineApp } from '@redwoodjs/sdk/worker';
 import { index, layout } from '@redwoodjs/sdk/router';
 import { Document } from 'src/Document';
-import { Home } from 'src/pages/Home';
+import HomePage from 'src/pages/home/HomePage';
 
 type Context = {
 }
@@ -13,7 +13,7 @@ export default defineApp<Context>([
   },
   layout(Document, [
     index([
-      Home,
+      HomePage,
     ]),
   ]),
 ])
