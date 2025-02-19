@@ -1,5 +1,5 @@
 #:schema node_modules/wrangler/config-schema.json
-name = "__change_me__"
+name = "cutable"
 main = "src/worker.tsx"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
