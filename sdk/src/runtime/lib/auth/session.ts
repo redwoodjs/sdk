@@ -2,8 +2,10 @@ import { Rpc } from "@cloudflare/workers-types/experimental";
 import { ErrorResponse } from "../../error";
 const MAX_TOKEN_DURATION = 14 * 24 * 60 * 60 * 1000; // 14 days
 
+type GetSessionResult<Session> = { value: Session } | { error: string };
+
 export interface SessionDOMethods<Session> extends Rpc.DurableObjectBranded {
-  getSession(): Promise<{ value: Session } | { error: string }>;
+  getSession(): Promise<GetSessionResult<Session>>;
   saveSession(session: Session): Promise<void>;
   revokeSession(): Promise<void>;
 }
@@ -143,7 +145,7 @@ export const defineDurableSession = <Session>({
     const { unsignedSessionId } = unpackSessionId(sessionId);
     const doId = sessionDO.idFromName(unsignedSessionId);
     const sessionStub = sessionDO.get(doId);
-    const result = await sessionStub.getSession();
+    const result = await sessionStub.getSession() as GetSessionResult<Session>;
     
     if ('error' in result) {
       throw new Error(result.error);
@@ -156,7 +158,8 @@ export const defineDurableSession = <Session>({
     const { unsignedSessionId } = unpackSessionId(sessionId);
     const doId = sessionDO.idFromName(unsignedSessionId);
     const sessionStub = sessionDO.get(doId);
-    await sessionStub.saveSession(session);
+    // todo(justinvdm, 20 Feb 2025): Avoid type cast
+    await sessionStub.saveSession(session as any);
   };
 
   const unset = async (sessionId: string): Promise<void> => {
