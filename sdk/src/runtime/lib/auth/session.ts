@@ -1,7 +1,8 @@
+import { Rpc } from "@cloudflare/workers-types/experimental";
 import { ErrorResponse } from "../../error";
 const MAX_TOKEN_DURATION = 14 * 24 * 60 * 60 * 1000; // 14 days
 
-export interface SessionDOMethods<Session> {
+export interface SessionDOMethods<Session> extends Rpc.DurableObjectBranded {
   getSession(): Promise<{ value: Session } | { error: string }>;
   saveSession(session: Session): Promise<void>;
   revokeSession(): Promise<void>;
