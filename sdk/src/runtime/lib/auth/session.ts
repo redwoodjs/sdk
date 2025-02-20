@@ -161,7 +161,7 @@ export const defineDurableSession = <Session, SessionDurableObject extends Durab
     return result.value;
   };
 
-  const set = async ({ sessionId, session, maxAge }: { sessionId: string, session: Session, maxAge?: number | true }): Promise<void> => {
+  const set = async ({ sessionId, session }: { sessionId: string, session: Session }): Promise<void> => {
     const { unsignedSessionId } = unpackSessionId(sessionId);
     const doId = sessionDurableObject.idFromName(unsignedSessionId);
     const sessionStub = sessionDurableObject.get(doId);
