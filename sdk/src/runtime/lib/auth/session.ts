@@ -87,7 +87,7 @@ export const defineSessionStore = <Session>({
 
     for (const cookie of cookieHeader.split(';')) {
       const [key, value] = cookie.trim().split('=');
-      if (key === cookieName) {
+      if (key === 'session_id') {
         return value;
       }
     }
@@ -147,7 +147,7 @@ export const defineDurableSession = <Session, SessionDurableObject extends Durab
   secretKey,
   sessionDurableObject,
 }: {
-  cookieName: string,
+  cookieName?: string,
   secretKey: string,
   sessionDurableObject: DurableObjectNamespace<SessionDurableObject>
 }) => {

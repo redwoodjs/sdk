@@ -16,7 +16,7 @@ export { SessionDO } from "./session";
 
 export type Context = {
   user: Awaited<ReturnType<typeof getUser>>;
-  sessionStore: SessionStore<Session>;
+  sessions: SessionStore<Session>;
 }
 
 export const getUser = async (
