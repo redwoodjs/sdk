@@ -1,3 +1,4 @@
+import { Session } from "node:inspector";
 import { ErrorResponse } from "../../error";
 
 const MAX_TOKEN_DURATION = 14 * 24 * 60 * 60 * 1000; // 14 days
@@ -77,11 +78,11 @@ export const defineSessionStore = <Session>({
 }: {
   cookieName?: string,
   secretKey: string,
-  get(input: { sessionId: string }): Promise<Session>,
-  set(input: { sessionId: string, session: Session, maxAge?: number | true }): Promise<void>,
-  unset(input: { sessionId: string }): Promise<void>
+  get: (sessionId: string) => Promise<Session>,
+  set: (sessionId: string, session: Session) => Promise<void>,
+  unset: (sessionId: string) => Promise<void>
 }) => {
-  const getSessionIdFromCookie = ({ request }: { request: Request }): string | undefined => {
+  const getSessionIdFromCookie = (request: Request): string | undefined => {
     const cookieHeader = request.headers.get("Cookie");
     if (!cookieHeader) return undefined;
 
@@ -93,8 +94,8 @@ export const defineSessionStore = <Session>({
     }
   };
 
-  const load = async ({ request }: { request: Request }): Promise<Session> => {
-    const sessionId = getSessionIdFromCookie({ request });
+  const load = async (request: Request): Promise<Session> => {
+    const sessionId = getSessionIdFromCookie(request);
     if (!sessionId) {
       throw new ErrorResponse(401, "No session id found");
     }
@@ -104,28 +105,31 @@ export const defineSessionStore = <Session>({
     }
 
     try {
-      return await get({ sessionId });
+      return await get(sessionId);
     } catch (error) {
       throw new ErrorResponse(401, "Invalid session id");
     }
   };
 
   const save = async (
-    { response, session, maxAge }: { response: Response, session: Session, maxAge?: number | true }
+    response: Response,
+    session: Session,
+    { maxAge }: { maxAge?: number | true }
   ): Promise<Response> => {
     const sessionId = await generateSessionId({ secretKey });
-    await set({ sessionId, session, maxAge });
+    await set(sessionId, session);
     const newResponse = response.clone();
     newResponse.headers.set("Set-Cookie", createSessionCookie({ sessionId, maxAge }));
     return newResponse;
   };
 
   const remove = async (
-    { request, response }: { request: Request, response: Response }
+    request: Request,
+    response: Response
   ): Promise<Response> => {
-    const sessionId = getSessionIdFromCookie({ request });
+    const sessionId = getSessionIdFromCookie(request);
     if (sessionId) {
-      await unset({ sessionId });
+      await unset(sessionId);
     }
     const newResponse = response.clone();
     newResponse.headers.set("Set-Cookie", createSessionCookie({ sessionId: '', maxAge: 0 }));
@@ -148,7 +152,7 @@ export const defineDurableSession = <Session, SessionDurableObject extends Durab
   secretKey: string,
   sessionDurableObject: DurableObjectNamespace<SessionDurableObject>
 }) => {
-  const get = async ({ sessionId }: { sessionId: string }): Promise<Session> => {
+  const get = async (sessionId: string): Promise<Session> => {
     const { unsignedSessionId } = unpackSessionId(sessionId);
     const doId = sessionDurableObject.idFromName(unsignedSessionId);
     const sessionStub = sessionDurableObject.get(doId);
@@ -161,14 +165,14 @@ export const defineDurableSession = <Session, SessionDurableObject extends Durab
     return result.value;
   };
 
-  const set = async ({ sessionId, session }: { sessionId: string, session: Session }): Promise<void> => {
+  const set = async (sessionId: string, session: Session): Promise<void> => {
     const { unsignedSessionId } = unpackSessionId(sessionId);
     const doId = sessionDurableObject.idFromName(unsignedSessionId);
     const sessionStub = sessionDurableObject.get(doId);
     await sessionStub.saveSession(session);
   };
 
-  const unset = async ({ sessionId }: { sessionId: string }): Promise<void> => {
+  const unset = async (sessionId: string): Promise<void> => {
     const { unsignedSessionId } = unpackSessionId(sessionId);
     const doId = sessionDurableObject.idFromName(unsignedSessionId);
     const sessionStub = sessionDurableObject.get(doId);

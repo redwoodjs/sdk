@@ -5,7 +5,6 @@ import { ExecutionContext } from '@cloudflare/workers-types';
 
 import { link } from "src/shared/links";
 import { Document } from 'src/Document';
-import { getSession } from './auth';
 import { authRoutes } from 'src/pages/auth/routes';
 import { invoiceRoutes } from 'src/pages/invoice/routes';
 import HomePage from 'src/pages/Home/HomePage';
@@ -22,9 +21,11 @@ export type Context = {
 export const getUser = async (
   request: Request,
   env: Env,
+  sessions: SessionStore<Session>,
 ) => {
   try {
-    const session = await getSession(request, env);
+    const session = await sessions.load({ request });
+
     const user = await db.user.findFirstOrThrow({
       select: {
         id: true,
@@ -45,7 +46,7 @@ const app = defineApp<Context>([
       secretKey: env.SECRET_KEY,
       sessionDurableObject: env.SESSION_DO,
     })
-    ctx.user = await getUser(request, env)
+    ctx.user = await getUser(request, env, ctx.sessions)
   },
   layout(Document, [
     index([
