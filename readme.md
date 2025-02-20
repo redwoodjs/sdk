@@ -1,3 +1,5 @@
+# RedwoodSDK
+
 This is a mono repo for the Redwood SDK.
 
 ```
@@ -35,7 +37,7 @@ pnpm dev
 
 ## Running one of the Experiments locally
 
-Each experiment should have it's own README with instructions
+Each [experiment](./experiments/) should have it's own README with instructions
 
 ## Building a Project locally
 
