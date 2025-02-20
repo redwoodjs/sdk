@@ -30,16 +30,6 @@ export default defineConfig({
           label: 'Tutorial',
           items: [
             {
-              label: 'Your First App',
-              items: [
-                { label: 'Project Setup', slug: 'tutorial/first/project-setup' },
-                { label: 'Project Structure', slug: 'tutorial/first/project-structure' },
-                { label: 'Router', slug: 'tutorial/first/router' },
-                { label: 'React Server Components', slug: 'tutorial/first/react-server-components' },
-                { label: 'Deploying to Cloudflare', slug: 'tutorial/first/deploying-to-cloudflare' },
-              ]
-            },
-            {
               label: 'Full Stack Applications',
               collapsed: true,
               items: [
