@@ -1,6 +1,6 @@
 ---
 title: Installation
-description: A guide in my new Starlight docs site.
+description: Get started with Redwood SDK by installing the framework and creating your first application.
 ---
 
 import { Aside } from '@astrojs/starlight/components';
@@ -8,13 +8,17 @@ import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 <Aside type="note" title="Prerequisites">
 - Redwood requires [Node.js](https://nodejs.org/en) (v22.x or later)
+- [Cloudflare Account](https://www.cloudflare.com/)
 </Aside>
 
+This is the easiest way to install the RedwoodSDK package. However, we've created a few [starter kits](/reference/starters/minimal) that are pre-configured for different use cases and make this process even easier.
+
+{/* TODO: This will need to be updated - We'll be using Vite Community Templates: https://vite.dev/guide/#community-templates */}
 ```bash frame="none"
 npx create-redwood@latest
 ```
 
-Then, change into that directory, install the dependencies, and start the development server:
+Move into that directory, install the dependencies, and start the development server:
 
 <Tabs>
   <TabItem label="pnpm">
@@ -43,3 +47,14 @@ Then, change into that directory, install the dependencies, and start the develo
 Now, you can open your browser to http://localhost:1234 where you'll see the Welcome Page:
 
 ![Hello World](./images/hello-world.png)
+
+
+## Troubleshooting
+
+### Node.js Installation
+If you're having trouble with Node.js installation:
+1. We recommend using [nvm](https://github.com/nvm-sh/nvm) for managing Node versions
+2. For setup help, see the [nvm installation guide](#)
+3. Most common issues are resolved by:
+    - Using the recommended nvm commands
+    - Restarting your terminal after installation
