@@ -69,11 +69,13 @@ export const isValidSessionId = async ({ sessionId, secretKey }: { sessionId: st
 }
 
 export const defineSessionStore = <Session>({
+  cookieName = 'session_id',
   secretKey,
   get,
   set,
   unset,
 }: {
+  cookieName?: string,
   secretKey: string,
   get(id: string): Promise<Session>,
   set(id: string, session: Session): Promise<void>,
@@ -85,7 +87,7 @@ export const defineSessionStore = <Session>({
 
     for (const cookie of cookieHeader.split(';')) {
       const [key, value] = cookie.trim().split('=');
-      if (key === 'session_id') {
+      if (key === cookieName) {
         return value;
       }
     }
@@ -112,21 +114,25 @@ export const defineSessionStore = <Session>({
     response: Response,
     session: Session,
     { maxAge }: { maxAge?: number | true } = {}
-  ): Promise<void> => {
+  ): Promise<Response> => {
     const sessionId = await generateSessionId({ secretKey });
     await set(sessionId, session);
-    response.headers.set("Set-Cookie", createSessionCookie({ sessionId, maxAge }));
+    const newResponse = response.clone();
+    newResponse.headers.set("Set-Cookie", createSessionCookie({ sessionId, maxAge }));
+    return newResponse;
   };
 
   const remove = async (
     request: Request,
     response: Response
-  ): Promise<void> => {
+  ): Promise<Response> => {
     const sessionId = getSessionIdFromCookie(request);
     if (sessionId) {
       await unset(sessionId);
     }
-    response.headers.set("Set-Cookie", createSessionCookie({ sessionId: '', maxAge: 0 }));
+    const newResponse = response.clone();
+    newResponse.headers.set("Set-Cookie", createSessionCookie({ sessionId: '', maxAge: 0 }));
+    return newResponse;
   };
 
   return {
@@ -137,9 +143,11 @@ export const defineSessionStore = <Session>({
 };
 
 export const defineDurableSession = <Session, SessionDurableObject extends DurableObjectMethods<Session>>({
+  cookieName,
   secretKey,
   sessionDurableObject,
 }: {
+  cookieName: string,
   secretKey: string,
   sessionDurableObject: DurableObjectNamespace<SessionDurableObject>
 }) => {
@@ -170,5 +178,5 @@ export const defineDurableSession = <Session, SessionDurableObject extends Durab
     await sessionStub.revokeSession();
   };
 
-  return defineSessionStore({ secretKey, get, set, unset });
+  return defineSessionStore({ cookieName, secretKey, get, set, unset });
 };

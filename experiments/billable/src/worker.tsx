@@ -41,7 +41,7 @@ export const getUser = async (
 const app = defineApp<Context>([
   async ({ request, ctx, env }) => {
     await setupDb(env)
-    ctx.sessionStore = defineDurableSession({
+    ctx.sessions = defineDurableSession({
       secretKey: env.SECRET_KEY,
       sessionDurableObject: env.SESSION_DO,
     })
