@@ -160,8 +160,7 @@ export const defineDurableSession = <Session, SessionDurableObject extends Durab
     const { unsignedSessionId } = unpackSessionId(sessionId);
     const doId = sessionDurableObject.idFromName(unsignedSessionId);
     const sessionStub = sessionDurableObject.get(doId);
-    // todo(justinvdm, 20 Feb 2025): Avoid type cast
-    await sessionStub.saveSession(session as any);
+    await sessionStub.saveSession(session);
   };
 
   const unset = async (sessionId: string): Promise<void> => {
