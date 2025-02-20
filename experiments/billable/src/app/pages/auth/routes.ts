@@ -2,6 +2,7 @@ import { db } from 'src/db';
 import { route } from '@redwoodjs/sdk/router';
 import { performLogin } from "../../../auth";
 import { LoginPage } from "./LoginPage";
+import { link } from 'src/shared/links';
 
 export const authRoutes = [
   route('/auth', async function ({ request, env }) {
@@ -39,7 +40,14 @@ export const authRoutes = [
 
     console.log("performing login");
 
-    return performLogin(request, env, user.id);
+    return new Response(null, {
+      status: 301,
+      headers: {
+        'Location': link('/invoice/list'),
+        "Set-Cookie": /*cookie,*/ null,
+        "Content-Type": "text/html"
+      },
+    });
   }),
   route('/login', LoginPage),
   route('/logout', function ({ request, env }) {

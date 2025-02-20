@@ -1,19 +1,19 @@
 import { DurableObject } from "cloudflare:workers";
 import { MAX_TOKEN_DURATION } from './constants';
 
-interface Session {
+export interface Session {
   userId: string;
   createdAt: number
 }
 
 export class SessionDO extends DurableObject {
-  session: Session | undefined = undefined;
+  private session: Session | undefined = undefined;
   constructor(state: DurableObjectState, env: Env) {
     super(state, env);
     this.session = undefined;
   }
 
-  async saveSession(userId: string): Promise<Session> {
+  async saveSession({ userId }: { userId: string }): Promise<Session> {
     const session: Session = {
       userId,
       createdAt: Date.now(),

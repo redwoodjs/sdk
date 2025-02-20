@@ -1,5 +1,6 @@
 import { defineApp } from '@redwoodjs/sdk/worker';
 import { index, layout, prefix } from '@redwoodjs/sdk/router';
+import { defineDurableSession, SessionStore } from '@redwoodjs/sdk/auth';
 import { ExecutionContext } from '@cloudflare/workers-types';
 
 import { link } from "src/shared/links";
@@ -8,13 +9,14 @@ import { getSession } from './auth';
 import { authRoutes } from 'src/pages/auth/routes';
 import { invoiceRoutes } from 'src/pages/invoice/routes';
 import HomePage from 'src/pages/Home/HomePage';
-import { setup } from './setup';
 import { db, setupDb } from './db';
+import { Session } from './session';
 
 export { SessionDO } from "./session";
 
 export type Context = {
   user: Awaited<ReturnType<typeof getUser>>;
+  sessionStore: SessionStore<Session>;
 }
 
 export const getUser = async (
@@ -39,6 +41,10 @@ export const getUser = async (
 const app = defineApp<Context>([
   async ({ request, ctx, env }) => {
     await setupDb(env)
+    ctx.sessionStore = defineDurableSession({
+      secretKey: env.SECRET_KEY,
+      sessionDO: env.SESSION_DO,
+    })
     ctx.user = await getUser(request, env)
   },
   layout(Document, [

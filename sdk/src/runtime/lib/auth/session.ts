@@ -1,19 +1,20 @@
-import { Rpc } from "@cloudflare/workers-types/experimental";
 import { ErrorResponse } from "../../error";
 const MAX_TOKEN_DURATION = 14 * 24 * 60 * 60 * 1000; // 14 days
 
 type GetSessionResult<Session> = { value: Session } | { error: string };
 
-export interface SessionDOMethods<Session> extends Rpc.DurableObjectBranded {
+export interface DurableObjectMethods<Session> extends Rpc.DurableObjectBranded {
   getSession(): Promise<GetSessionResult<Session>>;
-  saveSession(session: Session): Promise<void>;
-  revokeSession(): Promise<void>;
+  saveSession(data: any): Promise<Session>;
+  revokeSession(): void;
 }
 
 interface SessionIdParts {
   unsignedSessionId: string;
   signature: string;
 }
+
+export type SessionStore<Session> = ReturnType<typeof defineSessionStore<Session>>;
 
 const packSessionId = (parts: SessionIdParts): string => {
   return btoa([parts.unsignedSessionId, parts.signature].join(':'));
@@ -139,7 +140,7 @@ export const defineDurableSession = <Session>({
   sessionDO,
 }: {
   secretKey: string,
-  sessionDO: DurableObjectNamespace<SessionDOMethods<Session>>
+  sessionDO: DurableObjectNamespace<DurableObjectMethods<Session>>
 }) => {
   const get = async (sessionId: string): Promise<Session> => {
     const { unsignedSessionId } = unpackSessionId(sessionId);
