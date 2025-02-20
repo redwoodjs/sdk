@@ -1,5 +1,5 @@
 ---
-title: Installation
+title: Error Handling & Retries
 description: A guide in my new Starlight docs site.
 ---
 
