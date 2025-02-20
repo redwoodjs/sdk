@@ -1,6 +1,6 @@
 import { ErrorResponse } from "../../error";
 
-const MAX_TOKEN_DURATION = 14 * 24 * 60 * 60 * 1000; // 14 days
+export const MAX_SESSION_DURATION = 14 * 24 * 60 * 60 * 1000; // 14 days
 
 type GetSessionResult<Session> = { value: Session } | { error: string };
 
@@ -34,7 +34,7 @@ const arrayBufferToHex = (buffer: ArrayBuffer): string => {
 }
 
 export const createSessionCookie = ({ sessionId, maxAge }: { sessionId: string, maxAge?: number | true }) =>
-  `session_id=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax${maxAge ? `; Max-Age=${maxAge === true ? MAX_TOKEN_DURATION / 1000 : maxAge}` : ''}`;
+  `session_id=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax${maxAge ? `; Max-Age=${maxAge === true ? MAX_SESSION_DURATION / 1000 : maxAge}` : ''}`;
 
 export const signSessionId = async ({ unsignedSessionId, secretKey }: { unsignedSessionId: string, secretKey: string }) => {
   const encoder = new TextEncoder();

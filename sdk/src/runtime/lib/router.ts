@@ -162,9 +162,6 @@ export function defineRoutes<TContext = Record<string, any>>(routes: Route<TCont
           }
 
           const r = await h({ request, params, ctx, env, rw });
-          if (r instanceof Response) {
-            return r;
-          }
         }
       }
 
