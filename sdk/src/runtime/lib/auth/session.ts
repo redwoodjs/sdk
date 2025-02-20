@@ -1,4 +1,5 @@
 import { ErrorResponse } from "../../error";
+
 const MAX_TOKEN_DURATION = 14 * 24 * 60 * 60 * 1000; // 14 days
 
 type GetSessionResult<Session> = { value: Session } | { error: string };
@@ -135,17 +136,17 @@ export const defineSessionStore = <Session>({
   };
 };
 
-export const defineDurableSession = <Session>({
+export const defineDurableSession = <Session, SessionDurableObject extends DurableObjectMethods<Session>>({
   secretKey,
-  sessionDO,
+  sessionDurableObject,
 }: {
   secretKey: string,
-  sessionDO: DurableObjectNamespace<DurableObjectMethods<Session>>
+  sessionDurableObject: DurableObjectNamespace<SessionDurableObject>
 }) => {
   const get = async (sessionId: string): Promise<Session> => {
     const { unsignedSessionId } = unpackSessionId(sessionId);
-    const doId = sessionDO.idFromName(unsignedSessionId);
-    const sessionStub = sessionDO.get(doId);
+    const doId = sessionDurableObject.idFromName(unsignedSessionId);
+    const sessionStub = sessionDurableObject.get(doId);
     const result = await sessionStub.getSession() as GetSessionResult<Session>;
     
     if ('error' in result) {
@@ -157,16 +158,16 @@ export const defineDurableSession = <Session>({
 
   const set = async (sessionId: string, session: Session): Promise<void> => {
     const { unsignedSessionId } = unpackSessionId(sessionId);
-    const doId = sessionDO.idFromName(unsignedSessionId);
-    const sessionStub = sessionDO.get(doId);
+    const doId = sessionDurableObject.idFromName(unsignedSessionId);
+    const sessionStub = sessionDurableObject.get(doId);
     // todo(justinvdm, 20 Feb 2025): Avoid type cast
     await sessionStub.saveSession(session as any);
   };
 
   const unset = async (sessionId: string): Promise<void> => {
     const { unsignedSessionId } = unpackSessionId(sessionId);
-    const doId = sessionDO.idFromName(unsignedSessionId);
-    const sessionStub = sessionDO.get(doId);
+    const doId = sessionDurableObject.idFromName(unsignedSessionId);
+    const sessionStub = sessionDurableObject.get(doId);
     await sessionStub.revokeSession();
   };
 

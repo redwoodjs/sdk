@@ -43,7 +43,7 @@ const app = defineApp<Context>([
     await setupDb(env)
     ctx.sessionStore = defineDurableSession({
       secretKey: env.SECRET_KEY,
-      sessionDO: env.SESSION_DO,
+      sessionDurableObject: env.SESSION_DO,
     })
     ctx.user = await getUser(request, env)
   },
