@@ -5,9 +5,9 @@ const MAX_TOKEN_DURATION = 14 * 24 * 60 * 60 * 1000; // 14 days
 
 type GetSessionResult<Session> = { value: Session } | { error: string };
 
-export interface DurableObjectMethods<Session> extends Rpc.DurableObjectBranded {
+export interface DurableObjectMethods<Session, SessionInputData> extends Rpc.DurableObjectBranded {
   getSession(): Promise<GetSessionResult<Session>>;
-  saveSession(data: any): Promise<Session>;
+  saveSession(data: SessionInputData): Promise<Session>;
   revokeSession(): void;
 }
 
@@ -16,7 +16,7 @@ interface SessionIdParts {
   signature: string;
 }
 
-export type SessionStore<Session> = ReturnType<typeof defineSessionStore<Session>>;
+export type SessionStore<Session, SessionInputData = Session> = ReturnType<typeof defineSessionStore<Session, SessionInputData>>;
 
 const packSessionId = (parts: SessionIdParts): string => {
   return btoa([parts.unsignedSessionId, parts.signature].join(':'));
@@ -69,7 +69,7 @@ export const isValidSessionId = async ({ sessionId, secretKey }: { sessionId: st
   return computedSignature === signature;
 }
 
-export const defineSessionStore = <Session>({
+export const defineSessionStore = <Session, SessionInputData>({
   cookieName = 'session_id',
   secretKey,
   get,
@@ -79,7 +79,7 @@ export const defineSessionStore = <Session>({
   cookieName?: string,
   secretKey: string,
   get: (sessionId: string) => Promise<Session>,
-  set: (sessionId: string, session: Session) => Promise<void>,
+  set: (sessionId: string, sessionInputData: SessionInputData) => Promise<void>,
   unset: (sessionId: string) => Promise<void>
 }) => {
   const getSessionIdFromCookie = (request: Request): string | undefined => {
@@ -113,11 +113,11 @@ export const defineSessionStore = <Session>({
 
   const save = async (
     response: Response,
-    session: Session,
-    { maxAge }: { maxAge?: number | true }
+    sessionInputData: SessionInputData,
+    { maxAge }: { maxAge?: number | true } = {}
   ): Promise<Response> => {
     const sessionId = await generateSessionId({ secretKey });
-    await set(sessionId, session);
+    await set(sessionId, sessionInputData);
     const newResponse = response.clone();
     newResponse.headers.set("Set-Cookie", createSessionCookie({ sessionId, maxAge }));
     return newResponse;
@@ -143,7 +143,11 @@ export const defineSessionStore = <Session>({
   };
 };
 
-export const defineDurableSession = <Session, SessionDurableObject extends DurableObjectMethods<Session>>({
+type SessionStoreFromDurableObject<SessionDurableObject> = SessionDurableObject extends DurableObjectMethods<infer Session, infer SessionInputData> ? SessionStore<Session, SessionInputData> : never;
+type SessionInputDataFromDurableObject<SessionDurableObject> = SessionDurableObject extends DurableObjectMethods<any, infer SessionInputData> ? SessionInputData : never;
+type SessionFromDurableObject<SessionDurableObject> = SessionDurableObject extends DurableObjectMethods<any, infer SessionInputData> ? SessionInputData : never;
+
+export const defineDurableSession = <SessionDurableObject extends DurableObjectMethods<any, any>>({
   cookieName,
   secretKey,
   sessionDurableObject,
@@ -151,7 +155,10 @@ export const defineDurableSession = <Session, SessionDurableObject extends Durab
   cookieName?: string,
   secretKey: string,
   sessionDurableObject: DurableObjectNamespace<SessionDurableObject>
-}) => {
+}): SessionStoreFromDurableObject<SessionDurableObject> => {
+  type Session = SessionFromDurableObject<SessionDurableObject>;
+  type SessionInputData = SessionInputDataFromDurableObject<SessionDurableObject>;
+
   const get = async (sessionId: string): Promise<Session> => {
     const { unsignedSessionId } = unpackSessionId(sessionId);
     const doId = sessionDurableObject.idFromName(unsignedSessionId);
@@ -165,11 +172,13 @@ export const defineDurableSession = <Session, SessionDurableObject extends Durab
     return result.value;
   };
 
-  const set = async (sessionId: string, session: Session): Promise<void> => {
+  const set = async (sessionId: string, sessionInputData: SessionInputData): Promise<void> => {
     const { unsignedSessionId } = unpackSessionId(sessionId);
     const doId = sessionDurableObject.idFromName(unsignedSessionId);
     const sessionStub = sessionDurableObject.get(doId);
-    await sessionStub.saveSession(session);
+    // todo(justinvdm, 2025-02-20): Fix this
+    // @ts-ignore
+    await sessionStub.saveSession(sessionInputData as any);
   };
 
   const unset = async (sessionId: string): Promise<void> => {
@@ -179,5 +188,5 @@ export const defineDurableSession = <Session, SessionDurableObject extends Durab
     await sessionStub.revokeSession();
   };
 
-  return defineSessionStore({ cookieName, secretKey, get, set, unset });
+  return defineSessionStore({ cookieName, secretKey, get, set, unset }) as SessionStoreFromDurableObject<SessionDurableObject>;
 };
