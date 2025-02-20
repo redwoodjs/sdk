@@ -87,7 +87,13 @@ export const defineSessionStore = <Session, SessionInputData>({
     if (!cookieHeader) return undefined;
 
     for (const cookie of cookieHeader.split(';')) {
-      const [key, value] = cookie.trim().split('=');
+      const trimmedCookie = cookie.trim();
+      const separatorIndex = trimmedCookie.indexOf('=');
+      if (separatorIndex === -1) continue;
+      
+      const key = trimmedCookie.slice(0, separatorIndex);
+      const value = trimmedCookie.slice(separatorIndex + 1);
+      
       if (key === cookieName) {
         return value;
       }
