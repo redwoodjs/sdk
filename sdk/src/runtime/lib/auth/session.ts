@@ -77,24 +77,24 @@ export const defineSessionStore = <Session>({
 }: {
   cookieName?: string,
   secretKey: string,
-  get(id: string): Promise<Session>,
-  set(id: string, session: Session): Promise<void>,
-  unset(id: string): Promise<void>
+  get(input: { sessionId: string }): Promise<Session>,
+  set(input: { sessionId: string, session: Session, maxAge?: number | true }): Promise<void>,
+  unset(input: { sessionId: string }): Promise<void>
 }) => {
-  const getSessionIdFromCookie = (request: Request): string | undefined => {
+  const getSessionIdFromCookie = ({ request }: { request: Request }): string | undefined => {
     const cookieHeader = request.headers.get("Cookie");
     if (!cookieHeader) return undefined;
 
     for (const cookie of cookieHeader.split(';')) {
       const [key, value] = cookie.trim().split('=');
-      if (key === 'session_id') {
+      if (key === cookieName) {
         return value;
       }
     }
   };
 
-  const load = async (request: Request): Promise<Session> => {
-    const sessionId = getSessionIdFromCookie(request);
+  const load = async ({ request }: { request: Request }): Promise<Session> => {
+    const sessionId = getSessionIdFromCookie({ request });
     if (!sessionId) {
       throw new ErrorResponse(401, "No session id found");
     }
@@ -104,31 +104,28 @@ export const defineSessionStore = <Session>({
     }
 
     try {
-      return await get(sessionId);
+      return await get({ sessionId });
     } catch (error) {
       throw new ErrorResponse(401, "Invalid session id");
     }
   };
 
   const save = async (
-    response: Response,
-    session: Session,
-    { maxAge }: { maxAge?: number | true } = {}
+    { response, session, maxAge }: { response: Response, session: Session, maxAge?: number | true }
   ): Promise<Response> => {
     const sessionId = await generateSessionId({ secretKey });
-    await set(sessionId, session);
+    await set({ sessionId, session, maxAge });
     const newResponse = response.clone();
     newResponse.headers.set("Set-Cookie", createSessionCookie({ sessionId, maxAge }));
     return newResponse;
   };
 
   const remove = async (
-    request: Request,
-    response: Response
+    { request, response }: { request: Request, response: Response }
   ): Promise<Response> => {
-    const sessionId = getSessionIdFromCookie(request);
+    const sessionId = getSessionIdFromCookie({ request });
     if (sessionId) {
-      await unset(sessionId);
+      await unset({ sessionId });
     }
     const newResponse = response.clone();
     newResponse.headers.set("Set-Cookie", createSessionCookie({ sessionId: '', maxAge: 0 }));
@@ -151,7 +148,7 @@ export const defineDurableSession = <Session, SessionDurableObject extends Durab
   secretKey: string,
   sessionDurableObject: DurableObjectNamespace<SessionDurableObject>
 }) => {
-  const get = async (sessionId: string): Promise<Session> => {
+  const get = async ({ sessionId }: { sessionId: string }): Promise<Session> => {
     const { unsignedSessionId } = unpackSessionId(sessionId);
     const doId = sessionDurableObject.idFromName(unsignedSessionId);
     const sessionStub = sessionDurableObject.get(doId);
@@ -164,14 +161,14 @@ export const defineDurableSession = <Session, SessionDurableObject extends Durab
     return result.value;
   };
 
-  const set = async (sessionId: string, session: Session): Promise<void> => {
+  const set = async ({ sessionId, session, maxAge }: { sessionId: string, session: Session, maxAge?: number | true }): Promise<void> => {
     const { unsignedSessionId } = unpackSessionId(sessionId);
     const doId = sessionDurableObject.idFromName(unsignedSessionId);
     const sessionStub = sessionDurableObject.get(doId);
     await sessionStub.saveSession(session);
   };
 
-  const unset = async (sessionId: string): Promise<void> => {
+  const unset = async ({ sessionId }: { sessionId: string }): Promise<void> => {
     const { unsignedSessionId } = unpackSessionId(sessionId);
     const doId = sessionDurableObject.idFromName(unsignedSessionId);
     const sessionStub = sessionDurableObject.get(doId);
