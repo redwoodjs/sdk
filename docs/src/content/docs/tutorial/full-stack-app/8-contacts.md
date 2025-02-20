@@ -1,5 +1,8 @@
 ---
-title: Project Structure
+title: Contacts
+slug: tutorial/full-stack-app/contacts
+sidebar:
+  label: Contacts
 description: A guide in my new Starlight docs site.
 ---
 

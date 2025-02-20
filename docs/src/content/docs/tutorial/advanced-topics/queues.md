@@ -1,5 +1,5 @@
 ---
-title: Jobs Details
+title: Queues and Background Jobs
 description: A guide in my new Starlight docs site.
 ---
 

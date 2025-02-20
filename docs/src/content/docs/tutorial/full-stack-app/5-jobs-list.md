@@ -1,5 +1,8 @@
 ---
-title: React Server Components
+title: Jobs List
+slug: tutorial/full-stack-app/jobs-list
+sidebar:
+  label: Jobs List
 description: A guide in my new Starlight docs site.
 ---
 

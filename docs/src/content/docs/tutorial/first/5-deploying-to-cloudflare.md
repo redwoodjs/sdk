@@ -1,5 +1,8 @@
 ---
-title: Project Setup
+title: Deploying to Cloudflare
+slug: tutorial/first/deploying-to-cloudflare
+sidebar:
+  label: Deploying to Cloudflare
 description: A guide in my new Starlight docs site.
 ---
 

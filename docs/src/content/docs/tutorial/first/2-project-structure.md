@@ -1,5 +1,8 @@
 ---
-title: Prisma Starter
+title: Project Structure
+slug: tutorial/first/project-structure
+sidebar:
+  label: Project Structure
 description: A guide in my new Starlight docs site.
 ---
 

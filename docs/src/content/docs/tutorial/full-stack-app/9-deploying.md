@@ -1,5 +1,8 @@
 ---
-title: Router
+title: Deploying with Database
+slug: tutorial/full-stack-app/deploying
+sidebar:
+  label: Deploying with Database
 description: A guide in my new Starlight docs site.
 ---
 

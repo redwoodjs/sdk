@@ -1,5 +1,8 @@
 ---
-title: Jobs Form
+title: Project Setup
+slug: tutorial/first/project-setup
+sidebar:
+  label: Project Setup
 description: A guide in my new Starlight docs site.
 ---
 

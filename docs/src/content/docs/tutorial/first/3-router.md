@@ -1,5 +1,8 @@
 ---
-title: CRUD Operations
+title: Router
+slug: tutorial/first/router
+sidebar:
+  label: Router
 description: A guide in my new Starlight docs site.
 ---
 

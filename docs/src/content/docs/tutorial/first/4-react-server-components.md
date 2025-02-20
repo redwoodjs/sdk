@@ -1,5 +1,8 @@
 ---
-title: Authentication
+title: React Server Components
+slug: tutorial/first/react-server-components
+sidebar:
+  label: React Server Components
 description: A guide in my new Starlight docs site.
 ---
 

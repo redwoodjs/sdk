@@ -1,5 +1,8 @@
 ---
-title: Jobs List
+title: Database Setup
+slug: tutorial/full-stack-app/database-setup
+sidebar:
+  label: Database Setup
 description: A guide in my new Starlight docs site.
 ---
 

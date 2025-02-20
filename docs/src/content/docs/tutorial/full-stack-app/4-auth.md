@@ -1,8 +1,8 @@
 ---
-title: Setup
-slug: tutorial/full-stack-app/setup
+title: Authentication
+slug: tutorial/full-stack-app/auth
 sidebar:
-  label: Setup
+  label: Authentication
 description: A guide in my new Starlight docs site.
 ---
 

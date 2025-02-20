@@ -1,8 +1,8 @@
 ---
-title: Setup
-slug: tutorial/full-stack-app/setup
+title: Jobs Details
+slug: tutorial/full-stack-app/jobs-details
 sidebar:
-  label: Setup
+  label: Jobs Details
 description: A guide in my new Starlight docs site.
 ---
 

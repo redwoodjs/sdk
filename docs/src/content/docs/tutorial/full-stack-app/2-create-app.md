@@ -1,5 +1,8 @@
 ---
-title: Auth
+title: Create App
+slug: tutorial/full-stack-app/create-app
+sidebar:
+  label: Create App
 description: A guide in my new Starlight docs site.
 ---
 
