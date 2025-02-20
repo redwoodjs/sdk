@@ -29,6 +29,10 @@
     "./client": {
       "default": "./dist/runtime/entries/client.js",
       "types": "./dist/runtime/entries/client.d.ts"
+    },
+    "./auth": {
+      "default": "./dist/runtime/entries/auth.js",
+      "types": "./dist/runtime/entries/auth.d.ts"
     }
   },
   "keywords": [],

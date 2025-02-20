@@ -54,15 +54,26 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
           actionResult: unknown,
           Layout: React.FC<{ children: React.ReactNode }>
         }) => {
+          const headers = new Headers();
+
+          if (actionResult instanceof Response) {
+            for (const [key, value] of actionResult.headers.entries()) {
+              headers.set(key, value);
+            }
+          }
+
           const rscPayloadStream = renderToRscStream({
             node: <Page {...props} />,
-            actionResult: actionResult,
+            actionResult: actionResult instanceof Response ? null : actionResult,
           });
+
           if (isRSCRequest) {
+            headers.set("content-type", "text/x-component; charset=utf-8");
             return new Response(rscPayloadStream, {
-              headers: { "content-type": "text/x-component; charset=utf-8" },
+              headers,
             });
           }
+
           const [rscPayloadStream1, rscPayloadStream2] = rscPayloadStream.tee();
 
           const htmlStream = await transformRscToHtmlStream({
@@ -72,8 +83,10 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
 
           const html = htmlStream.pipeThrough(injectRSCPayload(rscPayloadStream2))
 
+          headers.set("content-type", "text/html; charset=utf-8");
+
           return new Response(html, {
-            headers: { "content-type": "text/html" },
+            headers,
           });
         };
 

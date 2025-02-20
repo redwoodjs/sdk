@@ -1,10 +1,11 @@
 import { db } from 'src/db';
-import { route } from '@redwoodjs/sdk/router';
-import { performLogin } from "../../../auth";
+import { route, RouteDefinition } from '@redwoodjs/sdk/router';
 import { LoginPage } from "./LoginPage";
+import { link } from 'src/shared/links';
+import { sessions } from '@/sessionStore';
 
-export const authRoutes = [
-  route('/auth', async function ({ request, env }) {
+export const authRoutes: RouteDefinition[] = [
+  route('/auth', async function ({ request }) {
     // when it's async then react-is thinks it's a react component.
     const url = new URL(request.url);
     const token = url.searchParams.get("token");
@@ -39,16 +40,23 @@ export const authRoutes = [
 
     console.log("performing login");
 
-    return performLogin(request, env, user.id);
+    const response = new Response(null, {
+      status: 301,
+      headers: {
+        'Location': link('/invoice/list'),
+        "Content-Type": "text/html"
+      },
+    });
+
+    return sessions.save(response, { userId: user.id });
   }),
   route('/login', LoginPage),
-  route('/logout', function ({ request, env }) {
-    return new Response(null, {
+  route('/logout', function ({ request }) {
+    return sessions.remove(request, new Response(null, {
       status: 302,
       headers: {
         'Location': '/',
-        'Set-Cookie': `session_id=""; Path=/; HttpOnly; Secure; SameSite=Lax; Max-Age=0`,
       }
-    });
+    }));
   }),
 ]

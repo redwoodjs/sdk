@@ -1,12 +1,12 @@
+import { MAX_SESSION_DURATION } from "@redwoodjs/sdk/auth";
 import { DurableObject } from "cloudflare:workers";
-import { MAX_TOKEN_DURATION } from './constants';
 
 export interface Session {
   userId: string;
   createdAt: number
 }
 
-export class SessionDO extends DurableObject {
+export class SessionDurableObject extends DurableObject {
   private session: Session | undefined = undefined;
   constructor(state: DurableObjectState, env: Env) {
     super(state, env);
@@ -31,17 +31,13 @@ export class SessionDO extends DurableObject {
 
     const session = await this.ctx.storage.get<Session>("session");
 
-    // context(justinvdm, 2025-01-15): If the session DO exists but there's no session state
-    // it means we received a valid session id (it passed the signature check), but the session
-    // has been revoked.
     if (!session) {
       return {
         error: 'Invalid session'
       }
     }
 
-    // context(justinvdm, 2025-01-15): If the session is expired, we need to revoke it.
-    if (session.createdAt + MAX_TOKEN_DURATION < Date.now()) {
+    if (session.createdAt + MAX_SESSION_DURATION < Date.now()) {
       await this.revokeSession();
       return {
         error: 'Session expired'
