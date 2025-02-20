@@ -10905,8 +10905,6 @@ snapshots:
 
   tapable@2.2.1: {}
 
-<<<<<<< HEAD
-=======
   tar-fs@2.1.2:
     dependencies:
       chownr: 1.1.4
@@ -10938,7 +10936,6 @@ snapshots:
       fast-fifo: 1.3.2
       streamx: 2.22.0
 
->>>>>>> main
   terser-webpack-plugin@5.3.11(esbuild@0.17.19)(webpack@5.97.1(esbuild@0.17.19)):
     dependencies:
       '@jridgewell/trace-mapping': 0.3.25
