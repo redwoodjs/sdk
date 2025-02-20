@@ -99,10 +99,11 @@ export const defineSessionStore = <Session, SessionInputData>({
     }
   };
 
-  const load = async (request: Request): Promise<Session> => {
+  const load = async (request: Request): Promise<Session | null> => {
     const sessionId = getSessionIdFromCookie(request);
+
     if (!sessionId) {
-      throw new ErrorResponse(401, "No session id found");
+      return null;
     }
 
     if (!await isValidSessionId({ sessionId, secretKey })) {
