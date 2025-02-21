@@ -11,7 +11,7 @@ const Header = () => {
         <div className="">
           <a href={link("/")} className="flex gap-3 font-display font-bold text-3xl items-center">
             <img src={logo} alt="Apply Wise" className="inline-block pt-5 -mb-3" />
-            <span>Apply Wise</span>
+            <span>Apply Wize</span>
           </a></div>
         <nav>
           <ul>

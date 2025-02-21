@@ -3,7 +3,7 @@
 interface Env {
 	SECRET_KEY: "secret";
 	APP_URL: "http://applywise.app";
-	SESSION_DO: DurableObjectNamespace /* SessionDO */;
+	SESSION_DO: DurableObjectNamespace<import("./src/worker").SessionDO>;
 	R2: R2Bucket;
 	DB: D1Database;
 	ASSETS: Fetcher;

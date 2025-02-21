@@ -1,6 +1,6 @@
 packages:
   - 'sdk'
   - 'experiments/billable'
-  - 'experiments/applywise'
+  - 'experiments/applywize'
   - 'experiments/yt-dos'
   - 'starters/minimal'

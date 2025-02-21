@@ -1,5 +1,5 @@
 #:schema node_modules/wrangler/config-schema.json
-name = "applywise"
+name = "applywize"
 main = "src/worker.tsx"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
@@ -7,7 +7,7 @@ assets = { binding = "ASSETS", directory = "./public" }
 
 workers_dev = false
 routes = [
-  { pattern = "applywise.app", custom_domain = true }
+  { pattern = "applywize.app", custom_domain = true }
 ]
 
 [observability]
@@ -15,11 +15,11 @@ enabled = true
 
 [[d1_databases]]
 binding = "DB"
-database_name = "applywise"
+database_name = "applywize"
 database_id = "6b422a1f-e1b0-4429-85ee-9c07f261bb3b"
 
 [[r2_buckets]]
-bucket_name = "applywise"
+bucket_name = "applywize"
 binding = "R2"
 
 [durable_objects]
@@ -33,4 +33,4 @@ new_classes = [ "SessionDO" ]
 
 [vars]
 SECRET_KEY = "secret"
-APP_URL="http://applywise.app"
+APP_URL="https://applywize.app"

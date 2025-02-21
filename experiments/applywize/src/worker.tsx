@@ -9,7 +9,7 @@ import { DetailPage } from 'app/pages/applications/DetailPage';
 import { UpdatePage } from 'app/pages/applications/UpdatePage';
 import { SettingsPage } from 'app/pages/account/SettingsPage';
 import { defineApp } from '@redwoodjs/sdk/worker';
-import { index, layout } from '@redwoodjs/sdk/router';
+import { index, layout, route, prefix } from '@redwoodjs/sdk/router';
 import { setupDb } from './db';
 
 export { SessionDO } from "./session";
