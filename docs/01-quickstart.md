@@ -1,11 +1,11 @@
 # Quickstart
 
 Note: This will not currently work. We have not yet published the packages. Therefore you must
-run this command in the `redwoodjs/reloaded` repo.
+run this command in the `redwoodjs/sdk` repo.
 
 <!-- This will eventually become a vite starter -->
 ```terminal
-npx degit redwoodjs/reloaded/starters/minimal my-project
+npx degit redwoodjs/sdk/starters/minimal my-project
 cd my-project
 
 npm install
@@ -19,8 +19,8 @@ Open http://localhost:8910 where you'll be be greeted by "Hello, world!"
 The fundemental law of your software is the request/ response cycle. 
 
 ```jsx (src/worker.tsx)
-import { defineApp } from '@redwoodjs/reloaded/worker'
-import { route } from '@redwoodjs/reloaded/router'
+import { defineApp } from '@redwoodjs/sdk/worker'
+import { route } from '@redwoodjs/sdk/router'
 
 defineApp([
     route('/', function({ request }: { request: Request }) {
@@ -37,8 +37,8 @@ In this example a request is made to "/" which is matched by the `/` route, pass
 The route function can either return a `Response` object or a JSX element. The JSX element is statically rendered (as html) and then hydrated by React's client side. Both Server and Client components are supported. (More on client components later...)
 
 ```jsx (src/worker.tsx)
-import { defineApp } from '@redwoodjs/reloaded/worker'
-import { route } from '@redwoodjs/reloaded/router'
+import { defineApp } from '@redwoodjs/sdk/worker'
+import { route } from '@redwoodjs/sdk/router'
 
 + function HomePage() {
 +   return <div>Hello, world!</div>
@@ -57,8 +57,8 @@ defineApp([
 You may have noticed that Redwood does not ship with a default template. You'll have to create one yourself, and use the the `layout` function to nest your routes.
 
 ```jsx (src/worker.tsx)
-import { defineApp } from '@redwoodjs/reloaded/worker'
-+ import { route, layout } from '@redwoodjs/reloaded/router'
+import { defineApp } from '@redwoodjs/sdk/worker'
++ import { route, layout } from '@redwoodjs/sdk/router'
 
 
 + function Document({ children }) {
@@ -103,7 +103,7 @@ return (
 ```
 
 ```jsx (src/client.tsx)
-import { initClient } from "@redwoodjs/reloaded/client";
+import { initClient } from "@redwoodjs/sdk/client";
 
 initClient();
 ```

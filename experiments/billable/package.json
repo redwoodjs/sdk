@@ -22,8 +22,8 @@
     "clean:vendor": "rm -rf ./vendor/dist",
     "release": "pnpm build && wrangler deploy",
     "format": "prettier --write ./src",
-    "__reset:reinstall": "(cd ../../ && rm -rf node_modules && rm -rf reloaded/node_modules && rm -rf experiments/billable/node_modules && pnpm install)",
-    "__reset": "(cd ../../reloaded && NODE_ENV=development pnpm build) && pnpm prisma generate && pnpm clean:vite",
+    "__reset:reinstall": "(cd ../../ && rm -rf node_modules && rm -rf sdk/node_modules && rm -rf experiments/billable/node_modules && pnpm install)",
+    "__reset": "(cd ../../sdk && NODE_ENV=development pnpm build) && pnpm prisma generate && pnpm clean:vite",
     "__reset:dev": "pnpm __reset && pnpm dev",
     "__reset:build": "pnpm __reset && pnpm build",
     "__reset:release": "pnpm __reset && pnpm release"
@@ -33,7 +33,7 @@
     "@prisma/adapter-d1": "^6.3.1",
     "@prisma/client": "^6.3.1",
     "@radix-ui/react-slot": "^1.1.1",
-    "@redwoodjs/reloaded": "workspace:*",
+    "@redwoodjs/sdk": "workspace:*",
     "@types/lodash": "^4.17.13",
     "aws4fetch": "^1.0.20",
     "class-variance-authority": "^0.7.1",
@@ -59,7 +59,7 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "prisma": "^6.3.1",
-    "vite": "^6.0.11",
+    "vite": "^6.1.0",
     "wrangler": "^3.105.1"
   },
   "prisma": {

@@ -15,7 +15,7 @@ export const transformJsxScriptTagsPlugin = ({
 }: {
   manifestPath: string;
 }): Plugin => ({
-  name: "rw-reloaded-transform-jsx-script-tags",
+  name: "rw-sdk-transform-jsx-script-tags",
   async transform(code) {
     const jsxScriptSrcRE =
       /(jsx|jsxDEV)\("script",\s*{[^}]*src:\s*["']([^"']+)["'][^}]/g;

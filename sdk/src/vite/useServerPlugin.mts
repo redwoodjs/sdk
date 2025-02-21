@@ -4,7 +4,7 @@ import { parse } from "es-module-lexer";
 import MagicString from "magic-string";
 
 export const useServerPlugin = (): Plugin => ({
-  name: "rw-reloaded-use-server",
+  name: "rw-sdk-use-server",
   async transform(code, id) {
     if (id.includes(".vite/deps") || id.includes("node_modules")) {
       return;
@@ -23,7 +23,7 @@ export const useServerPlugin = (): Plugin => ({
       if (this.environment.name === "worker") {
         // TODO: Rewrite the code, but register the "function" against
         s.prepend(`
-import { registerServerReference } from "@redwoodjs/reloaded/worker";
+import { registerServerReference } from "@redwoodjs/sdk/worker";
 `);
         const [_, exports] = parse(code);
 
@@ -35,7 +35,7 @@ registerServerReference(${e.ln}, ${JSON.stringify(relativeId)}, ${JSON.stringify
       }
       if (this.environment.name === "client") {
         s = new MagicString(`\
-import { createServerReference } from "@redwoodjs/reloaded/client";
+import { createServerReference } from "@redwoodjs/sdk/client";
 `);
         const [_, exports] = parse(code);
         for (const e of exports) {

@@ -60,7 +60,7 @@ async function init() {
 
   if (import.meta.hot) {
     import.meta.hot.on("rsc:update", (e) => {
-      console.log("[rw-reloaded] hot update", e.file);
+      console.log("[rw-sdk] hot update", e.file);
       callServer(null, null);
     });
   }

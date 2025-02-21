@@ -1,4 +1,4 @@
-RedwoodJS Reloaded uses Cloudflare R2 for Storage. R2 is functionally equivalant to AWS S3.
+RedwoodJS Redwood SDK uses Cloudflare R2 for Storage. R2 is functionally equivalant to AWS S3.
 
 If you want to store images, consider using Cloudflare's image optimized storage service called "Cloudflare Images," which allows
 you to resize and deliver images more efficiently. Generally using R2 is "good enough."

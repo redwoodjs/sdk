@@ -99,6 +99,6 @@ Ok. That seems like a possible way forward. What else to consider?
 Loaders. Stick with Suspense boundary. I kinda see the benefit of been able to declare this on the component itself... Or near the component.
 
 - Don't hide files. I want to be able to follow the request-response cycle in my own code. What does that mean?
-- We should expose the express (or something else) part of the framework. The user should invoke a function to pass the request off to Reloaded
+- We should expose the express (or something else) part of the framework. The user should invoke a function to pass the request off to Redwood SDK
 
 - Do not use "magic exports" to surface functionality of the frameworL: E.g.: Loader or fetchData, etc.

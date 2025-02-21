@@ -1,5 +1,3 @@
-import { defineApp } from '@redwoodjs/reloaded/worker';
-import { index, layout, route, prefix } from '@redwoodjs/reloaded/router';
 import { Document } from 'app/Document';
 import { HomePage } from 'app/pages/HomePage';
 import { LoginPage } from 'app/pages/auth/LoginPage';
@@ -10,6 +8,8 @@ import { ListPage } from 'app/pages/applications/ListPage';
 import { DetailPage } from 'app/pages/applications/DetailPage';
 import { UpdatePage } from 'app/pages/applications/UpdatePage';
 import { SettingsPage } from 'app/pages/account/SettingsPage';
+import { defineApp } from '@redwoodjs/sdk/worker';
+import { index, layout } from '@redwoodjs/sdk/router';
 import { setupDb } from './db';
 
 export { SessionDO } from "./session";

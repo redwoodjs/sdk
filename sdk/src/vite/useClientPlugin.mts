@@ -7,7 +7,7 @@ interface UseClientPluginOptions {
 }
 
 export const useClientPlugin = (options: UseClientPluginOptions = {}): Plugin => ({
-  name: "rw-reloaded-use-client",
+  name: "rw-sdk-use-client",
   async transform(code, id) {
     if (id.includes(".vite/deps") || id.includes("node_modules")) {
       return;
@@ -25,7 +25,7 @@ export const useClientPlugin = (options: UseClientPluginOptions = {}): Plugin =>
 
       if (this.environment.name === "worker") {
         s.prepend(`
-import { registerClientReference } from "@redwoodjs/reloaded/worker";
+import { registerClientReference } from "@redwoodjs/sdk/worker";
 `);
 
         const [_, exports] = parse(code);

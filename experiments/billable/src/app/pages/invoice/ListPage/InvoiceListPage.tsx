@@ -4,7 +4,7 @@ import { Layout } from "../../Layout";
 
 import { CreateInvoiceButton } from "./CreateInvoiceButton";
 import { db } from "src/db";
-import { RouteContext } from "@redwoodjs/reloaded/router";
+import { RouteContext } from "@redwoodjs/sdk/router";
 import { link } from "src/shared/links";
 
 import {

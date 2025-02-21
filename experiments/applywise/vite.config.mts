@@ -1,7 +1,7 @@
 import svgr from 'vite-plugin-svgr'
 import { defineConfig } from "vite";
-import { redwood } from "@redwoodjs/reloaded/vite";
 import tailwindcss from '@tailwindcss/vite'
+import { redwood } from "@redwoodjs/sdk/vite";
 
 export default defineConfig({
   assetsInclude: ['**/*.svg'],
