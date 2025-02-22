@@ -1,5 +1,6 @@
 ---
-title: Tailwind
+title: Queues and Background Jobs
+slug: tutorial/advanced-topics/queues
 description: A guide in my new Starlight docs site.
 ---
 

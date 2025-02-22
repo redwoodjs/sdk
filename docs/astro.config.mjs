@@ -39,8 +39,8 @@ export default defineConfig({
                 { label: 'Authentication', slug: 'tutorial/full-stack-app/auth' },
                 { label: 'Jobs List', slug: 'tutorial/full-stack-app/jobs-list' },
                 { label: 'Jobs Form', slug: 'tutorial/full-stack-app/jobs-form' },
-                { label: 'Jobs Details', slug: 'tutorial/full-stack-app/jobs-details' },
                 { label: 'Contacts', slug: 'tutorial/full-stack-app/contacts' },
+                { label: 'Jobs Details', slug: 'tutorial/full-stack-app/jobs-details' },
                 { label: 'Deploying', slug: 'tutorial/full-stack-app/deploying' },
               ]
             },
@@ -48,15 +48,17 @@ export default defineConfig({
               label: 'Advanced Topics',
               collapsed: true,
               items: [
-                { label: 'Working with Forms', slug: 'tutorial/advanced-topics/forms' },
+                { label: 'Form Validation', slug: 'tutorial/advanced-topics/validation' },
                 { label: 'File Uploads with r2', slug: 'tutorial/advanced-topics/uploads' },
-                { label: 'Adding Authentication', slug: 'tutorial/advanced-topics/auth' },
-                { label: 'Email Integration', slug: 'tutorial/advanced-topics/email' },
-                { label: 'Custom Styling with Tailwind', slug: 'tutorial/advanced-topics/tailwind' },
-                { label: 'Setting up ShadCN UI', slug: 'tutorial/advanced-topics/shadcn' },
-                { label: 'Queues and Background Jobs', slug: 'tutorial/advanced-topics/queues' },
-                { label: 'Testing Your Application', slug: 'tutorial/advanced-topics/testing' },
+                { label: 'Attaching Notes', slug: 'tutorial/advanced-topics/notes' },
+                { label: 'Resumes and Cover Letters', slug: 'tutorial/advanced-topics/resumes-cover-letters' },
                 { label: 'Integrating with AI', slug: 'tutorial/advanced-topics/ai' },
+                { label: 'Queues and Background Jobs', slug: 'tutorial/advanced-topics/queues' },
+                { label: 'Email Integration', slug: 'tutorial/advanced-topics/email' },
+                { label: 'Extending Authentication', slug: 'tutorial/advanced-topics/auth' },
+                { label: 'Building a Dashboard', slug: 'tutorial/advanced-topics/dashboard' },
+                { label: 'Testing Your Application', slug: 'tutorial/advanced-topics/testing' },
+                { label: 'CI/CD', slug: 'tutorial/advanced-topics/cicd' },
               ]
             },
           ],
@@ -84,12 +86,57 @@ export default defineConfig({
               ]
             },
             {
+              label: 'Forms',
+              collapsed: true,
+              items: [
+                {
+                  label: "Getting Started with Forms",
+                  items: [
+                    { label: 'Introduction to Forms', slug: 'guides/forms/intro' },
+                    { label: 'Basic Forms', slug: 'guides/forms/basic-forms' },
+                    { label: 'Optimistic Updates', slug: 'guides/forms/optimistic-updates' },
+                    { label: 'Form Components', slug: 'guides/forms/form-components' },
+                    { label: 'Validation', slug: 'guides/forms/validation' },
+                  ]
+                },
+                {
+                  label: "Advanced Form Patterns",
+                  items: [
+                    { label: 'Multi-Step Forms', slug: 'guides/forms/multi-step' },
+                    { label: 'Dynamic Forms', slug: 'guides/forms/dynamic' },
+                    { label: 'Uploads', slug: 'guides/forms/uploads' },
+                    { label: 'Auto-Save', slug: 'guides/forms/auto-save' },
+                    { label: 'State Management', slug: 'guides/forms/state' },
+                  ]
+                },
+                {
+                  label: "Form Security & Performance",
+                  items: [
+                    { label: 'Security', slug: 'guides/forms/security' },
+                    { label: 'Performance', slug: 'guides/forms/performance' },
+                    { label: 'Testing', slug: 'guides/forms/testing' },
+                    { label: 'Accessibility', slug: 'guides/forms/a11y' },
+                  ]
+                },
+                {
+                  label: "Specialized Forms",
+                  items: [
+                    { label: 'Payment Forms', slug: 'guides/forms/payment' },
+                    { label: 'Search Forms', slug: 'guides/forms/search' },
+                    { label: 'File Management', slug: 'guides/forms/file-management' },
+                    { label: 'Organization', slug: 'guides/forms/organization' },
+                    { label: 'Error Handling', slug: 'guides/forms/error' },
+                    { label: 'State Management', slug: 'guides/forms/state' },
+                  ]
+                },
+              ]
+            },
+            {
               label: 'Frontend Development',
               collapsed: true,
               items: [
                 { label: 'React Server Components', slug: 'guides/frontend/react-server-components' },
                 { label: 'Form Handling', slug: 'guides/frontend/forms' },
-                { label: 'File Uploads with R2 ', slug: 'guides/frontend/r2' },
                 { label: 'Setting up Tailwind CSS', slug: 'guides/frontend/tailwind' },
                 { label: 'Integrating with ShadCN UI', slug: 'guides/frontend/shadcn' },
                 { label: 'Customizing Layouts', slug: 'guides/frontend/layouts' },

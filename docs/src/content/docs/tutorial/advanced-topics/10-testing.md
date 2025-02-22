@@ -1,5 +1,6 @@
 ---
-title: Email
+title: Testing
+slug: tutorial/advanced-topics/testing
 description: A guide in my new Starlight docs site.
 ---
 
