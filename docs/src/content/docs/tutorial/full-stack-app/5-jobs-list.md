@@ -6,8 +6,11 @@ sidebar:
 description: A guide in my new Starlight docs site.
 ---
 
-Guides lead a user through a specific task they want to accomplish, often with a sequence of steps.
-Writing a good guide requires thinking about what your users are trying to do.
+- Creating the main jobs page layout
+- Building and styling the jobs table using ShadCN Table component
+- Implementing sorting and filtering
+- Adding the "Create New Job" button with ShadCN Button component
+- Responsive design considerations
 
 ## Further reading
 

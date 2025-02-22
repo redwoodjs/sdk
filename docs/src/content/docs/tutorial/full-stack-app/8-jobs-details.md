@@ -6,8 +6,11 @@ sidebar:
 description: A guide in my new Starlight docs site.
 ---
 
-Guides lead a user through a specific task they want to accomplish, often with a sequence of steps.
-Writing a good guide requires thinking about what your users are trying to do.
+- Building the job detail view
+- Implementing edit functionality
+- Adding delete capability with confirmation dialog
+- Using ShadCN Dialog for confirmations
+- Styling the detail view
 
 ## Further reading
 
