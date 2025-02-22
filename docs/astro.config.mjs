@@ -65,8 +65,31 @@ export default defineConfig({
         },
         {
           label: 'How-To Guides',
-          collapsed: true,
           items: [
+            {
+              label: 'Routing',
+              collapsed: true,
+              items: [
+                { label: 'Basic Routing', slug: 'guides/routing/basic' },
+                { label: 'Authentication & Authorization', slug: 'guides/routing/auth' },
+                { label: 'Data and State Management', slug: 'guides/routing/data-state' },
+                {
+                  label: 'Common Routing Patterns', items: [
+                    { label: 'Onboarding Flow', slug: 'guides/routing/onboarding-flow' },
+                    { label: 'Multi-Step Form', slug: 'guides/routing/multi-step-form' },
+                    { label: 'Modal Routes', slug: 'guides/routing/modal-routes' },
+                    { label: 'Tabs with Routes', slug: 'guides/routing/tabs-with-routes' },
+                  ]
+                },
+                {
+                  label: 'Performance and User Experience', items: [
+                    { label: 'Implement View transitions', slug: 'guides/routing/view-transitions' },
+                    { label: 'Optimize route loading (progress bar)', slug: 'guides/routing/route-loading' },
+                    { label: 'Handle back/forward navigation', slug: 'guides/routing/back-forward-nav' },
+                  ]
+                }
+              ]
+            },
             {
               label: 'Databases & Data',
               collapsed: true,
@@ -186,6 +209,7 @@ export default defineConfig({
         },
         {
           label: 'Reference',
+          collapsed: true,
           autogenerate: { directory: 'reference' },
         },
         {

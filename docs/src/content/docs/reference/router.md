@@ -211,6 +211,14 @@ prefix("/user", [
 ]);
 ```
 
+This creates the following routes:
+
+```
+/user/login
+/user/logout
+/user/authenticate
+```
+
 This is particularly helpful if you want to split your routes into separate files, and colocate services together.
 
 ```tsx
