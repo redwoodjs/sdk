@@ -2,7 +2,7 @@
 
 interface Env {
 	SECRET_KEY: "secret";
-	APP_URL: "http://applywise.app";
+	APP_URL: "https://applywize.app";
 	SESSION_DO: DurableObjectNamespace<import("./src/worker").SessionDO>;
 	R2: R2Bucket;
 	DB: D1Database;

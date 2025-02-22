@@ -20,16 +20,16 @@ model Application {
   userId         String
   user           User              @relation(fields: [userId], references: [id])
   status         ApplicationStatus @relation(fields: [statusId], references: [id])
-  statusId       Int
-  salaryMin      Int?
-  salaryMax      Int?
+  statusId       Int               @default(1)
+  salaryMin      String?
+  salaryMax      String?
   dateApplied    DateTime?
   jobTitle       String?
   jobDescription String?
   postingUrl     String?
-  submissionDate DateTime?
   createdAt      DateTime          @default(now())
   updatedAt      DateTime?         @updatedAt
+  archived       Boolean           @default(false)
   companyId      String
   company        Company           @relation(fields: [companyId], references: [id])
 }
@@ -54,9 +54,9 @@ model Contact {
   firstName String
   lastName  String
   email     String?
-  phone     String?
-  companyId String
-  company   Company   @relation(fields: [companyId], references: [id])
+  role      String?
+  companyId String?
+  company   Company?  @relation(fields: [companyId], references: [id])
   createdAt DateTime  @default(now())
   updatedAt DateTime? @updatedAt
 }

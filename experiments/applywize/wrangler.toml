@@ -7,8 +7,7 @@ assets = { binding = "ASSETS", directory = "./public" }
 
 workers_dev = false
 routes = [
-  { pattern = "applywize.app/*", custom_domain = true },
-  { pattern = "*.applywize.app/*", custom_domain = true },
+  { pattern = "applywize.app", custom_domain = true }
 ]
 
 [observability]
@@ -17,7 +16,7 @@ enabled = true
 [[d1_databases]]
 binding = "DB"
 database_name = "applywize"
-database_id = "6b422a1f-e1b0-4429-85ee-9c07f261bb3b"
+database_id = "d971929e-bdf6-4a5f-8f77-e3e053d61c02"
 
 [[r2_buckets]]
 bucket_name = "applywize"

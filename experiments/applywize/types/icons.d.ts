@@ -3,6 +3,7 @@
 export type IconName =
 	| "archive"
 	| "calendar"
+	| "check"
 	| "chevron-left"
 	| "chevron-right"
 	| "close"

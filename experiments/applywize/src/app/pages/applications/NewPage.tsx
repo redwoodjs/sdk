@@ -7,9 +7,25 @@ import {
   BreadcrumbPage,
   BreadcrumbSeparator,
 } from "app/components/ui/breadcrumb"
+import { db } from "@/db";
+import { AddApplicationForm } from "./component/AddApplicationForm";
 
+export async function NewPage() {
+  // get all the application statuses
+  const applicationStatuses = await db.applicationStatus.findMany({
+    select: {
+      id: true,
+      status: true
+    }
+  })
 
-export function NewPage() {
+  // get all the contacts that don't have a company
+  const contacts = await db.contact.findMany({
+    where: {
+      companyId: null
+    }
+  })
+
   return (
     <InteriorLayout>
       {/* breadcrumbs */}
@@ -30,6 +46,9 @@ export function NewPage() {
         <h1 className="page-title">New Application</h1>
         <p className="page-description">Create a new application</p>
       </div>
+
+      <AddApplicationForm contacts={contacts} applicationStatuses={applicationStatuses} />
+
     </InteriorLayout>
   );
 }
