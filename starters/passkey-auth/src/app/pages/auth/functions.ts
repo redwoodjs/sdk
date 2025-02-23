@@ -1,14 +1,26 @@
 "use server";
+import { server } from '@passwordless-id/webauthn'
+
 
 import { sessions } from "@/session/store";
+import { db } from '@/db';
 
-export async function performLogin() {
-  // >>> Authentication logic for user goes here
-  // >>> Replace this stub: e.g. get the user id from your database
-  const userId = crypto.randomUUID();
+export async function startPasskeyLogin(email: string, { headers }: { headers: Headers }) {
+  const user = await db.user.findUnique({ where: { email } });
 
-  // >>> Once the user is authenticated, we need to create a session for them.
-  const response = new Response(null);
+  if (user) {
+    // todo
+    throw new Error('Not implemented');
+  }
 
-  return sessions.save(response, { userId });
+  const challenge = await getChallenge();
+  sessions.save(headers, { challenge });
+
+  return {
+    challenge,
+  }
+}
+
+export async function getChallenge() {
+  return server.randomChallenge();
 }

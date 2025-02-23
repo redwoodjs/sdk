@@ -4,6 +4,7 @@ import {
   decodeReply,
 } from "react-server-dom-webpack/server.edge";
 import { getModuleExport } from "../imports/worker";
+import { RouteContext } from "../lib/router";
 
 export function registerServerReference(
   action: Function,
@@ -28,7 +29,7 @@ export function registerClientReference<Target extends Record<string, any>>(id: 
   );
 }
 
-export async function rscActionHandler(req: Request, ctx: any, env: Env): Promise<unknown> {
+export async function rscActionHandler(req: Request, ctx: RouteContext): Promise<unknown> {
   const url = new URL(req.url);
   const contentType = req.headers.get("content-type");
 
@@ -44,5 +45,5 @@ export async function rscActionHandler(req: Request, ctx: any, env: Env): Promis
     throw new Error(`Action ${actionId} is not a function`);
   }
 
-  return action(...args, { ctx, env });
+  return action(...args, ctx);
 }

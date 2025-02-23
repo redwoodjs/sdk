@@ -2,7 +2,8 @@ import { MAX_SESSION_DURATION } from "@redwoodjs/sdk/auth";
 import { DurableObject } from "cloudflare:workers";
 
 export interface Session {
-  userId: string;
+  userId?: string | null;
+  challenge?: string | null;
   createdAt: number
 }
 
@@ -13,9 +14,10 @@ export class SessionDurableObject extends DurableObject {
     this.session = undefined;
   }
 
-  async saveSession({ userId }: { userId: string }): Promise<Session> {
+  async saveSession({ userId = null, challenge = null }: { userId?: string | null, challenge?: string | null }): Promise<Session> {
     const session: Session = {
       userId,
+      challenge,
       createdAt: Date.now(),
     }
 

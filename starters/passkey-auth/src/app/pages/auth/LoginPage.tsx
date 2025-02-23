@@ -1,30 +1,38 @@
 "use client";
 
-import { useTransition } from 'react';
-import { performLogin } from './functions';
+import { useTransition, useState } from 'react';
+import { startPasskeyLogin } from './functions';
 
 export function LoginPage() {
+  const [email, setEmail] = useState('');
   const [isPending, startTransition] = useTransition();
 
-  const handlePerformLogin = () => {
+  const handlePerformPasskeyLogin = () => {
     startTransition(() => {
-      const doLogin = async () => {
-        await performLogin();
+      const doPasskeyLogin = async () => {
+        await startPasskeyLogin(email);
         window.location.href = "/";
       }
-      doLogin();
+      doPasskeyLogin();
     });
   };
 
   return (
     <>
-      <button onClick={handlePerformLogin} disabled={isPending}>
+      <button onClick={handlePerformPasskeyLogin} disabled={isPending}>
+        <input
+          type="email"
+          value={email}
+          onChange={(e) => setEmail(e.target.value)}
+          placeholder="Email"
+        />
+       
         {isPending ? (
           <>
             ...
           </>
         ) : (
-          "Login"
+          "Login with passkey"
         )}
       </button>
     </>

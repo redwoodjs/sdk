@@ -5,10 +5,11 @@ export type RouteContext<TContext = Record<string, any>, TParams = Record<string
   params: TParams;
   env: Env;
   ctx: TContext;
+  headers: Headers;
   rw: RwContext<TContext>;
 };
 
-type PageProps<TContext> = Omit<RouteContext<TContext>, "rw" | "request">
+type PageProps<TContext> = Omit<RouteContext<TContext>, "rw" | "request" | "headers">
 
 export type RwContext<TContext> = {
   Layout: React.FC<{ children: React.ReactNode }>;
@@ -100,18 +101,20 @@ export function defineRoutes<TContext = Record<string, any>>(routes: Route<TCont
       ctx,
       env,
       rw,
+      headers,
     }: {
       request: Request;
       ctx: TContext;
       env: Env;
       rw: RwContext<TContext>;
+      headers: Headers;
     },
   ) => Response | Promise<Response>;
 } {
   const flattenedRoutes = flattenRoutes(routes);
   return {
     routes: flattenedRoutes,
-    async handle({ request, ctx, env, rw }) {
+    async handle({ request, ctx, env, rw, headers }) {
       const url = new URL(request.url);
       let path = url.pathname;
 
@@ -122,10 +125,11 @@ export function defineRoutes<TContext = Record<string, any>>(routes: Route<TCont
 
       // Find matching route
       let match: RouteMatch<TContext> | null = null;
+      const routeContext: RouteContext<TContext> = { request, params: {}, ctx, env, rw, headers };
 
       for (const route of flattenedRoutes) {
         if (typeof route === "function") {
-          const r = await route({ request, params: {}, ctx, env, rw });
+          const r = await route({ request, params: {}, ctx, env, rw, headers });
 
           if (r instanceof Response) {
             return r;
@@ -147,6 +151,7 @@ export function defineRoutes<TContext = Record<string, any>>(routes: Route<TCont
       }
 
       let { params, handler } = match;
+      routeContext.params = params;
 
       // Array of handlers (middleware chain)
       if (Array.isArray(handler)) {
@@ -161,17 +166,17 @@ export function defineRoutes<TContext = Record<string, any>>(routes: Route<TCont
             );
           }
 
-          const r = await h({ request, params, ctx, env, rw });
+          const r = await h(routeContext);
         }
       }
 
       if (isRouteComponent(handler)) {
-        const actionResult = await rw.handleAction(ctx);
+        const actionResult = await rw.handleAction(routeContext);
         const serializedEnv = serializeEnv(env);
         const props = { params, env: serializedEnv, ctx };
         return await rw.renderPage({ Page: handler as React.FC<Record<string, any>>, props, actionResult, Layout: rw.Layout});
       } else {
-        return await (handler({ request, params, ctx, env, rw }) as Promise<Response>);
+        return await (handler(routeContext) as Promise<Response>);
       }
     },
   };

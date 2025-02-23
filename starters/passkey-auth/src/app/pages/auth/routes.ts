@@ -8,11 +8,13 @@ export const authRoutes: RouteDefinition<Context>[] = [
     LoginPage
   ]),
   route('/logout', function ({ request }) {
-    return sessions.remove(request, new Response(null, {
+    const headers = new Headers();
+    sessions.remove(request, headers);
+    headers.set('Location', '/');
+
+    return new Response(null, {
       status: 302,
-      headers: {
-        'Location': '/',
-      }
-    }));
+      headers,
+    });
   }),
 ]
