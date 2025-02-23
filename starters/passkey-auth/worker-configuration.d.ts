@@ -3,5 +3,6 @@
 interface Env {
 	SECRET_KEY: "_";
 	SESSION_DURABLE_OBJECT: DurableObjectNamespace<import("./src/worker").SessionDurableObject>;
+	DB: D1Database;
 	ASSETS: Fetcher;
 }

@@ -17,10 +17,19 @@ datasource db {
 }
 
 model User {
-  id                String    @id @default(uuid())
-  email             String    @unique
-  authToken         String?
-  authTokenExpiresAt DateTime?
-  createdAt         DateTime  @default(now())
-  updatedAt         DateTime? @updatedAt
+  id          String      @id @default(uuid()) // User ID (UUID-based)
+  email       String      @unique
+  createdAt   DateTime    @default(now())
+
+  credentials Credential[] // Relationship: One user can have many credentials
+}
+
+model Credential {
+  id          String   @id @default(cuid()) // Credential ID (WebAuthn key ID)
+  user        User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  credential  Json     // JSON blob storing WebAuthn passkey
+  createdAt   DateTime @default(now())
+
+  @@unique([userId, id]) // Each user should have unique passkeys
 }

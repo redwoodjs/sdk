@@ -19,3 +19,8 @@ SECRET_KEY = "_"
 [[migrations]]
 tag = "v1"
 new_classes = [ "SessionDurableObject" ]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "__change_me__"
+database_id = "__change_me__"
