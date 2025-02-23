@@ -1,0 +1,261 @@
+---
+title: Routing
+description: Redwood SDK's routing system, including route definitions, request handling, and nested routing patterns
+---
+
+import { Code } from '@astrojs/starlight/components';
+
+RedwoodSDK's routing system is built around the request/response cycle. 
+Each incoming `Request` is processed and generates a corresponding `Response`. 
+Routes are registered in `defineApp`, where incoming request URLs are matched to route functions that return `Response` objects.
+
+<Code 
+  language="jsx" 
+  title="src/worker.tsx" 
+  mark={[5,6, 7]}
+  code={`\
+import { defineApp } from '@redwoodjs/sdk/worker'
+import { route } from '@redwoodjs/sdk/router'
+
+export default defineApp({
+    route('/', function() {
+        return new Response('Hello, world!')
+    })
+})
+`} />
+
+## URL Pattern Matching
+
+RedwoodSDK supports three URL matching patterns:
+
+- `/static/`: Exact path matching. While trailing slashes are optional in the URL, they are always present in the internal route.
+- `/params/:id/:name/`: Parameter matching using colons (`:`). Named parameters are accessible in the request function via `params.id` and `params.name`.
+- `/wildcard/*`: Wildcard matching captures everything after the specified path. For example, `/wildcard/uploads/images/avatar.png` makes `"uploads/images/avatar.png"` available as `params.$0`.
+
+Note: Regular expressions and type casting are not supported.
+
+## Route functions
+
+Route functions handle incoming requests and return either a Response object or a JSX component. They receive the following properties:
+
+- `request`: The incoming Request object
+- `params`: URL parameters parsed from the route definition
+- `env`: CloudFlare environment variables and bindings
+- `ctx`: A mutable object for storing request-scoped data
+
+Here's a basic example:
+
+<Code
+  language="tsx"
+  code={`\
+import { route } from "@redwoodjs/sdk/router";
+
+route("/", function ({ request, params, env, ctx }) {
+  return new Response("Hello, world!", { status: 200 });
+});`} />
+
+When returning a JSX component, RedwoodSDK will:
+1. Render it to static HTML
+2. Hydrate it on the client side using React
+
+For more details on JSX handling, see the [JSX section](#jsx) below.
+
+## Interruptors
+
+RedwoodSDK's interruptors allow you to chain multiple request functions for a single route, where each function can either:
+
+1. Return a Response to interrupt the chain
+2. Return nothing to continue to the next function 
+3. Return a JSX component as the final response
+
+This pattern is particularly useful for implementing middleware-like functionality at the route level, such as authentication checks.
+
+Here's an example:
+
+<Code
+  language="tsx"
+  code={`\
+import { defineApp } from "@redwoodjs/sdk/worker";
+import { route } from "@redwoodjs/sdk/router";
+
+export default defineApp([
+  route("/user/settings", [
+    // Authentication check
+    function checkAuth({ ctx }) {
+      if (!ctx.user) {
+        return Response.redirect("/user/login", 302);
+      }
+    },
+    // Main page request
+    function showSettings() {
+      return <UserSettingsPage />;
+    },
+  ]),
+]);`} />
+
+The interruptors pattern complements the global middleware system, allowing you to apply route-specific checks without cluttering your main request functions.
+
+Note: All request functions in the chain receive the same route context (`request`, `params`, `env`, `ctx`), making it easy to share data between functions.
+
+## Global Middleware
+
+Global middleware allows you to inspect or modify every request and response in your application. Middleware functions are defined in the `defineApp` function and run in sequence before any route handling. You can specify as many middleware functions as needed.
+
+<Code
+  language="tsx"
+  title="src/worker.tsx"
+  code={`\
+export default defineApp([
+  async function getUserMiddleware({ request, env, ctx }) {
+    const session = getSession({ request, env })
+    try {
+      const user = await db.user.findFirstOrThrow({
+        select: {
+          id: true,
+          email: true
+        },
+        where: {
+          id: session?.userId
+        }
+      })
+      ctx.user = user
+    } catch {
+      ctx.user = null
+    }
+  },
+  route('/', function({ ctx }) {
+    return new Response(\`You are logged in as "\${ctx.user.email}"\`)
+  })
+])`} />
+
+In this example, we define a global middleware function `getUserMiddleware` that:
+1. Retrieves the user's session information
+2. Attempts to fetch the user from the database using the session's userId
+3. Stores the user object in the request context (`ctx`)
+
+The `ctx` object is then available to all subsequent route handlers and middleware functions.
+
+## JSX
+
+Route functions can return either a `Response` object or a JSX component. When returning JSX, RedwoodSDK:
+
+1. Renders it as static HTML
+2. Includes an RSC (React Server Components) payload
+3. Hydrates the component on the client side
+
+By default, all components use the `"use server"` directive. For interactive components, explicitly add the `"use client"` directive.
+
+### Basic Example
+
+<Code
+  language="tsx"
+  title="src/worker.tsx"
+  code={`\
+import { defineApp } from "@redwoodjs/sdk/worker";
+import { route } from "@redwoodjs/sdk/router";
+
+function Homepage() {
+  return <div>Hello, world! I'm a React Server Component!</div>;
+}
+
+export default defineApp([
+  route("/", Homepage)
+]);`} />
+
+This renders as simple HTML:
+
+```html
+<div>Hello, world! I'm a React Server Component!</div>
+```
+
+### Root Document
+
+By default, RedwoodSDK only renders your component's HTML without `<html>`, `<head>`, or `<body>` tags. To add these, wrap your routes in a layout:
+
+<Code
+  language="tsx"
+  title="src/worker.tsx"
+  code={`\
+import { defineApp } from "@redwoodjs/sdk/worker";
+import { route, layout } from "@redwoodjs/sdk/router";
+
+function Document({ children }) {
+  return (
+    <html>
+      <head>
+        <title>RedwoodSDK App</title>
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}
+
+export default defineApp([
+  layout(Document, [
+    route("/", Homepage)
+  ])
+]);`} />
+
+### Adding Interactivity
+
+To enable client-side hydration:
+
+1. Create a client entry point:
+
+<Code
+  language="tsx"
+  title="src/client.tsx"
+  code={`\
+import { initClient } from "@redwoodjs/sdk/client";
+
+initClient();`} />
+
+2. Include it in your Document layout:
+
+<Code
+  language="tsx"
+  title="src/worker.tsx"
+  code={`\
+function Document({ children }) {
+  return (
+    <html>
+      <head>
+        <title>RedwoodSDK App</title>
+        <script type="module" src="/src/client.tsx" />
+      </head>
+      <body>{children}</body>
+    </html>
+  );
+}`} />
+
+## Helpers
+
+The following helpers improve the development experience of routing:
+
+- `prefix` allows you to prepend a string to an array of routes
+- `index` is a shorthand for defining the root route (`/`) of a section
+
+Here's an example using both helpers:
+
+<Code
+  language="tsx"
+  code={`\
+import { defineApp } from "@redwoodjs/sdk/worker";
+import { index, layout, prefix } from "@redwoodjs/sdk/router";
+import { authRoutes } from 'src/pages/auth/routes';
+import { invoiceRoutes } from 'src/pages/invoice/routes';
+import HomePage from 'src/pages/Home/HomePage';
+
+export default defineApp([
+  layout(Document, [
+    // Define root route using index
+    index([
+      HomePage,
+    ]),
+    // Prefix routes with /user and /invoice
+    prefix("/user", authRoutes),
+    prefix("/invoice", invoiceRoutes),
+  ])
+])`} />
+
+The `index` helper is equivalent to calling `route('/', handler)`, making it more semantic when defining root routes for your application or route groups.
