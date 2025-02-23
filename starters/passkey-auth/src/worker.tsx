@@ -21,7 +21,7 @@ export default defineApp<Context>([
   layout<Context>(Document, [
     index([
         ({ ctx }) => {
-          if (!ctx.session || !ctx.session?.userId) {
+          if (!ctx.session?.userId) {
             return new Response(null, {
               status: 302,
               headers: { Location: '/user/login' }
