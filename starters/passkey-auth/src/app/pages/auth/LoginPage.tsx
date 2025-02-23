@@ -17,7 +17,7 @@ export function LoginPage() {
         const authentication = await client.authenticate({
           challenge,
         })
-        console.log('###', authentication)
+        console.log('### authentication', authentication)
       } catch (error) {
         console.error('###', error)
       }
