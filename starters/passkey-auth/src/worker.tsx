@@ -20,6 +20,14 @@ export default defineApp<Context>([
   // todo: Figure out why I'm needing to provide route type param each time
   layout<Context>(Document, [
     index([
+        ({ ctx }) => {
+          if (!ctx.session || !ctx.session?.userId) {
+            return new Response(null, {
+              status: 302,
+              headers: { Location: '/user/login' }
+            });
+          }
+        },
         Home,
     ]),
     prefix<Context>("/user", authRoutes),

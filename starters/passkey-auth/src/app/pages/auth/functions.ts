@@ -3,22 +3,15 @@ import { server } from '@passwordless-id/webauthn'
 
 
 import { sessions } from "@/session/store";
-import { db } from '@/db';
+import { RouteContext } from '@redwoodjs/sdk/router';
 
-export async function startPasskeyLogin(email: string, { headers }: { headers: Headers }) {
-  const user = await db.user.findUnique({ where: { email } });
-
-  if (user) {
-    // todo
-    throw new Error('Not implemented');
-  }
+export async function startPasskeyLogin(ctx?: RouteContext) {
+  const { headers } = ctx!;
 
   const challenge = await getChallenge();
   sessions.save(headers, { challenge });
 
-  return {
-    challenge,
-  }
+  return challenge
 }
 
 export async function getChallenge() {

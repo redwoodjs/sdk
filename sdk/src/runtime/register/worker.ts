@@ -29,7 +29,7 @@ export function registerClientReference<Target extends Record<string, any>>(id: 
   );
 }
 
-export async function rscActionHandler(req: Request, ctx: RouteContext): Promise<unknown> {
+export async function rscActionHandler<TContext>(req: Request, ctx: RouteContext<TContext, Record<string, string>>): Promise<unknown> {
   const url = new URL(req.url);
   const contentType = req.headers.get("content-type");
 

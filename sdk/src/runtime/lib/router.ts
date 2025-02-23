@@ -14,12 +14,12 @@ type PageProps<TContext> = Omit<RouteContext<TContext>, "rw" | "request" | "head
 export type RwContext<TContext> = {
   Layout: React.FC<{ children: React.ReactNode }>;
   renderPage: (params: { Page: React.FC<Record<string, any>>, props: PageProps<TContext>, actionResult: unknown, Layout: React.FC<{ children: React.ReactNode }> } ) => Promise<Response>;
-  handleAction: (ctx: TContext) => Promise<unknown>;
+  handleAction: (ctx: RouteContext<TContext>) => Promise<unknown>;
 }
 
 type RouteMiddleware<TContext> = (
   ctx: RouteContext<TContext>,
-) => Response | Promise<Response> | void | Promise<void>;
+) => Response | Promise<Response> | void | Promise<void> | Promise<Response | void>;
 type RouteFunction<TContext> = (ctx: RouteContext<TContext>) => Response | Promise<Response>;
 type RouteComponent<TContext> = (ctx: RouteContext<TContext>) => JSX.Element | Promise<JSX.Element>;
 
@@ -167,6 +167,10 @@ export function defineRoutes<TContext = Record<string, any>>(routes: Route<TCont
           }
 
           const r = await h(routeContext);
+
+          if (r instanceof Response) {
+            return r;
+          }
         }
       }
 
