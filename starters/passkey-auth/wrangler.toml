@@ -15,6 +15,7 @@ bindings = [
 
 [vars]
 SECRET_KEY = "_"
+APP_NAME = "__change_me__"
 
 [[migrations]]
 tag = "v1"

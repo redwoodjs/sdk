@@ -1,8 +1,8 @@
 "use client";
 
-import { useTransition, useState } from 'react';
-import { createChallenge } from './functions';
-import { client } from '@passwordless-id/webauthn';
+import { useState, useTransition } from 'react';
+import { startRegistration } from '@simplewebauthn/browser';
+import { generatePasskeyRegistrationOptions } from './functions';
 
 export function LoginPage() {
   const [username, setUsername] = useState('');
@@ -12,12 +12,9 @@ export function LoginPage() {
   }
 
   const passkeyRegister = async () => {
-    const challenge = await createChallenge();
-    client.register({
-      user: username,
-      challenge,
-      discoverable: 'required'
-    })
+    const options = await generatePasskeyRegistrationOptions(username);
+    const registration = await startRegistration({ optionsJSON: options });
+    console.log('## registration', registration);
   }
 
   const handlePerformPasskeyLogin = () => {
@@ -28,16 +25,9 @@ export function LoginPage() {
     startTransition(() => void passkeyRegister());
   };
 
-  console.log('sdfsd')
   return (
     <>
-      <input
-        type="username"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-        placeholder="Username"
-      />
-
+      <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} />
       <button onClick={handlePerformPasskeyLogin} disabled={isPending}>
         {isPending ? (
           <>

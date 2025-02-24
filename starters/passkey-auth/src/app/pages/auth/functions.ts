@@ -1,15 +1,24 @@
 "use server";
-import { server } from '@passwordless-id/webauthn'
-
+import { generateRegistrationOptions } from '@simplewebauthn/server';
 
 import { sessions } from "@/session/store";
 import { RouteContext } from '@redwoodjs/sdk/router';
 
-export async function createChallenge(ctx?: RouteContext) {
-  const { headers } = ctx!;
+export async function generatePasskeyRegistrationOptions(username: string, ctx?: RouteContext) {
+  const { request, headers, env } = ctx!;
+  const { origin } = new URL(request.url);
 
-  const challenge = server.randomChallenge();
-  sessions.save(headers, { challenge });
+  const options = await generateRegistrationOptions({
+    rpName: env.APP_NAME,
+    rpID: origin,
+    userName: username,
+    authenticatorSelection: {
+      residentKey: 'required',
+      userVerification: 'preferred',
+    },
+  });
 
-  return challenge
+  await sessions.save(headers, { challenge: options.challenge });
+
+  return options;
 }

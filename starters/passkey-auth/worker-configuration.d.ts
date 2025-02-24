@@ -2,6 +2,7 @@
 
 interface Env {
 	SECRET_KEY: "_";
+	APP_NAME: "__change_me__";
 	SESSION_DURABLE_OBJECT: DurableObjectNamespace<import("./src/worker").SessionDurableObject>;
 	DB: D1Database;
 	ASSETS: Fetcher;
