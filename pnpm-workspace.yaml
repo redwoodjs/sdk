@@ -5,3 +5,4 @@ packages:
   - 'experiments/yt-dos'
   - 'experiments/cutable'
   - 'starters/minimal'
+  - 'starters/prisma'
