@@ -1,5 +1,5 @@
 {
-  "name": "@redwoodjs/starter-db",
+  "name": "@redwoodjs/starter-prisma",
   "version": "1.0.0",
   "description": "",
   "main": "index.js",

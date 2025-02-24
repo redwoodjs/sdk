@@ -22,11 +22,6 @@ database_id = "__change_me__"
 bucket_name = "__change_me__"
 binding = "R2"
 
-[durable_objects]
-bindings = [
-  { name = "SESSION_DO", class_name = "SessionDO" }
-]
-
 [[migrations]]
 tag = "v1"
 new_classes = [ "SessionDO" ]
