@@ -6,10 +6,11 @@ import { sessions } from "@/session/store";
 import { RouteContext } from '@redwoodjs/sdk/router';
 import { AuthenticationJSON } from '@passwordless-id/webauthn/dist/esm/types';
 
-export async function startPasskeyLogin(ctx?: RouteContext) {
+export async function startPasskeyLogin({ request, headers }?: RouteContext) {
   const { headers } = ctx!;
 
   const challenge = await getChallenge();
+  sessions.load(request)
   sessions.save(headers, { challenge });
 
   return challenge
