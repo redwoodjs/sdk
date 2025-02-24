@@ -1,37 +1,34 @@
 "use client";
 
 import { useTransition, useState } from 'react';
-import { startPasskeyLogin } from './functions';
+import { createChallenge } from './functions';
 import { client } from '@passwordless-id/webauthn';
 
 export function LoginPage() {
   const [email, setEmail] = useState('');
   const [isPending, startTransition] = useTransition();
 
+  const passkeyLogin = async () => {
+  }
+
+  const passkeyRegister = async () => {
+    const challenge = await createChallenge();
+    client.register({
+      user: '_',
+      challenge,
+      discoverable: 'required'
+    })
+  }
+
   const handlePerformPasskeyLogin = () => {
-    const loginWithPasskey = async () => {
-      const challenge = await startPasskeyLogin();
-
-      console.log('### authenticate', challenge)
-      try {
-        const authentication = await client.authenticate({
-          challenge,
-        })
-        console.log('### authentication', authentication)
-      } catch (error) {
-        console.error('###', error)
-      }
-    }
-
-    startTransition(() => {
-      const doPasskeyLogin = async () => {
-        await loginWithPasskey();
-      }
-
-      doPasskeyLogin();
-    });
+    startTransition(() => void passkeyLogin());
   };
 
+  const handlePerformPasskeyRegister = () => {
+    startTransition(() => void passkeyRegister());
+  };
+
+  console.log('sdfsd')
   return (
     <>
       <input
@@ -48,6 +45,15 @@ export function LoginPage() {
           </>
         ) : (
           "Login with passkey"
+        )}
+      </button>
+      <button onClick={handlePerformPasskeyRegister} disabled={isPending}>
+        {isPending ? (
+          <>
+            ...
+          </>
+        ) : (
+          "Register with passkey"
         )}
       </button>
     </>

@@ -180,7 +180,7 @@ export function defineRoutes<TContext = Record<string, any>>(
           const serializedEnv = serializeEnv(env);
           const props = { params, env: serializedEnv, ctx };
           return await rw.renderPage({
-            Page: handler as React.FC<Record<string, any>>,
+            Page: h as React.FC<Record<string, any>>,
             props,
             actionResult,
             Layout: rw.Layout,
