@@ -4,25 +4,22 @@ import { ExecutionContext } from '@cloudflare/workers-types';
 
 import { link } from "src/shared/links";
 import { Document } from 'src/Document';
-import { getSession } from './auth';
 import { authRoutes } from 'src/pages/auth/routes';
 import { invoiceRoutes } from 'src/pages/invoice/routes';
 import HomePage from 'src/pages/Home/HomePage';
-import { setup } from './setup';
 import { db, setupDb } from './db';
+import { sessions, setupSessionStore } from './sessionStore';
 
 export { SessionDO } from "./session";
 
 export type Context = {
   user: Awaited<ReturnType<typeof getUser>>;
-}
+};
 
-export const getUser = async (
-  request: Request,
-  env: Env,
-) => {
+export const getUser = async (request: Request) => {
   try {
-    const session = await getSession(request, env);
+    const session = await sessions.load(request);
+
     const user = await db.user.findFirstOrThrow({
       select: {
         id: true,
@@ -39,7 +36,8 @@ export const getUser = async (
 const app = defineApp<Context>([
   async ({ request, ctx, env }) => {
     await setupDb(env)
-    ctx.user = await getUser(request, env)
+    setupSessionStore(env);
+    ctx.user = await getUser(request);
   },
   layout(Document, [
     index([

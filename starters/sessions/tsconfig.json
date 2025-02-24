@@ -21,10 +21,7 @@
       "./types/vite.d.ts"
     ],
     "paths": {
-      "vendor/*": ["./vendor/dist/*"],
-      "src/*": ["./src/app/*"],
-      "src/db": ["./src/db.ts"],
-      "@/*": ["./src/*"]
+      "@/*": ["./src/*"],
     },
     /* Enable importing .json files */
     "resolveJsonModule": true,
