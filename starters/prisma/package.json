@@ -22,7 +22,7 @@
     "migrate:prd": "wrangler d1 migrations apply DB --remote",
     "migrate:new": "rw-scripts migrate-new",
     "seed": "pnpm worker:run ./src/scripts/seed.ts",
-    "__reset:reinstall": "(cd ../../ && rm -rf node_modules && rm -rf sdk/node_modules && rm -rf starters/prisma/node_modules && pnpm install)",
+    "__reset:reinstall": "(cd ../../ && rm -rf node_modules && rm -rf sdk/node_modules && rm -rf experiments/__change-me__/node_modules && pnpm install)",
     "__reset": "(cd ../../sdk && NODE_ENV=development pnpm build) && pnpm clean:vite",
     "__reset:dev": "pnpm __reset && pnpm dev",
     "__reset:build": "pnpm __reset && pnpm build",
