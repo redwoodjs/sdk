@@ -11,9 +11,13 @@ import {
   TableRow,
 } from "app/components/ui/table"
 import { Icon } from "app/components/Icon";
+import { Application } from "@prisma/client";
 
-const ApplicationsTable = ({ applications }) => {
-  console.log({ applications })
+interface ApplicationsTableProps {
+  applications: Application[]
+}
+
+const ApplicationsTable = ({ applications }: ApplicationsTableProps) => {
   return (
     <Table>
       <TableHeader>
@@ -28,51 +32,31 @@ const ApplicationsTable = ({ applications }) => {
         </TableRow>
       </TableHeader>
       <TableBody>
-        <TableRow>
-          <TableCell><Badge variant="applied">Applied</Badge></TableCell>
-          <TableCell>February 5, 2025</TableCell>
-          <TableCell>Design Engineer</TableCell>
-          <TableCell>Vercel</TableCell>
-          <TableCell className="flex gap-2 items-center">
-            <Avatar>
-              <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
-              <AvatarFallback>CN</AvatarFallback>
-            </Avatar>
-            Carla Bergson
-          </TableCell>
-          <TableCell>$150k-$300k</TableCell>
-            <a href={link("/applications/:id", { id: "123" })}><Icon id="eye" /></a>
+        {applications.map((application) => (
+          <TableRow key={application.id}>
+            <TableCell><Badge variant={application.status.status.toLowerCase()}>{application.status.status}</Badge></TableCell>
+            <TableCell>{application.dateApplied.toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })}</TableCell>
+            <TableCell>{application.jobTitle}</TableCell>
+            <TableCell>{application.company.name}</TableCell>
+            <TableCell className="flex gap-2 items-center">
+              {application.company?.contacts && application.company?.contacts?.length > 0 && (
+                <>
+                  {/* <Avatar>
+                    <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
+                    <AvatarFallback>CN</AvatarFallback>
+                  </Avatar> */}
+                  {application.company.contacts[0].firstName} {application.company.contacts[0].lastName}
+                </>
+              )}
+            </TableCell>
+            <TableCell>${application.salaryMin}-${application.salaryMax}</TableCell>
+            <TableCell><a href={link("/applications/:id", { id: application.id })}><Icon id="eye" /></a></TableCell>
           </TableRow>
-          <TableRow>
-          <TableCell><Badge variant="applied">Applied</Badge></TableCell>
-          <TableCell>February 5, 2025</TableCell>
-          <TableCell>Design Engineer</TableCell>
-          <TableCell>Vercel</TableCell>
-          <TableCell className="flex gap-2 items-center">
-            <Avatar>
-              <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
-              <AvatarFallback>CN</AvatarFallback>
-            </Avatar>
-            Carla Bergson
-          </TableCell>
-          <TableCell>$150k-$300k</TableCell>
-            <a href={link("/applications/:id", { id: "123" })}><Icon id="eye" /></a>
-          </TableRow>
-          <TableRow>
-          <TableCell><Badge variant="applied">Applied</Badge></TableCell>
-          <TableCell>February 5, 2025</TableCell>
-          <TableCell>Design Engineer</TableCell>
-          <TableCell>Vercel</TableCell>
-          <TableCell className="flex gap-2 items-center">
-            <Avatar>
-              <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
-              <AvatarFallback>CN</AvatarFallback>
-            </Avatar>
-            Carla Bergson
-          </TableCell>
-          <TableCell>$150k-$300k</TableCell>
-            <a href={link("/applications/:id", { id: "123" })}><Icon id="eye" /></a>
-        </TableRow>
+        ))}
       </TableBody>
     </Table>
   )

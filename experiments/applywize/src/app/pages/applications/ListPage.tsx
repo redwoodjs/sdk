@@ -4,17 +4,32 @@ import { Button } from "app/components/ui/button";
 import { Icon } from "app/components/Icon";
 import { ApplicationsTable } from "app/components/ApplicationsTable";
 import { db } from "@/db";
+import { RouteContext } from "@redwoodjs/sdk/router";
 
-export async function ListPage() {
+export async function ListPage({ params }: RouteContext) {
+  console.log({ params });
+  const archived = !!params.archived;
+  console.log({ archived });
+
   const applications = await db.application.findMany({
     select: {
+      id: true,
       dateApplied: true,
       jobTitle: true,
+      salaryMin: true,
+      salaryMax: true,
       company: {
         select: {
           id: true,
           name: true,
-          contacts: true
+          contacts: {
+            select: {
+              id: true,
+              firstName: true,
+              lastName: true
+            },
+            take: 1
+          }
         }
       },
       status: {
@@ -26,6 +41,10 @@ export async function ListPage() {
     },
     orderBy: {
       updatedAt: 'desc'
+    },
+    where: {
+      userId: "1",
+      archived: false
     }
   });
   console.log({ applications });
@@ -42,7 +61,7 @@ export async function ListPage() {
 
         {/* TODO: Design a blank state */}
         <div className="px-page-side">
-          {applications && applications > 0 ? (
+          {applications && applications.length > 0 ? (
             <ApplicationsTable applications={applications} />
           ) : (
             <div><em>No applications found</em></div>
