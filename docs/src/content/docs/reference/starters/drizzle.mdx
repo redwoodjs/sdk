@@ -32,7 +32,7 @@ Rename the folder and move it into the `experiments` directory.
 
 Add your new project to the `pnpm-workspace.yaml` file. (_This example assumes your new project is called `showofhands`_)
 
-```yaml
+```yaml "experiments/showofhands"
 - "sdk"
   - "experiments/billable"
   - "experiments/yt-dos"
@@ -50,7 +50,7 @@ pnpm install
 ## Set up the Database
 Generate a d1 database:
 
-```bash
+```bash "NAME_OF_DB"
 npx wrangler d1 create NAME_OF_DB
 ```
 
@@ -58,7 +58,7 @@ npx wrangler d1 create NAME_OF_DB
 
 Take the `database_name` and `database_id` and update the values within the `wrangler.toml` file.
 
-```toml
+```toml "__change_me__"
 name = "__change_me__"
 
 ...
@@ -116,7 +116,7 @@ Click Create Token and copy/paste the value to your .env file.
 ## Set up the Seed File
 Change values within the `src/db/seed.ts` file.
 
-```ts
+```ts "__change_me__"
 import { defineScript } from "@redwoodjs/sdk/worker";
 import { drizzle } from "drizzle-orm/d1";
 import { users } from "./schema";
