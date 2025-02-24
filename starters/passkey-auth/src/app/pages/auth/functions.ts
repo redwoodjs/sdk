@@ -4,7 +4,6 @@ import { server } from '@passwordless-id/webauthn'
 
 import { sessions } from "@/session/store";
 import { RouteContext } from '@redwoodjs/sdk/router';
-import { AuthenticationJSON } from '@passwordless-id/webauthn/dist/esm/types';
 
 export async function createChallenge(ctx?: RouteContext) {
   const { headers } = ctx!;
@@ -12,6 +11,5 @@ export async function createChallenge(ctx?: RouteContext) {
   const challenge = server.randomChallenge();
   sessions.save(headers, { challenge });
 
-  console.log('### challenge', challenge)
   return challenge
 }

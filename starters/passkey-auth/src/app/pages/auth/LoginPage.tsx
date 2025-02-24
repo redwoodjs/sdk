@@ -5,7 +5,7 @@ import { createChallenge } from './functions';
 import { client } from '@passwordless-id/webauthn';
 
 export function LoginPage() {
-  const [email, setEmail] = useState('');
+  const [username, setUsername] = useState('');
   const [isPending, startTransition] = useTransition();
 
   const passkeyLogin = async () => {
@@ -14,7 +14,7 @@ export function LoginPage() {
   const passkeyRegister = async () => {
     const challenge = await createChallenge();
     client.register({
-      user: '_',
+      user: username,
       challenge,
       discoverable: 'required'
     })
@@ -32,10 +32,10 @@ export function LoginPage() {
   return (
     <>
       <input
-        type="email"
-        value={email}
-        onChange={(e) => setEmail(e.target.value)}
-        placeholder="Email"
+        type="username"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        placeholder="Username"
       />
 
       <button onClick={handlePerformPasskeyLogin} disabled={isPending}>
