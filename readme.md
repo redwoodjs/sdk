@@ -18,6 +18,7 @@ This is a mono repo for the Redwood SDK.
 ├── readme.md - this file
 ├── sdk - the main Redwood SDK package
 └── starters - starter projects, meant to help someone get up and running quickly
+    ├── drizzle - includes a Drizzle setup for working with Cloudflare d1
     ├── minimal - a minimal projects, no db required
     └── prisma - includes a Prisma setup for working with Cloudflare d1
 ```
@@ -45,3 +46,4 @@ We have starter specific instructions
 
 - [Minimal](./starters/minimal/README.md) for smaller projects, no db required
 - [Prisma](./starters/prisma/README.md) for projects that use Prisma as an ORM, integrates with Cloudflare d1
+- [Drizzle](./starters/drizzle/README.md) for projects that use Drizzle as an ORM, integrates with Cloudflare d1
