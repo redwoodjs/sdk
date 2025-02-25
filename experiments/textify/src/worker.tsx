@@ -170,15 +170,7 @@ export default {
 
           return new Response(null, { status: 200 });
         } else {
-          await env.ai_que.send({
-            input: {
-              text: bodyData.get("Body") || "",
-            },
-            from: bodyData.get("From")!,
-            messageSid: bodyData.get("MessageSid")!,
-            queue: "text-que",
-          });
-          return new Response(null, { status: 200 });
+          return new Response("Please send me a voice note.", { status: 200 });
         }
       }
 

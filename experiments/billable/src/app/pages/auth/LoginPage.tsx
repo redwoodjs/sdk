@@ -17,6 +17,7 @@ import {
 import { link } from "../../shared/links";
 
 export function LoginPage(ctx: RouteContext) {
+  console.log("### LoginPage", ctx);
   const [email, setEmail] = useState("peter@redwoodjs.com");
   const [isPending, startTransition] = useTransition();
   const [success, setSuccess] = useState(false);

@@ -29,11 +29,11 @@ export async function emailLoginLink(email: string, ctx: RouteContext) {
   const loginUrl = `${env.APP_URL}${link('/user/auth')}?token=${token}&email=${encodeURIComponent(email)}`;
 
   // TODO (peterp, 2025-02-11): Fix this better.
-  if (!env.RESEND_API_KEY) {
-    console.log("In development mode, not sending email.")
-    console.log('token', token)
-    return
-  }
+  // if (!env.RESEND_API_KEY) {
+  //   console.log("In development mode, not sending email.")
+  //   console.log('token', token)
+  //   return
+  // }
 
   const resend = new Resend(env.RESEND_API_KEY);
   console.log('### resend')
