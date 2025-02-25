@@ -1,18 +1,17 @@
 # RedwoodSDK
 
-This is a mono repo for the Redwood SDK.
+RedwoodSDK is a framework built on top of [Cloudflare's Platform](https://developers.cloudflare.com/), Request/ Response cycle and React Server Components.
+
+- *Cloudflare's platform* supplies compute (Workers/ Durable Objects), storage (R2), database (D1), and queues. Everything developers need to effectively build software for the web.
+- *React Server components* enable modern server-side rendering with React.
+- *Request/ Response cycle* provides a meaningful standard way to handle web interactions.
+
+Note: This project is not officially released, but we're very near to be beta.
+
 
 ```
 ├── docs - contains the docs for the SDK, based on Starlight
 ├── experiments - contains all the projects we've built as experiments
-│   ├── applywise - a tool for applying for jobs, this will be the basis for the new tutorial
-│   ├── billable - a tool for creating invoices
-│   ├── cutable - a tool for cutting boards
-│   ├── cutl
-│   ├── griffon
-│   ├── rsc
-│   ├── textify
-│   └── yt-dos
 ├── markdown - contains the old docs. We'll eventually migrate these into the docs
 ├── pnpm-workspace.yaml - list of all the workspaces in the repo
 ├── readme.md - this file
@@ -25,13 +24,13 @@ This is a mono repo for the Redwood SDK.
 
 ## Getting Started
 
-```bash
+```terminal
 pnpm install
 ```
 
 ## Running the Docs Locally
 
-```bash
+```terminal
 cd docs
 pnpm dev
 ```
