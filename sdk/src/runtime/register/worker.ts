@@ -25,6 +25,7 @@ export function registerClientReference<Target extends Record<string, any>>(id: 
     {
       ...Object.getOwnPropertyDescriptors(reference),
       $$async: { value: true },
+      $$isClientReference: { value: true },
     },
   );
 }
