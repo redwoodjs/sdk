@@ -16,6 +16,7 @@ bindings = [
 [vars]
 SECRET_KEY = "_"
 APP_NAME = "__change_me__"
+RP_ID = "localhost"
 
 [[migrations]]
 tag = "v1"

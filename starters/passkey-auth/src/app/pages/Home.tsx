@@ -4,8 +4,8 @@ export function Home({ ctx }: { ctx: Context }) {
   return (
     <div>
       <p>
-        {ctx.session?.userId 
-          ? `You are logged in as user ${ctx.session.userId}`
+        {ctx.user?.username 
+          ? `You are logged in as user ${ctx.user.username}`
           : "You are not logged in"}
       </p>
     </div>

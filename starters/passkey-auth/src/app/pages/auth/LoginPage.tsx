@@ -1,20 +1,36 @@
 "use client";
 
 import { useState, useTransition } from 'react';
-import { startRegistration } from '@simplewebauthn/browser';
-import { generatePasskeyRegistrationOptions } from './functions';
+import { startAuthentication, startRegistration } from '@simplewebauthn/browser';
+import { finishPasskeyLogin, finishPasskeyRegistration, startPasskeyLogin, startPasskeyRegistration } from './functions';
 
 export function LoginPage() {
   const [username, setUsername] = useState('');
+  const [result, setResult] = useState('');
   const [isPending, startTransition] = useTransition();
 
   const passkeyLogin = async () => {
+    const options = await startPasskeyLogin();
+    const login = await startAuthentication({ optionsJSON: options });
+    const success = await finishPasskeyLogin(login);
+
+    if (!success) {
+      setResult('Login failed');
+    } else {
+      setResult('Login successful!');
+    }
   }
 
   const passkeyRegister = async () => {
-    const options = await generatePasskeyRegistrationOptions(username);
+    const options = await startPasskeyRegistration(username);
     const registration = await startRegistration({ optionsJSON: options });
-    console.log('## registration', registration);
+    const success = await finishPasskeyRegistration(username, registration);
+
+    if (!success) {
+      setResult('Registration failed');
+    } else {
+      setResult('Registration successful!');
+    }
   }
 
   const handlePerformPasskeyLogin = () => {
@@ -46,6 +62,7 @@ export function LoginPage() {
           "Register with passkey"
         )}
       </button>
+      {result && <div>{result}</div>}
     </>
   );
 }

@@ -29,7 +29,6 @@
     "seed": "pnpm worker:run ./src/scripts/seed.ts"
   },
   "dependencies": {
-    "@passwordless-id/webauthn": "^2.2.0",
     "@prisma/adapter-d1": "^6.4.1",
     "@prisma/client": "^6.4.1",
     "@redwoodjs/sdk": "workspace:*",

@@ -173,7 +173,7 @@ export function defineRoutes<TContext = Record<string, any>>(
       let { params, handler } = match;
       routeContext.params = params;
 
-      let handlers = Array.isArray(handler) ? handler : [handler];
+      const handlers = Array.isArray(handler) ? handler : [handler];
       for (const h of handlers) {
         if (isRouteComponent(h)) {
           const actionResult = await rw.handleAction(routeContext);
@@ -186,7 +186,10 @@ export function defineRoutes<TContext = Record<string, any>>(
             Layout: rw.Layout,
           });
         } else {
-          return await (h(routeContext) as Promise<Response>);
+          const r = await (h(routeContext) as Promise<Response>);
+          if (r instanceof Response) {
+            return r;
+          }
         }
       }
       
