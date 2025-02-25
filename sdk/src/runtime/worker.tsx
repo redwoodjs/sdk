@@ -6,7 +6,7 @@ import { ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import { ErrorResponse } from "./error";
 
-import { Route, defineRoutes } from "./lib/router";
+import { Route, RouteContext, defineRoutes } from "./lib/router";
 
 declare global {
   type Env = {
@@ -35,11 +35,11 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
         const url = new URL(request.url);
         const isRSCRequest = url.searchParams.has("__rsc");
 
-        const handleAction = async (ctx: Context) => {
+        const handleAction = async (ctx: RouteContext<Context, Record<string, string>>) => {
           const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 
           if (isRSCActionHandler) {
-            return await rscActionHandler(request, ctx, env); // maybe we should include params and ctx in the action handler?
+            return await rscActionHandler(request, ctx); // maybe we should include params and ctx in the action handler?
           }
         }
 
@@ -54,23 +54,16 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
           actionResult: unknown,
           Layout: React.FC<{ children: React.ReactNode }>
         }) => {
-          const headers = new Headers();
-
-          if (actionResult instanceof Response) {
-            for (const [key, value] of actionResult.headers.entries()) {
-              headers.set(key, value);
-            }
-          }
-
           const rscPayloadStream = renderToRscStream({
             node: <Page {...props} />,
             actionResult: actionResult instanceof Response ? null : actionResult,
           });
 
           if (isRSCRequest) {
-            headers.set("content-type", "text/x-component; charset=utf-8");
             return new Response(rscPayloadStream, {
-              headers,
+              headers: {
+                "content-type": "text/x-component; charset=utf-8",
+              },
             });
           }
 
@@ -83,15 +76,18 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
 
           const html = htmlStream.pipeThrough(injectRSCPayload(rscPayloadStream2))
 
-          headers.set("content-type", "text/html; charset=utf-8");
-
           return new Response(html, {
-            headers,
+            headers: {
+              "content-type": "text/html; charset=utf-8",
+            },
           });
         };
 
+        const userHeaders = new Headers();
+
         const response = await router.handle({
           request,
+          headers: userHeaders,
           ctx: {} as Context,
           env,
           rw: {
@@ -100,6 +96,12 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
             renderPage,
           },
         });
+
+        for (const [key, value] of userHeaders.entries()) {
+          if (!response.headers.has(key)) {
+            response.headers.set(key, value);
+          }
+        }
 
         return response;
       } catch (e) {
@@ -119,7 +121,6 @@ export const DefaultLayout: React.FC<{ children: React.ReactNode }> = ({ childre
     <head>
       <meta charSet="utf-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1" />
-      <title>@redwoodjs/starter-minimal</title>
       <script type="module" src="/src/client.tsx"></script>
     </head>
     <body>

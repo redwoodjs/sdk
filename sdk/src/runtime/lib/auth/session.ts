@@ -118,28 +118,24 @@ export const defineSessionStore = <Session, SessionInputData>({
   };
 
   const save = async (
-    response: Response,
+    headers: Headers,
     sessionInputData: SessionInputData,
     { maxAge }: { maxAge?: number | true } = {}
-  ): Promise<Response> => {
+  ): Promise<void> => {
     const sessionId = await generateSessionId({ secretKey });
     await set(sessionId, sessionInputData);
-    const newResponse = response.clone();
-    newResponse.headers.set("Set-Cookie", createSessionCookie({ sessionId, maxAge }));
-    return newResponse;
+    headers.set("Set-Cookie", createSessionCookie({ sessionId, maxAge }));
   };
 
   const remove = async (
     request: Request,
-    response: Response
-  ): Promise<Response> => {
+    headers: Headers
+  ): Promise<void> => {
     const sessionId = getSessionIdFromCookie(request);
     if (sessionId) {
       await unset(sessionId);
     }
-    const newResponse = response.clone();
-    newResponse.headers.set("Set-Cookie", createSessionCookie({ sessionId: '', maxAge: 0 }));
-    return newResponse;
+    headers.set("Set-Cookie", createSessionCookie({ sessionId: '', maxAge: 0 }));
   };
 
   return {
