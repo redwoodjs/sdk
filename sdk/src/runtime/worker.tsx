@@ -45,7 +45,7 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
 
         const renderPage = async ({
           Page,
-          props,
+          props: givenProps,
           actionResult,
           Layout,
         }: {
@@ -54,6 +54,15 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
           actionResult: unknown,
           Layout: React.FC<{ children: React.ReactNode }>
         }) => {
+          let props = givenProps;
+
+          // context(justinvdm, 25 Feb 2025): If the page is a client reference, we need to avoid passing
+          // down props the client shouldn't get (e.g. env). For safety, we pick the allowed props explicitly.
+          if (Object.prototype.hasOwnProperty.call(Page, "$$isClientReference")) {
+            const { ctx, params } = givenProps;
+            props = { ctx, params };
+          }
+
           const rscPayloadStream = renderToRscStream({
             node: <Page {...props} />,
             actionResult: actionResult instanceof Response ? null : actionResult,
