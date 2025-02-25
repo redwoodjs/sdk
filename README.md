@@ -8,19 +8,6 @@ RedwoodSDK is a framework built on top of [Cloudflare's Platform](https://develo
 
 Note: This project is not officially released, but we're very near to be beta.
 
-
-```
-├── docs - contains the docs for the SDK, based on Starlight
-├── experiments - contains all the projects we've built as experiments
-├── pnpm-workspace.yaml - list of all the workspaces in the repo
-├── readme.md - this file
-├── sdk - the main Redwood SDK package
-└── starters - starter projects, meant to help someone get up and running quickly
-    ├── drizzle - includes a Drizzle setup for working with Cloudflare d1
-    ├── minimal - a minimal projects, no db required
-    └── prisma - includes a Prisma setup for working with Cloudflare d1
-```
-
 ## Getting Started
 
 ```terminal
