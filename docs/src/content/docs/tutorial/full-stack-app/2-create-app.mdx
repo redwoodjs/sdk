@@ -1,0 +1,93 @@
+---
+title: Create App
+slug: tutorial/full-stack-app/create-app
+sidebar:
+  label: Create App
+description: A guide in my new Starlight docs site.
+---
+
+import { FileTree } from '@astrojs/starlight/components';
+import { Aside } from '@astrojs/starlight/components';
+import { Steps } from '@astrojs/starlight/components';
+
+## Project Generation and Structure
+
+The first thing we'll do is generate our project.
+
+{/* this command doesn't exist yet */}
+
+```bash
+pnpm create vite@latest applywize -- --template redwoodsdk
+```
+
+This will create a directory called `applywize` with the RedwoodSDK project structure.
+
+<FileTree>
+- migrations
+  - ...
+- prisma
+  - schema.prisma
+- public
+  - ...
+- src
+  - app
+    - pages
+      - Home.tsx
+    - shared
+      - links.ts
+    - Document.tsx
+  - scripts
+    - seed.ts
+  - client.tsx
+  - db.ts
+  - worker.tsx
+- types
+  - ...
+- .gitignore
+- README.md
+- tsconfig.json
+- .vite.config.mts
+- worker-configuration.d.ts
+- wrangler.toml
+</FileTree>
+
+<Aside type="note" title="Starter Projects">
+  For the tutorial, we're starting with the [Prisma starter project](/reference/starters/prisma/). However, if you start with a different template, the files and folders may vary slightly.
+</Aside>
+
+{/* TODO: add some additional context for the purpose of each file */}
+
+## Setting up TailwindCSS and ShadCN
+
+Let's start by installing [TailwindCSS](https://tailwindcss.com/) and [ShadCN](https://ui.shadcn.com/).
+
+### TailwindCSS
+
+Since the RedwoodSDK is based on React and Vite, we can work through the ["Using Vite" documentation](https://tailwindcss.com/docs/installation/using-vite).
+
+<Steps>
+
+1. Install Tailwind CSS
+
+```bash
+npm install tailwindcss @tailwindcss/vite
+```
+
+2. Configure the Vite Plugin
+
+```ts
+// vite.config.mts
+import { defineConfig } from 'vite'
+import { redwood } from 'vite-plugin-redwood/plugin'
+```
+
+</Steps>
+
+### ShadCN
+
+## Running your first page
+
+## Further reading
+
+- Read [about how-to guides](https://diataxis.fr/how-to-guides/) in the Diátaxis framework
+
