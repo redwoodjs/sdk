@@ -12,7 +12,6 @@ Note: This project is not officially released, but we're very near to be beta.
 ```
 ├── docs - contains the docs for the SDK, based on Starlight
 ├── experiments - contains all the projects we've built as experiments
-├── markdown - contains the old docs. We'll eventually migrate these into the docs
 ├── pnpm-workspace.yaml - list of all the workspaces in the repo
 ├── readme.md - this file
 ├── sdk - the main Redwood SDK package
