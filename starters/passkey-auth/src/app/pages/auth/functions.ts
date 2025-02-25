@@ -13,7 +13,9 @@ export async function startPasskeyRegistration(username: string, ctx?: RouteCont
     rpID: env.RP_ID,
     userName: username,
     authenticatorSelection: {
+      // Require the authenticator to store the credential, enabling a username-less login experience
       residentKey: 'required',
+      // Prefer user verification (biometric, PIN, etc.), but allow authentication even if it's not available
       userVerification: 'preferred',
     },
   });
