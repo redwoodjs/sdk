@@ -37,13 +37,13 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
     setLoading(true);
     try {
       const res = await getUserData(ctx?.user?.id);
-      console.log(res);
       if (res && res.mealplan) {
         setMealPlan(res.mealplan.plan);
+        if (res.mealplan.shoppingList) {
+          setShoppingList(res.mealplan.shoppingList.items);
+        }
       }
-      if (res && res.shoppinglist) {
-        setShoppingList(res.shoppinglist.items);
-      }
+      
     } catch (error) {
       console.error("Error fetching meal plan:", error);
     }
@@ -90,14 +90,15 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
     if (!shoppingList) return;
     
     // Format the shopping list as text
-    let listText = "🛒 *SHOPPING LIST*\n\n";
+    let listText = "SHOPPING LIST\n\n";
     
     if (shoppingList.shopping_list) {
       // Handle the structured shopping list with categories
       const categorizedList = shoppingList.shopping_list;
       
       Object.entries(categorizedList).forEach(([category, items]) => {
-        listText += `*${category.toUpperCase()}*\n`;
+        listText += `${category.toUpperCase()}\n`;
+        listText += "----------------------------------------\n";
         
         if (Array.isArray(items)) {
           items.forEach(item => {
@@ -117,7 +118,7 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
       // Handle other object structures
       Object.entries(shoppingList).forEach(([category, items]) => {
         if (category !== 'shopping_list') {
-          listText += `\n*${category.toUpperCase()}*:\n`;
+          listText += `\n${category.toUpperCase()}:\n`;
           if (Array.isArray(items)) {
             items.forEach(item => {
               const itemName = item.ingredient || item.name;
@@ -128,14 +129,16 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
       });
     }
     
-    // Encode the text for URL
-    const encodedText = encodeURIComponent(listText);
-    
-    // Create WhatsApp URL
-    const whatsappUrl = `https://wa.me/?text=${encodedText}`;
-    
-    // Open in a new tab
-    window.open(whatsappUrl, '_blank');
+    // Create a blob and download link
+    const blob = new Blob([listText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'shopping-list.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   const shareToWhatsApp = () => {

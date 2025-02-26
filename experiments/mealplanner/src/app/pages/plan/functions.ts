@@ -7,9 +7,12 @@ export async function getUserData(userId: string) {
   const user = await db.user.findUnique({
     where: { id: userId },
     include: {
-      mealplan: true,
+      mealplan: {
+        include: {
+          shoppingList: true
+        }
+      },
       setup: true,
-      // shoppinglist: true
     }
   });
   return user;
@@ -62,33 +65,34 @@ export async function createShoppingList(apiKey: string, mealPlan: any, userId: 
 
   // for dev lets return the exapmple lsit and not use the api
   if (!dev) {
-    
-  
 
-  const response = await fetch("https://api.openai.com/v1/chat/completions", {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "Authorization": `Bearer ${apiKey}`
-    },
-    body: JSON.stringify({
-      model: "gpt-4",
-      messages: [{ role: "user", content: prompt }],
-      max_tokens: 1000,
-    }),
-  });
 
-  const data = await response.json();
-  const responseText = data.choices[0]?.message?.content?.trim();
-  console.log(responseText);
+
+    const response = await fetch("https://api.openai.com/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        "Authorization": `Bearer ${apiKey}`
+      },
+      body: JSON.stringify({
+        model: "gpt-4",
+        messages: [{ role: "user", content: prompt }],
+        max_tokens: 1000,
+      }),
+    });
+
+    const data = await response.json();
+    const responseText = data.choices[0]?.message?.content?.trim();
+    console.log(responseText);
 
     if (!responseText) {
       throw new Error("Invalid response from ChatGPT");
     }
 
-    
+
     try {
       shoppingList = JSON.parse(responseText);
+      console.log(shoppingList);
     } catch (error) {
       console.error("🔻 JSON Parse Error:", error, "Response Text:", responseText);
       throw new Error("ChatGPT returned invalid JSON");
@@ -101,26 +105,27 @@ export async function createShoppingList(apiKey: string, mealPlan: any, userId: 
     shoppingList = example_list;
     // Save shopping list to database
     // if there is already a shopping list, update it   
-    const existingShoppingList = await db.shoppingList.findUnique({
-      where: { userId }
-    });
-    if (existingShoppingList) {
-      const updatedShoppingList = await db.shoppingList.update({
-        where: { id: existingShoppingList.id },
-        data: { items: shoppingList.shopping_list },
-      });
-      return updatedShoppingList;
-    }
-    
   }
-  const savedShoppingList = await db.shoppingList.create({
-    data: {
-      userId,
-      mealPlanId: mealPlan.id,
-      items: shoppingList.shopping_list,
-    },
+
+  const existingShoppingList = await db.shoppingList.findUnique({
+    where: { userId }
   });
-  return shoppingList;
+  if (existingShoppingList) {
+    const updatedShoppingList = await db.shoppingList.update({
+      where: { id: existingShoppingList.id },
+      data: { items: shoppingList.shopping_list },
+    });
+    return updatedShoppingList;
+  } else {
+    const savedShoppingList = await db.shoppingList.create({
+      data: {
+        userId,
+        mealPlanId: mealPlan.id,
+        items: shoppingList.shopping_list,
+      },
+    });
+    return savedShoppingList;
+  }
 }
 
 export async function createMealPlan(apiKey: string, userId: string) {

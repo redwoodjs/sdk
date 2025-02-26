@@ -18,6 +18,7 @@ SECRET_KEY = "_"
 APP_NAME = "mealplanner"
 RP_ID = "localhost"
 
+
 [[migrations]]
 tag = "v1"
 new_classes = [ "SessionDurableObject" ]
