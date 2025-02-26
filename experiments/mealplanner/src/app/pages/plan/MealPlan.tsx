@@ -2,9 +2,9 @@
 import { useState, useEffect } from "react";
 import { Button } from "@/app/components/ui/button";
 import { Context } from "@/worker";
-import { getMealPlan } from "./functions";
+import { getUserData } from "./functions";
 import { Layout } from "@/app/Layout";
-import { Loader2, RefreshCw } from "lucide-react";
+import { Loader2, RefreshCw, ShoppingBag, Download } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -17,23 +17,33 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/ta
 
 export function MealPlanPage({ ctx }: { ctx: Context }) {
   const [mealPlan, setMealPlan] = useState(null);
+  const [shoppingList, setShoppingList] = useState(null);
   const [loading, setLoading] = useState(false);
+  const [generatingList, setGeneratingList] = useState(false);
   const [error, setError] = useState(null);
   const [fetchAttempted, setFetchAttempted] = useState(false);
   const [activeDay, setActiveDay] = useState("0");
 
   useEffect(() => {
     if (ctx?.user && !fetchAttempted) {
-      fetchMealPlan();
+      fetchUserData();
       setFetchAttempted(true);
     }
   }, [ctx, fetchAttempted]);
+  
 
-  const fetchMealPlan = async () => {
+  
+  const fetchUserData = async () => {
     setLoading(true);
     try {
-      const res = await getMealPlan(ctx?.user?.id);
-      setMealPlan(res.plan);
+      const res = await getUserData(ctx?.user?.id);
+      console.log(res);
+      if (res && res.mealplan) {
+        setMealPlan(res.mealplan.plan);
+      }
+      if (res && res.shoppinglist) {
+        setShoppingList(res.shoppinglist.items);
+      }
     } catch (error) {
       console.error("Error fetching meal plan:", error);
     }
@@ -48,11 +58,66 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
         headers: { "Content-Type": "application/json" }
       });
       const data = await res.json();
-      setMealPlan(data.plan);
+      if (data && data.plan) {
+        setMealPlan(data.plan);
+      }
     } catch (error) {
       console.error("Error generating meal plan:", error);
     }
     setLoading(false);
+  };
+
+  const generateShoppingList = async () => {
+    if (!mealPlan) return;
+    
+    setGeneratingList(true);
+    try {
+      const res = await fetch("/api/createShoppingList", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" }
+      });
+      const data = await res.json();
+      if (data && data.items) {
+        setShoppingList(data.items);
+      }
+    } catch (error) {
+      console.error("Error generating shopping list:", error);
+    }
+    setGeneratingList(false);
+  };
+
+  const downloadShoppingList = () => {
+    if (!shoppingList) return;
+    
+    // Format the shopping list as text
+    let listText = "SHOPPING LIST\n\n";
+    
+    if (Array.isArray(shoppingList)) {
+      shoppingList.forEach(item => {
+        listText += `• ${item.name}: ${item.quantity}\n`;
+      });
+    } else if (typeof shoppingList === 'object') {
+      // Handle case where shoppingList might be an object with categories
+      Object.entries(shoppingList).forEach(([category, items]) => {
+        listText += `\n${category.toUpperCase()}:\n`;
+        if (Array.isArray(items)) {
+          items.forEach(item => {
+            listText += `• ${item.name}: ${item.quantity}\n`;
+          });
+        }
+      });
+    }
+    
+    // Create a blob and download link
+    const blob = new Blob([listText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'shopping-list.txt';
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
   };
 
   return (
@@ -60,24 +125,61 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
       <div className="container mx-auto px-4 py-8">
         <div className="flex justify-between items-center mb-6">
           <h1 className="text-2xl font-bold">Your 7-Day Meal Plan</h1>
-          <Button 
-            onClick={generateMealPlan} 
-            variant="outline"
-            className="border-black text-black hover:bg-gray-100"
-            disabled={loading}
-          >
-            {loading ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="h-4 w-4 animate-spin" />
-                Loading...
-              </span>
-            ) : (
-              <span className="flex items-center gap-2">
-                <RefreshCw className="h-4 w-4" />
-                {mealPlan ? "Regenerate Plan" : "Generate Plan"}
-              </span>
+          <div className="flex gap-3">
+            {mealPlan && (
+              <>
+                {!shoppingList ? (
+                  <Button 
+                    onClick={generateShoppingList} 
+                    variant="outline"
+                    className="border-black text-black hover:bg-gray-100"
+                    disabled={generatingList}
+                  >
+                    {generatingList ? (
+                      <span className="flex items-center gap-2">
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        Generating...
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <ShoppingBag className="h-4 w-4" />
+                        Generate Shopping List
+                      </span>
+                    )}
+                  </Button>
+                ) : (
+                  <Button 
+                    onClick={downloadShoppingList} 
+                    variant="outline"
+                    className="border-black text-black hover:bg-gray-100"
+                  >
+                    <span className="flex items-center gap-2">
+                      <Download className="h-4 w-4" />
+                      Download Shopping List
+                    </span>
+                  </Button>
+                )}
+              </>
             )}
-          </Button>
+            <Button 
+              onClick={generateMealPlan} 
+              variant="outline"
+              className="border-black text-black hover:bg-gray-100"
+              disabled={loading}
+            >
+              {loading ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Loading...
+                </span>
+              ) : (
+                <span className="flex items-center gap-2">
+                  <RefreshCw className="h-4 w-4" />
+                  {mealPlan ? "Regenerate Plan" : "Generate Plan"}
+                </span>
+              )}
+            </Button>
+          </div>
         </div>
 
         {error && (

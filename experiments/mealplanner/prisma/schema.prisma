@@ -24,6 +24,7 @@ model User {
   credentials Credential[] // Relationship: One user can have many credentials
   setup       Setup?
   mealplan    MealPlan?
+  shoppinglist ShoppingList?
 
 }
 
@@ -59,5 +60,16 @@ model MealPlan {
   userId  String  @unique
   user    User    @relation(fields: [userId], references: [id])
   plan    Json
+  createdAt DateTime @default(now())
+  shoppingList ShoppingList?
+}
+
+model ShoppingList {
+  id        String  @id @default(uuid())
+  userId    String  @unique
+  user    User    @relation(fields: [userId], references: [id])
+  mealPlan  MealPlan @relation(fields: [mealPlanId], references: [id])
+  mealPlanId String @unique
+  items     Json
   createdAt DateTime @default(now())
 }
