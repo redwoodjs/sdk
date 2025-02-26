@@ -34,7 +34,7 @@ const arrayBufferToHex = (buffer: ArrayBuffer): string => {
 }
 
 export const createSessionCookie = ({ sessionId, maxAge }: { sessionId: string, maxAge?: number | true }) =>
-  `session_id=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax${maxAge ? `; Max-Age=${maxAge === true ? MAX_SESSION_DURATION / 1000 : maxAge}` : ''}`;
+  `session_id=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax${maxAge != null ? `; Max-Age=${maxAge === true ? MAX_SESSION_DURATION / 1000 : maxAge}` : ''}`;
 
 export const signSessionId = async ({ unsignedSessionId, secretKey }: { unsignedSessionId: string, secretKey: string }) => {
   const encoder = new TextEncoder();
