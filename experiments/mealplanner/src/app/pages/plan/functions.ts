@@ -51,12 +51,10 @@ export async function createShoppingList(apiKey: string, mealPlan: any, userId: 
     }),
   });
 
-  console.log(response);
   
 
   const data = await response.json();
   const responseText = data.choices[0]?.message?.content?.trim();
-  console.log(responseText);
 
   if (!responseText) {
     throw new Error("Invalid response from ChatGPT");
@@ -65,7 +63,6 @@ export async function createShoppingList(apiKey: string, mealPlan: any, userId: 
 
   try {
     shoppingList = JSON.parse(responseText);
-    console.log(shoppingList);
   } catch (error) {
     console.error("🔻 JSON Parse Error:", error, "Response Text:", responseText);
     throw new Error("ChatGPT returned invalid JSON");
