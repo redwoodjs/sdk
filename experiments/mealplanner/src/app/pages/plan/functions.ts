@@ -35,77 +35,46 @@ export async function getShoppingList(userId: string) {
 export async function createShoppingList(apiKey: string, mealPlan: any, userId: string, dev: boolean) {
   const prompt = createShoppingListPrompt(mealPlan);
 
-  const example_list = {
-    "shopping_list": {
-      "Proteins": [
-        { "ingredient": "Chicken breast", "quantity": "600g" },
-        { "ingredient": "Eggs", "quantity": "12" }
-      ],
-      "Vegetables": [
-        { "ingredient": "Spinach", "quantity": "4 cups" },
-        { "ingredient": "Tomatoes", "quantity": "5" }
-      ],
-      "Fruits": [
-        { "ingredient": "Bananas", "quantity": "6" },
-        { "ingredient": "Apples", "quantity": "4" }
-      ],
-      "Dairy": [
-        { "ingredient": "Greek Yogurt", "quantity": "2 cups" }
-      ],
-      "Grains": [
-        { "ingredient": "Quinoa", "quantity": "3 cups" },
-        { "ingredient": "Oats", "quantity": "2 cups" }
-      ],
-      "Condiments & Oils": [
-        { "ingredient": "Olive oil", "quantity": "200ml" }
-      ]
-    }
-  }
+
   let shoppingList;
 
-  // for dev lets return the exapmple lsit and not use the api
-  if (!dev) {
 
+  const response = await fetch("https://api.openai.com/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      "Authorization": `Bearer ${apiKey}`
+    },
+    body: JSON.stringify({
+      model: "gpt-4",
+      messages: [{ role: "user", content: prompt }],
+    }),
+  });
 
+  console.log(response);
+  
 
-    const response = await fetch("https://api.openai.com/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Authorization": `Bearer ${apiKey}`
-      },
-      body: JSON.stringify({
-        model: "gpt-4",
-        messages: [{ role: "user", content: prompt }],
-        max_tokens: 1000,
-      }),
-    });
+  const data = await response.json();
+  const responseText = data.choices[0]?.message?.content?.trim();
+  console.log(responseText);
 
-    const data = await response.json();
-    const responseText = data.choices[0]?.message?.content?.trim();
-    console.log(responseText);
-
-    if (!responseText) {
-      throw new Error("Invalid response from ChatGPT");
-    }
-
-
-    try {
-      shoppingList = JSON.parse(responseText);
-      console.log(shoppingList);
-    } catch (error) {
-      console.error("🔻 JSON Parse Error:", error, "Response Text:", responseText);
-      throw new Error("ChatGPT returned invalid JSON");
-    }
-
-    if (!shoppingList.shopping_list) {
-      throw new Error("Invalid shopping list format returned.");
-    }
-  } else {
-    shoppingList = example_list;
-    // Save shopping list to database
-    // if there is already a shopping list, update it   
+  if (!responseText) {
+    throw new Error("Invalid response from ChatGPT");
   }
+
+
+  try {
+    shoppingList = JSON.parse(responseText);
+    console.log(shoppingList);
+  } catch (error) {
+    console.error("🔻 JSON Parse Error:", error, "Response Text:", responseText);
+    throw new Error("ChatGPT returned invalid JSON");
+  }
+
+  if (!shoppingList.shopping_list) {
+    throw new Error("Invalid shopping list format returned.");
+  }
+
 
   const existingShoppingList = await db.shoppingList.findUnique({
     where: { userId }
@@ -143,7 +112,6 @@ export async function createMealPlan(apiKey: string, userId: string) {
     body: JSON.stringify({
       model: "gpt-4",
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 4000,
     }),
   });
 
