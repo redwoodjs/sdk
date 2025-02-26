@@ -383,7 +383,7 @@ Type HELP for more commands.
                 </div>
               )}
             </div>
-            <div className="mt-4 w-full">
+            <div className="max-w-3xl">
               {isLoading ? (
                 <pre className="text-[#f1fa8c]">
                   Searching{loadingChar}
