@@ -9,11 +9,13 @@ import { db, setupDb } from './db';
 import { User } from '@prisma/client';
 import { setupRoutes } from './app/pages/setup/routes';
 import { planRoutes } from './app/pages/plan/routes';
+import { apiRoutes } from './app/pages/api/routes';
 export { SessionDurableObject } from './session/durableObject';
 
 export type Context = {
   session: Session | null;
   user: User | null;
+  env: Env;
 }
 
 export default defineApp<Context>([
@@ -59,5 +61,6 @@ export default defineApp<Context>([
     prefix<Context>("/setup", setupRoutes),
     prefix<Context>("/plan", planRoutes),
     prefix<Context>("/user", authRoutes),
+    prefix<Context>("/api", apiRoutes),
   ])
 ])

@@ -4,6 +4,7 @@ interface Env {
 	SECRET_KEY: "_";
 	APP_NAME: "mealplanner";
 	RP_ID: "localhost";
+	OPENAI_API_KEY: string;
 	SESSION_DURABLE_OBJECT: DurableObjectNamespace<import("./src/worker").SessionDurableObject>;
 	DB: D1Database;
 	ASSETS: Fetcher;

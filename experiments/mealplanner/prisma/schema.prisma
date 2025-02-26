@@ -23,6 +23,7 @@ model User {
 
   credentials Credential[] // Relationship: One user can have many credentials
   setup       Setup?
+  mealplan    MealPlan?
 
 }
 
@@ -51,4 +52,12 @@ model Setup {
   dietaryPreferences String? // Example: "Vegan", "Keto", "Paleo", "None", etc.
   healthIssues   String?  // Any known health issues or restrictions
   createdAt      DateTime @default(now())
+}
+
+model MealPlan {
+  id      String  @id @default(uuid())
+  userId  String  @unique
+  user    User    @relation(fields: [userId], references: [id])
+  plan    Json
+  createdAt DateTime @default(now())
 }
