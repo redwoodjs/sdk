@@ -1,9 +1,8 @@
-import { route, RouteDefinition } from '@redwoodjs/sdk/router';
+import { route } from '@redwoodjs/sdk/router';
 import { LoginPage } from "./LoginPage";
 import { sessions } from '@/session/store';
-import { Context } from '@/worker';
 
-export const authRoutes: RouteDefinition<Context>[] = [
+export const authRoutes = [
   route('/login', [
     LoginPage
   ]),
