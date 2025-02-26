@@ -19,22 +19,34 @@ export default defineApp<Context>([
       HomePage,
     ]),
     route('/sitemap.xml', async () => {
-      const sitemap = `
-        <?xml version="1.0" encoding="UTF-8"?>
-        <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
-          <url>
-            <loc>https://yt-dos.redwoodjs.workers.dev</loc>
-            <lastmod>${new Date().toISOString()}</lastmod>
-            <changefreq>daily</changefreq>
-            <priority>1</priority>
-          </url>  
-        </urlset>
-      `;
+      const sitemap = `<?xml version="1.0" encoding="UTF-8"?>
+<urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
+  <url>
+    <loc>https://yt-dos.redwoodjs.workers.dev</loc>
+    <lastmod>${new Date().toISOString()}</lastmod>
+    <changefreq>daily</changefreq>
+    <priority>1</priority>
+  </url>
+</urlset>`;
       
       return new Response(sitemap, {
         status: 200,
         headers: {
           'Content-Type': 'application/xml',
+        },
+      });
+    }),
+    route('/robots.txt', async () => {
+      const robotsTxt = `User-agent: *
+Allow: /
+Disallow: /search
+
+Sitemap: https://yt-dos.redwoodjs.workers.dev/sitemap.xml`;
+      
+      return new Response(robotsTxt, {
+        status: 200,
+        headers: {
+          'Content-Type': 'text/plain',
         },
       });
     }),
@@ -57,6 +69,7 @@ export default defineApp<Context>([
             'Access-Control-Allow-Methods': 'POST, OPTIONS',
             'Access-Control-Allow-Headers': 'Content-Type',
             'Access-Control-Max-Age': '86400', // 24 hours
+            'X-Robots-Tag': 'noindex, nofollow',
           },
         });
       }
@@ -66,7 +79,8 @@ export default defineApp<Context>([
         return new Response(JSON.stringify({ error: 'Cross-origin requests are not allowed' }), { 
           status: 403,
           headers: {
-            'Content-Type': 'application/json'
+            'Content-Type': 'application/json',
+            'X-Robots-Tag': 'noindex, nofollow',
           }
         });
       }
@@ -77,6 +91,7 @@ export default defineApp<Context>([
           headers: {
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': isAllowedOrigin ? origin : '',
+            'X-Robots-Tag': 'noindex, nofollow',
           }
         });
       }
@@ -90,6 +105,7 @@ export default defineApp<Context>([
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': isAllowedOrigin ? origin : '',
             'Access-Control-Allow-Credentials': 'true',
+            'X-Robots-Tag': 'noindex, nofollow',
           },
         });
       } catch (error) {
@@ -98,6 +114,7 @@ export default defineApp<Context>([
           headers: {
             'Content-Type': 'application/json',
             'Access-Control-Allow-Origin': isAllowedOrigin ? origin : '',
+            'X-Robots-Tag': 'noindex, nofollow',
           },
         });
       }
