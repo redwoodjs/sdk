@@ -4,7 +4,7 @@ import { Button } from "@/app/components/ui/button";
 import { Context } from "@/worker";
 import { getUserData } from "./functions";
 import { Layout } from "@/app/Layout";
-import { Loader2, RefreshCw, ShoppingBag, Download, Share2 } from "lucide-react";
+import { Loader2, RefreshCw, ShoppingBag, Download, Share2, Lock } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -69,13 +69,36 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
   const [fetchAttempted, setFetchAttempted] = useState(false);
   const [activeDay, setActiveDay] = useState("0");
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
+  const [canGeneratePlan, setCanGeneratePlan] = useState(false);
+
+  // Helper function to set the active day to the current day of the week
+  const setActiveDayToCurrent = () => {
+    const today = new Date();
+    // Get current day index (0 = Sunday, 1 = Monday, ..., 6 = Saturday)
+    const currentDayIndex = today.getDay();
+    // Convert to our index (0 = Monday, 1 = Tuesday, ..., 6 = Sunday)
+    // If currentDayIndex is 0 (Sunday), we want 6, otherwise subtract 1
+    const adjustedDayIndex = currentDayIndex === 0 ? 6 : currentDayIndex - 1;
+    // Set the active day to the current day's index
+    setActiveDay(adjustedDayIndex.toString());
+  };
 
   useEffect(() => {
     if (ctx?.user && !fetchAttempted) {
       fetchUserData();
       setFetchAttempted(true);
     }
-  }, [ctx, fetchAttempted]);
+    
+    // Check if today is Monday or if user is premium
+    const today = new Date();
+    const isMonday = today.getDay() === 1; // 0 is Sunday, 1 is Monday
+    const isPremiumUser = ctx?.user ? (ctx.user as any).isPremium || false : false; // Safe access with type assertion
+    
+    // Allow first-time users (with no meal plan) to generate a plan regardless of the day
+    const isFirstTimeUser = !mealPlan;
+    
+    setCanGeneratePlan(isMonday || isPremiumUser || isFirstTimeUser);
+  }, [ctx, fetchAttempted, mealPlan]);
   
   const fetchUserData = async () => {
     setLoading(true);
@@ -87,6 +110,8 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
         if (res.mealplan.shoppingList) {
           setShoppingList(res.mealplan.shoppingList.items as unknown as ShoppingListType);
         }
+        // Set active day to current day when meal plan is loaded
+        setActiveDayToCurrent();
       }
     } catch (error) {
       console.error("Error fetching meal plan:", error);
@@ -98,6 +123,12 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
   };
 
   const generateMealPlan = async () => {
+    // Check if user can generate a plan (regardless of whether they already have one)
+    if (!canGeneratePlan) {
+      setError("Free accounts can only regenerate meal plans on Mondays. Upgrade to premium for unlimited access!");
+      return;
+    }
+    
     setLoading(true);
     setLoadingMessage("Generating your personalized meal plan... This may take up to 30 seconds.");
     try {
@@ -110,6 +141,8 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
         setMealPlan(data.plan);
         // Reset shopping list when generating a new meal plan
         setShoppingList(null);
+        // Set active day to current day when new meal plan is generated
+        setActiveDayToCurrent();
       }
     } catch (error) {
       console.error("Error generating meal plan:", error);
@@ -307,12 +340,17 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
               onClick={generateMealPlan} 
               variant="outline"
               className="border-black text-black hover:bg-gray-100"
-              disabled={loading}
+              disabled={loading || (!canGeneratePlan)}
             >
               {loading ? (
                 <span className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   Loading...
+                </span>
+              ) : !canGeneratePlan && !mealPlan ? (
+                <span className="flex items-center gap-2">
+                  <Lock className="h-4 w-4" />
+                  Available on Mondays
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
@@ -327,6 +365,24 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
         {error && (
           <Alert variant="destructive" className="mb-6">
             <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {!canGeneratePlan && (
+          <Alert className="mb-6 border-amber-200 bg-amber-50">
+            <AlertDescription className="flex items-center gap-2">
+              <Lock className="h-4 w-4" />
+              Free accounts can only regenerate meal plans on Mondays. Upgrade to premium for unlimited access!
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {!mealPlan && canGeneratePlan && !loading && (
+          <Alert className="mb-6 border-blue-200 bg-blue-50">
+            <AlertDescription className="flex items-center gap-2">
+              <RefreshCw className="h-4 w-4" />
+              As a new user, you can generate your first meal plan now! After that, free accounts can only regenerate plans on Mondays.
+            </AlertDescription>
           </Alert>
         )}
 
