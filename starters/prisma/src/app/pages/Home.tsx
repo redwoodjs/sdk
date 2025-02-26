@@ -1,7 +1,7 @@
 import { db } from "@/db";
 
-export function Home() {
-  const users = db.user.findMany();
+export async function Home() {
+  const users = await db.user.findMany();
 
   return (
     <div>
