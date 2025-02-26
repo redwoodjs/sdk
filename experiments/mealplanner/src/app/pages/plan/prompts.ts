@@ -1,24 +1,51 @@
 export function createShoppingListPrompt(mealPlan: any) {
-    return `You are a smart meal planning assistant. 
-    Given the following **7-day meal plan**, generate a **shopping list** that consolidates all ingredients.
+    return `You are a meal planning assistant. Given the following **7-day meal plan**, generate a **shopping list** grouped by food category.
+
+    ### **Instructions**
+    - Combine duplicate ingredients and sum up their total quantities.
+    - Convert quantities into standard units (grams, cups, liters, etc.).
+    - Group items into **categories**:
+      - **Proteins** (chicken, beef, tofu, eggs, etc.)
+      - **Vegetables** (spinach, tomatoes, carrots, etc.)
+      - **Fruits** (apples, bananas, oranges, etc.)
+      - **Dairy** (milk, cheese, yogurt, etc.)
+      - **Grains** (rice, oats, quinoa, bread, etc.)
+      - **Condiments & Oils** (olive oil, spices, sauces, etc.)
+      - **Other** (miscellaneous items)
     
-    - Combine duplicate ingredients and sum up their quantities.
-    - Convert quantities into standard units (e.g., grams, cups, tbsp, etc.).
-    - List items in a structured JSON format.
-
-    **Meal Plan:**
+    ### **Meal Plan**
     ${JSON.stringify(mealPlan.plan.week, null, 2)}
-
-    **Expected JSON Response Format:**
+    
+    ### **Expected JSON Response**
     {
-      "shopping_list": [
-        { "ingredient": "Chicken breast", "quantity": "600g" },
-        { "ingredient": "Quinoa", "quantity": "3 cups" },
-        { "ingredient": "Almond milk", "quantity": "2 liters" }
-      ]
+      "shopping_list": {
+        "Proteins": [
+          { "ingredient": "Chicken breast", "quantity": "600g" },
+          { "ingredient": "Eggs", "quantity": "12" }
+        ],
+        "Vegetables": [
+          { "ingredient": "Spinach", "quantity": "4 cups" },
+          { "ingredient": "Tomatoes", "quantity": "5" }
+        ],
+        "Fruits": [
+          { "ingredient": "Bananas", "quantity": "6" },
+          { "ingredient": "Apples", "quantity": "4" }
+        ],
+        "Dairy": [
+          { "ingredient": "Greek Yogurt", "quantity": "2 cups" }
+        ],
+        "Grains": [
+          { "ingredient": "Quinoa", "quantity": "3 cups" },
+          { "ingredient": "Oats", "quantity": "2 cups" }
+        ],
+        "Condiments & Oils": [
+          { "ingredient": "Olive oil", "quantity": "200ml" }
+        ]
+      }
     }
     
     **Return only valid JSON, no explanations.**`;
+    
 }
 
 export function createMealPlanPrompt(setup: any) {

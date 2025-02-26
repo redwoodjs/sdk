@@ -18,11 +18,12 @@ export const apiRoutes: RouteDefinition<Context>[] = [
     if (!userId) {
       return new Response('Unauthorized', { status: 401 });
     }
-    const mealPlan = await getMealPlan(userId);
+    const mealPlan = await getMealPlan(userId); 
     if (!mealPlan) {
       return new Response('Meal plan not found', { status: 404 });
     }
-    const shoppingList = await createShoppingList(apiKey, mealPlan, userId);
+    const dev = env.ENV === "development";
+    const shoppingList = await createShoppingList(apiKey, mealPlan, userId, dev);
     return new Response(JSON.stringify(shoppingList), { status: 200 });
   }),   
 ]

@@ -4,7 +4,7 @@ import { Button } from "@/app/components/ui/button";
 import { Context } from "@/worker";
 import { getUserData } from "./functions";
 import { Layout } from "@/app/Layout";
-import { Loader2, RefreshCw, ShoppingBag, Download } from "lucide-react";
+import { Loader2, RefreshCw, ShoppingBag, Download, Share2 } from "lucide-react";
 import {
   Table,
   TableBody,
@@ -90,34 +90,104 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
     if (!shoppingList) return;
     
     // Format the shopping list as text
-    let listText = "SHOPPING LIST\n\n";
+    let listText = "🛒 *SHOPPING LIST*\n\n";
     
-    if (Array.isArray(shoppingList)) {
-      shoppingList.forEach(item => {
-        listText += `• ${item.name}: ${item.quantity}\n`;
-      });
-    } else if (typeof shoppingList === 'object') {
-      // Handle case where shoppingList might be an object with categories
-      Object.entries(shoppingList).forEach(([category, items]) => {
-        listText += `\n${category.toUpperCase()}:\n`;
+    if (shoppingList.shopping_list) {
+      // Handle the structured shopping list with categories
+      const categorizedList = shoppingList.shopping_list;
+      
+      Object.entries(categorizedList).forEach(([category, items]) => {
+        listText += `*${category.toUpperCase()}*\n`;
+        
         if (Array.isArray(items)) {
           items.forEach(item => {
-            listText += `• ${item.name}: ${item.quantity}\n`;
+            listText += `• ${item.ingredient}: ${item.quantity}\n`;
           });
+        }
+        
+        listText += "\n";
+      });
+    } else if (Array.isArray(shoppingList)) {
+      // Handle case where shoppingList is a simple array
+      shoppingList.forEach(item => {
+        const itemName = item.ingredient || item.name;
+        listText += `• ${itemName}: ${item.quantity}\n`;
+      });
+    } else if (typeof shoppingList === 'object') {
+      // Handle other object structures
+      Object.entries(shoppingList).forEach(([category, items]) => {
+        if (category !== 'shopping_list') {
+          listText += `\n*${category.toUpperCase()}*:\n`;
+          if (Array.isArray(items)) {
+            items.forEach(item => {
+              const itemName = item.ingredient || item.name;
+              listText += `• ${itemName}: ${item.quantity}\n`;
+            });
+          }
         }
       });
     }
     
-    // Create a blob and download link
-    const blob = new Blob([listText], { type: 'text/plain' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = 'shopping-list.txt';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    // Encode the text for URL
+    const encodedText = encodeURIComponent(listText);
+    
+    // Create WhatsApp URL
+    const whatsappUrl = `https://wa.me/?text=${encodedText}`;
+    
+    // Open in a new tab
+    window.open(whatsappUrl, '_blank');
+  };
+
+  const shareToWhatsApp = () => {
+    if (!shoppingList) return;
+    
+    // Format the shopping list as text
+    let listText = "🛒 *SHOPPING LIST*\n\n";
+    
+    if (shoppingList.shopping_list) {
+      // Handle the structured shopping list with categories
+      const categorizedList = shoppingList.shopping_list;
+      
+      Object.entries(categorizedList).forEach(([category, items]) => {
+        listText += `*${category.toUpperCase()}*\n`;
+        
+        if (Array.isArray(items)) {
+          items.forEach(item => {
+            listText += `• ${item.ingredient}: ${item.quantity}\n`;
+          });
+        }
+        
+        listText += "\n";
+      });
+    } else if (Array.isArray(shoppingList)) {
+      // Handle case where shoppingList is a simple array
+      shoppingList.forEach(item => {
+        const itemName = item.ingredient || item.name;
+        listText += `• ${itemName}: ${item.quantity}\n`;
+      });
+    } else if (typeof shoppingList === 'object') {
+      // Handle other object structures
+      Object.entries(shoppingList).forEach(([category, items]) => {
+        if (category !== 'shopping_list') {
+          listText += `\n*${category.toUpperCase()}*:\n`;
+          if (Array.isArray(items)) {
+            items.forEach(item => {
+              const itemName = item.ingredient || item.name;
+              listText += `• ${itemName}: ${item.quantity}\n`;
+            });
+          }
+        }
+      });
+    }
+    
+    // Encode the text for URL
+    const encodedText = encodeURIComponent(listText);
+    
+    // Create WhatsApp URL
+    const whatsappUrl = `https://wa.me/?text=${encodedText}`;
+    
+    // Open in a new tab
+    window.open(whatsappUrl, '_blank');
   };
 
   return (
@@ -148,16 +218,28 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
                     )}
                   </Button>
                 ) : (
-                  <Button 
-                    onClick={downloadShoppingList} 
-                    variant="outline"
-                    className="border-black text-black hover:bg-gray-100"
-                  >
-                    <span className="flex items-center gap-2">
-                      <Download className="h-4 w-4" />
-                      Download Shopping List
-                    </span>
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button 
+                      onClick={downloadShoppingList} 
+                      variant="outline"
+                      className="border-black text-black hover:bg-gray-100"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Download className="h-4 w-4" />
+                        Download List
+                      </span>
+                    </Button>
+                    <Button 
+                      onClick={shareToWhatsApp} 
+                      variant="outline"
+                      className="border-black text-black hover:bg-gray-100"
+                    >
+                      <span className="flex items-center gap-2">
+                        <Share2 className="h-4 w-4" />
+                        Share via WhatsApp
+                      </span>
+                    </Button>
+                  </div>
                 )}
               </>
             )}
