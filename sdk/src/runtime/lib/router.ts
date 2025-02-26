@@ -199,7 +199,7 @@ export function defineRoutes<TContext = Record<string, any>>(
   };
 }
 
-export function route<TContext>(
+export function route<TContext = any>(
   path: string,
   handler: RouteHandler<TContext>,
 ): RouteDefinition<TContext> {
@@ -213,13 +213,13 @@ export function route<TContext>(
   };
 }
 
-export function index<TContext>(
+export function index<TContext = any>(
   handler: RouteHandler<TContext>,
 ): RouteDefinition<TContext> {
   return route("/", handler);
 }
 
-export function prefix<TContext>(
+export function prefix<TContext = any>(
   prefix: string,
   routes: ReturnType<typeof route<TContext>>[],
 ): RouteDefinition<TContext>[] {
@@ -231,7 +231,7 @@ export function prefix<TContext>(
   });
 }
 
-export function layout<TContext>(
+export function layout<TContext = any>(
   Layout: React.FC<{ children: React.ReactNode }>,
   routes: Route<TContext>[],
 ): Route<TContext>[] {

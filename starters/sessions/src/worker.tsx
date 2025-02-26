@@ -17,11 +17,10 @@ export default defineApp<Context>([
     setupSessionStore(env);
     ctx.session = await sessions.load(request);
   },
-  // todo: Figure out why I'm needing to provide route type param each time
-  layout<Context>(Document, [
+  layout(Document, [
     index([
         Home,
     ]),
-    prefix<Context>("/user", authRoutes),
+    prefix("/user", authRoutes),
   ])
 ])
