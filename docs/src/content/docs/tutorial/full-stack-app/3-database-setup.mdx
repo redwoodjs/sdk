@@ -241,11 +241,11 @@ model Contact {
 
 1. On the `Contact` model, we added a `companyId` field. This stores the ID of the related `Company` record.
 2. On the `Contact` model, we also added a `company` field, that defines the relationship.
-  - It is connected to the `Company` model.
-  - It uses the `companyId` field to connect the two models.
-  - It uses the `id` field on the `Company` model as the reference.
+    - It is connected to the `Company` model.
+    - It uses the `companyId` field to connect the two models.
+    - It uses the `id` field on the `Company` model as the reference.
 3. On the `Company` model, we added a `contacts` field.
-  - The type of content will be an array `[]` of `Contact` records.
+    - The type of content will be an array `[]` of `Contact` records.
 
 In some cases, you might need to give the relationship a name. This is particularly useful when you have multiple relationships between the same models.
 
