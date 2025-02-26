@@ -27,7 +27,7 @@ export type RwContext<TContext> = {
 
 type RouteMiddleware<TContext> = (
   ctx: RouteContext<TContext>,
-) => Response | Promise<Response> | void | Promise<void>;
+) => Response | Promise<Response> | void | Promise<void> | Promise<Response | void>;
 type RouteFunction<TContext> = (
   ctx: RouteContext<TContext>,
 ) => Response | Promise<Response>;
