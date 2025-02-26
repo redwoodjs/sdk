@@ -135,7 +135,6 @@ export const defineSessionStore = <Session, SessionInputData>({
     if (sessionId) {
       await unset(sessionId);
     }
-    console.log('## remove', createSessionCookie({ sessionId: '', maxAge: 0 }))
     headers.set("Set-Cookie", createSessionCookie({ sessionId: '', maxAge: 0 }));
   };
 
