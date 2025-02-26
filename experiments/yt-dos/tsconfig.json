@@ -21,7 +21,6 @@
       "./types/vite.d.ts"
     ],
     "paths": {
-      "vendor/*": ["./vendor/dist/*"],
       "src/*": ["./src/app/*"],
     },
     /* Enable importing .json files */
