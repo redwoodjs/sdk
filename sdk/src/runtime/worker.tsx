@@ -6,7 +6,7 @@ import { ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import { ErrorResponse } from "./error";
 
-import { Route, defineRoutes } from "./lib/router";
+import { Route, RouteContext, defineRoutes } from "./lib/router";
 
 declare global {
   type Env = {
@@ -35,17 +35,17 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
         const url = new URL(request.url);
         const isRSCRequest = url.searchParams.has("__rsc");
 
-        const handleAction = async (ctx: Context) => {
+        const handleAction = async (ctx: RouteContext<Context, Record<string, string>>) => {
           const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 
           if (isRSCActionHandler) {
-            return await rscActionHandler(request, ctx, env); // maybe we should include params and ctx in the action handler?
+            return await rscActionHandler(request, ctx); // maybe we should include params and ctx in the action handler?
           }
         }
 
         const renderPage = async ({
           Page,
-          props,
+          props: givenProps,
           actionResult,
           Layout,
         }: {
@@ -54,15 +54,28 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
           actionResult: unknown,
           Layout: React.FC<{ children: React.ReactNode }>
         }) => {
+          let props = givenProps;
+
+          // context(justinvdm, 25 Feb 2025): If the page is a client reference, we need to avoid passing
+          // down props the client shouldn't get (e.g. env). For safety, we pick the allowed props explicitly.
+          if (Object.prototype.hasOwnProperty.call(Page, "$$isClientReference")) {
+            const { ctx, params } = givenProps;
+            props = { ctx, params };
+          }
+
           const rscPayloadStream = renderToRscStream({
             node: <Page {...props} />,
-            actionResult: actionResult,
+            actionResult: actionResult instanceof Response ? null : actionResult,
           });
+
           if (isRSCRequest) {
             return new Response(rscPayloadStream, {
-              headers: { "content-type": "text/x-component; charset=utf-8" },
+              headers: {
+                "content-type": "text/x-component; charset=utf-8",
+              },
             });
           }
+
           const [rscPayloadStream1, rscPayloadStream2] = rscPayloadStream.tee();
 
           const htmlStream = await transformRscToHtmlStream({
@@ -73,12 +86,17 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
           const html = htmlStream.pipeThrough(injectRSCPayload(rscPayloadStream2))
 
           return new Response(html, {
-            headers: { "content-type": "text/html" },
+            headers: {
+              "content-type": "text/html; charset=utf-8",
+            },
           });
         };
 
+        const userHeaders = new Headers();
+
         const response = await router.handle({
           request,
+          headers: userHeaders,
           ctx: {} as Context,
           env,
           rw: {
@@ -87,6 +105,12 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
             renderPage,
           },
         });
+
+        for (const [key, value] of userHeaders.entries()) {
+          if (!response.headers.has(key)) {
+            response.headers.set(key, value);
+          }
+        }
 
         return response;
       } catch (e) {
@@ -106,7 +130,6 @@ export const DefaultLayout: React.FC<{ children: React.ReactNode }> = ({ childre
     <head>
       <meta charSet="utf-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1" />
-      <title>@redwoodjs/starter-minimal</title>
       <script type="module" src="/src/client.tsx"></script>
     </head>
     <body>

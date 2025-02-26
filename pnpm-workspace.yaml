@@ -1,6 +1,10 @@
 packages:
   - 'sdk'
+  - 'docs'
   - 'experiments/billable'
   - 'experiments/applywize'
   - 'experiments/yt-dos'
+  - 'experiments/cutable'
   - 'starters/minimal'
+  - 'starters/prisma'
+  - 'starters/drizzle'

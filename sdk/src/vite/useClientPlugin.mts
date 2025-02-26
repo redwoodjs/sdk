@@ -32,7 +32,7 @@ import { registerClientReference } from "@redwoodjs/sdk/worker";
 
         for (const e of exports) {
           if (e.ln != null) {
-            s.replaceAll(e.ln, `${e.ln}SSR`);
+            s.update(e.s, e.e, `${e.ln}SSR`);
 
             s.append(`\
 export const ${e.ln} = registerClientReference(${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)}, ${e.ln}SSR);

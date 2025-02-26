@@ -24,7 +24,8 @@
     "paths": {
       "vendor/*": ["./vendor/dist/*"],
       "src/*": ["./src/app/*"],
-      "src/db": ["./src/db.ts"]
+      "src/db": ["./src/db.ts"],
+      "@/*": ["./src/*"]
     },
     /* Enable importing .json files */
     "resolveJsonModule": true,
