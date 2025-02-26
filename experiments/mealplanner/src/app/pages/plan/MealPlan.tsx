@@ -332,18 +332,6 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
                         Share via WhatsApp
                       </span>
                     </Button>
-                    <Button 
-                      onClick={() => {
-                        setShoppingList(null);
-                      }} 
-                      variant="outline"
-                      className="border-red-500 text-red-500 hover:bg-red-50"
-                    >
-                      <span className="flex items-center gap-2">
-                        <RefreshCw className="h-4 w-4" />
-                        Debug: Reset List
-                      </span>
-                    </Button>
                   </div>
                 )}
               </>
