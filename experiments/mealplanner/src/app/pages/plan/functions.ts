@@ -23,38 +23,52 @@ export async function createMealPlan(apiKey: string, userId: string) {
 - Dietary Preferences: ${setup?.dietaryPreferences || "None"}
 - Health Issues: ${setup?.healthIssues || "None"}
 
-**Return ONLY valid JSON.** No extra explanations, no comments. If your response is too long, make sure to complete all 7 days.
+Each meal should include:
+- **Meal Name** (e.g., "Grilled Chicken with Quinoa")
+- **Ingredients** (list each ingredient used)
+- **Calories** (calculated total per meal)
+- **Portion Size** (clearly indicate portion amounts, e.g., "150g chicken, 1 cup quinoa, 1/2 avocado")
 
-Ensure meals include:
-- Breakfast, Lunch, Dinner, Snacks
-- Each meal has: 'meal', 'ingredients', 'calories'
-- Snacks are an array
-- A 'total_calories' field per day
-
-The expected JSON format:
+Expected JSON format:
 {
   "week": [
     {
       "day": "Monday",
       "meals": {
-        "breakfast": { "meal": "Meal name", "ingredients": ["Ingredient 1", "Ingredient 2"], "calories": 0 },
-        "lunch": { "meal": "Meal name", "ingredients": ["Ingredient 1", "Ingredient 2"], "calories": 0 },
-        "dinner": { "meal": "Meal name", "ingredients": ["Ingredient 1", "Ingredient 2"], "calories": 0 },
-        "snacks": [{ "meal": "Snack name", "ingredients": ["Ingredient 1", "Ingredient 2"], "calories": 0 }]
+        "breakfast": { 
+          "meal": "Oatmeal with Bananas",
+          "ingredients": ["Oats", "Banana", "Almond Milk"],
+          "portion_size": "1/2 cup oats, 1 banana, 1 cup almond milk",
+          "calories": 350
+        },
+        "lunch": { 
+          "meal": "Grilled Chicken Salad",
+          "ingredients": ["Chicken", "Lettuce", "Tomato", "Avocado", "Olive Oil"],
+          "portion_size": "150g chicken, 2 cups lettuce, 1/2 avocado",
+          "calories": 500
+        },
+        "dinner": { 
+          "meal": "Salmon with Quinoa",
+          "ingredients": ["Salmon", "Quinoa", "Spinach", "Lemon Juice"],
+          "portion_size": "120g salmon, 1/2 cup quinoa, 1 cup spinach",
+          "calories": 600
+        },
+        "snacks": [
+          {
+            "meal": "Greek Yogurt with Nuts",
+            "ingredients": ["Greek Yogurt", "Almonds", "Honey"],
+            "portion_size": "1 cup yogurt, 10 almonds, 1 tsp honey",
+            "calories": 250
+          }
+        ]
       },
-      "total_calories": 0
+      "total_calories": 1700
     }
   ]
 }
 
-Again, **return ONLY valid JSON.**`;
+**Return ONLY valid JSON, no explanations.**`;
 
-
-  // const response = await openai.chat.completions.create({
-  //   model: "gpt-4",
-  //   messages: [{ role: "user", content: prompt }],
-  //   max_tokens: 500,
-  // });
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",
     headers: {
@@ -64,7 +78,7 @@ Again, **return ONLY valid JSON.**`;
     body: JSON.stringify({
       model: "gpt-4",
       messages: [{ role: "user", content: prompt }],
-      max_tokens: 2000,
+      max_tokens: 4000,
     }),
   });
 
@@ -84,11 +98,19 @@ Again, **return ONLY valid JSON.**`;
   }
 
   // Save meal plan to the database
+  // if there is already a meal plan, update it 
+  const existingMealPlan = await db.mealPlan.findUnique({
+    where: { userId },
+  });
+  if (existingMealPlan) {
+    const updatedMealPlan = await db.mealPlan.update({
+      where: { id: existingMealPlan.id },
+      data: { plan: mealPlan },
+    });
+    return updatedMealPlan;
+  }
   const savedMealPlan = await db.mealPlan.create({
-    data: {
-      userId,
-      plan: mealPlan, // Storing as JSON
-    },
+    data: { userId, plan: mealPlan }, // Storing as JSON
   });
   return savedMealPlan;
 }
