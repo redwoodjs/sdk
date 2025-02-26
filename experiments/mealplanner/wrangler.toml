@@ -16,7 +16,7 @@ bindings = [
 [vars]
 SECRET_KEY = "_"
 APP_NAME = "mealplanner"
-RP_ID = "localhost"
+RP_ID = "mealplanner.redwoodjs.workers.dev"
 
 
 [[migrations]]
