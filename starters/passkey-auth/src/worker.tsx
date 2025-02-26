@@ -28,8 +28,7 @@ export default defineApp<Context>([
       });
     }
   },
-  // todo: Figure out why I'm needing to provide route type param each time
-  layout<Context>(Document, [
+  layout(Document, [
     index([
         ({ ctx }) => {
           if (!ctx.user) {
@@ -41,6 +40,6 @@ export default defineApp<Context>([
         },
         Home,
     ]),
-    prefix<Context>("/user", authRoutes),
+    prefix("/user", authRoutes),
   ])
 ])
