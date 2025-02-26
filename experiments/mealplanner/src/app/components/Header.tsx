@@ -34,11 +34,6 @@ export function Header(user: User) {
             <a href="/setup" className="text-gray-300 hover:text-white transition-colors">
               Setup
             </a>
-            {user && (
-              <a href="/user/profile" className="text-gray-300 hover:text-white transition-colors">
-                Profile
-              </a>
-            )}
           </nav>
 
           {/* User Authentication */}
