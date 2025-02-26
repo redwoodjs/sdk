@@ -24,6 +24,9 @@ export default defineApp<Context>([
         <urlset xmlns="http://www.sitemaps.org/schemas/sitemap/0.9">
           <url>
             <loc>https://yt-dos.redwoodjs.workers.dev</loc>
+            <lastmod>${new Date().toISOString()}</lastmod>
+            <changefreq>daily</changefreq>
+            <priority>1</priority>
           </url>  
         </urlset>
       `;
