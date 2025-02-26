@@ -14,15 +14,61 @@ import {
   TableRow,
 } from "@/app/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
+import { Alert, AlertDescription } from "@/app/components/ui/alert";
+
+// Define types for our data structures
+type MealPlanType = {
+  week: {
+    day: string;
+    total_calories: number;
+    meals: {
+      breakfast: {
+        meal: string;
+        ingredients: string[];
+        calories: number;
+        portion_size?: string;
+      };
+      lunch: {
+        meal: string;
+        ingredients: string[];
+        calories: number;
+        portion_size?: string;
+      };
+      dinner: {
+        meal: string;
+        ingredients: string[];
+        calories: number;
+        portion_size?: string;
+      };
+      snacks: Array<{
+        meal: string;
+        ingredients: string[];
+        calories: number;
+        portion_size?: string;
+      }>;
+    };
+  }[];
+};
+
+type ShoppingListItem = {
+  ingredient: string;
+  name?: string;
+  quantity: string;
+};
+
+type ShoppingListType = {
+  shopping_list?: Record<string, ShoppingListItem[]>;
+} | ShoppingListItem[];
 
 export function MealPlanPage({ ctx }: { ctx: Context }) {
-  const [mealPlan, setMealPlan] = useState(null);
-  const [shoppingList, setShoppingList] = useState(null);
+  const [mealPlan, setMealPlan] = useState<MealPlanType | null>(null);
+  const [shoppingList, setShoppingList] = useState<ShoppingListType | null>(null);
   const [loading, setLoading] = useState(false);
   const [generatingList, setGeneratingList] = useState(false);
-  const [error, setError] = useState(null);
+  const [error, setError] = useState<string | null>(null);
   const [fetchAttempted, setFetchAttempted] = useState(false);
   const [activeDay, setActiveDay] = useState("0");
+  const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
 
   useEffect(() => {
     if (ctx?.user && !fetchAttempted) {
@@ -31,59 +77,70 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
     }
   }, [ctx, fetchAttempted]);
   
-
-  
   const fetchUserData = async () => {
     setLoading(true);
+    setLoadingMessage("Loading your meal plan data...");
     try {
-      const res = await getUserData(ctx?.user?.id);
+      const res = await getUserData(ctx?.user?.id || "");
       if (res && res.mealplan) {
-        setMealPlan(res.mealplan.plan);
+        setMealPlan(res.mealplan.plan as unknown as MealPlanType);
         if (res.mealplan.shoppingList) {
-          setShoppingList(res.mealplan.shoppingList.items);
+          setShoppingList(res.mealplan.shoppingList.items as unknown as ShoppingListType);
         }
       }
-      
     } catch (error) {
       console.error("Error fetching meal plan:", error);
+      setError("Failed to load your meal plan. Please try again.");
+    } finally {
+      setLoading(false);
+      setLoadingMessage(null);
     }
-    setLoading(false);
   };
 
   const generateMealPlan = async () => {
     setLoading(true);
+    setLoadingMessage("Generating your personalized meal plan... This may take up to 30 seconds.");
     try {
       const res = await fetch("/api/createMealPlan", {
         method: "POST",
         headers: { "Content-Type": "application/json" }
       });
-      const data = await res.json();
+      const data = await res.json() as { plan?: MealPlanType };
       if (data && data.plan) {
         setMealPlan(data.plan);
+        // Reset shopping list when generating a new meal plan
+        setShoppingList(null);
       }
     } catch (error) {
       console.error("Error generating meal plan:", error);
+      setError("Failed to generate meal plan. Please try again.");
+    } finally {
+      setLoading(false);
+      setLoadingMessage(null);
     }
-    setLoading(false);
   };
 
   const generateShoppingList = async () => {
     if (!mealPlan) return;
     
     setGeneratingList(true);
+    setLoadingMessage("Generating your shopping list... This may take a few moments.");
     try {
       const res = await fetch("/api/createShoppingList", {
         method: "POST",
         headers: { "Content-Type": "application/json" }
       });
-      const data = await res.json();
+      const data = await res.json() as { items?: ShoppingListType };
       if (data && data.items) {
         setShoppingList(data.items);
       }
     } catch (error) {
       console.error("Error generating shopping list:", error);
+      setError("Failed to generate shopping list. Please try again.");
+    } finally {
+      setGeneratingList(false);
+      setLoadingMessage(null);
     }
-    setGeneratingList(false);
   };
 
   const downloadShoppingList = () => {
@@ -92,7 +149,7 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
     // Format the shopping list as text
     let listText = "SHOPPING LIST\n\n";
     
-    if (shoppingList.shopping_list) {
+    if (shoppingList && 'shopping_list' in shoppingList && shoppingList.shopping_list) {
       // Handle the structured shopping list with categories
       const categorizedList = shoppingList.shopping_list;
       
@@ -111,7 +168,7 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
     } else if (Array.isArray(shoppingList)) {
       // Handle case where shoppingList is a simple array
       shoppingList.forEach(item => {
-        const itemName = item.ingredient || item.name;
+        const itemName = item.ingredient || item.name || '';
         listText += `• ${itemName}: ${item.quantity}\n`;
       });
     } else if (typeof shoppingList === 'object') {
@@ -120,8 +177,8 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
         if (category !== 'shopping_list') {
           listText += `\n${category.toUpperCase()}:\n`;
           if (Array.isArray(items)) {
-            items.forEach(item => {
-              const itemName = item.ingredient || item.name;
+            (items as any[]).forEach(item => {
+              const itemName = item.ingredient || item.name || '';
               listText += `• ${itemName}: ${item.quantity}\n`;
             });
           }
@@ -147,7 +204,7 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
     // Format the shopping list as text
     let listText = "🛒 *SHOPPING LIST*\n\n";
     
-    if (shoppingList.shopping_list) {
+    if (shoppingList && 'shopping_list' in shoppingList && shoppingList.shopping_list) {
       // Handle the structured shopping list with categories
       const categorizedList = shoppingList.shopping_list;
       
@@ -165,7 +222,7 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
     } else if (Array.isArray(shoppingList)) {
       // Handle case where shoppingList is a simple array
       shoppingList.forEach(item => {
-        const itemName = item.ingredient || item.name;
+        const itemName = item.ingredient || item.name || '';
         listText += `• ${itemName}: ${item.quantity}\n`;
       });
     } else if (typeof shoppingList === 'object') {
@@ -174,8 +231,8 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
         if (category !== 'shopping_list') {
           listText += `\n*${category.toUpperCase()}*:\n`;
           if (Array.isArray(items)) {
-            items.forEach(item => {
-              const itemName = item.ingredient || item.name;
+            (items as any[]).forEach(item => {
+              const itemName = item.ingredient || item.name || '';
               listText += `• ${itemName}: ${item.quantity}\n`;
             });
           }
@@ -229,7 +286,7 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
                     >
                       <span className="flex items-center gap-2">
                         <Download className="h-4 w-4" />
-                        Download List
+                        Download shopping list
                       </span>
                     </Button>
                     <Button 
@@ -268,12 +325,21 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
         </div>
 
         {error && (
-          <div className="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded mb-6">
-            {error}
+          <Alert variant="destructive" className="mb-6">
+            <AlertDescription>{error}</AlertDescription>
+          </Alert>
+        )}
+
+        {loadingMessage && (
+          <div className="bg-black text-white p-4 rounded-md mb-6 animate-pulse">
+            <div className="flex items-center gap-3">
+              <Loader2 className="h-5 w-5 animate-spin" />
+              <p>{loadingMessage}</p>
+            </div>
           </div>
         )}
 
-        {loading && !mealPlan && (
+        {loading && !mealPlan && !loadingMessage && (
           <div className="flex justify-center items-center h-64">
             <Loader2 className="h-8 w-8 animate-spin text-gray-400" />
           </div>
