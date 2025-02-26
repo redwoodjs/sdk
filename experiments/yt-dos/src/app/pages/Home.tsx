@@ -389,7 +389,7 @@ Type HELP for more commands.
                   Searching{loadingChar}
                 </pre>
               ) : selectedVideo ? (
-                <div>
+                <div className="max-w-3xl mx-auto">
                   <iframe
                     width="100%"
                     height="400"
