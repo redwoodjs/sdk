@@ -19,9 +19,12 @@ datasource db {
 model User {
   id          String      @id @default(uuid()) // User ID (UUID-based)
   username    String      @unique
+  
+  updatedAt   DateTime    @updatedAt
   createdAt   DateTime    @default(now())
 
-  credentials Credential[] // Relationship: One user can have many credentials
+  credentials Credential[]
+  recordings Recording[]
 }
 
 model Credential {
@@ -35,4 +38,13 @@ model Credential {
   
   @@index([credentialId])
   @@index([userId])
+}
+
+model Recording {
+  id String @id @default(uuid())
+  userId String
+  payload Json
+  updatedAt DateTime @updatedAt
+  createdAt DateTime @default(now())
+  user User @relation(fields: [userId], references: [id])
 }

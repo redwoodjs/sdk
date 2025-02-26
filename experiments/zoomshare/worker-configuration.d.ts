@@ -2,9 +2,11 @@
 
 interface Env {
 	SECRET_KEY: "_";
-	APP_NAME: "__change_me__";
+	APP_NAME: "zoomshare";
 	RP_ID: "localhost";
 	SESSION_DURABLE_OBJECT: DurableObjectNamespace<import("./src/worker").SessionDurableObject>;
+	R2: R2Bucket;
 	DB: D1Database;
+	QUEUE: Queue;
 	ASSETS: Fetcher;
 }
