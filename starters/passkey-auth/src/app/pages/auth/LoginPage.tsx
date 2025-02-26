@@ -43,7 +43,7 @@ export function LoginPage() {
 
   return (
     <>
-      <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} />
+      <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} placeholder="Username" />
       <button onClick={handlePerformPasskeyLogin} disabled={isPending}>
         {isPending ? (
           <>

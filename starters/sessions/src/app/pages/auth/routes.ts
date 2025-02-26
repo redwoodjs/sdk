@@ -7,8 +7,9 @@ export const authRoutes: RouteDefinition<Context>[] = [
   route('/login', [
     LoginPage
   ]),
-  route('/logout', function ({ request, headers }) {
-    sessions.remove(request, headers);
+  route('/logout', async function ({ request }) {
+    const headers = new Headers();
+    await sessions.remove(request, headers);
     headers.set('Location', '/');
 
     return new Response(null, {
