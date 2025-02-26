@@ -1,13 +1,9 @@
 import { Context } from '@/worker'
-
+import { Header } from './components/Header'
 export const Layout = ({ children, ctx }: { children: React.ReactNode, ctx: Context }) => {
   return (
     <div>
-      <p>
-        {ctx.user?.username 
-          ? `You are logged in as user ${ctx.user.username}`
-          : "You are not logged in"}
-      </p>
+      <Header user={ctx.user} />
       {children}
     </div>
   )
