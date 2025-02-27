@@ -3,7 +3,7 @@
 import { db } from '@/db';
 
 export async function addUserSetup(userId: string, formData: any) {
-    const { age, gender, weight, height, activityLevel, dietaryPreferences, healthIssues } = formData;
+    const { age, gender, weight, height, activityLevel, dietaryPreferences, healthIssues, weightGoal } = formData;
     const ageInt = parseInt(age);
     const weightInt = parseFloat(weight);
     const heightInt = parseFloat(height);
@@ -20,6 +20,7 @@ export async function addUserSetup(userId: string, formData: any) {
         setup.activityLevel = activityLevel;
         setup.dietaryPreferences = dietaryPreferences;
         setup.healthIssues = healthIssues;
+        setup.weightGoal = weightGoal;
     } else {
         setup = await db.setup.create({
             data: {
@@ -30,7 +31,8 @@ export async function addUserSetup(userId: string, formData: any) {
                 height: heightInt,
                 activityLevel,
                 dietaryPreferences,
-                healthIssues
+                healthIssues,
+                weightGoal,
             }
         })
     }

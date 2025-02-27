@@ -49,59 +49,72 @@ export function createShoppingListPrompt(mealPlan: any) {
 }
 
 export function createMealPlanPrompt(setup: any) {
-    return `You are a meal planning assistant. Generate a **7-day structured meal plan** in JSON format based on:
+    return `You are a professional meal planning assistant. Generate a **7-day structured meal plan** for the following user:
 
-- Age: ${setup?.age}
-- Gender: ${setup?.gender}
-- Weight: ${setup?.weight} kg
-- Height: ${setup?.height} cm
-- Activity Level: ${setup?.activityLevel}
-- Dietary Preferences: ${setup?.dietaryPreferences || "None"}
-- Health Issues: ${setup?.healthIssues || "None"}
-
-Each meal should include:
-- **Meal Name** (e.g., "Grilled Chicken with Quinoa")
-- **Ingredients** (list each ingredient used)
-- **Calories** (calculated total per meal)
-- **Portion Size** (clearly indicate portion amounts, e.g., "150g chicken, 1 cup quinoa, 1/2 avocado")
-
-Expected JSON format:
-{
-  "week": [
+    ### **User Profile**
+    - **Age:** ${setup.age}
+    - **Gender:** ${setup.gender}
+    - **Weight:** ${setup.weight} kg
+    - **Height:** ${setup.height} cm
+    - **Activity Level:** ${setup.activityLevel}
+    - **Dietary Preferences:** ${setup.dietaryPreferences || "None"}
+    - **Health Issues:** ${setup.healthIssues || "None"}
+    - **Weight Goal:** ${setup.weightGoal} (Lose weight, Gain weight, Maintain weight)
+    
+    ### **Meal Plan Requirements**
+    - The plan should be **balanced and tailored to the user’s weight goal**.
+    - Ensure **calories align with the goal**:
+      - **Lose Weight** → Slight calorie deficit (~500 kcal below maintenance)
+      - **Gain Weight** → Slight calorie surplus (~500 kcal above maintenance)
+      - **Maintain Weight** → Calories match maintenance level
+    - Each meal should include:
+      - **Meal Name** (e.g., "Grilled Chicken with Quinoa")
+      - **Ingredients** (list all ingredients used)
+      - **Portion Size** (clearly indicate portion amounts, e.g., "150g chicken, 1 cup quinoa")
+      - **Calories** (calculated total per meal)
+    
+    ### **Expected JSON Response Format**
     {
-      "day": "Monday",
-      "meals": {
-        "breakfast": { 
-          "meal": "Oatmeal with Bananas",
-          "ingredients": ["Oats", "Banana", "Almond Milk"],
-          "portion_size": "1/2 cup oats, 1 banana, 1 cup almond milk",
-          "calories": 350
-        },
-        "lunch": { 
-          "meal": "Grilled Chicken Salad",
-          "ingredients": ["Chicken", "Lettuce", "Tomato", "Avocado", "Olive Oil"],
-          "portion_size": "150g chicken, 2 cups lettuce, 1/2 avocado",
-          "calories": 500
-        },
-        "dinner": { 
-          "meal": "Salmon with Quinoa",
-          "ingredients": ["Salmon", "Quinoa", "Spinach", "Lemon Juice"],
-          "portion_size": "120g salmon, 1/2 cup quinoa, 1 cup spinach",
-          "calories": 600
-        },
-        "snacks": [
-          {
-            "meal": "Greek Yogurt with Nuts",
-            "ingredients": ["Greek Yogurt", "Almonds", "Honey"],
-            "portion_size": "1 cup yogurt, 10 almonds, 1 tsp honey",
-            "calories": 250
-          }
-        ]
+      "summary": {
+        "description": "This meal plan is designed to help you ${setup.weightGoal.toLowerCase()}, providing approximately 2000 calories per day based on your activity level and weight.",
+        "total_calories": 14000 // Total weekly calories
       },
-      "total_calories": 1700
+      "week": [
+        {
+          "day": "Monday",
+          "meals": {
+            "breakfast": { 
+              "meal": "Oatmeal with Bananas",
+              "ingredients": ["Oats", "Banana", "Almond Milk"],
+              "portion_size": "1/2 cup oats, 1 banana, 1 cup almond milk",
+              "calories": 350
+            },
+            "lunch": { 
+              "meal": "Grilled Chicken Salad",
+              "ingredients": ["Chicken", "Lettuce", "Tomato", "Avocado", "Olive Oil"],
+              "portion_size": "150g chicken, 2 cups lettuce, 1/2 avocado",
+              "calories": 500
+            },
+            "dinner": { 
+              "meal": "Salmon with Quinoa",
+              "ingredients": ["Salmon", "Quinoa", "Spinach", "Lemon Juice"],
+              "portion_size": "120g salmon, 1/2 cup quinoa, 1 cup spinach",
+              "calories": 600
+            },
+            "snacks": [
+              {
+                "meal": "Greek Yogurt with Nuts",
+                "ingredients": ["Greek Yogurt", "Almonds", "Honey"],
+                "portion_size": "1 cup yogurt, 10 almonds, 1 tsp honey",
+                "calories": 250
+              }
+            ]
+          },
+          "total_calories": 1700
+        }
+      ]
     }
-  ]
-}
-
-**Return ONLY valid JSON, no explanations.**`;
+    
+    **Return only valid JSON with no additional text.**`;
+    
 }

@@ -16,6 +16,7 @@ export type Context = {
   session: Session | null;
   user: User | null;
   env: Env;
+  debugMode: boolean;
 }
 
 export default defineApp<Context>([
@@ -23,7 +24,7 @@ export default defineApp<Context>([
     setupDb(env);
     setupSessionStore(env);
     ctx.session = await sessions.load(request);
-
+    ctx.debugMode = env.DEBUG_MODE === 'true';
     if (ctx.session?.userId) {
       ctx.user = await db.user.findUnique({
         where: {

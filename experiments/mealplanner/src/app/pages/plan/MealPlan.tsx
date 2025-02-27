@@ -70,6 +70,8 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
   const [activeDay, setActiveDay] = useState("0");
   const [loadingMessage, setLoadingMessage] = useState<string | null>(null);
   const [canGeneratePlan, setCanGeneratePlan] = useState(false);
+  // Debug flag to override restrictions
+  const [debugMode, setDebugMode] = useState(ctx.debugMode);
 
   // Helper function to set the active day to the current day of the week
   const setActiveDayToCurrent = () => {
@@ -105,6 +107,7 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
     setLoadingMessage("Loading your meal plan data...");
     try {
       const res = await getUserData(ctx?.user?.id || "");
+      console.log(res);
       if (res && res.mealplan) {
         setMealPlan(res.mealplan.plan as unknown as MealPlanType);
         if (res.mealplan.shoppingList) {
@@ -123,8 +126,8 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
   };
 
   const generateMealPlan = async () => {
-    // Check if user can generate a plan (regardless of whether they already have one)
-    if (!canGeneratePlan) {
+    // Check if user can generate a plan (unless in debug mode)
+    if (!canGeneratePlan && !debugMode) {
       setError("Free accounts can only regenerate meal plans on Mondays. Upgrade to premium for unlimited access!");
       return;
     }
@@ -290,6 +293,21 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <h1 className="text-2xl font-bold">Your 7-Day Meal Plan</h1>
           <div className="flex flex-wrap gap-2 w-full sm:w-auto">
+            {/* Debug toggle button */}
+            {debugMode && (
+              <Button
+                onClick={() => setDebugMode(!debugMode)}
+                variant="outline"
+              className={`border-gray-300 text-xs sm:text-sm flex-none ${
+                debugMode ? "bg-red-100 border-red-500 text-red-500" : "text-gray-500"
+              }`}
+            >
+              <span className="flex items-center gap-1">
+                {debugMode ? "Debug: ON" : "Debug: OFF"}
+              </span>
+            </Button>
+            )}
+            
             {mealPlan && (
               <>
                 {!shoppingList ? (
@@ -345,14 +363,14 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
               onClick={generateMealPlan} 
               variant="outline"
               className="border-black text-black hover:bg-gray-100 flex-1 sm:flex-none"
-              disabled={loading || (!canGeneratePlan)}
+              disabled={loading || (!canGeneratePlan && !debugMode)}
             >
               {loading ? (
                 <span className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
                   <span>Loading...</span>
                 </span>
-              ) : !canGeneratePlan && !mealPlan ? (
+              ) : !canGeneratePlan && !debugMode ? (
                 <span className="flex items-center gap-2">
                   <Lock className="h-4 w-4" />
                   <span className="sm:inline hidden">Available on Mondays</span>
@@ -374,11 +392,20 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
           </Alert>
         )}
 
-        {!canGeneratePlan && (
+        {!canGeneratePlan && !debugMode && (
           <Alert className="mb-6 border-amber-200 bg-amber-50">
             <AlertDescription className="flex items-center gap-2">
               <Lock className="h-4 w-4" />
               Free accounts can only regenerate meal plans on Mondays. Upgrade to premium for unlimited access!
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {debugMode && (
+          <Alert className="mb-6 border-red-200 bg-red-50">
+            <AlertDescription className="flex items-center gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Debug mode enabled. You can generate meal plans regardless of restrictions.
             </AlertDescription>
           </Alert>
         )}
@@ -602,6 +629,11 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
                 </TabsContent>
               ))}
             </Tabs>
+            {mealPlan.summary && (  
+              <div className="p-3 sm:p-6">
+                <p className="text-sm text-gray-600">{mealPlan.summary}</p>
+              </div>
+            )}
           </div>
         )}
       </div>

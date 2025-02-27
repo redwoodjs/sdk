@@ -3,9 +3,10 @@
 interface Env {
 	SECRET_KEY: "_";
 	APP_NAME: "mealplanner";
-	RP_ID: "mealplanner.redwoodjs.workers.dev";
 	OPENAI_API_KEY: string;
 	ENV: string;
+	RP_ID: string;
+	DEBUG_MODE: string;
 	SESSION_DURABLE_OBJECT: DurableObjectNamespace<import("./src/worker").SessionDurableObject>;
 	DB: D1Database;
 	ASSETS: Fetcher;

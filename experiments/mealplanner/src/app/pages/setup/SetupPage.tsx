@@ -19,8 +19,9 @@ export function SetupPage({ ctx }: { ctx: Context }) {
     weight: "80",
     height: "180",
     activityLevel: "Moderate",
-    dietaryPreferences: "Vegan",
+    dietaryPreferences: "Mediterranean",
     healthIssues: "high cholesterol",
+    weightGoal: "Lose weight",
   });
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -37,6 +38,10 @@ export function SetupPage({ ctx }: { ctx: Context }) {
 
   const handleSubmit = async () => {
     console.log("Form Submitted:", formData);
+    if (!userId) {
+      setError("User ID not found. Please try logging in again.");
+      return;
+    }
     const setup = await addUserSetup(userId, formData);
     
     if (setup) {
@@ -65,7 +70,6 @@ export function SetupPage({ ctx }: { ctx: Context }) {
                 <SelectContent>
                   <SelectItem value="Male">Male</SelectItem>
                   <SelectItem value="Female">Female</SelectItem>
-                  <SelectItem value="Non-binary">Non-binary</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -86,11 +90,11 @@ export function SetupPage({ ctx }: { ctx: Context }) {
                   <SelectValue placeholder="Select Activity Level" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="Sedentary">Sedentary</SelectItem>
-                  <SelectItem value="Light">Light</SelectItem>
-                  <SelectItem value="Moderate">Moderate</SelectItem>
-                  <SelectItem value="Active">Active</SelectItem>
-                  <SelectItem value="Very Active">Very Active</SelectItem>
+                  <SelectItem value="Sedentary">Sedentary (Little to no exercise)</SelectItem>
+                  <SelectItem value="Light">Light (Light exercise 1-3 days/week)</SelectItem>
+                  <SelectItem value="Moderate">Moderate (Moderate exercise 3-5 days/week)</SelectItem>
+                  <SelectItem value="Active">Active (Hard exercise 6-7 days/week)</SelectItem>
+                  <SelectItem value="Very Active">Very Active (Very hard exercise & physical job)</SelectItem>
                 </SelectContent>
               </Select>
               <label className="block mt-4 mb-2">Dietary Preferences</label>
@@ -101,6 +105,17 @@ export function SetupPage({ ctx }: { ctx: Context }) {
             <div>
               <label className="block mb-2">Health Issues</label>
               <Input type="text" name="healthIssues" value={formData.healthIssues} onChange={handleChange} placeholder="E.g., Diabetes, High Blood Pressure" />
+              <label className="block mb-2">Weight Goal</label>
+              <Select onValueChange={(value) => setFormData({ ...formData, weightGoal: value })}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Weight Goal" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="Lose weight">Lose weight</SelectItem>
+                  <SelectItem value="Maintain weight">Maintain weight</SelectItem>
+                  <SelectItem value="Gain weight">Gain weight</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
           )}
         </CardContent>

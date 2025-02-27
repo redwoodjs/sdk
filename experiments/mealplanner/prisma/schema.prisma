@@ -49,6 +49,7 @@ model Setup {
   height         Float    // Height in centimeters
   activityLevel  String   // Example: "Sedentary", "Light", "Moderate", "Active", "Very Active"
   dietaryPreferences String? // Example: "Vegan", "Keto", "Paleo", "None", etc.
+  weightGoal     String? // Example: "Lose weight, maintain weight, gain weight" 
   healthIssues   String?  // Any known health issues or restrictions
   createdAt      DateTime @default(now())
 }
