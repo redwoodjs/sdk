@@ -15,6 +15,7 @@ import {
 } from "@/app/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/app/components/ui/tabs";
 import { Alert, AlertDescription } from "@/app/components/ui/alert";
+import { toast } from "sonner";
 
 // Define types for our data structures
 type MealPlanType = {
@@ -75,6 +76,10 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
   const [canGeneratePlan, setCanGeneratePlan] = useState(false);
   // Debug flag to override restrictions
   const [debugMode, setDebugMode] = useState(ctx.debugMode);
+  const [isPolling, setIsPolling] = useState(false);
+  const [lastPolledPlanId, setLastPolledPlanId] = useState<string | null>(null);
+  const [pollingStartTime, setPollingStartTime] = useState<Date | null>(null);
+  const [elapsedTime, setElapsedTime] = useState(0);
 
   // Helper function to set the active day to the current day of the week
   const setActiveDayToCurrent = () => {
@@ -92,6 +97,9 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
     if (ctx?.user && !fetchAttempted) {
       fetchUserData();
       setFetchAttempted(true);
+      
+      // Check if there's an in-progress meal plan generation
+      checkForInProgressGeneration();
     }
     
     // Check if today is Monday or if user is premium
@@ -113,6 +121,7 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
       console.log(res);
       if (res && res.mealplan) {
         setMealPlan(res.mealplan.plan as unknown as MealPlanType);
+        setLastPolledPlanId(res.mealplan.id);
         if (res.mealplan.shoppingList) {
           setShoppingList(res.mealplan.shoppingList.items as unknown as ShoppingListType);
         }
@@ -128,6 +137,41 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
     }
   };
 
+  // Function to check if there's an in-progress meal plan generation
+  const checkForInProgressGeneration = async () => {
+    try {
+      const response = await fetch("/api/mealPlanStatus");
+      const status = await response.json();
+      
+      if (status && (status.status === "queued" || status.status === "processing")) {
+        // Resume polling
+        setLoading(true);
+        setIsPolling(true);
+        setPollingStartTime(new Date(status.startedAt));
+        
+        // Calculate elapsed time
+        const startTimeDate = new Date(status.startedAt);
+        const currentTime = new Date();
+        const elapsedMs = currentTime.getTime() - startTimeDate.getTime();
+        const elapsedSeconds = Math.floor(elapsedMs / 1000);
+        
+        setElapsedTime(elapsedSeconds);
+        setLoadingMessage(status.message || `Resuming meal plan generation (${Math.floor(elapsedSeconds / 60)}m ${elapsedSeconds % 60}s elapsed)...`);
+        
+        // Start polling again
+        startPollingForMealPlan(elapsedSeconds);
+        
+        // Show toast notification
+        toast.info("Resuming Generation", {
+          description: "We're continuing to generate your meal plan.",
+          duration: 3000,
+        });
+      }
+    } catch (error) {
+      console.error("Error checking for in-progress generation:", error);
+    }
+  };
+
   const generateMealPlan = async () => {
     // Check if user can generate a plan (unless in debug mode)
     if (!canGeneratePlan && !debugMode) {
@@ -136,50 +180,229 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
     }
     
     setLoading(true);
-    setLoadingMessage("Generating your personalized meal plan... This may take up to 30 seconds.");
+    setLoadingMessage("Queuing your meal plan request...");
     try {
-      const res = await fetch("/api/createMealPlan", {
+      await fetch("/api/createMealPlan", {
         method: "POST",
         headers: { "Content-Type": "application/json" }
       });
-      const data = await res.json() as { plan?: MealPlanType };
-      if (data && data.plan) {
-        setMealPlan(data.plan);
-        // Reset shopping list when generating a new meal plan
-        setShoppingList(null);
-        // Set active day to current day when new meal plan is generated
-        setActiveDayToCurrent();
-      }
+      
+      // Show toast notification with Sonner
+      toast.success("Meal Plan Queued", {
+        description: "Your meal plan is being generated and will be ready in about a minute.",
+        duration: 5000,
+      });
+      
+      // Start polling for the meal plan
+      setIsPolling(true);
+      const startTime = new Date();
+      setPollingStartTime(startTime);
+      
+      startPollingForMealPlan();
+      
     } catch (error) {
-      console.error("Error generating meal plan:", error);
-      setError("Failed to generate meal plan. Please try again.");
-    } finally {
+      console.error("Error queuing meal plan:", error);
+      setError("Failed to queue meal plan generation. Please try again.");
       setLoading(false);
       setLoadingMessage(null);
     }
+  };
+
+  const startPollingForMealPlan = (initialElapsedTime = 0) => {
+    // Set a more user-friendly loading message
+    setLoadingMessage("Your AI-powered meal plan is being generated. This typically takes about a minute while we create personalized recipes for you...");
+    setElapsedTime(initialElapsedTime);
+    
+    // Poll every 10 seconds
+    const pollInterval = setInterval(async () => {
+      try {
+        // Increment elapsed time (in seconds)
+        setElapsedTime(prev => {
+          const newElapsedTime = prev + 10;
+          
+          // Format elapsed time for display
+          const elapsedMinutes = Math.floor(newElapsedTime / 60);
+          const elapsedSeconds = newElapsedTime % 60;
+          const timeDisplay = elapsedMinutes > 0 
+            ? `${elapsedMinutes}m ${elapsedSeconds}s` 
+            : `${elapsedSeconds}s`;
+          
+          // Update loading message with dots to show activity and elapsed time
+          setLoadingMessage(prevMsg => {
+            const baseMessage = `Checking for your meal plan (${timeDisplay})`;
+            
+            // Rotate through different numbers of dots to show activity
+            if (prevMsg?.endsWith("...")) return `${baseMessage}.`;
+            if (prevMsg?.endsWith("..")) return `${baseMessage}...`;
+            if (prevMsg?.endsWith(".")) return `${baseMessage}..`;
+            return `${baseMessage}.`;
+          });
+          
+          return newElapsedTime;
+        });
+        
+        // First check the status
+        const statusResponse = await fetch("/api/mealPlanStatus");
+        const status = await statusResponse.json();
+        
+        // If status is "completed", fetch the meal plan
+        if (status && status.status === "completed") {
+          const res = await getUserData(ctx?.user?.id || "");
+          
+          if (res && res.mealplan) {
+            // We have a fresh meal plan
+            clearInterval(pollInterval);
+            setIsPolling(false);
+            setMealPlan(res.mealplan.plan as unknown as MealPlanType);
+            setLastPolledPlanId(res.mealplan.id);
+            setShoppingList(null);
+            setActiveDayToCurrent();
+            setLoading(false);
+            setLoadingMessage(null);
+            setPollingStartTime(null);
+            
+            // Show success toast with Sonner
+            toast.success("Meal Plan Ready", {
+              description: "Your personalized meal plan has been generated successfully!",
+              duration: 3000,
+            });
+          }
+        } 
+        // If status is "failed", show error
+        else if (status && status.status === "failed") {
+          clearInterval(pollInterval);
+          setIsPolling(false);
+          setLoading(false);
+          setLoadingMessage(null);
+          setPollingStartTime(null);
+          
+          setError(status.message || "Failed to generate meal plan. Please try again.");
+          
+          // Show error toast with Sonner
+          toast.error("Generation Failed", {
+            description: status.message || "There was an error generating your meal plan. Please try again.",
+            duration: 5000,
+          });
+        }
+        // Otherwise, continue polling
+      } catch (error) {
+        console.error("Error polling for meal plan:", error);
+      }
+    }, 10000); // Poll every 10 seconds
+    
+    // Stop polling after 2 minutes if no result
+    setTimeout(() => {
+      if (isPolling) {
+        clearInterval(pollInterval);
+        setIsPolling(false);
+        setLoading(false);
+        setLoadingMessage(null);
+        setPollingStartTime(null);
+        
+        setError("Meal plan generation is taking longer than expected. Please check back later or try again.");
+        
+        // Show timeout toast with Sonner
+        toast.error("Taking Longer Than Expected", {
+          description: "Your meal plan is still being generated. Please check back in a few minutes.",
+          duration: 5000,
+        });
+      }
+    }, 120000); // 2 minutes timeout
   };
 
   const generateShoppingList = async () => {
     if (!mealPlan) return;
     
     setGeneratingList(true);
-    setLoadingMessage("Generating your shopping list... This may take a few moments.");
+    setLoadingMessage("Queuing your shopping list request...");
     try {
-      const res = await fetch("/api/createShoppingList", {
+      await fetch("/api/createShoppingList", {
         method: "POST",
         headers: { "Content-Type": "application/json" }
       });
-      const data = await res.json() as { items?: ShoppingListType };
-      if (data && data.items) {
-        setShoppingList(data.items);
-      }
+      
+      // Show toast notification with Sonner
+      toast.success("Shopping List Queued", {
+        description: "Your shopping list is being generated and will be ready in a moment.",
+        duration: 3000,
+      });
+      
+      // Start polling for the shopping list
+      pollForShoppingList();
+      
     } catch (error) {
       console.error("Error generating shopping list:", error);
       setError("Failed to generate shopping list. Please try again.");
-    } finally {
       setGeneratingList(false);
       setLoadingMessage(null);
     }
+  };
+
+  const pollForShoppingList = async () => {
+    // Set a more user-friendly loading message
+    setLoadingMessage("Generating your shopping list based on your meal plan...");
+    
+    // Poll every 3 seconds
+    const pollInterval = setInterval(async () => {
+      try {
+        // Check the status
+        const statusResponse = await fetch("/api/shoppingListStatus");
+        const status = await statusResponse.json();
+        
+        // If status is "completed", fetch the shopping list
+        if (status && status.status === "completed") {
+          const res = await getUserData(ctx?.user?.id || "");
+          
+          if (res && res.mealplan && res.mealplan.shoppingList) {
+            // We have a fresh shopping list
+            clearInterval(pollInterval);
+            setShoppingList(res.mealplan.shoppingList.items as unknown as ShoppingListType);
+            setGeneratingList(false);
+            setLoadingMessage(null);
+            
+            // Show success toast with Sonner
+            toast.success("Shopping List Ready", {
+              description: "Your shopping list has been generated successfully!",
+              duration: 3000,
+            });
+          }
+        } 
+        // If status is "failed", show error
+        else if (status && status.status === "failed") {
+          clearInterval(pollInterval);
+          setGeneratingList(false);
+          setLoadingMessage(null);
+          
+          setError(status.message || "Failed to generate shopping list. Please try again.");
+          
+          // Show error toast with Sonner
+          toast.error("Generation Failed", {
+            description: status.message || "There was an error generating your shopping list. Please try again.",
+            duration: 5000,
+          });
+        }
+        // Otherwise, continue polling
+      } catch (error) {
+        console.error("Error polling for shopping list:", error);
+      }
+    }, 3000); // Poll every 3 seconds
+    
+    // Stop polling after 1 minute if no result
+    setTimeout(() => {
+      clearInterval(pollInterval);
+      if (generatingList) {
+        setGeneratingList(false);
+        setLoadingMessage(null);
+        
+        setError("Shopping list generation is taking longer than expected. Please try again.");
+        
+        // Show timeout toast with Sonner
+        toast.error("Taking Longer Than Expected", {
+          description: "Your shopping list is still being generated. Please try again.",
+          duration: 5000,
+        });
+      }
+    }, 60000); // 1 minute timeout
   };
 
   const downloadShoppingList = () => {
@@ -423,10 +646,17 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
         )}
 
         {loadingMessage && (
-          <div className="bg-black text-white p-4 rounded-md mb-6 animate-pulse">
+          <div className="bg-gradient-to-r from-blue-600 to-blue-800 text-white p-5 rounded-md mb-6 shadow-md">
             <div className="flex items-center gap-3">
-              <Loader2 className="h-5 w-5 animate-spin" />
-              <p>{loadingMessage}</p>
+              <Loader2 className="h-6 w-6 animate-spin" />
+              <div>
+                <p className="font-medium">{loadingMessage}</p>
+                {isPolling && (
+                  <p className="text-sm text-blue-100 mt-1">
+                    This process may take up to 2 minutes. Please wait...
+                  </p>
+                )}
+              </div>
             </div>
           </div>
         )}
@@ -637,6 +867,19 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
                 <p className="text-sm text-gray-600">{mealPlan.summary.description}</p>
               </div>
             )}
+            {/* last updated on mealplan */}
+            {mealPlan && mealPlan.last_updated && (
+              <div className="p-3 sm:p-6">
+                <p className="text-sm text-gray-600">
+                  <span className="font-medium">Last updated:</span> {mealPlan.last_updated}
+                </p>
+              </div>
+            )}
+            <div className="p-3 sm:p-6">
+              <p className="text-sm text-gray-600">
+                <span className="font-medium">Note:</span> This meal plan is for informational purposes only. It is not a substitute for professional medical advice, diagnosis, or treatment. Always consult a qualified healthcare provider for personalized nutrition and health advice.
+              </p>
+            </div>
           </div>
         )}
       </div>

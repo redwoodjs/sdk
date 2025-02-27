@@ -27,3 +27,10 @@ new_classes = [ "SessionDurableObject" ]
 binding = "DB"
 database_name = "mealplanner"
 database_id = "3406ce85-6601-4c2f-be7c-f6146c49803f"
+
+[[queues.producers]]
+queue = "mealplan-queue"
+binding = "QUEUE"
+
+[[queues.consumers]]
+queue = "mealplan-queue"

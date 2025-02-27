@@ -12,6 +12,12 @@ import { planRoutes } from './app/pages/plan/routes';
 import { apiRoutes } from './app/pages/api/routes';
 export { SessionDurableObject } from './session/durableObject';
 import { QueueBatch } from '@cloudflare/workers-types';
+import { 
+  createMealPlan, 
+  createShoppingList, 
+  updateMealPlanStatus, 
+  updateShoppingListStatus 
+} from "./app/pages/plan/functions";
 
 export type Context = {
   session: Session | null;
@@ -70,27 +76,60 @@ const app = defineApp<Context>([
 export default {
   fetch: app.fetch,
   async queue(batch: QueueBatch<any>, env: Env) {
+    const debugMode = env.DEBUG_MODE === 'true';
     for (const message of batch.messages) {
+      console.log(`Processing message: ${message.body.action}`);
+      
       if (message.body.action === 'createMealPlan') {
+        console.log(`Debug mode: ${debugMode}`);
+        console.log(`Creating meal plan for userId: ${message.body.userId}`);
         const { userId } = message.body;
         const user = await db.user.findUnique({
           where: { id: userId },    
         });
         if (user) {
-          const mealPlan = await createMealPlan(env.OPENAI_API_KEY, userId, env.DEBUG_MODE);
+          try {
+            await createMealPlan(env.OPENAI_API_KEY, userId, debugMode);  
+          } catch (error) {
+            console.error(`Error creating meal plan for userId: ${userId}`, error);
+            // Update status to failed if there's an error
+            await updateMealPlanStatus(userId, "failed", `Error: ${error instanceof Error ? error.message : "Unknown error"}`);
+          }
         } else {
           console.error(`User not found for userId: ${userId}`);
+          await updateMealPlanStatus(userId, "failed", "User not found");
         }
       }
       if (message.body.action === 'createShoppingList') {
+        console.log(`Creating shopping list for userId: ${message.body.userId}`);
         const { userId } = message.body;
-        const user = await db.user.findUnique({
-          where: { id: userId },
-        });
-        if (user) {
-          const shoppingList = await createShoppingList(env.OPENAI_API_KEY, userId, env.DEBUG_MODE);
-        } else {
-          console.error(`User not found for userId: ${userId}`);
+        
+        try {
+          const user = await db.user.findUnique({
+            where: { id: userId },
+            include: {
+              mealplan: true
+            }
+          });
+          
+          if (!user) {
+            console.error(`User not found for userId: ${userId}`);
+            await updateShoppingListStatus(userId, "failed", "User not found");
+            continue;
+          }
+          
+          if (!user.mealplan) {
+            console.error(`Meal plan not found for userId: ${userId}`);
+            await updateShoppingListStatus(userId, "failed", "Meal plan not found. Please generate a meal plan first.");
+            continue;
+          }
+          
+          await createShoppingList(env.OPENAI_API_KEY, user.mealplan.plan, userId, debugMode);
+          console.log(`Successfully created shopping list for userId: ${userId}`);
+          
+        } catch (error) {
+          console.error(`Error creating shopping list for userId: ${userId}`, error);
+          await updateShoppingListStatus(userId, "failed", `Error: ${error instanceof Error ? error.message : "Unknown error"}`);
         }
       }
     }

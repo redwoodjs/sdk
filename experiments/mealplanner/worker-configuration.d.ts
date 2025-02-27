@@ -9,5 +9,6 @@ interface Env {
 	DEBUG_MODE: string;
 	SESSION_DURABLE_OBJECT: DurableObjectNamespace<import("./src/worker").SessionDurableObject>;
 	DB: D1Database;
+	QUEUE: Queue;
 	ASSETS: Fetcher;
 }

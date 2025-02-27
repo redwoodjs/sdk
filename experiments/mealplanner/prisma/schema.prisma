@@ -60,6 +60,7 @@ model MealPlan {
   user    User    @relation(fields: [userId], references: [id])
   plan    Json
   createdAt DateTime @default(now())
+  updatedAt DateTime @default(now())
   shoppingList ShoppingList?
 }
 
@@ -70,4 +71,22 @@ model ShoppingList {
   mealPlanId String @unique
   items     Json
   createdAt DateTime @default(now())
+}
+
+model MealPlanStatus {
+  id        String  @id @default(uuid())
+  userId    String  @unique
+  status    String  // "queued", "processing", "completed", "failed"
+  startedAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+  message   String? // Optional status message
+}
+
+model ShoppingListStatus {
+  id        String  @id @default(uuid())
+  userId    String  @unique
+  status    String  // "queued", "processing", "completed", "failed"
+  startedAt DateTime @default(now())
+  updatedAt DateTime @default(now())
+  message   String? // Optional status message
 }
