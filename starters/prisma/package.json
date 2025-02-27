@@ -11,6 +11,7 @@
   "scripts": {
     "build": "vite build",
     "dev": "while true; do NODE_ENV=development vite dev; [ $? -eq 0 ] || break; done",
+    "prisma:generate": "pnpm clean:vite && prisma generate",
     "dev:init": "rw-scripts dev-init",
     "worker:run": "rw-scripts worker-run",
     "clean": "pnpm build && pnpm clean:vendor",
