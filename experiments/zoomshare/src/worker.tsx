@@ -119,6 +119,7 @@ export default {
               Authorization: `Bearer ${message.body.downloadToken}`,
             },
           });
+          // TODO: (peterp, 2025-02-27): We need to ensure that we put in the correct mime type?
           await env.R2.put(filename, f.body);
           console.log('saved to r2')
           const data = {
