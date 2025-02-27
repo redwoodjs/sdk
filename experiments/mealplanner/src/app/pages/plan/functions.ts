@@ -142,5 +142,9 @@ export async function createMealPlan(apiKey: string, userId: string, debugMode: 
   const savedMealPlan = await db.mealPlan.create({
     data: { userId, plan: mealPlan }, // Storing as JSON
   });
+  // once a new mealpland is generatwd, we need to set the shopping list to null
+  await db.shoppingList.deleteMany({
+    where: { userId }
+  });
   return savedMealPlan;
 }
