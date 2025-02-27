@@ -24,7 +24,6 @@ model User {
   createdAt   DateTime    @default(now())
 
   credentials Credential[]
-  recordings Recording[]
 }
 
 model Credential {
@@ -40,11 +39,31 @@ model Credential {
   @@index([userId])
 }
 
-model Recording {
-  id String @id @default(uuid())
-  userId String
-  payload Json
-  updatedAt DateTime @updatedAt
+model Meeting {
+  id String @id
+  topic String
+  startTime DateTime
+  duration Int
+  shareUrl String
+  rawPayload String
+
   createdAt DateTime @default(now())
-  user User @relation(fields: [userId], references: [id])
+  updatedAt DateTime @updatedAt
+
+  recordings Recording[]
+}
+
+model Recording {
+  id String @id
+  meetingId String
+  meeting Meeting @relation(fields: [meetingId], references: [id])
+  type String
+  extension String
+  size Int
+  startTime DateTime
+  endTime DateTime
+  downloadUrl String
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 }
