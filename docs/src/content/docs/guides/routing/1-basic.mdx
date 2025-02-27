@@ -5,7 +5,95 @@ description: A guide in my new Starlight docs site.
 ---
 
 ### Set up your first route
+
 ### Handle dynamic parameters in URLs
+There are two ways to handle dynamic parameters in URLs.
+
+1. Client-side
+2. Server-side
+
+#### Client-side
+
+If you're using a client-side component, you can use the `URL()` and `URLSearchParams()` functions (both, part of the browser API) to get the parameters from the URL.
+
+```tsx
+"use client"
+
+import React, { useEffect, useState } from 'react'
+
+const QueryParams = () => {
+  const [query, setQuery] = useState<string | null>(null);
+
+  useEffect(() => {
+    // This code only runs in the browser after component mounts
+    const url = new URL(window.location.href);
+    const params = new URLSearchParams(url.search);
+    setQuery(params.get('q'));
+  }, []);
+
+  return (
+    <div>{query}</div>
+  )
+}
+
+export {QueryParams}
+```
+
+- Since we're accessing the `window` object to get the `url`, this needs to be a client component. We've included the `"use client"` directive at the top of the file.
+- Client components are pre-rendered on the server. This means that `window` will not be available on the first render. We can get around this by using the `useEffect` hook to get the URL as soon as the component mounts.
+- Now, if you navigate to page with this component and it contains the query parameter `?q=something`, `something` will be displayed on the page.
+
+#### Server-side
+
+Within your `worker.tsx` file, you can access the route functions `ctx`, `env`, and `request` within the Middleware. (More on middleware [here](/docs/reference/routing).)
+
+With every `request` that comes through, you can access the `url`.
+
+Let's create a helper function that will parse the `url` and return an object of the parameters.
+
+```tsx title="worker.ts"
+const getParams = (request: Request) => {
+  const url = new URL(request.url)
+  const params = url.searchParams
+  return Object.fromEntries(params.entries())
+}
+```
+
+Then, you can use this function within the `defineApp` function to save the parameters to the `ctx` object.
+
+```tsx title="worker.ts" {7}
+export type Context = {
+  params: Record<string, string>
+}
+
+export default defineApp<Context>([
+  async ({ ctx, env, request }) => {
+    ctx.params = getParams(request)
+  },
+  layout(Document, [
+    index([HomePage]),
+    ...
+  ])
+])
+```
+
+Now, the `ctx.params` object will be available within all of our route functions. For example:
+
+```tsx title="src/app/pages/HomePage.tsx"
+import { RouteContext } from "@redwoodjs/sdk/router";
+
+type Props = { ctx: RouteContext }
+
+export async function HomePage({ ctx }: Props) {
+  const archived = ctx.params.archived === 'true' ? true : false;
+  ...
+}
+```
+
+
+
+
+
 ### Redirect users between pages
 ### Handle 404 pages
 ### Determining the current route
