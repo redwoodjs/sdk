@@ -49,7 +49,7 @@ export function createShoppingListPrompt(mealPlan: any) {
 }
 
 export function createMealPlanPrompt(setup: any) {
-    return `You are a professional meal planning assistant. Generate a **7-day structured meal plan** for the following user:
+    return `You are a professional meal planning assistant. Generate a **3-day structured meal plan** for the following user:
 
     ### **User Profile**
     - **Age:** ${setup.age}

@@ -48,6 +48,9 @@ type MealPlanType = {
       }>;
     };
   }[];
+  summary?: {
+    description: string;
+  }; // Optional summary with description
 };
 
 type ShoppingListItem = {
@@ -441,7 +444,7 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
           </div>
         )}
 
-        {mealPlan && mealPlan.week && mealPlan.week.length === 7 && (
+        {mealPlan && mealPlan.week && mealPlan.week.length > 0 && (
           <div className="bg-white border border-gray-200 rounded-lg overflow-hidden">
             <Tabs defaultValue="0" value={activeDay} onValueChange={setActiveDay}>
               <TabsList className="w-full border-b border-gray-200 bg-gray-50 p-0 h-auto">
@@ -631,7 +634,7 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
             </Tabs>
             {mealPlan.summary && (  
               <div className="p-3 sm:p-6">
-                <p className="text-sm text-gray-600">{mealPlan.summary}</p>
+                <p className="text-sm text-gray-600">{mealPlan.summary.description}</p>
               </div>
             )}
           </div>
