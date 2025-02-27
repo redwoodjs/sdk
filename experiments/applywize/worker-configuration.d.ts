@@ -3,7 +3,9 @@
 interface Env {
 	SECRET_KEY: "secret";
 	APP_URL: "https://applywize.app";
-	SESSION_DO: DurableObjectNamespace<import("./src/worker").SessionDO>;
+	APP_NAME: "applywize";
+	RP_ID: "localhost";
+	SESSION_DURABLE_OBJECT: DurableObjectNamespace<import("./src/worker").SessionDurableObject>;
 	R2: R2Bucket;
 	DB: D1Database;
 	ASSETS: Fetcher;

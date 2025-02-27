@@ -6,11 +6,7 @@ import { ApplicationsTable } from "app/components/ApplicationsTable";
 import { db } from "@/db";
 import { RouteContext } from "@redwoodjs/sdk/router";
 
-export async function ListPage({ params }: RouteContext) {
-  console.log({ params });
-  const archived = !!params.archived;
-  console.log({ archived });
-
+export async function ListPage() {
   const applications = await db.application.findMany({
     select: {
       id: true,

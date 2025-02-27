@@ -1,0 +1,10 @@
+{
+  "workbench.colorCustomizations": {
+    "activityBar.background": "#27310A",
+    "titleBar.activeBackground": "#37450E",
+    "titleBar.activeForeground": "#F9FCEF"
+  },
+  "cSpell.words": [
+    "redwoodjs"
+  ]
+}

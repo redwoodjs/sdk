@@ -1,8 +1,6 @@
 import { Document } from 'app/Document';
 import { HomePage } from 'app/pages/HomePage';
-import { LoginPage } from 'app/pages/auth/LoginPage';
-import { SignupPage } from 'app/pages/auth/SignupPage';
-import { LogoutPage } from 'app/pages/auth/LogoutPage';
+import { authRoutes } from '@/app/pages/auth/routes';
 import { NewPage } from 'app/pages/applications/NewPage';
 import { ListPage } from 'app/pages/applications/ListPage';
 import { DetailPage } from 'app/pages/applications/DetailPage';
@@ -10,35 +8,49 @@ import { UpdatePage } from 'app/pages/applications/UpdatePage';
 import { SettingsPage } from 'app/pages/account/SettingsPage';
 import { defineApp } from '@redwoodjs/sdk/worker';
 import { index, layout, route, prefix } from '@redwoodjs/sdk/router';
-import { setupDb } from './db';
+import { sessions, setupSessionStore } from './session/store';
+import { Session } from './session/durableObject';
+import { db, setupDb } from './db';
+import { User } from '@prisma/client';
 
-export { SessionDO } from "./session";
-
-// Add this import
-import { handleAssets } from './assets';
+export { SessionDurableObject } from './session/durableObject';
 
 export type Context = {
-  // user: Awaited<ReturnType<typeof getUser>>;
+  session: Session | null;
+  user: User | null;
 }
 
 export default defineApp<Context>([
   async ({ ctx, env, request }) => {
-    // Try assets first
-    // const assetResponse = await handleAssets(request, env);
-    // if (assetResponse) return assetResponse;
-
     await setupDb(env)
-    // ctx.user = await getUser(request, env)
+    setupSessionStore(env);
+    ctx.session = await sessions.load(request);
+
+    if (ctx.session?.userId) {
+      ctx.user = await db.user.findUnique({
+        where: {
+          id: ctx.session.userId,
+        },
+      });
+    }
   },
-  layout(Document, [
-    index([HomePage]),
+  layout<Context>(Document, [
+    index([
+        // ({ ctx }) => {
+        //   if (!ctx.user) {
+        //     return new Response(null, {
+        //       status: 302,
+        //       headers: { Location: '/user/login' }
+        //     });
+        //   }
+        // },
+        HomePage,
+    ]),
     // auth
-    route('/login', LoginPage),
-    route('/signup', SignupPage),
-    route('/logout', LogoutPage),
+    prefix<Context>("/auth", authRoutes),
     // applications
-    prefix('/applications', [
-      route('/', ListPage),
+    route<Context>('/applications', ListPage),
+    prefix<Context>("/applications", [
       route('/new', NewPage),
       route('/update', UpdatePage),
       route('/:id', DetailPage),

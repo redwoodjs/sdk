@@ -53,12 +53,25 @@ model Contact {
   id        String    @id @default(uuid())
   firstName String
   lastName  String
-  email     String?
+  email     String
   role      String?
   companyId String?
   company   Company?  @relation(fields: [companyId], references: [id])
   createdAt DateTime  @default(now())
   updatedAt DateTime? @updatedAt
+}
+
+model Credential {
+  id           String   @id @default(uuid()) // Internal DB ID
+  userId       String   @unique // Each user has one discoverable credential
+  user         User     @relation(fields: [userId], references: [id])
+  createdAt    DateTime @default(now())
+  credentialId String   @unique // WebAuthn credential identifier
+  publicKey    Bytes
+  counter      Int      @default(0)
+
+  @@index([credentialId])
+  @@index([userId])
 }
 
 model User {
@@ -69,4 +82,5 @@ model User {
   createdAt          DateTime      @default(now())
   updatedAt          DateTime?     @updatedAt
   applications       Application[]
+  credentials        Credential[]
 }

@@ -24,13 +24,15 @@ binding = "R2"
 
 [durable_objects]
 bindings = [
-  { name = "SESSION_DO", class_name = "SessionDO" }
+  { name = "SESSION_DURABLE_OBJECT", class_name = "SessionDurableObject" }
 ]
 
 [[migrations]]
 tag = "v1"
-new_classes = [ "SessionDO" ]
+new_classes = [ "SessionDurableObject" ]
 
 [vars]
 SECRET_KEY = "secret"
 APP_URL="https://applywize.app"
+APP_NAME = "applywize"
+RP_ID = "localhost"
