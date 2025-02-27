@@ -286,50 +286,55 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
   return (
     <Layout ctx={ctx}>
       <div className="container mx-auto px-4 py-8">
-        <div className="flex justify-between items-center mb-6">
+        {/* Responsive header section */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 gap-4">
           <h1 className="text-2xl font-bold">Your 7-Day Meal Plan</h1>
-          <div className="flex gap-3">
+          <div className="flex flex-wrap gap-2 w-full sm:w-auto">
             {mealPlan && (
               <>
                 {!shoppingList ? (
                   <Button 
                     onClick={generateShoppingList} 
                     variant="outline"
-                    className="border-black text-black hover:bg-gray-100"
+                    className="border-black text-black hover:bg-gray-100 flex-1 sm:flex-none"
                     disabled={generatingList}
                   >
                     {generatingList ? (
                       <span className="flex items-center gap-2">
                         <Loader2 className="h-4 w-4 animate-spin" />
-                        Generating...
+                        <span className="sm:inline hidden">Generating...</span>
+                        <span className="sm:hidden inline">Loading...</span>
                       </span>
                     ) : (
                       <span className="flex items-center gap-2">
                         <ShoppingBag className="h-4 w-4" />
-                        Generate Shopping List
+                        <span className="sm:inline hidden">Generate Shopping List</span>
+                        <span className="sm:hidden inline">Shopping List</span>
                       </span>
                     )}
                   </Button>
                 ) : (
-                  <div className="flex gap-2">
+                  <div className="flex flex-wrap gap-2 w-full sm:w-auto">
                     <Button 
                       onClick={downloadShoppingList} 
                       variant="outline"
-                      className="border-black text-black hover:bg-gray-100"
+                      className="border-black text-black hover:bg-gray-100 flex-1 sm:flex-none"
                     >
                       <span className="flex items-center gap-2">
                         <Download className="h-4 w-4" />
-                        Download shopping list
+                        <span className="sm:inline hidden">Download shopping list</span>
+                        <span className="sm:hidden inline">Download</span>
                       </span>
                     </Button>
                     <Button 
                       onClick={shareToWhatsApp} 
                       variant="outline"
-                      className="border-black text-black hover:bg-gray-100"
+                      className="border-black text-black hover:bg-gray-100 flex-1 sm:flex-none"
                     >
                       <span className="flex items-center gap-2">
                         <Share2 className="h-4 w-4" />
-                        Share via WhatsApp
+                        <span className="sm:inline hidden">Share via WhatsApp</span>
+                        <span className="sm:hidden inline">Share</span>
                       </span>
                     </Button>
                   </div>
@@ -339,23 +344,24 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
             <Button 
               onClick={generateMealPlan} 
               variant="outline"
-              className="border-black text-black hover:bg-gray-100"
+              className="border-black text-black hover:bg-gray-100 flex-1 sm:flex-none"
               disabled={loading || (!canGeneratePlan)}
             >
               {loading ? (
                 <span className="flex items-center gap-2">
                   <Loader2 className="h-4 w-4 animate-spin" />
-                  Loading...
+                  <span>Loading...</span>
                 </span>
               ) : !canGeneratePlan && !mealPlan ? (
                 <span className="flex items-center gap-2">
                   <Lock className="h-4 w-4" />
-                  Available on Mondays
+                  <span className="sm:inline hidden">Available on Mondays</span>
+                  <span className="sm:hidden inline">Mondays Only</span>
                 </span>
               ) : (
                 <span className="flex items-center gap-2">
                   <RefreshCw className="h-4 w-4" />
-                  {mealPlan ? "Regenerate Plan" : "Generate Plan"}
+                  <span>{mealPlan ? "Regenerate Plan" : "Generate Plan"}</span>
                 </span>
               )}
             </Button>
@@ -417,7 +423,7 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
                     <TabsTrigger 
                       key={index}
                       value={index.toString()}
-                      className="flex-1 py-3 px-4 data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-black data-[state=active]:shadow-none rounded-none"
+                      className="flex-1 py-3 px-2 sm:px-4 data-[state=active]:bg-white data-[state=active]:border-b-2 data-[state=active]:border-black data-[state=active]:shadow-none rounded-none text-xs sm:text-sm"
                     >
                       {day.day}
                     </TabsTrigger>
@@ -427,89 +433,171 @@ export function MealPlanPage({ ctx }: { ctx: Context }) {
 
               {mealPlan.week.map((day, index) => (
                 <TabsContent key={index} value={index.toString()} className="p-0 m-0">
-                  <div className="p-6">
+                  <div className="p-3 sm:p-6">
                     <div className="flex justify-between items-center mb-4">
-                      <h2 className="text-xl font-semibold">{day.day}'s Meals</h2>
-                      <p className="text-sm font-medium bg-black text-white px-3 py-1 rounded">
+                      <h2 className="text-lg sm:text-xl font-semibold">{day.day}'s Meals</h2>
+                      <p className="text-xs sm:text-sm font-medium bg-black text-white px-2 sm:px-3 py-1 rounded">
                         {day.total_calories} calories
                       </p>
                     </div>
 
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead className="w-[150px]">Meal</TableHead>
-                          <TableHead>Description</TableHead>
-                          <TableHead>Ingredients</TableHead>
-                          <TableHead>Portion Size</TableHead>
-                          <TableHead className="text-right">Calories</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        <TableRow>
-                          <TableCell className="font-medium">
-                            <span className="flex items-center gap-2">
-                              <span className="text-lg">🥞</span> Breakfast
-                            </span>
-                          </TableCell>
-                          <TableCell>{day.meals.breakfast.meal}</TableCell>
-                          <TableCell className="text-sm text-gray-600">
-                            {day.meals.breakfast.ingredients.join(", ")}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {day.meals.breakfast.portion_size || "Standard serving"}
-                          </TableCell>
-                          <TableCell className="text-right">{day.meals.breakfast.calories}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell className="font-medium">
-                            <span className="flex items-center gap-2">
-                              <span className="text-lg">🍛</span> Lunch
-                            </span>
-                          </TableCell>
-                          <TableCell>{day.meals.lunch.meal}</TableCell>
-                          <TableCell className="text-sm text-gray-600">
-                            {day.meals.lunch.ingredients.join(", ")}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {day.meals.lunch.portion_size || "Standard serving"}
-                          </TableCell>
-                          <TableCell className="text-right">{day.meals.lunch.calories}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell className="font-medium">
-                            <span className="flex items-center gap-2">
-                              <span className="text-lg">🍽️</span> Dinner
-                            </span>
-                          </TableCell>
-                          <TableCell>{day.meals.dinner.meal}</TableCell>
-                          <TableCell className="text-sm text-gray-600">
-                            {day.meals.dinner.ingredients.join(", ")}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {day.meals.dinner.portion_size || "Standard serving"}
-                          </TableCell>
-                          <TableCell className="text-right">{day.meals.dinner.calories}</TableCell>
-                        </TableRow>
-                        <TableRow>
-                          <TableCell className="font-medium">
-                            <span className="flex items-center gap-2">
-                              <span className="text-lg">🍎</span> Snacks
-                            </span>
-                          </TableCell>
-                          <TableCell>{day.meals.snacks.map(snack => snack.meal).join(", ")}</TableCell>
-                          <TableCell className="text-sm text-gray-600">
-                            {day.meals.snacks.flatMap(snack => snack.ingredients).join(", ")}
-                          </TableCell>
-                          <TableCell className="text-sm">
-                            {day.meals.snacks.map(snack => snack.portion_size || "Standard serving").join("; ")}
-                          </TableCell>
-                          <TableCell className="text-right">
-                            {day.meals.snacks.reduce((total, snack) => total + snack.calories, 0)}
-                          </TableCell>
-                        </TableRow>
-                      </TableBody>
-                    </Table>
+                    {/* Desktop view - standard table */}
+                    <div className="hidden sm:block">
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead className="w-[150px]">Meal</TableHead>
+                            <TableHead>Description</TableHead>
+                            <TableHead>Ingredients</TableHead>
+                            <TableHead>Portion Size</TableHead>
+                            <TableHead className="text-right">Calories</TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          <TableRow>
+                            <TableCell className="font-medium">
+                              <span className="flex items-center gap-2">
+                                <span className="text-lg">🥞</span> Breakfast
+                              </span>
+                            </TableCell>
+                            <TableCell>{day.meals.breakfast.meal}</TableCell>
+                            <TableCell className="text-sm text-gray-600">
+                              {day.meals.breakfast.ingredients.join(", ")}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {day.meals.breakfast.portion_size || "Standard serving"}
+                            </TableCell>
+                            <TableCell className="text-right">{day.meals.breakfast.calories}</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">
+                              <span className="flex items-center gap-2">
+                                <span className="text-lg">🍛</span> Lunch
+                              </span>
+                            </TableCell>
+                            <TableCell>{day.meals.lunch.meal}</TableCell>
+                            <TableCell className="text-sm text-gray-600">
+                              {day.meals.lunch.ingredients.join(", ")}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {day.meals.lunch.portion_size || "Standard serving"}
+                            </TableCell>
+                            <TableCell className="text-right">{day.meals.lunch.calories}</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">
+                              <span className="flex items-center gap-2">
+                                <span className="text-lg">🍽️</span> Dinner
+                              </span>
+                            </TableCell>
+                            <TableCell>{day.meals.dinner.meal}</TableCell>
+                            <TableCell className="text-sm text-gray-600">
+                              {day.meals.dinner.ingredients.join(", ")}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {day.meals.dinner.portion_size || "Standard serving"}
+                            </TableCell>
+                            <TableCell className="text-right">{day.meals.dinner.calories}</TableCell>
+                          </TableRow>
+                          <TableRow>
+                            <TableCell className="font-medium">
+                              <span className="flex items-center gap-2">
+                                <span className="text-lg">🍎</span> Snacks
+                              </span>
+                            </TableCell>
+                            <TableCell>{day.meals.snacks.map(snack => snack.meal).join(", ")}</TableCell>
+                            <TableCell className="text-sm text-gray-600">
+                              {day.meals.snacks.flatMap(snack => snack.ingredients).join(", ")}
+                            </TableCell>
+                            <TableCell className="text-sm">
+                              {day.meals.snacks.map(snack => snack.portion_size || "Standard serving").join("; ")}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              {day.meals.snacks.reduce((total, snack) => total + snack.calories, 0)}
+                            </TableCell>
+                          </TableRow>
+                        </TableBody>
+                      </Table>
+                    </div>
+
+                    {/* Mobile view - card-based layout */}
+                    <div className="sm:hidden space-y-4">
+                      {/* Breakfast Card */}
+                      <div className="border rounded-lg p-3">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="flex items-center gap-2 font-medium">
+                            <span className="text-lg">🥞</span> Breakfast
+                          </span>
+                          <span className="text-xs font-medium bg-black text-white px-2 py-1 rounded">
+                            {day.meals.breakfast.calories} cal
+                          </span>
+                        </div>
+                        <h3 className="text-sm font-medium mb-1">{day.meals.breakfast.meal}</h3>
+                        <p className="text-xs text-gray-600 mb-1">
+                          <span className="font-medium">Ingredients:</span> {day.meals.breakfast.ingredients.join(", ")}
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          <span className="font-medium">Portion:</span> {day.meals.breakfast.portion_size || "Standard serving"}
+                        </p>
+                      </div>
+
+                      {/* Lunch Card */}
+                      <div className="border rounded-lg p-3">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="flex items-center gap-2 font-medium">
+                            <span className="text-lg">🍛</span> Lunch
+                          </span>
+                          <span className="text-xs font-medium bg-black text-white px-2 py-1 rounded">
+                            {day.meals.lunch.calories} cal
+                          </span>
+                        </div>
+                        <h3 className="text-sm font-medium mb-1">{day.meals.lunch.meal}</h3>
+                        <p className="text-xs text-gray-600 mb-1">
+                          <span className="font-medium">Ingredients:</span> {day.meals.lunch.ingredients.join(", ")}
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          <span className="font-medium">Portion:</span> {day.meals.lunch.portion_size || "Standard serving"}
+                        </p>
+                      </div>
+
+                      {/* Dinner Card */}
+                      <div className="border rounded-lg p-3">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="flex items-center gap-2 font-medium">
+                            <span className="text-lg">🍽️</span> Dinner
+                          </span>
+                          <span className="text-xs font-medium bg-black text-white px-2 py-1 rounded">
+                            {day.meals.dinner.calories} cal
+                          </span>
+                        </div>
+                        <h3 className="text-sm font-medium mb-1">{day.meals.dinner.meal}</h3>
+                        <p className="text-xs text-gray-600 mb-1">
+                          <span className="font-medium">Ingredients:</span> {day.meals.dinner.ingredients.join(", ")}
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          <span className="font-medium">Portion:</span> {day.meals.dinner.portion_size || "Standard serving"}
+                        </p>
+                      </div>
+
+                      {/* Snacks Card */}
+                      <div className="border rounded-lg p-3">
+                        <div className="flex justify-between items-center mb-2">
+                          <span className="flex items-center gap-2 font-medium">
+                            <span className="text-lg">🍎</span> Snacks
+                          </span>
+                          <span className="text-xs font-medium bg-black text-white px-2 py-1 rounded">
+                            {day.meals.snacks.reduce((total, snack) => total + snack.calories, 0)} cal
+                          </span>
+                        </div>
+                        <h3 className="text-sm font-medium mb-1">{day.meals.snacks.map(snack => snack.meal).join(", ")}</h3>
+                        <p className="text-xs text-gray-600 mb-1">
+                          <span className="font-medium">Ingredients:</span> {day.meals.snacks.flatMap(snack => snack.ingredients).join(", ")}
+                        </p>
+                        <p className="text-xs text-gray-600">
+                          <span className="font-medium">Portion:</span> {day.meals.snacks.map(snack => snack.portion_size || "Standard serving").join("; ")}
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </TabsContent>
               ))}
