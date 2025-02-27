@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "@/db";
-import { TApplicationFormData } from "./component/AddApplicationForm";
+import { TApplicationFormData } from "./components/AddApplicationForm";
 
 export async function createContact(formData: FormData) {
   const firstName = formData.get("firstName") as string;

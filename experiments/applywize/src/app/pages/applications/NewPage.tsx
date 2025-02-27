@@ -8,7 +8,7 @@ import {
   BreadcrumbSeparator,
 } from "app/components/ui/breadcrumb"
 import { db } from "@/db";
-import { AddApplicationForm } from "./component/AddApplicationForm";
+import { AddApplicationForm } from "./components/AddApplicationForm";
 
 export async function NewPage() {
   // get all the application statuses
