@@ -11,6 +11,7 @@ import { setupRoutes } from './app/pages/setup/routes';
 import { planRoutes } from './app/pages/plan/routes';
 import { apiRoutes } from './app/pages/api/routes';
 export { SessionDurableObject } from './session/durableObject';
+import { QueueBatch } from '@cloudflare/workers-types';
 
 export type Context = {
   session: Session | null;
@@ -19,7 +20,7 @@ export type Context = {
   debugMode: boolean;
 }
 
-export default defineApp<Context>([
+const app = defineApp<Context>([
   async ({ env, ctx, request }) => {
     setupDb(env);
     setupSessionStore(env);
@@ -65,3 +66,33 @@ export default defineApp<Context>([
     prefix<Context>("/api", apiRoutes),
   ])
 ])
+
+export default {
+  fetch: app.fetch,
+  async queue(batch: QueueBatch<any>, env: Env) {
+    for (const message of batch.messages) {
+      if (message.body.action === 'createMealPlan') {
+        const { userId } = message.body;
+        const user = await db.user.findUnique({
+          where: { id: userId },    
+        });
+        if (user) {
+          const mealPlan = await createMealPlan(env.OPENAI_API_KEY, userId, env.DEBUG_MODE);
+        } else {
+          console.error(`User not found for userId: ${userId}`);
+        }
+      }
+      if (message.body.action === 'createShoppingList') {
+        const { userId } = message.body;
+        const user = await db.user.findUnique({
+          where: { id: userId },
+        });
+        if (user) {
+          const shoppingList = await createShoppingList(env.OPENAI_API_KEY, userId, env.DEBUG_MODE);
+        } else {
+          console.error(`User not found for userId: ${userId}`);
+        }
+      }
+    }
+  }
+} satisfies ExportHandler<Env>;
