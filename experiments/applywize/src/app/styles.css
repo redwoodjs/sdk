@@ -157,13 +157,30 @@ textarea {
   @apply h-[80px] py-3;
 }
 
+svg {
+  @apply fill-current;
+}
+
+.center {
+  @apply flex items-center justify-center;
+}
+
+.page-wrapper {
+  @apply bg-bg min-h-screen min-w-screen p-12;
+}
+
 .label-inside {
   @apply relative flex border-1 outline-1 outline-white border-border rounded-md mb-2 h-9;
   label { @apply text-sm font-medium px-3 bg-[#f4f4f5] rounded-sm flex items-center justify-center my-1 ml-1; }
-  input[type="text"] { @apply border-none flex-1 my-1 border-none outline-none focus:border-none focus:outline-none h-auto; }
+  input[type="text"] { @apply border-none flex-1 my-1 outline-none focus:border-none focus:outline-none h-auto; }
   &:has(input[type="text"]:focus-visible) {
     @apply outline-2 outline-[#919191];
   }
+}
+
+button {
+  @apply { @apply cursor-pointer; }
+  &.primary { @apply font-display font-bold text-black bg-primary rounded-sm h-9 flex items-center justify-center w-full; }
 }
 
 .input-description {
@@ -189,4 +206,13 @@ nav {
 /* table */
 th {
   @apply text-zinc-500 font-bold font-display
+}
+
+
+/* ------ PAGE SPECIFIC ----------------------------------------------------- */
+/* login */
+.login-form {
+  p { @apply text-sm text-zinc-500 text-center;
+    a { @apply text-zinc-500 underline hover:text-black whitespace-nowrap; }
+  }
 }

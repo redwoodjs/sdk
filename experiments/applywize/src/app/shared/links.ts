@@ -5,6 +5,8 @@ export const link = defineLinks([
   '/login',
   '/signup',
   '/logout',
+  '/terms',
+  '/privacy',
   '/applications',
   '/applications/new',
   '/applications/update',
