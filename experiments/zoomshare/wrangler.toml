@@ -35,6 +35,6 @@ binding = "R2"
 queue = "zoomshare-recording"
 binding = "QUEUE"
 
- [[queues.consumers]]
+[[queues.consumers]]
 queue = "zoomshare-recording"
  

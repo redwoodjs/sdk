@@ -23,14 +23,13 @@ const testPayload = JSON.parse("{\"payload\":{\"account_id\":\"bxTu88fMRR6lJDWVE
 
 
 
-async function validateZoomWebhook({ request, env }) {
-  
+async function validateZoomWebhook({ request, env }: { request: Request; env: Env }) {
 
   if (request.method !== "POST" && request.headers.get("Content-Type") !== "application/json") {
     return
   }
 
-  const body = await request.json();
+  const body = await request.json<{ event: string; payload: { plainToken: string } }>();
   if (body?.event === "endpoint.url_validation") {
     const encryptedToken = crypto
       .createHmac("sha256", env.ZOOM_SECRET_TOKEN)
@@ -57,19 +56,23 @@ const app = defineApp<Context>([
   async ({ env, ctx, request }) => {
     setupDb(env);
     setupSessionStore(env);
-    // ctx.session = await sessions.load(request);
+    try {
+      ctx.session = await sessions.load(request);
+    } catch (error) {
+      console.error(error)
+    }
 
-    // if (ctx.session?.userId) {
-    //   ctx.user = await db.user.findUnique({
-    //     where: {
-    //       id: ctx.session.userId,
-    //     },
-    //   });
-    // }
+    if (ctx.session?.userId) {
+      ctx.user = await db.user.findUnique({
+        where: {
+          id: ctx.session.userId,
+        },
+      });
+    }
   },
   layout(Document, [
     index([Home]),
-    prefix("/user", authRoutes),
+  //   prefix("/user", authRoutes),
   ]),
 
   route("/webhook/meeting.recording.completed", [
