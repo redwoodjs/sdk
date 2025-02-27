@@ -94,11 +94,11 @@ export async function createShoppingList(apiKey: string, mealPlan: any, userId: 
   }
 }
 
-export async function createMealPlan(apiKey: string, userId: string) {
+export async function createMealPlan(apiKey: string, userId: string, debugMode: boolean) {
   const setup = await db.setup.findUnique({
     where: { userId }
   });
-  const prompt = createMealPlanPrompt(setup);
+  const prompt = createMealPlanPrompt(debugMode, setup);
 
   const response = await fetch("https://api.openai.com/v1/chat/completions", {
     method: "POST",

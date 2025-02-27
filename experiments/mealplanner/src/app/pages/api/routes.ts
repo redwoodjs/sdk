@@ -9,7 +9,7 @@ export const apiRoutes: RouteDefinition<Context>[] = [
     if (!userId) {
       return new Response('Unauthorized', { status: 401 });
     }
-    const mealPlan = await createMealPlan(apiKey, userId);
+    const mealPlan = await createMealPlan(apiKey, userId, ctx.debugMode);
     return new Response(JSON.stringify(mealPlan), { status: 200 });
   }),
   route('/createShoppingList', async ({ ctx, env }) => {
