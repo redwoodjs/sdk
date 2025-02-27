@@ -3,7 +3,7 @@ import { layout, prefix, route } from "@redwoodjs/sdk/router";
 import { Document } from "@/app/Document";
 import { authRoutes } from "@/app/pages/auth/routes";
 import { Session } from "./session/durableObject";
-import { db, setupDb } from "./db";
+import { db, setupDb } from "@/db";
 import { User } from "@prisma/client";
 export { SessionDurableObject } from "./session/durableObject";
 
@@ -39,7 +39,7 @@ async function validateZoomWebhook(body: any, env: Env) {
 
 const app = defineApp<Context>([
   async ({ env, ctx, request }) => {
-    setupDb(env);
+    await setupDb(env);
   },
 
   layout(Document, [
@@ -58,7 +58,7 @@ const app = defineApp<Context>([
         ) {
           return new Response("Invalid request", { status: 400 });
         }
-        
+
         const body = await request.json<{
           event: string;
           payload: {
@@ -86,6 +86,9 @@ const app = defineApp<Context>([
         }>();
 
         validateZoomWebhook(body, env);
+        console.log('-'.repeat(80))
+        console.log(JSON.stringify(body));
+        console.log('-'.repeat(80))
 
         const data = {
           id: body.payload.object.uuid,
@@ -93,7 +96,7 @@ const app = defineApp<Context>([
           startTime: body.payload.object.start_time,
           duration: body.payload.object.duration,
           shareUrl: body.payload.object.share_url,
-          rawPayload: "// todo",
+          rawPayload: '// todo',
         };
         await db.meeting.upsert({
           create: data,
@@ -117,48 +120,54 @@ const app = defineApp<Context>([
 export default {
   fetch: app.fetch,
   async queue(batch, env) {
+    await setupDb(env);
     for (const message of batch.messages) {
       if (message.body.action === "download") {
-        let meetingId: string | null = null;
-        console.log("hello....");
-        for (const recording of message.body.recordings) {
-          meetingId = recording.meeting_id;
+        
+
+        const recordings = message.body.recordings;
+        console.log(`${recordings.length} recordings to download`);
+        const downloadToken = message.body.downloadToken;
+        
+        for (const recording of recordings) {
+        
           const filename = `recording-${recording.meeting_id}-${recording.id}.${recording.file_extension.toLowerCase()}`;
-          console.log(filename);
-          const f = await fetch(recording.download_url, {
+          console.log('downloading', filename);
+          const downloadResponse = await fetch(recording.download_url, {
             headers: {
               "Content-Type": "application/json",
-              Authorization: `Bearer ${message.body.downloadToken}`,
+              Authorization: `Bearer ${downloadToken}`,
             },
           });
-          // TODO: (peterp, 2025-02-27): We need to ensure that we put in the correct mime type?
-          await env.R2.put(filename, f.body);
-          console.log("saved to r2");
+          
+          console.log('uploading', filename);
+          await env.R2.put(filename, downloadResponse.body);
+
           const data = {
             id: recording.id,
             meetingId: recording.meeting_id,
-            type: recording.file_type,
+            type: recording.recording_type,
             extension: recording.file_extension.toLowerCase(),
             size: recording.file_size,
             startTime: recording.recording_start,
             endTime: recording.recording_end,
             downloadUrl: recording.download_url,
           };
-          console.log("saving to db");
           await db.recording.upsert({
             create: data,
             update: data,
             where: {
-              id: data.id,
+              id: recording.id
             },
           });
-          console.log("saved to db");
+
+          console.log(`saved ${recording.id} to db`);
         }
       }
 
-      if (message.body.action === "email") {
-        // TODO (peterp, 2025-02-27): Send an email to the user.
-      }
+      // if (message.body.action === "email") {
+      //   // TODO (peterp, 2025-02-27): Send an email to the user.
+      // }
     }
   },
 } satisfies ExportedHandler<Env>;
