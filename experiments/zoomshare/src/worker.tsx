@@ -15,24 +15,8 @@ export type Context = {
   user: User;
 };
 
-async function validateZoomWebhook({
-  request,
-  env,
-}: {
-  request: Request;
-  env: Env;
-}) {
-  if (
-    request.method !== "POST" &&
-    request.headers.get("Content-Type") !== "application/json"
-  ) {
-    return;
-  }
-
-  const body = await request.json<{
-    event: string;
-    payload: { plainToken: string };
-  }>();
+async function validateZoomWebhook(body: any, env: Env) {
+  
   if (body?.event === "endpoint.url_validation") {
     const encryptedToken = crypto
       .createHmac("sha256", env.ZOOM_SECRET_TOKEN)
@@ -66,8 +50,15 @@ const app = defineApp<Context>([
   ]),
   prefix("/webhook", [
     route("/meeting.recording.completed", [
-      validateZoomWebhook,
       async function ({ request, env, ctx }) {
+        
+        if (
+          request.method !== "POST" &&
+          request.headers.get("Content-Type") !== "application/json"
+        ) {
+          return new Response("Invalid request", { status: 400 });
+        }
+        
         const body = await request.json<{
           event: string;
           payload: {
@@ -93,6 +84,8 @@ const app = defineApp<Context>([
           };
           download_token: string;
         }>();
+
+        validateZoomWebhook(body, env);
 
         const data = {
           id: body.payload.object.uuid,

@@ -28,7 +28,7 @@ new_classes = [ "SessionDurableObject" ]
 [[d1_databases]]
 binding = "DB"
 database_name = "zoomshare"
-database_id = "946168c1-a860-48c4-babc-640765f5f709"
+database_id = "8d37b90f-8116-4d30-8630-7d5b5ce70ba8"
 
 [[r2_buckets]]
 bucket_name = "zoomshare"
