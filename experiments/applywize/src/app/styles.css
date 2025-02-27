@@ -170,7 +170,7 @@ svg {
 }
 
 .label-inside {
-  @apply relative flex border-1 outline-1 outline-white border-border rounded-md mb-2 h-9;
+  @apply relative flex border outline-1 outline-white border-border rounded-md mb-2 h-9;
   label { @apply text-sm font-medium px-3 bg-[#f4f4f5] rounded-sm flex items-center justify-center my-1 ml-1; }
   input[type="text"] { @apply border-none flex-1 my-1 outline-none focus:border-none focus:outline-none h-auto; }
   &:has(input[type="text"]:focus-visible) {
@@ -179,7 +179,7 @@ svg {
 }
 
 button {
-  @apply { @apply cursor-pointer; }
+  @apply cursor-pointer;
   &.primary { @apply font-display font-bold text-black bg-primary rounded-sm h-9 flex items-center justify-center w-full; }
 }
 
@@ -196,7 +196,7 @@ button {
 }
 
 .box {
-  @apply border-1 border-border rounded-md p-6 mb-5;
+  @apply border border-border rounded-md p-6 mb-5;
 }
 
 nav {

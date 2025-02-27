@@ -2,7 +2,6 @@ import { User } from "@prisma/client";
 import { Header } from "app/components/Header";
 import { Icon } from "app/components/Icon";
 import { db } from "@/db";
-
 export async function HomePage() {
 
   const users = await db.user.findMany({

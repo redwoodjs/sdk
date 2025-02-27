@@ -6,7 +6,11 @@ import { ApplicationsTable } from "app/components/ApplicationsTable";
 import { db } from "@/db";
 import { RouteContext } from "@redwoodjs/sdk/router";
 
-export async function ListPage() {
+type Props = { ctx: RouteContext }
+
+export async function ListPage({ ctx }: Props) {
+  const archived = ctx.params.archived === 'true' ? true : false;
+
   const applications = await db.application.findMany({
     select: {
       id: true,
@@ -40,10 +44,9 @@ export async function ListPage() {
     },
     where: {
       userId: "1",
-      archived: false
+      archived: archived
     }
   });
-  console.log({ applications });
 
   return (
     <InteriorLayout>
@@ -65,20 +68,28 @@ export async function ListPage() {
         </div>
 
       <footer className="grid grid-cols-3 px-page-side py-10">
-        <div>
-          <Button variant="secondary">
-            <a href={link("/applications")} className="flex items-center gap-2">
-              <Icon id="archive" size={16} />
-              Archived
-            </a>
+          <div>
+            {archived ? (
+            <Button variant="secondary">
+              <a href={`${link("/applications")}`} className="flex items-center gap-2">
+                Active
+              </a>
           </Button>
+            ) : (
+            <Button variant="secondary">
+              <a href={`${link("/applications")}?archived=true`} className="flex items-center gap-2">
+                <Icon id="archive" size={16} />
+                Archived
+              </a>
+          </Button>
+          )}
         </div>
 
         <div>
          {/* TODO: Pagination - currently breaking the page */}
         </div>
 
-        <div className="flex justify-end">
+          <div className="flex justify-end">
             <Button><a href={link("/applications/new")} className="flex items-center gap-2"><Icon id="plus" size={16} /> New Application</a></Button>
         </div>
       </footer>
