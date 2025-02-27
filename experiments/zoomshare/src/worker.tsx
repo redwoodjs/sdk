@@ -1,17 +1,15 @@
 import { defineApp } from "@redwoodjs/sdk/worker";
 import { index, layout, prefix, route } from "@redwoodjs/sdk/router";
 import { Document } from "@/app/Document";
-import { Home } from "@/app/pages/Home";
+import { Home } from "@/app/pages/meetings/MeetingList";
 import { authRoutes } from "@/app/pages/auth/routes";
-import { sessions, setupSessionStore } from "./session/store";
 import { Session } from "./session/durableObject";
 import { db, setupDb } from "./db";
 import { User } from "@prisma/client";
-import { InputJsonValue, JsonValue } from "@prisma/client/runtime/library";
 export { SessionDurableObject } from "./session/durableObject";
 
 import crypto from "node:crypto";
-import { createDestinationAddress } from "./email";
+import { meetingRoutes } from "./app/pages/meetings/routes";
 
 export type Context = {
   session: Session | null;
@@ -64,11 +62,13 @@ const app = defineApp<Context>([
   async ({ env, ctx, request }) => {
     setupDb(env);
   },
+  
   layout(Document, [
-    index([Home]),
-    //   prefix("/user", authRoutes),
+    route('/', function() {
+      return new Response('Hello World')
+    }),
+    prefix("/meetings", meetingRoutes),
   ]),
-
   prefix("/webhook", [
     route("/meeting.recording.completed", [
       // validateZoomWebhook,
