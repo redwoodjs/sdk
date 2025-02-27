@@ -12,6 +12,9 @@ enabled = true
 bindings = [
   { name = "SESSION_DURABLE_OBJECT", class_name = "SessionDurableObject" }
 ]
+send_email = [
+  { name = "EMAIL", destination_address = "peter@redwoodjs.com" },
+]
 
 [vars]
 SECRET_KEY = "_"
@@ -38,3 +41,4 @@ binding = "QUEUE"
 [[queues.consumers]]
 queue = "zoomshare-recording"
  
+

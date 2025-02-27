@@ -11,6 +11,7 @@ import { InputJsonValue, JsonValue } from "@prisma/client/runtime/library";
 export { SessionDurableObject } from "./session/durableObject";
 
 import crypto from "node:crypto";
+import { createDestinationAddress } from "./email";
 
 export type Context = {
   session: Session | null;
@@ -62,21 +63,6 @@ async function validateZoomWebhook({
 const app = defineApp<Context>([
   async ({ env, ctx, request }) => {
     setupDb(env);
-    setupSessionStore(env);
-    try {
-      ctx.session = await sessions.load(request);
-    } catch (error) {
-      // no-op
-    }
-
-    ctx.user = { id: "1", username: "test" };
-    // if (ctx.session?.userId) {
-    //   ctx.user = await db.user.findUnique({
-    //     where: {
-    //       id: ctx.session.userId,
-    //     },
-    //   });
-    // }
   },
   layout(Document, [
     index([Home]),
@@ -86,39 +72,29 @@ const app = defineApp<Context>([
   prefix("/webhook", [
     route("/meeting.recording.completed", [
       // validateZoomWebhook,
-      async function ({ env, ctx }) {
-        // create an entry in the database for this recording
-
-
+      async function ({ request, env, ctx }) {
         const data = {
           id: testPayload.payload.object.uuid,
           topic: testPayload.payload.object.topic,
           startTime: testPayload.payload.object.start_time,
           duration: testPayload.payload.object.duration,
           shareUrl: testPayload.payload.object.share_url,
-          rawPayload: JSON.stringify(testPayload),
+          rawPayload: "// todo",
         }
-
-        await db.meeting.create({
-          data,
+        await db.meeting.upsert({
+          create: data,
+          update: data,
+          where: {
+            id: data.id,
+          },
         });
-
-        // await db.meeting.upsert({
-        //   create: data,
-        //   update: data,
-        //   where: {
-        //     id: data.id,
-        //   },
-        // });
-
-        const message = {
+        await env.QUEUE.send({
           version: "2025-02-26",
           action: "download",
           recordings: testPayload.payload.object.recording_files,
           downloadToken: testPayload.download_token,
-        };
-        // await env.QUEUE.send(message);
-        return new Response('', { status: 200 });
+        });
+        return new Response('OK', { status: 200 });
       },
     ]),
   ]),
@@ -127,11 +103,16 @@ const app = defineApp<Context>([
 export default {
   fetch: app.fetch,
   async queue(batch, env) {
+
     for (const message of batch.messages) {
+      
       if (message.body.action === "download") {
+        let meetingId: string | null = null;
+        console.log('hello....')
         for (const recording of message.body.recordings) {
+          meetingId = recording.meeting_id;
           const filename = `recording-${recording.meeting_id}-${recording.id}.${recording.file_extension.toLowerCase()}`;
-          console.log(filename);
+          console.log(filename)
           const f = await fetch(recording.download_url, {
             headers: {
               "Content-Type": "application/json",
@@ -139,9 +120,31 @@ export default {
             },
           });
           await env.R2.put(filename, f.body);
-          // store this information in the database
+          console.log('saved to r2')
+          const data = {
+            id: recording.id,
+            meetingId: recording.meeting_id,
+            type: recording.file_type,
+            extension: recording.file_extension.toLowerCase(),
+            size: recording.file_size,
+            startTime: recording.recording_start,
+            endTime: recording.recording_end,
+            downloadUrl: recording.download_url,
+          }
+          console.log('saving to db')
+          await db.recording.upsert({
+            create: data,
+            update: data,
+            where: {
+              id: data.id,
+            },
+          });
+          console.log('saved to db')
         }
-        // create another queue item so that we can email the user.
+      }
+
+      if (message.body.action === "email") {
+        // TODO (peterp, 2025-02-27): Send an email to the user.
       }
     }
   },
