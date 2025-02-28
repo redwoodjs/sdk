@@ -1,0 +1,44 @@
+#:schema node_modules/wrangler/config-schema.json
+name = "zoomshare"
+main = "src/worker.tsx"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+assets = { binding = "ASSETS" }
+
+[observability]
+enabled = true
+
+[durable_objects]
+bindings = [
+  { name = "SESSION_DURABLE_OBJECT", class_name = "SessionDurableObject" }
+]
+send_email = [
+  { name = "EMAIL", destination_address = "peter@redwoodjs.com" },
+]
+
+[vars]
+SECRET_KEY = "_"
+APP_NAME = "zoomshare"
+RP_ID = "localhost"
+
+[[migrations]]
+tag = "v1"
+new_classes = [ "SessionDurableObject" ]
+
+[[d1_databases]]
+binding = "DB"
+database_name = "zoomshare"
+database_id = "8d37b90f-8116-4d30-8630-7d5b5ce70ba8"
+
+[[r2_buckets]]
+bucket_name = "zoomshare"
+binding = "R2"
+
+[[queues.producers]]
+queue = "zoomshare-recording"
+binding = "QUEUE"
+
+[[queues.consumers]]
+queue = "zoomshare-recording"
+ 
+
