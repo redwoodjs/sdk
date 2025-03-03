@@ -31,7 +31,7 @@
   "dependencies": {
     "@prisma/adapter-d1": "^6.3.1",
     "@prisma/client": "^6.3.1",
-    "@redwoodjs/sdk": "workspace:*",
+    "redwoodsdk": "0.0.1",
     "prisma": "^6.3.1",
     "react": "19.0.0-rc-f2df5694-20240916",
     "react-dom": "19.0.0-rc-f2df5694-20240916",

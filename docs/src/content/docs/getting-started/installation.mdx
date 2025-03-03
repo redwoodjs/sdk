@@ -1,24 +1,20 @@
 ---
 title: Installation
-description: Get started with Redwood SDK by installing the framework and creating your first application.
+description: Zero to first launch
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 <Aside type="note" title="Prerequisites">
-- Redwood requires [Node.js](https://nodejs.org/en) (v22.x or later)
+- Redwood requires [Node.js](https://nodejs.org/en)
 - [Cloudflare Account](https://www.cloudflare.com/)
 </Aside>
 
-This is the easiest way to install the RedwoodSDK package. However, we've created a few [starter kits](/reference/starters/minimal) that are pre-configured for different use cases and make this process even easier.
-
-{/* TODO: This will need to be updated - We'll be using Vite Community Templates: https://vite.dev/guide/#community-templates */}
+{/* TODO: Create a Vite Community Template */}
 ```bash frame="none"
-npx create-redwood@latest
+npx degit redwoodjs/sdk/starters/passkey-auth#main <project-name>
 ```
-
-Move into that directory, install the dependencies, and start the development server:
 
 <Tabs>
   <TabItem label="pnpm">
