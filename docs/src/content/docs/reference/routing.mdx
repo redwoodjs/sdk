@@ -14,8 +14,8 @@ Routes are registered in `defineApp`, where incoming request URLs are matched to
   title="src/worker.tsx" 
   mark={[5,6, 7]}
   code={`\
-import { defineApp } from '@redwoodjs/sdk/worker'
-import { route } from '@redwoodjs/sdk/router'
+import { defineApp } from 'redwood-sdk/worker'
+import { route } from 'redwood-sdk/router'
 
 export default defineApp({
     route('/', function() {
@@ -48,7 +48,7 @@ Here's a basic example:
 <Code
   language="tsx"
   code={`\
-import { route } from "@redwoodjs/sdk/router";
+import { route } from "redwood-sdk/router";
 
 route("/", function ({ request, params, env, ctx }) {
   return new Response("Hello, world!", { status: 200 });
@@ -75,8 +75,8 @@ Here's an example:
 <Code
   language="tsx"
   code={`\
-import { defineApp } from "@redwoodjs/sdk/worker";
-import { route } from "@redwoodjs/sdk/router";
+import { defineApp } from "redwood-sdk/worker";
+import { route } from "redwood-sdk/router";
 
 export default defineApp([
   route("/user/settings", [
@@ -151,8 +151,8 @@ By default, all components use the `"use server"` directive. For interactive com
   language="tsx"
   title="src/worker.tsx"
   code={`\
-import { defineApp } from "@redwoodjs/sdk/worker";
-import { route } from "@redwoodjs/sdk/router";
+import { defineApp } from "redwood-sdk/worker";
+import { route } from "redwood-sdk/router";
 
 function Homepage() {
   return <div>Hello, world! I'm a React Server Component!</div>;
@@ -176,8 +176,8 @@ By default, RedwoodSDK only renders your component's HTML without `<html>`, `<he
   language="tsx"
   title="src/worker.tsx"
   code={`\
-import { defineApp } from "@redwoodjs/sdk/worker";
-import { route, layout } from "@redwoodjs/sdk/router";
+import { defineApp } from "redwood-sdk/worker";
+import { route, layout } from "redwood-sdk/router";
 
 function Document({ children }) {
   return (
@@ -206,7 +206,7 @@ To enable client-side hydration:
   language="tsx"
   title="src/client.tsx"
   code={`\
-import { initClient } from "@redwoodjs/sdk/client";
+import { initClient } from "redwood-sdk/client";
 
 initClient();`} />
 
@@ -240,8 +240,8 @@ Here's an example using both helpers:
 <Code
   language="tsx"
   code={`\
-import { defineApp } from "@redwoodjs/sdk/worker";
-import { index, layout, prefix } from "@redwoodjs/sdk/router";
+import { defineApp } from "redwood-sdk/worker";
+import { index, layout, prefix } from "redwood-sdk/router";
 import { authRoutes } from 'src/pages/auth/routes';
 import { invoiceRoutes } from 'src/pages/invoice/routes';
 import HomePage from 'src/pages/Home/HomePage';

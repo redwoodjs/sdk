@@ -1,4 +1,4 @@
-import { route } from "@redwoodjs/sdk/router";
+import { route } from "redwood-sdk/router";
 import { MeetingList } from "./MeetingList";
 import { MeetingDetail } from "./MeetingDetail";
 import { db } from "@/db";

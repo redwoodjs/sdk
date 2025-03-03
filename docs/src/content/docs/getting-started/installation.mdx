@@ -1,45 +1,50 @@
 ---
 title: Installation
-description: Zero to first launch
+description: Zero to request/ response
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 import { Tabs, TabItem } from '@astrojs/starlight/components';
 
 <Aside type="note" title="Prerequisites">
-- Redwood requires [Node.js](https://nodejs.org/en)
+- [Node.js](https://nodejs.org/en)
 - [Cloudflare Account](https://www.cloudflare.com/)
 </Aside>
 
 {/* TODO: Create a Vite Community Template */}
 ```bash frame="none"
 npx degit redwoodjs/sdk/starters/passkey-auth#main <project-name>
+cd <project-name>
 ```
 
 <Tabs>
   <TabItem label="pnpm">
     ```bash frame="none"
-    cd my-app
     pnpm install
     pnpm dev
     ```
   </TabItem>
   <TabItem label="npm">
     ```bash frame="none"
-    cd my-app
     npm install
     npm run dev
     ```
   </TabItem>
   <TabItem label="yarn">
     ```bash frame="none"
-    cd my-app
     yarn install
     yarn dev
     ```
   </TabItem>
 </Tabs>
 
-Now, you can open your browser to http://localhost:1234 where you'll see the Redwood SDK Welcome Page.
+Now, you can open your browser to see the Redwood SDK Welcome Page.
 
 ![Hello World](./images/hello-world.png)
+
+## Manual Installation
+
+```bash frame="none"
+npm init <project-name>
+cd <project-name>
+```

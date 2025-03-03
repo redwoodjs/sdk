@@ -2,7 +2,7 @@
 import { generateRegistrationOptions, generateAuthenticationOptions, verifyRegistrationResponse, verifyAuthenticationResponse, RegistrationResponseJSON, AuthenticationResponseJSON, WebAuthnCredential } from '@simplewebauthn/server';
 
 import { sessions } from "@/session/store";
-import { RouteContext } from '@redwoodjs/sdk/router';
+import { RouteContext } from 'redwood-sdk/router';
 import { db } from '@/db';
 
 export async function startPasskeyRegistration(username: string, ctx?: RouteContext) {

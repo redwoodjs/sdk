@@ -1,5 +1,5 @@
-import { defineApp } from '@redwoodjs/sdk/worker';
-import { index, layout } from '@redwoodjs/sdk/router';
+import { defineApp } from 'redwood-sdk/worker';
+import { index, layout } from 'redwood-sdk/router';
 import { Document } from 'src/Document';
 import { Home } from 'src/pages/Home';
 import { setupDb } from './db';

@@ -4,7 +4,7 @@ import { Layout } from "../../Layout";
 
 import { InvoiceForm } from "./InvoiceForm";
 import { db } from "src/db";
-import { RouteContext } from "@redwoodjs/sdk/router";
+import { RouteContext } from "redwood-sdk/router";
 import { BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "src/components/ui/breadcrumb";
 import { link } from "src/shared/links";
 

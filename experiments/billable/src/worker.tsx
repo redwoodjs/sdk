@@ -1,5 +1,5 @@
-import { defineApp } from '@redwoodjs/sdk/worker';
-import { index, layout, prefix } from '@redwoodjs/sdk/router';
+import { defineApp } from 'redwood-sdk/worker';
+import { index, layout, prefix } from 'redwood-sdk/router';
 import { ExecutionContext } from '@cloudflare/workers-types';
 
 import { link } from "src/shared/links";
