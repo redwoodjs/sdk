@@ -1,9 +1,6 @@
 packages:
   - 'sdk'
   - 'docs'
-  - 'starters/minimal'
-  - 'starters/prisma'
-  - 'starters/drizzle'
   - 'experiments/billable'
   - 'experiments/yt-dos'
   - 'experiments/cutable'

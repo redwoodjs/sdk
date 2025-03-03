@@ -33,7 +33,7 @@
     "@prisma/adapter-d1": "^6.3.1",
     "@prisma/client": "^6.3.1",
     "@radix-ui/react-slot": "^1.1.1",
-    "redwoodsdk": "0.0.1",
+    "redwoodsdk": "0.0.2",
     "@types/lodash": "^4.17.13",
     "aws4fetch": "^1.0.20",
     "class-variance-authority": "^0.7.1",
@@ -59,7 +59,7 @@
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
     "prisma": "^6.3.1",
-    "vite": "^6.2.0",
+    "vite": "^6.1.1",
     "wrangler": "^3.105.1"
   },
   "prisma": {
