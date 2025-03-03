@@ -37,7 +37,7 @@
     "@radix-ui/react-slot": "^1.1.1",
     "@radix-ui/react-toast": "^1.2.6",
     "@radix-ui/themes": "^3.2.0",
-    "redwoodsdk": "0.0.1",
+    "redwoodsdk": "0.0.2",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
