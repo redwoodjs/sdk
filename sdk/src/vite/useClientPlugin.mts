@@ -25,7 +25,7 @@ export const useClientPlugin = (options: UseClientPluginOptions = {}): Plugin =>
 
       if (this.environment.name === "worker") {
         s.prepend(`
-import { registerClientReference } from "redwood-sdk/worker";
+import { registerClientReference } from "redwoodsdk/worker";
 `);
 
         const [_, exports] = parse(code);

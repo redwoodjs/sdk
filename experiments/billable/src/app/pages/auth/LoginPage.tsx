@@ -1,6 +1,6 @@
 "use client";
 
-import { RouteContext } from "redwood-sdk/router";
+import { RouteContext } from "redwoodsdk/router";
 import { Loader2 } from "lucide-react";
 
 import { useState, useTransition } from "react";

@@ -1,5 +1,5 @@
-import { defineApp } from 'redwood-sdk/worker';
-import { index, layout, prefix } from 'redwood-sdk/router';
+import { defineApp } from 'redwoodsdk/worker';
+import { index, layout, prefix } from 'redwoodsdk/router';
 import { Document } from '@/app/Document';
 import { Home } from '@/app/pages/Home';
 import { authRoutes } from '@/app/pages/auth/routes';

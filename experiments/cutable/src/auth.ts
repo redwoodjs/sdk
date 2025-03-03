@@ -1,6 +1,6 @@
 import { MAX_TOKEN_DURATION } from './constants';
 import { SessionDO } from './session';
-import { ErrorResponse } from 'redwood-sdk/worker';
+import { ErrorResponse } from 'redwoodsdk/worker';
 import { link } from './app/shared/links'
 
 interface SessionIdParts {

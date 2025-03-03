@@ -6,8 +6,8 @@ description: Everything you need to know about Routing...
 RedwoodSDK's routing functionality is enshrined in the Request/ Response cycle. For each and every request there is an equal and opposite Response. Routes are registered in `defineApp` where an incoming request's URL is matched and passed to a route function which returns a `Response` object.
 
 ```jsx src/worker.tsx
-import { defineApp } from 'redwood-sdk/worker'
-import { route } from 'redwood-sdk/router'
+import { defineApp } from 'redwoodsdk/worker'
+import { route } from 'redwoodsdk/router'
 
 export default defineApp({
     route('/', function() {
@@ -38,7 +38,7 @@ The route function receives an object that contains:
 A route function can return a Response object, or a JSX component. The JSX component is rendered statically as html and then hydrated on the client side by React. More on this later in this document.
 
 ```tsx
-import { route } from 'redwood-sdk/router'
+import { route } from 'redwoodsdk/router'
 
 route('/', function({ request, params, env }) {
     return new Response('Hello, world!', { status: 200 })
@@ -50,8 +50,8 @@ route('/', function({ request, params, env }) {
 RedwoodSDK allows you to register a set of request functions against a single route. Each request function is run in sequence and can interrupt the request flow. An example of where this is helpful is if you want to ensure that a user is correctly authenticated in order to view the final Response.
 
 ```tsx
-import { defineApp } from 'redwood-sdk/worker'
-import { route } from 'redwood-sdk/router'
+import { defineApp } from 'redwoodsdk/worker'
+import { route } from 'redwoodsdk/router'
 
 export default defineApp([
     route('/user/settings', [
@@ -111,8 +111,8 @@ This object is then available in the subsequent route functions.
 A route function can return a `Response` object or a JSX component. When returning a JSX component it's rendered as static HTML and then hydrated by React's client side libraries. We support React Server Components by default. If you want interactivity then you must specify the `"use client"` directive.
 
 ```tsx (src/worker.tsx)
-import { defineApp } from 'redwood-sdk/worker'
-import { route } from 'redwood-sdk/router'
+import { defineApp } from 'redwoodsdk/worker'
+import { route } from 'redwoodsdk/router'
 
 function Homepage() {
     return <div>Hello, world! I'm a React Server Component!</div>
@@ -133,8 +133,8 @@ If you access the `/` page you'll receive the following html
 You'll notice that there's no, `html`, `head` or `body` tags, and that's because RedwoodSDK wants you to have complete control of your stack. In order to define your own "Root Document" you nest it in a `layout`
 
 ```tsx (src/worker.tsx)
-import { defineApp } from 'redwood-sdk/worker'
-import { route, layout } from 'redwood-sdk/router'
+import { defineApp } from 'redwoodsdk/worker'
+import { route, layout } from 'redwoodsdk/router'
 
 function Document({ children }) {
     return (<html>
@@ -165,7 +165,7 @@ Now when accessing "/" the HomePage component will be nested in the Document com
 Your components are rendererd as static html and streamed via the response. In addition to the html when pipe in an RSC payload, which is hydrated by the client side React. In order to achieve this you must first instantiate the client side React, create a new `src/client.tsx` file:
 
 ```tsx (src/client.tsx)
-import { initClient } from "redwood-sdk/client";
+import { initClient } from "redwoodsdk/client";
 
 initClient();
 ```
