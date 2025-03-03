@@ -1,12 +1,15 @@
 {
-  "name": "@redwoodjs/sdk",
+  "name": "redwoodsdk",
   "version": "0.0.1",
   "description": "",
-  "main": "index.js",
   "type": "module",
   "bin": {
     "rw-scripts": "./bin/rw-scripts.mjs"
   },
+  "files": [
+    "./README.md",
+    "./dist"
+  ],
   "scripts": {
     "build": "pnpm build:src && pnpm build:vendor",
     "build:src": "tsc --build --clean && tsc",
@@ -36,8 +39,13 @@
     }
   },
   "keywords": [],
-  "author": "",
-  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/redwoodjs/sdk",
+    "directory": "sdk"
+  },
+  "author": "RedwoodJS <peter@redwoodjs.com>",
+  "license": "MIT",
   "dependencies": {
     "@cloudflare/workers-types": "^4.20241112.0",
     "@microsoft/api-extractor": "^7.48.0",
