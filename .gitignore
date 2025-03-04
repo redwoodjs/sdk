@@ -172,3 +172,4 @@ dist
 .wrangler/
 
 .DS_Store
+.vscode/settings.json
