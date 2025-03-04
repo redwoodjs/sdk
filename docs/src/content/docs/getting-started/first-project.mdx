@@ -7,7 +7,7 @@ import { Aside, FileTree, Tabs, TabItem } from '@astrojs/starlight/components';
 
 This guide is designed for developers who are already comfortable with JavaScript frameworks and are looking to quickly understand RedwoodSDK's organization and conventions.
 
-If you're new to JavaScript frameworks or prefer a more detailed learning path, we recommend starting with our [First App Tutorial](/tutorials/first-app) or [Full-Stack Tutorial](/tutorials/full-stack) instead.
+If you're new to JavaScript frameworks or prefer a more detailed learning path, we recommend starting with our [Full-Stack Tutorial](/tutorial/full-stack-app/setup) instead.
 
 ## Understanding Project Structure
 
@@ -27,7 +27,7 @@ After you run the initial [installation command](/getting-started/installation),
   - client.tsx
   - worker.tsx
 - tsconfig.json
-- types
+- types/
 - vite.config.mts
 - worker-configuration.d.ts
 - wrangler.toml
@@ -53,7 +53,7 @@ Let's walk through each file and directory to understand their purpose.
 
 ### Editing Pages
 
-The minimal starter ships with the least amount of code possible. This means, you don't need to delete any files or perform any cleanup to get started.
+The [minimal starter](/reference/starters/minimal/) ships with the least amount of code possible. This means, you don't need to delete any files or perform any cleanup to get started.
 
 There's a single `Home` page component in the `src/app/pages` directory that says "Hello World".
 
@@ -80,7 +80,7 @@ export default defineApp<Context>([
 ])
 ```
 
-Here we have a `layout` function that takes the `Document` component (imported at the top of the file) and wraps our entire application. This include our basic HTML `head` and `body` tags.
+Here we have a `layout` function that takes the `Document` component (imported at the top of the file) and wraps our entire application. This includes our basic HTML `head` and `body` tags.
 
 ```tsx
 export const Document: React.FC<{ children: React.ReactNode }> = ({ children }) => (
@@ -128,7 +128,7 @@ You can find additional information about dynamic routes in our [Routing Guide](
 
 There is quite a bit of flexibility in how you organize your pages, layouts, and components. For example, you can co-locate page specific files together in the `src/app/pages` directory, or keep all of your components in a `src/app/components` directory (You'll need to create this folder).
 
-By default, all the pages and components in your project are React Server components. If you want to add reactivity, you'll need to use the `"use client"` directive at the top of the file.
+By default, all the pages and components in your project are server components by default. If you want to add reactivity, you'll need to use the `"use client"` directive at the top of the file.
 
 ```tsx
 "use client";
@@ -203,7 +203,7 @@ Then, from your Terminal, run:
 
 If this is your first time deploying, you'll be prompted to register a `workers.dev` subdomain.
 
-```bash frame="none"
+```bash
 ▲ [WARNING] You need to register a workers.dev subdomain before publishing to workers.dev
 ? Would you like to register a workers.dev subdomain now? > (Y/n)
 ? What would you like your workers.dev subdomain to be? It will be accessible at https://<subdomain>.workers.dev >
@@ -212,7 +212,7 @@ If this is your first time deploying, you'll be prompted to register a `workers.
 
 If everything goes through successfully, you should see the following message. Where, `PROJECT_NAME` is the name of your project and `SUBDOMAIN` is the subdomain you chose.
 
-```bash frame="none"
+```bash
 Success! It may take a few minutes for DNS records to update.
 Visit https://dash.cloudflare.com/YOUR_ACCOUNT_ID/workers/subdomain to edit your workers.dev subdomain
 Deployed PROJECT_NAME triggers (53.51 sec)
