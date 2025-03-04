@@ -5,6 +5,10 @@ export default defineScript(async ({ env }) => {
   setupDb(env);
 
   await db.$executeRawUnsafe(`\
+    DELETE FROM Application;
+    DELETE FROM Contact;
+    DELETE FROM Company;
+    DELETE FROM Credential;
     DELETE FROM User;
     DELETE FROM sqlite_sequence;
   `);

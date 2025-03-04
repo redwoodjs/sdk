@@ -2,10 +2,13 @@
 
 export type IconName =
 	| "archive"
+	| "bolt"
 	| "calendar"
 	| "check"
+	| "chevron-down"
 	| "chevron-left"
 	| "chevron-right"
+	| "chevron-up"
 	| "close"
 	| "eye"
 	| "github"

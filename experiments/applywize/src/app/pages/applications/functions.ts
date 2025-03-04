@@ -2,6 +2,7 @@
 
 import { db } from "@/db";
 import { TApplicationFormData } from "./components/AddApplicationForm";
+import { type Context } from "app/worker";
 
 export async function createContact(formData: FormData) {
   const firstName = formData.get("firstName") as string;
@@ -38,11 +39,38 @@ export async function createContact(formData: FormData) {
   }
 }
 
-export async function createApplication(data: Omit<TApplicationFormData, 'success' | 'error'>) {
+export async function deleteContact(id: string) {
   try {
-    // ad a company
-    const company = await db.company.create({
-      data: {
+    await db.contact.delete({
+      where: { id }
+    })
+
+    return {
+      success: true,
+      error: null,
+    }
+  } catch (error) {
+    console.error(error);
+    return {
+      success: false,
+      error: error instanceof Error ? error.message : "An unknown error occurred",
+    };
+  }
+}
+
+export async function createApplication({ data, ctx }: { data: Omit<TApplicationFormData, 'success' | 'error'>, ctx: Context }) {
+  try {
+    // add a company
+    const company = await db.company.upsert({
+      where: {
+        name: data.company
+      },
+      update: {
+        contacts: {
+          connect: data.contacts
+        }
+      },
+      create: {
         name: data.company,
         contacts: {
           connect: data.contacts
@@ -53,15 +81,23 @@ export async function createApplication(data: Omit<TApplicationFormData, 'succes
     // create an application
     const application = await db.application.create({
       data: {
-        userId: '1', /* TODO: Make this dynamic */
-        statusId: data.statusId,
+        statusId: 1, // TODO: Make this dynamic
         salaryMin: data.salaryMin,
         salaryMax: data.salaryMax,
         dateApplied: data.dateApplied,
         jobTitle: data.jobTitle,
         jobDescription: data.jobDescription,
         postingUrl: data.url,
-        companyId: company.id,
+        company: {
+          connect: {
+            id: company.id
+          }
+        },
+        user: {
+          connect: {
+            id: "1" // TODO: Make this dynamic
+          }
+        }
       }
     })
 

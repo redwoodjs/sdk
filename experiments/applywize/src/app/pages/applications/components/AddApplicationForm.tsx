@@ -21,7 +21,7 @@ import {
 import { ClientForm } from "app/components/ContactForm";
 import { createApplication } from "../functions";
 import { DatePicker } from "app/components/ui/datepicker";
-
+import { ContactCard } from "./ContactCard";
 // TODO: form validation with Zod
 export interface TApplicationFormData {
   success?: boolean;
@@ -40,7 +40,7 @@ export interface TApplicationFormData {
 const AddApplicationForm = ({ contacts, applicationStatuses }:
   {
     // TODO: get the types from Prisma
-    contacts: { id: string; firstName: string; lastName: string; email: string }[],
+    contacts: { id: string; firstName: string; lastName: string; email: string; role: string }[],
     applicationStatuses: { id: string; status: string }[]
   }) => {
 
@@ -128,13 +128,13 @@ const AddApplicationForm = ({ contacts, applicationStatuses }:
           </div>
           <div className="box">
             <label htmlFor="application-status">Application Status</label>
-            <Select>
+              <Select name="statusId" defaultValue={state.statusId?.toString()}>
               <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Status" />
+                <SelectValue placeholder="Select a Status" />
               </SelectTrigger>
               <SelectContent>
-                {applicationStatuses.map((status: { id: string; status: string }) => (
-                  <SelectItem key={status.id} value={status.id}>{status.status}</SelectItem>
+                {applicationStatuses.map((status) => (
+                  <SelectItem key={status.id} value={status.status}>{status.status}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -142,10 +142,16 @@ const AddApplicationForm = ({ contacts, applicationStatuses }:
           <div className="box">
             <h3>Contacts</h3>
             <p className="input-description">Invite your team members to collaborate.</p>
-            <div className="pt-8">
+              <div className="pt-8">
               {contacts.map((contact: { id: string; firstName: string; lastName: string; email: string }) => (
                 <div key={contact.id}>
-                  <p>{contact.firstName} {contact.lastName} {contact.email}</p>
+                  <ContactCard
+                    id={contact.id}
+                    firstName={contact.firstName}
+                    lastName={contact.lastName}
+                    email={contact.email}
+                    role={contact.role}
+                  />
                 </div>
               ))}
               <Sheet>

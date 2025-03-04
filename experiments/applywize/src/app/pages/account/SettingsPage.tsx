@@ -15,12 +15,14 @@ export async function SettingsPage() {
     select: {
       id: true,
       email: true,
+      name: true,
+      username: true,
     },
     where: {
-      id: "1",
+      id: "c87fe526-3415-44fb-9a87-b7ab2f119314", // TODO: Make this dynamic
     },
   });
-  console.log(user);
+  console.log({ user });
 
   return (
     <InteriorLayout>

@@ -10,7 +10,7 @@ const Header = () => {
       <div className="flex items-center gap-8">
         <div className="">
           <a href={link("/")} className="flex gap-3 font-display font-bold text-3xl items-center">
-            <img src={logo} alt="Apply Wise" className="inline-block pt-5 -mb-3" />
+            <img src={logo} alt="Apply Wize" className="inline-block pt-5 -mb-3" />
             <span>Apply Wize</span>
           </a></div>
         <nav>
@@ -25,12 +25,6 @@ const Header = () => {
         <ul className="flex items-center gap-7">
           <li><a href={link("/account/settings")}>Settings</a></li>
           <li><a href={link("/logout")}>Logout</a></li>
-          <li>
-            <Avatar>
-              <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
-              <AvatarFallback>CN</AvatarFallback>
-            </Avatar>
-          </li>
         </ul>
       </nav>
     </header>

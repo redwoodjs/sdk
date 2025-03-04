@@ -5,7 +5,7 @@ interface Env {
 	APP_URL: "https://applywize.app";
 	APP_NAME: "applywize";
 	RP_ID: "localhost";
-	SESSION_DURABLE_OBJECT: DurableObjectNamespace /* SessionDurableObject */;
+	SESSION_DURABLE_OBJECT: DurableObjectNamespace<import("./src/worker").SessionDurableObject>;
 	R2: R2Bucket;
 	DB: D1Database;
 	ASSETS: Fetcher;

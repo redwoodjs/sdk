@@ -1,10 +1,11 @@
 {
   "workbench.colorCustomizations": {
     "activityBar.background": "#27310A",
-    "titleBar.activeBackground": "#37450E",
-    "titleBar.activeForeground": "#F9FCEF"
+    "titleBar.activeBackground": "#f7b736",
+    "titleBar.activeForeground": "#000000"
   },
   "cSpell.words": [
-    "redwoodjs"
+    "redwoodjs",
+    "Wize"
   ]
 }

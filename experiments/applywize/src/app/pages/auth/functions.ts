@@ -25,7 +25,8 @@ export async function startPasskeyRegistration(username: string, ctx?: RouteCont
   return options;
 }
 
-export async function finishPasskeyRegistration(username: string, registration: RegistrationResponseJSON, ctx?: RouteContext) {
+export async function finishPasskeyRegistration({ username, email, name, registration, ctx }:
+  { username: string, email?: string, name?: string, registration: RegistrationResponseJSON, ctx?: RouteContext }) {
   const { request, headers, env } = ctx!;
   const { origin } = new URL(request.url);
 
@@ -52,6 +53,8 @@ export async function finishPasskeyRegistration(username: string, registration: 
   const user = await db.user.create({
     data: {
       username,
+      email,
+      name,
     },
   });
 

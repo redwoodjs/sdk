@@ -42,7 +42,7 @@ model ApplicationStatus {
 
 model Company {
   id           String        @id @default(uuid())
-  name         String
+  name         String        @unique
   applications Application[]
   contacts     Contact[]
   createdAt    DateTime      @default(now())
@@ -75,12 +75,12 @@ model Credential {
 }
 
 model User {
-  id                 String        @id @default(uuid())
-  email              String        @unique
-  authToken          String?
-  authTokenExpiresAt DateTime?
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime?     @updatedAt
-  applications       Application[]
-  credentials        Credential[]
+  id           String        @id @default(uuid())
+  name         String?
+  username     String?       @unique
+  email        String?       @unique
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime?     @updatedAt
+  applications Application[]
+  credentials  Credential[]
 }

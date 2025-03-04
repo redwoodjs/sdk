@@ -4,11 +4,9 @@ import { Button } from "app/components/ui/button";
 import { Icon } from "app/components/Icon";
 import { ApplicationsTable } from "app/components/ApplicationsTable";
 import { db } from "@/db";
-import { RouteContext } from "@redwoodjs/sdk/router";
+import { Context } from "@/worker";
 
-type Props = { ctx: RouteContext }
-
-export async function ListPage({ ctx }: Props) {
+export async function ListPage({ ctx }: { ctx: Context }) {
   const archived = ctx.params.archived === 'true' ? true : false;
 
   const applications = await db.application.findMany({
@@ -71,7 +69,8 @@ export async function ListPage({ ctx }: Props) {
           <div>
             {archived ? (
             <Button variant="secondary">
-              <a href={`${link("/applications")}`} className="flex items-center gap-2">
+              <a href={`${link("/applications")}`} className="flex items-center gap-1">
+                <Icon id="bolt" size={16} />
                 Active
               </a>
           </Button>
