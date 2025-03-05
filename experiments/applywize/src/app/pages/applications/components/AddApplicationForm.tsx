@@ -1,6 +1,6 @@
 "use client"
 
-import React, { useActionState } from 'react'
+import React, { useActionState, useState } from 'react'
 import { Button } from "app/components/ui/button"
 import { Icon } from "app/components/Icon";
 import {
@@ -43,6 +43,7 @@ const AddApplicationForm = ({ contacts, applicationStatuses }:
     contacts: { id: string; firstName: string; lastName: string; email: string; role: string }[],
     applicationStatuses: { id: string; status: string }[]
   }) => {
+  const [isContactSheetOpen, setIsContactSheetOpen] = useState(false)
 
   const handleSubmit = async (prevState: TApplicationFormData, formData: FormData): Promise<TApplicationFormData> => {
     const data = {
@@ -154,7 +155,7 @@ const AddApplicationForm = ({ contacts, applicationStatuses }:
                   />
                 </div>
               ))}
-              <Sheet>
+              <Sheet open={isContactSheetOpen} onOpenChange={setIsContactSheetOpen}>
                 <SheetTrigger className="flex items-center gap-2 font-poppins text-sm font-bold bg-secondary py-3 px-6 rounded-md cursor-pointer">
                   <Icon id="plus" size={16} />Add a Contact
                 </SheetTrigger>
@@ -164,7 +165,7 @@ const AddApplicationForm = ({ contacts, applicationStatuses }:
                     <SheetDescription>
                       Add a Contact to this application.
                     </SheetDescription>
-                    <ClientForm />
+                    <ClientForm callback={() => setIsContactSheetOpen(false)} />
                   </SheetHeader>
                 </SheetContent>
               </Sheet>

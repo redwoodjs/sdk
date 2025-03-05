@@ -59,6 +59,8 @@ export async function deleteContact(id: string) {
 }
 
 export async function createApplication({ data, ctx }: { data: Omit<TApplicationFormData, 'success' | 'error'>, ctx: Context }) {
+  console.log({ ctx })
+
   try {
     // add a company
     const company = await db.company.upsert({

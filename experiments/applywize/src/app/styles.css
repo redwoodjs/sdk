@@ -178,6 +178,10 @@ svg {
   }
 }
 
+div[role="dialog"] {
+  @apply overflow-y-scroll;
+}
+
 button {
   @apply cursor-pointer;
   &.primary { @apply font-display font-bold text-black bg-primary rounded-sm h-9 flex items-center justify-center w-full; }

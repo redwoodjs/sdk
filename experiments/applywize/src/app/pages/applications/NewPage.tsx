@@ -9,8 +9,9 @@ import {
 } from "app/components/ui/breadcrumb"
 import { db } from "@/db";
 import { AddApplicationForm } from "./components/AddApplicationForm";
+import { Context } from "@/worker";
 
-export async function NewPage() {
+export async function NewPage({ ctx }: { ctx: Context }) {
   // get all the application statuses
   const applicationStatuses = await db.applicationStatus.findMany({
     select: {

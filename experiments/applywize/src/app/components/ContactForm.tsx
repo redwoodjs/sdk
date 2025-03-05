@@ -15,12 +15,13 @@ export type TFormData = {
   email?: string;
 }
 
-export function ClientForm() {
+export function ClientForm({ callback }: { callback: () => void }) {
 
   const handleSubmit = async (prevState: TFormData, formData: FormData) => {
     const result = await createContact(formData);
     console.log({ result })
     console.log("checking");
+    callback();
     return result;
   }
 
