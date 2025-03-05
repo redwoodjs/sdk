@@ -54,7 +54,7 @@ export const configPlugin = ({
                   name: 'ignore-virtual-modules',
                   setup(build) {
                     build.onResolve({ filter: /^virtual:use-client-lookup$/ }, () => {
-                      return { external: true }; // Mark as external so Esbuild skips it
+                      return { external: true };
                     });
                   }
                 }
