@@ -46,9 +46,6 @@ export const configPlugin = ({
               input: { client: clientEntryPathname },
             },
           },
-          resolve: {
-            external: ['virtual:use-client-lookup']
-          },
           optimizeDeps: {
             noDiscovery: false,
             include: [

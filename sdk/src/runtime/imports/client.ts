@@ -5,7 +5,7 @@ export const loadModule = memoize(async (id: string) => {
     return await import(/* @vite-ignore */ id);
   } else {
     const { useClientLookup } = await import(
-      "virtual:use-client-lookup" as string
+      /* @vite-ignore */ "virtual:use-client-lookup" as string
     );
 
     const moduleFn = useClientLookup[id];
