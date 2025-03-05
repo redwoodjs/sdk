@@ -48,6 +48,18 @@ export const configPlugin = ({
           },
           optimizeDeps: {
             noDiscovery: false,
+            esbuildOptions: {
+              plugins: [
+                {
+                  name: 'ignore-virtual-modules',
+                  setup(build) {
+                    build.onResolve({ filter: /^virtual:use-client-lookup$/ }, () => {
+                      return { external: true }; // Mark as external so Esbuild skips it
+                    });
+                  }
+                }
+              ]
+            },
             include: [
               "react",
               "react-dom/client",
