@@ -52,7 +52,7 @@ export const redwoodPlugin = async (options: RedwoodPluginOptions = {}): Promise
       port: options.port ?? DEV_SERVER_PORT,
       isUsingPrisma,
     }),
-    customReactBuildPlugin(),
+    customReactBuildPlugin({ projectRootDir }),
     tsconfigPaths({ root: projectRootDir }),
     miniflarePlugin({
       rootDir: projectRootDir,
