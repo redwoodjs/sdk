@@ -5,3 +5,8 @@ packages:
   - 'experiments/yt-dos'
   - 'experiments/cutable'
   - 'experiments/zoomshare'
+  - 'starters/drizzle'
+  - 'starters/minimal'
+  - 'starters/passkey-auth'
+  - 'starters/prisma'
+  - 'starters/sessions'
