@@ -21,7 +21,7 @@ show_help() {
   echo "  6. On successful publish:"
   echo "     - Updates dependent packages in the monorepo"
   echo "     - Runs pnpm install to update lockfile"
-  echo "     - Commits dependency updates"
+  echo "     - Amends initial commit with dependency updates"
   echo "     - Tags the commit"
   echo "     - Pushes to origin"
   echo "  7. On failed publish:"
@@ -83,8 +83,11 @@ NEW_VERSION=$(semver -i $VERSION_TYPE $CURRENT_VERSION)
 echo -e "\n📦 Planning version bump to $NEW_VERSION ($VERSION_TYPE)..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] pnpm version $VERSION_TYPE"
+  echo "  [DRY RUN] Git commit version change"
 else
   pnpm version $VERSION_TYPE --no-git-tag-version
+  git add package.json
+  git commit -m "chore(release): $NEW_VERSION"
 fi
 
 TAG_NAME="v$NEW_VERSION"
@@ -131,13 +134,13 @@ echo -e "\n💾 Committing changes..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] Git operations:"
   echo "    - Add: all package.json and pnpm-lock.yaml files"
-  echo "    - Amend previous commit"
+  echo "    - Amend commit: release $NEW_VERSION"
   echo "    - Tag: $TAG_NAME"
   echo "    - Push: origin with tags"
 else
   # Add all changed package.json and pnpm-lock.yaml files in the monorepo
   git add $(git diff --name-only | grep -E 'package\.json|pnpm-lock\.yaml$')
-  git commit --amend --no-edit  # Amend the previous commit without changing the message
+  git commit --amend --no-edit
   git tag "$TAG_NAME"
   git push --follow-tags
 fi
