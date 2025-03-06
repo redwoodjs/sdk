@@ -20,9 +20,8 @@ npx degit redwoodjs/sdk/starters/minimal#main <project-name>
 <Aside type="note" title="Starter Templates">
 RedwoodSDK provides a number of starter templates to help you get started.
 
-- [Minimal](https://github.com/redwoodjs/sdk/tree/main/starters/minimal)
-- [Prisma](https://github.com/redwoodjs/sdk/tree/main/starters/prisma)
-- [Prisma & Authentication](https://github.com/redwoodjs/sdk/tree/main/starters/passkey-auth)
+- [Prisma](https://github.com/redwoodjs/sdk/tree/main/starters/prisma): Database access with Prisma and Cloudflare D1
+- [Prisma & Authentication](https://github.com/redwoodjs/sdk/tree/main/starters/passkey-auth): Database access & Passkey authentication
 </Aside>
 
 <Tabs>
@@ -104,13 +103,37 @@ export function Home() {
 }
 ```
 
-Modify the `Home` component to say "My Personal Website" instead of "Hello World". When you save the file, the development server will automatically reload the page.
+Modify the `Home` component to say "My Personal Website" instead of "Hello World". When you save the file, the development server will automatically reload the component.
 
-```tsx
+```tsx del="<h1>Hello World</h1>" ins="<h1>My Personal Website</h1>"
 export function Home() {
   return (
     <div>
+      <h1>Hello World</h1>
       <h1>My Personal Website</h1>
     </div>
   );
 }
+```
+
+## Deploy to Production
+
+RedwoodSDK is optimized for the Cloudflare Development Platform, and you can deploy your website to Cloudflare with a single command, but first you need to change the `wrangler.toml` file; and modify the `name` field to your own project's name.
+
+```toml del="__change_me__" ins="my-project-name"
+#:schema node_modules/wrangler/config-schema.json
+name = "__change_me__"
+main = "src/worker.tsx"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+assets = { binding = "ASSETS" }
+
+[observability]
+enabled = true
+```
+
+Then run the following command to deploy your website to Cloudflare.
+
+```bash frame="none"
+pnpm release
+```
