@@ -9,17 +9,15 @@ show_help() {
   echo ""
   echo "Automates version bumping, publishing, and dependency updates in a monorepo."
   echo ""
-  echo "Prerequisites:"
-  echo "  - semver CLI tool (npm install -g semver)"
-  echo ""
   echo "Arguments:"
   echo "  patch|minor|major    The type of version bump to perform"
   echo ""
   echo "Process:"
-  echo "  1. Calculates new version using semver"
-  echo "  2. Bumps package version (without git operations)"
-  echo "  3. Publishes package to npm"
-  echo "  4. On successful publish:"
+  echo "  1. Builds package with NODE_ENV=production"
+  echo "  2. Calculates new version using semver"
+  echo "  3. Bumps package version (without git operations)"
+  echo "  4. Publishes package to npm"
+  echo "  5. On successful publish:"
   echo "     - Updates dependent packages in the monorepo"
   echo "     - Runs pnpm install to update lockfile"
   echo "     - Commits all changes"
@@ -66,6 +64,14 @@ if [[ -z "$VERSION_TYPE" ]]; then
   echo "Error: Version type (patch|minor|major) is required"
   echo ""
   show_help
+fi
+
+# After argument validation and before version calculation
+echo -e "\n🏗️  Building package..."
+if [[ "$DRY_RUN" == true ]]; then
+  echo "  [DRY RUN] NODE_ENV=production pnpm build"
+else
+  NODE_ENV=production pnpm build
 fi
 
 CURRENT_VERSION=$(npm pkg get version | tr -d '"')
