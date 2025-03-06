@@ -21,7 +21,7 @@ show_help() {
   echo "    - Pushes the commit and tag."
   echo ""
   echo "Options:"
-  echo "  --dry-run   Simulate the release process without making actual changes."
+  echo "  --dry   Simulate the release process without making actual changes."
   echo "  --help      Show this help message."
   exit 0
 }
@@ -30,7 +30,7 @@ if [[ "$1" == "--help" || -z "$1" ]]; then
   show_help
 fi
 
-if [[ "$1" == "--dry-run" ]]; then
+if [[ "$1" == "--dry" ]]; then
   DRY_RUN=true
   shift
 fi
