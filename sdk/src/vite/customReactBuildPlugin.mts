@@ -4,8 +4,17 @@ import { mkdirp, copy } from "fs-extra";
 import { Plugin } from "vite";
 import { VENDOR_DIST_DIR } from "../lib/constants.mjs";
 
-export const customReactBuildPlugin = ({ projectRootDir }: { projectRootDir: string }): Plugin => {
+const copyReactFiles = async (viteDistDir: string) => {
+    await mkdirp(viteDistDir);
+    await copy(resolve(VENDOR_DIST_DIR, "react.js"), resolve(viteDistDir, 'react.js'));
+    await copy(resolve(VENDOR_DIST_DIR, "react.js.map"), resolve(viteDistDir, 'react.js.map'));
+    await copy(resolve(VENDOR_DIST_DIR, "react-dom-server-edge.js"), resolve(viteDistDir, "react-dom-server-edge.js"));
+    await copy(resolve(VENDOR_DIST_DIR, "react-dom-server-edge.js.map"), resolve(viteDistDir, "react-dom-server-edge.js.map"));
+}
+
+export const customReactBuildPlugin = async ({ projectRootDir }: { projectRootDir: string }): Promise<Plugin> => {
     const viteDistDir = resolve(projectRootDir, "node_modules", ".vite_redwoodsdk");
+    await copyReactFiles(viteDistDir);
     return {
         name: "custom-react-build-plugin",
         enforce: "pre",
