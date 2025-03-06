@@ -109,12 +109,13 @@ fi
 echo -e "\n💾 Committing changes..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] Git operations:"
-  echo "    - Add: package.json pnpm-lock.yaml"
+  echo "    - Add: all package.json and pnpm-lock.yaml files"
   echo "    - Commit: release $NEW_VERSION"
   echo "    - Tag: $TAG_NAME"
   echo "    - Push: origin with tags"
 else
-  git add package.json pnpm-lock.yaml
+  # Add all changed package.json and pnpm-lock.yaml files in the monorepo
+  git add $(git diff --name-only | grep -E 'package\.json|pnpm-lock\.yaml$')
   git commit -m "release $NEW_VERSION"
   git tag "$TAG_NAME"
   git push --follow-tags
