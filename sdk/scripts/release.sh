@@ -15,14 +15,17 @@ show_help() {
   echo "Process:"
   echo "  1. Builds package with NODE_ENV=production"
   echo "  2. Calculates new version using semver"
-  echo "  3. Bumps package version (without git operations)"
-  echo "  4. Publishes package to npm"
-  echo "  5. On successful publish:"
+  echo "  3. Updates package.json with new version"
+  echo "  4. Commits version change"
+  echo "  5. Publishes package to npm"
+  echo "  6. On successful publish:"
   echo "     - Updates dependent packages in the monorepo"
   echo "     - Runs pnpm install to update lockfile"
-  echo "     - Commits all changes"
+  echo "     - Commits dependency updates"
   echo "     - Tags the commit"
   echo "     - Pushes to origin"
+  echo "  7. On failed publish:"
+  echo "     - Reverts version commit"
   echo ""
   echo "Options:"
   echo "  --dry    Simulate the release process without making changes"
@@ -77,19 +80,19 @@ fi
 CURRENT_VERSION=$(npm pkg get version | tr -d '"')
 NEW_VERSION=$(semver -i $VERSION_TYPE $CURRENT_VERSION)
 
-if [[ "$DRY_RUN" == false ]]; then
-  npm version $NEW_VERSION --no-git-tag-version > /dev/null
-fi
-
-echo -e "\n📦 Bumping version to $NEW_VERSION ($VERSION_TYPE)..."
+echo -e "\n📦 Planning version bump to $NEW_VERSION ($VERSION_TYPE)..."
 
 TAG_NAME="v$NEW_VERSION"
 
-echo -e "\n🚀 Publishing package..."
+echo -e "\n🚀 Publishing version $NEW_VERSION..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] pnpm publish"
 else
-  pnpm publish
+  if ! pnpm publish; then
+    echo -e "\n❌ Publish failed. Rolling back version commit..."
+    git reset --hard HEAD~1
+    exit 1
+  fi
 fi
 
 echo -e "\n🔄 Updating dependencies in monorepo..."
