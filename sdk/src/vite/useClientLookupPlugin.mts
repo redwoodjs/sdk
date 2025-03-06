@@ -1,7 +1,7 @@
 import MagicString from "magic-string";
 import { virtualPlugin } from "./virtualPlugin.mjs";
-import { Plugin } from 'vite';
-import { $ } from '../lib/$.mjs';
+import { Plugin } from "vite";
+import { $ } from "../lib/$.mjs";
 
 export const findFilesContainingUseClient = async ({
   rootDir,
@@ -16,10 +16,12 @@ export const findFilesContainingUseClient = async ({
     reject: false,
   })`grep -rl --include=*.ts --include=*.tsx -e ${'"use client"'} -e ${"'use client'"} ${containingPath}`;
 
-  return result.stdout
-    ?.split("\n")
-    .map((line: string) => line.trim().slice(1))
-    .filter(Boolean) ?? [];
+  return (
+    result.stdout
+      ?.split("\n")
+      .map((line: string) => line.trim().slice(1))
+      .filter(Boolean) ?? []
+  );
 };
 
 export const useClientLookupPlugin = ({
@@ -30,21 +32,24 @@ export const useClientLookupPlugin = ({
   containingPath: string;
 }): Plugin =>
   virtualPlugin("use-client-lookup", async () => {
-    const files = await findFilesContainingUseClient({ rootDir, containingPath });
+    const files = await findFilesContainingUseClient({
+      rootDir,
+      containingPath,
+    });
 
     const s = new MagicString(`
 export const useClientLookup = {
   ${files
-        .map(
-          (file: string) => `
+    .map(
+      (file: string) => `
   "${file}": () => import("${file}"),
 `,
-        )
-        .join("")}
+    )
+    .join("")}
 };
 `);
     return {
       code: s.toString(),
       map: s.generateMap(),
     };
-  })
+  });

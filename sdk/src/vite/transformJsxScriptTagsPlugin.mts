@@ -11,7 +11,7 @@ const readManifest = async (manifestPath: string) => {
       manifestPath,
       (await pathExists(manifestPath))
         ? readFile(manifestPath, "utf-8").then(JSON.parse)
-        : Promise.resolve({})
+        : Promise.resolve({}),
     );
   }
   return manifestCache.get(manifestPath)!;
@@ -23,7 +23,7 @@ export const transformJsxScriptTagsPlugin = ({
   manifestPath: string;
 }): Plugin => ({
   name: "rw-sdk-transform-jsx-script-tags",
-  apply: 'build',
+  apply: "build",
   async transform(code) {
     const jsxScriptSrcRE =
       /(jsx|jsxDEV)\("script",\s*{[^}]*src:\s*["']([^"']+)["'][^}]/g;

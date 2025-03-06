@@ -12,7 +12,10 @@ export type RouteContext<
   rw: RwContext<TContext>;
 };
 
-type PageProps<TContext> = Omit<RouteContext<TContext>, "rw" | "request" | "headers">;
+type PageProps<TContext> = Omit<
+  RouteContext<TContext>,
+  "rw" | "request" | "headers"
+>;
 
 export type RwContext<TContext> = {
   Layout: React.FC<{ children: React.ReactNode }>;
@@ -27,7 +30,12 @@ export type RwContext<TContext> = {
 
 type RouteMiddleware<TContext> = (
   ctx: RouteContext<TContext>,
-) => Response | Promise<Response> | void | Promise<void> | Promise<Response | void>;
+) =>
+  | Response
+  | Promise<Response>
+  | void
+  | Promise<void>
+  | Promise<Response | void>;
 type RouteFunction<TContext> = (
   ctx: RouteContext<TContext>,
 ) => Response | Promise<Response>;
@@ -145,7 +153,14 @@ export function defineRoutes<TContext = Record<string, any>>(
 
       // Find matching route
       let match: RouteMatch<TContext> | null = null;
-      const routeContext: RouteContext<TContext> = { request, params: {}, ctx, env, rw, headers };
+      const routeContext: RouteContext<TContext> = {
+        request,
+        params: {},
+        ctx,
+        env,
+        rw,
+        headers,
+      };
 
       for (const route of flattenedRoutes) {
         if (typeof route === "function") {
@@ -192,9 +207,11 @@ export function defineRoutes<TContext = Record<string, any>>(
           }
         }
       }
-      
+
       // Add fallback return
-      return new Response("Response not returned from route handler", { status: 500 });
+      return new Response("Response not returned from route handler", {
+        status: 500,
+      });
     },
   };
 }

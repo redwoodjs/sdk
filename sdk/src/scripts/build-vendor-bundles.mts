@@ -1,7 +1,7 @@
 import { resolve } from "node:path";
 import { build, mergeConfig, type InlineConfig } from "vite";
-import { $ } from '../lib/$.mjs';
-import { VENDOR_DIST_DIR, VENDOR_SRC_DIR } from '../lib/constants.mjs';
+import { $ } from "../lib/$.mjs";
+import { VENDOR_DIST_DIR, VENDOR_SRC_DIR } from "../lib/constants.mjs";
 
 const __dirname = new URL(".", import.meta.url).pathname;
 
@@ -34,7 +34,7 @@ const configs = {
         },
       },
       resolve: {
-        conditions: ['react-server'],
+        conditions: ["react-server"],
       },
     }),
   react: (): InlineConfig =>
@@ -50,7 +50,10 @@ const configs = {
       },
       resolve: {
         alias: {
-          'react-server-internals': resolve(VENDOR_DIST_DIR, 'react-server-internals.js'),
+          "react-server-internals": resolve(
+            VENDOR_DIST_DIR,
+            "react-server-internals.js",
+          ),
         },
       },
     }),
@@ -65,11 +68,10 @@ const configs = {
           fileName: "react-dom-server-edge",
         },
         rollupOptions: {
-          external: ['react'],
+          external: ["react"],
         },
       },
     }),
-
 };
 
 export const buildVendorBundles = async () => {

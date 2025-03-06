@@ -1,7 +1,7 @@
 import { createModuleMap } from "./createModuleMap.js";
 import { createFromReadableStream } from "react-server-dom-webpack/client.edge";
-import { use } from 'react';
-import { renderToReadableStream } from 'react-dom/server.edge';
+import { use } from "react";
+import { renderToReadableStream } from "react-dom/server.edge";
 
 export const transformRscToHtmlStream = ({
   stream,
@@ -17,7 +17,9 @@ export const transformRscToHtmlStream = ({
     },
   });
 
-  const Component = () => <Parent>{(use(thenable) as { node: React.ReactNode }).node}</Parent>;
+  const Component = () => (
+    <Parent>{(use(thenable) as { node: React.ReactNode }).node}</Parent>
+  );
   const el = <Component />;
 
   return renderToReadableStream(el);
