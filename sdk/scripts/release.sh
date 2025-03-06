@@ -97,6 +97,10 @@ if [[ "$VERSION_TYPE" == "test" ]]; then
     NEW_VERSION="$CURRENT_VERSION-test.0"
   fi
 else
+  # If current version is a test version, use the base version for incrementing
+  if [[ "$CURRENT_VERSION" =~ ^(.*)-test.([0-9]+)$ ]]; then
+    CURRENT_VERSION="${BASH_REMATCH[1]}"
+  fi
   NEW_VERSION=$(semver -i $VERSION_TYPE $CURRENT_VERSION)
 fi
 
