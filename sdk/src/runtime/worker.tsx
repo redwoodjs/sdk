@@ -12,7 +12,7 @@ declare global {
   type Env = {
     ASSETS: Fetcher;
     DB: D1Database;
-  }
+  };
 }
 
 export const defineApp = <Context,>(routes: Route<Context>[]) => {
@@ -35,13 +35,15 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
         const url = new URL(request.url);
         const isRSCRequest = url.searchParams.has("__rsc");
 
-        const handleAction = async (ctx: RouteContext<Context, Record<string, string>>) => {
+        const handleAction = async (
+          ctx: RouteContext<Context, Record<string, string>>,
+        ) => {
           const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 
           if (isRSCActionHandler) {
             return await rscActionHandler(request, ctx); // maybe we should include params and ctx in the action handler?
           }
-        }
+        };
 
         const renderPage = async ({
           Page,
@@ -49,23 +51,26 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
           actionResult,
           Layout,
         }: {
-          Page: React.FC<Record<string, any>>,
-          props: Record<string, any>,
-          actionResult: unknown,
-          Layout: React.FC<{ children: React.ReactNode }>
+          Page: React.FC<Record<string, any>>;
+          props: Record<string, any>;
+          actionResult: unknown;
+          Layout: React.FC<{ children: React.ReactNode }>;
         }) => {
           let props = givenProps;
 
           // context(justinvdm, 25 Feb 2025): If the page is a client reference, we need to avoid passing
           // down props the client shouldn't get (e.g. env). For safety, we pick the allowed props explicitly.
-          if (Object.prototype.hasOwnProperty.call(Page, "$$isClientReference")) {
+          if (
+            Object.prototype.hasOwnProperty.call(Page, "$$isClientReference")
+          ) {
             const { ctx, params } = givenProps;
             props = { ctx, params };
           }
 
           const rscPayloadStream = renderToRscStream({
             node: <Page {...props} />,
-            actionResult: actionResult instanceof Response ? null : actionResult,
+            actionResult:
+              actionResult instanceof Response ? null : actionResult,
           });
 
           if (isRSCRequest) {
@@ -83,7 +88,9 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
             Parent: Layout,
           });
 
-          const html = htmlStream.pipeThrough(injectRSCPayload(rscPayloadStream2))
+          const html = htmlStream.pipeThrough(
+            injectRSCPayload(rscPayloadStream2),
+          );
 
           return new Response(html, {
             headers: {
@@ -121,11 +128,13 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
         console.error("Unhandled error", e);
         throw e;
       }
-    }
-  }
-}
+    },
+  };
+};
 
-export const DefaultLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+export const DefaultLayout: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => (
   <html lang="en">
     <head>
       <meta charSet="utf-8" />

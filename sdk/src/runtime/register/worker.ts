@@ -18,19 +18,23 @@ export function registerServerReference(
   return baseRegisterServerReference(action, id, name);
 }
 
-export function registerClientReference<Target extends Record<string, any>>(id: string, exportName: string, target: Target) {
+export function registerClientReference<Target extends Record<string, any>>(
+  id: string,
+  exportName: string,
+  target: Target,
+) {
   const reference = baseRegisterClientReference({}, id, exportName);
-  return Object.defineProperties(
-    target,
-    {
-      ...Object.getOwnPropertyDescriptors(reference),
-      $$async: { value: true },
-      $$isClientReference: { value: true },
-    },
-  );
+  return Object.defineProperties(target, {
+    ...Object.getOwnPropertyDescriptors(reference),
+    $$async: { value: true },
+    $$isClientReference: { value: true },
+  });
 }
 
-export async function rscActionHandler<TContext>(req: Request, ctx: RouteContext<TContext, Record<string, string>>): Promise<unknown> {
+export async function rscActionHandler<TContext>(
+  req: Request,
+  ctx: RouteContext<TContext, Record<string, string>>,
+): Promise<unknown> {
   const url = new URL(req.url);
   const contentType = req.headers.get("content-type");
 

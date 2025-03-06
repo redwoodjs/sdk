@@ -3,10 +3,11 @@ import { Plugin } from "vite";
 import { parse } from "es-module-lexer";
 import MagicString from "magic-string";
 
-interface UseClientPluginOptions {
-}
+interface UseClientPluginOptions {}
 
-export const useClientPlugin = (options: UseClientPluginOptions = {}): Plugin => ({
+export const useClientPlugin = (
+  options: UseClientPluginOptions = {},
+): Plugin => ({
   name: "rw-sdk-use-client",
   async transform(code, id) {
     if (id.includes(".vite/deps") || id.includes("node_modules")) {
@@ -33,8 +34,8 @@ import { registerClientReference } from "redwoodsdk/worker";
         for (const e of exports) {
           if (e.ln != null) {
             s.replaceAll(
-              new RegExp(`((?:const|function|let|var)\\s+)(${e.ln})\\b`, 'g'),
-              `$1${e.ln}SSR`
+              new RegExp(`((?:const|function|let|var)\\s+)(${e.ln})\\b`, "g"),
+              `$1${e.ln}SSR`,
             );
 
             s.append(`\

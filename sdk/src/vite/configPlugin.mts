@@ -1,10 +1,8 @@
 import { Plugin } from "vite";
 import { resolve } from "node:path";
-import { mergeConfig, InlineConfig } from 'vite';
+import { mergeConfig, InlineConfig } from "vite";
 
-import {
-  DEV_SERVER_PORT,
-} from "../lib/constants.mjs";
+import { DEV_SERVER_PORT } from "../lib/constants.mjs";
 
 export const configPlugin = ({
   mode,
@@ -15,15 +13,15 @@ export const configPlugin = ({
   port,
   isUsingPrisma,
 }: {
-  mode: 'development' | 'production',
-  silent: boolean,
-  projectRootDir: string,
-  clientEntryPathname: string,
-  workerEntryPathname: string,
-  port: number,
-  isUsingPrisma: boolean,
+  mode: "development" | "production";
+  silent: boolean;
+  projectRootDir: string;
+  clientEntryPathname: string;
+  workerEntryPathname: string;
+  port: number;
+  isUsingPrisma: boolean;
 }): Plugin => ({
-  name: 'rw-sdk-config',
+  name: "rw-sdk-config",
   config: (_, { command }) => {
     const baseConfig: InlineConfig = {
       appType: "custom",
@@ -51,14 +49,17 @@ export const configPlugin = ({
             esbuildOptions: {
               plugins: [
                 {
-                  name: 'ignore-virtual-modules',
+                  name: "ignore-virtual-modules",
                   setup(build) {
-                    build.onResolve({ filter: /^virtual:use-client-lookup$/ }, () => {
-                      return { external: true };
-                    });
-                  }
-                }
-              ]
+                    build.onResolve(
+                      { filter: /^virtual:use-client-lookup$/ },
+                      () => {
+                        return { external: true };
+                      },
+                    );
+                  },
+                },
+              ],
             },
             include: [
               "react",
@@ -79,16 +80,26 @@ export const configPlugin = ({
             esbuildOptions: {
               conditions: ["workerd", "react-server"],
               plugins: [
-                ...(isUsingPrisma ? [{
-                  name: 'prisma-client-wasm',
-                  setup(build: any) {
-                    build.onResolve({ filter: /.prisma\/client\/default/ }, async (args: any) => {
-                      return {
-                        path: resolve(projectRootDir, "node_modules/.prisma/client/wasm.js"),
-                      }
-                    })
-                  }
-                }] : []),
+                ...(isUsingPrisma
+                  ? [
+                      {
+                        name: "prisma-client-wasm",
+                        setup(build: any) {
+                          build.onResolve(
+                            { filter: /.prisma\/client\/default/ },
+                            async (args: any) => {
+                              return {
+                                path: resolve(
+                                  projectRootDir,
+                                  "node_modules/.prisma/client/wasm.js",
+                                ),
+                              };
+                            },
+                          );
+                        },
+                      },
+                    ]
+                  : []),
               ],
             },
             include: [
@@ -120,14 +131,19 @@ export const configPlugin = ({
       resolve: {
         conditions: ["workerd"],
         alias: {
-          ...(isUsingPrisma ? {
-            ".prisma/client/default": resolve(projectRootDir, "node_modules/.prisma/client/wasm.js"),
-          } : {}),
+          ...(isUsingPrisma
+            ? {
+                ".prisma/client/default": resolve(
+                  projectRootDir,
+                  "node_modules/.prisma/client/wasm.js",
+                ),
+              }
+            : {}),
         },
       },
     };
 
-    if (command === 'build') {
+    if (command === "build") {
       return mergeConfig(baseConfig, {
         environments: {
           worker: {
@@ -143,4 +159,4 @@ export const configPlugin = ({
 
     return baseConfig;
   },
-})
+});

@@ -6,7 +6,6 @@ import { type CallServerCallback } from "react-server-dom-webpack/client.browser
 globalThis.__webpack_require__ = clientWebpackRequire;
 
 export const initClient = async () => {
-
   const callServer: CallServerCallback = async (id, args) => {
     const url = new URL(window.location.href);
     url.searchParams.set("__rsc", "");
@@ -65,4 +64,4 @@ export const initClient = async () => {
       callServer(null, null);
     });
   }
-}
+};

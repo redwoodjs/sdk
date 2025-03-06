@@ -17,4 +17,4 @@ export const virtualPlugin = (name: string, load: Plugin["load"]): Plugin => {
       }
     },
   };
-}
+};
