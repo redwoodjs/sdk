@@ -1,7 +1,3 @@
 import { defineLinks } from "redwoodsdk/router";
 
-export const link = defineLinks([
-  '/',
-])
-
-
+export const link = defineLinks(["/"]);

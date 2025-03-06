@@ -1,14 +1,14 @@
-import { defineApp } from 'redwoodsdk/worker';
-import { index, layout, prefix } from 'redwoodsdk/router';
-import { ExecutionContext } from '@cloudflare/workers-types';
+import { defineApp } from "redwoodsdk/worker";
+import { index, layout, prefix } from "redwoodsdk/router";
+import { ExecutionContext } from "@cloudflare/workers-types";
 
 import { link } from "src/shared/links";
-import { Document } from 'src/Document';
-import { authRoutes } from 'src/pages/auth/routes';
-import { invoiceRoutes } from 'src/pages/invoice/routes';
-import HomePage from 'src/pages/Home/HomePage';
-import { db, setupDb } from './db';
-import { sessions, setupSessionStore } from './sessionStore';
+import { Document } from "src/Document";
+import { authRoutes } from "src/pages/auth/routes";
+import { invoiceRoutes } from "src/pages/invoice/routes";
+import HomePage from "src/pages/Home/HomePage";
+import { db, setupDb } from "./db";
+import { sessions, setupSessionStore } from "./sessionStore";
 
 export { SessionDO } from "./session";
 
@@ -35,29 +35,29 @@ export const getUser = async (request: Request) => {
 
 const app = defineApp<Context>([
   async ({ request, ctx, env }) => {
-    await setupDb(env)
+    await setupDb(env);
     setupSessionStore(env);
     ctx.user = await getUser(request);
   },
   layout(Document, [
     index([
-        ({ ctx }) => {
-          if (ctx.user) {
-            return new Response(null, {
-              status: 302,
-              headers: { Location: link('/invoice/list') },
-            });
-          }
-        },
-        HomePage,
+      ({ ctx }) => {
+        if (ctx.user) {
+          return new Response(null, {
+            status: 302,
+            headers: { Location: link("/invoice/list") },
+          });
+        }
+      },
+      HomePage,
     ]),
     prefix("/user", authRoutes),
     prefix("/invoice", invoiceRoutes),
-  ])
-])
+  ]),
+]);
 
 export default {
   fetch(request: Request, env: Env, ctx: ExecutionContext) {
     return app.fetch(request, env, ctx);
   },
-}
+};

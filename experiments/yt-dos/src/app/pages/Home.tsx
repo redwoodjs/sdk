@@ -24,13 +24,13 @@ export function HomePage() {
   const [blink, setBlink] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
-  const [loadingChar, setLoadingChar] = useState('|');
+  const [loadingChar, setLoadingChar] = useState("|");
   const [currentSearch, setCurrentSearch] = useState("");
   const [nextPageToken, setNextPageToken] = useState<string | null>(null);
   const [favorites, setFavorites] = useState<VideoItem[]>(() => {
     // Load favorites from sessionStorage on initial render
-    if (typeof window !== 'undefined') {
-      const savedFavorites = sessionStorage.getItem('yt-dos-favorites');
+    if (typeof window !== "undefined") {
+      const savedFavorites = sessionStorage.getItem("yt-dos-favorites");
       return savedFavorites ? JSON.parse(savedFavorites) : [];
     }
     return [];
@@ -40,15 +40,15 @@ export function HomePage() {
 
   // Save favorites to sessionStorage whenever they change
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      sessionStorage.setItem('yt-dos-favorites', JSON.stringify(favorites));
+    if (typeof window !== "undefined") {
+      sessionStorage.setItem("yt-dos-favorites", JSON.stringify(favorites));
     }
   }, [favorites]);
 
   const toggleFavorite = (video: VideoItem) => {
-    if (favorites.some(f => f.id.videoId === video.id.videoId)) {
+    if (favorites.some((f) => f.id.videoId === video.id.videoId)) {
       // Remove from favorites
-      setFavorites(favorites.filter(f => f.id.videoId !== video.id.videoId));
+      setFavorites(favorites.filter((f) => f.id.videoId !== video.id.videoId));
     } else {
       // Add to favorites
       setFavorites([...favorites, video]);
@@ -73,107 +73,107 @@ export function HomePage() {
       setError(null);
       setVideos([]);
       setQuery("");
-      
+
       // Create a DOS-style help screen as fake video results
       setVideos([
         {
           id: { videoId: "help-title" },
-          snippet: { 
+          snippet: {
             title: "YT-DOS Help System v1.0",
-            channelTitle: "=======================" 
-          }
+            channelTitle: "=======================",
+          },
         },
         {
           id: { videoId: "help-commands" },
-          snippet: { 
+          snippet: {
             title: "Available Commands:",
-            channelTitle: "------------------" 
-          }
+            channelTitle: "------------------",
+          },
         },
         {
           id: { videoId: "help-search" },
-          snippet: { 
+          snippet: {
             title: "SEARCH <query> - Search YouTube for videos",
-            channelTitle: "Type your search and press ENTER" 
-          }
+            channelTitle: "Type your search and press ENTER",
+          },
         },
         {
           id: { videoId: "help-more" },
-          snippet: { 
+          snippet: {
             title: "MORE - Load more search results",
-            channelTitle: "Shows the next page of results for your last search" 
-          }
+            channelTitle: "Shows the next page of results for your last search",
+          },
         },
         {
           id: { videoId: "help-fav" },
-          snippet: { 
+          snippet: {
             title: "FAV - Show your favorite videos",
-            channelTitle: "Displays all videos you've marked with [*]" 
-          }
+            channelTitle: "Displays all videos you've marked with [*]",
+          },
         },
         {
           id: { videoId: "help-dir" },
-          snippet: { 
+          snippet: {
             title: "DIR - List directory (not supported)",
-            channelTitle: "YT-DOS is not a real file system" 
-          }
+            channelTitle: "YT-DOS is not a real file system",
+          },
         },
         {
           id: { videoId: "help-help" },
-          snippet: { 
+          snippet: {
             title: "HELP - Display this help information",
-            channelTitle: "Shows available commands and shortcuts" 
-          }
+            channelTitle: "Shows available commands and shortcuts",
+          },
         },
         {
           id: { videoId: "help-exit" },
-          snippet: { 
+          snippet: {
             title: "EXIT - Exit YT-DOS",
-            channelTitle: "Closes the current session" 
-          }
+            channelTitle: "Closes the current session",
+          },
         },
         {
           id: { videoId: "help-shortcuts" },
-          snippet: { 
+          snippet: {
             title: "Keyboard Shortcuts:",
-            channelTitle: "------------------" 
-          }
+            channelTitle: "------------------",
+          },
         },
         {
           id: { videoId: "help-numbers" },
-          snippet: { 
+          snippet: {
             title: "[1-9] - Press number keys to play videos from results",
-            channelTitle: "Quick shortcut to play videos without clicking" 
-          }
+            channelTitle: "Quick shortcut to play videos without clicking",
+          },
         },
         {
           id: { videoId: "help-esc" },
-          snippet: { 
+          snippet: {
             title: "ESC - Close currently playing video",
-            channelTitle: "Returns to the search results" 
-          }
+            channelTitle: "Returns to the search results",
+          },
         },
         {
           id: { videoId: "help-favorites" },
-          snippet: { 
+          snippet: {
             title: "Favorites:",
-            channelTitle: "------------------" 
-          }
+            channelTitle: "------------------",
+          },
         },
         {
           id: { videoId: "help-fav1" },
-          snippet: { 
+          snippet: {
             title: "Click [*] next to any video to add/remove from favorites",
-            channelTitle: "Yellow * indicates a favorited video" 
-          }
+            channelTitle: "Yellow * indicates a favorited video",
+          },
         },
         {
           id: { videoId: "help-fav2" },
-          snippet: { 
+          snippet: {
             title: "Type FAV to view all your favorites",
-            channelTitle: "Your favorites are saved between sessions" 
-          }
-        }
+            channelTitle: "Your favorites are saved between sessions",
+          },
+        },
       ]);
       return;
     }
@@ -184,28 +184,30 @@ export function HomePage() {
         const moreSearch = async () => {
           setIsLoading(true);
           try {
-            const response = await fetch('/search', {
-              method: 'POST',
+            const response = await fetch("/search", {
+              method: "POST",
               headers: {
-                'Content-Type': 'application/json',
+                "Content-Type": "application/json",
               },
-              credentials: 'same-origin',
-              body: JSON.stringify({ 
+              credentials: "same-origin",
+              body: JSON.stringify({
                 searchTerm: currentSearch,
-                pageToken: nextPageToken
+                pageToken: nextPageToken,
               }),
             });
-            
+
             if (!response.ok) {
-              throw new Error('Search request failed');
+              throw new Error("Search request failed");
             }
-            
-            const data = await response.json() as YouTubeResponse;
+
+            const data = (await response.json()) as YouTubeResponse;
             setNextPageToken(data.nextPageToken || null);
             setVideos(data.items);
           } catch (error) {
-            console.error('Error fetching more videos:', error);
-            setError("A fatal exception has occurred at YT-DOS. System halted.");
+            console.error("Error fetching more videos:", error);
+            setError(
+              "A fatal exception has occurred at YT-DOS. System halted.",
+            );
           } finally {
             setIsLoading(false);
           }
@@ -244,29 +246,29 @@ export function HomePage() {
       setCurrentSearch(query);
     }
     setQuery("");
-    
+
     try {
-      const response = await fetch('/search', {
-        method: 'POST',
+      const response = await fetch("/search", {
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
+          "Content-Type": "application/json",
         },
-        credentials: 'same-origin',
-        body: JSON.stringify({ 
+        credentials: "same-origin",
+        body: JSON.stringify({
           searchTerm: isMore ? currentSearch : query,
-          pageToken: isMore ? nextPageToken : undefined
+          pageToken: isMore ? nextPageToken : undefined,
         }),
       });
-      
+
       if (!response.ok) {
-        throw new Error('Search request failed');
+        throw new Error("Search request failed");
       }
-      
-      const data = await response.json() as YouTubeResponse;
+
+      const data = (await response.json()) as YouTubeResponse;
       setNextPageToken(data.nextPageToken || null);
       setVideos(isMore ? [...videos, ...data.items] : data.items);
     } catch (error) {
-      console.error('Error fetching videos:', error);
+      console.error("Error fetching videos:", error);
       setError("A fatal exception has occurred at YT-DOS. System halted.");
     } finally {
       setIsLoading(false);
@@ -277,12 +279,16 @@ export function HomePage() {
     let interval: NodeJS.Timeout;
     if (isLoading) {
       interval = setInterval(() => {
-        setLoadingChar(prev => {
-          switch(prev) {
-            case '|': return '/';
-            case '/': return '-';
-            case '-': return '\\';
-            default: return '|';
+        setLoadingChar((prev) => {
+          switch (prev) {
+            case "|":
+              return "/";
+            case "/":
+              return "-";
+            case "-":
+              return "\\";
+            default:
+              return "|";
           }
         });
       }, 250);
@@ -332,9 +338,7 @@ export function HomePage() {
               {error}
             </pre>
           ) : (
-            <pre className="text-[#ff5555] bg-[#44475a] p-4">
-              {error}
-            </pre>
+            <pre className="text-[#ff5555] bg-[#44475a] p-4">{error}</pre>
           )
         ) : (
           <>
@@ -345,7 +349,9 @@ YT-DOS v1.0 - The Minimalist YouTube Experience
             </pre>
             <div className="w-full">
               <div className="flex items-center relative w-full">
-                <span className="text-lg text-[#50fa7b] whitespace-nowrap">C:\YT-DOS\SEARCH&gt;</span>
+                <span className="text-lg text-[#50fa7b] whitespace-nowrap">
+                  C:\YT-DOS\SEARCH&gt;
+                </span>
                 <div className="relative flex-1 w-full">
                   <input
                     ref={inputRef}
@@ -353,10 +359,11 @@ YT-DOS v1.0 - The Minimalist YouTube Experience
                     value={query}
                     onChange={(e) => setQuery(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === 'Enter') handleSearch();
+                      if (e.key === "Enter") handleSearch();
                       if (!selectedVideo && e.key.match(/^[0-9]$/)) {
                         const index = parseInt(e.key, 10) - 1;
-                        if (videos[index]) setSelectedVideo(videos[index].id.videoId);
+                        if (videos[index])
+                          setSelectedVideo(videos[index].id.videoId);
                       }
                     }}
                     className="ml-2 w-full bg-[#282a36] text-[#f8f8f2] border-none outline-none caret-transparent focus:ring-0"
@@ -365,14 +372,16 @@ YT-DOS v1.0 - The Minimalist YouTube Experience
                     ref={cursorRef}
                     className={`absolute top-0 text-[#f8f8f2] ${blink ? "inline" : "invisible"}`}
                     style={{ left: `${query.length * 10}px` }}
-                  >_</span>
+                  >
+                    _
+                  </span>
                 </div>
               </div>
-              
+
               {!selectedVideo && !isLoading && videos.length === 0 && (
                 <div className="mt-4 text-[#6272a4]">
                   <pre>
-{`
+                    {`
 Type a search term and press ENTER to search YouTube.
 Press [1-9] keys to play a video from the results (or click on the title).
 Click [*] to add/remove favorites.
@@ -385,9 +394,7 @@ Type HELP for more commands.
             </div>
             <div className="max-w-3xl">
               {isLoading ? (
-                <pre className="text-[#f1fa8c]">
-                  Searching{loadingChar}
-                </pre>
+                <pre className="text-[#f1fa8c]">Searching{loadingChar}</pre>
               ) : selectedVideo ? (
                 <div className="max-w-3xl mx-auto">
                   <iframe
@@ -398,20 +405,22 @@ Type HELP for more commands.
                     allowFullScreen
                     className="border border-green-400"
                   ></iframe>
-                  <p className="cursor-pointer mt-2 text-green-300" onClick={() => setSelectedVideo(null)}>
+                  <p
+                    className="cursor-pointer mt-2 text-green-300"
+                    onClick={() => setSelectedVideo(null)}
+                  >
                     [X] Close Video
                   </p>
                 </div>
               ) : (
                 <pre className="mt-2 w-full text-[#f8f8f2]">
                   {videos.map((video, index) => {
-                    const isFavorite = favorites.some(f => f.id.videoId === video.id.videoId);
+                    const isFavorite = favorites.some(
+                      (f) => f.id.videoId === video.id.videoId,
+                    );
                     return (
-                      <div
-                        key={video.id.videoId}
-                        className="mb-3"
-                      >
-                        <div 
+                      <div key={video.id.videoId} className="mb-3">
+                        <div
                           className="cursor-pointer hover:text-[#bd93f9]"
                           onClick={() => setSelectedVideo(video.id.videoId)}
                         >
@@ -419,7 +428,7 @@ Type HELP for more commands.
                         </div>
                         <div className="flex items-center ml-8 text-[#6272a4]">
                           <span>by {video.snippet.channelTitle}</span>
-                          <span 
+                          <span
                             className="ml-3 cursor-pointer text-purple-500"
                             onClick={(e) => {
                               e.preventDefault();
@@ -427,7 +436,17 @@ Type HELP for more commands.
                               toggleFavorite(video);
                             }}
                           >
-                            [<span className={isFavorite ? "text-yellow-400" : "text-purple-500"}>*</span>]
+                            [
+                            <span
+                              className={
+                                isFavorite
+                                  ? "text-yellow-400"
+                                  : "text-purple-500"
+                              }
+                            >
+                              *
+                            </span>
+                            ]
                           </span>
                         </div>
                       </div>
@@ -445,9 +464,9 @@ Type HELP for more commands.
         )}
       </div>
       <footer className="p-4 border-t border-[#44475a] text-center">
-        <a 
-          href="https://redwoodjs.com" 
-          target="_blank" 
+        <a
+          href="https://redwoodjs.com"
+          target="_blank"
           rel="noopener noreferrer"
           className="text-[#8be9fd] hover:text-[#bd93f9]"
         >

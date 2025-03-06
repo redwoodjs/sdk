@@ -15,13 +15,8 @@ export function CreateInvoiceButton() {
   };
 
   return (
-
-      <Button
-        onClick={onClick}
-        disabled={isPending}
-      >
-        New Invoice
-      </Button>
-
+    <Button onClick={onClick} disabled={isPending}>
+      New Invoice
+    </Button>
   );
 }

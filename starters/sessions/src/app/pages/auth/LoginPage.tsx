@@ -1,7 +1,7 @@
 "use client";
 
-import { useTransition } from 'react';
-import { performLogin } from './functions';
+import { useTransition } from "react";
+import { performLogin } from "./functions";
 
 export function LoginPage() {
   const [isPending, startTransition] = useTransition();
@@ -11,7 +11,7 @@ export function LoginPage() {
       const doLogin = async () => {
         await performLogin();
         window.location.href = "/";
-      }
+      };
       doLogin();
     });
   };
@@ -19,13 +19,7 @@ export function LoginPage() {
   return (
     <>
       <button onClick={handlePerformLogin} disabled={isPending}>
-        {isPending ? (
-          <>
-            ...
-          </>
-        ) : (
-          "Login"
-        )}
+        {isPending ? <>...</> : "Login"}
       </button>
     </>
   );

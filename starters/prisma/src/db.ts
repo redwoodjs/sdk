@@ -1,5 +1,5 @@
-import { PrismaClient } from '@prisma/client'
-import { PrismaD1 } from '@prisma/adapter-d1'
+import { PrismaClient } from "@prisma/client";
+import { PrismaD1 } from "@prisma/adapter-d1";
 
 export let db: PrismaClient;
 
@@ -24,4 +24,4 @@ export const setupDb = async (env: Env) => {
 
 export const setup = (env: Env) => {
   setupDb(env);
-}
+};

@@ -1,12 +1,20 @@
 "use client";
 
-import { useState, useTransition } from 'react';
-import { startAuthentication, startRegistration } from '@simplewebauthn/browser';
-import { finishPasskeyLogin, finishPasskeyRegistration, startPasskeyLogin, startPasskeyRegistration } from './functions';
+import { useState, useTransition } from "react";
+import {
+  startAuthentication,
+  startRegistration,
+} from "@simplewebauthn/browser";
+import {
+  finishPasskeyLogin,
+  finishPasskeyRegistration,
+  startPasskeyLogin,
+  startPasskeyRegistration,
+} from "./functions";
 
 export function LoginPage() {
-  const [username, setUsername] = useState('');
-  const [result, setResult] = useState('');
+  const [username, setUsername] = useState("");
+  const [result, setResult] = useState("");
   const [isPending, startTransition] = useTransition();
 
   const passkeyLogin = async () => {
@@ -15,11 +23,11 @@ export function LoginPage() {
     const success = await finishPasskeyLogin(login);
 
     if (!success) {
-      setResult('Login failed');
+      setResult("Login failed");
     } else {
-      setResult('Login successful!');
+      setResult("Login successful!");
     }
-  }
+  };
 
   const passkeyRegister = async () => {
     const options = await startPasskeyRegistration(username);
@@ -27,11 +35,11 @@ export function LoginPage() {
     const success = await finishPasskeyRegistration(username, registration);
 
     if (!success) {
-      setResult('Registration failed');
+      setResult("Registration failed");
     } else {
-      setResult('Registration successful!');
+      setResult("Registration successful!");
     }
-  }
+  };
 
   const handlePerformPasskeyLogin = () => {
     startTransition(() => void passkeyLogin());
@@ -43,24 +51,16 @@ export function LoginPage() {
 
   return (
     <>
-      <input type="text" value={username} onChange={(e) => setUsername(e.target.value)} />
+      <input
+        type="text"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+      />
       <button onClick={handlePerformPasskeyLogin} disabled={isPending}>
-        {isPending ? (
-          <>
-            ...
-          </>
-        ) : (
-          "Login with passkey"
-        )}
+        {isPending ? <>...</> : "Login with passkey"}
       </button>
       <button onClick={handlePerformPasskeyRegister} disabled={isPending}>
-        {isPending ? (
-          <>
-            ...
-          </>
-        ) : (
-          "Register with passkey"
-        )}
+        {isPending ? <>...</> : "Register with passkey"}
       </button>
       {result && <div>{result}</div>}
     </>

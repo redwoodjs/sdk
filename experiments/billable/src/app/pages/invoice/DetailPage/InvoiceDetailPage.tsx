@@ -5,7 +5,12 @@ import { Layout } from "../../Layout";
 import { InvoiceForm } from "./InvoiceForm";
 import { db } from "src/db";
 import { RouteContext } from "redwoodsdk/router";
-import { BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "src/components/ui/breadcrumb";
+import {
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "src/components/ui/breadcrumb";
 import { link } from "src/shared/links";
 
 export type InvoiceItem = {
@@ -41,7 +46,7 @@ export async function getInvoice(id: string, userId: string) {
     ...invoice,
     items: JSON.parse(invoice.items) as InvoiceItem[],
     taxes: JSON.parse(invoice.taxes) as InvoiceTaxes[],
-    labels: JSON.parse(invoice.labels || '{}') as InvoiceLabels
+    labels: JSON.parse(invoice.labels || "{}") as InvoiceLabels,
   };
 }
 
@@ -54,13 +59,9 @@ export async function InvoiceDetailPage({
   return (
     <Layout ctx={ctx}>
       <BreadcrumbList>
-        <BreadcrumbLink href={link('/invoice/list')}>
-        Invoices
-        </BreadcrumbLink>
+        <BreadcrumbLink href={link("/invoice/list")}>Invoices</BreadcrumbLink>
         <BreadcrumbSeparator />
-        <BreadcrumbPage>
-        Edit Invoice
-        </BreadcrumbPage>
+        <BreadcrumbPage>Edit Invoice</BreadcrumbPage>
       </BreadcrumbList>
 
       <InvoiceForm invoice={invoice} ctx={ctx} />

@@ -48,7 +48,7 @@ export function InvoiceForm(props: {
 
   const pdfContentRef = useRef<HTMLDivElement>(null);
 
-  const isLoggedIn = props.ctx?.user
+  const isLoggedIn = props.ctx?.user;
 
   return (
     <div>
@@ -528,12 +528,14 @@ function SupplierName({
             setInvoice({ ...invoice, supplierName: e.target.value })
           }
         />
-        {isLoggedIn && <UploadLogo
-          invoiceId={invoice.id}
-          onSuccess={(supplierLogo) => {
-            setInvoice({ ...invoice, supplierLogo });
-          }}
-        />}
+        {isLoggedIn && (
+          <UploadLogo
+            invoiceId={invoice.id}
+            onSuccess={(supplierLogo) => {
+              setInvoice({ ...invoice, supplierLogo });
+            }}
+          />
+        )}
       </div>
     );
   }

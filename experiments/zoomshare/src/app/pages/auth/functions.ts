@@ -1,11 +1,22 @@
 "use server";
-import { generateRegistrationOptions, generateAuthenticationOptions, verifyRegistrationResponse, verifyAuthenticationResponse, RegistrationResponseJSON, AuthenticationResponseJSON, WebAuthnCredential } from '@simplewebauthn/server';
+import {
+  generateRegistrationOptions,
+  generateAuthenticationOptions,
+  verifyRegistrationResponse,
+  verifyAuthenticationResponse,
+  RegistrationResponseJSON,
+  AuthenticationResponseJSON,
+  WebAuthnCredential,
+} from "@simplewebauthn/server";
 
 import { sessions } from "@/session/store";
-import { RouteContext } from 'redwoodsdk/router';
-import { db } from '@/db';
+import { RouteContext } from "redwoodsdk/router";
+import { db } from "@/db";
 
-export async function startPasskeyRegistration(username: string, ctx?: RouteContext) {
+export async function startPasskeyRegistration(
+  username: string,
+  ctx?: RouteContext,
+) {
   const { headers, env } = ctx!;
 
   const options = await generateRegistrationOptions({
@@ -14,9 +25,9 @@ export async function startPasskeyRegistration(username: string, ctx?: RouteCont
     userName: username,
     authenticatorSelection: {
       // Require the authenticator to store the credential, enabling a username-less login experience
-      residentKey: 'required',
+      residentKey: "required",
       // Prefer user verification (biometric, PIN, etc.), but allow authentication even if it's not available
-      userVerification: 'preferred',
+      userVerification: "preferred",
     },
   });
 
@@ -25,7 +36,11 @@ export async function startPasskeyRegistration(username: string, ctx?: RouteCont
   return options;
 }
 
-export async function finishPasskeyRegistration(username: string, registration: RegistrationResponseJSON, ctx?: RouteContext) {
+export async function finishPasskeyRegistration(
+  username: string,
+  registration: RegistrationResponseJSON,
+  ctx?: RouteContext,
+) {
   const { request, headers, env } = ctx!;
   const { origin } = new URL(request.url);
 
@@ -33,7 +48,7 @@ export async function finishPasskeyRegistration(username: string, registration: 
   const challenge = session?.challenge;
 
   if (!challenge) {
-    return false
+    return false;
   }
 
   const verification = await verifyRegistrationResponse({
@@ -64,7 +79,7 @@ export async function finishPasskeyRegistration(username: string, registration: 
     },
   });
 
-  return true
+  return true;
 }
 
 export async function startPasskeyLogin(ctx?: RouteContext) {
@@ -72,7 +87,7 @@ export async function startPasskeyLogin(ctx?: RouteContext) {
 
   const options = await generateAuthenticationOptions({
     rpID: env.RP_ID,
-    userVerification: 'preferred',
+    userVerification: "preferred",
     allowCredentials: [],
   });
 
@@ -81,7 +96,10 @@ export async function startPasskeyLogin(ctx?: RouteContext) {
   return options;
 }
 
-export async function finishPasskeyLogin(login: AuthenticationResponseJSON, ctx?: RouteContext) {
+export async function finishPasskeyLogin(
+  login: AuthenticationResponseJSON,
+  ctx?: RouteContext,
+) {
   const { request, headers, env } = ctx!;
   const { origin } = new URL(request.url);
 
@@ -89,7 +107,7 @@ export async function finishPasskeyLogin(login: AuthenticationResponseJSON, ctx?
   const challenge = session?.challenge;
 
   if (!challenge) {
-    return false
+    return false;
   }
 
   const credential = await db.credential.findUnique({
@@ -99,8 +117,8 @@ export async function finishPasskeyLogin(login: AuthenticationResponseJSON, ctx?
   });
 
   if (!credential) {
-    return false
-  };
+    return false;
+  }
 
   const verification = await verifyAuthenticationResponse({
     response: login,
@@ -121,7 +139,7 @@ export async function finishPasskeyLogin(login: AuthenticationResponseJSON, ctx?
 
   await db.credential.update({
     where: {
-      credentialId: login.id
+      credentialId: login.id,
     },
     data: {
       counter: verification.authenticationInfo.newCounter,
@@ -140,8 +158,8 @@ export async function finishPasskeyLogin(login: AuthenticationResponseJSON, ctx?
 
   await sessions.save(headers, {
     userId: user.id,
-    challenge: null
+    challenge: null,
   });
 
-  return true
+  return true;
 }
