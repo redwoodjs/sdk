@@ -3,7 +3,6 @@
 set -e  # Stop on first error
 
 DEPENDENCY_NAME="<YOUR_PACKAGE_NAME>"  # Replace with the actual package name
-DRY_RUN=false
 
 show_help() {
   echo "Usage: pnpm release <patch|minor|major> [--dry]"
@@ -37,25 +36,40 @@ validate_args() {
   done
 }
 
-if [[ "$1" == "--help" || -z "$1" ]]; then
+# Reorder argument handling
+validate_args "$@"
+
+# Initialize DRY_RUN first
+DRY_RUN=false
+VERSION_TYPE=""
+
+# Process all arguments
+for arg in "$@"; do
+  if [[ "$arg" == "--help" ]]; then
+    show_help
+  elif [[ "$arg" == "--dry" ]]; then
+    DRY_RUN=true
+  elif [[ "$arg" == "patch" || "$arg" == "minor" || "$arg" == "major" ]]; then
+    VERSION_TYPE=$arg
+  fi
+done
+
+# Validate required arguments
+if [[ -z "$VERSION_TYPE" ]]; then
+  echo "Error: Version type (patch|minor|major) is required"
+  echo ""
   show_help
 fi
 
-if [[ "$1" == "--dry" ]]; then
-  DRY_RUN=true
-  shift
+CURRENT_VERSION=$(npm pkg get version | tr -d '"')
+NEW_VERSION=$(semver -i $VERSION_TYPE $CURRENT_VERSION)
+
+if [[ "$DRY_RUN" == false ]]; then
+  npm version $NEW_VERSION --no-git-tag-version > /dev/null
 fi
 
-VERSION_TYPE=$1
+echo "Bumping version to $NEW_VERSION ($VERSION_TYPE)..."
 
-echo "Bumping version ($VERSION_TYPE)..."
-if [[ "$DRY_RUN" == true ]]; then
-  echo "[Dry Run] pnpm version $VERSION_TYPE --no-git-tag-version"
-else
-  pnpm version $VERSION_TYPE --no-git-tag-version
-fi
-
-NEW_VERSION=$(npm pkg get version | tr -d '"')
 TAG_NAME="v$NEW_VERSION"
 
 echo "Publishing package..."
