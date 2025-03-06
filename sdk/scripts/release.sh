@@ -2,7 +2,7 @@
 
 set -e  # Stop on first error
 
-DEPENDENCY_NAME="<YOUR_PACKAGE_NAME>"  # Replace with the actual package name
+DEPENDENCY_NAME="redwoodsdk"  # Replace with the actual package name
 
 show_help() {
   echo "Usage: pnpm release <patch|minor|major> [--dry]"
@@ -68,54 +68,60 @@ if [[ "$DRY_RUN" == false ]]; then
   npm version $NEW_VERSION --no-git-tag-version > /dev/null
 fi
 
-echo "Bumping version to $NEW_VERSION ($VERSION_TYPE)..."
+echo -e "\n📦 Bumping version to $NEW_VERSION ($VERSION_TYPE)..."
 
 TAG_NAME="v$NEW_VERSION"
 
-echo "Publishing package..."
+echo -e "\n🚀 Publishing package..."
 if [[ "$DRY_RUN" == true ]]; then
-  echo "[Dry Run] pnpm publish"
+  echo "  [DRY RUN] pnpm publish"
 else
   pnpm publish
 fi
 
-echo "Updating monorepo dependencies..."
+echo -e "\n🔄 Updating dependencies in monorepo..."
 while IFS= read -r package_json; do
   if [[ "$package_json" != "./package.json" ]]; then
-    CURRENT_DEP_VERSION=$(npm pkg get dependencies."$DEPENDENCY_NAME" --prefix "$(dirname "$package_json")" | tr -d '"')
-
-    if [[ -n "$CURRENT_DEP_VERSION" && "$CURRENT_DEP_VERSION" != workspace:* ]]; then
-      echo "Updating $package_json to use $NEW_VERSION..."
+    PROJECT_DIR=$(dirname "$package_json")
+    CURRENT_DEP_VERSION=$(cd "$PROJECT_DIR" && npm pkg get dependencies."$DEPENDENCY_NAME" | tr -d '"')
+    
+    # Only process if the dependency exists (not {} or empty) and isn't a workspace dependency
+    if [[ "$CURRENT_DEP_VERSION" != "{}" && -n "$CURRENT_DEP_VERSION" && "$CURRENT_DEP_VERSION" != workspace:* ]]; then
+      # Get relative path for cleaner output
+      REL_PATH=$(echo "$package_json" | sed 's/\.\.\///')
+      echo "  └─ $REL_PATH"
       if [[ "$DRY_RUN" == true ]]; then
-        echo "[Dry Run] npm pkg set dependencies.\"$DEPENDENCY_NAME\"=\"$NEW_VERSION\" --prefix \"$(dirname "$package_json")\""
+        echo "     [DRY RUN] Update to $NEW_VERSION"
       else
-        npm pkg set dependencies."$DEPENDENCY_NAME"="$NEW_VERSION" --prefix "$(dirname "$package_json")"
+        (cd "$PROJECT_DIR" && npm pkg set dependencies."$DEPENDENCY_NAME"="$NEW_VERSION")
       fi
     fi
   fi
-done < <(find . -path "*/node_modules" -prune -o -name "package.json" -print)
+done < <(find .. -path "*/node_modules" -prune -o -name "package.json" -print)
 
-echo "Committing changes..."
+echo -e "\n📥 Installing dependencies..."
 if [[ "$DRY_RUN" == true ]]; then
-  echo "[Dry Run] git add package.json pnpm-lock.yaml"
-  echo "[Dry Run] git commit -m \"release $NEW_VERSION\""
+  echo "  [DRY RUN] pnpm install"
+else
+  pnpm install
+fi
+
+echo -e "\n💾 Committing changes..."
+if [[ "$DRY_RUN" == true ]]; then
+  echo "  [DRY RUN] Git operations:"
+  echo "    - Add: package.json pnpm-lock.yaml"
+  echo "    - Commit: release $NEW_VERSION"
+  echo "    - Tag: $TAG_NAME"
+  echo "    - Push: origin with tags"
 else
   git add package.json pnpm-lock.yaml
   git commit -m "release $NEW_VERSION"
-fi
-
-echo "Tagging release..."
-if [[ "$DRY_RUN" == true ]]; then
-  echo "[Dry Run] git tag $TAG_NAME"
-else
   git tag "$TAG_NAME"
-fi
-
-echo "Pushing changes..."
-if [[ "$DRY_RUN" == true ]]; then
-  echo "[Dry Run] git push --follow-tags"
-else
   git push --follow-tags
 fi
 
-echo "Done! Released version $NEW_VERSION (Dry Run: $DRY_RUN)."
+if [[ "$DRY_RUN" == true ]]; then
+  echo -e "\n✨ Done! Released version $NEW_VERSION (DRY RUN)\n"
+else
+  echo -e "\n✨ Done! Released version $NEW_VERSION\n"
+fi
