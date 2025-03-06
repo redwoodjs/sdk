@@ -81,6 +81,11 @@ CURRENT_VERSION=$(npm pkg get version | tr -d '"')
 NEW_VERSION=$(semver -i $VERSION_TYPE $CURRENT_VERSION)
 
 echo -e "\n📦 Planning version bump to $NEW_VERSION ($VERSION_TYPE)..."
+if [[ "$DRY_RUN" == true ]]; then
+  echo "  [DRY RUN] pnpm version $VERSION_TYPE"
+else
+  pnpm version $VERSION_TYPE --no-git-tag-version
+fi
 
 TAG_NAME="v$NEW_VERSION"
 
