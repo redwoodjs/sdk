@@ -8,6 +8,140 @@ description: A guide in my new Starlight docs site.
 
 import { Aside } from '@astrojs/starlight/components';
 
+Since we're using the [Pass Key Auth starter kit](), it already has PassKey authentication setup.
+
+<Aside type="note" title="Why PassKey Authentication?">
+Passkey authentication offers several key advantages:
+
+- **Enhanced Security**: Passkeys are unique, resistant to guessing, and eliminate vulnerabilities associated with traditional passwords. They use biometric authentication like fingerprints, making them much harder to compromise.
+- **User-Friendly**: Users can log in quickly using biometric data or device authentication, removing the need to remember complex passwords. This creates a frictionless access experience across different platforms.
+- **Phishing Resistance**: Passkeys are tied to specific websites, making them immune to phishing attacks that typically trick users into entering credentials on fake sites.
+</Aside>
+
+Let's start by taking a look at the `worker.tsx` file:
+
+```tsx title="src/worker.tsx"
+...
+
+export type Context = {
+  session: Session | null;
+  user: User | null;
+}
+
+export default defineApp<Context>([
+  async ({ env, ctx, request }) => {
+    setupDb(env);
+    setupSessionStore(env);
+    ctx.session = await sessions.load(request);
+
+    if (ctx.session?.userId) {
+      ctx.user = await db.user.findUnique({
+        where: {
+          id: ctx.session.userId,
+        },
+      });
+    }
+  },
+  layout(Document, [
+    index([
+        ({ ctx }) => {
+          if (!ctx.user) {
+            return new Response(null, {
+              status: 302,
+              headers: { Location: '/user/login' }
+            });
+          }
+        },
+        Home,
+    ]),
+    prefix("/user", authRoutes),
+  ])
+])
+```
+
+- On **lines 3-6**, we're setting up the types for our context object. Specifically, we're defining the `session` and `user` properties.
+- On **lines 9-21**, we're setting up our middleware.
+  - First, we're setting up the database `setupDb(env);` We'll use this later, on line 15, to find the logged in user.
+  - Then, we're setting up the session store `setupSessionStore(env);`. We're using Cloudflare's Durable Objects to store our session data.
+  - Next, we're loading the session from the session store: `ctx.session = await sessions.load(request);`.
+  - Then, we're checking if the user is logged in `if (ctx.session?.userId)`. If they are, we're loading the user from the database (lines 15 - 19). The result gets saved into the `ctx.user` object.
+- On **line 22**, we're setting up our layout. This layout contains our `html`, `head`, and `body` tags and wraps all of our pages.
+- On **line 23-33**, we're setting up our home page route. Before we return our `Home` component (line 32), we use an interrupter to see if the user is logged in. Really, this is a function that takes our `ctx` object and checks to see if the `user` object exists. If it doesn't, we redirect to the login page. Otherwise, we return the `Home` component.
+- On **line 34**, we're prefixing all of our auth routes with `/user`. Meaning, our `login` route will be `/user/login` and our `logout` route will be `/user/logout`. Let's take a look at `authRoutes`. This is coming from `src > app > pages > auth > routes.tsx`.
+
+```tsx title="src/app/pages/auth/routes.tsx"
+...
+import { SignupPage } from 'app/pages/auth/SignupPage';
+
+export const authRoutes = [
+  route('/login', [
+    LoginPage
+  ]),
+  route('/logout', async function ({ request }) {
+    const headers = new Headers();
+    await sessions.remove(request, headers);
+    headers.set('Location', '/');
+
+    return new Response(null, {
+      status: 302,
+      headers,
+    });
+  }),
+]
+```
+
+One of the cool things about the RedwoodSDK router is the parameter is defined through an array. This means, we can define our route information in a separate file and then import it into our `worker.tsx` file.
+
+Here, we're co-locating our auth routes with our auth pages.
+
+We're defining 2 routes:
+- `/login` - This is displaying our login page.
+- `/logout` - This is our logout route, but instead of returning JSX, we're removing the session and redirecting the user to the home page.
+
+Let's create a third route for registering a new user, giving sign up a dedicated page.
+
+Inside, our `src/app/pages/auth` directory, create a new file called `SignupPage.tsx`. Let's stub out a simple function, just to make sure it's working:
+
+```tsx title="src/app/pages/auth/SignupPage.tsx"
+export const SignupPage = () => {
+  return <div>Signup</div>;
+}
+```
+
+Now, we need to add this route to our `authRoutes` array:
+
+```tsx title="src/app/pages/auth/routes.tsx" startLineNumber=7
+route('/signup', [
+  SignupPage
+]),
+```
+
+<Aside type="note" title="Middleware and Interrupters?">
+### Middleware
+
+Middleware is a function that runs _in the middle_, between your request to the server and the server's response.
+
+It allows you to:
+
+- Modify or inspect requests before they reach the main application logic
+- Perform operations like authentication, logging, error handling
+- Transform or validate data
+- Add headers or perform other preprocessing tasks
+
+### Interrupters
+
+Interrupters will _interrupt_ the flow. Before, the server returns a response, the interrupter will run.
+
+### These sound similar, what's the difference?
+
+- Middleware will run before every single route.
+- Interrupters will only on specific routes.
+
+In our code, we're using middleware to attach the user session to our context object, on every request. But, we're only checking to see if the user is logged in on the home page.
+</Aside>
+
+
+
 - Adding authentication
 - Creating signup/login pages with ShadCN components
 - Protecting routes
@@ -19,4 +153,11 @@ You can find the final code for this step on [GitHub](https://github.com/redwood
 
 ## Further reading
 
-- Read [about how-to guides](https://diataxis.fr/how-to-guides/) in the Diátaxis framework
+If you're interested in implementing other authentication strategies, we have guides for the following:
+
+- [Email/Password Authentication]() - TODO: Write a guide for setting up email/password authentication
+- [One Time Password (OTP)]() - TODO: Write a guide for setting up OTP authentication
+- [OAuth]() - TODO: Write a guide for setting up OAuth authentication
+- [Magic Link]() - TODO: Write a guide for setting up magic link authentication
+- [Passkey]() - TODO: Write a guide for setting up passkey authentication
+

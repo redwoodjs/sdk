@@ -6,13 +6,49 @@ sidebar:
 description: Setting up the database for the application
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+import { Aside, FileTree } from '@astrojs/starlight/components';
+
+First, let's set up our database. You'll need a [Cloudflare](https://www.cloudflare.com/) account. We're using their d1 services to handle the database.
+
+Generate a new database:
+
+```bash
+npx wrangler d1 create applywize
+```
+
+![]() - _TODO: Screenshot of the Terminal_
+
+Copy the database ID and it into your `wrangler.toml` file:
+
+```toml title="wrangler.toml"
+[[d1_databases]]
+binding = "DB"
+database_name = "applywize"
+database_id = "__change_me__"
+```
+
+## Set up Cloudflare d1
+If you ever need to find this value, you can log into your Cloudflare account and navigate to the D1 section.
+
+![]() - _TODO: Screenshot of the Cloudflare Dashboard_
+
+Within the Terminal, run:
+
+```bash
+npx prisma generate
+pnpm migrate:dev
+```
+
+This will set up Prisma and even though we're not ready to migrate our database, `migrate:dev` will create a `.wrangler` file within our project and setup the Cloudflare d1 database locally.
+
+![]() - _TODO: Screenshot of the Terminal_
+![]() - _TODO: Screenshot of the .wrangler folder_
+
+## Setting up our Database Tables or Models
 
 For this project, we'll use [Prisma](https://www.prisma.io/) as our ORM (Object Relational Mapper). This makes it easy to define our database and generate migrations.
 
 I like to start by going through the [application design files]() and making a list of all the tables (models) and fields we need.
-
-## Database Tables or Models
 
 Each model represents the type of data that will be stored in the table.
 
@@ -376,19 +412,108 @@ pnpm migrate:dev
 
 ## Previewing the Migration
 
-The [SQLite Viewer VS Code extension](https://marketplace.visualstudio.com/items?itemName=qwtel.sqlite-viewer) is perfect for being able to preview your SQLite database directly within VSCode.
+### SQLite Viewer
 
-;tk - SQLite within VSCode
+The [SQLite Viewer VS Code extension](https://marketplace.visualstudio.com/items?itemName=qwtel.sqlite-viewer) is perfect for previewing your SQLite database directly within VS Code.
 
-;tk - Bee Keeper Studio
+Within the file explorer, navigate to your SQLite database. You can find it in the `.wrangler > state > v3 > d1 > miniflare-D1DatabaseObject` folder.
 
-![]() - _TODO: Screenshot of Bee Keeper Studio_
+<FileTree>
+- .wrangler
+  - state
+    - v3
+      - d1
+        - miniflare-D1DatabaseObject/
+          - 005cb3d3133217f352562272facf516778925ea1151d9c310bcb4e13614995c1.sqlite
+</FileTree>
+
+The file name of your sqlite database will vary.
+
+Click on the sqlite file and a preview should open within VSCode.
+
+![](./images/vs-code-sqlite.png)
+
+The viewer will only let you preview the database. If you want to create, update, or delete, you'll need a pro account.
+
+### Bee Keeper Studio
+
+Bee Keeper Studio is another option. It's a stand alone application, but the free version will allow you to create, read, update, and delete data.
+
+![](./images/beekeeper-setup.png)
+
+When setting up the connection, select **SQLite** from the **Connection Type** dropdown. Then, click on "Choose File" and navigate to the .sqlite file.
+
+![](./images/beekeeper-preview.png)
 
 ## Seed the database
 
 Instead of manually adding data to the database, we can create a seed file to programmatically add data for us. This is particularly helpful if you need to reset the database during development.
 
-Inside the `src/scripts/seed.ts` file, ;tk
+Within the `src` directory, create a new folder called `scripts`. inside, create a file called `seed.ts`.
+
+<FileTree>
+- src/
+  - scripts/
+    - seed.ts
+</FileTree>
+
+You can copy and paste the following code inside:
+
+```ts title="src/scripts/seed.ts"
+import { defineScript } from "redwoodsdk/worker";
+import { db, setupDb } from "../db";
+
+export default defineScript(async ({ env }) => {
+  setupDb(env);
+
+  await db.$executeRawUnsafe(`\
+    DELETE FROM Application;
+    DELETE FROM Contact;
+    DELETE FROM Company;
+    DELETE FROM Credential;
+    DELETE FROM User;
+    DELETE FROM sqlite_sequence;
+  `);
+
+  await db.applicationStatus.createMany({
+    data: [
+      { id: 1, status: "New" },
+      { id: 2, status: "Applied" },
+      { id: 3, status: "Interview" },
+      { id: 4, status: "Rejected" },
+      { id: 5, status: "Offer" },
+    ],
+  });
+
+  console.log("🌱 Finished seeding");
+});
+```
+
+Before we add anything to this file, let's make sure we understand what's happening:
+* **On lines 1 and 2** are importing our dependencies. We need our Cloudflare worker and database connection.
+* **On line 4**, we're setting up our Cloudflare worker environment.
+* **On line 5**, we're setting up our database connection.
+* **On line 7-14**, we're using raw SQL to delete the existing data from the database. This will allow us seed the database with fresh data.
+* **On line 16-24**, we're adding all the job application statuses to the database. You'll notice this is a standard Prisma `createMany` function.
+* **On line 26**, we're logging a message to the console that the seeding is complete.
+
+To seed the database, run the following command:
+
+```bash
+pnpm seed
+```
+
+![]() - _TODO: Screenshot of the Terminal_
+
+<Aside type="note" title="Multiple Seed Files">
+Sometimes, I'll create multiple seed files for different purposes.
+
+The seed file we just created is perfect for a brand new database, whether we're in development or in production. We've provided all the application statuses that we need. These won't change.
+
+But, I'll also create seed files to test the application with various sets of data. This is much easier (and faster) than manually adding data.
+
+You can also leverage libraries, like [Faker](https://fakerjs.dev/) and [Snaplet](https://snaplet.dev/), to make it easier to create realistic data sets.
+</Aside>
 
 ## Code on GitHub
 
