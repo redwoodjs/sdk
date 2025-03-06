@@ -16,7 +16,7 @@ export type Context = {
 
 export default defineApp<Context>([
   async ({ env, ctx, request }) => {
-    setupDb(env);
+    await setupDb(env);
     setupSessionStore(env);
     ctx.session = await sessions.load(request);
 
