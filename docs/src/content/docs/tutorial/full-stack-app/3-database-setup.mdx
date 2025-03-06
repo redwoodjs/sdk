@@ -21,18 +21,24 @@ We need models for:
 1. Job Applications
 2. Users
 
-**The "trick" with database design is to prevent duplication.** For example, we want to store the company information for each application. There's a chance we'll have multiple applications for the same company. If we store the company information directly in the `Application` model, we'll have duplicate entries. This could create all kinds of problems. For example, is it `RedwoodSDK`, `redwoodsdk`, `redwood-sdk`, or `RedwoodSdk`?
+**The "trick" with database design is to prevent duplication.** For example, we want to store the company information for each job application. There's a chance we'll have multiple job applications for the same company. If we store the company information directly in the `Application` model, we'll have duplicate entries. This could create all kinds of problems. For example, is it `RedwoodSDK`, `redwoodsdk`, `redwood-sdk`, or `RedwoodSdk`?
 
 Instead, we can store the company information in a separate model, with a single entry for each company, and link it to the relevant job application.
+
+![](./images/db-application-to-company.png)
 
 The same applies to Contacts. We can create a separate model and create a relationship between the contact and the related company.
 
 3. Companies
 4. Contacts
 
+![](./images/db-contact-to-company.png)
+
 Application Statuses are a little different. The same principle applies. To avoid duplication, we will give statuses their own model. But, we will have a set of statuses (New, Applied, Interviewing, Offer, and Rejected) and won't be updating or deleting them.
 
 5. Application Statuses
+
+![](./images/db-application-to-status.png)
 
 ## Columns
 
@@ -53,6 +59,8 @@ I always start with an `id`, `createdAt`, and `updatedAt` field.
 
 As you're making a list of all the data we need to store, you'll also need to think about the **data type** of each column.
 
+In Prisma, there are 9 different data types:
+
 | **Prisma Type** |	**Description** |
 | --- | --- |
 | `String` | A UTF-8 encoded string |
@@ -72,11 +80,11 @@ When it comes to `id`s, there are 2 different types: `String` and `Int`.
 - `String` - A UUID (Universally Unique Identifier) is a unique string of characters. For example: `2b22ee49-d788-4bf0-bacd-380b351ca1e0`
 - `Int` - An auto-incrementing integer.
 
-When you use an integer, the first entry is usually 1. The next entry is 2, then 3, etc. This makes it easy to tell how many entries are in the database, or to sort the entries by the order they were created. However, this can also create a security risk. It's easy to guess the next entry in the sequence.
+When you use an integer, the first entry is usually 1. The next entry is 2, then 3, etc. This makes it easy to tell how many entries are in the database. It's also easy to sort the entries by the order they were created. However, this can also create a security risk. It's easy to guess the next entry in the sequence.
 
-For example, if the URL for my application is `https://applywize.app/applications/1`, it's easy to guess the URL for the next application is: `https://applywize.app/applications/2`.
+For example, if the URL for my job application is `https://applywize.app/applications/1`, I could assume the URL for the next application is: `https://applywize.app/applications/2`.
 
-This is where a UUID comes in handy. A UUID is a unique, random string of characters. It's near impossible to guess an entry's ID. The URL `https://applywize.app/applications/2b22ee49-d788-4bf0-bacd-380b351ca1e0` isn't quite as user friendly, but it's security by obscurity.
+This is where a UUID comes in handy. A UUID is a unique, random string of characters. It's almost impossible to guess an entry's ID. The URL `https://applywize.app/applications/2b22ee49-d788-4bf0-bacd-380b351ca1e0` isn't quite as user friendly, but it's security by obscurity.
 
 Which is better? It depends. My general rule of thumb is if the user is going to see the ID, use a string. If the ID is an internal identifier, use an integer.
 
@@ -89,17 +97,17 @@ I need the following data:
 | **Field** | **Type** | **Notes** |
 | --- | --- | --- |
 | `id` | `String` | A UUID |
-| `salaryMin` | `String` | Optional. The minimum salary for the job. It might be helpful to make this a number, so we can sort the applications by salary. However, this might be a pain to format when displaying the data. |
-| `salaryMax` | `String` | Optional. The maximum salary for the job. Same as `salaryMin`. |
-| `dateApplied` | `DateTime` | Optional. The date the application was submitted. |
-| `jobTitle` | `String` | Optional. The job title |
-| `jobDescription` | `String` | Optional. The job description. |
-| `postingUrl` | `String` | Optional. The URL to the job posting. |
-| `archived` | `Boolean` | False by default.Whether the application has been archived |
+| `salaryMin` | `String` | _Optional._ The minimum salary for the job. It might be helpful to make this a number, so we can sort the applications by salary. However, this might be a pain to format when displaying the data. |
+| `salaryMax` | `String` | _Optional._ The maximum salary for the job. Same as `salaryMin`. |
+| `dateApplied` | `DateTime` | _Optional._ The date the application was submitted. |
+| `jobTitle` | `String` | _Optional._ The job title |
+| `jobDescription` | `String` | _Optional._ The job description. |
+| `postingUrl` | `String` | _Optional._ The URL to the job posting. |
+| `archived` | `Boolean` | False by default. Whether the application has been archived |
 | `createdAt` | `DateTime` | The date the application was created. |
 | `updatedAt` | `DateTime` | The date the application was last updated. |
 
-Now, we need to translate all this information into a Prisma model. Prisma has it's own syntax for defining models. But, you'll notice that it looks similar to an object:
+Now, we need to translate all this information into a Prisma model. Prisma has it's own syntax for defining models. But, you'll notice that it looks similar to an object definition:
 
 ```prisma title="src/db/schema.prisma"
 model Application {
@@ -242,8 +250,8 @@ model Contact {
 1. On the `Contact` model, we added a `companyId` field. This stores the ID of the related `Company` record.
 2. On the `Contact` model, we also added a `company` field, that defines the relationship.
     - It is connected to the `Company` model.
-    - It uses the `companyId` field to connect the two models.
-    - It uses the `id` field on the `Company` model as the reference.
+    - It uses the `companyId` field on the `Contact` model to connect the two models.
+    - It references the `id` field on the `Company` model.
 3. On the `Company` model, we added a `contacts` field.
     - The type of content will be an array `[]` of `Contact` records.
 
@@ -338,17 +346,21 @@ model User {
 
 ## Running Migrations
 
+;tk - what is a migration?
+
 First, we'll need to create the migration. Run the `pnpm migrate:new` command and give the migration a name. Since this is our first migration, we'll call it our `initial migration`.
 
 ```bash
 pnpm migrate:new "initial migration"
 ```
 
-![]()
+![]() - _TODO: Screenshot of the Terminal_
 
 This will generate a `sql` file in the `migrations` folder.
 
-![]()
+;tk - this means that we didn't have to write any SQL code. Prisma handled that for us!
+
+![]() - _TODO: Screenshot of Cursor, include the `migrations` folder and the code that was generated_
 
 <Aside type="note" title="The Number of Migrations">
   Worried about the number of migrations in your project? Don't.
@@ -360,19 +372,31 @@ Now, we need to apply the migration.
 pnpm migrate:dev
 ```
 
-![]()
+![]() - _TODO: Screenshot of the Terminal_
 
 ## Previewing the Migration
 
+The [SQLite Viewer VS Code extension](https://marketplace.visualstudio.com/items?itemName=qwtel.sqlite-viewer) is perfect for being able to preview your SQLite database directly within VSCode.
+
+;tk - SQLite within VSCode
+
 ;tk - Bee Keeper Studio
 
-![]()
+![]() - _TODO: Screenshot of Bee Keeper Studio_
 
 ## Seed the database
 
-Instead of manually adding data to the database, we can use a seed file to add data to do the job for us. This is particularly helpful if you need to reset the database during development.
+Instead of manually adding data to the database, we can create a seed file to programmatically add data for us. This is particularly helpful if you need to reset the database during development.
 
 Inside the `src/scripts/seed.ts` file, ;tk
+
+## Code on GitHub
+
+You can find the final code for this step on [GitHub](https://github.com/redwoodjs/applywize).
+
+<Aside type="tip" title="Code on GitHub">
+You can find the final code for this step on [GitHub](https://github.com/redwoodjs/applywize).
+</Aside>
 
 ## Further reading
 

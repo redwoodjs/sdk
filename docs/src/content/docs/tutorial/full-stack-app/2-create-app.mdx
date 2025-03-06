@@ -49,7 +49,7 @@ This will create a directory called `applywize` with the RedwoodSDK project stru
 </FileTree>
 
 <Aside type="note" title="Starter Projects">
-  For the tutorial, we're starting with the [Prisma starter project](/reference/starters/prisma/). However, if you start with a different template, the files and folders may vary slightly.
+  For the tutorial, we're starting with the [Pass Key Auth starter project](/reference/starters/passkey-auth/). However, if you start with a different template, the files and folders may vary slightly.
 </Aside>
 
 {/* TODO: add some additional context for the purpose of each file */}
@@ -58,9 +58,9 @@ This will create a directory called `applywize` with the RedwoodSDK project stru
 
 Let's start by installing [TailwindCSS](https://tailwindcss.com/) and [ShadCN](https://ui.shadcn.com/).
 
-TailwindCSS is a utility-first CSS framework that makes it easy to style your components.
+**TailwindCSS** is a utility-first CSS framework that makes it easy to style your components.
 
-ShadCN components is a library of pre-built components making it easier for us to focus on the functionality of our app, rather than the styling and building of components.
+**ShadCN** components is a library of pre-built components making it easier for us to focus on the functionality of our app, rather than the styling and building of components.
 
 ### TailwindCSS
 
@@ -73,8 +73,7 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
     ```
 
 2. Configure the Vite Plugin
-    ```ts ins="import tailwindcss from '@tailwindcss/vite'" ins="tailwindcss(),"
-    // vite.config.mts
+    ```ts ins="import tailwindcss from '@tailwindcss/vite'" ins="tailwindcss()," title="vite.config.mts"
     import { defineConfig } from "vite";
     import tailwindcss from '@tailwindcss/vite'
     import { redwood } from "@redwoodjs/sdk/vite";
@@ -87,9 +86,8 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
     });
     ```
 
-3. Import Tailwind CSS
-    Create a `src/app/styles.css` file.
-    ```css
+3. Import Tailwind CSS. (You'll need to create the `src/app/styles.css` file.)
+    ```css title="src/app/styles.css"
     @import "tailwindcss";
     ```
 
@@ -97,6 +95,9 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
     ```bash
     pnpm run dev
     ```
+
+    {/* TODO: Add a screenshot of the Hello World page */}
+    ![]()
 
 </Steps>
 
@@ -112,7 +113,7 @@ TailwindCSS v4 was _just_ released, so we'll need to [use a canary version of Sh
     pnpm dlx shadcn@canary init
     ```
 2. Add path aliases to `tsconfig.json`:
-    ```json
+    ```json title="tsconfig.json"
     {
       "files": [],
       "references": [
@@ -128,7 +129,7 @@ TailwindCSS v4 was _just_ released, so we'll need to [use a canary version of Sh
     }
     ```
 3. Add path aliases to `tsconfig.app.json`:
-    ```json
+    ```json title="tsconfig.app.json"
     {
       "compilerOptions": {
         "baseUrl": ".",
@@ -143,7 +144,7 @@ TailwindCSS v4 was _just_ released, so we'll need to [use a canary version of Sh
     pnpm add -D @types/node
     ```
 5. Add resolve alias config to `vite.config.ts`:
-    ```ts
+    ```ts title="vite.config.ts"
     import path from "path"
     import tailwindcss from "@tailwindcss/vite"
     import react from "@vitejs/plugin-react"
@@ -183,10 +184,14 @@ TailwindCSS v4 was _just_ released, so we'll need to [use a canary version of Sh
     - Sonner
     - Table
 
-    This will install all the components inside the a `src/app/components/ui` folder.
+    This will add all the components inside the `src/app/components/ui` folder.
 </Steps>
 
 Perfect, now that we have our project setup, and all the frontend components installed, [let's start building the backend.](/tutorial/full-stack-app/database-setup)
+
+## Code on GitHub
+
+You can find the final code for this step on [GitHub](https://github.com/redwoodjs/applywize).
 
 
 ## Further reading

@@ -61,7 +61,7 @@ There's a single `Home` page component in the `src/app/pages` directory that say
 
 The home page is served by the router definition inside the `src/worker.tsx` file.
 
-```tsx
+```tsx title="src/worker.tsx"
 import { Document } from 'src/Document';
 import { Home } from 'src/pages/Home';
 
@@ -82,7 +82,7 @@ export default defineApp<Context>([
 
 Here we have a `layout` function that takes the `Document` component (imported at the top of the file) and wraps our entire application. This includes our basic HTML `head` and `body` tags.
 
-```tsx
+```tsx title="src/app/Document.tsx"
 export const Document: React.FC<{ children: React.ReactNode }> = ({ children }) => (
   <html lang="en">
     <head>
@@ -103,9 +103,9 @@ Then, we're using the `index` function to serve the `Home` page component (impor
 You can add additional routes by:
 - Creating new page components in the `src/app/pages` directory
 - Importing them inside the `src/worker.tsx` file
-- Add them to the layout array, using the `route` function:
+- Add them to the layout array, using the `route` function
 
-```tsx
+```tsx title="src/worker.tsx" {9-10}
 import { About } from 'src/pages/About';
 
 export default defineApp<Context>([
@@ -226,7 +226,7 @@ If you need to manage your deployed pages, you can login to your Cloudflare dash
 
 ![Workers and Pages](./images/workers-pages.png)
 
-You can find additional information deploying in our [Deployment Guide](/guides/deployment/cloudflare)
+You can find additional information deploying in our [Deployment Guide](/guides/deployment/cloudflare).
 
 ## Further Resources
 - [Building Your First Application](/tutorial/first)
