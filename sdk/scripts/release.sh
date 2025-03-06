@@ -7,7 +7,7 @@ DEPENDENCY_NAME="redwoodsdk"  # Replace with the actual package name
 show_help() {
   echo "Usage: pnpm release <patch|minor|major|test> [--dry]"
   echo ""
-  echo "Automates version bumping, publishing, and dependency updates in a monorepo."
+  echo "Automates version bumping, publishing, and dependency updates for $DEPENDENCY_NAME"
   echo ""
   echo "Arguments:"
   echo "  patch|minor|major    The type of version bump to perform"
