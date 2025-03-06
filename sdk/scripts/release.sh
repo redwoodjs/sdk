@@ -11,7 +11,7 @@ show_help() {
   echo ""
   echo "Arguments:"
   echo "  patch|minor|major    The type of version bump to perform"
-  echo "  test                 Create a test release (x.y.z.test.n)"
+  echo "  test                 Create a test release (x.y.z-test.n), published under --tag test"
   echo ""
   echo "Process:"
   echo "  1. Builds package with NODE_ENV=production"
@@ -31,6 +31,14 @@ show_help() {
   echo "Options:"
   echo "  --dry    Simulate the release process without making changes"
   echo "  --help   Show this help message"
+  echo ""
+  echo "Examples:"
+  echo "  pnpm release patch         # 0.1.0 -> 0.1.1"
+  echo "  pnpm release minor         # 0.1.1 -> 0.2.0"
+  echo "  pnpm release major         # 0.2.0 -> 1.0.0"
+  echo "  pnpm release test          # 1.0.0 -> 1.0.0-test.0 (published as @test)"
+  echo "  pnpm release test          # 1.0.0-test.0 -> 1.0.0-test.1 (published as @test)"
+  echo "  pnpm release patch --dry   # Show what would happen"
   exit 0
 }
 
