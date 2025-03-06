@@ -1,157 +1,111 @@
 # Starter with Drizzle
 
-This starter will make it easy to start up a project with a database using Drizzle.
+This starter makes it easy to start up a project with database using Drizzle.
 
-Clone the repo
+Create your new project:
 
-```bash
-git clone https://github.com/redwoodjs/sdk.git
-```
-
-Run
-
-```bash
+```shell
+npx degit redwoodjs/sdk/starters/drizzle my-project-name
+cd my-project-name
 pnpm install
 ```
 
-Go into the sdk directory and build the project
+Within your project's `wrangler.toml` file, replace the placeholder values. For example:
 
-```bash
-cd sdk
-pnpm build
+```toml
+name = "my-project-name"
+main = "src/worker.tsx"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+
+[[ d1_databases ]]
+binding = "DB"
+database_name = "my-project-db"
+database_id = "YOUR-DB-ID-HERE"
+migrations_dir = "drizzle"
 ```
 
-Duplicate the `starters/drizzle` directory.
+You'll need a [Cloudflare account](https://www.cloudflare.com/) as this starter uses Cloudflare D1 for the database.
 
-Rename the folder and move it into the `experiments` directory.
+Create a new D1 database:
 
-Add your new project to the `pnpm-workspace.yaml` file:
-
-```yaml
-- "sdk"
-  - "experiments/billable"
-  - "experiments/yt-dos"
-  - "starters/minimal"
-  - "starters/prisma"
-  - 'experiments/showofhands'
-```
-
-👆 Assuming your new project is called `showofhands`
-
-Then, install all the dependencies for your new project:
-
-```bash
-pnpm install
-```
-
-Generate a d1 database:
-
-```bash
-npx wrangler d1 create NAME_OF_DB
+```shell
+npx wrangler d1 create my-project-db
 ```
 
 ![New Database](./public/images/new-db.png)
 
-Take the `database_name` and `database_id` and update the values within the `wrangler.toml` file.
+Copy the `database_id` from the output and paste it into:
 
-```toml
-name = "__change_me__"
-
-...
-
-[[ d1_databases ]]
-binding = "DB"
-database_name = "__change_me__"
-database_id = "__change_me__"
-migrations_dir = "drizzle"
-```
-
-Rename `.env.example` to `.env`
+1. Your project's `wrangler.toml` file
+2. The `.env` file (copy from `.env.example`)
 
 ```text
-CLOUDFLARE_ACCOUNT_ID=__change_me__
-CLOUDFLARE_DATABASE_ID=__change_me__
-CLOUDFLARE_D1_TOKEN=__change_me__
+CLOUDFLARE_ACCOUNT_ID=your-account-id
+CLOUDFLARE_DATABASE_ID=your-database-id
+CLOUDFLARE_D1_TOKEN=your-api-token
 ```
 
-The `CLOUDFLARE_DATABASE_ID` should be the same as the `database_id` in the `wrangler.toml` file. But, you can also access this from your Cloudflare account:
+To get your Cloudflare credentials:
 
-![Database ID](./public/images/database-id.png)
+- **Account ID**: Find this under Workers & Pages in your Cloudflare dashboard
+- **API Token**: Generate this under User Profile > API Tokens with the following permissions:
+  - Account Settings: Read
+  - D1: Edit
 
-To get the `CLOUDFLARE_ACCOUNT_ID`, you’ll need to login to your Cloudflare account. Under Computer (Workers) > Workers & Pages > you’ll find the `Account ID` in the right sidebar.
+The starter includes a basic user model in `src/db/schema.ts`:
 
-![Cloudflare Account ID](./public/images/cloudflare-account-id.png)
-
-You’ll need to generate a `CLOUDFLARE_D1_TOKEN`. Under your User Account (top right), click on Profile. Then, API Tokens in the left sidebar. Under the API Tokens, click on the Create Token button.
-
-![User API Tokens](./public/images/cloudflare-user-api-tokens.png)
-
-Scroll down to the bottom and click on Custom Token.
-
-![Custom Token](./public/images/cloudflare-custom-token.png)
-
-Give your token a name. I called my `D1 Edit` but you do you.
-
-Under **Permissions**, you’ll need to add 2:
-
-- Account, Account Settings, Read
-- Account, D1, Edit
-
-![](./public/images/cloudflare-new-token.png)
-
-Then, click Continue to Summary
-
-![](./public/images/cloudflare-token-summary.png)
-
-Click Create Token and copy/paste the value to your .env file.
-
-![](./public/images/cloudflare-copy-token.png)
-
-Change values within the `src/db/seed.ts` file.
-
-```ts
-import { defineScript } from "redwoodsdk/worker";
-import { drizzle } from "drizzle-orm/d1";
-import { users } from "./schema";
-
-export default defineScript(async ({ env }) => {
-  const db = drizzle(env.DB);
-
-  // Insert a user
-  await db.insert(users).values({
-    name: "__change me__",
-    email: "__change me__",
-  });
-
-  // Verify the insert by selecting all users
-  const result = await db.select().from(users).all();
-
-  console.log("🌱 Finished seeding");
-
-  return Response.json(result);
+```typescript
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
 });
 ```
 
-Generate a migration. The first time you run this command, it will create a drizzle folder that will contain all your sql migrations.
+Set up your database:
 
-```bash
+```shell
 pnpm migrate:new
-```
-
-Run the migration.
-
-```bash
 pnpm migrate:dev
-```
-
-Run the seed file.
-
-```bash
 pnpm seed
 ```
 
-Run the dev server.
+These commands will:
 
-```bash
+- Create your initial migration
+- Apply the migration to your database
+- Seed your database with initial data
+
+Start your development server:
+
+```shell
 pnpm dev
 ```
+
+You should see your seeded data displayed in the browser.
+
+### Database Changes
+
+When you need to make changes to your database schema:
+
+1. Update your schema in `src/db/schema.ts`
+2. Run `pnpm migrate:new` to create a new migration
+3. Run `pnpm migrate:dev` to apply the migration
+
+### Recommended Tools
+
+VS Code extensions that make development easier:
+
+- [SQLite Viewer](https://marketplace.cursorapi.com/items?itemName=qwtel.sqlite-viewer)
+- [Better SQLite](https://marketplace.visualstudio.com/items?itemName=bettersqlite.better-sqlite3)
+
+For database management, we recommend [Bee Keeper Studio](https://www.beekeeperstudio.io/).
+
+## Further Reading
+
+- [Drizzle Documentation](https://orm.drizzle.team)
+- [Cloudflare D1 Documentation](https://developers.cloudflare.com/d1)

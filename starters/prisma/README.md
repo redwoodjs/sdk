@@ -1,65 +1,20 @@
 # Starter with Prisma
 
-This starter makes it easy to start up a project with database using Prisma
+This starter makes it easy to start up a project with database using Prisma.
 
-Clone the repo
-
-```shell
-git clone https://github.com/redwoodjs/sdk.git
-```
-
-Run
+Create your new project:
 
 ```shell
+npx degit redwoodjs/sdk/starters/prisma my-project-name
+cd my-project-name
 pnpm install
 ```
 
-Go into the `sdk` directory and build the project
+Within your project's `wrangler.toml` file, replace the placeholder values. For example:
 
-```shell
-cd sdk
-pnpm build
-```
-
-Duplicate the `starters/prisma` directory.
-
-Rename the folder and move into the `experiments` directory
-
-Add your new project to the `pnpm-workspace.yaml` file. (_This example assumes your new project is called `showofhands`_)
-
-```yaml "experiments/showofhands"
-packages:
-  - "sdk"
-  - "experiments/billable"
-  - "experiments/yt-dos"
-  - "experiments/showofhands"
-  - "starters/minimal"
-  - "starters/prisma"
-```
-
-```shell
-pnpm i
-```
-
-Change the name of your experiment’s `package.json`. For example:
-
-```json "@redwoodjs/starter-prisma"
-  "name": "@redwoodjs/starter-prisma",
-```
-
-Update the path in this script:
-
-```json "__change-me__"
-"__reset:reinstall": "(cd ../../ && rm -rf node_modules && rm -rf sdk/node_modules && rm -rf experiments/__change-me__/node_modules && pnpm install)",
-```
-
-Within your experiment’s `wrangler.toml` file, change every instance of `__change_me__`
-
-For example:
-
-```toml "__change_me__"
+```toml
 #:schema node_modules/wrangler/config-schema.json
-name = "__change_me__"
+name = "my-project-name"
 main = "src/worker.tsx"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
@@ -67,7 +22,7 @@ assets = { binding = "ASSETS", directory = "public" }
 
 workers_dev = false
 routes = [
-  { pattern = "__change_me__", custom_domain = true }
+  { pattern = "my-project-name.example.com", custom_domain = true }
 ]
 
 [observability]
@@ -75,11 +30,11 @@ enabled = true
 
 [[d1_databases]]
 binding = "DB"
-database_name = "__change_me__"
-database_id = "__change_me__"
+database_name = "my-project-db"
+database_id = "YOUR-DB-ID-HERE"
 
 [[r2_buckets]]
-bucket_name = "__change_me__"
+bucket_name = "my-project-bucket"
 binding = "R2"
 
 [[migrations]]
@@ -88,33 +43,26 @@ new_classes = [ "SessionDO" ]
 
 [vars]
 SECRET_KEY = "secret"
-APP_URL="https://__change_me__"
+APP_URL="https://my-project-name.example.com"
 ```
 
-You’ll need a [Cloudflare account](https://www.cloudflare.com/). We’re using their d1 service to handle the database.
+You'll need a [Cloudflare account](https://www.cloudflare.com/) as this starter uses Cloudflare D1 for the database.
 
-Generate a new db:
+Create a new D1 database:
 
-```shell "NAME_OF_DB"
-npx wrangler d1 create NAME_OF_DB
+```shell
+npx wrangler d1 create my-project-db
 ```
 
 ![terminal](./public/images/terminal.png)
 
-Copy the `database_id` and paste it into your project’s `database_id` inside `wrangler.toml`:
+Copy the `database_id` from the output and paste it into your project's `wrangler.toml` file.
 
-```toml "__change_me__"
-[[d1_databases]]
-binding = "DB"
-database_name = "__change_me__"
-database_id = "__change_me__"
-```
-
-If you ever need to find this value, you can log into your Cloudflare account
+If you need to find your database ID later, you can find it in your Cloudflare dashboard:
 
 ![Cloudflare Account](./public/images/cloudflare.png)
 
-Under `prisma/schema.prisma` we started a user model:
+The starter includes a basic user model in `prisma/schema.prisma`:
 
 ```prisma
 model User {
@@ -125,9 +73,7 @@ model User {
 }
 ```
 
-You can adjust as needed.
-
-Within the Terminal:
+Set up your database:
 
 ```shell
 npx prisma generate
@@ -137,28 +83,37 @@ pnpm migrate:dev
 pnpm seed
 ```
 
-- `npx prisma generate` is generating the Prisma Client based on the `schema.prisma` file.
-- `pnpm migrate:dev` ensures that your local database is set up.
-- `pnpm migrate:new "initial migration"` creates a migration.
-- `pnpm migrate:dev` applies the migrations to your local database.
-- `pnpm seed` seeds the database with the data in the `seed.ts` file.
+These commands will:
 
-Now, you can can run `pnpm dev`. You should see the "Hello World" message with a list of users in your database.
+- Generate the Prisma Client based on your schema
+- Set up your local database
+- Create and apply your initial migration
+- Seed your database with initial data
 
-As you make additional changes to your database, your workflow will look like:
+Start your development server:
 
-- Update your `schema.prisma` file
-- Create the migration file: `pnpm migrate:new "initial migration"`
-- Apply the migration `pnpm migrate:dev`
+```shell
+pnpm dev
+```
 
-### Additional Resources
+You should see a "Hello World" message with a list of users from your database.
 
-There are a few VS Code Plugins that make working with Prisma and SQLite a bit easier.
+### Database Changes
+
+When you need to make changes to your database schema:
+
+1. Update your `schema.prisma` file
+2. Create a migration: `pnpm migrate:new "describe your changes"`
+3. Apply the migration: `pnpm migrate:dev`
+
+### Recommended Tools
+
+VS Code extensions that make development easier:
 
 - [SQLite Viewer](https://marketplace.cursorapi.com/items?itemName=qwtel.sqlite-viewer)
 - [Prisma](https://marketplace.visualstudio.com/items?itemName=Prisma.prisma)
 
-I'm also a big fan of [Bee Keeper Studio](https://www.beekeeperstudio.io/). It's a SQL Editor and Database Manager.
+For database management, we recommend [Bee Keeper Studio](https://www.beekeeperstudio.io/).
 
 ## Further Reading
 
