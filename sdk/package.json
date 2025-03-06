@@ -17,9 +17,7 @@
     "build:vendor": "node ./dist/scripts/build-vendor-bundles.mjs",
     "clean:vendor": "rm -rf ./vendor/dist",
     "format": "prettier --write ./src",
-    "release:patch": "pnpm version patch && git push --follow-tags && pnpm publish",
-    "release:minor": "pnpm version minor && git push --follow-tags && pnpm publish",
-    "release:major": "pnpm version major && git push --follow-tags && pnpm publish"
+    "release": "./scripts/release.sh"
   },
   "exports": {
     "./vite": {
