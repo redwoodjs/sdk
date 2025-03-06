@@ -1,11 +1,11 @@
-# Minimal Starter
+# Sessions Starter
 
-This starter gives you a bare-bones RedwoodJS project.
+This starter gives you a RedwoodJS project with built-in session management.
 
 Create your new project:
 
 ```shell
-npx degit redwoodjs/sdk/starters/minimal my-project-name
+npx degit redwoodjs/sdk/starters/sessions my-project-name
 cd my-project-name
 pnpm install
 ```
@@ -27,15 +27,23 @@ routes = [
 
 [observability]
 enabled = true
+
+[[migrations]]
+tag = "v1"
+new_classes = ["SessionDO"]
+
+[vars]
+SECRET_KEY = "SECRET_KEY_FOR_LOCAL_DEVELOPMENT"
+APP_URL = "https://my-project-name.example.com"
 ```
+
+For deployments, make use of [cloudflare secrets](https://developers.cloudflare.com/workers/configuration/secrets/) for the `SECRET_KEY`.
 
 Start your development server:
 
 ```shell
 pnpm dev
 ```
-
-You should see a "Hello World" message in your browser.
 
 ## Further Reading
 
