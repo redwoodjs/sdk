@@ -5,12 +5,13 @@ set -e  # Stop on first error
 DEPENDENCY_NAME="redwoodsdk"  # Replace with the actual package name
 
 show_help() {
-  echo "Usage: pnpm release <patch|minor|major> [--dry]"
+  echo "Usage: pnpm release <patch|minor|major|test> [--dry]"
   echo ""
   echo "Automates version bumping, publishing, and dependency updates in a monorepo."
   echo ""
   echo "Arguments:"
   echo "  patch|minor|major    The type of version bump to perform"
+  echo "  test                 Create a test release (x.y.z.test.n)"
   echo ""
   echo "Process:"
   echo "  1. Builds package with NODE_ENV=production"
@@ -57,14 +58,14 @@ for arg in "$@"; do
     show_help
   elif [[ "$arg" == "--dry" ]]; then
     DRY_RUN=true
-  elif [[ "$arg" == "patch" || "$arg" == "minor" || "$arg" == "major" ]]; then
+  elif [[ "$arg" == "patch" || "$arg" == "minor" || "$arg" == "major" || "$arg" == "test" ]]; then
     VERSION_TYPE=$arg
   fi
 done
 
 # Validate required arguments
 if [[ -z "$VERSION_TYPE" ]]; then
-  echo "Error: Version type (patch|minor|major) is required"
+  echo "Error: Version type (patch|minor|major|test) is required"
   echo ""
   show_help
 fi
@@ -78,7 +79,18 @@ else
 fi
 
 CURRENT_VERSION=$(npm pkg get version | tr -d '"')
-NEW_VERSION=$(semver -i $VERSION_TYPE $CURRENT_VERSION)
+if [[ "$VERSION_TYPE" == "test" ]]; then
+  # Check if current version already has a test suffix
+  if [[ "$CURRENT_VERSION" =~ ^(.*).test.([0-9]+)$ ]]; then
+    BASE_VERSION="${BASH_REMATCH[1]}"
+    TEST_NUM=$((${BASH_REMATCH[2]} + 1))
+    NEW_VERSION="$BASE_VERSION.test.$TEST_NUM"
+  else
+    NEW_VERSION="$CURRENT_VERSION.test.0"
+  fi
+else
+  NEW_VERSION=$(semver -i $VERSION_TYPE $CURRENT_VERSION)
+fi
 
 echo -e "\n📦 Planning version bump to $NEW_VERSION ($VERSION_TYPE)..."
 if [[ "$DRY_RUN" == true ]]; then
@@ -94,9 +106,17 @@ TAG_NAME="v$NEW_VERSION"
 
 echo -e "\n🚀 Publishing version $NEW_VERSION..."
 if [[ "$DRY_RUN" == true ]]; then
-  echo "  [DRY RUN] pnpm publish"
+  if [[ "$VERSION_TYPE" == "test" ]]; then
+    echo "  [DRY RUN] pnpm publish --tag test"
+  else
+    echo "  [DRY RUN] pnpm publish"
+  fi
 else
-  if ! pnpm publish; then
+  PUBLISH_CMD="pnpm publish"
+  if [[ "$VERSION_TYPE" == "test" ]]; then
+    PUBLISH_CMD="$PUBLISH_CMD --tag test"
+  fi
+  if ! $PUBLISH_CMD; then
     echo -e "\n❌ Publish failed. Rolling back version commit..."
     git reset --hard HEAD~1
     exit 1
@@ -139,7 +159,7 @@ if [[ "$DRY_RUN" == true ]]; then
   echo "    - Push: origin with tags"
 else
   # Add all changed package.json and pnpm-lock.yaml files in the monorepo
-  git add $(git diff --name-only | grep -E 'package\.json|pnpm-lock\.yaml$')
+  (cd .. && git add $(git diff --name-only | grep -E 'package\.json|pnpm-lock\.yaml$'))
   git commit --amend --no-edit
   git tag "$TAG_NAME"
   git push --follow-tags
