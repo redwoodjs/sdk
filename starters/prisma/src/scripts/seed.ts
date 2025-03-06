@@ -11,7 +11,7 @@ export default defineScript(async ({ env }) => {
 
   await db.user.create({
     data: {
-      id: '1',
+      id: "1",
       email: "__change_me__",
     },
   });

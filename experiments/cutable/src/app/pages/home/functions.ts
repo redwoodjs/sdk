@@ -1,15 +1,23 @@
-'use server'
+"use server";
 
-import { calculateFreeSpaces, findOptimalPacking } from "../project/DetailPage/clientFunctions"
+import {
+  calculateFreeSpaces,
+  findOptimalPacking,
+} from "../project/DetailPage/clientFunctions";
 
 export async function calculateCutsAction(
   panels: { width: number; length: number; quantity: number }[],
   sheetWidth: number,
   sheetLength: number,
-  bladeWidth: number
+  bladeWidth: number,
 ) {
-  const packer = await findOptimalPacking(panels, sheetWidth, sheetLength, bladeWidth);
-  
+  const packer = await findOptimalPacking(
+    panels,
+    sheetWidth,
+    sheetLength,
+    bladeWidth,
+  );
+
   if (!packer) return null;
 
   const boards = packer.map((board: any) => {
@@ -17,14 +25,22 @@ export async function calculateCutsAction(
       x: rect.x,
       y: rect.y,
       width: rect.width,
-      length: rect.height
+      length: rect.height,
     }));
 
-    const freeRects = calculateFreeSpaces(usedRects, sheetWidth, sheetLength, bladeWidth);
+    const freeRects = calculateFreeSpaces(
+      usedRects,
+      sheetWidth,
+      sheetLength,
+      bladeWidth,
+    );
 
     // Calculate efficiency
     const totalSheetArea = sheetWidth * sheetLength;
-    const usedArea = usedRects.reduce((sum: number, rect: any) => sum + (rect.width * rect.length), 0);
+    const usedArea = usedRects.reduce(
+      (sum: number, rect: any) => sum + rect.width * rect.length,
+      0,
+    );
     const efficiency = usedArea / totalSheetArea;
 
     return {
@@ -32,7 +48,7 @@ export async function calculateCutsAction(
       length: sheetLength,
       usedRects,
       freeRects,
-      efficiency  // Add efficiency to the returned data
+      efficiency, // Add efficiency to the returned data
     };
   });
 

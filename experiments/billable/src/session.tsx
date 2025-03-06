@@ -1,9 +1,9 @@
 import { DurableObject } from "cloudflare:workers";
-import { MAX_TOKEN_DURATION } from './constants';
+import { MAX_TOKEN_DURATION } from "./constants";
 
 export interface Session {
   userId: string;
-  createdAt: number
+  createdAt: number;
 }
 
 export class SessionDO extends DurableObject {
@@ -17,7 +17,7 @@ export class SessionDO extends DurableObject {
     const session: Session = {
       userId,
       createdAt: Date.now(),
-    }
+    };
 
     await this.ctx.storage.put<Session>("session", session);
     this.session = session;
@@ -36,16 +36,16 @@ export class SessionDO extends DurableObject {
     // has been revoked.
     if (!session) {
       return {
-        error: 'Invalid session'
-      }
+        error: "Invalid session",
+      };
     }
 
     // context(justinvdm, 2025-01-15): If the session is expired, we need to revoke it.
     if (session.createdAt + MAX_TOKEN_DURATION < Date.now()) {
       await this.revokeSession();
       return {
-        error: 'Session expired'
-      }
+        error: "Session expired",
+      };
     }
 
     this.session = session;

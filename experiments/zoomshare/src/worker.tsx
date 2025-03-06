@@ -16,7 +16,6 @@ export type Context = {
 };
 
 async function validateZoomWebhook(body: any, env: Env) {
-  
   if (body?.event === "endpoint.url_validation") {
     const encryptedToken = crypto
       .createHmac("sha256", env.ZOOM_SECRET_TOKEN)
@@ -51,7 +50,6 @@ const app = defineApp<Context>([
   prefix("/webhook", [
     route("/meeting.recording.completed", [
       async function ({ request, env, ctx }) {
-        
         if (
           request.method !== "POST" &&
           request.headers.get("Content-Type") !== "application/json"
@@ -86,9 +84,9 @@ const app = defineApp<Context>([
         }>();
 
         validateZoomWebhook(body, env);
-        console.log('-'.repeat(80))
+        console.log("-".repeat(80));
         console.log(JSON.stringify(body));
-        console.log('-'.repeat(80))
+        console.log("-".repeat(80));
 
         const data = {
           id: body.payload.object.uuid,
@@ -96,7 +94,7 @@ const app = defineApp<Context>([
           startTime: body.payload.object.start_time,
           duration: body.payload.object.duration,
           shareUrl: body.payload.object.share_url,
-          rawPayload: '// todo',
+          rawPayload: "// todo",
         };
         await db.meeting.upsert({
           create: data,
@@ -123,24 +121,21 @@ export default {
     await setupDb(env);
     for (const message of batch.messages) {
       if (message.body.action === "download") {
-        
-
         const recordings = message.body.recordings;
         console.log(`${recordings.length} recordings to download`);
         const downloadToken = message.body.downloadToken;
-        
+
         for (const recording of recordings) {
-        
           const filename = `recording-${recording.meeting_id}-${recording.id}.${recording.file_extension.toLowerCase()}`;
-          console.log('downloading', filename);
+          console.log("downloading", filename);
           const downloadResponse = await fetch(recording.download_url, {
             headers: {
               "Content-Type": "application/json",
               Authorization: `Bearer ${downloadToken}`,
             },
           });
-          
-          console.log('uploading', filename);
+
+          console.log("uploading", filename);
           await env.R2.put(filename, downloadResponse.body);
 
           const data = {
@@ -157,7 +152,7 @@ export default {
             create: data,
             update: data,
             where: {
-              id: recording.id
+              id: recording.id,
             },
           });
 

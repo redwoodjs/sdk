@@ -4,7 +4,7 @@ import { DurableObject } from "cloudflare:workers";
 export interface Session {
   userId?: string | null;
   challenge?: string | null;
-  createdAt: number
+  createdAt: number;
 }
 
 export class SessionDurableObject extends DurableObject {
@@ -14,12 +14,18 @@ export class SessionDurableObject extends DurableObject {
     this.session = undefined;
   }
 
-  async saveSession({ userId = null, challenge = null }: { userId?: string | null, challenge?: string | null }): Promise<Session> {
+  async saveSession({
+    userId = null,
+    challenge = null,
+  }: {
+    userId?: string | null;
+    challenge?: string | null;
+  }): Promise<Session> {
     const session: Session = {
       userId,
       challenge,
       createdAt: Date.now(),
-    }
+    };
 
     await this.ctx.storage.put<Session>("session", session);
     this.session = session;
@@ -35,15 +41,15 @@ export class SessionDurableObject extends DurableObject {
 
     if (!session) {
       return {
-        error: 'Invalid session'
-      }
+        error: "Invalid session",
+      };
     }
 
     if (session.createdAt + MAX_SESSION_DURATION < Date.now()) {
       await this.revokeSession();
       return {
-        error: 'Session expired'
-      }
+        error: "Session expired",
+      };
     }
 
     this.session = session;

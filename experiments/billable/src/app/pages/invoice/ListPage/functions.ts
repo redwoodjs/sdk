@@ -1,14 +1,11 @@
-'use server';
-
+"use server";
 
 import { db } from "src/db";
 import { Context } from "../../../../worker";
 
-
 // We need to pass the context to these somehow?
 export async function createInvoice({ ctx }: { ctx: Context }) {
-
-  const userId = ctx.user.id
+  const userId = ctx.user.id;
 
   // todo(peterp, 28-01-2025): Implement templates.
   let lastInvoice = await db.invoice.findFirst({
@@ -16,9 +13,9 @@ export async function createInvoice({ ctx }: { ctx: Context }) {
       userId,
     },
     orderBy: {
-      createdAt: 'desc',
-    }
-  })
+      createdAt: "desc",
+    },
+  });
 
   const newInvoice = await db.invoice.create({
     data: {
@@ -29,9 +26,9 @@ export async function createInvoice({ ctx }: { ctx: Context }) {
       notesA: lastInvoice?.notesA,
       notesB: lastInvoice?.notesB,
       taxes: lastInvoice?.taxes,
-      userId
-    }
-  })
+      userId,
+    },
+  });
 
-  return newInvoice
+  return newInvoice;
 }
