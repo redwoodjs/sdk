@@ -6,7 +6,7 @@ DEPENDENCY_NAME="<YOUR_PACKAGE_NAME>"  # Replace with the actual package name
 DRY_RUN=false
 
 show_help() {
-  echo "Usage: pnpm release <patch|minor|major> [--dry-run]"
+  echo "Usage: pnpm release <patch|minor|major> [--dry]"
   echo ""
   echo "Automates version bumping, publishing, and dependency updates in a monorepo."
   echo ""
@@ -24,6 +24,17 @@ show_help() {
   echo "  --dry   Simulate the release process without making actual changes."
   echo "  --help      Show this help message."
   exit 0
+}
+
+validate_args() {
+  for arg in "$@"; do
+    if [[ "$arg" == --* && "$arg" != "--dry" && "$arg" != "--help" ]]; then
+      echo "Error: Unknown flag '$arg'"
+      echo "Use --help to see available options"
+      echo ""
+      show_help  # This will show the help message and exit
+    fi
+  done
 }
 
 if [[ "$1" == "--help" || -z "$1" ]]; then
