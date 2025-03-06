@@ -81,12 +81,12 @@ fi
 CURRENT_VERSION=$(npm pkg get version | tr -d '"')
 if [[ "$VERSION_TYPE" == "test" ]]; then
   # Check if current version already has a test suffix
-  if [[ "$CURRENT_VERSION" =~ ^(.*).test.([0-9]+)$ ]]; then
+  if [[ "$CURRENT_VERSION" =~ ^(.*)-test.([0-9]+)$ ]]; then
     BASE_VERSION="${BASH_REMATCH[1]}"
     TEST_NUM=$((${BASH_REMATCH[2]} + 1))
-    NEW_VERSION="$BASE_VERSION.test.$TEST_NUM"
+    NEW_VERSION="$BASE_VERSION-test.$TEST_NUM"
   else
-    NEW_VERSION="$CURRENT_VERSION.test.0"
+    NEW_VERSION="$CURRENT_VERSION-test.0"
   fi
 else
   NEW_VERSION=$(semver -i $VERSION_TYPE $CURRENT_VERSION)
