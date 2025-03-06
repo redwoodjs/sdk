@@ -94,10 +94,10 @@ fi
 
 echo -e "\n📦 Planning version bump to $NEW_VERSION ($VERSION_TYPE)..."
 if [[ "$DRY_RUN" == true ]]; then
-  echo "  [DRY RUN] pnpm version $VERSION_TYPE"
+  echo "  [DRY RUN] npm pkg set version=$NEW_VERSION"
   echo "  [DRY RUN] Git commit version change"
 else
-  pnpm version $VERSION_TYPE --no-git-tag-version
+  npm pkg set version="$NEW_VERSION"
   git add package.json
   git commit -m "chore(release): $NEW_VERSION"
 fi
