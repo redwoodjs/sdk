@@ -1,10 +1,13 @@
 ---
 title: Quick Start
 description: From zero to request/ response in seconds
+next: /docs/getting-started/installation
 ---
 
 import { Aside } from '@astrojs/starlight/components';
 import { Tabs, TabItem } from '@astrojs/starlight/components';
+
+In this quick start you'll go from zero to request/ response in seconds. Production in minutes.
 
 <Aside type="note" title="System requirements">
 - [Node.js](https://nodejs.org/en/download)
@@ -72,7 +75,7 @@ RedwoodSDK is based on Cloudflare, so the entry point of your website is `src/wo
 
 Here you'll see the `defineApp` function, this is the main function that "defines your website," where the purpose is to accept requests and return responses to the client.
 
-```tsx
+```tsx title="src/worker.tsx" collapse={1-5} "defineApp" 
 import { defineApp } from 'redwoodsdk/worker';
 import { index, layout } from 'redwoodsdk/router';
 import { Document } from 'src/Document';
@@ -93,7 +96,7 @@ export default defineApp<Context>([
 
 Open `src/app/pages/Home.tsx`:
 
-```tsx
+```tsx title="src/app/pages/Home.tsx"
 export function Home() {
   return (
     <div>
@@ -105,7 +108,7 @@ export function Home() {
 
 Modify the `Home` component to say "My Personal Website" instead of "Hello World". When you save the file, the development server will automatically reload the component.
 
-```tsx del="<h1>Hello World</h1>" ins="<h1>My Personal Website</h1>"
+```tsx title="src/app/pages/Home.tsx" del="<h1>Hello World</h1>" ins="<h1>My Personal Website</h1>"
 export function Home() {
   return (
     <div>
@@ -116,11 +119,13 @@ export function Home() {
 }
 ```
 
-## Deploy to Production
+{/* TODO: Show a screen that displays this page. */}
+
+## Deploy to production
 
 RedwoodSDK is optimized for the Cloudflare Development Platform, and you can deploy your website to Cloudflare with a single command, but first you need to change the `wrangler.toml` file; and modify the `name` field to your own project's name.
 
-```toml del="__change_me__" ins="my-project-name"
+```toml title="wrangler.toml" del="__change_me__"
 #:schema node_modules/wrangler/config-schema.json
 name = "__change_me__"
 main = "src/worker.tsx"

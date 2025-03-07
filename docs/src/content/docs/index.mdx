@@ -1,27 +1,35 @@
 ---
 title: RedwoodSDK
-description: Get started building your docs site with Starlight.
+description: From concept to cloud
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
+
+RedwoodSDK is a React framework for building websites. It's optimized for the Cloudflare Development Platform,
+which means you can build your website with a database, queues, storage, and much more. All in one place, without
+having to worry about the underlying infrastructure.
+
+It also means that your local development experience has database, queues, storage, and much more without having to install anything! Development matches
+production, and you can deploy your website to Cloudflare with a single command. It just works!
+
+- No magic exports
+- No magic imports
+- No magic components
+- No magic hooks
+- No magic utils
+- No magic types
+- No magic anything
+
+You focus on the request/response cycle, and provide a set of tools to help you build your website.
 
 
 
 <CardGrid>
 	<Card title="Quick start" icon="">
 		```bash
-		npx create-redwood-app@latest my-app
+		npx degit redwoodjs/sdk/starters/minimal#main my-app
 		```
 		
-		Then continue with "start developing"
+		Then continue with ["start developing"](/getting-started/quick-start#start-developing)
 	</Card>
-	{/* <Card title="Add new content" icon="add-document">
-		Add Markdown or MDX files to `src/content/docs` to create new pages.
-	</Card>
-	<Card title="Configure your site" icon="setting">
-		Edit your `sidebar` and other config in `astro.config.mjs`.
-	</Card>
-	<Card title="Read the docs" icon="open-book">
-		Learn more in [the Starlight Docs](https://starlight.astro.build/).
-	</Card> */}
 </CardGrid>
