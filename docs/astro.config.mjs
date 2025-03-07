@@ -6,7 +6,7 @@ import starlight from '@astrojs/starlight';
 export default defineConfig({
   integrations: [
     starlight({
-      title: 'Redwood SDK',
+      title: 'RedwoodSDK',
       logo: {
         src: './src/assets/logo.svg',
         replacesTitle: true,
@@ -20,10 +20,17 @@ export default defineConfig({
       },
       sidebar: [
         {
-          label: 'Quick Start',
+          label: 'Get Started',
           items: [
-            { label: 'Installation', slug: 'getting-started/installation' },
+            { label: 'Quick Start', slug: 'getting-started/quick-start' },
+            { label: 'Manual Setup', slug: 'getting-started/installation' },
             { label: 'Creating Your First Project', slug: 'getting-started/first-project' },
+          ],
+        },
+        {
+          label: 'Core',
+          items: [
+            { label: 'Routing', slug: 'core/routing' },
           ],
         },
         {
