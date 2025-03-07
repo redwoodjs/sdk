@@ -28,6 +28,12 @@ export default defineConfig({
           ],
         },
         {
+          label: 'Core',
+          items: [
+            { label: 'Routing', slug: 'core/routing' },
+          ],
+        },
+        {
           label: 'Tutorial',
           items: [
             {

@@ -1,13 +1,12 @@
 ---
 title: Quick Start
 description: From zero to request/ response in seconds
-next: /docs/getting-started/installation
+next: false
 ---
 
-import { Aside } from '@astrojs/starlight/components';
-import { Tabs, TabItem } from '@astrojs/starlight/components';
+import { Aside, Tabs, TabItem, LinkCard } from '@astrojs/starlight/components';
 
-In this quick start you'll go from zero to request/ response in seconds. Production in minutes.
+In this quick start you'll go from zero to request/ response in seconds, and deploy to production in minutes.
 
 <Aside type="note" title="System requirements">
 - [Node.js](https://nodejs.org/en/download)
@@ -142,3 +141,5 @@ Then run the following command to deploy your website to Cloudflare.
 ```bash frame="none"
 pnpm release
 ```
+
+<LinkCard title="What's next? Routing!" description="Learn how to route requests to different responses" href="/docs/core/routing" />
