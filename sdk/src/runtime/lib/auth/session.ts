@@ -37,16 +37,18 @@ const arrayBufferToHex = (buffer: ArrayBuffer): string => {
 };
 
 export const createSessionCookie = ({
+  name,
   sessionId,
   maxAge,
 }: {
+  name: string;
   sessionId: string;
   maxAge?: number | true;
 }) => {
   const isViteDev =
     typeof import.meta.env !== "undefined" && import.meta.env.DEV;
 
-  return `session_id=${sessionId}; Path=/; HttpOnly; ${isViteDev ? "" : "Secure; "}SameSite=Lax${
+  return `${name}=${sessionId}; Path=/; HttpOnly; ${isViteDev ? "" : "Secure; "}SameSite=Lax${
     maxAge != null
       ? `; Max-Age=${maxAge === true ? MAX_SESSION_DURATION / 1000 : maxAge}`
       : ""
@@ -106,12 +108,14 @@ export const isValidSessionId = async ({
 
 export const defineSessionStore = <Session, SessionInputData>({
   cookieName = "session_id",
+  createCookie = createSessionCookie,
   secretKey,
   get,
   set,
   unset,
 }: {
   cookieName?: string;
+  createCookie?: typeof createSessionCookie;
   secretKey: string;
   get: (sessionId: string) => Promise<Session>;
   set: (sessionId: string, sessionInputData: SessionInputData) => Promise<void>;
@@ -160,7 +164,10 @@ export const defineSessionStore = <Session, SessionInputData>({
   ): Promise<void> => {
     const sessionId = await generateSessionId({ secretKey });
     await set(sessionId, sessionInputData);
-    headers.set("Set-Cookie", createSessionCookie({ sessionId, maxAge }));
+    headers.set(
+      "Set-Cookie",
+      createCookie({ name: cookieName, sessionId, maxAge }),
+    );
   };
 
   const remove = async (request: Request, headers: Headers): Promise<void> => {
@@ -170,7 +177,7 @@ export const defineSessionStore = <Session, SessionInputData>({
     }
     headers.set(
       "Set-Cookie",
-      createSessionCookie({ sessionId: "", maxAge: 0 }),
+      createCookie({ name: cookieName, sessionId: "", maxAge: 0 }),
     );
   };
 
@@ -201,10 +208,12 @@ export const defineDurableSession = <
   SessionDurableObject extends DurableObjectMethods<any, any>,
 >({
   cookieName,
+  createCookie,
   secretKey,
   sessionDurableObject,
 }: {
   cookieName?: string;
+  createCookie?: typeof createSessionCookie;
   secretKey: string;
   sessionDurableObject: DurableObjectNamespace<SessionDurableObject>;
 }): SessionStoreFromDurableObject<SessionDurableObject> => {
@@ -247,6 +256,7 @@ export const defineDurableSession = <
 
   return defineSessionStore({
     cookieName,
+    createCookie,
     secretKey,
     get,
     set,
