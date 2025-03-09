@@ -42,8 +42,16 @@ export const createSessionCookie = ({
 }: {
   sessionId: string;
   maxAge?: number | true;
-}) =>
-  `session_id=${sessionId}; Path=/; HttpOnly; Secure; SameSite=Lax${maxAge != null ? `; Max-Age=${maxAge === true ? MAX_SESSION_DURATION / 1000 : maxAge}` : ""}`;
+}) => {
+  const isViteDev =
+    typeof import.meta.env !== "undefined" && import.meta.env.DEV;
+
+  return `session_id=${sessionId}; Path=/; HttpOnly; ${isViteDev ? "" : "Secure; "}SameSite=Lax${
+    maxAge != null
+      ? `; Max-Age=${maxAge === true ? MAX_SESSION_DURATION / 1000 : maxAge}`
+      : ""
+  }`;
+};
 
 export const signSessionId = async ({
   unsignedSessionId,
