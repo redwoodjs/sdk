@@ -174,7 +174,8 @@ else
   (cd .. && git add $(git diff --name-only | grep -E 'package\.json|pnpm-lock\.yaml$'))
   git commit --amend --no-edit
   git tag "$TAG_NAME"
-  git push --follow-tags
+  git push
+  git push --tags
 fi
 
 if [[ "$DRY_RUN" == true ]]; then
