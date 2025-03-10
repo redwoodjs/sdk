@@ -2,6 +2,7 @@ import { defineApp } from "redwoodsdk/worker";
 import { index, layout, prefix } from "redwoodsdk/router";
 import { Document } from "@/app/Document";
 import { Home } from "@/app/pages/Home";
+import { setCommonHeaders } from "@/app/headers";
 import { authRoutes } from "@/app/pages/auth/routes";
 import { sessions, setupSessionStore } from "./session/store";
 import { Session } from "./session/durableObject";
@@ -15,6 +16,7 @@ export type Context = {
 };
 
 export default defineApp<Context>([
+  setCommonHeaders(),
   async ({ env, ctx, request }) => {
     await setupDb(env);
     setupSessionStore(env);
