@@ -80,7 +80,7 @@ import { index, layout } from 'redwoodsdk/router';
 import { Document } from 'src/Document';
 import { Home } from 'src/pages/Home';
 
-export default defineApp<Context>([
+export default defineApp([
   layout(Document, [
     index(Home),
   ]),
@@ -142,4 +142,4 @@ Then run the following command to deploy your website to Cloudflare.
 pnpm release
 ```
 
-<LinkCard title="What's next? Routing!" description="Learn how to route requests to different responses" href="/docs/core/routing" />
+<LinkCard title="What's next? Routing!" description="Learn how to route requests to different responses" href="/core/routing" />

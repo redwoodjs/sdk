@@ -3,4 +3,132 @@ title: Routing
 description: Like air traffic control, but for requests.
 ---
 
-This section is under construction. The intention is to show you how to route requests to different responses.
+In this section you'll learn how to route requests to different responses so that you'll be able to display different pages or return different responses, based on the URL of the request. Routing is server-side, the client only receives the response from the server.
+
+Routes are defined in `src/worker.tsx` via the `defineApp` function.
+
+```tsx title="src/worker.tsx"
+import { defineApp } from 'redwoodsdk/worker';
+import { route } from 'redwoodsdk/router';
+import { AboutPage } from 'src/pages/About';
+
+export default defineApp<Context>([
+  route('/', () => new Response('Hello, world!')),
+  route('/about', () => <AboutPage />),
+])
+```
+
+
+## Matching Patterns
+
+RedwoodSDK matches URLs in the order they are defined. Trailing slashes are optional, but normalized internally. There are three URL matching patterns available:
+
+- Static routes (`/about/`): Match exact URLs. 
+- Parameter routes (`/users/:id/`): Match dynamic segments marked with a colon (`:`). The values are available in the route handler via `params` (`params.id`).
+- Wildcard routes (`/files/*`): Match all remaining segments after the prefix. For example, `/files/images/avatar.png` makes `"images/avatar.png"` available as `params.$0`.
+
+Note: Regular expression matching is not currently supported.
+
+```tsx title="src/worker.tsx"
+import { defineApp } from 'redwoodsdk/worker';
+import { route } from 'redwoodsdk/router';
+
+export default defineApp([
+  route('/static/', () => new Response('Static text.')),
+  route('/hello/:name', ({ params }) => new Response(`Hello ${params.name}!`)),
+  route('/files/*', ({ params }) => new Response(`All the files: ${params.$0}`)),
+])
+```
+
+In this example:
+
+1. The `/static/` route will match any request that starts with `/static/`.
+2. The `/hello/:name` route will match any request that starts with `/hello/` followed by any characters, and make the characters available in `params.name`.
+3. The `/files/*` route will match any request that starts with `/files/` followed by any characters, and make the characters available in `params.$0`.
+
+
+## Route Handlers
+
+A route handler is the function that will be called when the request URL matches the route. It can be defined as an arrow function or a named function.
+
+```tsx
+route('/hello/:name', ({ request, params, env, ctx }) => {
+    return new Response(`Hello ${params.name}!`)
+})
+```
+
+### Parameters
+
+- `request`: The request object.
+- `params`: The matched parameters from the request URL.
+- `env`: The Cloudflare environment.
+- `ctx`: The context object.
+
+### Response Values
+
+The return can be a standard response object or a JSX component, when a JSX component is returned, it's statically rendered to HTML on the server, streamed to the client, and then hydrated.
+
+
+```tsx title="src/worker.tsx" collapse={1-5} "defineApp" 
+import { defineApp } from 'redwoodsdk/worker';
+import { route } from 'redwoodsdk/router';
+import { AboutPage } from 'src/pages/About';
+
+export default defineApp<Context>([
+  route('/', () => new Response('Hello, world!')),
+  route('/about', () => <AboutPage />),
+])
+```
+
+In this example:
+
+1. We're defining a route for the root URL (`/`) and returning a response with the text "Hello, world!".
+2. We're defining a route for the `/about` URL and returning the `AboutPage` component.
+
+## Layouts
+
+Since you can also return a JSX component from a route handler, you can use layouts to wrap your pages. A layout is a JSX component that wraps a page and provides a consistent layout for the page.
+
+```tsx title="src/worker.tsx" "layout"
+import { defineApp } from 'redwoodsdk/worker';
+import { route, layout } from 'redwoodsdk/router';
+import { Document } from 'src/pages/Document';
+
+export default defineApp([
+    layout(Document, [
+        route('/', AboutPage),
+    ])
+])
+```
+
+```tsx title="src/pages/Document.tsx"
+export const Document: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+  <html lang="en">
+    <head>
+      <meta charSet="utf-8" />
+      <script type="module" src="/src/client.tsx"></script>
+    </head>
+    <body>
+      <div id="root">{children}</div>
+    </body>
+  </html>
+  );
+```
+
+Note: You must include the client side hydration script in your layout, otherwise the React components will not be hydrated on the client. This also means that you have a massive amount of control over the HTML returned by Redwood.
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
