@@ -17,7 +17,7 @@ import { configPlugin } from "./configPlugin.mjs";
 import { $ } from "../lib/$.mjs";
 import { customReactBuildPlugin } from "./customReactBuildPlugin.mjs";
 import { injectHmrPreambleJsxPlugin } from "./injectHmrPreambleJsxPlugin.mjs";
-import { symlinkEnvPlugin } from "./symlinkEnvPlugin.mjs";
+import { createSymlinkEnv } from "./createSymlinkEnv.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -47,6 +47,7 @@ export const redwoodPlugin = async (
     options?.entry?.worker ?? "src/worker.tsx",
   );
 
+  await createSymlinkEnv({ rootDir: projectRootDir });
   const usesPrisma = await $({ reject: false })`pnpm prisma --version`;
   const isUsingPrisma = usesPrisma.exitCode === 0;
 
@@ -98,6 +99,5 @@ export const redwoodPlugin = async (
       ? [copyPrismaWasmPlugin({ rootDir: projectRootDir })]
       : []),
     moveStaticAssetsPlugin({ rootDir: projectRootDir }),
-    symlinkEnvPlugin({ rootDir: projectRootDir }),
   ];
 };
