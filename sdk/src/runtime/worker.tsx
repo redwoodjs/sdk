@@ -1,5 +1,5 @@
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
-import { injectRSCPayload } from "rsc-html-stream/server";
+import { injectRSCPayload } from "./render/injectRSCPayload";
 import { renderToRscStream } from "./render/renderToRscStream";
 
 import { ssrWebpackRequire } from "./imports/worker";
@@ -7,6 +7,7 @@ import { rscActionHandler } from "./register/worker";
 import { ErrorResponse } from "./error";
 
 import { Route, RouteContext, defineRoutes } from "./lib/router";
+import { isDev, generateNonce } from "./lib/utils";
 
 declare global {
   type Env = {
@@ -29,6 +30,15 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
         const url = new URL(request.url);
         url.pathname = url.pathname.slice("/assets/".length);
         return env.ASSETS.fetch(new Request(url.toString(), request));
+      } else if (isDev() && request.url.includes("/__vite_preamble__")) {
+        return new Response(
+          'import RefreshRuntime from "/@react-refresh"; RefreshRuntime.injectIntoGlobalHook(window); window.$RefreshReg$ = () => {}; window.$RefreshSig$ = () => (type) => type; window.__vite_plugin_react_preamble_installed__ = true;',
+          {
+            headers: {
+              "content-type": "text/javascript",
+            },
+          },
+        );
       }
 
       try {
@@ -50,11 +60,13 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
           props: givenProps,
           actionResult,
           Layout,
+          nonce,
         }: {
           Page: React.FC<Record<string, any>>;
           props: Record<string, any>;
           actionResult: unknown;
           Layout: React.FC<{ children: React.ReactNode }>;
+          nonce: string;
         }) => {
           let props = givenProps;
 
@@ -89,7 +101,7 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
           });
 
           const html = htmlStream.pipeThrough(
-            injectRSCPayload(rscPayloadStream2),
+            injectRSCPayload(rscPayloadStream2, { nonce }),
           );
 
           return new Response(html, {
@@ -110,6 +122,7 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
             Layout: DefaultLayout,
             handleAction,
             renderPage,
+            nonce: generateNonce(),
           },
         });
 

@@ -5,6 +5,7 @@ import { Home } from "@/app/pages/Home";
 import { authRoutes } from "@/app/pages/auth/routes";
 import { sessions, setupSessionStore } from "./session/store";
 import { Session } from "./session/durableObject";
+import { setCommonHeaders } from "./app/headers";
 
 export { SessionDurableObject } from "./session/durableObject";
 
@@ -13,6 +14,7 @@ export type Context = {
 };
 
 export default defineApp<Context>([
+  setCommonHeaders(),
   async ({ env, ctx, request }) => {
     setupSessionStore(env);
     ctx.session = await sessions.load(request);

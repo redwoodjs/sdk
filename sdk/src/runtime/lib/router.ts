@@ -18,8 +18,10 @@ type PageProps<TContext> = Omit<
 >;
 
 export type RwContext<TContext> = {
+  nonce: string;
   Layout: React.FC<{ children: React.ReactNode }>;
   renderPage: (params: {
+    nonce: string;
     Page: React.FC<Record<string, any>>;
     props: PageProps<TContext>;
     actionResult: unknown;
@@ -28,7 +30,7 @@ export type RwContext<TContext> = {
   handleAction: (ctx: RouteContext<TContext>) => Promise<unknown>;
 };
 
-type RouteMiddleware<TContext> = (
+export type RouteMiddleware<TContext = any> = (
   ctx: RouteContext<TContext>,
 ) =>
   | Response
@@ -195,6 +197,7 @@ export function defineRoutes<TContext = Record<string, any>>(
           const serializedEnv = serializeEnv(env);
           const props = { params, env: serializedEnv, ctx };
           return await rw.renderPage({
+            nonce: rw.nonce,
             Page: h as React.FC<Record<string, any>>,
             props,
             actionResult,

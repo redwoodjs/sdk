@@ -2,6 +2,7 @@ import { defineApp } from "redwoodsdk/worker";
 import { index, layout } from "redwoodsdk/router";
 import { Document } from "src/Document";
 import { Home } from "src/pages/Home";
+import { setCommonHeaders } from "src/headers";
 import { drizzle } from "drizzle-orm/d1";
 
 export interface Env {
@@ -13,6 +14,7 @@ type Context = {
 };
 
 export default defineApp<Context>([
+  setCommonHeaders(),
   ({ ctx, env }) => {
     // setup db in ctx
     ctx.db = drizzle(env.DB);
