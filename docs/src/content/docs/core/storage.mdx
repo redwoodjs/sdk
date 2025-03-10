@@ -1,0 +1,88 @@
+---
+title: Storage
+description: Upload & download files to Cloudflare R2.
+---
+
+RedwoodSDK is built to work on the Cloudflare Developer Platform. R2 is Cloudflare's object storage solution that's similar to AWS S3.
+
+## Setup
+
+To use R2 in your project, you need to create a R2 bucket, and bind it to your worker.
+
+```bash
+npx wrangler r2 bucket create my-bucket
+
+Creating bucket 'my-bucket'...
+✅ Created bucket 'my-bucket' with default storage class of Standard.
+
+Configure your Worker to write objects to this bucket:
+
+[[r2_buckets]]
+bucket_name = "my-bucket"
+binding = "R2"
+```
+
+This will create a bucket called `my-bucket`, which you'll have to bind to your worker.
+
+```toml title="wrangler.toml"
+[[r2_buckets]]
+bucket_name = "my-bucket"
+binding = "R2"
+```
+
+This will make the `my-bucket` object available via the `env` variable `R2`.
+
+## Usage
+
+Since RedwoodSDK is built on standard Request/ Response objects you can stream files directly to R2.
+
+### Uploading Files
+
+```tsx title="src/worker.tsx"
+import { defineApp } from 'redwoodsdk/worker';
+import { route } from 'redwoodsdk/router';
+
+defineApp([
+  route('/upload/', async ({ request, env }) => {
+    const formData = await request.formData();
+    const file = formData.get("file") as File;
+
+    // Stream the file directly to R2
+    const r2ObjectKey = `/storage/${file.name}`;
+    await env.R2.put(r2ObjectKey, file.stream(), {
+        httpMetadata: {
+        contentType: file.type,
+      },
+    });
+
+    return new Response(JSON.stringify({ key: r2ObjectKey }), {
+      status: 200,
+      headers: {
+        "Content-Type": "application/json",
+      },
+    });
+  }),
+])
+```
+
+### Downloading Files
+
+```tsx title="src/worker.tsx"
+import { defineApp } from 'redwoodsdk/worker';
+import { route } from 'redwoodsdk/router';
+
+defineApp([
+  route('/download/*', async ({ request, params, env }) => {
+    const object = await env.R2.get("/storage/" + params.$0);
+    if (object === null) {
+      return new Response("Object Not Found", { status: 404 });
+    }
+    return new Response(object.body, {
+      headers: {
+        "Content-Type": object.httpMetadata?.contentType as string,
+      },
+    });
+  }),
+])
+```
+
