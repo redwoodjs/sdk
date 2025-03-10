@@ -3,6 +3,8 @@ title: Routing
 description: Like air traffic control, but for requests.
 ---
 
+import { Aside, Tabs, TabItem, LinkCard } from '@astrojs/starlight/components';
+
 In this section you'll learn how to route requests to different responses so that you'll be able to display different pages or return different responses, based on the URL of the request. Routing is server-side, the client only receives the response from the server.
 
 Routes are defined in `src/worker.tsx` via the `defineApp` function.
@@ -115,7 +117,9 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({ children }) 
   );
 ```
 
-Note: You must include the client side hydration script in your layout, otherwise the React components will not be hydrated on the client. This also means that you have a massive amount of control over the HTML returned by Redwood.
+<Aside type="note" title="Client Side Hydration">
+You must include the client side hydration script in your layout, otherwise the React components will not be hydrated on the client. This also means that you have a massive amount of control over the HTML returned by Redwood.
+</Aside>
 
 
 

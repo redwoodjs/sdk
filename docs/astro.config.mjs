@@ -32,6 +32,7 @@ export default defineConfig({
           items: [ 
             { label: 'Overview', slug: 'core/overview' },
             { label: 'Routing', slug: 'core/routing' },
+            { label: 'Database', slug: 'core/database' },
           ],
         },
         {
