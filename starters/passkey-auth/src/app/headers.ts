@@ -26,8 +26,12 @@ export const setCommonHeaders =
 
     // Defines trusted sources for content loading and script execution:
     // - Only loads resources from same origin ('self')
-    // - Only runs scripts from same origin - add other origins to this list (space separated) if you want to allow them
+    // - Only runs scripts from same origin
     // - Blocks all plugins/embedded objects
+    //
+    // Usage:
+    // - Add other origins to this list (space separated) if you want to allow them
+    // - Add 'nonce=${nonce}' to inline <script> tags you trust
     headers.set(
       "Content-Security-Policy",
       `default-src 'self'; script-src 'self' 'nonce-${nonce}'; object-src 'none';`,
