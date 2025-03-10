@@ -1,4 +1,4 @@
-import snakeCase from "lodash/snakeCase";
+import snakeCase from "lodash/snakeCase.js";
 import { $ } from "../lib/$.mjs";
 import { readdir } from "fs/promises";
 import { resolve } from "path";
