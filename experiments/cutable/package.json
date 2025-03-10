@@ -11,7 +11,7 @@
   "scripts": {
     "migrate:dev": "wrangler d1 migrations apply DB --local",
     "migrate:prd": "wrangler d1 migrations apply DB --remote",
-    "dev": "while true; do NODE_ENV=development vite dev; [ $? -eq 0 ] || break; done",
+    "dev": "NODE_ENV=${NODE_ENV:-development} vite dev",
     "dev:init": "rw-scripts dev-init",
     "seed": "pnpm worker:run ./src/scripts/seed.ts",
     "migrate:new": "rw-scripts migrate-new",
