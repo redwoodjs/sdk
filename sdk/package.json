@@ -50,7 +50,7 @@
   "author": "RedwoodJS <peter@redwoodjs.com>",
   "license": "MIT",
   "dependencies": {
-    "@cloudflare/vite-plugin": "^0.1.9",
+    "@cloudflare/vite-plugin": "beta",
     "@cloudflare/workers-types": "^4.20241112.0",
     "@microsoft/api-extractor": "^7.48.0",
     "@types/express": "^5.0.0",
