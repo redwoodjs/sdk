@@ -28,7 +28,7 @@ export type RwContext<TContext> = {
   handleAction: (ctx: RouteContext<TContext>) => Promise<unknown>;
 };
 
-type RouteMiddleware<TContext> = (
+export type RouteMiddleware<TContext = any> = (
   ctx: RouteContext<TContext>,
 ) =>
   | Response
