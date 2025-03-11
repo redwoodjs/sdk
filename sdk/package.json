@@ -39,6 +39,10 @@
     "./auth": {
       "default": "./dist/runtime/entries/auth.js",
       "types": "./dist/runtime/entries/auth.d.ts"
+    },
+    "./constants": {
+      "default": "./dist/runtime/constants.js",
+      "types": "./dist/runtime/constants.d.ts"
     }
   },
   "keywords": [],

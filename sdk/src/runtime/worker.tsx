@@ -7,7 +7,8 @@ import { rscActionHandler } from "./register/worker";
 import { ErrorResponse } from "./error";
 
 import { Route, RouteContext, defineRoutes } from "./lib/router";
-import { isDev, generateNonce } from "./lib/utils";
+import { generateNonce } from "./lib/utils";
+import { IS_DEV } from "./constants";
 
 declare global {
   type Env = {
@@ -30,7 +31,7 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
         const url = new URL(request.url);
         url.pathname = url.pathname.slice("/assets/".length);
         return env.ASSETS.fetch(new Request(url.toString(), request));
-      } else if (isDev() && request.url.includes("/__vite_preamble__")) {
+      } else if (IS_DEV && request.url.includes("/__vite_preamble__")) {
         return new Response(
           'import RefreshRuntime from "/@react-refresh"; RefreshRuntime.injectIntoGlobalHook(window); window.$RefreshReg$ = () => {}; window.$RefreshSig$ = () => (type) => type; window.__vite_plugin_react_preamble_installed__ = true;',
           {
