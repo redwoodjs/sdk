@@ -1,0 +1,64 @@
+---
+title: Authentication
+description: Secure authentication using the session API and authentication starters.
+---
+
+Our framework provides a standard session-based authentication API, with two starters to help you get started:
+
+1. **[Sessions Starter](https://github.com/redwoodjs/sdk/blob/main/starters/sessions/README.md)** – Basic session management boilerplate, letting you implement your own authentication logic
+2. **[Passkey Starter](https://github.com/redwoodjs/sdk/blob/main/starters/passkey-auth/README.md)** – A complete implementation using passkey-based authentication
+
+## 🛠 Session State Management
+
+The session API follows standard session-based authentication:
+
+- Session IDs are stored in secure, HTTP-only cookies
+- The corresponding session state is persisted server-side in Durable Objects
+
+You implement your own DO to store session data, giving you control over:
+
+- Session data structure
+- Session lifecycle and validation logic
+- Integration with your app's authentication flow
+
+```tsx
+import { defineDurableSession } from "redwoodsdk/session";
+
+export const session = defineDurableSession({
+  secretKey: process.env.SECRET_KEY,
+  sessionDurableObject: env.SESSION_DO, // Your custom DO implementation
+});
+```
+
+### **Key Functions**
+
+- `load(request)` – Gets session data from a request
+- `save(headers, sessionData)` – Stores session data and sets cookies
+
+## 🔑 Passkey Authentication
+
+The passkey starter implements passwordless authentication using public-private key pairs. Users can authenticate using built-in authenticators, password managers, or cross-platform services.
+
+### **How It Works**
+
+1. Registration creates a public-private key pair
+2. Your server stores the public key
+3. Login verifies a challenge using the private key (stored on user's device)
+
+### **Security Considerations**
+
+The starter uses usernames instead of emails to:
+
+- Prevent user enumeration attacks
+- Avoid requiring email verification
+- Use credential IDs for lookups instead of personal data
+
+Add email verification if your app requires verified identities.
+
+### **Bot Protection**
+
+The starter includes Cloudflare Turnstile integration:
+
+1. Load Turnstile via `<TurnstileScript />`
+2. Generate a challenge token with `useTurnstile()`
+3. Verify the token server-side with `verifyTurnstileToken()`
