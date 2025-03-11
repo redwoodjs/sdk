@@ -24,7 +24,6 @@ export function LoginPage(ctx: RouteContext) {
   const handleSendEmail = () => {
     startTransition(async () => {
       await emailLoginLink(email, ctx);
-      console.log("### emailLoginLink done");
       setSuccess(true);
     });
   };

@@ -22,7 +22,7 @@
     "migrate:dev": "wrangler d1 migrations apply DB --local",
     "seed": "pnpm worker:run ./src/db/seed.ts",
     "__reset:reinstall": "(cd ../../ && rm -rf node_modules && rm -rf sdk/node_modules && rm -rf experiments/__change_me__/node_modules && pnpm install)",
-    "__reset": "(cd ../../sdk && NODE_ENV=development pnpm build) && pnpm clean:vite && rm -r node_modules/redwoodsdk/dist && cp -r ../../sdk/dist node_modules/redwoodsdk/dist",
+    "__reset": "(cd ../../sdk && NODE_ENV=development pnpm build) && pnpm clean:vite && rm -r node_modules/redwoodsdk/dist && cp -r ../../sdk/{package.json,dist} node_modules/redwoodsdk/",
     "__reset:dev": "pnpm __reset && pnpm dev",
     "__reset:build": "pnpm __reset && pnpm build",
     "__reset:release": "pnpm __reset && pnpm release"

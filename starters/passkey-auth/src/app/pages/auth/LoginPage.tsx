@@ -11,11 +11,16 @@ import {
   startPasskeyLogin,
   startPasskeyRegistration,
 } from "./functions";
+import { useTurnstile } from "redwoodsdk/turnstile";
+
+// >>> Replace this with your own Cloudflare Turnstile site key
+const TURNSTILE_SITE_KEY = "1x00000000000000000000AA";
 
 export function LoginPage() {
   const [username, setUsername] = useState("");
   const [result, setResult] = useState("");
   const [isPending, startTransition] = useTransition();
+  const turnstile = useTurnstile(TURNSTILE_SITE_KEY);
 
   const passkeyLogin = async () => {
     const options = await startPasskeyLogin();
@@ -32,7 +37,13 @@ export function LoginPage() {
   const passkeyRegister = async () => {
     const options = await startPasskeyRegistration(username);
     const registration = await startRegistration({ optionsJSON: options });
-    const success = await finishPasskeyRegistration(username, registration);
+    const turnstileToken = await turnstile.challenge();
+
+    const success = await finishPasskeyRegistration(
+      username,
+      registration,
+      turnstileToken,
+    );
 
     if (!success) {
       setResult("Registration failed");
@@ -51,6 +62,7 @@ export function LoginPage() {
 
   return (
     <>
+      <div ref={turnstile.ref} />
       <input
         type="text"
         value={username}

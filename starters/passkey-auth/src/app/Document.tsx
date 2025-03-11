@@ -1,3 +1,5 @@
+import { TurnstileScript } from "redwoodsdk/turnstile";
+
 export const Document: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => (
@@ -6,6 +8,7 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
       <meta charSet="utf-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1" />
       <title>@redwoodjs/starter-passkey-auth</title>
+      <TurnstileScript />
       <script type="module" src="/src/client.tsx"></script>
     </head>
     <body>
