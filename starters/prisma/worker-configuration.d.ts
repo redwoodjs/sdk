@@ -3,7 +3,6 @@
 interface Env {
 	SECRET_KEY: "secret";
 	APP_URL: "https://__change_me__";
-	SESSION_DO: DurableObjectNamespace /* SessionDO */;
 	R2: R2Bucket;
 	DB: D1Database;
 	ASSETS: Fetcher;

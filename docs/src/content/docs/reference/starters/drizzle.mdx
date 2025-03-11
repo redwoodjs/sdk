@@ -48,6 +48,7 @@ pnpm install
 ```
 
 ## Set up the Database
+
 Generate a d1 database:
 
 ```bash "NAME_OF_DB"
@@ -56,18 +57,23 @@ npx wrangler d1 create NAME_OF_DB
 
 ![New Database](./images/drizzle/new-db.png)
 
-Take the `database_name` and `database_id` and update the values within the `wrangler.toml` file.
+Take the `database_name` and `database_id` and update the values within the `wrangler.jsonc` file.
 
-```toml "__change_me__"
-name = "__change_me__"
+```jsonc "__change_me__"
+{
+  "name": "__change_me__",
 
-...
+  ...
 
-[[ d1_databases ]]
-binding = "DB"
-database_name = "__change_me__"
-database_id = "__change_me__"
-migrations_dir = "drizzle"
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "__change_me__",
+      "database_id": "__change_me__",
+      "migrations_dir": "drizzle"
+    }
+  ]
+}
 ```
 
 ## Set up the Environmental Variables
@@ -80,15 +86,15 @@ CLOUDFLARE_DATABASE_ID=__change_me__
 CLOUDFLARE_D1_TOKEN=__change_me__
 ```
 
-The `CLOUDFLARE_DATABASE_ID` should be the same as the `database_id` in the `wrangler.toml` file. But, you can also access this from your Cloudflare account:
+The `CLOUDFLARE_DATABASE_ID` should be the same as the `database_id` in the `wrangler.jsonc` file. But, you can also access this from your Cloudflare account:
 
 ![Database ID](./images/drizzle/new-db.png)
 
-To get the `CLOUDFLARE_ACCOUNT_ID`, you’ll need to login to your Cloudflare account. Under Computer (Workers) > Workers & Pages > you’ll find the `Account ID` in the right sidebar.
+To get the `CLOUDFLARE_ACCOUNT_ID`, you'll need to login to your Cloudflare account. Under Computer (Workers) > Workers & Pages > you'll find the `Account ID` in the right sidebar.
 
 ![Cloudflare Account ID](./images/drizzle/cloudflare-account-id.png)
 
-You’ll need to generate a `CLOUDFLARE_D1_TOKEN`. Under your User Account (top right), click on Profile. Then, API Tokens in the left sidebar. Under the API Tokens, click on the Create Token button.
+You'll need to generate a `CLOUDFLARE_D1_TOKEN`. Under your User Account (top right), click on Profile. Then, API Tokens in the left sidebar. Under the API Tokens, click on the Create Token button.
 
 ![User API Tokens](./images/drizzle/cloudflare-user-api-tokens.png)
 
@@ -98,7 +104,7 @@ Scroll down to the bottom and click on Custom Token.
 
 Give your token a name. I called my `D1 Edit` but you do you.
 
-Under **Permissions**, you’ll need to add 2:
+Under **Permissions**, you'll need to add 2:
 
 - Account, Account Settings, Read
 - Account, D1, Edit
@@ -114,6 +120,7 @@ Click Create Token and copy/paste the value to your .env file.
 ![Copy Token](./images/drizzle/cloudflare-copy-token.png)
 
 ## Set up the Seed File
+
 Change values within the `src/db/seed.ts` file.
 
 ```ts "__change_me__"

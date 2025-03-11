@@ -16,7 +16,7 @@ RedwoodSDK is built to work on the Cloudflare Developer Platform. D1 is Cloudfla
 
 You'll need to "bind" your database to your worker (`./src/worker.tsx`). "Binding" implies that the an external service, like the database, is made available via the `env` object in your worker. You can also bind other services, like KV, Storage, and queues.
 
-In order to bind a database to your worker you'll need to create a D1 database, and save it's configuration details in your `wrangler.toml` file.
+In order to bind a database to your worker you'll need to create a D1 database, and save it's configuration details in your `wrangler.jsonc` file.
 
 ```bash
 npx wrangler d1 create my-database
@@ -29,7 +29,7 @@ database_name = "my-database"
 database_id = "62x40823-4750-4973-b994-fb8fd55xxxx6"
 ```
 
-We've run a command to create a database called `my-database`. Copy those values and paste them into your `wrangler.toml` file. The development server will use the values from your `wrangler.toml` file to bind your database to the `env` variable `DB`.
+We've run a command to create a database called `my-database`. Copy those values and paste them into your `wrangler.jsonc` file. The development server will use the values from your `wrangler.jsonc` file to bind your database to the `env` variable `DB`.
 
 ## Usage with Prisma
 

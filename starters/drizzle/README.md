@@ -10,19 +10,23 @@ cd my-project-name
 pnpm install
 ```
 
-Within your project's `wrangler.toml` file, replace the placeholder values. For example:
+Within your project's `wrangler.jsonc` file, replace the placeholder values. For example:
 
-```toml
-name = "my-project-name"
-main = "src/worker.tsx"
-compatibility_date = "2024-09-23"
-compatibility_flags = ["nodejs_compat"]
-
-[[ d1_databases ]]
-binding = "DB"
-database_name = "my-project-db"
-database_id = "YOUR-DB-ID-HERE"
-migrations_dir = "drizzle"
+```jsonc
+{
+  "name": "my-project-name",
+  "main": "src/worker.tsx",
+  "compatibility_date": "2024-09-23",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "my-project-db",
+      "database_id": "YOUR-DB-ID-HERE",
+      "migrations_dir": "drizzle",
+    },
+  ],
+}
 ```
 
 You'll need a [Cloudflare account](https://www.cloudflare.com/) as this starter uses Cloudflare D1 for the database.
@@ -37,7 +41,7 @@ npx wrangler d1 create my-project-db
 
 Copy the `database_id` from the output and paste it into:
 
-1. Your project's `wrangler.toml` file
+1. Your project's `wrangler.json` file
 2. The `.env` file (copy from `.env.example`)
 
 ```text

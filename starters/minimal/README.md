@@ -10,23 +10,30 @@ cd my-project-name
 pnpm install
 ```
 
-Within your project's `wrangler.toml` file, replace the placeholder values. For example:
+Within your project's `wrangler.jsonc` file, replace the placeholder values. For example:
 
-```toml
-#:schema node_modules/wrangler/config-schema.json
-name = "my-project-name"
-main = "src/worker.tsx"
-compatibility_date = "2024-09-23"
-compatibility_flags = ["nodejs_compat"]
-assets = { binding = "ASSETS", directory = "public" }
-
-workers_dev = false
-routes = [
-  { pattern = "my-project-name.example.com", custom_domain = true }
-]
-
-[observability]
-enabled = true
+```jsonc:wrangler.jsonc
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "my-project-name",
+  "main": "src/worker.tsx",
+  "compatibility_date": "2024-09-23",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "public"
+  },
+  "workers_dev": false,
+  "routes": [
+    {
+      "pattern": "my-project-name.example.com",
+      "custom_domain": true
+    }
+  ],
+  "observability": {
+    "enabled": true
+  }
+}
 ```
 
 Start your development server:

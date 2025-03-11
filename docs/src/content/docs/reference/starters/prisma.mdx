@@ -45,9 +45,10 @@ packages:
 ```shell
 pnpm install
 ```
+
 ## Update your Project Name
 
-Change the name of your experiment’s `package.json`. For example:
+Change the name of your experiment's `package.json`. For example:
 
 ```json "@redwoodjs/starter-prisma"
   "name": "@redwoodjs/starter-prisma",
@@ -59,45 +60,59 @@ Update the path in this script:
 "__reset:reinstall": "(cd ../../ && rm -rf node_modules && rm -rf sdk/node_modules && rm -rf experiments/__change-me__/node_modules && pnpm install)",
 ```
 
-Within your experiment’s `wrangler.toml` file, change every instance of `__change_me__`
+Within your experiment's `wrangler.jsonc` file, change every instance of `__change_me__`
 
 For example:
 
-```toml "__change_me__"
-#:schema node_modules/wrangler/config-schema.json
-name = "__change_me__"
-main = "src/worker.tsx"
-compatibility_date = "2024-09-23"
-compatibility_flags = ["nodejs_compat"]
-assets = { binding = "ASSETS", directory = "public" }
-
-workers_dev = false
-routes = [
-  { pattern = "__change_me__", custom_domain = true }
-]
-
-[observability]
-enabled = true
-
-[[d1_databases]]
-binding = "DB"
-database_name = "__change_me__"
-database_id = "__change_me__"
-
-[[r2_buckets]]
-bucket_name = "__change_me__"
-binding = "R2"
-
-[[migrations]]
-tag = "v1"
-new_classes = [ "SessionDO" ]
-
-[vars]
-SECRET_KEY = "secret"
-APP_URL="https://__change_me__"
+```jsonc "__change_me__"
+{
+  // Schema reference
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "__change_me__",
+  "main": "src/worker.tsx",
+  "compatibility_date": "2024-09-23",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "public",
+  },
+  "workers_dev": false,
+  "routes": [
+    {
+      "pattern": "__change_me__",
+      "custom_domain": true,
+    },
+  ],
+  "observability": {
+    "enabled": true,
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "__change_me__",
+      "database_id": "__change_me__",
+    },
+  ],
+  "r2_buckets": [
+    {
+      "bucket_name": "__change_me__",
+      "binding": "R2",
+    },
+  ],
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["SessionDO"],
+    },
+  ],
+  "vars": {
+    "SECRET_KEY": "secret",
+    "APP_URL": "https://__change_me__",
+  },
+}
 ```
 
-You’ll need a [Cloudflare account](https://www.cloudflare.com/). We’re using their d1 service to handle the database.
+You'll need a [Cloudflare account](https://www.cloudflare.com/). We're using their d1 service to handle the database.
 
 ## Generate a New Database
 
@@ -107,13 +122,18 @@ npx wrangler d1 create NAME_OF_DB
 
 ![terminal](./images/prisma/terminal.png)
 
-Copy the `database_id` and paste it into your project’s `database_id` inside `wrangler.toml`:
+Copy the `database_id` and paste it into your project's `database_id` inside `wrangler.jsonc`:
 
-```toml "__change_me__"
-[[d1_databases]]
-binding = "DB"
-database_name = "__change_me__"
-database_id = "__change_me__"
+```jsonc "__change_me__"
+{
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "__change_me__",
+      "database_id": "__change_me__",
+    },
+  ],
+}
 ```
 
 If you ever need to find this value, you can log into your Cloudflare account
