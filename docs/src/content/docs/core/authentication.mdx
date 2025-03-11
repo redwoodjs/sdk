@@ -3,17 +3,14 @@ title: Authentication
 description: Secure authentication using the session API and authentication starters.
 ---
 
-Our framework provides a standard session-based authentication API, with two starters to help you get started:
+Our framework provides an API for maintaining sessions, and two starters to help you get started with using these sessions for authentication:
 
 1. **[Sessions Starter](https://github.com/redwoodjs/sdk/blob/main/starters/sessions/README.md)** – Basic session management boilerplate, letting you implement your own authentication logic
 2. **[Passkey Starter](https://github.com/redwoodjs/sdk/blob/main/starters/passkey-auth/README.md)** – A complete implementation using passkey-based authentication
 
 ## 🛠 Session State Management
 
-The session API follows standard session-based authentication:
-
-- Session IDs are stored in secure, HTTP-only cookies
-- The corresponding session state is persisted server-side in Durable Objects
+The session API follows the familiar pattern of storing session IDs in cookies, but with a key difference: instead of a traditional database, session data is stored in Durable Objects for real-time access across regions.
 
 You implement your own DO to store session data, giving you control over:
 
@@ -21,23 +18,74 @@ You implement your own DO to store session data, giving you control over:
 - Session lifecycle and validation logic
 - Integration with your app's authentication flow
 
+Both starters include [reference Session DO implementations](https://github.com/redwoodjs/sdk/blob/main/starters/sessions/src/session/durableObject.ts) to use as a starting point.
+
 ```tsx
 import { defineDurableSession } from "redwoodsdk/session";
 
 export const session = defineDurableSession({
   secretKey: process.env.SECRET_KEY,
-  sessionDurableObject: env.SESSION_DO, // Your custom DO implementation
+  sessionDurableObject: env.SESSION_DURABLE_OBJECT, // Your custom DO implementation
 });
 ```
 
-### **Key Functions**
+#### `sessions.load(request)`
 
-- `load(request)` – Gets session data from a request
-- `save(headers, sessionData)` – Stores session data and sets cookies
+Used in your worker middleware to load session data into the request context:
+
+```tsx:worker.tsx
+import { defineApp } from "redwoodsdk/worker";
+import { sessions } from './lib/session';
+
+export default defineApp<Context>([
+  setCommonHeaders(),
+  async ({ ctx, request }) => {
+    ctx.session = await sessions.load(request);
+  },
+  layout(Document, [/* routes */]),
+]);
+```
+
+If adding the session durable object to a new project, you'll need to specify it in your `wrangler.jsonc`.
+
+```json:wrangler.jsonc
+  "durable_objects": {
+    "bindings": [
+      {
+        // needs to match `defineDurableSession({ sessionDurableObject: env.SESSION_DURABLE_OBJECT, ... })`
+        "name": "SESSION_DURABLE_OBJECT",
+        // needs to match the name of the durable object class
+        "class_name": "SessionDurableObject",
+      },
+    ],
+  },
+```
+
+You'll also need to export the durable object class in your worker entry point script (e.g. `worker.tsx`)
+
+```tsx:worker.tsx
+export { SessionDurableObject } from "./session/durableObject";
+```
+
+#### `sessions.save(headers, sessionData)`
+
+Used in server actions to save session state (e.g. after authentication):
+
+```tsx:app/auth/actions.ts
+'use server'
+
+async function handleLogin(ctx?: RouteContext) {
+  // ... authentication logic ...
+
+  await sessions.save(ctx!.headers, {
+    userId: user.id,
+  });
+}
+```
 
 ## 🔑 Passkey Authentication
 
-The passkey starter implements passwordless authentication using public-private key pairs. Users can authenticate using built-in authenticators, password managers, or cross-platform services.
+The passkey starter implements passwordless authentication using public-private key pairs.
 
 ### **How It Works**
 
@@ -57,8 +105,8 @@ Add email verification if your app requires verified identities.
 
 ### **Bot Protection**
 
-The starter includes Cloudflare Turnstile integration:
+Since the passkey starter allows multiple accounts per username and has no email verification step, it needs protection against registration spam. While Cloudflare's built in bot detection will identify and block malicious patterns over time, Turnstile provides immediate verification before registration:
 
 1. Load Turnstile via `<TurnstileScript />`
-2. Generate a challenge token with `useTurnstile()`
-3. Verify the token server-side with `verifyTurnstileToken()`
+2. During registration on client side: generate a challenge token with `useTurnstile()`
+3. In action handler on worker side: verify the token server-side with `verifyTurnstileToken()`
