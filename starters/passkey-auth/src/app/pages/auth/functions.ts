@@ -11,7 +11,7 @@ import {
 import { sessions } from "@/session/store";
 import { RouteContext } from "redwoodsdk/router";
 import { db } from "@/db";
-import { verifyTurnstileToken } from "redwoodsdk/worker";
+import { verifyTurnstileToken } from "redwoodsdk/turnstile";
 
 export async function startPasskeyRegistration(
   username: string,
@@ -113,6 +113,7 @@ export async function finishPasskeyLogin(
   ctx?: RouteContext,
 ) {
   const { request, headers, env } = ctx!;
+  const { origin } = new URL(request.url);
 
   if (
     !(await verifyTurnstileToken({
