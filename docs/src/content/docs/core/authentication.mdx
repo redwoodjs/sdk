@@ -159,11 +159,11 @@ export default defineApp<Context>([
 
 ## 🔑 Passkey Authentication
 
-The passkey starter implements passwordless authentication using public-private key pairs.
+The passkey starter implements passkeys/[webauthn]()https://en.wikipedia.org/wiki/WebAuthn-based authentication.
 
 ### **How It Works**
 
-1. Registration creates a public-private key pair
+1. Registration creates a public-private key pair - user interacts with their browser/authenticator (1Password, Google PassKeys) to store the private key
 2. Your server stores the public key
 3. Login verifies a challenge using the private key (stored on user's device)
 
