@@ -6,12 +6,12 @@ import {
   verifyAuthenticationResponse,
   RegistrationResponseJSON,
   AuthenticationResponseJSON,
-  WebAuthnCredential,
 } from "@simplewebauthn/server";
 
 import { sessions } from "@/session/store";
 import { RouteContext } from "redwoodsdk/router";
 import { db } from "@/db";
+import { verifyTurnstileToken } from "redwoodsdk/worker";
 
 export async function startPasskeyRegistration(
   username: string,
@@ -39,9 +39,20 @@ export async function startPasskeyRegistration(
 export async function finishPasskeyRegistration(
   username: string,
   registration: RegistrationResponseJSON,
+  turnstileToken: string,
   ctx?: RouteContext,
 ) {
   const { request, headers, env } = ctx!;
+
+  if (
+    !(await verifyTurnstileToken({
+      token: turnstileToken,
+      secretKey: env.TURNSTILE_SECRET_KEY,
+    }))
+  ) {
+    return false;
+  }
+
   const { origin } = new URL(request.url);
 
   const session = await sessions.load(request);
@@ -83,7 +94,7 @@ export async function finishPasskeyRegistration(
 }
 
 export async function startPasskeyLogin(ctx?: RouteContext) {
-  const { request, headers, env } = ctx!;
+  const { headers, env } = ctx!;
 
   const options = await generateAuthenticationOptions({
     rpID: env.RP_ID,
@@ -98,10 +109,19 @@ export async function startPasskeyLogin(ctx?: RouteContext) {
 
 export async function finishPasskeyLogin(
   login: AuthenticationResponseJSON,
+  turnstileToken: string,
   ctx?: RouteContext,
 ) {
   const { request, headers, env } = ctx!;
-  const { origin } = new URL(request.url);
+
+  if (
+    !(await verifyTurnstileToken({
+      token: turnstileToken,
+      secretKey: env.TURNSTILE_SECRET_KEY,
+    }))
+  ) {
+    return false;
+  }
 
   const session = await sessions.load(request);
   const challenge = session?.challenge;

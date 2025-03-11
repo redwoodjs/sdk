@@ -13,7 +13,6 @@ export const verifyTurnstileToken = async ({
       body: new URLSearchParams({ secret: secretKey, response: token }),
     },
   );
-
   try {
     const data = (await response.json()) as { success?: boolean } | null;
     return data?.success === true;

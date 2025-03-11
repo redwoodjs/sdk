@@ -43,6 +43,10 @@
     "./constants": {
       "default": "./dist/runtime/constants.js",
       "types": "./dist/runtime/constants.d.ts"
+    },
+    "./turnstile": {
+      "default": "./dist/runtime/lib/turnstile/turnstile.js",
+      "types": "./dist/runtime/lib/turnstile/turnstile.d.ts"
     }
   },
   "keywords": [],
