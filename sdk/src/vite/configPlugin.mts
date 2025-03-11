@@ -4,6 +4,15 @@ import { mergeConfig, InlineConfig } from "vite";
 
 import { DEV_SERVER_PORT } from "../lib/constants.mjs";
 
+const ignoreVirtualModules = {
+  name: "ignore-virtual-modules",
+  setup(build: any) {
+    build.onResolve({ filter: /^virtual:use-client-lookup$/ }, () => {
+      return { external: true };
+    });
+  },
+};
+
 export const configPlugin = ({
   mode,
   silent,
@@ -47,19 +56,7 @@ export const configPlugin = ({
           optimizeDeps: {
             noDiscovery: false,
             esbuildOptions: {
-              plugins: [
-                {
-                  name: "ignore-virtual-modules",
-                  setup(build) {
-                    build.onResolve(
-                      { filter: /^virtual:use-client-lookup$/ },
-                      () => {
-                        return { external: true };
-                      },
-                    );
-                  },
-                },
-              ],
+              plugins: [ignoreVirtualModules],
             },
             include: [
               "react",
@@ -100,6 +97,7 @@ export const configPlugin = ({
                       },
                     ]
                   : []),
+                ignoreVirtualModules,
               ],
             },
             include: [
