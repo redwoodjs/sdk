@@ -8,7 +8,3 @@ export * from "../worker";
 export * from "../error";
 export * from "../script";
 export * from "../lib/utils";
-
-export * from "../lib/turnstile/TurnstileScript";
-export * from "../lib/turnstile/TurnstileWidget";
-export * from "../lib/turnstile/verifyTurnstileToken";
