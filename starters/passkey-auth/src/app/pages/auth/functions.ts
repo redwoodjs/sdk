@@ -109,20 +109,10 @@ export async function startPasskeyLogin(ctx?: RouteContext) {
 
 export async function finishPasskeyLogin(
   login: AuthenticationResponseJSON,
-  turnstileToken: string,
   ctx?: RouteContext,
 ) {
   const { request, headers, env } = ctx!;
   const { origin } = new URL(request.url);
-
-  if (
-    !(await verifyTurnstileToken({
-      token: turnstileToken,
-      secretKey: env.TURNSTILE_SECRET_KEY,
-    }))
-  ) {
-    return false;
-  }
 
   const session = await sessions.load(request);
   const challenge = session?.challenge;
