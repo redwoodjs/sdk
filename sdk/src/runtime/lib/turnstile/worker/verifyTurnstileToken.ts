@@ -4,7 +4,7 @@ export const verifyTurnstileToken = async ({
 }: {
   token: string;
   secretKey: string;
-}) {
+}) => {
   const response = await fetch(
     "https://challenges.cloudflare.com/turnstile/v0/siteverify",
     {
@@ -21,4 +21,4 @@ export const verifyTurnstileToken = async ({
     console.error("Error verifying Turnstile token", error);
     return false;
   }
-}
+};
