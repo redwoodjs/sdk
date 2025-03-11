@@ -1,0 +1,76 @@
+---
+title: Queues
+description: Messages, queues, and background tasks
+---
+
+Whilst building a website you want to be able to respond as quickly as possible to user interactions, but sometimes you need to do things that take a long time to complete. For example, you might need to send an email when a user submits a form, or you need to process a payment. These tasks are called background tasks.
+
+Background tasks are handled by the queue system. You send a message to a queue, and a worker will process the message.
+
+
+### Setup
+
+First thing you've got to do is create a queue and bind the queue producers and consumers to your worker.
+```bash
+npx wrangler queues create MY_QUEUE_NAME
+```
+
+Replace "MY_QUEUE_NAME" with the name of your queue.
+
+```jsonc title="wrangler.jsonc"
+{
+  "queues": {
+    "producers": [
+      {
+        "binding": "QUEUE",
+        "queue": "MY_QUEUE_NAME",
+      }
+    ],
+    "consumers": [
+      {
+        "queue": "MY_QUEUE_NAME",
+        "max_batch_size": 10,
+        "max_batch_timeout": 5
+      }
+    ]
+  }
+}
+```
+
+### Sending messages
+
+the `QUEUE` object will now be available in your worker via the `env` object.
+
+```tsx title="src/worker.tsx"
+export default defineApp([
+  route('/pay', ({ env }) => {
+    // Post a message to the queue
+    env.QUEUE.send({
+      userId: 1,
+      amount: 100,
+      currency: 'USD',
+    })
+  })
+])
+```
+
+### Receiving messages
+
+In order to receive and "consume" messages from the queue you need to change the shape of the default export
+of your worker.
+
+```tsx title="src/worker.tsx"
+
+const app = defineApp([ /* routes... */])
+
+export default {
+  fetch: app.fetch,
+  async queue(batch) {
+    for (const message of batch) {
+      console.log(message)
+    }
+  }
+} satisfies ExportedHandler<Env>;
+```
+
+This will now consume messages from the queue.
