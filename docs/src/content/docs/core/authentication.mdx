@@ -46,27 +46,6 @@ export default defineApp<Context>([
 ]);
 ```
 
-If adding the session durable object to a new project, you'll need to specify it in your `wrangler.jsonc`.
-
-```json:wrangler.jsonc
-  "durable_objects": {
-    "bindings": [
-      {
-        // needs to match `defineDurableSession({ sessionDurableObject: env.SESSION_DURABLE_OBJECT, ... })`
-        "name": "SESSION_DURABLE_OBJECT",
-        // needs to match the name of the durable object class
-        "class_name": "SessionDurableObject",
-      },
-    ],
-  },
-```
-
-You'll also need to export the durable object class in your worker entry point script (e.g. `worker.tsx`)
-
-```tsx:worker.tsx
-export { SessionDurableObject } from "./session/durableObject";
-```
-
 #### `sessions.save(headers, sessionData)`
 
 Used in server actions to save session state (e.g. after authentication):
@@ -81,6 +60,101 @@ async function handleLogin(ctx?: RouteContext) {
     userId: user.id,
   });
 }
+```
+
+## Setting up sessions on new projects
+
+If adding the session durable object to a new project, first define your session durable object. For an example, check out the [reference Session DO implementation](https://github.com/redwoodjs/sdk/blob/main/starters/sessions/src/session/durableObject.ts):
+
+```ts:session/durableObject.ts
+export class SessionDurableObject extends DurableObject {
+  getSession(): Promise<GetSessionResult<Session>> {
+    ...
+  }
+  saveSession(data: SessionInputData): Promise<Session> {
+    ...
+  }
+  revokeSession(): void {
+    ...
+  }
+}
+```
+
+Then, set up a session store that uses the durable object:
+
+```session/store.ts
+import { defineDurableSession } from "redwoodsdk/auth";
+
+export let sessions: ReturnType<typeof createSessionStore>;
+
+const createSessionStore = (env: Env) =>
+  defineDurableSession({
+    // Define the secret key using `wrangler secret put` for deployments, and `.env` for development
+    secretKey: env.SECRET_KEY,
+    sessionDurableObject: env.SESSION_DURABLE_OBJECT,
+  });
+
+export const setupSessionStore = (env: Env) => {
+  sessions = createSessionStore(env);
+  return sessions;
+};
+```
+
+The session store requires a secret key (`env.SECRET_KEY`) to use for signing session ids (in order to verify that the worker issued them before DO instances are created).
+
+For development, set the secret key using `.env`:
+
+```env:.env
+SECRET_KEY=abc
+```
+
+For deployments, set the secret key using `wrangler secret put`:
+
+```bash
+npx wrangler secret put SECRET_KEY
+```
+
+Then, reference the DO it in your `wrangler.jsonc`.
+
+```json:wrangler.jsonc
+  "durable_objects": {
+    "bindings": [
+      {
+        // needs to match `defineDurableSession({ sessionDurableObject: env.SESSION_DURABLE_OBJECT, ... })`
+        "name": "SESSION_DURABLE_OBJECT",
+        // needs to match the name of the durable object class
+        "class_name": "SessionDurableObject",
+      },
+    ],
+  },
+```
+
+Now, export the durable object class in your worker entry point script (`worker.tsx`)
+
+```tsx:worker.tsx
+export { SessionDurableObject } from "./session/durableObject";
+```
+
+Finally, initialise the session store defined above in your `worker.tsx` entry point:
+
+```tsx:worker.tsx
+export default defineApp<Context>([
+  // ...
+  async ({ env, ctx, request }) => {
+    setupSessionStore(env);
+  },
+])
+```
+
+You're now ready to use your session store!
+
+```
+export default defineApp<Context>([
+  async ({ env, ctx, request }) => {
+    setupSessionStore(env);
+    ctx.session = await sessions.load(request);
+  },
+]);
 ```
 
 ## 🔑 Passkey Authentication
