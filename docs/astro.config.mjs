@@ -34,6 +34,7 @@ export default defineConfig({
             { label: 'Routing', slug: 'core/routing' },
             { label: 'Database', slug: 'core/database' },
             { label: 'Storage', slug: 'core/storage' },
+            { label: 'Queues', slug: 'core/queues' },
           ],
         },
         {
