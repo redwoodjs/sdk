@@ -4,17 +4,18 @@ description: From zero to request/ response in seconds
 next: false
 ---
 
-import { Aside, Tabs, TabItem, LinkCard } from '@astrojs/starlight/components';
+import { Aside, Tabs, TabItem, LinkCard } from "@astrojs/starlight/components";
 
 In this quick start you'll go from zero to request/ response in seconds, and deploy to production in minutes.
 
 <Aside type="note" title="System requirements">
-- [Node.js](https://nodejs.org/en/download)
+  - [Node.js](https://nodejs.org/en/download)
 </Aside>
 
 {/* TODO: Create a Vite Community Template */}
 
 To install a minimal project, run the following command, replace `<project-name>` with your own project's name.
+
 ```bash frame="none"
 npx degit redwoodjs/sdk/starters/minimal#main <project-name>
 ```
@@ -24,6 +25,7 @@ RedwoodSDK provides a number of starter templates to help you get started.
 
 - [Prisma](https://github.com/redwoodjs/sdk/tree/main/starters/prisma): Database access with Prisma and Cloudflare D1
 - [Prisma & Authentication](https://github.com/redwoodjs/sdk/tree/main/starters/passkey-auth): Database access & Passkey authentication
+
 </Aside>
 
 <Tabs>
@@ -63,34 +65,30 @@ VITE v6.2.0  ready in 500 ms
 Access the development server in your browser, by default it's available at [http://localhost:2332](http://localhost:2332),
 and you should see "Hello World" displayed on the page.
 
-
 ![Hello World](./images/hello-world.png)
 
 How exciting, your first request/response in Redwood SDK!
 
 ## Start developing
 
-RedwoodSDK is based on Cloudflare, so the entry point of your website is `src/worker.tsx`, open that file in your favorite editor. 
+RedwoodSDK is based on Cloudflare, so the entry point of your website is `src/worker.tsx`, open that file in your favorite editor.
 
 Here you'll see the `defineApp` function, this is the main function that "defines your website," where the purpose is to accept requests and return responses to the client.
 
-```tsx title="src/worker.tsx" collapse={1-5} "defineApp" 
-import { defineApp } from 'redwoodsdk/worker';
-import { index, layout } from 'redwoodsdk/router';
-import { Document } from 'src/Document';
-import { Home } from 'src/pages/Home';
+```tsx title="src/worker.tsx" collapse={1-5} "defineApp"
+import { defineApp } from "redwoodsdk/worker";
+import { index, layout } from "redwoodsdk/router";
+import { Document } from "src/Document";
+import { Home } from "src/pages/Home";
 
-export default defineApp([
-  layout(Document, [
-    index(Home),
-  ]),
-])
+export default defineApp([layout(Document, [index(Home)])]);
 ```
 
 <Aside type="note" title="Layout & Page Components">
 - `Document` is the layout component, it's the parent component of your website, it's responsible for providing the basic structure of your website, such as the header, footer, and sidebar.
 
 - `Home` is a page component of your website, it's the component that will be rendered when the user navigates to the root URL of your website.
+
 </Aside>
 
 Open `src/app/pages/Home.tsx`:
@@ -122,24 +120,27 @@ export function Home() {
 
 ## Deploy to production
 
-RedwoodSDK is optimized for the Cloudflare Development Platform, and you can deploy your website to Cloudflare with a single command, but first you need to change the `wrangler.toml` file; and modify the `name` field to your own project's name.
+RedwoodSDK is optimized for the Cloudflare Development Platform, and you can deploy your website to Cloudflare with a single command, but first you need to change the `wrangler.jsonc` file; and modify the `name` field to your own project's name.
 
-```toml title="wrangler.toml" del="__change_me__"
-#:schema node_modules/wrangler/config-schema.json
-name = "__change_me__"
-main = "src/worker.tsx"
-compatibility_date = "2024-09-23"
-compatibility_flags = ["nodejs_compat"]
-assets = { binding = "ASSETS" }
-
-[observability]
-enabled = true
+```jsonc title="wrangler.jsonc" del="__change_me__"
+{
+  // Schema reference
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "__change_me__",
+  "main": "src/worker.tsx",
+  "compatibility_date": "2024-09-23",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "binding": "ASSETS",
+  },
+  "observability": {
+    "enabled": true,
+  },
+}
 ```
 
 Then run the following command to deploy your website to Cloudflare.
 
-```bash frame="none"
-pnpm release
 ```
 
-<LinkCard title="What's next? Routing!" description="Learn how to route requests to different responses" href="/core/routing" />
+```

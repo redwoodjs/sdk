@@ -10,40 +10,53 @@ cd my-project-name
 pnpm install
 ```
 
-Within your project's `wrangler.toml` file, replace the placeholder values. For example:
+Within your project's `wrangler.jsonc` file, replace the placeholder values. For example:
 
-```toml
-#:schema node_modules/wrangler/config-schema.json
-name = "my-project-name"
-main = "src/worker.tsx"
-compatibility_date = "2024-09-23"
-compatibility_flags = ["nodejs_compat"]
-assets = { binding = "ASSETS", directory = "public" }
-
-workers_dev = false
-routes = [
-  { pattern = "my-project-name.example.com", custom_domain = true }
-]
-
-[observability]
-enabled = true
-
-[[d1_databases]]
-binding = "DB"
-database_name = "my-project-db"
-database_id = "YOUR-DB-ID-HERE"
-
-[[r2_buckets]]
-bucket_name = "my-project-bucket"
-binding = "R2"
-
-[[migrations]]
-tag = "v1"
-new_classes = [ "SessionDO" ]
-
-[vars]
-SECRET_KEY = "secret"
-APP_URL="https://my-project-name.example.com"
+```jsonc:wrangler.jsonc
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "my-project-name",
+  "main": "src/worker.tsx",
+  "compatibility_date": "2024-09-23",
+  "compatibility_flags": ["nodejs_compat"],
+  "assets": {
+    "binding": "ASSETS",
+    "directory": "public"
+  },
+  "workers_dev": false,
+  "routes": [
+    {
+      "pattern": "my-project-name.example.com",
+      "custom_domain": true
+    }
+  ],
+  "observability": {
+    "enabled": true
+  },
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "my-project-db",
+      "database_id": "YOUR-DB-ID-HERE"
+    }
+  ],
+  "r2_buckets": [
+    {
+      "bucket_name": "my-project-bucket",
+      "binding": "R2"
+    }
+  ],
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["SessionDO"]
+    }
+  ],
+  "vars": {
+    "SECRET_KEY": "secret",
+    "APP_URL": "https://my-project-name.example.com"
+  }
+}
 ```
 
 You'll need a [Cloudflare account](https://www.cloudflare.com/) as this starter uses Cloudflare D1 for the database.
@@ -56,7 +69,7 @@ npx wrangler d1 create my-project-db
 
 ![terminal](./public/images/terminal.png)
 
-Copy the `database_id` from the output and paste it into your project's `wrangler.toml` file.
+Copy the `database_id` from the output and paste it into your project's `wrangler.jsonc` file.
 
 If you need to find your database ID later, you can find it in your Cloudflare dashboard:
 

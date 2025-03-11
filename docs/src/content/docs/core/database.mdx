@@ -3,19 +3,20 @@ title: Database
 description: Store & retrieve data from the database.
 ---
 
-import { Aside, Tabs, TabItem, LinkCard } from '@astrojs/starlight/components';
+import { Aside, Tabs, TabItem, LinkCard } from "@astrojs/starlight/components";
 
 RedwoodSDK is built to work on the Cloudflare Developer Platform. D1 is Cloudflare's managed, serverless database with SQLite's SQL semantics, built-in disaster recovery, and a generous free tier.
 
 <Aside type="note" title="Pick your poison">
-  You do not need to use D1, you can use any database you want, but we recommend D1.
+  You do not need to use D1, you can use any database you want, but we recommend
+  D1.
 </Aside>
 
 ## Setup
 
 You'll need to "bind" your database to your worker (`./src/worker.tsx`). "Binding" implies that the an external service, like the database, is made available via the `env` object in your worker. You can also bind other services, like KV, Storage, and queues.
 
-In order to bind a database to your worker you'll need to create a D1 database, and save it's configuration details in your `wrangler.toml` file.
+In order to bind a database to your worker you'll need to create a D1 database, and save it's configuration details in your `wrangler.jsonc` file.
 
 ```bash
 npx wrangler d1 create my-database
@@ -28,7 +29,7 @@ database_name = "my-database"
 database_id = "62x40823-4750-4973-b994-fb8fd55xxxx6"
 ```
 
-We've run a command to create a database called `my-database`. Copy those values and paste them into your `wrangler.toml` file. The development server will use the values from your `wrangler.toml` file to bind your database to the `env` variable `DB`.
+We've run a command to create a database called `my-database`. Copy those values and paste them into your `wrangler.jsonc` file. The development server will use the values from your `wrangler.jsonc` file to bind your database to the `env` variable `DB`.
 
 ## Usage with Prisma
 
@@ -38,6 +39,7 @@ RedwoodSDK ships with a [Prisma starter project](https://github.com/redwoodjs/sd
 ```bash frame="none"
 npx degit redwoodjs/sdk/starters/prisma#main <project-name>
 ```
+
 </Aside>
 
 ### Installation

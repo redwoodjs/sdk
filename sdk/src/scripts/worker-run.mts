@@ -1,10 +1,11 @@
 import { resolve } from "path";
-import { readFile, writeFile } from "fs/promises";
+import { writeFile } from "fs/promises";
 import { unstable_readConfig } from "wrangler";
 import { createServer as createViteServer } from "vite";
 import tmp from "tmp-promise";
 
 import { redwood } from "../vite/index.mjs";
+import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
 
 export const runWorkerScript = async (relativeScriptPath: string) => {
   if (!relativeScriptPath) {
@@ -18,10 +19,10 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
 
   const scriptPath = resolve(process.cwd(), relativeScriptPath);
 
-  const workerTomlPath = resolve(process.cwd(), "wrangler.toml");
+  const workerConfigPath = await findWranglerConfig(process.cwd());
 
   const workerConfig = unstable_readConfig({
-    config: workerTomlPath,
+    config: workerConfigPath,
   });
 
   const tmpWorkerPath = await tmp.file({

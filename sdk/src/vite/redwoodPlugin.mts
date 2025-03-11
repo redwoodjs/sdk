@@ -19,6 +19,7 @@ import { customReactBuildPlugin } from "./customReactBuildPlugin.mjs";
 import { injectHmrPreambleJsxPlugin } from "./injectHmrPreambleJsxPlugin.mjs";
 import { createSymlinkEnv } from "./createSymlinkEnv.mjs";
 import { invalidateViteDepsCacheEntry } from "./invalidateViteDepsCacheEntry.mjs";
+import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -82,7 +83,7 @@ export const redwoodPlugin = async (
       viteEnvironment: { name: "worker" },
       workerEntryPathname,
       configPath:
-        options.configPath ?? resolve(projectRootDir, "wrangler.toml"),
+        options.configPath ?? (await findWranglerConfig(projectRootDir)),
     }),
     reactPlugin(),
     useServerPlugin(),
