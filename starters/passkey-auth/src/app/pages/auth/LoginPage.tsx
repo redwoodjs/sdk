@@ -11,11 +11,17 @@ import {
   startPasskeyLogin,
   startPasskeyRegistration,
 } from "./functions";
+import { useTurnstile } from "redwoodsdk/client";
+import { TURNSTILE_SITE_KEY } from "@/app/constants";
 
 export function LoginPage() {
   const [username, setUsername] = useState("");
   const [result, setResult] = useState("");
   const [isPending, startTransition] = useTransition();
+
+  const { ref, token } = useTurnstile({
+    siteKey: TURNSTILE_SITE_KEY,
+  });
 
   const passkeyLogin = async () => {
     const options = await startPasskeyLogin();

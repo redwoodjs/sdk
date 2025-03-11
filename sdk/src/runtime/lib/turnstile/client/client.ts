@@ -1,1 +1,1 @@
-export * from "./TurnstileWidget";
+export * from "./useTurnstile";
