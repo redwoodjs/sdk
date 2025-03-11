@@ -1,16 +1,16 @@
 import { RouteMiddleware } from "redwoodsdk/router";
+import { isDev } from "redwoodsdk/worker";
 
 export const setCommonHeaders =
   (): RouteMiddleware =>
   ({ headers, rw: { nonce } }) => {
-    // Forces browsers to always use HTTPS for a specified time period (2 years)
-    headers.set(
-      "Strict-Transport-Security",
-      "max-age=63072000; includeSubDomains; preload",
-    );
-
-    // Prevents your site from being embedded in iframes on other domains
-    headers.set("X-Frame-Options", "DENY");
+    if (isDev()) {
+      // Forces browsers to always use HTTPS for a specified time period (2 years)
+      headers.set(
+        "Strict-Transport-Security",
+        "max-age=63072000; includeSubDomains; preload",
+      );
+    }
 
     // Forces browser to use the declared content-type instead of trying to guess/sniff it
     headers.set("X-Content-Type-Options", "nosniff");
@@ -25,8 +25,9 @@ export const setCommonHeaders =
     );
 
     // Defines trusted sources for content loading and script execution:
-    // - Only loads resources from same origin ('self')
-    // - Only runs scripts from same origin
+    // - Only loads resources from same origin ('self') and Cloudflare Turnstile
+    // - Only runs scripts from same origin, trusted inline scripts with nonce, and Turnstile
+    // - Allows frames from Cloudflare Turnstile
     // - Blocks all plugins/embedded objects
     //
     // Usage:
@@ -34,6 +35,6 @@ export const setCommonHeaders =
     // - Add 'nonce=${nonce}' to inline <script> tags you trust
     headers.set(
       "Content-Security-Policy",
-      `default-src 'self'; script-src 'self' 'nonce-${nonce}'; object-src 'none';`,
+      `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; object-src 'none';`,
     );
   };
