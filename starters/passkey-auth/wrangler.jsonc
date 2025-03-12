@@ -35,7 +35,6 @@
   // Environment variables
   "vars": {
     "APP_NAME": "__change_me__",
-    "RP_ID": "localhost",
   },
 
   // Migrations configuration

@@ -36,6 +36,24 @@ Copy the database ID provided and paste it into your project's `wrangler.jsonc` 
 }
 ```
 
+### Setting up WebAuthn Relying Party ID (`RP_ID`)
+
+For production, set your domain as the `RP_ID` via Cloudflare secrets:
+
+```shell
+wrangler secret put RP_ID
+```
+
+When prompted, enter your production domain (e.g., `my-app.example.com`).
+
+For **local development**, set this in a `.env` file in your project root:
+
+```env
+RP_ID=localhost
+```
+
+Note: The RP_ID must be a valid domain that matches your application's origin. For security reasons, WebAuthn will not work if these don't match.
+
 ### Setting up Session Secret Key
 
 For production, generate a strong SECRET_KEY for signing session IDs. You can generate a secure random key using OpenSSL:
