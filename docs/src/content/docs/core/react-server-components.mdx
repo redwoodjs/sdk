@@ -1,0 +1,98 @@
+---
+title: React Server Components
+description: React, Server Components, Server Actions, and Suspense
+---
+
+React is used to build your user interface. By default, all components are server components. That means that the component is rendered on the server and then sent to the client. It does not include any client-side interactivity.
+
+```tsx title="src/components/MyServerComponent.tsx"
+export default function MyServerComponent() {
+  return <div>Hello, from the server!</div>
+}
+```
+
+When a user needs to interact with the component: clicking a button, setting state, etc, then you can use a client component. Mark the client component with the `"use client"` directive. It will by hydrated as a client component in the browser.
+
+```tsx title="src/components/MyClientComponent.tsx"
+"use client"
+
+export default function MyClientComponent() {
+  return <button>Click me</button>
+}
+```
+
+## Fetching and displaying data
+
+React Server Components run on the server, so they can easily fetch data and make it part of the payload sent to the client.
+
+```tsx title="src/app/pages/todos/TodoPage.tsx" "async"
+
+async function fetchData() {
+  const res = await fetch('https://jsonplaceholder.typicode.com/todos/1')
+  const data = await res.json()
+  return data.title
+}
+
+export async function Todos() {
+  const data = await fetchData()
+  return <div>{data}</div>
+}
+
+export async function TodoPage() {
+    return <div>
+    <h1>Todos</h1>
+    <Suspense fallback={<div>Loading...</div>}>
+      <Todos />
+    </Suspense>
+    </div>
+}
+```
+
+The important part is that the server component is async, the payload is streamed to the client, and when react detects an async boundary, it will suspend the component until the data is fetched.
+
+Because of this you're able to show a loading state, via `Suspense`, while the data is being fetched. Once the data is fetched, the component `Todos` component will be displayed.
+
+## Server Functions
+
+Are a way to handle form submissions and other interactions on the server from a client component. The code is executed on the server, but the interaction is initiated and handled by the client component.
+
+```tsx title="src/app/pages/todos/functions.tsx"
+"use server"
+
+function addTodo(formData: FormData) {
+  const title = formData.get('title')
+  console.log(title)
+}
+```
+
+The "use server" directive tells Redwood to execute the code on the server.
+
+```tsx title="src/app/pages/todos/AddTodo.tsx"
+"use client"
+
+import { addTodo } from './functions'
+
+export default function AddTodo() {
+  return <form action={addTodo}>
+    <input type="text" name="title" />
+    <button type="submit">Add</button>
+  </form>
+}
+```
+
+Redwood will execute the `addTodo` function on the server when the form is submitted. The form data is sent to the server and the function is executed. The result is sent back to the client, parsed by React, and the view is updated with the new todo.
+
+
+### Context
+
+We have not covered middleware and `context` yet, but you can use them to share data globally between server functions. The last parameter of a server function will always be the context.
+
+```tsx title="src/app/pages/todos/functions.tsx"
+function addTodo(formData: FormData, ctx: Context) {
+  console.log(ctx.user.id + " added a todo")
+  const title = formData.get('title')
+  console.log(title)
+}
+```
+
+In this example above we are using the `ctx` object to get the user id. This is how you could associate this todo item with a particular user.

@@ -35,6 +35,7 @@ export default defineConfig({
           items: [
             { label: "Overview", slug: "core/overview" },
             { label: "Routing", slug: "core/routing" },
+            { label: "React Server Components", slug: "core/react-server-components" },
             { label: "Database", slug: "core/database" },
             { label: "Storage", slug: "core/storage" },
             { label: "Queues", slug: "core/queues" },
