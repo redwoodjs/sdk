@@ -6,6 +6,8 @@ import starlight from "@astrojs/starlight";
 export default defineConfig({
   integrations: [
     starlight({
+      expressiveCode: {
+      },
       title: "RedwoodSDK",
       logo: {
         src: "./src/assets/logo.svg",
@@ -175,5 +177,4 @@ export default defineConfig({
       ],
     }),
   ],
-  baseUrl: "/docs/introduction",
 });
