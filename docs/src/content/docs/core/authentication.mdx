@@ -57,7 +57,7 @@ Registration follows the same two-step WebAuthn process as login, but with an ex
 
 ### Why Turnstile?
 
-Cloudflare already has bot protection, but there's a short gap before it fully picks up on attack patterns. Turnstile adds a lightweight challenge **before** registration happens, blocking automated signups.
+Cloudflare has built-in bot protection, but it works by detecting and blocking malicious patterns over time. That means automated registrations can still get through until Cloudflare picks up on them. Turnstile prevents this from becoming an issue in the first place by requiring a lightweight challenge **before** registration happens, stopping bots at the point of entry.
 
 ### Turnstile in the Registration Flow
 
