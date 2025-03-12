@@ -1,5 +1,5 @@
 import { defineApp } from "redwoodsdk/worker";
-import { index, layout, prefix } from "redwoodsdk/router";
+import { route, layout, prefix } from "redwoodsdk/router";
 import { Document } from "@/app/Document";
 import { Home } from "@/app/pages/Home";
 import { setCommonHeaders } from "@/app/headers";
@@ -31,7 +31,8 @@ export default defineApp<Context>([
     }
   },
   layout(Document, [
-    index([
+    route('/', () => new Response("Hello, World!")),
+    route('/protected', [
       ({ ctx }) => {
         if (!ctx.user) {
           return new Response(null, {
