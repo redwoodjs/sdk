@@ -1,6 +1,6 @@
-# Standard RedwoodSDK Starter
+# Standard RedwoodJS Starter
 
-This starter provides a comprehensive RedwoodSDK-based implementation that includes passkey authentication using WebAuthn, session management, database integration with Prisma, and file storage with Cloudflare R2. It serves as a fully integrated starting point for Redwood apps, consolidating various essential features into one package.
+This starter provides a comprehensive RedwoodJS-based implementation that includes passkey authentication using WebAuthn, session management, database integration with Prisma, and file storage with Cloudflare R2. It serves as a fully integrated starting point for Redwood apps, consolidating various essential features into one package.
 
 Create your new project:
 
@@ -36,6 +36,29 @@ Copy the database ID provided and paste it into your project's `wrangler.jsonc` 
 }
 ```
 
+### Setting up Session Secret Key
+
+For production, generate a strong SECRET_KEY for signing session IDs. You can generate a secure random key using OpenSSL:
+
+```shell
+# Generate a 32-byte random key and encode it as base64
+openssl rand -base64 32
+```
+
+Then set this key as a Cloudflare secret:
+
+```shell
+wrangler secret put SECRET_KEY
+```
+
+For **local development**, set this secret key in a `.env` file in your project root:
+
+```env
+SECRET_KEY=your-development-secret-key
+```
+
+Never use the same secret key for development and production environments, and avoid committing your secret keys to version control.
+
 ### Setting up Cloudflare Turnstile (Bot Protection)
 
 1. Visit [Cloudflare Turnstile Dashboard](https://dash.cloudflare.com/?to=/:account/turnstile).
@@ -65,6 +88,14 @@ TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
 ```
 
 (Your development environment automatically uses a test site key provided by the framework.)
+
+### Start it up
+
+Start your development server:
+
+```shell
+pnpm dev
+```
 
 ## Important Security Considerations
 

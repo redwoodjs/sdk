@@ -36,6 +36,29 @@ Copy the database ID provided and paste it into your project's `wrangler.jsonc` 
 }
 ```
 
+### Setting up Session Secret Key
+
+For production, generate a strong SECRET_KEY for signing session IDs. You can generate a secure random key using OpenSSL:
+
+```shell
+# Generate a 32-byte random key and encode it as base64
+openssl rand -base64 32
+```
+
+Then set this key as a Cloudflare secret:
+
+```shell
+wrangler secret put SECRET_KEY
+```
+
+For **local development**, set this secret key in a `.env` file in your project root:
+
+```env
+SECRET_KEY=your-development-secret-key
+```
+
+Never use the same secret key for development and production environments, and avoid committing your secret keys to version control.
+
 ### Setting up Cloudflare Turnstile (Bot Protection)
 
 1. Visit [Cloudflare Turnstile Dashboard](https://dash.cloudflare.com/?to=/:account/turnstile).

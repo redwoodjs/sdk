@@ -40,13 +40,35 @@ Within your project's `wrangler.jsonc` file, replace the placeholder values. For
     }
   ],
   "vars": {
-    "SECRET_KEY": "SECRET_KEY_FOR_LOCAL_DEVELOPMENT",
     "APP_URL": "https://my-project-name.example.com"
   }
 }
 ```
 
-For deployments, make use of [cloudflare secrets](https://developers.cloudflare.com/workers/configuration/secrets/) for the `SECRET_KEY`.
+### Setting up Session Secret Key
+
+For production, generate a strong SECRET_KEY for signing session IDs. You can generate a secure random key using OpenSSL:
+
+```shell
+# Generate a 32-byte random key and encode it as base64
+openssl rand -base64 32
+```
+
+Then set this key as a Cloudflare secret:
+
+```shell
+wrangler secret put SECRET_KEY
+```
+
+For **local development**, set this secret key in a `.env` file in your project root:
+
+```env
+SECRET_KEY=your-development-secret-key
+```
+
+Never use the same secret key for development and production environments, and avoid committing your secret keys to version control.
+
+### Start it up
 
 Start your development server:
 
