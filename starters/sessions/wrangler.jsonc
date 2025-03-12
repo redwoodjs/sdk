@@ -33,9 +33,7 @@
   },
 
   // Environment variables
-  "vars": {
-    "SECRET_KEY": "_",
-  },
+  "vars": {},
 
   // Migrations configuration
   "migrations": [
