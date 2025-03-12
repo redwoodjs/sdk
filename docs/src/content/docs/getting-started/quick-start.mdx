@@ -1,12 +1,14 @@
 ---
 title: Quick Start
-description: From zero to request/ response in seconds
+description: From zero to request/ response in seconds!
 next: false
 ---
 
-import { Aside, Tabs, TabItem, LinkCard } from "@astrojs/starlight/components";
+import { Aside, Tabs, TabItem, LinkCard, Code } from "@astrojs/starlight/components";
 
-In this quick start you'll go from zero to request/ response in seconds, and deploy to production in minutes.
+import importedCodeStandardWorker from '../../../../../starters/standard/src/worker.tsx?raw'
+
+In this quick start you'll go from zero to request/ response in seconds and deploy to production in minutes!
 
 <Aside type="note" title="System requirements">
   - [Node.js](https://nodejs.org/en/download)
@@ -14,47 +16,41 @@ In this quick start you'll go from zero to request/ response in seconds, and dep
 
 {/* TODO: Create a Vite Community Template */}
 
-To install a minimal project, run the following command, replace `<project-name>` with your own project's name.
+To install a standard project, run the following command, replace `<project-name>` with your own project's name.
 
 ```bash frame="none"
-npx degit redwoodjs/sdk/starters/minimal#main <project-name>
+npx degit redwoodjs/sdk/starters/standard#main <project-name>
 ```
-
-<Aside type="note" title="Starter Templates">
-RedwoodSDK provides a number of starter templates to help you get started.
-
-- [Prisma](https://github.com/redwoodjs/sdk/tree/main/starters/prisma): Database access with Prisma and Cloudflare D1
-- [Prisma & Authentication](https://github.com/redwoodjs/sdk/tree/main/starters/passkey-auth): Database access & Passkey authentication
-
-</Aside>
 
 <Tabs>
   <TabItem label="pnpm">
     ```bash frame="none"
     cd <project-name>
     pnpm install
-    pnpm dev
     ```
   </TabItem>
   <TabItem label="npm">
     ```bash frame="none"
     cd <project-name>
     npm install
-    npm run dev
     ```
   </TabItem>
   <TabItem label="yarn">
     ```bash frame="none"
     cd <project-name>
     yarn install
-    yarn dev
     ```
   </TabItem>
 </Tabs>
 
-The terminal will display a message that Vite development server is ready to accept requests.
+## Start developing
+
+### Run the Vite development server
+
+Run the vite development server, `pnpm dev`, `npm run dev`, or `yarn dev`, and the terminal will display a message that Vite development server is ready to accept requests.
 
 ```bash frame="none"
+pnpm dev
 VITE v6.2.0  ready in 500 ms
 
 ➜  Local:   http://localhost:2332/
@@ -67,22 +63,15 @@ and you should see "Hello World" displayed on the page.
 
 ![Hello World](./images/hello-world.png)
 
-How exciting, your first request/response in Redwood SDK!
+How exciting, your first request/response in RedwoodSDK!
 
-## Start developing
+### Your first route
 
-RedwoodSDK is based on Cloudflare, so the entry point of your website is `src/worker.tsx`, open that file in your favorite editor.
+The entry point of your website is `src/worker.tsx`, open that file in your favorite editor.
 
-Here you'll see the `defineApp` function, this is the main function that "defines your website," where the purpose is to accept requests and return responses to the client.
+Here you'll see the `defineApp` function, this is the main function that "defines your website," where the purpose is to handle requests by returning responses to the client.
 
-```tsx title="src/worker.tsx" collapse={1-5} "defineApp"
-import { defineApp } from "redwoodsdk/worker";
-import { index, layout } from "redwoodsdk/router";
-import { Document } from "src/Document";
-import { Home } from "src/pages/Home";
-
-export default defineApp([layout(Document, [index(Home)])]);
-```
+<Code language="jsx" title="src/worker.tsx" code={importedCodeStandardWorker} collapse={"3-17, 19-32, 35-46"} mark={[34]} />
 
 <Aside type="note" title="Layout & Page Components">
 - `Document` is the layout component, it's the parent component of your website, it's responsible for providing the basic structure of your website, such as the header, footer, and sidebar.
