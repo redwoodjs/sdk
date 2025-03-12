@@ -16,17 +16,13 @@ Sessions are handled using **cookies** (for session IDs) and **Durable Objects**
 When a request comes in, we:
 
 1. Check for a **`session_id` cookie**.
-2. Verify that the session ID is valid by checking its signature.
+2. Verify that the session ID is valid by checking its signature - this lets us know that was us that issued the session ID
 3. If it's valid, load the session from the **Durable Object**.
 4. If there's an active session, we pull the user ID from it and load the user from the **database ([D1](https://developers.cloudflare.com/d1/) + [Prisma](https://www.prisma.io/))**.
 
-```tsx
-// TODO: Placeholder for session loading code snippet
-```
-
 ### Why Durable Objects?
 
-Instead of keeping session data in a shared database table, each session gets its own **Durable Object instance**. This keeps session state consistent across requests while reducing database load. When a session is active, data is available in memory, avoiding extra lookups.
+Instead of keeping session data in multiple places where we’d have to worry about syncing and stale data, each session is stored in a single **Durable Object** instance. This means we don’t have to deal with session data being out of date or lingering after logout—it’s all in one place, making revocation straightforward. A nice side effect of this approach is that when a session is active, it stays in memory, so lookups are fast without extra database queries.
 
 For more on Durable Objects, see [Cloudflare's documentation](https://developers.cloudflare.com/durable-objects/).
 
@@ -47,19 +43,11 @@ For more on passkeys, see [passkeys.dev](https://passkeys.dev/).
 5. The signed challenge is sent back to the server and verified.
 6. If successful, the session is updated with the **user ID**.
 
-```tsx
-// TODO: Placeholder for login process code snippet
-```
-
 ### Session Handling in Login
 
 - The **WebAuthn challenge** is temporarily stored in the session.
 - After login, the session updates with the user ID.
 - `session.save()` persists these changes and updates the **Set-Cookie** header.
-
-```tsx
-// TODO: Placeholder for session saving code snippet
-```
 
 ---
 
@@ -71,21 +59,9 @@ Registration follows the same two-step WebAuthn process as login, but with an ex
 
 Cloudflare already has bot protection, but there's a short gap before it fully picks up on attack patterns. Turnstile adds a lightweight challenge **before** registration happens, blocking automated signups.
 
-### Registration Flow
+### Turnstile in the Registration Flow
 
 1. The Turnstile **client script** is loaded on the page.
 2. The frontend calls `useTurnstile()` to generate a challenge token.
 3. The token is sent to the backend along with the WebAuthn data.
 4. The backend verifies the token using `verifyTurnstileToken()` before completing registration.
-
-```tsx
-// TODO: Add Turnstile client script to <head>
-```
-
-```tsx
-// TODO: Implement useTurnstile() in registration (frontend)
-```
-
-```tsx
-// TODO: Implement Turnstile token verification in backend
-```
