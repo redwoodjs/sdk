@@ -1,11 +1,11 @@
-# Passkey Authentication Starter
+# Standard RedwoodJS Starter
 
-This starter provides a RedwoodJS-based passkey authentication implementation using WebAuthn. It allows password-less authentication leveraging built-in device authenticators and services such as Google Passkeys or 1Password.
+This starter provides a comprehensive RedwoodJS-based implementation that includes passkey authentication using WebAuthn, session management, database integration with Prisma, and file storage with Cloudflare R2. It serves as a fully integrated starting point for Redwood apps, consolidating various essential features into one package.
 
 Create your new project:
 
 ```shell
-npx degit redwoodjs/sdk/starters/passkey-auth my-project-name
+npx degit redwoodjs/sdk/starters/standard my-project-name
 cd my-project-name
 pnpm install
 ```
@@ -78,7 +78,7 @@ Authentication uses credential IDs from the authenticator instead of usernames o
 
 ## Bot Protection
 
-Registration is protected using Cloudflare Turnstile to prevent automated bot registrations, closing potential security gaps between detection and protection.
+Registration is protected using [Cloudflare Turnstile](https://www.cloudflare.com/application-services/products/turnstile/) to prevent automated bot registrations - while Cloudflare's built in bot detection will identify and block malicious patterns over time, Turnstile provides immediate verification before registration to prevent bot registrations from the start.
 
 ## Further Reading
 
