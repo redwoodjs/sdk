@@ -23,8 +23,13 @@ export function LoginPage() {
   const turnstile = useTurnstile(TURNSTILE_SITE_KEY);
 
   const passkeyLogin = async () => {
+    // 1. Get a challenge from the worker
     const options = await startPasskeyLogin();
+
+    // 2. Ask the browser to sign the challenge
     const login = await startAuthentication({ optionsJSON: options });
+
+    // 3. Give the signed challenge to the worker to finish the login process
     const success = await finishPasskeyLogin(login);
 
     if (!success) {
@@ -35,10 +40,15 @@ export function LoginPage() {
   };
 
   const passkeyRegister = async () => {
+    // 1. Get a challenge from the worker
     const options = await startPasskeyRegistration(username);
+
+    // 2. Ask the browser to sign the challenge
     const registration = await startRegistration({ optionsJSON: options });
+
     const turnstileToken = await turnstile.challenge();
 
+    // 3. Give the signed challenge to the worker to finish the registration process
     const success = await finishPasskeyRegistration(
       username,
       registration,

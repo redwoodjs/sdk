@@ -3,26 +3,43 @@ title: Authentication Guide
 description: Learn about the authentication mechanisms in the standard starter, including passkeys, session management, and bot protection.
 ---
 
+import {
+  Aside,
+  Tabs,
+  TabItem,
+  LinkCard,
+  Code,
+} from "@astrojs/starlight/components";
+
+import importedCodeStandardWorker from "../../../../../starters/standard/src/worker.tsx?raw";
+import importedCodeStandardAuthFunctions from "../../../../../starters/standard/src/app/pages/auth/functions.ts?raw";
+import importedCodeStandardLoginPage from "../../../../../starters/standard/src/app/pages/auth/LoginPage.tsx?raw";
+
 # Authentication
 
-We've baked authentication right into the **standard starter**, giving you everything you need to handle users, sessions, and logins out of the box. The standard starter uses **passkeys ([WebAuthn](https://webauthn.guide/))** for passwordless authentication, **session persistence via [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/)**, and **bot protection with [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/)**. The database layer is powered by **[Cloudflare D1](https://developers.cloudflare.com/d1/)** and **[Prisma](https://www.prisma.io/)**.
-
-🔗 **[Standard Starter Repo](https://github.com/redwoodjs/sdk/tree/main/starters/standard)**
+We've baked authentication right into the [**standard starter**](https://github.com/redwoodjs/sdk/tree/main/starters/standard), giving you everything you need to handle users, sessions, and logins out of the box. The standard starter uses **passkeys ([WebAuthn](https://webauthn.guide/))** for passwordless authentication, **session persistence via [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/)**, and **bot protection with [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/)**. The database layer is powered by **[Cloudflare D1](https://developers.cloudflare.com/d1/)** and **[Prisma](https://www.prisma.io/)**.
 
 ## Retrieving a Session
 
-Sessions are handled using **cookies** (for session IDs) and **Durable Objects** (for storing session data). This means each session has a dedicated Durable Object instance, keeping session data accessible without needing a database query on every request.
+Sessions are handled using **cookies** (for session IDs) and **Durable Objects** (for storing session data).
 
 When a request comes in, we:
 
 1. Check for a **`session_id` cookie**.
-2. Verify that the session ID is valid by checking its signature - this lets us know that was us that issued the session ID
-3. If it's valid, load the session from the **Durable Object**.
+2. Verify that the session ID is valid by checking its signature - this lets us be sure it was us that issued it
+3. If it's valid, load the session data from the **Durable Object**.
 4. If there's an active session, we pull the user ID from it and load the user from the **database ([D1](https://developers.cloudflare.com/d1/) + [Prisma](https://www.prisma.io/))**.
+
+<Code
+  language="typescript"
+  title="src/worker.tsx"
+  code={importedCodeStandardWorker}
+  collapse={"2-17, 19-19, 21-22, 31-31, 33-47"}
+/>
 
 ### Why Durable Objects?
 
-Instead of keeping session data in multiple places where we’d have to worry about syncing and stale data, each session is stored in a single **Durable Object** instance. This means we don’t have to deal with session data being out of date or lingering after logout—it’s all in one place, making revocation straightforward. A nice side effect of this approach is that when a session is active, it stays in memory, so lookups are fast without extra database queries.
+Instead of keeping session data in multiple places where we’d have to worry about syncing and stale data, each session is stored in a single **Durable Object** instance. This means we don’t have to deal with session data being out of date or lingering after logout—it’s all in one place, making revocation straightforward. On top of this, when a session is active, it stays in memory, so lookups are faster without extra database queries.
 
 For more on Durable Objects, see [Cloudflare's documentation](https://developers.cloudflare.com/durable-objects/).
 
@@ -43,17 +60,34 @@ For more on passkeys, see [passkeys.dev](https://passkeys.dev/).
 5. The signed challenge is sent back to the server and verified.
 6. If successful, the session is updated with the **user ID**.
 
-### Session Handling in Login
+<Code
+  language="typescript"
+  title="src/app/pages/auth/LoginPage.tsx"
+  code={importedCodeStandardLoginPage}
+  collapse={"1-18, 20-24, 41-90"}
+/>
 
-- The **WebAuthn challenge** is temporarily stored in the session.
-- After login, the session updates with the user ID.
-- `session.save()` persists these changes and updates the **Set-Cookie** header.
+<Code
+  language="typescript"
+  title="src/app/pages/auth/functions.ts"
+  code={importedCodeStandardAuthFunctions}
+  collapse={"1-109, 111-112, 114-116, 119-169"}
+/>
 
 ---
 
 ## Registering Users
 
-Registration follows the same two-step WebAuthn process as login, but with an extra layer of **bot protection** using [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/).
+Registration follows a very similar 3-step WebAuthn process as login:
+
+<Code
+  language="typescript"
+  title="src/app/pages/auth/LoginPage.tsx"
+  code={importedCodeStandardLoginPage}
+  collapse={"1-18, 20-41, 64-90"}
+/>
+
+One difference: we protect registrations with an extra layer of **bot protection** using [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/).
 
 ### Why Turnstile?
 
@@ -65,3 +99,17 @@ Cloudflare has built-in bot protection, but it works by detecting and blocking m
 2. The frontend calls `useTurnstile()` to generate a challenge token.
 3. The token is sent to the backend along with the WebAuthn data.
 4. The backend verifies the token using `verifyTurnstileToken()` before completing registration.
+
+<Code
+  language="typescript"
+  title="src/app/pages/auth/LoginPage.tsx"
+  code={importedCodeStandardLoginPage}
+  collapse={"1-15, 18-18, 20-22, 24-41, 43-48, 57-62, 64-72, 76-88"}
+/>
+
+<Code
+  language="typescript"
+  title="src/app/pages/auth/functions.ts"
+  code={importedCodeStandardAuthFunctions}
+  collapse={"1-38, 40-43, 45-46, 55-93, 95-176"}
+/>
