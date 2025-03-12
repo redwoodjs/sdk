@@ -53,7 +53,7 @@ For more on passkeys, see [passkeys.dev](https://passkeys.dev/).
 
 1. The user clicks **Login**.
 2. The frontend calls a server action to get a WebAuthn challenge.
-3. The challenge is stored in the **session store** using `session.save()`.
+3. The challenge is stored in the **session store** using `sessions.save()`.
 4. The user's authenticator signs the challenge.
 5. The signed challenge is sent back to the server and verified.
 6. If successful, the session is updated with the **user ID**.
