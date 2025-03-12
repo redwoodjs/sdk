@@ -1,186 +1,91 @@
 ---
-title: Authentication
-description: Secure authentication using the session API and authentication starters.
+title: Authentication Guide
+description: Learn about the authentication mechanisms in the standard starter, including passkeys, session management, and bot protection.
 ---
 
-Our framework provides an API for maintaining sessions, and two starters to help you get started with using these sessions for authentication:
+# Authentication
 
-1. **[Sessions Starter](https://github.com/redwoodjs/sdk/blob/main/starters/sessions/README.md)** – Basic session management boilerplate, letting you implement your own authentication logic
-2. **[Passkey Starter](https://github.com/redwoodjs/sdk/blob/main/starters/passkey-auth/README.md)** – A complete implementation using passkey-based authentication
+We've baked authentication right into the **standard starter**, giving you everything you need to handle users, sessions, and logins out of the box. The standard starter uses **passkeys ([WebAuthn](https://webauthn.guide/))** for passwordless authentication, **session persistence via [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/)**, and **bot protection with [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/)**. The database layer is powered by **[Cloudflare D1](https://developers.cloudflare.com/d1/)** and **[Prisma](https://www.prisma.io/)**.
 
-## 🛠 Session State Management
+🔗 **[Standard Starter Repo](https://github.com/redwoodjs/sdk/tree/main/starters/standard)**
 
-The session API follows the familiar pattern of storing session IDs in cookies, but with a key difference: instead of a traditional database, session data is stored in Durable Objects for real-time access across regions.
+## Retrieving a Session
 
-You implement your own DO to store session data, giving you control over:
+Sessions are handled using **cookies** (for session IDs) and **Durable Objects** (for storing session data). This means each session has a dedicated Durable Object instance, keeping session data accessible without needing a database query on every request.
 
-- Session data structure
-- Session lifecycle and validation logic
-- Integration with your app's authentication flow
+When a request comes in, we:
 
-Both starters include [reference Session DO implementations](https://github.com/redwoodjs/sdk/blob/main/starters/sessions/src/session/durableObject.ts) to use as a starting point.
+1. Check for a **`session_id` cookie**.
+2. Verify that the session ID is valid by checking its signature.
+3. If it's valid, load the session from the **Durable Object**.
+4. If there's an active session, we pull the user ID from it and load the user from the **database ([D1](https://developers.cloudflare.com/d1/) + [Prisma](https://www.prisma.io/))**.
 
 ```tsx
-import { defineDurableSession } from "redwoodsdk/session";
-
-export const session = defineDurableSession({
-  secretKey: process.env.SECRET_KEY,
-  sessionDurableObject: env.SESSION_DURABLE_OBJECT, // Your custom DO implementation
-});
+// TODO: Placeholder for session loading code snippet
 ```
 
-#### `sessions.load(request)`
+### Why Durable Objects?
 
-Used in your worker middleware to load session data into the request context:
+Instead of keeping session data in a shared database table, each session gets its own **Durable Object instance**. This keeps session state consistent across requests while reducing database load. When a session is active, data is available in memory, avoiding extra lookups.
 
-```tsx:worker.tsx
-import { defineApp } from "redwoodsdk/worker";
-import { sessions } from './lib/session';
+For more on Durable Objects, see [Cloudflare's documentation](https://developers.cloudflare.com/durable-objects/).
 
-export default defineApp<Context>([
-  setCommonHeaders(),
-  async ({ ctx, request }) => {
-    ctx.session = await sessions.load(request);
-  },
-  layout(Document, [/* routes */]),
-]);
+---
+
+## Logging In
+
+We use **passkeys ([WebAuthn](https://webauthn.guide/))** for authentication. This allows users to log in without passwords, using their authenticator, browser or device to handle authentication securely.
+
+For more on passkeys, see [passkeys.dev](https://passkeys.dev/).
+
+### Login Flow
+
+1. The user clicks **Login**.
+2. The frontend calls a server action to get a WebAuthn challenge.
+3. The challenge is stored in the **session store** using `session.save()`.
+4. The user's authenticator signs the challenge.
+5. The signed challenge is sent back to the server and verified.
+6. If successful, the session is updated with the **user ID**.
+
+```tsx
+// TODO: Placeholder for login process code snippet
 ```
 
-#### `sessions.save(headers, sessionData)`
+### Session Handling in Login
 
-Used in server actions to save session state (e.g. after authentication):
+- The **WebAuthn challenge** is temporarily stored in the session.
+- After login, the session updates with the user ID.
+- `session.save()` persists these changes and updates the **Set-Cookie** header.
 
-```tsx:app/auth/actions.ts
-'use server'
-
-async function handleLogin(ctx?: RouteContext) {
-  // ... authentication logic ...
-
-  await sessions.save(ctx!.headers, {
-    userId: user.id,
-  });
-}
+```tsx
+// TODO: Placeholder for session saving code snippet
 ```
 
-## Setting up sessions on new projects
+---
 
-If adding the session durable object to a new project, first define your session durable object. For an example, check out the [reference Session DO implementation](https://github.com/redwoodjs/sdk/blob/main/starters/sessions/src/session/durableObject.ts):
+## Registering Users
 
-```ts:session/durableObject.ts
-export class SessionDurableObject extends DurableObject {
-  getSession(): Promise<GetSessionResult<Session>> {
-    ...
-  }
-  saveSession(data: SessionInputData): Promise<Session> {
-    ...
-  }
-  revokeSession(): void {
-    ...
-  }
-}
+Registration follows the same two-step WebAuthn process as login, but with an extra layer of **bot protection** using [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/).
+
+### Why Turnstile?
+
+Cloudflare already has bot protection, but there's a short gap before it fully picks up on attack patterns. Turnstile adds a lightweight challenge **before** registration happens, blocking automated signups.
+
+### Registration Flow
+
+1. The Turnstile **client script** is loaded on the page.
+2. The frontend calls `useTurnstile()` to generate a challenge token.
+3. The token is sent to the backend along with the WebAuthn data.
+4. The backend verifies the token using `verifyTurnstileToken()` before completing registration.
+
+```tsx
+// TODO: Add Turnstile client script to <head>
 ```
 
-Then, set up a session store that uses the durable object:
-
-```session/store.ts
-import { defineDurableSession } from "redwoodsdk/auth";
-
-export let sessions: ReturnType<typeof createSessionStore>;
-
-const createSessionStore = (env: Env) =>
-  defineDurableSession({
-    // Define the secret key using `wrangler secret put` for deployments, and `.env` for development
-    secretKey: env.SECRET_KEY,
-    sessionDurableObject: env.SESSION_DURABLE_OBJECT,
-  });
-
-export const setupSessionStore = (env: Env) => {
-  sessions = createSessionStore(env);
-  return sessions;
-};
+```tsx
+// TODO: Implement useTurnstile() in registration (frontend)
 ```
 
-The session store requires a secret key (`env.SECRET_KEY`) to use for signing session ids (in order to verify that the worker issued them before DO instances are created).
-
-For development, set the secret key using `.env`:
-
-```env:.env
-SECRET_KEY=abc
+```tsx
+// TODO: Implement Turnstile token verification in backend
 ```
-
-For deployments, set the secret key using `wrangler secret put`:
-
-```bash
-npx wrangler secret put SECRET_KEY
-```
-
-Then, reference the DO it in your `wrangler.jsonc`.
-
-```json:wrangler.jsonc
-  "durable_objects": {
-    "bindings": [
-      {
-        // needs to match `defineDurableSession({ sessionDurableObject: env.SESSION_DURABLE_OBJECT, ... })`
-        "name": "SESSION_DURABLE_OBJECT",
-        // needs to match the name of the durable object class
-        "class_name": "SessionDurableObject",
-      },
-    ],
-  },
-```
-
-Now, export the durable object class in your worker entry point script (`worker.tsx`)
-
-```tsx:worker.tsx
-export { SessionDurableObject } from "./session/durableObject";
-```
-
-Finally, initialise the session store defined above in your `worker.tsx` entry point:
-
-```tsx:worker.tsx
-export default defineApp<Context>([
-  // ...
-  async ({ env, ctx, request }) => {
-    setupSessionStore(env);
-  },
-])
-```
-
-You're now ready to use your session store!
-
-```
-export default defineApp<Context>([
-  async ({ env, ctx, request }) => {
-    setupSessionStore(env);
-    ctx.session = await sessions.load(request);
-  },
-]);
-```
-
-## 🔑 Passkey Authentication
-
-The passkey starter implements passkeys/[webauthn]()https://en.wikipedia.org/wiki/WebAuthn-based authentication.
-
-### **How It Works**
-
-1. Registration creates a public-private key pair - user interacts with their browser/authenticator (1Password, Google) to store the private key
-2. Your server stores the public key
-3. Login verifies a challenge using the private key (stored on user's device)
-
-### **Security Considerations**
-
-The starter uses usernames instead of emails to:
-
-- Prevent user enumeration attacks
-- Avoid requiring email verification
-- Use credential IDs for lookups instead of personal data
-
-Add email verification if your app requires verified identities.
-
-### **Bot Protection**
-
-Since the passkey starter allows multiple accounts per username and has no email verification step, it needs protection against registration spam. While Cloudflare's built in bot detection will identify and block malicious patterns over time, Turnstile provides immediate verification before registration:
-
-1. Load Turnstile via `<TurnstileScript />`
-2. During registration on client side: generate a challenge token with `useTurnstile()`
-3. In action handler on worker side: verify the token server-side with `verifyTurnstileToken()`
