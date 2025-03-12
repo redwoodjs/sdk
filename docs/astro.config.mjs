@@ -7,6 +7,11 @@ export default defineConfig({
   integrations: [
     starlight({
       expressiveCode: {
+        // themes: ["dracula"],
+        shiki: {
+          
+          bundledLangs: ['bash', 'ts', 'tsx'],
+        },
       },
       title: "RedwoodSDK",
       logo: {
@@ -25,7 +30,6 @@ export default defineConfig({
           label: "Get Started",
           items: [
             { label: "Quick Start", slug: "getting-started/quick-start" },
-            { label: "Manual Setup", slug: "getting-started/installation" },
           ],
         },
         {

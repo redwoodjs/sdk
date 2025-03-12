@@ -4,9 +4,15 @@ description: From zero to request/ response in seconds!
 next: false
 ---
 
-import { Aside, Tabs, TabItem, LinkCard, Code } from "@astrojs/starlight/components";
+import {
+  Aside,
+  Tabs,
+  TabItem,
+  LinkCard,
+  Code,
+} from "@astrojs/starlight/components";
 
-import importedCodeStandardWorker from '../../../../../starters/standard/src/worker.tsx?raw'
+import importedCodeStandardWorker from "../../../../../starters/standard/src/worker.tsx?raw";
 
 In this quick start you'll go from zero to request/ response in seconds and deploy to production in minutes!
 
@@ -16,27 +22,27 @@ In this quick start you'll go from zero to request/ response in seconds and depl
 
 {/* TODO: Create a Vite Community Template */}
 
-To install a standard project, run the following command, replace `<project-name>` with your own project's name.
+Create a new project by running the following command, replacing `<project-name>` with your project name:
 
-```bash frame="none"
+```bash showLineNumbers=false
 npx degit redwoodjs/sdk/starters/standard#main <project-name>
 ```
 
-<Tabs>
+<Tabs syncKey="package-manager">
   <TabItem label="pnpm">
-    ```bash frame="none"
+    ```bash frame="none" showLineNumbers=false
     cd <project-name>
     pnpm install
     ```
   </TabItem>
   <TabItem label="npm">
-    ```bash frame="none"
+    ```bash frame="none" showLineNumbers=false  
     cd <project-name>
     npm install
     ```
   </TabItem>
   <TabItem label="yarn">
-    ```bash frame="none"
+    ```bash frame="none" showLineNumbers=false
     cd <project-name>
     yarn install
     ```
@@ -45,12 +51,30 @@ npx degit redwoodjs/sdk/starters/standard#main <project-name>
 
 ## Start developing
 
-### Run the Vite development server
+### Run the development server
 
-Run the vite development server, `pnpm dev`, `npm run dev`, or `yarn dev`, and the terminal will display a message that Vite development server is ready to accept requests.
+Redwood is just a plugin for Vite, so you can use the same commands to run the development server as you would with any other Vite project.
 
-```bash frame="none"
-pnpm dev
+<Tabs syncKey="package-manager">
+  <TabItem label="pnpm">
+    ```bash frame="none" showLineNumbers=false
+    pnpm dev
+    ```
+  </TabItem>
+  <TabItem label="npm">
+    ```bash frame="none" showLineNumbers=false  
+    npm run dev
+    ```
+  </TabItem>
+  <TabItem label="yarn">
+    ```bash frame="none" showLineNumbers=false
+    yarn dev
+    ```
+  </TabItem>
+</Tabs>
+
+
+```bash frame="none" showLineNumbers=false
 VITE v6.2.0  ready in 500 ms
 
 ➜  Local:   http://localhost:2332/
@@ -59,11 +83,11 @@ VITE v6.2.0  ready in 500 ms
 ```
 
 Access the development server in your browser, by default it's available at [http://localhost:2332](http://localhost:2332),
-and you should see "Hello World" displayed on the page.
+where you should see "Hello World" displayed on the page.
 
 ![Hello World](./images/hello-world.png)
 
-How exciting, your first request/response in RedwoodSDK!
+How exciting, your first request/response in Redwood!
 
 ### Your first route
 
@@ -71,45 +95,34 @@ The entry point of your website is `src/worker.tsx`, open that file in your favo
 
 Here you'll see the `defineApp` function, this is the main function that "defines your website," where the purpose is to handle requests by returning responses to the client.
 
-<Code language="jsx" title="src/worker.tsx" code={importedCodeStandardWorker} collapse={"3-17, 19-32, 35-46"} mark={[34]} />
+<Code
+  lang="tsx"
+  title="src/worker.tsx"
+  code={importedCodeStandardWorker}
+  collapse={"3-17, 19-32, 35-46"}
+  mark={"defineApp"}
+/>
 
-<Aside type="note" title="Layout & Page Components">
-- `Document` is the layout component, it's the parent component of your website, it's responsible for providing the basic structure of your website, such as the header, footer, and sidebar.
+You're going to add your own route, insert the "/ping" route's code to the `defineApp` function:
 
-- `Home` is a page component of your website, it's the component that will be rendered when the user navigates to the root URL of your website.
+```tsx title="src/worker.tsx" ins={5}
+import { defineApp } from "redwoodsdk/worker";
+import { route } from "redwoodsdk/router";
 
+export default defineApp([
+  route('/ping', () => <h1>Pong!</h1>)
+])
+```
+
+Now when you navigate to [http://localhost:2332/ping](http://localhost:2332/ping) you should see "Pong!" displayed on the page.
+
+<Aside type="tip">
+  You might have noticed that we returned JSX instead of a Response object. This is because Redwood has built-in support for React Server Components, allowing you to return JSX directly from your routes. The JSX will be rendered on the server and sent to the client as HTML.
 </Aside>
-
-Open `src/app/pages/Home.tsx`:
-
-```tsx title="src/app/pages/Home.tsx"
-export function Home() {
-  return (
-    <div>
-      <h1>Hello World</h1>
-    </div>
-  );
-}
-```
-
-Modify the `Home` component to say "My Personal Website" instead of "Hello World". When you save the file, the development server will automatically reload the component.
-
-```tsx title="src/app/pages/Home.tsx" del="<h1>Hello World</h1>" ins="<h1>My Personal Website</h1>"
-export function Home() {
-  return (
-    <div>
-      <h1>Hello World</h1>
-      <h1>My Personal Website</h1>
-    </div>
-  );
-}
-```
-
-{/* TODO: Show a screen that displays this page. */}
 
 ## Deploy to production
 
-RedwoodSDK is optimized for the Cloudflare Development Platform, and you can deploy your website to Cloudflare with a single command, but first you need to change the `wrangler.jsonc` file; and modify the `name` field to your own project's name.
+Redwood is built for the Cloudflare Development Platform. To deploy your website to Cloudflare, first update the `name` field in `wrangler.jsonc` to match your project name. Then you can deploy with a single command.
 
 ```jsonc title="wrangler.jsonc" del="__change_me__"
 {
@@ -128,8 +141,29 @@ RedwoodSDK is optimized for the Cloudflare Development Platform, and you can dep
 }
 ```
 
-Then run the following command to deploy your website to Cloudflare.
+Then run the following command to deploy your website to Cloudflare:
 
-```
+<Tabs syncKey="package-manager">
+  <TabItem label="pnpm">
+    ```bash frame="none" showLineNumbers=false
+    pnpm release
+    ```
+  </TabItem>
+  <TabItem label="npm">
+    ```bash frame="none" showLineNumbers=false  
+    npm run release
+    ```
+  </TabItem>
+  <TabItem label="yarn">
+    ```bash frame="none" showLineNumbers=false
+    yarn release
+    ```
+  </TabItem>
+</Tabs>
 
-```
+
+<LinkCard
+  title="What's next?"
+  description="Learn everything you need to know to build websites with Redwood!"
+  href="/core/overview"
+/>

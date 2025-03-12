@@ -7,7 +7,7 @@ import { authRoutes } from "@/app/pages/auth/routes";
 import { sessions, setupSessionStore } from "./session/store";
 import { Session } from "./session/durableObject";
 import { db, setupDb } from "./db";
-import { User } from "@prisma/client";
+import type { User } from "@prisma/client";
 export { SessionDurableObject } from "./session/durableObject";
 
 export type Context = {
