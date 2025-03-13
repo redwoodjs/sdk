@@ -7,7 +7,6 @@ export default defineConfig({
   integrations: [
     starlight({
       expressiveCode: {
-        // themes: ["dracula"],
         shiki: {
           bundledLangs: ["bash", "ts", "tsx"],
         },
@@ -34,17 +33,15 @@ export default defineConfig({
         {
           label: "Core",
           items: [
-            { label: "Overview", slug: "core/overview" },
-            { label: "Routing", slug: "core/routing" },
-            {
-              label: "React Server Components",
-              slug: "core/react-server-components",
-            },
-            { label: "Database", slug: "core/database" },
-            { label: "Storage", slug: "core/storage" },
-            { label: "Queues", slug: "core/queues" },
-            { label: "Authentication", slug: "core/authentication" },
-            { label: "Security", slug: "core/security" },
+            { slug: "core/overview" },
+            { label: "Request Handling", slug: "core/routing" },
+            { slug: "core/react-server-components" },
+            { slug: "core/database" },
+            { slug: "core/storage" },
+            { slug: "core/queues" },
+            { slug: "core/authentication" },
+            { slug: "core/security" },
+            { slug: "core/hosting" },
           ],
         },
         // {

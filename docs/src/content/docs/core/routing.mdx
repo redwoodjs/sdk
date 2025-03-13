@@ -1,110 +1,209 @@
 ---
-title: Routing
+title: Request Handling & Routing
 description: Like air traffic control, but for requests.
 ---
 
-import { Aside, Tabs, TabItem, LinkCard } from '@astrojs/starlight/components';
+import { Aside, Tabs, TabItem, LinkCard } from "@astrojs/starlight/components";
 
-In this section you'll learn how to route requests to different responses so that you'll be able to display different pages or return different responses, based on the URL of the request. Routing is server-side, the client only receives the response from the server.
-
-Routes are defined in `src/worker.tsx` via the `defineApp` function.
+The request/response cycle is at the heart of web development - when a browser makes a request, your server needs to respond with content. RedwoodSDK makes this easy with the `defineApp` function, which lets you elegantly handle incoming requests and return the right responses.
 
 ```tsx title="src/worker.tsx"
-import { defineApp } from 'redwoodsdk/worker';
-import { route } from 'redwoodsdk/router';
-import { AboutPage } from 'src/pages/About';
+import { defineApp } from "redwoodsdk/worker";
+import { route } from "redwoodsdk/router";
 
-export default defineApp<Context>([
-  route('/', () => new Response('Hello, world!')),
-  route('/about', () => <AboutPage />),
-])
+export default defineApp([
+  // Middleware
+  function middleware({ request, env, ctx }) { /* Modify context */ },
+  function middleware({ request, env, ctx }) { /* Modify context */ },
+  // Request Handlers
+  route("/", function handler({ request, env, ctx }) {
+    return new Response("Hello, world!")
+  }),
+  route("/ping", function handler({ request, env, ctx }) {
+    return new Response("Pong!")
+  }),
+]);
+
+---
+The `defineApp` function takes an array of middleware and route handlers that are executed in the order they are defined. In this example the request is passed through two middleware functions before being "matched" by the route handlers.
+---
 ```
-
 
 ## Matching Patterns
 
-RedwoodSDK matches URLs in the order they are defined. Trailing slashes are optional, but normalized internally. There are three URL matching patterns available:
+Routes are matched in the order they are defined. You define routes using the `route` function. Trailing slashes are optional and normalized internally.
 
-- Static routes (`/about/`): Match exact URLs. 
-- Parameter routes (`/users/:id/`): Match dynamic segments marked with a colon (`:`). The values are available in the route handler via `params` (`params.id`).
-- Wildcard routes (`/files/*`): Match all remaining segments after the prefix. For example, `/files/images/avatar.png` makes `"images/avatar.png"` available as `params.$0`.
+```tsx title="src/worker.tsx" mark={4}
+import { route } from "redwoodsdk/router";
 
-Note: Regular expression matching is not currently supported.
-
-```tsx title="src/worker.tsx"
-import { defineApp } from 'redwoodsdk/worker';
-import { route } from 'redwoodsdk/router';
-
-export default defineApp([
-  route('/static/', () => new Response('Static text.')),
-  route('/hello/:name', ({ params }) => new Response(`Hello ${params.name}!`)),
-  route('/files/*', ({ params }) => new Response(`All the files: ${params.$0}`)),
+defineApp([
+  route("/match-this", () => new Response("Hello, world!"))
 ])
+
+---
+`route` parameters:
+1. The matching pattern string
+2. The request handler function
+---
 ```
 
-In this example:
+There are three matching patterns:
 
-1. The `/static/` route will match any request that starts with `/static/`.
-2. The `/hello/:name` route will match any request that starts with `/hello/` followed by any characters, and make the characters available in `params.name`.
-3. The `/files/*` route will match any request that starts with `/files/` followed by any characters, and make the characters available in `params.$0`.
+#### Static
 
-
-## Route Handlers
-
-A route handler is the function that will be called when the request URL matches the route. It can be defined as an arrow function or a named function.
+Match exact pathnames.
 
 ```tsx
-route('/hello/:name', ({ request, params, env, ctx }) => {
-    return new Response(`Hello ${params.name}!`)
-})
+route("/", ...)
+route("/about", ...)
+route("/contact", ...)
 ```
 
-### Parameters
+#### Parameter
 
-- `request`: The request object.
-- `params`: The matched parameters from the request URL.
-- `env`: The Cloudflare environment.
-- `ctx`: The context object.
+Match dynamic segments marked with a colon (`:`). The values are available in the route handler via `params` (`params.id` and `params.groupId`).
 
-### Response Values
+```tsx
+route("/users/:id", ...)
+route("/users/:id/edit", ...)
+route("/users/:id/addToGroup/:groupId", ...)
+```
 
-The return can be a standard response object or a JSX component, when a JSX component is returned, it's statically rendered to HTML on the server, streamed to the client, and then hydrated.
+#### Wildcard
 
+Match all remaining segments after the prefix, the values are available in the route handler via `params.$0`, `params.$1`, etc.
 
-```tsx title="src/worker.tsx" collapse={1-5} "defineApp" 
-import { defineApp } from 'redwoodsdk/worker';
-import { route } from 'redwoodsdk/router';
-import { AboutPage } from 'src/pages/About';
+```tsx
+route("/files/*", ...)
+route("/files/*/preview", ...)
+route("/files/*/download/*", ...)
+```
 
-export default defineApp<Context>([
-  route('/', () => new Response('Hello, world!')),
-  route('/about', () => <AboutPage />),
+## Request Handlers
+
+The request handler is a function, or array of functions (See [Interruptors](#interruptors)), that are executed when a request is matched.
+
+```tsx title="src/worker.tsx" mark={4-9}
+import { route } from "redwoodsdk/router";
+
+defineApp([
+  route("/a-standard-response", ({ request, params, env, ctx }) => {
+    return new Response("Hello, world!")
+  }),
+  route('/a-jsx-response', () => {
+    return <div>Hello, JSX world!</div>
+  }),
 ])
+
+---
+The request handler function has the following parameters:
+1. `request`: The request object.
+2. `params`: The matched parameters from the request URL.
+3. `env`: The Cloudflare environment.
+4. `ctx`: The context object (See [Middleware & Context](#middleware-context)).
+
+Return values:
+- `Response`: A standard response object.
+- `JSX`: A React component, which is statically rendered to HTML on the server, streamed to the client, and then hydrated on the client side.
+---
 ```
 
-In this example:
+### Interruptors
 
-1. We're defining a route for the root URL (`/`) and returning a response with the text "Hello, world!".
-2. We're defining a route for the `/about` URL and returning the `AboutPage` component.
+Interruptors are an array of functions that are executed in sequence for each matched request. They can be used to modify the request, context, or to short-circuit the response. A typical use-case is to check for authentication on a per-request basis, as an example you're trying to ensure that a specific user can access a specific resource.
+
+```tsx title="src/worker.tsx" mark={5-10, 13} collapse={1-2}
+import { defineApp } from "redwoodsdk/worker";
+import { route } from "redwoodsdk/router";
+import { EditBlogPage } from "src/pages/blog/EditBlogPage";
+
+function isAuthenticated({ request, env, ctx }) {
+  // Ensure that this user is authenticated
+  if (!ctx.user) {
+    return new Response("Unauthorized", { status: 401 })
+  }
+}
+
+defineApp([
+  route("/blog/:slug/edit", [isAuthenticated, EditBlogPage])
+])
+
+---
+For the `/blog/:slug/edit` route, the `isAuthenticated` function will be executed first, if the user is not authenticated, the response will be a 401 Unauthorized. If the user is authenticated, the `EditBlogPage` component will be rendered. Therefore the flow is interrupted. The `isAuthenticated` function can be shared across multiple routes.
+---
+```
+
+## Middleware & Context
+
+Context is a mutable object that is passed to each request handler, interruptors, and React Server Functions. It's used to share data between the different parts of your application. You populate the context on a per-request basis via Middleware.
+
+Middleware runs before the request is matched to a route. You can specify multiple middleware functions, they'll be executed in the order they are defined.
+
+```tsx title="src/worker.tsx" mark={5-10}
+import { defineApp } from "redwoodsdk/worker";
+import { route } from "redwoodsdk/router";
+
+defineApp([
+  sessionMiddleware,
+  async function getUserMiddleware({ request, env, ctx }) {
+    if (ctx.session.userId) {
+      ctx.user = await db.user.find({ where: { id: ctx.session.userId } });
+    }
+  },
+  route("/hello", [
+    function ({ ctx }) {
+      if (!ctx.user) {
+        return new Response("Unauthorized", { status: 401 });
+      }
+    },
+    function ({ ctx }) {
+      return new Response(`Hello ${ctx.user.username}!`);
+    },
+  ]),
+]);
+
+---
+The `ctx` object:
+
+1. `sessionMiddleware` is a function that is used to populate the `ctx.session` object
+2. `getUserMiddleware` is a middleware function that is used to populate the `ctx.user` object
+3. `"/hello"` is a an array of route handlers that are executed when "/hello" is matched:
+  - if the user is not authenticated the request will be interrupted and a 401 Unauthorized response will be returned
+  - if the user is authenticated the request will be passed to the next request handler and `"Hello {ctx.user.username}!"` will be returned
+
+---
+```
 
 ## Layouts
 
-Since you can also return a JSX component from a route handler, you can use layouts to wrap your pages. A layout is a JSX component that wraps a page and provides a consistent layout for the page.
+Layouts are a way to wrap your pages in a consistent layout. In RedwoodSDK, layouts are defined using the `layout` function in `defineApp`.
 
 ```tsx title="src/worker.tsx" "layout"
-import { defineApp } from 'redwoodsdk/worker';
-import { route, layout } from 'redwoodsdk/router';
-import { Document } from 'src/pages/Document';
+import { defineApp } from "redwoodsdk/worker";
+import { route, layout } from "redwoodsdk/router";
+
+import { Document } from "@/pages/Document";
+import { HomePage } from "@/pages/HomePage";
 
 export default defineApp([
-    layout(Document, [
-        route('/', AboutPage),
-    ])
-])
+  layout(
+    Document, [route("/", HomePage)]
+)]);
+
+---
+The `layout` function takes a React component and an array of route handlers. The layout will be applied to all the routes that are passed to it.
+---
 ```
 
-```tsx title="src/pages/Document.tsx"
-export const Document: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+<Aside type="tip" title="Layouts">
+  RedwoodSDK does not supply a default "html" template. You must supply your own! This is so you have full control over the HTML rendered by your website.
+</Aside>
+
+
+```tsx title="src/pages/Document.tsx" mark={7}
+export const Document = ({
+  children,
+}) => (
   <html lang="en">
     <head>
       <meta charSet="utf-8" />
@@ -114,25 +213,12 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({ children }) 
       <div id="root">{children}</div>
     </body>
   </html>
-  );
+);
 ```
 
-<Aside type="note" title="Client Side Hydration">
-You must include the client side hydration script in your layout, otherwise the React components will not be hydrated on the client. This also means that you have a massive amount of control over the HTML returned by Redwood.
+
+
+<Aside type="caution" title="Client Side Hydration">
+  You must include the client side hydration script in your layout, otherwise
+  the React components will not be hydrated.
 </Aside>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
