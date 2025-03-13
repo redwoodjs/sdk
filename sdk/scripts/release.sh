@@ -159,7 +159,17 @@ echo -e "\n📥 Installing dependencies..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] pnpm install"
 else
-  pnpm install
+  for i in {1..3}; do
+    echo "Attempt $i of 3: Running pnpm install"
+    pnpm install && break
+    if [ $i -lt 3 ]; then
+      echo "pnpm install failed, retrying in 3 seconds..."
+      sleep 3
+    else
+      echo "pnpm install failed after 3 attempts, exiting"
+      exit 1
+    fi
+  done
 fi
 
 echo -e "\n💾 Committing changes..."
