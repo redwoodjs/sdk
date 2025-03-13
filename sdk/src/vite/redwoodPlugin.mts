@@ -4,7 +4,7 @@ import { InlineConfig } from "vite";
 import reactPlugin from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 
-import { DEV_SERVER_PORT, VENDOR_DIST_DIR } from "../lib/constants.mjs";
+import { DEV_SERVER_PORT } from "../lib/constants.mjs";
 import { transformJsxScriptTagsPlugin } from "./transformJsxScriptTagsPlugin.mjs";
 import { useServerPlugin } from "./useServerPlugin.mjs";
 import { useClientPlugin } from "./useClientPlugin.mjs";
@@ -17,7 +17,7 @@ import { configPlugin } from "./configPlugin.mjs";
 import { $ } from "../lib/$.mjs";
 import { customReactBuildPlugin } from "./customReactBuildPlugin.mjs";
 import { injectHmrPreambleJsxPlugin } from "./injectHmrPreambleJsxPlugin.mjs";
-import { createSymlinkEnv } from "./createSymlinkEnv.mjs";
+import { setupEnvFiles } from "./setupEnvFiles.mjs";
 import { invalidateViteDepsCacheEntry } from "./invalidateViteDepsCacheEntry.mjs";
 import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
 
@@ -49,7 +49,7 @@ export const redwoodPlugin = async (
     options?.entry?.worker ?? "src/worker.tsx",
   );
 
-  await createSymlinkEnv({ rootDir: projectRootDir });
+  await setupEnvFiles({ rootDir: projectRootDir });
   const usesPrisma = await $({ reject: false })`pnpm prisma --version`;
   const isUsingPrisma = usesPrisma.exitCode === 0;
 
