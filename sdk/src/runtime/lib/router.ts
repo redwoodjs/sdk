@@ -12,21 +12,30 @@ export type RouteContext<
   rw: RwContext<TContext>;
 };
 
-type PageProps<TContext> = Omit<
+export type PageProps<TContext> = Omit<
   RouteContext<TContext>,
-  "rw" | "request" | "headers"
->;
+  "request" | "headers" | "rw"
+> & { rw: { nonce: string } };
+
+export type LayoutProps<TContext> = PageProps<TContext> & {
+  children: React.ReactNode;
+};
+
+export type RenderPageParams<TContext> = {
+  Page: React.FC<Record<string, any>>;
+  props: PageProps<TContext>;
+  actionResult: unknown;
+  Layout: React.FC<LayoutProps<TContext>>;
+};
+
+export type RenderPage<TContext> = (
+  params: RenderPageParams<TContext>,
+) => Promise<Response>;
 
 export type RwContext<TContext> = {
   nonce: string;
-  Layout: React.FC<{ children: React.ReactNode }>;
-  renderPage: (params: {
-    nonce: string;
-    Page: React.FC<Record<string, any>>;
-    props: PageProps<TContext>;
-    actionResult: unknown;
-    Layout: React.FC<{ children: React.ReactNode }>;
-  }) => Promise<Response>;
+  Layout: React.FC<LayoutProps<TContext>>;
+  renderPage: RenderPage<TContext>;
   handleAction: (ctx: RouteContext<TContext>) => Promise<unknown>;
 };
 
@@ -195,9 +204,13 @@ export function defineRoutes<TContext = Record<string, any>>(
         if (isRouteComponent(h)) {
           const actionResult = await rw.handleAction(routeContext);
           const serializedEnv = serializeEnv(env);
-          const props = { params, env: serializedEnv, ctx };
+          const props = {
+            params,
+            env: serializedEnv,
+            ctx,
+            rw: { nonce: rw.nonce },
+          };
           return await rw.renderPage({
-            nonce: rw.nonce,
             Page: h as React.FC<Record<string, any>>,
             props,
             actionResult,

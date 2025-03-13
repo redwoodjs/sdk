@@ -7,8 +7,8 @@ export default defineConfig({
   integrations: [
     starlight({
       expressiveCode: {
-        shiki: {          
-          bundledLangs: ['bash', 'ts', 'tsx'],
+        shiki: {
+          bundledLangs: ["bash", "ts", "tsx"],
         },
       },
       title: "RedwoodSDK",
@@ -35,14 +35,12 @@ export default defineConfig({
           items: [
             { slug: "core/overview" },
             { label: "Request Handling", slug: "core/routing" },
-            {
-              
-              slug: "core/react-server-components",
-            },
+            { slug: "core/react-server-components" },
             { slug: "core/database" },
             { slug: "core/storage" },
             { slug: "core/queues" },
-            {  slug: "core/authentication" },
+            { slug: "core/authentication" },
+            { slug: "core/security" },
             { slug: "core/hosting" },
           ],
         },
