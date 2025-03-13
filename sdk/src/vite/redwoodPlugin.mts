@@ -17,7 +17,7 @@ import { configPlugin } from "./configPlugin.mjs";
 import { $ } from "../lib/$.mjs";
 import { customReactBuildPlugin } from "./customReactBuildPlugin.mjs";
 import { injectHmrPreambleJsxPlugin } from "./injectHmrPreambleJsxPlugin.mjs";
-import { createSymlinkEnv } from "./createSymlinkEnv.mjs";
+import { setupEnvFiles } from "./setupEnvFiles.mjs";
 import { invalidateViteDepsCacheEntry } from "./invalidateViteDepsCacheEntry.mjs";
 import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
 
@@ -49,7 +49,7 @@ export const redwoodPlugin = async (
     options?.entry?.worker ?? "src/worker.tsx",
   );
 
-  await createSymlinkEnv({ rootDir: projectRootDir });
+  await setupEnvFiles({ rootDir: projectRootDir });
   const usesPrisma = await $({ reject: false })`pnpm prisma --version`;
   const isUsingPrisma = usesPrisma.exitCode === 0;
 
