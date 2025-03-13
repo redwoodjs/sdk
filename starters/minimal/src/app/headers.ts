@@ -25,14 +25,6 @@ export const setCommonHeaders =
     );
 
     // Defines trusted sources for content loading and script execution:
-    // - Only loads resources from same origin ('self') and Cloudflare Turnstile
-    // - Only runs scripts from same origin, trusted inline scripts with nonce, and Turnstile
-    // - Allows frames from Cloudflare Turnstile
-    // - Blocks all plugins/embedded objects
-    //
-    // Usage:
-    // - Add other origins to this list (space separated) if you want to allow them
-    // - Add 'nonce=${nonce}' to inline <script> tags you trust
     headers.set(
       "Content-Security-Policy",
       `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; frame-src https://challenges.cloudflare.com; object-src 'none';`,
