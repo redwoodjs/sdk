@@ -53,12 +53,6 @@ wrangler secret put RP_ID
 
 When prompted, enter your production domain (e.g., `my-app.example.com`).
 
-For **local development**, set this in a `.env` file in your project root:
-
-```env
-RP_ID=localhost
-```
-
 Note: The RP_ID must be a valid domain that matches your application's origin. For security reasons, WebAuthn will not work if these don't match.
 
 ### Setting up Session Secret Key
@@ -74,12 +68,6 @@ Then set this key as a Cloudflare secret:
 
 ```shell
 wrangler secret put SECRET_KEY
-```
-
-For **local development**, set this secret key in a `.env` file in your project root:
-
-```env
-SECRET_KEY=your-development-secret-key
 ```
 
 Never use the same secret key for development and production environments, and avoid committing your secret keys to version control.
@@ -105,14 +93,6 @@ const TURNSTILE_SITE_KEY = "<YOUR_SITE_KEY>";
 ```shell
 wrangler secret put TURNSTILE_SECRET_KEY
 ```
-
-For **local development**, set this secret key in a `.env` file in your project root:
-
-```env
-TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
-```
-
-(Your development environment automatically uses a test site key provided by the framework.)
 
 ## How it all works
 
