@@ -3,7 +3,14 @@ title: Storage
 description: Upload & download files to Cloudflare R2.
 ---
 
+import { Aside } from "@astrojs/starlight/components";
+
 [Cloudflare R2](https://developers.cloudflare.com/r2/) is an object storage solution that's S3 compatible, global, scalable, and can be used to store files, images, videos, and more! It integrates natively with Cloudflare workers, and therefore, with Redwood. It is available locally during development, and is automatically configured when you deploy to Cloudflare.
+
+<Aside type="tip" title="Pick your poison">
+  You do not need to use R2, you can use any storage solution you want, but we recommend
+  R2!
+</Aside>
 
 ## Setup
 
