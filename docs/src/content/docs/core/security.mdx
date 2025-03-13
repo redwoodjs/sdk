@@ -1,0 +1,52 @@
+---
+title: Security
+description: Learn about security headers used in the standard starter, what they do, and how to configure them for your app.
+---
+
+import {
+  Aside,
+  Tabs,
+  TabItem,
+  LinkCard,
+  Code,
+} from "@astrojs/starlight/components";
+
+import importedCodeStandardHeaders from "../../../../../starters/standard/src/app/headers.ts?raw";
+
+## 🔐 Security Headers in the Standard Starter
+
+The standard starter includes a set of security headers by default in [`app/headers.ts`](https://github.com/redwoodjs/sdk/blob/main/starters/standard/src/app/headers.ts). These help protect against common attacks like cross-site scripting (XSS), clickjacking, and data injection.
+
+<Code
+  language="typescript"
+  title="src/app/pages/auth/LoginPage.tsx"
+  code={importedCodeStandardHeaders}
+  collapse={"1-3, 29-59"}
+/>
+
+### Changing CSP headers
+
+Sometimes you need to allow ...
+
+#### Using `nonce` for inline scripts
+
+### Lifting device permission restrictions
+
+Sometimes you need to allow your web application to access device features like the camera, microphone, or geolocation. These permissions are controlled by the `Permissions-Policy` header.
+
+By default, the standard starter includes restrictive permissions settings for security reasons.
+
+To enable device access, you'll need to modify the `Permissions-Policy` header in your [`app/headers.ts`](https://github.com/redwoodjs/sdk/blob/main/starters/standard/src/) file:
+
+```diff
+// In app/headers.ts
+headers.set(
+  "Permissions-Policy",
+-  "geolocation=(), microphone=(), camera=()",
++  "geolocation=self, microphone=self, camera=self"
+);
+```
+
+The `self` keyword allows the feature to be used only by your own domain.
+
+For a complete reference, see the [MDN Permissions Policy documentation](https://developer.mozilla.org/en-US/docs/Web/HTTP/Headers/Permissions-Policy).

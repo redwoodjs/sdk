@@ -9,8 +9,7 @@ export default defineConfig({
       expressiveCode: {
         // themes: ["dracula"],
         shiki: {
-          
-          bundledLangs: ['bash', 'ts', 'tsx'],
+          bundledLangs: ["bash", "ts", "tsx"],
         },
       },
       title: "RedwoodSDK",
@@ -45,6 +44,7 @@ export default defineConfig({
             { label: "Storage", slug: "core/storage" },
             { label: "Queues", slug: "core/queues" },
             { label: "Authentication", slug: "core/authentication" },
+            { label: "Security", slug: "core/security" },
           ],
         },
         // {
