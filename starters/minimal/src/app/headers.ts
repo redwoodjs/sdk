@@ -35,6 +35,6 @@ export const setCommonHeaders =
     // - Add 'nonce=${nonce}' to inline <script> tags you trust
     headers.set(
       "Content-Security-Policy",
-      `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com; frame-src https://challenges.cloudflare.com; object-src 'none';`,
+      `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; frame-src https://challenges.cloudflare.com; object-src 'none';`,
     );
   };
