@@ -23,7 +23,7 @@ We've baked authentication right into the [**standard starter**](https://github.
 
 Within your project's `wrangler.jsonc`:
 
-- Create a new D1 database:
+Create a new D1 database:
 
 ```shell
 npx wrangler d1 create my-project-db
@@ -57,7 +57,7 @@ Note: The RP_ID must be a valid domain that matches your application's origin. F
 
 ### Setting up Session Secret Key
 
-For production, generate a strong SECRET_KEY for signing session IDs. You can generate a secure random key using OpenSSL:
+For production, generate a strong `SECRET_KEY` for signing session IDs. You can generate a secure random key using OpenSSL:
 
 ```shell
 # Generate a 32-byte random key and encode it as base64
