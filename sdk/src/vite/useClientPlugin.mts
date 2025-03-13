@@ -30,18 +30,90 @@ import { registerClientReference } from "redwoodsdk/worker";
 `);
 
         const [_, exports] = parse(code);
+        const functionExports = new Set();
+        const inlineExportedFunctions = new Set();
 
+        // First, collect all function exports
         for (const e of exports) {
           if (e.ln != null) {
-            s.replaceAll(
-              new RegExp(`((?:const|function|let|var)\\s+)(${e.ln})\\b`, "g"),
-              `$1${e.ln}SSR`,
-            );
+            // Check if it's a function declaration
+            const isFunctionDeclaration = new RegExp(
+              `(export\\s+)?(function\\s+${e.ln}\\b|const\\s+${e.ln}\\s*=\\s*\\(.*\\)\\s*=>|const\\s+${e.ln}\\s*=\\s*function\\s*\\()`,
+            ).test(code);
 
-            s.append(`\
-export const ${e.ln} = registerClientReference(${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)}, ${e.ln}SSR);
-`);
+            if (isFunctionDeclaration) {
+              functionExports.add(e.ln);
+
+              // Check if it's an inline export
+              const isInlineExport = new RegExp(
+                `export\\s+(const|function)\\s+${e.ln}\\b`,
+              ).test(code);
+              if (isInlineExport) {
+                inlineExportedFunctions.add(e.ln);
+              }
+            }
           }
+        }
+
+        // Now process the code to find and transform each function
+        for (const name of functionExports) {
+          // Find function declarations and transform them
+          const functionRegex = new RegExp(
+            `(export\\s+)?(function\\s+)(${name})\\b([\\s\\S]*?{[\\s\\S]*?})`,
+            "g",
+          );
+          let match;
+
+          while ((match = functionRegex.exec(code)) !== null) {
+            const fullMatch = match[0];
+            const hasExport = !!match[1];
+            const functionBody = match[4];
+            const startPos = match.index;
+            const endPos = startPos + fullMatch.length;
+
+            // Replace with SSR version
+            s.overwrite(
+              startPos,
+              endPos,
+              `${match[2]}${name}SSR${functionBody}\n\nconst ${name} = registerClientReference(${JSON.stringify(relativeId)}, ${JSON.stringify(name)}, ${name}SSR);`,
+            );
+          }
+
+          // Find arrow functions and transform them
+          const arrowRegex = new RegExp(
+            `(export\\s+)?(const\\s+)(${name})(\\s*=.*?=>.*?[;\\n])`,
+            "g",
+          );
+
+          while ((match = arrowRegex.exec(code)) !== null) {
+            const fullMatch = match[0];
+            const hasExport = !!match[1];
+            const arrowBody = match[4];
+            const startPos = match.index;
+            const endPos = startPos + fullMatch.length;
+
+            // Replace with SSR version
+            s.overwrite(
+              startPos,
+              endPos,
+              `${match[2]}${name}SSR${arrowBody}\n\nconst ${name} = registerClientReference(${JSON.stringify(relativeId)}, ${JSON.stringify(name)}, ${name}SSR);`,
+            );
+          }
+        }
+
+        // Add a grouped export at the end for SSR versions
+        const ssrExportNames = Array.from(functionExports).map(
+          (name) => `${name}SSR`,
+        );
+
+        if (ssrExportNames.length > 0) {
+          s.append(`\nexport { ${ssrExportNames.join(", ")} };\n`);
+        }
+
+        if (inlineExportedFunctions.size > 0) {
+          s.append(
+            `\nexport { ${Array.from(inlineExportedFunctions).join(", ")} };\n`,
+          );
         }
       }
 
