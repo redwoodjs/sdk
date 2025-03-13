@@ -4,7 +4,7 @@ import { InlineConfig } from "vite";
 import reactPlugin from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 
-import { DEV_SERVER_PORT, VENDOR_DIST_DIR } from "../lib/constants.mjs";
+import { DEV_SERVER_PORT } from "../lib/constants.mjs";
 import { transformJsxScriptTagsPlugin } from "./transformJsxScriptTagsPlugin.mjs";
 import { useServerPlugin } from "./useServerPlugin.mjs";
 import { useClientPlugin } from "./useClientPlugin.mjs";
