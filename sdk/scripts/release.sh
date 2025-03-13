@@ -183,6 +183,7 @@ else
   # Add all changed package.json and pnpm-lock.yaml files in the monorepo
   (cd .. && git add $(git diff --name-only | grep -E 'package\.json|pnpm-lock\.yaml$'))
   git commit --amend --no-edit
+  git pull --rebase
   git tag "$TAG_NAME"
   git push
   git push --tags
