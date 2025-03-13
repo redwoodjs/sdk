@@ -176,19 +176,32 @@ The `ctx` object:
 
 ## Layouts
 
-
-Since you can also return a JSX component from a route handler, you can use layouts to wrap your pages. A layout is a JSX component that wraps a page and provides a consistent layout for the page.
+Layouts are a way to wrap your pages in a consistent layout. In RedwoodSDK, layouts are defined using the `layout` function in `defineApp`.
 
 ```tsx title="src/worker.tsx" "layout"
 import { defineApp } from "redwoodsdk/worker";
 import { route, layout } from "redwoodsdk/router";
-import { Document } from "src/pages/Document";
 
-export default defineApp([layout(Document, [route("/", AboutPage)])]);
+import { Document } from "@/pages/Document";
+import { HomePage } from "@/pages/HomePage";
+
+export default defineApp([
+  layout(
+    Document, [route("/", HomePage)]
+)]);
+
+---
+The `layout` function takes a React component and an array of route handlers. The layout will be applied to all the routes that are passed to it.
+---
 ```
 
-```tsx title="src/pages/Document.tsx"
-export const Document: React.FC<{ children: React.ReactNode }> = ({
+<Aside type="tip" title="Layouts">
+  RedwoodSDK does not supply a default "html" template. You must supply your own! This is so you have full control over the HTML rendered by your website.
+</Aside>
+
+
+```tsx title="src/pages/Document.tsx" mark={7}
+export const Document = ({
   children,
 }) => (
   <html lang="en">
@@ -203,8 +216,9 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
 );
 ```
 
-<Aside type="note" title="Client Side Hydration">
+
+
+<Aside type="caution" title="Client Side Hydration">
   You must include the client side hydration script in your layout, otherwise
-  the React components will not be hydrated on the client. This also means that
-  you have a massive amount of control over the HTML returned by Redwood.
+  the React components will not be hydrated.
 </Aside>
