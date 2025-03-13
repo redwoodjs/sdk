@@ -17,7 +17,106 @@ import importedCodeStandardLoginPage from "../../../../../starters/standard/src/
 
 We've baked authentication right into the [**standard starter**](https://github.com/redwoodjs/sdk/tree/main/starters/standard), giving you everything you need to handle users, sessions, and logins out of the box. The standard starter uses **passkeys ([WebAuthn](https://webauthn.guide/))** for passwordless authentication, **session persistence via [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/)**, and **bot protection with [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/)**. The database layer is powered by **[Cloudflare D1](https://developers.cloudflare.com/d1/)** and **[Prisma](https://www.prisma.io/)**.
 
-## Retrieving a Session
+## Setup
+
+### Wrangler Setup
+
+Within your project's `wrangler.jsonc`:
+
+- Create a new D1 database:
+
+```shell
+npx wrangler d1 create my-project-db
+```
+
+Copy the database ID provided and paste it into your project's `wrangler.jsonc` file:
+
+```jsonc
+{
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "my-project-db",
+      "database_id": "your-database-id",
+    },
+  ],
+}
+```
+
+### Setting up WebAuthn Relying Party ID (`RP_ID`)
+
+For production, set your domain as the `RP_ID` via Cloudflare secrets:
+
+```shell
+wrangler secret put RP_ID
+```
+
+When prompted, enter your production domain (e.g., `my-app.example.com`).
+
+For **local development**, set this in a `.env` file in your project root:
+
+```env
+RP_ID=localhost
+```
+
+Note: The RP_ID must be a valid domain that matches your application's origin. For security reasons, WebAuthn will not work if these don't match.
+
+### Setting up Session Secret Key
+
+For production, generate a strong SECRET_KEY for signing session IDs. You can generate a secure random key using OpenSSL:
+
+```shell
+# Generate a 32-byte random key and encode it as base64
+openssl rand -base64 32
+```
+
+Then set this key as a Cloudflare secret:
+
+```shell
+wrangler secret put SECRET_KEY
+```
+
+For **local development**, set this secret key in a `.env` file in your project root:
+
+```env
+SECRET_KEY=your-development-secret-key
+```
+
+Never use the same secret key for development and production environments, and avoid committing your secret keys to version control.
+
+### Setting up Cloudflare Turnstile (Bot Protection)
+
+1. Visit [Cloudflare Turnstile Dashboard](https://dash.cloudflare.com/?to=/:account/turnstile).
+
+2. Create a new Turnstile widget:
+
+   - Set **Widget Mode** to the preferred mode.
+   - Add your application's hostname to **Allowed hostnames**, e.g., `my-project-name.example.com`.
+
+3. Copy your **Site Key** into your application's `LoginPage.tsx`:
+
+```tsx
+// LoginPage.tsx
+const TURNSTILE_SITE_KEY = "<YOUR_SITE_KEY>";
+```
+
+4. Set your **Turnstile Secret Key** via Cloudflare secrets for production:
+
+```shell
+wrangler secret put TURNSTILE_SECRET_KEY
+```
+
+For **local development**, set this secret key in a `.env` file in your project root:
+
+```env
+TURNSTILE_SECRET_KEY=1x0000000000000000000000000000000AA
+```
+
+(Your development environment automatically uses a test site key provided by the framework.)
+
+## How it all works
+
+### Retrieving a Session
 
 Sessions are handled using **cookies** (for session IDs) and **Durable Objects** (for storing session data).
 
@@ -35,7 +134,7 @@ When a request comes in, we:
   collapse={"2-17, 19-19, 21-22, 31-31, 33-47"}
 />
 
-### Why Durable Objects?
+#### Why Durable Objects?
 
 Instead of keeping session data in multiple places where we’d have to worry about syncing and stale data, each session is stored in a single **Durable Object** instance. This means we don’t have to deal with session data being out of date or lingering after logout—it’s all in one place, making revocation straightforward. On top of this, when a session is active, it stays in memory, so lookups are faster without extra database queries.
 
@@ -43,13 +142,13 @@ For more on Durable Objects, see [Cloudflare's documentation](https://developers
 
 ---
 
-## Logging In
+### Logging In
 
 We use **passkeys ([WebAuthn](https://webauthn.guide/))** for authentication. This allows users to log in without passwords, using their authenticator, browser or device to handle authentication securely.
 
 For more on passkeys, see [passkeys.dev](https://passkeys.dev/).
 
-### Login Flow
+#### Login Flow
 
 1. The user clicks **Login**.
 2. The frontend calls a server action to get a WebAuthn challenge.
@@ -74,7 +173,7 @@ For more on passkeys, see [passkeys.dev](https://passkeys.dev/).
 
 ---
 
-## Registering Users
+### Registering Users
 
 Registration follows a very similar 3-step WebAuthn process as login:
 
@@ -87,7 +186,7 @@ Registration follows a very similar 3-step WebAuthn process as login:
 
 One difference: we protect registrations with an extra layer of **bot protection** using [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/).
 
-### Why Turnstile?
+#### Why Turnstile?
 
 Cloudflare has built-in bot protection, but it works by detecting and blocking malicious patterns over time. That means automated registrations can still get through until Cloudflare picks up on them. Turnstile prevents this from becoming an issue in the first place by requiring a lightweight challenge **before** registration happens, stopping bots at the point of entry.
 
