@@ -71,11 +71,11 @@ import { registerClientReference } from "redwoodsdk/worker";
             const startPos = match.index;
             const endPos = startPos + fullMatch.length;
 
-            // Replace with SSR version
+            // Replace with SSR version only
             s.overwrite(
               startPos,
               endPos,
-              `${match[2]}${name}SSR${functionBody}\n\nconst ${name} = registerClientReference(${JSON.stringify(relativeId)}, ${JSON.stringify(name)}, ${name}SSR);`,
+              `${match[2]}${name}SSR${functionBody}`,
             );
           }
 
@@ -92,11 +92,17 @@ import { registerClientReference } from "redwoodsdk/worker";
             const startPos = match.index;
             const endPos = startPos + fullMatch.length;
 
-            // Replace with SSR version
-            s.overwrite(
-              startPos,
-              endPos,
-              `${match[2]}${name}SSR${arrowBody}\n\nconst ${name} = registerClientReference(${JSON.stringify(relativeId)}, ${JSON.stringify(name)}, ${name}SSR);`,
+            // Replace with SSR version only
+            s.overwrite(startPos, endPos, `${match[2]}${name}SSR${arrowBody}`);
+          }
+        }
+
+        // Add client references for all functions before exports
+        if (functionExports.size > 0) {
+          s.append("\n\n// Client references\n");
+          for (const name of functionExports) {
+            s.append(
+              `const ${name} = registerClientReference(${JSON.stringify(relativeId)}, ${JSON.stringify(name)}, ${name}SSR);\n`,
             );
           }
         }
