@@ -47,7 +47,7 @@ export const initClient = async () => {
     callServer,
   });
 
-  let setRscPayload: (v: Promise<unknown>) => void;
+  let setRscPayload: (v: Promise<unknown>) => void = () => {};
 
   function Content() {
     const [streamData, setStreamData] = React.useState(rscPayload);
@@ -64,4 +64,8 @@ export const initClient = async () => {
       callServer(null, null);
     });
   }
+
+  return {
+    setRscPayload,
+  };
 };
