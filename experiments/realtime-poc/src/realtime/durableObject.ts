@@ -35,11 +35,7 @@ export class RealtimeDurableObject extends DurableObject {
   private async handleWebSocket(request: Request): Promise<Response> {
     const { 0: client, 1: server } = new WebSocketPair();
     this.acceptWebSocket(server);
-
-    // Enable WebSocket hibernation to keep DO alive
     this.state.acceptWebSocket(server);
-    this.state.waitUntil(this.maintainConnection());
-
     return new Response(null, { status: 101, webSocket: client });
   }
 
@@ -65,15 +61,6 @@ export class RealtimeDurableObject extends DurableObject {
     webSocket.addEventListener("close", () => {
       this.connections.delete(webSocket);
     });
-
-    // Use hibernation API to prevent evictions
-    this.state.waitUntil(this.maintainConnection());
-  }
-
-  private async maintainConnection(): Promise<void> {
-    while (this.connections.size > 0) {
-      await new Promise((resolve) => setTimeout(resolve, 30000)); // Keep alive every 30s
-    }
   }
 
   private broadcast(content: string): void {

@@ -1,7 +1,8 @@
 import { initClient } from "redwoodsdk/client";
 
+let ws: WebSocket | null = null;
+
 const main = async () => {
-  let ws: WebSocket | null = null;
   const { setRscPayload } = await initClient();
 
   const setupWebSocket = () => {
