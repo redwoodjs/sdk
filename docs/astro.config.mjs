@@ -13,7 +13,8 @@ export default defineConfig({
       },
       title: "RedwoodSDK",
       logo: {
-        src: "./src/assets/logo.svg",
+        light: './src/assets/light-logo.svg',
+        dark: './src/assets/dark-logo.svg',
         replacesTitle: true,
       },
       customCss: [
