@@ -5,7 +5,7 @@ interface Env {
 	RP_ID: string;
 	SECRET_KEY: string;
 	TURNSTILE_SECRET_KEY: string;
-	SESSION_DURABLE_OBJECT: DurableObjectNamespace<import("./src/worker").SessionDurableObject>;
+	REALTIME_DURABLE_OBJECT: DurableObjectNamespace<import("./src/worker").RealtimeDurableObject>;
 	DB: D1Database;
 	ASSETS: Fetcher;
 }

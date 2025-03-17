@@ -26,10 +26,6 @@
   "durable_objects": {
     "bindings": [
       {
-        "name": "SESSION_DURABLE_OBJECT",
-        "class_name": "SessionDurableObject",
-      },
-      {
         "name": "REALTIME_DURABLE_OBJECT",
         "class_name": "RealtimeDurableObject",
       },
