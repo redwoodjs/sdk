@@ -24,7 +24,7 @@ export type CreateCallServer = (
 // so we need to define it here before importing "react-server-dom-webpack."
 globalThis.__webpack_require__ = clientWebpackRequire;
 
-const fetchTransport: Transport = ({ setRscPayload }) => {
+export const fetchTransport: Transport = ({ setRscPayload }) => {
   const fetchCallServer = async <Result,>(
     id: null | string,
     args: null | unknown[],
