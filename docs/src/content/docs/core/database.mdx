@@ -1,0 +1,86 @@
+---
+title: Database
+description: Store & retrieve data from the database.
+---
+
+import { Aside, Tabs, TabItem, LinkCard } from "@astrojs/starlight/components";
+
+RedwoodSDK is built to work on the Cloudflare Developer Platform. D1 is Cloudflare's managed, serverless database with SQLite's SQL semantics, built-in disaster recovery, and a generous free tier.
+
+<Aside type="note" title="Pick your poison">
+  You do not need to use D1, you can use any database you want, but we recommend
+  D1.
+</Aside>
+
+## Setup
+
+You'll need to "bind" your database to your worker (`./src/worker.tsx`). "Binding" implies that the an external service, like the database, is made available via the `env` object in your worker. You can also bind other services, like KV, Storage, and queues.
+
+In order to bind a database to your worker you'll need to create a D1 database, and save it's configuration details in your `wrangler.jsonc` file.
+
+```bash
+npx wrangler d1 create my-database
+✅ Successfully created DB 'my-database' in region WEUR
+Created your new D1 database.
+
+[[d1_databases]]
+binding = "DB"
+database_name = "my-database"
+database_id = "62x40823-4750-4973-b994-fb8fd55xxxx6"
+```
+
+We've run a command to create a database called `my-database`. Copy those values and paste them into your `wrangler.jsonc` file. The development server will use the values from your `wrangler.jsonc` file to bind your database to the `env` variable `DB`.
+
+## Usage with Prisma
+
+<Aside type="note" title="Prisma Starter">
+RedwoodSDK ships with a [Prisma starter project](https://github.com/redwoodjs/sdk/tree/main/starters/prisma), you can use it to get started with a database in seconds.
+
+```bash frame="none"
+npx degit redwoodjs/sdk/starters/prisma#main <project-name>
+```
+
+</Aside>
+
+### Installation
+
+Install the Prisma packages, as well as the adapter for D1, and create a `prisma` directory.
+
+```bash
+npm install @prisma/adapter-d1 @prisma/client prisma
+mkdir prisma
+touch prisma/schema.prisma
+```
+
+Then modify the `prisma/schema.prisma` file to use the D1 adapter.
+
+```prisma title="prisma/schema.prisma"
+generator client {
+  provider        = "prisma-client-js"
+  previewFeatures = ["driverAdapters"]
+  output          = "../node_modules/.prisma/client"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+```
+
+### Migrations
+
+Unfortunately Prisma does not support D1 migrations yet, so you need to use our custom scripts to create and apply migrations.
+
+Add the following scripts to your `package.json` file.
+
+```json title="package.json"
+"scripts": {
+    "migrate:dev": "wrangler d1 migrations apply DB --local",
+    "migrate:prd": "wrangler d1 migrations apply DB --remote",
+    "migrate:new": "rw-scripts migrate-new",
+}
+```
+
+To create a new migration, run `npx run migrate:new "your migration name"`.
+
+To apply migrations, run `npx run migrate:dev` for local development, or `npx run migrate:prd` for production.

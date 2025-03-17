@@ -58,14 +58,13 @@
   }
 }
 
-
 @media print {
   .print-container {
     display: flex;
     flex-direction: column;
     align-items: center;
   }
-  
+
   .print-page {
     page-break-before: always;
     width: 210mm;
@@ -80,7 +79,8 @@
     border-collapse: collapse;
   }
 
-  th, td {
+  th,
+  td {
     border: 1px solid #ccc;
     padding: 8px;
     text-align: center;

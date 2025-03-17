@@ -1,18 +1,27 @@
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
-import { injectRSCPayload } from "rsc-html-stream/server";
+import { injectRSCPayload } from "./render/injectRSCPayload";
 import { renderToRscStream } from "./render/renderToRscStream";
 
 import { ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import { ErrorResponse } from "./error";
 
-import { Route, defineRoutes } from "./lib/router";
+import {
+  Route,
+  RouteContext,
+  defineRoutes,
+  RenderPageParams,
+  PageProps,
+  LayoutProps,
+} from "./lib/router";
+import { generateNonce } from "./lib/utils";
+import { IS_DEV } from "./constants";
 
 declare global {
   type Env = {
     ASSETS: Fetcher;
     DB: D1Database;
-  }
+  };
 }
 
 export const defineApp = <Context,>(routes: Route<Context>[]) => {
@@ -29,48 +38,69 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
         const url = new URL(request.url);
         url.pathname = url.pathname.slice("/assets/".length);
         return env.ASSETS.fetch(new Request(url.toString(), request));
+      } else if (IS_DEV && request.url.includes("/__vite_preamble__")) {
+        return new Response(
+          'import RefreshRuntime from "/@react-refresh"; RefreshRuntime.injectIntoGlobalHook(window); window.$RefreshReg$ = () => {}; window.$RefreshSig$ = () => (type) => type; window.__vite_plugin_react_preamble_installed__ = true;',
+          {
+            headers: {
+              "content-type": "text/javascript",
+            },
+          },
+        );
       }
 
       try {
         const url = new URL(request.url);
         const isRSCRequest = url.searchParams.has("__rsc");
 
-        const handleAction = async (ctx: Context) => {
+        const handleAction = async (
+          ctx: RouteContext<Context, Record<string, string>>,
+        ) => {
           const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 
           if (isRSCActionHandler) {
-            return await rscActionHandler(request, ctx, env); // maybe we should include params and ctx in the action handler?
+            return await rscActionHandler(request, ctx); // maybe we should include params and ctx in the action handler?
           }
-        }
+        };
 
         const renderPage = async ({
           Page,
-          props,
+          props: fullPageProps,
           actionResult,
           Layout,
-        }: {
-          Page: React.FC<Record<string, any>>,
-          props: Record<string, any>,
-          actionResult: unknown,
-          Layout: React.FC<{ children: React.ReactNode }>
-        }) => {
-          const headers = new Headers();
+        }: RenderPageParams<Context>) => {
+          let props = fullPageProps;
+          let layoutProps = fullPageProps;
 
-          if (actionResult instanceof Response) {
-            for (const [key, value] of actionResult.headers.entries()) {
-              headers.set(key, value);
-            }
+          // context(justinvdm, 25 Feb 2025): If the page is a client reference, we need to avoid passing
+          // down props the client shouldn't get (e.g. env). For safety, we pick the allowed props explicitly.
+          if (
+            Object.prototype.hasOwnProperty.call(Page, "$$isClientReference")
+          ) {
+            const { ctx, params } = fullPageProps;
+            props = { ctx, params } as PageProps<Context>;
           }
+
+          if (
+            Object.prototype.hasOwnProperty.call(Layout, "$$isClientReference")
+          ) {
+            const { ctx, params } = fullPageProps;
+            layoutProps = { ctx, params } as LayoutProps<Context>;
+          }
+
+          const nonce = fullPageProps.rw.nonce;
 
           const rscPayloadStream = renderToRscStream({
             node: <Page {...props} />,
-            actionResult: actionResult instanceof Response ? null : actionResult,
+            actionResult:
+              actionResult instanceof Response ? null : actionResult,
           });
 
           if (isRSCRequest) {
-            headers.set("content-type", "text/x-component; charset=utf-8");
             return new Response(rscPayloadStream, {
-              headers,
+              headers: {
+                "content-type": "text/x-component; charset=utf-8",
+              },
             });
           }
 
@@ -78,28 +108,42 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
 
           const htmlStream = await transformRscToHtmlStream({
             stream: rscPayloadStream1,
-            Parent: Layout,
+            Parent: ({ children }) => (
+              <Layout {...layoutProps} children={children} />
+            ),
           });
 
-          const html = htmlStream.pipeThrough(injectRSCPayload(rscPayloadStream2))
-
-          headers.set("content-type", "text/html; charset=utf-8");
+          const html = htmlStream.pipeThrough(
+            injectRSCPayload(rscPayloadStream2, { nonce }),
+          );
 
           return new Response(html, {
-            headers,
+            headers: {
+              "content-type": "text/html; charset=utf-8",
+            },
           });
         };
 
+        const userHeaders = new Headers();
+
         const response = await router.handle({
           request,
+          headers: userHeaders,
           ctx: {} as Context,
           env,
           rw: {
             Layout: DefaultLayout,
             handleAction,
             renderPage,
+            nonce: generateNonce(),
           },
         });
+
+        for (const [key, value] of userHeaders.entries()) {
+          if (!response.headers.has(key)) {
+            response.headers.set(key, value);
+          }
+        }
 
         return response;
       } catch (e) {
@@ -110,16 +154,17 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
         console.error("Unhandled error", e);
         throw e;
       }
-    }
-  }
-}
+    },
+  };
+};
 
-export const DefaultLayout: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+export const DefaultLayout: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => (
   <html lang="en">
     <head>
       <meta charSet="utf-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1" />
-      <title>@redwoodjs/starter-minimal</title>
       <script type="module" src="/src/client.tsx"></script>
     </head>
     <body>

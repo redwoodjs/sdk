@@ -1,17 +1,23 @@
 {
-  "name": "@redwoodjs/sdk",
-  "version": "1.0.0",
+  "name": "redwoodsdk",
+  "version": "0.0.17",
   "description": "",
-  "main": "index.js",
   "type": "module",
   "bin": {
     "rw-scripts": "./bin/rw-scripts.mjs"
   },
+  "files": [
+    "./README.md",
+    "./dist",
+    "./vendor/dist"
+  ],
   "scripts": {
     "build": "pnpm build:src && pnpm build:vendor",
     "build:src": "tsc --build --clean && tsc",
     "build:vendor": "node ./dist/scripts/build-vendor-bundles.mjs",
-    "clean:vendor": "rm -rf ./vendor/dist"
+    "clean:vendor": "rm -rf ./vendor/dist",
+    "format": "prettier --write ./src",
+    "release": "./scripts/release.sh"
   },
   "exports": {
     "./vite": {
@@ -33,12 +39,26 @@
     "./auth": {
       "default": "./dist/runtime/entries/auth.js",
       "types": "./dist/runtime/entries/auth.d.ts"
+    },
+    "./constants": {
+      "default": "./dist/runtime/constants.js",
+      "types": "./dist/runtime/constants.d.ts"
+    },
+    "./turnstile": {
+      "default": "./dist/runtime/lib/turnstile/turnstile.js",
+      "types": "./dist/runtime/lib/turnstile/turnstile.d.ts"
     }
   },
   "keywords": [],
-  "author": "",
-  "license": "UNLICENSED",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/redwoodjs/sdk",
+    "directory": "sdk"
+  },
+  "author": "RedwoodJS <peter@redwoodjs.com>",
+  "license": "MIT",
   "dependencies": {
+    "@cloudflare/vite-plugin": "^0.1.9",
     "@cloudflare/workers-types": "^4.20241112.0",
     "@microsoft/api-extractor": "^7.48.0",
     "@types/express": "^5.0.0",
@@ -79,8 +99,7 @@
     "vite-plugin-wasm": "^3.4.1",
     "vite-tsconfig-paths": "^5.1.4",
     "workers-types": "link:@cloudflare/workers-types",
-    "wrangler": "^3.105.1",
-    "@cloudflare/vite-plugin": "^0.1.2"
+    "wrangler": "^3.105.1"
   },
   "peerDependencies": {
     "react-server-dom-webpack": "19.0.0-rc-f2df5694-20240916",
@@ -88,6 +107,7 @@
   },
   "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab",
   "devDependencies": {
-    "@types/lodash": "^4.17.13"
+    "@types/lodash": "^4.17.13",
+    "semver": "^7.7.1"
   }
 }

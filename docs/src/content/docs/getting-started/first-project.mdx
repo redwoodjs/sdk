@@ -3,11 +3,12 @@ title: First Project
 description: Build and deploy your first Redwood SDK project.
 ---
 
-import { Aside, FileTree, Tabs, TabItem } from '@astrojs/starlight/components';
+import { Aside } from "@astrojs/starlight/components";
+import { Tabs, TabItem } from "@astrojs/starlight/components";
 
 This guide is designed for developers who are already comfortable with JavaScript frameworks and are looking to quickly understand RedwoodSDK's organization and conventions.
 
-If you're new to JavaScript frameworks or prefer a more detailed learning path, we recommend starting with our [Full-Stack Tutorial](/tutorial/full-stack-app/setup) instead.
+If you're new to JavaScript frameworks or prefer a more detailed learning path, we recommend starting with our [First App Tutorial](/tutorials/first-app) or [Full-Stack Tutorial](/tutorials/full-stack) instead.
 
 ## Understanding Project Structure
 
@@ -15,25 +16,27 @@ If you're new to JavaScript frameworks or prefer a more detailed learning path, 
 
 After you run the initial [installation command](/getting-started/installation), your project will have the following structure:
 
-<FileTree>
-- package.json
-- src/
-  - app/
-    - Document.tsx
-    - pages/
-      - Home.tsx
-    - shared/
-      - links.ts
-  - client.tsx
-  - worker.tsx
-- tsconfig.json
-- types/
-- vite.config.mts
-- worker-configuration.d.ts
-- wrangler.toml
-</FileTree>
+```text frame="none"
+.
+├── package.json
+├── src
+│   ├── app
+│   │   ├── Document.tsx
+│   │   ├── pages
+│   │   │   └── Home.tsx
+│   │   └── shared
+│   │       └── links.ts
+│   ├── client.tsx
+│   └── worker.tsx
+├── tsconfig.json
+├── types
+├── vite.config.mts
+├── worker-configuration.d.ts
+└── wrangler.jsonc
+```
 
 Let's walk through each file and directory to understand their purpose.
+
 - `package.json` - Contains project configuration and dependencies.
 - `src/app` - Contains the main application files.
 - `src/app/Document.tsx` - The main layout component that wraps your application. This includes the header, footer, and other shared components.
@@ -45,7 +48,7 @@ Let's walk through each file and directory to understand their purpose.
 - `types` - Contains TypeScript type definitions.
 - `vite.config.mts` - The Vite configuration file.
 - `worker-configuration.d.ts` - The worker configuration file.
-- `wrangler.toml` - The Cloudflare Workers configuration file.
+- `wrangler.jsonc` - The Cloudflare Workers configuration file.
 
 ## Making Your First Change
 
@@ -53,7 +56,7 @@ Let's walk through each file and directory to understand their purpose.
 
 ### Editing Pages
 
-The [minimal starter](/reference/starters/minimal/) ships with the least amount of code possible. This means, you don't need to delete any files or perform any cleanup to get started.
+The minimal starter ships with the least amount of code possible. This means, you don't need to delete any files or perform any cleanup to get started.
 
 There's a single `Home` page component in the `src/app/pages` directory that says "Hello World".
 
@@ -61,7 +64,7 @@ There's a single `Home` page component in the `src/app/pages` directory that say
 
 The home page is served by the router definition inside the `src/worker.tsx` file.
 
-```tsx title="src/worker.tsx"
+```tsx
 import { Document } from 'src/Document';
 import { Home } from 'src/pages/Home';
 
@@ -80,10 +83,12 @@ export default defineApp<Context>([
 ])
 ```
 
-Here we have a `layout` function that takes the `Document` component (imported at the top of the file) and wraps our entire application. This includes our basic HTML `head` and `body` tags.
+Here we have a `layout` function that takes the `Document` component (imported at the top of the file) and wraps our entire application. This include our basic HTML `head` and `body` tags.
 
-```tsx title="src/app/Document.tsx"
-export const Document: React.FC<{ children: React.ReactNode }> = ({ children }) => (
+```tsx
+export const Document: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => (
   <html lang="en">
     <head>
       <meta charSet="utf-8" />
@@ -101,23 +106,21 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({ children }) 
 Then, we're using the `index` function to serve the `Home` page component (imported at the top of the file).
 
 You can add additional routes by:
+
 - Creating new page components in the `src/app/pages` directory
 - Importing them inside the `src/worker.tsx` file
-- Add them to the layout array, using the `route` function
+- Add them to the layout array, using the `route` function:
 
-```tsx title="src/worker.tsx" {9-10}
-import { About } from 'src/pages/About';
+```tsx
+import { About } from "src/pages/About";
 
 export default defineApp<Context>([
   ({ ctx }) => {
     // setup ctx here
     ctx;
   },
-  layout(Document, [
-    index([ Home ]),
-    route('/about', About),
-  ]),
-])
+  layout(Document, [index([Home]), route("/about", About)]),
+]);
 ```
 
 When using the `route` function, the first parameter is the URL path and the second parameter is the response. In this case, we're importing the `About` component and displaying it.
@@ -128,7 +131,7 @@ You can find additional information about dynamic routes in our [Routing Guide](
 
 There is quite a bit of flexibility in how you organize your pages, layouts, and components. For example, you can co-locate page specific files together in the `src/app/pages` directory, or keep all of your components in a `src/app/components` directory (You'll need to create this folder).
 
-By default, all the pages and components in your project are server components by default. If you want to add reactivity, you'll need to use the `"use client"` directive at the top of the file.
+By default, all the pages and components in your project are React Server components. If you want to add reactivity, you'll need to use the `"use client"` directive at the top of the file.
 
 ```tsx
 "use client";
@@ -143,25 +146,12 @@ export const HelloWorld = () => {
 To see your changes, you can run the development server:
 
 <Tabs>
-  <TabItem label="pnpm">
-    ```bash frame="none"
-    pnpm dev
-    ```
-  </TabItem>
-  <TabItem label="npm">
-    ```bash frame="none"
-    npm run dev
-    ```
-  </TabItem>
-  <TabItem label="yarn">
-    ```bash frame="none"
-    yarn dev
-    ```
-  </TabItem>
+  <TabItem label="pnpm">```bash frame="none" pnpm dev ```</TabItem>
+  <TabItem label="npm">```bash frame="none" npm run dev ```</TabItem>
+  <TabItem label="yarn">```bash frame="none" yarn dev ```</TabItem>
 </Tabs>
 
 To quit the development server, press `Ctrl+C` _twice_.
-
 
 ## Deploying Your Project
 
@@ -173,10 +163,10 @@ To quit the development server, press `Ctrl+C` _twice_.
 
 The RedwoodSDK is tightly coupled to Cloudflare's services. This means that you'll need to have a [Cloudflare account](https://www.cloudflare.com/plans/) to deploy your project.
 
-Before deploying, check your `wrangler.toml` file. At the top of the file is a `name` property. If you haven't changed it, it will be `__change_me__`.
+Before deploying, check your `wrangler.jsonc` file. At the top of the file is a `name` property. If you haven't changed it, it will be `__change_me__`.
 
-```toml
-name = "__change_me__"
+```jsonc title="wrangler.jsonc"
+{ "name" = "__change_me__' }
 ```
 
 Change the `name` property to match your project name. When you get ready to deploy, Cloudflare will use this name to create a `workers.dev` subdomain for your project.
@@ -184,26 +174,14 @@ Change the `name` property to match your project name. When you get ready to dep
 Then, from your Terminal, run:
 
 <Tabs>
-  <TabItem label="pnpm">
-    ```bash frame="none"
-    pnpm release
-    ```
-  </TabItem>
-  <TabItem label="npm">
-    ```bash frame="none"
-    npm run release
-    ```
-  </TabItem>
-  <TabItem label="yarn">
-    ```bash frame="none"
-    yarn release
-    ```
-  </TabItem>
+  <TabItem label="pnpm">```bash frame="none" pnpm release ```</TabItem>
+  <TabItem label="npm">```bash frame="none" npm run release ```</TabItem>
+  <TabItem label="yarn">```bash frame="none" yarn release ```</TabItem>
 </Tabs>
 
 If this is your first time deploying, you'll be prompted to register a `workers.dev` subdomain.
 
-```bash
+```bash frame="none"
 ▲ [WARNING] You need to register a workers.dev subdomain before publishing to workers.dev
 ? Would you like to register a workers.dev subdomain now? > (Y/n)
 ? What would you like your workers.dev subdomain to be? It will be accessible at https://<subdomain>.workers.dev >
@@ -212,7 +190,7 @@ If this is your first time deploying, you'll be prompted to register a `workers.
 
 If everything goes through successfully, you should see the following message. Where, `PROJECT_NAME` is the name of your project and `SUBDOMAIN` is the subdomain you chose.
 
-```bash
+```bash frame="none"
 Success! It may take a few minutes for DNS records to update.
 Visit https://dash.cloudflare.com/YOUR_ACCOUNT_ID/workers/subdomain to edit your workers.dev subdomain
 Deployed PROJECT_NAME triggers (53.51 sec)
@@ -222,13 +200,14 @@ Current Version ID: VERSION_ID
 
 You can now visit your project at `https://PROJECT_NAME.SUBDOMAIN.workers.dev`.
 
-If you need to manage your deployed pages, you can login to your Cloudflare dashboard, expand the *Computer Workers* section, and select click on **Workers and Pages.**
+If you need to manage your deployed pages, you can login to your Cloudflare dashboard, expand the _Computer Workers_ section, and select click on **Workers and Pages.**
 
 ![Workers and Pages](./images/workers-pages.png)
 
-You can find additional information deploying in our [Deployment Guide](/guides/deployment/cloudflare).
+You can find additional information deploying in our [Deployment Guide](/guides/deployment/cloudflare)
 
 ## Further Resources
+
 - [Building Your First Application](/tutorial/first)
 - [Building a Full-Stack Application](/tutorial/full-stack)
 - [Data fetching guide](/guides/db-data/crud)

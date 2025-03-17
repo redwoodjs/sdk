@@ -1,9 +1,13 @@
 packages:
-  - 'sdk'
-  - 'docs'
-  - 'experiments/billable'
-  - 'experiments/yt-dos'
-  - 'experiments/cutable'
-  - 'starters/minimal'
-  - 'starters/prisma'
-  - 'starters/drizzle'
+  - "sdk"
+  - "docs"
+  - "experiments/billable"
+  - "experiments/yt-dos"
+  - "experiments/cutable"
+  - "experiments/zoomshare"
+  - "starters/drizzle"
+  - "starters/minimal"
+  - "starters/passkey-auth"
+  - "starters/prisma"
+  - "starters/sessions"
+  - "starters/standard"

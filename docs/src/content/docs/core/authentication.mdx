@@ -1,0 +1,191 @@
+---
+title: Authentication
+description: Learn about the authentication mechanisms in the standard starter, including passkeys, session management, and bot protection.
+---
+
+import {
+  Aside,
+  Tabs,
+  TabItem,
+  LinkCard,
+  Code,
+} from "@astrojs/starlight/components";
+
+import importedCodeStandardWorker from "../../../../../starters/standard/src/worker.tsx?raw";
+import importedCodeStandardAuthFunctions from "../../../../../starters/standard/src/app/pages/auth/functions.ts?raw";
+import importedCodeStandardLoginPage from "../../../../../starters/standard/src/app/pages/auth/LoginPage.tsx?raw";
+
+We've baked authentication right into the [**standard starter**](https://github.com/redwoodjs/sdk/tree/main/starters/standard), giving you everything you need to handle users, sessions, and logins out of the box. The standard starter uses **passkeys ([WebAuthn](https://webauthn.guide/))** for passwordless authentication, **session persistence via [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/)**, and **bot protection with [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/)**. The database layer is powered by **[Cloudflare D1](https://developers.cloudflare.com/d1/)** and **[Prisma](https://www.prisma.io/)**.
+
+## Setup
+
+### Wrangler Setup
+
+Within your project's `wrangler.jsonc`:
+
+Create a new D1 database:
+
+```shell
+npx wrangler d1 create my-project-db
+```
+
+Copy the database ID provided and paste it into your project's `wrangler.jsonc` file:
+
+```jsonc
+{
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "my-project-db",
+      "database_id": "your-database-id",
+    },
+  ],
+}
+```
+
+### Setting up WebAuthn Relying Party ID (`RP_ID`)
+
+For production, set your domain as the `RP_ID` via Cloudflare secrets:
+
+```shell
+wrangler secret put RP_ID
+```
+
+When prompted, enter your production domain (e.g., `my-app.example.com`).
+
+Note: The RP_ID must be a valid domain that matches your application's origin. For security reasons, WebAuthn will not work if these don't match.
+
+### Setting up Session Secret Key
+
+For production, generate a strong `SECRET_KEY` for signing session IDs. You can generate a secure random key using OpenSSL:
+
+```shell
+# Generate a 32-byte random key and encode it as base64
+openssl rand -base64 32
+```
+
+Then set this key as a Cloudflare secret:
+
+```shell
+wrangler secret put SECRET_KEY
+```
+
+Never use the same secret key for development and production environments, and avoid committing your secret keys to version control.
+
+### Setting up Cloudflare Turnstile (Bot Protection)
+
+1. Visit [Cloudflare Turnstile Dashboard](https://dash.cloudflare.com/?to=/:account/turnstile).
+
+2. Create a new Turnstile widget:
+
+   - Set **Widget Mode** to the preferred mode.
+   - Add your application's hostname to **Allowed hostnames**, e.g., `my-project-name.example.com`.
+
+3. Copy your **Site Key** into your application's [`LoginPage.tsx`](https://github.com/redwoodjs/sdk/blob/main/starters/standard/src/app/pages/auth/LoginPage.tsx#L17):
+
+```tsx title="LoginPage.tsx"
+const TURNSTILE_SITE_KEY = "<YOUR_SITE_KEY>";
+```
+
+4. Set your **Turnstile Secret Key** via Cloudflare secrets for production:
+
+```shell
+wrangler secret put TURNSTILE_SECRET_KEY
+```
+
+## How it all works
+
+### Retrieving a Session
+
+Sessions are handled using **cookies** (for session IDs) and **Durable Objects** (for storing session data).
+
+When a request comes in, we:
+
+1. Check for a **`session_id` cookie**.
+2. Verify that the session ID is valid by checking its signature - this lets us be sure it was us that issued it
+3. If it's valid, load the session data from the **Durable Object**.
+4. If there's an active session, we pull the user ID from it and load the user from the **database ([D1](https://developers.cloudflare.com/d1/) + [Prisma](https://www.prisma.io/))**.
+
+<Code
+  language="typescript"
+  title="src/worker.tsx"
+  code={importedCodeStandardWorker}
+  collapse={"2-17, 19-19, 21-22, 31-31, 33-47"}
+/>
+
+#### Why Durable Objects?
+
+Instead of keeping session data in multiple places where we’d have to worry about syncing and stale data, each session is stored in a single **Durable Object** instance. This means we don’t have to deal with session data being out of date or lingering after logout—it’s all in one place, making revocation straightforward. On top of this, when a session is active, it stays in memory, so lookups are faster without extra database queries.
+
+For more on Durable Objects, see [Cloudflare's documentation](https://developers.cloudflare.com/durable-objects/).
+
+---
+
+### Logging In
+
+We use **passkeys ([WebAuthn](https://webauthn.guide/))** for authentication. This allows users to log in without passwords, using their authenticator, browser or device to handle authentication securely.
+
+For more on passkeys, see [passkeys.dev](https://passkeys.dev/).
+
+#### Login Flow
+
+1. The user clicks **Login**.
+2. The frontend calls a server action to get a WebAuthn challenge.
+3. The challenge is stored in the **session store** using `sessions.save()`.
+4. The user's authenticator signs the challenge.
+5. The signed challenge is sent back to the server and verified.
+6. If successful, the session is updated with the **user ID**.
+
+<Code
+  language="typescript"
+  title="src/app/pages/auth/LoginPage.tsx"
+  code={importedCodeStandardLoginPage}
+  collapse={"1-18, 20-24, 41-90"}
+/>
+
+<Code
+  language="typescript"
+  title="src/app/pages/auth/functions.ts"
+  code={importedCodeStandardAuthFunctions}
+  collapse={"1-109, 111-112, 114-116, 119-169"}
+/>
+
+---
+
+### Registering Users
+
+Registration follows a very similar 3-step WebAuthn process as login:
+
+<Code
+  language="typescript"
+  title="src/app/pages/auth/LoginPage.tsx"
+  code={importedCodeStandardLoginPage}
+  collapse={"1-18, 20-41, 64-90"}
+/>
+
+One difference: we protect registrations with an extra layer of **bot protection** using [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/).
+
+#### Why Turnstile?
+
+Cloudflare has built-in bot protection, but it works by detecting and blocking malicious patterns over time. That means automated registrations can still get through until Cloudflare picks up on them. Turnstile prevents this from becoming an issue in the first place by requiring a lightweight challenge **before** registration happens, stopping bots at the point of entry.
+
+### Turnstile in the Registration Flow
+
+1. The Turnstile **client script** is loaded on the page.
+2. The frontend calls `useTurnstile()` to generate a challenge token.
+3. The token is sent to the backend along with the WebAuthn data.
+4. The backend verifies the token using `verifyTurnstileToken()` before completing registration.
+
+<Code
+  language="typescript"
+  title="src/app/pages/auth/LoginPage.tsx"
+  code={importedCodeStandardLoginPage}
+  collapse={"1-15, 18-18, 20-22, 24-41, 43-48, 57-62, 64-72, 76-88"}
+/>
+
+<Code
+  language="typescript"
+  title="src/app/pages/auth/functions.ts"
+  code={importedCodeStandardAuthFunctions}
+  collapse={"1-38, 40-43, 45-46, 55-93, 95-176"}
+/>

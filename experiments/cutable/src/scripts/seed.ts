@@ -1,4 +1,4 @@
-import { defineScript } from "@redwoodjs/sdk/worker";
+import { defineScript } from "redwoodsdk/worker";
 import { db, setupDb } from "../db";
 
 export default defineScript(async ({ env }) => {
@@ -11,7 +11,7 @@ export default defineScript(async ({ env }) => {
 
   const user = await db.user.create({
     data: {
-      id: '1',
+      id: "1",
       email: "her.stander@gmail.com",
     },
   });

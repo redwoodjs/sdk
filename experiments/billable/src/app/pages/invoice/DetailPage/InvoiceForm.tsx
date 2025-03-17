@@ -15,7 +15,7 @@ import { Textarea as OGTextarea } from "src/components/ui/textarea";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 import { cn } from "src/components/cn";
 import { toast, Toaster } from "sonner";
-import { RouteContext } from "@redwoodjs/sdk/router";
+import { RouteContext } from "redwoodsdk/router";
 import type { User } from "@prisma/client";
 
 function calculateSubtotal(items: InvoiceItem[]) {
@@ -48,7 +48,7 @@ export function InvoiceForm(props: {
 
   const pdfContentRef = useRef<HTMLDivElement>(null);
 
-  const isLoggedIn = props.ctx?.user
+  const isLoggedIn = props.ctx?.user;
 
   return (
     <div>
@@ -528,12 +528,14 @@ function SupplierName({
             setInvoice({ ...invoice, supplierName: e.target.value })
           }
         />
-        {isLoggedIn && <UploadLogo
-          invoiceId={invoice.id}
-          onSuccess={(supplierLogo) => {
-            setInvoice({ ...invoice, supplierLogo });
-          }}
-        />}
+        {isLoggedIn && (
+          <UploadLogo
+            invoiceId={invoice.id}
+            onSuccess={(supplierLogo) => {
+              setInvoice({ ...invoice, supplierLogo });
+            }}
+          />
+        )}
       </div>
     );
   }

@@ -1,6 +1,6 @@
 "use client";
 
-import { RouteContext } from "@redwoodjs/sdk/router";
+import { RouteContext } from "redwoodsdk/router";
 import { Loader2 } from "lucide-react";
 
 import { useState, useTransition } from "react";
@@ -24,7 +24,6 @@ export function LoginPage(ctx: RouteContext) {
   const handleSendEmail = () => {
     startTransition(async () => {
       await emailLoginLink(email, ctx);
-      console.log("### emailLoginLink done");
       setSuccess(true);
     });
   };

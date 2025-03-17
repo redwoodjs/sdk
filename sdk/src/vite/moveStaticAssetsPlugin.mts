@@ -1,18 +1,22 @@
 import { Plugin } from "vite";
 import { $sh } from "../lib/$.mjs";
 
-export const moveStaticAssetsPlugin = ({ rootDir }: { rootDir: string }): Plugin => ({
-  name: 'rw-sdk-move-static-assets',
+export const moveStaticAssetsPlugin = ({
+  rootDir,
+}: {
+  rootDir: string;
+}): Plugin => ({
+  name: "rw-sdk-move-static-assets",
 
-  apply: 'build',
+  apply: "build",
 
   async closeBundle() {
-    if (this.environment.name === 'client') {
+    if (this.environment.name === "client") {
       await $sh({ cwd: rootDir })`mv dist/client/assets/* dist/client/ || true`;
       await $sh({ cwd: rootDir })`rmdir dist/client/assets || true`;
     }
 
-    if (this.environment.name === 'worker') {
+    if (this.environment.name === "worker") {
       await $sh({ cwd: rootDir })`mv dist/worker/assets/* dist/client/ || true`;
       await $sh({ cwd: rootDir })`rmdir dist/worker/assets || true`;
     }

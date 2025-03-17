@@ -1,33 +1,51 @@
 // @ts-check
-import { defineConfig } from 'astro/config';
-import starlight from '@astrojs/starlight';
+import { defineConfig } from "astro/config";
+import starlight from "@astrojs/starlight";
 
 // https://astro.build/config
 export default defineConfig({
   integrations: [
     starlight({
-      title: 'Redwood SDK',
+      expressiveCode: {
+        shiki: {
+          bundledLangs: ["bash", "ts", "tsx"],
+        },
+      },
+      title: "RedwoodSDK",
       logo: {
-        src: './src/assets/logo.svg',
+        src: "./src/assets/logo.svg",
         replacesTitle: true,
       },
       customCss: [
         // Relative path to your custom CSS file
-        './src/styles/custom.css',
+        "./src/styles/custom.css",
       ],
       social: {
-        github: 'https://github.com/redwoodjs/sdk',
+        github: "https://github.com/redwoodjs/sdk",
       },
       sidebar: [
         {
-          label: 'Quick Start',
+          label: "Get Started",
           items: [
-            { label: 'Installation', slug: 'getting-started/installation' },
-            { label: 'Creating Your First Project', slug: 'getting-started/first-project' },
+            { label: "Quick Start", slug: "getting-started/quick-start" },
           ],
         },
         {
-          label: 'Tutorial',
+          label: "Core",
+          items: [
+            { slug: "core/overview" },
+            { label: "Request Handling", slug: "core/routing" },
+            { slug: "core/react-server-components" },
+            { slug: "core/database" },
+            { slug: "core/storage" },
+            { slug: "core/queues" },
+            { slug: "core/authentication" },
+            { slug: "core/security" },
+            { slug: "core/hosting" },
+          ]
+        },
+        {
+          label: "Tutorial",
           items: [
             {
               label: 'Full Stack Applications',
@@ -229,5 +247,4 @@ export default defineConfig({
       ],
     }),
   ],
-  baseUrl: '/docs/introduction'
 });

@@ -4,7 +4,7 @@ import { Layout } from "../../Layout";
 
 import { CreateInvoiceButton } from "./CreateInvoiceButton";
 import { db } from "src/db";
-import { RouteContext } from "@redwoodjs/sdk/router";
+import { RouteContext } from "redwoodsdk/router";
 import { link } from "src/shared/links";
 
 import {
@@ -75,11 +75,10 @@ export async function InvoiceListPage({ ctx }: RouteContext) {
             <TableHead></TableHead>
           </TableRow>
         </TableHeader>
-        {invoices.length === 0 && <TableCaption>
-          No invoices found
-        </TableCaption>}
+        {invoices.length === 0 && (
+          <TableCaption>No invoices found</TableCaption>
+        )}
         <TableBody>
-
           {invoices.map((i) => (
             <InvoiceListItem {...i} key={"invoice-" + i.id} />
           ))}

@@ -1,0 +1,56 @@
+{
+  // Schema reference
+  "$schema": "node_modules/wrangler/config-schema.json",
+
+  // Worker name
+  "name": "__change_me__",
+
+  // Entry point
+  "main": "src/worker.tsx",
+
+  // Compatibility settings
+  "compatibility_date": "2024-09-23",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Assets configuration
+  "assets": {
+    "binding": "ASSETS",
+  },
+
+  // Observability settings
+  "observability": {
+    "enabled": true,
+  },
+
+  // Durable Objects configuration
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "SESSION_DURABLE_OBJECT",
+        "class_name": "SessionDurableObject",
+      },
+    ],
+  },
+
+  // Environment variables
+  "vars": {
+    "APP_NAME": "__change_me__",
+  },
+
+  // Migrations configuration
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["SessionDurableObject"],
+    },
+  ],
+
+  // D1 database configuration
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "__change_me__",
+      "database_id": "__change_me__",
+    },
+  ],
+}

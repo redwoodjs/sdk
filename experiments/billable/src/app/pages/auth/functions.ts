@@ -3,7 +3,7 @@
 import { Resend } from "resend";
 import { link } from "../../shared/links";
 import { db } from "src/db";
-import { RouteContext } from "@redwoodjs/sdk/router";
+import { RouteContext } from "redwoodsdk/router";
 
 export async function generateAuthToken(email: string) {
   const authToken = Math.floor(100000 + Math.random() * 900000).toString();
@@ -12,31 +12,31 @@ export async function generateAuthToken(email: string) {
     where: { email },
     update: {
       authToken,
-      authTokenExpiresAt
+      authTokenExpiresAt,
     },
     create: {
       email,
       authToken,
       authTokenExpiresAt,
-    }
-  })
+    },
+  });
   return authToken;
 }
 
 export async function emailLoginLink(email: string, ctx: RouteContext) {
   const token = await generateAuthToken(email);
-  const { env } = ctx;  
-  const loginUrl = `${env.APP_URL}${link('/user/auth')}?token=${token}&email=${encodeURIComponent(email)}`;
+  const { env } = ctx;
+  const loginUrl = `${env.APP_URL}${link("/user/auth")}?token=${token}&email=${encodeURIComponent(email)}`;
 
   // TODO (peterp, 2025-02-11): Fix this better.
   if (!env.RESEND_API_KEY) {
-    console.log("In development mode, not sending email.")
-    console.log('token', token)
-    return
+    console.log("In development mode, not sending email.");
+    console.log("token", token);
+    return;
   }
 
   const resend = new Resend(env.RESEND_API_KEY);
-  console.log('### resend')
+  console.log("### resend");
   await resend.emails.send({
     from: "Billable <auth@billable.me>",
     to: email,
@@ -51,5 +51,5 @@ export async function emailLoginLink(email: string, ctx: RouteContext) {
     <p>This link will expire in 24 hours.</p>
   `,
   });
-  console.log('### resend done')
+  console.log("### resend done");
 }

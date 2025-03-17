@@ -11,7 +11,7 @@
   "scripts": {
     "migrate:dev": "wrangler d1 migrations apply DB --local",
     "migrate:prd": "wrangler d1 migrations apply DB --remote",
-    "dev": "while true; do NODE_ENV=development vite dev; [ $? -eq 0 ] || break; done",
+    "dev": "NODE_ENV=${NODE_ENV:-development} vite dev",
     "dev:init": "rw-scripts dev-init",
     "seed": "pnpm worker:run ./src/scripts/seed.ts",
     "migrate:new": "rw-scripts migrate-new",
@@ -37,7 +37,6 @@
     "@radix-ui/react-slot": "^1.1.1",
     "@radix-ui/react-toast": "^1.2.6",
     "@radix-ui/themes": "^3.2.0",
-    "@redwoodjs/sdk": "workspace:*",
     "autoprefixer": "^10.4.20",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
@@ -51,6 +50,7 @@
     "react": "19.0.0-rc-f2df5694-20240916",
     "react-dom": "19.0.0-rc-f2df5694-20240916",
     "react-server-dom-webpack": "19.0.0-rc-f2df5694-20240916",
+    "redwoodsdk": "0.0.17",
     "resend": "^4.1.1",
     "tailwind-merge": "^3.0.1",
     "tailwindcss": "^3.4.17"

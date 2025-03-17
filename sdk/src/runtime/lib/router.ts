@@ -8,25 +8,45 @@ export type RouteContext<
   params: TParams;
   env: Env;
   ctx: TContext;
+  headers: Headers;
   rw: RwContext<TContext>;
 };
 
-type PageProps<TContext> = Omit<RouteContext<TContext>, "rw" | "request">;
+export type PageProps<TContext> = Omit<
+  RouteContext<TContext>,
+  "request" | "headers" | "rw"
+> & { rw: { nonce: string } };
 
-export type RwContext<TContext> = {
-  Layout: React.FC<{ children: React.ReactNode }>;
-  renderPage: (params: {
-    Page: React.FC<Record<string, any>>;
-    props: PageProps<TContext>;
-    actionResult: unknown;
-    Layout: React.FC<{ children: React.ReactNode }>;
-  }) => Promise<Response>;
-  handleAction: (ctx: TContext) => Promise<unknown>;
+export type LayoutProps<TContext> = PageProps<TContext> & {
+  children: React.ReactNode;
 };
 
-type RouteMiddleware<TContext> = (
+export type RenderPageParams<TContext> = {
+  Page: React.FC<Record<string, any>>;
+  props: PageProps<TContext>;
+  actionResult: unknown;
+  Layout: React.FC<LayoutProps<TContext>>;
+};
+
+export type RenderPage<TContext> = (
+  params: RenderPageParams<TContext>,
+) => Promise<Response>;
+
+export type RwContext<TContext> = {
+  nonce: string;
+  Layout: React.FC<LayoutProps<TContext>>;
+  renderPage: RenderPage<TContext>;
+  handleAction: (ctx: RouteContext<TContext>) => Promise<unknown>;
+};
+
+export type RouteMiddleware<TContext = any> = (
   ctx: RouteContext<TContext>,
-) => Response | Promise<Response> | void | Promise<void>;
+) =>
+  | Response
+  | Promise<Response>
+  | void
+  | Promise<void>
+  | Promise<Response | void>;
 type RouteFunction<TContext> = (
   ctx: RouteContext<TContext>,
 ) => Response | Promise<Response>;
@@ -121,17 +141,19 @@ export function defineRoutes<TContext = Record<string, any>>(
     ctx,
     env,
     rw,
+    headers,
   }: {
     request: Request;
     ctx: TContext;
     env: Env;
     rw: RwContext<TContext>;
+    headers: Headers;
   }) => Response | Promise<Response>;
 } {
   const flattenedRoutes = flattenRoutes(routes);
   return {
     routes: flattenedRoutes,
-    async handle({ request, ctx, env, rw }) {
+    async handle({ request, ctx, env, rw, headers }) {
       const url = new URL(request.url);
       let path = url.pathname;
 
@@ -142,10 +164,18 @@ export function defineRoutes<TContext = Record<string, any>>(
 
       // Find matching route
       let match: RouteMatch<TContext> | null = null;
+      const routeContext: RouteContext<TContext> = {
+        request,
+        params: {},
+        ctx,
+        env,
+        rw,
+        headers,
+      };
 
       for (const route of flattenedRoutes) {
         if (typeof route === "function") {
-          const r = await route({ request, params: {}, ctx, env, rw });
+          const r = await route(routeContext);
 
           if (r instanceof Response) {
             return r;
@@ -167,37 +197,42 @@ export function defineRoutes<TContext = Record<string, any>>(
       }
 
       let { params, handler } = match;
+      routeContext.params = params;
 
-      let handlers = Array.isArray(handler) ? handler : [handler];
+      const handlers = Array.isArray(handler) ? handler : [handler];
       for (const h of handlers) {
         if (isRouteComponent(h)) {
-          const actionResult = await rw.handleAction(ctx);
+          const actionResult = await rw.handleAction(routeContext);
           const serializedEnv = serializeEnv(env);
-          const props = { params, env: serializedEnv, ctx };
+          const props = {
+            params,
+            env: serializedEnv,
+            ctx,
+            rw: { nonce: rw.nonce },
+          };
           return await rw.renderPage({
-            Page: handler as React.FC<Record<string, any>>,
+            Page: h as React.FC<Record<string, any>>,
             props,
             actionResult,
             Layout: rw.Layout,
           });
         } else {
-          return await (h({
-            request,
-            params,
-            ctx,
-            env,
-            rw,
-          }) as Promise<Response>);
+          const r = await (h(routeContext) as Promise<Response>);
+          if (r instanceof Response) {
+            return r;
+          }
         }
       }
-      
+
       // Add fallback return
-      return new Response("Response not returned from route handler", { status: 500 });
+      return new Response("Response not returned from route handler", {
+        status: 500,
+      });
     },
   };
 }
 
-export function route<TContext>(
+export function route<TContext = any>(
   path: string,
   handler: RouteHandler<TContext>,
 ): RouteDefinition<TContext> {
@@ -211,13 +246,13 @@ export function route<TContext>(
   };
 }
 
-export function index<TContext>(
+export function index<TContext = any>(
   handler: RouteHandler<TContext>,
 ): RouteDefinition<TContext> {
   return route("/", handler);
 }
 
-export function prefix<TContext>(
+export function prefix<TContext = any>(
   prefix: string,
   routes: ReturnType<typeof route<TContext>>[],
 ): RouteDefinition<TContext>[] {
@@ -229,7 +264,7 @@ export function prefix<TContext>(
   });
 }
 
-export function layout<TContext>(
+export function layout<TContext = any>(
   Layout: React.FC<{ children: React.ReactNode }>,
   routes: Route<TContext>[],
 ): Route<TContext>[] {

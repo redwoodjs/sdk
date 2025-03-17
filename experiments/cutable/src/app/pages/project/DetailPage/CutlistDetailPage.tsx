@@ -1,5 +1,5 @@
 import { getProject, ProjectItem, updateProject } from "./ProjectDetailPage";
-import { RouteContext } from "@redwoodjs/sdk/router";
+import { RouteContext } from "redwoodsdk/router";
 import { BreadcrumbLink } from "src/components/ui/breadcrumb";
 import { BreadcrumbSeparator } from "src/components/ui/breadcrumb";
 import { BreadcrumbPage } from "src/components/ui/breadcrumb";
@@ -14,29 +14,41 @@ export default async function CutlistDetailPage({
   ctx,
 }: RouteContext<{ id: string }>) {
   const project = await getProject(params.id, ctx.user.id);
-  const cutlistItems = JSON.parse(project.cutlistItems as string) as ProjectItem[];
+  const cutlistItems = JSON.parse(
+    project.cutlistItems as string,
+  ) as ProjectItem[];
 
   const SHEET_WIDTH = project.boardWidth;
   const SHEET_HEIGHT = project.boardLength;
   const BLADE_WIDTH = project.bladeWidth;
 
-  const panels = cutlistItems.flatMap(item =>
+  const panels = cutlistItems.flatMap((item) =>
     Array(item.quantity).fill({
       width: item.width,
-      height: item.length
-    })
+      height: item.length,
+    }),
   );
 
-  let packer = await findOptimalPacking(panels, SHEET_WIDTH, SHEET_HEIGHT, BLADE_WIDTH);
+  let packer = await findOptimalPacking(
+    panels,
+    SHEET_WIDTH,
+    SHEET_HEIGHT,
+    BLADE_WIDTH,
+  );
   const boards = packer?.map((board: any) => {
     let usedRects = board.map((rect: any) => ({
       x: rect.x,
       y: rect.y,
       width: rect.width,
-      height: rect.height
+      height: rect.height,
     }));
 
-    let freeRects = calculateFreeSpaces(board, SHEET_WIDTH, SHEET_HEIGHT, BLADE_WIDTH); // Pass blade width
+    let freeRects = calculateFreeSpaces(
+      board,
+      SHEET_WIDTH,
+      SHEET_HEIGHT,
+      BLADE_WIDTH,
+    ); // Pass blade width
 
     return {
       width: board.width,
@@ -50,24 +62,23 @@ export default async function CutlistDetailPage({
     // update the project with the new needed and cost
     await updateProject(params.id, {
       boardsNeeded: boards.length,
-      total: boards.length * project.boardPrice
+      total: boards.length * project.boardPrice,
     });
   }
-
 
   const boardCount = packer?.length ?? 0;
   const totalCost = boardCount * project.boardPrice;
 
-
   // boards?
-
 
   return (
     <Layout ctx={ctx}>
       <BreadcrumbList>
-        <BreadcrumbLink href={link('/project/list')}>Projects</BreadcrumbLink>
+        <BreadcrumbLink href={link("/project/list")}>Projects</BreadcrumbLink>
         <BreadcrumbSeparator />
-        <BreadcrumbLink href={`/project/${params.id}`}>Edit Project</BreadcrumbLink>
+        <BreadcrumbLink href={`/project/${params.id}`}>
+          Edit Project
+        </BreadcrumbLink>
         <BreadcrumbSeparator />
         <BreadcrumbPage>Cutlist</BreadcrumbPage>
       </BreadcrumbList>
@@ -97,11 +108,14 @@ export default async function CutlistDetailPage({
           Cut Layout
         </h3>
         {boards ? (
-          <BoardRenderer boards={boards} boardWidth={project.boardWidth} boardHeight={project.boardLength} />
+          <BoardRenderer
+            boards={boards}
+            boardWidth={project.boardWidth}
+            boardHeight={project.boardLength}
+          />
         ) : (
           <p>Loading cutting layout...</p> // Placeholder while waiting for data
         )}
-
       </div>
     </Layout>
   );

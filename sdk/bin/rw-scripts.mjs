@@ -2,10 +2,7 @@
 
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { $ as $base } from 'execa';
-
-// todo(justinvdm, 2025-02-09): Set this only when in this monorepo
-process.env.RW_DEV = "1";
+import { $ as $base } from "execa";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -21,9 +18,7 @@ const $ = $base({
   reject: false,
   env: {
     PATH: `${process.env.PATH}:${BIN_DIR}`,
-  }
-})
+  },
+});
 
-const [runner, containingDir, extension] = process.env.RW_DEV ? ['tsx', 'src', 'mts'] : ['node', 'dist', 'mjs']
-
-$`${runner} ${path.resolve(ROOT_DIR, containingDir, 'scripts', SCRIPT_NAME)}.${extension} ${ARGS.slice(1).join(" ")}`;
+$`node ${path.resolve(ROOT_DIR, "dist", "scripts", SCRIPT_NAME)}.mjs ${ARGS.slice(1).join(" ")}`;

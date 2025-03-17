@@ -1,7 +1,7 @@
-import { MAX_TOKEN_DURATION } from './constants';
-import { SessionDO } from './session';
-import { ErrorResponse } from '@redwoodjs/sdk/worker';
-import { link } from './app/shared/links'
+import { MAX_TOKEN_DURATION } from "./constants";
+import { SessionDO } from "./session";
+import { ErrorResponse } from "redwoodsdk/worker";
+import { link } from "./app/shared/links";
 
 interface SessionIdParts {
   unsignedSessionId: string;
@@ -9,15 +9,19 @@ interface SessionIdParts {
 }
 
 const packSessionId = (parts: SessionIdParts): string => {
-  return btoa([parts.unsignedSessionId, parts.signature].join(':'));
-}
+  return btoa([parts.unsignedSessionId, parts.signature].join(":"));
+};
 
 const unpackSessionId = (packed: string): SessionIdParts => {
-  const [unsignedSessionId, signature] = atob(packed).split(':');
+  const [unsignedSessionId, signature] = atob(packed).split(":");
   return { unsignedSessionId, signature };
-}
+};
 
-export const performLogin = async (request: Request, env: Env, userId: string) => {
+export const performLogin = async (
+  request: Request,
+  env: Env,
+  userId: string,
+) => {
   const sessionId = await generateSessionId(env);
   const doId = env.SESSION_DO.idFromName(sessionId);
   const sessionDO = env.SESSION_DO.get(doId) as DurableObjectStub<SessionDO>;
@@ -28,12 +32,12 @@ export const performLogin = async (request: Request, env: Env, userId: string) =
   return new Response(null, {
     status: 301,
     headers: {
-      'Location': link('/invoice/list'),
+      Location: link("/invoice/list"),
       "Set-Cookie": cookie,
-      "Content-Type": "text/html"
+      "Content-Type": "text/html",
     },
   });
-}
+};
 
 const signSessionId = async (sessionId: string, env: Env) => {
   const encoder = new TextEncoder();
@@ -43,36 +47,36 @@ const signSessionId = async (sessionId: string, env: Env) => {
     encoder.encode(env.SECRET_KEY),
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign"]
+    ["sign"],
   );
 
   const signatureArrayBuffer = await crypto.subtle.sign(
     "HMAC",
     key,
-    encoder.encode(sessionId)
+    encoder.encode(sessionId),
   );
 
   return arrayBufferToHex(signatureArrayBuffer);
-}
+};
 
 const arrayBufferToHex = (buffer: ArrayBuffer): string => {
   const array = new Uint8Array(buffer);
   return Array.from(array)
-    .map(b => b.toString(16).padStart(2, '0'))
-    .join('');
-}
+    .map((b) => b.toString(16).padStart(2, "0"))
+    .join("");
+};
 
 export const generateSessionId = async (env: Env) => {
   const unsignedSessionId = crypto.randomUUID();
   const signature = await signSessionId(unsignedSessionId, env);
   return packSessionId({ unsignedSessionId, signature });
-}
+};
 
 export const isValidSessionId = async (sessionId: string, env: Env) => {
   const { unsignedSessionId, signature } = unpackSessionId(sessionId);
   const computedSignature = await signSessionId(unsignedSessionId, env);
   return computedSignature === signature;
-}
+};
 
 export const getSession = async (request: Request, env: Env) => {
   const cookieHeader = request.headers.get("Cookie");
@@ -81,13 +85,13 @@ export const getSession = async (request: Request, env: Env) => {
     throw new ErrorResponse(401, "No cookie found");
   }
 
-  const sessionId = cookieHeader.split("=").slice(1).join("=")
+  const sessionId = cookieHeader.split("=").slice(1).join("=");
 
   if (sessionId == null) {
     throw new ErrorResponse(401, "No session id found");
   }
 
-  if (!await isValidSessionId(sessionId, env)) {
+  if (!(await isValidSessionId(sessionId, env))) {
     throw new ErrorResponse(401, "Invalid session id");
   }
 
@@ -95,9 +99,9 @@ export const getSession = async (request: Request, env: Env) => {
   const sessionDO = env.SESSION_DO.get(doId) as DurableObjectStub<SessionDO>;
   const session = await sessionDO.getSession();
 
-  if ('error' in session) {
+  if ("error" in session) {
     throw new ErrorResponse(401, session.error);
   }
 
   return session.value;
-}
+};

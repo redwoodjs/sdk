@@ -1,0 +1,97 @@
+---
+title: React Server Components
+description: React, Server Components, Server Actions, and Suspense
+---
+
+import { Aside, Tabs, TabItem, LinkCard } from "@astrojs/starlight/components";
+
+React is used to build your user interface. By default, all components are server components. That means that the component is rendered on the server as HTML and then streamed to the client. These do not include any client-side interactivity.
+
+```tsx
+export default function MyServerComponent() {
+  return <div>Hello, from the server!</div>;
+}
+```
+
+When a user needs to interact with your component: clicking a button, setting state, etc, then you must use a client component. Mark the client component with the `"use client"` directive. This will be hydrated by React in the browser.
+
+```tsx mark={1}
+"use client";
+
+export default function MyClientComponent() {
+  return <button>Click me</button>;
+}
+```
+
+## Fetching and displaying data
+
+React Server Components run on the server, they can easily fetch data and make it part of the payload that's sent to the client.
+
+```tsx title="src/app/pages/todos/TodoPage.tsx" "async"
+export async function Todos({ ctx }) {
+  const todos = await db.todo.findMany({ where: { userId: ctx.user.id } });
+  return (
+    <ol>
+      {todos.map((todo) => (
+        <li key={todo.id}>{todo.title}</li>
+      ))}
+    </ol>
+  );
+}
+
+export async function TodoPage({ ctx }) {
+  return (
+    <div>
+      <h1>Todos</h1>
+      <Suspense fallback={<div>Loading...</div>}>
+        <Todos ctx={ctx} />
+      </Suspense>
+    </div>
+  );
+}
+
+---
+The `TodoPage` component is a server component. It it rendered by a route, so it receives the `ctx` object. We pass this to the `Todos` component, which is also a server component,
+and renders the todos.
+---
+```
+
+<Aside type="tip" title="Suspense">
+When a server component is async, you'll able to wrap it in a `Suspense` boundary. This will allow you to show a loading state while the data is being fetched.  
+</Aside> 
+
+## Server Functions
+
+Allow you to execute code on the server from a client component.
+
+```tsx title="@/pages/todos/functions.tsx" mark={1}
+"use server";
+
+export async function addTodo(formData: FormData, ctx: Context) {
+  const title = formData.get("title");
+  await db.todo.create({ data: { title, userId: ctx.user.id } });
+}
+
+---
+The `addTodo` function is a server function. It is executed on the server when the form is submitted from a client side component. The form data is sent to the server and the function is executed. The result is sent back to the client, parsed by React, and the view is updated with the new todo.
+---
+```
+
+```tsx title="@/pages/todos/AddTodo.tsx" mark={1, 3}
+"use client";
+
+import { addTodo } from "./functions";
+
+export default function AddTodo() {
+  return (
+    <form action={addTodo}>
+      <input type="text" name="title" />
+      <button type="submit">Add</button>
+    </form>
+  );
+}
+```
+
+### Context
+
+Context is a way to share data globally between server components on a per-request basis. The context is populated by middleware, and is available to all React Server Components Pages and Server Functions.

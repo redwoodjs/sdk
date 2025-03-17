@@ -1,16 +1,14 @@
-import { defineLinks } from "@redwoodjs/sdk/router";
+import { defineLinks } from "redwoodsdk/router";
 
 export const link = defineLinks([
-  '/',
+  "/",
 
-  '/user/login',
-  '/user/logout',
-  '/user/auth',
+  "/user/login",
+  "/user/logout",
+  "/user/auth",
 
-  '/invoice/list',
-  '/invoice/:id',
-  '/invoice/:id/upload',
-  '/invoice/logos',
-])
-
-
+  "/invoice/list",
+  "/invoice/:id",
+  "/invoice/:id/upload",
+  "/invoice/logos",
+]);

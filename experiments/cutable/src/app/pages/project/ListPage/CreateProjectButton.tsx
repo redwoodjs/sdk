@@ -15,13 +15,8 @@ export function CreateProjectButton() {
   };
 
   return (
-
-      <Button
-        onClick={onClick}
-        disabled={isPending}
-      >
-        New Project
-      </Button>
-
+    <Button onClick={onClick} disabled={isPending}>
+      New Project
+    </Button>
   );
 }
