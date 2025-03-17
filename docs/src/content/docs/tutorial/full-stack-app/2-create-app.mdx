@@ -6,53 +6,78 @@ sidebar:
 description: A guide in my new Starlight docs site.
 ---
 
-import { FileTree } from '@astrojs/starlight/components';
-import { Aside } from '@astrojs/starlight/components';
-import { Steps } from '@astrojs/starlight/components';
+import { FileTree, Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
 ## Project Generation and Structure
 
 The first thing we'll do is generate our project.
 
-{/* this command doesn't exist yet */}
 
-```bash
-pnpm create vite@latest applywize -- --template redwoodsdk
-```
+<Tabs>
+  <TabItem label="pnpm">
+  ```terminal
+  npx degit redwoodjs/sdk/starters/passkey-auth applywize
+  cd applywize
+  pnpm install
+  ```
+  </TabItem>
+  <TabItem label="npm">
+  ```terminal
+  npx degit redwoodjs/sdk/starters/passkey-auth applywize
+  cd applywize
+  npm install
+  ```
+  </TabItem>
+  <TabItem label="yarn">
+  ```terminal
+  npx degit redwoodjs/sdk/starters/passkey-auth applywize
+  cd applywize
+  yarn install
+  ```
+  </TabItem>
+</Tabs>
 
 This will create a directory called `applywize` with the RedwoodSDK project structure.
 
+![](./images/terminal-install-starter.png)
+
+Inside, the `applywize` directory, you should have the following files and folders:
+
 <FileTree>
-- migrations/
-- prisma/
-  - schema.prisma
-- public/
-- src/
-  - app/
-    - pages/
-      - Home.tsx
-    - shared/
-      - links.ts
-    - Document.tsx
-  - scripts/
-    - seed.ts
-  - client.tsx
-  - db.ts
-  - worker.tsx
-- types/
-- .gitignore
 - README.md
+- migrations # database migrations
+  - 0001_init.sql
+- package.json
+- pnpm-lock.yaml
+- prisma # database schema
+  - schema.prisma
+- src
+  - app
+    - Document.tsx # Main HTML document
+    - headers.ts # Sets up page headers
+    - pages
+      - Home.tsx # Home page
+      - auth
+        - functions.ts # authentication functions
+        - LoginPage.tsx # Login page
+        - routes.ts # authentication routes
+      - shared
+        - links.ts # list of links
+  - client.tsx
+  - db.ts # database client
+  - session # sets up sessions for authentication
+  - worker.tsx # Cloudflare worker
 - tsconfig.json
-- .vite.config.mts
+- types
+  - vite.d.ts
+- vite.config.mts
 - worker-configuration.d.ts
-- wrangler.toml
+- wrangler.jsonc # Cloudflare configuration
 </FileTree>
 
 <Aside type="note" title="Starter Projects">
-  For the tutorial, we're starting with the [Pass Key Auth starter project](/reference/starters/passkey-auth/). However, if you start with a different template, the files and folders may vary slightly.
+  For the tutorial, we're starting with the [Pass Key Auth starter project](/reference/starters/passkey-auth/). However, when you start building your own projects, if you start with a different template, the files and folders may vary slightly.
 </Aside>
-
-{/* TODO: add some additional context for the purpose of each file */}
 
 ## Setting up TailwindCSS and ShadCN
 
@@ -68,9 +93,23 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
 
 <Steps>
 1. Install Tailwind CSS
+    <Tabs>
+    <TabItem label="pnpm">
+    ```bash
+    pnpm install tailwindcss @tailwindcss/vite
+    ```
+    </TabItem>
+    <TabItem label="npm">
     ```bash
     npm install tailwindcss @tailwindcss/vite
     ```
+    </TabItem>
+    <TabItem label="yarn">
+    ```bash
+    yarn install tailwindcss @tailwindcss/vite
+    ```
+    </TabItem>
+    </Tabs>
 
 2. Configure the Vite Plugin
     ```ts ins="import tailwindcss from '@tailwindcss/vite'" ins="tailwindcss()," title="vite.config.mts"
