@@ -80,12 +80,16 @@ export const realtimeTransport: Transport = ({ setRscPayload }) => {
     };
     socket.send(JSON.stringify(message));
 
-    return new Promise((resolve) => {
+    return new Promise((resolve, reject) => {
       const messageHandler = (event: MessageEvent) => {
         const data = JSON.parse(event.data);
         if (data.type === "action:response" && data.id === id) {
           socket.removeEventListener("message", messageHandler);
-          resolve(data.result);
+          if (data.error) {
+            reject(new Error(data.error));
+          } else {
+            resolve(data.result);
+          }
         }
       };
       socket.addEventListener("message", messageHandler);

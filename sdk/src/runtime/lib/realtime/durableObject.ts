@@ -4,29 +4,17 @@ export class RealtimeDurableObject extends DurableObject {
   state: DurableObjectState;
   env: any;
   connections: Set<WebSocket>;
-  documentContent: string;
 
   constructor(state: DurableObjectState, env: any) {
     super(state, env);
     this.state = state;
     this.env = env;
     this.connections = new Set();
-    this.documentContent = "";
   }
 
   async fetch(request: Request): Promise<Response> {
     if (request.headers.get("Upgrade") === "websocket") {
       return this.handleWebSocket(request);
-    }
-
-    if (request.method === "POST") {
-      const { content }: { content: string } = await request.json();
-      await this.state.blockConcurrencyWhile(async () => {
-        this.documentContent = content;
-        await this.state.storage.put("document", content);
-      });
-      this.broadcast(content);
-      return new Response("Document updated", { status: 200 });
     }
 
     return new Response("Invalid request", { status: 400 });
@@ -43,19 +31,30 @@ export class RealtimeDurableObject extends DurableObject {
     webSocket.accept();
     this.connections.add(webSocket);
 
-    // Load persisted content
-    const storedContent = await this.state.storage.get<string>("document");
-    if (storedContent) {
-      this.documentContent = storedContent;
-      webSocket.send(this.documentContent);
-    }
-
     webSocket.addEventListener("message", async (event) => {
-      await this.state.blockConcurrencyWhile(async () => {
-        this.documentContent = event.data.toString();
-        await this.state.storage.put("document", this.documentContent);
-      });
-      this.broadcast(this.documentContent);
+      const message = JSON.parse(event.data.toString());
+
+      if (message.type === "action:request") {
+        try {
+          const result = await this.handleAction(message.id, message.args);
+
+          webSocket.send(
+            JSON.stringify({
+              type: "action:response",
+              id: message.id,
+              result,
+            }),
+          );
+        } catch (error) {
+          webSocket.send(
+            JSON.stringify({
+              type: "action:response",
+              id: message.id,
+              error: `${error}`,
+            }),
+          );
+        }
+      }
     });
 
     webSocket.addEventListener("close", () => {
@@ -63,13 +62,50 @@ export class RealtimeDurableObject extends DurableObject {
     });
   }
 
-  private broadcast(content: string): void {
+  private async handleAction(id: string, args: any[]): Promise<any> {
+    // todo(justinvdm, 2025-03-17): implement
+    return null;
+  }
+
+  private async broadcastRSCUpdate(rscPayload: ReadableStream): Promise<void> {
     for (const socket of this.connections) {
       try {
-        socket.send(content);
+        socket.send(JSON.stringify({ type: "rsc:update" }));
+
+        const reader = rscPayload.getReader();
+        while (true) {
+          const { done, value } = await reader.read();
+
+          if (done) {
+            socket.send(JSON.stringify({ type: "rsc:end" }));
+            break;
+          }
+
+          socket.send(
+            JSON.stringify({
+              type: "rsc:chunk",
+              payload: value,
+            }),
+          );
+        }
       } catch (err) {
-        console.error("Failed to send update:", err);
+        console.error("Failed to send RSC update:", err);
       }
     }
+  }
+
+  public async updateRSC(newContent: any): Promise<void> {
+    const rscStream = await this.generateRSCStream(newContent);
+    this.broadcastRSCUpdate(rscStream);
+  }
+
+  private async generateRSCStream(content: any): Promise<ReadableStream> {
+    // todo(justinvdm, 2025-03-17): implement
+    return new ReadableStream({
+      start(controller) {
+        controller.enqueue(content);
+        controller.close();
+      },
+    });
   }
 }
