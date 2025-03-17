@@ -29,6 +29,10 @@
         "name": "REALTIME_DURABLE_OBJECT",
         "class_name": "RealtimeDurableObject",
       },
+      {
+        "name": "DOCUMENT_DURABLE_OBJECT",
+        "class_name": "DocumentDurableObject",
+      },
     ],
   },
 
