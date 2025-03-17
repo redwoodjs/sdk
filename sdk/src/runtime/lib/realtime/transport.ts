@@ -1,30 +1,32 @@
 import { createFromReadableStream } from "react-server-dom-webpack/client.browser";
-import { Transport, type ActionResponse } from "../../client";
+import { fetchTransport, Transport, type ActionResponse } from "../../client";
 
-export const realtimeTransport: Transport = ({ setRscPayload }) => {
+export const realtimeTransport: Transport<{ key?: string }> = (
+  { setRscPayload },
+  { key = "default" } = {},
+) => {
   let ws: WebSocket | null = null;
-  let promisedConnectionReady: Promise<void>;
+  let isConnected = false;
+  const clientId = crypto.randomUUID();
 
-  const ensureWs = async (): Promise<WebSocket> => {
-    if (!ws) {
-      setupWebSocket();
-    }
-    await promisedConnectionReady;
-    return ws!;
-  };
+  const fetchCallServer = fetchTransport({ setRscPayload });
+
+  const clientUrl = new URL(window.location.href);
+  clientUrl.protocol = "";
+  clientUrl.host = "";
 
   const setupWebSocket = () => {
     if (ws) return;
 
-    const { promise, resolve: resolveConnectionReady } =
-      Promise.withResolvers<void>();
-
-    promisedConnectionReady = promise;
-
-    ws = new WebSocket(`wss://${window.location.host}/__realtime`);
+    ws = new WebSocket(
+      `wss://${window.location.host}/__realtime?` +
+        `key=${encodeURIComponent(key)}&` +
+        `url=${encodeURIComponent(clientUrl.toString())}&` +
+        `clientId=${encodeURIComponent(clientId)}`,
+    );
 
     ws.addEventListener("open", () => {
-      resolveConnectionReady();
+      isConnected = true;
     });
 
     ws.addEventListener("message", (event) => {
@@ -59,41 +61,58 @@ export const realtimeTransport: Transport = ({ setRscPayload }) => {
     ws.addEventListener("close", () => {
       console.warn("[Realtime] WebSocket closed, attempting to reconnect...");
       ws = null;
+      isConnected = false;
       setTimeout(setupWebSocket, 5000);
     });
+  };
+
+  const ensureWs = (): WebSocket => {
+    if (!ws && isConnected) {
+      throw new Error(
+        "Inconsistent state: WebSocket is null but marked as connected",
+      );
+    }
+    if (!ws || !isConnected) {
+      throw new Error("WebSocket is not connected");
+    }
+    return ws;
   };
 
   const realtimeCallServer = async <Result>(
     id: string | null,
     args: unknown[],
   ): Promise<Result> => {
-    const { encodeReply } = await import(
-      "react-server-dom-webpack/client.browser"
-    );
+    try {
+      const socket = ensureWs();
+      const { encodeReply } = await import(
+        "react-server-dom-webpack/client.browser"
+      );
 
-    const socket = await ensureWs();
-
-    const message = {
-      type: "action:request",
-      id,
-      args: args != null ? await encodeReply(args) : null,
-    };
-    socket.send(JSON.stringify(message));
-
-    return new Promise((resolve, reject) => {
-      const messageHandler = (event: MessageEvent) => {
-        const data = JSON.parse(event.data);
-        if (data.type === "action:response" && data.id === id) {
-          socket.removeEventListener("message", messageHandler);
-          if (data.error) {
-            reject(new Error(data.error));
-          } else {
-            resolve(data.result);
-          }
-        }
+      const message = {
+        type: "action:request",
+        id,
+        args: args != null ? await encodeReply(args) : null,
       };
-      socket.addEventListener("message", messageHandler);
-    });
+
+      socket.send(JSON.stringify(message));
+
+      return new Promise((resolve, reject) => {
+        const messageHandler = (event: MessageEvent) => {
+          const data = JSON.parse(event.data);
+          if (data.type === "action:response" && data.id === id) {
+            socket.removeEventListener("message", messageHandler);
+            if (data.error) {
+              reject(new Error(data.error));
+            } else {
+              resolve(data.result);
+            }
+          }
+        };
+        socket.addEventListener("message", messageHandler);
+      });
+    } catch {
+      return (await fetchCallServer(id, args)) as Result;
+    }
   };
 
   setupWebSocket();
