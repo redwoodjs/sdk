@@ -2,10 +2,10 @@ import { DurableObject } from "cloudflare:workers";
 
 export class RealtimeDurableObject extends DurableObject {
   state: DurableObjectState;
-  env: any;
+  env: Env;
   connections: Set<WebSocket>;
 
-  constructor(state: DurableObjectState, env: any) {
+  constructor(state: DurableObjectState, env: Env) {
     super(state, env);
     this.state = state;
     this.env = env;
