@@ -6,7 +6,14 @@ import { ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import { ErrorResponse } from "./error";
 
-import { Route, RouteContext, defineRoutes } from "./lib/router";
+import {
+  Route,
+  RouteContext,
+  defineRoutes,
+  RenderPageParams,
+  PageProps,
+  LayoutProps,
+} from "./lib/router";
 import { generateNonce } from "./lib/utils";
 import { IS_DEV } from "./constants";
 
@@ -58,27 +65,30 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
 
         const renderPage = async ({
           Page,
-          props: givenProps,
+          props: fullPageProps,
           actionResult,
           Layout,
-          nonce,
-        }: {
-          Page: React.FC<Record<string, any>>;
-          props: Record<string, any>;
-          actionResult: unknown;
-          Layout: React.FC<{ children: React.ReactNode }>;
-          nonce: string;
-        }) => {
-          let props = givenProps;
+        }: RenderPageParams<Context>) => {
+          let props = fullPageProps;
+          let layoutProps = fullPageProps;
 
           // context(justinvdm, 25 Feb 2025): If the page is a client reference, we need to avoid passing
           // down props the client shouldn't get (e.g. env). For safety, we pick the allowed props explicitly.
           if (
             Object.prototype.hasOwnProperty.call(Page, "$$isClientReference")
           ) {
-            const { ctx, params } = givenProps;
-            props = { ctx, params };
+            const { ctx, params } = fullPageProps;
+            props = { ctx, params } as PageProps<Context>;
           }
+
+          if (
+            Object.prototype.hasOwnProperty.call(Layout, "$$isClientReference")
+          ) {
+            const { ctx, params } = fullPageProps;
+            layoutProps = { ctx, params } as LayoutProps<Context>;
+          }
+
+          const nonce = fullPageProps.rw.nonce;
 
           const rscPayloadStream = renderToRscStream({
             node: <Page {...props} />,
@@ -98,7 +108,9 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
 
           const htmlStream = await transformRscToHtmlStream({
             stream: rscPayloadStream1,
-            Parent: Layout,
+            Parent: ({ children }) => (
+              <Layout {...layoutProps} children={children} />
+            ),
           });
 
           const html = htmlStream.pipeThrough(

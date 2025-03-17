@@ -18,3 +18,7 @@ figcaption:not(.header) {
   color: var(--ec-caption-text) !important;
   padding: 0rem 1rem 0.5rem 1rem !important;
 }
+
+.output {
+  background-color: var(--ec-caption-bg) !important;
+}

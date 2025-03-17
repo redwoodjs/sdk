@@ -3,7 +3,9 @@ title: Hosting
 description: Cloudflare's Developer Platform provides out-of-the-box access to essential services
 ---
 
-Powered by Cloudflare's Developer Platform provides out-of-the-box access to essential services:
+import { Aside } from "@astrojs/starlight/components";
+
+Cloudflare's Developer Platform provides out-of-the-box access to essential services:
 
 - [Compute](https://developers.cloudflare.com/workers/) (Workers) for serverless functions
 - [Database](https://developers.cloudflare.com/d1/) (D1) for data storage
@@ -11,4 +13,32 @@ Powered by Cloudflare's Developer Platform provides out-of-the-box access to ess
 - [Queues](https://developers.cloudflare.com/queues/) for background job processing
 - & [so much more!](https://developers.cloudflare.com/)
 
-This tight integration with Cloudflare delivers a seamless developer experience while giving you powerful production-ready infrastructure.
+<Aside type="tip" title="Pick your poison">
+  You do not need to use Cloudflare's Developer Platform, you can use any bare-metal hosting provider you want, but we recommend
+  using Cloudflare's Developer Platform!
+</Aside>
+
+Not only does Cloudflare have the world's best network, but they also have the best developer experience. When you code locally you're coding against a real environment that is the same as the production environment. This has huge implications for your workflow and productivity, because often "it just works!"
+
+
+## Deploy to production
+
+Ship your website to Cloudflare with the following command:
+
+<Tabs syncKey="package-manager">
+  <TabItem label="pnpm">
+    ```bash frame="none" showLineNumbers=false
+    pnpm release
+    ```
+  </TabItem>
+  <TabItem label="npm">
+    ```bash frame="none" showLineNumbers=false  
+    npm run release
+    ```
+  </TabItem>
+  <TabItem label="yarn">
+    ```bash frame="none" showLineNumbers=false
+    yarn release
+    ```
+  </TabItem>
+</Tabs>
