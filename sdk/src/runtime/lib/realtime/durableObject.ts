@@ -162,19 +162,4 @@ export class RealtimeDurableObject extends DurableObject {
       }
     }
   }
-
-  public async updateRSC(newContent: any): Promise<void> {
-    const rscStream = await this.generateRSCStream(newContent);
-    this.broadcastRSCUpdate(rscStream);
-  }
-
-  private async generateRSCStream(content: any): Promise<ReadableStream> {
-    // todo(justinvdm, 2025-03-17): implement
-    return new ReadableStream({
-      start(controller) {
-        controller.enqueue(content);
-        controller.close();
-      },
-    });
-  }
 }
