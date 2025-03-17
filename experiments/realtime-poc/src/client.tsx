@@ -8,7 +8,7 @@ const main = async () => {
   const setupWebSocket = () => {
     if (ws) return;
 
-    ws = new WebSocket(`wss://${window.location.host}/document`);
+    ws = new WebSocket(`wss://${window.location.host}/__realtime`);
 
     ws.addEventListener("message", (event) => {
       console.log("[Realtime] New document content received");
