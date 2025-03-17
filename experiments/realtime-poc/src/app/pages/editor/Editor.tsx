@@ -1,18 +1,19 @@
 "use client";
 import { useState, useCallback } from "react";
 import debounce from "lodash/debounce";
-import { updateDocument, getDocument } from "./functions";
+import { updateContent, getContent } from "./functions";
+import { RouteContext } from "redwoodsdk/router";
 
-const Home = async () => {
-  const key = window.location.pathname;
-  const [content, setContent] = useState<string>(await getDocument(key));
+export const Editor = async (ctx: RouteContext) => {
+  const key = ctx.params.key;
+  const [content, setContent] = useState<string>(await getContent(key, ctx));
 
   const debouncedUpdate = useCallback(
     debounce(async (newContent: string) => {
       try {
-        await updateDocument(key, newContent);
+        await updateContent(key, newContent);
       } catch (error) {
-        console.error("Error updating document:", error);
+        console.error("Error updating content:", error);
       }
     }, 1000),
     [],
@@ -33,5 +34,3 @@ const Home = async () => {
     />
   );
 };
-
-export default Home;
