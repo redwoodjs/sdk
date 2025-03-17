@@ -31,12 +31,20 @@ export const realtimeTransport: Transport = ({ setRscPayload }) => {
       const data = JSON.parse(event.data);
 
       if (data.type === "rsc:update") {
-        console.log("[Realtime] New content received");
+        console.log("[Realtime] New content stream started");
 
         const stream = new ReadableStream({
           start(controller) {
-            controller.enqueue(data.payload);
-            controller.close();
+            ws!.addEventListener("message", function streamHandler(event) {
+              const chunk = JSON.parse(event.data);
+
+              if (chunk.type === "rsc:chunk") {
+                controller.enqueue(chunk.payload);
+              } else if (chunk.type === "rsc:end") {
+                controller.close();
+                ws!.removeEventListener("message", streamHandler);
+              }
+            });
           },
         });
 
