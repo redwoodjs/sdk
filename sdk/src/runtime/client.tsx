@@ -1,9 +1,5 @@
 import { clientWebpackRequire } from "./imports/client";
-import {
-  createFromFetch,
-  encodeReply,
-  type CallServerCallback,
-} from "react-server-dom-webpack/client.browser";
+import { type CallServerCallback } from "react-server-dom-webpack/client.browser";
 
 export type ActionResponse<Result> = {
   node: React.ReactNode;
@@ -102,8 +98,4 @@ export const initClient = async ({
       callServer(null, null);
     });
   }
-
-  return {
-    setRscPayload,
-  };
 };
