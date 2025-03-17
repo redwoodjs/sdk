@@ -10,10 +10,7 @@ type TransportContext = {
   setRscPayload: <Result>(v: Promise<ActionResponse<Result>>) => void;
 };
 
-export type Transport<Options = {}> = (
-  context: TransportContext,
-  options?: Options,
-) => CallServerCallback;
+export type Transport = (context: TransportContext) => CallServerCallback;
 
 export type CreateCallServer = (
   context: TransportContext,

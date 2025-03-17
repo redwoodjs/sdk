@@ -47,6 +47,18 @@
     "./turnstile": {
       "default": "./dist/runtime/lib/turnstile/turnstile.js",
       "types": "./dist/runtime/lib/turnstile/turnstile.d.ts"
+    },
+    "./realtime/worker": {
+      "default": "./dist/runtime/lib/realtime/worker.js",
+      "types": "./dist/runtime/lib/realtime/worker.d.ts"
+    },
+    "./realtime/client": {
+      "default": "./dist/runtime/lib/realtime/client.js",
+      "types": "./dist/runtime/lib/realtime/client.d.ts"
+    },
+    "./realtime/durableObject": {
+      "default": "./dist/runtime/lib/realtime/durableObject.js",
+      "types": "./dist/runtime/lib/realtime/durableObject.d.ts"
     }
   },
   "keywords": [],
