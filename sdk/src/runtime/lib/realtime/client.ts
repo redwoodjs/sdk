@@ -7,7 +7,9 @@ import {
 } from "../../client";
 const DEFAULT_KEY = "default";
 
-export const initRealtimeClient = ({ key = DEFAULT_KEY }: { key?: string }) => {
+export const initRealtimeClient = ({
+  key = DEFAULT_KEY,
+}: { key?: string } = {}) => {
   const transport = realtimeTransport({ key });
   return initClient({ transport });
 };
