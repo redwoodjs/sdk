@@ -1,15 +1,16 @@
 "use client";
 import { useState, useCallback } from "react";
 import debounce from "lodash/debounce";
-import { updateDocument } from "./functions";
+import { updateDocument, getDocument } from "./functions";
 
-const Home = () => {
-  const [content, setContent] = useState<string>("");
+const Home = async () => {
+  const key = window.location.pathname;
+  const [content, setContent] = useState<string>(await getDocument(key));
 
   const debouncedUpdate = useCallback(
     debounce(async (newContent: string) => {
       try {
-        await updateDocument(newContent);
+        await updateDocument(key, newContent);
       } catch (error) {
         console.error("Error updating document:", error);
       }

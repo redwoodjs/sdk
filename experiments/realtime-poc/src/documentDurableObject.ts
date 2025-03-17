@@ -2,7 +2,7 @@ import { DurableObject } from "cloudflare:workers";
 
 export class DocumentDurableObject extends DurableObject {
   private state: DurableObjectState;
-  private content: string;
+  private content: string | undefined;
 
   constructor(state: DurableObjectState, env: Env) {
     super(state, env);
@@ -11,16 +11,12 @@ export class DocumentDurableObject extends DurableObject {
   }
 
   async getContent(): Promise<string> {
-    return this.content;
+    return (this.content ??=
+      (await this.state.storage.get<string>("content")) ?? "");
   }
 
   async setContent(newContent: string): Promise<void> {
     this.content = newContent;
     await this.state.storage.put<string>("content", this.content);
-  }
-
-  async initialize() {
-    const storedContent = await this.state.storage.get<string>("content");
-    this.content = storedContent || "";
   }
 }
