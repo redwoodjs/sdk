@@ -7,13 +7,14 @@ export default defineConfig({
   integrations: [
     starlight({
       expressiveCode: {
-        shiki: {          
+        shiki: {
           bundledLangs: ['bash', 'ts', 'tsx'],
         },
       },
       title: "RedwoodSDK",
       logo: {
-        src: "./src/assets/logo.svg",
+        light: './src/assets/light-logo.svg',
+        dark: './src/assets/dark-logo.svg',
         replacesTitle: true,
       },
       customCss: [
@@ -36,7 +37,7 @@ export default defineConfig({
             { slug: "core/overview" },
             { label: "Request Handling", slug: "core/routing" },
             {
-              
+
               slug: "core/react-server-components",
             },
             { slug: "core/database" },
