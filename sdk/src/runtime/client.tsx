@@ -89,7 +89,7 @@ export const initClient = async ({
   function Content() {
     const [streamData, setStreamData] = React.useState(rscPayload);
     const [_isPending, startTransition] = React.useTransition();
-    callServerContext.setRscPayload = (v) =>
+    transportContext.setRscPayload = (v) =>
       startTransition(() => setStreamData(v));
     return <>{React.use<{ node: React.ReactNode }>(streamData).node}</>;
   }
