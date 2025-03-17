@@ -1,3 +1,5 @@
 import { initRealtimeClient } from "redwoodsdk/realtime/client";
 
-initRealtimeClient();
+initRealtimeClient({
+  key: window.location.pathname,
+});
