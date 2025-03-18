@@ -8,31 +8,17 @@ interface ClientInfo {
 export class RealtimeDurableObject extends DurableObject {
   state: DurableObjectState;
   env: Env;
-  connections: Map<WebSocket, ClientInfo>;
 
   constructor(state: DurableObjectState, env: Env) {
     super(state, env);
     this.state = state;
     this.env = env;
-    this.connections = new Map();
   }
 
   async fetch(request: Request): Promise<Response> {
     if (request.headers.get("Upgrade") === "websocket") {
       const url = new URL(request.url);
-      const clientId = url.searchParams.get("clientId");
-
-      let clientInfo: ClientInfo;
-      const stored = await this.state.storage.get(`client:${clientId}`);
-      if (stored) {
-        clientInfo = stored as ClientInfo;
-        clientInfo.url = url.searchParams.get("url") || "/";
-      } else {
-        clientInfo = this.createClientInfo(url);
-      }
-
-      await this.state.storage.put(`client:${clientInfo.clientId}`, clientInfo);
-
+      const clientInfo = this.createClientInfo(url);
       return this.handleWebSocket(request, clientInfo);
     }
 
@@ -51,55 +37,55 @@ export class RealtimeDurableObject extends DurableObject {
     clientInfo: ClientInfo,
   ): Promise<Response> {
     const { 0: client, 1: server } = new WebSocketPair();
-    this.acceptWebSocket(server, clientInfo);
+    server.serializeAttachment(clientInfo);
     this.state.acceptWebSocket(server);
     return new Response(null, { status: 101, webSocket: client });
   }
 
-  private async acceptWebSocket(
-    webSocket: WebSocket,
-    clientInfo: ClientInfo,
-  ): Promise<void> {
-    this.connections.set(webSocket, clientInfo);
+  async webSocketOpen(ws: WebSocket) {
+    const clientInfo = ws.deserializeAttachment() as ClientInfo;
     console.log(
       `Client connected - ID: ${clientInfo.clientId}, URL: ${clientInfo.url}`,
     );
+  }
 
-    webSocket.addEventListener("message", async (event) => {
-      const message = JSON.parse(event.data.toString());
+  async webSocketMessage(ws: WebSocket, event: any) {
+    console.log("######### message", event);
+    const clientInfo = ws.deserializeAttachment() as ClientInfo;
+    const message = JSON.parse(event.data.toString());
 
-      if (message.type === "action:request") {
-        try {
-          const result = await this.handleAction(
-            message.id,
-            message.args,
-            clientInfo,
-          );
+    if (message.type === "action:request") {
+      try {
+        const result = await this.handleAction(
+          message.id,
+          message.args,
+          clientInfo,
+        );
 
-          webSocket.send(
-            JSON.stringify({
-              type: "action:response",
-              id: message.id,
-              result,
-            }),
-          );
-        } catch (error) {
-          webSocket.send(
-            JSON.stringify({
-              type: "action:response",
-              id: message.id,
-              error: `${error}`,
-            }),
-          );
-        }
+        ws.send(
+          JSON.stringify({
+            type: "action:response",
+            id: message.id,
+            result,
+          }),
+        );
+      } catch (error) {
+        ws.send(
+          JSON.stringify({
+            type: "action:response",
+            id: message.id,
+            error: `${error}`,
+          }),
+        );
       }
-    });
+    }
+  }
 
-    webSocket.addEventListener("close", async () => {
-      console.log(`Client disconnected - ID: ${clientInfo.clientId}`);
-      this.connections.delete(webSocket);
-      await this.state.storage.put(`client:${clientInfo.clientId}`, clientInfo);
-    });
+  async webSocketClose(ws: WebSocket, code: number, reason: string) {
+    const clientInfo = ws.deserializeAttachment() as ClientInfo;
+    console.log(
+      `Client disconnected - ID: ${clientInfo.clientId}, URL: ${clientInfo.url}, Code: ${code}, Reason: ${reason}`,
+    );
   }
 
   private async handleAction(
@@ -136,7 +122,7 @@ export class RealtimeDurableObject extends DurableObject {
   }
 
   private async broadcastRSCUpdate(rscPayload: ReadableStream): Promise<void> {
-    for (const socket of this.connections.keys()) {
+    for (const socket of this.state.getWebSockets()) {
       try {
         socket.send(JSON.stringify({ type: "rsc:update" }));
 

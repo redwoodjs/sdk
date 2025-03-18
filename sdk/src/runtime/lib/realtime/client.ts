@@ -41,10 +41,17 @@ export const realtimeTransport =
       );
 
       ws.addEventListener("open", () => {
+        ws?.send(JSON.stringify({ type: "ping" }));
+        console.log("######### open");
         isConnected = true;
       });
 
+      ws.addEventListener("error", (event) => {
+        console.error("[Realtime] WebSocket error", event);
+      });
+
       ws.addEventListener("message", (event) => {
+        console.log("######### message", event);
         const data = JSON.parse(event.data);
 
         if (data.type === "rsc:update") {
@@ -96,7 +103,7 @@ export const realtimeTransport =
     const realtimeCallServer = async <Result>(
       id: string | null,
       args: unknown[],
-    ): Promise<Result> => {
+    ): Promise<Result | null> => {
       try {
         const socket = ensureWs();
         const { encodeReply } = await import(
@@ -108,6 +115,7 @@ export const realtimeTransport =
           id,
           args: args != null ? await encodeReply(args) : null,
         };
+        console.log("######### sending message", message);
 
         socket.send(JSON.stringify(message));
 
@@ -125,8 +133,9 @@ export const realtimeTransport =
           };
           socket.addEventListener("message", messageHandler);
         });
-      } catch {
-        return (await fetchCallServer(id, args)) as Result;
+      } catch (e) {
+        console.error("[Realtime] Error calling server", e);
+        return null;
       }
     };
 
