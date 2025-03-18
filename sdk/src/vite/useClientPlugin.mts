@@ -115,7 +115,6 @@ import { registerClientReference } from "redwoodsdk/worker";
             `\nexport { ${Array.from(inlineExportedFunctions).join(", ")} };\n`,
           );
         }
-        console.log("#######", s.toString());
       }
 
       return {
