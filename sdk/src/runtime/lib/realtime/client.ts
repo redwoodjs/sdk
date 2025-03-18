@@ -13,7 +13,7 @@ export const initRealtimeClient = ({
 
 export const realtimeTransport =
   ({ key = DEFAULT_KEY }: { key?: string }): Transport =>
-  ({ setRscPayload }) => {
+  (transportContext) => {
     let ws: WebSocket | null = null;
     let isConnected = false;
     const clientId = crypto.randomUUID();
@@ -37,7 +37,6 @@ export const realtimeTransport =
       ws.binaryType = "arraybuffer";
 
       ws.addEventListener("open", () => {
-        console.log("######### open");
         isConnected = true;
       });
 
@@ -46,7 +45,6 @@ export const realtimeTransport =
       });
 
       ws.addEventListener("message", (event) => {
-        console.log("######### message", event);
         const data = new Uint8Array(event.data);
         const messageType = data[0];
 
@@ -73,7 +71,7 @@ export const realtimeTransport =
             callServer: realtimeCallServer,
           }) as Promise<ActionResponse<unknown>>;
 
-          setRscPayload(rscPayload);
+          transportContext.setRscPayload(rscPayload);
         }
       });
 

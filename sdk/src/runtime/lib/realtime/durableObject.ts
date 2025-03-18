@@ -112,12 +112,8 @@ export class RealtimeDurableObject extends DurableObject {
       throw new Error(`Action failed: ${response.statusText}`);
     }
 
-    const responseForStream = response.clone();
-
-    const rscStream = responseForStream.body;
-    if (rscStream) {
-      await this.broadcastRSCUpdate(rscStream);
-    }
+    const broadcastStream = response.clone().body;
+    this.broadcastRSCUpdate(broadcastStream!, ws);
 
     const reader = response.body!.getReader();
     try {
@@ -140,10 +136,16 @@ export class RealtimeDurableObject extends DurableObject {
     }
   }
 
-  private async broadcastRSCUpdate(rscPayload: ReadableStream): Promise<void> {
-    const sockets = Array.from(this.state.getWebSockets());
+  private async broadcastRSCUpdate(
+    rscPayload: ReadableStream,
+    currentSocket: WebSocket,
+  ): Promise<void> {
+    const sockets = Array.from(this.state.getWebSockets()).filter(
+      (socket) => socket !== currentSocket,
+    );
 
-    // Notify all sockets that update is starting
+    if (sockets.length === 0) return;
+
     const startMessage = new Uint8Array([MESSAGE_TYPE.RSC_START]);
     sockets.forEach((socket) => {
       socket.send(startMessage);
@@ -154,7 +156,6 @@ export class RealtimeDurableObject extends DurableObject {
       while (true) {
         const { done, value } = await reader.read();
         if (done) {
-          // Notify all sockets that we're done
           const endMessage = new Uint8Array([MESSAGE_TYPE.RSC_END]);
           sockets.forEach((socket) => {
             socket.send(endMessage);
@@ -162,7 +163,6 @@ export class RealtimeDurableObject extends DurableObject {
           break;
         }
 
-        // Broadcast this chunk to all sockets
         const chunkMessage = new Uint8Array([MESSAGE_TYPE.RSC_CHUNK]);
         const chunkMessageWithPayload = new Uint8Array([
           ...chunkMessage,
