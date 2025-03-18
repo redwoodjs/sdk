@@ -61,32 +61,20 @@ export class RealtimeDurableObject extends DurableObject {
       const { id, args } = JSON.parse(jsonData);
 
       try {
-        const result = await this.handleAction(id, args, clientInfo);
-
-        // Success response
-        const responseData = JSON.stringify({ id, result });
-        const encoder = new TextEncoder();
-        const responseBytes = encoder.encode(responseData);
-
-        const response = new Uint8Array(responseBytes.length + 1);
-        response[0] = MESSAGE_TYPE.ACTION_RESPONSE;
-        response.set(responseBytes, 1);
-
-        ws.send(response);
+        await this.handleAction(ws, id, args, clientInfo);
       } catch (error) {
-        // Error response - using separate message type
-        const responseData = JSON.stringify({
+        const errorData = JSON.stringify({
           id,
           error: error instanceof Error ? error.message : String(error),
         });
         const encoder = new TextEncoder();
-        const responseBytes = encoder.encode(responseData);
+        const errorBytes = encoder.encode(errorData);
 
-        const response = new Uint8Array(responseBytes.length + 1);
-        response[0] = MESSAGE_TYPE.ACTION_ERROR;
-        response.set(responseBytes, 1);
+        const errorResponse = new Uint8Array(errorBytes.length + 1);
+        errorResponse[0] = MESSAGE_TYPE.ACTION_ERROR;
+        errorResponse.set(errorBytes, 1);
 
-        ws.send(response);
+        ws.send(errorResponse);
       }
     }
   }
@@ -99,10 +87,11 @@ export class RealtimeDurableObject extends DurableObject {
   }
 
   private async handleAction(
+    ws: WebSocket,
     id: string,
     args: string,
     clientInfo: ClientInfo,
-  ): Promise<any> {
+  ): Promise<void> {
     console.log(
       `Handling action for client ${clientInfo.clientId} at ${clientInfo.url}: id: ${id}, args: ${args}`,
     );
@@ -126,12 +115,29 @@ export class RealtimeDurableObject extends DurableObject {
     const responseForStream = response.clone();
 
     const rscStream = responseForStream.body;
-
     if (rscStream) {
       await this.broadcastRSCUpdate(rscStream);
     }
 
-    return await response.json();
+    const reader = response.body!.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+
+        if (done) {
+          const endMessage = new Uint8Array([MESSAGE_TYPE.ACTION_END]);
+          ws.send(endMessage);
+          break;
+        }
+
+        const chunkMessage = new Uint8Array(value.length + 1);
+        chunkMessage[0] = MESSAGE_TYPE.ACTION_CHUNK;
+        chunkMessage.set(value, 1);
+        ws.send(chunkMessage);
+      }
+    } finally {
+      reader.releaseLock();
+    }
   }
 
   private async broadcastRSCUpdate(rscPayload: ReadableStream): Promise<void> {

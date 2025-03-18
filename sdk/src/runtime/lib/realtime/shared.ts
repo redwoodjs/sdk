@@ -5,4 +5,6 @@ export const MESSAGE_TYPE = {
   ACTION_REQUEST: 3,
   ACTION_RESPONSE: 4,
   ACTION_ERROR: 5,
+  ACTION_CHUNK: 6,
+  ACTION_END: 7,
 } as const;

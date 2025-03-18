@@ -119,25 +119,33 @@ export const realtimeTransport =
         socket.send(message);
 
         return new Promise((resolve, reject) => {
-          const messageHandler = (event: MessageEvent) => {
-            const data = new Uint8Array(event.data);
-            const messageType = data[0];
-            const decoder = new TextDecoder();
-            const jsonData = decoder.decode(data.slice(1));
-            console.log("######### messageHandler", jsonData);
-            const response = JSON.parse(jsonData);
+          const stream = new ReadableStream({
+            start(controller) {
+              const messageHandler = (event: MessageEvent) => {
+                const data = new Uint8Array(event.data);
+                const messageType = data[0];
 
-            if (response.id === id) {
-              socket.removeEventListener("message", messageHandler);
+                if (messageType === MESSAGE_TYPE.ACTION_CHUNK) {
+                  controller.enqueue(data.slice(1));
+                } else if (messageType === MESSAGE_TYPE.ACTION_END) {
+                  controller.close();
+                  socket.removeEventListener("message", messageHandler);
+                } else if (messageType === MESSAGE_TYPE.ACTION_ERROR) {
+                  const decoder = new TextDecoder();
+                  const jsonData = decoder.decode(data.slice(1));
+                  const response = JSON.parse(jsonData);
+                  controller.error(new Error(response.error));
+                  socket.removeEventListener("message", messageHandler);
+                }
+              };
+              socket.addEventListener("message", messageHandler);
+            },
+          });
 
-              if (messageType === MESSAGE_TYPE.ACTION_RESPONSE) {
-                resolve(response.result);
-              } else if (messageType === MESSAGE_TYPE.ACTION_ERROR) {
-                reject(new Error(response.error));
-              }
-            }
-          };
-          socket.addEventListener("message", messageHandler);
+          const rscPayload = createFromReadableStream(stream, {
+            callServer: realtimeCallServer,
+          });
+          resolve(rscPayload as Result);
         });
       } catch (e) {
         console.error("[Realtime] Error calling server", e);
