@@ -6,7 +6,7 @@ interface Env {
 	SECRET_KEY: string;
 	TURNSTILE_SECRET_KEY: string;
 	REALTIME_DURABLE_OBJECT: DurableObjectNamespace<import("./src/worker").RealtimeDurableObject>;
-	DOCUMENT_DURABLE_OBJECT: DurableObjectNamespace<import("./src/worker").DocumentDurableObject>;
+	NOTE_DURABLE_OBJECT: DurableObjectNamespace<import("./src/worker").NoteDurableObject>;
 	DB: D1Database;
 	ASSETS: Fetcher;
 }

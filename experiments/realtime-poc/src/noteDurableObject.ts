@@ -1,6 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 
-export class DocumentDurableObject extends DurableObject {
+export class NoteDurableObject extends DurableObject {
   private state: DurableObjectState;
   private content: string | undefined;
 

@@ -10,10 +10,10 @@ import {
 } from "unique-names-generator";
 
 import { realtimeRoute } from "redwoodsdk/realtime/worker";
-import { Editor } from "./app/pages/editor/Editor";
+import Note from "./app/pages/note/Note";
 
 export { RealtimeDurableObject } from "redwoodsdk/realtime/durableObject";
-export { DocumentDurableObject } from "@/documentDurableObject";
+export { NoteDurableObject } from "@/noteDurableObject";
 
 export type Context = {};
 
@@ -35,6 +35,6 @@ export default defineApp<Context>([
         },
       });
     }),
-    route("/:key", Editor),
+    route("/:key", Note),
   ]),
 ]);

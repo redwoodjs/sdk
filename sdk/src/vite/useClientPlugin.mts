@@ -18,8 +18,7 @@ export const useClientPlugin = (
     const relativeId = `/${relative(this.environment.getTopLevelConfig().root, id)}`;
 
     if (code.includes('"use client"') || code.includes("'use client'")) {
-      // context(justinvdm, 5 Dec 2024): they've served their purpose at this point, keeping them around just causes rollup warnings since module level directives can't easily be applied to bundled
-      // modules
+      // context(justinvdm, 5 Dec 2024): they've served their purpose at this point, keeping them around just causes rollup warnings since module level directives can't easily be applied to bundled modules
       s.replaceAll("'use client'", "");
       s.replaceAll('"use client"', "");
       s.trim();
@@ -33,67 +32,62 @@ import { registerClientReference } from "redwoodsdk/worker";
         const functionExports = new Set();
         const inlineExportedFunctions = new Set();
 
-        // First, collect all function exports
         for (const e of exports) {
           if (e.ln != null) {
-            // Check if it's a function declaration
-            const isFunctionDeclaration = new RegExp(
-              `(export\\s+)?(function\\s+${e.ln}\\b|const\\s+${e.ln}\\s*=\\s*\\(.*\\)\\s*=>|const\\s+${e.ln}\\s*=\\s*function\\s*\\()`,
-            ).test(code);
+            const functionDeclarationPattern = new RegExp(
+              `(export\\s+)?(async\\s+)?(function\\s+${e.ln}\\b|const\\s+${e.ln}\\s*=\\s*(?:async\\s+)?(?:\\(.*?\\)\\s*=>|function\\s*\\())`,
+              "ms",
+            );
+
+            const isFunctionDeclaration = functionDeclarationPattern.test(code);
+            console.log("Is function declaration:", isFunctionDeclaration);
 
             if (isFunctionDeclaration) {
               functionExports.add(e.ln);
+              console.log("Added to function exports:", e.ln);
 
-              // Check if it's an inline export
               const isInlineExport = new RegExp(
-                `export\\s+(const|function)\\s+${e.ln}\\b`,
+                `export\\s+(?:async\\s+)?(?:const|function)\\s+${e.ln}\\b`,
+                "ms",
               ).test(code);
               if (isInlineExport) {
                 inlineExportedFunctions.add(e.ln);
+                console.log("Added to inline exports:", e.ln);
               }
             }
           }
         }
 
-        // Now process the code to find and transform each function
         for (const name of functionExports) {
-          // Find function declarations and transform them
+          console.log("Processing function:", name);
+
           const functionRegex = new RegExp(
-            `(export\\s+)?(function\\s+)(${name})\\b([\\s\\S]*?{[\\s\\S]*?})`,
+            `(export\\s+)?(async\\s+)?(function\\s+)(${name})\\b([\\s\\S]*?{[\\s\\S]*?})`,
             "g",
           );
-          let match;
 
+          const arrowRegex = new RegExp(
+            `(export\\s+)?(const\\s+)(${name})(\\s*=\\s*(?:async\\s+)?(?:\\(.*?\\)\\s*=>|function\\s*\\().*?[;\\n])`,
+            "gs",
+          );
+
+          let match;
           while ((match = functionRegex.exec(code)) !== null) {
+            console.log("Found function declaration match:", match[0]);
             const fullMatch = match[0];
-            const hasExport = !!match[1];
-            const functionBody = match[4];
             const startPos = match.index;
             const endPos = startPos + fullMatch.length;
 
-            // Replace with SSR version only
-            s.overwrite(
-              startPos,
-              endPos,
-              `${match[2]}${name}SSR${functionBody}`,
-            );
+            s.overwrite(startPos, endPos, `${match[3]}${name}SSR${match[5]}`);
           }
 
-          // Find arrow functions and transform them
-          const arrowRegex = new RegExp(
-            `(export\\s+)?(const\\s+)(${name})(\\s*=.*?=>.*?[;\\n])`,
-            "g",
-          );
-
           while ((match = arrowRegex.exec(code)) !== null) {
+            console.log("Found arrow function match:", match[0]);
             const fullMatch = match[0];
-            const hasExport = !!match[1];
-            const arrowBody = match[4];
             const startPos = match.index;
             const endPos = startPos + fullMatch.length;
 
-            // Replace with SSR version only
-            s.overwrite(startPos, endPos, `${match[2]}${name}SSR${arrowBody}`);
+            s.overwrite(startPos, endPos, `${match[2]}${name}SSR${match[4]}`);
           }
         }
 
@@ -121,6 +115,7 @@ import { registerClientReference } from "redwoodsdk/worker";
             `\nexport { ${Array.from(inlineExportedFunctions).join(", ")} };\n`,
           );
         }
+        console.log("#######", s.toString());
       }
 
       return {

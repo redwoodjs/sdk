@@ -30,8 +30,8 @@
         "class_name": "RealtimeDurableObject",
       },
       {
-        "name": "DOCUMENT_DURABLE_OBJECT",
-        "class_name": "DocumentDurableObject",
+        "name": "NOTE_DURABLE_OBJECT",
+        "class_name": "NoteDurableObject",
       },
     ],
   },

@@ -113,14 +113,6 @@ function matchPath(
   return params;
 }
 
-function serializeEnv(env: Env): Env {
-  return Object.fromEntries(
-    Object.entries(env).filter(([_, value]) =>
-      ["string", "number", "boolean"].includes(typeof value),
-    ),
-  ) as Env;
-}
-
 function flattenRoutes<TContext>(
   routes: Route<TContext>[],
 ): (RouteMiddleware<TContext> | RouteDefinition<TContext>)[] {
@@ -203,10 +195,9 @@ export function defineRoutes<TContext = Record<string, any>>(
       for (const h of handlers) {
         if (isRouteComponent(h)) {
           const actionResult = await rw.handleAction(routeContext);
-          const serializedEnv = serializeEnv(env);
           const props = {
             params,
-            env: serializedEnv,
+            env,
             ctx,
             rw: { nonce: rw.nonce },
           };

@@ -1,12 +1,21 @@
 "use client";
-import { useState, useCallback } from "react";
+import { useCallback, useState, useEffect } from "react";
 import debounce from "lodash/debounce";
-import { updateContent, getContent } from "./functions";
-import { RouteContext } from "redwoodsdk/router";
+import { updateContent } from "./functions";
 
-export const Editor = async (ctx: RouteContext) => {
-  const key = ctx.params.key;
-  const [content, setContent] = useState<string>(await getContent(key, ctx));
+export const Editor = ({
+  key,
+  initialContent,
+}: {
+  initialContent: string;
+  key: string;
+}) => {
+  const [content, setContent] = useState(initialContent);
+
+  // Always take the latest version from the server
+  useEffect(() => {
+    setContent(initialContent);
+  }, [initialContent]);
 
   const debouncedUpdate = useCallback(
     debounce(async (newContent: string) => {
@@ -21,8 +30,8 @@ export const Editor = async (ctx: RouteContext) => {
 
   const handleChange = (e: React.ChangeEvent<HTMLTextAreaElement>) => {
     const newContent = e.target.value;
-    setContent(newContent);
-    debouncedUpdate(newContent);
+    setContent(newContent); // Always update local state
+    debouncedUpdate(newContent); // Send the latest version
   };
 
   return (
