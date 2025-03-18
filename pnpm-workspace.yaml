@@ -5,6 +5,7 @@ packages:
   - "experiments/yt-dos"
   - "experiments/cutable"
   - "experiments/zoomshare"
+  - "experiments/realtime-poc"
   - "starters/drizzle"
   - "starters/minimal"
   - "starters/passkey-auth"
