@@ -1,0 +1,31 @@
+name: SDK Tests
+
+on:
+  pull_request:
+    paths:
+      - "sdk/**" # Runs only if files in the sdk directory change
+
+jobs:
+  test-sdk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js and pnpm
+        uses: actions/setup-node@v4
+        with:
+          node-version: 18
+          cache: "pnpm"
+
+      - name: Install pnpm
+        run: npm install -g pnpm
+
+      - name: Install dependencies
+        run: pnpm install
+        working-directory: sdk # Run inside the sdk directory
+
+      - name: Run tests
+        run: pnpm test
+        working-directory: sdk
