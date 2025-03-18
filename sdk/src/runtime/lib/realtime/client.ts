@@ -49,8 +49,6 @@ export const realtimeTransport =
         const messageType = data[0];
 
         if (messageType === MESSAGE_TYPE.RSC_START) {
-          console.log("[Realtime] New content stream started");
-
           const stream = new ReadableStream({
             start(controller) {
               ws!.addEventListener("message", function streamHandler(event) {

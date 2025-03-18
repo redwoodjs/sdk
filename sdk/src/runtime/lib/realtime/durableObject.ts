@@ -4,6 +4,7 @@ import { MESSAGE_TYPE } from "./shared";
 interface ClientInfo {
   url: string;
   clientId: string;
+  cookieHeaders: string;
 }
 
 export class RealtimeDurableObject extends DurableObject {
@@ -19,17 +20,18 @@ export class RealtimeDurableObject extends DurableObject {
   async fetch(request: Request): Promise<Response> {
     if (request.headers.get("Upgrade") === "websocket") {
       const url = new URL(request.url);
-      const clientInfo = this.createClientInfo(url);
+      const clientInfo = this.createClientInfo(url, request);
       return this.handleWebSocket(request, clientInfo);
     }
 
     return new Response("Invalid request", { status: 400 });
   }
 
-  private createClientInfo(url: URL): ClientInfo {
+  private createClientInfo(url: URL, request: Request): ClientInfo {
     return {
       url: url.searchParams.get("url")!,
       clientId: url.searchParams.get("clientId")!,
+      cookieHeaders: request.headers.get("Cookie") || "",
     };
   }
 
@@ -86,6 +88,33 @@ export class RealtimeDurableObject extends DurableObject {
     );
   }
 
+  private async streamResponse(
+    response: Response,
+    ws: WebSocket,
+    messageTypes: {
+      chunk: number;
+      end: number;
+    },
+  ): Promise<void> {
+    const reader = response.body!.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          ws.send(new Uint8Array([messageTypes.end]));
+          break;
+        }
+
+        const chunkMessage = new Uint8Array(value.length + 1);
+        chunkMessage[0] = messageTypes.chunk;
+        chunkMessage.set(value, 1);
+        ws.send(chunkMessage);
+      }
+    } finally {
+      reader.releaseLock();
+    }
+  }
+
   private async handleAction(
     ws: WebSocket,
     id: string,
@@ -105,6 +134,7 @@ export class RealtimeDurableObject extends DurableObject {
       body: args,
       headers: {
         "Content-Type": "application/json",
+        Cookie: clientInfo.cookieHeaders,
       },
     });
 
@@ -115,25 +145,10 @@ export class RealtimeDurableObject extends DurableObject {
     const broadcastStream = response.clone().body;
     this.broadcastRSCUpdate(broadcastStream!, ws);
 
-    const reader = response.body!.getReader();
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-
-        if (done) {
-          const endMessage = new Uint8Array([MESSAGE_TYPE.ACTION_END]);
-          ws.send(endMessage);
-          break;
-        }
-
-        const chunkMessage = new Uint8Array(value.length + 1);
-        chunkMessage[0] = MESSAGE_TYPE.ACTION_CHUNK;
-        chunkMessage.set(value, 1);
-        ws.send(chunkMessage);
-      }
-    } finally {
-      reader.releaseLock();
-    }
+    await this.streamResponse(response, ws, {
+      chunk: MESSAGE_TYPE.ACTION_CHUNK,
+      end: MESSAGE_TYPE.ACTION_END,
+    });
   }
 
   private async broadcastRSCUpdate(
@@ -146,39 +161,34 @@ export class RealtimeDurableObject extends DurableObject {
 
     if (sockets.length === 0) return;
 
-    const startMessage = new Uint8Array([MESSAGE_TYPE.RSC_START]);
-    sockets.forEach((socket) => {
-      socket.send(startMessage);
-    });
+    await Promise.all(
+      sockets.map(async (socket) => {
+        try {
+          const clientInfo = socket.deserializeAttachment() as ClientInfo;
+          const url = new URL(clientInfo.url);
+          url.searchParams.set("__rsc", "true");
 
-    const reader = rscPayload.getReader();
-    try {
-      while (true) {
-        const { done, value } = await reader.read();
-        if (done) {
-          const endMessage = new Uint8Array([MESSAGE_TYPE.RSC_END]);
-          sockets.forEach((socket) => {
-            socket.send(endMessage);
+          const response = await fetch(url.toString(), {
+            headers: {
+              "Content-Type": "application/json",
+              Cookie: clientInfo.cookieHeaders,
+            },
           });
-          break;
-        }
 
-        const chunkMessage = new Uint8Array([MESSAGE_TYPE.RSC_CHUNK]);
-        const chunkMessageWithPayload = new Uint8Array([
-          ...chunkMessage,
-          ...value,
-        ]);
-
-        sockets.forEach((socket) => {
-          try {
-            socket.send(chunkMessageWithPayload);
-          } catch (err) {
-            console.error("Failed to send to socket:", err);
+          if (!response.ok) {
+            console.error(`Failed to fetch RSC update: ${response.statusText}`);
+            return;
           }
-        });
-      }
-    } finally {
-      reader.releaseLock();
-    }
+
+          socket.send(new Uint8Array([MESSAGE_TYPE.RSC_START]));
+          await this.streamResponse(response, socket, {
+            chunk: MESSAGE_TYPE.RSC_CHUNK,
+            end: MESSAGE_TYPE.RSC_END,
+          });
+        } catch (err) {
+          console.error("Failed to process socket:", err);
+        }
+      }),
+    );
   }
 }

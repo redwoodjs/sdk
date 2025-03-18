@@ -7,7 +7,7 @@ export class NoteDurableObject extends DurableObject {
   constructor(state: DurableObjectState, env: Env) {
     super(state, env);
     this.state = state;
-    this.content = "";
+    this.content = undefined;
   }
 
   async getContent(): Promise<string> {

@@ -8,7 +8,6 @@ export const Editor = ({
 }: {
   props: { initialContent: string; key: string };
 }) => {
-  console.log("######### Editor", props);
   const { key, initialContent } = props;
   const [content, setContent] = useState(initialContent);
 
@@ -24,7 +23,7 @@ export const Editor = ({
       } catch (error) {
         console.error("Error updating content:", error);
       }
-    }, 1000),
+    }, 100),
     [],
   );
 
