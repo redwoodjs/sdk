@@ -4,12 +4,12 @@ import debounce from "lodash/debounce";
 import { updateContent } from "./functions";
 
 export const Editor = ({
-  key,
-  initialContent,
+  props,
 }: {
-  initialContent: string;
-  key: string;
+  props: { initialContent: string; key: string };
 }) => {
+  console.log("######### Editor", props);
+  const { key, initialContent } = props;
   const [content, setContent] = useState(initialContent);
 
   // Always take the latest version from the server

@@ -1,4 +1,5 @@
 import { DurableObject } from "cloudflare:workers";
+import { MESSAGE_TYPE } from "./shared";
 
 interface ClientInfo {
   url: string;
@@ -49,34 +50,43 @@ export class RealtimeDurableObject extends DurableObject {
     );
   }
 
-  async webSocketMessage(ws: WebSocket, event: any) {
-    console.log("######### message", event);
+  async webSocketMessage(ws: WebSocket, data: ArrayBuffer) {
     const clientInfo = ws.deserializeAttachment() as ClientInfo;
-    const message = JSON.parse(event.data.toString());
+    const message = new Uint8Array(data);
+    const messageType = message[0];
 
-    if (message.type === "action:request") {
+    if (messageType === MESSAGE_TYPE.ACTION_REQUEST) {
+      const decoder = new TextDecoder();
+      const jsonData = decoder.decode(message.slice(1));
+      const { id, args } = JSON.parse(jsonData);
+
       try {
-        const result = await this.handleAction(
-          message.id,
-          message.args,
-          clientInfo,
-        );
+        const result = await this.handleAction(id, args, clientInfo);
 
-        ws.send(
-          JSON.stringify({
-            type: "action:response",
-            id: message.id,
-            result,
-          }),
-        );
+        // Success response
+        const responseData = JSON.stringify({ id, result });
+        const encoder = new TextEncoder();
+        const responseBytes = encoder.encode(responseData);
+
+        const response = new Uint8Array(responseBytes.length + 1);
+        response[0] = MESSAGE_TYPE.ACTION_RESPONSE;
+        response.set(responseBytes, 1);
+
+        ws.send(response);
       } catch (error) {
-        ws.send(
-          JSON.stringify({
-            type: "action:response",
-            id: message.id,
-            error: `${error}`,
-          }),
-        );
+        // Error response - using separate message type
+        const responseData = JSON.stringify({
+          id,
+          error: error instanceof Error ? error.message : String(error),
+        });
+        const encoder = new TextEncoder();
+        const responseBytes = encoder.encode(responseData);
+
+        const response = new Uint8Array(responseBytes.length + 1);
+        response[0] = MESSAGE_TYPE.ACTION_ERROR;
+        response.set(responseBytes, 1);
+
+        ws.send(response);
       }
     }
   }
@@ -90,11 +100,11 @@ export class RealtimeDurableObject extends DurableObject {
 
   private async handleAction(
     id: string,
-    args: any[],
+    args: string,
     clientInfo: ClientInfo,
   ): Promise<any> {
     console.log(
-      `Handling action for client ${clientInfo.clientId} at ${clientInfo.url}`,
+      `Handling action for client ${clientInfo.clientId} at ${clientInfo.url}: id: ${id}, args: ${args}`,
     );
 
     const url = new URL(clientInfo.url);
@@ -103,7 +113,7 @@ export class RealtimeDurableObject extends DurableObject {
 
     const response = await fetch(url.toString(), {
       method: "POST",
-      body: JSON.stringify(args),
+      body: args,
       headers: {
         "Content-Type": "application/json",
       },
@@ -113,7 +123,10 @@ export class RealtimeDurableObject extends DurableObject {
       throw new Error(`Action failed: ${response.statusText}`);
     }
 
-    const rscStream = response.body;
+    const responseForStream = response.clone();
+
+    const rscStream = responseForStream.body;
+
     if (rscStream) {
       await this.broadcastRSCUpdate(rscStream);
     }
@@ -122,29 +135,44 @@ export class RealtimeDurableObject extends DurableObject {
   }
 
   private async broadcastRSCUpdate(rscPayload: ReadableStream): Promise<void> {
-    for (const socket of this.state.getWebSockets()) {
-      try {
-        socket.send(JSON.stringify({ type: "rsc:update" }));
+    const sockets = Array.from(this.state.getWebSockets());
 
-        const reader = rscPayload.getReader();
-        while (true) {
-          const { done, value } = await reader.read();
+    // Notify all sockets that update is starting
+    const startMessage = new Uint8Array([MESSAGE_TYPE.RSC_START]);
+    sockets.forEach((socket) => {
+      socket.send(startMessage);
+    });
 
-          if (done) {
-            socket.send(JSON.stringify({ type: "rsc:end" }));
-            break;
-          }
-
-          socket.send(
-            JSON.stringify({
-              type: "rsc:chunk",
-              payload: value,
-            }),
-          );
+    const reader = rscPayload.getReader();
+    try {
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) {
+          // Notify all sockets that we're done
+          const endMessage = new Uint8Array([MESSAGE_TYPE.RSC_END]);
+          sockets.forEach((socket) => {
+            socket.send(endMessage);
+          });
+          break;
         }
-      } catch (err) {
-        console.error("Failed to send RSC update:", err);
+
+        // Broadcast this chunk to all sockets
+        const chunkMessage = new Uint8Array([MESSAGE_TYPE.RSC_CHUNK]);
+        const chunkMessageWithPayload = new Uint8Array([
+          ...chunkMessage,
+          ...value,
+        ]);
+
+        sockets.forEach((socket) => {
+          try {
+            socket.send(chunkMessageWithPayload);
+          } catch (err) {
+            console.error("Failed to send to socket:", err);
+          }
+        });
       }
+    } finally {
+      reader.releaseLock();
     }
   }
 }

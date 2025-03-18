@@ -31,10 +31,10 @@ export default defineApp<Context>([
       return new Response(null, {
         status: 302,
         headers: {
-          Location: `/${randomName}`,
+          Location: `/note/${randomName}`,
         },
       });
     }),
-    route("/:key", Note),
+    route("/note/:key", Note),
   ]),
 ]);
