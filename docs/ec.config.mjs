@@ -2,10 +2,11 @@ import { pluginCollapsibleSections } from '@expressive-code/plugin-collapsible-s
 import { pluginLineNumbers } from '@expressive-code/plugin-line-numbers'
 import { pluginCodeCaption } from "@fujocoded/expressive-code-caption";
 import { pluginCodeOutput } from "@fujocoded/expressive-code-output";
+import { pluginColorChips } from 'expressive-code-color-chips';
 
 /** @type {import('@astrojs/starlight/expressive-code').StarlightExpressiveCodeOptions} */
 export default{
-  plugins: [pluginCodeCaption(), pluginCollapsibleSections(), pluginLineNumbers(), pluginCodeOutput()],
+  plugins: [pluginCodeCaption(), pluginCollapsibleSections(), pluginLineNumbers(), pluginCodeOutput(), pluginColorChips()],
   defaultProps: {
     // disable line numbers by default
     showLineNumbers: false,

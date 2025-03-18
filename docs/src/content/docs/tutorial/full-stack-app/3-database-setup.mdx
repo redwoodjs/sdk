@@ -8,45 +8,15 @@ description: Setting up the database for the application
 
 import { Aside, FileTree } from '@astrojs/starlight/components';
 
-First, let's set up our database. You'll need a [Cloudflare](https://www.cloudflare.com/) account. We're using their d1 services to handle the database.
-
-Generate a new database:
-
-```bash
-npx wrangler d1 create applywize
-```
-
-![]() - _TODO: Screenshot of the Terminal_
-
-Copy the database ID and it into your `wrangler.toml` file:
-
-```toml title="wrangler.toml"
-[[d1_databases]]
-binding = "DB"
-database_name = "applywize"
-database_id = "__change_me__"
-```
-
-## Set up Cloudflare d1
-If you ever need to find this value, you can log into your Cloudflare account and navigate to the D1 section.
-
-![]() - _TODO: Screenshot of the Cloudflare Dashboard_
-
-Within the Terminal, run:
-
-```bash
-npx prisma generate
-pnpm migrate:dev
-```
-
-This will set up Prisma and even though we're not ready to migrate our database, `migrate:dev` will create a `.wrangler` file within our project and setup the Cloudflare d1 database locally.
-
-![]() - _TODO: Screenshot of the Terminal_
-![]() - _TODO: Screenshot of the .wrangler folder_
-
 ## Setting up our Database Tables or Models
 
 For this project, we'll use [Prisma](https://www.prisma.io/) as our ORM (Object Relational Mapper). This makes it easy to define our database and generate migrations.
+
+<Aside type="note" title="What's a migration?">
+  A migration is a change to the database schema. It's a way to keep track of the changes we make to the database.
+
+  One of the great things about using Prisma is that it generates the migrations and SQL code so we don't to. We simply update the schema, and it handles the rest.
+</Aside>
 
 I like to start by going through the [application design files]() and making a list of all the tables (models) and fields we need.
 
@@ -54,8 +24,8 @@ Each model represents the type of data that will be stored in the table.
 
 We need models for:
 
-1. Job Applications
-2. Users
+1. Users
+2. Job Applications
 
 **The "trick" with database design is to prevent duplication.** For example, we want to store the company information for each job application. There's a chance we'll have multiple job applications for the same company. If we store the company information directly in the `Application` model, we'll have duplicate entries. This could create all kinds of problems. For example, is it `RedwoodSDK`, `redwoodsdk`, `redwood-sdk`, or `RedwoodSdk`?
 
@@ -70,7 +40,7 @@ The same applies to Contacts. We can create a separate model and create a relati
 
 ![](./images/db-contact-to-company.png)
 
-Application Statuses are a little different. The same principle applies. To avoid duplication, we will give statuses their own model. But, we will have a set of statuses (New, Applied, Interviewing, Offer, and Rejected) and won't be updating or deleting them.
+Application Statuses are a little different, but the same principle applies. To avoid duplication, we will give statuses their own model. But, we will have a set of "static" statuses (New, Applied, Interviewing, Offer, and Rejected). We won't be adding, updating, or deleting this list.
 
 5. Application Statuses
 
@@ -78,7 +48,9 @@ Application Statuses are a little different. The same principle applies. To avoi
 
 ## Columns
 
-Now, that we know what our models are, we need to create the columns. What are the pieces of data we need to store for each model?.
+Now, that we know what our models are, we need to create the columns. What are the pieces of data we need to store for each model?
+
+We've already alluded to the data that we'll need within the relationship diagrams, but let's take a closer look.
 
 I always start with an `id`, `createdAt`, and `updatedAt` field.
 - `id` - We need a way to uniquely identify each record or row in the database.
@@ -86,7 +58,7 @@ I always start with an `id`, `createdAt`, and `updatedAt` field.
 - `updatedAt` - We need to know when the record was last updated.
 
 <Aside type="tip" title="Soft Deleting">
-  If you're going to "soft delete" a record, you'll probably want a `deletedAt` column for tracking when the record was deleted.
+  In the future, if you're going to "soft delete" a record, you'll probably want a `deletedAt` column for tracking when the record was deleted.
 
   "Soft deleting" a record means that instead of removing the record from the database, we'll set a column (i.e. `deleted`) to `true` to indicate that the record has been deleted. The entry won't be shown to the user, but it gives you a way to recover the data. This is also useful for auditing purposes.
 </Aside>
@@ -122,7 +94,7 @@ For example, if the URL for my job application is `https://applywize.app/applica
 
 This is where a UUID comes in handy. A UUID is a unique, random string of characters. It's almost impossible to guess an entry's ID. The URL `https://applywize.app/applications/2b22ee49-d788-4bf0-bacd-380b351ca1e0` isn't quite as user friendly, but it's security by obscurity.
 
-Which is better? It depends. My general rule of thumb is if the user is going to see the ID, use a string. If the ID is an internal identifier, use an integer.
+Which is better? It depends. My general rule of thumb is if the user is going to see the ID, use a UUID (string). If the ID is an internal identifier, use an integer.
 
 ## Application Model
 
@@ -233,17 +205,25 @@ A one-to-many relationship is a relationship where a record in one table is asso
 
 A many-to-many relationship is a relationship where multiple records in one table are associated with multiple records in another table.
 
+In order to establish this relationship, we need a **junction table**. This table will store the relationship between the two tables.
+
 ![](./images/many-to-many.png)
 
 <Aside type="note" title="Naming Conventions">
   When creating junction tables, I name them based on the two tables they connect. For example, if I have a `User` and `Application` model, I'll name the junction table `ApplicationUser`. Notice the models are listed in alphabetical order.
 </Aside>
 
+<Aside type="note" title="IDs in Junction Tables">
+  Technically, you don't need an `id` field in the junction table, because the combination of the two IDs (`contactId` and `tagId`) together will be unique. However, I still like to include an `id` field for good measure.
+</Aside>
+
 Here's a diagram of all the models and their relationships for this project.
+
+{/* TODO: Update the database diagram to include the Credential table for pass keys */}
 
 ![](./images/database.png)
 
-Coincidentally, all the relationships in our project are one-to-many.
+Coincidentally, all the relationships in our project are one-to-one or one-to-many.
 
 <Aside type="tip" title="Database Diagram">
   I always find it helpful to have a visual representation of the database.
@@ -259,7 +239,7 @@ When establishing a relationship within your schema, there are 3 parts.
 2. **The relationship definition.** This defines the relationship between the two models.
 3. **The reverse relationship definition.** This defines the relationship from the related model back to the original model.
 
-Let's look at the `Company` and `Contact` models.
+Let's look at this in practice. On the `Company` and `Contact` models:
 
 ```prisma {4, 15-16} title="src/db/schema.prisma"
 model Company {
@@ -283,9 +263,9 @@ model Contact {
 }
 ```
 
-1. On the `Contact` model, we added a `companyId` field. This stores the ID of the related `Company` record.
+1. On the `Contact` model, we added a `companyId` field. This stores the ID of the related `Company` record. Because the `id` field on the `Company` model is a string, our `companyId` field is also a string.
 2. On the `Contact` model, we also added a `company` field, that defines the relationship.
-    - It is connected to the `Company` model.
+    - It is connected to the `Company` model. You can also think of this as having a type of `Company`.
     - It uses the `companyId` field on the `Contact` model to connect the two models.
     - It references the `id` field on the `Company` model.
 3. On the `Company` model, we added a `contacts` field.
@@ -369,40 +349,56 @@ model Contact {
   updatedAt DateTime? @updatedAt
 }
 
+model Credential {
+  id            String   @id @default(uuid()) // Internal DB ID
+  userId        String   @unique // Each user has one discoverable credential
+  user          User     @relation(fields: [userId], references: [id])
+  createdAt     DateTime @default(now())
+  credentialId  String   @unique // WebAuthn credential identifier
+  publicKey     Bytes
+  counter       Int      @default(0)
+
+  @@index([credentialId])
+  @@index([userId])
+}
+
 model User {
   id                 String        @id @default(uuid())
-  email              String        @unique
-  authToken          String?
-  authTokenExpiresAt DateTime?
+  username           String        @unique
   createdAt          DateTime      @default(now())
   updatedAt          DateTime?     @updatedAt
   applications       Application[]
+  credentials        Credential[]
 }
 ```
 
+<Aside type="tip" title="Models in Alphabetical Order">
+This is personal preference, but I like to put my models in alphabetical order. It makes it easier to find what you're looking for, especially on larger projects.
+</Aside>
+
 ## Running Migrations
 
-;tk - what is a migration?
+A migration is a change to the database schema. It's a way to keep track of the changes we make to the database.
 
-First, we'll need to create the migration. Run the `pnpm migrate:new` command and give the migration a name. Since this is our first migration, we'll call it our `initial migration`.
+When we create the migration, Prisma will look at our `prisma.schema` file and determine what has changed since our last migration. Then, it will generate a SQL file that will update our database with the changes.
 
-```bash
+Let's create the migration by running `pnpm migrate:new` and giving the migration a name. Since this is our first migration, we'll call it our `setup all database models`.
+
+```shell
 pnpm migrate:new "initial migration"
 ```
 
 ![]() - _TODO: Screenshot of the Terminal_
 
-This will generate a `sql` file in the `migrations` folder.
-
-;tk - this means that we didn't have to write any SQL code. Prisma handled that for us!
+Our generated `sql` file will be in the `migrations` folder.
 
 ![]() - _TODO: Screenshot of Cursor, include the `migrations` folder and the code that was generated_
 
-<Aside type="note" title="The Number of Migrations">
-  Worried about the number of migrations in your project? Don't.
+<Aside type="tip" title="The Number of Migrations">
+  Worried about the number of migrations in your project? Don't. It really doesn't have an effect on your project.
 </Aside>
 
-Now, we need to apply the migration.
+Now, we need to apply or run the migration.
 
 ```bash
 pnpm migrate:dev
@@ -410,11 +406,23 @@ pnpm migrate:dev
 
 ![]() - _TODO: Screenshot of the Terminal_
 
+<Aside type="note" title="Working with other people">
+  An added benefit of migrations is that it makes it easier to work with other people.
+
+  Migration files get committed to the repository and placed in version control.
+
+  Database changes can be tied to a branch and a specific feature or bug fix.
+
+  Keeping another team member's database in sync is as simple as running the migration.
+</Aside>
+
 ## Previewing the Migration
+
+If you want to preview the database, there area a couple of different options.
 
 ### SQLite Viewer
 
-The [SQLite Viewer VS Code extension](https://marketplace.visualstudio.com/items?itemName=qwtel.sqlite-viewer) is perfect for previewing your SQLite database directly within VS Code.
+The [VS Code extension, SQLite Viewer](https://marketplace.visualstudio.com/items?itemName=qwtel.sqlite-viewer) is perfect for previewing your SQLite database directly within VS Code.
 
 Within the file explorer, navigate to your SQLite database. You can find it in the `.wrangler > state > v3 > d1 > miniflare-D1DatabaseObject` folder.
 
@@ -437,7 +445,7 @@ The viewer will only let you preview the database. If you want to create, update
 
 ### Bee Keeper Studio
 
-Bee Keeper Studio is another option. It's a stand alone application, but the free version will allow you to create, read, update, and delete data.
+[Bee Keeper Studio](https://www.beekeeperstudio.io/) is another option. It's a standalone application, but the free version will allow you to create, read, update, and delete data.
 
 ![](./images/beekeeper-setup.png)
 
@@ -445,9 +453,13 @@ When setting up the connection, select **SQLite** from the **Connection Type** d
 
 ![](./images/beekeeper-preview.png)
 
+{/* TODO: Change the database screenshot so that it is exactly what the user is seeing (no data) */}
+
+We don't have any data within our database, but you should be able to see all the tables the columns inside.
+
 ## Seed the database
 
-Instead of manually adding data to the database, we can create a seed file to programmatically add data for us. This is particularly helpful if you need to reset the database during development.
+Instead of manually adding data to the database, we can create a **seed file** to programmatically add data for us. This is particularly helpful if you need to reset the database during development and don't want to manually enter your test data again and again.
 
 Within the `src` directory, create a new folder called `scripts`. inside, create a file called `seed.ts`.
 
@@ -467,6 +479,7 @@ export default defineScript(async ({ env }) => {
   setupDb(env);
 
   await db.$executeRawUnsafe(`\
+    DELETE FROM Application;
     DELETE FROM Application;
     DELETE FROM Contact;
     DELETE FROM Company;
@@ -493,9 +506,21 @@ Before we add anything to this file, let's make sure we understand what's happen
 * **On lines 1 and 2** are importing our dependencies. We need our Cloudflare worker and database connection.
 * **On line 4**, we're setting up our Cloudflare worker environment.
 * **On line 5**, we're setting up our database connection.
-* **On line 7-14**, we're using raw SQL to delete the existing data from the database. This will allow us seed the database with fresh data.
+* **On line 7-14**, we're using raw SQL to delete all the existing data from the database. This will allow us to start fresh when seeding the database.
 * **On line 16-24**, we're adding all the job application statuses to the database. You'll notice this is a standard Prisma `createMany` function.
-* **On line 26**, we're logging a message to the console that the seeding is complete.
+* **On line 26**, we're logging a message to the console saying the seeding is complete.
+
+<Aside type="caution" title="Troubleshooting">
+Are you getting an error that says: `"Property 'applicationStatus' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'"`
+{/* TODO: Add a screenshot of this error */}
+
+This means that the Prisma types haven't been generated for you model. Within the Terminal, run:
+
+```shell
+npx prisma generate
+```
+Problem solved.
+</Aside>
 
 To seed the database, run the following command:
 
@@ -503,21 +528,25 @@ To seed the database, run the following command:
 pnpm seed
 ```
 
-![]() - _TODO: Screenshot of the Terminal_
+Within the Terminal, you should see something like this:
+
+![](./images/seed-database-in-terminal.png)
+
+Now, when you preview the database and look at the `ApplicationStatus` table, you should see:
+
+![](./images/seed-database-in-sqlite.png)
 
 <Aside type="note" title="Multiple Seed Files">
 Sometimes, I'll create multiple seed files for different purposes.
 
 The seed file we just created is perfect for a brand new database, whether we're in development or in production. We've provided all the application statuses that we need. These won't change.
 
-But, I'll also create seed files to test the application with various sets of data. This is much easier (and faster) than manually adding data.
+Typically, I'll also create seed files to test the application with various sets of data. This is much easier (and faster) than manually adding data again and again.
 
 You can also leverage libraries, like [Faker](https://fakerjs.dev/) and [Snaplet](https://snaplet.dev/), to make it easier to create realistic data sets.
 </Aside>
 
-## Code on GitHub
 
-You can find the final code for this step on [GitHub](https://github.com/redwoodjs/applywize).
 
 <Aside type="tip" title="Code on GitHub">
 You can find the final code for this step on [GitHub](https://github.com/redwoodjs/applywize).
@@ -526,4 +555,4 @@ You can find the final code for this step on [GitHub](https://github.com/redwood
 ## Further reading
 
 - [Prisma Documentation](https://www.prisma.io/docs)
-- [VS Code Prisma Extension]()
+- [VS Code Prisma Extension](https://marketplace.visualstudio.com/items?itemName=Prisma.prisma)

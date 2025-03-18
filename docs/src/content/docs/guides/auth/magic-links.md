@@ -1,5 +1,5 @@
 ---
-title: Role Based Access
+title: Magic Links
 description: A guide in my new Starlight docs site.
 ---
 

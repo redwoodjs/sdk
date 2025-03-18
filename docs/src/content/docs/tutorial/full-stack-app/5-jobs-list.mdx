@@ -6,24 +6,156 @@ sidebar:
 description: A guide in my new Starlight docs site.
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+import { Aside, FileTree } from '@astrojs/starlight/components';
 
 The jobs application list page lists all the jobs that we've applied for. For this tutorial, it will also serve as the Dashboard. ([In the Advanced Topics Tutorial, we'll iterate on the Dashboard]())
 
 The finished page will look like this:
 
-![]()
+![](./images/figma-application-list.png)
 
-Let's start with the frontend code and then we'll query the database to make it dynamic.
+Let's start with the backend code and then make it look good.
 
-But, first, we need a route.
+But, first, we need a page and a route.
 
+In the `pages` directory, create a new folder called `applications`. Inside, create a file called `ListPage.tsx`.
+
+<FileTree>
+- src/
+  - app/
+    - pages/
+      - applications/
+        - ListPage.tsx
+      - auth/
+      - Home.tsx
+</FileTree>
+
+We can stub out a basic page, just to make sure it's loading correctly.
+
+```tsx title="src/app/pages/applications/ListPage.tsx"
+const ListPage = () => {
+  return (
+    <div>ListPage</div>
+  )
+}
+
+export { ListPage }
+```
+
+Now, within our `worker.tsx` file, we can add a route for our new page.
+
+```tsx title="src/worker.tsx" showLineNumbers=false
+import { ListPage } from "./app/pages/applications/ListPage";
+...
+prefix("/applications", [
+  route("/", ListPage),
+])
+---
+- We'll group all of our application routes (List, New, Detail, Update) under the `/applications` prefix.
+- When use visits `/applications`, they'll see our `ListPage` component.
+---
+```
+
+Let's test this out in the browser. Go to `http://localhost:4321/applications` and you should see our stubbed out page.
+
+![](./images/stubbed-out-applications-list-page.png)
+
+Since we've already set up authentication, we can also protect this route.
+
+```tsx
+prefix("/applications", [
+  route("/", [({ ctx }) => {
+    if (!ctx.user) {
+      return new Response(null, {
+        status: 302,
+        headers: { Location: "/user/login" },
+      });
+    }
+  }, ListPage]),
+])
+```
+
+This would get cumbersome (and annoying) if we have to do this for every.single.route we wanted to protect. Let's abstract this code into a reusable function.
+
+```tsx
+function isAuthenticated({ ctx }: { ctx: Context }) {
+  if (!ctx.user) {
+    return new Response(null, {
+      status: 302,
+      headers: { Location: "/user/login" },
+    });
+  }
+}
+```
+
+Then, we can update our `/applications` route to use `isAuthenticated`:
+
+```tsx
+prefix("/applications", [
+  route("/", [isAuthenticated, ListPage]),
+])
+```
+
+Now, we can also update our home page route to use the `isAuthenticated` function, too:
+
+```tsx
+index([isAuthenticated, Home]),
+```
+
+Test it out. 👨‍🍳 Chef's kiss!
+
+Now, let's get some data in the database that we can pull from.
+
+[Earlier, I mentioned that sometimes I'll create multiple seed files with various purposes.](/tutorial/full-stack-app/database-setup#seed-the-database). This is a perfect opportunity to create a separate file just for adding job applications to our database.
+
+Inside the `src/scripts` directory, create a new file called `applicationSeed.ts`.
+
+Let's stub it out:
+
+```tsx title="src/scripts/applicationSeed.ts"
+import { defineScript } from "redwoodsdk/worker";
+import { db, setupDb } from "../db";
+
+export default defineScript(async ({ env }) => {
+  setupDb(env);
+
+  console.log("🌱 Finished seeding");
+});
+---
+- **On line 4**, we're setting up the Cloudflare Worker environment to run our script. By default, we get the `env` object.
+- **On line 5**, we're setting our database.
+- **On line 7**, we're logging a message to the console to indicate that the script has finished running.
+---
+```
+
+Inside our function, we can reach for a standard Prisma `create` function:
+
+```tsx title="src/scripts/applicationSeed.ts" startLineNumber=7
+const createApplication = async () => {
+  await db.application.create({
+    data: {
+      salaryMin: "100000",
+      salaryMax: "120000",
+      jobTitle: "Software Engineer",
+      jobDescription: "Software Engineer",
+      postingUrl: "https://redwoodjs.com",
+      dateApplied: new Date(),
+    }
+  }
+};
+---
+- **On line 8,** we're referencing the `application` table. Then, using the Prisma `create` function to add all the data in our database object. You'll notice that these values match the columns we defined in `Prisma.schema` file.
+---
+```
+
+If you run the script now, you'll hit a few errors because it's also looking for related `user`, `status`, and `company` entries. For the `user` and `status` connections, we already have entries within the database we can use.
+
+![](./images/user-id-in-database.png)
 
 
 
 - Creating the main jobs page layout
 - Building and styling the jobs table using ShadCN Table component
-- Implementing sorting and filtering
 - Adding the "Create New Job" button with ShadCN Button component
 - Responsive design considerations
 
