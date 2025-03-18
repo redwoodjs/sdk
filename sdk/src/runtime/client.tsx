@@ -1,6 +1,10 @@
 import { clientWebpackRequire } from "./imports/client";
 import { type CallServerCallback } from "react-server-dom-webpack/client.browser";
 
+// NOTE: `react-server-dom-webpack` uses this global to load modules,
+// so we need to define it here before importing "react-server-dom-webpack."
+globalThis.__webpack_require__ = clientWebpackRequire;
+
 export type ActionResponse<Result> = {
   node: React.ReactNode;
   actionResult: Result;
@@ -15,10 +19,6 @@ export type Transport = (context: TransportContext) => CallServerCallback;
 export type CreateCallServer = (
   context: TransportContext,
 ) => <Result>(id: null | string, args: null | unknown[]) => Promise<Result>;
-
-// NOTE: `react-server-dom-webpack` uses this global to load modules,
-// so we need to define it here before importing "react-server-dom-webpack."
-globalThis.__webpack_require__ = clientWebpackRequire;
 
 export const fetchTransport: Transport = ({ setRscPayload }) => {
   const fetchCallServer = async <Result,>(
