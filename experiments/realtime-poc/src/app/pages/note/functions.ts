@@ -3,7 +3,6 @@
 import { RouteContext } from "redwoodsdk/router";
 
 export const getContent = async (key: string, ctx?: RouteContext) => {
-  console.log("##", ctx!.env);
   const doId = ctx!.env.NOTE_DURABLE_OBJECT.idFromName(key);
   const noteDO = ctx!.env.NOTE_DURABLE_OBJECT.get(doId);
   return noteDO.getContent();

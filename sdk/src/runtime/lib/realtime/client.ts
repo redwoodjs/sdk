@@ -5,6 +5,7 @@ import {
   type ActionResponse,
 } from "../../client";
 import { createFromReadableStream } from "react-server-dom-webpack/client.browser";
+import { IS_DEV } from "../../constants";
 const DEFAULT_KEY = "default";
 
 export const initRealtimeClient = ({
@@ -30,8 +31,10 @@ export const realtimeTransport =
     const setupWebSocket = () => {
       if (ws) return;
 
+      const protocol = IS_DEV ? "ws" : "wss";
+
       ws = new WebSocket(
-        `wss://${window.location.host}/__realtime?` +
+        `${protocol}://${window.location.host}/__realtime?` +
           `key=${encodeURIComponent(key)}&` +
           `url=${encodeURIComponent(clientUrl.toString())}&` +
           `clientId=${encodeURIComponent(clientId)}`,

@@ -60,7 +60,6 @@ export class RealtimeDurableObject extends DurableObject {
     webSocket: WebSocket,
     clientInfo: ClientInfo,
   ): Promise<void> {
-    webSocket.accept();
     this.connections.set(webSocket, clientInfo);
     console.log(
       `Client connected - ID: ${clientInfo.clientId}, URL: ${clientInfo.url}`,

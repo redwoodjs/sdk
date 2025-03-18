@@ -139,13 +139,17 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
           },
         });
 
+        // context(justinvdm, 18 Mar 2025): In some cases, such as a .fetch() call to a durable object instance, or Response.redirect(),
+        // the response object has immutable headers. To avoid issues, we wrap the response in a mutable response object.
+        const mutableResponse = new Response(response.body, response);
+
         for (const [key, value] of userHeaders.entries()) {
           if (!response.headers.has(key)) {
-            response.headers.set(key, value);
+            mutableResponse.headers.set(key, value);
           }
         }
 
-        return response;
+        return mutableResponse;
       } catch (e) {
         if (e instanceof ErrorResponse) {
           return new Response(e.message, { status: e.code });
