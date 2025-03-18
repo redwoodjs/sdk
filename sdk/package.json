@@ -1,6 +1,6 @@
 {
   "name": "redwoodsdk",
-  "version": "0.0.17",
+  "version": "0.0.18",
   "description": "",
   "type": "module",
   "bin": {
@@ -17,7 +17,8 @@
     "build:vendor": "node ./dist/scripts/build-vendor-bundles.mjs",
     "clean:vendor": "rm -rf ./vendor/dist",
     "format": "prettier --write ./src",
-    "release": "./scripts/release.sh"
+    "release": "./scripts/release.sh",
+    "test": "vitest"
   },
   "exports": {
     "./vite": {
@@ -120,6 +121,7 @@
   "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab",
   "devDependencies": {
     "@types/lodash": "^4.17.13",
-    "semver": "^7.7.1"
+    "semver": "^7.7.1",
+    "vitest": "^3.0.9"
   }
 }
