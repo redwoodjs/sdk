@@ -3,8 +3,6 @@ import { Plugin } from "vite";
 import { parse } from "es-module-lexer";
 import MagicString from "magic-string";
 
-interface UseClientPluginOptions {}
-
 export async function transformUseClientCode(
   code: string,
   relativeId: string,
@@ -193,9 +191,7 @@ export { ${functionName} as default };`;
   };
 }
 
-export const useClientPlugin = (
-  options: UseClientPluginOptions = {},
-): Plugin => ({
+export const useClientPlugin = (): Plugin => ({
   name: "rw-sdk-use-client",
   async transform(code, id) {
     if (id.includes(".vite/deps") || id.includes("node_modules")) {

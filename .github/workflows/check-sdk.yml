@@ -1,4 +1,4 @@
-name: SDK Tests
+name: SDK Checks
 
 on:
   pull_request:
@@ -6,7 +6,7 @@ on:
       - "sdk/**" # Runs only if files in the sdk directory change
 
 jobs:
-  test-sdk:
+  check-sdk:
     runs-on: ubuntu-latest
 
     steps:
@@ -21,6 +21,10 @@ jobs:
       - run: |
           corepack enable
           pnpm install
+
+      - name: Build SDK
+        run: pnpm build
+        working-directory: sdk
 
       - name: Run tests
         run: pnpm test
