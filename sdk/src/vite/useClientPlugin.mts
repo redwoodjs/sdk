@@ -90,7 +90,7 @@ import { registerClientReference } from "redwoodsdk/worker";
         const newDecl = originalDecl
           .replace(/export\s+default\s+/, "export default ")
           .replace(/export\s+/, "")
-          .replace(name, `${name}SSR`);
+          .replace(name as string, `${name}SSR`);
         s.overwrite(startPos, endPos, newDecl);
       }
     }
