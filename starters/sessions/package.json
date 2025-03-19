@@ -9,6 +9,7 @@
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
+    "preinstall": "pnpm dev:init",
     "build": "vite build",
     "dev": "NODE_ENV=${NODE_ENV:-development} vite dev",
     "dev:init": "rw-scripts dev-init",

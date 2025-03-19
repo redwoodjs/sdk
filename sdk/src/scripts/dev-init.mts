@@ -1,11 +1,17 @@
 import { $ } from "../lib/$.mjs";
+import { pathExists } from "fs-extra";
+import { resolve } from "path";
 
 export const initDev = async () => {
   console.log("Initializing development environment...");
 
-  await $`pnpm migrate:dev`;
-  await $`pnpm prisma generate`;
-  await $`pnpm seed`;
+  const isUsingPrisma = await pathExists(resolve(process.cwd(), "prisma"));
+
+  if (isUsingPrisma) {
+    await $`pnpm migrate:dev`;
+    await $`pnpm prisma generate`;
+    await $`pnpm seed`;
+  }
 
   console.log("Done.");
   console.log("Run `pnpm dev` to get started...");
