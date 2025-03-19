@@ -98,12 +98,16 @@ export const isValidSessionId = async ({
   sessionId: string;
   secretKey: string;
 }) => {
-  const { unsignedSessionId, signature } = unpackSessionId(sessionId);
-  const computedSignature = await signSessionId({
-    unsignedSessionId,
-    secretKey,
-  });
-  return computedSignature === signature;
+  try {
+    const { unsignedSessionId, signature } = unpackSessionId(sessionId);
+    const computedSignature = await signSessionId({
+      unsignedSessionId,
+      secretKey,
+    });
+    return computedSignature === signature;
+  } catch {
+    return false;
+  }
 };
 
 export const defineSessionStore = <Session, SessionInputData>({
@@ -248,7 +252,14 @@ export const defineDurableSession = <
   };
 
   const unset = async (sessionId: string): Promise<void> => {
-    const { unsignedSessionId } = unpackSessionId(sessionId);
+    let unsignedSessionId: string;
+
+    try {
+      unsignedSessionId = unpackSessionId(sessionId).unsignedSessionId;
+    } catch {
+      return;
+    }
+
     const doId = sessionDurableObject.idFromName(unsignedSessionId);
     const sessionStub = sessionDurableObject.get(doId);
     await sessionStub.revokeSession();

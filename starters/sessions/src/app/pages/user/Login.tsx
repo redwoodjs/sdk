@@ -3,7 +3,7 @@
 import { useTransition } from "react";
 import { performLogin } from "./functions";
 
-export function LoginPage() {
+export function Login() {
   const [isPending, startTransition] = useTransition();
 
   const handlePerformLogin = () => {
