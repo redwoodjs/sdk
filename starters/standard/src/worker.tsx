@@ -3,7 +3,7 @@ import { route, layout, prefix } from "redwoodsdk/router";
 import { Document } from "@/app/Document";
 import { Home } from "@/app/pages/Home";
 import { setCommonHeaders } from "@/app/headers";
-import { authRoutes } from "@/app/pages/auth/routes";
+import { userRoutes } from "@/app/pages/user/routes";
 import { sessions, setupSessionStore } from "./session/store";
 import { Session } from "./session/durableObject";
 import { db, setupDb } from "./db";
@@ -31,8 +31,8 @@ export default defineApp<Context>([
     }
   },
   layout(Document, [
-    route('/', () => new Response("Hello, World!")),
-    route('/protected', [
+    route("/", () => new Response("Hello, World!")),
+    route("/protected", [
       ({ ctx }) => {
         if (!ctx.user) {
           return new Response(null, {
@@ -43,6 +43,6 @@ export default defineApp<Context>([
       },
       Home,
     ]),
-    prefix("/user", authRoutes),
+    prefix("/user", userRoutes),
   ]),
 ]);

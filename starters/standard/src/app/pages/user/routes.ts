@@ -2,7 +2,7 @@ import { route } from "redwoodsdk/router";
 import { Login } from "./Login";
 import { sessions } from "@/session/store";
 
-export const authRoutes = [
+export const userRoutes = [
   route("/login", [Login]),
   route("/logout", async function ({ request }) {
     const headers = new Headers();
