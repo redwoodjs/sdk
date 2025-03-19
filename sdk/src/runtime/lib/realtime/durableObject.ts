@@ -18,8 +18,11 @@ export class RealtimeDurableObject extends DurableObject {
   }
 
   async fetch(request: Request): Promise<Response> {
-    if (request.headers.get("Upgrade") === "websocket") {
-      const url = new URL(request.url);
+    const url = new URL(request.url);
+    if (
+      request.headers.get("Upgrade") === "websocket" &&
+      request.headers.get("Origin") === url.origin
+    ) {
       const clientInfo = this.createClientInfo(url, request);
       return this.handleWebSocket(request, clientInfo);
     }

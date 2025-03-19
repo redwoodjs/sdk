@@ -12,6 +12,11 @@ export const realtimeRoute = (
     }
 
     const url = new URL(request.url);
+
+    if (request.headers.get("Origin") !== url.origin) {
+      return new Response("Invalid origin", { status: 403 });
+    }
+
     const key = url.searchParams.get("key") || "default";
 
     const id = getDurableObjectNamespace(env).idFromName(key);
