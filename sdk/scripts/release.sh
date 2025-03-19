@@ -161,7 +161,7 @@ if [[ "$DRY_RUN" == true ]]; then
 else
   for i in {1..3}; do
     echo "Attempt $i of 3: Running pnpm install"
-    pnpm install && break
+    pnpm install --ignore-scripts && break
     if [ $i -lt 3 ]; then
       echo "pnpm install failed, retrying in 3 seconds..."
       sleep 3

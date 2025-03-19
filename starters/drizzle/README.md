@@ -2,6 +2,8 @@
 
 This starter makes it easy to start up a project with database using Drizzle.
 
+## Creating your project
+
 Create your new project:
 
 ```shell
@@ -9,6 +11,47 @@ npx degit redwoodjs/sdk/starters/drizzle my-project-name
 cd my-project-name
 pnpm install
 ```
+
+## Setting up your db
+
+The starter includes a basic user model in `src/db/schema.ts`:
+
+```typescript
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+});
+```
+
+Set up your database:
+
+```shell
+pnpm migrate:new
+pnpm migrate:dev
+pnpm seed
+```
+
+These commands will:
+
+- Create your initial migration
+- Apply the migration to your database
+- Seed your database with initial data
+
+You should see your seeded data displayed in the browser.
+
+## Running the dev server
+
+```shell
+pnpm dev
+```
+
+Point your browser to the URL displayed in the terminal (e.g. `http://localhost:2332/`). You should see a "Hello World" message in your browser.
+
+## Deploying your app
 
 Within your project's `wrangler.jsonc` file, replace the placeholder values. For example:
 
@@ -56,41 +99,6 @@ To get your Cloudflare credentials:
 - **API Token**: Generate this under User Profile > API Tokens with the following permissions:
   - Account Settings: Read
   - D1: Edit
-
-The starter includes a basic user model in `src/db/schema.ts`:
-
-```typescript
-export const users = sqliteTable("users", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-});
-```
-
-Set up your database:
-
-```shell
-pnpm migrate:new
-pnpm migrate:dev
-pnpm seed
-```
-
-These commands will:
-
-- Create your initial migration
-- Apply the migration to your database
-- Seed your database with initial data
-
-Start your development server:
-
-```shell
-pnpm dev
-```
-
-You should see your seeded data displayed in the browser.
 
 ### Database Changes
 

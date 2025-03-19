@@ -2,13 +2,25 @@
 
 This starter gives you a RedwoodJS project with built-in session management.
 
-Create your new project:
+## Creating your project
 
 ```shell
 npx degit redwoodjs/sdk/starters/sessions my-project-name
 cd my-project-name
 pnpm install
 ```
+
+Within your project's `wrangler.jsonc` file, replace the placeholder values. For example:
+
+## Running the dev server
+
+```shell
+pnpm dev
+```
+
+Point your browser to the URL displayed in the terminal (e.g. `http://localhost:2332/`).
+
+## Deploying your app
 
 Within your project's `wrangler.jsonc` file, replace the placeholder values. For example:
 
@@ -67,14 +79,6 @@ SECRET_KEY=your-development-secret-key
 ```
 
 Never use the same secret key for development and production environments, and avoid committing your secret keys to version control.
-
-### Start it up
-
-Start your development server:
-
-```shell
-pnpm dev
-```
 
 ## Further Reading
 

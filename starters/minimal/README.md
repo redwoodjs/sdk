@@ -10,6 +10,16 @@ cd my-project-name
 pnpm install
 ```
 
+## Running the dev server
+
+```shell
+pnpm dev
+```
+
+Point your browser to the URL displayed in the terminal (e.g. `http://localhost:2332/`). You should see a "Hello World" message in your browser.
+
+##
+
 Within your project's `wrangler.jsonc` file, replace the placeholder values. For example:
 
 ```jsonc:wrangler.jsonc
@@ -35,14 +45,6 @@ Within your project's `wrangler.jsonc` file, replace the placeholder values. For
   }
 }
 ```
-
-Start your development server:
-
-```shell
-pnpm dev
-```
-
-You should see a "Hello World" message in your browser.
 
 ## Further Reading
 

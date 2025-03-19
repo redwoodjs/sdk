@@ -14,12 +14,12 @@
 
   // Assets configuration
   "assets": {
-    "binding": "ASSETS",
+    "binding": "ASSETS"
   },
 
   // Observability settings
   "observability": {
-    "enabled": true,
+    "enabled": true
   },
 
   // Durable Objects configuration
@@ -27,9 +27,9 @@
     "bindings": [
       {
         "name": "SESSION_DURABLE_OBJECT",
-        "class_name": "SessionDurableObject",
-      },
-    ],
+        "class_name": "SessionDurableObject"
+      }
+    ]
   },
 
   // Environment variables
@@ -39,7 +39,7 @@
   "migrations": [
     {
       "tag": "v1",
-      "new_classes": ["SessionDurableObject"],
-    },
-  ],
+      "new_classes": ["SessionDurableObject"]
+    }
+  ]
 }

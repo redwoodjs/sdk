@@ -2,7 +2,7 @@
 
 This starter provides a comprehensive RedwoodJS-based implementation that includes passkey authentication using WebAuthn, session management, database integration with Prisma, and file storage with Cloudflare R2. It serves as a fully integrated starting point for Redwood apps, consolidating various essential features into one package.
 
-Create your new project:
+## Creating your project
 
 ```shell
 npx degit redwoodjs/sdk/starters/standard my-project-name
@@ -10,7 +10,15 @@ cd my-project-name
 pnpm install
 ```
 
-## Configuration
+## Running the dev server
+
+```shell
+pnpm dev
+```
+
+Point your browser to the URL displayed in the terminal (e.g. `http://localhost:2332/`). You should see a "Hello World" message in your browser.
+
+## Deploying your app
 
 ### Wrangler Setup
 
@@ -85,14 +93,6 @@ const TURNSTILE_SITE_KEY = "<YOUR_SITE_KEY>";
 
 ```shell
 wrangler secret put TURNSTILE_SECRET_KEY
-```
-
-### Start it up
-
-Start your development server:
-
-```shell
-pnpm dev
 ```
 
 ## Important Security Considerations

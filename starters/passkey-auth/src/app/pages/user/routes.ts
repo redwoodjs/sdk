@@ -1,9 +1,9 @@
 import { route } from "redwoodsdk/router";
-import { LoginPage } from "./LoginPage";
+import { Login } from "./Login";
 import { sessions } from "@/session/store";
 
-export const authRoutes = [
-  route("/login", [LoginPage]),
+export const userRoutes = [
+  route("/login", [Login]),
   route("/logout", async function ({ request }) {
     const headers = new Headers();
     await sessions.remove(request, headers);

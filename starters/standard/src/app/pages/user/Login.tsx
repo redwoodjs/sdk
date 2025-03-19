@@ -16,7 +16,7 @@ import { useTurnstile } from "redwoodsdk/turnstile";
 // >>> Replace this with your own Cloudflare Turnstile site key
 const TURNSTILE_SITE_KEY = "1x00000000000000000000AA";
 
-export function LoginPage() {
+export function Login() {
   const [username, setUsername] = useState("");
   const [result, setResult] = useState("");
   const [isPending, startTransition] = useTransition();

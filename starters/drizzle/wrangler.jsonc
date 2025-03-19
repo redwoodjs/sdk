@@ -15,7 +15,7 @@
   // Assets configuration
   "assets": {
     "binding": "ASSETS",
-    "directory": "public",
+    "directory": "public"
   },
 
   // D1 database configuration
@@ -24,17 +24,17 @@
       "binding": "DB",
       "database_name": "__change_me__",
       "database_id": "__change_me__",
-      "migrations_dir": "drizzle",
-    },
+      "migrations_dir": "drizzle"
+    }
   ],
 
   // Observability settings
   "observability": {
-    "enabled": true,
+    "enabled": true
   },
 
   // Environment variables
   "vars": {
     // Add your environment variables here
-  },
+  }
 }

@@ -2,13 +2,23 @@
 
 This starter makes it easy to start up a project with database using Prisma.
 
-Create your new project:
+## Creating your project
 
 ```shell
 npx degit redwoodjs/sdk/starters/prisma my-project-name
 cd my-project-name
 pnpm install
 ```
+
+## Running the dev server
+
+```shell
+pnpm dev
+```
+
+Point your browser to the URL displayed in the terminal (e.g. `http://localhost:2332/`). You should see a "Hello World" message in your browser.
+
+## Deploying your app
 
 Within your project's `wrangler.jsonc` file, replace the placeholder values. For example:
 
@@ -85,31 +95,6 @@ model User {
   updatedAt         DateTime? @updatedAt
 }
 ```
-
-Set up your database:
-
-```shell
-npx prisma generate
-pnpm migrate:dev
-pnpm migrate:new "initial migration"
-pnpm migrate:dev
-pnpm seed
-```
-
-These commands will:
-
-- Generate the Prisma Client based on your schema
-- Set up your local database
-- Create and apply your initial migration
-- Seed your database with initial data
-
-Start your development server:
-
-```shell
-pnpm dev
-```
-
-You should see a "Hello World" message with a list of users from your database.
 
 ### Database Changes
 

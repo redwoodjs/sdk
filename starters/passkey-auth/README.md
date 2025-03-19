@@ -2,6 +2,8 @@
 
 This starter provides a RedwoodJS-based passkey authentication implementation using WebAuthn. It allows password-less authentication leveraging built-in device authenticators and services such as Google Passkeys or 1Password.
 
+## Creating your project
+
 Create your new project:
 
 ```shell
@@ -10,7 +12,15 @@ cd my-project-name
 pnpm install
 ```
 
-## Configuration
+## Running the dev server
+
+```shell
+pnpm dev
+```
+
+Point your browser to the URL displayed in the terminal (e.g. `http://localhost:2332/`).
+
+## Deploying your app
 
 ### Wrangler Setup
 
