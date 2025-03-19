@@ -1,8 +1,8 @@
-import { defineApp } from "redwoodsdk/worker";
+import { defineApp, ErrorResponse } from "redwoodsdk/worker";
 import { index, layout, prefix } from "redwoodsdk/router";
 import { Document } from "@/app/Document";
 import { Home } from "@/app/pages/Home";
-import { authRoutes } from "@/app/pages/auth/routes";
+import { userRoutes } from "@/app/pages/user/routes";
 import { sessions, setupSessionStore } from "./session/store";
 import { Session } from "./session/durableObject";
 import { setCommonHeaders } from "./app/headers";
@@ -15,9 +15,22 @@ export type Context = {
 
 export default defineApp<Context>([
   setCommonHeaders(),
-  async ({ env, ctx, request }) => {
+  async ({ env, ctx, request, headers }) => {
     setupSessionStore(env);
-    ctx.session = await sessions.load(request);
+
+    try {
+      ctx.session = await sessions.load(request);
+    } catch (error) {
+      if (error instanceof ErrorResponse && error.code === 401) {
+        await sessions.remove(request, headers);
+        headers.set("Location", "/user/login");
+
+        return new Response(null, {
+          status: 302,
+          headers,
+        });
+      }
+    }
   },
-  layout(Document, [index([Home]), prefix("/user", authRoutes)]),
+  layout(Document, [index([Home]), prefix("/user", userRoutes)]),
 ]);
