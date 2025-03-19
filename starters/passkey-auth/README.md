@@ -81,7 +81,7 @@ Note: The RP_ID must be a valid domain that matches your application's origin. F
 
 2. Create a new Turnstile widget:
 
-   - Set **Widget Mode** to the preferred mode.
+   - Set **Widget Mode** to `invisible`
    - Add your application's hostname to **Allowed hostnames**, e.g., `my-project-name.example.com`.
 
 3. Copy your **Site Key** into your application's `LoginPage.tsx`:

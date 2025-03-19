@@ -79,7 +79,7 @@ Never use the same secret key for development and production environments, and a
 
 2. Create a new Turnstile widget:
 
-   - Set **Widget Mode** to the preferred mode.
+   - Set **Widget Mode** to `invisible`
    - Add your application's hostname to **Allowed hostnames**, e.g., `my-project-name.example.com`.
 
 3. Copy your **Site Key** into your application's `LoginPage.tsx`:
