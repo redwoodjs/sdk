@@ -24,6 +24,8 @@ Point your browser to the URL displayed in the terminal (e.g. `http://localhost:
 
 Within your project's `wrangler.jsonc`:
 
+- Replace the `__change_me__` placeholders with a name for your application
+
 - Create a new D1 database:
 
 ```shell
