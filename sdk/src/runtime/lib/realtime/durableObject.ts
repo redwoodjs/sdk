@@ -1,5 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 import { MESSAGE_TYPE } from "./shared";
+import { validateUpgradeRequest } from "./validateUpgradeRequest";
 
 interface ClientInfo {
   url: string;
@@ -18,7 +19,14 @@ export class RealtimeDurableObject extends DurableObject {
   }
 
   async fetch(request: Request): Promise<Response> {
+    const validation = validateUpgradeRequest(request);
+
+    if (!validation.valid) {
+      return validation.response;
+    }
+
     const url = new URL(request.url);
+
     if (
       request.headers.get("Upgrade") === "websocket" &&
       request.headers.get("Origin") === url.origin
