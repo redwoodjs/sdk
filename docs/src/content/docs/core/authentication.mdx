@@ -12,8 +12,8 @@ import {
 } from "@astrojs/starlight/components";
 
 import importedCodeStandardWorker from "../../../../../starters/standard/src/worker.tsx?raw";
-import importedCodeStandardAuthFunctions from "../../../../../starters/standard/src/app/pages/auth/functions.ts?raw";
-import importedCodeStandardLogin from "../../../../../starters/standard/src/app/pages/auth/Login.tsx?raw";
+import importedCodeStandardAuthFunctions from "../../../../../starters/standard/src/app/pages/user/functions.ts?raw";
+import importedCodeStandardLogin from "../../../../../starters/standard/src/app/pages/user/Login.tsx?raw";
 
 We've baked authentication right into the [**standard starter**](https://github.com/redwoodjs/sdk/tree/main/starters/standard), giving you everything you need to handle users, sessions, and logins out of the box. The standard starter uses **passkeys ([WebAuthn](https://webauthn.guide/))** for passwordless authentication, **session persistence via [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/)**, and **bot protection with [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/)**. The database layer is powered by **[Cloudflare D1](https://developers.cloudflare.com/d1/)** and **[Prisma](https://www.prisma.io/)**.
 
@@ -85,7 +85,7 @@ Never use the same secret key for development and production environments, and a
    - Set **Widget Mode** to the preferred mode.
    - Add your application's hostname to **Allowed hostnames**, e.g., `my-project-name.example.com`.
 
-3. Copy your **Site Key** into your application's [`Login.tsx`](https://github.com/redwoodjs/sdk/blob/main/starters/standard/src/app/pages/auth/Login.tsx#L17):
+3. Copy your **Site Key** into your application's [`Login.tsx`](https://github.com/redwoodjs/sdk/blob/main/starters/standard/src/app/pages/user/Login.tsx#L17):
 
 ```tsx title="Login.tsx"
 const TURNSTILE_SITE_KEY = "<YOUR_SITE_KEY>";
@@ -142,14 +142,14 @@ For more on passkeys, see [passkeys.dev](https://passkeys.dev/).
 
 <Code
   language="typescript"
-  title="src/app/pages/auth/Login.tsx"
+  title="src/app/pages/user/Login.tsx"
   code={importedCodeStandardLogin}
   collapse={"1-18, 20-24, 41-90"}
 />
 
 <Code
   language="typescript"
-  title="src/app/pages/auth/functions.ts"
+  title="src/app/pages/user/functions.ts"
   code={importedCodeStandardAuthFunctions}
   collapse={"1-109, 111-112, 114-116, 119-169"}
 />
@@ -162,7 +162,7 @@ Registration follows a very similar 3-step WebAuthn process as login:
 
 <Code
   language="typescript"
-  title="src/app/pages/auth/Login.tsx"
+  title="src/app/pages/user/Login.tsx"
   code={importedCodeStandardLogin}
   collapse={"1-18, 20-41, 64-90"}
 />
@@ -182,14 +182,14 @@ Cloudflare has built-in bot protection, but it works by detecting and blocking m
 
 <Code
   language="typescript"
-  title="src/app/pages/auth/Login.tsx"
+  title="src/app/pages/user/Login.tsx"
   code={importedCodeStandardLogin}
   collapse={"1-15, 18-18, 20-22, 24-41, 43-48, 57-62, 64-72, 76-88"}
 />
 
 <Code
   language="typescript"
-  title="src/app/pages/auth/functions.ts"
+  title="src/app/pages/user/functions.ts"
   code={importedCodeStandardAuthFunctions}
   collapse={"1-38, 40-43, 45-46, 55-93, 95-176"}
 />
