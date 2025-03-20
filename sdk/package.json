@@ -1,6 +1,9 @@
 {
   "name": "@redwoodjs/sdk",
   "private": false,
+  "publishConfig": {
+    "access": "public"
+  },
   "version": "0.0.21-test.0",
   "description": "",
   "type": "module",
