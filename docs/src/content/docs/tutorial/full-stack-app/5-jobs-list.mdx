@@ -152,12 +152,211 @@ If you run the script now, you'll hit a few errors because it's also looking for
 
 ![](./images/user-id-in-database.png)
 
+;tk
+
+```tsx
+export default defineScript(async ({ env }) => {
+  setupDb(env);
+
+  await db.application.create({
+    data: {
+      user: {
+        connect: {
+          id: "0f9a097c-d7bc-4ab5-8b11-6942163df348",
+        },
+      },
+      status: {
+        connect: {
+          id: 1,
+        },
+      },
+      salaryMin: "100000",
+      salaryMax: "120000",
+      jobTitle: "Software Engineer",
+      jobDescription: "Software Engineer",
+      postingUrl: "https://redwoodjs.com",
+      dateApplied: new Date(),
+      company: {
+        create: {
+          name: "RedwoodSDK",
+          contacts: {
+            create: {
+              firstName: "John",
+              lastName: "Doe",
+              email: "john.doe@example.com",
+              role: "Hiring Manager",
+            },
+          },
+        },
+      },
+    },
+  });
+
+  console.log("🌱 Finished seeding");
+});
+```
+
+On the Applications list page:
+
+```tsx title="src/app/pages/applications/ListPage.tsx"
+import { db } from "src/db";
+
+const ListPage = async () => {
+  const applications = await db.application.findMany();
+
+  return (
+    <div>
+      {JSON.stringify(applications)}
+    </div>
+  )
+}
+
+export { ListPage }
+```
+
+Now that we know the content from our database is getting on the page, let's style it.
+
+## Styling the Job Applications List Page
+
+### Creating an Interior Page Layout
+
+```tsx
+import { Header } from "app/components/Header";
+
+const InteriorLayout = ({ children }: { children: React.ReactNode}) => {
+  return (
+    <div className="page-wrapper">
+      <main className="bg-white rounded-xl border-2 border-[#D6D5C5]">
+        <Header />
+        <div>{children}</div>
+      </main>
+    </div>
+  )
+}
+
+export { InteriorLayout }
+```
+
+### Creating the Header Component
+
+```tsx
+import React from 'react'
+import logo from "app/assets/logo.svg"
+import { Avatar, AvatarImage, AvatarFallback } from 'app/components/ui/avatar'
+import { link } from 'app/shared/links'
+
+const Header = () => {
+  return (
+    <header className="py-5 px-page-side h-20 flex justify-between items-center border-b-1 border-border mb-12">
+      {/* left side */}
+      <div className="flex items-center gap-8">
+        <div className="">
+          <a href={link("/")} className="flex gap-3 font-display font-bold text-3xl items-center">
+            <img src={logo} alt="Apply Wize" className="inline-block pt-5 -mb-3" />
+            <span>Apply Wize</span>
+          </a>
+        </div>
+        <nav>
+          <ul>
+            <li><a href={link("/applications")}>Dashboard</a></li>
+          </ul>
+        </nav>
+      </div>
+
+      {/* right side */}
+      <nav>
+        <ul className="flex items-center gap-7">
+          <li><a href={link("/account/settings")}>Settings</a></li>
+          <li><a href={link("/logout")}>Logout</a></li>
+        </ul>
+      </nav>
+    </header>
+  )
+}
+
+export { Header }
+```
+
+
+
+
+### Styling the Applications Table
+
+```tsx
+import React from 'react'
+import { link } from "app/shared/links";
+import { Badge } from "app/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "app/components/ui/avatar";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "app/components/ui/table"
+import { Icon } from "app/components/Icon";
+import { Application } from "@prisma/client";
+
+interface ApplicationsTableProps {
+  applications: Application[]
+}
+
+const ApplicationsTable = ({ applications }: ApplicationsTableProps) => {
+  return (
+    <Table>
+      <TableHeader>
+        <TableRow>
+          <TableHead className="w-[100px]">Status</TableHead>
+          <TableHead>Date Applied</TableHead>
+          <TableHead>Job Title</TableHead>
+          <TableHead>Company</TableHead>
+          <TableHead>Contact</TableHead>
+          <TableHead>Salary Range</TableHead>
+          <TableHead></TableHead>
+        </TableRow>
+      </TableHeader>
+      <TableBody>
+        {applications.map((application) => (
+          <TableRow key={application.id}>
+            <TableCell><Badge variant={application.status.status.toLowerCase()}>{application.status.status}</Badge></TableCell>
+            <TableCell>{application.dateApplied.toLocaleDateString('en-US', {
+              year: 'numeric',
+              month: 'long',
+              day: 'numeric'
+            })}</TableCell>
+            <TableCell>{application.jobTitle}</TableCell>
+            <TableCell>{application.company.name}</TableCell>
+            <TableCell className="flex gap-2 items-center">
+              {application.company?.contacts && application.company?.contacts?.length > 0 && (
+                <>
+                  {/* <Avatar>
+                    <AvatarImage src="https://github.com/shadcn.png" alt="@shadcn" />
+                    <AvatarFallback>CN</AvatarFallback>
+                  </Avatar> */}
+                  {application.company.contacts[0].firstName} {application.company.contacts[0].lastName}
+                </>
+              )}
+            </TableCell>
+            <TableCell>${application.salaryMin}-${application.salaryMax}</TableCell>
+            <TableCell><a href={link("/applications/:id", { id: application.id })}><Icon id="eye" /></a></TableCell>
+          </TableRow>
+        ))}
+      </TableBody>
+    </Table>
+  )
+}
+
+export {  ApplicationsTable }
+```
+
+
+
 
 
 - Creating the main jobs page layout
 - Building and styling the jobs table using ShadCN Table component
 - Adding the "Create New Job" button with ShadCN Button component
-- Responsive design considerations
 
 <Aside type="tip" title="Code on GitHub">
 You can find the final code for this step on [GitHub](https://github.com/redwoodjs/applywize).
