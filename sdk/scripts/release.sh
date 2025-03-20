@@ -2,7 +2,7 @@
 
 set -e  # Stop on first error
 
-DEPENDENCY_NAME="redwoodsdk"  # Replace with the actual package name
+DEPENDENCY_NAME="@redwoodjs/sdk"  # Replace with the actual package name
 
 show_help() {
   echo "Usage: pnpm release <patch|minor|major|test> [--dry]"

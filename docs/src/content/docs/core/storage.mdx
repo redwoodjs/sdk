@@ -8,8 +8,8 @@ import { Aside } from "@astrojs/starlight/components";
 [Cloudflare R2](https://developers.cloudflare.com/r2/) is an object storage solution that's S3 compatible, global, scalable, and can be used to store files, images, videos, and more! It integrates natively with Cloudflare workers, and therefore, with Redwood. It is available locally during development, and is automatically configured when you deploy to Cloudflare.
 
 <Aside type="tip" title="Pick your poison">
-  You do not need to use R2, you can use any storage solution you want, but we recommend
-  R2!
+  You do not need to use R2, you can use any storage solution you want, but we
+  recommend R2!
 </Aside>
 
 ## Setup
@@ -56,8 +56,8 @@ RedwoodSDK uses the standard Request/Response objects. When uploading files, the
 ### Uploading Files
 
 ```tsx title="src/worker.tsx"
-import { defineApp } from "redwoodsdk/worker";
-import { route } from "redwoodsdk/router";
+import { defineApp } from "@redwoodjs/sdk/worker";
+import { route } from "@redwoodjs/sdk/router";
 
 defineApp([
   route("/upload/", async ({ request, env }) => {
@@ -85,8 +85,8 @@ defineApp([
 ### Downloading Files
 
 ```tsx title="src/worker.tsx"
-import { defineApp } from "redwoodsdk/worker";
-import { route } from "redwoodsdk/router";
+import { defineApp } from "@redwoodjs/sdk/worker";
+import { route } from "@redwoodjs/sdk/router";
 
 defineApp([
   route("/download/*", async ({ request, params, env }) => {

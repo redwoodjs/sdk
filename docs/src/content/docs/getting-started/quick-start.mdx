@@ -58,21 +58,25 @@ Redwood is just a plugin for Vite, so you can use the same commands to run the d
 <Tabs syncKey="package-manager">
   <TabItem label="pnpm">
     ```bash frame="none" showLineNumbers=false
+
     pnpm dev
     ```
+
   </TabItem>
   <TabItem label="npm">
-    ```bash frame="none" showLineNumbers=false  
+    ```bash frame="none" showLineNumbers=false
+
     npm run dev
     ```
+
   </TabItem>
   <TabItem label="yarn">
     ```bash frame="none" showLineNumbers=false
+    
     yarn dev
     ```
   </TabItem>
 </Tabs>
-
 
 ```bash frame="none" showLineNumbers=false
 VITE v6.2.0  ready in 500 ms
@@ -106,18 +110,19 @@ Here you'll see the `defineApp` function, this is the main function that "define
 You're going to add your own route, insert the "/ping" route's code to the `defineApp` function:
 
 ```tsx title="src/worker.tsx" ins={5}
-import { defineApp } from "redwoodsdk/worker";
-import { route } from "redwoodsdk/router";
+import { defineApp } from "@redwoodjs/sdk/worker";
+import { route } from "@redwoodjs/sdk/router";
 
-export default defineApp([
-  route('/ping', () => <h1>Pong!</h1>)
-])
+export default defineApp([route("/ping", () => <h1>Pong!</h1>)]);
 ```
 
 Now when you navigate to [http://localhost:2332/ping](http://localhost:2332/ping) you should see "Pong!" displayed on the page.
 
 <Aside type="tip">
-  You might have noticed that we returned JSX instead of a Response object. This is because Redwood has built-in support for React Server Components, allowing you to return JSX directly from your routes. The JSX will be rendered on the server and sent to the client as HTML.
+  You might have noticed that we returned JSX instead of a Response object. This
+  is because Redwood has built-in support for React Server Components, allowing
+  you to return JSX directly from your routes. The JSX will be rendered on the
+  server and sent to the client as HTML.
 </Aside>
 
 ## Deploy to production
@@ -146,21 +151,24 @@ Then run the following command to deploy your website to Cloudflare:
 <Tabs syncKey="package-manager">
   <TabItem label="pnpm">
     ```bash frame="none" showLineNumbers=false
+    
     pnpm release
     ```
   </TabItem>
   <TabItem label="npm">
-    ```bash frame="none" showLineNumbers=false  
+    ```bash frame="none" showLineNumbers=false
+
     npm run release
     ```
+
   </TabItem>
   <TabItem label="yarn">
     ```bash frame="none" showLineNumbers=false
+    
     yarn release
     ```
   </TabItem>
 </Tabs>
-
 
 <LinkCard
   title="What's next?"

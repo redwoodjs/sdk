@@ -1,5 +1,5 @@
 import { db } from "src/db";
-import { index, route } from "redwoodsdk/router";
+import { index, route } from "@redwoodjs/sdk/router";
 import { InvoiceDetailPage } from "./DetailPage/InvoiceDetailPage";
 import { InvoiceListPage } from "./ListPage/InvoiceListPage";
 import { link } from "src/shared/links";

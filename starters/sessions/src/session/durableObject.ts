@@ -1,4 +1,4 @@
-import { MAX_SESSION_DURATION } from "redwoodsdk/auth";
+import { MAX_SESSION_DURATION } from "@redwoodjs/sdk/auth";
 import { DurableObject } from "cloudflare:workers";
 
 export interface Session {
