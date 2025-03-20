@@ -1,5 +1,5 @@
-import { defineApp } from "redwoodsdk/worker";
-import { index, layout, route } from "redwoodsdk/router";
+import { defineApp } from "@redwoodjs/sdk/worker";
+import { index, layout, route } from "@redwoodjs/sdk/router";
 import { Document } from "src/Document";
 import { HomePage } from "src/pages/Home";
 import { fetchYoutubeVideos } from "src/pages/serverFunctions";

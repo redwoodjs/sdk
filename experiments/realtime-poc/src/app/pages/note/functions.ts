@@ -1,6 +1,6 @@
 "use server";
 
-import { RouteContext } from "redwoodsdk/router";
+import { RouteContext } from "@redwoodjs/sdk/router";
 
 export const getContent = async (key: string, ctx?: RouteContext) => {
   const doId = ctx!.env.NOTE_DURABLE_OBJECT.idFromName(key);

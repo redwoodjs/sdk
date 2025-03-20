@@ -1,5 +1,5 @@
 import { getProject, ProjectItem, updateProject } from "./ProjectDetailPage";
-import { RouteContext } from "redwoodsdk/router";
+import { RouteContext } from "@redwoodjs/sdk/router";
 import { BreadcrumbLink } from "src/components/ui/breadcrumb";
 import { BreadcrumbSeparator } from "src/components/ui/breadcrumb";
 import { BreadcrumbPage } from "src/components/ui/breadcrumb";

@@ -1,4 +1,4 @@
-import { TurnstileScript } from "redwoodsdk/turnstile";
+import { TurnstileScript } from "@redwoodjs/sdk/turnstile";
 
 export const Document: React.FC<{ children: React.ReactNode }> = ({
   children,
