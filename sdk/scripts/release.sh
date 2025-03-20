@@ -119,9 +119,9 @@ TAG_NAME="v$NEW_VERSION"
 echo -e "\n🚀 Publishing version $NEW_VERSION..."
 if [[ "$DRY_RUN" == true ]]; then
   if [[ "$VERSION_TYPE" == "test" ]]; then
-    echo "  [DRY RUN] pnpm publish --tag test"
+    echo "  [DRY RUN] pnpm publish --tag test --access public"
   else
-    echo "  [DRY RUN] pnpm publish"
+    echo "  [DRY RUN] pnpm publish --access public"
   fi
 else
   PUBLISH_CMD="pnpm publish"
