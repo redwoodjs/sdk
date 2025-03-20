@@ -139,7 +139,6 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
           },
         });
 
-        return response;
         // context(justinvdm, 18 Mar 2025): In some cases, such as a .fetch() call to a durable object instance, or Response.redirect(),
         // we need to return a mutable response object.
         const mutableResponse = new Response(response.body, response);

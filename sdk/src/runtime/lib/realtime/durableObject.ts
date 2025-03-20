@@ -1,5 +1,6 @@
 import { DurableObject } from "cloudflare:workers";
 import { MESSAGE_TYPE } from "./shared";
+import { validateUpgradeRequest } from "./validateUpgradeRequest";
 
 interface ClientInfo {
   url: string;
@@ -18,13 +19,15 @@ export class RealtimeDurableObject extends DurableObject {
   }
 
   async fetch(request: Request): Promise<Response> {
-    if (request.headers.get("Upgrade") === "websocket") {
-      const url = new URL(request.url);
-      const clientInfo = this.createClientInfo(url, request);
-      return this.handleWebSocket(request, clientInfo);
+    const validation = validateUpgradeRequest(request);
+
+    if (!validation.valid) {
+      return validation.response;
     }
 
-    return new Response("Invalid request", { status: 400 });
+    const url = new URL(request.url);
+    const clientInfo = this.createClientInfo(url, request);
+    return this.handleWebSocket(request, clientInfo);
   }
 
   private createClientInfo(url: URL, request: Request): ClientInfo {
@@ -43,13 +46,6 @@ export class RealtimeDurableObject extends DurableObject {
     server.serializeAttachment(clientInfo);
     this.state.acceptWebSocket(server);
     return new Response(null, { status: 101, webSocket: client });
-  }
-
-  async webSocketOpen(ws: WebSocket) {
-    const clientInfo = ws.deserializeAttachment() as ClientInfo;
-    console.log(
-      `Client connected - ID: ${clientInfo.clientId}, URL: ${clientInfo.url}`,
-    );
   }
 
   async webSocketMessage(ws: WebSocket, data: ArrayBuffer) {
@@ -79,13 +75,6 @@ export class RealtimeDurableObject extends DurableObject {
         ws.send(errorResponse);
       }
     }
-  }
-
-  async webSocketClose(ws: WebSocket, code: number, reason: string) {
-    const clientInfo = ws.deserializeAttachment() as ClientInfo;
-    console.log(
-      `Client disconnected - ID: ${clientInfo.clientId}, URL: ${clientInfo.url}, Code: ${code}, Reason: ${reason}`,
-    );
   }
 
   private async streamResponse(
@@ -121,10 +110,6 @@ export class RealtimeDurableObject extends DurableObject {
     args: string,
     clientInfo: ClientInfo,
   ): Promise<void> {
-    console.log(
-      `Handling action for client ${clientInfo.clientId} at ${clientInfo.url}: id: ${id}, args: ${args}`,
-    );
-
     const url = new URL(clientInfo.url);
     url.searchParams.set("__rsc", "true");
     url.searchParams.set("__rsc_action_id", id);

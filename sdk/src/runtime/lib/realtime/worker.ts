@@ -1,4 +1,5 @@
 import { route } from "../../entries/router";
+import { validateUpgradeRequest } from "./validateUpgradeRequest";
 import type { RealtimeDurableObject } from "./durableObject";
 
 export const realtimeRoute = (
@@ -7,8 +8,10 @@ export const realtimeRoute = (
   ) => DurableObjectNamespace<RealtimeDurableObject>,
 ) =>
   route("/__realtime", async function ({ request, env }) {
-    if (request.headers.get("Upgrade") !== "websocket") {
-      return new Response("Expected WebSocket", { status: 400 });
+    const validation = validateUpgradeRequest(request);
+
+    if (!validation.valid) {
+      return validation.response;
     }
 
     const url = new URL(request.url);
