@@ -1,5 +1,6 @@
 {
   "name": "@redwoodjs/sdk",
+  "private": false,
   "version": "0.0.21",
   "description": "",
   "type": "module",
