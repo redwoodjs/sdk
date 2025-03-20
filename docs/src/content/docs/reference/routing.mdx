@@ -3,10 +3,10 @@ title: Request Handling & Routing
 description: Redwood SDK's routing system, including route definitions, request handling, and nested routing patterns
 ---
 
-import { Code } from '@astrojs/starlight/components';
+import { Code } from "@astrojs/starlight/components";
 
-RedwoodSDK's routing system is built around the request/response cycle. 
-Each incoming `Request` is processed and generates a corresponding `Response`. 
+RedwoodSDK's routing system is built around the request/response cycle.
+Each incoming `Request` is processed and generates a corresponding `Response`.
 Routes are registered in `defineApp`, where incoming request URLs are matched to route functions that return `Response` objects.
 
 <Code 
@@ -14,8 +14,8 @@ Routes are registered in `defineApp`, where incoming request URLs are matched to
   title="src/worker.tsx" 
   mark={[5,6, 7]}
   code={`\
-import { defineApp } from 'redwoodsdk/worker'
-import { route } from 'redwoodsdk/router'
+import { defineApp } from '@redwoodjs/sdk/worker'
+import { route } from '@redwoodjs/sdk/router'
 
 export default defineApp({
     route('/', function() {
@@ -48,13 +48,14 @@ Here's a basic example:
 <Code
   language="tsx"
   code={`\
-import { route } from "redwoodsdk/router";
+import { route } from "@redwoodjs/sdk/router";
 
 route("/", function ({ request, params, env, ctx }) {
-  return new Response("Hello, world!", { status: 200 });
+return new Response("Hello, world!", { status: 200 });
 });`} />
 
 When returning a JSX component, RedwoodSDK will:
+
 1. Render it to static HTML
 2. Hydrate it on the client side using React
 
@@ -65,7 +66,7 @@ For more details on JSX handling, see the [JSX section](#jsx) below.
 RedwoodSDK's interruptors allow you to chain multiple request functions for a single route, where each function can either:
 
 1. Return a Response to interrupt the chain
-2. Return nothing to continue to the next function 
+2. Return nothing to continue to the next function
 3. Return a JSX component as the final response
 
 This pattern is particularly useful for implementing middleware-like functionality at the route level, such as authentication checks.
@@ -75,8 +76,8 @@ Here's an example:
 <Code
   language="tsx"
   code={`\
-import { defineApp } from "redwoodsdk/worker";
-import { route } from "redwoodsdk/router";
+import { defineApp } from "@redwoodjs/sdk/worker";
+import { route } from "@redwoodjs/sdk/router";
 
 export default defineApp([
   route("/user/settings", [
@@ -126,9 +127,11 @@ export default defineApp([
   route('/', function({ ctx }) {
     return new Response(\`You are logged in as "\${ctx.user.email}"\`)
   })
-])`} />
+])`}
+/>
 
 In this example, we define a global middleware function `getUserMiddleware` that:
+
 1. Retrieves the user's session information
 2. Attempts to fetch the user from the database using the session's userId
 3. Stores the user object in the request context (`ctx`)
@@ -151,11 +154,11 @@ By default, all components use the `"use server"` directive. For interactive com
   language="tsx"
   title="src/worker.tsx"
   code={`\
-import { defineApp } from "redwoodsdk/worker";
-import { route } from "redwoodsdk/router";
+import { defineApp } from "@redwoodjs/sdk/worker";
+import { route } from "@redwoodjs/sdk/router";
 
 function Homepage() {
-  return <div>Hello, world! I'm a React Server Component!</div>;
+return <div>Hello, world! I'm a React Server Component!</div>;
 }
 
 export default defineApp([
@@ -176,18 +179,18 @@ By default, RedwoodSDK only renders your component's HTML without `<html>`, `<he
   language="tsx"
   title="src/worker.tsx"
   code={`\
-import { defineApp } from "redwoodsdk/worker";
-import { route, layout } from "redwoodsdk/router";
+import { defineApp } from "@redwoodjs/sdk/worker";
+import { route, layout } from "@redwoodjs/sdk/router";
 
 function Document({ children }) {
-  return (
-    <html>
-      <head>
-        <title>RedwoodSDK App</title>
-      </head>
-      <body>{children}</body>
-    </html>
-  );
+return (
+<html>
+<head>
+<title>RedwoodSDK App</title>
+</head>
+<body>{children}</body>
+</html>
+);
 }
 
 export default defineApp([
@@ -206,7 +209,7 @@ To enable client-side hydration:
   language="tsx"
   title="src/client.tsx"
   code={`\
-import { initClient } from "redwoodsdk/client";
+import { initClient } from "@redwoodjs/sdk/client";
 
 initClient();`} />
 
@@ -226,7 +229,8 @@ function Document({ children }) {
       <body>{children}</body>
     </html>
   );
-}`} />
+}`}
+/>
 
 ## Helpers
 
@@ -240,8 +244,8 @@ Here's an example using both helpers:
 <Code
   language="tsx"
   code={`\
-import { defineApp } from "redwoodsdk/worker";
-import { index, layout, prefix } from "redwoodsdk/router";
+import { defineApp } from "@redwoodjs/sdk/worker";
+import { index, layout, prefix } from "@redwoodjs/sdk/router";
 import { authRoutes } from 'src/pages/auth/routes';
 import { invoiceRoutes } from 'src/pages/invoice/routes';
 import HomePage from 'src/pages/Home/HomePage';

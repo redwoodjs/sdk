@@ -17,7 +17,7 @@ export async function transformUseClientCode(
 
   if (isWorkerEnvironment) {
     s.prepend(`
-import { registerClientReference } from "redwoodsdk/worker";
+import { registerClientReference } from "@redwoodjs/sdk/worker";
 `);
 
     const [_, exports] = parse(code);

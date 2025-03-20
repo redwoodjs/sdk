@@ -16,7 +16,7 @@ export const Component = () => {
 }`),
     ).toMatchInlineSnapshot(`
       "
-      import { registerClientReference } from "redwoodsdk/worker";
+      import { registerClientReference } from "@redwoodjs/sdk/worker";
       export const ComponentSSR = () => {
         return jsx('div', { children: 'Hello' });
       }
@@ -40,7 +40,7 @@ export const Component = async () => {
 }`),
     ).toMatchInlineSnapshot(`
       "
-      import { registerClientReference } from "redwoodsdk/worker";
+      import { registerClientReference } from "@redwoodjs/sdk/worker";
       export const ComponentSSR = async () => {
         return jsx('div', { children: 'Hello' });
       }
@@ -64,7 +64,7 @@ export function Component() {
 }`),
     ).toMatchInlineSnapshot(`
       "
-      import { registerClientReference } from "redwoodsdk/worker";
+      import { registerClientReference } from "@redwoodjs/sdk/worker";
       export function ComponentSSR() {
         return jsx('div', { children: 'Hello' });
       }
@@ -88,7 +88,7 @@ export async function Component() {
 }`),
     ).toMatchInlineSnapshot(`
       "
-      import { registerClientReference } from "redwoodsdk/worker";
+      import { registerClientReference } from "@redwoodjs/sdk/worker";
       export async function ComponentSSR() {
         return jsx('div', { children: 'Hello' });
       }
@@ -116,7 +116,7 @@ export const Second = () => {
 }`),
     ).toMatchInlineSnapshot(`
       "
-      import { registerClientReference } from "redwoodsdk/worker";
+      import { registerClientReference } from "@redwoodjs/sdk/worker";
       export const FirstSSR = () => {
         return jsx('div', { children: 'First' });
       }
@@ -149,7 +149,7 @@ export const Second = async () => {
 }`),
     ).toMatchInlineSnapshot(`
       "
-      import { registerClientReference } from "redwoodsdk/worker";
+      import { registerClientReference } from "@redwoodjs/sdk/worker";
       export const FirstSSR = async () => {
         return jsx('div', { children: 'First' });
       }
@@ -182,7 +182,7 @@ export function Second() {
 }`),
     ).toMatchInlineSnapshot(`
       "
-      import { registerClientReference } from "redwoodsdk/worker";
+      import { registerClientReference } from "@redwoodjs/sdk/worker";
       export function FirstSSR() {
         return jsx('div', { children: 'First' });
       }
@@ -215,7 +215,7 @@ export async function Second() {
 }`),
     ).toMatchInlineSnapshot(`
       "
-      import { registerClientReference } from "redwoodsdk/worker";
+      import { registerClientReference } from "@redwoodjs/sdk/worker";
       export async function FirstSSR() {
         return jsx('div', { children: 'First' });
       }
@@ -250,7 +250,7 @@ const Second = () => {
 export { First, Second }`),
     ).toMatchInlineSnapshot(`
       "
-      import { registerClientReference } from "redwoodsdk/worker";
+      import { registerClientReference } from "@redwoodjs/sdk/worker";
       const FirstSSR = () => {
         return jsx('div', { children: 'First' });
       }
@@ -287,7 +287,7 @@ const Second = async () => {
 export { First, Second }`),
     ).toMatchInlineSnapshot(`
       "
-      import { registerClientReference } from "redwoodsdk/worker";
+      import { registerClientReference } from "@redwoodjs/sdk/worker";
       const FirstSSR = async () => {
         return jsx('div', { children: 'First' });
       }
@@ -324,7 +324,7 @@ function Second() {
 export { First, Second }`),
     ).toMatchInlineSnapshot(`
       "
-      import { registerClientReference } from "redwoodsdk/worker";
+      import { registerClientReference } from "@redwoodjs/sdk/worker";
       function FirstSSR() {
         return jsx('div', { children: 'First' });
       }
@@ -361,7 +361,7 @@ async function Second() {
 export { First, Second }`),
     ).toMatchInlineSnapshot(`
       "
-      import { registerClientReference } from "redwoodsdk/worker";
+      import { registerClientReference } from "@redwoodjs/sdk/worker";
       async function FirstSSR() {
         return jsx('div', { children: 'First' });
       }
@@ -392,7 +392,7 @@ export default () => {
 }`),
     ).toMatchInlineSnapshot(`
       "
-      import { registerClientReference } from "redwoodsdk/worker";
+      import { registerClientReference } from "@redwoodjs/sdk/worker";
       function AnonymousComponent0SSR()  {
         return jsx('div', { children: 'Hello' })
 
@@ -414,7 +414,7 @@ export default async () => {
 }`),
     ).toMatchInlineSnapshot(`
       "
-      import { registerClientReference } from "redwoodsdk/worker";
+      import { registerClientReference } from "@redwoodjs/sdk/worker";
       async function AnonymousComponent0SSR()  {
         return jsx('div', { children: 'Hello' })
 
@@ -436,7 +436,7 @@ export default function Component() {
 }`),
     ).toMatchInlineSnapshot(`
       "
-      import { registerClientReference } from "redwoodsdk/worker";
+      import { registerClientReference } from "@redwoodjs/sdk/worker";
       function ComponentSSR{
         return jsx('div', { children: 'Hello' });
       }
@@ -459,7 +459,7 @@ export default async function Component() {
 }`),
     ).toMatchInlineSnapshot(`
       "
-      import { registerClientReference } from "redwoodsdk/worker";
+      import { registerClientReference } from "@redwoodjs/sdk/worker";
       async function ComponentSSR{
         return jsx('div', { children: 'Hello' });
       }
@@ -551,7 +551,7 @@ export function ComplexComponent({ initialCount = 0 }) {
 }`),
     ).toMatchInlineSnapshot(`
       "
-      import { registerClientReference } from "redwoodsdk/worker";
+      import { registerClientReference } from "@redwoodjs/sdk/worker";
       export function ComplexComponentSSR({ initialCount = 0 }) {
         const [count, setCount] = useState(initialCount);
         const [items, setItems] = useState([]);
@@ -663,7 +663,7 @@ export { Second, Third }
 export { Fourth as AnotherName }`),
     ).toMatchInlineSnapshot(`
       "
-      import { registerClientReference } from "redwoodsdk/worker";
+      import { registerClientReference } from "@redwoodjs/sdk/worker";
       export const FirstSSR = () => {
         return jsx('div', { children: 'First' });
       }

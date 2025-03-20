@@ -1,5 +1,5 @@
-import { defineApp } from "redwoodsdk/worker";
-import { route, layout } from "redwoodsdk/router";
+import { defineApp } from "@redwoodjs/sdk/worker";
+import { route, layout } from "@redwoodjs/sdk/router";
 import { Document } from "@/app/Document";
 import { setCommonHeaders } from "@/app/headers";
 import {
@@ -9,10 +9,10 @@ import {
   animals,
 } from "unique-names-generator";
 
-import { realtimeRoute } from "redwoodsdk/realtime/worker";
+import { realtimeRoute } from "@redwoodjs/sdk/realtime/worker";
 import Note from "./app/pages/note/Note";
 
-export { RealtimeDurableObject } from "redwoodsdk/realtime/durableObject";
+export { RealtimeDurableObject } from "@redwoodjs/sdk/realtime/durableObject";
 export { NoteDurableObject } from "@/noteDurableObject";
 
 export type Context = {};

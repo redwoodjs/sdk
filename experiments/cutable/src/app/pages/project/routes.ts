@@ -1,4 +1,4 @@
-import { index, route } from "redwoodsdk/router";
+import { index, route } from "@redwoodjs/sdk/router";
 import ProjectListPage from "./ListPage/ProjectListPage";
 import ProjectDetailPage from "./DetailPage/ProjectDetailPage";
 import CutlistDetailPage from "./DetailPage/CutlistDetailPage";

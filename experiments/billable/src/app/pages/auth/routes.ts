@@ -1,5 +1,5 @@
 import { db } from "src/db";
-import { route, RouteDefinition } from "redwoodsdk/router";
+import { route, RouteDefinition } from "@redwoodjs/sdk/router";
 import { LoginPage } from "./LoginPage";
 import { link } from "src/shared/links";
 import { sessions } from "@/sessionStore";

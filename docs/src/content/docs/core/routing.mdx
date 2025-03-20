@@ -8,8 +8,8 @@ import { Aside, Tabs, TabItem, LinkCard } from "@astrojs/starlight/components";
 The request/response cycle is at the heart of web development - when a browser makes a request, your server needs to respond with content. RedwoodSDK makes this easy with the `defineApp` function, which lets you elegantly handle incoming requests and return the right responses.
 
 ```tsx title="src/worker.tsx"
-import { defineApp } from "redwoodsdk/worker";
-import { route } from "redwoodsdk/router";
+import { defineApp } from "@redwoodjs/sdk/worker";
+import { route } from "@redwoodjs/sdk/router";
 
 export default defineApp([
   // Middleware
@@ -34,7 +34,7 @@ The `defineApp` function takes an array of middleware and route handlers that ar
 Routes are matched in the order they are defined. You define routes using the `route` function. Trailing slashes are optional and normalized internally.
 
 ```tsx title="src/worker.tsx" mark={4}
-import { route } from "redwoodsdk/router";
+import { route } from "@redwoodjs/sdk/router";
 
 defineApp([
   route("/match-this", () => new Response("Hello, world!"))
@@ -84,7 +84,7 @@ route("/files/*/download/*", ...)
 The request handler is a function, or array of functions (See [Interruptors](#interruptors)), that are executed when a request is matched.
 
 ```tsx title="src/worker.tsx" mark={4-9}
-import { route } from "redwoodsdk/router";
+import { route } from "@redwoodjs/sdk/router";
 
 defineApp([
   route("/a-standard-response", ({ request, params, env, ctx }) => {
@@ -113,8 +113,8 @@ Return values:
 Interruptors are an array of functions that are executed in sequence for each matched request. They can be used to modify the request, context, or to short-circuit the response. A typical use-case is to check for authentication on a per-request basis, as an example you're trying to ensure that a specific user can access a specific resource.
 
 ```tsx title="src/worker.tsx" mark={5-10, 13} collapse={1-2}
-import { defineApp } from "redwoodsdk/worker";
-import { route } from "redwoodsdk/router";
+import { defineApp } from "@redwoodjs/sdk/worker";
+import { route } from "@redwoodjs/sdk/router";
 import { EditBlogPage } from "src/pages/blog/EditBlogPage";
 
 function isAuthenticated({ request, env, ctx }) {
@@ -140,8 +140,8 @@ Context is a mutable object that is passed to each request handler, interruptors
 Middleware runs before the request is matched to a route. You can specify multiple middleware functions, they'll be executed in the order they are defined.
 
 ```tsx title="src/worker.tsx" mark={5-10}
-import { defineApp } from "redwoodsdk/worker";
-import { route } from "redwoodsdk/router";
+import { defineApp } from "@redwoodjs/sdk/worker";
+import { route } from "@redwoodjs/sdk/router";
 
 defineApp([
   sessionMiddleware,
@@ -179,8 +179,8 @@ The `ctx` object:
 Layouts are a way to wrap your pages in a consistent layout. In RedwoodSDK, layouts are defined using the `layout` function in `defineApp`.
 
 ```tsx title="src/worker.tsx" "layout"
-import { defineApp } from "redwoodsdk/worker";
-import { route, layout } from "redwoodsdk/router";
+import { defineApp } from "@redwoodjs/sdk/worker";
+import { route, layout } from "@redwoodjs/sdk/router";
 
 import { Document } from "@/pages/Document";
 import { HomePage } from "@/pages/HomePage";
@@ -196,14 +196,12 @@ The `layout` function takes a React component and an array of route handlers. Th
 ```
 
 <Aside type="tip" title="Layouts">
-  RedwoodSDK does not supply a default "html" template. You must supply your own! This is so you have full control over the HTML rendered by your website.
+  RedwoodSDK does not supply a default "html" template. You must supply your
+  own! This is so you have full control over the HTML rendered by your website.
 </Aside>
 
-
 ```tsx title="src/pages/Document.tsx" mark={7}
-export const Document = ({
-  children,
-}) => (
+export const Document = ({ children }) => (
   <html lang="en">
     <head>
       <meta charSet="utf-8" />
@@ -215,8 +213,6 @@ export const Document = ({
   </html>
 );
 ```
-
-
 
 <Aside type="caution" title="Client Side Hydration">
   You must include the client side hydration script in your layout, otherwise
