@@ -16,7 +16,7 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
         name="keywords"
         content="YouTube, search, social media, scrolling, minimalistic, DoS"
       />
-      <meta name="author" content="@redwoodjs/sdk" />
+      <meta name="author" content="RedwoodSDK" />
       <meta name="robots" content="index, follow" />
       <meta name="googlebot" content="index, follow" />
       <meta name="bingbot" content="index, follow" />

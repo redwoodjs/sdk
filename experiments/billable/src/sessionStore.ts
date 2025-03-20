@@ -1,4 +1,4 @@
-import { defineDurableSession } from "@redwoodjs/sdk/auth";
+import { defineDurableSession } from "redwoodsdk/auth";
 
 export let sessions: ReturnType<typeof defineDurableSession>;
 

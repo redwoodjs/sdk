@@ -8,8 +8,8 @@ import { Aside } from "@astrojs/starlight/components";
 [Cloudflare R2](https://developers.cloudflare.com/r2/) is an object storage solution that's S3 compatible, global, scalable, and can be used to store files, images, videos, and more! It integrates natively with Cloudflare workers, and therefore, with Redwood. It is available locally during development, and is automatically configured when you deploy to Cloudflare.
 
 <Aside type="tip" title="Pick your poison">
-  You do not need to use R2, you can use any storage solution you want, but we
-  recommend R2!
+  You do not need to use R2, you can use any storage solution you want, but we recommend
+  R2!
 </Aside>
 
 ## Setup
@@ -51,13 +51,13 @@ This will make the `my-bucket` bucket available via the `env.R2` binding in your
 
 ## Usage
 
-@redwoodjs/sdk uses the standard Request/Response objects. When uploading files, the data is streamed directly from the client to R2 storage. Similarly, when downloading files, they are streamed directly from R2 to the client. This streaming approach means files are processed in small chunks rather than loading the entire file into memory, making it memory-efficient and suitable for handling large files.
+RedwoodSDK uses the standard Request/Response objects. When uploading files, the data is streamed directly from the client to R2 storage. Similarly, when downloading files, they are streamed directly from R2 to the client. This streaming approach means files are processed in small chunks rather than loading the entire file into memory, making it memory-efficient and suitable for handling large files.
 
 ### Uploading Files
 
 ```tsx title="src/worker.tsx"
-import { defineApp } from "@redwoodjs/sdk/worker";
-import { route } from "@redwoodjs/sdk/router";
+import { defineApp } from "redwoodsdk/worker";
+import { route } from "redwoodsdk/router";
 
 defineApp([
   route("/upload/", async ({ request, env }) => {
@@ -85,8 +85,8 @@ defineApp([
 ### Downloading Files
 
 ```tsx title="src/worker.tsx"
-import { defineApp } from "@redwoodjs/sdk/worker";
-import { route } from "@redwoodjs/sdk/router";
+import { defineApp } from "redwoodsdk/worker";
+import { route } from "redwoodsdk/router";
 
 defineApp([
   route("/download/*", async ({ request, params, env }) => {

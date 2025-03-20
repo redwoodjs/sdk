@@ -1,6 +1,6 @@
-# @redwoodjs/sdk
+# RedwoodSDK
 
-@redwoodjs/sdk is a framework built on top of [Cloudflare's Platform](https://developers.cloudflare.com/), Request/ Response cycle and React Server Components.
+RedwoodSDK is a framework built on top of [Cloudflare's Platform](https://developers.cloudflare.com/), Request/ Response cycle and React Server Components.
 
 - _Cloudflare's platform_ supplies compute (Workers/ Durable Objects), storage (R2), database (D1), and queues. Everything developers need to effectively build software for the web.
 - _React Server components_ enable modern server-side rendering with React.

@@ -1,6 +1,8 @@
 import { defineConfig } from "vite";
-import { redwood } from "@redwoodjs/sdk/vite";
+import { redwood } from "redwoodsdk/vite";
 
 export default defineConfig({
-  plugins: [redwood()],
+  plugins: [
+    redwood(),
+  ],
 });

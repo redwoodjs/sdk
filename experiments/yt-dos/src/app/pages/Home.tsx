@@ -470,7 +470,7 @@ Type HELP for more commands.
           rel="noopener noreferrer"
           className="text-[#8be9fd] hover:text-[#bd93f9]"
         >
-          [BUILT WITH @redwoodjs/sdk]
+          [BUILT WITH REDWOODSDK]
         </a>
       </footer>
     </div>

@@ -1,4 +1,4 @@
-import { defineScript } from "@redwoodjs/sdk/worker";
+import { defineScript } from "redwoodsdk/worker";
 import { drizzle } from "drizzle-orm/d1";
 import { users } from "./schema";
 

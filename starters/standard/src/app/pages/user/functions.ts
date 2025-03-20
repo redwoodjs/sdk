@@ -9,9 +9,9 @@ import {
 } from "@simplewebauthn/server";
 
 import { sessions } from "@/session/store";
-import { RouteContext } from "@redwoodjs/sdk/router";
+import { RouteContext } from "redwoodsdk/router";
 import { db } from "@/db";
-import { verifyTurnstileToken } from "@redwoodjs/sdk/turnstile";
+import { verifyTurnstileToken } from "redwoodsdk/turnstile";
 
 export async function startPasskeyRegistration(
   username: string,

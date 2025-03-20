@@ -31,7 +31,7 @@ export const customReactBuildPlugin = async ({
   const viteDistDir = resolve(
     projectRootDir,
     "node_modules",
-    ".vite_@redwoodjs/sdk",
+    ".vite_redwoodsdk",
   );
   await copyReactFiles(viteDistDir);
   return {

@@ -1,5 +1,5 @@
-import { defineApp } from "@redwoodjs/sdk/worker";
-import { layout, prefix, route } from "@redwoodjs/sdk/router";
+import { defineApp } from "redwoodsdk/worker";
+import { layout, prefix, route } from "redwoodsdk/router";
 import { Document } from "@/app/Document";
 import { authRoutes } from "@/app/pages/auth/routes";
 import { Session } from "./session/durableObject";

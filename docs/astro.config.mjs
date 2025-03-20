@@ -11,10 +11,10 @@ export default defineConfig({
           bundledLangs: ["bash", "ts", "tsx"],
         },
       },
-      title: "@redwoodjs/sdk",
+      title: "RedwoodSDK",
       logo: {
-        light: "./src/assets/light-logo.svg",
-        dark: "./src/assets/dark-logo.svg",
+        light: './src/assets/light-logo.svg',
+        dark: './src/assets/dark-logo.svg',
         replacesTitle: true,
       },
       customCss: [

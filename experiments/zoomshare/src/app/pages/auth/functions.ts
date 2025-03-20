@@ -10,7 +10,7 @@ import {
 } from "@simplewebauthn/server";
 
 import { sessions } from "@/session/store";
-import { RouteContext } from "@redwoodjs/sdk/router";
+import { RouteContext } from "redwoodsdk/router";
 import { db } from "@/db";
 
 export async function startPasskeyRegistration(
