@@ -124,7 +124,7 @@ if [[ "$DRY_RUN" == true ]]; then
     echo "  [DRY RUN] pnpm publish --access public"
   fi
 else
-  PUBLISH_CMD="pnpm publish"
+  PUBLISH_CMD="pnpm publish --access public"
   if [[ "$VERSION_TYPE" == "test" ]]; then
     PUBLISH_CMD="$PUBLISH_CMD --tag test"
   fi
