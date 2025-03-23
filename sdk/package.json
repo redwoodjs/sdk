@@ -1,6 +1,6 @@
 {
   "name": "@redwoodjs/sdk",
-  "version": "0.0.23",
+  "version": "0.0.23-test.0",
   "description": "",
   "type": "module",
   "bin": {
@@ -71,7 +71,7 @@
   "author": "RedwoodJS <peter@redwoodjs.com>",
   "license": "MIT",
   "dependencies": {
-    "@cloudflare/vite-plugin": "^0.1.9",
+    "@cloudflare/vite-plugin": "^0.1.15",
     "@cloudflare/workers-types": "^4.20241112.0",
     "@microsoft/api-extractor": "^7.48.0",
     "@types/express": "^5.0.0",
@@ -112,7 +112,7 @@
     "vite-plugin-wasm": "^3.4.1",
     "vite-tsconfig-paths": "^5.1.4",
     "workers-types": "link:@cloudflare/workers-types",
-    "wrangler": "^3.105.1"
+    "wrangler": "^4.4.0"
   },
   "peerDependencies": {
     "react-server-dom-webpack": "19.0.0-rc-f2df5694-20240916",
