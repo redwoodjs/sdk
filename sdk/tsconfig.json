@@ -37,6 +37,11 @@
 
     "outDir": "./dist",
 
-    "types": ["./types/react.d.ts", "./types/global.d.ts", "./types/vite.d.ts"]
+    "types": [
+      "./types/react.d.ts",
+      "./types/global.d.ts",
+      "./types/vite.d.ts",
+      "@cloudflare/workers-types"
+    ]
   }
 }
