@@ -72,7 +72,7 @@
   "license": "MIT",
   "dependencies": {
     "@cloudflare/vite-plugin": "^0.1.15",
-    "@cloudflare/workers-types": "^4.20241112.0",
+    "@cloudflare/workers-types": "^4.20250321.0",
     "@microsoft/api-extractor": "^7.48.0",
     "@types/express": "^5.0.0",
     "@types/fnv-plus": "^1.3.2",
@@ -111,7 +111,6 @@
     "vite-plugin-top-level-await": "^1.4.4",
     "vite-plugin-wasm": "^3.4.1",
     "vite-tsconfig-paths": "^5.1.4",
-    "workers-types": "link:@cloudflare/workers-types",
     "wrangler": "^4.4.0"
   },
   "peerDependencies": {
@@ -121,6 +120,7 @@
   "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab",
   "devDependencies": {
     "@types/lodash": "^4.17.13",
+    "@types/node": "^22.13.11",
     "semver": "^7.7.1",
     "vitest": "^3.0.9"
   }
