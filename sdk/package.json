@@ -111,7 +111,6 @@
     "vite-plugin-top-level-await": "^1.4.4",
     "vite-plugin-wasm": "^3.4.1",
     "vite-tsconfig-paths": "^5.1.4",
-    "workers-types": "link:@cloudflare/workers-types",
     "wrangler": "^4.4.0"
   },
   "peerDependencies": {
