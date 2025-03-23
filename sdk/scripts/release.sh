@@ -79,6 +79,13 @@ if [[ -z "$VERSION_TYPE" ]]; then
 fi
 
 # After argument validation and before version calculation
+echo -e "\n🔄 Pulling for changes..."
+if [[ "$DRY_RUN" == true ]]; then
+  echo "  [DRY RUN] git pull --rebase"
+else
+  git pull --rebase
+fi
+
 echo -e "\n🏗️  Building package..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] NODE_ENV=production pnpm build"
