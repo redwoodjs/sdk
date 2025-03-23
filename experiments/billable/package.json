@@ -29,7 +29,6 @@
     "__reset:release": "pnpm __reset && pnpm release"
   },
   "dependencies": {
-    "@cloudflare/workers-types": "^4.20241112.0",
     "@prisma/adapter-d1": "^6.3.1",
     "@prisma/client": "^6.3.1",
     "@radix-ui/react-slot": "^1.1.1",
