@@ -17,6 +17,10 @@
     "binding": "ASSETS"
   },
 
+  "ai": {
+    "binding": "AI"
+  },
+
   // Observability settings
   "observability": {
     "enabled": true
