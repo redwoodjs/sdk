@@ -32,16 +32,16 @@
 
     /* Skip type checking all .d.ts files. */
     "skipLibCheck": true,
-    
+
     "declaration": true,
-    
+
     "outDir": "./dist",
 
     "types": [
-      "@cloudflare/workers-types/2023-07-01",
+      "worker-configuration.d.ts",
       "./types/react.d.ts",
       "./types/global.d.ts",
       "./types/vite.d.ts"
-    ],
-  },
+    ]
+  }
 }
