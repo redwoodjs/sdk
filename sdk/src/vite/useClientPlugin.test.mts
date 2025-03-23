@@ -24,8 +24,6 @@ export const Component = () => {
       // >>> Client references
       const Component = registerClientReference("/test/file.tsx", "Component", ComponentSSR);
 
-      export { ComponentSSR };
-
       export { Component };
       "
     `);
@@ -47,8 +45,6 @@ export const Component = async () => {
 
       // >>> Client references
       const Component = registerClientReference("/test/file.tsx", "Component", ComponentSSR);
-
-      export { ComponentSSR };
 
       export { Component };
       "
@@ -72,8 +68,6 @@ export function Component() {
       // >>> Client references
       const Component = registerClientReference("/test/file.tsx", "Component", ComponentSSR);
 
-      export { ComponentSSR };
-
       export { Component };
       "
     `);
@@ -95,8 +89,6 @@ export async function Component() {
 
       // >>> Client references
       const Component = registerClientReference("/test/file.tsx", "Component", ComponentSSR);
-
-      export { ComponentSSR };
 
       export { Component };
       "
@@ -129,8 +121,6 @@ export const Second = () => {
       const First = registerClientReference("/test/file.tsx", "First", FirstSSR);
       const Second = registerClientReference("/test/file.tsx", "Second", SecondSSR);
 
-      export { FirstSSR, SecondSSR };
-
       export { First, Second };
       "
     `);
@@ -161,8 +151,6 @@ export const Second = async () => {
       // >>> Client references
       const First = registerClientReference("/test/file.tsx", "First", FirstSSR);
       const Second = registerClientReference("/test/file.tsx", "Second", SecondSSR);
-
-      export { FirstSSR, SecondSSR };
 
       export { First, Second };
       "
@@ -195,8 +183,6 @@ export function Second() {
       const First = registerClientReference("/test/file.tsx", "First", FirstSSR);
       const Second = registerClientReference("/test/file.tsx", "Second", SecondSSR);
 
-      export { FirstSSR, SecondSSR };
-
       export { First, Second };
       "
     `);
@@ -227,8 +213,6 @@ export async function Second() {
       // >>> Client references
       const First = registerClientReference("/test/file.tsx", "First", FirstSSR);
       const Second = registerClientReference("/test/file.tsx", "Second", SecondSSR);
-
-      export { FirstSSR, SecondSSR };
 
       export { First, Second };
       "
@@ -628,8 +612,6 @@ export function ComplexComponent({ initialCount = 0 }) {
       // >>> Client references
       const ComplexComponent = registerClientReference("/test/file.tsx", "ComplexComponent", ComplexComponentSSR);
 
-      export { ComplexComponentSSR };
-
       export { ComplexComponent };
       "
     `);
@@ -694,7 +676,7 @@ export { Fourth as AnotherName }`),
       const Third = registerClientReference("/test/file.tsx", "Third", ThirdSSR);
       const Fourth = registerClientReference("/test/file.tsx", "AnotherName", FourthSSR);
 
-      export { FirstSSR, MainSSR, SecondSSR, ThirdSSR, FourthSSR };
+      export { MainSSR, SecondSSR, ThirdSSR, FourthSSR };
 
       export { First, Second, Third, Fourth as AnotherName };
       export { Main as default };

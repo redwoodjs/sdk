@@ -149,10 +149,10 @@ export { ${functionName} as default };`;
       }
     }
 
-    // First export SSR versions
-    const ssrExportNames = Array.from(functionExports).map(
-      (name) => `${name}SSR`,
-    );
+    // First export SSR versions - but only for non-inline exports
+    const ssrExportNames = Array.from(functionExports)
+      .filter((name) => !inlineExportedFunctions.has(name))
+      .map((name) => `${name}SSR`);
 
     if (ssrExportNames.length > 0) {
       s.append(`\nexport { ${ssrExportNames.join(", ")} };\n`);
