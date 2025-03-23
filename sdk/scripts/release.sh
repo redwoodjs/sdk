@@ -86,6 +86,13 @@ else
   git pull --rebase
 fi
 
+echo -e "\n📦 Making sure dependencies are up to date..."
+if [[ "$DRY_RUN" == true ]]; then
+  echo "  [DRY RUN] pnpm install --frozen-lockfile"
+else
+  pnpm install --frozen-lockfile
+fi
+
 echo -e "\n🏗️  Building package..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] NODE_ENV=production pnpm build"
