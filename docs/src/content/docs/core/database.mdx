@@ -75,12 +75,12 @@ Add the following scripts to your `package.json` file.
 
 ```json title="package.json"
 "scripts": {
-    "migrate:dev": "wrangler d1 migrations apply DB --local",
+    "migrate:dev": "npx prisma generate && wrangler d1 migrations apply DB --local",
     "migrate:prd": "wrangler d1 migrations apply DB --remote",
     "migrate:new": "rw-scripts migrate-new",
 }
 ```
 
-To create a new migration, run `npx run migrate:new "your migration name"`.
+To create a new migration, run `npx run migrate:new "your migration name"`. This will also apply the migration in local development.
 
 To apply migrations, run `npx run migrate:dev` for local development, or `npx run migrate:prd` for production.

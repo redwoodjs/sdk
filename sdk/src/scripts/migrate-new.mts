@@ -16,9 +16,9 @@ const getNextMigrationNumber = async (): Promise<string> => {
   return String(lastNumber + 1).padStart(4, "0");
 };
 
-export const migrateNew = async (name: string) => {
+export const migrateNew = async (name: string, skipApply = false) => {
   if (!name) {
-    console.log("Usage: pnpm migrate:new <migration-name>");
+    console.log("Usage: pnpm migrate:new <migration-name> [--no-apply]");
     console.log('Example: pnpm migrate:new "Add user"');
     process.exit(1);
   }
@@ -28,8 +28,22 @@ export const migrateNew = async (name: string) => {
   await $`pnpm prisma migrate diff --from-local-d1 --to-schema-datamodel ./prisma/schema.prisma --script --output ${filepath}`;
 
   console.log("Generated migration:", filepath);
+
+  if (!skipApply) {
+    console.log("Applying migration in development...");
+    await $`pnpm migrate:dev`;
+  }
 };
 
 if (import.meta.url === new URL(process.argv[1], import.meta.url).href) {
-  migrateNew(process.argv[2]);
+  const args = process.argv.slice(2);
+
+  // Separate flags from other arguments
+  const flags = new Set(args.filter((arg) => arg.startsWith("--")));
+  const nonFlags = args.filter((arg) => !arg.startsWith("--"));
+
+  const skipApply = flags.has("--no-apply");
+  const [name] = nonFlags;
+
+  migrateNew(name, skipApply);
 }
