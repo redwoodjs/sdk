@@ -3,6 +3,7 @@ import { $ } from "../lib/$.mjs";
 import { readdir } from "fs/promises";
 import { resolve } from "path";
 import { mkdirp } from "fs-extra";
+import { writeFile } from "fs/promises";
 
 const getNextMigrationNumber = async (): Promise<string> => {
   await mkdirp(resolve(process.cwd(), "./migrations"));
@@ -25,7 +26,24 @@ export const migrateNew = async (name: string, skipApply = false) => {
 
   const nextNum = await getNextMigrationNumber();
   const filepath = `./migrations/${nextNum}_${snakeCase(name.toLowerCase())}.sql`;
-  await $`pnpm prisma migrate diff --from-local-d1 --to-schema-datamodel ./prisma/schema.prisma --script --output ${filepath}`;
+  const raw =
+    await $`pnpm prisma migrate diff --from-local-d1 --to-schema-datamodel ./prisma/schema.prisma --script`;
+
+  const cleaned = raw.stdout
+    ?.split("\n")
+    .filter(
+      (line) =>
+        !line.includes("_cf_METADATA") && !line.includes("_cf_metadata"),
+    )
+    .join("\n");
+
+  if (!cleaned) {
+    console.error("No changes to apply");
+    process.exitCode = 1;
+    return;
+  }
+
+  await writeFile(filepath, cleaned);
 
   console.log("Generated migration:", filepath);
 
