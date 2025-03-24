@@ -2,20 +2,22 @@
 
 import { sendMessage } from "./functions";
 import { useState } from "react";
-import { useEventStream } from "@redwoodjs/sdk/client";
+import { consumeEventStream } from "@redwoodjs/sdk/client";
 
 export function Chat() {
   const [message, setMessage] = useState("");
   const [reply, setReply] = useState("");
-  const eventStream = useEventStream({
-    onEvent: (event) => {
-      setReply((prev) => prev + JSON.parse(event.data).response);
-    },
-  });
 
   const onClick = async () => {
     setReply(""); // Reset reply before new message
-    (await sendMessage(message)).pipeTo(eventStream());
+    (await sendMessage(message)).pipeTo(
+      consumeEventStream({
+        onChunk: (event) => {
+          console.log("######", event);
+          setReply((prev) => prev + JSON.parse(event.data).response);
+        },
+      }),
+    );
   };
 
   return (
