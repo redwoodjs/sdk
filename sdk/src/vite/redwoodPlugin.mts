@@ -18,7 +18,7 @@ import { $ } from "../lib/$.mjs";
 import { customReactBuildPlugin } from "./customReactBuildPlugin.mjs";
 import { injectHmrPreambleJsxPlugin } from "./injectHmrPreambleJsxPlugin.mjs";
 import { setupEnvFiles } from "./setupEnvFiles.mjs";
-import { invalidateViteDepsCacheEntry } from "./invalidateViteDepsCacheEntry.mjs";
+import { invalidateCacheIfPrismaClientChanged } from "./invalidateCacheIfPrismaClientChanged.mjs";
 import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
 
 export type RedwoodPluginOptions = {
@@ -53,18 +53,14 @@ export const redwoodPlugin = async (
   const usesPrisma = await $({ reject: false })`pnpm prisma --version`;
   const isUsingPrisma = usesPrisma.exitCode === 0;
 
-  if (isUsingPrisma) {
-    // context(justinvdm, 10 Mar 2025): We need to use vite optimizeDeps for all deps to work with @cloudflare/vite-plugin.
-    // Thing is, @prisma/client has generated code. So users end up with a stale @prisma/client
-    // when they change their prisma schema and regenerate the client, until clearing out node_modules/.vite
-    // We can't exclude @prisma/client from optimizeDeps since we need it there for @cloudflare/vite-plugin to work.
-    // But we can manually invalidate just its own deps cache entry.
-    await invalidateViteDepsCacheEntry({
-      projectRootDir,
-      environment: "worker",
-      entry: "@prisma/client",
-    });
-  }
+  // context(justinvdm, 10 Mar 2025): We need to use vite optimizeDeps for all deps to work with @cloudflare/vite-plugin.
+  // Thing is, @prisma/client has generated code. So users end up with a stale @prisma/client
+  // when they change their prisma schema and regenerate the client, until clearing out node_modules/.vite
+  // We can't exclude @prisma/client from optimizeDeps since we need it there for @cloudflare/vite-plugin to work.
+  // But we can manually invalidate the cache if the prisma schema changes.
+  await invalidateCacheIfPrismaClientChanged({
+    projectRootDir,
+  });
 
   return [
     configPlugin({

@@ -101,8 +101,7 @@ model User {
 When you need to make changes to your database schema:
 
 1. Update your `schema.prisma` file
-2. Create a migration: `pnpm migrate:new "describe your changes"`
-3. Apply the migration: `pnpm migrate:dev`
+2. Create a migration and apply it in development: `pnpm migrate:new "describe your changes"`
 
 ### Recommended Tools
 
