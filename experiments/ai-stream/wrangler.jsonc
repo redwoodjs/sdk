@@ -1,0 +1,33 @@
+{
+  // Schema reference for wrangler configuration
+  "$schema": "node_modules/wrangler/config-schema.json",
+
+  // Name of your worker
+  "name": "ai-stream",
+
+  // Entry point for your worker
+  "main": "src/worker.tsx",
+
+  // Compatibility settings
+  "compatibility_date": "2024-09-23",
+  "compatibility_flags": ["nodejs_compat"],
+
+  // Assets configuration
+  "assets": {
+    "binding": "ASSETS"
+  },
+
+  "ai": {
+    "binding": "AI"
+  },
+
+  // Observability settings
+  "observability": {
+    "enabled": true
+  },
+
+  // Environment variables
+  "vars": {
+    // Add your environment variables here
+  }
+}

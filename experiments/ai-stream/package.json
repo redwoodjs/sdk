@@ -1,0 +1,37 @@
+{
+  "name": "@redwoodjs/starter-minimal",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "type": "module",
+  "keywords": [],
+  "author": "",
+  "license": "UNLICENSED",
+  "private": true,
+  "scripts": {
+    "postinstall": "pnpm dev:init",
+    "build": "vite build",
+    "dev": "NODE_ENV=${NODE_ENV:-development} vite dev",
+    "dev:init": "rw-scripts dev-init",
+    "worker:run": "rw-scripts worker-run",
+    "clean": "pnpm build && pnpm clean:vendor",
+    "clean:vite": "rm -rf ./node_modules/.vite",
+    "clean:vendor": "rm -rf ./vendor/dist",
+    "release": "pnpm build && wrangler deploy",
+    "format": "prettier --write ./src"
+  },
+  "dependencies": {
+    "@redwoodjs/sdk": "0.0.24",
+    "react": "19.0.0-rc-f2df5694-20240916",
+    "react-dom": "19.0.0-rc-f2df5694-20240916",
+    "react-server-dom-webpack": "19.0.0-rc-f2df5694-20240916"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.11",
+    "@types/react": "^18.3.12",
+    "@types/react-dom": "^18.3.1",
+    "vite": "^6.1.1",
+    "wrangler": "^4.4.0"
+  },
+  "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab"
+}
