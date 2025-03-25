@@ -415,13 +415,13 @@ export default async () => {
     expect(
       await transform(`"use client"
 
-export default function Component() {
+export default function Component({ prop1, prop2 }) {
   return jsx('div', { children: 'Hello' });
 }`),
     ).toMatchInlineSnapshot(`
       "
       import { registerClientReference } from "@redwoodjs/sdk/worker";
-      function ComponentSSR{
+      function ComponentSSR({ prop1, prop2 }){
         return jsx('div', { children: 'Hello' });
       }
 
@@ -444,7 +444,7 @@ export default async function Component() {
     ).toMatchInlineSnapshot(`
       "
       import { registerClientReference } from "@redwoodjs/sdk/worker";
-      async function ComponentSSR{
+      async function ComponentSSR(){
         return jsx('div', { children: 'Hello' });
       }
 
@@ -662,7 +662,7 @@ export { Fourth as AnotherName }`),
         return jsx('div', { children: 'Fourth' });
       }
 
-      function MainSSR{
+      function MainSSR(){
         return jsx('div', { children: 'Main' });
       }
 
