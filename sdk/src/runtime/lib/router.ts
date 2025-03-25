@@ -1,9 +1,6 @@
 import { isValidElementType } from "react-is";
 
-export type RouteContext<
-  TContext = Record<string, any>,
-  TParams = Record<string, string>,
-> = {
+export type RouteContext<TContext = Record<string, any>, TParams = any> = {
   request: Request;
   params: TParams;
   env: Env;
@@ -47,19 +44,19 @@ export type RouteMiddleware<TContext = any> = (
   | void
   | Promise<void>
   | Promise<Response | void>;
-type RouteFunction<TContext> = (
-  ctx: RouteContext<TContext>,
+type RouteFunction<TContext, TParams> = (
+  ctx: RouteContext<TContext, TParams>,
 ) => Response | Promise<Response>;
-type RouteComponent<TContext> = (
-  ctx: RouteContext<TContext>,
+type RouteComponent<TContext, TParams> = (
+  ctx: RouteContext<TContext, TParams>,
 ) => JSX.Element | Promise<JSX.Element>;
 
-type RouteHandler<TContext> =
-  | RouteFunction<TContext>
-  | RouteComponent<TContext>
+type RouteHandler<TContext, TParams> =
+  | RouteFunction<TContext, TParams>
+  | RouteComponent<TContext, TParams>
   | [
       ...RouteMiddleware<TContext>[],
-      RouteFunction<TContext> | RouteComponent<TContext>,
+      RouteFunction<TContext, TParams> | RouteComponent<TContext, TParams>,
     ];
 
 export type Route<TContext> =
@@ -67,14 +64,14 @@ export type Route<TContext> =
   | RouteDefinition<TContext>
   | Array<Route<TContext>>;
 
-export type RouteDefinition<TContext = Record<string, any>> = {
+export type RouteDefinition<TContext = Record<string, any>, TParams = any> = {
   path: string;
-  handler: RouteHandler<TContext>;
+  handler: RouteHandler<TContext, TParams>;
 };
 
-type RouteMatch<TContext = Record<string, any>> = {
-  params: Record<string, string>;
-  handler: RouteHandler<TContext>;
+type RouteMatch<TContext = Record<string, any>, TParams = any> = {
+  params: TParams;
+  handler: RouteHandler<TContext, TParams>;
 };
 
 function matchPath(
@@ -223,10 +220,10 @@ export function defineRoutes<TContext = Record<string, any>>(
   };
 }
 
-export function route<TContext = any>(
+export function route<TContext, TParams>(
   path: string,
-  handler: RouteHandler<TContext>,
-): RouteDefinition<TContext> {
+  handler: RouteHandler<TContext, TParams>,
+): RouteDefinition<TContext, TParams> {
   if (!path.endsWith("/")) {
     path = path + "/";
   }
@@ -237,16 +234,16 @@ export function route<TContext = any>(
   };
 }
 
-export function index<TContext = any>(
-  handler: RouteHandler<TContext>,
-): RouteDefinition<TContext> {
+export function index<TContext, TParams>(
+  handler: RouteHandler<TContext, TParams>,
+): RouteDefinition<TContext, TParams> {
   return route("/", handler);
 }
 
-export function prefix<TContext = any>(
+export function prefix<TContext, TParams>(
   prefix: string,
-  routes: ReturnType<typeof route<TContext>>[],
-): RouteDefinition<TContext>[] {
+  routes: ReturnType<typeof route<TContext, TParams>>[],
+): RouteDefinition<TContext, TParams>[] {
   return routes.map((r) => {
     return {
       path: prefix + r.path,
