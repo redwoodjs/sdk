@@ -11,25 +11,12 @@ export function consumeEventStream({
   const decoder = new TextDecoder();
   let buffer = "";
 
-  // Step 1: Decode bytes -> strings
-  const decodeText = new TransformStream<Uint8Array, string>({
+  // Combined decoding and split on '\n\n' boundaries
+  const decodeAndSplit = new TransformStream<Uint8Array, string>({
     transform(chunk, controller) {
       buffer += decoder.decode(chunk, { stream: true });
-      controller.enqueue(buffer);
-      buffer = "";
-    },
-    flush(controller) {
-      buffer += decoder.decode();
-      if (buffer) controller.enqueue(buffer);
-    },
-  });
 
-  // Step 2: Split on '\n\n' boundaries (SSE message separator)
-  const splitOnDoubleNewline = new TransformStream<string, string>({
-    transform(chunk, controller) {
-      buffer += chunk;
-
-      console.log("####### buffer", buffer);
+      console.log("buffer", buffer);
       let index;
       while ((index = buffer.indexOf("\n\n")) !== -1) {
         const full = buffer.slice(0, index).trim();
@@ -38,18 +25,17 @@ export function consumeEventStream({
       }
     },
     flush(controller) {
+      buffer += decoder.decode();
       if (buffer.trim()) controller.enqueue(buffer.trim());
     },
   });
 
-  // Step 3: Parse SSE lines into EventSourceMessage
   const parseSSE = new EventSourceParserStream();
 
   const stream = new TransformStream();
 
   stream.readable
-    .pipeThrough(decodeText)
-    .pipeThrough(splitOnDoubleNewline)
+    .pipeThrough(decodeAndSplit)
     .pipeThrough(parseSSE)
     .pipeTo(
       new WritableStream({
