@@ -13,8 +13,11 @@ export function Chat() {
     (await sendMessage(message)).pipeTo(
       consumeEventStream({
         onChunk: (event) => {
-          console.log("######", event);
-          setReply((prev) => prev + JSON.parse(event.data).response);
+          setReply(
+            (prev) =>
+              prev +
+              (event.data === "[DONE]" ? "" : JSON.parse(event.data).response),
+          );
         },
       }),
     );
