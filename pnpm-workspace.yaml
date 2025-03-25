@@ -6,6 +6,7 @@ packages:
   - "experiments/cutable"
   - "experiments/zoomshare"
   - "experiments/realtime-poc"
+  - "experiments/ai-stream"
   - "starters/drizzle"
   - "starters/minimal"
   - "starters/passkey-auth"

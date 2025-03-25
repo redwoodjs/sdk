@@ -32,6 +32,37 @@ importers:
         specifier: ^0.32.5
         version: 0.32.6
 
+  experiments/ai-stream:
+    dependencies:
+      '@redwoodjs/sdk':
+        specifier: 0.0.24
+        version: 0.0.24(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
+      react:
+        specifier: 19.0.0-rc-f2df5694-20240916
+        version: 19.0.0-rc-f2df5694-20240916
+      react-dom:
+        specifier: 19.0.0-rc-f2df5694-20240916
+        version: 19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916)
+      react-server-dom-webpack:
+        specifier: 19.0.0-rc-f2df5694-20240916
+        version: 19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1)
+    devDependencies:
+      '@types/node':
+        specifier: ^22.13.11
+        version: 22.13.11
+      '@types/react':
+        specifier: ^18.3.12
+        version: 18.3.18
+      '@types/react-dom':
+        specifier: ^18.3.1
+        version: 18.3.5(@types/react@18.3.18)
+      vite:
+        specifier: ^6.1.1
+        version: 6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0)
+      wrangler:
+        specifier: ^4.4.0
+        version: 4.4.0(@cloudflare/workers-types@4.20250321.0)
+
   experiments/billable:
     dependencies:
       '@prisma/adapter-d1':
@@ -45,7 +76,7 @@ importers:
         version: 1.1.1(@types/react@18.3.18)(react@19.0.0-rc-f2df5694-20240916)
       '@redwoodjs/sdk':
         specifier: 0.0.25
-        version: 0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
+        version: 0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
       '@types/lodash':
         specifier: ^4.17.13
         version: 4.17.14
@@ -154,7 +185,7 @@ importers:
         version: 3.2.0(@types/react-dom@18.3.5(@types/react@18.3.18))(@types/react@18.3.18)(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)
       '@redwoodjs/sdk':
         specifier: 0.0.25
-        version: 0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.24.2)))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
+        version: 0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.24.2)))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.2)
@@ -230,7 +261,7 @@ importers:
         version: 6.4.1(prisma@6.4.1(typescript@5.7.3))(typescript@5.7.3)
       '@redwoodjs/sdk':
         specifier: 0.0.25
-        version: 0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.24.2)))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
+        version: 0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.24.2)))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))
       '@simplewebauthn/browser':
         specifier: ^13.1.0
         version: 13.1.0
@@ -279,7 +310,7 @@ importers:
     dependencies:
       '@redwoodjs/sdk':
         specifier: 0.0.25
-        version: 0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
+        version: 0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
       react:
         specifier: 19.0.0-rc-f2df5694-20240916
         version: 19.0.0-rc-f2df5694-20240916
@@ -316,7 +347,7 @@ importers:
         version: 6.4.1(prisma@6.4.1(typescript@5.7.3))(typescript@5.7.3)
       '@redwoodjs/sdk':
         specifier: 0.0.25
-        version: 0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
+        version: 0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
       '@simplewebauthn/browser':
         specifier: ^13.1.0
         version: 13.1.0
@@ -504,7 +535,7 @@ importers:
     dependencies:
       '@redwoodjs/sdk':
         specifier: 0.0.25
-        version: 0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.19.12)))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
+        version: 0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.19.12)))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))
       dotenv:
         specifier: ^16.4.7
         version: 16.4.7
@@ -547,7 +578,7 @@ importers:
     dependencies:
       '@redwoodjs/sdk':
         specifier: 0.0.25
-        version: 0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
+        version: 0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
       react:
         specifier: 19.0.0-rc-f2df5694-20240916
         version: 19.0.0-rc-f2df5694-20240916
@@ -584,7 +615,7 @@ importers:
         version: 6.4.1(prisma@6.4.1(typescript@5.7.3))(typescript@5.7.3)
       '@redwoodjs/sdk':
         specifier: 0.0.25
-        version: 0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
+        version: 0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
       '@simplewebauthn/browser':
         specifier: ^13.1.0
         version: 13.1.0
@@ -630,7 +661,7 @@ importers:
         version: 6.4.1(prisma@6.4.1(typescript@5.7.3))(typescript@5.7.3)
       '@redwoodjs/sdk':
         specifier: 0.0.25
-        version: 0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
+        version: 0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
       prisma:
         specifier: ^6.3.1
         version: 6.4.1(typescript@5.7.3)
@@ -664,7 +695,7 @@ importers:
     dependencies:
       '@redwoodjs/sdk':
         specifier: 0.0.25
-        version: 0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
+        version: 0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
       react:
         specifier: 19.0.0-rc-f2df5694-20240916
         version: 19.0.0-rc-f2df5694-20240916
@@ -701,7 +732,7 @@ importers:
         version: 6.4.1(prisma@6.4.1(typescript@5.7.3))(typescript@5.7.3)
       '@redwoodjs/sdk':
         specifier: 0.0.25
-        version: 0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
+        version: 0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
       '@simplewebauthn/browser':
         specifier: ^13.1.0
         version: 13.1.0
@@ -2769,6 +2800,13 @@ packages:
       react: ^18.0 || ^19.0 || ^19.0.0-rc
       react-dom: ^18.0 || ^19.0 || ^19.0.0-rc
 
+  '@redwoodjs/sdk@0.0.24':
+    resolution: {integrity: sha512-fDlN/Ic/xDhMLlU/hHObhFs2XE4jVB30Hoqx15UH6X/NuMvf9WycijXj+9rvCW72qqF670kAUKx1Or1+0Jb/Aw==}
+    hasBin: true
+    peerDependencies:
+      react-server-dom-webpack: 19.0.0-rc-f2df5694-20240916
+      vite: ^6.0.11
+
   '@redwoodjs/sdk@0.0.25':
     resolution: {integrity: sha512-SbYc7ybM9vWb7c8HBXQLti8QT3viEzMVvY0unF87qosJZsXsCd41PtsSPueQt1b+ORNaXm0PiYVVC7kk9ibMzA==}
     hasBin: true
@@ -3116,9 +3154,6 @@ packages:
 
   '@types/node@22.13.11':
     resolution: {integrity: sha512-iEUCUJoU0i3VnrCmgoWCXttklWcvoCIx4jzcP22fioIVSdTmjgoEvmAO/QPw6TcS9k5FrNgn4w7q5lGOd1CT5g==}
-
-  '@types/node@22.13.5':
-    resolution: {integrity: sha512-+lTU0PxZXn0Dr1NBtC7Y8cR21AJr87dLLU953CWA6pMxxv/UDc7jYAY90upcrie1nRcD6XNG5HOYEDtgW5TxAg==}
 
   '@types/prop-types@15.7.14':
     resolution: {integrity: sha512-gNMvNH49DJ7OJYv+KAKn0Xp45p8PLl6zo2YnvDIbTd4J6MER2BmWN49TG7n9LvkyihINxeKW8+3bfS2yDC9dzQ==}
@@ -8399,7 +8434,73 @@ snapshots:
       react-dom: 19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916)
       react-promise-suspense: 0.3.4
 
-  '@redwoodjs/sdk@0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.19.12)))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)':
+  '@redwoodjs/sdk@0.0.24(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)':
+    dependencies:
+      '@cloudflare/vite-plugin': 0.1.15(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)(wrangler@4.4.0(@cloudflare/workers-types@4.20250321.0))
+      '@cloudflare/workers-types': 4.20250321.0
+      '@microsoft/api-extractor': 7.49.1(@types/node@22.13.11)
+      '@types/express': 5.0.0
+      '@types/fnv-plus': 1.3.2
+      '@types/fs-extra': 11.0.4
+      '@types/react': 18.3.18
+      '@types/react-dom': 18.3.5(@types/react@18.3.18)
+      '@types/react-is': 18.3.1
+      '@vitejs/plugin-react': 4.3.4(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))
+      autoprefixer: 10.4.20(postcss@8.5.3)
+      dotenv: 16.4.7
+      es-module-lexer: 1.6.0
+      execa: 9.5.2
+      express: 4.21.2
+      fnv-plus: 1.3.1
+      fs-extra: 11.2.0
+      import-meta-resolve: 4.1.0
+      kysely-codegen: 0.17.0(kysely@0.27.5)
+      lodash: 4.17.21
+      magic-string: 0.30.17
+      miniflare: 3.20250224.0
+      picocolors: 1.1.1
+      postcss: 8.5.3
+      prettier: 3.4.2
+      prisma: 6.4.1(typescript@5.7.3)
+      react: 19.0.0-rc-f2df5694-20240916
+      react-dom: 19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916)
+      react-is: 19.0.0
+      react-server-dom-webpack: 19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1)
+      rsc-html-stream: 0.0.3
+      tailwindcss: 3.4.17
+      tmp-promise: 3.0.3
+      toml: 3.0.0
+      tsx: 4.19.2
+      typescript: 5.7.3
+      vite: 6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0)
+      vite-plugin-commonjs: 0.10.4
+      vite-plugin-dts: 4.5.0(@types/node@22.13.11)(rollup@4.34.8)(typescript@5.7.3)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))
+      vite-plugin-top-level-await: 1.4.4(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))
+      vite-plugin-wasm: 3.4.1(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))
+      vite-tsconfig-paths: 5.1.4(typescript@5.7.3)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))
+      workers-types: link:@cloudflare/workers-types
+      wrangler: 4.4.0(@cloudflare/workers-types@4.20250321.0)
+    transitivePeerDependencies:
+      - '@libsql/kysely-libsql'
+      - '@swc/helpers'
+      - '@tediousjs/connection-string'
+      - '@types/node'
+      - better-sqlite3
+      - bufferutil
+      - kysely
+      - kysely-bun-sqlite
+      - kysely-bun-worker
+      - mysql2
+      - pg
+      - rollup
+      - supports-color
+      - tarn
+      - tedious
+      - ts-node
+      - utf-8-validate
+      - workerd
+
+  '@redwoodjs/sdk@0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.19.12)))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))':
     dependencies:
       '@cloudflare/vite-plugin': 0.1.15(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)(wrangler@4.4.0(@cloudflare/workers-types@4.20250321.0))
       '@cloudflare/workers-types': 4.20250321.0
@@ -8464,7 +8565,7 @@ snapshots:
       - utf-8-validate
       - workerd
 
-  '@redwoodjs/sdk@0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.24.2)))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)':
+  '@redwoodjs/sdk@0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.24.2)))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))':
     dependencies:
       '@cloudflare/vite-plugin': 0.1.15(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)(wrangler@4.4.0(@cloudflare/workers-types@4.20250321.0))
       '@cloudflare/workers-types': 4.20250321.0
@@ -8529,7 +8630,7 @@ snapshots:
       - utf-8-validate
       - workerd
 
-  '@redwoodjs/sdk@0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)':
+  '@redwoodjs/sdk@0.0.25(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)':
     dependencies:
       '@cloudflare/vite-plugin': 0.1.15(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)(wrangler@4.4.0(@cloudflare/workers-types@4.20250321.0))
       '@cloudflare/workers-types': 4.20250321.0
@@ -8920,10 +9021,6 @@ snapshots:
     dependencies:
       undici-types: 6.20.0
 
-  '@types/node@22.13.5':
-    dependencies:
-      undici-types: 6.20.0
-
   '@types/prop-types@15.7.14': {}
 
   '@types/qs@6.9.18': {}
@@ -8948,7 +9045,7 @@ snapshots:
 
   '@types/sax@1.2.7':
     dependencies:
-      '@types/node': 22.13.5
+      '@types/node': 22.13.11
 
   '@types/send@0.17.4':
     dependencies:
