@@ -100,7 +100,7 @@ import { registerClientReference } from "@redwoodjs/sdk/worker";
 
     // Add a separate pattern for named default function exports
     const namedDefaultExportRegex =
-      /export\s+default\s+(?:async\s+)?function\s+(\w+)\s*\([^)]*\)\s*{[^}]*}/g;
+      /export\s+default\s+(?:async\s+)?function\s+(\w+)\s*(\([^)]*\))\s*({[^}]*})/g;
 
     // Update the defaultExportRegex handling for anonymous arrow functions
     const anonymousDefaultExportRegex =
@@ -120,9 +120,9 @@ import { registerClientReference } from "@redwoodjs/sdk/worker";
     }
 
     // Don't remove named default exports as they're handled by the function transformation
-    s.replaceAll(namedDefaultExportRegex, (match, name) => {
+    s.replaceAll(namedDefaultExportRegex, (match, name, params, body) => {
       const isAsync = match.includes("async");
-      return `${isAsync ? "async " : ""}function ${name}SSR${match.slice(match.indexOf("{"))}`;
+      return `${isAsync ? "async " : ""}function ${name}SSR${params}${body}`;
     });
 
     // Update the anonymous default export handling
