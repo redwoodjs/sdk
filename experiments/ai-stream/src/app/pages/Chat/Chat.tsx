@@ -28,9 +28,29 @@ export function Chat() {
       <input
         type="text"
         value={message}
+        placeholder="Type a message..."
         onChange={(e) => setMessage(e.target.value)}
+        style={{
+          width: "80%",
+          padding: "10px",
+          marginRight: "8px",
+          borderRadius: "4px",
+          border: "1px solid #ccc",
+        }}
       />
-      <button onClick={onClick}>Send</button>
+      <button
+        onClick={onClick}
+        style={{
+          padding: "10px 20px",
+          borderRadius: "4px",
+          border: "none",
+          backgroundColor: "#007bff",
+          color: "white",
+          cursor: "pointer",
+        }}
+      >
+        Send
+      </button>
       <div>{reply}</div>
     </div>
   );
