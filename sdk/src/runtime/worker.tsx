@@ -8,7 +8,7 @@ import { ErrorResponse } from "./error";
 
 import {
   Route,
-  RouteContext,
+  RouteOptions,
   defineRoutes,
   RenderPageParams,
   PageProps,
@@ -54,7 +54,7 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
         const isRSCRequest = url.searchParams.has("__rsc");
 
         const handleAction = async (
-          ctx: RouteContext<Context, Record<string, string>>,
+          ctx: RouteOptions<Context, Record<string, string>>,
         ) => {
           const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 

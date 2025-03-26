@@ -5,7 +5,7 @@ import { Loader2 } from "lucide-react";
 import { useState, useTransition } from "react";
 import { emailLoginLink } from "./functions";
 import { Layout } from "../Layout";
-import { RouteContext } from "../../../lib/router";
+import { RouteOptions } from "../../../lib/router";
 import { Button } from "../../components/ui/button";
 import { Input } from "../../components/ui/input";
 import {
@@ -16,7 +16,7 @@ import {
 } from "../../components/ui/input-otp";
 import { link } from "../../shared/links";
 
-export function LoginPage({ ctx }: RouteContext) {
+export function LoginPage({ ctx }: RouteOptions) {
   const [email, setEmail] = useState("her.stander@gmail.com");
   const [isPending, startTransition] = useTransition();
   const [success, setSuccess] = useState(false);
@@ -46,7 +46,10 @@ export function LoginPage({ ctx }: RouteContext) {
           {success ? (
             <OTP
               onClick={(token) => {
-                const url = new URL(link("/auth/callback"), window.location.origin);
+                const url = new URL(
+                  link("/auth/callback"),
+                  window.location.origin,
+                );
                 url.searchParams.set("email", email);
                 url.searchParams.set("token", token);
                 window.location.href = url.toString();

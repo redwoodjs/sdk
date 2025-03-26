@@ -1,9 +1,9 @@
 "use server";
 
 import { sessions } from "@/session/store";
-import { RouteContext } from "@redwoodjs/sdk/router";
+import { RouteOptions } from "@redwoodjs/sdk/router";
 
-export async function performLogin(ctx?: RouteContext) {
+export async function performLogin(ctx?: RouteOptions) {
   const { headers } = ctx!;
 
   // >>> Authentication logic for user goes here

@@ -2,9 +2,14 @@
 
 import { Layout } from "../../Layout";
 import { ProjectForm } from "./ProjectForm";
-import { RouteContext } from "../../../../lib/router";
+import { RouteOptions } from "../../../../lib/router";
 import { db } from "../../../../db";
-import { BreadcrumbLink, BreadcrumbList, BreadcrumbPage, BreadcrumbSeparator } from "src/components/ui/breadcrumb";
+import {
+  BreadcrumbLink,
+  BreadcrumbList,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "src/components/ui/breadcrumb";
 import { link } from "src/shared/links";
 
 export type ProjectItem = {
@@ -19,8 +24,7 @@ type Project = {
   total: number;
   boardsNeeded: number;
   createdAt: Date;
-}
-
+};
 
 export async function getProject(id: string, userId: string) {
   const project = await db.project.findFirstOrThrow({
@@ -29,38 +33,37 @@ export async function getProject(id: string, userId: string) {
       userId,
     },
   });
-  
+
   return {
     ...project,
   };
 }
 
-export async function updateProject(id: string, data: Partial<Omit<Project, 'userId' | 'cutlistItems'>>) {
+export async function updateProject(
+  id: string,
+  data: Partial<Omit<Project, "userId" | "cutlistItems">>,
+) {
   return await db.project.update({
     where: { id },
-    data
+    data,
   });
 }
 
 export default async function ProjectDetailPage({
   params,
   ctx,
-}: RouteContext<{ id: string }>) {
+}: RouteOptions<{ id: string }>) {
   const project = await getProject(params.id, ctx.user.id);
 
   return (
     <Layout ctx={ctx}>
       <BreadcrumbList>
-        <BreadcrumbLink href={link('/project/list')}>
-        Projects
-        </BreadcrumbLink>
+        <BreadcrumbLink href={link("/project/list")}>Projects</BreadcrumbLink>
         <BreadcrumbSeparator />
-        <BreadcrumbPage>
-        Edit Project
-        </BreadcrumbPage>
+        <BreadcrumbPage>Edit Project</BreadcrumbPage>
       </BreadcrumbList>
 
-        <ProjectForm project={project} />
+      <ProjectForm project={project} />
     </Layout>
   );
 }

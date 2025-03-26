@@ -1,9 +1,12 @@
 "use server";
 
-import { RouteContext } from "@redwoodjs/sdk/router";
+import { RouteOptions } from "@redwoodjs/sdk/router";
 
-export async function sendMessage(message: string, ctx?: RouteContext) {
-  const response = await ctx!.env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
+export async function sendMessage(
+  message: string,
+  ...[{ env }]: [RouteOptions]
+) {
+  const response = await env.AI.run("@cf/meta/llama-3.1-8b-instruct", {
     prompt: message,
     stream: true,
   });

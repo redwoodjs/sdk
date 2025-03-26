@@ -4,7 +4,7 @@ import { Layout } from "../../Layout";
 
 import { CreateInvoiceButton } from "./CreateInvoiceButton";
 import { db } from "src/db";
-import { RouteContext } from "@redwoodjs/sdk/router";
+import { RouteOptions } from "@redwoodjs/sdk/router";
 import { link } from "src/shared/links";
 
 import {
@@ -58,7 +58,7 @@ async function getInvoiceListSummary(userId: string) {
   });
 }
 
-export async function InvoiceListPage({ ctx }: RouteContext) {
+export async function InvoiceListPage({ ctx }: RouteOptions) {
   const invoices = await getInvoiceListSummary(ctx.user.id);
   return (
     <Layout ctx={ctx}>

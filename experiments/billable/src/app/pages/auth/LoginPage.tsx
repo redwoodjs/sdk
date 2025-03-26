@@ -1,6 +1,6 @@
 "use client";
 
-import { RouteContext } from "@redwoodjs/sdk/router";
+import { RouteOptions } from "@redwoodjs/sdk/router";
 import { Loader2 } from "lucide-react";
 
 import { useState, useTransition } from "react";
@@ -16,7 +16,7 @@ import {
 } from "../../components/ui/input-otp";
 import { link } from "../../shared/links";
 
-export function LoginPage(ctx: RouteContext) {
+export function LoginPage(ctx: RouteOptions) {
   const [email, setEmail] = useState("peter@redwoodjs.com");
   const [isPending, startTransition] = useTransition();
   const [success, setSuccess] = useState(false);

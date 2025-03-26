@@ -1,6 +1,6 @@
 import { isValidElementType } from "react-is";
 
-export type RouteContext<TParams = Record<string, string>> = {
+export type RouteOptions<TParams = Record<string, string>> = {
   request: Request;
   params: TParams;
   env: Env;
@@ -8,10 +8,10 @@ export type RouteContext<TParams = Record<string, string>> = {
 };
 
 type RouteMiddleware = (
-  ctx: RouteContext,
+  ctx: RouteOptions,
 ) => Response | Promise<Response> | void;
-type RouteFunction = (ctx: RouteContext) => Response | Promise<Response>;
-type RouteComponent = (ctx: RouteContext) => JSX.Element | Promise<JSX.Element>;
+type RouteFunction = (ctx: RouteOptions) => Response | Promise<Response>;
+type RouteComponent = (ctx: RouteOptions) => JSX.Element | Promise<JSX.Element>;
 
 type RouteHandler =
   | RouteFunction
@@ -31,7 +31,7 @@ type RouteMatch = {
 function matchPath(
   routePath: string,
   requestPath: string,
-): RouteContext["params"] | null {
+): RouteOptions["params"] | null {
   const pattern = routePath
     .replace(/:[a-zA-Z]+/g, "([^/]+)") // Convert :param to capture group
     .replace(/\*/g, "(.*)"); // Convert * to wildcard capture group
@@ -44,7 +44,7 @@ function matchPath(
   }
 
   // Extract named parameters and wildcards
-  const params: RouteContext["params"] = {};
+  const params: RouteOptions["params"] = {};
   const paramNames = [...routePath.matchAll(/:[a-zA-Z]+/g)].map((m) =>
     m[0].slice(1),
   );
@@ -66,24 +66,21 @@ function matchPath(
 
 export function defineRoutes(routes: RouteDefinition[]): {
   routes: RouteDefinition[];
-  handle: (
-    {
-      request,
-      ctx,
-      env,
-      renderPage,
-
-    }: {
-      request: Request;
-      ctx: any;
-      env: Env;
-      renderPage: (page: any, props: Record<string, any>) => Promise<Response>;
-    },
-  ) => Response | Promise<Response>;
+  handle: ({
+    request,
+    ctx,
+    env,
+    renderPage,
+  }: {
+    request: Request;
+    ctx: any;
+    env: Env;
+    renderPage: (page: any, props: Record<string, any>) => Promise<Response>;
+  }) => Response | Promise<Response>;
 } {
   return {
     routes,
-    async handle({request, ctx, env, renderPage }) {
+    async handle({ request, ctx, env, renderPage }) {
       try {
         const url = new URL(request.url);
         let path = url.pathname;
@@ -134,30 +131,43 @@ export function defineRoutes(routes: RouteDefinition[]): {
           // TODO(peterp, 2025-01-30): Serialize the request
           return await renderPage(handler as RouteComponent, { params, ctx });
         } else {
-          return await (handler({ request, params, ctx, env }) as Promise<Response>);
+          return await (handler({
+            request,
+            params,
+            ctx,
+            env,
+          }) as Promise<Response>);
         }
-
       } catch (error) {
-        console.error('Router Error:', {
+        console.error("Router Error:", {
           url: request.url,
-          error: error instanceof Error ? {
-            message: error.message,
-            stack: error.stack,
-            name: error.name,
-            // Some errors might have a 'cause' property with additional details
-            cause: (error as any).cause
-          } : error
+          error:
+            error instanceof Error
+              ? {
+                  message: error.message,
+                  stack: error.stack,
+                  name: error.name,
+                  // Some errors might have a 'cause' property with additional details
+                  cause: (error as any).cause,
+                }
+              : error,
         });
-        
-        return new Response(JSON.stringify({
-          error: error instanceof Error ? {
-            message: error.message,
-            location: error.stack?.split('\n')[1]?.trim() // This will show the first line of the stack trace
-          } : 'An unexpected error occurred'
-        }), {
-          status: 500,
-          headers: { 'Content-Type': 'application/json' }
-        });
+
+        return new Response(
+          JSON.stringify({
+            error:
+              error instanceof Error
+                ? {
+                    message: error.message,
+                    location: error.stack?.split("\n")[1]?.trim(), // This will show the first line of the stack trace
+                  }
+                : "An unexpected error occurred",
+          }),
+          {
+            status: 500,
+            headers: { "Content-Type": "application/json" },
+          },
+        );
       }
     },
   };

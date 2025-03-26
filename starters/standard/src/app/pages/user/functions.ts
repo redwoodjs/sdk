@@ -9,13 +9,13 @@ import {
 } from "@simplewebauthn/server";
 
 import { sessions } from "@/session/store";
-import { RouteContext } from "@redwoodjs/sdk/router";
+import { RouteOptions } from "@redwoodjs/sdk/router";
 import { db } from "@/db";
 import { verifyTurnstileToken } from "@redwoodjs/sdk/turnstile";
 
 export async function startPasskeyRegistration(
   username: string,
-  ctx?: RouteContext,
+  ctx?: RouteOptions,
 ) {
   const { headers, env } = ctx!;
 
@@ -40,7 +40,7 @@ export async function finishPasskeyRegistration(
   username: string,
   registration: RegistrationResponseJSON,
   turnstileToken: string,
-  ctx?: RouteContext,
+  ctx?: RouteOptions,
 ) {
   const { request, headers, env } = ctx!;
 
@@ -93,7 +93,7 @@ export async function finishPasskeyRegistration(
   return true;
 }
 
-export async function startPasskeyLogin(ctx?: RouteContext) {
+export async function startPasskeyLogin(ctx?: RouteOptions) {
   const { headers, env } = ctx!;
 
   const options = await generateAuthenticationOptions({
@@ -109,7 +109,7 @@ export async function startPasskeyLogin(ctx?: RouteContext) {
 
 export async function finishPasskeyLogin(
   login: AuthenticationResponseJSON,
-  ctx?: RouteContext,
+  ctx?: RouteOptions,
 ) {
   const { request, headers, env } = ctx!;
   const { origin } = new URL(request.url);

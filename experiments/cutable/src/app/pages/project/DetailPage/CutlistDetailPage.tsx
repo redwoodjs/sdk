@@ -1,5 +1,5 @@
 import { getProject, ProjectItem, updateProject } from "./ProjectDetailPage";
-import { RouteContext } from "@redwoodjs/sdk/router";
+import { RouteOptions } from "@redwoodjs/sdk/router";
 import { BreadcrumbLink } from "src/components/ui/breadcrumb";
 import { BreadcrumbSeparator } from "src/components/ui/breadcrumb";
 import { BreadcrumbPage } from "src/components/ui/breadcrumb";
@@ -12,7 +12,7 @@ import { findOptimalPacking, calculateFreeSpaces } from "./clientFunctions";
 export default async function CutlistDetailPage({
   params,
   ctx,
-}: RouteContext<{ id: string }>) {
+}: RouteOptions<{ id: string }>) {
   const project = await getProject(params.id, ctx.user.id);
   const cutlistItems = JSON.parse(
     project.cutlistItems as string,
