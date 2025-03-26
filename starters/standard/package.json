@@ -22,7 +22,8 @@
     "migrate:dev": "npx prisma generate && wrangler d1 migrations apply DB --local",
     "migrate:prd": "wrangler d1 migrations apply DB --remote",
     "migrate:new": "rw-scripts migrate-new",
-    "seed": "pnpm worker:run ./src/scripts/seed.ts"
+    "seed": "pnpm worker:run ./src/scripts/seed.ts",
+    "check": "pnpm tsc"
   },
   "dependencies": {
     "@prisma/adapter-d1": "^6.4.1",

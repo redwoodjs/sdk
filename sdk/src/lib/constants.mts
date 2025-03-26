@@ -11,7 +11,7 @@ export const VENDOR_ROOT_DIR = resolve(ROOT_DIR, "vendor");
 export const VENDOR_SRC_DIR = resolve(VENDOR_ROOT_DIR, "src");
 export const VENDOR_DIST_DIR = resolve(VENDOR_ROOT_DIR, "dist");
 
-export const DEV_SERVER_PORT = 2332;
+export const DEV_SERVER_PORT = +(process.env.DEV_SERVER_PORT ?? 2332);
 export const WORKER_DEV_SERVER_PORT = 5174;
 
 export const VENDOR_REACT_SSR_PATH = resolve(VENDOR_DIST_DIR, "react-ssr.js");

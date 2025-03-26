@@ -18,7 +18,8 @@
     "clean:vite": "rm -rf ./node_modules/.vite",
     "clean:vendor": "rm -rf ./vendor/dist",
     "release": "pnpm build && wrangler deploy",
-    "format": "prettier --write ./src"
+    "format": "prettier --write ./src",
+    "check": "pnpm tsc"
   },
   "dependencies": {
     "@redwoodjs/sdk": "0.0.30",

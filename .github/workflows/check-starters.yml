@@ -1,0 +1,37 @@
+name: Starters Checks
+
+on:
+  pull_request:
+    paths:
+      - "starters/**"
+
+jobs:
+  check-sdk:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: |
+          corepack enable
+          pnpm install
+
+      - name: Run checks for each starter
+        run: pnpm -r --filter="@redwoodjs/starter-*" check
+
+      - name: Test dev server for each starter
+        run: |
+          for starter in starters/*; do
+            if [ -d "$starter" ]; then
+              ./scripts/check-dev-server.sh "$starter"
+            fi
+          done
+
+      - name: Build each starter
+        run: pnpm -r --filter="@redwoodjs/starter-*" build
