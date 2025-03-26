@@ -45,13 +45,15 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
       configFile: false,
       plugins: [
         redwood({
-          port: 0,
           configPath: tmpWorkerPath.path,
           entry: {
             worker: scriptPath,
           },
         }),
       ],
+      server: {
+        port: 0,
+      },
     });
 
     try {

@@ -81,12 +81,12 @@ Redwood is just a plugin for Vite, so you can use the same commands to run the d
 ```bash frame="none" showLineNumbers=false
 VITE v6.2.0  ready in 500 ms
 
-➜  Local:   http://localhost:2332/
+➜  Local:   http://localhost:5173/
 ➜  Network: use --host to expose
 ➜  press h + enter to show help
 ```
 
-Access the development server in your browser, by default it's available at [http://localhost:2332](http://localhost:2332),
+Access the development server in your browser, by default it's available at [http://localhost:5173](http://localhost:5173),
 where you should see "Hello World" displayed on the page.
 
 ![Hello World](./images/hello-world.png)
@@ -116,7 +116,7 @@ import { route } from "@redwoodjs/sdk/router";
 export default defineApp([route("/ping", () => <h1>Pong!</h1>)]);
 ```
 
-Now when you navigate to [http://localhost:2332/ping](http://localhost:2332/ping) you should see "Pong!" displayed on the page.
+Now when you navigate to [http://localhost:5173/ping](http://localhost:5173/ping) you should see "Pong!" displayed on the page.
 
 <Aside type="tip">
   You might have noticed that we returned JSX instead of a Response object. This

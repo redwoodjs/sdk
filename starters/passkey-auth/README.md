@@ -18,7 +18,7 @@ pnpm install
 pnpm dev
 ```
 
-Point your browser to the URL displayed in the terminal (e.g. `http://localhost:2332/`).
+Point your browser to the URL displayed in the terminal (e.g. `http://localhost:5173/`).
 
 ## Deploying your app
 
