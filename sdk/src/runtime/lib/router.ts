@@ -1,5 +1,13 @@
 import { isValidElementType } from "react-is";
 
+export type HandlerOptions<TContext = Record<string, any>> = {
+  request: Request;
+  env: Env;
+  ctx: TContext;
+  headers: Headers;
+  rw: RwContext<TContext>;
+};
+
 export type RouteOptions<TContext = Record<string, any>, TParams = any> = {
   request: Request;
   params: TParams;
@@ -153,7 +161,7 @@ export function defineRoutes<TContext = Record<string, any>>(
 
       // Find matching route
       let match: RouteMatch<TContext> | null = null;
-      const RouteOptions: RouteOptions<TContext> = {
+      const routeOptions: RouteOptions<TContext> = {
         request,
         params: {},
         ctx,
@@ -164,7 +172,7 @@ export function defineRoutes<TContext = Record<string, any>>(
 
       for (const route of flattenedRoutes) {
         if (typeof route === "function") {
-          const r = await route(RouteOptions);
+          const r = await route(routeOptions);
 
           if (r instanceof Response) {
             return r;
@@ -186,12 +194,12 @@ export function defineRoutes<TContext = Record<string, any>>(
       }
 
       let { params, handler } = match;
-      RouteOptions.params = params;
+      routeOptions.params = params;
 
       const handlers = Array.isArray(handler) ? handler : [handler];
       for (const h of handlers) {
         if (isRouteComponent(h)) {
-          const actionResult = await rw.handleAction(RouteOptions);
+          const actionResult = await rw.handleAction(routeOptions);
           const props = {
             params,
             env,
@@ -205,7 +213,7 @@ export function defineRoutes<TContext = Record<string, any>>(
             Layout: rw.Layout,
           });
         } else {
-          const r = await (h(RouteOptions) as Promise<Response>);
+          const r = await (h(routeOptions) as Promise<Response>);
           if (r instanceof Response) {
             return r;
           }
