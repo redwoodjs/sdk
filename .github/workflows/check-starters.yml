@@ -3,7 +3,7 @@ name: Starters Checks
 on: pull_request
 
 jobs:
-  check-sdk:
+  check-starters:
     runs-on: ubuntu-latest
 
     steps:
