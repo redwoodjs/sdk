@@ -1,22 +1,48 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-starter_dir=$1
+# Parse arguments
+mode="dev"
+port=""
+starter_dir=""
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --port)
+      port="$2"
+      shift 2
+      ;;
+    --mode)
+      mode="$2"
+      if [[ "$mode" != "dev" && "$mode" != "preview" ]]; then
+        echo "Error: mode must be either 'dev' or 'preview'"
+        exit 1
+      fi
+      shift 2
+      ;;
+    *)
+      starter_dir="$1"
+      shift
+      ;;
+  esac
+done
+
 if [ ! -d "$starter_dir" ]; then
   echo "Error: $starter_dir is not a directory"
   exit 1
 fi
 
-# Calculate port (using the last part of the path to ensure consistent ports per starter)
-starter_name=$(basename "$starter_dir")
-# Use hash of name to generate port (between 3000-3999)
-port=$(( 3000 + $(echo "$starter_name" | cksum | cut -d' ' -f1) % 1000 ))
+# Calculate port if not provided
+if [ -z "$port" ]; then
+  starter_name=$(basename "$starter_dir")
+  port=$(( 3000 + $(echo "$starter_name" | cksum | cut -d' ' -f1) % 1000 ))
+fi
 
-echo "Testing $starter_dir on port $port"
+echo "Testing $starter_dir on port $port in $mode mode"
 
-# Start the dev server
+# Start the server
 cd "$starter_dir"
-DEV_SERVER_PORT=$port pnpm dev &
+pnpm "$mode" --port "$port" &
 server_pid=$!
 
 # Try to connect to the server with retries

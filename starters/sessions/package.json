@@ -12,6 +12,7 @@
     "postinstall": "pnpm dev:init",
     "build": "vite build",
     "dev": "NODE_ENV=${NODE_ENV:-development} vite dev",
+    "preview": "pnpm build && pnpm vite preview",
     "dev:init": "rw-scripts dev-init",
     "worker:run": "rw-scripts worker-run",
     "clean": "pnpm build && pnpm clean:vendor",
