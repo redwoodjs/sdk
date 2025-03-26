@@ -5,7 +5,7 @@ on:
     paths:
       - "sdk/**" # Runs only if files in the sdk directory change
 
-  workflow_dispatch:
+  workflow_dispatch
 
 jobs:
   check-sdk:
