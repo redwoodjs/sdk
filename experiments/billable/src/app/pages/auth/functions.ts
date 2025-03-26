@@ -23,9 +23,9 @@ export async function generateAuthToken(email: string) {
   return authToken;
 }
 
-export async function emailLoginLink(email: string, opts: RouteOptions) {
+export async function emailLoginLink(email: string, opts?: RouteOptions) {
   const token = await generateAuthToken(email);
-  const { env } = opts;
+  const { env } = opts!;
   const loginUrl = `${env.APP_URL}${link("/user/auth")}?token=${token}&email=${encodeURIComponent(email)}`;
 
   // TODO (peterp, 2025-02-11): Fix this better.

@@ -54,12 +54,12 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
         const isRSCRequest = url.searchParams.has("__rsc");
 
         const handleAction = async (
-          ctx: RouteOptions<Context, Record<string, string>>,
+          opts: RouteOptions<Context, Record<string, string>>,
         ) => {
           const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 
           if (isRSCActionHandler) {
-            return await rscActionHandler(request, ctx); // maybe we should include params and ctx in the action handler?
+            return await rscActionHandler(request, opts); // maybe we should include params and ctx in the action handler?
           }
         };
 

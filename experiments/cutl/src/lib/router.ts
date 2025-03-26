@@ -8,10 +8,12 @@ export type RouteOptions<TParams = Record<string, string>> = {
 };
 
 type RouteMiddleware = (
-  ctx: RouteOptions,
+  opts: RouteOptions,
 ) => Response | Promise<Response> | void;
-type RouteFunction = (ctx: RouteOptions) => Response | Promise<Response>;
-type RouteComponent = (ctx: RouteOptions) => JSX.Element | Promise<JSX.Element>;
+type RouteFunction = (opts: RouteOptions) => Response | Promise<Response>;
+type RouteComponent = (
+  opts: RouteOptions,
+) => JSX.Element | Promise<JSX.Element>;
 
 type RouteHandler =
   | RouteFunction

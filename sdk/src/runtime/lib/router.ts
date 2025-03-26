@@ -41,11 +41,11 @@ export type RwContext<TContext> = {
   nonce: string;
   Layout: React.FC<LayoutProps<TContext>>;
   renderPage: RenderPage<TContext>;
-  handleAction: (ctx: RouteOptions<TContext>) => Promise<unknown>;
+  handleAction: (opts: RouteOptions<TContext>) => Promise<unknown>;
 };
 
 export type RouteMiddleware<TContext = any> = (
-  ctx: RouteOptions<TContext>,
+  opts: RouteOptions<TContext>,
 ) =>
   | Response
   | Promise<Response>
@@ -53,10 +53,10 @@ export type RouteMiddleware<TContext = any> = (
   | Promise<void>
   | Promise<Response | void>;
 type RouteFunction<TContext, TParams> = (
-  ctx: RouteOptions<TContext, TParams>,
+  opts: RouteOptions<TContext, TParams>,
 ) => Response | Promise<Response>;
 type RouteComponent<TContext, TParams> = (
-  ctx: RouteOptions<TContext, TParams>,
+  opts: RouteOptions<TContext, TParams>,
 ) => JSX.Element | Promise<JSX.Element>;
 
 type RouteHandler<TContext, TParams> =
