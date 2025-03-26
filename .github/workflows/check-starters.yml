@@ -22,13 +22,18 @@ jobs:
       - name: Run checks for each starter
         run: pnpm -r --filter="@redwoodjs/starter-*" check
 
-      - name: Build each starter
-        run: pnpm -r --filter="@redwoodjs/starter-*" build
-
       - name: Test dev server for each starter
         run: |
           for starter in starters/*; do
             if [ -d "$starter" ]; then
-              ./scripts/check-dev-server.sh "$starter"
+              ./scripts/check-starter-server.sh dev "$starter"
+            fi
+          done
+
+      - name: Test building and preview server for each starter
+        run: |
+          for starter in starters/*; do
+            if [ -d "$starter" ]; then
+              ./scripts/check-starter-server.sh preview "$starter"
             fi
           done
