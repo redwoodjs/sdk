@@ -5,6 +5,8 @@ on:
     paths:
       - "sdk/**" # Runs only if files in the sdk directory change
 
+  workflow_dispatch:
+
 jobs:
   check-sdk:
     runs-on: ubuntu-latest

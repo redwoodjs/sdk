@@ -5,6 +5,8 @@ on:
     paths:
       - "starters/**"
 
+  workflow_dispatch:
+
 jobs:
   check-sdk:
     runs-on: ubuntu-latest
