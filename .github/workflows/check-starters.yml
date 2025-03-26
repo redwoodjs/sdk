@@ -1,11 +1,6 @@
 name: Starters Checks
 
-on:
-  pull_request:
-    paths:
-      - "starters/**"
-
-  workflow_dispatch
+on: pull_request
 
 jobs:
   check-sdk:
