@@ -9,7 +9,6 @@ export const initDev = async () => {
 
   if (isUsingPrisma) {
     await $`pnpm migrate:dev`;
-    await $`pnpm prisma generate`;
     await $`pnpm seed`;
   }
 
