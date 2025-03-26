@@ -1,6 +1,14 @@
 import { isValidElementType } from "react-is";
 
-export type RouteContext<TContext = Record<string, any>, TParams = any> = {
+export type HandlerOptions<TContext = Record<string, any>> = {
+  request: Request;
+  env: Env;
+  ctx: TContext;
+  headers: Headers;
+  rw: RwContext<TContext>;
+};
+
+export type RouteOptions<TContext = Record<string, any>, TParams = any> = {
   request: Request;
   params: TParams;
   env: Env;
@@ -10,7 +18,7 @@ export type RouteContext<TContext = Record<string, any>, TParams = any> = {
 };
 
 export type PageProps<TContext> = Omit<
-  RouteContext<TContext>,
+  RouteOptions<TContext>,
   "request" | "headers" | "rw"
 > & { rw: { nonce: string } };
 
@@ -33,11 +41,11 @@ export type RwContext<TContext> = {
   nonce: string;
   Layout: React.FC<LayoutProps<TContext>>;
   renderPage: RenderPage<TContext>;
-  handleAction: (ctx: RouteContext<TContext>) => Promise<unknown>;
+  handleAction: (opts: RouteOptions<TContext>) => Promise<unknown>;
 };
 
 export type RouteMiddleware<TContext = any> = (
-  ctx: RouteContext<TContext>,
+  opts: RouteOptions<TContext>,
 ) =>
   | Response
   | Promise<Response>
@@ -45,10 +53,10 @@ export type RouteMiddleware<TContext = any> = (
   | Promise<void>
   | Promise<Response | void>;
 type RouteFunction<TContext, TParams> = (
-  ctx: RouteContext<TContext, TParams>,
+  opts: RouteOptions<TContext, TParams>,
 ) => Response | Promise<Response>;
 type RouteComponent<TContext, TParams> = (
-  ctx: RouteContext<TContext, TParams>,
+  opts: RouteOptions<TContext, TParams>,
 ) => JSX.Element | Promise<JSX.Element>;
 
 type RouteHandler<TContext, TParams> =
@@ -77,7 +85,7 @@ type RouteMatch<TContext = Record<string, any>, TParams = any> = {
 function matchPath(
   routePath: string,
   requestPath: string,
-): RouteContext["params"] | null {
+): RouteOptions["params"] | null {
   const pattern = routePath
     .replace(/:[a-zA-Z]+/g, "([^/]+)") // Convert :param to capture group
     .replace(/\*/g, "(.*)"); // Convert * to wildcard capture group
@@ -90,7 +98,7 @@ function matchPath(
   }
 
   // Extract named parameters and wildcards
-  const params: RouteContext["params"] = {};
+  const params: RouteOptions["params"] = {};
   const paramNames = [...routePath.matchAll(/:[a-zA-Z]+/g)].map((m) =>
     m[0].slice(1),
   );
@@ -153,7 +161,7 @@ export function defineRoutes<TContext = Record<string, any>>(
 
       // Find matching route
       let match: RouteMatch<TContext> | null = null;
-      const routeContext: RouteContext<TContext> = {
+      const routeOptions: RouteOptions<TContext> = {
         request,
         params: {},
         ctx,
@@ -164,7 +172,7 @@ export function defineRoutes<TContext = Record<string, any>>(
 
       for (const route of flattenedRoutes) {
         if (typeof route === "function") {
-          const r = await route(routeContext);
+          const r = await route(routeOptions);
 
           if (r instanceof Response) {
             return r;
@@ -186,12 +194,12 @@ export function defineRoutes<TContext = Record<string, any>>(
       }
 
       let { params, handler } = match;
-      routeContext.params = params;
+      routeOptions.params = params;
 
       const handlers = Array.isArray(handler) ? handler : [handler];
       for (const h of handlers) {
         if (isRouteComponent(h)) {
-          const actionResult = await rw.handleAction(routeContext);
+          const actionResult = await rw.handleAction(routeOptions);
           const props = {
             params,
             env,
@@ -205,7 +213,7 @@ export function defineRoutes<TContext = Record<string, any>>(
             Layout: rw.Layout,
           });
         } else {
-          const r = await (h(routeContext) as Promise<Response>);
+          const r = await (h(routeOptions) as Promise<Response>);
           if (r instanceof Response) {
             return r;
           }

@@ -1,10 +1,10 @@
 "use server";
 
 import { sessions } from "@/session/store";
-import { RouteContext } from "@redwoodjs/sdk/router";
+import { HandlerOptions } from "@redwoodjs/sdk/router";
 
-export async function performLogin(ctx?: RouteContext) {
-  const { headers } = ctx!;
+export async function performLogin(opts?: HandlerOptions) {
+  const { headers } = opts!;
 
   // >>> Authentication logic for user goes here
   // >>> Replace this stub: e.g. get the user id from your database

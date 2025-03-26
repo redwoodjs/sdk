@@ -3,7 +3,7 @@
 import { Resend } from "resend";
 import { link } from "../../shared/links";
 import { db } from "src/db";
-import { RouteContext } from "@redwoodjs/sdk/router";
+import { RouteOptions } from "@redwoodjs/sdk/router";
 
 export async function generateAuthToken(email: string) {
   const authToken = Math.floor(100000 + Math.random() * 900000).toString();
@@ -23,9 +23,9 @@ export async function generateAuthToken(email: string) {
   return authToken;
 }
 
-export async function emailLoginLink(email: string, ctx: RouteContext) {
+export async function emailLoginLink(email: string, opts?: RouteOptions) {
   const token = await generateAuthToken(email);
-  const { env } = ctx;
+  const { env } = opts!;
   const loginUrl = `${env.APP_URL}${link("/user/auth")}?token=${token}&email=${encodeURIComponent(email)}`;
 
   // TODO (peterp, 2025-02-11): Fix this better.

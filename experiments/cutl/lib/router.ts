@@ -1,4 +1,4 @@
-export type RouteContext<TParams = Record<string, string>> = {
+export type RouteOptions<TParams = Record<string, string>> = {
   request: Request;
   params: TParams;
   env: Env;
@@ -6,4 +6,4 @@ export type RouteContext<TParams = Record<string, string>> = {
     id: string;
     // Add other user properties as needed
   };
-}; 
+};

@@ -1,6 +1,6 @@
 "use client";
 
-import { RouteContext } from "@redwoodjs/sdk/router";
+import { RouteOptions } from "@redwoodjs/sdk/router";
 import { Loader2 } from "lucide-react";
 
 import { useState, useTransition } from "react";
@@ -16,20 +16,20 @@ import {
 } from "../../components/ui/input-otp";
 import { link } from "../../shared/links";
 
-export function LoginPage(ctx: RouteContext) {
+export function LoginPage(opts: RouteOptions) {
   const [email, setEmail] = useState("peter@redwoodjs.com");
   const [isPending, startTransition] = useTransition();
   const [success, setSuccess] = useState(false);
 
   const handleSendEmail = () => {
     startTransition(async () => {
-      await emailLoginLink(email, ctx);
+      await emailLoginLink(email);
       setSuccess(true);
     });
   };
 
   return (
-    <Layout ctx={ctx.ctx}>
+    <Layout ctx={opts.ctx}>
       <div className="space-y-2 py-4">
         <h4 className="font-medium leading-none">
           Continue with Email Address

@@ -4,7 +4,7 @@ import { Layout } from "../../Layout";
 
 import { InvoiceForm } from "./InvoiceForm";
 import { db } from "src/db";
-import { RouteContext } from "@redwoodjs/sdk/router";
+import { RouteOptions } from "@redwoodjs/sdk/router";
 import {
   BreadcrumbLink,
   BreadcrumbList,
@@ -53,7 +53,7 @@ export async function getInvoice(id: string, userId: string) {
 export async function InvoiceDetailPage({
   params,
   ctx,
-}: RouteContext<{ id: string }>) {
+}: RouteOptions<{ id: string }>) {
   const invoice = await getInvoice(params.id, ctx.user.id);
 
   return (

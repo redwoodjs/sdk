@@ -9,15 +9,15 @@ import {
 } from "@simplewebauthn/server";
 
 import { sessions } from "@/session/store";
-import { RouteContext } from "@redwoodjs/sdk/router";
+import { HandlerOptions } from "@redwoodjs/sdk/router";
 import { db } from "@/db";
 import { verifyTurnstileToken } from "@redwoodjs/sdk/turnstile";
 
 export async function startPasskeyRegistration(
   username: string,
-  ctx?: RouteContext,
+  opts?: HandlerOptions,
 ) {
-  const { headers, env } = ctx!;
+  const { headers, env } = opts!;
 
   const options = await generateRegistrationOptions({
     rpName: env.APP_NAME,
@@ -40,9 +40,9 @@ export async function finishPasskeyRegistration(
   username: string,
   registration: RegistrationResponseJSON,
   turnstileToken: string,
-  ctx?: RouteContext,
+  opts?: HandlerOptions,
 ) {
-  const { request, headers, env } = ctx!;
+  const { request, headers, env } = opts!;
 
   if (
     !(await verifyTurnstileToken({
@@ -93,8 +93,8 @@ export async function finishPasskeyRegistration(
   return true;
 }
 
-export async function startPasskeyLogin(ctx?: RouteContext) {
-  const { headers, env } = ctx!;
+export async function startPasskeyLogin(opts?: HandlerOptions) {
+  const { headers, env } = opts!;
 
   const options = await generateAuthenticationOptions({
     rpID: env.RP_ID,
@@ -109,9 +109,9 @@ export async function startPasskeyLogin(ctx?: RouteContext) {
 
 export async function finishPasskeyLogin(
   login: AuthenticationResponseJSON,
-  ctx?: RouteContext,
+  opts?: HandlerOptions,
 ) {
-  const { request, headers, env } = ctx!;
+  const { request, headers, env } = opts!;
   const { origin } = new URL(request.url);
 
   const session = await sessions.load(request);

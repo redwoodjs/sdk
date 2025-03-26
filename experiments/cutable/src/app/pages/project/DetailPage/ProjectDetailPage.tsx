@@ -2,7 +2,7 @@
 
 import { Layout } from "../../Layout";
 import { ProjectForm } from "./ProjectForm";
-import { RouteContext } from "../../../../lib/router";
+import { RouteOptions } from "../../../../lib/router";
 import { db } from "../../../../db";
 import {
   BreadcrumbLink,
@@ -52,7 +52,7 @@ export async function updateProject(
 export default async function ProjectDetailPage({
   params,
   ctx,
-}: RouteContext<{ id: string }>) {
+}: RouteOptions<{ id: string }>) {
   const project = await getProject(params.id, ctx.user.id);
 
   return (

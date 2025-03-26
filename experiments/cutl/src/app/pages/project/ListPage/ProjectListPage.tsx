@@ -4,7 +4,7 @@ import { Layout } from "../../Layout";
 
 import { CreateProjectButton } from "./CreateProjectButton";
 import { db } from "../../../../db";
-import { RouteContext } from "../../../../lib/router";
+import { RouteOptions } from "../../../../lib/router";
 import { link } from "src/shared/links";
 
 import {
@@ -61,7 +61,7 @@ async function getProjectListSummary(userId: string) {
   });
 }
 
-export default async function ProjectListPage({ ctx }: RouteContext) {
+export default async function ProjectListPage({ ctx }: RouteOptions) {
   const projects = await getProjectListSummary(ctx.user.id);
   return (
     <Layout ctx={ctx}>

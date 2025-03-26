@@ -15,8 +15,7 @@ import { Textarea as OGTextarea } from "src/components/ui/textarea";
 import { PlusIcon, Trash2Icon } from "lucide-react";
 import { cn } from "src/components/cn";
 import { toast, Toaster } from "sonner";
-import { RouteContext } from "@redwoodjs/sdk/router";
-import type { User } from "@prisma/client";
+import { RouteOptions } from "@redwoodjs/sdk/router";
 
 function calculateSubtotal(items: InvoiceItem[]) {
   let sum = 0;
@@ -36,7 +35,7 @@ function calculateTaxes(subtotal: number, taxes: InvoiceTaxes[]) {
 
 export function InvoiceForm(props: {
   invoice: Awaited<ReturnType<typeof getInvoice>>;
-  ctx: RouteContext;
+  ctx: RouteOptions["ctx"];
 }) {
   const [invoice, setInvoice] = useState(props.invoice);
   const [items, setItems] = useState(props.invoice.items);
