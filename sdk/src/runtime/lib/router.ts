@@ -228,7 +228,7 @@ export function defineRoutes<TContext = Record<string, any>>(
   };
 }
 
-export function route<TContext, TParams>(
+export function route<TContext = any, TParams = any>(
   path: string,
   handler: RouteHandler<TContext, TParams>,
 ): RouteDefinition<TContext, TParams> {
@@ -242,13 +242,13 @@ export function route<TContext, TParams>(
   };
 }
 
-export function index<TContext, TParams>(
+export function index<TContext = any, TParams = any>(
   handler: RouteHandler<TContext, TParams>,
 ): RouteDefinition<TContext, TParams> {
   return route("/", handler);
 }
 
-export function prefix<TContext, TParams>(
+export function prefix<TContext = any, TParams = any>(
   prefix: string,
   routes: ReturnType<typeof route<TContext, TParams>>[],
 ): RouteDefinition<TContext, TParams>[] {
