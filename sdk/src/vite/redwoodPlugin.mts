@@ -4,7 +4,6 @@ import { InlineConfig } from "vite";
 import reactPlugin from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 
-import { DEV_SERVER_PORT } from "../lib/constants.mjs";
 import { transformJsxScriptTagsPlugin } from "./transformJsxScriptTagsPlugin.mjs";
 import { useServerPlugin } from "./useServerPlugin.mjs";
 import { useClientPlugin } from "./useClientPlugin.mjs";
@@ -23,7 +22,6 @@ import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
-  port?: number;
   rootDir?: string;
   mode?: "development" | "production";
   configPath?: string;
@@ -69,7 +67,6 @@ export const redwoodPlugin = async (
       projectRootDir,
       clientEntryPathname,
       workerEntryPathname,
-      port: options.port ?? DEV_SERVER_PORT,
       isUsingPrisma,
     }),
     customReactBuildPlugin({ projectRootDir }),

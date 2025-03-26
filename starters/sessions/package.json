@@ -12,16 +12,18 @@
     "postinstall": "pnpm dev:init",
     "build": "vite build",
     "dev": "NODE_ENV=${NODE_ENV:-development} vite dev",
+    "preview": "pnpm build && pnpm vite preview",
     "dev:init": "rw-scripts dev-init",
     "worker:run": "rw-scripts worker-run",
     "clean": "pnpm build && pnpm clean:vendor",
     "clean:vite": "rm -rf ./node_modules/.vite",
     "clean:vendor": "rm -rf ./vendor/dist",
     "release": "pnpm build && wrangler deploy",
-    "format": "prettier --write ./src"
+    "format": "prettier --write ./src",
+    "check": "pnpm tsc"
   },
   "dependencies": {
-    "@redwoodjs/sdk": "0.0.30",
+    "@redwoodjs/sdk": "0.0.30-test.2",
     "react": "19.0.0-rc-f2df5694-20240916",
     "react-dom": "19.0.0-rc-f2df5694-20240916",
     "react-server-dom-webpack": "19.0.0-rc-f2df5694-20240916"

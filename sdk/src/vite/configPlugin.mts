@@ -2,8 +2,6 @@ import { Plugin } from "vite";
 import { resolve } from "node:path";
 import { mergeConfig, InlineConfig } from "vite";
 
-import { DEV_SERVER_PORT } from "../lib/constants.mjs";
-
 const ignoreVirtualModules = {
   name: "ignore-virtual-modules",
   setup(build: any) {
@@ -19,7 +17,6 @@ export const configPlugin = ({
   projectRootDir,
   clientEntryPathname,
   workerEntryPathname,
-  port,
   isUsingPrisma,
 }: {
   mode: "development" | "production";
@@ -27,7 +24,6 @@ export const configPlugin = ({
   projectRootDir: string;
   clientEntryPathname: string;
   workerEntryPathname: string;
-  port: number;
   isUsingPrisma: boolean;
 }): Plugin => ({
   name: "rw-sdk-config",
@@ -124,7 +120,6 @@ export const configPlugin = ({
       },
       server: {
         hmr: true,
-        port: port ?? DEV_SERVER_PORT,
       },
       resolve: {
         conditions: ["workerd"],

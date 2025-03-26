@@ -13,6 +13,7 @@
     "build": "vite build",
     "dev": "NODE_ENV=${NODE_ENV:-development} vite dev",
     "dev:init": "rw-scripts dev-init",
+    "preview": "pnpm build && pnpm vite preview",
     "worker:run": "rw-scripts worker-run",
     "clean": "pnpm build && pnpm clean:vendor",
     "clean:vite": "rm -rf ./node_modules/.vite",
@@ -22,13 +23,13 @@
     "migrate:dev": "npx prisma generate && wrangler d1 migrations apply DB --local",
     "migrate:prd": "wrangler d1 migrations apply DB --remote",
     "migrate:new": "rw-scripts migrate-new",
-    "seed": "pnpm worker:run ./src/scripts/seed.ts"
+    "seed": "pnpm worker:run ./src/scripts/seed.ts",
+    "check": "pnpm tsc"
   },
   "dependencies": {
     "@prisma/adapter-d1": "^6.3.1",
     "@prisma/client": "^6.3.1",
-    "@redwoodjs/sdk": "0.0.30",
-    "prisma": "^6.3.1",
+    "@redwoodjs/sdk": "0.0.30-test.2",
     "react": "19.0.0-rc-f2df5694-20240916",
     "react-dom": "19.0.0-rc-f2df5694-20240916",
     "react-server-dom-webpack": "19.0.0-rc-f2df5694-20240916"
@@ -37,6 +38,7 @@
     "@types/node": "^22.13.11",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
+    "prisma": "^6.3.1",
     "vite": "^6.1.1",
     "wrangler": "^4.4.0"
   },

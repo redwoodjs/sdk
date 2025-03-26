@@ -9,7 +9,7 @@ export interface Env {
   DB: D1Database;
 }
 
-type Context = {
+export type Context = {
   db: ReturnType<typeof drizzle>;
 };
 

@@ -12,44 +12,13 @@ cd my-project-name
 pnpm install
 ```
 
-## Setting up your db
-
-The starter includes a basic user model in `src/db/schema.ts`:
-
-```typescript
-export const users = sqliteTable("users", {
-  id: text("id").primaryKey(),
-  name: text("name").notNull(),
-  email: text("email").notNull().unique(),
-  createdAt: integer("created_at", { mode: "timestamp" })
-    .notNull()
-    .default(sql`CURRENT_TIMESTAMP`),
-});
-```
-
-Set up your database:
-
-```shell
-pnpm migrate:new
-pnpm migrate:dev
-pnpm seed
-```
-
-These commands will:
-
-- Create your initial migration
-- Apply the migration to your database
-- Seed your database with initial data
-
-You should see your seeded data displayed in the browser.
-
 ## Running the dev server
 
 ```shell
 pnpm dev
 ```
 
-Point your browser to the URL displayed in the terminal (e.g. `http://localhost:2332/`). You should see a "Hello World" message in your browser.
+Point your browser to the URL displayed in the terminal (e.g. `http://localhost:5173/`). You should see a "Hello World" message in your browser.
 
 ## Deploying your app
 
@@ -101,6 +70,19 @@ To get your Cloudflare credentials:
   - D1: Edit
 
 ### Database Changes
+
+The starter includes a basic user model in `src/db/schema.ts`:
+
+```typescript
+export const users = sqliteTable("users", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  email: text("email").notNull().unique(),
+  createdAt: integer("created_at", { mode: "timestamp" })
+    .notNull()
+    .default(sql`CURRENT_TIMESTAMP`),
+});
+```
 
 When you need to make changes to your database schema:
 
