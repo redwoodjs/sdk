@@ -38,9 +38,19 @@ if [ -z "$port" ]; then
   port=$(( 3000 + $(echo "$starter_name" | cksum | cut -d' ' -f1) % 1000 ))
 fi
 
+# Kill miniflare process if it exists
+kill_miniflare_process() {
+  pid=$(lsof -ti:9229 || true)
+  if [ ! -z "$pid" ]; then
+    echo "Killing process on port 9229"
+    kill "$pid" || true
+  fi
+}
+
 echo "Testing $starter_dir on port $port in $mode mode"
 
-# Start the server
+# Kill existing miniflare process and start the server
+kill_miniflare_process
 cd "$starter_dir"
 pnpm "$mode" --port "$port" &
 server_pid=$!
