@@ -1,9 +1,14 @@
 name: SDK Checks
 
 on:
+  push:
+    branches:
+      - main
+    paths:
+      - "sdk/**"
   pull_request:
     paths:
-      - "sdk/**" # Runs only if files in the sdk directory change
+      - "sdk/**"
 
 jobs:
   check-sdk:
