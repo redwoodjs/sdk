@@ -41,6 +41,21 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
       JSON.stringify(scriptWorkerConfig, null, 2),
     );
 
+    // context(justinvdm, 27 Mar 2025): If worker scripts are run concurrently, they'll
+    // all using the same port for the inspector port (there is currently no way to override the port number).
+    try {
+      const { default: waitPort } = await import("wait-port");
+      await waitPort({
+        port: 9229,
+        host: "localhost",
+        timeout: 10000,
+        output: "silent",
+      });
+    } catch (error) {
+      console.error("Failed to wait for miniflare inspector port to be open");
+      process.exit(1);
+    }
+
     const server = await createViteServer({
       configFile: false,
       plugins: [
