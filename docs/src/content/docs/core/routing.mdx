@@ -101,7 +101,7 @@ The request handler function takes in the following options:
 2. `params`: The matched parameters from the request URL.
 3. `env`: The Cloudflare environment.
 4. `ctx`: The context object (See [Middleware & Context](#middleware-context)).
-5. Cloudflare's [Execution Context API](https://developers.cloudflare.com/workers/runtime-apis/context/) methods, e.g. `waitUntil()`
+5. `cf:` Cloudflare's [Execution Context API](https://developers.cloudflare.com/workers/runtime-apis/context/) methods, e.g. `waitUntil()`
 
 Return values:
 - `Response`: A standard response object.
