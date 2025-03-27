@@ -176,7 +176,7 @@ The `ctx` object:
 
 ## Documents
 
-Documents are how you define the "shell" of your application's html: the `<html>`, `<head>`, `<meta>` tags, scripts, stylesheets, `<body>`, and where in the `<body>` your page is rendered. In RedwoodSDK, documents are defined using the `document` function in `defineApp`.
+Documents are how you define the "shell" of your application's html: the `<html>`, `<head>`, `<meta>` tags, scripts, stylesheets, `<body>`, and where in the `<body>` your actual page content is rendered. In RedwoodSDK, documents are defined using the `document` function in `defineApp`.
 
 ```tsx title="src/worker.tsx" "document"
 import { defineApp } from "@redwoodjs/sdk/worker";
@@ -192,6 +192,10 @@ export default defineApp([
 
 ---
 The `document` function takes a React component and an array of route handlers. The document will be applied to all the routes that are passed to it.
+
+This component will be rendered on the server side when the page loads. When defining this component, you'd add:
+* Your application's stylesheets and scripts
+* A mount point for your page content (`id="root"` in the code below): this is where your actual page will be rendered - the "dynamic stuff" which updates using React Server Components.
 ---
 ```
 
