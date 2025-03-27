@@ -4,7 +4,7 @@
   "private": true,
   "description": "Redwood SDK monorepo",
   "scripts": {
-    "patch-latest-sdk": "(cd sdk && NODE_ENV=development pnpm build) && (for starter in starters/*; do (cd $starter && (pnpm clean:vite || true) && (rm -r node_modules/@redwoodjs/sdk/dist || true) && cp -r ../../sdk/{package.json,dist} node_modules/@redwoodjs/sdk/); done)",
+    "patch-latest-sdk": "(cd sdk && NODE_ENV=development pnpm build) && (for starter in starters/*; do (cd $starter && pnpm clean:vite || true) && (rm -r $starter/node_modules/@redwoodjs/sdk/dist || true) && cp -r sdk/{package.json,dist} $starter/node_modules/@redwoodjs/sdk/; done)",
     "check-starters:dev": "for starter in starters/*; do ./scripts/check-app.sh dev $starter; done",
     "check-starters:preview": "for starter in starters/*; do ./scripts/check-app.sh preview $starter; done"
   },
