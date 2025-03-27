@@ -23,21 +23,14 @@ jobs:
           corepack enable
           pnpm install
 
+      - name: Patch latest SDK
+        run: pnpm patch-latest-sdk
+
       - name: Run checks for each starter
         run: pnpm -r --filter="@redwoodjs/starter-*" check
 
       - name: Test dev server for each starter
-        run: |
-          for starter in starters/*; do
-            if [ -d "$starter" ]; then
-              ./scripts/check-starter-server.sh dev "$starter"
-            fi
-          done
+        run: pnpm check-starters:dev
 
       - name: Test building and preview server for each starter
-        run: |
-          for starter in starters/*; do
-            if [ -d "$starter" ]; then
-              ./scripts/check-starter-server.sh preview "$starter"
-            fi
-          done
+        run: pnpm check-starters:preview
