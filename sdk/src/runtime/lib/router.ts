@@ -1,4 +1,5 @@
 import { isValidElementType } from "react-is";
+import { ExecutionContext } from "@cloudflare/workers-types";
 
 export type HandlerOptions<TContext = Record<string, any>> = {
   request: Request;
@@ -8,7 +9,10 @@ export type HandlerOptions<TContext = Record<string, any>> = {
   rw: RwContext<TContext>;
 };
 
-export type RouteOptions<TContext = Record<string, any>, TParams = any> = {
+export type RouteOptions<
+  TContext = Record<string, any>,
+  TParams = any,
+> = ExecutionContext & {
   request: Request;
   params: TParams;
   env: Env;

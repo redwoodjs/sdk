@@ -26,7 +26,11 @@ declare global {
 
 export const defineApp = <Context,>(routes: Route<Context>[]) => {
   return {
-    fetch: async (request: Request, env: Env, _ctx: ExecutionContext) => {
+    fetch: async (
+      request: Request,
+      env: Env,
+      execContext: ExecutionContext,
+    ) => {
       globalThis.__webpack_require__ = ssrWebpackRequire;
 
       const router = defineRoutes(routes);
@@ -127,6 +131,7 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
         const userHeaders = new Headers();
 
         const response = await router.handle({
+          ...execContext,
           request,
           headers: userHeaders,
           ctx: {} as Context,
