@@ -1,14 +1,17 @@
 import { isValidElementType } from "react-is";
+import { ExecutionContext } from "@cloudflare/workers-types";
 
 export type HandlerOptions<TContext = Record<string, any>> = {
   request: Request;
   env: Env;
+  cf: ExecutionContext;
   ctx: TContext;
   headers: Headers;
   rw: RwContext<TContext>;
 };
 
 export type RouteOptions<TContext = Record<string, any>, TParams = any> = {
+  cf: ExecutionContext;
   request: Request;
   params: TParams;
   env: Env;
@@ -19,7 +22,7 @@ export type RouteOptions<TContext = Record<string, any>, TParams = any> = {
 
 export type PageProps<TContext> = Omit<
   RouteOptions<TContext>,
-  "request" | "headers" | "rw"
+  "request" | "headers" | "rw" | "cf"
 > & { rw: { nonce: string } };
 
 export type LayoutProps<TContext> = PageProps<TContext> & {
@@ -134,12 +137,14 @@ export function defineRoutes<TContext = Record<string, any>>(
 ): {
   routes: Route<TContext>[];
   handle: ({
+    cf,
     request,
     ctx,
     env,
     rw,
     headers,
   }: {
+    cf: ExecutionContext;
     request: Request;
     ctx: TContext;
     env: Env;
@@ -150,7 +155,7 @@ export function defineRoutes<TContext = Record<string, any>>(
   const flattenedRoutes = flattenRoutes(routes);
   return {
     routes: flattenedRoutes,
-    async handle({ request, ctx, env, rw, headers }) {
+    async handle({ cf, request, ctx, env, rw, headers }) {
       const url = new URL(request.url);
       let path = url.pathname;
 
@@ -162,6 +167,7 @@ export function defineRoutes<TContext = Record<string, any>>(
       // Find matching route
       let match: RouteMatch<TContext> | null = null;
       const routeOptions: RouteOptions<TContext> = {
+        cf,
         request,
         params: {},
         ctx,
