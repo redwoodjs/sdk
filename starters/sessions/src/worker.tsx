@@ -1,5 +1,5 @@
 import { defineApp, ErrorResponse } from "@redwoodjs/sdk/worker";
-import { index, layout, prefix } from "@redwoodjs/sdk/router";
+import { index, document, prefix } from "@redwoodjs/sdk/router";
 import { Document } from "@/app/Document";
 import { Home } from "@/app/pages/Home";
 import { userRoutes } from "@/app/pages/user/routes";
@@ -32,5 +32,5 @@ export default defineApp<Context>([
       }
     }
   },
-  layout(Document, [index([Home]), prefix("/user", userRoutes)]),
+  document(Document, [index([Home]), prefix("/user", userRoutes)]),
 ]);

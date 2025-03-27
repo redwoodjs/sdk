@@ -1,5 +1,5 @@
 import { defineApp } from "@redwoodjs/sdk/worker";
-import { index, layout } from "@redwoodjs/sdk/router";
+import { index, document } from "@redwoodjs/sdk/router";
 import { Document } from "src/Document";
 import HomePage from "src/pages/home/HomePage";
 
@@ -17,5 +17,5 @@ export default defineApp<Context>([
     ctx.foo = 23;
   },
   // @ts-ignore
-  layout(Document, [index([HomePage])]),
+  document(Document, [index([HomePage])]),
 ]);

@@ -1,5 +1,5 @@
 import { defineApp } from "@redwoodjs/sdk/worker";
-import { index, layout, route } from "@redwoodjs/sdk/router";
+import { index, document, route } from "@redwoodjs/sdk/router";
 import { Document } from "src/Document";
 import { HomePage } from "src/pages/Home";
 import { fetchYoutubeVideos } from "src/pages/serverFunctions";
@@ -13,7 +13,7 @@ export default defineApp<Context>([
     ctx;
   },
   // @ts-ignore
-  layout(Document, [
+  document(Document, [
     index([HomePage]),
     route("/sitemap.xml", async () => {
       const sitemap = `<?xml version="1.0" encoding="UTF-8"?>

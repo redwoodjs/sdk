@@ -4,17 +4,7 @@ import { db, setupDb } from "@/db";
 export default defineScript(async ({ env }) => {
   setupDb(env);
 
-  await db.$executeRawUnsafe(`\
-    DELETE FROM User;
-    DELETE FROM sqlite_sequence;
-  `);
-
-  await db.user.create({
-    data: {
-      id: "1",
-      email: "test@test.com",
-    },
-  });
+  // Add seed data here
 
   console.log("🌱 Finished seeding");
 });

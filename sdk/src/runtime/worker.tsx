@@ -12,7 +12,7 @@ import {
   defineRoutes,
   RenderPageParams,
   PageProps,
-  LayoutProps,
+  DocumentProps,
 } from "./lib/router";
 import { generateNonce } from "./lib/utils";
 import { IS_DEV } from "./constants";
@@ -67,10 +67,10 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
           Page,
           props: fullPageProps,
           actionResult,
-          Layout,
+          Document,
         }: RenderPageParams<Context>) => {
           let props = fullPageProps;
-          let layoutProps = fullPageProps;
+          let documentProps = fullPageProps;
 
           // context(justinvdm, 25 Feb 2025): If the page is a client reference, we need to avoid passing
           // down props the client shouldn't get (e.g. env). For safety, we pick the allowed props explicitly.
@@ -82,10 +82,13 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
           }
 
           if (
-            Object.prototype.hasOwnProperty.call(Layout, "$$isClientReference")
+            Object.prototype.hasOwnProperty.call(
+              Document,
+              "$$isClientReference",
+            )
           ) {
             const { ctx, params } = fullPageProps;
-            layoutProps = { ctx, params } as LayoutProps<Context>;
+            documentProps = { ctx, params } as DocumentProps<Context>;
           }
 
           const nonce = fullPageProps.rw.nonce;
@@ -109,7 +112,7 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
           const htmlStream = await transformRscToHtmlStream({
             stream: rscPayloadStream1,
             Parent: ({ children }) => (
-              <Layout {...layoutProps} children={children} />
+              <Document {...documentProps} children={children} />
             ),
           });
 
@@ -133,7 +136,7 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
           ctx: {} as Context,
           env,
           rw: {
-            Layout: DefaultLayout,
+            Document: DefaultDocument,
             handleAction,
             renderPage,
             nonce: generateNonce(),
@@ -163,7 +166,7 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
   };
 };
 
-export const DefaultLayout: React.FC<{ children: React.ReactNode }> = ({
+export const DefaultDocument: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => (
   <html lang="en">

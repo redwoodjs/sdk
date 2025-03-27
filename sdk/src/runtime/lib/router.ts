@@ -25,7 +25,7 @@ export type PageProps<TContext> = Omit<
   "request" | "headers" | "rw" | "cf"
 > & { rw: { nonce: string } };
 
-export type LayoutProps<TContext> = PageProps<TContext> & {
+export type DocumentProps<TContext> = PageProps<TContext> & {
   children: React.ReactNode;
 };
 
@@ -33,7 +33,7 @@ export type RenderPageParams<TContext> = {
   Page: React.FC<Record<string, any>>;
   props: PageProps<TContext>;
   actionResult: unknown;
-  Layout: React.FC<LayoutProps<TContext>>;
+  Document: React.FC<DocumentProps<TContext>>;
 };
 
 export type RenderPage<TContext> = (
@@ -42,7 +42,7 @@ export type RenderPage<TContext> = (
 
 export type RwContext<TContext> = {
   nonce: string;
-  Layout: React.FC<LayoutProps<TContext>>;
+  Document: React.FC<DocumentProps<TContext>>;
   renderPage: RenderPage<TContext>;
   handleAction: (opts: RouteOptions<TContext>) => Promise<unknown>;
 };
@@ -216,7 +216,7 @@ export function defineRoutes<TContext = Record<string, any>>(
             Page: h as React.FC<Record<string, any>>,
             props,
             actionResult,
-            Layout: rw.Layout,
+            Document: rw.Document,
           });
         } else {
           const r = await (h(routeOptions) as Promise<Response>);
@@ -266,15 +266,15 @@ export function prefix<TContext = any, TParams = any>(
   });
 }
 
-export function layout<TContext = any>(
-  Layout: React.FC<{ children: React.ReactNode }>,
+export function document<TContext = any>(
+  Document: React.FC<{ children: React.ReactNode }>,
   routes: Route<TContext>[],
 ): Route<TContext>[] {
-  const layoutMiddleware: RouteMiddleware<TContext> = ({ rw }) => {
-    rw.Layout = Layout;
+  const documentMiddleware: RouteMiddleware<TContext> = ({ rw }) => {
+    rw.Document = Document;
   };
 
-  return [layoutMiddleware, ...routes];
+  return [documentMiddleware, ...routes];
 }
 
 function isRouteComponent(handler: any) {
