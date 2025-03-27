@@ -23,8 +23,8 @@ jobs:
           corepack enable
           pnpm install
 
-      - name: Patch latest SDK
-        run: pnpm patch-latest-sdk
+      - name: Link latest SDK
+        run: pnpm link-sdk
 
       - name: Run checks for each starter
         run: pnpm -r --filter="@redwoodjs/starter-*" check
