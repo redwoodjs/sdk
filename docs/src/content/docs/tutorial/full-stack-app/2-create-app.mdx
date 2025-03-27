@@ -18,6 +18,7 @@ The first thing we'll do is setup our project.
   npx degit redwoodjs/sdk/starters/passkey-auth applywize
   cd applywize
   pnpm install
+  pnpm dev
   ```
   </TabItem>
   <TabItem label="npm">
@@ -25,6 +26,7 @@ The first thing we'll do is setup our project.
   npx degit redwoodjs/sdk/starters/passkey-auth applywize
   cd applywize
   npm install
+  npm run dev
   ```
   </TabItem>
   <TabItem label="yarn">
@@ -32,11 +34,16 @@ The first thing we'll do is setup our project.
   npx degit redwoodjs/sdk/starters/passkey-auth applywize
   cd applywize
   yarn install
+  yarn run dev
   ```
   </TabItem>
 </Tabs>
 
-This will create a directory called `applywize` with the RedwoodSDK project structure.
+Check it out! You're up and running!
+
+![](./images/initial-look.png)
+
+The commands you just ran created a directory called `applywize` with the RedwoodSDK project structure.
 
 ![](./images/terminal-install-starter.png)
 
@@ -58,7 +65,7 @@ Inside, the `applywize` directory, you should have the following files and folde
       - Home.tsx # Home page
       - auth
         - functions.ts # authentication functions
-        - LoginPage.tsx # Login page
+        - Login.tsx # Login page
         - routes.ts # authentication routes
       - shared
         - links.ts # list of links
@@ -117,7 +124,7 @@ openssl rand -base64 32
 Then set this key as a Cloudflare secret, where `SECRET_KEY` is the name of the key. It will prompt us for the random string we generated.
 
 ```shell
-wrangler secret put SECRET_KEY
+npx wrangler secret put SECRET_KEY
 ```
 
 <Aside type="caution" title="Secrets">
@@ -127,7 +134,7 @@ wrangler secret put SECRET_KEY
 For production, set your domain as the `RP_ID` via Cloudflare secrets:
 
 ```shell
-wrangler secret put RP_ID
+npx wrangler secret put RP_ID
 ```
 
 When prompted, enter your production domain (e.g., my-app.example.com).
@@ -149,13 +156,13 @@ Next, let's set up Cloudflare Turnstile for bot protection.
     - Mark "Would you like to opt for pre-clearance for this site?" as **No**.
 3. After you click the **Create** button, you'll be redirected to the confirmation screen with your **Site Key** and **Secret Key**.
     ![](./images/turnstile-site-key.png)
-4. Copy your Site Key and paste it into your application's `LoginPage.tsx`. This is defined on line 18.
-    ```tsx title="src/app/pages/auth/LoginPage.tsx" startLineNumber={18}
+4. Copy your Site Key and paste it into your application's `Login.tsx`. This is defined on line 18.
+    ```tsx title="src/app/pages/auth/Login.tsx" startLineNumber={18}
     const TURNSTILE_SITE_KEY = "<YOUR_SITE_KEY>";
     ```
 5. Set your Turnstile Secret Key via Cloudflare secrets for production:
     ```shell
-    wrangler secret put TURNSTILE_SECRET_KEY
+    npx wrangler secret put TURNSTILE_SECRET_KEY
     ```
     When prompted, enter your Turnstile Secret Key.
 6. Our starter kit already has a couple of tables set up, to support the authentication process. This will set up Prisma and `migrate:dev` will create a `.wrangler` file within our project and setup the Cloudflare d1 database locally. (More on Prisma, migrations, and databases later.)
@@ -163,12 +170,6 @@ Next, let's set up Cloudflare Turnstile for bot protection.
     npx prisma generate
     pnpm migrate:dev
     ```
-7. Let's make sure everything is working. Run the following command to start the development server:
-    ```shell
-    pnpm dev
-    ```
-    This should launch within your browser:
-    ![](./images/passkey-auth-starter-working.png)
 </Steps>
 
 <Aside type="caution" title="Troubleshooting">
@@ -238,14 +239,15 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
     </head>
     ```
 
-5. Now, you can run `pnpm run dev` and the "Hello World" text should look different.
+5. Now, you can run `pnpm run dev` and the passkey form should look different.
     ```bash
     pnpm run dev
     ```
+    ![](./images/passkey-starter-tailwind-working.png)
 </Steps>
 
-You can test to make sure this is working by going to the `src/app/pages/auth/LoginPage.tsx` file and adding an `h1` at the top of the return statement:
-```tsx title="src/app/pages/auth/LoginPage.tsx" collapse={4-17} {3}
+You can test this even further by going to the `src/app/pages/auth/Login.tsx` file and adding an `h1` at the top of the return statement:
+```tsx title="src/app/pages/auth/Login.tsx" collapse={4-17} {3}
 return (
   <>
     <h1 className="text-4xl font-bold text-red-500">YOLO</h1>
@@ -308,7 +310,7 @@ Technically, you can still use `tailwind.config.js`, but it's not recommended as
 
 Below the `@import "tailwindcss";` line, add the following:
 
-```css title="src/app/styles.css"
+```css title="src/app/styles.css" startLineNumber={6}
 @theme {
   --font-display: "Poppins", sans-serif;
   --font-body: "Inter", sans-serif;
@@ -330,7 +332,7 @@ Now, you can use the class `font-display` and `font-body` in your project.
 
 Defining colors is similar, except we'll prepend each color value with `--color-`.
 
-```css title="src/app/styles.css" {3-14}
+```css title="src/app/styles.css" showLineNumbers=false {3-14}
 @theme {
   ...
   --color-bg: #e4e3d4;
@@ -383,9 +385,9 @@ Your `styles.css` file should look like this:
 }
 ```
 
-Let's test to make sure this is working. On the `LoginPage.tsx` file, let's change the React fragment `<></>` to a `<main>` tag and add a `className` of `bg-bg`:
+Let's test to make sure this is working. On the `Login.tsx` file, let's change the React fragment `<></>` to a `<main>` tag and add a `className` of `bg-bg`:
 
-```tsx title="src/app/pages/auth/LoginPage.tsx" collapse={4-18} startLineNumber={63} {3,19}
+```tsx title="src/app/pages/auth/Login.tsx" collapse={4-18} startLineNumber={62} {3,19}
 ...
   return (
     <main className="bg-bg">
@@ -420,7 +422,7 @@ You can also use the [ShadCN Vite Installation instructions](https://ui.shadcn.c
 <Steps>
 1. Install ShadCN
     ```bash
-    pnpm dlx shadcn@canary init
+    pnpm dlx shadcn@latest init
     ```
 
     It will ask you what theme you want to use. Let's go with **Neutral**.
@@ -431,7 +433,7 @@ You can also use the [ShadCN Vite Installation instructions](https://ui.shadcn.c
 
     Let's modify the default paths so that it will put our components in the `src/app/components/ui` folder.
 
-    ```json title="components.json"
+    ```json title="components.json" startLineNumber={12}
     ...
     "aliases": {
       "components": "@/app/components",
@@ -460,12 +462,12 @@ You can also use the [ShadCN Vite Installation instructions](https://ui.shadcn.c
 5. Add resolve alias config to `vite.config.ts`:
     ```diff title="vite.config.ts"
     +import path from "path"
+    import { defineConfig } from "vite";
     import tailwindcss from "@tailwindcss/vite"
-    +import react from "@vitejs/plugin-react"
-    import { defineConfig } from "vite"
+    import { redwood } from "@redwoodjs/sdk/vite";
 
     export default defineConfig({
-      plugins: [react(), tailwindcss()],
+      plugins: [redwood(), tailwindcss()],
     + resolve: {
     +   alias: {
     +     "@": path.resolve(__dirname, "./src"),
@@ -475,7 +477,7 @@ You can also use the [ShadCN Vite Installation instructions](https://ui.shadcn.c
     ```
 6. You should now be able to add components:
     ```bash
-    pnpm dlx shadcn@canary add
+    pnpm dlx shadcn@latest add
     ```
 
     Select the following by hitting the `Space` key:
@@ -499,7 +501,7 @@ You can also use the [ShadCN Vite Installation instructions](https://ui.shadcn.c
     This will install all of our components into the `src/app/components/ui` folder.
 
     <Aside type="tip" title="Adding ShadCN Components individually">
-      Instead of selecting components from a list, you can also add them individually by running `pnpm dlx shadcn@canary add <component-name>`.
+      Instead of selecting components from a list, you can also add them individually by running `pnpm dlx shadcn@latest add <component-name>`.
     </Aside>
 
     <Aside type="note" title="ShadCN Components">
@@ -507,13 +509,32 @@ You can also use the [ShadCN Vite Installation instructions](https://ui.shadcn.c
     </Aside>
 </Steps>
 
-We'll also need the date picker component, but it can't be installed using the `pnpm dlx shadcn@canary add` command.
+Even though we specified the `lib` directory in the `components.json` file, the script still placed the folder inside the `src` directory. You'll need to move it into the `app` directory.
+
+<FileTree>
+- src/
+  - app/
+    - components/
+      - ui/
+    - lib/
+      - utils.ts
+</FileTree>
+
+We also need the date picker component, but it can't be installed using the `pnpm dlx shadcn@latest add` command.
 
 Instead, we'll need to install it manually. It's built using the `<Popover />` and `<Calendar />` components and we just installed those!
 
-Within the `src/app/components/ui` folder, create a new file called `DatePicker.tsx` and add the following code:
+Within the `src/app/components/ui` folder, create a new file called `datepicker.tsx`.
 
-```tsx title="src/app/components/ui/DatePicker.tsx"
+<Aside type="note" title="Component Naming Conventions">
+  Normally, I like to capitalize and camel case my component file names (`DatePicker.tsx`), but since this code is coming from ShadCN, I'll use their naming convention and put and put it in the `components/ui` folder.
+
+  Any custom components we make, will live in the `components` directory and be named like `CustomComponent.tsx`.
+</Aside>
+
+Add the following code to the `datepicker.tsx` file:
+
+```tsx title="src/app/components/ui/datepicker.tsx"
 "use client"
 
 import * as React from "react"
@@ -521,13 +542,13 @@ import { format } from "date-fns"
 import { Calendar as CalendarIcon } from "lucide-react"
 
 import { cn } from "@/lib/utils"
-import { Button } from "@/components/ui/button"
-import { Calendar } from "@/components/ui/calendar"
+import { Button } from "@/app/components/ui/button"
+import { Calendar } from "@/app/components/ui/calendar"
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/components/ui/popover"
+} from "@/app/components/ui/popover"
 
 export function DatePickerDemo() {
   const [date, setDate] = React.useState<Date>()
@@ -557,16 +578,35 @@ export function DatePickerDemo() {
     </Popover>
   )
 }
----
-[Official Date Picker documentation.](https://ui.shadcn.com/docs/components/date-picker)
----
 ```
 
-If you want to make sure everything is installed correctly, head over to the `src/app/pages/auth/LoginPage.tsx` file and let's use our `Button` component.
+- [Official Date Picker documentation.](https://ui.shadcn.com/docs/components/date-picker)
+- If you copy and paste directly from the ShadCN documentation, though, you'll find a few errors. In the code I provided, I adjusted the paths on some of the `@import` statements.
+
+```diff
+- import { cn } from "@/lib/utils"
++ import { cn } from "@/app/lib/utils"
+- import { Button } from "@/components/ui/button"
++ import { Button } from "@/app/components/ui/button"
+- import { Calendar } from "@/components/ui/calendar"
++ import { Calendar } from "@/app/components/ui/calendar"
+- import {
+-   Popover,
+-   PopoverContent,
+-   PopoverTrigger,
+- } from "@/components/ui/popover"
++ import {
++   Popover,
++   PopoverContent,
++   PopoverTrigger,
++ } from "@/app/components/ui/popover"
+```
+
+If you want to make sure everything is installed correctly, head over to the `src/app/pages/auth/Login.tsx` file and let's use our `Button` component.
 
 Change the `<button>` tag to use a capital `B`. This will reference the `Button` component, instead of the standard HTML button. You'll also need to import the `Button` component at the top of the file.
 
-```tsx title="src/app/pages/auth/LoginPage.tsx" collapse={5-12}
+```tsx title="src/app/pages/auth/Login.tsx" collapse={5-12}
 import { Button } from "@/app/components/ui/button";
 ...
 return (
@@ -590,7 +630,7 @@ return (
 );
 ```
 
-Now, when you visit https://localhost:4321/user/login, you should see buttons with our custom primary color:
+Now, when you visit https://localhost:2332/user/login, you should see styled buttons:
 
 ![](./images/shadcn-working.png)
 

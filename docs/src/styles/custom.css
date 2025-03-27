@@ -19,8 +19,22 @@ figcaption:not(.header) {
   background-color: var(--ec-caption-bg) !important;
   color: var(--ec-caption-text) !important;
   padding: 0rem 1rem 0.5rem 1rem !important;
+
+  code {
+    font-size: 13px !important;
+    background-color: var(--ec-codeBg) !important;
+    padding: 2px;
+  }
+}
+
+figure figcaption {
+  font-size: 14px !important;
 }
 
 .output {
   background-color: var(--ec-caption-bg) !important;
+}
+
+caption {
+  font-size: 14px !important;
 }

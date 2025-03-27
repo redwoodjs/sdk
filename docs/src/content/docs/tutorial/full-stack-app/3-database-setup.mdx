@@ -6,6 +6,8 @@ sidebar:
 description: Setting up the database for the application
 ---
 
+{/* TODO: Claude made some recommendations for making the content better: https://claude.ai/share/e52d53ca-f49f-4f36-9bc4-30da1f345945 */}
+
 import { Aside, FileTree } from '@astrojs/starlight/components';
 
 ## Setting up our Database Tables or Models
@@ -169,11 +171,26 @@ model Contact {
   updatedAt DateTime? @updatedAt
 }
 
+model Credential {
+  id           String   @id @default(uuid()) // Internal DB ID
+  userId       String   @unique // Each user has one discoverable credential
+  user         User     @relation(fields: [userId], references: [id])
+  createdAt    DateTime @default(now())
+  credentialId String   @unique // WebAuthn credential identifier
+  publicKey    Bytes
+  counter      Int      @default(0)
+
+  @@index([credentialId])
+  @@index([userId])
+}
+
 model User {
-  id                 String        @id @default(uuid())
-  email              String        @unique
-  createdAt          DateTime      @default(now())
-  updatedAt          DateTime?     @updatedAt
+  id           String   @id @default(uuid()) // User ID (UUID-based)
+  username     String   @unique
+  createdAt    DateTime      @default(now())
+  updatedAt    DateTime?     @updatedAt
+
+  credentials Credential[] // Relationship: One user can have many credentials
 }
 ```
 
@@ -241,10 +258,11 @@ When establishing a relationship within your schema, there are 3 parts.
 
 Let's look at this in practice. On the `Company` and `Contact` models:
 
-```prisma {4, 15-16} title="src/db/schema.prisma"
+```prisma {"3. The reverse relationship definition": 4-5} {"1. The field that holds the relationship": 16-17} {"2. The relationship definition": 18-19} title="src/db/schema.prisma"
 model Company {
   id           String        @id @default(uuid())
   name         String
+
   contacts     Contact[]
   createdAt    DateTime      @default(now())
   updatedAt    DateTime?     @updatedAt
@@ -256,7 +274,9 @@ model Contact {
   lastName  String
   email     String?
   role      String?
+
   companyId String
+
   company   Company   @relation(fields: [companyId], references: [id])
   createdAt DateTime  @default(now())
   updatedAt DateTime? @updatedAt
@@ -472,7 +492,7 @@ Within the `src` directory, create a new folder called `scripts`. inside, create
 You can copy and paste the following code inside:
 
 ```ts title="src/scripts/seed.ts"
-import { defineScript } from "redwoodsdk/worker";
+import { defineScript } from "@redwoodjs/sdk/worker";
 import { db, setupDb } from "../db";
 
 export default defineScript(async ({ env }) => {
