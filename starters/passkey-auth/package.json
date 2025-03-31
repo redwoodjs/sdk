@@ -19,11 +19,13 @@
     "clean:vendor": "rm -rf ./vendor/dist",
     "release": "pnpm build && wrangler deploy",
     "format": "prettier --write ./src",
-    "migrate:dev": "npx prisma generate && wrangler d1 migrations apply DB --local",
+    "generate": "npx prisma generate",
+    "migrate:dev": "pnpm generate && wrangler d1 migrations apply DB --local",
     "migrate:prd": "wrangler d1 migrations apply DB --remote",
     "migrate:new": "rw-scripts migrate-new",
     "seed": "pnpm worker:run ./src/scripts/seed.ts",
-    "check": "pnpm tsc"
+    "check": "pnpm generate && pnpm types",
+    "types": "pnpm tsc"
   },
   "dependencies": {
     "@prisma/adapter-d1": "^6.4.1",

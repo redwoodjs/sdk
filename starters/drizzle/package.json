@@ -22,7 +22,8 @@
     "migrate:new": "drizzle-kit generate",
     "migrate:dev": "wrangler d1 migrations apply DB --local",
     "seed": "pnpm worker:run ./src/db/seed.ts",
-    "check": "pnpm tsc"
+    "check": "pnpm types",
+    "types": "pnpm tsc"
   },
   "dependencies": {
     "@redwoodjs/sdk": "0.0.36",
