@@ -16,10 +16,7 @@ export const Component = () => {
 }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-
-
-
-      const Component = () => {
+      const ComponentSSR = () => {
         return jsx('div', { children: 'Hello' });
       }
       const Component = registerClientReference("/test/file.tsx", "Component", ComponentSSR);
@@ -36,9 +33,6 @@ export const baz = 23
 }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-
-
-
       export const foo = "bar"
       export const baz = 23
       }"
@@ -54,10 +48,7 @@ export const Component = async () => {
 }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-
-
-
-      const Component = async () => {
+      const ComponentSSR = async () => {
         return jsx('div', { children: 'Hello' });
       }
       const Component = registerClientReference("/test/file.tsx", "Component", ComponentSSR);
@@ -74,10 +65,7 @@ export function Component() {
 }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-
-
-
-      function Component() {
+      function ComponentSSR() {
         return jsx('div', { children: 'Hello' });
       }
       const Component = registerClientReference("/test/file.tsx", "Component", ComponentSSR);
@@ -94,10 +82,7 @@ export async function Component() {
 }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-
-
-
-      function Component() {
+      async function ComponentSSR() {
         return jsx('div', { children: 'Hello' });
       }
       const Component = registerClientReference("/test/file.tsx", "Component", ComponentSSR);
@@ -118,14 +103,11 @@ export const Second = () => {
 }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-
-
-
-      const First = () => {
+      const FirstSSR = () => {
         return jsx('div', { children: 'First' });
       }
 
-      expst Second = () => {
+      const SecondSSR = () => {
         return jsx('div', { children: 'Second' });
       }
       const First = registerClientReference("/test/file.tsx", "First", FirstSSR);
@@ -148,14 +130,11 @@ export const Second = async () => {
 }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-
-
-
-      const First = async () => {
+      const FirstSSR = async () => {
         return jsx('div', { children: 'First' });
       }
 
-      expst Second = async () => {
+      const SecondSSR = async () => {
         return jsx('div', { children: 'Second' });
       }
       const First = registerClientReference("/test/file.tsx", "First", FirstSSR);
@@ -178,14 +157,11 @@ export function Second() {
 }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-
-
-
-      function First() {
+      function FirstSSR() {
         return jsx('div', { children: 'First' });
       }
 
-      expction Second() {
+      function SecondSSR() {
         return jsx('div', { children: 'Second' });
       }
       const First = registerClientReference("/test/file.tsx", "First", FirstSSR);
@@ -208,14 +184,11 @@ export async function Second() {
 }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-
-
-
-      function First() {
+      async function FirstSSR() {
         return jsx('div', { children: 'First' });
       }
 
-      expction Second() {
+      async function SecondSSR() {
         return jsx('div', { children: 'Second' });
       }
       const First = registerClientReference("/test/file.tsx", "First", FirstSSR);
@@ -240,18 +213,15 @@ const Second = () => {
 export { First, Second }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-
-
-
-      const First = () => {
+      const FirstSSR = () => {
         return jsx('div', { children: 'First' });
       }
 
-      const Second = () => {
+      const SecondSSR = () => {
         return jsx('div', { children: 'Second' });
       }
 
-      export { First, Second }
+      export { FirstSSR, SecondSSR }
       const First = registerClientReference("/test/file.tsx", "First", FirstSSR);
       export { FirstSSR, First };
       const Second = registerClientReference("/test/file.tsx", "Second", SecondSSR);
@@ -274,18 +244,15 @@ const Second = async () => {
 export { First, Second }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-
-
-
-      const First = async () => {
+      const FirstSSR = async () => {
         return jsx('div', { children: 'First' });
       }
 
-      const Second = async () => {
+      const SecondSSR = async () => {
         return jsx('div', { children: 'Second' });
       }
 
-      export { First, Second }
+      export { FirstSSR, SecondSSR }
       const First = registerClientReference("/test/file.tsx", "First", FirstSSR);
       export { FirstSSR, First };
       const Second = registerClientReference("/test/file.tsx", "Second", SecondSSR);
@@ -308,18 +275,15 @@ function Second() {
 export { First, Second }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-
-
-
-      function First() {
+      function FirstSSR() {
         return jsx('div', { children: 'First' });
       }
 
-      function Second() {
+      function SecondSSR() {
         return jsx('div', { children: 'Second' });
       }
 
-      export { First, Second }
+      export { FirstSSR, SecondSSR }
       const First = registerClientReference("/test/file.tsx", "First", FirstSSR);
       export { FirstSSR, First };
       const Second = registerClientReference("/test/file.tsx", "Second", SecondSSR);
@@ -342,18 +306,15 @@ async function Second() {
 export { First, Second }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-
-
-
-      function First() {
+      async function FirstSSR() {
         return jsx('div', { children: 'First' });
       }
 
-      asyction Second() {
+      async function SecondSSR() {
         return jsx('div', { children: 'Second' });
       }
 
-      export { First, Second }
+      export { FirstSSR, SecondSSR }
       const First = registerClientReference("/test/file.tsx", "First", FirstSSR);
       export { FirstSSR, First };
       const Second = registerClientReference("/test/file.tsx", "Second", SecondSSR);
@@ -370,9 +331,6 @@ export default () => {
 }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-
-
-
       export default () => {
         return jsx('div', { children: 'Hello' });
       }"
@@ -388,9 +346,6 @@ export default async () => {
 }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-
-
-
       export default async () => {
         return jsx('div', { children: 'Hello' });
       }"
@@ -406,10 +361,7 @@ export default function Component({ prop1, prop2 }) {
 }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-
-
-
-      function Component({ prop1, prop2 }) {
+      export default function ComponentSSR({ prop1, prop2 }) {
         return jsx('div', { children: 'Hello' });
       }
       const Component = registerClientReference("/test/file.tsx", "default", ComponentSSR);
@@ -426,10 +378,7 @@ export default async function Component() {
 }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-
-
-
-      function Component() {
+      export default async function ComponentSSR() {
         return jsx('div', { children: 'Hello' });
       }
       const Component = registerClientReference("/test/file.tsx", "default", ComponentSSR);
@@ -515,10 +464,7 @@ export function ComplexComponent({ initialCount = 0 }) {
 }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-
-
-
-      function ComplexComponent({ initialCount = 0 }) {
+      function ComplexComponentSSR({ initialCount = 0 }) {
         const [count, setCount] = useState(initialCount);
         const [items, setItems] = useState([]);
         const doubledCount = useMemo(() => count * 2, [count]);
@@ -623,31 +569,28 @@ export { Second, Third }
 export { Fourth as AnotherName }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-
-
-
-      const First = () => {
+      const FirstSSR = () => {
         return jsx('div', { children: 'First' });
       }
 
-      const Second = () => {
+      const SecondSSR = () => {
         return jsx('div', { children: 'Second' });
       }
 
-      function Third() {
+      function ThirdSSR() {
         return jsx('div', { children: 'Third' });
       }
 
-      const Fourth = () => {
+      const FourthSSR = () => {
         return jsx('div', { children: 'Fourth' });
       }
 
-      export defaun() {
+      export default function MainSSR() {
         return jsx('div', { children: 'Main' });
       }
 
-      export { Second, Third }
-      export { Fourth as AnotherName }
+      export { SecondSSR, ThirdSSR }
+      export { FourthSSR as AnotherName }
       const Third = registerClientReference("/test/file.tsx", "Third", ThirdSSR);
       export { ThirdSSR, Third };
       const Main = registerClientReference("/test/file.tsx", "default", MainSSR);
@@ -672,14 +615,11 @@ function Component({ prop1, prop2 }) {
 export default Component;`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-
-
-
-      function Component({ prop1, prop2 }) {
+      function ComponentSSR({ prop1, prop2 }) {
         return jsx('div', { children: 'Hello' });
       }
 
-      export default Component;
+      export default ComponentSSR;
       const Component = registerClientReference("/test/file.tsx", "Component", ComponentSSR);
       export { ComponentSSR, Component };"
     `);

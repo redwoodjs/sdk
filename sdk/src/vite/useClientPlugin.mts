@@ -8,7 +8,6 @@ import {
   ArrowFunction,
   SourceFile,
 } from "ts-morph";
-import MagicString from "magic-string";
 
 interface TransformResult {
   code: string;
@@ -34,9 +33,16 @@ export async function transformUseClientCode(
     return { code };
   }
 
-  const project = new Project({ useInMemoryFileSystem: true });
+  const project = new Project({
+    useInMemoryFileSystem: true,
+    compilerOptions: {
+      sourceMap: true,
+      target: 2, // ES6
+      module: 1, // CommonJS
+      jsx: 2, // React
+    },
+  });
   const sourceFile = project.createSourceFile("temp.tsx", code);
-  const magicString = new MagicString(code);
   const components = new Map<string, ComponentInfo>();
   let anonymousDefaultCount = 0;
 
@@ -139,58 +145,29 @@ export async function transformUseClientCode(
       node.getText() === "'use client'" ||
       node.getText() === '"use client"'
     ) {
-      const stmt = node.getFirstAncestorByKind(SyntaxKind.ExpressionStatement);
-      if (stmt) {
-        const start = stmt.getStart();
-        const end = stmt.getEnd();
-        magicString.remove(start, end);
-      }
+      node.getFirstAncestorByKind(SyntaxKind.ExpressionStatement)?.remove();
     }
   });
 
   // Remove inline exports for components
-  components.forEach(({ node, statement, isInlineExport, isDefault }) => {
-    if (Node.isFunctionDeclaration(node)) {
-      const functionKeyword = node.getFirstChildByKind(
-        SyntaxKind.FunctionKeyword,
+  components.forEach(({ node, statement, isInlineExport }) => {
+    if (Node.isFunctionDeclaration(node) && isInlineExport) {
+      const nodeText = node.getText();
+      const newText = nodeText.replace(
+        /^export\s+(async\s+)?function/,
+        "$1function",
       );
-      if (functionKeyword) {
-        const start = node.getStart();
-        const firstNonModifier = functionKeyword.getStart();
-
-        // Remove everything from start of node to start of 'function' keyword
-        if (firstNonModifier > start) {
-          magicString.remove(start, firstNonModifier);
-        }
-      }
-    } else if (Node.isVariableDeclaration(node) && statement) {
-      const declarationList = statement.getFirstChildByKind(
-        SyntaxKind.VariableDeclarationList,
-      );
-      if (declarationList) {
-        const start = statement.getStart();
-        const firstNonModifier = declarationList.getStart();
-
-        // Remove everything from start of statement to start of declaration list
-        if (firstNonModifier > start) {
-          magicString.remove(start, firstNonModifier);
-        }
-      }
+      node.replaceWithText(newText);
+    } else if (
+      Node.isVariableDeclaration(node) &&
+      statement &&
+      isInlineExport
+    ) {
+      const stmtText = statement.getText();
+      const newText = stmtText.replace(/^export\s+/, "");
+      statement.replaceWithText(newText);
     }
   });
-
-  // Handle separate default exports
-  sourceFile
-    .getDescendantsOfKind(SyntaxKind.ExportAssignment)
-    .forEach((node) => {
-      const expression = node.getExpression();
-      if (
-        Node.isIdentifier(expression) &&
-        components.has(expression.getText())
-      ) {
-        magicString.remove(node.getStart(), node.getEnd());
-      }
-    });
 
   // Handle grouped exports - only remove component exports
   sourceFile
@@ -213,9 +190,23 @@ export async function transformUseClientCode(
       }
     });
 
+  // Handle default exports - only remove if it's a component
+  sourceFile
+    .getDescendantsOfKind(SyntaxKind.ExportAssignment)
+    .forEach((node) => {
+      const expression = node.getExpression();
+      if (
+        Node.isIdentifier(expression) &&
+        components.has(expression.getText())
+      ) {
+        node.remove();
+      }
+    });
+
   // Add import at the top
-  magicString.prepend(
-    'import { registerClientReference } from "@redwoodjs/sdk/worker";\n\n',
+  sourceFile.insertStatements(
+    0,
+    `import { registerClientReference } from "@redwoodjs/sdk/worker";\n`,
   );
 
   // Add client references and exports
@@ -226,25 +217,30 @@ export async function transformUseClientCode(
         return;
       }
 
-      magicString.append(
-        `\nconst ${originalName} = registerClientReference("${relativeId}", "${isDefault ? "default" : originalName}", ${ssrName});`,
+      sourceFile.addStatements(
+        `const ${originalName} = registerClientReference("${relativeId}", "${isDefault ? "default" : originalName}", ${ssrName});`,
       );
 
       if (isDefault) {
-        magicString.append(`\nexport default ${ssrName};`);
+        sourceFile.addStatements(`export default ${ssrName};`);
       } else {
-        magicString.append(`\nexport { ${ssrName}, ${originalName} };`);
+        sourceFile.addStatements(`export { ${ssrName}, ${originalName} };`);
       }
     },
   );
 
+  const emitOutput = sourceFile.getEmitOutput();
+  let sourceMap: any;
+
+  for (const outputFile of emitOutput.getOutputFiles()) {
+    if (outputFile.getFilePath().endsWith(".js.map")) {
+      sourceMap = JSON.parse(outputFile.getText());
+    }
+  }
+
   return {
-    code: magicString.toString(),
-    map: magicString.generateMap({
-      source: relativeId,
-      includeContent: true,
-      hires: true,
-    }),
+    code: sourceFile.getFullText(),
+    map: sourceMap,
   };
 }
 
