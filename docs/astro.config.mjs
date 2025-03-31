@@ -21,6 +21,9 @@ export default defineConfig({
         // Relative path to your custom CSS file
         "./src/styles/custom.css",
       ],
+      editLink: {
+        baseUrl: 'https://github.com/redwoodjs/sdk/edit/main/docs',
+      },
       social: {
         github: "https://github.com/redwoodjs/sdk",
       },
