@@ -40,6 +40,13 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
     main: scriptPath,
   };
 
+  const waitPort = (await import("wait-port")).default;
+
+  await waitPort({
+    host: "::",
+    port: 9229,
+  });
+
   // context(justinvdm, 27 Mar 2025): If worker scripts are run concurrently, they'll
   // all using the same port for the inspector port (there is currently no way to override the port number).
   // Simply waiting for the port to be open alone will cause a stampede of retries, so we use a lockfile to mitigate this.
@@ -89,8 +96,10 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
     }
   } finally {
     await tmpWorkerPath.cleanup();
-    const waitPort = (await import("wait-port")).default;
-    await waitPort({ port: 9229 });
+    await waitPort({
+      host: "::",
+      port: 9229,
+    });
     await releaseLock();
   }
 };
