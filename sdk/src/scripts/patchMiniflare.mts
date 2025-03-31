@@ -24,14 +24,16 @@ const miniflare = vitePluginRequire("miniflare");
 const OriginalMiniflare = miniflare.Miniflare;
 debug("Patching Miniflare constructor...");
 
-miniflare.Miniflare = function (options: any, ...args: any[]) {
+const originalConstruct = OriginalMiniflare.prototype.constructor;
+OriginalMiniflare.prototype.constructor = function (
+  options: any,
+  ...args: any[]
+) {
   if (options?.inspectorPort === 9229 || options?.inspectorPort == null) {
     debug("Replacing inspector port %s with 0", options?.inspectorPort);
     options.inspectorPort = 0;
   }
-  return new OriginalMiniflare(options, ...args);
-} as typeof OriginalMiniflare;
+  return originalConstruct.call(this, options, ...args);
+};
 
-Object.setPrototypeOf(miniflare.Miniflare, OriginalMiniflare);
-miniflare.Miniflare.prototype = OriginalMiniflare.prototype;
 debug("Miniflare constructor patched successfully");
