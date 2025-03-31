@@ -197,62 +197,58 @@ export async function transformUseClientCode(
       }
     });
 
-  // Handle default exports - only remove if it's a component
-  sourceFile
-    .getDescendantsOfKind(SyntaxKind.ExportAssignment)
-    .forEach((node) => {
-      const expression = node.getExpression();
-      if (
-        Node.isIdentifier(expression) &&
-        components.has(expression.getText())
-      ) {
-        node.remove();
-      }
-    });
-
-  // Add client references and exports
-  components.forEach(
-    ({ ssrName, originalName, isDefault, isAnonymousDefault }) => {
-      if (isAnonymousDefault) {
-        // For anonymous default exports, leave as-is
-        return;
-      }
-
-      sourceFile.addStatements(
-        `const ${originalName} = registerClientReference("${relativeId}", "${isDefault ? "default" : originalName}", ${ssrName});`,
-      );
-
-      if (isDefault) {
-        sourceFile.addStatements(`export default ${ssrName};`);
-      } else {
-        sourceFile.addStatements(`export { ${ssrName}, ${originalName} };`);
-      }
-    },
-  );
-
-  // When handling export assignments:
+  // First remove the default export node (we'll add it back later)
   sourceFile
     .getDescendantsOfKind(SyntaxKind.ExportAssignment)
     .forEach((node) => {
       const expression = node.getExpression();
 
       if (Node.isArrowFunction(expression)) {
-        // For anonymous default export arrow function
         const anonName = `DefaultComponent${anonymousDefaultCount++}`;
         const ssrName = `${anonName}SSR`;
 
-        // Create the SSR component declaration
+        // First add declarations
         sourceFile.addStatements(`const ${ssrName} = ${expression.getText()}`);
-
-        // Register client reference
         sourceFile.addStatements(
           `const ${anonName} = registerClientReference("${relativeId}", "default", ${ssrName});`,
         );
 
-        // Replace original export default with SSR version
-        node.replaceWithText(`export default ${ssrName}`);
+        // Remove the original export default node
+        node.remove();
+
+        // Store info for later export
+        components.set(anonName, {
+          node: expression,
+          ssrName,
+          originalName: anonName,
+          isDefault: true,
+          isInlineExport: true,
+          isAnonymousDefault: true,
+        });
       }
     });
+
+  // Add all declarations first
+  components.forEach(
+    ({ ssrName, originalName, isDefault, isAnonymousDefault }) => {
+      if (!isAnonymousDefault) {
+        sourceFile.addStatements(
+          `const ${originalName} = registerClientReference("${relativeId}", "${isDefault ? "default" : originalName}", ${ssrName});`,
+        );
+      }
+    },
+  );
+
+  // Then add all exports after declarations
+  components.forEach(({ ssrName, originalName, isDefault }) => {
+    if (isDefault) {
+      sourceFile.addStatements(
+        `export { ${ssrName} as default, ${originalName} };`,
+      );
+    } else {
+      sourceFile.addStatements(`export { ${ssrName}, ${originalName} };`);
+    }
+  });
 
   const emitOutput = sourceFile.getEmitOutput();
   let sourceMap: any;

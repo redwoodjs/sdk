@@ -113,8 +113,8 @@ export const Second = () => {
         return jsx('div', { children: 'Second' });
       }
       const First = registerClientReference("/test/file.tsx", "First", FirstSSR);
-      export { FirstSSR, First };
       const Second = registerClientReference("/test/file.tsx", "Second", SecondSSR);
+      export { FirstSSR, First };
       export { SecondSSR, Second };"
     `);
   });
@@ -140,8 +140,8 @@ export const Second = async () => {
         return jsx('div', { children: 'Second' });
       }
       const First = registerClientReference("/test/file.tsx", "First", FirstSSR);
-      export { FirstSSR, First };
       const Second = registerClientReference("/test/file.tsx", "Second", SecondSSR);
+      export { FirstSSR, First };
       export { SecondSSR, Second };"
     `);
   });
@@ -168,8 +168,8 @@ export function Second() {
         return jsx('div', { children: 'Second' });
       }
       const First = registerClientReference("/test/file.tsx", "First", FirstSSR);
-      export { FirstSSR, First };
       const Second = registerClientReference("/test/file.tsx", "Second", SecondSSR);
+      export { FirstSSR, First };
       export { SecondSSR, Second };"
     `);
   });
@@ -196,8 +196,8 @@ export async function Second() {
         return jsx('div', { children: 'Second' });
       }
       const First = registerClientReference("/test/file.tsx", "First", FirstSSR);
-      export { FirstSSR, First };
       const Second = registerClientReference("/test/file.tsx", "Second", SecondSSR);
+      export { FirstSSR, First };
       export { SecondSSR, Second };"
     `);
   });
@@ -227,8 +227,8 @@ export { First, Second }`),
 
       export { FirstSSR, SecondSSR }
       const First = registerClientReference("/test/file.tsx", "First", FirstSSR);
-      export { FirstSSR, First };
       const Second = registerClientReference("/test/file.tsx", "Second", SecondSSR);
+      export { FirstSSR, First };
       export { SecondSSR, Second };"
     `);
   });
@@ -258,8 +258,8 @@ export { First, Second }`),
 
       export { FirstSSR, SecondSSR }
       const First = registerClientReference("/test/file.tsx", "First", FirstSSR);
-      export { FirstSSR, First };
       const Second = registerClientReference("/test/file.tsx", "Second", SecondSSR);
+      export { FirstSSR, First };
       export { SecondSSR, Second };"
     `);
   });
@@ -290,8 +290,8 @@ export { First, Second }`),
 
       export { FirstSSR, SecondSSR }
       const First = registerClientReference("/test/file.tsx", "First", FirstSSR);
-      export { FirstSSR, First };
       const Second = registerClientReference("/test/file.tsx", "Second", SecondSSR);
+      export { FirstSSR, First };
       export { SecondSSR, Second };"
     `);
   });
@@ -322,8 +322,8 @@ export { First, Second }`),
 
       export { FirstSSR, SecondSSR }
       const First = registerClientReference("/test/file.tsx", "First", FirstSSR);
-      export { FirstSSR, First };
       const Second = registerClientReference("/test/file.tsx", "Second", SecondSSR);
+      export { FirstSSR, First };
       export { SecondSSR, Second };"
     `);
   });
@@ -337,11 +337,11 @@ export default () => {
 }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-      export default DefaultComponent0SSR
       const DefaultComponent0SSR = () => {
         return jsx('div', { children: 'Hello' });
       }
-      const DefaultComponent0 = registerClientReference("/test/file.tsx", "default", DefaultComponent0SSR);"
+      const DefaultComponent0 = registerClientReference("/test/file.tsx", "default", DefaultComponent0SSR);
+      export { DefaultComponent0SSR as default, DefaultComponent0 };"
     `);
   });
 
@@ -354,11 +354,11 @@ export default async () => {
 }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-      export default DefaultComponent0SSR
       const DefaultComponent0SSR = async () => {
         return jsx('div', { children: 'Hello' });
       }
-      const DefaultComponent0 = registerClientReference("/test/file.tsx", "default", DefaultComponent0SSR);"
+      const DefaultComponent0 = registerClientReference("/test/file.tsx", "default", DefaultComponent0SSR);
+      export { DefaultComponent0SSR as default, DefaultComponent0 };"
     `);
   });
 
@@ -376,7 +376,7 @@ export default function Component({ prop1, prop2 }) {
         return jsx('div', { children: 'Hello' });
       }
       const Component = registerClientReference("/test/file.tsx", "default", ComponentSSR);
-      export default ComponentSSR;"
+      export { ComponentSSR as default, Component };"
     `);
   });
 
@@ -394,7 +394,7 @@ export default async function Component() {
         return jsx('div', { children: 'Hello' });
       }
       const Component = registerClientReference("/test/file.tsx", "default", ComponentSSR);
-      export default ComponentSSR;"
+      export { ComponentSSR as default, Component };"
     `);
   });
 
@@ -605,14 +605,14 @@ export { Fourth as AnotherName }`),
       export { SecondSSR, ThirdSSR }
       export { FourthSSR as AnotherName }
       const Third = registerClientReference("/test/file.tsx", "Third", ThirdSSR);
-      export { ThirdSSR, Third };
       const Main = registerClientReference("/test/file.tsx", "default", MainSSR);
-      export default MainSSR;
       const First = registerClientReference("/test/file.tsx", "First", FirstSSR);
-      export { FirstSSR, First };
       const Second = registerClientReference("/test/file.tsx", "Second", SecondSSR);
-      export { SecondSSR, Second };
       const Fourth = registerClientReference("/test/file.tsx", "Fourth", FourthSSR);
+      export { ThirdSSR, Third };
+      export { MainSSR as default, Main };
+      export { FirstSSR, First };
+      export { SecondSSR, Second };
       export { FourthSSR, Fourth };"
     `);
   });
