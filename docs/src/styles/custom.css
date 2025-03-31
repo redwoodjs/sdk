@@ -38,3 +38,8 @@ figure figcaption {
 caption {
   font-size: 14px !important;
 }
+
+:root {
+  --sl-color-banner-bg: #ffae49;
+  --sl-color-banner-text: #000;
+}
