@@ -6,12 +6,12 @@ import { unstable_readConfig } from "wrangler";
 import { createServer as createViteServer } from "vite";
 import tmp from "tmp-promise";
 import lockfile from "proper-lockfile";
-import debug from "debug";
+import { debug as baseDebug } from "debug";
 
 import { redwood } from "../vite/index.mjs";
 import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
 
-const debug = debug("rwsdk:worker-run");
+const debug = baseDebug("rwsdk:worker-run");
 
 export const runWorkerScript = async (relativeScriptPath: string) => {
   if (!relativeScriptPath) {
