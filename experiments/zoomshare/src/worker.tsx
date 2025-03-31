@@ -1,5 +1,5 @@
 import { defineApp } from "@redwoodjs/sdk/worker";
-import { document, prefix, route } from "@redwoodjs/sdk/router";
+import { render, prefix, route } from "@redwoodjs/sdk/router";
 import { Document } from "@/app/Document";
 import { authRoutes } from "@/app/pages/auth/routes";
 import { Session } from "./session/durableObject";
@@ -41,7 +41,7 @@ const app = defineApp<Context>([
     await setupDb(env);
   },
 
-  document(Document, [
+  render(Document, [
     route("/", function () {
       return new Response("Hello World");
     }),

@@ -75,7 +75,7 @@ export default defineApp<Context>([
     // setup ctx here
     ctx;
   },
-  document(Document, [
+  render(Document, [
     index([
       Home,
     ]),
@@ -119,7 +119,7 @@ export default defineApp<Context>([
     // setup ctx here
     ctx;
   },
-  document(Document, [index([Home]), route("/about", About)]),
+  render(Document, [index([Home]), route("/about", About)]),
 ]);
 ```
 

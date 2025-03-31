@@ -180,7 +180,7 @@ By default, RedwoodSDK only renders your component's HTML without `<html>`, `<he
   title="src/worker.tsx"
   code={`\
 import { defineApp } from "@redwoodjs/sdk/worker";
-import { route, document } from "@redwoodjs/sdk/router";
+import { route, render } from "@redwoodjs/sdk/router";
 
 function Document({ children }) {
 return (
@@ -194,7 +194,7 @@ return (
 ); }
 
 export default defineApp([
-  document(Document, [
+  render(Document, [
     route("/", Homepage)
   ])
 ]);`} />
@@ -245,13 +245,13 @@ Here's an example using both helpers:
   language="tsx"
   code={`\
 import { defineApp } from "@redwoodjs/sdk/worker";
-import { index, document, prefix } from "@redwoodjs/sdk/router";
+import { index, render, prefix } from "@redwoodjs/sdk/router";
 import { authRoutes } from 'src/pages/auth/routes';
 import { invoiceRoutes } from 'src/pages/invoice/routes';
 import HomePage from 'src/pages/Home/HomePage';
 
 export default defineApp([
-  document(Document, [
+  render(Document, [
     // Define root route using index
     index([
       HomePage,

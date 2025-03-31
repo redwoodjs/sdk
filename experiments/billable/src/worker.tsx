@@ -1,5 +1,5 @@
 import { defineApp } from "@redwoodjs/sdk/worker";
-import { index, document, prefix } from "@redwoodjs/sdk/router";
+import { index, render, prefix } from "@redwoodjs/sdk/router";
 import { ExecutionContext } from "@cloudflare/workers-types";
 
 import { link } from "src/shared/links";
@@ -39,7 +39,7 @@ const app = defineApp<Context>([
     setupSessionStore(env);
     ctx.user = await getUser(request);
   },
-  document(Document, [
+  render(Document, [
     index([
       ({ ctx }) => {
         if (ctx.user) {

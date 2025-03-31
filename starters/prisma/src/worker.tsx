@@ -1,5 +1,5 @@
 import { defineApp } from "@redwoodjs/sdk/worker";
-import { index, document } from "@redwoodjs/sdk/router";
+import { index, render } from "@redwoodjs/sdk/router";
 import { Document } from "src/Document";
 import { Home } from "src/pages/Home";
 import { setupDb } from "./db";
@@ -11,5 +11,5 @@ export default defineApp<Context>([
   async ({ ctx, env, request }) => {
     await setupDb(env);
   },
-  document(Document, [index([Home])]),
+  render(Document, [index([Home])]),
 ]);

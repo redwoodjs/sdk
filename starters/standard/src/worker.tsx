@@ -1,5 +1,5 @@
 import { defineApp, ErrorResponse } from "@redwoodjs/sdk/worker";
-import { route, document, prefix } from "@redwoodjs/sdk/router";
+import { route, render, prefix } from "@redwoodjs/sdk/router";
 import { Document } from "@/app/Document";
 import { Home } from "@/app/pages/Home";
 import { setCommonHeaders } from "@/app/headers";
@@ -45,7 +45,7 @@ export default defineApp<Context>([
       });
     }
   },
-  document(Document, [
+  render(Document, [
     route("/", () => new Response("Hello, World!")),
     route("/protected", [
       ({ ctx }) => {
