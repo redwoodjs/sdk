@@ -204,10 +204,10 @@ export async function transformUseClientCode(
     });
 
   // Add import at the top
-  sourceFile.insertStatements(
-    0,
-    `import { registerClientReference } from "@redwoodjs/sdk/worker";\n`,
-  );
+  sourceFile.addImportDeclaration({
+    moduleSpecifier: "@redwoodjs/sdk/worker",
+    namedImports: [{ name: "registerClientReference" }],
+  });
 
   // Add client references and exports
   components.forEach(
