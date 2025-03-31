@@ -38,8 +38,6 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
     main: scriptPath,
   };
 
-  const waitPort = (await import("wait-port")).default;
-
   // context(justinvdm, 31 Mar 2025): proper-lockfile requires a file path to represent the resource to lock, so we need to stub one
   const anchorPath = resolve(tmpdir(), "rw-sdk-worker-run-lock");
   await ensureFile(anchorPath);
@@ -97,11 +95,6 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
   } finally {
     await tmpWorkerPath.cleanup();
     console.log("############ Done, waiting for inspector port to close...");
-    await waitPort({
-      host: "::",
-      port: 9229,
-    });
-    console.log("############ Inspector port closed, releasing lock...");
     await releaseLock();
     console.log("############ Lock released");
   }
