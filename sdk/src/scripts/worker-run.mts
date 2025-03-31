@@ -40,7 +40,7 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
   const waitPort = (await import("wait-port")).default;
 
   // context(justinvdm, 31 Mar 2025): proper-lockfile requires a file path to represent the resource to lock, so we need to stub one
-  const anchorPath = resolve(tmpdir(), "rw-sdk-worker-run-lock.lock");
+  const anchorPath = resolve(tmpdir(), "rw-sdk-worker-run-lock");
 
   // context(justinvdm, 27 Mar 2025): If worker scripts are run concurrently, they'll
   // all using the same port for the inspector port (there is currently no way to override the port number).
