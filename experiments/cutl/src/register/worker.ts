@@ -17,18 +17,22 @@ export function registerServerReference(
   return baseRegisterServerReference(action, id, name);
 }
 
-export function registerClientReference<Target extends Record<string, any>>(id: string, exportName: string, target: Target) {
+export function registerClientReference<Target extends Record<string, any>>(
+  id: string,
+  exportName: string,
+  target: Target,
+) {
   const reference = baseRegisterClientReference({}, id, exportName);
-  return Object.defineProperties(
-    target,
-    {
-      ...Object.getOwnPropertyDescriptors(reference),
-      $$async: { value: true },
-    },
-  );
+  return Object.defineProperties(target, {
+    ...Object.getOwnPropertyDescriptors(reference),
+    $$async: { value: true },
+  });
 }
 
-export async function rscActionHandler(req: Request, ctx: any): Promise<unknown> {
+export async function rscActionHandler(
+  req: Request,
+  appContext: any,
+): Promise<unknown> {
   const url = new URL(req.url);
   const contentType = req.headers.get("content-type");
 
@@ -44,5 +48,5 @@ export async function rscActionHandler(req: Request, ctx: any): Promise<unknown>
     throw new Error(`Action ${actionId} is not a function`);
   }
 
-  return action(...args, { ctx });
+  return action(...args, { appContext });
 }

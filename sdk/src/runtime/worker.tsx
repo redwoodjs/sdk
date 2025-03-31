@@ -24,7 +24,7 @@ declare global {
   };
 }
 
-export const defineApp = <Context,>(routes: Route<AppContext>[]) => {
+export const defineApp = <AppContext,>(routes: Route<AppContext>[]) => {
   return {
     fetch: async (request: Request, env: Env, cf: ExecutionContext) => {
       globalThis.__webpack_require__ = ssrWebpackRequire;
@@ -54,12 +54,12 @@ export const defineApp = <Context,>(routes: Route<AppContext>[]) => {
         const isRSCRequest = url.searchParams.has("__rsc");
 
         const handleAction = async (
-          opts: RouteOptions<Context, Record<string, string>>,
+          opts: RouteOptions<AppContext, Record<string, string>>,
         ) => {
           const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 
           if (isRSCActionHandler) {
-            return await rscActionHandler(request, opts); // maybe we should include params and ctx in the action handler?
+            return await rscActionHandler(request, opts); // maybe we should include params and appContext in the action handler?
           }
         };
 
@@ -77,8 +77,8 @@ export const defineApp = <Context,>(routes: Route<AppContext>[]) => {
           if (
             Object.prototype.hasOwnProperty.call(Page, "$$isClientReference")
           ) {
-            const { ctx, params } = fullPageProps;
-            props = { ctx, params } as PageProps<AppContext>;
+            const { appContext, params } = fullPageProps;
+            props = { appContext, params } as PageProps<AppContext>;
           }
 
           if (
@@ -87,8 +87,8 @@ export const defineApp = <Context,>(routes: Route<AppContext>[]) => {
               "$$isClientReference",
             )
           ) {
-            const { ctx, params } = fullPageProps;
-            documentProps = { ctx, params } as DocumentProps<AppContext>;
+            const { appContext, params } = fullPageProps;
+            documentProps = { appContext, params } as DocumentProps<AppContext>;
           }
 
           const nonce = fullPageProps.rw.nonce;
@@ -133,7 +133,7 @@ export const defineApp = <Context,>(routes: Route<AppContext>[]) => {
           cf,
           request,
           headers: userHeaders,
-          ctx: {} as Context,
+          appContext: {} as AppContext,
           env,
           rw: {
             Document: DefaultDocument,

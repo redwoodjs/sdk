@@ -15,9 +15,9 @@ import { db } from "@/db";
 
 export async function startPasskeyRegistration(
   username: string,
-  ctx?: RouteOptions,
+  appContext?: RouteOptions,
 ) {
-  const { headers, env } = ctx!;
+  const { headers, env } = appContext!;
 
   const options = await generateRegistrationOptions({
     rpName: env.APP_NAME,
@@ -39,9 +39,9 @@ export async function startPasskeyRegistration(
 export async function finishPasskeyRegistration(
   username: string,
   registration: RegistrationResponseJSON,
-  ctx?: RouteOptions,
+  appContext?: RouteOptions,
 ) {
-  const { request, headers, env } = ctx!;
+  const { request, headers, env } = appContext!;
   const { origin } = new URL(request.url);
 
   const session = await sessions.load(request);
@@ -82,8 +82,8 @@ export async function finishPasskeyRegistration(
   return true;
 }
 
-export async function startPasskeyLogin(ctx?: RouteOptions) {
-  const { request, headers, env } = ctx!;
+export async function startPasskeyLogin(appContext?: RouteOptions) {
+  const { request, headers, env } = appContext!;
 
   const options = await generateAuthenticationOptions({
     rpID: env.RP_ID,
@@ -98,9 +98,9 @@ export async function startPasskeyLogin(ctx?: RouteOptions) {
 
 export async function finishPasskeyLogin(
   login: AuthenticationResponseJSON,
-  ctx?: RouteOptions,
+  appContext?: RouteOptions,
 ) {
-  const { request, headers, env } = ctx!;
+  const { request, headers, env } = appContext!;
   const { origin } = new URL(request.url);
 
   const session = await sessions.load(request);

@@ -49,9 +49,8 @@ const router = defineRoutes([
   })
 ])
 
-router.handle({ request, ctx, env, renderPage })
+router.handle({ request, appContext, env, renderPage })
 ```
-
 
 # API Reference
 
@@ -59,7 +58,6 @@ router.handle({ request, ctx, env, renderPage })
 - `route`
 - `index`
 - `prefix`
-
 
 # Links
 
@@ -88,7 +86,6 @@ link('/invoice/:id', { id: 1 })
 
 ```
 
-
 ## TODO
 
 - Type safety. How do we ensure that the params have types? Maybe the route array has some sort of response... Like the type that it returns is a function that returns a thing... That's interesting.
@@ -96,7 +93,7 @@ link('/invoice/:id', { id: 1 })
 Ok. That seems like a possible way forward. What else to consider?
 
 - Type casting? Should we consider have the ability to cast things via the router? Seems like an overreach to me.
-Loaders. Stick with Suspense boundary. I kinda see the benefit of been able to declare this on the component itself... Or near the component.
+  Loaders. Stick with Suspense boundary. I kinda see the benefit of been able to declare this on the component itself... Or near the component.
 
 - Don't hide files. I want to be able to follow the request-response cycle in my own code. What does that mean?
 - We should expose the express (or something else) part of the framework. The user should invoke a function to pass the request off to Redwood SDK

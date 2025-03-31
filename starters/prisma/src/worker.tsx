@@ -8,7 +8,7 @@ type AppContext = {};
 
 export default defineApp<AppContext>([
   setCommonHeaders(),
-  async ({ ctx, env, request }) => {
+  async ({ appContext, env, request }) => {
     await setupDb(env);
   },
   render(Document, [index([Home])]),

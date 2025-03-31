@@ -11,9 +11,9 @@ import { findOptimalPacking, calculateFreeSpaces } from "./clientFunctions";
 
 export default async function CutlistDetailPage({
   params,
-  ctx,
+  appContext,
 }: RouteOptions<{ id: string }>) {
-  const project = await getProject(params.id, ctx.user.id);
+  const project = await getProject(params.id, appContext.user.id);
   const cutlistItems = JSON.parse(
     project.cutlistItems as string,
   ) as ProjectItem[];
@@ -72,7 +72,7 @@ export default async function CutlistDetailPage({
   // boards?
 
   return (
-    <Layout ctx={ctx}>
+    <Layout appContext={appContext}>
       <BreadcrumbList>
         <BreadcrumbLink href={link("/project/list")}>Projects</BreadcrumbLink>
         <BreadcrumbSeparator />

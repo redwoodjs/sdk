@@ -71,9 +71,9 @@ import { Home } from 'src/pages/Home';
 ...
 
 export default defineApp<AppContext>([
-  ({ ctx }) => {
-    // setup ctx here
-    ctx;
+  ({ appContext }) => {
+    // setup appContext here
+    appContext;
   },
   render(Document, [
     index([
@@ -115,9 +115,9 @@ You can add additional routes by:
 import { About } from "src/pages/About";
 
 export default defineApp<AppContext>([
-  ({ ctx }) => {
-    // setup ctx here
-    ctx;
+  ({ appContext }) => {
+    // setup appContext here
+    appContext;
   },
   render(Document, [index([Home]), route("/about", About)]),
 ]);

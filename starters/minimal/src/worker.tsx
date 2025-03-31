@@ -8,9 +8,9 @@ type AppContext = {};
 
 export default defineApp<AppContext>([
   setCommonHeaders(),
-  ({ ctx }) => {
-    // setup ctx here
-    ctx;
+  ({ appContext }) => {
+    // setup appContext here
+    appContext;
   },
   render(Document, [index([Home])]),
 ]);

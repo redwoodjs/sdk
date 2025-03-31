@@ -28,8 +28,8 @@ export default function MyClientComponent() {
 React Server Components run on the server, they can easily fetch data and make it part of the payload that's sent to the client.
 
 ```tsx title="src/app/pages/todos/TodoPage.tsx" "async"
-export async function Todos({ ctx }) {
-  const todos = await db.todo.findMany({ where: { userId: ctx.user.id } });
+export async function Todos({ appContext }) {
+  const todos = await db.todo.findMany({ where: { userId: appContext.user.id } });
   return (
     <ol>
       {todos.map((todo) => (
@@ -39,19 +39,19 @@ export async function Todos({ ctx }) {
   );
 }
 
-export async function TodoPage({ ctx }) {
+export async function TodoPage({ appContext }) {
   return (
     <div>
       <h1>Todos</h1>
       <Suspense fallback={<div>Loading...</div>}>
-        <Todos ctx={ctx} />
+        <Todos appContext={appContext} />
       </Suspense>
     </div>
   );
 }
 
 ---
-The `TodoPage` component is a server component. It it rendered by a route, so it receives the `ctx` object. We pass this to the `Todos` component, which is also a server component,
+The `TodoPage` component is a server component. It it rendered by a route, so it receives the `appContext` object. We pass this to the `Todos` component, which is also a server component,
 and renders the todos.
 ---
 ```
@@ -69,9 +69,9 @@ Allow you to execute code on the server from a client component.
 ```tsx title="@/pages/todos/functions.tsx" mark={1}
 "use server";
 
-export async function addTodo(formData: FormData, { ctx }: RouteOptions) {
+export async function addTodo(formData: FormData, { appContext }: RouteOptions) {
   const title = formData.get("title");
-  await db.todo.create({ data: { title, userId: ctx.user.id } });
+  await db.todo.create({ data: { title, userId: appContext.user.id } });
 }
 
 ---

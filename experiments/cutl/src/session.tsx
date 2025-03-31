@@ -1,9 +1,9 @@
 import { DurableObject } from "cloudflare:workers";
-import { MAX_TOKEN_DURATION } from './constants';
+import { MAX_TOKEN_DURATION } from "./constants";
 
 interface Session {
   userId: string;
-  createdAt: number
+  createdAt: number;
 }
 
 export class SessionDO extends DurableObject {
@@ -17,9 +17,9 @@ export class SessionDO extends DurableObject {
     const session: Session = {
       userId,
       createdAt: Date.now(),
-    }
+    };
 
-    await this.ctx.storage.put<Session>("session", session);
+    await this.appContext.storage.put<Session>("session", session);
     this.session = session;
     return session;
   }
@@ -29,23 +29,23 @@ export class SessionDO extends DurableObject {
       return { value: this.session };
     }
 
-    const session = await this.ctx.storage.get<Session>("session");
+    const session = await this.appContext.storage.get<Session>("session");
 
     // context(justinvdm, 2025-01-15): If the session DO exists but there's no session state
     // it means we received a valid session id (it passed the signature check), but the session
     // has been revoked.
     if (!session) {
       return {
-        error: 'Invalid session'
-      }
+        error: "Invalid session",
+      };
     }
 
     // context(justinvdm, 2025-01-15): If the session is expired, we need to revoke it.
     if (session.createdAt + MAX_TOKEN_DURATION < Date.now()) {
       await this.revokeSession();
       return {
-        error: 'Session expired'
-      }
+        error: "Session expired",
+      };
     }
 
     this.session = session;
@@ -53,7 +53,7 @@ export class SessionDO extends DurableObject {
   }
 
   async revokeSession() {
-    await this.ctx.storage.delete("session");
+    await this.appContext.storage.delete("session");
     this.session = undefined;
   }
 }

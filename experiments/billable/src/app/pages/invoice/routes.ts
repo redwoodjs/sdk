@@ -4,8 +4,8 @@ import { InvoiceDetailPage } from "./DetailPage/InvoiceDetailPage";
 import { InvoiceListPage } from "./ListPage/InvoiceListPage";
 import { link } from "src/shared/links";
 
-function isAuthenticated({ ctx }) {
-  if (!ctx.user) {
+function isAuthenticated({ appContext }) {
+  if (!appContext.user) {
     return new Response(null, {
       status: 302,
       headers: { Location: link("/") },
@@ -27,7 +27,7 @@ export const invoiceRoutes = [
   route("/:id", [isAuthenticated, InvoiceDetailPage]),
   route("/:id/upload", [
     isAuthenticated,
-    async ({ request, params, env, ctx }) => {
+    async ({ request, params, env, appContext }) => {
       if (
         request.method !== "POST" &&
         !request.headers.get("content-type")?.includes("multipart/form-data")
@@ -40,7 +40,7 @@ export const invoiceRoutes = [
       const file = formData.get("file") as File;
 
       // Stream the file directly to R2
-      const r2ObjectKey = `/invoice/logos/${ctx.user.id}/${params.id}-${Date.now()}-${file.name}`;
+      const r2ObjectKey = `/invoice/logos/${appContext.user.id}/${params.id}-${Date.now()}-${file.name}`;
       await env.R2.put(r2ObjectKey, file.stream(), {
         httpMetadata: {
           contentType: file.type,

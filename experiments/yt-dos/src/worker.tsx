@@ -8,9 +8,9 @@ type AppContext = {
 };
 
 export default defineApp<AppContext>([
-  ({ ctx }) => {
-    // setup ctx here
-    ctx;
+  ({ appContext }) => {
+    // setup appContext here
+    appContext;
   },
   // @ts-ignore
   render(Document, [

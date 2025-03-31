@@ -15,11 +15,11 @@ export type AppContext = {
 
 export default defineApp<AppContext>([
   setCommonHeaders(),
-  async ({ env, ctx, request, headers }) => {
+  async ({ env, appContext, request, headers }) => {
     setupSessionStore(env);
 
     try {
-      ctx.session = await sessions.load(request);
+      appContext.session = await sessions.load(request);
     } catch (error) {
       if (error instanceof ErrorResponse && error.code === 401) {
         await sessions.remove(request, headers);

@@ -15,9 +15,9 @@ export type AppContext = {
 
 export default defineApp<AppContext>([
   setCommonHeaders(),
-  ({ ctx, env }) => {
-    // setup db in ctx
-    ctx.db = drizzle(env.DB);
+  ({ appContext, env }) => {
+    // setup db in appContext
+    appContext.db = drizzle(env.DB);
   },
   render(Document, [index([Home])]),
 ]);

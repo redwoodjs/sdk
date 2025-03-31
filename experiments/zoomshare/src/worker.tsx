@@ -37,7 +37,7 @@ async function validateZoomWebhook(body: any, env: Env) {
 }
 
 const app = defineApp<AppContext>([
-  async ({ env, ctx, request }) => {
+  async ({ env, appContext, request }) => {
     await setupDb(env);
   },
 
@@ -49,7 +49,7 @@ const app = defineApp<AppContext>([
   ]),
   prefix("/webhook", [
     route("/meeting.recording.completed", [
-      async function ({ request, env, ctx }) {
+      async function ({ request, env, appContext }) {
         if (
           request.method !== "POST" &&
           request.headers.get("Content-Type") !== "application/json"

@@ -61,10 +61,10 @@ async function getProjectListSummary(userId: string) {
   });
 }
 
-export default async function ProjectListPage({ ctx }: RouteOptions) {
-  const projects = await getProjectListSummary(ctx.user.id);
+export default async function ProjectListPage({ appContext }: RouteOptions) {
+  const projects = await getProjectListSummary(appContext.user.id);
   return (
-    <Layout ctx={ctx}>
+    <Layout appContext={appContext}>
       <div className="space-y-2 py-4 text-right">
         <CreateProjectButton />
       </div>

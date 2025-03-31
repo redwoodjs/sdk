@@ -52,19 +52,19 @@ export async function getInvoice(id: string, userId: string) {
 
 export async function InvoiceDetailPage({
   params,
-  ctx,
+  appContext,
 }: RouteOptions<{ id: string }>) {
-  const invoice = await getInvoice(params.id, ctx.user.id);
+  const invoice = await getInvoice(params.id, appContext.user.id);
 
   return (
-    <Layout ctx={ctx}>
+    <Layout appContext={appContext}>
       <BreadcrumbList>
         <BreadcrumbLink href={link("/invoice/list")}>Invoices</BreadcrumbLink>
         <BreadcrumbSeparator />
         <BreadcrumbPage>Edit Invoice</BreadcrumbPage>
       </BreadcrumbList>
 
-      <InvoiceForm invoice={invoice} ctx={ctx} />
+      <InvoiceForm invoice={invoice} appContext={appContext} />
     </Layout>
   );
 }

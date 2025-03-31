@@ -34,15 +34,15 @@ export const getUser = async (request: Request) => {
 };
 
 const app = defineApp<AppContext>([
-  async ({ request, ctx, env }) => {
+  async ({ request, appContext, env }) => {
     await setupDb(env);
     setupSessionStore(env);
-    ctx.user = await getUser(request);
+    appContext.user = await getUser(request);
   },
   render(Document, [
     index([
-      ({ ctx }) => {
-        if (ctx.user) {
+      ({ appContext }) => {
+        if (appContext.user) {
           return new Response(null, {
             status: 302,
             headers: { Location: link("/invoice/list") },
@@ -57,7 +57,7 @@ const app = defineApp<AppContext>([
 ]);
 
 export default {
-  fetch(request: Request, env: Env, ctx: ExecutionContext) {
-    return app.fetch(request, env, ctx);
+  fetch(request: Request, env: Env, cf: ExecutionContext) {
+    return app.fetch(request, env, cf);
   },
 };

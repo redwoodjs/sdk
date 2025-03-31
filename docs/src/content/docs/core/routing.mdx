@@ -13,13 +13,13 @@ import { route } from "@redwoodjs/sdk/router";
 
 export default defineApp([
   // Middleware
-  function middleware({ request, env, ctx }) { /* Modify context */ },
-  function middleware({ request, env, ctx }) { /* Modify context */ },
+  function middleware({ request, env, appContext }) { /* Modify context */ },
+  function middleware({ request, env, appContext }) { /* Modify context */ },
   // Request Handlers
-  route("/", function handler({ request, env, ctx }) {
+  route("/", function handler({ request, env, appContext }) {
     return new Response("Hello, world!")
   }),
-  route("/ping", function handler({ request, env, ctx }) {
+  route("/ping", function handler({ request, env, appContext }) {
     return new Response("Pong!")
   }),
 ]);
@@ -87,7 +87,7 @@ The request handler is a function, or array of functions (See [Interruptors](#in
 import { route } from "@redwoodjs/sdk/router";
 
 defineApp([
-  route("/a-standard-response", ({ request, params, env, ctx }) => {
+  route("/a-standard-response", ({ request, params, env, appContext }) => {
     return new Response("Hello, world!")
   }),
   route('/a-jsx-response', () => {
@@ -100,7 +100,7 @@ The request handler function takes in the following options:
 1. `request`: The request object.
 2. `params`: The matched parameters from the request URL.
 3. `env`: The Cloudflare environment.
-4. `ctx`: The context object (See [Middleware & Context](#middleware-context)).
+4. `appContext`: The context object (See [Middleware & Context](#middleware-context)).
 5. `cf:` Cloudflare's [Execution Context API](https://developers.cloudflare.com/workers/runtime-apis/context/) methods, e.g. `waitUntil()`
 
 Return values:
@@ -118,9 +118,9 @@ import { defineApp } from "@redwoodjs/sdk/worker";
 import { route } from "@redwoodjs/sdk/router";
 import { EditBlogPage } from "src/pages/blog/EditBlogPage";
 
-function isAuthenticated({ request, env, ctx }) {
+function isAuthenticated({ request, env, appContext }) {
   // Ensure that this user is authenticated
-  if (!ctx.user) {
+  if (!appContext.user) {
     return new Response("Unauthorized", { status: 401 })
   }
 }
@@ -146,31 +146,31 @@ import { route } from "@redwoodjs/sdk/router";
 
 defineApp([
   sessionMiddleware,
-  async function getUserMiddleware({ request, env, ctx }) {
-    if (ctx.session.userId) {
-      ctx.user = await db.user.find({ where: { id: ctx.session.userId } });
+  async function getUserMiddleware({ request, env, appContext }) {
+    if (appContext.session.userId) {
+      appContext.user = await db.user.find({ where: { id: appContext.session.userId } });
     }
   },
   route("/hello", [
-    function ({ ctx }) {
-      if (!ctx.user) {
+    function ({ appContext }) {
+      if (!appContext.user) {
         return new Response("Unauthorized", { status: 401 });
       }
     },
-    function ({ ctx }) {
-      return new Response(`Hello ${ctx.user.username}!`);
+    function ({ appContext }) {
+      return new Response(`Hello ${appContext.user.username}!`);
     },
   ]),
 ]);
 
 ---
-The `ctx` object:
+The `appContext` object:
 
-1. `sessionMiddleware` is a function that is used to populate the `ctx.session` object
-2. `getUserMiddleware` is a middleware function that is used to populate the `ctx.user` object
+1. `sessionMiddleware` is a function that is used to populate the `appContext.session` object
+2. `getUserMiddleware` is a middleware function that is used to populate the `appContext.user` object
 3. `"/hello"` is a an array of route handlers that are executed when "/hello" is matched:
   - if the user is not authenticated the request will be interrupted and a 401 Unauthorized response will be returned
-  - if the user is authenticated the request will be passed to the next request handler and `"Hello {ctx.user.username}!"` will be returned
+  - if the user is authenticated the request will be passed to the next request handler and `"Hello {appContext.user.username}!"` will be returned
 
 ---
 ```

@@ -17,12 +17,12 @@ export type AppContext = {
 
 export default defineApp<AppContext>([
   setCommonHeaders(),
-  async ({ env, ctx, request, headers }) => {
+  async ({ env, appContext, request, headers }) => {
     await setupDb(env);
     setupSessionStore(env);
 
     try {
-      ctx.session = await sessions.load(request);
+      appContext.session = await sessions.load(request);
     } catch (error) {
       if (error instanceof ErrorResponse && error.code === 401) {
         await sessions.remove(request, headers);
@@ -37,18 +37,18 @@ export default defineApp<AppContext>([
       throw error;
     }
 
-    if (ctx.session?.userId) {
-      ctx.user = await db.user.findUnique({
+    if (appContext.session?.userId) {
+      appContext.user = await db.user.findUnique({
         where: {
-          id: ctx.session.userId,
+          id: appContext.session.userId,
         },
       });
     }
   },
   render(Document, [
     index([
-      ({ ctx }) => {
-        if (!ctx.user) {
+      ({ appContext }) => {
+        if (!appContext.user) {
           return new Response(null, {
             status: 302,
             headers: { Location: "/user/login" },

@@ -4,7 +4,7 @@ export type RouteOptions<TParams = Record<string, string>> = {
   request: Request;
   params: TParams;
   env: Env;
-  ctx?: any;
+  appContext?: any;
 };
 
 type RouteMiddleware = (
@@ -70,19 +70,19 @@ export function defineRoutes(routes: RouteDefinition[]): {
   routes: RouteDefinition[];
   handle: ({
     request,
-    ctx,
+    appContext,
     env,
     renderPage,
   }: {
     request: Request;
-    ctx: any;
+    appContext: any;
     env: Env;
     renderPage: (page: any, props: Record<string, any>) => Promise<Response>;
   }) => Response | Promise<Response>;
 } {
   return {
     routes,
-    async handle({ request, ctx, env, renderPage }) {
+    async handle({ request, appContext, env, renderPage }) {
       try {
         const url = new URL(request.url);
         let path = url.pathname;
@@ -122,7 +122,7 @@ export function defineRoutes(routes: RouteDefinition[]): {
               );
             }
 
-            const r = await h({ request, params, ctx, env });
+            const r = await h({ request, params, appContext, env });
             if (r instanceof Response) {
               return r;
             }
@@ -131,12 +131,15 @@ export function defineRoutes(routes: RouteDefinition[]): {
 
         if (isRouteComponent(handler)) {
           // TODO(peterp, 2025-01-30): Serialize the request
-          return await renderPage(handler as RouteComponent, { params, ctx });
+          return await renderPage(handler as RouteComponent, {
+            params,
+            appContext,
+          });
         } else {
           return await (handler({
             request,
             params,
-            ctx,
+            appContext,
             env,
           }) as Promise<Response>);
         }

@@ -11,10 +11,10 @@ type AppContext = {
 
 export default defineApp<AppContext>([
   // >>> Replaces `getContext()`
-  ({ ctx }: { ctx: Context }) => {
+  ({ appContext }: { appContext: AppContext }) => {
     // >>> You can do side effects (e.g, setup like `setupDb()`) here
     // >>> You can set your context here
-    ctx.foo = 23;
+    appContext.foo = 23;
   },
   // @ts-ignore
   render(Document, [index([HomePage])]),
