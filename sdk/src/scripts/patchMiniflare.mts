@@ -6,7 +6,6 @@ import baseDebug from "debug";
 // which causes issues when running multiple worker scripts concurrently (e.g. during
 // parallel postinstall runs in our monorepo). We patch Miniflare's constructor to use
 // auto-assigned ports (port 0) instead of the hardcoded 9229.
-const require = createRequire(import.meta.url);
 const debug = baseDebug("rwsdk:patch-miniflare");
 
 debug("Resolving @cloudflare/vite-plugin path...");
@@ -16,12 +15,11 @@ const vitePluginPath = importMetaResolve(
 );
 debug("Resolved @cloudflare/vite-plugin to: %s", vitePluginPath);
 
-debug("Resolving miniflare path relative to vite plugin...");
-const miniflareModule = importMetaResolve("miniflare", vitePluginPath);
-debug("Resolved miniflare to: %s", miniflareModule);
+debug("Creating require relative to vite plugin...");
+const vitePluginRequire = createRequire(vitePluginPath);
 
 debug("Loading miniflare module...");
-const miniflare = require(miniflareModule);
+const miniflare = vitePluginRequire("miniflare");
 
 const OriginalMiniflare = miniflare.Miniflare;
 debug("Patching Miniflare constructor...");
