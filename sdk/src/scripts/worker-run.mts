@@ -1,4 +1,4 @@
-import { tmpdir } from "path";
+import { tmpdir } from "os";
 import { resolve } from "path";
 import { ensureFile } from "fs-extra";
 import { writeFile } from "fs/promises";
