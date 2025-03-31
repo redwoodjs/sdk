@@ -1,4 +1,4 @@
-import "./patchMiniflare.mjs";
+import "./patchInspectorPort.mts";
 import { resolve } from "path";
 import { writeFile } from "fs/promises";
 import { unstable_readConfig } from "wrangler";
