@@ -619,7 +619,8 @@ export { Fourth as AnotherName }`),
 
   it("transforms function declaration that is exported default separately", async () => {
     expect(
-      await transform(`"use client"
+      await transform(`
+"use client"
 
 function Component({ prop1, prop2 }) {
   return jsx('div', { children: 'Hello' });
@@ -635,6 +636,176 @@ export default Component;`),
 
       const Component = registerClientReference("/test/file.tsx", "default", ComponentSSR);
       export { Component as default, ComponentSSR };"
+    `);
+  });
+
+  it("Works in dev", async () => {
+    expect(
+      await transform(`"use client"
+import { jsxDEV } from "react/jsx-dev-runtime";
+import { sendMessage } from "./functions";
+import { useState } from "react";
+import { consumeEventStream } from "@redwoodjs/sdk/client";
+
+export function Chat() {
+  const [message, setMessage] = useState("");
+  const [reply, setReply] = useState("");
+  const onClick = async () => {
+    setReply("");
+    (await sendMessage(message)).pipeTo(
+      consumeEventStream({
+        onChunk: (event) => {
+          setReply(
+            (prev) => prev + (event.data === "[DONE]" ? "" : JSON.parse(event.data).response)
+          );
+        }
+      })
+    );
+  };
+  return /* @__PURE__ */ jsxDEV("div", { children: [
+    /* @__PURE__ */ jsxDEV(
+      "input",
+      {
+        type: "text",
+        value: message,
+        placeholder: "Type a message...",
+        onChange: (e) => setMessage(e.target.value),
+        style: {
+          width: "80%",
+          padding: "10px",
+          marginRight: "8px",
+          borderRadius: "4px",
+          border: "1px solid #ccc"
+        }
+      },
+      void 0,
+      false,
+      {
+        fileName: "/Users/justin/rw/sdk/experiments/ai-stream/src/app/pages/Chat/Chat.tsx",
+        lineNumber: 28,
+        columnNumber: 7
+      },
+      this
+    ),
+    /* @__PURE__ */ jsxDEV(
+      "button",
+      {
+        onClick,
+        style: {
+          padding: "10px 20px",
+          borderRadius: "4px",
+          border: "none",
+          backgroundColor: "#007bff",
+          color: "white",
+          cursor: "pointer"
+        },
+        children: "Send"
+      },
+      void 0,
+      false,
+      {
+        fileName: "/Users/justin/rw/sdk/experiments/ai-stream/src/app/pages/Chat/Chat.tsx",
+        lineNumber: 41,
+        columnNumber: 7
+      },
+      this
+    ),
+    /* @__PURE__ */ jsxDEV("div", { children: reply }, void 0, false, {
+      fileName: "/Users/justin/rw/sdk/experiments/ai-stream/src/app/pages/Chat/Chat.tsx",
+      lineNumber: 54,
+      columnNumber: 7
+    }, this)
+  ] }, void 0, true, {
+    fileName: "/Users/justin/rw/sdk/experiments/ai-stream/src/app/pages/Chat/Chat.tsx",
+    lineNumber: 27,
+    columnNumber: 5
+  }, this);
+}
+`),
+    ).toMatchInlineSnapshot(`
+      "import { jsxDEV } from "react/jsx-dev-runtime";
+      import { sendMessage } from "./functions";
+      import { useState } from "react";
+      import { consumeEventStream } from "@redwoodjs/sdk/client";
+      import { registerClientReference } from "@redwoodjs/sdk/worker";
+
+      function ChatSSR() {
+        const [message, setMessage] = useState("");
+        const [reply, setReply] = useState("");
+        const onClick = async () => {
+          setReply("");
+          (await sendMessage(message)).pipeTo(
+            consumeEventStream({
+              onChunk: (event) => {
+                setReply(
+                  (prev) => prev + (event.data === "[DONE]" ? "" : JSON.parse(event.data).response)
+                );
+              }
+            })
+          );
+        };
+        return /* @__PURE__ */ jsxDEV("div", { children: [
+          /* @__PURE__ */ jsxDEV(
+            "input",
+            {
+              type: "text",
+              value: message,
+              placeholder: "Type a message...",
+              onChange: (e) => setMessage(e.target.value),
+              style: {
+                width: "80%",
+                padding: "10px",
+                marginRight: "8px",
+                borderRadius: "4px",
+                border: "1px solid #ccc"
+              }
+            },
+            void 0,
+            false,
+            {
+              fileName: "/Users/justin/rw/sdk/experiments/ai-stream/src/app/pages/Chat/Chat.tsx",
+              lineNumber: 28,
+              columnNumber: 7
+            },
+            this
+          ),
+          /* @__PURE__ */ jsxDEV(
+            "button",
+            {
+              onClick,
+              style: {
+                padding: "10px 20px",
+                borderRadius: "4px",
+                border: "none",
+                backgroundColor: "#007bff",
+                color: "white",
+                cursor: "pointer"
+              },
+              children: "Send"
+            },
+            void 0,
+            false,
+            {
+              fileName: "/Users/justin/rw/sdk/experiments/ai-stream/src/app/pages/Chat/Chat.tsx",
+              lineNumber: 41,
+              columnNumber: 7
+            },
+            this
+          ),
+          /* @__PURE__ */ jsxDEV("div", { children: reply }, void 0, false, {
+            fileName: "/Users/justin/rw/sdk/experiments/ai-stream/src/app/pages/Chat/Chat.tsx",
+            lineNumber: 54,
+            columnNumber: 7
+          }, this)
+        ] }, void 0, true, {
+          fileName: "/Users/justin/rw/sdk/experiments/ai-stream/src/app/pages/Chat/Chat.tsx",
+          lineNumber: 27,
+          columnNumber: 5
+        }, this);
+      }
+      const Chat = registerClientReference("/test/file.tsx", "Chat", ChatSSR);
+      export { ChatSSR, Chat };
+      "
     `);
   });
 });

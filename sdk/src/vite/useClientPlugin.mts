@@ -24,6 +24,12 @@ interface ComponentInfo {
   isAnonymousDefault?: boolean;
 }
 
+function isJsxFunction(text: string): boolean {
+  return (
+    text.includes("jsx(") || text.includes("jsxs(") || text.includes("jsxDEV(")
+  );
+}
+
 export async function transformUseClientCode(
   code: string,
   relativeId: string,
@@ -63,7 +69,7 @@ export async function transformUseClientCode(
       if (!name) return;
 
       // Only track if it's a component (has JSX return)
-      if (node.getText().includes("jsx(") || node.getText().includes("jsxs(")) {
+      if (isJsxFunction(node.getText())) {
         const ssrName = `${name}SSR`;
         const isInlineExport = node.hasModifier(SyntaxKind.ExportKeyword);
 
@@ -96,10 +102,7 @@ export async function transformUseClientCode(
         if (!arrowFunc) return;
 
         // Only track if it's a component (has JSX return)
-        if (
-          arrowFunc.getText().includes("jsx(") ||
-          arrowFunc.getText().includes("jsxs(")
-        ) {
+        if (isJsxFunction(arrowFunc.getText())) {
           const name = varDecl.getName();
           const isDefault = !!statement.getFirstAncestorByKind(
             SyntaxKind.ExportAssignment,
