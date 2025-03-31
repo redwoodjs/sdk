@@ -700,7 +700,12 @@ export default Component;`),
         return jsx('div', { children: 'Hello' });
       }
 
-      export default Component;"
+
+      // >>> Client references
+      const Component = registerClientReference("/test/file.tsx", "default", ComponentSSR);
+
+      export { ComponentSSR };
+      export { Component as default };"
     `);
   });
 });
