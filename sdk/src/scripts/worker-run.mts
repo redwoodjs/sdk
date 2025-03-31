@@ -6,7 +6,7 @@ import { unstable_readConfig } from "wrangler";
 import { createServer as createViteServer } from "vite";
 import tmp from "tmp-promise";
 import lockfile from "proper-lockfile";
-import { debug as baseDebug } from "debug";
+import baseDebug from "debug";
 
 import { redwood } from "../vite/index.mjs";
 import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
