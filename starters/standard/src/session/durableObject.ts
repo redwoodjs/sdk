@@ -27,7 +27,7 @@ export class SessionDurableObject extends DurableObject {
       createdAt: Date.now(),
     };
 
-    await this.appContext.storage.put<Session>("session", session);
+    await this.ctx.storage.put<Session>("session", session);
     this.session = session;
     return session;
   }
@@ -37,7 +37,7 @@ export class SessionDurableObject extends DurableObject {
       return { value: this.session };
     }
 
-    const session = await this.appContext.storage.get<Session>("session");
+    const session = await this.ctx.storage.get<Session>("session");
 
     if (!session) {
       return {
@@ -57,7 +57,7 @@ export class SessionDurableObject extends DurableObject {
   }
 
   async revokeSession() {
-    await this.appContext.storage.delete("session");
+    await this.ctx.storage.delete("session");
     this.session = undefined;
   }
 }
