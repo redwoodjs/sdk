@@ -24,7 +24,7 @@ declare global {
   };
 }
 
-export const defineApp = <Context,>(routes: Route<Context>[]) => {
+export const defineApp = <AppContext,>(routes: Route<AppContext>[]) => {
   return {
     fetch: async (request: Request, env: Env, cf: ExecutionContext) => {
       globalThis.__webpack_require__ = ssrWebpackRequire;
@@ -54,12 +54,12 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
         const isRSCRequest = url.searchParams.has("__rsc");
 
         const handleAction = async (
-          opts: RouteOptions<Context, Record<string, string>>,
+          opts: RouteOptions<AppContext, Record<string, string>>,
         ) => {
           const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 
           if (isRSCActionHandler) {
-            return await rscActionHandler(request, opts); // maybe we should include params and ctx in the action handler?
+            return await rscActionHandler(request, opts); // maybe we should include params and appContext in the action handler?
           }
         };
 
@@ -68,7 +68,7 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
           props: fullPageProps,
           actionResult,
           Document,
-        }: RenderPageParams<Context>) => {
+        }: RenderPageParams<AppContext>) => {
           let props = fullPageProps;
           let documentProps = fullPageProps;
 
@@ -77,8 +77,8 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
           if (
             Object.prototype.hasOwnProperty.call(Page, "$$isClientReference")
           ) {
-            const { ctx, params } = fullPageProps;
-            props = { ctx, params } as PageProps<Context>;
+            const { appContext, params } = fullPageProps;
+            props = { appContext, params } as PageProps<AppContext>;
           }
 
           if (
@@ -87,8 +87,8 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
               "$$isClientReference",
             )
           ) {
-            const { ctx, params } = fullPageProps;
-            documentProps = { ctx, params } as DocumentProps<Context>;
+            const { appContext, params } = fullPageProps;
+            documentProps = { appContext, params } as DocumentProps<AppContext>;
           }
 
           const nonce = fullPageProps.rw.nonce;
@@ -133,7 +133,7 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
           cf,
           request,
           headers: userHeaders,
-          ctx: {} as Context,
+          appContext: {} as AppContext,
           env,
           rw: {
             Document: DefaultDocument,

@@ -1,19 +1,19 @@
 import { defineApp } from "@redwoodjs/sdk/worker";
-import { index, document, route } from "@redwoodjs/sdk/router";
+import { index, render, route } from "@redwoodjs/sdk/router";
 import { Document } from "src/Document";
 import { HomePage } from "src/pages/Home";
 import { fetchYoutubeVideos } from "src/pages/serverFunctions";
-type Context = {
+type AppContext = {
   YT_API_KEY: string;
 };
 
-export default defineApp<Context>([
-  ({ ctx }) => {
-    // setup ctx here
-    ctx;
+export default defineApp<AppContext>([
+  ({ appContext }) => {
+    // setup appContext here
+    appContext;
   },
   // @ts-ignore
-  document(Document, [
+  render(Document, [
     index([HomePage]),
     route("/sitemap.xml", async () => {
       const sitemap = `<?xml version="1.0" encoding="UTF-8"?>

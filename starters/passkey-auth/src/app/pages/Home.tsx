@@ -1,11 +1,11 @@
-import { Context } from "@/worker";
+import { AppContext } from "@/worker";
 
-export function Home({ ctx }: { ctx: Context }) {
+export function Home({ appContext }: { appContext: AppContext }) {
   return (
     <div>
       <p>
-        {ctx.user?.username
-          ? `You are logged in as user ${ctx.user.username}`
+        {appContext.user?.username
+          ? `You are logged in as user ${appContext.user.username}`
           : "You are not logged in"}
       </p>
     </div>

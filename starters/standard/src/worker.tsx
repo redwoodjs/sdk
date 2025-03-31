@@ -1,5 +1,5 @@
 import { defineApp, ErrorResponse } from "@redwoodjs/sdk/worker";
-import { route, document, prefix } from "@redwoodjs/sdk/router";
+import { route, render, prefix } from "@redwoodjs/sdk/router";
 import { Document } from "@/app/Document";
 import { Home } from "@/app/pages/Home";
 import { setCommonHeaders } from "@/app/headers";
@@ -10,19 +10,19 @@ import { db, setupDb } from "./db";
 import type { User } from "@prisma/client";
 export { SessionDurableObject } from "./session/durableObject";
 
-export type Context = {
+export type AppContext = {
   session: Session | null;
   user: User | null;
 };
 
-export default defineApp<Context>([
+export default defineApp<AppContext>([
   setCommonHeaders(),
-  async ({ env, ctx, request, headers }) => {
+  async ({ env, appContext, request, headers }) => {
     await setupDb(env);
     setupSessionStore(env);
 
     try {
-      ctx.session = await sessions.load(request);
+      appContext.session = await sessions.load(request);
     } catch (error) {
       if (error instanceof ErrorResponse && error.code === 401) {
         await sessions.remove(request, headers);
@@ -37,19 +37,19 @@ export default defineApp<Context>([
       throw error;
     }
 
-    if (ctx.session?.userId) {
-      ctx.user = await db.user.findUnique({
+    if (appContext.session?.userId) {
+      appContext.user = await db.user.findUnique({
         where: {
-          id: ctx.session.userId,
+          id: appContext.session.userId,
         },
       });
     }
   },
-  document(Document, [
+  render(Document, [
     route("/", () => new Response("Hello, World!")),
     route("/protected", [
-      ({ ctx }) => {
-        if (!ctx.user) {
+      ({ appContext }) => {
+        if (!appContext.user) {
           return new Response(null, {
             status: 302,
             headers: { Location: "/user/login" },

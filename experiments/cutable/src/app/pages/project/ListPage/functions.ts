@@ -5,11 +5,11 @@ import { getContext } from "../../../../worker";
 
 // We need to pass the context to these somehow?
 export async function createProject({
-  ctx,
+  appContext,
 }: {
-  ctx: Awaited<ReturnType<typeof getContext>>;
+  appContext: Awaited<ReturnType<typeof getAppContext>>;
 }) {
-  const userId = ctx.user.id;
+  const userId = appContext.user.id;
 
   const newProject = await db.project.create({
     data: {
