@@ -9,12 +9,12 @@ export async function saveInvoice(
   invoice: Omit<Invoice, "items" | "taxes">,
   items: InvoiceItem[],
   taxes: InvoiceTaxes[],
-  { ctx },
+  { appContext },
 ) {
   await db.invoice.findFirstOrThrow({
     where: {
       id,
-      userId: ctx.user.id,
+      userId: appContext.user.id,
     },
   });
 
@@ -34,11 +34,11 @@ export async function saveInvoice(
   });
 }
 
-export async function deleteLogo(id: string, { ctx }) {
+export async function deleteLogo(id: string, { appContext }) {
   await db.invoice.findFirstOrThrow({
     where: {
       id,
-      userId: ctx.user.id,
+      userId: appContext.user.id,
     },
   });
 

@@ -29,7 +29,7 @@ export function LoginPage(opts: RouteOptions) {
   };
 
   return (
-    <Layout ctx={opts.ctx}>
+    <Layout appContext={opts.appContext}>
       <div className="space-y-2 py-4">
         <h4 className="font-medium leading-none">
           Continue with Email Address

@@ -1,5 +1,5 @@
 import { defineApp } from "@redwoodjs/sdk/worker";
-import { document, prefix, route } from "@redwoodjs/sdk/router";
+import { render, prefix, route } from "@redwoodjs/sdk/router";
 import { Document } from "@/app/Document";
 import { authRoutes } from "@/app/pages/auth/routes";
 import { Session } from "./session/durableObject";
@@ -10,7 +10,7 @@ export { SessionDurableObject } from "./session/durableObject";
 import crypto from "node:crypto";
 import { meetingRoutes } from "./app/pages/meetings/routes";
 
-export type Context = {
+export type AppContext = {
   session: Session | null;
   user: User;
 };
@@ -36,12 +36,12 @@ async function validateZoomWebhook(body: any, env: Env) {
   }
 }
 
-const app = defineApp<Context>([
-  async ({ env, ctx, request }) => {
+const app = defineApp<AppContext>([
+  async ({ env, appContext, request }) => {
     await setupDb(env);
   },
 
-  document(Document, [
+  render(Document, [
     route("/", function () {
       return new Response("Hello World");
     }),
@@ -49,7 +49,7 @@ const app = defineApp<Context>([
   ]),
   prefix("/webhook", [
     route("/meeting.recording.completed", [
-      async function ({ request, env, ctx }) {
+      async function ({ request, env, appContext }) {
         if (
           request.method !== "POST" &&
           request.headers.get("Content-Type") !== "application/json"

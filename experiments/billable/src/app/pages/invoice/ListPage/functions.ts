@@ -1,11 +1,15 @@
 "use server";
 
 import { db } from "src/db";
-import { Context } from "../../../../worker";
+import { AppContext } from "../../../../worker";
 
 // We need to pass the context to these somehow?
-export async function createInvoice({ ctx }: { ctx: Context }) {
-  const userId = ctx.user.id;
+export async function createInvoice({
+  appContext,
+}: {
+  appContext: AppContext;
+}) {
+  const userId = appContext.user.id;
 
   // todo(peterp, 28-01-2025): Implement templates.
   let lastInvoice = await db.invoice.findFirst({

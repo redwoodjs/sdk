@@ -35,7 +35,7 @@ function calculateTaxes(subtotal: number, taxes: InvoiceTaxes[]) {
 
 export function InvoiceForm(props: {
   invoice: Awaited<ReturnType<typeof getInvoice>>;
-  ctx: RouteOptions["ctx"];
+  appContext: RouteOptions["appContext"];
 }) {
   const [invoice, setInvoice] = useState(props.invoice);
   const [items, setItems] = useState(props.invoice.items);
@@ -47,7 +47,7 @@ export function InvoiceForm(props: {
 
   const pdfContentRef = useRef<HTMLDivElement>(null);
 
-  const isLoggedIn = props.ctx?.user;
+  const isLoggedIn = props.appContext?.user;
 
   return (
     <div>

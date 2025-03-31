@@ -31,9 +31,9 @@ export function registerClientReference<Target extends Record<string, any>>(
   });
 }
 
-export async function rscActionHandler<TContext>(
+export async function rscActionHandler<TAppContext>(
   req: Request,
-  opts: HandlerOptions<TContext>,
+  opts: HandlerOptions<TAppContext>,
 ): Promise<unknown> {
   const url = new URL(req.url);
   const contentType = req.headers.get("content-type");

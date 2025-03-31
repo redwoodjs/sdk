@@ -73,9 +73,9 @@ export const Document = ({ rw, children }) => (
   </html>
 );
 
-export default defineApp<Context>([
+export default defineApp<AppContext>([
   // ...
-  document(Document, [
+  render(Document, [
     // ...
   ]),
 ]);

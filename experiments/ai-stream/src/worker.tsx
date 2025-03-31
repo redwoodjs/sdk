@@ -1,12 +1,12 @@
 import { defineApp } from "@redwoodjs/sdk/worker";
-import { index, document } from "@redwoodjs/sdk/router";
+import { index, render } from "@redwoodjs/sdk/router";
 import { Document } from "src/Document";
 import { Chat } from "src/pages/Chat/Chat";
 import { setCommonHeaders } from "src/headers";
 
-type Context = {};
+type AppContext = {};
 
-export default defineApp<Context>([
+export default defineApp<AppContext>([
   setCommonHeaders(),
-  document(Document, [index([Chat])]),
+  render(Document, [index([Chat])]),
 ]);

@@ -35,8 +35,8 @@ export const getContext = async (
   };
 };
 
-function authRequired({ ctx }: any) {
-  if (!ctx.user) {
+function authRequired({ appContext }: any) {
+  if (!appContext.user) {
     return new Response("Unauthorized", { status: 401 });
   }
 }
@@ -47,8 +47,8 @@ export default {
 
     const router = defineRoutes([
       // index([
-      //   function ({ ctx }) {
-      //     if (ctx.user.id) {
+      //   function ({ appContext }) {
+      //     if (appContext.user.id) {
       //       return new Response(null, {
       //         status: 302,
       //         headers: { Location: link('/project/list') },
@@ -62,7 +62,6 @@ export default {
       // ...prefix("/auth", authRoutes),
       // ...prefix("/project", projectRoutes),
     ]);
-
 
     try {
       setupDb(env);
@@ -80,13 +79,13 @@ export default {
       // the request will not hang. This makes this issue particularly hard to debug.
       await db.$queryRaw`SELECT 1`;
 
-      let ctx: Awaited<ReturnType<typeof getContext>> = {
-        user: { id: '', email: '' }
+      let appContext: Awaited<ReturnType<typeof getAppContext>> = {
+        user: { id: "", email: "" },
       };
       let session: Awaited<ReturnType<typeof getSession>> | undefined;
       try {
         session = await getSession(request, env);
-        ctx = await getContext(session);
+        appContext = await getContext(session);
       } catch (e) {
         console.error("Error getting session", e);
       }
@@ -96,7 +95,7 @@ export default {
       const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
       let actionResult: any;
       if (isRSCActionHandler) {
-        actionResult = await rscActionHandler(request, ctx); // maybe we should include params and ctx in the action handler?
+        actionResult = await rscActionHandler(request, appContext); // maybe we should include params and appContext in the action handler?
       }
 
       if (url.pathname.startsWith("/assets/")) {
@@ -131,7 +130,7 @@ export default {
 
       const response = await router.handle({
         request,
-        ctx,
+        appContext,
         env,
         renderPage,
       });
