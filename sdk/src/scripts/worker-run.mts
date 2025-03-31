@@ -50,11 +50,12 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
       retries: 100,
       factor: 1.2,
       minTimeout: 200,
-      maxTimeout: 1000,
+      maxTimeout: 10000,
       randomize: true,
     },
     stale: 30000,
   });
+  console.log("############ Lock acquired");
 
   try {
     await writeFile(
@@ -85,17 +86,22 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
         throw new Error("Dev server address is invalid");
       }
 
+      console.log("############ Fetching worker");
       await fetch(`http://localhost:${address.port}/`);
+      console.log("############ Fetched worker");
     } finally {
       await server.close();
     }
   } finally {
     await tmpWorkerPath.cleanup();
+    console.log("############ Done, waiting for inspector port to close...");
     await waitPort({
       host: "::",
       port: 9229,
     });
+    console.log("############ Inspector port closed, releasing lock...");
     await releaseLock();
+    console.log("############ Lock released");
   }
 };
 
