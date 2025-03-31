@@ -1,4 +1,4 @@
-import { tmpdir } from "os";
+import { tmpdir } from "path";
 import { resolve } from "path";
 import { ensureFile } from "fs-extra";
 import { writeFile } from "fs/promises";
@@ -6,9 +6,12 @@ import { unstable_readConfig } from "wrangler";
 import { createServer as createViteServer } from "vite";
 import tmp from "tmp-promise";
 import lockfile from "proper-lockfile";
+import debug from "debug";
 
 import { redwood } from "../vite/index.mjs";
 import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
+
+const debug = debug("rwsdk:worker-run");
 
 export const runWorkerScript = async (relativeScriptPath: string) => {
   if (!relativeScriptPath) {
@@ -21,8 +24,10 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
   }
 
   const scriptPath = resolve(process.cwd(), relativeScriptPath);
+  debug("Running worker script: %s", scriptPath);
 
   const workerConfigPath = await findWranglerConfig(process.cwd());
+  debug("Using wrangler config: %s", workerConfigPath);
 
   const workerConfig = unstable_readConfig({
     config: workerConfigPath,
@@ -45,6 +50,7 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
   // context(justinvdm, 27 Mar 2025): If worker scripts are run concurrently, they'll
   // all using the same port for the inspector port (there is currently no way to override the port number).
   // Simply waiting for the port to be open alone will cause a stampede of retries, so we use a lockfile to mitigate this.
+  debug("Acquiring lock...");
   const releaseLock = await lockfile.lock(anchorPath, {
     retries: {
       retries: 100,
@@ -55,13 +61,14 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
     },
     stale: 30000,
   });
-  console.log("############ Lock acquired");
+  debug("Lock acquired");
 
   try {
     await writeFile(
       tmpWorkerPath.path,
       JSON.stringify(scriptWorkerConfig, null, 2),
     );
+    debug("Worker config written to: %s", tmpWorkerPath.path);
 
     const server = await createViteServer({
       configFile: false,
@@ -77,26 +84,31 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
         port: 0,
       },
     });
+    debug("Vite server created");
 
     try {
       await server.listen();
       const address = server.httpServer?.address();
+      debug("Server listening on address: %o", address);
 
       if (!address || typeof address === "string") {
         throw new Error("Dev server address is invalid");
       }
 
-      console.log("############ Fetching worker");
+      debug("Fetching worker...");
       await fetch(`http://localhost:${address.port}/`);
-      console.log("############ Fetched worker");
+      debug("Worker fetched successfully");
     } finally {
+      debug("Closing server...");
       await server.close();
+      debug("Server closed");
     }
   } finally {
+    debug("Cleaning up temporary files...");
     await tmpWorkerPath.cleanup();
-    console.log("############ Done, waiting for inspector port to close...");
+    debug("Temporary files cleaned up, releasing lock...");
     await releaseLock();
-    console.log("############ Lock released");
+    debug("Lock released");
   }
 };
 
