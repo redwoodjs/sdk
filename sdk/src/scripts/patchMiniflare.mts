@@ -33,6 +33,7 @@ OriginalMiniflare.prototype.constructor = function (
   options: any,
   ...args: any[]
 ) {
+  debug("Constructor initialized: %s", options);
   if (options?.inspectorPort === 9229 || options?.inspectorPort == null) {
     debug("Replacing inspector port %s with 0", options?.inspectorPort);
     options.inspectorPort = 0;
