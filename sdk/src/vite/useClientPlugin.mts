@@ -43,6 +43,13 @@ export async function transformUseClientCode(
     },
   });
   const sourceFile = project.createSourceFile("temp.tsx", code);
+
+  // Add import declaration properly through the AST
+  sourceFile.addImportDeclaration({
+    moduleSpecifier: "@redwoodjs/sdk/worker",
+    namedImports: [{ name: "registerClientReference" }],
+  });
+
   const components = new Map<string, ComponentInfo>();
   let anonymousDefaultCount = 0;
 
@@ -202,12 +209,6 @@ export async function transformUseClientCode(
         node.remove();
       }
     });
-
-  // Add import at the top
-  sourceFile.addImportDeclaration({
-    moduleSpecifier: "@redwoodjs/sdk/worker",
-    namedImports: [{ name: "registerClientReference" }],
-  });
 
   // Add client references and exports
   components.forEach(
