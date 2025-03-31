@@ -10,6 +10,8 @@ const debug = baseDebug("rwsdk:patch-net");
 
 const originalListen = net.Server.prototype.listen;
 
+const inspectorServers: net.Server[] = [];
+
 net.Server.prototype.listen = function (...args: any[]) {
   if (typeof args[0] === "object" && args[0]?.port === 9229) {
     debug("Overriding port 9229 with 0 in object options");
@@ -19,5 +21,13 @@ net.Server.prototype.listen = function (...args: any[]) {
     args[0] = 0;
   }
 
+  inspectorServers.push(this);
   return originalListen.apply(this, args as any);
+};
+
+export const closeAllInspectorServers = async () => {
+  for (const server of inspectorServers) {
+    await new Promise((resolve) => server.close(resolve));
+  }
+  inspectorServers.length = 0;
 };
