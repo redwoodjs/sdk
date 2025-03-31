@@ -3,9 +3,13 @@ import { writeFile } from "fs/promises";
 import { unstable_readConfig } from "wrangler";
 import { createServer as createViteServer } from "vite";
 import tmp from "tmp-promise";
+import lockfile from "proper-lockfile";
 
 import { redwood } from "../vite/index.mjs";
 import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
+import { ROOT_DIR } from "../lib/constants.mjs";
+
+const LOCK_PATH = resolve(ROOT_DIR, ".worker-run.lock");
 
 export const runWorkerScript = async (relativeScriptPath: string) => {
   if (!relativeScriptPath) {
@@ -35,26 +39,25 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
     main: scriptPath,
   };
 
+  // context(justinvdm, 27 Mar 2025): If worker scripts are run concurrently, they'll
+  // all using the same port for the inspector port (there is currently no way to override the port number).
+  // Simply waiting for the port to be open will cause a stampede of retries, so we use a lockfile to mitigate this.
+  const releaseLock = await lockfile.lock(LOCK_PATH, {
+    retries: {
+      retries: 100,
+      factor: 1.2,
+      minTimeout: 200,
+      maxTimeout: 1000,
+      randomize: true,
+    },
+    stale: 30000,
+  });
+
   try {
     await writeFile(
       tmpWorkerPath.path,
       JSON.stringify(scriptWorkerConfig, null, 2),
     );
-
-    // context(justinvdm, 27 Mar 2025): If worker scripts are run concurrently, they'll
-    // all using the same port for the inspector port (there is currently no way to override the port number).
-    try {
-      const { default: waitPort } = await import("wait-port");
-      await waitPort({
-        port: 9229,
-        host: "localhost",
-        timeout: 10000,
-        output: "silent",
-      });
-    } catch (error) {
-      console.error("Failed to wait for miniflare inspector port to be open");
-      process.exit(1);
-    }
 
     const server = await createViteServer({
       configFile: false,
@@ -85,6 +88,7 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
     }
   } finally {
     await tmpWorkerPath.cleanup();
+    await releaseLock();
   }
 };
 

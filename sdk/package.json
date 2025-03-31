@@ -98,6 +98,7 @@
     "postcss": "^8.4.49",
     "prettier": "^3.4.1",
     "prisma": "^6.3.0",
+    "proper-lockfile": "^4.1.2",
     "react": "19.0.0-rc-f2df5694-20240916",
     "react-dom": "19.0.0-rc-f2df5694-20240916",
     "react-is": "^19.0.0",
@@ -122,6 +123,7 @@
   "devDependencies": {
     "@types/lodash": "^4.17.13",
     "@types/node": "^22.13.11",
+    "@types/proper-lockfile": "^4.1.4",
     "semver": "^7.7.1",
     "vitest": "^3.0.9",
     "wait-port": "^1.1.0"
