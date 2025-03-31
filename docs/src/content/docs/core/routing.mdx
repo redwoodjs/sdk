@@ -100,7 +100,7 @@ The request handler function takes in the following options:
 1. `request`: The request object.
 2. `params`: The matched parameters from the request URL.
 3. `env`: The Cloudflare environment.
-4. `appContext`: The context object (See [Middleware & Context](#middleware-context)).
+4. `appContext`: The context object (See [Middleware & `AppContext`](#middleware--app-context)).
 5. `cf:` Cloudflare's [Execution Context API](https://developers.cloudflare.com/workers/runtime-apis/context/) methods, e.g. `waitUntil()`
 
 Return values:
@@ -134,9 +134,9 @@ For the `/blog/:slug/edit` route, the `isAuthenticated` function will be execute
 ---
 ```
 
-## Middleware & Context
+## Middleware & `AppContext`
 
-Context is a mutable object that is passed to each request handler, interruptors, and React Server Functions. It's used to share data between the different parts of your application. You populate the context on a per-request basis via Middleware.
+`appContext` is a mutable object that is passed to each request handler, interruptors, and React Server Functions. It's used to share data between the different parts of your application. You populate the context on a per-request basis via Middleware.
 
 Middleware runs before the request is matched to a route. You can specify multiple middleware functions, they'll be executed in the order they are defined.
 
