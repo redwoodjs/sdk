@@ -28,14 +28,14 @@ function Header({ user }: { user?: User }) {
 
 export function Layout({
   children,
-  ctx,
+  appContext,
 }: {
   children: React.ReactNode;
-  ctx: { user?: User };
+  appContext: { user?: User };
 }) {
   return (
     <div className="min-h-screen bg-white">
-      <Header user={ctx?.user} />
+      <Header user={appContext?.user} />
       <main className="pt-[66px]">
         <div className="max-w-7xl mx-auto py-6 sm:px-6 lg:px-8">{children}</div>
       </main>

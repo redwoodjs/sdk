@@ -1,7 +1,7 @@
-import type { Context } from "@/worker";
+import type { AppContext } from "@/worker";
 import { db } from "@/db";
 
-export async function MeetingList({ ctx }: { ctx: Context }) {
+export async function MeetingList({ appContext }: { appContext: AppContext }) {
   const meetings = await db.meeting.findMany({
     orderBy: {
       createdAt: "desc",

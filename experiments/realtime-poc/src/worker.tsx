@@ -1,5 +1,5 @@
 import { defineApp } from "@redwoodjs/sdk/worker";
-import { route, document } from "@redwoodjs/sdk/router";
+import { route, render } from "@redwoodjs/sdk/router";
 import { Document } from "@/app/Document";
 import { setCommonHeaders } from "@/app/headers";
 import {
@@ -15,12 +15,12 @@ import Note from "./app/pages/note/Note";
 export { RealtimeDurableObject } from "@redwoodjs/sdk/realtime/durableObject";
 export { NoteDurableObject } from "@/noteDurableObject";
 
-export type Context = {};
+export type AppContext = {};
 
-export default defineApp<Context>([
+export default defineApp<AppContext>([
   setCommonHeaders(),
   realtimeRoute((env) => env.REALTIME_DURABLE_OBJECT),
-  document(Document, [
+  render(Document, [
     route("/", () => {
       const randomName = uniqueNamesGenerator({
         dictionaries: [adjectives, colors, animals],

@@ -5,7 +5,7 @@ description: Like air traffic control, but for requests.
 
 import { Aside, Tabs, TabItem, LinkCard } from "@astrojs/starlight/components";
 
-The request/response cycle is at the heart of web development - when a browser makes a request, your server needs to respond with content. RedwoodSDK makes this easy with the `defineApp` function, which lets you elegantly handle incoming requests and return the right responses.
+The request/response paradigm is at the heart of web development - when a browser makes a request, your server needs to respond with content. RedwoodSDK makes this easy with the `defineApp` function, which lets you elegantly handle incoming requests and return the right responses.
 
 ```tsx title="src/worker.tsx"
 import { defineApp } from "@redwoodjs/sdk/worker";
@@ -13,13 +13,13 @@ import { route } from "@redwoodjs/sdk/router";
 
 export default defineApp([
   // Middleware
-  function middleware({ request, env, ctx }) { /* Modify context */ },
-  function middleware({ request, env, ctx }) { /* Modify context */ },
+  function middleware({ request, env, appContext }) { /* Modify context */ },
+  function middleware({ request, env, appContext }) { /* Modify context */ },
   // Request Handlers
-  route("/", function handler({ request, env, ctx }) {
+  route("/", function handler({ request, env, appContext }) {
     return new Response("Hello, world!")
   }),
-  route("/ping", function handler({ request, env, ctx }) {
+  route("/ping", function handler({ request, env, appContext }) {
     return new Response("Pong!")
   }),
 ]);
@@ -87,7 +87,7 @@ The request handler is a function, or array of functions (See [Interruptors](#in
 import { route } from "@redwoodjs/sdk/router";
 
 defineApp([
-  route("/a-standard-response", ({ request, params, env, ctx }) => {
+  route("/a-standard-response", ({ request, params, env, appContext }) => {
     return new Response("Hello, world!")
   }),
   route('/a-jsx-response', () => {
@@ -100,7 +100,7 @@ The request handler function takes in the following options:
 1. `request`: The request object.
 2. `params`: The matched parameters from the request URL.
 3. `env`: The Cloudflare environment.
-4. `ctx`: The context object (See [Middleware & Context](#middleware-context)).
+4. `appContext`: The context object (See [Middleware & `AppContext`](#middleware--app-context)).
 5. `cf:` Cloudflare's [Execution Context API](https://developers.cloudflare.com/workers/runtime-apis/context/) methods, e.g. `waitUntil()`
 
 Return values:
@@ -118,9 +118,9 @@ import { defineApp } from "@redwoodjs/sdk/worker";
 import { route } from "@redwoodjs/sdk/router";
 import { EditBlogPage } from "src/pages/blog/EditBlogPage";
 
-function isAuthenticated({ request, env, ctx }) {
+function isAuthenticated({ request, env, appContext }) {
   // Ensure that this user is authenticated
-  if (!ctx.user) {
+  if (!appContext.user) {
     return new Response("Unauthorized", { status: 401 })
   }
 }
@@ -134,9 +134,9 @@ For the `/blog/:slug/edit` route, the `isAuthenticated` function will be execute
 ---
 ```
 
-## Middleware & Context
+## Middleware & `AppContext`
 
-Context is a mutable object that is passed to each request handler, interruptors, and React Server Functions. It's used to share data between the different parts of your application. You populate the context on a per-request basis via Middleware.
+`appContext` is a mutable object that is passed to each request handler, interruptors, and React Server Functions. It's used to share data between the different parts of your application. You populate the context on a per-request basis via Middleware.
 
 Middleware runs before the request is matched to a route. You can specify multiple middleware functions, they'll be executed in the order they are defined.
 
@@ -146,53 +146,52 @@ import { route } from "@redwoodjs/sdk/router";
 
 defineApp([
   sessionMiddleware,
-  async function getUserMiddleware({ request, env, ctx }) {
-    if (ctx.session.userId) {
-      ctx.user = await db.user.find({ where: { id: ctx.session.userId } });
+  async function getUserMiddleware({ request, env, appContext }) {
+    if (appContext.session.userId) {
+      appContext.user = await db.user.find({ where: { id: appContext.session.userId } });
     }
   },
   route("/hello", [
-    function ({ ctx }) {
-      if (!ctx.user) {
+    function ({ appContext }) {
+      if (!appContext.user) {
         return new Response("Unauthorized", { status: 401 });
       }
     },
-    function ({ ctx }) {
-      return new Response(`Hello ${ctx.user.username}!`);
+    function ({ appContext }) {
+      return new Response(`Hello ${appContext.user.username}!`);
     },
   ]),
 ]);
 
 ---
-The `ctx` object:
+The `appContext` object:
 
-1. `sessionMiddleware` is a function that is used to populate the `ctx.session` object
-2. `getUserMiddleware` is a middleware function that is used to populate the `ctx.user` object
+1. `sessionMiddleware` is a function that is used to populate the `appContext.session` object
+2. `getUserMiddleware` is a middleware function that is used to populate the `appContext.user` object
 3. `"/hello"` is a an array of route handlers that are executed when "/hello" is matched:
   - if the user is not authenticated the request will be interrupted and a 401 Unauthorized response will be returned
-  - if the user is authenticated the request will be passed to the next request handler and `"Hello {ctx.user.username}!"` will be returned
+  - if the user is authenticated the request will be passed to the next request handler and `"Hello {appContext.user.username}!"` will be returned
 
 ---
 ```
 
 ## Documents
 
-Documents are how you define the "shell" of your application's html: the `<html>`, `<head>`, `<meta>` tags, scripts, stylesheets, `<body>`, and where in the `<body>` your actual page content is rendered. In RedwoodSDK, documents are defined using the `document` function in `defineApp`.
+Documents are how you define the "shell" of your application's html: the `<html>`, `<head>`, `<meta>` tags, scripts, stylesheets, `<body>`, and where in the `<body>` your actual page content is rendered. In RedwoodSDK, you tell it which document to use with the `render()` function in `defineApp`. In other words, you're asking RedwoodSDK to "render" the document.
 
 ```tsx title="src/worker.tsx" "document"
 import { defineApp } from "@redwoodjs/sdk/worker";
-import { route, document } from "@redwoodjs/sdk/router";
+import { route, render } from "@redwoodjs/sdk/router";
 
 import { Document } from "@/pages/Document";
 import { HomePage } from "@/pages/HomePage";
 
 export default defineApp([
-  document(
-    Document, [route("/", HomePage)]
-)]);
+  render(Document, [route("/", HomePage)])
+]);
 
 ---
-The `document` function takes a React component and an array of route handlers. The document will be applied to all the routes that are passed to it.
+The `render` function takes a React component and an array of route handlers. The document will be applied to all the routes that are passed to it.
 
 This component will be rendered on the server side when the page loads. When defining this component, you'd add:
 * Your application's stylesheets and scripts

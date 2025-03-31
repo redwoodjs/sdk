@@ -1,5 +1,5 @@
 import { defineApp } from "@redwoodjs/sdk/worker";
-import { index, document, prefix } from "@redwoodjs/sdk/router";
+import { index, render, prefix } from "@redwoodjs/sdk/router";
 import { ExecutionContext } from "@cloudflare/workers-types";
 
 import { link } from "src/shared/links";
@@ -12,7 +12,7 @@ import { sessions, setupSessionStore } from "./sessionStore";
 
 export { SessionDO } from "./session";
 
-export type Context = {
+export type AppContext = {
   user: Awaited<ReturnType<typeof getUser>>;
 };
 
@@ -33,16 +33,16 @@ export const getUser = async (request: Request) => {
   }
 };
 
-const app = defineApp<Context>([
-  async ({ request, ctx, env }) => {
+const app = defineApp<AppContext>([
+  async ({ request, appContext, env }) => {
     await setupDb(env);
     setupSessionStore(env);
-    ctx.user = await getUser(request);
+    appContext.user = await getUser(request);
   },
-  document(Document, [
+  render(Document, [
     index([
-      ({ ctx }) => {
-        if (ctx.user) {
+      ({ appContext }) => {
+        if (appContext.user) {
           return new Response(null, {
             status: 302,
             headers: { Location: link("/invoice/list") },
@@ -57,7 +57,7 @@ const app = defineApp<Context>([
 ]);
 
 export default {
-  fetch(request: Request, env: Env, ctx: ExecutionContext) {
-    return app.fetch(request, env, ctx);
+  fetch(request: Request, env: Env, cf: ExecutionContext) {
+    return app.fetch(request, env, cf);
   },
 };

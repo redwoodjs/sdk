@@ -2,18 +2,18 @@
 
 import { RouteOptions } from "@redwoodjs/sdk/router";
 
-export const getContent = async (key: string, ctx?: RouteOptions) => {
-  const doId = ctx!.env.NOTE_DURABLE_OBJECT.idFromName(key);
-  const noteDO = ctx!.env.NOTE_DURABLE_OBJECT.get(doId);
+export const getContent = async (key: string, opts?: RouteOptions) => {
+  const doId = opts!.env.NOTE_DURABLE_OBJECT.idFromName(key);
+  const noteDO = opts!.env.NOTE_DURABLE_OBJECT.get(doId);
   return noteDO.getContent();
 };
 
 export const updateContent = async (
   key: string,
   content: string,
-  ctx?: RouteOptions,
+  opts?: RouteOptions,
 ) => {
-  const doId = ctx!.env.NOTE_DURABLE_OBJECT.idFromName(key);
-  const noteDO = ctx!.env.NOTE_DURABLE_OBJECT.get(doId);
+  const doId = opts!.env.NOTE_DURABLE_OBJECT.idFromName(key);
+  const noteDO = opts!.env.NOTE_DURABLE_OBJECT.get(doId);
   await noteDO.setContent(content);
 };

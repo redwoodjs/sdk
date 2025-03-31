@@ -58,10 +58,10 @@ async function getInvoiceListSummary(userId: string) {
   });
 }
 
-export async function InvoiceListPage({ ctx }: RouteOptions) {
-  const invoices = await getInvoiceListSummary(ctx.user.id);
+export async function InvoiceListPage({ appContext }: RouteOptions) {
+  const invoices = await getInvoiceListSummary(appContext.user.id);
   return (
-    <Layout ctx={ctx}>
+    <Layout appContext={appContext}>
       <div className="space-y-2 py-4 text-right">
         <CreateInvoiceButton />
       </div>

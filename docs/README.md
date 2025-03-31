@@ -1,41 +1,16 @@
-[![Built with Starlight](https://astro.badg.es/v2/built-with-starlight/tiny.svg)](https://starlight.astro.build)
+# RedwoodSDK Documentation
 
-## 🚀 Project Structure
+## Usage
 
-Inside of our docs project, we have the following folders and files:
-
-```
-.
-├── public/
-├── src/
-│   ├── assets/
-│   ├── content/
-│   │   ├── docs/
-│   └── content.config.ts
-├── astro.config.mjs
-├── package.json
-└── tsconfig.json
+```bash
+pnpm install
+pnpm dev
 ```
 
-Starlight looks for `.md` or `.mdx` files in the `src/content/docs/` directory. Each file is exposed as a route based on its file name.
+## Rules guide
 
-Images can be added to `src/assets/` and embedded in Markdown with a relative link.
+These are simple guidelines that help us keep the documentation consistent.b
 
-Static assets, like favicons, can be placed in the `public/` directory.
-
-## 🧞 Commands
-
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-- [Starlight’s docs](https://starlight.astro.build/)
+1. Always refer to "RedwoodSDK" as "RedwoodSDK," not "Redwood," "RedwoodJS" or "Redwood SDK."
+2. Use "Request/Response" rather than "Request / Response" or "Request/ Response."
+3. Use "Route handler" rather than "Route function."

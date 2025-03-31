@@ -1,9 +1,9 @@
 import { RouteOptions } from "@redwoodjs/sdk/worker";
 import { Layout } from "../Layout";
 import { InvoiceForm } from "../invoice/DetailPage/InvoiceForm";
-export default function HomePage({ ctx }: RouteOptions) {
+export default function HomePage({ appContext }: RouteOptions) {
   return (
-    <Layout ctx={ctx}>
+    <Layout appContext={appContext}>
       <InvoiceForm
         invoice={{
           items: [
@@ -18,7 +18,7 @@ export default function HomePage({ ctx }: RouteOptions) {
           date: new Date(),
           invoiceNumber: "1",
         }}
-        ctx={ctx}
+        appContext={appContext}
       />
     </Layout>
   );
