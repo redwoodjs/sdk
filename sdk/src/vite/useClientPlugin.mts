@@ -106,6 +106,9 @@ import { registerClientReference } from "@redwoodjs/sdk/worker";
     const anonymousDefaultExportRegex =
       /export\s+default\s+(async\s+)?(\([^)]*\)\s*=>|\(\)\s*=>)[^;]*/g;
 
+    // Add a new pattern for standalone default exports
+    const standaloneDefaultExportRegex = /export\s+default\s+(\w+)\s*;/g;
+
     let match;
     while ((match = groupedExportRegex.exec(code)) !== null) {
       const startPos = match.index;
@@ -136,6 +139,16 @@ const ${functionName} = registerClientReference(${JSON.stringify(relativeId)}, "
 
 export { ${functionName}SSR };
 export { ${functionName} as default };`;
+    });
+
+    // In the transformation logic:
+    s.replaceAll(standaloneDefaultExportRegex, (match, name) => {
+      return `
+// >>> Client references
+const ${name} = registerClientReference(${JSON.stringify(relativeId)}, "default", ${name}SSR);
+
+export { ${name}SSR };
+export { ${name} as default };`;
     });
 
     // Add client references for all functions

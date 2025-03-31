@@ -683,4 +683,24 @@ export { Fourth as AnotherName }`),
       "
     `);
   });
+
+  it("transforms function declaration that is exported default separately", async () => {
+    expect(
+      await transform(`"use client"
+
+function Component({ prop1, prop2 }) {
+  return jsx('div', { children: 'Hello' });
+}
+
+export default Component;`),
+    ).toMatchInlineSnapshot(`
+      "
+      import { registerClientReference } from "@redwoodjs/sdk/worker";
+      function Component({ prop1, prop2 }) {
+        return jsx('div', { children: 'Hello' });
+      }
+
+      export default Component;"
+    `);
+  });
 });
