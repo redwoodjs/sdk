@@ -18,6 +18,10 @@ debug("Resolved @cloudflare/vite-plugin to: %s", vitePluginPath);
 debug("Creating require relative to vite plugin...");
 const vitePluginRequire = createRequire(vitePluginPath);
 
+debug("Resolving miniflare path...");
+const miniflareModulePath = vitePluginRequire.resolve("miniflare");
+debug("Resolved miniflare to: %s", miniflareModulePath);
+
 debug("Loading miniflare module...");
 const miniflare = vitePluginRequire("miniflare");
 
