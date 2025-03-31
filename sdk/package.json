@@ -1,6 +1,6 @@
 {
   "name": "@redwoodjs/sdk",
-  "version": "0.0.33",
+  "version": "0.0.33-test.6",
   "description": "",
   "type": "module",
   "bin": {
@@ -82,6 +82,7 @@
     "@types/react-is": "^18.3.1",
     "@vitejs/plugin-react": "^4.3.4",
     "autoprefixer": "^10.4.20",
+    "debug": "^4.4.0",
     "dotenv": "^16.4.7",
     "es-module-lexer": "^1.5.4",
     "eventsource-parser": "^3.0.0",
@@ -98,6 +99,7 @@
     "postcss": "^8.4.49",
     "prettier": "^3.4.1",
     "prisma": "^6.3.0",
+    "proper-lockfile": "^4.1.2",
     "react": "19.0.0-rc-f2df5694-20240916",
     "react-dom": "19.0.0-rc-f2df5694-20240916",
     "react-is": "^19.0.0",
@@ -120,8 +122,10 @@
   },
   "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab",
   "devDependencies": {
+    "@types/debug": "^4.1.12",
     "@types/lodash": "^4.17.13",
     "@types/node": "^22.13.11",
+    "@types/proper-lockfile": "^4.1.4",
     "semver": "^7.7.1",
     "vitest": "^3.0.9"
   }
