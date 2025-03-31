@@ -90,7 +90,7 @@ echo -e "\n📦 Making sure dependencies are up to date..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] pnpm install --frozen-lockfile"
 else
-  pnpm install --frozen-lockfile
+  pnpm install --frozen-lockfile --ignore-scripts
 fi
 
 echo -e "\n🏗️  Building package..."
