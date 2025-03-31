@@ -43,7 +43,7 @@
     "clsx": "^2.1.1",
     "guillotine-packer": "^1.0.2",
     "input-otp": "^1.4.2",
-    "jspdf": "^2.5.2",
+    "jspdf": "^3.0.1",
     "jspdf-autotable": "^3.8.4",
     "lucide-react": "^0.474.0",
     "postcss": "^8.4.49",
@@ -59,7 +59,7 @@
     "@types/node": "^22.13.11",
     "@types/react": "^18.3.12",
     "@types/react-dom": "^18.3.1",
-    "vite": "^6.1.1",
+    "vite": "^6.2.4",
     "wrangler": "^4.4.0"
   },
   "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab"
