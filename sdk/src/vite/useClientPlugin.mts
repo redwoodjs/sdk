@@ -229,6 +229,30 @@ export async function transformUseClientCode(
     },
   );
 
+  // When handling export assignments:
+  sourceFile
+    .getDescendantsOfKind(SyntaxKind.ExportAssignment)
+    .forEach((node) => {
+      const expression = node.getExpression();
+
+      if (Node.isArrowFunction(expression)) {
+        // For anonymous default export arrow function
+        const anonName = `DefaultComponent${anonymousDefaultCount++}`;
+        const ssrName = `${anonName}SSR`;
+
+        // Create the SSR component declaration
+        sourceFile.addStatements(`const ${ssrName} = ${expression.getText()}`);
+
+        // Register client reference
+        sourceFile.addStatements(
+          `const ${anonName} = registerClientReference("${relativeId}", "default", ${ssrName});`,
+        );
+
+        // Replace original export default with SSR version
+        node.replaceWithText(`export default ${ssrName}`);
+      }
+    });
+
   const emitOutput = sourceFile.getEmitOutput();
   let sourceMap: any;
 

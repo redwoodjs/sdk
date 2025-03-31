@@ -331,9 +331,11 @@ export default () => {
 }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-      export default () => {
+      export default DefaultComponent0SSR
+      const DefaultComponent0SSR = () => {
         return jsx('div', { children: 'Hello' });
-      }"
+      }
+      const DefaultComponent0 = registerClientReference("/test/file.tsx", "default", DefaultComponent0SSR);"
     `);
   });
 
@@ -346,9 +348,11 @@ export default async () => {
 }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-      export default async () => {
+      export default DefaultComponent0SSR
+      const DefaultComponent0SSR = async () => {
         return jsx('div', { children: 'Hello' });
-      }"
+      }
+      const DefaultComponent0 = registerClientReference("/test/file.tsx", "default", DefaultComponent0SSR);"
     `);
   });
 
