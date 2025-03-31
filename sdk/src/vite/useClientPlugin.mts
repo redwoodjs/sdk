@@ -64,9 +64,15 @@ export async function transformUseClientCode(
 
       // Only track if it's a component (has JSX return)
       if (node.getText().includes("jsx(") || node.getText().includes("jsxs(")) {
-        const isDefault = node.hasModifier(SyntaxKind.DefaultKeyword);
-        const ssrName = isDefault ? "defaultSSR" : `${name}SSR`;
+        const ssrName = `${name}SSR`;
         const isInlineExport = node.hasModifier(SyntaxKind.ExportKeyword);
+
+        // Check if this function is used in a default export
+        const isDefault =
+          node.hasModifier(SyntaxKind.DefaultKeyword) ||
+          sourceFile
+            .getDescendantsOfKind(SyntaxKind.ExportAssignment)
+            .some((exp) => exp.getExpression().getText() === name);
 
         components.set(name, {
           node,
@@ -111,7 +117,7 @@ export async function transformUseClientCode(
             components.set(anonName, {
               node: varDecl,
               statement,
-              ssrName: "defaultSSR",
+              ssrName: anonName,
               originalName: anonName,
               isDefault: true,
               isInlineExport: true,
@@ -202,7 +208,7 @@ export async function transformUseClientCode(
 
       if (Node.isArrowFunction(expression)) {
         const anonName = `DefaultComponent${anonymousDefaultCount++}`;
-        const ssrName = "defaultSSR";
+        const ssrName = `${anonName}SSR`;
 
         // First add declarations
         sourceFile.addStatements(`const ${ssrName} = ${expression.getText()}`);
@@ -247,6 +253,15 @@ export async function transformUseClientCode(
       sourceFile.addStatements(`export { ${ssrName}, ${originalName} };`);
     }
   });
+
+  // Add this where we handle other export removals
+  sourceFile
+    .getDescendantsOfKind(SyntaxKind.ExportAssignment)
+    .forEach((node) => {
+      // If it's not an arrow function (which we handle separately),
+      // just remove the export assignment
+      node.remove();
+    });
 
   const emitOutput = sourceFile.getEmitOutput();
   let sourceMap: any;
