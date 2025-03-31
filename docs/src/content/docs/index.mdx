@@ -1,34 +1,51 @@
 ---
-title: RedwoodSDK
+title: What is RedwoodSDK?
 description: From concept to cloud
 ---
 
 import { Card, CardGrid } from '@astrojs/starlight/components';
 
-RedwoodSDK is a React framework for building webapps. It's optimized for the Cloudflare Development Platform,
-which means you can build your webapp with a database, queues, storage, and much more! All in one place, without
-having to worry about the underlying infrastructure.
 
-It also means that your local development experience has database, queues, and storage without having to install anything! Development matches
-production, and you can deploy your website to Cloudflare with a single command. It just works!
+RedwoodSDK gives you a complete set of composable tools to handle the request/response lifecycle of webapps.
 
-- No magic exports
-- No magic imports
-- No magic components
-- No magic utils
-- No magic types
-- No magic anything
+At its core, **it's just a Vite plugin** that seamlessly enables **SSR**, **React Server Components**, **React Server Functions**, and **real-time**.
 
-You focus on the request/response cycle, and we provide a set of tools to help you build your website.
+It's also a **standards-compliant** HTTP server with middleware, route handling, and interruptors—giving you full control over every request.
 
+All of it runs on the **Cloudflare Development Platform**, with seamless access to compute (Workers/ Durable Objects), database (D1), storage (R2), queues, and AI.
 
 
 <CardGrid>
 	<Card title="Quick start" icon="">
 		```bash
-		npx degit redwoodjs/sdk/starters/minimal#main my-app
+		npx degit redwoodjs/sdk/starters/standard#main <project-name>
 		```
 		
 		Then continue with ["start developing"](/getting-started/quick-start#start-developing)
 	</Card>
 </CardGrid>
+
+## Design Philosophy
+
+
+
+We believe that the best way to build webapps is to be standards-compliant, to adhere to the request/response paradigm, and to be transparent and composable.
+
+### Standards compliant:
+
+We've removed the pain of abstracting away the underlying platform, and instead embraced it. The browser is the primary focus, with the request/response cycle as the foundation.
+
+### Request/Response as the foundation
+
+Fetch is the primary way to interact with the web. The `Request` and `Response` objects are the foundation of the request/response paradigm.
+By focusing on these objects, you'll able to seamlessly integrate with the web, streaming responses to the browser, and even build real-time applications.
+
+### Transparent and composable:
+
+You are able to follow the flow from request to response, and to understand, and mofify, how each step is handled.
+
+- No hidden files
+- No magic imports / exports
+- No magic components
+- No magic types
+- No magic anything
