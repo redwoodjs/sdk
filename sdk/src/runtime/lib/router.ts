@@ -272,7 +272,7 @@ export function prefix<TAppContext = any, TParams = any>(
   });
 }
 
-export function document<TAppContext = any>(
+export function render<TAppContext = any>(
   Document: React.FC<{ children: React.ReactNode }>,
   routes: Route<TAppContext>[],
 ): Route<TAppContext>[] {
