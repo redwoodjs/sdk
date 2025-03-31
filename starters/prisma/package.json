@@ -9,7 +9,6 @@
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
-    "postinstall": "pnpm dev:init",
     "build": "vite build",
     "dev": "NODE_ENV=${NODE_ENV:-development} vite dev",
     "dev:init": "rw-scripts dev-init",
@@ -20,16 +19,18 @@
     "clean:vendor": "rm -rf ./vendor/dist",
     "release": "pnpm build && wrangler deploy",
     "format": "prettier --write ./src",
-    "migrate:dev": "npx prisma generate && wrangler d1 migrations apply DB --local",
+    "generate": "npx prisma generate",
+    "migrate:dev": "pnpm generate && wrangler d1 migrations apply DB --local",
     "migrate:prd": "wrangler d1 migrations apply DB --remote",
     "migrate:new": "rw-scripts migrate-new",
     "seed": "pnpm worker:run ./src/scripts/seed.ts",
-    "check": "pnpm tsc"
+    "check": "pnpm generate && pnpm types",
+    "types": "pnpm tsc"
   },
   "dependencies": {
     "@prisma/adapter-d1": "^6.3.1",
     "@prisma/client": "^6.3.1",
-    "@redwoodjs/sdk": "0.0.34",
+    "@redwoodjs/sdk": "0.0.37",
     "react": "19.0.0-rc-f2df5694-20240916",
     "react-dom": "19.0.0-rc-f2df5694-20240916",
     "react-server-dom-webpack": "19.0.0-rc-f2df5694-20240916"

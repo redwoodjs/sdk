@@ -9,7 +9,7 @@ pnpm dev
 
 ## Rules guide
 
-These are simple guidelines that help us keep the documentation consistent.b
+These are simple guidelines that help us keep the documentation consistent.
 
 1. Always refer to "RedwoodSDK" as "RedwoodSDK," not "Redwood," "RedwoodJS" or "Redwood SDK."
 2. Use "Request/Response" rather than "Request / Response" or "Request/ Response."
