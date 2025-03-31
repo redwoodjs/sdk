@@ -12,7 +12,7 @@ import { sessions, setupSessionStore } from "./sessionStore";
 
 export { SessionDO } from "./session";
 
-export type Context = {
+export type AppContext = {
   user: Awaited<ReturnType<typeof getUser>>;
 };
 
@@ -33,7 +33,7 @@ export const getUser = async (request: Request) => {
   }
 };
 
-const app = defineApp<Context>([
+const app = defineApp<AppContext>([
   async ({ request, ctx, env }) => {
     await setupDb(env);
     setupSessionStore(env);

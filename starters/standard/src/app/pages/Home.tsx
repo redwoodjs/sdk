@@ -1,4 +1,4 @@
-import { Context } from "@/worker";
+import { AppContext } from "@/worker";
 
 export function Home({ ctx }: { ctx: Context }) {
   return (

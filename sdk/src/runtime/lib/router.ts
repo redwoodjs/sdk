@@ -7,7 +7,7 @@ export type HandlerOptions<TContext = Record<string, any>> = {
   cf: ExecutionContext;
   ctx: TContext;
   headers: Headers;
-  rw: RwContext<TContext>;
+  rw: RwContext<TAppContext>;
 };
 
 export type RouteOptions<TContext = Record<string, any>, TParams = any> = {
@@ -17,38 +17,38 @@ export type RouteOptions<TContext = Record<string, any>, TParams = any> = {
   env: Env;
   ctx: TContext;
   headers: Headers;
-  rw: RwContext<TContext>;
+  rw: RwContext<TAppContext>;
 };
 
-export type PageProps<TContext> = Omit<
-  RouteOptions<TContext>,
+export type PageProps<TAppContext> = Omit<
+  RouteOptions<TAppContext>,
   "request" | "headers" | "rw" | "cf"
 > & { rw: { nonce: string } };
 
-export type DocumentProps<TContext> = PageProps<TContext> & {
+export type DocumentProps<TAppContext> = PageProps<TAppContext> & {
   children: React.ReactNode;
 };
 
-export type RenderPageParams<TContext> = {
+export type RenderPageParams<TAppContext> = {
   Page: React.FC<Record<string, any>>;
-  props: PageProps<TContext>;
+  props: PageProps<TAppContext>;
   actionResult: unknown;
-  Document: React.FC<DocumentProps<TContext>>;
+  Document: React.FC<DocumentProps<TAppContext>>;
 };
 
-export type RenderPage<TContext> = (
-  params: RenderPageParams<TContext>,
+export type RenderPage<TAppContext> = (
+  params: RenderPageParams<TAppContext>,
 ) => Promise<Response>;
 
-export type RwContext<TContext> = {
+export type RwContext<TAppContext> = {
   nonce: string;
-  Document: React.FC<DocumentProps<TContext>>;
-  renderPage: RenderPage<TContext>;
-  handleAction: (opts: RouteOptions<TContext>) => Promise<unknown>;
+  Document: React.FC<DocumentProps<TAppContext>>;
+  renderPage: RenderPage<TAppContext>;
+  handleAction: (opts: RouteOptions<TAppContext>) => Promise<unknown>;
 };
 
 export type RouteMiddleware<TContext = any> = (
-  opts: RouteOptions<TContext>,
+  opts: RouteOptions<TAppContext>,
 ) =>
   | Response
   | Promise<Response>
@@ -66,14 +66,14 @@ type RouteHandler<TContext, TParams> =
   | RouteFunction<TContext, TParams>
   | RouteComponent<TContext, TParams>
   | [
-      ...RouteMiddleware<TContext>[],
+      ...RouteMiddleware<TAppContext>[],
       RouteFunction<TContext, TParams> | RouteComponent<TContext, TParams>,
     ];
 
-export type Route<TContext> =
-  | RouteMiddleware<TContext>
-  | RouteDefinition<TContext>
-  | Array<Route<TContext>>;
+export type Route<TAppContext> =
+  | RouteMiddleware<TAppContext>
+  | RouteDefinition<TAppContext>
+  | Array<Route<TAppContext>>;
 
 export type RouteDefinition<TContext = Record<string, any>, TParams = any> = {
   path: string;
@@ -121,21 +121,21 @@ function matchPath(
   return params;
 }
 
-function flattenRoutes<TContext>(
-  routes: Route<TContext>[],
-): (RouteMiddleware<TContext> | RouteDefinition<TContext>)[] {
-  return routes.reduce((acc: Route<TContext>[], route) => {
+function flattenRoutes<TAppContext>(
+  routes: Route<TAppContext>[],
+): (RouteMiddleware<TAppContext> | RouteDefinition<TAppContext>)[] {
+  return routes.reduce((acc: Route<TAppContext>[], route) => {
     if (Array.isArray(route)) {
       return [...acc, ...flattenRoutes(route)];
     }
     return [...acc, route];
-  }, []) as (RouteMiddleware<TContext> | RouteDefinition<TContext>)[];
+  }, []) as (RouteMiddleware<TAppContext> | RouteDefinition<TAppContext>)[];
 }
 
 export function defineRoutes<TContext = Record<string, any>>(
-  routes: Route<TContext>[],
+  routes: Route<TAppContext>[],
 ): {
-  routes: Route<TContext>[];
+  routes: Route<TAppContext>[];
   handle: ({
     cf,
     request,
@@ -148,7 +148,7 @@ export function defineRoutes<TContext = Record<string, any>>(
     request: Request;
     ctx: TContext;
     env: Env;
-    rw: RwContext<TContext>;
+    rw: RwContext<TAppContext>;
     headers: Headers;
   }) => Response | Promise<Response>;
 } {
@@ -165,8 +165,8 @@ export function defineRoutes<TContext = Record<string, any>>(
       }
 
       // Find matching route
-      let match: RouteMatch<TContext> | null = null;
-      const routeOptions: RouteOptions<TContext> = {
+      let match: RouteMatch<TAppContext> | null = null;
+      const routeOptions: RouteOptions<TAppContext> = {
         cf,
         request,
         params: {},
@@ -268,9 +268,9 @@ export function prefix<TContext = any, TParams = any>(
 
 export function document<TContext = any>(
   Document: React.FC<{ children: React.ReactNode }>,
-  routes: Route<TContext>[],
-): Route<TContext>[] {
-  const documentMiddleware: RouteMiddleware<TContext> = ({ rw }) => {
+  routes: Route<TAppContext>[],
+): Route<TAppContext>[] {
+  const documentMiddleware: RouteMiddleware<TAppContext> = ({ rw }) => {
     rw.Document = Document;
   };
 

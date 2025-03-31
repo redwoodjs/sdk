@@ -1,8 +1,8 @@
 import { users } from "../../db/schema";
 import { RouteOptions } from "@redwoodjs/sdk/router";
-import { Context } from "@/worker";
+import { AppContext } from "@/worker";
 
-export async function Home({ ctx }: RouteOptions<Context>) {
+export async function Home({ ctx }: RouteOptions<AppContext>) {
   const allUsers = await ctx.db.select().from(users).all();
   return (
     <div>

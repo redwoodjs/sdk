@@ -4,9 +4,9 @@ import { Document } from "src/Document";
 import { Home } from "src/pages/Home";
 import { setCommonHeaders } from "src/headers";
 
-type Context = {};
+type AppContext = {};
 
-export default defineApp<Context>([
+export default defineApp<AppContext>([
   setCommonHeaders(),
   ({ ctx }) => {
     // setup ctx here

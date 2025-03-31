@@ -9,11 +9,11 @@ export interface Env {
   DB: D1Database;
 }
 
-export type Context = {
+export type AppContext = {
   db: ReturnType<typeof drizzle>;
 };
 
-export default defineApp<Context>([
+export default defineApp<AppContext>([
   setCommonHeaders(),
   ({ ctx, env }) => {
     // setup db in ctx

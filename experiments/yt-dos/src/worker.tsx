@@ -3,11 +3,11 @@ import { index, render, route } from "@redwoodjs/sdk/router";
 import { Document } from "src/Document";
 import { HomePage } from "src/pages/Home";
 import { fetchYoutubeVideos } from "src/pages/serverFunctions";
-type Context = {
+type AppContext = {
   YT_API_KEY: string;
 };
 
-export default defineApp<Context>([
+export default defineApp<AppContext>([
   ({ ctx }) => {
     // setup ctx here
     ctx;

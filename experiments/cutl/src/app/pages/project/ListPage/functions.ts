@@ -1,15 +1,15 @@
-'use server';
-
+"use server";
 
 import { db } from "../../../../db";
 import { getContext } from "../../../../worker";
 
-
-
 // We need to pass the context to these somehow?
-export async function createProject({ ctx }: { ctx: Awaited<ReturnType<typeof getContext>>}) {
-
-  const userId = ctx.user.id
+export async function createProject({
+  ctx,
+}: {
+  ctx: Awaited<ReturnType<typeof getAppContext>>;
+}) {
+  const userId = ctx.user.id;
 
   const newProject = await db.project.create({
     data: {
@@ -22,15 +22,14 @@ export async function createProject({ ctx }: { ctx: Awaited<ReturnType<typeof ge
       boardLength: 2440,
       boardPrice: 0,
       bladeWidth: 3,
-    }
-  })
+    },
+  });
 
-  return newProject
+  return newProject;
 }
 
 export async function deleteProject(id: string) {
-
   await db.project.deleteMany({
     where: { id },
   });
-} 
+}

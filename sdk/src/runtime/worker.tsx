@@ -24,7 +24,7 @@ declare global {
   };
 }
 
-export const defineApp = <Context,>(routes: Route<Context>[]) => {
+export const defineApp = <Context,>(routes: Route<AppContext>[]) => {
   return {
     fetch: async (request: Request, env: Env, cf: ExecutionContext) => {
       globalThis.__webpack_require__ = ssrWebpackRequire;
@@ -68,7 +68,7 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
           props: fullPageProps,
           actionResult,
           Document,
-        }: RenderPageParams<Context>) => {
+        }: RenderPageParams<AppContext>) => {
           let props = fullPageProps;
           let documentProps = fullPageProps;
 
@@ -78,7 +78,7 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
             Object.prototype.hasOwnProperty.call(Page, "$$isClientReference")
           ) {
             const { ctx, params } = fullPageProps;
-            props = { ctx, params } as PageProps<Context>;
+            props = { ctx, params } as PageProps<AppContext>;
           }
 
           if (
@@ -88,7 +88,7 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
             )
           ) {
             const { ctx, params } = fullPageProps;
-            documentProps = { ctx, params } as DocumentProps<Context>;
+            documentProps = { ctx, params } as DocumentProps<AppContext>;
           }
 
           const nonce = fullPageProps.rw.nonce;

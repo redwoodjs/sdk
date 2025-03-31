@@ -1,7 +1,7 @@
 "use server";
 
 import { db } from "src/db";
-import { Context } from "../../../../worker";
+import { AppContext } from "../../../../worker";
 
 // We need to pass the context to these somehow?
 export async function createInvoice({ ctx }: { ctx: Context }) {

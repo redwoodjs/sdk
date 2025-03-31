@@ -4,9 +4,9 @@ import { Document } from "src/Document";
 import { Chat } from "src/pages/Chat/Chat";
 import { setCommonHeaders } from "src/headers";
 
-type Context = {};
+type AppContext = {};
 
-export default defineApp<Context>([
+export default defineApp<AppContext>([
   setCommonHeaders(),
   render(Document, [index([Chat])]),
 ]);

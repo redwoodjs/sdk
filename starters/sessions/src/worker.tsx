@@ -9,11 +9,11 @@ import { setCommonHeaders } from "./app/headers";
 
 export { SessionDurableObject } from "./session/durableObject";
 
-export type Context = {
+export type AppContext = {
   session: Session | null;
 };
 
-export default defineApp<Context>([
+export default defineApp<AppContext>([
   setCommonHeaders(),
   async ({ env, ctx, request, headers }) => {
     setupSessionStore(env);

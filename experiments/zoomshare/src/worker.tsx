@@ -10,7 +10,7 @@ export { SessionDurableObject } from "./session/durableObject";
 import crypto from "node:crypto";
 import { meetingRoutes } from "./app/pages/meetings/routes";
 
-export type Context = {
+export type AppContext = {
   session: Session | null;
   user: User;
 };
@@ -36,7 +36,7 @@ async function validateZoomWebhook(body: any, env: Env) {
   }
 }
 
-const app = defineApp<Context>([
+const app = defineApp<AppContext>([
   async ({ env, ctx, request }) => {
     await setupDb(env);
   },

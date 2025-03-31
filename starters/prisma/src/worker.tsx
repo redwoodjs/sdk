@@ -4,9 +4,9 @@ import { Document } from "src/Document";
 import { Home } from "src/pages/Home";
 import { setupDb } from "./db";
 import { setCommonHeaders } from "src/headers";
-type Context = {};
+type AppContext = {};
 
-export default defineApp<Context>([
+export default defineApp<AppContext>([
   setCommonHeaders(),
   async ({ ctx, env, request }) => {
     await setupDb(env);

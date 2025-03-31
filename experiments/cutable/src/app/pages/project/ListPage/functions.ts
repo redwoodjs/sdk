@@ -7,7 +7,7 @@ import { getContext } from "../../../../worker";
 export async function createProject({
   ctx,
 }: {
-  ctx: Awaited<ReturnType<typeof getContext>>;
+  ctx: Awaited<ReturnType<typeof getAppContext>>;
 }) {
   const userId = ctx.user.id;
 

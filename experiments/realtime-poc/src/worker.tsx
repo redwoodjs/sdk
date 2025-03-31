@@ -15,9 +15,9 @@ import Note from "./app/pages/note/Note";
 export { RealtimeDurableObject } from "@redwoodjs/sdk/realtime/durableObject";
 export { NoteDurableObject } from "@/noteDurableObject";
 
-export type Context = {};
+export type AppContext = {};
 
-export default defineApp<Context>([
+export default defineApp<AppContext>([
   setCommonHeaders(),
   realtimeRoute((env) => env.REALTIME_DURABLE_OBJECT),
   render(Document, [
