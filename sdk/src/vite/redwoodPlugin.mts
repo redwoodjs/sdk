@@ -19,6 +19,7 @@ import { injectHmrPreambleJsxPlugin } from "./injectHmrPreambleJsxPlugin.mjs";
 import { setupEnvFiles } from "./setupEnvFiles.mjs";
 import { invalidateCacheIfPrismaClientChanged } from "./invalidateCacheIfPrismaClientChanged.mjs";
 import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
+import { pathExists } from "fs-extra";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -47,7 +48,15 @@ export const redwoodPlugin = async (
     options?.entry?.worker ?? "src/worker.tsx",
   );
 
-  await setupEnvFiles({ rootDir: projectRootDir });
+  // context(justinvdm, 31 Mar 2025): We assume that if there is no .wrangler directory,
+  // then this is fresh install, and we run `pnpm dev:init` here.
+  if (!(await pathExists(resolve(process.cwd(), ".wrangler")))) {
+    console.log(
+      "🚀 Project has no .wrangler directory yet, assuming fresh install: running `pnpm dev:init`...",
+    );
+    await $({ stdio: "inherit" })`pnpm dev:init`;
+  }
+
   const usesPrisma = await $({ reject: false })`pnpm prisma --version`;
   const isUsingPrisma = usesPrisma.exitCode === 0;
 

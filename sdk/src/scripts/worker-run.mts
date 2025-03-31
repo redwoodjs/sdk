@@ -1,4 +1,3 @@
-import { closeAllInspectorServers } from "./patchInspectorPort.mjs";
 import { resolve } from "path";
 import { writeFile } from "fs/promises";
 import { unstable_readConfig } from "wrangler";
@@ -83,18 +82,9 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
     }
   } finally {
     debug("Closing inspector servers...");
-    await closeAllInspectorServers();
-    debug("Inspector servers closed");
-    debug("Cleaning up temporary files...");
     await tmpWorkerPath.cleanup();
     debug("Temporary files cleaned up");
   }
-
-  // context(justinvdm, 31 Mar 2024): The process may still hang due to open WebSocket
-  // clients and a live workerd child process (spawned internally by Miniflare).
-  // These handles are not exposed for manual cleanup, but are safe to abandon in our
-  // postinstall/CLI context. We explicitly call process.exit(0) to ensure reliable termination.
-  process.exit(0);
 };
 
 if (import.meta.url === new URL(process.argv[1], import.meta.url).href) {

@@ -9,7 +9,6 @@
   "license": "UNLICENSED",
   "private": true,
   "scripts": {
-    "postinstall": "pnpm dev:init",
     "build": "vite build",
     "dev": "NODE_ENV=${NODE_ENV:-development} vite dev",
     "dev:init": "rw-scripts dev-init",
@@ -20,7 +19,8 @@
     "clean:vendor": "rm -rf ./vendor/dist",
     "release": "pnpm build && wrangler deploy",
     "format": "prettier --write ./src",
-    "check": "pnpm tsc"
+    "check": "pnpm types",
+    "types": "pnpm tsc"
   },
   "dependencies": {
     "@redwoodjs/sdk": "0.0.36",
