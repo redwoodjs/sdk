@@ -32,7 +32,7 @@
     "@prisma/adapter-d1": "^6.3.1",
     "@prisma/client": "^6.3.1",
     "@radix-ui/react-slot": "^1.1.1",
-    "@redwoodjs/sdk": "0.0.35",
+    "@redwoodjs/sdk": "0.0.36",
     "@types/lodash": "^4.17.13",
     "aws4fetch": "^1.0.20",
     "class-variance-authority": "^0.7.1",
