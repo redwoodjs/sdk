@@ -42,7 +42,7 @@ importers:
     dependencies:
       '@redwoodjs/sdk':
         specifier: 0.0.34
-        version: 0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
+        version: 0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))
       react:
         specifier: 19.0.0-rc-f2df5694-20240916
         version: 19.0.0-rc-f2df5694-20240916
@@ -82,7 +82,7 @@ importers:
         version: 1.1.1(@types/react@18.3.18)(react@19.0.0-rc-f2df5694-20240916)
       '@redwoodjs/sdk':
         specifier: 0.0.34
-        version: 0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
+        version: 0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))
       '@types/lodash':
         specifier: ^4.17.13
         version: 4.17.14
@@ -191,7 +191,7 @@ importers:
         version: 3.2.0(@types/react-dom@18.3.5(@types/react@18.3.18))(@types/react@18.3.18)(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)
       '@redwoodjs/sdk':
         specifier: 0.0.34
-        version: 0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.24.2)))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
+        version: 0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.24.2)))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))
       autoprefixer:
         specifier: ^10.4.20
         version: 10.4.20(postcss@8.5.2)
@@ -267,7 +267,7 @@ importers:
         version: 6.4.1(prisma@6.4.1(typescript@5.7.3))(typescript@5.7.3)
       '@redwoodjs/sdk':
         specifier: 0.0.34
-        version: 0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.24.2)))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
+        version: 0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.24.2)))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))
       '@simplewebauthn/browser':
         specifier: ^13.1.0
         version: 13.1.0
@@ -316,7 +316,7 @@ importers:
     dependencies:
       '@redwoodjs/sdk':
         specifier: 0.0.34
-        version: 0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
+        version: 0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))
       react:
         specifier: 19.0.0-rc-f2df5694-20240916
         version: 19.0.0-rc-f2df5694-20240916
@@ -353,7 +353,7 @@ importers:
         version: 6.4.1(prisma@6.4.1(typescript@5.7.3))(typescript@5.7.3)
       '@redwoodjs/sdk':
         specifier: 0.0.34
-        version: 0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
+        version: 0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))
       '@simplewebauthn/browser':
         specifier: ^13.1.0
         version: 13.1.0
@@ -502,6 +502,9 @@ importers:
       toml:
         specifier: ^3.0.0
         version: 3.0.0
+      ts-morph:
+        specifier: ^25.0.1
+        version: 25.0.1
       tsx:
         specifier: ^4.19.2
         version: 4.19.2
@@ -553,7 +556,7 @@ importers:
     dependencies:
       '@redwoodjs/sdk':
         specifier: 0.0.34
-        version: 0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.19.12)))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
+        version: 0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.19.12)))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))
       dotenv:
         specifier: ^16.4.7
         version: 16.4.7
@@ -596,7 +599,7 @@ importers:
     dependencies:
       '@redwoodjs/sdk':
         specifier: 0.0.34
-        version: 0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
+        version: 0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))
       react:
         specifier: 19.0.0-rc-f2df5694-20240916
         version: 19.0.0-rc-f2df5694-20240916
@@ -633,7 +636,7 @@ importers:
         version: 6.4.1(prisma@6.4.1(typescript@5.7.3))(typescript@5.7.3)
       '@redwoodjs/sdk':
         specifier: 0.0.34
-        version: 0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
+        version: 0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))
       '@simplewebauthn/browser':
         specifier: ^13.1.0
         version: 13.1.0
@@ -679,7 +682,7 @@ importers:
         version: 6.4.1(prisma@6.4.1(typescript@5.7.3))(typescript@5.7.3)
       '@redwoodjs/sdk':
         specifier: 0.0.34
-        version: 0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
+        version: 0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))
       react:
         specifier: 19.0.0-rc-f2df5694-20240916
         version: 19.0.0-rc-f2df5694-20240916
@@ -713,7 +716,7 @@ importers:
     dependencies:
       '@redwoodjs/sdk':
         specifier: 0.0.34
-        version: 0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
+        version: 0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))
       react:
         specifier: 19.0.0-rc-f2df5694-20240916
         version: 19.0.0-rc-f2df5694-20240916
@@ -750,7 +753,7 @@ importers:
         version: 6.4.1(prisma@6.4.1(typescript@5.7.3))(typescript@5.7.3)
       '@redwoodjs/sdk':
         specifier: 0.0.34
-        version: 0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)
+        version: 0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))
       '@simplewebauthn/browser':
         specifier: ^13.1.0
         version: 13.1.0
@@ -3105,6 +3108,9 @@ packages:
   '@swc/types@0.1.17':
     resolution: {integrity: sha512-V5gRru+aD8YVyCOMAjMpWR1Ui577DD5KSJsHP8RAxopAH22jFz6GZd/qxqjO6MJHQhcsjvjOFXyDhyLQUnMveQ==}
 
+  '@ts-morph/common@0.26.1':
+    resolution: {integrity: sha512-Sn28TGl/4cFpcM+jwsH1wLncYq3FtN/BIpem+HOygfBWPT5pAeS5dB4VFVzV8FbnOKHpDLZmvAl4AjPEev5idA==}
+
   '@types/acorn@4.0.6':
     resolution: {integrity: sha512-veQTnWP+1D/xbxVrPC3zHnCZRjSrKfhbMUlEA43iMZLu7EsnTtkJklIuwrCPbOi8YkvDQAiW05VQQFvvz9oieQ==}
 
@@ -3740,6 +3746,9 @@ packages:
   clsx@2.1.1:
     resolution: {integrity: sha512-eYm0QWBtUrBWZWG0d386OGAw16Z995PiOVo2B7bjWSbHedGl5e0ZWaq65kOGgUSNesEIDkB9ISbTg/JK9dhCZA==}
     engines: {node: '>=6'}
+
+  code-block-writer@13.0.3:
+    resolution: {integrity: sha512-Oofo0pq3IKnsFtuHqSF7TqBfr71aeyZDVJ0HpmqB7FBM2qEigL0iPONSCZSO9pE9dZTAxANe5XHG9Uy0YMv8cg==}
 
   collapse-white-space@2.1.0:
     resolution: {integrity: sha512-loKTxY1zCOuG4j9f6EPnuyyYkf58RnhhWTvRoZEokgB+WbdXehfjFviyOVYkqzEWz1Q5kRiZdBYS5SwxbQYwzw==}
@@ -6137,6 +6146,9 @@ packages:
 
   ts-interface-checker@0.1.13:
     resolution: {integrity: sha512-Y/arvbn+rrz3JCKl9C4kVNfTfSm2/mEp5FSz5EsZSANGPSlQrpRI5M4PKF+mJnE52jOO90PnPSc3Ur3bTQw0gA==}
+
+  ts-morph@25.0.1:
+    resolution: {integrity: sha512-QJEiTdnz1YjrB3JFhd626gX4rKHDLSjSVMvGGG4v7ONc3RBwa0Eei98G9AT9uNFDMtV54JyuXsFeC+OH0n6bXQ==}
 
   tsconfck@3.1.4:
     resolution: {integrity: sha512-kdqWFGVJqe+KGYvlSO9NIaWn9jT1Ny4oKVzAJsKii5eoE9snzTJzL4+MMVOMn+fikWGFmKEylcXL710V/kIPJQ==}
@@ -8550,7 +8562,7 @@ snapshots:
       react-dom: 19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916)
       react-promise-suspense: 0.3.4
 
-  '@redwoodjs/sdk@0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.19.12)))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)':
+  '@redwoodjs/sdk@0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.19.12)))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))':
     dependencies:
       '@cloudflare/vite-plugin': 0.1.15(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)(wrangler@4.4.0(@cloudflare/workers-types@4.20250321.0))
       '@cloudflare/workers-types': 4.20250321.0
@@ -8618,7 +8630,7 @@ snapshots:
       - utf-8-validate
       - workerd
 
-  '@redwoodjs/sdk@0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.24.2)))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)':
+  '@redwoodjs/sdk@0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.24.2)))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))':
     dependencies:
       '@cloudflare/vite-plugin': 0.1.15(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)(wrangler@4.4.0(@cloudflare/workers-types@4.20250321.0))
       '@cloudflare/workers-types': 4.20250321.0
@@ -8686,7 +8698,7 @@ snapshots:
       - utf-8-validate
       - workerd
 
-  '@redwoodjs/sdk@0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(rollup@4.34.8)(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)':
+  '@redwoodjs/sdk@0.0.34(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))':
     dependencies:
       '@cloudflare/vite-plugin': 0.1.15(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250320.0)(wrangler@4.4.0(@cloudflare/workers-types@4.20250321.0))
       '@cloudflare/workers-types': 4.20250321.0
@@ -8995,6 +9007,12 @@ snapshots:
   '@swc/types@0.1.17':
     dependencies:
       '@swc/counter': 0.1.3
+
+  '@ts-morph/common@0.26.1':
+    dependencies:
+      fast-glob: 3.3.3
+      minimatch: 9.0.5
+      path-browserify: 1.0.1
 
   '@types/acorn@4.0.6':
     dependencies:
@@ -9818,6 +9836,8 @@ snapshots:
   cli-boxes@3.0.0: {}
 
   clsx@2.1.1: {}
+
+  code-block-writer@13.0.3: {}
 
   collapse-white-space@2.1.0: {}
 
@@ -12886,6 +12906,11 @@ snapshots:
   trough@2.2.0: {}
 
   ts-interface-checker@0.1.13: {}
+
+  ts-morph@25.0.1:
+    dependencies:
+      '@ts-morph/common': 0.26.1
+      code-block-writer: 13.0.3
 
   tsconfck@3.1.4(typescript@5.7.3):
     optionalDependencies:

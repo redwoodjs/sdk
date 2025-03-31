@@ -1,206 +1,250 @@
 import { relative } from "node:path";
 import { Plugin } from "vite";
-import { parse } from "es-module-lexer";
+import {
+  Project,
+  Node,
+  SyntaxKind,
+  FunctionDeclaration,
+  ArrowFunction,
+  SourceFile,
+} from "ts-morph";
 import MagicString from "magic-string";
+
+interface TransformResult {
+  code: string;
+  map?: any;
+}
+
+interface ComponentInfo {
+  node: Node;
+  statement?: Node;
+  ssrName: string;
+  originalName: string;
+  isDefault: boolean;
+  isInlineExport: boolean;
+  isAnonymousDefault?: boolean;
+}
 
 export async function transformUseClientCode(
   code: string,
   relativeId: string,
   isWorkerEnvironment: boolean,
-) {
-  const s = new MagicString(code);
-  let anonymousCounter = 0;
+): Promise<TransformResult> {
+  if (!isWorkerEnvironment) {
+    return { code };
+  }
 
-  s.replaceAll("'use client'", "");
-  s.replaceAll('"use client"', "");
-  s.trim();
+  const project = new Project({ useInMemoryFileSystem: true });
+  const sourceFile = project.createSourceFile("temp.tsx", code);
+  const magicString = new MagicString(code);
+  const components = new Map<string, ComponentInfo>();
+  let anonymousDefaultCount = 0;
 
-  if (isWorkerEnvironment) {
-    s.prepend(`
-import { registerClientReference } from "@redwoodjs/sdk/worker";
-`);
+  // First pass: collect all information
+  // Handle function declarations
+  sourceFile
+    .getDescendantsOfKind(SyntaxKind.FunctionDeclaration)
+    .forEach((node) => {
+      const name =
+        node.getName() || `DefaultComponent${anonymousDefaultCount++}`;
+      if (!name) return;
 
-    const [_, exports] = parse(code);
-    const functionExports = new Set();
-    const inlineExportedFunctions = new Set();
-    const exportAliases = new Map();
-
-    for (const e of exports) {
-      if (e.ln != null) {
-        const functionDeclarationPattern = new RegExp(
-          `(export\\s+)?(async\\s+)?(function\\s+${e.ln}\\b|const\\s+${e.ln}\\s*=\\s*(?:async\\s+)?(?:\\(.*?\\)\\s*=>|function\\s*\\())`,
-          "ms",
+      // Only track if it's a component (has JSX return)
+      if (node.getText().includes("jsx(") || node.getText().includes("jsxs(")) {
+        const ssrName = `${name}SSR`;
+        const isDefault = !!node.getFirstAncestorByKind(
+          SyntaxKind.ExportAssignment,
         );
+        const isInlineDefault = node.hasModifier(SyntaxKind.DefaultKeyword);
+        const isInlineExport = node.hasModifier(SyntaxKind.ExportKeyword);
 
-        const isFunctionDeclaration = functionDeclarationPattern.test(code);
+        components.set(name, {
+          node,
+          ssrName,
+          originalName: name,
+          isDefault: isDefault || isInlineDefault,
+          isInlineExport,
+        });
+      }
+    });
 
-        if (isFunctionDeclaration) {
-          const originalName = e.ln;
-          const exportName = e.n || e.ln;
-          functionExports.add(originalName);
-          if (exportName !== originalName) {
-            exportAliases.set(originalName, exportName);
+  // Handle arrow functions and anonymous default exports
+  sourceFile
+    .getDescendantsOfKind(SyntaxKind.VariableStatement)
+    .forEach((statement) => {
+      const declarations = statement.getDeclarationList().getDeclarations();
+      declarations.forEach((varDecl) => {
+        const arrowFunc = varDecl.getFirstDescendantByKind(
+          SyntaxKind.ArrowFunction,
+        );
+        if (!arrowFunc) return;
+
+        // Only track if it's a component (has JSX return)
+        if (
+          arrowFunc.getText().includes("jsx(") ||
+          arrowFunc.getText().includes("jsxs(")
+        ) {
+          const name = varDecl.getName();
+          const isDefault = !!statement.getFirstAncestorByKind(
+            SyntaxKind.ExportAssignment,
+          );
+          const isInlineExport = statement.hasModifier(
+            SyntaxKind.ExportKeyword,
+          );
+
+          if (
+            !name &&
+            (isDefault || statement.getText().includes("export default"))
+          ) {
+            // Handle anonymous default export
+            const anonName = `DefaultComponent${anonymousDefaultCount++}`;
+            components.set(anonName, {
+              node: varDecl,
+              statement,
+              ssrName: anonName,
+              originalName: anonName,
+              isDefault: true,
+              isInlineExport: true,
+              isAnonymousDefault: true,
+            });
+          } else if (name) {
+            components.set(name, {
+              node: varDecl,
+              statement,
+              ssrName: `${name}SSR`,
+              originalName: name,
+              isDefault,
+              isInlineExport,
+            });
           }
+        }
+      });
+    });
 
-          const isInlineExport = new RegExp(
-            `export\\s+(?:async\\s+)?(?:const|function)\\s+${e.ln}\\b`,
-            "ms",
-          ).test(code);
-          if (isInlineExport) {
-            inlineExportedFunctions.add(e.ln);
-          }
+  // Second pass: rename all identifiers to SSR versions
+  components.forEach(({ node, ssrName, isAnonymousDefault }) => {
+    if (!isAnonymousDefault) {
+      if (Node.isFunctionDeclaration(node)) {
+        node.rename(ssrName);
+      } else if (Node.isVariableDeclaration(node)) {
+        node.getFirstChildByKind(SyntaxKind.Identifier)?.rename(ssrName);
+      }
+    }
+  });
+
+  // Third pass: handle exports
+  // Remove use client directives
+  sourceFile.getDescendantsOfKind(SyntaxKind.StringLiteral).forEach((node) => {
+    if (
+      node.getText() === "'use client'" ||
+      node.getText() === '"use client"'
+    ) {
+      const stmt = node.getFirstAncestorByKind(SyntaxKind.ExpressionStatement);
+      if (stmt) {
+        const start = stmt.getStart();
+        const end = stmt.getEnd();
+        magicString.remove(start, end);
+      }
+    }
+  });
+
+  // Remove inline exports for components
+  components.forEach(({ node, statement, isInlineExport, isDefault }) => {
+    if (Node.isFunctionDeclaration(node)) {
+      const functionKeyword = node.getFirstChildByKind(
+        SyntaxKind.FunctionKeyword,
+      );
+      if (functionKeyword) {
+        const start = node.getStart();
+        const firstNonModifier = functionKeyword.getStart();
+
+        // Remove everything from start of node to start of 'function' keyword
+        if (firstNonModifier > start) {
+          magicString.remove(start, firstNonModifier);
+        }
+      }
+    } else if (Node.isVariableDeclaration(node) && statement) {
+      const declarationList = statement.getFirstChildByKind(
+        SyntaxKind.VariableDeclarationList,
+      );
+      if (declarationList) {
+        const start = statement.getStart();
+        const firstNonModifier = declarationList.getStart();
+
+        // Remove everything from start of statement to start of declaration list
+        if (firstNonModifier > start) {
+          magicString.remove(start, firstNonModifier);
         }
       }
     }
+  });
 
-    for (const name of functionExports) {
-      const functionRegex = new RegExp(
-        `(export\\s+default\\s+)?(async\\s+)?(function\\s+)(${name})\\b([\\s\\S]*?{[\\s\\S]*?})`,
-        "g",
-      );
-
-      const arrowRegex = new RegExp(
-        `(export\\s+default\\s+)?(const\\s+)(${name})(\\s*=\\s*(?:async\\s+)?(?:\\(.*?\\)\\s*=>|function\\s*\\().*?[;\\n])`,
-        "gs",
-      );
-
-      let match;
-      while ((match = functionRegex.exec(code)) !== null) {
-        const fullMatch = match[0];
-        const startPos = match.index;
-        const endPos = startPos + fullMatch.length;
-
-        const asyncKeyword = match[2] || "";
-        const isDefault = match[1]?.includes("default") || false;
-        s.overwrite(
-          startPos,
-          endPos,
-          `${isDefault ? "" : ""}${asyncKeyword}function ${name}SSR${match[5]}`,
-        );
+  // Handle separate default exports
+  sourceFile
+    .getDescendantsOfKind(SyntaxKind.ExportAssignment)
+    .forEach((node) => {
+      const expression = node.getExpression();
+      if (
+        Node.isIdentifier(expression) &&
+        components.has(expression.getText())
+      ) {
+        magicString.remove(node.getStart(), node.getEnd());
       }
-
-      while ((match = arrowRegex.exec(code)) !== null) {
-        const fullMatch = match[0];
-        const startPos = match.index;
-        const endPos = startPos + fullMatch.length;
-
-        const originalDecl = code.slice(startPos, endPos);
-        const newDecl = originalDecl
-          .replace(/export\s+default\s+/, "export default ")
-          .replace(/export\s+/, "")
-          .replace(name as string, `${name}SSR`);
-        s.overwrite(startPos, endPos, newDecl);
-      }
-    }
-
-    // Remove original grouped exports and default exports
-    const groupedExportRegex = /export\s*{[^}]*}/g;
-    const defaultExportRegex =
-      /export\s+default\s+(?:async\s+)?(?:(?:\([^)]*\)\s*=>|function(?:\s+\w+)?\s*\([^)]*\))(?:\s*{[^}]*}|\s*=>[^;]*);?)/g;
-
-    // Add a separate pattern for named default function exports
-    const namedDefaultExportRegex =
-      /export\s+default\s+(?:async\s+)?function\s+(\w+)\s*(\([^)]*\))\s*({[^}]*})/g;
-
-    // Update the defaultExportRegex handling for anonymous arrow functions
-    const anonymousDefaultExportRegex =
-      /export\s+default\s+(async\s+)?(\([^)]*\)\s*=>|\(\)\s*=>)[^;]*/g;
-
-    // Add a new pattern for standalone default exports
-    const standaloneDefaultExportRegex = /export\s+default\s+(\w+)\s*;/g;
-
-    let match;
-    while ((match = groupedExportRegex.exec(code)) !== null) {
-      const startPos = match.index;
-      const endPos = startPos + match[0].length;
-      s.remove(startPos, endPos);
-    }
-
-    while ((match = defaultExportRegex.exec(code)) !== null) {
-      const startPos = match.index;
-      const endPos = startPos + match[0].length;
-      s.remove(startPos, endPos);
-    }
-
-    // Don't remove named default exports as they're handled by the function transformation
-    s.replaceAll(namedDefaultExportRegex, (match, name, params, body) => {
-      const isAsync = match.includes("async");
-      return `${isAsync ? "async " : ""}function ${name}SSR${params}${body}`;
     });
 
-    // Update the anonymous default export handling
-    s.replaceAll(anonymousDefaultExportRegex, (match, asyncKeyword = "") => {
-      const functionName = `AnonymousComponent${anonymousCounter++}`;
-      const functionBody = match.slice(match.indexOf("=>") + 2);
-      return `${asyncKeyword || ""}function ${functionName}SSR() ${functionBody}
-
-// >>> Client references
-const ${functionName} = registerClientReference(${JSON.stringify(relativeId)}, "${functionName}", ${functionName}SSR);
-
-export { ${functionName}SSR };
-export { ${functionName} as default };`;
-    });
-
-    // In the transformation logic:
-    s.replaceAll(standaloneDefaultExportRegex, (match, name) => {
-      return `
-// >>> Client references
-const ${name} = registerClientReference(${JSON.stringify(relativeId)}, "default", ${name}SSR);
-
-export { ${name}SSR };
-export { ${name} as default };`;
-    });
-
-    // Add client references for all functions
-    if (functionExports.size > 0) {
-      s.append("\n\n// >>> Client references\n");
-      for (const originalName of functionExports) {
-        const exportName = exportAliases.get(originalName) || originalName;
-        s.append(
-          `const ${originalName} = registerClientReference(${JSON.stringify(relativeId)}, ${JSON.stringify(exportName)}, ${originalName}SSR);\n`,
-        );
-      }
-    }
-
-    // First export SSR versions - but only for non-inline exports
-    const ssrExportNames = Array.from(functionExports)
-      .filter((name) => !inlineExportedFunctions.has(name))
-      .map((name) => `${name}SSR`);
-
-    if (ssrExportNames.length > 0) {
-      s.append(`\nexport { ${ssrExportNames.join(", ")} };\n`);
-    }
-
-    // Then export client versions (only once)
-    if (functionExports.size > 0) {
-      const defaultExport = Array.from(functionExports).find((name) =>
-        new RegExp(
-          `export\\s+default\\s+(?:async\\s+)?(?:function\\s+${name}\\b|const\\s+${name}\\s*=)`,
-          "ms",
-        ).test(code),
+  // Handle grouped exports - only remove component exports
+  sourceFile
+    .getDescendantsOfKind(SyntaxKind.ExportDeclaration)
+    .forEach((node) => {
+      const namedExports = node.getNamedExports();
+      const nonComponentExports = namedExports.filter(
+        (exp) => !components.has(exp.getName()),
       );
 
-      const namedExports = Array.from(functionExports)
-        .filter((name) => name !== defaultExport)
-        .map((name) => {
-          const alias = exportAliases.get(name);
-          return alias ? `${name} as ${alias}` : name;
-        })
-        .join(", ");
+      if (nonComponentExports.length === 0) {
+        // If all exports were components, remove the declaration
+        node.remove();
+      } else if (nonComponentExports.length !== namedExports.length) {
+        // If some exports were components, update the export declaration
+        const newExports = nonComponentExports
+          .map((exp) => exp.getText())
+          .join(", ");
+        node.replaceWithText(`export { ${newExports} };`);
+      }
+    });
 
-      if (namedExports) {
-        s.append(`\nexport { ${namedExports} };\n`);
+  // Add import at the top
+  magicString.prepend(
+    'import { registerClientReference } from "@redwoodjs/sdk/worker";\n\n',
+  );
+
+  // Add client references and exports
+  components.forEach(
+    ({ ssrName, originalName, isDefault, isAnonymousDefault }) => {
+      if (isAnonymousDefault) {
+        // For anonymous default exports, leave as-is
+        return;
       }
 
-      if (defaultExport) {
-        s.append(`export { ${defaultExport} as default };\n`);
+      magicString.append(
+        `\nconst ${originalName} = registerClientReference("${relativeId}", "${isDefault ? "default" : originalName}", ${ssrName});`,
+      );
+
+      if (isDefault) {
+        magicString.append(`\nexport default ${ssrName};`);
+      } else {
+        magicString.append(`\nexport { ${ssrName}, ${originalName} };`);
       }
-    }
-  }
+    },
+  );
 
   return {
-    code: s.toString(),
-    map: s.generateMap(),
+    code: magicString.toString(),
+    map: magicString.generateMap({
+      source: relativeId,
+      includeContent: true,
+      hires: true,
+    }),
   };
 }
 

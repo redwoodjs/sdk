@@ -107,6 +107,7 @@
     "tailwindcss": "^3.4.16",
     "tmp-promise": "^3.0.3",
     "toml": "^3.0.0",
+    "ts-morph": "^25.0.1",
     "tsx": "^4.19.2",
     "typescript": "^5.6.3",
     "vite-plugin-commonjs": "^0.10.4",
