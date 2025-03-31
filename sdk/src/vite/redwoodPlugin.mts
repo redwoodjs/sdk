@@ -52,7 +52,7 @@ export const redwoodPlugin = async (
   // then this is fresh install, and we run `pnpm dev:init` here.
   if (!(await pathExists(resolve(process.cwd(), ".wrangler")))) {
     console.log(
-      "Assuming fresh install since no .wrangler directory found, running `pnpm dev:init`...",
+      "🚀 Project has no .wrangler directory yet, assuming fresh install: running `pnpm dev:init`...",
     );
     await $({ stdio: "inherit" })`pnpm dev:init`;
   }
