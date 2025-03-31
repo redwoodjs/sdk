@@ -337,11 +337,11 @@ export default () => {
 }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-      const DefaultComponent0SSR = () => {
+      const defaultSSR = () => {
         return jsx('div', { children: 'Hello' });
       }
-      const DefaultComponent0 = registerClientReference("/test/file.tsx", "default", DefaultComponent0SSR);
-      export { DefaultComponent0SSR as default, DefaultComponent0 };"
+      const DefaultComponent0 = registerClientReference("/test/file.tsx", "default", defaultSSR);
+      export { DefaultComponent0 as default, defaultSSR };"
     `);
   });
 
@@ -354,11 +354,11 @@ export default async () => {
 }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
-      const DefaultComponent0SSR = async () => {
+      const defaultSSR = async () => {
         return jsx('div', { children: 'Hello' });
       }
-      const DefaultComponent0 = registerClientReference("/test/file.tsx", "default", DefaultComponent0SSR);
-      export { DefaultComponent0SSR as default, DefaultComponent0 };"
+      const DefaultComponent0 = registerClientReference("/test/file.tsx", "default", defaultSSR);
+      export { DefaultComponent0 as default, defaultSSR };"
     `);
   });
 
@@ -372,11 +372,11 @@ export default function Component({ prop1, prop2 }) {
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
 
-      export default function ComponentSSR({ prop1, prop2 }) {
+      function defaultSSR({ prop1, prop2 }) {
         return jsx('div', { children: 'Hello' });
       }
-      const Component = registerClientReference("/test/file.tsx", "default", ComponentSSR);
-      export { ComponentSSR as default, Component };"
+      const Component = registerClientReference("/test/file.tsx", "default", defaultSSR);
+      export { Component as default, defaultSSR };"
     `);
   });
 
@@ -390,11 +390,11 @@ export default async function Component() {
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
 
-      export default async function ComponentSSR() {
+      async function defaultSSR() {
         return jsx('div', { children: 'Hello' });
       }
-      const Component = registerClientReference("/test/file.tsx", "default", ComponentSSR);
-      export { ComponentSSR as default, Component };"
+      const Component = registerClientReference("/test/file.tsx", "default", defaultSSR);
+      export { Component as default, defaultSSR };"
     `);
   });
 
@@ -598,19 +598,19 @@ export { Fourth as AnotherName }`),
         return jsx('div', { children: 'Fourth' });
       }
 
-      export default function MainSSR() {
+      function defaultSSR() {
         return jsx('div', { children: 'Main' });
       }
 
       export { SecondSSR, ThirdSSR }
       export { FourthSSR as AnotherName }
       const Third = registerClientReference("/test/file.tsx", "Third", ThirdSSR);
-      const Main = registerClientReference("/test/file.tsx", "default", MainSSR);
+      const Main = registerClientReference("/test/file.tsx", "default", defaultSSR);
       const First = registerClientReference("/test/file.tsx", "First", FirstSSR);
       const Second = registerClientReference("/test/file.tsx", "Second", SecondSSR);
       const Fourth = registerClientReference("/test/file.tsx", "Fourth", FourthSSR);
       export { ThirdSSR, Third };
-      export { MainSSR as default, Main };
+      export { Main as default, defaultSSR };
       export { FirstSSR, First };
       export { SecondSSR, Second };
       export { FourthSSR, Fourth };"

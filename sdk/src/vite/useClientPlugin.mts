@@ -64,18 +64,15 @@ export async function transformUseClientCode(
 
       // Only track if it's a component (has JSX return)
       if (node.getText().includes("jsx(") || node.getText().includes("jsxs(")) {
-        const ssrName = `${name}SSR`;
-        const isDefault = !!node.getFirstAncestorByKind(
-          SyntaxKind.ExportAssignment,
-        );
-        const isInlineDefault = node.hasModifier(SyntaxKind.DefaultKeyword);
+        const isDefault = node.hasModifier(SyntaxKind.DefaultKeyword);
+        const ssrName = isDefault ? "defaultSSR" : `${name}SSR`;
         const isInlineExport = node.hasModifier(SyntaxKind.ExportKeyword);
 
         components.set(name, {
           node,
           ssrName,
           originalName: name,
-          isDefault: isDefault || isInlineDefault,
+          isDefault,
           isInlineExport,
         });
       }
@@ -114,7 +111,7 @@ export async function transformUseClientCode(
             components.set(anonName, {
               node: varDecl,
               statement,
-              ssrName: anonName,
+              ssrName: "defaultSSR",
               originalName: anonName,
               isDefault: true,
               isInlineExport: true,
@@ -161,8 +158,8 @@ export async function transformUseClientCode(
     if (Node.isFunctionDeclaration(node) && isInlineExport) {
       const nodeText = node.getText();
       const newText = nodeText.replace(
-        /^export\s+(async\s+)?function/,
-        "$1function",
+        /^export\s+(default\s+)?(async\s+)?function/,
+        "$2function",
       );
       node.replaceWithText(newText);
     } else if (
@@ -205,7 +202,7 @@ export async function transformUseClientCode(
 
       if (Node.isArrowFunction(expression)) {
         const anonName = `DefaultComponent${anonymousDefaultCount++}`;
-        const ssrName = `${anonName}SSR`;
+        const ssrName = "defaultSSR";
 
         // First add declarations
         sourceFile.addStatements(`const ${ssrName} = ${expression.getText()}`);
@@ -242,8 +239,9 @@ export async function transformUseClientCode(
   // Then add all exports after declarations
   components.forEach(({ ssrName, originalName, isDefault }) => {
     if (isDefault) {
+      // Export the registerClientReference version as default
       sourceFile.addStatements(
-        `export { ${ssrName} as default, ${originalName} };`,
+        `export { ${originalName} as default, ${ssrName} };`,
       );
     } else {
       sourceFile.addStatements(`export { ${ssrName}, ${originalName} };`);
