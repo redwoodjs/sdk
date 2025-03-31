@@ -1,5 +1,6 @@
 import { tmpdir } from "os";
 import { resolve } from "path";
+import { ensureFile } from "fs-extra";
 import { writeFile } from "fs/promises";
 import { unstable_readConfig } from "wrangler";
 import { createServer as createViteServer } from "vite";
@@ -41,6 +42,7 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
 
   // context(justinvdm, 31 Mar 2025): proper-lockfile requires a file path to represent the resource to lock, so we need to stub one
   const anchorPath = resolve(tmpdir(), "rw-sdk-worker-run-lock");
+  await ensureFile(anchorPath);
 
   // context(justinvdm, 27 Mar 2025): If worker scripts are run concurrently, they'll
   // all using the same port for the inspector port (there is currently no way to override the port number).
