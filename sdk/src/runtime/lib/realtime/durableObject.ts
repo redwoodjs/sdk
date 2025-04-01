@@ -127,8 +127,7 @@ export class RealtimeDurableObject extends DurableObject {
       throw new Error(`Action failed: ${response.statusText}`);
     }
 
-    const broadcastStream = response.clone().body;
-    this.broadcastRSCUpdate(broadcastStream!, ws);
+    this.render({ exclude: [clientInfo.clientId] });
 
     await this.streamResponse(response, ws, {
       chunk: MESSAGE_TYPE.ACTION_CHUNK,
@@ -136,20 +135,45 @@ export class RealtimeDurableObject extends DurableObject {
     });
   }
 
-  private async broadcastRSCUpdate(
-    rscPayload: ReadableStream,
-    currentSocket: WebSocket,
-  ): Promise<void> {
-    const sockets = Array.from(this.state.getWebSockets()).filter(
-      (socket) => socket !== currentSocket,
-    );
+  private async determineSockets({
+    include,
+    exclude,
+  }: {
+    include?: string[];
+    exclude?: string[];
+  }): Promise<Array<{ socket: WebSocket; clientInfo: ClientInfo }>> {
+    const sockets = Array.from(this.state.getWebSockets());
 
+    const includeSet = include ? new Set(include) : null;
+    const excludeSet = exclude ? new Set(exclude) : null;
+
+    return sockets
+      .map((socket) => ({
+        socket,
+        clientInfo: socket.deserializeAttachment() as ClientInfo,
+      }))
+      .filter(({ clientInfo }) => {
+        if (excludeSet?.has(clientInfo.clientId)) {
+          return false;
+        }
+
+        return includeSet ? includeSet.has(clientInfo.clientId) : true;
+      });
+  }
+
+  public async render({
+    include,
+    exclude,
+  }: {
+    include?: string[];
+    exclude?: string[];
+  }): Promise<void> {
+    const sockets = await this.determineSockets({ include, exclude });
     if (sockets.length === 0) return;
 
     await Promise.all(
-      sockets.map(async (socket) => {
+      sockets.map(async ({ socket, clientInfo }) => {
         try {
-          const clientInfo = socket.deserializeAttachment() as ClientInfo;
           const url = new URL(clientInfo.url);
           url.searchParams.set("__rsc", "true");
 
