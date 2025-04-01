@@ -231,4 +231,14 @@ export class RealtimeDurableObject extends DurableObject {
       }),
     );
   }
+
+  private async removeClientInfo(clientId: string): Promise<void> {
+    this.clientInfoCache.delete(clientId);
+    await this.storage.delete(`client:${clientId}`);
+  }
+
+  async webSocketClose(ws: WebSocket) {
+    const clientId = ws.deserializeAttachment() as string;
+    await this.removeClientInfo(clientId);
+  }
 }
