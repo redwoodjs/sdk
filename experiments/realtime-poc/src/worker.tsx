@@ -36,7 +36,7 @@ export default defineApp<AppContext>([
 
     await renderRealtimeClients({
       durableObjectNamespace: env.REALTIME_DURABLE_OBJECT,
-      key: params.key,
+      key: `/note/${params.key}`,
     });
 
     return new Response(null, { status: 200 });
