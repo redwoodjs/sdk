@@ -9,7 +9,10 @@ import {
   animals,
 } from "unique-names-generator";
 
-import { realtimeRoute } from "@redwoodjs/sdk/realtime/worker";
+import {
+  renderRealtimeClients,
+  realtimeRoute,
+} from "@redwoodjs/sdk/realtime/worker";
 import Note from "./app/pages/note/Note";
 
 export { RealtimeDurableObject } from "@redwoodjs/sdk/realtime/durableObject";
@@ -20,6 +23,24 @@ export type AppContext = {};
 export default defineApp<AppContext>([
   setCommonHeaders(),
   realtimeRoute((env) => env.REALTIME_DURABLE_OBJECT),
+  route("/api/note/:key", async ({ request, env, params }) => {
+    if (request.method !== "POST") {
+      return new Response(null, { status: 405 });
+    }
+
+    const body = await request.text();
+
+    const id = env.NOTE_DURABLE_OBJECT.idFromName(params.key);
+    const durableObject = env.NOTE_DURABLE_OBJECT.get(id);
+    await durableObject.setContent(body);
+
+    await renderRealtimeClients({
+      durableObjectNamespace: env.REALTIME_DURABLE_OBJECT,
+      key: params.key,
+    });
+
+    return new Response(null, { status: 200 });
+  }),
   render(Document, [
     route("/", () => {
       const randomName = uniqueNamesGenerator({
