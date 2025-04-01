@@ -11,11 +11,15 @@ interface ClientInfo {
 export class RealtimeDurableObject extends DurableObject {
   state: DurableObjectState;
   env: Env;
+  storage: DurableObjectStorage;
+  clientInfoCache: Map<string, ClientInfo>;
 
   constructor(state: DurableObjectState, env: Env) {
     super(state, env);
     this.state = state;
     this.env = env;
+    this.storage = state.storage;
+    this.clientInfoCache = new Map();
   }
 
   async fetch(request: Request): Promise<Response> {
@@ -38,18 +42,41 @@ export class RealtimeDurableObject extends DurableObject {
     };
   }
 
+  private async storeClientInfo(clientInfo: ClientInfo): Promise<void> {
+    this.clientInfoCache.set(clientInfo.clientId, clientInfo);
+    await this.storage.put(`client:${clientInfo.clientId}`, clientInfo);
+  }
+
+  private async getClientInfo(clientId: string): Promise<ClientInfo> {
+    const cachedInfo = this.clientInfoCache.get(clientId);
+    if (cachedInfo) {
+      return cachedInfo;
+    }
+
+    const clientInfo = await this.storage.get<ClientInfo>(`client:${clientId}`);
+    if (!clientInfo) {
+      throw new Error(`Client info not found for clientId: ${clientId}`);
+    }
+
+    this.clientInfoCache.set(clientId, clientInfo);
+    return clientInfo;
+  }
+
   private async handleWebSocket(
     request: Request,
     clientInfo: ClientInfo,
   ): Promise<Response> {
     const { 0: client, 1: server } = new WebSocketPair();
-    server.serializeAttachment(clientInfo);
+    await this.storeClientInfo(clientInfo);
+    server.serializeAttachment(clientInfo.clientId);
     this.state.acceptWebSocket(server);
     return new Response(null, { status: 101, webSocket: client });
   }
 
   async webSocketMessage(ws: WebSocket, data: ArrayBuffer) {
-    const clientInfo = ws.deserializeAttachment() as ClientInfo;
+    const clientId = ws.deserializeAttachment() as string;
+    const clientInfo = await this.getClientInfo(clientId);
+
     const message = new Uint8Array(data);
     const messageType = message[0];
 
@@ -143,22 +170,26 @@ export class RealtimeDurableObject extends DurableObject {
     exclude?: string[];
   }): Promise<Array<{ socket: WebSocket; clientInfo: ClientInfo }>> {
     const sockets = Array.from(this.state.getWebSockets());
-
     const includeSet = include ? new Set(include) : null;
     const excludeSet = exclude ? new Set(exclude) : null;
+    const results: Array<{ socket: WebSocket; clientInfo: ClientInfo }> = [];
 
-    return sockets
-      .map((socket) => ({
-        socket,
-        clientInfo: socket.deserializeAttachment() as ClientInfo,
-      }))
-      .filter(({ clientInfo }) => {
-        if (excludeSet?.has(clientInfo.clientId)) {
-          return false;
-        }
+    for (const socket of sockets) {
+      const clientId = socket.deserializeAttachment() as string;
 
-        return includeSet ? includeSet.has(clientInfo.clientId) : true;
-      });
+      if (excludeSet?.has(clientId)) {
+        continue;
+      }
+
+      if (includeSet && !includeSet.has(clientId)) {
+        continue;
+      }
+
+      const clientInfo = await this.getClientInfo(clientId);
+      results.push({ socket, clientInfo });
+    }
+
+    return results;
   }
 
   public async render({
