@@ -1,6 +1,6 @@
 {
   "name": "@redwoodjs/sdk",
-  "version": "0.0.39",
+  "version": "0.0.39-test.0",
   "description": "",
   "type": "module",
   "bin": {
