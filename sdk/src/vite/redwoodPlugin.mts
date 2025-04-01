@@ -20,6 +20,7 @@ import { setupEnvFiles } from "./setupEnvFiles.mjs";
 import { invalidateCacheIfPrismaClientChanged } from "./invalidateCacheIfPrismaClientChanged.mjs";
 import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
 import { pathExists } from "fs-extra";
+import { stderr, stdout } from "node:process";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -54,7 +55,11 @@ export const redwoodPlugin = async (
     console.log(
       "🚀 Project has no .wrangler directory yet, assuming fresh install: running `pnpm dev:init`...",
     );
-    await $({ stdio: "inherit" })`pnpm dev:init`;
+    await $({
+      // context(justinvdm, 01 Apr 2025): We want to avoid interactive migration y/n prompt, so we ignore stdin
+      // as a signal to operate in no-tty mode
+      stdio: ["ignore", "inherit", "inherit"],
+    })`pnpm dev:init`;
   }
 
   const usesPrisma = await $({ reject: false })`pnpm prisma --version`;

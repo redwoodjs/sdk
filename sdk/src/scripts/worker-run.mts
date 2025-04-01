@@ -85,6 +85,9 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
     await tmpWorkerPath.cleanup();
     debug("Temporary files cleaned up");
   }
+
+  // todo(justinvdm, 01 Apr 2025): Investigate what handles are remaining open
+  process.exit(0);
 };
 
 if (import.meta.url === new URL(process.argv[1], import.meta.url).href) {
