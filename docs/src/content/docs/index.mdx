@@ -3,8 +3,7 @@ title: What is RedwoodSDK?
 description: From concept to cloud
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
-
+import { Card, CardGrid } from "@astrojs/starlight/components";
 
 RedwoodSDK gives you a complete set of composable tools to handle the request/response lifecycle of webapps.
 
@@ -15,20 +14,20 @@ It's also a **standards-compliant** HTTP server with middleware, route handling,
 All of it runs on the **Cloudflare Development Platform**, with seamless access to compute (Workers/ Durable Objects), database (D1), storage (R2), queues, and AI.
 Thanks to Cloudflare's Miniflare Simulator, you don't need to install any additional services locally. Development matches production!
 
-
 <CardGrid>
 	<Card title="Quick start" icon="">
-		```bash
-		npx degit redwoodjs/sdk/starters/standard#main <project-name>
-		```
-		
-		Then ["start developing"](/getting-started/quick-start#start-developing)
-	</Card>
+    	Create a new project by running the following command, replacing {"<project-name>"} with your project name
+
+    	```bash
+    	npx degit redwoodjs/sdk/starters/standard#main <project-name>
+    	```
+
+    	Then ["start developing"](/getting-started/quick-start#start-developing)
+    </Card>
+
 </CardGrid>
 
 ## Design Philosophy
-
-
 
 We believe that the best way to build webapps is to be standards-compliant, to adhere to the request/response paradigm, and to be transparent and composable.
 
@@ -38,7 +37,7 @@ We've removed the pain of abstracting away the underlying platform, and instead 
 
 ### Request/Response
 
-The `Request` and `Response` objects are the foundation of the request/response paradigm. 
+The `Request` and `Response` objects are the foundation of the request/response paradigm.
 By focusing on these objects, you'll able to seamlessly integrate with the web, streaming responses to the browser, and even build real-time applications.
 
 ### Transparent and composable
