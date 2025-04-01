@@ -5,7 +5,6 @@ packages:
   - "experiments/yt-dos"
   - "experiments/cutable"
   - "experiments/zoomshare"
-  - "experiments/realtime-poc"
   - "experiments/ai-stream"
   - "experiments/server-push-poc"
   - "starters/drizzle"
