@@ -3,9 +3,12 @@ import { writeFile } from "fs/promises";
 import { unstable_readConfig } from "wrangler";
 import { createServer as createViteServer } from "vite";
 import tmp from "tmp-promise";
+import baseDebug from "debug";
 
 import { redwood } from "../vite/index.mjs";
 import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
+
+const debug = baseDebug("rwsdk:worker-run");
 
 export const runWorkerScript = async (relativeScriptPath: string) => {
   if (!relativeScriptPath) {
@@ -18,8 +21,10 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
   }
 
   const scriptPath = resolve(process.cwd(), relativeScriptPath);
+  debug("Running worker script: %s", scriptPath);
 
   const workerConfigPath = await findWranglerConfig(process.cwd());
+  debug("Using wrangler config: %s", workerConfigPath);
 
   const workerConfig = unstable_readConfig({
     config: workerConfigPath,
@@ -40,6 +45,7 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
       tmpWorkerPath.path,
       JSON.stringify(scriptWorkerConfig, null, 2),
     );
+    debug("Worker config written to: %s", tmpWorkerPath.path);
 
     const server = await createViteServer({
       configFile: false,
@@ -55,21 +61,29 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
         port: 0,
       },
     });
+    debug("Vite server created");
 
     try {
       await server.listen();
       const address = server.httpServer?.address();
+      debug("Server listening on address: %o", address);
 
       if (!address || typeof address === "string") {
         throw new Error("Dev server address is invalid");
       }
 
+      debug("Fetching worker...");
       await fetch(`http://localhost:${address.port}/`);
+      debug("Worker fetched successfully");
     } finally {
+      debug("Closing server...");
       await server.close();
+      debug("Server closed");
     }
   } finally {
+    debug("Closing inspector servers...");
     await tmpWorkerPath.cleanup();
+    debug("Temporary files cleaned up");
   }
 };
 

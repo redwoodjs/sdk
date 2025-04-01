@@ -1,193 +1,283 @@
 import { relative } from "node:path";
 import { Plugin } from "vite";
-import { parse } from "es-module-lexer";
-import MagicString from "magic-string";
+import {
+  Project,
+  Node,
+  SyntaxKind,
+  FunctionDeclaration,
+  ArrowFunction,
+  SourceFile,
+} from "ts-morph";
+
+interface TransformResult {
+  code: string;
+  map?: any;
+}
+
+interface ComponentInfo {
+  node: Node;
+  statement?: Node;
+  ssrName: string;
+  originalName: string;
+  isDefault: boolean;
+  isInlineExport: boolean;
+  isAnonymousDefault?: boolean;
+}
+
+function isJsxFunction(text: string): boolean {
+  return (
+    text.includes("jsx(") || text.includes("jsxs(") || text.includes("jsxDEV(")
+  );
+}
 
 export async function transformUseClientCode(
   code: string,
   relativeId: string,
   isWorkerEnvironment: boolean,
-) {
-  const s = new MagicString(code);
-  let anonymousCounter = 0;
+): Promise<TransformResult> {
+  if (!isWorkerEnvironment) {
+    return { code };
+  }
 
-  s.replaceAll("'use client'", "");
-  s.replaceAll('"use client"', "");
-  s.trim();
+  const project = new Project({
+    useInMemoryFileSystem: true,
+    compilerOptions: {
+      sourceMap: true,
+      target: 2, // ES6
+      module: 1, // CommonJS
+      jsx: 2, // React
+    },
+  });
+  const sourceFile = project.createSourceFile("temp.tsx", code);
 
-  if (isWorkerEnvironment) {
-    s.prepend(`
-import { registerClientReference } from "@redwoodjs/sdk/worker";
-`);
+  // Add import declaration properly through the AST
+  sourceFile.addImportDeclaration({
+    moduleSpecifier: "@redwoodjs/sdk/worker",
+    namedImports: [{ name: "registerClientReference" }],
+  });
 
-    const [_, exports] = parse(code);
-    const functionExports = new Set();
-    const inlineExportedFunctions = new Set();
-    const exportAliases = new Map();
+  const components = new Map<string, ComponentInfo>();
+  let anonymousDefaultCount = 0;
 
-    for (const e of exports) {
-      if (e.ln != null) {
-        const functionDeclarationPattern = new RegExp(
-          `(export\\s+)?(async\\s+)?(function\\s+${e.ln}\\b|const\\s+${e.ln}\\s*=\\s*(?:async\\s+)?(?:\\(.*?\\)\\s*=>|function\\s*\\())`,
-          "ms",
+  // First pass: collect all information
+  // Handle function declarations
+  sourceFile
+    .getDescendantsOfKind(SyntaxKind.FunctionDeclaration)
+    .forEach((node) => {
+      const name =
+        node.getName() || `DefaultComponent${anonymousDefaultCount++}`;
+      if (!name) return;
+
+      // Only track if it's a component (has JSX return)
+      if (isJsxFunction(node.getText())) {
+        const ssrName = `${name}SSR`;
+        const isInlineExport = node.hasModifier(SyntaxKind.ExportKeyword);
+
+        // Check if this function is used in a default export
+        const isDefault =
+          node.hasModifier(SyntaxKind.DefaultKeyword) ||
+          sourceFile
+            .getDescendantsOfKind(SyntaxKind.ExportAssignment)
+            .some((exp) => exp.getExpression().getText() === name);
+
+        components.set(name, {
+          node,
+          ssrName,
+          originalName: name,
+          isDefault,
+          isInlineExport,
+        });
+      }
+    });
+
+  // Handle arrow functions and anonymous default exports
+  sourceFile
+    .getDescendantsOfKind(SyntaxKind.VariableStatement)
+    .forEach((statement) => {
+      const declarations = statement.getDeclarationList().getDeclarations();
+      declarations.forEach((varDecl) => {
+        const arrowFunc = varDecl.getFirstDescendantByKind(
+          SyntaxKind.ArrowFunction,
         );
+        if (!arrowFunc) return;
 
-        const isFunctionDeclaration = functionDeclarationPattern.test(code);
+        // Only track if it's a component (has JSX return)
+        if (isJsxFunction(arrowFunc.getText())) {
+          const name = varDecl.getName();
+          const isDefault = !!statement.getFirstAncestorByKind(
+            SyntaxKind.ExportAssignment,
+          );
+          const isInlineExport = statement.hasModifier(
+            SyntaxKind.ExportKeyword,
+          );
 
-        if (isFunctionDeclaration) {
-          const originalName = e.ln;
-          const exportName = e.n || e.ln;
-          functionExports.add(originalName);
-          if (exportName !== originalName) {
-            exportAliases.set(originalName, exportName);
-          }
-
-          const isInlineExport = new RegExp(
-            `export\\s+(?:async\\s+)?(?:const|function)\\s+${e.ln}\\b`,
-            "ms",
-          ).test(code);
-          if (isInlineExport) {
-            inlineExportedFunctions.add(e.ln);
+          if (
+            !name &&
+            (isDefault || statement.getText().includes("export default"))
+          ) {
+            // Handle anonymous default export
+            const anonName = `DefaultComponent${anonymousDefaultCount++}`;
+            components.set(anonName, {
+              node: varDecl,
+              statement,
+              ssrName: anonName,
+              originalName: anonName,
+              isDefault: true,
+              isInlineExport: true,
+              isAnonymousDefault: true,
+            });
+          } else if (name) {
+            components.set(name, {
+              node: varDecl,
+              statement,
+              ssrName: `${name}SSR`,
+              originalName: name,
+              isDefault,
+              isInlineExport,
+            });
           }
         }
-      }
-    }
-
-    for (const name of functionExports) {
-      const functionRegex = new RegExp(
-        `(export\\s+default\\s+)?(async\\s+)?(function\\s+)(${name})\\b([\\s\\S]*?{[\\s\\S]*?})`,
-        "g",
-      );
-
-      const arrowRegex = new RegExp(
-        `(export\\s+default\\s+)?(const\\s+)(${name})(\\s*=\\s*(?:async\\s+)?(?:\\(.*?\\)\\s*=>|function\\s*\\().*?[;\\n])`,
-        "gs",
-      );
-
-      let match;
-      while ((match = functionRegex.exec(code)) !== null) {
-        const fullMatch = match[0];
-        const startPos = match.index;
-        const endPos = startPos + fullMatch.length;
-
-        const asyncKeyword = match[2] || "";
-        const isDefault = match[1]?.includes("default") || false;
-        s.overwrite(
-          startPos,
-          endPos,
-          `${isDefault ? "" : ""}${asyncKeyword}function ${name}SSR${match[5]}`,
-        );
-      }
-
-      while ((match = arrowRegex.exec(code)) !== null) {
-        const fullMatch = match[0];
-        const startPos = match.index;
-        const endPos = startPos + fullMatch.length;
-
-        const originalDecl = code.slice(startPos, endPos);
-        const newDecl = originalDecl
-          .replace(/export\s+default\s+/, "export default ")
-          .replace(/export\s+/, "")
-          .replace(name as string, `${name}SSR`);
-        s.overwrite(startPos, endPos, newDecl);
-      }
-    }
-
-    // Remove original grouped exports and default exports
-    const groupedExportRegex = /export\s*{[^}]*}/g;
-    const defaultExportRegex =
-      /export\s+default\s+(?:async\s+)?(?:(?:\([^)]*\)\s*=>|function(?:\s+\w+)?\s*\([^)]*\))(?:\s*{[^}]*}|\s*=>[^;]*);?)/g;
-
-    // Add a separate pattern for named default function exports
-    const namedDefaultExportRegex =
-      /export\s+default\s+(?:async\s+)?function\s+(\w+)\s*(\([^)]*\))\s*({[^}]*})/g;
-
-    // Update the defaultExportRegex handling for anonymous arrow functions
-    const anonymousDefaultExportRegex =
-      /export\s+default\s+(async\s+)?(\([^)]*\)\s*=>|\(\)\s*=>)[^;]*/g;
-
-    let match;
-    while ((match = groupedExportRegex.exec(code)) !== null) {
-      const startPos = match.index;
-      const endPos = startPos + match[0].length;
-      s.remove(startPos, endPos);
-    }
-
-    while ((match = defaultExportRegex.exec(code)) !== null) {
-      const startPos = match.index;
-      const endPos = startPos + match[0].length;
-      s.remove(startPos, endPos);
-    }
-
-    // Don't remove named default exports as they're handled by the function transformation
-    s.replaceAll(namedDefaultExportRegex, (match, name, params, body) => {
-      const isAsync = match.includes("async");
-      return `${isAsync ? "async " : ""}function ${name}SSR${params}${body}`;
+      });
     });
 
-    // Update the anonymous default export handling
-    s.replaceAll(anonymousDefaultExportRegex, (match, asyncKeyword = "") => {
-      const functionName = `AnonymousComponent${anonymousCounter++}`;
-      const functionBody = match.slice(match.indexOf("=>") + 2);
-      return `${asyncKeyword || ""}function ${functionName}SSR() ${functionBody}
-
-// >>> Client references
-const ${functionName} = registerClientReference(${JSON.stringify(relativeId)}, "${functionName}", ${functionName}SSR);
-
-export { ${functionName}SSR };
-export { ${functionName} as default };`;
-    });
-
-    // Add client references for all functions
-    if (functionExports.size > 0) {
-      s.append("\n\n// >>> Client references\n");
-      for (const originalName of functionExports) {
-        const exportName = exportAliases.get(originalName) || originalName;
-        s.append(
-          `const ${originalName} = registerClientReference(${JSON.stringify(relativeId)}, ${JSON.stringify(exportName)}, ${originalName}SSR);\n`,
-        );
+  // Second pass: rename all identifiers to SSR versions
+  components.forEach(({ node, ssrName, isAnonymousDefault }) => {
+    if (!isAnonymousDefault) {
+      if (Node.isFunctionDeclaration(node)) {
+        node.rename(ssrName);
+      } else if (Node.isVariableDeclaration(node)) {
+        node.getFirstChildByKind(SyntaxKind.Identifier)?.rename(ssrName);
       }
     }
+  });
 
-    // First export SSR versions - but only for non-inline exports
-    const ssrExportNames = Array.from(functionExports)
-      .filter((name) => !inlineExportedFunctions.has(name))
-      .map((name) => `${name}SSR`);
-
-    if (ssrExportNames.length > 0) {
-      s.append(`\nexport { ${ssrExportNames.join(", ")} };\n`);
+  // Third pass: handle exports
+  // Remove use client directives
+  sourceFile.getDescendantsOfKind(SyntaxKind.StringLiteral).forEach((node) => {
+    if (
+      node.getText() === "'use client'" ||
+      node.getText() === '"use client"'
+    ) {
+      node.getFirstAncestorByKind(SyntaxKind.ExpressionStatement)?.remove();
     }
+  });
 
-    // Then export client versions (only once)
-    if (functionExports.size > 0) {
-      const defaultExport = Array.from(functionExports).find((name) =>
-        new RegExp(
-          `export\\s+default\\s+(?:async\\s+)?(?:function\\s+${name}\\b|const\\s+${name}\\s*=)`,
-          "ms",
-        ).test(code),
+  // Remove inline exports for components
+  components.forEach(({ node, statement, isInlineExport }) => {
+    if (Node.isFunctionDeclaration(node) && isInlineExport) {
+      const nodeText = node.getText();
+      const newText = nodeText.replace(
+        /^export\s+(default\s+)?(async\s+)?function/,
+        "$2function",
+      );
+      node.replaceWithText(newText);
+    } else if (
+      Node.isVariableDeclaration(node) &&
+      statement &&
+      isInlineExport
+    ) {
+      const stmtText = statement.getText();
+      const newText = stmtText.replace(/^export\s+/, "");
+      statement.replaceWithText(newText);
+    }
+  });
+
+  // Handle grouped exports - only remove component exports
+  sourceFile
+    .getDescendantsOfKind(SyntaxKind.ExportDeclaration)
+    .forEach((node) => {
+      const namedExports = node.getNamedExports();
+      const nonComponentExports = namedExports.filter(
+        (exp) => !components.has(exp.getName()),
       );
 
-      const namedExports = Array.from(functionExports)
-        .filter((name) => name !== defaultExport)
-        .map((name) => {
-          const alias = exportAliases.get(name);
-          return alias ? `${name} as ${alias}` : name;
-        })
-        .join(", ");
-
-      if (namedExports) {
-        s.append(`\nexport { ${namedExports} };\n`);
+      if (nonComponentExports.length === 0) {
+        // If all exports were components, remove the declaration
+        node.remove();
+      } else if (nonComponentExports.length !== namedExports.length) {
+        // If some exports were components, update the export declaration
+        const newExports = nonComponentExports
+          .map((exp) => exp.getText())
+          .join(", ");
+        node.replaceWithText(`export { ${newExports} };`);
       }
+    });
 
-      if (defaultExport) {
-        s.append(`export { ${defaultExport} as default };\n`);
+  // First remove the default export node (we'll add it back later)
+  sourceFile
+    .getDescendantsOfKind(SyntaxKind.ExportAssignment)
+    .forEach((node) => {
+      const expression = node.getExpression();
+
+      if (Node.isArrowFunction(expression)) {
+        const anonName = `DefaultComponent${anonymousDefaultCount++}`;
+        const ssrName = `${anonName}SSR`;
+
+        // First add declarations
+        sourceFile.addStatements(`const ${ssrName} = ${expression.getText()}`);
+        sourceFile.addStatements(
+          `const ${anonName} = registerClientReference("${relativeId}", "default", ${ssrName});`,
+        );
+
+        // Remove the original export default node
+        node.remove();
+
+        // Store info for later export
+        components.set(anonName, {
+          node: expression,
+          ssrName,
+          originalName: anonName,
+          isDefault: true,
+          isInlineExport: true,
+          isAnonymousDefault: true,
+        });
       }
+    });
+
+  // Add all declarations first
+  components.forEach(
+    ({ ssrName, originalName, isDefault, isAnonymousDefault }) => {
+      if (!isAnonymousDefault) {
+        sourceFile.addStatements(
+          `const ${originalName} = registerClientReference("${relativeId}", "${isDefault ? "default" : originalName}", ${ssrName});`,
+        );
+      }
+    },
+  );
+
+  // Then add all exports after declarations
+  components.forEach(({ ssrName, originalName, isDefault }) => {
+    if (isDefault) {
+      // Export the registerClientReference version as default
+      sourceFile.addStatements(
+        `export { ${originalName} as default, ${ssrName} };`,
+      );
+    } else {
+      sourceFile.addStatements(`export { ${ssrName}, ${originalName} };`);
+    }
+  });
+
+  // Add this where we handle other export removals
+  sourceFile
+    .getDescendantsOfKind(SyntaxKind.ExportAssignment)
+    .forEach((node) => {
+      // If it's not an arrow function (which we handle separately),
+      // just remove the export assignment
+      node.remove();
+    });
+
+  const emitOutput = sourceFile.getEmitOutput();
+  let sourceMap: any;
+
+  for (const outputFile of emitOutput.getOutputFiles()) {
+    if (outputFile.getFilePath().endsWith(".js.map")) {
+      sourceMap = JSON.parse(outputFile.getText());
     }
   }
 
   return {
-    code: s.toString(),
-    map: s.generateMap(),
+    code: sourceFile.getFullText(),
+    map: sourceMap,
   };
 }
 

@@ -17,8 +17,7 @@ export const initDev = async () => {
     await $`pnpm seed`;
   }
 
-  console.log("Done.");
-  console.log("Run `pnpm dev` to get started...");
+  console.log("Done!");
   console.log();
 };
 
