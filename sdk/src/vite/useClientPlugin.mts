@@ -34,9 +34,9 @@ export async function transformUseClientCode(
   code: string,
   relativeId: string,
   isWorkerEnvironment: boolean,
-): Promise<TransformResult> {
+): Promise<TransformResult | undefined> {
   if (!isWorkerEnvironment) {
-    return { code };
+    return;
   }
 
   const project = new Project({
