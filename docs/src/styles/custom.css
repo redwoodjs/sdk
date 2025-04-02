@@ -2,8 +2,14 @@
   --sl-color-text-accent: #1ccabf;
 }
 
-li details ul li .group-label span { font-size: 14px; text-transform: capitalize; }
-li details ul li details summary { padding-top: 8px; padding-bottom: 8px; }
+li details ul li .group-label span {
+  font-size: 14px;
+  text-transform: capitalize;
+}
+li details ul li details summary {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
 
 /* This is the caption that explains the code block, defined when you add "---" to the end of the code block.
 
@@ -14,9 +20,11 @@ This code sample does the following...
 
 */
 figcaption:not(.header) {
-  background-color: var(--ec-caption-bg) !important;
-  color: var(--ec-caption-text) !important;
-  padding: 0rem 1rem 0.5rem 1rem !important;
+  background-color: var(--sl-color-bg-inline-code) !important;
+  color: var(--sl-color-text) !important;
+  padding: 0.5rem !important;
+  margin-top: -1rem !important;
+  border-bottom: 1px solid var(--sl-color-gray-5) !important;
 }
 
 .output {
