@@ -50,6 +50,8 @@ export const migrateNew = async (name: string, skipApply = false) => {
   if (!skipApply) {
     console.log("Applying migration in development...");
     await $`pnpm migrate:dev`;
+    console.log("Generating Prisma Client");
+    await $`pnpm prisma generate`;
   }
 };
 
