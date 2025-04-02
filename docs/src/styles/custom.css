@@ -2,8 +2,14 @@
   --sl-color-text-accent: #1ccabf;
 }
 
-li details ul li .group-label span { font-size: 14px; text-transform: capitalize; }
-li details ul li details summary { padding-top: 8px; padding-bottom: 8px; }
+li details ul li .group-label span {
+  font-size: 14px;
+  text-transform: capitalize;
+}
+li details ul li details summary {
+  padding-top: 8px;
+  padding-bottom: 8px;
+}
 
 /* This is the caption that explains the code block, defined when you add "---" to the end of the code block.
 
