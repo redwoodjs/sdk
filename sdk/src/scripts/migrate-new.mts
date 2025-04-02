@@ -20,7 +20,7 @@ const getNextMigrationNumber = async (): Promise<string> => {
 export const migrateNew = async (name: string, skipApply = false) => {
   if (!name) {
     console.log("Usage: pnpm migrate:new <migration-name> [--no-apply]");
-    console.log('Example: pnpm migrate:new "Add user"');
+    console.log("Example: pnpm migrate:new add a user");
     process.exit(1);
   }
 
@@ -61,7 +61,7 @@ if (import.meta.url === new URL(process.argv[1], import.meta.url).href) {
   const nonFlags = args.filter((arg) => !arg.startsWith("--"));
 
   const skipApply = flags.has("--no-apply");
-  const [name] = nonFlags;
+  const name = nonFlags.join("_").toLocaleLowerCase();
 
   migrateNew(name, skipApply);
 }
