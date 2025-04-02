@@ -4,7 +4,7 @@ import { transformUseClientCode } from "./useClientPlugin.mjs";
 describe("transformUseClientCode", () => {
   async function transform(code: string) {
     const result = await transformUseClientCode(code, "/test/file.tsx", true);
-    return result.code;
+    return result?.code;
   }
 
   it("transforms arrow function component", async () => {
