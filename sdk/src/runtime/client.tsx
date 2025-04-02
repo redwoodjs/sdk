@@ -20,7 +20,7 @@ export type CreateCallServer = (
   context: TransportContext,
 ) => <Result>(id: null | string, args: null | unknown[]) => Promise<Result>;
 
-export const fetchTransport: Transport = ({ setRscPayload }) => {
+export const fetchTransport: Transport = (transportContext) => {
   const fetchCallServer = async <Result,>(
     id: null | string,
     args: null | unknown[],
@@ -44,7 +44,7 @@ export const fetchTransport: Transport = ({ setRscPayload }) => {
       { callServer: fetchCallServer },
     ) as Promise<ActionResponse<Result>>;
 
-    setRscPayload(streamData);
+    transportContext.setRscPayload(streamData);
     const result = await streamData;
     return (result as { actionResult: Result }).actionResult;
   };
