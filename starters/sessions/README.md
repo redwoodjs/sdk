@@ -1,6 +1,6 @@
 # Sessions Starter
 
-This starter gives you a RedwoodJS project with built-in session management.
+This starter gives you a RedwoodSDK project with built-in session management.
 
 ## Creating your project
 
@@ -82,5 +82,5 @@ Never use the same secret key for development and production environments, and a
 
 ## Further Reading
 
-- [RedwoodJS Documentation](https://redwoodjs.com)
+- [RedwoodSDK Documentation](https://docs.rwsdk.com/)
 - [Cloudflare Workers Documentation](https://developers.cloudflare.com/workers)

@@ -1,6 +1,6 @@
-# Standard RedwoodJS Starter
+# Standard RedwoodSDK Starter
 
-This starter provides a comprehensive RedwoodJS-based implementation that includes passkey authentication using WebAuthn, session management, database integration with Prisma, and file storage with Cloudflare R2. It serves as a fully integrated starting point for Redwood apps, consolidating various essential features into one package.
+This starter provides a comprehensive RedwoodSDK-based implementation that includes passkey authentication using WebAuthn, session management, database integration with Prisma, and file storage with Cloudflare R2. It serves as a fully integrated starting point for Redwood apps, consolidating various essential features into one package.
 
 ## Creating your project
 
@@ -113,6 +113,6 @@ Registration is protected using [Cloudflare Turnstile](https://www.cloudflare.co
 
 ## Further Reading
 
-- [RedwoodJS Documentation](https://redwoodjs.com)
+- [RedwoodSDK Documentation](https://docs.rwsdk.com/)
 - [Cloudflare Workers Secrets](https://developers.cloudflare.com/workers/runtime-apis/secrets/)
 - [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/)

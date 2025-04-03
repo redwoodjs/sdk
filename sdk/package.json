@@ -69,7 +69,7 @@
     "url": "https://github.com/redwoodjs/sdk",
     "directory": "sdk"
   },
-  "author": "RedwoodJS <peter@redwoodjs.com>",
+  "author": "RedwoodSDK <peter@redwoodjs.com>",
   "license": "MIT",
   "dependencies": {
     "@cloudflare/vite-plugin": "^0.1.15",
