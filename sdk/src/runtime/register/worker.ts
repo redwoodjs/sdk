@@ -5,6 +5,7 @@ import {
 } from "react-server-dom-webpack/server.edge";
 import { getModuleExport } from "../imports/worker";
 import { HandlerOptions } from "../lib/router";
+import { IS_DEV } from "../constants";
 
 export function registerServerReference(
   action: Function,
@@ -44,6 +45,10 @@ export async function rscActionHandler<TAppContext>(
 
   const args = (await decodeReply(data, null)) as unknown[];
   const actionId = url.searchParams.get("__rsc_action_id");
+
+  if (IS_DEV && actionId === "__rsc_hot_update") {
+    return null;
+  }
   const action = await getModuleExport(actionId!);
 
   if (typeof action !== "function") {
