@@ -1,11 +1,11 @@
 ---
-title: Real-Time
-description: Add real-time updates to your app using WebSockets and Cloudflare Durable Objects.
+title: Realtime
+description: Add realtime updates to your app using WebSockets and Cloudflare Durable Objects.
 ---
 
 import { Aside, Code, LinkCard } from "@astrojs/starlight/components";
 
-The SDK includes built-in support for **real-time updates** using **Cloudflare Durable Objects** and **WebSockets**. With just a few lines of setup, you can enable bidirectional communication between clients and the server — without polling.
+The SDK includes built-in support for **realtime updates** using **Cloudflare Durable Objects** and **WebSockets**. With just a few lines of setup, you can enable bidirectional communication between clients and the server — without polling.
 
 <Aside>
   This is an **experimental feature**. It works well for collaborative apps and
@@ -21,7 +21,7 @@ You’ll need to connect three parts:
 
 ### 1. Client Setup
 
-On the client side, initialize the real-time connection with a `key`. This `key` determines which group of clients should share updates. More on this below.
+On the client side, initialize the realtime connection with a `key`. This `key` determines which group of clients should share updates. More on this below.
 
 ```ts title="src/client.tsx"
 import { initRealtimeClient } from "@redwoodjs/sdk/realtime/client";
@@ -48,17 +48,31 @@ export default defineApp([
 ]);
 ```
 
+### 4. Add the Durable Object to `wrangler.jsonc`
+
+```
+"durable_objects": {
+  "bindings": [
+    // ...
+    {
+      "name": "REALTIME_DURABLE_OBJECT",
+      "class_name": "RealtimeDurableObject",
+    },
+  ],
+},
+```
+
 ---
 
 ## Example: Collaborative Notes
 
-To see real-time updates in action, check out our [collaborative notes example](https://github.com/redwoodjs/example-realtime-notes).
+To see realtime updates in action, check out our [collaborative notes example](https://github.com/redwoodjs/example-realtime-notes).
 
 Multiple users can edit the same note at the same time, and see each other's changes as they happen.
 
 ---
 
-## Understanding Real-Time in the SDK
+## Understanding Realtime in the SDK
 
 React Server Components provide a way of **describing the UI you want to render based the latest app state**. When an event happens (whether user or system-initiated), the app state is updated, the server re-renders the UI, and the client receives the result.
 
@@ -75,7 +89,7 @@ This means you don’t need to wire up subscriptions or manually track diffs —
 
 ## Scoping Updates
 
-Each real-time connection is scoped by a `key`. This `key` determines which clients are considered part of the same group, so they can receive the same updates.
+Each realtime connection is scoped by a `key`. This `key` determines which clients are considered part of the same group, so they can receive the same updates.
 
 All clients with the same `key` are connected to the same Durable Object instance. Updates affecting one client are pushed to others in the same group.
 
@@ -124,7 +138,7 @@ await renderRealtimeClients({
 
 ## Why WebSockets and Durable Objects?
 
-To support real-time updates on Cloudflare, WebSockets and Durable Objects are a natural fit. WebSockets give us a persistent, bidirectional connection - not just for pushing updates to the client, but also for sending actions back to the server. Since that connection is already open, we can reuse it for both directions, avoiding the overhead of establishing new HTTP requests.
+To support realtime updates on Cloudflare, WebSockets and Durable Objects are a natural fit. WebSockets give us a persistent, bidirectional connection - not just for pushing updates to the client, but also for sending actions back to the server. Since that connection is already open, we can reuse it for both directions, avoiding the overhead of establishing new HTTP requests.
 
 Durable Objects are well-suited for managing these connections: they can **persist across requests**, maintain in-memory state, and coordinate updates between connected clients.
 
@@ -134,7 +148,7 @@ Durable Objects are well-suited for managing these connections: they can **persi
 initRealtimeClient({ key?: string }): Promise<void>
 ```
 
-Initialises the real-time WebSocket client.
+Initialises the realtime WebSocket client.
 
 - `key`: (optional) Identifies which group of clients this user belongs to.
 
