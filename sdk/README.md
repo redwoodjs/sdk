@@ -1,3 +1,6 @@
-# Redwood SDK
+# RedwoodSDK
 
-This is an early preview of the next epoch of RedwoodSDK. Documentation is currently under development.
+A full-stack webapp toolkit designed for TypeScript, Vite, and React Server Components
+
+→ [rwsdk.com](https://rwsdk.com/)
+→ [RedwoodSDK Documentation](https://rwsdk.com/)
