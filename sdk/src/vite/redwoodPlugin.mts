@@ -49,6 +49,9 @@ export const redwoodPlugin = async (
   );
   await setupEnvFiles({ rootDir: projectRootDir });
 
+  console.log("Generating wrangler types...");
+  await $({ reject: false })`npx wrangler types`;
+
   // context(justinvdm, 31 Mar 2025): We assume that if there is no .wrangler directory,
   // then this is fresh install, and we run `pnpm dev:init` here.
   if (!(await pathExists(resolve(process.cwd(), ".wrangler")))) {
