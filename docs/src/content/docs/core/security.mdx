@@ -51,7 +51,7 @@ headers.set(
 
 #### Using `nonce` for inline scripts
 
-Sometimes you need to include inline scripts in your application, but Content Security Policy (CSP) blocks them by default for security reasons. RedwoodJS automatically generates a fresh, cryptographically secure nonce value for each request You can access this nonce in document or page components rendered by the [router](./routing), using `rw.nonce`.
+Sometimes you need to include inline scripts in your application, but Content Security Policy (CSP) blocks them by default for security reasons. RedwoodSDK automatically generates a fresh, cryptographically secure nonce value for each request You can access this nonce in document or page components rendered by the [router](./routing), using `rw.nonce`.
 
 <Aside type="caution">
   Only use the nonce attribute for trusted inline scripts that you have full

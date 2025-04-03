@@ -1,6 +1,6 @@
 # Minimal Starter
 
-This starter gives you a bare-bones RedwoodJS project.
+This starter gives you a bare-bones RedwoodSDK project.
 
 Create your new project:
 
@@ -48,5 +48,5 @@ Within your project's `wrangler.jsonc` file, replace the placeholder values. For
 
 ## Further Reading
 
-- [RedwoodJS Documentation](https://redwoodjs.com)
+- [RedwoodSDK Documentation](https://docs.rwsdk.com/)
 - [Cloudflare Workers Documentation](https://developers.cloudflare.com/workers)
