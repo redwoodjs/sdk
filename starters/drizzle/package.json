@@ -25,7 +25,7 @@
     "types": "pnpm tsc"
   },
   "dependencies": {
-    "@redwoodjs/sdk": "0.0.49",
+    "@redwoodjs/sdk": "0.0.50",
     "dotenv": "^16.4.7",
     "drizzle-orm": "^0.39.3",
     "react": "19.0.0-rc-f2df5694-20240916",

@@ -29,7 +29,7 @@
   "dependencies": {
     "@prisma/adapter-d1": "^6.4.1",
     "@prisma/client": "^6.4.1",
-    "@redwoodjs/sdk": "0.0.49",
+    "@redwoodjs/sdk": "0.0.50",
     "@simplewebauthn/browser": "^13.1.0",
     "@simplewebauthn/server": "^13.1.1",
     "react": "19.0.0-rc-f2df5694-20240916",
