@@ -1,7 +1,7 @@
 {
   "name": "@redwoodjs/starter-prisma",
   "version": "1.0.0",
-  "description": "",
+  "description": "A RedwoodSDK starter for projects with a database using Prisma",
   "main": "index.js",
   "type": "module",
   "keywords": [],

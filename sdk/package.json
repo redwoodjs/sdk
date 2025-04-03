@@ -1,7 +1,7 @@
 {
   "name": "@redwoodjs/sdk",
   "version": "0.0.50",
-  "description": "",
+  "description": "A full-stack webapp toolkit designed for TypeScript, Vite, and React Server Components",
   "type": "module",
   "bin": {
     "rw-scripts": "./bin/rw-scripts.mjs"
@@ -63,7 +63,30 @@
       "types": "./dist/runtime/lib/realtime/durableObject.d.ts"
     }
   },
-  "keywords": [],
+  "keywords": [
+    "rwsdk",
+    "redwoodsdk",
+    "redwoodjs",
+    "redwood",
+    "react",
+    "server components",
+    "sdk",
+    "toolkit",
+    "starter-kit",
+    "typescript",
+    "vite",
+    "react",
+    "jsx",
+    "react-server-components",
+    "rsc",
+    "cloudflare",
+    "cloudflare-workers",
+    "durable-objects",
+    "edge",
+    "serverless",
+    "webapp",
+    "fullstack"
+  ],
   "repository": {
     "type": "git",
     "url": "https://github.com/redwoodjs/sdk",

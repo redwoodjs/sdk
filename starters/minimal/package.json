@@ -1,7 +1,7 @@
 {
   "name": "@redwoodjs/starter-minimal",
   "version": "1.0.0",
-  "description": "",
+  "description": "A bare-bones RedwoodSDK starter",
   "main": "index.js",
   "type": "module",
   "keywords": [],

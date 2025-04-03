@@ -1,7 +1,7 @@
 {
   "name": "@redwoodjs/starter-standard",
   "version": "1.0.0",
-  "description": "",
+  "description": "The recommended RedwoodSDK starter — batteries included with auth and DB",
   "main": "index.js",
   "type": "module",
   "keywords": [],
