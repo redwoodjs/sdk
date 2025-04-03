@@ -141,6 +141,9 @@ export const realtimeTransport =
           const rscPayload = createFromReadableStream(stream, {
             callServer: realtimeCallServer,
           });
+          transportContext.setRscPayload(
+            rscPayload as Promise<ActionResponse<unknown>>,
+          );
           resolve(rscPayload as Result);
         });
       } catch (e) {
