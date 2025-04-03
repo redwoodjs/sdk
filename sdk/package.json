@@ -1,6 +1,6 @@
 {
   "name": "@redwoodjs/sdk",
-  "version": "0.0.50",
+  "version": "0.0.51",
   "description": "A full-stack webapp toolkit designed for TypeScript, Vite, and React Server Components",
   "type": "module",
   "bin": {
