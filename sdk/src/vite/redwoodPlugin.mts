@@ -48,6 +48,8 @@ export const redwoodPlugin = async (
     options?.entry?.worker ?? "src/worker.tsx",
   );
   await setupEnvFiles({ rootDir: projectRootDir });
+
+  console.log("Generating wrangler types...");
   await $({ reject: false })`npx wrangler types`;
 
   // context(justinvdm, 31 Mar 2025): We assume that if there is no .wrangler directory,
