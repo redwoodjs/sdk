@@ -8,7 +8,7 @@ export const debugSync = async () => {
     process.exit(1);
   }
 
-  const command = `pnpm tsc && rm -rf ${targetDir}/node_modules/@redwoodjs/sdk/dist && cp -r dist ${targetDir}/node_modules/@redwoodjs/sdk/`;
+  const command = `echo syncing... && pnpm tsc && rm -rf ${targetDir}/node_modules/@redwoodjs/sdk/dist && cp -r dist ${targetDir}/node_modules/@redwoodjs/sdk/ && echo done`;
 
   $({
     stdio: "inherit",
