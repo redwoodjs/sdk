@@ -6,7 +6,7 @@
   "type": "module",
   "keywords": [],
   "author": "",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "private": true,
   "scripts": {
     "build": "vite build",
