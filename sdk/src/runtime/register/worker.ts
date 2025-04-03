@@ -44,6 +44,10 @@ export async function rscActionHandler<TAppContext>(
 
   const args = (await decodeReply(data, null)) as unknown[];
   const actionId = url.searchParams.get("__rsc_action_id");
+
+  if (actionId === "__rsc_hot_update") {
+    return null;
+  }
   const action = await getModuleExport(actionId!);
 
   if (typeof action !== "function") {

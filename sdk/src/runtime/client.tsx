@@ -95,7 +95,7 @@ export const initClient = async ({
   if (import.meta.hot) {
     import.meta.hot.on("rsc:update", (e) => {
       console.log("[rw-sdk] hot update", e.file);
-      callServer(null, null);
+      callServer("__rsc_hot_update", [e.file]);
     });
   }
 };
