@@ -18,7 +18,8 @@
     "clean:vendor": "rm -rf ./vendor/dist",
     "format": "prettier --write ./src",
     "release": "./scripts/release.sh",
-    "test": "vitest"
+    "test": "vitest",
+    "debug:sync": "node ./dist/scripts/debug-sync.mjs"
   },
   "exports": {
     "./vite": {
