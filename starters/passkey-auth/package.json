@@ -1,7 +1,7 @@
 {
   "name": "@redwoodjs/starter-passkey-auth",
   "version": "1.0.0",
-  "description": "",
+  "description": "A RedwoodSDK starter with passkey authentication",
   "main": "index.js",
   "type": "module",
   "keywords": [],

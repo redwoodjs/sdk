@@ -1,6 +1,6 @@
 # Starter with Prisma
 
-This starter makes it easy to start up a project with database using Prisma.
+This starter makes it easy to start up a project with a database using Prisma.
 
 ## Creating your project
 

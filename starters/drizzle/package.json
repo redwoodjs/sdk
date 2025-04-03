@@ -1,7 +1,7 @@
 {
   "name": "@redwoodjs/starter-drizzle",
   "version": "1.0.0",
-  "description": "",
+  "description": "A RedwoodSDK starter for projects with a database using Drizzle",
   "main": "index.js",
   "type": "module",
   "keywords": [],
