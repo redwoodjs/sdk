@@ -7,7 +7,6 @@ interface ClientInfo {
   clientId: string;
   cookieHeaders: string;
 }
-
 export class RealtimeDurableObject extends DurableObject {
   state: DurableObjectState;
   env: Env;
@@ -154,7 +153,9 @@ export class RealtimeDurableObject extends DurableObject {
       throw new Error(`Action failed: ${response.statusText}`);
     }
 
-    this.render({ exclude: [clientInfo.clientId] });
+    this.render({
+      exclude: [clientInfo.clientId],
+    });
 
     await this.streamResponse(response, ws, {
       chunk: MESSAGE_TYPE.ACTION_CHUNK,
@@ -163,12 +164,12 @@ export class RealtimeDurableObject extends DurableObject {
   }
 
   private async determineSockets({
-    include,
-    exclude,
+    include = [],
+    exclude = [],
   }: {
     include?: string[];
     exclude?: string[];
-  }): Promise<Array<{ socket: WebSocket; clientInfo: ClientInfo }>> {
+  } = {}): Promise<Array<{ socket: WebSocket; clientInfo: ClientInfo }>> {
     const sockets = Array.from(this.state.getWebSockets());
     const includeSet = include ? new Set(include) : null;
     const excludeSet = exclude ? new Set(exclude) : null;
@@ -198,7 +199,7 @@ export class RealtimeDurableObject extends DurableObject {
   }: {
     include?: string[];
     exclude?: string[];
-  }): Promise<void> {
+  } = {}): Promise<void> {
     const sockets = await this.determineSockets({ include, exclude });
     if (sockets.length === 0) return;
 
