@@ -171,8 +171,8 @@ export class RealtimeDurableObject extends DurableObject {
     exclude?: string[];
   } = {}): Promise<Array<{ socket: WebSocket; clientInfo: ClientInfo }>> {
     const sockets = Array.from(this.state.getWebSockets());
-    const includeSet = include ? new Set(include) : null;
-    const excludeSet = exclude ? new Set(exclude) : null;
+    const includeSet = include.length > 0 ? new Set(include) : null;
+    const excludeSet = exclude.length > 0 ? new Set(exclude) : null;
     const results: Array<{ socket: WebSocket; clientInfo: ClientInfo }> = [];
 
     for (const socket of sockets) {
