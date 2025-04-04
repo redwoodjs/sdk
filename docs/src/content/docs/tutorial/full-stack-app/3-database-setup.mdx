@@ -408,23 +408,22 @@ Let's create the migration by running `pnpm migrate:new` and giving the migratio
 pnpm migrate:new "initial migration"
 ```
 
-![]() - _TODO: Screenshot of the Terminal_
+![](./images/initial-migration.png)
 
 Our generated `sql` file will be in the `migrations` folder.
 
-![]() - _TODO: Screenshot of Cursor, include the `migrations` folder and the code that was generated_
+<figure>
+![](./images/migrations-folder.png)
+<figcaption>
+- `0001_init.sql` was generated the first time we ran `pnpm dev`.
+- `0002_initial_migration.sql` was generated when we ran `pnpm migrate:new "initial migration"`.
+</figcaption>
+</figure>
+
 
 <Aside type="tip" title="The Number of Migrations">
-  Worried about the number of migrations in your project? Don't. It really doesn't have an effect on your project.
+  Worried about the number of migrations in your project? Don't. It really doesn't have any effect on your project.
 </Aside>
-
-Now, we need to apply or run the migration.
-
-```bash
-pnpm migrate:dev
-```
-
-![]() - _TODO: Screenshot of the Terminal_
 
 <Aside type="note" title="Working with other people">
   An added benefit of migrations is that it makes it easier to work with other people.
@@ -433,12 +432,66 @@ pnpm migrate:dev
 
   Database changes can be tied to a branch and a specific feature or bug fix.
 
-  Keeping another team member's database in sync is as simple as running the migration.
+  Keeping another team member's database in sync is as simple as running the migration: `npm migrate:dev`
 </Aside>
 
 ## Previewing the Migration
 
-If you want to preview the database, there area a couple of different options.
+If you want to preview the database, there are a couple of different options.
+
+### Prisma Studio (Recommended)
+
+Prisma Studio ships with Prisma, so there’s nothing extra to install.
+
+Let's start by opening the `schema.prisma` file.
+
+```tsx title="src/schema.prisma" {3}
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+```
+
+You'll notice the `url` is referencing the `DATABASE_URL` environment variable.
+
+We need this to set this up in the `.env` file so Prisma Studio can connect to the database.
+
+First, let's go to our `d1` database. This is inside the `.wrangler/state/v3/d1/miniflare-D1DatabaseObject` directory.
+
+![](./images/local-wrangler-d1-database.png)
+
+Right click on the sqlite file and click `Copy Path`.
+
+Inside your `.env` file, create a `DATABASE_URL` variable and paste in the database path:
+
+![](./images/database-url-full-url.png)
+
+Right now, the database url uses the absolute path, we need to make this path relative. Remove everything in front of `.wrangler` and replace it with `../`. We also need to specify that this is a `file`:
+
+```
+DATABASE_URL="file:../.wrangler/state/v3/d1/miniflare-D1DatabaseObject/84daca3a95ca09403c82fcd535a8a092abf9029357d742c62ecaab59bcc13d30.sqlite"
+```
+
+Now, within the Terminal, run:
+
+```Terminal
+npx prisma studio
+```
+
+This will open a new tab in your default browser at `http://localhost:5555`.
+
+{/* ./images/prisma-studio.png - this is a screenshot of a seeded database */}
+<figure>
+![](./images/prisma-studio-no-tables-selected.png)
+<figcaption>
+- Within Prisma Studio, you can see a list of all your tables/models on the left.
+- If you click on one, it will load the table/model on the right.
+</figcaption>
+</figure>
+
+![](./images/prisma-studio-application-table-selected.png)
+
+Right now, we don't have any data in our table, but at least we can tell that our migration ran successfully.
 
 ### SQLite Viewer
 
@@ -463,31 +516,38 @@ Click on the sqlite file and a preview should open within VSCode.
 
 The viewer will only let you preview the database. If you want to create, update, or delete, you'll need a pro account.
 
-### Bee Keeper Studio
-
-[Bee Keeper Studio](https://www.beekeeperstudio.io/) is another option. It's a standalone application, but the free version will allow you to create, read, update, and delete data.
-
-![](./images/beekeeper-setup.png)
-
-When setting up the connection, select **SQLite** from the **Connection Type** dropdown. Then, click on "Choose File" and navigate to the .sqlite file.
-
-![](./images/beekeeper-preview.png)
-
-{/* TODO: Change the database screenshot so that it is exactly what the user is seeing (no data) */}
-
-We don't have any data within our database, but you should be able to see all the tables the columns inside.
-
 ## Seed the database
 
-Instead of manually adding data to the database, we can create a **seed file** to programmatically add data for us. This is particularly helpful if you need to reset the database during development and don't want to manually enter your test data again and again.
+We can manually add data to the database through Prisma Studio.
 
-Within the `src` directory, create a new folder called `scripts`. inside, create a file called `seed.ts`.
+Instead of manually adding data to the database, we can create a **seed file** to programmatically add data for us. This is particularly helpful if you need to reset the database during development and don't want to manually enter test data (again and again).
+
+Within the `src > scripts` directory, you'll find a `seed.ts`
 
 <FileTree>
 - src/
   - scripts/
     - seed.ts
 </FileTree>
+
+This contains the basic structure for our seed file.
+
+```ts title="src/scripts/seed.ts"
+import { defineScript } from "@redwoodjs/sdk/worker";
+import { db, setupDb } from "@/db";
+
+export default defineScript(async ({ env }) => {
+  setupDb(env);
+
+  // Add seed data here
+
+  console.log("🌱 Finished seeding");
+});
+```
+
+<Aside type="tip" title="Seed File Structure">
+  In order for our seed file to run properly, we have to run it inside a Cloudflare worker.
+</Aside>
 
 You can copy and paste the following code inside:
 
@@ -522,13 +582,13 @@ export default defineScript(async ({ env }) => {
 });
 ```
 
-Before we add anything to this file, let's make sure we understand what's happening:
+Let's make sure we understand what's happening:
 * **On lines 1 and 2** are importing our dependencies. We need our Cloudflare worker and database connection.
 * **On line 4**, we're setting up our Cloudflare worker environment.
 * **On line 5**, we're setting up our database connection.
-* **On line 7-14**, we're using raw SQL to delete all the existing data from the database. This will allow us to start fresh when seeding the database.
-* **On line 16-24**, we're adding all the job application statuses to the database. You'll notice this is a standard Prisma `createMany` function.
-* **On line 26**, we're logging a message to the console saying the seeding is complete.
+* **On line 7-15**, we're using raw SQL to delete all the existing data from the database. This will allow us to start fresh when seeding the database.
+* **On line 16-25**, we're adding all the job application statuses to the database. You'll notice this is a standard Prisma `createMany` function.
+* **On line 27**, we're logging a message to the console saying the seeding is complete.
 
 <Aside type="caution" title="Troubleshooting">
 Are you getting an error that says: `"Property 'applicationStatus' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'"`
@@ -548,13 +608,21 @@ To seed the database, run the following command:
 pnpm seed
 ```
 
+<Aside title="Error: listen EADDRINUSE: address already in use :::9229">
+If you get an `Error: listen EADDRINUSE: address already in use :::9229` error when running `pnpm seed`, it means that you're already running a worker (probably `pnpm dev`) when running the seed script.
+
+![](./images/address-already-in-use.png)
+
+Remember, the seed script needs a Cloudflare Worker, too. Quit `pnpm dev` and then you should be able to successfully run the seeder.
+</Aside>
+
 Within the Terminal, you should see something like this:
 
 ![](./images/seed-database-in-terminal.png)
 
 Now, when you preview the database and look at the `ApplicationStatus` table, you should see:
 
-![](./images/seed-database-in-sqlite.png)
+![](./images/application-status-in-prisma-studio.png)
 
 <Aside type="note" title="Multiple Seed Files">
 Sometimes, I'll create multiple seed files for different purposes.
@@ -565,7 +633,6 @@ Typically, I'll also create seed files to test the application with various sets
 
 You can also leverage libraries, like [Faker](https://fakerjs.dev/) and [Snaplet](https://snaplet.dev/), to make it easier to create realistic data sets.
 </Aside>
-
 
 
 <Aside type="tip" title="Code on GitHub">

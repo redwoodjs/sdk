@@ -9,7 +9,7 @@ description: A guide in my new Starlight docs site.
 import { Aside, FileTree } from '@astrojs/starlight/components';
 
 ## Existing Authentication Code
-Since we're using the [Pass Key Auth starter kit](), it already has PassKey authentication setup.
+Since we're using the [Pass Key Auth starter kit](https://github.com/redwoodjs/sdk/tree/main/starters/passkey-auth), it already has PassKey authentication setup.
 
 <Aside type="note" title="Why PassKey Authentication?">
 Passkey authentication offers several key advantages:
@@ -21,10 +21,9 @@ Passkey authentication offers several key advantages:
 
 Let's start by taking a look at the `worker.tsx` file. This file sets up our Cloudflare worker, but it also handles all the routing, middleware, and interrupters.
 
-```tsx title="src/worker.tsx"
-...
+```tsx title="src/worker.tsx" collapse={1-11}
 import { defineApp, ErrorResponse } from "@redwoodjs/sdk/worker";
-import { index, layout, prefix } from "@redwoodjs/sdk/router";
+import { index, render, prefix } from "@redwoodjs/sdk/router";
 import { Document } from "@/app/Document";
 import { Home } from "@/app/pages/Home";
 import { setCommonHeaders } from "@/app/headers";
@@ -35,19 +34,19 @@ import { db, setupDb } from "./db";
 import { User } from "@prisma/client";
 export { SessionDurableObject } from "./session/durableObject";
 
-export type Context = {
+export type AppContext = {
   session: Session | null;
   user: User | null;
 };
 
-export default defineApp<Context>([
+export default defineApp<AppContext>([
   setCommonHeaders(),
-  async ({ env, ctx, request, headers }) => {
+  async ({ env, appContext, request, headers }) => {
     await setupDb(env);
     setupSessionStore(env);
 
     try {
-      ctx.session = await sessions.load(request);
+      appContext.session = await sessions.load(request);
     } catch (error) {
       if (error instanceof ErrorResponse && error.code === 401) {
         await sessions.remove(request, headers);
@@ -62,18 +61,18 @@ export default defineApp<Context>([
       throw error;
     }
 
-    if (ctx.session?.userId) {
-      ctx.user = await db.user.findUnique({
+    if (appContext.session?.userId) {
+      appContext.user = await db.user.findUnique({
         where: {
-          id: ctx.session.userId,
+          id: appContext.session.userId,
         },
       });
     }
   },
-  layout(Document, [
+  render(Document, [
     index([
-      ({ ctx }) => {
-        if (!ctx.user) {
+      ({ appContext }) => {
+        if (!appContext.user) {
           return new Response(null, {
             status: 302,
             headers: { Location: "/user/login" },
@@ -89,79 +88,77 @@ export default defineApp<Context>([
 
 Let's break it down, chunk by chunk:
 
-```tsx title="src/worker.tsx" startLineNumber=14
-export type Context = {
+```tsx title="src/worker.tsx" startLineNumber=13
+export type AppContext = {
   session: Session | null;
   user: User | null;
-}
+};
 ```
-- On **lines 14-17**, we're setting up the types for our context object. Specifically, we're defining the `session` and `user` properties.
-  - The `Session` type is defined in `src/session/durableObject.ts`. It contains a `userId`, `challenge`, and `createdAt`.
-  - The `User` type comes from our `@prisma/client`. That's right! When Prisma generates our migration files, it also generates types.
+- On **lines 13-16**, we're setting up the types for our application's context object. Specifically, we're defining the `session` and `user` properties.
+  - The `Session` type is defined in `src/session/durableObject.ts`. (Imported on line 8.) It contains a `userId`, `challenge`, and `createdAt`.
+  - The `User` type comes from our `@prisma/client`. (Imported on line 10.) That's right! When Prisma generates our migration files, it also generates types.
 
-```tsx title="src/worker.tsx" startLineNumber=20
+```tsx title="src/worker.tsx" startLineNumber=19
 setCommonHeaders(),
 ```
-- On **line 20** we're setting up our common headers. This is a function inside of `app/src/headers.ts`. It creates the Security Policies, Transport Policy, Referrer Policy, and Permissions Policy.
+- On **line 19** we're setting up our common headers. This is a function inside of `app/src/headers.ts`. (Imported on line 5.) It creates the Security Policies, Transport Policy, Referrer Policy, and Permissions Policy.
 
-```tsx title="src/worker.tsx" startLineNumber=21
-async ({ env, ctx, request, headers }) => {
-    await setupDb(env);
-    setupSessionStore(env);
+```tsx title="src/worker.tsx" startLineNumber=20
+async ({ env, appContext, request, headers }) => {
+  await setupDb(env);
+  setupSessionStore(env);
 
-    try {
-      ctx.session = await sessions.load(request);
-    } catch (error) {
-      if (error instanceof ErrorResponse && error.code === 401) {
-        await sessions.remove(request, headers);
-        headers.set("Location", "/user/login");
+  try {
+    appContext.session = await sessions.load(request);
+  } catch (error) {
+    if (error instanceof ErrorResponse && error.code === 401) {
+      await sessions.remove(request, headers);
+      headers.set("Location", "/user/login");
 
-        return new Response(null, {
-          status: 302,
-          headers,
-        });
-      }
-
-      throw error;
-    }
-
-    if (ctx.session?.userId) {
-      ctx.user = await db.user.findUnique({
-        where: {
-          id: ctx.session.userId,
-        },
+      return new Response(null, {
+        status: 302,
+        headers,
       });
     }
-  },
-```
-- On **lines 21-48**, we're setting up our middleware.
-  - First, we're setting up the database `setupDb(env);` We'll use this later, on line 42, to find the logged in user.
-  - Then, we're setting up the session store `setupSessionStore(env);`. We're using Cloudflare's Durable Objects to store our session data.
-  - On **lines 27-39**, we're catching any errors. If the status code is 401, we remove the session and redirect the user to the login page.
-  - On **lines 41-46**, we check the `ctx` for the `session` object. If it has a `userId`, we connect to the database and get all the user data. The result gets saved into the `ctx.user` object.
 
-{/* TODO: Layouts are going to become documents */}
+    throw error;
+  }
 
-```tsx title="src/worker.tsx" startLineNumber=49
-layout(Document, [
+  if (appContext.session?.userId) {
+    appContext.user = await db.user.findUnique({
+      where: {
+        id: appContext.session.userId,
+      },
+    });
+  }
+},
 ```
-- On **line 49**, we're setting up our layout. This layout contains our `html`, `head`, and `body` tags and wraps _all_ of our pages. **_RedwoodSDK only supports one layout._**
+- On **lines 20-47**, we're setting up our middleware.
+  - First, we're setting up the database `setupDb(env);` We'll use this later, on line 41, to find the logged in user.
+  - Then, we're setting up the session store `setupSessionStore(env);`. We're using Cloudflare's Durable Objects to store our session data and loading it. `sessions.load(request)`
+  - On **lines 26-38**, we're catching any errors. If the status code is 401, we remove the session and redirect the user to the login page.
+  - On **lines 40-46**, we check the `AppContext` for the `session` object. If it has a `userId`, we connect to the database and get all the user data. The result gets saved into the `AppContext.user` object.
 
 ```tsx title="src/worker.tsx" startLineNumber=48
-layout(Document, [
-    index([
-      ({ ctx }) => {
-        if (!ctx.user) {
-          return new Response(null, {
-            status: 302,
-            headers: { Location: "/user/login" },
-          });
-        }
-      },
-      Home,
-    ]),
+render(Document, [
 ```
-- On **line 48-59**, we're setting up our home page route. Before we return our `Home` component (line 58), we use an **interrupter** to see if the user is logged in. This is a function that takes our `ctx` object and checks to see if the `user` object exists on our context. If it doesn't, we redirect the user to the login page. Otherwise, we return the `Home` component.
+- On **line 48**, we're setting up our document. This document contains our `html`, `head`, and `body` tags and wraps _all_ of our pages. **_RedwoodSDK only supports one document._**
+
+```tsx title="src/worker.tsx" startLineNumber=48
+render(Document, [
+  index([
+    ({ appContext }) => {
+      if (!appContext.user) {
+        return new Response(null, {
+          status: 302,
+          headers: { Location: "/user/login" },
+        });
+      }
+    },
+    Home,
+  ]),
+```
+- On **line 48-59**, we're setting up our home page route. Before we return our `Home` component (line 58), we use an **interrupter** to see if the user is logged in. This is a function that takes our `appContext` object and checks to see if the `user` object exists on our app context. If it doesn't, we redirect the user to the login page (lines 52-55). Otherwise, we return the `Home` component (line 58).
 
 <Aside type="note" title="Middleware vs Interrupters">
 #### Middleware
@@ -181,18 +178,19 @@ Interrupters will _interrupt_ the flow. Before, the server returns a response, t
 
 #### These sound similar, what's the difference?
 
-- Middleware will run before every single route.
-- Interrupters will only on specific routes.
+- Middleware will run before _every single route_.
+- Interrupters will only run _on specific routes._
 
 In our code, we're using middleware to attach the user session to our context object, on every request. But, we're only checking to see if the user is logged in on the home page.
 </Aside>
 
-```tsx title="src/worker.tsx" startLineNumber=61
+```tsx title="src/worker.tsx" startLineNumber=60
 prefix("/user", userRoutes),
 ```
-- On **line 61**, we're prefixing all of our auth routes with `/user`. Meaning, our `login` route will be `/user/login` and our `logout` route will be `/user/logout`. One of the cool things about the RedwoodSDK router is the parameter is defined through an array. This means, we can define our route information in a separate file and then import it into our `worker.tsx` file.
+- On **line 60**, we're prefixing all of our auth routes with `/user`. Meaning, our `login` route will be `/user/login` and our `logout` route will be `/user/logout`.
+  - `login` and `logout` are defined within the `userRoutes` file, imported on line 6. One of the cool things about the RedwoodSDK router is the parameter is defined through an array. This means, we can define our route information in a separate file and then import it into our `worker.tsx` file.
 
-Here, we're co-locating the file that defines our auth routes with our auth pages.
+We're co-locating the file that defines our auth routes with our auth pages.
 
 Let's take a look at `userRoutes`. This is coming from `src > app > pages > user > routes.tsx`.
 
@@ -227,17 +225,17 @@ Remember, even though these routes are defined as `/login` and `/logout`, we've 
 ## Setting up the Signup Page
 Let's create a third route for registering a new user, giving sign up a dedicated page.
 
-Inside, our `src/app/pages/auth` directory, create a new file called `Signup.tsx`. Let's stub out a simple function, just to make sure it's working:
+Inside, our `src/app/pages/user` directory, create a new file called `Signup.tsx`. Let's stub out a simple function, just to make sure it's working:
 
-```tsx title="src/app/pages/auth/Signup.tsx"
+```tsx title="src/app/pages/user/Signup.tsx"
 export const Signup = () => {
   return <div>Signup</div>;
 }
 ```
 
-Now, we need to add this route to our `authRoutes` array:
+Now, we need to add this route to our `userRoutes` array (inside of `src/app/pages/user/routes.ts`):
 
-```tsx title="src/app/pages/auth/routes.tsx"
+```tsx title="src/app/pages/user/routes.ts"
 import { route } from "@redwoodjs/sdk/router";
 import { Login } from "./Login";
 import { Signup } from "./Signup";
@@ -268,7 +266,7 @@ Now, let's move over some of the functionality from our `Login.tsx` to our `Sign
 <details>
 <summary>Full `Login.tsx` code</summary>
 
-```tsx title="src/app/pages/auth/Login.tsx" collapse={2-16}
+```tsx title="src/app/pages/user/Login.tsx" collapse={2-16}
 "use client";
 
 import { useState, useTransition } from "react";
@@ -355,23 +353,23 @@ export function Login() {
 ```
 </details>
 
-Let's break it chunk by chunk:
+Let's break it down, chunk by chunk:
 
-```tsx title="src/app/pages/auth/Login.tsx"
+```tsx title="src/app/pages/user/Login.tsx"
 "use client";
 ---
 - **On line 1,** we have a `use client` directive. By default, all components within RedwoodSDK are server components. Here, we're explicitly telling React to render this component on the client side (in the browser). Anytime you want there to be interactivity (clicking on buttons or managing state), you'll need to use a client component.
 ---
 ```
 
-```tsx title="src/app/pages/auth/Login.tsx" startLineNumber=18
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=18
 const TURNSTILE_SITE_KEY = "0xXXXXXXXXXXXXXXXXXXXXXX";
 ---
 - **On line 18**, we're setting up our Turnstile site key. [We already set this up.](/tutorial/full-stack-app/create-app#setting-up-cloudflare-turnstile)
 ---
 ```
 
-```tsx title="src/app/pages/auth/Login.tsx" startLineNumber=21
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=21
 const [username, setUsername] = useState("");
 const [result, setResult] = useState("");
 ---
@@ -381,21 +379,21 @@ const [result, setResult] = useState("");
 ---
 ```
 
-```tsx title="src/app/pages/auth/Login.tsx" startLineNumber=23
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=23
 const [isPending, startTransition] = useTransition();
 ---
 - **On line 23**, we're using React's `useTransition` hook to manage our loading state. (More on this later, but you can also find more within [the official React documentation](https://react.dev/reference/react/useTransition).)
 ---
 ```
 
-```tsx title="src/app/pages/auth/Login.tsx" startLineNumber=24
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=24
 const turnstile = useTurnstile(TURNSTILE_SITE_KEY);
 ---
 - **On line 24**, the `useTurnstile` hook gets our Turnstile instance. This hook is coming from RedwoodSDK and is used to handle the challenge and verify our Turnstile token.
 ---
 ```
 
-```tsx title="src/app/pages/auth/Login.tsx" startLineNumber=26
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=26
 const passkeyLogin = async () => {
   const options = await startPasskeyLogin();
   const login = await startAuthentication({ optionsJSON: options });
@@ -409,14 +407,14 @@ const passkeyLogin = async () => {
 };
 ---
 - **On line 26**, we're defining our `passkeyLogin` function.
-  - The functions `startPasskeyLogin`, `startAuthentication`, and `finishPasskeyLogin` are all defined in the `src/app/pages/auth/functions.ts` file. You can find more information about these functions in the [Passkey Authentication docs](/docs/auth/passkeys).
-  - Here, we start the Passkey login authentication, and then determine whether it was successful or not.
-  - If it wasn't successful, we set the result message to "Login failed".
-  - Otherwise, we set the result message to "Login successful!".
+- The functions `startPasskeyLogin`, `startAuthentication`, and `finishPasskeyLogin` are all defined in the `src/app/pages/user/functions.ts` file. You can find more information about these functions in the [Passkey Authentication docs](/core/authentication).
+- We start the Passkey login authentication `startPasskeyLogin()`, and then determine whether it was successful or not.
+- If it wasn't successful, we set the result message to "Login failed".
+- Otherwise, we set the result message to "Login successful!".
 ---
 ```
 
-```tsx title="src/app/pages/auth/Login.tsx" startLineNumber=38
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=38
 const passkeyRegister = async () => {
   const options = await startPasskeyRegistration(username);
   const registration = await startRegistration({ optionsJSON: options });
@@ -436,13 +434,13 @@ const passkeyRegister = async () => {
 };
 ---
 - **On lines 38-54**, we're defining our `passkeyRegister` function. This is similar the `passkeyLogin` function, but this handles the registration process.
-  - The functions `startPasskeyRegistration`, `startRegistration`, and `finishPasskeyRegistration` are all defined in the `src/app/pages/auth/functions.ts` file. You can find more information about these functions in the [Passkey Authentication docs](/docs/auth/passkeys).
+  - The functions `startPasskeyRegistration`, `startRegistration`, and `finishPasskeyRegistration` are all defined in the `src/app/pages/user/functions.ts` file. You can find more information about these functions in the [Passkey Authentication docs](/docs/auth/passkeys).
   - If the registration isn't successful, we set the result message to "Registration failed".
   - Otherwise, we set the result message to "Registration successful!".
 ---
 ```
 
-```tsx title="src/app/pages/auth/Login.tsx" startLineNumber=56
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=56
 const handlePerformPasskeyLogin = () => {
   startTransition(() => void passkeyLogin());
 };
@@ -451,7 +449,7 @@ const handlePerformPasskeyLogin = () => {
 ---
 ```
 
-```tsx title="src/app/pages/auth/Login.tsx" startLineNumber=60
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=60
 const handlePerformPasskeyRegister = () => {
   startTransition(() => void passkeyRegister());
 };
@@ -460,7 +458,7 @@ const handlePerformPasskeyRegister = () => {
 ---
 ```
 
-```tsx title="src/app/pages/auth/Login.tsx" startLineNumber=68
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=68
 <input
   type="text"
   value={username}
@@ -476,7 +474,7 @@ const handlePerformPasskeyRegister = () => {
 We're intentionally using usernames instead of emails. This decision prevents enumeration attacks and avoids requiring valid email addresses for registration.
 </Aside>
 
-```tsx title="src/app/pages/auth/Login.tsx" startLineNumber=74
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=74
 <Button onClick={handlePerformPasskeyLogin} disabled={isPending}>
   {isPending ? <>...</> : "Login with passkey"}
 </Button>
@@ -488,7 +486,7 @@ We're intentionally using usernames instead of emails. This decision prevents en
 ---
 ```
 
-```tsx title="src/app/pages/auth/Login.tsx" startLineNumber=80
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=80
 {result && <div>{result}</div>}
 ---
 - **On lines 80**, we're rendering the result message.
@@ -499,7 +497,7 @@ We're intentionally using usernames instead of emails. This decision prevents en
 
 Let's start by copying all the contents from our `Login.tsx` and pasting it into our `Signup.tsx`. Be sure that the component is still named `Signup`.
 
-```tsx title="src/app/pages/auth/Signup.tsx" startLineNumber=20
+```tsx title="src/app/pages/user/Signup.tsx" startLineNumber=20
 export function Signup() {
 ```
 
@@ -515,22 +513,24 @@ Now, we need to clean up our unused imports. Within our IDE, these should be gra
 <details>
 <summary>Cleaned up `Signup.tsx` code</summary>
 
-```tsx title="src/app/pages/auth/Signup.tsx"
+```tsx title="src/app/pages/user/Signup.tsx"
 "use client";
 
 import { useState, useTransition } from "react";
-import { startRegistration } from "@simplewebauthn/browser";
+import {
+  startRegistration,
+} from "@simplewebauthn/browser";
 import {
   finishPasskeyRegistration,
   startPasskeyRegistration,
 } from "./functions";
-import { useTurnstile } from "redwoodsdk/turnstile";
+import { useTurnstile } from "@redwoodjs/sdk/turnstile";
 import { Button } from "@/app/components/ui/button";
 
 // >>> Replace this with your own Cloudflare Turnstile site key
-const TURNSTILE_SITE_KEY = "0x4AAAAAABBM92GLK3VnyFAr";
+const TURNSTILE_SITE_KEY = "0x4AAAAAABCpUSmzOt7TgetS";
 
-export function SignupPage() {
+export function Signup() {
   const [username, setUsername] = useState("");
   const [result, setResult] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -559,7 +559,7 @@ export function SignupPage() {
   };
 
   return (
-    <>
+    <main className="bg-bg">
       <h1 className="text-4xl font-bold text-red-500">YOLO</h1>
       <div ref={turnstile.ref} />
       <input
@@ -572,7 +572,7 @@ export function SignupPage() {
         {isPending ? <>...</> : "Register with passkey"}
       </Button>
       {result && <div>{result}</div>}
-    </>
+    </main>
   );
 }
 ```
@@ -591,7 +591,7 @@ Don't forget to clean up your unused imports, too.
 <details>
 <summary>Cleaned up `Login.tsx` code</summary>
 
-```tsx title="src/app/pages/auth/Login.tsx"
+```tsx title="src/app/pages/user/Login.tsx"
 "use client";
 
 import { useState, useTransition } from "react";
@@ -689,8 +689,8 @@ Did you realize we haven't been able to access the home page before because it w
 
 ```tsx title="src/worker.tsx" startLineNumber=34 {3-7}
 index([
-  ({ ctx }) => {
-    if (!ctx.user) {
+  ({ appContext }) => {
+    if (!appContext.user) {
       return new Response(null, {
         status: 302,
         headers: { Location: "/user/login" },
@@ -723,7 +723,166 @@ Let's create a layout component, that we can use in both places.
 
 ### Creating a Layout Component
 
-Inside our `app` directory, create a new folder called `layouts`. Then, a new file called `AuthLayout.tsx`:
+When we installed ShadCN, it added a lot of variables to the bottom of our `styles.css` file. In CSS, order matters. So, let's move our `@theme` definition to the bottom of the file so that it reads as more important and will override any ShadCN default values.
+
+<details>
+<summary>Updated `styles.css` file</summary>
+
+```css title="src/app/styles.css"
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+
+@import "tailwindcss";
+
+@import "tw-animate-css";
+
+@custom-variant dark (&:is(.dark *));
+
+body {
+  font-family: var(--font-body);
+}
+
+:root {
+  --radius: 0.625rem;
+  --background: oklch(1 0 0);
+  --foreground: oklch(0.145 0 0);
+  --card: oklch(1 0 0);
+  --card-foreground: oklch(0.145 0 0);
+  --popover: oklch(1 0 0);
+  --popover-foreground: oklch(0.145 0 0);
+  --primary: oklch(0.205 0 0);
+  --primary-foreground: oklch(0.985 0 0);
+  --secondary: oklch(0.97 0 0);
+  --secondary-foreground: oklch(0.205 0 0);
+  --muted: oklch(0.97 0 0);
+  --muted-foreground: oklch(0.556 0 0);
+  --accent: oklch(0.97 0 0);
+  --accent-foreground: oklch(0.205 0 0);
+  --destructive: oklch(0.577 0.245 27.325);
+  --border: oklch(0.922 0 0);
+  --input: oklch(0.922 0 0);
+  --ring: oklch(0.708 0 0);
+  --chart-1: oklch(0.646 0.222 41.116);
+  --chart-2: oklch(0.6 0.118 184.704);
+  --chart-3: oklch(0.398 0.07 227.392);
+  --chart-4: oklch(0.828 0.189 84.429);
+  --chart-5: oklch(0.769 0.188 70.08);
+  --sidebar: oklch(0.985 0 0);
+  --sidebar-foreground: oklch(0.145 0 0);
+  --sidebar-primary: oklch(0.205 0 0);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.97 0 0);
+  --sidebar-accent-foreground: oklch(0.205 0 0);
+  --sidebar-border: oklch(0.922 0 0);
+  --sidebar-ring: oklch(0.708 0 0);
+}
+
+.dark {
+  --background: oklch(0.145 0 0);
+  --foreground: oklch(0.985 0 0);
+  --card: oklch(0.205 0 0);
+  --card-foreground: oklch(0.985 0 0);
+  --popover: oklch(0.205 0 0);
+  --popover-foreground: oklch(0.985 0 0);
+  --primary: oklch(0.922 0 0);
+  --primary-foreground: oklch(0.205 0 0);
+  --secondary: oklch(0.269 0 0);
+  --secondary-foreground: oklch(0.985 0 0);
+  --muted: oklch(0.269 0 0);
+  --muted-foreground: oklch(0.708 0 0);
+  --accent: oklch(0.269 0 0);
+  --accent-foreground: oklch(0.985 0 0);
+  --destructive: oklch(0.704 0.191 22.216);
+  --border: oklch(1 0 0 / 10%);
+  --input: oklch(1 0 0 / 15%);
+  --ring: oklch(0.556 0 0);
+  --chart-1: oklch(0.488 0.243 264.376);
+  --chart-2: oklch(0.696 0.17 162.48);
+  --chart-3: oklch(0.769 0.188 70.08);
+  --chart-4: oklch(0.627 0.265 303.9);
+  --chart-5: oklch(0.645 0.246 16.439);
+  --sidebar: oklch(0.205 0 0);
+  --sidebar-foreground: oklch(0.985 0 0);
+  --sidebar-primary: oklch(0.488 0.243 264.376);
+  --sidebar-primary-foreground: oklch(0.985 0 0);
+  --sidebar-accent: oklch(0.269 0 0);
+  --sidebar-accent-foreground: oklch(0.985 0 0);
+  --sidebar-border: oklch(1 0 0 / 10%);
+  --sidebar-ring: oklch(0.556 0 0);
+}
+
+@theme inline {
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
+
+@theme {
+  --font-display: "Poppins", sans-serif;
+  --font-body: "Inter", sans-serif;
+
+  --color-bg: #e4e3d4;
+  --color-border: #eeeef0;
+
+  --color-primary: #f7b736;
+  --color-secondary: #f1f1e8;
+  --color-destructive: #ef533f;
+
+  --color-tag-applied: #b1c7c0;
+  --color-tag-interview: #da9b7c;
+  --color-tag-new: #db9a9f;
+  --color-tag-rejected: #e4e3d4;
+  --color-tag-offer: #aae198;
+}
+```
+</details>
+
+If you take a look in the browser, by changing the position of the `@theme` block, it also changed the button's background color to yellow, our primary color. Perfect.
+
+![](./images/button-primary-color.png)
+
+Now, let's start on our layout component. Inside our `app` directory, create a new folder called `layouts`. Then, a new file called `AuthLayout.tsx`:
 
 <FileTree>
 - src
@@ -742,6 +901,8 @@ const AuthLayout = ({ children }: { children: React.ReactNode}) => {
     </div>
   )
 }
+
+export { AuthLayout }
 ---
 On our wrapping `div`, I've added a few Tailwind styles.
 - `bg-bg` uses the custom background color we set up previously.
@@ -752,9 +913,9 @@ On our wrapping `div`, I've added a few Tailwind styles.
 
 As we continue to make adjustments, we want to be able to see the changes we're making within the browser.
 
-Inside our `LoginPage` component let's replace our `main` tag with our `AuthLayout` component.
+Inside our `Login` component let's replace our `main` tag with our `AuthLayout` component.
 
-```tsx title="src/app/pages/auth/Login.tsx" {2,15} startLineNumber=35
+```tsx title="src/app/pages/user/Login.tsx" {2,15} startLineNumber=37
 return (
   <AuthLayout>
   <h1 className="text-4xl font-bold text-red-500">YOLO</h1>
@@ -801,7 +962,7 @@ Inside our wrapping `div`, let's set up our two column grid:
 
 Inside our `grid`, we need two `div`s for our two columns. Our `{children}` will go in the second column, on the right side.
 
-For the column on the left, we have a repeating background image. You can export this image from Figma yourself, or [grab all the image assets for this project here](https://drive.google.com/drive/folders/1VYvgh6nvxvxamHOomfwEGG9DYVbvfOvS?usp=drive_link).
+For the column on the left, we have a repeating background image. You can export this image from Figma yourself, or [grab all the image assets for this project here](https://github.com/ahaywood/applywize/tree/main/assets).
 
 Inside the root of our project, create a new folder called `public`. Inside, I'm going to create another folder called `images` and drop the image inside.
 
@@ -813,7 +974,7 @@ Inside the root of our project, create a new folder called `public`. Inside, I'm
 - src/
 </FileTree>
 
-While we're here, let's also grab the logo. I'm only going to grab the owl. We can make "Apply Wize" text, styled with CSS. This will give us a little more control over the display (horizontal or stacked) without having to use two separate images. You can export the owl as an SVG (or [download it directly](https://drive.google.com/drive/folders/1VYvgh6nvxvxamHOomfwEGG9DYVbvfOvS?usp=drive_link)).
+While we're here, let's also grab the logo. I'm only going to grab the owl. We can use "Apply Wize" text and style it with CSS. This will give us a little more control over the display (horizontal or stacked) without having to use two separate images. You can export the owl as an SVG (or [download it directly](https://github.com/ahaywood/applywize/tree/main/assets)).
 
 For our left column `div`:
 
@@ -854,7 +1015,7 @@ Inside our `styles.css` file, let's add a new utility function. At the very bott
   @apply flex items-center justify-center;
 }
 ---
-Within Tailwind v4, you can add custom utility functions with the `@utility` directive. _NOTE: `center` does not have a `.` in front, like a class would._
+Within Tailwind v4, you can add custom utility functions with the `@utility` directive. _NOTE:_ `center` does not have a `.` in front, like a class would.
 ---
 ```
 
@@ -958,7 +1119,7 @@ To style the text:
 
 This looks good-ish. The text is styled correctly, but the placement is off. We could adjust our our `top` and `left` values, but that's not the real problem. In CSS, positioning is relative. Meaning, it takes the parent container and it's positioning into consideration.
 
-Our parent `div` doesn't have any positioning applied (by default it's `static`). So, then, it looks to the page. And, yes, our quote is positioned to the bottom left corner of the page, with `40px` of padding.
+Our parent `div` doesn't have any positioning applied (by default it's `static`). Therefore, it looks to the page. And, yes, our quote is positioned to the bottom left corner of the page, with `40px` of padding.
 
 If we add a class of `relative` to our parent `div`, then it will position our quote _relative_ to the parent container.
 
@@ -997,9 +1158,18 @@ Now, let's style the right side. This is easy!
 
 ```tsx title="src/app/layouts/AuthLayout.tsx" {1} startLineNumber=16
 <div className="center bg-white rounded-r-xl">
-  <div>{children}</div>
+  <div className="w-full">{children}</div>
 </div>
+---
+- We want all the content to be centered, with our custom utility `center`
+- The background should be white: `bg-white`
+- And the corners on the right should be rounded, `rounded-r-xl`
+- For the `div` that wraps `{children}`, we want it to take the full width of it's container with `w-full`
+---
 ```
+
+
+
 
 ![](./images/authlayout-styling-complete.png)
 
@@ -1058,17 +1228,17 @@ export { AuthLayout };
 
 ### Styling the Login Content
 
-Now, we can jump over to our `LoginPage` component and style it.
+Now, we can jump over to our `Login` component and style it.
 
 First we can delete our `h1`, **YOLO** text. Now, let's just work from top to bottom.
 
 In the top, right corner, we have a link to the signup page. This is similar to our the quote in our layout component, except this time we want it positioned to the top, right corner.
 
-```tsx title="src/app/pages/auth/Login.tsx" {3-7} startLineNumber=35
+```tsx title="src/app/pages/user/Login.tsx" {3-7} startLineNumber=35
 return (
   <AuthLayout>
     <div className="absolute top-0 right-0 p-10">
-      <a href="#" className="font-display font-bold text-black text-sm underline underline-offset-8 hover:decoration-primary"">
+      <a href="#" className="font-display font-bold text-black text-sm underline underline-offset-8 hover:decoration-primary">
         Register
       </a>
     </div>
@@ -1086,14 +1256,14 @@ Now, we have the same positioning "problem" that we had with our quote. We need 
 
 ```tsx title="src/app/layouts/AuthLayout.tsx" "relative" startLineNumber=16
 <div className="center bg-white rounded-r-xl relative">
-  <div>{children}</div>
+  <div className="w-full">{children}</div>
 </div>
 ```
 
 Next up, let's wrap all of our form content with a `div` and add the text at the top of our form:
 
-```tsx title="src/app/pages/auth/Login.tsx" collapse={4-15} startLineNumber=43
-<div className="max-w-[400px] px-10">
+```tsx title="src/app/pages/user/Login.tsx" {1-3, 16} startLineNumber=45
+<div className="max-w-[400px] w-full mx-auto px-10">
   <h1 className="text-center">Login</h1>
   <p className="py-6">Enter your username below to sign-in.</p>
 
@@ -1110,14 +1280,25 @@ Next up, let's wrap all of our form content with a `div` and add the text at the
   {result && <div>{result}</div>}
 </div>
 ---
-- On our wrapping `div` I don't want the content to be more than `400px` wide with `max-w-[400px]`
+- On our wrapping `div` I don't want the content to be more than `400px` wide with `max-w-[400px]`. But, I want it to take up as much space as possible with `w-full`.
+- I want it to be centered with `mx-auto`.
 - On smaller screens, I want to ensure there's some horizontal padding with `px-10`
-- Our `h1` should be centered `text-center`
+- Our `h1` should be centered with `text-center`
 - I also want to add some vertical spacing with `py-6`
 ---
 ```
 
-I want to some more styling, but I want to be able to reuse these styles on our Signup page, so let's stick these inside our `styles.css` file.
+Let's also add some text below our form:
+
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=57 {5}
+<Button onClick={handlePerformPasskeyLogin} disabled={isPending} className="font-display w-full mb-6">
+    {isPending ? <>...</> : "Login with passkey"}
+  </Button>
+  {result && <div>{result}</div>}
+  <p>By clicking continue, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.</p>
+```
+
+I want to add some more styling, but I want to be able to reuse these styles on our Signup page, so let's stick these updates inside our `styles.css` file.
 
 In CSS order matters. The [`@layer` CSS at-rule](https://developer.mozilla.org/en-US/docs/Web/CSS/@layer) makes it easy to declare a _layer_ and set the order of preference.
 
@@ -1130,16 +1311,18 @@ Based on this ordering, we get more specific as we move down the file.
 
 At the very bottom of our `styles.css` file, let's start by setting up `@layer` for each grouping:
 
-```css title="src/styles.css" showLineNumbers=false
+```css title="src/styles.css" startLineNumber=152
 @layer base, components, page;
 
 @layer base {}
+
 @layer components {}
+
 @layer page {}
 ```
 
 <Aside type="tip" title="CSS Layers">
-Did these `@layer`s give you de ja vu. Feels similar to Tailwind v3? It's the exact same concept! But, because these layers are no longer established in Tailwind, we have to define the order ourselves: `@layer base, components, page;`
+Did these `@layer`s give you déjà vu. Feels similar to Tailwind v3? It's the exact same concept! But, because these layers are no longer established in Tailwind, we have to define the order ourselves: `@layer base, components, page;`
 
 Technically, we could list our layers in any order we want:
 ```css showLineNumbers=false
@@ -1148,7 +1331,7 @@ Technically, we could list our layers in any order we want:
 @layer base {}
 ```
 
-It will still be applied in the correct order because we set the ordering here:
+It will still be applied in the correct order because we set the ordering, here:
 ```css showLineNumbers=false
 @layer base, components, page;
 ```
@@ -1177,16 +1360,16 @@ Then, let's also add some more specific styles for our `h1` since it's a page ti
 ---
 ```
 
-Back in our `LoginPage` component, let's add the class of `page-title` to our `h1`:
+Back in our `Login` component, let's add the class of `page-title` to our `h1`:
 
-```tsx title="src/app/pages/auth/Login.tsx" "page-title" startLineNumber=44
+```tsx title="src/app/pages/user/Login.tsx" "page-title" startLineNumber=47
 <h1 className="page-title text-center">Login</h1>
 ```
 
 We have a couple of paragraphs of text, but I only want these classes to be applied to our auth forms. Let's add a class of `auth-form` to our wrapping `div`:
 
-```tsx title="src/app/pages/auth/Login.tsx" "auth-form" startLineNumber=43 collapse={2-15}
-<div className="auth-form max-w-[400px] px-10">
+```tsx title="src/app/pages/user/Login.tsx" "auth-form" startLineNumber=46 collapse={2-15}
+<div className="auth-form max-w-[400px] w-full mx-auto px-10">
   <h1 className="text-center">Login</h1>
   <p className="py-6">Enter your username below to sign-in.</p>
 
@@ -1240,7 +1423,7 @@ If we take a look in the browser, this looks great. The only thing we lack is th
   }
 }
 ---
-- Let's target an `input` with a type of `text` with `input[type="text"]`. Since, we're styling a base tag, we can stick this in the `base` layer.
+- Let's target an `input` with a `type` of `text` with `input[type="text"]`. Since, we're styling a base tag, we can stick this in the `base` layer.
 - We want to add a border with a color of border `border-border` and a width of `1px` with `border-1`.
 - Let's round the corners with `rounded-md`
 - Add some horizontal padding `px-3`
@@ -1288,7 +1471,7 @@ const buttonVariants = cva(
 ---
 - Near the top of the file, there's a variable called `buttonVariants` that contains all the Tailwind styling.
 - Let's make the button text bold by adding a class of `font-bold` within the first list of classes. This ensures that all button variants will be bold. You'll also need to remove `font-medium` from the list. Otherwise, the two classes will conflict.
-- The first variant is the `default` variant and has a class of `bg-primary`. This is why our button is using our yellow, primary color out of the box. We've already set `--color-primary` within our `styles.css` file.
+- The first variant is the `default` variant and has a class of `bg-primary`. This is why our button is using our yellow, primary color. We've already set `--color-primary` within our `styles.css` file.
 ---
 ```
 
@@ -1304,7 +1487,7 @@ We can override this by adding a class of `--color-primary-foreground` within ou
 
 Let's also add a few specific classes just for login button. I don't want this to get applied by default to every button we use.
 
-```tsx title="src/styles.css" startLineNumber=55 "className="font-display w-full mb-6"
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=56 "className="font-display w-full mb-6""
 <Button onClick={handlePerformPasskeyLogin} disabled={isPending} className="font-display w-full mb-6">
   {isPending ? <>...</> : "Login with Passkey"}
 </Button>
@@ -1321,8 +1504,8 @@ Let's take a look at the final result within the browser:
 
 But, there's one more thing. Let's move the `result` message above the form and below our text:
 
-```tsx title="src/app/pages/auth/Login.tsx" collapse={6-18}
-<div className="auth-form max-w-[400px] px-10">
+```tsx title="src/app/pages/user/Login.tsx" collapse={6-18} startLineNumber=46 "{result && <div>{result}</div>}"
+<div className="auth-form max-w-[400px] w-full mx-auto px-10">
   <h1 className="page-title text-center">Login</h1>
   <p className="py-6">Enter your username below to sign-in.</p>
 
@@ -1343,9 +1526,9 @@ But, there's one more thing. Let's move the `result` message above the form and 
 </div>
 ```
 
-We can also style this, using an `<Alert />` ShadCN component.
+We can also style this, using an `<Alert />` ShadCN component. We just need to import our component at the top and and wrap our `{result}`.
 
-```tsx title="src/app/pages/auth/Login.tsx" showLineNumbers=false
+```tsx title="src/app/pages/user/Login.tsx" showLineNumbers=false
 import { Alert, AlertTitle } from "@/app/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 ...
@@ -1366,9 +1549,9 @@ You'll need to login (successfully or unsuccessfully) to see the alert.
 
 ![](./images/alert-message-successful-login.png)
 
-I know, it feels strange to see a red alert message when we were able to successfully login. But, really, if we were able to login successfully, we want to be redirected to the homepage. We can update the `passkeyLogin` function:
+I know, it feels strange to see a red alert message when we were able to successfully login. But, really, if we were able to login successfully, we want to be redirected to the homepage. We can update the `passkeyLogin` function (starts on line 25):
 
-```tsx title="src/app/pages/auth/Login.tsx" {4} startLineNumber=27
+```tsx title="src/app/pages/user/Login.tsx" {4} startLineNumber=30
 if (!success) {
   setResult("Login failed");
 } else {
@@ -1409,19 +1592,20 @@ At first glance, this file is a little sparse.
 
 Let's add reference links for all our other pages:
 
-```tsx title="src/app/shared/links.ts" {3-6} startLineNumber=3
+```tsx title="src/app/shared/links.ts" {3-7} startLineNumber=3
 export const link = defineLinks([
   "/",
   "/user/login",
   "/user/signup",
+  "/user/logout",
   "/legal/privacy",
   "/legal/terms",
 ]);
 ```
 
-Now, let's go back to our `LoginPage` component and update our **Register** link.
+Now, let's go back to our `Login` component and update our **Register** link.
 
-```tsx title="src/app/pages/auth/Login.tsx" showLineNumbers=false
+```tsx title="src/app/pages/user/Login.tsx" showLineNumbers=false
 import { link } from "@/app/shared/links";
 ...
 <a href={link('/user/signup')} className="font-display font-bold text-black text-sm underline underline-offset-8 hover:decoration-primary">
@@ -1439,10 +1623,8 @@ As you type, you should see VS Code make recommendations based on the contents o
 
 We can make similar changes to our **Terms of Service** and **Privacy Policy** links:
 
-```tsx title="src/app/pages/auth/Login.tsx" "link" startLineNumber=4
-<a href={link('/legal/terms')} className="font-display font-bold text-black text-sm underline underline-offset-8 hover:decoration-primary">
-  Terms of Service
-</a>
+```tsx title="src/app/pages/user/Login.tsx" "{link("/legal/terms")}" "link("/legal/privacy")" startLineNumber=70
+<p>By clicking continue, you agree to our <a href={link("/legal/terms")}>Terms of Service</a> and <a href={link("/legal/privacy")}>Privacy Policy</a>.</p>
 ```
 
 If you check your work in the browser, the register link works great, but our Terms of Service and Privacy Policy links go to a Not Found page. Let's fix that.
@@ -1451,26 +1633,41 @@ We'll do a quick "duct tape" solution for now, but we'll eventually circle back 
 
 Within our `src/worker.tsx` file, we're exporting `defineApp`. Remember, this includes definitions for all our middleware and routes.
 
-```tsx title="src/worker.tsx" collapse={2-27} startLineNumber=18 {29-30}
-export default defineApp<Context>([
+```tsx title="src/worker.tsx" collapse={2-30} startLineNumber=19 {44-45}
+export default defineApp<AppContext>([
   setCommonHeaders(),
-  async ({ env, ctx, request }) => {
+  async ({ env, appContext, request, headers }) => {
     await setupDb(env);
     setupSessionStore(env);
-    ctx.session = await sessions.load(request);
 
-    if (ctx.session?.userId) {
-      ctx.user = await db.user.findUnique({
+    try {
+      appContext.session = await sessions.load(request);
+    } catch (error) {
+      if (error instanceof ErrorResponse && error.code === 401) {
+        await sessions.remove(request, headers);
+        headers.set("Location", "/user/login");
+
+        return new Response(null, {
+          status: 302,
+          headers,
+        });
+      }
+
+      throw error;
+    }
+
+    if (appContext.session?.userId) {
+      appContext.user = await db.user.findUnique({
         where: {
-          id: ctx.session.userId,
+          id: appContext.session.userId,
         },
       });
     }
   },
-  layout(Document, [
+  render(Document, [
     index([
-      ({ ctx }) => {
-        if (!ctx.user) {
+      ({ appContext }) => {
+        if (!appContext.user) {
           return new Response(null, {
             status: 302,
             headers: { Location: "/user/login" },
@@ -1485,8 +1682,8 @@ export default defineApp<Context>([
   ]),
 ]);
 ---
-- **On line 46**, let's add a new `route` definition to our array for our privacy policy page. The `route` function takes two parameters. The first parameter is the path or the URL. The second parameter is the response. This could be [a standard HTML response object](https://developer.mozilla.org/en-US/docs/Web/API/Response) or JSX/TSX. For our quick solution, we're inlining JSX.
-- **On line 47**, we're doing the exact same thing for our Terms page.
+- **On line 62**, let's add a new `route` definition to our array for our privacy policy page. The `route` function takes two parameters. The first parameter is the path or the URL. The second parameter is the response. This could be [a standard HTML response object](https://developer.mozilla.org/en-US/docs/Web/API/Response) or JSX/TSX. For our quick solution, we're inlining JSX.
+- **On line 63**, we're doing the exact same thing for our Terms page.
 ---
 ```
 
@@ -1520,7 +1717,7 @@ We've touched a few files, if you want to see the full code for each:
 <details>
 <summary>Final code for our `Login.tsx`</summary>
 
-```tsx title="src/app/pages/auth/Login.tsx"
+```tsx title="src/app/pages/user/Login.tsx"
 "use client";
 
 import { useState, useTransition } from "react";
@@ -1536,7 +1733,7 @@ import { AlertCircle } from "lucide-react";
 // >>> Replace this with your own Cloudflare Turnstile site key
 const TURNSTILE_SITE_KEY = "0xXXXXXXXXXXXXXXXXXXXXXX";
 
-export function LoginPage() {
+export function Login() {
   const [username, setUsername] = useState("");
   const [result, setResult] = useState("");
   const [isPending, startTransition] = useTransition();
@@ -1566,7 +1763,7 @@ export function LoginPage() {
         </a>
       </div>
 
-      <div className="auth-form max-w-[400px] px-10">
+      <div className="auth-form max-w-[400px] w-full mx-auto px-10">
         <h1 className="page-title text-center">Login</h1>
         <p className="py-6">Enter your username below to sign-in.</p>
 
@@ -1617,7 +1814,7 @@ const AuthLayout = ({ children }: { children: React.ReactNode }) => {
           </div>
         </div>
         <div className="center bg-white rounded-r-xl relative">
-          <div>{children}</div>
+          <div className="w-full">{children}</div>
         </div>
       </div>
     </div>
@@ -1897,42 +2094,57 @@ export const link = defineLinks([
 <summary>Final code for our `worker.tsx`</summary>
 
 ```tsx title="src/worker.tsx"
-import { defineApp } from "redwoodsdk/worker";
-import { index, layout, prefix, route } from "redwoodsdk/router";
+import { defineApp, ErrorResponse } from "@redwoodjs/sdk/worker";
+import { index, render, prefix, route } from "@redwoodjs/sdk/router";
 import { Document } from "@/app/Document";
 import { Home } from "@/app/pages/Home";
 import { setCommonHeaders } from "@/app/headers";
-import { authRoutes } from "@/app/pages/auth/routes";
+import { userRoutes } from "@/app/pages/user/routes";
 import { sessions, setupSessionStore } from "./session/store";
 import { Session } from "./session/durableObject";
 import { db, setupDb } from "./db";
 import { User } from "@prisma/client";
+import { List } from "./app/pages/applications/List";
 export { SessionDurableObject } from "./session/durableObject";
 
-export type Context = {
+export type AppContext = {
   session: Session | null;
   user: User | null;
 };
 
-export default defineApp<Context>([
+export default defineApp<AppContext>([
   setCommonHeaders(),
-  async ({ env, ctx, request }) => {
+  async ({ env, appContext, request, headers }) => {
     await setupDb(env);
     setupSessionStore(env);
-    ctx.session = await sessions.load(request);
+    try {
+      appContext.session = await sessions.load(request);
+    } catch (error) {
+      if (error instanceof ErrorResponse && error.code === 401) {
+        await sessions.remove(request, headers);
+        headers.set("Location", "/user/login");
 
-    if (ctx.session?.userId) {
-      ctx.user = await db.user.findUnique({
+        return new Response(null, {
+          status: 302,
+          headers,
+        });
+      }
+
+      throw error;
+    }
+
+    if (appContext.session?.userId) {
+      appContext.user = await db.user.findUnique({
         where: {
-          id: ctx.session.userId,
+          id: appContext.session.userId,
         },
       });
     }
   },
-  layout(Document, [
+  render(Document, [
     index([
-      ({ ctx }) => {
-        if (!ctx.user) {
+      ({ appContext }: { appContext: AppContext }) => {
+        if (!appContext.user) {
           return new Response(null, {
             status: 302,
             headers: { Location: "/user/login" },
@@ -1954,7 +2166,7 @@ export default defineApp<Context>([
 
 😅 Don't worry, we've already done all the heavy lifting. This will be a breeze.
 
-```tsx title="src/app/pages/auth/Signup.tsx" del={4, 8} ins={1,5,7} showLineNumbers=false
+```tsx title="src/app/pages/user/Signup.tsx" del={4, 8} ins={1,5,7} showLineNumbers=false
 import { AuthLayout } from "@/app/layouts/AuthLayout";
 ...
 return (
@@ -1972,7 +2184,7 @@ return (
 
 Right inside our `AuthLayout` component, let's add our Login link:
 
-```tsx title="src/app/pages/auth/Signup.tsx" showLineNumbers=false "/user/login" "Login"
+```tsx title="src/app/pages/user/Signup.tsx" showLineNumbers=false "/user/login" "Login"
 import { link } from "@/app/shared/links";
 ...
 <AuthLayout>
@@ -1990,26 +2202,28 @@ import { link } from "@/app/shared/links";
 
 Next, let's wrap all of our form content with a `div`:
 
-```tsx title="src/app/pages/auth/Signup.tsx" startLineNumber=55 "auth-form max-w-[400px] px-10"
-<div className="auth-form max-w-[400px] px-10">
+```tsx title="src/app/pages/user/Signup.tsx" startLineNumber=54 "auth-form max-w-[400px] px-10"
+<div className="auth-form max-w-[400px] w-full mx-auto px-10">
   ...
 </div>
 ---
 - We're using the same styles as our login page.
 - We have a class `auth-form` that will style our `p` and `a` tags.
-- We've set the maximum width of our form to `400px` and added `40px` padding to the left and right with `px-10.
+- We've set the maximum width of our form to `400px`, but we want it to take up as much space as possible `min-w-full`.
+- Center it on the page `mx-auto`.
+- Added `40px` padding to the left and right with `px-10`.
 ---
 ```
 
 We can get rid of our red YOLO heading at the top and replace it with:
-```tsx title="src/app/pages/auth/Signup.tsx" startLineNumber=56
+```tsx title="src/app/pages/user/Signup.tsx" startLineNumber=56
 <h1 className="page-title text-center">Create an Account</h1>
 <p className="py-6">Enter a username to setup an account.</p>
 ```
 
 Let's move our `result` message to appear below our heading:
 
-```tsx title="src/app/pages/auth/Signup.tsx" showLineNumbers=false
+```tsx title="src/app/pages/user/Signup.tsx" showLineNumbers=false
 import { Alert, AlertTitle } from "@/app/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 ...
@@ -2023,7 +2237,7 @@ import { AlertCircle } from "lucide-react";
 
 Jumping down a little bit, on our `Button` component, let's add a few classes to the end::
 
-```tsx title="src/app/pages/auth/Signup.tsx" "className="font-display w-full mb-6"" startLineNumber=75
+```tsx title="src/app/pages/user/Signup.tsx" "className="font-display w-full mb-6"" startLineNumber=75
 <Button onClick={handlePerformPasskeyRegister} disabled={isPending} className="font-display w-full mb-6">
   {isPending ? <>...</> : "Register with Passkey"}
 </Button>
@@ -2036,7 +2250,7 @@ Jumping down a little bit, on our `Button` component, let's add a few classes to
 
 Then, right below the button, we can add our legal statement:
 
-```tsx title="src/app/pages/auth/Signup.tsx" startLineNumber=79
+```tsx title="src/app/pages/user/Signup.tsx" startLineNumber=79
 <p>By clicking continue, you agree to our <a href={link('/legal/terms')}>Terms of Service</a> and <a href={link('/legal/privacy')}>Privacy Policy</a>.</p>
 ```
 
@@ -2047,7 +2261,7 @@ See, I told you! Easy peasy. 🍋
 <details>
 <summary>Final code for our `Signup.tsx`</summary>
 
-```tsx title="src/app/pages/auth/Signup.tsx"
+```tsx title="src/app/pages/user/Signup.tsx"
 "use client";
 
 import { useState, useTransition } from "react";
@@ -2104,7 +2318,7 @@ export function SignupPage() {
         </a>
       </div>
 
-      <div className="auth-form max-w-[400px] px-10">
+      <div className="auth-form max-w-[400px] w-full px-10">
         <h1 className="page-title text-center">Create an Account</h1>
         <p className="py-6">Enter a username to setup an account.</p>
 

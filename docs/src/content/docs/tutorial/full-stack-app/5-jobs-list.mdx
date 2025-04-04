@@ -18,41 +18,41 @@ Let's start with the backend code and then make it look good.
 
 But, first, we need a page and a route.
 
-In the `pages` directory, create a new folder called `applications`. Inside, create a file called `ListPage.tsx`.
+In the `src > app > pages` directory, create a new folder called `applications`. Inside, create a file called `List.tsx`.
 
 <FileTree>
 - src/
   - app/
     - pages/
       - applications/
-        - ListPage.tsx
+        - List.tsx
       - auth/
       - Home.tsx
 </FileTree>
 
 We can stub out a basic page, just to make sure it's loading correctly.
 
-```tsx title="src/app/pages/applications/ListPage.tsx"
-const ListPage = () => {
+```tsx title="src/app/pages/applications/List.tsx"
+const List = () => {
   return (
-    <div>ListPage</div>
+    <div>List</div>
   )
 }
 
-export { ListPage }
+export { List }
 ```
 
 Now, within our `worker.tsx` file, we can add a route for our new page.
 
 ```tsx title="src/worker.tsx" showLineNumbers=false
-import { ListPage } from "./app/pages/applications/ListPage";
+import { List } from "./app/pages/applications/List";
 ...
 prefix("/applications", [
-  route("/", ListPage),
+  route("/", List),
 ])
 ---
 - We'll group all of our application routes (List, New, Detail, Update) under the `/applications` prefix.
-- When the user visits `/applications`, they'll see our `ListPage` component.
+- When the user visits `/applications`, they'll see our `List` component.
 ---
 ```
 
@@ -62,24 +62,24 @@ Let's test this out in the browser. Go to `http://localhost:2332/applications` a
 
 Since we've already set up authentication, we can also protect this route.
 
-```tsx
+```tsx startLineNumber=62
 prefix("/applications", [
-  route("/", [({ ctx }) => {
-    if (!ctx.user) {
+  route("/", [({ appContext }) => {
+    if (!appContext.user) {
       return new Response(null, {
         status: 302,
         headers: { Location: "/user/login" },
       });
     }
-  }, ListPage]),
+  }, List]),
 ])
 ```
 
 This would get cumbersome (and annoying) if we have to do this for every.single.route we wanted to protect. Let's abstract this code into a reusable function.
 
-```tsx
-function isAuthenticated({ ctx }: { ctx: Context }) {
-  if (!ctx.user) {
+```tsx startLineNumber=14
+function isAuthenticated({ appContext }: { appContext: AppContext }) {
+  if (!appContext.user) {
     return new Response(null, {
       status: 302,
       headers: { Location: "/user/login" },
@@ -90,25 +90,25 @@ function isAuthenticated({ ctx }: { ctx: Context }) {
 
 Then, we can update our `/applications` route to use `isAuthenticated`:
 
-```tsx
+```tsx startLineNumber=71
 prefix("/applications", [
-  route("/", [isAuthenticated, ListPage]),
+  route("/", [isAuthenticated, List]),
 ])
 ```
 
 Now, we can also update our home page route to use the `isAuthenticated` function, too:
 
-```tsx
+```tsx startLineNumber=59
 index([isAuthenticated, Home]),
 ```
 
 Test it out. 👨‍🍳 Chef's kiss!
 
 <Aside type="tip" title="Using multiple layers of Middleware">
-  You can use multiple layers of middleware, by continuing to write functions and adding them to the array. For example:
+  You can use multiple layers of middleware, by continuing to write functions and adding them to the array. They'll run in the order they're listed. For example:
   ```tsx
   prefix("/applications", [
-    route("/", [isAuthenticated, isAdmin, ListPage]),
+    route("/", [isAuthenticated, isAdmin, List]),
   ])
   ```
 </Aside>
@@ -125,7 +125,7 @@ Inside the `src/scripts` directory, create a new file called `applicationSeed.ts
 Let's stub it out:
 
 ```tsx title="src/scripts/applicationSeed.ts"
-import { defineScript } from "redwoodsdk/worker";
+import { defineScript } from "@redwoodjs/sdk/worker";
 import { db, setupDb } from "../db";
 
 export default defineScript(async ({ env }) => {
@@ -155,10 +155,16 @@ const createApplication = async () => {
     }
   }
 };
+
+await createApplication();
 ---
 - **On line 8,** we're referencing the `application` table. Then, using the Prisma `create` function to add all the data in our database object. You'll notice that these values match the columns we defined in `Prisma.schema` file.
 ---
 ```
+
+You'll probably see a few linting errors.
+
+![](./images/application-seed-linting-error.png)
 
 If you run the script now, you'll hit a few errors because it's also looking for related `user`, `status`, and `company` entries. For the `user` and `status` connections, we already have entries within the database we can reference.
 
@@ -172,14 +178,15 @@ Now, we can connect the entries, by setting `user` to an object with a `connect`
 export default defineScript(async ({ env }) => {
   setupDb(env);
 
-  await db.application.create({
-    data: {
-      user: {
-        connect: {
-          id: "0f9a097c-d7bc-4ab5-8b11-6942163df348",
+  const createApplication = async () => {
+    await db.application.create({
+      data: {
+        user: {
+          connect: {
+            id: "0f9a097c-d7bc-4ab5-8b11-6942163df348",
+          },
         },
-      },
-      ...
+        ...
 ```
 
 We want to do something similar for the `status`. If we look at the `ApplicationStatus` table, you'll notice that an `id` of `1` is associated with a New application.
@@ -188,44 +195,46 @@ We want to do something similar for the `status`. If we look at the `Application
 
 We can connect the application record to the status record, by referencing an object with a `connect` key that contains an object with an `id` of `1`.
 
-```tsx title="src/scripts/applicationSeed.ts" {7-11}
+```tsx title="src/scripts/applicationSeed.ts" {8-12}
 export default defineScript(async ({ env }) => {
   setupDb(env);
 
-  await db.application.create({
-    data: {
-      ...
-      status: {
-        connect: {
-          id: 1,
+  const createApplication = async () => {
+    await db.application.create({
+      data: {
+        ...
+        status: {
+          connect: {
+            id: 1,
+          },
         },
-      },
-      ...
+        ...
 ```
 
 The company field is a little different because we haven't created any company records yet. However, we can create _and_ connect a company record at the same time:
 
-```tsx title="src/scripts/applicationSeed.ts" {7-19}
+```tsx title="src/scripts/applicationSeed.ts" {8-20}
 export default defineScript(async ({ env }) => {
   setupDb(env);
 
-  await db.application.create({
-    data: {
-      ...
-      company: {
-        create: {
-          name: "RedwoodSDK",
-          contacts: {
-            create: {
-              firstName: "John",
-              lastName: "Doe",
-              email: "john.doe@example.com",
-              role: "Hiring Manager",
+  const createApplication = async () => {
+    await db.application.create({
+      data: {
+        ...
+        company: {
+          create: {
+            name: "RedwoodSDK",
+            contacts: {
+              create: {
+                firstName: "John",
+                lastName: "Doe",
+                email: "john.doe@example.com",
+                role: "Hiring Manager",
+              },
             },
           },
         },
-      },
-      ...
+        ...
 ```
 
 This time instead of using an object with a `connect` key, we'll use a `create` key inside. Then, we can list an object with all the company's data.
@@ -233,43 +242,50 @@ This time instead of using an object with a `connect` key, we'll use a `create` 
 <details>
 <summary>Complete applicationSeed.ts file</summary>
 
-```tsx title="src/scripts/applicationSeed.ts" {6-10}
+```tsx title="src/scripts/applicationSeed.ts"
+import { defineScript } from "@redwoodjs/sdk/worker";
+import { db, setupDb } from "../db";
+
 export default defineScript(async ({ env }) => {
   setupDb(env);
 
-  await db.application.create({
-    data: {
-      user: {
-        connect: {
-          id: "0f9a097c-d7bc-4ab5-8b11-6942163df348",
+  const createApplication = async () => {
+    await db.application.create({
+      data: {
+        user: {
+          connect: {
+            id: "b7dbaf18-07a4-4af0-b5b7-918e5c77a2b5",
+          },
         },
-      },
-      status: {
-        connect: {
-          id: 1,
+        status: {
+          connect: {
+            id: 1,
+          },
         },
-      },
-      salaryMin: "100000",
-      salaryMax: "120000",
-      jobTitle: "Software Engineer",
-      jobDescription: "Software Engineer",
-      postingUrl: "https://redwoodjs.com",
-      dateApplied: new Date(),
-      company: {
-        create: {
-          name: "RedwoodSDK",
-          contacts: {
-            create: {
-              firstName: "John",
-              lastName: "Doe",
-              email: "john.doe@example.com",
-              role: "Hiring Manager",
+        salaryMin: "100000",
+        salaryMax: "120000",
+        jobTitle: "Software Engineer",
+        jobDescription: "Software Engineer",
+        postingUrl: "https://redwoodjs.com",
+        dateApplied: new Date(),
+        company: {
+          create: {
+            name: "RedwoodSDK",
+            contacts: {
+              create: {
+                firstName: "John",
+                lastName: "Doe",
+                email: "john.doe@example.com",
+                role: "Hiring Manager",
+              },
             },
           },
         },
-      },
-    },
-  });
+      }
+    });
+  };
+
+  await createApplication();
 
   console.log("🌱 Finished seeding");
 });
@@ -299,7 +315,7 @@ pnpm worker:run ./src/scripts/applicationSeed.ts
 
 If this feels hard to remember, you can create a script in your `package.json` file. Inside the `scripts` block:
 
-```json title="package.json" {16}
+```json title="package.json" {16} collapse={3-14}
 ...
   "scripts": {
     "build": "vite build",
@@ -329,63 +345,28 @@ pnpm seed:applications
 
 😅 Much more straight forward!
 
-When you're creating custom seed files, this does take more time on the frontend to set up. _But,_ it makes it much easier in the long run.
+When you're creating custom seed files, this does take more time on the frontend to set up. _But,_ it makes it much easier in the long run. Now, anytime you need a fresh set of data, you can run the seed file.
 
 ### Option 2: Prisma Studio
 
-Another option is to use Prisma Studio. This option is easier, but requires manual entry and can take more time in the long run.
+Another option is to use Prisma Studio. This option is easier, but requires manual entry and can take more time in the long run. ([We already set up Prisma Studio, here.](http://localhost:4321/tutorial/full-stack-app/database-setup#prisma-studio-recommended))
 
-Prisma Studio ships with Prisma, so there's nothing extra to install.
-
-Let's start by opening the `schema.prisma` file.
-
-```tsx title="src/schema.prisma" {3}
-datasource db {
-  provider = "sqlite"
-  url      = env("DATABASE_URL")
-}
-```
-
-You'll notice the `url` is referencing the `DATABASE_URL` environment variable.
-
-We need this to set this up in the `.env` file so Prisma Studio can connect to the database.
-
-First, let's go to our `d1` database. This is inside the `.wrangler/state/v3/d1/miniflare-D1DatabaseObject` directory.
-
-![](./images/local-wrangler-d1-database.png)
-
-Right click on the sqlite file and click `Copy Path`.
-
-Inside your `.env` file, create a `DATABASE_URL` variable and paste in the database path:
-
-![](./images/database-url-full-url.png)
-
-Right now, the database url uses the absolute path, we need to make this path relative. Remove everything in front of `.wrangler` and replace it with `../`. We also need to specify that this is a `file`:
-
-```
-DATABASE_URL="file:../.wrangler/state/v3/d1/miniflare-D1DatabaseObject/84daca3a95ca09403c82fcd535a8a092abf9029357d742c62ecaab59bcc13d30.sqlite"
-```
-
-Now, within the Terminal, run:
-
-```Terminal
+```shell
 npx prisma studio
 ```
 
-This will open a new tab in your default browser at `http://localhost:5555`.
+Prisma Studio should now be available at `http://localhost:5555`. From here, you can create, read, update, and delete records.
 
-![](./images/prisma-studio.png)
-
-From here, you can create, read, update, and delete records.
+## Displaying the Job Application Data
 
 Once you've added some data, let's go back to our application and display the data on the page.
 
-On the Applications list page, let's `import` the `db` at the top of the file. Then, inside the `ListPage` function, let's use the `findMany` function to get all the applications:
+On the Applications list page, let's `import` the `db` at the top of the file. Then, inside the `List` function, let's use the `findMany` function to get all the applications:
 
-```tsx title="src/app/pages/applications/ListPage.tsx"
+```tsx title="src/app/pages/applications/List.tsx" "async" {4, 8}
 import { db } from "src/db";
 
-const ListPage = async () => {
+const List = async () => {
   const applications = await db.application.findMany();
 
   return (
@@ -395,7 +376,10 @@ const ListPage = async () => {
   )
 }
 
-export { ListPage }
+export { List }
+---
+Notice, we also made our `List` function an `async` function. We need to `await` the database call before rendering the page.
+---
 ```
 
 <Aside type="note" title="Using `db`">
@@ -413,9 +397,13 @@ All the data from the database is returned as an array and saved in a variable c
 [For reference: JSON.Stringify on MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify)
 </Aside>
 
-![]()
+![](./images/applications-list-json.png)
 
 Easy, right?! Since we're using React Server Components, this code runs on the server. We're able to make database calls directly from the page and don't need to worry about creating API routes. 🎉
+
+Also, if you look right click on the page and select **View Source**, you'll see that the data is being rendered directly on the page.
+
+![](./images/applications-list-view-source.png)
 
 Now that we know the content from our database is getting on the page, let's style it.
 
@@ -435,9 +423,9 @@ Inside our `layouts` folder, let's create a new file called `InteriorLayout.tsx`
       - InteriorLayout.tsx
 </FileTree>
 
-Inside, we need should use some of the same the same styles that we used within our `AuthLayout.tsx` file.
+Inside, we need should use some of the same the same styles that we used within our `AuthLayout.tsx` file. As a quick reminder, let's take a look at the `AuthLayout.tsx` file:
 
-```tsx title="src/app/layouts/AuthLayout.tsx" {3-4}
+```tsx title="src/app/layouts/AuthLayout.tsx"
 const AuthLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="bg-bg min-h-screen min-w-screen p-12">
@@ -453,15 +441,15 @@ We don't need to set up a grid, but we can abstract the styles and reuse them wi
 
 From the `AuthLayout.tsx` file, I'm going to copy the `bg-bg min-h-screen min-w-screen p-12` styles and create a class inside our `styles.css` file, inside the `@layer components` block:
 
-```css title="src/styles.css" startLineNumber=164
+```css title="src/styles.css" startLineNumber=167
 .page-wrapper {
   @apply bg-bg min-h-screen min-w-screen p-12;
 }
 ```
 
-Then, let's do something similar with the child `div` from our `AuthLayout.tsx`. We don't need to the `grid`, but we can grab everything else: `min-h-[calc(100vh-96px)] rounded-xl border-2 border-[#D6D5C5]`
+Then, let's do something similar with the child `div` from our `AuthLayout.tsx`. We don't need the `grid`, but we can grab everything else: `min-h-[calc(100vh-96px)] rounded-xl border-2 border-[#D6D5C5]`
 
-```css title="src/styles.css" startLineNumber=168
+```css title="src/styles.css" startLineNumber=171
 .page {
   @apply min-h-[calc(100vh-96px)] rounded-xl border-2 border-[#D6D5C5];
 }
@@ -470,7 +458,7 @@ Then, let's do something similar with the child `div` from our `AuthLayout.tsx`.
 <details>
 <summary>`@layer components` section of styles.css</summary>
 
-```css title="src/styles.css" startLineNumber=163
+```css title="src/styles.css" startLineNumber=166
 @layer components {
   .page-wrapper {
       @apply bg-bg min-h-screen min-w-screen p-12;
@@ -486,6 +474,22 @@ Then, let's do something similar with the child `div` from our `AuthLayout.tsx`.
 }
 ```
 </details>
+
+Let's also add our route to our `links.ts` file for type hinting:
+
+```tsx title="src/app/shared/links.ts" collapse={4-9}
+import { defineLinks } from "@redwoodjs/sdk/router";
+
+export const link = defineLinks([
+  "/",
+  "/user/login",
+  "/user/signup",
+  "/user/logout",
+  "/legal/privacy",
+  "/legal/terms",
+  "/applications",
+]);
+```
 
 Now, let's update the class list within our `AuthLayout.tsx` file:
 
@@ -518,9 +522,9 @@ You'll also notice I added a background of white with `bg-white`
 ---
 ```
 
-To see how this looks, we need to add this to our `ListPage.tsx`:
+To see how this looks, we need to add this to our `List.tsx`:
 
-```tsx title="src/app/pages/applications/ListPage.tsx" startLineNumber=13
+```tsx title="src/app/pages/applications/List.tsx" startLineNumber=13
 return (
   <InteriorLayout>
     <pre>{JSON.stringify(applications, null, 2)}</pre>
@@ -583,21 +587,28 @@ import { link } from '@/app/shared/links'
 
 Now, let's add the navigation. For now this is only one link that goes to the dashboard page.
 
-```tsx title="src/app/components/Header.tsx" startLineNumber=12
-<nav>
-  <ul>
-    <li><a href={link("/applications")}>Dashboard</a></li>
-  </ul>
-</nav>
+```tsx title="src/app/components/Header.tsx" collapse={3-6} {7-11}
+{/* left side */}
+<div>
+  <a href={link("/")}>
+    <img src="/images/logo.svg" alt="Apply Wize" />
+    <span>Apply Wize</span>
+  </a>
+  <nav>
+    <ul>
+      <li><a href={link("/applications")}>Dashboard</a></li>
+    </ul>
+  </nav>
+</div>
 ```
 
 For the right side, we want another unordered list and the Avatar component:
 
-```tsx title="src/app/components/Header.tsx" startLineNumber=15
+```tsx title="src/app/components/Header.tsx" startLineNumber=19
 {/* right side */}
 <nav>
   <ul className="flex items-center gap-7">
-    <li><a href={link("/user/settings")}>Settings</a></li>
+    <li><a href="#">Settings</a></li>
     <li><a href={link("/user/logout")}>Logout</a></li>
     <li>
       <Avatar>
@@ -612,7 +623,7 @@ For the right side, we want another unordered list and the Avatar component:
 - Inside, I've included links for the settings and logout pages.
 - For the `Avatar` component, you'll need to import it at the top of your file. This is a ShadCN component, so it should already be part of your project.
 
-```tsx
+```tsx showLineNumbers=false
 import { Avatar, AvatarFallback } from '@/app/components/ui/avatar'
 ```
 
@@ -620,7 +631,7 @@ import { Avatar, AvatarFallback } from '@/app/components/ui/avatar'
 
 Normally, when you're using the `Avatar` component, you'll also want to use the `AvatarImage` component. This is where you define the Avatar image:
 
-```tsx title="src/app/components/Header.tsx" startLineNumber=25
+```tsx title="src/app/components/Header.tsx" showLineNumbers=false "AvatarImage" {8}
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
 
 ...
@@ -633,7 +644,25 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
 </li>
 ```
 
-If you want to go this route, you can download the [`avatar.png` placeholder image](). However, we're not going to cover file uploads and storage in this tutorial. So, we'll use the `AvatarFallback` component to display the first character of the username.
+If you want to go this route, you can download the [`avatar.png` placeholder image]() and hard code the image source. However, we're not going to cover file uploads and storage in this tutorial. So, we'll use the `AvatarFallback` component to display the first character of the username.
+
+The ShadCN Avatar component uses client side interactivity. So, you'll need to add the `use client` directive to the top of the `Avatar.tsx` file:
+
+```tsx title="src/app/components/ui/avatar.tsx" startLineNumber=1 ""use client""
+"use client"
+
+import * as React from "react"
+import * as AvatarPrimitive from "@radix-ui/react-avatar"
+
+import { cn } from "@/app/lib/utils"
+
+function Avatar({
+  ...
+```
+
+If you forget to add the `use client` directive, you'll see a "null reading `useState`" error in the browser:
+
+![](./images/null-reading-use-state.png)
 
 Now that we have all the elements, let's add some styling:
 
@@ -651,25 +680,34 @@ Now that we have all the elements, let's add some styling:
 
 We set the left and right padding to `40px` with `px-10`. We'll use this throughout our entire application. In order to maintain consistency, let's define it as a custom utility. This will make it easy to reference (and change, if necessary).
 
-```css title="src/styles.css" startLineNumber=147
+```css title="src/styles.css" startLineNumber=148
 --spacing-page-side: 40px;
 ---
 Inside the `@theme` block, below our color definitions, we'll add a new variable called `--spacing-page-side` and set it to `40px`. Now, we can use this variable with margin or padding: `mx-page-side` or `px-page-side` respectively.
 ---
 ```
 
-Now, we can update our `header` element to use the new utility:
+Now, we can update our `header` element to use the new utility, replacing `px-10` with `px-page-side`:
 
-```tsx title="src/app/layouts/Header.tsx" startLineNumber=6
+```tsx title="src/app/layouts/Header.tsx" startLineNumber=6 "px-page-side"
 <header className="py-5 px-page-side h-20 flex justify-between items-center border-b-1 border-border mb-12">
 ```
 
 On the left side `div`, we want the logo and the Dashboard link to align vertically:
 
-```tsx title="src/app/layouts/Header.tsx" startLineNumber=8
+```tsx title="src/app/layouts/Header.tsx" startLineNumber=8 collapse={3-11} "flex items-center gap-8"
 {/* left side */}
 <div className="flex items-center gap-8">
-  ...
+  <a href={link("/")}>
+    <img src="/images/logo.svg" alt="Apply Wize" />
+    <span>Apply Wize</span>
+  </a>
+  <nav>
+    <ul>
+      <li><a href={link("/applications")}>Dashboard</a></li>
+    </ul>
+  </nav>
+</div>
 ---
 - We're using `flex` and `items-center` to align the items vertically.
 - `gap-8` adds `32px` of space between the logo and the Dashboard link.
@@ -678,7 +716,7 @@ On the left side `div`, we want the logo and the Dashboard link to align vertica
 
 On the home page link, we want the logo and the "Apply Wize" text to align vertically too:
 
-```tsx
+```tsx title="src/app/components/Header.tsx" startLineNumber=9 "flex items-center gap-3 font-display font-bold text-3xl"
 <a href={link("/")} className="flex items-center gap-3 font-display font-bold text-3xl">
 ---
 - `flex`, `items-center`, and `gap-3` aligns the logo and text and puts `12px` of space between them.
@@ -693,7 +731,7 @@ If you look at the logo, it overlaps with the bottom border of the header.
 
 In order to achieve this, we also need to add some styles to the `img` tag:
 
-```tsx title="src/app/components/Header.tsx" startLineNumber=10
+```tsx title="src/app/components/Header.tsx" startLineNumber=10 "className="pt-5 -mb-3""
 <img src="/images/logo.svg" alt="Apply Wize" className="pt-5 -mb-3" />
 ---
 - `pt-5` adds `20px` of padding to the top.
@@ -703,7 +741,7 @@ In order to achieve this, we also need to add some styles to the `img` tag:
 
 For the right side `ul`, we need to add a few styles to position the links properly:
 
-```tsx title="src/app/components/Header.tsx" startLineNumber=20 {22}
+```tsx title="src/app/components/Header.tsx" startLineNumber=20 "className="flex items-center gap-7"
 {/* right side */}
 <nav>
   <ul className="flex items-center gap-7">
@@ -716,7 +754,7 @@ For the right side `ul`, we need to add a few styles to position the links prope
 
 To style our nav links, I want these styles to apply to both the left and the right side. So, let's stick these inside the `styles.css` file, inside the `@layer base` block:
 
-```css title="src/styles.css" startLineNumber=159
+```css title="src/styles.css" startLineNumber=162
 nav {
   @apply font-display font-medium text-sm;
 }
@@ -769,7 +807,7 @@ export { Header }
 
 Now, let's stick our `Header` component into our `InteriorLayout.tsx` file:
 
-```tsx title="src/app/layouts/InteriorLayout.tsx"
+```tsx title="src/app/layouts/InteriorLayout.tsx" {1, 7}
 import { Header } from "@/app/components/Header";
 
 const InteriorLayout = ({ children }: { children: React.ReactNode}) => {
@@ -794,9 +832,8 @@ Moving on.
 
 At the top of our file, let's add a page heading and a button/link to add a new application:
 
-```tsx title="src/app/pages/applications/ListPage.tsx" showLineNumbers=false
+```tsx title="src/app/pages/applications/List.tsx" showLineNumbers=false
 import { Button } from "@/app/components/ui/button";
-import { link } from "@/app/shared/links";
 ...
 return (
   <InteriorLayout>
@@ -804,7 +841,7 @@ return (
       <div>
         <h1>All Applications</h1>
         <div>
-          <Button asChild><a href={link("/applications/new")}>New Application</a></Button>
+          <Button asChild><a href="#">New Application</a></Button>
         </div>
       </div>
       <pre>{JSON.stringify(applications, null, 2)}</pre>
@@ -812,10 +849,11 @@ return (
   </InteriorLayout>
 )
 ```
+
 - `InteriorLayout` can only have one react node, so we need to wrap everything with a React fragment (`<>`)
 - Above our application content, I added a wrapping `div` with a `h1` heading for "All Applications".
 - Then, I have another `div` that wraps a `<Button>` component. Inside, I have a link that points to the new application page. The `Button` component is coming from ShadCN. It should already be part of your project, but you'll need to import it at the top of your file.
-- Since we're not triggering an event, we're _linking_ to another page, we have an `a` tag referencing the `applications/new` route via the `link` helper.
+- Since we're not triggering an event, we're _linking_ to another page, we have an `a` tag. Eventually, this will reference the `applications/new` route, but since we haven't set that up yet, I used a placeholder `#` instead.
 
 <Aside type="tip" title="ShadCN Button">
   Admittedly, it does look a little strange having an `a` tag inside a `Button` component. This is functionality provided by ShadCN, when you have an element that looks like a button, but should be a link.
@@ -825,8 +863,7 @@ return (
 
 Now, let's add some styling:
 
-```
-```
+👉 ADD SOME STYLING CODE HERE
 
 ### Styling the Applications Table
 

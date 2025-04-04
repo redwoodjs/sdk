@@ -10,7 +10,7 @@ import { FileTree, Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/compon
 
 ## Project Generation and Structure
 
-The first thing we'll do is setup our project.
+The first thing we'll do is set up our project.
 
 <Tabs>
   <TabItem label="pnpm">
@@ -50,20 +50,23 @@ The commands you just ran created a directory called `applywize` with the Redwoo
 Inside, the `applywize` directory, you should have the following files and folders:
 
 <FileTree>
-- README.md
+- .env.example
+- .gitignore
+- .prettierrc
 - migrations # database migrations
   - 0001_init.sql
 - package.json
 - pnpm-lock.yaml
 - prisma # database schema
   - schema.prisma
+- README.md
 - src
   - app
     - Document.tsx # Main HTML document
     - headers.ts # Sets up page headers
     - pages
       - Home.tsx # Home page
-      - auth
+      - user
         - functions.ts # authentication functions
         - Login.tsx # Login page
         - routes.ts # authentication routes
@@ -71,6 +74,8 @@ Inside, the `applywize` directory, you should have the following files and folde
         - links.ts # list of links
   - client.tsx
   - db.ts # database client
+  - scripts
+    - seed.ts # seed the database
   - session # sets up sessions for authentication
   - worker.tsx # Cloudflare worker
 - tsconfig.json
@@ -112,6 +117,13 @@ Copy the database ID provided and paste it into your project's `wrangler.jsonc` 
 While we're in our `wrangler.jsonc` file, let's also update our worker name:
 ```jsonc title="wrangler.jsonc" startLineNumber={6}
 "name": "applywize",
+```
+
+and the `APP_name`:
+```jsonc title="wrangler.jsonc" startLineNumber={36}
+"vars": {
+  "APP_NAME": "applywize"
+},
 ```
 
 ### Generating Secret Keys
@@ -167,7 +179,6 @@ Next, let's set up Cloudflare Turnstile for bot protection.
     When prompted, enter your Turnstile Secret Key.
 6. Our starter kit already has a couple of tables set up, to support the authentication process. This will set up Prisma and `migrate:dev` will create a `.wrangler` file within our project and setup the Cloudflare d1 database locally. (More on Prisma, migrations, and databases later.)
     ```shell
-    npx prisma generate
     pnpm migrate:dev
     ```
 </Steps>
@@ -246,8 +257,8 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
     ![](./images/passkey-starter-tailwind-working.png)
 </Steps>
 
-You can test this even further by going to the `src/app/pages/auth/Login.tsx` file and adding an `h1` at the top of the return statement:
-```tsx title="src/app/pages/auth/Login.tsx" collapse={4-17} {3}
+You can test this even further by going to the `src/app/pages/user/Login.tsx` file and adding an `h1` at the top of the return statement:
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber={63} collapse={4-17} {3}
 return (
   <>
     <h1 className="text-4xl font-bold text-red-500">YOLO</h1>
@@ -358,7 +369,10 @@ We're using three different groups of colors:
 
 Now, we can use these colors for backgrounds (`bg-bg`), borders (`border-border`), and text (`text-destructive`).
 
-Your `styles.css` file should look like this:
+<details>
+<summary>
+Full `styles.css` file
+</summary>
 
 ```css title="src/app/styles.css"
 @import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;700&display=swap');
@@ -384,10 +398,11 @@ Your `styles.css` file should look like this:
   --color-tag-offer: #aae198;
 }
 ```
+</details>
 
-Let's test to make sure this is working. On the `Login.tsx` file, let's change the React fragment `<></>` to a `<main>` tag and add a `className` of `bg-bg`:
+Let's test to make sure our custom colors are working. On the `Login.tsx` file, let's change the React fragment `<></>` to a `<main>` tag and add a `className` of `bg-bg`:
 
-```tsx title="src/app/pages/auth/Login.tsx" collapse={4-18} startLineNumber={62} {3,19}
+```tsx title="src/app/pages/user/Login.tsx" collapse={4-18} startLineNumber={62} {3,19}
 ...
   return (
     <main className="bg-bg">
@@ -411,7 +426,7 @@ Let's test to make sure this is working. On the `Login.tsx` file, let's change t
 }
 ```
 
-When you visit https://localhost:4321/user/login, you should see a beige background color:
+When you visit https://localhost:5173/user/login, you should see a beige background color:
 
 ![](./images/testing-custom-tailwind-colors.png)
 
@@ -522,7 +537,7 @@ Even though we specified the `lib` directory in the `components.json` file, the 
 
 We also need the date picker component, but it can't be installed using the `pnpm dlx shadcn@latest add` command.
 
-Instead, we'll need to install it manually. It's built using the `<Popover />` and `<Calendar />` components and we just installed those!
+Instead, we'll need to install it manually. It's built using the `<Popover />` and `<Calendar />` components and we just installed those.
 
 Within the `src/app/components/ui` folder, create a new file called `datepicker.tsx`.
 
@@ -530,6 +545,10 @@ Within the `src/app/components/ui` folder, create a new file called `datepicker.
   Normally, I like to capitalize and camel case my component file names (`DatePicker.tsx`), but since this code is coming from ShadCN, I'll use their naming convention and put and put it in the `components/ui` folder.
 
   Any custom components we make, will live in the `components` directory and be named like `CustomComponent.tsx`.
+
+  Any ShadCN components will live in the `components/ui` folder.
+
+  Even though, we're creating the `datepicker.tsx` file manually, it's still a ShadCN component, so it will still live in the `components/ui` folder.
 </Aside>
 
 Add the following code to the `datepicker.tsx` file:
@@ -541,7 +560,7 @@ import * as React from "react"
 import { format } from "date-fns"
 import { Calendar as CalendarIcon } from "lucide-react"
 
-import { cn } from "@/lib/utils"
+import { cn } from "@/app/lib/utils"
 import { Button } from "@/app/components/ui/button"
 import { Calendar } from "@/app/components/ui/calendar"
 import {
@@ -550,7 +569,7 @@ import {
   PopoverTrigger,
 } from "@/app/components/ui/popover"
 
-export function DatePickerDemo() {
+export function DatePicker() {
   const [date, setDate] = React.useState<Date>()
 
   return (
@@ -602,7 +621,7 @@ export function DatePickerDemo() {
 + } from "@/app/components/ui/popover"
 ```
 
-If you want to make sure everything is installed correctly, head over to the `src/app/pages/auth/Login.tsx` file and let's use our `Button` component.
+If you want to make sure everything is installed correctly, head over to the `src/app/pages/user/Login.tsx` file and let's use our `Button` component.
 
 Change the `<button>` tag to use a capital `B`. This will reference the `Button` component, instead of the standard HTML button. You'll also need to import the `Button` component at the top of the file.
 
