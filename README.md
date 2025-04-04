@@ -1,12 +1,9 @@
 # RedwoodSDK
 
-RedwoodSDK is a framework built on top of [Cloudflare's Platform](https://developers.cloudflare.com/), Request/ Response cycle and React Server Components.
+RedwoodSDK is a composable toolkit for building server-driven webapps on Cloudflare. It starts as a _Vite plugin_ that unlocks _SSR_, _React Server Components_, _Server Functions_, and _realtime_. Its standards-based router—with middleware and interruptors—gives you precise control over every request and response. With built-in access to Cloudflare’s Workers, Database (D1), Storage (R2), Queues, and AI—and full local emulation via Miniflare—development feels just like production.
 
-- _Cloudflare's platform_ supplies compute (Workers/ Durable Objects), storage (R2), database (D1), and queues. Everything developers need to effectively build software for the web.
-- _React Server components_ enable modern server-side rendering with React.
-- _Request/ Response cycle_ provides a meaningful standard way to handle web interactions.
-
-Note: This project is not officially released, but we're very near to be beta.
+→ [Quick start](https://docs.rwsdk.com/getting-started/quick-start/)
+→ [Documentation](https://docs.rwsdk.com/)
 
 ## Getting Started
 
@@ -14,23 +11,9 @@ Note: This project is not officially released, but we're very near to be beta.
 pnpm install
 ```
 
-## Running the Docs Locally
+## Running documentation locally
 
 ```terminal
 cd docs
 pnpm dev
 ```
-
-## Running one of the Experiments locally
-
-Each [experiment](./experiments/) should have it's own README with instructions
-
-## Building a Project locally
-
-We have starter specific instructions
-
-- [Minimal](./starters/minimal/README.md) for smaller projects, no db required
-- [Prisma](./starters/prisma/README.md) for projects that use Prisma as an ORM, integrates with Cloudflare d1
-- [Drizzle](./starters/drizzle/README.md) for projects that use Drizzle as an ORM, integrates with Cloudflare d1
-- [Sessions](./starters/sessions/README.md) for projects that need session management
-- [Passkey Auth](./starters/passkey-auth/README.md) for projects that want password-less authentication using WebAuthn
