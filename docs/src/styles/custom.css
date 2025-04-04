@@ -13,7 +13,7 @@ li details ul li details summary {
 
 /* This is the caption that explains the code block, defined when you add "---" to the end of the code block.
 
-Example: 
+Example:
 ---
 This code sample does the following...
 ---
@@ -29,4 +29,9 @@ figcaption:not(.header) {
 
 .output {
   background-color: var(--ec-caption-bg) !important;
+}
+
+:root {
+  --sl-color-banner-bg: #ffae49;
+  --sl-color-banner-text: #000;
 }
