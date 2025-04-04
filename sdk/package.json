@@ -1,7 +1,7 @@
 {
   "name": "@redwoodjs/sdk",
   "version": "0.0.51",
-  "description": "A full-stack webapp toolkit designed for TypeScript, Vite, and React Server Components",
+  "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime",
   "type": "module",
   "bin": {
     "rw-scripts": "./bin/rw-scripts.mjs"

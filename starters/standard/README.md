@@ -1,6 +1,12 @@
 # Standard RedwoodSDK Starter
 
-This starter provides a comprehensive RedwoodSDK-based implementation that includes passkey authentication using WebAuthn, session management, database integration with Prisma, and file storage with Cloudflare R2. It serves as a fully integrated starting point for Redwood apps, consolidating various essential features into one package.
+This "standard starter" is the recommended implementation for RedwoodSDK. You get a Typescript project with:
+
+- Vite
+- database (Prisma via D1)
+- Session Management (via DurableObjects)
+- Passkey authentication (Webauthn)
+- Storage (via R2)
 
 ## Creating your project
 

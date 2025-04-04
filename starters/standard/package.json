@@ -1,7 +1,7 @@
 {
   "name": "@redwoodjs/starter-standard",
   "version": "1.0.0",
-  "description": "The recommended RedwoodSDK starter — batteries included with auth and DB",
+  "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime. ",
   "main": "index.js",
   "type": "module",
   "keywords": [],
