@@ -34,4 +34,5 @@ figcaption:not(.header) {
 :root {
   --sl-color-banner-bg: #ffae49;
   --sl-color-banner-text: #000;
+  font-size: 12px;
 }
