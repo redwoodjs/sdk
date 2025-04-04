@@ -1,4 +1,4 @@
-# RedwoodSDK Documentation
+# RedwoodSDK Docs
 
 ## Usage
 
@@ -7,7 +7,7 @@ pnpm install
 pnpm dev
 ```
 
-## Rules guide
+## Style guide
 
 These are simple guidelines that help us keep the documentation consistent.
 
