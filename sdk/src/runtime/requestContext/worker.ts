@@ -5,9 +5,9 @@ const requestContextStore = new AsyncLocalStorage<Record<string, any>>();
 
 const requestContextBase = {};
 
-const contextKeys = ["userId", "requestId", "tenantId"];
+const CONTEXT_KEYS = ["request", "params", "data", "headers", "rw", "cf"];
 
-contextKeys.forEach((key) => {
+CONTEXT_KEYS.forEach((key) => {
   Object.defineProperty(requestContextBase, key, {
     enumerable: true,
     configurable: false,
@@ -28,11 +28,10 @@ export function runWithRequestContext<T>(
 }
 
 export type RequestContext<Data = Record<string, any>, TParams = any> = {
-  cf: ExecutionContext;
   request: Request;
   params: TParams;
-  env: Env;
   data: Data;
   headers: Headers;
   rw: RwContext<Data>;
+  cf: ExecutionContext;
 };

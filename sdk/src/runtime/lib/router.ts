@@ -2,25 +2,50 @@ import { isValidElementType } from "react-is";
 import { ExecutionContext } from "@cloudflare/workers-types";
 import { RequestContext } from "../requestContext/worker";
 
+/** @deprecated Use `requestContext` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
 export type HandlerOptions<TAppContext = Record<string, any>> = {
+  /** @deprecated Use `requestContext.request` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
   request: Request;
+  /** @deprecated Use `requestContext.env` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
   env: Env;
+  /** @deprecated Use `requestContext.cf` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
   cf: ExecutionContext;
+  /** @deprecated Use `requestContext.appContext` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
   appContext: TAppContext;
+  /** @deprecated Use `requestContext.headers` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
   headers: Headers;
+  /** @deprecated Use `requestContext.rw` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
   rw: RwContext<TAppContext>;
 };
 
-export type RouteOptions<
-  Data = Record<string, any>,
-  TParams = any,
-> = RequestContext<Data, TParams>;
+/** @deprecated Use `requestContext` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
+export type RouteOptions<TAppContext = Record<string, any>, TParams = any> = {
+  /** @deprecated Use `requestContext.cf` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
+  cf: ExecutionContext;
+  /** @deprecated Use `requestContext.request` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
+  request: Request;
+  /** @deprecated Use `requestContext.params` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
+  params: TParams;
+  /** @deprecated Use `env` from `cloudflare:workers` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
+  env: Env;
+  /** @deprecated Use `requestContext.data` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
+  appContext: TAppContext;
+  /** @deprecated Use `requestContext.headers` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
+  headers: Headers;
+  /** @deprecated Use `requestContext.rw` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
+  rw: RwContext<TAppContext>;
+};
 
+/** @deprecated Use `requestContext` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
 export type PageProps<TAppContext> = Omit<
   RouteOptions<TAppContext>,
   "request" | "headers" | "rw" | "cf"
-> & { rw: { nonce: string } };
+> & {
+  /** @deprecated Use `requestContext.rw.nonce` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
+  rw: { nonce: string };
+};
 
+/** @deprecated Use `requestContext` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
 export type DocumentProps<TAppContext> = PageProps<TAppContext> & {
   children: React.ReactNode;
 };
