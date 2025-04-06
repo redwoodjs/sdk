@@ -20,11 +20,36 @@ CONTEXT_KEYS.forEach((key) => {
 
 export const requestContext = Object.freeze(requestContextBase);
 
-export function runWithRequestContext<T>(
+export function getRequestContext<
+  Data = Record<string, any>,
+  TParams = any,
+>(): RequestContext<Data, TParams> {
+  const store = requestContextStore.getStore();
+  if (!store) {
+    throw new Error("Request context not found");
+  }
+  return store as RequestContext<Data, TParams>;
+}
+
+export function runWithRequestContext<Result>(
   context: Record<string, any>,
-  fn: () => T,
-): T {
+  fn: () => Result,
+): Result {
   return requestContextStore.run(context, fn);
+}
+
+export function runWithRequestContextOverrides<Result>(
+  overrides: Record<string, any>,
+  fn: () => Result,
+): Result {
+  const context = requestContextStore.getStore();
+
+  const newContext = {
+    ...context,
+    ...overrides,
+  };
+
+  return requestContextStore.run(newContext, fn);
 }
 
 export type RequestContext<Data = Record<string, any>, TParams = any> = {

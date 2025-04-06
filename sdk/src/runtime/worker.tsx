@@ -5,6 +5,12 @@ import { renderToRscStream } from "./render/renderToRscStream";
 import { ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import { ErrorResponse } from "./error";
+import {
+  RequestContext,
+  getRequestContext,
+  requestContext,
+  runWithRequestContext,
+} from "./requestContext/worker";
 
 import {
   Route,
@@ -24,7 +30,7 @@ declare global {
   };
 }
 
-export const defineApp = <AppContext,>(routes: Route<AppContext>[]) => {
+export const defineApp = <Data,>(routes: Route<Data>[]) => {
   return {
     fetch: async (request: Request, env: Env, cf: ExecutionContext) => {
       globalThis.__webpack_require__ = ssrWebpackRequire;
@@ -53,24 +59,41 @@ export const defineApp = <AppContext,>(routes: Route<AppContext>[]) => {
         const url = new URL(request.url);
         const isRSCRequest = url.searchParams.has("__rsc");
 
-        const handleAction = async (
-          opts: RouteOptions<AppContext, Record<string, string>>,
-        ) => {
-          const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
-
-          if (isRSCActionHandler) {
-            return await rscActionHandler(request, opts); // maybe we should include params and appContext in the action handler?
-          }
+        const rw = {
+          Document: DefaultDocument,
+          nonce: generateNonce(),
         };
 
-        const renderPage = async ({
-          Page,
-          props: fullPageProps,
-          actionResult,
-          Document,
-        }: RenderPageParams<AppContext>) => {
-          let props = fullPageProps;
-          let documentProps = fullPageProps;
+        const outerRequestContext: RequestContext<Data> = {
+          request,
+          headers: request.headers,
+          cf,
+          params: {},
+          data: {} as Data,
+          rw,
+        };
+
+        const computeDeprecatedPageProps = (Page: React.FC) => {
+          const requestContext = getRequestContext();
+
+          const routeOptions = {
+            cf,
+            request,
+            env,
+            appContext: requestContext.data,
+            headers: requestContext.headers,
+            params: requestContext.params,
+            rw,
+          };
+
+          let props;
+          let fullPageProps = routeOptions;
+
+          let documentProps: any = {
+            appContext: routeOptions.appContext,
+            params: routeOptions.params,
+            rw: routeOptions.rw,
+          };
 
           // context(justinvdm, 25 Feb 2025): If the page is a client reference, we need to avoid passing
           // down props the client shouldn't get (e.g. env). For safety, we pick the allowed props explicitly.
@@ -78,7 +101,7 @@ export const defineApp = <AppContext,>(routes: Route<AppContext>[]) => {
             Object.prototype.hasOwnProperty.call(Page, "$$isClientReference")
           ) {
             const { appContext, params } = fullPageProps;
-            props = { appContext, params } as PageProps<AppContext>;
+            props = { appContext, params } as PageProps<Data>;
           }
 
           if (
@@ -88,13 +111,26 @@ export const defineApp = <AppContext,>(routes: Route<AppContext>[]) => {
             )
           ) {
             const { appContext, params } = fullPageProps;
-            documentProps = { appContext, params } as DocumentProps<AppContext>;
+            documentProps = { appContext, params };
           }
 
-          const nonce = fullPageProps.rw.nonce;
+          return { routeOptions, props, documentProps };
+        };
+
+        const renderPage = async (Page: React.FC<any>) => {
+          let actionResult: unknown = undefined;
+          const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
+          const deprecatedPageProps = computeDeprecatedPageProps(Page);
+
+          if (isRSCActionHandler) {
+            actionResult = await rscActionHandler(
+              request,
+              deprecatedPageProps.routeOptions,
+            );
+          }
 
           const rscPayloadStream = renderToRscStream({
-            node: <Page {...props} />,
+            node: <Page {...deprecatedPageProps.props} />,
             actionResult:
               actionResult instanceof Response ? null : actionResult,
           });
@@ -112,12 +148,17 @@ export const defineApp = <AppContext,>(routes: Route<AppContext>[]) => {
           const htmlStream = await transformRscToHtmlStream({
             stream: rscPayloadStream1,
             Parent: ({ children }) => (
-              <Document {...documentProps} children={children} />
+              <rw.Document
+                {...deprecatedPageProps.documentProps}
+                children={children}
+              />
             ),
           });
 
           const html = htmlStream.pipeThrough(
-            injectRSCPayload(rscPayloadStream2, { nonce }),
+            injectRSCPayload(rscPayloadStream2, {
+              nonce: rw.nonce,
+            }),
           );
 
           return new Response(html, {
@@ -129,19 +170,21 @@ export const defineApp = <AppContext,>(routes: Route<AppContext>[]) => {
 
         const userHeaders = new Headers();
 
-        const response = await router.handle({
-          cf,
-          request,
-          headers: userHeaders,
-          appContext: {} as AppContext,
-          env,
-          rw: {
-            Document: DefaultDocument,
-            handleAction,
+        const response = runWithRequestContext(outerRequestContext, () =>
+          router.handle({
+            request,
             renderPage,
-            nonce: generateNonce(),
-          },
-        });
+            deprecatedRouteOptions: {
+              cf,
+              request,
+              env,
+              appContext: outerRequestContext.data,
+              headers: outerRequestContext.headers,
+              params: outerRequestContext.params,
+              rw: outerRequestContext.rw,
+            },
+          }),
+        );
 
         // context(justinvdm, 18 Mar 2025): In some cases, such as a .fetch() call to a durable object instance, or Response.redirect(),
         // we need to return a mutable response object.

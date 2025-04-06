@@ -1,115 +1,109 @@
 import { isValidElementType } from "react-is";
 import { ExecutionContext } from "@cloudflare/workers-types";
-import { RequestContext } from "../requestContext/worker";
+import {
+  RequestContext,
+  runWithRequestContextOverrides,
+} from "../requestContext/worker";
 
-/** @deprecated Use `requestContext` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-export type HandlerOptions<TAppContext = Record<string, any>> = {
-  /** @deprecated Use `requestContext.request` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
+/** @deprecated Import and use `requestContext` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
+export type HandlerOptions<Data = Record<string, any>> = {
+  /** @deprecated Import and use `requestContext.request` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
   request: Request;
-  /** @deprecated Use `requestContext.env` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
+  /** @deprecated Import and use `requestContext.env` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
   env: Env;
-  /** @deprecated Use `requestContext.cf` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
+  /** @deprecated Import and use `requestContext.cf` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
   cf: ExecutionContext;
-  /** @deprecated Use `requestContext.appContext` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-  appContext: TAppContext;
-  /** @deprecated Use `requestContext.headers` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
+  /** @deprecated Import and use `requestContext.appContext` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
+  appContext: Data;
+  /** @deprecated Import and use `requestContext.headers` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
   headers: Headers;
-  /** @deprecated Use `requestContext.rw` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-  rw: RwContext<TAppContext>;
+  /** @deprecated Import and use `requestContext.rw` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
+  rw: RwContext<Data>;
 };
 
-/** @deprecated Use `requestContext` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-export type RouteOptions<TAppContext = Record<string, any>, TParams = any> = {
-  /** @deprecated Use `requestContext.cf` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
+/** @deprecated Import and use `requestContext` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
+export type RouteOptions<Data = Record<string, any>, Params = any> = {
+  /** @deprecated Import and use `requestContext.cf` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
   cf: ExecutionContext;
-  /** @deprecated Use `requestContext.request` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
+  /** @deprecated Import and use `requestContext.request` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
   request: Request;
-  /** @deprecated Use `requestContext.params` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-  params: TParams;
+  /** @deprecated Import and use `requestContext.params` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
+  params: Params;
   /** @deprecated Use `env` from `cloudflare:workers` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
   env: Env;
-  /** @deprecated Use `requestContext.data` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-  appContext: TAppContext;
-  /** @deprecated Use `requestContext.headers` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
+  /** @deprecated Import and use `requestContext.data` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
+  appContext: Data;
+  /** @deprecated Import and use `requestContext.headers` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
   headers: Headers;
-  /** @deprecated Use `requestContext.rw` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-  rw: RwContext<TAppContext>;
+  /** @deprecated Import and use `requestContext.rw` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
+  rw: RwContext<Data>;
 };
 
-/** @deprecated Use `requestContext` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-export type PageProps<TAppContext> = Omit<
-  RouteOptions<TAppContext>,
+/** @deprecated Import and use `requestContext` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
+export type PageProps<Data> = Omit<
+  RouteOptions<Data>,
   "request" | "headers" | "rw" | "cf"
 > & {
-  /** @deprecated Use `requestContext.rw.nonce` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
+  /** @deprecated Import and use `requestContext.rw.nonce` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
   rw: { nonce: string };
 };
 
-/** @deprecated Use `requestContext` from `@redwoodjs/sdk/worker` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-export type DocumentProps<TAppContext> = PageProps<TAppContext> & {
+export type DocumentProps<Data> = PageProps<Data> & {
   children: React.ReactNode;
 };
 
-export type RenderPageParams<TAppContext> = {
+export type RenderPageParams<Data> = {
   Page: React.FC<Record<string, any>>;
-  props: PageProps<TAppContext>;
+  props: PageProps<Data>;
   actionResult: unknown;
-  Document: React.FC<DocumentProps<TAppContext>>;
+  Document: React.FC<DocumentProps<Data>>;
 };
 
-export type RenderPage<TAppContext> = (
-  params: RenderPageParams<TAppContext>,
+export type RenderPage<Data> = (
+  params: RenderPageParams<Data>,
 ) => Promise<Response>;
 
-export type RwContext<TAppContext> = {
+export type RwContext<Data> = {
   nonce: string;
-  Document: React.FC<DocumentProps<TAppContext>>;
-  renderPage: RenderPage<TAppContext>;
-  handleAction: (opts: RouteOptions<TAppContext>) => Promise<unknown>;
+  Document: React.FC<DocumentProps<Data>>;
 };
 
-export type RouteMiddleware<TAppContext = any> = (
-  opts: RouteOptions<TAppContext>,
+export type RouteMiddleware<Data = any> = (
+  opts: RouteOptions<Data>,
 ) =>
   | Response
   | Promise<Response>
   | void
   | Promise<void>
   | Promise<Response | void>;
-type RouteFunction<TAppContext, TParams> = (
-  opts: RouteOptions<TAppContext, TParams>,
+type RouteFunction<Data, Params> = (
+  opts: RouteOptions<Data, Params>,
 ) => Response | Promise<Response>;
-type RouteComponent<TAppContext, TParams> = (
-  opts: RouteOptions<TAppContext, TParams>,
+type RouteComponent<Data, Params> = (
+  opts: RouteOptions<Data, Params>,
 ) => JSX.Element | Promise<JSX.Element>;
 
-type RouteHandler<TAppContext, TParams> =
-  | RouteFunction<TAppContext, TParams>
-  | RouteComponent<TAppContext, TParams>
+type RouteHandler<Data, Params> =
+  | RouteFunction<Data, Params>
+  | RouteComponent<Data, Params>
   | [
-      ...RouteMiddleware<TAppContext>[],
-      (
-        | RouteFunction<TAppContext, TParams>
-        | RouteComponent<TAppContext, TParams>
-      ),
+      ...RouteMiddleware<Data>[],
+      RouteFunction<Data, Params> | RouteComponent<Data, Params>,
     ];
 
-export type Route<TAppContext> =
-  | RouteMiddleware<TAppContext>
-  | RouteDefinition<TAppContext>
-  | Array<Route<TAppContext>>;
+export type Route<Data> =
+  | RouteMiddleware<Data>
+  | RouteDefinition<Data>
+  | Array<Route<Data>>;
 
-export type RouteDefinition<
-  TAppContext = Record<string, any>,
-  TParams = any,
-> = {
+export type RouteDefinition<Data = Record<string, any>, Params = any> = {
   path: string;
-  handler: RouteHandler<TAppContext, TParams>;
+  handler: RouteHandler<Data, Params>;
 };
 
-type RouteMatch<TAppContext = Record<string, any>, TParams = any> = {
-  params: TParams;
-  handler: RouteHandler<TAppContext, TParams>;
+type RouteMatch<Data = Record<string, any>, Params = any> = {
+  params: Params;
+  handler: RouteHandler<Data, Params>;
 };
 
 function matchPath(
@@ -148,41 +142,35 @@ function matchPath(
   return params;
 }
 
-function flattenRoutes<TAppContext>(
-  routes: Route<TAppContext>[],
-): (RouteMiddleware<TAppContext> | RouteDefinition<TAppContext>)[] {
-  return routes.reduce((acc: Route<TAppContext>[], route) => {
+function flattenRoutes<Data>(
+  routes: Route<Data>[],
+): (RouteMiddleware<Data> | RouteDefinition<Data>)[] {
+  return routes.reduce((acc: Route<Data>[], route) => {
     if (Array.isArray(route)) {
       return [...acc, ...flattenRoutes(route)];
     }
     return [...acc, route];
-  }, []) as (RouteMiddleware<TAppContext> | RouteDefinition<TAppContext>)[];
+  }, []) as (RouteMiddleware<Data> | RouteDefinition<Data>)[];
 }
 
-export function defineRoutes<TAppContext = Record<string, any>>(
-  routes: Route<TAppContext>[],
+export function defineRoutes<Data = Record<string, any>>(
+  routes: Route<Data>[],
 ): {
-  routes: Route<TAppContext>[];
+  routes: Route<Data>[];
   handle: ({
-    cf,
     request,
-    appContext,
-    env,
-    rw,
-    headers,
+    renderPage,
+    deprecatedRouteOptions,
   }: {
-    cf: ExecutionContext;
     request: Request;
-    appContext: TAppContext;
-    env: Env;
-    rw: RwContext<TAppContext>;
-    headers: Headers;
+    renderPage: (Page: React.FC) => Promise<Response>;
+    deprecatedRouteOptions: RouteOptions<Data>;
   }) => Response | Promise<Response>;
 } {
   const flattenedRoutes = flattenRoutes(routes);
   return {
     routes: flattenedRoutes,
-    async handle({ cf, request, appContext, env, rw, headers }) {
+    async handle({ request, renderPage, deprecatedRouteOptions }) {
       const url = new URL(request.url);
       let path = url.pathname;
 
@@ -192,20 +180,11 @@ export function defineRoutes<TAppContext = Record<string, any>>(
       }
 
       // Find matching route
-      let match: RouteMatch<TAppContext> | null = null;
-      const routeOptions: RouteOptions<TAppContext> = {
-        cf,
-        request,
-        params: {},
-        appContext,
-        env,
-        rw,
-        headers,
-      };
+      let match: RouteMatch<Data> | null = null;
 
       for (const route of flattenedRoutes) {
         if (typeof route === "function") {
-          const r = await route(routeOptions);
+          const r = await route(deprecatedRouteOptions);
 
           if (r instanceof Response) {
             return r;
@@ -227,44 +206,33 @@ export function defineRoutes<TAppContext = Record<string, any>>(
       }
 
       let { params, handler } = match;
-      routeOptions.params = params;
 
-      const handlers = Array.isArray(handler) ? handler : [handler];
-      for (const h of handlers) {
-        if (isRouteComponent(h)) {
-          const actionResult = await rw.handleAction(routeOptions);
-          const props = {
-            params,
-            env,
-            appContext,
-            rw: { nonce: rw.nonce },
-          };
-          return await rw.renderPage({
-            Page: h as React.FC<Record<string, any>>,
-            props,
-            actionResult,
-            Document: rw.Document,
-          });
-        } else {
-          const r = await (h(routeOptions) as Promise<Response>);
-          if (r instanceof Response) {
-            return r;
+      return runWithRequestContextOverrides({ params }, async () => {
+        const handlers = Array.isArray(handler) ? handler : [handler];
+        for (const h of handlers) {
+          if (isRouteComponent(h)) {
+            return await renderPage(h as React.FC);
+          } else {
+            const r = await (h(deprecatedRouteOptions) as Promise<Response>);
+            if (r instanceof Response) {
+              return r;
+            }
           }
         }
-      }
 
-      // Add fallback return
-      return new Response("Response not returned from route handler", {
-        status: 500,
+        // Add fallback return
+        return new Response("Response not returned from route handler", {
+          status: 500,
+        });
       });
     },
   };
 }
 
-export function route<TAppContext = any, TParams = any>(
+export function route<Data = any, Params = any>(
   path: string,
-  handler: RouteHandler<TAppContext, TParams>,
-): RouteDefinition<TAppContext, TParams> {
+  handler: RouteHandler<Data, Params>,
+): RouteDefinition<Data, Params> {
   if (!path.endsWith("/")) {
     path = path + "/";
   }
@@ -275,16 +243,16 @@ export function route<TAppContext = any, TParams = any>(
   };
 }
 
-export function index<TAppContext = any, TParams = any>(
-  handler: RouteHandler<TAppContext, TParams>,
-): RouteDefinition<TAppContext, TParams> {
+export function index<Data = any, Params = any>(
+  handler: RouteHandler<Data, Params>,
+): RouteDefinition<Data, Params> {
   return route("/", handler);
 }
 
-export function prefix<TAppContext = any, TParams = any>(
+export function prefix<Data = any, Params = any>(
   prefix: string,
-  routes: ReturnType<typeof route<TAppContext, TParams>>[],
-): RouteDefinition<TAppContext, TParams>[] {
+  routes: ReturnType<typeof route<Data, Params>>[],
+): RouteDefinition<Data, Params>[] {
   return routes.map((r) => {
     return {
       path: prefix + r.path,
@@ -293,11 +261,11 @@ export function prefix<TAppContext = any, TParams = any>(
   });
 }
 
-export function render<TAppContext = any>(
+export function render<Data = any>(
   Document: React.FC<{ children: React.ReactNode }>,
-  routes: Route<TAppContext>[],
-): Route<TAppContext>[] {
-  const documentMiddleware: RouteMiddleware<TAppContext> = ({ rw }) => {
+  routes: Route<Data>[],
+): Route<Data>[] {
+  const documentMiddleware: RouteMiddleware<Data> = ({ rw }) => {
     rw.Document = Document;
   };
 
