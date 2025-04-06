@@ -1,5 +1,6 @@
 import { isValidElementType } from "react-is";
 import { ExecutionContext } from "@cloudflare/workers-types";
+import { RequestContext } from "../requestContext/worker";
 
 export type HandlerOptions<TAppContext = Record<string, any>> = {
   request: Request;
@@ -10,15 +11,10 @@ export type HandlerOptions<TAppContext = Record<string, any>> = {
   rw: RwContext<TAppContext>;
 };
 
-export type RouteOptions<TAppContext = Record<string, any>, TParams = any> = {
-  cf: ExecutionContext;
-  request: Request;
-  params: TParams;
-  env: Env;
-  appContext: TAppContext;
-  headers: Headers;
-  rw: RwContext<TAppContext>;
-};
+export type RouteOptions<
+  Data = Record<string, any>,
+  TParams = any,
+> = RequestContext<Data, TParams>;
 
 export type PageProps<TAppContext> = Omit<
   RouteOptions<TAppContext>,
