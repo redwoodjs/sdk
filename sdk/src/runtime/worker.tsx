@@ -170,7 +170,7 @@ export const defineApp = <Data,>(routes: Route<Data>[]) => {
 
         const userHeaders = new Headers();
 
-        const response = runWithRequestContext(outerRequestContext, () =>
+        const response = await runWithRequestContext(outerRequestContext, () =>
           router.handle({
             request,
             renderPage,
