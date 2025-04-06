@@ -58,6 +58,7 @@ export const defineApp = <Data,>(routes: Route<Data>[]) => {
       try {
         const url = new URL(request.url);
         const isRSCRequest = url.searchParams.has("__rsc");
+        const userHeaders = new Headers();
 
         const rw = {
           Document: DefaultDocument,
@@ -66,7 +67,7 @@ export const defineApp = <Data,>(routes: Route<Data>[]) => {
 
         const outerRequestContext: RequestContext<Data> = {
           request,
-          headers: request.headers,
+          headers: userHeaders,
           cf,
           params: {},
           data: {} as Data,
@@ -167,8 +168,6 @@ export const defineApp = <Data,>(routes: Route<Data>[]) => {
             },
           });
         };
-
-        const userHeaders = new Headers();
 
         const response = await runWithRequestContext(outerRequestContext, () =>
           router.handle({
