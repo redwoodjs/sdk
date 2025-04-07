@@ -42,6 +42,8 @@ The default CSP in the starter focuses on the most critical security aspects. Fo
 
 ```diff
 // In app/headers.ts
+const { headers, rw: { nonce } } = requestContext;
+
 headers.set(
   "Content-Security-Policy",
 - `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; frame-src https://challenges.cloudflare.com; object-src 'none';`,
@@ -51,7 +53,7 @@ headers.set(
 
 #### Using `nonce` for inline scripts
 
-Sometimes you need to include inline scripts in your application, but Content Security Policy (CSP) blocks them by default for security reasons. RedwoodSDK automatically generates a fresh, cryptographically secure nonce value for each request You can access this nonce in document or page components rendered by the [router](./routing), using `rw.nonce`.
+Sometimes you need to include inline scripts in your application, but Content Security Policy (CSP) blocks them by default for security reasons. RedwoodSDK automatically generates a fresh, cryptographically secure nonce value for each request. You can access this nonce in document or page components rendered by the [router](./routing), using `requestContext.rw.nonce`.
 
 <Aside type="caution">
   Only use the nonce attribute for trusted inline scripts that you have full
@@ -61,19 +63,25 @@ Sometimes you need to include inline scripts in your application, but Content Se
 </Aside>
 
 ```tsx
-export const Document = ({ rw, children }) => (
-  <html lang="en">
-    <head><!-- ... --></head>
-    <body>
-      <div id="root">{children}</div>
+import { requestContext } from "@redwoodjs/sdk/worker"
 
-      <!-- Set the nonce the inline script -->
-      <script nonce={row.nonce}>/* ... */</script>
-    </body>
-  </html>
-);
+export const Document = () => {
+  const { rw: { nonce } } = requestContext
 
-export default defineApp<AppContext>([
+  return (
+    <html lang="en">
+      <head>{/* ... */}</head>
+      <body>
+        <div id="root">{children}</div>
+
+        {/* Set the nonce for the inline script */}
+        <script nonce={nonce}>/* ... */</script>
+      </body>
+    </html>
+  )
+}
+
+export default defineApp([
   // ...
   render(Document, [
     // ...
@@ -91,6 +99,8 @@ To enable device access, you'll need to modify the `Permissions-Policy` header i
 
 ```diff
 // In app/headers.ts
+const { headers } = requestContext;
+
 headers.set(
   "Permissions-Policy",
 -  "geolocation=(), microphone=(), camera=()",

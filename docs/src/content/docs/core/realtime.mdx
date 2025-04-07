@@ -17,7 +17,7 @@ The SDK includes built-in support for **realtime updates** using **Cloudflare Du
 
 ## Setup
 
-You’ll need to connect three parts:
+You'll need to connect three parts:
 
 ### 1. Client Setup
 
@@ -83,7 +83,7 @@ In RedwoodSDK, we build on top of this model for real time updates.
 3. **Re-render is triggered** — either automatically (as a result of an action) or explicitly via `renderRealtimeClients()`
 4. **Each client re-renders** — by calling your server code and receiving the latest state
 
-This means you don’t need to wire up subscriptions or manually track diffs — just write your app as usual and let the server deliver updated UI to each connected client.
+This means you don't need to wire up subscriptions or manually track diffs — just write your app as usual and let the server deliver updated UI to each connected client.
 
 ---
 
@@ -108,12 +108,15 @@ Only clients in `room-42` will receive updates related to that room.
 For updates that begin from user interaction, consider this example:
 
 ```tsx
-const Note = async ({ appContext }: RouteOptions) => {
-  return <Editor content={appContext.content} />;
+import { requestContext } from "@redwoodjs/sdk/worker";
+
+const Note = async () => {
+  const { data } = requestContext;
+  return <Editor content={data.content} />;
 };
 ```
 
-Here, the `appContext` has been populated with the latest content for the relevant note.
+Here, the `data` object has been populated with the latest content for the relevant note.
 
 This is just a normal React Server Component. What's new is that when one client triggers an action, **all other clients** with the same `key` will re-run this server logic too.
 
@@ -121,7 +124,7 @@ This is just a normal React Server Component. What's new is that when one client
 
 ## Server ➝ Client Updates
 
-You can update clients even when the event didn’t originate from a user action — for example, background events, notifications, or admin triggers.
+You can update clients even when the event didn't originate from a user action — for example, background events, notifications, or admin triggers.
 
 Use `renderRealtimeClients()` to trigger a re-render for all clients connected to a given `key`:
 

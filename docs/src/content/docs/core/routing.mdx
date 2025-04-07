@@ -7,26 +7,79 @@ import { Aside, Tabs, TabItem, LinkCard } from "@astrojs/starlight/components";
 
 The request/response paradigm is at the heart of web development - when a browser makes a request, your server needs to respond with content. RedwoodSDK makes this easy with the `defineApp` function, which lets you elegantly handle incoming requests and return the right responses.
 
+## Request Context
+
+At the core of RedwoodSDK is the `requestContext` object, which provides access to everything you need to handle requests and build responses. This shared context is available throughout your application - in middleware, route handlers, and React Server Components.
+
+```tsx
+import { requestContext } from "@redwoodjs/sdk/worker";
+
+// Access request context anywhere in your application
+const { request, params, env, data, cf } = requestContext;
+```
+
+The `requestContext` object includes:
+
+1. `request`: The [Request](https://developer.mozilla.org/en-US/docs/Web/API/Request) object representing the incoming HTTP request
+2. `params`: Parameters extracted from the URL based on your route patterns (e.g., `/users/:id` → `params.id`)
+3. `env`: Your Cloudflare environment, including bindings to Durable Objects, D1, etc.
+4. `data`: A mutable object for sharing data between middleware and handlers
+5. `cf`: Cloudflare's [Execution Context API](https://developers.cloudflare.com/workers/runtime-apis/context/) methods, e.g. `waitUntil()`
+
+## Defining Your App
+
+The `defineApp` function takes an array of middleware and route handlers that are executed in the order they are defined.
+
 ```tsx title="src/worker.tsx"
 import { defineApp } from "@redwoodjs/sdk/worker";
 import { route } from "@redwoodjs/sdk/router";
+import { requestContext } from "@redwoodjs/sdk/worker";
 
 export default defineApp([
   // Middleware
-  function middleware({ request, env, appContext }) { /* Modify context */ },
-  function middleware({ request, env, appContext }) { /* Modify context */ },
+  function middleware() { 
+    const { data } = requestContext;
+    // Modify data here
+  },
   // Request Handlers
-  route("/", function handler({ request, env, appContext }) {
+  route("/", function handler() {
     return new Response("Hello, world!")
   }),
-  route("/ping", function handler({ request, env, appContext }) {
+  route("/ping", function handler() {
     return new Response("Pong!")
   }),
 ]);
+```
 
----
-The `defineApp` function takes an array of middleware and route handlers that are executed in the order they are defined. In this example the request is passed through two middleware functions before being "matched" by the route handlers.
----
+## Middleware & Data
+
+Middleware runs before any routes are matched, allowing you to set up the request context. You can specify multiple middleware functions, which will be executed in order.
+
+The `data` object in `requestContext` is where you store and share information between middleware, route handlers, and React Server Components:
+
+```tsx title="src/worker.tsx"
+import { defineApp } from "@redwoodjs/sdk/worker";
+import { route } from "@redwoodjs/sdk/router";
+import { requestContext } from "@redwoodjs/sdk/worker";
+
+defineApp([
+  // Add user data to context if authenticated
+  async function authMiddleware() {
+    const { data } = requestContext;
+    const userId = await getCurrentUser();
+    if (userId) {
+      data.user = await db.user.find({ id: userId });
+    }
+  },
+  // Use that data in routes
+  route("/profile", function handler() {
+    const { data } = requestContext;
+    if (!data.user) {
+      return new Response("Unauthorized", { status: 401 });
+    }
+    return <UserProfile />;
+  }),
+]);
 ```
 
 ## Matching Patterns
@@ -61,7 +114,7 @@ route("/contact", ...)
 
 #### Parameter
 
-Match dynamic segments marked with a colon (`:`). The values are available in the route handler via `params` (`params.id` and `params.groupId`).
+Match dynamic segments marked with a colon (`:`). The values are available via `requestContext.params` (`requestContext.params.id` and `requestContext.params.groupId`).
 
 ```tsx
 route("/users/:id", ...)
@@ -71,7 +124,7 @@ route("/users/:id/addToGroup/:groupId", ...)
 
 #### Wildcard
 
-Match all remaining segments after the prefix, the values are available in the route handler via `params.$0`, `params.$1`, etc.
+Match all remaining segments after the prefix, the values are available via `requestContext.params.$0`, `requestContext.params.$1`, etc.
 
 ```tsx
 route("/files/*", ...)
@@ -85,9 +138,10 @@ The request handler is a function, or array of functions (See [Interruptors](#in
 
 ```tsx title="src/worker.tsx" mark={4-9}
 import { route } from "@redwoodjs/sdk/router";
+import { requestContext } from "@redwoodjs/sdk/worker";
 
 defineApp([
-  route("/a-standard-response", ({ request, params, env, appContext }) => {
+  route("/a-standard-response", () => {
     return new Response("Hello, world!")
   }),
   route('/a-jsx-response', () => {
@@ -96,13 +150,6 @@ defineApp([
 ])
 
 ---
-The request handler function takes in the following options:
-1. `request`: The request object.
-2. `params`: The matched parameters from the request URL.
-3. `env`: The Cloudflare environment.
-4. `appContext`: The context object (See [Middleware & `AppContext`](#middleware--app-context)).
-5. `cf:` Cloudflare's [Execution Context API](https://developers.cloudflare.com/workers/runtime-apis/context/) methods, e.g. `waitUntil()`
-
 Return values:
 - `Response`: A standard response object.
 - `JSX`: A React component, which is statically rendered to HTML on the server, streamed to the client, and then hydrated on the client side.
@@ -111,17 +158,17 @@ Return values:
 
 ### Interruptors
 
-Interruptors are an array of functions that are executed in sequence for each matched request. They can be used to modify the request, context, or to short-circuit the response. A typical use-case is to check for authentication on a per-request basis, as an example you're trying to ensure that a specific user can access a specific resource.
+Interruptors are an array of functions that are executed in sequence for each matched request. They can be used to modify the request, context, or to short-circuit the response. A typical use-case is to check for authentication on a per-request basis.
 
 ```tsx title="src/worker.tsx" mark={5-10, 13} collapse={1-2}
 import { defineApp } from "@redwoodjs/sdk/worker";
 import { route } from "@redwoodjs/sdk/router";
 import { EditBlogPage } from "src/pages/blog/EditBlogPage";
 
-function isAuthenticated({ request, env, appContext }) {
-  // Ensure that this user is authenticated
-  if (!appContext.user) {
-    return new Response("Unauthorized", { status: 401 })
+function isAuthenticated() {
+  const { data } = requestContext;
+  if (!data.user) {
+    return new Response("Unauthorized", { status: 401 });
   }
 }
 
@@ -130,54 +177,13 @@ defineApp([
 ])
 
 ---
-For the `/blog/:slug/edit` route, the `isAuthenticated` function will be executed first, if the user is not authenticated, the response will be a 401 Unauthorized. If the user is authenticated, the `EditBlogPage` component will be rendered. Therefore the flow is interrupted. The `isAuthenticated` function can be shared across multiple routes.
----
-```
-
-## Middleware & `AppContext`
-
-`appContext` is a mutable object that is passed to each request handler, interruptors, and React Server Functions. It's used to share data between the different parts of your application. You populate the context on a per-request basis via Middleware.
-
-Middleware runs before the request is matched to a route. You can specify multiple middleware functions, they'll be executed in the order they are defined.
-
-```tsx title="src/worker.tsx" mark={5-10}
-import { defineApp } from "@redwoodjs/sdk/worker";
-import { route } from "@redwoodjs/sdk/router";
-
-defineApp([
-  sessionMiddleware,
-  async function getUserMiddleware({ request, env, appContext }) {
-    if (appContext.session.userId) {
-      appContext.user = await db.user.find({ where: { id: appContext.session.userId } });
-    }
-  },
-  route("/hello", [
-    function ({ appContext }) {
-      if (!appContext.user) {
-        return new Response("Unauthorized", { status: 401 });
-      }
-    },
-    function ({ appContext }) {
-      return new Response(`Hello ${appContext.user.username}!`);
-    },
-  ]),
-]);
-
----
-The `appContext` object:
-
-1. `sessionMiddleware` is a function that is used to populate the `appContext.session` object
-2. `getUserMiddleware` is a middleware function that is used to populate the `appContext.user` object
-3. `"/hello"` is a an array of route handlers that are executed when "/hello" is matched:
-  - if the user is not authenticated the request will be interrupted and a 401 Unauthorized response will be returned
-  - if the user is authenticated the request will be passed to the next request handler and `"Hello {appContext.user.username}!"` will be returned
-
+For the `/blog/:slug/edit` route, the `isAuthenticated` function will be executed first. If the user is not authenticated, the response will be a 401 Unauthorized. If the user is authenticated, the `EditBlogPage` component will be rendered. The `isAuthenticated` function can be shared across multiple routes.
 ---
 ```
 
 ## Documents
 
-Documents are how you define the "shell" of your application's html: the `<html>`, `<head>`, `<meta>` tags, scripts, stylesheets, `<body>`, and where in the `<body>` your actual page content is rendered. In RedwoodSDK, you tell it which document to use with the `render()` function in `defineApp`. In other words, you're asking RedwoodSDK to "render" the document.
+Documents are how you define the "shell" of your application's html: the `<html>`, `<head>`, `<meta>` tags, scripts, stylesheets, `<body>`, and where in the `<body>` your actual page content is rendered. In RedwoodSDK, you tell it which document to use with the `render()` function in `defineApp`.
 
 ```tsx title="src/worker.tsx" "document"
 import { defineApp } from "@redwoodjs/sdk/worker";
@@ -200,17 +206,20 @@ This component will be rendered on the server side when the page loads. When def
 ```
 
 ```tsx title="src/pages/Document.tsx" mark={7}
-export const Document = ({ children }) => (
-  <html lang="en">
-    <head>
-      <meta charSet="utf-8" />
-      <script type="module" src="/src/client.tsx"></script>
-    </head>
-    <body>
-      <div id="root">{children}</div>
-    </body>
-  </html>
-);
+export const Document = () => {
+  const { children } = requestContext;
+  return (
+    <html lang="en">
+      <head>
+        <meta charSet="utf-8" />
+        <script type="module" src="/src/client.tsx"></script>
+      </head>
+      <body>
+        <div id="root">{children}</div>
+      </body>
+    </html>
+  )
+}
 ```
 
 <Aside type="caution" title="Client Side Hydration">
