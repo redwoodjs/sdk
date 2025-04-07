@@ -12,17 +12,17 @@
     "build": "vite build",
     "dev": "NODE_ENV=${NODE_ENV:-development} vite dev",
     "dev:init": "rw-scripts dev-init",
-    "preview": "pnpm build && pnpm vite preview",
+    "preview": "npx yarpm run build && npx yarpm run vite preview",
     "worker:run": "rw-scripts worker-run",
-    "clean": "pnpm clean:vite",
+    "clean": "npx yarpm run clean:vite",
     "clean:vite": "rm -rf ./node_modules/.vite",
-    "release": "pnpm clean && pnpm build && wrangler deploy",
+    "release": "npx yarpm run clean && npx yarpm run build && wrangler deploy",
     "format": "prettier --write ./src",
     "migrate:new": "drizzle-kit generate",
     "migrate:dev": "wrangler d1 migrations apply DB --local",
-    "seed": "pnpm worker:run ./src/db/seed.ts",
-    "check": "pnpm types",
-    "types": "pnpm tsc"
+    "seed": "npx yarpm run worker:run ./src/db/seed.ts",
+    "check": "npx yarpm run types",
+    "types": "npx yarpm run tsc"
   },
   "dependencies": {
     "@redwoodjs/sdk": "0.0.51",
