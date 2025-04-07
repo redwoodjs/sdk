@@ -6,28 +6,30 @@ import { userRoutes } from "@/app/pages/user/routes";
 import { sessions, setupSessionStore } from "./session/store";
 import { Session } from "./session/durableObject";
 import { setCommonHeaders } from "./app/headers";
+import { requestContext } from "@redwoodjs/sdk/worker";
+import { env } from "cloudflare:workers";
 
 export { SessionDurableObject } from "./session/durableObject";
 
-export type AppContext = {
+export type Data = {
   session: Session | null;
 };
 
-export default defineApp<AppContext>([
+export default defineApp([
   setCommonHeaders(),
-  async ({ env, appContext, request, headers }) => {
+  async () => {
     setupSessionStore(env);
 
     try {
-      appContext.session = await sessions.load(request);
+      requestContext.data.session = await sessions.load(requestContext.request);
     } catch (error) {
       if (error instanceof ErrorResponse && error.code === 401) {
-        await sessions.remove(request, headers);
-        headers.set("Location", "/user/login");
+        await sessions.remove(requestContext.request, requestContext.headers);
+        requestContext.headers.set("Location", "/user/login");
 
         return new Response(null, {
           status: 302,
-          headers,
+          headers: requestContext.headers,
         });
       }
     }

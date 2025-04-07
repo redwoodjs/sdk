@@ -22,7 +22,7 @@ declare global {
   };
 }
 
-export const defineApp = <Data,>(routes: Route<Data>[]) => {
+export const defineApp = (routes: Route[]) => {
   return {
     fetch: async (request: Request, env: Env, cf: ExecutionContext) => {
       globalThis.__webpack_require__ = ssrWebpackRequire;

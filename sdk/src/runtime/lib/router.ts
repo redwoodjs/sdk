@@ -1,9 +1,6 @@
 import { isValidElementType } from "react-is";
 import { ExecutionContext } from "@cloudflare/workers-types";
-import {
-  RequestContext,
-  runWithRequestContextOverrides,
-} from "../requestContext/worker";
+import { runWithRequestContextOverrides } from "../requestContext/worker";
 
 /** @deprecated Import and use `requestContext` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
 export type HandlerOptions<Data = Record<string, any>> = {

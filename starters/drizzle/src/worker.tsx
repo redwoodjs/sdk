@@ -1,23 +1,25 @@
 import { defineApp } from "@redwoodjs/sdk/worker";
 import { index, render } from "@redwoodjs/sdk/router";
-import { Document } from "src/Document";
-import { Home } from "src/pages/Home";
-import { setCommonHeaders } from "src/headers";
+import { Document } from "@/app/Document";
+import { Home } from "@/app/pages/Home";
+import { setCommonHeaders } from "@/app/headers";
 import { drizzle } from "drizzle-orm/d1";
+import { requestContext } from "@redwoodjs/sdk/worker";
+import { env } from "cloudflare:workers";
 
 export interface Env {
   DB: D1Database;
 }
 
-export type AppContext = {
+export type Data = {
   db: ReturnType<typeof drizzle>;
 };
 
-export default defineApp<AppContext>([
+export default defineApp([
   setCommonHeaders(),
-  ({ appContext, env }) => {
-    // setup db in appContext
-    appContext.db = drizzle(env.DB);
+  () => {
+    // setup db in data
+    requestContext.data.db = drizzle(env.DB);
   },
   render(Document, [index([Home])]),
 ]);

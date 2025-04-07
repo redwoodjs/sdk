@@ -1,14 +1,17 @@
 import { defineApp } from "@redwoodjs/sdk/worker";
 import { index, render } from "@redwoodjs/sdk/router";
-import { Document } from "src/Document";
-import { Home } from "src/pages/Home";
+import { Document } from "@/app/Document";
+import { Home } from "@/app/pages/Home";
 import { setupDb } from "./db";
-import { setCommonHeaders } from "src/headers";
-type AppContext = {};
+import { setCommonHeaders } from "@/app/headers";
+import { requestContext } from "@redwoodjs/sdk/worker";
+import { env } from "cloudflare:workers";
 
-export default defineApp<AppContext>([
+export type Data = {};
+
+export default defineApp([
   setCommonHeaders(),
-  async ({ appContext, env, request }) => {
+  async () => {
     await setupDb(env);
   },
   render(Document, [index([Home])]),
