@@ -1,13 +1,12 @@
-import { AppContext } from "@/worker";
+import { requestContext } from "@redwoodjs/sdk/worker";
 
-export function Home({ appContext }: { appContext: AppContext }) {
+export function Home() {
+  const { data } = requestContext;
   return (
     <div>
-      <p>
-        {appContext.session?.userId
-          ? `You are logged in as user ${appContext.session.userId}`
-          : "You are not logged in"}
-      </p>
+      {data.session?.userId
+        ? `You are logged in as user ${data.session.userId}`
+        : "You are not logged in"}
     </div>
   );
 }
