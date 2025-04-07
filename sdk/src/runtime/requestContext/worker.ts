@@ -18,7 +18,9 @@ CONTEXT_KEYS.forEach((key) => {
   });
 });
 
-export const requestContext = Object.freeze(requestContextBase);
+export const requestContext = Object.freeze(
+  requestContextBase,
+) as RequestContext;
 
 export function getRequestContext<
   Data = Record<string, any>,
