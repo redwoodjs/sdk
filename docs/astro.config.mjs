@@ -25,8 +25,7 @@ export default defineConfig({
         replacesTitle: true,
       },
       customCss: [
-        // Relative path to your custom CSS file
-        "./src/styles/custom.css",
+        './src/styles/custom.css'
       ],
       social: {
         github: "https://github.com/redwoodjs/sdk",
