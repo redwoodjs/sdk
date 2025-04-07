@@ -8,18 +8,10 @@ import { ErrorResponse } from "./error";
 import {
   RequestContext,
   getRequestContext,
-  requestContext,
   runWithRequestContext,
 } from "./requestContext/worker";
 
-import {
-  Route,
-  RouteOptions,
-  defineRoutes,
-  RenderPageParams,
-  PageProps,
-  DocumentProps,
-} from "./lib/router";
+import { Route, defineRoutes } from "./lib/router";
 import { generateNonce } from "./lib/utils";
 import { IS_DEV } from "./constants";
 
@@ -87,7 +79,7 @@ export const defineApp = <Data,>(routes: Route<Data>[]) => {
             rw,
           };
 
-          let props;
+          let props = routeOptions;
           let fullPageProps = routeOptions;
 
           let documentProps: any = {
@@ -102,12 +94,14 @@ export const defineApp = <Data,>(routes: Route<Data>[]) => {
             Object.prototype.hasOwnProperty.call(Page, "$$isClientReference")
           ) {
             const { appContext, params } = fullPageProps;
-            props = { appContext, params } as PageProps<Data>;
+            // context(justinvdm, 6 Apr 2025): tsignore instead of cast to avoid importing deprecated types
+            // @ts-ignore
+            props = { appContext, params };
           }
 
           if (
             Object.prototype.hasOwnProperty.call(
-              Document,
+              rw.Document,
               "$$isClientReference",
             )
           ) {

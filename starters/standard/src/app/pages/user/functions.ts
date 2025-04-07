@@ -12,13 +12,10 @@ import { sessions } from "@/session/store";
 import { HandlerOptions } from "@redwoodjs/sdk/router";
 import { db } from "@/db";
 import { verifyTurnstileToken } from "@redwoodjs/sdk/turnstile";
+import { env } from "cloudflare:workers";
+import { requestContext } from "@redwoodjs/sdk/worker";
 
-export async function startPasskeyRegistration(
-  username: string,
-  opts?: HandlerOptions,
-) {
-  const { headers, env } = opts!;
-
+export async function startPasskeyRegistration(username: string) {
   const options = await generateRegistrationOptions({
     rpName: env.APP_NAME,
     rpID: env.RP_ID,
@@ -31,7 +28,7 @@ export async function startPasskeyRegistration(
     },
   });
 
-  await sessions.save(headers, { challenge: options.challenge });
+  await sessions.save(requestContext.headers, { challenge: options.challenge });
 
   return options;
 }
@@ -40,10 +37,7 @@ export async function finishPasskeyRegistration(
   username: string,
   registration: RegistrationResponseJSON,
   turnstileToken: string,
-  opts?: HandlerOptions,
 ) {
-  const { request, headers, env } = opts!;
-
   if (
     !(await verifyTurnstileToken({
       token: turnstileToken,
@@ -53,9 +47,9 @@ export async function finishPasskeyRegistration(
     return false;
   }
 
-  const { origin } = new URL(request.url);
+  const { origin } = new URL(requestContext.request.url);
 
-  const session = await sessions.load(request);
+  const session = await sessions.load(requestContext.request);
   const challenge = session?.challenge;
 
   if (!challenge) {
@@ -73,7 +67,7 @@ export async function finishPasskeyRegistration(
     return false;
   }
 
-  await sessions.save(headers, { challenge: null });
+  await sessions.save(requestContext.headers, { challenge: null });
 
   const user = await db.user.create({
     data: {
