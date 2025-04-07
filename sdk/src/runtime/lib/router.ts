@@ -1,6 +1,9 @@
 import { isValidElementType } from "react-is";
 import { ExecutionContext } from "@cloudflare/workers-types";
-import { runWithRequestContextOverrides } from "../requestContext/worker";
+import {
+  requestContext,
+  runWithRequestContextOverrides,
+} from "../requestContext/worker";
 
 /** @deprecated Import and use `requestContext` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
 export type HandlerOptions<Data = Record<string, any>> = {
@@ -65,42 +68,31 @@ export type RwContext<Data> = {
   Document: React.FC<DocumentProps<Data>>;
 };
 
-export type RouteMiddleware<Data = any> = (
-  opts: RouteOptions<Data>,
-) =>
+export type RouteMiddleware = () =>
   | Response
   | Promise<Response>
   | void
   | Promise<void>
   | Promise<Response | void>;
-type RouteFunction<Data, Params> = (
-  opts: RouteOptions<Data, Params>,
-) => Response | Promise<Response>;
-type RouteComponent<Data, Params> = (
-  opts: RouteOptions<Data, Params>,
-) => JSX.Element | Promise<JSX.Element>;
 
-type RouteHandler<Data, Params> =
-  | RouteFunction<Data, Params>
-  | RouteComponent<Data, Params>
-  | [
-      ...RouteMiddleware<Data>[],
-      RouteFunction<Data, Params> | RouteComponent<Data, Params>,
-    ];
+type RouteFunction = () => Response | Promise<Response>;
+type RouteComponent = () => JSX.Element | Promise<JSX.Element>;
 
-export type Route<Data> =
-  | RouteMiddleware<Data>
-  | RouteDefinition<Data>
-  | Array<Route<Data>>;
+type RouteHandler =
+  | RouteFunction
+  | RouteComponent
+  | [...RouteMiddleware[], RouteFunction | RouteComponent];
 
-export type RouteDefinition<Data = Record<string, any>, Params = any> = {
+export type Route = RouteMiddleware | RouteDefinition | Array<Route>;
+
+export type RouteDefinition = {
   path: string;
-  handler: RouteHandler<Data, Params>;
+  handler: RouteHandler;
 };
 
-type RouteMatch<Data = Record<string, any>, Params = any> = {
-  params: Params;
-  handler: RouteHandler<Data, Params>;
+type RouteMatch = {
+  params: Record<string, string>;
+  handler: RouteHandler;
 };
 
 function matchPath(
@@ -139,21 +131,17 @@ function matchPath(
   return params;
 }
 
-function flattenRoutes<Data>(
-  routes: Route<Data>[],
-): (RouteMiddleware<Data> | RouteDefinition<Data>)[] {
-  return routes.reduce((acc: Route<Data>[], route) => {
+function flattenRoutes(routes: Route[]): (RouteMiddleware | RouteDefinition)[] {
+  return routes.reduce((acc: Route[], route) => {
     if (Array.isArray(route)) {
       return [...acc, ...flattenRoutes(route)];
     }
     return [...acc, route];
-  }, []) as (RouteMiddleware<Data> | RouteDefinition<Data>)[];
+  }, []) as (RouteMiddleware | RouteDefinition)[];
 }
 
-export function defineRoutes<Data = Record<string, any>>(
-  routes: Route<Data>[],
-): {
-  routes: Route<Data>[];
+export function defineRoutes(routes: Route[]): {
+  routes: Route[];
   handle: ({
     request,
     renderPage,
@@ -161,7 +149,7 @@ export function defineRoutes<Data = Record<string, any>>(
   }: {
     request: Request;
     renderPage: (Page: React.FC) => Promise<Response>;
-    deprecatedRouteOptions: RouteOptions<Data>;
+    deprecatedRouteOptions: RouteOptions;
   }) => Response | Promise<Response>;
 } {
   const flattenedRoutes = flattenRoutes(routes);
@@ -177,11 +165,11 @@ export function defineRoutes<Data = Record<string, any>>(
       }
 
       // Find matching route
-      let match: RouteMatch<Data> | null = null;
+      let match: RouteMatch | null = null;
 
       for (const route of flattenedRoutes) {
         if (typeof route === "function") {
-          const r = await route(deprecatedRouteOptions);
+          const r = await route();
 
           if (r instanceof Response) {
             return r;
@@ -210,7 +198,7 @@ export function defineRoutes<Data = Record<string, any>>(
           if (isRouteComponent(h)) {
             return await renderPage(h as React.FC);
           } else {
-            const r = await (h(deprecatedRouteOptions) as Promise<Response>);
+            const r = await (h() as Promise<Response>);
             if (r instanceof Response) {
               return r;
             }
@@ -226,10 +214,7 @@ export function defineRoutes<Data = Record<string, any>>(
   };
 }
 
-export function route<Data = any, Params = any>(
-  path: string,
-  handler: RouteHandler<Data, Params>,
-): RouteDefinition<Data, Params> {
+export function route(path: string, handler: RouteHandler): RouteDefinition {
   if (!path.endsWith("/")) {
     path = path + "/";
   }
@@ -240,16 +225,14 @@ export function route<Data = any, Params = any>(
   };
 }
 
-export function index<Data = any, Params = any>(
-  handler: RouteHandler<Data, Params>,
-): RouteDefinition<Data, Params> {
+export function index(handler: RouteHandler): RouteDefinition {
   return route("/", handler);
 }
 
-export function prefix<Data = any, Params = any>(
+export function prefix(
   prefix: string,
-  routes: ReturnType<typeof route<Data, Params>>[],
-): RouteDefinition<Data, Params>[] {
+  routes: ReturnType<typeof route>[],
+): RouteDefinition[] {
   return routes.map((r) => {
     return {
       path: prefix + r.path,
@@ -258,12 +241,12 @@ export function prefix<Data = any, Params = any>(
   });
 }
 
-export function render<Data = any>(
+export function render(
   Document: React.FC<{ children: React.ReactNode }>,
-  routes: Route<Data>[],
-): Route<Data>[] {
-  const documentMiddleware: RouteMiddleware<Data> = ({ rw }) => {
-    rw.Document = Document;
+  routes: Route[],
+): Route[] {
+  const documentMiddleware: RouteMiddleware = () => {
+    requestContext.rw.Document = Document;
   };
 
   return [documentMiddleware, ...routes];
