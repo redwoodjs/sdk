@@ -1,6 +1,15 @@
 import { AsyncLocalStorage } from "async_hooks";
 import { RwContext } from "../lib/router";
 
+export type RequestContext<Data = Record<string, any>, TParams = any> = {
+  request: Request;
+  params: TParams;
+  data: Data;
+  headers: Headers;
+  rw: RwContext<Data>;
+  cf: ExecutionContext;
+};
+
 const requestContextStore = new AsyncLocalStorage<Record<string, any>>();
 
 const requestContextBase = {};
@@ -53,12 +62,3 @@ export function runWithRequestContextOverrides<Result>(
 
   return requestContextStore.run(newContext, fn);
 }
-
-export type RequestContext<Data = Record<string, any>, TParams = any> = {
-  request: Request;
-  params: TParams;
-  data: Data;
-  headers: Headers;
-  rw: RwContext<Data>;
-  cf: ExecutionContext;
-};
