@@ -14,7 +14,7 @@
     "dev:init": "rw-scripts dev-init",
     "preview": "npm run build && vite preview",
     "worker:run": "rw-scripts worker-run",
-    "clean": "npmrun clean:vite",
+    "clean": "npm run clean:vite",
     "clean:vite": "rm -rf ./node_modules/.vite",
     "release": "npm run clean && prisma generate && npm run build && wrangler deploy",
     "format": "prettier --write ./src",
