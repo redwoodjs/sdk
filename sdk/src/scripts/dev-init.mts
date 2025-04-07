@@ -11,12 +11,12 @@ export const initDev = async () => {
 
   if (pkg.scripts?.["migrate:dev"]) {
     console.log("Running migrations...");
-    await $`pnpm migrate:dev`;
+    await $`npm run migrate:dev`;
   }
 
   if (pkg.scripts?.["seed"]) {
     console.log("Seeding database...");
-    await $`pnpm seed`;
+    await $`npm run seed`;
   }
 
   console.log("Done!");
