@@ -242,7 +242,7 @@ importers:
         version: 6.4.1
       '@prisma/client':
         specifier: ^6.4.1
-        version: 6.4.1(prisma@6.4.1(typescript@5.5.4))(typescript@5.5.4)
+        version: 6.4.1(prisma@6.4.1(typescript@5.7.3))(typescript@5.7.3)
       '@redwoodjs/sdk':
         specifier: 0.0.51
         version: 0.0.51(@types/node@22.13.11)(kysely@0.27.5)(react-server-dom-webpack@19.0.0-rc-f2df5694-20240916(react-dom@19.0.0-rc-f2df5694-20240916(react@19.0.0-rc-f2df5694-20240916))(react@19.0.0-rc-f2df5694-20240916)(webpack@5.97.1(esbuild@0.24.2)))(vite@6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))
@@ -273,10 +273,10 @@ importers:
         version: 18.3.5(@types/react@18.3.18)
       prisma:
         specifier: ^6.4.1
-        version: 6.4.1(typescript@5.5.4)
+        version: 6.4.1(typescript@5.7.3)
       typescript:
-        specifier: 5.5.4
-        version: 5.5.4
+        specifier: ^5.6.3
+        version: 5.7.3
       vite:
         specifier: ^6.1.0
         version: 6.2.0(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0)
@@ -4270,11 +4270,6 @@ packages:
     resolution: {integrity: sha512-TkRKr9sUTxEH8MdfuCSP7VizJyzRNMjj2J2do2Jr3Kym598JVdEksuzPQCnlFPW4ky9Q+iA+ma9BGm06XQBy8g==}
     engines: {node: '>= 0.6'}
 
-  typescript@5.5.4:
-    resolution: {integrity: sha512-Mtq29sKDAEYP7aljRgtPOpTvOfbwRWlS6dPRzwjdE+C0R4brX/GUyhHSecbHMFLNBLcJIPt9nl9yG5TZ1weH+Q==}
-    engines: {node: '>=14.17'}
-    hasBin: true
-
   typescript@5.7.2:
     resolution: {integrity: sha512-i5t66RHxDvVN40HfDd1PsEThGNnlMCMT3jMUuoh9/0TaqWevNontacunWyN02LA9/fIbEWlcHZcgTKb9QoaLfg==}
     engines: {node: '>=14.17'}
@@ -5641,10 +5636,10 @@ snapshots:
       '@cloudflare/workers-types': 4.20240614.0
       '@prisma/driver-adapter-utils': 6.4.1
 
-  '@prisma/client@6.4.1(prisma@6.4.1(typescript@5.5.4))(typescript@5.5.4)':
+  '@prisma/client@6.4.1(prisma@6.4.1(typescript@5.7.3))(typescript@5.7.3)':
     optionalDependencies:
-      prisma: 6.4.1(typescript@5.5.4)
-      typescript: 5.5.4
+      prisma: 6.4.1(typescript@5.7.3)
+      typescript: 5.7.3
 
   '@prisma/debug@6.3.1': {}
 
@@ -8755,17 +8750,6 @@ snapshots:
       fsevents: 2.3.3
       typescript: 5.7.3
 
-  prisma@6.4.1(typescript@5.5.4):
-    dependencies:
-      '@prisma/engines': 6.4.1
-      esbuild: 0.24.2
-      esbuild-register: 3.6.0(esbuild@0.24.2)
-    optionalDependencies:
-      fsevents: 2.3.3
-      typescript: 5.5.4
-    transitivePeerDependencies:
-      - supports-color
-
   prisma@6.4.1(typescript@5.7.3):
     dependencies:
       '@prisma/engines': 6.4.1
@@ -9576,8 +9560,6 @@ snapshots:
     dependencies:
       media-typer: 0.3.0
       mime-types: 2.1.35
-
-  typescript@5.5.4: {}
 
   typescript@5.7.2: {}
 
