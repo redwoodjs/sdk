@@ -1,9 +1,9 @@
 import { AsyncLocalStorage } from "async_hooks";
 import { RwContext } from "../lib/router";
 
-export type RequestContext<Data = Record<string, any>, TParams = any> = {
+export type RequestContext<Params = any, Data = Record<string, any>> = {
   request: Request;
-  params: TParams;
+  params: Params;
   data: Data;
   headers: Headers;
   rw: RwContext<Data>;
