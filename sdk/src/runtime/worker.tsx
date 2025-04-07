@@ -57,12 +57,12 @@ export const defineApp = (routes: Route[]) => {
           nonce: generateNonce(),
         };
 
-        const outerRequestContext: RequestContext<Data> = {
+        const outerRequestContext: RequestContext = {
           request,
           headers: userHeaders,
           cf,
           params: {},
-          data: {} as Data,
+          data: {},
           rw,
         };
 
