@@ -12,14 +12,14 @@
     "build": "vite build",
     "dev": "NODE_ENV=${NODE_ENV:-development} vite dev",
     "dev:init": "rw-scripts dev-init",
-    "preview": "npx yarpm run build && npx yarpm run vite preview",
+    "preview": "npx run build && npx run vite preview",
     "worker:run": "rw-scripts worker-run",
-    "clean": "npx yarpm run clean:vite",
+    "clean": "npx run clean:vite",
     "clean:vite": "rm -rf ./node_modules/.vite",
-    "release": "npx yarpm run clean && npx yarpm run build && wrangler deploy",
+    "release": "npx run clean && npx run build && wrangler deploy",
     "format": "prettier --write ./src",
-    "check": "npx yarpm run types",
-    "types": "npx yarpm run tsc"
+    "check": "npx run types",
+    "types": "npx run tsc"
   },
   "dependencies": {
     "@redwoodjs/sdk": "0.0.51",
