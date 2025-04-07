@@ -27,7 +27,7 @@ export const migrateNew = async (name: string, skipApply = false) => {
   const nextNum = await getNextMigrationNumber();
   const filepath = `./migrations/${nextNum}_${snakeCase(name.toLowerCase())}.sql`;
   const raw =
-    await $`pnpm prisma migrate diff --from-local-d1 --to-schema-datamodel ./prisma/schema.prisma --script`;
+    await $`npx prisma migrate diff --from-local-d1 --to-schema-datamodel ./prisma/schema.prisma --script`;
 
   const cleaned = raw.stdout
     ?.split("\n")
@@ -49,9 +49,9 @@ export const migrateNew = async (name: string, skipApply = false) => {
 
   if (!skipApply) {
     console.log("Applying migration in development...");
-    await $`pnpm migrate:dev`;
+    await $`npm run migrate:dev`;
     console.log("Generating Prisma Client");
-    await $`pnpm prisma generate`;
+    await $`npx prisma generate`;
   }
 };
 
