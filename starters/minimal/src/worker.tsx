@@ -1,16 +1,16 @@
 import { defineApp } from "@redwoodjs/sdk/worker";
-import { route, render } from "@redwoodjs/sdk/router";
-import { requestContext } from "@redwoodjs/sdk/worker";
+import { index, render } from "@redwoodjs/sdk/router";
+import { Document } from "src/Document";
+import { Home } from "src/pages/Home";
+import { setCommonHeaders } from "src/headers";
 
-import { Document } from "@/app/Document";
-import { Home } from "@/app/pages/Home";
-import { setCommonHeaders } from "@/app/headers";
+type AppContext = {};
 
-export default defineApp([
+export default defineApp<AppContext>([
   setCommonHeaders(),
-  () => {
-    // setup data here
-    requestContext.data;
+  ({ appContext }) => {
+    // setup appContext here
+    appContext;
   },
-  render(Document, [route("/", Home)]),
+  render(Document, [index([Home])]),
 ]);

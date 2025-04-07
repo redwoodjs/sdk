@@ -70,10 +70,10 @@ import { Home } from 'src/pages/Home';
 
 ...
 
-export default defineApp([
-  () => {
-    // setup data here
-    const { data } = requestContext;
+export default defineApp<AppContext>([
+  ({ appContext }) => {
+    // setup appContext here
+    appContext;
   },
   render(Document, [
     index([
@@ -86,22 +86,21 @@ export default defineApp([
 Here we have a `document` function that takes the `Document` component (imported at the top of the file) and wraps our entire application. This include our basic HTML `head` and `body` tags.
 
 ```tsx
-export const Document = () => {
-  const { children } = requestContext;
-  return (
-    <html lang="en">
-      <head>
-        <meta charSet="utf-8" />
-        <meta name="viewport" content="width=device-width, initial-scale=1" />
-        <title>@redwoodjs/starter-minimal</title>
-        <script type="module" src="/src/client.tsx"></script>
-      </head>
-      <body>
-        <div id="root">{children}</div>
-      </body>
-    </html>
-  );
-}
+export const Document: React.FC<{ children: React.ReactNode }> = ({
+  children,
+}) => (
+  <html lang="en">
+    <head>
+      <meta charSet="utf-8" />
+      <meta name="viewport" content="width=device-width, initial-scale=1" />
+      <title>@redwoodjs/starter-minimal</title>
+      <script type="module" src="/src/client.tsx"></script>
+    </head>
+    <body>
+      <div id="root">{children}</div>
+    </body>
+  </html>
+);
 ```
 
 Then, we're using the `index` function to serve the `Home` page component (imported at the top of the file).
@@ -115,10 +114,10 @@ You can add additional routes by:
 ```tsx
 import { About } from "src/pages/About";
 
-export default defineApp([
-  () => {
-    // setup data here
-    const { data } = requestContext;
+export default defineApp<AppContext>([
+  ({ appContext }) => {
+    // setup appContext here
+    appContext;
   },
   render(Document, [index([Home]), route("/about", About)]),
 ]);

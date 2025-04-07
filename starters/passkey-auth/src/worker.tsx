@@ -8,50 +8,47 @@ import { sessions, setupSessionStore } from "./session/store";
 import { Session } from "./session/durableObject";
 import { db, setupDb } from "./db";
 import { User } from "@prisma/client";
-import { requestContext } from "@redwoodjs/sdk/worker";
-import { env } from "cloudflare:workers";
-
 export { SessionDurableObject } from "./session/durableObject";
 
-export type Data = {
+export type AppContext = {
   session: Session | null;
   user: User | null;
 };
 
-export default defineApp([
+export default defineApp<AppContext>([
   setCommonHeaders(),
-  async () => {
+  async ({ env, appContext, request, headers }) => {
     await setupDb(env);
     setupSessionStore(env);
 
     try {
-      requestContext.data.session = await sessions.load(requestContext.request);
+      appContext.session = await sessions.load(request);
     } catch (error) {
       if (error instanceof ErrorResponse && error.code === 401) {
-        await sessions.remove(requestContext.request, requestContext.headers);
-        requestContext.headers.set("Location", "/user/login");
+        await sessions.remove(request, headers);
+        headers.set("Location", "/user/login");
 
         return new Response(null, {
           status: 302,
-          headers: requestContext.headers,
+          headers,
         });
       }
 
       throw error;
     }
 
-    if (requestContext.data.session?.userId) {
-      requestContext.data.user = await db.user.findUnique({
+    if (appContext.session?.userId) {
+      appContext.user = await db.user.findUnique({
         where: {
-          id: requestContext.data.session.userId,
+          id: appContext.session.userId,
         },
       });
     }
   },
   render(Document, [
     index([
-      () => {
-        if (!requestContext.data.user) {
+      ({ appContext }) => {
+        if (!appContext.user) {
           return new Response(null, {
             status: 302,
             headers: { Location: "/user/login" },

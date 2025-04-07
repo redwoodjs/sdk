@@ -28,11 +28,8 @@ export default function MyClientComponent() {
 React Server Components run on the server, they can easily fetch data and make it part of the payload that's sent to the client.
 
 ```tsx title="src/app/pages/todos/TodoPage.tsx" "async"
-import { requestContext } from "@redwoodjs/sdk/worker";
-
-export async function Todos() {
-  const { data } = requestContext;
-  const todos = await db.todo.findMany({ where: { userId: data.user.id } });
+export async function Todos({ appContext }) {
+  const todos = await db.todo.findMany({ where: { userId: appContext.user.id } });
   return (
     <ol>
       {todos.map((todo) => (
@@ -42,19 +39,20 @@ export async function Todos() {
   );
 }
 
-export async function TodoPage() {
+export async function TodoPage({ appContext }) {
   return (
     <div>
       <h1>Todos</h1>
       <Suspense fallback={<div>Loading...</div>}>
-        <Todos />
+        <Todos appContext={appContext} />
       </Suspense>
     </div>
   );
 }
 
 ---
-The `TodoPage` component is a server component. Since it's rendered by a route, it has access to `requestContext`. The `Todos` component is also a server component and can directly access `requestContext` to fetch data.
+The `TodoPage` component is a server component. It it rendered by a route, so it receives the `appContext` object. We pass this to the `Todos` component, which is also a server component,
+and renders the todos.
 ---
 ```
 
@@ -71,12 +69,9 @@ Allow you to execute code on the server from a client component.
 ```tsx title="@/pages/todos/functions.tsx" mark={1}
 "use server";
 
-import { requestContext } from "@redwoodjs/sdk/worker";
-
-export async function addTodo(formData: FormData) {
-  const { data } = requestContext;
+export async function addTodo(formData: FormData, { appContext }: RouteOptions) {
   const title = formData.get("title");
-  await db.todo.create({ data: { title, userId: data.user.id } });
+  await db.todo.create({ data: { title, userId: appContext.user.id } });
 }
 
 ---
@@ -99,15 +94,6 @@ export default function AddTodo() {
 }
 ```
 
-### Request Context
+### Context
 
-The `requestContext` object is available to all server components and server functions. It provides access to the current request, environment variables, and shared data that was populated by middleware.
-
-```tsx
-import { requestContext } from "@redwoodjs/sdk/worker";
-
-// Access request context in any server component or function
-const { request, params, env, data, cf } = requestContext;
-```
-
-For more information about `requestContext`, see the [Request Context](/core/routing#request-context) section.
+Context is a way to share data globally between server components on a per-request basis. The context is populated by middleware, and is available to all React Server Components Pages and Server Functions.

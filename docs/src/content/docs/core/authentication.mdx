@@ -121,7 +121,7 @@ When a request comes in, we:
 
 #### Why Durable Objects?
 
-Instead of keeping session data in multiple places where we'd have to worry about syncing and stale data, each session is stored in a single **Durable Object** instance. This means we don't have to deal with session data being out of date or lingering after logout—it's all in one place, making revocation straightforward. On top of this, when a session is active, it stays in memory, so lookups are faster without extra database queries.
+Instead of keeping session data in multiple places where we’d have to worry about syncing and stale data, each session is stored in a single **Durable Object** instance. This means we don’t have to deal with session data being out of date or lingering after logout—it’s all in one place, making revocation straightforward. On top of this, when a session is active, it stays in memory, so lookups are faster without extra database queries.
 
 For more on Durable Objects, see [Cloudflare's documentation](https://developers.cloudflare.com/durable-objects/).
 

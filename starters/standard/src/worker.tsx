@@ -8,24 +8,21 @@ import { sessions, setupSessionStore } from "./session/store";
 import { Session } from "./session/durableObject";
 import { db, setupDb } from "./db";
 import type { User } from "@prisma/client";
-import { env } from "cloudflare:workers";
-import { requestContext } from "@redwoodjs/sdk/worker";
 export { SessionDurableObject } from "./session/durableObject";
 
-export type Data = {
+export type AppContext = {
   session: Session | null;
   user: User | null;
 };
 
-export default defineApp([
+export default defineApp<AppContext>([
   setCommonHeaders(),
-  async () => {
-    const { request, headers, data } = requestContext;
+  async ({ env, appContext, request, headers }) => {
     await setupDb(env);
     setupSessionStore(env);
 
     try {
-      data.session = await sessions.load(request);
+      appContext.session = await sessions.load(request);
     } catch (error) {
       if (error instanceof ErrorResponse && error.code === 401) {
         await sessions.remove(request, headers);
@@ -40,10 +37,10 @@ export default defineApp([
       throw error;
     }
 
-    if (data.session?.userId) {
-      data.user = await db.user.findUnique({
+    if (appContext.session?.userId) {
+      appContext.user = await db.user.findUnique({
         where: {
-          id: data.session.userId,
+          id: appContext.session.userId,
         },
       });
     }
@@ -51,8 +48,8 @@ export default defineApp([
   render(Document, [
     route("/", () => new Response("Hello, World!")),
     route("/protected", [
-      () => {
-        if (!requestContext.data.user) {
+      ({ appContext }) => {
+        if (!appContext.user) {
           return new Response(null, {
             status: 302,
             headers: { Location: "/user/login" },
