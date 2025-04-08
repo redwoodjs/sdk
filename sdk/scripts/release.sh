@@ -115,7 +115,7 @@ else
   if [[ "$CURRENT_VERSION" =~ ^(.*)-test.([0-9]+)$ ]]; then
     CURRENT_VERSION="${BASH_REMATCH[1]}"
   fi
-  NEW_VERSION=$(semver -i $VERSION_TYPE $CURRENT_VERSION)
+  NEW_VERSION=$(npx semver -i $VERSION_TYPE $CURRENT_VERSION)
 fi
 
 echo -e "\n📦 Planning version bump to $NEW_VERSION ($VERSION_TYPE)..."

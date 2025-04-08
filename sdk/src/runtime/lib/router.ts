@@ -51,7 +51,7 @@ function matchPath(
   requestPath: string,
 ): RequestInfo["params"] | null {
   const pattern = routePath
-    .replace(/:[a-zA-Z]+/g, "([^/]+)") // Convert :param to capture group
+    .replace(/:[a-zA-Z0-9]+/g, "([^/]+)") // Convert :param to capture group
     .replace(/\*/g, "(.*)"); // Convert * to wildcard capture group
 
   const regex = new RegExp(`^${pattern}$`);
@@ -63,7 +63,7 @@ function matchPath(
 
   // Extract named parameters and wildcards
   const params: RequestInfo["params"] = {};
-  const paramNames = [...routePath.matchAll(/:[a-zA-Z]+/g)].map((m) =>
+  const paramNames = [...routePath.matchAll(/:[a-zA-Z0-9]+/g)].map((m) =>
     m[0].slice(1),
   );
   const wildcardCount = (routePath.match(/\*/g) || []).length;

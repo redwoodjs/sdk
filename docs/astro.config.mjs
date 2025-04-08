@@ -24,10 +24,7 @@ export default defineConfig({
         dark: "./src/assets/dark-logo.svg",
         replacesTitle: true,
       },
-      customCss: [
-        // Relative path to your custom CSS file
-        "./src/styles/custom.css",
-      ],
+      customCss: ["./src/styles/custom.css"],
       social: {
         github: "https://github.com/redwoodjs/sdk",
       },
@@ -46,11 +43,11 @@ export default defineConfig({
             { slug: "core/react-server-components" },
             { slug: "core/database" },
             { slug: "core/storage" },
+            { slug: "core/realtime" },
             { slug: "core/queues" },
             { slug: "core/authentication" },
             { slug: "core/security" },
             { slug: "core/hosting" },
-            { slug: "core/realtime" },
           ],
         },
         // {
@@ -144,11 +141,6 @@ export default defineConfig({
         //     },
         //   ],
         // },
-        {
-          label: "Reference",
-
-          autogenerate: { directory: "reference", collapsed: true },
-        },
         // {
         //   label: "Explanations & Concepts",
         //   collapsed: true,
