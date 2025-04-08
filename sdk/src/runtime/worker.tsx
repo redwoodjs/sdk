@@ -66,8 +66,10 @@ export const defineApp = (routes: Route[]) => {
           rw,
         };
 
-        const computePageProps = (Page: React.FC<any>) => {
-          const requestInfo = getRequestInfo();
+        const computePageProps = (
+          requestInfo: RequestInfo,
+          Page: React.FC<any>,
+        ) => {
           const { ctx, params } = requestInfo;
           let props;
 
@@ -85,12 +87,13 @@ export const defineApp = (routes: Route[]) => {
           return props;
         };
 
-        const renderPage = async (Page: React.FC<any>) => {
-          const requestInfo = getRequestInfo();
-
+        const renderPage = async (
+          requestInfo: RequestInfo,
+          Page: React.FC<any>,
+        ) => {
           if (isClientReference(requestInfo.rw.Document)) {
             if (IS_DEV) {
-              console.error("Document cannot be a 'use client' component");
+              console.error("Document cannot be a client component");
             }
 
             return new Response(null, {
@@ -98,7 +101,7 @@ export const defineApp = (routes: Route[]) => {
             });
           }
 
-          const props = computePageProps(Page);
+          const props = computePageProps(requestInfo, Page);
           let actionResult: unknown = undefined;
           const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 

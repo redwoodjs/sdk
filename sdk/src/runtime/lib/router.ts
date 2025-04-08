@@ -98,7 +98,7 @@ export function defineRoutes(routes: Route[]): {
     renderPage,
   }: {
     request: Request;
-    renderPage: (Page: React.FC) => Promise<Response>;
+    renderPage: (requestInfo: RequestInfo, Page: React.FC) => Promise<Response>;
   }) => Response | Promise<Response>;
 } {
   const flattenedRoutes = flattenRoutes(routes);
@@ -145,7 +145,7 @@ export function defineRoutes(routes: Route[]): {
         const handlers = Array.isArray(handler) ? handler : [handler];
         for (const h of handlers) {
           if (isRouteComponent(h)) {
-            return await renderPage(h as React.FC);
+            return await renderPage(getRequestInfo(), h as React.FC);
           } else {
             const r = await (h(getRequestInfo()) as Promise<Response>);
             if (r instanceof Response) {
