@@ -2,7 +2,7 @@ import { route } from "../../entries/router";
 import { validateUpgradeRequest } from "./validateUpgradeRequest";
 import type { RealtimeDurableObject } from "./durableObject";
 import { DEFAULT_REALTIME_KEY } from "./constants";
-import { requestContext } from "../../requestInfo/worker";
+import { requestInfo } from "../../requestInfo/worker";
 import { env } from "cloudflare:workers";
 
 export { renderRealtimeClients } from "./renderRealtimeClients";
@@ -13,7 +13,7 @@ export const realtimeRoute = (
   ) => DurableObjectNamespace<RealtimeDurableObject>,
 ) =>
   route("/__realtime", async function () {
-    const { request } = requestContext;
+    const { request } = requestInfo;
     const validation = validateUpgradeRequest(request);
 
     if (!validation.valid) {

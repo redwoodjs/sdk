@@ -8,4 +8,4 @@ export * from "../worker";
 export * from "../error";
 export * from "../script";
 export * from "../lib/utils";
-export { type RequestContext, requestContext } from "../requestInfo/worker";
+export * from "../requestInfo/worker";
