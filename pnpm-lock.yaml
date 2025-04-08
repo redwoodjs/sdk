@@ -152,6 +152,15 @@ importers:
       '@types/node':
         specifier: ^22.13.11
         version: 22.13.11
+      prettier:
+        specifier: ^3.4.1
+        version: 3.4.2
+      semver:
+        specifier: ^7.7.1
+        version: 7.7.1
+      typescript:
+        specifier: ^5.6.3
+        version: 5.7.3
       vitest:
         specifier: ^3.1.1
         version: 3.1.1(@types/debug@4.1.12)(@types/node@22.13.11)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0)
