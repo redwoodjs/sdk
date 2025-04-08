@@ -1,82 +1,34 @@
 import { isValidElementType } from "react-is";
-import { ExecutionContext } from "@cloudflare/workers-types";
 import {
-  requestContext,
-  runWithRequestContextOverrides,
-} from "../requestContext/worker";
+  runWithRequestInfoOverrides,
+  RequestInfo,
+  getRequestInfo,
+  DefaultAppContext,
+} from "../requestInfo/worker";
 
-/** @deprecated Import and use `requestContext` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-export type HandlerOptions<Data = Record<string, any>> = {
-  /** @deprecated Import and use `requestContext.request` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-  request: Request;
-  /** @deprecated Import and use `requestContext.env` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-  env: Env;
-  /** @deprecated Import and use `requestContext.cf` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-  cf: ExecutionContext;
-  /** @deprecated Import and use `requestContext.appContext` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-  appContext: Data;
-  /** @deprecated Import and use `requestContext.headers` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-  headers: Headers;
-  /** @deprecated Import and use `requestContext.rw` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-  rw: RwContext<Data>;
-};
-
-/** @deprecated Import and use `requestContext` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-export type RouteOptions<Data = Record<string, any>, Params = any> = {
-  /** @deprecated Import and use `requestContext.cf` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-  cf: ExecutionContext;
-  /** @deprecated Import and use `requestContext.request` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-  request: Request;
-  /** @deprecated Import and use `requestContext.params` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-  params: Params;
-  /** @deprecated Use `env` from `cloudflare:workers` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-  env: Env;
-  /** @deprecated Import and use `requestContext.data` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-  appContext: Data;
-  /** @deprecated Import and use `requestContext.headers` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-  headers: Headers;
-  /** @deprecated Import and use `requestContext.rw` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-  rw: RwContext<Data>;
-};
-
-/** @deprecated Import and use `requestContext` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-export type PageProps<Data> = Omit<
-  RouteOptions<Data>,
-  "request" | "headers" | "rw" | "cf"
-> & {
-  /** @deprecated Import and use `requestContext.rw.nonce` instead. See release notes for migration guide: https://github.com/redwoodjs/sdk/releases/tag/v0.0.52 */
-  rw: { nonce: string };
-};
-
-export type DocumentProps<Data> = PageProps<Data> & {
+export type DocumentProps<Data = DefaultAppContext> = RequestInfo<Data> & {
   children: React.ReactNode;
 };
 
-export type RenderPageParams<Data> = {
-  Page: React.FC<Record<string, any>>;
-  props: PageProps<Data>;
-  actionResult: unknown;
-  Document: React.FC<DocumentProps<Data>>;
-};
-
-export type RenderPage<Data> = (
-  params: RenderPageParams<Data>,
-) => Promise<Response>;
-
-export type RwContext<Data> = {
+export type RwContext<Data = DefaultAppContext> = {
   nonce: string;
   Document: React.FC<DocumentProps<Data>>;
 };
 
-export type RouteMiddleware = () =>
+export type RouteMiddleware = (
+  requestInfo: RequestInfo,
+) =>
   | Response
   | Promise<Response>
   | void
   | Promise<void>
   | Promise<Response | void>;
 
-type RouteFunction = () => Response | Promise<Response>;
-type RouteComponent = () => JSX.Element | Promise<JSX.Element>;
+type RouteFunction = (requestInfo: RequestInfo) => Response | Promise<Response>;
+
+type RouteComponent = (
+  requestInfo: RequestInfo,
+) => JSX.Element | Promise<JSX.Element>;
 
 type RouteHandler =
   | RouteFunction
@@ -98,7 +50,7 @@ type RouteMatch = {
 function matchPath(
   routePath: string,
   requestPath: string,
-): RouteOptions["params"] | null {
+): RequestInfo["params"] | null {
   const pattern = routePath
     .replace(/:[a-zA-Z]+/g, "([^/]+)") // Convert :param to capture group
     .replace(/\*/g, "(.*)"); // Convert * to wildcard capture group
@@ -111,7 +63,7 @@ function matchPath(
   }
 
   // Extract named parameters and wildcards
-  const params: RouteOptions["params"] = {};
+  const params: RequestInfo["params"] = {};
   const paramNames = [...routePath.matchAll(/:[a-zA-Z]+/g)].map((m) =>
     m[0].slice(1),
   );
@@ -145,17 +97,15 @@ export function defineRoutes(routes: Route[]): {
   handle: ({
     request,
     renderPage,
-    deprecatedRouteOptions,
   }: {
     request: Request;
     renderPage: (Page: React.FC) => Promise<Response>;
-    deprecatedRouteOptions: RouteOptions;
   }) => Response | Promise<Response>;
 } {
   const flattenedRoutes = flattenRoutes(routes);
   return {
     routes: flattenedRoutes,
-    async handle({ request, renderPage, deprecatedRouteOptions }) {
+    async handle({ request, renderPage }) {
       const url = new URL(request.url);
       let path = url.pathname;
 
@@ -169,7 +119,7 @@ export function defineRoutes(routes: Route[]): {
 
       for (const route of flattenedRoutes) {
         if (typeof route === "function") {
-          const r = await route();
+          const r = await route(getRequestInfo());
 
           if (r instanceof Response) {
             return r;
@@ -192,13 +142,13 @@ export function defineRoutes(routes: Route[]): {
 
       let { params, handler } = match;
 
-      return runWithRequestContextOverrides({ params }, async () => {
+      return runWithRequestInfoOverrides({ params }, async () => {
         const handlers = Array.isArray(handler) ? handler : [handler];
         for (const h of handlers) {
           if (isRouteComponent(h)) {
             return await renderPage(h as React.FC);
           } else {
-            const r = await (h() as Promise<Response>);
+            const r = await (h(getRequestInfo()) as Promise<Response>);
             if (r instanceof Response) {
               return r;
             }
@@ -245,8 +195,8 @@ export function render(
   Document: React.FC<{ children: React.ReactNode }>,
   routes: Route[],
 ): Route[] {
-  const documentMiddleware: RouteMiddleware = () => {
-    requestContext.rw.Document = Document;
+  const documentMiddleware: RouteMiddleware = ({ rw }) => {
+    rw.Document = Document;
   };
 
   return [documentMiddleware, ...routes];

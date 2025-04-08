@@ -2,7 +2,7 @@ import { route } from "../../entries/router";
 import { validateUpgradeRequest } from "./validateUpgradeRequest";
 import type { RealtimeDurableObject } from "./durableObject";
 import { DEFAULT_REALTIME_KEY } from "./constants";
-import { requestContext } from "../../requestContext/worker";
+import { requestContext } from "../../requestInfo/worker";
 import { env } from "cloudflare:workers";
 
 export { renderRealtimeClients } from "./renderRealtimeClients";

@@ -6,10 +6,10 @@ import { ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import { ErrorResponse } from "./error";
 import {
-  RequestContext,
-  getRequestContext,
-  runWithRequestContext,
-} from "./requestContext/worker";
+  RequestInfo,
+  getRequestInfo,
+  runWithRequestInfo,
+} from "./requestInfo/worker";
 
 import { Route, defineRoutes } from "./lib/router";
 import { generateNonce } from "./lib/utils";
@@ -57,75 +57,57 @@ export const defineApp = (routes: Route[]) => {
           nonce: generateNonce(),
         };
 
-        const outerRequestContext: RequestContext = {
+        const outerRequestInfo: RequestInfo = {
           request,
           headers: userHeaders,
           cf,
           params: {},
-          data: {},
+          ctx: {},
           rw,
         };
 
-        const computeDeprecatedPageProps = (Page: React.FC) => {
-          const requestContext = getRequestContext();
-
-          const routeOptions = {
-            cf,
-            request,
-            env,
-            appContext: requestContext.data,
-            headers: requestContext.headers,
-            params: requestContext.params,
-            rw,
-          };
-
-          let props = routeOptions;
-          let fullPageProps = routeOptions;
-
-          let documentProps: any = {
-            appContext: routeOptions.appContext,
-            params: routeOptions.params,
-            rw: routeOptions.rw,
-          };
+        const computePageProps = (Page: React.FC<any>) => {
+          const requestInfo = getRequestInfo();
+          const { ctx, params } = requestInfo;
+          let props;
 
           // context(justinvdm, 25 Feb 2025): If the page is a client reference, we need to avoid passing
           // down props the client shouldn't get (e.g. env). For safety, we pick the allowed props explicitly.
-          if (
-            Object.prototype.hasOwnProperty.call(Page, "$$isClientReference")
-          ) {
-            const { appContext, params } = fullPageProps;
-            // context(justinvdm, 6 Apr 2025): tsignore instead of cast to avoid importing deprecated types
-            // @ts-ignore
-            props = { appContext, params };
+          if (isClientReference(Page)) {
+            props = {
+              ctx,
+              params,
+            };
+          } else {
+            props = requestInfo;
           }
 
-          if (
-            Object.prototype.hasOwnProperty.call(
-              rw.Document,
-              "$$isClientReference",
-            )
-          ) {
-            const { appContext, params } = fullPageProps;
-            documentProps = { appContext, params };
-          }
-
-          return { routeOptions, props, documentProps };
+          return props;
         };
 
         const renderPage = async (Page: React.FC<any>) => {
+          const requestInfo = getRequestInfo();
+
+          if (isClientReference(requestInfo.rw.Document)) {
+            if (IS_DEV) {
+              console.error("Document cannot be a 'use client' component");
+            }
+
+            return new Response(null, {
+              status: 500,
+            });
+          }
+
+          const props = computePageProps(Page);
           let actionResult: unknown = undefined;
           const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
-          const deprecatedPageProps = computeDeprecatedPageProps(Page);
 
           if (isRSCActionHandler) {
-            actionResult = await rscActionHandler(
-              request,
-              deprecatedPageProps.routeOptions,
-            );
+            actionResult = await rscActionHandler(request);
           }
 
           const rscPayloadStream = renderToRscStream({
-            node: <Page {...deprecatedPageProps.props} />,
+            node: <Page {...props} />,
             actionResult:
               actionResult instanceof Response ? null : actionResult,
           });
@@ -143,10 +125,7 @@ export const defineApp = (routes: Route[]) => {
           const htmlStream = await transformRscToHtmlStream({
             stream: rscPayloadStream1,
             Parent: ({ children }) => (
-              <rw.Document
-                {...deprecatedPageProps.documentProps}
-                children={children}
-              />
+              <rw.Document {...props} children={children} />
             ),
           });
 
@@ -163,19 +142,10 @@ export const defineApp = (routes: Route[]) => {
           });
         };
 
-        const response = await runWithRequestContext(outerRequestContext, () =>
+        const response = await runWithRequestInfo(outerRequestInfo, () =>
           router.handle({
             request,
             renderPage,
-            deprecatedRouteOptions: {
-              cf,
-              request,
-              env,
-              appContext: outerRequestContext.data,
-              headers: outerRequestContext.headers,
-              params: outerRequestContext.params,
-              rw: outerRequestContext.rw,
-            },
           }),
         );
 
@@ -215,3 +185,7 @@ export const DefaultDocument: React.FC<{ children: React.ReactNode }> = ({
     </body>
   </html>
 );
+
+const isClientReference = (Component: React.FC<any>) => {
+  return Object.prototype.hasOwnProperty.call(Component, "$$isClientReference");
+};

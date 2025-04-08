@@ -4,7 +4,6 @@ import {
   decodeReply,
 } from "react-server-dom-webpack/server.edge";
 import { getModuleExport } from "../imports/worker";
-import { HandlerOptions } from "../lib/router";
 import { IS_DEV } from "../constants";
 
 export function registerServerReference(
@@ -32,10 +31,7 @@ export function registerClientReference<Target extends Record<string, any>>(
   });
 }
 
-export async function rscActionHandler<TAppContext>(
-  req: Request,
-  opts: HandlerOptions<TAppContext>,
-): Promise<unknown> {
+export async function rscActionHandler(req: Request): Promise<unknown> {
   const url = new URL(req.url);
   const contentType = req.headers.get("content-type");
 
@@ -55,5 +51,5 @@ export async function rscActionHandler<TAppContext>(
     throw new Error(`Action ${actionId} is not a function`);
   }
 
-  return action(...args, opts);
+  return action(...args);
 }
