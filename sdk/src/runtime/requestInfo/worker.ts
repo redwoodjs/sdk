@@ -1,22 +1,16 @@
 import { AsyncLocalStorage } from "async_hooks";
 import { RwContext } from "../lib/router";
 
-// context(justinvdm, 2025-04-08): Each app augment this declaration to add app-specific AppContext
-export type DefaultAppContext = Record<string, any>;
+export interface DefaultAppContext {}
 
-export type DefaultParams = Record<string, any>;
-
-export type RequestInfo<
-  Params = DefaultParams,
-  AppContext = DefaultAppContext,
-> = {
+export interface RequestInfo<Context = DefaultAppContext> {
   request: Request;
-  params: Params;
-  ctx: AppContext;
+  params: Record<string, any>;
+  ctx: Context;
   headers: Headers;
-  rw: RwContext<AppContext>;
+  rw: RwContext;
   cf: ExecutionContext;
-};
+}
 
 const requestInfoStore = new AsyncLocalStorage<Record<string, any>>();
 
@@ -35,17 +29,16 @@ REQUEST_INFO_KEYS.forEach((key) => {
   });
 });
 
-export const requestInfo = Object.freeze(requestInfoBase) as RequestInfo;
+export const requestInfo: RequestInfo<DefaultAppContext> = Object.freeze(
+  requestInfoBase,
+) as RequestInfo<DefaultAppContext>;
 
-export function getRequestInfo<
-  Data = Record<string, any>,
-  Params = any,
->(): RequestInfo<Data, Params> {
+export function getRequestInfo(): RequestInfo {
   const store = requestInfoStore.getStore();
   if (!store) {
     throw new Error("Request context not found");
   }
-  return store as RequestInfo<Data, Params>;
+  return store as RequestInfo;
 }
 
 export function runWithRequestInfo<Result>(

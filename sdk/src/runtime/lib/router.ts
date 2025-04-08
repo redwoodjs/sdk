@@ -3,16 +3,15 @@ import {
   runWithRequestInfoOverrides,
   RequestInfo,
   getRequestInfo,
-  DefaultAppContext,
 } from "../requestInfo/worker";
 
-export type DocumentProps<Data = DefaultAppContext> = RequestInfo<Data> & {
+export type DocumentProps = RequestInfo & {
   children: React.ReactNode;
 };
 
-export type RwContext<Data = DefaultAppContext> = {
+export type RwContext = {
   nonce: string;
-  Document: React.FC<DocumentProps<Data>>;
+  Document: React.FC<DocumentProps>;
 };
 
 export type RouteMiddleware = (

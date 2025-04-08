@@ -8,6 +8,7 @@ import { sessions, setupSessionStore } from "./session/store";
 import { Session } from "./session/durableObject";
 import { db, setupDb } from "./db";
 import type { User } from "@prisma/client";
+import { env } from "cloudflare:workers";
 export { SessionDurableObject } from "./session/durableObject";
 
 export type AppContext = {
@@ -15,14 +16,14 @@ export type AppContext = {
   user: User | null;
 };
 
-export default defineApp<AppContext>([
+export default defineApp([
   setCommonHeaders(),
-  async ({ env, appContext, request, headers }) => {
+  async ({ ctx, request, headers }) => {
     await setupDb(env);
     setupSessionStore(env);
 
     try {
-      appContext.session = await sessions.load(request);
+      ctx.session = await sessions.load(request);
     } catch (error) {
       if (error instanceof ErrorResponse && error.code === 401) {
         await sessions.remove(request, headers);
@@ -37,10 +38,10 @@ export default defineApp<AppContext>([
       throw error;
     }
 
-    if (appContext.session?.userId) {
-      appContext.user = await db.user.findUnique({
+    if (ctx.session?.userId) {
+      ctx.user = await db.user.findUnique({
         where: {
-          id: appContext.session.userId,
+          id: ctx.session.userId,
         },
       });
     }
@@ -48,8 +49,8 @@ export default defineApp<AppContext>([
   render(Document, [
     route("/", () => new Response("Hello, World!")),
     route("/protected", [
-      ({ appContext }) => {
-        if (!appContext.user) {
+      ({ ctx }) => {
+        if (!ctx.user) {
           return new Response(null, {
             status: 302,
             headers: { Location: "/user/login" },
