@@ -16,7 +16,7 @@
     /* Specify type package names to be included without being referenced in a source file. */
     "types": ["./worker-configuration.d.ts"],
     "paths": {
-      "src/*": ["./src/app/*"]
+      "@/*": ["./src/app/*"]
     },
     /* Enable importing .json files */
     "resolveJsonModule": true,
