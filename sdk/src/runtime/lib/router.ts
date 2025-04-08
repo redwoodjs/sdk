@@ -1,100 +1,55 @@
 import { isValidElementType } from "react-is";
-import { ExecutionContext } from "@cloudflare/workers-types";
+import {
+  runWithRequestInfoOverrides,
+  RequestInfo,
+  getRequestInfo,
+} from "../requestInfo/worker";
 
-export type HandlerOptions<TAppContext = Record<string, any>> = {
-  request: Request;
-  env: Env;
-  cf: ExecutionContext;
-  appContext: TAppContext;
-  headers: Headers;
-  rw: RwContext<TAppContext>;
-};
-
-export type RouteOptions<TAppContext = Record<string, any>, TParams = any> = {
-  cf: ExecutionContext;
-  request: Request;
-  params: TParams;
-  env: Env;
-  appContext: TAppContext;
-  headers: Headers;
-  rw: RwContext<TAppContext>;
-};
-
-export type PageProps<TAppContext> = Omit<
-  RouteOptions<TAppContext>,
-  "request" | "headers" | "rw" | "cf"
-> & { rw: { nonce: string } };
-
-export type DocumentProps<TAppContext> = PageProps<TAppContext> & {
+export type DocumentProps = RequestInfo & {
   children: React.ReactNode;
 };
 
-export type RenderPageParams<TAppContext> = {
-  Page: React.FC<Record<string, any>>;
-  props: PageProps<TAppContext>;
-  actionResult: unknown;
-  Document: React.FC<DocumentProps<TAppContext>>;
-};
-
-export type RenderPage<TAppContext> = (
-  params: RenderPageParams<TAppContext>,
-) => Promise<Response>;
-
-export type RwContext<TAppContext> = {
+export type RwContext = {
   nonce: string;
-  Document: React.FC<DocumentProps<TAppContext>>;
-  renderPage: RenderPage<TAppContext>;
-  handleAction: (opts: RouteOptions<TAppContext>) => Promise<unknown>;
+  Document: React.FC<DocumentProps>;
 };
 
-export type RouteMiddleware<TAppContext = any> = (
-  opts: RouteOptions<TAppContext>,
+export type RouteMiddleware = (
+  requestInfo: RequestInfo,
 ) =>
   | Response
   | Promise<Response>
   | void
   | Promise<void>
   | Promise<Response | void>;
-type RouteFunction<TAppContext, TParams> = (
-  opts: RouteOptions<TAppContext, TParams>,
-) => Response | Promise<Response>;
-type RouteComponent<TAppContext, TParams> = (
-  opts: RouteOptions<TAppContext, TParams>,
+
+type RouteFunction = (requestInfo: RequestInfo) => Response | Promise<Response>;
+
+type RouteComponent = (
+  requestInfo: RequestInfo,
 ) => JSX.Element | Promise<JSX.Element>;
 
-type RouteHandler<TAppContext, TParams> =
-  | RouteFunction<TAppContext, TParams>
-  | RouteComponent<TAppContext, TParams>
-  | [
-      ...RouteMiddleware<TAppContext>[],
-      (
-        | RouteFunction<TAppContext, TParams>
-        | RouteComponent<TAppContext, TParams>
-      ),
-    ];
+type RouteHandler =
+  | RouteFunction
+  | RouteComponent
+  | [...RouteMiddleware[], RouteFunction | RouteComponent];
 
-export type Route<TAppContext> =
-  | RouteMiddleware<TAppContext>
-  | RouteDefinition<TAppContext>
-  | Array<Route<TAppContext>>;
+export type Route = RouteMiddleware | RouteDefinition | Array<Route>;
 
-export type RouteDefinition<
-  TAppContext = Record<string, any>,
-  TParams = any,
-> = {
+export type RouteDefinition = {
   path: string;
-  handler: RouteHandler<TAppContext, TParams>;
+  handler: RouteHandler;
 };
 
-type RouteMatch<TAppContext = Record<string, any>, TParams = any> = {
-  params: TParams;
-  handler: RouteHandler<TAppContext, TParams>;
+type RouteMatch = {
+  params: Record<string, string>;
+  handler: RouteHandler;
 };
 
 function matchPath(
   routePath: string,
   requestPath: string,
-): RouteOptions["params"] | null {
+): RequestInfo["params"] | null {
   const pattern = routePath
     .replace(/:[a-zA-Z0-9]+/g, "([^/]+)") // Convert :param to capture group
     .replace(/\*/g, "(.*)"); // Convert * to wildcard capture group
@@ -107,7 +62,7 @@ function matchPath(
   }
 
   // Extract named parameters and wildcards
-  const params: RouteOptions["params"] = {};
+  const params: RequestInfo["params"] = {};
   const paramNames = [...routePath.matchAll(/:[a-zA-Z0-9]+/g)].map((m) =>
     m[0].slice(1),
   );
@@ -127,41 +82,29 @@ function matchPath(
   return params;
 }
 
-function flattenRoutes<TAppContext>(
-  routes: Route<TAppContext>[],
-): (RouteMiddleware<TAppContext> | RouteDefinition<TAppContext>)[] {
-  return routes.reduce((acc: Route<TAppContext>[], route) => {
+function flattenRoutes(routes: Route[]): (RouteMiddleware | RouteDefinition)[] {
+  return routes.reduce((acc: Route[], route) => {
     if (Array.isArray(route)) {
       return [...acc, ...flattenRoutes(route)];
     }
     return [...acc, route];
-  }, []) as (RouteMiddleware<TAppContext> | RouteDefinition<TAppContext>)[];
+  }, []) as (RouteMiddleware | RouteDefinition)[];
 }
 
-export function defineRoutes<TAppContext = Record<string, any>>(
-  routes: Route<TAppContext>[],
-): {
-  routes: Route<TAppContext>[];
+export function defineRoutes(routes: Route[]): {
+  routes: Route[];
   handle: ({
-    cf,
     request,
-    appContext,
-    env,
-    rw,
-    headers,
+    renderPage,
   }: {
-    cf: ExecutionContext;
     request: Request;
-    appContext: TAppContext;
-    env: Env;
-    rw: RwContext<TAppContext>;
-    headers: Headers;
+    renderPage: (requestInfo: RequestInfo, Page: React.FC) => Promise<Response>;
   }) => Response | Promise<Response>;
 } {
   const flattenedRoutes = flattenRoutes(routes);
   return {
     routes: flattenedRoutes,
-    async handle({ cf, request, appContext, env, rw, headers }) {
+    async handle({ request, renderPage }) {
       const url = new URL(request.url);
       let path = url.pathname;
 
@@ -171,20 +114,11 @@ export function defineRoutes<TAppContext = Record<string, any>>(
       }
 
       // Find matching route
-      let match: RouteMatch<TAppContext> | null = null;
-      const routeOptions: RouteOptions<TAppContext> = {
-        cf,
-        request,
-        params: {},
-        appContext,
-        env,
-        rw,
-        headers,
-      };
+      let match: RouteMatch | null = null;
 
       for (const route of flattenedRoutes) {
         if (typeof route === "function") {
-          const r = await route(routeOptions);
+          const r = await route(getRequestInfo());
 
           if (r instanceof Response) {
             return r;
@@ -206,44 +140,30 @@ export function defineRoutes<TAppContext = Record<string, any>>(
       }
 
       let { params, handler } = match;
-      routeOptions.params = params;
 
-      const handlers = Array.isArray(handler) ? handler : [handler];
-      for (const h of handlers) {
-        if (isRouteComponent(h)) {
-          const actionResult = await rw.handleAction(routeOptions);
-          const props = {
-            params,
-            env,
-            appContext,
-            rw: { nonce: rw.nonce },
-          };
-          return await rw.renderPage({
-            Page: h as React.FC<Record<string, any>>,
-            props,
-            actionResult,
-            Document: rw.Document,
-          });
-        } else {
-          const r = await (h(routeOptions) as Promise<Response>);
-          if (r instanceof Response) {
-            return r;
+      return runWithRequestInfoOverrides({ params }, async () => {
+        const handlers = Array.isArray(handler) ? handler : [handler];
+        for (const h of handlers) {
+          if (isRouteComponent(h)) {
+            return await renderPage(getRequestInfo(), h as React.FC);
+          } else {
+            const r = await (h(getRequestInfo()) as Promise<Response>);
+            if (r instanceof Response) {
+              return r;
+            }
           }
         }
-      }
 
-      // Add fallback return
-      return new Response("Response not returned from route handler", {
-        status: 500,
+        // Add fallback return
+        return new Response("Response not returned from route handler", {
+          status: 500,
+        });
       });
     },
   };
 }
 
-export function route<TAppContext = any, TParams = any>(
-  path: string,
-  handler: RouteHandler<TAppContext, TParams>,
-): RouteDefinition<TAppContext, TParams> {
+export function route(path: string, handler: RouteHandler): RouteDefinition {
   if (!path.endsWith("/")) {
     path = path + "/";
   }
@@ -254,16 +174,14 @@ export function route<TAppContext = any, TParams = any>(
   };
 }
 
-export function index<TAppContext = any, TParams = any>(
-  handler: RouteHandler<TAppContext, TParams>,
-): RouteDefinition<TAppContext, TParams> {
+export function index(handler: RouteHandler): RouteDefinition {
   return route("/", handler);
 }
 
-export function prefix<TAppContext = any, TParams = any>(
+export function prefix(
   prefix: string,
-  routes: ReturnType<typeof route<TAppContext, TParams>>[],
-): RouteDefinition<TAppContext, TParams>[] {
+  routes: ReturnType<typeof route>[],
+): RouteDefinition[] {
   return routes.map((r) => {
     return {
       path: prefix + r.path,
@@ -272,11 +190,11 @@ export function prefix<TAppContext = any, TParams = any>(
   });
 }
 
-export function render<TAppContext = any>(
+export function render(
   Document: React.FC<{ children: React.ReactNode }>,
-  routes: Route<TAppContext>[],
-): Route<TAppContext>[] {
-  const documentMiddleware: RouteMiddleware<TAppContext> = ({ rw }) => {
+  routes: Route[],
+): Route[] {
+  const documentMiddleware: RouteMiddleware = ({ rw }) => {
     rw.Document = Document;
   };
 

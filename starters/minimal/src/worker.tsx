@@ -5,13 +5,13 @@ import { Document } from "@/Document";
 import { Home } from "@/pages/Home";
 import { setCommonHeaders } from "@/headers";
 
-type AppContext = {};
+export type AppContext = {};
 
-export default defineApp<AppContext>([
+export default defineApp([
   setCommonHeaders(),
-  ({ appContext }) => {
-    // setup appContext here
-    appContext;
+  ({ ctx }) => {
+    // setup ctx here
+    ctx;
   },
   render(Document, [index([Home])]),
 ]);

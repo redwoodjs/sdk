@@ -5,15 +5,13 @@ import { renderToRscStream } from "./render/renderToRscStream";
 import { ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import { ErrorResponse } from "./error";
-
 import {
-  Route,
-  RouteOptions,
-  defineRoutes,
-  RenderPageParams,
-  PageProps,
-  DocumentProps,
-} from "./lib/router";
+  RequestInfo,
+  getRequestInfo,
+  runWithRequestInfo,
+} from "./requestInfo/worker";
+
+import { Route, defineRoutes } from "./lib/router";
 import { generateNonce } from "./lib/utils";
 import { IS_DEV } from "./constants";
 
@@ -24,7 +22,7 @@ declare global {
   };
 }
 
-export const defineApp = <AppContext,>(routes: Route<AppContext>[]) => {
+export const defineApp = (routes: Route[]) => {
   return {
     fetch: async (request: Request, env: Env, cf: ExecutionContext) => {
       globalThis.__webpack_require__ = ssrWebpackRequire;
@@ -52,46 +50,64 @@ export const defineApp = <AppContext,>(routes: Route<AppContext>[]) => {
       try {
         const url = new URL(request.url);
         const isRSCRequest = url.searchParams.has("__rsc");
+        const userHeaders = new Headers();
 
-        const handleAction = async (
-          opts: RouteOptions<AppContext, Record<string, string>>,
-        ) => {
-          const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
-
-          if (isRSCActionHandler) {
-            return await rscActionHandler(request, opts); // maybe we should include params and appContext in the action handler?
-          }
+        const rw = {
+          Document: DefaultDocument,
+          nonce: generateNonce(),
         };
 
-        const renderPage = async ({
-          Page,
-          props: fullPageProps,
-          actionResult,
-          Document,
-        }: RenderPageParams<AppContext>) => {
-          let props = fullPageProps;
-          let documentProps = fullPageProps;
+        const outerRequestInfo: RequestInfo = {
+          request,
+          headers: userHeaders,
+          cf,
+          params: {},
+          ctx: {},
+          rw,
+        };
+
+        const computePageProps = (
+          requestInfo: RequestInfo,
+          Page: React.FC<any>,
+        ) => {
+          const { ctx, params } = requestInfo;
+          let props;
 
           // context(justinvdm, 25 Feb 2025): If the page is a client reference, we need to avoid passing
           // down props the client shouldn't get (e.g. env). For safety, we pick the allowed props explicitly.
-          if (
-            Object.prototype.hasOwnProperty.call(Page, "$$isClientReference")
-          ) {
-            const { appContext, params } = fullPageProps;
-            props = { appContext, params } as PageProps<AppContext>;
+          if (isClientReference(Page)) {
+            props = {
+              ctx,
+              params,
+            };
+          } else {
+            props = requestInfo;
           }
 
-          if (
-            Object.prototype.hasOwnProperty.call(
-              Document,
-              "$$isClientReference",
-            )
-          ) {
-            const { appContext, params } = fullPageProps;
-            documentProps = { appContext, params } as DocumentProps<AppContext>;
+          return props;
+        };
+
+        const renderPage = async (
+          requestInfo: RequestInfo,
+          Page: React.FC<any>,
+        ) => {
+          if (isClientReference(requestInfo.rw.Document)) {
+            if (IS_DEV) {
+              console.error("Document cannot be a client component");
+            }
+
+            return new Response(null, {
+              status: 500,
+            });
           }
 
-          const nonce = fullPageProps.rw.nonce;
+          const props = computePageProps(requestInfo, Page);
+          let actionResult: unknown = undefined;
+          const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
+
+          if (isRSCActionHandler) {
+            actionResult = await rscActionHandler(request);
+          }
 
           const rscPayloadStream = renderToRscStream({
             node: <Page {...props} />,
@@ -112,12 +128,14 @@ export const defineApp = <AppContext,>(routes: Route<AppContext>[]) => {
           const htmlStream = await transformRscToHtmlStream({
             stream: rscPayloadStream1,
             Parent: ({ children }) => (
-              <Document {...documentProps} children={children} />
+              <rw.Document {...props} children={children} />
             ),
           });
 
           const html = htmlStream.pipeThrough(
-            injectRSCPayload(rscPayloadStream2, { nonce }),
+            injectRSCPayload(rscPayloadStream2, {
+              nonce: rw.nonce,
+            }),
           );
 
           return new Response(html, {
@@ -127,21 +145,12 @@ export const defineApp = <AppContext,>(routes: Route<AppContext>[]) => {
           });
         };
 
-        const userHeaders = new Headers();
-
-        const response = await router.handle({
-          cf,
-          request,
-          headers: userHeaders,
-          appContext: {} as AppContext,
-          env,
-          rw: {
-            Document: DefaultDocument,
-            handleAction,
+        const response = await runWithRequestInfo(outerRequestInfo, () =>
+          router.handle({
+            request,
             renderPage,
-            nonce: generateNonce(),
-          },
-        });
+          }),
+        );
 
         // context(justinvdm, 18 Mar 2025): In some cases, such as a .fetch() call to a durable object instance, or Response.redirect(),
         // we need to return a mutable response object.
@@ -179,3 +188,7 @@ export const DefaultDocument: React.FC<{ children: React.ReactNode }> = ({
     </body>
   </html>
 );
+
+const isClientReference = (Component: React.FC<any>) => {
+  return Object.prototype.hasOwnProperty.call(Component, "$$isClientReference");
+};
