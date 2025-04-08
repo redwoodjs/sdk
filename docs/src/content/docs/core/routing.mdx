@@ -10,16 +10,17 @@ The request/response paradigm is at the heart of web development - when a browse
 ```tsx title="src/worker.tsx"
 import { defineApp } from "@redwoodjs/sdk/worker";
 import { route } from "@redwoodjs/sdk/router";
+import { env } from "cloudflare:workers";
 
 export default defineApp([
   // Middleware
-  function middleware({ request, env, appContext }) { /* Modify context */ },
-  function middleware({ request, env, appContext }) { /* Modify context */ },
+  function middleware({ request, ctx }) { /* Modify context */ },
+  function middleware({ request, ctx }) { /* Modify context */ },
   // Request Handlers
-  route("/", function handler({ request, env, appContext }) {
+  route("/", function handler({ request, ctx }) {
     return new Response("Hello, world!")
   }),
-  route("/ping", function handler({ request, env, appContext }) {
+  route("/ping", function handler({ request, ctx }) {
     return new Response("Pong!")
   }),
 ]);
@@ -87,7 +88,7 @@ The request handler is a function, or array of functions (See [Interruptors](#in
 import { route } from "@redwoodjs/sdk/router";
 
 defineApp([
-  route("/a-standard-response", ({ request, params, env, appContext }) => {
+  route("/a-standard-response", ({ request, params, ctx }) => {
     return new Response("Hello, world!")
   }),
   route('/a-jsx-response', () => {
@@ -96,12 +97,7 @@ defineApp([
 ])
 
 ---
-The request handler function takes in the following options:
-1. `request`: The request object.
-2. `params`: The matched parameters from the request URL.
-3. `env`: The Cloudflare environment.
-4. `appContext`: The context object (See [Middleware & `AppContext`](#middleware--app-context)).
-5. `cf:` Cloudflare's [Execution Context API](https://developers.cloudflare.com/workers/runtime-apis/context/) methods, e.g. `waitUntil()`
+The request handler function takes a [RequestInfo](#request-info) object as its parameter.
 
 Return values:
 - `Response`: A standard response object.
@@ -118,9 +114,9 @@ import { defineApp } from "@redwoodjs/sdk/worker";
 import { route } from "@redwoodjs/sdk/router";
 import { EditBlogPage } from "src/pages/blog/EditBlogPage";
 
-function isAuthenticated({ request, env, appContext }) {
+function isAuthenticated({ request, ctx }) {
   // Ensure that this user is authenticated
-  if (!appContext.user) {
+  if (!ctx.user) {
     return new Response("Unauthorized", { status: 401 })
   }
 }
@@ -134,43 +130,44 @@ For the `/blog/:slug/edit` route, the `isAuthenticated` function will be execute
 ---
 ```
 
-## Middleware & `AppContext`
+## Middleware & Context
 
-`appContext` is a mutable object that is passed to each request handler, interruptors, and React Server Functions. It's used to share data between the different parts of your application. You populate the context on a per-request basis via Middleware.
+The context object (`ctx`) is a mutable object that is passed to each request handler, interruptors, and React Server Functions. It's used to share data between the different parts of your application. You populate the context on a per-request basis via Middleware.
 
 Middleware runs before the request is matched to a route. You can specify multiple middleware functions, they'll be executed in the order they are defined.
 
 ```tsx title="src/worker.tsx" mark={5-10}
 import { defineApp } from "@redwoodjs/sdk/worker";
 import { route } from "@redwoodjs/sdk/router";
+import { env } from "cloudflare:workers";
 
 defineApp([
   sessionMiddleware,
-  async function getUserMiddleware({ request, env, appContext }) {
-    if (appContext.session.userId) {
-      appContext.user = await db.user.find({ where: { id: appContext.session.userId } });
+  async function getUserMiddleware({ request, ctx }) {
+    if (ctx.session.userId) {
+      ctx.user = await db.user.find({ where: { id: ctx.session.userId } });
     }
   },
   route("/hello", [
-    function ({ appContext }) {
-      if (!appContext.user) {
+    function ({ ctx }) {
+      if (!ctx.user) {
         return new Response("Unauthorized", { status: 401 });
       }
     },
-    function ({ appContext }) {
-      return new Response(`Hello ${appContext.user.username}!`);
+    function ({ ctx }) {
+      return new Response(`Hello ${ctx.user.username}!`);
     },
   ]),
 ]);
 
 ---
-The `appContext` object:
+The context object:
 
-1. `sessionMiddleware` is a function that is used to populate the `appContext.session` object
-2. `getUserMiddleware` is a middleware function that is used to populate the `appContext.user` object
+1. `sessionMiddleware` is a function that is used to populate the `ctx.session` object
+2. `getUserMiddleware` is a middleware function that is used to populate the `ctx.user` object
 3. `"/hello"` is a an array of route handlers that are executed when "/hello" is matched:
   - if the user is not authenticated the request will be interrupted and a 401 Unauthorized response will be returned
-  - if the user is authenticated the request will be passed to the next request handler and `"Hello {appContext.user.username}!"` will be returned
+  - if the user is authenticated the request will be passed to the next request handler and `"Hello {ctx.user.username}!"` will be returned
 
 ---
 ```
@@ -217,3 +214,24 @@ export const Document = ({ children }) => (
   You must include the client side hydration script in your document, otherwise
   the React components will not be hydrated.
 </Aside>
+
+## Request Info
+
+The `requestInfo` object is available in server functions and provides access to the current request's context. Import it from `@redwoodjs/sdk/worker`:
+
+```tsx
+import { requestInfo } from "@redwoodjs/sdk/worker";
+
+export async function myServerFunction() {
+  const { request, headers, ctx } = requestInfo;
+  // Use request, headers, or ctx as needed
+}
+```
+
+The `requestInfo` object contains:
+
+- `request`: The incoming HTTP Request object
+- `headers`: Response headers
+- `ctx`: The app context (same as what's passed to components)
+- `rw`: RedwoodSDK-specific context
+- `cf`: Cloudflare's Execution Context API

@@ -67,13 +67,14 @@ The home page is served by the router definition inside the `src/worker.tsx` fil
 ```tsx
 import { Document } from 'src/Document';
 import { Home } from 'src/pages/Home';
+import { env } from 'cloudflare:workers';
 
 ...
 
-export default defineApp<AppContext>([
-  ({ appContext }) => {
-    // setup appContext here
-    appContext;
+export default defineApp([
+  ({ ctx }) => {
+    // setup context here
+    ctx;
   },
   render(Document, [
     index([
@@ -113,11 +114,12 @@ You can add additional routes by:
 
 ```tsx
 import { About } from "src/pages/About";
+import { env } from "cloudflare:workers";
 
-export default defineApp<AppContext>([
-  ({ appContext }) => {
-    // setup appContext here
-    appContext;
+export default defineApp([
+  ({ ctx }) => {
+    // setup context here
+    ctx;
   },
   render(Document, [index([Home]), route("/about", About)]),
 ]);
