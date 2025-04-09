@@ -23,7 +23,7 @@
     "migrate:new": "rw-scripts migrate-new",
     "seed": "npm run worker:run ./src/scripts/seed.ts",
     "check": "prisma generate && npm run types",
-    "types": "tsc"
+    "types": "wrangler types && tsc"
   },
   "dependencies": {
     "@prisma/adapter-d1": "^6.4.1",
