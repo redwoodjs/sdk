@@ -1,9 +1,5 @@
 import { isValidElementType } from "react-is";
-import {
-  runWithRequestInfoOverrides,
-  RequestInfo,
-  getRequestInfo,
-} from "../requestInfo/worker";
+import type { RequestInfo } from "../requestInfo/types";
 
 export type DocumentProps = RequestInfo & {
   children: React.ReactNode;
@@ -96,15 +92,27 @@ export function defineRoutes(routes: Route[]): {
   handle: ({
     request,
     renderPage,
+    getRequestInfo,
+    runWithRequestInfoOverrides,
   }: {
     request: Request;
     renderPage: (requestInfo: RequestInfo, Page: React.FC) => Promise<Response>;
+    getRequestInfo: () => RequestInfo;
+    runWithRequestInfoOverrides: <Result>(
+      overrides: Partial<RequestInfo>,
+      fn: () => Promise<Result>,
+    ) => Promise<Result>;
   }) => Response | Promise<Response>;
 } {
   const flattenedRoutes = flattenRoutes(routes);
   return {
     routes: flattenedRoutes,
-    async handle({ request, renderPage }) {
+    async handle({
+      request,
+      renderPage,
+      getRequestInfo,
+      runWithRequestInfoOverrides,
+    }) {
       const url = new URL(request.url);
       let path = url.pathname;
 

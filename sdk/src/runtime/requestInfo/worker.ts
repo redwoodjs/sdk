@@ -1,16 +1,7 @@
 import { AsyncLocalStorage } from "async_hooks";
-import { RwContext } from "../lib/router";
+import { RequestInfo, DefaultAppContext } from "./types";
 
-export interface DefaultAppContext {}
-
-export interface RequestInfo<Params = any, AppContext = DefaultAppContext> {
-  request: Request;
-  params: Params;
-  ctx: AppContext;
-  headers: Headers;
-  rw: RwContext;
-  cf: ExecutionContext;
-}
+export type { RequestInfo };
 
 const requestInfoStore = new AsyncLocalStorage<Record<string, any>>();
 
