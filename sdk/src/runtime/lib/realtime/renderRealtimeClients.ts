@@ -1,6 +1,5 @@
 import { DEFAULT_REALTIME_KEY } from "./constants";
 import { RealtimeDurableObject } from "./durableObject";
-import { DurableObjectNamespace } from "@cloudflare/workers-types";
 
 export const renderRealtimeClients = async ({
   durableObjectNamespace,
