@@ -6,9 +6,10 @@ import { ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import { ErrorResponse } from "./error";
 import {
-  RequestInfo,
   getRequestInfo,
   runWithRequestInfo,
+  runWithRequestInfoOverrides,
+  type RequestInfo,
 } from "./requestInfo/worker";
 
 import { Route, defineRoutes } from "./lib/router";
@@ -149,6 +150,8 @@ export const defineApp = (routes: Route[]) => {
           router.handle({
             request,
             renderPage,
+            getRequestInfo,
+            runWithRequestInfoOverrides,
           }),
         );
 
