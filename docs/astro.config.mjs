@@ -197,7 +197,7 @@ export default defineConfig({
           tag: "meta",
           attrs: {
             property: "og:image",
-            content: "./src/assets/og-docs.png"
+            content: "https://imagedelivery.net/EBSSfnGYYD9-tGTmYMjDgg/b1fee579-c064-4495-3473-bf9656d8d400/public"
           }
         },
         {
@@ -240,7 +240,7 @@ export default defineConfig({
           tag: "meta",
           attrs: {
             name: "twitter:image",
-            content: "./src/assets/og-docs.png"
+            content: "https://imagedelivery.net/EBSSfnGYYD9-tGTmYMjDgg/b1fee579-c064-4495-3473-bf9656d8d400/public"
           }
         },
         {
