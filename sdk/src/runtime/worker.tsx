@@ -9,8 +9,8 @@ import {
   getRequestInfo,
   runWithRequestInfo,
   runWithRequestInfoOverrides,
-  type RequestInfo,
 } from "./requestInfo/worker";
+import { RequestInfo } from "./requestInfo/types";
 
 import { Route, defineRoutes } from "./lib/router";
 import { generateNonce } from "./lib/utils";
