@@ -1,5 +1,5 @@
 import { isValidElementType } from "react-is";
-import type { RequestInfo } from "../requestInfo/types";
+import { RequestInfo } from "../requestInfo/types";
 
 export type DocumentProps = RequestInfo & {
   children: React.ReactNode;

@@ -1,8 +1,6 @@
 import { AsyncLocalStorage } from "async_hooks";
 import { RequestInfo, DefaultAppContext } from "./types";
 
-export type { RequestInfo };
-
 const requestInfoStore = new AsyncLocalStorage<Record<string, any>>();
 
 const requestInfoBase = {};
