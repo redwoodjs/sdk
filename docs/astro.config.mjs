@@ -178,6 +178,71 @@ export default defineConfig({
         // },
       ],
       head: [
+        // Open Graph Meta Tags
+        {
+          tag: "meta",
+          attrs: {
+            property: "og:title",
+            content: "RedwoodSDK Documentation"
+          }
+        },
+        {
+          tag: "meta",
+          attrs: {
+            property: "og:description",
+            content: "Learn how to build and deploy full-stack apps with RedwoodSDK and Cloudflare."
+          }
+        },
+        {
+          tag: "meta",
+          attrs: {
+            property: "og:image",
+            content: "./src/assets/og-docs.png"
+          }
+        },
+        {
+          tag: "meta",
+          attrs: {
+            property: "og:url",
+            content: "https://docs.rwsdk.com/"
+          }
+        },
+        {
+          tag: "meta",
+          attrs: {
+            property: "og:type",
+            content: "website"
+          }
+        },
+        // Twitter Card Meta Tags
+        {
+          tag: "meta",
+          attrs: {
+            name: "twitter:card",
+            content: "summary_large_image"
+          }
+        },
+        {
+          tag: "meta",
+          attrs: {
+            name: "twitter:title",
+            content: "RedwoodSDK Docs"
+          }
+        },
+        {
+          tag: "meta",
+          attrs: {
+            name: "twitter:description",
+            content: "Official RedwoodSDK documentation for building full-stack JS apps fast."
+          }
+        },
+        {
+          tag: "meta",
+          attrs: {
+            name: "twitter:image",
+            content: "./src/assets/og-docs.png"
+          }
+        },
         {
           tag: "script",
           attrs: {
