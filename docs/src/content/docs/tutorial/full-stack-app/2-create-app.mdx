@@ -15,7 +15,7 @@ The first thing we'll do is set up our project.
 <Tabs>
   <TabItem label="pnpm">
   ```shell
-  npx degit redwoodjs/sdk/starters/passkey-auth applywize
+  npx degit redwoodjs/sdk/starters/standard applywize
   cd applywize
   pnpm install
   pnpm dev
@@ -23,7 +23,7 @@ The first thing we'll do is set up our project.
   </TabItem>
   <TabItem label="npm">
   ```shell
-  npx degit redwoodjs/sdk/starters/passkey-auth applywize
+  npx degit redwoodjs/sdk/starters/standard applywize
   cd applywize
   npm install
   npm run dev
@@ -31,7 +31,7 @@ The first thing we'll do is set up our project.
   </TabItem>
   <TabItem label="yarn">
   ```shell
-  npx degit redwoodjs/sdk/starters/passkey-auth applywize
+  npx degit redwoodjs/sdk/starters/standard applywize
   cd applywize
   yarn install
   yarn run dev
@@ -50,15 +50,19 @@ The commands you just ran created a directory called `applywize` with the Redwoo
 Inside, the `applywize` directory, you should have the following files and folders:
 
 <FileTree>
-- .env.example
-- .gitignore
-- .prettierrc
+- .dev.vars # environment variables for development
+- .env # environment variables
+- .env.example # example environment variables
+- .gitignore # files to ignore in git
+- .prettierrc # prettier configuration
+- .wrangler # Cloudflare configuration
 - migrations # database migrations
   - 0001_init.sql
+- node_modules # dependencies
 - package.json
 - pnpm-lock.yaml
-- prisma # database schema
-  - schema.prisma
+- prisma
+  - schema.prisma # database schema
 - README.md
 - src
   - app
@@ -87,16 +91,22 @@ Inside, the `applywize` directory, you should have the following files and folde
 </FileTree>
 
 <Aside type="note" title="Starter Projects">
-  For the tutorial, we're starting with the [Pass Key Auth starter project](/reference/starters/passkey-auth/). However, when you start building your own projects, if you use a different starter template, the files and folders may vary slightly.
+  For the tutorial, we're starting with the standard starter project. When you start building your own projects, if you use a different starter template, the files and folders may vary slightly.
 </Aside>
 
 ## Setting up our Database
 
-First, we need to create a new D1 database:
+The first time you run `pnpm dev`, it creates the `.wrangler` directory. This directory is used by Cloudflare's Miniflare for storing assets. It contains your local database, caching information, and configuration data.
+
+First, we can create a D1 database that's connected to our Cloudflare account using the following command:
 
 ```shell
 npx wrangler d1 create applywize
 ```
+
+Here, `applywize` is the name of our database.
+
+![](./images/wrangler-d1-create.png)
 
 Copy the database ID provided and paste it into your project's `wrangler.jsonc` file:
 
@@ -107,10 +117,10 @@ Copy the database ID provided and paste it into your project's `wrangler.jsonc` 
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "my-project-db",
-      "database_id": "your-database-id",
-    },
-  ],
+      "database_name": "__change_me__",
+      "database_id": "__change_me__"
+    }
+  ]
 }
 ```
 
@@ -133,11 +143,15 @@ Next, we need to generate a strong `SECRET_KEY` for signing session IDs. You can
 openssl rand -base64 32
 ```
 
+![](./images/openssl-rand-base64.png)
+
 Then set this key as a Cloudflare secret, where `SECRET_KEY` is the name of the key. It will prompt us for the random string we generated.
 
 ```shell
 npx wrangler secret put SECRET_KEY
 ```
+
+![](./images/wrangler-secret-key.png)
 
 <Aside type="caution" title="Secrets">
   Never use the same secret key for development and production environments, and avoid committing your secret keys to version control.
@@ -148,6 +162,8 @@ For production, set your domain as the `RP_ID` via Cloudflare secrets:
 ```shell
 npx wrangler secret put RP_ID
 ```
+
+![](./images/wrangler-rp-id.png)
 
 When prompted, enter your production domain (e.g., my-app.example.com).
 
@@ -177,18 +193,12 @@ Next, let's set up Cloudflare Turnstile for bot protection.
     npx wrangler secret put TURNSTILE_SECRET_KEY
     ```
     When prompted, enter your Turnstile Secret Key.
-6. Our starter kit already has a couple of tables set up, to support the authentication process. This will set up Prisma and `migrate:dev` will create a `.wrangler` file within our project and setup the Cloudflare d1 database locally. (More on Prisma, migrations, and databases later.)
+    ![](./images/wrangler-turnstile-secret-key.png)
+6. Our starter kit already has a couple of tables set up, to support the authentication process. This will set up Prisma and create a `.wrangler` file within our project and setup the Cloudflare d1 database locally. (More on Prisma, migrations, and databases later.)
     ```shell
-    pnpm migrate:dev
+    pnpm dev
     ```
 </Steps>
-
-<Aside type="caution" title="Troubleshooting">
-If you get an error message the first time you run `pnpm dev`, you  might have some stale cookies. Inside your developer tools, delete any existing cookies and try again.
-
-If you're using a Chrome based browser, click on the **Application** tab, then **Cookies**. Right click on the cookie and select **Delete** for each cookie.
-![](./images/stale-local-cookies.png)
-</Aside>
 
 ## Setting up TailwindCSS and ShadCN
 
@@ -250,11 +260,13 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
     </head>
     ```
 
-5. Now, you can run `pnpm run dev` and the passkey form should look different.
+5. Now, you can run `pnpm run dev` and go to `http://localhost:5173/user/login`.
     ```bash
     pnpm run dev
     ```
     ![](./images/passkey-starter-tailwind-working.png)
+    For reference, before adding TailwindCSS, the login page looked like this:
+    ![](./images/passkey-form-before-tailwind.png)
 </Steps>
 
 You can test this even further by going to the `src/app/pages/user/Login.tsx` file and adding an `h1` at the top of the return statement:
@@ -474,8 +486,8 @@ You can also use the [ShadCN Vite Installation instructions](https://ui.shadcn.c
     ```bash
     pnpm add -D @types/node
     ```
-5. Add resolve alias config to `vite.config.ts`:
-    ```diff title="vite.config.ts"
+5. Add resolve alias config to `vite.config.mts`:
+    ```diff title="vite.config.mts"
     +import path from "path"
     import { defineConfig } from "vite";
     import tailwindcss from "@tailwindcss/vite"
@@ -511,9 +523,15 @@ You can also use the [ShadCN Vite Installation instructions](https://ui.shadcn.c
     - Sonner
     - Table
 
+    ![](./images/terminal-shadcn-bulk-add.png)
+
     When you've selected all the components you want to add, hit `Enter`. This will add all the components inside the `src/app/components/ui` folder.
 
+    ![](./images/terminal-shadcn-bulk-add-result.png)
+
     This will install all of our components into the `src/app/components/ui` folder.
+
+    ![](./images/shad-cn-components-in-finder.png)
 
     <Aside type="tip" title="Adding ShadCN Components individually">
       Instead of selecting components from a list, you can also add them individually by running `pnpm dlx shadcn@latest add <component-name>`.
@@ -524,7 +542,7 @@ You can also use the [ShadCN Vite Installation instructions](https://ui.shadcn.c
     </Aside>
 </Steps>
 
-Even though we specified the `lib` directory in the `components.json` file, the script still placed the folder inside the `src` directory. You'll need to move it into the `app` directory.
+Even though we specified the path to the `lib` directory in the `components.json` file, the script still placed the folder inside the `src` directory. You'll need to move it into the `app` directory.
 
 <FileTree>
 - src/
@@ -621,11 +639,18 @@ export function DatePicker() {
 + } from "@/app/components/ui/popover"
 ```
 
+- I also changed the component name to `DatePicker`:
+
+```diff title="src/app/components/ui/datepicker.tsx" "DatePicker()" startLineNumber={16}
+- export function DatePickerDemo() {
++ export function DatePicker() {
+```
+
 If you want to make sure everything is installed correctly, head over to the `src/app/pages/user/Login.tsx` file and let's use our `Button` component.
 
 Change the `<button>` tag to use a capital `B`. This will reference the `Button` component, instead of the standard HTML button. You'll also need to import the `Button` component at the top of the file.
 
-```tsx title="src/app/pages/auth/Login.tsx" collapse={5-12}
+```tsx title="src/app/pages/auth/Login.tsx" collapse={5-12} "Button"
 import { Button } from "@/app/components/ui/button";
 ...
 return (
@@ -649,7 +674,7 @@ return (
 );
 ```
 
-Now, when you visit https://localhost:2332/user/login, you should see styled buttons:
+Now, when you visit https://localhost:5173/user/login, you should see styled buttons:
 
 ![](./images/shadcn-working.png)
 

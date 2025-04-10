@@ -42,7 +42,7 @@ The same applies to Contacts. We can create a separate model and create a relati
 
 ![](./images/db-contact-to-company.png)
 
-Application Statuses are a little different, but the same principle applies. To avoid duplication, we will give statuses their own model. But, we will have a set of "static" statuses (New, Applied, Interviewing, Offer, and Rejected). We won't be adding, updating, or deleting this list.
+Application Statuses are a little different, but the same principle applies. To avoid duplication, we will give statuses their own model. We will have a set of fixed status options (New, Applied, Interviewing, Offer, and Rejected).
 
 5. Application Statuses
 
@@ -54,7 +54,7 @@ Now, that we know what our models are, we need to create the columns. What are t
 
 We've already alluded to the data that we'll need within the relationship diagrams, but let's take a closer look.
 
-I always start with an `id`, `createdAt`, and `updatedAt` field.
+Most tables I create include an `id`, `createdAt`, and `updatedAt` field.
 - `id` - We need a way to uniquely identify each record or row in the database.
 - `createdAt` - We need to know when the record was created.
 - `updatedAt` - We need to know when the record was last updated.
@@ -107,8 +107,8 @@ I need the following data:
 | **Field** | **Type** | **Notes** |
 | --- | --- | --- |
 | `id` | `String` | A UUID |
-| `salaryMin` | `String` | _Optional._ The minimum salary for the job. It might be helpful to make this a number, so we can sort the applications by salary. However, this might be a pain to format when displaying the data. |
-| `salaryMax` | `String` | _Optional._ The maximum salary for the job. Same as `salaryMin`. |
+| `salaryMin` | `String` | _Optional._ The minimum salary for the job. Alternatively, we could make this a number, so we can standardize the display or sort the applications by salary. |
+| `salaryMax` | `String` | _Optional._ The maximum salary for the job. The type should be the same as `salaryMin`. |
 | `dateApplied` | `DateTime` | _Optional._ The date the application was submitted. |
 | `jobTitle` | `String` | _Optional._ The job title |
 | `jobDescription` | `String` | _Optional._ The job description. |
@@ -117,7 +117,7 @@ I need the following data:
 | `createdAt` | `DateTime` | The date the application was created. |
 | `updatedAt` | `DateTime` | The date the application was last updated. |
 
-Now, we need to translate all this information into a Prisma model. Prisma has it's own syntax for defining models. But, you'll notice that it looks similar to an object definition:
+Now, we need to translate all this information into a Prisma model. Prisma has it's own syntax for defining models. You'll notice that it looks similar to an object definition:
 
 ```prisma title="src/db/schema.prisma"
 model Application {
@@ -134,7 +134,7 @@ model Application {
 }
 ```
 
-You'll notice a few things:
+A few things worth noting:
 
 - The `?` means that that field is optional.
 - Some fields are followed by a Prisma directive. For example, `@id` means that the field is the primary key.
@@ -185,8 +185,8 @@ model Credential {
 }
 
 model User {
-  id           String   @id @default(uuid()) // User ID (UUID-based)
-  username     String   @unique
+  id           String        @id @default(uuid()) // User ID (UUID-based)
+  username     String        @unique
   createdAt    DateTime      @default(now())
   updatedAt    DateTime?     @updatedAt
 
@@ -234,13 +234,17 @@ In order to establish this relationship, we need a **junction table**. This tabl
   Technically, you don't need an `id` field in the junction table, because the combination of the two IDs (`contactId` and `tagId`) together will be unique. However, I still like to include an `id` field for good measure.
 </Aside>
 
-Here's a diagram of all the models and their relationships for this project.
+## All the Tables for our Database
 
-{/* TODO: Update the database diagram to include the Credential table for pass keys */}
+Here's a diagram of all the models and their relationships for this project.
 
 ![](./images/database.png)
 
 Coincidentally, all the relationships in our project are one-to-one or one-to-many.
+
+<Aside type="note" title="Crendential Table">
+  Most of the tables in our database are self explanatory. But, let's look take a second look at the `Credential` table. This model was included within the standard starter kit and will hold all the details for our passkeys.
+</Aside>
 
 <Aside type="tip" title="Database Diagram">
   I always find it helpful to have a visual representation of the database.
@@ -250,9 +254,10 @@ Coincidentally, all the relationships in our project are one-to-one or one-to-ma
   [prisma-dbml-generator](https://github.com/notiz-dev/prisma-dbml-generator) is an interesting project. It's built on top of [dbdiagram.io](https://dbdiagram.io/) and can take a Prisma Schema and generate a diagram.
 </Aside>
 
+## Relationships within Prisma
 When establishing a relationship within your schema, there are 3 parts.
 
-1. **The field that will hold the relationship.** This stores the ID of the related record.
+1. **The field that will hold the relationship.** This stores the ID for the related record.
 2. **The relationship definition.** This defines the relationship between the two models.
 3. **The reverse relationship definition.** This defines the relationship from the related model back to the original model.
 
@@ -290,6 +295,8 @@ model Contact {
     - It references the `id` field on the `Company` model.
 3. On the `Company` model, we added a `contacts` field.
     - The type of content will be an array `[]` of `Contact` records.
+
+![](./images/prisma-relationship-field.png)
 
 In some cases, you might need to give the relationship a name. This is particularly useful when you have multiple relationships between the same models.
 
@@ -402,13 +409,13 @@ A migration is a change to the database schema. It's a way to keep track of the 
 
 When we create the migration, Prisma will look at our `prisma.schema` file and determine what has changed since our last migration. Then, it will generate a SQL file that will update our database with the changes.
 
-Let's create the migration by running `pnpm migrate:new` and giving the migration a name. Since this is our first migration, we'll call it our `setup all database models`.
+Let's create the migration by running `pnpm migrate:new` and give our migration a name. Since this is our first migration, we'll say: `setup all database models`.
 
 ```shell
-pnpm migrate:new "initial migration"
+pnpm migrate:new "setup all database models"
 ```
 
-![](./images/initial-migration.png)
+![](./images/setup-all-tables-migration.png)
 
 Our generated `sql` file will be in the `migrations` folder.
 
@@ -416,7 +423,7 @@ Our generated `sql` file will be in the `migrations` folder.
 ![](./images/migrations-folder.png)
 <figcaption>
 - `0001_init.sql` was generated the first time we ran `pnpm dev`.
-- `0002_initial_migration.sql` was generated when we ran `pnpm migrate:new "initial migration"`.
+- `0002_setup_all_database_models.sql` was generated when we ran `pnpm migrate:new "setup all database models"`.
 </figcaption>
 </figure>
 
@@ -449,6 +456,7 @@ Let's start by opening the `schema.prisma` file.
 datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")
+  output   = "../node_modules/.prisma/client"
 }
 ```
 
@@ -474,7 +482,7 @@ DATABASE_URL="file:../.wrangler/state/v3/d1/miniflare-D1DatabaseObject/84daca3a9
 
 Now, within the Terminal, run:
 
-```Terminal
+```shell
 npx prisma studio
 ```
 
@@ -514,7 +522,15 @@ Click on the sqlite file and a preview should open within VSCode.
 
 ![](./images/vs-code-sqlite.png)
 
-The viewer will only let you preview the database. If you want to create, update, or delete, you'll need a pro account.
+The viewer will only let you preview the database. If you want to create, update, or delete, you'll need a pro (premium) account.
+
+<Aside type="note" title="If the Migration Didn't Run">
+If the migration didn't run, there are a few things you can check:
+- How many SQLlite files are in the `.wrangler > state > v3 > d1 > miniflare-D1DatabaseObject` folder? There should be one. You can always delete the `.wrangler` folder and rerun `pnpm dev` to regenerate it.
+- Try running `pnpm migrate:dev`. This will apply any new migrations.
+- Try running `pnpm dev`. This will also apply any new migrations.
+- Ensure that the `database_id` within the `wrangler.jsonc` file matches the database id in your Cloudflare account.
+</Aside>
 
 ## Seed the database
 
@@ -539,17 +555,30 @@ import { db, setupDb } from "@/db";
 export default defineScript(async ({ env }) => {
   setupDb(env);
 
-  // Add seed data here
+  await db.$executeRawUnsafe(`\
+    DELETE FROM User;
+    DELETE FROM sqlite_sequence;
+  `);
+
+  await db.user.create({
+    data: {
+      id: "1",
+      username: "testuser",
+    },
+  });
 
   console.log("🌱 Finished seeding");
 });
+---
+If you want to start fresh with your own seed file, you could delete lines 7-17, but we'll use this as a starting point.
+---
 ```
 
 <Aside type="tip" title="Seed File Structure">
   In order for our seed file to run properly, we have to run it inside a Cloudflare worker.
 </Aside>
 
-You can copy and paste the following code inside:
+You can copy and paste the following code to your project:
 
 ```ts title="src/scripts/seed.ts"
 import { defineScript } from "@redwoodjs/sdk/worker";
@@ -607,14 +636,6 @@ To seed the database, run the following command:
 ```bash
 pnpm seed
 ```
-
-<Aside title="Error: listen EADDRINUSE: address already in use :::9229">
-If you get an `Error: listen EADDRINUSE: address already in use :::9229` error when running `pnpm seed`, it means that you're already running a worker (probably `pnpm dev`) when running the seed script.
-
-![](./images/address-already-in-use.png)
-
-Remember, the seed script needs a Cloudflare Worker, too. Quit `pnpm dev` and then you should be able to successfully run the seeder.
-</Aside>
 
 Within the Terminal, you should see something like this:
 
