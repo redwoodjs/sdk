@@ -5,7 +5,7 @@ alwaysApply: false
 ---
 ---
 # Specify the following for Cursor rules
-description: Guidelines for writing RedwoodSDK routes
+description: Guidelines for handling the request/response cycle.
 globs: '**/route.tsx, **/route.ts, src/worker.tsx'
 ---
 
@@ -16,6 +16,7 @@ You're an expert at Cloudflare, TypeScript, and building web apps in React. Gene
 ## Guidelines
 
 1. Try to use Web APIs instead of external dependencies (eg: use fetch instead of Axios, use WebSockets API instead of node-ws)
+2. Co-locate sections into a seperate `routes.ts` file into `./src/app/pages/<section>`. (eg: keep all the "user" routes in `./src/app/pages/user/routes.ts`, keep all "blog" routes in `./src/app/pages/user/routes.ts`), and the bring that into `defineApp` with the `prefix` function.
 
 
 ## Example Templates
@@ -26,7 +27,7 @@ You're an expert at Cloudflare, TypeScript, and building web apps in React. Gene
 
 Routes are matched in the order they are defined. You define routes using the route function. Trailing slashes are optional and normalized internally.
 
-#### Matching static pathnames
+#### Matching static paths
 
 Match exact pathnames.
 
@@ -39,7 +40,7 @@ route("/contact", function handler() {})
 // Matches "contact"
 ```
 
-### Matching parameters pathnames
+#### Matching parameters paths
 
 ```tsx
 route("/users/:id", function handler({ params }) { console.log(params.id) })
@@ -58,7 +59,7 @@ route("/users/:id/addToGroup/:groupId", function handler({ params }) { console.l
 
 Match dynamic segments marked with a colon (:). The values are available in the route handler via params (params.id and params.groupId).
 
-### Matching wildcard URLs
+### Matching wildcard paths
 
 ```tsx
 route("/files/*", function handler({ params }) { console.log(params.$0) })
@@ -71,27 +72,31 @@ route("/files/*/download/*", function handler({ params }) { console.log(params.$
 
 Match all remaining segments after the prefix, the values are available in the route handler via params.$0, params.$1, etc.
 
-### Simple Route Function with a Web API `Response` interface
+### Responses
+
+#### Simple route function with a Web API `Response` interface
 
 ```tsx
 import { route } from "@redwoodjs/sdk/router";
 
-route("/", function handler({ request, ctx }) { 
+route("/", function handler() { 
   return new Response("Hello, world!")
 })
 ```
 
-### Simple Route Function with JSX React Element
+If it's a `text/plain` response, do not include the default value.
+
+#### Simple route function with JSX React element
 
 ```tsx
 import { route } from "@redwoodjs/sdk/router";
 
-route("/", function handler({ request, ctx }) { 
+route("/", function handler() { 
   return <>Hello, world!</>
 })
 ```
 
-## Simple Route Function with Custom `Document` Template and JSX React Element
+#### Simple route function with custom `Document` template and JSX React element
 
 ```tsx
 import { render, route } from "@redwoodjs/sdk/router";
@@ -99,8 +104,46 @@ import { render, route } from "@redwoodjs/sdk/router";
 import { Document } from '@/app/Document'
 
 render(Document, [
-  route("/", function handler({ request, ctx }) { 
+  route("/", function handler() { 
     return <>Hello, world!</>
   })
 ])
 ```
+
+### Co-location logical routes in sections
+
+When building functionality that can be grouped together, seperate the routes in a `./src/app/pages/SECTION_NAME/routes.tsx` file.
+
+```tsx
+import { route } from "@redwoodjs/sdk/router";
+
+import { isAdminUser } from '@/app/interruptors'
+
+import { BlogLandingPage } from './BlogLandingPage'
+import { BlogPostPage } from './BlogPostPage'
+import { BlogPostPage } from './BlogAdminPage'
+
+export const routes = [
+  route('/', BlogLandingPage),
+  route('/post/:postId', BlogPostPage)
+  route('/post/:postId/edit', [isAdminUser, BlogAdminPage])
+]
+```
+
+Then import these routes, by using the prefix:
+
+```tsx src/worker.tsx
+
+import { routes as blogRoutes } from '@app/pages/blog/routes'
+
+export default defineApp([
+  /* middleware */
+  render(Document, [
+    route('/', HomePage),
+    prefix('/blog', blogRoutes)
+  ]),
+])
+```
+
+
+
