@@ -18,8 +18,9 @@
     "clean:vite": "rm -rf ./node_modules/.vite",
     "release": "npm run clean && npm run build && wrangler deploy",
     "format": "prettier --write ./src",
-    "check": "npm run types",
-    "types": "wrangler types && tsc"
+    "generate": "rw-scripts ensure-env && wrangler types",
+    "check": "npm run generate && npm run types",
+    "types": "tsc"
   },
   "dependencies": {
     "@redwoodjs/sdk": "0.0.55",
