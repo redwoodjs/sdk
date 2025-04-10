@@ -48,16 +48,16 @@ export const redwoodPlugin = async (
   );
 
   // context(justinvdm, 31 Mar 2025): We assume that if there is no .wrangler directory,
-  // then this is fresh install, and we run `pnpm dev:init` here.
+  // then this is fresh install, and we run `npm run dev:init` here.
   if (!(await pathExists(resolve(process.cwd(), ".wrangler")))) {
     console.log(
-      "🚀 Project has no .wrangler directory yet, assuming fresh install: running `pnpm dev:init`...",
+      "🚀 Project has no .wrangler directory yet, assuming fresh install: running `npm run dev:init`...",
     );
     await $({
       // context(justinvdm, 01 Apr 2025): We want to avoid interactive migration y/n prompt, so we ignore stdin
       // as a signal to operate in no-tty mode
       stdio: ["ignore", "inherit", "inherit"],
-    })`pnpm dev:init`;
+    })`npm run dev:init`;
   }
 
   const usesPrisma = await $({ reject: false })`pnpm prisma --version`;
@@ -93,14 +93,6 @@ export const redwoodPlugin = async (
     reactPlugin(),
     useServerPlugin(),
     useClientPlugin(),
-    asyncSetupPlugin({
-      async setup({ command }) {
-        if (command !== "build") {
-          console.log("Generating wrangler types...");
-          await $`pnpm wrangler types`;
-        }
-      },
-    }),
     injectHmrPreambleJsxPlugin(),
     useClientLookupPlugin({
       rootDir: projectRootDir,

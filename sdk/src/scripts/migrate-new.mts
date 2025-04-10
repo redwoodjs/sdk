@@ -19,8 +19,8 @@ const getNextMigrationNumber = async (): Promise<string> => {
 
 export const migrateNew = async (name: string, skipApply = false) => {
   if (!name) {
-    console.log("Usage: pnpm migrate:new <migration-name> [--no-apply]");
-    console.log("Example: pnpm migrate:new add a user");
+    console.log("Usage: npm run migrate:new <migration-name> [--no-apply]");
+    console.log("Example: npm run migrate:new add a user");
     process.exit(1);
   }
 

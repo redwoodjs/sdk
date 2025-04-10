@@ -14,9 +14,9 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
   if (!relativeScriptPath) {
     console.error("Error: Script path is required");
     console.log("\nUsage:");
-    console.log("  pnpm worker:run <script-path>");
+    console.log("  npm run worker:run <script-path>");
     console.log("\nExample:");
-    console.log("  pnpm worker:run src/scripts/seed.ts\n");
+    console.log("  npm run worker:run src/scripts/seed.ts\n");
     process.exit(1);
   }
 
