@@ -22,7 +22,8 @@
     "migrate:prd": "wrangler d1 migrations apply DB --remote",
     "migrate:new": "rw-scripts migrate-new",
     "seed": "npm run worker:run ./src/scripts/seed.ts",
-    "check": "prisma generate && npm run types",
+    "generate": "rw-scripts ensure-env && prisma generate && wrangler types",
+    "check": "npm run generate && npm run types",
     "types": "tsc"
   },
   "dependencies": {

@@ -9,6 +9,11 @@ export const initDev = async () => {
     await readFile(resolve(process.cwd(), "package.json"), "utf-8"),
   );
 
+  if (pkg.scripts?.["generate"]) {
+    console.log("Generating...");
+    await $`npm run generate`;
+  }
+
   if (pkg.scripts?.["migrate:dev"]) {
     console.log("Running migrations...");
     await $`npm run migrate:dev`;

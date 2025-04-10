@@ -16,7 +16,6 @@ import { configPlugin } from "./configPlugin.mjs";
 import { $ } from "../lib/$.mjs";
 import { customReactBuildPlugin } from "./customReactBuildPlugin.mjs";
 import { injectHmrPreambleJsxPlugin } from "./injectHmrPreambleJsxPlugin.mjs";
-import { setupEnvFiles } from "./setupEnvFiles.mjs";
 import { invalidateCacheIfPrismaClientChanged } from "./invalidateCacheIfPrismaClientChanged.mjs";
 import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
 import { pathExists } from "fs-extra";
@@ -47,10 +46,6 @@ export const redwoodPlugin = async (
     projectRootDir,
     options?.entry?.worker ?? "src/worker.tsx",
   );
-  await setupEnvFiles({ rootDir: projectRootDir });
-
-  console.log("Generating wrangler types...");
-  await $({ reject: false })`npx wrangler types`;
 
   // context(justinvdm, 31 Mar 2025): We assume that if there is no .wrangler directory,
   // then this is fresh install, and we run `pnpm dev:init` here.
