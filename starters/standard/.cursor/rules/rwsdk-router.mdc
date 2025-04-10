@@ -1,0 +1,106 @@
+---
+description: 
+globs: route.tsx,route.ts,worker.tsx
+alwaysApply: false
+---
+---
+# Specify the following for Cursor rules
+description: Guidelines for writing RedwoodSDK routes
+globs: '**/route.tsx, **/route.ts, src/worker.tsx'
+---
+
+# RedwoodSDK: Request handling and responses
+
+You're an expert at Cloudflare, TypeScript, and building web apps in React. Generate high quality **RedwoodSDK route handlers** that adhere to the following best practices:
+
+## Guidelines
+
+1. Try to use Web APIs instead of external dependencies (eg: use fetch instead of Axios, use WebSockets API instead of node-ws)
+
+
+## Example Templates
+
+### Basics
+
+### Matching Patterns
+
+Routes are matched in the order they are defined. You define routes using the route function. Trailing slashes are optional and normalized internally.
+
+#### Matching static pathnames
+
+Match exact pathnames.
+
+```tsx
+route("/", function handler() {})
+// Matches "/"
+route("/about", function handler() {})
+// Matches "/about"
+route("/contact", function handler() {})
+// Matches "contact"
+```
+
+### Matching parameters pathnames
+
+```tsx
+route("/users/:id", function handler({ params }) { console.log(params.id) })
+// Matches "/users/1"
+// Matches "/users/2"
+// Matches "/users/peterp"
+route("/users/:id/edit", function handler({ params }) { console.log(params.id) }))
+// Matches "/users/1/edit"
+// Matches "/users/2/edit"
+// Matches "/users/peterp/edit"
+route("/users/:id/addToGroup/:groupId", function handler({ params }) { console.log(params.id, params.groupId) }))
+// Matches "/users/1/addToGroup/1"
+// Matches "/users/2/addToGroup/42"
+// Matches "/users/peterp/addToGroup/friends"
+```
+
+Match dynamic segments marked with a colon (:). The values are available in the route handler via params (params.id and params.groupId).
+
+### Matching wildcard URLs
+
+```tsx
+route("/files/*", function handler({ params }) { console.log(params.$0) })
+// Matches "/files/logo.png"
+route("/files/*/preview", function handler({ params }) { console.log(params.$0) }))
+// Matches "/files/logo.png/preview"
+route("/files/*/download/*", function handler({ params }) { console.log(params.$0, $params.$1) })
+// Matches "/files/logo.png/download/small"
+```
+
+Match all remaining segments after the prefix, the values are available in the route handler via params.$0, params.$1, etc.
+
+### Simple Route Function with a Web API `Response` interface
+
+```tsx
+import { route } from "@redwoodjs/sdk/router";
+
+route("/", function handler({ request, ctx }) { 
+  return new Response("Hello, world!")
+})
+```
+
+### Simple Route Function with JSX React Element
+
+```tsx
+import { route } from "@redwoodjs/sdk/router";
+
+route("/", function handler({ request, ctx }) { 
+  return <>Hello, world!</>
+})
+```
+
+## Simple Route Function with Custom `Document` Template and JSX React Element
+
+```tsx
+import { render, route } from "@redwoodjs/sdk/router";
+
+import { Document } from '@/app/Document'
+
+render(Document, [
+  route("/", function handler({ request, ctx }) { 
+    return <>Hello, world!</>
+  })
+])
+```
