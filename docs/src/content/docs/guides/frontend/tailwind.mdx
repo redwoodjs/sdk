@@ -37,7 +37,18 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
     @import "tailwindcss";
     ```
 
-4. Now, you can run `pnpm run dev` and the "Hello World" text should look different.
+4. Add a `<link>` to the `styles.css` file.
+    In the `Document.tsx` file, within the `<head>` section, add:
+
+    ```tsx title="src/app/Document.tsx" {3}
+    <head>
+      ...
+      <link rel="stylesheet" href="/src/app/styles.css" />
+      ...
+    </head>
+    ```
+
+5. Now, you can run `pnpm run dev` and the "Hello World" text should look different.
     ```bash
     pnpm run dev
     ```
