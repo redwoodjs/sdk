@@ -9,7 +9,7 @@ description: A guide in my new Starlight docs site.
 import { Aside, FileTree } from '@astrojs/starlight/components';
 
 ## Existing Authentication Code
-Since we're using the [Pass Key Auth starter kit](https://github.com/redwoodjs/sdk/tree/main/starters/passkey-auth), it already has PassKey authentication setup.
+Since we're using the [standard starter kit](https://github.com/redwoodjs/sdk/tree/main/starters/standard), it already has PassKey authentication setup.
 
 <Aside type="note" title="Why PassKey Authentication?">
 Passkey authentication offers several key advantages:
@@ -21,9 +21,9 @@ Passkey authentication offers several key advantages:
 
 Let's start by taking a look at the `worker.tsx` file. This file sets up our Cloudflare worker, but it also handles all the routing, middleware, and interrupters.
 
-```tsx title="src/worker.tsx" collapse={1-11}
+```tsx title="src/worker.tsx" collapse={1-12}
 import { defineApp, ErrorResponse } from "@redwoodjs/sdk/worker";
-import { index, render, prefix } from "@redwoodjs/sdk/router";
+import { route, render, prefix } from "@redwoodjs/sdk/router";
 import { Document } from "@/app/Document";
 import { Home } from "@/app/pages/Home";
 import { setCommonHeaders } from "@/app/headers";
@@ -31,7 +31,8 @@ import { userRoutes } from "@/app/pages/user/routes";
 import { sessions, setupSessionStore } from "./session/store";
 import { Session } from "./session/durableObject";
 import { db, setupDb } from "./db";
-import { User } from "@prisma/client";
+import type { User } from "@prisma/client";
+import { env } from "cloudflare:workers";
 export { SessionDurableObject } from "./session/durableObject";
 
 export type AppContext = {
@@ -39,14 +40,14 @@ export type AppContext = {
   user: User | null;
 };
 
-export default defineApp<AppContext>([
+export default defineApp([
   setCommonHeaders(),
-  async ({ env, appContext, request, headers }) => {
+  async ({ ctx, request, headers }) => {
     await setupDb(env);
     setupSessionStore(env);
 
     try {
-      appContext.session = await sessions.load(request);
+      ctx.session = await sessions.load(request);
     } catch (error) {
       if (error instanceof ErrorResponse && error.code === 401) {
         await sessions.remove(request, headers);
@@ -61,18 +62,19 @@ export default defineApp<AppContext>([
       throw error;
     }
 
-    if (appContext.session?.userId) {
-      appContext.user = await db.user.findUnique({
+    if (ctx.session?.userId) {
+      ctx.user = await db.user.findUnique({
         where: {
-          id: appContext.session.userId,
+          id: ctx.session.userId,
         },
       });
     }
   },
   render(Document, [
-    index([
-      ({ appContext }) => {
-        if (!appContext.user) {
+    route("/", () => new Response("Hello, World!")),
+    route("/protected", [
+      ({ ctx }) => {
+        if (!ctx.user) {
           return new Response(null, {
             status: 302,
             headers: { Location: "/user/login" },
@@ -88,28 +90,28 @@ export default defineApp<AppContext>([
 
 Let's break it down, chunk by chunk:
 
-```tsx title="src/worker.tsx" startLineNumber=13
+```tsx title="src/worker.tsx" startLineNumber=14
 export type AppContext = {
   session: Session | null;
   user: User | null;
 };
 ```
-- On **lines 13-16**, we're setting up the types for our application's context object. Specifically, we're defining the `session` and `user` properties.
+- On **lines 14-17**, we're setting up the types for our application's context object. Specifically, we're defining the `session` and `user` properties.
   - The `Session` type is defined in `src/session/durableObject.ts`. (Imported on line 8.) It contains a `userId`, `challenge`, and `createdAt`.
   - The `User` type comes from our `@prisma/client`. (Imported on line 10.) That's right! When Prisma generates our migration files, it also generates types.
 
-```tsx title="src/worker.tsx" startLineNumber=19
+```tsx title="src/worker.tsx" startLineNumber=20
 setCommonHeaders(),
 ```
-- On **line 19** we're setting up our common headers. This is a function inside of `app/src/headers.ts`. (Imported on line 5.) It creates the Security Policies, Transport Policy, Referrer Policy, and Permissions Policy.
+- On **line 20** we're setting up our common headers. This is a function inside of `app/src/headers.ts`. (Imported on line 5.) It creates the Security Policies, Transport Policy, Referrer Policy, and Permissions Policy. [You can find additional documentation here.](/core/security/#-security-headers)
 
-```tsx title="src/worker.tsx" startLineNumber=20
-async ({ env, appContext, request, headers }) => {
+```tsx title="src/worker.tsx" startLineNumber=21
+async ({ ctx, request, headers }) => {
   await setupDb(env);
   setupSessionStore(env);
 
   try {
-    appContext.session = await sessions.load(request);
+    ctx.session = await sessions.load(request);
   } catch (error) {
     if (error instanceof ErrorResponse && error.code === 401) {
       await sessions.remove(request, headers);
@@ -124,41 +126,67 @@ async ({ env, appContext, request, headers }) => {
     throw error;
   }
 
-  if (appContext.session?.userId) {
-    appContext.user = await db.user.findUnique({
+  if (ctx.session?.userId) {
+    ctx.user = await db.user.findUnique({
       where: {
-        id: appContext.session.userId,
+        id: ctx.session.userId,
       },
     });
   }
 },
 ```
-- On **lines 20-47**, we're setting up our middleware.
-  - First, we're setting up the database `setupDb(env);` We'll use this later, on line 41, to find the logged in user.
+- On **lines 21-48**, we're setting up our middleware. This will run between every request and response cycle.
+  - First, we're setting up the database `setupDb(env);` We'll use this later, on line 42, to find the logged in user.
   - Then, we're setting up the session store `setupSessionStore(env);`. We're using Cloudflare's Durable Objects to store our session data and loading it. `sessions.load(request)`
-  - On **lines 26-38**, we're catching any errors. If the status code is 401, we remove the session and redirect the user to the login page.
-  - On **lines 40-46**, we check the `AppContext` for the `session` object. If it has a `userId`, we connect to the database and get all the user data. The result gets saved into the `AppContext.user` object.
+  - On **lines 27-36**, we're catching any errors. If there's an error or the status code is 401, we remove the session and redirect the user to the login page.
+  - On **lines 41-47**, we check the `ctx` for the `session` object. If it has a `userId`, we connect to the database and get all the user data. The result gets saved into the `ctx.user` object.
 
-```tsx title="src/worker.tsx" startLineNumber=48
+```tsx title="src/worker.tsx" startLineNumber=49
 render(Document, [
 ```
-- On **line 48**, we're setting up our document. This document contains our `html`, `head`, and `body` tags and wraps _all_ of our pages. **_RedwoodSDK only supports one document._**
+- On **line 49**, we're setting up our document. This document is referencing our `src/app/Document.tsx` file. It contains our `html`, `head`, and `body` tags and wraps _all_ of our pages. **_RedwoodSDK only supports one document._**
 
-```tsx title="src/worker.tsx" startLineNumber=48
+```tsx title="src/worker.tsx" startLineNumber=49
 render(Document, [
-  index([
-    ({ appContext }) => {
-      if (!appContext.user) {
-        return new Response(null, {
-          status: 302,
-          headers: { Location: "/user/login" },
-        });
-      }
-    },
-    Home,
-  ]),
+  route("/", () => new Response("Hello, World!")),
 ```
-- On **line 48-59**, we're setting up our home page route. Before we return our `Home` component (line 58), we use an **interrupter** to see if the user is logged in. This is a function that takes our `appContext` object and checks to see if the `user` object exists on our app context. If it doesn't, we redirect the user to the login page (lines 52-55). Otherwise, we return the `Home` component (line 58).
+- On **line 50**, we're setting up our home page route. Here, we're just returning a standard response.
+
+The router, highlights the request response life cycle. The first parameter is the route we're requesting and the second parameter is the response. This can be a standard response, or it can be a React component. On line 50, we're returning a standard response that says `Hello World!`.
+
+We could change that to return the `Home` component, by changing the second parameter:
+
+```tsx title="src/worker.tsx" startLineNumber=50
+route("/", () => Home),
+```
+
+We could also change the home page route to use the `index` method:
+
+```tsx title="src/worker.tsx" showLineNumbers={false}
+import { index, route, render, prefix } from "@redwoodjs/sdk/router";
+...
+index([Home]);
+```
+
+The `index` method is similar to the `route` method, but instead of taking two parameters, it only takes one, the response.
+
+If we move further down our `render` method, the next route is a `/protected` route.
+
+```tsx title="src/worker.tsx" startLineNumber=51
+route("/protected", [
+  ({ ctx }) => {
+    if (!ctx.user) {
+      return new Response(null, {
+        status: 302,
+        headers: { Location: "/user/login" },
+      });
+    }
+  },
+  Home,
+]),
+```
+
+Here, we're using an **interrupter** to see if the user is logged in. This is a function that takes our `ctx` object and checks to see if the `user` object exists on it. If it doesn't, we redirect the user to the login page (lines 54-57). Otherwise, we return the `Home` component (line 60).
 
 <Aside type="note" title="Middleware vs Interrupters">
 #### Middleware
@@ -187,12 +215,12 @@ In our code, we're using middleware to attach the user session to our context ob
 ```tsx title="src/worker.tsx" startLineNumber=60
 prefix("/user", userRoutes),
 ```
-- On **line 60**, we're prefixing all of our auth routes with `/user`. Meaning, our `login` route will be `/user/login` and our `logout` route will be `/user/logout`.
+- On **line 62**, we're prefixing all of our auth routes with `/user`. Meaning, our `login` route will be `/user/login` and our `logout` route will be `/user/logout`.
   - `login` and `logout` are defined within the `userRoutes` file, imported on line 6. One of the cool things about the RedwoodSDK router is the parameter is defined through an array. This means, we can define our route information in a separate file and then import it into our `worker.tsx` file.
 
 We're co-locating the file that defines our auth routes with our auth pages.
 
-Let's take a look at `userRoutes`. This is coming from `src > app > pages > user > routes.tsx`.
+Let's take a look at `userRoutes`. This is coming from `src/app/pages/user/routes.tsx`.
 
 ```tsx title="src/app/pages/user/routes.tsx"
 import { route } from "@redwoodjs/sdk/router";
@@ -235,7 +263,7 @@ export const Signup = () => {
 
 Now, we need to add this route to our `userRoutes` array (inside of `src/app/pages/user/routes.ts`):
 
-```tsx title="src/app/pages/user/routes.ts"
+```tsx title="src/app/pages/user/routes.ts" {3,8}
 import { route } from "@redwoodjs/sdk/router";
 import { Login } from "./Login";
 import { Signup } from "./Signup";
@@ -282,7 +310,6 @@ import {
 } from "./functions";
 import { useTurnstile } from "@redwoodjs/sdk/turnstile";
 import { Button } from "@/app/components/ui/button";
-
 // >>> Replace this with your own Cloudflare Turnstile site key
 const TURNSTILE_SITE_KEY = "0x4AAAAAABBM92GLK3VnyFAr";
 
@@ -293,8 +320,13 @@ export function Login() {
   const turnstile = useTurnstile(TURNSTILE_SITE_KEY);
 
   const passkeyLogin = async () => {
+    // 1. Get a challenge from the worker
     const options = await startPasskeyLogin();
+
+    // 2. Ask the browser to sign the challenge
     const login = await startAuthentication({ optionsJSON: options });
+
+    // 3. Give the signed challenge to the worker to finish the login process
     const success = await finishPasskeyLogin(login);
 
     if (!success) {
@@ -305,10 +337,15 @@ export function Login() {
   };
 
   const passkeyRegister = async () => {
+    // 1. Get a challenge from the worker
     const options = await startPasskeyRegistration(username);
+
+    // 2. Ask the browser to sign the challenge
     const registration = await startRegistration({ optionsJSON: options });
+
     const turnstileToken = await turnstile.challenge();
 
+    // 3. Give the signed challenge to the worker to finish the registration process
     const success = await finishPasskeyRegistration(
       username,
       registration,
@@ -362,41 +399,46 @@ Let's break it down, chunk by chunk:
 ---
 ```
 
-```tsx title="src/app/pages/user/Login.tsx" startLineNumber=18
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=17
 const TURNSTILE_SITE_KEY = "0xXXXXXXXXXXXXXXXXXXXXXX";
 ---
-- **On line 18**, we're setting up our Turnstile site key. [We already set this up.](/tutorial/full-stack-app/create-app#setting-up-cloudflare-turnstile)
+- **On line 17**, we're setting up our Turnstile site key. [We already set this up.](/tutorial/full-stack-app/create-app#setting-up-cloudflare-turnstile)
 ---
 ```
 
-```tsx title="src/app/pages/user/Login.tsx" startLineNumber=21
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=20
 const [username, setUsername] = useState("");
 const [result, setResult] = useState("");
 ---
-- **On lines 21-22**, we're setting a couple pieces of state.
+- **On lines 20-21**, we're setting a couple pieces of state.
   - `username` is tied to our username input value.
   - `result` contains our result message.
 ---
 ```
 
-```tsx title="src/app/pages/user/Login.tsx" startLineNumber=23
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=22
 const [isPending, startTransition] = useTransition();
 ---
-- **On line 23**, we're using React's `useTransition` hook to manage our loading state. (More on this later, but you can also find more within [the official React documentation](https://react.dev/reference/react/useTransition).)
+- **On line 22**, we're using React's `useTransition` hook to manage our loading state. (More on this later, but you can also find more within [the official React documentation](https://react.dev/reference/react/useTransition).)
 ---
 ```
 
-```tsx title="src/app/pages/user/Login.tsx" startLineNumber=24
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=23
 const turnstile = useTurnstile(TURNSTILE_SITE_KEY);
 ---
-- **On line 24**, the `useTurnstile` hook gets our Turnstile instance. This hook is coming from RedwoodSDK and is used to handle the challenge and verify our Turnstile token.
+- **On line 23**, the `useTurnstile` hook gets our Turnstile instance. This hook is coming from RedwoodSDK and is used to handle the challenge and verify our Turnstile token.
 ---
 ```
 
-```tsx title="src/app/pages/user/Login.tsx" startLineNumber=26
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=25
 const passkeyLogin = async () => {
+  // 1. Get a challenge from the worker
   const options = await startPasskeyLogin();
+
+  // 2. Ask the browser to sign the challenge
   const login = await startAuthentication({ optionsJSON: options });
+
+  // 3. Give the signed challenge to the worker to finish the login process
   const success = await finishPasskeyLogin(login);
 
   if (!success) {
@@ -406,50 +448,55 @@ const passkeyLogin = async () => {
   }
 };
 ---
-- **On line 26**, we're defining our `passkeyLogin` function.
-- The functions `startPasskeyLogin`, `startAuthentication`, and `finishPasskeyLogin` are all defined in the `src/app/pages/user/functions.ts` file. You can find more information about these functions in the [Passkey Authentication docs](/core/authentication).
+- **On line 25**, we're defining our `passkeyLogin` function.
+- The functions `startPasskeyLogin`, `startAuthentication`, and `finishPasskeyLogin` are all defined in the `src/app/pages/user/functions.ts` file. You can find more information about these functions in the [Authentication docs](/core/authentication).
 - We start the Passkey login authentication `startPasskeyLogin()`, and then determine whether it was successful or not.
 - If it wasn't successful, we set the result message to "Login failed".
 - Otherwise, we set the result message to "Login successful!".
 ---
 ```
 
-```tsx title="src/app/pages/user/Login.tsx" startLineNumber=38
-const passkeyRegister = async () => {
-  const options = await startPasskeyRegistration(username);
-  const registration = await startRegistration({ optionsJSON: options });
-  const turnstileToken = await turnstile.challenge();
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=42
+  const passkeyRegister = async () => {
+    // 1. Get a challenge from the worker
+    const options = await startPasskeyRegistration(username);
 
-  const success = await finishPasskeyRegistration(
-    username,
-    registration,
-    turnstileToken,
-  );
+    // 2. Ask the browser to sign the challenge
+    const registration = await startRegistration({ optionsJSON: options });
 
-  if (!success) {
-    setResult("Registration failed");
-  } else {
-    setResult("Registration successful!");
-  }
-};
+    const turnstileToken = await turnstile.challenge();
+
+    // 3. Give the signed challenge to the worker to finish the registration process
+    const success = await finishPasskeyRegistration(
+      username,
+      registration,
+      turnstileToken,
+    );
+
+    if (!success) {
+      setResult("Registration failed");
+    } else {
+      setResult("Registration successful!");
+    }
+  };
 ---
-- **On lines 38-54**, we're defining our `passkeyRegister` function. This is similar the `passkeyLogin` function, but this handles the registration process.
+- **On lines 42-63**, we're defining our `passkeyRegister` function. This is similar the `passkeyLogin` function, but this handles the registration process.
   - The functions `startPasskeyRegistration`, `startRegistration`, and `finishPasskeyRegistration` are all defined in the `src/app/pages/user/functions.ts` file. You can find more information about these functions in the [Passkey Authentication docs](/docs/auth/passkeys).
   - If the registration isn't successful, we set the result message to "Registration failed".
   - Otherwise, we set the result message to "Registration successful!".
 ---
 ```
 
-```tsx title="src/app/pages/user/Login.tsx" startLineNumber=56
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=65
 const handlePerformPasskeyLogin = () => {
   startTransition(() => void passkeyLogin());
 };
 ---
-- **On lines 56-58**, the`handlePerformPasskeyLogin` function handles the transition and calls the `passkeyLogin` function.
+- **On lines 65**, the`handlePerformPasskeyLogin` function handles the transition and calls the `passkeyLogin` function.
 ---
 ```
 
-```tsx title="src/app/pages/user/Login.tsx" startLineNumber=60
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=69
 const handlePerformPasskeyRegister = () => {
   startTransition(() => void passkeyRegister());
 };
@@ -458,7 +505,7 @@ const handlePerformPasskeyRegister = () => {
 ---
 ```
 
-```tsx title="src/app/pages/user/Login.tsx" startLineNumber=68
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=77
 <input
   type="text"
   value={username}
@@ -466,7 +513,7 @@ const handlePerformPasskeyRegister = () => {
   placeholder="Username"
 />
 ---
-- **On lines 68-73**, we're rendering an input field. This is tied to our `username` state.
+- **On lines 77-82**, we're rendering an input field. This is tied to our `username` state (line 20).
 ---
 ```
 
