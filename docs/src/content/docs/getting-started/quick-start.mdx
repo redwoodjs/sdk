@@ -12,7 +12,7 @@ import {
   Code,
 } from "@astrojs/starlight/components";
 
-import importedCodeStandardWorker from "../../../../../starters/standard/src/worker.tsx?raw";
+import importedCodeMinimalWorker from "../../../../../starters/minimal/src/worker.tsx?raw";
 
 In this quick start you'll go from zero to request/response in seconds and deploy to production in minutes!
 
@@ -25,7 +25,7 @@ In this quick start you'll go from zero to request/response in seconds and deplo
 Create a new project by running the following command, replacing `<project-name>` with your project name:
 
 ```bash showLineNumbers=false
-npx degit redwoodjs/sdk/starters/standard <project-name>
+npx degit redwoodjs/sdk/starters/minimal <project-name>
 ```
 
 ## Start developing
@@ -104,7 +104,7 @@ Here you'll see the `defineApp` function, this is the main function that "define
 <Code
   lang="tsx"
   title="src/worker.tsx"
-  code={importedCodeStandardWorker}
+  code={importedCodeMinimalWorker}
   collapse={"4-17, 19-47, 50-61"}
   mark={"defineApp"}
 />
