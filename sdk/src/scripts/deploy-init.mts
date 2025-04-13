@@ -2,32 +2,28 @@ import { $ } from "../lib/$.mjs";
 import { readFile, writeFile } from "fs/promises";
 import { resolve } from "path";
 import { randomBytes } from "crypto";
-import { createInterface } from "readline";
 import { glob } from "glob";
 
 const generateSecretKey = () => {
   return randomBytes(32).toString("base64");
 };
 
-const askQuestion = async (question: string): Promise<string> => {
-  const rl = createInterface({
-    input: process.stdin,
-    output: process.stdout,
-  });
-
-  return new Promise((resolve) => {
-    rl.question(question, (answer) => {
-      rl.close();
-      resolve(answer.trim());
-    });
-  });
-};
-
 const hasWebAuthn = async () => {
   const files = await glob("src/**/*.{ts,tsx}", { ignore: "node_modules/**" });
   for (const file of files) {
     const content = await readFile(file, "utf-8");
-    if (content.includes("@redwoodsdk/auth") || content.includes("webauthn")) {
+    if (content.includes("WEBAUTHN")) {
+      return true;
+    }
+  }
+  return false;
+};
+
+const hasD1Database = async () => {
+  const files = await glob("src/**/*.{ts,tsx}", { ignore: "node_modules/**" });
+  for (const file of files) {
+    const content = await readFile(file, "utf-8");
+    if (content.includes("env.DB")) {
       return true;
     }
   }
@@ -35,7 +31,7 @@ const hasWebAuthn = async () => {
 };
 
 export const initDeploy = async () => {
-  console.log("Initializing deployment environment...");
+  console.log("Ensuring deployment environment is ready...");
 
   const pkg = JSON.parse(
     await readFile(resolve(process.cwd(), "package.json"), "utf-8"),
@@ -45,18 +41,97 @@ export const initDeploy = async () => {
   const wranglerPath = resolve(process.cwd(), "wrangler.jsonc");
   const wranglerConfig = JSON.parse(await readFile(wranglerPath, "utf-8"));
 
-  // Only set up auth if WebAuthn is being used
-  if (await hasWebAuthn()) {
-    // Set up secrets
-    const secretKey = generateSecretKey();
-    await $`echo ${secretKey} | wrangler secret put AUTH_SECRET_KEY`;
-    console.log("Set AUTH_SECRET_KEY secret");
+  // Check D1 database setup
+  const needsDatabase = await hasD1Database();
+  if (!needsDatabase) {
+    console.log("Skipping D1 setup - no env.DB usage detected in codebase");
+  } else {
+    console.log("Found env.DB usage, checking D1 database setup...");
+    try {
+      if (wranglerConfig.d1_databases?.some((db) => db.binding === "DB")) {
+        console.log(
+          "D1 database already configured in wrangler.jsonc, skipping creation",
+        );
+      } else {
+        const dbName = wranglerConfig.name + "-db";
+        const result = await $`wrangler d1 create ${dbName} --json`;
+        const dbInfo = JSON.parse(result.stdout ?? "{}");
 
-    // Set WEBAUTHN_APP_NAME to match wrangler name
-    wranglerConfig.vars = wranglerConfig.vars || {};
-    wranglerConfig.vars.WEBAUTHN_APP_NAME = wranglerConfig.name;
+        if (!dbInfo.uuid) {
+          throw new Error("Failed to get database ID from wrangler output");
+        }
+
+        // Update wrangler config with database info
+        wranglerConfig.d1_databases = [
+          {
+            binding: "DB",
+            database_name: dbName,
+            database_id: dbInfo.uuid,
+          },
+        ];
+
+        console.log(`Created D1 database: ${dbName}`);
+      }
+    } catch (error) {
+      console.error("Failed to create D1 database. Please create it manually:");
+      console.error("1. Run: wrangler d1 create <your-db-name>");
+      console.error("2. Update wrangler.jsonc with the database details");
+      process.exit(1);
+    }
+  }
+
+  // Check WebAuthn setup
+  const needsWebAuthn = await hasWebAuthn();
+  if (!needsWebAuthn) {
+    console.log(
+      "Skipping WebAuthn setup - no WEBAUTHN usage detected in codebase",
+    );
+  } else {
+    console.log("Found WEBAUTHN usage, checking WebAuthn setup...");
+    try {
+      // Check if AUTH_SECRET_KEY already exists
+      try {
+        await $`wrangler secret get AUTH_SECRET_KEY`;
+        console.log(
+          "AUTH_SECRET_KEY secret already exists in Cloudflare, skipping",
+        );
+      } catch {
+        // Secret doesn't exist, create it
+        const secretKey = generateSecretKey();
+        await $`echo ${secretKey} | wrangler secret put AUTH_SECRET_KEY`;
+        console.log("Set AUTH_SECRET_KEY secret");
+      }
+
+      // Check WEBAUTHN_APP_NAME
+      wranglerConfig.vars = wranglerConfig.vars || {};
+      if (wranglerConfig.vars.WEBAUTHN_APP_NAME === wranglerConfig.name) {
+        console.log(
+          `WEBAUTHN_APP_NAME already set to "${wranglerConfig.name}" in wrangler.jsonc`,
+        );
+      } else {
+        wranglerConfig.vars.WEBAUTHN_APP_NAME = wranglerConfig.name;
+        console.log(`Set WEBAUTHN_APP_NAME to ${wranglerConfig.name}`);
+      }
+    } catch (error) {
+      console.error("Failed to set up WebAuthn. Please configure it manually:");
+      console.error(
+        "1. Generate a secret key: node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\"",
+      );
+      console.error("2. Set the secret: wrangler secret put AUTH_SECRET_KEY");
+      console.error("3. Add to wrangler.jsonc vars:");
+      console.error(
+        `   "vars": { "WEBAUTHN_APP_NAME": "${wranglerConfig.name}" }`,
+      );
+      process.exit(1);
+    }
+  }
+
+  // Only write wrangler config if changes were made
+  if (
+    JSON.stringify(wranglerConfig) !== (await readFile(wranglerPath, "utf-8"))
+  ) {
     await writeFile(wranglerPath, JSON.stringify(wranglerConfig, null, 2));
-    console.log(`Set WEBAUTHN_APP_NAME to ${wranglerConfig.name}`);
+    console.log("Updated wrangler.jsonc configuration");
   }
 
   if (pkg.scripts?.["migrate:deploy"]) {
@@ -65,17 +140,6 @@ export const initDeploy = async () => {
   }
 
   console.log("\nDeployment initialization complete!");
-  console.log(
-    "\nNote: If you want to enable bot protection via Cloudflare Turnstile:",
-  );
-  console.log("1. Visit https://dash.cloudflare.com/?to=/:account/turnstile");
-  console.log("2. Create a new widget with 'invisible' mode");
-  console.log("3. Add your domain to allowed hostnames");
-  console.log("4. Set the site key and secret key:");
-  console.log("   wrangler secret put TURNSTILE_SECRET_KEY");
-  console.log("   Update your LoginPage.tsx with the site key");
-  console.log();
-
   process.exit(0);
 };
 
