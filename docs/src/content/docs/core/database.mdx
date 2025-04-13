@@ -18,8 +18,9 @@ You'll need to "bind" your database to your worker (`./src/worker.tsx`). "Bindin
 
 In order to bind a database to your worker you'll need to create a D1 database, and save it's configuration details in your `wrangler.jsonc` file.
 
-```bash
-npx wrangler d1 create my-database
+```bash showLineNumbers=false withOutput
+> npx wrangler d1 create my-database
+
 ✅ Successfully created DB 'my-database' in region WEUR
 Created your new D1 database.
 
@@ -46,7 +47,7 @@ npx degit redwoodjs/sdk/starters/prisma#main <project-name>
 
 Install the Prisma packages, as well as the adapter for D1, and create a `prisma` directory.
 
-```bash
+```bash showLineNumbers=false
 npm install @prisma/adapter-d1 @prisma/client prisma
 mkdir prisma
 touch prisma/schema.prisma

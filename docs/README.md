@@ -30,3 +30,29 @@ These are simple guidelines that help us keep the documentation consistent.
 1. Always refer to "RedwoodSDK" as "RedwoodSDK," not "Redwood," "RedwoodJS" or "Redwood SDK."
 2. Use "Request/Response" rather than "Request / Response" or "Request/ Response."
 3. Use "Route handler" rather than "Route function."
+
+## Code Syntax
+
+Prefer "bash showLineNumbers=false" when only showing code commands.
+
+Example: 
+
+```bash showLineNumbers=false
+npx degit redwoodjs/sdk/starters/standard <project-name>
+```
+
+Prefer "bash showLineNumbers=false withOutput" when showing both code commands along with the expected output. 
+
+Example
+
+```bash showLineNumbers=false withOutput
+> npx wrangler d1 create my-database
+
+✅ Successfully created DB 'my-database' in region WEUR
+Created your new D1 database.
+
+[[d1_databases]]
+binding = "DB"
+database_name = "my-database"
+database_id = "62x40823-4750-4973-b994-fb8fd55xxxx6"
+```

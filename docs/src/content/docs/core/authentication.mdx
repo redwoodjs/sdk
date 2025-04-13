@@ -31,7 +31,7 @@ If you haven't already, replace the `__change_me__` placeholders with a name for
 
 Then, create a new D1 database:
 
-```shell
+```bash showLineNumbers=false
 npx wrangler d1 create my-project-db
 ```
 
@@ -53,8 +53,8 @@ Copy the database ID provided and paste it into your project's `wrangler.jsonc` 
 
 For production, set your domain as the `RP_ID` via Cloudflare secrets:
 
-```shell
-wrangler secret put RP_ID
+```bash showLineNumbers=false
+npx wrangler secret put RP_ID
 ```
 
 When prompted, enter your production domain (e.g., `my-app.example.com`).
@@ -65,15 +65,15 @@ Note: The RP_ID must be a valid domain that matches your application's origin. F
 
 For production, generate a strong `SECRET_KEY` for signing session IDs. You can generate a secure random key using OpenSSL:
 
-```shell
+```bash showLineNumbers=false
 # Generate a 32-byte random key and encode it as base64
 openssl rand -base64 32
 ```
 
 Then set this key as a Cloudflare secret:
 
-```shell
-wrangler secret put SECRET_KEY
+```bash showLineNumbers=false
+npx wrangler secret put SECRET_KEY
 ```
 
 Never use the same secret key for development and production environments, and avoid committing your secret keys to version control.
@@ -95,8 +95,8 @@ const TURNSTILE_SITE_KEY = "<YOUR_SITE_KEY>";
 
 4. Set your **Turnstile Secret Key** via Cloudflare secrets for production:
 
-```shell
-wrangler secret put TURNSTILE_SECRET_KEY
+```bash showLineNumbers=false
+npx wrangler secret put TURNSTILE_SECRET_KEY
 ```
 
 ## How it all works
