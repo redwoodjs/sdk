@@ -1,6 +1,7 @@
 import { $ } from "../lib/$.mjs";
-import { readFile } from "fs/promises";
+import { readFile, writeFile } from "fs/promises";
 import { resolve } from "path";
+import { basename } from "path";
 
 export const initDev = async () => {
   console.log("Initializing development environment...");
@@ -8,6 +9,17 @@ export const initDev = async () => {
   const pkg = JSON.parse(
     await readFile(resolve(process.cwd(), "package.json"), "utf-8"),
   );
+
+  // Update wrangler name if needed
+  const wranglerPath = resolve(process.cwd(), "wrangler.jsonc");
+  const wranglerConfig = JSON.parse(await readFile(wranglerPath, "utf-8"));
+
+  if (wranglerConfig.name === "__change_me__") {
+    const dirName = basename(process.cwd());
+    wranglerConfig.name = dirName;
+    await writeFile(wranglerPath, JSON.stringify(wranglerConfig, null, 2));
+    console.log(`Set wrangler name to ${dirName}`);
+  }
 
   if (pkg.scripts?.["generate"]) {
     console.log("Generating...");

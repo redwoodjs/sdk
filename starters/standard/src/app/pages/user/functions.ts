@@ -14,12 +14,26 @@ import { db } from "@/db";
 import { verifyTurnstileToken } from "@redwoodjs/sdk/turnstile";
 import { env } from "cloudflare:workers";
 
-export async function startPasskeyRegistration(username: string) {
-  const { headers } = requestInfo;
+const IS_DEV = process.env.NODE_ENV === "development";
+
+interface WebAuthnConfig {
+  rpName: string;
+  rpId: string;
+}
+
+function getWebAuthnConfig(request: Request): WebAuthnConfig {
+  return {
+    rpName: env.WEBAUTHN_APP_NAME || (IS_DEV ? "Development App" : env.name),
+    rpId: env.WEBAUTHN_RP_ID || new URL(request.url).hostname,
+  };
+}
+
+export async function register(request: Request, username: string) {
+  const { rpName, rpId } = getWebAuthnConfig(request);
 
   const options = await generateRegistrationOptions({
-    rpName: env.APP_NAME,
-    rpID: env.RP_ID,
+    rpName,
+    rpId,
     userName: username,
     authenticatorSelection: {
       // Require the authenticator to store the credential, enabling a username-less login experience
@@ -29,7 +43,21 @@ export async function startPasskeyRegistration(username: string) {
     },
   });
 
-  await sessions.save(headers, { challenge: options.challenge });
+  await sessions.save(request, { challenge: options.challenge });
+
+  return options;
+}
+
+export async function authenticate(request: Request) {
+  const { rpId } = getWebAuthnConfig(request);
+
+  const options = await generateAuthenticationOptions({
+    rpId,
+    userVerification: "preferred",
+    allowCredentials: [],
+  });
+
+  await sessions.save(request, { challenge: options.challenge });
 
   return options;
 }
@@ -63,7 +91,7 @@ export async function finishPasskeyRegistration(
     response: registration,
     expectedChallenge: challenge,
     expectedOrigin: origin,
-    expectedRPID: env.RP_ID,
+    expectedRPID: env.WEBAUTHN_RP_ID || new URL(request.url).hostname,
   });
 
   if (!verification.verified || !verification.registrationInfo) {
@@ -88,20 +116,6 @@ export async function finishPasskeyRegistration(
   });
 
   return true;
-}
-
-export async function startPasskeyLogin() {
-  const { headers } = requestInfo;
-
-  const options = await generateAuthenticationOptions({
-    rpID: env.RP_ID,
-    userVerification: "preferred",
-    allowCredentials: [],
-  });
-
-  await sessions.save(headers, { challenge: options.challenge });
-
-  return options;
 }
 
 export async function finishPasskeyLogin(login: AuthenticationResponseJSON) {
@@ -129,7 +143,7 @@ export async function finishPasskeyLogin(login: AuthenticationResponseJSON) {
     response: login,
     expectedChallenge: challenge,
     expectedOrigin: origin,
-    expectedRPID: env.RP_ID,
+    expectedRPID: env.WEBAUTHN_RP_ID || new URL(request.url).hostname,
     requireUserVerification: false,
     credential: {
       id: credential.credentialId,

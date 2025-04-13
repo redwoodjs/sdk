@@ -165,6 +165,15 @@ export const defineApp = (routes: Route[]) => {
           }
         }
 
+        if (IS_DEV) {
+          // Set development defaults for auth variables
+          env.WEBAUTHN_RP_ID = env.WEBAUTHN_RP_ID || "localhost";
+          env.AUTH_SECRET_KEY =
+            env.AUTH_SECRET_KEY ||
+            "development-secret-key-do-not-use-in-production";
+          env.WEBAUTHN_APP_NAME = env.WEBAUTHN_APP_NAME || "Development App";
+        }
+
         return mutableResponse;
       } catch (e) {
         if (e instanceof ErrorResponse) {

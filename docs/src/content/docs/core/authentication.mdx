@@ -49,21 +49,31 @@ Copy the database ID provided and paste it into your project's `wrangler.jsonc` 
 }
 ```
 
-### Setting up WebAuthn Relying Party ID (`RP_ID`)
+### Environment Variables
 
-For production, set your domain as the `RP_ID` via Cloudflare secrets:
+The following environment variables are used for authentication:
 
-```bash showLineNumbers=false
-npx wrangler secret put RP_ID
+- `WEBAUTHN_APP_NAME`: The application name shown in WebAuthn prompts (defaults to your application name)
+- `WEBAUTHN_RP_ID`: The relying party ID for WebAuthn (defaults to the request hostname)
+- `AUTH_SECRET_KEY`: Secret key for signing session tokens (defaults to a development key in development)
+
+For production deployments, these values are automatically configured by the deployment script. You can override them if needed:
+
+### Customizing WebAuthn Relying Party ID
+
+By default, the RP_ID is set to the hostname of each request. You can override this by setting the `WEBAUTHN_RP_ID` environment variable:
+
+```shell
+npx wrangler secret put WEBAUTHN_RP_ID
 ```
 
 When prompted, enter your production domain (e.g., `my-app.example.com`).
 
-Note: The RP_ID must be a valid domain that matches your application's origin. For security reasons, WebAuthn will not work if these don't match.
+Note: The WEBAUTHN_RP_ID must be a valid domain that matches your application's origin. For security reasons, WebAuthn will not work if these don't match.
 
 ### Setting up Session Secret Key
 
-For production, generate a strong `SECRET_KEY` for signing session IDs. You can generate a secure random key using OpenSSL:
+For production, generate a strong `AUTH_SECRET_KEY` for signing session IDs:
 
 ```bash showLineNumbers=false
 # Generate a 32-byte random key and encode it as base64
@@ -73,23 +83,26 @@ openssl rand -base64 32
 Then set this key as a Cloudflare secret:
 
 ```bash showLineNumbers=false
-npx wrangler secret put SECRET_KEY
+npx wrangler secret put AUTH_SECRET_KEY
 ```
 
 Never use the same secret key for development and production environments, and avoid committing your secret keys to version control.
 
-### Setting up Cloudflare Turnstile (Bot Protection)
+## Optional: Bot Protection with Turnstile
+
+You can optionally enable bot protection for user registration using Cloudflare Turnstile. To enable this:
 
 1. Visit [Cloudflare Turnstile Dashboard](https://dash.cloudflare.com/?to=/:account/turnstile).
 
 2. Create a new Turnstile widget:
 
    - Set **Widget Mode** to `invisible`
-   - Add your application's hostname to **Allowed hostnames**, e.g., `my-project-name.example.com`.
+   - Add your application's hostname to **Allowed hostnames**, e.g., `my-app.example.com`.
 
-3. Copy your **Site Key** into your application's [`Login.tsx`](https://github.com/redwoodjs/sdk/blob/main/starters/standard/src/app/pages/user/Login.tsx#L17):
+3. Copy your **Site Key** into your application's `LoginPage.tsx`:
 
-```tsx title="Login.tsx"
+```tsx
+// LoginPage.tsx
 const TURNSTILE_SITE_KEY = "<YOUR_SITE_KEY>";
 ```
 
@@ -98,6 +111,32 @@ const TURNSTILE_SITE_KEY = "<YOUR_SITE_KEY>";
 ```bash showLineNumbers=false
 npx wrangler secret put TURNSTILE_SECRET_KEY
 ```
+
+5. Update your registration function to include Turnstile verification:
+
+```tsx
+import { verifyTurnstileToken } from "@redwoodsdk/auth";
+
+// In your registration handler:
+const turnstileResponse = await verifyTurnstileToken(token, env);
+if (!turnstileResponse.success) {
+  throw new Error("Bot protection verification failed");
+}
+```
+
+## Security Considerations
+
+### Username vs Email
+
+The authentication system intentionally uses usernames instead of emails. This decision prevents enumeration attacks and avoids requiring valid email addresses for registration.
+
+### Authentication Flow
+
+Authentication uses credential IDs from the authenticator instead of usernames or emails, significantly mitigating enumeration risks.
+
+### Bot Protection
+
+When enabled, registration is protected using [Cloudflare Turnstile](https://www.cloudflare.com/application-services/products/turnstile/) to prevent automated bot registrations. While Cloudflare's built-in bot detection will identify and block malicious patterns over time, Turnstile provides immediate verification before registration to prevent bot registrations from the start.
 
 ## How it all works
 
@@ -121,7 +160,7 @@ When a request comes in, we:
 
 #### Why Durable Objects?
 
-Instead of keeping session data in multiple places where we’d have to worry about syncing and stale data, each session is stored in a single **Durable Object** instance. This means we don’t have to deal with session data being out of date or lingering after logout—it’s all in one place, making revocation straightforward. On top of this, when a session is active, it stays in memory, so lookups are faster without extra database queries.
+Instead of keeping session data in multiple places where we'd have to worry about syncing and stale data, each session is stored in a single **Durable Object** instance. This means we don't have to deal with session data being out of date or lingering after logout—it's all in one place, making revocation straightforward. On top of this, when a session is active, it stays in memory, so lookups are faster without extra database queries.
 
 For more on Durable Objects, see [Cloudflare's documentation](https://developers.cloudflare.com/durable-objects/).
 
