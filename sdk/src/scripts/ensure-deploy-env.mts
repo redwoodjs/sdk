@@ -3,7 +3,7 @@ import { readFile, writeFile } from "fs/promises";
 import { resolve } from "path";
 import { randomBytes } from "crypto";
 import { glob } from "glob";
-import { parse as parseJsonc, stringify as stringifyJsonc } from "jsonc-parser";
+import { parse as parseJsonc } from "jsonc-parser";
 
 const generateSecretKey = () => {
   return randomBytes(32).toString("base64");
@@ -40,8 +40,10 @@ export const ensureDeployEnv = async () => {
 
   // Read wrangler config
   const wranglerPath = resolve(process.cwd(), "wrangler.jsonc");
-  const wranglerContent = await readFile(wranglerPath, "utf-8");
-  const wranglerConfig = parseJsonc(wranglerContent);
+  const wranglerConfig = parseJsonc(await readFile(wranglerPath, "utf-8"));
+
+  // Track if we need to update the file
+  let needsUpdate = false;
 
   // Check D1 database setup
   const needsDatabase = await hasD1Database();
@@ -80,6 +82,7 @@ export const ensureDeployEnv = async () => {
       console.error("2. Update wrangler.jsonc with the database details");
       process.exit(1);
     }
+    needsUpdate = true;
   }
 
   // Check WebAuthn setup
@@ -126,12 +129,12 @@ export const ensureDeployEnv = async () => {
       );
       process.exit(1);
     }
+    needsUpdate = true;
   }
 
   // Only write wrangler config if changes were made
-  const formattedConfig = stringifyJsonc(wranglerConfig, null, 2);
-  if (formattedConfig !== wranglerContent) {
-    await writeFile(wranglerPath, formattedConfig);
+  if (needsUpdate) {
+    await writeFile(wranglerPath, JSON.stringify(wranglerConfig, null, 2));
     console.log("Updated wrangler.jsonc configuration");
   }
 
