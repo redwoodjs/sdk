@@ -52,7 +52,10 @@ export const ensureDeployEnv = async () => {
   } else {
     console.log("Found env.DB usage, checking D1 database setup...");
     try {
-      if (wranglerConfig.d1_databases?.some((db: any) => db.binding === "DB")) {
+      const existingDb = wranglerConfig.d1_databases?.find(
+        (db: any) => db.binding === "DB",
+      );
+      if (existingDb && existingDb.database_id !== "__change_me__") {
         console.log(
           "D1 database already configured in wrangler.jsonc, skipping creation",
         );
@@ -65,8 +68,10 @@ export const ensureDeployEnv = async () => {
           throw new Error("Failed to get database ID from wrangler output");
         }
 
-        // Update wrangler config with database info
+        // Update wrangler config with database info, preserving other databases
+        const existingDatabases = wranglerConfig.d1_databases || [];
         wranglerConfig.d1_databases = [
+          ...existingDatabases.filter((db: any) => db.binding !== "DB"),
           {
             binding: "DB",
             database_name: dbName,
