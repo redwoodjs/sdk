@@ -121,7 +121,7 @@ export const ensureDeployEnv = async () => {
     console.log("Found WEBAUTHN usage, checking WebAuthn setup...");
     try {
       // Get list of all secrets
-      const secretsResult = await $`wrangler secret list --json`;
+      const secretsResult = await $`wrangler secret list --format=json`;
       const secretsData = JSON.parse(secretsResult.stdout ?? "[]");
       const existingSecrets = secretsData.map(
         (secret: { name: string }) => secret.name,
