@@ -16,7 +16,7 @@
 
 # RedwoodSDK
 
-RedwoodJS is a React Framework for Cloudfare.
+RedwoodSDK is a React Framework for Cloudfare.
 
 It begins as a Vite plugin that unlocks SSR, React Server Components, Server Functions, and realtime features.  Its standards-based router, with support for middleware and  interruptors, gives you fine-grained control over every request and  response.
 
