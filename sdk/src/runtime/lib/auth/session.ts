@@ -235,12 +235,12 @@ export const defineDurableSession = <
 >({
   cookieName,
   createCookie,
-  secretKey,
+  secretKey = AUTH_SECRET_KEY,
   sessionDurableObject,
 }: {
   cookieName?: string;
   createCookie?: typeof createSessionCookie;
-  secretKey: string;
+  secretKey?: string;
   sessionDurableObject: DurableObjectNamespace<SessionDurableObject>;
 }): SessionStoreFromDurableObject<SessionDurableObject> => {
   type Session = SessionFromDurableObject<SessionDurableObject>;

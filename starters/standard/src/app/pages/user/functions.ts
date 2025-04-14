@@ -24,8 +24,8 @@ function getWebAuthnConfig(request: Request) {
   };
 }
 
-export async function register(request: Request, username: string) {
-  const { rpName, rpID } = getWebAuthnConfig(request);
+export async function startPasskeyRegistration(username: string) {
+  const { rpName, rpID } = getWebAuthnConfig(requestInfo.request);
   const { headers } = requestInfo;
 
   const options = await generateRegistrationOptions({
@@ -45,8 +45,8 @@ export async function register(request: Request, username: string) {
   return options;
 }
 
-export async function authenticate(request: Request) {
-  const { rpID } = getWebAuthnConfig(request);
+export async function startPasskeyLogin() {
+  const { rpID } = getWebAuthnConfig(requestInfo.request);
   const { headers } = requestInfo;
 
   const options = await generateAuthenticationOptions({

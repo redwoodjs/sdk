@@ -48,7 +48,7 @@ export const initDeploy = async () => {
   } else {
     console.log("Found env.DB usage, checking D1 database setup...");
     try {
-      if (wranglerConfig.d1_databases?.some((db) => db.binding === "DB")) {
+      if (wranglerConfig.d1_databases?.some((db: any) => db.binding === "DB")) {
         console.log(
           "D1 database already configured in wrangler.jsonc, skipping creation",
         );
