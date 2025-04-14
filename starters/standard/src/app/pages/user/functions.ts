@@ -16,24 +16,22 @@ import { env } from "cloudflare:workers";
 
 const IS_DEV = process.env.NODE_ENV === "development";
 
-interface WebAuthnConfig {
-  rpName: string;
-  rpId: string;
-}
-
-function getWebAuthnConfig(request: Request): WebAuthnConfig {
+function getWebAuthnConfig(request: Request) {
+  const rpID = env.WEBAUTHN_RP_ID ?? new URL(request.url).hostname;
+  const rpName = IS_DEV ? "Development App" : env.WEBAUTHN_APP_NAME;
   return {
-    rpName: env.WEBAUTHN_APP_NAME || (IS_DEV ? "Development App" : env.name),
-    rpId: env.WEBAUTHN_RP_ID || new URL(request.url).hostname,
+    rpName,
+    rpID,
   };
 }
 
 export async function register(request: Request, username: string) {
-  const { rpName, rpId } = getWebAuthnConfig(request);
+  const { rpName, rpID } = getWebAuthnConfig(request);
+  const { headers } = requestInfo;
 
   const options = await generateRegistrationOptions({
     rpName,
-    rpId,
+    rpID,
     userName: username,
     authenticatorSelection: {
       // Require the authenticator to store the credential, enabling a username-less login experience
@@ -43,21 +41,22 @@ export async function register(request: Request, username: string) {
     },
   });
 
-  await sessions.save(request, { challenge: options.challenge });
+  await sessions.save(headers, { challenge: options.challenge });
 
   return options;
 }
 
 export async function authenticate(request: Request) {
-  const { rpId } = getWebAuthnConfig(request);
+  const { rpID } = getWebAuthnConfig(request);
+  const { headers } = requestInfo;
 
   const options = await generateAuthenticationOptions({
-    rpId,
+    rpID,
     userVerification: "preferred",
     allowCredentials: [],
   });
 
-  await sessions.save(request, { challenge: options.challenge });
+  await sessions.save(headers, { challenge: options.challenge });
 
   return options;
 }
