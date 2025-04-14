@@ -6,7 +6,7 @@
     </picture>
   </a>
   
-  <h1>RedwoodSDK</h1>
+  <h1>RedwoodSDK | The React Framework for (Cloudflare)[https://www.cloudflare.com/].</h1>
 
   <a href="https://rwsdk.com"><img alt="Redwood Inc. logo" src="https://img.shields.io/badge/MADE%20BY%20Redwood%20Inc.-000000.svg?style=for-the-badge&logo=Redwood&labelColor=000"></a>
   <a href="https://docs.rwsdk.com"><img alt="Documentation" src="https://img.shields.io/badge/Documentation-000000.svg?style=for-the-badge&logo=Redwood&labelColor=000"></a>
@@ -14,9 +14,11 @@
   <a href="https://github.com/redwoodjs/sdk/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/redwoodjs/sdk?style=for-the-badge&labelColor=000000"></a>
 </div>
 
-# RedwoodSDK Monorepo
+# RedwoodSDK
 
-RedwoodSDK is a composable framework for building server-driven webapps on Cloudflare. It starts as a **Vite plugin** that unlocks **SSR**, **React Server Components**, **Server Functions**, and **realtime**. Its standards-based router—with middleware and interruptors—gives you precise control over every request and response. With built-in access to Cloudflare's Workers, Database (D1), Storage (R2), Queues, and AI—and full local emulation via Miniflare—development feels just like production.
+RedwoodSDK is a React Framework for (Cloudflare)[https://www.cloudflare.com/].
+
+It begins as a Vite plugin that unlocks SSR, React Server Components, Server Functions, and realtime features.  Its standards-based router, with support for middleware and  interruptors, gives you fine-grained control over every request and  response.
 
 → [Quick start](https://docs.rwsdk.com/getting-started/quick-start/)
 → [Docs](https://docs.rwsdk.com/)
