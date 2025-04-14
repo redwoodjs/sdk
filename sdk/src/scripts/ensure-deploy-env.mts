@@ -3,6 +3,7 @@ import { readFile, writeFile } from "fs/promises";
 import { resolve } from "path";
 import { randomBytes } from "crypto";
 import { glob } from "glob";
+import { parse as parseJsonc, stringify as stringifyJsonc } from "jsonc-parser";
 
 const generateSecretKey = () => {
   return randomBytes(32).toString("base64");
@@ -39,7 +40,8 @@ export const ensureDeployEnv = async () => {
 
   // Read wrangler config
   const wranglerPath = resolve(process.cwd(), "wrangler.jsonc");
-  const wranglerConfig = JSON.parse(await readFile(wranglerPath, "utf-8"));
+  const wranglerContent = await readFile(wranglerPath, "utf-8");
+  const wranglerConfig = parseJsonc(wranglerContent);
 
   // Check D1 database setup
   const needsDatabase = await hasD1Database();
@@ -127,10 +129,9 @@ export const ensureDeployEnv = async () => {
   }
 
   // Only write wrangler config if changes were made
-  if (
-    JSON.stringify(wranglerConfig) !== (await readFile(wranglerPath, "utf-8"))
-  ) {
-    await writeFile(wranglerPath, JSON.stringify(wranglerConfig, null, 2));
+  const formattedConfig = stringifyJsonc(wranglerConfig, null, 2);
+  if (formattedConfig !== wranglerContent) {
+    await writeFile(wranglerPath, formattedConfig);
     console.log("Updated wrangler.jsonc configuration");
   }
 

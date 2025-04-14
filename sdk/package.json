@@ -111,6 +111,7 @@
     "fs-extra": "^11.3.0",
     "glob": "^11.0.1",
     "import-meta-resolve": "^4.1.0",
+    "jsonc-parser": "^3.3.1",
     "lodash": "^4.17.21",
     "magic-string": "^0.30.17",
     "miniflare": "^4.20250405.0",
