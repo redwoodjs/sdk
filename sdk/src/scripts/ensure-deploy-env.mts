@@ -30,7 +30,7 @@ const hasD1Database = async () => {
   return false;
 };
 
-export const initDeploy = async () => {
+export const ensureDeployEnv = async () => {
   console.log("Ensuring deployment environment is ready...");
 
   const pkg = JSON.parse(
@@ -144,5 +144,5 @@ export const initDeploy = async () => {
 };
 
 if (import.meta.url === new URL(process.argv[1], import.meta.url).href) {
-  initDeploy();
+  ensureDeployEnv();
 }
