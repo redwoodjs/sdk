@@ -183,14 +183,14 @@ export default defineConfig({
           tag: "meta",
           attrs: {
             property: "og:title",
-            content: "RedwoodSDK Documentation"
+            content: "RedwoodSDK Documentation | The React Framework for Cloudflare."
           }
         },
         {
           tag: "meta",
           attrs: {
             property: "og:description",
-            content: "Learn how to build and deploy full-stack apps with RedwoodSDK and Cloudflare."
+            content: "RedwoodSDK is a React Framework for Cloudfare. It begins as a Vite plugin that unlocks SSR, React Server Components, Server Functions, and realtime features.  Its standards-based router, with support for middleware and  interruptors, gives you fine-grained control over every request and  response."
           }
         },
         {
@@ -233,7 +233,7 @@ export default defineConfig({
           tag: "meta",
           attrs: {
             name: "twitter:description",
-            content: "Official RedwoodSDK documentation for building full-stack JS apps fast."
+            content: "Official RedwoodSDK documentation for building full-stack React applications on Cloudflare."
           }
         },
         {
