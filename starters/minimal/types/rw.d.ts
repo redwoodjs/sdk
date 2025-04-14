@@ -1,10 +1,5 @@
-import { RequestContext } from "@redwoodjs/sdk/worker";
-import { Data, AppContext } from "@/worker";
+import { AppContext } from "../src/worker";
 
 declare module "@redwoodjs/sdk/worker" {
-  export const requestContext: RequestContext & {
-    data: Data;
-  };
-
-  export interface DefaultAppContext extends AppContext {}
+  interface DefaultAppContext extends AppContext {}
 }
