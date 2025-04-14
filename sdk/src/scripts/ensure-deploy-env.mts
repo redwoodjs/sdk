@@ -4,6 +4,12 @@ import { resolve, basename } from "path";
 import { randomBytes } from "crypto";
 import { glob } from "glob";
 import { parse as parseJsonc } from "jsonc-parser";
+import {
+  uniqueNamesGenerator,
+  Config,
+  adjectives,
+  animals,
+} from "unique-names-generator";
 
 const generateSecretKey = () => {
   return randomBytes(32).toString("base64");
@@ -68,7 +74,13 @@ export const ensureDeployEnv = async () => {
           "D1 database already configured in wrangler.jsonc, skipping creation",
         );
       } else {
-        const dbName = wranglerConfig.name + "-db";
+        const suffix = uniqueNamesGenerator({
+          dictionaries: [adjectives, animals],
+          separator: "-",
+          length: 2,
+          style: "lowerCase",
+        });
+        const dbName = `${wranglerConfig.name}-${suffix}`;
         await $({ stdio: "inherit" })`wrangler d1 create ${dbName}`;
         const result = await $`wrangler d1 info ${dbName} --json`;
         const dbInfo = JSON.parse(result.stdout ?? "{}");
