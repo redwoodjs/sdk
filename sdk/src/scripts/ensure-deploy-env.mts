@@ -61,7 +61,8 @@ export const ensureDeployEnv = async () => {
         );
       } else {
         const dbName = wranglerConfig.name + "-db";
-        const result = await $`wrangler d1 create ${dbName} --json`;
+        await $`wrangler d1 create ${dbName}`;
+        const result = await $`wrangler d1 info ${dbName} --json`;
         const dbInfo = JSON.parse(result.stdout ?? "{}");
 
         if (!dbInfo.uuid) {
