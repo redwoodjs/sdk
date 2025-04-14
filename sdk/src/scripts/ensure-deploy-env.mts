@@ -135,7 +135,7 @@ export const ensureDeployEnv = async () => {
       } else {
         // Secret doesn't exist, create it
         const secretKey = generateSecretKey();
-        await $`echo ${secretKey} | wrangler secret put AUTH_SECRET_KEY`;
+        await $`echo ${secretKey}`.pipe`wrangler secret put AUTH_SECRET_KEY`;
         console.log("Set AUTH_SECRET_KEY secret");
       }
 
