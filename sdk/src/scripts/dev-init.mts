@@ -11,18 +11,6 @@ export const initDev = async () => {
     await readFile(resolve(process.cwd(), "package.json"), "utf-8"),
   );
 
-  // Read wrangler config
-  const wranglerPath = resolve(process.cwd(), "wrangler.jsonc");
-  const wranglerConfig = parseJsonc(await readFile(wranglerPath, "utf-8"));
-
-  // Update wrangler name if needed
-  if (wranglerConfig.name === "__change_me__") {
-    const dirName = basename(process.cwd());
-    wranglerConfig.name = dirName;
-    await writeFile(wranglerPath, JSON.stringify(wranglerConfig, null, 2));
-    console.log(`Set wrangler name to ${dirName}`);
-  }
-
   if (pkg.scripts?.["generate"]) {
     console.log("Generating...");
     await $`npm run generate`;

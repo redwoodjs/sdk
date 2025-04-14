@@ -1,6 +1,6 @@
 import { $ } from "../lib/$.mjs";
 import { readFile, writeFile } from "fs/promises";
-import { resolve } from "path";
+import { resolve, basename } from "path";
 import { randomBytes } from "crypto";
 import { glob } from "glob";
 import { parse as parseJsonc } from "jsonc-parser";
@@ -44,6 +44,14 @@ export const ensureDeployEnv = async () => {
 
   // Track if we need to update the file
   let needsUpdate = false;
+
+  // Update wrangler name if needed
+  if (wranglerConfig.name === "__change_me__") {
+    const dirName = basename(process.cwd());
+    wranglerConfig.name = dirName;
+    console.log(`Set wrangler name to ${dirName}`);
+    needsUpdate = true;
+  }
 
   // Check D1 database setup
   const needsDatabase = await hasD1Database();
