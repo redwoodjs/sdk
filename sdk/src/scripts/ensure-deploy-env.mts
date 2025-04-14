@@ -108,13 +108,19 @@ export const ensureDeployEnv = async () => {
   } else {
     console.log("Found WEBAUTHN usage, checking WebAuthn setup...");
     try {
+      // Get list of all secrets
+      const secretsResult = await $`wrangler secret list --json`;
+      const secretsData = JSON.parse(secretsResult.stdout ?? "[]");
+      const existingSecrets = secretsData.map(
+        (secret: { name: string }) => secret.name,
+      );
+
       // Check if AUTH_SECRET_KEY already exists
-      try {
-        await $`wrangler secret get AUTH_SECRET_KEY`;
+      if (existingSecrets.includes("AUTH_SECRET_KEY")) {
         console.log(
           "AUTH_SECRET_KEY secret already exists in Cloudflare, skipping",
         );
-      } catch {
+      } else {
         // Secret doesn't exist, create it
         const secretKey = generateSecretKey();
         await $`echo ${secretKey} | wrangler secret put AUTH_SECRET_KEY`;
@@ -131,6 +137,7 @@ export const ensureDeployEnv = async () => {
         wranglerConfig.vars.WEBAUTHN_APP_NAME = wranglerConfig.name;
         console.log(`Set WEBAUTHN_APP_NAME to ${wranglerConfig.name}`);
       }
+      needsUpdate = true;
     } catch (error) {
       console.error("Failed to set up WebAuthn. Please configure it manually:");
       console.error(
@@ -143,7 +150,6 @@ export const ensureDeployEnv = async () => {
       );
       process.exit(1);
     }
-    needsUpdate = true;
   }
 
   // Only write wrangler config if changes were made
