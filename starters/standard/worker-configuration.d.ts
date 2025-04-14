@@ -13,11 +13,9 @@ declare namespace Cloudflare {
     ASSETS: Fetcher;
     SESSIONS: DurableObjectNamespace;
     STORAGE: R2Bucket;
-    WEBAUTHN_APP_NAME: "__change_me__";
+    WEBAUTHN_APP_NAME: string;
     WEBAUTHN_RP_ID: string;
     AUTH_SECRET_KEY: string;
-    // Optional: Enable Turnstile bot protection
-    TURNSTILE_SECRET_KEY?: string;
   }
 }
 interface Env extends Cloudflare.Env {}

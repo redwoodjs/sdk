@@ -11,7 +11,6 @@ import {
 import { sessions } from "@/session/store";
 import { requestInfo } from "@redwoodjs/sdk/worker";
 import { db } from "@/db";
-import { verifyTurnstileToken } from "@redwoodjs/sdk/turnstile";
 import { env } from "cloudflare:workers";
 
 const IS_DEV = process.env.NODE_ENV === "development";
@@ -64,19 +63,8 @@ export async function authenticate(request: Request) {
 export async function finishPasskeyRegistration(
   username: string,
   registration: RegistrationResponseJSON,
-  turnstileToken: string,
 ) {
   const { request, headers } = requestInfo;
-
-  if (
-    !(await verifyTurnstileToken({
-      token: turnstileToken,
-      secretKey: env.TURNSTILE_SECRET_KEY,
-    }))
-  ) {
-    return false;
-  }
-
   const { origin } = new URL(request.url);
 
   const session = await sessions.load(request);
