@@ -2,6 +2,7 @@ import { $ } from "../lib/$.mjs";
 import { readFile, writeFile } from "fs/promises";
 import { resolve } from "path";
 import { basename } from "path";
+import { parseJsonc } from "jsonc";
 
 export const initDev = async () => {
   console.log("Initializing development environment...");
@@ -10,10 +11,11 @@ export const initDev = async () => {
     await readFile(resolve(process.cwd(), "package.json"), "utf-8"),
   );
 
-  // Update wrangler name if needed
+  // Read wrangler config
   const wranglerPath = resolve(process.cwd(), "wrangler.jsonc");
-  const wranglerConfig = JSON.parse(await readFile(wranglerPath, "utf-8"));
+  const wranglerConfig = parseJsonc(await readFile(wranglerPath, "utf-8"));
 
+  // Update wrangler name if needed
   if (wranglerConfig.name === "__change_me__") {
     const dirName = basename(process.cwd());
     wranglerConfig.name = dirName;
