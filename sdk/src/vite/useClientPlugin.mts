@@ -33,7 +33,7 @@ function isJsxFunction(text: string): boolean {
 export async function transformUseClientCode(
   code: string,
   relativeId: string,
-  isWorkerEnvironment: boolean,
+  isWorkerEnvironment: boolean
 ): Promise<TransformResult | undefined> {
   if (!isWorkerEnvironment) {
     return;
@@ -97,7 +97,7 @@ export async function transformUseClientCode(
       const declarations = statement.getDeclarationList().getDeclarations();
       declarations.forEach((varDecl) => {
         const arrowFunc = varDecl.getFirstDescendantByKind(
-          SyntaxKind.ArrowFunction,
+          SyntaxKind.ArrowFunction
         );
         if (!arrowFunc) return;
 
@@ -105,10 +105,10 @@ export async function transformUseClientCode(
         if (isJsxFunction(arrowFunc.getText())) {
           const name = varDecl.getName();
           const isDefault = !!statement.getFirstAncestorByKind(
-            SyntaxKind.ExportAssignment,
+            SyntaxKind.ExportAssignment
           );
           const isInlineExport = statement.hasModifier(
-            SyntaxKind.ExportKeyword,
+            SyntaxKind.ExportKeyword
           );
 
           if (
@@ -168,7 +168,7 @@ export async function transformUseClientCode(
       const nodeText = node.getText();
       const newText = nodeText.replace(
         /^export\s+(default\s+)?(async\s+)?function/,
-        "$2function",
+        "$2function"
       );
       node.replaceWithText(newText);
     } else if (
@@ -188,7 +188,7 @@ export async function transformUseClientCode(
     .forEach((node) => {
       const namedExports = node.getNamedExports();
       const nonComponentExports = namedExports.filter(
-        (exp) => !components.has(exp.getName()),
+        (exp) => !components.has(exp.getName())
       );
 
       if (nonComponentExports.length === 0) {
@@ -216,7 +216,7 @@ export async function transformUseClientCode(
         // First add declarations
         sourceFile.addStatements(`const ${ssrName} = ${expression.getText()}`);
         sourceFile.addStatements(
-          `const ${anonName} = registerClientReference("${relativeId}", "default", ${ssrName});`,
+          `const ${anonName} = registerClientReference("${relativeId}", "default", ${ssrName});`
         );
 
         // Remove the original export default node
@@ -239,10 +239,12 @@ export async function transformUseClientCode(
     ({ ssrName, originalName, isDefault, isAnonymousDefault }) => {
       if (!isAnonymousDefault) {
         sourceFile.addStatements(
-          `const ${originalName} = registerClientReference("${relativeId}", "${isDefault ? "default" : originalName}", ${ssrName});`,
+          `const ${originalName} = registerClientReference("${relativeId}", "${
+            isDefault ? "default" : originalName
+          }", ${ssrName});`
         );
       }
-    },
+    }
   );
 
   // Then add all exports after declarations
@@ -250,7 +252,7 @@ export async function transformUseClientCode(
     if (isDefault) {
       // Export the registerClientReference version as default
       sourceFile.addStatements(
-        `export { ${originalName} as default, ${ssrName} };`,
+        `export { ${originalName} as default, ${ssrName} };`
       );
     } else {
       sourceFile.addStatements(`export { ${ssrName}, ${originalName} };`);
@@ -288,12 +290,19 @@ export const useClientPlugin = (): Plugin => ({
       return;
     }
 
-    if (code.includes('"use client"') || code.includes("'use client'")) {
-      const relativeId = `/${relative(this.environment.getTopLevelConfig().root, id)}`;
+    const cleanCode = code.trimStart();
+    if (
+      cleanCode.startsWith('"use client"') ||
+      cleanCode.startsWith("'use client'")
+    ) {
+      const relativeId = `/${relative(
+        this.environment.getTopLevelConfig().root,
+        id
+      )}`;
       return transformUseClientCode(
         code,
         relativeId,
-        this.environment.name === "worker",
+        this.environment.name === "worker"
       );
     }
   },
