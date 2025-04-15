@@ -17,13 +17,13 @@ type TransportContext = {
 export type Transport = (context: TransportContext) => CallServerCallback;
 
 export type CreateCallServer = (
-  context: TransportContext,
+  context: TransportContext
 ) => <Result>(id: null | string, args: null | unknown[]) => Promise<Result>;
 
 export const fetchTransport: Transport = (transportContext) => {
   const fetchCallServer = async <Result,>(
     id: null | string,
-    args: null | unknown[],
+    args: null | unknown[]
   ): Promise<Result> => {
     const { createFromFetch, encodeReply } = await import(
       "react-server-dom-webpack/client.browser"
@@ -41,10 +41,12 @@ export const fetchTransport: Transport = (transportContext) => {
         method: "POST",
         body: args != null ? await encodeReply(args) : null,
       }),
-      { callServer: fetchCallServer },
+      { callServer: fetchCallServer }
     ) as Promise<ActionResponse<Result>>;
 
+    console.log("Setting RSC Payload");
     transportContext.setRscPayload(streamData);
+    console.log("Setting RSC Payload done");
     const result = await streamData;
     return (result as { actionResult: Result }).actionResult;
   };
@@ -72,9 +74,9 @@ export const initClient = async ({
 
   const React = await import("react");
   const { hydrateRoot } = await import("react-dom/client");
-  // @ts-ignore: todo(peterp, 2024-11-27): Type these properly.
-  const { createFromReadableStream, createFromFetch, encodeReply } =
-    await import("react-server-dom-webpack/client.browser");
+  const { createFromReadableStream } = await import(
+    "react-server-dom-webpack/client.browser"
+  );
   const { rscStream } = await import("rsc-html-stream/client");
 
   let rscPayload: any;
@@ -85,12 +87,17 @@ export const initClient = async ({
   function Content() {
     const [streamData, setStreamData] = React.useState(rscPayload);
     const [_isPending, startTransition] = React.useTransition();
-    transportContext.setRscPayload = (v) =>
+    transportContext.setRscPayload = (v) => {
+      console.log("Setting RSC Payload");
       startTransition(() => setStreamData(v));
+      console.log("Setting RSC Payload done");
+    };
     return <>{React.use<{ node: React.ReactNode }>(streamData).node}</>;
   }
 
+  console.log("Hydrating Root");
   hydrateRoot(rootEl, <Content />);
+  console.log("Hydrating Root done");
 
   if (import.meta.hot) {
     import.meta.hot.on("rsc:update", (e) => {

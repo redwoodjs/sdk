@@ -3,3 +3,4 @@ packages:
   - "docs"
   - "starters/minimal"
   - "starters/standard"
+  - "starters/todo"
