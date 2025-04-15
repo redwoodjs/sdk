@@ -12,15 +12,11 @@ import {
   Code,
 } from "@astrojs/starlight/components";
 
-import importedCodeStandardWorker from "../../../../../starters/standard/src/worker.tsx?raw";
-
 In this quick start you'll go from zero to request/response in seconds and deploy to production in minutes!
 
 <Aside type="note" title="System requirements">
   - [Node.js](https://nodejs.org/en/download)
 </Aside>
-
-{/* TODO: Create a Vite Community Template */}
 
 Create a new project by running the following command, replacing `<project-name>` with your project name:
 
@@ -101,15 +97,19 @@ The entry point of your webapp is `src/worker.tsx`, open that file in your favor
 
 Here you'll see the `defineApp` function, this is the main function that "defines your webapp," where the purpose is to handle requests by returning responses to the client.
 
-<Code
-  lang="tsx"
-  title="src/worker.tsx"
-  code={importedCodeStandardWorker}
-  collapse={"4-17, 19-47, 50-61"}
-  mark={"defineApp"}
-/>
+```tsx title="src/worker.tsx" showLineNumbers=false "defineApp"
+import { defineApp } from "@redwoodjs/sdk/worker";
+import { route, render } from "@redwoodjs/sdk/router";
 
-You're going to add your own route, insert the "/ping" route's code to the `defineApp` function:
+import { Document } from "@/app/Document";
+import { Home } from "@/app/pages/Home";
+
+export default defineApp([
+  render(Document, [route("/", () => new Response("Hello, World!"))]),
+]);
+```
+
+You're going to add your own route, insert the `"/ping"` route handler:
 
 ```tsx title="src/worker.tsx" ins={7-9} showLineNumbers=false
 import { defineApp } from "@redwoodjs/sdk/worker";
@@ -147,11 +147,11 @@ RedwoodSDK is built for the Cloudflare Development Platform. To deploy your weba
   "compatibility_date": "2024-09-23",
   "compatibility_flags": ["nodejs_compat"],
   "assets": {
-    "binding": "ASSETS",
+    "binding": "ASSETS"
   },
   "observability": {
-    "enabled": true,
-  },
+    "enabled": true
+  }
 }
 ```
 

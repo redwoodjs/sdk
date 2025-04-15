@@ -45,10 +45,26 @@ export default defineConfig({
             { slug: "core/storage" },
             { slug: "core/realtime" },
             { slug: "core/queues" },
+            { label: "Environment variables", slug: "core/env-vars" },
             { slug: "core/authentication" },
             { slug: "core/security" },
             { slug: "core/hosting" },
           ],
+        },
+        {
+          label: "Guides",
+          items: [
+            { label: "Server Function Streams", slug: "guides/rsc-streams" },
+          ],
+          collapsed: true,
+        },
+        {
+          label: "Reference",
+          items: [
+            { slug: "reference/sdk-worker" },
+            { slug: "reference/sdk-router" },
+          ],
+          collapsed: true,
         },
         // {
         //   label: "Tutorial",
@@ -183,65 +199,70 @@ export default defineConfig({
           tag: "meta",
           attrs: {
             property: "og:title",
-            content: "RedwoodSDK Documentation | The React Framework for Cloudflare."
-          }
+            content:
+              "RedwoodSDK Documentation | The React Framework for Cloudflare.",
+          },
         },
         {
           tag: "meta",
           attrs: {
             property: "og:description",
-            content: "RedwoodSDK is a React Framework for Cloudflare. It begins as a Vite plugin that unlocks SSR, React Server Components, Server Functions, and realtime features.  Its standards-based router, with support for middleware and  interruptors, gives you fine-grained control over every request and  response."
-          }
+            content:
+              "RedwoodSDK is a React Framework for Cloudflare. It begins as a Vite plugin that unlocks SSR, React Server Components, Server Functions, and realtime features.  Its standards-based router, with support for middleware and  interruptors, gives you fine-grained control over every request and  response.",
+          },
         },
         {
           tag: "meta",
           attrs: {
             property: "og:image",
-            content: "https://imagedelivery.net/EBSSfnGYYD9-tGTmYMjDgg/b1fee579-c064-4495-3473-bf9656d8d400/public"
-          }
+            content:
+              "https://imagedelivery.net/EBSSfnGYYD9-tGTmYMjDgg/b1fee579-c064-4495-3473-bf9656d8d400/public",
+          },
         },
         {
           tag: "meta",
           attrs: {
             property: "og:url",
-            content: "https://docs.rwsdk.com/"
-          }
+            content: "https://docs.rwsdk.com/",
+          },
         },
         {
           tag: "meta",
           attrs: {
             property: "og:type",
-            content: "website"
-          }
+            content: "website",
+          },
         },
         // Twitter Card Meta Tags
         {
           tag: "meta",
           attrs: {
             name: "twitter:card",
-            content: "summary_large_image"
-          }
+            content: "summary_large_image",
+          },
         },
         {
           tag: "meta",
           attrs: {
             name: "twitter:title",
-            content: "RedwoodSDK Docs"
-          }
+            content: "RedwoodSDK Docs",
+          },
         },
         {
           tag: "meta",
           attrs: {
             name: "twitter:description",
-            content: "Official RedwoodSDK documentation for building full-stack React applications on Cloudflare."
-          }
+            content:
+              "Official RedwoodSDK documentation for building full-stack React applications on Cloudflare.",
+          },
         },
         {
           tag: "meta",
           attrs: {
             name: "twitter:image",
-            content: "https://imagedelivery.net/EBSSfnGYYD9-tGTmYMjDgg/b1fee579-c064-4495-3473-bf9656d8d400/public"
-          }
+            content:
+              "https://imagedelivery.net/EBSSfnGYYD9-tGTmYMjDgg/b1fee579-c064-4495-3473-bf9656d8d400/public",
+          },
         },
         {
           tag: "script",
