@@ -52,7 +52,11 @@ export default defineConfig({
         },
         {
           label: "Reference",
-          items: [{ slug: "reference/sdk-worker" }],
+          items: [
+            { slug: "reference/sdk-worker" },
+            { slug: "reference/sdk-router" },
+          ],
+          collapsed: true,
         },
         // {
         //   label: "Tutorial",
