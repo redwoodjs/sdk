@@ -1,6 +1,6 @@
 ---
 description:
-globs:
+globs: worker.tsx, routes.tsx, routes.ts
 alwaysApply: false
 ---
 
