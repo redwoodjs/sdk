@@ -10,6 +10,21 @@ import {
   adjectives,
   animals,
 } from "unique-names-generator";
+import * as readline from "readline";
+
+const promptForDeployment = async (): Promise<boolean> => {
+  const rl = readline.createInterface({
+    input: process.stdin,
+    output: process.stdout,
+  });
+
+  return new Promise((resolve) => {
+    rl.question("Do you want to proceed with deployment? (y/N): ", (answer) => {
+      rl.close();
+      resolve(answer.toLowerCase() === "y");
+    });
+  });
+};
 
 const generateSecretKey = () => {
   return randomBytes(32).toString("base64");
@@ -38,6 +53,12 @@ const hasD1Database = async () => {
 };
 
 export const ensureDeployEnv = async () => {
+  const shouldDeploy = await promptForDeployment();
+  if (!shouldDeploy) {
+    console.log("Deployment cancelled.");
+    process.exit(0);
+  }
+
   console.log("Ensuring deployment environment is ready...");
 
   const pkg = JSON.parse(
@@ -169,9 +190,35 @@ export const ensureDeployEnv = async () => {
     console.log("Updated wrangler.jsonc configuration");
   }
 
-  if (pkg.scripts?.["migrate:deploy"]) {
-    console.log("\nRunning production migrations...");
-    await $`npm run migrate:deploy`;
+  if (pkg.scripts?.["migrate:prd"]) {
+    console.log("\nChecking migration status...");
+    try {
+      // Get the database name from wrangler config
+      const dbConfig = wranglerConfig.d1_databases?.find(
+        (db: any) => db.binding === "DB",
+      );
+      if (!dbConfig) {
+        throw new Error("No D1 database configuration found in wrangler.jsonc");
+      }
+
+      // Check remote migrations status
+      const migrationStatus =
+        await $`npx wrangler d1 migrations list ${dbConfig.database_name} --remote`;
+
+      // If stdout includes "No migrations found", this is a fresh database
+      if (migrationStatus.stdout?.includes("No migrations present")) {
+        console.log("No migrations found.");
+      } else if (migrationStatus.stdout?.includes("Migrations to be applied")) {
+        await $({ stdio: "inherit" })`npm run migrate:prd`;
+        process.exit(1);
+      } else {
+        console.log("Migrations are up to date.");
+      }
+    } catch (error) {
+      console.error("\n❌ Error checking migration status:");
+      console.error(error);
+      process.exit(1);
+    }
   }
 
   console.log("\nDeployment initialization complete!");
