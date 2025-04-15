@@ -16,7 +16,7 @@
     "worker:run": "rw-scripts worker-run",
     "clean": "npm run clean:vite",
     "clean:vite": "rm -rf ./node_modules/.vite",
-    "release": "rw-scripts ensure-deploy-env && npm run clean prisma generate && npm run build && wrangler deploy",
+    "release": "rw-scripts ensure-deploy-env && npm run clean && prisma generate && npm run build && wrangler deploy",
     "format": "prettier --write ./src",
     "migrate:dev": "prisma generate && wrangler d1 migrations apply DB --local",
     "migrate:prd": "wrangler d1 migrations apply DB --remote",

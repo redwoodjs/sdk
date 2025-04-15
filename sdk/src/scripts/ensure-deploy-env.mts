@@ -192,7 +192,7 @@ export const ensureDeployEnv = async () => {
   }
 
   if (pkg.scripts?.["migrate:prd"]) {
-    console.log("\nChecking migration status...");
+    console.log("Checking migration status...");
     try {
       // Get the database name from wrangler config
       const dbConfig = wranglerConfig.d1_databases?.find(
