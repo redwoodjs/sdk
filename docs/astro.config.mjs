@@ -53,7 +53,9 @@ export default defineConfig({
         },
         {
           label: "Guides",
-          items: [],
+          items: [
+            { label: "Server Function Streams", slug: "guides/rsc-streams" },
+          ],
           collapsed: true,
         },
         {
