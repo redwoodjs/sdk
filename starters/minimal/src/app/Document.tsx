@@ -1,8 +1,5 @@
-import { DocumentProps } from "@redwoodjs/sdk/router";
-
-export const Document: React.FC<DocumentProps> = ({
+export const Document: React.FC<{ children: React.ReactNode }> = ({
   children,
-  rw: { nonce },
 }) => (
   <html lang="en">
     <head>
