@@ -210,7 +210,6 @@ export const ensureDeployEnv = async () => {
         console.log("No migrations found.");
       } else if (migrationStatus.stdout?.includes("Migrations to be applied")) {
         await $({ stdio: "inherit" })`npm run migrate:prd`;
-        process.exit(1);
       } else {
         console.log("Migrations are up to date.");
       }
