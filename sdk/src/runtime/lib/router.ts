@@ -11,7 +11,7 @@ export type RwContext = {
 };
 
 export type RouteMiddleware = (
-  requestInfo: RequestInfo,
+  requestInfo: RequestInfo
 ) =>
   | Response
   | Promise<Response>
@@ -22,7 +22,7 @@ export type RouteMiddleware = (
 type RouteFunction = (requestInfo: RequestInfo) => Response | Promise<Response>;
 
 type RouteComponent = (
-  requestInfo: RequestInfo,
+  requestInfo: RequestInfo
 ) => JSX.Element | Promise<JSX.Element>;
 
 type RouteHandler =
@@ -44,7 +44,7 @@ type RouteMatch = {
 
 function matchPath(
   routePath: string,
-  requestPath: string,
+  requestPath: string
 ): RequestInfo["params"] | null {
   const pattern = routePath
     .replace(/:[a-zA-Z0-9]+/g, "([^/]+)") // Convert :param to capture group
@@ -60,7 +60,7 @@ function matchPath(
   // Extract named parameters and wildcards
   const params: RequestInfo["params"] = {};
   const paramNames = [...routePath.matchAll(/:[a-zA-Z0-9]+/g)].map((m) =>
-    m[0].slice(1),
+    m[0].slice(1)
   );
   const wildcardCount = (routePath.match(/\*/g) || []).length;
 
@@ -100,7 +100,7 @@ export function defineRoutes(routes: Route[]): {
     getRequestInfo: () => RequestInfo;
     runWithRequestInfoOverrides: <Result>(
       overrides: Partial<RequestInfo>,
-      fn: () => Promise<Result>,
+      fn: () => Promise<Result>
     ) => Promise<Result>;
   }) => Response | Promise<Response>;
 } {
@@ -188,7 +188,7 @@ export function index(handler: RouteHandler): RouteDefinition {
 
 export function prefix(
   prefix: string,
-  routes: ReturnType<typeof route>[],
+  routes: ReturnType<typeof route>[]
 ): RouteDefinition[] {
   return routes.map((r) => {
     return {
@@ -199,8 +199,8 @@ export function prefix(
 }
 
 export function render(
-  Document: React.FC<{ children: React.ReactNode }>,
-  routes: Route[],
+  Document: React.FC<DocumentProps>,
+  routes: Route[]
 ): Route[] {
   const documentMiddleware: RouteMiddleware = ({ rw }) => {
     rw.Document = Document;

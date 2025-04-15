@@ -11,7 +11,7 @@ const readManifest = async (manifestPath: string) => {
       manifestPath,
       (await pathExists(manifestPath))
         ? readFile(manifestPath, "utf-8").then(JSON.parse)
-        : Promise.resolve({}),
+        : Promise.resolve({})
     );
   }
   return manifestCache.get(manifestPath)!;
@@ -28,7 +28,13 @@ export const transformJsxScriptTagsPlugin = ({
     const jsxScriptSrcRE =
       /(jsx|jsxDEV)\("script",\s*{[^}]*src:\s*["']([^"']+)["'][^}]/g;
 
-    const matches = [...code.matchAll(jsxScriptSrcRE)];
+    const jsxScriptImportRE =
+      /(jsx|jsxDEV)\("script",\s*{[^}]*children:\s*["']import\(["']([^"']+)["']\)["'][^}]/g;
+
+    const matches = [
+      ...code.matchAll(jsxScriptSrcRE),
+      ...code.matchAll(jsxScriptImportRE),
+    ];
 
     if (!matches.length) {
       return;
@@ -42,7 +48,11 @@ export const transformJsxScriptTagsPlugin = ({
 
       if (manifest[src]) {
         const transformedSrc = manifest[src].file;
-        s.replaceAll(src, transformedSrc);
+        if (match[0].includes("children:")) {
+          s.replaceAll(`import("${src}")`, `import("/${transformedSrc}")`);
+        } else {
+          s.replaceAll(src, transformedSrc);
+        }
       }
     }
 
