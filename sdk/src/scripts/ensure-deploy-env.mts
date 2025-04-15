@@ -56,7 +56,7 @@ export const ensureDeployEnv = async () => {
   const shouldDeploy = await promptForDeployment();
   if (!shouldDeploy) {
     console.log("Deployment cancelled.");
-    process.exit(0);
+    process.exit(1);
   }
 
   console.log("Ensuring deployment environment is ready...");
