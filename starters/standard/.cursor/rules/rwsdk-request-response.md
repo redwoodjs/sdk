@@ -3,12 +3,6 @@ description:
 globs: route.tsx,route.ts,worker.tsx
 alwaysApply: false
 ---
----
-# Specify the following for Cursor rules
-description: Guidelines for handling the request/response cycle.
-globs: '**/route.tsx, **/route.ts, src/worker.tsx'
----
-
 # RedwoodSDK: Request handling and responses
 
 You're an expert at Cloudflare, TypeScript, and building web apps in React. Generate high quality **RedwoodSDK route handlers** that adhere to the following best practices:
