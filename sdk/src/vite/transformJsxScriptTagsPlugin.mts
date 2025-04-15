@@ -22,19 +22,13 @@ export const transformJsxScriptTagsPlugin = ({
 }: {
   manifestPath: string;
 }): Plugin => ({
-  name: "rwsdk:transform-jsx-script-tags",
+  name: "rw-sdk-transform-jsx-script-tags",
   apply: "build",
   async transform(code) {
-    const jsxScriptSrcRE =
-      /(jsx|jsxDEV)\("script",\s*{[^}]*src:\s*["']([^"']+)["'][^}]/g;
+    // Simpler regex that just looks for the import statement inside script children
+    const scriptImportRE = /children:\s*'import\("([^"]+)"\)'/g;
 
-    const jsxScriptImportRE =
-      /(jsx|jsxDEV)\("script",\s*{[^}]*children:\s*["']import\(["']([^"']+)["']\)["'][^}]/g;
-
-    const matches = [
-      ...code.matchAll(jsxScriptSrcRE),
-      ...code.matchAll(jsxScriptImportRE),
-    ];
+    const matches = [...code.matchAll(scriptImportRE)];
 
     if (!matches.length) {
       return;
@@ -44,15 +38,10 @@ export const transformJsxScriptTagsPlugin = ({
     const s = new MagicString(code);
 
     for (const match of matches) {
-      const src = match[2].slice("/".length);
-
+      const src = match[1].slice("./".length); // Remove leading ./
       if (manifest[src]) {
         const transformedSrc = manifest[src].file;
-        if (match[0].includes("children:")) {
-          s.replaceAll(`import("${src}")`, `import("/${transformedSrc}")`);
-        } else {
-          s.replaceAll(src, transformedSrc);
-        }
+        s.replaceAll(`import("${match[1]}")`, `import("/${transformedSrc}")`);
       }
     }
 
