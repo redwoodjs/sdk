@@ -9,7 +9,7 @@ export const copyPrismaWasmPlugin = ({
 }: {
   rootDir: string;
 }): Plugin => ({
-  name: "copy-prisma-wasm",
+  name: "rwsdk:copy-prisma-wasm",
   enforce: "post",
   apply: "build",
   async writeBundle() {

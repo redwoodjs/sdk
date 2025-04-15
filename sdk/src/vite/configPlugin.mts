@@ -3,7 +3,7 @@ import { resolve } from "node:path";
 import { mergeConfig, InlineConfig } from "vite";
 
 const ignoreVirtualModules = {
-  name: "ignore-virtual-modules",
+  name: "rwsdk:ignore-virtual-modules",
   setup(build: any) {
     build.onResolve({ filter: /^virtual:use-client-lookup$/ }, () => {
       return { external: true };
@@ -26,7 +26,7 @@ export const configPlugin = ({
   workerEntryPathname: string;
   isUsingPrisma: boolean;
 }): Plugin => ({
-  name: "rw-sdk-config",
+  name: "rwsdk:config",
   config: (_, { command }) => {
     const baseConfig: InlineConfig = {
       appType: "custom",
@@ -76,7 +76,7 @@ export const configPlugin = ({
                 ...(isUsingPrisma
                   ? [
                       {
-                        name: "prisma-client-wasm",
+                        name: "rwsdk:prisma-client-wasm",
                         setup(build: any) {
                           build.onResolve(
                             { filter: /.prisma\/client\/default/ },

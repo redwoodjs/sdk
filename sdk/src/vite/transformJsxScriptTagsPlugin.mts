@@ -22,7 +22,7 @@ export const transformJsxScriptTagsPlugin = ({
 }: {
   manifestPath: string;
 }): Plugin => ({
-  name: "rw-sdk-transform-jsx-script-tags",
+  name: "rwsdk:transform-jsx-script-tags",
   apply: "build",
   async transform(code) {
     const jsxScriptSrcRE =
