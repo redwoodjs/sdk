@@ -49,7 +49,11 @@ export const redwoodPlugin = async (
 
   // context(justinvdm, 31 Mar 2025): We assume that if there is no .wrangler directory,
   // then this is fresh install, and we run `npm run dev:init` here.
-  if (!(await pathExists(resolve(process.cwd(), ".wrangler")))) {
+  if (
+    process.env.RWSDK_WORKER_RUN !== "1" &&
+    process.env.RWSDK_DEPLOY !== "1" &&
+    !(await pathExists(resolve(process.cwd(), ".wrangler")))
+  ) {
     console.log(
       "🚀 Project has no .wrangler directory yet, assuming fresh install: running `npm run dev:init`...",
     );

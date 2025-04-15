@@ -6,7 +6,7 @@ export const moveStaticAssetsPlugin = ({
 }: {
   rootDir: string;
 }): Plugin => ({
-  name: "rw-sdk-move-static-assets",
+  name: "rwsdk:move-static-assets",
 
   apply: "build",
 

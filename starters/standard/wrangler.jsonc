@@ -34,7 +34,7 @@
 
   // Environment variables
   "vars": {
-    "APP_NAME": "__change_me__"
+    "WEBAUTHN_APP_NAME": "__change_me__"
   },
 
   // Migrations configuration

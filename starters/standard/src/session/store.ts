@@ -4,7 +4,7 @@ export let sessions: ReturnType<typeof createSessionStore>;
 
 const createSessionStore = (env: Env) =>
   defineDurableSession({
-    secretKey: env.SECRET_KEY,
+    secretKey: env.AUTH_SECRET_KEY,
     sessionDurableObject: env.SESSION_DURABLE_OBJECT,
   });
 

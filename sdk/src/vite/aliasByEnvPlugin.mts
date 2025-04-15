@@ -3,7 +3,7 @@ import { Plugin } from "vite";
 export const aliasByEnvPlugin = (
   aliasesByEnv: Record<string, Record<string, string>>,
 ): Plugin => ({
-  name: "rw-sdk-env-alias",
+  name: "rwsdk:env-alias",
 
   enforce: "pre",
 

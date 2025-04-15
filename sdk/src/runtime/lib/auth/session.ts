@@ -1,4 +1,22 @@
 import { ErrorResponse } from "../../error";
+import { IS_DEV } from "../../constants";
+import { env } from "cloudflare:workers";
+
+const AUTH_SECRET_KEY =
+  (env as { AUTH_SECRET_KEY?: string }).AUTH_SECRET_KEY ??
+  (IS_DEV ? "development-secret-key-do-not-use-in-production" : undefined);
+
+if (AUTH_SECRET_KEY === "") {
+  throw new Error(
+    "AUTH_SECRET_KEY is set but empty. Please provide a non-empty secret key for session store security.",
+  );
+}
+
+if (!AUTH_SECRET_KEY) {
+  throw new Error(
+    "AUTH_SECRET_KEY not set. Please set this environment variable to a secure random key for session store security.",
+  );
+}
 
 export const MAX_SESSION_DURATION = 14 * 24 * 60 * 60 * 1000; // 14 days
 
@@ -113,18 +131,22 @@ export const isValidSessionId = async ({
 export const defineSessionStore = <Session, SessionInputData>({
   cookieName = "session_id",
   createCookie = createSessionCookie,
-  secretKey,
+  secretKey = AUTH_SECRET_KEY,
   get,
   set,
   unset,
 }: {
   cookieName?: string;
   createCookie?: typeof createSessionCookie;
-  secretKey: string;
+  secretKey?: string;
   get: (sessionId: string) => Promise<Session>;
   set: (sessionId: string, sessionInputData: SessionInputData) => Promise<void>;
   unset: (sessionId: string) => Promise<void>;
 }) => {
+  if (!secretKey) {
+    throw new Error("No secret key provided for session store");
+  }
+
   const getSessionIdFromCookie = (request: Request): string | undefined => {
     const cookieHeader = request.headers.get("Cookie");
     if (!cookieHeader) return undefined;
@@ -213,12 +235,12 @@ export const defineDurableSession = <
 >({
   cookieName,
   createCookie,
-  secretKey,
+  secretKey = AUTH_SECRET_KEY,
   sessionDurableObject,
 }: {
   cookieName?: string;
   createCookie?: typeof createSessionCookie;
-  secretKey: string;
+  secretKey?: string;
   sessionDurableObject: DurableObjectNamespace<SessionDurableObject>;
 }): SessionStoreFromDurableObject<SessionDurableObject> => {
   type Session = SessionFromDurableObject<SessionDurableObject>;

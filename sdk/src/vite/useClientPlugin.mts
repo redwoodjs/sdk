@@ -282,7 +282,7 @@ export async function transformUseClientCode(
 }
 
 export const useClientPlugin = (): Plugin => ({
-  name: "rw-sdk-use-client",
+  name: "rwsdk:use-client",
   async transform(code, id) {
     if (id.includes(".vite/deps") || id.includes("node_modules")) {
       return;

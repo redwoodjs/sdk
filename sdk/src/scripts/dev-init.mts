@@ -1,6 +1,8 @@
 import { $ } from "../lib/$.mjs";
-import { readFile } from "fs/promises";
+import { readFile, writeFile } from "fs/promises";
 import { resolve } from "path";
+import { basename } from "path";
+import { parse as parseJsonc } from "jsonc-parser";
 
 export const initDev = async () => {
   console.log("Initializing development environment...");

@@ -35,7 +35,7 @@ export const customReactBuildPlugin = async ({
   );
   await copyReactFiles(viteDistDir);
   return {
-    name: "custom-react-build-plugin",
+    name: "rwsdk:custom-react-build",
     enforce: "pre",
     applyToEnvironment: (environment) => {
       return environment.name === "worker";
@@ -74,7 +74,7 @@ export const customReactBuildPlugin = async ({
             esbuildOptions: {
               plugins: [
                 {
-                  name: "rewrite-react-imports",
+                  name: "rwsdk:rewrite-react-imports",
                   setup(build) {
                     build.onResolve({ filter: /^react$/ }, (args) => {
                       return { path: resolve(viteDistDir, "react.js") };

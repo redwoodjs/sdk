@@ -47,6 +47,8 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
     );
     debug("Worker config written to: %s", tmpWorkerPath.path);
 
+    process.env.RWSDK_WORKER_RUN = "1";
+
     const server = await createViteServer({
       configFile: false,
       plugins: [

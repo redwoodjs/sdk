@@ -16,7 +16,7 @@
     "worker:run": "rw-scripts worker-run",
     "clean": "npm run clean:vite",
     "clean:vite": "rm -rf ./node_modules/.vite",
-    "release": "npm run clean && prisma generate && npm run build && wrangler deploy",
+    "release": "rw-scripts ensure-deploy-env && npm run clean && prisma generate && npm run build && wrangler deploy",
     "format": "prettier --write ./src",
     "migrate:dev": "prisma generate && wrangler d1 migrations apply DB --local",
     "migrate:prd": "wrangler d1 migrations apply DB --remote",
@@ -29,7 +29,7 @@
   "dependencies": {
     "@prisma/adapter-d1": "~6.5.0",
     "@prisma/client": "~6.5.0",
-    "@redwoodjs/sdk": "0.0.58",
+    "@redwoodjs/sdk": "0.0.58-test.2",
     "@simplewebauthn/browser": "^13.1.0",
     "@simplewebauthn/server": "^13.1.1",
     "react": "19.0.0-rc-f2df5694-20240916",

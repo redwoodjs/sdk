@@ -2,7 +2,7 @@ import MagicString from "magic-string";
 import { type Plugin } from "vite";
 
 export const injectHmrPreambleJsxPlugin = (): Plugin => ({
-  name: "rw-sdk-inject-hmr-preamble",
+  name: "rwsdk:inject-hmr-preamble",
   apply: "serve",
   async transform(code: string, id: string) {
     const htmlHeadRE = /jsxDEV\("html",[^]*?jsxDEV\("head",[^]*?\[(.*?)\]/s;

@@ -21,4 +21,11 @@ const $ = $base({
   },
 });
 
-$`node ${path.resolve(ROOT_DIR, "dist", "scripts", SCRIPT_NAME)}.mjs ${ARGS.slice(1).join(" ")}`;
+const main = async () => {
+  const result =
+    await $`node ${path.resolve(ROOT_DIR, "dist", "scripts", SCRIPT_NAME)}.mjs ${ARGS.slice(1).join(" ")}`;
+
+  process.exitCode = result.exitCode;
+};
+
+main();

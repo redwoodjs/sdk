@@ -97,7 +97,7 @@ export const miniflarePlugin = (
 ): (Plugin | Plugin[])[] => [
   cloudflare(givenOptions),
   {
-    name: "miniflare-plugin-hmr",
+    name: "rwsdk:miniflare-hmr",
     async hotUpdate(ctx) {
       const environment = givenOptions.viteEnvironment?.name ?? "worker";
       const entry = givenOptions.workerEntryPathname;
