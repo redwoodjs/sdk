@@ -810,8 +810,11 @@ export function Chat() {
   });
 
   it("Does not transform when 'use client' is not directive", async () => {
-    expect(
-      await transform(`const message = "use client";`)
-    ).toMatchInlineSnapshot(``);
+    expect(await transform(`const message = "use client";`))
+      .toMatchInlineSnapshot(`
+      "import { registerClientReference } from "@redwoodjs/sdk/worker";
+
+      const message = "use client";"
+    `);
   });
 });
