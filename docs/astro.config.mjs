@@ -45,6 +45,7 @@ export default defineConfig({
             { slug: "core/storage" },
             { slug: "core/realtime" },
             { slug: "core/queues" },
+            { label: "Environment variables", slug: "core/env-vars" },
             { slug: "core/authentication" },
             { slug: "core/security" },
             { slug: "core/hosting" },
