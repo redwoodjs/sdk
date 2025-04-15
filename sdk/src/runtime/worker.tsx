@@ -44,7 +44,7 @@ export const defineApp = (routes: Route[]) => {
             headers: {
               "content-type": "text/javascript",
             },
-          },
+          }
         );
       }
 
@@ -69,7 +69,7 @@ export const defineApp = (routes: Route[]) => {
 
         const computePageProps = (
           requestInfo: RequestInfo,
-          Page: React.FC<any>,
+          Page: React.FC<any>
         ) => {
           const { ctx, params } = requestInfo;
           let props;
@@ -90,7 +90,7 @@ export const defineApp = (routes: Route[]) => {
 
         const renderPage = async (
           requestInfo: RequestInfo,
-          Page: React.FC<any>,
+          Page: React.FC<any>
         ) => {
           if (isClientReference(requestInfo.rw.Document)) {
             if (IS_DEV) {
@@ -129,14 +129,14 @@ export const defineApp = (routes: Route[]) => {
           const htmlStream = await transformRscToHtmlStream({
             stream: rscPayloadStream1,
             Parent: ({ children }) => (
-              <rw.Document {...props} children={children} />
+              <rw.Document {...requestInfo} children={children} />
             ),
           });
 
           const html = htmlStream.pipeThrough(
             injectRSCPayload(rscPayloadStream2, {
               nonce: rw.nonce,
-            }),
+            })
           );
 
           return new Response(html, {
@@ -152,7 +152,7 @@ export const defineApp = (routes: Route[]) => {
             renderPage,
             getRequestInfo,
             runWithRequestInfoOverrides,
-          }),
+          })
         );
 
         // context(justinvdm, 18 Mar 2025): In some cases, such as a .fetch() call to a durable object instance, or Response.redirect(),
