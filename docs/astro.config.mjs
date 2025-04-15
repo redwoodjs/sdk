@@ -52,6 +52,11 @@ export default defineConfig({
           ],
         },
         {
+          label: "Guides",
+          items: [],
+          collapsed: true,
+        },
+        {
           label: "Reference",
           items: [
             { slug: "reference/sdk-worker" },
