@@ -122,7 +122,9 @@ export const ensureDeployEnv = async () => {
     try {
       // Get list of all secrets
       const secretsResult = await $`wrangler secret list --format=json`;
-      const existingSecrets = JSON.parse(secretsResult.stdout ?? "[]");
+      const existingSecrets = JSON.parse(secretsResult.stdout ?? "[]").map(
+        (secret: any) => secret.name,
+      );
 
       // Check if AUTH_SECRET_KEY already exists
       if (existingSecrets.includes("AUTH_SECRET_KEY")) {
