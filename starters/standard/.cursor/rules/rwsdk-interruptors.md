@@ -47,32 +47,22 @@ async function myInterruptor({ request, params, ctx }) {
 ### Authentication Interruptors
 
 ```tsx
-import { getSession } from "@redwoodjs/sdk/auth";
-
 export async function requireAuth({ request, ctx }) {
-  const session = await getSession(request);
-
-  if (!session) {
-    // Redirect to login if not authenticated
-    return Response.redirect("/login");
+  if (!ctx.user) {
+    return new Response(null, {
+      status: 302,
+      headers: { Location: "/user/login" },
+    });
   }
-
-  // Pass session to the handler
-  return { ...ctx, session };
 }
 
 export async function requireAdmin({ request, ctx }) {
-  const session = await getSession(request);
-
-  if (!session) {
-    return Response.redirect("/login");
+  if (!ctx?.user?.isAdmin) {
+    return new Response(null, {
+      status: 302,
+      headers: { Location: "/user/login" },
+    });
   }
-
-  if (session.role !== "ADMIN") {
-    return Response.json({ error: "Unauthorized" }, { status: 403 });
-  }
-
-  return { ...ctx, session };
 }
 ```
 
@@ -86,9 +76,7 @@ export function validateInput(schema) {
   return async function validateInputInterruptor({ request, ctx }) {
     try {
       const data = await request.json();
-      const validated = schema.parse(data);
-
-      return { ...ctx, data: validated };
+      const validated = (ctx.data = schema.parse(data));
     } catch (error) {
       return Response.json(
         { error: "Validation failed", details: error.errors },
@@ -108,49 +96,6 @@ const userSchema = z.object({
 export const validateUser = validateInput(userSchema);
 ```
 
-### Rate Limiting Interruptor
-
-```tsx
-// Simple in-memory rate limiting (use a distributed cache in production)
-const requestCounts = new Map();
-
-export function rateLimit(maxRequests, windowMs) {
-  return async function rateLimitInterruptor({ request, ctx }) {
-    const ip = request.headers.get("CF-Connecting-IP") || "unknown";
-    const now = Date.now();
-
-    // Get or initialize request history for this IP
-    const history = requestCounts.get(ip) || [];
-
-    // Filter out requests outside the time window
-    const recentRequests = history.filter((time) => now - time < windowMs);
-
-    // Check if rate limit exceeded
-    if (recentRequests.length >= maxRequests) {
-      return Response.json(
-        { error: "Too many requests" },
-        {
-          status: 429,
-          headers: {
-            "Retry-After": Math.ceil(
-              (windowMs - (now - recentRequests[0])) / 1000,
-            ),
-          },
-        },
-      );
-    }
-
-    // Add current request timestamp and update map
-    requestCounts.set(ip, [...recentRequests, now]);
-
-    return ctx;
-  };
-}
-
-// Limit to 10 requests per minute
-export const apiRateLimit = rateLimit(10, 60 * 1000);
-```
-
 ### Logging Interruptor
 
 ```tsx
@@ -158,12 +103,9 @@ export async function logRequests({ request, ctx }) {
   const start = Date.now();
 
   // Add a function to the context that will log when called
-  return {
-    ...ctx,
-    logCompletion: (response) => {
+  ctx.logCompletion: (response) => {
       const duration = Date.now() - start;
       const status = response.status;
-
       console.log(
         `${request.method} ${request.url} - ${status} (${duration}ms)`,
       );
@@ -172,18 +114,14 @@ export async function logRequests({ request, ctx }) {
 }
 
 // Usage in a route handler
-export const handler = [
+route('/', [
   logRequests,
-  async (request, { logCompletion }) => {
-    // Process the request
-    const response = Response.json({ success: true });
-
+  async ({request, ctx}) => {
     // Call the logging function
-    logCompletion(response);
-
-    return response;
+    ctx.logCompletion(response);
+    return Response.json({ success: true });;
   },
-];
+]);
 ```
 
 ### Composing Multiple Interruptors
@@ -195,21 +133,19 @@ import {
   validateUser,
   apiRateLimit,
   logRequests,
-} from "./interruptors";
+} from "@/app/interruptors";
 
 // Combine multiple interruptors
-route("/api/users", {
-  POST: [
+route("/api/users", [
     logRequests, // Log all requests
-    apiRateLimit, // Apply rate limiting
     requireAuth, // Ensure user is authenticated
     validateUser, // Validate user input
-    async (request, { data, session }) => {
+    async ({ request, ctx }) => {
       // Handler receives validated data and session from interruptors
       const newUser = await db.user.create({
         data: {
-          ...data,
-          createdBy: session.userId,
+          /* ... */,
+          createdBy: ctx.user.userId,
         },
       });
 
