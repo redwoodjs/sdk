@@ -21,8 +21,14 @@ In this quick start you'll go from zero to request/response in seconds and deplo
 Create a new project by running the following command, replacing `<project-name>` with your project name:
 
 ```bash showLineNumbers=false
-npx degit redwoodjs/sdk/starters/standard <project-name>
+npx degit redwoodjs/sdk/starters/minimal <project-name>
 ```
+
+<Aside type="tip">
+  If you want to use the standard starter, replace `minimal` with `standard`.
+  The production deployment requirements are slightly different in that you'll
+  have to [create a database](/core/database#setup) first.
+</Aside>
 
 ## Start developing
 
@@ -109,7 +115,7 @@ export default defineApp([
 ]);
 ```
 
-You're going to add your own route, insert the "/ping" route's code:
+You're going to add your own route, insert the `"/ping"` route handler:
 
 ```tsx title="src/worker.tsx" ins={7-9} showLineNumbers=false
 import { defineApp } from "@redwoodjs/sdk/worker";
