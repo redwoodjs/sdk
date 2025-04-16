@@ -26,23 +26,28 @@ export const transformJsxScriptTagsPlugin = ({
   apply: "build",
   async transform(code) {
     const jsxScriptSrcRE =
-      /(jsx|jsxDEV)\("script",\s*{[^}]*src:\s*["']([^"']+)["'][^}]/g;
-
-    const matches = [...code.matchAll(jsxScriptSrcRE)];
-
-    if (!matches.length) {
-      return;
-    }
+      /(jsx|jsxDEV)\("script",\s*{[^}]*src:\s*["']([^"']+)["']/g;
+    const jsxLinkPreloadRE =
+      /(jsx|jsxDEV)\("link",\s*{[^}]*(?:href:\s*["']([^"']+)["'][^}]*rel:\s*["'](preload|modulepreload)["']|rel:\s*["'](preload|modulepreload)["'][^}]*href:\s*["']([^"']+)["'])/g;
 
     const manifest = await readManifest(manifestPath);
     const s = new MagicString(code);
 
-    for (const match of matches) {
+    // Transform script src attributes
+    for (const match of code.matchAll(jsxScriptSrcRE)) {
       const src = match[2].slice("/".length);
-
       if (manifest[src]) {
         const transformedSrc = manifest[src].file;
         s.replaceAll(src, transformedSrc);
+      }
+    }
+
+    // Transform link href attributes
+    for (const match of code.matchAll(jsxLinkPreloadRE)) {
+      const href = (match[2] || match[5]).slice("/".length);
+      if (manifest[href]) {
+        const transformedHref = manifest[href].file;
+        s.replaceAll(href, transformedHref);
       }
     }
 
