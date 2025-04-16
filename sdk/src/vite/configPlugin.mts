@@ -1,5 +1,6 @@
 import { Plugin } from "vite";
 import { resolve } from "node:path";
+import { createRequire } from "node:module";
 import { mergeConfig, InlineConfig } from "vite";
 
 const ignoreVirtualModules = {
@@ -28,6 +29,10 @@ export const configPlugin = ({
 }): Plugin => ({
   name: "rwsdk:config",
   config: (_, { command }) => {
+    const sdkRequire = createRequire(
+      resolve(projectRootDir, "node_modules/@redwoodjs/sdk")
+    );
+
     const baseConfig: InlineConfig = {
       appType: "custom",
       mode,
@@ -59,13 +64,6 @@ export const configPlugin = ({
             esbuildOptions: {
               plugins: [ignoreVirtualModules],
             },
-            include: [
-              "react",
-              "react-dom/client",
-              "react/jsx-runtime",
-              "react/jsx-dev-runtime",
-              "react-server-dom-webpack/client.browser",
-            ],
           },
         },
         worker: {
@@ -101,12 +99,6 @@ export const configPlugin = ({
                 ignoreVirtualModules,
               ],
             },
-            include: [
-              "react/jsx-runtime",
-              "react/jsx-dev-runtime",
-              "react-server-dom-webpack/client.edge",
-              "react-server-dom-webpack/server.edge",
-            ],
           },
           build: {
             outDir: resolve(projectRootDir, "dist", "worker"),

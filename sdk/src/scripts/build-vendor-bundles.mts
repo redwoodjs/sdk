@@ -5,67 +5,99 @@ import { VENDOR_DIST_DIR, VENDOR_SRC_DIR } from "../lib/constants.mjs";
 
 const __dirname = new URL(".", import.meta.url).pathname;
 
-const MODE =
-  process.env.NODE_ENV === "development" ? "development" : "production";
-
-const configs = {
-  common: (): InlineConfig => ({
-    mode: MODE,
+const createConfig = (
+  mode: "development" | "production"
+): (() => InlineConfig) => {
+  return () => ({
+    mode,
     plugins: [],
     logLevel: process.env.VERBOSE ? "info" : "error",
     build: {
       emptyOutDir: false,
       sourcemap: true,
-      minify: MODE === "production",
+      minify: mode === "production",
     },
     define: {
-      "process.env.NODE_ENV": JSON.stringify(MODE),
+      "process.env.NODE_ENV": JSON.stringify(mode),
     },
-  }),
-  reactServerInternals: (): InlineConfig =>
-    mergeConfig(configs.common(), {
+  });
+};
+
+const configs = {
+  reactServerInternals: (mode: "development" | "production"): InlineConfig =>
+    mergeConfig(createConfig(mode)(), {
       build: {
         outDir: VENDOR_DIST_DIR,
         lib: {
           entry: resolve(VENDOR_SRC_DIR, "react-server-internals.js"),
           name: "react-server-internals",
           formats: ["es"],
-          fileName: "react-server-internals",
+          fileName: () => `react-server-internals.${mode}.js`,
         },
       },
       resolve: {
         conditions: ["react-server"],
       },
     }),
-  react: (): InlineConfig =>
-    mergeConfig(configs.common(), {
+  react: (mode: "development" | "production"): InlineConfig =>
+    mergeConfig(createConfig(mode)(), {
       build: {
         outDir: VENDOR_DIST_DIR,
         lib: {
           entry: resolve(VENDOR_SRC_DIR, "react.js"),
           name: "react",
           formats: ["es"],
-          fileName: "react",
+          fileName: () => `react.${mode}.js`,
         },
       },
       resolve: {
         alias: {
           "react-server-internals": resolve(
             VENDOR_DIST_DIR,
-            "react-server-internals.js",
+            `react-server-internals.${mode}.js`
           ),
         },
       },
     }),
-  reactDomServerEdge: (): InlineConfig =>
-    mergeConfig(configs.common(), {
+  reactDomServerEdge: (mode: "development" | "production"): InlineConfig =>
+    mergeConfig(createConfig(mode)(), {
       build: {
         outDir: VENDOR_DIST_DIR,
         lib: {
           entry: resolve(VENDOR_SRC_DIR, "react-dom-server-edge.js"),
           name: "react-dom-server-edge",
           formats: ["es"],
-          fileName: "react-dom-server-edge",
+          fileName: () => `react-dom-server-edge.${mode}.js`,
+        },
+        rollupOptions: {
+          external: ["react"],
+        },
+      },
+    }),
+  jsxRuntime: (mode: "development" | "production"): InlineConfig =>
+    mergeConfig(createConfig(mode)(), {
+      build: {
+        outDir: VENDOR_DIST_DIR,
+        lib: {
+          entry: resolve(VENDOR_SRC_DIR, "jsx-runtime.js"),
+          name: "jsx-runtime",
+          formats: ["es"],
+          fileName: () => `jsx-runtime.${mode}.js`,
+        },
+        rollupOptions: {
+          external: ["react"],
+        },
+      },
+    }),
+  jsxDevRuntime: (mode: "development" | "production"): InlineConfig =>
+    mergeConfig(createConfig(mode)(), {
+      build: {
+        outDir: VENDOR_DIST_DIR,
+        lib: {
+          entry: resolve(VENDOR_SRC_DIR, "jsx-dev-runtime.js"),
+          name: "jsx-dev-runtime",
+          formats: ["es"],
+          fileName: () => `jsx-dev-runtime.${mode}.js`,
         },
         rollupOptions: {
           external: ["react"],
@@ -76,9 +108,20 @@ const configs = {
 
 export const buildVendorBundles = async () => {
   await $`pnpm clean:vendor`;
-  await build(configs.reactServerInternals());
-  await build(configs.react());
-  await build(configs.reactDomServerEdge());
+
+  const bundles = [
+    "reactServerInternals",
+    "react",
+    "reactDomServerEdge",
+    "jsxRuntime",
+    "jsxDevRuntime",
+  ] as const;
+
+  for (const mode of ["development", "production"] as const) {
+    for (const bundle of bundles) {
+      await build(configs[bundle](mode));
+    }
+  }
 };
 
 if (import.meta.url === new URL(process.argv[1], import.meta.url).href) {

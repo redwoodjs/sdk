@@ -85,7 +85,7 @@ export const redwoodPlugin = async (
       workerEntryPathname,
       isUsingPrisma,
     }),
-    customReactBuildPlugin({ projectRootDir }),
+    customReactBuildPlugin({ projectRootDir, mode }),
     tsconfigPaths({ root: projectRootDir }),
     miniflarePlugin({
       rootDir: projectRootDir,
