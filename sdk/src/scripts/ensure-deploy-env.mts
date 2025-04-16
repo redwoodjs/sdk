@@ -63,22 +63,20 @@ export const ensureDeployEnv = async () => {
   console.log("Ensuring deployment environment is ready...");
 
   const pkg = JSON.parse(
-    await readFile(resolve(process.cwd(), "package.json"), "utf-8"),
+    await readFile(resolve(process.cwd(), "package.json"), "utf-8")
   );
 
   // Read wrangler config
   const wranglerPath = resolve(process.cwd(), "wrangler.jsonc");
   const wranglerConfig = parseJsonc(await readFile(wranglerPath, "utf-8"));
 
-  // Track if we need to update the file
-  let needsUpdate = false;
-
   // Update wrangler name if needed
   if (wranglerConfig.name === "__change_me__") {
     const dirName = basename(process.cwd());
     wranglerConfig.name = dirName;
     console.log(`Set wrangler name to ${dirName}`);
-    needsUpdate = true;
+    await writeFile(wranglerPath, JSON.stringify(wranglerConfig, null, 2));
+    console.log("Updated wrangler.jsonc configuration");
   }
 
   // Check D1 database setup
@@ -89,11 +87,11 @@ export const ensureDeployEnv = async () => {
     console.log("Found env.DB usage, checking D1 database setup...");
     try {
       const existingDb = wranglerConfig.d1_databases?.find(
-        (db: any) => db.binding === "DB",
+        (db: any) => db.binding === "DB"
       );
       if (existingDb && existingDb.database_id !== "__change_me__") {
         console.log(
-          "D1 database already configured in wrangler.jsonc, skipping creation",
+          "D1 database already configured in wrangler.jsonc, skipping creation"
         );
       } else {
         const suffix = uniqueNamesGenerator({
@@ -122,6 +120,8 @@ export const ensureDeployEnv = async () => {
           },
         ];
 
+        await writeFile(wranglerPath, JSON.stringify(wranglerConfig, null, 2));
+        console.log("Updated wrangler.jsonc configuration");
         console.log(`Created D1 database: ${dbName}`);
       }
     } catch (error) {
@@ -130,14 +130,13 @@ export const ensureDeployEnv = async () => {
       console.error("2. Update wrangler.jsonc with the database details");
       process.exit(1);
     }
-    needsUpdate = true;
   }
 
   // Check WebAuthn setup
   const needsWebAuthn = await hasWebAuthn();
   if (!needsWebAuthn) {
     console.log(
-      "Skipping WebAuthn setup - no WEBAUTHN usage detected in codebase",
+      "Skipping WebAuthn setup - no WEBAUTHN usage detected in codebase"
     );
   } else {
     console.log("Found WEBAUTHN usage, checking WebAuthn setup...");
@@ -145,13 +144,13 @@ export const ensureDeployEnv = async () => {
       // Get list of all secrets
       const secretsResult = await $`wrangler secret list --format=json`;
       const existingSecrets = JSON.parse(secretsResult.stdout ?? "[]").map(
-        (secret: any) => secret.name,
+        (secret: any) => secret.name
       );
 
       // Check if AUTH_SECRET_KEY already exists
       if (existingSecrets.includes("AUTH_SECRET_KEY")) {
         console.log(
-          "AUTH_SECRET_KEY secret already exists in Cloudflare, skipping",
+          "AUTH_SECRET_KEY secret already exists in Cloudflare, skipping"
         );
       } else {
         // Secret doesn't exist, create it
@@ -164,31 +163,26 @@ export const ensureDeployEnv = async () => {
       wranglerConfig.vars = wranglerConfig.vars || {};
       if (wranglerConfig.vars.WEBAUTHN_APP_NAME === wranglerConfig.name) {
         console.log(
-          `WEBAUTHN_APP_NAME already set to "${wranglerConfig.name}" in wrangler.jsonc`,
+          `WEBAUTHN_APP_NAME already set to "${wranglerConfig.name}" in wrangler.jsonc`
         );
       } else {
         wranglerConfig.vars.WEBAUTHN_APP_NAME = wranglerConfig.name;
+        await writeFile(wranglerPath, JSON.stringify(wranglerConfig, null, 2));
+        console.log("Updated wrangler.jsonc configuration");
         console.log(`Set WEBAUTHN_APP_NAME to ${wranglerConfig.name}`);
       }
-      needsUpdate = true;
     } catch (error) {
       console.error("Failed to set up WebAuthn. Please configure it manually:");
       console.error(
-        "1. Generate a secret key: node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\"",
+        "1. Generate a secret key: node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\""
       );
       console.error("2. Set the secret: wrangler secret put AUTH_SECRET_KEY");
       console.error("3. Add to wrangler.jsonc vars:");
       console.error(
-        `   "vars": { "WEBAUTHN_APP_NAME": "${wranglerConfig.name}" }`,
+        `   "vars": { "WEBAUTHN_APP_NAME": "${wranglerConfig.name}" }`
       );
       process.exit(1);
     }
-  }
-
-  // Only write wrangler config if changes were made
-  if (needsUpdate) {
-    await writeFile(wranglerPath, JSON.stringify(wranglerConfig, null, 2));
-    console.log("Updated wrangler.jsonc configuration");
   }
 
   if (pkg.scripts?.["migrate:prd"]) {
@@ -196,7 +190,7 @@ export const ensureDeployEnv = async () => {
     try {
       // Get the database name from wrangler config
       const dbConfig = wranglerConfig.d1_databases?.find(
-        (db: any) => db.binding === "DB",
+        (db: any) => db.binding === "DB"
       );
       if (!dbConfig) {
         throw new Error("No D1 database configuration found in wrangler.jsonc");
