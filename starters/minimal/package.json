@@ -23,7 +23,7 @@
     "types": "tsc"
   },
   "dependencies": {
-    "@redwoodjs/sdk": "0.0.60-test.4",
+    "@redwoodjs/sdk": "0.0.60-test.5",
     "react": "canary",
     "react-dom": "canary",
     "react-server-dom-webpack": "canary"
