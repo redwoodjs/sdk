@@ -79,6 +79,10 @@ export const ensureDeployEnv = async () => {
     console.log("Updated wrangler.jsonc configuration");
   }
 
+  // Create a no-op secret to ensure worker exists
+  console.log(`Ensuring worker ${wranglerConfig.name} exists...`);
+  await $`echo "true"`.pipe`wrangler secret put TMP_WORKER_CREATED`;
+
   // Check D1 database setup
   const needsDatabase = await hasD1Database();
   if (!needsDatabase) {
