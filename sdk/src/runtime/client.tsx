@@ -5,8 +5,30 @@ import { type CallServerCallback } from "react-server-dom-webpack/client.browser
 // so we need to define it here before importing "react-server-dom-webpack."
 globalThis.__webpack_require__ = clientWebpackRequire;
 
-export const initClient = async () => {
-  const callServer: CallServerCallback = async (id, args) => {
+export type ActionResponse<Result> = {
+  node: React.ReactNode;
+  actionResult: Result;
+};
+
+type TransportContext = {
+  setRscPayload: <Result>(v: Promise<ActionResponse<Result>>) => void;
+};
+
+export type Transport = (context: TransportContext) => CallServerCallback;
+
+export type CreateCallServer = (
+  context: TransportContext,
+) => <Result>(id: null | string, args: null | unknown[]) => Promise<Result>;
+
+export const fetchTransport: Transport = (transportContext) => {
+  const fetchCallServer = async <Result,>(
+    id: null | string,
+    args: null | unknown[],
+  ): Promise<Result> => {
+    const { createFromFetch, encodeReply } = await import(
+      "react-server-dom-webpack/client.browser"
+    );
+
     const url = new URL(window.location.href);
     url.searchParams.set("__rsc", "");
 
@@ -19,14 +41,27 @@ export const initClient = async () => {
         method: "POST",
         body: args != null ? await encodeReply(args) : null,
       }),
-      { callServer: globalThis.__rsc_callServer },
-    );
+      { callServer: fetchCallServer },
+    ) as Promise<ActionResponse<Result>>;
 
-    setRscPayload(streamData);
+    transportContext.setRscPayload(streamData);
     const result = await streamData;
-    return (result as { actionResult: unknown }).actionResult;
+    return (result as { actionResult: Result }).actionResult;
   };
 
+  return fetchCallServer;
+};
+
+export const initClient = async ({
+  transport = fetchTransport,
+}: {
+  transport?: Transport;
+} = {}) => {
+  const transportContext: TransportContext = {
+    setRscPayload: () => {},
+  };
+
+  const callServer = transport(transportContext);
   globalThis.__rsc_callServer = callServer;
 
   const rootEl = document.getElementById("root");
@@ -47,12 +82,11 @@ export const initClient = async () => {
     callServer,
   });
 
-  let setRscPayload: (v: Promise<unknown>) => void;
-
   function Content() {
     const [streamData, setStreamData] = React.useState(rscPayload);
     const [_isPending, startTransition] = React.useTransition();
-    setRscPayload = (v) => startTransition(() => setStreamData(v));
+    transportContext.setRscPayload = (v) =>
+      startTransition(() => setStreamData(v));
     return <>{React.use<{ node: React.ReactNode }>(streamData).node}</>;
   }
 
@@ -61,7 +95,7 @@ export const initClient = async () => {
   if (import.meta.hot) {
     import.meta.hot.on("rsc:update", (e) => {
       console.log("[rw-sdk] hot update", e.file);
-      callServer(null, null);
+      callServer("__rsc_hot_update", [e.file]);
     });
   }
 };

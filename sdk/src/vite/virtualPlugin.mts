@@ -4,7 +4,7 @@ import { Plugin } from "vite";
 export const virtualPlugin = (name: string, load: Plugin["load"]): Plugin => {
   name = "virtual:" + name;
   return {
-    name: `virtual-${name}`,
+    name: `rwsdk:virtual-${name}`,
     resolveId(source, _importer, _options) {
       if (source === name || source.startsWith(`${name}?`)) {
         return `\0${source}`;

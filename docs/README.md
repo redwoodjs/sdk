@@ -1,41 +1,58 @@
-[![Built with Starlight](https://astro.badg.es/v2/built-with-starlight/tiny.svg)](https://starlight.astro.build)
+<div align="center" style="margin: 0; padding: 0;">
+  <a href="https://rwsdk.com">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://imagedelivery.net/EBSSfnGYYD9-tGTmYMjDgg/53dbc43a-e481-469a-91fc-40d9c0947d00/public">
+      <img alt="RedwoodSDK logo" src="https://imagedelivery.net/EBSSfnGYYD9-tGTmYMjDgg/37162c6c-890c-48e3-790a-48b2b87fcd00/public" height="128">
+    </picture>
+  </a>
+  
+  <h1>RedwoodSDK</h1>
 
-## 🚀 Project Structure
+  <a href="https://rwsdk.com"><img alt="Redwood Inc. logo" src="https://img.shields.io/badge/MADE%20BY%20Redwood%20Inc.-000000.svg?style=for-the-badge&logo=Redwood&labelColor=000"></a>
+  <a href="https://docs.rwsdk.com"><img alt="Documentation" src="https://img.shields.io/badge/Documentation-000000.svg?style=for-the-badge&logo=Redwood&labelColor=000"></a>
+  <a href="https://discord.gg/redwoodjs"><img alt="Join the community on Discord" src="https://img.shields.io/badge/Join%20the%20community-blueviolet.svg?style=for-the-badge&logo=Discord&labelColor=000000&logoWidth=20"></a>
+  <a href="https://github.com/redwoodjs/sdk/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/redwoodjs/sdk?style=for-the-badge&labelColor=000000"></a>
+</div>
 
-Inside of our docs project, we have the following folders and files:
+# RedwoodSDK Docs
 
+## Usage
+
+```bash
+pnpm install
+pnpm dev
 ```
-.
-├── public/
-├── src/
-│   ├── assets/
-│   ├── content/
-│   │   ├── docs/
-│   └── content.config.ts
-├── astro.config.mjs
-├── package.json
-└── tsconfig.json
+
+## Style guide
+
+These are simple guidelines that help us keep the documentation consistent.
+
+1. Always refer to "RedwoodSDK" as "RedwoodSDK," not "Redwood," "RedwoodJS" or "Redwood SDK."
+2. Use "Request/Response" rather than "Request / Response" or "Request/ Response."
+3. Use "Route handler" rather than "Route function."
+
+## Code Syntax
+
+Prefer "bash showLineNumbers=false" when only showing code commands.
+
+Example: 
+
+```bash showLineNumbers=false
+npx degit redwoodjs/sdk/starters/standard <project-name>
 ```
 
-Starlight looks for `.md` or `.mdx` files in the `src/content/docs/` directory. Each file is exposed as a route based on its file name.
+Prefer "bash showLineNumbers=false withOutput" when showing both code commands along with the expected output. 
 
-Images can be added to `src/assets/` and embedded in Markdown with a relative link.
+Example
 
-Static assets, like favicons, can be placed in the `public/` directory.
+```bash showLineNumbers=false withOutput
+> npx wrangler d1 create my-database
 
-## 🧞 Commands
+✅ Successfully created DB 'my-database' in region WEUR
+Created your new D1 database.
 
-All commands are run from the root of the project, from a terminal:
-
-| Command                   | Action                                           |
-| :------------------------ | :----------------------------------------------- |
-| `npm install`             | Installs dependencies                            |
-| `npm run dev`             | Starts local dev server at `localhost:4321`      |
-| `npm run build`           | Build your production site to `./dist/`          |
-| `npm run preview`         | Preview your build locally, before deploying     |
-| `npm run astro ...`       | Run CLI commands like `astro add`, `astro check` |
-| `npm run astro -- --help` | Get help using the Astro CLI                     |
-
-## 👀 Want to learn more?
-
-- [Starlight’s docs](https://starlight.astro.build/)
+[[d1_databases]]
+binding = "DB"
+database_name = "my-database"
+database_id = "62x40823-4750-4973-b994-fb8fd55xxxx6"
+```

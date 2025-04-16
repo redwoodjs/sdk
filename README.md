@@ -1,36 +1,29 @@
+<div align="center" style="margin: 0; padding: 0;">
+  <a href="https://rwsdk.com">
+    <picture>
+      <source media="(prefers-color-scheme: dark)" srcset="https://imagedelivery.net/EBSSfnGYYD9-tGTmYMjDgg/53dbc43a-e481-469a-91fc-40d9c0947d00/public">
+      <img alt="RedwoodSDK logo" src="https://imagedelivery.net/EBSSfnGYYD9-tGTmYMjDgg/37162c6c-890c-48e3-790a-48b2b87fcd00/public" height="128">
+    </picture>
+  </a>
+  
+  <h1>RedwoodSDK | The React Framework for [Cloudflare](https://www.cloudflare.com/).</h1>
+
+  <a href="https://rwsdk.com"><img alt="Redwood Inc. logo" src="https://img.shields.io/badge/MADE%20BY%20Redwood%20Inc.-000000.svg?style=for-the-badge&logo=Redwood&labelColor=000"></a>
+  <a href="https://docs.rwsdk.com"><img alt="Documentation" src="https://img.shields.io/badge/Documentation-000000.svg?style=for-the-badge&logo=Redwood&labelColor=000"></a>
+  <a href="https://discord.gg/redwoodjs"><img alt="Join the community on Discord" src="https://img.shields.io/badge/Join%20the%20community-blueviolet.svg?style=for-the-badge&logo=Discord&labelColor=000000&logoWidth=20"></a>
+  <a href="https://github.com/redwoodjs/sdk/blob/main/LICENSE"><img alt="License" src="https://img.shields.io/github/license/redwoodjs/sdk?style=for-the-badge&labelColor=000000"></a>
+</div>
+
 # RedwoodSDK
 
-RedwoodSDK is a framework built on top of [Cloudflare's Platform](https://developers.cloudflare.com/), Request/ Response cycle and React Server Components.
+RedwoodSDK is a React Framework for [Cloudflare](https://www.cloudflare.com/).
 
-- _Cloudflare's platform_ supplies compute (Workers/ Durable Objects), storage (R2), database (D1), and queues. Everything developers need to effectively build software for the web.
-- _React Server components_ enable modern server-side rendering with React.
-- _Request/ Response cycle_ provides a meaningful standard way to handle web interactions.
+It begins as a Vite plugin that unlocks SSR, React Server Components, Server Functions, and realtime features.  Its standards-based router, with support for middleware and  interruptors, gives you fine-grained control over every request and  response.
 
-Note: This project is not officially released, but we're very near to be beta.
+→ [Quick start](https://docs.rwsdk.com/getting-started/quick-start/)
+→ [Docs](https://docs.rwsdk.com/)
+→ [Discord](https://discord.gg/redwoodjs)
 
-## Getting Started
+## Contributing
 
-```terminal
-pnpm install
-```
-
-## Running the Docs Locally
-
-```terminal
-cd docs
-pnpm dev
-```
-
-## Running one of the Experiments locally
-
-Each [experiment](./experiments/) should have it's own README with instructions
-
-## Building a Project locally
-
-We have starter specific instructions
-
-- [Minimal](./starters/minimal/README.md) for smaller projects, no db required
-- [Prisma](./starters/prisma/README.md) for projects that use Prisma as an ORM, integrates with Cloudflare d1
-- [Drizzle](./starters/drizzle/README.md) for projects that use Drizzle as an ORM, integrates with Cloudflare d1
-- [Sessions](./starters/sessions/README.md) for projects that need session management
-- [Passkey Auth](./starters/passkey-auth/README.md) for projects that want password-less authentication using WebAuthn
+This is a monorepo for the RedwoodSDK project. If you're interested in fixing bugs or contributing features, please join us on [Discord](https://discord.gg/redwoodjs).

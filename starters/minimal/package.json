@@ -1,41 +1,39 @@
 {
   "name": "@redwoodjs/starter-minimal",
   "version": "1.0.0",
-  "description": "",
+  "description": "A bare-bones RedwoodSDK starter",
   "main": "index.js",
   "type": "module",
   "keywords": [],
   "author": "",
-  "license": "UNLICENSED",
+  "license": "MIT",
   "private": true,
   "scripts": {
     "build": "vite build",
     "dev": "NODE_ENV=${NODE_ENV:-development} vite dev",
     "dev:init": "rw-scripts dev-init",
+    "preview": "npm run build && npm run vite preview",
     "worker:run": "rw-scripts worker-run",
-    "clean": "pnpm build && pnpm clean:vendor",
+    "clean": "npm run clean:vite",
     "clean:vite": "rm -rf ./node_modules/.vite",
-    "clean:vendor": "rm -rf ./vendor/dist",
-    "release": "pnpm build && wrangler deploy",
+    "release": "rw-scripts ensure-deploy-env && npm run clean && npm run build && RWSDK_DEPLOY=1 wrangler deploy",
     "format": "prettier --write ./src",
-    "__reset:reinstall": "(cd ../../ && rm -rf node_modules && rm -rf sdk/node_modules && rm -rf experiments/billable/node_modules && pnpm install)",
-    "__reset": "(cd ../../sdk && NODE_ENV=development pnpm build) && pnpm clean:vite && rm -r node_modules/redwoodsdk/dist && cp -r ../../sdk/{package.json,dist} node_modules/redwoodsdk/",
-    "__reset:dev": "pnpm __reset && pnpm dev",
-    "__reset:build": "pnpm __reset && pnpm build",
-    "__reset:release": "pnpm __reset && pnpm release"
+    "generate": "rw-scripts ensure-env && wrangler types",
+    "check": "npm run generate && npm run types",
+    "types": "tsc"
   },
   "dependencies": {
-    "react": "19.0.0-rc-f2df5694-20240916",
-    "react-dom": "19.0.0-rc-f2df5694-20240916",
-    "react-server-dom-webpack": "19.0.0-rc-f2df5694-20240916",
-    "redwoodsdk": "0.0.17"
+    "@redwoodjs/sdk": "0.0.63",
+    "react": "canary",
+    "react-dom": "canary",
+    "react-server-dom-webpack": "canary"
   },
   "devDependencies": {
-    "@cloudflare/workers-types": "^4.20241112.0",
-    "@types/react": "^18.3.12",
-    "@types/react-dom": "^18.3.1",
-    "vite": "^6.1.1",
-    "wrangler": "^3.105.1"
-  },
-  "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab"
+    "@types/node": "^22.14.0",
+    "@types/react": "^19.1.2",
+    "@types/react-dom": "^19.1.2",
+    "typescript": "^5.8.3",
+    "vite": "^6.2.5",
+    "wrangler": "^4.8.0"
+  }
 }

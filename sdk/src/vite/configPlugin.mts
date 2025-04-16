@@ -2,10 +2,8 @@ import { Plugin } from "vite";
 import { resolve } from "node:path";
 import { mergeConfig, InlineConfig } from "vite";
 
-import { DEV_SERVER_PORT } from "../lib/constants.mjs";
-
 const ignoreVirtualModules = {
-  name: "ignore-virtual-modules",
+  name: "rwsdk:ignore-virtual-modules",
   setup(build: any) {
     build.onResolve({ filter: /^virtual:use-client-lookup$/ }, () => {
       return { external: true };
@@ -19,7 +17,6 @@ export const configPlugin = ({
   projectRootDir,
   clientEntryPathname,
   workerEntryPathname,
-  port,
   isUsingPrisma,
 }: {
   mode: "development" | "production";
@@ -27,10 +24,9 @@ export const configPlugin = ({
   projectRootDir: string;
   clientEntryPathname: string;
   workerEntryPathname: string;
-  port: number;
   isUsingPrisma: boolean;
 }): Plugin => ({
-  name: "rw-sdk-config",
+  name: "rwsdk:config",
   config: (_, { command }) => {
     const baseConfig: InlineConfig = {
       appType: "custom",
@@ -50,7 +46,12 @@ export const configPlugin = ({
             outDir: resolve(projectRootDir, "dist", "client"),
             manifest: true,
             rollupOptions: {
-              input: { client: clientEntryPathname },
+              input: {
+                client: clientEntryPathname,
+              },
+              output: {
+                format: "iife",
+              },
             },
           },
           optimizeDeps: {
@@ -80,7 +81,7 @@ export const configPlugin = ({
                 ...(isUsingPrisma
                   ? [
                       {
-                        name: "prisma-client-wasm",
+                        name: "rwsdk:prisma-client-wasm",
                         setup(build: any) {
                           build.onResolve(
                             { filter: /.prisma\/client\/default/ },
@@ -88,10 +89,10 @@ export const configPlugin = ({
                               return {
                                 path: resolve(
                                   projectRootDir,
-                                  "node_modules/.prisma/client/wasm.js",
+                                  "node_modules/.prisma/client/wasm.js"
                                 ),
                               };
-                            },
+                            }
                           );
                         },
                       },
@@ -124,7 +125,6 @@ export const configPlugin = ({
       },
       server: {
         hmr: true,
-        port: port ?? DEV_SERVER_PORT,
       },
       resolve: {
         conditions: ["workerd"],
@@ -133,7 +133,7 @@ export const configPlugin = ({
             ? {
                 ".prisma/client/default": resolve(
                   projectRootDir,
-                  "node_modules/.prisma/client/wasm.js",
+                  "node_modules/.prisma/client/wasm.js"
                 ),
               }
             : {}),

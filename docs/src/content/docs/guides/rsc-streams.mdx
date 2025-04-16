@@ -1,0 +1,80 @@
+---
+title: React Server Function Streams
+description: Sending chunked stream responses from server function to the client
+next: false
+---
+
+This pattern is useful for sending partial responses to the client, such as when you're waiting for data from an external API, like an AI model.
+
+## Example
+
+First create a server function that returns a stream. In this example we're using Cloudflare's AI, and we're streaming the response back to the client.
+
+```tsx title="app/pages/Chat/functions.ts" lineNumbers mark={7}
+"use server";
+
+export async function sendMessage(prompt: string) {
+  console.log("Running AI with Prompt:", prompt);
+  const response = await env.AI.run("@cf/meta/llama-4-scout-17b-16e-instruct", {
+    prompt,
+    stream: true,
+  });
+  return response as unknown as ReadableStream;
+}
+```
+
+Now on the client component, we can use the `consumeEventStream` function to parse the chunks whilst keeping the UI updated.
+
+```tsx title="app/pages/Chat/Chat.tsx" lineNumbers mark={17-29}
+"use client";
+
+import { sendMessage } from "./functions";
+import { useState } from "react";
+import { consumeEventStream } from "@redwoodjs/sdk/client";
+
+export function Chat() {
+  const [message, setMessage] = useState("");
+  const [reply, setReply] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const onSubmit = async (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    setIsLoading(true);
+
+    setReply("");
+    (await sendMessage(message)).pipeTo(
+      consumeEventStream({
+        onChunk: (event) => {
+          setReply((prev) => {
+            if (event.data === "[DONE]") {
+              setIsLoading(false);
+              return prev;
+            }
+            return (prev += JSON.parse(event.data).response);
+          });
+        },
+      })
+    );
+  };
+
+  return (
+    <div>
+      <div>{reply}</div>
+
+      <form onSubmit={onSubmit}>
+        <input
+          type="text"
+          value={message}
+          placeholder="Type a message..."
+          onChange={(e) => setMessage(e.target.value)}
+        />
+        <button type="submit" disabled={message.length === 0 || isLoading}>
+          {isLoading ? "Sending..." : "Send"}
+        </button>
+      </form>
+    </div>
+  );
+}
+```
+
+For a working example, please see the [Chat example](https://github.com/redwoodjs/example-streaming-ai-chat/tree/main).

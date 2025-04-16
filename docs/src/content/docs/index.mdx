@@ -1,35 +1,43 @@
 ---
-title: RedwoodSDK
+title: What is RedwoodSDK?
 description: From concept to cloud
+tableOfContents: false
 ---
 
-import { Card, CardGrid } from '@astrojs/starlight/components';
+import { Card, CardGrid } from "@astrojs/starlight/components";
 
-RedwoodSDK is a React framework for building websites. It's optimized for the Cloudflare Development Platform,
-which means you can build your website with a database, queues, storage, and much more. All in one place, without
-having to worry about the underlying infrastructure.
-
-It also means that your local development experience has database, queues, storage, and much more without having to install anything! Development matches
-production, and you can deploy your website to Cloudflare with a single command. It just works!
-
-- No magic exports
-- No magic imports
-- No magic components
-- No magic hooks
-- No magic utils
-- No magic types
-- No magic anything
-
-You focus on the request/response cycle, and we provide a set of tools to help you build your website.
-
-
+RedwoodSDK is a React framework for **Cloudflare**. It begins as a **Vite plugin** that unlocks **SSR**, **React Server Components**, **Server Functions**, and **realtime features**. Its standards-based router, with support for middleware and interruptors, gives you fine-grained control over every request and response. With built-in access to Cloudflare Workers, D1 (Database), R2 (Storage), Queues, AI, and full local emulation via Miniflare, development feels just like production.
 
 <CardGrid>
 	<Card title="Quick start" icon="">
-		```bash
-		npx degit redwoodjs/sdk/starters/minimal#main my-app
-		```
-		
-		Then continue with ["start developing"](/getting-started/quick-start#start-developing)
-	</Card>
+    	Create a new project by running the following command, replacing {"<project-name>"} with your project name
+
+    	```bash frame="none"
+    	npx degit redwoodjs/sdk/starters/standard <project-name>
+    	```
+
+    	Then ["start developing"](/getting-started/quick-start#start-developing)
+    </Card>
+
 </CardGrid>
+
+## Design Philosophy
+
+We believe that the best way to build webapps is to be standards-compliant, to adhere to the request/response paradigm, and to be transparent and composable.
+
+### Standards compliant
+
+We've removed the pain of abstracting away the underlying platform, and instead embraced it. The browser is the primary focus, with the request/response cycle as the foundation.
+
+### Request/Response
+
+The `Request` and `Response` objects are the foundation of the request/response paradigm.
+By focusing on these objects, you'll able to seamlessly integrate with the web, streaming responses to the browser, and even build realtime applications.
+
+### Transparent and composable
+
+You are able to follow the flow from request to response, to understand, and modify, how each step is handled.
+
+- No hidden files
+- No magic imports / exports
+- No generated types

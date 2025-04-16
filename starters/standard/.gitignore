@@ -62,3 +62,5 @@ coverage
 # Temporary files
 *.tmp
 *.temp
+
+.wrangler

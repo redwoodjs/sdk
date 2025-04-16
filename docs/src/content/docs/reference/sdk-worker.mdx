@@ -1,0 +1,94 @@
+---
+title: sdk/worker
+description: The RedwoodSDK worker
+next: false
+---
+
+The `@redwoodjs/sdk/worker` module exports the `defineApp` function, which is the entry point for your Cloudflare Worker.
+
+This is the shape of a Cloudflare Worker:
+
+```tsx
+export default {
+  fetch: (request: Request) => {
+    return new Response("Hello, World!");
+  },
+};
+```
+
+This is the shape of a RedwoodSDK Worker:
+
+```ts
+import { defineApp } from "@redwoodjs/sdk/worker";
+
+const app = defineApp();
+export default {
+  fetch: app.fetch,
+};
+```
+
+## `defineApp`
+
+The `defineApp` function is used to manage how Cloudflare Workers should process requests and subsequently return a response.
+
+```ts
+import { defineApp } from '@redwoodjs/sdk/worker'
+import { route } from '@redwoodjs/sdk/router'
+
+defineApp([
+  // Middleware
+  function  middleware1({ request, ctx }) {
+    ctx.var1 = 'we break'
+  },
+  function  middleware1({ request, ctx }) {
+    ctx.var1 = ctx.var1 + ' abstractions'
+  },
+  // Route handlers
+  route('/', ({ ctx }) => new Response(ctx.var1)), // we break abstractions
+  route('/ping', () => new Response('pong!')),
+]);
+
+---
+In this example above a request would be processed by the middleware, then the correct route would match and execute the handler.
+---
+```
+
+## `ErrorResponse`
+
+The `ErrorResponse` class is used to return an errors that includes a status code, a message, and a stack trace. You'll be able to extract this information in try-catch blocks, handle it, or return a proper request response.
+
+```ts
+import { ErrorResponse } from "@redwoodjs/sdk/worker";
+
+export default defineApp([
+  function middleware({ request, ctx }) {
+    try {
+      ctx.session = await sessions.load(request);
+    } catch (error) {
+      if (error instanceof ErrorResponse && error.code === 401) {
+        await sessions.remove(request, headers);
+        headers.set("Location", "/user/login");
+        return new Response(null, {
+          status: 302,
+          headers,
+        });
+      }
+    }
+  },
+  route("/", () => new ErrorResponse(404, "Not Found")),
+]);
+```
+
+## `requestInfo: RequestInfo`
+
+The `requestInfo` object is used to get information about the current request. It's a singleton that's populated for each request, and constains the following information.
+
+```ts
+import { requestInfo } from "@redwoodjs/sdk/worker";
+
+requestInfo.request.url;
+requestInfo.request.method;
+requestInfo.request.body;
+requestInfo.ctx;
+requestInfo.headers;
+```

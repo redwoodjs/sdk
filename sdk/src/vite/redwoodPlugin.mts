@@ -4,26 +4,24 @@ import { InlineConfig } from "vite";
 import reactPlugin from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 
-import { DEV_SERVER_PORT } from "../lib/constants.mjs";
 import { transformJsxScriptTagsPlugin } from "./transformJsxScriptTagsPlugin.mjs";
 import { useServerPlugin } from "./useServerPlugin.mjs";
 import { useClientPlugin } from "./useClientPlugin.mjs";
 import { useClientLookupPlugin } from "./useClientLookupPlugin.mjs";
 import { miniflarePlugin } from "./miniflarePlugin.mjs";
-import { asyncSetupPlugin } from "./asyncSetupPlugin.mjs";
 import { copyPrismaWasmPlugin } from "./copyPrismaWasmPlugin.mjs";
 import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
 import { configPlugin } from "./configPlugin.mjs";
 import { $ } from "../lib/$.mjs";
 import { customReactBuildPlugin } from "./customReactBuildPlugin.mjs";
-import { injectHmrPreambleJsxPlugin } from "./injectHmrPreambleJsxPlugin.mjs";
-import { setupEnvFiles } from "./setupEnvFiles.mjs";
-import { invalidateViteDepsCacheEntry } from "./invalidateViteDepsCacheEntry.mjs";
+import { invalidateCacheIfPrismaClientChanged } from "./invalidateCacheIfPrismaClientChanged.mjs";
 import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
+import { pathExists } from "fs-extra";
+import { transformClientEntryPlugin } from "./transformClientEntryPlugin.mjs";
+import { vitePreamblePlugin } from "./vitePreamblePlugin.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
-  port?: number;
   rootDir?: string;
   mode?: "development" | "production";
   configPath?: string;
@@ -34,7 +32,7 @@ export type RedwoodPluginOptions = {
 };
 
 export const redwoodPlugin = async (
-  options: RedwoodPluginOptions = {},
+  options: RedwoodPluginOptions = {}
 ): Promise<InlineConfig["plugins"]> => {
   const projectRootDir = process.cwd();
   const mode =
@@ -42,29 +40,41 @@ export const redwoodPlugin = async (
     (process.env.NODE_ENV === "development" ? "development" : "production");
   const clientEntryPathname = resolve(
     projectRootDir,
-    options?.entry?.client ?? "src/client.tsx",
+    options?.entry?.client ?? "src/client.tsx"
   );
   const workerEntryPathname = resolve(
     projectRootDir,
-    options?.entry?.worker ?? "src/worker.tsx",
+    options?.entry?.worker ?? "src/worker.tsx"
   );
 
-  await setupEnvFiles({ rootDir: projectRootDir });
+  // context(justinvdm, 31 Mar 2025): We assume that if there is no .wrangler directory,
+  // then this is fresh install, and we run `npm run dev:init` here.
+  if (
+    process.env.RWSDK_WORKER_RUN !== "1" &&
+    process.env.RWSDK_DEPLOY !== "1" &&
+    !(await pathExists(resolve(process.cwd(), ".wrangler")))
+  ) {
+    console.log(
+      "🚀 Project has no .wrangler directory yet, assuming fresh install: running `npm run dev:init`..."
+    );
+    await $({
+      // context(justinvdm, 01 Apr 2025): We want to avoid interactive migration y/n prompt, so we ignore stdin
+      // as a signal to operate in no-tty mode
+      stdio: ["ignore", "inherit", "inherit"],
+    })`npm run dev:init`;
+  }
+
   const usesPrisma = await $({ reject: false })`pnpm prisma --version`;
   const isUsingPrisma = usesPrisma.exitCode === 0;
 
-  if (isUsingPrisma) {
-    // context(justinvdm, 10 Mar 2025): We need to use vite optimizeDeps for all deps to work with @cloudflare/vite-plugin.
-    // Thing is, @prisma/client has generated code. So users end up with a stale @prisma/client
-    // when they change their prisma schema and regenerate the client, until clearing out node_modules/.vite
-    // We can't exclude @prisma/client from optimizeDeps since we need it there for @cloudflare/vite-plugin to work.
-    // But we can manually invalidate just its own deps cache entry.
-    await invalidateViteDepsCacheEntry({
-      projectRootDir,
-      environment: "worker",
-      entry: "@prisma/client",
-    });
-  }
+  // context(justinvdm, 10 Mar 2025): We need to use vite optimizeDeps for all deps to work with @cloudflare/vite-plugin.
+  // Thing is, @prisma/client has generated code. So users end up with a stale @prisma/client
+  // when they change their prisma schema and regenerate the client, until clearing out node_modules/.vite
+  // We can't exclude @prisma/client from optimizeDeps since we need it there for @cloudflare/vite-plugin to work.
+  // But we can manually invalidate the cache if the prisma schema changes.
+  await invalidateCacheIfPrismaClientChanged({
+    projectRootDir,
+  });
 
   return [
     configPlugin({
@@ -73,7 +83,6 @@ export const redwoodPlugin = async (
       projectRootDir,
       clientEntryPathname,
       workerEntryPathname,
-      port: options.port ?? DEV_SERVER_PORT,
       isUsingPrisma,
     }),
     customReactBuildPlugin({ projectRootDir }),
@@ -88,15 +97,8 @@ export const redwoodPlugin = async (
     reactPlugin(),
     useServerPlugin(),
     useClientPlugin(),
-    asyncSetupPlugin({
-      async setup({ command }) {
-        if (command !== "build") {
-          console.log("Generating wrangler types...");
-          await $`pnpm wrangler types`;
-        }
-      },
-    }),
-    injectHmrPreambleJsxPlugin(),
+    vitePreamblePlugin(),
+    transformClientEntryPlugin({ clientEntryPathname, mode }),
     useClientLookupPlugin({
       rootDir: projectRootDir,
       containingPath: "./src/app",
@@ -107,7 +109,7 @@ export const redwoodPlugin = async (
         "dist",
         "client",
         ".vite",
-        "manifest.json",
+        "manifest.json"
       ),
     }),
     ...(isUsingPrisma

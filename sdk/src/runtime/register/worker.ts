@@ -4,7 +4,7 @@ import {
   decodeReply,
 } from "react-server-dom-webpack/server.edge";
 import { getModuleExport } from "../imports/worker";
-import { RouteContext } from "../lib/router";
+import { IS_DEV } from "../constants";
 
 export function registerServerReference(
   action: Function,
@@ -31,10 +31,7 @@ export function registerClientReference<Target extends Record<string, any>>(
   });
 }
 
-export async function rscActionHandler<TContext>(
-  req: Request,
-  ctx: RouteContext<TContext, Record<string, string>>,
-): Promise<unknown> {
+export async function rscActionHandler(req: Request): Promise<unknown> {
   const url = new URL(req.url);
   const contentType = req.headers.get("content-type");
 
@@ -44,11 +41,15 @@ export async function rscActionHandler<TContext>(
 
   const args = (await decodeReply(data, null)) as unknown[];
   const actionId = url.searchParams.get("__rsc_action_id");
+
+  if (IS_DEV && actionId === "__rsc_hot_update") {
+    return null;
+  }
   const action = await getModuleExport(actionId!);
 
   if (typeof action !== "function") {
     throw new Error(`Action ${actionId} is not a function`);
   }
 
-  return action(...args, ctx);
+  return action(...args);
 }

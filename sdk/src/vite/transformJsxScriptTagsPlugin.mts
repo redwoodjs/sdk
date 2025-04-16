@@ -11,7 +11,7 @@ const readManifest = async (manifestPath: string) => {
       manifestPath,
       (await pathExists(manifestPath))
         ? readFile(manifestPath, "utf-8").then(JSON.parse)
-        : Promise.resolve({}),
+        : Promise.resolve({})
     );
   }
   return manifestCache.get(manifestPath)!;
@@ -22,27 +22,39 @@ export const transformJsxScriptTagsPlugin = ({
 }: {
   manifestPath: string;
 }): Plugin => ({
-  name: "rw-sdk-transform-jsx-script-tags",
+  name: "rwsdk:transform-jsx-script-tags",
   apply: "build",
   async transform(code) {
     const jsxScriptSrcRE =
-      /(jsx|jsxDEV)\("script",\s*{[^}]*src:\s*["']([^"']+)["'][^}]/g;
+      /(jsx|jsxDEV)\("script",\s*{[^}]*src:\s*["']([^"']+)["']/g;
+    const jsxLinkPreloadRE =
+      /(jsx|jsxDEV)\("link",\s*{[^}]*(?:href:\s*["']([^"']+)["'][^}]*rel:\s*["'](preload|modulepreload)["']|rel:\s*["'](preload|modulepreload)["'][^}]*href:\s*["']([^"']+)["'])/g;
 
-    const matches = [...code.matchAll(jsxScriptSrcRE)];
+    const scriptMatches = Array.from(code.matchAll(jsxScriptSrcRE));
+    const linkMatches = Array.from(code.matchAll(jsxLinkPreloadRE));
 
-    if (!matches.length) {
+    if (scriptMatches.length === 0 && linkMatches.length === 0) {
       return;
     }
 
     const manifest = await readManifest(manifestPath);
     const s = new MagicString(code);
 
-    for (const match of matches) {
+    // Transform script src attributes
+    for (const match of scriptMatches) {
       const src = match[2].slice("/".length);
-
       if (manifest[src]) {
         const transformedSrc = manifest[src].file;
         s.replaceAll(src, transformedSrc);
+      }
+    }
+
+    // Transform link href attributes
+    for (const match of linkMatches) {
+      const href = (match[2] || match[5]).slice("/".length);
+      if (manifest[href]) {
+        const transformedHref = manifest[href].file;
+        s.replaceAll(href, transformedHref);
       }
     }
 

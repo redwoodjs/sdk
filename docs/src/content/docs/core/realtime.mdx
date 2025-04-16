@@ -1,0 +1,173 @@
+---
+title: Realtime
+description: Add realtime updates to your app using WebSockets and Cloudflare Durable Objects.
+---
+
+import { Aside, Code, LinkCard } from "@astrojs/starlight/components";
+
+The SDK includes built-in support for **realtime updates** using **Cloudflare Durable Objects** and **WebSockets**. With just a few lines of setup, you can enable bidirectional communication between clients and the server — without polling.
+
+<Aside>
+  This is an **experimental feature**. It works well for collaborative apps and
+  live notifications, but we're still gathering feedback on edge cases and
+  advanced use.
+</Aside>
+
+---
+
+## Setup
+
+You'll need to connect three parts:
+
+### 1. Client Setup
+
+On the client side, initialize the realtime connection with a `key`. This `key` determines which group of clients should share updates. More on this below.
+
+```ts title="src/client.tsx"
+import { initRealtimeClient } from "@redwoodjs/sdk/realtime/client";
+
+initRealtimeClient({
+  key: window.location.pathname, // Used to group related clients
+});
+```
+
+### 2. Export the Durable Object
+
+```ts title="src/worker.ts"
+export { RealtimeDurableObject } from "@redwoodjs/sdk/realtime/durableObject";
+```
+
+### 3. Wire Up the Worker Route
+
+```ts title="src/worker.ts"
+import { realtimeRoute } from "@redwoodjs/sdk/realtime/worker";
+import { env } from "cloudflare:workers";
+
+export default defineApp([
+  realtimeRoute(() => env.REALTIME_DURABLE_OBJECT),
+  // ... your routes
+]);
+```
+
+### 4. Add the Durable Object to `wrangler.jsonc`
+
+```
+"durable_objects": {
+  "bindings": [
+    // ...
+    {
+      "name": "REALTIME_DURABLE_OBJECT",
+      "class_name": "RealtimeDurableObject",
+    },
+  ],
+},
+```
+
+---
+
+## Example: Collaborative Notes
+
+To see realtime updates in action, check out our [collaborative notes example](https://github.com/redwoodjs/example-realtime-notes).
+
+Multiple users can edit the same note at the same time, and see each other's changes as they happen.
+
+---
+
+## Understanding Realtime in the SDK
+
+React Server Components provide a way of **describing the UI you want to render based the latest app state**. When an event happens (whether user or system-initiated), the app state is updated, the server re-renders the UI, and the client receives the result.
+
+In RedwoodSDK, we build on top of this model for real time updates.
+
+1. **An event happens** — user action or external trigger
+2. **App state is updated** — using your existing RSC action handlers
+3. **Re-render is triggered** — either automatically (as a result of an action) or explicitly via `renderRealtimeClients()`
+4. **Each client re-renders** — by calling your server code and receiving the latest state
+
+This means you don't need to wire up subscriptions or manually track diffs — just write your app as usual and let the server deliver updated UI to each connected client.
+
+---
+
+## Scoping Updates
+
+Each realtime connection is scoped by a `key`. This `key` determines which clients are considered part of the same group, so they can receive the same updates.
+
+All clients with the same `key` are connected to the same Durable Object instance. Updates affecting one client are pushed to others in the same group.
+
+For example:
+
+```ts
+initRealtimeClient({ key: "/chat/room-42" });
+```
+
+Only clients in `room-42` will receive updates related to that room.
+
+---
+
+## Client ➝ Server ➝ Client Updates
+
+For updates that begin from user interaction, consider this example:
+
+```tsx
+const Note = async ({ ctx }: RequestInfo) => {
+  return <Editor content={ctx.content} />;
+};
+```
+
+Here, the `ctx` has been populated with the latest content for the relevant note.
+
+This is just a normal React Server Component. What's new is that when one client triggers an action, **all other clients** with the same `key` will re-run this server logic too.
+
+---
+
+## Server ➝ Client Updates
+
+You can update clients even when the event didn't originate from a user action — for example, background events, notifications, or admin triggers.
+
+Use `renderRealtimeClients()` to trigger a re-render for all clients connected to a given `key`:
+
+```ts
+import { renderRealtimeClients } from "@redwoodjs/sdk/realtime/worker";
+import { env } from "cloudflare:workers";
+
+await renderRealtimeClients({
+  durableObjectNamespace: env.REALTIME_DURABLE_OBJECT,
+  key: "/note/some-id",
+});
+```
+
+---
+
+## Why WebSockets and Durable Objects?
+
+To support realtime updates on Cloudflare, WebSockets and Durable Objects are a natural fit. WebSockets give us a persistent, bidirectional connection - not just for pushing updates to the client, but also for sending actions back to the server. Since that connection is already open, we can reuse it for both directions, avoiding the overhead of establishing new HTTP requests.
+
+Durable Objects are well-suited for managing these connections: they can **persist across requests**, maintain in-memory state, and coordinate updates between connected clients.
+
+## API Reference
+
+```ts
+initRealtimeClient({ key?: string }): Promise<void>
+```
+
+Initialises the realtime WebSocket client.
+
+- `key`: (optional) Identifies which group of clients this user belongs to.
+
+```ts
+realtimeRoute((env) => DurableObjectNamespace): RouteDefinition
+```
+
+Connects the WebSocket route in your worker to the appropriate Durable Object.
+
+```ts
+renderRealtimeClients({
+  durableObjectNamespace,
+  key?: string,
+}): Promise<void>
+```
+
+Triggers a re-render for all clients with a given `key`.
+
+- `durableObjectNamespace`: your binding to the Durable Object
+- `key`: the scope of clients to re-render

@@ -1,6 +1,6 @@
-import { Context } from "@/worker";
+import { RequestInfo } from "@redwoodjs/sdk/worker";
 
-export function Home({ ctx }: { ctx: Context }) {
+export function Home({ ctx }: RequestInfo) {
   return (
     <div>
       <p>

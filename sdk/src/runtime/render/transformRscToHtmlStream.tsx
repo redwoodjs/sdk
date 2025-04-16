@@ -6,12 +6,14 @@ import { renderToReadableStream } from "react-dom/server.edge";
 export const transformRscToHtmlStream = ({
   stream,
   Parent = ({ children }) => <>{children}</>,
+  nonce,
 }: {
   stream: ReadableStream;
   Parent: React.ComponentType<{ children: React.ReactNode }>;
+  nonce?: string;
 }) => {
   const thenable = createFromReadableStream(stream, {
-    ssrManifest: {
+    serverConsumerManifest: {
       moduleMap: createModuleMap(),
       moduleLoading: null,
     },
@@ -22,5 +24,7 @@ export const transformRscToHtmlStream = ({
   );
   const el = <Component />;
 
-  return renderToReadableStream(el);
+  return renderToReadableStream(el, {
+    nonce,
+  });
 };

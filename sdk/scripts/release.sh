@@ -2,7 +2,7 @@
 
 set -e  # Stop on first error
 
-DEPENDENCY_NAME="redwoodsdk"  # Replace with the actual package name
+DEPENDENCY_NAME="@redwoodjs/sdk"  # Replace with the actual package name
 
 show_help() {
   echo "Usage: pnpm release <patch|minor|major|test> [--dry]"
@@ -79,6 +79,20 @@ if [[ -z "$VERSION_TYPE" ]]; then
 fi
 
 # After argument validation and before version calculation
+echo -e "\n🔄 Pulling for changes..."
+if [[ "$DRY_RUN" == true ]]; then
+  echo "  [DRY RUN] git pull --rebase"
+else
+  git pull --rebase
+fi
+
+echo -e "\n📦 Making sure dependencies are up to date..."
+if [[ "$DRY_RUN" == true ]]; then
+  echo "  [DRY RUN] pnpm install --frozen-lockfile"
+else
+  pnpm install --frozen-lockfile --ignore-scripts
+fi
+
 echo -e "\n🏗️  Building package..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] NODE_ENV=production pnpm build"
@@ -101,7 +115,7 @@ else
   if [[ "$CURRENT_VERSION" =~ ^(.*)-test.([0-9]+)$ ]]; then
     CURRENT_VERSION="${BASH_REMATCH[1]}"
   fi
-  NEW_VERSION=$(semver -i $VERSION_TYPE $CURRENT_VERSION)
+  NEW_VERSION=$(npx semver -i $VERSION_TYPE $CURRENT_VERSION)
 fi
 
 echo -e "\n📦 Planning version bump to $NEW_VERSION ($VERSION_TYPE)..."
@@ -161,7 +175,7 @@ if [[ "$DRY_RUN" == true ]]; then
 else
   for i in {1..3}; do
     echo "Attempt $i of 3: Running pnpm install"
-    pnpm install && break
+    pnpm install --ignore-scripts && break
     if [ $i -lt 3 ]; then
       echo "pnpm install failed, retrying in 3 seconds..."
       sleep 3

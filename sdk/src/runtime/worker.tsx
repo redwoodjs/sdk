@@ -5,15 +5,14 @@ import { renderToRscStream } from "./render/renderToRscStream";
 import { ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import { ErrorResponse } from "./error";
-
 import {
-  Route,
-  RouteContext,
-  defineRoutes,
-  RenderPageParams,
-  PageProps,
-  LayoutProps,
-} from "./lib/router";
+  getRequestInfo,
+  runWithRequestInfo,
+  runWithRequestInfoOverrides,
+} from "./requestInfo/worker";
+import { RequestInfo } from "./requestInfo/types";
+
+import { Route, defineRoutes } from "./lib/router";
 import { generateNonce } from "./lib/utils";
 import { IS_DEV } from "./constants";
 
@@ -24,9 +23,9 @@ declare global {
   };
 }
 
-export const defineApp = <Context,>(routes: Route<Context>[]) => {
+export const defineApp = (routes: Route[]) => {
   return {
-    fetch: async (request: Request, env: Env, _ctx: ExecutionContext) => {
+    fetch: async (request: Request, env: Env, cf: ExecutionContext) => {
       globalThis.__webpack_require__ = ssrWebpackRequire;
 
       const router = defineRoutes(routes);
@@ -45,50 +44,71 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
             headers: {
               "content-type": "text/javascript",
             },
-          },
+          }
         );
       }
 
       try {
         const url = new URL(request.url);
         const isRSCRequest = url.searchParams.has("__rsc");
+        const userHeaders = new Headers();
 
-        const handleAction = async (
-          ctx: RouteContext<Context, Record<string, string>>,
-        ) => {
-          const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
-
-          if (isRSCActionHandler) {
-            return await rscActionHandler(request, ctx); // maybe we should include params and ctx in the action handler?
-          }
+        const rw = {
+          Document: DefaultDocument,
+          nonce: generateNonce(),
         };
 
-        const renderPage = async ({
-          Page,
-          props: fullPageProps,
-          actionResult,
-          Layout,
-        }: RenderPageParams<Context>) => {
-          let props = fullPageProps;
-          let layoutProps = fullPageProps;
+        const outerRequestInfo: RequestInfo = {
+          request,
+          headers: userHeaders,
+          cf,
+          params: {},
+          ctx: {},
+          rw,
+        };
+
+        const computePageProps = (
+          requestInfo: RequestInfo,
+          Page: React.FC<any>
+        ) => {
+          const { ctx, params } = requestInfo;
+          let props;
 
           // context(justinvdm, 25 Feb 2025): If the page is a client reference, we need to avoid passing
           // down props the client shouldn't get (e.g. env). For safety, we pick the allowed props explicitly.
-          if (
-            Object.prototype.hasOwnProperty.call(Page, "$$isClientReference")
-          ) {
-            const { ctx, params } = fullPageProps;
-            props = { ctx, params } as PageProps<Context>;
+          if (isClientReference(Page)) {
+            props = {
+              ctx,
+              params,
+            };
+          } else {
+            props = requestInfo;
           }
 
-          if (
-            Object.prototype.hasOwnProperty.call(Layout, "$$isClientReference")
-          ) {
-            const { ctx, params } = fullPageProps;
-            layoutProps = { ctx, params } as LayoutProps<Context>;
+          return props;
+        };
+
+        const renderPage = async (
+          requestInfo: RequestInfo,
+          Page: React.FC<any>
+        ) => {
+          if (isClientReference(requestInfo.rw.Document)) {
+            if (IS_DEV) {
+              console.error("Document cannot be a client component");
+            }
+
+            return new Response(null, {
+              status: 500,
+            });
           }
 
-          const nonce = fullPageProps.rw.nonce;
+          const props = computePageProps(requestInfo, Page);
+          let actionResult: unknown = undefined;
+          const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
+
+          if (isRSCActionHandler) {
+            actionResult = await rscActionHandler(request);
+          }
 
           const rscPayloadStream = renderToRscStream({
             node: <Page {...props} />,
@@ -109,12 +129,15 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
           const htmlStream = await transformRscToHtmlStream({
             stream: rscPayloadStream1,
             Parent: ({ children }) => (
-              <Layout {...layoutProps} children={children} />
+              <rw.Document {...requestInfo} children={children} />
             ),
+            nonce: rw.nonce,
           });
 
           const html = htmlStream.pipeThrough(
-            injectRSCPayload(rscPayloadStream2, { nonce }),
+            injectRSCPayload(rscPayloadStream2, {
+              nonce: rw.nonce,
+            })
           );
 
           return new Response(html, {
@@ -124,28 +147,26 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
           });
         };
 
-        const userHeaders = new Headers();
-
-        const response = await router.handle({
-          request,
-          headers: userHeaders,
-          ctx: {} as Context,
-          env,
-          rw: {
-            Layout: DefaultLayout,
-            handleAction,
+        const response = await runWithRequestInfo(outerRequestInfo, () =>
+          router.handle({
+            request,
             renderPage,
-            nonce: generateNonce(),
-          },
-        });
+            getRequestInfo,
+            runWithRequestInfoOverrides,
+          })
+        );
+
+        // context(justinvdm, 18 Mar 2025): In some cases, such as a .fetch() call to a durable object instance, or Response.redirect(),
+        // we need to return a mutable response object.
+        const mutableResponse = new Response(response.body, response);
 
         for (const [key, value] of userHeaders.entries()) {
           if (!response.headers.has(key)) {
-            response.headers.set(key, value);
+            mutableResponse.headers.set(key, value);
           }
         }
 
-        return response;
+        return mutableResponse;
       } catch (e) {
         if (e instanceof ErrorResponse) {
           return new Response(e.message, { status: e.code });
@@ -158,17 +179,20 @@ export const defineApp = <Context,>(routes: Route<Context>[]) => {
   };
 };
 
-export const DefaultLayout: React.FC<{ children: React.ReactNode }> = ({
+export const DefaultDocument: React.FC<{ children: React.ReactNode }> = ({
   children,
 }) => (
   <html lang="en">
     <head>
       <meta charSet="utf-8" />
       <meta name="viewport" content="width=device-width, initial-scale=1" />
-      <script type="module" src="/src/client.tsx"></script>
     </head>
     <body>
       <div id="root">{children}</div>
     </body>
   </html>
 );
+
+const isClientReference = (Component: React.FC<any>) => {
+  return Object.prototype.hasOwnProperty.call(Component, "$$isClientReference");
+};

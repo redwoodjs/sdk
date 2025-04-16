@@ -1,0 +1,32 @@
+---
+title: Environment Variables & Secrets
+description: RedwoodSDK Environment Variables
+---
+
+When integrating with external services you typically store your credentials in environment variables. This is done to avoid hardcoding secrets into your codebase.
+
+There are several environments that require different credentials, for example:
+
+- On your local machine: Development
+- Secrets on deployed Workers: Staging & Production
+
+We follow Cloudflare's [recommended approach](https://developers.cloudflare.com/workers/configuration/secrets/) for workers.
+
+## Development
+
+Create a `.dev.vars` file in the root of your project.
+
+```ts title=".dev.vars"
+SECRET_KEY = "value";
+API_TOKEN = "ABCDEFGHIJKLMNOPQRSTUVWXYZ";
+```
+
+This file will be used when you run the development server.
+
+## Secrets on deployed Workers
+
+```bash
+npx wrangler secret put <KEY>
+```
+
+These can also be added via the Cloudflare dashboard.

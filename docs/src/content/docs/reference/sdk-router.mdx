@@ -1,0 +1,65 @@
+---
+title: sdk/router
+description: The RedwoodSDK router
+next: false
+---
+
+RedwoodSDK's router is a lightweight server-side router that's designed to work with `defineApp` from `@redwoodjs/sdk/worker`.
+
+## `route`
+
+The `route` function is used to define a route.
+
+```ts
+import { route } from "@redwoodjs/sdk/router";
+
+route("/", () => new Response("Hello, World!"));
+```
+
+## `prefix`
+
+The `prefix` function is used to modify the matched string of a group of routes, by adding a prefix to the matched string. This essentially allows you to group related functionality into a seperate file, import those routes and place it into your `defineApp` function.
+
+```ts title="app/pages/user/routes.ts"
+import { route } from "@redwoodjs/sdk/router";
+
+import { LoginPage } from "./LoginPage";
+
+export const routes = [
+  route("/login", LoginPage),
+  route("/logout", () => {
+    /* handle logout*/
+  }),
+];
+```
+
+```ts title="worker.ts"
+import { prefix } from "@redwoodjs/sdk/router";
+
+import { routes as userRoutes } from "@/app/pages/user/routes";
+
+defineApp([prefix("/user", userRoutes)]);
+
+---
+This will match `/user/login` and `/user/logout`
+---
+```
+
+## render
+
+The `render` function is used to statically render the contents of a JSX element. It cannot contain any dynamic content. Use this to control the output of your HTML.
+
+```tsx
+import { render } from "@redwoodjs/sdk/router";
+
+import { ReactDocument } from "@/app/Document";
+import { StaticDocument } from "@/app/Document";
+
+import { routes as appRoutes } from "@/app/pages/app/routes";
+import { routes as docsRoutes } from "@/app/pages/docs/routes";
+
+export default defineApp([
+  render(ReactDocument, [prefix("/app", appRoutes)]),
+  render(StaticDocument, [prefix("/docs", docsRoutes)]),
+]);
+```

@@ -57,8 +57,10 @@ and renders the todos.
 ```
 
 <Aside type="tip" title="Suspense">
-When a server component is async, you'll able to wrap it in a `Suspense` boundary. This will allow you to show a loading state while the data is being fetched.  
-</Aside> 
+  When a server component is async, you'll able to wrap it in a `Suspense`
+  boundary. This will allow you to show a loading state while the data is being
+  fetched.
+</Aside>
 
 ## Server Functions
 
@@ -67,7 +69,10 @@ Allow you to execute code on the server from a client component.
 ```tsx title="@/pages/todos/functions.tsx" mark={1}
 "use server";
 
-export async function addTodo(formData: FormData, ctx: Context) {
+import { requestInfo } from "@redwoodjs/sdk/worker";
+
+export async function addTodo(formData: FormData) {
+  const { ctx } = requestInfo;
   const title = formData.get("title");
   await db.todo.create({ data: { title, userId: ctx.user.id } });
 }
@@ -94,4 +99,4 @@ export default function AddTodo() {
 
 ### Context
 
-Context is a way to share data globally between server components on a per-request basis. The context is populated by middleware, and is available to all React Server Components Pages and Server Functions.
+Context is a way to share data globally between server components on a per-request basis. The context is populated by middleware, and is available to all React Server Components Pages and Server Functions via the `ctx` prop or `requestInfo.ctx`.

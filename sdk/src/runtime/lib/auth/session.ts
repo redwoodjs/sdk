@@ -1,4 +1,22 @@
 import { ErrorResponse } from "../../error";
+import { IS_DEV } from "../../constants";
+import { env } from "cloudflare:workers";
+
+const AUTH_SECRET_KEY =
+  (env as { AUTH_SECRET_KEY?: string }).AUTH_SECRET_KEY ??
+  (IS_DEV ? "development-secret-key-do-not-use-in-production" : undefined);
+
+if (AUTH_SECRET_KEY === "") {
+  console.warn(
+    "AUTH_SECRET_KEY is set but empty. Please provide a non-empty secret key for session store security."
+  );
+}
+
+if (!AUTH_SECRET_KEY) {
+  console.warn(
+    "AUTH_SECRET_KEY not set. Please set this environment variable to a secure random key for session store security."
+  );
+}
 
 export const MAX_SESSION_DURATION = 14 * 24 * 60 * 60 * 1000; // 14 days
 
@@ -48,7 +66,9 @@ export const createSessionCookie = ({
   const isViteDev =
     typeof import.meta.env !== "undefined" && import.meta.env.DEV;
 
-  return `${name}=${sessionId}; Path=/; HttpOnly; ${isViteDev ? "" : "Secure; "}SameSite=Lax${
+  return `${name}=${sessionId}; Path=/; HttpOnly; ${
+    isViteDev ? "" : "Secure; "
+  }SameSite=Lax${
     maxAge != null
       ? `; Max-Age=${maxAge === true ? MAX_SESSION_DURATION / 1000 : maxAge}`
       : ""
@@ -69,13 +89,13 @@ export const signSessionId = async ({
     encoder.encode(secretKey),
     { name: "HMAC", hash: "SHA-256" },
     false,
-    ["sign"],
+    ["sign"]
   );
 
   const signatureArrayBuffer = await crypto.subtle.sign(
     "HMAC",
     key,
-    encoder.encode(unsignedSessionId),
+    encoder.encode(unsignedSessionId)
   );
 
   return arrayBufferToHex(signatureArrayBuffer);
@@ -98,29 +118,37 @@ export const isValidSessionId = async ({
   sessionId: string;
   secretKey: string;
 }) => {
-  const { unsignedSessionId, signature } = unpackSessionId(sessionId);
-  const computedSignature = await signSessionId({
-    unsignedSessionId,
-    secretKey,
-  });
-  return computedSignature === signature;
+  try {
+    const { unsignedSessionId, signature } = unpackSessionId(sessionId);
+    const computedSignature = await signSessionId({
+      unsignedSessionId,
+      secretKey,
+    });
+    return computedSignature === signature;
+  } catch {
+    return false;
+  }
 };
 
 export const defineSessionStore = <Session, SessionInputData>({
   cookieName = "session_id",
   createCookie = createSessionCookie,
-  secretKey,
+  secretKey = AUTH_SECRET_KEY,
   get,
   set,
   unset,
 }: {
   cookieName?: string;
   createCookie?: typeof createSessionCookie;
-  secretKey: string;
+  secretKey?: string;
   get: (sessionId: string) => Promise<Session>;
   set: (sessionId: string, sessionInputData: SessionInputData) => Promise<void>;
   unset: (sessionId: string) => Promise<void>;
 }) => {
+  if (!secretKey) {
+    throw new Error("No secret key provided for session store");
+  }
+
   const getSessionIdFromCookie = (request: Request): string | undefined => {
     const cookieHeader = request.headers.get("Cookie");
     if (!cookieHeader) return undefined;
@@ -160,13 +188,13 @@ export const defineSessionStore = <Session, SessionInputData>({
   const save = async (
     headers: Headers,
     sessionInputData: SessionInputData,
-    { maxAge }: { maxAge?: number | true } = {},
+    { maxAge }: { maxAge?: number | true } = {}
   ): Promise<void> => {
     const sessionId = await generateSessionId({ secretKey });
     await set(sessionId, sessionInputData);
     headers.set(
       "Set-Cookie",
-      createCookie({ name: cookieName, sessionId, maxAge }),
+      createCookie({ name: cookieName, sessionId, maxAge })
     );
   };
 
@@ -177,7 +205,7 @@ export const defineSessionStore = <Session, SessionInputData>({
     }
     headers.set(
       "Set-Cookie",
-      createCookie({ name: cookieName, sessionId: "", maxAge: 0 }),
+      createCookie({ name: cookieName, sessionId: "", maxAge: 0 })
     );
   };
 
@@ -205,16 +233,16 @@ type SessionFromDurableObject<SessionDurableObject> =
     : never;
 
 export const defineDurableSession = <
-  SessionDurableObject extends DurableObjectMethods<any, any>,
+  SessionDurableObject extends DurableObjectMethods<any, any>
 >({
   cookieName,
   createCookie,
-  secretKey,
+  secretKey = AUTH_SECRET_KEY,
   sessionDurableObject,
 }: {
   cookieName?: string;
   createCookie?: typeof createSessionCookie;
-  secretKey: string;
+  secretKey?: string;
   sessionDurableObject: DurableObjectNamespace<SessionDurableObject>;
 }): SessionStoreFromDurableObject<SessionDurableObject> => {
   type Session = SessionFromDurableObject<SessionDurableObject>;
@@ -237,7 +265,7 @@ export const defineDurableSession = <
 
   const set = async (
     sessionId: string,
-    sessionInputData: SessionInputData,
+    sessionInputData: SessionInputData
   ): Promise<void> => {
     const { unsignedSessionId } = unpackSessionId(sessionId);
     const doId = sessionDurableObject.idFromName(unsignedSessionId);
@@ -248,7 +276,14 @@ export const defineDurableSession = <
   };
 
   const unset = async (sessionId: string): Promise<void> => {
-    const { unsignedSessionId } = unpackSessionId(sessionId);
+    let unsignedSessionId: string;
+
+    try {
+      unsignedSessionId = unpackSessionId(sessionId).unsignedSessionId;
+    } catch {
+      return;
+    }
+
     const doId = sessionDurableObject.idFromName(unsignedSessionId);
     const sessionStub = sessionDurableObject.get(doId);
     await sessionStub.revokeSession();

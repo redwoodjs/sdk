@@ -5,7 +5,7 @@ description: Messages, queues, and background tasks
 
 import { Aside } from "@astrojs/starlight/components";
 
-Whilst building a website you want to be able to respond as quickly as possible to user interactions, but sometimes you need to do things that take a long time! For example, you might need to send an email when a user submits a form, or you need to process a payment, or do something magic with AI - and you don't want the user to wait for these things to complete.
+Whilst building a webapp you want to be able to respond as quickly as possible to user interactions, but sometimes you need to do things that take a long time! For example, you might need to send an email when a user submits a form, or you need to process a payment, or do something magic with AI - and you don't want the user to wait for these things to complete.
 
 To handle these you'll use **background tasks**. Background tasks are managed by the [Cloudflare queue system](https://developers.cloudflare.com/queues/). You send a message to a queue, where a worker will process the message, but on a different worker - so it doesn't block the main one.
 
@@ -17,7 +17,8 @@ To handle these you'll use **background tasks**. Background tasks are managed by
 ### Setup
 
 First thing you've got to do is create a queue and bind the queue producers and consumers to your worker.
-```bash frame="none" showLineNumbers=false
+
+```bash showLineNumbers=false
 npx wrangler queues create MY_QUEUE_NAME
 ```
 
