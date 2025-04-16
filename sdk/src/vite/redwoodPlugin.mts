@@ -9,16 +9,16 @@ import { useServerPlugin } from "./useServerPlugin.mjs";
 import { useClientPlugin } from "./useClientPlugin.mjs";
 import { useClientLookupPlugin } from "./useClientLookupPlugin.mjs";
 import { miniflarePlugin } from "./miniflarePlugin.mjs";
-import { asyncSetupPlugin } from "./asyncSetupPlugin.mjs";
 import { copyPrismaWasmPlugin } from "./copyPrismaWasmPlugin.mjs";
 import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
 import { configPlugin } from "./configPlugin.mjs";
 import { $ } from "../lib/$.mjs";
 import { customReactBuildPlugin } from "./customReactBuildPlugin.mjs";
-import { injectHmrPreambleJsxPlugin } from "./injectHmrPreambleJsxPlugin.mjs";
 import { invalidateCacheIfPrismaClientChanged } from "./invalidateCacheIfPrismaClientChanged.mjs";
 import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
 import { pathExists } from "fs-extra";
+import { transformClientEntryPlugin } from "./transformClientEntryPlugin.mjs";
+import { vitePreamblePlugin } from "./vitePreamblePlugin.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -32,7 +32,7 @@ export type RedwoodPluginOptions = {
 };
 
 export const redwoodPlugin = async (
-  options: RedwoodPluginOptions = {},
+  options: RedwoodPluginOptions = {}
 ): Promise<InlineConfig["plugins"]> => {
   const projectRootDir = process.cwd();
   const mode =
@@ -40,11 +40,11 @@ export const redwoodPlugin = async (
     (process.env.NODE_ENV === "development" ? "development" : "production");
   const clientEntryPathname = resolve(
     projectRootDir,
-    options?.entry?.client ?? "src/client.tsx",
+    options?.entry?.client ?? "src/client.tsx"
   );
   const workerEntryPathname = resolve(
     projectRootDir,
-    options?.entry?.worker ?? "src/worker.tsx",
+    options?.entry?.worker ?? "src/worker.tsx"
   );
 
   // context(justinvdm, 31 Mar 2025): We assume that if there is no .wrangler directory,
@@ -55,7 +55,7 @@ export const redwoodPlugin = async (
     !(await pathExists(resolve(process.cwd(), ".wrangler")))
   ) {
     console.log(
-      "🚀 Project has no .wrangler directory yet, assuming fresh install: running `npm run dev:init`...",
+      "🚀 Project has no .wrangler directory yet, assuming fresh install: running `npm run dev:init`..."
     );
     await $({
       // context(justinvdm, 01 Apr 2025): We want to avoid interactive migration y/n prompt, so we ignore stdin
@@ -97,7 +97,8 @@ export const redwoodPlugin = async (
     reactPlugin(),
     useServerPlugin(),
     useClientPlugin(),
-    injectHmrPreambleJsxPlugin(),
+    vitePreamblePlugin(),
+    transformClientEntryPlugin({ clientEntryPathname, mode }),
     useClientLookupPlugin({
       rootDir: projectRootDir,
       containingPath: "./src/app",
@@ -108,7 +109,7 @@ export const redwoodPlugin = async (
         "dist",
         "client",
         ".vite",
-        "manifest.json",
+        "manifest.json"
       ),
     }),
     ...(isUsingPrisma

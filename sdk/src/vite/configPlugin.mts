@@ -46,7 +46,9 @@ export const configPlugin = ({
             outDir: resolve(projectRootDir, "dist", "client"),
             manifest: true,
             rollupOptions: {
-              input: { client: clientEntryPathname },
+              input: {
+                client: clientEntryPathname,
+              },
             },
           },
           optimizeDeps: {
@@ -84,10 +86,10 @@ export const configPlugin = ({
                               return {
                                 path: resolve(
                                   projectRootDir,
-                                  "node_modules/.prisma/client/wasm.js",
+                                  "node_modules/.prisma/client/wasm.js"
                                 ),
                               };
-                            },
+                            }
                           );
                         },
                       },
@@ -128,7 +130,7 @@ export const configPlugin = ({
             ? {
                 ".prisma/client/default": resolve(
                   projectRootDir,
-                  "node_modules/.prisma/client/wasm.js",
+                  "node_modules/.prisma/client/wasm.js"
                 ),
               }
             : {}),
