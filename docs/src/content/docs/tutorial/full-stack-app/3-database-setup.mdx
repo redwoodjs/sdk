@@ -589,7 +589,7 @@ export default defineScript(async ({ env }) => {
 
   await db.$executeRawUnsafe(`\
     DELETE FROM Application;
-    DELETE FROM Application;
+    DELETE FROM ApplicationStatus;
     DELETE FROM Contact;
     DELETE FROM Company;
     DELETE FROM Credential;

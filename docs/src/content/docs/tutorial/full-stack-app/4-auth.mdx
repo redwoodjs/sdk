@@ -1112,13 +1112,13 @@ It's centering our content, but it's also horizontally aligning everything. Let'
 
 To center the owl, we can use the `mx-auto` class. This will set the left and right margins to `auto`.
 
-```tsx title="src/app/layouts/AuthLayout.tsx" startLineNumber=7
-<img src="/images/logo.svg" alt="Apply Wize" />
+```tsx title="src/app/layouts/AuthLayout.tsx" startLineNumber=7 "className="mx-auto""
+<img src="/images/logo.svg" alt="Apply Wize" className="mx-auto" />
 ```
 
 Now, let's style the Apply Wize text.
 
-```tsx title="src/app/layouts/AuthLayout.tsx" {11} startLineNumber=8
+```tsx title="src/app/layouts/AuthLayout.tsx" {1} startLineNumber=8 "className="text-5xl text-white font-bold""
 <div className="text-5xl text-white font-bold">
   Apply Wize
 </div>
@@ -1151,7 +1151,7 @@ We want this to be fixed to the bottom of the left column. So, this needs to be 
 
 To style the text:
 
-```tsx title="src/app/layouts/AuthLayout.tsx" startLineNumber=12
+```tsx title="src/app/layouts/AuthLayout.tsx" startLineNumber=12 {1}
 <div className="text-white text-sm absolute bottom-0 left-0 right-0 p-10">
   “Transform the job hunt from a maze into a map.”
 </div>
@@ -1281,7 +1281,7 @@ First we can delete our `h1`, **YOLO** text. Now, let's just work from top to bo
 
 In the top, right corner, we have a link to the signup page. This is similar to our the quote in our layout component, except this time we want it positioned to the top, right corner.
 
-```tsx title="src/app/pages/user/Login.tsx" {3-7} startLineNumber=35
+```tsx title="src/app/pages/user/Login.tsx" {3-7} startLineNumber=48
 return (
   <AuthLayout>
     <div className="absolute top-0 right-0 p-10">
@@ -1309,7 +1309,7 @@ Now, we have the same positioning "problem" that we had with our quote. We need 
 
 Next up, let's wrap all of our form content with a `div` and add the text at the top of our form:
 
-```tsx title="src/app/pages/user/Login.tsx" {1-3, 16} startLineNumber=45
+```tsx title="src/app/pages/user/Login.tsx" {1-3, 16} startLineNumber=50
 <div className="max-w-[400px] w-full mx-auto px-10">
   <h1 className="text-center">Login</h1>
   <p className="py-6">Enter your username below to sign-in.</p>
@@ -1337,7 +1337,7 @@ Next up, let's wrap all of our form content with a `div` and add the text at the
 
 Let's also add some text below our form:
 
-```tsx title="src/app/pages/user/Login.tsx" startLineNumber=57 {5}
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=68 {5}
 <Button onClick={handlePerformPasskeyLogin} disabled={isPending} className="font-display w-full mb-6">
     {isPending ? <>...</> : "Login with passkey"}
   </Button>
@@ -1358,7 +1358,7 @@ Based on this ordering, we get more specific as we move down the file.
 
 At the very bottom of our `styles.css` file, let's start by setting up `@layer` for each grouping:
 
-```css title="src/styles.css" startLineNumber=152
+```css title="src/styles.css" startLineNumber=238
 @layer base, components, page;
 
 @layer base {}
@@ -1484,7 +1484,7 @@ If we take a look in the browser, this looks great. The only thing we lack is th
 
 For the button, we're using the ShadCN button component. Let's crack it open:
 
-```tsx title="src/components/ui/button.tsx" collapse={8-29} startLineNumber=7 "buttonVariants" "default:" "font-bold"
+```tsx title="src/components/ui/button.tsx" collapse={8-29} startLineNumber=9 "buttonVariants" "default:" "font-bold"
 const buttonVariants = cva(
   "font-bold inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
   {
@@ -1596,14 +1596,25 @@ You'll need to login (successfully or unsuccessfully) to see the alert.
 
 ![](./images/alert-message-successful-login.png)
 
-I know, it feels strange to see a red alert message when we were able to successfully login. But, really, if we were able to login successfully, we want to be redirected to the homepage. We can update the `passkeyLogin` function (starts on line 25):
+I know, it feels strange to see a red alert message when we were able to successfully login. But, really, if we were able to login successfully, we want to be redirected to the homepage. We can update the `passkeyLogin` function (starts on line 30):
 
-```tsx title="src/app/pages/user/Login.tsx" {4} startLineNumber=30
-if (!success) {
-  setResult("Login failed");
-} else {
-  window.location.href = "/";
-}
+```tsx title="src/app/pages/user/Login.tsx" {14} collapse={2-10} startLineNumber=30
+const passkeyLogin = async () => {
+  // 1. Get a challenge from the worker
+  const options = await startPasskeyLogin();
+
+  // 2. Ask the browser to sign the challenge
+  const login = await startAuthentication({ optionsJSON: options });
+
+  // 3. Give the signed challenge to the worker to finish the login process
+  const success = await finishPasskeyLogin(login);
+
+  if (!success) {
+    setResult("Login failed");
+  } else {
+    window.location.href = link('/');
+  }
+};
 ---
 - If we weren't successful, it will still set the result message to "Login failed."
 - If we were successful, it will redirect us to the homepage.
@@ -1680,15 +1691,15 @@ We'll do a quick "duct tape" solution for now, but we'll eventually circle back 
 
 Within our `src/worker.tsx` file, we're exporting `defineApp`. Remember, this includes definitions for all our middleware and routes.
 
-```tsx title="src/worker.tsx" collapse={2-30} startLineNumber=19 {44-45}
-export default defineApp<AppContext>([
+```tsx title="src/worker.tsx" collapse={2-30} startLineNumber=19 {45-46}
+export default defineApp([
   setCommonHeaders(),
-  async ({ env, appContext, request, headers }) => {
+  async ({ ctx, request, headers }) => {
     await setupDb(env);
     setupSessionStore(env);
 
     try {
-      appContext.session = await sessions.load(request);
+      ctx.session = await sessions.load(request);
     } catch (error) {
       if (error instanceof ErrorResponse && error.code === 401) {
         await sessions.remove(request, headers);
@@ -1703,18 +1714,19 @@ export default defineApp<AppContext>([
       throw error;
     }
 
-    if (appContext.session?.userId) {
-      appContext.user = await db.user.findUnique({
+    if (ctx.session?.userId) {
+      ctx.user = await db.user.findUnique({
         where: {
-          id: appContext.session.userId,
+          id: ctx.session.userId,
         },
       });
     }
   },
   render(Document, [
-    index([
-      ({ appContext }) => {
-        if (!appContext.user) {
+    route("/", Home),
+    route("/protected", [
+      ({ ctx }) => {
+        if (!ctx.user) {
           return new Response(null, {
             status: 302,
             headers: { Location: "/user/login" },
@@ -1723,14 +1735,14 @@ export default defineApp<AppContext>([
       },
       Home,
     ]),
-    prefix("/user", authRoutes),
+    prefix("/user", userRoutes),
     route("/legal/privacy", () => <h1>Privacy Policy</h1>),
     route("/legal/terms", () => <h1>Terms of Service</h1>),
   ]),
 ]);
 ---
-- **On line 62**, let's add a new `route` definition to our array for our privacy policy page. The `route` function takes two parameters. The first parameter is the path or the URL. The second parameter is the response. This could be [a standard HTML response object](https://developer.mozilla.org/en-US/docs/Web/API/Response) or JSX/TSX. For our quick solution, we're inlining JSX.
-- **On line 63**, we're doing the exact same thing for our Terms page.
+- **On line 63**, let's add a new `route` definition to our array for our privacy policy page. The `route` function takes two parameters. The first parameter is the path or the URL. The second parameter is the response. This could be [a standard HTML response object](https://developer.mozilla.org/en-US/docs/Web/API/Response) or JSX/TSX. For our quick solution, we're inlining JSX.
+- **On line 64**, we're doing the exact same thing for our Terms page.
 ---
 ```
 
@@ -1768,17 +1780,25 @@ We've touched a few files, if you want to see the full code for each:
 "use client";
 
 import { useState, useTransition } from "react";
-import { startAuthentication } from "@simplewebauthn/browser";
-import { finishPasskeyLogin, startPasskeyLogin } from "./functions";
-import { useTurnstile } from "redwoodsdk/turnstile";
-import { Button } from "@/app/components/ui/button";
-import { AuthLayout } from "@/app/layouts/AuthLayout";
 import { link } from "@/app/shared/links";
+import {
+  startAuthentication,
+  startRegistration,
+} from "@simplewebauthn/browser";
+import {
+  finishPasskeyLogin,
+  finishPasskeyRegistration,
+  startPasskeyLogin,
+  startPasskeyRegistration,
+} from "./functions";
+import { useTurnstile } from "@redwoodjs/sdk/turnstile";
+import { AuthLayout } from "@/app/layouts/AuthLayout";
+import { Button } from "@/app/components/ui/button";
 import { Alert, AlertTitle } from "@/app/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 
 // >>> Replace this with your own Cloudflare Turnstile site key
-const TURNSTILE_SITE_KEY = "0xXXXXXXXXXXXXXXXXXXXXXX";
+const TURNSTILE_SITE_KEY = "1x00000000000000000000AA";
 
 export function Login() {
   const [username, setUsername] = useState("");
@@ -1787,14 +1807,19 @@ export function Login() {
   const turnstile = useTurnstile(TURNSTILE_SITE_KEY);
 
   const passkeyLogin = async () => {
+    // 1. Get a challenge from the worker
     const options = await startPasskeyLogin();
+
+    // 2. Ask the browser to sign the challenge
     const login = await startAuthentication({ optionsJSON: options });
+
+    // 3. Give the signed challenge to the worker to finish the login process
     const success = await finishPasskeyLogin(login);
 
     if (!success) {
       setResult("Login failed");
     } else {
-      window.location.href = link('/');
+      setResult("Login successful!");
     }
   };
 
@@ -1804,23 +1829,22 @@ export function Login() {
 
   return (
     <AuthLayout>
-      <div className="absolute top-0 right-0 p-10">
-        <a href={link('/user/signup')} className="font-display font-bold text-black text-sm underline underline-offset-8 hover:decoration-primary">
-          Register
-        </a>
-      </div>
-
       <div className="auth-form max-w-[400px] w-full mx-auto px-10">
         <h1 className="page-title text-center">Login</h1>
         <p className="py-6">Enter your username below to sign-in.</p>
 
         {result && (
-          <Alert variant="destructive" className="mb-5">
-            <AlertCircle className="h-4 w-4"/>
-            <AlertTitle>{result}</AlertTitle>
-          </Alert>
+        <Alert variant="destructive" className="mb-5">
+          <AlertCircle className="h-4 w-4"/>
+          <AlertTitle>{result}</AlertTitle>
+        </Alert>
         )}
 
+        <div className="absolute top-0 right-0 p-10">
+          <a href={link("/user/signup")} className="font-display font-bold text-black text-sm underline underline-offset-8 hover:decoration-primary">
+            Register
+          </a>
+        </div>
         <div ref={turnstile.ref} />
         <input
           type="text"
@@ -1829,10 +1853,10 @@ export function Login() {
           placeholder="Username"
         />
         <Button onClick={handlePerformPasskeyLogin} disabled={isPending} className="font-display w-full mb-6">
-          {isPending ? <>...</> : "Login with Passkey"}
+          {isPending ? <>...</> : "Login with passkey"}
         </Button>
 
-        <p>By clicking continue, you agree to our <a href={link('/legal/terms')}>Terms of Service</a> and <a href={link('/legal/privacy')}>Privacy Policy</a>.</p>
+        <p>By clicking continue, you agree to our <a href={link("/legal/terms")}>Terms of Service</a> and <a href={link("/legal/privacy")}>Privacy Policy</a>.</p>
       </div>
     </AuthLayout>
   );
@@ -1845,7 +1869,7 @@ export function Login() {
 <summary>Final code for our `AuthLayout.tsx`</summary>
 
 ```tsx title="src/app/layouts/AuthLayout.tsx"
-const AuthLayout = ({ children }: { children: React.ReactNode }) => {
+const AuthLayout = ({ children }: { children: React.ReactNode}) => {
   return (
     <div className="bg-bg min-h-screen min-w-screen p-12">
       <div className="grid grid-cols-2 min-h-[calc(100vh-96px)] rounded-xl border-2 border-[#D6D5C5]">
@@ -1861,14 +1885,14 @@ const AuthLayout = ({ children }: { children: React.ReactNode }) => {
           </div>
         </div>
         <div className="center bg-white rounded-r-xl relative">
-          <div className="w-full">{children}</div>
+          {children}
         </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export { AuthLayout };
+export { AuthLayout }
 ```
 </details>
 
@@ -1880,128 +1904,217 @@ export { AuthLayout };
 @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
 
 @import "tailwindcss";
-
-@plugin "tailwindcss-animate";
+@import "tw-animate-css";
 
 @custom-variant dark (&:is(.dark *));
 
+body {
+  @apply bg-white;
+}
+
+@theme inline {
+
+  --radius-sm: calc(var(--radius) - 4px);
+
+  --radius-md: calc(var(--radius) - 2px);
+
+  --radius-lg: var(--radius);
+
+  --radius-xl: calc(var(--radius) + 4px);
+
+  --color-background: var(--background);
+
+  --color-foreground: var(--foreground);
+
+  --color-card: var(--card);
+
+  --color-card-foreground: var(--card-foreground);
+
+  --color-popover: var(--popover);
+
+  --color-popover-foreground: var(--popover-foreground);
+
+  --color-primary: var(--primary);
+
+  --color-primary-foreground: var(--primary-foreground);
+
+  --color-secondary: var(--secondary);
+
+  --color-secondary-foreground: var(--secondary-foreground);
+
+  --color-muted: var(--muted);
+
+  --color-muted-foreground: var(--muted-foreground);
+
+  --color-accent: var(--accent);
+
+  --color-accent-foreground: var(--accent-foreground);
+
+  --color-destructive: var(--destructive);
+
+  --color-border: var(--border);
+
+  --color-input: var(--input);
+
+  --color-ring: var(--ring);
+
+  --color-chart-1: var(--chart-1);
+
+  --color-chart-2: var(--chart-2);
+
+  --color-chart-3: var(--chart-3);
+
+  --color-chart-4: var(--chart-4);
+
+  --color-chart-5: var(--chart-5);
+
+  --color-sidebar: var(--sidebar);
+
+  --color-sidebar-foreground: var(--sidebar-foreground);
+
+  --color-sidebar-primary: var(--sidebar-primary);
+
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+
+  --color-sidebar-accent: var(--sidebar-accent);
+
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+
+  --color-sidebar-border: var(--sidebar-border);
+
+  --color-sidebar-ring: var(--sidebar-ring);
+}
+
 :root {
-  --background: oklch(1 0 0);
-  --foreground: oklch(0.145 0 0);
-  --card: oklch(1 0 0);
-  --card-foreground: oklch(0.145 0 0);
-  --popover: oklch(1 0 0);
-  --popover-foreground: oklch(0.145 0 0);
-  --primary: oklch(0.205 0 0);
-  --primary-foreground: oklch(0.985 0 0);
-  --secondary: oklch(0.97 0 0);
-  --secondary-foreground: oklch(0.205 0 0);
-  --muted: oklch(0.97 0 0);
-  --muted-foreground: oklch(0.556 0 0);
-  --accent: oklch(0.97 0 0);
-  --accent-foreground: oklch(0.205 0 0);
-  --destructive: oklch(0.577 0.245 27.325);
-  --destructive-foreground: hsl(0 0% 98%);
-  --border: oklch(0.922 0 0);
-  --input: oklch(0.922 0 0);
-  --ring: oklch(0.708 0 0);
-  --chart-1: oklch(0.646 0.222 41.116);
-  --chart-2: oklch(0.6 0.118 184.704);
-  --chart-3: oklch(0.398 0.07 227.392);
-  --chart-4: oklch(0.828 0.189 84.429);
-  --chart-5: oklch(0.769 0.188 70.08);
+
   --radius: 0.625rem;
+
+  --background: oklch(1 0 0);
+
+  --foreground: oklch(0.145 0 0);
+
+  --card: oklch(1 0 0);
+
+  --card-foreground: oklch(0.145 0 0);
+
+  --popover: oklch(1 0 0);
+
+  --popover-foreground: oklch(0.145 0 0);
+
+  --primary: oklch(0.205 0 0);
+
+  --primary-foreground: oklch(0.985 0 0);
+
+  --secondary: oklch(0.97 0 0);
+
+  --secondary-foreground: oklch(0.205 0 0);
+
+  --muted: oklch(0.97 0 0);
+
+  --muted-foreground: oklch(0.556 0 0);
+
+  --accent: oklch(0.97 0 0);
+
+  --accent-foreground: oklch(0.205 0 0);
+
+  --destructive: oklch(0.577 0.245 27.325);
+
+  --border: oklch(0.922 0 0);
+
+  --input: oklch(0.922 0 0);
+
+  --ring: oklch(0.708 0 0);
+
+  --chart-1: oklch(0.646 0.222 41.116);
+
+  --chart-2: oklch(0.6 0.118 184.704);
+
+  --chart-3: oklch(0.398 0.07 227.392);
+
+  --chart-4: oklch(0.828 0.189 84.429);
+
+  --chart-5: oklch(0.769 0.188 70.08);
+
   --sidebar: oklch(0.985 0 0);
+
   --sidebar-foreground: oklch(0.145 0 0);
+
   --sidebar-primary: oklch(0.205 0 0);
+
   --sidebar-primary-foreground: oklch(0.985 0 0);
+
   --sidebar-accent: oklch(0.97 0 0);
+
   --sidebar-accent-foreground: oklch(0.205 0 0);
+
   --sidebar-border: oklch(0.922 0 0);
+
   --sidebar-ring: oklch(0.708 0 0);
 }
 
 .dark {
+
   --background: oklch(0.145 0 0);
+
   --foreground: oklch(0.985 0 0);
+
   --card: oklch(0.205 0 0);
+
   --card-foreground: oklch(0.985 0 0);
+
   --popover: oklch(0.205 0 0);
+
   --popover-foreground: oklch(0.985 0 0);
+
   --primary: oklch(0.922 0 0);
+
   --primary-foreground: oklch(0.205 0 0);
+
   --secondary: oklch(0.269 0 0);
+
   --secondary-foreground: oklch(0.985 0 0);
+
   --muted: oklch(0.269 0 0);
+
   --muted-foreground: oklch(0.708 0 0);
+
   --accent: oklch(0.269 0 0);
+
   --accent-foreground: oklch(0.985 0 0);
+
   --destructive: oklch(0.704 0.191 22.216);
-  --destructive-foreground: hsl(0 0% 98%);
+
   --border: oklch(1 0 0 / 10%);
+
   --input: oklch(1 0 0 / 15%);
+
   --ring: oklch(0.556 0 0);
+
   --chart-1: oklch(0.488 0.243 264.376);
+
   --chart-2: oklch(0.696 0.17 162.48);
+
   --chart-3: oklch(0.769 0.188 70.08);
+
   --chart-4: oklch(0.627 0.265 303.9);
+
   --chart-5: oklch(0.645 0.246 16.439);
+
   --sidebar: oklch(0.205 0 0);
+
   --sidebar-foreground: oklch(0.985 0 0);
+
   --sidebar-primary: oklch(0.488 0.243 264.376);
+
   --sidebar-primary-foreground: oklch(0.985 0 0);
+
   --sidebar-accent: oklch(0.269 0 0);
+
   --sidebar-accent-foreground: oklch(0.985 0 0);
+
   --sidebar-border: oklch(1 0 0 / 10%);
+
   --sidebar-ring: oklch(0.556 0 0);
-}
-
-@theme inline {
-  --color-background: var(--background);
-  --color-foreground: var(--foreground);
-  --color-card: var(--card);
-  --color-card-foreground: var(--card-foreground);
-  --color-popover: var(--popover);
-  --color-popover-foreground: var(--popover-foreground);
-  --color-primary: var(--primary);
-  --color-primary-foreground: var(--primary-foreground);
-  --color-secondary: var(--secondary);
-  --color-secondary-foreground: var(--secondary-foreground);
-  --color-muted: var(--muted);
-  --color-muted-foreground: var(--muted-foreground);
-  --color-accent: var(--accent);
-  --color-accent-foreground: var(--accent-foreground);
-  --color-destructive: var(--destructive);
-  --color-destructive-foreground: var(--destructive-foreground);
-  --color-border: var(--border);
-  --color-input: var(--input);
-  --color-ring: var(--ring);
-  --color-chart-1: var(--chart-1);
-  --color-chart-2: var(--chart-2);
-  --color-chart-3: var(--chart-3);
-  --color-chart-4: var(--chart-4);
-  --color-chart-5: var(--chart-5);
-  --radius-sm: calc(var(--radius) - 4px);
-  --radius-md: calc(var(--radius) - 2px);
-  --radius-lg: var(--radius);
-  --radius-xl: calc(var(--radius) + 4px);
-  --color-sidebar: var(--sidebar);
-  --color-sidebar-foreground: var(--sidebar-foreground);
-  --color-sidebar-primary: var(--sidebar-primary);
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-  --color-sidebar-accent: var(--sidebar-accent);
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-  --color-sidebar-border: var(--sidebar-border);
-  --color-sidebar-ring: var(--sidebar-ring);
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
 }
 
 @theme {
@@ -2012,7 +2125,6 @@ export { AuthLayout };
   --color-border: #eeeef0;
 
   --color-primary: #f7b736;
-  --color-primary-foreground: #000;
   --color-secondary: #f1f1e8;
   --color-destructive: #ef533f;
 
@@ -2021,20 +2133,18 @@ export { AuthLayout };
   --color-tag-new: #db9a9f;
   --color-tag-rejected: #e4e3d4;
   --color-tag-offer: #aae198;
-}
 
-@utility center { @apply flex items-center justify-center; }
+  --color-primary-foreground: #000;
+}
 
 @layer base, components, page;
 
 @layer base {
-  h1, h2, h3 {
-    @apply font-display font-bold;
-  }
 
-  /* form elements */
-  input[type="text"] {
-    @apply border-border border-1 rounded-md px-3 h-9 block w-full mb-2 text-base;
+  h1,
+  h2,
+  h3 {
+    @apply font-display font-bold;
   }
 }
 
@@ -2045,11 +2155,35 @@ export { AuthLayout };
 }
 
 @layer page {
+
   /* login page */
   .auth-form {
-    p { @apply text-sm text-zinc-500 text-center;
-      a { @apply text-zinc-500 hover:text-black underline whitespace-nowrap; }
+    p {
+      @apply text-sm text-zinc-500 text-center;
+
+      a {
+        @apply text-zinc-500 hover:text-black underline whitespace-nowrap;
+      }
     }
+  }
+
+  /* form elements */
+  input[type="text"] {
+    @apply border-border border-1 rounded-md px-3 h-9 block w-full mb-2 text-base;
+  }
+}
+
+@utility center {
+  @apply flex items-center justify-center;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
   }
 }
 ```
@@ -2059,11 +2193,13 @@ export { AuthLayout };
 <summary>Final code for our `button.tsx`</summary>
 
 ```tsx title="src/components/ui/button.tsx"
+"use client";
+
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { cva, type VariantProps } from "class-variance-authority"
 
-import { cn } from "@/app/lib/utils"
+import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
   "font-bold inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
@@ -2142,7 +2278,7 @@ export const link = defineLinks([
 
 ```tsx title="src/worker.tsx"
 import { defineApp, ErrorResponse } from "@redwoodjs/sdk/worker";
-import { index, render, prefix, route } from "@redwoodjs/sdk/router";
+import { route, render, prefix } from "@redwoodjs/sdk/router";
 import { Document } from "@/app/Document";
 import { Home } from "@/app/pages/Home";
 import { setCommonHeaders } from "@/app/headers";
@@ -2150,8 +2286,8 @@ import { userRoutes } from "@/app/pages/user/routes";
 import { sessions, setupSessionStore } from "./session/store";
 import { Session } from "./session/durableObject";
 import { db, setupDb } from "./db";
-import { User } from "@prisma/client";
-import { List } from "./app/pages/applications/List";
+import type { User } from "@prisma/client";
+import { env } from "cloudflare:workers";
 export { SessionDurableObject } from "./session/durableObject";
 
 export type AppContext = {
@@ -2159,13 +2295,14 @@ export type AppContext = {
   user: User | null;
 };
 
-export default defineApp<AppContext>([
+export default defineApp([
   setCommonHeaders(),
-  async ({ env, appContext, request, headers }) => {
+  async ({ ctx, request, headers }) => {
     await setupDb(env);
     setupSessionStore(env);
+
     try {
-      appContext.session = await sessions.load(request);
+      ctx.session = await sessions.load(request);
     } catch (error) {
       if (error instanceof ErrorResponse && error.code === 401) {
         await sessions.remove(request, headers);
@@ -2180,18 +2317,19 @@ export default defineApp<AppContext>([
       throw error;
     }
 
-    if (appContext.session?.userId) {
-      appContext.user = await db.user.findUnique({
+    if (ctx.session?.userId) {
+      ctx.user = await db.user.findUnique({
         where: {
-          id: appContext.session.userId,
+          id: ctx.session.userId,
         },
       });
     }
   },
   render(Document, [
-    index([
-      ({ appContext }: { appContext: AppContext }) => {
-        if (!appContext.user) {
+    route("/", Home),
+    route("/protected", [
+      ({ ctx }) => {
+        if (!ctx.user) {
           return new Response(null, {
             status: 302,
             headers: { Location: "/user/login" },
@@ -2200,7 +2338,7 @@ export default defineApp<AppContext>([
       },
       Home,
     ]),
-    prefix("/user", authRoutes),
+    prefix("/user", userRoutes),
     route("/legal/privacy", () => <h1>Privacy Policy</h1>),
     route("/legal/terms", () => <h1>Terms of Service</h1>),
   ]),
@@ -2217,11 +2355,9 @@ export default defineApp<AppContext>([
 import { AuthLayout } from "@/app/layouts/AuthLayout";
 ...
 return (
-  <>
   <AuthLayout>
   ...
   </AuthLayout>
-  </>
 )
 ---
 - Let's import our `AuthLayout` at the top of our file.
@@ -2249,10 +2385,18 @@ import { link } from "@/app/shared/links";
 
 Next, let's wrap all of our form content with a `div`:
 
-```tsx title="src/app/pages/user/Signup.tsx" startLineNumber=54 "auth-form max-w-[400px] px-10"
-<div className="auth-form max-w-[400px] w-full mx-auto px-10">
-  ...
-</div>
+```tsx title="src/app/pages/user/Signup.tsx" startLineNumber=56 "auth-form max-w-[400px] px-10"
+<AuthLayout>
+  <div className="auth-form max-w-[400px] w-full mx-auto px-10">
+    ...
+    <div className="absolute top-0 right-0 p-10">
+      <a href={link('/user/login')} className="font-display font-bold text-black text-sm underline underline-offset-8 hover:decoration-primary">
+        Login
+      </a>
+    </div>
+    ...
+  </div>
+</AuthLayout>
 ---
 - We're using the same styles as our login page.
 - We have a class `auth-form` that will style our `p` and `a` tags.
@@ -2263,17 +2407,20 @@ Next, let's wrap all of our form content with a `div`:
 ```
 
 We can get rid of our red YOLO heading at the top and replace it with:
-```tsx title="src/app/pages/user/Signup.tsx" startLineNumber=56
+```tsx title="src/app/pages/user/Signup.tsx" startLineNumber=63
 <h1 className="page-title text-center">Create an Account</h1>
 <p className="py-6">Enter a username to setup an account.</p>
 ```
 
 Let's move our `result` message to appear below our heading:
 
-```tsx title="src/app/pages/user/Signup.tsx" showLineNumbers=false
+```tsx title="src/app/pages/user/Signup.tsx" showLineNumbers=false {1-2, 7-12}
 import { Alert, AlertTitle } from "@/app/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 ...
+<h1 className="page-title text-center">Create an Account</h1>
+<p className="py-6">Enter a username to setup an account.</p>
+
 {result && (
   <Alert variant="destructive" className="mb-5">
     <AlertCircle className="h-4 w-4"/>
@@ -2282,9 +2429,9 @@ import { AlertCircle } from "lucide-react";
 )}
 ```
 
-Jumping down a little bit, on our `Button` component, let's add a few classes to the end::
+Jumping down a little bit, on our `Button` component, let's add a few classes to the end:
 
-```tsx title="src/app/pages/user/Signup.tsx" "className="font-display w-full mb-6"" startLineNumber=75
+```tsx title="src/app/pages/user/Signup.tsx" "className="font-display w-full mb-6"" startLineNumber=83
 <Button onClick={handlePerformPasskeyRegister} disabled={isPending} className="font-display w-full mb-6">
   {isPending ? <>...</> : "Register with Passkey"}
 </Button>
@@ -2297,7 +2444,7 @@ Jumping down a little bit, on our `Button` component, let's add a few classes to
 
 Then, right below the button, we can add our legal statement:
 
-```tsx title="src/app/pages/user/Signup.tsx" startLineNumber=79
+```tsx title="src/app/pages/user/Signup.tsx" startLineNumber=87
 <p>By clicking continue, you agree to our <a href={link('/legal/terms')}>Terms of Service</a> and <a href={link('/legal/privacy')}>Privacy Policy</a>.</p>
 ```
 
