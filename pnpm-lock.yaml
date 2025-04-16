@@ -171,8 +171,8 @@ importers:
   starters/minimal:
     dependencies:
       '@redwoodjs/sdk':
-        specifier: 0.0.60-test.2
-        version: 0.0.60-test.2(@types/node@22.14.0)(react-server-dom-webpack@19.2.0-canary-39cad7af-20250411(react-dom@19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411))(react@19.2.0-canary-39cad7af-20250411)(webpack@5.97.1))(rollup@4.34.8)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250408.0)
+        specifier: 0.0.60-test.3
+        version: 0.0.60-test.3(@types/node@22.14.0)(react-server-dom-webpack@19.2.0-canary-39cad7af-20250411(react-dom@19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411))(react@19.2.0-canary-39cad7af-20250411)(webpack@5.97.1))(rollup@4.34.8)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250408.0)
       react:
         specifier: canary
         version: 19.2.0-canary-39cad7af-20250411
@@ -211,8 +211,8 @@ importers:
         specifier: ~6.5.0
         version: 6.5.0(prisma@6.5.0(typescript@5.8.3))(typescript@5.8.3)
       '@redwoodjs/sdk':
-        specifier: 0.0.60-test.2
-        version: 0.0.60-test.2(@types/node@22.14.0)(react-server-dom-webpack@19.2.0-canary-39cad7af-20250411(react-dom@19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411))(react@19.2.0-canary-39cad7af-20250411)(webpack@5.97.1(esbuild@0.25.0)))(rollup@4.34.8)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250408.0)
+        specifier: 0.0.60-test.3
+        version: 0.0.60-test.3(@types/node@22.14.0)(react-server-dom-webpack@19.2.0-canary-39cad7af-20250411(react-dom@19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411))(react@19.2.0-canary-39cad7af-20250411)(webpack@5.97.1(esbuild@0.25.0)))(rollup@4.34.8)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250408.0)
       '@simplewebauthn/browser':
         specifier: ^13.1.0
         version: 13.1.0
@@ -1225,8 +1225,8 @@ packages:
     engines: {node: '>=18.0.0'}
     hasBin: true
 
-  '@redwoodjs/sdk@0.0.60-test.2':
-    resolution: {integrity: sha512-i6g5WP46nC5+DGh5O4S546OzKdyANhP98Giakwi+lz/TFR6626fjqlOrhb+UOWX5OEQ1oEopWbfbSfT5eVvrpg==}
+  '@redwoodjs/sdk@0.0.60-test.3':
+    resolution: {integrity: sha512-3v4CB+IKUPvvIKXDnhSaxYNvwt1G392wTa/zg1F49oiQLjlXpMvQ9PRX1zG3zDCIXHd02OiX/M/IiOtnS4CYBQ==}
     hasBin: true
     peerDependencies:
       react-server-dom-webpack: canary
@@ -5059,7 +5059,7 @@ snapshots:
     dependencies:
       dotenv: 16.4.7
 
-  '@redwoodjs/sdk@0.0.60-test.2(@types/node@22.14.0)(react-server-dom-webpack@19.2.0-canary-39cad7af-20250411(react-dom@19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411))(react@19.2.0-canary-39cad7af-20250411)(webpack@5.97.1(esbuild@0.25.0)))(rollup@4.34.8)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250408.0)':
+  '@redwoodjs/sdk@0.0.60-test.3(@types/node@22.14.0)(react-server-dom-webpack@19.2.0-canary-39cad7af-20250411(react-dom@19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411))(react@19.2.0-canary-39cad7af-20250411)(webpack@5.97.1(esbuild@0.25.0)))(rollup@4.34.8)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250408.0)':
     dependencies:
       '@cloudflare/vite-plugin': 1.0.1(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250408.0)(wrangler@4.8.0(@cloudflare/workers-types@4.20250407.0))
       '@cloudflare/workers-types': 4.20250407.0
@@ -5107,7 +5107,7 @@ snapshots:
       - utf-8-validate
       - workerd
 
-  '@redwoodjs/sdk@0.0.60-test.2(@types/node@22.14.0)(react-server-dom-webpack@19.2.0-canary-39cad7af-20250411(react-dom@19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411))(react@19.2.0-canary-39cad7af-20250411)(webpack@5.97.1))(rollup@4.34.8)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250408.0)':
+  '@redwoodjs/sdk@0.0.60-test.3(@types/node@22.14.0)(react-server-dom-webpack@19.2.0-canary-39cad7af-20250411(react-dom@19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411))(react@19.2.0-canary-39cad7af-20250411)(webpack@5.97.1))(rollup@4.34.8)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250408.0)':
     dependencies:
       '@cloudflare/vite-plugin': 1.0.1(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250408.0)(wrangler@4.8.0(@cloudflare/workers-types@4.20250407.0))
       '@cloudflare/workers-types': 4.20250407.0
