@@ -6,4 +6,4 @@
 // runtime deps when optimizing deps for the user, as the latter has proven in
 // the past to be difficult to accomplish:
 // https://github.com/redwoodjs/sdk/pull/144
-export * from "react/jsx-dev-runtime";
+export { Fragment, jsxDEV } from "react/jsx-dev-runtime";

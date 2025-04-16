@@ -3,8 +3,6 @@ import { build, mergeConfig, type InlineConfig } from "vite";
 import { $ } from "../lib/$.mjs";
 import { VENDOR_DIST_DIR, VENDOR_SRC_DIR } from "../lib/constants.mjs";
 
-const __dirname = new URL(".", import.meta.url).pathname;
-
 const createConfig = (
   mode: "development" | "production"
 ): (() => InlineConfig) => {
@@ -39,15 +37,16 @@ const configs = {
         conditions: ["react-server"],
       },
     }),
-  react: (mode: "development" | "production"): InlineConfig =>
+  // Worker environment bundles
+  workerReact: (mode: "development" | "production"): InlineConfig =>
     mergeConfig(createConfig(mode)(), {
       build: {
         outDir: VENDOR_DIST_DIR,
         lib: {
-          entry: resolve(VENDOR_SRC_DIR, "react.js"),
+          entry: resolve(VENDOR_SRC_DIR, "react.worker.js"),
           name: "react",
           formats: ["es"],
-          fileName: () => `react.${mode}.js`,
+          fileName: () => `react.worker.${mode}.js`,
         },
       },
       resolve: {
@@ -74,6 +73,25 @@ const configs = {
         },
       },
     }),
+
+  // Client environment bundles - just re-exports
+  clientReact: (mode: "development" | "production"): InlineConfig =>
+    mergeConfig(createConfig(mode)(), {
+      build: {
+        outDir: VENDOR_DIST_DIR,
+        lib: {
+          entry: resolve(VENDOR_SRC_DIR, "react.client.js"), // New file that just re-exports react
+          name: "react",
+          formats: ["es"],
+          fileName: () => `react.client.${mode}.js`,
+        },
+      },
+      resolve: {
+        conditions: ["browser", "import"],
+      },
+    }),
+
+  // Common bundles (used by both environments)
   jsxRuntime: (mode: "development" | "production"): InlineConfig =>
     mergeConfig(createConfig(mode)(), {
       build: {
@@ -82,13 +100,33 @@ const configs = {
           entry: resolve(VENDOR_SRC_DIR, "jsx-runtime.js"),
           name: "jsx-runtime",
           formats: ["es"],
-          fileName: () => `jsx-runtime.${mode}.js`,
+          fileName: () => `jsx-runtime.worker.${mode}.js`,
+        },
+        rollupOptions: {
+          external: ["react"],
+        },
+      },
+      resolve: {
+        conditions: ["react-server"],
+      },
+    }),
+
+  jsxRuntimeClient: (mode: "development" | "production"): InlineConfig =>
+    mergeConfig(createConfig(mode)(), {
+      build: {
+        outDir: VENDOR_DIST_DIR,
+        lib: {
+          entry: resolve(VENDOR_SRC_DIR, "jsx-runtime.js"),
+          name: "jsx-runtime",
+          formats: ["es"],
+          fileName: () => `jsx-runtime.client.${mode}.js`,
         },
         rollupOptions: {
           external: ["react"],
         },
       },
     }),
+
   jsxDevRuntime: (mode: "development" | "production"): InlineConfig =>
     mergeConfig(createConfig(mode)(), {
       build: {
@@ -97,7 +135,26 @@ const configs = {
           entry: resolve(VENDOR_SRC_DIR, "jsx-dev-runtime.js"),
           name: "jsx-dev-runtime",
           formats: ["es"],
-          fileName: () => `jsx-dev-runtime.${mode}.js`,
+          fileName: () => `jsx-dev-runtime.worker.${mode}.js`,
+        },
+        rollupOptions: {
+          external: ["react"],
+        },
+      },
+      resolve: {
+        conditions: ["react-server"],
+      },
+    }),
+
+  jsxDevRuntimeClient: (mode: "development" | "production"): InlineConfig =>
+    mergeConfig(createConfig(mode)(), {
+      build: {
+        outDir: VENDOR_DIST_DIR,
+        lib: {
+          entry: resolve(VENDOR_SRC_DIR, "jsx-dev-runtime.js"),
+          name: "jsx-dev-runtime",
+          formats: ["es"],
+          fileName: () => `jsx-dev-runtime.client.${mode}.js`,
         },
         rollupOptions: {
           external: ["react"],
@@ -111,14 +168,18 @@ export const buildVendorBundles = async () => {
 
   const bundles = [
     "reactServerInternals",
-    "react",
+    "workerReact",
     "reactDomServerEdge",
+    "clientReact",
     "jsxRuntime",
+    "jsxRuntimeClient",
     "jsxDevRuntime",
+    "jsxDevRuntimeClient",
   ] as const;
 
   for (const mode of ["development", "production"] as const) {
     for (const bundle of bundles) {
+      console.log(`Building ${bundle} in ${mode} mode`);
       await build(configs[bundle](mode));
     }
   }

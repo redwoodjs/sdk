@@ -1,7 +1,6 @@
 import { resolve } from "node:path";
 import { InlineConfig } from "vite";
 
-import reactPlugin from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 import { transformJsxScriptTagsPlugin } from "./transformJsxScriptTagsPlugin.mjs";
@@ -94,7 +93,6 @@ export const redwoodPlugin = async (
       configPath:
         options.configPath ?? (await findWranglerConfig(projectRootDir)),
     }),
-    reactPlugin(),
     useServerPlugin(),
     useClientPlugin(),
     vitePreamblePlugin(),

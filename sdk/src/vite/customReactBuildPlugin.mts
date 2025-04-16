@@ -1,27 +1,32 @@
 import { resolve } from "path";
 import { mkdirp, copy } from "fs-extra";
-import { Plugin } from "vite";
+import { Plugin, PluginOption } from "vite";
 import { VENDOR_DIST_DIR } from "../lib/constants.mjs";
+import reactPlugin from "@vitejs/plugin-react";
 
 const copyReactFiles = async (viteDistDir: string) => {
   await mkdirp(viteDistDir);
 
   const vendorBundles = [
-    "react",
-    "react-dom-server-edge",
-    "jsx-runtime",
-    "jsx-dev-runtime",
+    ["react.worker", "worker"],
+    ["react.client", "client"],
+    ["react-dom-server-edge", null],
+    ["jsx-runtime.worker", "worker"],
+    ["jsx-runtime.client", "client"],
+    ["jsx-dev-runtime.worker", "worker"],
+    ["jsx-dev-runtime.client", "client"],
   ] as const;
 
   for (const mode of ["development", "production"] as const) {
-    for (const bundle of vendorBundles) {
+    for (const [bundle, env] of vendorBundles) {
+      const fileName = `${bundle}.${mode}.js`;
       await copy(
-        resolve(VENDOR_DIST_DIR, `${bundle}.${mode}.js`),
-        resolve(viteDistDir, `${bundle}.${mode}.js`)
+        resolve(VENDOR_DIST_DIR, fileName),
+        resolve(viteDistDir, fileName)
       );
       await copy(
-        resolve(VENDOR_DIST_DIR, `${bundle}.${mode}.js.map`),
-        resolve(viteDistDir, `${bundle}.${mode}.js.map`)
+        resolve(VENDOR_DIST_DIR, `${fileName}.map`),
+        resolve(viteDistDir, `${fileName}.map`)
       );
     }
   }
@@ -42,6 +47,51 @@ const createJsxRuntimeEsbuildPlugin = (
   },
 });
 
+// context(justinvdm, 2024-03-19): Wraps Vite's React plugin to remove its
+// optimizeDeps.include configuration. This is necessary because the React plugin
+// automatically adds React dependencies to optimizeDeps.include, but we need full
+// control over React resolution to use our environment-specific builds (worker vs
+// client) and custom JSX runtime bundles.
+const wrapReactPluginConfig = (plugins: PluginOption[]): Plugin[] =>
+  plugins.map((p) => {
+    // Skip non-object plugins
+    if (!p || typeof p !== "object" || Array.isArray(p)) {
+      return p;
+    }
+
+    const plugin = p as Plugin;
+    const originalConfig = plugin.config;
+
+    return {
+      ...plugin,
+      config: (config, env) => {
+        if (typeof originalConfig === "function") {
+          const result = originalConfig.call(plugin as any, config, env);
+          if (
+            result &&
+            typeof result === "object" &&
+            "optimizeDeps" in result
+          ) {
+            const { optimizeDeps, ...rest } = result;
+            if (
+              optimizeDeps &&
+              typeof optimizeDeps === "object" &&
+              "include" in optimizeDeps
+            ) {
+              const { include, ...otherOptimizeDeps } = optimizeDeps;
+              return {
+                ...rest,
+                optimizeDeps: otherOptimizeDeps,
+              };
+            }
+          }
+          return result;
+        }
+        return null;
+      },
+    };
+  }) as Plugin[];
+
 export const customReactBuildPlugin = async ({
   projectRootDir,
   mode,
@@ -55,8 +105,15 @@ export const customReactBuildPlugin = async ({
     ".vite_redwoodjs_sdk"
   );
 
-  const resolveVendorBundle = (name: string) =>
-    resolve(viteDistDir, `${name}.${mode}.js`);
+  const resolveVendorBundle = (name: string, env: "worker" | "client") => {
+    if (name === "react") {
+      return resolve(viteDistDir, `react.${env}.${mode}.js`);
+    }
+    if (name.startsWith("jsx")) {
+      return resolve(viteDistDir, `${name}.${env}.${mode}.js`);
+    }
+    return resolve(viteDistDir, `${name}.${mode}.js`);
+  };
 
   await copyReactFiles(viteDistDir);
 
@@ -65,10 +122,12 @@ export const customReactBuildPlugin = async ({
     enforce: "pre",
     resolveId(id) {
       if (id === "react/jsx-runtime") {
-        return resolveVendorBundle("jsx-runtime");
+        const env = this.environment.name as "worker" | "client";
+        return resolveVendorBundle("jsx-runtime", env);
       }
       if (id === "react/jsx-dev-runtime") {
-        return resolveVendorBundle("jsx-dev-runtime");
+        const env = this.environment.name as "worker" | "client";
+        return resolveVendorBundle("jsx-dev-runtime", env);
       }
     },
     config: () => ({
@@ -112,10 +171,10 @@ export const customReactBuildPlugin = async ({
     },
     resolveId(id) {
       if (id === "react") {
-        return resolveVendorBundle("react");
+        return resolveVendorBundle("react", "worker");
       }
       if (id === "react-dom/server.edge" || id === "react-dom/server") {
-        return resolveVendorBundle("react-dom-server-edge");
+        return resolveVendorBundle("react-dom-server-edge", "worker");
       }
     },
     config: () => ({
@@ -128,12 +187,15 @@ export const customReactBuildPlugin = async ({
                   name: "rwsdk:rewrite-react-imports",
                   setup(build) {
                     build.onResolve({ filter: /^react$/ }, () => ({
-                      path: resolveVendorBundle("react"),
+                      path: resolveVendorBundle("react", "worker"),
                     }));
                     build.onResolve(
                       { filter: /^react-dom\/server\.edge$/ },
                       () => ({
-                        path: resolveVendorBundle("react-dom-server-edge"),
+                        path: resolveVendorBundle(
+                          "react-dom-server-edge",
+                          "worker"
+                        ),
                       })
                     );
                   },
@@ -146,5 +208,43 @@ export const customReactBuildPlugin = async ({
     }),
   };
 
-  return [commonPlugin, workerReactPlugin];
+  const clientReactPlugin: Plugin = {
+    name: "rwsdk:client-react",
+    enforce: "pre",
+    applyToEnvironment: (environment) => {
+      return environment.name === "client";
+    },
+    resolveId(id) {
+      if (id === "react") {
+        return resolveVendorBundle("react", "client");
+      }
+    },
+    config: () => ({
+      environments: {
+        client: {
+          optimizeDeps: {
+            esbuildOptions: {
+              plugins: [
+                {
+                  name: "rwsdk:client:rewrite-react-imports",
+                  setup(build) {
+                    build.onResolve({ filter: /^react$/ }, () => ({
+                      path: resolveVendorBundle("react", "client"),
+                    }));
+                  },
+                },
+              ],
+            },
+          },
+        },
+      },
+    }),
+  };
+
+  return [
+    ...wrapReactPluginConfig(reactPlugin()),
+    commonPlugin,
+    workerReactPlugin,
+    clientReactPlugin,
+  ];
 };
