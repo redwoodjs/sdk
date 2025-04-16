@@ -1,3 +1,4 @@
+import type React from "react";
 import { isValidElementType } from "react-is";
 import { RequestInfo } from "../requestInfo/types";
 
@@ -23,7 +24,7 @@ type RouteFunction = (requestInfo: RequestInfo) => Response | Promise<Response>;
 
 type RouteComponent = (
   requestInfo: RequestInfo
-) => JSX.Element | Promise<JSX.Element>;
+) => React.JSX.Element | Promise<React.JSX.Element>;
 
 type RouteHandler =
   | RouteFunction
