@@ -131,6 +131,7 @@ export const defineApp = (routes: Route[]) => {
             Parent: ({ children }) => (
               <rw.Document {...requestInfo} children={children} />
             ),
+            nonce: rw.nonce,
           });
 
           const html = htmlStream.pipeThrough(
