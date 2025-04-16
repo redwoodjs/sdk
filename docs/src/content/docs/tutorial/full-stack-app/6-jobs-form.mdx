@@ -6,13 +6,257 @@ sidebar:
 description: A guide in my new Starlight docs site.
 ---
 
-import { Aside } from '@astrojs/starlight/components';
+import { Aside, FileTree } from '@astrojs/starlight/components';
+
+Now, that we have a way of displaying our applications, we need a way of adding new ones.
+
+First, let's take a look at our design, in Figma, and what we're building.
+
+![](./images/figma-new-application-form.png)
+
+In the last section, we set up the `/applications/new` route, but we haven't created the page.
+
+Inside the `src/app/pages/applications` folder, let's create a new file called `New.tsx`.
+
+<FileTree>
+- src/
+  - app/
+    - pages/
+      - applications/
+        - New.tsx
+</FileTree>
+
+We can stub out a basic component:
+
+```tsx title="src/app/pages/applications/New.tsx"
+import { InteriorLayout } from "@/app/layouts/InteriorLayout"
+
+const New = () => {
+  return (
+    <InteriorLayout>
+      <div>New</div>
+    </InteriorLayout>
+  )
+}
+
+export { New }
+---
+I went ahead and wrapped our component with the `InteriorLayout` component.
+---
+```
+
+In order to see the changes that we're making in the browser, we need to update our worker.
+
+```diff title="src/worker.tsx" collapse={4-7}
+import { New } from "./app/pages/applications/New";
+...
+render(Document, [
+  index([ isAuthenticated, Home ]),
+  prefix("/user", userRoutes),
+  route("/legal/privacy", () => <h1>Privacy Policy</h1>),
+  route("/legal/terms", () => <h1>Terms of Service</h1>),
+  prefix("/applications", [
+    route("/", [isAuthenticated, List]),
+-    route("/new", [isAuthenticated, () => <h1>New Application</h1>]),
++    route("/new", [isAuthenticated, New]),
+    route("/:id", [isAuthenticated, () => <h1>Application</h1>]),
+  ]),
+]),
+```
+
+Originally, we defined our `/new` route, returning an `h1` element that said "New Application". Let's change that to return our `New` component instead.
+
+Then, be sure to import the `New` component at the top of the file:
+
+```tsx title="src/worker.tsx" collapse={4-7}
+import { New } from "./app/pages/applications/New";
+```
+
+Inside our `New` component, let's start building our page.
+
+At the top, we have breadcrumbs, helping the user know where they are and navigate back.
+
+Conveniently, ShadCN has a `Breadcrumb` component that we can use.
+
+Just like the Applications Table, let's start by copying and pasting the code directly from [ShadCN's documentation](https://ui.shadcn.com/docs/components/breadcrumb) into our component:
+
+```tsx showLineNumbers={false}
+import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/app/components/ui/breadcrumb"
+...
+<Breadcrumb>
+  <BreadcrumbList>
+    <BreadcrumbItem>
+      <BreadcrumbLink href="/">Home</BreadcrumbLink>
+    </BreadcrumbItem>
+    <BreadcrumbSeparator />
+    <BreadcrumbItem>
+      <BreadcrumbLink href="/components">Components</BreadcrumbLink>
+    </BreadcrumbItem>
+    <BreadcrumbSeparator />
+    <BreadcrumbItem>
+      <BreadcrumbPage>Breadcrumb</BreadcrumbPage>
+    </BreadcrumbItem>
+  </BreadcrumbList>
+</Breadcrumb>
+```
+
+Now, we an start modifying the code to fit our needs.
+
+```diff title="src/app/pages/applications/New.tsx"
+<InteriorLayout>
+    <Breadcrumb>
+      <BreadcrumbList>
+        <BreadcrumbItem>
+-         <BreadcrumbLink href="/">Home</BreadcrumbLink>
++         <BreadcrumbLink href="/applications">Applications</BreadcrumbLink>
+        </BreadcrumbItem>
+-         <BreadcrumbSeparator />
+-         <BreadcrumbItem>
+-           <BreadcrumbLink href="/components">Components</BreadcrumbLink>
+-         </BreadcrumbItem>
+        <BreadcrumbSeparator />
+        <BreadcrumbItem>
+-          <BreadcrumbPage>Breadcrumb</BreadcrumbPage>
++          <BreadcrumbPage>Add an Application</BreadcrumbPage>
+        </BreadcrumbItem>
+      </BreadcrumbList>
+    </Breadcrumb>
+</InteriorLayout>
+```
+
+- I've adjusted the first `BreadcrumbLink` to point to the Applications list page.
+- We can get rid of the second `BreadcrumbItem`.
+- For the third `BreadcrumbItem`, I've changed the label from `Breadcrumb` to `Add an Application`.
+
+At the top of the `src/app/components/ui/breadcrumb.tsx` file, we need to add a `use client` directive, otherwise our page will error out.
+
+```tsx title="src/app/components/ui/breadcrumb.tsx"
+"use client"
+```
+
+Let's wrap our breadcrumbs with a `div` and add a few classes to adjust the spacing.
+
+```tsx title="src/app/pages/applications/New.tsx" collapse={4-14} {3,15} startLineNumber=5 "mb-12 -mt-7 pl-[120px]"
+return (
+  <InteriorLayout>
+    <div className="mb-12 -mt-7 pl-[120px]">
+      <Breadcrumb>
+        <BreadcrumbList>
+          <BreadcrumbItem>
+            <BreadcrumbLink href="/applications">Applications</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>Add an Application</BreadcrumbPage>
+          </BreadcrumbItem>
+        </BreadcrumbList>
+      </Breadcrumb>
+    </div>
+  </InteriorLayout>
+);
+```
+
+- I added `48px` of margin on the bottom with `mb-12`
+- I put a negative margin of `28px` on the top to move the breadcrumbs up.
+- I added `120px` of padding on the left.
+
+Next up, let's add our page heading:
+
+```tsx title="src/app/pages/applications/New.tsx" startLineNumber=20
+<div className="mx-page-side pb-6 mb-8 border-b-1 border-border">
+  <h1 className="page-title">New Application</h1>
+  <p className="page-description">Create a new application</p>
+</div>
+```
+
+- On the wrapping `div`, we have a few classes that adjusts the spacing and adds a border to the bottom.
+  - `mx-page-side` uses our custom utility class to add `40px` of padding on the left and right.
+  - `pb-6` adds `24px` of padding on the bottom.
+  - `mb-8` adds `32px` of margin on the bottom.
+  - `border-b-1 border-border` adds a border to the bottom of the `div`.
+- Here, we've added an `h1` that says "New Application" and has a class called `page-title`
+- Then, we have a `p` of text that says "Create a new application." I went ahead and added a class of `page-description` so that we can use this on multiple pages, but we'll need to add this class definition to our `styles.css` file.
+
+```css title="src/app/styles.css" startLineNumber={268}
+.page-description {
+  @apply text-zinc-500;
+}
+---
+This sets the default color of our `page-description` to a light gray, using class provided by Tailwind.
+---
+```
+
+Moving down the page, we have a two column form. There are parts of our form that will need state and interactivity, meaning our component will need to be a client component. Instead of making the entire page a client component, let's create a separate component, just for our form.
+
+Inside the `src/app/components` folder, let's create a new file called `ApplicationForm.tsx`.
+
+<FileTree>
+- src/
+  - app/
+    - components/
+      - ApplicationForm.tsx
+</FileTree>
+
+Stubbing out our component:
+
+```tsx title="src/app/components/ApplicationForm.tsx"
+"use client"
+
+const ApplicationsForm = () => {
+  return (
+    <div>ApplicationsForm</div>
+  )
+}
+
+export {ApplicationsForm}
+---
+You'll notice I also placed the `use client` directive at the top of the file, converting this file to a client component.
+---
+```
+
+Before we start building out our Application Form, let's add it to the `New.tsx` file.
+
+```tsx title="src/app/pages/applications/New.tsx" showLineNumbers={false} {6}
+import { ApplicationsForm } from "@/app/components/ApplicationsForm"
+...
+<div className="mx-page-side pb-6 mb-8 border-b-1 border-border">
+    <h1 className="page-title">New Application</h1>
+    <p className="page-description">Create a new application</p>
+  </div>
+  <ApplicationsForm />
+```
+
+Now, let's wrap our `<div>ApplicationsForm</div>` with a `form` tag and add some styles:
+
+```tsx title="src/app/pages/applications/New.tsx" startLineNumber=5
+<form>
+  <div className="grid grid-cols-2 gap-[200px] px-page-side mb-[75px]">
+    ApplicationForm
+  <div>
+</form>
+```
+
+- On our `div`, I added a class of `grid` and gave it two columns, `grid-cols-2`. I also put a `200px` gap between the two columns.
+- On the left and right side, I added `40px` of padding with our custom utility class, `px-page-side`.
+- Finally, I added `75px` of margin on the bottom with `mb-[75px]`.
+
+Now, let's start building out our form.
+
+```tsx title="src/app/components/ApplicationForm.tsx"
+<form>
+  <div className="grid grid-cols-2 gap-[200px] px-page-side mb-[75px]">
+    ApplicationForm
+  <div>
+</form>
+```
+
+
+
 
 - Creating the new job form with ShadCN Form components
 - Form validation
 - Handling form submission
 - Success/error states using ShadCN Toast
-- Making the form mobile-friendly
 
 <Aside type="tip" title="Code on GitHub">
 You can find the final code for this step on [GitHub](https://github.com/redwoodjs/applywize).

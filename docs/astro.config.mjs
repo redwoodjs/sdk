@@ -185,6 +185,8 @@ export default defineConfig({
                 { label: 'TailwindCSS', slug: 'guides/frontend/tailwind' },
                 { label: 'ShadCN UI', slug: 'guides/frontend/shadcn' },
                 { label: 'Layouts', slug: 'guides/frontend/layouts' },
+                { label: 'Assets', slug: 'guides/frontend/assets' },
+                { label: 'Metadata', slug: 'guides/frontend/metadata' },
               ]
             },
             {
