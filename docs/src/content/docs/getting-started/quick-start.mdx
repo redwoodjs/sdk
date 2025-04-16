@@ -136,26 +136,7 @@ Now when you navigate to [http://localhost:5173/ping](http://localhost:5173/ping
 
 ## Deploy to production
 
-RedwoodSDK is built for the Cloudflare Development Platform. To deploy your webapp to Cloudflare, first update the `name` field in `wrangler.jsonc` to match your project name. Then you can deploy with a single command.
-
-```jsonc title="wrangler.jsonc" del="__change_me__"
-{
-  // Schema reference
-  "$schema": "./node_modules/wrangler/config-schema.json",
-  "name": "__change_me__",
-  "main": "src/worker.tsx",
-  "compatibility_date": "2024-09-23",
-  "compatibility_flags": ["nodejs_compat"],
-  "assets": {
-    "binding": "ASSETS"
-  },
-  "observability": {
-    "enabled": true
-  }
-}
-```
-
-Then run the following command to deploy your webapp to Cloudflare:
+RedwoodSDK is built for the Cloudflare Development Platform. You can deploy your webapp to Cloudflare with a single command:
 
 <Tabs syncKey="package-manager">
   <TabItem label="pnpm">
