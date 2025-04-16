@@ -13,7 +13,7 @@ export const transformRscToHtmlStream = ({
   nonce?: string;
 }) => {
   const thenable = createFromReadableStream(stream, {
-    ssrManifest: {
+    serverConsumerManifest: {
       moduleMap: createModuleMap(),
       moduleLoading: null,
     },
