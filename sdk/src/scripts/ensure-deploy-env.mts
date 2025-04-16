@@ -53,6 +53,17 @@ const hasD1Database = async () => {
   return false;
 };
 
+const hasAuthSecret = async () => {
+  const files = await glob("src/**/*.{ts,tsx}", { ignore: "node_modules/**" });
+  for (const file of files) {
+    const content = await readFile(file, "utf-8");
+    if (content.includes("AUTH_SECRET_KEY")) {
+      return true;
+    }
+  }
+  return false;
+};
+
 export const ensureDeployEnv = async () => {
   const shouldDeploy = await promptForDeployment();
   if (!shouldDeploy) {
@@ -149,14 +160,14 @@ export const ensureDeployEnv = async () => {
     }
   }
 
-  // Check WebAuthn setup
-  const needsWebAuthn = await hasWebAuthn();
-  if (!needsWebAuthn) {
+  // Check AUTH_SECRET_KEY setup
+  const needsAuthSecret = await hasAuthSecret();
+  if (!needsAuthSecret) {
     console.log(
-      "Skipping WebAuthn setup - no WEBAUTHN usage detected in codebase"
+      "Skipping AUTH_SECRET_KEY setup - no AUTH_SECRET_KEY usage detected in codebase"
     );
   } else {
-    console.log("Found WEBAUTHN usage, checking WebAuthn setup...");
+    console.log("Found AUTH_SECRET_KEY usage, checking secret setup...");
     try {
       // Get list of all secrets
       const secretsResult = await $`wrangler secret list --format=json`;
@@ -175,8 +186,27 @@ export const ensureDeployEnv = async () => {
         await $`echo ${secretKey}`.pipe`wrangler secret put AUTH_SECRET_KEY`;
         console.log("Set AUTH_SECRET_KEY secret");
       }
+    } catch (error) {
+      console.error(
+        "Failed to set up AUTH_SECRET_KEY. Please configure it manually:"
+      );
+      console.error(
+        "1. Generate a secret key: node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\""
+      );
+      console.error("2. Set the secret: wrangler secret put AUTH_SECRET_KEY");
+      process.exit(1);
+    }
+  }
 
-      // Check WEBAUTHN_APP_NAME
+  // Check WebAuthn setup
+  const needsWebAuthn = await hasWebAuthn();
+  if (!needsWebAuthn) {
+    console.log(
+      "Skipping WebAuthn setup - no WEBAUTHN usage detected in codebase"
+    );
+  } else {
+    console.log("Found WEBAUTHN usage, checking WebAuthn setup...");
+    try {
       wranglerConfig.vars = wranglerConfig.vars || {};
       if (wranglerConfig.vars.WEBAUTHN_APP_NAME === wranglerConfig.name) {
         console.log(
@@ -190,11 +220,7 @@ export const ensureDeployEnv = async () => {
       }
     } catch (error) {
       console.error("Failed to set up WebAuthn. Please configure it manually:");
-      console.error(
-        "1. Generate a secret key: node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\""
-      );
-      console.error("2. Set the secret: wrangler secret put AUTH_SECRET_KEY");
-      console.error("3. Add to wrangler.jsonc vars:");
+      console.error("Add to wrangler.jsonc vars:");
       console.error(
         `   "vars": { "WEBAUTHN_APP_NAME": "${wranglerConfig.name}" }`
       );
