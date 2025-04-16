@@ -57,7 +57,7 @@ const hasAuthSecret = async () => {
   const files = await glob("src/**/*.{ts,tsx}", { ignore: "node_modules/**" });
   for (const file of files) {
     const content = await readFile(file, "utf-8");
-    if (content.includes("AUTH_SECRET_KEY")) {
+    if (content.includes("@redwoodjs/sdk/auth")) {
       return true;
     }
   }
