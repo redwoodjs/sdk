@@ -1,6 +1,6 @@
 import { $ } from "../lib/$.mjs";
 import { readFile, writeFile } from "fs/promises";
-import { resolve, basename } from "path";
+import { resolve, basename, join } from "path";
 import { randomBytes } from "crypto";
 import { glob } from "glob";
 import { parse as parseJsonc } from "jsonc-parser";
@@ -11,6 +11,7 @@ import {
   animals,
 } from "unique-names-generator";
 import * as readline from "readline";
+import { pathExists } from "fs-extra";
 
 const promptForDeployment = async (): Promise<boolean> => {
   const rl = readline.createInterface({
@@ -79,9 +80,22 @@ export const ensureDeployEnv = async () => {
     console.log("Updated wrangler.jsonc configuration");
   }
 
+  // Trigger account selection prompt if needed
+  console.log("Checking Cloudflare account setup...");
+  const accountCachePath = join(
+    process.cwd(),
+    "node_modules/.cache/wrangler/wrangler-account.json"
+  );
+
+  // todo(justinvdm): this is a hack to force the account selection prompt,
+  // we need to find a better way
+  if (!(await pathExists(accountCachePath))) {
+    await $({ stdio: "inherit" })`wrangler d1 list --json`;
+  }
+
   // Create a no-op secret to ensure worker exists
   console.log(`Ensuring worker ${wranglerConfig.name} exists...`);
-  await $({ stdio: "inherit" })`wrangler secret put TMP_WORKER_CREATED`;
+  await $`echo "true"`.pipe`wrangler secret put TMP_WORKER_CREATED`;
 
   // Check D1 database setup
   const needsDatabase = await hasD1Database();
