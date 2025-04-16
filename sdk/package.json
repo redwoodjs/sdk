@@ -1,6 +1,6 @@
 {
   "name": "@redwoodjs/sdk",
-  "version": "0.0.63",
+  "version": "0.0.63-test.0",
   "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime",
   "type": "module",
   "bin": {
@@ -118,8 +118,8 @@
     "picocolors": "^1.1.1",
     "react": "19.2.0-canary-39cad7af-20250411",
     "react-dom": "19.2.0-canary-39cad7af-20250411",
-    "react-server-dom-webpack": "19.2.0-canary-39cad7af-20250411",
     "react-is": "^19.0.0",
+    "react-server-dom-webpack": "canary",
     "rsc-html-stream": "^0.0.3",
     "tmp-promise": "^3.0.3",
     "ts-morph": "^25.0.1",
