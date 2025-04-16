@@ -30,11 +30,18 @@ export const transformJsxScriptTagsPlugin = ({
     const jsxLinkPreloadRE =
       /(jsx|jsxDEV)\("link",\s*{[^}]*(?:href:\s*["']([^"']+)["'][^}]*rel:\s*["'](preload|modulepreload)["']|rel:\s*["'](preload|modulepreload)["'][^}]*href:\s*["']([^"']+)["'])/g;
 
+    const scriptMatches = Array.from(code.matchAll(jsxScriptSrcRE));
+    const linkMatches = Array.from(code.matchAll(jsxLinkPreloadRE));
+
+    if (scriptMatches.length === 0 && linkMatches.length === 0) {
+      return;
+    }
+
     const manifest = await readManifest(manifestPath);
     const s = new MagicString(code);
 
     // Transform script src attributes
-    for (const match of code.matchAll(jsxScriptSrcRE)) {
+    for (const match of scriptMatches) {
       const src = match[2].slice("/".length);
       if (manifest[src]) {
         const transformedSrc = manifest[src].file;
@@ -43,7 +50,7 @@ export const transformJsxScriptTagsPlugin = ({
     }
 
     // Transform link href attributes
-    for (const match of code.matchAll(jsxLinkPreloadRE)) {
+    for (const match of linkMatches) {
       const href = (match[2] || match[5]).slice("/".length);
       if (manifest[href]) {
         const transformedHref = manifest[href].file;

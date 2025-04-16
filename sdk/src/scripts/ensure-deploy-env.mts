@@ -60,7 +60,6 @@ export const ensureDeployEnv = async () => {
     process.exit(1);
   }
 
-  process.env.RWSDK_DEPLOY = "1";
   console.log("Ensuring deployment environment is ready...");
 
   const pkg = JSON.parse(
