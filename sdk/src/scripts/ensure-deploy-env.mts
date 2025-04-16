@@ -53,7 +53,7 @@ const hasD1Database = async () => {
   return false;
 };
 
-const hasAuthSecret = async () => {
+const hasAuthUsage = async () => {
   const files = await glob("src/**/*.{ts,tsx}", { ignore: "node_modules/**" });
   for (const file of files) {
     const content = await readFile(file, "utf-8");
@@ -161,13 +161,12 @@ export const ensureDeployEnv = async () => {
   }
 
   // Check AUTH_SECRET_KEY setup
-  const needsAuthSecret = await hasAuthSecret();
-  if (!needsAuthSecret) {
+  if (!(await hasAuthUsage())) {
     console.log(
-      "Skipping AUTH_SECRET_KEY setup - no AUTH_SECRET_KEY usage detected in codebase"
+      "Skipping AUTH_SECRET_KEY setup - no auth usage detected in codebase"
     );
   } else {
-    console.log("Found AUTH_SECRET_KEY usage, checking secret setup...");
+    console.log("Found auth usage, checking secret setup...");
     try {
       // Get list of all secrets
       const secretsResult = await $`wrangler secret list --format=json`;
