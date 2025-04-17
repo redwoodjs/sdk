@@ -201,28 +201,6 @@ export const reactConditionsResolverPlugin = async ({
   logImports("worker", workerImports);
   logImports("client", clientImports);
 
-  // Helper function to create esbuild plugins from import mappings
-  const createEsbuildPlugin = (
-    env: string,
-    imports: Record<string, string>
-  ) => {
-    return {
-      name: `rwsdk:${env}:react-conditions:${mode}`,
-      setup(build: any) {
-        Object.entries(imports).forEach(([id, path]) => {
-          build.onResolve(
-            { filter: new RegExp(`^${id.replace(/\//g, "\\/")}$`) },
-            (args: any) => {
-              log(`esbuild ${env} resolving ${id} (${mode}) -> %s`, path);
-              return { path };
-            }
-          );
-        });
-      },
-    };
-  };
-
-  // Helper to configure an environment
   const configureEnvironment = (
     name: string,
     config: EnvironmentOptions,
@@ -232,12 +210,7 @@ export const reactConditionsResolverPlugin = async ({
       `Applying React conditions resolver for ${name} environment in ${mode} mode`
     );
 
-    // Mutate optimizeDeps.esbuildOptions
     (config.optimizeDeps ??= {}).esbuildOptions ??= {};
-    //config.optimizeDeps.esbuildOptions.plugins = [
-    //  ...(config.optimizeDeps.esbuildOptions.plugins || []),
-    //  createEsbuildPlugin(name, imports),
-    //];
 
     // Add define for process.env.NODE_ENV
     config.optimizeDeps.esbuildOptions.define = {
