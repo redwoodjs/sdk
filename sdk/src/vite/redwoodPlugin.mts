@@ -13,7 +13,7 @@ import { copyPrismaWasmPlugin } from "./copyPrismaWasmPlugin.mjs";
 import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
 import { configPlugin } from "./configPlugin.mjs";
 import { $ } from "../lib/$.mjs";
-import { customReactBuildPlugin } from "./customReactBuildPlugin.mjs";
+import { reactConditionsResolverPlugin } from "./reactConditionsResolverPlugin.mjs";
 import { invalidateCacheIfPrismaClientChanged } from "./invalidateCacheIfPrismaClientChanged.mjs";
 import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
 import { pathExists } from "fs-extra";
@@ -85,7 +85,7 @@ export const redwoodPlugin = async (
       workerEntryPathname,
       isUsingPrisma,
     }),
-    customReactBuildPlugin({ projectRootDir }),
+    reactConditionsResolverPlugin({ projectRootDir, mode }),
     tsconfigPaths({ root: projectRootDir }),
     miniflarePlugin({
       rootDir: projectRootDir,
