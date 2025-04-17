@@ -237,6 +237,20 @@ export const reactConditionsResolverPlugin = async ({
     name: `rwsdk:react-conditions-resolver:${mode}`,
     enforce: "post",
 
+    async resolveId(source: string) {
+      // Use worker or client imports based on environment
+      const imports =
+        this.environment?.name === "worker" ? workerImports : clientImports;
+
+      if (imports[source]) {
+        log(
+          `resolveId (${this.environment?.name}): Resolving ${source} -> ${imports[source]}`
+        );
+        return imports[source];
+      }
+      return null;
+    },
+
     configEnvironment(name: string, config: EnvironmentOptions) {
       if (name === "worker") {
         configureEnvironment("worker", config, workerImports);
