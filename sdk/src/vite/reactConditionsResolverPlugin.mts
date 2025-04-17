@@ -16,7 +16,6 @@ const WORKER_PACKAGES = [
   "react-dom",
   "react/jsx-runtime",
   "react/jsx-dev-runtime",
-  "react-server-dom-webpack/client.browser",
   "react-server-dom-webpack/client.edge",
   "react-server-dom-webpack/server.edge",
 ];
@@ -186,11 +185,33 @@ export const reactConditionsResolverPlugin = async ({
       createEsbuildPlugin(name, imports),
     ];
 
-    // Mutate resolve.alias
-    ((config.resolve ??= {}) as any).alias = {
-      ...((config.resolve ??= {}) as any).alias,
-      ...imports,
-    };
+    // Initialize resolve config if needed
+    config.resolve ??= {};
+
+    // Initialize alias if it doesn't exist
+    (config.resolve as any).alias ??= [];
+
+    // If alias is an object, convert it to array while preserving entries
+    if (!Array.isArray((config.resolve as any).alias)) {
+      const existingAlias = (config.resolve as any).alias;
+      (config.resolve as any).alias = Object.entries(existingAlias).map(
+        ([find, replacement]) => ({ find, replacement })
+      );
+    }
+
+    // Add each package import as a separate alias entry
+    Object.entries(imports).forEach(([id, resolvedPath]) => {
+      const exactMatchRegex = new RegExp(
+        `^${id.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`
+      );
+
+      (config.resolve as any).alias.push({
+        find: exactMatchRegex,
+        replacement: resolvedPath,
+      });
+
+      log(`${name}: Added alias for ${id} -> ${resolvedPath}`);
+    });
   };
 
   return {
