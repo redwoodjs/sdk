@@ -3,46 +3,53 @@ import { mkdirp, copy } from "fs-extra";
 import { Plugin, PluginOption } from "vite";
 import { VENDOR_DIST_DIR } from "../lib/constants.mjs";
 import reactPlugin from "@vitejs/plugin-react";
+import createDebugger from "debug";
+
+const debug = createDebugger("rwsdk:vite:react");
 
 const copyReactFiles = async (viteDistDir: string) => {
   await mkdirp(viteDistDir);
 
   const vendorBundles = [
-    ["react.worker", "worker"],
-    ["react.client", "client"],
-    ["react-dom-server-edge", null],
-    ["jsx-runtime.worker", "worker"],
-    ["jsx-runtime.client", "client"],
-    ["jsx-dev-runtime.worker", "worker"],
-    ["jsx-dev-runtime.client", "client"],
+    "react",
+    "react-dom",
+    "jsx-runtime",
+    "jsx-dev-runtime",
   ] as const;
 
   for (const mode of ["development", "production"] as const) {
-    for (const [bundle, env] of vendorBundles) {
-      const fileName = `${bundle}.${mode}.js`;
-      await copy(
-        resolve(VENDOR_DIST_DIR, fileName),
-        resolve(viteDistDir, fileName)
-      );
-      await copy(
-        resolve(VENDOR_DIST_DIR, `${fileName}.map`),
-        resolve(viteDistDir, `${fileName}.map`)
-      );
+    for (const env of ["worker", "client"] as const) {
+      for (const bundle of vendorBundles) {
+        const fileName = `${bundle}.${env}.${mode}.js`;
+        await copy(
+          resolve(VENDOR_DIST_DIR, fileName),
+          resolve(viteDistDir, fileName)
+        );
+        await copy(
+          resolve(VENDOR_DIST_DIR, `${fileName}.map`),
+          resolve(viteDistDir, `${fileName}.map`)
+        );
+      }
     }
   }
 };
 
 const createJsxRuntimeEsbuildPlugin = (
   viteDistDir: string,
-  mode: "development" | "production"
+  mode: "development" | "production",
+  environment: "worker" | "client"
 ) => ({
   name: "rwsdk:rewrite-jsx-runtime-imports",
   setup(build: any) {
     build.onResolve({ filter: /^react\/jsx-runtime$/ }, () => ({
-      path: resolve(viteDistDir, `jsx-runtime.${mode}.js`),
+      path: resolve(viteDistDir, `jsx-runtime.${environment}.${mode}.js`),
     }));
     build.onResolve({ filter: /^react\/jsx-dev-runtime$/ }, () => ({
-      path: resolve(viteDistDir, `jsx-dev-runtime.${mode}.js`),
+      path: resolve(viteDistDir, `jsx-dev-runtime.${environment}.${mode}.js`),
+    }));
+    // Also handle react imports from within the JSX runtime
+    build.onResolve({ filter: /^react$/ }, () => ({
+      path: resolve(viteDistDir, `react.${environment}.${mode}.js`),
     }));
   },
 });
@@ -106,15 +113,22 @@ export const customReactBuildPlugin = async ({
   );
 
   const resolveVendorBundle = (name: string, env: "worker" | "client") => {
-    if (name === "react") {
-      return resolve(viteDistDir, `react.${env}.${mode}.js`);
-    }
-    if (name.startsWith("jsx")) {
-      return resolve(viteDistDir, `${name}.${env}.${mode}.js`);
-    }
-    return resolve(viteDistDir, `${name}.${mode}.js`);
+    const resolved = (() => {
+      switch (name) {
+        case "react":
+          return resolve(viteDistDir, `react.${env}.${mode}.js`);
+        case "jsx-runtime":
+        case "jsx-dev-runtime":
+          return resolve(viteDistDir, `${name}.${env}.${mode}.js`);
+        default:
+          return resolve(viteDistDir, `${name}.${env}.${mode}.js`);
+      }
+    })();
+    debug("resolved %s for env %s to %s", name, env, resolved);
+    return resolved;
   };
 
+  debug("initializing with mode %s", mode);
   await copyReactFiles(viteDistDir);
 
   const commonPlugin: Plugin = {
@@ -123,10 +137,12 @@ export const customReactBuildPlugin = async ({
     resolveId(id) {
       if (id === "react/jsx-runtime") {
         const env = this.environment.name as "worker" | "client";
+        debug("resolving jsx-runtime for env %s", env);
         return resolveVendorBundle("jsx-runtime", env);
       }
       if (id === "react/jsx-dev-runtime") {
         const env = this.environment.name as "worker" | "client";
+        debug("resolving jsx-dev-runtime for env %s", env);
         return resolveVendorBundle("jsx-dev-runtime", env);
       }
     },
@@ -137,7 +153,7 @@ export const customReactBuildPlugin = async ({
             esbuildOptions: {
               plugins: [
                 {
-                  ...createJsxRuntimeEsbuildPlugin(viteDistDir, mode),
+                  ...createJsxRuntimeEsbuildPlugin(viteDistDir, mode, "worker"),
                   name: "rwsdk:worker:rewrite-jsx-runtime-imports",
                 },
               ],
@@ -149,7 +165,7 @@ export const customReactBuildPlugin = async ({
             esbuildOptions: {
               plugins: [
                 {
-                  ...createJsxRuntimeEsbuildPlugin(viteDistDir, mode),
+                  ...createJsxRuntimeEsbuildPlugin(viteDistDir, mode, "client"),
                   name: "rwsdk:client:rewrite-jsx-runtime-imports",
                 },
               ],
@@ -171,10 +187,12 @@ export const customReactBuildPlugin = async ({
     },
     resolveId(id) {
       if (id === "react") {
+        debug("resolving react for worker");
         return resolveVendorBundle("react", "worker");
       }
       if (id === "react-dom/server.edge" || id === "react-dom/server") {
-        return resolveVendorBundle("react-dom-server-edge", "worker");
+        debug("resolving react-dom server for worker");
+        return resolveVendorBundle("react-dom", "worker");
       }
     },
     config: () => ({
@@ -192,10 +210,7 @@ export const customReactBuildPlugin = async ({
                     build.onResolve(
                       { filter: /^react-dom\/server\.edge$/ },
                       () => ({
-                        path: resolveVendorBundle(
-                          "react-dom-server-edge",
-                          "worker"
-                        ),
+                        path: resolveVendorBundle("react-dom", "worker"),
                       })
                     );
                   },
@@ -212,11 +227,17 @@ export const customReactBuildPlugin = async ({
     name: "rwsdk:client-react",
     enforce: "pre",
     applyToEnvironment: (environment) => {
+      debug("checking if plugin applies to env %s", environment.name);
       return environment.name === "client";
     },
     resolveId(id) {
       if (id === "react") {
+        debug("resolving react for client");
         return resolveVendorBundle("react", "client");
+      }
+      if (id === "react-dom") {
+        debug("resolving react-dom for client");
+        return resolveVendorBundle("react-dom", "client");
       }
     },
     config: () => ({
@@ -231,6 +252,9 @@ export const customReactBuildPlugin = async ({
                     build.onResolve({ filter: /^react$/ }, () => ({
                       path: resolveVendorBundle("react", "client"),
                     }));
+                    build.onResolve({ filter: /^react-dom$/ }, () => ({
+                      path: resolveVendorBundle("react-dom", "client"),
+                    }));
                   },
                 },
               ],
@@ -241,6 +265,7 @@ export const customReactBuildPlugin = async ({
     }),
   };
 
+  debug("returning plugins");
   return [
     ...wrapReactPluginConfig(reactPlugin()),
     commonPlugin,
