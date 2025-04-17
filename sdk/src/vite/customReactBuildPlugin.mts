@@ -187,14 +187,12 @@ export const customReactBuildPlugin = async ({
     name: "rwsdk:custom-react-build",
     enforce: "pre",
     applyToEnvironment: (environment) => {
+      debug("checking if plugin applies to env %s", environment.name);
       return environment.name === "worker";
     },
-    async configureServer() {
-      await copyReactFiles(viteDistDir);
-    },
     resolveId(id) {
+      debug("worker plugin resolving id %s", id);
       if (id === "react") {
-        debug("resolving react for worker");
         return resolveVendorBundle("react", "worker");
       }
       if (id === "react-dom/server.edge" || id === "react-dom/server") {
@@ -211,21 +209,20 @@ export const customReactBuildPlugin = async ({
                 {
                   name: "rwsdk:worker:rewrite-react-imports",
                   setup(build) {
-                    debug("setting up worker react esbuild plugin");
                     build.onResolve({ filter: /^react$/ }, (args) => {
                       debug("worker esbuild resolving react: %o", args);
                       return { path: resolveVendorBundle("react", "worker") };
                     });
                     build.onResolve(
-                      { filter: /^react-dom(\/.*)?$/ },
+                      { filter: /^react-dom\/(server\.edge|server)$/ },
                       (args) => {
-                        debug("worker esbuild resolving react-dom: %o", args);
-                        const resolved = resolveVendorBundle(
-                          "react-dom",
-                          "worker"
+                        debug(
+                          "worker esbuild resolving react-dom server: %o",
+                          args
                         );
-                        debug("resolved to: %s", resolved);
-                        return { path: resolved };
+                        return {
+                          path: resolveVendorBundle("react-dom", "worker"),
+                        };
                       }
                     );
                   },
@@ -247,13 +244,11 @@ export const customReactBuildPlugin = async ({
     },
     resolveId(id) {
       debug("client plugin resolving id %s", id);
-
       if (id === "react") {
-        debug("resolving react for client");
         return resolveVendorBundle("react", "client");
       }
-      if (id === "react-dom") {
-        debug("resolving react-dom for client");
+      if (id === "react-dom/client") {
+        debug("resolving react-dom client");
         return resolveVendorBundle("react-dom", "client");
       }
     },
@@ -266,21 +261,20 @@ export const customReactBuildPlugin = async ({
                 {
                   name: "rwsdk:client:rewrite-react-imports",
                   setup(build) {
-                    debug("setting up client react esbuild plugin");
                     build.onResolve({ filter: /^react$/ }, (args) => {
                       debug("client esbuild resolving react: %o", args);
                       return { path: resolveVendorBundle("react", "client") };
                     });
                     build.onResolve(
-                      { filter: /^react-dom(\/.*)?$/ },
+                      { filter: /^react-dom\/client$/ },
                       (args) => {
-                        debug("client esbuild resolving react-dom: %o", args);
-                        const resolved = resolveVendorBundle(
-                          "react-dom",
-                          "client"
+                        debug(
+                          "client esbuild resolving react-dom client: %o",
+                          args
                         );
-                        debug("resolved to: %s", resolved);
-                        return { path: resolved };
+                        return {
+                          path: resolveVendorBundle("react-dom", "client"),
+                        };
                       }
                     );
                   },
