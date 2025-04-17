@@ -40,6 +40,14 @@ const SKIP_REACT_SERVER = [
   "react-dom/server.browser",
 ];
 
+// Global server packages that need aliases regardless of environment
+const GLOBAL_SERVER_PACKAGES = [
+  "react-dom/server.edge",
+  "react-dom/server",
+  "react-server-dom-webpack/server.edge",
+  "react-server-dom-webpack/client.edge",
+];
+
 export const reactConditionsResolverPlugin = async ({
   projectRootDir,
   mode = "development",
@@ -270,14 +278,7 @@ export const reactConditionsResolverPlugin = async ({
       }
 
       // Add global aliases for server packages
-      const serverAliases = [
-        "react-dom/server.edge",
-        "react-dom/server",
-        "react-server-dom-webpack/server.edge",
-        "react-server-dom-webpack/client.edge",
-      ];
-
-      for (const id of serverAliases) {
+      for (const id of GLOBAL_SERVER_PACKAGES) {
         const resolvedPath = workerImports[id];
         if (resolvedPath) {
           const exactMatchRegex = new RegExp(
