@@ -16,6 +16,7 @@ const copyReactFiles = async (viteDistDir: string) => {
     "react-dom",
     "jsx-runtime",
     "jsx-dev-runtime",
+    "react-server-dom-webpack",
   ] as const;
 
   // Copy environment-specific bundles
@@ -133,7 +134,10 @@ export const customReactBuildPlugin = async ({
     ".vite_redwoodjs_sdk"
   );
 
-  const resolveVendorBundle = (name: string, env: "worker" | "client") => {
+  const resolveVendorBundle = (
+    name: string,
+    env: "worker" | "client" | null
+  ) => {
     const resolved = (() => {
       switch (name) {
         case "react":
@@ -143,6 +147,11 @@ export const customReactBuildPlugin = async ({
         case "jsx-runtime":
         case "jsx-dev-runtime":
           return resolve(viteDistDir, `${name}.${env}.${mode}.js`);
+        case "react-server-dom-webpack":
+          return resolve(
+            viteDistDir,
+            `react-server-dom-webpack.${env}.${mode}.js`
+          );
         default:
           return resolve(viteDistDir, `${name}.${env}.${mode}.js`);
       }
@@ -211,15 +220,14 @@ export const customReactBuildPlugin = async ({
       if (id === "react") {
         return resolveVendorBundle("react", "worker");
       }
-      // Base react-dom gets the worker variant (with react-server condition)
       if (id === "react-dom") {
-        debug("resolving base react-dom to worker variant");
         return resolveVendorBundle("react-dom", "worker");
       }
-      // Server entrypoints get the server variant (without react-server condition)
       if (id === "react-dom/server.edge" || id === "react-dom/server") {
-        debug("resolving react-dom server entrypoints to server variant");
-        return resolveVendorBundle("react-dom.server", "worker");
+        return resolveVendorBundle("react-dom.server", null);
+      }
+      if (id === "react-server-dom-webpack/server.edge") {
+        return resolveVendorBundle("react-server-dom-webpack", "worker");
       }
     },
     config: () => ({
@@ -259,6 +267,21 @@ export const customReactBuildPlugin = async ({
                         };
                       }
                     );
+                    build.onResolve(
+                      { filter: /^react-server-dom-webpack\/server\.edge$/ },
+                      (args) => {
+                        debug(
+                          "worker esbuild resolving react-server-dom-webpack server: %o",
+                          args
+                        );
+                        return {
+                          path: resolveVendorBundle(
+                            "react-server-dom-webpack",
+                            "worker"
+                          ),
+                        };
+                      }
+                    );
                   },
                 },
               ],
@@ -282,8 +305,10 @@ export const customReactBuildPlugin = async ({
         return resolveVendorBundle("react", "client");
       }
       if (id === "react-dom/client") {
-        debug("resolving react-dom client");
         return resolveVendorBundle("react-dom", "client");
+      }
+      if (id === "react-server-dom-webpack/client.browser") {
+        return resolveVendorBundle("react-server-dom-webpack", "client");
       }
     },
     config: () => ({
@@ -308,6 +333,21 @@ export const customReactBuildPlugin = async ({
                         );
                         return {
                           path: resolveVendorBundle("react-dom", "client"),
+                        };
+                      }
+                    );
+                    build.onResolve(
+                      { filter: /^react-server-dom-webpack\/client\.browser$/ },
+                      (args) => {
+                        debug(
+                          "client esbuild resolving react-server-dom-webpack client: %o",
+                          args
+                        );
+                        return {
+                          path: resolveVendorBundle(
+                            "react-server-dom-webpack",
+                            "client"
+                          ),
                         };
                       }
                     );

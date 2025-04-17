@@ -167,6 +167,45 @@ const configs = {
       },
       resolve: env === "worker" ? { conditions: ["react-server"] } : undefined,
     }),
+
+  // Add these new configs
+  rsdwClient: (mode: "development" | "production"): InlineConfig =>
+    mergeConfig(createConfig(mode)(), {
+      build: {
+        outDir: VENDOR_DIST_DIR,
+        lib: {
+          entry: resolve(VENDOR_SRC_DIR, "react-server-dom-webpack.client.js"),
+          name: "react-server-dom-webpack-client",
+          formats: ["es"],
+          fileName: () => `react-server-dom-webpack.client.${mode}.js`,
+        },
+        rollupOptions: {
+          external: ["react", "react-dom"],
+        },
+      },
+      resolve: {
+        conditions: ["browser", "import"],
+      },
+    }),
+
+  rsdwWorker: (mode: "development" | "production"): InlineConfig =>
+    mergeConfig(createConfig(mode)(), {
+      build: {
+        outDir: VENDOR_DIST_DIR,
+        lib: {
+          entry: resolve(VENDOR_SRC_DIR, "react-server-dom-webpack.worker.js"),
+          name: "react-server-dom-webpack-server",
+          formats: ["es"],
+          fileName: () => `react-server-dom-webpack.worker.${mode}.js`,
+        },
+        rollupOptions: {
+          external: ["react", "react-dom"],
+        },
+      },
+      resolve: {
+        conditions: ["react-server"],
+      },
+    }),
 };
 
 export const buildVendorBundles = async () => {
@@ -185,6 +224,8 @@ export const buildVendorBundles = async () => {
     await build(configs.reactDomServer(mode));
     await build(configs.reactDomWorker(mode));
     await build(configs.reactDomClient(mode));
+    await build(configs.rsdwClient(mode));
+    await build(configs.rsdwWorker(mode));
 
     for (const env of envs) {
       await build(configs.jsxRuntime(mode, env));
