@@ -78,19 +78,17 @@ export const reactConditionsResolverPlugin = async ({
       const baseResolved = sdkRequire.resolve("react-dom");
       const packageDir = path.dirname(baseResolved);
 
-      // Resolve directly to the edge production file
-      const edgeProductionPath = path.join(
-        packageDir,
-        "cjs",
-        "react-dom-server.edge.production.js"
-      );
-      if (await pathExists(edgeProductionPath)) {
-        log(
-          "Using edge production server for %s: %s",
-          packageName,
-          edgeProductionPath
-        );
-        return edgeProductionPath;
+      // Determine which file to use based on mode
+      const edgeFileName =
+        mode === "development"
+          ? "react-dom-server.edge.development.js"
+          : "react-dom-server.edge.production.js";
+
+      const edgePath = path.join(packageDir, "cjs", edgeFileName);
+
+      if (await pathExists(edgePath)) {
+        log("Using edge %s server for %s: %s", mode, packageName, edgePath);
+        return edgePath;
       }
     }
 
