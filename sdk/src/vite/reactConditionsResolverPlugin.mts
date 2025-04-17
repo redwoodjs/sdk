@@ -256,6 +256,44 @@ export const reactConditionsResolverPlugin = async ({
     name: `rwsdk:react-conditions-resolver:${mode}`,
     enforce: "post",
 
+    config(config) {
+      // Initialize resolve config and alias if needed
+      config.resolve ??= {};
+      (config.resolve as any).alias ??= [];
+
+      // Convert alias to array if it's an object
+      if (!Array.isArray((config.resolve as any).alias)) {
+        const existingAlias = (config.resolve as any).alias;
+        (config.resolve as any).alias = Object.entries(existingAlias).map(
+          ([find, replacement]) => ({ find, replacement })
+        );
+      }
+
+      // Add global aliases for server packages
+      const serverAliases = [
+        "react-dom/server.edge",
+        "react-dom/server",
+        "react-server-dom-webpack/server.edge",
+        "react-server-dom-webpack/client.edge",
+      ];
+
+      for (const id of serverAliases) {
+        const resolvedPath = workerImports[id];
+        if (resolvedPath) {
+          const exactMatchRegex = new RegExp(
+            `^${id.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`
+          );
+          (config.resolve as any).alias.push({
+            find: exactMatchRegex,
+            replacement: resolvedPath,
+          });
+          log(`Global: Added alias for ${id} -> ${resolvedPath}`);
+        }
+      }
+
+      return config;
+    },
+
     configEnvironment(name: string, config: EnvironmentOptions) {
       console.log("###### configEnvironment");
       if (name === "client") {
