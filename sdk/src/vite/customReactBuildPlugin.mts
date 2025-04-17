@@ -41,16 +41,23 @@ const createJsxRuntimeEsbuildPlugin = (
 ) => ({
   name: "rwsdk:rewrite-jsx-runtime-imports",
   setup(build: any) {
-    build.onResolve({ filter: /^react\/jsx-runtime$/ }, () => ({
-      path: resolve(viteDistDir, `jsx-runtime.${environment}.${mode}.js`),
-    }));
-    build.onResolve({ filter: /^react\/jsx-dev-runtime$/ }, () => ({
-      path: resolve(viteDistDir, `jsx-dev-runtime.${environment}.${mode}.js`),
-    }));
-    // Also handle react imports from within the JSX runtime
-    build.onResolve({ filter: /^react$/ }, () => ({
-      path: resolve(viteDistDir, `react.${environment}.${mode}.js`),
-    }));
+    debug("setting up jsx runtime esbuild plugin for %s env", environment);
+    build.onResolve({ filter: /^react\/jsx-runtime$/ }, (args: any) => {
+      debug("jsx runtime esbuild resolving jsx-runtime: %o", args);
+      return {
+        path: resolve(viteDistDir, `jsx-runtime.${environment}.${mode}.js`),
+      };
+    });
+    build.onResolve({ filter: /^react\/jsx-dev-runtime$/ }, (args: any) => {
+      debug("jsx runtime esbuild resolving jsx-dev-runtime: %o", args);
+      return {
+        path: resolve(viteDistDir, `jsx-dev-runtime.${environment}.${mode}.js`),
+      };
+    });
+    build.onResolve({ filter: /^react$/ }, (args: any) => {
+      debug("jsx runtime esbuild resolving react: %o", args);
+      return { path: resolve(viteDistDir, `react.${environment}.${mode}.js`) };
+    });
   },
 });
 
@@ -202,16 +209,24 @@ export const customReactBuildPlugin = async ({
             esbuildOptions: {
               plugins: [
                 {
-                  name: "rwsdk:rewrite-react-imports",
+                  name: "rwsdk:worker:rewrite-react-imports",
                   setup(build) {
-                    build.onResolve({ filter: /^react$/ }, () => ({
-                      path: resolveVendorBundle("react", "worker"),
-                    }));
+                    debug("setting up worker react esbuild plugin");
+                    build.onResolve({ filter: /^react$/ }, (args) => {
+                      debug("worker esbuild resolving react: %o", args);
+                      return { path: resolveVendorBundle("react", "worker") };
+                    });
                     build.onResolve(
-                      { filter: /^react-dom\/server\.edge$/ },
-                      () => ({
-                        path: resolveVendorBundle("react-dom", "worker"),
-                      })
+                      { filter: /^react-dom(\/.*)?$/ },
+                      (args) => {
+                        debug("worker esbuild resolving react-dom: %o", args);
+                        const resolved = resolveVendorBundle(
+                          "react-dom",
+                          "worker"
+                        );
+                        debug("resolved to: %s", resolved);
+                        return { path: resolved };
+                      }
                     );
                   },
                 },
@@ -231,6 +246,8 @@ export const customReactBuildPlugin = async ({
       return environment.name === "client";
     },
     resolveId(id) {
+      debug("client plugin resolving id %s", id);
+
       if (id === "react") {
         debug("resolving react for client");
         return resolveVendorBundle("react", "client");
@@ -249,12 +266,23 @@ export const customReactBuildPlugin = async ({
                 {
                   name: "rwsdk:client:rewrite-react-imports",
                   setup(build) {
-                    build.onResolve({ filter: /^react$/ }, () => ({
-                      path: resolveVendorBundle("react", "client"),
-                    }));
-                    build.onResolve({ filter: /^react-dom$/ }, () => ({
-                      path: resolveVendorBundle("react-dom", "client"),
-                    }));
+                    debug("setting up client react esbuild plugin");
+                    build.onResolve({ filter: /^react$/ }, (args) => {
+                      debug("client esbuild resolving react: %o", args);
+                      return { path: resolveVendorBundle("react", "client") };
+                    });
+                    build.onResolve(
+                      { filter: /^react-dom(\/.*)?$/ },
+                      (args) => {
+                        debug("client esbuild resolving react-dom: %o", args);
+                        const resolved = resolveVendorBundle(
+                          "react-dom",
+                          "client"
+                        );
+                        debug("resolved to: %s", resolved);
+                        return { path: resolved };
+                      }
+                    );
                   },
                 },
               ],
