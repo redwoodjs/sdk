@@ -10,17 +10,6 @@ export const debugSync = async () => {
     process.exit(1);
   }
 
-  // If --build flag is present, only run build in target dir
-  if (flags.has("--build")) {
-    console.log("🏗️ Running build in target directory...");
-    await $({
-      stdio: "inherit",
-      shell: true,
-      cwd: targetDir,
-    })`npm run build`;
-    return;
-  }
-
   const syncCommand = `echo 🏗️ rebuilding... && pnpm build && rm -rf ${targetDir}/node_modules/@redwoodjs/sdk/{dist,vendor} && cp -r dist ${targetDir}/node_modules/@redwoodjs/sdk/ && cp -r vendor ${targetDir}/node_modules/@redwoodjs/sdk/ && echo ✅ done`;
 
   // Run initial sync
@@ -45,6 +34,13 @@ export const debugSync = async () => {
       stdio: "inherit",
       shell: true,
     })`npx chokidar-cli './src/**' './vendor/**' -c "${syncCommand}"`;
+  } else if (flags.has("--build")) {
+    console.log("🏗️ Running build in target directory...");
+    await $({
+      stdio: "inherit",
+      shell: true,
+      cwd: targetDir,
+    })`npm run build`;
   }
 };
 

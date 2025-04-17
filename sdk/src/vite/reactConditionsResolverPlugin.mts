@@ -64,22 +64,11 @@ export const reactConditionsResolverPlugin = async ({
       const baseResolved = sdkRequire.resolve("react-dom");
       const packageDir = path.dirname(baseResolved);
 
-      // For server.edge, explicitly look for the edge file
-      if (packageName === "react-dom/server.edge") {
-        const edgePath = path.join(packageDir, "server.edge.js");
-        if (await pathExists(edgePath)) {
-          log("Using edge server for %s: %s", packageName, edgePath);
-          return edgePath;
-        }
-      }
-
-      // For regular server, use node version
-      if (packageName === "react-dom/server") {
-        const serverPath = path.join(packageDir, "server.node.js");
-        if (await pathExists(serverPath)) {
-          log("Using node server for %s: %s", packageName, serverPath);
-          return serverPath;
-        }
+      // Always use the edge version for both server and server.edge
+      const edgePath = path.join(packageDir, "server.edge.js");
+      if (await pathExists(edgePath)) {
+        log("Using edge server for %s: %s", packageName, edgePath);
+        return edgePath;
       }
     }
 
@@ -268,13 +257,16 @@ export const reactConditionsResolverPlugin = async ({
     enforce: "post",
 
     configEnvironment(name: string, config: EnvironmentOptions) {
+      console.log("###### configEnvironment");
+      if (name === "client") {
+        configureEnvironment("client", config, clientImports);
+      }
+
       if (name === "worker") {
         configureEnvironment("worker", config, workerImports);
       }
 
-      if (name === "client") {
-        configureEnvironment("client", config, clientImports);
-      }
+      console.log("###", name);
     },
   };
 };
