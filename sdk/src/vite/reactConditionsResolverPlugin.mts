@@ -51,11 +51,17 @@ const GLOBAL_SERVER_PACKAGES = [
 export const reactConditionsResolverPlugin = async ({
   projectRootDir,
   mode = "development",
+  command = "serve",
 }: {
   projectRootDir: string;
   mode?: "development" | "production";
+  command?: "build" | "serve";
 }): Promise<Plugin> => {
-  log("Initializing React conditions resolver plugin in %s mode", mode);
+  log(
+    "Initializing React conditions resolver plugin in %s mode for %s",
+    mode,
+    command
+  );
 
   // Create a require function to resolve node modules from the SDK
   const sdkRequire = createRequire(
@@ -72,11 +78,19 @@ export const reactConditionsResolverPlugin = async ({
       const baseResolved = sdkRequire.resolve("react-dom");
       const packageDir = path.dirname(baseResolved);
 
-      // Always use the edge version for both server and server.edge
-      const edgePath = path.join(packageDir, "server.edge.js");
-      if (await pathExists(edgePath)) {
-        log("Using edge server for %s: %s", packageName, edgePath);
-        return edgePath;
+      // Resolve directly to the edge production file
+      const edgeProductionPath = path.join(
+        packageDir,
+        "cjs",
+        "react-dom-server.edge.production.js"
+      );
+      if (await pathExists(edgeProductionPath)) {
+        log(
+          "Using edge production server for %s: %s",
+          packageName,
+          edgeProductionPath
+        );
+        return edgeProductionPath;
       }
     }
 
