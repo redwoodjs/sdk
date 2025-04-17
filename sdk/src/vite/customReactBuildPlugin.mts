@@ -124,6 +124,8 @@ export const customReactBuildPlugin = async ({
       switch (name) {
         case "react":
           return resolve(viteDistDir, `react.${env}.${mode}.js`);
+        case "react-dom.server":
+          return resolve(viteDistDir, `react-dom.server.${mode}.js`);
         case "jsx-runtime":
         case "jsx-dev-runtime":
           return resolve(viteDistDir, `${name}.${env}.${mode}.js`);
@@ -195,9 +197,15 @@ export const customReactBuildPlugin = async ({
       if (id === "react") {
         return resolveVendorBundle("react", "worker");
       }
-      if (id === "react-dom/server.edge" || id === "react-dom/server") {
-        debug("resolving react-dom server for worker");
+      // Base react-dom gets the worker variant (with react-server condition)
+      if (id === "react-dom") {
+        debug("resolving base react-dom to worker variant");
         return resolveVendorBundle("react-dom", "worker");
+      }
+      // Server entrypoints get the server variant (without react-server condition)
+      if (id === "react-dom/server.edge" || id === "react-dom/server") {
+        debug("resolving react-dom server entrypoints to server variant");
+        return resolveVendorBundle("react-dom.server", "worker");
       }
     },
     config: () => ({
@@ -213,6 +221,15 @@ export const customReactBuildPlugin = async ({
                       debug("worker esbuild resolving react: %o", args);
                       return { path: resolveVendorBundle("react", "worker") };
                     });
+                    build.onResolve({ filter: /^react-dom$/ }, (args) => {
+                      debug(
+                        "worker esbuild resolving base react-dom: %o",
+                        args
+                      );
+                      return {
+                        path: resolveVendorBundle("react-dom", "worker"),
+                      };
+                    });
                     build.onResolve(
                       { filter: /^react-dom\/(server\.edge|server)$/ },
                       (args) => {
@@ -221,7 +238,10 @@ export const customReactBuildPlugin = async ({
                           args
                         );
                         return {
-                          path: resolveVendorBundle("react-dom", "worker"),
+                          path: resolveVendorBundle(
+                            "react-dom.server",
+                            "worker"
+                          ),
                         };
                       }
                     );

@@ -58,23 +58,39 @@ const configs = {
         },
       },
     }),
-  reactDom: (
-    mode: "development" | "production",
-    env: "worker" | "client"
-  ): InlineConfig =>
+  reactDomWorker: (mode: "development" | "production"): InlineConfig =>
     mergeConfig(createConfig(mode)(), {
       build: {
         outDir: VENDOR_DIST_DIR,
         lib: {
-          entry: resolve(VENDOR_SRC_DIR, `react-dom.${env}.js`),
+          entry: resolve(VENDOR_SRC_DIR, "react-dom.worker.js"),
           name: "react-dom",
           formats: ["es"],
-          fileName: () => `react-dom.${env}.${mode}.js`,
+          fileName: () => `react-dom.worker.${mode}.js`,
         },
         rollupOptions: {
           external: ["react"],
         },
       },
+      resolve: {
+        conditions: ["react-server"],
+      },
+    }),
+  reactDomServer: (mode: "development" | "production"): InlineConfig =>
+    mergeConfig(createConfig(mode)(), {
+      build: {
+        outDir: VENDOR_DIST_DIR,
+        lib: {
+          entry: resolve(VENDOR_SRC_DIR, "react-dom.server.js"),
+          name: "react-dom-server",
+          formats: ["es"],
+          fileName: () => `react-dom.server.${mode}.js`,
+        },
+        rollupOptions: {
+          external: ["react"],
+        },
+      },
+      // No react-server condition here
     }),
 
   // Client environment bundles
@@ -149,7 +165,8 @@ export const buildVendorBundles = async () => {
   // Build environment-specific bundles
   for (const mode of modes) {
     for (const env of envs) {
-      await build(configs.reactDom(mode, env));
+      await build(configs.reactDomWorker(mode));
+      await build(configs.reactDomServer(mode));
       await build(configs.jsxRuntime(mode, env));
       await build(configs.jsxDevRuntime(mode, env));
     }

@@ -1,1 +1,1 @@
-export { renderToReadableStream } from 'react-dom/server.edge'
+export * from "react-dom";
