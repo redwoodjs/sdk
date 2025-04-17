@@ -171,8 +171,8 @@ importers:
   starters/minimal:
     dependencies:
       '@redwoodjs/sdk':
-        specifier: 0.0.63-test.6
-        version: 0.0.63-test.6(@types/node@22.14.0)(rollup@4.34.8)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250408.0)
+        specifier: 0.0.63-test.7
+        version: 0.0.63-test.7(@types/node@22.14.0)(rollup@4.34.8)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250408.0)
     devDependencies:
       '@types/node':
         specifier: ^22.14.0
@@ -202,8 +202,8 @@ importers:
         specifier: ~6.5.0
         version: 6.5.0(prisma@6.5.0(typescript@5.8.3))(typescript@5.8.3)
       '@redwoodjs/sdk':
-        specifier: 0.0.63-test.6
-        version: 0.0.63-test.6(@types/node@22.14.0)(rollup@4.34.8)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(webpack@5.97.1(esbuild@0.25.0))(workerd@1.20250408.0)
+        specifier: 0.0.63-test.7
+        version: 0.0.63-test.7(@types/node@22.14.0)(rollup@4.34.8)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(webpack@5.97.1(esbuild@0.25.0))(workerd@1.20250408.0)
       '@simplewebauthn/browser':
         specifier: ^13.1.0
         version: 13.1.0
@@ -1207,8 +1207,8 @@ packages:
     engines: {node: '>=18.0.0'}
     hasBin: true
 
-  '@redwoodjs/sdk@0.0.63-test.6':
-    resolution: {integrity: sha512-CfnlzGxLhp1tLxV4spqZLji49+Qj4q9bCbq1goG68WNDsohj06kDG17IRAJuqHxCFlopDl27Y2WAQJjKh3P+mA==}
+  '@redwoodjs/sdk@0.0.63-test.7':
+    resolution: {integrity: sha512-roBbrXMjXMqDSDn3QFaJ91BWTuLUTE/yy51h6DGWdMbebyjtujdG6Rk/o26WQtQ98my1MpVwnf82pPcONX4DKg==}
     hasBin: true
     peerDependencies:
       vite: ^6.2.5
@@ -5040,7 +5040,7 @@ snapshots:
     dependencies:
       dotenv: 16.4.7
 
-  '@redwoodjs/sdk@0.0.63-test.6(@types/node@22.14.0)(rollup@4.34.8)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(webpack@5.97.1(esbuild@0.25.0))(workerd@1.20250408.0)':
+  '@redwoodjs/sdk@0.0.63-test.7(@types/node@22.14.0)(rollup@4.34.8)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(webpack@5.97.1(esbuild@0.25.0))(workerd@1.20250408.0)':
     dependencies:
       '@cloudflare/vite-plugin': 1.0.1(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250408.0)(wrangler@4.8.0(@cloudflare/workers-types@4.20250407.0))
       '@cloudflare/workers-types': 4.20250407.0
@@ -5089,7 +5089,7 @@ snapshots:
       - webpack
       - workerd
 
-  '@redwoodjs/sdk@0.0.63-test.6(@types/node@22.14.0)(rollup@4.34.8)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250408.0)':
+  '@redwoodjs/sdk@0.0.63-test.7(@types/node@22.14.0)(rollup@4.34.8)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250408.0)':
     dependencies:
       '@cloudflare/vite-plugin': 1.0.1(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250408.0)(wrangler@4.8.0(@cloudflare/workers-types@4.20250407.0))
       '@cloudflare/workers-types': 4.20250407.0
