@@ -27,6 +27,15 @@ export const debugSync = async () => {
     console.log("🚀 Starting dev server...");
     await $({ stdio: "inherit", shell: true, cwd: targetDir })`npm run dev`;
   }
+  // If --build flag is present, run build command
+  else if (flags.has("--build")) {
+    console.log("🏗️ Running build...");
+    await $({
+      stdio: "inherit",
+      shell: true,
+      cwd: targetDir,
+    })`npm run build`;
+  }
   // Start watching if --watch flag is present
   else if (flags.has("--watch")) {
     console.log("👀 Watching for changes...");
