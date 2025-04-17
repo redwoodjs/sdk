@@ -51,11 +51,17 @@ const GLOBAL_SERVER_PACKAGES = [
 export const reactConditionsResolverPlugin = async ({
   projectRootDir,
   mode = "development",
+  command = "serve",
 }: {
   projectRootDir: string;
   mode?: "development" | "production";
+  command?: "build" | "serve";
 }): Promise<Plugin> => {
-  log("Initializing React conditions resolver plugin in %s mode", mode);
+  log(
+    "Initializing React conditions resolver plugin in %s mode for %s",
+    mode,
+    command
+  );
 
   // Create a require function to resolve node modules from the SDK
   const sdkRequire = createRequire(
@@ -277,19 +283,24 @@ export const reactConditionsResolverPlugin = async ({
         );
       }
 
-      // Add global aliases for server packages
-      for (const id of GLOBAL_SERVER_PACKAGES) {
-        const resolvedPath = workerImports[id];
-        if (resolvedPath) {
-          const exactMatchRegex = new RegExp(
-            `^${id.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`
-          );
-          (config.resolve as any).alias.push({
-            find: exactMatchRegex,
-            replacement: resolvedPath,
-          });
-          log(`Global: Added alias for ${id} -> ${resolvedPath}`);
+      // Add global aliases for server packages only during build
+      if (command === "build") {
+        log("Adding global server package aliases for build");
+        for (const id of GLOBAL_SERVER_PACKAGES) {
+          const resolvedPath = workerImports[id];
+          if (resolvedPath) {
+            const exactMatchRegex = new RegExp(
+              `^${id.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`
+            );
+            (config.resolve as any).alias.push({
+              find: exactMatchRegex,
+              replacement: resolvedPath,
+            });
+            log(`Global: Added alias for ${id} -> ${resolvedPath}`);
+          }
         }
+      } else {
+        log("Skipping global server package aliases for serve command");
       }
 
       return config;
