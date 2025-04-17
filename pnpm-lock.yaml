@@ -113,8 +113,8 @@ importers:
         specifier: ^19.0.0
         version: 19.0.0
       react-server-dom-webpack:
-        specifier: canary
-        version: 19.2.0-canary-b04254fd-20250415(react-dom@19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411))(react@19.2.0-canary-39cad7af-20250411)(webpack@5.97.1)
+        specifier: 19.2.0-canary-39cad7af-20250411
+        version: 19.2.0-canary-39cad7af-20250411(react-dom@19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411))(react@19.2.0-canary-39cad7af-20250411)(webpack@5.97.1)
       rsc-html-stream:
         specifier: ^0.0.3
         version: 0.0.3
@@ -172,16 +172,7 @@ importers:
     dependencies:
       '@redwoodjs/sdk':
         specifier: 0.0.63-test.1
-        version: 0.0.63-test.1(@types/node@22.14.0)(react-server-dom-webpack@19.2.0-canary-39cad7af-20250411(react-dom@19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411))(react@19.2.0-canary-39cad7af-20250411)(webpack@5.97.1))(rollup@4.34.8)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250408.0)
-      react:
-        specifier: canary
-        version: 19.2.0-canary-39cad7af-20250411
-      react-dom:
-        specifier: canary
-        version: 19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411)
-      react-server-dom-webpack:
-        specifier: canary
-        version: 19.2.0-canary-39cad7af-20250411(react-dom@19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411))(react@19.2.0-canary-39cad7af-20250411)(webpack@5.97.1)
+        version: 0.0.63-test.1(@types/node@22.14.0)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))
     devDependencies:
       '@types/node':
         specifier: ^22.14.0
@@ -212,7 +203,7 @@ importers:
         version: 6.5.0(prisma@6.5.0(typescript@5.8.3))(typescript@5.8.3)
       '@redwoodjs/sdk':
         specifier: 0.0.63-test.1
-        version: 0.0.63-test.1(@types/node@22.14.0)(react-server-dom-webpack@19.2.0-canary-39cad7af-20250411(react-dom@19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411))(react@19.2.0-canary-39cad7af-20250411)(webpack@5.97.1))(rollup@4.34.8)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250408.0)
+        version: 0.0.63-test.1(@types/node@22.14.0)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))
       '@simplewebauthn/browser':
         specifier: ^13.1.0
         version: 13.1.0
@@ -3231,14 +3222,6 @@ packages:
       react-dom: 19.2.0-canary-39cad7af-20250411
       webpack: ^5.59.0
 
-  react-server-dom-webpack@19.2.0-canary-b04254fd-20250415:
-    resolution: {integrity: sha512-S6Bf8Ui/uP96V4TCxjYLyAojqwab1NnC20LLUYZ14Nbn/8o6xjLnhuXwJ0fgfN2F/SYjahd0PRBD+xE8XnHVDA==}
-    engines: {node: '>=0.10.0'}
-    peerDependencies:
-      react: 19.2.0-canary-b04254fd-20250415
-      react-dom: 19.2.0-canary-b04254fd-20250415
-      webpack: ^5.59.0
-
   react@19.2.0-canary-39cad7af-20250411:
     resolution: {integrity: sha512-F6Iiuc7rXFtMZpCYM7rjJUSc8ee2xJV2+1s47xYR29U7e3Z5ztSplpEy559zeTEol1nHIxNTRvyFwVjmyEXnUA==}
     engines: {node: '>=0.10.0'}
@@ -4386,32 +4369,9 @@ snapshots:
     optionalDependencies:
       workerd: 1.20250405.0
 
-  '@cloudflare/unenv-preset@2.3.1(unenv@2.0.0-rc.15)(workerd@1.20250408.0)':
-    dependencies:
-      unenv: 2.0.0-rc.15
-    optionalDependencies:
-      workerd: 1.20250408.0
-
   '@cloudflare/vite-plugin@1.0.1(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250405.0)(wrangler@4.8.0(@cloudflare/workers-types@4.20250407.0))':
     dependencies:
       '@cloudflare/unenv-preset': 2.3.1(unenv@2.0.0-rc.15)(workerd@1.20250405.0)
-      '@hattip/adapter-node': 0.0.49
-      get-port: 7.1.0
-      miniflare: 4.20250405.0
-      picocolors: 1.1.1
-      tinyglobby: 0.2.12
-      unenv: 2.0.0-rc.15
-      vite: 6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0)
-      wrangler: 4.8.0(@cloudflare/workers-types@4.20250407.0)
-      ws: 8.18.0
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-      - workerd
-
-  '@cloudflare/vite-plugin@1.0.1(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250408.0)(wrangler@4.8.0(@cloudflare/workers-types@4.20250407.0))':
-    dependencies:
-      '@cloudflare/unenv-preset': 2.3.1(unenv@2.0.0-rc.15)(workerd@1.20250408.0)
       '@hattip/adapter-node': 0.0.49
       get-port: 7.1.0
       miniflare: 4.20250405.0
@@ -5058,9 +5018,9 @@ snapshots:
     dependencies:
       dotenv: 16.4.7
 
-  '@redwoodjs/sdk@0.0.63-test.1(@types/node@22.14.0)(react-server-dom-webpack@19.2.0-canary-39cad7af-20250411(react-dom@19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411))(react@19.2.0-canary-39cad7af-20250411)(webpack@5.97.1))(rollup@4.34.8)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250408.0)':
+  '@redwoodjs/sdk@0.0.63-test.1(@types/node@22.14.0)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))':
     dependencies:
-      '@cloudflare/vite-plugin': 1.0.1(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250408.0)(wrangler@4.8.0(@cloudflare/workers-types@4.20250407.0))
+      '@cloudflare/vite-plugin': 1.0.1(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250405.0)(wrangler@4.8.0(@cloudflare/workers-types@4.20250407.0))
       '@cloudflare/workers-types': 4.20250407.0
       '@types/fnv-plus': 1.3.2
       '@types/fs-extra': 11.0.4
@@ -5084,7 +5044,6 @@ snapshots:
       react: 19.2.0-canary-39cad7af-20250411
       react-dom: 19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411)
       react-is: 19.0.0
-      react-server-dom-webpack: 19.2.0-canary-39cad7af-20250411(react-dom@19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411))(react@19.2.0-canary-39cad7af-20250411)(webpack@5.97.1)
       rsc-html-stream: 0.0.3
       tmp-promise: 3.0.3
       ts-morph: 25.0.1
@@ -7662,15 +7621,6 @@ snapshots:
   react-refresh@0.14.2: {}
 
   react-server-dom-webpack@19.2.0-canary-39cad7af-20250411(react-dom@19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411))(react@19.2.0-canary-39cad7af-20250411)(webpack@5.97.1):
-    dependencies:
-      acorn-loose: 8.4.0
-      neo-async: 2.6.2
-      react: 19.2.0-canary-39cad7af-20250411
-      react-dom: 19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411)
-      webpack: 5.97.1
-      webpack-sources: 3.2.3
-
-  react-server-dom-webpack@19.2.0-canary-b04254fd-20250415(react-dom@19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411))(react@19.2.0-canary-39cad7af-20250411)(webpack@5.97.1):
     dependencies:
       acorn-loose: 8.4.0
       neo-async: 2.6.2
