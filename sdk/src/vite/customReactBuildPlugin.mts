@@ -10,6 +10,7 @@ const debug = createDebugger("rwsdk:vite:react");
 const copyReactFiles = async (viteDistDir: string) => {
   await mkdirp(viteDistDir);
 
+  // Regular bundles that follow the .env.mode.js pattern
   const vendorBundles = [
     "react",
     "react-dom",
@@ -17,7 +18,20 @@ const copyReactFiles = async (viteDistDir: string) => {
     "jsx-dev-runtime",
   ] as const;
 
+  // Copy environment-specific bundles
   for (const mode of ["development", "production"] as const) {
+    // Copy react-dom.server bundle (no env suffix)
+    const serverFileName = `react-dom.server.${mode}.js`;
+    await copy(
+      resolve(VENDOR_DIST_DIR, serverFileName),
+      resolve(viteDistDir, serverFileName)
+    );
+    await copy(
+      resolve(VENDOR_DIST_DIR, `${serverFileName}.map`),
+      resolve(viteDistDir, `${serverFileName}.map`)
+    );
+
+    // Copy regular env-specific bundles
     for (const env of ["worker", "client"] as const) {
       for (const bundle of vendorBundles) {
         const fileName = `${bundle}.${env}.${mode}.js`;

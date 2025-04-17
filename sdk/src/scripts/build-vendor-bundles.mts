@@ -92,6 +92,24 @@ const configs = {
       },
       // No react-server condition here
     }),
+  reactDomClient: (mode: "development" | "production"): InlineConfig =>
+    mergeConfig(createConfig(mode)(), {
+      build: {
+        outDir: VENDOR_DIST_DIR,
+        lib: {
+          entry: resolve(VENDOR_SRC_DIR, "react-dom.client.js"),
+          name: "react-dom",
+          formats: ["es"],
+          fileName: () => `react-dom.client.${mode}.js`,
+        },
+        rollupOptions: {
+          external: ["react"],
+        },
+      },
+      resolve: {
+        conditions: ["browser", "import"],
+      },
+    }),
 
   // Client environment bundles
   clientReact: (mode: "development" | "production"): InlineConfig =>
@@ -164,9 +182,11 @@ export const buildVendorBundles = async () => {
 
   // Build environment-specific bundles
   for (const mode of modes) {
+    await build(configs.reactDomServer(mode));
+    await build(configs.reactDomWorker(mode));
+    await build(configs.reactDomClient(mode));
+
     for (const env of envs) {
-      await build(configs.reactDomWorker(mode));
-      await build(configs.reactDomServer(mode));
       await build(configs.jsxRuntime(mode, env));
       await build(configs.jsxDevRuntime(mode, env));
     }
