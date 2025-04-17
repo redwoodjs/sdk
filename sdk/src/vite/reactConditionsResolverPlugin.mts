@@ -234,10 +234,10 @@ export const reactConditionsResolverPlugin = async ({
 
     // Mutate optimizeDeps.esbuildOptions
     (config.optimizeDeps ??= {}).esbuildOptions ??= {};
-    config.optimizeDeps.esbuildOptions.plugins = [
-      ...(config.optimizeDeps.esbuildOptions.plugins || []),
-      createEsbuildPlugin(name, imports),
-    ];
+    //config.optimizeDeps.esbuildOptions.plugins = [
+    //  ...(config.optimizeDeps.esbuildOptions.plugins || []),
+    //  createEsbuildPlugin(name, imports),
+    //];
 
     // Add define for process.env.NODE_ENV
     config.optimizeDeps.esbuildOptions.define = {
