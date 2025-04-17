@@ -24,6 +24,9 @@ const createConfig = (
 const configs = {
   reactServerInternals: (mode: "development" | "production"): InlineConfig =>
     mergeConfig(createConfig(mode)(), {
+      resolve: {
+        conditions: ["react-server"],
+      },
       build: {
         outDir: VENDOR_DIST_DIR,
         lib: {
@@ -33,13 +36,20 @@ const configs = {
           fileName: () => `react-server-internals.${mode}.js`,
         },
       },
-      resolve: {
-        conditions: ["react-server"],
-      },
     }),
+
   // Worker environment bundles
   workerReact: (mode: "development" | "production"): InlineConfig =>
     mergeConfig(createConfig(mode)(), {
+      resolve: {
+        conditions: ["react-server"],
+        alias: {
+          "react-server-internals": resolve(
+            VENDOR_DIST_DIR,
+            `react-server-internals.${mode}.js`
+          ),
+        },
+      },
       build: {
         outDir: VENDOR_DIST_DIR,
         lib: {
@@ -49,17 +59,13 @@ const configs = {
           fileName: () => `react.worker.${mode}.js`,
         },
       },
-      resolve: {
-        alias: {
-          "react-server-internals": resolve(
-            VENDOR_DIST_DIR,
-            `react-server-internals.${mode}.js`
-          ),
-        },
-      },
     }),
+
   reactDomWorker: (mode: "development" | "production"): InlineConfig =>
     mergeConfig(createConfig(mode)(), {
+      resolve: {
+        conditions: ["react-server"],
+      },
       build: {
         outDir: VENDOR_DIST_DIR,
         lib: {
@@ -72,10 +78,8 @@ const configs = {
           external: ["react"],
         },
       },
-      resolve: {
-        conditions: ["react-server"],
-      },
     }),
+
   reactDomServer: (mode: "development" | "production"): InlineConfig =>
     mergeConfig(createConfig(mode)(), {
       build: {
@@ -90,10 +94,13 @@ const configs = {
           external: ["react"],
         },
       },
-      // No react-server condition here
     }),
+
   reactDomClient: (mode: "development" | "production"): InlineConfig =>
     mergeConfig(createConfig(mode)(), {
+      resolve: {
+        conditions: ["react-server"],
+      },
       build: {
         outDir: VENDOR_DIST_DIR,
         lib: {
@@ -106,14 +113,14 @@ const configs = {
           external: ["react"],
         },
       },
-      resolve: {
-        conditions: ["browser", "import"],
-      },
     }),
 
   // Client environment bundles
   clientReact: (mode: "development" | "production"): InlineConfig =>
     mergeConfig(createConfig(mode)(), {
+      resolve: {
+        conditions: ["react-server"],
+      },
       build: {
         outDir: VENDOR_DIST_DIR,
         lib: {
@@ -123,9 +130,6 @@ const configs = {
           fileName: () => `react.client.${mode}.js`,
         },
       },
-      resolve: {
-        conditions: ["browser", "import"],
-      },
     }),
 
   jsxRuntime: (
@@ -133,6 +137,9 @@ const configs = {
     env: "worker" | "client"
   ): InlineConfig =>
     mergeConfig(createConfig(mode)(), {
+      resolve: {
+        conditions: ["react-server"],
+      },
       build: {
         outDir: VENDOR_DIST_DIR,
         lib: {
@@ -145,7 +152,6 @@ const configs = {
           external: ["react"],
         },
       },
-      resolve: env === "worker" ? { conditions: ["react-server"] } : undefined,
     }),
 
   jsxDevRuntime: (
@@ -153,6 +159,9 @@ const configs = {
     env: "worker" | "client"
   ): InlineConfig =>
     mergeConfig(createConfig(mode)(), {
+      resolve: {
+        conditions: ["react-server"],
+      },
       build: {
         outDir: VENDOR_DIST_DIR,
         lib: {
@@ -165,45 +174,72 @@ const configs = {
           external: ["react"],
         },
       },
-      resolve: env === "worker" ? { conditions: ["react-server"] } : undefined,
     }),
 
-  // Add these new configs
-  rsdwClient: (mode: "development" | "production"): InlineConfig =>
+  // RSC bundles
+  rsdwClientBrowser: (mode: "development" | "production"): InlineConfig =>
     mergeConfig(createConfig(mode)(), {
-      build: {
-        outDir: VENDOR_DIST_DIR,
-        lib: {
-          entry: resolve(VENDOR_SRC_DIR, "react-server-dom-webpack.client.js"),
-          name: "react-server-dom-webpack-client",
-          formats: ["es"],
-          fileName: () => `react-server-dom-webpack.client.${mode}.js`,
-        },
-        rollupOptions: {
-          external: ["react", "react-dom"],
-        },
-      },
       resolve: {
         conditions: ["browser", "import"],
       },
-    }),
-
-  rsdwWorker: (mode: "development" | "production"): InlineConfig =>
-    mergeConfig(createConfig(mode)(), {
       build: {
         outDir: VENDOR_DIST_DIR,
         lib: {
-          entry: resolve(VENDOR_SRC_DIR, "react-server-dom-webpack.worker.js"),
-          name: "react-server-dom-webpack-server",
+          entry: resolve(
+            VENDOR_SRC_DIR,
+            "react-server-dom-webpack.client.browser.js"
+          ),
+          name: "react-server-dom-webpack-client-browser",
           formats: ["es"],
-          fileName: () => `react-server-dom-webpack.worker.${mode}.js`,
+          fileName: () => `react-server-dom-webpack.client.browser.${mode}.js`,
         },
         rollupOptions: {
           external: ["react", "react-dom"],
         },
       },
+    }),
+
+  rsdwClientEdge: (mode: "development" | "production"): InlineConfig =>
+    mergeConfig(createConfig(mode)(), {
       resolve: {
         conditions: ["react-server"],
+      },
+      build: {
+        outDir: VENDOR_DIST_DIR,
+        lib: {
+          entry: resolve(
+            VENDOR_SRC_DIR,
+            "react-server-dom-webpack.client.edge.js"
+          ),
+          name: "react-server-dom-webpack-client-edge",
+          formats: ["es"],
+          fileName: () => `react-server-dom-webpack.client.edge.${mode}.js`,
+        },
+        rollupOptions: {
+          external: ["react", "react-dom"],
+        },
+      },
+    }),
+
+  rsdwServerEdge: (mode: "development" | "production"): InlineConfig =>
+    mergeConfig(createConfig(mode)(), {
+      resolve: {
+        conditions: ["react-server"],
+      },
+      build: {
+        outDir: VENDOR_DIST_DIR,
+        lib: {
+          entry: resolve(
+            VENDOR_SRC_DIR,
+            "react-server-dom-webpack.server.edge.js"
+          ),
+          name: "react-server-dom-webpack-server-edge",
+          formats: ["es"],
+          fileName: () => `react-server-dom-webpack.server.edge.${mode}.js`,
+        },
+        rollupOptions: {
+          external: ["react", "react-dom"],
+        },
       },
     }),
 };
@@ -224,8 +260,11 @@ export const buildVendorBundles = async () => {
     await build(configs.reactDomServer(mode));
     await build(configs.reactDomWorker(mode));
     await build(configs.reactDomClient(mode));
-    await build(configs.rsdwClient(mode));
-    await build(configs.rsdwWorker(mode));
+
+    // Build RSC bundles
+    await build(configs.rsdwClientBrowser(mode));
+    await build(configs.rsdwClientEdge(mode));
+    await build(configs.rsdwServerEdge(mode));
 
     for (const env of envs) {
       await build(configs.jsxRuntime(mode, env));

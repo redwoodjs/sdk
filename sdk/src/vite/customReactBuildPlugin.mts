@@ -16,7 +16,13 @@ const copyReactFiles = async (viteDistDir: string) => {
     "react-dom",
     "jsx-runtime",
     "jsx-dev-runtime",
-    "react-server-dom-webpack",
+  ] as const;
+
+  // RSC bundles with exact paths
+  const rscBundles = [
+    "react-server-dom-webpack.client.browser",
+    "react-server-dom-webpack.client.edge",
+    "react-server-dom-webpack.server.edge",
   ] as const;
 
   // Copy environment-specific bundles
@@ -31,6 +37,19 @@ const copyReactFiles = async (viteDistDir: string) => {
       resolve(VENDOR_DIST_DIR, `${serverFileName}.map`),
       resolve(viteDistDir, `${serverFileName}.map`)
     );
+
+    // Copy RSC bundles
+    for (const bundle of rscBundles) {
+      const fileName = `${bundle}.${mode}.js`;
+      await copy(
+        resolve(VENDOR_DIST_DIR, fileName),
+        resolve(viteDistDir, fileName)
+      );
+      await copy(
+        resolve(VENDOR_DIST_DIR, `${fileName}.map`),
+        resolve(viteDistDir, `${fileName}.map`)
+      );
+    }
 
     // Copy regular env-specific bundles
     for (const env of ["worker", "client"] as const) {
@@ -147,11 +166,11 @@ export const customReactBuildPlugin = async ({
         case "jsx-runtime":
         case "jsx-dev-runtime":
           return resolve(viteDistDir, `${name}.${env}.${mode}.js`);
-        case "react-server-dom-webpack":
-          return resolve(
-            viteDistDir,
-            `react-server-dom-webpack.${env}.${mode}.js`
-          );
+        // Handle RSC bundles directly (they already include their environment)
+        case "react-server-dom-webpack.client.browser":
+        case "react-server-dom-webpack.client.edge":
+        case "react-server-dom-webpack.server.edge":
+          return resolve(viteDistDir, `${name}.${mode}.js`);
         default:
           return resolve(viteDistDir, `${name}.${env}.${mode}.js`);
       }
@@ -226,8 +245,18 @@ export const customReactBuildPlugin = async ({
       if (id === "react-dom/server.edge" || id === "react-dom/server") {
         return resolveVendorBundle("react-dom.server", null);
       }
+      // RSC worker-side imports
       if (id === "react-server-dom-webpack/server.edge") {
-        return resolveVendorBundle("react-server-dom-webpack", "worker");
+        return resolveVendorBundle(
+          "react-server-dom-webpack.server.edge",
+          null
+        );
+      }
+      if (id === "react-server-dom-webpack/client.edge") {
+        return resolveVendorBundle(
+          "react-server-dom-webpack.client.edge",
+          null
+        );
       }
     },
     config: () => ({
@@ -267,17 +296,33 @@ export const customReactBuildPlugin = async ({
                         };
                       }
                     );
+                    // RSC worker-side resolvers
                     build.onResolve(
                       { filter: /^react-server-dom-webpack\/server\.edge$/ },
                       (args) => {
                         debug(
-                          "worker esbuild resolving react-server-dom-webpack server: %o",
+                          "worker esbuild resolving rsdw server.edge: %o",
                           args
                         );
                         return {
                           path: resolveVendorBundle(
-                            "react-server-dom-webpack",
-                            "worker"
+                            "react-server-dom-webpack.server.edge",
+                            null
+                          ),
+                        };
+                      }
+                    );
+                    build.onResolve(
+                      { filter: /^react-server-dom-webpack\/client\.edge$/ },
+                      (args) => {
+                        debug(
+                          "worker esbuild resolving rsdw client.edge: %o",
+                          args
+                        );
+                        return {
+                          path: resolveVendorBundle(
+                            "react-server-dom-webpack.client.edge",
+                            null
                           ),
                         };
                       }
@@ -304,11 +349,17 @@ export const customReactBuildPlugin = async ({
       if (id === "react") {
         return resolveVendorBundle("react", "client");
       }
+      if (id === "react-dom") {
+        return resolveVendorBundle("react-dom", "client");
+      }
       if (id === "react-dom/client") {
         return resolveVendorBundle("react-dom", "client");
       }
       if (id === "react-server-dom-webpack/client.browser") {
-        return resolveVendorBundle("react-server-dom-webpack", "client");
+        return resolveVendorBundle(
+          "react-server-dom-webpack.client.browser",
+          null
+        );
       }
     },
     config: () => ({
@@ -323,6 +374,12 @@ export const customReactBuildPlugin = async ({
                     build.onResolve({ filter: /^react$/ }, (args) => {
                       debug("client esbuild resolving react: %o", args);
                       return { path: resolveVendorBundle("react", "client") };
+                    });
+                    build.onResolve({ filter: /^react-dom$/ }, (args) => {
+                      debug("client esbuild resolving react-dom: %o", args);
+                      return {
+                        path: resolveVendorBundle("react-dom", "client"),
+                      };
                     });
                     build.onResolve(
                       { filter: /^react-dom\/client$/ },
@@ -340,13 +397,13 @@ export const customReactBuildPlugin = async ({
                       { filter: /^react-server-dom-webpack\/client\.browser$/ },
                       (args) => {
                         debug(
-                          "client esbuild resolving react-server-dom-webpack client: %o",
+                          "client esbuild resolving rsdw client.browser: %o",
                           args
                         );
                         return {
                           path: resolveVendorBundle(
-                            "react-server-dom-webpack",
-                            "client"
+                            "react-server-dom-webpack.client.browser",
+                            null
                           ),
                         };
                       }
