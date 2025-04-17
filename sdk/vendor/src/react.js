@@ -16,9 +16,6 @@ import { __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE as IMPO
 // context(justinvdm, 2025-04-18): This file is now built in both development and production modes
 // The customReactBuildPlugin will use the appropriate build based on the Vite mode.
 // In development mode, we include extra logging and validation.
-if (process.env.NODE_ENV === "development") {
-  console.debug("[rwsdk] Using development build of React");
-}
 
 if (typeof globalThis.__REACT === "undefined") {
   globalThis.__REACT = {

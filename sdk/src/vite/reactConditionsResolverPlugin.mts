@@ -16,6 +16,7 @@ const WORKER_PACKAGES = [
   "react-dom",
   "react/jsx-runtime",
   "react/jsx-dev-runtime",
+  "react-server-dom-webpack/client.browser",
   "react-server-dom-webpack/client.edge",
   "react-server-dom-webpack/server.edge",
 ];
@@ -27,6 +28,8 @@ const CLIENT_PACKAGES = [
   "react/jsx-runtime",
   "react/jsx-dev-runtime",
   "react-server-dom-webpack/client.browser",
+  "react-server-dom-webpack/client.edge",
+  "react-server-dom-webpack/server.edge",
 ];
 
 // Skip react-server condition for these packages
@@ -66,7 +69,7 @@ export const reactConditionsResolverPlugin = async ({
     }
 
     // Environment conditions
-    const env = environment || "worker"; // Default to worker
+    const env = environment || "worker";
     const conditions: string[] = [];
 
     if (env === "worker") {
@@ -81,44 +84,61 @@ export const reactConditionsResolverPlugin = async ({
     }
 
     try {
-      // Start with standard resolution
       const baseResolved = sdkRequire.resolve(packageName);
       const packageDir = path.dirname(baseResolved);
       const baseName = path.basename(baseResolved, ".js");
 
-      // Try possible condition-specific file patterns
+      // Helper to check path existence and log if found
+      const tryPath = async (filepath: string, type: string) => {
+        if (await pathExists(filepath)) {
+          log("Using %s for %s: %s", type, packageName, filepath);
+          return filepath;
+        }
+        return null;
+      };
+
+      // Try condition-specific paths first
       for (const condition of conditions) {
         const conditionPath = path.join(
           packageDir,
           `${baseName}.${condition}.js`
         );
-        if (await pathExists(conditionPath)) {
-          log(
-            "Using condition %s for %s: %s",
-            condition,
-            packageName,
-            conditionPath
-          );
-          return conditionPath;
+        const found = await tryPath(conditionPath, `condition ${condition}`);
+        if (found) return found;
+      }
+
+      // Try mode-specific paths based on package type
+      if (packageName.includes("react-server-dom-webpack")) {
+        const [pkgBase, type, env] = packageName.split("/");
+        const filename =
+          type === "server"
+            ? `${pkgBase}-${type}.${env}.${mode}.js`
+            : `${pkgBase}-${type}.${mode}.js`;
+
+        const cjsPath = path.join(packageDir, "cjs", filename);
+        const found = await tryPath(cjsPath, `webpack ${mode} mode`);
+        if (found) {
+          return found;
+        } else {
+          log("Using standard resolution for %s", packageName);
+          return baseResolved;
+        }
+      } else {
+        const modePath = baseResolved.replace(
+          /\.js$/,
+          mode === "development" ? ".development.js" : ".production.min.js"
+        );
+        const found = await tryPath(modePath, `${mode} mode`);
+        if (found) {
+          return found;
         }
       }
 
-      // Handle development/production variants
-      const modePath = baseResolved.replace(
-        /\.js$/,
-        mode === "development" ? ".development.js" : ".production.min.js"
-      );
-
-      if (await pathExists(modePath)) {
-        log("Using %s mode build for %s", mode, packageName);
-        return modePath;
-      }
-
       // Fall back to standard resolution
+      log("Using standard resolution for %s", packageName);
       return baseResolved;
     } catch (error) {
       log("Error in custom resolution for %s: %o", packageName, error);
-      // Fall back to standard resolution
       return sdkRequire.resolve(packageName);
     }
   };
@@ -135,7 +155,6 @@ export const reactConditionsResolverPlugin = async ({
   // Generate import mappings for both environments
   const workerImports = await generateImports(WORKER_PACKAGES, "worker");
   const clientImports = await generateImports(CLIENT_PACKAGES, "client");
-
   // Log the resolved paths
   const logImports = (env: string, imports: Record<string, string>) => {
     log(`Resolved ${env} paths (${mode} mode):`);
