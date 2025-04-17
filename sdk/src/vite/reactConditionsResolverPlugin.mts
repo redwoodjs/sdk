@@ -59,6 +59,30 @@ export const reactConditionsResolverPlugin = async ({
 
   // Helper to resolve packages with mode in mind
   const resolveWithMode = async (packageName: string, environment: string) => {
+    // Special handling for react-dom server packages
+    if (packageName.startsWith("react-dom/server")) {
+      const baseResolved = sdkRequire.resolve("react-dom");
+      const packageDir = path.dirname(baseResolved);
+
+      // For server.edge, explicitly look for the edge file
+      if (packageName === "react-dom/server.edge") {
+        const edgePath = path.join(packageDir, "server.edge.js");
+        if (await pathExists(edgePath)) {
+          log("Using edge server for %s: %s", packageName, edgePath);
+          return edgePath;
+        }
+      }
+
+      // For regular server, use node version
+      if (packageName === "react-dom/server") {
+        const serverPath = path.join(packageDir, "server.node.js");
+        if (await pathExists(serverPath)) {
+          log("Using node server for %s: %s", packageName, serverPath);
+          return serverPath;
+        }
+      }
+    }
+
     // For custom React builds, use our own bundled versions
     if (packageName === "react") {
       const modePath = resolve(vendorDir, `react.${mode}.js`);
@@ -204,6 +228,12 @@ export const reactConditionsResolverPlugin = async ({
       createEsbuildPlugin(name, imports),
     ];
 
+    // Add define for process.env.NODE_ENV
+    config.optimizeDeps.esbuildOptions.define = {
+      ...(config.optimizeDeps.esbuildOptions.define || {}),
+      "process.env.NODE_ENV": JSON.stringify(mode),
+    };
+
     // Initialize resolve config if needed
     config.resolve ??= {};
 
@@ -236,20 +266,6 @@ export const reactConditionsResolverPlugin = async ({
   return {
     name: `rwsdk:react-conditions-resolver:${mode}`,
     enforce: "post",
-
-    async resolveId(source: string) {
-      // Use worker or client imports based on environment
-      const imports =
-        this.environment?.name === "worker" ? workerImports : clientImports;
-
-      if (imports[source]) {
-        log(
-          `resolveId (${this.environment?.name}): Resolving ${source} -> ${imports[source]}`
-        );
-        return imports[source];
-      }
-      return null;
-    },
 
     configEnvironment(name: string, config: EnvironmentOptions) {
       if (name === "worker") {
