@@ -17,13 +17,13 @@ type TransportContext = {
 export type Transport = (context: TransportContext) => CallServerCallback;
 
 export type CreateCallServer = (
-  context: TransportContext,
+  context: TransportContext
 ) => <Result>(id: null | string, args: null | unknown[]) => Promise<Result>;
 
 export const fetchTransport: Transport = (transportContext) => {
   const fetchCallServer = async <Result,>(
     id: null | string,
-    args: null | unknown[],
+    args: null | unknown[]
   ): Promise<Result> => {
     const { createFromFetch, encodeReply } = await import(
       "react-server-dom-webpack/client.browser"
@@ -41,7 +41,7 @@ export const fetchTransport: Transport = (transportContext) => {
         method: "POST",
         body: args != null ? await encodeReply(args) : null,
       }),
-      { callServer: fetchCallServer },
+      { callServer: fetchCallServer }
     ) as Promise<ActionResponse<Result>>;
 
     transportContext.setRscPayload(streamData);
@@ -73,8 +73,9 @@ export const initClient = async ({
   const React = await import("react");
   const { hydrateRoot } = await import("react-dom/client");
   // @ts-ignore: todo(peterp, 2024-11-27): Type these properly.
-  const { createFromReadableStream, createFromFetch, encodeReply } =
-    await import("react-server-dom-webpack/client.browser");
+  const { createFromReadableStream } = await import(
+    "react-server-dom-webpack/client.browser"
+  );
   const { rscStream } = await import("rsc-html-stream/client");
 
   let rscPayload: any;
