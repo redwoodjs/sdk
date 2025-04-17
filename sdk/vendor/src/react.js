@@ -1,7 +1,7 @@
-import ImportedReact from 'react'
-import { __SERVER_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE as IMPORTED_SERVER_INTERNALS } from 'react-server-internals'
+import ImportedReact from "react";
+import { __SERVER_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE as IMPORTED_SERVER_INTERNALS } from "react-server-internals";
 
-import { __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE as IMPORTED_CLIENT_INTERNALS } from 'react'
+import { __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE as IMPORTED_CLIENT_INTERNALS } from "react";
 
 // context(justinvdm, 2025-02-10): Vite dev server reloads as it discovers new deps during its dep optimization passes.
 // When it does this, react and react-dom are re-instantiated. However, miniflare sandbox will have the old instances around.
@@ -13,15 +13,24 @@ import { __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE as IMPO
 // * On the other hand, for RSC react, it doesn't want to see that there was an inexisting renderer around before it was instantiated
 //   => we need to export the new instance of the server internals
 
-if (typeof globalThis.__REACT === 'undefined') {
-  globalThis.__REACT = {
-    ...ImportedReact,
-    __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE: IMPORTED_CLIENT_INTERNALS
-  }
+// context(justinvdm, 2025-04-18): This file is now built in both development and production modes
+// The customReactBuildPlugin will use the appropriate build based on the Vite mode.
+// In development mode, we include extra logging and validation.
+if (process.env.NODE_ENV === "development") {
+  console.debug("[rwsdk] Using development build of React");
 }
 
-const React = globalThis.__REACT
-React.__SERVER_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE = IMPORTED_SERVER_INTERNALS
+if (typeof globalThis.__REACT === "undefined") {
+  globalThis.__REACT = {
+    ...ImportedReact,
+    __CLIENT_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE:
+      IMPORTED_CLIENT_INTERNALS,
+  };
+}
+
+const React = globalThis.__REACT;
+React.__SERVER_INTERNALS_DO_NOT_USE_OR_WARN_USERS_THEY_CANNOT_UPGRADE =
+  IMPORTED_SERVER_INTERNALS;
 
 const {
   Children,
@@ -76,8 +85,8 @@ const {
   unstable_TracingMarker,
   useId,
   act,
-  captureOwnerStack
-} = React
+  captureOwnerStack,
+} = React;
 
 export {
   Children,
@@ -132,7 +141,7 @@ export {
   unstable_TracingMarker,
   useId,
   act,
-  captureOwnerStack
-}
+  captureOwnerStack,
+};
 
-export default React
+export default React;

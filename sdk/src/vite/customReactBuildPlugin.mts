@@ -2,59 +2,125 @@ import { resolve } from "path";
 import { Plugin } from "vite";
 import { createRequire } from "node:module";
 import debug from "debug";
+import { pathExists } from "fs-extra";
+import { VENDOR_DIST_DIR } from "../lib/constants.mjs";
 
 const log = debug("rwsdk:vite:react-build");
 
 export const customReactBuildPlugin = async ({
   projectRootDir,
+  mode = "development",
 }: {
   projectRootDir: string;
+  mode?: "development" | "production";
 }): Promise<Plugin> => {
-  log("Initializing custom React build plugin");
+  log("Initializing custom React build plugin in %s mode", mode);
 
   // Create a require function to resolve node modules from the SDK
   const sdkRequire = createRequire(
     resolve(projectRootDir, "node_modules/@redwoodjs/sdk")
   );
 
-  // Define mappings for worker environment
-  const workerImports = {
-    react: sdkRequire.resolve("react"),
-    "react-dom/server.edge": sdkRequire.resolve("react-dom/server.edge"),
-    "react-dom/server": sdkRequire.resolve("react-dom/server"),
-    "react-dom": sdkRequire.resolve("react-dom"),
-    "react/jsx-runtime": sdkRequire.resolve("react/jsx-runtime"),
-    "react/jsx-dev-runtime": sdkRequire.resolve("react/jsx-dev-runtime"),
-    "react-server-dom-webpack/client.browser": sdkRequire.resolve(
-      "react-server-dom-webpack/client.browser"
-    ),
-    "react-server-dom-webpack/client.edge": sdkRequire.resolve(
-      "react-server-dom-webpack/client.edge"
-    ),
-    "react-server-dom-webpack/server.edge": sdkRequire.resolve(
-      "react-server-dom-webpack/server.edge"
-    ),
+  // Path to custom React builds in the vendor directory
+  const vendorDir = VENDOR_DIST_DIR;
+
+  // Helper to resolve packages with mode in mind
+  const resolveWithMode = async (packageName: string) => {
+    // For custom React builds, check for mode-specific files in the vendor directory
+    if (packageName === "react") {
+      const modePath = resolve(vendorDir, `react.${mode}.js`);
+      if (await pathExists(modePath)) {
+        log("Using custom %s mode build for %s", mode, packageName);
+        return modePath;
+      }
+    }
+
+    // For React server internals, check for mode-specific files
+    if (packageName === "react-server-internals") {
+      const modePath = resolve(vendorDir, `react-server-internals.${mode}.js`);
+      if (await pathExists(modePath)) {
+        log("Using custom %s mode build for %s", mode, packageName);
+        return modePath;
+      }
+    }
+
+    // For standard packages, apply mode-specific logic to the path
+    // Standard resolution for other packages
+    const resolvedPath = sdkRequire.resolve(packageName);
+
+    // Check if we should use a development or production build
+    const isDev = mode === "development";
+
+    // Many React packages have mode-specific files like:
+    // - react.development.js / react.production.min.js
+    // Try to construct the appropriate path
+    const modePath = resolvedPath.replace(
+      /\.js$/,
+      isDev ? ".development.js" : ".production.min.js"
+    );
+
+    try {
+      // Check if the mode-specific file exists
+      if (await pathExists(modePath)) {
+        log("Using %s mode build for %s", mode, packageName);
+        return modePath;
+      } else {
+        // Fall back to default resolution if mode-specific file doesn't exist
+        log("Mode-specific file not found for %s, using default", packageName);
+        return resolvedPath;
+      }
+    } catch (error) {
+      // Fall back to default resolution if there's an error
+      log(
+        "Error resolving %s mode-specific file for %s: %o",
+        mode,
+        packageName,
+        error
+      );
+      return resolvedPath;
+    }
   };
+
+  // Define mappings for worker environment
+  const workerImports: Record<string, string> = {};
+
+  // Populate worker imports asynchronously
+  for (const pkg of [
+    "react",
+    "react-dom/server.edge",
+    "react-dom/server",
+    "react-dom",
+    "react/jsx-runtime",
+    "react/jsx-dev-runtime",
+    "react-server-dom-webpack/client.browser",
+    "react-server-dom-webpack/client.edge",
+    "react-server-dom-webpack/server.edge",
+  ]) {
+    workerImports[pkg] = await resolveWithMode(pkg);
+  }
 
   // Define mappings for client environment
-  const clientImports = {
-    react: sdkRequire.resolve("react"),
-    "react-dom/client": sdkRequire.resolve("react-dom/client"),
-    "react-dom": sdkRequire.resolve("react-dom"),
-    "react/jsx-runtime": sdkRequire.resolve("react/jsx-runtime"),
-    "react/jsx-dev-runtime": sdkRequire.resolve("react/jsx-dev-runtime"),
-    "react-server-dom-webpack/client.browser": sdkRequire.resolve(
-      "react-server-dom-webpack/client.browser"
-    ),
-  };
+  const clientImports: Record<string, string> = {};
+
+  // Populate client imports asynchronously
+  for (const pkg of [
+    "react",
+    "react-dom/client",
+    "react-dom",
+    "react/jsx-runtime",
+    "react/jsx-dev-runtime",
+    "react-server-dom-webpack/client.browser",
+  ]) {
+    clientImports[pkg] = await resolveWithMode(pkg);
+  }
 
   // Log the resolved paths
-  log("Resolved worker paths:");
+  log("Resolved worker paths (%s mode):", mode);
   Object.entries(workerImports).forEach(([id, path]) => {
     log("- %s: %s", id, path);
   });
 
-  log("Resolved client paths:");
+  log("Resolved client paths (%s mode):", mode);
   Object.entries(clientImports).forEach(([id, path]) => {
     log("- %s: %s", id, path);
   });
@@ -65,13 +131,13 @@ export const customReactBuildPlugin = async ({
     imports: Record<string, string>
   ) => {
     return {
-      name: `rwsdk:${env}:rewrite-react-imports`,
+      name: `rwsdk:${env}:rewrite-react-imports:${mode}`,
       setup(build: any) {
         Object.entries(imports).forEach(([id, path]) => {
           build.onResolve(
             { filter: new RegExp(`^${id.replace(/\//g, "\\/")}$`) },
             (args: any) => {
-              log(`esbuild ${env} resolving ${id} -> %s`, path);
+              log(`esbuild ${env} resolving ${id} (${mode}) -> %s`, path);
               return { path };
             }
           );
@@ -81,7 +147,7 @@ export const customReactBuildPlugin = async ({
   };
 
   return {
-    name: "rwsdk:custom-react-build",
+    name: `rwsdk:custom-react-build:${mode}`,
     enforce: "pre",
 
     config: () => ({
