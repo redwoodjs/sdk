@@ -10,6 +10,17 @@ export const debugSync = async () => {
     process.exit(1);
   }
 
+  // If --build flag is present, only run build in target dir
+  if (flags.has("--build")) {
+    console.log("🏗️ Running build in target directory...");
+    await $({
+      stdio: "inherit",
+      shell: true,
+      cwd: targetDir,
+    })`npm run build`;
+    return;
+  }
+
   const syncCommand = `echo 🏗️ rebuilding... && pnpm build && rm -rf ${targetDir}/node_modules/@redwoodjs/sdk/{dist,vendor} && cp -r dist ${targetDir}/node_modules/@redwoodjs/sdk/ && cp -r vendor ${targetDir}/node_modules/@redwoodjs/sdk/ && echo ✅ done`;
 
   // Run initial sync
@@ -26,15 +37,6 @@ export const debugSync = async () => {
 
     console.log("🚀 Starting dev server...");
     await $({ stdio: "inherit", shell: true, cwd: targetDir })`npm run dev`;
-  }
-  // If --build flag is present, run build command
-  else if (flags.has("--build")) {
-    console.log("🏗️ Running build...");
-    await $({
-      stdio: "inherit",
-      shell: true,
-      cwd: targetDir,
-    })`npm run build`;
   }
   // Start watching if --watch flag is present
   else if (flags.has("--watch")) {
