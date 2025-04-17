@@ -296,7 +296,6 @@ export const reactConditionsResolverPlugin = async ({
     },
 
     configEnvironment(name: string, config: EnvironmentOptions) {
-      console.log("###### configEnvironment");
       if (name === "client") {
         configureEnvironment("client", config, clientImports);
       }
@@ -304,8 +303,6 @@ export const reactConditionsResolverPlugin = async ({
       if (name === "worker") {
         configureEnvironment("worker", config, workerImports);
       }
-
-      console.log("###", name);
     },
   };
 };
