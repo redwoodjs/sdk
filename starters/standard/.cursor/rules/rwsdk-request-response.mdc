@@ -1,6 +1,6 @@
 ---
-description: 
-globs: route.tsx,route.ts,worker.tsx
+description: RedwoodSDK: Request handling and responses
+globs: worker.tsx,src/app/**/routes.ts,src/app/**/*/routes.ts
 alwaysApply: false
 ---
 # RedwoodSDK: Request handling and responses
@@ -41,7 +41,7 @@ route("/contact", function handler() {
 
 ```tsx
 // Match dynamic segments marked with a colon (:)
-route("/users/:id", function handler({ params }) { 
+route("/users/:id", function handler({ params }) {
   // params.id contains the value from the URL
   return <>User profile for {params.id}</>
 })
@@ -56,7 +56,7 @@ route("/posts/:postId/comments/:commentId", function handler({ params }) {
 
 ```tsx
 // Match all remaining segments after the prefix
-route("/files/*", function handler({ params }) { 
+route("/files/*", function handler({ params }) {
   // params.$0 contains the wildcard value
   return <>File: {params.$0}</>
 })
@@ -74,7 +74,7 @@ route("/docs/*/version/*", function handler({ params }) {
 ```tsx
 import { route } from "@redwoodjs/sdk/router";
 
-route("/api/status", function handler() { 
+route("/api/status", function handler() {
   return new Response("OK", {
     status: 200,
     headers: { "Content-Type": "text/plain" }
@@ -87,9 +87,9 @@ route("/api/status", function handler() {
 ```tsx
 import { route } from "@redwoodjs/sdk/router";
 
-route("/api/users/:id", function handler({ params }) { 
+route("/api/users/:id", function handler({ params }) {
   const userData = { id: params.id, name: "John Doe", email: "john@example.com" }
-  
+
   return Response.json(userData, {
     status: 200,
     headers: {
@@ -105,7 +105,7 @@ route("/api/users/:id", function handler({ params }) {
 import { route } from "@redwoodjs/sdk/router";
 import { UserProfile } from '@/app/components/UserProfile'
 
-route("/users/:id", function handler({ params }) { 
+route("/users/:id", function handler({ params }) {
   return <UserProfile userId={params.id} />
 })
 ```
@@ -117,7 +117,7 @@ import { render, route } from "@redwoodjs/sdk/router";
 import { Document } from '@/app/Document'
 
 render(Document, [
-  route("/", function handler() { 
+  route("/", function handler() {
     return <>Home Page</>
   }),
   route("/about", function handler() {
@@ -134,14 +134,14 @@ import { route } from "@redwoodjs/sdk/router";
 route("/api/posts/:id", async function handler({ params }) {
   try {
     const post = await db.post.findUnique({ where: { id: params.id } })
-    
+
     if (!post) {
       return Response.json(
         { error: "Post not found" },
         { status: 404 }
       )
     }
-    
+
     return Response.json(post)
   } catch (error) {
     console.error(error)
@@ -200,7 +200,7 @@ route("/api/search", function handler({ request }) {
   const query = url.searchParams.get('q') || ''
   const page = parseInt(url.searchParams.get('page') || '1')
   const limit = parseInt(url.searchParams.get('limit') || '10')
-  
+
   return Response.json({
     query,
     page,
