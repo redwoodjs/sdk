@@ -59,13 +59,6 @@ export const configPlugin = ({
             esbuildOptions: {
               plugins: [ignoreVirtualModules],
             },
-            include: [
-              "react",
-              "react-dom/client",
-              "react/jsx-runtime",
-              "react/jsx-dev-runtime",
-              "react-server-dom-webpack/client.browser",
-            ],
           },
         },
         worker: {
