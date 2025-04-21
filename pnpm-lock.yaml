@@ -67,6 +67,9 @@ importers:
       debug:
         specifier: ^4.4.0
         version: 4.4.0
+      enhanced-resolve:
+        specifier: ^5.18.1
+        version: 5.18.1
       es-module-lexer:
         specifier: ^1.5.4
         version: 1.6.0
@@ -172,7 +175,7 @@ importers:
     dependencies:
       '@redwoodjs/sdk':
         specifier: 0.0.65
-        version: 0.0.65(@types/node@22.14.0)(rollup@4.34.8)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250408.0)
+        version: 0.0.65(@types/node@22.14.0)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(webpack@5.97.1)
     devDependencies:
       '@types/node':
         specifier: ^22.14.0
@@ -203,7 +206,7 @@ importers:
         version: 6.5.0(prisma@6.5.0(typescript@5.8.3))(typescript@5.8.3)
       '@redwoodjs/sdk':
         specifier: 0.0.65
-        version: 0.0.65(@types/node@22.14.0)(rollup@4.34.8)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(webpack@5.97.1(esbuild@0.25.0))(workerd@1.20250408.0)
+        version: 0.0.65(@types/node@22.14.0)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(webpack@5.97.1(esbuild@0.25.0))
       '@simplewebauthn/browser':
         specifier: ^13.1.0
         version: 13.1.0
@@ -4368,32 +4371,9 @@ snapshots:
     optionalDependencies:
       workerd: 1.20250405.0
 
-  '@cloudflare/unenv-preset@2.3.1(unenv@2.0.0-rc.15)(workerd@1.20250408.0)':
-    dependencies:
-      unenv: 2.0.0-rc.15
-    optionalDependencies:
-      workerd: 1.20250408.0
-
   '@cloudflare/vite-plugin@1.0.1(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250405.0)(wrangler@4.8.0(@cloudflare/workers-types@4.20250407.0))':
     dependencies:
       '@cloudflare/unenv-preset': 2.3.1(unenv@2.0.0-rc.15)(workerd@1.20250405.0)
-      '@hattip/adapter-node': 0.0.49
-      get-port: 7.1.0
-      miniflare: 4.20250405.0
-      picocolors: 1.1.1
-      tinyglobby: 0.2.12
-      unenv: 2.0.0-rc.15
-      vite: 6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0)
-      wrangler: 4.8.0(@cloudflare/workers-types@4.20250407.0)
-      ws: 8.18.0
-    transitivePeerDependencies:
-      - bufferutil
-      - utf-8-validate
-      - workerd
-
-  '@cloudflare/vite-plugin@1.0.1(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250408.0)(wrangler@4.8.0(@cloudflare/workers-types@4.20250407.0))':
-    dependencies:
-      '@cloudflare/unenv-preset': 2.3.1(unenv@2.0.0-rc.15)(workerd@1.20250408.0)
       '@hattip/adapter-node': 0.0.49
       get-port: 7.1.0
       miniflare: 4.20250405.0
@@ -5040,9 +5020,9 @@ snapshots:
     dependencies:
       dotenv: 16.4.7
 
-  '@redwoodjs/sdk@0.0.65(@types/node@22.14.0)(rollup@4.34.8)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(webpack@5.97.1(esbuild@0.25.0))(workerd@1.20250408.0)':
+  '@redwoodjs/sdk@0.0.65(@types/node@22.14.0)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(webpack@5.97.1(esbuild@0.25.0))':
     dependencies:
-      '@cloudflare/vite-plugin': 1.0.1(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250408.0)(wrangler@4.8.0(@cloudflare/workers-types@4.20250407.0))
+      '@cloudflare/vite-plugin': 1.0.1(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250405.0)(wrangler@4.8.0(@cloudflare/workers-types@4.20250407.0))
       '@cloudflare/workers-types': 4.20250407.0
       '@types/fnv-plus': 1.3.2
       '@types/fs-extra': 11.0.4
@@ -5089,9 +5069,9 @@ snapshots:
       - webpack
       - workerd
 
-  '@redwoodjs/sdk@0.0.65(@types/node@22.14.0)(rollup@4.34.8)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250408.0)':
+  '@redwoodjs/sdk@0.0.65(@types/node@22.14.0)(typescript@5.8.3)(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(webpack@5.97.1)':
     dependencies:
-      '@cloudflare/vite-plugin': 1.0.1(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250408.0)(wrangler@4.8.0(@cloudflare/workers-types@4.20250407.0))
+      '@cloudflare/vite-plugin': 1.0.1(vite@6.2.5(@types/node@22.14.0)(jiti@1.21.7)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250405.0)(wrangler@4.8.0(@cloudflare/workers-types@4.20250407.0))
       '@cloudflare/workers-types': 4.20250407.0
       '@types/fnv-plus': 1.3.2
       '@types/fs-extra': 11.0.4

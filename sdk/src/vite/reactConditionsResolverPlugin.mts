@@ -1,11 +1,12 @@
 import { resolve } from "path";
 import path from "path";
 import { Plugin, EnvironmentOptions } from "vite";
-import { createRequire } from "node:module";
+import { ROOT_DIR } from "../lib/constants.mjs";
 import debug from "debug";
 import { pathExists } from "fs-extra";
+import enhancedResolve from "enhanced-resolve";
 import { VENDOR_DIST_DIR } from "../lib/constants.mjs";
-
+import { createRequire } from "node:module";
 const log = debug("rwsdk:vite:react-conditions");
 
 // Define package sets for each environment
@@ -63,36 +64,28 @@ export const reactConditionsResolverPlugin = async ({
     command
   );
 
-  // Create a require function to resolve node modules from the SDK
-  const sdkRequire = createRequire(
-    resolve(projectRootDir, "node_modules/@redwoodjs/sdk")
-  );
-
-  // Path to custom React builds in the vendor directory
   const vendorDir = VENDOR_DIST_DIR;
+  const sdkRequire = createRequire(ROOT_DIR);
 
-  // Helper to resolve packages with mode in mind
-  const resolveWithMode = async (packageName: string, environment: string) => {
-    // Special handling for react-dom server packages
-    if (packageName.startsWith("react-dom/server")) {
-      const baseResolved = sdkRequire.resolve("react-dom");
-      const packageDir = path.dirname(baseResolved);
+  // Create resolver functions for each environment condition set
+  const workerResolver = enhancedResolve.create.sync({
+    conditionNames: ["react-server", "workerd", "worker", "edge", "default"],
+  });
 
-      // Determine which file to use based on mode
-      const edgeFileName =
-        mode === "development"
-          ? "react-dom-server.edge.development.js"
-          : "react-dom-server.edge.production.js";
+  const clientResolver = enhancedResolve.create.sync({
+    conditionNames: ["browser", "default"],
+  });
 
-      const edgePath = path.join(packageDir, "cjs", edgeFileName);
+  const skipReactServerResolver = enhancedResolve.create.sync({
+    conditionNames: ["workerd", "worker", "edge", "default"],
+  });
 
-      if (await pathExists(edgePath)) {
-        log("Using edge %s server for %s: %s", mode, packageName, edgePath);
-        return edgePath;
-      }
-    }
-
-    // For custom React builds, use our own bundled versions
+  // Helper to resolve packages with conditions
+  const resolveWithConditions = async (
+    packageName: string,
+    environment: string
+  ) => {
+    // Custom handling for react package - check for our custom builds first
     if (packageName === "react") {
       const modePath = resolve(vendorDir, `react.${mode}.js`);
       if (await pathExists(modePath)) {
@@ -101,78 +94,43 @@ export const reactConditionsResolverPlugin = async ({
       }
     }
 
-    // Environment conditions
-    const env = environment || "worker";
-    const conditions: string[] = [];
-
-    if (env === "worker") {
-      conditions.push("workerd", "edge", "worker");
-    } else {
-      conditions.push("browser");
-    }
-
-    // React-server condition - apply selectively
-    if (!SKIP_REACT_SERVER.includes(packageName)) {
-      conditions.push("react-server");
-    }
-
+    // Try enhanced-resolve resolution
     try {
-      const baseResolved = sdkRequire.resolve(packageName);
-      const packageDir = path.dirname(baseResolved);
-      const baseName = path.basename(baseResolved, ".js");
+      // Determine which resolver to use
+      let resolver;
 
-      // Helper to check path existence and log if found
-      const tryPath = async (filepath: string, type: string) => {
-        if (await pathExists(filepath)) {
-          log("Using %s for %s: %s", type, packageName, filepath);
-          return filepath;
-        }
-        return null;
-      };
-
-      // Try condition-specific paths first
-      for (const condition of conditions) {
-        const conditionPath = path.join(
-          packageDir,
-          `${baseName}.${condition}.js`
-        );
-        const found = await tryPath(conditionPath, `condition ${condition}`);
-        if (found) return found;
-      }
-
-      // Try mode-specific paths based on package type
-      if (packageName.includes("react-server-dom-webpack")) {
-        const [pkgBase, type, env] = packageName.split("/");
-        const filename =
-          type === "server"
-            ? `${pkgBase}-${type}.${env}.${mode}.js`
-            : `${pkgBase}-${type}.${mode}.js`;
-
-        const cjsPath = path.join(packageDir, "cjs", filename);
-        const found = await tryPath(cjsPath, `webpack ${mode} mode`);
-        if (found) {
-          return found;
+      if (environment === "worker") {
+        if (SKIP_REACT_SERVER.includes(packageName)) {
+          resolver = skipReactServerResolver;
+          log("Using skipReactServer resolver for %s", packageName);
         } else {
-          log("Using standard resolution for %s", packageName);
-          return baseResolved;
+          resolver = workerResolver;
+          log("Using worker resolver with react-server for %s", packageName);
         }
       } else {
-        const modePath = baseResolved.replace(
-          /\.js$/,
-          mode === "development" ? ".development.js" : ".production.min.js"
-        );
-        const found = await tryPath(modePath, `${mode} mode`);
-        if (found) {
-          return found;
-        }
+        resolver = clientResolver;
+        log("Using client resolver for %s", packageName);
       }
 
-      // Fall back to standard resolution
-      log("Using standard resolution for %s", packageName);
-      return baseResolved;
+      // First arg is the context directory for relative requires,
+      // second arg is the actual request
+      const resolved = resolver(ROOT_DIR, packageName);
+      if (resolved) {
+        log("Resolved %s to %s using enhanced-resolve", packageName, resolved);
+        return resolved;
+      }
     } catch (error) {
-      log("Error in custom resolution for %s: %o", packageName, error);
-      return sdkRequire.resolve(packageName);
+      log("Enhanced resolution failed for %s: %o", packageName, error);
+    }
+
+    // Fallback to standard resolution
+    try {
+      const resolved = sdkRequire.resolve(packageName);
+      log("Standard resolution for %s: %s", packageName, resolved);
+      return resolved;
+    } catch (fallbackError) {
+      log("All resolution failed for %s: %o", packageName, fallbackError);
+      throw new Error(`Failed to resolve ${packageName}`);
     }
   };
 
@@ -180,7 +138,7 @@ export const reactConditionsResolverPlugin = async ({
   const generateImports = async (packages: string[], env: string) => {
     const imports: Record<string, string> = {};
     for (const pkg of packages) {
-      imports[pkg] = await resolveWithMode(pkg, env);
+      imports[pkg] = await resolveWithConditions(pkg, env);
     }
     return imports;
   };
@@ -188,6 +146,7 @@ export const reactConditionsResolverPlugin = async ({
   // Generate import mappings for both environments
   const workerImports = await generateImports(WORKER_PACKAGES, "worker");
   const clientImports = await generateImports(CLIENT_PACKAGES, "client");
+
   // Log the resolved paths
   const logImports = (env: string, imports: Record<string, string>) => {
     log(`Resolved ${env} paths (${mode} mode):`);
@@ -215,6 +174,9 @@ export const reactConditionsResolverPlugin = async ({
       ...(config.optimizeDeps.esbuildOptions.define || {}),
       "process.env.NODE_ENV": JSON.stringify(mode),
     };
+
+    config.optimizeDeps.include ??= [];
+    config.optimizeDeps.include.push(...Object.keys(imports));
 
     // Initialize resolve config if needed
     config.resolve ??= {};
