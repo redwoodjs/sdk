@@ -1,5 +1,4 @@
 import { resolve } from "path";
-import path from "path";
 import { Plugin, EnvironmentOptions } from "vite";
 import { ROOT_DIR } from "../lib/constants.mjs";
 import debug from "debug";
