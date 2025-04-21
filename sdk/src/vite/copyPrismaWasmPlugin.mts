@@ -15,7 +15,7 @@ export const copyPrismaWasmPlugin = ({
   async writeBundle() {
     const wasmFilePath = resolve(
       rootDir,
-      "node_modules/.prisma/client/query_engine_bg.wasm",
+      "node_modules/.prisma/client/query_engine_bg.wasm"
     );
 
     const fileName = path.basename(wasmFilePath);
@@ -24,10 +24,8 @@ export const copyPrismaWasmPlugin = ({
     if (await pathExists(wasmFilePath)) {
       await copy(wasmFilePath, outputPath);
       console.log(
-        `✅ Copied ${fileName} from ${wasmFilePath} to ${outputPath}`,
+        `✅ Copied ${fileName} from ${wasmFilePath} to ${outputPath}`
       );
-    } else {
-      console.warn(`⚠️ WASM file not found at: ${wasmFilePath}`);
     }
   },
   renderChunk(code) {
