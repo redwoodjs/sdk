@@ -65,7 +65,6 @@ export const reactConditionsResolverPlugin = async ({
   const vendorDir = VENDOR_DIST_DIR;
   const sdkRequire = createRequire(ROOT_DIR);
 
-  // Create resolver functions for each environment condition set
   const workerResolver = enhancedResolve.create.sync({
     conditionNames: ["react-server", "workerd", "worker", "edge", "default"],
   });
@@ -78,12 +77,10 @@ export const reactConditionsResolverPlugin = async ({
     conditionNames: ["workerd", "worker", "edge", "default"],
   });
 
-  // Helper to resolve packages with conditions
   const resolveWithConditions = async (
     packageName: string,
     environment: string
   ) => {
-    // Custom handling for react package - check for our custom builds first
     if (packageName === "react") {
       const modePath = resolve(vendorDir, `react.${mode}.js`);
       if (await pathExists(modePath)) {
@@ -92,9 +89,7 @@ export const reactConditionsResolverPlugin = async ({
       }
     }
 
-    // Try enhanced-resolve resolution
     try {
-      // Determine which resolver to use
       let resolver;
 
       if (environment === "worker") {
@@ -110,8 +105,6 @@ export const reactConditionsResolverPlugin = async ({
         log("Using client resolver for %s", packageName);
       }
 
-      // First arg is the context directory for relative requires,
-      // second arg is the actual request
       const resolved = resolver(ROOT_DIR, packageName);
       if (resolved) {
         log("Resolved %s to %s using enhanced-resolve", packageName, resolved);
@@ -121,7 +114,6 @@ export const reactConditionsResolverPlugin = async ({
       log("Enhanced resolution failed for %s: %o", packageName, error);
     }
 
-    // Fallback to standard resolution
     try {
       const resolved = sdkRequire.resolve(packageName);
       log("Standard resolution for %s: %s", packageName, resolved);
@@ -132,7 +124,6 @@ export const reactConditionsResolverPlugin = async ({
     }
   };
 
-  // Generate import mappings for environments
   const generateImports = async (packages: string[], env: string) => {
     const imports: Record<string, string> = {};
     for (const pkg of packages) {
@@ -167,7 +158,6 @@ export const reactConditionsResolverPlugin = async ({
 
     (config.optimizeDeps ??= {}).esbuildOptions ??= {};
 
-    // Add define for process.env.NODE_ENV
     config.optimizeDeps.esbuildOptions.define = {
       ...(config.optimizeDeps.esbuildOptions.define || {}),
       "process.env.NODE_ENV": JSON.stringify(mode),
@@ -176,13 +166,10 @@ export const reactConditionsResolverPlugin = async ({
     config.optimizeDeps.include ??= [];
     config.optimizeDeps.include.push(...Object.keys(imports));
 
-    // Initialize resolve config if needed
     config.resolve ??= {};
 
-    // Initialize alias if it doesn't exist
     (config.resolve as any).alias ??= [];
 
-    // If alias is an object, convert it to array while preserving entries
     if (!Array.isArray((config.resolve as any).alias)) {
       const existingAlias = (config.resolve as any).alias;
       (config.resolve as any).alias = Object.entries(existingAlias).map(
@@ -190,7 +177,6 @@ export const reactConditionsResolverPlugin = async ({
       );
     }
 
-    // Add each package import as a separate alias entry
     Object.entries(imports).forEach(([id, resolvedPath]) => {
       const exactMatchRegex = new RegExp(
         `^${id.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`
@@ -210,11 +196,9 @@ export const reactConditionsResolverPlugin = async ({
     enforce: "post",
 
     config(config) {
-      // Initialize resolve config and alias if needed
       config.resolve ??= {};
       (config.resolve as any).alias ??= [];
 
-      // Convert alias to array if it's an object
       if (!Array.isArray((config.resolve as any).alias)) {
         const existingAlias = (config.resolve as any).alias;
         (config.resolve as any).alias = Object.entries(existingAlias).map(
@@ -222,7 +206,6 @@ export const reactConditionsResolverPlugin = async ({
         );
       }
 
-      // Add global aliases for server packages
       for (const id of GLOBAL_SERVER_PACKAGES) {
         const resolvedPath = workerImports[id];
         if (resolvedPath) {
