@@ -49,7 +49,6 @@ const GLOBAL_SERVER_PACKAGES = [
 ];
 
 export const reactConditionsResolverPlugin = async ({
-  projectRootDir,
   mode = "development",
   command = "serve",
 }: {
