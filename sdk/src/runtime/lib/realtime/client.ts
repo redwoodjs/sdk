@@ -31,7 +31,7 @@ export const realtimeTransport =
         `${protocol}://${window.location.host}/__realtime?` +
           `key=${encodeURIComponent(key)}&` +
           `url=${encodeURIComponent(clientUrl.toString())}&` +
-          `clientId=${encodeURIComponent(clientId)}`,
+          `clientId=${encodeURIComponent(clientId)}`
       );
 
       ws.binaryType = "arraybuffer";
@@ -49,14 +49,25 @@ export const realtimeTransport =
         const messageType = data[0];
 
         if (messageType === MESSAGE_TYPE.RSC_START) {
+          const decoder = new TextDecoder();
+          const rscId = decoder.decode(data.slice(1, 37)); // Extract RSC stream ID
+
           const stream = new ReadableStream({
             start(controller) {
               ws!.addEventListener("message", function streamHandler(event) {
                 const data = new Uint8Array(event.data);
                 const messageType = data[0];
 
+                // Extract the RSC stream ID and verify it matches
+                const responseId = decoder.decode(data.slice(1, 37));
+                if (responseId !== rscId) {
+                  return; // Not for this stream
+                }
+
+                const payload = data.slice(37);
+
                 if (messageType === MESSAGE_TYPE.RSC_CHUNK) {
-                  controller.enqueue(data.slice(1));
+                  controller.enqueue(payload);
                 } else if (messageType === MESSAGE_TYPE.RSC_END) {
                   controller.close();
                   ws!.removeEventListener("message", streamHandler);
@@ -84,7 +95,7 @@ export const realtimeTransport =
     const ensureWs = (): WebSocket => {
       if (!ws && isConnected) {
         throw new Error(
-          "Inconsistent state: WebSocket is null but marked as connected",
+          "Inconsistent state: WebSocket is null but marked as connected"
         );
       }
       if (!ws || !isConnected) {
@@ -95,7 +106,7 @@ export const realtimeTransport =
 
     const realtimeCallServer = async <Result>(
       id: string | null,
-      args: unknown[],
+      args: unknown[]
     ): Promise<Result | null> => {
       try {
         const socket = ensureWs();
@@ -104,7 +115,12 @@ export const realtimeTransport =
         );
 
         const encodedArgs = args != null ? await encodeReply(args) : null;
-        const messageData = JSON.stringify({ id, args: encodedArgs });
+        const requestId = crypto.randomUUID();
+        const messageData = JSON.stringify({
+          id,
+          args: encodedArgs,
+          requestId,
+        });
 
         const encoder = new TextEncoder();
         const messageBytes = encoder.encode(messageData);
@@ -121,16 +137,37 @@ export const realtimeTransport =
                 const data = new Uint8Array(event.data);
                 const messageType = data[0];
 
+                // First byte is message type
+                // Next 36 bytes (or fixed size) should be UUID as requestId
+                // Remaining bytes are the payload
+
+                // Extract the requestId from the message
+                const decoder = new TextDecoder();
+                const responseId = decoder.decode(data.slice(1, 37)); // Assuming UUID is 36 chars
+
+                // Only process messages meant for this request
+                if (responseId !== requestId) {
+                  return;
+                }
+
+                // The actual payload starts after the requestId
+                const payload = data.slice(37);
+
                 if (messageType === MESSAGE_TYPE.ACTION_CHUNK) {
-                  controller.enqueue(data.slice(1));
+                  controller.enqueue(payload);
                 } else if (messageType === MESSAGE_TYPE.ACTION_END) {
                   controller.close();
                   socket.removeEventListener("message", messageHandler);
                 } else if (messageType === MESSAGE_TYPE.ACTION_ERROR) {
-                  const decoder = new TextDecoder();
-                  const jsonData = decoder.decode(data.slice(1));
-                  const response = JSON.parse(jsonData);
-                  controller.error(new Error(response.error));
+                  const errorJson = decoder.decode(payload);
+                  let errorMsg = "Unknown error";
+                  try {
+                    const errorObj = JSON.parse(errorJson);
+                    errorMsg = errorObj.error || errorMsg;
+                  } catch (e) {
+                    // Use default error message
+                  }
+                  controller.error(new Error(errorMsg));
                   socket.removeEventListener("message", messageHandler);
                 }
               };
@@ -142,7 +179,7 @@ export const realtimeTransport =
             callServer: realtimeCallServer,
           });
           transportContext.setRscPayload(
-            rscPayload as Promise<ActionResponse<unknown>>,
+            rscPayload as Promise<ActionResponse<unknown>>
           );
           resolve(rscPayload as Result);
         });
