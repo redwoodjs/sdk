@@ -6,7 +6,7 @@
     </picture>
   </a>
 
-  <h1>The React Framework for <a href="https://www.cloudflare.com/">Cloudflare</a>.</h1>
+  <h1>A React Framework for <a href="https://www.cloudflare.com/">Cloudflare</a>.</h1>
 
 <a href="https://rwsdk.com"><img alt="Redwood Inc. logo" src="https://img.shields.io/badge/MADE%20BY%20Redwood%20Inc.-000000.svg?style=for-the-badge&logo=Redwood&labelColor=000"></a>
 <a href="https://docs.rwsdk.com"><img alt="Documentation" src="https://img.shields.io/badge/Documentation-000000.svg?style=for-the-badge&logo=Redwood&labelColor=000"></a>
