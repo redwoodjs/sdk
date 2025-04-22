@@ -103,6 +103,12 @@ export const defineApp = (routes: Route[]) => {
           }
 
           const props = computePageProps(requestInfo, Page);
+          const pageResult = await Page(props);
+
+          if (pageResult instanceof Response) {
+            return pageResult;
+          }
+
           let actionResult: unknown = undefined;
           const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 
@@ -111,7 +117,7 @@ export const defineApp = (routes: Route[]) => {
           }
 
           const rscPayloadStream = renderToRscStream({
-            node: <Page {...props} />,
+            node: pageResult as React.ReactElement,
             actionResult:
               actionResult instanceof Response ? null : actionResult,
           });
