@@ -22,9 +22,11 @@ export type RouteMiddleware = (
 
 type RouteFunction = (requestInfo: RequestInfo) => Response | Promise<Response>;
 
+type MaybePromise<T> = T | Promise<T>;
+
 type RouteComponent = (
   requestInfo: RequestInfo
-) => React.JSX.Element | Promise<React.JSX.Element>;
+) => MaybePromise<React.JSX.Element | Response>;
 
 type RouteHandler =
   | RouteFunction
