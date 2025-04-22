@@ -90,7 +90,8 @@ export const defineApp = (routes: Route[]) => {
 
         const renderPage = async (
           requestInfo: RequestInfo,
-          Page: React.FC<any>
+          Page: React.FC<any>,
+          onError: (error: unknown) => void
         ) => {
           if (isClientReference(requestInfo.rw.Document)) {
             if (IS_DEV) {
@@ -103,6 +104,12 @@ export const defineApp = (routes: Route[]) => {
           }
 
           const props = computePageProps(requestInfo, Page);
+          const pageResult = await Page(props);
+
+          if (pageResult instanceof Response) {
+            return pageResult;
+          }
+
           let actionResult: unknown = undefined;
           const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 
@@ -111,9 +118,10 @@ export const defineApp = (routes: Route[]) => {
           }
 
           const rscPayloadStream = renderToRscStream({
-            node: <Page {...props} />,
+            node: pageResult as React.ReactElement,
             actionResult:
               actionResult instanceof Response ? null : actionResult,
+            onError,
           });
 
           if (isRSCRequest) {
@@ -147,13 +155,20 @@ export const defineApp = (routes: Route[]) => {
           });
         };
 
-        const response = await runWithRequestInfo(outerRequestInfo, () =>
-          router.handle({
-            request,
-            renderPage,
-            getRequestInfo,
-            runWithRequestInfoOverrides,
-          })
+        const response = await runWithRequestInfo(
+          outerRequestInfo,
+          async () =>
+            new Promise<Response>(async (resolve, reject) => {
+              const response = await router.handle({
+                request,
+                renderPage,
+                getRequestInfo,
+                runWithRequestInfoOverrides,
+                onError: reject,
+              });
+
+              resolve(response);
+            })
         );
 
         // context(justinvdm, 18 Mar 2025): In some cases, such as a .fetch() call to a durable object instance, or Response.redirect(),
@@ -170,6 +185,10 @@ export const defineApp = (routes: Route[]) => {
       } catch (e) {
         if (e instanceof ErrorResponse) {
           return new Response(e.message, { status: e.code });
+        }
+
+        if (e instanceof Response) {
+          return e;
         }
 
         console.error("Unhandled error", e);

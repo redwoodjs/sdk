@@ -22,9 +22,11 @@ export type RouteMiddleware = (
 
 type RouteFunction = (requestInfo: RequestInfo) => Response | Promise<Response>;
 
+type MaybePromise<T> = T | Promise<T>;
+
 type RouteComponent = (
   requestInfo: RequestInfo
-) => React.JSX.Element | Promise<React.JSX.Element>;
+) => MaybePromise<React.JSX.Element | Response>;
 
 type RouteHandler =
   | RouteFunction
@@ -94,11 +96,17 @@ export function defineRoutes(routes: Route[]): {
     request,
     renderPage,
     getRequestInfo,
+    onError,
     runWithRequestInfoOverrides,
   }: {
     request: Request;
-    renderPage: (requestInfo: RequestInfo, Page: React.FC) => Promise<Response>;
+    renderPage: (
+      requestInfo: RequestInfo,
+      Page: React.FC,
+      onError: (error: unknown) => void
+    ) => Promise<Response>;
     getRequestInfo: () => RequestInfo;
+    onError: (error: unknown) => void;
     runWithRequestInfoOverrides: <Result>(
       overrides: Partial<RequestInfo>,
       fn: () => Promise<Result>
@@ -112,6 +120,7 @@ export function defineRoutes(routes: Route[]): {
       request,
       renderPage,
       getRequestInfo,
+      onError,
       runWithRequestInfoOverrides,
     }) {
       const url = new URL(request.url);
@@ -154,7 +163,7 @@ export function defineRoutes(routes: Route[]): {
         const handlers = Array.isArray(handler) ? handler : [handler];
         for (const h of handlers) {
           if (isRouteComponent(h)) {
-            return await renderPage(getRequestInfo(), h as React.FC);
+            return await renderPage(getRequestInfo(), h as React.FC, onError);
           } else {
             const r = await (h(getRequestInfo()) as Promise<Response>);
             if (r instanceof Response) {
