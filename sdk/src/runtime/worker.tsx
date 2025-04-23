@@ -1,3 +1,4 @@
+import React from "react";
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 import { injectRSCPayload } from "./render/injectRSCPayload";
 import { renderToRscStream } from "./render/renderToRscStream";
@@ -12,9 +13,11 @@ import {
 } from "./requestInfo/worker";
 import { RequestInfo } from "./requestInfo/types";
 
-import { Route, defineRoutes } from "./lib/router";
+import { Route, defineRoutes, route } from "./lib/router";
 import { generateNonce } from "./lib/utils";
 import { IS_DEV } from "./constants";
+
+import { HealthCheckWrapper, HealthCheckPage } from "./components/HealthCheck";
 
 declare global {
   type Env = {
@@ -51,6 +54,7 @@ export const defineApp = (routes: Route[]) => {
       try {
         const url = new URL(request.url);
         const isRSCRequest = url.searchParams.has("__rsc");
+        const isHealthCheck = url.searchParams.has("__health");
         const userHeaders = new Headers();
 
         const rw = {
@@ -104,7 +108,7 @@ export const defineApp = (routes: Route[]) => {
           }
 
           const props = computePageProps(requestInfo, Page);
-          const pageResult = await Page(props);
+          let pageResult = await Page(props);
 
           if (pageResult instanceof Response) {
             return pageResult;
@@ -113,8 +117,14 @@ export const defineApp = (routes: Route[]) => {
           let actionResult: unknown = undefined;
           const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 
+          // Handle action requests first to ensure __health action works properly
           if (isRSCActionHandler) {
             actionResult = await rscActionHandler(request);
+          }
+
+          // If health check is requested via query param, wrap the page with health info
+          if (isHealthCheck && React.isValidElement(pageResult)) {
+            pageResult = <HealthCheckWrapper>{pageResult}</HealthCheckWrapper>;
           }
 
           const rscPayloadStream = renderToRscStream({
