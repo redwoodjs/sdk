@@ -99,8 +99,12 @@ export const ensureDeployEnv = async () => {
 
   // todo(justinvdm): this is a hack to force the account selection prompt,
   // we need to find a better way
+  let d1ListResult;
   if (!(await pathExists(accountCachePath))) {
-    await $({ stdio: "inherit" })`wrangler d1 list --json`;
+    d1ListResult = await $({ stdio: "inherit" })`wrangler d1 list --json`;
+  } else {
+    // Get the D1 database list for later use
+    d1ListResult = await $`wrangler d1 list --json`;
   }
 
   // Create a no-op secret to ensure worker exists
@@ -118,9 +122,64 @@ export const ensureDeployEnv = async () => {
         (db: any) => db.binding === "DB"
       );
       if (existingDb && existingDb.database_id !== "__change_me__") {
-        console.log(
-          "D1 database already configured in wrangler.jsonc, skipping creation"
-        );
+        let dbExists = false;
+        if (d1ListResult?.stdout) {
+          try {
+            const databases = JSON.parse(d1ListResult.stdout);
+            const existingDatabase = databases.find(
+              (db: any) =>
+                db.name === existingDb.database_name ||
+                db.uuid === existingDb.database_id
+            );
+
+            if (existingDatabase) {
+              dbExists = true;
+              console.log(
+                "D1 database already configured and exists in Cloudflare, skipping creation"
+              );
+            } else {
+              console.log(
+                "D1 database configured in wrangler.jsonc but not found in Cloudflare, creating it..."
+              );
+            }
+          } catch (error) {
+            console.log(
+              "Error checking database existence, will attempt to create it"
+            );
+          }
+        }
+
+        // Create the database if it doesn't exist
+        if (!dbExists) {
+          await $({
+            stdio: "inherit",
+          })`wrangler d1 create ${existingDb.database_name}`;
+          const result =
+            await $`wrangler d1 info ${existingDb.database_name} --json`;
+          const dbInfo = JSON.parse(result.stdout ?? "{}");
+
+          if (!dbInfo.uuid) {
+            throw new Error("Failed to get database ID from wrangler output");
+          }
+
+          // Update the database ID in the config
+          const existingDatabases = wranglerConfig.d1_databases || [];
+          wranglerConfig.d1_databases = [
+            ...existingDatabases.filter((db: any) => db.binding !== "DB"),
+            {
+              binding: "DB",
+              database_name: existingDb.database_name,
+              database_id: dbInfo.uuid,
+            },
+          ];
+
+          await writeFile(
+            wranglerPath,
+            JSON.stringify(wranglerConfig, null, 2)
+          );
+          console.log(`Created D1 database: ${existingDb.database_name}`);
+          console.log("Updated wrangler.jsonc configuration");
+        }
       } else {
         const suffix = uniqueNamesGenerator({
           dictionaries: [adjectives, animals],
