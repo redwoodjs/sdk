@@ -1,6 +1,6 @@
 import { relative } from "node:path";
 import { Plugin } from "vite";
-import { Project, Node, SyntaxKinds } from "ts-morph";
+import { Project, Node, SyntaxKind } from "ts-morph";
 
 interface TransformResult {
   code: string;
@@ -57,7 +57,7 @@ export async function transformUseClientCode(
   const components = new Map<string, ComponentInfo>();
   let anonymousDefaultCount = 0;
 
-  // First pass: collect all information
+  // Pass 1: collect all information
   // Handle function declarations
   sourceFile
     .getDescendantsOfKind(SyntaxKind.FunctionDeclaration)
@@ -138,18 +138,7 @@ export async function transformUseClientCode(
       });
     });
 
-  // Second pass: rename all identifiers to SSR versions
-  components.forEach(({ node, ssrName, isAnonymousDefault }) => {
-    if (!isAnonymousDefault) {
-      if (Node.isFunctionDeclaration(node)) {
-        node.rename(ssrName);
-      } else if (Node.isVariableDeclaration(node)) {
-        node.getFirstChildByKind(SyntaxKind.Identifier)?.rename(ssrName);
-      }
-    }
-  });
-
-  // Third pass: handle exports
+  // Pass 2: handle exports
   // Remove use client directives
   sourceFile.getDescendantsOfKind(SyntaxKind.StringLiteral).forEach((node) => {
     if (
@@ -201,6 +190,7 @@ export async function transformUseClientCode(
       }
     });
 
+  // Pass 3: handle default exports with arrow functions
   // First remove the default export node (we'll add it back later)
   sourceFile
     .getDescendantsOfKind(SyntaxKind.ExportAssignment)
@@ -232,6 +222,18 @@ export async function transformUseClientCode(
       }
     });
 
+  // Pass 4: Rename all identifiers to SSR version
+  components.forEach(({ node, ssrName, isAnonymousDefault }) => {
+    if (!isAnonymousDefault) {
+      if (Node.isFunctionDeclaration(node)) {
+        node.rename(ssrName);
+      } else if (Node.isVariableDeclaration(node)) {
+        node.getFirstChildByKind(SyntaxKind.Identifier)?.rename(ssrName);
+      }
+    }
+  });
+
+  // Pass 5: Add client reference registrations
   // Add all declarations first
   components.forEach(
     ({ ssrName, originalName, isDefault, isAnonymousDefault }) => {
@@ -245,6 +247,7 @@ export async function transformUseClientCode(
     }
   );
 
+  // Pass 6: add new exports
   // Then add all exports after declarations
   components.forEach(({ ssrName, originalName, isDefault }) => {
     if (isDefault) {
@@ -257,7 +260,7 @@ export async function transformUseClientCode(
     }
   });
 
-  // Add this where we handle other export removals
+  // Clean up any remaining export assignments
   sourceFile
     .getDescendantsOfKind(SyntaxKind.ExportAssignment)
     .forEach((node) => {

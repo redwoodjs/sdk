@@ -377,10 +377,9 @@ export { Button, buttonVariants }
         )
       }
 
-      export { ButtonSSR, buttonVariants }
+      export { buttonVariants };
       const Button = registerClientReference("/test/file.tsx", "Button", ButtonSSR);
-      export { ButtonSSR };
-      export { Button };
+      export { ButtonSSR, Button };
       "
     `);
   });
