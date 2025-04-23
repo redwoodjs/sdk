@@ -405,6 +405,6 @@ export const useClientPlugin = (): Plugin => ({
       id
     )}`;
 
-    transformUseClientCode(code, relativeId);
+    return transformUseClientCode(code, relativeId);
   },
 });
