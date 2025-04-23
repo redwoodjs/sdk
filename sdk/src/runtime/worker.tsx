@@ -159,15 +159,19 @@ export const defineApp = (routes: Route[]) => {
           outerRequestInfo,
           async () =>
             new Promise<Response>(async (resolve, reject) => {
-              const response = await router.handle({
-                request,
-                renderPage,
-                getRequestInfo,
-                runWithRequestInfoOverrides,
-                onError: reject,
-              });
-
-              resolve(response);
+              try {
+                resolve(
+                  await router.handle({
+                    request,
+                    renderPage,
+                    getRequestInfo,
+                    runWithRequestInfoOverrides,
+                    onError: reject,
+                  })
+                );
+              } catch (e) {
+                reject(e);
+              }
             })
         );
 
