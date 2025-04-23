@@ -103,6 +103,13 @@ export const defineApp = (routes: Route[]) => {
             });
           }
 
+          let actionResult: unknown = undefined;
+          const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
+
+          if (isRSCActionHandler) {
+            actionResult = await rscActionHandler(request);
+          }
+
           const props = computePageProps(requestInfo, Page);
 
           const pageResult = isClientReference(Page) ? (
@@ -113,13 +120,6 @@ export const defineApp = (routes: Route[]) => {
 
           if (pageResult instanceof Response) {
             return pageResult;
-          }
-
-          let actionResult: unknown = undefined;
-          const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
-
-          if (isRSCActionHandler) {
-            actionResult = await rscActionHandler(request);
           }
 
           const rscPayloadStream = renderToRscStream({
