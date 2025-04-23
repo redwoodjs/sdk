@@ -1,13 +1,6 @@
 import { relative } from "node:path";
 import { Plugin } from "vite";
-import {
-  Project,
-  Node,
-  SyntaxKind,
-  FunctionDeclaration,
-  ArrowFunction,
-  SourceFile,
-} from "ts-morph";
+import { Project, Node, SyntaxKinds } from "ts-morph";
 
 interface TransformResult {
   code: string;
@@ -22,6 +15,7 @@ interface ComponentInfo {
   isDefault: boolean;
   isInlineExport: boolean;
   isAnonymousDefault?: boolean;
+  ssrExported?: boolean;
 }
 
 function isJsxFunction(text: string): boolean {
@@ -32,14 +26,18 @@ function isJsxFunction(text: string): boolean {
 
 export async function transformUseClientCode(
   code: string,
-  relativeId: string,
-  isWorkerEnvironment: boolean
+  relativeId: string
 ): Promise<TransformResult | undefined> {
-  if (!isWorkerEnvironment) {
+  const cleanCode = code.trimStart();
+
+  if (
+    !cleanCode.startsWith('"use client"') &&
+    !cleanCode.startsWith("'use client'")
+  ) {
     return;
   }
 
-  const project = new Project({
+  onst project = new Project({
     useInMemoryFileSystem: true,
     compilerOptions: {
       sourceMap: true,
@@ -286,24 +284,19 @@ export async function transformUseClientCode(
 export const useClientPlugin = (): Plugin => ({
   name: "rwsdk:use-client",
   async transform(code, id) {
-    if (id.includes(".vite/deps") || id.includes("node_modules")) {
+    if (
+      id.includes(".vite/deps") ||
+      id.includes("node_modules") ||
+      this.environment.name !== "worker"
+    ) {
       return;
     }
 
-    const cleanCode = code.trimStart();
-    if (
-      cleanCode.startsWith('"use client"') ||
-      cleanCode.startsWith("'use client'")
-    ) {
-      const relativeId = `/${relative(
-        this.environment.getTopLevelConfig().root,
-        id
-      )}`;
-      return transformUseClientCode(
-        code,
-        relativeId,
-        this.environment.name === "worker"
-      );
-    }
+    const relativeId = `/${relative(
+      this.environment.getTopLevelConfig().root,
+      id
+    )}`;
+
+    return transformUseClientCode(code, relativeId);
   },
 });
