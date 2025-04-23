@@ -37,7 +37,7 @@ export async function transformUseClientCode(
     return;
   }
 
-  onst project = new Project({
+  const project = new Project({
     useInMemoryFileSystem: true,
     compilerOptions: {
       sourceMap: true,
