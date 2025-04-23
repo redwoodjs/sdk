@@ -104,7 +104,12 @@ export const defineApp = (routes: Route[]) => {
           }
 
           const props = computePageProps(requestInfo, Page);
-          const pageResult = await Page(props);
+
+          const pageResult = isClientReference(Page) ? (
+            <Page {...props} />
+          ) : (
+            await Page(props)
+          );
 
           if (pageResult instanceof Response) {
             return pageResult;
