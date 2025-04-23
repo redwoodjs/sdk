@@ -19,7 +19,8 @@
     "format": "npx prettier --write ./src",
     "release": "./scripts/release.sh",
     "test": "vitest",
-    "debug:sync": "node ./dist/scripts/debug-sync.mjs"
+    "debug:sync": "node ./dist/scripts/debug-sync.mjs",
+    "smoke-test": "node ./dist/scripts/smoke-test.mjs"
   },
   "exports": {
     "./vite": {
@@ -130,7 +131,9 @@
     "vite-plugin-top-level-await": "^1.4.4",
     "vite-plugin-wasm": "^3.4.1",
     "vite-tsconfig-paths": "^5.1.4",
-    "wrangler": "^4.8.0"
+    "wrangler": "^4.8.0",
+    "@puppeteer/browsers": "^2.8.0",
+    "puppeteer-core": "^22.8.1"
   },
   "peerDependencies": {
     "vite": "^6.2.5"

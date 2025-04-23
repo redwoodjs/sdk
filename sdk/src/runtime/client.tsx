@@ -17,13 +17,13 @@ type TransportContext = {
 export type Transport = (context: TransportContext) => CallServerCallback;
 
 export type CreateCallServer = (
-  context: TransportContext,
+  context: TransportContext
 ) => <Result>(id: null | string, args: null | unknown[]) => Promise<Result>;
 
 export const fetchTransport: Transport = (transportContext) => {
   const fetchCallServer = async <Result,>(
     id: null | string,
-    args: null | unknown[],
+    args: null | unknown[]
   ): Promise<Result> => {
     const { createFromFetch, encodeReply } = await import(
       "react-server-dom-webpack/client.browser"
@@ -41,7 +41,7 @@ export const fetchTransport: Transport = (transportContext) => {
         method: "POST",
         body: args != null ? await encodeReply(args) : null,
       }),
-      { callServer: fetchCallServer },
+      { callServer: fetchCallServer }
     ) as Promise<ActionResponse<Result>>;
 
     transportContext.setRscPayload(streamData);
@@ -52,6 +52,7 @@ export const fetchTransport: Transport = (transportContext) => {
   return fetchCallServer;
 };
 
+// Define health check response type
 export const initClient = async ({
   transport = fetchTransport,
 }: {
@@ -63,6 +64,52 @@ export const initClient = async ({
 
   const callServer = transport(transportContext);
   globalThis.__rsc_callServer = callServer;
+
+  // Handle health check route
+  if (window.location.pathname === "/__health") {
+    try {
+      // Send the current timestamp to verify round-trip
+      const timestamp = Date.now();
+      const result = await callServer("__health", [timestamp]);
+
+      let status = "error";
+      let verificationPassed = false;
+
+      // Check if we got back the same timestamp
+      if (typeof result === "object" && result !== null) {
+        const healthResult = result as { status: string; timestamp: number };
+        status = healthResult.status || "error";
+        verificationPassed = healthResult.timestamp === timestamp;
+      } else if (result === "ok") {
+        status = "ok";
+        // Legacy support for servers that don't echo back timestamps
+        verificationPassed = true;
+      }
+
+      document.body.innerHTML = `
+        <div id="health-check-result" 
+             data-result="${status}" 
+             data-timestamp="${timestamp}"
+             data-verified="${verificationPassed}">
+          ${status}: ${
+        verificationPassed ? "Verification passed" : "Verification failed"
+      }
+        </div>`;
+
+      console.log("Health check result:", result);
+      console.log(
+        "Timestamp verification:",
+        verificationPassed ? "Passed" : "Failed"
+      );
+      return;
+    } catch (error: unknown) {
+      console.error("Health check failed:", error);
+      const errorMessage =
+        error instanceof Error ? error.message : "Unknown error";
+      document.body.innerHTML = `<div id="health-check-result" data-result="error">Error: ${errorMessage}</div>`;
+      return;
+    }
+  }
 
   const rootEl = document.getElementById("root");
 
