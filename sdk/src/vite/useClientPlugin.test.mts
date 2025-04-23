@@ -491,6 +491,341 @@ export default async () => {
     `);
   });
 
+  it("transforms complex default export cases", async () => {
+    expect(
+      await transform(`
+"use client";
+import { jsxDEV } from "react/jsx-dev-runtime";
+import { useState, useEffect, useRef } from "react";
+import { ChevronDownIcon, CheckIcon } from "./icons";
+export const MovieSelector = ({
+  label,
+  selectedMovie,
+  onSelect,
+  otherSelectedMovie,
+  movies,
+  error
+}) => {
+  const [isOpen, setIsOpen] = useState(false);
+  const dropdownRef = useRef(null);
+  useEffect(() => {
+    const handleClickOutside = (event) => {
+      if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+        setIsOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => {
+      document.removeEventListener("mousedown", handleClickOutside);
+    };
+  }, []);
+  const selectedMovieObj = movies.find((movie) => movie.id === selectedMovie);
+  const availableMovies = movies.filter(
+    (movie) => !otherSelectedMovie || movie.id !== otherSelectedMovie
+  );
+  return /* @__PURE__ */ jsxDEV("div", { className: "relative", ref: dropdownRef, children: [
+    /* @__PURE__ */ jsxDEV("label", { className: "font-banner block text-sm font-medium text-gray-700 mb-1", children: label === "First Movie" ? "Mash ..." : "With ..." }, void 0, false, {
+      fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+      lineNumber: 49,
+      columnNumber: 7
+    }, this),
+    /* @__PURE__ */ jsxDEV(
+      "button",
+      {
+        type: "button",
+        className: "w-full p-2 border border-gray-300 rounded-md bg-white text-left flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed",
+        onClick: () => setIsOpen(!isOpen),
+        disabled: !!error,
+        children: [
+          error ? /* @__PURE__ */ jsxDEV("span", { className: "text-red-500", children: "Error loading movies" }, void 0, false, {
+            fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+            lineNumber: 59,
+            columnNumber: 11
+          }, this) : selectedMovieObj ? /* @__PURE__ */ jsxDEV("div", { className: "flex items-center", children: [
+            /* @__PURE__ */ jsxDEV(
+              "img",
+              {
+                src: \`https://image.tmdb.org/t/p/w500/\${selectedMovieObj.photo}\`,
+                alt: selectedMovieObj.title,
+                className: "size-6 shrink-0 rounded-sm mr-2"
+              },
+              void 0,
+              false,
+              {
+                fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+                lineNumber: 62,
+                columnNumber: 13
+              },
+              this
+            ),
+            /* @__PURE__ */ jsxDEV("span", { children: selectedMovieObj.title }, void 0, false, {
+              fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+              lineNumber: 67,
+              columnNumber: 13
+            }, this)
+          ] }, void 0, true, {
+            fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+            lineNumber: 61,
+            columnNumber: 11
+          }, this) : /* @__PURE__ */ jsxDEV("span", { className: "text-gray-500", children: label }, void 0, false, {
+            fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+            lineNumber: 70,
+            columnNumber: 11
+          }, this),
+          /* @__PURE__ */ jsxDEV(ChevronDownIcon, { isOpen }, void 0, false, {
+            fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+            lineNumber: 72,
+            columnNumber: 9
+          }, this)
+        ]
+      },
+      void 0,
+      true,
+      {
+        fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+        lineNumber: 52,
+        columnNumber: 7
+      },
+      this
+    ),
+    isOpen && !error && /* @__PURE__ */ jsxDEV("div", { className: "absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm", children: availableMovies.map((movie) => /* @__PURE__ */ jsxDEV(
+      "div",
+      {
+        className: "cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-purple-50",
+        onClick: () => {
+          onSelect(movie.id);
+          setIsOpen(false);
+        },
+        children: [
+          /* @__PURE__ */ jsxDEV("div", { className: "flex items-center", children: [
+            /* @__PURE__ */ jsxDEV(
+              "img",
+              {
+                src: \`https://image.tmdb.org/t/p/w500/\${movie.photo}\`,
+                alt: movie.title,
+                className: "size-10 shrink-0 rounded-sm mr-2"
+              },
+              void 0,
+              false,
+              {
+                fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+                lineNumber: 87,
+                columnNumber: 17
+              },
+              this
+            ),
+            /* @__PURE__ */ jsxDEV("span", { className: "block truncate text-base font-medium", children: movie.title }, void 0, false, {
+              fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+              lineNumber: 92,
+              columnNumber: 17
+            }, this)
+          ] }, void 0, true, {
+            fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+            lineNumber: 86,
+            columnNumber: 15
+          }, this),
+          selectedMovie === movie.id && /* @__PURE__ */ jsxDEV("span", { className: "absolute inset-y-0 right-0 flex items-center pr-4 text-purple-600", children: /* @__PURE__ */ jsxDEV(CheckIcon, {}, void 0, false, {
+            fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+            lineNumber: 99,
+            columnNumber: 19
+          }, this) }, void 0, false, {
+            fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+            lineNumber: 98,
+            columnNumber: 17
+          }, this)
+        ]
+      },
+      movie.id,
+      true,
+      {
+        fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+        lineNumber: 78,
+        columnNumber: 13
+      },
+      this
+    )) }, void 0, false, {
+      fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+      lineNumber: 76,
+      columnNumber: 9
+    }, this)
+  ] }, void 0, true, {
+    fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+    lineNumber: 48,
+    columnNumber: 5
+  }, this);
+};
+
+`)
+    ).toMatchInlineSnapshot(`
+      "
+      import { jsxDEV } from "react/jsx-dev-runtime";
+      import { useState, useEffect, useRef } from "react";
+      import { ChevronDownIcon, CheckIcon } from "./icons";
+      import { registerClientReference } from "@redwoodjs/sdk/worker";
+
+      const MovieSelectorSSR = ({
+        label,
+        selectedMovie,
+        onSelect,
+        otherSelectedMovie,
+        movies,
+        error
+      }) => {
+        const [isOpen, setIsOpen] = useState(false);
+        const dropdownRef = useRef(null);
+        useEffect(() => {
+          const handleClickOutside = (event) => {
+            if (dropdownRef.current && !dropdownRef.current.contains(event.target)) {
+              setIsOpen(false);
+            }
+          };
+          document.addEventListener("mousedown", handleClickOutside);
+          return () => {
+            document.removeEventListener("mousedown", handleClickOutside);
+          };
+        }, []);
+        const selectedMovieObj = movies.find((movie) => movie.id === selectedMovie);
+        const availableMovies = movies.filter(
+          (movie) => !otherSelectedMovie || movie.id !== otherSelectedMovie
+        );
+        return /* @__PURE__ */ jsxDEV("div", { className: "relative", ref: dropdownRef, children: [
+          /* @__PURE__ */ jsxDEV("label", { className: "font-banner block text-sm font-medium text-gray-700 mb-1", children: label === "First Movie" ? "Mash ..." : "With ..." }, void 0, false, {
+            fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+            lineNumber: 49,
+            columnNumber: 7
+          }, this),
+          /* @__PURE__ */ jsxDEV(
+            "button",
+            {
+              type: "button",
+              className: "w-full p-2 border border-gray-300 rounded-md bg-white text-left flex items-center justify-between disabled:opacity-50 disabled:cursor-not-allowed",
+              onClick: () => setIsOpen(!isOpen),
+              disabled: !!error,
+              children: [
+                error ? /* @__PURE__ */ jsxDEV("span", { className: "text-red-500", children: "Error loading movies" }, void 0, false, {
+                  fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+                  lineNumber: 59,
+                  columnNumber: 11
+                }, this) : selectedMovieObj ? /* @__PURE__ */ jsxDEV("div", { className: "flex items-center", children: [
+                  /* @__PURE__ */ jsxDEV(
+                    "img",
+                    {
+                      src: \`https://image.tmdb.org/t/p/w500/\${selectedMovieObj.photo}\`,
+                      alt: selectedMovieObj.title,
+                      className: "size-6 shrink-0 rounded-sm mr-2"
+                    },
+                    void 0,
+                    false,
+                    {
+                      fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+                      lineNumber: 62,
+                      columnNumber: 13
+                    },
+                    this
+                  ),
+                  /* @__PURE__ */ jsxDEV("span", { children: selectedMovieObj.title }, void 0, false, {
+                    fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+                    lineNumber: 67,
+                    columnNumber: 13
+                  }, this)
+                ] }, void 0, true, {
+                  fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+                  lineNumber: 61,
+                  columnNumber: 11
+                }, this) : /* @__PURE__ */ jsxDEV("span", { className: "text-gray-500", children: label }, void 0, false, {
+                  fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+                  lineNumber: 70,
+                  columnNumber: 11
+                }, this),
+                /* @__PURE__ */ jsxDEV(ChevronDownIcon, { isOpen }, void 0, false, {
+                  fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+                  lineNumber: 72,
+                  columnNumber: 9
+                }, this)
+              ]
+            },
+            void 0,
+            true,
+            {
+              fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+              lineNumber: 52,
+              columnNumber: 7
+            },
+            this
+          ),
+          isOpen && !error && /* @__PURE__ */ jsxDEV("div", { className: "absolute z-10 mt-1 w-full bg-white shadow-lg max-h-60 rounded-md py-1 text-base overflow-auto focus:outline-none sm:text-sm", children: availableMovies.map((movie) => /* @__PURE__ */ jsxDEV(
+            "div",
+            {
+              className: "cursor-pointer select-none relative py-2 pl-3 pr-9 hover:bg-purple-50",
+              onClick: () => {
+                onSelect(movie.id);
+                setIsOpen(false);
+              },
+              children: [
+                /* @__PURE__ */ jsxDEV("div", { className: "flex items-center", children: [
+                  /* @__PURE__ */ jsxDEV(
+                    "img",
+                    {
+                      src: \`https://image.tmdb.org/t/p/w500/\${movie.photo}\`,
+                      alt: movie.title,
+                      className: "size-10 shrink-0 rounded-sm mr-2"
+                    },
+                    void 0,
+                    false,
+                    {
+                      fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+                      lineNumber: 87,
+                      columnNumber: 17
+                    },
+                    this
+                  ),
+                  /* @__PURE__ */ jsxDEV("span", { className: "block truncate text-base font-medium", children: movie.title }, void 0, false, {
+                    fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+                    lineNumber: 92,
+                    columnNumber: 17
+                  }, this)
+                ] }, void 0, true, {
+                  fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+                  lineNumber: 86,
+                  columnNumber: 15
+                }, this),
+                selectedMovie === movie.id && /* @__PURE__ */ jsxDEV("span", { className: "absolute inset-y-0 right-0 flex items-center pr-4 text-purple-600", children: /* @__PURE__ */ jsxDEV(CheckIcon, {}, void 0, false, {
+                  fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+                  lineNumber: 99,
+                  columnNumber: 19
+                }, this) }, void 0, false, {
+                  fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+                  lineNumber: 98,
+                  columnNumber: 17
+                }, this)
+              ]
+            },
+            movie.id,
+            true,
+            {
+              fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+              lineNumber: 78,
+              columnNumber: 13
+            },
+            this
+          )) }, void 0, false, {
+            fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+            lineNumber: 76,
+            columnNumber: 9
+          }, this)
+        ] }, void 0, true, {
+          fileName: "/Users/justin/rw/blotter/ai-movie-mashup/src/app/pages/mashups/components/MovieSelector.tsx",
+          lineNumber: 48,
+          columnNumber: 5
+        }, this);
+      };
+      const MovieSelector = registerClientReference("/test/file.tsx", "MovieSelector", MovieSelectorSSR);
+      export { MovieSelectorSSR, MovieSelector };
+
+      "
+    `);
+  });
+
   it("transforms default export function declaration component", async () => {
     expect(
       await transform(`"use client"
@@ -759,7 +1094,6 @@ export default Component;`)
       function ComponentSSR({ prop1, prop2 }) {
         return jsx('div', { children: 'Hello' });
       }
-
       const Component = registerClientReference("/test/file.tsx", "default", ComponentSSR);
       export { Component as default, ComponentSSR };"
     `);
@@ -936,7 +1270,8 @@ export function Chat() {
   });
 
   it("Does not transform when 'use client' is not directive", async () => {
-    expect(await transform(`const message = "use client";`))
-      .toMatchInlineSnapshot(`undefined`);
+    expect(
+      await transform(`const message = "use client";`)
+    ).toMatchInlineSnapshot(`undefined`);
   });
 });
