@@ -67,30 +67,36 @@ export const defineApp = (routes: Route[]) => {
           rw,
         };
 
-        const computePageProps = (
+        const createPageElement = (
           requestInfo: RequestInfo,
           Page: React.FC<any>
         ) => {
-          const { ctx, params } = requestInfo;
-          let props;
-
-          // context(justinvdm, 25 Feb 2025): If the page is a client reference, we need to avoid passing
-          // down props the client shouldn't get (e.g. env). For safety, we pick the allowed props explicitly.
           if (isClientReference(Page)) {
-            props = {
-              ctx,
-              params,
-            };
+            const { ctx, params } = requestInfo;
+            // context(justinvdm, 25 Feb 2025): If the page is a client reference, we need to avoid passing
+            // down props the client shouldn't get (e.g. env). For safety, we pick the allowed props explicitly.
+            return <Page ctx={ctx} params={params} />;
           } else {
-            props = requestInfo;
-          }
+            // context(justinvdm, 24 Apr 2025): We need to wrap the page in a component that throws the response to bubble it up and break out of react rendering context
+            // This way, we're able to return a response from the page component while still staying within react rendering context
+            const PageWrapper = async () => {
+              const result = await Page(requestInfo);
 
-          return props;
+              if (result instanceof Response) {
+                throw result;
+              }
+
+              return result;
+            };
+
+            return <PageWrapper />;
+          }
         };
 
         const renderPage = async (
           requestInfo: RequestInfo,
-          Page: React.FC<any>
+          Page: React.FC<any>,
+          onError: (error: unknown) => void
         ) => {
           if (isClientReference(requestInfo.rw.Document)) {
             if (IS_DEV) {
@@ -102,7 +108,6 @@ export const defineApp = (routes: Route[]) => {
             });
           }
 
-          const props = computePageProps(requestInfo, Page);
           let actionResult: unknown = undefined;
           const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 
@@ -110,10 +115,13 @@ export const defineApp = (routes: Route[]) => {
             actionResult = await rscActionHandler(request);
           }
 
+          const pageElement = createPageElement(requestInfo, Page);
+
           const rscPayloadStream = renderToRscStream({
-            node: <Page {...props} />,
+            node: pageElement,
             actionResult:
               actionResult instanceof Response ? null : actionResult,
+            onError,
           });
 
           if (isRSCRequest) {
@@ -147,13 +155,24 @@ export const defineApp = (routes: Route[]) => {
           });
         };
 
-        const response = await runWithRequestInfo(outerRequestInfo, () =>
-          router.handle({
-            request,
-            renderPage,
-            getRequestInfo,
-            runWithRequestInfoOverrides,
-          })
+        const response = await runWithRequestInfo(
+          outerRequestInfo,
+          async () =>
+            new Promise<Response>(async (resolve, reject) => {
+              try {
+                resolve(
+                  await router.handle({
+                    request,
+                    renderPage,
+                    getRequestInfo,
+                    runWithRequestInfoOverrides,
+                    onError: reject,
+                  })
+                );
+              } catch (e) {
+                reject(e);
+              }
+            })
         );
 
         // context(justinvdm, 18 Mar 2025): In some cases, such as a .fetch() call to a durable object instance, or Response.redirect(),
@@ -170,6 +189,10 @@ export const defineApp = (routes: Route[]) => {
       } catch (e) {
         if (e instanceof ErrorResponse) {
           return new Response(e.message, { status: e.code });
+        }
+
+        if (e instanceof Response) {
+          return e;
         }
 
         console.error("Unhandled error", e);

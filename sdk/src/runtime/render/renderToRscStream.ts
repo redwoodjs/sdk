@@ -5,7 +5,7 @@ import { createClientManifest } from "./createClientManifest.js";
 // the stream to avoid losing data
 function rechunkStream(
   stream: ReadableStream,
-  maxChunkSize: number = 28,
+  maxChunkSize: number = 28
 ): ReadableStream {
   const reader = stream.getReader();
   return new ReadableStream({
@@ -46,13 +46,16 @@ function rechunkStream(
 export const renderToRscStream = (app: {
   node: React.ReactElement;
   actionResult: any;
+  onError?: (error: unknown) => void;
 }): ReadableStream => {
-  const { node } = app;
+  const { node, onError } = app;
   let { actionResult } = app;
 
   if (actionResult instanceof ReadableStream) {
     actionResult = rechunkStream(actionResult);
   }
 
-  return baseRenderToRscStream({ node, actionResult }, createClientManifest());
+  return baseRenderToRscStream({ node, actionResult }, createClientManifest(), {
+    onError,
+  });
 };

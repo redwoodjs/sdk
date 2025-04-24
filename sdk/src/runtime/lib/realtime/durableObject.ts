@@ -63,7 +63,7 @@ export class RealtimeDurableObject extends DurableObject {
 
   private async handleWebSocket(
     request: Request,
-    clientInfo: ClientInfo,
+    clientInfo: ClientInfo
   ): Promise<Response> {
     const { 0: client, 1: server } = new WebSocketPair();
     await this.storeClientInfo(clientInfo);
@@ -82,21 +82,25 @@ export class RealtimeDurableObject extends DurableObject {
     if (messageType === MESSAGE_TYPE.ACTION_REQUEST) {
       const decoder = new TextDecoder();
       const jsonData = decoder.decode(message.slice(1));
-      const { id, args } = JSON.parse(jsonData);
+      const { id, args, requestId } = JSON.parse(jsonData);
 
       try {
-        await this.handleAction(ws, id, args, clientInfo);
+        await this.handleAction(ws, id, args, clientInfo, requestId);
       } catch (error) {
+        const encoder = new TextEncoder();
+        const requestIdBytes = encoder.encode(requestId);
+
         const errorData = JSON.stringify({
-          id,
           error: error instanceof Error ? error.message : String(error),
         });
-        const encoder = new TextEncoder();
         const errorBytes = encoder.encode(errorData);
 
-        const errorResponse = new Uint8Array(errorBytes.length + 1);
+        const errorResponse = new Uint8Array(
+          1 + requestIdBytes.length + errorBytes.length
+        );
         errorResponse[0] = MESSAGE_TYPE.ACTION_ERROR;
-        errorResponse.set(errorBytes, 1);
+        errorResponse.set(requestIdBytes, 1);
+        errorResponse.set(errorBytes, 1 + requestIdBytes.length);
 
         ws.send(errorResponse);
       }
@@ -110,19 +114,29 @@ export class RealtimeDurableObject extends DurableObject {
       chunk: number;
       end: number;
     },
+    streamId: string
   ): Promise<void> {
     const reader = response.body!.getReader();
+    const encoder = new TextEncoder();
+    const streamIdBytes = encoder.encode(streamId);
+
     try {
       while (true) {
         const { done, value } = await reader.read();
         if (done) {
-          ws.send(new Uint8Array([messageTypes.end]));
+          const endMessage = new Uint8Array(1 + streamIdBytes.length);
+          endMessage[0] = messageTypes.end;
+          endMessage.set(streamIdBytes, 1);
+          ws.send(endMessage);
           break;
         }
 
-        const chunkMessage = new Uint8Array(value.length + 1);
+        const chunkMessage = new Uint8Array(
+          1 + streamIdBytes.length + value.length
+        );
         chunkMessage[0] = messageTypes.chunk;
-        chunkMessage.set(value, 1);
+        chunkMessage.set(streamIdBytes, 1);
+        chunkMessage.set(value, 1 + streamIdBytes.length);
         ws.send(chunkMessage);
       }
     } finally {
@@ -135,6 +149,7 @@ export class RealtimeDurableObject extends DurableObject {
     id: string,
     args: string,
     clientInfo: ClientInfo,
+    requestId: string
   ): Promise<void> {
     const url = new URL(clientInfo.url);
     url.searchParams.set("__rsc", "true");
@@ -157,10 +172,15 @@ export class RealtimeDurableObject extends DurableObject {
       exclude: [clientInfo.clientId],
     });
 
-    await this.streamResponse(response, ws, {
-      chunk: MESSAGE_TYPE.ACTION_CHUNK,
-      end: MESSAGE_TYPE.ACTION_END,
-    });
+    await this.streamResponse(
+      response,
+      ws,
+      {
+        chunk: MESSAGE_TYPE.ACTION_CHUNK,
+        end: MESSAGE_TYPE.ACTION_END,
+      },
+      requestId
+    );
   }
 
   private async determineSockets({
@@ -221,15 +241,26 @@ export class RealtimeDurableObject extends DurableObject {
             return;
           }
 
-          socket.send(new Uint8Array([MESSAGE_TYPE.RSC_START]));
-          await this.streamResponse(response, socket, {
-            chunk: MESSAGE_TYPE.RSC_CHUNK,
-            end: MESSAGE_TYPE.RSC_END,
-          });
+          const rscId = crypto.randomUUID();
+
+          const startMessage = new Uint8Array(1 + 36);
+          startMessage[0] = MESSAGE_TYPE.RSC_START;
+          startMessage.set(new TextEncoder().encode(rscId), 1);
+          socket.send(startMessage);
+
+          await this.streamResponse(
+            response,
+            socket,
+            {
+              chunk: MESSAGE_TYPE.RSC_CHUNK,
+              end: MESSAGE_TYPE.RSC_END,
+            },
+            rscId
+          );
         } catch (err) {
           console.error("Failed to process socket:", err);
         }
-      }),
+      })
     );
   }
 

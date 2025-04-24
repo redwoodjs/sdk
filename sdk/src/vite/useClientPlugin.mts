@@ -4,9 +4,12 @@ import {
   Project,
   Node,
   SyntaxKind,
-  FunctionDeclaration,
   ArrowFunction,
-  SourceFile,
+  ExportSpecifier,
+  ExportAssignment,
+  Identifier,
+  ExportDeclaration,
+  FunctionDeclaration,
 } from "ts-morph";
 
 interface TransformResult {
@@ -15,10 +18,8 @@ interface TransformResult {
 }
 
 interface ComponentInfo {
-  node: Node;
-  statement?: Node;
+  name: string;
   ssrName: string;
-  originalName: string;
   isDefault: boolean;
   isInlineExport: boolean;
   isAnonymousDefault?: boolean;
@@ -32,10 +33,14 @@ function isJsxFunction(text: string): boolean {
 
 export async function transformUseClientCode(
   code: string,
-  relativeId: string,
-  isWorkerEnvironment: boolean
+  relativeId: string
 ): Promise<TransformResult | undefined> {
-  if (!isWorkerEnvironment) {
+  const cleanCode = code.trimStart();
+
+  if (
+    !cleanCode.startsWith('"use client"') &&
+    !cleanCode.startsWith("'use client'")
+  ) {
     return;
   }
 
@@ -59,7 +64,7 @@ export async function transformUseClientCode(
   const components = new Map<string, ComponentInfo>();
   let anonymousDefaultCount = 0;
 
-  // First pass: collect all information
+  // Pass 1: Collect all component information
   // Handle function declarations
   sourceFile
     .getDescendantsOfKind(SyntaxKind.FunctionDeclaration)
@@ -81,9 +86,8 @@ export async function transformUseClientCode(
             .some((exp) => exp.getExpression().getText() === name);
 
         components.set(name, {
-          node,
+          name,
           ssrName,
-          originalName: name,
           isDefault,
           isInlineExport,
         });
@@ -118,20 +122,16 @@ export async function transformUseClientCode(
             // Handle anonymous default export
             const anonName = `DefaultComponent${anonymousDefaultCount++}`;
             components.set(anonName, {
-              node: varDecl,
-              statement,
+              name: anonName,
               ssrName: anonName,
-              originalName: anonName,
               isDefault: true,
               isInlineExport: true,
               isAnonymousDefault: true,
             });
           } else if (name) {
             components.set(name, {
-              node: varDecl,
-              statement,
+              name,
               ssrName: `${name}SSR`,
-              originalName: name,
               isDefault,
               isInlineExport,
             });
@@ -140,49 +140,80 @@ export async function transformUseClientCode(
       });
     });
 
-  // Second pass: rename all identifiers to SSR versions
-  components.forEach(({ node, ssrName, isAnonymousDefault }) => {
-    if (!isAnonymousDefault) {
-      if (Node.isFunctionDeclaration(node)) {
-        node.rename(ssrName);
-      } else if (Node.isVariableDeclaration(node)) {
-        node.getFirstChildByKind(SyntaxKind.Identifier)?.rename(ssrName);
-      }
-    }
-  });
-
-  // Third pass: handle exports
+  // Pass 2: handle exports
   // Remove use client directives
   sourceFile.getDescendantsOfKind(SyntaxKind.StringLiteral).forEach((node) => {
     if (
       node.getText() === "'use client'" ||
       node.getText() === '"use client"'
     ) {
-      node.getFirstAncestorByKind(SyntaxKind.ExpressionStatement)?.remove();
-    }
-  });
-
-  // Remove inline exports for components
-  components.forEach(({ node, statement, isInlineExport }) => {
-    if (Node.isFunctionDeclaration(node) && isInlineExport) {
-      const nodeText = node.getText();
-      const newText = nodeText.replace(
-        /^export\s+(default\s+)?(async\s+)?function/,
-        "$2function"
+      const parentExpr = node.getFirstAncestorByKind(
+        SyntaxKind.ExpressionStatement
       );
-      node.replaceWithText(newText);
-    } else if (
-      Node.isVariableDeclaration(node) &&
-      statement &&
-      isInlineExport
-    ) {
-      const stmtText = statement.getText();
-      const newText = stmtText.replace(/^export\s+/, "");
-      statement.replaceWithText(newText);
+      if (parentExpr) {
+        parentExpr.remove();
+      }
     }
   });
 
-  // Handle grouped exports - only remove component exports
+  // Create lists of nodes to modify before making any changes
+  const functionsToModify: {
+    node: Node;
+    nodeText: string;
+    component: ComponentInfo;
+  }[] = [];
+  const variableStatementsToModify: { node: Node; stmtText: string }[] = [];
+  const exportDeclarationsToModify: {
+    node: ExportDeclaration;
+    nonComponentExports: ExportSpecifier[];
+  }[] = [];
+  const exportAssignmentsToModify: {
+    node: ExportAssignment;
+    expression: ArrowFunction | null;
+  }[] = [];
+
+  // Collect function declarations to modify
+  sourceFile
+    .getDescendantsOfKind(SyntaxKind.FunctionDeclaration)
+    .forEach((node) => {
+      const name = node.getName();
+      if (!name || !components.has(name)) return;
+
+      const component = components.get(name)!;
+      if (component.isInlineExport) {
+        functionsToModify.push({
+          node,
+          nodeText: node.getText(),
+          component,
+        });
+      }
+    });
+
+  // Collect variable statements to modify
+  sourceFile
+    .getDescendantsOfKind(SyntaxKind.VariableStatement)
+    .forEach((statement) => {
+      if (!statement.hasModifier(SyntaxKind.ExportKeyword)) return;
+
+      const declarations = statement.getDeclarationList().getDeclarations();
+      let hasComponent = false;
+
+      declarations.forEach((varDecl) => {
+        const name = varDecl.getName();
+        if (name && components.has(name)) {
+          hasComponent = true;
+        }
+      });
+
+      if (hasComponent) {
+        variableStatementsToModify.push({
+          node: statement,
+          stmtText: statement.getText(),
+        });
+      }
+    });
+
+  // Collect export declarations to modify
   sourceFile
     .getDescendantsOfKind(SyntaxKind.ExportDeclaration)
     .forEach((node) => {
@@ -191,75 +222,150 @@ export async function transformUseClientCode(
         (exp) => !components.has(exp.getName())
       );
 
-      if (nonComponentExports.length === 0) {
-        // If all exports were components, remove the declaration
-        node.remove();
-      } else if (nonComponentExports.length !== namedExports.length) {
-        // If some exports were components, update the export declaration
-        const newExports = nonComponentExports
-          .map((exp) => exp.getText())
-          .join(", ");
-        node.replaceWithText(`export { ${newExports} };`);
-      }
-    });
-
-  // First remove the default export node (we'll add it back later)
-  sourceFile
-    .getDescendantsOfKind(SyntaxKind.ExportAssignment)
-    .forEach((node) => {
-      const expression = node.getExpression();
-
-      if (Node.isArrowFunction(expression)) {
-        const anonName = `DefaultComponent${anonymousDefaultCount++}`;
-        const ssrName = `${anonName}SSR`;
-
-        // First add declarations
-        sourceFile.addStatements(`const ${ssrName} = ${expression.getText()}`);
-        sourceFile.addStatements(
-          `const ${anonName} = registerClientReference("${relativeId}", "default", ${ssrName});`
-        );
-
-        // Remove the original export default node
-        node.remove();
-
-        // Store info for later export
-        components.set(anonName, {
-          node: expression,
-          ssrName,
-          originalName: anonName,
-          isDefault: true,
-          isInlineExport: true,
-          isAnonymousDefault: true,
+      if (nonComponentExports.length !== namedExports.length) {
+        exportDeclarationsToModify.push({
+          node,
+          nonComponentExports,
         });
       }
     });
 
-  // Add all declarations first
-  components.forEach(
-    ({ ssrName, originalName, isDefault, isAnonymousDefault }) => {
-      if (!isAnonymousDefault) {
-        sourceFile.addStatements(
-          `const ${originalName} = registerClientReference("${relativeId}", "${
-            isDefault ? "default" : originalName
-          }", ${ssrName});`
-        );
+  // Collect export assignments to modify
+  sourceFile
+    .getDescendantsOfKind(SyntaxKind.ExportAssignment)
+    .forEach((node) => {
+      const expression = node.getExpression();
+      if (Node.isArrowFunction(expression)) {
+        exportAssignmentsToModify.push({
+          node,
+          expression,
+        });
+      } else {
+        exportAssignmentsToModify.push({
+          node,
+          expression: null,
+        });
       }
-    }
-  );
+    });
 
-  // Then add all exports after declarations
-  components.forEach(({ ssrName, originalName, isDefault }) => {
-    if (isDefault) {
-      // Export the registerClientReference version as default
-      sourceFile.addStatements(
-        `export { ${originalName} as default, ${ssrName} };`
-      );
+  // Now apply all modifications in sequence to avoid operating on removed nodes
+
+  // Modify function declarations
+  functionsToModify.forEach(({ node, nodeText, component }) => {
+    const newText = nodeText.replace(
+      /^export\s+(default\s+)?(async\s+)?function/,
+      "$2function"
+    );
+    node.replaceWithText(newText);
+  });
+
+  // Modify variable statements
+  variableStatementsToModify.forEach(({ node, stmtText }) => {
+    const newText = stmtText.replace(/^export\s+/, "");
+    node.replaceWithText(newText);
+  });
+
+  // Modify export declarations
+  exportDeclarationsToModify.forEach(({ node, nonComponentExports }) => {
+    if (nonComponentExports.length === 0) {
+      // If all exports were components, remove the declaration
+      node.remove();
     } else {
-      sourceFile.addStatements(`export { ${ssrName}, ${originalName} };`);
+      // If some exports were components, update the export declaration
+      const newExports = nonComponentExports
+        .map((exp) => exp.getText())
+        .join(", ");
+      node.replaceWithText(`export { ${newExports} };`);
     }
   });
 
-  // Add this where we handle other export removals
+  // Handle export assignments with arrow functions
+  exportAssignmentsToModify.forEach(({ node, expression }) => {
+    if (expression && Node.isArrowFunction(expression)) {
+      const anonName = `DefaultComponent${anonymousDefaultCount++}`;
+      const ssrName = `${anonName}SSR`;
+
+      // First add declarations
+      sourceFile.addStatements(`const ${ssrName} = ${expression.getText()}`);
+      sourceFile.addStatements(
+        `const ${anonName} = registerClientReference("${relativeId}", "default", ${ssrName});`
+      );
+
+      // Store info for later export
+      components.set(anonName, {
+        name: anonName,
+        ssrName,
+        isDefault: true,
+        isInlineExport: true,
+        isAnonymousDefault: true,
+      });
+    }
+
+    // Remove the original export default node
+    node.remove();
+  });
+
+  // Pass 4: rename all identifiers to SSR version - collect first
+  const identifiersToRename: {
+    node: Identifier | FunctionDeclaration;
+    newName: string;
+  }[] = [];
+
+  components.forEach(({ name, ssrName, isAnonymousDefault }) => {
+    if (isAnonymousDefault) return;
+
+    // Find function declarations by name
+    const funcDecls = sourceFile.getDescendantsOfKind(
+      SyntaxKind.FunctionDeclaration
+    );
+    const funcNode = funcDecls.find((decl) => decl.getName() === name);
+    if (funcNode) {
+      identifiersToRename.push({ node: funcNode, newName: ssrName });
+      return;
+    }
+
+    // Find variable declarations by name
+    const varDecls = sourceFile.getDescendantsOfKind(
+      SyntaxKind.VariableDeclaration
+    );
+    const varNode = varDecls.find((decl) => decl.getName() === name);
+    if (varNode) {
+      const identifier = varNode.getFirstChildByKind(SyntaxKind.Identifier);
+      if (identifier) {
+        identifiersToRename.push({ node: identifier, newName: ssrName });
+      }
+    }
+  });
+
+  // Now apply the renames
+  identifiersToRename.forEach(({ node, newName }) => {
+    node.rename(newName);
+  });
+
+  // Pass 5: Add client reference registrations
+  // Add all declarations first
+  components.forEach(({ name, ssrName, isDefault, isAnonymousDefault }) => {
+    if (!isAnonymousDefault) {
+      sourceFile.addStatements(
+        `const ${name} = registerClientReference("${relativeId}", "${
+          isDefault ? "default" : name
+        }", ${ssrName});`
+      );
+    }
+  });
+
+  // Pass 6: add new exports
+  // Then add all exports after declarations
+  components.forEach(({ name, ssrName, isDefault }) => {
+    if (isDefault) {
+      // Export the registerClientReference version as default
+      sourceFile.addStatements(`export { ${name} as default, ${ssrName} };`);
+    } else {
+      sourceFile.addStatements(`export { ${ssrName}, ${name} };`);
+    }
+  });
+
+  // Clean up any remaining export assignments
   sourceFile
     .getDescendantsOfKind(SyntaxKind.ExportAssignment)
     .forEach((node) => {
@@ -286,24 +392,19 @@ export async function transformUseClientCode(
 export const useClientPlugin = (): Plugin => ({
   name: "rwsdk:use-client",
   async transform(code, id) {
-    if (id.includes(".vite/deps") || id.includes("node_modules")) {
+    if (
+      id.includes(".vite/deps") ||
+      id.includes("node_modules") ||
+      this.environment.name !== "worker"
+    ) {
       return;
     }
 
-    const cleanCode = code.trimStart();
-    if (
-      cleanCode.startsWith('"use client"') ||
-      cleanCode.startsWith("'use client'")
-    ) {
-      const relativeId = `/${relative(
-        this.environment.getTopLevelConfig().root,
-        id
-      )}`;
-      return transformUseClientCode(
-        code,
-        relativeId,
-        this.environment.name === "worker"
-      );
-    }
+    const relativeId = `/${relative(
+      this.environment.getTopLevelConfig().root,
+      id
+    )}`;
+
+    return transformUseClientCode(code, relativeId);
   },
 });

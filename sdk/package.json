@@ -1,6 +1,6 @@
 {
   "name": "@redwoodjs/sdk",
-  "version": "0.0.63",
+  "version": "0.0.75",
   "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime",
   "type": "module",
   "bin": {
@@ -104,6 +104,7 @@
     "@types/react-is": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
     "debug": "^4.4.0",
+    "enhanced-resolve": "^5.18.1",
     "es-module-lexer": "^1.5.4",
     "eventsource-parser": "^3.0.0",
     "execa": "^9.5.2",
@@ -116,9 +117,10 @@
     "magic-string": "^0.30.17",
     "miniflare": "^4.20250405.0",
     "picocolors": "^1.1.1",
-    "react": "canary",
-    "react-dom": "canary",
+    "react": "19.2.0-canary-39cad7af-20250411",
+    "react-dom": "19.2.0-canary-39cad7af-20250411",
     "react-is": "^19.0.0",
+    "react-server-dom-webpack": "19.2.0-canary-39cad7af-20250411",
     "rsc-html-stream": "^0.0.3",
     "tmp-promise": "^3.0.3",
     "ts-morph": "^25.0.1",
@@ -131,7 +133,6 @@
     "wrangler": "^4.8.0"
   },
   "peerDependencies": {
-    "react-server-dom-webpack": "canary",
     "vite": "^6.2.5"
   },
   "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab",
