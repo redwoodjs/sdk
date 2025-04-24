@@ -71,25 +71,39 @@ export const defineApp = (routes: Route[]) => {
           rw,
         };
 
-        const computePageProps = (
+        const createPageElement = (
           requestInfo: RequestInfo,
           Page: React.FC<any>
         ) => {
-          const { ctx, params } = requestInfo;
-          let props;
-
-          // context(justinvdm, 25 Feb 2025): If the page is a client reference, we need to avoid passing
-          // down props the client shouldn't get (e.g. env). For safety, we pick the allowed props explicitly.
+          let pageElement;
           if (isClientReference(Page)) {
-            props = {
-              ctx,
-              params,
-            };
+            const { ctx, params } = requestInfo;
+            // context(justinvdm, 25 Feb 2025): If the page is a client reference, we need to avoid passing
+            // down props the client shouldn't get (e.g. env). For safety, we pick the allowed props explicitly.
+            pageElement = <Page ctx={ctx} params={params} />;
           } else {
-            props = requestInfo;
+            // context(justinvdm, 24 Apr 2025): We need to wrap the page in a component that throws the response to bubble it up and break out of react rendering context
+            // This way, we're able to return a response from the page component while still staying within react rendering context
+            const PageWrapper = async () => {
+              const result = await Page(requestInfo);
+
+              if (result instanceof Response) {
+                throw result;
+              }
+
+              return result;
+            };
+
+            pageElement = <PageWrapper />;
           }
 
-          return props;
+          if (isHealthCheck) {
+            pageElement = (
+              <HealthCheckWrapper>{pageElement}</HealthCheckWrapper>
+            );
+          }
+
+          return pageElement;
         };
 
         const renderPage = async (
@@ -107,13 +121,6 @@ export const defineApp = (routes: Route[]) => {
             });
           }
 
-          const props = computePageProps(requestInfo, Page);
-          let pageResult = await Page(props);
-
-          if (pageResult instanceof Response) {
-            return pageResult;
-          }
-
           let actionResult: unknown = undefined;
           const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 
@@ -122,13 +129,10 @@ export const defineApp = (routes: Route[]) => {
             actionResult = await rscActionHandler(request);
           }
 
-          // If health check is requested via query param, wrap the page with health info
-          if (isHealthCheck && React.isValidElement(pageResult)) {
-            pageResult = <HealthCheckWrapper>{pageResult}</HealthCheckWrapper>;
-          }
+          const pageElement = createPageElement(requestInfo, Page);
 
           const rscPayloadStream = renderToRscStream({
-            node: pageResult as React.ReactElement,
+            node: pageElement,
             actionResult:
               actionResult instanceof Response ? null : actionResult,
             onError,
@@ -169,15 +173,19 @@ export const defineApp = (routes: Route[]) => {
           outerRequestInfo,
           async () =>
             new Promise<Response>(async (resolve, reject) => {
-              const response = await router.handle({
-                request,
-                renderPage,
-                getRequestInfo,
-                runWithRequestInfoOverrides,
-                onError: reject,
-              });
-
-              resolve(response);
+              try {
+                resolve(
+                  await router.handle({
+                    request,
+                    renderPage,
+                    getRequestInfo,
+                    runWithRequestInfoOverrides,
+                    onError: reject,
+                  })
+                );
+              } catch (e) {
+                reject(e);
+              }
             })
         );
 
