@@ -67,25 +67,30 @@ export const defineApp = (routes: Route[]) => {
           rw,
         };
 
-        const computePageProps = (
+        const createPageElement = (
           requestInfo: RequestInfo,
           Page: React.FC<any>
         ) => {
-          const { ctx, params } = requestInfo;
-          let props;
-
-          // context(justinvdm, 25 Feb 2025): If the page is a client reference, we need to avoid passing
-          // down props the client shouldn't get (e.g. env). For safety, we pick the allowed props explicitly.
           if (isClientReference(Page)) {
-            props = {
-              ctx,
-              params,
-            };
+            const { ctx, params } = requestInfo;
+            // context(justinvdm, 25 Feb 2025): If the page is a client reference, we need to avoid passing
+            // down props the client shouldn't get (e.g. env). For safety, we pick the allowed props explicitly.
+            return <Page ctx={ctx} params={params} />;
           } else {
-            props = requestInfo;
-          }
+            // context(justinvdm, 24 Apr 2025): We need to wrap the page in a component that throws the response to bubble it up and break out of react rendering context
+            // This way, we're able to return a response from the page component while still staying within react rendering context
+            const PageWrapper = async () => {
+              const result = await Page(requestInfo);
 
-          return props;
+              if (result instanceof Response) {
+                throw result;
+              }
+
+              return result;
+            };
+
+            return <PageWrapper />;
+          }
         };
 
         const renderPage = async (
@@ -110,20 +115,10 @@ export const defineApp = (routes: Route[]) => {
             actionResult = await rscActionHandler(request);
           }
 
-          const props = computePageProps(requestInfo, Page);
-
-          const pageResult = isClientReference(Page) ? (
-            <Page {...props} />
-          ) : (
-            await Page(props)
-          );
-
-          if (pageResult instanceof Response) {
-            return pageResult;
-          }
+          const pageElement = createPageElement(requestInfo, Page);
 
           const rscPayloadStream = renderToRscStream({
-            node: pageResult as React.ReactElement,
+            node: pageElement,
             actionResult:
               actionResult instanceof Response ? null : actionResult,
             onError,
