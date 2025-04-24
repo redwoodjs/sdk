@@ -124,7 +124,6 @@ export const defineApp = (routes: Route[]) => {
           let actionResult: unknown = undefined;
           const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 
-          // Handle action requests first to ensure __health action works properly
           if (isRSCActionHandler) {
             actionResult = await rscActionHandler(request);
           }
