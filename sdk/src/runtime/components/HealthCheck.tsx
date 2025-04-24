@@ -9,9 +9,7 @@ export const HealthCheckInfo: React.FC = async () => {
   let result: any = null;
 
   try {
-    // Use __rsc_callServer directly to call the __health action
-    // @ts-ignore - __rsc_callServer is defined globally in client.tsx
-    result = await globalThis.__rsc_callServer("__health", [timestamp]);
+    result = await globalThis.__rw.callServer("__health", [timestamp]);
 
     // Check the result
     if (typeof result === "object" && result !== null) {

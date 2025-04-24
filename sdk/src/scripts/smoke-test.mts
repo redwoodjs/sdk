@@ -112,11 +112,14 @@ async function runSmokeTest() {
 
   try {
     const page = await browser.newPage();
-
-    // Set a timeout for the navigation
     page.setDefaultNavigationTimeout(TIMEOUT);
 
-    // Test server-side health check
+    // PHASE 1: Initial Health Checks
+    console.log(
+      "📡 PHASE 1: Testing initial health checks (before realtime upgrade)"
+    );
+
+    // Run the initial health checks exactly as they are now
     console.log(`🔍 Testing server-side health check: ${URL}/?__health`);
     await page.goto(`${URL}/?__health`, { waitUntil: "networkidle0" });
 
@@ -183,10 +186,8 @@ async function runSmokeTest() {
       process.exit(1);
     }
 
-    // Test client-side health check (typically involves a button click)
+    // Test client-side health check (if available)
     console.log("🔍 Testing client-side health check");
-
-    // Click the refresh button to trigger client-side health check
     const refreshButtonExists = await page.evaluate(() => {
       const button = document.querySelector('[data-testid="refresh-health"]');
       return !!button;
@@ -271,6 +272,201 @@ async function runSmokeTest() {
       );
     }
 
+    // PHASE 2: Upgrade to Realtime
+    console.log("\n📡 PHASE 2: Upgrading to realtime mode");
+
+    try {
+      // Attempt to upgrade to realtime
+      const upgradeResult = await page.evaluate(async () => {
+        try {
+          // Check if __rw API exists
+          if (
+            typeof window.__rw !== "object" ||
+            typeof window.__rw.upgradeToRealtime !== "function"
+          ) {
+            return {
+              success: false,
+              message:
+                "The __rw API or upgradeToRealtime method is not available",
+            };
+          }
+
+          // Call the upgradeToRealtime method with empty options
+          // The method returns Promise<void> so we just need to await it
+          await window.__rw.upgradeToRealtime({});
+
+          // If we get here, it succeeded
+          return { success: true };
+        } catch (error) {
+          return {
+            success: false,
+            message: error instanceof Error ? error.message : String(error),
+          };
+        }
+      });
+
+      if (upgradeResult.success) {
+        console.log("✅ Successfully upgraded to realtime mode");
+      } else {
+        console.error(
+          `❌ Failed to upgrade to realtime mode: ${upgradeResult.message}`
+        );
+        process.exit(1);
+      }
+
+      // Wait a moment for realtime connections to stabilize
+      console.log("⏳ Waiting for realtime connections to stabilize...");
+      await page.waitForTimeout(2000);
+    } catch (error) {
+      console.error("❌ Error during realtime upgrade:", error);
+      process.exit(1);
+    }
+
+    // PHASE 3: Verify Health After Realtime Upgrade
+    console.log("\n📡 PHASE 3: Testing health checks (after realtime upgrade)");
+
+    // Refresh the page to ensure we're testing with realtime
+    await page.reload({ waitUntil: "networkidle0" });
+
+    // Re-run the server-side health check
+    console.log(`🔍 Testing server-side health check after realtime upgrade`);
+    const postUpgradeServerHealthResult = await page.evaluate(async () => {
+      try {
+        const healthElement = document.querySelector(
+          '[data-testid="health-status"]'
+        );
+        if (!healthElement) {
+          return {
+            status: "error",
+            verificationPassed: false,
+            error: "Health status element not found in the page",
+          };
+        }
+
+        const status = healthElement.getAttribute("data-status");
+        const timestamp = parseInt(
+          healthElement.getAttribute("data-timestamp") || "0",
+          10
+        );
+        const serverTimestamp = parseInt(
+          healthElement.getAttribute("data-server-timestamp") || "0",
+          10
+        );
+
+        const now = Date.now();
+        const isTimestampRecent = Math.abs(now - timestamp) < 60000;
+        const isServerTimestampRecent = Math.abs(now - serverTimestamp) < 60000;
+
+        return {
+          status: status || "error",
+          verificationPassed:
+            status === "ok" && isTimestampRecent && isServerTimestampRecent,
+          timestamp,
+          serverTimestamp,
+          error:
+            status !== "ok"
+              ? "Health check did not return ok status"
+              : undefined,
+        };
+      } catch (error) {
+        return {
+          status: "error",
+          verificationPassed: false,
+          error: error instanceof Error ? error.message : String(error),
+        };
+      }
+    });
+
+    if (postUpgradeServerHealthResult.verificationPassed) {
+      console.log("✅ Post-upgrade server-side health check passed!");
+      console.log(
+        `✅ Server timestamp: ${postUpgradeServerHealthResult.serverTimestamp}`
+      );
+    } else {
+      console.error(
+        `❌ Post-upgrade server-side health check failed. Status: ${postUpgradeServerHealthResult.status}`
+      );
+      if (postUpgradeServerHealthResult.error) {
+        console.error(`❌ Error: ${postUpgradeServerHealthResult.error}`);
+      }
+      process.exit(1);
+    }
+
+    // Re-run the client-side health check if available
+    if (refreshButtonExists) {
+      console.log("🔍 Testing client-side health check after realtime upgrade");
+      await page.click('[data-testid="refresh-health"]');
+
+      await page.waitForFunction(
+        () => {
+          const indicator = document.querySelector(
+            '[data-testid="health-status"]'
+          );
+          return (
+            indicator &&
+            indicator.getAttribute("data-client-timestamp") !== null
+          );
+        },
+        { timeout: 5000 }
+      );
+
+      const postUpgradeClientHealthResult = await page.evaluate(async () => {
+        try {
+          const healthElement = document.querySelector(
+            '[data-testid="health-status"]'
+          );
+          if (!healthElement) {
+            return {
+              status: "error",
+              verificationPassed: false,
+              error: "Health status element not found in the page",
+            };
+          }
+
+          const status = healthElement.getAttribute("data-status");
+          const clientTimestamp = parseInt(
+            healthElement.getAttribute("data-client-timestamp") || "0",
+            10
+          );
+
+          const now = Date.now();
+          const isClientTimestampRecent =
+            Math.abs(now - clientTimestamp) < 60000;
+
+          return {
+            status: status || "error",
+            verificationPassed: status === "ok" && isClientTimestampRecent,
+            clientTimestamp,
+            error:
+              status !== "ok"
+                ? "Client health check did not return ok status"
+                : undefined,
+          };
+        } catch (error) {
+          return {
+            status: "error",
+            verificationPassed: false,
+            error: error instanceof Error ? error.message : String(error),
+          };
+        }
+      });
+
+      if (postUpgradeClientHealthResult.verificationPassed) {
+        console.log("✅ Post-upgrade client-side health check passed!");
+        console.log(
+          `✅ Client timestamp: ${postUpgradeClientHealthResult.clientTimestamp}`
+        );
+      } else {
+        console.error(
+          `❌ Post-upgrade client-side health check failed. Status: ${postUpgradeClientHealthResult.status}`
+        );
+        if (postUpgradeClientHealthResult.error) {
+          console.error(`❌ Error: ${postUpgradeClientHealthResult.error}`);
+        }
+        process.exit(1);
+      }
+    }
+
     // Take a screenshot for CI artifacts if needed
     await page.screenshot({ path: "smoke-test-result.png" });
   } catch (error) {
@@ -280,7 +476,9 @@ async function runSmokeTest() {
     await browser.close();
   }
 
-  console.log("✨ All smoke tests completed successfully!");
+  console.log(
+    "✨ All smoke tests completed successfully, including realtime upgrade!"
+  );
 }
 
 // Run the smoke test if this file is executed directly

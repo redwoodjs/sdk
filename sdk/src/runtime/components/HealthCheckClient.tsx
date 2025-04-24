@@ -26,8 +26,7 @@ export const HealthCheckClient: React.FC = () => {
       // Get current timestamp to verify round-trip
       const timestamp = Date.now();
 
-      // @ts-ignore - __rsc_callServer is defined globally in client.tsx
-      const result = await window.__rsc_callServer("__health", [timestamp]);
+      const result = await globalThis.__rw.callServer("__health", [timestamp]);
 
       // Process the result
       let status = "error";
