@@ -1,0 +1,689 @@
+---
+title: Create the Application
+slug: tutorial/full-stack-app/create-app
+sidebar:
+  label: Create the Application
+description: A guide in my new Starlight docs site.
+---
+
+import { FileTree, Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+
+## Project Generation and Structure
+
+The first thing we'll do is set up our project.
+
+<Tabs>
+  <TabItem label="pnpm">
+  ```shell
+  npx degit redwoodjs/sdk/starters/standard applywize
+  cd applywize
+  pnpm install
+  pnpm dev
+  ```
+  </TabItem>
+  <TabItem label="npm">
+  ```shell
+  npx degit redwoodjs/sdk/starters/standard applywize
+  cd applywize
+  npm install
+  npm run dev
+  ```
+  </TabItem>
+  <TabItem label="yarn">
+  ```shell
+  npx degit redwoodjs/sdk/starters/standard applywize
+  cd applywize
+  yarn install
+  yarn run dev
+  ```
+  </TabItem>
+</Tabs>
+
+Check it out! You're up and running!
+
+![](./images/initial-look.png)
+
+The commands you just ran created a directory called `applywize` with the RedwoodSDK project structure.
+
+![](./images/terminal-install-starter.png)
+
+Inside, the `applywize` directory, you should have the following files and folders:
+
+<FileTree>
+- .dev.vars # environment variables for development
+- .env # environment variables
+- .env.example # example environment variables
+- .gitignore # files to ignore in git
+- .prettierrc # prettier configuration
+- .wrangler # Cloudflare configuration
+- migrations # database migrations
+  - 0001_init.sql # initial migration
+- node_modules # dependencies
+- package.json # lists all the dependencies and scripts
+- pnpm-lock.yaml # lock file for pnpm
+- prisma # prisma configuration
+  - schema.prisma # database schema
+- README.md # project overview
+- src
+  - app
+    - Document.tsx # Main HTML document
+    - headers.ts # Sets up page headers
+    - pages
+      - Home.tsx # Home page
+      - user
+        - functions.ts # authentication functions
+        - Login.tsx # Login page
+        - routes.ts # authentication routes
+      - shared
+        - links.ts # list of links
+  - client.tsx # initializes the client
+  - db.ts # database client
+  - scripts
+    - seed.ts # seed the database
+  - session # sets up sessions for authentication
+  - worker.tsx # Cloudflare worker
+- tsconfig.json # TypeScript configuration
+- types
+  - vite.d.ts # Vite types
+- vite.config.mts # Vite configuration
+- worker-configuration.d.ts # Cloudflare worker configuration
+- wrangler.jsonc # Cloudflare configuration
+</FileTree>
+
+<Aside type="note" title="Starter Projects">
+  For the tutorial, we're starting with the standard starter project. When you start building your own projects, if you use a different starter template, the files and folders may vary slightly.
+</Aside>
+
+## Setting up our Database
+
+The first time you run `pnpm dev`, it creates the `.wrangler` directory. This directory is used by Cloudflare's Miniflare for storing assets. It contains your local database, caching information, and configuration data.
+
+First, we can create a D1 database that's connected to our Cloudflare account using the following command:
+
+```shell
+npx wrangler d1 create applywize
+```
+
+Here, `applywize` is the name of our database.
+
+![](./images/wrangler-d1-create.png)
+
+Copy the database ID provided and paste it into your project's `wrangler.jsonc` file:
+
+{/* TODO: Add a screenshot of the terminal */}
+
+```jsonc title="wrangler.jsonc"
+{
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "__change_me__",
+      "database_id": "__change_me__"
+    }
+  ]
+}
+```
+
+While we're in our `wrangler.jsonc` file, let's also update our worker name:
+```jsonc title="wrangler.jsonc" startLineNumber={6}
+"name": "applywize",
+```
+
+and the `APP_name`:
+```jsonc title="wrangler.jsonc" startLineNumber={36}
+"vars": {
+  "APP_NAME": "applywize"
+},
+```
+
+### Generating Secret Keys
+Next, we need to generate a strong `SECRET_KEY` for signing session IDs. You can generate a secure random key using OpenSSL. This command will generate a 32-byte random key and encode it as a base64 string.
+
+```shell
+openssl rand -base64 32
+```
+
+![](./images/openssl-rand-base64.png)
+
+Then set this key as a Cloudflare secret, where `SECRET_KEY` is the name of the key. It will prompt us for the random string we generated.
+
+```shell
+npx wrangler secret put SECRET_KEY
+```
+
+![](./images/wrangler-secret-key.png)
+
+<Aside type="caution" title="Secrets">
+  Never use the same secret key for development and production environments, and avoid committing your secret keys to version control.
+</Aside>
+
+For production, set your domain as the `RP_ID` via Cloudflare secrets:
+
+```shell
+npx wrangler secret put RP_ID
+```
+
+![](./images/wrangler-rp-id.png)
+
+When prompted, enter your production domain (e.g., my-app.example.com).
+
+<Aside type="caution" title="RP_ID">
+The RP_ID must be a valid domain that matches your application's origin. For security reasons, WebAuthn will not work if these don't match.
+</Aside>
+
+### Setting up Cloudflare Turnstile
+Next, let's set up Cloudflare Turnstile for bot protection.
+
+<Steps>
+1. Visit [Cloudflare Turnstile Dashboard](https://dash.cloudflare.com/?to=/:account/turnstile).
+    ![](./images/turnstile-add-widget.png)
+2. Create a new Turnstile widget:
+    - Set Widget Mode to **Invisible**. This will prevent users from having to solve a challenge or see the widget loading bar.
+    - Add your application's hostname to Allowed hostnames, e.g., my-project-name.example.com
+    ![](./images/turnstile-add-widget-form.png)
+    - Mark "Would you like to opt for pre-clearance for this site?" as **No**.
+3. After you click the **Create** button, you'll be redirected to the confirmation screen with your **Site Key** and **Secret Key**.
+    ![](./images/turnstile-site-key.png)
+4. Copy your Site Key and paste it into your application's `Login.tsx`. This is defined on line 18.
+    ```tsx title="src/app/pages/auth/Login.tsx" startLineNumber={18}
+    const TURNSTILE_SITE_KEY = "<YOUR_SITE_KEY>";
+    ```
+5. Set your Turnstile Secret Key via Cloudflare secrets for production:
+    ```shell
+    npx wrangler secret put TURNSTILE_SECRET_KEY
+    ```
+    When prompted, enter your Turnstile Secret Key.
+    ![](./images/wrangler-turnstile-secret-key.png)
+6. Our starter kit already has a couple of tables set up, to support the authentication process. This will set up Prisma and create a `.wrangler` file within our project and setup the Cloudflare d1 database locally. (More on Prisma, migrations, and databases later.)
+    ```shell
+    pnpm dev
+    ```
+</Steps>
+
+## Setting up TailwindCSS and shadcn/ui
+
+Now, let's install [TailwindCSS](https://tailwindcss.com/) and [shadcn/ui](https://ui.shadcn.com/).
+
+**TailwindCSS** is a utility-first CSS framework that makes it easy to style your components.
+
+**shadcn/ui** components is a library of pre-built components making it easier for us to focus on the functionality of our app, rather than the styling and building of components.
+
+### TailwindCSS
+
+Since the RedwoodSDK is based on React and Vite, we can work through the ["Using Vite" documentation](https://tailwindcss.com/docs/installation/using-vite).
+
+<Steps>
+1. Install Tailwind CSS
+    <Tabs>
+    <TabItem label="pnpm">
+    ```bash
+    pnpm install tailwindcss @tailwindcss/vite
+    ```
+    </TabItem>
+    <TabItem label="npm">
+    ```bash
+    npm install tailwindcss @tailwindcss/vite
+    ```
+    </TabItem>
+    <TabItem label="yarn">
+    ```bash
+    yarn install tailwindcss @tailwindcss/vite
+    ```
+    </TabItem>
+    </Tabs>
+
+2. Configure the Vite Plugin
+    ```ts ins="import tailwindcss from '@tailwindcss/vite'" ins="tailwindcss()," title="vite.config.mts"
+    import { defineConfig } from "vite";
+    import tailwindcss from '@tailwindcss/vite'
+    import { redwood } from "@redwoodjs/sdk/vite";
+
+    export default defineConfig({
+      plugins: [
+        redwood(),
+        tailwindcss(),
+      ],
+    });
+    ```
+
+3. Import Tailwind CSS. (You'll need to create the `src/app/styles.css` file.)
+    ```css title="src/app/styles.css"
+    @import "tailwindcss";
+    ```
+
+4. Add the Tailwind CSS inside the `head` tag in the `Document.tsx` file.
+    ```tsx title="src/app/Document.tsx" {3}
+    <head>
+      ...
+      <link rel="stylesheet" href="/src/app/styles.css" />
+      ...
+    </head>
+    ```
+
+5. Now, you can run `pnpm run dev` and go to `http://localhost:5173/user/login`.
+    ```bash
+    pnpm run dev
+    ```
+    ![](./images/passkey-starter-tailwind-working.png)
+    For reference, before adding TailwindCSS, the login page looked like this:
+    ![](./images/passkey-form-before-tailwind.png)
+</Steps>
+
+You can test this even further by going to the `src/app/pages/user/Login.tsx` file and adding an `h1` at the top of the return statement:
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber={63} collapse={4-17} {3}
+return (
+  <>
+    <h1 className="text-4xl font-bold text-red-500">YOLO</h1>
+    <div ref={turnstile.ref} />
+    <input
+      type="text"
+      value={username}
+      onChange={(e) => setUsername(e.target.value)}
+      placeholder="Username"
+    />
+    <button onClick={handlePerformPasskeyLogin} disabled={isPending}>
+      {isPending ? <>...</> : "Login with passkey"}
+    </button>
+    <button onClick={handlePerformPasskeyRegister} disabled={isPending}>
+      {isPending ? <>...</> : "Register with passkey"}
+    </button>
+    {result && <div>{result}</div>}
+  </>
+);
+```
+
+![](./images/tailwind-working.png)
+
+### Setting up Custom Fonts
+
+First, let's add the fonts that we'll need for our project. We're using [Poppins](https://fonts.google.com/specimen/Poppins) and [Inter](https://fonts.google.com/specimen/Inter), both can be found on [Google Fonts](https://fonts.google.com/).
+
+From the font specimen page, click on the **"Get Font"** button.
+
+![](./images/google-fonts-get-fonts.png)
+
+Once both fonts have been added, click on the **"View selected families" button** on the top right. Then, click on the "Get Embed Code" button.
+
+![](./images/google-fonts-selected-fonts.png)
+
+Next, let's only select the font weights that we'll need for our project.
+
+Under **Poppins**, click on the **"Change Styles"** button. Turn everything off except for **"500"** and **"700"**.
+
+Under **Inter**, if you click on the **"Change Styles"** button, you'll see the settings are slightly different. That's because this is variable font. A variable font is a single font file that contains multiple variations of a typeface, allowing for dynamic manipulation of the font. Meaning, nothing to do here.
+
+Next, select the `@import` radio button and copy the code.
+
+![](./images/google-fonts-embed-code.png)
+
+Paste the code at the top of our `styles.css` file. Then, remove the `<style>` tags:
+
+```css title="src/app/styles.css" {1-2}
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+
+@import "tailwindcss";
+```
+
+Next, we need to add a custom configuration. In TailwindCSS v4, all customizations happen in the CSS file, _not_ `tailwind.config.js`.
+
+<Aside type="note" title="tailwind.config.js Support">
+Technically, you can still use `tailwind.config.js`, but it's not recommended as long-term support is unknown.
+</Aside>
+
+Below the `@import "tailwindcss";` line, add the following:
+
+```css title="src/app/styles.css" startLineNumber={6}
+@theme {
+  --font-display: "Poppins", sans-serif;
+  --font-body: "Inter", sans-serif;
+}
+```
+
+<Aside type="note" title="Theme Variables">
+In Tailwind, all theme variables are defined inside the `@theme` directive. These influence which utility classes exist within our project.
+You can find more information in the [TailwindCSS Docs.](https://tailwindcss.com/docs/theme)
+</Aside>
+
+If you're unsure how the font-family is written, you can find it in the CSS class definition on the Google Fonts page. Here, Poppins and Inter are both in quotes and capitalized.
+
+![](./images/google-fonts-font-family.png)
+
+Now, you can use the class `font-display` and `font-body` in your project.
+
+### Setting up our Custom Color Palette
+
+Defining colors is similar, except we'll prepend each color value with `--color-`.
+
+```css title="src/app/styles.css" showLineNumbers=false {3-14}
+@theme {
+  ...
+  --color-bg: #e4e3d4;
+  --color-border: #eeeef0;
+
+  --color-primary: #f7b736;
+  --color-secondary: #f1f1e8;
+  --color-destructive: #ef533f;
+
+  --color-tag-applied: #b1c7c0;
+  --color-tag-interview: #da9b7c;
+  --color-tag-new: #db9a9f;
+  --color-tag-rejected: #e4e3d4;
+  --color-tag-offer: #aae198;
+}
+---
+We're using three different groups of colors:
+- semantically named colors: background and border
+- buttons: primary, secondary, and destructive
+- tag colors: applied, interview, new, rejected, and offer
+---
+```
+
+Now, we can use these colors for backgrounds (`bg-bg`), borders (`border-border`), and text (`text-destructive`).
+
+<details>
+<summary>
+Full `styles.css` file
+</summary>
+
+```css title="src/app/styles.css"
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+
+@import "tailwindcss";
+
+@theme {
+  --font-display: "Poppins", sans-serif;
+  --font-body: "Inter", sans-serif;
+
+  --color-bg: #e4e3d4;
+  --color-border: #eeeef0;
+
+  --color-primary: #f7b736;
+  --color-secondary: #f1f1e8;
+  --color-destructive: #ef533f;
+
+  --color-tag-applied: #b1c7c0;
+  --color-tag-interview: #da9b7c;
+  --color-tag-new: #db9a9f;
+  --color-tag-rejected: #e4e3d4;
+  --color-tag-offer: #aae198;
+}
+```
+</details>
+
+Let's test to make sure our custom colors are working. On the `Login.tsx` file, let's change the React fragment `<></>` to a `<main>` tag and add a `className` of `bg-bg`:
+
+```tsx title="src/app/pages/user/Login.tsx" collapse={4-18} startLineNumber={62} {3,19}
+...
+  return (
+    <main className="bg-bg">
+      <h1 className="text-4xl font-bold text-red-500">YOLO</h1>
+      <div ref={turnstile.ref} />
+      <input
+        type="text"
+        value={username}
+        onChange={(e) => setUsername(e.target.value)}
+        placeholder="Username"
+      />
+      <Button onClick={handlePerformPasskeyLogin} disabled={isPending}>
+        {isPending ? <>...</> : "Login with passkey"}
+      </Button>
+      <Button onClick={handlePerformPasskeyRegister} disabled={isPending}>
+        {isPending ? <>...</> : "Register with passkey"}
+      </Button>
+      {result && <div>{result}</div>}
+    </main>
+  );
+}
+```
+
+When you visit https://localhost:5173/user/login, you should see a beige background color:
+
+![](./images/testing-custom-tailwind-colors.png)
+
+### shadcn/ui UI Components
+
+You can also use the [shadcn/ui Vite Installation instructions](https://ui.shadcn.com/docs/installation/vite).
+
+<Steps>
+1. Install shadcn/ui
+    ```bash
+    pnpm dlx shadcn@latest init
+    ```
+
+    It will ask you what theme you want to use. Let's go with **Neutral**.
+
+    ![](./images/shadcn-neutral-theme.png)
+
+    This command will create a `components.json` file in the root of your project. It contains all the configuration for our shadcn/ui components.
+
+    Let's modify the default paths so that it will put our components in the `src/app/components/ui` folder.
+
+    ```json title="components.json" startLineNumber={12}
+    ...
+    "aliases": {
+      "components": "@/app/components",
+      "utils": "@/app/lib/utils",
+      "ui": "@/app/components/ui",
+      "lib": "@/app/lib",
+      "hooks": "@/app/hooks"
+    },
+    ```
+
+2. Add path aliases to `tsconfig.json`:
+    ```diff title="tsconfig.json"
+    {
+      "compilerOptions": {
+    +   "baseUrl": ".",
+        "paths": {
+          "@/*": ["./src/*"]
+        }
+      }
+    }
+    ```
+4. Install `@types/node`
+    ```bash
+    pnpm add -D @types/node
+    ```
+5. Add resolve alias config to `vite.config.mts`:
+    ```diff title="vite.config.mts"
+    +import path from "path"
+    import { defineConfig } from "vite";
+    import tailwindcss from "@tailwindcss/vite"
+    import { redwood } from "@redwoodjs/sdk/vite";
+
+    export default defineConfig({
+      plugins: [redwood(), tailwindcss()],
+    + resolve: {
+    +   alias: {
+    +     "@": path.resolve(__dirname, "./src"),
+    +   },
+    + },
+    )
+    ```
+6. You should now be able to add components:
+    ```bash
+    pnpm dlx shadcn@latest add
+    ```
+
+    Select the following by hitting the `Space` key:
+    - Alert
+    - Avatar
+    - Badge
+    - Breadcrumb
+    - Button
+    - Calendar
+    - Dialog
+    - Popover
+    - Select
+    - Sheet
+    - Sonner
+    - Table
+
+    ![](./images/terminal-shadcn-bulk-add.png)
+
+    When you've selected all the components you want to add, hit `Enter`. This will add all the components inside the `src/app/components/ui` folder.
+
+    ![](./images/terminal-shadcn-bulk-add-result.png)
+
+    This will install all of our components into the `src/app/components/ui` folder.
+
+    ![](./images/shad-cn-components-in-finder.png)
+
+    <Aside type="tip" title="Adding shadcn/ui Components individually">
+      Instead of selecting components from a list, you can also add them individually by running `pnpm dlx shadcn@latest add <component-name>`.
+    </Aside>
+
+    <Aside type="note" title="shadcn/ui Components">
+      You can find a list of all the components [here](https://ui.shadcn.com/docs/components).
+    </Aside>
+</Steps>
+
+Even though we specified the path to the `lib` directory in the `components.json` file, the script still placed the folder inside the `src` directory. You'll need to move it into the `app` directory.
+
+<FileTree>
+- src/
+  - app/
+    - components/
+      - ui/
+    - lib/
+      - utils.ts
+</FileTree>
+
+We also need the date picker component, but it can't be installed using the `pnpm dlx shadcn@latest add` command.
+
+Instead, we'll need to install it manually. It's built using the `<Popover />` and `<Calendar />` components and we just installed those.
+
+Within the `src/app/components/ui` folder, create a new file called `datepicker.tsx`.
+
+<Aside type="note" title="Component Naming Conventions">
+  Normally, I like to capitalize and camel case my component file names (`DatePicker.tsx`), but since this code is coming from shadcn/ui, I'll use their naming convention and put and put it in the `components/ui` folder.
+
+  Any custom components we make, will live in the `components` directory and be named like `CustomComponent.tsx`.
+
+  Any shadcn/ui components will live in the `components/ui` folder.
+
+  Even though, we're creating the `datepicker.tsx` file manually, it's still a shadcn/ui component, so it will still live in the `components/ui` folder.
+</Aside>
+
+Add the following code to the `datepicker.tsx` file:
+
+```tsx title="src/app/components/ui/datepicker.tsx"
+"use client"
+
+import * as React from "react"
+import { format } from "date-fns"
+import { Calendar as CalendarIcon } from "lucide-react"
+
+import { cn } from "@/app/lib/utils"
+import { Button } from "@/app/components/ui/button"
+import { Calendar } from "@/app/components/ui/calendar"
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/app/components/ui/popover"
+
+export function DatePicker() {
+  const [date, setDate] = React.useState<Date>()
+
+  return (
+    <Popover>
+      <PopoverTrigger asChild>
+        <Button
+          variant={"outline"}
+          className={cn(
+            "w-[280px] justify-start text-left font-normal",
+            !date && "text-muted-foreground"
+          )}
+        >
+          <CalendarIcon className="mr-2 h-4 w-4" />
+          {date ? format(date, "PPP") : <span>Pick a date</span>}
+        </Button>
+      </PopoverTrigger>
+      <PopoverContent className="w-auto p-0">
+        <Calendar
+          mode="single"
+          selected={date}
+          onSelect={setDate}
+          initialFocus
+        />
+      </PopoverContent>
+    </Popover>
+  )
+}
+```
+
+- [Official Date Picker documentation.](https://ui.shadcn.com/docs/components/date-picker)
+- If you copy and paste directly from the shadcn/ui documentation, though, you'll find a few errors. In the code I provided, I adjusted the paths on some of the `@import` statements.
+
+```diff
+- import { cn } from "@/lib/utils"
++ import { cn } from "@/app/lib/utils"
+- import { Button } from "@/components/ui/button"
++ import { Button } from "@/app/components/ui/button"
+- import { Calendar } from "@/components/ui/calendar"
++ import { Calendar } from "@/app/components/ui/calendar"
+- import {
+-   Popover,
+-   PopoverContent,
+-   PopoverTrigger,
+- } from "@/components/ui/popover"
++ import {
++   Popover,
++   PopoverContent,
++   PopoverTrigger,
++ } from "@/app/components/ui/popover"
+```
+
+- I also changed the component name to `DatePicker`:
+
+```diff title="src/app/components/ui/datepicker.tsx" "DatePicker()" startLineNumber={16}
+- export function DatePickerDemo() {
++ export function DatePicker() {
+```
+
+If you want to make sure everything is installed correctly, head over to the `src/app/pages/user/Login.tsx` file and let's use our `Button` component.
+
+Change the `<button>` tag to use a capital `B`. This will reference the `Button` component, instead of the standard HTML button. You'll also need to import the `Button` component at the top of the file.
+
+```tsx title="src/app/pages/auth/Login.tsx" collapse={5-12} "Button"
+import { Button } from "@/app/components/ui/button";
+...
+return (
+  <>
+    <h1 className="text-4xl font-bold text-red-500">YOLO</h1>
+    <div ref={turnstile.ref} />
+    <input
+      type="text"
+      value={username}
+      onChange={(e) => setUsername(e.target.value)}
+      placeholder="Username"
+    />
+    <Button onClick={handlePerformPasskeyLogin} disabled={isPending}>
+      {isPending ? <>...</> : "Login with passkey"}
+    </Button>
+    <Button onClick={handlePerformPasskeyRegister} disabled={isPending}>
+      {isPending ? <>...</> : "Register with passkey"}
+    </Button>
+    {result && <div>{result}</div>}
+  </>
+);
+```
+
+Now, when you visit https://localhost:5173/user/login, you should see styled buttons:
+
+![](./images/shadcn-working.png)
+
+Perfect, now that we have our project setup, and all the frontend components installed, [let's start building the backend.](/tutorial/full-stack-app/database-setup)
+
+<Aside type="tip" title="Code on GitHub">
+You can find the final code for this step on [GitHub](https://github.com/redwoodjs/applywize).
+</Aside>
+
+## Further reading
+
+- [TailwindCSS](https://tailwindcss.com/)
+- [shadcn/ui](https://ui.shadcn.com/)
+
