@@ -61,8 +61,22 @@ export const initClient = async ({
     setRscPayload: () => {},
   };
 
-  const callServer = transport(transportContext);
+  let transportCallServer = transport(transportContext);
+
+  const callServer = (id: any, args: any) => transportCallServer(id, args);
+
+  const upgradeToRealtime = async ({ key }: { key?: string } = {}) => {
+    const { realtimeTransport } = await import("./lib/realtime/client");
+    const createRealtimeTransport = realtimeTransport({ key });
+    transportCallServer = createRealtimeTransport(transportContext);
+  };
+
   globalThis.__rsc_callServer = callServer;
+
+  globalThis.__rw = {
+    callServer,
+    upgradeToRealtime,
+  };
 
   const rootEl = document.getElementById("root");
 
