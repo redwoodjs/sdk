@@ -57,13 +57,13 @@ Inside, the `applywize` directory, you should have the following files and folde
 - .prettierrc # prettier configuration
 - .wrangler # Cloudflare configuration
 - migrations # database migrations
-  - 0001_init.sql
+  - 0001_init.sql # initial migration
 - node_modules # dependencies
-- package.json
-- pnpm-lock.yaml
-- prisma
+- package.json # lists all the dependencies and scripts
+- pnpm-lock.yaml # lock file for pnpm
+- prisma # prisma configuration
   - schema.prisma # database schema
-- README.md
+- README.md # project overview
 - src
   - app
     - Document.tsx # Main HTML document
@@ -76,17 +76,17 @@ Inside, the `applywize` directory, you should have the following files and folde
         - routes.ts # authentication routes
       - shared
         - links.ts # list of links
-  - client.tsx
+  - client.tsx # initializes the client
   - db.ts # database client
   - scripts
     - seed.ts # seed the database
   - session # sets up sessions for authentication
   - worker.tsx # Cloudflare worker
-- tsconfig.json
+- tsconfig.json # TypeScript configuration
 - types
-  - vite.d.ts
-- vite.config.mts
-- worker-configuration.d.ts
+  - vite.d.ts # Vite types
+- vite.config.mts # Vite configuration
+- worker-configuration.d.ts # Cloudflare worker configuration
 - wrangler.jsonc # Cloudflare configuration
 </FileTree>
 
@@ -200,13 +200,13 @@ Next, let's set up Cloudflare Turnstile for bot protection.
     ```
 </Steps>
 
-## Setting up TailwindCSS and ShadCN
+## Setting up TailwindCSS and shadcn/ui
 
-Now, let's install [TailwindCSS](https://tailwindcss.com/) and [ShadCN](https://ui.shadcn.com/).
+Now, let's install [TailwindCSS](https://tailwindcss.com/) and [shadcn/ui](https://ui.shadcn.com/).
 
 **TailwindCSS** is a utility-first CSS framework that makes it easy to style your components.
 
-**ShadCN** components is a library of pre-built components making it easier for us to focus on the functionality of our app, rather than the styling and building of components.
+**shadcn/ui** components is a library of pre-built components making it easier for us to focus on the functionality of our app, rather than the styling and building of components.
 
 ### TailwindCSS
 
@@ -442,12 +442,12 @@ When you visit https://localhost:5173/user/login, you should see a beige backgro
 
 ![](./images/testing-custom-tailwind-colors.png)
 
-### ShadCN UI Components
+### shadcn/ui UI Components
 
-You can also use the [ShadCN Vite Installation instructions](https://ui.shadcn.com/docs/installation/vite).
+You can also use the [shadcn/ui Vite Installation instructions](https://ui.shadcn.com/docs/installation/vite).
 
 <Steps>
-1. Install ShadCN
+1. Install shadcn/ui
     ```bash
     pnpm dlx shadcn@latest init
     ```
@@ -456,7 +456,7 @@ You can also use the [ShadCN Vite Installation instructions](https://ui.shadcn.c
 
     ![](./images/shadcn-neutral-theme.png)
 
-    This command will create a `components.json` file in the root of your project. It contains all the configuration for our ShadCN components.
+    This command will create a `components.json` file in the root of your project. It contains all the configuration for our shadcn/ui components.
 
     Let's modify the default paths so that it will put our components in the `src/app/components/ui` folder.
 
@@ -514,9 +514,7 @@ You can also use the [ShadCN Vite Installation instructions](https://ui.shadcn.c
     - Breadcrumb
     - Button
     - Calendar
-    - Input
-    - Label
-    - Pagination
+    - Dialog
     - Popover
     - Select
     - Sheet
@@ -533,11 +531,11 @@ You can also use the [ShadCN Vite Installation instructions](https://ui.shadcn.c
 
     ![](./images/shad-cn-components-in-finder.png)
 
-    <Aside type="tip" title="Adding ShadCN Components individually">
+    <Aside type="tip" title="Adding shadcn/ui Components individually">
       Instead of selecting components from a list, you can also add them individually by running `pnpm dlx shadcn@latest add <component-name>`.
     </Aside>
 
-    <Aside type="note" title="ShadCN Components">
+    <Aside type="note" title="shadcn/ui Components">
       You can find a list of all the components [here](https://ui.shadcn.com/docs/components).
     </Aside>
 </Steps>
@@ -560,13 +558,13 @@ Instead, we'll need to install it manually. It's built using the `<Popover />` a
 Within the `src/app/components/ui` folder, create a new file called `datepicker.tsx`.
 
 <Aside type="note" title="Component Naming Conventions">
-  Normally, I like to capitalize and camel case my component file names (`DatePicker.tsx`), but since this code is coming from ShadCN, I'll use their naming convention and put and put it in the `components/ui` folder.
+  Normally, I like to capitalize and camel case my component file names (`DatePicker.tsx`), but since this code is coming from shadcn/ui, I'll use their naming convention and put and put it in the `components/ui` folder.
 
   Any custom components we make, will live in the `components` directory and be named like `CustomComponent.tsx`.
 
-  Any ShadCN components will live in the `components/ui` folder.
+  Any shadcn/ui components will live in the `components/ui` folder.
 
-  Even though, we're creating the `datepicker.tsx` file manually, it's still a ShadCN component, so it will still live in the `components/ui` folder.
+  Even though, we're creating the `datepicker.tsx` file manually, it's still a shadcn/ui component, so it will still live in the `components/ui` folder.
 </Aside>
 
 Add the following code to the `datepicker.tsx` file:
@@ -618,7 +616,7 @@ export function DatePicker() {
 ```
 
 - [Official Date Picker documentation.](https://ui.shadcn.com/docs/components/date-picker)
-- If you copy and paste directly from the ShadCN documentation, though, you'll find a few errors. In the code I provided, I adjusted the paths on some of the `@import` statements.
+- If you copy and paste directly from the shadcn/ui documentation, though, you'll find a few errors. In the code I provided, I adjusted the paths on some of the `@import` statements.
 
 ```diff
 - import { cn } from "@/lib/utils"
@@ -687,5 +685,5 @@ You can find the final code for this step on [GitHub](https://github.com/redwood
 ## Further reading
 
 - [TailwindCSS](https://tailwindcss.com/)
-- [ShadCN](https://ui.shadcn.com/)
+- [shadcn/ui](https://ui.shadcn.com/)
 

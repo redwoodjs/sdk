@@ -9,9 +9,21 @@ description: A guide in my new Starlight docs site.
 import { Aside, FileTree } from '@astrojs/starlight/components';
 
 ## Existing Authentication Code
-Since we're using the [standard starter kit](https://github.com/redwoodjs/sdk/tree/main/starters/standard), it already has PassKey authentication setup.
+Since we're using the [standard starter kit](https://github.com/redwoodjs/sdk/tree/main/starters/standard), it already has passkey authentication setup.
 
-<Aside type="note" title="Why PassKey Authentication?">
+<Aside type="note" title="Passkey Authentication">
+### What is Passkey Authentication?
+Passkey authentication is a passwordless authentication method that uses a biometric or device authentication to verify the user's identity.
+
+**How it Works**:
+1. A use creates a passkey during the registration process.
+2. A unique public-private key pair is generated.
+3. The private key remains securely stored on the user's device.
+4. The public key is shared with the service.
+5. When the user logs in, they have to "prove" they have access to the private key.
+6. The service verifies the user's identity using the public key.
+
+### Why Passkey Authentication?
 Passkey authentication offers several key advantages:
 
 - **Enhanced Security**: Passkeys are unique, resistant to guessing, and eliminate vulnerabilities associated with traditional passwords. They use biometric authentication like fingerprints, making them much harder to compromise.
@@ -138,7 +150,7 @@ async ({ ctx, request, headers }) => {
 - On **lines 21-48**, we're setting up our middleware. This will run between every request and response cycle.
   - First, we're setting up the database `setupDb(env);` We'll use this later, on line 42, to find the logged in user.
   - Then, we're setting up the session store `setupSessionStore(env);`. We're using Cloudflare's Durable Objects to store our session data and loading it. `sessions.load(request)`
-  - On **lines 27-36**, we're catching any errors. If there's an error or the status code is 401, we remove the session and redirect the user to the login page.
+  - On **lines 27-36**, we're catching unauthorized errors. If there's an error and the status code is 401, we remove the session and redirect the user to the login page.
   - On **lines 41-47**, we check the `ctx` for the `session` object. If it has a `userId`, we connect to the database and get all the user data. The result gets saved into the `ctx.user` object.
 
 ```tsx title="src/worker.tsx" startLineNumber=49
@@ -770,7 +782,7 @@ Let's create a layout component, that we can use in both places.
 
 ### Creating a Layout Component
 
-When we installed ShadCN, it added a lot of variables to the bottom of our `styles.css` file. In CSS, order matters. So, let's move our `@theme` definition to the bottom of the file so that it reads as more important and will override any ShadCN default values.
+When we installed shadcn/ui, it added a lot of variables to the bottom of our `styles.css` file. In CSS, order matters. So, let's move our `@theme` definition to the bottom of the file so that it reads as more important and will override any shadcn/ui default values.
 
 <details>
 <summary>Updated `styles.css` file</summary>
@@ -1482,7 +1494,7 @@ If we take a look in the browser, this looks great. The only thing we lack is th
 ---
 ```
 
-For the button, we're using the ShadCN button component. Let's crack it open:
+For the button, we're using the shadcn/ui button component. Let's crack it open:
 
 ```tsx title="src/components/ui/button.tsx" collapse={8-29} startLineNumber=9 "buttonVariants" "default:" "font-bold"
 const buttonVariants = cva(
@@ -1573,7 +1585,7 @@ But, there's one more thing. Let's move the `result` message above the form and 
 </div>
 ```
 
-We can also style this, using an `<Alert />` ShadCN component. We just need to import our component at the top and and wrap our `{result}`.
+We can also style this, using an `<Alert />` shadcn/ui component. We just need to import our component at the top and and wrap our `{result}`.
 
 ```tsx title="src/app/pages/user/Login.tsx" showLineNumbers=false
 import { Alert, AlertTitle } from "@/app/components/ui/alert";
@@ -1586,7 +1598,7 @@ import { AlertCircle } from "lucide-react";
   </Alert>
 )}
 ---
-- `Alert`, `AlertCircle`, and `AlertTitle` are all from the ShadCN `Alert` component. [You can find the full documentation here.](https://ui.shadcn.com/docs/components/alert)
+- `Alert`, `AlertCircle`, and `AlertTitle` are all from the shadcn/ui `Alert` component. [You can find the full documentation here.](https://ui.shadcn.com/docs/components/alert)
 - Let's set the `variant` to `destructive`
 - and add some margin to the bottom with `mb-5`
 ---

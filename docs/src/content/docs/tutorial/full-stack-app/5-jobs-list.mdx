@@ -276,7 +276,7 @@ export default defineScript(async ({ env }) => {
       data: {
         user: {
           connect: {
-            id: "0f9a097c-d7bc-4ab5-8b11-6942163df348",
+            id: "0f9a097c-d7bc-4ab5-8b11-6942163df348", // REPLACE THIS WITH YOUR USER ID
           },
         },
         applicationStatus: {
@@ -641,7 +641,7 @@ For the right side, we want another unordered list and the Avatar component:
 
 - Notice, I replaced the right side `div` with a `nav` element, keeping things nice and semantic.
 - Inside, I've included links for the settings and logout pages.
-- For the `Avatar` component, you'll need to import it at the top of your file. This is a ShadCN component, so it should already be part of your project.
+- For the `Avatar` component, you'll need to import it at the top of your file. This is a shadcn/ui component, so it should already be part of your project.
 
 ```tsx showLineNumbers=false
 import { Avatar, AvatarFallback } from '@/app/components/ui/avatar'
@@ -664,7 +664,7 @@ import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
 
 If you want to go this route, you can download the [`avatar.png` placeholder image]() and hard code the image source. However, we're not going to cover file uploads and storage in this tutorial. So, we'll use the `AvatarFallback` component to display the first character of the username.
 
-The ShadCN Avatar component uses client side interactivity. So, you'll need to add the `use client` directive to the top of the `Avatar.tsx` file:
+The shadcn/ui Avatar component uses client side interactivity. So, you'll need to add the `use client` directive to the top of the `Avatar.tsx` file:
 
 ```tsx title="src/app/components/ui/avatar.tsx" startLineNumber=1 ""use client""
 "use client"
@@ -870,13 +870,17 @@ return (
 
 - `InteriorLayout` can only have one react node, so we need to wrap everything with a React fragment (`<>`)
 - Above our application content, I added a wrapping `div` with a `h1` heading for "All Applications".
-- Then, I have another `div` that wraps a `<Button>` component. Inside, I have a link that points to the new application page. The `Button` component is coming from ShadCN. It should already be part of your project, but you'll need to import it at the top of your file.
+- Then, I have another `div` that wraps a `<Button>` component. Inside, I have a link that points to the new application page. The `Button` component is coming from shadcn/ui. It should already be part of your project, but you'll need to import it at the top of your file.
 - Since we're not triggering an event, we're _linking_ to another page, we have an `a` tag. Eventually, this will reference the `applications/new` route, but since we haven't set that up yet, I used a placeholder `#` instead.
 
-<Aside type="tip" title="ShadCN Button">
-  Admittedly, it does look a little strange having an `a` tag inside a `Button` component. This is functionality provided by ShadCN, when you have an element that looks like a button, but should be a link.
+<Aside type="tip" title="shadcn/ui Button">
+  Admittedly, it does look a little strange having an `a` tag inside a `Button` component.
 
-  [For reference: ShadCN Button Component Documentation](https://ui.shadcn.com/docs/components/button)
+  In shadcn/ui, the ⁠Button component is designed to be flexible, allowing you to create buttons that can also act as links. This is a common pattern in modern web design where you want a consistent visual style for interactive elements.
+
+  `asChild` is a special prop in shadcn/ui that tells the Button component to render its child element as-is. It allows you to keep the Button's styling while using a different underlying HTML element (like an ⁠`<a>` tag).
+
+  [For reference: shadcn/ui Button Component Documentation](https://ui.shadcn.com/docs/components/button)
 </Aside>
 
 Now, let's add some styling:
@@ -917,7 +921,7 @@ const ApplicationsTable = () => {
 export { ApplicationsTable }
 ```
 
-Let's go ahead and put this on our `ApplicationsList.tsx` page, so we can see the updates we're making in th browser:
+Let's go ahead and put this on our `ApplicationsList.tsx` page, so we can see the updates we're making in the browser:
 
 ```tsx title="src/app/pages/applications/List.tsx" {1} "<ApplicationsTable />"
 import { ApplicationsTable } from "@/app/components/ApplicationsTable";
@@ -938,7 +942,7 @@ return (
 )
 ```
 
-We've already added the [ShadCN Table component](https://ui.shadcn.com/docs/components/table) to our project, so let's go back to our `ApplicationsTable.tsx` file and use it. Just to start, I'm going to copy the example code from the ShadCN documentation and then we can rework it for our needs:
+We've already added the [shadcn/ui Table component](https://ui.shadcn.com/docs/components/table) to our project, so let's go back to our `ApplicationsTable.tsx` file and use it. Just to start, I'm going to copy the example code from the shadcn/ui documentation and then we can rework it for our needs:
 
 ```tsx title="src/app/components/ApplicationsTable.tsx"
 import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "./ui/table"
@@ -1021,7 +1025,7 @@ Cool. Let's make a few stylistic changes before we plug in the data.
 
 ### Adding Badges to the Status Column
 
-The status column should be a badge. We can reach for the `Badge` component from ShadCN.
+The status column should be a badge. We can reach for the `Badge` component from shadcn/ui.
 
 ```tsx title="src/app/components/ApplicationsTable.tsx" showLineNumbers=false
 import { Badge } from "./ui/badge"
@@ -1395,7 +1399,7 @@ Inside our `badge` component, when we defined our `badgeVariants` for styles, it
 ```
 
 <Aside type="note" title="Class Variance Authority">
-Class Variance Authority is a utility library, used within ShadCN, for creating and using CSS classes.
+Class Variance Authority is a utility library, used within shadcn/ui, for creating and using CSS classes.
 
 For further reading, you can read the [official Class Variance Authority documentation.](https://cva.style/docs)
 </Aside>

@@ -75,12 +75,23 @@ figcaption:not(.header) {
   }
 }
 
-figure figcaption {
+figure figcaption:not(.header) {
   font-size: 14px !important;
   background-color: var(--sl-color-bg-inline-code) !important;
   color: var(--sl-color-text) !important;
-  padding: 0.5rem !important;
+}
+
+/* Code captions */
+figure:not(:has(> p))>figcaption:not(.header) {
+  padding: 1rem 1rem 0.5rem 1rem !important;
   margin-top: -1rem !important;
+  border-bottom: 1px solid var(--sl-color-gray-5) !important;
+}
+
+/* Image captions */
+figure:has(> p)>figcaption:not(.header) {
+  padding: 1rem 1rem 0.5rem 1rem !important;
+  margin-top: -0.5rem !important;
   border-bottom: 1px solid var(--sl-color-gray-5) !important;
 }
 
