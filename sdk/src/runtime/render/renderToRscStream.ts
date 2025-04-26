@@ -55,7 +55,7 @@ export const renderToRscStream = (app: {
     actionResult = rechunkStream(actionResult);
   }
 
-  return baseRenderToRscStream({ node, actionResult }, createClientManifest(), {
+  return baseRenderToRscStream({ node, actionResult }, /* createClientManifest(), */ {
     onError,
   });
 };

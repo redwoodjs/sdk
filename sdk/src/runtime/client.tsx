@@ -1,9 +1,13 @@
-import { clientWebpackRequire } from "./imports/client";
+import { clientWebpackRequire, loadModule } from "./imports/client";
 import { type CallServerCallback } from "react-server-dom-webpack/client.browser";
+import * as ReactClient from "react-server-dom-webpack/client.browser";
 
 // NOTE: `react-server-dom-webpack` uses this global to load modules,
 // so we need to define it here before importing "react-server-dom-webpack."
-globalThis.__webpack_require__ = clientWebpackRequire;
+// globalThis.__webpack_require__ = clientWebpackRequire;
+(ReactClient as any).setPreloadModule((id: string) => {
+  return loadModule(id)
+})
 
 export type ActionResponse<Result> = {
   node: React.ReactNode;

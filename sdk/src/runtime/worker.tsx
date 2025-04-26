@@ -2,7 +2,7 @@ import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 import { injectRSCPayload } from "./render/injectRSCPayload";
 import { renderToRscStream } from "./render/renderToRscStream";
 
-import { ssrWebpackRequire } from "./imports/worker";
+import { loadModule, ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import { ErrorResponse } from "./error";
 import {
@@ -16,6 +16,8 @@ import { Route, defineRoutes } from "./lib/router";
 import { generateNonce } from "./lib/utils";
 import { IS_DEV } from "./constants";
 
+import * as ReactClient from "react-server-dom-webpack/client.edge"
+
 declare global {
   type Env = {
     ASSETS: Fetcher;
@@ -26,7 +28,11 @@ declare global {
 export const defineApp = (routes: Route[]) => {
   return {
     fetch: async (request: Request, env: Env, cf: ExecutionContext) => {
-      globalThis.__webpack_require__ = ssrWebpackRequire;
+      // globalThis.__webpack_require__ = ssrWebpackRequire;
+      (ReactClient as any).setPreloadModule((id: string) => {
+        // TODO: ReactDOM.preloadModule on build to inject modulepreload link
+        return loadModule(id)
+      });
 
       const router = defineRoutes(routes);
 
