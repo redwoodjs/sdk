@@ -12,5 +12,12 @@
     "node": ">=18.0.0",
     "pnpm": ">=8.0.0"
   },
+  "pnpm": {
+    "overrides": {
+      "react": "0.0.0-experimental-197d6a04-20250424",
+      "react-dom": "0.0.0-experimental-197d6a04-20250424",
+      "react-server-dom-webpack": "https://github.com/hi-ogawa/vite-plugins/raw/refs/heads/04-24-refactor_rsc_use_react-server-dom-vite/react-server-dom-vite-19.1.0.tgz"
+    }
+  },
   "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab"
 }
