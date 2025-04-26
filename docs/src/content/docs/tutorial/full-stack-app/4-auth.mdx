@@ -9,7 +9,7 @@ description: A guide in my new Starlight docs site.
 import { Aside, FileTree } from '@astrojs/starlight/components';
 
 ## Existing Authentication Code
-Since we're using the [standard starter kit](https://github.com/redwoodjs/sdk/tree/main/starters/standard), it already has passkey authentication setup.
+Since we're using the [standard starter kit](https://github.com/redwoodjs/sdk/tree/main/starters/standard), it already has passkey authentication set up.
 
 <Aside type="note" title="Passkey Authentication">
 ### What is Passkey Authentication?
@@ -18,7 +18,7 @@ Passkey authentication is a passwordless authentication method that uses a biome
 **How it Works**:
 1. A use creates a passkey during the registration process.
 2. A unique public-private key pair is generated.
-3. The private key remains securely stored on the user's device.
+3. The private key remains securely stored on the user's device or [in a password manager](https://support.apple.com/guide/iphone/use-passkeys-to-sign-in-to-websites-and-apps-iphf538ea8d0/ios).
 4. The public key is shared with the service.
 5. When the user logs in, they have to "prove" they have access to the private key.
 6. The service verifies the user's identity using the public key.
@@ -156,7 +156,8 @@ async ({ ctx, request, headers }) => {
 ```tsx title="src/worker.tsx" startLineNumber=49
 render(Document, [
 ```
-- On **line 49**, we're setting up our document. This document is referencing our `src/app/Document.tsx` file. It contains our `html`, `head`, and `body` tags and wraps _all_ of our pages. **_RedwoodSDK only supports one document._**
+- On **line 49**, we're setting up our document. This document is referencing our `src/app/Document.tsx` file. It contains our `html`, `head`, and `body` tags and wraps _all_ of our pages.
+  - One of the powerful yet simple features of RedwoodSDK is that it supports per-route documents. Read more about this [on our blog](https://rwsdk.com/blog/redwoodsdk-multiple-documents).
 
 ```tsx title="src/worker.tsx" startLineNumber=49
 render(Document, [
