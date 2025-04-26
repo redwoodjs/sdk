@@ -10,7 +10,7 @@ import { Aside, FileTree } from '@astrojs/starlight/components';
 
 Can you believe it?! This is the last piece we need before deploying our application.
 
-We've already done the bulk of our set up, so this part should easier-ly. 🙃
+We've already done the bulk of our set up, so this part should be easy...er? 🙃
 
 First, let's take a look at [what we're building in Figma](https://www.figma.com/design/nqBPIIfe0MO4W8zOfW4oae/RedwoodSDK---Applywize?node-id=12-327&t=OsDs4uB62Y6faUen-1).
 
@@ -238,7 +238,7 @@ Now, that we know we're getting the right application back, let's update our `<B
 + <BreadcrumbPage>{application?.jobTitle} at {application?.company?.name}</BreadcrumbPage>
 ```
 
-We're using the Elvis operator (`?.`) or optional chaining to ensure that we don't throw an error if the application object is `null`.
+We're using the Elvis operator (`?.`) (optional chaining) to ensure that we don't throw an error if the application object is `null`.
 
 When you preview this in the browser, you might be surprised to see that the company information is not showing up.
 
@@ -880,11 +880,9 @@ Now, let's go back to our `Details.tsx` file and add our `DeleteApplicationButto
 +<DeleteApplicationButton applicationId={application?.id as string} />
 ```
 
-Let's test this out in the browser.
+Go test this out in the browser — everything should be working. 🙌
 
-🙌 Looks like everything is working.
-
-Before we can move on, we need to set up the "Nevermind" button to close the dialog box.
+Before we can move on, we need to set up the "Nevermind" button for closing the dialog box.
 
 ### Closing the Dialog Box
 
