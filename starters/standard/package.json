@@ -17,7 +17,6 @@
     "clean": "npm run clean:vite",
     "clean:vite": "rm -rf ./node_modules/.vite",
     "release": "rw-scripts ensure-deploy-env && npm run clean && prisma generate && RWSDK_DEPLOY=1 npm run build && wrangler deploy",
-    "format": "prettier --write ./src",
     "migrate:dev": "prisma generate && wrangler d1 migrations apply DB --local",
     "migrate:prd": "wrangler d1 migrations apply DB --remote",
     "migrate:new": "rw-scripts migrate-new",
@@ -41,5 +40,15 @@
     "typescript": "^5.8.3",
     "vite": "^6.2.6",
     "wrangler": "^4.8.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "@prisma/client",
+      "@prisma/engines",
+      "esbuild",
+      "prisma",
+      "sharp",
+      "workerd"
+    ]
   }
 }
