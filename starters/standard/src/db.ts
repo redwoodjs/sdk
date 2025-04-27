@@ -21,7 +21,3 @@ export const setupDb = async (env: Env) => {
   // the request will not hang. This makes this issue particularly hard to debug.
   await db.$queryRaw`SELECT 1`;
 };
-
-export const setup = (env: Env) => {
-  setupDb(env);
-};
