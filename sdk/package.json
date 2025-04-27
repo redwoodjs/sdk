@@ -1,6 +1,6 @@
 {
   "name": "@redwoodjs/sdk",
-  "version": "0.0.75",
+  "version": "0.0.75-test.20250427033246",
   "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime",
   "type": "module",
   "bin": {
@@ -114,9 +114,9 @@
     "magic-string": "^0.30.17",
     "miniflare": "^4.20250405.0",
     "picocolors": "^1.1.1",
-    "react-is": "^19.0.0",
     "react": "0.0.0-experimental-197d6a04-20250424",
     "react-dom": "0.0.0-experimental-197d6a04-20250424",
+    "react-is": "^19.0.0",
     "react-server-dom-vite": "https://github.com/hi-ogawa/vite-plugins/raw/refs/heads/04-24-refactor_rsc_use_react-server-dom-vite/react-server-dom-vite-19.1.0.tgz",
     "rsc-html-stream": "^0.0.3",
     "tmp-promise": "^3.0.3",
