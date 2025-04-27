@@ -1,6 +1,6 @@
 {
   "name": "@redwoodjs/sdk",
-  "version": "0.0.75-test.0",
+  "version": "0.0.75",
   "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime",
   "type": "module",
   "bin": {
