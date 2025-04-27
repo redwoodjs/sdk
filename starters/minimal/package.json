@@ -22,7 +22,7 @@
     "types": "tsc"
   },
   "dependencies": {
-    "@redwoodjs/sdk": "0.0.75"
+    "@redwoodjs/sdk": "0.0.75-test.0"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
@@ -31,5 +31,12 @@
     "typescript": "^5.8.3",
     "vite": "^6.2.6",
     "wrangler": "^4.8.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "workerd"
+    ]
   }
 }
