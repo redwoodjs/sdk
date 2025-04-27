@@ -1,5 +1,4 @@
 import { renderToReadableStream as baseRenderToRscStream } from "react-server-dom-vite/server.edge";
-import { createClientManifest } from "./createClientManifest.js";
 
 // context(justinvdm, 24 Mar 2025): React flight limits chunks to 28 bytes, so we need to rechunk
 // the stream to avoid losing data
@@ -57,7 +56,7 @@ export const renderToRscStream = (app: {
 
   return baseRenderToRscStream(
     { node, actionResult },
-    /* createClientManifest(), */ {
+    {
       onError,
     },
   );

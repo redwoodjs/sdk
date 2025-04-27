@@ -39,7 +39,7 @@ export async function rscActionHandler(req: Request): Promise<unknown> {
     ? await req.formData()
     : await req.text();
 
-  const args = (await decodeReply(data /* null */)) as unknown[];
+  const args = (await decodeReply(data)) as unknown[];
   const actionId = url.searchParams.get("__rsc_action_id");
 
   if (IS_DEV && actionId === "__rsc_hot_update") {

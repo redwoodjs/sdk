@@ -28,7 +28,6 @@ declare global {
 export const defineApp = (routes: Route[]) => {
   return {
     fetch: async (request: Request, env: Env, cf: ExecutionContext) => {
-      // globalThis.__webpack_require__ = ssrWebpackRequire;
       (ReactClient as any).setPreloadModule((id: string) => {
         // TODO: ReactDOM.preloadModule on build to inject modulepreload link
         return loadModule(id);

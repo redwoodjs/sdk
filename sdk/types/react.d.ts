@@ -47,7 +47,6 @@ declare module "react-server-dom-vite/server.edge" {
   // https://github.com/facebook/react/blob/0711ff17638ed41f9cdea712a19b92f01aeda38f/packages/react-server-dom-webpack/src/ReactFlightDOMServerEdge.js#L48
   export function renderToReadableStream(
     model: ReactClientValue,
-    // webpackMap: ClientManifest,
     options?: Options,
   ): ReadableStream;
 
@@ -118,8 +117,7 @@ declare module "react-server-dom-vite/server.edge" {
   // TODO: branded stream type?
   export function renderToReadableStream<T>(
     node: T,
-    // bundlerConfig: import("./react").BundlerConfig,
-    opitons?: {
+    options?: {
       onError: import("react-dom/server").RenderToReadableStreamOptions["onError"];
     },
   ): ReadableStream<Uint8Array>;
@@ -138,19 +136,15 @@ declare module "react-server-dom-vite/server.edge" {
 
   export function decodeReply(
     body: string | FormData,
-    // bundlerConfig: import("./react").BundlerConfig
-    // TODO: temporaryReferences
   ): Promise<unknown[]>;
 
   export function decodeAction(
     body: FormData,
-    // bundlerConfig: import("./react").BundlerConfig
   ): Promise<() => Promise<unknown>>;
 
   export function decodeFormState(
     actionResult: unknown,
     body: FormData,
-    // serverManifest?: unknown
   ): Promise<unknown>;
 }
 
@@ -176,7 +170,6 @@ declare module "react-server-dom-vite/server" {
    */
   export function decodeReply<T>(
     body: string | FormData,
-    // webpackMap?: ServerManifest
   ): Promise<T>;
 
   /**
@@ -190,7 +183,6 @@ declare module "react-server-dom-vite/server" {
    */
   export function decodeReplyFromBusboy<T>(
     busboyStream: Busboy,
-    // webpackMap?: ServerManifest
   ): Promise<T>;
 
   type PipeableStream = {
@@ -211,7 +203,6 @@ declare module "react-server-dom-vite/server" {
    */
   export function renderToPipeableStream(
     model: ReactClientValue,
-    // webpackMap: ClientManifest
   ): PipeableStream;
 }
 
@@ -256,12 +247,7 @@ declare module "react-server-dom-vite/client.edge" {
    */
   export function createFromReadableStream<T>(
     stream: ReadableStream,
-    options: {
-      // serverConsumerManifest: {
-      //   moduleMap: ClientManifest;
-      //   moduleLoading: null;
-      // };
-    },
+    options: {},
   ): Thenable<T>;
 
   export function createServerReference<A, T>(
