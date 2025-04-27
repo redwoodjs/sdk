@@ -4,11 +4,6 @@ settings:
   autoInstallPeers: true
   excludeLinksFromLockfile: false
 
-overrides:
-  react: 0.0.0-experimental-197d6a04-20250424
-  react-dom: 0.0.0-experimental-197d6a04-20250424
-  react-server-dom-webpack: https://github.com/hi-ogawa/vite-plugins/raw/refs/heads/04-24-refactor_rsc_use_react-server-dom-vite/react-server-dom-vite-19.1.0.tgz
-
 importers:
 
   .:
@@ -16,6 +11,9 @@ importers:
       knip:
         specifier: ^5.50.5
         version: 5.50.5(@types/node@22.14.0)(typescript@5.8.3)
+      prettier:
+        specifier: ^3.5.3
+        version: 3.5.3
 
   docs:
     dependencies:
@@ -152,9 +150,6 @@ importers:
       '@types/node':
         specifier: ^22.14.0
         version: 22.14.0
-      prettier:
-        specifier: ^3.5.3
-        version: 3.5.3
       semver:
         specifier: ^7.7.1
         version: 7.7.1
@@ -2938,8 +2933,8 @@ packages:
     version: 19.1.0
     engines: {node: '>=0.10.0'}
     peerDependencies:
-      react: 0.0.0-experimental-197d6a04-20250424
-      react-dom: 0.0.0-experimental-197d6a04-20250424
+      react: ^19.1.0
+      react-dom: ^19.1.0
 
   react@0.0.0-experimental-197d6a04-20250424:
     resolution: {integrity: sha512-2BWhl33tYx2nVLahXumIvAmyMKQOuXKRj/DjV1gnBTRT31PV7ttMeOUDtR1Pwt648rI4ooCKyMV4wqxZotyOAA==}

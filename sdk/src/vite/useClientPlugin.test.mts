@@ -13,7 +13,7 @@ describe("transformUseClientCode", () => {
 
 export const Component = () => {
   return jsx('div', { children: 'Hello' });
-}`)
+}`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
       const ComponentSSR = () => {
@@ -30,7 +30,7 @@ export const Component = () => {
 
 export const foo = "bar"
 export const baz = 23
-}`)
+}`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
       export const foo = "bar"
@@ -45,7 +45,7 @@ export const baz = 23
 
 export const Component = async () => {
   return jsx('div', { children: 'Hello' });
-}`)
+}`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
       const ComponentSSR = async () => {
@@ -62,7 +62,7 @@ export const Component = async () => {
 
 export function Component() {
   return jsx('div', { children: 'Hello' });
-}`)
+}`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
 
@@ -80,7 +80,7 @@ export function Component() {
 
 export async function Component() {
   return jsx('div', { children: 'Hello' });
-}`)
+}`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
 
@@ -102,7 +102,7 @@ export const First = () => {
 
 export const Second = () => {
   return jsx('div', { children: 'Second' });
-}`)
+}`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
       const FirstSSR = () => {
@@ -129,7 +129,7 @@ export const First = async () => {
 
 export const Second = async () => {
   return jsx('div', { children: 'Second' });
-}`)
+}`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
       const FirstSSR = async () => {
@@ -156,7 +156,7 @@ export function First() {
 
 export function Second() {
   return jsx('div', { children: 'Second' });
-}`)
+}`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
 
@@ -184,7 +184,7 @@ export async function First() {
 
 export async function Second() {
   return jsx('div', { children: 'Second' });
-}`)
+}`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
 
@@ -214,7 +214,7 @@ const Second = () => {
   return jsx('div', { children: 'Second' });
 }
 
-export { First, Second }`)
+export { First, Second }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
       const FirstSSR = () => {
@@ -297,7 +297,7 @@ function Button({
 }
 
 export { Button, buttonVariants }
-`)
+`),
     ).toMatchInlineSnapshot(`
       "
       import * as React from "react"
@@ -380,7 +380,7 @@ const Second = async () => {
   return jsx('div', { children: 'Second' });
 }
 
-export { First, Second }`)
+export { First, Second }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
       const FirstSSR = async () => {
@@ -409,7 +409,7 @@ function Second() {
   return jsx('div', { children: 'Second' });
 }
 
-export { First, Second }`)
+export { First, Second }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
 
@@ -439,7 +439,7 @@ async function Second() {
   return jsx('div', { children: 'Second' });
 }
 
-export { First, Second }`)
+export { First, Second }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
 
@@ -463,7 +463,7 @@ export { First, Second }`)
 
 export default () => {
   return jsx('div', { children: 'Hello' });
-}`)
+}`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
       const DefaultComponent0SSR = () => {
@@ -480,7 +480,7 @@ export default () => {
 
 export default async () => {
   return jsx('div', { children: 'Hello' });
-}`)
+}`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
       const DefaultComponent0SSR = async () => {
@@ -655,7 +655,7 @@ export const MovieSelector = ({
   }, this);
 };
 
-`)
+`),
     ).toMatchInlineSnapshot(`
       "
       import { jsxDEV } from "react/jsx-dev-runtime";
@@ -832,7 +832,7 @@ export const MovieSelector = ({
 
 export default function Component({ prop1, prop2 }) {
   return jsx('div', { children: 'Hello' });
-}`)
+}`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
 
@@ -850,7 +850,7 @@ export default function Component({ prop1, prop2 }) {
 
 export default async function Component() {
   return jsx('div', { children: 'Hello' });
-}`)
+}`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
 
@@ -937,7 +937,7 @@ export function ComplexComponent({ initialCount = 0 }) {
       })
     ]
   });
-}`)
+}`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
 
@@ -1043,7 +1043,7 @@ export default function Main() {
 }
 
 export { Second, Third }
-export { Fourth as AnotherName }`)
+export { Fourth as AnotherName }`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
       const FirstSSR = () => {
@@ -1087,7 +1087,7 @@ function Component({ prop1, prop2 }) {
   return jsx('div', { children: 'Hello' });
 }
 
-export default Component;`)
+export default Component;`),
     ).toMatchInlineSnapshot(`
       "import { registerClientReference } from "@redwoodjs/sdk/worker";
 
@@ -1181,7 +1181,7 @@ export function Chat() {
     columnNumber: 5
   }, this);
 }
-`)
+`),
     ).toMatchInlineSnapshot(`
       "import { jsxDEV } from "react/jsx-dev-runtime";
       import { sendMessage } from "./functions";
@@ -1271,7 +1271,7 @@ export function Chat() {
 
   it("Does not transform when 'use client' is not directive", async () => {
     expect(
-      await transform(`const message = "use client";`)
+      await transform(`const message = "use client";`),
     ).toMatchInlineSnapshot(`undefined`);
   });
 });

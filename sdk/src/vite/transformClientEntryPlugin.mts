@@ -24,7 +24,7 @@ export const transformClientEntryPlugin = ({
     // Add Vite preamble import in development mode
     if (mode === "development") {
       transformedImports.push(
-        `await import(/* @vite-ignore */ 'virtual:vite-preamble');`
+        `await import(/* @vite-ignore */ 'virtual:vite-preamble');`,
       );
     }
 
@@ -44,7 +44,7 @@ export const transformClientEntryPlugin = ({
           .join(", ");
 
         transformedImports.push(
-          `const { ${importSpecifiers} } = await import('${moduleSpecifier}');`
+          `const { ${importSpecifiers} } = await import('${moduleSpecifier}');`,
         );
       }
 
@@ -52,7 +52,7 @@ export const transformClientEntryPlugin = ({
       const defaultImport = importDecl.getDefaultImport();
       if (defaultImport) {
         transformedImports.push(
-          `const ${defaultImport.getText()} = (await import('${moduleSpecifier}')).default;`
+          `const ${defaultImport.getText()} = (await import('${moduleSpecifier}')).default;`,
         );
       }
 
@@ -60,7 +60,7 @@ export const transformClientEntryPlugin = ({
       const namespaceImport = importDecl.getNamespaceImport();
       if (namespaceImport) {
         transformedImports.push(
-          `const ${namespaceImport.getText()} = await import('${moduleSpecifier}');`
+          `const ${namespaceImport.getText()} = await import('${moduleSpecifier}');`,
         );
       }
     });
@@ -81,7 +81,7 @@ ${otherStatements.join("\n")}
     const transformedFile = project.createSourceFile(
       "transformed.tsx",
       transformedCode,
-      { overwrite: true }
+      { overwrite: true },
     );
 
     return {
