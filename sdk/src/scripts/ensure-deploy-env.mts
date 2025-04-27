@@ -74,7 +74,7 @@ export const ensureDeployEnv = async () => {
   console.log("Ensuring deployment environment is ready...");
 
   const pkg = JSON.parse(
-    await readFile(resolve(process.cwd(), "package.json"), "utf-8")
+    await readFile(resolve(process.cwd(), "package.json"), "utf-8"),
   );
 
   // Read wrangler config
@@ -94,7 +94,7 @@ export const ensureDeployEnv = async () => {
   console.log("Checking Cloudflare account setup...");
   const accountCachePath = join(
     process.cwd(),
-    "node_modules/.cache/wrangler/wrangler-account.json"
+    "node_modules/.cache/wrangler/wrangler-account.json",
   );
 
   // todo(justinvdm): this is a hack to force the account selection prompt,
@@ -115,11 +115,11 @@ export const ensureDeployEnv = async () => {
     console.log("Found env.DB usage, checking D1 database setup...");
     try {
       const existingDb = wranglerConfig.d1_databases?.find(
-        (db: any) => db.binding === "DB"
+        (db: any) => db.binding === "DB",
       );
       if (existingDb && existingDb.database_id !== "__change_me__") {
         console.log(
-          "D1 database already configured in wrangler.jsonc, skipping creation"
+          "D1 database already configured in wrangler.jsonc, skipping creation",
         );
       } else {
         const suffix = uniqueNamesGenerator({
@@ -163,7 +163,7 @@ export const ensureDeployEnv = async () => {
   // Check AUTH_SECRET_KEY setup
   if (!(await hasAuthUsage())) {
     console.log(
-      "Skipping AUTH_SECRET_KEY setup - no auth usage detected in codebase"
+      "Skipping AUTH_SECRET_KEY setup - no auth usage detected in codebase",
     );
   } else {
     console.log("Found auth usage, checking secret setup...");
@@ -171,13 +171,13 @@ export const ensureDeployEnv = async () => {
       // Get list of all secrets
       const secretsResult = await $`wrangler secret list --format=json`;
       const existingSecrets = JSON.parse(secretsResult.stdout ?? "[]").map(
-        (secret: any) => secret.name
+        (secret: any) => secret.name,
       );
 
       // Check if AUTH_SECRET_KEY already exists
       if (existingSecrets.includes("AUTH_SECRET_KEY")) {
         console.log(
-          "AUTH_SECRET_KEY secret already exists in Cloudflare, skipping"
+          "AUTH_SECRET_KEY secret already exists in Cloudflare, skipping",
         );
       } else {
         // Secret doesn't exist, create it
@@ -187,10 +187,10 @@ export const ensureDeployEnv = async () => {
       }
     } catch (error) {
       console.error(
-        "Failed to set up AUTH_SECRET_KEY. Please configure it manually:"
+        "Failed to set up AUTH_SECRET_KEY. Please configure it manually:",
       );
       console.error(
-        "1. Generate a secret key: node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\""
+        "1. Generate a secret key: node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\"",
       );
       console.error("2. Set the secret: wrangler secret put AUTH_SECRET_KEY");
       process.exit(1);
@@ -201,7 +201,7 @@ export const ensureDeployEnv = async () => {
   const needsWebAuthn = await hasWebAuthn();
   if (!needsWebAuthn) {
     console.log(
-      "Skipping WebAuthn setup - no WEBAUTHN usage detected in codebase"
+      "Skipping WebAuthn setup - no WEBAUTHN usage detected in codebase",
     );
   } else {
     console.log("Found WEBAUTHN usage, checking WebAuthn setup...");
@@ -209,7 +209,7 @@ export const ensureDeployEnv = async () => {
       wranglerConfig.vars = wranglerConfig.vars || {};
       if (wranglerConfig.vars.WEBAUTHN_APP_NAME === wranglerConfig.name) {
         console.log(
-          `WEBAUTHN_APP_NAME already set to "${wranglerConfig.name}" in wrangler.jsonc`
+          `WEBAUTHN_APP_NAME already set to "${wranglerConfig.name}" in wrangler.jsonc`,
         );
       } else {
         wranglerConfig.vars.WEBAUTHN_APP_NAME = wranglerConfig.name;
@@ -221,7 +221,7 @@ export const ensureDeployEnv = async () => {
       console.error("Failed to set up WebAuthn. Please configure it manually:");
       console.error("Add to wrangler.jsonc vars:");
       console.error(
-        `   "vars": { "WEBAUTHN_APP_NAME": "${wranglerConfig.name}" }`
+        `   "vars": { "WEBAUTHN_APP_NAME": "${wranglerConfig.name}" }`,
       );
       process.exit(1);
     }
@@ -232,7 +232,7 @@ export const ensureDeployEnv = async () => {
     try {
       // Get the database name from wrangler config
       const dbConfig = wranglerConfig.d1_databases?.find(
-        (db: any) => db.binding === "DB"
+        (db: any) => db.binding === "DB",
       );
       if (!dbConfig) {
         throw new Error("No D1 database configuration found in wrangler.jsonc");

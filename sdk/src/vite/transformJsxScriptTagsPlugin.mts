@@ -11,7 +11,7 @@ const readManifest = async (manifestPath: string) => {
       manifestPath,
       (await pathExists(manifestPath))
         ? readFile(manifestPath, "utf-8").then(JSON.parse)
-        : Promise.resolve({})
+        : Promise.resolve({}),
     );
   }
   return manifestCache.get(manifestPath)!;

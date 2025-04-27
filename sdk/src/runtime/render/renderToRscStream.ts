@@ -5,7 +5,7 @@ import { createClientManifest } from "./createClientManifest.js";
 // the stream to avoid losing data
 function rechunkStream(
   stream: ReadableStream,
-  maxChunkSize: number = 28
+  maxChunkSize: number = 28,
 ): ReadableStream {
   const reader = stream.getReader();
   return new ReadableStream({
