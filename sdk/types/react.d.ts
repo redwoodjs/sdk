@@ -246,8 +246,7 @@ declare module "react-server-dom-vite/client.edge" {
    * @see https://timtech.blog/posts/react-server-components-rsc-no-framework/#createfromreadablestream-from-react-server-dom-webpackclient
    */
   export function createFromReadableStream<T>(
-    stream: ReadableStream,
-    options: {},
+    stream: ReadableStream
   ): Thenable<T>;
 
   export function createServerReference<A, T>(
