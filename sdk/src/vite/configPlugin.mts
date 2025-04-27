@@ -82,10 +82,10 @@ export const configPlugin = ({
                               return {
                                 path: resolve(
                                   projectRootDir,
-                                  "node_modules/.prisma/client/wasm.js"
+                                  "node_modules/.prisma/client/wasm.js",
                                 ),
                               };
-                            }
+                            },
                           );
                         },
                       },
@@ -97,8 +97,8 @@ export const configPlugin = ({
             include: [
               "react/jsx-runtime",
               "react/jsx-dev-runtime",
-              "react-server-dom-webpack/client.edge",
-              "react-server-dom-webpack/server.edge",
+              "react-server-dom-vite/client.edge",
+              "react-server-dom-vite/server.edge",
             ],
           },
           build: {
@@ -126,7 +126,7 @@ export const configPlugin = ({
             ? {
                 ".prisma/client/default": resolve(
                   projectRootDir,
-                  "node_modules/.prisma/client/wasm.js"
+                  "node_modules/.prisma/client/wasm.js",
                 ),
               }
             : {}),

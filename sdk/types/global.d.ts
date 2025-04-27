@@ -1,7 +1,7 @@
 /* eslint-disable no-var */
 /// <reference types="react/experimental" />
 
-import { CallServerCallback } from "react-server-dom-webpack/client.browser";
+import { CallServerCallback } from "react-server-dom-vite/client.browser";
 import { ViteHotContext } from "vite/types/hot";
 
 declare global {

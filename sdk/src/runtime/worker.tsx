@@ -16,7 +16,7 @@ import { Route, defineRoutes } from "./lib/router";
 import { generateNonce } from "./lib/utils";
 import { IS_DEV } from "./constants";
 
-import * as ReactClient from "react-server-dom-webpack/client.edge"
+import * as ReactClient from "react-server-dom-vite/client.edge";
 
 declare global {
   type Env = {
@@ -31,7 +31,7 @@ export const defineApp = (routes: Route[]) => {
       // globalThis.__webpack_require__ = ssrWebpackRequire;
       (ReactClient as any).setPreloadModule((id: string) => {
         // TODO: ReactDOM.preloadModule on build to inject modulepreload link
-        return loadModule(id)
+        return loadModule(id);
       });
 
       const router = defineRoutes(routes);
@@ -50,7 +50,7 @@ export const defineApp = (routes: Route[]) => {
             headers: {
               "content-type": "text/javascript",
             },
-          }
+          },
         );
       }
 
@@ -75,7 +75,7 @@ export const defineApp = (routes: Route[]) => {
 
         const createPageElement = (
           requestInfo: RequestInfo,
-          Page: React.FC<any>
+          Page: React.FC<any>,
         ) => {
           if (isClientReference(Page)) {
             const { ctx, params } = requestInfo;
@@ -102,7 +102,7 @@ export const defineApp = (routes: Route[]) => {
         const renderPage = async (
           requestInfo: RequestInfo,
           Page: React.FC<any>,
-          onError: (error: unknown) => void
+          onError: (error: unknown) => void,
         ) => {
           if (isClientReference(requestInfo.rw.Document)) {
             if (IS_DEV) {
@@ -151,7 +151,7 @@ export const defineApp = (routes: Route[]) => {
           const html = htmlStream.pipeThrough(
             injectRSCPayload(rscPayloadStream2, {
               nonce: rw.nonce,
-            })
+            }),
           );
 
           return new Response(html, {
@@ -173,12 +173,12 @@ export const defineApp = (routes: Route[]) => {
                     getRequestInfo,
                     runWithRequestInfoOverrides,
                     onError: reject,
-                  })
+                  }),
                 );
               } catch (e) {
                 reject(e);
               }
-            })
+            }),
         );
 
         // context(justinvdm, 18 Mar 2025): In some cases, such as a .fetch() call to a durable object instance, or Response.redirect(),

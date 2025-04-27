@@ -16,9 +16,9 @@ const WORKER_PACKAGES = [
   "react-dom",
   "react/jsx-runtime",
   "react/jsx-dev-runtime",
-  "react-server-dom-webpack/client.browser",
-  "react-server-dom-webpack/client.edge",
-  "react-server-dom-webpack/server.edge",
+  "react-server-dom-vite/client.browser",
+  "react-server-dom-vite/client.edge",
+  "react-server-dom-vite/server.edge",
 ];
 
 const CLIENT_PACKAGES = [
@@ -27,9 +27,9 @@ const CLIENT_PACKAGES = [
   "react-dom",
   "react/jsx-runtime",
   "react/jsx-dev-runtime",
-  "react-server-dom-webpack/client.browser",
-  "react-server-dom-webpack/client.edge",
-  "react-server-dom-webpack/server.edge",
+  "react-server-dom-vite/client.browser",
+  "react-server-dom-vite/client.edge",
+  "react-server-dom-vite/server.edge",
 ];
 
 // Skip react-server condition for these packages
@@ -44,8 +44,8 @@ const SKIP_REACT_SERVER = [
 const GLOBAL_SERVER_PACKAGES = [
   "react-dom/server.edge",
   "react-dom/server",
-  "react-server-dom-webpack/server.edge",
-  "react-server-dom-webpack/client.edge",
+  "react-server-dom-vite/server.edge",
+  "react-server-dom-vite/client.edge",
 ];
 
 export const reactConditionsResolverPlugin = async ({
@@ -59,7 +59,7 @@ export const reactConditionsResolverPlugin = async ({
   log(
     "Initializing React conditions resolver plugin in %s mode for %s",
     mode,
-    command
+    command,
   );
 
   const vendorDir = VENDOR_DIST_DIR;
@@ -79,7 +79,7 @@ export const reactConditionsResolverPlugin = async ({
 
   const resolveWithConditions = async (
     packageName: string,
-    environment: string
+    environment: string,
   ) => {
     if (packageName === "react") {
       const modePath = resolve(vendorDir, `react.${mode}.js`);
@@ -150,10 +150,10 @@ export const reactConditionsResolverPlugin = async ({
   const configureEnvironment = (
     name: string,
     config: EnvironmentOptions,
-    imports: Record<string, string>
+    imports: Record<string, string>,
   ) => {
     log(
-      `Applying React conditions resolver for ${name} environment in ${mode} mode`
+      `Applying React conditions resolver for ${name} environment in ${mode} mode`,
     );
 
     (config.optimizeDeps ??= {}).esbuildOptions ??= {};
@@ -173,13 +173,13 @@ export const reactConditionsResolverPlugin = async ({
     if (!Array.isArray((config.resolve as any).alias)) {
       const existingAlias = (config.resolve as any).alias;
       (config.resolve as any).alias = Object.entries(existingAlias).map(
-        ([find, replacement]) => ({ find, replacement })
+        ([find, replacement]) => ({ find, replacement }),
       );
     }
 
     Object.entries(imports).forEach(([id, resolvedPath]) => {
       const exactMatchRegex = new RegExp(
-        `^${id.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`
+        `^${id.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
       );
 
       (config.resolve as any).alias.push({
@@ -202,7 +202,7 @@ export const reactConditionsResolverPlugin = async ({
       if (!Array.isArray((config.resolve as any).alias)) {
         const existingAlias = (config.resolve as any).alias;
         (config.resolve as any).alias = Object.entries(existingAlias).map(
-          ([find, replacement]) => ({ find, replacement })
+          ([find, replacement]) => ({ find, replacement }),
         );
       }
 
@@ -210,7 +210,7 @@ export const reactConditionsResolverPlugin = async ({
         const resolvedPath = workerImports[id];
         if (resolvedPath) {
           const exactMatchRegex = new RegExp(
-            `^${id.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`
+            `^${id.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
           );
           (config.resolve as any).alias.push({
             find: exactMatchRegex,

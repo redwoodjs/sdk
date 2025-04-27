@@ -2,7 +2,7 @@ import {
   registerServerReference as baseRegisterServerReference,
   registerClientReference as baseRegisterClientReference,
   decodeReply,
-} from "react-server-dom-webpack/server.edge";
+} from "react-server-dom-vite/server.edge";
 import { getModuleExport } from "../imports/worker";
 import { IS_DEV } from "../constants";
 
@@ -39,7 +39,7 @@ export async function rscActionHandler(req: Request): Promise<unknown> {
     ? await req.formData()
     : await req.text();
 
-  const args = (await decodeReply(data, /* null */)) as unknown[];
+  const args = (await decodeReply(data /* null */)) as unknown[];
   const actionId = url.searchParams.get("__rsc_action_id");
 
   if (IS_DEV && actionId === "__rsc_hot_update") {

@@ -1,5 +1,5 @@
 import { initClient, type Transport, type ActionResponse } from "../../client";
-import { createFromReadableStream } from "react-server-dom-webpack/client.browser";
+import { createFromReadableStream } from "react-server-dom-vite/client.browser";
 import { IS_DEV } from "../../constants";
 import { MESSAGE_TYPE } from "./shared";
 const DEFAULT_KEY = "default";
@@ -31,7 +31,7 @@ export const realtimeTransport =
         `${protocol}://${window.location.host}/__realtime?` +
           `key=${encodeURIComponent(key)}&` +
           `url=${encodeURIComponent(clientUrl.toString())}&` +
-          `clientId=${encodeURIComponent(clientId)}`
+          `clientId=${encodeURIComponent(clientId)}`,
       );
 
       ws.binaryType = "arraybuffer";
@@ -95,7 +95,7 @@ export const realtimeTransport =
     const ensureWs = (): WebSocket => {
       if (!ws && isConnected) {
         throw new Error(
-          "Inconsistent state: WebSocket is null but marked as connected"
+          "Inconsistent state: WebSocket is null but marked as connected",
         );
       }
       if (!ws || !isConnected) {
@@ -106,12 +106,12 @@ export const realtimeTransport =
 
     const realtimeCallServer = async <Result>(
       id: string | null,
-      args: unknown[]
+      args: unknown[],
     ): Promise<Result | null> => {
       try {
         const socket = ensureWs();
         const { encodeReply } = await import(
-          "react-server-dom-webpack/client.browser"
+          "react-server-dom-vite/client.browser"
         );
 
         const encodedArgs = args != null ? await encodeReply(args) : null;
@@ -179,7 +179,7 @@ export const realtimeTransport =
             callServer: realtimeCallServer,
           });
           transportContext.setRscPayload(
-            rscPayload as Promise<ActionResponse<unknown>>
+            rscPayload as Promise<ActionResponse<unknown>>,
           );
           resolve(rscPayload as Result);
         });

@@ -1,7 +1,7 @@
 import "react";
 import "react-dom/server.edge";
-import "react-server-dom-webpack/server.edge";
-import "react-server-dom-webpack/client.edge";
+import "react-server-dom-vite/server.edge";
+import "react-server-dom-vite/client.edge";
 
 export * from "../register/worker";
 export * from "../worker";

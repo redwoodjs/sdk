@@ -1,13 +1,13 @@
 import { clientWebpackRequire, loadModule } from "./imports/client";
-import { type CallServerCallback } from "react-server-dom-webpack/client.browser";
-import * as ReactClient from "react-server-dom-webpack/client.browser";
+import { type CallServerCallback } from "react-server-dom-vite/client.browser";
+import * as ReactClient from "react-server-dom-vite/client.browser";
 
 // NOTE: `react-server-dom-webpack` uses this global to load modules,
 // so we need to define it here before importing "react-server-dom-webpack."
 // globalThis.__webpack_require__ = clientWebpackRequire;
 (ReactClient as any).setPreloadModule((id: string) => {
-  return loadModule(id)
-})
+  return loadModule(id);
+});
 
 export type ActionResponse<Result> = {
   node: React.ReactNode;
@@ -30,7 +30,7 @@ export const fetchTransport: Transport = (transportContext) => {
     args: null | unknown[],
   ): Promise<Result> => {
     const { createFromFetch, encodeReply } = await import(
-      "react-server-dom-webpack/client.browser"
+      "react-server-dom-vite/client.browser"
     );
 
     const url = new URL(window.location.href);
@@ -78,7 +78,7 @@ export const initClient = async ({
   const { hydrateRoot } = await import("react-dom/client");
   // @ts-ignore: todo(peterp, 2024-11-27): Type these properly.
   const { createFromReadableStream, createFromFetch, encodeReply } =
-    await import("react-server-dom-webpack/client.browser");
+    await import("react-server-dom-vite/client.browser");
   const { rscStream } = await import("rsc-html-stream/client");
 
   let rscPayload: any;
