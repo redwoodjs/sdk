@@ -11,7 +11,7 @@ show_help() {
   echo ""
   echo "Arguments:"
   echo "  patch|minor|major    The type of version bump to perform"
-  echo "  test                 Create a test release (x.y.z-test.n), published under --tag test"
+  echo "  test                 Create a test release (x.y.z-test.<timestamp>), published under --tag test"
   echo ""
   echo "Process:"
   echo "  1. Builds package with NODE_ENV=production"
@@ -102,17 +102,19 @@ fi
 
 CURRENT_VERSION=$(npm pkg get version | tr -d '"')
 if [[ "$VERSION_TYPE" == "test" ]]; then
-  # Check if current version already has a test suffix
-  if [[ "$CURRENT_VERSION" =~ ^(.*)-test.([0-9]+)$ ]]; then
+  # Use a timestamp for test versions instead of a counter to avoid conflicts between branches
+  # Format: YYYYMMDDHHMMSS
+  TIMESTAMP=$(date "+%Y%m%d%H%M%S")
+  # Extract base version (strip any existing test suffix)
+  if [[ "$CURRENT_VERSION" =~ ^(.*)-test\..*$ ]]; then
     BASE_VERSION="${BASH_REMATCH[1]}"
-    TEST_NUM=$((${BASH_REMATCH[2]} + 1))
-    NEW_VERSION="$BASE_VERSION-test.$TEST_NUM"
   else
-    NEW_VERSION="$CURRENT_VERSION-test.0"
+    BASE_VERSION="$CURRENT_VERSION"
   fi
+  NEW_VERSION="$BASE_VERSION-test.$TIMESTAMP"
 else
   # If current version is a test version, use the base version for incrementing
-  if [[ "$CURRENT_VERSION" =~ ^(.*)-test.([0-9]+)$ ]]; then
+  if [[ "$CURRENT_VERSION" =~ ^(.*)-test\..*$ ]]; then
     CURRENT_VERSION="${BASH_REMATCH[1]}"
   fi
   NEW_VERSION=$(npx semver -i $VERSION_TYPE $CURRENT_VERSION)
