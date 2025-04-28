@@ -259,11 +259,15 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, mockManifest);
 
-    expect(result?.code).toContain(
-      'import { requestInfo } from "@redwoodjs/sdk/worker";',
-    );
-    expect(result?.code).toContain("nonce: requestInfo.rw.nonce");
-    expect(result?.code).toContain('"/assets/client-a1b2c3d4.js"');
+    expect(result?.code)
+      .toEqual(`import { requestInfo } from "@redwoodjs/sdk/worker";
+
+      jsx("script", {
+        src: "/assets/client-a1b2c3d4.js",
+        type: "module",
+          nonce: requestInfo.rw.nonce
+    })
+    `);
   });
 
   it("adds nonce to script tags with string literal children", async () => {
@@ -276,10 +280,15 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, {});
 
-    expect(result?.code).toContain(
-      'import { requestInfo } from "@redwoodjs/sdk/worker";',
-    );
-    expect(result?.code).toContain("nonce: requestInfo.rw.nonce");
+    expect(result?.code)
+      .toEqual(`import { requestInfo } from "@redwoodjs/sdk/worker";
+
+      jsx("script", {
+        type: "module",
+        children: "console.log('hello world')",
+          nonce: requestInfo.rw.nonce
+    })
+    `);
   });
 
   it("does not add nonce to script tags with dangerouslySetInnerHTML", async () => {
@@ -322,10 +331,17 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, {});
 
-    expect(result?.code).not.toContain(
-      'import { requestInfo } from "@redwoodjs/sdk/worker";',
-    );
-    expect(result?.code).toContain("nonce: requestInfo.rw.nonce");
+    expect(result?.code).toEqual(`
+      import { foo } from 'bar';
+      import { requestInfo, someOtherThing } from "@redwoodjs/sdk/worker";
+      
+      jsx("script", {
+        type: "module",
+        children: "console.log('hello world')",
+          nonce: requestInfo.rw.nonce
+    })
+    `);
+
     // Ensure we didn't duplicate the import
     const importCount = (
       result?.code.match(/from "@redwoodjs\/sdk\/worker"/g) || []
@@ -346,10 +362,16 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, {});
 
-    expect(result?.code).toContain(
-      'import { someOtherThing, requestInfo } from "@redwoodjs/sdk/worker"',
-    );
-    expect(result?.code).toContain("nonce: requestInfo.rw.nonce");
+    expect(result?.code).toEqual(`
+      import { foo } from 'bar';
+      import { someOtherThing, requestInfo } from "@redwoodjs/sdk/worker";
+      
+      jsx("script", {
+        type: "module",
+        children: "console.log('hello world')",
+          nonce: requestInfo.rw.nonce
+    })
+    `);
   });
 
   it("works in development mode without a manifest", async () => {
@@ -363,9 +385,14 @@ describe("transformJsxScriptTagsCode", () => {
     // Call without providing manifest (simulating dev mode)
     const result = await transformJsxScriptTagsCode(code);
 
-    expect(result?.code).toContain(
-      'import { requestInfo } from "@redwoodjs/sdk/worker";',
-    );
-    expect(result?.code).toContain("nonce: requestInfo.rw.nonce");
+    expect(result?.code)
+      .toEqual(`import { requestInfo } from "@redwoodjs/sdk/worker";
+
+      jsx("script", {
+        src: "/src/client.tsx",
+        type: "module",
+          nonce: requestInfo.rw.nonce
+    })
+    `);
   });
 });
