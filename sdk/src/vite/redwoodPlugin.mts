@@ -17,7 +17,6 @@ import { reactConditionsResolverPlugin } from "./reactConditionsResolverPlugin.m
 import { invalidateCacheIfPrismaClientChanged } from "./invalidateCacheIfPrismaClientChanged.mjs";
 import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
 import { pathExists } from "fs-extra";
-import { transformClientEntryPlugin } from "./transformClientEntryPlugin.mjs";
 import { vitePreamblePlugin } from "./vitePreamblePlugin.mjs";
 
 export type RedwoodPluginOptions = {
@@ -98,7 +97,6 @@ export const redwoodPlugin = async (
     useServerPlugin(),
     useClientPlugin(),
     vitePreamblePlugin(),
-    transformClientEntryPlugin({ clientEntryPathname, mode }),
     useClientLookupPlugin({
       rootDir: projectRootDir,
       containingPath: "./src/app",
