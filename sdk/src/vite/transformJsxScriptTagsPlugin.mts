@@ -3,16 +3,18 @@ import { type Plugin } from "vite";
 import { readFile } from "node:fs/promises";
 import { pathExists } from "fs-extra";
 
-const manifestCache = new Map<string, Promise<any>>();
+// Use a Map to cache manifests by path
+const manifestCache = new Map<string, Record<string, { file: string }>>();
 
-const readManifest = async (manifestPath: string) => {
+const readManifest = async (
+  manifestPath: string,
+): Promise<Record<string, { file: string }>> => {
   if (!manifestCache.has(manifestPath)) {
-    manifestCache.set(
-      manifestPath,
-      (await pathExists(manifestPath))
-        ? readFile(manifestPath, "utf-8").then(JSON.parse)
-        : Promise.resolve({}),
-    );
+    const exists = await pathExists(manifestPath);
+    const content = exists
+      ? JSON.parse(await readFile(manifestPath, "utf-8"))
+      : {};
+    manifestCache.set(manifestPath, content);
   }
   return manifestCache.get(manifestPath)!;
 };
@@ -28,29 +30,56 @@ function hasJsxFunctions(text: string): boolean {
 function transformScriptImports(
   scriptContent: string,
   manifest: Record<string, any>,
-): { content: string; hasChanges: boolean } {
+): { content: string | undefined; hasChanges: boolean } {
   const scriptProject = new Project({ useInMemoryFileSystem: true });
+
+  console.log("SCRIPT CONTENT:", scriptContent);
+  console.log("Contains import?", scriptContent.includes("import"));
 
   try {
     // Wrap in a function to make it valid JavaScript
-    const wrappedContent = `function __wrapper() {\n${scriptContent}\n}`;
+    const wrappedContent = `function __wrapper() {${scriptContent}}`;
     const scriptFile = scriptProject.createSourceFile(
       "script.js",
       wrappedContent,
     );
 
+    console.log("WRAPPED CONTENT:", wrappedContent);
+
     let hasChanges = false;
+    let foundCallExpressions = 0;
 
     // Find all CallExpressions that look like import("path")
     scriptFile
       .getDescendantsOfKind(SyntaxKind.CallExpression)
       .forEach((callExpr) => {
-        if (callExpr.getExpression().getText() === "import") {
+        foundCallExpressions++;
+
+        const expr = callExpr.getExpression();
+        console.log("FOUND CALL EXPRESSION:", expr.getText());
+
+        // Check for both "import()" and "await import()" patterns
+        const isImport = expr.getText() === "import";
+
+        // Check for await import pattern
+        const isAwaitImport =
+          expr.getKind() === SyntaxKind.PropertyAccessExpression &&
+          expr.getText().endsWith(".import");
+
+        if (isImport || isAwaitImport) {
+          console.log("FOUND IMPORT CALL");
           const args = callExpr.getArguments();
+          console.log("ARGS:", args.map((arg) => arg.getText()).join(", "));
+
           if (args.length > 0 && Node.isStringLiteral(args[0])) {
             const importPath = args[0].getLiteralValue();
+            console.log("IMPORT PATH:", importPath);
+
             if (importPath.startsWith("/")) {
               const path = importPath.slice(1); // Remove leading slash
+              console.log("CHECKING MANIFEST FOR:", path);
+              console.log("MANIFEST KEYS:", Object.keys(manifest));
+
               if (manifest[path]) {
                 const transformedPath = manifest[path].file;
                 args[0].replaceWithText(`"/${transformedPath}"`);
@@ -61,22 +90,26 @@ function transformScriptImports(
         }
       });
 
+    console.log("FOUND CALL EXPRESSIONS:", foundCallExpressions);
+    console.log("HAS CHANGES:", hasChanges);
+
     if (hasChanges) {
       // Extract the transformed content from inside the wrapper function
       const fullText = scriptFile.getFullText();
       // Find content between the first { and the last }
       const startPos = fullText.indexOf("{") + 1;
       const endPos = fullText.lastIndexOf("}");
-      const transformedContent = fullText.substring(startPos, endPos).trim();
+      const transformedContent = fullText.substring(startPos, endPos);
 
       return { content: transformedContent, hasChanges: true };
     }
 
+    // Return the original content when no changes are made
     return { content: scriptContent, hasChanges: false };
   } catch (error) {
     // If parsing fails, fall back to the original content
     console.warn("Failed to parse inline script content:", error);
-    return { content: scriptContent, hasChanges: false };
+    return { content: undefined, hasChanges: false };
   }
 }
 
@@ -142,14 +175,29 @@ export async function transformJsxScriptTagsCode(
               if (
                 tagName === "script" &&
                 propName === "src" &&
-                Node.isStringLiteral(initializer)
+                (Node.isStringLiteral(initializer) ||
+                  Node.isNoSubstitutionTemplateLiteral(initializer))
               ) {
                 const srcValue = initializer.getLiteralValue();
                 if (srcValue.startsWith("/")) {
                   const path = srcValue.slice(1); // Remove leading slash
                   if (manifest[path]) {
                     const transformedSrc = manifest[path].file;
-                    initializer.replaceWithText(`"/${transformedSrc}"`);
+                    const originalText = initializer.getText();
+                    const isTemplateLiteral =
+                      Node.isNoSubstitutionTemplateLiteral(initializer);
+                    const quote = isTemplateLiteral
+                      ? "`"
+                      : originalText.charAt(0);
+
+                    // Preserve the original quote style
+                    if (isTemplateLiteral) {
+                      initializer.replaceWithText(`\`/${transformedSrc}\``);
+                    } else if (quote === '"') {
+                      initializer.replaceWithText(`"/${transformedSrc}"`);
+                    } else {
+                      initializer.replaceWithText(`'/${transformedSrc}'`);
+                    }
                     hasModifications = true;
                   }
                 }
@@ -159,33 +207,52 @@ export async function transformJsxScriptTagsCode(
               if (
                 tagName === "script" &&
                 propName === "children" &&
-                Node.isStringLiteral(initializer)
+                (Node.isStringLiteral(initializer) ||
+                  Node.isNoSubstitutionTemplateLiteral(initializer))
               ) {
                 const scriptContent = initializer.getLiteralValue();
+                const originalText = initializer.getText();
 
                 // Transform import statements in script content using ts-morph
                 const { content: transformedContent, hasChanges } =
                   transformScriptImports(scriptContent, manifest);
 
-                if (hasChanges) {
-                  // Always use double quotes with JSON.stringify for consistency
-                  initializer.replaceWithText(
-                    JSON.stringify(transformedContent),
-                  );
+                if (hasChanges && transformedContent) {
+                  // Get the raw text with quotes to determine the exact format
+                  const isTemplateLiteral =
+                    Node.isNoSubstitutionTemplateLiteral(initializer);
+
+                  if (isTemplateLiteral) {
+                    // Simply wrap the transformed content in backticks
+                    initializer.replaceWithText("`" + transformedContent + "`");
+                  } else {
+                    initializer.replaceWithText(
+                      JSON.stringify(transformedContent),
+                    );
+                  }
+
                   hasModifications = true;
                 }
               }
 
               // For link tags, first check if it's a preload/modulepreload
               if (tagName === "link") {
-                if (propName === "rel" && Node.isStringLiteral(initializer)) {
+                if (
+                  propName === "rel" &&
+                  (Node.isStringLiteral(initializer) ||
+                    Node.isNoSubstitutionTemplateLiteral(initializer))
+                ) {
                   const relValue = initializer.getLiteralValue();
                   if (relValue === "preload" || relValue === "modulepreload") {
                     isPreload = true;
                   }
                 }
 
-                if (propName === "href" && Node.isStringLiteral(initializer)) {
+                if (
+                  propName === "href" &&
+                  (Node.isStringLiteral(initializer) ||
+                    Node.isNoSubstitutionTemplateLiteral(initializer))
+                ) {
                   hrefValue = initializer.getLiteralValue();
                 }
               }
@@ -207,9 +274,26 @@ export async function transformJsxScriptTagsCode(
                   prop.getName() === "href"
                 ) {
                   const initializer = prop.getInitializer();
-                  if (Node.isStringLiteral(initializer)) {
+                  if (
+                    Node.isStringLiteral(initializer) ||
+                    Node.isNoSubstitutionTemplateLiteral(initializer)
+                  ) {
                     const transformedHref = manifest[path].file;
-                    initializer.replaceWithText(`"/${transformedHref}"`);
+                    const originalText = initializer.getText();
+                    const isTemplateLiteral =
+                      Node.isNoSubstitutionTemplateLiteral(initializer);
+                    const quote = isTemplateLiteral
+                      ? "`"
+                      : originalText.charAt(0);
+
+                    // Preserve the original quote style
+                    if (isTemplateLiteral) {
+                      initializer.replaceWithText(`\`/${transformedHref}\``);
+                    } else if (quote === '"') {
+                      initializer.replaceWithText(`"/${transformedHref}"`);
+                    } else {
+                      initializer.replaceWithText(`'/${transformedHref}'`);
+                    }
                     hasModifications = true;
                   }
                 }
@@ -240,7 +324,7 @@ export const transformJsxScriptTagsPlugin = ({
   apply: "build",
   async transform(code) {
     const manifest = await readManifest(manifestPath);
-    const result = await transformJsxScriptTagsCode(code, manifest);
-    return result;
+    // Ensure manifest is always a valid object to satisfy TypeScript
+    return transformJsxScriptTagsCode(code, manifest);
   },
 });

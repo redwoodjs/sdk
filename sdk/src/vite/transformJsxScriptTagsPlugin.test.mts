@@ -56,7 +56,7 @@ describe("transformJsxScriptTagsCode", () => {
     `);
   });
 
-  it.only("transforms inline scripts with multiline content", async () => {
+  it("transforms inline scripts with multiline content", async () => {
     const code = `
       jsx("script", {
         type: "module",
@@ -76,7 +76,14 @@ describe("transformJsxScriptTagsCode", () => {
     expect(result?.code).toEqual(`
       jsx("script", {
         type: "module",
-        children: "\\n          // Some comments here\\n          const init = async () => {\\n            await import('/assets/entry-e5f6g7h8.js');\\n            console.log('initialized');\\n          };\\n          init();\\n        "
+        children: \`
+          // Some comments here
+          const init = async () => {
+            await import("/assets/entry-e5f6g7h8.js");
+            console.log('initialized');
+          };
+          init();
+        \`
       })
     `);
   });
@@ -97,7 +104,10 @@ describe("transformJsxScriptTagsCode", () => {
     expect(result?.code).toEqual(`
       jsx("script", {
         type: "module",
-        children: "\\n          import(\\"\/assets\/client-a1b2c3d4.js\\");\\n          import(\\"\/assets\/entry-e5f6g7h8.js\\");\\n        "
+        children: \`
+          import("/assets/client-a1b2c3d4.js");
+          import("/assets/entry-e5f6g7h8.js");
+        \`
       })
     `);
   });
