@@ -1,0 +1,84 @@
+---
+title: Meta Data
+description: How to add meta tags and SEO elements to your Redwood SDK project using React 19 conventions
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+import { FileTree } from '@astrojs/starlight/components';
+
+[React 19](https://react.dev/blog/2024/12/05/react-19#support-for-metadata-tags) introduced a more streamlined approach to managing document metadata. In RedwoodSDK, you can leverage these conventions to easily add and manage meta tags for SEO, social sharing, and other purposes directly within your components.
+
+## Title and Meta Tags
+
+Meta tags are directly built-in to React 19, with `<title` and `<meta>` component:
+
+```tsx {6-8}
+import React from "react";
+
+export default function ProductPage() {
+  return (
+    <>
+      <title>Product Name</title>
+      <meta name="description" content="This is a description of our product" />
+      <meta name="keywords" content="product, redwood, react" />
+
+      <h1>Product Name</h1>
+      {/* Rest of your component */}
+    </>
+  );
+}
+```
+
+When this component renders, React will automatically handle updating the document's `<head>` section.
+
+
+## Complete SEO Setup
+
+Here's a more comprehensive example including Open Graph and Twitter card meta tags:
+
+```tsx
+import React from "react";
+
+export default function BlogPostPage({ post }) {
+  const { title, description, image, publishDate, author } = post;
+
+  return (
+    <>
+      {/* Basic Meta Tags */}
+      <title>{title} | My Blog</title>
+      <meta name="description" content={description} />
+
+      {/* Open Graph / Facebook */}
+      <meta property="og:type" content="article" />
+      <meta property="og:title" content={title} />
+      <meta property="og:description" content={description} />
+      <meta property="og:image" content={image.url} />
+      <meta property="article:published_time" content={publishDate} />
+      <meta property="article:author" content={author.name} />
+
+      {/* Twitter */}
+      <meta name="twitter:card" content="summary_large_image" />
+      <meta name="twitter:title" content={title} />
+      <meta name="twitter:description" content={description} />
+      <meta name="twitter:image" content={image.url} />
+
+      {/* Canonical URL */}
+      <link rel="canonical" href={`https://mysite.com/blog/${post.slug}`} />
+
+      {/* Page Content */}
+      <article>
+        <h1>{title}</h1>
+        {/* Rest of your blog post content */}
+      </article>
+    </>
+  );
+}
+```
+
+## Further Reading
+
+- [React 19 Documentation](https://react.dev/)
+- [Google SEO Documentation](https://developers.google.com/search/docs/fundamentals/seo-starter-guide)
+- [Open Graph Protocol](https://ogp.me/)
+- [Twitter Cards Documentation](https://developer.twitter.com/en/docs/twitter-for-websites/cards/overview/abouts-cards)
+- [Schema.org](https://schema.org/) for structured data
