@@ -49,8 +49,10 @@ This will bind the queue to the `env.QUEUE` object in the worker. So you'll be a
 ### Sending messages
 
 ```tsx title="src/worker.tsx"
+import { env } from "cloudflare:workers";
+
 export default defineApp([
-  route('/pay-with-ai', ({ env }) => {
+  route('/pay-with-ai', () => {
     // Post a message to the queue
     env.QUEUE.send({
       userId: 1,
