@@ -58,9 +58,10 @@ RedwoodSDK uses the standard Request/Response objects. When uploading files, the
 ```tsx title="src/worker.tsx"
 import { defineApp } from "@redwoodjs/sdk/worker";
 import { route } from "@redwoodjs/sdk/router";
+import { env } from "cloudflare:workers";
 
 defineApp([
-  route("/upload/", async ({ request, env }) => {
+  route("/upload/", async ({ request }) => {
     const formData = await request.formData();
     const file = formData.get("file") as File;
 
