@@ -52,7 +52,7 @@ importers:
     dependencies:
       '@cloudflare/vite-plugin':
         specifier: ^1.0.1
-        version: 1.0.1(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250405.0)(wrangler@4.8.0(@cloudflare/workers-types@4.20250407.0))
+        version: 1.0.1(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250408.0)(wrangler@4.8.0(@cloudflare/workers-types@4.20250407.0))
       '@cloudflare/workers-types':
         specifier: ^4.20250407.0
         version: 4.20250407.0
@@ -163,8 +163,8 @@ importers:
   starters/minimal:
     dependencies:
       '@redwoodjs/sdk':
-        specifier: 0.0.75-test.20250428023218
-        version: 0.0.75-test.20250428023218(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250408.0)
+        specifier: 0.0.75-test.20250428084601
+        version: 0.0.75-test.20250428084601(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250405.0)
     devDependencies:
       '@types/node':
         specifier: ^22.14.0
@@ -194,8 +194,8 @@ importers:
         specifier: ~6.5.0
         version: 6.5.0(prisma@6.5.0(typescript@5.8.3))(typescript@5.8.3)
       '@redwoodjs/sdk':
-        specifier: 0.0.75-test.20250428023218
-        version: 0.0.75-test.20250428023218(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(webpack@5.97.1(esbuild@0.25.0))(workerd@1.20250408.0)
+        specifier: 0.0.75-test.20250428084601
+        version: 0.0.75-test.20250428084601(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(webpack@5.97.1(esbuild@0.25.0))(workerd@1.20250408.0)
       '@simplewebauthn/browser':
         specifier: ^13.1.0
         version: 13.1.0
@@ -1186,8 +1186,8 @@ packages:
     engines: {node: '>=18.0.0'}
     hasBin: true
 
-  '@redwoodjs/sdk@0.0.75-test.20250428023218':
-    resolution: {integrity: sha512-+1DGifPh3EER0n7oWa9KGu/XvPZiupRwig087nRdu9ZOjqHlUyvDq0f3nLJS0wqQjrzM3FuJ6L6ZtWL4S+i/1w==}
+  '@redwoodjs/sdk@0.0.75-test.20250428084601':
+    resolution: {integrity: sha512-aAvwByCaUK7cFlUOHb0x2DzYjJzzrG51Oi6jH22+R/qHD2tDJefCuilmqQn3rZNbcbj7WwSdv6QGpxW+Uy06Vg==}
     hasBin: true
     peerDependencies:
       vite: ^6.2.6
@@ -4835,7 +4835,7 @@ snapshots:
     dependencies:
       dotenv: 16.4.7
 
-  '@redwoodjs/sdk@0.0.75-test.20250428023218(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(webpack@5.97.1(esbuild@0.25.0))(workerd@1.20250408.0)':
+  '@redwoodjs/sdk@0.0.75-test.20250428084601(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(webpack@5.97.1(esbuild@0.25.0))(workerd@1.20250408.0)':
     dependencies:
       '@cloudflare/vite-plugin': 1.0.1(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250408.0)(wrangler@4.8.0(@cloudflare/workers-types@4.20250407.0))
       '@cloudflare/workers-types': 4.20250407.0
@@ -4875,9 +4875,9 @@ snapshots:
       - webpack
       - workerd
 
-  '@redwoodjs/sdk@0.0.75-test.20250428023218(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250408.0)':
+  '@redwoodjs/sdk@0.0.75-test.20250428084601(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250405.0)':
     dependencies:
-      '@cloudflare/vite-plugin': 1.0.1(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250408.0)(wrangler@4.8.0(@cloudflare/workers-types@4.20250407.0))
+      '@cloudflare/vite-plugin': 1.0.1(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.2)(yaml@2.7.0))(workerd@1.20250405.0)(wrangler@4.8.0(@cloudflare/workers-types@4.20250407.0))
       '@cloudflare/workers-types': 4.20250407.0
       '@types/fs-extra': 11.0.4
       '@types/react': 19.1.2
