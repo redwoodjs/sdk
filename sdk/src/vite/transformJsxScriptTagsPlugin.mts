@@ -376,15 +376,22 @@ export const transformJsxScriptTagsPlugin = ({
   manifestPath,
 }: {
   manifestPath: string;
-}): Plugin => ({
-  name: "rwsdk:transform-jsx-script-tags",
-  // Apply to both dev and build - no longer limiting to build mode
-  async transform(code) {
-    let manifest = {};
-    // Only read manifest in production/build mode
-    if (process.env.NODE_ENV === "production") {
-      manifest = await readManifest(manifestPath);
-    }
-    return transformJsxScriptTagsCode(code, manifest);
-  },
-});
+}): Plugin => {
+  let isBuild = false;
+
+  return {
+    name: "rwsdk:transform-jsx-script-tags",
+
+    configResolved(config) {
+      isBuild = config.command === "build";
+    },
+
+    async transform(code) {
+      let manifest = {};
+      if (isBuild) {
+        manifest = await readManifest(manifestPath);
+      }
+      return transformJsxScriptTagsCode(code, manifest);
+    },
+  };
+};
