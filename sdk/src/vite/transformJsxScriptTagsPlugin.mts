@@ -1,4 +1,4 @@
-import { Project, Node, SyntaxKind } from "ts-morph";
+import { Project, Node, SyntaxKind, ImportDeclaration } from "ts-morph";
 import { type Plugin } from "vite";
 import { readFile } from "node:fs/promises";
 import { pathExists } from "fs-extra";
@@ -98,7 +98,7 @@ function transformScriptImports(
 
 export async function transformJsxScriptTagsCode(
   code: string,
-  manifest: Record<string, any>,
+  manifest: Record<string, any> = {},
 ) {
   // Quick heuristic check if there's JSX in the code
   if (!hasJsxFunctions(code)) {
@@ -109,6 +109,27 @@ export async function transformJsxScriptTagsCode(
   const sourceFile = project.createSourceFile("temp.tsx", code);
 
   let hasModifications = false;
+  let needsRequestInfoImport = false;
+
+  // Check for existing imports up front
+  let hasRequestInfoImport = false;
+  let sdkWorkerImportDecl: ImportDeclaration | undefined;
+
+  // Scan for imports only once
+  sourceFile.getImportDeclarations().forEach((importDecl) => {
+    const moduleSpecifier = importDecl.getModuleSpecifierValue();
+    if (moduleSpecifier === "@redwoodjs/sdk/worker") {
+      sdkWorkerImportDecl = importDecl;
+      // Check if requestInfo is already imported
+      if (
+        importDecl
+          .getNamedImports()
+          .some((namedImport) => namedImport.getName() === "requestInfo")
+      ) {
+        hasRequestInfoImport = true;
+      }
+    }
+  });
 
   // Look for jsx function calls (jsx, jsxs, jsxDEV)
   sourceFile
@@ -145,6 +166,12 @@ export async function transformJsxScriptTagsCode(
         if (Node.isObjectLiteralExpression(propsArg)) {
           const properties = propsArg.getProperties();
 
+          // Variables to track script attributes
+          let hasDangerouslySetInnerHTML = false;
+          let hasNonce = false;
+          let hasStringLiteralChildren = false;
+          let hasSrc = false;
+
           // Variables to track link attributes
           let isPreload = false;
           let hrefValue = null;
@@ -154,17 +181,28 @@ export async function transformJsxScriptTagsCode(
               const propName = prop.getName();
               const initializer = prop.getInitializer();
 
-              // Handle script src attributes
-              if (
-                tagName === "script" &&
-                propName === "src" &&
-                (Node.isStringLiteral(initializer) ||
-                  Node.isNoSubstitutionTemplateLiteral(initializer))
-              ) {
-                const srcValue = initializer.getLiteralValue();
-                if (srcValue.startsWith("/")) {
-                  const path = srcValue.slice(1); // Remove leading slash
-                  if (manifest[path]) {
+              // Check for existing nonce
+              if (propName === "nonce") {
+                hasNonce = true;
+              }
+
+              // Check for dangerouslySetInnerHTML
+              if (propName === "dangerouslySetInnerHTML") {
+                hasDangerouslySetInnerHTML = true;
+              }
+
+              // Check for src attribute
+              if (tagName === "script" && propName === "src") {
+                hasSrc = true;
+
+                // Also process src for manifest transformation if needed
+                if (
+                  Node.isStringLiteral(initializer) ||
+                  Node.isNoSubstitutionTemplateLiteral(initializer)
+                ) {
+                  const srcValue = initializer.getLiteralValue();
+                  if (srcValue.startsWith("/") && manifest[srcValue.slice(1)]) {
+                    const path = srcValue.slice(1); // Remove leading slash
                     const transformedSrc = manifest[path].file;
                     const originalText = initializer.getText();
                     const isTemplateLiteral =
@@ -186,13 +224,15 @@ export async function transformJsxScriptTagsCode(
                 }
               }
 
-              // Handle script children (inline scripts)
+              // Check for string literal children
               if (
                 tagName === "script" &&
                 propName === "children" &&
                 (Node.isStringLiteral(initializer) ||
                   Node.isNoSubstitutionTemplateLiteral(initializer))
               ) {
+                hasStringLiteralChildren = true;
+
                 const scriptContent = initializer.getLiteralValue();
 
                 // Transform import statements in script content using ts-morph
@@ -241,43 +281,62 @@ export async function transformJsxScriptTagsCode(
             }
           }
 
+          // Add nonce to script tags if needed
+          if (
+            tagName === "script" &&
+            !hasNonce &&
+            !hasDangerouslySetInnerHTML &&
+            (hasStringLiteralChildren || hasSrc)
+          ) {
+            // Add nonce property to the props object
+            propsArg.addPropertyAssignment({
+              name: "nonce",
+              initializer: "requestInfo.rw.nonce",
+            });
+
+            if (!hasRequestInfoImport) {
+              needsRequestInfoImport = true;
+            }
+
+            hasModifications = true;
+          }
+
           // Transform href if this is a preload link
           if (
             tagName === "link" &&
             isPreload &&
             hrefValue &&
-            hrefValue.startsWith("/")
+            hrefValue.startsWith("/") &&
+            manifest[hrefValue.slice(1)]
           ) {
             const path = hrefValue.slice(1); // Remove leading slash
-            if (manifest[path]) {
-              for (const prop of properties) {
+            for (const prop of properties) {
+              if (
+                Node.isPropertyAssignment(prop) &&
+                prop.getName() === "href"
+              ) {
+                const initializer = prop.getInitializer();
                 if (
-                  Node.isPropertyAssignment(prop) &&
-                  prop.getName() === "href"
+                  Node.isStringLiteral(initializer) ||
+                  Node.isNoSubstitutionTemplateLiteral(initializer)
                 ) {
-                  const initializer = prop.getInitializer();
-                  if (
-                    Node.isStringLiteral(initializer) ||
-                    Node.isNoSubstitutionTemplateLiteral(initializer)
-                  ) {
-                    const transformedHref = manifest[path].file;
-                    const originalText = initializer.getText();
-                    const isTemplateLiteral =
-                      Node.isNoSubstitutionTemplateLiteral(initializer);
-                    const quote = isTemplateLiteral
-                      ? "`"
-                      : originalText.charAt(0);
+                  const transformedHref = manifest[path].file;
+                  const originalText = initializer.getText();
+                  const isTemplateLiteral =
+                    Node.isNoSubstitutionTemplateLiteral(initializer);
+                  const quote = isTemplateLiteral
+                    ? "`"
+                    : originalText.charAt(0);
 
-                    // Preserve the original quote style
-                    if (isTemplateLiteral) {
-                      initializer.replaceWithText(`\`/${transformedHref}\``);
-                    } else if (quote === '"') {
-                      initializer.replaceWithText(`"/${transformedHref}"`);
-                    } else {
-                      initializer.replaceWithText(`'/${transformedHref}'`);
-                    }
-                    hasModifications = true;
+                  // Preserve the original quote style
+                  if (isTemplateLiteral) {
+                    initializer.replaceWithText(`\`/${transformedHref}\``);
+                  } else if (quote === '"') {
+                    initializer.replaceWithText(`"/${transformedHref}"`);
+                  } else {
+                    initializer.replaceWithText(`'/${transformedHref}'`);
                   }
+                  hasModifications = true;
                 }
               }
             }
@@ -285,6 +344,22 @@ export async function transformJsxScriptTagsCode(
         }
       }
     });
+
+  // Add requestInfo import if needed and not already imported
+  if (needsRequestInfoImport && hasModifications) {
+    if (sdkWorkerImportDecl) {
+      // Module is imported but need to add requestInfo
+      if (!hasRequestInfoImport) {
+        sdkWorkerImportDecl.addNamedImport("requestInfo");
+      }
+    } else {
+      // Add new import declaration
+      sourceFile.addImportDeclaration({
+        moduleSpecifier: "@redwoodjs/sdk/worker",
+        namedImports: ["requestInfo"],
+      });
+    }
+  }
 
   // Return the transformed code only if modifications were made
   if (hasModifications) {
@@ -303,9 +378,13 @@ export const transformJsxScriptTagsPlugin = ({
   manifestPath: string;
 }): Plugin => ({
   name: "rwsdk:transform-jsx-script-tags",
-  apply: "build",
+  // Apply to both dev and build - no longer limiting to build mode
   async transform(code) {
-    const manifest = await readManifest(manifestPath);
+    let manifest = {};
+    // Only read manifest in production/build mode
+    if (process.env.NODE_ENV === "production") {
+      manifest = await readManifest(manifestPath);
+    }
     return transformJsxScriptTagsCode(code, manifest);
   },
 });

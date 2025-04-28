@@ -18,11 +18,14 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, mockManifest);
 
-    expect(result?.code).toEqual(`
+    expect(result?.code)
+      .toEqual(`import { requestInfo } from "@redwoodjs/sdk/worker";
+
       jsx("script", {
         src: "/assets/client-a1b2c3d4.js",
-        type: "module"
-      })
+        type: "module",
+          nonce: requestInfo.rw.nonce
+    })
     `);
   });
 
@@ -36,11 +39,14 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, mockManifest);
 
-    expect(result?.code).toEqual(`
+    expect(result?.code)
+      .toEqual(`import { requestInfo } from "@redwoodjs/sdk/worker";
+
       jsx("script", {
         type: "module",
-        children: "import(\\"\/assets\/client-a1b2c3d4.js\\").then(module => { console.log(module); })"
-      })
+        children: "import(\\"\/assets\/client-a1b2c3d4.js\\").then(module => { console.log(module); })",
+          nonce: requestInfo.rw.nonce
+    })
     `);
   });
 
@@ -51,8 +57,12 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, mockManifest);
 
-    expect(result?.code).toEqual(`
-      jsx("script", { type: "module", children: "import(\\"\/assets\/client-a1b2c3d4.js\\")" })
+    expect(result?.code)
+      .toEqual(`import { requestInfo } from "@redwoodjs/sdk/worker";
+
+      jsx("script", { type: "module", children: "import(\\"\/assets\/client-a1b2c3d4.js\\")",
+          nonce: requestInfo.rw.nonce
+    })
     `);
   });
 
@@ -73,7 +83,9 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, mockManifest);
 
-    expect(result?.code).toEqual(`
+    expect(result?.code)
+      .toEqual(`import { requestInfo } from "@redwoodjs/sdk/worker";
+
       jsx("script", {
         type: "module",
         children: \`
@@ -83,8 +95,9 @@ describe("transformJsxScriptTagsCode", () => {
             console.log('initialized');
           };
           init();
-        \`
-      })
+        \`,
+          nonce: requestInfo.rw.nonce
+    })
     `);
   });
 
@@ -101,14 +114,17 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, mockManifest);
 
-    expect(result?.code).toEqual(`
+    expect(result?.code)
+      .toEqual(`import { requestInfo } from "@redwoodjs/sdk/worker";
+
       jsx("script", {
         type: "module",
         children: \`
           import("/assets/client-a1b2c3d4.js");
           import("/assets/entry-e5f6g7h8.js");
-        \`
-      })
+        \`,
+          nonce: requestInfo.rw.nonce
+    })
     `);
   });
 
@@ -175,7 +191,9 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, mockManifest);
 
-    expect(result?.code).toEqual(`
+    expect(result?.code)
+      .toEqual(`import { requestInfo } from "@redwoodjs/sdk/worker";
+
       jsx("html", {
         lang: "en",
         children: [
@@ -190,7 +208,9 @@ describe("transformJsxScriptTagsCode", () => {
           jsx("body", {
             children: [
               jsx("div", { id: "root", children: props.children }),
-              jsx("script", { children: "import(\\"\/assets\/client-a1b2c3d4.js\\")" })
+              jsx("script", { children: "import(\\"\/assets\/client-a1b2c3d4.js\\")",
+                  nonce: requestInfo.rw.nonce
+            })
             ]
           })
         ]
@@ -218,6 +238,134 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, mockManifest);
 
+    expect(result?.code)
+      .toEqual(`import { requestInfo } from "@redwoodjs/sdk/worker";
+
+      jsx("script", {
+        src: "/src/non-existent.js",
+        type: "module",
+          nonce: requestInfo.rw.nonce
+    })
+    `);
+  });
+
+  it("adds nonce to script tags with src attribute and imports requestInfo", async () => {
+    const code = `
+      jsx("script", {
+        src: "/src/client.tsx",
+        type: "module"
+      })
+    `;
+
+    const result = await transformJsxScriptTagsCode(code, mockManifest);
+
+    expect(result?.code).toContain(
+      'import { requestInfo } from "@redwoodjs/sdk/worker";',
+    );
+    expect(result?.code).toContain("nonce: requestInfo.rw.nonce");
+    expect(result?.code).toContain('"/assets/client-a1b2c3d4.js"');
+  });
+
+  it("adds nonce to script tags with string literal children", async () => {
+    const code = `
+      jsx("script", {
+        type: "module",
+        children: "console.log('hello world')"
+      })
+    `;
+
+    const result = await transformJsxScriptTagsCode(code, {});
+
+    expect(result?.code).toContain(
+      'import { requestInfo } from "@redwoodjs/sdk/worker";',
+    );
+    expect(result?.code).toContain("nonce: requestInfo.rw.nonce");
+  });
+
+  it("does not add nonce to script tags with dangerouslySetInnerHTML", async () => {
+    const code = `
+      jsx("script", {
+        type: "module",
+        dangerouslySetInnerHTML: { __html: "console.log('hello world')" }
+      })
+    `;
+
+    const result = await transformJsxScriptTagsCode(code, {});
+
     expect(result?.code).toEqual(undefined);
+  });
+
+  it("does not add nonce to script tags that already have nonce", async () => {
+    const code = `
+      jsx("script", {
+        type: "module",
+        children: "console.log('hello world')",
+        nonce: "existing-nonce"
+      })
+    `;
+
+    const result = await transformJsxScriptTagsCode(code, {});
+
+    expect(result?.code).toEqual(undefined);
+  });
+
+  it("uses existing requestInfo import if already present", async () => {
+    const code = `
+      import { foo } from 'bar';
+      import { requestInfo, someOtherThing } from "@redwoodjs/sdk/worker";
+      
+      jsx("script", {
+        type: "module",
+        children: "console.log('hello world')"
+      })
+    `;
+
+    const result = await transformJsxScriptTagsCode(code, {});
+
+    expect(result?.code).not.toContain(
+      'import { requestInfo } from "@redwoodjs/sdk/worker";',
+    );
+    expect(result?.code).toContain("nonce: requestInfo.rw.nonce");
+    // Ensure we didn't duplicate the import
+    const importCount = (
+      result?.code.match(/from "@redwoodjs\/sdk\/worker"/g) || []
+    ).length;
+    expect(importCount).toBe(1);
+  });
+
+  it("adds requestInfo to existing SDK import if module already imported", async () => {
+    const code = `
+      import { foo } from 'bar';
+      import { someOtherThing } from "@redwoodjs/sdk/worker";
+      
+      jsx("script", {
+        type: "module",
+        children: "console.log('hello world')"
+      })
+    `;
+
+    const result = await transformJsxScriptTagsCode(code, {});
+
+    expect(result?.code).toContain(
+      'import { someOtherThing, requestInfo } from "@redwoodjs/sdk/worker"',
+    );
+    expect(result?.code).toContain("nonce: requestInfo.rw.nonce");
+  });
+
+  it("works in development mode without a manifest", async () => {
+    const code = `
+      jsx("script", {
+        src: "/src/client.tsx",
+        type: "module"
+      })
+    `;
+
+    // Call without providing manifest (simulating dev mode)
+    const result = await transformJsxScriptTagsCode(code);
+
+    expect(result?.code).toContain(
+      'import { requestInfo } from "@redwoodjs/sdk/worker";',
+    );
+    expect(result?.code).toContain("nonce: requestInfo.rw.nonce");
   });
 });
