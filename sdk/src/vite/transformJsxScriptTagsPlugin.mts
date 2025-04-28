@@ -33,9 +33,6 @@ function transformScriptImports(
 ): { content: string | undefined; hasChanges: boolean } {
   const scriptProject = new Project({ useInMemoryFileSystem: true });
 
-  console.log("SCRIPT CONTENT:", scriptContent);
-  console.log("Contains import?", scriptContent.includes("import"));
-
   try {
     // Wrap in a function to make it valid JavaScript
     const wrappedContent = `function __wrapper() {${scriptContent}}`;
@@ -44,19 +41,13 @@ function transformScriptImports(
       wrappedContent,
     );
 
-    console.log("WRAPPED CONTENT:", wrappedContent);
-
     let hasChanges = false;
-    let foundCallExpressions = 0;
 
     // Find all CallExpressions that look like import("path")
     scriptFile
       .getDescendantsOfKind(SyntaxKind.CallExpression)
       .forEach((callExpr) => {
-        foundCallExpressions++;
-
         const expr = callExpr.getExpression();
-        console.log("FOUND CALL EXPRESSION:", expr.getText());
 
         // Check for both "import()" and "await import()" patterns
         const isImport = expr.getText() === "import";
@@ -67,18 +58,13 @@ function transformScriptImports(
           expr.getText().endsWith(".import");
 
         if (isImport || isAwaitImport) {
-          console.log("FOUND IMPORT CALL");
           const args = callExpr.getArguments();
-          console.log("ARGS:", args.map((arg) => arg.getText()).join(", "));
 
           if (args.length > 0 && Node.isStringLiteral(args[0])) {
             const importPath = args[0].getLiteralValue();
-            console.log("IMPORT PATH:", importPath);
 
             if (importPath.startsWith("/")) {
               const path = importPath.slice(1); // Remove leading slash
-              console.log("CHECKING MANIFEST FOR:", path);
-              console.log("MANIFEST KEYS:", Object.keys(manifest));
 
               if (manifest[path]) {
                 const transformedPath = manifest[path].file;
@@ -89,9 +75,6 @@ function transformScriptImports(
           }
         }
       });
-
-    console.log("FOUND CALL EXPRESSIONS:", foundCallExpressions);
-    console.log("HAS CHANGES:", hasChanges);
 
     if (hasChanges) {
       // Extract the transformed content from inside the wrapper function
@@ -211,7 +194,6 @@ export async function transformJsxScriptTagsCode(
                   Node.isNoSubstitutionTemplateLiteral(initializer))
               ) {
                 const scriptContent = initializer.getLiteralValue();
-                const originalText = initializer.getText();
 
                 // Transform import statements in script content using ts-morph
                 const { content: transformedContent, hasChanges } =
@@ -324,7 +306,6 @@ export const transformJsxScriptTagsPlugin = ({
   apply: "build",
   async transform(code) {
     const manifest = await readManifest(manifestPath);
-    // Ensure manifest is always a valid object to satisfy TypeScript
     return transformJsxScriptTagsCode(code, manifest);
   },
 });
