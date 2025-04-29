@@ -100,7 +100,7 @@ export default defineConfig({
           items: [
             {
               label: 'Frontend Development',
-              collapsed: true,
+              collapsed: false,
               items: [
                 { label: 'TailwindCSS', slug: 'guides/frontend/tailwind' },
                 { label: 'shadcn/ui', slug: 'guides/frontend/shadcn' },
@@ -111,6 +111,17 @@ export default defineConfig({
               ]
             },
             { label: "Server Function Streams", slug: "guides/rsc-streams" },
+            {
+              label: 'Testing',
+              collapsed: true,
+              items: [
+                { label: 'Testing Basics', slug: 'getting-started/testing/basics' },
+                { label: 'Vitest', slug: 'getting-started/testing/vitest' },
+                { label: 'Playwright', slug: 'getting-started/testing/playwright' },
+                { label: 'Cyprus', slug: 'getting-started/testing/cyprus' },
+                { label: 'Testing Best Practices', slug: 'getting-started/testing/best-practices' },
+              ]
+            },
           ],
           collapsed: true,
         },

@@ -1,0 +1,86 @@
+---
+title: Vitest
+description: Replace this description
+---
+
+import { FileTree, Steps } from '@astrojs/starlight/components';
+
+Vitest is perfect for running unit or integration tests. However, please note that this setup is only for testing React components.
+
+## Setup
+
+<Steps>
+1. Install the following dependencies. Use the `--save-dev` or `-D` flag. These packages will only be used when testing your project during development and don't need to be part of the final production build.
+
+    ```bash
+    pnpm i -D @testing-library/dom @testing-library/jest-dom @testing-library/react jsdom vitest
+    ```
+
+    - This uses `jsdom` for React component testing, giving a DOM-like environment in Node.js
+    - We're using `@test-library` for component and DOM-specific assertions
+
+2. Create a `vite.setup.ts` file in the root of your project.
+
+    ```ts title="/vite.setup.ts"
+    import '@testing-library/jest-dom/vitest';
+    ```
+
+3. Create a `vitest.config.ts` file in the root of your project.
+
+    ```ts title="/vitest.config.ts"
+    import { defineConfig } from 'vite';
+    import path from 'path';
+
+    export default defineConfig({
+      test: {
+        environment: 'jsdom',  // Use jsdom for React component testing
+        include: ['./test/**/*.test.{ts,tsx}'],  // Test file pattern
+        exclude: ['**/node_modules/**'],  // Exclude node_modules
+        setupFiles: ['./vitest.setup.ts'], // Setup file
+      },
+      resolve: {
+        alias: {
+          '@': path.resolve(__dirname, './src')  // Enable @ path alias
+        }
+      },
+    });
+    ```
+
+    - This configuration sets up the `@` alias so that if you're using this convention within your components, they will render correctly.
+    - You can adjust the `include` property if necessary, but for now, all test files live in the `test/` directory. You'll also need to follow the naming pattern `*.test.tsx` for component tests.
+
+4. Within your `package.json` file, add the following script:
+
+    ```json package.json
+    {
+      "scripts": {
+        ...
+        "test": "vitest",
+      }
+    }
+    ```
+</Steps>
+
+## Running tests
+
+Now, you can run the following:
+
+```bash
+# Run all tests
+pnpm test
+
+# Run tests in watch mode
+pnpm test --watch
+
+# Run specific test file
+pnpm test Icon.test.tsx
+```
+
+## Example Test
+
+## Further Reading
+
+- [Official Vitest Documentation](https://vitest.dev/)
+- [Vitest Integration on the Cloudflare Docs](https://developers.cloudflare.com/workers/testing/vitest-integration/)
+
+

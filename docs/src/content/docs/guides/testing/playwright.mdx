@@ -1,0 +1,76 @@
+---
+title: Playwright
+description: Replace this description
+---
+
+import { FileTree, Steps } from '@astrojs/starlight/components';
+
+## Setup
+
+<Steps>
+1. Install Playwright:
+
+    ```bash
+    pnpm create playwright
+    ```
+
+    This will ask a few questions:
+
+    - **Where to put your end-to-end tests?** If you're already using a **tests** directory for your vitest unit tests, then we recommend playing your Playwright tests within an **e2e** directory.
+    - **Add a GitHub Actions workflow**
+    - **Install Playright browsers** You can also do this manually, but it's easier to say yes and have the script install it now.
+
+    ![](./images/installing-playwright.png)
+
+2. Install the Cloudflare plugin for Playwright:
+
+    ```bash
+    pnpm i -D @cloudflare/playwright
+    ```
+
+3. In your `wrangler.jsonc` file, bind the browser:
+
+    ```jsconc title="wrangler.jsonc"
+    "browser": {
+      "binding": "MYBROWSER"
+    }
+    ```
+
+4. Within the `package.json` file, add the following scripts:
+
+    ```json title="package.json"
+    "scripts": {
+      ...
+      "e2e": "playwright test",
+      "e2e:ui": "playwright test --ui",
+      "e2e:chromium": "playwright test --project chromium",
+      "e2e:firefox": "playwright test --project firefox",
+      "e2e:webkit": "playwright test --project webkit",
+      "e2e:file": "playwright test",
+      "e2e:debug": "playwright test --debug",
+      "e2e:codegen": "playwright codegen"
+    }
+
+    Below, I'll walk through each of these settings in more depth
+
+</Steps>
+
+## Example Test
+
+## Playwright UI
+
+## Playwright Chromium, Firefox, and webkit
+
+## Playwright File
+
+## Playwright debug
+
+## Playwright Codegen
+
+---
+
+## Further Reading
+
+- Official Playwright Documentation
+- [Playwright on the Cloudflare Documentation](https://developers.cloudflare.com/browser-rendering/platform/playwright/)
+
