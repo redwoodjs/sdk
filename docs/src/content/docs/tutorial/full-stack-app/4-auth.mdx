@@ -170,7 +170,7 @@ The router highlights the request-response lifecycle. The first parameter is the
 We can change that to return the `Home` component by changing the second parameter:
 
 ```tsx title="src/worker.tsx" startLineNumber=50
-route("/", () => Home),
+route("/", Home),
 ```
 
 We can also change the home page route to use the `index` method:
