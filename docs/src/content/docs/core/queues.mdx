@@ -106,6 +106,65 @@ export default {
 
 This will receive a batch of messages, and process them one by one.
 
+
+## Ways to Send Messages
+
+Cloudflare Queues allow Workers to send and process asynchronous messages reliably.
+
+There are three common approaches to send data:
+
+### Send Message Body Directly (up to 128KB)
+
+Best for: Small payloads that fit within the 128KB limit.
+
+```ts
+await queue.send({
+  body: JSON.stringify({ email: "user@example.com", subject: "Welcome!" }),
+});
+```
+✅ Simple and fast
+❌ Hard limit of 128KB per message
+
+
+### Store in R2 and Send Object Key
+
+
+Best for: Large payloads (e.g., files, JSON blobs, videos).
+
+```ts
+// Upload to R2 first
+await r2.put("msg/123.json", JSON.stringify(largeData));
+
+// Then send only the key to the queue
+await queue.send({
+  body: JSON.stringify({ r2Key: "msg/123.json" }),
+});
+```
+
+✅ Great for large data
+✅ Persistent and versioned if needed
+❌ Slightly more complex (requires R2 integration)
+
+### Store in KV and Send KV Key
+
+Best for: Short-lived messages or small-to-medium payloads.
+
+```
+// Save to KV
+await kv.put("queue:msg:123", JSON.stringify(data), { expirationTtl: 600 });
+
+// Send reference key
+await queue.send({
+  body: JSON.stringify({ kvKey: "queue:msg:123" }),
+});
+```
+✅ Fast access
+✅ Automatic expiration possible
+❌ Not ideal for large data
+❌ KV has eventual consistency (meaning that when you write data to Cloudflare KV (via kv.put), it might not be immediately visible to all readers — especially in different Cloudflare data centers.)
+
+### Tips
+
 #### Handling Different Queues
 
 By sending a message on a queue
@@ -150,6 +209,7 @@ export default {
 
 #### Handling Different Messages on the Same Queue
 
+Use metadata (e.g. type, source, key) in your message body to help the consumer Worker determine where and how to retrieve the full data.
 
 If for some reason, you decide to share a queue for different types of messages, one pattern is to set a `type` (or other attribute) in the message body to specify its purpose and how to handle its contents.
 
@@ -190,4 +250,3 @@ export default {
   }
 } satisfies ExportedHandler<Env>;
 ```
-
