@@ -18,7 +18,7 @@
     "clean:vendor": "rm -rf ./vendor/dist",
     "release": "./scripts/release.sh",
     "test": "vitest",
-    "debug:sync": "node ./dist/scripts/debug-sync.mjs"
+    "debug:sync": "tsx ./src/scripts/debug-sync.mts"
   },
   "exports": {
     "./vite": {
@@ -133,6 +133,7 @@
     "@types/lodash": "^4.17.16",
     "@types/node": "^22.14.0",
     "semver": "^7.7.1",
+    "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vitest": "^3.1.1"
   }
