@@ -76,7 +76,7 @@ const app = defineApp([ /* routes... */])
 export default {
   fetch: app.fetch,
   async queue(batch) {
-    for (const message of batch) {
+    for (const message of batch.messages) {
       console.log('handling message' + JSON.stringify(message))
     }
   }
