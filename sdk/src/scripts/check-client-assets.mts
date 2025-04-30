@@ -85,10 +85,12 @@ export const checkAssets = async () => {
     const BASE_URL = getBaseUrl(TARGET_URL);
     console.log(`Base URL: ${BASE_URL}`);
 
-    // First run release to ensure manifest is created
-    console.log("\nRunning release to generate manifest...");
-    // Run pnpm release in interactive mode by passing stdio 'inherit'
-    await $({ stdio: "inherit" })`pnpm release`;
+    if (!process.env.NO_RELEASE) {
+      // First run release to ensure manifest is created
+      console.log("\nRunning release to generate manifest...");
+      // Run pnpm release in interactive mode by passing stdio 'inherit'
+      await $({ stdio: "inherit" })`pnpm release`;
+    }
 
     // Fetch the target page
     console.log(`\nFetching content from ${TARGET_URL}...`);
