@@ -19,10 +19,10 @@ To handle these you'll use **background tasks**. Background tasks are managed by
 First thing you've got to do is create a queue and bind the queue producers and consumers to your worker.
 
 ```bash showLineNumbers=false
-npx wrangler queues create MY_QUEUE_NAME
+npx wrangler queues create my-queue-name
 ```
 
-Replace `"MY_QUEUE_NAME"` with the name of your queue, and place the following in your `wrangler.jsonc` file:
+Replace `my-queue-name` with the name of your queue, and place the following in your `wrangler.jsonc` file:
 
 ```jsonc title="wrangler.jsonc"
 {
@@ -30,12 +30,12 @@ Replace `"MY_QUEUE_NAME"` with the name of your queue, and place the following i
     "producers": [
       {
         "binding": "QUEUE",
-        "queue": "MY_QUEUE_NAME",
+        "queue": "my-queue-name",
       }
     ],
     "consumers": [
       {
-        "queue": "MY_QUEUE_NAME",
+        "queue": "my-queue-name",
         "max_batch_size": 10,
         "max_batch_timeout": 5
       }
@@ -45,6 +45,27 @@ Replace `"MY_QUEUE_NAME"` with the name of your queue, and place the following i
 ```
 
 This will bind the queue to the `env.QUEUE` object in the worker. So you'll be able to send messages.
+
+
+#### Naming Queues
+
+Queue names must match the following RegEx pattern: `^[a-z0-9]([a-z0-9-]{0,61}[a-z0-9])?$`
+
+##### Valid queue names
+
+- `my-queue`
+- `my-awesome-queue-123`
+- `queue1`
+- `1queue`
+- `my-queue-v2`
+
+##### Invalid queue names
+
+- `My_Queue` (uppercase letters not allowed)
+- `MY_QUENE_NAME` (uppercase letters and underscores not allowed))
+- `-queue-` (cannot start or end with hyphen)
+- `really-really-really-really-really-really-really-long-queue-name` (max 63 chars)
+- `queue_name` (underscores not allowed)
 
 ### Sending messages
 
@@ -84,3 +105,89 @@ export default {
 ```
 
 This will receive a batch of messages, and process them one by one.
+
+#### Handling Different Queues
+
+By sending a message on a queue
+
+```tsx title="src/worker.tsx"
+import { env } from "cloudflare:workers";
+
+export default defineApp([
+  route('/pay-with-ai', () => {
+    // Post a message to the queue
+    env.QUEUE.send({
+      userId: 1,
+      amount: 100,
+      currency: 'USD',
+    })
+
+    return new Response('Done!')
+  })
+])
+```
+
+when handling queues and receivng a `MessageBatch`, the `batch` contains
+a collection of `messages` and the name of the `queue` which you can use to handle
+
+```tsx title="src/worker.tsx" mark={5-9}
+
+const app = defineApp([ /* routes... */])
+
+export default {
+  fetch: app.fetch,
+  async queue(batch) {
+    if (batch.queue === 'my-queue-name') {
+      for (const message of batch.messages) {
+        console.log('handling my-queue-name message' + JSON.stringify(message))
+      }
+    }
+  }
+} satisfies ExportedHandler<Env>;
+```
+
+> ℹ️ Note: Having a dedicated Queue for a specific message is a best practice
+
+#### Handling Different Messages on the Same Queue
+
+
+If for some reason, you decide to share a queue for different types of messages, one pattern is to set a `type` (or other attribute) in the message body to specify its purpose and how to handle its contents.
+
+For example, when sending this payment message:
+
+```tsx title="src/worker.tsx"
+import { env } from "cloudflare:workers";
+
+export default defineApp([
+  route('/pay-with-ai', () => {
+    // Post a message to the queue
+    env.QUEUE.send({
+      type: 'PAYMENT',
+      userId: 1,
+      amount: 100,
+      currency: 'USD',
+    })
+
+    return new Response('Done!')
+  })
+])
+```
+
+One can then determine the message type and handle accordingly:
+
+```tsx title="src/worker.tsx" mark={5-9}
+const app = defineApp([ /* routes... */])
+
+export default {
+  fetch: app.fetch,
+  async queue(batch) {
+    for (const message of batch.messages) {
+      const { type, userId, amount, currenct } = message.body as { type: string, userId: number, amount: number, currency: string };
+      if (type === 'PAYMENT') {
+        console.log('handling payment message' + JSON.stringify(message))
+      }
+    }
+  }
+} satisfies ExportedHandler<Env>;
+```
+
