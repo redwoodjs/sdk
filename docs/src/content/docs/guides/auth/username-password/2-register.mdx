@@ -1,0 +1,82 @@
+---
+title: Setting up the Register Page
+slug: guides/auth/username-password/register
+description: Learn how to use the username and password flow with RedwoodJS.
+---
+
+import { Aside, FileTree } from "@astrojs/starlight/components";
+
+Let's start by setting up the registration page. inside the `pages` directory, create a new folder called `auth` and inside create a new file called `RegisterPage.tsx`.
+
+<FileTree>
+- src/
+  - app/
+    - pages/
+      - auth/
+        - RegisterPage.tsx
+</FileTree>
+
+Inside the `RegisterPage.tsx` file, add the following code:
+
+```tsx title="src/app/pages/auth/RegisterPage.tsx"
+const RegisterPage = () => {
+  return (
+    <form>
+      <h1>Register</h1>
+      <div>
+        <label htmlFor="username">Username</label>
+        <input type="text" name="username" placeholder="Username" />
+      </div>
+      <div>
+        <label htmlFor="email">Email</label>
+        <input type="email" name="email" placeholder="Email" />
+      </div>
+      <div>
+        <label htmlFor="password">Password</label>
+        <input type="password" name="password" placeholder="Password" />
+      </div>
+      <button type="submit">Login</button>
+    </form>
+  )
+}
+```
+
+No styles. We'll keep this as simple as possible. We have a standard HTML form with 3 inputs and a submit button.
+
+## Registration Flow
+
+Here are the steps for our registration flow:
+
+- User submits a registration form with a email, username, and password (and any other required information)
+- Server validates the submission
+- Server checks if the username or email address already exist in the database
+- If validation passes, server:
+  - generates a salt for the password
+  - hashes the password with the salt
+  - stores the user information and hashed password in the database
+- Optional: send a verification email ([we'll come back to this](/guides/auth/username-password/email))
+- Return a success (or error) response to the client
+
+
+## Connecting the Form
+
+Within RedwoodSDK, all components are server components by default. Then, you need to specify a client component by adding a `"use client"` directive at the top of the file.
+
+Normally, I like to leave page components as server components, but for this example, we'll make the `RegisterPage` a client component so that we can keep track of the form state.
+
+```tsx title="src/app/pages/auth/RegisterPage.tsx"
+"use client"
+```
+
+On our `form` tag, let's add an `action` attribute and pass it the `handleSubmit` function.
+
+<Aside type="note" title="">
+
+More information on the [Official React 19 Documentation.](https://react.dev/blog/2024/12/05/react-19#form-actions)
+</Aside>
+
+
+
+
+## Steps
+

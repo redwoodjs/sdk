@@ -110,7 +110,33 @@ export default defineConfig({
                 { label: 'Metadata', slug: 'guides/frontend/metadata' },
               ]
             },
-            { label: "Server Function Streams", slug: "guides/rsc-streams" },
+            {
+              label: 'Authentication & Security',
+              collapsed: true,
+              items: [
+                {
+                  label: 'Username & Password',
+                  collapsed: true,
+                  items: [
+                    { label: 'Flow', slug: 'guides/auth/username-password/flow' },
+                    { label: 'Register', slug: 'guides/auth/username-password/register' },
+                    { label: 'Login', slug: 'guides/auth/username-password/login' },
+                    { label: 'Middleware', slug: 'guides/auth/username-password/middleware' },
+                    { label: 'Logout', slug: 'guides/auth/username-password/logout' },
+                    { label: 'Verifying Email Addresses', slug: 'guides/auth/username-password/email' },
+                    { label: 'Forgot Password', slug: 'guides/auth/username-password/forgot' },
+                    { label: 'Reset Password', slug: 'guides/auth/username-password/reset' },
+                  ]
+                },
+              ]
+            },
+            {
+              label: "Backend",
+              collapsed: true,
+              items: [
+                { label: "Server Function Streams", slug: "guides/rsc-streams" },
+              ]
+            },
           ],
           collapsed: true,
         },
