@@ -22,8 +22,13 @@ const $ = $base({
 });
 
 const main = async () => {
+  const isDev = process.env.RWDEV === "1" || process.env.RWDEV === "true";
+  const executor = isDev ? "tsx" : "node";
+  const scriptDir = isDev ? "src" : "dist";
+  const extension = isDev ? ".mts" : ".mjs";
+
   const result =
-    await $`node ${path.resolve(ROOT_DIR, "dist", "scripts", SCRIPT_NAME)}.mjs ${ARGS.slice(1).join(" ")}`;
+    await $`${executor} ${path.resolve(ROOT_DIR, scriptDir, "scripts", SCRIPT_NAME)}${extension} ${ARGS.slice(1).join(" ")}`;
 
   process.exitCode = result.exitCode;
 };
