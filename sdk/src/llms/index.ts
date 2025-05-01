@@ -16,7 +16,7 @@ const rules: PackageRuleItem[] = [
     name: "rwsdk-middleware",
     description: "RedwoodSDK: Middleware",
     rule: middleware,
-    alwaysApply: true,
+    alwaysApply: false,
     globs: ["worker.tsx", "middleware.ts", "middleware.tsx"],
   },
   {
