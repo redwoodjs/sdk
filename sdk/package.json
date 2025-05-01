@@ -1,6 +1,6 @@
 {
   "name": "@redwoodjs/sdk",
-  "version": "0.0.75",
+  "version": "0.0.76",
   "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime",
   "type": "module",
   "bin": {
@@ -16,10 +16,9 @@
     "build:src": "tsc --build --clean && tsc",
     "build:vendor": "node ./dist/scripts/build-vendor-bundles.mjs",
     "clean:vendor": "rm -rf ./vendor/dist",
-    "format": "npx prettier --write ./src",
     "release": "./scripts/release.sh",
     "test": "vitest",
-    "debug:sync": "node ./dist/scripts/debug-sync.mjs"
+    "debug:sync": "tsx ./src/scripts/debug-sync.mts"
   },
   "exports": {
     "./vite": {
@@ -133,8 +132,8 @@
     "@types/debug": "^4.1.12",
     "@types/lodash": "^4.17.16",
     "@types/node": "^22.14.0",
-    "prettier": "^3.5.3",
     "semver": "^7.7.1",
+    "tsx": "^4.19.4",
     "typescript": "^5.8.3",
     "vitest": "^3.1.1"
   }

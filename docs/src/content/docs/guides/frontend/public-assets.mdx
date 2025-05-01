@@ -1,0 +1,117 @@
+---
+title: Public Assets
+description: How to serve static files in your RedwoodSDK project
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+import { FileTree } from '@astrojs/starlight/components';
+
+## Setting Up the Public Directory
+
+RedwoodSDK provides a simple way to serve static assets like images, fonts, and other files through the public directory.
+
+<Steps>
+1. Create a `public` directory in the root of your project:
+    ```bash
+    mkdir public
+    ```
+
+2. Place any static assets you want to serve in this directory:
+
+    <FileTree>
+    - public/
+      - images/
+        - logo.png
+        - background.jpg
+      - fonts/
+        - custom-font.woff2
+      - documents/
+        - sample.pdf
+      - favicon.ico
+    </FileTree>
+
+3. Access your static assets in your application using root-relative URLs:
+
+    ```tsx
+    // In your component
+    function Header() {
+      return (
+        <header>
+          <img src="/images/logo.png" alt="Logo" />
+          <h1 className="font-custom">My Application</h1>
+        </header>
+      );
+    }
+    ```
+
+    Or, for custom fonts, reference them in your CSS:
+
+    ```css
+    @font-face {
+      font-family: "CustomFont";
+      src: url("/fonts/custom-font.woff2") format("woff2");
+    }
+    ```
+</Steps>
+
+## Common Use Cases
+
+### Images and Media
+
+Store and serve images, videos, and other media files:
+
+```tsx
+<img src="/images/hero-banner.jpg" alt="Hero Banner" />
+<video controls>
+  <source src="/videos/demo.mp4" type="video/mp4" />
+</video>
+```
+
+### Fonts
+
+Host custom font files for your application:
+
+```css
+/* In your CSS */
+@font-face {
+  font-family: "BrandFont";
+  src: url("/fonts/brand-font.woff2") format("woff2");
+  font-weight: 400;
+  font-style: normal;
+}
+
+/* Then use it with Tailwind */
+@theme {
+  --font-brand: "BrandFont", sans-serif;
+}
+```
+
+### Favicon and Browser Icons
+
+Store favicon and other browser icons:
+
+```tsx
+// In your Document.tsx
+<head>
+  <link rel="icon" href="/favicon.ico" />
+  <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+  <link rel="manifest" href="/manifest.json" />
+</head>
+```
+
+<Aside type="caution" title="Security Considerations">
+  Remember that all files in the public directory are accessible to anyone who knows the URL. Don't store sensitive information in this directory.
+</Aside>
+
+## Production Considerations
+
+In production, files in the public directory:
+
+- Do not go through the JavaScript bundling process
+- Maintain their file structure and naming
+
+## Further Reading
+
+- [Static File Serving in Vite](https://vitejs.dev/guide/assets.html#the-public-directory)
+- [Image Optimization Best Practices](https://web.dev/fast/#optimize-your-images)
+- [Web Font Best Practices](https://web.dev/font-best-practices/)

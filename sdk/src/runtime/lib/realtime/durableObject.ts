@@ -63,7 +63,7 @@ export class RealtimeDurableObject extends DurableObject {
 
   private async handleWebSocket(
     request: Request,
-    clientInfo: ClientInfo
+    clientInfo: ClientInfo,
   ): Promise<Response> {
     const { 0: client, 1: server } = new WebSocketPair();
     await this.storeClientInfo(clientInfo);
@@ -96,7 +96,7 @@ export class RealtimeDurableObject extends DurableObject {
         const errorBytes = encoder.encode(errorData);
 
         const errorResponse = new Uint8Array(
-          1 + requestIdBytes.length + errorBytes.length
+          1 + requestIdBytes.length + errorBytes.length,
         );
         errorResponse[0] = MESSAGE_TYPE.ACTION_ERROR;
         errorResponse.set(requestIdBytes, 1);
@@ -114,7 +114,7 @@ export class RealtimeDurableObject extends DurableObject {
       chunk: number;
       end: number;
     },
-    streamId: string
+    streamId: string,
   ): Promise<void> {
     const reader = response.body!.getReader();
     const encoder = new TextEncoder();
@@ -132,7 +132,7 @@ export class RealtimeDurableObject extends DurableObject {
         }
 
         const chunkMessage = new Uint8Array(
-          1 + streamIdBytes.length + value.length
+          1 + streamIdBytes.length + value.length,
         );
         chunkMessage[0] = messageTypes.chunk;
         chunkMessage.set(streamIdBytes, 1);
@@ -149,7 +149,7 @@ export class RealtimeDurableObject extends DurableObject {
     id: string,
     args: string,
     clientInfo: ClientInfo,
-    requestId: string
+    requestId: string,
   ): Promise<void> {
     const url = new URL(clientInfo.url);
     url.searchParams.set("__rsc", "true");
@@ -179,7 +179,7 @@ export class RealtimeDurableObject extends DurableObject {
         chunk: MESSAGE_TYPE.ACTION_CHUNK,
         end: MESSAGE_TYPE.ACTION_END,
       },
-      requestId
+      requestId,
     );
   }
 
@@ -255,12 +255,12 @@ export class RealtimeDurableObject extends DurableObject {
               chunk: MESSAGE_TYPE.RSC_CHUNK,
               end: MESSAGE_TYPE.RSC_END,
             },
-            rscId
+            rscId,
           );
         } catch (err) {
           console.error("Failed to process socket:", err);
         }
-      })
+      }),
     );
   }
 

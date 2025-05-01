@@ -6,7 +6,8 @@
   "scripts": {
     "link-sdk": "(cd sdk && pnpm build) && for starter in starters/*; do (cd $starter && npm pkg set dependencies.@redwoodjs/sdk='workspace:*'); done && pnpm install --ignore-scripts --no-frozen-lockfile",
     "check-starters:dev": "for starter in starters/*; do ./scripts/check-app.sh dev $starter; done",
-    "check-starters:preview": "for starter in starters/*; do ./scripts/check-app.sh preview $starter; done"
+    "check-starters:preview": "for starter in starters/*; do ./scripts/check-app.sh preview $starter; done",
+    "format": "prettier --write ./sdk/src starters/*/src"
   },
   "engines": {
     "node": ">=18.0.0",
@@ -21,6 +22,7 @@
   },
   "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab",
   "devDependencies": {
-    "knip": "^5.50.5"
+    "knip": "^5.50.5",
+    "prettier": "^3.5.3"
   }
 }

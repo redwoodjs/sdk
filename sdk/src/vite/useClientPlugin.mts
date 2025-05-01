@@ -33,7 +33,7 @@ function isJsxFunction(text: string): boolean {
 
 export async function transformUseClientCode(
   code: string,
-  relativeId: string
+  relativeId: string,
 ): Promise<TransformResult | undefined> {
   const cleanCode = code.trimStart();
 
@@ -101,7 +101,7 @@ export async function transformUseClientCode(
       const declarations = statement.getDeclarationList().getDeclarations();
       declarations.forEach((varDecl) => {
         const arrowFunc = varDecl.getFirstDescendantByKind(
-          SyntaxKind.ArrowFunction
+          SyntaxKind.ArrowFunction,
         );
         if (!arrowFunc) return;
 
@@ -109,10 +109,10 @@ export async function transformUseClientCode(
         if (isJsxFunction(arrowFunc.getText())) {
           const name = varDecl.getName();
           const isDefault = !!statement.getFirstAncestorByKind(
-            SyntaxKind.ExportAssignment
+            SyntaxKind.ExportAssignment,
           );
           const isInlineExport = statement.hasModifier(
-            SyntaxKind.ExportKeyword
+            SyntaxKind.ExportKeyword,
           );
 
           if (
@@ -148,7 +148,7 @@ export async function transformUseClientCode(
       node.getText() === '"use client"'
     ) {
       const parentExpr = node.getFirstAncestorByKind(
-        SyntaxKind.ExpressionStatement
+        SyntaxKind.ExpressionStatement,
       );
       if (parentExpr) {
         parentExpr.remove();
@@ -219,7 +219,7 @@ export async function transformUseClientCode(
     .forEach((node) => {
       const namedExports = node.getNamedExports();
       const nonComponentExports = namedExports.filter(
-        (exp) => !components.has(exp.getName())
+        (exp) => !components.has(exp.getName()),
       );
 
       if (nonComponentExports.length !== namedExports.length) {
@@ -254,7 +254,7 @@ export async function transformUseClientCode(
   functionsToModify.forEach(({ node, nodeText, component }) => {
     const newText = nodeText.replace(
       /^export\s+(default\s+)?(async\s+)?function/,
-      "$2function"
+      "$2function",
     );
     node.replaceWithText(newText);
   });
@@ -288,7 +288,7 @@ export async function transformUseClientCode(
       // First add declarations
       sourceFile.addStatements(`const ${ssrName} = ${expression.getText()}`);
       sourceFile.addStatements(
-        `const ${anonName} = registerClientReference("${relativeId}", "default", ${ssrName});`
+        `const ${anonName} = registerClientReference("${relativeId}", "default", ${ssrName});`,
       );
 
       // Store info for later export
@@ -316,7 +316,7 @@ export async function transformUseClientCode(
 
     // Find function declarations by name
     const funcDecls = sourceFile.getDescendantsOfKind(
-      SyntaxKind.FunctionDeclaration
+      SyntaxKind.FunctionDeclaration,
     );
     const funcNode = funcDecls.find((decl) => decl.getName() === name);
     if (funcNode) {
@@ -326,7 +326,7 @@ export async function transformUseClientCode(
 
     // Find variable declarations by name
     const varDecls = sourceFile.getDescendantsOfKind(
-      SyntaxKind.VariableDeclaration
+      SyntaxKind.VariableDeclaration,
     );
     const varNode = varDecls.find((decl) => decl.getName() === name);
     if (varNode) {
@@ -349,7 +349,7 @@ export async function transformUseClientCode(
       sourceFile.addStatements(
         `const ${name} = registerClientReference("${relativeId}", "${
           isDefault ? "default" : name
-        }", ${ssrName});`
+        }", ${ssrName});`,
       );
     }
   });
@@ -402,7 +402,7 @@ export const useClientPlugin = (): Plugin => ({
 
     const relativeId = `/${relative(
       this.environment.getTopLevelConfig().root,
-      id
+      id,
     )}`;
 
     return transformUseClientCode(code, relativeId);
