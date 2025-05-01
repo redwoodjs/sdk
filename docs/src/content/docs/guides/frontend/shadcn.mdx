@@ -1,0 +1,94 @@
+---
+title: shadcn/ui
+description: A comprehensive guide to installing and configuring ShadCN UI components within Redwood SDK projects, with step-by-step instructions for proper integration with TailwindCSS v4.
+---
+
+import { Aside, Steps, FileTree } from '@astrojs/starlight/components';
+
+## Installing shadcn/ui
+
+<Steps>
+1. Install shadcn/ui
+    ```bash
+    pnpm dlx shadcn@latest init
+    ```
+    It will ask you what theme you want to use.
+    ![](../../tutorial/full-stack-app/images/shadcn-neutral-theme.png)
+
+    This command will create a `components.json` file in the root of your project. It contains all the configuration for our shadcn/ui components.
+
+    If you want to modify the default paths so that it will put our components in the `src/app/components/ui` folder.
+
+    ```json title="components.json" startLineNumber={12}
+    ...
+    "aliases": {
+      "components": "@/app/components",
+      "utils": "@/app/lib/utils",
+      "ui": "@/app/components/ui",
+      "lib": "@/app/lib",
+      "hooks": "@/app/hooks"
+    },
+    ```
+
+    <Aside type="note" title="shadcn/ui Organization">
+    You'll notice that the `lib` directory is directly inside the `app` directory. You may have to manually move the folder or adjust the import paths when you start adding and using shadcn/ui components.
+    </Aside>
+
+2. [Install TailwindCSS](/guides/frontend/tailwind).
+3. Add `baseUrl` to your `tsconfig.json`:
+    ```json showLineNumbers={false} ""baseUrl": ".","
+    {
+      "compilerOptions": {
+        "baseUrl": ".",
+        "paths": {
+          "@/*": ["./src/*"]
+        }
+      }
+    }
+    ```
+4. Add resolve alias config to `vite.config.ts`:
+    ```ts
+    import path from "path"
+    import tailwindcss from "@tailwindcss/vite"
+    import react from "@vitejs/plugin-react"
+    import { defineConfig } from "vite"
+
+    export default defineConfig({
+      plugins: [react(), tailwindcss()],
+      resolve: {
+        alias: {
+          "@": path.resolve(__dirname, "./src"),
+        },
+      },
+    })
+    ```
+
+5. Now, you should be able to add components:
+    You can add components in bulk by running:
+    ```bash
+    pnpm dlx shadcn@latest add
+    ```
+
+    Or, you can add a single component by running:
+    ```bash
+    pnpm dlx shadcn@latest add <COMPONENT-NAME>
+    ```
+
+    Components will be added to the `src/components/ui` folder.
+
+    <FileTree>
+    - src/
+      - app/
+        - components/
+          - ui/
+    </FileTree>
+</Steps>
+
+<Aside type="caution" title="React Server Components">
+By default, all pages and components within Redwood are server components. However, most of the ShadCN components require reactivity. Therefore, you may need to add `use client` to the top of your component file.
+</Aside>
+
+## Further reading
+
+- [ShadCN](https://ui.shadcn.com/)
+- [TailwindCSS v4](https://tailwindcss.com/docs/installation/using-vite)

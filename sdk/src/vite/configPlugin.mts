@@ -49,9 +49,6 @@ export const configPlugin = ({
               input: {
                 client: clientEntryPathname,
               },
-              output: {
-                format: "iife",
-              },
             },
           },
           optimizeDeps: {
