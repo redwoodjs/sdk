@@ -25,7 +25,7 @@ type ClientManifest = {
   [id: string]: ClientReferenceManifestEntry;
 };
 
-declare module "react-server-dom-webpack/server.edge" {
+declare module "react-server-dom-vite/server.edge" {
   type Options = {
     environmentName?: string;
     identifierPrefix?: string;
@@ -47,8 +47,7 @@ declare module "react-server-dom-webpack/server.edge" {
   // https://github.com/facebook/react/blob/0711ff17638ed41f9cdea712a19b92f01aeda38f/packages/react-server-dom-webpack/src/ReactFlightDOMServerEdge.js#L48
   export function renderToReadableStream(
     model: ReactClientValue,
-    webpackMap: ClientManifest,
-    options?: Options
+    options?: Options,
   ): ReadableStream;
 
   /**
@@ -64,7 +63,7 @@ declare module "react-server-dom-webpack/server.edge" {
   export function registerClientReference<T>(
     proxyImplementation: T,
     id: string,
-    exportName: string
+    exportName: string,
   ): T;
 }
 
@@ -74,7 +73,7 @@ declare module "react-dom/server.edge" {
   export * from "react-dom/server";
 }
 
-declare module "react-server-dom-webpack/client" {
+declare module "react-server-dom-vite/client" {
   // https://github.com/facebook/react/blob/dfaed5582550f11b27aae967a8e7084202dd2d90/packages/react-server-dom-webpack/src/ReactFlightDOMClientBrowser.js#L31
   export type Options<A, T> = {
     callServer?: (id: string, args: A) => Promise<T>;
@@ -94,7 +93,7 @@ declare module "react-server-dom-webpack/client" {
     // `Response` is a Web Response:
     // https://developer.mozilla.org/en-US/docs/Web/API/Response
     promiseForResponse: Promise<Response>,
-    options?: Options<A, T>
+    options?: Options<A, T>,
   ): Thenable<T>;
 
   /**
@@ -108,53 +107,48 @@ declare module "react-server-dom-webpack/client" {
    */
   export function encodeReply(
     // https://github.com/facebook/react/blob/dfaed5582550f11b27aae967a8e7084202dd2d90/packages/react-client/src/ReactFlightReplyClient.js#L65
-    value: ReactServerValue
+    value: ReactServerValue,
   ): Promise<string | URLSearchParams | FormData>;
 }
 
 // From https://github.com/hi-ogawa/vite-plugins/blob/ca3f97ec09c2549d98779acbf9a24e97706c125d/packages/react-server/src/types/react-lib.d.ts#L6
 // https://github.com/facebook/react/blob/89021fb4ec9aa82194b0788566e736a4cedfc0e4/packages/react-server-dom-webpack/src/ReactFlightDOMServerEdge.js
-declare module "react-server-dom-webpack/server.edge" {
+declare module "react-server-dom-vite/server.edge" {
   // TODO: branded stream type?
   export function renderToReadableStream<T>(
     node: T,
-    bundlerConfig: import("./react").BundlerConfig,
-    opitons?: {
+    options?: {
       onError: import("react-dom/server").RenderToReadableStreamOptions["onError"];
-    }
+    },
   ): ReadableStream<Uint8Array>;
 
   export function registerClientReference<T>(
     ref: T,
     id: string,
-    name: string
+    name: string,
   ): T;
 
   export function registerServerReference<T>(
     ref: T,
     id: string,
-    name: string
+    name: string,
   ): T;
 
   export function decodeReply(
     body: string | FormData,
-    bundlerConfig: import("./react").BundlerConfig
-    // TODO: temporaryReferences
   ): Promise<unknown[]>;
 
   export function decodeAction(
     body: FormData,
-    bundlerConfig: import("./react").BundlerConfig
   ): Promise<() => Promise<unknown>>;
 
   export function decodeFormState(
     actionResult: unknown,
     body: FormData,
-    serverManifest?: unknown
   ): Promise<unknown>;
 }
 
-declare module "react-server-dom-webpack/server" {
+declare module "react-server-dom-vite/server" {
   import type { Writable } from "node:stream";
   import type { Busboy } from "busboy";
 
@@ -176,7 +170,6 @@ declare module "react-server-dom-webpack/server" {
    */
   export function decodeReply<T>(
     body: string | FormData,
-    webpackMap?: ServerManifest
   ): Promise<T>;
 
   /**
@@ -190,7 +183,6 @@ declare module "react-server-dom-webpack/server" {
    */
   export function decodeReplyFromBusboy<T>(
     busboyStream: Busboy,
-    webpackMap?: ServerManifest
   ): Promise<T>;
 
   type PipeableStream = {
@@ -211,39 +203,38 @@ declare module "react-server-dom-webpack/server" {
    */
   export function renderToPipeableStream(
     model: ReactClientValue,
-    webpackMap: ClientManifest
   ): PipeableStream;
 }
 
 // From https://github.com/hi-ogawa/vite-plugins/blob/ca3f97ec09c2549d98779acbf9a24e97706c125d/packages/react-server/src/types/react-lib.d.ts#L64-L87
 // https://github.com/facebook/react/blob/89021fb4ec9aa82194b0788566e736a4cedfc0e4/packages/react-server-dom-webpack/src/ReactFlightDOMClientBrowser.js
-declare module "react-server-dom-webpack/client.browser" {
+declare module "react-server-dom-vite/client.browser" {
   export type CallServerCallback = (id: any, args: any) => Promise<unknown>;
 
   export function createServerReference(
     id: string,
     callServer: CallServerCallback,
-    encodeFormAction?: unknown
+    encodeFormAction?: unknown,
   ): Function;
 
   export function createFromReadableStream<T>(
     stream: ReadableStream<Uint8Array>,
     options?: {
       callServer?: CallServerCallback;
-    }
+    },
   ): Promise<T>;
 
   export function createFromFetch<T>(
     promiseForResponse: Promise<Response>,
     options?: {
       callServer?: import("./react").CallServerCallback;
-    }
+    },
   ): Promise<T>;
 
   export function encodeReply(v: unknown[]): Promise<string | FormData>;
 }
 
-declare module "react-server-dom-webpack/client.edge" {
+declare module "react-server-dom-vite/client.edge" {
   /**
    * Creates a Promise-like structure from a ReadableStream of RSC data.
    * Core client-side RSC processing function that:
@@ -255,17 +246,11 @@ declare module "react-server-dom-webpack/client.edge" {
    * @see https://timtech.blog/posts/react-server-components-rsc-no-framework/#createfromreadablestream-from-react-server-dom-webpackclient
    */
   export function createFromReadableStream<T>(
-    stream: ReadableStream,
-    options: {
-      serverConsumerManifest: {
-        moduleMap: ClientManifest;
-        moduleLoading: null;
-      };
-    }
+    stream: ReadableStream
   ): Thenable<T>;
 
   export function createServerReference<A, T>(
     id: string,
-    callServer: (id: string, args: A) => Promise<T>
+    callServer: (id: string, args: A) => Promise<T>,
   );
 }

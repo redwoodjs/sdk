@@ -1,5 +1,5 @@
 import { initClient, type Transport, type ActionResponse } from "../../client";
-import { createFromReadableStream } from "react-server-dom-webpack/client.browser";
+import { createFromReadableStream } from "react-server-dom-vite/client.browser";
 import { IS_DEV } from "../../constants";
 import { MESSAGE_TYPE } from "./shared";
 const DEFAULT_KEY = "default";
@@ -111,7 +111,7 @@ export const realtimeTransport =
       try {
         const socket = ensureWs();
         const { encodeReply } = await import(
-          "react-server-dom-webpack/client.browser"
+          "react-server-dom-vite/client.browser"
         );
 
         const encodedArgs = args != null ? await encodeReply(args) : null;

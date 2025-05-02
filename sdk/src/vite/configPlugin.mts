@@ -94,8 +94,8 @@ export const configPlugin = ({
             include: [
               "react/jsx-runtime",
               "react/jsx-dev-runtime",
-              "react-server-dom-webpack/client.edge",
-              "react-server-dom-webpack/server.edge",
+              "react-server-dom-vite/client.edge",
+              "react-server-dom-vite/server.edge",
             ],
           },
           build: {

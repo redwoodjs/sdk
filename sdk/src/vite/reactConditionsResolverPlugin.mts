@@ -16,9 +16,9 @@ const WORKER_PACKAGES = [
   "react-dom",
   "react/jsx-runtime",
   "react/jsx-dev-runtime",
-  "react-server-dom-webpack/client.browser",
-  "react-server-dom-webpack/client.edge",
-  "react-server-dom-webpack/server.edge",
+  "react-server-dom-vite/client.browser",
+  "react-server-dom-vite/client.edge",
+  "react-server-dom-vite/server.edge",
 ];
 
 const CLIENT_PACKAGES = [
@@ -27,9 +27,9 @@ const CLIENT_PACKAGES = [
   "react-dom",
   "react/jsx-runtime",
   "react/jsx-dev-runtime",
-  "react-server-dom-webpack/client.browser",
-  "react-server-dom-webpack/client.edge",
-  "react-server-dom-webpack/server.edge",
+  "react-server-dom-vite/client.browser",
+  "react-server-dom-vite/client.edge",
+  "react-server-dom-vite/server.edge",
 ];
 
 // Skip react-server condition for these packages
@@ -44,8 +44,8 @@ const SKIP_REACT_SERVER = [
 const GLOBAL_SERVER_PACKAGES = [
   "react-dom/server.edge",
   "react-dom/server",
-  "react-server-dom-webpack/server.edge",
-  "react-server-dom-webpack/client.edge",
+  "react-server-dom-vite/server.edge",
+  "react-server-dom-vite/client.edge",
 ];
 
 export const reactConditionsResolverPlugin = async ({
