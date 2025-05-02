@@ -125,7 +125,7 @@
     "tmp-promise": "^3.0.3",
     "ts-morph": "^25.0.1",
     "unique-names-generator": "^4.7.1",
-    "vibe-rules": "^0.2.23",
+    "vibe-rules": "^0.2.31",
     "vite-tsconfig-paths": "^5.1.4",
     "wrangler": "^4.14.1"
   },
