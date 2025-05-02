@@ -317,7 +317,7 @@ model Contact {
 }
 ```
 
-1. On the `Contact` model, we added a `companyId` field. This stores the ID of the related `Company` record. Because the `id` field on the `Company` model is a string, our `companyId` field is also a string. This is needed by the database to establish the relationship, and is the only information that gets stored.
+1. On the `Contact` model, we added a `companyId` field. This stores the ID of the related `Company` record. Because the `id` field on the `Company` model is a string, our `companyId` field is also a string.
 2. On the `Contact` model, we also added a `company` field. This describes the Contact↔Company relationship to Prisma.
     - You can read this as: "A contact belongs to a company."
     - It is connected to the `Company` model. You can also think of this as having a type of `Company`.
