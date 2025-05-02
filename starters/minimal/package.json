@@ -22,7 +22,7 @@
     "types": "tsc"
   },
   "dependencies": {
-    "@redwoodjs/sdk": "0.0.76"
+    "@redwoodjs/sdk": "0.0.76-test.20250502130648"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
@@ -30,7 +30,7 @@
     "@types/react-dom": "^19.1.2",
     "typescript": "^5.8.3",
     "vite": "^6.2.6",
-    "wrangler": "^4.8.0"
+    "wrangler": "^4.14.1"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
