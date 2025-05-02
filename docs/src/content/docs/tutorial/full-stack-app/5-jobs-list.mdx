@@ -106,7 +106,7 @@ Now, we can also update our protected page route to use the `isAuthenticated` fu
 route("/protected", [ isAuthenticated, Home ]),
 ```
 
-Actually, let's refactor this. The `protected` route was really meant as an example. We don't need `/protected`, but we do want to protect our home page: `route("/", Home),`. We *could* change `/protected` to `/`, and then delete `route("/", Home),`.
+Actually, let's refactor this. The `protected` route was meant as an example. We don't need `/protected`, but we do want to protect our home page: `route("/", Home),`. We could change `/protected` to `/`, and then delete `route("/", Home),`.
 
 ```tsx startLineNumber=61
 route("/", [ isAuthenticated, Home ]),
@@ -423,9 +423,15 @@ All the data from the database is returned as an array and saved in a variable c
 
 Easy, right?! Since we're using React Server Components, this code runs on the server. We're able to make database calls directly from the page and don't need to worry about creating API routes. 🎉
 
-Also, if you right click on the page and select **View Source**, you'll see that the data is being sent as part of the HTML, rather than rendered client side by JavaScript.
+Also, if you right click on the page and select **View Source**, you'll see that the data is being rendered directly on the page.
 
 ![](./images/applications-list-view-source.png)
+
+In comparison, if you were you were working with a traditional SPA (Single Page Application), all the data would be rendered on the client side with JavaScript and the View Source might look like this:
+
+```html
+<div id="app"></div>
+```
 
 Now that we know the content from our database is getting on the page, let's style it.
 
@@ -1980,8 +1986,6 @@ const List = async ({ request }: { request: Request }) => {
 export { List }
 ```
 </details>
-
-
 
 <Aside type="tip" title="Code on GitHub">
 You can find the final code for this step on [GitHub](https://github.com/ahaywood/applywize/tree/main/end-of-5).

@@ -238,7 +238,7 @@ Now, that we know we're getting the right application back, let's update our `<B
 + <BreadcrumbPage>{application?.jobTitle} at {application?.company?.name}</BreadcrumbPage>
 ```
 
-We're using the Elvis operator (`?.`) (optional chaining) to ensure that we don't throw an error if the application object is `null`.
+We're using the Elvis operator (`?.`) or optional chaining to ensure that we don't throw an error if the application object is `null`.
 
 When you preview this in the browser, you might be surprised to see that the company information is not showing up.
 
@@ -880,7 +880,9 @@ Now, let's go back to our `Details.tsx` file and add our `DeleteApplicationButto
 +<DeleteApplicationButton applicationId={application?.id as string} />
 ```
 
-Go test this out in the browser — everything should be working. 🙌
+Let's test this out in the browser.
+
+🙌 Looks like everything is working.
 
 Before we can move on, we need to set up the "Nevermind" button for closing the dialog box.
 

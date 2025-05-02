@@ -804,7 +804,7 @@ This is personal preference, but I like co-locating my actions with the pages th
 If it's a shared action, you can put it in a folder like `src/app/lib/actions` and naming the file based on the action.
 </Aside>
 
-At the top of our `actions.ts` file, we need the `"use server"` directive to mark server-side functions that can be called from client-side code (see the [React documentation on this](https://react.dev/reference/rsc/use-server) for more info).
+At the top of our `actions.ts` file, we need the `"use server"` directive to ensure our code runs on the server (see the [React documentation on this](https://react.dev/reference/rsc/use-server) for more info).
 
 ```tsx title="/src/app/pages/applications/actions.ts"
 "use server"
