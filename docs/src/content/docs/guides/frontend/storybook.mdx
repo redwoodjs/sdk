@@ -3,12 +3,20 @@ title: Storybook
 description: A step-by-step guide for installing and configuring Storybook in Redwood SDK projects.
 ---
 
-import { Aside } from '@astrojs/starlight/components';
-import { Steps } from '@astrojs/starlight/components';
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+<Aside type="note" title="What is Storybook?">
+  <p>
+    Storybook is a tool for developing UI components in isolation. It allows you to create and test components without needing to run your full application.
+  </p>
+  <p>
+    This guide covers setup and some basics. For full documentation, see the <a target="_blank" href="https://storybook.js.org">Storybook site</a>.
+  </p>
+</Aside>
 
 ## Installing Storybook
 
-Becayse the RedwoodSDK is based on React and Vite, we can work through the ["React & Vite" documentation](https://storybook.js.org/docs/get-started/frameworks/react-vite).
+Because the RedwoodSDK is based on React and Vite, we can work through the <a target="_blank" href="https://storybook.js.org/docs/get-started/frameworks/react-vite">"React & Vite" documentation</a>.
 
 <Steps>
 1. Install Storybook
@@ -16,15 +24,15 @@ Becayse the RedwoodSDK is based on React and Vite, we can work through the ["Rea
     pnpm create storybook@latest
     ```
 
-2. Select what you want to use Storybook for. I selected both Documentation and Testing. (ARI INSERT SCREENSHOT)
+2. Select what you want to use Storybook for. I selected both Documentation and Testing.
+    ![](./images/sb-select-use.png)
 
-3. It'll say it can't detect the framework. Select React. It'll automatically detect Vite. (ARI INSERT SCREENSHOT)
+3. It'll say it can't detect the framework. Select React. It'll automatically detect Vite.
+    ![](./images/sb-select-react.png)
 
-4. Storybook will finish installing, and start your Storybook server. (ARI INSERT SCREENSHOT)
+4. Storybook will finish installing, and start your Storybook server.
+    ![](./images/sb-started.png)
 
-5. It should automatically open your browser to Storybook, but if it doesn't, you can go to `localhost:6006` to see it. (ARI INSERT SCREENSHOT)
-
-6. Next, let's experiment with adding a component. (ARI TODOOOO)
-
-
+5. It should automatically open your browser to Storybook, but if it doesn't, you can go to `localhost:6006` to see it.
+    ![](./images/sb-served-site.png)
 </Steps>
