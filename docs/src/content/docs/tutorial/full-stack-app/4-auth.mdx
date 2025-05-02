@@ -9,16 +9,16 @@ description: A guide in my new Starlight docs site.
 import { Aside, FileTree } from '@astrojs/starlight/components';
 
 ## Existing Authentication Code
-Since we're using the [standard starter kit](https://github.com/redwoodjs/sdk/tree/main/starters/standard), it already has passkey authentication setup.
+Since we're using the [standard starter kit](https://github.com/redwoodjs/sdk/tree/main/starters/standard), it already has passkey authentication set up.
 
 <Aside type="note" title="Passkey Authentication">
 ### What is Passkey Authentication?
 Passkey authentication is a passwordless authentication method that uses a biometric or device authentication to verify the user's identity.
 
 **How it Works**:
-1. A use creates a passkey during the registration process.
+1. A user creates a passkey during the registration process.
 2. A unique public-private key pair is generated.
-3. The private key remains securely stored on the user's device.
+3. The private key remains securely stored on the user's device or [in a password manager](https://developer.apple.com/passkeys/).
 4. The public key is shared with the service.
 5. When the user logs in, they have to "prove" they have access to the private key.
 6. The service verifies the user's identity using the public key.
@@ -156,7 +156,8 @@ async ({ ctx, request, headers }) => {
 ```tsx title="src/worker.tsx" startLineNumber=49
 render(Document, [
 ```
-- On **line 49**, we're setting up our document. This document is referencing our `src/app/Document.tsx` file. It contains our `html`, `head`, and `body` tags and wraps _all_ of our pages. **_RedwoodSDK only supports one document._**
+- On **line 49**, we're setting up our document. This document is referencing our `src/app/Document.tsx` file. It contains our `html`, `head`, and `body` tags and wraps _all_ of our pages.
+  - One of the powerful yet simple features of RedwoodSDK is that it supports per-route documents. Read more about this [on our blog](https://rwsdk.com/blog/redwoodsdk-multiple-documents).
 
 ```tsx title="src/worker.tsx" startLineNumber=49
 render(Document, [
@@ -164,15 +165,15 @@ render(Document, [
 ```
 - On **line 50**, we're setting up our home page route. Here, we're just returning a standard response.
 
-The router, highlights the request response life cycle. The first parameter is the route we're requesting and the second parameter is the response. This can be a standard response, or it can be a React component. On line 50, we're returning a standard response that says `Hello World!`.
+The router highlights the request-response lifecycle. The first parameter is the route we're requesting and the second parameter is the response. This can be a standard response, or it can be a React component. On line 50, we're returning a standard response that says `Hello World!`.
 
-We could change that to return the `Home` component, by changing the second parameter:
+We can change that to return the `Home` component by changing the second parameter:
 
 ```tsx title="src/worker.tsx" startLineNumber=50
-route("/", () => Home),
+route("/", Home),
 ```
 
-We could also change the home page route to use the `index` method:
+We can also change the home page route to use the `index` method:
 
 ```tsx title="src/worker.tsx" showLineNumbers={false}
 import { index, route, render, prefix } from "@redwoodjs/sdk/router";
@@ -180,9 +181,9 @@ import { index, route, render, prefix } from "@redwoodjs/sdk/router";
 index([Home]);
 ```
 
-The `index` method is similar to the `route` method, but instead of taking two parameters, it only takes one, the response.
+The `index` method is just [a wrapper around the `route` method that passes `/` as the path](https://github.com/redwoodjs/sdk/blob/b943792e5b651f0c82a102fdd21db1d6f834cf93/sdk/src/runtime/lib/router.ts#L196). As such, instead of taking two parameters, it only takes one — the response.
 
-If we move further down our `render` method, the next route is a `/protected` route.
+If we move further down our `render` method, the next route is a protected route at the `/protected` path.
 
 ```tsx title="src/worker.tsx" startLineNumber=51
 route("/protected", [
@@ -203,7 +204,7 @@ Here, we're using an **interrupter** to see if the user is logged in. This is a 
 <Aside type="note" title="Middleware vs Interrupters">
 #### Middleware
 
-Middleware is a function that runs _in the middle_, between your request to the server and the server's response.
+Middleware is a function that runs _in the middle_, between the server receiving requests and the server's handling of those requests.
 
 It allows you to:
 
@@ -214,21 +215,21 @@ It allows you to:
 
 #### Interrupters
 
-Interrupters will _interrupt_ the flow. Before, the server returns a response, the interrupter will run.
+Interrupters will _interrupt_ the flow. They run as part of the handling of a given request, and before the response is returned.
 
 #### These sound similar, what's the difference?
 
 - Middleware will run before _every single route_.
 - Interrupters will only run _on specific routes._
 
-In our code, we're using middleware to attach the user session to our context object, on every request. But, we're only checking to see if the user is logged in on the home page.
+In our code, we're using middleware to attach the user session to our context object *on every request*. But, we're only checking to see if the user is logged in *on the home page*.
 </Aside>
 
-```tsx title="src/worker.tsx" startLineNumber=60
+```tsx title="src/worker.tsx" startLineNumber=62
 prefix("/user", userRoutes),
 ```
-- On **line 62**, we're prefixing all of our auth routes with `/user`. Meaning, our `login` route will be `/user/login` and our `logout` route will be `/user/logout`.
-  - `login` and `logout` are defined within the `userRoutes` file, imported on line 6. One of the cool things about the RedwoodSDK router is the parameter is defined through an array. This means, we can define our route information in a separate file and then import it into our `worker.tsx` file.
+- On **line 62**, we're prefixing all of our auth routes with `/user`. This means our `login` route will be `/user/login` and our `logout` route will be `/user/logout`.
+  - `login` and `logout` are defined within the `userRoutes` file, imported on line 6. One of the cool things about the RedwoodSDK router is that the response parameter can be an array. This means we can define our route information in a separate file and then import it into our `worker.tsx` file.
 
 We're co-locating the file that defines our auth routes with our auth pages.
 
@@ -256,7 +257,7 @@ export const userRoutes = [
 
 We're defining 2 routes:
 - `/login` - This is displaying our login page (on line 6).
-- `/logout` - This is our logout route (on line 7), but instead of returning JSX, we're removing the session (line 9) and redirecting the user to the home page (line 10). Then, returning the response (line 12-15).
+- `/logout` - This is our logout route (on line 7), but instead of returning JSX, we're removing the session (line 9) and redirecting the user to the home page (line 10). Then, we return the response (line 12-15). The [response code of 302](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/302) means we're doing a redirect to the `Location` header.
 
 <Aside type="note" title="Prefixed Routes">
 Remember, even though these routes are defined as `/login` and `/logout`, we've prefixed them in our `worker.tsx` file with `/user` So, in order to access them, you'll go to `/user/login` and `/user/logout`.
@@ -714,7 +715,7 @@ Within the browser, go to http://localhost:2332/user/signup.
 
 Add a `username` and click "Register with passkey".
 
-If you're using a Password Manager, like [1Password](https://1password.com/), it's easy to create and manage your passkeys. Of course, there are other tools to choose from. [Apple even has their own native solution](https://developer.apple.com/passkeys/).
+If you're using a Password Manager, like [1Password](https://1password.com/product/passkeys), it's easy to create and manage your passkeys. Of course, there are other tools to choose from. [Apple even has their own native solution](https://developer.apple.com/passkeys/).
 
 ![](./images/register-with-passkey.png)
 
@@ -1381,7 +1382,7 @@ At the very bottom of our `styles.css` file, let's start by setting up `@layer` 
 ```
 
 <Aside type="tip" title="CSS Layers">
-Did these `@layer`s give you déjà vu. Feels similar to Tailwind v3? It's the exact same concept! But, because these layers are no longer established in Tailwind, we have to define the order ourselves: `@layer base, components, page;`
+Did these `@layer` names give you déjà vu? Feels similar to Tailwind v3? It's the exact same concept! But because these layers [are no longer established in Tailwind as of v4](https://tailwindcss.com/docs/upgrade-guide#removed-tailwind-directives), we have to define the order ourselves: `@layer base, components, page;`
 
 Technically, we could list our layers in any order we want:
 ```css showLineNumbers=false
@@ -1390,7 +1391,7 @@ Technically, we could list our layers in any order we want:
 @layer base {}
 ```
 
-It will still be applied in the correct order because we set the ordering, here:
+It will still be applied in the correct order because we set the ordering here:
 ```css showLineNumbers=false
 @layer base, components, page;
 ```
@@ -2555,7 +2556,7 @@ export function SignupPage() {
 </details>
 
 <Aside type="tip" title="Code on GitHub">
-You can find the final code for this step on [GitHub](https://github.com/redwoodjs/applywize).
+You can find the final code for this step on [GitHub](https://github.com/ahaywood/applywize/tree/main/end-of-4).
 </Aside>
 
 ## Further reading

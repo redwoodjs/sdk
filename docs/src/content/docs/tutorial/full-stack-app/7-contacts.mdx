@@ -314,13 +314,11 @@ You can also check Prisma Studio (`npx prisma studio`) to see the new contact in
 
 This _works_, kind of. -- It works, but it's not the best user experience. It would be better if we could see a success (or error) message in browser.
 
-Fortunate for us, [shadcn/ui has a toast component](https://ui.shadcn.com/docs/components/sonner) that we can use. This component works a little differently than the other components we've used. It has two parts. It needs the `Toaster` and the `Toast`.
+Fortunate for us, [shadcn/ui has a toast component](https://ui.shadcn.com/docs/components/sonner) that we can use. This component works a little differently than the other components we've used. It has two parts — a `Toaster` and the `Toast`:
 
-The `Toaster` handles where the message gets displayed. We can also cue up or show several messages at once. So, the `Toaster` "holds" the `Toast`.
-
-The `Toaster` component typically lives in a layout component.
-
-Then, components nested inside, can trigger `Toast` messages.
+- The `Toaster` handles where the message gets displayed. We can also cue up or show several messages at once. So, the `Toaster` "holds" and then "pops out" the `Toast`.
+- The `Toaster` typically lives in a layout component that parents the rest of the app.
+- Then, child components can `Toast` messages.
 
 This might make more sense as we build it out.
 
@@ -449,7 +447,7 @@ const ContactForm = ({ callback }: { callback: () => void }) => {
   }
 ```
 
-If you test everything out in the browser, you should still see the successful toaster message and the `Sheet` will close. 😎
+If you test everything out in the browser, you should still see the successful toast and the `Sheet` will close. 😎
 
 Now, we need a way to see the contacts we've added.
 
@@ -476,7 +474,7 @@ Let's start by displaying all contacts that aren't associated with a company.
 
 ### Getting the Contacts from the Database
 
-Even though our contacts will be displayed in the `ApplicationForm` component, the `ApplicationForm` is a client component. It'd be better if we could grab the data inside a server component and then pass it in. (You'll remember, we did the ame thing with our application statuses).
+Even though our contacts will be displayed in the `ApplicationForm` component, the `ApplicationForm` is a client component. It'd be better if we could grab the data inside a server component and then pass it in. (You'll remember, we did the same thing with our application statuses).
 
 Inside our `New` page, let's get all of our contacts, where the `companyId` is `null`:
 
@@ -684,7 +682,7 @@ When you run this, you'll probably get an error:
 
 ![](./images/error-running-new-migration.png)
 
-The reason is because we already have contacts in our database. When we added the `userId` column to the `Contact` model, we said that it was a required field. This creates a problem for all existing contact entries that don't have a user associated with them.
+The reason is that we already have contacts in our database. When we added the `userId` column to the `Contact` model, we said that it was a required field. This creates a problem for all existing contact entries that don't have a user associated with them.
 
 If you read the error message, the migration file was created, but not applied.
 
@@ -869,7 +867,7 @@ company: {
 },
 ```
 
-Now, when you create a new job application, any contacts you've listed, will be associated with the company and job application you created.
+Now, when you create a new job application, any contacts you've listed will be associated with the company and job application you created.
 
 ![](./images/associated-contact-in-applications-table.png)
 
@@ -1123,6 +1121,6 @@ Now, try running this in the browser again. You should see the contact deleted a
 Lovely!
 
 <Aside type="tip" title="Code on GitHub">
-You can find the final code for this step on [GitHub](https://github.com/redwoodjs/applywize).
+You can find the final code for this step on [GitHub](https://github.com/ahaywood/applywize/tree/main/end-of-7).
 </Aside>
 
