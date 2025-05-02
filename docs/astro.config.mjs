@@ -92,23 +92,27 @@ export default defineConfig({
                   slug: "tutorial/full-stack-app/deploying",
                 },
               ],
-            }
-          ]
+            },
+          ],
         },
         {
           label: "Guides",
           items: [
             {
-              label: 'Frontend Development',
+              label: "Frontend Development",
               collapsed: true,
               items: [
-                { label: 'TailwindCSS', slug: 'guides/frontend/tailwind' },
-                { label: 'shadcn/ui', slug: 'guides/frontend/shadcn' },
-                { label: 'Layouts', slug: 'guides/frontend/layouts' },
-                { label: 'Documents', slug: 'guides/frontend/documents' },
-                { label: 'Public Assets', slug: 'guides/frontend/public-assets' },
-                { label: 'Metadata', slug: 'guides/frontend/metadata' },
-              ]
+                { label: "TailwindCSS", slug: "guides/frontend/tailwind" },
+                { label: "Storybook", slug: "guides/frontend/storybook" },
+                { label: "shadcn/ui", slug: "guides/frontend/shadcn" },
+                { label: "Layouts", slug: "guides/frontend/layouts" },
+                { label: "Documents", slug: "guides/frontend/documents" },
+                {
+                  label: "Public Assets",
+                  slug: "guides/frontend/public-assets",
+                },
+                { label: "Metadata", slug: "guides/frontend/metadata" },
+              ],
             },
             { label: "Server Function Streams", slug: "guides/rsc-streams" },
           ],
