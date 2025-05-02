@@ -353,7 +353,7 @@ model Contact {
 
 You can find more information about naming relationships in the [Prisma documentation](https://www.prisma.io/docs/orm/prisma-schema/data-model/relations#disambiguating-relations).
 
-Now, we need to create the remaining relationships. Here's my final `prisma.schema` file.
+Now, we need to create the remaining relationships. Here's my final `schema.prisma` file.
 
 ```prisma showLineNumbers=true title="src/db/schema.prisma" {15-16, 27-28, 34, 40-41, 52-53}
 generator client {
@@ -444,7 +444,7 @@ This is personal preference, but I like to put my models in alphabetical order. 
 
 A migration is a change to the database schema. It's a way to keep track of the changes we make to the database.
 
-When we create the migration, Prisma will look at our `prisma.schema` file and determine what has changed since our last migration. Then, it will generate a SQL file that will update our database with the changes.
+When we create the migration, Prisma will look at our `schema.prisma` file and determine what has changed since our last migration. Then, it will generate a SQL file that will update our database with the changes.
 
 Let's create the migration by running `pnpm migrate:new` and give our migration a name. Since this is our first migration, we'll say: `setup all database models`.
 

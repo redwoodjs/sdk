@@ -28,11 +28,11 @@ Again, shadcn/ui components are great for this.
 
 This time, we're going to reach for the `Sheet` component.
 
-You can copy and paste the boilerplate code from the [Shad docs](https://ui.shadcn.com/docs/components/sheet):
+You can copy the boilerplate code from the [shadcn/ui docs](https://ui.shadcn.com/docs/components/sheet) and paste it at the top of our `ApplicationForm` component:
 
-Import statement for the top of our `ApplicationForm` component (but below the `use client` directive):
+```tsx title="/src/app/components/ApplicationForm.tsx"
+"use client";
 
-```tsx
 import {
   Sheet,
   SheetContent,
@@ -639,7 +639,7 @@ Now, we need to ensure that the user will only see the contacts that they've add
 
 ### Limiting the Contacts to the Current User
 
-First, we'll need to modify our `prisma.schema` file so that we can keep track of who authored the contact.
+First, we'll need to modify our `schema.prisma` file so that we can keep track of who authored the contact.
 
 ```prisma title="/prisma/schema.prisma" collapse={2-8, 11-14, 18-20, 22-23}
 model Contact {
@@ -854,7 +854,7 @@ company: {
   create: {
     name: formData.get("company") as string,
     contacts: {
--      connect: {
+-      create: {
 -        firstName: "John",
 -        lastName: "Doe",
 -        email: "john.doe@example.com",
@@ -881,7 +881,7 @@ One step remains: removing a contact from the list.
 
 ### Styling the Delete Button
 
-First, we need to modify the `ContactCard` component to have a delete button:
+First, we need to modify the `ContactCard` component to include a delete button:
 
 ```tsx title="/src/app/components/ContactCard.tsx" {3-7} startLineNumber={6}
 return (
@@ -898,9 +898,11 @@ return (
         </AvatarFallback>
       </Avatar>
     </div>
+)
+---
+- On lines **3-7**, we added an `Icon` component with an `id` of `close` and a size of `16px`. Then, we wrapped the `icon` with a `button` and a `div`.
+---
 ```
-
-I added a `div` right before the `Avatar` div that contains a `button` with an X icon inside. Pretty straightforward.
 
 Now, we need to add some styles.
 
@@ -1015,6 +1017,18 @@ On the `div` wrapping the button:
 ---
 ```
 
+Now, if you test this in the browser, you might feel like you're chasing the button. There's a gap between the where the `div` ends and the `button` begins. We can resolve this by adding some additional padding to the `div` wrapping the `button`:
+
+```tsx title="/src/app/components/ContactCard.tsx" startLineNumber={8} "pr-5"
+<div className="pr-5 hidden group-hover/card:block pr-10 absolute top-1 -left-[37px]">
+  <button
+    role="button"
+    className="hover:bg-black cursor-pointer text-white fill-current rounded-full bg-destructive p-1">
+    <Icon id="close" size={16} />
+  </button>
+</div>
+---
+
 Perfect! With the styling applied, let's give this button the functionality it needs.
 
 ### Adding the Delete Functionality
@@ -1023,6 +1037,7 @@ On the `button`, let's add an `onClick` handler:
 
 ```tsx title="/src/app/components/ContactCard.tsx" startLineNumber={9} "onClick={handleDelete}"
 <button
+    onClick={handleDelete}
     role="button"
     className="hover:bg-black cursor-pointer text-white fill-current rounded-full bg-destructive p-1">
   <Icon id="close" size={16} />

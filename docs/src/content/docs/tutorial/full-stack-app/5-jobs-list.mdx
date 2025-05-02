@@ -180,7 +180,7 @@ const createApplication = async () => {
 
 await createApplication();
 ---
-- **On line 8,** we're referencing the `application` table. Then, using the Prisma `create` function to add all the data in our database object. You'll notice that these values match the columns we defined in `Prisma.schema` file.
+- **On line 8,** we're referencing the `application` table. Then, using the Prisma `create` function to add all the data in our database object. You'll notice that these values match the columns we defined in `schema.prisma` file.
 ---
 ```
 
@@ -1849,7 +1849,7 @@ const applications = await db.application.findMany({
 
 The `where` clause filters the results of our query based on whether `archived` is `true` or `false`. We can se it to `true` or `false` depending on whether `status` is set to `archived` or not.
 
-YOu can test this in the browser, by clicking on the **Archive** button. You should see the URL change to include `/applications?status=archived` and the entry applications table should be empty.
+You can test this in the browser, by clicking on the **Archive** button. You should see the URL change to include `/applications?status=archived` and the entry applications table should be empty.
 
 Let's make this better by adding an empty state:
 
