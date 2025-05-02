@@ -1,11 +1,9 @@
 {
   "$schema": "node_modules/wrangler/config-schema.json",
-  "name": "standard",
+  "name": "__change_me__",
   "main": "src/worker.tsx",
   "compatibility_date": "2024-09-23",
-  "compatibility_flags": [
-    "nodejs_compat"
-  ],
+  "compatibility_flags": ["nodejs_compat"],
   "assets": {
     "binding": "ASSETS"
   },
@@ -21,21 +19,19 @@
     ]
   },
   "vars": {
-    "WEBAUTHN_APP_NAME": "standard"
+    "WEBAUTHN_APP_NAME": "__change_me__"
   },
   "migrations": [
     {
       "tag": "v1",
-      "new_sqlite_classes": [
-        "SessionDurableObject"
-      ]
+      "new_sqlite_classes": ["SessionDurableObject"]
     }
   ],
   "d1_databases": [
     {
       "binding": "DB",
-      "database_name": "standard-parallel-gibbon",
-      "database_id": "f49c1db7-c957-48c7-9a08-dadf094a1861"
+      "database_name": "__change_me__",
+      "database_id": "__change_me__"
     }
   ]
 }
