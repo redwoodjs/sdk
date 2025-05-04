@@ -386,7 +386,8 @@ export const transformJsxScriptTagsPlugin = ({
       isBuild = config.command === "build";
     },
 
-    async transform(code) {
+    async transform(code, id) {
+      console.log("########", this.environment.name, id);
       let manifest = {};
       if (isBuild) {
         manifest = await readManifest(manifestPath);
