@@ -3,20 +3,20 @@ import { type Plugin } from "vite";
 import { readFile } from "node:fs/promises";
 import { pathExists } from "fs-extra";
 
-// Use a Map to cache manifests by path
-const manifestCache = new Map<string, Record<string, { file: string }>>();
+let manifestCache: Record<string, { file: string }> | undefined;
 
 const readManifest = async (
   manifestPath: string,
 ): Promise<Record<string, { file: string }>> => {
-  if (!manifestCache.has(manifestPath)) {
+  if (manifestCache === undefined) {
     const exists = await pathExists(manifestPath);
-    const content = exists
-      ? JSON.parse(await readFile(manifestPath, "utf-8"))
-      : {};
-    manifestCache.set(manifestPath, content);
+
+    if (exists) {
+      manifestCache = JSON.parse(await readFile(manifestPath, "utf-8"));
+    }
   }
-  return manifestCache.get(manifestPath)!;
+
+  return manifestCache ?? {};
 };
 
 // Check if a string includes any jsx function calls
