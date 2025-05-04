@@ -1,23 +1,8 @@
 import { Project, Node, SyntaxKind, ImportDeclaration } from "ts-morph";
 import { type Plugin } from "vite";
-import { readFile } from "node:fs/promises";
-import { pathExists } from "fs-extra";
 
-let manifestCache: Record<string, { file: string }> | undefined;
-
-const readManifest = async (
-  manifestPath: string,
-): Promise<Record<string, { file: string }>> => {
-  if (manifestCache === undefined) {
-    const exists = await pathExists(manifestPath);
-
-    if (exists) {
-      manifestCache = JSON.parse(await readFile(manifestPath, "utf-8"));
-    }
-  }
-
-  return manifestCache ?? {};
-};
+const manifestDeferred =
+  Promise.withResolvers<Record<string, { file: string }>>();
 
 // Check if a string includes any jsx function calls
 function hasJsxFunctions(text: string): boolean {
@@ -386,11 +371,23 @@ export const transformJsxScriptTagsPlugin = ({
       isBuild = config.command === "build";
     },
 
+    async generateBundle(_, bundle) {
+      if (this.environment.name === "client") {
+        for (const [fileName, asset] of Object.entries(bundle)) {
+          if (fileName === "manifest.json" && asset.type === "asset") {
+            const manifest = JSON.parse(asset.source as string);
+            manifestDeferred.resolve(manifest);
+            return;
+          }
+        }
+      }
+    },
+
     async transform(code, id) {
       let manifest = {};
 
       if (isBuild) {
-        manifest = await readManifest(manifestPath);
+        manifest = await manifestDeferred.promise;
       }
 
       if (id.includes("Document.tsx")) {
