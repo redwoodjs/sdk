@@ -1,8 +1,4 @@
----
-description: RedwoodSDK: Request Interruptors
-globs: worker.tsx,src/app/**/routes.ts,src/app/**/*/routes.ts
-alwaysApply: false
----
+export const interruptors = `
 
 # RedwoodSDK: Request Interruptors
 
@@ -11,7 +7,7 @@ You're an expert at Cloudflare, TypeScript, and building web apps with RedwoodSD
 ## Guidelines
 
 1. Create focused, single-responsibility interruptors
-2. Organize interruptors in dedicated files (e.g., `interruptors.ts`, `interceptors.ts`, or `middleware.ts`)
+2. Organize interruptors in dedicated files (e.g., \`interruptors.ts\`, \`interceptors.ts\`, or \`middleware.ts\`)
 3. Compose interruptors to create more complex validation chains
 4. Use typed parameters and return values
 5. Include clear error handling and user feedback
@@ -32,7 +28,7 @@ Interruptors are middleware functions that run before your route handlers. They 
 
 ### Basic Interruptor Structure
 
-```tsx
+\`\`\`tsx
 async function myInterruptor({ request, params, ctx }) {
   // Perform checks or transformations here
 
@@ -42,11 +38,11 @@ async function myInterruptor({ request, params, ctx }) {
   // OR return a Response to short-circuit the request
   // return new Response('Unauthorized', { status: 401 });
 }
-```
+\`\`\`
 
 ### Authentication Interruptors
 
-```tsx
+\`\`\`tsx
 export async function requireAuth({ request, ctx }) {
   if (!ctx.user) {
     return new Response(null, {
@@ -64,11 +60,11 @@ export async function requireAdmin({ request, ctx }) {
     });
   }
 }
-```
+\`\`\`
 
 ### Input Validation Interruptor
 
-```tsx
+\`\`\`tsx
 import { z } from "zod";
 
 // Create a reusable validator interruptor
@@ -94,11 +90,11 @@ const userSchema = z.object({
 });
 
 export const validateUser = validateInput(userSchema);
-```
+\`\`\`
 
 ### Logging Interruptor
 
-```tsx
+\`\`\`tsx
 export async function logRequests({ request, ctx }) {
   const start = Date.now();
 
@@ -107,7 +103,7 @@ export async function logRequests({ request, ctx }) {
       const duration = Date.now() - start;
       const status = response.status;
       console.log(
-        `${request.method} ${request.url} - ${status} (${duration}ms)`,
+        \`\${request.method} \${request.url} - \${status} (\${duration}ms)\`,
       );
     },
   };
@@ -122,11 +118,11 @@ route('/', [
     return Response.json({ success: true });;
   },
 ]);
-```
+\`\`\`
 
 ### Composing Multiple Interruptors
 
-```tsx
+\`\`\`tsx
 import { route } from "@redwoodjs/sdk/router";
 import {
   requireAuth,
@@ -153,11 +149,11 @@ route("/api/users", [
     },
   ],
 });
-```
+\`\`\`
 
 ### Role-Based Access Control
 
-```tsx
+\`\`\`tsx
 import { getSession } from "@redwoodjs/sdk/auth";
 
 // Create a function that generates role-based interruptors
@@ -181,13 +177,13 @@ export function hasRole(allowedRoles) {
 export const isAdmin = hasRole(["ADMIN"]);
 export const isEditor = hasRole(["ADMIN", "EDITOR"]);
 export const isUser = hasRole(["ADMIN", "EDITOR", "USER"]);
-```
+\`\`\`
 
 ### Organization with Co-located Interruptors
 
-Create a file at `./src/app/interruptors.ts`:
+Create a file at \`./src/app/interruptors.ts\`:
 
-```tsx
+\`\`\`tsx
 import { getSession } from "@redwoodjs/sdk/auth";
 
 // Authentication interruptors
@@ -223,14 +219,14 @@ export const isEditor = hasRole(["ADMIN", "EDITOR"]);
 
 // Other common interruptors
 export async function logRequests({ request, ctx }) {
-  console.log(`${request.method} ${request.url}`);
+  console.log(\`\${request.method} \${request.url}\`);
   return ctx;
 }
-```
+\`\`\`
 
 Then import these interruptors in your route files:
 
-```tsx
+\`\`\`tsx
 // src/app/pages/admin/routes.ts
 import { route } from "@redwoodjs/sdk/router";
 import { isAdmin, logRequests } from "@/app/interruptors";
@@ -242,4 +238,6 @@ export const routes = [
   route("/", [isAdmin, logRequests, AdminDashboard]),
   route("/users", [isAdmin, logRequests, UserManagement]),
 ];
-```
+\`\`\`
+
+`;

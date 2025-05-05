@@ -23,7 +23,8 @@
     "seed": "npm run worker:run ./src/scripts/seed.ts",
     "generate": "rw-scripts ensure-env && prisma generate && wrangler types",
     "check": "npm run generate && npm run types",
-    "types": "tsc"
+    "types": "tsc",
+    "prepare": "vibe-rules install cursor"
   },
   "dependencies": {
     "@prisma/adapter-d1": "~6.5.0",
@@ -39,7 +40,8 @@
     "prisma": "~6.5.0",
     "typescript": "^5.8.3",
     "vite": "^6.2.6",
-    "wrangler": "^4.14.1"
+    "wrangler": "^4.14.1",
+    "vibe-rules": "^0.2.31"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
