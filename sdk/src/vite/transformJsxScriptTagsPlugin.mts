@@ -1,8 +1,27 @@
 import { Project, Node, SyntaxKind, ImportDeclaration } from "ts-morph";
 import { type Plugin } from "vite";
+import { readFile } from "node:fs/promises";
+import { pathExists } from "fs-extra";
 
-const manifestDeferred =
-  Promise.withResolvers<Record<string, { file: string }>>();
+let manifestCache: Record<string, { file: string }> | undefined;
+
+const readManifest = async (
+  manifestPath: string,
+): Promise<Record<string, { file: string }>> => {
+  if (manifestCache === undefined) {
+    const exists = await pathExists(manifestPath);
+
+    if (!exists) {
+      throw new Error(
+        `RedwoodSDK expected client manifest to exist at ${manifestPath}. This is likely a bug. Please report it at https://github.com/redwoodjs/sdk/issues/new`,
+      );
+    }
+
+    manifestCache = JSON.parse(await readFile(manifestPath, "utf-8"));
+  }
+
+  return manifestCache!;
+};
 
 // Check if a string includes any jsx function calls
 function hasJsxFunctions(text: string): boolean {
@@ -371,24 +390,12 @@ export const transformJsxScriptTagsPlugin = ({
       isBuild = config.command === "build";
     },
 
-    async generateBundle(_, bundle) {
-      if (this.environment.name === "client") {
-        for (const [fileName, asset] of Object.entries(bundle)) {
-          if (fileName === "manifest.json" && asset.type === "asset") {
-            const manifest = JSON.parse(asset.source as string);
-            manifestDeferred.resolve(manifest);
-            return;
-          }
-        }
-      }
-    },
-
     async transform(code, id) {
-      let manifest = {};
-
-      if (isBuild) {
-        manifest = await manifestDeferred.promise;
+      if (this.environment.name !== "worker") {
+        return;
       }
+
+      const manifest = isBuild ? await readManifest(manifestPath) : {};
 
       if (id.includes("Document.tsx")) {
         console.log("########", {
