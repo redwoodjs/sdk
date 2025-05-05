@@ -390,19 +390,12 @@ export const transformJsxScriptTagsPlugin = ({
       isBuild = config.command === "build";
     },
 
-    async transform(code, id) {
+    async transform(code) {
       if (this.environment.name !== "worker") {
         return;
       }
 
       const manifest = isBuild ? await readManifest(manifestPath) : {};
-
-      if (id.includes("Document.tsx")) {
-        console.log("########", {
-          env: this.environment.name,
-          manifest,
-        });
-      }
 
       return transformJsxScriptTagsCode(code, manifest);
     },
