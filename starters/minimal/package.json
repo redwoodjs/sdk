@@ -22,7 +22,7 @@
     "types": "tsc"
   },
   "dependencies": {
-    "@redwoodjs/sdk": "0.0.77-test.20250505021527"
+    "@redwoodjs/sdk": "0.0.78"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
