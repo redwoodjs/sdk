@@ -33,7 +33,7 @@ export const debugSync = async () => {
     $({
       stdio: "inherit",
       shell: true,
-    })`npx chokidar-cli './src/**' './vendor/**' -c "${syncCommand}"`;
+    })`npx chokidar-cli './src/**' './vendor/src/**' -c "${syncCommand}"`;
   } else if (flags.has("--build")) {
     console.log("🏗️ Running build in target directory...");
     await $({
