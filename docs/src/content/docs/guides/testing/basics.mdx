@@ -3,18 +3,50 @@ title: Testing Basics
 description: Replace this description
 ---
 
-## Testing Basics
+import { Aside } from '@astrojs/starlight/components'
 
+## Why test?
 
+### Confidence in Your Code
+Testing provides confidence that your application works as expected. When you make changes or add new features, a good test suite helps ensure you haven't broken existing functionality. This is particularly valuable when:
 
-## Different Types of Tests
+- Refactoring complex components
+- Upgrading dependencies
+- Collaborating with team members who may not be familiar with all parts of the codebase
 
-1. Static Tests
-2. Unit Tests
-3. Integration Tests
-4. e2e Tests
+### Documentation through Tests
+Well-written tests serve as living documentation that demonstrates how your application should work. They provide clear examples of:
+
+- How components should render under different conditions
+- Expected API behaviors and responses
+- User flows through your application
+- Edge cases and how they're handled
+
+### Faster Development Cycles
+While writing tests requires an initial investment of time, they typically pay dividends through:
+
+- Faster debugging when issues arise
+- Reduced manual testing burden
+- Earlier detection of bugs in the development process
+- More focused development with clearly defined expectations
+
+## Four Different Types of Tests
+
+When writing tests, there are four different types of tests:
+
+1. **Static Tests** - These typically include linting, type checking, formatting, and code quality.
+2. **Unit Tests** - These test the smallest units of code in isolation.
+3. **Integration Tests** - These test the interaction between two units of code, how they're _integrated_.
+4. **e2e Tests** - e2e stands for end-to-end and test the entire application from the perspective of the user.
+
+[Kent C. Dodds](https://kentcdodds.com/) coined the term "Testing Trophy." Note, it's not a pyramid. Applied, static tests are at the bottom and lay the foundation, but they aren't the most important. End-to-end tests are the most important because they mirror how the user experiences the application.
+
+![](./images/testing-trophy.png)
+
+Let's walk through each type in more detail:
 
 ### Static Tests
+
 - Linting
 - Type Checking
 - Formatting
@@ -24,7 +56,25 @@ Tools: TypeScript, ESLint, Prettier, etc.
 
 ### Unit Tests
 
-Tools: Vitest, Jest, etc.
+Unit tests allow you to verify individual components and functions work correctly in isolation. You're testing the smallest _unit_ of your application.
+
+These tests:
+
+- Target specific, isolated pieces of functionality
+- Run quickly and provide immediate feedback
+- Ensure basic building blocks work correctly before they're combined
+- Serve as a safety net when refactoring or modifying existing code
+
+With RedwoodSDK, we recommend using [Vitest](https://vitest.dev/) for unit tests, coupled with several packages:
+
+- [@testing-library/react](https://testing-library.com/docs/react-testing-library/intro/): Allows testing React components in a way that simulates user behavior
+- [@testing-library/user-event](https://testing-library.com/docs/user-event/intro/): Provides utilities for simulating user interactions like clicks, typing, and keyboard navigation
+- [@testing-library/jest-dom](https://testing-library.com/docs/ecosystem-jest-dom/): Provides custom DOM element matchers
+
+<Aside type="tip" title="Vitest with RedwoodSDK">
+We have a specific guide for setting up [Vitest with RedwoodSDK](/guides/testing/vitest).
+</Aside>
+
 
 ### Integration Tests
 
@@ -42,9 +92,7 @@ Tools: Playwright, Cypress, etc.
 
 
 ## What Should I Test?
-
-
-## Not All Tests are Created Equal
+Not all tests are created equal. Some tests are more important than others. For example, there's no need to test the text on a Privacy Policy or a Meet the Team page. These pages generally consist of static text that doesn't change. It would be more beneficial to test the functionality of a shopping cart, that has business logic and financial implications.
 
 ## Further Reading
 

@@ -115,11 +115,11 @@ export default defineConfig({
               label: 'Testing',
               collapsed: true,
               items: [
-                { label: 'Testing Basics', slug: 'getting-started/testing/basics' },
-                { label: 'Vitest', slug: 'getting-started/testing/vitest' },
-                { label: 'Playwright', slug: 'getting-started/testing/playwright' },
-                { label: 'Cyprus', slug: 'getting-started/testing/cyprus' },
-                { label: 'Testing Best Practices', slug: 'getting-started/testing/best-practices' },
+                { label: 'Testing Basics', slug: 'guides/testing/basics' },
+                { label: 'Vitest', slug: 'guides/testing/vitest' },
+                { label: 'Playwright', slug: 'guides/testing/playwright' },
+                { label: 'Cyprus', slug: 'guides/testing/cyprus' },
+                { label: 'Testing Best Practices', slug: 'guides/testing/best-practices' },
               ]
             },
           ],
