@@ -451,7 +451,7 @@ Inside our `layouts` folder, let's create a new file called `InteriorLayout.tsx`
       - InteriorLayout.tsx
 </FileTree>
 
-Inside, we need should use some of the same the same styles that we used within our `AuthLayout.tsx` file. As a quick reminder, let's take a look at the `AuthLayout.tsx` file:
+Inside, we need should use some of the same styles that we used within our `AuthLayout.tsx` file. As a quick reminder, let's take a look at the `AuthLayout.tsx` file:
 
 ```tsx title="src/app/layouts/AuthLayout.tsx"
 const AuthLayout = ({ children }: { children: React.ReactNode }) => {
@@ -699,6 +699,7 @@ Now that we have all the elements, let's add some styling:
 - `flex` and `justify-between` are used to align the items inside the header, putting as much space between each of the elements as possible.
 - `items-center` centers the items vertically.
 - `border-border` and `border-b-1` adds a border to the bottom of the header with a color of `border` (defined as a custom color in the `@theme` block of our `styles.css` file).
+- `mb-12` adds `48px` of margin to the bottom of the header.
 ---
 ```
 
@@ -1180,7 +1181,7 @@ This will ask a series of questions:
 - Next, it will ask you about file names and folder paths. It will make recommendations based on the framework you're using. Most of the defaults, work:
   - Input directory for SVG files: `./other/svg-icons` -- we've already set this directory up!
   - Output directory for sprite: `./public/images/icons` This is the same location as the background and `logo.svg`
-  - Directory for TypeScript types: `./src/types`
+  - Directory for TypeScript types: `./types`
   - Sprite file name: `sprite.svg`
   - Type definition file name: `icons.d.ts`
   - Enable verbose logging: The default is set to "no", but I usually like to turn this on and get a little extra feedback.
