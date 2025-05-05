@@ -24,6 +24,20 @@ Go to your dashboard in Cloudflare, on the left side navigation click on **Worke
 
 ![](./images/cloudflare-visit-website.png)
 
+## Adjust The Security Headers
+
+You may need to update the security headers to allow your Cloudflare URL.
+
+Within the content loading and script execution section, add the `workers.dev` or your custom domain name:
+
+```ts title="src/app/headers.ts" "https://applywize.redwoodjs.workers.dev" startLineNumber={27}
+// Defines trusted sources for content loading and script execution:
+headers.set(
+  "Content-Security-Policy",
+  `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://applywize.redwoodjs.workers.dev; font-src 'self' https://fonts.gstatic.com; frame-src https://challenges.cloudflare.com; object-src 'none';`
+);
+```
+
 ## Deleting Your Project
 
 If for whatever reason, you need to delete your project through Cloudflare, go to **Workers & Pages** in the left side navigation. Then, click on the name of your project. Click on the **Settings** tab, then scroll to the bottom of the page. Click on the **Delete** button.
@@ -91,5 +105,5 @@ If you click on the **Details** link, it will take you to a dedicated page withi
 Congrats! You should know everything you need to know to build your own application, using RedwoodSDK. We'd love to see what you build. Please share your work and stay in touch by registering for our [newsletter](https://rwsdk.com).
 
 <Aside type="tip" title="Code on GitHub">
-You can find the final code for this step on [GitHub](https://github.com/redwoodjs/applywize).
+You can find the final code for this step on [GitHub](https://github.com/ahaywood/applywize/tree/main/finished).
 </Aside>

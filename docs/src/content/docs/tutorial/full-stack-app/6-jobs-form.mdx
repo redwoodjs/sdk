@@ -307,7 +307,7 @@ Now, let's start building out our form.
 </form>
 ```
 
-This is a big chunk of code, but it should be pretty straight forward. It's a standard form, using HTML labels and inputs with fields for:
+This is a big chunk of code, but it should be pretty straightforward. It's a standard form, using HTML labels and inputs with fields for:
 - Company Name
 - Job Title
 - Job Description / Requirements
@@ -645,7 +645,7 @@ Here, we're using a shadcn/ui `Select` component. We'll need to import this at t
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 ```
 
-Let's look a little bit more at the shadcn/ui `Select` component. You can also [check out the official documentation.](https://ui.shadcn.com/docs/components/select)
+Let's look a little bit more at the shadcn/ui `Select` component. You can also [check out the official documentation](https://ui.shadcn.com/docs/components/select).
 
 The `Select` component has a trigger (`SelectTrigger`). This is essentially a button that opens the dropdown. I'm using a `placeholder` here that says "Select a Status." Then, the content (`SelectContent`) is the dropdown menu. For now, I only have one item in the dropdown, for "new", but we want to make this dynamic so that it's pulling all our application statuses from our database.
 
@@ -698,7 +698,7 @@ Test this out in the browser. If you click on the Application Status dropdown, y
 
 ![](./images/browser-application-status-expanded.png)
 
-Now, let's set up the basics for our Contacts box. We'll, set up the bare minimum now, and [revisit this in the next section](/tutorial/full-stack-app/contacts/).
+Now, let's set up the basics for our Contacts box. We'll set up the bare minimum now, and [revisit this in the next section](/tutorial/full-stack-app/contacts/).
 
 ```tsx
 <div className="box">
@@ -804,7 +804,7 @@ This is personal preference, but I like co-locating my actions with the pages th
 If it's a shared action, you can put it in a folder like `src/app/lib/actions` and naming the file based on the action.
 </Aside>
 
-At the top of our `actions.ts` file, we need the `"use server"` directive, to ensure this code runs on the server.
+At the top of our `actions.ts` file, we need the `"use server"` directive to ensure our code runs on the server (see the [React documentation on this](https://react.dev/reference/rsc/use-server) for more info).
 
 ```tsx title="/src/app/pages/applications/actions.ts"
 "use server"
@@ -823,7 +823,7 @@ export const createApplication = async (formData: FormData) => {
   }
 }
 ---
-- You'll notice we're `export`ing the function, so that we can use it in our `ApplicationForm` component.
+- You'll notice we're `export`ing the function so that we can use it in our `ApplicationForm` component.
 - Since this is a server action, we can use `async` / `await`. When the time comes, we'll want to `await` our database call.
 - This function accepts all the `formData` we collected. -- Form Data is part of the Web API ([further documentation on MDN](https://developer.mozilla.org/en-US/docs/Web/API/FormData))
 - We set up a `try` / `catch` block. Inside the `try` block we'll eventually add our database call. Assuming that works, we'll return an object with `success` as `true` and `error` as `null`.
@@ -935,7 +935,7 @@ If you're interested in reading more on handling forms in React 19, here are a f
 </Aside>
 
 <Aside type="tip" title="Code on GitHub">
-You can find the final code for this step on [GitHub](https://github.com/redwoodjs/applywize).
+You can find the final code for this step on [GitHub](https://github.com/ahaywood/applywize/tree/main/end-of-6).
 </Aside>
 
 ## Further reading
