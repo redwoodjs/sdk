@@ -239,6 +239,9 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
     import { redwood } from "@redwoodjs/sdk/vite";
 
     export default defineConfig({
+      environments: {
+        ssr: {},
+      },
       plugins: [
         redwood(),
         tailwindcss(),
@@ -246,16 +249,24 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
     });
     ```
 
+    <Aside type="note" title="Environment Configuration">
+    Tailwindcss currently uses [the non-deprecated internal `createResolver()` vite API method.](https://github.com/tailwindlabs/tailwindcss/blob/main/packages/%40tailwindcss-vite/src/index.ts#L22) [The code and its docstring indicate that it relies on an `ssr` being present](https://github.com/vitejs/vite/blob/c0e3dba3108e479ab839205cfb046db327bdaf43/packages/vite/src/node/config.ts#L1498).
+
+    This isn't the case for us, since we only have a `worker` environment instead of `ssr`. To prevent builds from getting blocked on this, we stub out the ssr environment here.
+    </Aside>
+
 3. Import Tailwind CSS. (You'll need to create the `src/app/styles.css` file.)
     ```css title="src/app/styles.css"
     @import "tailwindcss";
     ```
 
-4. Add the Tailwind CSS inside the `head` tag in the `Document.tsx` file.
+4. Import the CSS file at the top of your file and include a `link` tag in the `head` of the `Document.tsx` file.
     ```tsx title="src/app/Document.tsx" {3}
+    import styles from "./styles.css?url";
+    ...
     <head>
       ...
-      <link rel="stylesheet" href="/src/app/styles.css" />
+      <link rel="stylesheet" href={styles} />
       ...
     </head>
     ```
@@ -350,6 +361,43 @@ If you're unsure how the font-family is written, you can find it in the CSS clas
 ![](./images/google-fonts-font-family.png)
 
 Now, you can use the class `font-display` and `font-body` in your project.
+
+Before this will work in production, we need to update our security headers to allow `googleapis` and `fonts.gstatic`:
+
+```tsx title="src/app/headers.ts" collapse={1-26} {30}
+import { RouteMiddleware } from "@redwoodjs/sdk/router";
+import { IS_DEV } from "@redwoodjs/sdk/constants";
+
+export const setCommonHeaders =
+(): RouteMiddleware =>
+({ headers, rw: { nonce } }) => {
+  if (!IS_DEV) {
+    // Forces browsers to always use HTTPS for a specified time period (2 years)
+    headers.set(
+      "Strict-Transport-Security",
+      "max-age=63072000; includeSubDomains; preload"
+    );
+  }
+
+  // Forces browser to use the declared content-type instead of trying to guess/sniff it
+  headers.set("X-Content-Type-Options", "nosniff");
+
+  // Stops browsers from sending the referring webpage URL in HTTP headers
+  headers.set("Referrer-Policy", "no-referrer");
+
+  // Explicitly disables access to specific browser features/APIs
+  headers.set(
+    "Permissions-Policy",
+    "geolocation=(), microphone=(), camera=()"
+  );
+
+  // Defines trusted sources for content loading and script execution:
+  headers.set(
+    "Content-Security-Policy",
+    `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-src https://challenges.cloudflare.com; object-src 'none';`
+  );
+};
+```
 
 ### Setting up our Custom Color Palette
 
