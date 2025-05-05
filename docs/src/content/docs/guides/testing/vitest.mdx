@@ -5,12 +5,12 @@ description: Replace this description
 
 import { FileTree, Steps } from '@astrojs/starlight/components';
 
-Vitest is perfect for running unit or integration tests. However, please note that this setup is only for testing React components.
+Vitest is perfect for running unit or integration tests.
 
 ## Setup
 
 <Steps>
-1. Install the following dependencies. Use the `--save-dev` or `-D` flag. These packages will only be used when testing your project during development and don't need to be part of the final production build.
+1. Install the following dependencies using the `--save-dev` or `-D` flag. These packages will only be used when testing your project during development and don't need to be part of the final production build.
 
     ```bash
     pnpm i -D @testing-library/dom @testing-library/jest-dom @testing-library/react jsdom vitest
@@ -46,8 +46,8 @@ Vitest is perfect for running unit or integration tests. However, please note th
     });
     ```
 
-    - This configuration sets up the `@` alias so that if you're using this convention within your components, they will render correctly.
-    - You can adjust the `include` property if necessary, but for now, all test files live in the `test/` directory. You'll also need to follow the naming pattern `*.test.tsx` for component tests.
+    - This configuration sets up the `@` alias so that if you're using the `@` alias convention for file paths within your components, they will render correctly.
+    - You can adjust the `include` property to meet your needs. This setup places all test files in the `test/` directory, in the root of your project. You'll also need to follow the naming pattern `*.test.tsx`.
 
 4. Within your `package.json` file, add the following script:
 
@@ -63,7 +63,7 @@ Vitest is perfect for running unit or integration tests. However, please note th
 
 ## Running tests
 
-Now, you can run the following:
+Now, the following commands are available within your project:
 
 ```bash
 # Run all tests
@@ -75,8 +75,6 @@ pnpm test --watch
 # Run specific test file
 pnpm test Icon.test.tsx
 ```
-
-## Example Test
 
 ## Further Reading
 

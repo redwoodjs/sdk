@@ -47,12 +47,42 @@ Let's walk through each type in more detail:
 
 ### Static Tests
 
-- Linting
-- Type Checking
-- Formatting
-- Code Quality
+Static tests catch potential issues in your code before it's even executed. Unlike the other types of tests, static tests analyze your code without running it, providing immediate feedback during development.
 
-Tools: TypeScript, ESLint, Prettier, etc.
+#### Type Checking with TypeScript
+
+TypeScript adds static type checking to JavaScript, helping catch errors before runtime:
+
+- **Type Safety:** Ensures variables and function parameters are used correctly
+- **Better Developer Experience:** Provides intelligent code completion and documentation
+- **Interface Definitions:** Creates contracts between different parts of your application
+- **Refactoring Confidence:** Makes large-scale code changes safer with immediate feedback
+
+In RedwoodSDK, TypeScript is integrated by default, with type definitions for all framework components. TypeScript compiler options are configured in the `tsconfig.json` file.
+
+#### Linting with ESLint
+
+ESLint analyzes your code for potential errors and enforces consistent coding practices:
+
+- **Error Prevention:** Catches common mistakes like undefined variables or unreachable code
+- **Code Quality:** Enforces best practices (like avoiding unused variables)
+- **Accessibility Checks:** Ensures your UI components follow accessibility guidelines
+- **Security Rules:** Identifies potential security vulnerabilities
+
+#### Formatting with Prettier
+
+Prettier ensures consistent code formatting across your project:
+
+- **Consistency:** Guarantees the same formatting style across your entire codebase
+- **Automation:** Eliminates debates about formatting preferences
+- **Focus on Content:** Lets developers concentrate on logic instead of formatting
+- **Integration:** Works seamlessly with ESLint and your code editor
+
+RedwoodSDK comes with a pre-configured Prettier setup that includes recommended rules for React and TypeScript. The Prettier configuration is located in the `.prettierrc` file.
+
+<Aside type="note" title="Static Tests">
+We have a specific guide for setting up [Prettier and ESLint](/guides/testing/prettier-eslint).
+</Aside>
 
 ### Unit Tests
 
@@ -71,28 +101,52 @@ With RedwoodSDK, we recommend using [Vitest](https://vitest.dev/) for unit tests
 - [@testing-library/user-event](https://testing-library.com/docs/user-event/intro/): Provides utilities for simulating user interactions like clicks, typing, and keyboard navigation
 - [@testing-library/jest-dom](https://testing-library.com/docs/ecosystem-jest-dom/): Provides custom DOM element matchers
 
-<Aside type="tip" title="Vitest with RedwoodSDK">
+<Aside type="note" title="Vitest with RedwoodSDK">
 We have a specific guide for setting up [Vitest with RedwoodSDK](/guides/testing/vitest).
 </Aside>
 
-
 ### Integration Tests
 
-Tools: Playwright, Cypress, etc.
+Integration testing bridges the gap between unit testing and end-to-end testing by verifying that multiple components work together correctly. While unit tests focus on isolated components, integration tests examine how these components interact in more realistic scenarios.
+
+These tests:
+
+- Validate communication between components
+- Test data flow across component boundaries
+- Verify proper handling of actual DOM events and state changes
+- Check interactions with external dependencies (sometimes using real implementations)
+
+<Aside type="note" title="Playwright and Cypress">
+[Playwright](/guides/testing/playwright) and [Cypress](/guides/testing/cypress) are two of the most popular tools for integration testing. We have specific guides working with each.
+</Aside>
+
+<Aside type="tip" title="Choosing Between Playwright and Cypress">
+Both tools are excellent choices for E2E testing in RedwoodSDK applications. Playwright typically offers better performance and cross-browser testing capabilities, while Cypress provides an exceptional developer experience with its unique debugging features.
+
+Playwright is an open source solution, backed by Microsoft.
+
+Cypress is also open source, but Cypress Cloud is a premium, hosted solution that provides more features.
+
+RedwoodSDK supports both, allowing you to choose based on your team's preferences and requirements.
+</Aside>
 
 ### e2e Tests
+End-to-end (E2E) testing represents the most comprehensive layer of your testing strategy, simulating real user interactions with your application from start to finish. Unlike unit or integration tests, E2E tests verify that all components of your application work together correctly in a production-like environment.
 
-Tools: Playwright, Cypress, etc.
+These tests:
 
-
-
-
-
-
-
+- Testing the application as users would experience it
+- Verifying all layers of the stack work together (frontend, API, database)
+- Catching issues that might not be visible at the unit or integration level
+- Ensuring critical user journeys function correctly end-to-end
+- Validating business requirements from the user's perspective
 
 ## What Should I Test?
-Not all tests are created equal. Some tests are more important than others. For example, there's no need to test the text on a Privacy Policy or a Meet the Team page. These pages generally consist of static text that doesn't change. It would be more beneficial to test the functionality of a shopping cart, that has business logic and financial implications.
+**Not all tests are created equal.** Some tests are more important than others. For example, there's no need to test the text on a Privacy Policy or a Meet the Team page. These pages generally consist of static text that doesn't change. It would be more beneficial to test the functionality of a shopping cart, that has business logic and financial implications.
+
+**Write tests that mirror the user's experience.** There's no need to test whether a prop is getting passed down correctly. The end user doesn't have any concept of what props are being used or how they're being implemented. It's more important to test the user flow through the application.
+
+**Test your code.** This might sound obvious, but it's tempting to test 3rd party libraries and APIs. Trust that the vendors you're using have their own tests.
 
 ## Further Reading
 
