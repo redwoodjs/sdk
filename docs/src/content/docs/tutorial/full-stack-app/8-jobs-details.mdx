@@ -6,7 +6,7 @@ sidebar:
 description: A guide in my new Starlight docs site.
 ---
 
-import { Aside, FileTree } from '@astrojs/starlight/components';
+import { Aside, FileTree } from "@astrojs/starlight/components";
 
 Can you believe it?! This is the last piece we need before deploying our application.
 
@@ -23,26 +23,18 @@ Pretty simple, right?
 Let's start by creating a new file in our `src/app/pages/applications` folder called `Details.tsx`.
 
 <FileTree>
-- src
-  - app
-    - pages
-      - applications
-        - actions.ts
-        - Details.tsx
-        - List.tsx
-        - New.tsx
+  - src - app - pages - applications - actions.ts - Details.tsx - List.tsx -
+  New.tsx
 </FileTree>
 
 We can start with the basics:
 
 ```tsx title="/src/app/pages/applications/Details.tsx"
 const Details = () => {
-  return (
-    <div>Details</div>
-  )
-}
+  return <div>Details</div>;
+};
 
-export { Details }
+export { Details };
 ```
 
 Now, let's jump over to our `worker.tsx` file and update the route for our details page.
@@ -82,13 +74,13 @@ return (
   <InteriorLayout>
     <p>Details</p>
   </InteriorLayout>
-)
+);
 ```
 
 Be sure to import `InteriorLayout` at the top of our file:
 
 ```tsx title="/src/app/pages/applications/Details.tsx"
-import { InteriorLayout } from "@/app/layouts/InteriorLayout"
+import { InteriorLayout } from "@/app/layouts/InteriorLayout";
 ```
 
 Already, that makes a huge difference:
@@ -159,7 +151,7 @@ return (
     </div>
     <p>Details</p>
   </InteriorLayout>
-)
+);
 ```
 
 We need to update the breadcrumb links. The first link is for our Dashboard:
@@ -183,7 +175,7 @@ Everything after `applications/` is the application id.
 We can get all the details we need based on the `RequestInfo` object that gets passed into all pages by default.
 
 ```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={3} {1} "{ params }: RequestInfo"
-import { RequestInfo } from "@redwoodjs/sdk/worker"
+import { RequestInfo } from "rwsdk/worker"
 
 const Details = async ({ params }: RequestInfo) => {
 ```
@@ -195,12 +187,13 @@ The `RequestInfo` object contains:
 - `ctx`: The app context
 
 [You can find more information here.](/reference/sdk-worker/#requestinfo-requestinfo)
+
 </Aside>
 
 Let's `console.log` the `params`, right before our `return` statement:
 
 ```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={6}
-console.log({ params })
+console.log({ params });
 ```
 
 Since this code is running on the server, this will get logged to the terminal, _not_ the browser.
@@ -209,7 +202,7 @@ Since this code is running on the server, this will get logged to the terminal, 
 
 Perfect! We can get the application ID by referencing `params.id`.
 
-Now, we can remove our `console.log` and  make our database call:
+Now, we can remove our `console.log` and make our database call:
 
 ```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={4} {1, 4-8}
 import { db } from "@/db"
@@ -254,7 +247,7 @@ const application = await db.application.findUnique({
   include: {
     company: true,
   },
-})
+});
 ```
 
 and actually, while we're here, let's go ahead and include our `applicationStatus` and `contact` relationships as well. Since the `contact` relationship is through our `company` object, we need to go another level deeper:
@@ -272,7 +265,7 @@ const application = await db.application.findUnique({
       },
     },
   },
-})
+});
 ```
 
 We can get rid of our `console.log` statement and move down the page.
@@ -311,9 +304,9 @@ Below our bread crumbs, let's start with our JSX and then we can come back and s
 At the top of our file, we need to add a few imports:
 
 ```tsx title="/src/app/pages/applications/Details.tsx" showLineNumbers=false
-import { Badge, badgeVariants } from "@/app/components/ui/badge"
-import { Button } from "@/app/components/ui/button"
-import { VariantProps } from "class-variance-authority"
+import { Badge, badgeVariants } from "@/app/components/ui/badge";
+import { Button } from "@/app/components/ui/button";
+import { VariantProps } from "class-variance-authority";
 ```
 
 Now, let's do another pass, this time adding our styles.
@@ -362,12 +355,26 @@ I want to add some space to the left and right side. But, this will also need to
     <div>
       <div className="flex items-center gap-5 mb-1">
         <h1 className="page-title">{application?.jobTitle}</h1>
-        <Badge variant={application?.applicationStatus?.status.toLowerCase() as VariantProps<typeof badgeVariants>['variant']}>{application?.applicationStatus?.status}</Badge>
+        <Badge
+          variant={
+            application?.applicationStatus?.status.toLowerCase() as VariantProps<
+              typeof badgeVariants
+            >["variant"]
+          }
+        >
+          {application?.applicationStatus?.status}
+        </Badge>
       </div>
-      <p><span className="text-zinc-500">at</span> {application?.company?.name}</p>
+      <p>
+        <span className="text-zinc-500">at</span> {application?.company?.name}
+      </p>
     </div>
     <div>
-      <Button><a href={application?.postingUrl as string} target="_blank">View Application</a></Button>
+      <Button>
+        <a href={application?.postingUrl as string} target="_blank">
+          View Application
+        </a>
+      </Button>
     </div>
   </header>
 
@@ -397,7 +404,7 @@ Now, within our CSS file, inside the `@layer components` section, let's add our 
 
 ```css title="/src/styles.css" startLineNumber={319}
 .two-column-grid {
-  @apply grid grid-cols-2 gap-[200px] mb-[75px]
+  @apply grid grid-cols-2 gap-[200px] mb-[75px];
 }
 ```
 
@@ -553,7 +560,9 @@ Now, let's paste our code into our `Details.tsx` file.
   {contacts && (
     <ul>
       {contacts.map((contact) => (
-        <li key={contact.id}><ContactCard contact={contact} /></li>
+        <li key={contact.id}>
+          <ContactCard contact={contact} />
+        </li>
       ))}
     </ul>
   )}
@@ -563,7 +572,7 @@ Now, let's paste our code into our `Details.tsx` file.
 At the top of our file, import the `ContactCard` component:
 
 ```tsx title="/src/app/pages/applications/Details.tsx" showLineNumbers=false
-import { ContactCard } from "@/app/components/ContactCard"
+import { ContactCard } from "@/app/components/ContactCard";
 ```
 
 On our Contact box, we have some linting errors because it cannot find our `contacts`.
@@ -573,13 +582,17 @@ On our Contact box, we have some linting errors because it cannot find our `cont
 We have this data, but it's nested inside our `application.company` object. We can adjust our conditional statement and the object we're mapping over to get rid of the error:
 
 ```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={78} "application?.company?.contacts"
-{application?.company?.contacts && (
-  <ul>
-    {application?.company?.contacts.map((contact) => (
-      <li key={contact.id}><ContactCard contact={contact} /></li>
-    ))}
-  </ul>
-)}
+{
+  application?.company?.contacts && (
+    <ul>
+      {application?.company?.contacts.map((contact) => (
+        <li key={contact.id}>
+          <ContactCard contact={contact} />
+        </li>
+      ))}
+    </ul>
+  );
+}
 ```
 
 Amazing!
@@ -598,28 +611,35 @@ I made the `isEditable` prop optional and set it to `true` by default. This way,
 Now, I'm going to wrap our Delete button with a conditional statement that checks if `isEditable` is `true`:
 
 ```tsx title="/src/app/components/ContactCard.tsx" startLineNumber={22} {1, 10}
-{isEditable && (
-  <div className="hidden group-hover/card:block pr-10 absolute top-1 -left-[37px]">
-    <button role="button"
-      className="hover:bg-black cursor-pointer text-white fill-current rounded-full bg-destructive p-1"
-      onClick={(e) => handleDelete(e)}
-    >
-      <Icon id="close" size={16} />
-    </button>
-  </div>
-)}
+{
+  isEditable && (
+    <div className="hidden group-hover/card:block pr-10 absolute top-1 -left-[37px]">
+      <button
+        role="button"
+        className="hover:bg-black cursor-pointer text-white fill-current rounded-full bg-destructive p-1"
+        onClick={(e) => handleDelete(e)}
+      >
+        <Icon id="close" size={16} />
+      </button>
+    </div>
+  );
+}
 ```
 
 Back on our `Details` page, where we're looping over the `ContactCard` component, we can pass in `false` for the `isEditable` prop:
 
 ```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={78} "isEditable={false}"
-{application?.company?.contacts && (
-  <ul>
-    {application?.company?.contacts.map((contact) => (
-      <li key={contact.id}><ContactCard contact={contact} isEditable={false} /></li>
-    ))}
-  </ul>
-)}
+{
+  application?.company?.contacts && (
+    <ul>
+      {application?.company?.contacts.map((contact) => (
+        <li key={contact.id}>
+          <ContactCard contact={contact} isEditable={false} />
+        </li>
+      ))}
+    </ul>
+  );
+}
 ```
 
 If you test this out in the browser, you'll see that the delete button doesn't appear when you hover over a contact card on the `Details` page, but it still appears on the `New Application` page.
@@ -657,23 +677,16 @@ The `Dialog` component requires button clicks and maintaining state, so we'll ne
 
 Inside our `src/app/components`, let's create a new file and name it `DeleteApplicationButton.tsx`
 
-<FileTree>
-- src/
-  - app/
-    - components/
-      - DeleteApplicationButton.tsx
-</FileTree>
+<FileTree>- src/ - app/ - components/ - DeleteApplicationButton.tsx</FileTree>
 
 Let's start with a bare bones component:
 
 ```tsx title="/src/app/components/DeleteApplicationButton.tsx"
 const DeleteApplicationButton = () => {
-  return (
-    <div>DeleteApplicationButton</div>
-  )
-}
+  return <div>DeleteApplicationButton</div>;
+};
 
-export { DeleteApplicationButton }
+export { DeleteApplicationButton };
 ```
 
 Then, we can replace the placeholder `<div>DeleteApplicationButton</div>` with the Dialog code from shadcn/ui:
@@ -735,7 +748,9 @@ If you look at the DOM that's rendered in the browser, `DialogTrigger` renders a
 
 ```tsx title="/src/app/components/DeleteApplicationButton.tsx" startLineNumber={20} "asChild"
 <DialogTrigger asChild>
-  <Button variant="link" className="text-destructive fill-current"><Icon id="trash" size={16} /> Delete</Button>
+  <Button variant="link" className="text-destructive fill-current">
+    <Icon id="trash" size={16} /> Delete
+  </Button>
 </DialogTrigger>
 ```
 
@@ -749,7 +764,8 @@ For the `DialogDescription`, we can use the text: "This will permanently delete 
 
 ```tsx title="/src/app/components/DeleteApplicationButton.tsx" startLineNumber={26}
 <DialogDescription>
-  This will permanently delete the application and any related companies and contacts. This action cannot be undone.
+  This will permanently delete the application and any related companies and
+  contacts. This action cannot be undone.
 </DialogDescription>
 ```
 
@@ -910,7 +926,9 @@ Then, we can use the `Dialog`'s props, `open` and `onOpenChange`, to control the
 Now, we can update the "Nevermind" button to close the dialog box, by updating the `isOpen` state:
 
 ```tsx title="/src/app/components/DeleteApplicationButton.tsx" startLineNumber={34}
-<Button variant="secondary" onClick={ () => setIsOpen(false) }>Nevermind</Button>
+<Button variant="secondary" onClick={() => setIsOpen(false)}>
+  Nevermind
+</Button>
 ```
 
 If you test this in the browser, the "Nevermind" button should close the dialog box, without deleting the application. 😎
@@ -924,15 +942,8 @@ Our application is looking great, but we're missing one thing: the ability to ed
 Let's take the smarter, not harder approach and start with our `New` application form page and modify it. Let's duplicate the `New.tsx` file and name the new file `Edit.tsx`.
 
 <FileTree>
-- src/
-  - app/
-    - pages/
-      - applications/
-        - actions.ts
-        - Details.tsx
-        - Edit.tsx
-        - List.tsx
-        - New.tsx
+  - src/ - app/ - pages/ - applications/ - actions.ts - Details.tsx - Edit.tsx -
+  List.tsx - New.tsx
 </FileTree>
 
 Inside, we need to rename our component to `Edit`
@@ -996,7 +1007,7 @@ Now, let's update the **Edit** button on the **Details** page so that we can eas
 You'll also need to import the `links` function at the top of our file:
 
 ```tsx title="/src/app/pages/applications/Details.tsx" showLineNumbers=false
-import { link } from "@/app/shared/links"
+import { link } from "@/app/shared/links";
 ```
 
 If you look at this in the browser and click on the **Edit** button, it should take you to a page that looks like the new application form. But, the URL is different.
@@ -1031,13 +1042,13 @@ const Edit = async ({ params, ctx }: RequestInfo) => {
 Be sure to import `RequestInfo` at the top of our file:
 
 ```tsx title="/src/app/pages/applications/Edit.tsx" showLineNumbers=false
-import { RequestInfo } from "@redwoodjs/sdk/worker"
+import { RequestInfo } from "rwsdk/worker";
 ```
 
 If we work our way down the file, we still need to grab _all_ the application statuses to populate the dropdown menu:
 
 ```tsx title="/src/app/pages/applications/Edit.tsx" startLineNumber={22}
-const statuses = await db.applicationStatus.findMany()
+const statuses = await db.applicationStatus.findMany();
 ```
 
 But, we can _delete_ the block of code where we get all the contacts that aren't related to a company:
@@ -1046,9 +1057,9 @@ But, we can _delete_ the block of code where we get all the contacts that aren't
 const contacts = await db.contact.findMany({
   where: {
     companyId: null,
-    userId: ctx.user?.id || ""
-  }
-})
+    userId: ctx.user?.id || "",
+  },
+});
 ```
 
 We already have all the contact information we need through the `application` database call.
@@ -1078,6 +1089,7 @@ Let's keep moving down the file. We can change our `BreadcrumbPage` to display t
 - Then, I changed the `BreadcrumbPage` to `Edit Application`.
 ---
 ```
+
 ![](./images/edit-job-application-breadcrumbs.png)
 
 Looking at the next section:
@@ -1141,17 +1153,16 @@ We updated the types that we're importing from Prisma to remove `Contact` and in
 
 You'll notice that our `Application` type also includes the `company` and `contacts` details.
 
-
 <Aside type="tip" title="Application Type">
 If the Application type looks too long and complex, you can always abstract it into it's own type:
 
 ```tsx
 type ApplicationWithCompanyAndContacts = Application & {
-  applicationStatus: ApplicationStatus
+  applicationStatus: ApplicationStatus;
   company: Company & {
-    contacts: Contact[]
-  }
-}
+    contacts: Contact[];
+  };
+};
 ```
 
 and then reference it like this:
@@ -1160,6 +1171,7 @@ and then reference it like this:
 const EditApplicationForm = ({ statuses, application }:
   { statuses: ApplicationStatus[], application: ApplicationWithCompanyAndContacts }) => {
 ```
+
 </Aside>
 
 Let's work our way through the form, for each input field, we want to set a `defaultValue`, referencing the application details.
@@ -1182,9 +1194,7 @@ Let's work our way through the form, for each input field, we want to set a `def
 Then, for the submit button, change the label from "Create" to "Update":
 
 ```tsx title="/src/app/components/EditApplicationForm.tsx" startLineNumber={77} "Update"
-<Button type="submit">
-  Update
-</Button>
+<Button type="submit">Update</Button>
 ```
 
 Let's add a second button, to cancel:
@@ -1208,7 +1218,10 @@ Let's add a second button, to cancel:
 For the Date Picker, we need to adjust the component slightly. If you try to pass in a `defaultValue`:
 
 ```tsx title="/src/app/components/EditApplicationForm.tsx" showLineNumbers=false
-<DatePicker name="dateApplied" defaultValue={application?.dateApplied?.toISOString() ?? ''} />
+<DatePicker
+  name="dateApplied"
+  defaultValue={application?.dateApplied?.toISOString() ?? ""}
+/>
 ```
 
 It will show a linting error because it's not prepared to accept that prop:
@@ -1263,7 +1276,10 @@ Instead of duplicating the `ContactForm` component, let's make it "smart" enough
 Inside our `EditApplicationForm` component, where we're using our `ContactForm` component, let's pass in the `companyId`:
 
 ```tsx title="/src/app/components/EditApplicationForm.tsx" startLineNumber={125} "companyId={application?.company?.id ?? ''"
-<ContactForm callback={() => setIsContactSheetOpen(false)} companyId={application?.company?.id ?? ''} />
+<ContactForm
+  callback={() => setIsContactSheetOpen(false)}
+  companyId={application?.company?.id ?? ""}
+/>
 ```
 
 Right away, you will see an error because our `ContactForm` isn't expecting a `companyId` prop. Let's fix that:
@@ -1283,7 +1299,7 @@ Inside the `handleSubmit` function, let's `append` the `companyId` to our `formD
 const handleSubmit = async (formData: FormData) => {
   formData.append("companyId", companyId);
   const result = await createContact(formData);
-}
+};
 ```
 
 Now, let's jump over to our `createContact` function, inside our `src/app/pages/applications/actions.tsx` file and get the `companyId` from the form data:
@@ -1341,7 +1357,7 @@ const handleSubmit = async (formData: FormData) => {
   } else {
     console.error(result.error);
   }
-}
+};
 ```
 
 We can remove line `26`, where we're appending the `contacts` to the `formData`.
@@ -1356,7 +1372,7 @@ const handleSubmit = async (formData: FormData) => {
   } else {
     console.error(result.error);
   }
-}
+};
 ```
 
 Be sure to update the import statement at the top of your file:
@@ -1418,11 +1434,12 @@ This is great, the only problem is that the application `id` does not exist in o
 Let's go back to our `EditApplicationForm` and add a `hidden` input field to our form:
 
 ```tsx title="/src/app/components/EditApplicationForm.tsx" startLineNumber={25} "id={application?.id ?? ''}"
-<input type="hidden" id="id" name="id" defaultValue={application?.id ?? ''} />
+<input type="hidden" id="id" name="id" defaultValue={application?.id ?? ""} />
 ```
 
 <Aside type="tip" title="Hidden Input Field">
-This is personal preference, but I like to list any `hidden` inputs next to the submit button, making them easy to find.
+  This is personal preference, but I like to list any `hidden` inputs next to
+  the submit button, making them easy to find.
 </Aside>
 
 Perfect! Now test the update form within the browser. You should be able to edit and save changes to our application.
@@ -1430,5 +1447,6 @@ Perfect! Now test the update form within the browser. You should be able to edit
 💥 We did it! Now, we just need to get our application online where people can use it!
 
 <Aside type="tip" title="Code on GitHub">
-You can find the final code for this step on [GitHub](https://github.com/ahaywood/applywize/tree/main).
+  You can find the final code for this step on
+  [GitHub](https://github.com/ahaywood/applywize/tree/main).
 </Aside>

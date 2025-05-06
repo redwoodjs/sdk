@@ -3,8 +3,8 @@ title: Documents
 description: How to create custom HTML documents for different routes in your Redwood SDK project
 ---
 
-import { Aside, Steps } from '@astrojs/starlight/components';
-import { FileTree } from '@astrojs/starlight/components';
+import { Aside, Steps } from "@astrojs/starlight/components";
+import { FileTree } from "@astrojs/starlight/components";
 
 In RedwoodSDK, Document components give you complete control over the HTML structure of each route. Unlike many frameworks that use a fixed HTML document structure, Redwood lets you define custom documents per route, controlling everything from the doctype to scripts and hydration strategy.
 
@@ -31,21 +31,22 @@ In RedwoodSDK, Document components give you complete control over the HTML struc
     );
     ```
 
-2. Use the Document component in your routes:
+2.  Use the Document component in your routes:
     ```tsx title="src/worker.tsx" "Document" {4,8}
-    import { defineApp } from '@redwoodjs/sdk/worker'
-    import { render, route } from '@redwoodjs/sdk/router'
+    import { defineApp } from 'rwsdk/worker'
+    import { render, route } from 'rwsdk/router'
 
-    import { Document } from '@/app/Document.tsx'
-    import { HomePage } from '@/app/pages/HomePage.tsx'
+        import { Document } from '@/app/Document.tsx'
+        import { HomePage } from '@/app/pages/HomePage.tsx'
 
-    export default defineApp([
-      render(Document, [
-        route('/', HomePage),
-      ])
-    ])
-    ```
-</Steps>
+        export default defineApp([
+          render(Document, [
+            route('/', HomePage),
+          ])
+        ])
+        ```
+
+    </Steps>
 
 ## Multiple Document Types
 
@@ -54,37 +55,33 @@ One of the most powerful features of RedwoodSDK is the ability to use different 
 You can create a specialized Document component for a static document, a realtime document, or an application document.
 
 Then, use different Documents for different routes:
+
 ```tsx title="src/worker.tsx" "StaticDocument" "ApplicationDocument" "RealtimeDocument" collapse={8-11}
-import { defineApp } from '@redwoodjs/sdk/worker'
-import { render, route, prefix } from '@redwoodjs/sdk/router'
+import { defineApp } from "rwsdk/worker";
+import { render, route, prefix } from "rwsdk/router";
 
-import { StaticDocument } from '@/app/StaticDocument.tsx'
-import { ApplicationDocument } from '@/app/ApplicationDocument.tsx'
-import { RealtimeDocument } from '@/app/RealtimeDocument.tsx'
+import { StaticDocument } from "@/app/StaticDocument.tsx";
+import { ApplicationDocument } from "@/app/ApplicationDocument.tsx";
+import { RealtimeDocument } from "@/app/RealtimeDocument.tsx";
 
-import { HomePage } from '@/app/pages/HomePage.tsx'
-import { blogRoutes } from '@/app/routes/blog.tsx'
-import { userRoutes } from '@/app/routes/user.tsx'
-import { dashboardRoutes } from '@/app/routes/dashboard.tsx'
+import { HomePage } from "@/app/pages/HomePage.tsx";
+import { blogRoutes } from "@/app/routes/blog.tsx";
+import { userRoutes } from "@/app/routes/user.tsx";
+import { dashboardRoutes } from "@/app/routes/dashboard.tsx";
 
 export default defineApp([
-  render(StaticDocument, [
-    route('/', HomePage),
-    prefix('/blog', blogRoutes),
-  ]),
+  render(StaticDocument, [route("/", HomePage), prefix("/blog", blogRoutes)]),
 
-  render(ApplicationDocument, [
-    prefix('/app/user', userRoutes),
-  ]),
+  render(ApplicationDocument, [prefix("/app/user", userRoutes)]),
 
-  render(RealtimeDocument, [
-    prefix('/app/dashboard', dashboardRoutes),
-  ])
-])
+  render(RealtimeDocument, [prefix("/app/dashboard", dashboardRoutes)]),
+]);
 ```
 
 <Aside type="tip" title="Performance Optimization">
-  Only include JavaScript when you need it. For static content like blog posts or marketing pages, consider using a StaticDocument with no client-side JavaScript for maximum performance.
+  Only include JavaScript when you need it. For static content like blog posts
+  or marketing pages, consider using a StaticDocument with no client-side
+  JavaScript for maximum performance.
 </Aside>
 
 ## Further Reading
