@@ -334,9 +334,8 @@ describe("transformJsxScriptTagsCode", () => {
     `);
 
     // Ensure we didn't duplicate the import
-    const importCount = (
-      result?.code.match(/from "@redwoodjs\/sdk\/worker"/g) || []
-    ).length;
+    const importCount = (result?.code.match(/from "rwsdk\/worker"/g) || [])
+      .length;
     expect(importCount).toBe(1);
   });
 
