@@ -25,7 +25,7 @@ import ignore from "ignore";
 const TIMEOUT = 30000; // 30 seconds timeout
 const RETRIES = 3;
 
-interface HealthCheckResult {
+interface SmokeTestResult {
   status: string;
   verificationPassed: boolean;
   timestamp?: number;
@@ -35,8 +35,8 @@ interface HealthCheckResult {
   clientTimestamp?: number;
 }
 
-// Define the expected health check response type
-interface HealthCheckResponse {
+// Define the expected smoke test response type
+interface SmokeTestResponse {
   status: string;
   timestamp?: number;
   [key: string]: unknown;
@@ -116,8 +116,8 @@ async function setupTestEnvironment(options: {
     // Change to the new directory for the tests
     process.chdir(targetDir);
 
-    // Create the health check components in the user's project
-    await createHealthCheckComponents(targetDir);
+    // Create the smoke test components in the user's project
+    await createSmokeTestComponents(targetDir);
   }
 
   return resources;
@@ -256,7 +256,7 @@ async function copyProjectToTempDir(projectDir: string): Promise<{
 }
 
 /**
- * Check a URL by performing health checks and realtime upgrade
+ * Check a URL by performing smoke tests and realtime upgrade
  */
 async function checkUrl(url: string, artifactDir?: string): Promise<void> {
   console.log(`🔍 Testing URL: ${url}`);
@@ -266,13 +266,13 @@ async function checkUrl(url: string, artifactDir?: string): Promise<void> {
     const page = await browser.newPage();
     page.setDefaultNavigationTimeout(TIMEOUT);
 
-    // Initial health check
-    await checkUrlHealth(page, url, false);
+    // Initial smoke test
+    await checkUrlSmoke(page, url, false);
 
     // Upgrade to realtime and check again
     await upgradeToRealtime(page);
     await page.reload({ waitUntil: "networkidle0" });
-    await checkUrlHealth(page, url, true);
+    await checkUrlSmoke(page, url, true);
 
     // Take a screenshot for CI artifacts if needed
     const screenshotPath = artifactDir
@@ -292,70 +292,68 @@ async function checkUrl(url: string, artifactDir?: string): Promise<void> {
 }
 
 /**
- * Check health for a specific URL
+ * Check smoke test status for a specific URL
  */
-async function checkUrlHealth(
+async function checkUrlSmoke(
   page: Page,
   url: string,
   isRealtime: boolean,
 ): Promise<void> {
   const phase = isRealtime ? "Post-upgrade" : "Initial";
-  console.log(`🔍 Testing ${phase} health checks at ${url}`);
+  console.log(`🔍 Testing ${phase} smoke tests at ${url}`);
 
-  // Parse the base URL and path to properly handle health check queries
+  // Parse the base URL and path to properly handle smoke test queries
   const parsedUrl = new URL(url);
 
-  // Add __health query parameter, preserving any existing query parameters
-  if (parsedUrl.searchParams.has("__health")) {
-    console.log(`URL already has __health parameter: ${url}`);
+  // Add __smoke_test query parameter, preserving any existing query parameters
+  if (parsedUrl.searchParams.has("__smoke_test")) {
+    console.log(`URL already has __smoke_test parameter: ${url}`);
   } else {
-    parsedUrl.searchParams.append("__health", "1");
+    parsedUrl.searchParams.append("__smoke_test", "1");
   }
 
-  // Navigate to health check page
-  const healthUrl = parsedUrl.toString();
-  console.log(`🔍 Accessing health check page: ${healthUrl}`);
-  await page.goto(healthUrl, { waitUntil: "networkidle0" });
+  // Navigate to smoke test page
+  const smokeUrl = parsedUrl.toString();
+  console.log(`🔍 Accessing smoke test page: ${smokeUrl}`);
+  await page.goto(smokeUrl, { waitUntil: "networkidle0" });
 
-  // Run server-side health check
-  await checkServerHealth(page, phase);
+  // Run server-side smoke test
+  await checkServerSmoke(page, phase);
 
-  // Run client-side health check if available
-  await checkClientHealth(page, phase);
+  // Run client-side smoke test if available
+  await checkClientSmoke(page, phase);
 }
 
 /**
- * Check server-side health
+ * Check server-side smoke test status
  */
-async function checkServerHealth(
+async function checkServerSmoke(
   page: Page,
   phase: string = "",
-): Promise<HealthCheckResult> {
-  console.log(
-    `🔍 Testing server-side health check ${phase ? `(${phase})` : ""}`,
-  );
+): Promise<SmokeTestResult> {
+  console.log(`🔍 Testing server-side smoke test ${phase ? `(${phase})` : ""}`);
 
   const result = await page.evaluate(async () => {
     try {
-      // Look for health status indicator in the page
-      const healthElement = document.querySelector(
+      // Look for smoke test status indicator in the page
+      const smokeElement = document.querySelector(
         '[data-testid="health-status"]',
       );
-      if (!healthElement) {
+      if (!smokeElement) {
         return {
           status: "error",
           verificationPassed: false,
-          error: "Health status element not found in the page",
+          error: "Smoke test status element not found in the page",
         };
       }
 
-      const status = healthElement.getAttribute("data-status");
+      const status = smokeElement.getAttribute("data-status");
       const timestamp = parseInt(
-        healthElement.getAttribute("data-timestamp") || "0",
+        smokeElement.getAttribute("data-timestamp") || "0",
         10,
       );
       const serverTimestamp = parseInt(
-        healthElement.getAttribute("data-server-timestamp") || "0",
+        smokeElement.getAttribute("data-server-timestamp") || "0",
         10,
       );
 
@@ -371,7 +369,7 @@ async function checkServerHealth(
         timestamp,
         serverTimestamp,
         error:
-          status !== "ok" ? "Health check did not return ok status" : undefined,
+          status !== "ok" ? "Smoke test did not return ok status" : undefined,
       };
     } catch (error) {
       return {
@@ -382,20 +380,18 @@ async function checkServerHealth(
     }
   });
 
-  reportHealthCheckResult(result, "Server-side", phase);
+  reportSmokeTestResult(result, "Server-side", phase);
   return result;
 }
 
 /**
- * Check client-side health if refresh button is available
+ * Check client-side smoke test if refresh button is available
  */
-async function checkClientHealth(
+async function checkClientSmoke(
   page: Page,
   phase: string = "",
-): Promise<HealthCheckResult | null> {
-  console.log(
-    `🔍 Testing client-side health check ${phase ? `(${phase})` : ""}`,
-  );
+): Promise<SmokeTestResult | null> {
+  console.log(`🔍 Testing client-side smoke test ${phase ? `(${phase})` : ""}`);
 
   // Check if refresh button exists
   const refreshButtonExists = await page.evaluate(() => {
@@ -405,7 +401,7 @@ async function checkClientHealth(
 
   if (!refreshButtonExists) {
     console.warn(
-      "⚠️ No client-side refresh button found - this is expected only if testing a non-health page",
+      "⚠️ No client-side refresh button found - this is expected only if testing a non-smoke test page",
     );
 
     // Look for any other evidence that the page is working
@@ -414,16 +410,16 @@ async function checkClientHealth(
       throw new Error("Page doesn't appear to be a valid HTML document");
     }
 
-    // Check if we're on a health check page - in which case missing the refresh button is a failure
+    // Check if we're on a smoke test page - in which case missing the refresh button is a failure
     const currentUrl = page.url();
-    if (currentUrl.includes("__health")) {
+    if (currentUrl.includes("__smoke_test")) {
       throw new Error(
-        "Health check page is missing the refresh-health button - this is a test failure",
+        "Smoke test page is missing the refresh-health button - this is a test failure",
       );
     }
 
     console.log(
-      "ℹ️ Basic page structure verified, continuing without client-side health check",
+      "ℹ️ Basic page structure verified, continuing without client-side smoke test",
     );
     return null;
   }
@@ -445,26 +441,26 @@ async function checkClientHealth(
     );
   } catch (error) {
     throw new Error(
-      `Timed out waiting for client-side health check to complete: ${error instanceof Error ? error.message : String(error)}`,
+      `Timed out waiting for client-side smoke test to complete: ${error instanceof Error ? error.message : String(error)}`,
     );
   }
 
   const result = await page.evaluate(async () => {
     try {
-      const healthElement = document.querySelector(
+      const smokeElement = document.querySelector(
         '[data-testid="health-status"]',
       );
-      if (!healthElement) {
+      if (!smokeElement) {
         return {
           status: "error",
           verificationPassed: false,
-          error: "Health status element not found in the page",
+          error: "Smoke test status element not found in the page",
         };
       }
 
-      const status = healthElement.getAttribute("data-status");
+      const status = smokeElement.getAttribute("data-status");
       const clientTimestamp = parseInt(
-        healthElement.getAttribute("data-client-timestamp") || "0",
+        smokeElement.getAttribute("data-client-timestamp") || "0",
         10,
       );
 
@@ -478,7 +474,7 @@ async function checkClientHealth(
         clientTimestamp,
         error:
           status !== "ok"
-            ? "Client health check did not return ok status"
+            ? "Client smoke test did not return ok status"
             : undefined,
       };
     } catch (error) {
@@ -490,7 +486,7 @@ async function checkClientHealth(
     }
   });
 
-  reportHealthCheckResult(result, "Client-side", phase);
+  reportSmokeTestResult(result, "Client-side", phase);
   return result;
 }
 
@@ -744,17 +740,17 @@ async function checkServerUp(url: string, retries = RETRIES): Promise<boolean> {
 }
 
 /**
- * Report the health check result
+ * Report the smoke test result
  */
-function reportHealthCheckResult(
-  result: HealthCheckResult,
+function reportSmokeTestResult(
+  result: SmokeTestResult,
   type: string,
   phase: string = "",
 ): void {
   const phasePrefix = phase ? `(${phase}) ` : "";
 
   if (result.verificationPassed) {
-    console.log(`✅ ${phasePrefix}${type} health check passed!`);
+    console.log(`✅ ${phasePrefix}${type} smoke test passed!`);
     if (result.serverTimestamp) {
       console.log(`✅ Server timestamp: ${result.serverTimestamp}`);
     }
@@ -763,7 +759,7 @@ function reportHealthCheckResult(
     }
   } else {
     throw new Error(
-      `${phasePrefix}${type} health check failed. Status: ${result.status}${result.error ? `. Error: ${result.error}` : ""}`,
+      `${phasePrefix}${type} smoke test failed. Status: ${result.status}${result.error ? `. Error: ${result.error}` : ""}`,
     );
   }
 }
@@ -791,31 +787,31 @@ async function deleteWorker(name: string): Promise<void> {
 }
 
 /**
- * Creates the health check components in the target project directory
+ * Creates the smoke test components in the target project directory
  */
-async function createHealthCheckComponents(targetDir: string): Promise<void> {
-  console.log("Creating health check components in project...");
+async function createSmokeTestComponents(targetDir: string): Promise<void> {
+  console.log("Creating smoke test components in project...");
 
   // Create directories if they don't exist
   const componentsDir = join(targetDir, "src", "app", "components");
   await fs.mkdir(componentsDir, { recursive: true });
 
-  // Create HealthCheck.tsx
-  const healthCheckPath = join(componentsDir, "__HealthCheck.tsx");
-  const healthCheckContent = `"use client";
+  // Create SmokeTest.tsx
+  const smokeTestPath = join(componentsDir, "__SmokeTest.tsx");
+  const smokeTestContent = `"use client";
 
 import React from "react";
 import { RequestInfo } from "rwsdk/worker";
-import { HealthCheckClient } from "./__HealthCheckClient";
+import { SmokeTestClient } from "./__SmokeTestClient";
 
-export const HealthCheckInfo: React.FC = async () => {
+export const SmokeTestInfo: React.FC = async () => {
   const timestamp = Date.now();
   let status = "error";
   let verificationPassed = false;
   let result: any = null;
 
   try {
-    result = await globalThis.__rw.callServer("__health", [timestamp]);
+    result = await globalThis.__rw.callServer("__smoke_test", [timestamp]);
 
     // Check the result
     if (typeof result === "object" && result !== null) {
@@ -826,14 +822,14 @@ export const HealthCheckInfo: React.FC = async () => {
       verificationPassed = true;
     }
   } catch (error) {
-    console.error("Health check failed:", error);
+    console.error("Smoke test failed:", error);
     status = "error";
     result = { error: error instanceof Error ? error.message : String(error) };
   }
 
   return (
     <div
-      id="health-check-container"
+      id="smoke-test-container"
       data-testid="health-status"
       data-status={status}
       data-timestamp={timestamp}
@@ -854,10 +850,10 @@ export const HealthCheckInfo: React.FC = async () => {
           margin: "0 0 10px 0",
         }}
       >
-        Health Check: {status}
+        Smoke Test: {status}
       </h2>
       <div
-        id="health-check-result"
+        id="smoke-test-result"
       >
         {verificationPassed
           ? "Timestamp verification passed ✅"
@@ -878,42 +874,42 @@ export const HealthCheckInfo: React.FC = async () => {
         </pre>
       </details>
 
-      {/* Include the client component for on-demand health checks */}
-      <HealthCheckClient />
+      {/* Include the client component for on-demand smoke tests */}
+      <SmokeTestClient />
     </div>
   );
 };
 
 /**
- * Standalone health check page that conforms to the RouteComponent type
+ * Standalone smoke test page that conforms to the RouteComponent type
  */
-export const HealthCheckPage = (
+export const SmokeTestPage = (
   requestInfo: RequestInfo
 ): React.JSX.Element => {
   return (
     <div style={{ maxWidth: "800px", margin: "0 auto", padding: "40px 20px" }}>
-      <h1>RedwoodJS SDK Health Check</h1>
-      <HealthCheckInfo />
+      <h1>RedwoodJS SDK Smoke Test</h1>
+      <SmokeTestInfo />
       <p style={{ marginTop: "20px" }}>
-        This is a dedicated health check page to verify that your RedwoodJS SDK
+        This is a dedicated smoke test page to verify that your RedwoodJS SDK
         application is functioning correctly. It tests that server-side
         rendering, client-side hydration, and RSC (React Server Components)
         actions are all working properly.
       </p>
       <p>
-        Use the button below to manually trigger a new health check at any time.
+        Use the button below to manually trigger a new smoke test at any time.
       </p>
     </div>
   );
 };`;
 
-  // Create HealthCheckClient.tsx
-  const healthCheckClientPath = join(componentsDir, "__HealthCheckClient.tsx");
-  const healthCheckClientContent = `"use client";
+  // Create SmokeTestClient.tsx
+  const smokeTestClientPath = join(componentsDir, "__SmokeTestClient.tsx");
+  const smokeTestClientContent = `"use client";
 
 import React, { useState } from "react";
 
-interface HealthCheckStatus {
+interface SmokeTestStatus {
   status: string;
   verificationPassed: boolean;
   timestamp: number;
@@ -921,30 +917,30 @@ interface HealthCheckStatus {
   error?: string;
 }
 
-interface HealthCheckResponse {
+interface SmokeTestResponse {
   status: string;
   timestamp?: number;
   [key: string]: unknown;
 }
 
-export const HealthCheckClient: React.FC = () => {
+export const SmokeTestClient: React.FC = () => {
   const [loading, setLoading] = useState(false);
-  const [lastCheck, setLastCheck] = useState<HealthCheckStatus | null>(null);
+  const [lastCheck, setLastCheck] = useState<SmokeTestStatus | null>(null);
 
-  const runHealthCheck = async () => {
+  const runSmokeTest = async () => {
     setLoading(true);
     try {
       // Get current timestamp to verify round-trip
       const timestamp = Date.now();
 
-      const result = await globalThis.__rw.callServer("__health", [timestamp]);
+      const result = await globalThis.__rw.callServer("__smoke_test", [timestamp]);
 
       // Process the result
       let status = "error";
       let verificationPassed = false;
 
       if (typeof result === "object" && result !== null) {
-        const typedResult = result as HealthCheckResponse;
+        const typedResult = result as SmokeTestResponse;
         status = typedResult.status || "error";
         verificationPassed = typedResult.timestamp === timestamp;
       } else if (result === "ok") {
@@ -972,7 +968,7 @@ export const HealthCheckClient: React.FC = () => {
 
   return (
     <div
-      className="health-check-client"
+      className="smoke-test-client"
       style={{
         margin: "20px 0",
         padding: "15px",
@@ -982,10 +978,10 @@ export const HealthCheckClient: React.FC = () => {
         fontFamily: "system-ui, -apple-system, sans-serif",
       }}
     >
-      <h3>Manual Health Check</h3>
+      <h3>Manual Smoke Test</h3>
       <button
         data-testid="refresh-health"
-        onClick={runHealthCheck}
+        onClick={runSmokeTest}
         disabled={loading}
         style={{
           padding: "8px 16px",
@@ -997,7 +993,7 @@ export const HealthCheckClient: React.FC = () => {
           fontWeight: "bold",
         }}
       >
-        {loading ? "Checking..." : "Run Health Check"}
+        {loading ? "Checking..." : "Run Smoke Test"}
       </button>
 
       {lastCheck && (
@@ -1054,7 +1050,7 @@ export const HealthCheckClient: React.FC = () => {
       )}
 
       <div 
-        id="health-check-client-timestamp"
+        id="smoke-test-client-timestamp"
         data-client-timestamp={lastCheck?.timestamp ?? ""}
         data-status={lastCheck?.status ?? ""}
         style={{ display: "none" }}
@@ -1064,12 +1060,12 @@ export const HealthCheckClient: React.FC = () => {
 };`;
 
   // Write the files
-  await fs.writeFile(healthCheckPath, healthCheckContent);
-  await fs.writeFile(healthCheckClientPath, healthCheckClientContent);
+  await fs.writeFile(smokeTestPath, smokeTestContent);
+  await fs.writeFile(smokeTestClientPath, smokeTestClientContent);
 
-  console.log("Created health check components:");
-  console.log(`- ${healthCheckPath}`);
-  console.log(`- ${healthCheckClientPath}`);
+  console.log("Created smoke test components:");
+  console.log(`- ${smokeTestPath}`);
+  console.log(`- ${smokeTestClientPath}`);
 }
 
 // Run the smoke test if this file is executed directly
@@ -1127,4 +1123,4 @@ Examples:
     });
 }
 
-export { main, checkUrl, checkUrlHealth, checkServerHealth, checkClientHealth };
+export { main, checkUrl, checkUrlSmoke, checkServerSmoke, checkClientSmoke };

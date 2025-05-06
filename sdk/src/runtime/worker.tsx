@@ -52,7 +52,7 @@ export const defineApp = (routes: Route[]) => {
       try {
         const url = new URL(request.url);
         const isRSCRequest = url.searchParams.has("__rsc");
-        const isHealthCheck = url.searchParams.has("__health");
+        const isSmokeTest = url.searchParams.has("__smoke_test");
         const userHeaders = new Headers();
 
         const rw = {
@@ -95,9 +95,9 @@ export const defineApp = (routes: Route[]) => {
             pageElement = <PageWrapper />;
           }
 
-          if (isHealthCheck) {
+          if (isSmokeTest) {
             pageElement = (
-              <HealthCheckWrapper>{pageElement}</HealthCheckWrapper>
+              <__SmokeTestWrapper>{pageElement}</__SmokeTestWrapper>
             );
           }
 
@@ -213,17 +213,17 @@ export const defineApp = (routes: Route[]) => {
   };
 };
 
-export const __HealthCheckWrapper: React.FC<{
+export const __SmokeTestWrapper: React.FC<{
   children: React.ReactNode;
 }> = async ({ children }) => {
-  const { HealthCheckInfo } = await import(
+  const { SmokeTestInfo } = await import(
     /* @ts-ignore - Dynamic import path that will only exist at build time for user, and only if this is a smoke test */
-    "src/app/components/__HealthCheck"
+    "src/app/components/__SmokeTest"
   );
 
   return (
     <>
-      <HealthCheckInfo />
+      <SmokeTestInfo />
       {children}
     </>
   );
