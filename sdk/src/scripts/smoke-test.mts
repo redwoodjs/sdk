@@ -116,7 +116,7 @@ async function runSmokeTest() {
 
     // PHASE 1: Initial Health Checks
     console.log(
-      "📡 PHASE 1: Testing initial health checks (before realtime upgrade)"
+      "📡 PHASE 1: Testing initial health checks (before realtime upgrade)",
     );
 
     // Run the initial health checks exactly as they are now
@@ -128,7 +128,7 @@ async function runSmokeTest() {
       try {
         // Look for health status indicator in the page
         const healthElement = document.querySelector(
-          '[data-testid="health-status"]'
+          '[data-testid="health-status"]',
         );
         if (!healthElement) {
           return {
@@ -141,11 +141,11 @@ async function runSmokeTest() {
         const status = healthElement.getAttribute("data-status");
         const timestamp = parseInt(
           healthElement.getAttribute("data-timestamp") || "0",
-          10
+          10,
         );
         const serverTimestamp = parseInt(
           healthElement.getAttribute("data-server-timestamp") || "0",
-          10
+          10,
         );
 
         // Verify timestamps are reasonable (within 60 seconds of now)
@@ -178,7 +178,7 @@ async function runSmokeTest() {
       console.log(`✅ Server timestamp: ${serverHealthResult.serverTimestamp}`);
     } else {
       console.error(
-        `❌ Server-side health check failed. Status: ${serverHealthResult.status}`
+        `❌ Server-side health check failed. Status: ${serverHealthResult.status}`,
       );
       if (serverHealthResult.error) {
         console.error(`❌ Error: ${serverHealthResult.error}`);
@@ -199,21 +199,21 @@ async function runSmokeTest() {
       await page.waitForFunction(
         () => {
           const indicator = document.querySelector(
-            '[data-testid="health-status"]'
+            '[data-testid="health-status"]',
           );
           return (
             indicator &&
             indicator.getAttribute("data-client-timestamp") !== null
           );
         },
-        { timeout: 5000 }
+        { timeout: 5000 },
       );
 
       // Validate client-side health check
       const clientHealthResult = await page.evaluate(async () => {
         try {
           const healthElement = document.querySelector(
-            '[data-testid="health-status"]'
+            '[data-testid="health-status"]',
           );
           if (!healthElement) {
             return {
@@ -226,7 +226,7 @@ async function runSmokeTest() {
           const status = healthElement.getAttribute("data-status");
           const clientTimestamp = parseInt(
             healthElement.getAttribute("data-client-timestamp") || "0",
-            10
+            10,
           );
 
           // Verify timestamp is reasonable (within 60 seconds of now)
@@ -255,11 +255,11 @@ async function runSmokeTest() {
       if (clientHealthResult.verificationPassed) {
         console.log("✅ Client-side health check passed!");
         console.log(
-          `✅ Client timestamp: ${clientHealthResult.clientTimestamp}`
+          `✅ Client timestamp: ${clientHealthResult.clientTimestamp}`,
         );
       } else {
         console.error(
-          `❌ Client-side health check failed. Status: ${clientHealthResult.status}`
+          `❌ Client-side health check failed. Status: ${clientHealthResult.status}`,
         );
         if (clientHealthResult.error) {
           console.error(`❌ Error: ${clientHealthResult.error}`);
@@ -268,7 +268,7 @@ async function runSmokeTest() {
       }
     } else {
       console.log(
-        "⚠️ No client-side refresh button found, skipping client-side health check"
+        "⚠️ No client-side refresh button found, skipping client-side health check",
       );
     }
 
@@ -293,7 +293,7 @@ async function runSmokeTest() {
 
           // Call the upgradeToRealtime method with empty options
           // The method returns Promise<void> so we just need to await it
-          await window.__rw.upgradeToRealtime({});
+          await window.__rw.upgradeToRealtime();
 
           // If we get here, it succeeded
           return { success: true };
@@ -309,7 +309,7 @@ async function runSmokeTest() {
         console.log("✅ Successfully upgraded to realtime mode");
       } else {
         console.error(
-          `❌ Failed to upgrade to realtime mode: ${upgradeResult.message}`
+          `❌ Failed to upgrade to realtime mode: ${upgradeResult.message}`,
         );
         process.exit(1);
       }
@@ -333,7 +333,7 @@ async function runSmokeTest() {
     const postUpgradeServerHealthResult = await page.evaluate(async () => {
       try {
         const healthElement = document.querySelector(
-          '[data-testid="health-status"]'
+          '[data-testid="health-status"]',
         );
         if (!healthElement) {
           return {
@@ -346,11 +346,11 @@ async function runSmokeTest() {
         const status = healthElement.getAttribute("data-status");
         const timestamp = parseInt(
           healthElement.getAttribute("data-timestamp") || "0",
-          10
+          10,
         );
         const serverTimestamp = parseInt(
           healthElement.getAttribute("data-server-timestamp") || "0",
-          10
+          10,
         );
 
         const now = Date.now();
@@ -380,11 +380,11 @@ async function runSmokeTest() {
     if (postUpgradeServerHealthResult.verificationPassed) {
       console.log("✅ Post-upgrade server-side health check passed!");
       console.log(
-        `✅ Server timestamp: ${postUpgradeServerHealthResult.serverTimestamp}`
+        `✅ Server timestamp: ${postUpgradeServerHealthResult.serverTimestamp}`,
       );
     } else {
       console.error(
-        `❌ Post-upgrade server-side health check failed. Status: ${postUpgradeServerHealthResult.status}`
+        `❌ Post-upgrade server-side health check failed. Status: ${postUpgradeServerHealthResult.status}`,
       );
       if (postUpgradeServerHealthResult.error) {
         console.error(`❌ Error: ${postUpgradeServerHealthResult.error}`);
@@ -400,20 +400,20 @@ async function runSmokeTest() {
       await page.waitForFunction(
         () => {
           const indicator = document.querySelector(
-            '[data-testid="health-status"]'
+            '[data-testid="health-status"]',
           );
           return (
             indicator &&
             indicator.getAttribute("data-client-timestamp") !== null
           );
         },
-        { timeout: 5000 }
+        { timeout: 5000 },
       );
 
       const postUpgradeClientHealthResult = await page.evaluate(async () => {
         try {
           const healthElement = document.querySelector(
-            '[data-testid="health-status"]'
+            '[data-testid="health-status"]',
           );
           if (!healthElement) {
             return {
@@ -426,7 +426,7 @@ async function runSmokeTest() {
           const status = healthElement.getAttribute("data-status");
           const clientTimestamp = parseInt(
             healthElement.getAttribute("data-client-timestamp") || "0",
-            10
+            10,
           );
 
           const now = Date.now();
@@ -454,11 +454,11 @@ async function runSmokeTest() {
       if (postUpgradeClientHealthResult.verificationPassed) {
         console.log("✅ Post-upgrade client-side health check passed!");
         console.log(
-          `✅ Client timestamp: ${postUpgradeClientHealthResult.clientTimestamp}`
+          `✅ Client timestamp: ${postUpgradeClientHealthResult.clientTimestamp}`,
         );
       } else {
         console.error(
-          `❌ Post-upgrade client-side health check failed. Status: ${postUpgradeClientHealthResult.status}`
+          `❌ Post-upgrade client-side health check failed. Status: ${postUpgradeClientHealthResult.status}`,
         );
         if (postUpgradeClientHealthResult.error) {
           console.error(`❌ Error: ${postUpgradeClientHealthResult.error}`);
@@ -477,7 +477,7 @@ async function runSmokeTest() {
   }
 
   console.log(
-    "✨ All smoke tests completed successfully, including realtime upgrade!"
+    "✨ All smoke tests completed successfully, including realtime upgrade!",
   );
 }
 

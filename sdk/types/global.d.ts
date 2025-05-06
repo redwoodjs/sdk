@@ -9,7 +9,7 @@ declare global {
   var __rsc_callServer: CallServerCallback;
   var __rw: {
     callServer: CallServerCallback;
-    upgradeToRealtime: (options: { key?: string }) => Promise<void>;
+    upgradeToRealtime: (options?: { key?: string }) => Promise<void>;
   };
   interface ImportMeta {
     readonly env: ImportMetaEnv;
