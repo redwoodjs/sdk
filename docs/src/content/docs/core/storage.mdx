@@ -49,6 +49,10 @@ This will create a bucket called `my-bucket`, which you'll have to bind to your 
 
 This will make the `my-bucket` bucket available via the `env.R2` binding in your worker. You can then use this binding to upload, download, and manage files stored in R2 using the standard R2 API.
 
+### Naming
+
+Bucket names must begin and end with an alphanumeric and can only contain letters (a-z), numbers (0-9), and hyphens (-).
+
 ## Usage
 
 RedwoodSDK uses the standard Request/Response objects. When uploading files, the data is streamed directly from the client to R2 storage. Similarly, when downloading files, they are streamed directly from R2 to the client. This streaming approach means files are processed in small chunks rather than loading the entire file into memory, making it memory-efficient and suitable for handling large files.
@@ -58,9 +62,10 @@ RedwoodSDK uses the standard Request/Response objects. When uploading files, the
 ```tsx title="src/worker.tsx"
 import { defineApp } from "@redwoodjs/sdk/worker";
 import { route } from "@redwoodjs/sdk/router";
+import { env } from "cloudflare:workers";
 
 defineApp([
-  route("/upload/", async ({ request, env }) => {
+  route("/upload/", async ({ request }) => {
     const formData = await request.formData();
     const file = formData.get("file") as File;
 

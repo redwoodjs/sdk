@@ -17,8 +17,9 @@ import { reactConditionsResolverPlugin } from "./reactConditionsResolverPlugin.m
 import { invalidateCacheIfPrismaClientChanged } from "./invalidateCacheIfPrismaClientChanged.mjs";
 import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
 import { pathExists } from "fs-extra";
-import { transformClientEntryPlugin } from "./transformClientEntryPlugin.mjs";
+import { injectVitePreamble } from "./injectVitePreamblePlugin.mjs";
 import { vitePreamblePlugin } from "./vitePreamblePlugin.mjs";
+import { checkIsUsingPrisma } from "./checkIsUsingPrisma.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -32,7 +33,7 @@ export type RedwoodPluginOptions = {
 };
 
 export const redwoodPlugin = async (
-  options: RedwoodPluginOptions = {}
+  options: RedwoodPluginOptions = {},
 ): Promise<InlineConfig["plugins"]> => {
   const projectRootDir = process.cwd();
   const mode =
@@ -40,11 +41,11 @@ export const redwoodPlugin = async (
     (process.env.NODE_ENV === "development" ? "development" : "production");
   const clientEntryPathname = resolve(
     projectRootDir,
-    options?.entry?.client ?? "src/client.tsx"
+    options?.entry?.client ?? "src/client.tsx",
   );
   const workerEntryPathname = resolve(
     projectRootDir,
-    options?.entry?.worker ?? "src/worker.tsx"
+    options?.entry?.worker ?? "src/worker.tsx",
   );
 
   // context(justinvdm, 31 Mar 2025): We assume that if there is no .wrangler directory,
@@ -55,7 +56,7 @@ export const redwoodPlugin = async (
     !(await pathExists(resolve(process.cwd(), ".wrangler")))
   ) {
     console.log(
-      "🚀 Project has no .wrangler directory yet, assuming fresh install: running `npm run dev:init`..."
+      "🚀 Project has no .wrangler directory yet, assuming fresh install: running `npm run dev:init`...",
     );
     await $({
       // context(justinvdm, 01 Apr 2025): We want to avoid interactive migration y/n prompt, so we ignore stdin
@@ -64,8 +65,7 @@ export const redwoodPlugin = async (
     })`npm run dev:init`;
   }
 
-  const usesPrisma = await $({ reject: false })`pnpm prisma --version`;
-  const isUsingPrisma = usesPrisma.exitCode === 0;
+  const isUsingPrisma = checkIsUsingPrisma({ projectRootDir });
 
   // context(justinvdm, 10 Mar 2025): We need to use vite optimizeDeps for all deps to work with @cloudflare/vite-plugin.
   // Thing is, @prisma/client has generated code. So users end up with a stale @prisma/client
@@ -98,7 +98,7 @@ export const redwoodPlugin = async (
     useServerPlugin(),
     useClientPlugin(),
     vitePreamblePlugin(),
-    transformClientEntryPlugin({ clientEntryPathname, mode }),
+    injectVitePreamble({ clientEntryPathname, mode }),
     useClientLookupPlugin({
       rootDir: projectRootDir,
       containingPath: "./src/app",
@@ -109,7 +109,7 @@ export const redwoodPlugin = async (
         "dist",
         "client",
         ".vite",
-        "manifest.json"
+        "manifest.json",
       ),
     }),
     ...(isUsingPrisma

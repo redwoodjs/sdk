@@ -31,7 +31,7 @@ export const realtimeTransport =
         `${protocol}://${window.location.host}/__realtime?` +
           `key=${encodeURIComponent(key)}&` +
           `url=${encodeURIComponent(clientUrl.toString())}&` +
-          `clientId=${encodeURIComponent(clientId)}`
+          `clientId=${encodeURIComponent(clientId)}`,
       );
 
       ws.binaryType = "arraybuffer";
@@ -95,7 +95,7 @@ export const realtimeTransport =
     const ensureWs = (): WebSocket => {
       if (!ws && isConnected) {
         throw new Error(
-          "Inconsistent state: WebSocket is null but marked as connected"
+          "Inconsistent state: WebSocket is null but marked as connected",
         );
       }
       if (!ws || !isConnected) {
@@ -106,7 +106,7 @@ export const realtimeTransport =
 
     const realtimeCallServer = async <Result>(
       id: string | null,
-      args: unknown[]
+      args: unknown[],
     ): Promise<Result | null> => {
       try {
         const socket = ensureWs();
@@ -179,7 +179,7 @@ export const realtimeTransport =
             callServer: realtimeCallServer,
           });
           transportContext.setRscPayload(
-            rscPayload as Promise<ActionResponse<unknown>>
+            rscPayload as Promise<ActionResponse<unknown>>,
           );
           resolve(rscPayload as Result);
         });

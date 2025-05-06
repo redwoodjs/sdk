@@ -113,7 +113,7 @@ You're going to add your own route, insert the `"/ping"` route handler:
 
 ```tsx title="src/worker.tsx" ins={7-9} showLineNumbers=false
 import { defineApp } from "@redwoodjs/sdk/worker";
-import { route } from "@redwoodjs/sdk/router";
+import { route, render } from "@redwoodjs/sdk/router";
 
 export default defineApp([
   render(Document, [

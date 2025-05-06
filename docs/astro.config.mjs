@@ -52,8 +52,64 @@ export default defineConfig({
           ],
         },
         {
+          label: "Tutorial",
+          items: [
+            {
+              label: "Full Stack Applications",
+              collapsed: true,
+              items: [
+                {
+                  label: "Project Setup",
+                  slug: "tutorial/full-stack-app/setup",
+                },
+                {
+                  label: "Creating the Application",
+                  slug: "tutorial/full-stack-app/create-app",
+                },
+                {
+                  label: "Database Setup",
+                  slug: "tutorial/full-stack-app/database-setup",
+                },
+                {
+                  label: "Authentication",
+                  slug: "tutorial/full-stack-app/auth",
+                },
+                {
+                  label: "Jobs List",
+                  slug: "tutorial/full-stack-app/jobs-list",
+                },
+                {
+                  label: "Jobs Form",
+                  slug: "tutorial/full-stack-app/jobs-form",
+                },
+                { label: "Contacts", slug: "tutorial/full-stack-app/contacts" },
+                {
+                  label: "Jobs Details",
+                  slug: "tutorial/full-stack-app/jobs-details",
+                },
+                {
+                  label: "Deploying",
+                  slug: "tutorial/full-stack-app/deploying",
+                },
+              ],
+            }
+          ]
+        },
+        {
           label: "Guides",
           items: [
+            {
+              label: 'Frontend Development',
+              collapsed: true,
+              items: [
+                { label: 'TailwindCSS', slug: 'guides/frontend/tailwind' },
+                { label: 'shadcn/ui', slug: 'guides/frontend/shadcn' },
+                { label: 'Layouts', slug: 'guides/frontend/layouts' },
+                { label: 'Documents', slug: 'guides/frontend/documents' },
+                { label: 'Public Assets', slug: 'guides/frontend/public-assets' },
+                { label: 'Metadata', slug: 'guides/frontend/metadata' },
+              ]
+            },
             { label: "Server Function Streams", slug: "guides/rsc-streams" },
           ],
           collapsed: true,
@@ -66,132 +122,6 @@ export default defineConfig({
           ],
           collapsed: true,
         },
-        // {
-        //   label: "Tutorial",
-        //   items: [
-        //     {
-        //       label: "Full Stack Applications",
-        //       collapsed: true,
-        //       items: [
-        //         {
-        //           label: "Project Setup",
-        //           slug: "tutorial/full-stack-app/setup",
-        //         },
-        //         {
-        //           label: "Creating the Application",
-        //           slug: "tutorial/full-stack-app/create-app",
-        //         },
-        //         {
-        //           label: "Database Setup",
-        //           slug: "tutorial/full-stack-app/database-setup",
-        //         },
-        //         {
-        //           label: "Authentication",
-        //           slug: "tutorial/full-stack-app/auth",
-        //         },
-        //         {
-        //           label: "Jobs List",
-        //           slug: "tutorial/full-stack-app/jobs-list",
-        //         },
-        //         {
-        //           label: "Jobs Form",
-        //           slug: "tutorial/full-stack-app/jobs-form",
-        //         },
-        //         { label: "Contacts", slug: "tutorial/full-stack-app/contacts" },
-        //         {
-        //           label: "Jobs Details",
-        //           slug: "tutorial/full-stack-app/jobs-details",
-        //         },
-        //         {
-        //           label: "Deploying",
-        //           slug: "tutorial/full-stack-app/deploying",
-        //         },
-        //       ],
-        //     },
-        //     {
-        //       label: "Advanced Topics",
-        //       collapsed: true,
-        //       items: [
-        //         {
-        //           label: "Form Validation",
-        //           slug: "tutorial/advanced-topics/validation",
-        //         },
-        //         {
-        //           label: "File Uploads with r2",
-        //           slug: "tutorial/advanced-topics/uploads",
-        //         },
-        //         {
-        //           label: "Attaching Notes",
-        //           slug: "tutorial/advanced-topics/notes",
-        //         },
-        //         {
-        //           label: "Resumes and Cover Letters",
-        //           slug: "tutorial/advanced-topics/resumes-cover-letters",
-        //         },
-        //         {
-        //           label: "Integrating with AI",
-        //           slug: "tutorial/advanced-topics/ai",
-        //         },
-        //         {
-        //           label: "Queues and Background Jobs",
-        //           slug: "tutorial/advanced-topics/queues",
-        //         },
-        //         {
-        //           label: "Email Integration",
-        //           slug: "tutorial/advanced-topics/email",
-        //         },
-        //         {
-        //           label: "Extending Authentication",
-        //           slug: "tutorial/advanced-topics/auth",
-        //         },
-        //         {
-        //           label: "Building a Dashboard",
-        //           slug: "tutorial/advanced-topics/dashboard",
-        //         },
-        //         {
-        //           label: "Testing Your Application",
-        //           slug: "tutorial/advanced-topics/testing",
-        //         },
-        //         { label: "CI/CD", slug: "tutorial/advanced-topics/cicd" },
-        //       ],
-        //     },
-        //   ],
-        // },
-        // {
-        //   label: "Explanations & Concepts",
-        //   collapsed: true,
-        //   items: [
-        //     {
-        //       label: "Architecture Overview",
-        //       slug: "getting-started/installation",
-        //     },
-        //     { label: "Why Redwood SDK?", slug: "getting-started/installation" },
-        //     {
-        //       label: "Server vs Client Components",
-        //       slug: "getting-started/installation",
-        //     },
-        //     {
-        //       label: "Integration Philosophy",
-        //       slug: "getting-started/installation",
-        //     },
-        //     {
-        //       label: "Performance Considerations",
-        //       slug: "getting-started/installation",
-        //     },
-        //     {
-        //       label: "Security Best Practices",
-        //       slug: "getting-started/installation",
-        //     },
-        //     {
-        //       label: "AI Integration Philosophy",
-        //       slug: "getting-started/installation",
-        //     },
-        //     {
-        //       label: "UI Component Strategy",
-        //       slug: "getting-started/installation",
-        //     },
-        //   ],
-        // },
       ],
       head: [
         // Open Graph Meta Tags

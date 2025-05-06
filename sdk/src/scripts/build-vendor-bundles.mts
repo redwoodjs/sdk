@@ -53,7 +53,7 @@ const configs = {
         alias: {
           "react-server-internals": resolve(
             VENDOR_DIST_DIR,
-            `react-server-internals.${mode}.js`
+            `react-server-internals.${mode}.js`,
           ),
         },
       },
@@ -84,7 +84,7 @@ export const buildVendorBundles = async () => {
   for (const mode of modes) {
     const serverInternalsFile = resolve(
       VENDOR_DIST_DIR,
-      `react-server-internals.${mode}.js`
+      `react-server-internals.${mode}.js`,
     );
     const serverInternalsMapFile = `${serverInternalsFile}.map`;
 

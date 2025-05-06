@@ -14,11 +14,7 @@
   line-height: 1.7 !important;
 }
 
-.sidebar-content,
-.sidebar-content a,
-.sidebar-content li {
-  font-size: 1rem !important;
-}
+.sl-markdown-content table td code { white-space: nowrap; }
 
 /* Mobile styles */
 @media screen and (max-width: 640px) {
@@ -68,15 +64,48 @@ li details ul li details summary {
 }
 
 figcaption:not(.header) {
+  background-color: var(--ec-caption-bg) !important;
+  color: var(--ec-caption-text) !important;
+  padding: 0rem 1rem 0.5rem 1rem !important;
+
+  code {
+    font-size: 13px !important;
+    background-color: var(--ec-codeBg) !important;
+    padding: 2px;
+  }
+}
+
+figure figcaption:not(.header) {
+  font-size: 14px !important;
   background-color: var(--sl-color-bg-inline-code) !important;
   color: var(--sl-color-text) !important;
-  padding: 0.5rem !important;
+}
+
+/* Code captions */
+figure:not(:has(> p))>figcaption:not(.header) {
+  padding: 1rem 1rem 0.5rem 1rem !important;
   margin-top: -1rem !important;
+  border-bottom: 1px solid var(--sl-color-gray-5) !important;
+}
+
+/* Image captions */
+figure:has(> p)>figcaption:not(.header) {
+  padding: 1rem 1rem 0.5rem 1rem !important;
+  margin-top: -0.5rem !important;
   border-bottom: 1px solid var(--sl-color-gray-5) !important;
 }
 
 .output {
   background-color: var(--ec-caption-bg) !important;
+}
+
+caption {
+  font-size: 14px !important;
+}
+
+:root {
+  --sl-color-banner-bg: #ffae49;
+  --sl-color-banner-text: #000;
 }
 
 /* Make headings more prominent */
