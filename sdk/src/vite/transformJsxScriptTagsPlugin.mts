@@ -122,7 +122,7 @@ export async function transformJsxScriptTagsCode(
   // Scan for imports only once
   sourceFile.getImportDeclarations().forEach((importDecl) => {
     const moduleSpecifier = importDecl.getModuleSpecifierValue();
-    if (moduleSpecifier === "@redwoodjs/sdk/worker") {
+    if (moduleSpecifier === "rwsdk/worker") {
       sdkWorkerImportDecl = importDecl;
       // Check if requestInfo is already imported
       if (
@@ -359,7 +359,7 @@ export async function transformJsxScriptTagsCode(
     } else {
       // Add new import declaration
       sourceFile.addImportDeclaration({
-        moduleSpecifier: "@redwoodjs/sdk/worker",
+        moduleSpecifier: "rwsdk/worker",
         namedImports: ["requestInfo"],
       });
     }

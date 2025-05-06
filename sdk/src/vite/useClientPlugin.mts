@@ -57,7 +57,7 @@ export async function transformUseClientCode(
 
   // Add import declaration properly through the AST
   sourceFile.addImportDeclaration({
-    moduleSpecifier: "@redwoodjs/sdk/worker",
+    moduleSpecifier: "rwsdk/worker",
     namedImports: [{ name: "registerClientReference" }],
   });
 

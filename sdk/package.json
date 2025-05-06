@@ -1,5 +1,5 @@
 {
-  "name": "@redwoodjs/sdk",
+  "name": "rwsdk",
   "version": "0.0.79",
   "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime",
   "type": "module",

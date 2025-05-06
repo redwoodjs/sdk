@@ -6,7 +6,13 @@ sidebar:
 description: A guide in my new Starlight docs site.
 ---
 
-import { FileTree, Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
+import {
+  FileTree,
+  Aside,
+  Steps,
+  Tabs,
+  TabItem,
+} from "@astrojs/starlight/components";
 
 ## Project Generation and Structure
 
@@ -14,28 +20,16 @@ The first thing we'll do is set up our project.
 
 <Tabs>
   <TabItem label="pnpm">
-  ```shell
-  npx degit redwoodjs/sdk/starters/standard applywize
-  cd applywize
-  pnpm install
-  pnpm dev
-  ```
+    ```shell npx degit redwoodjs/sdk/starters/standard applywize cd applywize
+    pnpm install pnpm dev ```
   </TabItem>
   <TabItem label="npm">
-  ```shell
-  npx degit redwoodjs/sdk/starters/standard applywize
-  cd applywize
-  npm install
-  npm run dev
-  ```
+    ```shell npx degit redwoodjs/sdk/starters/standard applywize cd applywize
+    npm install npm run dev ```
   </TabItem>
   <TabItem label="yarn">
-  ```shell
-  npx degit redwoodjs/sdk/starters/standard applywize
-  cd applywize
-  yarn install
-  yarn run dev
-  ```
+    ```shell npx degit redwoodjs/sdk/starters/standard applywize cd applywize
+    yarn install yarn run dev ```
   </TabItem>
 </Tabs>
 
@@ -50,48 +44,28 @@ The commands you just ran created a directory called `applywize` with the Redwoo
 Inside, the `applywize` directory, you should have the following files and folders:
 
 <FileTree>
-- .dev.vars # environment variables for development
-- .env # environment variables
-- .env.example # example environment variables
-- .gitignore # files to ignore in git
-- .prettierrc # prettier configuration
-- .wrangler # Cloudflare configuration
-- migrations # database migrations
-  - 0001_init.sql # initial migration
-- node_modules # dependencies
-- package.json # lists all the dependencies and scripts
-- pnpm-lock.yaml # lock file for pnpm
-- prisma # prisma configuration
-  - schema.prisma # database schema
-- README.md # project overview
-- src
-  - app
-    - Document.tsx # Main HTML document
-    - headers.ts # Sets up page headers
-    - pages
-      - Home.tsx # Home page
-      - user
-        - functions.ts # authentication functions
-        - Login.tsx # Login page
-        - routes.ts # authentication routes
-      - shared
-        - links.ts # list of links
-  - client.tsx # initializes the client
-  - db.ts # database client
-  - scripts
-    - seed.ts # seed the database
-  - session # sets up sessions for authentication
-  - worker.tsx # Cloudflare worker
-- tsconfig.json # TypeScript configuration
-- types
-  - vite.d.ts # Vite types
-- vite.config.mts # Vite configuration
-- worker-configuration.d.ts # Generated types based on your worker config
-- wrangler.jsonc # Cloudflare configuration
+  - .dev.vars # environment variables for development - .env # environment
+  variables - .env.example # example environment variables - .gitignore # files
+  to ignore in git - .prettierrc # prettier configuration - .wrangler #
+  Cloudflare configuration - migrations # database migrations - 0001_init.sql #
+  initial migration - node_modules # dependencies - package.json # lists all the
+  dependencies and scripts - pnpm-lock.yaml # lock file for pnpm - prisma #
+  prisma configuration - schema.prisma # database schema - README.md # project
+  overview - src - app - Document.tsx # Main HTML document - headers.ts # Sets
+  up page headers - pages - Home.tsx # Home page - user - functions.ts #
+  authentication functions - Login.tsx # Login page - routes.ts # authentication
+  routes - shared - links.ts # list of links - client.tsx # initializes the
+  client - db.ts # database client - scripts - seed.ts # seed the database -
+  session # sets up sessions for authentication - worker.tsx # Cloudflare worker
+  - tsconfig.json # TypeScript configuration - types - vite.d.ts # Vite types -
+  vite.config.mts # Vite configuration - worker-configuration.d.ts # Generated
+  types based on your worker config - wrangler.jsonc # Cloudflare configuration
 </FileTree>
 
 <Aside type="note" title="Starter Projects">
-  For the tutorial, we're starting with the standard starter project. When you start building your own projects, if you use a different starter template, the files and folders may vary slightly.
+  For the tutorial, we're starting with the standard starter project. When you
+  start building your own projects, if you use a different starter template, the
+  files and folders may vary slightly.
 </Aside>
 
 ## Setting up our Database
@@ -118,18 +92,20 @@ Copy the database ID provided and paste it into your project's `wrangler.jsonc` 
     {
       "binding": "DB",
       "database_name": "__change_me__",
-      "database_id": "__change_me__"
-    }
-  ]
+      "database_id": "__change_me__",
+    },
+  ],
 }
 ```
 
 While we're in our `wrangler.jsonc` file, let's also update our worker name:
+
 ```jsonc title="wrangler.jsonc" startLineNumber={6}
 "name": "applywize",
 ```
 
 and the `APP_name`:
+
 ```jsonc title="wrangler.jsonc" startLineNumber={36}
 "vars": {
   "APP_NAME": "applywize"
@@ -137,6 +113,7 @@ and the `APP_name`:
 ```
 
 ### Generating Secret Keys
+
 Next, we need to generate a strong `SECRET_KEY` for signing session IDs. You can generate a secure random key using OpenSSL. This command will generate a 32-byte random key and encode it as a base64 string.
 
 ```shell
@@ -154,7 +131,8 @@ npx wrangler secret put SECRET_KEY
 ![](./images/wrangler-secret-key.png)
 
 <Aside type="caution" title="Secrets">
-  Never use the same secret key for development and production environments, and avoid committing your secret keys to version control.
+  Never use the same secret key for development and production environments, and
+  avoid committing your secret keys to version control.
 </Aside>
 
 For production, set your domain as the `RP_ID` via Cloudflare secrets:
@@ -168,10 +146,12 @@ npx wrangler secret put RP_ID
 When prompted, enter your production domain (e.g., my-app.example.com).
 
 <Aside type="caution" title="RP_ID">
-The RP_ID must be a valid domain that matches your application's origin. For security reasons, WebAuthn will not work if these don't match.
+  The RP_ID must be a valid domain that matches your application's origin. For
+  security reasons, WebAuthn will not work if these don't match.
 </Aside>
 
 ### Setting up Cloudflare Turnstile
+
 Next, let's set up Cloudflare Turnstile for bot protection.
 
 <Steps>
@@ -233,54 +213,56 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
     </Tabs>
 
 2. Configure the Vite Plugin
-    ```ts ins="import tailwindcss from '@tailwindcss/vite'" ins="tailwindcss()," title="vite.config.mts"
-    import { defineConfig } from "vite";
-    import tailwindcss from '@tailwindcss/vite'
-    import { redwood } from "@redwoodjs/sdk/vite";
 
-    export default defineConfig({
-      environments: {
-        ssr: {},
-      },
-      plugins: [
-        redwood(),
-        tailwindcss(),
-      ],
-    });
-    ```
+   ```ts ins="import tailwindcss from '@tailwindcss/vite'" ins="tailwindcss()," title="vite.config.mts"
+   import { defineConfig } from "vite";
+   import tailwindcss from "@tailwindcss/vite";
+   import { redwood } from "rwsdk/vite";
 
-    <Aside type="note" title="Environment Configuration">
-    Tailwindcss currently uses [the non-deprecated internal `createResolver()` vite API method.](https://github.com/tailwindlabs/tailwindcss/blob/main/packages/%40tailwindcss-vite/src/index.ts#L22) [The code and its docstring indicate that it relies on an `ssr` being present](https://github.com/vitejs/vite/blob/c0e3dba3108e479ab839205cfb046db327bdaf43/packages/vite/src/node/config.ts#L1498).
+   export default defineConfig({
+     environments: {
+       ssr: {},
+     },
+     plugins: [redwood(), tailwindcss()],
+   });
+   ```
 
-    This isn't the case for us, since we only have a `worker` environment instead of `ssr`. To prevent builds from getting blocked on this, we stub out the ssr environment here.
-    </Aside>
+   <Aside type="note" title="Environment Configuration">
+Tailwindcss currently uses [the non-deprecated internal `createResolver()` vite API method.](https://github.com/tailwindlabs/tailwindcss/blob/main/packages/%40tailwindcss-vite/src/index.ts#L22) [The code and its docstring indicate that it relies on an `ssr` being present](https://github.com/vitejs/vite/blob/c0e3dba3108e479ab839205cfb046db327bdaf43/packages/vite/src/node/config.ts#L1498).
+
+   This isn't the case for us, since we only have a `worker` environment instead of `ssr`. To prevent builds from getting blocked on this, we stub out the ssr environment here.
+
+   </Aside>
 
 3. Import Tailwind CSS. (You'll need to create the `src/app/styles.css` file.)
-    ```css title="src/app/styles.css"
-    @import "tailwindcss";
-    ```
+
+   ```css title="src/app/styles.css"
+   @import "tailwindcss";
+   ```
 
 4. Import the CSS file at the top of your file and include a `link` tag in the `head` of the `Document.tsx` file.
-    ```tsx title="src/app/Document.tsx" {3}
-    import styles from "./styles.css?url";
-    ...
-    <head>
-      ...
-      <link rel="stylesheet" href={styles} />
-      ...
-    </head>
-    ```
+
+   ```tsx title="src/app/Document.tsx" {3}
+   import styles from "./styles.css?url";
+   ...
+   <head>
+     ...
+     <link rel="stylesheet" href={styles} />
+     ...
+   </head>
+   ```
 
 5. Now, you can run `pnpm run dev` and go to `http://localhost:5173/user/login`.
-    ```bash
+   `bash
     pnpm run dev
-    ```
-    ![](./images/passkey-starter-tailwind-working.png)
-    For reference, before adding TailwindCSS, the login page looked like this:
-    ![](./images/passkey-form-before-tailwind.png)
-</Steps>
+    `
+   ![](./images/passkey-starter-tailwind-working.png)
+   For reference, before adding TailwindCSS, the login page looked like this:
+   ![](./images/passkey-form-before-tailwind.png)
+   </Steps>
 
 You can test this even further by going to the `src/app/pages/user/Login.tsx` file and adding an `h1` at the top of the return statement:
+
 ```tsx title="src/app/pages/user/Login.tsx" startLineNumber={63} collapse={4-17} {3}
 return (
   <>
@@ -330,8 +312,8 @@ Next, select the `@import` radio button and copy the code.
 Paste the code at the top of our `styles.css` file. Then, remove the `<style>` tags:
 
 ```css title="src/app/styles.css" {1-2}
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@500;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap");
 
 @import "tailwindcss";
 ```
@@ -339,7 +321,8 @@ Paste the code at the top of our `styles.css` file. Then, remove the `<style>` t
 Next, we need to add a custom configuration. In TailwindCSS v4, all customizations happen in the CSS file, _not_ `tailwind.config.js`.
 
 <Aside type="note" title="tailwind.config.js Support">
-Technically, you can still use `tailwind.config.js`, but it's not recommended as long-term support is unknown.
+  Technically, you can still use `tailwind.config.js`, but it's not recommended
+  as long-term support is unknown.
 </Aside>
 
 Below the `@import "tailwindcss";` line, add the following:
@@ -352,8 +335,10 @@ Below the `@import "tailwindcss";` line, add the following:
 ```
 
 <Aside type="note" title="Theme Variables">
-In Tailwind, all theme variables are defined inside the `@theme` directive. These influence which utility classes exist within our project.
-You can find more information in the [TailwindCSS Docs.](https://tailwindcss.com/docs/theme)
+  In Tailwind, all theme variables are defined inside the `@theme` directive.
+  These influence which utility classes exist within our project. You can find
+  more information in the [TailwindCSS
+  Docs.](https://tailwindcss.com/docs/theme)
 </Aside>
 
 If you're unsure how the font-family is written, you can find it in the CSS class definition on the Google Fonts page. Here, Poppins and Inter are both in quotes and capitalized.
@@ -365,38 +350,38 @@ Now, you can use the class `font-display` and `font-body` in your project.
 Before this will work in production, we need to update our security headers to allow `googleapis` and `fonts.gstatic`:
 
 ```tsx title="src/app/headers.ts" collapse={1-26} {30}
-import { RouteMiddleware } from "@redwoodjs/sdk/router";
-import { IS_DEV } from "@redwoodjs/sdk/constants";
+import { RouteMiddleware } from "rwsdk/router";
+import { IS_DEV } from "rwsdk/constants";
 
 export const setCommonHeaders =
-(): RouteMiddleware =>
-({ headers, rw: { nonce } }) => {
-  if (!IS_DEV) {
-    // Forces browsers to always use HTTPS for a specified time period (2 years)
+  (): RouteMiddleware =>
+  ({ headers, rw: { nonce } }) => {
+    if (!IS_DEV) {
+      // Forces browsers to always use HTTPS for a specified time period (2 years)
+      headers.set(
+        "Strict-Transport-Security",
+        "max-age=63072000; includeSubDomains; preload",
+      );
+    }
+
+    // Forces browser to use the declared content-type instead of trying to guess/sniff it
+    headers.set("X-Content-Type-Options", "nosniff");
+
+    // Stops browsers from sending the referring webpage URL in HTTP headers
+    headers.set("Referrer-Policy", "no-referrer");
+
+    // Explicitly disables access to specific browser features/APIs
     headers.set(
-      "Strict-Transport-Security",
-      "max-age=63072000; includeSubDomains; preload"
+      "Permissions-Policy",
+      "geolocation=(), microphone=(), camera=()",
     );
-  }
 
-  // Forces browser to use the declared content-type instead of trying to guess/sniff it
-  headers.set("X-Content-Type-Options", "nosniff");
-
-  // Stops browsers from sending the referring webpage URL in HTTP headers
-  headers.set("Referrer-Policy", "no-referrer");
-
-  // Explicitly disables access to specific browser features/APIs
-  headers.set(
-    "Permissions-Policy",
-    "geolocation=(), microphone=(), camera=()"
-  );
-
-  // Defines trusted sources for content loading and script execution:
-  headers.set(
-    "Content-Security-Policy",
-    `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-src https://challenges.cloudflare.com; object-src 'none';`
-  );
-};
+    // Defines trusted sources for content loading and script execution:
+    headers.set(
+      "Content-Security-Policy",
+      `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; frame-src https://challenges.cloudflare.com; object-src 'none';`,
+    );
+  };
 ```
 
 ### Setting up our Custom Color Palette
@@ -435,8 +420,8 @@ Full `styles.css` file
 </summary>
 
 ```css title="src/app/styles.css"
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@500;700&display=swap");
+@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap");
 
 @import "tailwindcss";
 
@@ -458,6 +443,7 @@ Full `styles.css` file
   --color-tag-offer: #aae198;
 }
 ```
+
 </details>
 
 Let's test to make sure our custom colors are working. On the `Login.tsx` file, let's change the React fragment `<></>` to a `<main>` tag and add a `className` of `bg-bg`:
@@ -519,7 +505,7 @@ You can also use the [shadcn/ui Vite Installation instructions](https://ui.shadc
     },
     ```
 
-2. Add path aliases to `tsconfig.json`:
+2.  Add path aliases to `tsconfig.json`:
     ```diff title="tsconfig.json"
     {
       "compilerOptions": {
@@ -530,16 +516,17 @@ You can also use the [shadcn/ui Vite Installation instructions](https://ui.shadc
       }
     }
     ```
-4. Install `@types/node`
+3.  Install `@types/node`
     ```bash
     pnpm add -D @types/node
     ```
-5. Add resolve alias config to `vite.config.mts`:
+4.  Add resolve alias config to `vite.config.mts`:
+
     ```diff title="vite.config.mts"
     +import path from "path"
     import { defineConfig } from "vite";
     import tailwindcss from "@tailwindcss/vite"
-    import { redwood } from "@redwoodjs/sdk/vite";
+    import { redwood } from "rwsdk/vite";
 
     export default defineConfig({
       plugins: [redwood(), tailwindcss()],
@@ -550,54 +537,49 @@ You can also use the [shadcn/ui Vite Installation instructions](https://ui.shadc
     + },
     )
     ```
-6. You should now be able to add components:
-    ```bash
+
+5.  You should now be able to add components:
+    `bash
     pnpm dlx shadcn@latest add
-    ```
+    `
 
-    Select the following by hitting the `Space` key:
-    - Alert
-    - Avatar
-    - Badge
-    - Breadcrumb
-    - Button
-    - Calendar
-    - Dialog
-    - Popover
-    - Select
-    - Sheet
-    - Sonner
-    - Table
+        Select the following by hitting the `Space` key:
+        - Alert
+        - Avatar
+        - Badge
+        - Breadcrumb
+        - Button
+        - Calendar
+        - Dialog
+        - Popover
+        - Select
+        - Sheet
+        - Sonner
+        - Table
 
-    ![](./images/terminal-shadcn-bulk-add.png)
+        ![](./images/terminal-shadcn-bulk-add.png)
 
-    When you've selected all the components you want to add, hit `Enter`. This will add all the components inside the `src/app/components/ui` folder.
+        When you've selected all the components you want to add, hit `Enter`. This will add all the components inside the `src/app/components/ui` folder.
 
-    ![](./images/terminal-shadcn-bulk-add-result.png)
+        ![](./images/terminal-shadcn-bulk-add-result.png)
 
-    This will install all of our components into the `src/app/components/ui` folder.
+        This will install all of our components into the `src/app/components/ui` folder.
 
-    ![](./images/shad-cn-components-in-finder.png)
+        ![](./images/shad-cn-components-in-finder.png)
 
-    <Aside type="tip" title="Adding shadcn/ui Components individually">
-      Instead of selecting components from a list, you can also add them individually by running `pnpm dlx shadcn@latest add <component-name>`.
-    </Aside>
+        <Aside type="tip" title="Adding shadcn/ui Components individually">
+          Instead of selecting components from a list, you can also add them individually by running `pnpm dlx shadcn@latest add <component-name>`.
+        </Aside>
 
-    <Aside type="note" title="shadcn/ui Components">
-      You can find a list of all the components [here](https://ui.shadcn.com/docs/components).
-    </Aside>
-</Steps>
+        <Aside type="note" title="shadcn/ui Components">
+          You can find a list of all the components [here](https://ui.shadcn.com/docs/components).
+        </Aside>
+
+    </Steps>
 
 Even though we specified the path to the `lib` directory in the `components.json` file, the script still placed the folder inside the `src` directory. You'll need to move it into the `app` directory.
 
-<FileTree>
-- src/
-  - app/
-    - components/
-      - ui/
-    - lib/
-      - utils.ts
-</FileTree>
+<FileTree>- src/ - app/ - components/ - ui/ - lib/ - utils.ts</FileTree>
 
 We also need the date picker component, but it can't be installed using the `pnpm dlx shadcn@latest add` command.
 
@@ -608,33 +590,34 @@ Within the `src/app/components/ui` folder, create a new file called `datepicker.
 <Aside type="note" title="Component Naming Conventions">
   Normally, I like to capitalize and camel case my component file names (`DatePicker.tsx`), but since this code is coming from shadcn/ui, I'll use their naming convention and put and put it in the `components/ui` folder.
 
-  Any custom components we make, will live in the `components` directory and be named like `CustomComponent.tsx`.
+Any custom components we make, will live in the `components` directory and be named like `CustomComponent.tsx`.
 
-  Any shadcn/ui components will live in the `components/ui` folder.
+Any shadcn/ui components will live in the `components/ui` folder.
 
-  Even though, we're creating the `datepicker.tsx` file manually, it's still a shadcn/ui component, so it will still live in the `components/ui` folder.
+Even though, we're creating the `datepicker.tsx` file manually, it's still a shadcn/ui component, so it will still live in the `components/ui` folder.
+
 </Aside>
 
 Add the following code to the `datepicker.tsx` file:
 
 ```tsx title="src/app/components/ui/datepicker.tsx"
-"use client"
+"use client";
 
-import * as React from "react"
-import { format } from "date-fns"
-import { Calendar as CalendarIcon } from "lucide-react"
+import * as React from "react";
+import { format } from "date-fns";
+import { Calendar as CalendarIcon } from "lucide-react";
 
-import { cn } from "@/app/lib/utils"
-import { Button } from "@/app/components/ui/button"
-import { Calendar } from "@/app/components/ui/calendar"
+import { cn } from "@/app/lib/utils";
+import { Button } from "@/app/components/ui/button";
+import { Calendar } from "@/app/components/ui/calendar";
 import {
   Popover,
   PopoverContent,
   PopoverTrigger,
-} from "@/app/components/ui/popover"
+} from "@/app/components/ui/popover";
 
 export function DatePicker() {
-  const [date, setDate] = React.useState<Date>()
+  const [date, setDate] = React.useState<Date>();
 
   return (
     <Popover>
@@ -643,7 +626,7 @@ export function DatePicker() {
           variant={"outline"}
           className={cn(
             "w-[280px] justify-start text-left font-normal",
-            !date && "text-muted-foreground"
+            !date && "text-muted-foreground",
           )}
         >
           <CalendarIcon className="mr-2 h-4 w-4" />
@@ -659,7 +642,7 @@ export function DatePicker() {
         />
       </PopoverContent>
     </Popover>
-  )
+  );
 }
 ```
 
@@ -727,11 +710,11 @@ Now, when you visit https://localhost:5173/user/login, you should see styled but
 Perfect, now that we have our project setup, and all the frontend components installed, [let's start building the backend.](/tutorial/full-stack-app/database-setup)
 
 <Aside type="tip" title="Code on GitHub">
-You can find the final code for this step on [GitHub](https://github.com/ahaywood/applywize/tree/main/end-of-2).
+  You can find the final code for this step on
+  [GitHub](https://github.com/ahaywood/applywize/tree/main/end-of-2).
 </Aside>
 
 ## Further reading
 
 - [TailwindCSS](https://tailwindcss.com/)
 - [shadcn/ui](https://ui.shadcn.com/)
-

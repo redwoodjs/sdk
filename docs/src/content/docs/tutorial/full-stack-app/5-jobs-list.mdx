@@ -6,7 +6,7 @@ sidebar:
 description: A guide in my new Starlight docs site.
 ---
 
-import { Aside, FileTree } from '@astrojs/starlight/components';
+import { Aside, FileTree } from "@astrojs/starlight/components";
 
 The jobs application list page lists all the jobs that we've applied for. For this tutorial, it will also serve as the Dashboard.
 
@@ -21,25 +21,17 @@ But, first, we need a page and a route.
 In the `src > app > pages` directory, create a new folder called `applications`. Inside, create a file called `List.tsx`.
 
 <FileTree>
-- src/
-  - app/
-    - pages/
-      - applications/
-        - List.tsx
-      - auth/
-      - Home.tsx
+  - src/ - app/ - pages/ - applications/ - List.tsx - auth/ - Home.tsx
 </FileTree>
 
 We can stub out a basic page, just to make sure it's loading correctly.
 
 ```tsx title="src/app/pages/applications/List.tsx"
 const List = () => {
-  return (
-    <div>List</div>
-  )
-}
+  return <div>List</div>;
+};
 
-export { List }
+export { List };
 ```
 
 Now, within our `worker.tsx` file, we can add a route for our new page.
@@ -72,8 +64,10 @@ prefix("/applications", [
           headers: { Location: "/user/login" },
         });
       }
-    }, List]),
-])
+    },
+    List,
+  ]),
+]);
 ```
 
 This would get cumbersome (and annoying) if we have to do this for every.single.route we wanted to protect. Let's abstract this code into a reusable function.
@@ -95,9 +89,7 @@ We're passing in the `ctx` that we get with each request. Then, we're checking t
 Then, we can update our `/applications` route to use `isAuthenticated`:
 
 ```tsx startLineNumber=75
-prefix("/applications", [
-  route("/", [isAuthenticated, List]),
-])
+prefix("/applications", [route("/", [isAuthenticated, List])]);
 ```
 
 Now, we can also update our protected page route to use the `isAuthenticated` function, too:
@@ -121,18 +113,16 @@ index([ isAuthenticated, Home ]),
 Be sure to import `index` at the top of the file:
 
 ```tsx startLineNumber=2 "index"
-import { route, render, prefix, index } from "@redwoodjs/sdk/router";
+import { route, render, prefix, index } from "rwsdk/router";
 ```
 
 Test it out. 👨‍🍳 Chef's kiss! If you're logged in, you should see the "List" text. If you're not logged in, you'll be redirected to the login page.
 
 <Aside type="tip" title="Using multiple layers of Middleware">
-  You can use multiple layers of middleware, by continuing to write functions and adding them to the array. They'll run in the order they're listed. For example:
-  ```tsx
-  prefix("/applications", [
-    route("/", [isAuthenticated, isAdmin, List]),
-  ])
-  ```
+  You can use multiple layers of middleware, by continuing to write functions
+  and adding them to the array. They'll run in the order they're listed. For
+  example: ```tsx prefix("/applications", [ route("/", [isAuthenticated,
+  isAdmin, List]), ]) ```
 </Aside>
 
 Now, let's get some data into the database.
@@ -140,6 +130,7 @@ Now, let's get some data into the database.
 We can do this one of two ways:
 
 ### Option 1: Create a Seed File
+
 [Earlier, I mentioned that sometimes I'll create multiple seed files with various purposes.](/tutorial/full-stack-app/database-setup#seed-the-database). This is a perfect opportunity to create a separate file just for adding job applications to our database.
 
 Inside the `src/scripts` directory, create a new file called `applicationSeed.ts`.
@@ -147,7 +138,7 @@ Inside the `src/scripts` directory, create a new file called `applicationSeed.ts
 Let's stub it out:
 
 ```tsx title="src/scripts/applicationSeed.ts"
-import { defineScript } from "@redwoodjs/sdk/worker";
+import { defineScript } from "rwsdk/worker";
 import { db, setupDb } from "@/db";
 
 export default defineScript(async ({ env }) => {
@@ -265,7 +256,7 @@ This time instead of using an object with a `connect` key, we'll use a `create` 
 <summary>Complete applicationSeed.ts file</summary>
 
 ```tsx title="src/scripts/applicationSeed.ts"
-import { defineScript } from "@redwoodjs/sdk/worker";
+import { defineScript } from "rwsdk/worker";
 import { db, setupDb } from "@/db";
 
 export default defineScript(async ({ env }) => {
@@ -303,7 +294,7 @@ export default defineScript(async ({ env }) => {
         jobDescription: "Software Engineer",
         postingUrl: "https://redwoodjs.com",
         dateApplied: new Date(),
-      }
+      },
     });
   };
 
@@ -322,12 +313,12 @@ Prisma also has a `createMany` function where you can create multiple entries at
 - There's limited support for complex relational constraints and upsert operations.
 
 For reference: [`createMany` on Prisma's Documentation](https://www.prisma.io/docs/orm/prisma-client/queries/crud#create-multiple-records)
+
 </Aside>
 
 <Aside type="note" title="`skipDuplicates` is not supported">
-Since our database is a sqlite database, `skipDuplicates` is not supported.
+  Since our database is a sqlite database, `skipDuplicates` is not supported.
 </Aside>
-
 
 To run the seed file, within the Terminal:
 
@@ -405,7 +396,8 @@ Notice, we also made our `List` function an `async` function. We need to `await`
 ```
 
 <Aside type="note" title="Using `db`">
-Note, it's `db` then the name of the table. In this case, `application`. But, this could just as easily be `company`, `contact`, `status`, or `user`.
+  Note, it's `db` then the name of the table. In this case, `application`. But,
+  this could just as easily be `company`, `contact`, `status`, or `user`.
 </Aside>
 
 All the data from the database is returned as an array and saved in a variable called `applications`. Then, we can display all the data by using the `JSON.stringify` function. Wrapping our code in `pre` tags, it makes it easier to read.
@@ -417,6 +409,7 @@ All the data from the database is returned as an array and saved in a variable c
 - `2` specifies the number of spaces to use for indentation.
 
 [For reference: JSON.Stringify on MDN](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/JSON/stringify)
+
 </Aside>
 
 ![](./images/applications-list-json.png)
@@ -444,11 +437,7 @@ Similar to the auth pages, let's start by creating a layout that will wrap all o
 Inside our `layouts` folder, let's create a new file called `InteriorLayout.tsx`.
 
 <FileTree>
-- src/
-  - app/
-    - layouts/
-      - AuthLayout.tsx
-      - InteriorLayout.tsx
+  - src/ - app/ - layouts/ - AuthLayout.tsx - InteriorLayout.tsx
 </FileTree>
 
 Inside, we need should use some of the same styles that we used within our `AuthLayout.tsx` file. As a quick reminder, let's take a look at the `AuthLayout.tsx` file:
@@ -497,16 +486,17 @@ Then, let's do something similar with the child `div` from our `AuthLayout.tsx`.
   }
 
   .page-title {
-    @apply text-3xl
+    @apply text-3xl;
   }
 }
 ```
+
 </details>
 
 Let's also add our route to our `links.ts` file for type hinting:
 
 ```tsx title="src/app/shared/links.ts" collapse={4-9}
-import { defineLinks } from "@redwoodjs/sdk/router";
+import { defineLinks } from "rwsdk/router";
 
 export const link = defineLinks([
   "/",
@@ -555,19 +545,14 @@ return (
   <InteriorLayout>
     <pre>{JSON.stringify(applications, null, 2)}</pre>
   </InteriorLayout>
-)
+);
 ```
 
 ![](./images/applications-json-with-interior-layout.png)
 
 It's coming together! Across the top, let's add the logo and navigation. We may need to reuse this component in the future, so let's make it it's own component. Inside the `components` folder, let's create a new file called `Header.tsx`.
 
-<FileTree>
-- src/
-  - app/
-    - components/
-      - Header.tsx
-</FileTree>
+<FileTree>- src/ - app/ - components/ - Header.tsx</FileTree>
 
 ```tsx title="src/app/components/Header.tsx"
 const Header = () => {
@@ -596,25 +581,30 @@ Here are the basic building blocks we need.
 Inside the left `div`, let's add the logo and "Apply Wize" text and wrap it in a link:
 
 ```tsx title="src/app/components/Header.tsx" startLineNumber=5
-{/* left side */}
+{
+  /* left side */
+}
 <div>
   <a href={link("/")}>
     <img src="/images/logo.svg" alt="Apply Wize" />
     <span>Apply Wize</span>
   </a>
-</div>
+</div>;
 ```
 
 - Pretty straightforward. We're using the same `logo.svg` that we used on the auth pages. It should already be in your `public/images` folder.
 - Then, we're using the `link` helper to link to home page. At the top of your file, you'll need to import the `link` helper:
+
 ```tsx
-import { link } from '@/app/shared/links'
+import { link } from "@/app/shared/links";
 ```
 
 Now, let's add the navigation. For now this is only one link that goes to the dashboard page.
 
 ```tsx title="src/app/components/Header.tsx" collapse={3-6} {7-11}
-{/* left side */}
+{
+  /* left side */
+}
 <div>
   <a href={link("/")}>
     <img src="/images/logo.svg" alt="Apply Wize" />
@@ -622,27 +612,35 @@ Now, let's add the navigation. For now this is only one link that goes to the da
   </a>
   <nav>
     <ul>
-      <li><a href={link("/applications")}>Dashboard</a></li>
+      <li>
+        <a href={link("/applications")}>Dashboard</a>
+      </li>
     </ul>
   </nav>
-</div>
+</div>;
 ```
 
 For the right side, we want another unordered list and the Avatar component:
 
 ```tsx title="src/app/components/Header.tsx" startLineNumber=19
-{/* right side */}
+{
+  /* right side */
+}
 <nav>
   <ul>
-    <li><a href="#">Settings</a></li>
-    <li><a href={link("/user/logout")}>Logout</a></li>
+    <li>
+      <a href="#">Settings</a>
+    </li>
+    <li>
+      <a href={link("/user/logout")}>Logout</a>
+    </li>
     <li>
       <Avatar>
         <AvatarFallback>R</AvatarFallback>
       </Avatar>
     </li>
   </ul>
-</nav>
+</nav>;
 ```
 
 - Notice, I replaced the right side `div` with a `nav` element, keeping things nice and semantic.
@@ -650,7 +648,7 @@ For the right side, we want another unordered list and the Avatar component:
 - For the `Avatar` component, you'll need to import it at the top of your file. This is a shadcn/ui component, so it should already be part of your project.
 
 ```tsx showLineNumbers=false
-import { Avatar, AvatarFallback } from '@/app/components/ui/avatar'
+import { Avatar, AvatarFallback } from "@/app/components/ui/avatar";
 ```
 
 Normally, when you're using the `Avatar` component, you'll also want to use the `AvatarImage` component. This is where you define the Avatar image:
@@ -791,21 +789,26 @@ That should be it! (for the header at least)
 <summary>Finished `Header.tsx` component</summary>
 
 ```tsx title="src/app/components/Header.tsx"
-import { link } from '@/app/shared/links'
-import { Avatar, AvatarFallback } from './ui/avatar'
+import { link } from "@/app/shared/links";
+import { Avatar, AvatarFallback } from "./ui/avatar";
 
 const Header = () => {
   return (
     <header className="py-5 px-page-side h-20 flex justify-between items-center border-b-1 border-border mb-12">
       {/* left side */}
       <div className="flex items-center gap-8">
-        <a href={link("/")} className="flex items-center gap-3 font-display font-bold text-3xl">
+        <a
+          href={link("/")}
+          className="flex items-center gap-3 font-display font-bold text-3xl"
+        >
           <img src="/images/logo.svg" alt="Apply Wize" className="pt-5 -mb-3" />
           <span>Apply Wize</span>
         </a>
         <nav>
           <ul>
-            <li><a href={link("/applications")}>Dashboard</a></li>
+            <li>
+              <a href={link("/applications")}>Dashboard</a>
+            </li>
           </ul>
         </nav>
       </div>
@@ -813,8 +816,12 @@ const Header = () => {
       {/* right side */}
       <nav>
         <ul className="flex items-center gap-7">
-          <li><a href="#">Settings</a></li>
-          <li><a href={link("/user/logout")}>Logout</a></li>
+          <li>
+            <a href="#">Settings</a>
+          </li>
+          <li>
+            <a href={link("/user/logout")}>Logout</a>
+          </li>
           <li>
             <Avatar>
               <AvatarFallback>R</AvatarFallback>
@@ -823,11 +830,12 @@ const Header = () => {
         </ul>
       </nav>
     </header>
-  )
-}
+  );
+};
 
-export { Header }
+export { Header };
 ```
+
 </details>
 
 Now, let's stick our `Header` component into our `InteriorLayout.tsx` file:
@@ -835,7 +843,7 @@ Now, let's stick our `Header` component into our `InteriorLayout.tsx` file:
 ```tsx title="src/app/layouts/InteriorLayout.tsx" {1, 7}
 import { Header } from "@/app/components/Header";
 
-const InteriorLayout = ({ children }: { children: React.ReactNode}) => {
+const InteriorLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="page-wrapper">
       <main className="page bg-white">
@@ -843,10 +851,10 @@ const InteriorLayout = ({ children }: { children: React.ReactNode}) => {
         <div>{children}</div>
       </main>
     </div>
-  )
-}
+  );
+};
 
-export { InteriorLayout }
+export { InteriorLayout };
 ```
 
 Check it out in the browser!
@@ -883,11 +891,12 @@ return (
 <Aside type="tip" title="shadcn/ui Button">
   Admittedly, it does look a little strange having an `a` tag inside a `Button` component.
 
-  In shadcn/ui, the ⁠Button component is designed to be flexible, allowing you to create buttons that can also act as links. This is a common pattern in modern web design where you want a consistent visual style for interactive elements.
+In shadcn/ui, the ⁠Button component is designed to be flexible, allowing you to create buttons that can also act as links. This is a common pattern in modern web design where you want a consistent visual style for interactive elements.
 
-  `asChild` is a special prop in shadcn/ui that tells the Button component to render its child element as-is. It allows you to keep the Button's styling while using a different underlying HTML element (like an ⁠`<a>` tag).
+`asChild` is a special prop in shadcn/ui that tells the Button component to render its child element as-is. It allows you to keep the Button's styling while using a different underlying HTML element (like an ⁠`<a>` tag).
 
-  [For reference: shadcn/ui Button Component Documentation](https://ui.shadcn.com/docs/components/button)
+[For reference: shadcn/ui Button Component Documentation](https://ui.shadcn.com/docs/components/button)
+
 </Aside>
 
 Now, let's add some styling:
@@ -909,23 +918,16 @@ Now, let's style the list of applications.
 
 Inside our `components` directory, let's create a new file, called `ApplicationsTable.tsx`.
 
-<FileTree>
-- src/
-  - app/
-    - components/
-      - ApplicationsTable.tsx
-</FileTree>
+<FileTree>- src/ - app/ - components/ - ApplicationsTable.tsx</FileTree>
 
 I'm going to stub out a basic component:
 
 ```tsx title="src/app/components/ApplicationsTable.tsx"
 const ApplicationsTable = () => {
-  return (
-    <div>ApplicationsTable</div>
-  )
-}
+  return <div>ApplicationsTable</div>;
+};
 
-export { ApplicationsTable }
+export { ApplicationsTable };
 ```
 
 Let's go ahead and put this on our `ApplicationsList.tsx` page, so we can see the updates we're making in the browser:
@@ -952,7 +954,15 @@ return (
 We've already added the [shadcn/ui Table component](https://ui.shadcn.com/docs/components/table) to our project, so let's go back to our `ApplicationsTable.tsx` file and use it. Just to start, I'm going to copy the example code from the shadcn/ui documentation and then we can rework it for our needs:
 
 ```tsx title="src/app/components/ApplicationsTable.tsx"
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "./ui/table"
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./ui/table";
 
 const ApplicationsTable = () => {
   return (
@@ -975,10 +985,10 @@ const ApplicationsTable = () => {
         </TableRow>
       </TableBody>
     </Table>
-  )
-}
+  );
+};
 
-export { ApplicationsTable }
+export { ApplicationsTable };
 ```
 
 ![](./images/shadcn-table-component.png)
@@ -1021,7 +1031,9 @@ For our `TableBody`, we need our application data. First, let's set up our table
     <TableCell>RedwoodJS</TableCell>
     <TableCell>John Doe</TableCell>
     <TableCell>$150,000-$250,000</TableCell>
-    <TableCell><a href="#">View</a></TableCell>
+    <TableCell>
+      <a href="#">View</a>
+    </TableCell>
   </TableRow>
 </TableBody>
 ```
@@ -1047,11 +1059,11 @@ import { Badge } from "./ui/badge"
 Let's add styles based on the application status. We've already added some custom colors to our `styles.css` file, so let's use those.
 
 ```css styles.css startLineNumber=229
-  --color-tag-applied: #b1c7c0;
-  --color-tag-interview: #da9b7c;
-  --color-tag-new: #db9a9f;
-  --color-tag-rejected: #e4e3d4;
-  --color-tag-offer: #aae198;
+--color-tag-applied: #b1c7c0;
+--color-tag-interview: #da9b7c;
+--color-tag-new: #db9a9f;
+--color-tag-rejected: #e4e3d4;
+--color-tag-offer: #aae198;
 ```
 
 Inside of our `badge.tsx` component, there's a section at the top of `variants`:
@@ -1093,7 +1105,9 @@ const badgeVariants = cva(
 Let's go back to our `ApplicationsTable.tsx` component and update our badge:
 
 ```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=20
-<TableCell><Badge variant="new">New</Badge></TableCell>
+<TableCell>
+  <Badge variant="new">New</Badge>
+</TableCell>
 ```
 
 For the contact column, let's include an avatar:
@@ -1112,7 +1126,7 @@ This is the same avatar component we used in the `Header` component.
 Be sure to import the `Avatar` and `AvatarFallback` components at the top of your file:
 
 ```tsx title="src/app/components/ApplicationsTable.tsx" showLineNumbers=false
-import { Avatar, AvatarFallback } from "./ui/avatar"
+import { Avatar, AvatarFallback } from "./ui/avatar";
 ```
 
 Let's add a few styles to fix the positioning:
@@ -1142,15 +1156,12 @@ We have several icons we want to use throughout our application. You can export 
 If you're exporting the icons from Figma, make sure you're grabbing the **frame** for the actual icon. All the icons are `24px` by `24px`.
 
 ![](./images/exporting-icons-out-of-figma.png)
+
 </Aside>
 
 I'm going to create a new folder in the root of our our project called `other` and then a sub directory inside that called `svg-icons` and place all of the icons inside the `svg-icons` directory.
 
-<FileTree>
-- other/
-  - svg-icons/
-- src/
-</FileTree>
+<FileTree>- other/ - svg-icons/ - src/</FileTree>
 
 My favorite way to implement SVG icons is through an SVG sprite. Basically, this combines all our SVG files into a single `sprite.svg` file. We can control which icon is displayed by setting the `id` attribute on the `use` element.
 
@@ -1165,7 +1176,8 @@ pnpm install lemon-lime-svgs --save-dev
 ```
 
 <Aside type="note" title="Save Dev">
-The purpose of this package is to help with the development process. The code does not need to go to production, so we can add the `--save-dev` flag.
+  The purpose of this package is to help with the development process. The code
+  does not need to go to production, so we can add the `--save-dev` flag.
 </Aside>
 
 Once installed, run the setup command:
@@ -1177,6 +1189,7 @@ npx lemon-lime-svgs setup
 ![](./images/setup-lemon-lime-svgs.png)
 
 This will ask a series of questions:
+
 - First, it will ask you what framework you're using. At it's core RedwoodSDK is React and Vite = 6
 - Next, it will ask you about file names and folder paths. It will make recommendations based on the framework you're using. Most of the defaults, work:
   - Input directory for SVG files: `./other/svg-icons` -- we've already set this directory up!
@@ -1216,7 +1229,7 @@ This component takes a `className`, if you want to add additional styles to the 
 Before we move on, I'm going to change this to a named export to be consistent with the other components we've created:
 
 ```tsx title="src/app/components/Icon.tsx" startLineNumber=15
-export { Icon }
+export { Icon };
 ```
 
 Now, let's take all our icon SVGs and dump them inside our `other/svg-icons` directory.
@@ -1249,7 +1262,8 @@ Inside our `ApplicationsTable.tsx` file:
 ![](./images/view-icon-in-browser.png)
 
 <Aside type="note" title="Caching">
-Due to caching, sometimes the icon doesn't update immediately. Try opening a browser window in incognito to see if that makes a difference.
+  Due to caching, sometimes the icon doesn't update immediately. Try opening a
+  browser window in incognito to see if that makes a difference.
 </Aside>
 
 ## Making our Table Dynamic
@@ -1282,24 +1296,26 @@ Now, let's go down to our `TableBody`. First we want to loop over all the applic
 
 ```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=20
 <TableBody>
-  {applications.map(application => (
-  <TableRow>
-    <TableCell><Badge>New</Badge></TableCell>
-    <TableCell>April 15, 2025</TableCell>
-    <TableCell>Software Engineer</TableCell>
-    <TableCell>RedwoodJS</TableCell>
-    <TableCell className="flex items-center gap-2">
-      <Avatar>
-        <AvatarFallback>J</AvatarFallback>
-      </Avatar>
-      John Doe
-    </TableCell>
-    <TableCell>$150,000-$250,000</TableCell>
-    <TableCell>
-      <a href="#">
-        <Icon id="view" />
-      </a>
-    </TableCell>
+  {applications.map((application) => (
+    <TableRow>
+      <TableCell>
+        <Badge>New</Badge>
+      </TableCell>
+      <TableCell>April 15, 2025</TableCell>
+      <TableCell>Software Engineer</TableCell>
+      <TableCell>RedwoodJS</TableCell>
+      <TableCell className="flex items-center gap-2">
+        <Avatar>
+          <AvatarFallback>J</AvatarFallback>
+        </Avatar>
+        John Doe
+      </TableCell>
+      <TableCell>$150,000-$250,000</TableCell>
+      <TableCell>
+        <a href="#">
+          <Icon id="view" />
+        </a>
+      </TableCell>
     </TableRow>
   ))}
 </TableBody>
@@ -1308,11 +1324,12 @@ Now, let's go down to our `TableBody`. First we want to loop over all the applic
 Now, we can start replacing the static content with dynamic content.
 
 For our application status and our `Badge` component, we can swap out the `new` text with `{application.applicationStatus.status}`.
+
 ```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=22
 <TableCell>
-    <Badge variant={application.applicationStatus.status}>
-      {application.applicationStatus.status}
-    </Badge>
+  <Badge variant={application.applicationStatus.status}>
+    {application.applicationStatus.status}
+  </Badge>
 </TableCell>
 ```
 
@@ -1372,24 +1389,25 @@ const ApplicationsTable = ({ applications }: {
 ```
 
 <Aside type="tip" title="TypeScript">
-If this starts to feel a little overwhelming, a few things that have helped me:
-- This is a great use case for AI. It knows your database schema and query. Ask it!
-- You know what the resulting data looks like.
-    ![](./images/json-with-relationships.png)
-    This is incredibly helpful when trying to create the type definition. You can also send the data to AI and ask it to help you create the type definition.
+  If this starts to feel a little overwhelming, a few things that have helped
+  me: - This is a great use case for AI. It knows your database schema and
+  query. Ask it! - You know what the resulting data looks like.
+  ![](./images/json-with-relationships.png) This is incredibly helpful when
+  trying to create the type definition. You can also send the data to AI and ask
+  it to help you create the type definition.
 </Aside>
 
 If you look at your `TableCell` again, you're probably still seeing an error 🤯
 
 ```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=31
 <TableCell>
-    <Badge variant={application.applicationStatus.status}>
-      {application.applicationStatus.status}
-    </Badge>
+  <Badge variant={application.applicationStatus.status}>
+    {application.applicationStatus.status}
+  </Badge>
 </TableCell>
 ```
 
-When we pass in the `variant` prop for our `Badge` component, it's not just looking for a string, it's looking for a specific string: ``"default" | "secondary" | "destructive" | "outline" | "applied" | "interview" | "new" | "rejected" | "offer" | null | undefined``
+When we pass in the `variant` prop for our `Badge` component, it's not just looking for a string, it's looking for a specific string: `"default" | "secondary" | "destructive" | "outline" | "applied" | "interview" | "new" | "rejected" | "offer" | null | undefined`
 
 Inside our `badge` component, when we defined our `badgeVariants` for styles, it used our variant options to create a type definition. `badgeVariants` is exported from the `badge.tsx` component, making it easy to reuse and reference within our `ApplicationsTable.tsx`:
 
@@ -1409,6 +1427,7 @@ Inside our `badge` component, when we defined our `badgeVariants` for styles, it
 Class Variance Authority is a utility library, used within shadcn/ui, for creating and using CSS classes.
 
 For further reading, you can read the [official Class Variance Authority documentation.](https://cva.style/docs)
+
 </Aside>
 
 Sweet! Now, all of our TypeScript errors should be taken care of.
@@ -1526,22 +1545,37 @@ Perfect. Everything should check out. Try clicking on the view icon in the brows
 <summary>Final `ApplicationsTable.tsx` file</summary>
 
 ```tsx title="src/app/components/ApplicationsTable.tsx"
-import { Application, ApplicationStatus, Company, Contact } from "@prisma/client"
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "./ui/table"
-import { Avatar, AvatarFallback } from "./ui/avatar"
-import { Badge } from "./ui/badge"
-import { Icon } from "./Icon"
-import type { badgeVariants } from "./ui/badge"
-import { VariantProps } from "class-variance-authority"
-import { link } from "../shared/links"
+import {
+  Application,
+  ApplicationStatus,
+  Company,
+  Contact,
+} from "@prisma/client";
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./ui/table";
+import { Avatar, AvatarFallback } from "./ui/avatar";
+import { Badge } from "./ui/badge";
+import { Icon } from "./Icon";
+import type { badgeVariants } from "./ui/badge";
+import { VariantProps } from "class-variance-authority";
+import { link } from "../shared/links";
 
-const ApplicationsTable = ({ applications }: {
+const ApplicationsTable = ({
+  applications,
+}: {
   applications: (Application & {
-    applicationStatus: ApplicationStatus,
+    applicationStatus: ApplicationStatus;
     company: Company & {
-      contacts: Contact[]
-    },
-  })[]
+      contacts: Contact[];
+    };
+  })[];
 }) => {
   return (
     <Table>
@@ -1555,31 +1589,38 @@ const ApplicationsTable = ({ applications }: {
         <TableHead></TableHead>
       </TableHeader>
       <TableBody>
-        {applications.map(application => (
-        <TableRow>
-          <TableCell>
-              <Badge variant={application.applicationStatus?.status.toLowerCase() as VariantProps<typeof badgeVariants>['variant']}>
+        {applications.map((application) => (
+          <TableRow>
+            <TableCell>
+              <Badge
+                variant={
+                  application.applicationStatus?.status.toLowerCase() as VariantProps<
+                    typeof badgeVariants
+                  >["variant"]
+                }
+              >
                 {application.applicationStatus?.status}
               </Badge>
-          </TableCell>
+            </TableCell>
             <TableCell>
-              {application.dateApplied?.toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
+              {application.dateApplied?.toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
               })}
             </TableCell>
-            <TableCell>
-              {application.jobTitle}
-            </TableCell>
-            <TableCell>
-              {application.company.name}
-            </TableCell>
+            <TableCell>{application.jobTitle}</TableCell>
+            <TableCell>{application.company.name}</TableCell>
             <TableCell className="flex items-center gap-2">
               <Avatar>
-                <AvatarFallback>{application.company.contacts[0].firstName.charAt(0).toUpperCase()}</AvatarFallback>
+                <AvatarFallback>
+                  {application.company.contacts[0].firstName
+                    .charAt(0)
+                    .toUpperCase()}
+                </AvatarFallback>
               </Avatar>
-              {application.company.contacts[0].firstName} {application.company.contacts[0].lastName}
+              {application.company.contacts[0].firstName}{" "}
+              {application.company.contacts[0].lastName}
             </TableCell>
             <TableCell>
               ${application.salaryMin}-${application.salaryMax}
@@ -1593,11 +1634,12 @@ const ApplicationsTable = ({ applications }: {
         ))}
       </TableBody>
     </Table>
-  )
-}
+  );
+};
 
-export { ApplicationsTable }
+export { ApplicationsTable };
 ```
+
 </details>
 
 ### Finalizing the List Page
@@ -1717,7 +1759,7 @@ return (
       <div className="flex justify-between items-center">
         <Button asChild variant="secondary">
           <a href={`${link("/applications")}?status=archived`}>
-          <Icon id="archive" />
+            <Icon id="archive" />
             Archive
           </a>
         </Button>
@@ -1730,7 +1772,7 @@ return (
       </div>
     </>
   </InteriorLayout>
-)
+);
 ```
 
 Now, let's adjust the spacing around our table. On **line 22**, we're using a class of `px-page-side` to add some padding to the left and right side.
@@ -1760,13 +1802,17 @@ Before we preview this in the browser, let's adjust the vertical spacing.
 <Aside type="tip" title="Vertical Spacing">
   Whenever I'm adjusting the vertical spacing with margins, I always use margin bottom, pushing everything down. A couple of reasons: (1) it adds consistency to my code, and (2) it's easier to troubleshoot.
 
-  Plus, there's a feature within CSS called **collapsing margins**.
+Plus, there's a feature within CSS called **collapsing margins**.
 
-  > The top and bottom margins of blocks are sometimes combined (collapsed) into a single margin whose size is the largest of the individual margins (or just one of them, if they are equal), a behavior known as margin collapsing.
+> The top and bottom margins of blocks are sometimes combined (collapsed) into a single margin whose size is the largest of the individual margins (or just one of them, if they are equal), a behavior known as margin collapsing.
 
-  <cite>Reference: [Mastering margin collapsing on MDN Docs](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_box_model/Mastering_margin_collapsing)</cite>
+<cite>
+  Reference: [Mastering margin collapsing on MDN
+  Docs](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_box_model/Mastering_margin_collapsing)
+</cite>
 
-  This means that when you use a top and bottom margin, it can sometimes produce unexpected results. If you only use margin bottom, you can avoid this issue altogether.
+This means that when you use a top and bottom margin, it can sometimes produce unexpected results. If you only use margin bottom, you can avoid this issue altogether.
+
 </Aside>
 
 ```tsx title="src/app/pages/applications/List.tsx" "mb-5" "mb-8" "mb-10" collapse={4-13} startLineNumber=20
@@ -1825,7 +1871,8 @@ If you run this in the browser, you should see `{ status: 'archived' }` displaye
 <Aside type="note" title="Console">
   Since this code is running on the server, when you use `console.log` it will display the result in the Terminal.
 
-  When code is running in the browser and use `console.log` it will display within dev tools.
+When code is running in the browser and use `console.log` it will display within dev tools.
+
 </Aside>
 
 Now, that we've checked that our query parameter is working, we can remove our `console.log` statement and adjust our Prisma `findMany` query.
@@ -1838,13 +1885,13 @@ const applications = await db.application.findMany({
     applicationStatus: true,
     company: {
       include: {
-        contacts: true
-      }
-    }
+        contacts: true,
+      },
+    },
   },
   where: {
-    archived: status === "archived" ? true : false
-  }
+    archived: status === "archived" ? true : false,
+  },
 });
 ```
 
@@ -1926,13 +1973,13 @@ const List = async ({ request }: { request: Request }) => {
       applicationStatus: true,
       company: {
         include: {
-          contacts: true
-        }
-      }
+          contacts: true,
+        },
+      },
     },
     where: {
-      archived: status === "archived" ? true : false
-    }
+      archived: status === "archived" ? true : false,
+    },
   });
 
   return (
@@ -1981,13 +2028,15 @@ const List = async ({ request }: { request: Request }) => {
         </div>
       </div>
     </InteriorLayout>
-  )
-}
+  );
+};
 
-export { List }
+export { List };
 ```
+
 </details>
 
 <Aside type="tip" title="Code on GitHub">
-You can find the final code for this step on [GitHub](https://github.com/ahaywood/applywize/tree/main/end-of-5).
+  You can find the final code for this step on
+  [GitHub](https://github.com/ahaywood/applywize/tree/main/end-of-5).
 </Aside>

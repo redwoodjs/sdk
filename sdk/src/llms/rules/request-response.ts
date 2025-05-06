@@ -68,7 +68,7 @@ route("/docs/*/version/*", function handler({ params }) {
 #### Plain Text Response
 
 \`\`\`tsx
-import { route } from "@redwoodjs/sdk/router";
+import { route } from "rwsdk/router";
 
 route("/api/status", function handler() {
   return new Response("OK", {
@@ -81,7 +81,7 @@ route("/api/status", function handler() {
 #### JSON Response
 
 \`\`\`tsx
-import { route } from "@redwoodjs/sdk/router";
+import { route } from "rwsdk/router";
 
 route("/api/users/:id", function handler({ params }) {
   const userData = { id: params.id, name: "John Doe", email: "john@example.com" }
@@ -98,7 +98,7 @@ route("/api/users/:id", function handler({ params }) {
 #### JSX/React Components Response
 
 \`\`\`tsx
-import { route } from "@redwoodjs/sdk/router";
+import { route } from "rwsdk/router";
 import { UserProfile } from '@/app/components/UserProfile'
 
 route("/users/:id", function handler({ params }) {
@@ -109,7 +109,7 @@ route("/users/:id", function handler({ params }) {
 #### Custom Document Template
 
 \`\`\`tsx
-import { render, route } from "@redwoodjs/sdk/router";
+import { render, route } from "rwsdk/router";
 import { Document } from '@/app/Document'
 
 render(Document, [
@@ -125,7 +125,7 @@ render(Document, [
 ### Error Handling
 
 \`\`\`tsx
-import { route } from "@redwoodjs/sdk/router";
+import { route } from "rwsdk/router";
 
 route("/api/posts/:id", async function handler({ params }) {
   try {
@@ -154,7 +154,7 @@ route("/api/posts/:id", async function handler({ params }) {
 Create a file at \`./src/app/pages/blog/routes.ts\`:
 
 \`\`\`tsx
-import { route } from "@redwoodjs/sdk/router";
+import { route } from "rwsdk/router";
 import { isAdminUser } from '@/app/interceptors'
 
 import { BlogLandingPage } from './BlogLandingPage'
@@ -172,7 +172,7 @@ Then import these routes in your main worker file:
 
 \`\`\`tsx
 // src/worker.tsx
-import { defineApp, render, route, prefix } from "@redwoodjs/sdk/router";
+import { defineApp, render, route, prefix } from "rwsdk/router";
 import { Document } from '@/app/Document'
 import { HomePage } from '@/app/pages/home/HomePage'
 import { routes as blogRoutes } from '@/app/pages/blog/routes'
@@ -189,7 +189,7 @@ export default defineApp([
 ### Advanced: Route with Query Parameters
 
 \`\`\`tsx
-import { route } from "@redwoodjs/sdk/router";
+import { route } from "rwsdk/router";
 
 route("/api/search", function handler({ request }) {
   const url = new URL(request.url)

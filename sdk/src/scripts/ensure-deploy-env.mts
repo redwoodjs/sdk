@@ -57,7 +57,7 @@ const hasAuthUsage = async () => {
   const files = await glob("src/**/*.{ts,tsx}", { ignore: "node_modules/**" });
   for (const file of files) {
     const content = await readFile(file, "utf-8");
-    if (content.includes("@redwoodjs/sdk/auth")) {
+    if (content.includes("rwsdk/auth")) {
       return true;
     }
   }
