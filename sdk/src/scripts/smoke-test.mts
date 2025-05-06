@@ -24,7 +24,7 @@ import ignore from "ignore";
 import debug from "debug";
 
 // Initialize the debug logger
-const log = debug("rw:smoke");
+const log = debug("rwsdk:smoke");
 
 const TIMEOUT = 30000; // 30 seconds timeout
 const RETRIES = 3;
