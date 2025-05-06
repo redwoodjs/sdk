@@ -69,7 +69,7 @@ Allow you to execute code on the server from a client component.
 ```tsx title="@/pages/todos/functions.tsx" mark={1}
 "use server";
 
-import { requestInfo } from "rwsdk/worker";
+import { requestInfo } from "@redwoodjs/sdk/worker";
 
 export async function addTodo(formData: FormData) {
   const { ctx } = requestInfo;

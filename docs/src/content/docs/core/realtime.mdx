@@ -24,7 +24,7 @@ You'll need to connect three parts:
 On the client side, initialize the realtime connection with a `key`. This `key` determines which group of clients should share updates. More on this below.
 
 ```ts title="src/client.tsx"
-import { initRealtimeClient } from "rwsdk/realtime/client";
+import { initRealtimeClient } from "@redwoodjs/sdk/realtime/client";
 
 initRealtimeClient({
   key: window.location.pathname, // Used to group related clients
@@ -34,13 +34,13 @@ initRealtimeClient({
 ### 2. Export the Durable Object
 
 ```ts title="src/worker.ts"
-export { RealtimeDurableObject } from "rwsdk/realtime/durableObject";
+export { RealtimeDurableObject } from "@redwoodjs/sdk/realtime/durableObject";
 ```
 
 ### 3. Wire Up the Worker Route
 
 ```ts title="src/worker.ts"
-import { realtimeRoute } from "rwsdk/realtime/worker";
+import { realtimeRoute } from "@redwoodjs/sdk/realtime/worker";
 import { env } from "cloudflare:workers";
 
 export default defineApp([
@@ -127,7 +127,7 @@ You can update clients even when the event didn't originate from a user action â
 Use `renderRealtimeClients()` to trigger a re-render for all clients connected to a given `key`:
 
 ```ts
-import { renderRealtimeClients } from "rwsdk/realtime/worker";
+import { renderRealtimeClients } from "@redwoodjs/sdk/realtime/worker";
 import { env } from "cloudflare:workers";
 
 await renderRealtimeClients({

@@ -60,8 +60,8 @@ RedwoodSDK uses the standard Request/Response objects. When uploading files, the
 ### Uploading Files
 
 ```tsx title="src/worker.tsx"
-import { defineApp } from "rwsdk/worker";
-import { route } from "rwsdk/router";
+import { defineApp } from "@redwoodjs/sdk/worker";
+import { route } from "@redwoodjs/sdk/router";
 import { env } from "cloudflare:workers";
 
 defineApp([
@@ -90,8 +90,8 @@ defineApp([
 ### Downloading Files
 
 ```tsx title="src/worker.tsx"
-import { defineApp } from "rwsdk/worker";
-import { route } from "rwsdk/router";
+import { defineApp } from "@redwoodjs/sdk/worker";
+import { route } from "@redwoodjs/sdk/router";
 
 defineApp([
   route("/download/*", async ({ request, params, env }) => {
