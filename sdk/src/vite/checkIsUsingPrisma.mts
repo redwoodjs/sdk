@@ -4,4 +4,10 @@ export const checkIsUsingPrisma = ({
   projectRootDir,
 }: {
   projectRootDir: string;
-}) => Boolean(enhancedResolve.sync(projectRootDir, "@prisma/client"));
+}) => {
+  try {
+    return Boolean(enhancedResolve.sync(projectRootDir, "@prisma/client"));
+  } catch {
+    return false;
+  }
+};
