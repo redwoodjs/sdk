@@ -1074,11 +1074,11 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
   const args = process.argv.slice(2);
   const options = {
     customPath: args.find(
-      (arg) => !arg.startsWith("--") && !arg.startsWith("-p="),
+      (arg) => !arg.startsWith("--") && !arg.startsWith("--path="),
     ),
     skipDev: args.includes("--skip-dev"),
     skipRelease: args.includes("--skip-release"),
-    projectDir: args.find((arg) => arg.startsWith("-p="))?.substring(3),
+    projectDir: args.find((arg) => arg.startsWith("--path="))?.substring(7),
     artifactDir: args
       .find((arg) => arg.startsWith("--artifact-dir="))
       ?.substring(15),
@@ -1093,7 +1093,7 @@ Smoke Test Usage:
 Options:
   --skip-dev              Skip testing the local development server
   --skip-release          Skip testing the release/production deployment
-  -p=PATH                 Project directory to test
+  --path=PATH             Project directory to test
   --artifact-dir=DIR      Directory to store test artifacts
   --help, -h              Show this help message
 
@@ -1104,8 +1104,8 @@ Examples:
   node smoke-test.mjs                                # Test both dev and release with default path
   node smoke-test.mjs /login                         # Test both dev and release with /login path
   node smoke-test.mjs --skip-release                 # Only test dev server
-  node smoke-test.mjs -p=./my-project                # Test using the specified project directory
-  node smoke-test.mjs -p=./my-project --artifact-dir=./artifacts  # Store artifacts in ./artifacts
+  node smoke-test.mjs --path=./my-project            # Test using the specified project directory
+  node smoke-test.mjs --path=./my-project --artifact-dir=./artifacts  # Store artifacts in ./artifacts
 `);
     // No error, just showing help
     process.exit(0);
