@@ -1,7 +1,7 @@
 import { $ } from "../lib/$.mjs";
 import puppeteer from "puppeteer-core";
 import { setTimeout } from "node:timers/promises";
-import { resolve } from "path";
+import { resolve, basename, join, relative } from "path";
 import { fileURLToPath } from "url";
 import * as process from "process";
 import * as fs from "fs/promises";
@@ -13,6 +13,14 @@ import {
 } from "@puppeteer/browsers";
 import type { Page, Browser } from "puppeteer-core";
 import { spawn } from "child_process";
+import { copy, pathExists } from "fs-extra";
+import tmp from "tmp-promise";
+import {
+  uniqueNamesGenerator,
+  adjectives,
+  animals,
+} from "unique-names-generator";
+import ignore from "ignore";
 
 const TIMEOUT = 30000; // 30 seconds timeout
 const RETRIES = 3;
@@ -42,67 +50,200 @@ async function main(
     customPath?: string;
     skipDev?: boolean;
     skipRelease?: boolean;
+    projectDir?: string;
   } = {},
 ) {
-  const customPath = options.customPath || "";
-  const pathSuffix = customPath
-    ? customPath.startsWith("/")
-      ? customPath
-      : `/${customPath}`
-    : "";
+  // Throw immediately if both tests would be skipped
+  if (options.skipDev && options.skipRelease) {
+    throw new Error(
+      "Cannot skip both dev and release tests. At least one must run.",
+    );
+  }
+
+  const resources = await setupTestEnvironment(options);
 
   try {
-    // Default to running both tests
-    const skipDev = Boolean(options.skipDev);
-    const skipRelease = Boolean(options.skipRelease);
+    // Run the tests that weren't skipped
+    if (!options.skipDev) {
+      await runDevTest(options.customPath);
+    }
 
-    // Ensure at least one test runs
-    if (skipDev && skipRelease) {
-      console.log(
-        "⚠️ Warning: Both dev and release tests were skipped via command line flags.",
-      );
-      console.log(
-        "⚠️ At least one test environment must be tested. Running dev test by default.",
-      );
-
-      // Run dev test by default if both are skipped
-      await runDevTest(pathSuffix);
-    } else {
-      // Run the tests that weren't skipped
-      if (!skipDev) {
-        await runDevTest(pathSuffix);
-      }
-
-      if (!skipRelease) {
-        await runReleaseTest(pathSuffix);
-      }
+    if (!options.skipRelease) {
+      await runReleaseTest(options.customPath, resources);
     }
 
     console.log("\n✅ All smoke tests completed successfully!");
-    process.exit(0);
-  } catch (error) {
-    console.error("\n❌ Smoke test failed:", error);
-    process.exit(1);
+  } finally {
+    await cleanupResources(resources);
   }
 }
 
 /**
- * Run the development server test
+ * Sets up the test environment, preparing any resources needed for testing
  */
-async function runDevTest(pathSuffix: string): Promise<void> {
-  console.log("🚀 STEP 1: Testing local development server");
+async function setupTestEnvironment(options: {
+  customPath?: string;
+  skipDev?: boolean;
+  skipRelease?: boolean;
+  projectDir?: string;
+}): Promise<{
+  tempDirCleanup?: () => Promise<void>;
+  workerName?: string;
+  originalCwd: string;
+}> {
+  const resources: {
+    tempDirCleanup?: () => Promise<void>;
+    workerName?: string;
+    originalCwd: string;
+  } = {
+    tempDirCleanup: undefined,
+    workerName: undefined,
+    originalCwd: process.cwd(),
+  };
+
+  // If a project dir is specified, copy it to a temp dir with a unique name
+  if (options.projectDir) {
+    const { tempDir, targetDir, workerName } = await copyProjectToTempDir(
+      options.projectDir,
+    );
+
+    // Store cleanup function
+    resources.tempDirCleanup = tempDir.cleanup;
+    resources.workerName = workerName;
+
+    // Change to the new directory for the tests
+    process.chdir(targetDir);
+  }
+
+  return resources;
+}
+
+/**
+ * Runs tests against the development server
+ */
+async function runDevTest(customPath?: string): Promise<void> {
+  console.log("🚀 Testing local development server");
+  const pathSuffix = formatPathSuffix(customPath);
+
   const { url, stopDev } = await runDevServer();
   await checkUrl(url + pathSuffix);
   await stopDev();
 }
 
 /**
- * Run the release/production test
+ * Runs tests against the production deployment
  */
-async function runReleaseTest(pathSuffix: string): Promise<void> {
-  console.log("\n🚀 STEP 2: Testing production deployment");
-  const { url } = await runRelease();
+async function runReleaseTest(
+  customPath?: string,
+  resources?: { workerName?: string },
+): Promise<void> {
+  console.log("\n🚀 Testing production deployment");
+  const pathSuffix = formatPathSuffix(customPath);
+
+  const { url, workerName } = await runRelease();
   await checkUrl(url + pathSuffix);
+
+  // Store the worker name if we didn't set it earlier
+  if (resources && !resources.workerName) {
+    resources.workerName = workerName;
+  }
+}
+
+/**
+ * Cleans up any resources used during testing
+ */
+async function cleanupResources(resources: {
+  tempDirCleanup?: () => Promise<void>;
+  workerName?: string;
+  originalCwd: string;
+}): Promise<void> {
+  // Restore original working directory
+  process.chdir(resources.originalCwd);
+
+  // Clean up resources
+  if (resources.workerName) {
+    await deleteWorker(resources.workerName);
+  }
+
+  if (resources.tempDirCleanup) {
+    await resources.tempDirCleanup();
+  }
+}
+
+/**
+ * Formats the path suffix from a custom path
+ */
+function formatPathSuffix(customPath?: string): string {
+  return customPath
+    ? customPath.startsWith("/")
+      ? customPath
+      : `/${customPath}`
+    : "";
+}
+
+/**
+ * Copy project to a temporary directory with a unique name
+ */
+async function copyProjectToTempDir(projectDir: string): Promise<{
+  tempDir: tmp.DirectoryResult;
+  targetDir: string;
+  workerName: string;
+}> {
+  // Create a temporary directory
+  const tempDir = await tmp.dir({ unsafeCleanup: true });
+
+  // Generate a unique suffix for the project
+  const suffix = uniqueNamesGenerator({
+    dictionaries: [adjectives, animals],
+    separator: "-",
+    length: 2,
+    style: "lowerCase",
+  });
+
+  // Create unique project directory name
+  const originalDirName = basename(projectDir);
+  const workerName = `${originalDirName}_${suffix}`;
+  const targetDir = resolve(tempDir.path, workerName);
+
+  console.log(`Copying project from ${projectDir} to ${targetDir}`);
+
+  // Read project's .gitignore if it exists
+  let ig = ignore();
+  const gitignorePath = join(projectDir, ".gitignore");
+
+  if (await pathExists(gitignorePath)) {
+    const gitignoreContent = await fs.readFile(gitignorePath, "utf-8");
+    ig = ig.add(gitignoreContent);
+  } else {
+    // Add default ignores if no .gitignore exists
+    ig = ig.add(
+      [
+        "node_modules",
+        ".git",
+        "dist",
+        "build",
+        ".DS_Store",
+        "coverage",
+        ".cache",
+        ".wrangler",
+        ".env",
+      ].join("\n"),
+    );
+  }
+
+  // Copy the project directory, respecting .gitignore
+  await copy(projectDir, targetDir, {
+    filter: (src) => {
+      // Get path relative to project directory
+      const relativePath = relative(projectDir, src);
+      if (!relativePath) return true; // Include the root directory
+
+      // Check against ignore patterns
+      return !ig.ignores(relativePath);
+    },
+  });
+
+  return { tempDir, targetDir, workerName };
 }
 
 /**
@@ -251,17 +392,15 @@ async function checkClientHealth(
     // Look for any other evidence that the page is working
     const pageContent = await page.content();
     if (!pageContent.includes("<!DOCTYPE html>")) {
-      console.error("❌ Page doesn't appear to be a valid HTML document");
-      process.exit(1);
+      throw new Error("Page doesn't appear to be a valid HTML document");
     }
 
     // Check if we're on a health check page - in which case missing the refresh button is a failure
     const currentUrl = page.url();
     if (currentUrl.includes("__health")) {
-      console.error(
-        "❌ Health check page is missing the refresh-health button - this is a test failure",
+      throw new Error(
+        "Health check page is missing the refresh-health button - this is a test failure",
       );
-      process.exit(1);
     }
 
     console.log(
@@ -286,10 +425,9 @@ async function checkClientHealth(
       { timeout: 5000 },
     );
   } catch (error) {
-    console.error(
-      "❌ Timed out waiting for client-side health check to complete",
+    throw new Error(
+      `Timed out waiting for client-side health check to complete: ${error instanceof Error ? error.message : String(error)}`,
     );
-    process.exit(1);
   }
 
   const result = await page.evaluate(async () => {
@@ -367,14 +505,13 @@ async function upgradeToRealtime(page: Page): Promise<void> {
     }
   });
 
-  if (upgradeResult.success) {
-    console.log("✅ Successfully upgraded to realtime mode");
-  } else {
-    console.error(
-      `❌ Failed to upgrade to realtime mode: ${upgradeResult.message}`,
+  if (!upgradeResult.success) {
+    throw new Error(
+      `Failed to upgrade to realtime mode: ${upgradeResult.message}`,
     );
-    process.exit(1);
   }
+
+  console.log("✅ Successfully upgraded to realtime mode");
 }
 
 /**
@@ -441,9 +578,9 @@ async function runDevServer(): Promise<{
 }
 
 /**
- * Run the release process and return the deployed URL
+ * Run the release process and return the deployed URL and worker name
  */
-async function runRelease(): Promise<{ url: string }> {
+async function runRelease(): Promise<{ url: string; workerName: string }> {
   console.log("🚀 Running release process...");
 
   // Create an interactive expect script for handling the release prompts
@@ -470,8 +607,10 @@ expect {
 wait
 `;
 
-  // Write the expect script to a temporary file
-  const scriptPath = resolve(process.cwd(), "release-script.exp");
+  // Create a temporary file for the expect script
+  const tempExpectFile = await tmp.file({ postfix: ".exp" });
+  const scriptPath = tempExpectFile.path;
+
   await fs.writeFile(scriptPath, expectScript);
   await fs.chmod(scriptPath, 0o755);
 
@@ -483,19 +622,24 @@ wait
 
     // Extract deployment URL from output
     const urlMatch = stdout.match(
-      /https:\/\/[a-zA-Z0-9-]+\.redwoodjs\.workers\.dev/,
+      /https:\/\/([a-zA-Z0-9-]+)\.redwoodjs\.workers\.dev/,
     );
     if (!urlMatch || !urlMatch[0]) {
       throw new Error("Could not extract deployment URL from release output");
     }
 
     const url = urlMatch[0];
+    const workerName = urlMatch[1];
     console.log(`✅ Successfully deployed to ${url}`);
 
-    return { url };
+    return { url, workerName };
   } finally {
     // Clean up the temporary expect script
-    await fs.unlink(scriptPath).catch(() => {});
+    await tempExpectFile.cleanup().catch(() => {
+      console.warn(
+        `Warning: Failed to clean up temporary script file: ${scriptPath}`,
+      );
+    });
   }
 }
 
@@ -518,44 +662,39 @@ async function launchBrowser(): Promise<Browser> {
  * Get the browser executable path
  */
 async function getBrowserPath(): Promise<string> {
+  console.log("Finding Chrome executable...");
+  // First try using environment variable if set
+  if (process.env.CHROME_PATH) {
+    console.log(
+      `Using Chrome from environment variable: ${process.env.CHROME_PATH}`,
+    );
+    return process.env.CHROME_PATH;
+  }
+
+  // Use a more direct approach to avoid type issues
+  const platform = detectBrowserPlatform();
+  if (!platform) {
+    throw new Error("Failed to detect browser platform");
+  }
+
+  // Bypass type issues by using 'any'
   try {
-    console.log("Finding Chrome executable...");
-    // First try using environment variable if set
-    if (process.env.CHROME_PATH) {
-      console.log(
-        `Using Chrome from environment variable: ${process.env.CHROME_PATH}`,
-      );
-      return process.env.CHROME_PATH;
-    }
-
-    // Use a more direct approach to avoid type issues
-    const platform = detectBrowserPlatform();
-    if (!platform) {
-      throw new Error("Failed to detect browser platform");
-    }
-
-    // Bypass type issues by using 'any'
-    try {
-      // Try to compute the path first (this will check if it's installed)
-      const options: any = { browser: "chrome", platform };
-      const path = computeExecutablePath(options);
-      console.log(`Found existing Chrome at: ${path}`);
-      return path;
-    } catch (error) {
-      // If path computation fails, install Chrome
-      console.log("No Chrome installation found. Installing Chrome...");
-      const installOptions: any = { browser: "chrome", platform };
-      await install(installOptions);
-
-      // Now compute the path for the installed browser
-      const options: any = { browser: "chrome", platform };
-      const path = computeExecutablePath(options);
-      console.log(`Installed and using Chrome at: ${path}`);
-      return path;
-    }
+    // Try to compute the path first (this will check if it's installed)
+    const options: any = { browser: "chrome", platform };
+    const path = computeExecutablePath(options);
+    console.log(`Found existing Chrome at: ${path}`);
+    return path;
   } catch (error) {
-    console.error("❌ Failed to find Chrome executable:", error);
-    process.exit(1);
+    // If path computation fails, install Chrome
+    console.log("No Chrome installation found. Installing Chrome...");
+    const installOptions: any = { browser: "chrome", platform };
+    await install(installOptions);
+
+    // Now compute the path for the installed browser
+    const options: any = { browser: "chrome", platform };
+    const path = computeExecutablePath(options);
+    console.log(`Installed and using Chrome at: ${path}`);
+    return path;
   }
 }
 
@@ -571,10 +710,17 @@ async function checkServerUp(url: string, retries = RETRIES): Promise<boolean> {
       await $`curl -s -o /dev/null -w "%{http_code}" ${url}`;
       return true;
     } catch (error) {
+      if (i === retries - 1) {
+        throw new Error(
+          `Server at ${url} did not become available after ${retries} attempts`,
+        );
+      }
       console.log(`Server not up yet, retrying in 2 seconds...`);
       await setTimeout(2000);
     }
   }
+
+  // This should never be reached due to the throw above, but TypeScript needs it
   return false;
 }
 
@@ -597,13 +743,31 @@ function reportHealthCheckResult(
       console.log(`✅ Client timestamp: ${result.clientTimestamp}`);
     }
   } else {
-    console.error(
-      `❌ ${phasePrefix}${type} health check failed. Status: ${result.status}`,
+    throw new Error(
+      `${phasePrefix}${type} health check failed. Status: ${result.status}${result.error ? `. Error: ${result.error}` : ""}`,
     );
-    if (result.error) {
-      console.error(`❌ Error: ${result.error}`);
+  }
+}
+
+/**
+ * Delete the worker using wrangler
+ */
+async function deleteWorker(name: string): Promise<void> {
+  console.log(`Cleaning up: Deleting worker ${name}...`);
+  try {
+    // The --yes flag automatically confirms the deletion
+    await $`npx wrangler delete ${name} --yes`;
+    console.log(`✅ Worker ${name} deleted successfully`);
+  } catch (error) {
+    console.error(`Failed to delete worker ${name}: ${error}`);
+    // Retry with force flag if the first attempt failed
+    try {
+      console.log("Retrying with force flag...");
+      await $`npx wrangler delete ${name} --yes --force`;
+      console.log(`✅ Worker ${name} force deleted successfully`);
+    } catch (retryError) {
+      console.error(`Failed to force delete worker ${name}: ${retryError}`);
     }
-    process.exit(1);
   }
 }
 
@@ -612,9 +776,12 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
   // Parse command line arguments
   const args = process.argv.slice(2);
   const options = {
-    customPath: args.find((arg) => !arg.startsWith("--")),
+    customPath: args.find(
+      (arg) => !arg.startsWith("--") && !arg.startsWith("-p="),
+    ),
     skipDev: args.includes("--skip-dev"),
     skipRelease: args.includes("--skip-release"),
+    projectDir: args.find((arg) => arg.startsWith("-p="))?.substring(3),
   };
 
   // Print help if requested
@@ -624,25 +791,34 @@ Smoke Test Usage:
   node smoke-test.mjs [options] [custom-path]
 
 Options:
-  --skip-dev       Skip testing the local development server
-  --skip-release   Skip testing the release/production deployment
-  --help, -h       Show this help message
+  --skip-dev              Skip testing the local development server
+  --skip-release          Skip testing the release/production deployment
+  -p=PATH                 Project directory to test
+  --help, -h              Show this help message
 
 Arguments:
-  custom-path      Optional path to test (e.g., "/login")
+  custom-path             Optional path to test (e.g., "/login")
 
 Examples:
-  node smoke-test.mjs              # Test both dev and release with default path
-  node smoke-test.mjs /login       # Test both dev and release with /login path
-  node smoke-test.mjs --skip-release # Only test dev server
+  node smoke-test.mjs                    # Test both dev and release with default path
+  node smoke-test.mjs /login             # Test both dev and release with /login path
+  node smoke-test.mjs --skip-release     # Only test dev server
+  node smoke-test.mjs -p=./my-project    # Test using the specified project directory
 `);
+    // No error, just showing help
     process.exit(0);
   }
 
-  main(options).catch((error) => {
-    console.error("❌ Unhandled error in smoke test:", error);
-    process.exit(1);
-  });
+  // Run the main function
+  main(options)
+    .then(() => {
+      console.log("✨ Smoke test completed successfully!");
+      process.exit(0);
+    })
+    .catch((error) => {
+      console.error(`❌ Smoke test failed: ${error.message}`);
+      process.exit(1);
+    });
 }
 
 export { main, checkUrl, checkUrlHealth, checkServerHealth, checkClientHealth };

@@ -156,6 +156,9 @@ importers:
       '@types/node':
         specifier: ^22.14.0
         version: 22.14.0
+      ignore:
+        specifier: ^7.0.4
+        version: 7.0.4
       puppeteer-core:
         specifier: ^22.8.1
         version: 22.15.0
@@ -2560,6 +2563,10 @@ packages:
 
   ieee754@1.2.1:
     resolution: {integrity: sha512-dcyqhDvX1C46lXZcVqCpK+FtMRQVdIMN6/Df5js2zouUsqG7I6sFxitIC+7KYK29KdXOLHdu9zL4sFnoVQnqaA==}
+
+  ignore@7.0.4:
+    resolution: {integrity: sha512-gJzzk+PQNznz8ysRrC0aOkBNVRBDtE1n53IqyqEf3PXrYwomFs5q4pGMizBMJF+ykh03insJ27hB8gSrD2Hn8A==}
+    engines: {node: '>= 4'}
 
   import-meta-resolve@4.1.0:
     resolution: {integrity: sha512-I6fiaX09Xivtk+THaMfAwnA3MVA5Big1WHF1Dfx9hFuvNIWpXnorlkzhcQf6ehrqQiiZECRt1poOAkPmer3ruw==}
@@ -6778,6 +6785,8 @@ snapshots:
       '@babel/runtime': 7.26.9
 
   ieee754@1.2.1: {}
+
+  ignore@7.0.4: {}
 
   import-meta-resolve@4.1.0: {}
 

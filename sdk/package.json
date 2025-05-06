@@ -139,6 +139,7 @@
     "@types/debug": "^4.1.12",
     "@types/lodash": "^4.17.16",
     "@types/node": "^22.14.0",
+    "ignore": "^7.0.4",
     "puppeteer-core": "^22.8.1",
     "semver": "^7.7.1",
     "tsx": "^4.19.4",
