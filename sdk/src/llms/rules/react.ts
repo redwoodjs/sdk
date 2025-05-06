@@ -73,7 +73,7 @@ Example:
 \`\`\`tsx
 "use server";
 
-import { requestInfo } from "@redwoodjs/sdk/worker";
+import { requestInfo } from "rwsdk/worker";
 
 export async function addTodo(formData: FormData) {
   const { ctx } = requestInfo;
@@ -88,7 +88,7 @@ export async function addTodo(formData: FormData) {
 2. Access context via:
    - requestInfo in server functions:
    \`\`\`
-   import { requestInfo } from "@redwoodjs/sdk/worker";
+   import { requestInfo } from "rwsdk/worker";
    const { ctx } = requestInfo
    \`\`\`
 3. Context is populated by middleware and interruptors and is request-scoped.

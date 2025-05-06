@@ -236,7 +236,7 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
     ```ts ins="import tailwindcss from '@tailwindcss/vite'" ins="tailwindcss()," title="vite.config.mts"
     import { defineConfig } from "vite";
     import tailwindcss from '@tailwindcss/vite'
-    import { redwood } from "@redwoodjs/sdk/vite";
+    import { redwood } from "rwsdk/vite";
 
     export default defineConfig({
       environments: {
@@ -365,8 +365,8 @@ Now, you can use the class `font-display` and `font-body` in your project.
 Before this will work in production, we need to update our security headers to allow `googleapis` and `fonts.gstatic`:
 
 ```tsx title="src/app/headers.ts" collapse={1-26} {30}
-import { RouteMiddleware } from "@redwoodjs/sdk/router";
-import { IS_DEV } from "@redwoodjs/sdk/constants";
+import { RouteMiddleware } from "rwsdk/router";
+import { IS_DEV } from "rwsdk/constants";
 
 export const setCommonHeaders =
 (): RouteMiddleware =>
@@ -539,7 +539,7 @@ You can also use the [shadcn/ui Vite Installation instructions](https://ui.shadc
     +import path from "path"
     import { defineConfig } from "vite";
     import tailwindcss from "@tailwindcss/vite"
-    import { redwood } from "@redwoodjs/sdk/vite";
+    import { redwood } from "rwsdk/vite";
 
     export default defineConfig({
       plugins: [redwood(), tailwindcss()],

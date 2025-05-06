@@ -1,4 +1,4 @@
-import { route } from "@redwoodjs/sdk/router";
+import { route } from "rwsdk/router";
 import { Login } from "./Login";
 import { sessions } from "@/session/store";
 
