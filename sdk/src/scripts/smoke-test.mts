@@ -1101,11 +1101,11 @@ Arguments:
   custom-path             Optional path to test (e.g., "/login")
 
 Examples:
-  node smoke-test.mjs                                # Test both dev and release with default path
-  node smoke-test.mjs /login                         # Test both dev and release with /login path
-  node smoke-test.mjs --skip-release                 # Only test dev server
-  node smoke-test.mjs --path=./my-project            # Test using the specified project directory
-  node smoke-test.mjs --path=./my-project --artifact-dir=./artifacts  # Store artifacts in ./artifacts
+  pnpm run smoke-test                                # Test both dev and release with default path
+  pnpm run smoke-test /login                         # Test both dev and release with /login path
+  pnpm run smoke-test --skip-release                 # Only test dev server
+  pnpm run smoke-test --path=./my-project            # Test using the specified project directory
+  pnpm run smoke-test --path=./my-project --artifact-dir=./artifacts  # Store artifacts in ./artifacts
 `);
     // No error, just showing help
     process.exit(0);
