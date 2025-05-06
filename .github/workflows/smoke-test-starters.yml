@@ -1,0 +1,49 @@
+name: Starter Smoke Tests
+
+on:
+  push:
+    branches:
+      - main
+  pull_request:
+  workflow_dispatch:
+
+jobs:
+  smoke-test:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          corepack enable
+          pnpm install
+
+      - name: Link latest SDK
+        run: pnpm link-sdk
+
+      - name: Install Chrome for Puppeteer
+        uses: browser-actions/setup-chrome@v1
+        id: setup-chrome
+
+      - name: Build SDK
+        run: cd sdk && pnpm build
+
+      - name: Run smoke tests for starters
+        run: ./scripts/smoke-test-starters.sh
+        env:
+          CHROME_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
+
+      - name: Upload test artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-test-artifacts
+          path: smoke-test-artifacts
+          retention-days: 7

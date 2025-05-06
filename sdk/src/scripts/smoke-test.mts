@@ -51,6 +51,7 @@ async function main(
     skipDev?: boolean;
     skipRelease?: boolean;
     projectDir?: string;
+    artifactDir?: string;
   } = {},
 ) {
   // Throw immediately if both tests would be skipped
@@ -65,14 +66,14 @@ async function main(
   try {
     // Run the tests that weren't skipped
     if (!options.skipDev) {
-      await runDevTest(options.customPath);
+      await runDevTest(options.customPath, options.artifactDir);
     }
 
     if (!options.skipRelease) {
-      await runReleaseTest(options.customPath, resources);
+      await runReleaseTest(options.customPath, resources, options.artifactDir);
     }
 
-    console.log("\n✅ All smoke tests completed successfully!");
+    console.log("\n✅ All smoke tests passed!");
   } finally {
     await cleanupResources(resources);
   }
@@ -86,6 +87,7 @@ async function setupTestEnvironment(options: {
   skipDev?: boolean;
   skipRelease?: boolean;
   projectDir?: string;
+  artifactDir?: string;
 }): Promise<{
   tempDirCleanup?: () => Promise<void>;
   workerName?: string;
@@ -121,12 +123,15 @@ async function setupTestEnvironment(options: {
 /**
  * Runs tests against the development server
  */
-async function runDevTest(customPath?: string): Promise<void> {
+async function runDevTest(
+  customPath?: string,
+  artifactDir?: string,
+): Promise<void> {
   console.log("🚀 Testing local development server");
   const pathSuffix = formatPathSuffix(customPath);
 
   const { url, stopDev } = await runDevServer();
-  await checkUrl(url + pathSuffix);
+  await checkUrl(url + pathSuffix, artifactDir);
   await stopDev();
 }
 
@@ -136,12 +141,13 @@ async function runDevTest(customPath?: string): Promise<void> {
 async function runReleaseTest(
   customPath?: string,
   resources?: { workerName?: string },
+  artifactDir?: string,
 ): Promise<void> {
   console.log("\n🚀 Testing production deployment");
   const pathSuffix = formatPathSuffix(customPath);
 
   const { url, workerName } = await runRelease();
-  await checkUrl(url + pathSuffix);
+  await checkUrl(url + pathSuffix, artifactDir);
 
   // Store the worker name if we didn't set it earlier
   if (resources && !resources.workerName) {
@@ -249,7 +255,7 @@ async function copyProjectToTempDir(projectDir: string): Promise<{
 /**
  * Check a URL by performing health checks and realtime upgrade
  */
-async function checkUrl(url: string): Promise<void> {
+async function checkUrl(url: string, artifactDir?: string): Promise<void> {
   console.log(`🔍 Testing URL: ${url}`);
   const browser = await launchBrowser();
 
@@ -266,7 +272,17 @@ async function checkUrl(url: string): Promise<void> {
     await checkUrlHealth(page, url, true);
 
     // Take a screenshot for CI artifacts if needed
-    await page.screenshot({ path: "smoke-test-result.png" });
+    const screenshotPath = artifactDir
+      ? `${artifactDir}/smoke-test-result.png`
+      : "smoke-test-result.png";
+
+    // Ensure the artifact directory exists
+    if (artifactDir) {
+      await fs.mkdir(artifactDir, { recursive: true });
+    }
+
+    await page.screenshot({ path: screenshotPath });
+    console.log(`📸 Screenshot saved to ${screenshotPath}`);
   } finally {
     await browser.close();
   }
@@ -782,6 +798,9 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
     skipDev: args.includes("--skip-dev"),
     skipRelease: args.includes("--skip-release"),
     projectDir: args.find((arg) => arg.startsWith("-p="))?.substring(3),
+    artifactDir: args
+      .find((arg) => arg.startsWith("--artifact-dir="))
+      ?.substring(15),
   };
 
   // Print help if requested
@@ -794,16 +813,18 @@ Options:
   --skip-dev              Skip testing the local development server
   --skip-release          Skip testing the release/production deployment
   -p=PATH                 Project directory to test
+  --artifact-dir=DIR      Directory to store test artifacts
   --help, -h              Show this help message
 
 Arguments:
   custom-path             Optional path to test (e.g., "/login")
 
 Examples:
-  node smoke-test.mjs                    # Test both dev and release with default path
-  node smoke-test.mjs /login             # Test both dev and release with /login path
-  node smoke-test.mjs --skip-release     # Only test dev server
-  node smoke-test.mjs -p=./my-project    # Test using the specified project directory
+  node smoke-test.mjs                                # Test both dev and release with default path
+  node smoke-test.mjs /login                         # Test both dev and release with /login path
+  node smoke-test.mjs --skip-release                 # Only test dev server
+  node smoke-test.mjs -p=./my-project                # Test using the specified project directory
+  node smoke-test.mjs -p=./my-project --artifact-dir=./artifacts  # Store artifacts in ./artifacts
 `);
     // No error, just showing help
     process.exit(0);
