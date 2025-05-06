@@ -18,8 +18,8 @@
     "clean:vendor": "rm -rf ./vendor/dist",
     "release": "./scripts/release.sh",
     "test": "vitest",
-    "debug:sync": "node ./dist/scripts/debug-sync.mjs",
-    "smoke-test": "node ./dist/scripts/smoke-test.mjs"
+    "debug:sync": "tsx ./src/scripts/debug-sync.mts",
+    "smoke-test": "tsx ./src/scripts/smoke-test.mts"
   },
   "exports": {
     "./vite": {
