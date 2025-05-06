@@ -17,8 +17,6 @@ import { Route, defineRoutes, route } from "./lib/router";
 import { generateNonce } from "./lib/utils";
 import { IS_DEV } from "./constants";
 
-import { HealthCheckWrapper, HealthCheckPage } from "./components/HealthCheck";
-
 declare global {
   type Env = {
     ASSETS: Fetcher;
@@ -213,6 +211,22 @@ export const defineApp = (routes: Route[]) => {
       }
     },
   };
+};
+
+export const __HealthCheckWrapper: React.FC<{
+  children: React.ReactNode;
+}> = async ({ children }) => {
+  const { HealthCheckInfo } = await import(
+    /* @ts-ignore - Dynamic import path that will only exist at build time for user, and only if this is a smoke test */
+    "src/app/components/__HealthCheck"
+  );
+
+  return (
+    <>
+      <HealthCheckInfo />
+      {children}
+    </>
+  );
 };
 
 export const DefaultDocument: React.FC<{ children: React.ReactNode }> = ({
