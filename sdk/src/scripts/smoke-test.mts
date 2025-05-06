@@ -21,6 +21,10 @@ import {
   animals,
 } from "unique-names-generator";
 import ignore from "ignore";
+import debug from "debug";
+
+// Initialize the debug logger
+const log = debug("rw:smoke");
 
 const TIMEOUT = 30000; // 30 seconds timeout
 const RETRIES = 3;
@@ -54,27 +58,39 @@ async function main(
     artifactDir?: string;
   } = {},
 ) {
+  log("Starting smoke test with options: %O", options);
+
   // Throw immediately if both tests would be skipped
   if (options.skipDev && options.skipRelease) {
+    log("Error: Both dev and release tests are skipped");
     throw new Error(
       "Cannot skip both dev and release tests. At least one must run.",
     );
   }
 
+  log("Setting up test environment");
   const resources = await setupTestEnvironment(options);
 
   try {
     // Run the tests that weren't skipped
     if (!options.skipDev) {
+      log("Running development server tests");
       await runDevTest(options.customPath, options.artifactDir);
+    } else {
+      log("Skipping development server tests");
     }
 
     if (!options.skipRelease) {
+      log("Running release/production tests");
       await runReleaseTest(options.customPath, resources, options.artifactDir);
+    } else {
+      log("Skipping release/production tests");
     }
 
+    log("All smoke tests completed successfully");
     console.log("\n✅ All smoke tests passed!");
   } finally {
+    log("Cleaning up resources");
     await cleanupResources(resources);
   }
 }
@@ -93,6 +109,8 @@ async function setupTestEnvironment(options: {
   workerName?: string;
   originalCwd: string;
 }> {
+  log("Setting up test environment with options: %O", options);
+
   const resources: {
     tempDirCleanup?: () => Promise<void>;
     workerName?: string;
@@ -103,8 +121,11 @@ async function setupTestEnvironment(options: {
     originalCwd: process.cwd(),
   };
 
+  log("Current working directory: %s", resources.originalCwd);
+
   // If a project dir is specified, copy it to a temp dir with a unique name
   if (options.projectDir) {
+    log("Project directory specified: %s", options.projectDir);
     const { tempDir, targetDir, workerName } = await copyProjectToTempDir(
       options.projectDir,
     );
@@ -113,11 +134,15 @@ async function setupTestEnvironment(options: {
     resources.tempDirCleanup = tempDir.cleanup;
     resources.workerName = workerName;
 
+    log("Changing directory to: %s", targetDir);
     // Change to the new directory for the tests
     process.chdir(targetDir);
 
     // Create the smoke test components in the user's project
+    log("Creating smoke test components");
     await createSmokeTestComponents(targetDir);
+  } else {
+    log("No project directory specified, using current directory");
   }
 
   return resources;
@@ -130,12 +155,18 @@ async function runDevTest(
   customPath?: string,
   artifactDir?: string,
 ): Promise<void> {
+  log("Starting dev server test with path: %s", customPath || "default");
   console.log("🚀 Testing local development server");
   const pathSuffix = formatPathSuffix(customPath);
+  log("Path suffix: %s", pathSuffix);
 
+  log("Launching development server");
   const { url, stopDev } = await runDevServer();
+  log("Testing URL: %s", url + pathSuffix);
   await checkUrl(url + pathSuffix, artifactDir);
+  log("Stopping development server");
   await stopDev();
+  log("Development server test completed successfully");
 }
 
 /**
@@ -146,14 +177,20 @@ async function runReleaseTest(
   resources?: { workerName?: string },
   artifactDir?: string,
 ): Promise<void> {
+  log("Starting release test with path: %s", customPath || "default");
   console.log("\n🚀 Testing production deployment");
   const pathSuffix = formatPathSuffix(customPath);
+  log("Path suffix: %s", pathSuffix);
 
+  log("Running release process");
   const { url, workerName } = await runRelease();
+  log("Testing URL: %s with worker: %s", url + pathSuffix, workerName);
   await checkUrl(url + pathSuffix, artifactDir);
+  log("Release test completed successfully");
 
   // Store the worker name if we didn't set it earlier
   if (resources && !resources.workerName) {
+    log("Storing worker name: %s", workerName);
     resources.workerName = workerName;
   }
 }
@@ -166,28 +203,39 @@ async function cleanupResources(resources: {
   workerName?: string;
   originalCwd: string;
 }): Promise<void> {
+  log("Cleaning up resources");
+
   // Restore original working directory
+  log("Restoring original working directory: %s", resources.originalCwd);
   process.chdir(resources.originalCwd);
 
   // Clean up resources
   if (resources.workerName) {
+    log("Deleting worker: %s", resources.workerName);
     await deleteWorker(resources.workerName);
   }
 
   if (resources.tempDirCleanup) {
+    log("Cleaning up temporary directory");
     await resources.tempDirCleanup();
+    log("Temporary directory cleaned up");
   }
+
+  log("Resource cleanup completed");
 }
 
 /**
  * Formats the path suffix from a custom path
  */
 function formatPathSuffix(customPath?: string): string {
-  return customPath
+  const suffix = customPath
     ? customPath.startsWith("/")
       ? customPath
       : `/${customPath}`
     : "";
+
+  log("Formatted path suffix: %s", suffix);
+  return suffix;
 }
 
 /**
@@ -198,6 +246,7 @@ async function copyProjectToTempDir(projectDir: string): Promise<{
   targetDir: string;
   workerName: string;
 }> {
+  log("Creating temporary directory for project");
   // Create a temporary directory
   const tempDir = await tmp.dir({ unsafeCleanup: true });
 
@@ -214,6 +263,7 @@ async function copyProjectToTempDir(projectDir: string): Promise<{
   const workerName = `${originalDirName}_${suffix}`;
   const targetDir = resolve(tempDir.path, workerName);
 
+  log("Copying project from %s to %s", projectDir, targetDir);
   console.log(`Copying project from ${projectDir} to ${targetDir}`);
 
   // Read project's .gitignore if it exists
@@ -221,9 +271,11 @@ async function copyProjectToTempDir(projectDir: string): Promise<{
   const gitignorePath = join(projectDir, ".gitignore");
 
   if (await pathExists(gitignorePath)) {
+    log("Found .gitignore file at %s", gitignorePath);
     const gitignoreContent = await fs.readFile(gitignorePath, "utf-8");
     ig = ig.add(gitignoreContent);
   } else {
+    log("No .gitignore found, using default ignore patterns");
     // Add default ignores if no .gitignore exists
     ig = ig.add(
       [
@@ -241,6 +293,7 @@ async function copyProjectToTempDir(projectDir: string): Promise<{
   }
 
   // Copy the project directory, respecting .gitignore
+  log("Starting copy process with ignored patterns");
   await copy(projectDir, targetDir, {
     filter: (src) => {
       // Get path relative to project directory
@@ -248,9 +301,11 @@ async function copyProjectToTempDir(projectDir: string): Promise<{
       if (!relativePath) return true; // Include the root directory
 
       // Check against ignore patterns
-      return !ig.ignores(relativePath);
+      const result = !ig.ignores(relativePath);
+      return result;
     },
   });
+  log("Project copy completed successfully");
 
   return { tempDir, targetDir, workerName };
 }
@@ -259,19 +314,28 @@ async function copyProjectToTempDir(projectDir: string): Promise<{
  * Check a URL by performing smoke tests and realtime upgrade
  */
 async function checkUrl(url: string, artifactDir?: string): Promise<void> {
+  log("Checking URL: %s", url);
   console.log(`🔍 Testing URL: ${url}`);
+
+  log("Launching browser");
   const browser = await launchBrowser();
 
   try {
+    log("Opening new page");
     const page = await browser.newPage();
     page.setDefaultNavigationTimeout(TIMEOUT);
+    log("Set navigation timeout: %dms", TIMEOUT);
 
     // Initial smoke test
+    log("Performing initial smoke test");
     await checkUrlSmoke(page, url, false);
 
     // Upgrade to realtime and check again
+    log("Upgrading to realtime");
     await upgradeToRealtime(page);
+    log("Reloading page after realtime upgrade");
     await page.reload({ waitUntil: "networkidle0" });
+    log("Performing post-upgrade smoke test");
     await checkUrlSmoke(page, url, true);
 
     // Take a screenshot for CI artifacts if needed
@@ -281,14 +345,18 @@ async function checkUrl(url: string, artifactDir?: string): Promise<void> {
 
     // Ensure the artifact directory exists
     if (artifactDir) {
+      log("Creating artifact directory: %s", artifactDir);
       await fs.mkdir(artifactDir, { recursive: true });
     }
 
+    log("Taking screenshot: %s", screenshotPath);
     await page.screenshot({ path: screenshotPath });
     console.log(`📸 Screenshot saved to ${screenshotPath}`);
   } finally {
+    log("Closing browser");
     await browser.close();
   }
+  log("URL check completed successfully");
 }
 
 /**
@@ -300,28 +368,42 @@ async function checkUrlSmoke(
   isRealtime: boolean,
 ): Promise<void> {
   const phase = isRealtime ? "Post-upgrade" : "Initial";
+  log("Testing %s smoke tests at %s", phase, url);
   console.log(`🔍 Testing ${phase} smoke tests at ${url}`);
 
   // Parse the base URL and path to properly handle smoke test queries
   const parsedUrl = new URL(url);
+  log("Parsed URL: %O", {
+    origin: parsedUrl.origin,
+    pathname: parsedUrl.pathname,
+    search: parsedUrl.search,
+  });
 
   // Add __smoke_test query parameter, preserving any existing query parameters
   if (parsedUrl.searchParams.has("__smoke_test")) {
+    log("URL already has __smoke_test parameter: %s", url);
     console.log(`URL already has __smoke_test parameter: ${url}`);
   } else {
     parsedUrl.searchParams.append("__smoke_test", "1");
+    log("Added __smoke_test parameter to URL");
   }
 
   // Navigate to smoke test page
   const smokeUrl = parsedUrl.toString();
+  log("Accessing smoke test page: %s", smokeUrl);
   console.log(`🔍 Accessing smoke test page: ${smokeUrl}`);
   await page.goto(smokeUrl, { waitUntil: "networkidle0" });
+  log("Page loaded successfully");
 
   // Run server-side smoke test
+  log("Running server-side smoke test");
   await checkServerSmoke(page, phase);
 
   // Run client-side smoke test if available
+  log("Running client-side smoke test");
   await checkClientSmoke(page, phase);
+
+  log("URL smoke test completed successfully");
 }
 
 /**
@@ -331,6 +413,7 @@ async function checkServerSmoke(
   page: Page,
   phase: string = "",
 ): Promise<SmokeTestResult> {
+  log("Testing server-side smoke test %s", phase ? `(${phase})` : "");
   console.log(`🔍 Testing server-side smoke test ${phase ? `(${phase})` : ""}`);
 
   const result = await page.evaluate(async () => {
@@ -380,6 +463,7 @@ async function checkServerSmoke(
     }
   });
 
+  log("Server-side smoke test result: %O", result);
   reportSmokeTestResult(result, "Server-side", phase);
   return result;
 }
@@ -391,42 +475,54 @@ async function checkClientSmoke(
   page: Page,
   phase: string = "",
 ): Promise<SmokeTestResult | null> {
+  log("Testing client-side smoke test %s", phase ? `(${phase})` : "");
   console.log(`🔍 Testing client-side smoke test ${phase ? `(${phase})` : ""}`);
 
   // Check if refresh button exists
+  log("Checking for refresh button");
   const refreshButtonExists = await page.evaluate(() => {
     const button = document.querySelector('[data-testid="refresh-health"]');
     return !!button;
   });
 
   if (!refreshButtonExists) {
+    log("No client-side refresh button found");
     console.warn(
       "⚠️ No client-side refresh button found - this is expected only if testing a non-smoke test page",
     );
 
     // Look for any other evidence that the page is working
+    log("Checking if page content is valid HTML");
     const pageContent = await page.content();
     if (!pageContent.includes("<!DOCTYPE html>")) {
+      log("ERROR: Page doesn't appear to be a valid HTML document");
       throw new Error("Page doesn't appear to be a valid HTML document");
     }
 
     // Check if we're on a smoke test page - in which case missing the refresh button is a failure
     const currentUrl = page.url();
+    log("Current URL: %s", currentUrl);
     if (currentUrl.includes("__smoke_test")) {
+      log("ERROR: Smoke test page is missing the refresh-health button");
       throw new Error(
         "Smoke test page is missing the refresh-health button - this is a test failure",
       );
     }
 
+    log(
+      "Basic page structure verified, continuing without client-side smoke test",
+    );
     console.log(
       "ℹ️ Basic page structure verified, continuing without client-side smoke test",
     );
     return null;
   }
 
+  log("Clicking refresh button to trigger client-side smoke test");
   await page.click('[data-testid="refresh-health"]');
 
   // Wait for client-side update to complete
+  log("Waiting for client-side test to complete");
   try {
     await page.waitForFunction(
       () => {
@@ -439,7 +535,12 @@ async function checkClientSmoke(
       },
       { timeout: 5000 },
     );
+    log("Client-side test completed");
   } catch (error) {
+    log(
+      "ERROR: Timed out waiting for client-side smoke test to complete: %O",
+      error,
+    );
     throw new Error(
       `Timed out waiting for client-side smoke test to complete: ${error instanceof Error ? error.message : String(error)}`,
     );
@@ -486,6 +587,7 @@ async function checkClientSmoke(
     }
   });
 
+  log("Client-side smoke test result: %O", result);
   reportSmokeTestResult(result, "Client-side", phase);
   return result;
 }
@@ -494,6 +596,7 @@ async function checkClientSmoke(
  * Upgrade to realtime mode
  */
 async function upgradeToRealtime(page: Page): Promise<void> {
+  log("Upgrading to realtime mode");
   console.log("\n📡 Upgrading to realtime mode");
   const upgradeResult = await page.evaluate(async () => {
     try {
@@ -521,11 +624,13 @@ async function upgradeToRealtime(page: Page): Promise<void> {
   });
 
   if (!upgradeResult.success) {
+    log("ERROR: Failed to upgrade to realtime mode: %s", upgradeResult.message);
     throw new Error(
       `Failed to upgrade to realtime mode: ${upgradeResult.message}`,
     );
   }
 
+  log("Successfully upgraded to realtime mode");
   console.log("✅ Successfully upgraded to realtime mode");
 }
 
@@ -536,6 +641,7 @@ async function runDevServer(): Promise<{
   url: string;
   stopDev: () => Promise<void>;
 }> {
+  log("Starting development server");
   console.log("🚀 Starting development server...");
 
   // Start dev server
@@ -543,6 +649,7 @@ async function runDevServer(): Promise<{
     stdio: ["pipe", "pipe", "pipe"],
     shell: true,
   });
+  log("Development server process spawned");
 
   // Store chunks to parse the URL
   const chunks: Buffer[] = [];
@@ -562,16 +669,19 @@ async function runDevServer(): Promise<{
     // Try to extract the URL from the server output
     const localMatch = output.match(/Local:\s+(http:\/\/localhost:\d+)/);
     if (localMatch && localMatch[1]) {
+      log("Found development server URL: %s", localMatch[1]);
       resolveDevServer(localMatch[1]);
     }
   });
 
   // Function to stop the dev server
   const stopDev = async () => {
+    log("Stopping development server");
     console.log("Stopping development server...");
     devProcess.kill();
     await new Promise<void>((resolve) => {
       devProcess.on("exit", () => {
+        log("Development server stopped");
         console.log("Development server stopped");
         resolve();
       });
@@ -581,6 +691,7 @@ async function runDevServer(): Promise<{
   // Wait for URL with timeout
   const timeoutPromise = new Promise<string>((_, reject) => {
     setTimeout(60000).then(() => {
+      log("ERROR: Timed out waiting for dev server URL");
       reject(new Error("Timed out waiting for dev server URL"));
     });
   });
@@ -588,6 +699,7 @@ async function runDevServer(): Promise<{
   // Wait for either the URL or timeout
   const url = await Promise.race([devServerPromise, timeoutPromise]);
 
+  log("Development server started at %s", url);
   console.log(`✅ Development server started at ${url}`);
   return { url, stopDev };
 }
@@ -596,6 +708,7 @@ async function runDevServer(): Promise<{
  * Run the release process and return the deployed URL and worker name
  */
 async function runRelease(): Promise<{ url: string; workerName: string }> {
+  log("Running release process");
   console.log("🚀 Running release process...");
 
   // Create an interactive expect script for handling the release prompts
@@ -622,35 +735,43 @@ expect {
 wait
 `;
 
+  log("Creating temporary expect script file");
   // Create a temporary file for the expect script
   const tempExpectFile = await tmp.file({ postfix: ".exp" });
   const scriptPath = tempExpectFile.path;
 
   await fs.writeFile(scriptPath, expectScript);
   await fs.chmod(scriptPath, 0o755);
+  log("Expect script created at %s", scriptPath);
 
   try {
     // Run the expect script
+    log("Running expect script to handle interactive prompts");
     const result = await $({ shell: true })`${scriptPath}`;
     const stdout = result.stdout ?? "";
     console.log(stdout);
 
     // Extract deployment URL from output
+    log("Extracting deployment URL from output");
     const urlMatch = stdout.match(
       /https:\/\/([a-zA-Z0-9-]+)\.redwoodjs\.workers\.dev/,
     );
     if (!urlMatch || !urlMatch[0]) {
+      log("ERROR: Could not extract deployment URL from release output");
       throw new Error("Could not extract deployment URL from release output");
     }
 
     const url = urlMatch[0];
     const workerName = urlMatch[1];
+    log("Successfully deployed to %s (worker: %s)", url, workerName);
     console.log(`✅ Successfully deployed to ${url}`);
 
     return { url, workerName };
   } finally {
     // Clean up the temporary expect script
+    log("Cleaning up temporary expect script");
     await tempExpectFile.cleanup().catch(() => {
+      log("Warning: Failed to clean up temporary script file: %s", scriptPath);
       console.warn(
         `Warning: Failed to clean up temporary script file: ${scriptPath}`,
       );
@@ -663,9 +784,12 @@ wait
  */
 async function launchBrowser(): Promise<Browser> {
   // Get browser path
+  log("Getting browser executable path");
   const browserPath = await getBrowserPath();
+  log("Launching browser from %s", browserPath);
   console.log(`🚀 Launching browser from ${browserPath}`);
 
+  log("Starting browser with puppeteer");
   return await puppeteer.launch({
     executablePath: browserPath,
     headless: true,
@@ -677,9 +801,11 @@ async function launchBrowser(): Promise<Browser> {
  * Get the browser executable path
  */
 async function getBrowserPath(): Promise<string> {
+  log("Finding Chrome executable");
   console.log("Finding Chrome executable...");
   // First try using environment variable if set
   if (process.env.CHROME_PATH) {
+    log("Using Chrome from environment variable: %s", process.env.CHROME_PATH);
     console.log(
       `Using Chrome from environment variable: ${process.env.CHROME_PATH}`,
     );
@@ -687,27 +813,35 @@ async function getBrowserPath(): Promise<string> {
   }
 
   // Use a more direct approach to avoid type issues
+  log("Detecting platform");
   const platform = detectBrowserPlatform();
   if (!platform) {
+    log("ERROR: Failed to detect browser platform");
     throw new Error("Failed to detect browser platform");
   }
+  log("Detected platform: %s", platform);
 
   // Bypass type issues by using 'any'
   try {
     // Try to compute the path first (this will check if it's installed)
+    log("Attempting to find existing Chrome installation");
     const options: any = { browser: "chrome", platform };
     const path = computeExecutablePath(options);
+    log("Found existing Chrome at: %s", path);
     console.log(`Found existing Chrome at: ${path}`);
     return path;
   } catch (error) {
     // If path computation fails, install Chrome
+    log("No Chrome installation found, installing Chrome");
     console.log("No Chrome installation found. Installing Chrome...");
     const installOptions: any = { browser: "chrome", platform };
     await install(installOptions);
+    log("Chrome installation completed");
 
     // Now compute the path for the installed browser
     const options: any = { browser: "chrome", platform };
     const path = computeExecutablePath(options);
+    log("Installed and using Chrome at: %s", path);
     console.log(`Installed and using Chrome at: ${path}`);
     return path;
   }
@@ -717,19 +851,29 @@ async function getBrowserPath(): Promise<string> {
  * Check if a server is running at the given URL
  */
 async function checkServerUp(url: string, retries = RETRIES): Promise<boolean> {
+  log("Checking if server is up at %s (max retries: %d)", url, retries);
+
   for (let i = 0; i < retries; i++) {
     try {
+      log("Attempt %d/%d to check server at %s", i + 1, retries, url);
       console.log(
         `Checking if server is up at ${url} (attempt ${i + 1}/${retries})...`,
       );
       await $`curl -s -o /dev/null -w "%{http_code}" ${url}`;
+      log("Server is up at %s", url);
       return true;
     } catch (error) {
       if (i === retries - 1) {
+        log(
+          "ERROR: Server at %s did not become available after %d attempts",
+          url,
+          retries,
+        );
         throw new Error(
           `Server at ${url} did not become available after ${retries} attempts`,
         );
       }
+      log("Server not up yet, retrying in 2 seconds");
       console.log(`Server not up yet, retrying in 2 seconds...`);
       await setTimeout(2000);
     }
@@ -748,16 +892,27 @@ function reportSmokeTestResult(
   phase: string = "",
 ): void {
   const phasePrefix = phase ? `(${phase}) ` : "";
+  log("Reporting %s%s smoke test result: %O", phasePrefix, type, result);
 
   if (result.verificationPassed) {
+    log("%s%s smoke test passed", phasePrefix, type);
     console.log(`✅ ${phasePrefix}${type} smoke test passed!`);
     if (result.serverTimestamp) {
+      log("Server timestamp: %d", result.serverTimestamp);
       console.log(`✅ Server timestamp: ${result.serverTimestamp}`);
     }
     if (result.clientTimestamp) {
+      log("Client timestamp: %d", result.clientTimestamp);
       console.log(`✅ Client timestamp: ${result.clientTimestamp}`);
     }
   } else {
+    log(
+      "ERROR: %s%s smoke test failed. Status: %s. Error: %s",
+      phasePrefix,
+      type,
+      result.status,
+      result.error || "unknown",
+    );
     throw new Error(
       `${phasePrefix}${type} smoke test failed. Status: ${result.status}${result.error ? `. Error: ${result.error}` : ""}`,
     );
@@ -768,19 +923,26 @@ function reportSmokeTestResult(
  * Delete the worker using wrangler
  */
 async function deleteWorker(name: string): Promise<void> {
+  log("Deleting worker: %s", name);
   console.log(`Cleaning up: Deleting worker ${name}...`);
   try {
     // The --yes flag automatically confirms the deletion
+    log("Running wrangler delete command");
     await $`npx wrangler delete ${name} --yes`;
+    log("Worker %s deleted successfully", name);
     console.log(`✅ Worker ${name} deleted successfully`);
   } catch (error) {
+    log("Failed to delete worker %s: %O", name, error);
     console.error(`Failed to delete worker ${name}: ${error}`);
     // Retry with force flag if the first attempt failed
     try {
+      log("Retrying with force flag");
       console.log("Retrying with force flag...");
       await $`npx wrangler delete ${name} --yes --force`;
+      log("Worker %s force deleted successfully", name);
       console.log(`✅ Worker ${name} force deleted successfully`);
     } catch (retryError) {
+      log("Failed to force delete worker %s: %O", name, retryError);
       console.error(`Failed to force delete worker ${name}: ${retryError}`);
     }
   }
@@ -790,14 +952,17 @@ async function deleteWorker(name: string): Promise<void> {
  * Creates the smoke test components in the target project directory
  */
 async function createSmokeTestComponents(targetDir: string): Promise<void> {
+  log("Creating smoke test components in project directory: %s", targetDir);
   console.log("Creating smoke test components in project...");
 
   // Create directories if they don't exist
   const componentsDir = join(targetDir, "src", "app", "components");
+  log("Creating components directory: %s", componentsDir);
   await fs.mkdir(componentsDir, { recursive: true });
 
   // Create SmokeTest.tsx
   const smokeTestPath = join(componentsDir, "__SmokeTest.tsx");
+  log("Creating SmokeTest component at: %s", smokeTestPath);
   const smokeTestContent = `"use client";
 
 import React from "react";
@@ -905,6 +1070,7 @@ export const SmokeTestPage = (
 
   // Create SmokeTestClient.tsx
   const smokeTestClientPath = join(componentsDir, "__SmokeTestClient.tsx");
+  log("Creating SmokeTestClient component at: %s", smokeTestClientPath);
   const smokeTestClientContent = `"use client";
 
 import React, { useState } from "react";
@@ -1060,9 +1226,12 @@ export const SmokeTestClient: React.FC = () => {
 };`;
 
   // Write the files
+  log("Writing SmokeTest component file");
   await fs.writeFile(smokeTestPath, smokeTestContent);
+  log("Writing SmokeTestClient component file");
   await fs.writeFile(smokeTestClientPath, smokeTestClientContent);
 
+  log("Smoke test components created successfully");
   console.log("Created smoke test components:");
   console.log(`- ${smokeTestPath}`);
   console.log(`- ${smokeTestClientPath}`);
@@ -1072,6 +1241,8 @@ export const SmokeTestClient: React.FC = () => {
 if (fileURLToPath(import.meta.url) === process.argv[1]) {
   // Parse command line arguments
   const args = process.argv.slice(2);
+  log("Command line arguments: %O", args);
+
   const options = {
     customPath: args.find(
       (arg) => !arg.startsWith("--") && !arg.startsWith("--path="),
@@ -1084,8 +1255,11 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
       ?.substring(15),
   };
 
+  log("Parsed options: %O", options);
+
   // Print help if requested
   if (args.includes("--help") || args.includes("-h")) {
+    log("Showing help message");
     console.log(`
 Smoke Test Usage:
   node smoke-test.mjs [options] [custom-path]
@@ -1108,16 +1282,20 @@ Examples:
   pnpm smoke-test --path=./my-project --artifact-dir=./artifacts  # Store artifacts in ./artifacts
 `);
     // No error, just showing help
+    log("Exiting after showing help");
     process.exit(0);
   }
 
   // Run the main function
+  log("Starting smoke test");
   main(options)
     .then(() => {
+      log("Smoke test completed successfully");
       console.log("✨ Smoke test completed successfully!");
       process.exit(0);
     })
     .catch((error) => {
+      log("ERROR: Smoke test failed: %O", error);
       console.error(`❌ Smoke test failed: ${error.message}`);
       process.exit(1);
     });
