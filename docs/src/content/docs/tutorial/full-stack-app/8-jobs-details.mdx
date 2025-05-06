@@ -183,7 +183,7 @@ Everything after `applications/` is the application id.
 We can get all the details we need based on the `RequestInfo` object that gets passed into all pages by default.
 
 ```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={3} {1} "{ params }: RequestInfo"
-import { RequestInfo } from "@redwoodjs/sdk/worker"
+import { RequestInfo } from "rwsdk/worker"
 
 const Details = async ({ params }: RequestInfo) => {
 ```
@@ -1031,7 +1031,7 @@ const Edit = async ({ params, ctx }: RequestInfo) => {
 Be sure to import `RequestInfo` at the top of our file:
 
 ```tsx title="/src/app/pages/applications/Edit.tsx" showLineNumbers=false
-import { RequestInfo } from "@redwoodjs/sdk/worker"
+import { RequestInfo } from "rwsdk/worker"
 ```
 
 If we work our way down the file, we still need to grab _all_ the application statuses to populate the dropdown menu:

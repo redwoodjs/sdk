@@ -34,8 +34,8 @@ Passkey authentication offers several key advantages:
 Let's start by taking a look at the `worker.tsx` file. This file sets up our Cloudflare worker, but it also handles all the routing, middleware, and interrupters.
 
 ```tsx title="src/worker.tsx" collapse={1-12}
-import { defineApp, ErrorResponse } from "@redwoodjs/sdk/worker";
-import { route, render, prefix } from "@redwoodjs/sdk/router";
+import { defineApp, ErrorResponse } from "rwsdk/worker";
+import { route, render, prefix } from "rwsdk/router";
 import { Document } from "@/app/Document";
 import { Home } from "@/app/pages/Home";
 import { setCommonHeaders } from "@/app/headers";
@@ -176,7 +176,7 @@ route("/", Home),
 We can also change the home page route to use the `index` method:
 
 ```tsx title="src/worker.tsx" showLineNumbers={false}
-import { index, route, render, prefix } from "@redwoodjs/sdk/router";
+import { index, route, render, prefix } from "rwsdk/router";
 ...
 index([Home]);
 ```
@@ -236,7 +236,7 @@ We're co-locating the file that defines our auth routes with our auth pages.
 Let's take a look at `userRoutes`. This is coming from `src/app/pages/user/routes.tsx`.
 
 ```tsx title="src/app/pages/user/routes.tsx"
-import { route } from "@redwoodjs/sdk/router";
+import { route } from "rwsdk/router";
 import { Login } from "./Login";
 import { sessions } from "@/session/store";
 
@@ -277,7 +277,7 @@ export const Signup = () => {
 Now, we need to add this route to our `userRoutes` array (inside of `src/app/pages/user/routes.ts`):
 
 ```tsx title="src/app/pages/user/routes.ts" {3,8}
-import { route } from "@redwoodjs/sdk/router";
+import { route } from "rwsdk/router";
 import { Login } from "./Login";
 import { Signup } from "./Signup";
 import { sessions } from "@/session/store";
@@ -321,7 +321,7 @@ import {
   startPasskeyLogin,
   startPasskeyRegistration,
 } from "./functions";
-import { useTurnstile } from "@redwoodjs/sdk/turnstile";
+import { useTurnstile } from "rwsdk/turnstile";
 import { Button } from "@/app/components/ui/button";
 // >>> Replace this with your own Cloudflare Turnstile site key
 const TURNSTILE_SITE_KEY = "0x4AAAAAABBM92GLK3VnyFAr";
@@ -584,7 +584,7 @@ import {
   finishPasskeyRegistration,
   startPasskeyRegistration,
 } from "./functions";
-import { useTurnstile } from "@redwoodjs/sdk/turnstile";
+import { useTurnstile } from "rwsdk/turnstile";
 import { Button } from "@/app/components/ui/button";
 
 // >>> Replace this with your own Cloudflare Turnstile site key
@@ -1804,7 +1804,7 @@ import {
   startPasskeyLogin,
   startPasskeyRegistration,
 } from "./functions";
-import { useTurnstile } from "@redwoodjs/sdk/turnstile";
+import { useTurnstile } from "rwsdk/turnstile";
 import { AuthLayout } from "@/app/layouts/AuthLayout";
 import { Button } from "@/app/components/ui/button";
 import { Alert, AlertTitle } from "@/app/components/ui/alert";
@@ -2290,8 +2290,8 @@ export const link = defineLinks([
 <summary>Final code for our `worker.tsx`</summary>
 
 ```tsx title="src/worker.tsx"
-import { defineApp, ErrorResponse } from "@redwoodjs/sdk/worker";
-import { route, render, prefix } from "@redwoodjs/sdk/router";
+import { defineApp, ErrorResponse } from "rwsdk/worker";
+import { route, render, prefix } from "rwsdk/router";
 import { Document } from "@/app/Document";
 import { Home } from "@/app/pages/Home";
 import { setCommonHeaders } from "@/app/headers";

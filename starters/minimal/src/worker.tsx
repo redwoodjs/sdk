@@ -1,5 +1,5 @@
-import { defineApp } from "@redwoodjs/sdk/worker";
-import { index, render } from "@redwoodjs/sdk/router";
+import { defineApp } from "rwsdk/worker";
+import { index, render } from "rwsdk/router";
 
 import { Document } from "@/app/Document";
 import { Home } from "@/app/pages/Home";

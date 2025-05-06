@@ -123,7 +123,7 @@ route('/', [
 ### Composing Multiple Interruptors
 
 \`\`\`tsx
-import { route } from "@redwoodjs/sdk/router";
+import { route } from "rwsdk/router";
 import {
   requireAuth,
   validateUser,
@@ -154,7 +154,7 @@ route("/api/users", [
 ### Role-Based Access Control
 
 \`\`\`tsx
-import { getSession } from "@redwoodjs/sdk/auth";
+import { getSession } from "rwsdk/auth";
 
 // Create a function that generates role-based interruptors
 export function hasRole(allowedRoles) {
@@ -184,7 +184,7 @@ export const isUser = hasRole(["ADMIN", "EDITOR", "USER"]);
 Create a file at \`./src/app/interruptors.ts\`:
 
 \`\`\`tsx
-import { getSession } from "@redwoodjs/sdk/auth";
+import { getSession } from "rwsdk/auth";
 
 // Authentication interruptors
 export async function requireAuth({ request, ctx }) {
@@ -228,7 +228,7 @@ Then import these interruptors in your route files:
 
 \`\`\`tsx
 // src/app/pages/admin/routes.ts
-import { route } from "@redwoodjs/sdk/router";
+import { route } from "rwsdk/router";
 import { isAdmin, logRequests } from "@/app/interruptors";
 
 import { AdminDashboard } from "./AdminDashboard";

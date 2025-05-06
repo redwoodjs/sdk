@@ -121,7 +121,7 @@ index([ isAuthenticated, Home ]),
 Be sure to import `index` at the top of the file:
 
 ```tsx startLineNumber=2 "index"
-import { route, render, prefix, index } from "@redwoodjs/sdk/router";
+import { route, render, prefix, index } from "rwsdk/router";
 ```
 
 Test it out. 👨‍🍳 Chef's kiss! If you're logged in, you should see the "List" text. If you're not logged in, you'll be redirected to the login page.
@@ -147,7 +147,7 @@ Inside the `src/scripts` directory, create a new file called `applicationSeed.ts
 Let's stub it out:
 
 ```tsx title="src/scripts/applicationSeed.ts"
-import { defineScript } from "@redwoodjs/sdk/worker";
+import { defineScript } from "rwsdk/worker";
 import { db, setupDb } from "@/db";
 
 export default defineScript(async ({ env }) => {
@@ -265,7 +265,7 @@ This time instead of using an object with a `connect` key, we'll use a `create` 
 <summary>Complete applicationSeed.ts file</summary>
 
 ```tsx title="src/scripts/applicationSeed.ts"
-import { defineScript } from "@redwoodjs/sdk/worker";
+import { defineScript } from "rwsdk/worker";
 import { db, setupDb } from "@/db";
 
 export default defineScript(async ({ env }) => {
@@ -506,7 +506,7 @@ Then, let's do something similar with the child `div` from our `AuthLayout.tsx`.
 Let's also add our route to our `links.ts` file for type hinting:
 
 ```tsx title="src/app/shared/links.ts" collapse={4-9}
-import { defineLinks } from "@redwoodjs/sdk/router";
+import { defineLinks } from "rwsdk/router";
 
 export const link = defineLinks([
   "/",

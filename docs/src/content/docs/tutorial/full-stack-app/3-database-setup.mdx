@@ -603,7 +603,7 @@ Within the `src > scripts` directory, you'll find a `seed.ts`
 This contains the basic structure for our seed file.
 
 ```ts title="src/scripts/seed.ts"
-import { defineScript } from "@redwoodjs/sdk/worker";
+import { defineScript } from "rwsdk/worker";
 import { db, setupDb } from "@/db";
 
 export default defineScript(async ({ env }) => {
@@ -637,7 +637,7 @@ If you want to start fresh with your own seed file, you could delete lines 7-17,
 You can copy and paste the following code to your project:
 
 ```ts title="src/scripts/seed.ts"
-import { defineScript } from "@redwoodjs/sdk/worker";
+import { defineScript } from "rwsdk/worker";
 import { db, setupDb } from "../db";
 
 export default defineScript(async ({ env }) => {
