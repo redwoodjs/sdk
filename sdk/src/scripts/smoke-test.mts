@@ -12,7 +12,6 @@ import {
   Browser as PuppeteerBrowser,
 } from "@puppeteer/browsers";
 import type { Page, Browser } from "puppeteer-core";
-import { spawn } from "child_process";
 import { copy, pathExists } from "fs-extra";
 import tmp from "tmp-promise";
 import {
@@ -644,33 +643,28 @@ async function runDevServer(): Promise<{
   log("Starting development server");
   console.log("🚀 Starting development server...");
 
-  // Start dev server
-  const devProcess = spawn("npm", ["run", "dev"], {
-    stdio: ["pipe", "pipe", "pipe"],
-    shell: true,
-  });
+  // Start dev server with stdout pipe to capture URL
+  const devProcess = $({
+    stdio: ["inherit", "pipe", "inherit"],
+    detached: true,
+    cleanup: false, // Don't auto-kill on exit
+  })`npm run dev`;
+
   log("Development server process spawned");
 
   // Store chunks to parse the URL
-  const chunks: Buffer[] = [];
-
-  // Create a promise that resolves when we find the URL
-  let resolveDevServer: (value: string) => void;
-  const devServerPromise = new Promise<string>((resolve) => {
-    resolveDevServer = resolve;
-  });
+  let url = "";
 
   // Listen for stdout to get the URL
-  devProcess.stdout.on("data", (data) => {
-    chunks.push(Buffer.from(data));
-    const output = Buffer.concat(chunks).toString();
+  devProcess.stdout?.on("data", (data) => {
+    const output = data.toString();
     console.log(output);
 
     // Try to extract the URL from the server output
     const localMatch = output.match(/Local:\s+(http:\/\/localhost:\d+)/);
-    if (localMatch && localMatch[1]) {
-      log("Found development server URL: %s", localMatch[1]);
-      resolveDevServer(localMatch[1]);
+    if (localMatch && localMatch[1] && !url) {
+      url = localMatch[1];
+      log("Found development server URL: %s", url);
     }
   });
 
@@ -678,30 +672,48 @@ async function runDevServer(): Promise<{
   const stopDev = async () => {
     log("Stopping development server");
     console.log("Stopping development server...");
-    devProcess.kill();
-    await new Promise<void>((resolve) => {
-      devProcess.on("exit", () => {
-        log("Development server stopped");
-        console.log("Development server stopped");
-        resolve();
-      });
-    });
+
+    if (devProcess.pid) {
+      try {
+        process.kill(-devProcess.pid, "SIGTERM");
+      } catch (e) {
+        devProcess.kill();
+      }
+    }
+
+    try {
+      await devProcess;
+    } catch (e) {
+      // Expected error when the process is killed
+      log("Dev server process was terminated");
+    }
+
+    log("Development server stopped");
+    console.log("Development server stopped");
   };
 
   // Wait for URL with timeout
-  const timeoutPromise = new Promise<string>((_, reject) => {
-    setTimeout(60000).then(() => {
-      log("ERROR: Timed out waiting for dev server URL");
-      reject(new Error("Timed out waiting for dev server URL"));
-    });
-  });
+  const waitForUrl = async (): Promise<string> => {
+    const start = Date.now();
+    const timeout = 60000; // 60 seconds
 
-  // Wait for either the URL or timeout
-  const url = await Promise.race([devServerPromise, timeoutPromise]);
+    while (Date.now() - start < timeout) {
+      if (url) {
+        return url;
+      }
+      await setTimeout(500); // Check every 500ms
+    }
 
-  log("Development server started at %s", url);
-  console.log(`✅ Development server started at ${url}`);
-  return { url, stopDev };
+    log("ERROR: Timed out waiting for dev server URL");
+    throw new Error("Timed out waiting for dev server URL");
+  };
+
+  // Wait for the URL
+  const serverUrl = await waitForUrl();
+
+  log("Development server started at %s", serverUrl);
+  console.log(`✅ Development server started at ${serverUrl}`);
+  return { url: serverUrl, stopDev };
 }
 
 /**
@@ -747,7 +759,7 @@ wait
   try {
     // Run the expect script
     log("Running expect script to handle interactive prompts");
-    const result = await $({ shell: true })`${scriptPath}`;
+    const result = await $`${scriptPath}`;
     const stdout = result.stdout ?? "";
     console.log(stdout);
 
