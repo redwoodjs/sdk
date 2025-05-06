@@ -902,7 +902,7 @@ We can access the current user by importing the `requestInfo` object. This conta
 
 ```tsx title="/src/app/pages/applications/actions.ts" {"1. import package":1} {"2. Get the ctx from the requestInfo object": 6} {"3. If the user does not exist on the ctx, throw an error": 9} {"4. Replace the hard coded user id with the one from the ctx": 18} {2, 7, 10-12, 19} showLineNumbers=false
 .
-import { requestInfo } from "@redwoodjs/sdk/worker";
+import { requestInfo } from "rwsdk/worker";
 
 export const createApplication = async (formData: FormData) => {
   try {
