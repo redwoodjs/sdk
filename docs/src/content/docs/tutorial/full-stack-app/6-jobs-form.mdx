@@ -6,7 +6,7 @@ sidebar:
 description: A guide in my new Starlight docs site.
 ---
 
-import { Aside, FileTree } from "@astrojs/starlight/components";
+import { Aside, FileTree } from '@astrojs/starlight/components';
 
 ## Building the Form
 
@@ -20,7 +20,13 @@ In the last section, we set up the `/applications/new` route, but we haven't cre
 
 Inside the `src/app/pages/applications` folder, let's create a new file called `New.tsx`.
 
-<FileTree>- src/ - app/ - pages/ - applications/ - New.tsx</FileTree>
+<FileTree>
+- src/
+  - app/
+    - pages/
+      - applications/
+        - New.tsx
+</FileTree>
 
 We can stub out a basic component:
 
@@ -129,7 +135,7 @@ Now, we an start modifying the code to fit our needs.
 At the top of the `src/app/components/ui/breadcrumb.tsx` file, we need to add a `use client` directive, otherwise our page will error out.
 
 ```tsx title="src/app/components/ui/breadcrumb.tsx"
-"use client";
+"use client"
 ```
 
 Let's wrap our breadcrumbs with a `div` and add a few classes to adjust the spacing.
@@ -188,7 +194,12 @@ Moving down the page, we have a two column form. There are parts of our form tha
 
 Inside the `src/app/components` folder, let's create a new file called `ApplicationForm.tsx`.
 
-<FileTree>- src/ - app/ - components/ - ApplicationForm.tsx</FileTree>
+<FileTree>
+- src/
+  - app/
+    - components/
+      - ApplicationForm.tsx
+</FileTree>
 
 Stubbing out our component:
 
@@ -281,19 +292,22 @@ Now, let's start building out our form.
           <input type="text" id="url" name="url" />
         </div>
         <div className="field">
-          <Button role="submit">Create</Button>
+          <Button role="submit">
+            Create
+          </Button>
         </div>
       </div>
     </div>
 
     {/* right side */}
-    <div></div>
+    <div>
+
+    </div>
   </div>
 </form>
 ```
 
 This is a big chunk of code, but it should be pretty straightforward. It's a standard form, using HTML labels and inputs with fields for:
-
 - Company Name
 - Job Title
 - Job Description / Requirements
@@ -386,8 +400,10 @@ textarea {
 For the minimum and maximum salary fields, we have to add a few custom styles in order to get the "Min" and "Max" labels to appear inside the input.
 
 <figure>
-  ![](./images/figma-salary-min-max.png)
-  <figcaption>Salary min and max within Figma.</figcaption>
+![](./images/figma-salary-min-max.png)
+<figcaption>
+  Salary min and max within Figma.
+</figcaption>
 </figure>
 
 Let's revisit the JSX. This is what we have right now:
@@ -517,7 +533,6 @@ Now, let's write the code for the right side.
 ### Right Side
 
 Looking at the design in Figma, we have 3 boxes.
-
 1. Application submission date, with a date picker
 2. Application status, with a dropdown
 3. Contacts list
@@ -529,15 +544,13 @@ For most of these pieces, we can use existing shadcn/ui components.
 I'm going to use a wrapping `div` with a class of `box` to wrap each of these sections.
 
 ```tsx title="src/app/components/ApplicationForm.tsx" startLineNumber=56
-{
-  /* right side */
-}
+{/* right side */}
 <div>
   <div className="box">
     <label>Application submission date</label>
     <DatePicker name="dateApplied" />
   </div>
-</div>;
+</div>
 ```
 
 Our `DatePicker` component is a shadcn/ui component, so we'll need to import it at the top of our file:
@@ -561,7 +574,7 @@ export function DatePicker({ name }: { name: string }) {
 Now, we need to do something with it. If you skim through the code, it's saving the selected `date` in a piece of state, defined at the top of the component:
 
 ```tsx title="src/app/components/ui/DatePicker.tsx" startLineNumber=17
-const [date, setDate] = React.useState<Date>();
+const [date, setDate] = React.useState<Date>()
 ```
 
 We can use that in conjunction with our `name` prop! Scroll down to the bottom of the `DatePicker` component, where we'll create a hidden input. We can give our `input` the `name` that we passed in as a prop and set the value to the `date` that we're saving in state.
@@ -571,7 +584,6 @@ We can use that in conjunction with our `name` prop! Scroll down to the bottom o
 ```
 
 You probably noticed, we're formatting the `date` value.
-
 - The `?` says, "if the `date` is defined, then format it".
 - The `.toISOString()` method converts the `date` to a string in ISO 8601 format.
 
@@ -579,7 +591,7 @@ Now, our component is returning two children, so we'll need to wrap our entire r
 
 ```tsx title="src/app/components/ui/datepicker.tsx" "<>" "</>" startLineNumber=16 collapse={6-27}
 export function DatePicker({ name }: { name: string }) {
-  const [date, setDate] = React.useState<Date>();
+  const [date, setDate] = React.useState<Date>()
 
   return (
     <>
@@ -589,7 +601,7 @@ export function DatePicker({ name }: { name: string }) {
             variant={"outline"}
             className={cn(
               "w-[280px] justify-start text-left font-normal",
-              !date && "text-muted-foreground",
+              !date && "text-muted-foreground"
             )}
           >
             <CalendarIcon className="mr-2 h-4 w-4" />
@@ -607,7 +619,7 @@ export function DatePicker({ name }: { name: string }) {
       </Popover>
       <input type="hidden" name={name} value={date ? date.toISOString() : ""} />
     </>
-  );
+  )
 }
 ```
 
@@ -630,13 +642,7 @@ Moving on to the next box, we have the Application Status:
 Here, we're using a shadcn/ui `Select` component. We'll need to import this at the top of our file:
 
 ```tsx title="src/app/components/ApplicationForm.tsx" showLineNumbers={false}
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "./ui/select";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "./ui/select"
 ```
 
 Let's look a little bit more at the shadcn/ui `Select` component. You can also [check out the official documentation](https://ui.shadcn.com/docs/components/select).
@@ -681,10 +687,9 @@ Scroll down to our `Select` component. We want to loop over all of our statuses 
     <SelectValue placeholder="Select a Status" />
   </SelectTrigger>
   <SelectContent>
-    {statuses &&
-      statuses.map((status) => (
-        <SelectItem value={status.status}>{status.status}</SelectItem>
-      ))}
+    {statuses && statuses.map(status => (
+      <SelectItem value={status.status}>{status.status}</SelectItem>
+    ))}
   </SelectContent>
 </Select>
 ```
@@ -784,20 +789,25 @@ Now, we need to write the `handleSubmit` function. Still within the `Application
 Now, let's set up the `createApplication` function. Create a file for our action. Inside, the `src/app/pages/applications` folder, let's create a new file called `actions.ts`.
 
 <FileTree>
-  - src/ - app/ - pages/ - applications/ - actions.ts - List.tsx - New.tsx
+- src/
+  - app/
+    - pages/
+      - applications/
+        - actions.ts
+        - List.tsx
+        - New.tsx
 </FileTree>
 
 <Aside type="tip" title="actions.ts file">
 This is personal preference, but I like co-locating my actions with the pages that need them.
 
 If it's a shared action, you can put it in a folder like `src/app/lib/actions` and naming the file based on the action.
-
 </Aside>
 
 At the top of our `actions.ts` file, we need the `"use server"` directive to ensure our code runs on the server (see the [React documentation on this](https://react.dev/reference/rsc/use-server) for more info).
 
 ```tsx title="/src/app/pages/applications/actions.ts"
-"use server";
+"use server"
 ```
 
 Then, let's create a function called `createApplication`.
@@ -868,12 +878,13 @@ try {
 Before looking at this within the browser, make sure that you go back to the `ApplicationsForm` component and import the `createApplication` function at the top of your file:
 
 ```tsx title="/src/app/components/ApplicationForm.tsx" startLineNumber={7}
-import { createApplication } from "@/app/pages/applications/actions";
+import { createApplication } from "@/app/pages/applications/actions"
 ```
 
 Now, let's test this out. Fill out the form, click the "Create" button, and you should be redirected to the applications page and see your new application in the list. 😎
 
 ![](./images/working-job-application-form.png)
+
 
 Our user id is still hard coded in:
 
@@ -891,7 +902,7 @@ We can access the current user by importing the `requestInfo` object. This conta
 
 ```tsx title="/src/app/pages/applications/actions.ts" {"1. import package":1} {"2. Get the ctx from the requestInfo object": 6} {"3. If the user does not exist on the ctx, throw an error": 9} {"4. Replace the hard coded user id with the one from the ctx": 18} {2, 7, 10-12, 19} showLineNumbers=false
 .
-import { requestInfo } from "rwsdk/worker";
+import { requestInfo } from "@redwoodjs/sdk/worker";
 
 export const createApplication = async (formData: FormData) => {
   try {
@@ -916,18 +927,15 @@ export const createApplication = async (formData: FormData) => {
 Test this out again and everything should still work. 🥳
 
 <Aside type="note" title="Handling Forms in React 19">
-  If you're interested in reading more on handling forms in React 19, here are a
-  few resources: - [React v19](https://react.dev/blog/2024/12/05/react-19) -
-  [React Hook Form vs React
-  19](https://mattburgess.medium.com/react-hook-form-vs-react-19-1e28009e6557) -
-  [Exploring React 19 Features: New Hooks and Actions for Better Form
-  Handling](https://curiosum.com/blog/react-19-features) - [A deep dive on forms
-  with modern React](https://www.epicreact.dev/react-forms)
+If you're interested in reading more on handling forms in React 19, here are a few resources:
+- [React v19](https://react.dev/blog/2024/12/05/react-19)
+- [React Hook Form vs React 19](https://mattburgess.medium.com/react-hook-form-vs-react-19-1e28009e6557)
+- [Exploring React 19 Features: New Hooks and Actions for Better Form Handling](https://curiosum.com/blog/react-19-features)
+- [A deep dive on forms with modern React](https://www.epicreact.dev/react-forms)
 </Aside>
 
 <Aside type="tip" title="Code on GitHub">
-  You can find the final code for this step on
-  [GitHub](https://github.com/ahaywood/applywize/tree/main/end-of-6).
+You can find the final code for this step on [GitHub](https://github.com/ahaywood/applywize/tree/main/end-of-6).
 </Aside>
 
 ## Further reading

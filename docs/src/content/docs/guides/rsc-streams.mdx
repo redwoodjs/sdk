@@ -30,7 +30,7 @@ Now on the client component, we can use the `consumeEventStream` function to par
 
 import { sendMessage } from "./functions";
 import { useState } from "react";
-import { consumeEventStream } from "rwsdk/client";
+import { consumeEventStream } from "@redwoodjs/sdk/client";
 
 export function Chat() {
   const [message, setMessage] = useState("");
@@ -53,7 +53,7 @@ export function Chat() {
             return (prev += JSON.parse(event.data).response);
           });
         },
-      }),
+      })
     );
   };
 

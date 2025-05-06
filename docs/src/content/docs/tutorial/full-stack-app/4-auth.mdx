@@ -6,10 +6,9 @@ sidebar:
 description: A guide in my new Starlight docs site.
 ---
 
-import { Aside, FileTree } from "@astrojs/starlight/components";
+import { Aside, FileTree } from '@astrojs/starlight/components';
 
 ## Existing Authentication Code
-
 Since we're using the [standard starter kit](https://github.com/redwoodjs/sdk/tree/main/starters/standard), it already has passkey authentication set up.
 
 <Aside type="note" title="Passkey Authentication">
@@ -17,7 +16,6 @@ Since we're using the [standard starter kit](https://github.com/redwoodjs/sdk/tr
 Passkey authentication is a passwordless authentication method that uses a biometric or device authentication to verify the user's identity.
 
 **How it Works**:
-
 1. A user creates a passkey during the registration process.
 2. A unique public-private key pair is generated.
 3. The private key remains securely stored on the user's device or [in a password manager](https://developer.apple.com/passkeys/).
@@ -26,19 +24,18 @@ Passkey authentication is a passwordless authentication method that uses a biome
 6. The service verifies the user's identity using the public key.
 
 ### Why Passkey Authentication?
-
 Passkey authentication offers several key advantages:
 
 - **Enhanced Security**: Passkeys are unique, resistant to guessing, and eliminate vulnerabilities associated with traditional passwords. They use biometric authentication like fingerprints, making them much harder to compromise.
 - **User-Friendly**: Users can log in quickly using biometric data or device authentication, removing the need to remember complex passwords. This creates a frictionless access experience across different platforms.
 - **Phishing Resistance**: Passkeys are tied to specific websites, making them immune to phishing attacks that typically trick users into entering credentials on fake sites.
-  </Aside>
+</Aside>
 
 Let's start by taking a look at the `worker.tsx` file. This file sets up our Cloudflare worker, but it also handles all the routing, middleware, and interrupters.
 
 ```tsx title="src/worker.tsx" collapse={1-12}
-import { defineApp, ErrorResponse } from "rwsdk/worker";
-import { route, render, prefix } from "rwsdk/router";
+import { defineApp, ErrorResponse } from "@redwoodjs/sdk/worker";
+import { route, render, prefix } from "@redwoodjs/sdk/router";
 import { Document } from "@/app/Document";
 import { Home } from "@/app/pages/Home";
 import { setCommonHeaders } from "@/app/headers";
@@ -111,7 +108,6 @@ export type AppContext = {
   user: User | null;
 };
 ```
-
 - On **lines 14-17**, we're setting up the types for our application's context object. Specifically, we're defining the `session` and `user` properties.
   - The `Session` type is defined in `src/session/durableObject.ts`. (Imported on line 8.) It contains a `userId`, `challenge`, and `createdAt`.
   - The `User` type comes from our `@prisma/client`. (Imported on line 10.) That's right! When Prisma generates our migration files, it also generates types.
@@ -119,7 +115,6 @@ export type AppContext = {
 ```tsx title="src/worker.tsx" startLineNumber=20
 setCommonHeaders(),
 ```
-
 - On **line 20** we're setting up our common headers. This is a function inside of `app/src/headers.ts`. (Imported on line 5.) It creates the Security Policies, Transport Policy, Referrer Policy, and Permissions Policy. [You can find additional documentation here.](/core/security/#-security-headers)
 
 ```tsx title="src/worker.tsx" startLineNumber=21
@@ -152,7 +147,6 @@ async ({ ctx, request, headers }) => {
   }
 },
 ```
-
 - On **lines 21-48**, we're setting up our middleware. This will run between every request and response cycle.
   - First, we're setting up the database `setupDb(env);` We'll use this later, on line 42, to find the logged in user.
   - Then, we're setting up the session store `setupSessionStore(env);`. We're using Cloudflare's Durable Objects to store our session data and loading it. `sessions.load(request)`
@@ -162,7 +156,6 @@ async ({ ctx, request, headers }) => {
 ```tsx title="src/worker.tsx" startLineNumber=49
 render(Document, [
 ```
-
 - On **line 49**, we're setting up our document. This document is referencing our `src/app/Document.tsx` file. It contains our `html`, `head`, and `body` tags and wraps _all_ of our pages.
   - One of the powerful yet simple features of RedwoodSDK is that it supports per-route documents. Read more about this [on our blog](https://rwsdk.com/blog/redwoodsdk-multiple-documents).
 
@@ -170,7 +163,6 @@ render(Document, [
 render(Document, [
   route("/", () => new Response("Hello, World!")),
 ```
-
 - On **line 50**, we're setting up our home page route. Here, we're just returning a standard response.
 
 The router highlights the request-response lifecycle. The first parameter is the route we're requesting and the second parameter is the response. This can be a standard response, or it can be a React component. On line 50, we're returning a standard response that says `Hello World!`.
@@ -184,7 +176,7 @@ route("/", Home),
 We can also change the home page route to use the `index` method:
 
 ```tsx title="src/worker.tsx" showLineNumbers={false}
-import { index, route, render, prefix } from "rwsdk/router";
+import { index, route, render, prefix } from "@redwoodjs/sdk/router";
 ...
 index([Home]);
 ```
@@ -230,14 +222,12 @@ Interrupters will _interrupt_ the flow. Before, the server returns a response, t
 - Middleware will run before _every single route_.
 - Interrupters will only run _on specific routes._
 
-In our code, we're using middleware to attach the user session to our context object _on every request_. But, we're only checking to see if the user is logged in _on the home page_.
-
+In our code, we're using middleware to attach the user session to our context object *on every request*. But, we're only checking to see if the user is logged in *on the home page*.
 </Aside>
 
 ```tsx title="src/worker.tsx" startLineNumber=62
 prefix("/user", userRoutes),
 ```
-
 - On **line 62**, we're prefixing all of our auth routes with `/user`. Meaning, our `login` route will be `/user/login` and our `logout` route will be `/user/logout`.
   - `login` and `logout` are defined within the `userRoutes` file, imported on line 6. One of the cool things about the RedwoodSDK router is that the response parameter can be an array. This means we can define our route information in a separate file and then import it into our `worker.tsx` file.
 
@@ -246,7 +236,7 @@ We're co-locating the file that defines our auth routes with our auth pages.
 Let's take a look at `userRoutes`. This is coming from `src/app/pages/user/routes.tsx`.
 
 ```tsx title="src/app/pages/user/routes.tsx"
-import { route } from "rwsdk/router";
+import { route } from "@redwoodjs/sdk/router";
 import { Login } from "./Login";
 import { sessions } from "@/session/store";
 
@@ -266,18 +256,14 @@ export const userRoutes = [
 ```
 
 We're defining 2 routes:
-
 - `/login` - This is displaying our login page (on line 6).
 - `/logout` - This is our logout route (on line 7), but instead of returning JSX, we're removing the session (line 9) and redirecting the user to the home page (line 10). Then, we return the response (line 12-15). The [302 status code](https://developer.mozilla.org/en-US/docs/Web/HTTP/Reference/Status/302) means we're redirecting to the `Location` header.
 
 <Aside type="note" title="Prefixed Routes">
-  Remember, even though these routes are defined as `/login` and `/logout`,
-  we've prefixed them in our `worker.tsx` file with `/user` So, in order to
-  access them, you'll go to `/user/login` and `/user/logout`.
+Remember, even though these routes are defined as `/login` and `/logout`, we've prefixed them in our `worker.tsx` file with `/user` So, in order to access them, you'll go to `/user/login` and `/user/logout`.
 </Aside>
 
 ## Setting up the Signup Page
-
 Let's create a third route for registering a new user, giving sign up a dedicated page.
 
 Inside, our `src/app/pages/user` directory, create a new file called `Signup.tsx`. Let's stub out a simple function, just to make sure it's working:
@@ -285,13 +271,13 @@ Inside, our `src/app/pages/user` directory, create a new file called `Signup.tsx
 ```tsx title="src/app/pages/user/Signup.tsx"
 export const Signup = () => {
   return <div>Signup</div>;
-};
+}
 ```
 
 Now, we need to add this route to our `userRoutes` array (inside of `src/app/pages/user/routes.ts`):
 
 ```tsx title="src/app/pages/user/routes.ts" {3,8}
-import { route } from "rwsdk/router";
+import { route } from "@redwoodjs/sdk/router";
 import { Login } from "./Login";
 import { Signup } from "./Signup";
 import { sessions } from "@/session/store";
@@ -335,7 +321,7 @@ import {
   startPasskeyLogin,
   startPasskeyRegistration,
 } from "./functions";
-import { useTurnstile } from "rwsdk/turnstile";
+import { useTurnstile } from "@redwoodjs/sdk/turnstile";
 import { Button } from "@/app/components/ui/button";
 // >>> Replace this with your own Cloudflare Turnstile site key
 const TURNSTILE_SITE_KEY = "0x4AAAAAABBM92GLK3VnyFAr";
@@ -415,7 +401,6 @@ export function Login() {
   );
 }
 ```
-
 </details>
 
 Let's break it down, chunk by chunk:
@@ -546,9 +531,7 @@ const handlePerformPasskeyRegister = () => {
 ```
 
 <Aside type="note" title="Usernames vs Email Addresses">
-  We're intentionally using usernames instead of emails. This decision prevents
-  enumeration attacks and avoids requiring valid email addresses for
-  registration.
+We're intentionally using usernames instead of emails. This decision prevents enumeration attacks and avoids requiring valid email addresses for registration.
 </Aside>
 
 ```tsx title="src/app/pages/user/Login.tsx" startLineNumber=74
@@ -579,7 +562,6 @@ export function Signup() {
 ```
 
 Let's remove all the pieces that aren't related to registering.
-
 - We don't need the `passkeyLogin` function (lines 26-36)
 - You can delete the `handlePerformPasskeyLogin` function (originally lines 56-58)
 - Let's also remove the "Login with passkey" button (originally lines 74-76)
@@ -595,12 +577,14 @@ Now, we need to clean up our unused imports. Within our IDE, these should be gra
 "use client";
 
 import { useState, useTransition } from "react";
-import { startRegistration } from "@simplewebauthn/browser";
+import {
+  startRegistration,
+} from "@simplewebauthn/browser";
 import {
   finishPasskeyRegistration,
   startPasskeyRegistration,
 } from "./functions";
-import { useTurnstile } from "rwsdk/turnstile";
+import { useTurnstile } from "@redwoodjs/sdk/turnstile";
 import { Button } from "@/app/components/ui/button";
 
 // >>> Replace this with your own Cloudflare Turnstile site key
@@ -654,6 +638,7 @@ export function Signup() {
 ```
 
 </details>
+
 
 Now, let's do the opposite for our `Login.tsx`.
 
@@ -718,7 +703,6 @@ export function LoginPage() {
   );
 }
 ```
-
 </details>
 
 Now, let's test our code:
@@ -760,7 +744,6 @@ Now, navigate to http://localhost:2332/. You should see a message that you're lo
 ![](./images/home-page-logged-in-as.png)
 
 Did you realize we haven't been able to access the home page before because it was protected by an interruptor?
-
 <details>
 <summary>Interruptor code (`worker.tsx`, lines 35-42)</summary>
 
@@ -777,7 +760,6 @@ index([
   Home,
 ]),
 ```
-
 </details>
 
 Try logging out, by going to http://localhost:2332/user/logout. You should be redirected to the login page.
@@ -789,7 +771,6 @@ Login and then you can visit the home page again.
 😎 Cool, right?
 
 ## Styling the Login Page
-
 Now that we know our authentication code is working, let's add some styles and make it look good.
 
 If we take a look at [the final design within Figma](https://www.figma.com/design/nqBPIIfe0MO4W8zOfW4oae/RedwoodSDK-%2F-Applywize?node-id=239-604&t=AzaW01lRe7c80zl2-1), this is what we're aiming for:
@@ -808,8 +789,8 @@ When we installed shadcn/ui, it added a lot of variables to the bottom of our `s
 <summary>Updated `styles.css` file</summary>
 
 ```css title="src/app/styles.css"
-@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@500;700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
 
 @import "tailwindcss";
 
@@ -955,7 +936,6 @@ body {
   --color-tag-offer: #aae198;
 }
 ```
-
 </details>
 
 If you take a look in the browser, by changing the position of the `@theme` block, it also changed the button's background color to yellow, our primary color. Perfect.
@@ -964,7 +944,12 @@ If you take a look in the browser, by changing the position of the `@theme` bloc
 
 Now, let's start on our layout component. Inside our `app` directory, create a new folder called `layouts`. Then, a new file called `AuthLayout.tsx`:
 
-<FileTree>- src - app - layouts - AuthLayout.tsx</FileTree>
+<FileTree>
+- src
+  - app
+    - layouts
+      - AuthLayout.tsx
+</FileTree>
 
 Let's start by stubbing out our component:
 
@@ -993,7 +978,7 @@ Inside our `Login` component let's replace our `main` tag with our `AuthLayout` 
 ```tsx title="src/app/pages/user/Login.tsx" {2,15} startLineNumber=37
 return (
   <AuthLayout>
-    <h1 className="text-4xl font-bold text-red-500">YOLO</h1>
+  <h1 className="text-4xl font-bold text-red-500">YOLO</h1>
     <div ref={turnstile.ref} />
     <input
       type="text"
@@ -1006,7 +991,7 @@ return (
     </Button>
     {result && <div>{result}</div>}
   </AuthLayout>
-);
+)
 ```
 
 If we head over to the browser, we should see something like this:
@@ -1041,7 +1026,13 @@ For the column on the left, we have a repeating background image. You can export
 
 Inside the root of our project, create a new folder called `public`. Inside, I'm going to create another folder called `images` and drop the image inside.
 
-<FileTree>- public/ - images/ - bg.png - logo.svg - src/</FileTree>
+<FileTree>
+- public/
+  - images/
+    - bg.png
+    - logo.svg
+- src/
+</FileTree>
 
 While we're here, let's also grab the logo. I'm only going to grab the owl. We can use "Apply Wize" text and style it with CSS. This will give us a little more control over the display (horizontal or stacked) without having to use two separate images. You can export the owl as an SVG (or [download it directly](https://github.com/ahaywood/applywize/tree/main/assets)).
 
@@ -1095,9 +1086,13 @@ Now, we can use this on both of our columns:
   <div className="grid grid-cols-2 min-h-[calc(100vh-96px)] rounded-xl border-2 border-[#D6D5C5]">
     <div className="center bg-[url('/images/bg.png')] bg-repeat rounded-l-xl">
       <img src="/images/logo.svg" alt="Apply Wize" />
-      <div>Apply Wize</div>
+      <div>
+        Apply Wize
+      </div>
     </div>
-    <div className="center">{children}</div>
+    <div className="center">
+      {children}
+    </div>
   </div>
 </div>
 ```
@@ -1113,7 +1108,9 @@ It's centering our content, but it's also horizontally aligning everything. Let'
       <div className="center">
         <div>
           <img src="/images/logo.svg" alt="Apply Wize" />
-          <div className="text-5xl text-white font-bold">Apply Wize</div>
+          <div className="text-5xl text-white font-bold">
+            Apply Wize
+          </div>
         </div>
       </div>
     </div>
@@ -1157,7 +1154,9 @@ We want this to be fixed to the bottom of the left column. So, this needs to be 
 <div className="center bg-[url('/images/bg.png')] bg-repeat rounded-l-xl">
   <div>
     <img src="/images/logo.svg" alt="Apply Wize" className="mx-auto" />
-    <div className="text-5xl text-white font-bold">Apply Wize</div>
+    <div className="text-5xl text-white font-bold">
+      Apply Wize
+    </div>
   </div>
   <div>“Transform the job hunt from a maze into a map.”</div>
 </div>
@@ -1229,6 +1228,9 @@ Now, let's style the right side. This is easy!
 ---
 ```
 
+
+
+
 ![](./images/authlayout-styling-complete.png)
 
 The styling for auth layout component is complete, but there's still one thing bothering me. (And maybe it's been bothering you too.)
@@ -1251,7 +1253,6 @@ When setting the type for `children` within React, you'll see `React.ReactNode`,
 > - `JSX.Element` and `React.ReactElement` are functionally the same type. They can be used interchangeably. They represent the thing that a JSX expression creates.
 > - They can't be used to represent all the things that React can render, like strings and numbers. For that, use `React.ReactNode.`
 > - In everyday use, you should use `React.ReactNode`. You rarely need to use the more specific type of `JSX.Element`.
-
 </Aside>
 
 <details>
@@ -1265,7 +1266,9 @@ const AuthLayout = ({ children }: { children: React.ReactNode }) => {
         <div className="relative center bg-[url('/images/bg.png')] bg-repeat rounded-l-xl">
           <div className="-top-[100px] relative">
             <img src="/images/logo.svg" alt="Apply Wize" className="mx-auto" />
-            <div className="text-5xl text-white font-bold">Apply Wize</div>
+            <div className="text-5xl text-white font-bold">
+              Apply Wize
+            </div>
           </div>
           <div className="text-white text-sm absolute bottom-0 left-0 right-0 p-10">
             “Transform the job hunt from a maze into a map.”
@@ -1281,7 +1284,6 @@ const AuthLayout = ({ children }: { children: React.ReactNode }) => {
 
 export { AuthLayout };
 ```
-
 </details>
 
 ### Styling the Login Content
@@ -1349,20 +1351,11 @@ Next up, let's wrap all of our form content with a `div` and add the text at the
 Let's also add some text below our form:
 
 ```tsx title="src/app/pages/user/Login.tsx" startLineNumber=68 {5}
-<Button
-  onClick={handlePerformPasskeyLogin}
-  disabled={isPending}
-  className="font-display w-full mb-6"
->
-  {isPending ? <>...</> : "Login with passkey"}
-</Button>;
-{
-  result && <div>{result}</div>;
-}
-<p>
-  By clicking continue, you agree to our <a href="#">Terms of Service</a> and{" "}
-  <a href="#">Privacy Policy</a>.
-</p>;
+<Button onClick={handlePerformPasskeyLogin} disabled={isPending} className="font-display w-full mb-6">
+    {isPending ? <>...</> : "Login with passkey"}
+  </Button>
+  {result && <div>{result}</div>}
+  <p>By clicking continue, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.</p>
 ```
 
 I want to add some more styling, but I want to be able to reuse these styles on our Signup page, so let's stick these updates inside our `styles.css` file.
@@ -1370,7 +1363,6 @@ I want to add some more styling, but I want to be able to reuse these styles on 
 In CSS order matters. The [`@layer` CSS at-rule](https://developer.mozilla.org/en-US/docs/Web/CSS/@layer) makes it easy to declare a _layer_ and set the order of preference.
 
 I like to order my CSS:
-
 1. **Base styles** are at the top. These are for styling generic HTML elements. No classes, just tags.
 2. **Component styles.** These are for styling classes that get used across multiple components and pages.
 3. **Page specific styles.** These are for styling elements on a specific page.
@@ -1382,45 +1374,34 @@ At the very bottom of our `styles.css` file, let's start by setting up `@layer` 
 ```css title="src/styles.css" startLineNumber=238
 @layer base, components, page;
 
-@layer base {
-}
+@layer base {}
 
-@layer components {
-}
+@layer components {}
 
-@layer page {
-}
+@layer page {}
 ```
 
 <Aside type="tip" title="CSS Layers">
 Do these `@layer` names give you déjà vu? Feels similar to Tailwind v3? It's the exact same concept! Since these layers [are no longer established in Tailwind v4](https://tailwindcss.com/docs/upgrade-guide#removed-tailwind-directives), we have to define the order ourselves: `@layer base, components, page;`
 
 Technically, we could list our layers in any order we want:
-
 ```css showLineNumbers=false
-@layer page {
-}
-@layer components {
-}
-@layer base {
-}
+@layer page {}
+@layer components {}
+@layer base {}
 ```
 
 It will still be applied in the correct order, because we explicitly defined the order:
-
 ```css showLineNumbers=false
 @layer base, components, page;
 ```
-
 </Aside>
 
 For all our headings (`h1, h2, h3, etc.`), we want to use the font Poppins, `font-display`, and make it bold `font-bold`. Let's stick this inside our base layer:
 
 ```css title="src/styles.css" showLineNumbers=false
 @layer base {
-  h1,
-  h2,
-  h3 {
+  h1, h2, h3 {
     @apply font-display font-bold;
   }
 }
@@ -1597,19 +1578,11 @@ But, there's one more thing. Let's move the `result` message above the form and 
     onChange={(e) => setUsername(e.target.value)}
     placeholder="Username"
   />
-  <Button
-    onClick={handlePerformPasskeyLogin}
-    disabled={isPending}
-    className="font-display w-full mb-6"
-  >
+  <Button onClick={handlePerformPasskeyLogin} disabled={isPending} className="font-display w-full mb-6">
     {isPending ? <>...</> : "Login with Passkey"}
   </Button>
 
-  <p>
-    By clicking continue, you agree to our 
-    <a href={link("/legal/terms")}>Terms of Service</a> and 
-    <a href={link("/legal/privacy")}>Privacy Policy</a>.
-  </p>
+  <p>By clicking continue, you agree to our <a href={link('/legal/terms')}>Terms of Service</a> and <a href={link('/legal/privacy')}>Privacy Policy</a>.</p>
 </div>
 ```
 
@@ -1722,11 +1695,7 @@ As you type, you should see VS Code make recommendations based on the contents o
 We can make similar changes to our **Terms of Service** and **Privacy Policy** links:
 
 ```tsx title="src/app/pages/user/Login.tsx" "{link("/legal/terms")}" "link("/legal/privacy")" startLineNumber=70
-<p>
-  By clicking continue, you agree to our{" "}
-  <a href={link("/legal/terms")}>Terms of Service</a> and{" "}
-  <a href={link("/legal/privacy")}>Privacy Policy</a>.
-</p>
+<p>By clicking continue, you agree to our <a href={link("/legal/terms")}>Terms of Service</a> and <a href={link("/legal/privacy")}>Privacy Policy</a>.</p>
 ```
 
 If you check your work in the browser, the register link works great, but our Terms of Service and Privacy Policy links go to a Not Found page. Let's fix that.
@@ -1801,14 +1770,18 @@ Now, if you check your work in the browser, you should see the Terms of Service 
 ![](./images/working-terms-page.png)
 
 <Aside type="note" title="Alternate way of displaying our legal routes">
-  When we listed our legal routes, we listed them individually: ```tsx
-  title="src/worker.tsx" startLineNumber=18 {46}
-  route("/legal/privacy", () => <h1>Privacy Policy</h1>), route("/legal/terms",
-  () => <h1>Terms of Service</h1>), ``` But, we could also group them together,
-  with a `prefix` (similar to our `/user` routes, but a little different):
-  ```tsx title="src/worker.tsx" startLineNumber=18 prefix("/legal", [
-  route("/privacy", () => <h1>Privacy Policy</h1>), route("/terms", () =>{" "}
-  <h1>Terms of Service</h1>), ]), ```
+  When we listed our legal routes, we listed them individually:
+  ```tsx title="src/worker.tsx" startLineNumber=18 {46}
+  route("/legal/privacy", () => <h1>Privacy Policy</h1>),
+  route("/legal/terms", () => <h1>Terms of Service</h1>),
+  ```
+  But, we could also group them together, with a `prefix` (similar to our `/user` routes, but a little different):
+  ```tsx title="src/worker.tsx" startLineNumber=18
+  prefix("/legal", [
+    route("/privacy", () => <h1>Privacy Policy</h1>),
+    route("/terms", () => <h1>Terms of Service</h1>),
+  ]),
+  ```
 </Aside>
 
 We've touched a few files, if you want to see the full code for each:
@@ -1831,7 +1804,7 @@ import {
   startPasskeyLogin,
   startPasskeyRegistration,
 } from "./functions";
-import { useTurnstile } from "rwsdk/turnstile";
+import { useTurnstile } from "@redwoodjs/sdk/turnstile";
 import { AuthLayout } from "@/app/layouts/AuthLayout";
 import { Button } from "@/app/components/ui/button";
 import { Alert, AlertTitle } from "@/app/components/ui/alert";
@@ -1874,17 +1847,14 @@ export function Login() {
         <p className="py-6">Enter your username below to sign-in.</p>
 
         {result && (
-          <Alert variant="destructive" className="mb-5">
-            <AlertCircle className="h-4 w-4" />
-            <AlertTitle>{result}</AlertTitle>
-          </Alert>
+        <Alert variant="destructive" className="mb-5">
+          <AlertCircle className="h-4 w-4"/>
+          <AlertTitle>{result}</AlertTitle>
+        </Alert>
         )}
 
         <div className="absolute top-0 right-0 p-10">
-          <a
-            href={link("/user/signup")}
-            className="font-display font-bold text-black text-sm underline underline-offset-8 hover:decoration-primary"
-          >
+          <a href={link("/user/signup")} className="font-display font-bold text-black text-sm underline underline-offset-8 hover:decoration-primary">
             Register
           </a>
         </div>
@@ -1895,19 +1865,11 @@ export function Login() {
           onChange={(e) => setUsername(e.target.value)}
           placeholder="Username"
         />
-        <Button
-          onClick={handlePerformPasskeyLogin}
-          disabled={isPending}
-          className="font-display w-full mb-6"
-        >
+        <Button onClick={handlePerformPasskeyLogin} disabled={isPending} className="font-display w-full mb-6">
           {isPending ? <>...</> : "Login with passkey"}
         </Button>
 
-        <p>
-          By clicking continue, you agree to our{" "}
-          <a href={link("/legal/terms")}>Terms of Service</a> and{" "}
-          <a href={link("/legal/privacy")}>Privacy Policy</a>.
-        </p>
+        <p>By clicking continue, you agree to our <a href={link("/legal/terms")}>Terms of Service</a> and <a href={link("/legal/privacy")}>Privacy Policy</a>.</p>
       </div>
     </AuthLayout>
   );
@@ -1920,36 +1882,39 @@ export function Login() {
 <summary>Final code for our `AuthLayout.tsx`</summary>
 
 ```tsx title="src/app/layouts/AuthLayout.tsx"
-const AuthLayout = ({ children }: { children: React.ReactNode }) => {
+const AuthLayout = ({ children }: { children: React.ReactNode}) => {
   return (
     <div className="bg-bg min-h-screen min-w-screen p-12">
       <div className="grid grid-cols-2 min-h-[calc(100vh-96px)] rounded-xl border-2 border-[#D6D5C5]">
         <div className="relative center bg-[url('/images/bg.png')] bg-repeat rounded-l-xl">
           <div className="-top-[100px] relative">
             <img src="/images/logo.svg" alt="Apply Wize" className="mx-auto" />
-            <div className="text-5xl text-white font-bold">Apply Wize</div>
+            <div className="text-5xl text-white font-bold">
+              Apply Wize
+            </div>
           </div>
           <div className="text-white text-sm absolute bottom-0 left-0 right-0 p-10">
             “Transform the job hunt from a maze into a map.”
           </div>
         </div>
-        <div className="center bg-white rounded-r-xl relative">{children}</div>
+        <div className="center bg-white rounded-r-xl relative">
+          {children}
+        </div>
       </div>
     </div>
-  );
-};
+  )
+}
 
-export { AuthLayout };
+export { AuthLayout }
 ```
-
 </details>
 
 <details>
 <summary>Final code for our `styles.css`</summary>
 
 ```css title="src/styles.css"
-@import url("https://fonts.googleapis.com/css2?family=Poppins:wght@500;700&display=swap");
-@import url("https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap");
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
 
 @import "tailwindcss";
 @import "tw-animate-css";
@@ -1961,6 +1926,7 @@ body {
 }
 
 @theme inline {
+
   --radius-sm: calc(var(--radius) - 4px);
 
   --radius-md: calc(var(--radius) - 2px);
@@ -2033,6 +1999,7 @@ body {
 }
 
 :root {
+
   --radius: 0.625rem;
 
   --background: oklch(1 0 0);
@@ -2099,6 +2066,7 @@ body {
 }
 
 .dark {
+
   --background: oklch(0.145 0 0);
 
   --foreground: oklch(0.985 0 0);
@@ -2185,6 +2153,7 @@ body {
 @layer base, components, page;
 
 @layer base {
+
   h1,
   h2,
   h3 {
@@ -2194,11 +2163,12 @@ body {
 
 @layer components {
   .page-title {
-    @apply text-3xl;
+    @apply text-3xl
   }
 }
 
 @layer page {
+
   /* login page */
   .auth-form {
     p {
@@ -2230,7 +2200,6 @@ body {
   }
 }
 ```
-
 </details>
 
 <details>
@@ -2239,11 +2208,11 @@ body {
 ```tsx title="src/components/ui/button.tsx"
 "use client";
 
-import * as React from "react";
-import { Slot } from "@radix-ui/react-slot";
-import { cva, type VariantProps } from "class-variance-authority";
+import * as React from "react"
+import { Slot } from "@radix-ui/react-slot"
+import { cva, type VariantProps } from "class-variance-authority"
 
-import { cn } from "@/lib/utils";
+import { cn } from "@/lib/utils"
 
 const buttonVariants = cva(
   "font-bold inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
@@ -2273,8 +2242,8 @@ const buttonVariants = cva(
       variant: "default",
       size: "default",
     },
-  },
-);
+  }
+)
 
 function Button({
   className,
@@ -2284,9 +2253,9 @@ function Button({
   ...props
 }: React.ComponentProps<"button"> &
   VariantProps<typeof buttonVariants> & {
-    asChild?: boolean;
+    asChild?: boolean
   }) {
-  const Comp = asChild ? Slot : "button";
+  const Comp = asChild ? Slot : "button"
 
   return (
     <Comp
@@ -2294,12 +2263,11 @@ function Button({
       className={cn(buttonVariants({ variant, size, className }))}
       {...props}
     />
-  );
+  )
 }
 
-export { Button, buttonVariants };
+export { Button, buttonVariants }
 ```
-
 </details>
 
 <details>
@@ -2316,15 +2284,14 @@ export const link = defineLinks([
   "/legal/terms",
 ]);
 ```
-
 </details>
 
 <details>
 <summary>Final code for our `worker.tsx`</summary>
 
 ```tsx title="src/worker.tsx"
-import { defineApp, ErrorResponse } from "rwsdk/worker";
-import { route, render, prefix } from "rwsdk/router";
+import { defineApp, ErrorResponse } from "@redwoodjs/sdk/worker";
+import { route, render, prefix } from "@redwoodjs/sdk/router";
 import { Document } from "@/app/Document";
 import { Home } from "@/app/pages/Home";
 import { setCommonHeaders } from "@/app/headers";
@@ -2390,8 +2357,8 @@ export default defineApp([
   ]),
 ]);
 ```
-
 </details>
+
 
 ## Styling the Signup Page
 
@@ -2453,7 +2420,6 @@ Next, let's wrap all of our form content with a `div`:
 ```
 
 We can get rid of our red YOLO heading at the top and replace it with:
-
 ```tsx title="src/app/pages/user/Signup.tsx" startLineNumber=63
 <h1 className="page-title text-center">Create an Account</h1>
 <p className="py-6">Enter a username to setup an account.</p>
@@ -2492,11 +2458,7 @@ Jumping down a little bit, on our `Button` component, let's add a few classes to
 Then, right below the button, we can add our legal statement:
 
 ```tsx title="src/app/pages/user/Signup.tsx" startLineNumber=87
-<p>
-  By clicking continue, you agree to our 
-  <a href={link("/legal/terms")}>Terms of Service</a> and 
-  <a href={link("/legal/privacy")}>Privacy Policy</a>.
-</p>
+<p>By clicking continue, you agree to our <a href={link('/legal/terms')}>Terms of Service</a> and <a href={link('/legal/privacy')}>Privacy Policy</a>.</p>
 ```
 
 ![](./images/final-signup-page.png)
@@ -2510,7 +2472,9 @@ See, I told you! Easy peasy. 🍋
 "use client";
 
 import { useState, useTransition } from "react";
-import { startRegistration } from "@simplewebauthn/browser";
+import {
+  startRegistration,
+} from "@simplewebauthn/browser";
 import {
   finishPasskeyRegistration,
   startPasskeyRegistration,
@@ -2556,10 +2520,7 @@ export function SignupPage() {
   return (
     <AuthLayout>
       <div className="absolute top-0 right-0 p-10">
-        <a
-          href={link("/user/login")}
-          className="font-display font-bold text-black text-sm underline underline-offset-8 hover:decoration-primary"
-        >
+        <a href={link('/user/login')} className="font-display font-bold text-black text-sm underline underline-offset-8 hover:decoration-primary">
           Login
         </a>
       </div>
@@ -2570,7 +2531,7 @@ export function SignupPage() {
 
         {result && (
           <Alert variant="destructive" className="mb-5">
-            <AlertCircle className="h-4 w-4" />
+            <AlertCircle className="h-4 w-4"/>
             <AlertTitle>{result}</AlertTitle>
           </Alert>
         )}
@@ -2582,32 +2543,23 @@ export function SignupPage() {
           onChange={(e) => setUsername(e.target.value)}
           placeholder="Username"
         />
-        <Button
-          onClick={handlePerformPasskeyRegister}
-          disabled={isPending}
-          className="font-display w-full mb-6"
-        >
+        <Button onClick={handlePerformPasskeyRegister} disabled={isPending} className="font-display w-full mb-6">
           {isPending ? <>...</> : "Register with Passkey"}
         </Button>
 
-        <p>
-          By clicking continue, you agree to our 
-          <a href={link("/legal/terms")}>Terms of Service</a> and 
-          <a href={link("/legal/privacy")}>Privacy Policy</a>.
-        </p>
+        <p>By clicking continue, you agree to our <a href={link('/legal/terms')}>Terms of Service</a> and <a href={link('/legal/privacy')}>Privacy Policy</a>.</p>
       </div>
     </AuthLayout>
   );
 }
 ```
-
 </details>
 
 <Aside type="tip" title="Code on GitHub">
-  You can find the final code for this step on
-  [GitHub](https://github.com/ahaywood/applywize/tree/main/end-of-4).
+You can find the final code for this step on [GitHub](https://github.com/ahaywood/applywize/tree/main/end-of-4).
 </Aside>
 
 ## Further reading
 
 - An even more [detailed guide to how Authentication works and the reasoning behind some of the decisions we made](/core/authentication)
+

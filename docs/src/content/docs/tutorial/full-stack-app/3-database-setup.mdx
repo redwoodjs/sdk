@@ -8,7 +8,7 @@ description: Setting up the database for the application
 
 {/* TODO: Claude made some recommendations for making the content better: https://claude.ai/share/e52d53ca-f49f-4f36-9bc4-30da1f345945 */}
 
-import { Aside, FileTree } from "@astrojs/starlight/components";
+import { Aside, FileTree } from '@astrojs/starlight/components';
 
 ## Setting up our Database Tables or Models
 
@@ -17,8 +17,7 @@ For this project, we'll use [Prisma](https://www.prisma.io/) as our ORM (Object 
 <Aside type="note" title="What's a migration?">
   A migration is a change to the database schema. It's a way to keep track of the changes we make to the database.
 
-One of the great things about using Prisma is that it generates the migrations and SQL code so we don't need to. We simply update the schema, and it handles the rest.
-
+  One of the great things about using Prisma is that it generates the migrations and SQL code so we don't need to. We simply update the schema, and it handles the rest.
 </Aside>
 
 I like to start by going through the [application design files]() and making a list of all the tables (models) and fields we need.
@@ -56,7 +55,6 @@ Now, that we know what our models are, we need to create the columns. What are t
 We've already alluded to the data that we'll need within the relationship diagrams, but let's take a closer look.
 
 Most tables I create include an `id`, `createdAt`, and `updatedAt` field.
-
 - `id` - We need a way to uniquely identify each record or row in the database.
 - `createdAt` - We need to know when the record was created.
 - `updatedAt` - We need to know when the record was last updated.
@@ -64,8 +62,7 @@ Most tables I create include an `id`, `createdAt`, and `updatedAt` field.
 <Aside type="tip" title="Soft Deleting">
   In the future, if you're going to "soft delete" a record, you'll probably want a `deletedAt` column for tracking when the record was deleted.
 
-"Soft deleting" a record means that instead of removing the record from the database, we'll set a column (i.e. `deleted`) to `true` to indicate that the record has been deleted. The entry won't be shown to the user, but it gives you a way to recover the data. This is also useful for auditing purposes.
-
+  "Soft deleting" a record means that instead of removing the record from the database, we'll set a column (i.e. `deleted`) to `true` to indicate that the record has been deleted. The entry won't be shown to the user, but it gives you a way to recover the data. This is also useful for auditing purposes.
 </Aside>
 
 ### Data Types
@@ -74,17 +71,17 @@ As you're making a list of all the data we need to store, you'll also need to th
 
 In Prisma, there are 9 different data types:
 
-| **Prisma Type** | **Description**                             |
-| --------------- | ------------------------------------------- |
-| `String`        | A UTF-8 encoded string                      |
-| `Boolean`       | A true or false value                       |
-| `Int`           | A 32-bit signed integer                     |
-| `BigInt`        | A 64-bit signed integer (for large numbers) |
-| `Float`         | A floating-point number                     |
-| `Decimal`       | A high-precision decimal number             |
-| `DateTime`      | An ISO 8601 timestamp                       |
-| `Json`          | Arbitrary JSON data                         |
-| `Bytes`         | Binary data (Base64-encoded)                |
+| **Prisma Type** |	**Description** |
+| --- | --- |
+| `String` | A UTF-8 encoded string |
+| `Boolean` | A true or false value |
+| `Int` | A 32-bit signed integer |
+| `BigInt` | A 64-bit signed integer (for large numbers) |
+| `Float` | A floating-point number |
+| `Decimal` | A high-precision decimal number |
+| `DateTime` | An ISO 8601 timestamp |
+| `Json` | Arbitrary JSON data |
+| `Bytes` | Binary data (Base64-encoded) |
 
 ### IDs
 
@@ -107,30 +104,28 @@ Let's start with the `Application` model.
 
 I need the following data:
 
-| **Field**        | **Type**   | **Notes**                                                   |
-| ---------------- | ---------- | ----------------------------------------------------------- |
-| `id`             | `String`   | A UUID                                                      |
-| `salaryMin`      | `String`   | _Optional._ The minimum salary for the job.                 |
-| `salaryMax`      | `String`   | _Optional._ The maximum salary for the job.                 |
-| `dateApplied`    | `DateTime` | _Optional._ The date the application was submitted.         |
-| `jobTitle`       | `String`   | _Optional._ The job title                                   |
-| `jobDescription` | `String`   | _Optional._ The job description.                            |
-| `postingUrl`     | `String`   | _Optional._ The URL to the job posting.                     |
-| `archived`       | `Boolean`  | False by default. Whether the application has been archived |
-| `createdAt`      | `DateTime` | The date the application was created.                       |
-| `updatedAt`      | `DateTime` | The date the application was last updated.                  |
+| **Field** | **Type** | **Notes** |
+| --- | --- | --- |
+| `id` | `String` | A UUID |
+| `salaryMin` | `String` | _Optional._ The minimum salary for the job. |
+| `salaryMax` | `String` | _Optional._ The maximum salary for the job. |
+| `dateApplied` | `DateTime` | _Optional._ The date the application was submitted. |
+| `jobTitle` | `String` | _Optional._ The job title |
+| `jobDescription` | `String` | _Optional._ The job description. |
+| `postingUrl` | `String` | _Optional._ The URL to the job posting. |
+| `archived` | `Boolean` | False by default. Whether the application has been archived |
+| `createdAt` | `DateTime` | The date the application was created. |
+| `updatedAt` | `DateTime` | The date the application was last updated. |
 
 <Aside type="note" title="Working with Money">
 You may have noticed that I'm using a `String` for the `salaryMin` and `salaryMax` fields. Alternatively, we could make this a number, so we can standardize the display or sort the applications by salary.
 
 However, there's a few reasons why I'm using a `String`:
-
 - Working with money is complicated. It's not just a number. There's currency symbols, commas, and decimal points.
 - Prisma doesn't have a native `Currency` data type for SQLite
 - If you are going to use a number, it's best to use a `integer` to avoid potential floating-point accuracy problems and store the values as cents.
 
 For now, I'm going to hit the easy button, and use a `String`.
-
 </Aside>
 
 Now, we need to translate all this information into a Prisma model. Prisma has it's own syntax for defining models. You'll notice that it looks similar to an object definition:
@@ -162,7 +157,7 @@ A few things worth noting:
 
 We can do the same for the remaining models.
 
-```prisma title="src/db/schema.prisma"
+```prisma  title="src/db/schema.prisma"
 ...
 
 model ApplicationStatus {
@@ -213,16 +208,14 @@ model User {
 <Aside type="note" title="@@index">
   You may have noticed that the provided `Credential` model includes the `@@index` directive. This is used to create an index on the field. This can improve performance when querying the database.
 
-All the database calls we make use the `id` field, which is already indexed.
-
+  All the database calls we make use the `id` field, which is already indexed.
 </Aside>
 
 <Aside type="tip" title="Naming Conventions">
-  When working with Prisma, there a couple of naming conventions you should
-  follow: - Use singular names for your models. For example, `Application` not
-  `Applications`. - The model name should be in PascalCase. - The field names
-  should be start with a lowercase letter, pascal case. For example, `jobTitle`
-  not `JobTitle`.
+  When working with Prisma, there a couple of naming conventions you should follow:
+  - Use singular names for your models. For example, `Application` not `Applications`.
+  - The model name should be in PascalCase.
+  - The field names should be start with a lowercase letter, pascal case. For example, `jobTitle` not `JobTitle`.
 </Aside>
 
 This looks good, but we haven't defined any of the relationships between the models (Other than the preexisting relationship between `User` and `Credential` models, defined in the starter).
@@ -232,7 +225,6 @@ This looks good, but we haven't defined any of the relationships between the mod
 There are several different types of relationships:
 
 ### **One-to-one**
-
 A one-to-one relationship is a relationship where a record in one table is associated with exactly one record in another table.
 
 ![](./images/one-to-one.png)
@@ -252,16 +244,11 @@ In order to establish this relationship, we need a **junction table**. This tabl
 ![](./images/many-to-many.png)
 
 <Aside type="note" title="Naming Conventions">
-  When creating junction tables, I name them based on the two tables they
-  connect. For example, if I have a `User` and `Application` model, I'll name
-  the junction table `ApplicationUser`. Notice the models are listed in
-  alphabetical order.
+  When creating junction tables, I name them based on the two tables they connect. For example, if I have a `User` and `Application` model, I'll name the junction table `ApplicationUser`. Notice the models are listed in alphabetical order.
 </Aside>
 
 <Aside type="note" title="IDs in Junction Tables">
-  Technically, you don't need an `id` field in the junction table, because the
-  combination of the two IDs (`contactId` and `tagId`) together will be unique.
-  However, I still like to include an `id` field for good measure.
+  Technically, you don't need an `id` field in the junction table, because the combination of the two IDs (`contactId` and `tagId`) together will be unique. However, I still like to include an `id` field for good measure.
 </Aside>
 
 ## All the Tables for our Database
@@ -273,22 +260,18 @@ Here's a diagram of all the models and their relationships for this project.
 Coincidentally, all the relationships in our project are one-to-one or one-to-many.
 
 <Aside type="note" title="Crendential Table">
-  Most of the tables in our database are self explanatory. But, let's look take
-  a second look at the `Credential` table. This model was included within the
-  standard starter kit and will hold all the details for our passkeys.
+  Most of the tables in our database are self explanatory. But, let's look take a second look at the `Credential` table. This model was included within the standard starter kit and will hold all the details for our passkeys.
 </Aside>
 
 <Aside type="tip" title="Database Diagram">
   I always find it helpful to have a visual representation of the database.
 
-I created these diagrams with [tldraw](https://tldraw.com/). But, [Whimsical](https://whimsical.com/) and [Figma](https://www.figma.com/) are also great tools.
+  I created these diagrams with [tldraw](https://tldraw.com/). But, [Whimsical](https://whimsical.com/) and [Figma](https://www.figma.com/) are also great tools.
 
-[prisma-dbml-generator](https://github.com/notiz-dev/prisma-dbml-generator) is an interesting project. It's built on top of [dbdiagram.io](https://dbdiagram.io/) and can take a Prisma Schema and generate a diagram.
-
+  [prisma-dbml-generator](https://github.com/notiz-dev/prisma-dbml-generator) is an interesting project. It's built on top of [dbdiagram.io](https://dbdiagram.io/) and can take a Prisma Schema and generate a diagram.
 </Aside>
 
 ## Relationships within Prisma
-
 When establishing a relationship within your schema, there are 3 parts.
 
 1. **Foreign Key Column** This stores the ID for the related record.
@@ -298,15 +281,13 @@ When establishing a relationship within your schema, there are 3 parts.
 <Aside type="note" title="What's a foreign key?">
   A foreign key is a column (or set of columns) in a table that refers to the primary key of another table, establishing a link between two tables in a relational database.
 
-It's called a "foreign key" because it references the primary key of the "foreign" table.
-
+  It's called a "foreign key" because it references the primary key of the "foreign" table.
 </Aside>
 
 <Aside type="note" title="What can you see within the database?">
   Within the database, the only column that you'll be able to see if the foreign key column that stores the ID of the related record.
 
-The **relationship field** and **implicit relationship field** are only used within the context of Prisma.
-
+  The **relationship field** and **implicit relationship field** are only used within the context of Prisma.
 </Aside>
 
 Let's look at this in practice. On the `Company` and `Contact` models:
@@ -338,21 +319,18 @@ model Contact {
 
 1. On the `Contact` model, we added a `companyId` field. This stores the ID of the related `Company` record. Because the `id` field on the `Company` model is a string, our `companyId` field is also a string.
 2. On the `Contact` model, we also added a `company` field. This describes the Contact↔Company relationship for Prisma.
-   - You can read this as: "A contact belongs to a company."
-   - It is connected to the `Company` model. You can also think of this as having a type of `Company`.
-   - It uses the `companyId` field on the `Contact` model to connect the two models.
-   - It references the `id` field on the `Company` model.
+    - You can read this as: "A contact belongs to a company."
+    - It is connected to the `Company` model. You can also think of this as having a type of `Company`.
+    - It uses the `companyId` field on the `Contact` model to connect the two models.
+    - It references the `id` field on the `Company` model.
 3. On the `Company` model, we added a `contacts` field. This describes the Company↔Contact relationship to Prisma.
-   - You can read this as: "A company has many contacts."
-   - The type of content will be an array `[]` of `Contact` records.
+    - You can read this as: "A company has many contacts."
+    - The type of content will be an array `[]` of `Contact` records.
 
 ![](./images/prisma-relationship-field.png)
 
 <Aside type="note" title="Relationships in Prisma">
-  When you look a the columns in your database that Prisma generates, you won't
-  find a relation or implicit relationship field, only the foreign key. However,
-  these properties are necessary for Prisma to understand the relationship
-  between the two models.
+  When you look a the columns in your database that Prisma generates, you won't find a relation or implicit relationship field, only the foreign key. However, these properties are necessary for Prisma to understand the relationship between the two models.
 </Aside>
 
 In some cases, you might need to give the relationship a name. This is particularly useful when you have multiple relationships between the same models.
@@ -459,9 +437,7 @@ model User {
 ```
 
 <Aside type="tip" title="Models in Alphabetical Order">
-  This is personal preference, but I like to put my models in alphabetical
-  order. It makes it easier to find what you're looking for, especially on
-  larger projects.
+This is personal preference, but I like to put my models in alphabetical order. It makes it easier to find what you're looking for, especially on larger projects.
 </Aside>
 
 ## Running Migrations
@@ -481,45 +457,43 @@ pnpm migrate:new "setup all database models"
 <Aside type="note" title="Troubleshooting a Migration">
   {/* TODO: Add a screenshot of this error message. */}
 
-Occasionally, you may run into an error where there are multiple sqlite files in the `.wrangler > state > v3 > d1 > miniflare-D1DatabaseObject` folder.
+  Occasionally, you may run into an error where there are multiple sqlite files in the `.wrangler > state > v3 > d1 > miniflare-D1DatabaseObject` folder.
 
-If this happens, you can delete the `.wrangler` folder and rerun `pnpm dev` to regenerate it.
+  If this happens, you can delete the `.wrangler` folder and rerun `pnpm dev` to regenerate it.
 
-Then, try running `pnpm migrate:dev` to apply the migration.
-
+  Then, try running `pnpm migrate:dev` to apply the migration.
 </Aside>
 
 Our generated `sql` file will be in the `migrations` folder.
 
 <figure>
-  ![](./images/migrations-folder.png)
-  <figcaption>
-    - `0001_init.sql` was generated the first time we ran `pnpm dev`. -
-    `0002_setup_all_database_models.sql` was generated when we ran `pnpm
-    migrate:new "setup all database models"`.
-  </figcaption>
+![](./images/migrations-folder.png)
+<figcaption>
+- `0001_init.sql` was generated the first time we ran `pnpm dev`.
+- `0002_setup_all_database_models.sql` was generated when we ran `pnpm migrate:new "setup all database models"`.
+</figcaption>
 </figure>
 
+
 <Aside type="tip" title="The Number of Migrations">
-  Worried about the number of migrations in your project? Don't. It really
-  doesn't have any effect on your project.
+  Worried about the number of migrations in your project? Don't. It really doesn't have any effect on your project.
 </Aside>
 
 <Aside type="note" title="Working with other people">
   An added benefit of migrations is that it makes it easier to work with other people.
 
-Migration files get committed to the repository and placed in version control.
+  Migration files get committed to the repository and placed in version control.
 
-Database changes can be tied to a branch and a specific feature or bug fix.
+  Database changes can be tied to a branch and a specific feature or bug fix.
 
-Keeping another team member's database in sync is as simple as running the migration: `npm migrate:dev`
-
+  Keeping another team member's database in sync is as simple as running the migration: `npm migrate:dev`
 </Aside>
 
 <Aside type="note" title="Migration Commands">
-  There are 3 different migration commands: 1. `migrate:dev`: runs the migration
-  on your local database 2. `migrate:prd`: runs the migration on your production
-  database 3. `migrate:new`: creates a new migration
+  There are 3 different migration commands:
+  1. `migrate:dev`: runs the migration on your local database
+  2. `migrate:prd`: runs the migration on your production database
+  3. `migrate:new`: creates a new migration
 </Aside>
 
 ## Previewing the Migration
@@ -559,6 +533,7 @@ Then, paste in the database path:
 
 ![](./images/database-url-full-url.png)
 
+
 Now, within the Terminal, run:
 
 ```shell
@@ -568,13 +543,12 @@ npx prisma studio
 This will open a new tab in your default browser at `http://localhost:5555`.
 
 {/* ./images/prisma-studio.png - this is a screenshot of a seeded database */}
-
 <figure>
-  ![](./images/prisma-studio-no-tables-selected.png)
-  <figcaption>
-    - Within Prisma Studio, you can see a list of all your tables/models on the
-    left. - If you click on one, it will load the table/model on the right.
-  </figcaption>
+![](./images/prisma-studio-no-tables-selected.png)
+<figcaption>
+- Within Prisma Studio, you can see a list of all your tables/models on the left.
+- If you click on one, it will load the table/model on the right.
+</figcaption>
 </figure>
 
 ![](./images/prisma-studio-application-table-selected.png)
@@ -588,8 +562,12 @@ The [VS Code extension, SQLite Viewer](https://marketplace.visualstudio.com/item
 Within the file explorer, navigate to your D1 database. You can find it in the `.wrangler > state > v3 > d1 > miniflare-D1DatabaseObject` folder.
 
 <FileTree>
-  - .wrangler - state - v3 - d1 - miniflare-D1DatabaseObject/ -
-  005cb3d3133217f352562272facf516778925ea1151d9c310bcb4e13614995c1.sqlite
+- .wrangler
+  - state
+    - v3
+      - d1
+        - miniflare-D1DatabaseObject/
+          - 005cb3d3133217f352562272facf516778925ea1151d9c310bcb4e13614995c1.sqlite
 </FileTree>
 
 The file name of your sqlite database will vary.
@@ -601,14 +579,11 @@ Click on the sqlite file and a preview should open within VSCode.
 The viewer will only let you preview the database. If you want to create, update, or delete, you'll need a pro (premium) account.
 
 <Aside type="note" title="If the Migration Didn't Run">
-  If the migration didn't run, there are a few things you can check: - How many
-  SQLlite files are in the `.wrangler > state > v3 > d1 >
-  miniflare-D1DatabaseObject` folder? There should be one. You can always delete
-  the `.wrangler` folder and rerun `pnpm dev` to regenerate it. - Try running
-  `pnpm migrate:dev`. This will apply any new migrations. - Try running `pnpm
-  dev`. This will also apply any new migrations. - Ensure that the `database_id`
-  within the `wrangler.jsonc` file matches the database id in your Cloudflare
-  account.
+If the migration didn't run, there are a few things you can check:
+- How many SQLlite files are in the `.wrangler > state > v3 > d1 > miniflare-D1DatabaseObject` folder? There should be one. You can always delete the `.wrangler` folder and rerun `pnpm dev` to regenerate it.
+- Try running `pnpm migrate:dev`. This will apply any new migrations.
+- Try running `pnpm dev`. This will also apply any new migrations.
+- Ensure that the `database_id` within the `wrangler.jsonc` file matches the database id in your Cloudflare account.
 </Aside>
 
 ## Seed the database
@@ -619,12 +594,16 @@ Instead of manually adding data to the database, we can create a **seed file** t
 
 Within the `src > scripts` directory, you'll find a `seed.ts`
 
-<FileTree>- src/ - scripts/ - seed.ts</FileTree>
+<FileTree>
+- src/
+  - scripts/
+    - seed.ts
+</FileTree>
 
 This contains the basic structure for our seed file.
 
 ```ts title="src/scripts/seed.ts"
-import { defineScript } from "rwsdk/worker";
+import { defineScript } from "@redwoodjs/sdk/worker";
 import { db, setupDb } from "@/db";
 
 export default defineScript(async ({ env }) => {
@@ -652,14 +631,13 @@ If you want to start fresh with your own seed file, you could delete lines 7-17,
 <Aside type="tip" title="Seed File Structure">
   In order for our seed file to run properly, we have to run it inside a Cloudflare worker.
 
-Why? Since we're using a Cloudflare D1 database, we need a worker in order to access it.
-
+  Why? Since we're using a Cloudflare D1 database, we need a worker in order to access it.
 </Aside>
 
 You can copy and paste the following code to your project:
 
 ```ts title="src/scripts/seed.ts"
-import { defineScript } from "rwsdk/worker";
+import { defineScript } from "@redwoodjs/sdk/worker";
 import { db, setupDb } from "../db";
 
 export default defineScript(async ({ env }) => {
@@ -690,13 +668,12 @@ export default defineScript(async ({ env }) => {
 ```
 
 Let's make sure we understand what's happening:
-
-- **On lines 1 and 2** are importing our dependencies. We need our Cloudflare worker and database connection.
-- **On line 4**, we're setting up our Cloudflare worker environment.
-- **On line 5**, we're setting up our database connection.
-- **On line 7-15**, we're using raw SQL to delete all the existing data from the database. This will allow us to start fresh when seeding the database.
-- **On line 16-25**, we're adding all the job application statuses to the database. You'll notice this is a standard Prisma `createMany` function.
-- **On line 27**, we're logging a message to the console saying the seeding is complete.
+* **On lines 1 and 2** are importing our dependencies. We need our Cloudflare worker and database connection.
+* **On line 4**, we're setting up our Cloudflare worker environment.
+* **On line 5**, we're setting up our database connection.
+* **On line 7-15**, we're using raw SQL to delete all the existing data from the database. This will allow us to start fresh when seeding the database.
+* **On line 16-25**, we're adding all the job application statuses to the database. You'll notice this is a standard Prisma `createMany` function.
+* **On line 27**, we're logging a message to the console saying the seeding is complete.
 
 <Aside type="caution" title="Troubleshooting">
 Are you getting an error that says: `"Property 'applicationStatus' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'"`
@@ -706,9 +683,7 @@ This means that the Prisma types haven't been generated for your model. Within t
 ```shell
 npx prisma generate
 ```
-
 Problem solved.
-
 </Aside>
 
 To seed the database, run the following command:
@@ -733,12 +708,11 @@ The seed file we just created is perfect for a brand new database, whether we're
 Typically, I'll also create seed files to test the application with various sets of data. This is much easier (and faster) than manually adding data again and again.
 
 You can also leverage libraries, like [Faker](https://fakerjs.dev/) and [Snaplet](https://snaplet-seed.netlify.app/seed/getting-started/overview), to make it easier to create realistic data sets.
-
 </Aside>
 
+
 <Aside type="tip" title="Code on GitHub">
-  You can find the final code for this step on
-  [GitHub](https://github.com/ahaywood/applywize/tree/main/end-of-3).
+You can find the final code for this step on [GitHub](https://github.com/ahaywood/applywize/tree/main/end-of-3).
 </Aside>
 
 ## Further reading
