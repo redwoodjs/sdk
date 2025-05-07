@@ -26,6 +26,17 @@ import ignore from "ignore";
 import debug from "debug";
 import { debugSync } from "./debug-sync.mjs";
 
+// Helper function to detect if running in CI environment
+function isRunningInCI(ciFlag = false): boolean {
+  return (
+    ciFlag ||
+    !!process.env.CI ||
+    !!process.env.GITHUB_ACTIONS ||
+    !!process.env.GITLAB_CI ||
+    !!process.env.CIRCLECI
+  );
+}
+
 if (!process.env.DEBUG) {
   debug.enable("rwsdk:smoke");
 }
@@ -54,6 +65,7 @@ interface SmokeTestOptions {
   keep?: boolean;
   headless?: boolean;
   sync?: boolean;
+  ci?: boolean;
 }
 
 interface TestResources {
@@ -357,6 +369,8 @@ async function cleanupResources(
 ): Promise<void> {
   log("Cleaning up resources");
 
+  const inCIMode = isRunningInCI(options.ci);
+
   // Stop dev server if it was started
   if (resources.stopDev) {
     console.log("Stopping development server...");
@@ -388,7 +402,137 @@ async function cleanupResources(
     );
   }
 
-  if (resources.tempDirCleanup && !options.keep) {
+  // Copy test directory to artifact directory if specified and we're keeping it
+  if (
+    resources.targetDir &&
+    options.artifactDir &&
+    (options.keep || inCIMode)
+  ) {
+    try {
+      // Create project subdirectory in artifacts
+      const projectsDir = join(options.artifactDir, "projects");
+      await mkdirp(projectsDir);
+
+      // Use a directory name that includes timestamp and worker name for uniqueness
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const workerPart = resources.workerName ? `-${resources.workerName}` : "";
+      const artifactTargetDir = join(
+        projectsDir,
+        `smoke-test-project${workerPart}-${timestamp}`,
+      );
+
+      log(
+        "Copying test directory to artifacts: %s → %s",
+        resources.targetDir,
+        artifactTargetDir,
+      );
+      console.log(
+        `📦 Copying test directory to artifacts: ${artifactTargetDir}`,
+      );
+
+      // Ensure artifact directory exists
+      await mkdirp(options.artifactDir);
+
+      // Use git-aware copying (same as we use for the original directory copy)
+      // Read project's .gitignore if it exists
+      let ig = ignore();
+      const gitignorePath = join(resources.targetDir, ".gitignore");
+
+      if (await pathExists(gitignorePath)) {
+        log("Found .gitignore file at %s", gitignorePath);
+        const gitignoreContent = await fs.readFile(gitignorePath, "utf-8");
+        ig = ig.add(gitignoreContent);
+      } else {
+        log("No .gitignore found, using default ignore patterns");
+        // Add default ignores if no .gitignore exists
+        ig = ig.add(
+          [
+            "node_modules",
+            ".git",
+            "dist",
+            "build",
+            ".DS_Store",
+            "coverage",
+            ".cache",
+            ".wrangler",
+            ".env",
+          ].join("\n"),
+        );
+      }
+
+      // Copy the project directory, respecting .gitignore
+      await copy(resources.targetDir, artifactTargetDir, {
+        filter: (src) => {
+          // Get path relative to project directory
+          const relativePath = relative(resources.targetDir!, src);
+          if (!relativePath) return true; // Include the root directory
+
+          // Check against ignore patterns
+          const result = !ig.ignores(relativePath);
+          return result;
+        },
+      });
+
+      // Create a symlink to the latest project for easier access
+      const latestLink = join(projectsDir, "latest");
+      try {
+        // Remove existing symlink if it exists
+        if (await pathExists(latestLink)) {
+          await fs.unlink(latestLink);
+        }
+        // Create relative symlink
+        const relativeTargetPath = basename(artifactTargetDir);
+        await fs.symlink(relativeTargetPath, latestLink, "dir");
+        log("Created 'latest' symlink to %s", relativeTargetPath);
+      } catch (linkError) {
+        log("Error creating 'latest' symlink: %O", linkError);
+        // Non-fatal error, continue
+      }
+
+      console.log(
+        `✅ Test directory copied to artifacts: ${artifactTargetDir}`,
+      );
+
+      // Create a simple report file with basic information
+      try {
+        const reportDir = join(options.artifactDir, "reports");
+        await mkdirp(reportDir);
+
+        const reportPath = join(
+          reportDir,
+          `smoke-test-report-${timestamp}.json`,
+        );
+        const report = {
+          timestamp,
+          success: state.exitCode === 0,
+          exitCode: state.exitCode,
+          workerName: resources.workerName,
+          projectDir: artifactTargetDir,
+          options: {
+            ...options,
+            // Redact any sensitive information
+            customPath: options.customPath,
+            skipDev: options.skipDev,
+            skipRelease: options.skipRelease,
+          },
+        };
+
+        await fs.writeFile(reportPath, JSON.stringify(report, null, 2));
+        log("Wrote test report to %s", reportPath);
+        console.log(`📝 Test report saved to ${reportPath}`);
+      } catch (reportError) {
+        log("Error writing test report: %O", reportError);
+        // Non-fatal error, continue
+      }
+    } catch (error) {
+      log("Error copying test directory to artifacts: %O", error);
+      console.error(
+        `Error copying test directory to artifacts: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
+  }
+
+  if (resources.tempDirCleanup && !options.keep && !inCIMode) {
     log("Cleaning up temporary directory");
     try {
       await resources.tempDirCleanup();
@@ -399,7 +543,11 @@ async function cleanupResources(
         `Error while cleaning up temporary directory: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
-  } else if (resources.tempDirCleanup && options.keep && resources.targetDir) {
+  } else if (
+    resources.tempDirCleanup &&
+    (options.keep || inCIMode) &&
+    resources.targetDir
+  ) {
     console.log(
       `📂 Keeping temporary directory for inspection: ${resources.targetDir}`,
     );
@@ -594,19 +742,29 @@ async function checkUrl(
     await checkUrlSmoke(page, url, true);
 
     // Take a screenshot for CI artifacts if needed
-    const screenshotPath = artifactDir
-      ? `${artifactDir}/smoke-test-result.png`
-      : "smoke-test-result.png";
-
-    // Ensure the artifact directory exists
     if (artifactDir) {
-      log("Creating artifact directory: %s", artifactDir);
-      await fs.mkdir(artifactDir, { recursive: true });
-    }
+      // Create screenshots subdirectory
+      const screenshotsDir = join(artifactDir, "screenshots");
+      log("Creating screenshots directory: %s", screenshotsDir);
+      await fs.mkdir(screenshotsDir, { recursive: true });
 
-    log("Taking screenshot: %s", screenshotPath);
-    await page.screenshot({ path: screenshotPath });
-    console.log(`📸 Screenshot saved to ${screenshotPath}`);
+      // Create a more descriptive filename with timestamp
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      const urlIdentifier = new URL(url).hostname.replace(/\./g, "-");
+      const screenshotPath = join(
+        screenshotsDir,
+        `smoke-test-${urlIdentifier}-${timestamp}.png`,
+      );
+
+      log("Taking screenshot: %s", screenshotPath);
+      await page.screenshot({ path: screenshotPath, fullPage: true });
+      console.log(`📸 Screenshot saved to ${screenshotPath}`);
+    } else {
+      const screenshotPath = "smoke-test-result.png";
+      log("Taking screenshot: %s", screenshotPath);
+      await page.screenshot({ path: screenshotPath });
+      console.log(`📸 Screenshot saved to ${screenshotPath}`);
+    }
   } catch (error) {
     log("Error during URL check: %O", error);
     await browser.close().catch((e) => log("Error closing browser: %O", e));
@@ -1618,6 +1776,9 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
   const args = process.argv.slice(2);
   log("Command line arguments: %O", args);
 
+  // Check for CI flag first
+  const ciFlag = args.includes("--ci");
+
   // Set initial default values (sync will be determined below)
   const options: SmokeTestOptions = {
     customPath: "/", // Default path
@@ -1625,10 +1786,16 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
     skipRelease: false,
     projectDir: undefined,
     artifactDir: undefined,
-    keep: false,
+    keep: isRunningInCI(ciFlag), // Default to true in CI environments
     headless: true,
+    ci: ciFlag,
     // sync: will be set below
   };
+
+  // Log if we're in CI
+  if (isRunningInCI(ciFlag)) {
+    log("Running in CI environment, keeping test directory by default");
+  }
 
   // Track if user explicitly set sync or no-sync
   let syncExplicit: boolean | undefined = undefined;
@@ -1649,6 +1816,8 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
       syncExplicit = false;
     } else if (arg === "--sync") {
       syncExplicit = true;
+    } else if (arg === "--ci") {
+      // Already handled above, just skip
     } else if (arg === "--help" || arg === "-h") {
       // Help will be handled later
     } else if (arg.startsWith("--path=")) {
@@ -1707,14 +1876,26 @@ Options:
   --skip-release          Skip testing the release/production deployment
   --path=PATH             Project directory to test
   --artifact-dir=DIR      Directory to store test artifacts
+                          Creates structured output with subdirectories:
+                            - screenshots/: Browser screenshots
+                            - projects/: Test project copies
+                            - reports/: Test result reports
   --keep                  Don't delete the temporary project directory after tests
+                          (Defaults to true when running in CI environments)
   --no-headless           Use regular browser instead of headless browser for testing
   --no-sync               Do not sync SDK before running smoke test (overrides default)
   --sync                  Force sync SDK before running smoke test (overrides default)
+  --ci                    Force CI mode behavior (keeps temporary directories by default)
   --help, -h              Show this help message
 
 Arguments:
   custom-path             Optional path to test (e.g., "/login")
+
+CI Environment:
+  * When running in CI (detected automatically or with --ci flag), the --keep flag defaults to true
+  * When --keep is true and --artifact-dir is specified, the test project is copied 
+    to the artifact directory in the projects/ subdirectory
+  * Screenshots and test reports are saved to their respective subdirectories
 
 Examples:
   pnpm smoke-test                                # Test both dev and release with default path
@@ -1724,6 +1905,7 @@ Examples:
   pnpm smoke-test --path=./my-project --keep     # Keep the test directory after completion
   pnpm smoke-test --no-headless                  # Use headed browser for visual debugging
   pnpm smoke-test --path=./my-project --artifact-dir=./artifacts  # Store artifacts in ./artifacts
+  pnpm smoke-test --ci --artifact-dir=./artifacts # Force CI mode and store artifacts
 `);
       // No error, just showing help
       log("Exiting after showing help");
