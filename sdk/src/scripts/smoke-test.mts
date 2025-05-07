@@ -70,16 +70,18 @@ async function main(
 
   log("Setting up test environment");
   const resources = await setupTestEnvironment(options);
+  let stopDev: (() => Promise<void>) | undefined;
 
   try {
     // Run the tests that weren't skipped
     if (!options.skipDev) {
       log("Running development server tests");
-      await runDevTest(
+      const devTest = await runDevTest(
         options.customPath,
         options.artifactDir,
         resources.targetDir,
       );
+      stopDev = devTest.stopDev; // Store the stopDev function
     } else {
       log("Skipping development server tests");
     }
@@ -94,6 +96,12 @@ async function main(
     log("All smoke tests completed successfully");
     console.log("\n✅ All smoke tests passed!");
   } finally {
+    // Stop dev server if it was started, before any other cleanup
+    if (stopDev) {
+      log("Stopping development server during cleanup");
+      await stopDev();
+    }
+
     log("Cleaning up resources");
     await cleanupResources(resources);
   }
@@ -166,7 +174,10 @@ async function runDevTest(
   customPath?: string,
   artifactDir?: string,
   targetDir?: string,
-): Promise<void> {
+): Promise<{
+  url: string;
+  stopDev: () => Promise<void>;
+}> {
   log("Starting dev server test with path: %s", customPath || "default");
   console.log("🚀 Testing local development server");
   const pathSuffix = formatPathSuffix(customPath);
@@ -176,9 +187,8 @@ async function runDevTest(
   const { url, stopDev } = await runDevServer(targetDir);
   log("Testing URL: %s", url + pathSuffix);
   await checkUrl(url + pathSuffix, artifactDir);
-  log("Stopping development server");
-  await stopDev();
   log("Development server test completed successfully");
+  return { url, stopDev };
 }
 
 /**
