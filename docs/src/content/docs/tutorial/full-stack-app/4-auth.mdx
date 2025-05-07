@@ -657,7 +657,7 @@ Don't forget to clean up your unused imports, too.
 import { useState, useTransition } from "react";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { finishPasskeyLogin, startPasskeyLogin } from "./functions";
-import { useTurnstile } from "redwoodsdk/turnstile";
+import { useTurnstile } from "rwsdk/turnstile";
 import { Button } from "@/app/components/ui/button";
 
 // >>> Replace this with your own Cloudflare Turnstile site key
@@ -1651,7 +1651,7 @@ This will definitely get us where we want to go. The only problem is, it's not t
 Within our `src/app/shared` folder, there's a file inside called `links.ts`.
 
 ```tsx title="src/app/shared/links.ts"
-import { defineLinks } from "redwoodsdk/router";
+import { defineLinks } from "rwsdk/router";
 
 export const link = defineLinks(["/"]);
 ---
@@ -1762,7 +1762,7 @@ export default defineApp([
 You'll also need to update the `import` statement at the top of your file:
 
 ```tsx title="src/worker.tsx" "route " startLineNumber=2
-import { index, layout, prefix, route } from "redwoodsdk/router";
+import { index, layout, prefix, route } from "rwsdk/router";
 ```
 
 Now, if you check your work in the browser, you should see the Terms of Service and Privacy Policy links working.
@@ -2274,7 +2274,7 @@ export { Button, buttonVariants }
 <summary>Final code for our `links.ts`</summary>
 
 ```tsx title="src/app/shared/links.ts"
-import { defineLinks } from "redwoodsdk/router";
+import { defineLinks } from "rwsdk/router";
 
 export const link = defineLinks([
   "/",
@@ -2479,7 +2479,7 @@ import {
   finishPasskeyRegistration,
   startPasskeyRegistration,
 } from "./functions";
-import { useTurnstile } from "redwoodsdk/turnstile";
+import { useTurnstile } from "rwsdk/turnstile";
 import { Button } from "@/app/components/ui/button";
 import { AuthLayout } from "@/app/layouts/AuthLayout";
 import { Alert, AlertTitle } from "@/app/components/ui/alert";
