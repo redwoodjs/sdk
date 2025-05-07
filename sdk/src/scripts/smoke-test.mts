@@ -939,8 +939,12 @@ async function checkClientSmoke(
         const indicator = document.querySelector(
           '[data-testid="health-status"]',
         );
+        const clientIndicator = document.querySelector(
+          "#smoke-test-client-timestamp",
+        );
         return (
-          indicator && indicator.getAttribute("data-client-timestamp") !== null
+          clientIndicator &&
+          clientIndicator.getAttribute("data-client-timestamp") !== null
         );
       },
       { timeout: 5000 },
