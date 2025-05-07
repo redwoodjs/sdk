@@ -71,10 +71,8 @@ async function main(options: SmokeTestOptions = {}) {
   }
 
   // Prepare browser early to avoid waiting later
-  log("Preparing browser early");
   console.log("🔍 Preparing browser for testing...");
   const browserPath = await getBrowserPath(options);
-  log("Browser ready at: %s", browserPath);
   console.log(`✅ Browser ready at: ${browserPath}`);
 
   log("Setting up test environment");
@@ -113,7 +111,6 @@ async function main(options: SmokeTestOptions = {}) {
       log("Skipping release/production tests");
     }
 
-    log("All smoke tests completed successfully");
     console.log("\n✅ All smoke tests passed!");
   } finally {
     log("Cleaning up resources");
@@ -281,14 +278,12 @@ async function cleanupResources(
 
   // Stop dev server if it was started
   if (resources.stopDev) {
-    log("Stopping development server");
     console.log("Stopping development server...");
     await resources.stopDev();
   }
 
   // Clean up resources
   if (resources.workerName && resources.workerCreatedDuringTest) {
-    log("Deleting worker: %s", resources.workerName);
     console.log(`🧹 Cleaning up: Deleting worker ${resources.workerName}...`);
     await deleteWorker(resources.workerName, resources.targetDir);
   } else if (resources.workerName) {
@@ -303,7 +298,6 @@ async function cleanupResources(
     await resources.tempDirCleanup();
     log("Temporary directory cleaned up");
   } else if (resources.tempDirCleanup && options.keep && resources.targetDir) {
-    log("Keeping temporary directory for inspection: %s", resources.targetDir);
     console.log(
       `📂 Keeping temporary directory for inspection: ${resources.targetDir}`,
     );
@@ -351,7 +345,6 @@ async function copyProjectToTempDir(projectDir: string): Promise<{
   const workerName = `${originalDirName}-smoke-test-${suffix}`;
   const targetDir = resolve(tempDir.path, workerName);
 
-  log("Copying project from %s to %s", projectDir, targetDir);
   console.log(`Copying project from ${projectDir} to ${targetDir}`);
 
   // Read project's .gitignore if it exists
@@ -405,7 +398,6 @@ async function copyProjectToTempDir(projectDir: string): Promise<{
  * Install project dependencies using pnpm
  */
 async function installDependencies(targetDir: string): Promise<void> {
-  log("Installing dependencies in %s", targetDir);
   console.log(`📦 Installing project dependencies in ${targetDir}...`);
 
   try {
@@ -416,7 +408,6 @@ async function installDependencies(targetDir: string): Promise<void> {
       stdio: "pipe", // Capture output
     })`pnpm install`;
 
-    log("pnpm install completed successfully");
     console.log("✅ Dependencies installed successfully");
 
     // Log installation details at debug level
@@ -431,7 +422,6 @@ async function installDependencies(targetDir: string): Promise<void> {
 
     // Try npm as fallback if pnpm fails
     try {
-      log("Attempting fallback to npm install");
       console.log("⚠️ pnpm install failed, trying npm install as fallback...");
 
       await $({
@@ -439,7 +429,6 @@ async function installDependencies(targetDir: string): Promise<void> {
         stdio: "pipe",
       })`npm install`;
 
-      log("npm install completed successfully");
       console.log("✅ Dependencies installed successfully with npm");
     } catch (npmError) {
       log("ERROR: Both pnpm and npm install failed: %O", npmError);
@@ -462,7 +451,6 @@ async function checkUrl(
   browserPath?: string,
   headless: boolean = true,
 ): Promise<void> {
-  log("Checking URL: %s", url);
   console.log(`🔍 Testing URL: ${url}`);
 
   log("Launching browser");
@@ -516,7 +504,6 @@ async function checkUrlSmoke(
   isRealtime: boolean,
 ): Promise<void> {
   const phase = isRealtime ? "Post-upgrade" : "Initial";
-  log("Testing %s smoke tests at %s", phase, url);
   console.log(`🔍 Testing ${phase} smoke tests at ${url}`);
 
   // Parse the base URL and path to properly handle smoke test queries
@@ -529,7 +516,6 @@ async function checkUrlSmoke(
 
   // Add __smoke_test query parameter, preserving any existing query parameters
   if (parsedUrl.searchParams.has("__smoke_test")) {
-    log("URL already has __smoke_test parameter: %s", url);
     console.log(`URL already has __smoke_test parameter: ${url}`);
   } else {
     parsedUrl.searchParams.append("__smoke_test", "1");
@@ -538,7 +524,6 @@ async function checkUrlSmoke(
 
   // Navigate to smoke test page
   const smokeUrl = parsedUrl.toString();
-  log("Accessing smoke test page: %s", smokeUrl);
   console.log(`🔍 Accessing smoke test page: ${smokeUrl}`);
   await page.goto(smokeUrl, { waitUntil: "networkidle0" });
   log("Page loaded successfully");
@@ -561,7 +546,6 @@ async function checkServerSmoke(
   page: Page,
   phase: string = "",
 ): Promise<SmokeTestResult> {
-  log("Testing server-side smoke test %s", phase ? `(${phase})` : "");
   console.log(`🔍 Testing server-side smoke test ${phase ? `(${phase})` : ""}`);
 
   const result = await page.evaluate(async () => {
@@ -623,7 +607,6 @@ async function checkClientSmoke(
   page: Page,
   phase: string = "",
 ): Promise<SmokeTestResult | null> {
-  log("Testing client-side smoke test %s", phase ? `(${phase})` : "");
   console.log(`🔍 Testing client-side smoke test ${phase ? `(${phase})` : ""}`);
 
   // Check if refresh button exists
@@ -657,9 +640,6 @@ async function checkClientSmoke(
       );
     }
 
-    log(
-      "Basic page structure verified, continuing without client-side smoke test",
-    );
     console.log(
       "ℹ️ Basic page structure verified, continuing without client-side smoke test",
     );
@@ -744,7 +724,6 @@ async function checkClientSmoke(
  * Upgrade to realtime mode
  */
 async function upgradeToRealtime(page: Page): Promise<void> {
-  log("Upgrading to realtime mode");
   console.log("\n📡 Upgrading to realtime mode");
   const upgradeResult = await page.evaluate(async () => {
     try {
@@ -778,7 +757,6 @@ async function upgradeToRealtime(page: Page): Promise<void> {
     );
   }
 
-  log("Successfully upgraded to realtime mode");
   console.log("✅ Successfully upgraded to realtime mode");
 }
 
@@ -789,7 +767,6 @@ async function runDevServer(cwd?: string): Promise<{
   url: string;
   stopDev: () => Promise<void>;
 }> {
-  log("Starting development server");
   console.log("🚀 Starting development server...");
 
   // Start dev server with stdout pipe to capture URL
@@ -824,7 +801,6 @@ async function runDevServer(cwd?: string): Promise<{
 
   // Function to stop the dev server
   const stopDev = async () => {
-    log("Stopping development server");
     console.log("Stopping development server...");
 
     devProcess.kill();
@@ -836,7 +812,6 @@ async function runDevServer(cwd?: string): Promise<{
       log("Dev server process was terminated");
     }
 
-    log("Development server stopped");
     console.log("Development server stopped");
   };
 
@@ -859,7 +834,6 @@ async function runDevServer(cwd?: string): Promise<{
   // Wait for the URL
   const serverUrl = await waitForUrl();
 
-  log("Development server started at %s", serverUrl);
   console.log(`✅ Development server started at ${serverUrl}`);
   return { url: serverUrl, stopDev };
 }
@@ -870,7 +844,6 @@ async function runDevServer(cwd?: string): Promise<{
 async function runRelease(
   cwd?: string,
 ): Promise<{ url: string; workerName: string }> {
-  log("Running release process");
   console.log("🚀 Running release process...");
 
   // Create an interactive expect script for handling the release prompts
@@ -957,7 +930,6 @@ async function launchBrowser(
     browserPath = await getBrowserPath();
   }
 
-  log("Launching browser from %s (headless: %s)", browserPath, headless);
   console.log(
     `🚀 Launching browser from ${browserPath} (headless: ${headless})`,
   );
@@ -974,12 +946,10 @@ async function launchBrowser(
  * Get the browser executable path
  */
 async function getBrowserPath(testOptions?: SmokeTestOptions): Promise<string> {
-  log("Finding Chrome executable");
   console.log("Finding Chrome executable...");
 
   // First try using environment variable if set
   if (process.env.CHROME_PATH) {
-    log("Using Chrome from environment variable: %s", process.env.CHROME_PATH);
     console.log(
       `Using Chrome from environment variable: ${process.env.CHROME_PATH}`,
     );
@@ -1006,14 +976,12 @@ async function getBrowserPath(testOptions?: SmokeTestOptions): Promise<string> {
       ? PuppeteerBrowser.CHROME
       : PuppeteerBrowser.CHROMEHEADLESSSHELL;
 
-  log("Using browser type: %s", browser);
-  console.log(`Using browser type: ${browser}`);
+  log(`Using browser type: ${browser}`);
 
   // Resolve the buildId for the stable Chrome version - do this once
   log("Resolving Chrome buildId for stable channel");
   const buildId = await resolveBuildId(browser, platform, "stable");
   log("Resolved buildId: %s", buildId);
-  console.log(`Resolved Chrome buildId: ${buildId}`);
 
   // Create installation options - use them consistently
   const installOptions: InstallOptions & { unpack: true } = {
@@ -1029,7 +997,6 @@ async function getBrowserPath(testOptions?: SmokeTestOptions): Promise<string> {
     log("Attempting to find existing Chrome installation");
     const path = computeExecutablePath(installOptions);
     if (await pathExists(path)) {
-      log("Found existing Chrome at: %s", path);
       console.log(`Found existing Chrome at: ${path}`);
       return path;
     } else {
@@ -1037,20 +1004,16 @@ async function getBrowserPath(testOptions?: SmokeTestOptions): Promise<string> {
     }
   } catch (error) {
     // If path computation fails, install Chrome
-    log("No Chrome installation found, installing Chrome");
     console.log("No Chrome installation found. Installing Chrome...");
 
     // Add better error handling for the install step
     try {
-      log("Starting Chrome download with options: %O", installOptions);
       console.log("Downloading Chrome (this may take a few minutes)...");
       await install(installOptions);
-      log("Chrome installation completed successfully");
       console.log("✅ Chrome installation completed successfully");
 
       // Now compute the path for the installed browser
       const path = computeExecutablePath(installOptions);
-      log("Installed and using Chrome at: %s", path);
       console.log(`Installed and using Chrome at: ${path}`);
       return path;
     } catch (installError) {
@@ -1144,14 +1107,11 @@ function reportSmokeTestResult(
   log("Reporting %s%s smoke test result: %O", phasePrefix, type, result);
 
   if (result.verificationPassed) {
-    log("%s%s smoke test passed", phasePrefix, type);
     console.log(`✅ ${phasePrefix}${type} smoke test passed!`);
     if (result.serverTimestamp) {
-      log("Server timestamp: %d", result.serverTimestamp);
       console.log(`✅ Server timestamp: ${result.serverTimestamp}`);
     }
     if (result.clientTimestamp) {
-      log("Client timestamp: %d", result.clientTimestamp);
       console.log(`✅ Client timestamp: ${result.clientTimestamp}`);
     }
   } else {
@@ -1172,7 +1132,6 @@ function reportSmokeTestResult(
  * Delete the worker using wrangler
  */
 async function deleteWorker(name: string, cwd?: string): Promise<void> {
-  log("Deleting worker: %s", name);
   console.log(`Cleaning up: Deleting worker ${name}...`);
   try {
     // The --yes flag automatically confirms the deletion
@@ -1181,22 +1140,17 @@ async function deleteWorker(name: string, cwd?: string): Promise<void> {
       cwd || process.cwd(),
     );
     await $({ cwd: cwd || process.cwd() })`npx wrangler delete ${name} --yes`;
-    log("Worker %s deleted successfully", name);
     console.log(`✅ Worker ${name} deleted successfully`);
   } catch (error) {
-    log("Failed to delete worker %s: %O", name, error);
     console.error(`Failed to delete worker ${name}: ${error}`);
     // Retry with force flag if the first attempt failed
     try {
-      log("Retrying with force flag");
       console.log("Retrying with force flag...");
       await $({
         cwd: cwd || process.cwd(),
       })`npx wrangler delete ${name} --yes --force`;
-      log("Worker %s force deleted successfully", name);
       console.log(`✅ Worker ${name} force deleted successfully`);
     } catch (retryError) {
-      log("Failed to force delete worker %s: %O", name, retryError);
       console.error(`Failed to force delete worker ${name}: ${retryError}`);
     }
   }
@@ -1206,7 +1160,6 @@ async function deleteWorker(name: string, cwd?: string): Promise<void> {
  * Creates the smoke test components in the target project directory
  */
 async function createSmokeTestComponents(targetDir: string): Promise<void> {
-  log("Creating smoke test components in project directory: %s", targetDir);
   console.log("Creating smoke test components in project...");
 
   // Create directories if they don't exist
@@ -1540,7 +1493,6 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
 
   // Print help if requested
   if (args.includes("--help") || args.includes("-h")) {
-    log("Showing help message");
     console.log(`
 Smoke Test Usage:
   node smoke-test.mjs [options] [custom-path]
@@ -1577,18 +1529,15 @@ Examples:
   (async () => {
     if (options.sync) {
       const targetDir = options.projectDir || process.cwd();
-      log("Syncing SDK to %s", targetDir);
       console.log(
         `🔄 Syncing SDK to ${targetDir} before running smoke test...`,
       );
       await debugSync({ targetDir });
     }
     await main(options);
-    log("Smoke test completed successfully");
     console.log("✨ Smoke test completed successfully!");
     process.exit(0);
   })().catch((error) => {
-    log("ERROR: Smoke test failed: %O", error);
     console.error(`❌ Smoke test failed: ${error.message}`);
     process.exit(1);
   });
