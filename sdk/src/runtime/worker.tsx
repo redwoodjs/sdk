@@ -96,9 +96,7 @@ export const defineApp = (routes: Route[]) => {
           }
 
           if (isSmokeTest) {
-            pageElement = (
-              <__SmokeTestWrapper>{pageElement}</__SmokeTestWrapper>
-            );
+            pageElement = <SmokeTestWrapper>{pageElement}</SmokeTestWrapper>;
           }
 
           return pageElement;
@@ -213,7 +211,7 @@ export const defineApp = (routes: Route[]) => {
   };
 };
 
-export const __SmokeTestWrapper: React.FC<{
+export const SmokeTestWrapper: React.FC<{
   children: React.ReactNode;
 }> = async ({ children }) => {
   const { SmokeTestInfo } = await import(

@@ -20,15 +20,15 @@ export const debugSync = async (opts: DebugSyncOptions) => {
   // Run initial sync
   await $({ stdio: "inherit", shell: true })`${syncCommand}`;
 
+  console.log("🧹 Cleaning Vite cache...");
+  await $({
+    stdio: "inherit",
+    shell: true,
+    cwd: targetDir,
+  })`npm run clean:vite`;
+
   // If dev flag is present, clean vite cache and start dev server
   if (dev) {
-    console.log("🧹 Cleaning Vite cache...");
-    await $({
-      stdio: "inherit",
-      shell: true,
-      cwd: targetDir,
-    })`npm run clean:vite`;
-
     console.log("🚀 Starting dev server...");
     await $({ stdio: "inherit", shell: true, cwd: targetDir })`npm run dev`;
   }
