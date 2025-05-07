@@ -35,21 +35,6 @@ const log = debug("rwsdk:smoke");
 const TIMEOUT = 30000; // 30 seconds timeout
 const RETRIES = 3;
 
-// Module-level state to track resources and teardown status
-const state = {
-  isTearingDown: false,
-  exitCode: 0,
-  resources: {
-    tempDirCleanup: undefined as (() => Promise<void>) | undefined,
-    workerName: undefined as string | undefined,
-    originalCwd: process.cwd(),
-    targetDir: undefined as string | undefined,
-    workerCreatedDuringTest: false,
-    stopDev: undefined as (() => Promise<void>) | undefined,
-  },
-  options: {} as SmokeTestOptions,
-};
-
 interface SmokeTestResult {
   status: string;
   verificationPassed: boolean;
@@ -70,6 +55,30 @@ interface SmokeTestOptions {
   headless?: boolean;
   sync?: boolean;
 }
+
+interface TestResources {
+  tempDirCleanup?: () => Promise<void>;
+  workerName?: string;
+  originalCwd: string;
+  targetDir?: string;
+  workerCreatedDuringTest: boolean;
+  stopDev?: () => Promise<void>;
+}
+
+// Module-level state to track resources and teardown status
+const state = {
+  isTearingDown: false,
+  exitCode: 0,
+  resources: {
+    tempDirCleanup: undefined,
+    workerName: undefined,
+    originalCwd: process.cwd(),
+    targetDir: undefined,
+    workerCreatedDuringTest: false,
+    stopDev: undefined,
+  } as TestResources,
+  options: {} as SmokeTestOptions,
+};
 
 /**
  * Handles test failure by logging the error and initiating teardown
@@ -201,30 +210,16 @@ async function setupTestEnvironment(options: {
   projectDir?: string;
   artifactDir?: string;
   sync?: boolean;
-}): Promise<{
-  tempDirCleanup?: () => Promise<void>;
-  workerName?: string;
-  originalCwd: string;
-  targetDir?: string;
-  workerCreatedDuringTest?: boolean;
-  stopDev?: () => Promise<void>;
-}> {
+}): Promise<TestResources> {
   log("Setting up test environment with options: %O", options);
 
-  const resources = {
+  const resources: TestResources = {
     tempDirCleanup: undefined,
     workerName: undefined,
     originalCwd: process.cwd(),
     targetDir: undefined,
     workerCreatedDuringTest: false,
     stopDev: undefined,
-  } as {
-    tempDirCleanup?: () => Promise<void>;
-    workerName?: string;
-    originalCwd: string;
-    targetDir?: string;
-    workerCreatedDuringTest?: boolean;
-    stopDev?: () => Promise<void>;
   };
 
   log("Current working directory: %s", resources.originalCwd);
@@ -300,11 +295,7 @@ async function runDevTest(
  */
 async function runReleaseTest(
   customPath: string = "/",
-  resources?: {
-    workerName?: string;
-    targetDir?: string;
-    workerCreatedDuringTest?: boolean;
-  },
+  resources?: Partial<TestResources>,
   artifactDir?: string,
   browserPath?: string,
   headless: boolean = true,
@@ -361,14 +352,7 @@ async function runReleaseTest(
  * Cleans up any resources used during testing
  */
 async function cleanupResources(
-  resources: {
-    tempDirCleanup?: () => Promise<void>;
-    workerName?: string;
-    originalCwd: string;
-    targetDir?: string;
-    workerCreatedDuringTest?: boolean;
-    stopDev?: () => Promise<void>;
-  },
+  resources: TestResources,
   options: SmokeTestOptions,
 ): Promise<void> {
   log("Cleaning up resources");
