@@ -1459,6 +1459,7 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
     artifactDir: undefined,
     keep: false,
     headless: true,
+    sync: true, // Default to true
   };
 
   // Process arguments in order
@@ -1473,8 +1474,8 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
       options.keep = true;
     } else if (arg === "--no-headless") {
       options.headless = false;
-    } else if (arg === "--sync") {
-      options.sync = true;
+    } else if (arg === "--no-sync") {
+      options.sync = false;
     } else if (arg === "--help" || arg === "-h") {
       // Help will be handled later
     } else if (arg.startsWith("--path=")) {
@@ -1504,7 +1505,7 @@ Options:
   --artifact-dir=DIR      Directory to store test artifacts
   --keep                  Don't delete the temporary project directory after tests
   --no-headless           Use regular browser instead of headless browser for testing
-  --sync                  Sync SDK before running smoke test
+  --no-sync               Do not sync SDK before running smoke test
   --help, -h              Show this help message
 
 Arguments:
