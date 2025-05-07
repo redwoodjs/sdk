@@ -15,7 +15,6 @@ import {
   resolveBuildId,
 } from "@puppeteer/browsers";
 import type { Page, Browser } from "puppeteer-core";
-import { spawn } from "child_process";
 import { copy, mkdirp, pathExists } from "fs-extra";
 import tmp from "tmp-promise";
 import {
