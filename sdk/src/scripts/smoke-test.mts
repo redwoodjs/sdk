@@ -205,10 +205,6 @@ async function runDevTest(
   const testUrl = url + pathSuffix;
   log("Testing URL: %s", testUrl);
 
-  // Wait a moment before checking server availability
-  log("Waiting 1s before checking server...");
-  await setTimeout(1000);
-
   // Check if server is responding before proceeding
   log("Checking if development server is up and responding");
   console.log(
