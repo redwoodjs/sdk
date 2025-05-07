@@ -1493,6 +1493,19 @@ async function createSmokeTestComponents(targetDir: string): Promise<void> {
   log("Creating components directory: %s", componentsDir);
   await fs.mkdir(componentsDir, { recursive: true });
 
+  // Create __smokeTestFunctions.ts
+  const smokeTestFunctionsPath = join(componentsDir, "__smokeTestFunctions.ts");
+  log("Creating SmokeTestFunctions at: %s", smokeTestFunctionsPath);
+  const smokeTestFunctionsContent = `"use server";
+
+export async function smokeTestAction(
+  timestamp?: number,
+): Promise<unknown> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  return { status: "ok", timestamp };
+}
+`;
+
   // Create SmokeTest.tsx
   const smokeTestPath = join(componentsDir, "__SmokeTest.tsx");
   log("Creating SmokeTest component at: %s", smokeTestPath);
@@ -1500,6 +1513,7 @@ async function createSmokeTestComponents(targetDir: string): Promise<void> {
 import React from "react";
 import { RequestInfo } from "rwsdk/worker";
 import { SmokeTestClient } from "./__SmokeTestClient";
+import { smokeTestAction } from "./__smokeTestFunctions";
 
 export const SmokeTestInfo: React.FC = async () => {
   const timestamp = Date.now();
@@ -1508,7 +1522,7 @@ export const SmokeTestInfo: React.FC = async () => {
   let result: any = null;
 
   try {
-    result = await globalThis.__rw.callServer("__smoke_test", [timestamp]);
+    result = await smokeTestAction(timestamp);
 
     // Check the result
     if (typeof result === "object" && result !== null) {
@@ -1606,6 +1620,7 @@ export const SmokeTestPage = (
   const smokeTestClientContent = `"use client";
 
 import React, { useState } from "react";
+import { smokeTestAction } from "./__smokeTestFunctions";
 
 interface SmokeTestStatus {
   status: string;
@@ -1631,7 +1646,7 @@ export const SmokeTestClient: React.FC = () => {
       // Get current timestamp to verify round-trip
       const timestamp = Date.now();
 
-      const result = await globalThis.__rw.callServer("__smoke_test", [timestamp]);
+      const result = await smokeTestAction(timestamp);
 
       // Process the result
       let status = "error";
@@ -1758,6 +1773,8 @@ export const SmokeTestClient: React.FC = () => {
 };`;
 
   // Write the files
+  log("Writing SmokeTestFunctions file");
+  await fs.writeFile(smokeTestFunctionsPath, smokeTestFunctionsContent);
   log("Writing SmokeTest component file");
   await fs.writeFile(smokeTestPath, smokeTestContent);
   log("Writing SmokeTestClient component file");
@@ -1765,6 +1782,7 @@ export const SmokeTestClient: React.FC = () => {
 
   log("Smoke test components created successfully");
   console.log("Created smoke test components:");
+  console.log(`- ${smokeTestFunctionsPath}`);
   console.log(`- ${smokeTestPath}`);
   console.log(`- ${smokeTestClientPath}`);
 }

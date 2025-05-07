@@ -9,7 +9,7 @@ import { IS_DEV } from "../constants";
 export function registerServerReference(
   action: Function,
   id: string,
-  name: string
+  name: string,
 ) {
   if (typeof action !== "function") {
     return action;
@@ -21,7 +21,7 @@ export function registerServerReference(
 export function registerClientReference<Target extends Record<string, any>>(
   id: string,
   exportName: string,
-  target: Target
+  target: Target,
 ) {
   const reference = baseRegisterClientReference({}, id, exportName);
   return Object.defineProperties(target, {
@@ -29,6 +29,13 @@ export function registerClientReference<Target extends Record<string, any>>(
     $$async: { value: true },
     $$isClientReference: { value: true },
   });
+}
+
+export async function __smokeTestActionHandler(
+  timestamp?: number,
+): Promise<unknown> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  return { status: "ok", timestamp };
 }
 
 export async function rscActionHandler(req: Request): Promise<unknown> {
@@ -44,14 +51,6 @@ export async function rscActionHandler(req: Request): Promise<unknown> {
 
   if (IS_DEV && actionId === "__rsc_hot_update") {
     return null;
-  }
-
-  // Special case for health check action - echo back the timestamp
-  if (actionId === "__health") {
-    // If a timestamp was passed, echo it back, otherwise just return "ok"
-    return args && args.length > 0
-      ? { status: "ok", timestamp: args[0] }
-      : "ok";
   }
 
   const action = await getModuleExport(actionId!);
