@@ -112,7 +112,7 @@ export default defineApp([
 Start building immediately → [Quick start guide](https://docs.rwsdk.com/getting-started/quick-start/)
 
 ---
-## React Server Components
+## 🚀 React Server Components
 
 RedwoodSDK is true Javascript full-stack:
 
