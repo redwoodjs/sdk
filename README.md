@@ -118,7 +118,7 @@ Start building immediately → [Quick start guide](https://docs.rwsdk.com/gettin
 
 ---
 
-## React Server Components
+## 🚀 React Server Components
 
 RedwoodSDK is true Javascript full-stack:
 
