@@ -24,6 +24,7 @@ import {
 } from "unique-names-generator";
 import ignore from "ignore";
 import debug from "debug";
+import { debugSync } from "./debug-sync.mjs";
 
 if (!process.env.DEBUG) {
   debug.enable("rwsdk:*");
@@ -52,6 +53,7 @@ interface SmokeTestOptions {
   artifactDir?: string;
   keep?: boolean;
   headless?: boolean;
+  sync?: boolean;
 }
 
 /**
@@ -1518,6 +1520,8 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
       options.keep = true;
     } else if (arg === "--no-headless") {
       options.headless = false;
+    } else if (arg === "--sync") {
+      options.sync = true;
     } else if (arg === "--help" || arg === "-h") {
       // Help will be handled later
     } else if (arg.startsWith("--path=")) {
@@ -1548,6 +1552,7 @@ Options:
   --artifact-dir=DIR      Directory to store test artifacts
   --keep                  Don't delete the temporary project directory after tests
   --no-headless           Use regular browser instead of headless browser for testing
+  --sync                  Sync SDK before running smoke test
   --help, -h              Show this help message
 
 Arguments:
@@ -1569,17 +1574,24 @@ Examples:
 
   // Run the main function
   log("Starting smoke test");
-  main(options)
-    .then(() => {
-      log("Smoke test completed successfully");
-      console.log("✨ Smoke test completed successfully!");
-      process.exit(0);
-    })
-    .catch((error) => {
-      log("ERROR: Smoke test failed: %O", error);
-      console.error(`❌ Smoke test failed: ${error.message}`);
-      process.exit(1);
-    });
+  (async () => {
+    if (options.sync) {
+      const targetDir = options.projectDir || process.cwd();
+      log("Syncing SDK to %s", targetDir);
+      console.log(
+        `🔄 Syncing SDK to ${targetDir} before running smoke test...`,
+      );
+      await debugSync({ targetDir });
+    }
+    await main(options);
+    log("Smoke test completed successfully");
+    console.log("✨ Smoke test completed successfully!");
+    process.exit(0);
+  })().catch((error) => {
+    log("ERROR: Smoke test failed: %O", error);
+    console.error(`❌ Smoke test failed: ${error.message}`);
+    process.exit(1);
+  });
 }
 
 export { main, checkUrl, checkUrlSmoke, checkServerSmoke, checkClientSmoke };
