@@ -77,6 +77,20 @@ These can also be added and managed via the Cloudflare dashboard.
   </figcaption>
 </figure>
 
+## Using an Environment Variable
+
+At the top of your file, import `env`:
+
+```tsx
+import { env } from "cloudflare:workers";
+```
+
+Then, you can access the environment variables through the `env` object.
+
+```ts
+const rpID = env.WEBAUTHN_RP_ID ?? new URL(request.url).hostname;
+```
+
 ## Further Reading
 
 - [Cloudflare Environment Variables](https://developers.cloudflare.com/workers/configuration/secrets/)
