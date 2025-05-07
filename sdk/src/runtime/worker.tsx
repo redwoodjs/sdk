@@ -3,7 +3,7 @@ import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 import { injectRSCPayload } from "./render/injectRSCPayload";
 import { renderToRscStream } from "./render/renderToRscStream";
 
-import { ssrWebpackRequire } from "./imports/worker";
+import { loadModule, ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import { ErrorResponse } from "./error";
 import {
@@ -214,15 +214,7 @@ export const defineApp = (routes: Route[]) => {
 export const SmokeTestWrapper: React.FC<{
   children: React.ReactNode;
 }> = async ({ children }) => {
-  const modules = (
-    import.meta as object as {
-      glob: (
-        pattern: string,
-      ) => Record<string, () => Promise<Record<string, unknown>>>;
-    }
-  ).glob("/src/app/components/__SmokeTest.tsx");
-
-  const smokeTestInfo = await Object.values(modules)[0]();
+  const smokeTestInfo = await loadModule("/src/app/components/__SmokeTest.tsx");
   const SmokeTestInfo = smokeTestInfo.SmokeTestInfo as React.FC<any>;
 
   return (

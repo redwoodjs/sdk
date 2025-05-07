@@ -1496,8 +1496,7 @@ async function createSmokeTestComponents(targetDir: string): Promise<void> {
   // Create SmokeTest.tsx
   const smokeTestPath = join(componentsDir, "__SmokeTest.tsx");
   log("Creating SmokeTest component at: %s", smokeTestPath);
-  const smokeTestContent = `"use client";
-
+  const smokeTestContent = `
 import React from "react";
 import { RequestInfo } from "rwsdk/worker";
 import { SmokeTestClient } from "./__SmokeTestClient";
