@@ -911,8 +911,11 @@ async function runDevServer(cwd?: string): Promise<{
 
   // Function to stop the dev server - defined early so we can use it in error handling
   let devProcess: any = null;
+  let isErrorExpected = false;
 
   const stopDev = async () => {
+    isErrorExpected = true;
+
     if (!devProcess) {
       log("No dev process to stop");
       return;
@@ -946,6 +949,12 @@ async function runDevServer(cwd?: string): Promise<{
       cleanup: false, // Don't auto-kill on exit
       cwd: cwd || process.cwd(), // Use provided directory or current directory
     })`npm run dev`;
+
+    devProcess.catch((error: any) => {
+      if (!isErrorExpected) {
+        fail(error);
+      }
+    });
 
     log(
       "Development server process spawned in directory: %s",
