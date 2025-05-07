@@ -973,17 +973,14 @@ async function getBrowserPath(): Promise<string> {
 
   // Resolve the buildId for the stable Chrome version - do this once
   log("Resolving Chrome buildId for stable channel");
-  const buildId = await resolveBuildId(
-    PuppeteerBrowser.CHROMIUM,
-    platform,
-    "stable",
-  );
+  const browser = PuppeteerBrowser.CHROME;
+  const buildId = await resolveBuildId(browser, platform, "stable");
   log("Resolved buildId: %s", buildId);
   console.log(`Resolved Chrome buildId: ${buildId}`);
 
   // Create installation options - use them consistently
   const options: InstallOptions & { unpack: true } = {
-    browser: PuppeteerBrowser.CHROMIUM,
+    browser,
     platform,
     cacheDir: rwCacheDir,
     buildId,
