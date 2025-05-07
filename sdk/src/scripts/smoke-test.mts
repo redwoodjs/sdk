@@ -205,6 +205,10 @@ async function runDevTest(
   const testUrl = url + pathSuffix;
   log("Testing URL: %s", testUrl);
 
+  // Wait a moment before checking server availability
+  log("Waiting 1s before checking server...");
+  await setTimeout(1000);
+
   // Check if server is responding before proceeding
   log("Checking if development server is up and responding");
   console.log(
@@ -241,6 +245,10 @@ async function runReleaseTest(
   const { url, workerName } = await runRelease(resources?.targetDir);
   const testUrl = url + pathSuffix;
   log("Testing URL: %s with worker: %s", testUrl, workerName);
+
+  // Wait a moment before checking server availability
+  log("Waiting 1s before checking server...");
+  await setTimeout(1000);
 
   // Check if production server is responding before proceeding
   log("Checking if production server is up and responding");
