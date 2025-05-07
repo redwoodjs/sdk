@@ -127,6 +127,7 @@ async function setupTestEnvironment(options: {
   skipRelease?: boolean;
   projectDir?: string;
   artifactDir?: string;
+  sync?: boolean;
 }): Promise<{
   tempDirCleanup?: () => Promise<void>;
   workerName?: string;
@@ -160,6 +161,7 @@ async function setupTestEnvironment(options: {
     log("Project directory specified: %s", options.projectDir);
     const { tempDir, targetDir, workerName } = await copyProjectToTempDir(
       options.projectDir,
+      options.sync !== false, // default to true if undefined
     );
 
     // Store cleanup function
@@ -323,7 +325,10 @@ function formatPathSuffix(customPath?: string): string {
 /**
  * Copy project to a temporary directory with a unique name
  */
-async function copyProjectToTempDir(projectDir: string): Promise<{
+async function copyProjectToTempDir(
+  projectDir: string,
+  sync: boolean = true,
+): Promise<{
   tempDir: tmp.DirectoryResult;
   targetDir: string;
   workerName: string;
@@ -390,6 +395,14 @@ async function copyProjectToTempDir(projectDir: string): Promise<{
 
   // Install dependencies in the target directory
   await installDependencies(targetDir);
+
+  // Sync SDK to the temp dir if requested
+  if (sync) {
+    console.log(
+      `🔄 Syncing SDK to ${targetDir} after installing dependencies...`,
+    );
+    await debugSync({ targetDir });
+  }
 
   return { tempDir, targetDir, workerName };
 }
@@ -1528,13 +1541,6 @@ Examples:
   // Run the main function
   log("Starting smoke test");
   (async () => {
-    if (options.sync) {
-      const targetDir = options.projectDir || process.cwd();
-      console.log(
-        `🔄 Syncing SDK to ${targetDir} before running smoke test...`,
-      );
-      await debugSync({ targetDir });
-    }
     await main(options);
     console.log("✨ Smoke test completed successfully!");
     process.exit(0);

@@ -21,6 +21,7 @@ export const debugSync = async (opts: DebugSyncOptions) => {
   await $({ stdio: "inherit", shell: true })`${syncCommand}`;
 
   console.log("🧹 Cleaning Vite cache...");
+
   await $({
     stdio: "inherit",
     shell: true,
