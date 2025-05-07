@@ -239,4 +239,28 @@ You now have a fully functional Storybook set up with a component that you can p
 In the previous section, we mocked the `ctx` prop. But what if we want to mock a dependency that isn't a prop? For example, let's say we have a component that makes calls to our
 database via Prisma.
 
-ARI YOU ARE UP TO THIS :)
+<Steps>
+1. If you're also using the standard starter, then the only thing in your database schema is a list of users. What's the most obvious thing to do? List out all the users! Add this to your `Home` component:
+    ```tsx title="src/app/pages/Home.tsx" ins={2, 13-17} useDiffSyntax={true} ins="async"
+    import { RequestInfo } from "rwsdk/worker";
+    import { db } from "@/db";
+
+    export async function Home({ ctx }: RequestInfo) {
+      const users = await db.user.findMany();
+      return (
+        <div>
+          <p>
+            {ctx.user?.username
+              ? `You are logged in as user ${ctx.user.username}`
+              : "You are not logged in"}
+          </p>
+          <ul>
+            {users.map((user) => (
+              <li key={user.id}>{user.username}</li>
+            ))}
+          </ul>
+        </div>
+      );
+    }
+    ```
+</Steps>
