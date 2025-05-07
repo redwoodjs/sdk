@@ -49,18 +49,19 @@ interface SmokeTestResponse {
   [key: string]: unknown;
 }
 
+interface SmokeTestOptions {
+  customPath?: string;
+  skipDev?: boolean;
+  skipRelease?: boolean;
+  projectDir?: string;
+  artifactDir?: string;
+  keep?: boolean;
+}
+
 /**
  * Main function that orchestrates the smoke test flow
  */
-async function main(
-  options: {
-    customPath?: string;
-    skipDev?: boolean;
-    skipRelease?: boolean;
-    projectDir?: string;
-    artifactDir?: string;
-  } = {},
-) {
+async function main(options: SmokeTestOptions = {}) {
   log("Starting smoke test with options: %O", options);
 
   // Throw immediately if both tests would be skipped
@@ -116,7 +117,7 @@ async function main(
     console.log("\n✅ All smoke tests passed!");
   } finally {
     log("Cleaning up resources");
-    await cleanupResources(resources);
+    await cleanupResources(resources, options);
   }
 }
 
@@ -242,14 +243,17 @@ async function runReleaseTest(
 /**
  * Cleans up any resources used during testing
  */
-async function cleanupResources(resources: {
-  tempDirCleanup?: () => Promise<void>;
-  workerName?: string;
-  originalCwd: string;
-  targetDir?: string;
-  workerCreatedDuringTest?: boolean;
-  stopDev?: () => Promise<void>;
-}): Promise<void> {
+async function cleanupResources(
+  resources: {
+    tempDirCleanup?: () => Promise<void>;
+    workerName?: string;
+    originalCwd: string;
+    targetDir?: string;
+    workerCreatedDuringTest?: boolean;
+    stopDev?: () => Promise<void>;
+  },
+  options: SmokeTestOptions,
+): Promise<void> {
   log("Cleaning up resources");
 
   // Stop dev server if it was started
@@ -271,10 +275,15 @@ async function cleanupResources(resources: {
     );
   }
 
-  if (resources.tempDirCleanup) {
+  if (resources.tempDirCleanup && !options.keep) {
     log("Cleaning up temporary directory");
     await resources.tempDirCleanup();
     log("Temporary directory cleaned up");
+  } else if (resources.tempDirCleanup && options.keep && resources.targetDir) {
+    log("Keeping temporary directory for inspection: %s", resources.targetDir);
+    console.log(
+      `📂 Keeping temporary directory for inspection: ${resources.targetDir}`,
+    );
   }
 
   log("Resource cleanup completed");
@@ -1441,7 +1450,7 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
   const args = process.argv.slice(2);
   log("Command line arguments: %O", args);
 
-  const options = {
+  const options: SmokeTestOptions = {
     customPath: args.find(
       (arg) => !arg.startsWith("--") && !arg.startsWith("--path="),
     ),
@@ -1451,6 +1460,7 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
     artifactDir: args
       .find((arg) => arg.startsWith("--artifact-dir="))
       ?.substring(15),
+    keep: args.includes("--keep"),
   };
 
   log("Parsed options: %O", options);
@@ -1467,6 +1477,7 @@ Options:
   --skip-release          Skip testing the release/production deployment
   --path=PATH             Project directory to test
   --artifact-dir=DIR      Directory to store test artifacts
+  --keep                  Don't delete the temporary project directory after tests
   --help, -h              Show this help message
 
 Arguments:
@@ -1477,6 +1488,7 @@ Examples:
   pnpm smoke-test /login                         # Test both dev and release with /login path
   pnpm smoke-test --skip-release                 # Only test dev server
   pnpm smoke-test --path=./my-project            # Test using the specified project directory
+  pnpm smoke-test --path=./my-project --keep     # Keep the test directory after completion
   pnpm smoke-test --path=./my-project --artifact-dir=./artifacts  # Store artifacts in ./artifacts
 `);
     // No error, just showing help
