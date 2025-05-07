@@ -27,7 +27,7 @@ import debug from "debug";
 import { debugSync } from "./debug-sync.mjs";
 
 if (!process.env.DEBUG) {
-  debug.enable("rwsdk:*");
+  debug.enable("rwsdk:smoke");
 }
 
 const log = debug("rwsdk:smoke");
