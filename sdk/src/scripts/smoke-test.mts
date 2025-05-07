@@ -844,7 +844,25 @@ async function checkServerSmoke(
         };
       }
 
+      // Check if required attributes exist
       const status = smokeElement.getAttribute("data-status");
+      if (status === null) {
+        return {
+          status: "error",
+          verificationPassed: false,
+          error: "data-status attribute is missing on health-status element",
+        };
+      }
+
+      // Check if data-verified attribute exists
+      if (smokeElement.getAttribute("data-verified") === null) {
+        return {
+          status: "error",
+          verificationPassed: false,
+          error: "data-verified attribute is missing",
+        };
+      }
+
       const timestamp = parseInt(
         smokeElement.getAttribute("data-timestamp") || "0",
         10,
@@ -854,15 +872,13 @@ async function checkServerSmoke(
         10,
       );
 
-      // Verify timestamps are reasonable (within 60 seconds of now)
-      const now = Date.now();
-      const isTimestampRecent = Math.abs(now - timestamp) < 60000;
-      const isServerTimestampRecent = Math.abs(now - serverTimestamp) < 60000;
+      // Use the component's own verification result instead of recalculating
+      const verificationPassed =
+        smokeElement.getAttribute("data-verified") === "true";
 
       return {
         status: status || "error",
-        verificationPassed:
-          status === "ok" && isTimestampRecent && isServerTimestampRecent,
+        verificationPassed: status === "ok" && verificationPassed,
         timestamp,
         serverTimestamp,
         error:
@@ -936,15 +952,12 @@ async function checkClientSmoke(
   try {
     await page.waitForFunction(
       () => {
-        const indicator = document.querySelector(
-          '[data-testid="health-status"]',
-        );
         const clientIndicator = document.querySelector(
           "#smoke-test-client-timestamp",
         );
         return (
           clientIndicator &&
-          clientIndicator.getAttribute("data-client-timestamp") !== null
+          +(clientIndicator.getAttribute("data-client-timestamp") ?? "0") > 0
         );
       },
       { timeout: 5000 },
@@ -974,6 +987,13 @@ async function checkClientSmoke(
       }
 
       const status = smokeElement.getAttribute("data-status");
+      if (status === null) {
+        return {
+          status: "error",
+          verificationPassed: false,
+          error: "data-status attribute is missing on health-status element",
+        };
+      }
 
       // Get client timestamp from the client timestamp element
       const clientTimestampElement = document.querySelector(
@@ -987,21 +1007,50 @@ async function checkClientSmoke(
         };
       }
 
-      const clientTimestamp = parseInt(
-        clientTimestampElement.getAttribute("data-client-timestamp") || "0",
-        10,
+      // Check if required client attributes exist
+      const clientTimestampAttr = clientTimestampElement.getAttribute(
+        "data-client-timestamp",
       );
+      if (clientTimestampAttr === null) {
+        return {
+          status: "error",
+          verificationPassed: false,
+          error: "data-client-timestamp attribute is missing",
+        };
+      }
 
-      // Verify timestamp is reasonable (within 60 seconds of now)
-      const now = Date.now();
-      const isClientTimestampRecent = Math.abs(now - clientTimestamp) < 60000;
+      const clientTimestamp = parseInt(clientTimestampAttr, 10);
+
+      // Check if status attribute exists
+      const clientStatus = clientTimestampElement.getAttribute("data-status");
+      if (clientStatus === null) {
+        return {
+          status: "error",
+          verificationPassed: false,
+          error: "data-status attribute is missing on client timestamp element",
+        };
+      }
+
+      // Check if verified attribute exists
+      if (clientTimestampElement.getAttribute("data-verified") === null) {
+        return {
+          status: "error",
+          verificationPassed: false,
+          error:
+            "data-verified attribute is missing on client timestamp element",
+        };
+      }
+
+      // Get client verification result directly
+      const verificationPassed =
+        clientTimestampElement.getAttribute("data-verified") === "true";
 
       return {
-        status: status || "error",
-        verificationPassed: status === "ok" && isClientTimestampRecent,
+        status: clientStatus,
+        verificationPassed: clientStatus === "ok" && verificationPassed,
         clientTimestamp,
         error:
-          status !== "ok"
+          clientStatus !== "ok"
             ? "Client smoke test did not return ok status"
             : undefined,
       };
@@ -1765,6 +1814,7 @@ export const SmokeTestClient: React.FC = () => {
         id="smoke-test-client-timestamp"
         data-client-timestamp={lastCheck?.timestamp ?? ""}
         data-status={lastCheck?.status ?? ""}
+        data-verified={lastCheck?.verificationPassed ? "true" : "false"}
         style={{ display: "none" }}
       />
     </div>
