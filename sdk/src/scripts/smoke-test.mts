@@ -185,28 +185,25 @@ async function setupTestEnvironment(options: {
  */
 async function runDevTest(
   url: string,
-  customPath?: string,
+  customPath: string = "/",
   artifactDir?: string,
   browserPath?: string,
   headless: boolean = true,
 ): Promise<void> {
-  log("Starting dev server test with path: %s", customPath || "default");
+  log("Starting dev server test with path: %s", customPath || "/");
   console.log("🚀 Testing local development server");
-  const pathSuffix = formatPathSuffix(customPath);
-  log("Path suffix: %s", pathSuffix);
 
-  const testUrl = url + pathSuffix;
-  log("Testing URL: %s", testUrl);
+  // DRY: check both root and custom path
+  await checkServerUp(url, customPath);
 
-  // Check if server is responding before proceeding
-  log("Checking if development server is up and responding");
-  console.log(
-    `🔍 Checking if development server is responding at ${testUrl}...`,
-  );
-  await checkServerUp(testUrl);
-  log("Development server is up and responding");
-  console.log(`✅ Development server is up and responding`);
-
+  // Now run the tests with the custom path
+  const testUrl =
+    url +
+    (customPath === "/"
+      ? ""
+      : customPath.startsWith("/")
+        ? customPath
+        : "/" + customPath);
   await checkUrl(testUrl, artifactDir, browserPath, headless);
   log("Development server test completed successfully");
 }
@@ -215,7 +212,7 @@ async function runDevTest(
  * Runs tests against the production deployment
  */
 async function runReleaseTest(
-  customPath?: string,
+  customPath: string = "/",
   resources?: {
     workerName?: string;
     targetDir?: string;
@@ -225,29 +222,27 @@ async function runReleaseTest(
   browserPath?: string,
   headless: boolean = true,
 ): Promise<void> {
-  log("Starting release test with path: %s", customPath || "default");
+  log("Starting release test with path: %s", customPath || "/");
   console.log("\n🚀 Testing production deployment");
-  const pathSuffix = formatPathSuffix(customPath);
-  log("Path suffix: %s", pathSuffix);
 
   log("Running release process");
   const { url, workerName } = await runRelease(resources?.targetDir);
-  const testUrl = url + pathSuffix;
-  log("Testing URL: %s with worker: %s", testUrl, workerName);
 
   // Wait a moment before checking server availability
   log("Waiting 1s before checking server...");
   await setTimeout(1000);
 
-  // Check if production server is responding before proceeding
-  log("Checking if production server is up and responding");
-  console.log(
-    `🔍 Checking if production server is responding at ${testUrl}...`,
-  );
-  await checkServerUp(testUrl);
-  log("Production server is up and responding");
-  console.log(`✅ Production server is up and responding`);
+  // DRY: check both root and custom path
+  await checkServerUp(url, customPath);
 
+  // Now run the tests with the custom path
+  const testUrl =
+    url +
+    (customPath === "/"
+      ? ""
+      : customPath.startsWith("/")
+        ? customPath
+        : "/" + customPath);
   await checkUrl(testUrl, artifactDir, browserPath, headless);
   log("Release test completed successfully");
 
@@ -1084,40 +1079,53 @@ async function getBrowserPath(testOptions?: SmokeTestOptions): Promise<string> {
   }
 }
 
-/**
- * Check if a server is running at the given URL
- */
-async function checkServerUp(url: string, retries = RETRIES): Promise<boolean> {
-  log("Checking if server is up at %s (max retries: %d)", url, retries);
-
-  for (let i = 0; i < retries; i++) {
-    try {
-      log("Attempt %d/%d to check server at %s", i + 1, retries, url);
-      console.log(
-        `Checking if server is up at ${url} (attempt ${i + 1}/${retries})...`,
-      );
-      await $`curl -s -o /dev/null -w "%{http_code}" ${url}`;
-      log("Server is up at %s", url);
-      return true;
-    } catch (error) {
-      if (i === retries - 1) {
-        log(
-          "ERROR: Server at %s did not become available after %d attempts",
-          url,
-          retries,
-        );
-        throw new Error(
-          `Server at ${url} did not become available after ${retries} attempts`,
-        );
-      }
-      log("Server not up yet, retrying in 2 seconds");
-      console.log(`Server not up yet, retrying in 2 seconds...`);
-      await setTimeout(2000);
-    }
+// DRY: checkServerUp now checks both root and custom path if needed
+async function checkServerUp(
+  baseUrl: string,
+  customPath: string = "/",
+  retries = RETRIES,
+): Promise<boolean> {
+  // Always check root first, then custom path if different
+  const pathsToCheck = ["/"];
+  if (customPath !== "/" && customPath !== "") {
+    pathsToCheck.push(customPath);
   }
 
-  // This should never be reached due to the throw above, but TypeScript needs it
-  return false;
+  for (const path of pathsToCheck) {
+    const url = baseUrl + (path.startsWith("/") ? path : "/" + path);
+    log("Checking if server is up at %s (max retries: %d)", url, retries);
+
+    let up = false;
+    for (let i = 0; i < retries; i++) {
+      try {
+        log("Attempt %d/%d to check server at %s", i + 1, retries, url);
+        console.log(
+          `Checking if server is up at ${url} (attempt ${i + 1}/${retries})...`,
+        );
+        await $`curl -s -o /dev/null -w "%{http_code}" ${url}`;
+        log("Server is up at %s", url);
+        console.log(`✅ Server is up at ${url}`);
+        up = true;
+        break;
+      } catch (error) {
+        if (i === retries - 1) {
+          log(
+            "ERROR: Server at %s did not become available after %d attempts",
+            url,
+            retries,
+          );
+          throw new Error(
+            `Server at ${url} did not become available after ${retries} attempts`,
+          );
+        }
+        log("Server not up yet, retrying in 2 seconds");
+        console.log(`Server not up yet, retrying in 2 seconds...`);
+        await setTimeout(2000);
+      }
+    }
+    if (!up) return false;
+  }
+  return true;
 }
 
 /**
