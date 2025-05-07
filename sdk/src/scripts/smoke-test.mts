@@ -5,15 +5,18 @@ import { resolve, basename, join, relative } from "path";
 import { fileURLToPath } from "url";
 import * as process from "process";
 import * as fs from "fs/promises";
+import * as os from "os";
 import {
   install,
   computeExecutablePath,
   detectBrowserPlatform,
   Browser as PuppeteerBrowser,
+  InstallOptions,
+  resolveBuildId,
 } from "@puppeteer/browsers";
 import type { Page, Browser } from "puppeteer-core";
 import { spawn } from "child_process";
-import { copy, pathExists } from "fs-extra";
+import { copy, mkdirp, pathExists } from "fs-extra";
 import tmp from "tmp-promise";
 import {
   uniqueNamesGenerator,
@@ -68,6 +71,13 @@ async function main(
     );
   }
 
+  // Prepare browser early to avoid waiting later
+  log("Preparing browser early");
+  console.log("🔍 Preparing browser for testing...");
+  const browserPath = await getBrowserPath();
+  log("Browser ready at: %s", browserPath);
+  console.log(`✅ Browser ready at: ${browserPath}`);
+
   log("Setting up test environment");
   const resources = await setupTestEnvironment(options);
 
@@ -80,14 +90,24 @@ async function main(
       resources.stopDev = stopDev;
 
       log("Running development server tests");
-      await runDevTest(url, options.customPath, options.artifactDir);
+      await runDevTest(
+        url,
+        options.customPath,
+        options.artifactDir,
+        browserPath,
+      );
     } else {
       log("Skipping development server tests");
     }
 
     if (!options.skipRelease) {
       log("Running release/production tests");
-      await runReleaseTest(options.customPath, resources, options.artifactDir);
+      await runReleaseTest(
+        options.customPath,
+        resources,
+        options.artifactDir,
+        browserPath,
+      );
     } else {
       log("Skipping release/production tests");
     }
@@ -170,6 +190,7 @@ async function runDevTest(
   url: string,
   customPath?: string,
   artifactDir?: string,
+  browserPath?: string,
 ): Promise<void> {
   log("Starting dev server test with path: %s", customPath || "default");
   console.log("🚀 Testing local development server");
@@ -177,7 +198,7 @@ async function runDevTest(
   log("Path suffix: %s", pathSuffix);
 
   log("Testing URL: %s", url + pathSuffix);
-  await checkUrl(url + pathSuffix, artifactDir);
+  await checkUrl(url + pathSuffix, artifactDir, browserPath);
   log("Development server test completed successfully");
 }
 
@@ -192,6 +213,7 @@ async function runReleaseTest(
     workerCreatedDuringTest?: boolean;
   },
   artifactDir?: string,
+  browserPath?: string,
 ): Promise<void> {
   log("Starting release test with path: %s", customPath || "default");
   console.log("\n🚀 Testing production deployment");
@@ -201,7 +223,7 @@ async function runReleaseTest(
   log("Running release process");
   const { url, workerName } = await runRelease(resources?.targetDir);
   log("Testing URL: %s with worker: %s", url + pathSuffix, workerName);
-  await checkUrl(url + pathSuffix, artifactDir);
+  await checkUrl(url + pathSuffix, artifactDir, browserPath);
   log("Release test completed successfully");
 
   // Store the worker name if we didn't set it earlier
@@ -402,12 +424,16 @@ async function installDependencies(targetDir: string): Promise<void> {
 /**
  * Check a URL by performing smoke tests and realtime upgrade
  */
-async function checkUrl(url: string, artifactDir?: string): Promise<void> {
+async function checkUrl(
+  url: string,
+  artifactDir?: string,
+  browserPath?: string,
+): Promise<void> {
   log("Checking URL: %s", url);
   console.log(`🔍 Testing URL: ${url}`);
 
   log("Launching browser");
-  const browser = await launchBrowser();
+  const browser = await launchBrowser(browserPath);
 
   try {
     log("Opening new page");
@@ -888,10 +914,13 @@ wait
 /**
  * Launch a browser instance
  */
-async function launchBrowser(): Promise<Browser> {
-  // Get browser path
-  log("Getting browser executable path");
-  const browserPath = await getBrowserPath();
+async function launchBrowser(browserPath?: string): Promise<Browser> {
+  // Get browser path if not provided
+  if (!browserPath) {
+    log("Getting browser executable path");
+    browserPath = await getBrowserPath();
+  }
+
   log("Launching browser from %s", browserPath);
   console.log(`🚀 Launching browser from ${browserPath}`);
 
@@ -909,6 +938,7 @@ async function launchBrowser(): Promise<Browser> {
 async function getBrowserPath(): Promise<string> {
   log("Finding Chrome executable");
   console.log("Finding Chrome executable...");
+
   // First try using environment variable if set
   if (process.env.CHROME_PATH) {
     log("Using Chrome from environment variable: %s", process.env.CHROME_PATH);
@@ -918,7 +948,7 @@ async function getBrowserPath(): Promise<string> {
     return process.env.CHROME_PATH;
   }
 
-  // Use a more direct approach to avoid type issues
+  // Detect platform
   log("Detecting platform");
   const platform = detectBrowserPlatform();
   if (!platform) {
@@ -927,11 +957,33 @@ async function getBrowserPath(): Promise<string> {
   }
   log("Detected platform: %s", platform);
 
-  // Bypass type issues by using 'any'
+  // Define a consistent cache directory path in system temp folder
+  const rwCacheDir = join(os.tmpdir(), "redwoodjs-smoke-test-cache");
+  await mkdirp(rwCacheDir);
+  log("Using cache directory: %s", rwCacheDir);
+
+  // Resolve the buildId for the stable Chrome version - do this once
+  log("Resolving Chrome buildId for stable channel");
+  const buildId = await resolveBuildId(
+    PuppeteerBrowser.CHROMEHEADLESSSHELL,
+    platform,
+    "stable",
+  );
+  log("Resolved buildId: %s", buildId);
+  console.log(`Resolved Chrome buildId: ${buildId}`);
+
+  // Create installation options - use them consistently
+  const options: InstallOptions & { unpack: true } = {
+    browser: PuppeteerBrowser.CHROMEHEADLESSSHELL,
+    platform,
+    cacheDir: rwCacheDir,
+    buildId,
+    unpack: true,
+  };
+
   try {
     // Try to compute the path first (this will check if it's installed)
     log("Attempting to find existing Chrome installation");
-    const options: any = { browser: "chrome", platform };
     const path = computeExecutablePath(options);
     log("Found existing Chrome at: %s", path);
     console.log(`Found existing Chrome at: ${path}`);
@@ -943,15 +995,13 @@ async function getBrowserPath(): Promise<string> {
 
     // Add better error handling for the install step
     try {
-      const installOptions: any = { browser: "chrome", platform };
-      log("Starting Chrome download with options: %O", installOptions);
+      log("Starting Chrome download with options: %O", options);
       console.log("Downloading Chrome (this may take a few minutes)...");
-      await install(installOptions);
+      await install(options);
       log("Chrome installation completed successfully");
       console.log("✅ Chrome installation completed successfully");
 
       // Now compute the path for the installed browser
-      const options: any = { browser: "chrome", platform };
       const path = computeExecutablePath(options);
       log("Installed and using Chrome at: %s", path);
       console.log(`Installed and using Chrome at: ${path}`);
