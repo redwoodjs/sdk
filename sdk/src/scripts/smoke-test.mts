@@ -202,8 +202,19 @@ async function runDevTest(
   const pathSuffix = formatPathSuffix(customPath);
   log("Path suffix: %s", pathSuffix);
 
-  log("Testing URL: %s", url + pathSuffix);
-  await checkUrl(url + pathSuffix, artifactDir, browserPath, headless);
+  const testUrl = url + pathSuffix;
+  log("Testing URL: %s", testUrl);
+
+  // Check if server is responding before proceeding
+  log("Checking if development server is up and responding");
+  console.log(
+    `🔍 Checking if development server is responding at ${testUrl}...`,
+  );
+  await checkServerUp(testUrl);
+  log("Development server is up and responding");
+  console.log(`✅ Development server is up and responding`);
+
+  await checkUrl(testUrl, artifactDir, browserPath, headless);
   log("Development server test completed successfully");
 }
 
@@ -228,8 +239,19 @@ async function runReleaseTest(
 
   log("Running release process");
   const { url, workerName } = await runRelease(resources?.targetDir);
-  log("Testing URL: %s with worker: %s", url + pathSuffix, workerName);
-  await checkUrl(url + pathSuffix, artifactDir, browserPath, headless);
+  const testUrl = url + pathSuffix;
+  log("Testing URL: %s with worker: %s", testUrl, workerName);
+
+  // Check if production server is responding before proceeding
+  log("Checking if production server is up and responding");
+  console.log(
+    `🔍 Checking if production server is responding at ${testUrl}...`,
+  );
+  await checkServerUp(testUrl);
+  log("Production server is up and responding");
+  console.log(`✅ Production server is up and responding`);
+
+  await checkUrl(testUrl, artifactDir, browserPath, headless);
   log("Release test completed successfully");
 
   // Store the worker name if we didn't set it earlier
