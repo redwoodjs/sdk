@@ -346,7 +346,7 @@ async function copyProjectToTempDir(projectDir: string): Promise<{
 
   // Create unique project directory name
   const originalDirName = basename(projectDir);
-  const workerName = `${originalDirName}_smoke_test_${suffix}`;
+  const workerName = `${originalDirName}-smoke-test-${suffix}`;
   const targetDir = resolve(tempDir.path, workerName);
 
   log("Copying project from %s to %s", projectDir, targetDir);
