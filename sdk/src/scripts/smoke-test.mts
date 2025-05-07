@@ -27,7 +27,7 @@ import ignore from "ignore";
 import debug from "debug";
 
 if (!process.env.DEBUG) {
-  process.env.DEBUG = "rwsdk:*";
+  debug.enable("rwsdk:*");
 }
 
 const log = debug("rwsdk:smoke");
