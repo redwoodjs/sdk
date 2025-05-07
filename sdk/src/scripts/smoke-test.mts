@@ -26,7 +26,10 @@ import {
 import ignore from "ignore";
 import debug from "debug";
 
-process.env.DEBUG ??= "rwsdk:*";
+if (!process.env.DEBUG) {
+  process.env.DEBUG = "rwsdk:*";
+}
+
 const log = debug("rwsdk:smoke");
 
 const TIMEOUT = 30000; // 30 seconds timeout
