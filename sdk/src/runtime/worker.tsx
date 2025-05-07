@@ -216,7 +216,7 @@ export const SmokeTestWrapper: React.FC<{
 }> = async ({ children }) => {
   const { SmokeTestInfo } = await import(
     /* @ts-ignore - Dynamic import path that will only exist at build time for user, and only if this is a smoke test */
-    "src/app/components/__SmokeTest"
+    "@/app/components/__SmokeTest"
   );
 
   return (
