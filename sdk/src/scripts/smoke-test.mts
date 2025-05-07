@@ -74,13 +74,13 @@ async function main(
   try {
     // Run the tests that weren't skipped
     if (!options.skipDev) {
+      log("Starting development server");
+      // Start the dev server first, store the stop function in resources
+      const { url, stopDev } = await runDevServer(resources.targetDir);
+      resources.stopDev = stopDev;
+
       log("Running development server tests");
-      const devTest = await runDevTest(
-        options.customPath,
-        options.artifactDir,
-        resources.targetDir,
-      );
-      resources.stopDev = devTest.stopDev; // Store the stopDev function
+      await runDevTest(url, options.customPath, options.artifactDir);
     } else {
       log("Skipping development server tests");
     }
@@ -167,24 +167,18 @@ async function setupTestEnvironment(options: {
  * Runs tests against the development server
  */
 async function runDevTest(
+  url: string,
   customPath?: string,
   artifactDir?: string,
-  targetDir?: string,
-): Promise<{
-  url: string;
-  stopDev: () => Promise<void>;
-}> {
+): Promise<void> {
   log("Starting dev server test with path: %s", customPath || "default");
   console.log("🚀 Testing local development server");
   const pathSuffix = formatPathSuffix(customPath);
   log("Path suffix: %s", pathSuffix);
 
-  log("Launching development server");
-  const { url, stopDev } = await runDevServer(targetDir);
   log("Testing URL: %s", url + pathSuffix);
   await checkUrl(url + pathSuffix, artifactDir);
   log("Development server test completed successfully");
-  return { url, stopDev };
 }
 
 /**
@@ -774,13 +768,7 @@ async function runDevServer(cwd?: string): Promise<{
     log("Stopping development server");
     console.log("Stopping development server...");
 
-    if (devProcess.pid) {
-      try {
-        process.kill(-devProcess.pid, "SIGTERM");
-      } catch (e) {
-        devProcess.kill();
-      }
-    }
+    devProcess.kill();
 
     try {
       await devProcess;
