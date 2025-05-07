@@ -113,6 +113,7 @@ async function setupTestEnvironment(options: {
   workerName?: string;
   originalCwd: string;
   targetDir?: string;
+  workerCreatedDuringTest?: boolean;
 }> {
   log("Setting up test environment with options: %O", options);
 
@@ -121,11 +122,13 @@ async function setupTestEnvironment(options: {
     workerName?: string;
     originalCwd: string;
     targetDir?: string;
+    workerCreatedDuringTest?: boolean;
   } = {
     tempDirCleanup: undefined,
     workerName: undefined,
     originalCwd: process.cwd(),
     targetDir: undefined,
+    workerCreatedDuringTest: false,
   };
 
   log("Current working directory: %s", resources.originalCwd);
@@ -183,7 +186,11 @@ async function runDevTest(
  */
 async function runReleaseTest(
   customPath?: string,
-  resources?: { workerName?: string; targetDir?: string },
+  resources?: {
+    workerName?: string;
+    targetDir?: string;
+    workerCreatedDuringTest?: boolean;
+  },
   artifactDir?: string,
 ): Promise<void> {
   log("Starting release test with path: %s", customPath || "default");
@@ -202,6 +209,12 @@ async function runReleaseTest(
     log("Storing worker name: %s", workerName);
     resources.workerName = workerName;
   }
+
+  // Mark that we created this worker during the test
+  if (resources) {
+    log("Marking worker %s as created during this test", workerName);
+    resources.workerCreatedDuringTest = true;
+  }
 }
 
 /**
@@ -212,13 +225,20 @@ async function cleanupResources(resources: {
   workerName?: string;
   originalCwd: string;
   targetDir?: string;
+  workerCreatedDuringTest?: boolean;
 }): Promise<void> {
   log("Cleaning up resources");
 
   // Clean up resources
-  if (resources.workerName) {
+  if (resources.workerName && resources.workerCreatedDuringTest) {
     log("Deleting worker: %s", resources.workerName);
+    console.log(`🧹 Cleaning up: Deleting worker ${resources.workerName}...`);
     await deleteWorker(resources.workerName, resources.targetDir);
+  } else if (resources.workerName) {
+    log(
+      "Not deleting worker %s as it was not created during this test",
+      resources.workerName,
+    );
   }
 
   if (resources.tempDirCleanup) {
