@@ -12,6 +12,7 @@ import {
   Browser as PuppeteerBrowser,
 } from "@puppeteer/browsers";
 import type { Page, Browser } from "puppeteer-core";
+import { spawn } from "child_process";
 import { copy, pathExists } from "fs-extra";
 import tmp from "tmp-promise";
 import {
@@ -74,7 +75,11 @@ async function main(
     // Run the tests that weren't skipped
     if (!options.skipDev) {
       log("Running development server tests");
-      await runDevTest(options.customPath, options.artifactDir);
+      await runDevTest(
+        options.customPath,
+        options.artifactDir,
+        resources.targetDir,
+      );
     } else {
       log("Skipping development server tests");
     }
@@ -107,6 +112,7 @@ async function setupTestEnvironment(options: {
   tempDirCleanup?: () => Promise<void>;
   workerName?: string;
   originalCwd: string;
+  targetDir?: string;
 }> {
   log("Setting up test environment with options: %O", options);
 
@@ -114,10 +120,12 @@ async function setupTestEnvironment(options: {
     tempDirCleanup?: () => Promise<void>;
     workerName?: string;
     originalCwd: string;
+    targetDir?: string;
   } = {
     tempDirCleanup: undefined,
     workerName: undefined,
     originalCwd: process.cwd(),
+    targetDir: undefined,
   };
 
   log("Current working directory: %s", resources.originalCwd);
@@ -132,16 +140,17 @@ async function setupTestEnvironment(options: {
     // Store cleanup function
     resources.tempDirCleanup = tempDir.cleanup;
     resources.workerName = workerName;
+    resources.targetDir = targetDir;
 
-    log("Changing directory to: %s", targetDir);
-    // Change to the new directory for the tests
-    process.chdir(targetDir);
+    log("Target directory: %s", targetDir);
 
     // Create the smoke test components in the user's project
     log("Creating smoke test components");
     await createSmokeTestComponents(targetDir);
   } else {
     log("No project directory specified, using current directory");
+    // When no project dir is specified, we'll use the current directory
+    resources.targetDir = resources.originalCwd;
   }
 
   return resources;
@@ -153,6 +162,7 @@ async function setupTestEnvironment(options: {
 async function runDevTest(
   customPath?: string,
   artifactDir?: string,
+  targetDir?: string,
 ): Promise<void> {
   log("Starting dev server test with path: %s", customPath || "default");
   console.log("🚀 Testing local development server");
@@ -160,7 +170,7 @@ async function runDevTest(
   log("Path suffix: %s", pathSuffix);
 
   log("Launching development server");
-  const { url, stopDev } = await runDevServer();
+  const { url, stopDev } = await runDevServer(targetDir);
   log("Testing URL: %s", url + pathSuffix);
   await checkUrl(url + pathSuffix, artifactDir);
   log("Stopping development server");
@@ -173,7 +183,7 @@ async function runDevTest(
  */
 async function runReleaseTest(
   customPath?: string,
-  resources?: { workerName?: string },
+  resources?: { workerName?: string; targetDir?: string },
   artifactDir?: string,
 ): Promise<void> {
   log("Starting release test with path: %s", customPath || "default");
@@ -182,7 +192,7 @@ async function runReleaseTest(
   log("Path suffix: %s", pathSuffix);
 
   log("Running release process");
-  const { url, workerName } = await runRelease();
+  const { url, workerName } = await runRelease(resources?.targetDir);
   log("Testing URL: %s with worker: %s", url + pathSuffix, workerName);
   await checkUrl(url + pathSuffix, artifactDir);
   log("Release test completed successfully");
@@ -201,17 +211,14 @@ async function cleanupResources(resources: {
   tempDirCleanup?: () => Promise<void>;
   workerName?: string;
   originalCwd: string;
+  targetDir?: string;
 }): Promise<void> {
   log("Cleaning up resources");
-
-  // Restore original working directory
-  log("Restoring original working directory: %s", resources.originalCwd);
-  process.chdir(resources.originalCwd);
 
   // Clean up resources
   if (resources.workerName) {
     log("Deleting worker: %s", resources.workerName);
-    await deleteWorker(resources.workerName);
+    await deleteWorker(resources.workerName, resources.targetDir);
   }
 
   if (resources.tempDirCleanup) {
@@ -636,7 +643,7 @@ async function upgradeToRealtime(page: Page): Promise<void> {
 /**
  * Run the local development server and return the URL
  */
-async function runDevServer(): Promise<{
+async function runDevServer(cwd?: string): Promise<{
   url: string;
   stopDev: () => Promise<void>;
 }> {
@@ -644,13 +651,18 @@ async function runDevServer(): Promise<{
   console.log("🚀 Starting development server...");
 
   // Start dev server with stdout pipe to capture URL
+  // Use the provided cwd if available
   const devProcess = $({
     stdio: ["inherit", "pipe", "inherit"],
     detached: true,
     cleanup: false, // Don't auto-kill on exit
+    cwd: cwd || process.cwd(), // Use provided directory or current directory
   })`npm run dev`;
 
-  log("Development server process spawned");
+  log(
+    "Development server process spawned in directory: %s",
+    cwd || process.cwd(),
+  );
 
   // Store chunks to parse the URL
   let url = "";
@@ -719,7 +731,9 @@ async function runDevServer(): Promise<{
 /**
  * Run the release process and return the deployed URL and worker name
  */
-async function runRelease(): Promise<{ url: string; workerName: string }> {
+async function runRelease(
+  cwd?: string,
+): Promise<{ url: string; workerName: string }> {
   log("Running release process");
   console.log("🚀 Running release process...");
 
@@ -757,9 +771,12 @@ wait
   log("Expect script created at %s", scriptPath);
 
   try {
-    // Run the expect script
-    log("Running expect script to handle interactive prompts");
-    const result = await $`${scriptPath}`;
+    // Run the expect script with the specified working directory
+    log(
+      "Running expect script to handle interactive prompts in directory: %s",
+      cwd || process.cwd(),
+    );
+    const result = await $({ cwd: cwd || process.cwd() })`${scriptPath}`;
     const stdout = result.stdout ?? "";
     console.log(stdout);
 
@@ -934,13 +951,16 @@ function reportSmokeTestResult(
 /**
  * Delete the worker using wrangler
  */
-async function deleteWorker(name: string): Promise<void> {
+async function deleteWorker(name: string, cwd?: string): Promise<void> {
   log("Deleting worker: %s", name);
   console.log(`Cleaning up: Deleting worker ${name}...`);
   try {
     // The --yes flag automatically confirms the deletion
-    log("Running wrangler delete command");
-    await $`npx wrangler delete ${name} --yes`;
+    log(
+      "Running wrangler delete command in directory: %s",
+      cwd || process.cwd(),
+    );
+    await $({ cwd: cwd || process.cwd() })`npx wrangler delete ${name} --yes`;
     log("Worker %s deleted successfully", name);
     console.log(`✅ Worker ${name} deleted successfully`);
   } catch (error) {
@@ -950,7 +970,9 @@ async function deleteWorker(name: string): Promise<void> {
     try {
       log("Retrying with force flag");
       console.log("Retrying with force flag...");
-      await $`npx wrangler delete ${name} --yes --force`;
+      await $({
+        cwd: cwd || process.cwd(),
+      })`npx wrangler delete ${name} --yes --force`;
       log("Worker %s force deleted successfully", name);
       console.log(`✅ Worker ${name} force deleted successfully`);
     } catch (retryError) {
