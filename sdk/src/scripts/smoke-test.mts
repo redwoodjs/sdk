@@ -70,7 +70,6 @@ async function main(
 
   log("Setting up test environment");
   const resources = await setupTestEnvironment(options);
-  let stopDev: (() => Promise<void>) | undefined;
 
   try {
     // Run the tests that weren't skipped
@@ -81,7 +80,7 @@ async function main(
         options.artifactDir,
         resources.targetDir,
       );
-      stopDev = devTest.stopDev; // Store the stopDev function
+      resources.stopDev = devTest.stopDev; // Store the stopDev function
     } else {
       log("Skipping development server tests");
     }
@@ -96,12 +95,6 @@ async function main(
     log("All smoke tests completed successfully");
     console.log("\n✅ All smoke tests passed!");
   } finally {
-    // Stop dev server if it was started, before any other cleanup
-    if (stopDev) {
-      log("Stopping development server during cleanup");
-      await stopDev();
-    }
-
     log("Cleaning up resources");
     await cleanupResources(resources);
   }
@@ -122,6 +115,7 @@ async function setupTestEnvironment(options: {
   originalCwd: string;
   targetDir?: string;
   workerCreatedDuringTest?: boolean;
+  stopDev?: () => Promise<void>;
 }> {
   log("Setting up test environment with options: %O", options);
 
@@ -131,12 +125,14 @@ async function setupTestEnvironment(options: {
     originalCwd: string;
     targetDir?: string;
     workerCreatedDuringTest?: boolean;
+    stopDev?: () => Promise<void>;
   } = {
     tempDirCleanup: undefined,
     workerName: undefined,
     originalCwd: process.cwd(),
     targetDir: undefined,
     workerCreatedDuringTest: false,
+    stopDev: undefined,
   };
 
   log("Current working directory: %s", resources.originalCwd);
@@ -236,8 +232,16 @@ async function cleanupResources(resources: {
   originalCwd: string;
   targetDir?: string;
   workerCreatedDuringTest?: boolean;
+  stopDev?: () => Promise<void>;
 }): Promise<void> {
   log("Cleaning up resources");
+
+  // Stop dev server if it was started
+  if (resources.stopDev) {
+    log("Stopping development server");
+    console.log("Stopping development server...");
+    await resources.stopDev();
+  }
 
   // Clean up resources
   if (resources.workerName && resources.workerCreatedDuringTest) {
