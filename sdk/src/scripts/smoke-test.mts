@@ -56,6 +56,7 @@ interface SmokeTestOptions {
   projectDir?: string;
   artifactDir?: string;
   keep?: boolean;
+  headless?: boolean;
 }
 
 /**
@@ -75,7 +76,7 @@ async function main(options: SmokeTestOptions = {}) {
   // Prepare browser early to avoid waiting later
   log("Preparing browser early");
   console.log("🔍 Preparing browser for testing...");
-  const browserPath = await getBrowserPath();
+  const browserPath = await getBrowserPath(options);
   log("Browser ready at: %s", browserPath);
   console.log(`✅ Browser ready at: ${browserPath}`);
 
@@ -96,6 +97,7 @@ async function main(options: SmokeTestOptions = {}) {
         options.customPath,
         options.artifactDir,
         browserPath,
+        options.headless !== false,
       );
     } else {
       log("Skipping development server tests");
@@ -108,6 +110,7 @@ async function main(options: SmokeTestOptions = {}) {
         resources,
         options.artifactDir,
         browserPath,
+        options.headless !== false,
       );
     } else {
       log("Skipping release/production tests");
@@ -192,6 +195,7 @@ async function runDevTest(
   customPath?: string,
   artifactDir?: string,
   browserPath?: string,
+  headless: boolean = true,
 ): Promise<void> {
   log("Starting dev server test with path: %s", customPath || "default");
   console.log("🚀 Testing local development server");
@@ -199,7 +203,7 @@ async function runDevTest(
   log("Path suffix: %s", pathSuffix);
 
   log("Testing URL: %s", url + pathSuffix);
-  await checkUrl(url + pathSuffix, artifactDir, browserPath);
+  await checkUrl(url + pathSuffix, artifactDir, browserPath, headless);
   log("Development server test completed successfully");
 }
 
@@ -215,6 +219,7 @@ async function runReleaseTest(
   },
   artifactDir?: string,
   browserPath?: string,
+  headless: boolean = true,
 ): Promise<void> {
   log("Starting release test with path: %s", customPath || "default");
   console.log("\n🚀 Testing production deployment");
@@ -224,7 +229,7 @@ async function runReleaseTest(
   log("Running release process");
   const { url, workerName } = await runRelease(resources?.targetDir);
   log("Testing URL: %s with worker: %s", url + pathSuffix, workerName);
-  await checkUrl(url + pathSuffix, artifactDir, browserPath);
+  await checkUrl(url + pathSuffix, artifactDir, browserPath, headless);
   log("Release test completed successfully");
 
   // Store the worker name if we didn't set it earlier
@@ -437,12 +442,13 @@ async function checkUrl(
   url: string,
   artifactDir?: string,
   browserPath?: string,
+  headless: boolean = true,
 ): Promise<void> {
   log("Checking URL: %s", url);
   console.log(`🔍 Testing URL: ${url}`);
 
   log("Launching browser");
-  const browser = await launchBrowser(browserPath);
+  const browser = await launchBrowser(browserPath, headless);
 
   try {
     log("Opening new page");
@@ -923,20 +929,25 @@ wait
 /**
  * Launch a browser instance
  */
-async function launchBrowser(browserPath?: string): Promise<Browser> {
+async function launchBrowser(
+  browserPath?: string,
+  headless: boolean = true,
+): Promise<Browser> {
   // Get browser path if not provided
   if (!browserPath) {
     log("Getting browser executable path");
     browserPath = await getBrowserPath();
   }
 
-  log("Launching browser from %s", browserPath);
-  console.log(`🚀 Launching browser from ${browserPath}`);
+  log("Launching browser from %s (headless: %s)", browserPath, headless);
+  console.log(
+    `🚀 Launching browser from ${browserPath} (headless: ${headless})`,
+  );
 
   log("Starting browser with puppeteer");
   return await puppeteer.launch({
     executablePath: browserPath,
-    headless: true,
+    headless,
     args: ["--no-sandbox", "--disable-setuid-sandbox"],
   });
 }
@@ -944,7 +955,7 @@ async function launchBrowser(browserPath?: string): Promise<Browser> {
 /**
  * Get the browser executable path
  */
-async function getBrowserPath(): Promise<string> {
+async function getBrowserPath(testOptions?: SmokeTestOptions): Promise<string> {
   log("Finding Chrome executable");
   console.log("Finding Chrome executable...");
 
@@ -971,15 +982,23 @@ async function getBrowserPath(): Promise<string> {
   await mkdirp(rwCacheDir);
   log("Using cache directory: %s", rwCacheDir);
 
+  // Determine browser type based on headless option
+  const browser =
+    testOptions?.headless === false
+      ? PuppeteerBrowser.CHROME
+      : PuppeteerBrowser.CHROMEHEADLESSSHELL;
+
+  log("Using browser type: %s", browser);
+  console.log(`Using browser type: ${browser}`);
+
   // Resolve the buildId for the stable Chrome version - do this once
   log("Resolving Chrome buildId for stable channel");
-  const browser = PuppeteerBrowser.CHROME;
   const buildId = await resolveBuildId(browser, platform, "stable");
   log("Resolved buildId: %s", buildId);
   console.log(`Resolved Chrome buildId: ${buildId}`);
 
   // Create installation options - use them consistently
-  const options: InstallOptions & { unpack: true } = {
+  const installOptions: InstallOptions & { unpack: true } = {
     browser,
     platform,
     cacheDir: rwCacheDir,
@@ -990,7 +1009,7 @@ async function getBrowserPath(): Promise<string> {
   try {
     // Try to compute the path first (this will check if it's installed)
     log("Attempting to find existing Chrome installation");
-    const path = computeExecutablePath(options);
+    const path = computeExecutablePath(installOptions);
     if (await pathExists(path)) {
       log("Found existing Chrome at: %s", path);
       console.log(`Found existing Chrome at: ${path}`);
@@ -1005,14 +1024,14 @@ async function getBrowserPath(): Promise<string> {
 
     // Add better error handling for the install step
     try {
-      log("Starting Chrome download with options: %O", options);
+      log("Starting Chrome download with options: %O", installOptions);
       console.log("Downloading Chrome (this may take a few minutes)...");
-      await install(options);
+      await install(installOptions);
       log("Chrome installation completed successfully");
       console.log("✅ Chrome installation completed successfully");
 
       // Now compute the path for the installed browser
-      const path = computeExecutablePath(options);
+      const path = computeExecutablePath(installOptions);
       log("Installed and using Chrome at: %s", path);
       console.log(`Installed and using Chrome at: ${path}`);
       return path;
@@ -1458,6 +1477,7 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
       .find((arg) => arg.startsWith("--artifact-dir="))
       ?.substring(15),
     keep: args.includes("--keep"),
+    headless: !args.includes("--no-headless"),
   };
 
   log("Parsed options: %O", options);
@@ -1475,6 +1495,7 @@ Options:
   --path=PATH             Project directory to test
   --artifact-dir=DIR      Directory to store test artifacts
   --keep                  Don't delete the temporary project directory after tests
+  --no-headless           Use regular browser instead of headless browser for testing
   --help, -h              Show this help message
 
 Arguments:
@@ -1486,6 +1507,7 @@ Examples:
   pnpm smoke-test --skip-release                 # Only test dev server
   pnpm smoke-test --path=./my-project            # Test using the specified project directory
   pnpm smoke-test --path=./my-project --keep     # Keep the test directory after completion
+  pnpm smoke-test --no-headless                  # Use headed browser for visual debugging
   pnpm smoke-test --path=./my-project --artifact-dir=./artifacts  # Store artifacts in ./artifacts
 `);
     // No error, just showing help
