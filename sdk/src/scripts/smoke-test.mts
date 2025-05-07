@@ -1463,7 +1463,7 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
   const args = process.argv.slice(2);
   log("Command line arguments: %O", args);
 
-  // Set default values
+  // Set initial default values (sync will be determined below)
   const options: SmokeTestOptions = {
     customPath: "/", // Default path
     skipDev: false,
@@ -1472,8 +1472,11 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
     artifactDir: undefined,
     keep: false,
     headless: true,
-    sync: true, // Default to true
+    // sync: will be set below
   };
+
+  // Track if user explicitly set sync or no-sync
+  let syncExplicit: boolean | undefined = undefined;
 
   // Process arguments in order
   for (let i = 0; i < args.length; i++) {
@@ -1488,7 +1491,9 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
     } else if (arg === "--no-headless") {
       options.headless = false;
     } else if (arg === "--no-sync") {
-      options.sync = false;
+      syncExplicit = false;
+    } else if (arg === "--sync") {
+      syncExplicit = true;
     } else if (arg === "--help" || arg === "-h") {
       // Help will be handled later
     } else if (arg.startsWith("--path=")) {
@@ -1503,11 +1508,32 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
     }
   }
 
-  log("Parsed options: %O", options);
+  // Async IIFE to determine sync default and run main
+  (async () => {
+    if (syncExplicit !== undefined) {
+      options.sync = syncExplicit;
+    } else {
+      // Determine default for sync: true if cwd has package.json with name 'rwsdk', otherwise false
+      let syncDefault = false;
+      try {
+        const pkgPath = join(process.cwd(), "package.json");
+        const pkgRaw = await fs.readFile(pkgPath, "utf8");
+        const pkg = JSON.parse(pkgRaw);
+        if (pkg && pkg.name === "rwsdk") {
+          syncDefault = true;
+        }
+      } catch (e) {
+        // If package.json doesn't exist or can't be read, default to false
+        log("Could not read package.json or parse name: %O", e);
+      }
+      options.sync = syncDefault;
+    }
 
-  // Print help if requested
-  if (args.includes("--help") || args.includes("-h")) {
-    console.log(`
+    log("Parsed options: %O", options);
+
+    // Print help if requested
+    if (args.includes("--help") || args.includes("-h")) {
+      console.log(`
 Smoke Test Usage:
   node smoke-test.mjs [options] [custom-path]
 
@@ -1518,7 +1544,8 @@ Options:
   --artifact-dir=DIR      Directory to store test artifacts
   --keep                  Don't delete the temporary project directory after tests
   --no-headless           Use regular browser instead of headless browser for testing
-  --no-sync               Do not sync SDK before running smoke test
+  --no-sync               Do not sync SDK before running smoke test (overrides default)
+  --sync                  Force sync SDK before running smoke test (overrides default)
   --help, -h              Show this help message
 
 Arguments:
@@ -1533,21 +1560,23 @@ Examples:
   pnpm smoke-test --no-headless                  # Use headed browser for visual debugging
   pnpm smoke-test --path=./my-project --artifact-dir=./artifacts  # Store artifacts in ./artifacts
 `);
-    // No error, just showing help
-    log("Exiting after showing help");
-    process.exit(0);
-  }
+      // No error, just showing help
+      log("Exiting after showing help");
+      process.exit(0);
+    }
 
-  // Run the main function
-  log("Starting smoke test");
-  (async () => {
-    await main(options);
-    console.log("✨ Smoke test completed successfully!");
-    process.exit(0);
-  })().catch((error) => {
-    console.error(`❌ Smoke test failed: ${error.message}`);
-    process.exit(1);
-  });
+    // Run the main function
+    log("Starting smoke test");
+    try {
+      await main(options);
+      console.log("✨ Smoke test completed successfully!");
+      process.exit(0);
+    } catch (error) {
+      const msg = error instanceof Error ? error.message : String(error);
+      console.error(`❌ Smoke test failed: ${msg}`);
+      process.exit(1);
+    }
+  })();
 }
 
 export { main, checkUrl, checkUrlSmoke, checkServerSmoke, checkClientSmoke };
