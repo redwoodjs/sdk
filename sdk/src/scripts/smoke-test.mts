@@ -782,73 +782,105 @@ async function runDevServer(cwd?: string): Promise<{
 }> {
   console.log("🚀 Starting development server...");
 
-  // Start dev server with stdout pipe to capture URL
-  // Use the provided cwd if available
-  const devProcess = $({
-    stdio: ["inherit", "pipe", "inherit"],
-    detached: true,
-    cleanup: false, // Don't auto-kill on exit
-    cwd: cwd || process.cwd(), // Use provided directory or current directory
-  })`npm run dev`;
+  // Function to stop the dev server - defined early so we can use it in error handling
+  let devProcess: any = null;
 
-  log(
-    "Development server process spawned in directory: %s",
-    cwd || process.cwd(),
-  );
-
-  // Store chunks to parse the URL
-  let url = "";
-
-  // Listen for stdout to get the URL
-  devProcess.stdout?.on("data", (data) => {
-    const output = data.toString();
-    console.log(output);
-
-    // Try to extract the URL from the server output
-    const localMatch = output.match(/Local:\s+(http:\/\/localhost:\d+)/);
-    if (localMatch && localMatch[1] && !url) {
-      url = localMatch[1];
-      log("Found development server URL: %s", url);
-    }
-  });
-
-  // Function to stop the dev server
   const stopDev = async () => {
+    if (!devProcess) {
+      log("No dev process to stop");
+      return;
+    }
+
     console.log("Stopping development server...");
 
-    devProcess.kill();
-
     try {
-      await devProcess;
+      devProcess.kill();
+
+      try {
+        await devProcess;
+      } catch (e) {
+        // Expected error when the process is killed
+        log("Dev server process was terminated");
+      }
     } catch (e) {
-      // Expected error when the process is killed
-      log("Dev server process was terminated");
+      // Process might already have exited
+      log("Could not kill dev server process: %O", e);
     }
 
     console.log("Development server stopped");
   };
 
-  // Wait for URL with timeout
-  const waitForUrl = async (): Promise<string> => {
-    const start = Date.now();
-    const timeout = 60000; // 60 seconds
+  try {
+    // Start dev server with stdout pipe to capture URL
+    // Use the provided cwd if available
+    devProcess = $({
+      stdio: ["inherit", "pipe", "inherit"],
+      detached: true,
+      cleanup: false, // Don't auto-kill on exit
+      cwd: cwd || process.cwd(), // Use provided directory or current directory
+    })`npm run dev`;
 
-    while (Date.now() - start < timeout) {
-      if (url) {
-        return url;
+    log(
+      "Development server process spawned in directory: %s",
+      cwd || process.cwd(),
+    );
+
+    // Store chunks to parse the URL
+    let url = "";
+
+    // Listen for stdout to get the URL
+    devProcess.stdout?.on("data", (data: Buffer) => {
+      const output = data.toString();
+      console.log(output);
+
+      // Try to extract the URL from the server output
+      const localMatch = output.match(/Local:\s+(http:\/\/localhost:\d+)/);
+      if (localMatch && localMatch[1] && !url) {
+        url = localMatch[1];
+        log("Found development server URL: %s", url);
       }
-      await setTimeout(500); // Check every 500ms
-    }
+    });
 
-    log("ERROR: Timed out waiting for dev server URL");
-    throw new Error("Timed out waiting for dev server URL");
-  };
+    // Wait for URL with timeout
+    const waitForUrl = async (): Promise<string> => {
+      const start = Date.now();
+      const timeout = 60000; // 60 seconds
 
-  // Wait for the URL
-  const serverUrl = await waitForUrl();
+      while (Date.now() - start < timeout) {
+        if (url) {
+          return url;
+        }
 
-  console.log(`✅ Development server started at ${serverUrl}`);
-  return { url: serverUrl, stopDev };
+        // Check if the process is still running
+        if (devProcess.exitCode !== null) {
+          log(
+            "ERROR: Development server process exited with code %d",
+            devProcess.exitCode,
+          );
+          throw new Error(
+            `Development server process exited with code ${devProcess.exitCode}`,
+          );
+        }
+
+        await setTimeout(500); // Check every 500ms
+      }
+
+      log("ERROR: Timed out waiting for dev server URL");
+      throw new Error("Timed out waiting for dev server URL");
+    };
+
+    // Wait for the URL
+    const serverUrl = await waitForUrl();
+    console.log(`✅ Development server started at ${serverUrl}`);
+    return { url: serverUrl, stopDev };
+  } catch (error) {
+    // Make sure to try to stop the server on error
+    log("Error during dev server startup: %O", error);
+    await stopDev().catch((e) => {
+      log("Failed to stop dev server during error handling: %O", e);
+    });
+    throw error;
+  }
 }
 
 /**
