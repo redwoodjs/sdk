@@ -42,13 +42,6 @@ interface SmokeTestResult {
   clientTimestamp?: number;
 }
 
-// Define the expected smoke test response type
-interface SmokeTestResponse {
-  status: string;
-  timestamp?: number;
-  [key: string]: unknown;
-}
-
 interface SmokeTestOptions {
   customPath?: string;
   skipDev?: boolean;
@@ -1492,19 +1485,42 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
   const args = process.argv.slice(2);
   log("Command line arguments: %O", args);
 
+  // Set default values
   const options: SmokeTestOptions = {
-    customPath: args.find(
-      (arg) => !arg.startsWith("--") && !arg.startsWith("--path="),
-    ),
-    skipDev: args.includes("--skip-dev"),
-    skipRelease: args.includes("--skip-release"),
-    projectDir: args.find((arg) => arg.startsWith("--path="))?.substring(7),
-    artifactDir: args
-      .find((arg) => arg.startsWith("--artifact-dir="))
-      ?.substring(15),
-    keep: args.includes("--keep"),
-    headless: !args.includes("--no-headless"),
+    customPath: "/", // Default path
+    skipDev: false,
+    skipRelease: false,
+    projectDir: undefined,
+    artifactDir: undefined,
+    keep: false,
+    headless: true,
   };
+
+  // Process arguments in order
+  for (let i = 0; i < args.length; i++) {
+    const arg = args[i];
+
+    if (arg === "--skip-dev") {
+      options.skipDev = true;
+    } else if (arg === "--skip-release") {
+      options.skipRelease = true;
+    } else if (arg === "--keep") {
+      options.keep = true;
+    } else if (arg === "--no-headless") {
+      options.headless = false;
+    } else if (arg === "--help" || arg === "-h") {
+      // Help will be handled later
+    } else if (arg.startsWith("--path=")) {
+      options.projectDir = arg.substring(7);
+    } else if (arg.startsWith("--artifact-dir=")) {
+      options.artifactDir = arg.substring(15);
+    } else if (!arg.startsWith("--")) {
+      // Any non-flag argument is treated as the custom path
+      options.customPath = arg;
+    } else {
+      console.warn(`Unknown option: ${arg}`);
+    }
+  }
 
   log("Parsed options: %O", options);
 
