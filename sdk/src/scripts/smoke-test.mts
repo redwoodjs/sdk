@@ -940,16 +940,49 @@ async function getBrowserPath(): Promise<string> {
     // If path computation fails, install Chrome
     log("No Chrome installation found, installing Chrome");
     console.log("No Chrome installation found. Installing Chrome...");
-    const installOptions: any = { browser: "chrome", platform };
-    await install(installOptions);
-    log("Chrome installation completed");
 
-    // Now compute the path for the installed browser
-    const options: any = { browser: "chrome", platform };
-    const path = computeExecutablePath(options);
-    log("Installed and using Chrome at: %s", path);
-    console.log(`Installed and using Chrome at: ${path}`);
-    return path;
+    // Add better error handling for the install step
+    try {
+      const installOptions: any = { browser: "chrome", platform };
+      log("Starting Chrome download with options: %O", installOptions);
+      console.log("Downloading Chrome (this may take a few minutes)...");
+      await install(installOptions);
+      log("Chrome installation completed successfully");
+      console.log("✅ Chrome installation completed successfully");
+
+      // Now compute the path for the installed browser
+      const options: any = { browser: "chrome", platform };
+      const path = computeExecutablePath(options);
+      log("Installed and using Chrome at: %s", path);
+      console.log(`Installed and using Chrome at: ${path}`);
+      return path;
+    } catch (installError) {
+      // Provide more detailed error about the browser download failure
+      log("ERROR: Failed to download/install Chrome: %O", installError);
+      console.error(`❌ Failed to download/install Chrome browser.`);
+      console.error(
+        `This is likely a network issue or the browser download URL is unavailable.`,
+      );
+      console.error(
+        `Error details: ${installError instanceof Error ? installError.message : String(installError)}`,
+      );
+
+      // For debug builds, show the full error stack if available
+      if (installError instanceof Error && installError.stack) {
+        log("Error stack: %s", installError.stack);
+      }
+
+      console.log("\nPossible solutions:");
+      console.log("1. Check your internet connection");
+      console.log(
+        "2. Set CHROME_PATH environment variable to an existing Chrome installation",
+      );
+      console.log("3. Install Chrome manually and run the tests again");
+
+      throw new Error(
+        `Failed to install Chrome browser: ${installError instanceof Error ? installError.message : String(installError)}`,
+      );
+    }
   }
 }
 
