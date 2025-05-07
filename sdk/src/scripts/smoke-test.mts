@@ -1515,17 +1515,27 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
     } else {
       // Determine default for sync: true if cwd has package.json with name 'rwsdk', otherwise false
       let syncDefault = false;
+      const pkgPath = join(process.cwd(), "package.json");
+      log(`[sync default] Checking for package.json at: %s`, pkgPath);
       try {
-        const pkgPath = join(process.cwd(), "package.json");
         const pkgRaw = await fs.readFile(pkgPath, "utf8");
+        log(`[sync default] Read package.json: %s`, pkgRaw);
         const pkg = JSON.parse(pkgRaw);
         if (pkg && pkg.name === "rwsdk") {
+          log(
+            `[sync default] package.json name is 'rwsdk', setting syncDefault = true`,
+          );
           syncDefault = true;
+        } else {
+          log(
+            `[sync default] package.json name is not 'rwsdk', setting syncDefault = false`,
+          );
         }
       } catch (e) {
-        // If package.json doesn't exist or can't be read, default to false
-        log("Could not read package.json or parse name: %O", e);
+        log(`[sync default] Could not read package.json or parse name: %O`, e);
+        log(`[sync default] Defaulting syncDefault = false`);
       }
+      log(`[sync default] Final syncDefault value: %s`, syncDefault);
       options.sync = syncDefault;
     }
 
