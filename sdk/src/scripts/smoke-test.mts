@@ -35,6 +35,21 @@ const log = debug("rwsdk:smoke");
 const TIMEOUT = 30000; // 30 seconds timeout
 const RETRIES = 3;
 
+// Module-level state to track resources and teardown status
+const state = {
+  isTearingDown: false,
+  exitCode: 0,
+  resources: {
+    tempDirCleanup: undefined as (() => Promise<void>) | undefined,
+    workerName: undefined as string | undefined,
+    originalCwd: process.cwd(),
+    targetDir: undefined as string | undefined,
+    workerCreatedDuringTest: false,
+    stopDev: undefined as (() => Promise<void>) | undefined,
+  },
+  options: {} as SmokeTestOptions,
+};
+
 interface SmokeTestResult {
   status: string;
   verificationPassed: boolean;
@@ -57,34 +72,91 @@ interface SmokeTestOptions {
 }
 
 /**
+ * Handles test failure by logging the error and initiating teardown
+ */
+async function fail(error: unknown, exitCode = 1): Promise<never> {
+  state.exitCode = exitCode;
+  const msg = error instanceof Error ? error.message : String(error);
+  console.error(`❌ Smoke test failed: ${msg}`);
+  log("Test failed with error: %O", error);
+
+  await teardown();
+  return process.exit(exitCode) as never;
+}
+
+/**
+ * Handles resource teardown and exits the process with appropriate exit code
+ */
+async function teardown(): Promise<void> {
+  // Prevent multiple teardowns running simultaneously
+  if (state.isTearingDown) {
+    log("Teardown already in progress, skipping duplicate call");
+    return;
+  }
+
+  state.isTearingDown = true;
+  log("Starting teardown process with exit code: %d", state.exitCode);
+
+  try {
+    await cleanupResources(state.resources, state.options);
+
+    if (state.exitCode === 0) {
+      console.log("✨ Smoke test completed successfully!");
+    }
+  } catch (error) {
+    log("Error during teardown: %O", error);
+    console.error(
+      `Error during teardown: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    // Set exit code to 1 if it wasn't already set
+    if (state.exitCode === 0) state.exitCode = 1;
+  } finally {
+    process.exit(state.exitCode);
+  }
+}
+
+/**
  * Main function that orchestrates the smoke test flow
  */
-async function main(options: SmokeTestOptions = {}) {
+async function main(options: SmokeTestOptions = {}): Promise<void> {
   log("Starting smoke test with options: %O", options);
+
+  // Store options in state for future reference
+  state.options = options;
 
   // Throw immediately if both tests would be skipped
   if (options.skipDev && options.skipRelease) {
     log("Error: Both dev and release tests are skipped");
-    throw new Error(
-      "Cannot skip both dev and release tests. At least one must run.",
+    await fail(
+      new Error(
+        "Cannot skip both dev and release tests. At least one must run.",
+      ),
     );
   }
 
   // Prepare browser early to avoid waiting later
   console.log("🔍 Preparing browser for testing...");
-  const browserPath = await getBrowserPath(options);
-  console.log(`✅ Browser ready at: ${browserPath}`);
+  let browserPath;
+  try {
+    browserPath = await getBrowserPath(options);
+    console.log(`✅ Browser ready at: ${browserPath}`);
+  } catch (error) {
+    await fail(error);
+  }
 
   log("Setting up test environment");
-  const resources = await setupTestEnvironment(options);
-
   try {
+    const resources = await setupTestEnvironment(options);
+    // Store resources in module-level state
+    state.resources = resources;
+
     // Run the tests that weren't skipped
     if (!options.skipDev) {
       log("Starting development server");
       // Start the dev server first, store the stop function in resources
       const { url, stopDev } = await runDevServer(resources.targetDir);
       resources.stopDev = stopDev;
+      state.resources.stopDev = stopDev;
 
       log("Running development server tests");
       await runDevTest(
@@ -112,9 +184,10 @@ async function main(options: SmokeTestOptions = {}) {
     }
 
     console.log("\n✅ All smoke tests passed!");
-  } finally {
-    log("Cleaning up resources");
-    await cleanupResources(resources, options);
+    // Call teardown with success exit code
+    await teardown();
+  } catch (error) {
+    await fail(error);
   }
 }
 
@@ -138,49 +211,55 @@ async function setupTestEnvironment(options: {
 }> {
   log("Setting up test environment with options: %O", options);
 
-  const resources: {
-    tempDirCleanup?: () => Promise<void>;
-    workerName?: string;
-    originalCwd: string;
-    targetDir?: string;
-    workerCreatedDuringTest?: boolean;
-    stopDev?: () => Promise<void>;
-  } = {
+  const resources = {
     tempDirCleanup: undefined,
     workerName: undefined,
     originalCwd: process.cwd(),
     targetDir: undefined,
     workerCreatedDuringTest: false,
     stopDev: undefined,
+  } as {
+    tempDirCleanup?: () => Promise<void>;
+    workerName?: string;
+    originalCwd: string;
+    targetDir?: string;
+    workerCreatedDuringTest?: boolean;
+    stopDev?: () => Promise<void>;
   };
 
   log("Current working directory: %s", resources.originalCwd);
 
-  // If a project dir is specified, copy it to a temp dir with a unique name
-  if (options.projectDir) {
-    log("Project directory specified: %s", options.projectDir);
-    const { tempDir, targetDir, workerName } = await copyProjectToTempDir(
-      options.projectDir,
-      options.sync !== false, // default to true if undefined
-    );
+  try {
+    // If a project dir is specified, copy it to a temp dir with a unique name
+    if (options.projectDir) {
+      log("Project directory specified: %s", options.projectDir);
+      const { tempDir, targetDir, workerName } = await copyProjectToTempDir(
+        options.projectDir,
+        options.sync !== false, // default to true if undefined
+      );
 
-    // Store cleanup function
-    resources.tempDirCleanup = tempDir.cleanup;
-    resources.workerName = workerName;
-    resources.targetDir = targetDir;
+      // Store cleanup function
+      resources.tempDirCleanup = tempDir.cleanup;
+      resources.workerName = workerName;
+      resources.targetDir = targetDir;
 
-    log("Target directory: %s", targetDir);
+      log("Target directory: %s", targetDir);
 
-    // Create the smoke test components in the user's project
-    log("Creating smoke test components");
-    await createSmokeTestComponents(targetDir);
-  } else {
-    log("No project directory specified, using current directory");
-    // When no project dir is specified, we'll use the current directory
-    resources.targetDir = resources.originalCwd;
+      // Create the smoke test components in the user's project
+      log("Creating smoke test components");
+      await createSmokeTestComponents(targetDir);
+    } else {
+      log("No project directory specified, using current directory");
+      // When no project dir is specified, we'll use the current directory
+      resources.targetDir = resources.originalCwd;
+    }
+
+    return resources;
+  } catch (error) {
+    log("Error during test environment setup: %O", error);
+    await fail(error);
+    throw error; // This will never be reached due to fail() exiting
   }
-
-  return resources;
 }
 
 /**
@@ -196,19 +275,24 @@ async function runDevTest(
   log("Starting dev server test with path: %s", customPath || "/");
   console.log("🚀 Testing local development server");
 
-  // DRY: check both root and custom path
-  await checkServerUp(url, customPath);
+  try {
+    // DRY: check both root and custom path
+    await checkServerUp(url, customPath);
 
-  // Now run the tests with the custom path
-  const testUrl =
-    url +
-    (customPath === "/"
-      ? ""
-      : customPath.startsWith("/")
-        ? customPath
-        : "/" + customPath);
-  await checkUrl(testUrl, artifactDir, browserPath, headless);
-  log("Development server test completed successfully");
+    // Now run the tests with the custom path
+    const testUrl =
+      url +
+      (customPath === "/"
+        ? ""
+        : customPath.startsWith("/")
+          ? customPath
+          : "/" + customPath);
+    await checkUrl(testUrl, artifactDir, browserPath, headless);
+    log("Development server test completed successfully");
+  } catch (error) {
+    log("Error during development server testing: %O", error);
+    await fail(error);
+  }
 }
 
 /**
@@ -228,37 +312,48 @@ async function runReleaseTest(
   log("Starting release test with path: %s", customPath || "/");
   console.log("\n🚀 Testing production deployment");
 
-  log("Running release process");
-  const { url, workerName } = await runRelease(resources?.targetDir);
+  try {
+    log("Running release process");
+    const { url, workerName } = await runRelease(resources?.targetDir);
 
-  // Wait a moment before checking server availability
-  log("Waiting 1s before checking server...");
-  await setTimeout(1000);
+    // Wait a moment before checking server availability
+    log("Waiting 1s before checking server...");
+    await setTimeout(1000);
 
-  // DRY: check both root and custom path
-  await checkServerUp(url, customPath);
+    // DRY: check both root and custom path
+    await checkServerUp(url, customPath);
 
-  // Now run the tests with the custom path
-  const testUrl =
-    url +
-    (customPath === "/"
-      ? ""
-      : customPath.startsWith("/")
-        ? customPath
-        : "/" + customPath);
-  await checkUrl(testUrl, artifactDir, browserPath, headless);
-  log("Release test completed successfully");
+    // Now run the tests with the custom path
+    const testUrl =
+      url +
+      (customPath === "/"
+        ? ""
+        : customPath.startsWith("/")
+          ? customPath
+          : "/" + customPath);
+    await checkUrl(testUrl, artifactDir, browserPath, headless);
+    log("Release test completed successfully");
 
-  // Store the worker name if we didn't set it earlier
-  if (resources && !resources.workerName) {
-    log("Storing worker name: %s", workerName);
-    resources.workerName = workerName;
-  }
+    // Store the worker name if we didn't set it earlier
+    if (resources && !resources.workerName) {
+      log("Storing worker name: %s", workerName);
+      resources.workerName = workerName;
+    }
 
-  // Mark that we created this worker during the test
-  if (resources) {
-    log("Marking worker %s as created during this test", workerName);
-    resources.workerCreatedDuringTest = true;
+    // Mark that we created this worker during the test
+    if (resources) {
+      log("Marking worker %s as created during this test", workerName);
+      resources.workerCreatedDuringTest = true;
+
+      // Update the global state
+      if (state.resources === resources) {
+        state.resources.workerName = workerName;
+        state.resources.workerCreatedDuringTest = true;
+      }
+    }
+  } catch (error) {
+    log("Error during release testing: %O", error);
+    await fail(error);
   }
 }
 
@@ -281,13 +376,27 @@ async function cleanupResources(
   // Stop dev server if it was started
   if (resources.stopDev) {
     console.log("Stopping development server...");
-    await resources.stopDev();
+    try {
+      await resources.stopDev();
+    } catch (error) {
+      log("Error while stopping development server: %O", error);
+      console.error(
+        `Error while stopping development server: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   }
 
   // Clean up resources
   if (resources.workerName && resources.workerCreatedDuringTest) {
     console.log(`🧹 Cleaning up: Deleting worker ${resources.workerName}...`);
-    await deleteWorker(resources.workerName, resources.targetDir);
+    try {
+      await deleteWorker(resources.workerName, resources.targetDir);
+    } catch (error) {
+      log("Error while deleting worker: %O", error);
+      console.error(
+        `Error while deleting worker: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   } else if (resources.workerName) {
     log(
       "Not deleting worker %s as it was not created during this test",
@@ -297,8 +406,15 @@ async function cleanupResources(
 
   if (resources.tempDirCleanup && !options.keep) {
     log("Cleaning up temporary directory");
-    await resources.tempDirCleanup();
-    log("Temporary directory cleaned up");
+    try {
+      await resources.tempDirCleanup();
+      log("Temporary directory cleaned up");
+    } catch (error) {
+      log("Error while cleaning up temporary directory: %O", error);
+      console.error(
+        `Error while cleaning up temporary directory: ${error instanceof Error ? error.message : String(error)}`,
+      );
+    }
   } else if (resources.tempDirCleanup && options.keep && resources.targetDir) {
     console.log(
       `📂 Keeping temporary directory for inspection: ${resources.targetDir}`,
@@ -467,7 +583,13 @@ async function checkUrl(
   console.log(`🔍 Testing URL: ${url}`);
 
   log("Launching browser");
-  const browser = await launchBrowser(browserPath, headless);
+  let browser;
+  try {
+    browser = await launchBrowser(browserPath, headless);
+  } catch (error) {
+    await fail(error);
+    return; // This will never be reached
+  }
 
   try {
     log("Opening new page");
@@ -501,9 +623,14 @@ async function checkUrl(
     log("Taking screenshot: %s", screenshotPath);
     await page.screenshot({ path: screenshotPath });
     console.log(`📸 Screenshot saved to ${screenshotPath}`);
+  } catch (error) {
+    log("Error during URL check: %O", error);
+    await browser.close().catch((e) => log("Error closing browser: %O", e));
+    await fail(error);
+    return; // This will never be reached
   } finally {
     log("Closing browser");
-    await browser.close();
+    await browser.close().catch((e) => log("Error closing browser: %O", e));
   }
   log("URL check completed successfully");
 }
@@ -1126,9 +1253,12 @@ async function checkServerUp(
             url,
             retries,
           );
-          throw new Error(
-            `Server at ${url} did not become available after ${retries} attempts`,
+          await fail(
+            new Error(
+              `Server at ${url} did not become available after ${retries} attempts`,
+            ),
           );
+          return false; // This will never be reached
         }
         log("Server not up yet, retrying in 2 seconds");
         console.log(`Server not up yet, retrying in 2 seconds...`);
@@ -1607,16 +1737,17 @@ Examples:
       process.exit(0);
     }
 
-    // Run the main function
-    log("Starting smoke test");
     try {
+      // Store options in the module-level state
+      state.options = options;
+
+      // Run the main function
+      log("Starting smoke test");
       await main(options);
-      console.log("✨ Smoke test completed successfully!");
-      process.exit(0);
+      // On success, teardown() is called inside main()
     } catch (error) {
-      const msg = error instanceof Error ? error.message : String(error);
-      console.error(`❌ Smoke test failed: ${msg}`);
-      process.exit(1);
+      // If an uncaught error happens, make sure we attempt teardown
+      await fail(error);
     }
   })();
 }
