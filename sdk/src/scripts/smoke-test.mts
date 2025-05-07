@@ -985,9 +985,13 @@ async function getBrowserPath(): Promise<string> {
     // Try to compute the path first (this will check if it's installed)
     log("Attempting to find existing Chrome installation");
     const path = computeExecutablePath(options);
-    log("Found existing Chrome at: %s", path);
-    console.log(`Found existing Chrome at: ${path}`);
-    return path;
+    if (await pathExists(path)) {
+      log("Found existing Chrome at: %s", path);
+      console.log(`Found existing Chrome at: ${path}`);
+      return path;
+    } else {
+      throw new Error("Chrome not found at: " + path);
+    }
   } catch (error) {
     // If path computation fails, install Chrome
     log("No Chrome installation found, installing Chrome");
