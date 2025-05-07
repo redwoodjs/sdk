@@ -974,8 +974,21 @@ async function checkClientSmoke(
       }
 
       const status = smokeElement.getAttribute("data-status");
+
+      // Get client timestamp from the client timestamp element
+      const clientTimestampElement = document.querySelector(
+        "#smoke-test-client-timestamp",
+      );
+      if (!clientTimestampElement) {
+        return {
+          status: "error",
+          verificationPassed: false,
+          error: "Client timestamp element not found in the page",
+        };
+      }
+
       const clientTimestamp = parseInt(
-        smokeElement.getAttribute("data-client-timestamp") || "0",
+        clientTimestampElement.getAttribute("data-client-timestamp") || "0",
         10,
       );
 
@@ -1527,15 +1540,8 @@ export const SmokeTestInfo: React.FC = async () => {
 
   try {
     result = await smokeTestAction(timestamp);
-
-    // Check the result
-    if (typeof result === "object" && result !== null) {
-      status = result.status || "error";
-      verificationPassed = result.timestamp === timestamp;
-    } else if (result === "ok") {
-      status = "ok";
-      verificationPassed = true;
-    }
+    status = result.status || "error";
+    verificationPassed = result.timestamp === timestamp;
   } catch (error) {
     console.error("Smoke test failed:", error);
     status = "error";
@@ -1646,24 +1652,13 @@ export const SmokeTestClient: React.FC = () => {
 
   const runSmokeTest = async () => {
     setLoading(true);
+    const timestamp = Date.now();
+
     try {
       // Get current timestamp to verify round-trip
-      const timestamp = Date.now();
-
       const result = await smokeTestAction(timestamp);
-
-      // Process the result
-      let status = "error";
-      let verificationPassed = false;
-
-      if (typeof result === "object" && result !== null) {
-        const typedResult = result as SmokeTestResponse;
-        status = typedResult.status || "error";
-        verificationPassed = typedResult.timestamp === timestamp;
-      } else if (result === "ok") {
-        status = "ok";
-        verificationPassed = true;
-      }
+      const status = result.status || "error";
+      const verificationPassed = result.timestamp === timestamp;
 
       setLastCheck({
         status,
@@ -1675,7 +1670,7 @@ export const SmokeTestClient: React.FC = () => {
       setLastCheck({
         status: "error",
         verificationPassed: false,
-        timestamp: Date.now(),
+        timestamp,
         error: error instanceof Error ? error.message : String(error),
       });
     } finally {
