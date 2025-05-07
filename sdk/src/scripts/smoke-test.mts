@@ -313,7 +313,62 @@ async function copyProjectToTempDir(projectDir: string): Promise<{
   });
   log("Project copy completed successfully");
 
+  // Install dependencies in the target directory
+  await installDependencies(targetDir);
+
   return { tempDir, targetDir, workerName };
+}
+
+/**
+ * Install project dependencies using pnpm
+ */
+async function installDependencies(targetDir: string): Promise<void> {
+  log("Installing dependencies in %s", targetDir);
+  console.log(`📦 Installing project dependencies in ${targetDir}...`);
+
+  try {
+    // Run pnpm install in the target directory
+    log("Running pnpm install");
+    const result = await $({
+      cwd: targetDir,
+      stdio: "pipe", // Capture output
+    })`pnpm install`;
+
+    log("pnpm install completed successfully");
+    console.log("✅ Dependencies installed successfully");
+
+    // Log installation details at debug level
+    if (result.stdout) {
+      log("pnpm install output: %s", result.stdout);
+    }
+  } catch (error) {
+    log("ERROR: Failed to install dependencies: %O", error);
+    console.error(
+      `❌ Failed to install dependencies: ${error instanceof Error ? error.message : String(error)}`,
+    );
+
+    // Try npm as fallback if pnpm fails
+    try {
+      log("Attempting fallback to npm install");
+      console.log("⚠️ pnpm install failed, trying npm install as fallback...");
+
+      await $({
+        cwd: targetDir,
+        stdio: "pipe",
+      })`npm install`;
+
+      log("npm install completed successfully");
+      console.log("✅ Dependencies installed successfully with npm");
+    } catch (npmError) {
+      log("ERROR: Both pnpm and npm install failed: %O", npmError);
+      console.error(
+        `❌ Failed to install dependencies with npm: ${npmError instanceof Error ? npmError.message : String(npmError)}`,
+      );
+      throw new Error(
+        `Failed to install project dependencies. Please ensure the project can be installed with pnpm or npm.`,
+      );
+    }
+  }
 }
 
 /**
