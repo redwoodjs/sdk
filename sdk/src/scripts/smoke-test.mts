@@ -100,6 +100,210 @@ const state = {
   failures: [] as { step: string; error: string; details?: string }[],
 };
 
+// Add process-level error handlers to ensure report generation even on catastrophic failures
+process.on("uncaughtException", async (error) => {
+  console.error(`\n❌ Uncaught exception: ${error.message}`);
+
+  // Add the error to our failures list
+  state.failures.push({
+    step: "Uncaught Exception",
+    error: error.message,
+    details: error.stack,
+  });
+
+  state.exitCode = 1;
+
+  // Attempt to show report even if we're crashing
+  if (!state.isTearingDown) {
+    await generateFinalReport(true);
+  }
+
+  // Exit after reporting
+  process.exit(1);
+});
+
+process.on("unhandledRejection", async (reason, promise) => {
+  const errorMessage =
+    reason instanceof Error ? reason.message : String(reason);
+  console.error(`\n❌ Unhandled promise rejection: ${errorMessage}`);
+
+  // Add the error to our failures list
+  state.failures.push({
+    step: "Unhandled Promise Rejection",
+    error: errorMessage,
+    details: reason instanceof Error && reason.stack ? reason.stack : undefined,
+  });
+
+  state.exitCode = 1;
+
+  // Attempt to show report even if we're crashing
+  if (!state.isTearingDown) {
+    await generateFinalReport(true);
+  }
+
+  // Exit after reporting
+  process.exit(1);
+});
+
+// Handle graceful shutdown signals
+process.on("SIGINT", async () => {
+  console.log("\n⚠️ Process interrupted by user");
+
+  // Record the interruption
+  state.failures.push({
+    step: "Process",
+    error: "Interrupted by user (SIGINT)",
+  });
+
+  state.exitCode = 130; // Standard exit code for SIGINT
+
+  // Try to report before exiting
+  if (!state.isTearingDown) {
+    await generateFinalReport(true);
+  }
+  process.exit(130);
+});
+
+process.on("SIGTERM", async () => {
+  console.log("\n⚠️ Process terminated externally");
+
+  // Record the termination
+  state.failures.push({
+    step: "Process",
+    error: "Terminated externally (SIGTERM)",
+  });
+
+  state.exitCode = 143; // Standard exit code for SIGTERM
+
+  // Try to report before exiting
+  if (!state.isTearingDown) {
+    await generateFinalReport(true);
+  }
+  process.exit(143);
+});
+
+/**
+ * Generates the final test report without doing any resource cleanup.
+ * Used when we need to ensure a report is shown even during catastrophic failures.
+ */
+async function generateFinalReport(isEmergency = false): Promise<void> {
+  try {
+    // Create a report object
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const report = {
+      timestamp,
+      success: state.exitCode === 0,
+      exitCode: state.exitCode,
+      workerName: (state.resources.workerName || null) as string | null,
+      projectDir: state.options.artifactDir
+        ? join(state.options.artifactDir, "project")
+        : null,
+      failures: state.failures,
+      options: {
+        customPath: state.options.customPath,
+        skipDev: state.options.skipDev,
+        skipRelease: state.options.skipRelease,
+        skipClient: state.options.skipClient,
+      },
+    };
+
+    // Always print the report to console in a pretty format
+    console.log("\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓");
+    if (isEmergency) {
+      console.log("┃       ⚠️ EMERGENCY CRASH REPORT       ┃");
+    } else {
+      console.log("┃          📊 SMOKE TEST REPORT          ┃");
+    }
+    console.log("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛");
+    console.log("┌──────────────────────────────────────┐");
+    console.log(`│ Timestamp: ${timestamp}`);
+
+    if (isEmergency) {
+      console.log(`│ Status: ❌ FAILED (crash or unhandled error)`);
+    } else {
+      console.log(`│ Status: ${report.success ? "✅ PASSED" : "❌ FAILED"}`);
+    }
+
+    console.log(`│ Exit code: ${state.exitCode}`);
+    if (report.workerName) {
+      console.log(`│ Worker name: ${report.workerName}`);
+    }
+    console.log(`│ Test options:`);
+    console.log(`│   - Custom path: ${report.options.customPath || "/"}`);
+    console.log(`│   - Skip dev: ${report.options.skipDev ? "Yes" : "No"}`);
+    console.log(
+      `│   - Skip release: ${report.options.skipRelease ? "Yes" : "No"}`,
+    );
+    console.log(
+      `│   - Skip client: ${report.options.skipClient ? "Yes" : "No"}`,
+    );
+    console.log("└──────────────────────────────────────┘");
+
+    // Add summary of failures count
+    if (state.failures.length > 0) {
+      console.log(`\n❌ Failed tests: ${state.failures.length}`);
+    } else if (report.success) {
+      console.log("\n✅ All smoke tests passed successfully!");
+    }
+
+    // Add failures to the report file if we have a valid artifactDir
+    if (state.options.artifactDir) {
+      try {
+        // Ensure the directory exists, even if it was not created earlier
+        await mkdirp(state.options.artifactDir);
+
+        // Use the standardized reports directory
+        const reportDir = join(state.options.artifactDir, "reports");
+        // Ensure the directory exists
+        await mkdirp(reportDir);
+
+        const reportPath = join(
+          reportDir,
+          isEmergency
+            ? `smoke-test-emergency-report-${timestamp}.json`
+            : `smoke-test-report-${timestamp}.json`,
+        );
+
+        await fs.writeFile(reportPath, JSON.stringify(report, null, 2));
+        console.log(
+          `\n📝 ${isEmergency ? "Emergency r" : "R"}eport saved to ${reportPath}`,
+        );
+      } catch (reportError) {
+        console.error(
+          `⚠️ Could not save ${isEmergency ? "emergency " : ""}report to file: ${reportError instanceof Error ? reportError.message : String(reportError)}`,
+        );
+      }
+    } else {
+      console.log(
+        "\n⚠️ No artifacts directory specified, report not saved to disk",
+      );
+    }
+
+    // Report failures
+    if (state.failures.length > 0) {
+      console.log("\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓");
+      console.log("┃        🔍 FAILURE DETAILS             ┃");
+      console.log("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛");
+
+      state.failures.forEach((failure, index) => {
+        console.log(`┌─────────── Failure #${index + 1} ───────────┐`);
+        console.log(`│ Step: ${failure.step}`);
+
+        // Split error message into lines if it's long
+        const errorLines = failure.error.split("\n");
+        console.log(`│ Error: ${errorLines[0]}`);
+        for (let i = 1; i < errorLines.length; i++) {
+          console.log(`│        ${errorLines[i]}`);
+        }
+        console.log(`└────────────────────────────────────┘`);
+      });
+    }
+  } catch (error) {
+    // Last resort error handling
+    console.error("❌ Failed to generate report:", error);
+  }
+}
+
 /**
  * Handles test failure by logging the error and initiating teardown
  */
@@ -155,101 +359,8 @@ async function teardown(): Promise<void> {
   try {
     await cleanupResources(state.resources, state.options);
 
-    // Create a report object regardless of directory existence
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const report = {
-      timestamp,
-      success: state.exitCode === 0,
-      exitCode: state.exitCode,
-      workerName: (state.resources.workerName || null) as string | null,
-      projectDir: state.options.artifactDir
-        ? join(state.options.artifactDir, "project")
-        : null,
-      failures: state.failures,
-      options: {
-        customPath: state.options.customPath,
-        skipDev: state.options.skipDev,
-        skipRelease: state.options.skipRelease,
-        skipClient: state.options.skipClient,
-      },
-    };
-
-    // Always print the report to console in a pretty format
-    console.log("\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓");
-    console.log("┃          📊 SMOKE TEST REPORT          ┃");
-    console.log("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛");
-    console.log("┌──────────────────────────────────────┐");
-    console.log(`│ Timestamp: ${timestamp}`);
-    console.log(`│ Status: ${report.success ? "✅ PASSED" : "❌ FAILED"}`);
-    console.log(`│ Exit code: ${report.exitCode}`);
-    if (report.workerName) {
-      console.log(`│ Worker name: ${report.workerName}`);
-    }
-    console.log(`│ Test options:`);
-    console.log(`│   - Custom path: ${report.options.customPath || "/"}`);
-    console.log(`│   - Skip dev: ${report.options.skipDev ? "Yes" : "No"}`);
-    console.log(
-      `│   - Skip release: ${report.options.skipRelease ? "Yes" : "No"}`,
-    );
-    console.log(
-      `│   - Skip client: ${report.options.skipClient ? "Yes" : "No"}`,
-    );
-    console.log("└──────────────────────────────────────┘");
-
-    // Add summary of failures count if any
-    if (state.failures.length > 0) {
-      console.log(`\n❌ Failed tests: ${state.failures.length}`);
-    }
-
-    // Add failures to the report file if we have a valid artifactDir
-    if (state.options.artifactDir) {
-      try {
-        // Use the standardized reports directory
-        const reportDir = join(state.options.artifactDir, "reports");
-        // Ensure the directory exists, even if it was not created earlier
-        await mkdirp(reportDir);
-
-        const reportPath = join(
-          reportDir,
-          `smoke-test-report-${timestamp}.json`,
-        );
-
-        await fs.writeFile(reportPath, JSON.stringify(report, null, 2));
-        log("Wrote test report to %s", reportPath);
-        console.log(`\n📝 Test report saved to ${reportPath}`);
-      } catch (reportError) {
-        log("Error writing test report to file: %O", reportError);
-        console.error(
-          `⚠️ Could not save test report to file: ${reportError instanceof Error ? reportError.message : String(reportError)}`,
-        );
-        // Non-fatal error, continue
-      }
-    } else {
-      console.log(
-        "\n⚠️ No artifacts directory specified, report not saved to disk",
-      );
-    }
-
-    // Report a summary of all failures at the end
-    if (state.failures.length > 0) {
-      console.log("\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓");
-      console.log("┃        🔍 FAILURE DETAILS             ┃");
-      console.log("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛");
-
-      state.failures.forEach((failure, index) => {
-        console.log(`┌─────────── Failure #${index + 1} ───────────┐`);
-        console.log(`│ Step: ${failure.step}`);
-        // Split error message into lines if it's long
-        const errorLines = failure.error.split("\n");
-        console.log(`│ Error: ${errorLines[0]}`);
-        for (let i = 1; i < errorLines.length; i++) {
-          console.log(`│        ${errorLines[i]}`);
-        }
-        console.log(`└────────────────────────────────────┘`);
-      });
-    } else if (state.exitCode === 0) {
-      console.log("\n✨ Smoke test completed successfully!");
-    }
+    // Generate the report after cleanup
+    await generateFinalReport(false);
   } catch (error) {
     log("Error during teardown: %O", error);
     console.error(
@@ -257,6 +368,16 @@ async function teardown(): Promise<void> {
     );
     // Set exit code to 1 if it wasn't already set
     if (state.exitCode === 0) state.exitCode = 1;
+
+    // Try generating report even if cleanup failed
+    try {
+      await generateFinalReport(true);
+    } catch (reportError) {
+      console.error(
+        "Failed to generate report after cleanup error:",
+        reportError,
+      );
+    }
   } finally {
     process.exit(state.exitCode);
   }
