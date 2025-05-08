@@ -112,7 +112,7 @@ export const ensureDeployEnv = async () => {
   // Create a no-op secret to ensure worker exists
   console.log(`Ensuring worker ${wranglerConfig.name} exists...`);
   await $({
-    env: process.env, // Explicitly pass environment variables
+    env: process.env,
     stdio: "inherit",
   })`wrangler secret put TMP_WORKER_CREATED --value="true"`;
 

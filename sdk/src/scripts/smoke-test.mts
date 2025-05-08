@@ -356,6 +356,154 @@ async function generateFinalReport(isEmergency = false): Promise<void> {
       console.log("\n✅ All smoke tests passed successfully!");
     }
 
+    // Add hierarchical test results overview
+    console.log("\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓");
+    console.log("┃          🔍 TEST RESULTS SUMMARY        ┃");
+    console.log("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛");
+
+    // Group failures by step to determine which stages had issues
+    const devFailures = state.failures.filter(
+      (f) =>
+        f.step.includes("Development") || f.step.includes("Development Server"),
+    );
+
+    const releaseFailures = state.failures.filter(
+      (f) => f.step.includes("Production") || f.step.includes("Release"),
+    );
+
+    // More specific test stage failures - for dev environment
+    const serverSideInitialDevFailures = state.failures.filter(
+      (f) =>
+        f.step.includes("Server-side") &&
+        f.step.includes("Initial") &&
+        !f.step.includes("Production"),
+    );
+
+    const clientSideInitialDevFailures = state.failures.filter(
+      (f) =>
+        f.step.includes("Client-side") &&
+        f.step.includes("Initial") &&
+        !f.step.includes("Production"),
+    );
+
+    const serverSideRealtimeDevFailures = state.failures.filter(
+      (f) =>
+        f.step.includes("Server-side") &&
+        f.step.includes("Post-upgrade") &&
+        !f.step.includes("Production"),
+    );
+
+    const clientSideRealtimeDevFailures = state.failures.filter(
+      (f) =>
+        f.step.includes("Client-side") &&
+        f.step.includes("Post-upgrade") &&
+        !f.step.includes("Production"),
+    );
+
+    const realtimeUpgradeDevFailures = state.failures.filter(
+      (f) =>
+        f.step.includes("Realtime Upgrade") && !f.step.includes("Production"),
+    );
+
+    // For production environment
+    const serverSideInitialProdFailures = state.failures.filter(
+      (f) =>
+        f.step.includes("Server-side") &&
+        f.step.includes("Initial") &&
+        f.step.includes("Production"),
+    );
+
+    const clientSideInitialProdFailures = state.failures.filter(
+      (f) =>
+        f.step.includes("Client-side") &&
+        f.step.includes("Initial") &&
+        f.step.includes("Production"),
+    );
+
+    const serverSideRealtimeProdFailures = state.failures.filter(
+      (f) =>
+        f.step.includes("Server-side") &&
+        f.step.includes("Post-upgrade") &&
+        f.step.includes("Production"),
+    );
+
+    const clientSideRealtimeProdFailures = state.failures.filter(
+      (f) =>
+        f.step.includes("Client-side") &&
+        f.step.includes("Post-upgrade") &&
+        f.step.includes("Production"),
+    );
+
+    const realtimeUpgradeProdFailures = state.failures.filter(
+      (f) =>
+        f.step.includes("Realtime Upgrade") && f.step.includes("Production"),
+    );
+
+    const releaseCommandFailures = state.failures.filter((f) =>
+      f.step.includes("Release Command"),
+    );
+
+    // Dev tests summary
+    if (report.options.skipDev) {
+      console.log("● Development Tests: ⏩ SKIPPED");
+    } else {
+      console.log(
+        `● Development Tests: ${devFailures.length > 0 ? "❌ FAILED" : "✅ PASSED"}`,
+      );
+      console.log(`  ├─ Initial Tests:`);
+      console.log(
+        `  │  ├─ Server-side: ${serverSideInitialDevFailures.length > 0 ? "❌ FAILED" : "✅ PASSED"}`,
+      );
+      console.log(
+        `  │  └─ Client-side: ${clientSideInitialDevFailures.length > 0 ? "❌ FAILED" : report.options.skipClient ? "⏩ SKIPPED" : "✅ PASSED"}`,
+      );
+      console.log(`  └─ Realtime Tests:`);
+      console.log(
+        `     ├─ Upgrade: ${realtimeUpgradeDevFailures.length > 0 ? "❌ FAILED" : "✅ PASSED"}`,
+      );
+      console.log(
+        `     ├─ Server-side: ${serverSideRealtimeDevFailures.length > 0 ? "❌ FAILED" : realtimeUpgradeDevFailures.length > 0 ? "⏩ SKIPPED" : "✅ PASSED"}`,
+      );
+      console.log(
+        `     └─ Client-side: ${clientSideRealtimeDevFailures.length > 0 ? "❌ FAILED" : realtimeUpgradeDevFailures.length > 0 || report.options.skipClient ? "⏩ SKIPPED" : "✅ PASSED"}`,
+      );
+    }
+
+    // Release tests summary
+    if (report.options.skipRelease) {
+      console.log("● Production Tests: ⏩ SKIPPED");
+    } else {
+      console.log(
+        `● Production Tests: ${releaseFailures.length > 0 ? "❌ FAILED" : "✅ PASSED"}`,
+      );
+      console.log(
+        `  ├─ Release Command: ${releaseCommandFailures.length > 0 ? "❌ FAILED" : "✅ PASSED"}`,
+      );
+
+      // Only show these if release command succeeded
+      if (releaseCommandFailures.length === 0) {
+        console.log(`  ├─ Initial Tests:`);
+        console.log(
+          `  │  ├─ Server-side: ${serverSideInitialProdFailures.length > 0 ? "❌ FAILED" : "✅ PASSED"}`,
+        );
+        console.log(
+          `  │  └─ Client-side: ${clientSideInitialProdFailures.length > 0 ? "❌ FAILED" : report.options.skipClient ? "⏩ SKIPPED" : "✅ PASSED"}`,
+        );
+        console.log(`  └─ Realtime Tests:`);
+        console.log(
+          `     ├─ Upgrade: ${realtimeUpgradeProdFailures.length > 0 ? "❌ FAILED" : "✅ PASSED"}`,
+        );
+        console.log(
+          `     ├─ Server-side: ${serverSideRealtimeProdFailures.length > 0 ? "❌ FAILED" : realtimeUpgradeProdFailures.length > 0 ? "⏩ SKIPPED" : "✅ PASSED"}`,
+        );
+        console.log(
+          `     └─ Client-side: ${clientSideRealtimeProdFailures.length > 0 ? "❌ FAILED" : realtimeUpgradeProdFailures.length > 0 || report.options.skipClient ? "⏩ SKIPPED" : "✅ PASSED"}`,
+        );
+      } else {
+        console.log(`  └─ Tests: ⏩ SKIPPED (release command failed)`);
+      }
+    }
+
     // Add failures to the report file if we have a valid artifactDir
     if (state.options.artifactDir) {
       try {
@@ -389,24 +537,65 @@ async function generateFinalReport(isEmergency = false): Promise<void> {
       );
     }
 
-    // Report failures
+    // Report failures with clear environment context
     if (state.failures.length > 0) {
       console.log("\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓");
       console.log("┃        🔍 FAILURE DETAILS             ┃");
       console.log("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛");
 
-      state.failures.forEach((failure, index) => {
-        console.log(`┌─────────── Failure #${index + 1} ───────────┐`);
-        console.log(`│ Step: ${failure.step}`);
+      // Group failures by environment (Dev vs Release)
+      if (devFailures.length > 0) {
+        console.log("┌─────────── DEVELOPMENT ENVIRONMENT ───────────┐");
+        devFailures.forEach((failure, index) => {
+          console.log(`│ Failure #${index + 1}: ${failure.step}`);
 
-        // Split error message into lines if it's long
-        const errorLines = failure.error.split("\n");
-        console.log(`│ Error: ${errorLines[0]}`);
-        for (let i = 1; i < errorLines.length; i++) {
-          console.log(`│        ${errorLines[i]}`);
-        }
+          // Split error message into lines if it's long
+          const errorLines = failure.error.split("\n");
+          console.log(`│ Error: ${errorLines[0]}`);
+          for (let i = 1; i < errorLines.length; i++) {
+            console.log(`│        ${errorLines[i]}`);
+          }
+          console.log(`│`);
+        });
         console.log(`└────────────────────────────────────┘`);
-      });
+      }
+
+      if (releaseFailures.length > 0) {
+        console.log("┌─────────── PRODUCTION ENVIRONMENT ───────────┐");
+        releaseFailures.forEach((failure, index) => {
+          console.log(`│ Failure #${index + 1}: ${failure.step}`);
+
+          // Split error message into lines if it's long
+          const errorLines = failure.error.split("\n");
+          console.log(`│ Error: ${errorLines[0]}`);
+          for (let i = 1; i < errorLines.length; i++) {
+            console.log(`│        ${errorLines[i]}`);
+          }
+          console.log(`│`);
+        });
+        console.log(`└────────────────────────────────────┘`);
+      }
+
+      // Show other failures that don't fit into the above categories
+      const otherFailures = state.failures.filter(
+        (f) => !devFailures.includes(f) && !releaseFailures.includes(f),
+      );
+
+      if (otherFailures.length > 0) {
+        console.log("┌─────────── OTHER FAILURES ───────────┐");
+        otherFailures.forEach((failure, index) => {
+          console.log(`│ Failure #${index + 1}: ${failure.step}`);
+
+          // Split error message into lines if it's long
+          const errorLines = failure.error.split("\n");
+          console.log(`│ Error: ${errorLines[0]}`);
+          for (let i = 1; i < errorLines.length; i++) {
+            console.log(`│        ${errorLines[i]}`);
+          }
+          console.log(`│`);
+        });
+        console.log(`└────────────────────────────────────┘`);
+      }
     }
   } catch (error) {
     // Last resort error handling
@@ -429,8 +618,30 @@ async function fail(
 
   // Record the failure if a step is provided
   if (step) {
+    // Determine the environment context if not explicitly in the step name
+    let enhancedStep = step;
+    if (
+      !step.toLowerCase().includes("development") &&
+      !step.toLowerCase().includes("production") &&
+      !step.toLowerCase().includes("dev server")
+    ) {
+      // For server/client side tests with phase info, add environment context
+      const isInReleasePhase =
+        state.failures.some(
+          (f) =>
+            f.step.includes("Release Command") ||
+            f.step.includes("Release Test"),
+        ) || state.options.skipDev; // If dev is skipped, we're in release phase
+
+      if (isInReleasePhase) {
+        enhancedStep = `Production - ${step}`;
+      } else {
+        enhancedStep = `Development - ${step}`;
+      }
+    }
+
     state.failures.push({
-      step,
+      step: enhancedStep,
       error: msg,
       details: error instanceof Error && error.stack ? error.stack : undefined,
     });
@@ -836,13 +1047,14 @@ async function runDevTest(
       headless,
       bail,
       skipClient,
+      "Development", // Add environment context parameter
     );
     log("Development server test completed successfully");
   } catch (error) {
     // Add more context about the specific part that failed
     if (error instanceof Error && error.message.includes("Server at")) {
       state.failures.push({
-        step: "Development Server Availability",
+        step: "Development - Server Availability",
         error: error.message,
         details: error.stack,
       });
@@ -893,6 +1105,7 @@ async function runReleaseTest(
       headless,
       bail,
       skipClient,
+      "Production", // Add environment context parameter
     );
     log("Release test completed successfully");
 
@@ -1233,6 +1446,7 @@ async function checkUrl(
   headless: boolean = true,
   bail: boolean = false,
   skipClient: boolean = false,
+  environment: string = "Development", // Add environment parameter with default
 ): Promise<void> {
   console.log(`🔍 Testing URL: ${url}`);
 
@@ -1241,7 +1455,7 @@ async function checkUrl(
   try {
     browser = await launchBrowser(browserPath, headless);
   } catch (error) {
-    await fail(error);
+    await fail(error, 1, `${environment} - Browser Launch`);
     return; // This will never be reached
   }
 
@@ -1260,7 +1474,7 @@ async function checkUrl(
     log("Performing initial smoke test");
     let initialTestStatus = "passed";
     try {
-      await checkUrlSmoke(page, url, false, bail, skipClient);
+      await checkUrlSmoke(page, url, false, bail, skipClient, environment);
     } catch (error) {
       hasFailures = true;
       initialTestStatus = "failed";
@@ -1286,18 +1500,18 @@ async function checkUrl(
       page,
       url,
       artifactDir,
-      `initial-${initialTestStatus}`,
+      `${environment.toLowerCase()}-initial-${initialTestStatus}`,
     );
 
     // Upgrade to realtime and check again
     log("Upgrading to realtime");
     let realtimeTestStatus = "passed";
     try {
-      await upgradeToRealtime(page);
+      await upgradeToRealtime(page, environment);
       log("Reloading page after realtime upgrade");
       await page.reload({ waitUntil: "networkidle0" });
       log("Performing post-upgrade smoke test");
-      await checkUrlSmoke(page, url, true, bail, skipClient);
+      await checkUrlSmoke(page, url, true, bail, skipClient, environment);
     } catch (error) {
       hasFailures = true;
       realtimeTestStatus = "failed";
@@ -1319,7 +1533,7 @@ async function checkUrl(
       page,
       url,
       artifactDir,
-      `realtime-${realtimeTestStatus}`,
+      `${environment.toLowerCase()}-realtime-${realtimeTestStatus}`,
     );
 
     // If there were failures, propagate them after taking screenshots
@@ -1385,6 +1599,7 @@ async function checkUrlSmoke(
   isRealtime: boolean,
   bail: boolean = false,
   skipClient: boolean = false,
+  environment: string = "Development", // Add environment parameter with default
 ): Promise<void> {
   const phase = isRealtime ? "Post-upgrade" : "Initial";
   console.log(`🔍 Testing ${phase} smoke tests at ${url}`);
@@ -1419,7 +1634,7 @@ async function checkUrlSmoke(
   // Run server-side smoke test
   log("Running server-side smoke test");
   try {
-    await checkServerSmoke(page, phase);
+    await checkServerSmoke(page, phase, environment);
   } catch (error) {
     hasFailures = true;
     serverTestError = error instanceof Error ? error : new Error(String(error));
@@ -1430,7 +1645,7 @@ async function checkUrlSmoke(
 
     // Record the specific failure
     state.failures.push({
-      step: `Server-side Smoke Test (${phase})`,
+      step: `${environment} - Server-side Smoke Test (${phase})`,
       error: error instanceof Error ? error.message : String(error),
       details: error instanceof Error && error.stack ? error.stack : undefined,
     });
@@ -1449,7 +1664,7 @@ async function checkUrlSmoke(
   if (!skipClient) {
     log("Running client-side smoke test");
     try {
-      await checkClientSmoke(page, phase);
+      await checkClientSmoke(page, phase, environment);
     } catch (error) {
       hasFailures = true;
       clientTestError =
@@ -1461,7 +1676,7 @@ async function checkUrlSmoke(
 
       // Record the specific failure
       state.failures.push({
-        step: `Client-side Smoke Test (${phase})`,
+        step: `${environment} - Client-side Smoke Test (${phase})`,
         error: error instanceof Error ? error.message : String(error),
         details:
           error instanceof Error && error.stack ? error.stack : undefined,
@@ -1500,6 +1715,7 @@ async function checkUrlSmoke(
 async function checkServerSmoke(
   page: Page,
   phase: string = "",
+  environment: string = "Development", // Add environment parameter with default
 ): Promise<SmokeTestResult> {
   console.log(`🔍 Testing server-side smoke test ${phase ? `(${phase})` : ""}`);
 
@@ -1567,7 +1783,7 @@ async function checkServerSmoke(
   });
 
   log("Server-side smoke test result: %O", result);
-  reportSmokeTestResult(result, "Server-side", phase);
+  reportSmokeTestResult(result, "Server-side", phase, environment);
   return result;
 }
 
@@ -1577,6 +1793,7 @@ async function checkServerSmoke(
 async function checkClientSmoke(
   page: Page,
   phase: string = "",
+  environment: string = "Development", // Add environment parameter with default
 ): Promise<SmokeTestResult | null> {
   console.log(`🔍 Testing client-side smoke test ${phase ? `(${phase})` : ""}`);
 
@@ -1737,14 +1954,17 @@ async function checkClientSmoke(
   });
 
   log("Client-side smoke test result: %O", result);
-  reportSmokeTestResult(result, "Client-side", phase);
+  reportSmokeTestResult(result, "Client-side", phase, environment);
   return result;
 }
 
 /**
  * Upgrade to realtime mode
  */
-async function upgradeToRealtime(page: Page): Promise<void> {
+async function upgradeToRealtime(
+  page: Page,
+  environment: string = "Development", // Add environment parameter with default
+): Promise<void> {
   console.log("\n📡 Upgrading to realtime mode");
   const upgradeResult = await page.evaluate(async () => {
     try {
@@ -1774,9 +1994,9 @@ async function upgradeToRealtime(page: Page): Promise<void> {
   if (!upgradeResult.success) {
     log("ERROR: Failed to upgrade to realtime mode: %s", upgradeResult.message);
 
-    // Record the specific failure
+    // Record the specific failure with environment context
     state.failures.push({
-      step: "Realtime Upgrade",
+      step: `${environment} - Realtime Upgrade`,
       error: upgradeResult.message ?? "Unknown error",
     });
 
@@ -2189,7 +2409,7 @@ async function launchBrowser(
   // Get browser path if not provided
   if (!browserPath) {
     log("Getting browser executable path");
-    browserPath = await getBrowserPath();
+    browserPath = await getBrowserPath(state.options);
   }
 
   console.log(
@@ -2376,6 +2596,7 @@ function reportSmokeTestResult(
   result: SmokeTestResult,
   type: string,
   phase: string = "",
+  environment: string = "Development", // Add environment parameter with default
 ): void {
   const phasePrefix = phase ? `(${phase}) ` : "";
   log("Reporting %s%s smoke test result: %O", phasePrefix, type, result);
@@ -2397,7 +2618,7 @@ function reportSmokeTestResult(
       result.error || "unknown",
     );
     throw new Error(
-      `${phasePrefix}${type} smoke test failed. Status: ${result.status}${result.error ? `. Error: ${result.error}` : ""}`,
+      `${environment} - ${phasePrefix}${type} smoke test failed. Status: ${result.status}${result.error ? `. Error: ${result.error}` : ""}`,
     );
   }
 }
