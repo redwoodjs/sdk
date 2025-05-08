@@ -1,3 +1,4 @@
+import { existsSync, mkdirSync, writeFileSync } from "fs";
 import { $ } from "../lib/$.mjs";
 import puppeteer from "puppeteer-core";
 import { setTimeout } from "node:timers/promises";
@@ -59,9 +60,8 @@ const capturer: StreamCapturer = {
     const logsDir = join(artifactDir, "logs");
     try {
       // Synchronously create directory to ensure it exists before writing
-      const nodeFs = require("fs");
-      if (!nodeFs.existsSync(logsDir)) {
-        nodeFs.mkdirSync(logsDir, { recursive: true });
+      if (!existsSync(logsDir)) {
+        mkdirSync(logsDir, { recursive: true });
       }
 
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -193,9 +193,8 @@ const forceReportOnExit = () => {
 
     // Synchronously ensure directory exists (ignoring errors)
     try {
-      const fs = require("fs");
-      if (!fs.existsSync(reportDir)) {
-        fs.mkdirSync(reportDir, { recursive: true });
+      if (!existsSync(reportDir)) {
+        mkdirSync(reportDir, { recursive: true });
       }
     } catch (e) {
       // Ignore directory creation errors
@@ -242,12 +241,11 @@ const forceReportOnExit = () => {
 
     // Write report to file synchronously as process may be about to die
     try {
-      const fs = require("fs");
       const reportPath = join(
         reportDir,
         `smoke-test-forced-report-${timestamp}.json`,
       );
-      fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
+      writeFileSync(reportPath, JSON.stringify(report, null, 2));
 
       // Try to print to console as well
       console.log(
