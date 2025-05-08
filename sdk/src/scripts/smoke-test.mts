@@ -450,6 +450,10 @@ async function fail(
   }
 
   try {
+    // Generate a report before starting teardown to ensure we have at least one report
+    await generateFinalReport(true);
+
+    // Then proceed with teardown
     await teardown();
   } catch (teardownError) {
     // If teardown itself fails, use our forced report generation
@@ -457,11 +461,16 @@ async function fail(
       `Error during teardown: ${teardownError instanceof Error ? teardownError.message : String(teardownError)}`,
     );
     forceReportOnExit();
+
+    // Set a short timeout to allow the forced report to be written before exiting
+    await setTimeout(500);
   }
 
   // Force a report if we somehow get here
   if (!forcedReportGenerated) {
     forceReportOnExit();
+    // Short delay to allow report to be written
+    await setTimeout(500);
   }
 
   return process.exit(exitCode) as never;
@@ -481,10 +490,36 @@ async function teardown(): Promise<void> {
   log("Starting teardown process with exit code: %d", state.exitCode);
 
   try {
-    await cleanupResources(state.resources, state.options);
-
-    // Generate the report after cleanup
+    // First, generate a report, before any cleanup happens
+    // This ensures we have at least some report even if cleanup fails
     await generateFinalReport(false);
+
+    // Then try to cleanup resources
+    try {
+      await cleanupResources(state.resources, state.options);
+      log("Resource cleanup completed successfully");
+    } catch (cleanupError) {
+      log("Error during resource cleanup: %O", cleanupError);
+      console.error(
+        `Error during resource cleanup: ${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}`,
+      );
+
+      // Add this error to our failures list
+      state.failures.push({
+        step: "Resource Cleanup",
+        error:
+          cleanupError instanceof Error
+            ? cleanupError.message
+            : String(cleanupError),
+        details:
+          cleanupError instanceof Error && cleanupError.stack
+            ? cleanupError.stack
+            : undefined,
+      });
+
+      // Set exit code to 1 if it wasn't already set
+      if (state.exitCode === 0) state.exitCode = 1;
+    }
   } catch (error) {
     log("Error during teardown: %O", error);
     console.error(
@@ -493,12 +528,12 @@ async function teardown(): Promise<void> {
     // Set exit code to 1 if it wasn't already set
     if (state.exitCode === 0) state.exitCode = 1;
 
-    // Try generating report even if cleanup failed
+    // Try generating report even if an error occurred
     try {
       await generateFinalReport(true);
     } catch (reportError) {
       console.error(
-        "Failed to generate report after cleanup error:",
+        "Failed to generate report after teardown error:",
         reportError,
       );
 
@@ -2074,7 +2109,36 @@ async function runRelease(
         },
       ],
       cwd,
+      { reject: false }, // Add reject: false to prevent uncaught promise rejections
     );
+
+    // Check exit code to ensure command succeeded
+    if (result.code !== 0) {
+      // Add more contextual information about the error
+      let errorMessage = `Release command failed with exit code ${result.code}`;
+
+      // Add stderr output to the error message if available
+      if (result.stderr && result.stderr.trim().length > 0) {
+        // Extract the most relevant part of the error message
+        const errorLines = result.stderr
+          .split("\n")
+          .filter(
+            (line) =>
+              line.includes("ERROR") ||
+              line.includes("error:") ||
+              line.includes("failed"),
+          )
+          .slice(0, 3) // Take just the first few error lines
+          .join("\n");
+
+        if (errorLines) {
+          errorMessage += `\nError details: ${errorLines}`;
+        }
+      }
+
+      log("ERROR: %s", errorMessage);
+      throw new Error(errorMessage);
+    }
 
     const stdout = result.stdout;
 
@@ -2085,6 +2149,13 @@ async function runRelease(
     );
     if (!urlMatch || !urlMatch[0]) {
       log("ERROR: Could not extract deployment URL from release output");
+
+      // Log more details about the output for debugging
+      log("Release command stdout: %s", stdout);
+      if (result.stderr) {
+        log("Release command stderr: %s", result.stderr);
+      }
+
       throw new Error("Could not extract deployment URL from release output");
     }
 
@@ -2096,6 +2167,14 @@ async function runRelease(
     return { url, workerName };
   } catch (error) {
     log("ERROR: Failed to run release command: %O", error);
+
+    // Record the failure with more details
+    state.failures.push({
+      step: "Release Command",
+      error: error instanceof Error ? error.message : String(error),
+      details: error instanceof Error && error.stack ? error.stack : undefined,
+    });
+
     throw error;
   }
 }
@@ -2823,12 +2902,14 @@ Examples:
  * @param command The command to execute
  * @param expectations Array of {expect, send} objects for interactive responses and verification
  * @param cwd Working directory for command execution
+ * @param options Additional options for command execution
  * @returns Promise that resolves when the command completes
  */
 export async function $expect(
   command: string,
   expectations: Array<{ expect: string | RegExp; send?: string }>,
   cwd?: string,
+  options: { reject: boolean } = { reject: true },
 ): Promise<{ stdout: string; stderr: string; code: number | null }> {
   return new Promise((resolve, reject) => {
     log("$expect starting with command: %s", command);
@@ -2844,6 +2925,7 @@ export async function $expect(
     const childProcess = execaCommand(command, {
       cwd: cwd ?? process.cwd(),
       stdio: "pipe",
+      reject: false, // Never reject so we can handle the error ourselves
     });
 
     log("Process spawned with PID: %s", childProcess.pid);
@@ -3020,7 +3102,11 @@ export async function $expect(
 
     childProcess.on("error", (err) => {
       log("Process error: %O", err);
-      reject(new Error(`Failed to execute command: ${err.message}`));
+      if (options.reject) {
+        reject(new Error(`Failed to execute command: ${err.message}`));
+      } else {
+        resolve({ stdout, stderr, code: null });
+      }
     });
   });
 }
