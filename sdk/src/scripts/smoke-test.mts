@@ -85,9 +85,11 @@ const capturer: StreamCapturer = {
         encoding?: BufferEncoding,
         callback?: (error?: Error | null) => void,
       ) => {
-        if (this.stdoutLogFile) this.stdoutLogFile.write(chunk, encoding);
-        if (this.combinedLogFile) this.combinedLogFile.write(chunk, encoding);
-        return this.originalStdoutWrite(chunk, encoding, callback);
+        if (this.stdoutLogFile)
+          this.stdoutLogFile.write(chunk, encoding ?? "utf-8");
+        if (this.combinedLogFile)
+          this.combinedLogFile.write(chunk, encoding ?? "utf-8");
+        return this.originalStdoutWrite(chunk, encoding ?? "utf-8", callback);
       };
 
       // Capture stderr
@@ -97,9 +99,11 @@ const capturer: StreamCapturer = {
         encoding?: BufferEncoding,
         callback?: (error?: Error | null) => void,
       ) => {
-        if (this.stderrLogFile) this.stderrLogFile.write(chunk, encoding);
-        if (this.combinedLogFile) this.combinedLogFile.write(chunk, encoding);
-        return this.originalStderrWrite(chunk, encoding, callback);
+        if (this.stderrLogFile)
+          this.stderrLogFile.write(chunk, encoding ?? "utf-8");
+        if (this.combinedLogFile)
+          this.combinedLogFile.write(chunk, encoding ?? "utf-8");
+        return this.originalStderrWrite(chunk, encoding ?? "utf-8", callback);
       };
 
       console.log(`📝 Log files created in ${logsDir}`);
