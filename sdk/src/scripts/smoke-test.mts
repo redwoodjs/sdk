@@ -1561,10 +1561,6 @@ async function runDevServer(cwd?: string): Promise<{
       const output = data.toString();
       console.log(output);
 
-      // Log output for debugging with explicit character representation
-      log("Received stdout chunk: %O", output);
-      log("Chunk as JSON: %s", JSON.stringify(output));
-
       // Try to extract the URL from the server output with a more flexible regex
       // Allow for variable amounts of whitespace between "Local:" and the URL
       // And handle ANSI color codes by using a more robust pattern
@@ -2557,8 +2553,6 @@ export async function $expect(
       const chunk = data.toString();
       stdout += chunk;
       buffer += chunk;
-
-      log("Received stdout chunk (%d bytes): %s", chunk.length, chunk.trim());
 
       // Print to console
       process.stdout.write(chunk);
