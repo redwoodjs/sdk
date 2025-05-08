@@ -1,6 +1,6 @@
 {
   "name": "rwsdk",
-  "version": "0.0.81-test.20250508122718",
+  "version": "0.0.81-test.20250508123434",
   "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime",
   "type": "module",
   "bin": {
@@ -101,6 +101,7 @@
   "dependencies": {
     "@cloudflare/vite-plugin": "^1.1.0",
     "@cloudflare/workers-types": "^4.20250407.0",
+    "@puppeteer/browsers": "^2.8.0",
     "@types/fs-extra": "^11.0.4",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
@@ -113,11 +114,13 @@
     "execa": "^9.5.2",
     "fs-extra": "^11.3.0",
     "glob": "^11.0.1",
+    "ignore": "^7.0.4",
     "jsonc-parser": "^3.3.1",
     "lodash": "^4.17.21",
     "magic-string": "^0.30.17",
     "miniflare": "^4.20250405.0",
     "picocolors": "^1.1.1",
+    "puppeteer-core": "^22.8.1",
     "react": "19.2.0-canary-39cad7af-20250411",
     "react-dom": "19.2.0-canary-39cad7af-20250411",
     "react-is": "^19.0.0",
@@ -128,10 +131,7 @@
     "unique-names-generator": "^4.7.1",
     "vibe-rules": "^0.2.31",
     "vite-tsconfig-paths": "^5.1.4",
-    "wrangler": "^4.14.1",
-    "ignore": "^7.0.4",
-    "@puppeteer/browsers": "^2.8.0",
-    "puppeteer-core": "^22.8.1"
+    "wrangler": "^4.14.1"
   },
   "peerDependencies": {
     "vite": "^6.2.6"
