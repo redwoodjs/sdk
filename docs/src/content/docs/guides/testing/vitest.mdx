@@ -34,7 +34,7 @@ Vitest is perfect for running unit or integration tests.
     export default defineConfig({
       test: {
         environment: 'jsdom',  // Use jsdom for React component testing
-        include: ['./test/**/*.test.{ts,tsx}'],  // Test file pattern
+        include: ["./tests/**/*.test.{ts,tsx}", "./src/app/**/*.test.{ts,tsx}"], // Test file pattern
         exclude: ['**/node_modules/**'],  // Exclude node_modules
         setupFiles: ['./vitest.setup.ts'], // Setup file
       },

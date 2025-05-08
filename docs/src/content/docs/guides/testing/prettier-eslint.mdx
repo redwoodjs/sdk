@@ -167,7 +167,7 @@ For the best development experience:
 - **Editor Integration**: Configure your code editor to show type and lint errors in real-time
 - **Pre-commit Hooks**: Use Husky to run static tests before committing code
 - **CI Pipeline**: Include static tests in your continuous integration workflow
-- **Automated Fixes**: Use `pnpm run lint:fix` and `pnpm run format` to automatically fix many issues
+- **Automated Fixes**: Use `pnpm run lint:fix` to list all linting issues and `pnpm run format` to automatically fix them
 
 ### Editor Integration
 
@@ -192,9 +192,10 @@ For the best development experience:
 
 Add these scripts to your `package.json`:
 
-```jsonc title="package.json"
+```jsonc title="package.json" {4-8}
 {
   "scripts": {
+    ...
     "lint": "eslint 'src/**/*.{js,jsx,ts,tsx}'",
     "lint:fix": "eslint 'src/**/*.{js,jsx,ts,tsx}' --fix",
     "format": "prettier --write 'src/**/*.{js,jsx,ts,tsx,json,css,scss,md}'",
@@ -236,16 +237,12 @@ To set up and install Husky:
 2.  Initialize Husky:
 
     ```bash
-    npx husky install
+    npx husky init
     ```
 
-3.  Create a pre-commit hook:
+    This will create a `pre-commit` script in the `.husky` directory and updates the `prepare` script in your `package.json`.
 
-    ```bash
-    npx husky add .husky/pre-commit "npx lint-staged"
-    ```
-
-4.  Configure lint-staged in `package.json`:
+3.  Configure lint-staged in `package.json`:
     ```jsonc title="package.json"
     {
       "lint-staged": {
