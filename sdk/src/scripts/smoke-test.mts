@@ -2926,6 +2926,7 @@ export async function $expect(
       cwd: cwd ?? process.cwd(),
       stdio: "pipe",
       reject: false, // Never reject so we can handle the error ourselves
+      env: process.env,
     });
 
     log("Process spawned with PID: %s", childProcess.pid);
