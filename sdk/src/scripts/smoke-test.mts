@@ -502,6 +502,8 @@ async function cleanupResources(
     try {
       // Use the standardized project directory
       const projectDir = join(options.artifactDir, "project");
+      // Ensure directory exists
+      await mkdirp(projectDir);
 
       // Use a directory name that includes timestamp and worker name for uniqueness
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -521,45 +523,9 @@ async function cleanupResources(
         `📦 Copying test directory to artifacts: ${artifactTargetDir}`,
       );
 
-      // Use git-aware copying (same as we use for the original directory copy)
-      // Read project's .gitignore if it exists
-      let ig = ignore();
-      const gitignorePath = join(resources.targetDir, ".gitignore");
-
-      if (await pathExists(gitignorePath)) {
-        log("Found .gitignore file at %s", gitignorePath);
-        const gitignoreContent = await fs.readFile(gitignorePath, "utf-8");
-        ig = ig.add(gitignoreContent);
-      } else {
-        log("No .gitignore found, using default ignore patterns");
-        // Add default ignores if no .gitignore exists
-        ig = ig.add(
-          [
-            "node_modules",
-            ".git",
-            "dist",
-            "build",
-            ".DS_Store",
-            "coverage",
-            ".cache",
-            ".wrangler",
-            ".env",
-          ].join("\n"),
-        );
-      }
-
-      // Copy the project directory, respecting .gitignore
-      await copy(resources.targetDir, artifactTargetDir, {
-        filter: (src) => {
-          // Get path relative to project directory
-          const relativePath = relative(resources.targetDir!, src);
-          if (!relativePath) return true; // Include the root directory
-
-          // Check against ignore patterns
-          const result = !ig.ignores(relativePath);
-          return result;
-        },
-      });
+      // Use direct copying instead of git-aware copying
+      await copy(resources.targetDir, artifactTargetDir);
+      log("Project directory copied successfully");
 
       // Create a symlink to the latest project for easier access
       const latestLink = join(projectDir, "latest");
@@ -576,10 +542,6 @@ async function cleanupResources(
         log("Error creating 'latest' symlink: %O", linkError);
         // Non-fatal error, continue
       }
-
-      console.log(
-        `✅ Test directory copied to artifacts: ${artifactTargetDir}`,
-      );
 
       // Create a simple report file with basic information
       try {
