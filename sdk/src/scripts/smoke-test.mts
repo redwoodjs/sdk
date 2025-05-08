@@ -2280,9 +2280,12 @@ export async function $expect(
     let stdout = "";
     let stderr = "";
     let buffer = "";
+    let lastMatchIndex = 0; // Track the index where the last match occurred
 
     // Track patterns that have been matched
     const matchHistory = new Map<string | RegExp, number>();
+    // Track current expectation index to process them in order
+    let currentExpectationIndex = 0;
 
     // Initialize match count for each pattern
     expectations.forEach(({ expect: expectPattern }) => {
@@ -2301,40 +2304,49 @@ export async function $expect(
       // Print to console
       process.stdout.write(chunk);
 
-      // Check for expected patterns
-      for (const { expect: expectPattern, send } of expectations) {
+      // Only process expectations that haven't been fully matched yet
+      // and in the order they were provided
+      while (currentExpectationIndex < expectations.length) {
+        const { expect: expectPattern, send } =
+          expectations[currentExpectationIndex];
         const pattern =
           expectPattern instanceof RegExp
             ? expectPattern
             : new RegExp(expectPattern, "m");
 
+        // Only search in the unmatched portion of the buffer
+        const searchBuffer = buffer.substring(lastMatchIndex);
+
         log(
-          "Testing pattern: %s against buffer (%d chars)",
+          "Testing pattern: %s against buffer from position %d (%d chars)",
           pattern.toString(),
-          buffer.length,
+          lastMatchIndex,
+          searchBuffer.length,
         );
 
-        // Enhanced debugging: show actual buffer content
-        log("Buffer content for debugging: %O", buffer);
+        // Enhanced debugging: show actual search buffer content
+        log("Search buffer content for debugging: %O", searchBuffer);
 
-        // Convert buffer to hex representation to spot any hidden characters
-        const bufferHex = Buffer.from(buffer).toString("hex");
-        log("Buffer as hex: %s", bufferHex);
-
-        if (pattern.test(buffer)) {
+        const match = searchBuffer.match(pattern);
+        if (match) {
           // Found a match
           const patternStr = expectPattern.toString();
           const matchCount = matchHistory.get(expectPattern) || 0;
 
+          // Update the lastMatchIndex to point after this match
+          // Calculate the absolute position in the full buffer
+          const matchStartPosition = lastMatchIndex + match.index!;
+          const matchEndPosition = matchStartPosition + match[0].length;
+          lastMatchIndex = matchEndPosition;
+
           log(
-            `Pattern matched: "${patternStr}" (occurrence #${matchCount + 1})`,
+            `Pattern matched: "${patternStr}" (occurrence #${matchCount + 1}) at position ${matchStartPosition}-${matchEndPosition}`,
           );
 
           // Only send a response if one is specified
           if (send) {
             log(`Sending response: "${send.replace(/\r/g, "\\r")}" to stdin`);
             childProcess.stdin?.write(send);
-            childProcess.stdin?.end();
           } else {
             log(`Pattern "${patternStr}" matched (verification only)`);
           }
@@ -2343,14 +2355,16 @@ export async function $expect(
           matchHistory.set(expectPattern, matchCount + 1);
           log("Updated match count for %s: %d", patternStr, matchCount + 1);
 
-          // Remove the matched part from buffer to avoid duplicate matches
-          const oldBufferLength = buffer.length;
-          buffer = buffer.replace(pattern, "");
-          log(
-            "Removed matched pattern from buffer: %d -> %d chars",
-            oldBufferLength,
-            buffer.length,
-          );
+          // Move to the next expectation
+          currentExpectationIndex++;
+          // If we've processed all expectations but need to wait for stdin response,
+          // delay closing stdin until the next data event
+          if (currentExpectationIndex >= expectations.length && send) {
+            log("All patterns matched, closing stdin after last response");
+            childProcess.stdin?.end();
+          }
+
+          break; // Exit the while loop to process next chunk
         } else {
           log("Pattern not matched. Attempting to diagnose the mismatch:");
 
@@ -2358,14 +2372,16 @@ export async function $expect(
           const patternString = pattern.toString();
           const patternCore = patternString.substring(
             1,
-            patternString.lastIndexOf("/"),
+            patternString.lastIndexOf("/") > 0
+              ? patternString.lastIndexOf("/")
+              : patternString.length,
           );
 
           // Try partial matches to diagnose the issue
           for (let i = 3; i < patternCore.length; i++) {
             const partialPattern = patternCore.substring(0, i);
             const partialRegex = new RegExp(partialPattern, "m");
-            const matches = partialRegex.test(buffer);
+            const matches = partialRegex.test(searchBuffer);
             log(
               "  Partial pattern '%s': %s",
               partialPattern,
@@ -2375,7 +2391,19 @@ export async function $expect(
             // Once we find where the matching starts to fail, stop
             if (!matches) break;
           }
+
+          // Break the while loop as this pattern doesn't match yet
+          break;
         }
+      }
+
+      // If all expectations have been matched, we can close stdin if not already closed
+      if (
+        currentExpectationIndex >= expectations.length &&
+        childProcess.stdin?.writable
+      ) {
+        log("All patterns matched, ensuring stdin is closed");
+        childProcess.stdin.end();
       }
     });
 
