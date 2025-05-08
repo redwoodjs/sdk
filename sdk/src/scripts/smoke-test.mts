@@ -1245,12 +1245,20 @@ async function runRelease(
       "npm run release",
       [
         {
-          when: "Do you want to proceed with deployment? (y/N)",
+          expect: "Do you want to proceed with deployment? (y/N)",
           send: "y\r",
         },
         {
-          when: "Select an account",
+          expect: "Select an account",
           send: "\r",
+        },
+        {
+          // Just detect wrangler output to keep the process running
+          expect: "wrangler",
+        },
+        {
+          // Watch for the deployment URL to appear
+          expect: "https://",
         },
       ],
       cwd,
@@ -1506,7 +1514,7 @@ async function deleteWorker(name: string, cwd?: string): Promise<void> {
       `npx wrangler delete ${name} --yes`,
       [
         {
-          when: "Are you sure you want to delete",
+          expect: "Are you sure you want to delete",
           send: "y\r",
         },
       ],
@@ -1522,7 +1530,7 @@ async function deleteWorker(name: string, cwd?: string): Promise<void> {
         `npx wrangler delete ${name} --yes --force`,
         [
           {
-            when: "Are you sure you want to delete",
+            expect: "Are you sure you want to delete",
             send: "y\r",
           },
         ],
@@ -1980,15 +1988,15 @@ Examples:
 }
 
 /**
- * A mini expect-like utility for handling interactive CLI prompts
+ * A mini expect-like utility for handling interactive CLI prompts and verifying output
  * @param command The command to execute
- * @param expectations Array of {when, send} objects for interactive responses
+ * @param expectations Array of {expect, send} objects for interactive responses and verification
  * @param cwd Working directory for command execution
  * @returns Promise that resolves when the command completes
  */
 export async function $expect(
   command: string,
-  expectations: Array<{ when: string | RegExp; send: string }>,
+  expectations: Array<{ expect: string | RegExp; send?: string }>,
   cwd?: string,
 ): Promise<{ stdout: string; stderr: string; code: number | null }> {
   return new Promise((resolve, reject) => {
@@ -2009,6 +2017,14 @@ export async function $expect(
     let stderr = "";
     let buffer = "";
 
+    // Track patterns that have been matched
+    const matchHistory = new Map<string | RegExp, number>();
+
+    // Initialize match count for each pattern
+    expectations.forEach(({ expect: expectPattern }) => {
+      matchHistory.set(expectPattern, 0);
+    });
+
     // Collect stdout
     childProcess.stdout?.on("data", (data: Buffer) => {
       const chunk = data.toString();
@@ -2018,13 +2034,34 @@ export async function $expect(
       // Print to console
       process.stdout.write(chunk);
 
-      // Check for expected prompts
-      for (const { when, send } of expectations) {
-        const pattern = when instanceof RegExp ? when : new RegExp(when);
+      // Check for expected patterns
+      for (const { expect: expectPattern, send } of expectations) {
+        const pattern =
+          expectPattern instanceof RegExp
+            ? expectPattern
+            : new RegExp(expectPattern, "m");
+
         if (pattern.test(buffer)) {
-          // Found a match, send the response
-          childProcess.stdin?.write(send);
-          // Remove the matched part from buffer
+          // Found a match
+          const patternStr = expectPattern.toString();
+          const matchCount = matchHistory.get(expectPattern) || 0;
+
+          log(
+            `Pattern matched: "${patternStr}" (occurrence #${matchCount + 1})`,
+          );
+
+          // Only send a response if one is specified
+          if (send) {
+            log(`Sending response: "${send.replace(/\r/g, "\\r")}"`);
+            childProcess.stdin?.write(send);
+          } else {
+            log(`Pattern "${patternStr}" matched (verification only)`);
+          }
+
+          // Increment the match count for this pattern
+          matchHistory.set(expectPattern, matchCount + 1);
+
+          // Remove the matched part from buffer to avoid duplicate matches
           buffer = buffer.replace(pattern, "");
         }
       }
@@ -2042,6 +2079,24 @@ export async function $expect(
 
     // Handle process completion
     childProcess.on("close", (code) => {
+      // Log the number of matches for each pattern
+      log("Pattern match summary:");
+      for (const [pattern, count] of matchHistory.entries()) {
+        log(`  - "${pattern.toString()}": ${count} matches`);
+      }
+
+      // Check if any required patterns were not matched
+      const unmatchedPatterns = Array.from(matchHistory.entries())
+        .filter(([_, count]) => count === 0)
+        .map(([pattern, _]) => pattern.toString());
+
+      if (unmatchedPatterns.length > 0) {
+        log(
+          "WARNING: Some expected patterns were not matched: %O",
+          unmatchedPatterns,
+        );
+      }
+
       resolve({ stdout, stderr, code });
     });
 
