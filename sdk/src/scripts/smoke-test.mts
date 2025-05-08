@@ -145,6 +145,16 @@ async function main(options: SmokeTestOptions = {}): Promise<void> {
   // Store options in state for future reference
   state.options = options;
 
+  // Set default artifacts directory if not specified
+  if (!options.artifactDir) {
+    options.artifactDir = join(process.cwd(), ".artifacts");
+    log("Using default artifacts directory: %s", options.artifactDir);
+  }
+
+  // Create artifacts directory
+  await mkdirp(options.artifactDir);
+  log("Created artifacts directory: %s", options.artifactDir);
+
   // Throw immediately if both tests would be skipped
   if (options.skipDev && options.skipRelease) {
     log("Error: Both dev and release tests are skipped");
@@ -182,8 +192,8 @@ async function main(options: SmokeTestOptions = {}): Promise<void> {
       log("Running development server tests");
       await runDevTest(
         url,
-        options.customPath,
         options.artifactDir,
+        options.customPath,
         browserPath,
         options.headless !== false,
       );
@@ -195,8 +205,8 @@ async function main(options: SmokeTestOptions = {}): Promise<void> {
       log("Running release/production tests");
       await runReleaseTest(
         options.customPath,
-        resources,
         options.artifactDir,
+        resources,
         browserPath,
         options.headless !== false,
       );
@@ -274,8 +284,8 @@ async function setupTestEnvironment(options: {
  */
 async function runDevTest(
   url: string,
+  artifactDir: string,
   customPath: string = "/",
-  artifactDir?: string,
   browserPath?: string,
   headless: boolean = true,
 ): Promise<void> {
@@ -307,8 +317,8 @@ async function runDevTest(
  */
 async function runReleaseTest(
   customPath: string = "/",
+  artifactDir: string,
   resources?: Partial<TestResources>,
-  artifactDir?: string,
   browserPath?: string,
   headless: boolean = true,
 ): Promise<void> {
@@ -708,7 +718,7 @@ async function installDependencies(targetDir: string): Promise<void> {
  */
 async function checkUrl(
   url: string,
-  artifactDir?: string,
+  artifactDir: string,
   browserPath?: string,
   headless: boolean = true,
 ): Promise<void> {
@@ -741,30 +751,23 @@ async function checkUrl(
     log("Performing post-upgrade smoke test");
     await checkUrlSmoke(page, url, true);
 
-    // Take a screenshot for CI artifacts if needed
-    if (artifactDir) {
-      // Create screenshots subdirectory
-      const screenshotsDir = join(artifactDir, "screenshots");
-      log("Creating screenshots directory: %s", screenshotsDir);
-      await fs.mkdir(screenshotsDir, { recursive: true });
+    // Always take a screenshot and save to artifacts
+    // Create screenshots subdirectory
+    const screenshotsDir = join(artifactDir, "screenshots");
+    log("Creating screenshots directory: %s", screenshotsDir);
+    await fs.mkdir(screenshotsDir, { recursive: true });
 
-      // Create a more descriptive filename with timestamp
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const urlIdentifier = new URL(url).hostname.replace(/\./g, "-");
-      const screenshotPath = join(
-        screenshotsDir,
-        `smoke-test-${urlIdentifier}-${timestamp}.png`,
-      );
+    // Create a more descriptive filename with timestamp
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const urlIdentifier = new URL(url).hostname.replace(/\./g, "-");
+    const screenshotPath = join(
+      screenshotsDir,
+      `smoke-test-${urlIdentifier}-${timestamp}.png`,
+    );
 
-      log("Taking screenshot: %s", screenshotPath);
-      await page.screenshot({ path: screenshotPath, fullPage: true });
-      console.log(`📸 Screenshot saved to ${screenshotPath}`);
-    } else {
-      const screenshotPath = "smoke-test-result.png";
-      log("Taking screenshot: %s", screenshotPath);
-      await page.screenshot({ path: screenshotPath });
-      console.log(`📸 Screenshot saved to ${screenshotPath}`);
-    }
+    log("Taking screenshot: %s", screenshotPath);
+    await page.screenshot({ path: screenshotPath, fullPage: true });
+    console.log(`📸 Screenshot saved to ${screenshotPath}`);
   } catch (error) {
     log("Error during URL check: %O", error);
     await browser.close().catch((e) => log("Error closing browser: %O", e));
@@ -1235,48 +1238,25 @@ async function runRelease(
 ): Promise<{ url: string; workerName: string }> {
   console.log("🚀 Running release process...");
 
-  // Create an interactive expect script for handling the release prompts
-  const expectScript = `#!/usr/bin/env expect -f
-spawn npm run release
-expect {
-  "Do you want to proceed with deployment? (y/N)" {
-    send "y\\r"
-    exp_continue
-  }
-  "Select an account" {
-    send "\\r"
-    exp_continue
-  }
-  "wrangler" {
-    # Just wait for wrangler output
-    exp_continue
-  }
-  "https://" {
-    # Deployment URL appears
-  }
-}
-# Wait for process to complete
-wait
-`;
-
-  log("Creating temporary expect script file");
-  // Create a temporary file for the expect script
-  const tempExpectFile = await tmp.file({ postfix: ".exp" });
-  const scriptPath = tempExpectFile.path;
-
-  await fs.writeFile(scriptPath, expectScript);
-  await fs.chmod(scriptPath, 0o755);
-  log("Expect script created at %s", scriptPath);
-
   try {
-    // Run the expect script with the specified working directory
-    log(
-      "Running expect script to handle interactive prompts in directory: %s",
-      cwd || process.cwd(),
+    // Run release command with our interactive $expect utility
+    log("Running release command with interactive prompts");
+    const result = await $expect(
+      "npm run release",
+      [
+        {
+          when: "Do you want to proceed with deployment? (y/N)",
+          send: "y\r",
+        },
+        {
+          when: "Select an account",
+          send: "\r",
+        },
+      ],
+      cwd,
     );
-    const result = await $({ cwd: cwd || process.cwd() })`${scriptPath}`;
-    const stdout = result.stdout ?? "";
-    console.log(stdout);
+
+    const stdout = result.stdout;
 
     // Extract deployment URL from output
     log("Extracting deployment URL from output");
@@ -1294,15 +1274,9 @@ wait
     console.log(`✅ Successfully deployed to ${url}`);
 
     return { url, workerName };
-  } finally {
-    // Clean up the temporary expect script
-    log("Cleaning up temporary expect script");
-    await tempExpectFile.cleanup().catch(() => {
-      log("Warning: Failed to clean up temporary script file: %s", scriptPath);
-      console.warn(
-        `Warning: Failed to clean up temporary script file: ${scriptPath}`,
-      );
-    });
+  } catch (error) {
+    log("ERROR: Failed to run release command: %O", error);
+    throw error;
   }
 }
 
@@ -1526,21 +1500,34 @@ function reportSmokeTestResult(
 async function deleteWorker(name: string, cwd?: string): Promise<void> {
   console.log(`Cleaning up: Deleting worker ${name}...`);
   try {
-    // The --yes flag automatically confirms the deletion
-    log(
-      "Running wrangler delete command in directory: %s",
-      cwd || process.cwd(),
+    // Use our $expect utility to handle any confirmation prompts
+    log("Running wrangler delete command with interactive prompts");
+    await $expect(
+      `npx wrangler delete ${name} --yes`,
+      [
+        {
+          when: "Are you sure you want to delete",
+          send: "y\r",
+        },
+      ],
+      cwd,
     );
-    await $({ cwd: cwd || process.cwd() })`npx wrangler delete ${name} --yes`;
     console.log(`✅ Worker ${name} deleted successfully`);
   } catch (error) {
     console.error(`Failed to delete worker ${name}: ${error}`);
     // Retry with force flag if the first attempt failed
     try {
       console.log("Retrying with force flag...");
-      await $({
-        cwd: cwd || process.cwd(),
-      })`npx wrangler delete ${name} --yes --force`;
+      await $expect(
+        `npx wrangler delete ${name} --yes --force`,
+        [
+          {
+            when: "Are you sure you want to delete",
+            send: "y\r",
+          },
+        ],
+        cwd,
+      );
       console.log(`✅ Worker ${name} force deleted successfully`);
     } catch (retryError) {
       console.error(`Failed to force delete worker ${name}: ${retryError}`);
@@ -1851,7 +1838,7 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
     skipDev: false,
     skipRelease: false,
     projectDir: undefined,
-    artifactDir: undefined,
+    artifactDir: join(process.cwd(), ".artifacts"), // Default to .artifacts in current directory
     keep: isRunningInCI(ciFlag), // Default to true in CI environments
     headless: true,
     ci: ciFlag,
@@ -1941,7 +1928,7 @@ Options:
   --skip-dev              Skip testing the local development server
   --skip-release          Skip testing the release/production deployment
   --path=PATH             Project directory to test
-  --artifact-dir=DIR      Directory to store test artifacts
+  --artifact-dir=DIR      Directory to store test artifacts (default: .artifacts)
                           Creates structured output with subdirectories:
                             - screenshots/: Browser screenshots
                             - projects/: Test project copies
@@ -1959,9 +1946,8 @@ Arguments:
 
 CI Environment:
   * When running in CI (detected automatically or with --ci flag), the --keep flag defaults to true
-  * When --keep is true and --artifact-dir is specified, the test project is copied 
-    to the artifact directory in the projects/ subdirectory
-  * Screenshots and test reports are saved to their respective subdirectories
+  * Screenshots and test reports are always saved to the artifacts directory
+  * Test project is copied to the artifacts directory when --keep is true
 
 Examples:
   pnpm smoke-test                                # Test both dev and release with default path
@@ -1970,8 +1956,8 @@ Examples:
   pnpm smoke-test --path=./my-project            # Test using the specified project directory
   pnpm smoke-test --path=./my-project --keep     # Keep the test directory after completion
   pnpm smoke-test --no-headless                  # Use headed browser for visual debugging
-  pnpm smoke-test --path=./my-project --artifact-dir=./artifacts  # Store artifacts in ./artifacts
-  pnpm smoke-test --ci --artifact-dir=./artifacts # Force CI mode and store artifacts
+  pnpm smoke-test --artifact-dir=my-artifacts    # Use custom artifacts directory
+  pnpm smoke-test --ci                           # Force CI mode behavior
 `);
       // No error, just showing help
       log("Exiting after showing help");
@@ -1991,6 +1977,78 @@ Examples:
       await fail(error);
     }
   })();
+}
+
+/**
+ * A mini expect-like utility for handling interactive CLI prompts
+ * @param command The command to execute
+ * @param expectations Array of {when, send} objects for interactive responses
+ * @param cwd Working directory for command execution
+ * @returns Promise that resolves when the command completes
+ */
+export async function $expect(
+  command: string,
+  expectations: Array<{ when: string | RegExp; send: string }>,
+  cwd?: string,
+): Promise<{ stdout: string; stderr: string; code: number | null }> {
+  return new Promise((resolve, reject) => {
+    // Split command into executable and args
+    const parts = command.split(/\s+/);
+    const executable = parts[0];
+    const args = parts.slice(1);
+
+    console.log(`Running command: ${command}`);
+
+    // Spawn the process with pipes for interaction
+    const childProcess = $(executable, args, {
+      cwd: cwd || process.cwd(),
+      stdio: ["pipe", "pipe", "pipe"], // All pipes for full control
+    });
+
+    let stdout = "";
+    let stderr = "";
+    let buffer = "";
+
+    // Collect stdout
+    childProcess.stdout?.on("data", (data: Buffer) => {
+      const chunk = data.toString();
+      stdout += chunk;
+      buffer += chunk;
+
+      // Print to console
+      process.stdout.write(chunk);
+
+      // Check for expected prompts
+      for (const { when, send } of expectations) {
+        const pattern = when instanceof RegExp ? when : new RegExp(when);
+        if (pattern.test(buffer)) {
+          // Found a match, send the response
+          childProcess.stdin?.write(send);
+          // Remove the matched part from buffer
+          buffer = buffer.replace(pattern, "");
+        }
+      }
+    });
+
+    // Collect stderr if needed
+    if (childProcess.stderr) {
+      childProcess.stderr.on("data", (data: Buffer) => {
+        const chunk = data.toString();
+        stderr += chunk;
+        // Also write stderr to console
+        process.stderr.write(chunk);
+      });
+    }
+
+    // Handle process completion
+    childProcess.on("close", (code) => {
+      resolve({ stdout, stderr, code });
+    });
+
+    childProcess.on("error", (err) => {
+      reject(new Error(`Failed to execute command: ${err.message}`));
+    });
+  });
 }
 
 export { main, checkUrl, checkUrlSmoke, checkServerSmoke, checkClientSmoke };

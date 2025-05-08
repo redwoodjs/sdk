@@ -174,3 +174,5 @@ dist
 
 .DS_Store
 .vscode/settings.json
+
+.artifacts/
