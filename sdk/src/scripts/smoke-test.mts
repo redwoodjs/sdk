@@ -66,6 +66,7 @@ interface SmokeTestOptions {
   headless?: boolean;
   sync?: boolean;
   ci?: boolean;
+  bail?: boolean;
 }
 
 interface TestResources {
@@ -181,41 +182,86 @@ async function main(options: SmokeTestOptions = {}): Promise<void> {
     // Store resources in module-level state
     state.resources = resources;
 
+    // Track failures to determine final exit code
+    let hasFailures = false;
+
     // Run the tests that weren't skipped
     if (!options.skipDev) {
       log("Starting development server");
-      // Start the dev server first, store the stop function in resources
-      const { url, stopDev } = await runDevServer(resources.targetDir);
-      resources.stopDev = stopDev;
-      state.resources.stopDev = stopDev;
+      try {
+        // Start the dev server first, store the stop function in resources
+        const { url, stopDev } = await runDevServer(resources.targetDir);
+        resources.stopDev = stopDev;
+        state.resources.stopDev = stopDev;
 
-      log("Running development server tests");
-      await runDevTest(
-        url,
-        options.artifactDir,
-        options.customPath,
-        browserPath,
-        options.headless !== false,
-      );
+        log("Running development server tests");
+        await runDevTest(
+          url,
+          options.artifactDir,
+          options.customPath,
+          browserPath,
+          options.headless !== false,
+          options.bail,
+        );
+      } catch (error) {
+        hasFailures = true;
+        log("Error during development server testing: %O", error);
+        console.error(
+          `❌ Development server test failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+
+        // If bail option is true, stop the tests
+        if (options.bail) {
+          await fail(error);
+        }
+
+        // Otherwise, continue with the release test
+        console.log(
+          "Continuing with next tests since --bail is not enabled...",
+        );
+      }
     } else {
       log("Skipping development server tests");
     }
 
     if (!options.skipRelease) {
       log("Running release/production tests");
-      await runReleaseTest(
-        options.customPath,
-        options.artifactDir,
-        resources,
-        browserPath,
-        options.headless !== false,
-      );
+      try {
+        await runReleaseTest(
+          options.customPath,
+          options.artifactDir,
+          resources,
+          browserPath,
+          options.headless !== false,
+          options.bail,
+        );
+      } catch (error) {
+        hasFailures = true;
+        log("Error during release testing: %O", error);
+        console.error(
+          `❌ Release test failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+
+        // If bail option is true, stop the tests
+        if (options.bail) {
+          await fail(error);
+        }
+      }
     } else {
       log("Skipping release/production tests");
     }
 
-    console.log("\n✅ All smoke tests passed!");
-    // Call teardown with success exit code
+    // Set the exit code based on whether there were failures
+    if (hasFailures) {
+      state.exitCode = 1;
+      console.log(
+        "\n⚠️ Some smoke tests failed, but continued running since --bail was not enabled.",
+      );
+    } else {
+      console.log("\n✅ All smoke tests passed!");
+    }
+
+    // Call teardown with the final exit code
     await teardown();
   } catch (error) {
     await fail(error);
@@ -288,6 +334,7 @@ async function runDevTest(
   customPath: string = "/",
   browserPath?: string,
   headless: boolean = true,
+  bail: boolean = false,
 ): Promise<void> {
   log("Starting dev server test with path: %s", customPath || "/");
   console.log("🚀 Testing local development server");
@@ -304,11 +351,11 @@ async function runDevTest(
         : customPath.startsWith("/")
           ? customPath
           : "/" + customPath);
-    await checkUrl(testUrl, artifactDir, browserPath, headless);
+    await checkUrl(testUrl, artifactDir, browserPath, headless, bail);
     log("Development server test completed successfully");
   } catch (error) {
     log("Error during development server testing: %O", error);
-    await fail(error);
+    throw error;
   }
 }
 
@@ -321,6 +368,7 @@ async function runReleaseTest(
   resources?: Partial<TestResources>,
   browserPath?: string,
   headless: boolean = true,
+  bail: boolean = false,
 ): Promise<void> {
   log("Starting release test with path: %s", customPath || "/");
   console.log("\n🚀 Testing production deployment");
@@ -344,7 +392,7 @@ async function runReleaseTest(
         : customPath.startsWith("/")
           ? customPath
           : "/" + customPath);
-    await checkUrl(testUrl, artifactDir, browserPath, headless);
+    await checkUrl(testUrl, artifactDir, browserPath, headless, bail);
     log("Release test completed successfully");
 
     // Store the worker name if we didn't set it earlier
@@ -366,7 +414,7 @@ async function runReleaseTest(
     }
   } catch (error) {
     log("Error during release testing: %O", error);
-    await fail(error);
+    throw error;
   }
 }
 
@@ -721,6 +769,7 @@ async function checkUrl(
   artifactDir: string,
   browserPath?: string,
   headless: boolean = true,
+  bail: boolean = false,
 ): Promise<void> {
   console.log(`🔍 Testing URL: ${url}`);
 
@@ -733,6 +782,11 @@ async function checkUrl(
     return; // This will never be reached
   }
 
+  // Track failures to report at the end
+  let hasFailures = false;
+  let initialTestError: Error | null = null;
+  let realtimeTestError: Error | null = null;
+
   try {
     log("Opening new page");
     const page = await browser.newPage();
@@ -741,15 +795,49 @@ async function checkUrl(
 
     // Initial smoke test
     log("Performing initial smoke test");
-    await checkUrlSmoke(page, url, false);
+    try {
+      await checkUrlSmoke(page, url, false, bail);
+    } catch (error) {
+      hasFailures = true;
+      initialTestError =
+        error instanceof Error ? error : new Error(String(error));
+      log("Error during initial smoke test: %O", error);
+      console.error(
+        `❌ Initial smoke test failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+
+      // If bail is true, stop the tests
+      if (bail) {
+        throw error;
+      }
+
+      console.log(
+        "Continuing with realtime upgrade test since --bail is not enabled...",
+      );
+    }
 
     // Upgrade to realtime and check again
     log("Upgrading to realtime");
-    await upgradeToRealtime(page);
-    log("Reloading page after realtime upgrade");
-    await page.reload({ waitUntil: "networkidle0" });
-    log("Performing post-upgrade smoke test");
-    await checkUrlSmoke(page, url, true);
+    try {
+      await upgradeToRealtime(page);
+      log("Reloading page after realtime upgrade");
+      await page.reload({ waitUntil: "networkidle0" });
+      log("Performing post-upgrade smoke test");
+      await checkUrlSmoke(page, url, true, bail);
+    } catch (error) {
+      hasFailures = true;
+      realtimeTestError =
+        error instanceof Error ? error : new Error(String(error));
+      log("Error during realtime smoke test: %O", error);
+      console.error(
+        `❌ Realtime smoke test failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+
+      // If bail is true, stop the tests
+      if (bail) {
+        throw error;
+      }
+    }
 
     // Always take a screenshot and save to artifacts
     // Create screenshots subdirectory
@@ -768,11 +856,24 @@ async function checkUrl(
     log("Taking screenshot: %s", screenshotPath);
     await page.screenshot({ path: screenshotPath, fullPage: true });
     console.log(`📸 Screenshot saved to ${screenshotPath}`);
+
+    // If there were failures, propagate them after taking screenshots
+    if (hasFailures) {
+      // Combine errors or just throw the one that happened
+      if (initialTestError && realtimeTestError) {
+        throw new Error(
+          `Multiple test failures: Initial test: ${initialTestError.message}, Realtime test: ${realtimeTestError.message}`,
+        );
+      } else if (initialTestError) {
+        throw initialTestError;
+      } else if (realtimeTestError) {
+        throw realtimeTestError;
+      }
+    }
   } catch (error) {
     log("Error during URL check: %O", error);
     await browser.close().catch((e) => log("Error closing browser: %O", e));
-    await fail(error);
-    return; // This will never be reached
+    throw error;
   } finally {
     log("Closing browser");
     await browser.close().catch((e) => log("Error closing browser: %O", e));
@@ -787,6 +888,7 @@ async function checkUrlSmoke(
   page: Page,
   url: string,
   isRealtime: boolean,
+  bail: boolean = false,
 ): Promise<void> {
   const phase = isRealtime ? "Post-upgrade" : "Initial";
   console.log(`🔍 Testing ${phase} smoke tests at ${url}`);
@@ -813,13 +915,64 @@ async function checkUrlSmoke(
   await page.goto(smokeUrl, { waitUntil: "networkidle0" });
   log("Page loaded successfully");
 
+  // Track failures to report at the end
+  let hasFailures = false;
+  let serverTestError: Error | null = null;
+  let clientTestError: Error | null = null;
+
   // Run server-side smoke test
   log("Running server-side smoke test");
-  await checkServerSmoke(page, phase);
+  try {
+    await checkServerSmoke(page, phase);
+  } catch (error) {
+    hasFailures = true;
+    serverTestError = error instanceof Error ? error : new Error(String(error));
+    log("Error during server-side smoke test: %O", error);
+    console.error(
+      `❌ Server-side smoke test failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+
+    // If bail is true, stop the tests
+    if (bail) {
+      throw error;
+    }
+
+    console.log(
+      "Continuing with client-side smoke test since --bail is not enabled...",
+    );
+  }
 
   // Run client-side smoke test if available
   log("Running client-side smoke test");
-  await checkClientSmoke(page, phase);
+  try {
+    await checkClientSmoke(page, phase);
+  } catch (error) {
+    hasFailures = true;
+    clientTestError = error instanceof Error ? error : new Error(String(error));
+    log("Error during client-side smoke test: %O", error);
+    console.error(
+      `❌ Client-side smoke test failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+
+    // If bail is true, stop the tests
+    if (bail) {
+      throw error;
+    }
+  }
+
+  // If there were failures, propagate them
+  if (hasFailures) {
+    // Combine errors or just throw the one that happened
+    if (serverTestError && clientTestError) {
+      throw new Error(
+        `Multiple test failures: Server-side test: ${serverTestError.message}, Client-side test: ${clientTestError.message}`,
+      );
+    } else if (serverTestError) {
+      throw serverTestError;
+    } else if (clientTestError) {
+      throw clientTestError;
+    }
+  }
 
   log("URL smoke test completed successfully");
 }
@@ -1850,6 +2003,7 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
     keep: isRunningInCI(ciFlag), // Default to true in CI environments
     headless: true,
     ci: ciFlag,
+    bail: false, // Default to false - continue tests even if some fail
     // sync: will be set below
   };
 
@@ -1879,6 +2033,8 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
       syncExplicit = true;
     } else if (arg === "--ci") {
       // Already handled above, just skip
+    } else if (arg === "--bail") {
+      options.bail = true;
     } else if (arg === "--help" || arg === "-h") {
       // Help will be handled later
     } else if (arg.startsWith("--path=")) {
@@ -1947,6 +2103,7 @@ Options:
   --no-sync               Do not sync SDK before running smoke test (overrides default)
   --sync                  Force sync SDK before running smoke test (overrides default)
   --ci                    Force CI mode behavior (keeps temporary directories by default)
+  --bail                  Stop on first test failure (default: run all possible tests)
   --help, -h              Show this help message
 
 Arguments:
@@ -1966,6 +2123,7 @@ Examples:
   pnpm smoke-test --no-headless                  # Use headed browser for visual debugging
   pnpm smoke-test --artifact-dir=my-artifacts    # Use custom artifacts directory
   pnpm smoke-test --ci                           # Force CI mode behavior
+  pnpm smoke-test --bail                         # Stop on first test failure
 `);
       // No error, just showing help
       log("Exiting after showing help");
