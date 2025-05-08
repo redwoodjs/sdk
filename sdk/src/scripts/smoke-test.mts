@@ -494,7 +494,18 @@ async function cleanupResources(
   if (resources.stopDev) {
     console.log("Stopping development server...");
     try {
-      await resources.stopDev();
+      // Set a timeout for the stopDev function
+      const stopTimeout = 10000; // 10 seconds
+      await Promise.race([
+        resources.stopDev(),
+        (async () => {
+          await setTimeout(stopTimeout);
+          log("Timed out waiting for dev server to stop, continuing cleanup");
+          console.log("⚠️ Timed out waiting for development server to stop");
+          // If the dev server didn't stop in time, we'll continue with cleanup
+          return null;
+        })(),
+      ]);
     } catch (error) {
       log("Error while stopping development server: %O", error);
       console.error(
@@ -1329,13 +1340,52 @@ async function runDevServer(cwd?: string): Promise<{
     console.log("Stopping development server...");
 
     try {
+      // Send a regular termination signal first
       devProcess.kill();
 
-      try {
-        await devProcess;
-      } catch (e) {
-        // Expected error when the process is killed
-        log("Dev server process was terminated");
+      // Wait for the process to terminate with a timeout
+      const terminationTimeout = 5000; // 5 seconds timeout
+      const terminationPromise = Promise.race([
+        // Wait for natural process termination
+        (async () => {
+          try {
+            await devProcess;
+            log("Dev server process was terminated normally");
+            return true;
+          } catch (e) {
+            // Expected error when the process is killed
+            log("Dev server process was terminated");
+            return true;
+          }
+        })(),
+        // Or timeout
+        (async () => {
+          await setTimeout(terminationTimeout);
+          return false;
+        })(),
+      ]);
+
+      // Check if process terminated within timeout
+      const terminated = await terminationPromise;
+
+      // If not terminated within timeout, force kill
+      if (!terminated) {
+        log(
+          "Dev server process did not terminate within timeout, force killing with SIGKILL",
+        );
+        console.log("⚠️ Development server not responding, force killing...");
+
+        // Try to kill with SIGKILL if the process still has a pid
+        if (devProcess.pid) {
+          try {
+            // Use process.kill with SIGKILL for a stronger termination
+            process.kill(devProcess.pid, "SIGKILL");
+            log("Sent SIGKILL to process %d", devProcess.pid);
+          } catch (killError) {
+            log("Error sending SIGKILL to process: %O", killError);
+            // Non-fatal, as the process might already be gone
+          }
+        }
       }
     } catch (e) {
       // Process might already have exited
