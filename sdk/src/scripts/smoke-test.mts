@@ -96,16 +96,31 @@ const state = {
     stopDev: undefined,
   } as TestResources,
   options: {} as SmokeTestOptions,
+  // Add a new failures array to track all failures
+  failures: [] as { step: string; error: string; details?: string }[],
 };
 
 /**
  * Handles test failure by logging the error and initiating teardown
  */
-async function fail(error: unknown, exitCode = 1): Promise<never> {
+async function fail(
+  error: unknown,
+  exitCode = 1,
+  step?: string,
+): Promise<never> {
   state.exitCode = exitCode;
   const msg = error instanceof Error ? error.message : String(error);
   console.error(`❌ Smoke test failed: ${msg}`);
   log("Test failed with error: %O", error);
+
+  // Record the failure if a step is provided
+  if (step) {
+    state.failures.push({
+      step,
+      error: msg,
+      details: error instanceof Error && error.stack ? error.stack : undefined,
+    });
+  }
 
   await teardown();
   return process.exit(exitCode) as never;
@@ -127,7 +142,55 @@ async function teardown(): Promise<void> {
   try {
     await cleanupResources(state.resources, state.options);
 
-    if (state.exitCode === 0) {
+    // Add failures to the report file
+    if (state.resources.targetDir && state.options.artifactDir) {
+      try {
+        // Use the standardized reports directory
+        const reportDir = join(state.options.artifactDir, "reports");
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+        const reportPath = join(
+          reportDir,
+          `smoke-test-report-${timestamp}.json`,
+        );
+
+        // Create more detailed report with failures
+        const report = {
+          timestamp,
+          success: state.exitCode === 0,
+          exitCode: state.exitCode,
+          // Use a simpler approach with type assertion to avoid the linter error
+          workerName: (state.resources.workerName || null) as string | null,
+          projectDir: join(state.options.artifactDir, "project"),
+          failures: state.failures,
+          options: {
+            customPath: state.options.customPath,
+            skipDev: state.options.skipDev,
+            skipRelease: state.options.skipRelease,
+          },
+        };
+
+        await fs.writeFile(reportPath, JSON.stringify(report, null, 2));
+        log("Wrote test report to %s", reportPath);
+        console.log(`📝 Test report saved to ${reportPath}`);
+      } catch (reportError) {
+        log("Error writing test report: %O", reportError);
+        // Non-fatal error, continue
+      }
+    }
+
+    // Report a summary of all failures at the end
+    if (state.failures.length > 0) {
+      console.log("\n📋 Smoke Test Failure Summary:");
+      console.log("================================");
+
+      state.failures.forEach((failure, index) => {
+        console.log(`Failure #${index + 1}: ${failure.step}`);
+        console.log(`Error: ${failure.error}`);
+        console.log("--------------------------------");
+      });
+
+      console.log(`\n❌ Total failures: ${state.failures.length}`);
+    } else if (state.exitCode === 0) {
       console.log("✨ Smoke test completed successfully!");
     }
   } catch (error) {
@@ -167,6 +230,8 @@ async function main(options: SmokeTestOptions = {}): Promise<void> {
       new Error(
         "Cannot skip both dev and release tests. At least one must run.",
       ),
+      1,
+      "Configuration",
     );
   }
 
@@ -177,7 +242,7 @@ async function main(options: SmokeTestOptions = {}): Promise<void> {
     browserPath = await getBrowserPath(options);
     console.log(`✅ Browser ready at: ${browserPath}`);
   } catch (error) {
-    await fail(error);
+    await fail(error, 1, "Browser Preparation");
   }
 
   log("Setting up test environment");
@@ -215,9 +280,17 @@ async function main(options: SmokeTestOptions = {}): Promise<void> {
           `❌ Development server test failed: ${error instanceof Error ? error.message : String(error)}`,
         );
 
+        // Record the failure
+        state.failures.push({
+          step: "Development Server Test",
+          error: error instanceof Error ? error.message : String(error),
+          details:
+            error instanceof Error && error.stack ? error.stack : undefined,
+        });
+
         // If bail option is true, stop the tests
         if (options.bail) {
-          await fail(error);
+          await fail(error, 1, "Development Server Test");
         }
 
         // Otherwise, continue with the release test
@@ -248,9 +321,17 @@ async function main(options: SmokeTestOptions = {}): Promise<void> {
           `❌ Release test failed: ${error instanceof Error ? error.message : String(error)}`,
         );
 
+        // Record the failure
+        state.failures.push({
+          step: "Release Test",
+          error: error instanceof Error ? error.message : String(error),
+          details:
+            error instanceof Error && error.stack ? error.stack : undefined,
+        });
+
         // If bail option is true, stop the tests
         if (options.bail) {
-          await fail(error);
+          await fail(error, 1, "Release Test");
         }
       }
     } else {
@@ -270,7 +351,7 @@ async function main(options: SmokeTestOptions = {}): Promise<void> {
     // Call teardown with the final exit code
     await teardown();
   } catch (error) {
-    await fail(error);
+    await fail(error, 1, "Test Environment Setup");
   }
 }
 
@@ -407,6 +488,14 @@ async function runDevTest(
     );
     log("Development server test completed successfully");
   } catch (error) {
+    // Add more context about the specific part that failed
+    if (error instanceof Error && error.message.includes("Server at")) {
+      state.failures.push({
+        step: "Development Server Availability",
+        error: error.message,
+        details: error.stack,
+      });
+    }
     log("Error during development server testing: %O", error);
     throw error;
   }
@@ -502,6 +591,14 @@ async function cleanupResources(
           await setTimeout(stopTimeout);
           log("Timed out waiting for dev server to stop, continuing cleanup");
           console.log("⚠️ Timed out waiting for development server to stop");
+
+          // Record this issue
+          state.failures.push({
+            step: "Development Server Shutdown",
+            error:
+              "Timed out waiting for development server to stop after 10 seconds",
+          });
+
           // If the dev server didn't stop in time, we'll continue with cleanup
           return null;
         })(),
@@ -511,6 +608,14 @@ async function cleanupResources(
       console.error(
         `Error while stopping development server: ${error instanceof Error ? error.message : String(error)}`,
       );
+
+      // Record this issue
+      state.failures.push({
+        step: "Development Server Shutdown",
+        error: error instanceof Error ? error.message : String(error),
+        details:
+          error instanceof Error && error.stack ? error.stack : undefined,
+      });
     }
   }
 
@@ -524,6 +629,14 @@ async function cleanupResources(
       console.error(
         `Error while deleting worker: ${error instanceof Error ? error.message : String(error)}`,
       );
+
+      // Record this issue
+      state.failures.push({
+        step: `Worker Deletion: ${resources.workerName}`,
+        error: error instanceof Error ? error.message : String(error),
+        details:
+          error instanceof Error && error.stack ? error.stack : undefined,
+      });
     }
   } else if (resources.workerName) {
     log(
@@ -566,42 +679,20 @@ async function cleanupResources(
         `✅ Test directory copied to artifacts: ${artifactTargetDir}`,
       );
 
-      // Create a simple report file with basic information
-      try {
-        // Use the standardized reports directory
-        const reportDir = join(options.artifactDir, "reports");
-        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-        const reportPath = join(
-          reportDir,
-          `smoke-test-report-${timestamp}.json`,
-        );
-        const report = {
-          timestamp,
-          success: state.exitCode === 0,
-          exitCode: state.exitCode,
-          workerName: resources.workerName,
-          projectDir: artifactTargetDir,
-          options: {
-            ...options,
-            // Redact any sensitive information
-            customPath: options.customPath,
-            skipDev: options.skipDev,
-            skipRelease: options.skipRelease,
-          },
-        };
-
-        await fs.writeFile(reportPath, JSON.stringify(report, null, 2));
-        log("Wrote test report to %s", reportPath);
-        console.log(`📝 Test report saved to ${reportPath}`);
-      } catch (reportError) {
-        log("Error writing test report: %O", reportError);
-        // Non-fatal error, continue
-      }
+      // Note: Report generation moved to teardown function
     } catch (error) {
       log("Error copying test directory to artifacts: %O", error);
       console.error(
         `Error copying test directory to artifacts: ${error instanceof Error ? error.message : String(error)}`,
       );
+
+      // Record this issue
+      state.failures.push({
+        step: "Artifact Copy",
+        error: error instanceof Error ? error.message : String(error),
+        details:
+          error instanceof Error && error.stack ? error.stack : undefined,
+      });
     }
   }
 
@@ -616,6 +707,14 @@ async function cleanupResources(
       console.error(
         `Error while cleaning up temporary directory: ${error instanceof Error ? error.message : String(error)}`,
       );
+
+      // Record this issue
+      state.failures.push({
+        step: "Temporary Directory Cleanup",
+        error: error instanceof Error ? error.message : String(error),
+        details:
+          error instanceof Error && error.stack ? error.stack : undefined,
+      });
     }
   } else if (resources.tempDirCleanup && resources.targetDir) {
     console.log(
@@ -978,6 +1077,13 @@ async function checkUrlSmoke(
       `❌ Server-side smoke test failed: ${error instanceof Error ? error.message : String(error)}`,
     );
 
+    // Record the specific failure
+    state.failures.push({
+      step: `Server-side Smoke Test (${phase})`,
+      error: error instanceof Error ? error.message : String(error),
+      details: error instanceof Error && error.stack ? error.stack : undefined,
+    });
+
     // If bail is true, stop the tests
     if (bail) {
       throw error;
@@ -1001,6 +1107,14 @@ async function checkUrlSmoke(
       console.error(
         `❌ Client-side smoke test failed: ${error instanceof Error ? error.message : String(error)}`,
       );
+
+      // Record the specific failure
+      state.failures.push({
+        step: `Client-side Smoke Test (${phase})`,
+        error: error instanceof Error ? error.message : String(error),
+        details:
+          error instanceof Error && error.stack ? error.stack : undefined,
+      });
 
       // If bail is true, stop the tests
       if (bail) {
@@ -1308,6 +1422,13 @@ async function upgradeToRealtime(page: Page): Promise<void> {
 
   if (!upgradeResult.success) {
     log("ERROR: Failed to upgrade to realtime mode: %s", upgradeResult.message);
+
+    // Record the specific failure
+    state.failures.push({
+      step: "Realtime Upgrade",
+      error: upgradeResult.message,
+    });
+
     throw new Error(
       `Failed to upgrade to realtime mode: ${upgradeResult.message}`,
     );
@@ -1373,7 +1494,9 @@ async function runDevServer(cwd?: string): Promise<{
         log(
           "Dev server process did not terminate within timeout, force killing with SIGKILL",
         );
-        console.log("⚠️ Development server not responding, force killing...");
+        console.log(
+          "⚠️ Development server not responding after 5 seconds timeout, force killing...",
+        );
 
         // Try to kill with SIGKILL if the process still has a pid
         if (devProcess.pid) {
@@ -1815,10 +1938,19 @@ async function checkServerUp(
             url,
             retries,
           );
+
+          // Record the specific failure
+          state.failures.push({
+            step: `Server Availability Check: ${url}`,
+            error: `Server at ${url} did not become available after ${retries} attempts`,
+          });
+
           await fail(
             new Error(
               `Server at ${url} did not become available after ${retries} attempts`,
             ),
+            1,
+            `Server Availability Check: ${url}`,
           );
           return false; // This will never be reached
         }
