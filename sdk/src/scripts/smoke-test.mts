@@ -543,6 +543,10 @@ async function cleanupResources(
         // Non-fatal error, continue
       }
 
+      console.log(
+        `✅ Test directory copied to artifacts: ${artifactTargetDir}`,
+      );
+
       // Create a simple report file with basic information
       try {
         // Use the standardized reports directory
