@@ -90,17 +90,22 @@ export const ensureDeployEnv = async () => {
     console.log("Updated wrangler.jsonc configuration");
   }
 
-  // Trigger account selection prompt if needed
-  console.log("Checking Cloudflare account setup...");
-  const accountCachePath = join(
-    process.cwd(),
-    "node_modules/.cache/wrangler/wrangler-account.json",
-  );
+  if (
+    process.env.CLOUDFLARE_ACCOUNT_ID == null ||
+    process.env.CLOUDFLARE_API_TOKEN == null
+  ) {
+    // Trigger account selection prompt if needed
+    console.log("Checking Cloudflare account setup...");
+    const accountCachePath = join(
+      process.cwd(),
+      "node_modules/.cache/wrangler/wrangler-account.json",
+    );
 
-  // todo(justinvdm): this is a hack to force the account selection prompt,
-  // we need to find a better way
-  if (!(await pathExists(accountCachePath))) {
-    await $({ stdio: "inherit" })`wrangler d1 list --json`;
+    // todo(justinvdm): this is a hack to force the account selection prompt,
+    // we need to find a better way
+    if (!(await pathExists(accountCachePath))) {
+      await $({ stdio: "inherit" })`wrangler d1 list --json`;
+    }
   }
 
   // Create a no-op secret to ensure worker exists
