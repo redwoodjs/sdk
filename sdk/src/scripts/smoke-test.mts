@@ -47,6 +47,9 @@ const log = debug("rwsdk:smoke");
 const TIMEOUT = 30000; // 30 seconds timeout
 const RETRIES = 3;
 
+// Known Cloudflare account ID - default to RedwoodJS account if we need one
+const REDWOODJS_ACCOUNT_ID = "1634a8e653b2ce7e0f7a23cca8cbd86a";
+
 interface SmokeTestResult {
   status: string;
   verificationPassed: boolean;
@@ -1406,6 +1409,91 @@ async function runDevServer(cwd?: string): Promise<{
 }
 
 /**
+ * Ensures Cloudflare account ID is set in environment
+ * Extracts from error output if available, otherwise uses RedwoodJS account
+ */
+async function ensureCloudflareAccountId(cwd?: string): Promise<void> {
+  // Skip if already set
+  if (process.env.CLOUDFLARE_ACCOUNT_ID) {
+    log(
+      "CLOUDFLARE_ACCOUNT_ID is already set: %s",
+      process.env.CLOUDFLARE_ACCOUNT_ID,
+    );
+    console.log(
+      `Using existing CLOUDFLARE_ACCOUNT_ID: ${process.env.CLOUDFLARE_ACCOUNT_ID}`,
+    );
+    return;
+  }
+
+  console.log("CLOUDFLARE_ACCOUNT_ID not set, attempting to detect...");
+
+  try {
+    // Run a wrangler command that will list available accounts if there's an issue
+    const result = await $({
+      cwd: cwd || process.cwd(),
+      stdio: "pipe",
+      reject: false, // Don't throw on non-zero exit code
+    })`npx wrangler whoami`;
+
+    // If command succeeds but we still don't have an account ID, try to extract from output
+    if (result.stdout) {
+      // Parse output to look for account ID
+      const accountIdMatch = result.stdout.match(/Account ID: ([a-f0-9]{32})/);
+      if (accountIdMatch && accountIdMatch[1]) {
+        const accountId = accountIdMatch[1];
+        process.env.CLOUDFLARE_ACCOUNT_ID = accountId;
+        log("Extracted CLOUDFLARE_ACCOUNT_ID from whoami: %s", accountId);
+        console.log(`✅ Setting CLOUDFLARE_ACCOUNT_ID to ${accountId}`);
+        return;
+      }
+    }
+
+    // If the command ran but we couldn't find an ID or there was an error
+    if (result.stderr) {
+      // Look for available accounts in the error output
+      const accountMatches = result.stderr.match(
+        /`([^`]+)'s Account`: `([a-f0-9]{32})`/g,
+      );
+      if (accountMatches && accountMatches.length > 0) {
+        // Extract the first account ID
+        const firstAccount = accountMatches[0].match(/`([a-f0-9]{32})`$/);
+        if (firstAccount && firstAccount[1]) {
+          const accountId = firstAccount[1];
+          process.env.CLOUDFLARE_ACCOUNT_ID = accountId;
+          log(
+            "Extracted CLOUDFLARE_ACCOUNT_ID from error output: %s",
+            accountId,
+          );
+          console.log(`✅ Setting CLOUDFLARE_ACCOUNT_ID to ${accountId}`);
+          return;
+        }
+      }
+    }
+
+    // Fall back to RedwoodJS account ID
+    process.env.CLOUDFLARE_ACCOUNT_ID = REDWOODJS_ACCOUNT_ID;
+    log(
+      "Using default RedwoodJS CLOUDFLARE_ACCOUNT_ID: %s",
+      REDWOODJS_ACCOUNT_ID,
+    );
+    console.log(
+      `✅ Setting CLOUDFLARE_ACCOUNT_ID to RedwoodJS account: ${REDWOODJS_ACCOUNT_ID}`,
+    );
+  } catch (error) {
+    // In case of any error, fall back to the RedwoodJS account ID
+    log("Error checking Cloudflare account: %O", error);
+    process.env.CLOUDFLARE_ACCOUNT_ID = REDWOODJS_ACCOUNT_ID;
+    log(
+      "Using default RedwoodJS CLOUDFLARE_ACCOUNT_ID due to error: %s",
+      REDWOODJS_ACCOUNT_ID,
+    );
+    console.log(
+      `⚠️ Error detecting Cloudflare account, falling back to RedwoodJS account: ${REDWOODJS_ACCOUNT_ID}`,
+    );
+  }
+}
+
+/**
  * Run the release process and return the deployed URL and worker name
  */
 async function runRelease(
@@ -1414,26 +1502,18 @@ async function runRelease(
   console.log("🚀 Running release process...");
 
   try {
+    // Ensure CLOUDFLARE_ACCOUNT_ID is set before running release
+    await ensureCloudflareAccountId(cwd);
+
     // Run release command with our interactive $expect utility
     log("Running release command with interactive prompts");
     const result = await $expect(
       "npm run release",
       [
         {
-          expect: "Do you want to proceed with deployment? (y/N)",
+          // Make the pattern more flexible to account for potential whitespace differences
+          expect: /Do you want to proceed with deployment\?\s*\(y\/N\)/i,
           send: "y\r",
-        },
-        {
-          expect: "Select an account",
-          send: "\r",
-        },
-        {
-          // Just detect wrangler output to keep the process running
-          expect: "wrangler",
-        },
-        {
-          // Watch for the deployment URL to appear
-          expect: "https://",
         },
       ],
       cwd,
@@ -2180,6 +2260,13 @@ export async function $expect(
   cwd?: string,
 ): Promise<{ stdout: string; stderr: string; code: number | null }> {
   return new Promise((resolve, reject) => {
+    log("$expect starting with command: %s", command);
+    log("Working directory: %s", cwd ?? process.cwd());
+    log(
+      "Expected patterns: %O",
+      expectations.map((e) => e.expect.toString()),
+    );
+
     console.log(`Running command: ${command}`);
 
     // Spawn the process with pipes for interaction
@@ -2187,6 +2274,8 @@ export async function $expect(
       cwd: cwd ?? process.cwd(),
       stdio: "pipe",
     });
+
+    log("Process spawned with PID: %s", childProcess.pid);
 
     let stdout = "";
     let stderr = "";
@@ -2198,6 +2287,7 @@ export async function $expect(
     // Initialize match count for each pattern
     expectations.forEach(({ expect: expectPattern }) => {
       matchHistory.set(expectPattern, 0);
+      log("Initialized pattern match count for: %s", expectPattern.toString());
     });
 
     // Collect stdout
@@ -2205,6 +2295,8 @@ export async function $expect(
       const chunk = data.toString();
       stdout += chunk;
       buffer += chunk;
+
+      log("Received stdout chunk (%d bytes): %s", chunk.length, chunk.trim());
 
       // Print to console
       process.stdout.write(chunk);
@@ -2215,6 +2307,19 @@ export async function $expect(
           expectPattern instanceof RegExp
             ? expectPattern
             : new RegExp(expectPattern, "m");
+
+        log(
+          "Testing pattern: %s against buffer (%d chars)",
+          pattern.toString(),
+          buffer.length,
+        );
+
+        // Enhanced debugging: show actual buffer content
+        log("Buffer content for debugging: %O", buffer);
+
+        // Convert buffer to hex representation to spot any hidden characters
+        const bufferHex = Buffer.from(buffer).toString("hex");
+        log("Buffer as hex: %s", bufferHex);
 
         if (pattern.test(buffer)) {
           // Found a match
@@ -2227,17 +2332,49 @@ export async function $expect(
 
           // Only send a response if one is specified
           if (send) {
-            log(`Sending response: "${send.replace(/\r/g, "\\r")}"`);
+            log(`Sending response: "${send.replace(/\r/g, "\\r")}" to stdin`);
             childProcess.stdin?.write(send);
+            childProcess.stdin?.end();
           } else {
             log(`Pattern "${patternStr}" matched (verification only)`);
           }
 
           // Increment the match count for this pattern
           matchHistory.set(expectPattern, matchCount + 1);
+          log("Updated match count for %s: %d", patternStr, matchCount + 1);
 
           // Remove the matched part from buffer to avoid duplicate matches
+          const oldBufferLength = buffer.length;
           buffer = buffer.replace(pattern, "");
+          log(
+            "Removed matched pattern from buffer: %d -> %d chars",
+            oldBufferLength,
+            buffer.length,
+          );
+        } else {
+          log("Pattern not matched. Attempting to diagnose the mismatch:");
+
+          // Try to find the closest substring that might partially match
+          const patternString = pattern.toString();
+          const patternCore = patternString.substring(
+            1,
+            patternString.lastIndexOf("/"),
+          );
+
+          // Try partial matches to diagnose the issue
+          for (let i = 3; i < patternCore.length; i++) {
+            const partialPattern = patternCore.substring(0, i);
+            const partialRegex = new RegExp(partialPattern, "m");
+            const matches = partialRegex.test(buffer);
+            log(
+              "  Partial pattern '%s': %s",
+              partialPattern,
+              matches ? "matched" : "not matched",
+            );
+
+            // Once we find where the matching starts to fail, stop
+            if (!matches) break;
+          }
         }
       }
     });
@@ -2247,6 +2384,7 @@ export async function $expect(
       childProcess.stderr.on("data", (data: Buffer) => {
         const chunk = data.toString();
         stderr += chunk;
+        log("Received stderr chunk (%d bytes): %s", chunk.length, chunk.trim());
         // Also write stderr to console
         process.stderr.write(chunk);
       });
@@ -2254,6 +2392,8 @@ export async function $expect(
 
     // Handle process completion
     childProcess.on("close", (code) => {
+      log("Process closed with code: %s", code);
+
       // Log the number of matches for each pattern
       log("Pattern match summary:");
       for (const [pattern, count] of matchHistory.entries()) {
@@ -2272,10 +2412,17 @@ export async function $expect(
         );
       }
 
+      log(
+        "$expect completed. Total stdout: %d bytes, stderr: %d bytes",
+        stdout.length,
+        stderr.length,
+      );
+
       resolve({ stdout, stderr, code });
     });
 
     childProcess.on("error", (err) => {
+      log("Process error: %O", err);
       reject(new Error(`Failed to execute command: ${err.message}`));
     });
   });
