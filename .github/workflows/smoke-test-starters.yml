@@ -25,13 +25,6 @@ jobs:
           corepack enable
           pnpm install
 
-      - name: Link latest SDK
-        run: pnpm link-sdk
-
-      - name: Install Chrome for Puppeteer
-        uses: browser-actions/setup-chrome@v1
-        id: setup-chrome
-
       - name: Build SDK
         run: cd sdk && pnpm build
 
