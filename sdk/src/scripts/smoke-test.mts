@@ -152,9 +152,8 @@ async function main(options: SmokeTestOptions = {}): Promise<void> {
     log("Using default artifacts directory: %s", options.artifactDir);
   }
 
-  // Create artifacts directory
-  await mkdirp(options.artifactDir);
-  log("Created artifacts directory: %s", options.artifactDir);
+  // Clean and recreate artifacts directory
+  await setupArtifactsDirectory(options.artifactDir);
 
   // Throw immediately if both tests would be skipped
   if (options.skipDev && options.skipRelease) {
@@ -266,6 +265,44 @@ async function main(options: SmokeTestOptions = {}): Promise<void> {
   } catch (error) {
     await fail(error);
   }
+}
+
+/**
+ * Sets up the artifacts directory with a clean structure
+ */
+async function setupArtifactsDirectory(artifactDir: string): Promise<void> {
+  log("Setting up artifacts directory: %s", artifactDir);
+  console.log(`📁 Setting up artifacts directory: ${artifactDir}`);
+
+  // Check if directory exists
+  const exists = await pathExists(artifactDir);
+  if (exists) {
+    log("Artifacts directory already exists, removing it");
+    console.log(`🧹 Cleaning existing artifacts directory`);
+    try {
+      await fs.rm(artifactDir, { recursive: true, force: true });
+    } catch (error) {
+      log("Error removing existing artifacts directory: %O", error);
+      console.error(
+        `⚠️ Could not remove existing artifacts directory: ${error instanceof Error ? error.message : String(error)}`,
+      );
+      // Non-fatal error, continue
+    }
+  }
+
+  // Create main artifacts directory
+  await mkdirp(artifactDir);
+  log("Created artifacts directory: %s", artifactDir);
+
+  // Create standard subdirectories
+  const subdirs = ["project", "screenshots", "reports"];
+  for (const subdir of subdirs) {
+    const dirPath = join(artifactDir, subdir);
+    await mkdirp(dirPath);
+    log("Created artifacts subdirectory: %s", dirPath);
+  }
+
+  console.log(`✅ Artifacts directory structure created`);
 }
 
 /**
@@ -463,16 +500,15 @@ async function cleanupResources(
   // Always copy test directory to artifact directory if targetDir exists
   if (resources.targetDir && options.artifactDir) {
     try {
-      // Create project subdirectory in artifacts
-      const projectsDir = join(options.artifactDir, "projects");
-      await mkdirp(projectsDir);
+      // Use the standardized project directory
+      const projectDir = join(options.artifactDir, "project");
 
       // Use a directory name that includes timestamp and worker name for uniqueness
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const workerPart = resources.workerName ? `-${resources.workerName}` : "";
       const testResult = state.exitCode === 0 ? "passed" : "failed";
       const artifactTargetDir = join(
-        projectsDir,
+        projectDir,
         `smoke-test-project${workerPart}-${testResult}-${timestamp}`,
       );
 
@@ -484,9 +520,6 @@ async function cleanupResources(
       console.log(
         `📦 Copying test directory to artifacts: ${artifactTargetDir}`,
       );
-
-      // Ensure artifact directory exists
-      await mkdirp(options.artifactDir);
 
       // Use git-aware copying (same as we use for the original directory copy)
       // Read project's .gitignore if it exists
@@ -529,7 +562,7 @@ async function cleanupResources(
       });
 
       // Create a symlink to the latest project for easier access
-      const latestLink = join(projectsDir, "latest");
+      const latestLink = join(projectDir, "latest");
       try {
         // Remove existing symlink if it exists
         if (await pathExists(latestLink)) {
@@ -550,8 +583,8 @@ async function cleanupResources(
 
       // Create a simple report file with basic information
       try {
+        // Use the standardized reports directory
         const reportDir = join(options.artifactDir, "reports");
-        await mkdirp(reportDir);
 
         const reportPath = join(
           reportDir,
@@ -886,10 +919,9 @@ async function takeScreenshot(
   artifactDir: string,
   status: string,
 ): Promise<void> {
-  // Create screenshots subdirectory
+  // Use the standardized screenshots directory
   const screenshotsDir = join(artifactDir, "screenshots");
-  log("Creating screenshots directory: %s", screenshotsDir);
-  await fs.mkdir(screenshotsDir, { recursive: true });
+  log("Saving screenshot to: %s", screenshotsDir);
 
   // Create a more descriptive filename with timestamp and test result
   const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
