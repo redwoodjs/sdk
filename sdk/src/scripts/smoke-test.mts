@@ -1766,7 +1766,7 @@ async function deleteWorker(name: string, cwd?: string): Promise<void> {
     // Use our $expect utility to handle any confirmation prompts
     log("Running wrangler delete command with interactive prompts");
     await $expect(
-      `npx wrangler delete ${name} --yes`,
+      `npx wrangler delete ${name}`,
       [
         {
           expect: "Are you sure you want to delete",
