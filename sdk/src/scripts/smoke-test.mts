@@ -65,48 +65,60 @@ const capturer: StreamCapturer = {
       }
 
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      this.stdoutLogFile = createWriteStream(
-        join(logsDir, `stdout-${timestamp}.log`),
-        { flags: "a" },
-      );
-      this.stderrLogFile = createWriteStream(
-        join(logsDir, `stderr-${timestamp}.log`),
-        { flags: "a" },
-      );
-      this.combinedLogFile = createWriteStream(
-        join(logsDir, `combined-${timestamp}.log`),
-        { flags: "a" },
-      );
 
-      // Capture stdout
-      // @ts-ignore - TS doesn't like dynamically modifying process streams
-      process.stdout.write = (
-        chunk: any,
-        encoding?: BufferEncoding,
-        callback?: (error?: Error | null) => void,
-      ) => {
-        if (this.stdoutLogFile)
-          this.stdoutLogFile.write(chunk, encoding ?? "utf-8");
-        if (this.combinedLogFile)
-          this.combinedLogFile.write(chunk, encoding ?? "utf-8");
-        return this.originalStdoutWrite(chunk, encoding ?? "utf-8", callback);
-      };
+      try {
+        this.stdoutLogFile = createWriteStream(
+          join(logsDir, `stdout-${timestamp}.log`),
+          { flags: "a" },
+        );
+        this.stderrLogFile = createWriteStream(
+          join(logsDir, `stderr-${timestamp}.log`),
+          { flags: "a" },
+        );
+        this.combinedLogFile = createWriteStream(
+          join(logsDir, `combined-${timestamp}.log`),
+          { flags: "a" },
+        );
 
-      // Capture stderr
-      // @ts-ignore - TS doesn't like dynamically modifying process streams
-      process.stderr.write = (
-        chunk: any,
-        encoding?: BufferEncoding,
-        callback?: (error?: Error | null) => void,
-      ) => {
-        if (this.stderrLogFile)
-          this.stderrLogFile.write(chunk, encoding ?? "utf-8");
-        if (this.combinedLogFile)
-          this.combinedLogFile.write(chunk, encoding ?? "utf-8");
-        return this.originalStderrWrite(chunk, encoding ?? "utf-8", callback);
-      };
+        // Verify the streams are working
+        this.stdoutLogFile.write("Log capture started\n");
+        this.stderrLogFile.write("Log capture started\n");
+        this.combinedLogFile.write("Log capture started\n");
 
-      console.log(`📝 Log files created in ${logsDir}`);
+        // Capture stdout
+        // @ts-ignore - TS doesn't like dynamically modifying process streams
+        process.stdout.write = (
+          chunk: any,
+          encoding?: BufferEncoding,
+          callback?: (error?: Error | null) => void,
+        ) => {
+          if (this.stdoutLogFile && this.stdoutLogFile.writable)
+            this.stdoutLogFile.write(chunk, encoding ?? "utf-8");
+          if (this.combinedLogFile && this.combinedLogFile.writable)
+            this.combinedLogFile.write(chunk, encoding ?? "utf-8");
+          return this.originalStdoutWrite(chunk, encoding ?? "utf-8", callback);
+        };
+
+        // Capture stderr
+        // @ts-ignore - TS doesn't like dynamically modifying process streams
+        process.stderr.write = (
+          chunk: any,
+          encoding?: BufferEncoding,
+          callback?: (error?: Error | null) => void,
+        ) => {
+          if (this.stderrLogFile && this.stderrLogFile.writable)
+            this.stderrLogFile.write(chunk, encoding ?? "utf-8");
+          if (this.combinedLogFile && this.combinedLogFile.writable)
+            this.combinedLogFile.write(chunk, encoding ?? "utf-8");
+          return this.originalStderrWrite(chunk, encoding ?? "utf-8", callback);
+        };
+
+        console.log(`📝 Log files created in ${logsDir}`);
+      } catch (streamError) {
+        console.error(`Failed to create log streams: ${streamError}`);
+        // Clean up any partially created log files
+        this.stop();
+      }
     } catch (error) {
       console.error(`Failed to set up log capturing: ${error}`);
     }
@@ -120,9 +132,27 @@ const capturer: StreamCapturer = {
     process.stderr.write = this.originalStderrWrite;
 
     // Close log files
-    if (this.stdoutLogFile) this.stdoutLogFile.end();
-    if (this.stderrLogFile) this.stderrLogFile.end();
-    if (this.combinedLogFile) this.combinedLogFile.end();
+    if (this.stdoutLogFile) {
+      try {
+        this.stdoutLogFile.end();
+      } catch (e) {
+        console.error(`Error closing stdout log file: ${e}`);
+      }
+    }
+    if (this.stderrLogFile) {
+      try {
+        this.stderrLogFile.end();
+      } catch (e) {
+        console.error(`Error closing stderr log file: ${e}`);
+      }
+    }
+    if (this.combinedLogFile) {
+      try {
+        this.combinedLogFile.end();
+      } catch (e) {
+        console.error(`Error closing combined log file: ${e}`);
+      }
+    }
 
     this.stdoutLogFile = null;
     this.stderrLogFile = null;
@@ -1118,6 +1148,22 @@ async function setupArtifactsDirectory(artifactDir: string): Promise<void> {
 
   console.log(`✅ Artifacts directory structure created`);
 
+  // Ensure logs directory exists and has correct permissions before capturing logs
+  try {
+    const logsDir = join(artifactDir, "logs");
+    // Double-check permissions by writing a test file
+    const testLogPath = join(logsDir, "test-log-permissions.txt");
+    await fs.writeFile(testLogPath, "Testing log directory permissions\n");
+    await fs.unlink(testLogPath);
+    log("Log directory permissions verified");
+  } catch (error) {
+    log("Error verifying log directory permissions: %O", error);
+    console.error(
+      `⚠️ Warning: Log directory permissions issue: ${error instanceof Error ? error.message : String(error)}`,
+    );
+    // Not fatal, try to proceed anyway
+  }
+
   // Start capturing logs
   capturer.start(artifactDir);
 }
@@ -1402,10 +1448,46 @@ async function cleanupResources(
         await fs.rm(artifactTargetDir, { recursive: true, force: true });
       }
 
-      // Use direct copying instead of git-aware copying
-      await copy(resources.targetDir, artifactTargetDir);
-      log("Project directory copied successfully");
+      // Create gitignore filter for copying to artifacts
+      let ig = ignore();
+      const gitignorePath = join(resources.targetDir, ".gitignore");
 
+      if (await pathExists(gitignorePath)) {
+        log("Found .gitignore file at %s", gitignorePath);
+        const gitignoreContent = await fs.readFile(gitignorePath, "utf-8");
+        ig = ig.add(gitignoreContent);
+      } else {
+        log("No .gitignore found, using default ignore patterns");
+        // Add default ignores if no .gitignore exists
+        ig = ig.add(
+          [
+            "node_modules",
+            ".git",
+            "dist",
+            "build",
+            ".DS_Store",
+            "coverage",
+            ".cache",
+            ".wrangler",
+            ".env",
+          ].join("\n"),
+        );
+      }
+
+      // Copy project directory respecting the .gitignore
+      await copy(resources.targetDir, artifactTargetDir, {
+        filter: (src) => {
+          // Get path relative to project directory
+          const relativePath = relative(resources.targetDir!, src);
+          if (!relativePath) return true; // Include the root directory
+
+          // Check against ignore patterns
+          const result = !ig.ignores(relativePath);
+          return result;
+        },
+      });
+
+      log("Project directory copied successfully");
       console.log(
         `✅ Test directory copied to artifacts: ${artifactTargetDir}`,
       );
