@@ -1342,10 +1342,10 @@ async function runDevServer(cwd?: string): Promise<{
   };
 
   try {
-    // Start dev server with stdout pipe to capture URL
+    // Start dev server with stdout and stderr pipes to capture URL
     // Use the provided cwd if available
     devProcess = $({
-      stdio: ["inherit", "pipe", "inherit"],
+      stdio: ["inherit", "pipe", "pipe"], // Change to pipe stderr as well
       detached: true,
       cleanup: false, // Don't auto-kill on exit
       cwd: cwd || process.cwd(), // Use provided directory or current directory
@@ -1374,7 +1374,20 @@ async function runDevServer(cwd?: string): Promise<{
       const localMatch = output.match(/Local:\s+(http:\/\/localhost:\d+)/);
       if (localMatch && localMatch[1] && !url) {
         url = localMatch[1];
-        log("Found development server URL: %s", url);
+        log("Found development server URL in stdout: %s", url);
+      }
+    });
+
+    // Also listen for stderr to get the URL (some frameworks output to stderr in CI)
+    devProcess.stderr?.on("data", (data: Buffer) => {
+      const output = data.toString();
+      console.error(output); // Use console.error for stderr
+
+      // Try to extract the URL from the stderr output
+      const localMatch = output.match(/Local:\s+(http:\/\/localhost:\d+)/);
+      if (localMatch && localMatch[1] && !url) {
+        url = localMatch[1];
+        log("Found development server URL in stderr: %s", url);
       }
     });
 
@@ -2161,7 +2174,11 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
       );
       options.customPath = arg;
     } else {
-      console.warn(`Unknown option: ${arg}`);
+      // Throw error for unknown options instead of just warning
+      log("Unknown option: %s", arg);
+      throw new Error(
+        `Unknown option: ${arg}. Use --help to see available options.`,
+      );
     }
   }
 
