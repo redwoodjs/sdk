@@ -529,14 +529,9 @@ async function cleanupResources(
       // Ensure directory exists
       await mkdirp(projectDir);
 
-      // Use a directory name that includes timestamp and worker name for uniqueness
-      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-      const workerPart = resources.workerName ? `-${resources.workerName}` : "";
+      // Use a simple project directory name without timestamp
       const testResult = state.exitCode === 0 ? "passed" : "failed";
-      const artifactTargetDir = join(
-        projectDir,
-        `smoke-test-project${workerPart}-${testResult}-${timestamp}`,
-      );
+      const artifactTargetDir = projectDir;
 
       log(
         "Copying test directory to artifacts: %s → %s",
@@ -547,25 +542,14 @@ async function cleanupResources(
         `📦 Copying test directory to artifacts: ${artifactTargetDir}`,
       );
 
+      // Remove existing project directory if it exists
+      if (await pathExists(artifactTargetDir)) {
+        await fs.rm(artifactTargetDir, { recursive: true, force: true });
+      }
+
       // Use direct copying instead of git-aware copying
       await copy(resources.targetDir, artifactTargetDir);
       log("Project directory copied successfully");
-
-      // Create a symlink to the latest project for easier access
-      const latestLink = join(projectDir, "latest");
-      try {
-        // Remove existing symlink if it exists
-        if (await pathExists(latestLink)) {
-          await fs.unlink(latestLink);
-        }
-        // Create relative symlink
-        const relativeTargetPath = basename(artifactTargetDir);
-        await fs.symlink(relativeTargetPath, latestLink, "dir");
-        log("Created 'latest' symlink to %s", relativeTargetPath);
-      } catch (linkError) {
-        log("Error creating 'latest' symlink: %O", linkError);
-        // Non-fatal error, continue
-      }
 
       console.log(
         `✅ Test directory copied to artifacts: ${artifactTargetDir}`,
@@ -575,7 +559,7 @@ async function cleanupResources(
       try {
         // Use the standardized reports directory
         const reportDir = join(options.artifactDir, "reports");
-
+        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
         const reportPath = join(
           reportDir,
           `smoke-test-report-${timestamp}.json`,
