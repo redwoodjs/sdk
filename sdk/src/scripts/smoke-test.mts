@@ -25,6 +25,106 @@ import ignore from "ignore";
 import debug from "debug";
 import { debugSync } from "./debug-sync.mjs";
 import { execaCommand } from "execa";
+import { createWriteStream, WriteStream } from "fs";
+
+interface StreamCapturer {
+  stdoutLogFile: WriteStream | null;
+  stderrLogFile: WriteStream | null;
+  combinedLogFile: WriteStream | null;
+  originalStdoutWrite: (
+    chunk: Uint8Array | string,
+    encoding?: BufferEncoding,
+    callback?: (error?: Error | null) => void,
+  ) => boolean;
+  originalStderrWrite: (
+    chunk: Uint8Array | string,
+    encoding?: BufferEncoding,
+    callback?: (error?: Error | null) => void,
+  ) => boolean;
+  start: (artifactDir: string) => void;
+  stop: () => void;
+}
+
+const capturer: StreamCapturer = {
+  stdoutLogFile: null,
+  stderrLogFile: null,
+  combinedLogFile: null,
+  // @ts-ignore - TS doesn't like this binding but it works as expected
+  originalStdoutWrite: process.stdout.write.bind(process.stdout),
+  // @ts-ignore - TS doesn't like this binding but it works as expected
+  originalStderrWrite: process.stderr.write.bind(process.stderr),
+
+  start(artifactDir: string) {
+    // Create logs directory in the artifacts directory
+    const logsDir = join(artifactDir, "logs");
+    try {
+      // Synchronously create directory to ensure it exists before writing
+      const nodeFs = require("fs");
+      if (!nodeFs.existsSync(logsDir)) {
+        nodeFs.mkdirSync(logsDir, { recursive: true });
+      }
+
+      const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+      this.stdoutLogFile = createWriteStream(
+        join(logsDir, `stdout-${timestamp}.log`),
+        { flags: "a" },
+      );
+      this.stderrLogFile = createWriteStream(
+        join(logsDir, `stderr-${timestamp}.log`),
+        { flags: "a" },
+      );
+      this.combinedLogFile = createWriteStream(
+        join(logsDir, `combined-${timestamp}.log`),
+        { flags: "a" },
+      );
+
+      // Capture stdout
+      // @ts-ignore - TS doesn't like dynamically modifying process streams
+      process.stdout.write = (
+        chunk: any,
+        encoding?: BufferEncoding,
+        callback?: (error?: Error | null) => void,
+      ) => {
+        if (this.stdoutLogFile) this.stdoutLogFile.write(chunk, encoding);
+        if (this.combinedLogFile) this.combinedLogFile.write(chunk, encoding);
+        return this.originalStdoutWrite(chunk, encoding, callback);
+      };
+
+      // Capture stderr
+      // @ts-ignore - TS doesn't like dynamically modifying process streams
+      process.stderr.write = (
+        chunk: any,
+        encoding?: BufferEncoding,
+        callback?: (error?: Error | null) => void,
+      ) => {
+        if (this.stderrLogFile) this.stderrLogFile.write(chunk, encoding);
+        if (this.combinedLogFile) this.combinedLogFile.write(chunk, encoding);
+        return this.originalStderrWrite(chunk, encoding, callback);
+      };
+
+      console.log(`📝 Log files created in ${logsDir}`);
+    } catch (error) {
+      console.error(`Failed to set up log capturing: ${error}`);
+    }
+  },
+
+  stop() {
+    // Restore original write functions
+    // @ts-ignore - TS doesn't like dynamically modifying process streams
+    process.stdout.write = this.originalStdoutWrite;
+    // @ts-ignore - TS doesn't like dynamically modifying process streams
+    process.stderr.write = this.originalStderrWrite;
+
+    // Close log files
+    if (this.stdoutLogFile) this.stdoutLogFile.end();
+    if (this.stderrLogFile) this.stderrLogFile.end();
+    if (this.combinedLogFile) this.combinedLogFile.end();
+
+    this.stdoutLogFile = null;
+    this.stderrLogFile = null;
+    this.combinedLogFile = null;
+  },
+};
 
 // Helper function to detect if running in CI environment
 function isRunningInCI(ciFlag = false): boolean {
@@ -43,6 +143,9 @@ const forceReportOnExit = () => {
   if (forcedReportGenerated) return;
 
   try {
+    // Make sure to stop logging to files
+    capturer.stop();
+
     // Mark as generated to prevent duplicate reports
     forcedReportGenerated = true;
 
@@ -71,6 +174,25 @@ const forceReportOnExit = () => {
       exitCode: state.exitCode || 1,
       forcedReport: true,
       workerName: state.resources.workerName || null,
+      logFiles: state.options.artifactDir
+        ? {
+            stdout: join(
+              state.options.artifactDir,
+              "logs",
+              `stdout-${timestamp}.log`,
+            ),
+            stderr: join(
+              state.options.artifactDir,
+              "logs",
+              `stderr-${timestamp}.log`,
+            ),
+            combined: join(
+              state.options.artifactDir,
+              "logs",
+              `combined-${timestamp}.log`,
+            ),
+          }
+        : null,
       failures:
         state.failures.length > 0
           ? state.failures
@@ -98,6 +220,11 @@ const forceReportOnExit = () => {
         "\n⚠️ EMERGENCY REPORT GENERATED DUE TO UNEXPECTED TERMINATION",
       );
       console.log(`📝 Emergency report saved to: ${reportPath}`);
+      if (report.logFiles) {
+        console.log(
+          `📄 Log files saved to: ${join(state.options.artifactDir || "", "logs")}`,
+        );
+      }
     } catch (e) {
       // If we can't write, try to output to console at minimum
       console.error("❌ FAILED TO SAVE EMERGENCY REPORT", e);
@@ -308,6 +435,25 @@ async function generateFinalReport(isEmergency = false): Promise<void> {
       projectDir: state.options.artifactDir
         ? join(state.options.artifactDir, "project")
         : null,
+      logFiles: state.options.artifactDir
+        ? {
+            stdout: join(
+              state.options.artifactDir,
+              "logs",
+              `stdout-${timestamp}.log`,
+            ),
+            stderr: join(
+              state.options.artifactDir,
+              "logs",
+              `stderr-${timestamp}.log`,
+            ),
+            combined: join(
+              state.options.artifactDir,
+              "logs",
+              `combined-${timestamp}.log`,
+            ),
+          }
+        : null,
       failures: state.failures,
       options: {
         customPath: state.options.customPath,
@@ -347,6 +493,15 @@ async function generateFinalReport(isEmergency = false): Promise<void> {
     console.log(
       `│   - Skip client: ${report.options.skipClient ? "Yes" : "No"}`,
     );
+
+    // Add info about log files
+    if (report.logFiles) {
+      console.log(`│ Log files:`);
+      console.log(`│   - stdout: ${basename(report.logFiles.stdout)}`);
+      console.log(`│   - stderr: ${basename(report.logFiles.stderr)}`);
+      console.log(`│   - combined: ${basename(report.logFiles.combined)}`);
+    }
+
     console.log("└──────────────────────────────────────┘");
 
     // Add summary of failures count
@@ -752,6 +907,10 @@ async function teardown(): Promise<void> {
       forceReportOnExit();
     }
   } finally {
+    // Make sure log capturing is stopped before exiting
+    capturer.stop();
+    log("Log capturing stopped during teardown");
+
     // Make sure we generate a report no matter what
     if (!forcedReportGenerated) {
       forceReportOnExit();
@@ -779,11 +938,12 @@ async function main(options: SmokeTestOptions = {}): Promise<void> {
     state.options.artifactDir = options.artifactDir;
   }
 
-  // Start emergency report timer now that we have options
-  scheduleEmergencyReportTimer();
-
   // Clean and recreate artifacts directory
   await setupArtifactsDirectory(options.artifactDir);
+  log("Initialized log capturing to artifact files");
+
+  // Start emergency report timer now that we have options
+  scheduleEmergencyReportTimer();
 
   // Throw immediately if both tests would be skipped
   if (options.skipDev && options.skipRelease) {
@@ -945,7 +1105,7 @@ async function setupArtifactsDirectory(artifactDir: string): Promise<void> {
   log("Created artifacts directory: %s", artifactDir);
 
   // Create standard subdirectories
-  const subdirs = ["project", "screenshots", "reports"];
+  const subdirs = ["project", "screenshots", "reports", "logs"];
   for (const subdir of subdirs) {
     const dirPath = join(artifactDir, subdir);
     await mkdirp(dirPath);
@@ -953,6 +1113,9 @@ async function setupArtifactsDirectory(artifactDir: string): Promise<void> {
   }
 
   console.log(`✅ Artifacts directory structure created`);
+
+  // Start capturing logs
+  capturer.start(artifactDir);
 }
 
 /**
@@ -1287,6 +1450,10 @@ async function cleanupResources(
   }
 
   log("Resource cleanup completed");
+
+  // At the end of cleanup, stop log capturing
+  capturer.stop();
+  log("Log capturing stopped");
 }
 
 /**
