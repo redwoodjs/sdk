@@ -97,15 +97,24 @@ export const ensureDeployEnv = async () => {
     "node_modules/.cache/wrangler/wrangler-account.json",
   );
 
+  // Skip account selection if env vars are set (CI environments)
+  if (process.env.CLOUDFLARE_API_TOKEN && process.env.CLOUDFLARE_ACCOUNT_ID) {
+    console.log(
+      "Using CLOUDFLARE_API_TOKEN and CLOUDFLARE_ACCOUNT_ID from environment",
+    );
+  }
   // todo(justinvdm): this is a hack to force the account selection prompt,
   // we need to find a better way
-  if (!(await pathExists(accountCachePath))) {
+  else if (!(await pathExists(accountCachePath))) {
     await $({ stdio: "inherit" })`wrangler d1 list --json`;
   }
 
   // Create a no-op secret to ensure worker exists
   console.log(`Ensuring worker ${wranglerConfig.name} exists...`);
-  await $`echo "true"`.pipe`wrangler secret put TMP_WORKER_CREATED`;
+  await $({
+    env: process.env, // Explicitly pass environment variables
+    stdio: "inherit",
+  })`wrangler secret put TMP_WORKER_CREATED --value="true"`;
 
   // Check D1 database setup
   const needsDatabase = await hasD1Database();
@@ -129,8 +138,13 @@ export const ensureDeployEnv = async () => {
           style: "lowerCase",
         });
         const dbName = `${wranglerConfig.name}-${suffix}`;
-        await $({ stdio: "inherit" })`wrangler d1 create ${dbName}`;
-        const result = await $`wrangler d1 info ${dbName} --json`;
+        await $({
+          stdio: "inherit",
+          env: process.env,
+        })`wrangler d1 create ${dbName}`;
+        const result = await $({
+          env: process.env,
+        })`wrangler d1 info ${dbName} --json`;
         const dbInfo = JSON.parse(result.stdout ?? "{}");
 
         if (!dbInfo.uuid) {
@@ -169,7 +183,9 @@ export const ensureDeployEnv = async () => {
     console.log("Found auth usage, checking secret setup...");
     try {
       // Get list of all secrets
-      const secretsResult = await $`wrangler secret list --format=json`;
+      const secretsResult = await $({
+        env: process.env,
+      })`wrangler secret list --format=json`;
       const existingSecrets = JSON.parse(secretsResult.stdout ?? "[]").map(
         (secret: any) => secret.name,
       );
@@ -182,7 +198,9 @@ export const ensureDeployEnv = async () => {
       } else {
         // Secret doesn't exist, create it
         const secretKey = generateSecretKey();
-        await $`echo ${secretKey}`.pipe`wrangler secret put AUTH_SECRET_KEY`;
+        await $({
+          env: process.env,
+        })`wrangler secret put AUTH_SECRET_KEY --value="${secretKey}"`;
         console.log("Set AUTH_SECRET_KEY secret");
       }
     } catch (error) {
@@ -239,14 +257,15 @@ export const ensureDeployEnv = async () => {
       }
 
       // Check remote migrations status
-      const migrationStatus =
-        await $`npx wrangler d1 migrations list ${dbConfig.database_name} --remote`;
+      const migrationStatus = await $({
+        env: process.env,
+      })`npx wrangler d1 migrations list ${dbConfig.database_name} --remote`;
 
       // If stdout includes "No migrations found", this is a fresh database
       if (migrationStatus.stdout?.includes("No migrations present")) {
         console.log("No migrations found.");
       } else if (migrationStatus.stdout?.includes("Migrations to be applied")) {
-        await $({ stdio: "inherit" })`npm run migrate:prd`;
+        await $({ stdio: "inherit", env: process.env })`npm run migrate:prd`;
       } else {
         console.log("Migrations are up to date.");
       }
