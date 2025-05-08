@@ -1556,7 +1556,7 @@ async function createSmokeTestComponents(targetDir: string): Promise<void> {
 
   // Create __smokeTestFunctions.ts
   const smokeTestFunctionsPath = join(componentsDir, "__smokeTestFunctions.ts");
-  log("Creating SmokeTestFunctions at: %s", smokeTestFunctionsPath);
+  log("Creating __smokeTestFunctions.ts at: %s", smokeTestFunctionsPath);
   const smokeTestFunctionsContent = `"use server";
 
 export async function smokeTestAction(
@@ -1569,7 +1569,7 @@ export async function smokeTestAction(
 
   // Create SmokeTest.tsx
   const smokeTestPath = join(componentsDir, "__SmokeTest.tsx");
-  log("Creating SmokeTest component at: %s", smokeTestPath);
+  log("Creating __SmokeTest.tsx at: %s", smokeTestPath);
   const smokeTestContent = `
 import React from "react";
 import { RequestInfo } from "rwsdk/worker";
@@ -1670,7 +1670,7 @@ export const SmokeTestPage = (
 
   // Create SmokeTestClient.tsx
   const smokeTestClientPath = join(componentsDir, "__SmokeTestClient.tsx");
-  log("Creating SmokeTestClient component at: %s", smokeTestClientPath);
+  log("Creating __SmokeTestClient.tsx at: %s", smokeTestClientPath);
   const smokeTestClientContent = `"use client";
 
 import React, { useState } from "react";
