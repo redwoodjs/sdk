@@ -2008,10 +2008,10 @@ export async function $expect(
     console.log(`Running command: ${command}`);
 
     // Spawn the process with pipes for interaction
-    const childProcess = $(executable, args, {
-      cwd: cwd || process.cwd(),
-      stdio: ["pipe", "pipe", "pipe"], // All pipes for full control
-    });
+    const childProcess = $({
+      cwd: cwd ?? process.cwd(),
+      stdio: "pipe",
+    })(executable, args);
 
     let stdout = "";
     let stderr = "";
