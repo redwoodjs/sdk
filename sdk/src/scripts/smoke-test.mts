@@ -50,9 +50,6 @@ async function main(options: SmokeTestOptions = {}): Promise<void> {
   await setupArtifactsDirectory(options.artifactDir);
   log("Initialized log capturing to artifact files");
 
-  // Start emergency report timer now that we have options
-  scheduleEmergencyReportTimer();
-
   // Throw immediately if both tests would be skipped
   if (options.skipDev && options.skipRelease) {
     log("Error: Both dev and release tests are skipped");
@@ -328,142 +325,6 @@ function isRunningInCI(ciFlag = false): boolean {
   );
 }
 
-// Force report generation on process exit - this is a last resort safeguard
-let forcedReportGenerated = false;
-const forceReportOnExit = () => {
-  if (forcedReportGenerated) return;
-
-  try {
-    // Make sure to stop logging to files
-    capturer.stop();
-
-    // Mark as generated to prevent duplicate reports
-    forcedReportGenerated = true;
-
-    // Create a basic timestamp
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-
-    // Determine a valid report location
-    const reportDir = state.options.artifactDir
-      ? join(state.options.artifactDir, "reports")
-      : join(process.cwd(), ".reports");
-
-    // Synchronously ensure directory exists (ignoring errors)
-    try {
-      if (!existsSync(reportDir)) {
-        mkdirSync(reportDir, { recursive: true });
-      }
-    } catch (e) {
-      // Ignore directory creation errors
-    }
-
-    // Generate a basic report object
-    const report = {
-      timestamp,
-      success: state.exitCode === 0,
-      exitCode: state.exitCode || 1,
-      forcedReport: true,
-      workerName: state.resources.workerName || null,
-      logFiles: state.options.artifactDir
-        ? {
-            stdout: join(
-              state.options.artifactDir,
-              "logs",
-              `stdout-${timestamp}.log`,
-            ),
-            stderr: join(
-              state.options.artifactDir,
-              "logs",
-              `stderr-${timestamp}.log`,
-            ),
-            combined: join(
-              state.options.artifactDir,
-              "logs",
-              `combined-${timestamp}.log`,
-            ),
-          }
-        : null,
-      failures:
-        state.failures.length > 0
-          ? state.failures
-          : [
-              {
-                step: "Unknown",
-                error:
-                  "Process terminated unexpectedly before detailed error could be captured",
-              },
-            ],
-      options: state.options,
-    };
-
-    // Write report to file synchronously as process may be about to die
-    try {
-      const reportPath = join(
-        reportDir,
-        `smoke-test-forced-report-${timestamp}.json`,
-      );
-      writeFileSync(reportPath, JSON.stringify(report, null, 2));
-
-      // Try to print to console as well
-      console.log(
-        "\n⚠️ EMERGENCY REPORT GENERATED DUE TO UNEXPECTED TERMINATION",
-      );
-      console.log(`📝 Emergency report saved to: ${reportPath}`);
-      if (report.logFiles) {
-        console.log(
-          `📄 Log files saved to: ${join(state.options.artifactDir || "", "logs")}`,
-        );
-      }
-    } catch (e) {
-      // If we can't write, try to output to console at minimum
-      console.error("❌ FAILED TO SAVE EMERGENCY REPORT", e);
-      console.log("EMERGENCY REPORT CONTENT:", JSON.stringify(report, null, 2));
-    }
-  } catch (e) {
-    // Last resort attempt to show something
-    console.error("❌ COMPLETE FAILURE OF REPORT GENERATION:", e);
-  }
-};
-
-// Register the handler for exit and various signals
-process.on("exit", forceReportOnExit);
-process.on("SIGINT", () => {
-  forceReportOnExit();
-  process.exit(130);
-});
-process.on("SIGTERM", () => {
-  forceReportOnExit();
-  process.exit(143);
-});
-process.on("SIGUSR1", forceReportOnExit);
-process.on("SIGUSR2", forceReportOnExit);
-
-// Schedule regular report generation while process is running
-// This will ensure we have at least some data if the process hangs
-const scheduleEmergencyReportTimer = () => {
-  if (forcedReportGenerated) return;
-
-  // Generate report every 10 seconds if the process is still running
-  const timer = global.setTimeout(() => {
-    if (!forcedReportGenerated && state.failures.length > 0) {
-      // Only generate emergency reports if we already have failures
-      forceReportOnExit();
-    }
-    // Reschedule if not yet generated
-    if (!forcedReportGenerated) {
-      scheduleEmergencyReportTimer();
-    }
-  }, 10000);
-
-  // Make sure the timer doesn't prevent process exit
-  if (timer.unref) {
-    timer.unref();
-  }
-};
-
-// Start the timer
-scheduleEmergencyReportTimer();
-
 if (!process.env.DEBUG) {
   debug.enable("rwsdk:smoke");
 }
@@ -541,7 +402,7 @@ process.on("uncaughtException", async (error) => {
 
   // Attempt to show report even if we're crashing
   if (!state.isTearingDown) {
-    await generateFinalReport(true);
+    await generateFinalReport();
   }
 
   // Exit after reporting
@@ -564,7 +425,7 @@ process.on("unhandledRejection", async (reason, promise) => {
 
   // Attempt to show report even if we're crashing
   if (!state.isTearingDown) {
-    await generateFinalReport(true);
+    await generateFinalReport();
   }
 
   // Exit after reporting
@@ -585,7 +446,7 @@ process.on("SIGINT", async () => {
 
   // Try to report before exiting
   if (!state.isTearingDown) {
-    await generateFinalReport(true);
+    await generateFinalReport();
   }
   process.exit(130);
 });
@@ -603,16 +464,15 @@ process.on("SIGTERM", async () => {
 
   // Try to report before exiting
   if (!state.isTearingDown) {
-    await generateFinalReport(true);
+    await generateFinalReport();
   }
   process.exit(143);
 });
 
 /**
  * Generates the final test report without doing any resource cleanup.
- * Used when we need to ensure a report is shown even during catastrophic failures.
  */
-async function generateFinalReport(isEmergency = false): Promise<void> {
+async function generateFinalReport(): Promise<void> {
   try {
     // Create a report object
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
@@ -654,20 +514,12 @@ async function generateFinalReport(isEmergency = false): Promise<void> {
 
     // Always print the report to console in a pretty format
     console.log("\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓");
-    if (isEmergency) {
-      console.log("┃       ⚠️ EMERGENCY CRASH REPORT       ┃");
-    } else {
-      console.log("┃          📊 SMOKE TEST REPORT          ┃");
-    }
+    console.log("┃          📊 SMOKE TEST REPORT          ┃");
     console.log("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛");
     console.log("┌──────────────────────────────────────┐");
     console.log(`│ Timestamp: ${timestamp}`);
 
-    if (isEmergency) {
-      console.log(`│ Status: ❌ FAILED (crash or unhandled error)`);
-    } else {
-      console.log(`│ Status: ${report.success ? "✅ PASSED" : "❌ FAILED"}`);
-    }
+    console.log(`│ Status: ${report.success ? "✅ PASSED" : "❌ FAILED"}`);
 
     console.log(`│ Exit code: ${state.exitCode}`);
     if (report.workerName) {
@@ -861,18 +713,14 @@ async function generateFinalReport(isEmergency = false): Promise<void> {
 
         const reportPath = join(
           reportDir,
-          isEmergency
-            ? `smoke-test-emergency-report-${timestamp}.json`
-            : `smoke-test-report-${timestamp}.json`,
+          `smoke-test-report-${timestamp}.json`,
         );
 
         await fs.writeFile(reportPath, JSON.stringify(report, null, 2));
-        console.log(
-          `\n📝 ${isEmergency ? "Emergency r" : "R"}eport saved to ${reportPath}`,
-        );
+        console.log(`\n📝 Report saved to ${reportPath}`);
       } catch (reportError) {
         console.error(
-          `⚠️ Could not save ${isEmergency ? "emergency " : ""}report to file: ${reportError instanceof Error ? reportError.message : String(reportError)}`,
+          `⚠️ Could not save report to file: ${reportError instanceof Error ? reportError.message : String(reportError)}`,
         );
       }
     } else {
@@ -1006,27 +854,22 @@ async function fail(
 
   try {
     // Generate a report before starting teardown to ensure we have at least one report
-    await generateFinalReport(true);
+    await generateFinalReport();
 
     // Then proceed with teardown
     await teardown();
   } catch (teardownError) {
-    // If teardown itself fails, use our forced report generation
+    // If teardown itself fails, log the error
     console.error(
       `Error during teardown: ${teardownError instanceof Error ? teardownError.message : String(teardownError)}`,
     );
-    forceReportOnExit();
 
-    // Set a short timeout to allow the forced report to be written before exiting
+    // Set a short timeout to allow any pending operations to complete
     await setTimeout(500);
   }
 
-  // Force a report if we somehow get here
-  if (!forcedReportGenerated) {
-    forceReportOnExit();
-    // Short delay to allow report to be written
-    await setTimeout(500);
-  }
+  // Set a short delay to allow report to be written
+  await setTimeout(500);
 
   return process.exit(exitCode) as never;
 }
@@ -1047,7 +890,7 @@ async function teardown(): Promise<void> {
   try {
     // First, generate a report, before any cleanup happens
     // This ensures we have at least some report even if cleanup fails
-    await generateFinalReport(false);
+    await generateFinalReport();
 
     // Then try to cleanup resources
     try {
@@ -1085,25 +928,17 @@ async function teardown(): Promise<void> {
 
     // Try generating report even if an error occurred
     try {
-      await generateFinalReport(true);
+      await generateFinalReport();
     } catch (reportError) {
       console.error(
         "Failed to generate report after teardown error:",
         reportError,
       );
-
-      // Last resort: use our forced report generation
-      forceReportOnExit();
     }
   } finally {
     // Make sure log capturing is stopped before exiting
     capturer.stop();
     log("Log capturing stopped during teardown");
-
-    // Make sure we generate a report no matter what
-    if (!forcedReportGenerated) {
-      forceReportOnExit();
-    }
 
     process.exit(state.exitCode);
   }
