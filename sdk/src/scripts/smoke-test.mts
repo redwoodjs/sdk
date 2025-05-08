@@ -1519,13 +1519,27 @@ async function runDevServer(cwd?: string): Promise<{
   };
 
   try {
+    // Check if we're in CI mode
+    const inCIMode = isRunningInCI(state.options.ci);
+
     // Start dev server with stdout pipe to capture URL
+    // Create environment variables object
+    const env = { ...process.env };
+
+    // Disable colors when running in CI mode to make URL parsing more reliable
+    if (inCIMode) {
+      log("Running in CI mode, disabling colors for dev server output");
+      env.NO_COLOR = "1";
+      env.FORCE_COLOR = "0";
+    }
+
     // Use the provided cwd if available
     devProcess = $({
       stdio: ["inherit", "pipe", "pipe"], // Pipe stderr again to check both streams
       detached: true,
       cleanup: false, // Don't auto-kill on exit
       cwd: cwd || process.cwd(), // Use provided directory or current directory
+      env, // Pass the updated environment variables
     })`npm run dev`;
 
     devProcess.catch((error: any) => {
@@ -1553,7 +1567,8 @@ async function runDevServer(cwd?: string): Promise<{
 
       // Try to extract the URL from the server output with a more flexible regex
       // Allow for variable amounts of whitespace between "Local:" and the URL
-      const localMatch = output.match(/Local:\s+(http:\/\/localhost:\d+)/);
+      // And handle ANSI color codes by using a more robust pattern
+      const localMatch = output.match(/Local:.*?(http:\/\/localhost:\d+)/);
       if (localMatch && localMatch[1] && !url) {
         url = localMatch[1];
         log("Found development server URL: %s", url);
@@ -1567,10 +1582,10 @@ async function runDevServer(cwd?: string): Promise<{
           output,
         );
 
-        // Try an alternative, more general pattern
-        const altMatch = output.match(/(https?:\/\/localhost:\d+)/i);
+        // Try an alternative, more general pattern that's more resilient to ANSI codes
+        const altMatch = output.match(/localhost:(\d+)/i);
         if (altMatch && altMatch[1] && !url) {
-          url = altMatch[1];
+          url = `http://localhost:${altMatch[1]}`;
           log("Found development server URL with alternative pattern: %s", url);
         }
       }
@@ -1588,11 +1603,10 @@ async function runDevServer(cwd?: string): Promise<{
       // Check if we already found a URL
       if (url) return;
 
-      // Check for localhost URLs in stderr
-      // Try the most general pattern - any URL with localhost
-      const urlMatch = output.match(/(https?:\/\/localhost:\d+)/i);
+      // Check for localhost URLs in stderr using the same resilient patterns as stdout
+      const urlMatch = output.match(/localhost:(\d+)/i);
       if (urlMatch && urlMatch[1]) {
-        url = urlMatch[1];
+        url = `http://localhost:${urlMatch[1]}`;
         log("Found development server URL in stderr: %s", url);
       }
     });
