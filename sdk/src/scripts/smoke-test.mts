@@ -876,11 +876,15 @@ async function checkUrl(
     }
   } catch (error) {
     log("Error during URL check: %O", error);
-    await browser.close().catch((e) => log("Error closing browser: %O", e));
+    await browser
+      .close()
+      .catch((e: unknown) => log("Error closing browser: %O", e));
     throw error;
   } finally {
     log("Closing browser");
-    await browser.close().catch((e) => log("Error closing browser: %O", e));
+    await browser
+      .close()
+      .catch((e: unknown) => log("Error closing browser: %O", e));
   }
   log("URL check completed successfully");
 }
@@ -1342,10 +1346,10 @@ async function runDevServer(cwd?: string): Promise<{
   };
 
   try {
-    // Start dev server with stdout and stderr pipes to capture URL
+    // Start dev server with stdout pipe to capture URL
     // Use the provided cwd if available
     devProcess = $({
-      stdio: ["inherit", "pipe", "pipe"], // Change to pipe stderr as well
+      stdio: ["inherit", "pipe", "inherit"], // Change back to inherit for stderr
       detached: true,
       cleanup: false, // Don't auto-kill on exit
       cwd: cwd || process.cwd(), // Use provided directory or current directory
@@ -1370,24 +1374,12 @@ async function runDevServer(cwd?: string): Promise<{
       const output = data.toString();
       console.log(output);
 
-      // Try to extract the URL from the server output
-      const localMatch = output.match(/Local:\s+(http:\/\/localhost:\d+)/);
+      // Try to extract the URL from the server output with a more flexible regex
+      // Allow for variable amounts of whitespace between "Local:" and the URL
+      const localMatch = output.match(/Local:[ \t]+(http:\/\/localhost:\d+)/);
       if (localMatch && localMatch[1] && !url) {
         url = localMatch[1];
-        log("Found development server URL in stdout: %s", url);
-      }
-    });
-
-    // Also listen for stderr to get the URL (some frameworks output to stderr in CI)
-    devProcess.stderr?.on("data", (data: Buffer) => {
-      const output = data.toString();
-      console.error(output); // Use console.error for stderr
-
-      // Try to extract the URL from the stderr output
-      const localMatch = output.match(/Local:\s+(http:\/\/localhost:\d+)/);
-      if (localMatch && localMatch[1] && !url) {
-        url = localMatch[1];
-        log("Found development server URL in stderr: %s", url);
+        log("Found development server URL: %s", url);
       }
     });
 
@@ -1426,7 +1418,7 @@ async function runDevServer(cwd?: string): Promise<{
   } catch (error) {
     // Make sure to try to stop the server on error
     log("Error during dev server startup: %O", error);
-    await stopDev().catch((e) => {
+    await stopDev().catch((e: unknown) => {
       log("Failed to stop dev server during error handling: %O", e);
     });
     throw error;
