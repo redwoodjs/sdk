@@ -25,6 +25,7 @@ import {
 import ignore from "ignore";
 import debug from "debug";
 import { debugSync } from "./debug-sync.mjs";
+import { execaCommand } from "execa";
 
 // Helper function to detect if running in CI environment
 function isRunningInCI(ciFlag = false): boolean {
@@ -2182,10 +2183,10 @@ export async function $expect(
     console.log(`Running command: ${command}`);
 
     // Spawn the process with pipes for interaction
-    const childProcess = $({
+    const childProcess = execaCommand(command, {
       cwd: cwd ?? process.cwd(),
       stdio: "pipe",
-    })(command);
+    });
 
     let stdout = "";
     let stderr = "";
