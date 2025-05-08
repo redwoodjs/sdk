@@ -122,6 +122,19 @@ async function fail(
     });
   }
 
+  // Ensure artifactDir exists if it's defined but hasn't been created yet
+  if (state.options.artifactDir) {
+    try {
+      // Create the main artifacts directory and reports subdirectory if they don't exist
+      await mkdirp(state.options.artifactDir);
+      await mkdirp(join(state.options.artifactDir, "reports"));
+      log("Ensured artifact directories exist before teardown");
+    } catch (dirError) {
+      log("Error ensuring artifact directories exist: %O", dirError);
+      // Non-fatal, continue to teardown
+    }
+  }
+
   await teardown();
   return process.exit(exitCode) as never;
 }
@@ -142,56 +155,100 @@ async function teardown(): Promise<void> {
   try {
     await cleanupResources(state.resources, state.options);
 
-    // Add failures to the report file
-    if (state.resources.targetDir && state.options.artifactDir) {
+    // Create a report object regardless of directory existence
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+    const report = {
+      timestamp,
+      success: state.exitCode === 0,
+      exitCode: state.exitCode,
+      workerName: (state.resources.workerName || null) as string | null,
+      projectDir: state.options.artifactDir
+        ? join(state.options.artifactDir, "project")
+        : null,
+      failures: state.failures,
+      options: {
+        customPath: state.options.customPath,
+        skipDev: state.options.skipDev,
+        skipRelease: state.options.skipRelease,
+        skipClient: state.options.skipClient,
+      },
+    };
+
+    // Always print the report to console in a pretty format
+    console.log("\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓");
+    console.log("┃          📊 SMOKE TEST REPORT          ┃");
+    console.log("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛");
+    console.log("┌──────────────────────────────────────┐");
+    console.log(`│ Timestamp: ${timestamp}`);
+    console.log(`│ Status: ${report.success ? "✅ PASSED" : "❌ FAILED"}`);
+    console.log(`│ Exit code: ${report.exitCode}`);
+    if (report.workerName) {
+      console.log(`│ Worker name: ${report.workerName}`);
+    }
+    console.log(`│ Test options:`);
+    console.log(`│   - Custom path: ${report.options.customPath || "/"}`);
+    console.log(`│   - Skip dev: ${report.options.skipDev ? "Yes" : "No"}`);
+    console.log(
+      `│   - Skip release: ${report.options.skipRelease ? "Yes" : "No"}`,
+    );
+    console.log(
+      `│   - Skip client: ${report.options.skipClient ? "Yes" : "No"}`,
+    );
+    console.log("└──────────────────────────────────────┘");
+
+    // Add summary of failures count if any
+    if (state.failures.length > 0) {
+      console.log(`\n❌ Failed tests: ${state.failures.length}`);
+    }
+
+    // Add failures to the report file if we have a valid artifactDir
+    if (state.options.artifactDir) {
       try {
         // Use the standardized reports directory
         const reportDir = join(state.options.artifactDir, "reports");
-        const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+        // Ensure the directory exists, even if it was not created earlier
+        await mkdirp(reportDir);
+
         const reportPath = join(
           reportDir,
           `smoke-test-report-${timestamp}.json`,
         );
 
-        // Create more detailed report with failures
-        const report = {
-          timestamp,
-          success: state.exitCode === 0,
-          exitCode: state.exitCode,
-          // Use a simpler approach with type assertion to avoid the linter error
-          workerName: (state.resources.workerName || null) as string | null,
-          projectDir: join(state.options.artifactDir, "project"),
-          failures: state.failures,
-          options: {
-            customPath: state.options.customPath,
-            skipDev: state.options.skipDev,
-            skipRelease: state.options.skipRelease,
-          },
-        };
-
         await fs.writeFile(reportPath, JSON.stringify(report, null, 2));
         log("Wrote test report to %s", reportPath);
-        console.log(`📝 Test report saved to ${reportPath}`);
+        console.log(`\n📝 Test report saved to ${reportPath}`);
       } catch (reportError) {
-        log("Error writing test report: %O", reportError);
+        log("Error writing test report to file: %O", reportError);
+        console.error(
+          `⚠️ Could not save test report to file: ${reportError instanceof Error ? reportError.message : String(reportError)}`,
+        );
         // Non-fatal error, continue
       }
+    } else {
+      console.log(
+        "\n⚠️ No artifacts directory specified, report not saved to disk",
+      );
     }
 
     // Report a summary of all failures at the end
     if (state.failures.length > 0) {
-      console.log("\n📋 Smoke Test Failure Summary:");
-      console.log("================================");
+      console.log("\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓");
+      console.log("┃        🔍 FAILURE DETAILS             ┃");
+      console.log("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛");
 
       state.failures.forEach((failure, index) => {
-        console.log(`Failure #${index + 1}: ${failure.step}`);
-        console.log(`Error: ${failure.error}`);
-        console.log("--------------------------------");
+        console.log(`┌─────────── Failure #${index + 1} ───────────┐`);
+        console.log(`│ Step: ${failure.step}`);
+        // Split error message into lines if it's long
+        const errorLines = failure.error.split("\n");
+        console.log(`│ Error: ${errorLines[0]}`);
+        for (let i = 1; i < errorLines.length; i++) {
+          console.log(`│        ${errorLines[i]}`);
+        }
+        console.log(`└────────────────────────────────────┘`);
       });
-
-      console.log(`\n❌ Total failures: ${state.failures.length}`);
     } else if (state.exitCode === 0) {
-      console.log("✨ Smoke test completed successfully!");
+      console.log("\n✨ Smoke test completed successfully!");
     }
   } catch (error) {
     log("Error during teardown: %O", error);
