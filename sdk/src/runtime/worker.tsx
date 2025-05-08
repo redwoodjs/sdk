@@ -143,6 +143,8 @@ export const defineApp = (routes: Route[]) => {
           });
 
           const html = htmlStream.pipeThrough(
+            // @ts-ignore: Assuming patched injectRSCPayload is used to test this PR
+            // https://github.com/devongovett/rsc-html-stream/pull/7
             injectRSCPayload(rscPayloadStream2, {
               nonce: rw.nonce,
             }),
