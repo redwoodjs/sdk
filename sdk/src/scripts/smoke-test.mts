@@ -2168,8 +2168,13 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
       options.projectDir = arg.substring(7);
     } else if (arg.startsWith("--artifact-dir=")) {
       options.artifactDir = arg.substring(15);
+    } else if (arg.startsWith("--url=")) {
+      options.customPath = arg.substring(6);
     } else if (!arg.startsWith("--")) {
-      // Any non-flag argument is treated as the custom path
+      // For backwards compatibility, any non-flag argument is treated as the custom path
+      console.log(
+        `Setting URL path to "${arg}" (use --url= format in the future)`,
+      );
       options.customPath = arg;
     } else {
       console.warn(`Unknown option: ${arg}`);
@@ -2213,9 +2218,10 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
     if (args.includes("--help") || args.includes("-h")) {
       console.log(`
 Smoke Test Usage:
-  node smoke-test.mjs [options] [custom-path]
+  node smoke-test.mjs [options]
 
 Options:
+  --url=PATH              Custom URL path to test (e.g., "/login")
   --skip-dev              Skip testing the local development server
   --skip-release          Skip testing the release/production deployment
   --skip-client           Skip client-side tests, only run server-side checks
@@ -2234,17 +2240,14 @@ Options:
   --bail                  Stop on first test failure (default: run all possible tests)
   --help, -h              Show this help message
 
-Arguments:
-  custom-path             Optional path to test (e.g., "/login")
-
 CI Environment:
   * When running in CI (detected automatically or with --ci flag), the --keep flag defaults to true
   * Screenshots and test reports are always saved to the artifacts directory
   * Test project is copied to the artifacts directory when --keep is true
 
 Examples:
-  pnpm smoke-test                                # Test both dev and release with default path
-  pnpm smoke-test /login                         # Test both dev and release with /login path
+  pnpm smoke-test                                # Test both dev and release with default path (/)
+  pnpm smoke-test --url=/login                   # Test both dev and release with /login path
   pnpm smoke-test --skip-release                 # Only test dev server
   pnpm smoke-test --path=./my-project            # Test using the specified project directory
   pnpm smoke-test --path=./my-project --keep     # Keep the test directory after completion

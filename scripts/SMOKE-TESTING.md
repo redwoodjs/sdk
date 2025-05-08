@@ -59,7 +59,7 @@ To run a smoke test for a specific starter:
 
 ```sh
 # From the sdk/ directory
-pnpm smoke-test "/custom/path" -p="../starters/minimal" --artifact-dir="./my-artifacts"
+pnpm smoke-test --url="/custom/path" --path="../starters/minimal" --artifact-dir="./my-artifacts"
 
 # Skip client-side tests (only run server-side checks)
 pnpm smoke-test --skip-client
@@ -70,6 +70,7 @@ pnpm smoke-test --skip-client
 The smoke-test script supports several options:
 
 ```
+--url=PATH              Custom URL path to test (e.g., "/login")
 --skip-dev              Skip testing the local development server
 --skip-release          Skip testing the release/production deployment
 --skip-client           Skip client-side tests, only run server-side checks
