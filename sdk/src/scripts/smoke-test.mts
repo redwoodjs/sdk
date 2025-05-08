@@ -37,6 +37,117 @@ function isRunningInCI(ciFlag = false): boolean {
   );
 }
 
+// Force report generation on process exit - this is a last resort safeguard
+let forcedReportGenerated = false;
+const forceReportOnExit = () => {
+  if (forcedReportGenerated) return;
+
+  try {
+    // Mark as generated to prevent duplicate reports
+    forcedReportGenerated = true;
+
+    // Create a basic timestamp
+    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+
+    // Determine a valid report location
+    const reportDir = state.options.artifactDir
+      ? join(state.options.artifactDir, "reports")
+      : join(process.cwd(), ".reports");
+
+    // Synchronously ensure directory exists (ignoring errors)
+    try {
+      const fs = require("fs");
+      if (!fs.existsSync(reportDir)) {
+        fs.mkdirSync(reportDir, { recursive: true });
+      }
+    } catch (e) {
+      // Ignore directory creation errors
+    }
+
+    // Generate a basic report object
+    const report = {
+      timestamp,
+      success: state.exitCode === 0,
+      exitCode: state.exitCode || 1,
+      forcedReport: true,
+      workerName: state.resources.workerName || null,
+      failures:
+        state.failures.length > 0
+          ? state.failures
+          : [
+              {
+                step: "Unknown",
+                error:
+                  "Process terminated unexpectedly before detailed error could be captured",
+              },
+            ],
+      options: state.options,
+    };
+
+    // Write report to file synchronously as process may be about to die
+    try {
+      const fs = require("fs");
+      const reportPath = join(
+        reportDir,
+        `smoke-test-forced-report-${timestamp}.json`,
+      );
+      fs.writeFileSync(reportPath, JSON.stringify(report, null, 2));
+
+      // Try to print to console as well
+      console.log(
+        "\n⚠️ EMERGENCY REPORT GENERATED DUE TO UNEXPECTED TERMINATION",
+      );
+      console.log(`📝 Emergency report saved to: ${reportPath}`);
+    } catch (e) {
+      // If we can't write, try to output to console at minimum
+      console.error("❌ FAILED TO SAVE EMERGENCY REPORT", e);
+      console.log("EMERGENCY REPORT CONTENT:", JSON.stringify(report, null, 2));
+    }
+  } catch (e) {
+    // Last resort attempt to show something
+    console.error("❌ COMPLETE FAILURE OF REPORT GENERATION:", e);
+  }
+};
+
+// Register the handler for exit and various signals
+process.on("exit", forceReportOnExit);
+process.on("SIGINT", () => {
+  forceReportOnExit();
+  process.exit(130);
+});
+process.on("SIGTERM", () => {
+  forceReportOnExit();
+  process.exit(143);
+});
+process.on("SIGUSR1", forceReportOnExit);
+process.on("SIGUSR2", forceReportOnExit);
+
+// Schedule regular report generation while process is running
+// This will ensure we have at least some data if the process hangs
+const scheduleEmergencyReportTimer = () => {
+  if (forcedReportGenerated) return;
+
+  // Generate report every 10 seconds if the process is still running
+  const timer = global.setTimeout(() => {
+    if (!forcedReportGenerated && state.failures.length > 0) {
+      // Only generate emergency reports if we already have failures
+      forceReportOnExit();
+    }
+    // Reschedule if not yet generated
+    if (!forcedReportGenerated) {
+      scheduleEmergencyReportTimer();
+    }
+  }, 10000);
+
+  // Make sure the timer doesn't prevent process exit
+  if (timer.unref) {
+    timer.unref();
+  }
+};
+
+// Start the timer
+scheduleEmergencyReportTimer();
+
 if (!process.env.DEBUG) {
   debug.enable("rwsdk:smoke");
 }
@@ -338,7 +449,21 @@ async function fail(
     }
   }
 
-  await teardown();
+  try {
+    await teardown();
+  } catch (teardownError) {
+    // If teardown itself fails, use our forced report generation
+    console.error(
+      `Error during teardown: ${teardownError instanceof Error ? teardownError.message : String(teardownError)}`,
+    );
+    forceReportOnExit();
+  }
+
+  // Force a report if we somehow get here
+  if (!forcedReportGenerated) {
+    forceReportOnExit();
+  }
+
   return process.exit(exitCode) as never;
 }
 
@@ -376,8 +501,16 @@ async function teardown(): Promise<void> {
         "Failed to generate report after cleanup error:",
         reportError,
       );
+
+      // Last resort: use our forced report generation
+      forceReportOnExit();
     }
   } finally {
+    // Make sure we generate a report no matter what
+    if (!forcedReportGenerated) {
+      forceReportOnExit();
+    }
+
     process.exit(state.exitCode);
   }
 }
@@ -388,14 +521,20 @@ async function teardown(): Promise<void> {
 async function main(options: SmokeTestOptions = {}): Promise<void> {
   log("Starting smoke test with options: %O", options);
 
-  // Store options in state for future reference
+  // Store options in state immediately for force report generation if needed
   state.options = options;
 
   // Set default artifacts directory if not specified
   if (!options.artifactDir) {
     options.artifactDir = join(process.cwd(), ".artifacts");
     log("Using default artifacts directory: %s", options.artifactDir);
+
+    // Update state.options with the default value
+    state.options.artifactDir = options.artifactDir;
   }
+
+  // Start emergency report timer now that we have options
+  scheduleEmergencyReportTimer();
 
   // Clean and recreate artifacts directory
   await setupArtifactsDirectory(options.artifactDir);
