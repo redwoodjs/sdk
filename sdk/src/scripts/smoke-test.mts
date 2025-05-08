@@ -64,6 +64,7 @@ interface SmokeTestOptions {
   customPath?: string;
   skipDev?: boolean;
   skipRelease?: boolean;
+  skipClient?: boolean;
   projectDir?: string;
   artifactDir?: string;
   keep?: boolean;
@@ -205,6 +206,7 @@ async function main(options: SmokeTestOptions = {}): Promise<void> {
           browserPath,
           options.headless !== false,
           options.bail,
+          options.skipClient,
         );
       } catch (error) {
         hasFailures = true;
@@ -237,6 +239,7 @@ async function main(options: SmokeTestOptions = {}): Promise<void> {
           browserPath,
           options.headless !== false,
           options.bail,
+          options.skipClient,
         );
       } catch (error) {
         hasFailures = true;
@@ -316,6 +319,7 @@ async function setupTestEnvironment(options: {
   customPath?: string;
   skipDev?: boolean;
   skipRelease?: boolean;
+  skipClient?: boolean;
   projectDir?: string;
   artifactDir?: string;
   sync?: boolean;
@@ -351,7 +355,7 @@ async function setupTestEnvironment(options: {
 
       // Create the smoke test components in the user's project
       log("Creating smoke test components");
-      await createSmokeTestComponents(targetDir);
+      await createSmokeTestComponents(targetDir, options.skipClient);
     } else {
       log("No project directory specified, using current directory");
       // When no project dir is specified, we'll use the current directory
@@ -376,6 +380,7 @@ async function runDevTest(
   browserPath?: string,
   headless: boolean = true,
   bail: boolean = false,
+  skipClient: boolean = false,
 ): Promise<void> {
   log("Starting dev server test with path: %s", customPath || "/");
   console.log("🚀 Testing local development server");
@@ -392,7 +397,14 @@ async function runDevTest(
         : customPath.startsWith("/")
           ? customPath
           : "/" + customPath);
-    await checkUrl(testUrl, artifactDir, browserPath, headless, bail);
+    await checkUrl(
+      testUrl,
+      artifactDir,
+      browserPath,
+      headless,
+      bail,
+      skipClient,
+    );
     log("Development server test completed successfully");
   } catch (error) {
     log("Error during development server testing: %O", error);
@@ -410,6 +422,7 @@ async function runReleaseTest(
   browserPath?: string,
   headless: boolean = true,
   bail: boolean = false,
+  skipClient: boolean = false,
 ): Promise<void> {
   log("Starting release test with path: %s", customPath || "/");
   console.log("\n🚀 Testing production deployment");
@@ -433,7 +446,14 @@ async function runReleaseTest(
         : customPath.startsWith("/")
           ? customPath
           : "/" + customPath);
-    await checkUrl(testUrl, artifactDir, browserPath, headless, bail);
+    await checkUrl(
+      testUrl,
+      artifactDir,
+      browserPath,
+      headless,
+      bail,
+      skipClient,
+    );
     log("Release test completed successfully");
 
     // Store the worker name if we didn't set it earlier
@@ -767,6 +787,7 @@ async function checkUrl(
   browserPath?: string,
   headless: boolean = true,
   bail: boolean = false,
+  skipClient: boolean = false,
 ): Promise<void> {
   console.log(`🔍 Testing URL: ${url}`);
 
@@ -794,7 +815,7 @@ async function checkUrl(
     log("Performing initial smoke test");
     let initialTestStatus = "passed";
     try {
-      await checkUrlSmoke(page, url, false, bail);
+      await checkUrlSmoke(page, url, false, bail, skipClient);
     } catch (error) {
       hasFailures = true;
       initialTestStatus = "failed";
@@ -831,7 +852,7 @@ async function checkUrl(
       log("Reloading page after realtime upgrade");
       await page.reload({ waitUntil: "networkidle0" });
       log("Performing post-upgrade smoke test");
-      await checkUrlSmoke(page, url, true, bail);
+      await checkUrlSmoke(page, url, true, bail, skipClient);
     } catch (error) {
       hasFailures = true;
       realtimeTestStatus = "failed";
@@ -914,6 +935,7 @@ async function checkUrlSmoke(
   url: string,
   isRealtime: boolean,
   bail: boolean = false,
+  skipClient: boolean = false,
 ): Promise<void> {
   const phase = isRealtime ? "Post-upgrade" : "Initial";
   console.log(`🔍 Testing ${phase} smoke tests at ${url}`);
@@ -967,22 +989,28 @@ async function checkUrlSmoke(
     );
   }
 
-  // Run client-side smoke test if available
-  log("Running client-side smoke test");
-  try {
-    await checkClientSmoke(page, phase);
-  } catch (error) {
-    hasFailures = true;
-    clientTestError = error instanceof Error ? error : new Error(String(error));
-    log("Error during client-side smoke test: %O", error);
-    console.error(
-      `❌ Client-side smoke test failed: ${error instanceof Error ? error.message : String(error)}`,
-    );
+  // Run client-side smoke test if available and not skipped
+  if (!skipClient) {
+    log("Running client-side smoke test");
+    try {
+      await checkClientSmoke(page, phase);
+    } catch (error) {
+      hasFailures = true;
+      clientTestError =
+        error instanceof Error ? error : new Error(String(error));
+      log("Error during client-side smoke test: %O", error);
+      console.error(
+        `❌ Client-side smoke test failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
 
-    // If bail is true, stop the tests
-    if (bail) {
-      throw error;
+      // If bail is true, stop the tests
+      if (bail) {
+        throw error;
+      }
     }
+  } else {
+    log("Skipping client-side smoke test");
+    console.log("⏩ Skipping client-side smoke test as requested");
   }
 
   // If there were failures, propagate them
@@ -1801,7 +1829,10 @@ async function deleteWorker(name: string, cwd?: string): Promise<void> {
 /**
  * Creates the smoke test components in the target project directory
  */
-async function createSmokeTestComponents(targetDir: string): Promise<void> {
+async function createSmokeTestComponents(
+  targetDir: string,
+  skipClient: boolean = false,
+): Promise<void> {
   console.log("Creating smoke test components in project...");
 
   // Create directories if they don't exist
@@ -1822,13 +1853,13 @@ export async function smokeTestAction(
 }
 `;
 
-  // Create SmokeTest.tsx
+  // Create SmokeTest.tsx with conditional client component import
   const smokeTestPath = join(componentsDir, "__SmokeTest.tsx");
   log("Creating __SmokeTest.tsx at: %s", smokeTestPath);
   const smokeTestContent = `
 import React from "react";
 import { RequestInfo } from "rwsdk/worker";
-import { SmokeTestClient } from "./__SmokeTestClient";
+${skipClient ? "" : 'import { SmokeTestClient } from "./__SmokeTestClient";'}
 import { smokeTestAction } from "./__smokeTestFunctions";
 
 export const SmokeTestInfo: React.FC = async () => {
@@ -1894,39 +1925,27 @@ export const SmokeTestInfo: React.FC = async () => {
         </pre>
       </details>
 
-      {/* Include the client component for on-demand smoke tests */}
-      <SmokeTestClient />
-    </div>
-  );
-};
-
-/**
- * Standalone smoke test page that conforms to the RouteComponent type
- */
-export const SmokeTestPage = (
-  requestInfo: RequestInfo
-): React.JSX.Element => {
-  return (
-    <div style={{ maxWidth: "800px", margin: "0 auto", padding: "40px 20px" }}>
-      <h1>RedwoodJS SDK Smoke Test</h1>
-      <SmokeTestInfo />
-      <p style={{ marginTop: "20px" }}>
-        This is a dedicated smoke test page to verify that your RedwoodJS SDK
-        application is functioning correctly. It tests that server-side
-        rendering, client-side hydration, and RSC (React Server Components)
-        actions are all working properly.
-      </p>
-      <p>
-        Use the button below to manually trigger a new smoke test at any time.
-      </p>
+      ${
+        skipClient
+          ? "<!-- Client-side checks disabled -->"
+          : "{/* Include the client component for on-demand smoke tests */}\n      <SmokeTestClient />"
+      }
     </div>
   );
 };`;
 
-  // Create SmokeTestClient.tsx
-  const smokeTestClientPath = join(componentsDir, "__SmokeTestClient.tsx");
-  log("Creating __SmokeTestClient.tsx at: %s", smokeTestClientPath);
-  const smokeTestClientContent = `"use client";
+  // Write the server files
+  log("Writing SmokeTestFunctions file");
+  await fs.writeFile(smokeTestFunctionsPath, smokeTestFunctionsContent);
+  log("Writing SmokeTest component file");
+  await fs.writeFile(smokeTestPath, smokeTestContent);
+
+  // Only create client component if not skipping client-side tests
+  if (!skipClient) {
+    // Create SmokeTestClient.tsx
+    const smokeTestClientPath = join(componentsDir, "__SmokeTestClient.tsx");
+    log("Creating __SmokeTestClient.tsx at: %s", smokeTestClientPath);
+    const smokeTestClientContent = `"use client";
 
 import React, { useState } from "react";
 import { smokeTestAction } from "./__smokeTestFunctions";
@@ -2071,19 +2090,22 @@ export const SmokeTestClient: React.FC = () => {
   );
 };`;
 
-  // Write the files
-  log("Writing SmokeTestFunctions file");
-  await fs.writeFile(smokeTestFunctionsPath, smokeTestFunctionsContent);
-  log("Writing SmokeTest component file");
-  await fs.writeFile(smokeTestPath, smokeTestContent);
-  log("Writing SmokeTestClient component file");
-  await fs.writeFile(smokeTestClientPath, smokeTestClientContent);
+    log("Writing SmokeTestClient component file");
+    await fs.writeFile(smokeTestClientPath, smokeTestClientContent);
+    log("Created client-side smoke test component");
+  } else {
+    log("Skipping client-side smoke test component creation");
+  }
 
   log("Smoke test components created successfully");
   console.log("Created smoke test components:");
   console.log(`- ${smokeTestFunctionsPath}`);
   console.log(`- ${smokeTestPath}`);
-  console.log(`- ${smokeTestClientPath}`);
+  if (!skipClient) {
+    console.log(`- ${join(componentsDir, "__SmokeTestClient.tsx")}`);
+  } else {
+    console.log("- Client component skipped (--skip-client was specified)");
+  }
 }
 
 // Run the smoke test if this file is executed directly
@@ -2100,6 +2122,7 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
     customPath: "/", // Default path
     skipDev: false,
     skipRelease: false,
+    skipClient: false,
     projectDir: undefined,
     artifactDir: join(process.cwd(), ".artifacts"), // Default to .artifacts in current directory
     keep: isRunningInCI(ciFlag), // Default to true in CI environments
@@ -2125,6 +2148,8 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
       options.skipDev = true;
     } else if (arg === "--skip-release") {
       options.skipRelease = true;
+    } else if (arg === "--skip-client") {
+      options.skipClient = true;
     } else if (arg === "--keep") {
       options.keep = true;
     } else if (arg === "--no-headless") {
@@ -2193,6 +2218,7 @@ Smoke Test Usage:
 Options:
   --skip-dev              Skip testing the local development server
   --skip-release          Skip testing the release/production deployment
+  --skip-client           Skip client-side tests, only run server-side checks
   --path=PATH             Project directory to test
   --artifact-dir=DIR      Directory to store test artifacts (default: .artifacts)
                           Creates structured output with subdirectories:

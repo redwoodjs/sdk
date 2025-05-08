@@ -25,6 +25,13 @@ This will:
 - Test the minimal starter with the root path `/`
 - Test the standard starter with the path `/user/login`
 
+For testing your own project, you can use:
+
+```sh
+# From within your project directory
+npx rw-scripts smoke-tests
+```
+
 ## How It Works
 
 The smoke testing process:
@@ -53,6 +60,27 @@ To run a smoke test for a specific starter:
 ```sh
 # From the sdk/ directory
 pnpm smoke-test "/custom/path" -p="../starters/minimal" --artifact-dir="./my-artifacts"
+
+# Skip client-side tests (only run server-side checks)
+pnpm smoke-test --skip-client
+```
+
+## Available Options
+
+The smoke-test script supports several options:
+
+```
+--skip-dev              Skip testing the local development server
+--skip-release          Skip testing the release/production deployment
+--skip-client           Skip client-side tests, only run server-side checks
+--path=PATH             Project directory to test
+--artifact-dir=DIR      Directory to store test artifacts
+--keep                  Don't delete the temporary project directory after tests
+--no-headless           Use regular browser instead of headless browser
+--no-sync               Do not sync SDK before running smoke test
+--sync                  Force sync SDK before running smoke test
+--ci                    Force CI mode behavior
+--bail                  Stop on first test failure
 ```
 
 ## Troubleshooting
