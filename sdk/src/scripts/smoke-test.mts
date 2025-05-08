@@ -1349,7 +1349,7 @@ async function runDevServer(cwd?: string): Promise<{
     // Start dev server with stdout pipe to capture URL
     // Use the provided cwd if available
     devProcess = $({
-      stdio: ["inherit", "pipe", "inherit"], // Change back to inherit for stderr
+      stdio: ["inherit", "pipe", "pipe"], // Pipe stderr again to check both streams
       detached: true,
       cleanup: false, // Don't auto-kill on exit
       cwd: cwd || process.cwd(), // Use provided directory or current directory
@@ -1374,12 +1374,53 @@ async function runDevServer(cwd?: string): Promise<{
       const output = data.toString();
       console.log(output);
 
+      // Log output for debugging with explicit character representation
+      log("Received stdout chunk: %O", output);
+      log("Chunk as JSON: %s", JSON.stringify(output));
+
       // Try to extract the URL from the server output with a more flexible regex
       // Allow for variable amounts of whitespace between "Local:" and the URL
-      const localMatch = output.match(/Local:[ \t]+(http:\/\/localhost:\d+)/);
+      const localMatch = output.match(/Local:\s+(http:\/\/localhost:\d+)/);
       if (localMatch && localMatch[1] && !url) {
         url = localMatch[1];
         log("Found development server URL: %s", url);
+      } else if (
+        output.includes("Local:") &&
+        output.includes("http://localhost:")
+      ) {
+        // Log near-match for debugging
+        log(
+          "Found potential URL pattern but regex didn't match. Content: %s",
+          output,
+        );
+
+        // Try an alternative, more general pattern
+        const altMatch = output.match(/(https?:\/\/localhost:\d+)/i);
+        if (altMatch && altMatch[1] && !url) {
+          url = altMatch[1];
+          log("Found development server URL with alternative pattern: %s", url);
+        }
+      }
+    });
+
+    // Also listen for stderr to check for URL patterns there as well
+    devProcess.stderr?.on("data", (data: Buffer) => {
+      const output = data.toString();
+      console.error(output); // Output error messages to console
+
+      // Log output for debugging
+      log("Received stderr chunk: %O", output);
+      log("Stderr chunk as JSON: %s", JSON.stringify(output));
+
+      // Check if we already found a URL
+      if (url) return;
+
+      // Check for localhost URLs in stderr
+      // Try the most general pattern - any URL with localhost
+      const urlMatch = output.match(/(https?:\/\/localhost:\d+)/i);
+      if (urlMatch && urlMatch[1]) {
+        url = urlMatch[1];
+        log("Found development server URL in stderr: %s", url);
       }
     });
 
