@@ -120,8 +120,8 @@ importers:
         specifier: 19.2.0-canary-39cad7af-20250411
         version: 19.2.0-canary-39cad7af-20250411(react-dom@19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411))(react@19.2.0-canary-39cad7af-20250411)(webpack@5.97.1)
       rsc-html-stream:
-        specifier: file:vendor/pkg/rsc-html-stream-0.0.5-test-nonce.1.tgz
-        version: file:sdk/vendor/pkg/rsc-html-stream-0.0.5-test-nonce.1.tgz
+        specifier: ^0.0.3
+        version: 0.0.3
       tmp-promise:
         specifier: ^3.0.3
         version: 3.0.3
@@ -3270,10 +3270,6 @@ packages:
 
   rsc-html-stream@0.0.3:
     resolution: {integrity: sha512-GrHT+ADZM1Mj+sfXNjJjtFCwvB/xK5gx9KHQqcHJQIKfZ0Nh3wd8O59Nvd7VLb8lyvdOkqnqi5d5TAtDICf8yQ==}
-
-  rsc-html-stream@file:sdk/vendor/pkg/rsc-html-stream-0.0.5-test-nonce.1.tgz:
-    resolution: {integrity: sha512-3yUnS7AT0007E4qr+yLUCKuQBUEccECX+smA7iU5CkcMAFn3VqvRykTSyfwJzsjLNyVS5U9HWS6kHSvy6etBeQ==, tarball: file:sdk/vendor/pkg/rsc-html-stream-0.0.5-test-nonce.1.tgz}
-    version: 0.0.5
 
   run-parallel@1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
@@ -7631,8 +7627,6 @@ snapshots:
       fsevents: 2.3.3
 
   rsc-html-stream@0.0.3: {}
-
-  rsc-html-stream@file:sdk/vendor/pkg/rsc-html-stream-0.0.5-test-nonce.1.tgz: {}
 
   run-parallel@1.2.0:
     dependencies:
