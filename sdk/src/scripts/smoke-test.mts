@@ -460,12 +460,8 @@ async function cleanupResources(
     );
   }
 
-  // Copy test directory to artifact directory if specified and we're keeping it
-  if (
-    resources.targetDir &&
-    options.artifactDir &&
-    (options.keep || inCIMode)
-  ) {
+  // Always copy test directory to artifact directory if targetDir exists
+  if (resources.targetDir && options.artifactDir) {
     try {
       // Create project subdirectory in artifacts
       const projectsDir = join(options.artifactDir, "projects");
@@ -474,9 +470,10 @@ async function cleanupResources(
       // Use a directory name that includes timestamp and worker name for uniqueness
       const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
       const workerPart = resources.workerName ? `-${resources.workerName}` : "";
+      const testResult = state.exitCode === 0 ? "passed" : "failed";
       const artifactTargetDir = join(
         projectsDir,
-        `smoke-test-project${workerPart}-${timestamp}`,
+        `smoke-test-project${workerPart}-${testResult}-${timestamp}`,
       );
 
       log(
@@ -590,6 +587,7 @@ async function cleanupResources(
     }
   }
 
+  // Clean up temporary directory only if keep flag is false and not in CI mode
   if (resources.tempDirCleanup && !options.keep && !inCIMode) {
     log("Cleaning up temporary directory");
     try {
@@ -601,11 +599,7 @@ async function cleanupResources(
         `Error while cleaning up temporary directory: ${error instanceof Error ? error.message : String(error)}`,
       );
     }
-  } else if (
-    resources.tempDirCleanup &&
-    (options.keep || inCIMode) &&
-    resources.targetDir
-  ) {
+  } else if (resources.tempDirCleanup && resources.targetDir) {
     console.log(
       `📂 Keeping temporary directory for inspection: ${resources.targetDir}`,
     );
@@ -795,10 +789,12 @@ async function checkUrl(
 
     // Initial smoke test
     log("Performing initial smoke test");
+    let initialTestStatus = "passed";
     try {
       await checkUrlSmoke(page, url, false, bail);
     } catch (error) {
       hasFailures = true;
+      initialTestStatus = "failed";
       initialTestError =
         error instanceof Error ? error : new Error(String(error));
       log("Error during initial smoke test: %O", error);
@@ -816,8 +812,17 @@ async function checkUrl(
       );
     }
 
+    // Take a screenshot after initial test
+    await takeScreenshot(
+      page,
+      url,
+      artifactDir,
+      `initial-${initialTestStatus}`,
+    );
+
     // Upgrade to realtime and check again
     log("Upgrading to realtime");
+    let realtimeTestStatus = "passed";
     try {
       await upgradeToRealtime(page);
       log("Reloading page after realtime upgrade");
@@ -826,6 +831,7 @@ async function checkUrl(
       await checkUrlSmoke(page, url, true, bail);
     } catch (error) {
       hasFailures = true;
+      realtimeTestStatus = "failed";
       realtimeTestError =
         error instanceof Error ? error : new Error(String(error));
       log("Error during realtime smoke test: %O", error);
@@ -839,23 +845,13 @@ async function checkUrl(
       }
     }
 
-    // Always take a screenshot and save to artifacts
-    // Create screenshots subdirectory
-    const screenshotsDir = join(artifactDir, "screenshots");
-    log("Creating screenshots directory: %s", screenshotsDir);
-    await fs.mkdir(screenshotsDir, { recursive: true });
-
-    // Create a more descriptive filename with timestamp
-    const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
-    const urlIdentifier = new URL(url).hostname.replace(/\./g, "-");
-    const screenshotPath = join(
-      screenshotsDir,
-      `smoke-test-${urlIdentifier}-${timestamp}.png`,
+    // Take a screenshot after realtime test
+    await takeScreenshot(
+      page,
+      url,
+      artifactDir,
+      `realtime-${realtimeTestStatus}`,
     );
-
-    log("Taking screenshot: %s", screenshotPath);
-    await page.screenshot({ path: screenshotPath, fullPage: true });
-    console.log(`📸 Screenshot saved to ${screenshotPath}`);
 
     // If there were failures, propagate them after taking screenshots
     if (hasFailures) {
@@ -879,6 +875,33 @@ async function checkUrl(
     await browser.close().catch((e) => log("Error closing browser: %O", e));
   }
   log("URL check completed successfully");
+}
+
+/**
+ * Helper function to take and save a screenshot with a descriptive name
+ */
+async function takeScreenshot(
+  page: Page,
+  url: string,
+  artifactDir: string,
+  status: string,
+): Promise<void> {
+  // Create screenshots subdirectory
+  const screenshotsDir = join(artifactDir, "screenshots");
+  log("Creating screenshots directory: %s", screenshotsDir);
+  await fs.mkdir(screenshotsDir, { recursive: true });
+
+  // Create a more descriptive filename with timestamp and test result
+  const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
+  const urlIdentifier = new URL(url).hostname.replace(/\./g, "-");
+  const screenshotPath = join(
+    screenshotsDir,
+    `smoke-test-${urlIdentifier}-${status}-${timestamp}.png`,
+  );
+
+  log("Taking screenshot: %s", screenshotPath);
+  await page.screenshot({ path: screenshotPath, fullPage: true });
+  console.log(`📸 Screenshot saved to ${screenshotPath}`);
 }
 
 /**
@@ -2158,18 +2181,13 @@ export async function $expect(
   cwd?: string,
 ): Promise<{ stdout: string; stderr: string; code: number | null }> {
   return new Promise((resolve, reject) => {
-    // Split command into executable and args
-    const parts = command.split(/\s+/);
-    const executable = parts[0];
-    const args = parts.slice(1);
-
     console.log(`Running command: ${command}`);
 
     // Spawn the process with pipes for interaction
     const childProcess = $({
       cwd: cwd ?? process.cwd(),
       stdio: "pipe",
-    })(executable, args);
+    })(command);
 
     let stdout = "";
     let stderr = "";
