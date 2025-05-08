@@ -1426,7 +1426,7 @@ async function upgradeToRealtime(page: Page): Promise<void> {
     // Record the specific failure
     state.failures.push({
       step: "Realtime Upgrade",
-      error: upgradeResult.message,
+      error: upgradeResult.message ?? "Unknown error",
     });
 
     throw new Error(
