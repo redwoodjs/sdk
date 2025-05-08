@@ -3,7 +3,6 @@ import puppeteer from "puppeteer-core";
 import { setTimeout } from "node:timers/promises";
 import { resolve, basename, join, relative } from "path";
 import { fileURLToPath } from "url";
-import * as process from "process";
 import * as fs from "fs/promises";
 import * as os from "os";
 import {
