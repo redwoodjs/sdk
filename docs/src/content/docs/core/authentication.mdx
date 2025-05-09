@@ -119,7 +119,7 @@ npx wrangler secret put TURNSTILE_SECRET_KEY
 5. Update your registration function to include Turnstile verification:
 
 ```tsx
-import { verifyTurnstileToken } from "@redwoodsdk/auth";
+import { verifyTurnstileToken } from "rwsdk/auth";
 
 // In your registration handler:
 const turnstileResponse = await verifyTurnstileToken(token, env);

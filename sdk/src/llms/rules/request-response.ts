@@ -1,8 +1,4 @@
----
-description: RedwoodSDK: Request handling and responses
-globs: worker.tsx,src/app/**/routes.ts,src/app/**/*/routes.ts
-alwaysApply: false
----
+export const requestResponse = `
 # RedwoodSDK: Request handling and responses
 
 You're an expert at Cloudflare, TypeScript, and building web apps in React. Generate high quality **RedwoodSDK route handlers** that adhere to the following best practices:
@@ -10,7 +6,7 @@ You're an expert at Cloudflare, TypeScript, and building web apps in React. Gene
 ## Guidelines
 
 1. Try to use Web APIs instead of external dependencies (e.g. use fetch instead of Axios, use WebSockets API instead of node-ws)
-2. Co-locate related routes into a separate `routes.ts` file in `./src/app/pages/<section>` (e.g. keep all "user" routes in `./src/app/pages/user/routes.ts`, all "blog" routes in `./src/app/pages/blog/routes.ts`), and then import them into `defineApp` with the `prefix` function
+2. Co-locate related routes into a separate \`routes.ts\` file in \`./src/app/pages/<section>\` (e.g. keep all "user" routes in \`./src/app/pages/user/routes.ts\`, all "blog" routes in \`./src/app/pages/blog/routes.ts\`), and then import them into \`defineApp\` with the \`prefix\` function
 4. Structure response data consistently with proper status codes
 5. Handle errors gracefully and return appropriate error responses
 
@@ -18,11 +14,11 @@ You're an expert at Cloudflare, TypeScript, and building web apps in React. Gene
 
 ### Basic Routing
 
-Routes are matched in the order they are defined. Define routes using the `route` function. Trailing slashes are optional and normalized internally.
+Routes are matched in the order they are defined. Define routes using the \`route\` function. Trailing slashes are optional and normalized internally.
 
 #### Static Path Matching
 
-```tsx
+\`\`\`tsx
 // Match exact pathnames
 route("/", function handler() {
   return <>Home Page</>
@@ -35,11 +31,11 @@ route("/about", function handler() {
 route("/contact", function handler() {
   return <>Contact Page</>
 })
-```
+\`\`\`
 
 #### Dynamic Path Parameters
 
-```tsx
+\`\`\`tsx
 // Match dynamic segments marked with a colon (:)
 route("/users/:id", function handler({ params }) {
   // params.id contains the value from the URL
@@ -50,11 +46,11 @@ route("/posts/:postId/comments/:commentId", function handler({ params }) {
   // Access multiple parameters
   return <>Comment {params.commentId} on Post {params.postId}</>
 })
-```
+\`\`\`
 
 #### Wildcard Path Matching
 
-```tsx
+\`\`\`tsx
 // Match all remaining segments after the prefix
 route("/files/*", function handler({ params }) {
   // params.$0 contains the wildcard value
@@ -65,14 +61,14 @@ route("/docs/*/version/*", function handler({ params }) {
   // Multiple wildcards available as params.$0, params.$1, etc.
   return <>Document: {params.$0}, Version: {params.$1}</>
 })
-```
+\`\`\`
 
 ### Response Types
 
 #### Plain Text Response
 
-```tsx
-import { route } from "@redwoodjs/sdk/router";
+\`\`\`tsx
+import { route } from "rwsdk/router";
 
 route("/api/status", function handler() {
   return new Response("OK", {
@@ -80,12 +76,12 @@ route("/api/status", function handler() {
     headers: { "Content-Type": "text/plain" }
   })
 })
-```
+\`\`\`
 
 #### JSON Response
 
-```tsx
-import { route } from "@redwoodjs/sdk/router";
+\`\`\`tsx
+import { route } from "rwsdk/router";
 
 route("/api/users/:id", function handler({ params }) {
   const userData = { id: params.id, name: "John Doe", email: "john@example.com" }
@@ -97,23 +93,23 @@ route("/api/users/:id", function handler({ params }) {
     }
   })
 })
-```
+\`\`\`
 
 #### JSX/React Components Response
 
-```tsx
-import { route } from "@redwoodjs/sdk/router";
+\`\`\`tsx
+import { route } from "rwsdk/router";
 import { UserProfile } from '@/app/components/UserProfile'
 
 route("/users/:id", function handler({ params }) {
   return <UserProfile userId={params.id} />
 })
-```
+\`\`\`
 
 #### Custom Document Template
 
-```tsx
-import { render, route } from "@redwoodjs/sdk/router";
+\`\`\`tsx
+import { render, route } from "rwsdk/router";
 import { Document } from '@/app/Document'
 
 render(Document, [
@@ -124,12 +120,12 @@ render(Document, [
     return <>About Page</>
   })
 ])
-```
+\`\`\`
 
 ### Error Handling
 
-```tsx
-import { route } from "@redwoodjs/sdk/router";
+\`\`\`tsx
+import { route } from "rwsdk/router";
 
 route("/api/posts/:id", async function handler({ params }) {
   try {
@@ -151,14 +147,14 @@ route("/api/posts/:id", async function handler({ params }) {
     )
   }
 })
-```
+\`\`\`
 
 ### Organization with Co-located Routes
 
-Create a file at `./src/app/pages/blog/routes.ts`:
+Create a file at \`./src/app/pages/blog/routes.ts\`:
 
-```tsx
-import { route } from "@redwoodjs/sdk/router";
+\`\`\`tsx
+import { route } from "rwsdk/router";
 import { isAdminUser } from '@/app/interceptors'
 
 import { BlogLandingPage } from './BlogLandingPage'
@@ -170,13 +166,13 @@ export const routes = [
   route('/post/:postId', BlogPostPage),
   route('/post/:postId/edit', [isAdminUser, BlogAdminPage])
 ]
-```
+\`\`\`
 
 Then import these routes in your main worker file:
 
-```tsx
+\`\`\`tsx
 // src/worker.tsx
-import { defineApp, render, route, prefix } from "@redwoodjs/sdk/router";
+import { defineApp, render, route, prefix } from "rwsdk/router";
 import { Document } from '@/app/Document'
 import { HomePage } from '@/app/pages/home/HomePage'
 import { routes as blogRoutes } from '@/app/pages/blog/routes'
@@ -188,12 +184,12 @@ export default defineApp([
     prefix('/blog', blogRoutes)
   ]),
 ])
-```
+\`\`\`
 
 ### Advanced: Route with Query Parameters
 
-```tsx
-import { route } from "@redwoodjs/sdk/router";
+\`\`\`tsx
+import { route } from "rwsdk/router";
 
 route("/api/search", function handler({ request }) {
   const url = new URL(request.url)
@@ -208,7 +204,6 @@ route("/api/search", function handler({ request }) {
     results: [] // Your search results would go here
   })
 })
-```
+\`\`\`
 
-
-
+`;

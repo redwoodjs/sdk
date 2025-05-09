@@ -15,7 +15,7 @@ export const Component = () => {
   return jsx('div', { children: 'Hello' });
 }`),
     ).toMatchInlineSnapshot(`
-      "import { registerClientReference } from "@redwoodjs/sdk/worker";
+      "import { registerClientReference } from "rwsdk/worker";
       const ComponentSSR = () => {
         return jsx('div', { children: 'Hello' });
       }
@@ -32,7 +32,7 @@ export const foo = "bar"
 export const baz = 23
 }`),
     ).toMatchInlineSnapshot(`
-      "import { registerClientReference } from "@redwoodjs/sdk/worker";
+      "import { registerClientReference } from "rwsdk/worker";
       export const foo = "bar"
       export const baz = 23
       }"
@@ -47,7 +47,7 @@ export const Component = async () => {
   return jsx('div', { children: 'Hello' });
 }`),
     ).toMatchInlineSnapshot(`
-      "import { registerClientReference } from "@redwoodjs/sdk/worker";
+      "import { registerClientReference } from "rwsdk/worker";
       const ComponentSSR = async () => {
         return jsx('div', { children: 'Hello' });
       }
@@ -64,7 +64,7 @@ export function Component() {
   return jsx('div', { children: 'Hello' });
 }`),
     ).toMatchInlineSnapshot(`
-      "import { registerClientReference } from "@redwoodjs/sdk/worker";
+      "import { registerClientReference } from "rwsdk/worker";
 
       function ComponentSSR() {
         return jsx('div', { children: 'Hello' });
@@ -82,7 +82,7 @@ export async function Component() {
   return jsx('div', { children: 'Hello' });
 }`),
     ).toMatchInlineSnapshot(`
-      "import { registerClientReference } from "@redwoodjs/sdk/worker";
+      "import { registerClientReference } from "rwsdk/worker";
 
       async function ComponentSSR() {
         return jsx('div', { children: 'Hello' });
@@ -104,7 +104,7 @@ export const Second = () => {
   return jsx('div', { children: 'Second' });
 }`),
     ).toMatchInlineSnapshot(`
-      "import { registerClientReference } from "@redwoodjs/sdk/worker";
+      "import { registerClientReference } from "rwsdk/worker";
       const FirstSSR = () => {
         return jsx('div', { children: 'First' });
       }
@@ -131,7 +131,7 @@ export const Second = async () => {
   return jsx('div', { children: 'Second' });
 }`),
     ).toMatchInlineSnapshot(`
-      "import { registerClientReference } from "@redwoodjs/sdk/worker";
+      "import { registerClientReference } from "rwsdk/worker";
       const FirstSSR = async () => {
         return jsx('div', { children: 'First' });
       }
@@ -158,7 +158,7 @@ export function Second() {
   return jsx('div', { children: 'Second' });
 }`),
     ).toMatchInlineSnapshot(`
-      "import { registerClientReference } from "@redwoodjs/sdk/worker";
+      "import { registerClientReference } from "rwsdk/worker";
 
       function FirstSSR() {
         return jsx('div', { children: 'First' });
@@ -186,7 +186,7 @@ export async function Second() {
   return jsx('div', { children: 'Second' });
 }`),
     ).toMatchInlineSnapshot(`
-      "import { registerClientReference } from "@redwoodjs/sdk/worker";
+      "import { registerClientReference } from "rwsdk/worker";
 
       async function FirstSSR() {
         return jsx('div', { children: 'First' });
@@ -216,7 +216,7 @@ const Second = () => {
 
 export { First, Second }`),
     ).toMatchInlineSnapshot(`
-      "import { registerClientReference } from "@redwoodjs/sdk/worker";
+      "import { registerClientReference } from "rwsdk/worker";
       const FirstSSR = () => {
         return jsx('div', { children: 'First' });
       }
@@ -306,7 +306,7 @@ export { Button, buttonVariants }
       import { jsx, jsxs } from "react/jsx-runtime"
 
       import { cn } from "@/lib/utils"
-      import { registerClientReference } from "@redwoodjs/sdk/worker";
+      import { registerClientReference } from "rwsdk/worker";
 
       const buttonVariants = cva(
         "font-bold inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
@@ -382,7 +382,7 @@ const Second = async () => {
 
 export { First, Second }`),
     ).toMatchInlineSnapshot(`
-      "import { registerClientReference } from "@redwoodjs/sdk/worker";
+      "import { registerClientReference } from "rwsdk/worker";
       const FirstSSR = async () => {
         return jsx('div', { children: 'First' });
       }
@@ -411,7 +411,7 @@ function Second() {
 
 export { First, Second }`),
     ).toMatchInlineSnapshot(`
-      "import { registerClientReference } from "@redwoodjs/sdk/worker";
+      "import { registerClientReference } from "rwsdk/worker";
 
       function FirstSSR() {
         return jsx('div', { children: 'First' });
@@ -441,7 +441,7 @@ async function Second() {
 
 export { First, Second }`),
     ).toMatchInlineSnapshot(`
-      "import { registerClientReference } from "@redwoodjs/sdk/worker";
+      "import { registerClientReference } from "rwsdk/worker";
 
       async function FirstSSR() {
         return jsx('div', { children: 'First' });
@@ -465,7 +465,7 @@ export default () => {
   return jsx('div', { children: 'Hello' });
 }`),
     ).toMatchInlineSnapshot(`
-      "import { registerClientReference } from "@redwoodjs/sdk/worker";
+      "import { registerClientReference } from "rwsdk/worker";
       const DefaultComponent0SSR = () => {
         return jsx('div', { children: 'Hello' });
       }
@@ -482,7 +482,7 @@ export default async () => {
   return jsx('div', { children: 'Hello' });
 }`),
     ).toMatchInlineSnapshot(`
-      "import { registerClientReference } from "@redwoodjs/sdk/worker";
+      "import { registerClientReference } from "rwsdk/worker";
       const DefaultComponent0SSR = async () => {
         return jsx('div', { children: 'Hello' });
       }
@@ -661,7 +661,7 @@ export const MovieSelector = ({
       import { jsxDEV } from "react/jsx-dev-runtime";
       import { useState, useEffect, useRef } from "react";
       import { ChevronDownIcon, CheckIcon } from "./icons";
-      import { registerClientReference } from "@redwoodjs/sdk/worker";
+      import { registerClientReference } from "rwsdk/worker";
 
       const MovieSelectorSSR = ({
         label,
@@ -834,7 +834,7 @@ export default function Component({ prop1, prop2 }) {
   return jsx('div', { children: 'Hello' });
 }`),
     ).toMatchInlineSnapshot(`
-      "import { registerClientReference } from "@redwoodjs/sdk/worker";
+      "import { registerClientReference } from "rwsdk/worker";
 
       function ComponentSSR({ prop1, prop2 }) {
         return jsx('div', { children: 'Hello' });
@@ -852,7 +852,7 @@ export default async function Component() {
   return jsx('div', { children: 'Hello' });
 }`),
     ).toMatchInlineSnapshot(`
-      "import { registerClientReference } from "@redwoodjs/sdk/worker";
+      "import { registerClientReference } from "rwsdk/worker";
 
       async function ComponentSSR() {
         return jsx('div', { children: 'Hello' });
@@ -939,7 +939,7 @@ export function ComplexComponent({ initialCount = 0 }) {
   });
 }`),
     ).toMatchInlineSnapshot(`
-      "import { registerClientReference } from "@redwoodjs/sdk/worker";
+      "import { registerClientReference } from "rwsdk/worker";
 
       function ComplexComponentSSR({ initialCount = 0 }) {
         const [count, setCount] = useState(initialCount);
@@ -1045,7 +1045,7 @@ export default function Main() {
 export { Second, Third }
 export { Fourth as AnotherName }`),
     ).toMatchInlineSnapshot(`
-      "import { registerClientReference } from "@redwoodjs/sdk/worker";
+      "import { registerClientReference } from "rwsdk/worker";
       const FirstSSR = () => {
         return jsx('div', { children: 'First' });
       }
@@ -1089,7 +1089,7 @@ function Component({ prop1, prop2 }) {
 
 export default Component;`),
     ).toMatchInlineSnapshot(`
-      "import { registerClientReference } from "@redwoodjs/sdk/worker";
+      "import { registerClientReference } from "rwsdk/worker";
 
       function ComponentSSR({ prop1, prop2 }) {
         return jsx('div', { children: 'Hello' });
@@ -1105,7 +1105,7 @@ export default Component;`),
 import { jsxDEV } from "react/jsx-dev-runtime";
 import { sendMessage } from "./functions";
 import { useState } from "react";
-import { consumeEventStream } from "@redwoodjs/sdk/client";
+import { consumeEventStream } from "rwsdk/client";
 
 export function Chat() {
   const [message, setMessage] = useState("");
@@ -1186,8 +1186,8 @@ export function Chat() {
       "import { jsxDEV } from "react/jsx-dev-runtime";
       import { sendMessage } from "./functions";
       import { useState } from "react";
-      import { consumeEventStream } from "@redwoodjs/sdk/client";
-      import { registerClientReference } from "@redwoodjs/sdk/worker";
+      import { consumeEventStream } from "rwsdk/client";
+      import { registerClientReference } from "rwsdk/worker";
 
       function ChatSSR() {
         const [message, setMessage] = useState("");

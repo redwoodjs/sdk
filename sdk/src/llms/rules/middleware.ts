@@ -1,8 +1,4 @@
----
-description: RedwoodSDK: Middleware
-globs: worker.tsx,middleware.ts,middleware.tsx
-alwaysApply: false
----
+export const middleware = `
 
 # RedwoodSDK: Middleware
 
@@ -11,7 +7,7 @@ You're an expert at Cloudflare, TypeScript, and building web apps with RedwoodSD
 ## Guidelines
 
 1. Create focused, single-responsibility middleware functions
-2. Organize middleware in dedicated files (e.g., `middleware.ts`, `middleware.tsx`)
+2. Organize middleware in dedicated files (e.g., \`middleware.ts\`, \`middleware.tsx\`)
 3. Use typed parameters and return values
 4. Include clear error handling and logging
 5. Follow the principle of least privilege
@@ -37,7 +33,7 @@ Middleware functions in RedwoodSDK are functions that run on every request befor
 
 ### Basic Middleware Structure
 
-```tsx
+\`\`\`tsx
 export default defineApp([
   setCommonHeaders(),
   async ({ ctx, request, headers }) => {
@@ -71,4 +67,5 @@ export default defineApp([
   },
   // Route handlers
 ]);
-```
+\`\`\`
+`;

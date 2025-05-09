@@ -3,20 +3,24 @@ import { type Plugin } from "vite";
 import { readFile } from "node:fs/promises";
 import { pathExists } from "fs-extra";
 
-// Use a Map to cache manifests by path
-const manifestCache = new Map<string, Record<string, { file: string }>>();
+let manifestCache: Record<string, { file: string }> | undefined;
 
 const readManifest = async (
   manifestPath: string,
 ): Promise<Record<string, { file: string }>> => {
-  if (!manifestCache.has(manifestPath)) {
+  if (manifestCache === undefined) {
     const exists = await pathExists(manifestPath);
-    const content = exists
-      ? JSON.parse(await readFile(manifestPath, "utf-8"))
-      : {};
-    manifestCache.set(manifestPath, content);
+
+    if (!exists) {
+      throw new Error(
+        `RedwoodSDK expected client manifest to exist at ${manifestPath}. This is likely a bug. Please report it at https://github.com/redwoodjs/sdk/issues/new`,
+      );
+    }
+
+    manifestCache = JSON.parse(await readFile(manifestPath, "utf-8"));
   }
-  return manifestCache.get(manifestPath)!;
+
+  return manifestCache!;
 };
 
 // Check if a string includes any jsx function calls
@@ -118,7 +122,7 @@ export async function transformJsxScriptTagsCode(
   // Scan for imports only once
   sourceFile.getImportDeclarations().forEach((importDecl) => {
     const moduleSpecifier = importDecl.getModuleSpecifierValue();
-    if (moduleSpecifier === "@redwoodjs/sdk/worker") {
+    if (moduleSpecifier === "rwsdk/worker") {
       sdkWorkerImportDecl = importDecl;
       // Check if requestInfo is already imported
       if (
@@ -355,7 +359,7 @@ export async function transformJsxScriptTagsCode(
     } else {
       // Add new import declaration
       sourceFile.addImportDeclaration({
-        moduleSpecifier: "@redwoodjs/sdk/worker",
+        moduleSpecifier: "rwsdk/worker",
         namedImports: ["requestInfo"],
       });
     }
@@ -387,10 +391,12 @@ export const transformJsxScriptTagsPlugin = ({
     },
 
     async transform(code) {
-      let manifest = {};
-      if (isBuild) {
-        manifest = await readManifest(manifestPath);
+      if (this.environment.name !== "worker") {
+        return;
       }
+
+      const manifest = isBuild ? await readManifest(manifestPath) : {};
+
       return transformJsxScriptTagsCode(code, manifest);
     },
   };

@@ -4,7 +4,7 @@ description: The RedwoodSDK worker
 next: false
 ---
 
-The `@redwoodjs/sdk/worker` module exports the `defineApp` function, which is the entry point for your Cloudflare Worker.
+The `rwsdk/worker` module exports the `defineApp` function, which is the entry point for your Cloudflare Worker.
 
 This is the shape of a Cloudflare Worker:
 
@@ -19,7 +19,7 @@ export default {
 This is the shape of a RedwoodSDK Worker:
 
 ```ts
-import { defineApp } from "@redwoodjs/sdk/worker";
+import { defineApp } from "rwsdk/worker";
 
 const app = defineApp();
 export default {
@@ -32,8 +32,8 @@ export default {
 The `defineApp` function is used to manage how Cloudflare Workers should process requests and subsequently return a response.
 
 ```ts
-import { defineApp } from '@redwoodjs/sdk/worker'
-import { route } from '@redwoodjs/sdk/router'
+import { defineApp } from 'rwsdk/worker'
+import { route } from 'rwsdk/router'
 
 defineApp([
   // Middleware
@@ -58,7 +58,7 @@ In this example above a request would be processed by the middleware, then the c
 The `ErrorResponse` class is used to return an errors that includes a status code, a message, and a stack trace. You'll be able to extract this information in try-catch blocks, handle it, or return a proper request response.
 
 ```ts
-import { ErrorResponse } from "@redwoodjs/sdk/worker";
+import { ErrorResponse } from "rwsdk/worker";
 
 export default defineApp([
   function middleware({ request, ctx }) {
@@ -84,7 +84,7 @@ export default defineApp([
 The `requestInfo` object is used to get information about the current request. It's a singleton that's populated for each request, and constains the following information.
 
 ```ts
-import { requestInfo } from "@redwoodjs/sdk/worker";
+import { requestInfo } from "rwsdk/worker";
 
 requestInfo.request.url;
 requestInfo.request.method;

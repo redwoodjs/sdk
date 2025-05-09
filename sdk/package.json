@@ -1,6 +1,6 @@
 {
-  "name": "@redwoodjs/sdk",
-  "version": "0.0.77",
+  "name": "rwsdk",
+  "version": "0.0.81",
   "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime",
   "type": "module",
   "bin": {
@@ -48,6 +48,10 @@
     "./turnstile": {
       "default": "./dist/runtime/lib/turnstile/turnstile.js",
       "types": "./dist/runtime/lib/turnstile/turnstile.d.ts"
+    },
+    "./llms": {
+      "default": "./dist/llms/index.js",
+      "types": "./dist/llms/index.d.ts"
     },
     "./realtime/worker": {
       "default": "./dist/runtime/lib/realtime/worker.js",
@@ -121,6 +125,7 @@
     "tmp-promise": "^3.0.3",
     "ts-morph": "^25.0.1",
     "unique-names-generator": "^4.7.1",
+    "vibe-rules": "^0.2.31",
     "vite-tsconfig-paths": "^5.1.4",
     "wrangler": "^4.14.1"
   },
