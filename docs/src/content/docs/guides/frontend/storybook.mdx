@@ -7,7 +7,7 @@ import { Aside, Steps } from '@astrojs/starlight/components';
 
 <Aside type="note" title="What is Storybook?">
   <p>
-    Storybook is a tool for developing UI components in isolation. It allows we to create and test components without needing to run our full application. It can also be a great way to document our components.
+    Storybook is a tool for developing UI components in isolation. It allows us to create and test components without needing to run our full application. It can also be a great way to document our components.
   </p>
   <p>
     Developing UI in isolation is especially useful if we have a component that relies on network requests or our database — we can mock any dependencies and focus on building the component itself.
@@ -19,27 +19,27 @@ import { Aside, Steps } from '@astrojs/starlight/components';
 
 ## Installing Storybook
 
-Because the RedwoodSDK is based on React and Vite, we can work through the <a target="_blank" href="https://storybook.js.org/docs/get-started/frameworks/react-vite">"React & Vite" documentation</a>.
+Because the RedwoodSDK is based on React and Vite, we can work through the <a target="_blank" href="https://storybook.js.org/docs/get-started/frameworks/react-vite">"React & Vite" documentation</a>:
 
 <Steps>
-1. Install Storybook
+1. Install Storybook:
     ```bash
     pnpm create storybook@latest
     ```
 
-2. Select what we want to use Storybook for. I selected both Documentation and Testing, though this guide will only cover the documentation part.
+2. Select what we want to use Storybook for — I selected both Documentation and Testing, though this guide will only cover the documentation part:
     ![](./images/sb-select-use.png)
 
-3. It'll say it can't detect the framework. Select React. It'll automatically detect Vite.
+3. It'll say it can't detect the framework. Select React — it'll automatically detect Vite:
     ![](./images/sb-select-react.png)
 
-4. Storybook will finish installing, and start our Storybook server.
+4. Storybook will finish installing, and then start our Storybook server:
     ![](./images/sb-started.png)
 
-5. It should automatically open our browser to Storybook, but if it doesn't, we can go to `localhost:6006` to see it.
+5. It should automatically open our browser to Storybook, and if it doesn't, we can go to `localhost:6006` to see it:
     ![](./images/sb-served-site.png)
 
-7. we'll also see that it added `storybook` and `storybook-build` scripts to our `package.json` file. we can always run `pnpm storybook` to start the Storybook server, and `pnpm storybook-build` to build our Storybook site for production.
+7. It also added `storybook` and `storybook-build` scripts to our `package.json` file. We can always run `pnpm storybook` to start the Storybook server, and `pnpm storybook-build` to build our Storybook site for production:
     ```json
     {
       "scripts": {
@@ -53,10 +53,10 @@ Because the RedwoodSDK is based on React and Vite, we can work through the <a ta
 
 <Aside type="note" title="Wait, Storybook is showing me some random components!">
   <p>
-    Storybook comes with some boilerplate components and stories. we can delete the `src/stories` folder to get rid of them.
+    Storybook comes with some boilerplate components and stories. We can delete the `src/stories` folder to get rid of them.
   </p>
   <p>
-    Still, if we're new to Storybook, I recommend keeping them around for a bit and taking a look at the files it added. They show we how to set up a Storybook component and how to use and customize the Storybook UI.
+    Still, if you're new to Storybook, I recommend keeping them around for a bit and taking a look at the files it added. They demonstrate how to set up a Storybook component and how to use and customize the Storybook UI.
   </p>
 </Aside>
 
@@ -74,8 +74,8 @@ export function Home({ ctx }: RequestInfo) {
     <div>
       <p>
         {ctx.user?.username
-          ? `we are logged in as user ${ctx.user.username}`
-          : "we are not logged in"}
+          ? `You are logged in as user ${ctx.user.username}`
+          : "You are not logged in"}
       </p>
     </div>
   );
@@ -109,13 +109,13 @@ Given that this is very basic, we'd most likely want to build this out a bit mor
     ```
     <Aside type="note" title="What is `args`?">
       <p>
-        [`args` is how we tell Storybook what props to pass to our component](https://storybook.js.org/docs/writing-stories/args). we can think of it as the "input" to our component.
+        [`args` is how we tell Storybook what props to pass to our component](https://storybook.js.org/docs/writing-stories/args). We can think of it as the "input" to our component.
       </p>
       <p>
         In this case, we're passing the `ctx` prop to the `Home` component. As always, if we don't give a component its required props, it'll complain about it.
       </p>
     </Aside>
-2. Save it, and go back to our Storybook site. we should see a new "Home" section in the sidebar:
+2. Save, and go back to our Storybook site. We should see a new "Home" section in the sidebar:
     ![](./images/sb-home-story-1.png)
 
 3. Great! What if we want to mock the logged in user? We can do that by adding a new story, this time passing in a user object to the `ctx` prop:
@@ -154,7 +154,7 @@ Given that this is very basic, we'd most likely want to build this out a bit mor
     };
     ```
 
-4. Save it, and go back to our Storybook site. we should see a new "Logged In" story:
+4. Save it, and go back to our Storybook site. We should see a new "Logged In" story:
     ![](./images/sb-home-story-2.png)
     <Aside type="note" title="What even is a story?">
       <p>
@@ -165,7 +165,7 @@ Given that this is very basic, we'd most likely want to build this out a bit mor
       </p>
       <p>
         For example, in our case, we have two stories: "Not Logged In" and "Logged In." Each story shows a different state of the `Home` component.
-        we can have as many stories as we want for a component. In fact, it's recommended to have a story for each state of the component.
+        We can have as many stories as we want for a component. In fact, it's recommended to have a story for each state of the component.
         As we continue building a component, checking back on its stories is also a great way to make sure that we haven't broken anything.
       </p>
       <p>
@@ -239,8 +239,8 @@ Given that this is very basic, we'd most likely want to build this out a bit mor
     ![](./images/sb-ctx-argtypes.gif)
 </Steps>
 
-we did it! 🎉 <br />
-we now have a fully functional Storybook set up with a component that we can play around with.
+You did it! 🎉 <br />
+We now have a fully functional Storybook set up with a component that we can play around with.
 
 ## Mocking a dependency that's not a prop
 
@@ -248,7 +248,7 @@ In the previous section, we mocked the `ctx` prop. But what if we want to mock a
 database via Prisma.
 
 <Steps>
-1. If we're also using the standard starter, then the only thing in our database schema is a list of users. What's the most obvious thing to do? List out all the users! Add this to our `Home` component:
+1. Starting with the standard starter, the only thing in our database schema is a list of users. What's the most obvious thing to do? List out all the users! Add this to our `Home` component:
     ```tsx title="src/app/pages/Home.tsx" ins={2, 13-17} useDiffSyntax={true} ins="async"
     import { RequestInfo } from "rwsdk/worker";
     import { db } from "@/db";
@@ -259,8 +259,8 @@ database via Prisma.
         <div>
           <p>
             {ctx.user?.username
-              ? `we are logged in as user ${ctx.user.username}`
-              : "we are not logged in"}
+              ? `You are logged in as user ${ctx.user.username}`
+              : "You are not logged in"}
           </p>
           <ul>
             {users.map((user) => (
@@ -276,7 +276,7 @@ database via Prisma.
     ![](./images/sb-prisma-error.png)
 
 3. We need to mock our Prisma client. There are a few ways to do this, and [Storybook](https://storybook.js.org/docs/writing-stories/mocking-data-and-modules/mocking-modules) and [Prisma](https://www.prisma.io/blog/testing-series-1-8eRB5p0Y8o) both have great documentation on this.
-    For the sake of this guide, we're going to do this the most straightforward way, so know that this is just the beginning. First, we need to create a mocked version of our Prisma client. Create a new file right next to our existing `db.ts` — `src/db.mock.ts`:
+    For the sake of this guide, we're going to do this the most straightforward way. First, we need to create a mocked version of our Prisma client. Create a new file right next to our existing `db.ts` — `src/db.mock.ts`:
     ```ts title="src/db.mock.ts"
     /**
     * First, mock the imported client.
@@ -295,7 +295,7 @@ database via Prisma.
     }
     ```
 4. Now, we need to tell Storybook to use this mocked version of the Prisma client. We'll do this using [a Vite alias](https://storybook.js.org/docs/writing-stories/mocking-data-and-modules/mocking-modules#builder-aliases).<br />
-    (we can instead use [subpath imports](https://storybook.js.org/docs/writing-stories/mocking-data-and-modules/mocking-modules#subpath-imports), but it requires a bit more setup — we'll need to change any existing imports.)<br />
+    (We can instead use [subpath imports](https://storybook.js.org/docs/writing-stories/mocking-data-and-modules/mocking-modules#subpath-imports), but it requires a bit more setup — we'd need to change any existing imports.)<br />
 
     One of the Storybook config files is [`.storybook/main.ts`](https://storybook.js.org/docs/api/main-config/main-config) — this defines the behavior of our Storybook project. Open it up and add the following:
     ```ts title=".storybook/main.ts" ins={2-3, 7-13, 25-33}
@@ -428,10 +428,9 @@ database via Prisma.
 
 You did it! 🚀 We now have a fully functioning Storybook project, and have started to explore the benefits of developing UI in isolation.
 
-We're also well on our way to having a robust and well-documented and well-tested UI component library for our Redwood SDK project.
+We're also well on our way to having a robust, well-documented, and well-tested UI component library for our Redwood SDK project.
 
 Some great resources for next steps are:
 - [Testing UIs with Storybook](https://storybook.js.org/docs/writing-tests/)
 - [Documenting components with Storybook](https://storybook.js.org/docs/writing-docs/)
 - [Publishing your Storybook](https://storybook.js.org/docs/sharing)
-
