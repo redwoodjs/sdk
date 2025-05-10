@@ -102,7 +102,7 @@ export default defineConfig({
               label: "Frontend Development",
               collapsed: true,
               items: [
-                { label: "TailwindCSS", slug: "guides/frontend/tailwind" },
+                { label: "Tailwind CSS", slug: "guides/frontend/tailwind" },
                 { label: "Storybook", slug: "guides/frontend/storybook" },
                 { label: "shadcn/ui", slug: "guides/frontend/shadcn" },
                 { label: "Layouts", slug: "guides/frontend/layouts" },
