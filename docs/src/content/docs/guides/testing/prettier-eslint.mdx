@@ -1,0 +1,324 @@
+---
+title: Prettier and ESLint
+description: Integrating with Your Workflow
+---
+
+import { Aside, Steps } from "@astrojs/starlight/components";
+
+## Prettier: Consistent Code Formatting
+
+[Prettier](https://prettier.io/) enforces a consistent code styling by parsing your code and reformatting it, ensuring consistency across your codebase.
+
+### How Prettier Works
+
+Prettier takes your code, parses it into an abstract syntax tree (AST), and then regenerates the code with consistent formatting rules. This approach ensures:
+
+- Consistent indentation, spacing, and line breaks
+- Standardized quote styles and semicolon usage
+- Proper wrapping of long lines
+- Normalized object and array formatting
+
+Your RedwoodSDK project includes a `.prettierrc` file with minimal defaults.
+
+```json
+{
+  "overrides": [
+    {
+      "files": "*.jsonc",
+      "options": {
+        "trailingComma": "none"
+      }
+    }
+  ]
+}
+```
+
+You can customize it to your liking. See the [official Prettier documentation for a comprehensive list of options](https://prettier.io/docs/options).
+
+## ESLint: Code Quality Enforcement
+
+ESLint helps identify problematic patterns in JavaScript code. It helps catch bugs, enforce best practices, and maintain consistent coding conventions.
+
+### How ESLint Works
+
+ESLint analyzes your code for potential issues using a set of configurable rules. These rules can check for:
+
+- Syntax errors and potential bugs
+- Unused variables and imports
+- Accessibility issues in React components
+- Security vulnerabilities
+- Consistent coding patterns
+
+<Steps>
+1. Install ESLint and the necessary plugins for React and TypeScript support:
+
+    ```bash
+    pnpm install --save-dev eslint @typescript-eslint/eslint-plugin @typescript-eslint/parser eslint-plugin-react eslint-plugin-react-hooks eslint-plugin-jsx-a11y
+    ```
+
+2. For Prettier integration, also install:
+
+    ```bash
+    pnpm install --save-dev eslint-config-prettier eslint-plugin-prettier
+    ```
+
+3. Create an `.eslintrc.js` file in the root of your project:
+
+    ```js title=".eslintrc.js"
+    module.exports = {
+      root: true,
+      parser: '@typescript-eslint/parser',
+      parserOptions: {
+        ecmaVersion: 2020,
+        sourceType: 'module',
+        ecmaFeatures: {
+          jsx: true,
+        },
+      },
+      settings: {
+        react: {
+          version: 'detect',
+        },
+      },
+      env: {
+        browser: true,
+        node: true,
+        es6: true,
+      },
+      extends: [
+        'eslint:recommended',
+        'plugin:@typescript-eslint/recommended',
+        'plugin:react/recommended',
+        'plugin:react-hooks/recommended',
+        'plugin:jsx-a11y/recommended',
+        'prettier', // Make sure this is always the last element in the array
+      ],
+      plugins: ['@typescript-eslint', 'react', 'prettier'],
+      rules: {
+        // Add your custom rules here
+        'prettier/prettier': ['error', {}, { usePrettierrc: true }],
+        'react/react-in-jsx-scope': 'off', // Not needed with React 17+
+        'react/prop-types': 'off', // Not needed with TypeScript
+        '@typescript-eslint/explicit-function-return-type': 'off',
+        '@typescript-eslint/explicit-module-boundary-types': 'off',
+        'jsx-a11y/anchor-is-valid': [
+          'error',
+          {
+            components: ['Link'],
+            specialLink: ['hrefLeft', 'hrefRight'],
+            aspects: ['invalidHref', 'preferButton'],
+          },
+        ],
+      },
+    };
+    ```
+
+4. Create a `.eslintignore` file in the root of your project to exclude certain directories:
+
+    ```text title=".eslintignore"
+    node_modules
+    build
+    dist
+    public
+    .cache
+    coverage
+    ```
+
+5. Add pnpm scripts to your `package.json`:
+
+    ```jsonc title="package.json"
+    {
+      "scripts": {
+        "lint": "eslint 'src/**/*.{js,jsx,ts,tsx}'",
+        "lint:fix": "eslint 'src/**/*.{js,jsx,ts,tsx}' --fix",
+      },
+    }
+    ```
+
+6. Configure Prettier Integration
+
+    ```jsonc title=".prettierrc"
+    {
+      "semi": false,
+      "singleQuote": true,
+      "tabWidth": 2,
+      "trailingComma": "es5",
+      "printWidth": 80,
+      "arrowParens": "avoid"
+    }
+    ```
+
+</Steps>
+
+## Integrating with Your Workflow
+
+<Aside type="tip" title="ESLint and Prettier">
+Prettier and ESLint serve complementary but distinct purposes:
+
+- Prettier focuses exclusively on code formatting (whitespace, line breaks, etc.)
+- ESLint focuses on code quality and potential errors
+
+When used together, these tools can occasionally conflict. To resolve this, we recommend using the [eslint-config-prettier](https://github.com/prettier/eslint-config-prettier) package, which disables any ESLint rules that might conflict with Prettier's formatting.
+
+</Aside>
+
+For the best development experience:
+
+- **Editor Integration**: Configure your code editor to show type and lint errors in real-time
+- **Pre-commit Hooks**: Use Husky to run static tests before committing code
+- **CI Pipeline**: Include static tests in your continuous integration workflow
+- **Automated Fixes**: Use `pnpm run lint:fix` and `pnpm run format` to automatically fix many issues
+
+### Editor Integration
+
+<Steps>
+1. Install the ESLint and Prettier extensions:
+    - [Prettier](https://marketplace.visualstudio.com/items?itemName=esbenp.prettier-vscode)
+    - [ESLint](https://marketplace.visualstudio.com/items?itemName=dbaeumer.vscode-eslint)
+
+2. Configure VSCode / Cursor / Windsurf to format on save by adjusting your `settings.json` file:
+    ```jsonc
+    {
+      "editor.formatOnSave": true,
+      "editor.defaultFormatter": "esbenp.prettier-vscode",
+      "editor.codeActionsOnSave": {
+        "source.fixAll.eslint": true
+      }
+    }
+    ```
+</Steps>
+
+### Automated Fixes with pnpm Scripts
+
+Add these scripts to your `package.json`:
+
+```jsonc title="package.json"
+{
+  "scripts": {
+    "lint": "eslint 'src/**/*.{js,jsx,ts,tsx}'",
+    "lint:fix": "eslint 'src/**/*.{js,jsx,ts,tsx}' --fix",
+    "format": "prettier --write 'src/**/*.{js,jsx,ts,tsx,json,css,scss,md}'",
+    "format:check": "prettier --check 'src/**/*.{js,jsx,ts,tsx,json,css,scss,md}'",
+    "fix:all": "npm run format && npm run lint:fix",
+  },
+}
+```
+
+#### With these scripts, you can:
+
+- Check for linting issues with `npm run lint`
+- Automatically fix linting issues with `npm run lint:fix`
+- Format all files with `npm run format`
+- Check if files are properly formatted with `npm run format:check`
+- Fix all formatting and linting issues with `npm run fix:all`
+
+### Pre-commit Hooks
+
+[Husky](https://typicode.github.io/husky/) is a tool that makes it easy to use Git hooks in your project. Git hooks are scripts that run automatically when certain Git events occur, such as committing or pushing code.
+
+#### Why Use Husky?
+
+Husky ensures code quality standards are met before code is committed to your repository by:
+
+- Running linters and formatters automatically
+- Preventing commits that don't meet quality standards
+- Ensuring all team members follow the same standards
+- Reducing the number of "fix formatting" commits
+
+To set up and install Husky:
+
+<Steps>
+1. Install Husky and lint-staged:
+    ```bash
+    pnpm add --save-dev husky lint-staged
+    ```
+
+2.  Initialize Husky:
+
+    ```bash
+    npx husky install
+    ```
+
+3.  Create a pre-commit hook:
+
+    ```bash
+    npx husky add .husky/pre-commit "npx lint-staged"
+    ```
+
+4.  Configure lint-staged in `package.json`:
+    ```jsonc title="package.json"
+    {
+      "lint-staged": {
+        "*.{js,jsx,ts,tsx}": [
+          "eslint --fix",
+          "prettier --write"
+        ],
+        "*.{json,md,html,css}": [
+          "prettier --write"
+        ]
+      }
+    }
+    ```
+
+    This configuration runs ESLint and Prettier on staged JavaScript/TypeScript files, and just Prettier on other file types before each commit.
+
+</Steps>
+
+### CI Pipeline
+
+Enforcing code quality standards isn't just a local concern—integrating these checks into your Continuous Integration (CI) pipeline ensures that all code entering your repository meets your quality standards, regardless of individual developer environments.
+
+#### Setting up ESLint and Prettier in CI using GitHub Actions
+
+Create a file at `.github/workflows/code-quality.yml`:
+
+```yaml title=".github/workflows/code-quality.yml"
+name: Code Quality
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main, develop]
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v3
+
+      - name: Set up Node
+        uses: actions/setup-node@v3
+        with:
+          node-version: "16"
+          cache: "npm"
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Check formatting
+        run: npm run format:check
+
+      - name: Run ESLint
+        run: npm run lint
+
+      - name: Type check
+        run: npm run type-check
+```
+
+For faster CI runs:
+
+- **Cache `node_modules`**: Most CI services offer built-in caching
+- **Separate jobs**: Run linting, formatting, and tests as parallel jobs
+- **Selective execution**: Only run tests for changed files when possible
+- **Fail fast**: Configure your pipeline to fail immediately on the first error
+
+<Aside type="note" title="Husky vs CI Checks">
+While both Husky and CI checks serve similar purposes, they complement each other:
+
+- Husky prevents developers from committing non-compliant code locally
+- CI checks provide a safety net for changes that bypass Husky (e.g., direct commits to the repository)
+
+It's recommended to use both approaches for maximum coverage.
+
+</Aside>
