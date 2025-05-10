@@ -31,6 +31,13 @@ export function registerClientReference<Target extends Record<string, any>>(
   });
 }
 
+export async function __smokeTestActionHandler(
+  timestamp?: number,
+): Promise<unknown> {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+  return { status: "ok", timestamp };
+}
+
 export async function rscActionHandler(req: Request): Promise<unknown> {
   const url = new URL(req.url);
   const contentType = req.headers.get("content-type");
@@ -45,6 +52,7 @@ export async function rscActionHandler(req: Request): Promise<unknown> {
   if (IS_DEV && actionId === "__rsc_hot_update") {
     return null;
   }
+
   const action = await getModuleExport(actionId!);
 
   if (typeof action !== "function") {

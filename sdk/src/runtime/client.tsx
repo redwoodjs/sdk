@@ -17,13 +17,13 @@ type TransportContext = {
 export type Transport = (context: TransportContext) => CallServerCallback;
 
 export type CreateCallServer = (
-  context: TransportContext,
+  context: TransportContext
 ) => <Result>(id: null | string, args: null | unknown[]) => Promise<Result>;
 
 export const fetchTransport: Transport = (transportContext) => {
   const fetchCallServer = async <Result,>(
     id: null | string,
-    args: null | unknown[],
+    args: null | unknown[]
   ): Promise<Result> => {
     const { createFromFetch, encodeReply } = await import(
       "react-server-dom-webpack/client.browser"
@@ -41,7 +41,7 @@ export const fetchTransport: Transport = (transportContext) => {
         method: "POST",
         body: args != null ? await encodeReply(args) : null,
       }),
-      { callServer: fetchCallServer },
+      { callServer: fetchCallServer }
     ) as Promise<ActionResponse<Result>>;
 
     transportContext.setRscPayload(streamData);
@@ -61,8 +61,22 @@ export const initClient = async ({
     setRscPayload: () => {},
   };
 
-  const callServer = transport(transportContext);
+  let transportCallServer = transport(transportContext);
+
+  const callServer = (id: any, args: any) => transportCallServer(id, args);
+
+  const upgradeToRealtime = async ({ key }: { key?: string } = {}) => {
+    const { realtimeTransport } = await import("./lib/realtime/client");
+    const createRealtimeTransport = realtimeTransport({ key });
+    transportCallServer = createRealtimeTransport(transportContext);
+  };
+
   globalThis.__rsc_callServer = callServer;
+
+  globalThis.__rw = {
+    callServer,
+    upgradeToRealtime,
+  };
 
   const rootEl = document.getElementById("root");
 

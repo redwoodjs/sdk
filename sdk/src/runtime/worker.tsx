@@ -1,8 +1,9 @@
+import React from "react";
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 import { injectRSCPayload } from "./render/injectRSCPayload";
 import { renderToRscStream } from "./render/renderToRscStream";
 
-import { ssrWebpackRequire } from "./imports/worker";
+import { loadModule, ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import { ErrorResponse } from "./error";
 import {
@@ -12,7 +13,7 @@ import {
 } from "./requestInfo/worker";
 import { RequestInfo } from "./requestInfo/types";
 
-import { Route, defineRoutes } from "./lib/router";
+import { Route, defineRoutes, route } from "./lib/router";
 import { generateNonce } from "./lib/utils";
 import { IS_DEV } from "./constants";
 
@@ -51,6 +52,7 @@ export const defineApp = (routes: Route[]) => {
       try {
         const url = new URL(request.url);
         const isRSCRequest = url.searchParams.has("__rsc");
+        const isSmokeTest = url.searchParams.has("__smoke_test");
         const userHeaders = new Headers();
 
         const rw = {
@@ -71,11 +73,12 @@ export const defineApp = (routes: Route[]) => {
           requestInfo: RequestInfo,
           Page: React.FC<any>,
         ) => {
+          let pageElement;
           if (isClientReference(Page)) {
             const { ctx, params } = requestInfo;
             // context(justinvdm, 25 Feb 2025): If the page is a client reference, we need to avoid passing
             // down props the client shouldn't get (e.g. env). For safety, we pick the allowed props explicitly.
-            return <Page ctx={ctx} params={params} />;
+            pageElement = <Page ctx={ctx} params={params} />;
           } else {
             // context(justinvdm, 24 Apr 2025): We need to wrap the page in a component that throws the response to bubble it up and break out of react rendering context
             // This way, we're able to return a response from the page component while still staying within react rendering context
@@ -89,8 +92,14 @@ export const defineApp = (routes: Route[]) => {
               return result;
             };
 
-            return <PageWrapper />;
+            pageElement = <PageWrapper />;
           }
+
+          if (isSmokeTest) {
+            pageElement = <SmokeTestWrapper>{pageElement}</SmokeTestWrapper>;
+          }
+
+          return pageElement;
         };
 
         const renderPage = async (
@@ -200,6 +209,20 @@ export const defineApp = (routes: Route[]) => {
       }
     },
   };
+};
+
+export const SmokeTestWrapper: React.FC<{
+  children: React.ReactNode;
+}> = async ({ children }) => {
+  const smokeTestInfo = await loadModule("/src/app/components/__SmokeTest.tsx");
+  const SmokeTestInfo = smokeTestInfo.SmokeTestInfo as React.FC<any>;
+
+  return (
+    <>
+      <SmokeTestInfo />
+      {children}
+    </>
+  );
 };
 
 export const DefaultDocument: React.FC<{ children: React.ReactNode }> = ({

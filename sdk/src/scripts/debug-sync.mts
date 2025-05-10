@@ -1,9 +1,14 @@
 import { $ } from "../lib/$.mjs";
 
-export const debugSync = async () => {
-  const args = process.argv.slice(2);
-  const targetDir = args[0];
-  const flags = new Set(args.slice(1));
+export interface DebugSyncOptions {
+  targetDir: string;
+  dev?: boolean;
+  watch?: boolean;
+  build?: boolean;
+}
+
+export const debugSync = async (opts: DebugSyncOptions) => {
+  const { targetDir, dev, watch, build } = opts;
 
   if (!targetDir) {
     console.error("❌ Please provide a target directory as an argument.");
@@ -15,26 +20,27 @@ export const debugSync = async () => {
   // Run initial sync
   await $({ stdio: "inherit", shell: true })`${syncCommand}`;
 
-  // If --dev flag is present, clean vite cache and start dev server
-  if (flags.has("--dev")) {
-    console.log("🧹 Cleaning Vite cache...");
-    await $({
-      stdio: "inherit",
-      shell: true,
-      cwd: targetDir,
-    })`npm run clean:vite`;
+  console.log("🧹 Cleaning Vite cache...");
 
+  await $({
+    stdio: "inherit",
+    shell: true,
+    cwd: targetDir,
+  })`npm run clean:vite`;
+
+  // If dev flag is present, clean vite cache and start dev server
+  if (dev) {
     console.log("🚀 Starting dev server...");
     await $({ stdio: "inherit", shell: true, cwd: targetDir })`npm run dev`;
   }
-  // Start watching if --watch flag is present
-  else if (flags.has("--watch")) {
+  // Start watching if watch flag is present
+  else if (watch) {
     console.log("👀 Watching for changes...");
     $({
       stdio: "inherit",
       shell: true,
     })`npx chokidar-cli './src/**' './vendor/src/**' -c "${syncCommand}"`;
-  } else if (flags.has("--build")) {
+  } else if (build) {
     console.log("🏗️ Running build in target directory...");
     await $({
       stdio: "inherit",
@@ -45,5 +51,13 @@ export const debugSync = async () => {
 };
 
 if (import.meta.url === new URL(process.argv[1], import.meta.url).href) {
-  debugSync();
+  const args = process.argv.slice(2);
+  const targetDir = args[0];
+  const flags = new Set(args.slice(1));
+  debugSync({
+    targetDir,
+    dev: flags.has("--dev"),
+    watch: flags.has("--watch"),
+    build: flags.has("--build"),
+  });
 }
