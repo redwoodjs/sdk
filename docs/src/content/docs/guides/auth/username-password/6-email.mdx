@@ -145,7 +145,14 @@ When sending emails, you can use `text`, `html`, or `react`.
 </Tabs>
 
 <Aside type="tip" title="Constants">
-  ;tk
+  This is personal preference, but I like to put commonly used values in a `Constants.ts` file. This makes it easy to maintain and update.
+
+  ```ts title="src/app/shared/constants.ts"
+  export const Constants = Object.freeze({
+    FROM_EMAIL: "Acme <onboarding@resend.dev>",
+    BASE_URL: "http://localhost:5173",
+  });
+  ```
 </Aside>
 
 Try registering for a new account and check to see if the email was sent. One of my favorite features of Resend is that it will show you all the emails that have been sent, as well as a preview of that email. This makes is faster than waiting for it to hit your inbox (or spam folder), plus it's much easier to debug.
