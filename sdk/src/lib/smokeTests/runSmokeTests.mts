@@ -124,6 +124,7 @@ export async function runSmokeTests(
           options.headless !== false,
           options.bail,
           options.skipClient,
+          options.projectDir,
         );
       } catch (error) {
         hasFailures = true;

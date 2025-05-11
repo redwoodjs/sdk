@@ -12,17 +12,10 @@ import {
   animals,
 } from "unique-names-generator";
 import { $ } from "../../lib/$.mjs";
-// Change this import to use a mock implementation since we can't access the original path
-// import { debugSync } from "../scripts/debug-sync.mjs";
 import { log } from "./constants.mjs";
+import { debugSync } from "../../scripts/debug-sync.mjs";
 import { SmokeTestOptions, TestResources } from "./types.mjs";
 import { createSmokeTestComponents } from "./components.mjs";
-
-// Mock implementation of debugSync for testing
-const debugSync = async ({ targetDir }: { targetDir: string }) => {
-  console.log(`Mocking SDK sync to ${targetDir}`);
-  return { success: true };
-};
 
 /**
  * Sets up the test environment, preparing any resources needed for testing

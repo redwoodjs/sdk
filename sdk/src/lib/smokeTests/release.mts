@@ -240,7 +240,10 @@ export async function $expect(
  * Ensures Cloudflare account ID is set in environment
  * First checks wrangler cache, then environment variables, and finally guides the user
  */
-export async function ensureCloudflareAccountId(cwd?: string): Promise<void> {
+export async function ensureCloudflareAccountId(
+  cwd?: string,
+  projectDir?: string,
+): Promise<void> {
   // Skip if already set
   if (process.env.CLOUDFLARE_ACCOUNT_ID) {
     log(
@@ -257,7 +260,7 @@ export async function ensureCloudflareAccountId(cwd?: string): Promise<void> {
 
   try {
     // Check wrangler cache in the project directory, not the current working directory
-    const projectDir = cwd || process.cwd();
+    projectDir = projectDir || cwd || process.cwd();
     log("Looking for wrangler cache in project directory: %s", projectDir);
     const accountCachePath = join(
       projectDir,
@@ -331,12 +334,14 @@ export async function ensureCloudflareAccountId(cwd?: string): Promise<void> {
  */
 export async function runRelease(
   cwd?: string,
+  projectDir?: string,
 ): Promise<{ url: string; workerName: string }> {
   console.log("🚀 Running release process...");
 
   try {
     // Ensure CLOUDFLARE_ACCOUNT_ID is set before running release
-    await ensureCloudflareAccountId(cwd);
+    // Pass projectDir as a separate parameter specifically for cache checking
+    await ensureCloudflareAccountId(cwd, projectDir);
 
     // Run release command with our interactive $expect utility
     log("Running release command with interactive prompts");
@@ -423,13 +428,17 @@ export async function runReleaseTest(
   headless: boolean = true,
   bail: boolean = false,
   skipClient: boolean = false,
+  projectDir?: string,
 ): Promise<void> {
   log("Starting release test with path: %s", customPath || "/");
   console.log("\n🚀 Testing production deployment");
 
   try {
     log("Running release process");
-    const { url, workerName } = await runRelease(resources?.targetDir);
+    const { url, workerName } = await runRelease(
+      resources?.targetDir,
+      projectDir,
+    );
 
     // Wait a moment before checking server availability
     log("Waiting 1s before checking server...");
