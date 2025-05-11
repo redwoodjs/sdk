@@ -5,6 +5,7 @@ import { checkUrl, checkServerUp } from "./browser.mjs";
 import { TestResources } from "./types.mjs";
 import { $ } from "../../lib/$.mjs";
 import { execaCommand } from "execa";
+import { existsSync, readFileSync } from "fs";
 
 // The $expect utility function from utils.mts
 interface ExpectOptions {
@@ -237,7 +238,7 @@ export async function $expect(
 
 /**
  * Ensures Cloudflare account ID is set in environment
- * Extracts from error output if available, otherwise uses RedwoodJS account
+ * First checks wrangler cache, then environment variables, and finally guides the user
  */
 export async function ensureCloudflareAccountId(cwd?: string): Promise<void> {
   // Skip if already set
@@ -252,19 +253,52 @@ export async function ensureCloudflareAccountId(cwd?: string): Promise<void> {
     return;
   }
 
-  console.log("CLOUDFLARE_ACCOUNT_ID not set, attempting to detect...");
+  console.log("CLOUDFLARE_ACCOUNT_ID not set, checking wrangler cache...");
 
   try {
-    // Run a wrangler command that will list available accounts if there's an issue
+    // Check wrangler cache first - more reliable than parsing command output
+    const workingDir = cwd || process.cwd();
+    const accountCachePath = join(
+      workingDir,
+      "node_modules/.cache/wrangler/wrangler-account.json",
+    );
+
+    if (existsSync(accountCachePath)) {
+      try {
+        const accountCache = JSON.parse(readFileSync(accountCachePath, "utf8"));
+        if (accountCache.account?.id) {
+          const accountId = accountCache.account.id;
+          process.env.CLOUDFLARE_ACCOUNT_ID = accountId;
+          log("Found CLOUDFLARE_ACCOUNT_ID in wrangler cache: %s", accountId);
+          console.log(`✅ Setting CLOUDFLARE_ACCOUNT_ID to ${accountId}`);
+          return;
+        }
+      } catch (parseError) {
+        log("Failed to parse wrangler account cache: %O", parseError);
+        // Continue to other methods if cache parsing fails
+      }
+    }
+
+    // If we get here, we couldn't find the account ID in the cache
+    // Give clear guidance to the user
+    console.log("⚠️ Could not find Cloudflare account ID");
+    console.log("Please either:");
+    console.log(
+      "  1. Run 'npx wrangler login' to authenticate with Cloudflare",
+    );
+    console.log(
+      "  2. Set CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN environment variables",
+    );
+
+    // Try wrangler whoami as a final attempt
+    console.log("\nAttempting to get account info from wrangler...");
     const result = await $({
-      cwd: cwd || process.cwd(),
+      cwd: workingDir,
       stdio: "pipe",
-      reject: false, // Don't throw on non-zero exit code
     })`npx wrangler whoami`;
 
-    // If command succeeds but we still don't have an account ID, try to extract from output
+    // If command succeeds, try to extract account ID from output
     if (result.stdout) {
-      // Parse output to look for account ID
       const accountIdMatch = result.stdout.match(/Account ID: ([a-f0-9]{32})/);
       if (accountIdMatch && accountIdMatch[1]) {
         const accountId = accountIdMatch[1];
@@ -275,27 +309,10 @@ export async function ensureCloudflareAccountId(cwd?: string): Promise<void> {
       }
     }
 
-    // If the command ran but we couldn't find an ID or there was an error
-    if (result.stderr) {
-      // Look for available accounts in the error output
-      const accountMatches = result.stderr.match(
-        /`([^`]+)'s Account`: `([a-f0-9]{32})`/g,
-      );
-      if (accountMatches && accountMatches.length > 0) {
-        // Extract the first account ID
-        const firstAccount = accountMatches[0].match(/`([a-f0-9]{32})`$/);
-        if (firstAccount && firstAccount[1]) {
-          const accountId = firstAccount[1];
-          process.env.CLOUDFLARE_ACCOUNT_ID = accountId;
-          log(
-            "Extracted CLOUDFLARE_ACCOUNT_ID from error output: %s",
-            accountId,
-          );
-          console.log(`✅ Setting CLOUDFLARE_ACCOUNT_ID to ${accountId}`);
-          return;
-        }
-      }
-    }
+    // If we get here, we've exhausted all options
+    throw new Error(
+      "Could not find Cloudflare account ID. Please login with 'npx wrangler login' or set CLOUDFLARE_ACCOUNT_ID manually.",
+    );
   } catch (error) {
     log("Error during account ID detection: %O", error);
     throw error;
