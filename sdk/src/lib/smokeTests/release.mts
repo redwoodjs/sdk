@@ -256,10 +256,11 @@ export async function ensureCloudflareAccountId(cwd?: string): Promise<void> {
   console.log("CLOUDFLARE_ACCOUNT_ID not set, checking wrangler cache...");
 
   try {
-    // Check wrangler cache first - more reliable than parsing command output
-    const workingDir = cwd || process.cwd();
+    // Check wrangler cache in the project directory, not the current working directory
+    const projectDir = cwd || process.cwd();
+    log("Looking for wrangler cache in project directory: %s", projectDir);
     const accountCachePath = join(
-      workingDir,
+      projectDir,
       "node_modules/.cache/wrangler/wrangler-account.json",
     );
 
@@ -270,13 +271,17 @@ export async function ensureCloudflareAccountId(cwd?: string): Promise<void> {
           const accountId = accountCache.account.id;
           process.env.CLOUDFLARE_ACCOUNT_ID = accountId;
           log("Found CLOUDFLARE_ACCOUNT_ID in wrangler cache: %s", accountId);
-          console.log(`✅ Setting CLOUDFLARE_ACCOUNT_ID to ${accountId}`);
+          console.log(
+            `✅ Setting CLOUDFLARE_ACCOUNT_ID to ${accountId} (from wrangler cache)`,
+          );
           return;
         }
       } catch (parseError) {
         log("Failed to parse wrangler account cache: %O", parseError);
         // Continue to other methods if cache parsing fails
       }
+    } else {
+      log("Wrangler account cache not found at: %s", accountCachePath);
     }
 
     // If we get here, we couldn't find the account ID in the cache
@@ -293,7 +298,7 @@ export async function ensureCloudflareAccountId(cwd?: string): Promise<void> {
     // Try wrangler whoami as a final attempt
     console.log("\nAttempting to get account info from wrangler...");
     const result = await $({
-      cwd: workingDir,
+      cwd: projectDir,
       stdio: "pipe",
     })`npx wrangler whoami`;
 
@@ -304,7 +309,9 @@ export async function ensureCloudflareAccountId(cwd?: string): Promise<void> {
         const accountId = accountIdMatch[1];
         process.env.CLOUDFLARE_ACCOUNT_ID = accountId;
         log("Extracted CLOUDFLARE_ACCOUNT_ID from whoami: %s", accountId);
-        console.log(`✅ Setting CLOUDFLARE_ACCOUNT_ID to ${accountId}`);
+        console.log(
+          `✅ Setting CLOUDFLARE_ACCOUNT_ID to ${accountId} (from wrangler whoami)`,
+        );
         return;
       }
     }
