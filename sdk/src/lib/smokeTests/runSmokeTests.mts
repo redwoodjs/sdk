@@ -1,0 +1,167 @@
+import { setTimeout } from "node:timers/promises";
+import { join } from "path";
+import debug from "debug";
+import { SmokeTestOptions, SmokeTestResult, TestResources } from "./types.mjs";
+import { getBrowserPath } from "./browser.mjs";
+import { setupArtifactsDirectory } from "./artifacts.mjs";
+import { setupTestEnvironment } from "./environment.mjs";
+import { runDevServer, runDevTest } from "./development.mjs";
+import { runReleaseTest } from "./release.mjs";
+import { fail, teardown, log } from "./utils.mjs";
+import { state } from "./state.mjs";
+
+/**
+ * Main function that orchestrates the smoke test flow
+ */
+export async function runSmokeTests(
+  options: SmokeTestOptions = {},
+): Promise<void> {
+  log("Starting smoke test with options: %O", options);
+
+  // Store options in state immediately for force report generation if needed
+  state.options = options;
+
+  // Set default artifacts directory if not specified
+  if (!options.artifactDir) {
+    options.artifactDir = join(process.cwd(), ".artifacts");
+    log("Using default artifacts directory: %s", options.artifactDir);
+
+    // Update state.options with the default value
+    state.options.artifactDir = options.artifactDir;
+  }
+
+  // Clean and recreate artifacts directory
+  await setupArtifactsDirectory(options.artifactDir);
+  log("Initialized log capturing to artifact files");
+
+  // Throw immediately if both tests would be skipped
+  if (options.skipDev && options.skipRelease) {
+    log("Error: Both dev and release tests are skipped");
+    await fail(
+      new Error(
+        "Cannot skip both dev and release tests. At least one must run.",
+      ),
+      1,
+      "Configuration",
+    );
+  }
+
+  // Prepare browser early to avoid waiting later
+  console.log("🔍 Preparing browser for testing...");
+  let browserPath;
+  try {
+    browserPath = await getBrowserPath(options);
+    console.log(`✅ Browser ready at: ${browserPath}`);
+  } catch (error) {
+    await fail(error, 1, "Browser Preparation");
+  }
+
+  log("Setting up test environment");
+  try {
+    const resources = await setupTestEnvironment(options);
+    // Store resources in module-level state
+    state.resources = resources;
+
+    // Track failures to determine final exit code
+    let hasFailures = false;
+
+    // Run the tests that weren't skipped
+    if (!options.skipDev) {
+      log("Starting development server");
+      try {
+        // Start the dev server first, store the stop function in resources
+        const { url, stopDev } = await runDevServer(resources.targetDir);
+        resources.stopDev = stopDev;
+        state.resources.stopDev = stopDev;
+
+        log("Running development server tests");
+        await runDevTest(
+          url,
+          options.artifactDir,
+          options.customPath,
+          browserPath,
+          options.headless !== false,
+          options.bail,
+          options.skipClient,
+        );
+      } catch (error) {
+        hasFailures = true;
+        log("Error during development server testing: %O", error);
+        console.error(
+          `❌ Development server test failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+
+        // Record the failure
+        state.failures.push({
+          step: "Development Server Test",
+          error: error instanceof Error ? error.message : String(error),
+          details:
+            error instanceof Error && error.stack ? error.stack : undefined,
+        });
+
+        // If bail option is true, stop the tests
+        if (options.bail) {
+          await fail(error, 1, "Development Server Test");
+        }
+
+        // Otherwise, continue with the release test
+        console.log(
+          "Continuing with next tests since --bail is not enabled...",
+        );
+      }
+    } else {
+      log("Skipping development server tests");
+    }
+
+    if (!options.skipRelease) {
+      log("Running release/production tests");
+      try {
+        await runReleaseTest(
+          options.customPath,
+          options.artifactDir,
+          resources,
+          browserPath,
+          options.headless !== false,
+          options.bail,
+          options.skipClient,
+        );
+      } catch (error) {
+        hasFailures = true;
+        log("Error during release testing: %O", error);
+        console.error(
+          `❌ Release test failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+
+        // Record the failure
+        state.failures.push({
+          step: "Release Test",
+          error: error instanceof Error ? error.message : String(error),
+          details:
+            error instanceof Error && error.stack ? error.stack : undefined,
+        });
+
+        // If bail option is true, stop the tests
+        if (options.bail) {
+          await fail(error, 1, "Release Test");
+        }
+      }
+    } else {
+      log("Skipping release/production tests");
+    }
+
+    // Set the exit code based on whether there were failures
+    if (hasFailures) {
+      state.exitCode = 1;
+      console.log(
+        "\n⚠️ Some smoke tests failed, but continued running since --bail was not enabled.",
+      );
+    } else {
+      console.log("\n✅ All smoke tests passed!");
+    }
+
+    // Call teardown with the final exit code
+    await teardown();
+  } catch (error) {
+    await fail(error, 1, "Test Environment Setup");
+  }
+}
