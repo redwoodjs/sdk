@@ -2,7 +2,6 @@ import * as os from "os";
 import { join } from "path";
 import { pathExists } from "fs-extra";
 import { log } from "./constants.mjs";
-import { REDWOODJS_ACCOUNT_ID } from "./constants.mjs";
 import { mkdirp } from "fs-extra";
 import { SmokeTestOptions, SmokeTestResult } from "./types.mjs";
 import {
@@ -11,23 +10,14 @@ import {
   resolveBuildId,
   computeExecutablePath,
   detectBrowserPlatform,
-  type Browser as PuppeteerBrowser,
+  Browser as PuppeteerBrowser,
   type InstallOptions,
 } from "@puppeteer/browsers";
 import type { Page, Browser } from "puppeteer-core";
 import puppeteer from "puppeteer-core";
 import { takeScreenshot } from "./artifacts.mjs";
-import { formatPathSuffix } from "./utils.mjs";
 import { RETRIES } from "./constants.mjs";
 import { $ } from "../$.mjs";
-import { setTimeout } from "node:timers/promises";
-import debug from "debug";
-import { spawn } from "child_process";
-import { createHash } from "crypto";
-import * as fs from "fs/promises";
-import { writeFile } from "fs/promises";
-import path from "path";
-import { createInterface } from "readline";
 
 /**
  * Launch a browser instance
