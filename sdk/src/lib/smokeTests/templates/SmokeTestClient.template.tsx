@@ -24,25 +24,25 @@ export const SmokeTestClient: React.FC = () => {
 
   const runSmokeTest = async () => {
     setLoading(true);
-    const timestamp = Date.now();
+    const clientTimestamp = Date.now();
 
     try {
-      // Get current timestamp to verify round-trip
-      const result = await smokeTestAction(timestamp);
+      // Update the server timestamp with our client timestamp
+      const result = await smokeTestAction(clientTimestamp);
       const status = result.status || "error";
-      const verificationPassed = result.timestamp === timestamp;
+      const verificationPassed = result.timestamp === clientTimestamp;
 
       setLastCheck({
         status,
         verificationPassed,
-        timestamp,
+        timestamp: clientTimestamp,
         rawResult: result,
       });
     } catch (error) {
       setLastCheck({
         status: "error",
         verificationPassed: false,
-        timestamp,
+        timestamp: clientTimestamp,
         error: error instanceof Error ? error.message : String(error),
       });
     } finally {
@@ -100,6 +100,9 @@ export const SmokeTestClient: React.FC = () => {
             >
               Status: {lastCheck.status}
             </h4>
+            <p>
+              Server timestamp updated to: {lastCheck.timestamp}
+            </p>
             <p>
               Timestamp verification:{" "}
               {lastCheck.verificationPassed ? "Passed ✅" : "Failed ⚠️"}

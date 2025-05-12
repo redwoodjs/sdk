@@ -334,7 +334,7 @@ export async function checkUrlSmoke(
   isRealtime: boolean,
   bail: boolean = false,
   skipClient: boolean = false,
-  environment: string = "Development", // Add environment parameter with default
+  environment: string = "Development",
 ): Promise<void> {
   const phase = isRealtime ? "Post-upgrade" : "Initial";
   console.log(`🔍 Testing ${phase} smoke tests at ${url}`);
@@ -363,19 +363,34 @@ export async function checkUrlSmoke(
 
   // Track failures to report at the end
   let hasFailures = false;
-  let serverTestError: Error | null = null;
+  let initialServerTestError: Error | null = null;
   let clientTestError: Error | null = null;
+  let serverRenderCheckError: Error | null = null;
 
-  // Run server-side smoke test
-  log("Running server-side smoke test");
+  // Step 1: Run initial server-side smoke test to check the initial server state
+  // The module-level variable should be set to a fixed initial value (23)
+  log("Running initial server-side smoke test");
+  let initialServerResult;
   try {
-    await checkServerSmoke(page, phase, environment, bail);
+    // Check that the server is returning the expected initial value (23)
+    initialServerResult = await checkServerSmoke(
+      page,
+      phase,
+      environment,
+      bail,
+      23, // Expected initial fixed value
+      false, // Not a server render check
+    );
+    log(
+      "Initial server-side check passed - module variable has initial value of 23",
+    );
   } catch (error) {
     hasFailures = true;
-    serverTestError = error instanceof Error ? error : new Error(String(error));
-    log("Error during server-side smoke test: %O", error);
+    initialServerTestError =
+      error instanceof Error ? error : new Error(String(error));
+    log("Error during initial server-side smoke test: %O", error);
     console.error(
-      `❌ Server-side smoke test failed: ${error instanceof Error ? error.message : String(error)}`,
+      `❌ Initial server-side smoke test failed: ${error instanceof Error ? error.message : String(error)}`,
     );
 
     // If bail is true, stop the tests
@@ -388,18 +403,61 @@ export async function checkUrlSmoke(
     );
   }
 
-  // Run client-side smoke test if available and not skipped
-  if (!skipClient) {
-    log("Running client-side smoke test");
+  // Skip client tests if requested
+  if (skipClient) {
+    log("Skipping client-side smoke test as requested");
+    console.log("⏩ Skipping client-side smoke test as requested");
+    return;
+  }
+
+  // Step 2: Run client-side smoke test to update the server timestamp
+  log("Running client-side smoke test");
+  let clientResult;
+  try {
+    clientResult = await checkClientSmoke(page, phase, environment, bail);
+  } catch (error) {
+    hasFailures = true;
+    clientTestError = error instanceof Error ? error : new Error(String(error));
+    log("Error during client-side smoke test: %O", error);
+    console.error(
+      `❌ Client-side smoke test failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+
+    // If bail is true, stop the tests
+    if (bail) {
+      throw error;
+    }
+
+    console.log(
+      "Continuing with server render check since --bail is not enabled...",
+    );
+  }
+
+  // Step 3: Check if the server has rendered with the updated timestamp (server render check)
+  if (clientResult && clientResult.clientTimestamp) {
+    log("Running server render check with client timestamp");
+    // Wait a moment for any server renders to complete
+    await new Promise((resolve) => setTimeout(resolve, 500));
+
     try {
-      await checkClientSmoke(page, phase, environment, bail);
+      await checkServerSmoke(
+        page,
+        phase,
+        environment,
+        bail,
+        clientResult.clientTimestamp, // Expected to match the client-set timestamp
+        true, // This is a server render check
+      );
+      log(
+        "Server render check passed - server has updated with client timestamp",
+      );
     } catch (error) {
       hasFailures = true;
-      clientTestError =
+      serverRenderCheckError =
         error instanceof Error ? error : new Error(String(error));
-      log("Error during client-side smoke test: %O", error);
+      log("Error during server render check: %O", error);
       console.error(
-        `❌ Client-side smoke test failed: ${error instanceof Error ? error.message : String(error)}`,
+        `❌ Server render check failed: ${error instanceof Error ? error.message : String(error)}`,
       );
 
       // If bail is true, stop the tests
@@ -408,22 +466,27 @@ export async function checkUrlSmoke(
       }
     }
   } else {
-    log("Skipping client-side smoke test");
-    console.log("⏩ Skipping client-side smoke test as requested");
+    log("Skipping server render check - no client timestamp available");
+    // Update test status for server render check as skipped
+    const env = environment === "Development" ? "dev" : "production";
+    updateTestStatus(env, "serverRenderCheck", "SKIPPED");
   }
 
   // If there were failures, propagate them
   if (hasFailures) {
-    // Combine errors or just throw the one that happened
-    if (serverTestError && clientTestError) {
-      throw new Error(
-        `Multiple test failures: Server-side test: ${serverTestError.message}, Client-side test: ${clientTestError.message}`,
-      );
-    } else if (serverTestError) {
-      throw serverTestError;
-    } else if (clientTestError) {
-      throw clientTestError;
+    // Combine errors
+    const errors = [];
+    if (initialServerTestError) {
+      errors.push(`Initial server test: ${initialServerTestError.message}`);
     }
+    if (clientTestError) {
+      errors.push(`Client test: ${clientTestError.message}`);
+    }
+    if (serverRenderCheckError) {
+      errors.push(`Server render check: ${serverRenderCheckError.message}`);
+    }
+
+    throw new Error(`Multiple test failures: ${errors.join(", ")}`);
   }
 
   log("URL smoke test completed successfully");
@@ -435,17 +498,27 @@ export async function checkUrlSmoke(
 export async function checkServerSmoke(
   page: Page,
   phase: string = "",
-  environment: string = "Development", // Add environment parameter with default
-  bail: boolean = false, // Add bail parameter
+  environment: string = "Development",
+  bail: boolean = false,
+  expectedTimestamp?: number,
+  isServerRenderCheck: boolean = false,
 ): Promise<SmokeTestResult> {
-  console.log(`🔍 Testing server-side smoke test ${phase ? `(${phase})` : ""}`);
+  const checkType = isServerRenderCheck
+    ? "Server Render Check"
+    : "Initial Check";
+  console.log(
+    `🔍 Testing server-side smoke test ${phase ? `(${phase})` : ""} - ${checkType}`,
+  );
 
   // Determine the environment and test key for state update
   const env = environment === "Development" ? "dev" : "production";
-  const testKey =
-    phase === "Initial" || !phase ? "initialServerSide" : "realtimeServerSide";
+  const testKey = isServerRenderCheck
+    ? "serverRenderCheck"
+    : phase === "Initial" || !phase
+      ? "initialServerSide"
+      : "realtimeServerSide";
 
-  const result = await page.evaluate(async () => {
+  const result = await page.evaluate(async (expectedTimestamp) => {
     try {
       // Look for smoke test status indicator in the page
       const smokeElement = document.querySelector(
@@ -469,15 +542,6 @@ export async function checkServerSmoke(
         };
       }
 
-      // Check if data-verified attribute exists
-      if (smokeElement.getAttribute("data-verified") === null) {
-        return {
-          status: "error",
-          verificationPassed: false,
-          error: "data-verified attribute is missing",
-        };
-      }
-
       const timestamp = parseInt(
         smokeElement.getAttribute("data-timestamp") || "0",
         10,
@@ -487,9 +551,16 @@ export async function checkServerSmoke(
         10,
       );
 
-      // Use the component's own verification result instead of recalculating
-      const verificationPassed =
-        smokeElement.getAttribute("data-verified") === "true";
+      // If an expected timestamp is provided, verify it matches
+      let verificationPassed = true;
+      let verificationError;
+
+      if (expectedTimestamp) {
+        verificationPassed = timestamp === expectedTimestamp;
+        if (!verificationPassed) {
+          verificationError = `Server timestamp (${timestamp}) does not match expected (${expectedTimestamp})`;
+        }
+      }
 
       return {
         status: status || "error",
@@ -497,7 +568,8 @@ export async function checkServerSmoke(
         timestamp,
         serverTimestamp,
         error:
-          status !== "ok" ? "Smoke test did not return ok status" : undefined,
+          verificationError ||
+          (status !== "ok" ? "Smoke test did not return ok status" : undefined),
       };
     } catch (error) {
       return {
@@ -506,7 +578,7 @@ export async function checkServerSmoke(
         error: error instanceof Error ? error.message : String(error),
       };
     }
-  });
+  }, expectedTimestamp);
 
   log("Server-side smoke test result: %O", result);
 
@@ -518,18 +590,23 @@ export async function checkServerSmoke(
   );
 
   // Report the result (this no longer throws errors)
-  reportSmokeTestResult(result, "Server-side", phase, environment);
+  reportSmokeTestResult(
+    result,
+    isServerRenderCheck ? "Server Render Check" : "Server-side",
+    phase,
+    environment,
+  );
 
   // Handle the error if verification failed
   if (!result.verificationPassed) {
-    const errorMessage = `${environment} - ${phase ? `(${phase}) ` : ""}Server-side smoke test failed. Status: ${result.status}${result.error ? `. Error: ${result.error}` : ""}`;
+    const errorMessage = `${environment} - ${phase ? `(${phase}) ` : ""}${isServerRenderCheck ? "Server Render Check" : "Server-side smoke test"} failed. Status: ${result.status}${result.error ? `. Error: ${result.error}` : ""}`;
 
     if (bail) {
       // If bail is true, call fail() which will exit the process
       await fail(
         new Error(errorMessage),
         1,
-        `${environment} - Server-side Smoke Test (${phase})`,
+        `${environment} - ${isServerRenderCheck ? "Server Render Check" : "Server-side Smoke Test"} (${phase})`,
       );
     } else {
       // Otherwise throw an error that can be caught by the caller
@@ -546,8 +623,8 @@ export async function checkServerSmoke(
 export async function checkClientSmoke(
   page: Page,
   phase: string = "",
-  environment: string = "Development", // Add environment parameter with default
-  bail: boolean = false, // Add bail parameter
+  environment: string = "Development",
+  bail: boolean = false,
 ): Promise<SmokeTestResult | null> {
   console.log(`🔍 Testing client-side smoke test ${phase ? `(${phase})` : ""}`);
 
@@ -635,16 +712,7 @@ export async function checkClientSmoke(
         };
       }
 
-      const status = smokeElement.getAttribute("data-status");
-      if (status === null) {
-        return {
-          status: "error",
-          verificationPassed: false,
-          error: "data-status attribute is missing on health-status element",
-        };
-      }
-
-      // Get client timestamp from the client timestamp element
+      // Check if required client attributes exist
       const clientTimestampElement = document.querySelector(
         "#smoke-test-client-timestamp",
       );
