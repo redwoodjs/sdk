@@ -1,9 +1,9 @@
 import { join } from "path";
 import * as fs from "fs/promises";
 import { log } from "./constants.mjs";
-import { getSmokeTestFunctionsTemplate } from "./templates/__smokeTestFunctions.template";
-import { getSmokeTestTemplate } from "./templates/__SmokeTest.template";
-import { getSmokeTestClientTemplate } from "./templates/__SmokeTestClient.template";
+import { getSmokeTestFunctionsTemplate } from "./templates/smokeTestFunctions.template";
+import { getSmokeTestTemplate } from "./templates/SmokeTest.template";
+import { getSmokeTestClientTemplate } from "./templates/SmokeTestClient.template";
 
 /**
  * Creates the smoke test components in the target project directory
