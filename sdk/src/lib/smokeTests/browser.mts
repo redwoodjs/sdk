@@ -426,121 +426,61 @@ export async function checkUrlSmoke(
         log(`Client timestamp from test: ${clientTimestamp}`);
       }
 
-      // Only perform server rerender test if we need to
-      if (!isRealtime) {
-        // 3. Update server state using the client-side update button
-        log("Clicking update server timestamp button");
-        console.log("Clicking the 'Update Server Timestamp' button...");
-        await page.click('[data-testid="update-server-timestamp"]');
+      // Always perform server rerender test in all cases (initial, post-upgrade, and realtime-only)
+      // 3. Update server state using the client-side update button
+      log("Clicking update server timestamp button");
+      console.log("Clicking the 'Update Server Timestamp' button...");
+      await page.click('[data-testid="update-server-timestamp"]');
 
-        // Wait for update to complete
-        await page.waitForFunction(
-          () => {
-            const element = document.querySelector(
-              "#smoke-test-client-timestamp",
-            );
-            return (
-              element &&
-              element.getAttribute("data-server-update-timestamp") !== ""
-            );
-          },
-          { timeout: 5000 },
-        );
-
-        // Get the timestamp that was sent to server
-        clientTimestamp = await page.evaluate(() => {
+      // Wait for update to complete
+      await page.waitForFunction(
+        () => {
           const element = document.querySelector(
             "#smoke-test-client-timestamp",
           );
-          return element
-            ? parseInt(
-                element.getAttribute("data-server-update-timestamp") || "0",
-                10,
-              )
-            : 0;
-        });
-
-        log(`Client sent timestamp to server: ${clientTimestamp}`);
-        console.log(`Client set timestamp to: ${clientTimestamp}`);
-
-        // 4. Reload page to check if server state was updated
-        log("Reloading page to check server state update");
-        console.log("Reloading page to check if server state was updated...");
-        await page.reload();
-        await page.waitForSelector('[data-testid="health-status"]');
-
-        // 5. Check server state again with the client timestamp to verify update
-        log("Checking server state after client update");
-        await checkServerSmoke(
-          page,
-          "After Client Update",
-          environment,
-          bail,
-          clientTimestamp,
-        );
-
-        // If we got here, update the status
-        updateTestStatus(env, "serverRerender", "PASSED");
-        console.log("✅ Server rerender test passed!");
-      } else {
-        // In realtime mode, we need to verify the server rerender still works
-        log("Testing server rerender in realtime mode");
-
-        // 3. Update server state using the client-side update button
-        log("Clicking update server timestamp button");
-        console.log("Clicking the 'Update Server Timestamp' button...");
-        await page.click('[data-testid="update-server-timestamp"]');
-
-        // Wait for update to complete
-        await page.waitForFunction(
-          () => {
-            const element = document.querySelector(
-              "#smoke-test-client-timestamp",
-            );
-            return (
-              element &&
-              element.getAttribute("data-server-update-timestamp") !== ""
-            );
-          },
-          { timeout: 5000 },
-        );
-
-        // Get the timestamp that was sent to server
-        clientTimestamp = await page.evaluate(() => {
-          const element = document.querySelector(
-            "#smoke-test-client-timestamp",
+          return (
+            element &&
+            element.getAttribute("data-server-update-timestamp") !== ""
           );
-          return element
-            ? parseInt(
-                element.getAttribute("data-server-update-timestamp") || "0",
-                10,
-              )
-            : 0;
-        });
+        },
+        { timeout: 5000 },
+      );
 
-        log(`Client sent timestamp to server: ${clientTimestamp}`);
-        console.log(`Client set timestamp to: ${clientTimestamp}`);
+      // Get the timestamp that was sent to server
+      clientTimestamp = await page.evaluate(() => {
+        const element = document.querySelector("#smoke-test-client-timestamp");
+        return element
+          ? parseInt(
+              element.getAttribute("data-server-update-timestamp") || "0",
+              10,
+            )
+          : 0;
+      });
 
-        // 4. Reload page to check if server state was updated
-        log("Reloading page to check server state update");
-        console.log("Reloading page to check if server state was updated...");
-        await page.reload();
-        await page.waitForSelector('[data-testid="health-status"]');
+      log(`Client sent timestamp to server: ${clientTimestamp}`);
+      console.log(`Client set timestamp to: ${clientTimestamp}`);
 
-        // 5. Check server state again with the client timestamp to verify update
-        log("Checking server state after client update");
-        await checkServerSmoke(
-          page,
-          "After Client Update",
-          environment,
-          bail,
-          clientTimestamp,
-        );
+      // 4. Reload page to check if server state was updated
+      log("Reloading page to check server state update");
+      console.log("Reloading page to check if server state was updated...");
+      await page.reload();
+      await page.waitForSelector('[data-testid="health-status"]');
 
-        // If we got here, update the status
-        updateTestStatus(env, "serverRerender", "PASSED");
-        console.log("✅ Server rerender test passed in realtime mode!");
-      }
+      // 5. Check server state again with the client timestamp to verify update
+      log("Checking server state after client update");
+      await checkServerSmoke(
+        page,
+        "After Client Update",
+        environment,
+        bail,
+        clientTimestamp,
+      );
+
+      // If we got here, update the status
+      updateTestStatus(env, "serverRerender", "PASSED");
+      console.log(
+        `✅ Server rerender test passed${isRealtime ? " in realtime mode" : ""}!`,
+      );
     } catch (error: unknown) {
       hasFailures = true;
 
