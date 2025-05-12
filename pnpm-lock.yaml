@@ -47,6 +47,9 @@ importers:
       sharp:
         specifier: ^0.32.5
         version: 0.32.6
+      starlight-package-managers:
+        specifier: ^0.11.0
+        version: 0.11.0(@astrojs/starlight@0.32.0(astro@5.3.0(@types/node@22.14.0)(aws4fetch@1.0.20)(jiti@2.4.2)(rollup@4.40.0)(terser@5.39.0)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.7.0)))
 
   sdk:
     dependencies:
@@ -3549,6 +3552,12 @@ packages:
 
   stacktracey@2.1.8:
     resolution: {integrity: sha512-Kpij9riA+UNg7TnphqjH7/CzctQ/owJGNbFkfEeve4Z4uxT5+JapVLFXcsurIfN34gnTWZNJ/f7NMG0E8JDzTw==}
+
+  starlight-package-managers@0.11.0:
+    resolution: {integrity: sha512-ItOgeF4YYI4lKaeqGBuRBNsmPTXQv16Pc7U+hzkvJoR9HzOxhk2wSNkRzxSnqX5OZmmsAwDy49NYqpFyzkO8Bw==}
+    engines: {node: '>=18.17.1'}
+    peerDependencies:
+      '@astrojs/starlight': '>=0.22.0'
 
   std-env@3.9.0:
     resolution: {integrity: sha512-UGvjygr6F6tpH7o2qyqR6QYpwraIjKSdtzyBdyytFOHmPZY917kwdwLG0RbOjWOnKmnm3PeHjaoLLMie7kPLQw==}
@@ -8235,6 +8244,10 @@ snapshots:
     dependencies:
       as-table: 1.0.55
       get-source: 2.0.12
+
+  starlight-package-managers@0.11.0(@astrojs/starlight@0.32.0(astro@5.3.0(@types/node@22.14.0)(aws4fetch@1.0.20)(jiti@2.4.2)(rollup@4.40.0)(terser@5.39.0)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.7.0))):
+    dependencies:
+      '@astrojs/starlight': 0.32.0(astro@5.3.0(@types/node@22.14.0)(aws4fetch@1.0.20)(jiti@2.4.2)(rollup@4.40.0)(terser@5.39.0)(tsx@4.19.4)(typescript@5.8.3)(yaml@2.7.0))
 
   std-env@3.9.0: {}
 
