@@ -130,7 +130,7 @@ export const realtimeTransport =
 
         socket.send(message);
 
-        return new Promise((resolve, reject) => {
+        return new Promise(async (resolve, reject) => {
           const stream = new ReadableStream({
             start(controller) {
               const messageHandler = (event: MessageEvent) => {
@@ -181,7 +181,12 @@ export const realtimeTransport =
           transportContext.setRscPayload(
             rscPayload as Promise<ActionResponse<unknown>>,
           );
-          resolve(rscPayload as Result);
+          try {
+            const result = await rscPayload;
+            resolve((result as { actionResult: Result }).actionResult);
+          } catch (rscPayloadError) {
+            reject(rscPayloadError);
+          }
         });
       } catch (e) {
         console.error("[Realtime] Error calling server", e);
