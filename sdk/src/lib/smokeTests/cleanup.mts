@@ -64,8 +64,8 @@ export async function cleanupResources(
     }
   }
 
-  // Clean up resources
-  if (resources.workerName) {
+  // Clean up resources only if release tests have run
+  if (resources.workerName && state.releaseTestsRan) {
     // First, clean up any D1 databases associated with this worker
     try {
       log(
@@ -158,6 +158,13 @@ export async function cleanupResources(
           error instanceof Error && error.stack ? error.stack : undefined,
       });
     }
+  } else if (resources.workerName && !state.releaseTestsRan) {
+    log(
+      "Skipping worker and D1 database cleanup because release tests did not run",
+    );
+    console.log(
+      "⏭️ Skipping worker and D1 database cleanup (release tests did not run)",
+    );
   } else {
     log("No worker name provided for cleanup");
   }

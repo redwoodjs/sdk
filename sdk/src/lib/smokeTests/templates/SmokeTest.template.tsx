@@ -3,22 +3,20 @@ export function getSmokeTestTemplate(skipClient: boolean = false): string {
 import React from "react";
 import { RequestInfo } from "rwsdk/worker";
 ${skipClient ? "" : 'import { SmokeTestClient } from "./__SmokeTestClient";'}
-import { smokeTestAction } from "./__smokeTestFunctions";
+import { getSmokeTestTimestamp } from "./__smokeTestFunctions";
 
 export const SmokeTestInfo: React.FC = async () => {
-  const timestamp = Date.now();
+  const currentTime = Date.now();
   let status = "error";
-  let verificationPassed = false;
-  let result: any = null;
+  let timestamp = 0;
 
   try {
-    result = await smokeTestAction(timestamp);
+    const result = await getSmokeTestTimestamp();
     status = result.status || "error";
-    verificationPassed = result.timestamp === timestamp;
+    timestamp = result.timestamp;
   } catch (error) {
     console.error("Smoke test failed:", error);
     status = "error";
-    result = { error: error instanceof Error ? error.message : String(error) };
   }
 
   return (
@@ -27,8 +25,7 @@ export const SmokeTestInfo: React.FC = async () => {
       data-testid="health-status"
       data-status={status}
       data-timestamp={timestamp}
-      data-server-timestamp={Date.now()}
-      data-verified={verificationPassed ? "true" : "false"}
+      data-server-timestamp={currentTime}
       style={{
         fontFamily: "system-ui, -apple-system, sans-serif",
         margin: "20px",
@@ -49,9 +46,7 @@ export const SmokeTestInfo: React.FC = async () => {
       <div
         id="smoke-test-result"
       >
-        {verificationPassed
-          ? "Timestamp verification passed ✅"
-          : "Timestamp verification failed ⚠️"}
+        Server Timestamp: {timestamp}
       </div>
       <details style={{ marginTop: "10px" }}>
         <summary>Details</summary>
@@ -64,7 +59,7 @@ export const SmokeTestInfo: React.FC = async () => {
             overflow: "auto",
           }}
         >
-          {JSON.stringify({ timestamp, result, verificationPassed }, null, 2)}
+          {JSON.stringify({ currentTime, serverTimestamp: timestamp, status }, null, 2)}
         </pre>
       </details>
 
