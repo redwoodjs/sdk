@@ -4,7 +4,13 @@ on:
   push:
     branches:
       - main
+    paths-ignore:
+      - "docs/**"
   pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - "docs/**"
   workflow_dispatch:
 
 concurrency:
@@ -20,6 +26,11 @@ jobs:
   smoke-test-minimal:
     name: Minimal Starter
     runs-on: ubuntu-latest
+
+    # context(justinvdm, 2025-05-12):
+    # Only run this job for PRs from the same repository and pushes to main
+    # For security, GH won't expose secrets for fork PRs
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
 
     steps:
       - name: Checkout repository
@@ -61,6 +72,11 @@ jobs:
   smoke-test-standard:
     name: Standard Starter
     runs-on: ubuntu-latest
+
+    # context(justinvdm, 2025-05-12):
+    # Only run this job for PRs from the same repository and pushes to main
+    # For security, GH won't expose secrets for fork PRs
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
 
     steps:
       - name: Checkout repository
