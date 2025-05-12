@@ -1124,12 +1124,6 @@ async function realtimeOnlyFlow(
   };
 
   try {
-    // Directly upgrade to realtime mode
-    console.log(
-      "\n📡 Directly upgrading to realtime mode (skipping initial tests)",
-    );
-    await upgradeToRealtime(page, environment, bail);
-
     log("Performing realtime-only smoke test");
     await checkUrlSmoke(
       page,
