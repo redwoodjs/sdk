@@ -264,7 +264,9 @@ export const ensureDeployEnv = async () => {
       } else {
         // Secret doesn't exist, create it
         const secretKey = generateSecretKey();
-        await $`echo ${secretKey}`.pipe`wrangler secret put AUTH_SECRET_KEY`;
+        // Use the same pattern as TMP_WORKER_CREATED for consistency
+        await $({ stdio: "pipe" })`echo "${secretKey}"`
+          .pipe`wrangler secret put AUTH_SECRET_KEY`;
         console.log("Set AUTH_SECRET_KEY secret");
       }
     } catch (error) {
