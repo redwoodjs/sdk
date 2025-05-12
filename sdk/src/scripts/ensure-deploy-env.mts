@@ -144,7 +144,10 @@ export const ensureDeployEnv = async () => {
         const dbName = `${wranglerConfig.name}-${suffix}`;
         await $({ stdio: "inherit" })`wrangler d1 create ${dbName}`;
         const result = await $`wrangler d1 info ${dbName} --json`;
-        const dbInfo = JSON.parse(result.stdout ?? "{}");
+
+        // Extract only valid JSON from the output
+        const jsonOutput = result.stdout?.match(/\{.*?\}/s)?.[0] || "{}";
+        const dbInfo = JSON.parse(jsonOutput);
 
         if (!dbInfo.uuid) {
           throw new Error("Failed to get database ID from wrangler output");
@@ -183,7 +186,8 @@ export const ensureDeployEnv = async () => {
     try {
       // Get list of all secrets
       const secretsResult = await $`wrangler secret list --format=json`;
-      const existingSecrets = JSON.parse(secretsResult.stdout ?? "[]").map(
+      const secretsJson = secretsResult.stdout?.match(/\[.*?\]/s)?.[0] || "[]";
+      const existingSecrets = JSON.parse(secretsJson).map(
         (secret: any) => secret.name,
       );
 
