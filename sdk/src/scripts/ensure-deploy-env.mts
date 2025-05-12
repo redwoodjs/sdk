@@ -12,6 +12,22 @@ import {
 } from "unique-names-generator";
 import * as readline from "readline";
 import { pathExists } from "fs-extra";
+import { parseJson } from "../lib/jsonUtils.mjs";
+
+// Define interface for the database info returned by wrangler
+interface D1DatabaseInfo {
+  uuid?: string;
+  name?: string;
+  version?: string;
+  [key: string]: any;
+}
+
+// Define interface for the secrets list returned by wrangler
+interface Secret {
+  name: string;
+  type?: string;
+  [key: string]: any;
+}
 
 const promptForDeployment = async (): Promise<boolean> => {
   const rl = readline.createInterface({
@@ -145,9 +161,8 @@ export const ensureDeployEnv = async () => {
         await $({ stdio: "inherit" })`wrangler d1 create ${dbName}`;
         const result = await $`wrangler d1 info ${dbName} --json`;
 
-        // Extract only valid JSON from the output
-        const jsonOutput = result.stdout?.match(/\{.*?\}/s)?.[0] || "{}";
-        const dbInfo = JSON.parse(jsonOutput);
+        // Extract JSON using our utility function with a typed empty object
+        const dbInfo = parseJson<D1DatabaseInfo>(result.stdout, {});
 
         if (!dbInfo.uuid) {
           throw new Error("Failed to get database ID from wrangler output");
@@ -186,9 +201,8 @@ export const ensureDeployEnv = async () => {
     try {
       // Get list of all secrets
       const secretsResult = await $`wrangler secret list --format=json`;
-      const secretsJson = secretsResult.stdout?.match(/\[.*?\]/s)?.[0] || "[]";
-      const existingSecrets = JSON.parse(secretsJson).map(
-        (secret: any) => secret.name,
+      const existingSecrets = parseJson<Secret[]>(secretsResult.stdout, []).map(
+        (secret) => secret.name,
       );
 
       // Check if AUTH_SECRET_KEY already exists

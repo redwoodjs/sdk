@@ -9,6 +9,7 @@ import { existsSync, readFileSync } from "fs";
 import { pathExists } from "fs-extra";
 import { parse as parseJsonc } from "jsonc-parser";
 import * as fs from "fs/promises";
+import { extractLastJson, parseJson } from "../../lib/jsonUtils.mjs";
 
 // The $expect utility function from utils.mts
 interface ExpectOptions {
@@ -20,6 +21,19 @@ interface ExpectResult {
   stdout: string;
   stderr: string;
   code: number | null;
+}
+
+// Define interfaces for API responses
+interface Worker {
+  name?: string;
+  id?: string;
+  [key: string]: any;
+}
+
+interface D1Database {
+  name: string;
+  uuid: string;
+  [key: string]: any;
 }
 
 /**
@@ -308,18 +322,30 @@ export async function ensureCloudflareAccountId(
       stdio: "pipe",
     })`npx wrangler whoami`;
 
-    // If command succeeds, try to extract account ID from output
+    // First try regex pattern matching on the text output
     if (result.stdout) {
       const accountIdMatch = result.stdout.match(/Account ID: ([a-f0-9]{32})/);
       if (accountIdMatch && accountIdMatch[1]) {
         const accountId = accountIdMatch[1];
         process.env.CLOUDFLARE_ACCOUNT_ID = accountId;
-        log("Extracted CLOUDFLARE_ACCOUNT_ID from whoami: %s", accountId);
+        log("Extracted CLOUDFLARE_ACCOUNT_ID from whoami text: %s", accountId);
         console.log(
           `✅ Setting CLOUDFLARE_ACCOUNT_ID to ${accountId} (from wrangler whoami)`,
         );
         return;
       }
+    }
+
+    // Fallback: try to extract any JSON that might be in the output
+    const accountInfo = extractLastJson(result.stdout);
+    if (accountInfo && accountInfo.account && accountInfo.account.id) {
+      const accountId = accountInfo.account.id;
+      process.env.CLOUDFLARE_ACCOUNT_ID = accountId;
+      log("Extracted CLOUDFLARE_ACCOUNT_ID from whoami JSON: %s", accountId);
+      console.log(
+        `✅ Setting CLOUDFLARE_ACCOUNT_ID to ${accountId} (from wrangler whoami)`,
+      );
+      return;
     }
 
     // If we get here, we've exhausted all options
@@ -565,96 +591,40 @@ export async function listWorkers(cwd?: string): Promise<string[]> {
       stdio: "pipe",
     })`npx wrangler workers list --json`;
 
-    // Parse the JSON output, handling potential non-JSON content before or after
-    try {
-      // First try to extract an array pattern
-      const arrayMatch = result.stdout?.match(/(\[.*?\])/s);
-      if (arrayMatch && arrayMatch[1]) {
-        try {
-          const workers = JSON.parse(arrayMatch[1]);
-          if (Array.isArray(workers)) {
-            // Extract worker names based on the structure of the response
-            const workerNames = workers
-              .map((w) => {
-                // Handle different possible response formats
-                if (typeof w === "string") return w;
-                if (w.name) return w.name;
-                if (w.id) return w.id;
-                return null;
-              })
-              .filter(Boolean) as string[];
+    // Parse the JSON output to extract the last valid JSON
+    const data = parseJson<Worker[] | { workers?: Worker[] }>(
+      result.stdout,
+      [],
+    );
 
-            log("Found %d workers", workerNames.length);
-            return workerNames;
-          }
-        } catch (parseError) {
-          log("Error parsing JSON from array match: %O", parseError);
-        }
-      }
+    if (Array.isArray(data)) {
+      const workerNames = data
+        .map((w) => {
+          if (typeof w === "string") return w;
+          if (w.name) return w.name;
+          if (w.id) return w.id;
+          return null;
+        })
+        .filter(Boolean) as string[];
 
-      // Fallback: try to extract any JSON object
-      const jsonMatch = result.stdout?.match(/(\{.*?\})/s);
-      if (jsonMatch && jsonMatch[1]) {
-        try {
-          const data = JSON.parse(jsonMatch[1]);
-          // Check if the parsed object has a workers property that's an array
-          if (data.workers && Array.isArray(data.workers)) {
-            const workerNames = data.workers
-              .map((w: any) => {
-                if (typeof w === "string") return w;
-                if (w.name) return w.name;
-                if (w.id) return w.id;
-                return null;
-              })
-              .filter(Boolean) as string[];
+      log("Found %d workers in parsed array", workerNames.length);
+      return workerNames;
+    } else if (data.workers && Array.isArray(data.workers)) {
+      const workerNames = data.workers
+        .map((w) => {
+          if (typeof w === "string") return w;
+          if (w.name) return w.name;
+          if (w.id) return w.id;
+          return null;
+        })
+        .filter(Boolean) as string[];
 
-            log("Found %d workers in 'workers' property", workerNames.length);
-            return workerNames;
-          }
-        } catch (parseError) {
-          log("Error parsing JSON from object match: %O", parseError);
-        }
-      }
-
-      // If all else fails, try to parse the entire output
-      try {
-        const data = JSON.parse(result.stdout || "[]");
-        if (Array.isArray(data)) {
-          const workerNames = data
-            .map((w: any) => {
-              if (typeof w === "string") return w;
-              if (w.name) return w.name;
-              if (w.id) return w.id;
-              return null;
-            })
-            .filter(Boolean) as string[];
-
-          log("Found %d workers by parsing entire output", workerNames.length);
-          return workerNames;
-        } else if (data.workers && Array.isArray(data.workers)) {
-          const workerNames = data.workers
-            .map((w: any) => {
-              if (typeof w === "string") return w;
-              if (w.name) return w.name;
-              if (w.id) return w.id;
-              return null;
-            })
-            .filter(Boolean) as string[];
-
-          log(
-            "Found %d workers in 'workers' property from entire output",
-            workerNames.length,
-          );
-          return workerNames;
-        }
-      } catch (parseError) {
-        log("Error parsing entire output as JSON: %O", parseError);
-      }
-    } catch (error) {
-      log("Error parsing worker list: %O", error);
+      log("Found %d workers in 'workers' property", workerNames.length);
+      return workerNames;
     }
 
-    // If we can't parse the JSON, just return an empty array
+    // If nothing worked, return an empty array
+    log("Could not parse JSON from output, returning empty array");
     return [];
   } catch (error) {
     log("Error listing workers: %O", error);
@@ -750,7 +720,7 @@ export function isRelatedToTest(
  */
 export async function listD1Databases(
   cwd?: string,
-): Promise<Array<{ name: string; uuid: string }>> {
+): Promise<Array<D1Database>> {
   log("Listing D1 databases");
   try {
     const result = await $({
@@ -758,52 +728,21 @@ export async function listD1Databases(
       stdio: "pipe",
     })`npx wrangler d1 list --json`;
 
-    // Parse the JSON output, handling potential non-JSON content before or after
-    // First look for an array since d1 list returns an array of databases
-    const arrayMatch = result.stdout?.match(/(\[.*?\])/s);
-    if (arrayMatch && arrayMatch[1]) {
-      try {
-        const databases = JSON.parse(arrayMatch[1]);
-        log("Found %d D1 databases", databases.length);
-        return databases;
-      } catch (parseError) {
-        log("Error parsing JSON from array match: %O", parseError);
-      }
-    }
+    // Parse the JSON output to extract the last valid JSON
+    const data = parseJson<D1Database[] | { databases?: D1Database[] }>(
+      result.stdout,
+      [],
+    );
 
-    // Fallback: try to extract any JSON object and see if it contains the databases
-    const jsonMatch = result.stdout?.match(/(\{.*?\})/s);
-    if (jsonMatch && jsonMatch[1]) {
-      try {
-        const data = JSON.parse(jsonMatch[1]);
-        // Check if the parsed object has a databases property that's an array
-        if (data.databases && Array.isArray(data.databases)) {
-          log(
-            "Found %d D1 databases in 'databases' property",
-            data.databases.length,
-          );
-          return data.databases;
-        }
-      } catch (parseError) {
-        log("Error parsing JSON from object match: %O", parseError);
-      }
-    }
-
-    // If all else fails, try to parse the entire output
-    try {
-      const data = JSON.parse(result.stdout || "[]");
-      if (Array.isArray(data)) {
-        log("Found %d D1 databases by parsing entire output", data.length);
-        return data;
-      } else if (data.databases && Array.isArray(data.databases)) {
-        log(
-          "Found %d D1 databases in 'databases' property from entire output",
-          data.databases.length,
-        );
-        return data.databases;
-      }
-    } catch (parseError) {
-      log("Error parsing entire output as JSON: %O", parseError);
+    if (Array.isArray(data)) {
+      log("Found %d D1 databases in parsed array", data.length);
+      return data;
+    } else if (data.databases && Array.isArray(data.databases)) {
+      log(
+        "Found %d D1 databases in 'databases' property",
+        data.databases.length,
+      );
+      return data.databases;
     }
 
     // If nothing worked, return an empty array
