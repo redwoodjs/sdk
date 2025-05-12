@@ -175,7 +175,7 @@ export async function generateFinalReport(): Promise<void> {
     // Dev tests summary
     if (report.options.skipDev) {
       console.log("● Development Tests: ⏩ SKIPPED");
-    } else if (state.devTestsRan === false) {
+    } else if (state.devTestsRan === false && devFailures.length === 0) {
       console.log("● Development Tests: ⚠️ DID NOT RUN");
     } else {
       console.log(
@@ -183,54 +183,57 @@ export async function generateFinalReport(): Promise<void> {
       );
       console.log(`  ├─ Initial Tests:`);
       console.log(
-        `  │  ├─ Server-side: ${serverSideInitialDevFailures.length > 0 ? "❌ FAILED" : serverSideInitialDevFailures.length === 0 && !state.devTestsRan ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
+        `  │  ├─ Server-side: ${serverSideInitialDevFailures.length > 0 ? "❌ FAILED" : serverSideInitialDevFailures.length === 0 && state.devTestsRan === false && devFailures.length === 0 ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
       );
       console.log(
-        `  │  └─ Client-side: ${clientSideInitialDevFailures.length > 0 ? "❌ FAILED" : report.options.skipClient ? "⏩ SKIPPED" : clientSideInitialDevFailures.length === 0 && !state.devTestsRan ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
+        `  │  └─ Client-side: ${clientSideInitialDevFailures.length > 0 ? "❌ FAILED" : report.options.skipClient ? "⏩ SKIPPED" : clientSideInitialDevFailures.length === 0 && state.devTestsRan === false && devFailures.length === 0 ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
       );
       console.log(`  └─ Realtime Tests:`);
       console.log(
-        `     ├─ Upgrade: ${realtimeUpgradeDevFailures.length > 0 ? "❌ FAILED" : realtimeUpgradeDevFailures.length === 0 && !state.devTestsRan ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
+        `     ├─ Upgrade: ${realtimeUpgradeDevFailures.length > 0 ? "❌ FAILED" : realtimeUpgradeDevFailures.length === 0 && state.devTestsRan === false && devFailures.length === 0 ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
       );
       console.log(
-        `     ├─ Server-side: ${serverSideRealtimeDevFailures.length > 0 ? "❌ FAILED" : realtimeUpgradeDevFailures.length > 0 ? "⏩ SKIPPED" : serverSideRealtimeDevFailures.length === 0 && !state.devTestsRan ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
+        `     ├─ Server-side: ${serverSideRealtimeDevFailures.length > 0 ? "❌ FAILED" : realtimeUpgradeDevFailures.length > 0 ? "⏩ SKIPPED" : serverSideRealtimeDevFailures.length === 0 && state.devTestsRan === false && devFailures.length === 0 ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
       );
       console.log(
-        `     └─ Client-side: ${clientSideRealtimeDevFailures.length > 0 ? "❌ FAILED" : realtimeUpgradeDevFailures.length > 0 || report.options.skipClient ? "⏩ SKIPPED" : clientSideRealtimeDevFailures.length === 0 && !state.devTestsRan ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
+        `     └─ Client-side: ${clientSideRealtimeDevFailures.length > 0 ? "❌ FAILED" : realtimeUpgradeDevFailures.length > 0 || report.options.skipClient ? "⏩ SKIPPED" : clientSideRealtimeDevFailures.length === 0 && state.devTestsRan === false && devFailures.length === 0 ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
       );
     }
 
     // Release tests summary
     if (report.options.skipRelease) {
       console.log("● Production Tests: ⏩ SKIPPED");
-    } else if (state.releaseTestsRan === false) {
+    } else if (
+      state.releaseTestsRan === false &&
+      releaseFailures.length === 0
+    ) {
       console.log("● Production Tests: ⚠️ DID NOT RUN");
     } else {
       console.log(
         `● Production Tests: ${releaseFailures.length > 0 ? "❌ FAILED" : "✅ PASSED"}`,
       );
       console.log(
-        `  ├─ Release Command: ${releaseCommandFailures.length > 0 ? "❌ FAILED" : releaseCommandFailures.length === 0 && !state.releaseTestsRan ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
+        `  ├─ Release Command: ${releaseCommandFailures.length > 0 ? "❌ FAILED" : releaseCommandFailures.length === 0 && state.releaseTestsRan === false && releaseFailures.length === 0 ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
       );
 
       // Only show these if release command succeeded
       if (releaseCommandFailures.length === 0) {
         console.log(`  ├─ Initial Tests:`);
         console.log(
-          `  │  ├─ Server-side: ${serverSideInitialProdFailures.length > 0 ? "❌ FAILED" : serverSideInitialProdFailures.length === 0 && !state.releaseTestsRan ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
+          `  │  ├─ Server-side: ${serverSideInitialProdFailures.length > 0 ? "❌ FAILED" : serverSideInitialProdFailures.length === 0 && state.releaseTestsRan === false && releaseFailures.length === 0 ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
         );
         console.log(
-          `  │  └─ Client-side: ${clientSideInitialProdFailures.length > 0 ? "❌ FAILED" : report.options.skipClient ? "⏩ SKIPPED" : clientSideInitialProdFailures.length === 0 && !state.releaseTestsRan ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
+          `  │  └─ Client-side: ${clientSideInitialProdFailures.length > 0 ? "❌ FAILED" : report.options.skipClient ? "⏩ SKIPPED" : clientSideInitialProdFailures.length === 0 && state.releaseTestsRan === false && releaseFailures.length === 0 ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
         );
         console.log(`  └─ Realtime Tests:`);
         console.log(
-          `     ├─ Upgrade: ${realtimeUpgradeProdFailures.length > 0 ? "❌ FAILED" : realtimeUpgradeProdFailures.length === 0 && !state.releaseTestsRan ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
+          `     ├─ Upgrade: ${realtimeUpgradeProdFailures.length > 0 ? "❌ FAILED" : realtimeUpgradeProdFailures.length === 0 && state.releaseTestsRan === false && releaseFailures.length === 0 ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
         );
         console.log(
-          `     ├─ Server-side: ${serverSideRealtimeProdFailures.length > 0 ? "❌ FAILED" : realtimeUpgradeProdFailures.length > 0 ? "⏩ SKIPPED" : serverSideRealtimeProdFailures.length === 0 && !state.releaseTestsRan ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
+          `     ├─ Server-side: ${serverSideRealtimeProdFailures.length > 0 ? "❌ FAILED" : realtimeUpgradeProdFailures.length > 0 ? "⏩ SKIPPED" : serverSideRealtimeProdFailures.length === 0 && state.releaseTestsRan === false && releaseFailures.length === 0 ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
         );
         console.log(
-          `     └─ Client-side: ${clientSideRealtimeProdFailures.length > 0 ? "❌ FAILED" : realtimeUpgradeProdFailures.length > 0 || report.options.skipClient ? "⏩ SKIPPED" : clientSideRealtimeProdFailures.length === 0 && !state.releaseTestsRan ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
+          `     └─ Client-side: ${clientSideRealtimeProdFailures.length > 0 ? "❌ FAILED" : realtimeUpgradeProdFailures.length > 0 || report.options.skipClient ? "⏩ SKIPPED" : clientSideRealtimeProdFailures.length === 0 && state.releaseTestsRan === false && releaseFailures.length === 0 ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
         );
       } else {
         console.log(`  └─ Tests: ⏩ SKIPPED (release command failed)`);

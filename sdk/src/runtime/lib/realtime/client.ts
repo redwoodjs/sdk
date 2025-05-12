@@ -181,7 +181,9 @@ export const realtimeTransport =
           transportContext.setRscPayload(
             rscPayload as Promise<ActionResponse<unknown>>,
           );
+          console.log("###### before");
           const result = await rscPayload;
+          console.log("###### after", result);
           return (result as { actionResult: Result }).actionResult;
         });
       } catch (e) {
