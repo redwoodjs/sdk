@@ -10,10 +10,11 @@ export interface TestStatus {
     overall: TestStatusValue;
     initialServerSide: TestStatusValue;
     initialClientSide: TestStatusValue;
+    initialServerRenderCheck: TestStatusValue; // Server render check for initial tests
     realtimeUpgrade: TestStatusValue;
     realtimeServerSide: TestStatusValue;
     realtimeClientSide: TestStatusValue;
-    serverRenderCheck: TestStatusValue;
+    realtimeServerRenderCheck: TestStatusValue; // Server render check for realtime tests
   };
   // Production environment tests
   production: {
@@ -21,10 +22,11 @@ export interface TestStatus {
     releaseCommand: TestStatusValue;
     initialServerSide: TestStatusValue;
     initialClientSide: TestStatusValue;
+    initialServerRenderCheck: TestStatusValue; // Server render check for initial tests
     realtimeUpgrade: TestStatusValue;
     realtimeServerSide: TestStatusValue;
     realtimeClientSide: TestStatusValue;
-    serverRenderCheck: TestStatusValue;
+    realtimeServerRenderCheck: TestStatusValue; // Server render check for realtime tests
   };
 }
 
@@ -52,20 +54,22 @@ export const state = {
       overall: "DID_NOT_RUN",
       initialServerSide: "DID_NOT_RUN",
       initialClientSide: "DID_NOT_RUN",
+      initialServerRenderCheck: "DID_NOT_RUN",
       realtimeUpgrade: "DID_NOT_RUN",
       realtimeServerSide: "DID_NOT_RUN",
       realtimeClientSide: "DID_NOT_RUN",
-      serverRenderCheck: "DID_NOT_RUN",
+      realtimeServerRenderCheck: "DID_NOT_RUN",
     },
     production: {
       overall: "DID_NOT_RUN",
       releaseCommand: "DID_NOT_RUN",
       initialServerSide: "DID_NOT_RUN",
       initialClientSide: "DID_NOT_RUN",
+      initialServerRenderCheck: "DID_NOT_RUN",
       realtimeUpgrade: "DID_NOT_RUN",
       realtimeServerSide: "DID_NOT_RUN",
       realtimeClientSide: "DID_NOT_RUN",
-      serverRenderCheck: "DID_NOT_RUN",
+      realtimeServerRenderCheck: "DID_NOT_RUN",
     },
   } as TestStatus,
 };

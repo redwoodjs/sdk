@@ -21,6 +21,7 @@ import { $ } from "../$.mjs";
 import { fail } from "./utils.mjs";
 import { reportSmokeTestResult } from "./reporting.mjs";
 import { updateTestStatus } from "./state.mjs";
+import { TestStatus } from "./state.mjs";
 
 /**
  * Launch a browser instance
@@ -467,9 +468,19 @@ export async function checkUrlSmoke(
     }
   } else {
     log("Skipping server render check - no client timestamp available");
+
     // Update test status for server render check as skipped
     const env = environment === "Development" ? "dev" : "production";
-    updateTestStatus(env, "serverRenderCheck", "SKIPPED");
+    const serverRenderKey =
+      phase === "Initial" || !phase
+        ? "initialServerRenderCheck"
+        : "realtimeServerRenderCheck";
+
+    updateTestStatus(
+      env,
+      serverRenderKey as keyof TestStatus[typeof env],
+      "SKIPPED",
+    );
   }
 
   // If there were failures, propagate them
@@ -512,11 +523,23 @@ export async function checkServerSmoke(
 
   // Determine the environment and test key for state update
   const env = environment === "Development" ? "dev" : "production";
-  const testKey = isServerRenderCheck
-    ? "serverRenderCheck"
-    : phase === "Initial" || !phase
-      ? "initialServerSide"
-      : "realtimeServerSide";
+
+  // Determine the appropriate test key based on phase and whether this is a server render check
+  let testKey: string;
+
+  if (isServerRenderCheck) {
+    // This is a server render check - use the appropriate key based on phase
+    testKey =
+      phase === "Initial" || !phase
+        ? "initialServerRenderCheck"
+        : "realtimeServerRenderCheck";
+  } else {
+    // Regular server-side check
+    testKey =
+      phase === "Initial" || !phase
+        ? "initialServerSide"
+        : "realtimeServerSide";
+  }
 
   const result = await page.evaluate(async (expectedTimestamp) => {
     try {
@@ -585,7 +608,7 @@ export async function checkServerSmoke(
   // Update test status based on result
   updateTestStatus(
     env,
-    testKey,
+    testKey as keyof TestStatus[typeof env],
     result.verificationPassed ? "PASSED" : "FAILED",
   );
 

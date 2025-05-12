@@ -2,7 +2,7 @@ import { join, basename } from "path";
 import { writeFile } from "fs/promises";
 import { mkdirp } from "fs-extra";
 import { log } from "./constants.mjs";
-import { state, TestStatusValue } from "./state.mjs";
+import { state, TestStatusValue, TestStatus } from "./state.mjs";
 import { SmokeTestResult } from "./types.mjs";
 
 /**
@@ -158,20 +158,23 @@ export async function generateFinalReport(): Promise<void> {
         `  │  ├─ Server-side: ${formatTestStatus(state.testStatus.dev.initialServerSide)}`,
       );
       console.log(
-        `  │  └─ Client-side: ${formatTestStatus(state.testStatus.dev.initialClientSide)}`,
-      );
-      console.log(`  ├─ Realtime Tests:`);
-      console.log(
-        `  │  ├─ Upgrade: ${formatTestStatus(state.testStatus.dev.realtimeUpgrade)}`,
+        `  │  ├─ Client-side: ${formatTestStatus(state.testStatus.dev.initialClientSide)}`,
       );
       console.log(
-        `  │  ├─ Server-side: ${formatTestStatus(state.testStatus.dev.realtimeServerSide)}`,
+        `  │  └─ Server Render Check: ${formatTestStatus(state.testStatus.dev.initialServerRenderCheck)}`,
+      );
+      console.log(`  └─ Realtime Tests:`);
+      console.log(
+        `     ├─ Upgrade: ${formatTestStatus(state.testStatus.dev.realtimeUpgrade)}`,
       );
       console.log(
-        `  │  └─ Client-side: ${formatTestStatus(state.testStatus.dev.realtimeClientSide)}`,
+        `     ├─ Server-side: ${formatTestStatus(state.testStatus.dev.realtimeServerSide)}`,
       );
       console.log(
-        `  └─ Server Render Check: ${formatTestStatus(state.testStatus.dev.serverRenderCheck)}`,
+        `     ├─ Client-side: ${formatTestStatus(state.testStatus.dev.realtimeClientSide)}`,
+      );
+      console.log(
+        `     └─ Server Render Check: ${formatTestStatus(state.testStatus.dev.realtimeServerRenderCheck)}`,
       );
     }
 
@@ -196,20 +199,23 @@ export async function generateFinalReport(): Promise<void> {
           `  │  ├─ Server-side: ${formatTestStatus(state.testStatus.production.initialServerSide)}`,
         );
         console.log(
-          `  │  └─ Client-side: ${formatTestStatus(state.testStatus.production.initialClientSide)}`,
-        );
-        console.log(`  ├─ Realtime Tests:`);
-        console.log(
-          `  │  ├─ Upgrade: ${formatTestStatus(state.testStatus.production.realtimeUpgrade)}`,
+          `  │  ├─ Client-side: ${formatTestStatus(state.testStatus.production.initialClientSide)}`,
         );
         console.log(
-          `  │  ├─ Server-side: ${formatTestStatus(state.testStatus.production.realtimeServerSide)}`,
+          `  │  └─ Server Render Check: ${formatTestStatus(state.testStatus.production.initialServerRenderCheck)}`,
+        );
+        console.log(`  └─ Realtime Tests:`);
+        console.log(
+          `     ├─ Upgrade: ${formatTestStatus(state.testStatus.production.realtimeUpgrade)}`,
         );
         console.log(
-          `  │  └─ Client-side: ${formatTestStatus(state.testStatus.production.realtimeClientSide)}`,
+          `     ├─ Server-side: ${formatTestStatus(state.testStatus.production.realtimeServerSide)}`,
         );
         console.log(
-          `  └─ Server Render Check: ${formatTestStatus(state.testStatus.production.serverRenderCheck)}`,
+          `     ├─ Client-side: ${formatTestStatus(state.testStatus.production.realtimeClientSide)}`,
+        );
+        console.log(
+          `     └─ Server Render Check: ${formatTestStatus(state.testStatus.production.realtimeServerRenderCheck)}`,
         );
       } else {
         console.log(`  └─ Tests: ⏩ SKIPPED (release command failed)`);
@@ -361,20 +367,22 @@ export function initializeTestStatus(): void {
   state.testStatus.dev.overall = "DID_NOT_RUN";
   state.testStatus.dev.initialServerSide = "DID_NOT_RUN";
   state.testStatus.dev.initialClientSide = "DID_NOT_RUN";
+  state.testStatus.dev.initialServerRenderCheck = "DID_NOT_RUN";
   state.testStatus.dev.realtimeUpgrade = "DID_NOT_RUN";
   state.testStatus.dev.realtimeServerSide = "DID_NOT_RUN";
   state.testStatus.dev.realtimeClientSide = "DID_NOT_RUN";
-  state.testStatus.dev.serverRenderCheck = "DID_NOT_RUN";
+  state.testStatus.dev.realtimeServerRenderCheck = "DID_NOT_RUN";
 
   // Production tests
   state.testStatus.production.overall = "DID_NOT_RUN";
   state.testStatus.production.releaseCommand = "DID_NOT_RUN";
   state.testStatus.production.initialServerSide = "DID_NOT_RUN";
   state.testStatus.production.initialClientSide = "DID_NOT_RUN";
+  state.testStatus.production.initialServerRenderCheck = "DID_NOT_RUN";
   state.testStatus.production.realtimeUpgrade = "DID_NOT_RUN";
   state.testStatus.production.realtimeServerSide = "DID_NOT_RUN";
   state.testStatus.production.realtimeClientSide = "DID_NOT_RUN";
-  state.testStatus.production.serverRenderCheck = "DID_NOT_RUN";
+  state.testStatus.production.realtimeServerRenderCheck = "DID_NOT_RUN";
 
   // Now override with specific statuses based on options
 
@@ -383,10 +391,11 @@ export function initializeTestStatus(): void {
     state.testStatus.dev.overall = "SKIPPED";
     state.testStatus.dev.initialServerSide = "SKIPPED";
     state.testStatus.dev.initialClientSide = "SKIPPED";
+    state.testStatus.dev.initialServerRenderCheck = "SKIPPED";
     state.testStatus.dev.realtimeUpgrade = "SKIPPED";
     state.testStatus.dev.realtimeServerSide = "SKIPPED";
     state.testStatus.dev.realtimeClientSide = "SKIPPED";
-    state.testStatus.dev.serverRenderCheck = "SKIPPED";
+    state.testStatus.dev.realtimeServerRenderCheck = "SKIPPED";
   }
 
   if (state.options.skipRelease) {
@@ -394,10 +403,11 @@ export function initializeTestStatus(): void {
     state.testStatus.production.releaseCommand = "SKIPPED";
     state.testStatus.production.initialServerSide = "SKIPPED";
     state.testStatus.production.initialClientSide = "SKIPPED";
+    state.testStatus.production.initialServerRenderCheck = "SKIPPED";
     state.testStatus.production.realtimeUpgrade = "SKIPPED";
     state.testStatus.production.realtimeServerSide = "SKIPPED";
     state.testStatus.production.realtimeClientSide = "SKIPPED";
-    state.testStatus.production.serverRenderCheck = "SKIPPED";
+    state.testStatus.production.realtimeServerRenderCheck = "SKIPPED";
   }
 
   if (state.options.skipClient) {
@@ -405,8 +415,10 @@ export function initializeTestStatus(): void {
     state.testStatus.dev.realtimeClientSide = "SKIPPED";
     state.testStatus.production.initialClientSide = "SKIPPED";
     state.testStatus.production.realtimeClientSide = "SKIPPED";
-    state.testStatus.dev.serverRenderCheck = "SKIPPED";
-    state.testStatus.production.serverRenderCheck = "SKIPPED";
+    state.testStatus.dev.initialServerRenderCheck = "SKIPPED";
+    state.testStatus.dev.realtimeServerRenderCheck = "SKIPPED";
+    state.testStatus.production.initialServerRenderCheck = "SKIPPED";
+    state.testStatus.production.realtimeServerRenderCheck = "SKIPPED";
   }
 
   // Handle realtime option which skips initial tests
@@ -415,6 +427,7 @@ export function initializeTestStatus(): void {
     if (!state.options.skipDev) {
       state.testStatus.dev.initialServerSide = "SKIPPED";
       state.testStatus.dev.initialClientSide = "SKIPPED";
+      state.testStatus.dev.initialServerRenderCheck = "SKIPPED";
       // Set the upgrade test to PASSED as it's implicitly run for realtime mode
       state.testStatus.dev.realtimeUpgrade = "PASSED";
     }
@@ -422,6 +435,7 @@ export function initializeTestStatus(): void {
     if (!state.options.skipRelease) {
       state.testStatus.production.initialServerSide = "SKIPPED";
       state.testStatus.production.initialClientSide = "SKIPPED";
+      state.testStatus.production.initialServerRenderCheck = "SKIPPED";
       // Set release command to PASSED since it must have succeeded for realtime tests to run
       state.testStatus.production.releaseCommand = "PASSED";
       // Set the upgrade test to PASSED as it's implicitly run for realtime mode
