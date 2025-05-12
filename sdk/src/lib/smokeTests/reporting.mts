@@ -92,37 +92,35 @@ export async function generateFinalReport(): Promise<void> {
     };
 
     // Always print the report to console in a pretty format
-    console.log("\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓");
-    console.log("┃          📊 SMOKE TEST REPORT          ┃");
-    console.log("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛");
-    console.log("┌──────────────────────────────────────┐");
-    console.log(`│ Timestamp: ${timestamp}`);
+    console.log("\n==================================================");
+    console.log("                📊 SMOKE TEST REPORT              ");
+    console.log("==================================================");
+    console.log("--------------------------------------------------");
+    console.log(`Timestamp: ${timestamp}`);
 
-    console.log(`│ Status: ${report.success ? "✅ PASSED" : "❌ FAILED"}`);
+    console.log(`Status: ${report.success ? "✅ PASSED" : "❌ FAILED"}`);
 
-    console.log(`│ Exit code: ${state.exitCode}`);
+    console.log(`Exit code: ${state.exitCode}`);
     if (report.workerName) {
-      console.log(`│ Worker name: ${report.workerName}`);
+      console.log(`Worker name: ${report.workerName}`);
     }
-    console.log(`│ Test options:`);
-    console.log(`│   - Custom path: ${report.options.customPath || "/"}`);
-    console.log(`│   - Skip dev: ${report.options.skipDev ? "Yes" : "No"}`);
+    console.log(`Test options:`);
+    console.log(`  - Custom path: ${report.options.customPath || "/"}`);
+    console.log(`  - Skip dev: ${report.options.skipDev ? "Yes" : "No"}`);
     console.log(
-      `│   - Skip release: ${report.options.skipRelease ? "Yes" : "No"}`,
+      `  - Skip release: ${report.options.skipRelease ? "Yes" : "No"}`,
     );
-    console.log(
-      `│   - Skip client: ${report.options.skipClient ? "Yes" : "No"}`,
-    );
+    console.log(`  - Skip client: ${report.options.skipClient ? "Yes" : "No"}`);
 
     // Add info about log files
     if (report.logFiles) {
-      console.log(`│ Log files:`);
-      console.log(`│   - stdout: ${basename(report.logFiles.stdout)}`);
-      console.log(`│   - stderr: ${basename(report.logFiles.stderr)}`);
-      console.log(`│   - combined: ${basename(report.logFiles.combined)}`);
+      console.log(`Log files:`);
+      console.log(`  - stdout: ${basename(report.logFiles.stdout)}`);
+      console.log(`  - stderr: ${basename(report.logFiles.stderr)}`);
+      console.log(`  - combined: ${basename(report.logFiles.combined)}`);
     }
 
-    console.log("└──────────────────────────────────────┘");
+    console.log("--------------------------------------------------");
 
     // Add summary of failures count
     if (state.failures.length > 0) {
@@ -141,9 +139,9 @@ export async function generateFinalReport(): Promise<void> {
     );
 
     // Add hierarchical test results overview
-    console.log("\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓");
-    console.log("┃          🔍 TEST RESULTS SUMMARY          ┃");
-    console.log("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛");
+    console.log("\n==================================================");
+    console.log("              🔍 TEST RESULTS SUMMARY              ");
+    console.log("==================================================");
 
     // Dev tests summary using the new testStatus system
     console.log(
@@ -243,41 +241,45 @@ export async function generateFinalReport(): Promise<void> {
 
     // Report failures with clear environment context
     if (state.failures.length > 0) {
-      console.log("\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓");
-      console.log("┃          🔍 FAILURE DETAILS             ┃");
-      console.log("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛");
+      console.log("\n==================================================");
+      console.log("              🔍 FAILURE DETAILS                  ");
+      console.log("==================================================");
 
       // Group failures by environment (Dev vs Release)
       if (devFailures.length > 0) {
-        console.log("┌─────────── DEVELOPMENT ENVIRONMENT ───────────┐");
+        console.log(
+          "----------------- DEVELOPMENT ENVIRONMENT -----------------",
+        );
         devFailures.forEach((failure, index) => {
-          console.log(`│ Failure #${index + 1}: ${failure.step}`);
+          console.log(`Failure #${index + 1}: ${failure.step}`);
 
           // Split error message into lines if it's long
           const errorLines = failure.error.split("\n");
-          console.log(`│ Error: ${errorLines[0]}`);
+          console.log(`Error: ${errorLines[0]}`);
           for (let i = 1; i < errorLines.length; i++) {
-            console.log(`│        ${errorLines[i]}`);
+            console.log(`       ${errorLines[i]}`);
           }
-          console.log(`│`);
+          console.log(``);
         });
-        console.log(`└────────────────────────────────────┘`);
+        console.log(`--------------------------------------------------`);
       }
 
       if (releaseFailures.length > 0) {
-        console.log("┌─────────── PRODUCTION ENVIRONMENT ───────────┐");
+        console.log(
+          "----------------- PRODUCTION ENVIRONMENT -----------------",
+        );
         releaseFailures.forEach((failure, index) => {
-          console.log(`│ Failure #${index + 1}: ${failure.step}`);
+          console.log(`Failure #${index + 1}: ${failure.step}`);
 
           // Split error message into lines if it's long
           const errorLines = failure.error.split("\n");
-          console.log(`│ Error: ${errorLines[0]}`);
+          console.log(`Error: ${errorLines[0]}`);
           for (let i = 1; i < errorLines.length; i++) {
-            console.log(`│        ${errorLines[i]}`);
+            console.log(`       ${errorLines[i]}`);
           }
-          console.log(`│`);
+          console.log(``);
         });
-        console.log(`└────────────────────────────────────┘`);
+        console.log(`--------------------------------------------------`);
       }
 
       // Show other failures that don't fit into the above categories
@@ -286,19 +288,19 @@ export async function generateFinalReport(): Promise<void> {
       );
 
       if (otherFailures.length > 0) {
-        console.log("┌─────────── OTHER FAILURES ───────────┐");
+        console.log("----------------- OTHER FAILURES -----------------");
         otherFailures.forEach((failure, index) => {
-          console.log(`│ Failure #${index + 1}: ${failure.step}`);
+          console.log(`Failure #${index + 1}: ${failure.step}`);
 
           // Split error message into lines if it's long
           const errorLines = failure.error.split("\n");
-          console.log(`│ Error: ${errorLines[0]}`);
+          console.log(`Error: ${errorLines[0]}`);
           for (let i = 1; i < errorLines.length; i++) {
-            console.log(`│        ${errorLines[i]}`);
+            console.log(`       ${errorLines[i]}`);
           }
-          console.log(`│`);
+          console.log(``);
         });
-        console.log(`└────────────────────────────────────┘`);
+        console.log(`--------------------------------------------------`);
       }
     }
   } catch (error) {
