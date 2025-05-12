@@ -178,7 +178,7 @@ export async function generateFinalReport(): Promise<void> {
     // Dev tests summary
     if (report.options.skipDev) {
       console.log("● Development Tests: ⏩ SKIPPED");
-    } else if (!state.devTestsRan) {
+    } else if (state.devTestsRan === false && !devFailures.length) {
       console.log("● Development Tests: ⚠️ DID NOT RUN");
     } else {
       console.log(
@@ -206,7 +206,7 @@ export async function generateFinalReport(): Promise<void> {
     // Release tests summary
     if (report.options.skipRelease) {
       console.log("● Production Tests: ⏩ SKIPPED");
-    } else if (!state.releaseTestsRan) {
+    } else if (state.releaseTestsRan === false && !releaseFailures.length) {
       console.log("● Production Tests: ⚠️ DID NOT RUN");
     } else {
       console.log(
