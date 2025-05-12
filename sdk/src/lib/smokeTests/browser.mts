@@ -191,15 +191,11 @@ export async function checkUrl(
       // If realtime flag is set, use the simplified flow that only does realtime testing
       log("Using realtime-only flow (--realtime option enabled)");
       console.log(
-        "⏩ Skipping initial smoke tests (--realtime option enabled)",
+        "⏩ Skipping initial smoke tests and upgrade step (--realtime option enabled)",
       );
 
-      // Directly upgrade to realtime mode
-      console.log("\n📡 Directly upgrading to realtime mode");
+      // Skip upgradeToRealtime and just run the realtime tests directly
       try {
-        await upgradeToRealtime(page, environment);
-        log("Reloading page after realtime upgrade");
-        await page.reload({ waitUntil: "networkidle0" });
         log("Performing realtime-only smoke test");
         await checkUrlSmoke(page, url, true, bail, skipClient, environment);
 
