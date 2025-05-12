@@ -2,6 +2,7 @@ import { setTimeout } from "node:timers/promises";
 import { log } from "./constants.mjs";
 import { $ } from "../$.mjs";
 import { checkUrl, checkServerUp } from "./browser.mjs";
+import { fail } from "./utils.mjs";
 
 /**
  * Run the local development server and return the URL
@@ -110,7 +111,8 @@ export async function runDevServer(cwd?: string): Promise<{
 
     devProcess.catch((error: any) => {
       if (!isErrorExpected) {
-        throw error;
+        // Use fail() directly here to properly handle errors from the dev process
+        fail(error, 1, "Development Server Process");
       }
     });
 
