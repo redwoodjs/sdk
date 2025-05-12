@@ -9,6 +9,7 @@ import { runDevServer, runDevTest } from "./development.mjs";
 import { runReleaseTest } from "./release.mjs";
 import { fail, teardown, log } from "./utils.mjs";
 import { state } from "./state.mjs";
+import { initializeTestStatus } from "./reporting.mjs";
 
 /**
  * Main function that orchestrates the smoke test flow
@@ -20,6 +21,9 @@ export async function runSmokeTests(
 
   // Store options in state immediately for force report generation if needed
   state.options = options;
+
+  // Initialize test status based on options
+  initializeTestStatus();
 
   // Set default artifacts directory if not specified
   if (!options.artifactDir) {
@@ -88,6 +92,9 @@ export async function runSmokeTests(
 
         // Mark that dev tests have run successfully
         state.devTestsRan = true;
+
+        // Update the overall dev test status to PASSED
+        state.testStatus.dev.overall = "PASSED";
       } catch (error) {
         hasFailures = true;
         log("Error during development server testing: %O", error);
@@ -102,6 +109,9 @@ export async function runSmokeTests(
           details:
             error instanceof Error && error.stack ? error.stack : undefined,
         });
+
+        // Mark overall dev test status as FAILED
+        state.testStatus.dev.overall = "FAILED";
 
         // If bail option is true, stop the tests
         if (options.bail) {
@@ -134,6 +144,9 @@ export async function runSmokeTests(
 
         // Mark that release tests have run successfully
         state.releaseTestsRan = true;
+
+        // Update the overall production test status to PASSED
+        state.testStatus.production.overall = "PASSED";
       } catch (error) {
         hasFailures = true;
         log("Error during release testing: %O", error);
@@ -148,6 +161,9 @@ export async function runSmokeTests(
           details:
             error instanceof Error && error.stack ? error.stack : undefined,
         });
+
+        // Mark overall production test status as FAILED
+        state.testStatus.production.overall = "FAILED";
 
         // If bail option is true, stop the tests
         if (options.bail) {

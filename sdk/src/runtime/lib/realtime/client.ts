@@ -181,10 +181,12 @@ export const realtimeTransport =
           transportContext.setRscPayload(
             rscPayload as Promise<ActionResponse<unknown>>,
           );
-          console.log("###### before");
-          const result = await rscPayload;
-          console.log("###### after", result);
-          return (result as { actionResult: Result }).actionResult;
+          try {
+            const result = await rscPayload;
+            resolve((result as { actionResult: Result }).actionResult);
+          } catch (rscPayloadError) {
+            reject(rscPayloadError);
+          }
         });
       } catch (e) {
         console.error("[Realtime] Error calling server", e);

@@ -19,6 +19,8 @@ import { takeScreenshot } from "./artifacts.mjs";
 import { RETRIES } from "./constants.mjs";
 import { $ } from "../$.mjs";
 import { fail } from "./utils.mjs";
+import { reportSmokeTestResult } from "./reporting.mjs";
+import { updateTestStatus } from "./state.mjs";
 
 /**
  * Launch a browser instance
@@ -438,6 +440,11 @@ export async function checkServerSmoke(
 ): Promise<SmokeTestResult> {
   console.log(`🔍 Testing server-side smoke test ${phase ? `(${phase})` : ""}`);
 
+  // Determine the environment and test key for state update
+  const env = environment === "Development" ? "dev" : "production";
+  const testKey =
+    phase === "Initial" || !phase ? "initialServerSide" : "realtimeServerSide";
+
   const result = await page.evaluate(async () => {
     try {
       // Look for smoke test status indicator in the page
@@ -502,7 +509,34 @@ export async function checkServerSmoke(
   });
 
   log("Server-side smoke test result: %O", result);
-  reportSmokeTestResult(result, "Server-side", phase, environment, bail);
+
+  // Update test status based on result
+  updateTestStatus(
+    env,
+    testKey,
+    result.verificationPassed ? "PASSED" : "FAILED",
+  );
+
+  // Report the result (this no longer throws errors)
+  reportSmokeTestResult(result, "Server-side", phase, environment);
+
+  // Handle the error if verification failed
+  if (!result.verificationPassed) {
+    const errorMessage = `${environment} - ${phase ? `(${phase}) ` : ""}Server-side smoke test failed. Status: ${result.status}${result.error ? `. Error: ${result.error}` : ""}`;
+
+    if (bail) {
+      // If bail is true, call fail() which will exit the process
+      await fail(
+        new Error(errorMessage),
+        1,
+        `${environment} - Server-side Smoke Test (${phase})`,
+      );
+    } else {
+      // Otherwise throw an error that can be caught by the caller
+      throw new Error(errorMessage);
+    }
+  }
+
   return result;
 }
 
@@ -516,6 +550,11 @@ export async function checkClientSmoke(
   bail: boolean = false, // Add bail parameter
 ): Promise<SmokeTestResult | null> {
   console.log(`🔍 Testing client-side smoke test ${phase ? `(${phase})` : ""}`);
+
+  // Determine the environment and test key for state update
+  const env = environment === "Development" ? "dev" : "production";
+  const testKey =
+    phase === "Initial" || !phase ? "initialClientSide" : "realtimeClientSide";
 
   // Check if refresh button exists
   log("Checking for refresh button");
@@ -674,7 +713,34 @@ export async function checkClientSmoke(
   });
 
   log("Client-side smoke test result: %O", result);
-  reportSmokeTestResult(result, "Client-side", phase, environment, bail);
+
+  // Update test status based on result
+  updateTestStatus(
+    env,
+    testKey,
+    result.verificationPassed ? "PASSED" : "FAILED",
+  );
+
+  // Report the result (this no longer throws errors)
+  reportSmokeTestResult(result, "Client-side", phase, environment);
+
+  // Handle the error if verification failed
+  if (!result.verificationPassed) {
+    const errorMessage = `${environment} - ${phase ? `(${phase}) ` : ""}Client-side smoke test failed. Status: ${result.status}${result.error ? `. Error: ${result.error}` : ""}`;
+
+    if (bail) {
+      // If bail is true, call fail() which will exit the process
+      await fail(
+        new Error(errorMessage),
+        1,
+        `${environment} - Client-side Smoke Test (${phase})`,
+      );
+    } else {
+      // Otherwise throw an error that can be caught by the caller
+      throw new Error(errorMessage);
+    }
+  }
+
   return result;
 }
 
@@ -687,6 +753,10 @@ export async function upgradeToRealtime(
   bail: boolean = false, // Add bail parameter
 ): Promise<void> {
   console.log("\n📡 Upgrading to realtime mode");
+
+  // Determine the environment for state update
+  const env = environment === "Development" ? "dev" : "production";
+
   const upgradeResult = await page.evaluate(async () => {
     try {
       // Check if __rw API exists
@@ -716,6 +786,9 @@ export async function upgradeToRealtime(
     log("ERROR: Failed to upgrade to realtime mode: %s", upgradeResult.message);
     const errorMessage = `Failed to upgrade to realtime mode: ${upgradeResult.message}`;
 
+    // Update test status to FAILED
+    updateTestStatus(env, "realtimeUpgrade", "FAILED");
+
     if (bail) {
       // If bail is true, call fail() which will exit the process
       await fail(
@@ -730,54 +803,10 @@ export async function upgradeToRealtime(
     }
   }
 
+  // Update test status to PASSED
+  updateTestStatus(env, "realtimeUpgrade", "PASSED");
+
   console.log("✅ Successfully upgraded to realtime mode");
-}
-
-/**
- * Report the smoke test result
- */
-export function reportSmokeTestResult(
-  result: SmokeTestResult,
-  type: string,
-  phase: string = "",
-  environment: string = "Development", // Add environment parameter with default
-  bail: boolean = false, // Add bail parameter with default
-): void {
-  const phasePrefix = phase ? `(${phase}) ` : "";
-  log("Reporting %s%s smoke test result: %O", phasePrefix, type, result);
-
-  if (result.verificationPassed) {
-    console.log(`✅ ${phasePrefix}${type} smoke test passed!`);
-    if (result.serverTimestamp) {
-      console.log(`✅ Server timestamp: ${result.serverTimestamp}`);
-    }
-    if (result.clientTimestamp) {
-      console.log(`✅ Client timestamp: ${result.clientTimestamp}`);
-    }
-  } else {
-    log(
-      "ERROR: %s%s smoke test failed. Status: %s. Error: %s",
-      phasePrefix,
-      type,
-      result.status,
-      result.error || "unknown",
-    );
-
-    // Create the error message
-    const errorMessage = `${environment} - ${phasePrefix}${type} smoke test failed. Status: ${result.status}${result.error ? `. Error: ${result.error}` : ""}`;
-
-    if (bail) {
-      // If bail is true, call fail() which will exit the process
-      fail(
-        new Error(errorMessage),
-        1,
-        `${environment} - ${type} Smoke Test (${phase})`,
-      );
-    } else {
-      // Otherwise throw an error that can be caught by the caller
-      throw new Error(errorMessage);
-    }
-  }
 }
 
 /**

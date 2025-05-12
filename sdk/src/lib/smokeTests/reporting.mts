@@ -2,8 +2,26 @@ import { join, basename } from "path";
 import { writeFile } from "fs/promises";
 import { mkdirp } from "fs-extra";
 import { log } from "./constants.mjs";
-import { state } from "./state.mjs";
+import { state, TestStatusValue } from "./state.mjs";
 import { SmokeTestResult } from "./types.mjs";
+
+/**
+ * Maps a test status to a display string with emoji
+ */
+function formatTestStatus(status: TestStatusValue): string {
+  switch (status) {
+    case "PASSED":
+      return "✅ PASSED";
+    case "FAILED":
+      return "❌ FAILED";
+    case "SKIPPED":
+      return "⏩ SKIPPED";
+    case "DID_NOT_RUN":
+      return "⚠️ DID NOT RUN";
+    default:
+      return "❓ UNKNOWN";
+  }
+}
 
 /**
  * Generates the final test report without doing any resource cleanup.
@@ -70,6 +88,7 @@ export async function generateFinalReport(): Promise<void> {
         skipRelease: state.options.skipRelease,
         skipClient: state.options.skipClient,
       },
+      testStatus: state.testStatus,
     };
 
     // Always print the report to console in a pretty format
@@ -112,11 +131,6 @@ export async function generateFinalReport(): Promise<void> {
       console.log("\n✅ All smoke tests passed successfully!");
     }
 
-    // Add hierarchical test results overview
-    console.log("\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓");
-    console.log("┃          🔍 TEST RESULTS SUMMARY        ┃");
-    console.log("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛");
-
     // Group failures by step to determine which stages had issues
     const devFailures = state.failures.filter((f) =>
       failureMatches(f, ["Development", "Development Server", "Development -"]),
@@ -126,114 +140,72 @@ export async function generateFinalReport(): Promise<void> {
       failureMatches(f, ["Production", "Release", "Production -"]),
     );
 
-    // More specific test stage failures - for dev environment
-    const serverSideInitialDevFailures = state.failures.filter((f) =>
-      failureMatches(f, ["Server-side", "Initial"], ["Production"]),
+    // Add hierarchical test results overview
+    console.log("\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓");
+    console.log("┃          🔍 TEST RESULTS SUMMARY        ┃");
+    console.log("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛");
+
+    // Dev tests summary using the new testStatus system
+    console.log(
+      `● Development Tests: ${formatTestStatus(state.testStatus.dev.overall)}`,
     );
 
-    const clientSideInitialDevFailures = state.failures.filter((f) =>
-      failureMatches(f, ["Client-side", "Initial"], ["Production"]),
-    );
-
-    const serverSideRealtimeDevFailures = state.failures.filter((f) =>
-      failureMatches(f, ["Server-side", "Post-upgrade"], ["Production"]),
-    );
-
-    const clientSideRealtimeDevFailures = state.failures.filter((f) =>
-      failureMatches(f, ["Client-side", "Post-upgrade"], ["Production"]),
-    );
-
-    const realtimeUpgradeDevFailures = state.failures.filter((f) =>
-      failureMatches(f, ["Realtime Upgrade"], ["Production"]),
-    );
-
-    // For production environment
-    const serverSideInitialProdFailures = state.failures.filter((f) =>
-      failureMatches(f, ["Server-side", "Initial", "Production"]),
-    );
-
-    const clientSideInitialProdFailures = state.failures.filter((f) =>
-      failureMatches(f, ["Client-side", "Initial", "Production"]),
-    );
-
-    const serverSideRealtimeProdFailures = state.failures.filter((f) =>
-      failureMatches(f, ["Server-side", "Post-upgrade", "Production"]),
-    );
-
-    const clientSideRealtimeProdFailures = state.failures.filter((f) =>
-      failureMatches(f, ["Client-side", "Post-upgrade", "Production"]),
-    );
-
-    const realtimeUpgradeProdFailures = state.failures.filter((f) =>
-      failureMatches(f, ["Realtime Upgrade", "Production"]),
-    );
-
-    const releaseCommandFailures = state.failures.filter((f) =>
-      failureMatches(f, ["Release Command"]),
-    );
-
-    // Dev tests summary
-    if (report.options.skipDev) {
-      console.log("● Development Tests: ⏩ SKIPPED");
-    } else if (state.devTestsRan === false && devFailures.length === 0) {
-      console.log("● Development Tests: ⚠️ DID NOT RUN");
-    } else {
-      console.log(
-        `● Development Tests: ${devFailures.length > 0 ? "❌ FAILED" : "✅ PASSED"}`,
-      );
+    // Only show details if the overall test status is not "SKIPPED" or "DID_NOT_RUN"
+    if (
+      state.testStatus.dev.overall !== "SKIPPED" &&
+      state.testStatus.dev.overall !== "DID_NOT_RUN"
+    ) {
       console.log(`  ├─ Initial Tests:`);
       console.log(
-        `  │  ├─ Server-side: ${serverSideInitialDevFailures.length > 0 ? "❌ FAILED" : serverSideInitialDevFailures.length === 0 && state.devTestsRan === false && devFailures.length === 0 ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
+        `  │  ├─ Server-side: ${formatTestStatus(state.testStatus.dev.initialServerSide)}`,
       );
       console.log(
-        `  │  └─ Client-side: ${clientSideInitialDevFailures.length > 0 ? "❌ FAILED" : report.options.skipClient ? "⏩ SKIPPED" : clientSideInitialDevFailures.length === 0 && state.devTestsRan === false && devFailures.length === 0 ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
+        `  │  └─ Client-side: ${formatTestStatus(state.testStatus.dev.initialClientSide)}`,
       );
       console.log(`  └─ Realtime Tests:`);
       console.log(
-        `     ├─ Upgrade: ${realtimeUpgradeDevFailures.length > 0 ? "❌ FAILED" : realtimeUpgradeDevFailures.length === 0 && state.devTestsRan === false && devFailures.length === 0 ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
+        `     ├─ Upgrade: ${formatTestStatus(state.testStatus.dev.realtimeUpgrade)}`,
       );
       console.log(
-        `     ├─ Server-side: ${serverSideRealtimeDevFailures.length > 0 ? "❌ FAILED" : realtimeUpgradeDevFailures.length > 0 ? "⏩ SKIPPED" : serverSideRealtimeDevFailures.length === 0 && state.devTestsRan === false && devFailures.length === 0 ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
+        `     ├─ Server-side: ${formatTestStatus(state.testStatus.dev.realtimeServerSide)}`,
       );
       console.log(
-        `     └─ Client-side: ${clientSideRealtimeDevFailures.length > 0 ? "❌ FAILED" : realtimeUpgradeDevFailures.length > 0 || report.options.skipClient ? "⏩ SKIPPED" : clientSideRealtimeDevFailures.length === 0 && state.devTestsRan === false && devFailures.length === 0 ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
+        `     └─ Client-side: ${formatTestStatus(state.testStatus.dev.realtimeClientSide)}`,
       );
     }
 
-    // Release tests summary
-    if (report.options.skipRelease) {
-      console.log("● Production Tests: ⏩ SKIPPED");
-    } else if (
-      state.releaseTestsRan === false &&
-      releaseFailures.length === 0
+    // Production tests summary using the new testStatus system
+    console.log(
+      `● Production Tests: ${formatTestStatus(state.testStatus.production.overall)}`,
+    );
+
+    // Only show details if the overall test status is not "SKIPPED" or "DID_NOT_RUN"
+    if (
+      state.testStatus.production.overall !== "SKIPPED" &&
+      state.testStatus.production.overall !== "DID_NOT_RUN"
     ) {
-      console.log("● Production Tests: ⚠️ DID NOT RUN");
-    } else {
       console.log(
-        `● Production Tests: ${releaseFailures.length > 0 ? "❌ FAILED" : "✅ PASSED"}`,
-      );
-      console.log(
-        `  ├─ Release Command: ${releaseCommandFailures.length > 0 ? "❌ FAILED" : releaseCommandFailures.length === 0 && state.releaseTestsRan === false && releaseFailures.length === 0 ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
+        `  ├─ Release Command: ${formatTestStatus(state.testStatus.production.releaseCommand)}`,
       );
 
-      // Only show these if release command succeeded
-      if (releaseCommandFailures.length === 0) {
+      // Only show these if release command was either not run or passed
+      if (state.testStatus.production.releaseCommand !== "FAILED") {
         console.log(`  ├─ Initial Tests:`);
         console.log(
-          `  │  ├─ Server-side: ${serverSideInitialProdFailures.length > 0 ? "❌ FAILED" : serverSideInitialProdFailures.length === 0 && state.releaseTestsRan === false && releaseFailures.length === 0 ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
+          `  │  ├─ Server-side: ${formatTestStatus(state.testStatus.production.initialServerSide)}`,
         );
         console.log(
-          `  │  └─ Client-side: ${clientSideInitialProdFailures.length > 0 ? "❌ FAILED" : report.options.skipClient ? "⏩ SKIPPED" : clientSideInitialProdFailures.length === 0 && state.releaseTestsRan === false && releaseFailures.length === 0 ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
+          `  │  └─ Client-side: ${formatTestStatus(state.testStatus.production.initialClientSide)}`,
         );
         console.log(`  └─ Realtime Tests:`);
         console.log(
-          `     ├─ Upgrade: ${realtimeUpgradeProdFailures.length > 0 ? "❌ FAILED" : realtimeUpgradeProdFailures.length === 0 && state.releaseTestsRan === false && releaseFailures.length === 0 ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
+          `     ├─ Upgrade: ${formatTestStatus(state.testStatus.production.realtimeUpgrade)}`,
         );
         console.log(
-          `     ├─ Server-side: ${serverSideRealtimeProdFailures.length > 0 ? "❌ FAILED" : realtimeUpgradeProdFailures.length > 0 ? "⏩ SKIPPED" : serverSideRealtimeProdFailures.length === 0 && state.releaseTestsRan === false && releaseFailures.length === 0 ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
+          `     ├─ Server-side: ${formatTestStatus(state.testStatus.production.realtimeServerSide)}`,
         );
         console.log(
-          `     └─ Client-side: ${clientSideRealtimeProdFailures.length > 0 ? "❌ FAILED" : realtimeUpgradeProdFailures.length > 0 || report.options.skipClient ? "⏩ SKIPPED" : clientSideRealtimeProdFailures.length === 0 && state.releaseTestsRan === false && releaseFailures.length === 0 ? "⚠️ DID NOT RUN" : "✅ PASSED"}`,
+          `     └─ Client-side: ${formatTestStatus(state.testStatus.production.realtimeClientSide)}`,
         );
       } else {
         console.log(`  └─ Tests: ⏩ SKIPPED (release command failed)`);
@@ -336,7 +308,7 @@ export async function generateFinalReport(): Promise<void> {
 }
 
 /**
- * Report the smoke test result
+ * Updates the test status in the state object and reports the result.
  */
 export function reportSmokeTestResult(
   result: SmokeTestResult,
@@ -363,8 +335,57 @@ export function reportSmokeTestResult(
       result.status,
       result.error || "unknown",
     );
-    throw new Error(
-      `${environment} - ${phasePrefix}${type} smoke test failed. Status: ${result.status}${result.error ? `. Error: ${result.error}` : ""}`,
+
+    // The actual state update and error throwing is now handled by the caller functions
+    // We only need to report the result in the console
+    console.error(
+      `❌ ${phasePrefix}${type} smoke test failed. Status: ${result.status}${result.error ? `. Error: ${result.error}` : ""}`,
     );
+  }
+}
+
+/**
+ * Initialize test statuses based on test options
+ */
+export function initializeTestStatus(): void {
+  // Mark skipped tests based on options
+  if (state.options.skipDev) {
+    state.testStatus.dev.overall = "SKIPPED";
+    state.testStatus.dev.initialServerSide = "SKIPPED";
+    state.testStatus.dev.initialClientSide = "SKIPPED";
+    state.testStatus.dev.realtimeUpgrade = "SKIPPED";
+    state.testStatus.dev.realtimeServerSide = "SKIPPED";
+    state.testStatus.dev.realtimeClientSide = "SKIPPED";
+  }
+
+  if (state.options.skipRelease) {
+    state.testStatus.production.overall = "SKIPPED";
+    state.testStatus.production.releaseCommand = "SKIPPED";
+    state.testStatus.production.initialServerSide = "SKIPPED";
+    state.testStatus.production.initialClientSide = "SKIPPED";
+    state.testStatus.production.realtimeUpgrade = "SKIPPED";
+    state.testStatus.production.realtimeServerSide = "SKIPPED";
+    state.testStatus.production.realtimeClientSide = "SKIPPED";
+  }
+
+  if (state.options.skipClient) {
+    state.testStatus.dev.initialClientSide = "SKIPPED";
+    state.testStatus.dev.realtimeClientSide = "SKIPPED";
+    state.testStatus.production.initialClientSide = "SKIPPED";
+    state.testStatus.production.realtimeClientSide = "SKIPPED";
+  }
+
+  // Handle realtime option which skips initial tests
+  if (state.options.realtime) {
+    // In realtime mode, initial tests are skipped
+    if (!state.options.skipDev) {
+      state.testStatus.dev.initialServerSide = "SKIPPED";
+      state.testStatus.dev.initialClientSide = "SKIPPED";
+    }
+
+    if (!state.options.skipRelease) {
+      state.testStatus.production.initialServerSide = "SKIPPED";
+      state.testStatus.production.initialClientSide = "SKIPPED";
+    }
   }
 }
