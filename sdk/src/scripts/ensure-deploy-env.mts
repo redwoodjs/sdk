@@ -12,7 +12,7 @@ import {
 } from "unique-names-generator";
 import * as readline from "readline";
 import { pathExists } from "fs-extra";
-import { parseJson } from "../lib/jsonUtils.mjs";
+import { parseJson, extractAllJson } from "../lib/jsonUtils.mjs";
 // Define interface for the database info returned by wrangler
 interface D1DatabaseInfo {
   uuid?: string;
@@ -157,30 +157,82 @@ export const ensureDeployEnv = async () => {
           style: "lowerCase",
         });
         const dbName = `${wranglerConfig.name}-${suffix}`;
-        await $({ stdio: "inherit" })`wrangler d1 create ${dbName}`;
-        const result = await $`wrangler d1 info ${dbName} --json`;
 
-        // Extract JSON using our utility function with a typed empty object
-        const dbInfo = parseJson<D1DatabaseInfo>(result.stdout, {});
+        try {
+          // Create the database with real-time output so the user can see progress
+          console.log(`Creating D1 database: ${dbName}...`);
+          const createResult = await $({
+            stdio: "pipe",
+          })`wrangler d1 create ${dbName}`;
 
-        if (!dbInfo.uuid) {
-          throw new Error("Failed to get database ID from wrangler output");
+          // Log the result to the console
+          console.log(createResult.stdout);
+
+          // Parse all JSON objects from the output
+          const allJsonObjects = extractAllJson(createResult.stdout);
+
+          // First look for object with uuid directly
+          let dbInfo: D1DatabaseInfo = { uuid: undefined, name: undefined };
+
+          for (const obj of allJsonObjects) {
+            if (obj && obj.uuid) {
+              dbInfo = obj;
+              break;
+            }
+          }
+
+          // If not found, look for the d1_databases structure
+          if (!dbInfo.uuid) {
+            for (const obj of allJsonObjects) {
+              if (obj && obj.d1_databases && Array.isArray(obj.d1_databases)) {
+                const dbConfig = obj.d1_databases.find(
+                  (db: any) =>
+                    db.binding === "DB" || db.database_name === dbName,
+                );
+                if (dbConfig && dbConfig.database_id) {
+                  dbInfo.uuid = dbConfig.database_id;
+                  dbInfo.name = dbConfig.database_name || dbName;
+                  break;
+                }
+              }
+            }
+          }
+
+          if (!dbInfo.uuid) {
+            throw new Error(
+              "Failed to extract database ID from wrangler output",
+            );
+          }
+
+          // Update wrangler config with database info, preserving other databases
+          const existingDatabases = wranglerConfig.d1_databases || [];
+          wranglerConfig.d1_databases = [
+            ...existingDatabases.filter((db: any) => db.binding !== "DB"),
+            {
+              binding: "DB",
+              database_name: dbName,
+              database_id: dbInfo.uuid,
+            },
+          ];
+
+          await writeFile(
+            wranglerPath,
+            JSON.stringify(wranglerConfig, null, 2),
+          );
+          console.log("Updated wrangler.jsonc configuration");
+          console.log(
+            `D1 database configured: ${dbName} with ID: ${dbInfo.uuid}`,
+          );
+        } catch (error) {
+          console.error(
+            "Failed to create D1 database:",
+            error instanceof Error ? error.message : String(error),
+          );
+          console.error("Please create it manually:");
+          console.error("1. Run: wrangler d1 create <your-db-name>");
+          console.error("2. Update wrangler.jsonc with the database details");
+          process.exit(1);
         }
-
-        // Update wrangler config with database info, preserving other databases
-        const existingDatabases = wranglerConfig.d1_databases || [];
-        wranglerConfig.d1_databases = [
-          ...existingDatabases.filter((db: any) => db.binding !== "DB"),
-          {
-            binding: "DB",
-            database_name: dbName,
-            database_id: dbInfo.uuid,
-          },
-        ];
-
-        await writeFile(wranglerPath, JSON.stringify(wranglerConfig, null, 2));
-        console.log("Updated wrangler.jsonc configuration");
-        console.log(`Created D1 database: ${dbName}`);
       }
     } catch (error) {
       console.error("Failed to create D1 database. Please create it manually:");
