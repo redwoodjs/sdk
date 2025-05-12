@@ -164,8 +164,8 @@ export async function checkUrl(
   headless: boolean = true,
   bail: boolean = false,
   skipClient: boolean = false,
-  environment: string = "Development", // Add environment parameter with default
-  realtime: boolean = false, // Add realtime parameter with default
+  environment: string = "Development",
+  realtime: boolean = false,
 ): Promise<void> {
   console.log(`🔍 Testing URL: ${url}`);
 
@@ -184,6 +184,12 @@ export async function checkUrl(
   let initialTestError: Error | null = null;
   let realtimeTestError: Error | null = null;
 
+  // Store timestamp values between test phases
+  const timestampState = {
+    initialServerValue: 23, // This is the default initial module-level value
+    clientUpdatedValue: null as number | null,
+  };
+
   try {
     log("Opening new page");
     const page = await browser.newPage();
@@ -200,7 +206,15 @@ export async function checkUrl(
       // Skip upgradeToRealtime and just run the realtime tests directly
       try {
         log("Performing realtime-only smoke test");
-        await checkUrlSmoke(page, url, true, bail, skipClient, environment);
+        await checkUrlSmoke(
+          page,
+          url,
+          true,
+          bail,
+          skipClient,
+          environment,
+          timestampState,
+        );
 
         // Take a screenshot of the realtime test
         await takeScreenshot(
@@ -235,7 +249,15 @@ export async function checkUrl(
       log("Performing initial smoke test");
       let initialTestStatus = "passed";
       try {
-        await checkUrlSmoke(page, url, false, bail, skipClient, environment);
+        await checkUrlSmoke(
+          page,
+          url,
+          false,
+          bail,
+          skipClient,
+          environment,
+          timestampState,
+        );
       } catch (error) {
         hasFailures = true;
         initialTestStatus = "failed";
@@ -272,7 +294,15 @@ export async function checkUrl(
         log("Reloading page after realtime upgrade");
         await page.reload({ waitUntil: "networkidle0" });
         log("Performing post-upgrade smoke test");
-        await checkUrlSmoke(page, url, true, bail, skipClient, environment);
+        await checkUrlSmoke(
+          page,
+          url,
+          true,
+          bail,
+          skipClient,
+          environment,
+          timestampState,
+        );
       } catch (error) {
         hasFailures = true;
         realtimeTestStatus = "failed";
@@ -336,6 +366,10 @@ export async function checkUrlSmoke(
   bail: boolean = false,
   skipClient: boolean = false,
   environment: string = "Development",
+  timestampState: {
+    initialServerValue: number;
+    clientUpdatedValue: number | null;
+  },
 ): Promise<void> {
   const phase = isRealtime ? "Post-upgrade" : "Initial";
   console.log(`🔍 Testing ${phase} smoke tests at ${url}`);
@@ -368,30 +402,41 @@ export async function checkUrlSmoke(
   let clientTestError: Error | null = null;
   let serverRenderCheckError: Error | null = null;
 
-  // Step 1: Run initial server-side smoke test to check the initial server state
-  // The module-level variable should be set to a fixed initial value (23)
+  // Step 1: Run initial server-side smoke test to check the server state
   log("Running initial server-side smoke test");
   let initialServerResult;
   try {
-    // Check that the server is returning the expected initial value (23)
+    // For initial checks: use the fixed initial value (23)
+    // For realtime checks: if we've previously updated the value, use that instead of 23
+    const expectedValue =
+      isRealtime && timestampState.clientUpdatedValue !== null
+        ? timestampState.clientUpdatedValue
+        : timestampState.initialServerValue;
+
+    // Check that the server is returning the expected value
     initialServerResult = await checkServerSmoke(
       page,
       phase,
       environment,
       bail,
-      23, // Expected initial fixed value
+      expectedValue,
       false, // Not a server render check
     );
     log(
-      "Initial server-side check passed - module variable has initial value of 23",
+      `${phase} server-side check passed - module variable has expected value ${expectedValue}`,
     );
+
+    // Store the current timestamp for potential future reference
+    if (initialServerResult && initialServerResult.timestamp) {
+      timestampState.initialServerValue = initialServerResult.timestamp;
+    }
   } catch (error) {
     hasFailures = true;
     initialServerTestError =
       error instanceof Error ? error : new Error(String(error));
     log("Error during initial server-side smoke test: %O", error);
     console.error(
-      `❌ Initial server-side smoke test failed: ${error instanceof Error ? error.message : String(error)}`,
+      `❌ ${phase} server-side smoke test failed: ${error instanceof Error ? error.message : String(error)}`,
     );
 
     // If bail is true, stop the tests
@@ -416,6 +461,14 @@ export async function checkUrlSmoke(
   let clientResult;
   try {
     clientResult = await checkClientSmoke(page, phase, environment, bail);
+
+    // Store the client-updated timestamp for further tests
+    if (clientResult && clientResult.clientTimestamp) {
+      timestampState.clientUpdatedValue = clientResult.clientTimestamp;
+      log(
+        `Saved client timestamp ${clientResult.clientTimestamp} for verification`,
+      );
+    }
   } catch (error) {
     hasFailures = true;
     clientTestError = error instanceof Error ? error : new Error(String(error));
@@ -978,6 +1031,12 @@ async function realtimeOnlyFlow(
   let hasFailures = false;
   let realtimeError: Error | null = null;
 
+  // Create timestamp state for the realtime-only flow
+  const timestampState = {
+    initialServerValue: 23, // This is the default initial module-level value
+    clientUpdatedValue: null as number | null,
+  };
+
   try {
     // Directly upgrade to realtime mode
     console.log(
@@ -989,7 +1048,15 @@ async function realtimeOnlyFlow(
     await page.reload({ waitUntil: "networkidle0" });
 
     log("Performing realtime-only smoke test");
-    await checkUrlSmoke(page, url, true, bail, skipClient, environment);
+    await checkUrlSmoke(
+      page,
+      url,
+      true,
+      bail,
+      skipClient,
+      environment,
+      timestampState,
+    );
 
     // Take a screenshot of the realtime test
     await takeScreenshot(
