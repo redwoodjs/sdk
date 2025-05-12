@@ -68,11 +68,7 @@ export const SmokeTestInfo: React.FC = async () => {
         </pre>
       </details>
 
-      ${
-        skipClient
-          ? "<!-- Client-side checks disabled -->"
-          : "{/* Include the client component for on-demand smoke tests */}\\n      <SmokeTestClient />"
-      }
+      ${!skipClient ? "<SmokeTestClient/>" : ""}
     </div>
   );
 };`;
