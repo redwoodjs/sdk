@@ -142,7 +142,7 @@ export async function generateFinalReport(): Promise<void> {
 
     // Add hierarchical test results overview
     console.log("\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓");
-    console.log("┃          🔍 TEST RESULTS SUMMARY        ┃");
+    console.log("┃          🔍 TEST RESULTS SUMMARY          ┃");
     console.log("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛");
 
     // Dev tests summary using the new testStatus system
@@ -244,7 +244,7 @@ export async function generateFinalReport(): Promise<void> {
     // Report failures with clear environment context
     if (state.failures.length > 0) {
       console.log("\n┏━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┓");
-      console.log("┃        🔍 FAILURE DETAILS             ┃");
+      console.log("┃          🔍 FAILURE DETAILS             ┃");
       console.log("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛");
 
       // Group failures by environment (Dev vs Release)

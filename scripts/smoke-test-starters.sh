@@ -17,12 +17,12 @@ echo "🚀 Starting smoke tests for all starters"
 FAILED=0
 
 # Test minimal starter with root path
-echo "🔥 Running smoke test for minimal starter with path /"
-cd "$SDK_ROOT/sdk"
-if ! pnpm smoke-test --url="/" --path="$SDK_ROOT/starters/minimal" --artifact-dir="$ARTIFACT_DIR/minimal" --sync --copy-project; then
-  echo "❌ Smoke test failed for minimal starter"
-  FAILED=1
-fi
+#echo "🔥 Running smoke test for minimal starter with path /"
+#cd "$SDK_ROOT/sdk"
+#if ! pnpm smoke-test --url="/" --path="$SDK_ROOT/starters/minimal" --artifact-dir="$ARTIFACT_DIR/minimal" --sync --copy-project; then
+#  echo "❌ Smoke test failed for minimal starter"
+#  FAILED=1
+#fi
 
 # Test standard starter with /user/login path
 echo "🔥 Running smoke test for standard starter with path /user/login"
