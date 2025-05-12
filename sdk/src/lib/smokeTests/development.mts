@@ -229,6 +229,7 @@ export async function runDevTest(
   headless: boolean = true,
   bail: boolean = false,
   skipClient: boolean = false,
+  realtime: boolean = false,
 ): Promise<void> {
   log("Starting dev server test with path: %s", customPath || "/");
   console.log("🚀 Testing local development server");
@@ -253,6 +254,7 @@ export async function runDevTest(
       bail,
       skipClient,
       "Development", // Add environment context parameter
+      realtime, // Add realtime parameter
     );
     log("Development server test completed successfully");
   } catch (error) {

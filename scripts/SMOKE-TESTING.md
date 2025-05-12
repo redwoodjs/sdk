@@ -65,26 +65,6 @@ pnpm smoke-test --url="/custom/path" --path="../starters/minimal" --artifact-dir
 pnpm smoke-test --skip-client
 ```
 
-## Available Options
-
-The smoke-test script supports several options:
-
-```
---url=PATH              Custom URL path to test (e.g., "/login")
---skip-dev              Skip testing the local development server
---skip-release          Skip testing the release/production deployment
---skip-client           Skip client-side tests, only run server-side checks
---path=PATH             Project directory to test
---artifact-dir=DIR      Directory to store test artifacts
---keep                  Don't delete the temporary project directory after tests
---no-headless           Use regular browser instead of headless browser
---no-sync               Do not sync SDK before running smoke test
---sync                  Force sync SDK before running smoke test
---ci                    Force CI mode behavior
---bail                  Stop on first test failure
---copy-project          Copy the project directory to artifacts
-```
-
 ## Troubleshooting
 
 If a smoke test fails:

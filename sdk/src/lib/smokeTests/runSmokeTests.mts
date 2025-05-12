@@ -83,6 +83,7 @@ export async function runSmokeTests(
           options.headless !== false,
           options.bail,
           options.skipClient,
+          options.realtime,
         );
 
         // Mark that dev tests have run successfully
@@ -128,6 +129,7 @@ export async function runSmokeTests(
           options.bail,
           options.skipClient,
           options.projectDir,
+          options.realtime,
         );
 
         // Mark that release tests have run successfully

@@ -35,6 +35,7 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
     ci: ciFlag,
     bail: false, // Default to false - continue tests even if some fail
     copyProject: false, // Default to false - don't copy project to artifacts
+    realtime: false, // Default to false - don't just test realtime
     // sync: will be set below
   };
 
@@ -70,6 +71,8 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
       // Already handled above, just skip
     } else if (arg === "--bail") {
       options.bail = true;
+    } else if (arg === "--realtime") {
+      options.realtime = true;
     } else if (arg === "--help" || arg === "-h") {
       // Display help text
       console.log(`
@@ -90,6 +93,7 @@ Options:
   --ci                    Run in CI mode (keeps temp dirs, sets headless)
   --bail                  Stop on first test failure
   --copy-project          Copy the project to the artifacts directory
+  --realtime              Only run realtime smoke tests, skip initial tests
   --help                  Show this help message
 `);
       process.exit(0);

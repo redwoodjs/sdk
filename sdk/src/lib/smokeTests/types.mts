@@ -23,6 +23,7 @@ export interface SmokeTestOptions {
   ci?: boolean;
   bail?: boolean;
   copyProject?: boolean;
+  realtime?: boolean;
 }
 
 export interface TestResources {

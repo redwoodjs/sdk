@@ -162,6 +162,7 @@ export async function checkUrl(
   bail: boolean = false,
   skipClient: boolean = false,
   environment: string = "Development", // Add environment parameter with default
+  realtime: boolean = false, // Add realtime parameter with default
 ): Promise<void> {
   console.log(`🔍 Testing URL: ${url}`);
 
@@ -186,38 +187,46 @@ export async function checkUrl(
     page.setDefaultNavigationTimeout(30000);
     log("Set navigation timeout: %dms", 30000);
 
-    // Initial smoke test
-    log("Performing initial smoke test");
-    let initialTestStatus = "passed";
-    try {
-      await checkUrlSmoke(page, url, false, bail, skipClient, environment);
-    } catch (error) {
-      hasFailures = true;
-      initialTestStatus = "failed";
-      initialTestError =
-        error instanceof Error ? error : new Error(String(error));
-      log("Error during initial smoke test: %O", error);
-      console.error(
-        `❌ Initial smoke test failed: ${error instanceof Error ? error.message : String(error)}`,
-      );
+    // Skip initial smoke test if realtime flag is true
+    if (!realtime) {
+      // Initial smoke test
+      log("Performing initial smoke test");
+      let initialTestStatus = "passed";
+      try {
+        await checkUrlSmoke(page, url, false, bail, skipClient, environment);
+      } catch (error) {
+        hasFailures = true;
+        initialTestStatus = "failed";
+        initialTestError =
+          error instanceof Error ? error : new Error(String(error));
+        log("Error during initial smoke test: %O", error);
+        console.error(
+          `❌ Initial smoke test failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
 
-      // If bail is true, stop the tests
-      if (bail) {
-        throw error;
+        // If bail is true, stop the tests
+        if (bail) {
+          throw error;
+        }
+
+        console.log(
+          "Continuing with realtime upgrade test since --bail is not enabled...",
+        );
       }
 
+      // Take a screenshot after initial test
+      await takeScreenshot(
+        page,
+        url,
+        artifactDir,
+        `${environment.toLowerCase()}-initial-${initialTestStatus}`,
+      );
+    } else {
+      log("Skipping initial smoke test (--realtime option enabled)");
       console.log(
-        "Continuing with realtime upgrade test since --bail is not enabled...",
+        "⏩ Skipping initial smoke tests (--realtime option enabled)",
       );
     }
-
-    // Take a screenshot after initial test
-    await takeScreenshot(
-      page,
-      url,
-      artifactDir,
-      `${environment.toLowerCase()}-initial-${initialTestStatus}`,
-    );
 
     // Upgrade to realtime and check again
     log("Upgrading to realtime");

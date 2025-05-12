@@ -436,6 +436,7 @@ export async function runReleaseTest(
   bail: boolean = false,
   skipClient: boolean = false,
   projectDir?: string,
+  realtime: boolean = false,
 ): Promise<void> {
   log("Starting release test with path: %s", customPath || "/");
   console.log("\n🚀 Testing production deployment");
@@ -469,7 +470,8 @@ export async function runReleaseTest(
       headless,
       bail,
       skipClient,
-      "Production", // Add environment context parameter
+      "Production",
+      realtime,
     );
     log("Release test completed successfully");
 
