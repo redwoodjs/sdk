@@ -581,59 +581,6 @@ export async function runReleaseTest(
 }
 
 /**
- * List all Cloudflare workers
- */
-export async function listWorkers(cwd?: string): Promise<string[]> {
-  log("Listing Cloudflare workers");
-  try {
-    const result = await $({
-      cwd,
-      stdio: "pipe",
-    })`npx wrangler workers list --json`;
-
-    // Parse the JSON output to extract the last valid JSON
-    const data = parseJson<Worker[] | { workers?: Worker[] }>(
-      result.stdout,
-      [],
-    );
-
-    if (Array.isArray(data)) {
-      const workerNames = data
-        .map((w) => {
-          if (typeof w === "string") return w;
-          if (w.name) return w.name;
-          if (w.id) return w.id;
-          return null;
-        })
-        .filter(Boolean) as string[];
-
-      log("Found %d workers in parsed array", workerNames.length);
-      return workerNames;
-    } else if (data.workers && Array.isArray(data.workers)) {
-      const workerNames = data.workers
-        .map((w) => {
-          if (typeof w === "string") return w;
-          if (w.name) return w.name;
-          if (w.id) return w.id;
-          return null;
-        })
-        .filter(Boolean) as string[];
-
-      log("Found %d workers in 'workers' property", workerNames.length);
-      return workerNames;
-    }
-
-    // If nothing worked, return an empty array
-    log("Could not parse JSON from output, returning empty array");
-    return [];
-  } catch (error) {
-    log("Error listing workers: %O", error);
-    console.error(`Failed to list workers: ${error}`);
-    return [];
-  }
-}
-
-/**
  * Check if a resource name includes a specific resource unique key
  * This is used to identify resources created during our tests
  */
@@ -654,28 +601,19 @@ export async function deleteWorker(
   resourceUniqueKey?: string,
 ): Promise<void> {
   console.log(`Cleaning up: Deleting worker ${name}...`);
+
+  // Safety check: if we have a resourceUniqueKey, verify this worker name contains it
+  if (resourceUniqueKey && !isRelatedToTest(name, resourceUniqueKey)) {
+    log(
+      `Worker ${name} does not contain unique key ${resourceUniqueKey}, not deleting for safety`,
+    );
+    console.log(
+      `⚠️ Worker ${name} does not seem to be created by this test, skipping deletion for safety`,
+    );
+    return;
+  }
+
   try {
-    // First check if the worker exists
-    const workers = await listWorkers(cwd);
-    const exists = workers.includes(name);
-
-    if (!exists) {
-      log(`Worker ${name} not found, skipping deletion`);
-      console.log(`⚠️ Worker ${name} not found, skipping deletion`);
-      return;
-    }
-
-    // Extra safety check: if we have a resourceUniqueKey, verify this worker is related to our test
-    if (resourceUniqueKey && !isRelatedToTest(name, resourceUniqueKey)) {
-      log(
-        `Worker ${name} does not contain unique key ${resourceUniqueKey}, not deleting for safety`,
-      );
-      console.log(
-        `⚠️ Worker ${name} does not seem to be created by this test, skipping deletion for safety`,
-      );
-      return;
-    }
-
     // Use our $expect utility to handle any confirmation prompts
     log("Running wrangler delete command with interactive prompts");
     await $expect(
