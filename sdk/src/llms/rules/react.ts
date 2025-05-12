@@ -1,8 +1,4 @@
----
-description: RedwoodSDK: React, React Server Components, and React Server Functions Rules
-globs: src/app/**/*/*.tsx,Document.tsx
-alwaysApply: false
----
+export const react = `
 # React, React Server Components, and React Server Functions Rules
 
 ## React Server Components (RSC)
@@ -15,11 +11,11 @@ alwaysApply: false
 
 Example:
 
-```tsx
+\`\`\`tsx
 export default function MyServerComponent() {
   return <div>Hello, from the server!</div>;
 }
-```
+\`\`\`
 
 ## Client Components
 
@@ -34,13 +30,13 @@ export default function MyServerComponent() {
 
 Example:
 
-```tsx
+\`\`\`tsx
 "use client";
 
 export default function MyClientComponent() {
   return <button onClick={() => console.log("clicked")}>Click me</button>;
 }
-```
+\`\`\`
 
 ## Data Fetching in Server Components
 
@@ -50,7 +46,7 @@ export default function MyClientComponent() {
 
 Example:
 
-```tsx
+\`\`\`tsx
 export async function TodoList({ ctx }) {
   const todos = await db.todo.findMany({ where: { userId: ctx.user.id } });
 
@@ -62,7 +58,7 @@ export async function TodoList({ ctx }) {
     </ol>
   );
 }
-```
+\`\`\`
 
 ## Server Functions
 
@@ -74,27 +70,27 @@ export async function TodoList({ ctx }) {
 
 Example:
 
-```tsx
+\`\`\`tsx
 "use server";
 
-import { requestInfo } from "@redwoodjs/sdk/worker";
+import { requestInfo } from "rwsdk/worker";
 
 export async function addTodo(formData: FormData) {
   const { ctx } = requestInfo;
   const title = formData.get("title");
   await db.todo.create({ data: { title, userId: ctx.user.id } });
 }
-```
+\`\`\`
 
 ## Context Usage
 
 1. Context is available to all server components and server functions.
 2. Access context via:
    - requestInfo in server functions:
-   ```
-   import { requestInfo } from "@redwoodjs/sdk/worker";
+   \`\`\`
+   import { requestInfo } from "rwsdk/worker";
    const { ctx } = requestInfo
-   ```
+   \`\`\`
 3. Context is populated by middleware and interruptors and is request-scoped.
 
 ## Best Practices
@@ -106,3 +102,5 @@ export async function addTodo(formData: FormData) {
 5. Keep client components as small as possible, moving server-side logic to server components or server functions.
 6. Always mark client components with "use client" directive.
 7. Always mark server functions with "use server" directive.
+
+`;

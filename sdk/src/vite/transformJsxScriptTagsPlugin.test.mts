@@ -18,8 +18,7 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, mockManifest);
 
-    expect(result?.code)
-      .toEqual(`import { requestInfo } from "@redwoodjs/sdk/worker";
+    expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
       jsx("script", {
         src: "/assets/client-a1b2c3d4.js",
@@ -39,8 +38,7 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, mockManifest);
 
-    expect(result?.code)
-      .toEqual(`import { requestInfo } from "@redwoodjs/sdk/worker";
+    expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
       jsx("script", {
         type: "module",
@@ -57,8 +55,7 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, mockManifest);
 
-    expect(result?.code)
-      .toEqual(`import { requestInfo } from "@redwoodjs/sdk/worker";
+    expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
       jsx("script", { type: "module", children: "import(\\"\/assets\/client-a1b2c3d4.js\\")",
           nonce: requestInfo.rw.nonce
@@ -83,8 +80,7 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, mockManifest);
 
-    expect(result?.code)
-      .toEqual(`import { requestInfo } from "@redwoodjs/sdk/worker";
+    expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
       jsx("script", {
         type: "module",
@@ -114,8 +110,7 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, mockManifest);
 
-    expect(result?.code)
-      .toEqual(`import { requestInfo } from "@redwoodjs/sdk/worker";
+    expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
       jsx("script", {
         type: "module",
@@ -191,8 +186,7 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, mockManifest);
 
-    expect(result?.code)
-      .toEqual(`import { requestInfo } from "@redwoodjs/sdk/worker";
+    expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
       jsx("html", {
         lang: "en",
@@ -238,8 +232,7 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, mockManifest);
 
-    expect(result?.code)
-      .toEqual(`import { requestInfo } from "@redwoodjs/sdk/worker";
+    expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
       jsx("script", {
         src: "/src/non-existent.js",
@@ -259,8 +252,7 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, mockManifest);
 
-    expect(result?.code)
-      .toEqual(`import { requestInfo } from "@redwoodjs/sdk/worker";
+    expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
       jsx("script", {
         src: "/assets/client-a1b2c3d4.js",
@@ -280,8 +272,7 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, {});
 
-    expect(result?.code)
-      .toEqual(`import { requestInfo } from "@redwoodjs/sdk/worker";
+    expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
       jsx("script", {
         type: "module",
@@ -321,7 +312,7 @@ describe("transformJsxScriptTagsCode", () => {
   it("uses existing requestInfo import if already present", async () => {
     const code = `
       import { foo } from 'bar';
-      import { requestInfo, someOtherThing } from "@redwoodjs/sdk/worker";
+      import { requestInfo, someOtherThing } from "rwsdk/worker";
       
       jsx("script", {
         type: "module",
@@ -333,7 +324,7 @@ describe("transformJsxScriptTagsCode", () => {
 
     expect(result?.code).toEqual(`
       import { foo } from 'bar';
-      import { requestInfo, someOtherThing } from "@redwoodjs/sdk/worker";
+      import { requestInfo, someOtherThing } from "rwsdk/worker";
       
       jsx("script", {
         type: "module",
@@ -343,16 +334,15 @@ describe("transformJsxScriptTagsCode", () => {
     `);
 
     // Ensure we didn't duplicate the import
-    const importCount = (
-      result?.code.match(/from "@redwoodjs\/sdk\/worker"/g) || []
-    ).length;
+    const importCount = (result?.code.match(/from "rwsdk\/worker"/g) || [])
+      .length;
     expect(importCount).toBe(1);
   });
 
   it("adds requestInfo to existing SDK import if module already imported", async () => {
     const code = `
       import { foo } from 'bar';
-      import { someOtherThing } from "@redwoodjs/sdk/worker";
+      import { someOtherThing } from "rwsdk/worker";
       
       jsx("script", {
         type: "module",
@@ -364,7 +354,7 @@ describe("transformJsxScriptTagsCode", () => {
 
     expect(result?.code).toEqual(`
       import { foo } from 'bar';
-      import { someOtherThing, requestInfo } from "@redwoodjs/sdk/worker";
+      import { someOtherThing, requestInfo } from "rwsdk/worker";
       
       jsx("script", {
         type: "module",
@@ -385,8 +375,7 @@ describe("transformJsxScriptTagsCode", () => {
     // Call without providing manifest (simulating dev mode)
     const result = await transformJsxScriptTagsCode(code);
 
-    expect(result?.code)
-      .toEqual(`import { requestInfo } from "@redwoodjs/sdk/worker";
+    expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
       jsx("script", {
         src: "/src/client.tsx",

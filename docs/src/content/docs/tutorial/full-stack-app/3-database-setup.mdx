@@ -292,7 +292,7 @@ When establishing a relationship within your schema, there are 3 parts.
 
 Let's look at this in practice. On the `Company` and `Contact` models:
 
-```prisma {"3. The reverse relationship definition": 4-5} {"1. The field that holds the relationship": 16-17} {"2. The relationship definition": 18-19} title="src/db/schema.prisma"
+```prisma {"3. The Implicit Relationship Field": 4-5} {"1. The Foreign Key": 16-17} {"2. The Relation Field": 18-19} title="src/db/schema.prisma"
 model Company {
   id           String        @id @default(uuid())
   name         String
@@ -318,18 +318,24 @@ model Contact {
 ```
 
 1. On the `Contact` model, we added a `companyId` field. This stores the ID of the related `Company` record. Because the `id` field on the `Company` model is a string, our `companyId` field is also a string.
-2. On the `Contact` model, we also added a `company` field, that defines the relationship.
+2. On the `Contact` model, we also added a `company` field. This describes the Contact↔Company relationship for Prisma.
+    - You can read this as: "A contact belongs to a company."
     - It is connected to the `Company` model. You can also think of this as having a type of `Company`.
     - It uses the `companyId` field on the `Contact` model to connect the two models.
     - It references the `id` field on the `Company` model.
-3. On the `Company` model, we added a `contacts` field.
+3. On the `Company` model, we added a `contacts` field. This describes the Company↔Contact relationship to Prisma.
+    - You can read this as: "A company has many contacts."
     - The type of content will be an array `[]` of `Contact` records.
 
 ![](./images/prisma-relationship-field.png)
 
+<Aside type="note" title="Relationships in Prisma">
+  When you look a the columns in your database that Prisma generates, you won't find a relation or implicit relationship field, only the foreign key. However, these properties are necessary for Prisma to understand the relationship between the two models.
+</Aside>
+
 In some cases, you might need to give the relationship a name. This is particularly useful when you have multiple relationships between the same models.
 
-Here, I've named the relationship `CompanyContacts`.
+As an example, I've named the relationship `CompanyContacts`. Notice this is defined on both the relation field and the implicit relationship field.
 
 ```prisma ins="CompanyContacts" title="src/db/schema.prisma"
 model Company {
@@ -345,7 +351,9 @@ model Contact {
 }
 ```
 
-We need to create the remaining relationships. Here's my final `prisma.schema` file.
+You can find more information about naming relationships in the [Prisma documentation](https://www.prisma.io/docs/orm/prisma-schema/data-model/relations#disambiguating-relations).
+
+Now, we need to create the remaining relationships. Here's my final `schema.prisma` file.
 
 ```prisma showLineNumbers=true title="src/db/schema.prisma" {15-16, 27-28, 34, 40-41, 52-53}
 generator client {
@@ -436,7 +444,7 @@ This is personal preference, but I like to put my models in alphabetical order. 
 
 A migration is a change to the database schema. It's a way to keep track of the changes we make to the database.
 
-When we create the migration, Prisma will look at our `prisma.schema` file and determine what has changed since our last migration. Then, it will generate a SQL file that will update our database with the changes.
+When we create the migration, Prisma will look at our `schema.prisma` file and determine what has changed since our last migration. Then, it will generate a SQL file that will update our database with the changes.
 
 Let's create the migration by running `pnpm migrate:new` and give our migration a name. Since this is our first migration, we'll say: `setup all database models`.
 
@@ -513,17 +521,18 @@ First, let's go to our `d1` database. This is inside the `.wrangler/state/v3/d1/
 
 ![](./images/local-wrangler-d1-database.png)
 
-Right click on the sqlite file and click `Copy Path`.
+Right click on the sqlite file and click `Copy Relative Path`.
 
-Inside your `.env` file, create a `DATABASE_URL` variable and paste in the database path:
+Inside your `.env` file, create a `DATABASE_URL` variable. We need to specify that this is a file:
+
+```
+DATABASE_URL="file:"
+```
+
+Then, paste in the database path:
 
 ![](./images/database-url-full-url.png)
 
-Right now, the database url uses the absolute path, we need to make this path relative. Remove everything in front of `.wrangler` and replace it with `../`. We also need to specify that this is a `file`:
-
-```
-DATABASE_URL="file:../.wrangler/state/v3/d1/miniflare-D1DatabaseObject/84daca3a95ca09403c82fcd535a8a092abf9029357d742c62ecaab59bcc13d30.sqlite"
-```
 
 Now, within the Terminal, run:
 
@@ -550,7 +559,7 @@ Right now, we don't have any data in our table, but at least we can tell that ou
 
 The [VS Code extension, SQLite Viewer](https://marketplace.visualstudio.com/items?itemName=qwtel.sqlite-viewer) is perfect for previewing your SQLite database directly within VS Code.
 
-Within the file explorer, navigate to your SQLite database. You can find it in the `.wrangler > state > v3 > d1 > miniflare-D1DatabaseObject` folder.
+Within the file explorer, navigate to your D1 database. You can find it in the `.wrangler > state > v3 > d1 > miniflare-D1DatabaseObject` folder.
 
 <FileTree>
 - .wrangler
@@ -594,7 +603,7 @@ Within the `src > scripts` directory, you'll find a `seed.ts`
 This contains the basic structure for our seed file.
 
 ```ts title="src/scripts/seed.ts"
-import { defineScript } from "@redwoodjs/sdk/worker";
+import { defineScript } from "rwsdk/worker";
 import { db, setupDb } from "@/db";
 
 export default defineScript(async ({ env }) => {
@@ -622,13 +631,13 @@ If you want to start fresh with your own seed file, you could delete lines 7-17,
 <Aside type="tip" title="Seed File Structure">
   In order for our seed file to run properly, we have to run it inside a Cloudflare worker.
 
-  Why? We're using a Cloudflare D1 database, we need a worker in order to access it.
+  Why? Since we're using a Cloudflare D1 database, we need a worker in order to access it.
 </Aside>
 
 You can copy and paste the following code to your project:
 
 ```ts title="src/scripts/seed.ts"
-import { defineScript } from "@redwoodjs/sdk/worker";
+import { defineScript } from "rwsdk/worker";
 import { db, setupDb } from "../db";
 
 export default defineScript(async ({ env }) => {
@@ -698,12 +707,12 @@ The seed file we just created is perfect for a brand new database, whether we're
 
 Typically, I'll also create seed files to test the application with various sets of data. This is much easier (and faster) than manually adding data again and again.
 
-You can also leverage libraries, like [Faker](https://fakerjs.dev/) and [Snaplet](https://snaplet.dev/), to make it easier to create realistic data sets.
+You can also leverage libraries, like [Faker](https://fakerjs.dev/) and [Snaplet](https://snaplet-seed.netlify.app/seed/getting-started/overview), to make it easier to create realistic data sets.
 </Aside>
 
 
 <Aside type="tip" title="Code on GitHub">
-You can find the final code for this step on [GitHub](https://github.com/redwoodjs/applywize).
+You can find the final code for this step on [GitHub](https://github.com/ahaywood/applywize/tree/main/end-of-3).
 </Aside>
 
 ## Further reading

@@ -4,6 +4,7 @@ globs: worker.tsx,middleware.ts,middleware.tsx
 alwaysApply: false
 ---
 
+
 # RedwoodSDK: Middleware
 
 You're an expert at Cloudflare, TypeScript, and building web apps with RedwoodSDK. Generate high quality **RedwoodSDK middleware** that adhere to the following best practices:

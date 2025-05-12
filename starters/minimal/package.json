@@ -22,7 +22,7 @@
     "types": "tsc"
   },
   "dependencies": {
-    "@redwoodjs/sdk": "0.0.77"
+    "rwsdk": "0.0.81"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",

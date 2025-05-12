@@ -33,8 +33,8 @@ In RedwoodSDK, Document components give you complete control over the HTML struc
 
 2. Use the Document component in your routes:
     ```tsx title="src/worker.tsx" "Document" {4,8}
-    import { defineApp } from '@redwoodjs/sdk/worker'
-    import { render, route } from '@redwoodjs/sdk/router'
+    import { defineApp } from 'rwsdk/worker'
+    import { render, route } from 'rwsdk/router'
 
     import { Document } from '@/app/Document.tsx'
     import { HomePage } from '@/app/pages/HomePage.tsx'
@@ -55,8 +55,8 @@ You can create a specialized Document component for a static document, a realtim
 
 Then, use different Documents for different routes:
 ```tsx title="src/worker.tsx" "StaticDocument" "ApplicationDocument" "RealtimeDocument" collapse={8-11}
-import { defineApp } from '@redwoodjs/sdk/worker'
-import { render, route, prefix } from '@redwoodjs/sdk/router'
+import { defineApp } from 'rwsdk/worker'
+import { render, route, prefix } from 'rwsdk/router'
 
 import { StaticDocument } from '@/app/StaticDocument.tsx'
 import { ApplicationDocument } from '@/app/ApplicationDocument.tsx'

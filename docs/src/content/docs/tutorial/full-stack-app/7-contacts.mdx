@@ -28,11 +28,11 @@ Again, shadcn/ui components are great for this.
 
 This time, we're going to reach for the `Sheet` component.
 
-You can copy and paste the boilerplate code from the [Shad docs](https://ui.shadcn.com/docs/components/sheet):
+You can copy the boilerplate code from the [shadcn/ui docs](https://ui.shadcn.com/docs/components/sheet) and paste it at the top of our `ApplicationForm` component:
 
-Import statement for the top of our `ApplicationForm` component (but below the `use client` directive):
+```tsx title="/src/app/components/ApplicationForm.tsx"
+"use client";
 
-```tsx
 import {
   Sheet,
   SheetContent,
@@ -314,13 +314,11 @@ You can also check Prisma Studio (`npx prisma studio`) to see the new contact in
 
 This _works_, kind of. -- It works, but it's not the best user experience. It would be better if we could see a success (or error) message in browser.
 
-Fortunate for us, [shadcn/ui has a toast component](https://ui.shadcn.com/docs/components/sonner) that we can use. This component works a little differently than the other components we've used. It has two parts. It needs the `Toaster` and the `Toast`.
+Fortunate for us, [shadcn/ui has a toast component](https://ui.shadcn.com/docs/components/sonner) that we can use. This component works a little differently than the other components we've used. It has two parts — a `Toaster` and the `Toast`:
 
-The `Toaster` handles where the message gets displayed. We can also cue up or show several messages at once. So, the `Toaster` "holds" the `Toast`.
-
-The `Toaster` component typically lives in a layout component.
-
-Then, components nested inside, can trigger `Toast` messages.
+- The `Toaster` handles where the message is displayed. We can also cue up or show several messages at once. So, the `Toaster` "holds" the `Toast`.
+- The `Toaster` typically lives in a layout component.
+- Then, child components can send `Toast` messages.
 
 This might make more sense as we build it out.
 
@@ -449,7 +447,7 @@ const ContactForm = ({ callback }: { callback: () => void }) => {
   }
 ```
 
-If you test everything out in the browser, you should still see the successful toaster message and the `Sheet` will close. 😎
+If you test everything in the browser, you should still see the successful toast message and the `Sheet` will close. 😎
 
 Now, we need a way to see the contacts we've added.
 
@@ -476,7 +474,7 @@ Let's start by displaying all contacts that aren't associated with a company.
 
 ### Getting the Contacts from the Database
 
-Even though our contacts will be displayed in the `ApplicationForm` component, the `ApplicationForm` is a client component. It'd be better if we could grab the data inside a server component and then pass it in. (You'll remember, we did the ame thing with our application statuses).
+Even though our contacts will be displayed in the `ApplicationForm` component, the `ApplicationForm` is a client component. It'd be better if we could grab the data inside a server component and then pass it in. (You'll remember, we did the same thing with our application statuses).
 
 Inside our `New` page, let's get all of our contacts, where the `companyId` is `null`:
 
@@ -641,7 +639,7 @@ Now, we need to ensure that the user will only see the contacts that they've add
 
 ### Limiting the Contacts to the Current User
 
-First, we'll need to modify our `prisma.schema` file so that we can keep track of who authored the contact.
+First, we'll need to modify our `schema.prisma` file so that we can keep track of who authored the contact.
 
 ```prisma title="/prisma/schema.prisma" collapse={2-8, 11-14, 18-20, 22-23}
 model Contact {
@@ -684,7 +682,7 @@ When you run this, you'll probably get an error:
 
 ![](./images/error-running-new-migration.png)
 
-The reason is because we already have contacts in our database. When we added the `userId` column to the `Contact` model, we said that it was a required field. This creates a problem for all existing contact entries that don't have a user associated with them.
+The problem is that we already have contacts in our database. When we added the `userId` column to the `Contact` model, we said that it was a required field. This creates a problem for all existing contact entries that don't have a user associated with them.
 
 If you read the error message, the migration file was created, but not applied.
 
@@ -856,7 +854,7 @@ company: {
   create: {
     name: formData.get("company") as string,
     contacts: {
--      connect: {
+-      create: {
 -        firstName: "John",
 -        lastName: "Doe",
 -        email: "john.doe@example.com",
@@ -869,7 +867,7 @@ company: {
 },
 ```
 
-Now, when you create a new job application, any contacts you've listed, will be associated with the company and job application you created.
+Now, when you create a new job application, any contacts you've listed will be associated with the company and job application you created.
 
 ![](./images/associated-contact-in-applications-table.png)
 
@@ -883,7 +881,7 @@ One step remains: removing a contact from the list.
 
 ### Styling the Delete Button
 
-First, we need to modify the `ContactCard` component to have a delete button:
+First, we need to modify the `ContactCard` component to include a delete button:
 
 ```tsx title="/src/app/components/ContactCard.tsx" {3-7} startLineNumber={6}
 return (
@@ -900,9 +898,11 @@ return (
         </AvatarFallback>
       </Avatar>
     </div>
+)
+---
+- On lines **3-7**, we added an `Icon` component with an `id` of `close` and a size of `16px`. Then, we wrapped the `icon` with a `button` and a `div`.
+---
 ```
-
-I added a `div` right before the `Avatar` div that contains a `button` with an X icon inside. Pretty straightforward.
 
 Now, we need to add some styles.
 
@@ -1017,6 +1017,18 @@ On the `div` wrapping the button:
 ---
 ```
 
+Now, if you test this in the browser, you might feel like you're chasing the button. There's a gap between the where the `div` ends and the `button` begins. We can resolve this by adding some additional padding to the `div` wrapping the `button`:
+
+```tsx title="/src/app/components/ContactCard.tsx" startLineNumber={8} "pr-5"
+<div className="pr-5 hidden group-hover/card:block pr-10 absolute top-1 -left-[37px]">
+  <button
+    role="button"
+    className="hover:bg-black cursor-pointer text-white fill-current rounded-full bg-destructive p-1">
+    <Icon id="close" size={16} />
+  </button>
+</div>
+---
+
 Perfect! With the styling applied, let's give this button the functionality it needs.
 
 ### Adding the Delete Functionality
@@ -1025,6 +1037,7 @@ On the `button`, let's add an `onClick` handler:
 
 ```tsx title="/src/app/components/ContactCard.tsx" startLineNumber={9} "onClick={handleDelete}"
 <button
+    onClick={handleDelete}
     role="button"
     className="hover:bg-black cursor-pointer text-white fill-current rounded-full bg-destructive p-1">
   <Icon id="close" size={16} />
@@ -1123,6 +1136,6 @@ Now, try running this in the browser again. You should see the contact deleted a
 Lovely!
 
 <Aside type="tip" title="Code on GitHub">
-You can find the final code for this step on [GitHub](https://github.com/redwoodjs/applywize).
+You can find the final code for this step on [GitHub](https://github.com/ahaywood/applywize/tree/main/end-of-7).
 </Aside>
 

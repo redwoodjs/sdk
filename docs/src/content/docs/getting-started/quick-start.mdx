@@ -85,8 +85,8 @@ The entry point of your webapp is `src/worker.tsx`, open that file in your favor
 Here you'll see the `defineApp` function, this is the main function that "defines your webapp," where the purpose is to handle requests by returning responses to the client.
 
 ```tsx title="src/worker.tsx" showLineNumbers=false "defineApp"
-import { defineApp } from "@redwoodjs/sdk/worker";
-import { route, render } from "@redwoodjs/sdk/router";
+import { defineApp } from "rwsdk/worker";
+import { route, render } from "rwsdk/router";
 
 import { Document } from "@/app/Document";
 import { Home } from "@/app/pages/Home";
@@ -99,8 +99,8 @@ export default defineApp([
 You're going to add your own route, insert the `"/ping"` route handler:
 
 ```tsx title="src/worker.tsx" ins={7-9} showLineNumbers=false
-import { defineApp } from "@redwoodjs/sdk/worker";
-import { route, render } from "@redwoodjs/sdk/router";
+import { defineApp } from "rwsdk/worker";
+import { route, render } from "rwsdk/router";
 
 export default defineApp([
   render(Document, [
