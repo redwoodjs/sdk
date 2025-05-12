@@ -96,83 +96,120 @@ export async function generateFinalReport(): Promise<void> {
     // Group failures by step to determine which stages had issues
     const devFailures = state.failures.filter(
       (f) =>
-        f.step.includes("Development") || f.step.includes("Development Server"),
+        f.step.includes("Development") ||
+        f.step.includes("Development Server") ||
+        (f.error && f.error.includes("Development -")),
     );
 
     const releaseFailures = state.failures.filter(
-      (f) => f.step.includes("Production") || f.step.includes("Release"),
+      (f) =>
+        f.step.includes("Production") ||
+        f.step.includes("Release") ||
+        (f.error && f.error.includes("Production -")),
     );
 
     // More specific test stage failures - for dev environment
     const serverSideInitialDevFailures = state.failures.filter(
       (f) =>
-        f.step.includes("Server-side") &&
-        f.step.includes("Initial") &&
-        !f.step.includes("Production"),
+        (f.step.includes("Server-side") ||
+          (f.error && f.error.includes("Server-side"))) &&
+        (f.step.includes("Initial") ||
+          (f.error && f.error.includes("Initial"))) &&
+        !f.step.includes("Production") &&
+        !(f.error && f.error.includes("Production")),
     );
 
     const clientSideInitialDevFailures = state.failures.filter(
       (f) =>
-        f.step.includes("Client-side") &&
-        f.step.includes("Initial") &&
-        !f.step.includes("Production"),
+        (f.step.includes("Client-side") ||
+          (f.error && f.error.includes("Client-side"))) &&
+        (f.step.includes("Initial") ||
+          (f.error && f.error.includes("Initial"))) &&
+        !f.step.includes("Production") &&
+        !(f.error && f.error.includes("Production")),
     );
 
     const serverSideRealtimeDevFailures = state.failures.filter(
       (f) =>
-        f.step.includes("Server-side") &&
-        f.step.includes("Post-upgrade") &&
-        !f.step.includes("Production"),
+        (f.step.includes("Server-side") ||
+          (f.error && f.error.includes("Server-side"))) &&
+        (f.step.includes("Post-upgrade") ||
+          (f.error && f.error.includes("Post-upgrade"))) &&
+        !f.step.includes("Production") &&
+        !(f.error && f.error.includes("Production")),
     );
 
     const clientSideRealtimeDevFailures = state.failures.filter(
       (f) =>
-        f.step.includes("Client-side") &&
-        f.step.includes("Post-upgrade") &&
-        !f.step.includes("Production"),
+        (f.step.includes("Client-side") ||
+          (f.error && f.error.includes("Client-side"))) &&
+        (f.step.includes("Post-upgrade") ||
+          (f.error && f.error.includes("Post-upgrade"))) &&
+        !f.step.includes("Production") &&
+        !(f.error && f.error.includes("Production")),
     );
 
     const realtimeUpgradeDevFailures = state.failures.filter(
       (f) =>
-        f.step.includes("Realtime Upgrade") && !f.step.includes("Production"),
+        (f.step.includes("Realtime Upgrade") ||
+          (f.error && f.error.includes("Realtime Upgrade"))) &&
+        !f.step.includes("Production") &&
+        !(f.error && f.error.includes("Production")),
     );
 
     // For production environment
     const serverSideInitialProdFailures = state.failures.filter(
       (f) =>
-        f.step.includes("Server-side") &&
-        f.step.includes("Initial") &&
-        f.step.includes("Production"),
+        (f.step.includes("Server-side") ||
+          (f.error && f.error.includes("Server-side"))) &&
+        (f.step.includes("Initial") ||
+          (f.error && f.error.includes("Initial"))) &&
+        (f.step.includes("Production") ||
+          (f.error && f.error.includes("Production"))),
     );
 
     const clientSideInitialProdFailures = state.failures.filter(
       (f) =>
-        f.step.includes("Client-side") &&
-        f.step.includes("Initial") &&
-        f.step.includes("Production"),
+        (f.step.includes("Client-side") ||
+          (f.error && f.error.includes("Client-side"))) &&
+        (f.step.includes("Initial") ||
+          (f.error && f.error.includes("Initial"))) &&
+        (f.step.includes("Production") ||
+          (f.error && f.error.includes("Production"))),
     );
 
     const serverSideRealtimeProdFailures = state.failures.filter(
       (f) =>
-        f.step.includes("Server-side") &&
-        f.step.includes("Post-upgrade") &&
-        f.step.includes("Production"),
+        (f.step.includes("Server-side") ||
+          (f.error && f.error.includes("Server-side"))) &&
+        (f.step.includes("Post-upgrade") ||
+          (f.error && f.error.includes("Post-upgrade"))) &&
+        (f.step.includes("Production") ||
+          (f.error && f.error.includes("Production"))),
     );
 
     const clientSideRealtimeProdFailures = state.failures.filter(
       (f) =>
-        f.step.includes("Client-side") &&
-        f.step.includes("Post-upgrade") &&
-        f.step.includes("Production"),
+        (f.step.includes("Client-side") ||
+          (f.error && f.error.includes("Client-side"))) &&
+        (f.step.includes("Post-upgrade") ||
+          (f.error && f.error.includes("Post-upgrade"))) &&
+        (f.step.includes("Production") ||
+          (f.error && f.error.includes("Production"))),
     );
 
     const realtimeUpgradeProdFailures = state.failures.filter(
       (f) =>
-        f.step.includes("Realtime Upgrade") && f.step.includes("Production"),
+        (f.step.includes("Realtime Upgrade") ||
+          (f.error && f.error.includes("Realtime Upgrade"))) &&
+        (f.step.includes("Production") ||
+          (f.error && f.error.includes("Production"))),
     );
 
-    const releaseCommandFailures = state.failures.filter((f) =>
-      f.step.includes("Release Command"),
+    const releaseCommandFailures = state.failures.filter(
+      (f) =>
+        f.step.includes("Release Command") ||
+        (f.error && f.error.includes("Release Command")),
     );
 
     // Dev tests summary
