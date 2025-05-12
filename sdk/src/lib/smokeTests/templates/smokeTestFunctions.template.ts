@@ -10,16 +10,9 @@ export async function getSmokeTestTimestamp(): Promise<{ timestamp: number, stat
   return { timestamp: serverTimestamp, status: "ok" };
 }
 
-export async function smokeTestAction(
-  timestamp?: number,
-): Promise<unknown> {
+export async function smokeTestAction(timestamp: number): Promise<unknown> {
   await new Promise((resolve) => setTimeout(resolve, 0));
-  
-  // Update the module-level timestamp if provided
-  if (timestamp) {
-    serverTimestamp = timestamp;
-  }
-  
+  serverTimestamp = timestamp;
   return { status: "ok", timestamp };
 }
 `;

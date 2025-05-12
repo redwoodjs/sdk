@@ -36,6 +36,7 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
     bail: false, // Default to false - continue tests even if some fail
     copyProject: false, // Default to false - don't copy project to artifacts
     realtime: false, // Default to false - don't just test realtime
+    skipHmr: false, // Default to false - run HMR tests
     // sync: will be set below
   };
 
@@ -57,6 +58,8 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
       options.skipRelease = true;
     } else if (arg === "--skip-client") {
       options.skipClient = true;
+    } else if (arg === "--skip-hmr") {
+      options.skipHmr = true;
     } else if (arg === "--keep") {
       options.keep = true;
     } else if (arg === "--no-headless") {
@@ -84,6 +87,7 @@ Options:
   --skip-dev              Skip testing the local development server
   --skip-release          Skip testing the release/production deployment
   --skip-client           Skip client-side tests, only run server-side checks
+  --skip-hmr              Skip hot module replacement (HMR) tests
   --path=PATH             Project directory to test
   --artifact-dir=DIR      Directory to store test artifacts (default: .artifacts)
   --keep                  Keep temporary test directory after tests complete
