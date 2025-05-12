@@ -4,6 +4,7 @@ description: A step-by-step guide for installing and configuring Storybook in Re
 ---
 
 import { Aside, Steps } from '@astrojs/starlight/components';
+import { PackageManagers } from "starlight-package-managers";
 
 <Aside type="note" title="What is Storybook?">
   <p>
@@ -23,9 +24,10 @@ Because the RedwoodSDK is based on React and Vite, we can work through the <a ta
 
 <Steps>
 1. Install Storybook:
-    ```bash
-    pnpm create storybook@latest
-    ```
+    <PackageManagers
+      type="create"
+      pkg="storybook@latest"
+    />
 
 2. Select what we want to use Storybook for — I selected both Documentation and Testing, though this guide will only cover the documentation part:
     ![](./images/sb-select-use.png)
@@ -39,7 +41,7 @@ Because the RedwoodSDK is based on React and Vite, we can work through the <a ta
 5. It should automatically open our browser to Storybook, and if it doesn't, we can go to `localhost:6006` to see it:
     ![](./images/sb-served-site.png)
 
-7. It also added `storybook` and `storybook-build` scripts to our `package.json` file. We can always run `pnpm storybook` to start the Storybook server, and `pnpm storybook-build` to build our Storybook site for production:
+7. It also added `storybook` and `storybook-build` scripts to our `package.json` file. We can always run the `storybook` script to start the Storybook server, and `storybook-build` script to build our Storybook site for production:
     ```json
     {
       "scripts": {
@@ -408,7 +410,12 @@ database via Prisma.
     };
     ```
 
-6. Now, restart the Storybook server (`CTRL + C` and then `pnpm storybook`), and go back to the Storybook site. We should see our mocked list of users:
+6. Now, restart the Storybook server (`CTRL + C` to stop it), and go back to the Storybook site. We should see our mocked list of users:
+    <PackageManagers
+      title="Start Storybook Server"
+      type="run"
+      args="storybook"
+    />
     ![](./images/sb-mocked-user-list.png)
 
     <Aside type="note" title="What are these errors I'm seeing in the dev tools console?">
