@@ -1132,9 +1132,6 @@ async function realtimeOnlyFlow(
     );
     await upgradeToRealtime(page, environment, bail);
 
-    log("Reloading page after realtime upgrade");
-    await page.reload({ waitUntil: "networkidle0" });
-
     log("Performing realtime-only smoke test");
     await checkUrlSmoke(
       page,
