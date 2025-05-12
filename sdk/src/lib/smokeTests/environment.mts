@@ -26,6 +26,23 @@ export async function setupTestEnvironment(
 ): Promise<TestResources> {
   log("Setting up test environment with options: %O", options);
 
+  // Generate a resource unique key for this test run right at the start
+  const uniqueNameSuffix = uniqueNamesGenerator({
+    dictionaries: [adjectives, animals],
+    separator: "-",
+    length: 2,
+    style: "lowerCase",
+  });
+
+  // Create a short unique hash based on the timestamp
+  const hash = createHash("md5")
+    .update(Date.now().toString())
+    .digest("hex")
+    .substring(0, 8);
+
+  // Create a resource unique key even if we're not copying a project
+  const resourceUniqueKey = `${uniqueNameSuffix}-${hash}`;
+
   const resources: TestResources = {
     tempDirCleanup: undefined,
     workerName: undefined,
@@ -33,6 +50,7 @@ export async function setupTestEnvironment(
     targetDir: undefined,
     workerCreatedDuringTest: false,
     stopDev: undefined,
+    resourceUniqueKey, // Set at initialization
   };
 
   log("Current working directory: %s", resources.originalCwd);
@@ -41,17 +59,16 @@ export async function setupTestEnvironment(
     // If a project dir is specified, copy it to a temp dir with a unique name
     if (options.projectDir) {
       log("Project directory specified: %s", options.projectDir);
-      const { tempDir, targetDir, workerName, resourceUniqueKey } =
-        await copyProjectToTempDir(
-          options.projectDir,
-          options.sync !== false, // default to true if undefined
-        );
+      const { tempDir, targetDir, workerName } = await copyProjectToTempDir(
+        options.projectDir,
+        options.sync !== false, // default to true if undefined
+        resourceUniqueKey, // Pass in the existing resourceUniqueKey
+      );
 
       // Store cleanup function
       resources.tempDirCleanup = tempDir.cleanup;
       resources.workerName = workerName;
       resources.targetDir = targetDir;
-      resources.resourceUniqueKey = resourceUniqueKey;
 
       log("Target directory: %s", targetDir);
 
@@ -77,32 +94,15 @@ export async function setupTestEnvironment(
 export async function copyProjectToTempDir(
   projectDir: string,
   sync: boolean = true,
+  resourceUniqueKey: string,
 ): Promise<{
   tempDir: tmp.DirectoryResult;
   targetDir: string;
   workerName: string;
-  resourceUniqueKey: string;
 }> {
   log("Creating temporary directory for project");
   // Create a temporary directory
   const tempDir = await tmp.dir({ unsafeCleanup: true });
-
-  // Generate a unique suffix for the project
-  const suffix = uniqueNamesGenerator({
-    dictionaries: [adjectives, animals],
-    separator: "-",
-    length: 2,
-    style: "lowerCase",
-  });
-
-  // Create a short unique hash based on the timestamp
-  const hash = createHash("md5")
-    .update(Date.now().toString())
-    .digest("hex")
-    .substring(0, 8);
-
-  // Combine the name suffix and hash to create a complete unique key
-  const resourceUniqueKey = `${suffix}-${hash}`;
 
   // Create unique project directory name
   const originalDirName = basename(projectDir);
@@ -163,7 +163,7 @@ export async function copyProjectToTempDir(
     await debugSync({ targetDir });
   }
 
-  return { tempDir, targetDir, workerName, resourceUniqueKey };
+  return { tempDir, targetDir, workerName };
 }
 
 /**

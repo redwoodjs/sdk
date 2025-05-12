@@ -78,7 +78,7 @@ export async function cleanupResources(
       const databases = await listD1Databases(resources.targetDir);
 
       // Look for databases that contain the unique resource key
-      const resourceUniqueKey = resources.resourceUniqueKey || "";
+      const resourceUniqueKey = resources.resourceUniqueKey;
       const relatedDatabases = databases.filter((db) =>
         db.name.includes(resourceUniqueKey),
       );
@@ -97,7 +97,7 @@ export async function cleanupResources(
             log(`Deleting D1 database: ${db.name}`);
             await deleteD1Database(
               db.name,
-              resources.targetDir,
+              resources.targetDir || "", // Provide empty string as fallback
               resourceUniqueKey,
             );
           } catch (dbError) {
@@ -141,7 +141,7 @@ export async function cleanupResources(
     try {
       await deleteWorker(
         resources.workerName,
-        resources.targetDir,
+        resources.targetDir || "", // Provide empty string as fallback
         resources.resourceUniqueKey,
       );
     } catch (error) {
