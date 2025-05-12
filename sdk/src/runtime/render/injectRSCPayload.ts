@@ -8,7 +8,7 @@ export function injectRSCPayload(
   rscStream: ReadableStream,
   { nonce }: { nonce: string },
 ) {
-  const decoder = new TextDecoder("utf-8");
+  let decoder = new TextDecoder();
   let resolveFlightDataPromise: (value: unknown) => void;
   let flightDataPromise = new Promise(
     (resolve) => (resolveFlightDataPromise = resolve),
@@ -22,9 +22,12 @@ export function injectRSCPayload(
   let timeout: NodeJS.Timeout | null = null;
 
   function flushBufferedChunks(controller: TransformStreamDefaultController) {
-    for (const chunk of buffered) {
-      const html = decoder.decode(chunk, { stream: true });
-      controller.enqueue(encoder.encode(html));
+    for (let chunk of buffered) {
+      let buf = decoder.decode(chunk);
+      if (buf.endsWith(trailer)) {
+        buf = buf.slice(0, -trailer.length);
+      }
+      controller.enqueue(encoder.encode(buf));
     }
 
     buffered.length = 0;
@@ -54,8 +57,7 @@ export function injectRSCPayload(
         clearTimeout(timeout);
         flushBufferedChunks(controller);
       }
-      controller.enqueue(encoder.encode(decoder.decode()));
-      controller.enqueue(encoder.encode(trailer));
+      controller.enqueue(encoder.encode("</body></html>"));
     },
   });
 }
