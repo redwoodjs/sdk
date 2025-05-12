@@ -15,6 +15,11 @@ export interface TestStatus {
     realtimeServerSide: TestStatusValue;
     realtimeClientSide: TestStatusValue;
     realtimeServerRenderCheck: TestStatusValue; // Server render check for realtime tests
+    // HMR test statuses
+    initialServerHmr: TestStatusValue;
+    initialClientHmr: TestStatusValue;
+    realtimeServerHmr: TestStatusValue;
+    realtimeClientHmr: TestStatusValue;
   };
   // Production environment tests
   production: {
@@ -27,6 +32,11 @@ export interface TestStatus {
     realtimeServerSide: TestStatusValue;
     realtimeClientSide: TestStatusValue;
     realtimeServerRenderCheck: TestStatusValue; // Server render check for realtime tests
+    // HMR test statuses
+    initialServerHmr: TestStatusValue;
+    initialClientHmr: TestStatusValue;
+    realtimeServerHmr: TestStatusValue;
+    realtimeClientHmr: TestStatusValue;
   };
 }
 
@@ -59,6 +69,11 @@ export const state = {
       realtimeServerSide: "DID_NOT_RUN",
       realtimeClientSide: "DID_NOT_RUN",
       realtimeServerRenderCheck: "DID_NOT_RUN",
+      // HMR test statuses
+      initialServerHmr: "DID_NOT_RUN",
+      initialClientHmr: "DID_NOT_RUN",
+      realtimeServerHmr: "DID_NOT_RUN",
+      realtimeClientHmr: "DID_NOT_RUN",
     },
     production: {
       overall: "DID_NOT_RUN",
@@ -70,6 +85,11 @@ export const state = {
       realtimeServerSide: "DID_NOT_RUN",
       realtimeClientSide: "DID_NOT_RUN",
       realtimeServerRenderCheck: "DID_NOT_RUN",
+      // HMR test statuses
+      initialServerHmr: "DID_NOT_RUN",
+      initialClientHmr: "DID_NOT_RUN",
+      realtimeServerHmr: "DID_NOT_RUN",
+      realtimeClientHmr: "DID_NOT_RUN",
     },
   } as TestStatus,
 };
