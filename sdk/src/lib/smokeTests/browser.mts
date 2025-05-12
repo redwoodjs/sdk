@@ -187,8 +187,51 @@ export async function checkUrl(
     page.setDefaultNavigationTimeout(30000);
     log("Set navigation timeout: %dms", 30000);
 
-    // Skip initial smoke test if realtime flag is true
-    if (!realtime) {
+    if (realtime) {
+      // If realtime flag is set, use the simplified flow that only does realtime testing
+      log("Using realtime-only flow (--realtime option enabled)");
+      console.log(
+        "⏩ Skipping initial smoke tests (--realtime option enabled)",
+      );
+
+      // Directly upgrade to realtime mode
+      console.log("\n📡 Directly upgrading to realtime mode");
+      try {
+        await upgradeToRealtime(page, environment);
+        log("Reloading page after realtime upgrade");
+        await page.reload({ waitUntil: "networkidle0" });
+        log("Performing realtime-only smoke test");
+        await checkUrlSmoke(page, url, true, bail, skipClient, environment);
+
+        // Take a screenshot of the realtime test
+        await takeScreenshot(
+          page,
+          url,
+          artifactDir,
+          `${environment.toLowerCase()}-realtime-passed`,
+        );
+      } catch (error) {
+        hasFailures = true;
+        realtimeTestError =
+          error instanceof Error ? error : new Error(String(error));
+        log("Error during realtime-only test: %O", error);
+        console.error(`❌ Realtime test failed: ${realtimeTestError.message}`);
+
+        // Take a failure screenshot
+        await takeScreenshot(
+          page,
+          url,
+          artifactDir,
+          `${environment.toLowerCase()}-realtime-failed`,
+        ).catch((e) => log("Failed to take error screenshot: %O", e));
+
+        // If bail is true, propagate the error
+        if (bail) {
+          throw error;
+        }
+      }
+    } else {
+      // Normal flow with both initial and realtime tests
       // Initial smoke test
       log("Performing initial smoke test");
       let initialTestStatus = "passed";
@@ -221,45 +264,40 @@ export async function checkUrl(
         artifactDir,
         `${environment.toLowerCase()}-initial-${initialTestStatus}`,
       );
-    } else {
-      log("Skipping initial smoke test (--realtime option enabled)");
-      console.log(
-        "⏩ Skipping initial smoke tests (--realtime option enabled)",
-      );
-    }
 
-    // Upgrade to realtime and check again
-    log("Upgrading to realtime");
-    let realtimeTestStatus = "passed";
-    try {
-      await upgradeToRealtime(page, environment);
-      log("Reloading page after realtime upgrade");
-      await page.reload({ waitUntil: "networkidle0" });
-      log("Performing post-upgrade smoke test");
-      await checkUrlSmoke(page, url, true, bail, skipClient, environment);
-    } catch (error) {
-      hasFailures = true;
-      realtimeTestStatus = "failed";
-      realtimeTestError =
-        error instanceof Error ? error : new Error(String(error));
-      log("Error during realtime smoke test: %O", error);
-      console.error(
-        `❌ Realtime smoke test failed: ${error instanceof Error ? error.message : String(error)}`,
-      );
+      // Upgrade to realtime and check again
+      log("Upgrading to realtime");
+      let realtimeTestStatus = "passed";
+      try {
+        await upgradeToRealtime(page, environment);
+        log("Reloading page after realtime upgrade");
+        await page.reload({ waitUntil: "networkidle0" });
+        log("Performing post-upgrade smoke test");
+        await checkUrlSmoke(page, url, true, bail, skipClient, environment);
+      } catch (error) {
+        hasFailures = true;
+        realtimeTestStatus = "failed";
+        realtimeTestError =
+          error instanceof Error ? error : new Error(String(error));
+        log("Error during realtime smoke test: %O", error);
+        console.error(
+          `❌ Realtime smoke test failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
 
-      // If bail is true, stop the tests
-      if (bail) {
-        throw error;
+        // If bail is true, stop the tests
+        if (bail) {
+          throw error;
+        }
       }
-    }
 
-    // Take a screenshot after realtime test
-    await takeScreenshot(
-      page,
-      url,
-      artifactDir,
-      `${environment.toLowerCase()}-realtime-${realtimeTestStatus}`,
-    );
+      // Take a screenshot after realtime test
+      await takeScreenshot(
+        page,
+        url,
+        artifactDir,
+        `${environment.toLowerCase()}-realtime-${realtimeTestStatus}`,
+      );
+    }
 
     // If there were failures, propagate them after taking screenshots
     if (hasFailures) {
@@ -781,4 +819,61 @@ export async function checkServerUp(
     if (!up) return false;
   }
   return true;
+}
+
+/**
+ * Perform only the realtime upgrade and tests without doing initial checks
+ */
+async function realtimeOnlyFlow(
+  page: Page,
+  url: string,
+  artifactDir: string,
+  bail: boolean,
+  skipClient: boolean,
+  environment: string,
+): Promise<{ hasFailures: boolean; error: Error | null }> {
+  let hasFailures = false;
+  let realtimeError: Error | null = null;
+
+  try {
+    // Directly upgrade to realtime mode
+    console.log(
+      "\n📡 Directly upgrading to realtime mode (skipping initial tests)",
+    );
+    await upgradeToRealtime(page, environment);
+
+    log("Reloading page after realtime upgrade");
+    await page.reload({ waitUntil: "networkidle0" });
+
+    log("Performing realtime-only smoke test");
+    await checkUrlSmoke(page, url, true, bail, skipClient, environment);
+
+    // Take a screenshot of the realtime test
+    await takeScreenshot(
+      page,
+      url,
+      artifactDir,
+      `${environment.toLowerCase()}-realtime-passed`,
+    );
+  } catch (error) {
+    hasFailures = true;
+    realtimeError = error instanceof Error ? error : new Error(String(error));
+    log("Error during realtime-only test: %O", error);
+    console.error(`❌ Realtime test failed: ${realtimeError.message}`);
+
+    // Take a failure screenshot
+    await takeScreenshot(
+      page,
+      url,
+      artifactDir,
+      `${environment.toLowerCase()}-realtime-failed`,
+    ).catch((e) => log("Failed to take error screenshot: %O", e));
+
+    // If bail is true, propagate the error
+    if (bail) {
+      throw error;
+    }
+  }
+
+  return { hasFailures, error: realtimeError };
 }
