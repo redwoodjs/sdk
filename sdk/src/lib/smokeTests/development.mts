@@ -1,5 +1,5 @@
 import { setTimeout } from "node:timers/promises";
-import { log } from "./constants.mjs";
+import { log, RETRIES } from "./constants.mjs";
 import { $ } from "../$.mjs";
 import { checkUrl, checkServerUp } from "./browser.mjs";
 import { fail } from "./utils.mjs";
@@ -236,7 +236,7 @@ export async function runDevTest(
 
   try {
     // DRY: check both root and custom path
-    await checkServerUp(url, customPath);
+    await checkServerUp(url, customPath, RETRIES, bail);
 
     // Now run the tests with the custom path
     const testUrl =

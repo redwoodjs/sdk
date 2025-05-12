@@ -265,7 +265,7 @@ export async function checkUrl(
       log("Upgrading to realtime");
       let realtimeTestStatus = "passed";
       try {
-        await upgradeToRealtime(page, environment);
+        await upgradeToRealtime(page, environment, bail);
         log("Reloading page after realtime upgrade");
         await page.reload({ waitUntil: "networkidle0" });
         log("Performing post-upgrade smoke test");
@@ -367,7 +367,7 @@ export async function checkUrlSmoke(
   // Run server-side smoke test
   log("Running server-side smoke test");
   try {
-    await checkServerSmoke(page, phase, environment);
+    await checkServerSmoke(page, phase, environment, bail);
   } catch (error) {
     hasFailures = true;
     serverTestError = error instanceof Error ? error : new Error(String(error));
@@ -390,7 +390,7 @@ export async function checkUrlSmoke(
   if (!skipClient) {
     log("Running client-side smoke test");
     try {
-      await checkClientSmoke(page, phase, environment);
+      await checkClientSmoke(page, phase, environment, bail);
     } catch (error) {
       hasFailures = true;
       clientTestError =
@@ -434,6 +434,7 @@ export async function checkServerSmoke(
   page: Page,
   phase: string = "",
   environment: string = "Development", // Add environment parameter with default
+  bail: boolean = false, // Add bail parameter
 ): Promise<SmokeTestResult> {
   console.log(`🔍 Testing server-side smoke test ${phase ? `(${phase})` : ""}`);
 
@@ -501,7 +502,7 @@ export async function checkServerSmoke(
   });
 
   log("Server-side smoke test result: %O", result);
-  reportSmokeTestResult(result, "Server-side", phase, environment);
+  reportSmokeTestResult(result, "Server-side", phase, environment, bail);
   return result;
 }
 
@@ -512,6 +513,7 @@ export async function checkClientSmoke(
   page: Page,
   phase: string = "",
   environment: string = "Development", // Add environment parameter with default
+  bail: boolean = false, // Add bail parameter
 ): Promise<SmokeTestResult | null> {
   console.log(`🔍 Testing client-side smoke test ${phase ? `(${phase})` : ""}`);
 
@@ -672,7 +674,7 @@ export async function checkClientSmoke(
   });
 
   log("Client-side smoke test result: %O", result);
-  reportSmokeTestResult(result, "Client-side", phase, environment);
+  reportSmokeTestResult(result, "Client-side", phase, environment, bail);
   return result;
 }
 
@@ -682,6 +684,7 @@ export async function checkClientSmoke(
 export async function upgradeToRealtime(
   page: Page,
   environment: string = "Development", // Add environment parameter with default
+  bail: boolean = false, // Add bail parameter
 ): Promise<void> {
   console.log("\n📡 Upgrading to realtime mode");
   const upgradeResult = await page.evaluate(async () => {
@@ -711,12 +714,20 @@ export async function upgradeToRealtime(
 
   if (!upgradeResult.success) {
     log("ERROR: Failed to upgrade to realtime mode: %s", upgradeResult.message);
-    await fail(
-      new Error(`Failed to upgrade to realtime mode: ${upgradeResult.message}`),
-      1,
-      `${environment} - Realtime Upgrade`,
-    );
-    return; // This will never be reached due to fail() exiting
+    const errorMessage = `Failed to upgrade to realtime mode: ${upgradeResult.message}`;
+
+    if (bail) {
+      // If bail is true, call fail() which will exit the process
+      await fail(
+        new Error(errorMessage),
+        1,
+        `${environment} - Realtime Upgrade`,
+      );
+      return; // This will never be reached due to fail() exiting
+    } else {
+      // Otherwise throw an error that can be caught by the caller
+      throw new Error(errorMessage);
+    }
   }
 
   console.log("✅ Successfully upgraded to realtime mode");
@@ -730,6 +741,7 @@ export function reportSmokeTestResult(
   type: string,
   phase: string = "",
   environment: string = "Development", // Add environment parameter with default
+  bail: boolean = false, // Add bail parameter with default
 ): void {
   const phasePrefix = phase ? `(${phase}) ` : "";
   log("Reporting %s%s smoke test result: %O", phasePrefix, type, result);
@@ -750,13 +762,21 @@ export function reportSmokeTestResult(
       result.status,
       result.error || "unknown",
     );
-    fail(
-      new Error(
-        `${environment} - ${phasePrefix}${type} smoke test failed. Status: ${result.status}${result.error ? `. Error: ${result.error}` : ""}`,
-      ),
-      1,
-      `${environment} - ${type} Smoke Test (${phase})`,
-    );
+
+    // Create the error message
+    const errorMessage = `${environment} - ${phasePrefix}${type} smoke test failed. Status: ${result.status}${result.error ? `. Error: ${result.error}` : ""}`;
+
+    if (bail) {
+      // If bail is true, call fail() which will exit the process
+      fail(
+        new Error(errorMessage),
+        1,
+        `${environment} - ${type} Smoke Test (${phase})`,
+      );
+    } else {
+      // Otherwise throw an error that can be caught by the caller
+      throw new Error(errorMessage);
+    }
   }
 }
 
@@ -767,6 +787,7 @@ export async function checkServerUp(
   baseUrl: string,
   customPath: string = "/",
   retries = RETRIES,
+  bail: boolean = false, // Add bail parameter
 ): Promise<boolean> {
   // Always check root first, then custom path if different
   const pathsToCheck = ["/"];
@@ -798,14 +819,20 @@ export async function checkServerUp(
             retries,
           );
 
-          await fail(
-            new Error(
-              `Server at ${url} did not become available after ${retries} attempts`,
-            ),
-            1,
-            `Server Availability Check: ${url}`,
-          );
-          return false; // This will never be reached due to fail() exiting
+          const errorMessage = `Server at ${url} did not become available after ${retries} attempts`;
+
+          if (bail) {
+            // If bail is true, call fail() which will exit the process
+            await fail(
+              new Error(errorMessage),
+              1,
+              `Server Availability Check: ${url}`,
+            );
+            return false; // This will never be reached due to fail() exiting
+          } else {
+            // Otherwise throw an error that can be caught by the caller
+            throw new Error(errorMessage);
+          }
         }
         log("Server not up yet, retrying in 2 seconds");
         console.log(`Server not up yet, retrying in 2 seconds...`);
@@ -836,7 +863,7 @@ async function realtimeOnlyFlow(
     console.log(
       "\n📡 Directly upgrading to realtime mode (skipping initial tests)",
     );
-    await upgradeToRealtime(page, environment);
+    await upgradeToRealtime(page, environment, bail);
 
     log("Reloading page after realtime upgrade");
     await page.reload({ waitUntil: "networkidle0" });
