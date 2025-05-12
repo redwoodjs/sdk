@@ -33,9 +33,6 @@ jobs:
           corepack enable
           pnpm install
 
-      - name: Build SDK
-        run: cd sdk && pnpm build
-
       - name: Run smoke tests for starters
         run: ./scripts/smoke-test-starters.sh
         env:
