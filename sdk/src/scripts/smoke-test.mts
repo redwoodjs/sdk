@@ -34,6 +34,7 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
     headless: true,
     ci: ciFlag,
     bail: false, // Default to false - continue tests even if some fail
+    copyProject: false, // Default to false - don't copy project to artifacts
     // sync: will be set below
   };
 
@@ -59,6 +60,8 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
       options.keep = true;
     } else if (arg === "--no-headless") {
       options.headless = false;
+    } else if (arg === "--copy-project") {
+      options.copyProject = true;
     } else if (arg === "--no-sync") {
       syncExplicit = false;
     } else if (arg === "--sync") {
@@ -86,6 +89,7 @@ Options:
   --no-sync               Disable syncing SDK code to test project
   --ci                    Run in CI mode (keeps temp dirs, sets headless)
   --bail                  Stop on first test failure
+  --copy-project          Copy the project to the artifacts directory
   --help                  Show this help message
 `);
       process.exit(0);

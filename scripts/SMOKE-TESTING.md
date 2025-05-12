@@ -82,6 +82,7 @@ The smoke-test script supports several options:
 --sync                  Force sync SDK before running smoke test
 --ci                    Force CI mode behavior
 --bail                  Stop on first test failure
+--copy-project          Copy the project directory to artifacts
 ```
 
 ## Troubleshooting

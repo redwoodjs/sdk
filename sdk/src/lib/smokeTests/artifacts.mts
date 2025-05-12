@@ -4,7 +4,7 @@ import { mkdirp, pathExists } from "fs-extra";
 import { createWriteStream, WriteStream, existsSync, mkdirSync } from "fs";
 import puppeteer from "puppeteer-core";
 import { log } from "./constants.mjs";
-import { StreamCapturer } from "./types.mjs";
+import { SmokeTestOptions, StreamCapturer } from "./types.mjs";
 
 // Stream capturer for logging
 export const capturer: StreamCapturer = {
@@ -126,6 +126,7 @@ export const capturer: StreamCapturer = {
  */
 export async function setupArtifactsDirectory(
   artifactDir: string,
+  options?: SmokeTestOptions,
 ): Promise<void> {
   log("Setting up artifacts directory: %s", artifactDir);
   console.log(`📁 Setting up artifacts directory: ${artifactDir}`);
@@ -151,7 +152,13 @@ export async function setupArtifactsDirectory(
   log("Created artifacts directory: %s", artifactDir);
 
   // Create standard subdirectories
-  const subdirs = ["project", "screenshots", "reports", "logs"];
+  const subdirs = ["screenshots", "reports", "logs"];
+
+  // Only create project directory if copyProject is enabled
+  if (options?.copyProject) {
+    subdirs.push("project");
+  }
+
   for (const subdir of subdirs) {
     const dirPath = join(artifactDir, subdir);
     await mkdirp(dirPath);

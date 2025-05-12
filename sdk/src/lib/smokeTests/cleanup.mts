@@ -91,7 +91,7 @@ export async function cleanupResources(
   }
 
   // Always copy test directory to artifact directory if targetDir exists
-  if (resources.targetDir && options.artifactDir) {
+  if (resources.targetDir && options.artifactDir && options.copyProject) {
     try {
       // Use the standardized project directory
       const projectDir = join(options.artifactDir, "project");

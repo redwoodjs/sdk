@@ -31,7 +31,7 @@ export async function runSmokeTests(
   }
 
   // Clean and recreate artifacts directory
-  await setupArtifactsDirectory(options.artifactDir);
+  await setupArtifactsDirectory(options.artifactDir, options);
   log("Initialized log capturing to artifact files");
 
   // Throw immediately if both tests would be skipped
