@@ -6,9 +6,13 @@ on:
       - main
     paths:
       - "sdk/**"
+    paths-ignore:
+      - "docs/**"
   pull_request:
     paths:
       - "sdk/**"
+    paths-ignore:
+      - "docs/**"
 
 jobs:
   check-sdk:
