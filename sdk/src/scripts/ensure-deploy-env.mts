@@ -13,7 +13,6 @@ import {
 import * as readline from "readline";
 import { pathExists } from "fs-extra";
 import { parseJson } from "../lib/jsonUtils.mjs";
-
 // Define interface for the database info returned by wrangler
 interface D1DatabaseInfo {
   uuid?: string;

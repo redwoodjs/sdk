@@ -3,48 +3,61 @@
  */
 
 /**
- * Extract the last JSON object or array from a string that might contain multiple
- * JSON structures or other content.
+ * Attempt to extract the last JSON object or array from a string by
+ * first finding closing braces/brackets and then matching them to their
+ * opening counterparts.
  *
- * @param output - The string output that might contain JSON
- * @returns The parsed JSON object/array, or null if no valid JSON was found
+ * @param output - The string to parse
+ * @returns JSON object or null if invalid
  */
 export function extractLastJson(output: string | undefined): any {
   if (!output) return null;
 
   try {
-    // Try to find all JSON arrays in the output
-    const arrayMatches = Array.from(output.matchAll(/(\[[\s\S]*?\])/g) || []);
-
-    // Try to find all JSON objects in the output
-    const objectMatches = Array.from(output.matchAll(/(\{[\s\S]*?\})/g) || []);
-
-    // Get the positions of all matches
-    const allMatches = [
-      ...arrayMatches.map((match) => ({
-        type: "array",
-        match: match[1],
-        index: match.index || 0,
-      })),
-      ...objectMatches.map((match) => ({
-        type: "object",
-        match: match[1],
-        index: match.index || 0,
-      })),
-    ];
-
-    // Sort by position in descending order to find the last match first
-    allMatches.sort((a, b) => b.index - a.index);
-
-    // Get the first item after sorting (which is the last in the original string)
-    const lastMatch = allMatches.length > 0 ? allMatches[0] : null;
-
-    if (lastMatch) {
-      return JSON.parse(lastMatch.match);
+    // First try a direct parse of the entire output
+    // (in case it's already valid JSON with no surrounding text)
+    try {
+      return JSON.parse(output);
+    } catch (e) {
+      // If that fails, try more complex extraction
     }
 
-    // If no JSON objects or arrays were found, try parsing the entire output
-    return JSON.parse(output);
+    // Start from the end of the string to find closing braces/brackets
+    for (let i = output.length - 1; i >= 0; i--) {
+      // Look for closing braces/brackets
+      if (output[i] === "}" || output[i] === "]") {
+        const closingChar = output[i];
+        const openingChar = closingChar === "}" ? "{" : "[";
+
+        // Find the matching opening brace/bracket
+        let balance = 1; // Start with 1 since we've already found a closing char
+        let j = i - 1;
+
+        while (j >= 0 && balance > 0) {
+          if (output[j] === closingChar) {
+            balance++;
+          } else if (output[j] === openingChar) {
+            balance--;
+            // If balance is 0, we found the matching opening char
+            if (balance === 0) {
+              // Extract the potential JSON and try to parse it
+              const extracted = output.substring(j, i + 1);
+              try {
+                const parsed = JSON.parse(extracted);
+                return parsed;
+              } catch (e) {
+                // Not valid JSON, continue
+                break;
+              }
+            }
+          }
+          j--;
+        }
+      }
+    }
+
+    // If we reach here, no valid JSON was found
+    return null;
   } catch (error) {
     console.error("Error extracting last JSON:", error);
     return null;
@@ -63,6 +76,7 @@ export function parseJson<T>(input: string | undefined, defaultValue: T): T {
     const result = extractLastJson(input);
     return result !== null ? result : defaultValue;
   } catch (error) {
+    console.error("Error in parseJson:", error);
     return defaultValue;
   }
 }
