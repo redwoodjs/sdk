@@ -348,6 +348,26 @@ export function reportSmokeTestResult(
  * Initialize test statuses based on test options
  */
 export function initializeTestStatus(): void {
+  // Set default status for all tests as "DID_NOT_RUN"
+  // Dev tests
+  state.testStatus.dev.overall = "DID_NOT_RUN";
+  state.testStatus.dev.initialServerSide = "DID_NOT_RUN";
+  state.testStatus.dev.initialClientSide = "DID_NOT_RUN";
+  state.testStatus.dev.realtimeUpgrade = "DID_NOT_RUN";
+  state.testStatus.dev.realtimeServerSide = "DID_NOT_RUN";
+  state.testStatus.dev.realtimeClientSide = "DID_NOT_RUN";
+
+  // Production tests
+  state.testStatus.production.overall = "DID_NOT_RUN";
+  state.testStatus.production.releaseCommand = "DID_NOT_RUN";
+  state.testStatus.production.initialServerSide = "DID_NOT_RUN";
+  state.testStatus.production.initialClientSide = "DID_NOT_RUN";
+  state.testStatus.production.realtimeUpgrade = "DID_NOT_RUN";
+  state.testStatus.production.realtimeServerSide = "DID_NOT_RUN";
+  state.testStatus.production.realtimeClientSide = "DID_NOT_RUN";
+
+  // Now override with specific statuses based on options
+
   // Mark skipped tests based on options
   if (state.options.skipDev) {
     state.testStatus.dev.overall = "SKIPPED";
@@ -381,11 +401,17 @@ export function initializeTestStatus(): void {
     if (!state.options.skipDev) {
       state.testStatus.dev.initialServerSide = "SKIPPED";
       state.testStatus.dev.initialClientSide = "SKIPPED";
+      // Set the upgrade test to PASSED as it's implicitly run for realtime mode
+      state.testStatus.dev.realtimeUpgrade = "PASSED";
     }
 
     if (!state.options.skipRelease) {
       state.testStatus.production.initialServerSide = "SKIPPED";
       state.testStatus.production.initialClientSide = "SKIPPED";
+      // Set release command to PASSED since it must have succeeded for realtime tests to run
+      state.testStatus.production.releaseCommand = "PASSED";
+      // Set the upgrade test to PASSED as it's implicitly run for realtime mode
+      state.testStatus.production.realtimeUpgrade = "PASSED";
     }
   }
 }

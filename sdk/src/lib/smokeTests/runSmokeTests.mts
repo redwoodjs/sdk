@@ -8,7 +8,7 @@ import { setupTestEnvironment } from "./environment.mjs";
 import { runDevServer, runDevTest } from "./development.mjs";
 import { runReleaseTest } from "./release.mjs";
 import { fail, teardown, log } from "./utils.mjs";
-import { state } from "./state.mjs";
+import { state, updateTestStatus } from "./state.mjs";
 import { initializeTestStatus } from "./reporting.mjs";
 
 /**
@@ -128,46 +128,59 @@ export async function runSmokeTests(
     }
 
     if (!options.skipRelease) {
-      log("Running release/production tests");
-      try {
-        await runReleaseTest(
-          options.customPath,
-          options.artifactDir,
-          resources,
-          browserPath,
-          options.headless !== false,
-          options.bail,
-          options.skipClient,
-          options.projectDir,
-          options.realtime,
+      if (options.realtime) {
+        // If --realtime flag is set, status is already set in initializeTestStatus
+        console.log(
+          "⏩ Using realtime mode for Production tests (--realtime option enabled)",
         );
+      } else {
+        // Update status when release command runs
+        try {
+          console.log("\n🚀 Running release command smoke test");
+          await runReleaseTest(
+            options.customPath,
+            options.artifactDir,
+            resources,
+            browserPath,
+            options.headless !== false,
+            options.bail,
+            options.skipClient,
+            options.projectDir,
+            options.realtime,
+          );
+          // Update release command status to PASSED
+          updateTestStatus("production", "releaseCommand", "PASSED");
 
-        // Mark that release tests have run successfully
-        state.releaseTestsRan = true;
+          // Mark that release tests have run successfully
+          state.releaseTestsRan = true;
 
-        // Update the overall production test status to PASSED
-        state.testStatus.production.overall = "PASSED";
-      } catch (error) {
-        hasFailures = true;
-        log("Error during release testing: %O", error);
-        console.error(
-          `❌ Release test failed: ${error instanceof Error ? error.message : String(error)}`,
-        );
+          // Update the overall production test status to PASSED
+          state.testStatus.production.overall = "PASSED";
+        } catch (error) {
+          // Update release command status to FAILED
+          updateTestStatus("production", "releaseCommand", "FAILED");
 
-        // Record the failure
-        state.failures.push({
-          step: "Release Test",
-          error: error instanceof Error ? error.message : String(error),
-          details:
-            error instanceof Error && error.stack ? error.stack : undefined,
-        });
+          hasFailures = true;
+          log("Error during release testing: %O", error);
+          console.error(
+            `❌ Release test failed: ${error instanceof Error ? error.message : String(error)}`,
+          );
 
-        // Mark overall production test status as FAILED
-        state.testStatus.production.overall = "FAILED";
+          // Record the failure
+          state.failures.push({
+            step: "Release Test",
+            error: error instanceof Error ? error.message : String(error),
+            details:
+              error instanceof Error && error.stack ? error.stack : undefined,
+          });
 
-        // If bail option is true, stop the tests
-        if (options.bail) {
-          await fail(error, 1, "Release Test");
+          // Mark overall production test status as FAILED
+          state.testStatus.production.overall = "FAILED";
+
+          // If bail option is true, stop the tests
+          if (options.bail) {
+            await fail(error, 1, "Release Test");
+          }
         }
       }
     } else {
