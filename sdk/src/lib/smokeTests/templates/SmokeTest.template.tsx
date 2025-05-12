@@ -3,28 +3,19 @@ export function getSmokeTestTemplate(skipClient: boolean = false): string {
 import React from "react";
 import { RequestInfo } from "rwsdk/worker";
 ${skipClient ? "" : 'import { SmokeTestClient } from "./__SmokeTestClient";'}
-import { smokeTestAction, getSmokeTestTimestamp } from "./__smokeTestFunctions";
+import { getSmokeTestTimestamp } from "./__smokeTestFunctions";
 
 export const SmokeTestInfo: React.FC = async () => {
   const timestamp = Date.now();
   let status = "error";
-  let verificationPassed = false;
-  let serverStoredTimestamp = 0;
-  let result: any = null;
 
   try {
-    // Call the smoke test action to verify basic server functionality
-    result = await smokeTestAction(timestamp);
-    status = result.status || "error";
-    verificationPassed = result.timestamp === timestamp;
-    
     // Get the current server-stored timestamp
-    const storedResult = await getSmokeTestTimestamp();
-    serverStoredTimestamp = storedResult.timestamp;
+    const result = await getSmokeTestTimestamp();
+    status = result.status || "error";
   } catch (error) {
     console.error("Smoke test failed:", error);
     status = "error";
-    result = { error: error instanceof Error ? error.message : String(error) };
   }
 
   return (
@@ -34,8 +25,7 @@ export const SmokeTestInfo: React.FC = async () => {
       data-status={status}
       data-timestamp={timestamp}
       data-server-timestamp={Date.now()}
-      data-server-stored-timestamp={serverStoredTimestamp}
-      data-verified={verificationPassed ? "true" : "false"}
+      data-verified={status === "ok" ? "true" : "false"}
       style={{
         fontFamily: "system-ui, -apple-system, sans-serif",
         margin: "20px",
@@ -56,12 +46,9 @@ export const SmokeTestInfo: React.FC = async () => {
       <div
         id="smoke-test-result"
       >
-        {verificationPassed
-          ? "Timestamp verification passed ✅"
-          : "Timestamp verification failed ⚠️"}
-      </div>
-      <div id="server-stored-timestamp">
-        Server Stored Timestamp: {serverStoredTimestamp}
+        {status === "ok"
+          ? "Server connection successful ✅"
+          : "Server connection failed ⚠️"}
       </div>
       <details style={{ marginTop: "10px" }}>
         <summary>Details</summary>
@@ -74,7 +61,7 @@ export const SmokeTestInfo: React.FC = async () => {
             overflow: "auto",
           }}
         >
-          {JSON.stringify({ timestamp, serverStoredTimestamp, result, verificationPassed }, null, 2)}
+          {JSON.stringify({ timestamp, status }, null, 2)}
         </pre>
       </details>
 

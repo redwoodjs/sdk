@@ -8,8 +8,9 @@ The smoke tests verify that the starter templates work correctly by:
 
 1. Starting a development server
 2. Testing the server and client health checks
-3. Upgrading to realtime mode and testing again
-4. Capturing screenshots as artifacts
+3. Testing that client action calls can cause server component rerenders
+4. Upgrading to realtime mode and testing again
+5. Capturing screenshots as artifacts
 
 ## Running Smoke Tests Locally
 
@@ -40,8 +41,19 @@ The smoke testing process:
 2. Copies each starter to a temporary directory with a unique name
 3. Starts a development server for each starter
 4. Performs health checks using Puppeteer and Chrome
-5. Attempts to upgrade to realtime mode and verifies it works
-6. Saves screenshots as artifacts for debugging
+5. Tests client-to-server communication and server component rerenders
+6. Attempts to upgrade to realtime mode and verifies it works
+7. Saves screenshots as artifacts for debugging
+
+## Test Specifics
+
+The smoke tests verify several critical aspects of the application:
+
+1. **Server Component Rendering**: Verifies that server components render correctly
+2. **Client Component Rendering**: Verifies that client components render correctly
+3. **Client-to-Server Communication**: Verifies that client actions can successfully communicate with the server
+4. **Server Component Rerendering**: Verifies that client action calls can cause server components to rerender with updated data
+5. **Realtime Functionality**: Verifies that the app functions correctly after being upgraded to realtime mode
 
 ## CI Integration
 

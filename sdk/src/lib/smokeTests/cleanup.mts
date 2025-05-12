@@ -64,8 +64,14 @@ export async function cleanupResources(
     }
   }
 
-  // Clean up resources
-  if (resources.workerName) {
+  // Clean up resources only if release tests actually ran successfully or the worker was created
+  if (
+    resources.workerName &&
+    (state.releaseTestsRan || resources.workerCreatedDuringTest)
+  ) {
+    log(
+      "Release tests ran or worker was created during test, cleaning up Cloudflare resources",
+    );
     // First, clean up any D1 databases associated with this worker
     try {
       log(
@@ -158,6 +164,13 @@ export async function cleanupResources(
           error instanceof Error && error.stack ? error.stack : undefined,
       });
     }
+  } else if (resources.workerName) {
+    log(
+      "Skipping Cloudflare resource cleanup since release tests didn't run successfully",
+    );
+    console.log(
+      "⏩ Skipping Cloudflare worker cleanup (release tests didn't complete)",
+    );
   } else {
     log("No worker name provided for cleanup");
   }
