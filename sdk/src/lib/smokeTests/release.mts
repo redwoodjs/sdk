@@ -23,19 +23,19 @@ interface ExpectResult {
  * A mini expect-like utility for handling interactive CLI prompts and verifying output
  * @param command The command to execute
  * @param expectations Array of {expect, send} objects for interactive responses and verification
- * @param cwd Working directory for command execution
- * @param options Additional options for command execution
+ * @param options Additional options for command execution including working directory and environment
  * @returns Promise that resolves when the command completes
  */
 export async function $expect(
   command: string,
   expectations: Array<ExpectOptions>,
-  cwd?: string,
-  options: { reject: boolean } = { reject: true },
+  options: { reject?: boolean; env?: NodeJS.ProcessEnv; cwd?: string } = {
+    reject: true,
+  },
 ): Promise<ExpectResult> {
   return new Promise((resolve, reject) => {
     log("$expect starting with command: %s", command);
-    log("Working directory: %s", cwd ?? process.cwd());
+    log("Working directory: %s", options.cwd ?? process.cwd());
     log(
       "Expected patterns: %O",
       expectations.map((e) => e.expect.toString()),
@@ -45,10 +45,10 @@ export async function $expect(
 
     // Spawn the process with pipes for interaction
     const childProcess = execaCommand(command, {
-      cwd: cwd ?? process.cwd(),
+      cwd: options.cwd ?? process.cwd(),
       stdio: "pipe",
       reject: false, // Never reject so we can handle the error ourselves
-      env: process.env,
+      env: options.env ?? process.env,
     });
 
     log("Process spawned with PID: %s", childProcess.pid);
@@ -354,8 +354,15 @@ export async function runRelease(
           send: "y\r",
         },
       ],
-      cwd,
-      { reject: false }, // Add reject: false to prevent uncaught promise rejections
+      {
+        reject: false, // Add reject: false to prevent uncaught promise rejections
+        env: {
+          RWSDK_RENAME_WORKER: "1",
+          RWSDK_RENAME_DB: "1",
+          ...process.env,
+        },
+        cwd,
+      },
     );
 
     // Check exit code to ensure command succeeded
@@ -504,7 +511,9 @@ export async function deleteWorker(name: string, cwd?: string): Promise<void> {
           send: "y\r",
         },
       ],
-      cwd,
+      {
+        cwd,
+      },
     );
     console.log(`✅ Worker ${name} deleted successfully`);
   } catch (error) {
@@ -520,7 +529,9 @@ export async function deleteWorker(name: string, cwd?: string): Promise<void> {
             send: "y\r",
           },
         ],
-        cwd,
+        {
+          cwd,
+        },
       );
       console.log(`✅ Worker ${name} force deleted successfully`);
     } catch (retryError) {

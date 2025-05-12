@@ -82,7 +82,10 @@ export const ensureDeployEnv = async () => {
   const wranglerConfig = parseJsonc(await readFile(wranglerPath, "utf-8"));
 
   // Update wrangler name if needed
-  if (wranglerConfig.name === "__change_me__") {
+  if (
+    wranglerConfig.name === "__change_me__" ||
+    process.env.RWSDK_RENAME_WORKER === "1"
+  ) {
     const dirName = basename(process.cwd());
     wranglerConfig.name = dirName;
     console.log(`Set wrangler name to ${dirName}`);
@@ -123,7 +126,11 @@ export const ensureDeployEnv = async () => {
       const existingDb = wranglerConfig.d1_databases?.find(
         (db: any) => db.binding === "DB",
       );
-      if (existingDb && existingDb.database_id !== "__change_me__") {
+      if (
+        existingDb &&
+        existingDb.database_id !== "__change_me__" &&
+        process.env.RWSDK_RENAME_DB !== "1"
+      ) {
         console.log(
           "D1 database already configured in wrangler.jsonc, skipping creation",
         );
