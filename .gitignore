@@ -176,3 +176,4 @@ dist
 .vscode/settings.json
 
 .artifacts/
+smoke-test-artifacts
