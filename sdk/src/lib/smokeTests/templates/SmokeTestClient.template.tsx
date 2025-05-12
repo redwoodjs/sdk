@@ -21,6 +21,8 @@ interface SmokeTestResponse {
 export const SmokeTestClient: React.FC = () => {
   const [loading, setLoading] = useState(false);
   const [lastCheck, setLastCheck] = useState<SmokeTestStatus | null>(null);
+  const [serverUpdateLoading, setServerUpdateLoading] = useState(false);
+  const [serverUpdateResult, setServerUpdateResult] = useState<any>(null);
 
   const runSmokeTest = async () => {
     setLoading(true);
@@ -50,6 +52,30 @@ export const SmokeTestClient: React.FC = () => {
     }
   };
 
+  const updateServerTimestamp = async () => {
+    setServerUpdateLoading(true);
+    const clientTimestamp = Date.now();
+
+    try {
+      // Call smokeTestAction with client timestamp to update server state
+      const result = await smokeTestAction(clientTimestamp);
+      setServerUpdateResult({
+        success: true,
+        timestamp: clientTimestamp,
+        serverStoredTimestamp: result.serverStoredTimestamp,
+        result,
+      });
+    } catch (error) {
+      setServerUpdateResult({
+        success: false,
+        timestamp: clientTimestamp,
+        error: error instanceof Error ? error.message : String(error),
+      });
+    } finally {
+      setServerUpdateLoading(false);
+    }
+  };
+
   return (
     <div
       className="smoke-test-client"
@@ -63,22 +89,72 @@ export const SmokeTestClient: React.FC = () => {
       }}
     >
       <h3>Manual Smoke Test</h3>
-      <button
-        data-testid="refresh-health"
-        onClick={runSmokeTest}
-        disabled={loading}
-        style={{
-          padding: "8px 16px",
-          background: loading ? "#ccc" : "#0070f3",
-          color: "white",
-          border: "none",
-          borderRadius: "4px",
-          cursor: loading ? "not-allowed" : "pointer",
-          fontWeight: "bold",
-        }}
-      >
-        {loading ? "Checking..." : "Run Smoke Test"}
-      </button>
+      <div style={{ display: "flex", gap: "10px", marginBottom: "15px" }}>
+        <button
+          data-testid="refresh-health"
+          onClick={runSmokeTest}
+          disabled={loading}
+          style={{
+            padding: "8px 16px",
+            background: loading ? "#ccc" : "#0070f3",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: loading ? "not-allowed" : "pointer",
+            fontWeight: "bold",
+          }}
+        >
+          {loading ? "Checking..." : "Run Smoke Test"}
+        </button>
+
+        <button
+          data-testid="update-server-timestamp"
+          onClick={updateServerTimestamp}
+          disabled={serverUpdateLoading}
+          style={{
+            padding: "8px 16px",
+            background: serverUpdateLoading ? "#ccc" : "#22c55e",
+            color: "white",
+            border: "none",
+            borderRadius: "4px",
+            cursor: serverUpdateLoading ? "not-allowed" : "pointer",
+            fontWeight: "bold",
+          }}
+        >
+          {serverUpdateLoading ? "Updating..." : "Update Server Timestamp"}
+        </button>
+      </div>
+
+      {serverUpdateResult && (
+        <div style={{ marginBottom: "15px" }}>
+          <div
+            style={{
+              padding: "10px",
+              borderRadius: "4px",
+              background: serverUpdateResult.success ? "#e6f7ee" : "#ffeded",
+              border: \`1px solid \${
+                serverUpdateResult.success ? "#0c9" : "#f44"
+              }\`,
+            }}
+          >
+            <h4
+              style={{
+                margin: "0 0 10px 0",
+                color: serverUpdateResult.success ? "#0c9" : "#f44",
+              }}
+            >
+              Server Update: {serverUpdateResult.success ? "Success" : "Failed"}
+            </h4>
+            <p>Client Timestamp: {serverUpdateResult.timestamp}</p>
+            {serverUpdateResult.serverStoredTimestamp && (
+              <p>Server Stored Timestamp: {serverUpdateResult.serverStoredTimestamp}</p>
+            )}
+            {serverUpdateResult.error && (
+              <p style={{ color: "#f44" }}>Error: {serverUpdateResult.error}</p>
+            )}
+          </div>
+        </div>
+      )}
 
       {lastCheck && (
         <div style={{ marginTop: "15px" }}>
@@ -138,6 +214,7 @@ export const SmokeTestClient: React.FC = () => {
         data-client-timestamp={lastCheck?.timestamp ?? ""}
         data-status={lastCheck?.status ?? ""}
         data-verified={lastCheck?.verificationPassed ? "true" : "false"}
+        data-server-update-timestamp={serverUpdateResult?.timestamp ?? ""}
         style={{ display: "none" }}
       />
     </div>

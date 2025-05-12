@@ -9,12 +9,15 @@ export const SmokeTestInfo: React.FC = async () => {
   const timestamp = Date.now();
   let status = "error";
   let verificationPassed = false;
+  let serverStoredTimestamp = 0;
   let result: any = null;
 
   try {
+    // Call the smoke test action to verify basic server functionality
     result = await smokeTestAction(timestamp);
     status = result.status || "error";
     verificationPassed = result.timestamp === timestamp;
+    serverStoredTimestamp = result.serverStoredTimestamp;
   } catch (error) {
     console.error("Smoke test failed:", error);
     status = "error";
@@ -28,6 +31,7 @@ export const SmokeTestInfo: React.FC = async () => {
       data-status={status}
       data-timestamp={timestamp}
       data-server-timestamp={Date.now()}
+      data-server-stored-timestamp={serverStoredTimestamp}
       data-verified={verificationPassed ? "true" : "false"}
       style={{
         fontFamily: "system-ui, -apple-system, sans-serif",
@@ -53,6 +57,9 @@ export const SmokeTestInfo: React.FC = async () => {
           ? "Timestamp verification passed ✅"
           : "Timestamp verification failed ⚠️"}
       </div>
+      <div id="server-stored-timestamp">
+        Server Stored Timestamp: {serverStoredTimestamp}
+      </div>
       <details style={{ marginTop: "10px" }}>
         <summary>Details</summary>
         <pre
@@ -64,7 +71,7 @@ export const SmokeTestInfo: React.FC = async () => {
             overflow: "auto",
           }}
         >
-          {JSON.stringify({ timestamp, result, verificationPassed }, null, 2)}
+          {JSON.stringify({ timestamp, serverStoredTimestamp, result, verificationPassed }, null, 2)}
         </pre>
       </details>
 

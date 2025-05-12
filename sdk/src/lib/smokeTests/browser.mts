@@ -365,11 +365,25 @@ export async function checkUrlSmoke(
   let hasFailures = false;
   let serverTestError: Error | null = null;
   let clientTestError: Error | null = null;
+  let clientToServerTestError: Error | null = null;
+  let clientTimestamp: number = 0;
 
-  // Run server-side smoke test
-  log("Running server-side smoke test");
+  // Determine the environment for status update
+  const env = environment === "Development" ? "dev" : "production";
+
+  // 1. Run initial server-side smoke test (check default value)
+  log("Running initial server-side smoke test");
   try {
-    await checkServerSmoke(page, phase, environment, bail);
+    // Initial check should find the default server-stored timestamp (23)
+    const initialResult = await checkServerSmoke(
+      page,
+      "Initial",
+      environment,
+      bail,
+    );
+    log(
+      `Initial server stored timestamp: ${initialResult.serverStoredTimestamp}`,
+    );
   } catch (error) {
     hasFailures = true;
     serverTestError = error instanceof Error ? error : new Error(String(error));
@@ -388,19 +402,94 @@ export async function checkUrlSmoke(
     );
   }
 
-  // Run client-side smoke test if available and not skipped
-  if (!skipClient) {
+  // 2. Run client-side smoke test if available and not skipped
+  if (!skipClient && !serverTestError) {
     log("Running client-side smoke test");
     try {
-      await checkClientSmoke(page, phase, environment, bail);
-    } catch (error) {
-      hasFailures = true;
-      clientTestError =
-        error instanceof Error ? error : new Error(String(error));
-      log("Error during client-side smoke test: %O", error);
-      console.error(
-        `❌ Client-side smoke test failed: ${error instanceof Error ? error.message : String(error)}`,
+      const clientResult = await checkClientSmoke(
+        page,
+        phase,
+        environment,
+        bail,
       );
+      if (clientResult && clientResult.clientTimestamp) {
+        clientTimestamp = clientResult.clientTimestamp;
+        log(`Client timestamp from test: ${clientTimestamp}`);
+      }
+
+      // 3. Update server state using the client-side update button
+      log("Clicking update server timestamp button");
+      console.log("Clicking the 'Update Server Timestamp' button...");
+      await page.click('[data-testid="update-server-timestamp"]');
+
+      // Wait for update to complete
+      await page.waitForFunction(
+        () => {
+          const element = document.querySelector(
+            "#smoke-test-client-timestamp",
+          );
+          return (
+            element &&
+            element.getAttribute("data-server-update-timestamp") !== ""
+          );
+        },
+        { timeout: 5000 },
+      );
+
+      // Get the timestamp that was sent to server
+      clientTimestamp = await page.evaluate(() => {
+        const element = document.querySelector("#smoke-test-client-timestamp");
+        return element
+          ? parseInt(
+              element.getAttribute("data-server-update-timestamp") || "0",
+              10,
+            )
+          : 0;
+      });
+
+      log(`Client sent timestamp to server: ${clientTimestamp}`);
+      console.log(`Client set timestamp to: ${clientTimestamp}`);
+
+      // 4. Reload page to check if server state was updated
+      log("Reloading page to check server state update");
+      console.log("Reloading page to check if server state was updated...");
+      await page.reload();
+      await page.waitForSelector('[data-testid="health-status"]');
+
+      // 5. Check server state again with the client timestamp to verify update
+      log("Checking server state after client update");
+      await checkServerSmoke(
+        page,
+        "After Client Update",
+        environment,
+        bail,
+        clientTimestamp,
+      );
+
+      // If we got here, update the status
+      updateTestStatus(env, "serverRerender", "PASSED");
+      console.log("✅ Server rerender test passed!");
+    } catch (error: unknown) {
+      hasFailures = true;
+
+      if (
+        typeof error === "object" &&
+        error !== null &&
+        "message" in error &&
+        typeof error.message === "string" &&
+        error.message.includes("Client-to-server")
+      ) {
+        clientToServerTestError =
+          error instanceof Error ? error : new Error(String(error));
+        updateTestStatus(env, "serverRerender", "FAILED");
+      } else {
+        clientTestError =
+          error instanceof Error ? error : new Error(String(error));
+        log("Error during client-side smoke test: %O", error);
+        console.error(
+          `❌ Client-side smoke test failed: ${error instanceof Error ? error.message : String(error)}`,
+        );
+      }
 
       // If bail is true, stop the tests
       if (bail) {
@@ -410,20 +499,22 @@ export async function checkUrlSmoke(
   } else {
     log("Skipping client-side smoke test");
     console.log("⏩ Skipping client-side smoke test as requested");
+    // Skip client-to-server test too
+    updateTestStatus(env, "serverRerender", "SKIPPED");
   }
 
   // If there were failures, propagate them
   if (hasFailures) {
     // Combine errors or just throw the one that happened
-    if (serverTestError && clientTestError) {
-      throw new Error(
-        `Multiple test failures: Server-side test: ${serverTestError.message}, Client-side test: ${clientTestError.message}`,
-      );
-    } else if (serverTestError) {
-      throw serverTestError;
-    } else if (clientTestError) {
-      throw clientTestError;
-    }
+    const errors: string[] = [];
+    if (serverTestError)
+      errors.push(`Server-side test: ${serverTestError.message}`);
+    if (clientTestError)
+      errors.push(`Client-side test: ${clientTestError.message}`);
+    if (clientToServerTestError)
+      errors.push(`Client-to-server test: ${clientToServerTestError.message}`);
+
+    throw new Error(`Test failures: ${errors.join(", ")}`);
   }
 
   log("URL smoke test completed successfully");
@@ -437,7 +528,8 @@ export async function checkServerSmoke(
   phase: string = "",
   environment: string = "Development", // Add environment parameter with default
   bail: boolean = false, // Add bail parameter
-): Promise<SmokeTestResult> {
+  expectedTimestamp?: number, // Parameter for expected timestamp (default or from client)
+): Promise<SmokeTestResult & { serverStoredTimestamp?: number }> {
   console.log(`🔍 Testing server-side smoke test ${phase ? `(${phase})` : ""}`);
 
   // Determine the environment and test key for state update
@@ -486,6 +578,10 @@ export async function checkServerSmoke(
         smokeElement.getAttribute("data-server-timestamp") || "0",
         10,
       );
+      const serverStoredTimestamp = parseInt(
+        smokeElement.getAttribute("data-server-stored-timestamp") || "0",
+        10,
+      );
 
       // Use the component's own verification result instead of recalculating
       const verificationPassed =
@@ -496,6 +592,7 @@ export async function checkServerSmoke(
         verificationPassed: status === "ok" && verificationPassed,
         timestamp,
         serverTimestamp,
+        serverStoredTimestamp,
         error:
           status !== "ok" ? "Smoke test did not return ok status" : undefined,
       };
@@ -509,6 +606,37 @@ export async function checkServerSmoke(
   });
 
   log("Server-side smoke test result: %O", result);
+
+  // Check if a specific server-stored timestamp is expected
+  if (expectedTimestamp !== undefined) {
+    // For the initial check, we expect the default value (23)
+    if (phase === "Initial" && expectedTimestamp === 23) {
+      const defaultExpected = 23;
+      if (result.serverStoredTimestamp !== defaultExpected) {
+        result.verificationPassed = false;
+        result.error = `Server-stored timestamp does not match default value. Expected: ${defaultExpected}, got: ${result.serverStoredTimestamp}`;
+      } else {
+        console.log(
+          `✅ Server has default timestamp value: ${result.serverStoredTimestamp}`,
+        );
+      }
+    }
+    // After client update, the timestamp should match what client sent
+    else if (phase === "After Client Update") {
+      if (result.serverStoredTimestamp !== expectedTimestamp) {
+        result.verificationPassed = false;
+        result.error = `Server-stored timestamp was not updated by client action. Expected: ${expectedTimestamp}, got: ${result.serverStoredTimestamp}`;
+        // Update the serverRerender status
+        updateTestStatus(env, "serverRerender", "FAILED");
+      } else {
+        console.log(
+          `✅ Server-stored timestamp was successfully updated by client action to: ${result.serverStoredTimestamp}`,
+        );
+        // Update the serverRerender status
+        updateTestStatus(env, "serverRerender", "PASSED");
+      }
+    }
+  }
 
   // Update test status based on result
   updateTestStatus(

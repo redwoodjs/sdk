@@ -13,6 +13,7 @@ export interface TestStatus {
     realtimeUpgrade: TestStatusValue;
     realtimeServerSide: TestStatusValue;
     realtimeClientSide: TestStatusValue;
+    serverRerender: TestStatusValue;
   };
   // Production environment tests
   production: {
@@ -23,6 +24,7 @@ export interface TestStatus {
     realtimeUpgrade: TestStatusValue;
     realtimeServerSide: TestStatusValue;
     realtimeClientSide: TestStatusValue;
+    serverRerender: TestStatusValue;
   };
 }
 
@@ -53,6 +55,7 @@ export const state = {
       realtimeUpgrade: "DID_NOT_RUN",
       realtimeServerSide: "DID_NOT_RUN",
       realtimeClientSide: "DID_NOT_RUN",
+      serverRerender: "DID_NOT_RUN",
     },
     production: {
       overall: "DID_NOT_RUN",
@@ -62,6 +65,7 @@ export const state = {
       realtimeUpgrade: "DID_NOT_RUN",
       realtimeServerSide: "DID_NOT_RUN",
       realtimeClientSide: "DID_NOT_RUN",
+      serverRerender: "DID_NOT_RUN",
     },
   } as TestStatus,
 };

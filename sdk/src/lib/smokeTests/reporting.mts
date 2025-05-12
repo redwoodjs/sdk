@@ -160,6 +160,9 @@ export async function generateFinalReport(): Promise<void> {
       console.log(
         `  │  └─ Client-side: ${formatTestStatus(state.testStatus.dev.initialClientSide)}`,
       );
+      console.log(
+        `  ├─ Server Rerender: ${formatTestStatus(state.testStatus.dev.serverRerender)}`,
+      );
       console.log(`  └─ Realtime Tests:`);
       console.log(
         `     ├─ Upgrade: ${formatTestStatus(state.testStatus.dev.realtimeUpgrade)}`,
@@ -194,6 +197,9 @@ export async function generateFinalReport(): Promise<void> {
         );
         console.log(
           `  │  └─ Client-side: ${formatTestStatus(state.testStatus.production.initialClientSide)}`,
+        );
+        console.log(
+          `  ├─ Server Rerender: ${formatTestStatus(state.testStatus.production.serverRerender)}`,
         );
         console.log(`  └─ Realtime Tests:`);
         console.log(
@@ -358,6 +364,7 @@ export function initializeTestStatus(): void {
   state.testStatus.dev.realtimeUpgrade = "DID_NOT_RUN";
   state.testStatus.dev.realtimeServerSide = "DID_NOT_RUN";
   state.testStatus.dev.realtimeClientSide = "DID_NOT_RUN";
+  state.testStatus.dev.serverRerender = "DID_NOT_RUN";
 
   // Production tests
   state.testStatus.production.overall = "DID_NOT_RUN";
@@ -367,6 +374,7 @@ export function initializeTestStatus(): void {
   state.testStatus.production.realtimeUpgrade = "DID_NOT_RUN";
   state.testStatus.production.realtimeServerSide = "DID_NOT_RUN";
   state.testStatus.production.realtimeClientSide = "DID_NOT_RUN";
+  state.testStatus.production.serverRerender = "DID_NOT_RUN";
 
   // Now override with specific statuses based on options
 
@@ -378,6 +386,7 @@ export function initializeTestStatus(): void {
     state.testStatus.dev.realtimeUpgrade = "SKIPPED";
     state.testStatus.dev.realtimeServerSide = "SKIPPED";
     state.testStatus.dev.realtimeClientSide = "SKIPPED";
+    state.testStatus.dev.serverRerender = "SKIPPED";
   }
 
   if (state.options.skipRelease) {
@@ -388,13 +397,16 @@ export function initializeTestStatus(): void {
     state.testStatus.production.realtimeUpgrade = "SKIPPED";
     state.testStatus.production.realtimeServerSide = "SKIPPED";
     state.testStatus.production.realtimeClientSide = "SKIPPED";
+    state.testStatus.production.serverRerender = "SKIPPED";
   }
 
   if (state.options.skipClient) {
     state.testStatus.dev.initialClientSide = "SKIPPED";
     state.testStatus.dev.realtimeClientSide = "SKIPPED";
+    state.testStatus.dev.serverRerender = "SKIPPED";
     state.testStatus.production.initialClientSide = "SKIPPED";
     state.testStatus.production.realtimeClientSide = "SKIPPED";
+    state.testStatus.production.serverRerender = "SKIPPED";
   }
 
   // Handle realtime option which skips initial tests
