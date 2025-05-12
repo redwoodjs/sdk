@@ -364,7 +364,7 @@ export async function ensureCloudflareAccountId(
 export async function runRelease(
   cwd?: string,
   projectDir?: string,
-  resourceHash?: string,
+  resourceUniqueKey?: string,
 ): Promise<{ url: string; workerName: string }> {
   log("Running release command");
   console.log("\n🚀 Deploying worker to Cloudflare...");
@@ -376,13 +376,13 @@ export async function runRelease(
     // Extract worker name from directory name to ensure consistency
     const dirName = cwd ? basename(cwd) : "unknown-worker";
 
-    // Ensure resource hash is included in worker name for tracking
-    if (resourceHash && !dirName.includes(resourceHash)) {
+    // Ensure resource unique key is included in worker name for tracking
+    if (resourceUniqueKey && !dirName.includes(resourceUniqueKey)) {
       log(
-        `Worker name doesn't contain our resource hash, this is unexpected: ${dirName}, hash: ${resourceHash}`,
+        `Worker name doesn't contain our unique key, this is unexpected: ${dirName}, key: ${resourceUniqueKey}`,
       );
       console.log(
-        `⚠️ Worker name doesn't contain our resource hash. This might cause cleanup issues.`,
+        `⚠️ Worker name doesn't contain our unique key. This might cause cleanup issues.`,
       );
     }
 
@@ -528,7 +528,7 @@ export async function runReleaseTest(
     const { url, workerName } = await runRelease(
       resources?.targetDir,
       projectDir,
-      resources?.resourceHash,
+      resources?.resourceUniqueKey,
     );
 
     // Wait a moment before checking server availability
@@ -634,12 +634,24 @@ export async function listWorkers(cwd?: string): Promise<string[]> {
 }
 
 /**
+ * Check if a resource name includes a specific resource unique key
+ * This is used to identify resources created during our tests
+ */
+export function isRelatedToTest(
+  resourceName: string,
+  resourceUniqueKey: string | undefined,
+): boolean {
+  if (!resourceUniqueKey) return false;
+  return resourceName.includes(resourceUniqueKey);
+}
+
+/**
  * Delete the worker using wrangler
  */
 export async function deleteWorker(
   name: string,
   cwd?: string,
-  resourceHash?: string,
+  resourceUniqueKey?: string,
 ): Promise<void> {
   console.log(`Cleaning up: Deleting worker ${name}...`);
   try {
@@ -653,10 +665,10 @@ export async function deleteWorker(
       return;
     }
 
-    // Extra safety check: if we have a resourceHash, verify this worker is related to our test
-    if (resourceHash && !isRelatedToTest(name, resourceHash)) {
+    // Extra safety check: if we have a resourceUniqueKey, verify this worker is related to our test
+    if (resourceUniqueKey && !isRelatedToTest(name, resourceUniqueKey)) {
       log(
-        `Worker ${name} does not contain resource hash ${resourceHash}, not deleting for safety`,
+        `Worker ${name} does not contain unique key ${resourceUniqueKey}, not deleting for safety`,
       );
       console.log(
         `⚠️ Worker ${name} does not seem to be created by this test, skipping deletion for safety`,
@@ -701,18 +713,6 @@ export async function deleteWorker(
       console.error(`Failed to force delete worker ${name}: ${retryError}`);
     }
   }
-}
-
-/**
- * Check if a resource name includes a specific resource hash
- * This is used to identify resources created during our tests
- */
-export function isRelatedToTest(
-  resourceName: string,
-  resourceHash: string | undefined,
-): boolean {
-  if (!resourceHash) return false;
-  return resourceName.includes(resourceHash);
 }
 
 /**
@@ -761,7 +761,7 @@ export async function listD1Databases(
 export async function deleteD1Database(
   name: string,
   cwd?: string,
-  resourceHash?: string,
+  resourceUniqueKey?: string,
 ): Promise<void> {
   console.log(`Cleaning up: Deleting D1 database ${name}...`);
   try {
@@ -775,10 +775,10 @@ export async function deleteD1Database(
       return;
     }
 
-    // Extra safety check: if we have a resourceHash, verify this database is related to our test
-    if (resourceHash && !isRelatedToTest(name, resourceHash)) {
+    // Extra safety check: if we have a resourceUniqueKey, verify this database is related to our test
+    if (resourceUniqueKey && !isRelatedToTest(name, resourceUniqueKey)) {
       log(
-        `D1 database ${name} does not contain resource hash ${resourceHash}, not deleting for safety`,
+        `D1 database ${name} does not contain unique key ${resourceUniqueKey}, not deleting for safety`,
       );
       console.log(
         `⚠️ D1 database ${name} does not seem to be created by this test, skipping deletion for safety`,

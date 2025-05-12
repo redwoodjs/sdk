@@ -77,14 +77,14 @@ export async function cleanupResources(
 
       const databases = await listD1Databases(resources.targetDir);
 
-      // Look for databases that contain the unique resource hash
-      const resourceHash = resources.resourceHash || "";
+      // Look for databases that contain the unique resource key
+      const resourceUniqueKey = resources.resourceUniqueKey || "";
       const relatedDatabases = databases.filter((db) =>
-        db.name.includes(resourceHash),
+        db.name.includes(resourceUniqueKey),
       );
 
       log(
-        `Found ${relatedDatabases.length} related D1 databases with resource hash: ${resourceHash}`,
+        `Found ${relatedDatabases.length} related D1 databases with unique key: ${resourceUniqueKey}`,
       );
 
       if (relatedDatabases.length > 0) {
@@ -98,7 +98,7 @@ export async function cleanupResources(
             await deleteD1Database(
               db.name,
               resources.targetDir,
-              resources.resourceHash,
+              resourceUniqueKey,
             );
           } catch (dbError) {
             log("Error while deleting D1 database: %O", dbError);
@@ -142,7 +142,7 @@ export async function cleanupResources(
       await deleteWorker(
         resources.workerName,
         resources.targetDir,
-        resources.resourceHash,
+        resources.resourceUniqueKey,
       );
     } catch (error) {
       log("Error while deleting worker: %O", error);

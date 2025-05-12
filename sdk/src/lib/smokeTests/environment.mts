@@ -41,7 +41,7 @@ export async function setupTestEnvironment(
     // If a project dir is specified, copy it to a temp dir with a unique name
     if (options.projectDir) {
       log("Project directory specified: %s", options.projectDir);
-      const { tempDir, targetDir, workerName, resourceHash } =
+      const { tempDir, targetDir, workerName, resourceUniqueKey } =
         await copyProjectToTempDir(
           options.projectDir,
           options.sync !== false, // default to true if undefined
@@ -51,7 +51,7 @@ export async function setupTestEnvironment(
       resources.tempDirCleanup = tempDir.cleanup;
       resources.workerName = workerName;
       resources.targetDir = targetDir;
-      resources.resourceHash = resourceHash;
+      resources.resourceUniqueKey = resourceUniqueKey;
 
       log("Target directory: %s", targetDir);
 
@@ -81,7 +81,7 @@ export async function copyProjectToTempDir(
   tempDir: tmp.DirectoryResult;
   targetDir: string;
   workerName: string;
-  resourceHash: string;
+  resourceUniqueKey: string;
 }> {
   log("Creating temporary directory for project");
   // Create a temporary directory
@@ -101,9 +101,12 @@ export async function copyProjectToTempDir(
     .digest("hex")
     .substring(0, 8);
 
+  // Combine the name suffix and hash to create a complete unique key
+  const resourceUniqueKey = `${suffix}-${hash}`;
+
   // Create unique project directory name
   const originalDirName = basename(projectDir);
-  const workerName = `${originalDirName}-smoke-test-${suffix}-${hash}`;
+  const workerName = `${originalDirName}-smoke-test-${resourceUniqueKey}`;
   const targetDir = resolve(tempDir.path, workerName);
 
   console.log(`Copying project from ${projectDir} to ${targetDir}`);
@@ -160,7 +163,7 @@ export async function copyProjectToTempDir(
     await debugSync({ targetDir });
   }
 
-  return { tempDir, targetDir, workerName, resourceHash: hash };
+  return { tempDir, targetDir, workerName, resourceUniqueKey };
 }
 
 /**
