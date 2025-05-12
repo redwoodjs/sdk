@@ -161,7 +161,13 @@ export async function generateFinalReport(): Promise<void> {
         `  │  ├─ Client-side: ${formatTestStatus(state.testStatus.dev.initialClientSide)}`,
       );
       console.log(
-        `  │  └─ Server Render Check: ${formatTestStatus(state.testStatus.dev.initialServerRenderCheck)}`,
+        `  │  ├─ Server Render Check: ${formatTestStatus(state.testStatus.dev.initialServerRenderCheck)}`,
+      );
+      console.log(
+        `  │  ├─ Server HMR: ${formatTestStatus(state.testStatus.dev.initialServerHmr)}`,
+      );
+      console.log(
+        `  │  └─ Client HMR: ${formatTestStatus(state.testStatus.dev.initialClientHmr)}`,
       );
       console.log(`  └─ Realtime Tests:`);
       console.log(
@@ -174,7 +180,13 @@ export async function generateFinalReport(): Promise<void> {
         `     ├─ Client-side: ${formatTestStatus(state.testStatus.dev.realtimeClientSide)}`,
       );
       console.log(
-        `     └─ Server Render Check: ${formatTestStatus(state.testStatus.dev.realtimeServerRenderCheck)}`,
+        `     ├─ Server Render Check: ${formatTestStatus(state.testStatus.dev.realtimeServerRenderCheck)}`,
+      );
+      console.log(
+        `     ├─ Server HMR: ${formatTestStatus(state.testStatus.dev.realtimeServerHmr)}`,
+      );
+      console.log(
+        `     └─ Client HMR: ${formatTestStatus(state.testStatus.dev.realtimeClientHmr)}`,
       );
     }
 
@@ -372,6 +384,10 @@ export function initializeTestStatus(): void {
   state.testStatus.dev.realtimeServerSide = "DID_NOT_RUN";
   state.testStatus.dev.realtimeClientSide = "DID_NOT_RUN";
   state.testStatus.dev.realtimeServerRenderCheck = "DID_NOT_RUN";
+  state.testStatus.dev.initialServerHmr = "DID_NOT_RUN";
+  state.testStatus.dev.initialClientHmr = "DID_NOT_RUN";
+  state.testStatus.dev.realtimeServerHmr = "DID_NOT_RUN";
+  state.testStatus.dev.realtimeClientHmr = "DID_NOT_RUN";
 
   // Production tests
   state.testStatus.production.overall = "DID_NOT_RUN";
@@ -383,6 +399,10 @@ export function initializeTestStatus(): void {
   state.testStatus.production.realtimeServerSide = "DID_NOT_RUN";
   state.testStatus.production.realtimeClientSide = "DID_NOT_RUN";
   state.testStatus.production.realtimeServerRenderCheck = "DID_NOT_RUN";
+  state.testStatus.production.initialServerHmr = "DID_NOT_RUN";
+  state.testStatus.production.initialClientHmr = "DID_NOT_RUN";
+  state.testStatus.production.realtimeServerHmr = "DID_NOT_RUN";
+  state.testStatus.production.realtimeClientHmr = "DID_NOT_RUN";
 
   // Now override with specific statuses based on options
 
@@ -396,6 +416,10 @@ export function initializeTestStatus(): void {
     state.testStatus.dev.realtimeServerSide = "SKIPPED";
     state.testStatus.dev.realtimeClientSide = "SKIPPED";
     state.testStatus.dev.realtimeServerRenderCheck = "SKIPPED";
+    state.testStatus.dev.initialServerHmr = "SKIPPED";
+    state.testStatus.dev.initialClientHmr = "SKIPPED";
+    state.testStatus.dev.realtimeServerHmr = "SKIPPED";
+    state.testStatus.dev.realtimeClientHmr = "SKIPPED";
   }
 
   if (state.options.skipRelease) {
@@ -408,6 +432,10 @@ export function initializeTestStatus(): void {
     state.testStatus.production.realtimeServerSide = "SKIPPED";
     state.testStatus.production.realtimeClientSide = "SKIPPED";
     state.testStatus.production.realtimeServerRenderCheck = "SKIPPED";
+    state.testStatus.production.initialServerHmr = "SKIPPED";
+    state.testStatus.production.initialClientHmr = "SKIPPED";
+    state.testStatus.production.realtimeServerHmr = "SKIPPED";
+    state.testStatus.production.realtimeClientHmr = "SKIPPED";
   }
 
   if (state.options.skipClient) {
@@ -419,6 +447,23 @@ export function initializeTestStatus(): void {
     state.testStatus.dev.realtimeServerRenderCheck = "SKIPPED";
     state.testStatus.production.initialServerRenderCheck = "SKIPPED";
     state.testStatus.production.realtimeServerRenderCheck = "SKIPPED";
+    state.testStatus.dev.initialClientHmr = "SKIPPED";
+    state.testStatus.dev.realtimeClientHmr = "SKIPPED";
+    state.testStatus.production.initialClientHmr = "SKIPPED";
+    state.testStatus.production.realtimeClientHmr = "SKIPPED";
+  }
+
+  // Skip HMR tests in production and when requested
+  state.testStatus.production.initialServerHmr = "SKIPPED";
+  state.testStatus.production.initialClientHmr = "SKIPPED";
+  state.testStatus.production.realtimeServerHmr = "SKIPPED";
+  state.testStatus.production.realtimeClientHmr = "SKIPPED";
+
+  if (state.options.skipHmr) {
+    state.testStatus.dev.initialServerHmr = "SKIPPED";
+    state.testStatus.dev.initialClientHmr = "SKIPPED";
+    state.testStatus.dev.realtimeServerHmr = "SKIPPED";
+    state.testStatus.dev.realtimeClientHmr = "SKIPPED";
   }
 
   // Handle realtime option which skips initial tests
@@ -428,6 +473,8 @@ export function initializeTestStatus(): void {
       state.testStatus.dev.initialServerSide = "SKIPPED";
       state.testStatus.dev.initialClientSide = "SKIPPED";
       state.testStatus.dev.initialServerRenderCheck = "SKIPPED";
+      state.testStatus.dev.initialServerHmr = "SKIPPED";
+      state.testStatus.dev.initialClientHmr = "SKIPPED";
       // Set the upgrade test to PASSED as it's implicitly run for realtime mode
       state.testStatus.dev.realtimeUpgrade = "PASSED";
     }
@@ -436,6 +483,8 @@ export function initializeTestStatus(): void {
       state.testStatus.production.initialServerSide = "SKIPPED";
       state.testStatus.production.initialClientSide = "SKIPPED";
       state.testStatus.production.initialServerRenderCheck = "SKIPPED";
+      state.testStatus.production.initialServerHmr = "SKIPPED";
+      state.testStatus.production.initialClientHmr = "SKIPPED";
       // Set release command to PASSED since it must have succeeded for realtime tests to run
       state.testStatus.production.releaseCommand = "PASSED";
       // Set the upgrade test to PASSED as it's implicitly run for realtime mode

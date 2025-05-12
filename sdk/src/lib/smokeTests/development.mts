@@ -230,6 +230,7 @@ export async function runDevTest(
   bail: boolean = false,
   skipClient: boolean = false,
   realtime: boolean = false,
+  skipHmr: boolean = false,
 ): Promise<void> {
   log("Starting dev server test with path: %s", customPath || "/");
   console.log("🚀 Testing local development server");
@@ -246,6 +247,10 @@ export async function runDevTest(
         : customPath.startsWith("/")
           ? customPath
           : "/" + customPath);
+
+    // Pass the target directory to checkUrl for HMR testing
+    const targetDir = state.resources.targetDir;
+
     await checkUrl(
       testUrl,
       artifactDir,
@@ -255,6 +260,8 @@ export async function runDevTest(
       skipClient,
       "Development", // Add environment context parameter
       realtime, // Add realtime parameter
+      targetDir, // Add target directory for HMR testing
+      skipHmr, // Add skip HMR option
     );
     log("Development server test completed successfully");
   } catch (error) {
