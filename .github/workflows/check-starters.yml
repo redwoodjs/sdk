@@ -14,6 +14,11 @@ jobs:
   check-starters:
     runs-on: ubuntu-latest
 
+    # context(justinvdm, 2025-05-12):
+    # Only run this job for PRs from the same repository and pushes to main
+    # For security, GH won't expose secrets for fork PRs
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
