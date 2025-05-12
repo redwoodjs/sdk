@@ -16,6 +16,7 @@ import { log } from "./constants.mjs";
 import { debugSync } from "../../scripts/debug-sync.mjs";
 import { SmokeTestOptions, TestResources } from "./types.mjs";
 import { createSmokeTestComponents } from "./components.mjs";
+import { createHash } from "crypto";
 
 /**
  * Sets up the test environment, preparing any resources needed for testing
@@ -40,15 +41,17 @@ export async function setupTestEnvironment(
     // If a project dir is specified, copy it to a temp dir with a unique name
     if (options.projectDir) {
       log("Project directory specified: %s", options.projectDir);
-      const { tempDir, targetDir, workerName } = await copyProjectToTempDir(
-        options.projectDir,
-        options.sync !== false, // default to true if undefined
-      );
+      const { tempDir, targetDir, workerName, resourceHash } =
+        await copyProjectToTempDir(
+          options.projectDir,
+          options.sync !== false, // default to true if undefined
+        );
 
       // Store cleanup function
       resources.tempDirCleanup = tempDir.cleanup;
       resources.workerName = workerName;
       resources.targetDir = targetDir;
+      resources.resourceHash = resourceHash;
 
       log("Target directory: %s", targetDir);
 
@@ -78,6 +81,7 @@ export async function copyProjectToTempDir(
   tempDir: tmp.DirectoryResult;
   targetDir: string;
   workerName: string;
+  resourceHash: string;
 }> {
   log("Creating temporary directory for project");
   // Create a temporary directory
@@ -91,9 +95,15 @@ export async function copyProjectToTempDir(
     style: "lowerCase",
   });
 
+  // Create a short unique hash based on the timestamp
+  const hash = createHash("md5")
+    .update(Date.now().toString())
+    .digest("hex")
+    .substring(0, 8);
+
   // Create unique project directory name
   const originalDirName = basename(projectDir);
-  const workerName = `${originalDirName}-smoke-test-${suffix}`;
+  const workerName = `${originalDirName}-smoke-test-${suffix}-${hash}`;
   const targetDir = resolve(tempDir.path, workerName);
 
   console.log(`Copying project from ${projectDir} to ${targetDir}`);
@@ -150,7 +160,7 @@ export async function copyProjectToTempDir(
     await debugSync({ targetDir });
   }
 
-  return { tempDir, targetDir, workerName };
+  return { tempDir, targetDir, workerName, resourceHash: hash };
 }
 
 /**

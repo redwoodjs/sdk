@@ -7,7 +7,7 @@ import { copy } from "fs-extra";
 import { relative } from "path";
 import ignore from "ignore";
 import { log } from "./constants.mjs";
-import { deleteWorker } from "./release.mjs";
+import { deleteWorker, listD1Databases, deleteD1Database } from "./release.mjs";
 import { isRunningInCI } from "./utils.mjs";
 import { SmokeTestOptions, TestResources } from "./types.mjs";
 import { capturer } from "./artifacts.mjs";
@@ -65,10 +65,85 @@ export async function cleanupResources(
   }
 
   // Clean up resources
-  if (resources.workerName && resources.workerCreatedDuringTest) {
+  if (resources.workerName) {
+    // First, clean up any D1 databases associated with this worker
+    try {
+      log(
+        `Finding D1 databases associated with worker ${resources.workerName}`,
+      );
+      console.log(
+        `🔍 Looking for D1 databases associated with worker ${resources.workerName}...`,
+      );
+
+      const databases = await listD1Databases(resources.targetDir);
+
+      // Look for databases that contain the unique resource hash
+      const resourceHash = resources.resourceHash || "";
+      const relatedDatabases = databases.filter((db) =>
+        db.name.includes(resourceHash),
+      );
+
+      log(
+        `Found ${relatedDatabases.length} related D1 databases with resource hash: ${resourceHash}`,
+      );
+
+      if (relatedDatabases.length > 0) {
+        console.log(
+          `Found ${relatedDatabases.length} D1 database(s) to clean up`,
+        );
+
+        for (const db of relatedDatabases) {
+          try {
+            log(`Deleting D1 database: ${db.name}`);
+            await deleteD1Database(
+              db.name,
+              resources.targetDir,
+              resources.resourceHash,
+            );
+          } catch (dbError) {
+            log("Error while deleting D1 database: %O", dbError);
+            console.error(
+              `Error while deleting D1 database: ${dbError instanceof Error ? dbError.message : String(dbError)}`,
+            );
+
+            // Record this issue
+            state.failures.push({
+              step: `D1 Database Deletion: ${db.name}`,
+              error:
+                dbError instanceof Error ? dbError.message : String(dbError),
+              details:
+                dbError instanceof Error && dbError.stack
+                  ? dbError.stack
+                  : undefined,
+            });
+          }
+        }
+      } else {
+        log("No related D1 databases found to clean up");
+      }
+    } catch (error) {
+      log("Error finding D1 databases: %O", error);
+      console.error(
+        `Error finding D1 databases: ${error instanceof Error ? error.message : String(error)}`,
+      );
+
+      // Record this issue
+      state.failures.push({
+        step: "D1 Database Lookup",
+        error: error instanceof Error ? error.message : String(error),
+        details:
+          error instanceof Error && error.stack ? error.stack : undefined,
+      });
+    }
+
+    // Now delete the worker
     console.log(`🧹 Cleaning up: Deleting worker ${resources.workerName}...`);
     try {
-      await deleteWorker(resources.workerName, resources.targetDir);
+      await deleteWorker(
+        resources.workerName,
+        resources.targetDir,
+        resources.resourceHash,
+      );
     } catch (error) {
       log("Error while deleting worker: %O", error);
       console.error(
@@ -83,11 +158,8 @@ export async function cleanupResources(
           error instanceof Error && error.stack ? error.stack : undefined,
       });
     }
-  } else if (resources.workerName) {
-    log(
-      "Not deleting worker %s as it was not created during this test",
-      resources.workerName,
-    );
+  } else {
+    log("No worker name provided for cleanup");
   }
 
   // Always copy test directory to artifact directory if targetDir exists

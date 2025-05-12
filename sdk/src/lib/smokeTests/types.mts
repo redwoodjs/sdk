@@ -33,6 +33,7 @@ export interface TestResources {
   targetDir?: string;
   workerCreatedDuringTest: boolean;
   stopDev?: () => Promise<void>;
+  resourceHash?: string;
 }
 
 export interface StreamCapturer {

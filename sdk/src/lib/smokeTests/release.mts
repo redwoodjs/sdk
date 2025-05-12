@@ -1,4 +1,4 @@
-import { join } from "path";
+import { join, basename } from "path";
 import { setTimeout } from "node:timers/promises";
 import { log } from "./constants.mjs";
 import { checkUrl, checkServerUp } from "./browser.mjs";
@@ -6,6 +6,9 @@ import { TestResources } from "./types.mjs";
 import { $ } from "../../lib/$.mjs";
 import { execaCommand } from "execa";
 import { existsSync, readFileSync } from "fs";
+import { pathExists } from "fs-extra";
+import { parse as parseJsonc } from "jsonc-parser";
+import * as fs from "fs/promises";
 
 // The $expect utility function from utils.mts
 interface ExpectOptions {
@@ -330,18 +333,71 @@ export async function ensureCloudflareAccountId(
 }
 
 /**
- * Run the release process and return the deployed URL and worker name
+ * Run the release command to deploy to Cloudflare
  */
 export async function runRelease(
   cwd?: string,
   projectDir?: string,
+  resourceHash?: string,
 ): Promise<{ url: string; workerName: string }> {
-  console.log("🚀 Running release process...");
+  log("Running release command");
+  console.log("\n🚀 Deploying worker to Cloudflare...");
 
   try {
-    // Ensure CLOUDFLARE_ACCOUNT_ID is set before running release
-    // Pass projectDir as a separate parameter specifically for cache checking
+    // Make sure we have an account ID
     await ensureCloudflareAccountId(cwd, projectDir);
+
+    // Extract worker name from directory name to ensure consistency
+    const dirName = cwd ? basename(cwd) : "unknown-worker";
+
+    // Ensure resource hash is included in worker name for tracking
+    if (resourceHash && !dirName.includes(resourceHash)) {
+      log(
+        `Worker name doesn't contain our resource hash, this is unexpected: ${dirName}, hash: ${resourceHash}`,
+      );
+      console.log(
+        `⚠️ Worker name doesn't contain our resource hash. This might cause cleanup issues.`,
+      );
+    }
+
+    // Ensure the worker name in wrangler.jsonc matches our unique name
+    if (cwd) {
+      try {
+        const wranglerPath = join(cwd, "wrangler.jsonc");
+        if (await pathExists(wranglerPath)) {
+          log(
+            "Updating wrangler.jsonc to use our unique worker name: %s",
+            dirName,
+          );
+
+          // Read the wrangler config - handle both jsonc and json formats
+          const wranglerContent = await fs.readFile(wranglerPath, "utf-8");
+
+          // Use parseJsonc which handles comments and is more tolerant
+          let wranglerConfig;
+          try {
+            wranglerConfig = parseJsonc(wranglerContent);
+          } catch (parseError) {
+            // Fallback to standard JSON if jsonc parsing fails
+            log("JSONC parsing failed, trying standard JSON: %O", parseError);
+            wranglerConfig = JSON.parse(wranglerContent);
+          }
+
+          // Update the name
+          if (wranglerConfig.name !== dirName) {
+            wranglerConfig.name = dirName;
+            await fs.writeFile(
+              wranglerPath,
+              JSON.stringify(wranglerConfig, null, 2),
+            );
+            log("Updated wrangler.jsonc with unique worker name: %s", dirName);
+          }
+        }
+      } catch (error) {
+        log("Error updating wrangler.jsonc: %O", error);
+        console.error(`Warning: Could not update wrangler.jsonc: ${error}`);
+      }
+    }
 
     // Run release command with our interactive $expect utility
     log("Running release command with interactive prompts");
@@ -446,6 +502,7 @@ export async function runReleaseTest(
     const { url, workerName } = await runRelease(
       resources?.targetDir,
       projectDir,
+      resources?.resourceHash,
     );
 
     // Wait a moment before checking server availability
@@ -498,11 +555,145 @@ export async function runReleaseTest(
 }
 
 /**
+ * List all Cloudflare workers
+ */
+export async function listWorkers(cwd?: string): Promise<string[]> {
+  log("Listing Cloudflare workers");
+  try {
+    const result = await $({
+      cwd,
+      stdio: "pipe",
+    })`npx wrangler workers list --json`;
+
+    // Parse the JSON output, handling potential non-JSON content before or after
+    try {
+      // First try to extract an array pattern
+      const arrayMatch = result.stdout?.match(/(\[.*?\])/s);
+      if (arrayMatch && arrayMatch[1]) {
+        try {
+          const workers = JSON.parse(arrayMatch[1]);
+          if (Array.isArray(workers)) {
+            // Extract worker names based on the structure of the response
+            const workerNames = workers
+              .map((w) => {
+                // Handle different possible response formats
+                if (typeof w === "string") return w;
+                if (w.name) return w.name;
+                if (w.id) return w.id;
+                return null;
+              })
+              .filter(Boolean) as string[];
+
+            log("Found %d workers", workerNames.length);
+            return workerNames;
+          }
+        } catch (parseError) {
+          log("Error parsing JSON from array match: %O", parseError);
+        }
+      }
+
+      // Fallback: try to extract any JSON object
+      const jsonMatch = result.stdout?.match(/(\{.*?\})/s);
+      if (jsonMatch && jsonMatch[1]) {
+        try {
+          const data = JSON.parse(jsonMatch[1]);
+          // Check if the parsed object has a workers property that's an array
+          if (data.workers && Array.isArray(data.workers)) {
+            const workerNames = data.workers
+              .map((w: any) => {
+                if (typeof w === "string") return w;
+                if (w.name) return w.name;
+                if (w.id) return w.id;
+                return null;
+              })
+              .filter(Boolean) as string[];
+
+            log("Found %d workers in 'workers' property", workerNames.length);
+            return workerNames;
+          }
+        } catch (parseError) {
+          log("Error parsing JSON from object match: %O", parseError);
+        }
+      }
+
+      // If all else fails, try to parse the entire output
+      try {
+        const data = JSON.parse(result.stdout || "[]");
+        if (Array.isArray(data)) {
+          const workerNames = data
+            .map((w: any) => {
+              if (typeof w === "string") return w;
+              if (w.name) return w.name;
+              if (w.id) return w.id;
+              return null;
+            })
+            .filter(Boolean) as string[];
+
+          log("Found %d workers by parsing entire output", workerNames.length);
+          return workerNames;
+        } else if (data.workers && Array.isArray(data.workers)) {
+          const workerNames = data.workers
+            .map((w: any) => {
+              if (typeof w === "string") return w;
+              if (w.name) return w.name;
+              if (w.id) return w.id;
+              return null;
+            })
+            .filter(Boolean) as string[];
+
+          log(
+            "Found %d workers in 'workers' property from entire output",
+            workerNames.length,
+          );
+          return workerNames;
+        }
+      } catch (parseError) {
+        log("Error parsing entire output as JSON: %O", parseError);
+      }
+    } catch (error) {
+      log("Error parsing worker list: %O", error);
+    }
+
+    // If we can't parse the JSON, just return an empty array
+    return [];
+  } catch (error) {
+    log("Error listing workers: %O", error);
+    console.error(`Failed to list workers: ${error}`);
+    return [];
+  }
+}
+
+/**
  * Delete the worker using wrangler
  */
-export async function deleteWorker(name: string, cwd?: string): Promise<void> {
+export async function deleteWorker(
+  name: string,
+  cwd?: string,
+  resourceHash?: string,
+): Promise<void> {
   console.log(`Cleaning up: Deleting worker ${name}...`);
   try {
+    // First check if the worker exists
+    const workers = await listWorkers(cwd);
+    const exists = workers.includes(name);
+
+    if (!exists) {
+      log(`Worker ${name} not found, skipping deletion`);
+      console.log(`⚠️ Worker ${name} not found, skipping deletion`);
+      return;
+    }
+
+    // Extra safety check: if we have a resourceHash, verify this worker is related to our test
+    if (resourceHash && !isRelatedToTest(name, resourceHash)) {
+      log(
+        `Worker ${name} does not contain resource hash ${resourceHash}, not deleting for safety`,
+      );
+      console.log(
+        `⚠️ Worker ${name} does not seem to be created by this test, skipping deletion for safety`,
+      );
+      return;
+    }
+
     // Use our $expect utility to handle any confirmation prompts
     log("Running wrangler delete command with interactive prompts");
     await $expect(
@@ -538,6 +729,161 @@ export async function deleteWorker(name: string, cwd?: string): Promise<void> {
       console.log(`✅ Worker ${name} force deleted successfully`);
     } catch (retryError) {
       console.error(`Failed to force delete worker ${name}: ${retryError}`);
+    }
+  }
+}
+
+/**
+ * Check if a resource name includes a specific resource hash
+ * This is used to identify resources created during our tests
+ */
+export function isRelatedToTest(
+  resourceName: string,
+  resourceHash: string | undefined,
+): boolean {
+  if (!resourceHash) return false;
+  return resourceName.includes(resourceHash);
+}
+
+/**
+ * List D1 databases using wrangler
+ */
+export async function listD1Databases(
+  cwd?: string,
+): Promise<Array<{ name: string; uuid: string }>> {
+  log("Listing D1 databases");
+  try {
+    const result = await $({
+      cwd,
+      stdio: "pipe",
+    })`npx wrangler d1 list --json`;
+
+    // Parse the JSON output, handling potential non-JSON content before or after
+    // First look for an array since d1 list returns an array of databases
+    const arrayMatch = result.stdout?.match(/(\[.*?\])/s);
+    if (arrayMatch && arrayMatch[1]) {
+      try {
+        const databases = JSON.parse(arrayMatch[1]);
+        log("Found %d D1 databases", databases.length);
+        return databases;
+      } catch (parseError) {
+        log("Error parsing JSON from array match: %O", parseError);
+      }
+    }
+
+    // Fallback: try to extract any JSON object and see if it contains the databases
+    const jsonMatch = result.stdout?.match(/(\{.*?\})/s);
+    if (jsonMatch && jsonMatch[1]) {
+      try {
+        const data = JSON.parse(jsonMatch[1]);
+        // Check if the parsed object has a databases property that's an array
+        if (data.databases && Array.isArray(data.databases)) {
+          log(
+            "Found %d D1 databases in 'databases' property",
+            data.databases.length,
+          );
+          return data.databases;
+        }
+      } catch (parseError) {
+        log("Error parsing JSON from object match: %O", parseError);
+      }
+    }
+
+    // If all else fails, try to parse the entire output
+    try {
+      const data = JSON.parse(result.stdout || "[]");
+      if (Array.isArray(data)) {
+        log("Found %d D1 databases by parsing entire output", data.length);
+        return data;
+      } else if (data.databases && Array.isArray(data.databases)) {
+        log(
+          "Found %d D1 databases in 'databases' property from entire output",
+          data.databases.length,
+        );
+        return data.databases;
+      }
+    } catch (parseError) {
+      log("Error parsing entire output as JSON: %O", parseError);
+    }
+
+    // If nothing worked, return an empty array
+    log("Could not parse JSON from output, returning empty array");
+    return [];
+  } catch (error) {
+    log("Error listing D1 databases: %O", error);
+    console.error(`Failed to list D1 databases: ${error}`);
+    return [];
+  }
+}
+
+/**
+ * Delete a D1 database using wrangler
+ */
+export async function deleteD1Database(
+  name: string,
+  cwd?: string,
+  resourceHash?: string,
+): Promise<void> {
+  console.log(`Cleaning up: Deleting D1 database ${name}...`);
+  try {
+    // First check if the database exists
+    const databases = await listD1Databases(cwd);
+    const exists = databases.some((db) => db.name === name);
+
+    if (!exists) {
+      log(`D1 database ${name} not found, skipping deletion`);
+      console.log(`⚠️ D1 database ${name} not found, skipping deletion`);
+      return;
+    }
+
+    // Extra safety check: if we have a resourceHash, verify this database is related to our test
+    if (resourceHash && !isRelatedToTest(name, resourceHash)) {
+      log(
+        `D1 database ${name} does not contain resource hash ${resourceHash}, not deleting for safety`,
+      );
+      console.log(
+        `⚠️ D1 database ${name} does not seem to be created by this test, skipping deletion for safety`,
+      );
+      return;
+    }
+
+    // Use our $expect utility to handle any confirmation prompts
+    log("Running wrangler d1 delete command with interactive prompts");
+    await $expect(
+      `npx wrangler d1 delete ${name}`,
+      [
+        {
+          expect: "Are you sure you want to delete",
+          send: "y\r",
+        },
+      ],
+      {
+        cwd,
+      },
+    );
+    console.log(`✅ D1 database ${name} deleted successfully`);
+  } catch (error) {
+    console.error(`Failed to delete D1 database ${name}: ${error}`);
+    // Retry with force flag if the first attempt failed
+    try {
+      console.log("Retrying with force flag...");
+      await $expect(
+        `npx wrangler d1 delete ${name} --yes --force`,
+        [
+          {
+            expect: "Are you sure you want to delete",
+            send: "y\r",
+          },
+        ],
+        {
+          cwd,
+        },
+      );
+      console.log(`✅ D1 database ${name} force deleted successfully`);
+    } catch (retryError) {
+      console.error(
+        `Failed to force delete D1 database ${name}: ${retryError}`,
+      );
     }
   }
 }
