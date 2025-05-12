@@ -10,6 +10,30 @@ import { SmokeTestResult } from "./types.mjs";
  */
 export async function generateFinalReport(): Promise<void> {
   try {
+    // Helper function to check if a failure matches the specified patterns
+    function failureMatches(
+      failure: { step: string; error?: string },
+      patterns: string[],
+      notPatterns: string[] = [],
+    ): boolean {
+      // Check if any of the patterns match in either step or error
+      const matchesPattern = patterns.some(
+        (pattern) =>
+          failure.step.includes(pattern) ||
+          (failure.error && failure.error.includes(pattern)),
+      );
+
+      // Check if any of the not-patterns match in either step or error
+      const matchesNotPattern = notPatterns.some(
+        (pattern) =>
+          failure.step.includes(pattern) ||
+          (failure.error && failure.error.includes(pattern)),
+      );
+
+      // Return true if it matches a pattern and doesn't match any not-pattern
+      return matchesPattern && !matchesNotPattern;
+    }
+
     // Create a report object
     const timestamp = new Date().toISOString().replace(/[:.]/g, "-");
     const report = {
@@ -94,122 +118,58 @@ export async function generateFinalReport(): Promise<void> {
     console.log("┗━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━┛");
 
     // Group failures by step to determine which stages had issues
-    const devFailures = state.failures.filter(
-      (f) =>
-        f.step.includes("Development") ||
-        f.step.includes("Development Server") ||
-        (f.error && f.error.includes("Development -")),
+    const devFailures = state.failures.filter((f) =>
+      failureMatches(f, ["Development", "Development Server", "Development -"]),
     );
 
-    const releaseFailures = state.failures.filter(
-      (f) =>
-        f.step.includes("Production") ||
-        f.step.includes("Release") ||
-        (f.error && f.error.includes("Production -")),
+    const releaseFailures = state.failures.filter((f) =>
+      failureMatches(f, ["Production", "Release", "Production -"]),
     );
 
     // More specific test stage failures - for dev environment
-    const serverSideInitialDevFailures = state.failures.filter(
-      (f) =>
-        (f.step.includes("Server-side") ||
-          (f.error && f.error.includes("Server-side"))) &&
-        (f.step.includes("Initial") ||
-          (f.error && f.error.includes("Initial"))) &&
-        !f.step.includes("Production") &&
-        !(f.error && f.error.includes("Production")),
+    const serverSideInitialDevFailures = state.failures.filter((f) =>
+      failureMatches(f, ["Server-side", "Initial"], ["Production"]),
     );
 
-    const clientSideInitialDevFailures = state.failures.filter(
-      (f) =>
-        (f.step.includes("Client-side") ||
-          (f.error && f.error.includes("Client-side"))) &&
-        (f.step.includes("Initial") ||
-          (f.error && f.error.includes("Initial"))) &&
-        !f.step.includes("Production") &&
-        !(f.error && f.error.includes("Production")),
+    const clientSideInitialDevFailures = state.failures.filter((f) =>
+      failureMatches(f, ["Client-side", "Initial"], ["Production"]),
     );
 
-    const serverSideRealtimeDevFailures = state.failures.filter(
-      (f) =>
-        (f.step.includes("Server-side") ||
-          (f.error && f.error.includes("Server-side"))) &&
-        (f.step.includes("Post-upgrade") ||
-          (f.error && f.error.includes("Post-upgrade"))) &&
-        !f.step.includes("Production") &&
-        !(f.error && f.error.includes("Production")),
+    const serverSideRealtimeDevFailures = state.failures.filter((f) =>
+      failureMatches(f, ["Server-side", "Post-upgrade"], ["Production"]),
     );
 
-    const clientSideRealtimeDevFailures = state.failures.filter(
-      (f) =>
-        (f.step.includes("Client-side") ||
-          (f.error && f.error.includes("Client-side"))) &&
-        (f.step.includes("Post-upgrade") ||
-          (f.error && f.error.includes("Post-upgrade"))) &&
-        !f.step.includes("Production") &&
-        !(f.error && f.error.includes("Production")),
+    const clientSideRealtimeDevFailures = state.failures.filter((f) =>
+      failureMatches(f, ["Client-side", "Post-upgrade"], ["Production"]),
     );
 
-    const realtimeUpgradeDevFailures = state.failures.filter(
-      (f) =>
-        (f.step.includes("Realtime Upgrade") ||
-          (f.error && f.error.includes("Realtime Upgrade"))) &&
-        !f.step.includes("Production") &&
-        !(f.error && f.error.includes("Production")),
+    const realtimeUpgradeDevFailures = state.failures.filter((f) =>
+      failureMatches(f, ["Realtime Upgrade"], ["Production"]),
     );
 
     // For production environment
-    const serverSideInitialProdFailures = state.failures.filter(
-      (f) =>
-        (f.step.includes("Server-side") ||
-          (f.error && f.error.includes("Server-side"))) &&
-        (f.step.includes("Initial") ||
-          (f.error && f.error.includes("Initial"))) &&
-        (f.step.includes("Production") ||
-          (f.error && f.error.includes("Production"))),
+    const serverSideInitialProdFailures = state.failures.filter((f) =>
+      failureMatches(f, ["Server-side", "Initial", "Production"]),
     );
 
-    const clientSideInitialProdFailures = state.failures.filter(
-      (f) =>
-        (f.step.includes("Client-side") ||
-          (f.error && f.error.includes("Client-side"))) &&
-        (f.step.includes("Initial") ||
-          (f.error && f.error.includes("Initial"))) &&
-        (f.step.includes("Production") ||
-          (f.error && f.error.includes("Production"))),
+    const clientSideInitialProdFailures = state.failures.filter((f) =>
+      failureMatches(f, ["Client-side", "Initial", "Production"]),
     );
 
-    const serverSideRealtimeProdFailures = state.failures.filter(
-      (f) =>
-        (f.step.includes("Server-side") ||
-          (f.error && f.error.includes("Server-side"))) &&
-        (f.step.includes("Post-upgrade") ||
-          (f.error && f.error.includes("Post-upgrade"))) &&
-        (f.step.includes("Production") ||
-          (f.error && f.error.includes("Production"))),
+    const serverSideRealtimeProdFailures = state.failures.filter((f) =>
+      failureMatches(f, ["Server-side", "Post-upgrade", "Production"]),
     );
 
-    const clientSideRealtimeProdFailures = state.failures.filter(
-      (f) =>
-        (f.step.includes("Client-side") ||
-          (f.error && f.error.includes("Client-side"))) &&
-        (f.step.includes("Post-upgrade") ||
-          (f.error && f.error.includes("Post-upgrade"))) &&
-        (f.step.includes("Production") ||
-          (f.error && f.error.includes("Production"))),
+    const clientSideRealtimeProdFailures = state.failures.filter((f) =>
+      failureMatches(f, ["Client-side", "Post-upgrade", "Production"]),
     );
 
-    const realtimeUpgradeProdFailures = state.failures.filter(
-      (f) =>
-        (f.step.includes("Realtime Upgrade") ||
-          (f.error && f.error.includes("Realtime Upgrade"))) &&
-        (f.step.includes("Production") ||
-          (f.error && f.error.includes("Production"))),
+    const realtimeUpgradeProdFailures = state.failures.filter((f) =>
+      failureMatches(f, ["Realtime Upgrade", "Production"]),
     );
 
-    const releaseCommandFailures = state.failures.filter(
-      (f) =>
-        f.step.includes("Release Command") ||
-        (f.error && f.error.includes("Release Command")),
+    const releaseCommandFailures = state.failures.filter((f) =>
+      failureMatches(f, ["Release Command"]),
     );
 
     // Dev tests summary
