@@ -362,9 +362,9 @@ export async function ensureCloudflareAccountId(
  * Run the release command to deploy to Cloudflare
  */
 export async function runRelease(
-  cwd?: string,
-  projectDir?: string,
-  resourceUniqueKey?: string,
+  cwd: string,
+  projectDir: string,
+  resourceUniqueKey: string,
 ): Promise<{ url: string; workerName: string }> {
   log("Running release command");
   console.log("\n🚀 Deploying worker to Cloudflare...");
@@ -512,7 +512,7 @@ export async function runRelease(
 export async function runReleaseTest(
   customPath: string = "/",
   artifactDir: string,
-  resources?: Partial<TestResources>,
+  resources: TestResources,
   browserPath?: string,
   headless: boolean = true,
   bail: boolean = false,
@@ -526,9 +526,9 @@ export async function runReleaseTest(
   try {
     log("Running release process");
     const { url, workerName } = await runRelease(
-      resources?.targetDir,
-      projectDir,
-      resources?.resourceUniqueKey,
+      resources.targetDir || "",
+      projectDir || "",
+      resources.resourceUniqueKey,
     );
 
     // Wait a moment before checking server availability
@@ -586,9 +586,8 @@ export async function runReleaseTest(
  */
 export function isRelatedToTest(
   resourceName: string,
-  resourceUniqueKey: string | undefined,
+  resourceUniqueKey: string,
 ): boolean {
-  if (!resourceUniqueKey) return false;
   return resourceName.includes(resourceUniqueKey);
 }
 
@@ -597,8 +596,8 @@ export function isRelatedToTest(
  */
 export async function deleteWorker(
   name: string,
-  cwd?: string,
-  resourceUniqueKey?: string,
+  cwd: string,
+  resourceUniqueKey: string,
 ): Promise<void> {
   console.log(`Cleaning up: Deleting worker ${name}...`);
 
@@ -698,8 +697,8 @@ export async function listD1Databases(
  */
 export async function deleteD1Database(
   name: string,
-  cwd?: string,
-  resourceUniqueKey?: string,
+  cwd: string,
+  resourceUniqueKey: string,
 ): Promise<void> {
   console.log(`Cleaning up: Deleting D1 database ${name}...`);
   try {
