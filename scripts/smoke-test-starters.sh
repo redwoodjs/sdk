@@ -16,21 +16,37 @@ mkdir -p "$ARTIFACT_DIR"
 echo "🚀 Starting smoke tests for all starters"
 FAILED=0
 
-# Test minimal starter with root path
-#echo "🔥 Running smoke test for minimal starter with path /"
-#cd "$SDK_ROOT/sdk"
-#if ! pnpm smoke-test --url="/" --path="$SDK_ROOT/starters/minimal" --artifact-dir="$ARTIFACT_DIR/minimal" --sync --copy-project; then
-#  echo "❌ Smoke test failed for minimal starter"
-#  FAILED=1
-#fi
+# Run each starter test in a completely separate subshell to ensure isolation
+echo "🔥 Running smoke test for minimal starter with path /"
+(
+  cd "$SDK_ROOT"
+  # Always rebuild the SDK from scratch for each test
+  cd "$SDK_ROOT/sdk"
+  pnpm clean || true
+  pnpm build
+  
+  # Now run the smoke test
+  if ! pnpm smoke-test --url="/" --path="$SDK_ROOT/starters/minimal" --artifact-dir="$ARTIFACT_DIR/minimal" --sync --copy-project; then
+    echo "❌ Smoke test failed for minimal starter"
+    exit 1
+  fi
+) || FAILED=1
 
 # Test standard starter with /user/login path
 echo "🔥 Running smoke test for standard starter with path /user/login"
-cd "$SDK_ROOT/sdk"
-if ! pnpm smoke-test --url="/user/login" --path="$SDK_ROOT/starters/standard" --artifact-dir="$ARTIFACT_DIR/standard" --sync --copy-project; then
-  echo "❌ Smoke test failed for standard starter"
-  FAILED=1
-fi
+(
+  cd "$SDK_ROOT"
+  # Always rebuild the SDK from scratch for each test
+  cd "$SDK_ROOT/sdk"
+  pnpm clean || true
+  pnpm build
+  
+  # Now run the smoke test
+  if ! pnpm smoke-test --url="/user/login" --path="$SDK_ROOT/starters/standard" --artifact-dir="$ARTIFACT_DIR/standard" --sync --copy-project; then
+    echo "❌ Smoke test failed for standard starter"
+    exit 1
+  fi
+) || FAILED=1
 
 # Report results
 if [ $FAILED -eq 0 ]; then
