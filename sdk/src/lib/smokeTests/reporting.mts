@@ -178,6 +178,8 @@ export async function generateFinalReport(): Promise<void> {
     // Dev tests summary
     if (report.options.skipDev) {
       console.log("● Development Tests: ⏩ SKIPPED");
+    } else if (!state.devTestsRan) {
+      console.log("● Development Tests: ⚠️ DID NOT RUN");
     } else {
       console.log(
         `● Development Tests: ${devFailures.length > 0 ? "❌ FAILED" : "✅ PASSED"}`,
@@ -204,6 +206,8 @@ export async function generateFinalReport(): Promise<void> {
     // Release tests summary
     if (report.options.skipRelease) {
       console.log("● Production Tests: ⏩ SKIPPED");
+    } else if (!state.releaseTestsRan) {
+      console.log("● Production Tests: ⚠️ DID NOT RUN");
     } else {
       console.log(
         `● Production Tests: ${releaseFailures.length > 0 ? "❌ FAILED" : "✅ PASSED"}`,

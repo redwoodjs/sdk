@@ -84,6 +84,9 @@ export async function runSmokeTests(
           options.bail,
           options.skipClient,
         );
+
+        // Mark that dev tests have run successfully
+        state.devTestsRan = true;
       } catch (error) {
         hasFailures = true;
         log("Error during development server testing: %O", error);
@@ -126,6 +129,9 @@ export async function runSmokeTests(
           options.skipClient,
           options.projectDir,
         );
+
+        // Mark that release tests have run successfully
+        state.releaseTestsRan = true;
       } catch (error) {
         hasFailures = true;
         log("Error during release testing: %O", error);

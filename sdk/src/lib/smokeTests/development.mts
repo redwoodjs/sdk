@@ -3,6 +3,7 @@ import { log } from "./constants.mjs";
 import { $ } from "../$.mjs";
 import { checkUrl, checkServerUp } from "./browser.mjs";
 import { fail } from "./utils.mjs";
+import { state } from "./state.mjs";
 
 /**
  * Run the local development server and return the URL
@@ -257,9 +258,14 @@ export async function runDevTest(
   } catch (error) {
     // Add more context about the specific part that failed
     if (error instanceof Error && error.message.includes("Server at")) {
-      throw new Error(`Development - Server Availability: ${error.message}`);
+      state.failures.push({
+        step: "Development - Server Availability",
+        error: error.message,
+        details: error.stack,
+      });
     }
     log("Error during development server testing: %O", error);
+    // Make sure we throw the error so it's properly handled upstream
     throw error;
   }
 }

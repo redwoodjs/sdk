@@ -15,4 +15,7 @@ export const state = {
   options: {} as SmokeTestOptions,
   // Add a new failures array to track all failures
   failures: [] as { step: string; error: string; details?: string }[],
+  // Track whether tests have actually run
+  devTestsRan: false,
+  releaseTestsRan: false,
 };
