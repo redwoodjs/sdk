@@ -3,7 +3,7 @@ export function getSmokeTestTemplate(skipClient: boolean = false): string {
 import React from "react";
 import { RequestInfo } from "rwsdk/worker";
 ${skipClient ? "" : 'import { SmokeTestClient } from "./__SmokeTestClient";'}
-import { smokeTestAction } from "./__smokeTestFunctions";
+import { smokeTestAction, getSmokeTestTimestamp } from "./__smokeTestFunctions";
 
 export const SmokeTestInfo: React.FC = async () => {
   const timestamp = Date.now();
@@ -17,7 +17,10 @@ export const SmokeTestInfo: React.FC = async () => {
     result = await smokeTestAction(timestamp);
     status = result.status || "error";
     verificationPassed = result.timestamp === timestamp;
-    serverStoredTimestamp = result.serverStoredTimestamp;
+    
+    // Get the current server-stored timestamp
+    const storedResult = await getSmokeTestTimestamp();
+    serverStoredTimestamp = storedResult.timestamp;
   } catch (error) {
     console.error("Smoke test failed:", error);
     status = "error";
@@ -75,7 +78,7 @@ export const SmokeTestInfo: React.FC = async () => {
         </pre>
       </details>
 
-      ${!skipClient ? "<SmokeTestClient/>" : ""}
+      ${skipClient ? "" : "<SmokeTestClient />"}
     </div>
   );
 };`;

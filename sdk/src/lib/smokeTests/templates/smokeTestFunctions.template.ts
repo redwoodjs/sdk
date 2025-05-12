@@ -32,7 +32,10 @@ export async function smokeTestClientToServerAction(
 
 // Action to retrieve the current server-stored timestamp
 export async function getSmokeTestTimestamp(): Promise<unknown> {
-  return { status: "ok", timestamp: serverStoredTimestamp };
+  return { 
+    status: "ok", 
+    timestamp: serverStoredTimestamp
+  };
 }
 `;
 }

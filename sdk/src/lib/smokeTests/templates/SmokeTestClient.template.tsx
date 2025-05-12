@@ -132,22 +132,24 @@ export const SmokeTestClient: React.FC = () => {
               padding: "10px",
               borderRadius: "4px",
               background: serverUpdateResult.success ? "#e6f7ee" : "#ffeded",
-              border: \`1px solid \${
-                serverUpdateResult.success ? "#0c9" : "#f44"
-              }\`,
+              border: serverUpdateResult.success
+                ? "1px solid #d1e7dd"
+                : "1px solid #f5c2c7",
             }}
           >
-            <h4
-              style={{
-                margin: "0 0 10px 0",
-                color: serverUpdateResult.success ? "#0c9" : "#f44",
-              }}
-            >
-              Server Update: {serverUpdateResult.success ? "Success" : "Failed"}
+            <h4 style={{ margin: "0 0 10px 0" }}>
+              Server Timestamp Update:{" "}
+              {serverUpdateResult.success ? "Success ✅" : "Failed ❌"}
             </h4>
-            <p>Client Timestamp: {serverUpdateResult.timestamp}</p>
-            {serverUpdateResult.serverStoredTimestamp && (
-              <p>Server Stored Timestamp: {serverUpdateResult.serverStoredTimestamp}</p>
+            <p>Sent timestamp: {serverUpdateResult.timestamp}</p>
+            {serverUpdateResult.success && (
+              <p>
+                Server stored: {serverUpdateResult.serverStoredTimestamp}
+                {serverUpdateResult.serverStoredTimestamp ===
+                serverUpdateResult.timestamp
+                  ? " ✓"
+                  : " ⚠️"}
+              </p>
             )}
             {serverUpdateResult.error && (
               <p style={{ color: "#f44" }}>Error: {serverUpdateResult.error}</p>
@@ -157,15 +159,16 @@ export const SmokeTestClient: React.FC = () => {
       )}
 
       {lastCheck && (
-        <div style={{ marginTop: "15px" }}>
+        <div style={{ marginBottom: "15px" }}>
           <div
             style={{
               padding: "10px",
               borderRadius: "4px",
               background: lastCheck.status === "ok" ? "#e6f7ee" : "#ffeded",
-              border: \`1px solid \${
-                lastCheck.status === "ok" ? "#0c9" : "#f44"
-              }\`,
+              border:
+                lastCheck.status === "ok"
+                  ? "1px solid #d1e7dd"
+                  : "1px solid #f5c2c7",
             }}
           >
             <h4
