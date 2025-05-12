@@ -18,6 +18,7 @@ import puppeteer from "puppeteer-core";
 import { takeScreenshot } from "./artifacts.mjs";
 import { RETRIES } from "./constants.mjs";
 import { $ } from "../$.mjs";
+import { fail } from "./utils.mjs";
 
 /**
  * Launch a browser instance
@@ -169,9 +170,9 @@ export async function checkUrl(
   try {
     browser = await launchBrowser(browserPath, headless);
   } catch (error) {
-    throw new Error(
-      `${environment} - Browser Launch: ${error instanceof Error ? error.message : String(error)}`,
-    );
+    // Use fail() directly for browser launch errors
+    await fail(error, 1, `${environment} - Browser Launch`);
+    return; // This will never be reached due to fail() exiting
   }
 
   // Track failures to report at the end
@@ -667,9 +668,12 @@ export async function upgradeToRealtime(
 
   if (!upgradeResult.success) {
     log("ERROR: Failed to upgrade to realtime mode: %s", upgradeResult.message);
-    throw new Error(
-      `${environment} - Realtime Upgrade: Failed to upgrade to realtime mode: ${upgradeResult.message}`,
+    await fail(
+      new Error(`Failed to upgrade to realtime mode: ${upgradeResult.message}`),
+      1,
+      `${environment} - Realtime Upgrade`,
     );
+    return; // This will never be reached due to fail() exiting
   }
 
   console.log("✅ Successfully upgraded to realtime mode");
@@ -703,8 +707,12 @@ export function reportSmokeTestResult(
       result.status,
       result.error || "unknown",
     );
-    throw new Error(
-      `${environment} - ${phasePrefix}${type} smoke test failed. Status: ${result.status}${result.error ? `. Error: ${result.error}` : ""}`,
+    fail(
+      new Error(
+        `${environment} - ${phasePrefix}${type} smoke test failed. Status: ${result.status}${result.error ? `. Error: ${result.error}` : ""}`,
+      ),
+      1,
+      `${environment} - ${type} Smoke Test (${phase})`,
     );
   }
 }
@@ -747,9 +755,14 @@ export async function checkServerUp(
             retries,
           );
 
-          throw new Error(
-            `Server at ${url} did not become available after ${retries} attempts`,
+          await fail(
+            new Error(
+              `Server at ${url} did not become available after ${retries} attempts`,
+            ),
+            1,
+            `Server Availability Check: ${url}`,
           );
+          return false; // This will never be reached due to fail() exiting
         }
         log("Server not up yet, retrying in 2 seconds");
         console.log(`Server not up yet, retrying in 2 seconds...`);
