@@ -297,8 +297,6 @@ export async function checkUrl(
       let realtimeTestStatus = "passed";
       try {
         await upgradeToRealtime(page, environment, bail);
-        log("Reloading page after realtime upgrade");
-        await page.reload({ waitUntil: "networkidle0" });
         log("Performing post-upgrade smoke test");
         await checkUrlSmoke(
           page,
