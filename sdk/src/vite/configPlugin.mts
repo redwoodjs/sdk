@@ -69,8 +69,7 @@ export const configPlugin = ({
             esbuildOptions: {
               conditions: ["workerd", "react-server"],
               plugins: [
-                ...(prismaStatus.isUsingPrisma &&
-                prismaStatus.requiresWasmSupport
+                ...(prismaStatus.isUsingPrisma
                   ? [
                       {
                         name: "rwsdk:prisma-client-wasm",
@@ -81,7 +80,12 @@ export const configPlugin = ({
                               return {
                                 path: resolve(
                                   projectRootDir,
-                                  "node_modules/.prisma/client/wasm.js",
+                                  "node_modules",
+                                  ".prisma",
+                                  "client",
+                                  prismaStatus.requiresWasmSupport
+                                    ? "wasm.js"
+                                    : "edge.js",
                                 ),
                               };
                             },
@@ -121,11 +125,14 @@ export const configPlugin = ({
       resolve: {
         conditions: ["workerd"],
         alias: {
-          ...(prismaStatus.isUsingPrisma && prismaStatus.requiresWasmSupport
+          ...(prismaStatus.isUsingPrisma
             ? {
                 ".prisma/client/default": resolve(
                   projectRootDir,
-                  "node_modules/.prisma/client/wasm.js",
+                  "node_modules",
+                  ".prisma",
+                  "client",
+                  prismaStatus.requiresWasmSupport ? "wasm.js" : "edge.js",
                 ),
               }
             : {}),
