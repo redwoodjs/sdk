@@ -55,7 +55,7 @@ importers:
     dependencies:
       '@cloudflare/vite-plugin':
         specifier: ^1.1.0
-        version: 1.1.0(rollup@4.40.0)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250428.0)(wrangler@4.14.1)
+        version: 1.1.0(rollup@4.40.0)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250428.0)(wrangler@4.14.1(@cloudflare/workers-types@4.20250407.0))
       '@cloudflare/workers-types':
         specifier: ^4.20250407.0
         version: 4.20250407.0
@@ -132,8 +132,8 @@ importers:
         specifier: 19.2.0-canary-39cad7af-20250411
         version: 19.2.0-canary-39cad7af-20250411(react-dom@19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411))(react@19.2.0-canary-39cad7af-20250411)(webpack@5.97.1)
       rsc-html-stream:
-        specifier: ^0.0.3
-        version: 0.0.3
+        specifier: ^0.0.6
+        version: 0.0.6
       tmp-promise:
         specifier: ^3.0.3
         version: 3.0.3
@@ -182,7 +182,7 @@ importers:
     dependencies:
       rwsdk:
         specifier: 0.0.82
-        version: 0.0.82(rollup@4.40.0)(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250428.0)
+        version: 0.0.82(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)
     devDependencies:
       '@types/node':
         specifier: ^22.14.0
@@ -219,7 +219,7 @@ importers:
         version: 13.1.1
       rwsdk:
         specifier: 0.0.82
-        version: 0.0.82(rollup@4.40.0)(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1(esbuild@0.25.0))(workerd@1.20250428.0)
+        version: 0.0.82(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1(esbuild@0.25.0))
     devDependencies:
       '@types/node':
         specifier: ^22.14.0
@@ -3423,6 +3423,9 @@ packages:
   rsc-html-stream@0.0.3:
     resolution: {integrity: sha512-GrHT+ADZM1Mj+sfXNjJjtFCwvB/xK5gx9KHQqcHJQIKfZ0Nh3wd8O59Nvd7VLb8lyvdOkqnqi5d5TAtDICf8yQ==}
 
+  rsc-html-stream@0.0.6:
+    resolution: {integrity: sha512-oZUJ5AH0oDo9QywxD9yMY6N5Z3VwX2YfQg0FanNdCmvXmO0itTfv7BMkbMSwxg7JmBjYmefU8DTW0EcLsePPgQ==}
+
   run-parallel@1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
 
@@ -4461,7 +4464,26 @@ snapshots:
     optionalDependencies:
       workerd: 1.20250428.0
 
-  '@cloudflare/vite-plugin@1.1.0(rollup@4.40.0)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250428.0)(wrangler@4.14.1)':
+  '@cloudflare/vite-plugin@1.1.0(rollup@4.40.0)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250428.0)(wrangler@4.14.1(@cloudflare/workers-types@4.20250407.0))':
+    dependencies:
+      '@cloudflare/unenv-preset': 2.3.1(unenv@2.0.0-rc.15)(workerd@1.20250428.0)
+      '@hattip/adapter-node': 0.0.49
+      '@rollup/plugin-replace': 6.0.2(rollup@4.40.0)
+      get-port: 7.1.0
+      miniflare: 4.20250428.1
+      picocolors: 1.1.1
+      tinyglobby: 0.2.13
+      unenv: 2.0.0-rc.15
+      vite: 6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0)
+      wrangler: 4.14.1(@cloudflare/workers-types@4.20250407.0)
+      ws: 8.18.0
+    transitivePeerDependencies:
+      - bufferutil
+      - rollup
+      - utf-8-validate
+      - workerd
+
+  '@cloudflare/vite-plugin@1.1.0(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(wrangler@4.14.1(@cloudflare/workers-types@4.20250407.0))':
     dependencies:
       '@cloudflare/unenv-preset': 2.3.1(unenv@2.0.0-rc.15)(workerd@1.20250428.0)
       '@hattip/adapter-node': 0.0.49
@@ -7988,13 +8010,15 @@ snapshots:
 
   rsc-html-stream@0.0.3: {}
 
+  rsc-html-stream@0.0.6: {}
+
   run-parallel@1.2.0:
     dependencies:
       queue-microtask: 1.2.3
 
-  rwsdk@0.0.82(rollup@4.40.0)(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1(esbuild@0.25.0))(workerd@1.20250428.0):
+  rwsdk@0.0.82(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1(esbuild@0.25.0)):
     dependencies:
-      '@cloudflare/vite-plugin': 1.1.0(rollup@4.40.0)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250428.0)(wrangler@4.14.1)
+      '@cloudflare/vite-plugin': 1.1.0(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(wrangler@4.14.1(@cloudflare/workers-types@4.20250407.0))
       '@cloudflare/workers-types': 4.20250407.0
       '@puppeteer/browsers': 2.10.1
       '@types/fs-extra': 11.0.4
@@ -8038,9 +8062,9 @@ snapshots:
       - webpack
       - workerd
 
-  rwsdk@0.0.82(rollup@4.40.0)(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250428.0):
+  rwsdk@0.0.82(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1):
     dependencies:
-      '@cloudflare/vite-plugin': 1.1.0(rollup@4.40.0)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250428.0)(wrangler@4.14.1)
+      '@cloudflare/vite-plugin': 1.1.0(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(wrangler@4.14.1(@cloudflare/workers-types@4.20250407.0))
       '@cloudflare/workers-types': 4.20250407.0
       '@puppeteer/browsers': 2.10.1
       '@types/fs-extra': 11.0.4

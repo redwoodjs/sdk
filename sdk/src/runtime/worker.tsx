@@ -1,10 +1,10 @@
 import React from "react";
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
-import { injectRSCPayload } from "./render/injectRSCPayload";
 import { renderToRscStream } from "./render/renderToRscStream";
 
 import { loadModule, ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
+import { injectRSCPayload } from "rsc-html-stream/server";
 import { ErrorResponse } from "./error";
 import {
   getRequestInfo,
