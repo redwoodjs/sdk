@@ -132,7 +132,7 @@ export const configPlugin = ({
                   "node_modules",
                   ".prisma",
                   "client",
-                  prismaStatus.requiresWasmSupport ? "wasm.js" : "edge.js",
+                  prismaStatus.requiresWasmSupport ? "wasm.js" : "default.js",
                 ),
               }
             : {}),
