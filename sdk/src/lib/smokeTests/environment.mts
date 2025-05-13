@@ -15,7 +15,7 @@ import { $ } from "../../lib/$.mjs";
 import { log } from "./constants.mjs";
 import { debugSync } from "../../scripts/debug-sync.mjs";
 import { SmokeTestOptions, TestResources } from "./types.mjs";
-import { createSmokeTestComponents } from "./components.mjs";
+import { createSmokeTestComponents } from "./codeUpdates.mjs";
 import { createHash } from "crypto";
 
 /**

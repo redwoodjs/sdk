@@ -2,6 +2,8 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import partytown from "@astrojs/partytown";
+import starlightLlmsTxt from 'starlight-llms-txt'
+
 
 // https://astro.build/config
 export default defineConfig({
@@ -13,6 +15,7 @@ export default defineConfig({
       },
     }),
     starlight({
+      plugins: [starlightLlmsTxt()],
       expressiveCode: {
         shiki: {
           bundledLangs: ["bash", "ts", "tsx"],

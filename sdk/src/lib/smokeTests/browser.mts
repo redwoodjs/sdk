@@ -297,8 +297,6 @@ export async function checkUrl(
       let realtimeTestStatus = "passed";
       try {
         await upgradeToRealtime(page, environment, bail);
-        log("Reloading page after realtime upgrade");
-        await page.reload({ waitUntil: "networkidle0" });
         log("Performing post-upgrade smoke test");
         await checkUrlSmoke(
           page,
@@ -1126,15 +1124,6 @@ async function realtimeOnlyFlow(
   };
 
   try {
-    // Directly upgrade to realtime mode
-    console.log(
-      "\n📡 Directly upgrading to realtime mode (skipping initial tests)",
-    );
-    await upgradeToRealtime(page, environment, bail);
-
-    log("Reloading page after realtime upgrade");
-    await page.reload({ waitUntil: "networkidle0" });
-
     log("Performing realtime-only smoke test");
     await checkUrlSmoke(
       page,
