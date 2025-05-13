@@ -1,6 +1,4 @@
-# RedwoodSDK Starter Smoke Testing
-
-This document explains the smoke testing process for RedwoodJS starter templates.
+# RedwoodSDK Smoke Testing
 
 ## Overview
 
