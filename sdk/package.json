@@ -1,6 +1,6 @@
 {
   "name": "rwsdk",
-  "version": "0.0.82-test.20250513045050",
+  "version": "0.0.83",
   "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime",
   "type": "module",
   "bin": {
@@ -125,7 +125,7 @@
     "react-dom": "19.2.0-canary-39cad7af-20250411",
     "react-is": "^19.0.0",
     "react-server-dom-webpack": "19.2.0-canary-39cad7af-20250411",
-    "rsc-html-stream": "^0.0.3",
+    "rsc-html-stream": "^0.0.6",
     "tmp-promise": "^3.0.3",
     "ts-morph": "^25.0.1",
     "unique-names-generator": "^4.7.1",
