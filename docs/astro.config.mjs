@@ -95,25 +95,46 @@ export default defineConfig({
                   slug: "tutorial/full-stack-app/deploying",
                 },
               ],
-            }
-          ]
+            },
+          ],
         },
         {
           label: "Guides",
           items: [
             {
-              label: 'Frontend Development',
-              collapsed: true,
+              label: "Frontend Development",
+              collapsed: false,
               items: [
-                { label: 'TailwindCSS', slug: 'guides/frontend/tailwind' },
-                { label: 'shadcn/ui', slug: 'guides/frontend/shadcn' },
-                { label: 'Layouts', slug: 'guides/frontend/layouts' },
-                { label: 'Documents', slug: 'guides/frontend/documents' },
-                { label: 'Public Assets', slug: 'guides/frontend/public-assets' },
-                { label: 'Metadata', slug: 'guides/frontend/metadata' },
-              ]
+                { label: "TailwindCSS", slug: "guides/frontend/tailwind" },
+                { label: "shadcn/ui", slug: "guides/frontend/shadcn" },
+                { label: "Layouts", slug: "guides/frontend/layouts" },
+                { label: "Documents", slug: "guides/frontend/documents" },
+                {
+                  label: "Public Assets",
+                  slug: "guides/frontend/public-assets",
+                },
+                { label: "Metadata", slug: "guides/frontend/metadata" },
+              ],
             },
             { label: "Server Function Streams", slug: "guides/rsc-streams" },
+            {
+              label: "Testing",
+              collapsed: true,
+              items: [
+                { label: "Testing Basics", slug: "guides/testing/basics" },
+                {
+                  label: "Prettier and ESLint",
+                  slug: "guides/testing/prettier-eslint",
+                },
+                { label: "Vitest", slug: "guides/testing/vitest" },
+                { label: "Playwright", slug: "guides/testing/playwright" },
+                { label: "Cypress", slug: "guides/testing/cypress" },
+                {
+                  label: "Testing Best Practices",
+                  slug: "guides/testing/best-practices",
+                },
+              ],
+            },
           ],
           collapsed: true,
         },
