@@ -28,7 +28,7 @@
   },
   "dependencies": {
     "@prisma/adapter-d1": "~6.5.0",
-    "@prisma/client": "~6.5.0",
+    "@prisma/client": "~6.7.0",
     "@simplewebauthn/browser": "^13.1.0",
     "@simplewebauthn/server": "^13.1.1",
     "rwsdk": "0.0.82"
@@ -37,7 +37,7 @@
     "@types/node": "^22.14.0",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
-    "prisma": "~6.5.0",
+    "prisma": "~6.7.0",
     "typescript": "^5.8.3",
     "vibe-rules": "^0.2.31",
     "vite": "^6.2.6",

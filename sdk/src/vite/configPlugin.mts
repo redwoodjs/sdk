@@ -1,6 +1,7 @@
 import { Plugin } from "vite";
 import { resolve } from "node:path";
 import { mergeConfig, InlineConfig } from "vite";
+import { PrismaCheckResult } from "./checkIsUsingPrisma.mjs";
 
 const ignoreVirtualModules = {
   name: "rwsdk:ignore-virtual-modules",
@@ -17,14 +18,14 @@ export const configPlugin = ({
   projectRootDir,
   clientEntryPathname,
   workerEntryPathname,
-  isUsingPrisma,
+  prismaStatus,
 }: {
   mode: "development" | "production";
   silent: boolean;
   projectRootDir: string;
   clientEntryPathname: string;
   workerEntryPathname: string;
-  isUsingPrisma: boolean;
+  prismaStatus: PrismaCheckResult;
 }): Plugin => ({
   name: "rwsdk:config",
   config: (_, { command }) => {
@@ -68,7 +69,8 @@ export const configPlugin = ({
             esbuildOptions: {
               conditions: ["workerd", "react-server"],
               plugins: [
-                ...(isUsingPrisma
+                ...(prismaStatus.isUsingPrisma &&
+                prismaStatus.requiresWasmSupport
                   ? [
                       {
                         name: "rwsdk:prisma-client-wasm",
@@ -119,7 +121,7 @@ export const configPlugin = ({
       resolve: {
         conditions: ["workerd"],
         alias: {
-          ...(isUsingPrisma
+          ...(prismaStatus.isUsingPrisma && prismaStatus.requiresWasmSupport
             ? {
                 ".prisma/client/default": resolve(
                   projectRootDir,

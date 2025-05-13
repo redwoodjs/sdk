@@ -141,6 +141,7 @@
     "@types/debug": "^4.1.12",
     "@types/lodash": "^4.17.16",
     "@types/node": "^22.14.0",
+    "@types/semver": "^7.7.0",
     "semver": "^7.7.1",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",
