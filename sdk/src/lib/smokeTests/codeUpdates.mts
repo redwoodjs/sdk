@@ -88,8 +88,11 @@ export async function modifyAppForRealtime(targetDir: string): Promise<void> {
       'export { RealtimeDurableObject } from "rwsdk/realtime/durableObject"',
     );
     const hasRealtimeRoute = workerContent.includes("realtimeRoute(");
+    const hasEnvImport = workerContent.includes(
+      'import { env } from "cloudflare:workers"',
+    );
 
-    if (!hasRealtimeExport || !hasRealtimeRoute) {
+    if (!hasRealtimeExport || !hasRealtimeRoute || !hasEnvImport) {
       log("Need to modify worker.tsx for realtime support");
       const s = new MagicString(workerContent);
 
@@ -111,6 +114,20 @@ export async function modifyAppForRealtime(targetDir: string): Promise<void> {
             'export { RealtimeDurableObject } from "rwsdk/realtime/durableObject";\n',
           );
           log("Added RealtimeDurableObject export");
+        }
+      }
+
+      // Add the env import if it doesn't exist
+      if (!hasEnvImport) {
+        const importRegex = /import.*?from.*?;\n/g;
+        let firstImportMatch = importRegex.exec(workerContent);
+
+        if (firstImportMatch) {
+          s.appendLeft(
+            firstImportMatch.index,
+            'import { env } from "cloudflare:workers";\n',
+          );
+          log("Added env import from cloudflare:workers");
         }
       }
 
