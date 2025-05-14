@@ -19,367 +19,187 @@
  * viable given Cloudflare Workers' strict 3MB limit.
  *
  * ## Solution
- * We remain in a single Vite environment (`worker`), and simulate distinct graphs
- * by using virtual module IDs:
+ * We remain in a single Vite environment (`worker`) and simulate distinct resolution graphs.
  *
- * - The RSC graph is canonical — modules resolve as-is using "react-server"
- * - The SSR graph is virtualised — import paths are rewritten to `virtual:rwsdk:ssr/...`
- *   to break Vite's resolution cache and apply different conditions
+ * - We scan all modules and detect those starting with `"use client"` as entrypoints into
+ *   the SSR graph. From there, we track their transitive imports.
  *
- * A module whose contents begin with "use client" acts as the entry point
- * into this virtualised SSR graph. All of its imports — and their transitive imports —
- * are rewritten through `resolveId()` to use SSR-specific resolution rules.
+ * - During `configEnvironment`, we read the user's `package.json` and resolve each declared
+ *   dependency — including its `exports` subpaths — using SSR conditions. Each is assigned
+ *   a corresponding `virtual:rwsdk:ssr/...` ID and added to the alias map and optimizeDeps.
  *
- * Bare imports like `react` become `virtual:rwsdk:ssr/react`, and normal relative
- * imports like `./foo.ts` become `virtual:rwsdk:ssr/abs/path/to/foo.ts`.
+ * - In the `transform` hook, we rewrite import specifiers to their virtual equivalents
+ *   if the module is part of the SSR graph and the import matches a resolved dependency.
  *
- * To support optimizeDeps and alias resolution, we eagerly resolve all declared
- * `dependencies` from the user's `package.json` using SSR conditions and map them
- * to virtual IDs during the `configEnvironment()` hook.
+ * - Only bare imports (`react`, `swr/infinite`, etc.) are virtualised; relative imports are left as-is.
+ *
+ * This gives us two overlapping graphs — canonical RSC and virtualised SSR — within a single
+ * runtime, with accurate export conditions and no bundle duplication.
  */
-
 import path from "path";
 import fs from "fs/promises";
 import { Plugin } from "vite";
 import enhancedResolve from "enhanced-resolve";
+import { init, parse } from "es-module-lexer";
+import MagicString from "magic-string";
 import debug from "debug";
 
 const SSR_NAMESPACE = "virtual:rwsdk:ssr:";
-
 const log = debug("rwsdk:vite:virtualized-ssr");
-
-const ssrGraph = new Set<string>();
-const virtualSsrDeps = new Map<string, string>();
 
 const ssrResolver = enhancedResolve.create.sync({
   conditionNames: ["workerd", "edge", "import", "default"],
 });
-
-/**
- * Resolves a package and its export paths
- */
-async function resolvePackageDeps(
-  dep: string,
-  projectRootDir: string,
-  resolver: typeof ssrResolver,
-): Promise<Map<string, string>> {
-  const depMappings = new Map<string, string>();
-
-  log("📦 Starting resolution for dependency: %s", dep);
-
-  try {
-    log("🔍 Resolving package entry point for: %s", dep);
-    const entryPoint = resolver(projectRootDir, dep);
-    if (!entryPoint) {
-      log("❌ Failed to resolve entry point for %s", dep);
-      return depMappings;
-    }
-    log("✅ Found entry point: %s", entryPoint);
-
-    // Find package root by looking for nearest package.json
-    let pkgRoot = path.dirname(entryPoint);
-    let pkgJsonPath = "";
-
-    log("🔍 Looking for package.json from entry point: %s", entryPoint);
-    // Navigate up directories until we find package.json
-    while (pkgRoot && pkgRoot !== projectRootDir) {
-      const candidatePath = path.join(pkgRoot, "package.json");
-      try {
-        await fs.access(candidatePath);
-        pkgJsonPath = candidatePath;
-        log("✅ Found package.json at: %s", pkgJsonPath);
-        break;
-      } catch {
-        // Move up one directory
-        const prevRoot = pkgRoot;
-        pkgRoot = path.dirname(pkgRoot);
-        log("⬆️ Moving up from %s to %s", prevRoot, pkgRoot);
-      }
-    }
-
-    if (!pkgJsonPath) {
-      log(
-        "❌ Could not find package.json for %s after traversing directories",
-        dep,
-      );
-      return depMappings;
-    }
-
-    log("📄 Found package.json at %s", pkgJsonPath);
-    log("📁 Package root directory: %s", pkgRoot);
-
-    const pkgRaw = await fs.readFile(pkgJsonPath, "utf-8");
-    const pkg = JSON.parse(pkgRaw);
-    log(
-      "📦 Package %s details: main=%s, exports=%d entries",
-      dep,
-      pkg.main || "(none)",
-      pkg.exports ? Object.keys(pkg.exports).length : 0,
-    );
-
-    // Always include the root entry
-    log("🔍 Resolving root entry for %s", dep);
-    const rootResolved = resolver(pkgRoot, ".");
-    log("🔄 Root resolved: %s -> %s", dep, rootResolved || "(failed)");
-
-    if (rootResolved) {
-      const virtualId = SSR_NAMESPACE + dep;
-      depMappings.set(virtualId, rootResolved);
-      log("✅ Added root mapping %s -> %s", virtualId, rootResolved);
-    } else {
-      log("❌ Failed to resolve root entry for %s", dep);
-    }
-
-    // Handle subpaths declared in `exports`
-    if (typeof pkg.exports === "object" && pkg.exports !== null) {
-      const exportKeys = Object.keys(pkg.exports);
-      log(
-        "🔄 Processing exports from %s - found %d export paths",
-        dep,
-        exportKeys.length,
-      );
-      const keys = exportKeys.filter(
-        (k) => k.startsWith("./") && k !== "./package.json",
-      );
-      log("🔍 Filtered %d relevant export paths for %s", keys.length, dep);
-
-      for (const key of keys) {
-        const subpath = key.slice(2); // "./infinite" -> "infinite"
-        const virtualId = SSR_NAMESPACE + dep + "/" + subpath;
-        log(
-          "🔄 Processing export path %s -> creating virtual ID %s",
-          key,
-          virtualId,
-        );
-
-        const resolved = resolver(pkgRoot, "./" + subpath);
-        log("🔍 Resolved %s/%s -> %s", dep, subpath, resolved || "(failed)");
-
-        if (resolved) {
-          depMappings.set(virtualId, resolved);
-          log("✅ Added subpath mapping %s -> %s", virtualId, resolved);
-        } else {
-          log("❌ Failed to resolve %s/%s", dep, subpath);
-        }
-      }
-    } else {
-      log("ℹ️ Package %s has no exports object or it's empty", dep);
-    }
-
-    log(
-      "📊 Finished processing %s - created %d mappings",
-      dep,
-      depMappings.size,
-    );
-  } catch (err) {
-    log("❌ Error resolving %s or its exports: %O", dep, err);
-  }
-
-  return depMappings;
-}
 
 export function virtualizedSSRPlugin({
   projectRootDir,
 }: {
   projectRootDir: string;
 }): Plugin {
-  log(
-    "🚀 Initializing virtualizedSSRPlugin with projectRootDir: %s",
-    projectRootDir,
-  );
+  const ssrGraph = new Set<string>();
+  const virtualSsrDeps = new Map<string, string>();
+  const depPrefixMap = new Map<string, string>();
+
+  async function resolvePackageDeps(dep: string): Promise<Map<string, string>> {
+    const mappings = new Map<string, string>();
+    try {
+      const entry = ssrResolver(projectRootDir, dep);
+      if (!entry) return mappings;
+
+      // Find the root package.json
+      let dir = path.dirname(entry);
+      while (dir !== projectRootDir) {
+        const pkgJsonPath = path.join(dir, "package.json");
+        try {
+          await fs.access(pkgJsonPath);
+          const raw = await fs.readFile(pkgJsonPath, "utf-8");
+          const pkg = JSON.parse(raw);
+
+          // Resolve root entry
+          const virtualId = SSR_NAMESPACE + dep;
+          mappings.set(virtualId, entry);
+
+          // Track rewrite mapping
+          depPrefixMap.set(dep, virtualId);
+
+          // Resolve exports subpaths
+          if (typeof pkg.exports === "object" && pkg.exports !== null) {
+            for (const key of Object.keys(pkg.exports)) {
+              if (!key.startsWith("./") || key === "./package.json") continue;
+
+              const sub = key.slice(2); // './infinite' -> 'infinite'
+              const full = `${dep}/${sub}`;
+              const resolved = ssrResolver(dir, "./" + sub);
+              const vId = SSR_NAMESPACE + full;
+              if (resolved) {
+                mappings.set(vId, resolved);
+                depPrefixMap.set(full, vId);
+              }
+            }
+          }
+
+          break;
+        } catch {
+          dir = path.dirname(dir);
+        }
+      }
+    } catch (err) {
+      log("❌ Failed to resolve %s: %O", dep, err);
+    }
+    return mappings;
+  }
 
   return {
     name: "rwsdk:virtualized-ssr",
+    enforce: "pre",
 
     async configEnvironment(env, config) {
-      if (env !== "worker") {
-        log(
-          "⏭️ Skipping configEnvironment for non-worker environment: %s",
-          env,
-        );
-        return;
-      }
-
-      log("🔧 Setting up aliases for worker environment");
+      if (env !== "worker") return;
 
       config.resolve ??= {};
       (config.resolve as any).alias ??= [];
 
       if (!Array.isArray((config.resolve as any).alias)) {
-        const existingAlias = (config.resolve as any).alias;
-        log(
-          "🔄 Converting object alias to array format, found %d existing aliases",
-          Object.keys(existingAlias).length,
-        );
-        (config.resolve as any).alias = Object.entries(existingAlias).map(
+        const aliasObj = (config.resolve as any).alias;
+        (config.resolve as any).alias = Object.entries(aliasObj).map(
           ([find, replacement]) => ({ find, replacement }),
         );
       }
 
-      const pkgJsonPath = path.join(projectRootDir, "package.json");
-      let dependencies: string[] = [];
+      const pkgPath = path.join(projectRootDir, "package.json");
+      const pkgRaw = await fs.readFile(pkgPath, "utf-8");
+      const pkg = JSON.parse(pkgRaw);
+      const deps = Object.keys(pkg.dependencies ?? {});
 
-      try {
-        log("📄 Reading project package.json from %s", pkgJsonPath);
-        const pkgRaw = await fs.readFile(pkgJsonPath, "utf-8");
-        const pkg = JSON.parse(pkgRaw);
-        dependencies = Object.keys(pkg.dependencies ?? {});
-        log("📦 Found %d dependencies to process", dependencies.length);
-      } catch (err) {
-        log("❌ Failed to read package.json from %s: %O", pkgJsonPath, err);
-        return;
-      }
-
-      log("🔄 Starting dependency resolution process");
-      for (const dep of dependencies) {
-        if (dep === "rwsdk") {
-          log("⏭️ Skipping rwsdk dependency");
-          continue;
-        }
-
-        log("📦 Processing dependency: %s", dep);
-        const depMappings = await resolvePackageDeps(
-          dep,
-          projectRootDir,
-          ssrResolver,
-        );
-        log("📊 Resolved %d mappings for %s", depMappings.size, dep);
-
-        // Add all resolved mappings to our virtualSsrDeps map
-        for (const [virtualId, resolvedPath] of depMappings) {
-          virtualSsrDeps.set(virtualId, resolvedPath);
-          log("🔄 Added to global mappings: %s -> %s", virtualId, resolvedPath);
+      for (const dep of deps) {
+        if (dep === "rwsdk") continue;
+        const resolved = await resolvePackageDeps(dep);
+        for (const [vId, real] of resolved.entries()) {
+          virtualSsrDeps.set(vId, real);
         }
       }
 
-      log(
-        "🔧 Adding %d virtual SSR aliases to Vite config: %O",
-        virtualSsrDeps.size,
-        virtualSsrDeps,
-      );
-      for (const [virtualId, resolvedPath] of virtualSsrDeps.entries()) {
-        const exactMatchRegex = new RegExp(
-          `^${virtualId.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
-        );
-
+      for (const [vId, realPath] of virtualSsrDeps) {
         (config.resolve as any).alias.push({
-          find: exactMatchRegex,
-          replacement: resolvedPath,
+          find: new RegExp(`^${vId.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")}$`),
+          replacement: realPath,
         });
       }
 
       config.optimizeDeps ??= {};
       config.optimizeDeps.include ??= [];
-      log(
-        "🔧 Adding %d virtual IDs to optimizeDeps.include",
-        virtualSsrDeps.size,
-      );
       config.optimizeDeps.include.push(...virtualSsrDeps.keys());
 
-      log(
-        "✅ Registered %d SSR aliases for virtual import resolution",
-        virtualSsrDeps.size,
-      );
+      log("✅ Registered %d SSR virtual aliases", virtualSsrDeps.size);
     },
 
-    async transform(code, id) {
-      if (this.environment.name !== "worker") {
-        return;
-      }
+    async transform(code, id, options) {
+      if (this.environment.name !== "worker") return;
 
-      if (!id.match(/\.(tsx?|jsx?|mjs|mts|cjs)$/)) {
-        return;
-      }
-
-      const firstLine = code.split("\n", 1)[0]?.trim();
-      if (firstLine === '"use client"' || firstLine === "'use client'") {
-        ssrGraph.add(id);
-        log("🔎 Discovered SSR entrypoint via 'use client': %s", id);
-      }
-
-      return null;
-    },
-
-    resolveId(source, importer) {
-      if (this.environment.name !== "worker" || !importer) {
-        log(
-          "⏭️ Skipping resolveId for %s from %s (not in worker or no importer)",
-          source,
-          importer,
-        );
-        return;
-      }
-
-      log(
-        "🔍 resolveId called for source=%s from importer=%s",
-        source,
-        importer,
-      );
-
-      const isBare = !source.startsWith(".") && !source.startsWith("/");
-
-      // Case 1: Already in SSR graph via a virtualized importer
-      if (importer.startsWith(SSR_NAMESPACE) && isBare) {
-        log(
-          "📦 Import from virtualized module: %s imports %s",
-          importer,
-          source,
-        );
-
-        const resolved = ssrResolver(projectRootDir, source);
-        if (!resolved) {
-          log(
-            "❌ Failed to resolve %s from virtual module %s",
-            source,
-            importer,
-          );
-          return;
+      if (
+        id.endsWith(".ts") ||
+        id.endsWith(".js") ||
+        id.endsWith(".tsx") ||
+        id.endsWith(".jsx") ||
+        id.endsWith(".mjs")
+      ) {
+        const firstLine = code.split("\n", 1)[0]?.trim();
+        if (firstLine === "'use client'" || firstLine === '"use client"') {
+          log("🔎 Found SSR entrypoint: %s", id);
+          ssrGraph.add(id);
         }
-
-        const virtualId = SSR_NAMESPACE + source;
-        log(
-          "✅ Resolved bare import in SSR context: %s -> %s (virtual: %s)",
-          source,
-          resolved,
-          virtualId,
-        );
-
-        virtualSsrDeps.set(virtualId, resolved);
-        return virtualId;
       }
 
-      // Case 2: Module is in the SSR graph via 'use client'
-      if (ssrGraph.has(importer)) {
-        log(
-          "📦 Import from 'use client' module: %s imports %s",
-          importer,
-          source,
-        );
+      // Propagate SSR graph to all importers
+      const moduleInfo = this.getModuleInfo?.(id);
+      const shouldRewrite =
+        ssrGraph.has(id) ||
+        moduleInfo?.importers?.some((imp) => ssrGraph.has(imp));
 
-        const resolved = ssrResolver(path.dirname(importer), source);
-        if (!resolved) {
-          log(
-            "❌ Failed to resolve %s from 'use client' module %s",
-            source,
-            importer,
-          );
-          return;
+      if (!shouldRewrite) return null;
+
+      await init;
+      const [imports] = parse(code);
+      const ms = new MagicString(code);
+      let modified = false;
+
+      for (const i of imports) {
+        const raw = code.slice(i.s, i.e);
+        const prefix = depPrefixMap.get(raw);
+        if (prefix) {
+          log("🔁 Rewriting %s -> %s", raw, prefix);
+          ms.overwrite(i.s, i.e, prefix);
+          modified = true;
         }
-
-        const virtualResolved = SSR_NAMESPACE + resolved;
-        log(
-          "✅ Resolved import in 'use client' context: %s -> %s (virtual: %s)",
-          source,
-          resolved,
-          virtualResolved,
-        );
-
-        ssrGraph.add(resolved);
-        return virtualResolved;
       }
 
-      // Not part of SSR graph, let Vite handle it normally
-      log("⏭️ Import not in SSR context: %s from %s", source, importer);
+      if (modified) {
+        return {
+          code: ms.toString(),
+          map: ms.generateMap({ hires: true }),
+        };
+      }
+
       return null;
     },
   };
