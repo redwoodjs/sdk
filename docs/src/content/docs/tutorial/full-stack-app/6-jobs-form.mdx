@@ -140,7 +140,7 @@ At the top of the `src/app/components/ui/breadcrumb.tsx` file, we need to add a 
 
 Let's wrap our breadcrumbs with a `div` and add a few classes to adjust the spacing.
 
-```tsx title="src/app/pages/applications/New.tsx" collapse={4-14} {3,15} startLineNumber=5 "mb-12 -mt-7 pl-[120px]"
+```tsx title="src/app/pages/applications/New.tsx" collapse={4-14} {3,15} startLineNumber=12 "mb-12 -mt-7 pl-[120px]"
 return (
   <InteriorLayout>
     <div className="mb-12 -mt-7 pl-[120px]">
@@ -166,7 +166,7 @@ return (
 
 Next up, let's add our page heading:
 
-```tsx title="src/app/pages/applications/New.tsx" startLineNumber=20
+```tsx title="src/app/pages/applications/New.tsx" startLineNumber=26
 <div className="mx-page-side pb-6 mb-8 border-b-1 border-border">
   <h1 className="page-title">New Application</h1>
   <p className="page-description">Create a new application</p>
@@ -179,9 +179,9 @@ Next up, let's add our page heading:
   - `mb-8` adds `32px` of margin on the bottom.
   - `border-b-1 border-border` adds a border to the bottom of the `div`.
 - Here, we've added an `h1` that says "New Application" and has a class called `page-title`
-- Then, we have a `p` of text that says "Create a new application." I went ahead and added a class of `page-description` so that we can use this on multiple pages, but we'll need to add this class definition to our `styles.css` file.
+- Then, we have a `p` of text that says "Create a new application." I went ahead and added a class of `page-description` so that we can use this on multiple pages, but we'll need to add this class definition to the `@layer components` section of our `styles.css` file.
 
-```css title="src/app/styles.css" startLineNumber={268}
+```css title="src/app/styles.css" startLineNumber={182}
 .page-description {
   @apply text-zinc-500;
 }
@@ -206,13 +206,13 @@ Stubbing out our component:
 ```tsx title="src/app/components/ApplicationForm.tsx"
 "use client"
 
-const ApplicationsForm = () => {
+const ApplicationForm = () => {
   return (
-    <div>ApplicationsForm</div>
+    <div>ApplicationForm</div>
   )
 }
 
-export {ApplicationsForm}
+export {ApplicationForm}
 ---
 You'll notice I also placed the `use client` directive at the top of the file, converting this file to a client component.
 ---
@@ -230,9 +230,9 @@ import { ApplicationsForm } from "@/app/components/ApplicationsForm"
   <ApplicationsForm />
 ```
 
-Now, let's wrap our `<div>ApplicationsForm</div>` with a `form` tag and add some styles:
+Now, let's go back to our `ApplicationForm` component and wrap our `<div>ApplicationForm</div>` with a `form` tag and add some styles:
 
-```tsx title="src/app/pages/applications/New.tsx" startLineNumber=5
+```tsx title="src/app/components/ApplicationForm.tsx" startLineNumber=1
 <form>
   <div className="grid grid-cols-2 gap-[200px] px-page-side mb-[75px]">
     ApplicationForm
