@@ -8,6 +8,8 @@ description: A guide in my new Starlight docs site.
 
 import { FileTree, Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
+import { PackageManagers } from "starlight-package-managers";
+
 ## Project Generation and Structure
 
 The first thing we'll do is set up our project.
@@ -214,23 +216,10 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
 
 <Steps>
 1. Install Tailwind CSS
-    <Tabs>
-    <TabItem label="pnpm">
-    ```bash
-    pnpm install tailwindcss @tailwindcss/vite
-    ```
-    </TabItem>
-    <TabItem label="npm">
-    ```bash
-    npm install tailwindcss @tailwindcss/vite
-    ```
-    </TabItem>
-    <TabItem label="yarn">
-    ```bash
-    yarn install tailwindcss @tailwindcss/vite
-    ```
-    </TabItem>
-    </Tabs>
+    <PackageManagers
+      type="install"
+      pkg="tailwindcss @tailwindcss/vite"
+    />
 
 2. Configure the Vite Plugin
     ```ts ins="import tailwindcss from '@tailwindcss/vite'" ins="tailwindcss()," title="vite.config.mts"
@@ -272,9 +261,11 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
     ```
 
 5. Now, you can run `pnpm run dev` and go to `http://localhost:5173/user/login`.
-    ```bash
-    pnpm run dev
-    ```
+    <PackageManagers
+      type="run"
+      args="dev"
+    />
+
     ![](./images/passkey-starter-tailwind-working.png)
     For reference, before adding TailwindCSS, the login page looked like this:
     ![](./images/passkey-form-before-tailwind.png)
@@ -496,9 +487,11 @@ You can also use the [shadcn/ui Vite Installation instructions](https://ui.shadc
 
 <Steps>
 1. Install shadcn/ui
-    ```bash
-    pnpm dlx shadcn@latest init
-    ```
+    <PackageManagers
+      type="dlx"
+      pkg="shadcn@latest"
+      args="init"
+    />
 
     It will ask you what theme you want to use. Let's go with **Neutral**.
 
@@ -531,9 +524,11 @@ You can also use the [shadcn/ui Vite Installation instructions](https://ui.shadc
     }
     ```
 4. Install `@types/node`
-    ```bash
-    pnpm add -D @types/node
-    ```
+    <PackageManagers
+      pkg="@types/node"
+      dev
+    />
+
 5. Add resolve alias config to `vite.config.mts`:
     ```diff title="vite.config.mts"
     +import path from "path"
@@ -551,9 +546,11 @@ You can also use the [shadcn/ui Vite Installation instructions](https://ui.shadc
     )
     ```
 6. You should now be able to add components:
-    ```bash
-    pnpm dlx shadcn@latest add
-    ```
+    <PackageManagers
+      type="dlx"
+      pkg="shadcn@latest"
+      args="add"
+    />
 
     Select the following by hitting the `Space` key:
     - Alert

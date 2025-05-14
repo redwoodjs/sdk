@@ -8,6 +8,8 @@ description: A guide in my new Starlight docs site.
 
 import { Aside, FileTree } from '@astrojs/starlight/components';
 
+import { PackageManagers } from "starlight-package-managers";
+
 The jobs application list page lists all the jobs that we've applied for. For this tutorial, it will also serve as the Dashboard.
 
 The finished page will look like this:
@@ -331,9 +333,10 @@ Since our database is a sqlite database, `skipDuplicates` is not supported.
 
 To run the seed file, within the Terminal:
 
-```shell
-pnpm worker:run ./src/scripts/applicationSeed.ts
-```
+<PackageManagers
+  type="run"
+  args="worker:run ./src/scripts/applicationSeed.ts"
+/>
 
 If this feels hard to remember, you can create a script in your `package.json` file. Inside the `scripts` block:
 
@@ -361,9 +364,10 @@ If this feels hard to remember, you can create a script in your `package.json` f
 
 Now, you can run the seed file by saying:
 
-```shell
-pnpm seed:applications
-```
+<PackageManagers 
+  type="run"
+  args="seed:applications"
+/>
 
 😅 Much more straight forward!
 
@@ -1160,12 +1164,13 @@ You could set all of this up, manually, but I do this on every single project I 
 
 Within the Terminal run:
 
-```shell
-pnpm install lemon-lime-svgs --save-dev
-```
+<PackageManagers
+  pkg="lemon-lime-svgs"
+  dev
+/>
 
 <Aside type="note" title="Save Dev">
-The purpose of this package is to help with the development process. The code does not need to go to production, so we can add the `--save-dev` flag.
+The purpose of this package is to help with the development process. The code does not need to go to production, so we can add the `-D` flag.
 </Aside>
 
 Once installed, run the setup command:
@@ -1225,9 +1230,10 @@ Now, let's take all our icon SVGs and dump them inside our `other/svg-icons` dir
 
 Inside the terminal, let's generate our sprite:
 
-```shell
-pnpm icons
-```
+<PackageManagers
+  type="exec"
+  pkg="icons"
+/>
 
 ![](./images/terminal-pnpm-icons.png)
 

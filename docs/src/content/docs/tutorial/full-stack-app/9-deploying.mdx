@@ -8,13 +8,16 @@ description: A guide in my new Starlight docs site.
 
 import { Aside } from '@astrojs/starlight/components';
 
+import { PackageManagers } from "starlight-package-managers";
+
 Now that our application is complete 🥳, let's deploy it! This is the _easiest_ step in the whole process.
 
 Within the Terminal, run:
 
-```bash
-pnpm release
-```
+<PackageManagers
+  type="run"
+  pkg="release"
+/>
 
 Within the Terminal, it will ask you: **Do you want to proceed with deployment? (y/N):** Type `y` and press Enter.
 

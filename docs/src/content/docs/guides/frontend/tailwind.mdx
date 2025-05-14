@@ -6,15 +6,17 @@ description: A step-by-step guide for installing and configuring TailwindCSS v4 
 import { Aside } from '@astrojs/starlight/components';
 import { Steps } from '@astrojs/starlight/components';
 
+import { PackageManagers } from "starlight-package-managers";
+
 ## Installing Tailwind
 
 Since the RedwoodSDK is based on React and Vite, we can work through the ["Using Vite" documentation](https://tailwindcss.com/docs/installation/using-vite).
 
 <Steps>
 1. Install Tailwind CSS
-    ```bash
-    npm install tailwindcss @tailwindcss/vite
-    ```
+    <PackageManagers
+      pkg="tailwindcss @tailwindcss/vite"
+    />
 
 2. Configure the Vite Plugin
     ```ts ins="import tailwindcss from '@tailwindcss/vite'" ins="tailwindcss(),"
@@ -59,10 +61,11 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
     </head>
     ```
 
-5. Now, you can run `pnpm run dev` and the "Hello World" text should look different.
-    ```bash
-    pnpm run dev
-    ```
+5. Now, you can run `dev` and the "Hello World" text should look different.
+    <PackageManagers
+      type="run"
+      args="dev"
+    />
 
 </Steps>
 

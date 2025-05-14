@@ -5,13 +5,18 @@ description: A comprehensive guide to installing and configuring ShadCN UI compo
 
 import { Aside, Steps, FileTree } from '@astrojs/starlight/components';
 
+import { PackageManagers } from "starlight-package-managers";
+
 ## Installing shadcn/ui
 
 <Steps>
 1. Install shadcn/ui
-    ```bash
-    pnpm dlx shadcn@latest init
-    ```
+    <PackageManagers
+      type="dlx"
+      pkg="shadcn@latest"
+      args="init"
+    />
+
     It will ask you what theme you want to use.
     ![](../../tutorial/full-stack-app/images/shadcn-neutral-theme.png)
 
@@ -65,14 +70,18 @@ import { Aside, Steps, FileTree } from '@astrojs/starlight/components';
 
 5. Now, you should be able to add components:
     You can add components in bulk by running:
-    ```bash
-    pnpm dlx shadcn@latest add
-    ```
+    <PackageManagers
+      type="dlx"
+      pkg="shadcn@latest"
+      args="add"
+    />
 
     Or, you can add a single component by running:
-    ```bash
-    pnpm dlx shadcn@latest add <COMPONENT-NAME>
-    ```
+    <PackageManagers
+      type="dlx"
+      pkg="shadcn@latest"
+      args="add <COMPONENT-NAME>"
+    />
 
     Components will be added to the `src/components/ui` folder.
 

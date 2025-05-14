@@ -8,6 +8,8 @@ description: A guide in my new Starlight docs site.
 
 import { Aside, FileTree } from '@astrojs/starlight/components';
 
+import { PackageManagers } from "starlight-package-managers";
+
 Things are coming together nicely. But, we still hard coded contacts into the Job Application form. Let's make this dynamic.
 
 If we look at the Figma file, you'll notice that we have a "Add a Contact" button on our sidebar:
@@ -674,9 +676,10 @@ Then, we need to set up the inverse relationship on the `User` model establishin
 
 Now, we need to create our migration. Within the terminal:
 
-```terminal
-pnpm migrate:new "associate contacts with users"
-```
+<PackageManagers frame={false}
+  type="run"
+  pkg='migrate:new "associate contacts with users"'
+/>
 
 When you run this, you'll probably get an error:
 
@@ -688,9 +691,10 @@ If you read the error message, the migration file was created, but not applied.
 
 To fix this, you can try manually removing the existing contacts, or you can run the seed command:
 
-```terminal
-pnpm seed
-```
+<PackageManagers frame={false}
+  type="run"
+  pkg='seed'
+/>
 
 The seed command will also reset the database because we also clear all the tables at the top of the script:
 
@@ -706,7 +710,7 @@ await db.$executeRawUnsafe(`\
 `);
 ```
 
-Now, try running `pnpm migrate:dev`.
+Now, try running `migrate:dev`.
 
 ![](./images/pnpm-migrate-dev-contacts-users-relationship.png)
 
@@ -742,9 +746,10 @@ contacts: {
 
 Now, you can run:
 
-```terminal
-pnpm seed:application
-```
+<PackageManagers frame={false}
+  type="run"
+  pkg='seed:application'
+/>
 
 We also need to update our `createContact` function, inside our `actions.ts` file, to include the `userId` column:
 
@@ -945,9 +950,10 @@ To resolve this, go to your `other/svg-icons/` folder and find the `close.svg` i
 
 Then, you'll need to re-run the icon script file in order to regenerate the `sprite.svg` with the updated icon:
 
-```bash
-pnpm icons
-```
+<PackageManagers frame={false}
+  type="exec"
+  pkg='icons'
+/>
 
 💥
 </Aside>

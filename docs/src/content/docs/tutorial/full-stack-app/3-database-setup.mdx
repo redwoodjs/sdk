@@ -10,6 +10,8 @@ description: Setting up the database for the application
 
 import { Aside, FileTree } from '@astrojs/starlight/components';
 
+import { PackageManagers } from "starlight-package-managers";
+
 ## Setting up our Database Tables or Models
 
 For this project, we'll use [Prisma](https://www.prisma.io/) as our ORM (Object Relational Mapper). This makes it easy to define our database and generate migrations.
@@ -449,11 +451,12 @@ A migration is a change to the database schema. It's a way to keep track of the 
 
 When we create the migration, Prisma will look at our `schema.prisma` file and determine what has changed since our last migration. Then, it will generate a SQL file that will update our database with the changes.
 
-Let's create the migration by running `pnpm migrate:new` and give our migration a name. Since this is our first migration, we'll say: `setup all database models`.
+Let's create the migration by running `migrate:new` and give our migration a name. Since this is our first migration, we'll say: `setup all database models`.
 
-```shell
-pnpm migrate:new "setup all database models"
-```
+<PackageManagers
+  type="run"
+  pkg='migrate:new "setup all database models"'
+/>
 
 ![](./images/setup-all-tables-migration.png)
 
@@ -462,9 +465,9 @@ pnpm migrate:new "setup all database models"
 
   Occasionally, you may run into an error where there are multiple sqlite files in the `.wrangler > state > v3 > d1 > miniflare-D1DatabaseObject` folder.
 
-  If this happens, you can delete the `.wrangler` folder and rerun `pnpm dev` to regenerate it.
+  If this happens, you can delete the `.wrangler` folder and rerun `dev` to regenerate it.
 
-  Then, try running `pnpm migrate:dev` to apply the migration.
+  Then, try running `migrate:dev` to apply the migration.
 </Aside>
 
 Our generated `sql` file will be in the `migrations` folder.
@@ -691,9 +694,10 @@ Problem solved.
 
 To seed the database, run the following command:
 
-```bash
-pnpm seed
-```
+<PackageManagers
+  type="run"
+  pkg="seed"
+/>
 
 Within the Terminal, you should see something like this:
 
