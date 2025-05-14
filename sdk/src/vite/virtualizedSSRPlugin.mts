@@ -84,28 +84,12 @@ export function virtualizedSSRPlugin({
       return cachedId;
     }
 
-    // Make sure the path is absolute before getting the relative path
-    const absolutePath = path.isAbsolute(fullPath)
-      ? fullPath
-      : path.resolve(projectRootDir, fullPath);
-
-    logModuleIds(
-      "🔍 Generating module ID for %s (absolute: %s)",
-      fullPath,
-      absolutePath,
-    );
-
-    // Get the project-relative path
-    const relativePath = path.relative(projectRootDir, absolutePath);
-    // Replace backslashes with forward slashes for consistent IDs across platforms
-    const normalizedPath = relativePath.replace(/\\/g, "/");
-
-    logModuleIds("✅ Generated module ID: %s → %s", fullPath, normalizedPath);
+    logModuleIds("✅ Generated module ID: %s", fullPath);
 
     // Store the mapping for future lookups
-    moduleIdMap.set(fullPath, normalizedPath);
+    moduleIdMap.set(fullPath, fullPath);
 
-    return normalizedPath;
+    return fullPath;
   }
 
   async function resolvePackageDeps(dep: string): Promise<Map<string, string>> {
@@ -226,7 +210,10 @@ export function virtualizedSSRPlugin({
       return null;
     }
 
-    logTransform("🔎 Processing imports in client module: %s", id);
+    logTransform(
+      "🔎 Processing imports in client module or module imported by one: %s",
+      id,
+    );
     await init;
     const [imports] = parse(code);
     logTransform("📊 Found %d imports to process", imports.length);
@@ -366,12 +353,11 @@ export function virtualizedSSRPlugin({
     },
 
     async transform(code, id, options) {
-      logTransform("🔄 Transform: %s", id);
-
       if (this.environment.name !== "worker") {
-        logTransform("⏭️ Skipping non-worker environment for: %s", id);
         return null;
       }
+
+      logTransform("🔄 Transform: %s", id);
 
       // Check if this is a "use client" module
       let isClientModule = false;
@@ -407,21 +393,19 @@ export function virtualizedSSRPlugin({
       const moduleId = id.slice(SSR_NAMESPACE.length);
       logLoad("🔍 Module ID: %s", moduleId);
 
-      // For module IDs, they are project-relative paths
-      const absolutePath = path.join(projectRootDir, moduleId);
-      logLoad("📂 Checking for file at absolute path: %s", absolutePath);
+      logLoad("📂 Checking for file: %s", moduleId);
 
       // Check if this is a file that exists
       try {
-        await fs.access(absolutePath);
+        await fs.access(moduleId);
         logLoad("✅ File exists, loading content directly");
         // Load the content directly
-        const code = await fs.readFile(absolutePath, "utf-8");
+        const code = await fs.readFile(moduleId, "utf-8");
         logLoad("📄 Loaded %d bytes of content", code.length);
 
         // Process the imports in this module
         logLoad("🔄 Processing imports in loaded module");
-        const result = await processImports(this, code, absolutePath, true);
+        const result = await processImports(this, code, moduleId, true);
 
         return result || { code };
       } catch (err) {
@@ -450,18 +434,11 @@ export function virtualizedSSRPlugin({
       if (source.startsWith(SSR_NAMESPACE)) {
         // Get the module ID from the virtual ID
         const moduleId = source.slice(SSR_NAMESPACE.length);
+
         logResolve(
           "🔍 Resolving virtual module: %s from %s",
           moduleId,
           importer || "unknown",
-        );
-
-        // For module IDs that are project-relative paths
-        const absolutePath = path.resolve(projectRootDir, moduleId);
-        logResolve(
-          "🔄 Converting to absolute path: %s → %s",
-          moduleId,
-          absolutePath,
         );
 
         // Check if this is one of our known dependencies
@@ -475,9 +452,11 @@ export function virtualizedSSRPlugin({
           return resolvedPath;
         }
 
-        // Return the resolved path
-        logResolve("✅ Resolved to: %s", absolutePath);
-        return absolutePath;
+        logResolve(
+          "🔍 Keeping original ID as resolveId() result so we transform its imports: %s",
+          source,
+        );
+        return source;
       }
 
       return null;
