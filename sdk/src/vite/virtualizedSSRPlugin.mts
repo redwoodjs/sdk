@@ -24,22 +24,15 @@
  *
  * How it works:
  * - Any module beginning with `"use client"` is treated as an SSR boundary.
- * - All of its dependencies — and their transitive imports — must be resolved
- *   without the `"react-server"` condition.
+ * - When we encounter a "use client" module in transform:
+ *   - For each import, we check if it's a dependency from our mapping
+ *   - If it's a dependency, we prefix it with our virtual namespace
+ *   - If not, we resolve it on-the-fly and prefix non-node_modules imports
+ * - In load(), we intercept prefixed modules, strip the prefix, and apply the same logic
+ *   to its imports recursively
  *
- * To do this:
- * - We eagerly resolve all declared `dependencies` and their subpaths via enhanced-resolve,
- *   storing them as virtual aliases like `virtual:rwsdk:ssr:react` or `virtual:rwsdk:ssr:swr/infinite`.
- * - In the transform step, we use es-module-lexer to detect import statements in modules
- *   that are part of the SSR graph. If the import is in `depPrefixMap`, we rewrite it to the
- *   virtual ID using MagicString.
- * - At build start (`configEnvironment`), we register all these virtual IDs as Vite aliases
- *   pointing to their resolved SSR paths.
- * - Vite then resolves and optimizes them as if they were real modules, without `"react-server"`.
- *
- * We use our own custom module graph to track imports originating from "use client" modules
- * instead of relying on Vite's module graph. This gives us more control and better visibility
- * into the dependency relationships.
+ * This approach eliminates the need for tracking a custom module graph, making the
+ * process more direct and following Vite's plugin lifecycle more naturally.
  */
 
 import path from "path";
@@ -55,101 +48,13 @@ const log = debug("rwsdk:vite:virtualized-ssr");
 
 const logInfo = log.extend("info");
 const logError = log.extend("error");
-const logTrace = log.extend("trace");
-const logGraph = log.extend("graph");
 const logResolve = log.extend("resolve");
 const logTransform = log.extend("transform");
+const logLoad = log.extend("load");
 
 const ssrResolver = enhancedResolve.create.sync({
   conditionNames: ["workerd", "edge", "import", "default"],
 });
-
-/**
- * Custom module graph to track dependencies
- */
-class SSRModuleGraph {
-  private clientModules = new Set<string>();
-  private moduleImports = new Map<string, Set<string>>();
-  private moduleImporters = new Map<string, Set<string>>();
-
-  constructor() {
-    logGraph("📊 Creating custom SSR module graph");
-  }
-
-  addClientModule(id: string): void {
-    logGraph("📝 Adding client module: %s", id);
-    this.clientModules.add(id);
-  }
-
-  isClientModule(id: string): boolean {
-    return this.clientModules.has(id);
-  }
-
-  addImport(importerId: string, importedId: string): void {
-    logGraph("🔗 Adding import relationship: %s -> %s", importerId, importedId);
-
-    // Track what this module imports
-    if (!this.moduleImports.has(importerId)) {
-      this.moduleImports.set(importerId, new Set());
-    }
-    this.moduleImports.get(importerId)!.add(importedId);
-
-    // Track what imports this module
-    if (!this.moduleImporters.has(importedId)) {
-      this.moduleImporters.set(importedId, new Set());
-    }
-    this.moduleImporters.get(importedId)!.add(importerId);
-  }
-
-  getImporters(id: string): Set<string> {
-    return this.moduleImporters.get(id) || new Set();
-  }
-
-  getImports(id: string): Set<string> {
-    return this.moduleImports.get(id) || new Set();
-  }
-
-  isInClientTree(id: string, visited = new Set<string>()): boolean {
-    // Avoid circular dependencies
-    if (visited.has(id)) return false;
-    visited.add(id);
-
-    // Direct client module
-    if (this.isClientModule(id)) {
-      logGraph("🎯 %s is a direct client module", id);
-      return true;
-    }
-
-    // Check if any importers are in client tree
-    const importers = this.getImporters(id);
-    if (importers.size === 0) {
-      logGraph("❌ %s has no importers, not in client tree", id);
-      return false;
-    }
-
-    for (const importer of importers) {
-      if (this.isInClientTree(importer, visited)) {
-        logGraph("✅ %s is in client tree via %s", id, importer);
-        return true;
-      }
-    }
-
-    logGraph("❌ %s is not in client tree", id);
-    return false;
-  }
-
-  debug(): void {
-    logGraph("📊 Module Graph Status:");
-    logGraph("Client Modules: %d", this.clientModules.size);
-    logGraph("Module Import Records: %d", this.moduleImports.size);
-    logGraph("Module Importer Records: %d", this.moduleImporters.size);
-
-    logGraph("Client Modules:");
-    for (const mod of this.clientModules) {
-      logGraph(" - %s", mod);
-    }
-  }
-}
 
 export function virtualizedSSRPlugin({
   projectRootDir,
@@ -161,10 +66,8 @@ export function virtualizedSSRPlugin({
     projectRootDir,
   );
 
-  const moduleGraph = new SSRModuleGraph();
   const virtualSsrDeps = new Map<string, string>();
   const depPrefixMap = new Map<string, string>();
-  const resolvedIds = new Map<string, string>();
 
   async function resolvePackageDeps(dep: string): Promise<Map<string, string>> {
     logResolve("🔍 Resolving package dependencies for: %s", dep);
@@ -245,6 +148,68 @@ export function virtualizedSSRPlugin({
     return mappings;
   }
 
+  // Helper function to check if a path is in node_modules
+  function isNodeModules(id: string): boolean {
+    return id.includes("node_modules");
+  }
+
+  // Helper function to process imports in a code string
+  async function processImports(
+    context: any,
+    code: string,
+    id: string,
+    isClientModule: boolean,
+  ): Promise<{ code: string; map: any } | null> {
+    if (!isClientModule) {
+      return null;
+    }
+
+    await init;
+    const [imports] = parse(code);
+    const ms = new MagicString(code);
+    let modified = false;
+
+    for (const i of imports) {
+      const raw = code.slice(i.s, i.e);
+      // Check if it's in our known deps mapping
+      const prefix = depPrefixMap.get(raw);
+
+      if (prefix) {
+        logTransform("🔁 Rewriting %s -> %s in %s", raw, prefix, id);
+        ms.overwrite(i.s, i.e, prefix);
+        modified = true;
+      } else {
+        // Not in our mapping, use context.resolve() to check if it's a non-node_modules import
+        try {
+          const resolved = await context.resolve(raw, id);
+          if (resolved && !isNodeModules(resolved.id)) {
+            const virtualId = SSR_NAMESPACE + raw;
+            logTransform(
+              "🔁 Rewriting non-node_modules import %s -> %s in %s",
+              raw,
+              virtualId,
+              id,
+            );
+            ms.overwrite(i.s, i.e, virtualId);
+            modified = true;
+          }
+        } catch (err) {
+          logError("❌ Failed to resolve %s from %s: %O", raw, id, err);
+        }
+      }
+    }
+
+    if (modified) {
+      logTransform("✏️ Modified code in: %s", id);
+      return {
+        code: ms.toString(),
+        map: ms.generateMap({ hires: true }),
+      };
+    }
+
+    return null;
+  }
+
   return {
     name: "rwsdk:virtualized-ssr",
 
@@ -311,37 +276,6 @@ export function virtualizedSSRPlugin({
       logInfo("✅ Registered %d SSR virtual aliases", virtualSsrDeps.size);
     },
 
-    resolveId(source, importer, options) {
-      if (!importer) return null;
-
-      logTrace("🔍 resolveId called: %s from %s", source, importer);
-
-      // Record the relationship in our graph when it gets resolved
-      const resolvePromise = this.resolve(source, importer, {
-        skipSelf: true,
-        ...options,
-      });
-
-      if (resolvePromise) {
-        resolvePromise.then((resolved) => {
-          if (resolved) {
-            logTrace(
-              "🔗 Resolved %s -> %s (from %s)",
-              source,
-              resolved.id,
-              importer,
-            );
-            moduleGraph.addImport(importer, resolved.id);
-            resolvedIds.set(`${importer}:${source}`, resolved.id);
-          } else {
-            logTrace("⚠️ Failed to resolve %s from %s", source, importer);
-          }
-        });
-      }
-
-      return null; // Let Vite handle the actual resolution
-    },
-
     async transform(code, id, options) {
       logTransform("🔄 Transform: %s", id);
 
@@ -350,6 +284,8 @@ export function virtualizedSSRPlugin({
         return null;
       }
 
+      // Check if this is a "use client" module
+      let isClientModule = false;
       if (
         id.endsWith(".ts") ||
         id.endsWith(".js") ||
@@ -360,57 +296,43 @@ export function virtualizedSSRPlugin({
         const firstLine = code.split("\n", 1)[0]?.trim();
         if (firstLine === "'use client'" || firstLine === '"use client"') {
           logTransform("🎯 Found SSR entrypoint: %s", id);
-          moduleGraph.addClientModule(id);
-
-          // Debug current graph status periodically
-          moduleGraph.debug();
+          isClientModule = true;
         }
       }
 
-      // Check if this module is in the client tree using our custom graph
-      const shouldRewrite = moduleGraph.isInClientTree(id);
+      return processImports(this, code, id, isClientModule);
+    },
 
-      if (!shouldRewrite) {
-        logTransform("⏭️ No rewrite needed for: %s", id);
+    async load(id) {
+      // Only handle prefixed IDs
+      if (!id.startsWith(SSR_NAMESPACE)) {
         return null;
       }
 
-      logTransform("✅ Module is in client tree, applying rewrites: %s", id);
+      logLoad("📥 Loading virtualized module: %s", id);
 
-      await init;
-      const [imports] = parse(code);
-      const ms = new MagicString(code);
-      let modified = false;
+      // Strip the prefix to get the real ID
+      const realId = id.slice(SSR_NAMESPACE.length);
+      logLoad("🔍 Real module ID: %s", realId);
 
-      for (const i of imports) {
-        const raw = code.slice(i.s, i.e);
-        const prefix = depPrefixMap.get(raw);
-
-        if (prefix) {
-          logTransform("🔁 Rewriting %s -> %s in %s", raw, prefix, id);
-          ms.overwrite(i.s, i.e, prefix);
-          modified = true;
-        } else {
-          logTransform("⏭️ No rewrite mapping for %s in %s", raw, id);
-        }
+      // Resolve the module
+      const resolved = await this.resolve(realId);
+      if (!resolved) {
+        logError("❌ Failed to resolve real module: %s", realId);
+        return null;
       }
 
-      if (modified) {
-        logTransform("✏️ Modified code in: %s", id);
-        return {
-          code: ms.toString(),
-          map: ms.generateMap({ hires: true }),
-        };
-      }
+      // Load the content
+      let code = await fs.readFile(resolved.id, "utf-8");
 
-      logTransform("⏭️ No modifications made to: %s", id);
-      return null;
+      // Process the imports in this module as if it's a client module
+      const result = await processImports(this, code, resolved.id, true);
+
+      return result || { code };
     },
 
     buildEnd() {
       logInfo("🏁 Build ended");
-      logInfo("📊 Final module graph statistics:");
-      moduleGraph.debug();
     },
   };
 }
