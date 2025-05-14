@@ -51,8 +51,8 @@ import { init, parse } from "es-module-lexer";
 import MagicString from "magic-string";
 import debug from "debug";
 import { glob } from "glob";
-import { $ } from "../lib/$.mjs";
 import { fileURLToPath } from "url";
+import { parse as sgParse, Lang as SgLang } from "@ast-grep/napi";
 
 const SSR_NAMESPACE = "virtual:rwsdk:ssr:";
 const log = debug("rwsdk:vite:virtualized-ssr");
@@ -72,6 +72,96 @@ const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const ssrResolver = enhancedResolve.create.sync({
   conditionNames: ["workerd", "edge", "import", "default"],
 });
+
+// Define import patterns directly in code (from allImportsRule.yml)
+const IMPORT_PATTERNS = [
+  // Static Imports
+  'import { $$$ } from "$MODULE"',
+  "import { $$$ } from '$MODULE'",
+  'import $DEFAULT from "$MODULE"',
+  "import $DEFAULT from '$MODULE'",
+  'import * as $NS from "$MODULE"',
+  "import * as $NS from '$MODULE'",
+  'import "$MODULE"',
+  "import '$MODULE'",
+
+  // Static Re-exports
+  'export { $$$ } from "$MODULE"',
+  "export { $$$ } from '$MODULE'",
+  'export * from "$MODULE"',
+  "export * from '$MODULE'",
+
+  // Dynamic Imports
+  'import("$MODULE")',
+  "import('$MODULE')",
+  "import(`$MODULE`)",
+];
+
+/**
+ * Extract bare imports from code content using ast-grep
+ * @param content The source code content to parse
+ * @param lang The language to use for parsing
+ * @param logFn Optional logging function for debugging
+ * @returns A set of bare import paths
+ */
+async function extractBareImports(
+  content: string,
+  lang: typeof SgLang.TypeScript | typeof SgLang.Tsx,
+  logFn = logTransform,
+): Promise<Set<string>> {
+  const imports = new Set<string>();
+
+  try {
+    // Parse the file with ast-grep
+    const root = sgParse(lang, content);
+
+    // Try each pattern against the content
+    for (const pattern of IMPORT_PATTERNS) {
+      try {
+        const matches = root.root().findAll(pattern);
+
+        for (const match of matches) {
+          // Get the module name from the capture
+          const moduleCapture = match.getMatch("MODULE");
+
+          if (moduleCapture) {
+            // Get the module text exactly as it appears in the code
+            // The AST node text includes the quotes for string literals
+            const moduleText = moduleCapture.text();
+
+            // AST-grep returns the entire string literal including quotes
+            // e.g., '"react"' or "'lodash'"
+            // We need to strip these quotes to get the actual module name
+            let importPath = moduleText;
+            if (
+              (moduleText.startsWith('"') && moduleText.endsWith('"')) ||
+              (moduleText.startsWith("'") && moduleText.endsWith("'")) ||
+              (moduleText.startsWith("`") && moduleText.endsWith("`"))
+            ) {
+              importPath = moduleText.slice(1, -1);
+            }
+
+            // Only include bare imports (not relative paths, absolute paths, or virtual modules)
+            if (
+              !importPath.startsWith(".") &&
+              !importPath.startsWith("/") &&
+              !importPath.startsWith("virtual:")
+            ) {
+              // Add the bare import path to our set
+              imports.add(importPath);
+            }
+          }
+        }
+      } catch (err) {
+        logError("❌ Error processing pattern %s: %O", pattern, err);
+      }
+    }
+  } catch (err) {
+    logError("❌ Error parsing content: %O", err);
+  }
+
+  return imports;
+}
 
 export function virtualizedSSRPlugin({
   projectRootDir,
@@ -182,66 +272,48 @@ export function virtualizedSSRPlugin({
   }
 
   /**
-   * Extracts bare imports from a file using es-module-lexer
+   * Scans source files using ast-grep/napi to find bare imports
    */
-  async function extractBareImports(filePath: string): Promise<Set<string>> {
+  async function scanWithAstGrep(srcDir: string): Promise<Set<string>> {
     const imports = new Set<string>();
 
     try {
-      // Read the file content
-      const content = await fs.readFile(filePath, "utf-8");
+      logScan("🔍 Using ast-grep/napi to scan for imports");
 
-      // Initialize es-module-lexer (if not already initialized)
-      await init;
+      // Use glob to find all JS/TS files
+      const files = await glob(`${srcDir}/**/*.{js,jsx,ts,tsx,mjs,mts}`, {
+        absolute: true,
+      });
+      logScan("📊 Found %d files to scan", files.length);
 
-      // Parse imports from the file
-      const [moduleImports] = parse(content);
+      for (const file of files) {
+        try {
+          // Read the file content
+          const content = await fs.readFile(file, "utf-8");
 
-      // Process each import
-      for (const imp of moduleImports) {
-        const importPath = content.slice(imp.s, imp.e);
+          // Determine language based on file extension
+          const ext = path.extname(file).toLowerCase();
+          const lang =
+            ext === ".tsx" || ext === ".jsx" ? SgLang.Tsx : SgLang.TypeScript;
 
-        // Skip relative/absolute imports, only process bare imports
-        if (
-          importPath.startsWith(".") ||
-          importPath.startsWith("/") ||
-          importPath.startsWith("virtual:")
-        ) {
-          continue;
+          // Extract bare imports from this file
+          const fileImports = await extractBareImports(content, lang, logScan);
+
+          // Add to our collective set
+          for (const importPath of fileImports) {
+            imports.add(importPath);
+          }
+        } catch (err) {
+          logError("❌ Error scanning file %s: %O", file, err);
         }
-
-        imports.add(importPath);
       }
+
+      // Process and resolve all the unique bare imports we found
+      await processBareImports(imports);
+
+      logScan("📊 Found %d unique bare imports", imports.size);
     } catch (err) {
-      logError("❌ Failed to extract imports from %s: %O", filePath, err);
-    }
-
-    return imports;
-  }
-
-  /**
-   * Scans source directory using glob + es-module-lexer to find bare imports
-   */
-  async function scanWithGlobAndLexer(srcDir: string): Promise<Set<string>> {
-    const imports = new Set<string>();
-
-    // Get all JS/TS files in src directory
-    const files = await glob("**/*.{js,jsx,ts,tsx,mjs,mts}", {
-      cwd: srcDir,
-      absolute: true,
-    });
-
-    logScan("📊 Found %d files to scan with es-module-lexer", files.length);
-
-    // Initialize es-module-lexer
-    await init;
-
-    // Process all files to extract bare imports
-    for (const file of files) {
-      const fileImports = await extractBareImports(file);
-      for (const importPath of fileImports) {
-        imports.add(importPath);
-      }
+      logError("❌ Error during ast-grep scan: %O", err);
     }
 
     return imports;
@@ -255,13 +327,9 @@ export function virtualizedSSRPlugin({
       const srcDir = path.join(projectRootDir, "src");
       logScan("📂 Scanning directory: %s", srcDir);
 
-      // Use glob + es-module-lexer for scanning
-      logScan("✅ Using glob + es-module-lexer for import scanning");
-      const bareImports = await scanWithGlobAndLexer(srcDir);
-      logScan("📊 Found %d unique bare imports", bareImports.size);
-
-      // Process and resolve all the bare imports
-      await processBareImports(bareImports);
+      logScan("✅ Using ast-grep for import scanning");
+      // This will find all imports and add them to virtualSsrDeps internally
+      await scanWithAstGrep(srcDir);
 
       // Copy dependencies to the return mapping
       for (const [vId, real] of virtualSsrDeps.entries()) {
@@ -279,8 +347,19 @@ export function virtualizedSSRPlugin({
     logWatch("🔄 Processing file change: %s", filePath);
 
     try {
-      // Extract bare imports from the changed file
-      const bareImports = await extractBareImports(filePath);
+      // Extract bare imports using ast-grep/napi directly on the changed file
+      logWatch("🔍 Using ast-grep/napi to process changed file");
+
+      // Read the file content
+      const content = await fs.readFile(filePath, "utf-8");
+
+      // Determine language based on file extension
+      const ext = path.extname(filePath).toLowerCase();
+      const lang =
+        ext === ".tsx" || ext === ".jsx" ? SgLang.Tsx : SgLang.TypeScript;
+
+      // Use our shared function to extract bare imports
+      const bareImports = await extractBareImports(content, lang, logWatch);
 
       if (bareImports.size === 0) {
         logWatch("⏭️ No bare imports found in changed file");
