@@ -36,7 +36,7 @@ import { Aside, Steps, FileTree } from '@astrojs/starlight/components';
 
 2. [Install TailwindCSS](/guides/frontend/tailwind).
 3. Add `baseUrl` to your `tsconfig.json`:
-    ```json showLineNumbers={false} ""baseUrl": ".","
+    ```json title="tsconfig.json" showLineNumbers={false} ins="baseUrl": ".","
     {
       "compilerOptions": {
         "baseUrl": ".",
@@ -47,7 +47,7 @@ import { Aside, Steps, FileTree } from '@astrojs/starlight/components';
     }
     ```
 4. Add resolve alias config to `vite.config.ts`:
-    ```ts
+    ```ts title="vite.config.ts" {1, 8-12}
     import path from "path"
     import tailwindcss from "@tailwindcss/vite"
     import react from "@vitejs/plugin-react"
@@ -86,6 +86,12 @@ import { Aside, Steps, FileTree } from '@astrojs/starlight/components';
 
 <Aside type="caution" title="React Server Components">
 By default, all pages and components within Redwood are server components. However, most of the ShadCN components require reactivity. Therefore, you may need to add `use client` to the top of your component file.
+</Aside>
+
+<Aside type="caution" title="lib/utils path">
+Even though we defined our `lib/utils` directory in the `components.json` file, as `"lib": "@/app/lib", it still still install the `lib` folder in the `src` directory (or `@`). You'll need to manually move the folder to the `app` directory.
+
+Installing components through the shadcn/ui CLI should use the correct paths, however, if you're copying and pasting code from the shadcn/ui website, you may need to update the import paths.
 </Aside>
 
 ## Further reading
