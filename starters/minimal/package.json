@@ -36,7 +36,8 @@
     "onlyBuiltDependencies": [
       "esbuild",
       "sharp",
-      "workerd"
+      "workerd",
+      "@ast-grep/cli"
     ]
   }
 }

@@ -50,6 +50,8 @@ import enhancedResolve from "enhanced-resolve";
 import { init, parse } from "es-module-lexer";
 import MagicString from "magic-string";
 import debug from "debug";
+import { glob } from "glob";
+import { $ } from "../lib/$.mjs";
 
 const SSR_NAMESPACE = "virtual:rwsdk:ssr:";
 const log = debug("rwsdk:vite:virtualized-ssr");
@@ -59,8 +61,9 @@ const logError = log.extend("error");
 const logResolve = log.extend("resolve");
 const logTransform = log.extend("transform");
 const logLoad = log.extend("load");
-const logVirtualIds = log.extend("virtual-ids");
 const logModuleIds = log.extend("module-ids");
+const logScan = log.extend("scan");
+const logWatch = log.extend("watch");
 
 const ssrResolver = enhancedResolve.create.sync({
   conditionNames: ["workerd", "edge", "import", "default"],
@@ -82,6 +85,7 @@ export function virtualizedSSRPlugin({
   const virtualSsrDeps = new Map<string, string>();
   const depPrefixMap = new Map<string, string>();
   const moduleIdMap = new Map<string, string>();
+  let viteServer: any = null;
 
   // Generate a stable virtual module ID without exposing file system paths
   function getVirtualModuleId(fullPath: string): string {
@@ -100,105 +104,341 @@ export function virtualizedSSRPlugin({
     return fullPath;
   }
 
-  async function resolvePackageDeps(dep: string): Promise<Map<string, string>> {
-    logResolve("🔍 Resolving package dependencies for: %s", dep);
-    logResolve(
-      "   Using resolver with conditions: workerd, edge, import, default",
-    );
+  /**
+   * Resolves a bare import and adds it to our dependency mappings
+   * @returns true if a new dependency was resolved and added
+   */
+  async function resolveBareImport(importPath: string): Promise<boolean> {
+    // Skip if already in our mappings
+    if (depPrefixMap.has(importPath)) {
+      return false;
+    }
 
-    const mappings = new Map<string, string>();
+    logResolve("🔍 Resolving bare import: %s", importPath);
+
     try {
-      const entry = ssrResolver(projectRootDir, dep);
+      const resolved = ssrResolver(projectRootDir, importPath);
 
-      if (!entry) {
-        logResolve("⚠️ Could not resolve entry for %s", dep);
-        return mappings;
+      if (!resolved) {
+        logResolve("⚠️ Could not resolve: %s", importPath);
+        return false;
       }
 
-      logResolve("✅ Resolved entry for %s: %s", dep, entry);
+      // Create virtual ID and add to mappings
+      const virtualId = SSR_NAMESPACE + importPath;
+      virtualSsrDeps.set(virtualId, resolved);
 
-      // Find the root package.json
-      let dir = path.dirname(entry);
-      logResolve("📂 Starting package.json search from: %s", dir);
+      // Add to prefix map for rewriting imports
+      depPrefixMap.set(importPath, virtualId);
 
-      while (dir !== projectRootDir) {
-        const pkgJsonPath = path.join(dir, "package.json");
-        logResolve("📦 Looking for package.json at: %s", pkgJsonPath);
+      logResolve("✅ Resolved %s -> %s", importPath, resolved);
+      return true;
+    } catch (err) {
+      logError("❌ Failed to resolve %s: %O", importPath, err);
+      return false;
+    }
+  }
 
-        try {
-          await fs.access(pkgJsonPath);
-          const raw = await fs.readFile(pkgJsonPath, "utf-8");
-          const pkg = JSON.parse(raw);
-          logResolve("📦 Found package.json for %s", dep);
-          logResolve(
-            "   Name: %s, Version: %s",
-            pkg.name || "unknown",
-            pkg.version || "unknown",
-          );
+  /**
+   * Updates Vite config with new dependencies and triggers optimization
+   */
+  function updateAndOptimize(): void {
+    if (!viteServer) {
+      logInfo("⚠️ Vite server not available, skipping optimization");
+      return;
+    }
 
-          // Resolve root entry
-          const virtualId = SSR_NAMESPACE + dep;
-          mappings.set(virtualId, entry);
-          logResolve("➕ Mapping %s -> %s", virtualId, entry);
+    logInfo("🔄 Updating Vite config with dependencies");
 
-          // Track rewrite mapping
-          depPrefixMap.set(dep, virtualId);
-          logResolve("📝 Added rewrite mapping %s -> %s", dep, virtualId);
+    // Update optimizeDeps and alias
+    updateViteConfig();
 
-          // Resolve exports subpaths
-          if (typeof pkg.exports === "object" && pkg.exports !== null) {
-            const exportKeys = Object.keys(pkg.exports);
-            logResolve(
-              "📦 Processing exports for %s: Found %d export paths",
-              dep,
-              exportKeys.length,
-            );
+    // Trigger re-optimization
+    viteServer.optimizeDeps();
+    logInfo("✅ Triggered dependencies re-optimization");
+  }
 
-            for (const key of exportKeys) {
-              if (!key.startsWith("./") || key === "./package.json") {
-                logResolve("⏭️ Skipping export path: %s", key);
-                continue;
-              }
+  /**
+   * Process a collection of bare imports, resolving and adding them to mappings
+   * @returns true if any new dependencies were added
+   */
+  async function processBareImports(
+    imports: Set<string> | string[],
+  ): Promise<boolean> {
+    let newDepsFound = false;
 
-              const sub = key.slice(2); // './infinite' -> 'infinite'
-              const full = `${dep}/${sub}`;
-              logResolve("🔍 Processing export subpath: %s → %s", key, full);
+    for (const importPath of imports) {
+      const resolved = await resolveBareImport(importPath);
+      if (resolved) {
+        newDepsFound = true;
+      }
+    }
 
-              logResolve("🔍 Resolving subpath %s from %s", "./" + sub, dir);
-              const resolved = ssrResolver(dir, "./" + sub);
+    return newDepsFound;
+  }
 
-              const vId = SSR_NAMESPACE + full;
-              if (resolved) {
-                mappings.set(vId, resolved);
-                depPrefixMap.set(full, vId);
-                logResolve("➕ Mapping %s -> %s", vId, resolved);
-              } else {
-                logResolve("⚠️ Failed to resolve %s", "./" + sub);
-              }
-            }
-          } else {
-            logResolve("📦 No exports field in package.json for %s", dep);
-          }
+  /**
+   * Extracts bare imports from a file using es-module-lexer
+   */
+  async function extractBareImports(filePath: string): Promise<Set<string>> {
+    const imports = new Set<string>();
 
-          break;
-        } catch (err) {
-          logResolve("⚠️ No package.json at %s, moving up", pkgJsonPath);
-          dir = path.dirname(dir);
+    try {
+      // Read the file content
+      const content = await fs.readFile(filePath, "utf-8");
+
+      // Initialize es-module-lexer (if not already initialized)
+      await init;
+
+      // Parse imports from the file
+      const [moduleImports] = parse(content);
+
+      // Process each import
+      for (const imp of moduleImports) {
+        const importPath = content.slice(imp.s, imp.e);
+
+        // Skip relative/absolute imports, only process bare imports
+        if (
+          importPath.startsWith(".") ||
+          importPath.startsWith("/") ||
+          importPath.startsWith("virtual:")
+        ) {
+          continue;
         }
+
+        imports.add(importPath);
       }
     } catch (err) {
-      logError("❌ Failed to resolve %s: %O", dep, err);
+      logError("❌ Failed to extract imports from %s: %O", filePath, err);
     }
 
-    logResolve("📊 Resolved %d mappings for %s", mappings.size, dep);
-    if (mappings.size > 0) {
-      logResolve("📋 Summary of mappings for %s:", dep);
-      for (const [vId, real] of mappings.entries()) {
-        logResolve("   %s → %s", vId, real);
+    return imports;
+  }
+
+  /**
+   * Scans source files using ast-grep to find bare imports
+   */
+  async function scanWithAstGrep(srcDir: string): Promise<Set<string>> {
+    const imports = new Set<string>();
+
+    // Try multiple patterns to cover different import styles
+    const patterns = [
+      "import { $$ } from '$importPath'", // named imports
+      "import $name from '$importPath'", // default import
+      "import * as $name from '$importPath'", // namespace import
+      "import '$importPath'", // side-effect import
+      "export * from '$importPath'", // re-export all
+      "export { $$ } from '$importPath'", // named re-exports
+    ];
+
+    for (const pattern of patterns) {
+      try {
+        logScan("🔍 Running ast-grep with pattern: %s", pattern);
+
+        const result =
+          await $`npx ast-grep run -p "${pattern}" --json=compact --lang=tsx ${srcDir}`.catch(
+            (err: Error) => {
+              logError(
+                "❌ Error running ast-grep with pattern %s: %O",
+                pattern,
+                err,
+              );
+              return { stdout: "[]" };
+            },
+          );
+
+        const matches = JSON.parse(result.stdout || "[]");
+        logScan(
+          "📊 Found %d potential matches with pattern: %s",
+          matches.length,
+          pattern,
+        );
+
+        // Extract bare imports from the matches
+        for (const match of matches) {
+          if (!match.capture || !match.capture.importPath) continue;
+
+          const importPath = match.capture.importPath;
+
+          // Skip relative/absolute imports, only process bare imports
+          if (importPath.startsWith('"') || importPath.startsWith("'")) {
+            // Remove quotes from the import path
+            const cleanImportPath = importPath.slice(1, -1);
+
+            if (
+              cleanImportPath.startsWith(".") ||
+              cleanImportPath.startsWith("/") ||
+              cleanImportPath.startsWith("virtual:")
+            ) {
+              continue;
+            }
+
+            imports.add(cleanImportPath);
+          }
+        }
+      } catch (err) {
+        logError(
+          "❌ Error processing ast-grep results for pattern %s: %O",
+          pattern,
+          err,
+        );
       }
     }
 
+    return imports;
+  }
+
+  /**
+   * Fallback method to scan files using es-module-lexer
+   */
+  async function scanWithEsModuleLexer(srcDir: string): Promise<Set<string>> {
+    const imports = new Set<string>();
+
+    // Get all JS/TS files in src directory
+    const files = await glob("**/*.{js,jsx,ts,tsx,mjs,mts}", {
+      cwd: srcDir,
+      absolute: true,
+    });
+
+    logScan("📊 Found %d files to scan with es-module-lexer", files.length);
+
+    // Initialize es-module-lexer
+    await init;
+
+    // Process all files to extract bare imports
+    for (const file of files) {
+      const fileImports = await extractBareImports(file);
+      for (const importPath of fileImports) {
+        imports.add(importPath);
+      }
+    }
+
+    return imports;
+  }
+
+  async function resolvePackageDeps(): Promise<Map<string, string>> {
+    logResolve("🔍 Scanning src directory for bare imports");
+    const mappings = new Map<string, string>();
+
+    try {
+      const srcDir = path.join(projectRootDir, "src");
+      logScan("📂 Scanning directory: %s", srcDir);
+
+      // Try using ast-grep for scanning (it's best for finding all import patterns)
+      try {
+        logScan("✅ Using npx ast-grep for import scanning");
+        const bareImports = await scanWithAstGrep(srcDir);
+        logScan(
+          "📊 Found %d unique bare imports with ast-grep",
+          bareImports.size,
+        );
+
+        // Process and resolve all the bare imports
+        await processBareImports(bareImports);
+      } catch (astGrepError) {
+        // If ast-grep fails, fall back to es-module-lexer
+        logError(
+          "❌ ast-grep failed, falling back to es-module-lexer: %O",
+          astGrepError,
+        );
+        const bareImports = await scanWithEsModuleLexer(srcDir);
+        logScan(
+          "📊 Found %d unique bare imports with es-module-lexer",
+          bareImports.size,
+        );
+
+        // Process and resolve all the bare imports
+        await processBareImports(bareImports);
+      }
+
+      // Copy dependencies to the return mapping
+      for (const [vId, real] of virtualSsrDeps.entries()) {
+        mappings.set(vId, real);
+      }
+    } catch (err) {
+      logError("❌ Error scanning src directory: %O", err);
+    }
+
+    logResolve("📊 Found %d dependencies during scan", mappings.size);
     return mappings;
+  }
+
+  async function processNewFile(filePath: string): Promise<void> {
+    logWatch("🔄 Processing file change: %s", filePath);
+
+    try {
+      // Extract bare imports from the changed file
+      const bareImports = await extractBareImports(filePath);
+
+      if (bareImports.size === 0) {
+        logWatch("⏭️ No bare imports found in changed file");
+        return;
+      }
+
+      logWatch("📊 Found %d bare imports in changed file", bareImports.size);
+
+      // Process the imports and check if any new ones were added
+      const newDepsFound = await processBareImports(bareImports);
+
+      // If new dependencies were found, update Vite config
+      if (newDepsFound && viteServer) {
+        logWatch("🔄 New dependencies found, updating configuration");
+        updateAndOptimize();
+      }
+    } catch (err) {
+      logError("❌ Failed to process file change %s: %O", filePath, err);
+    }
+  }
+
+  function updateViteConfig(): void {
+    if (!viteServer || !viteServer.config) {
+      logError("⚠️ Cannot update Vite config, server not available");
+      return;
+    }
+
+    const config = viteServer.config;
+
+    // Update resolve.alias
+    config.resolve ??= {};
+    config.resolve.alias ??= [];
+
+    if (!Array.isArray(config.resolve.alias)) {
+      const aliasObj = config.resolve.alias;
+      config.resolve.alias = Object.entries(aliasObj).map(
+        ([find, replacement]) => ({ find, replacement }),
+      );
+    }
+
+    // Clear existing aliases for our namespace
+    config.resolve.alias = config.resolve.alias.filter(
+      (alias: any) =>
+        typeof alias.find !== "object" ||
+        !String(alias.find).includes(SSR_NAMESPACE),
+    );
+
+    // Add all current virtual SSR deps as aliases
+    for (const [vId, realPath] of virtualSsrDeps) {
+      config.resolve.alias.push({
+        find: new RegExp(`^${vId.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")}$`),
+        replacement: realPath,
+      });
+    }
+
+    // Update optimizeDeps
+    config.optimizeDeps ??= {};
+    config.optimizeDeps.include ??= [];
+
+    // Add all our virtual deps to optimizeDeps.include
+    for (const vId of virtualSsrDeps.keys()) {
+      if (!config.optimizeDeps.include.includes(vId)) {
+        config.optimizeDeps.include.push(vId);
+      }
+    }
+
+    logInfo(
+      "✅ Updated Vite config with %d SSR virtual aliases",
+      virtualSsrDeps.size,
+    );
   }
 
   // Helper function to check if a path is in node_modules
@@ -231,51 +471,80 @@ export function virtualizedSSRPlugin({
 
     for (const i of imports) {
       const raw = code.slice(i.s, i.e);
-      // Check if it's in our known deps mapping
-      const prefix = depPrefixMap.get(raw);
 
-      if (prefix) {
-        logTransform("🔄 Found dependency import: %s → %s", raw, prefix);
-        ms.overwrite(i.s, i.e, prefix);
-        modified = true;
-      } else {
-        // Not in our mapping, use context.resolve() to check if it's a non-node_modules import
-        try {
-          logTransform("🔍 Resolving import: %s from %s", raw, id);
+      try {
+        // First check if it's in our known deps mapping
+        const prefix = depPrefixMap.get(raw);
+
+        if (prefix) {
+          logTransform(
+            "🔄 Found mapped dependency import: %s → %s",
+            raw,
+            prefix,
+          );
+          ms.overwrite(i.s, i.e, prefix);
+          modified = true;
+        } else if (
+          !raw.startsWith(".") &&
+          !raw.startsWith("/") &&
+          !raw.startsWith("virtual:")
+        ) {
+          // This is a bare import not in our mapping, try to resolve it on-the-fly
+          logTransform(
+            "🔍 Attempting to resolve unmapped bare import: %s",
+            raw,
+          );
+
+          try {
+            const resolved = ssrResolver(projectRootDir, raw);
+
+            if (resolved) {
+              // Create virtual ID and add to mappings
+              const virtualId = SSR_NAMESPACE + raw;
+              virtualSsrDeps.set(virtualId, resolved);
+
+              // Add to prefix map for rewriting imports
+              depPrefixMap.set(raw, virtualId);
+
+              // Update Vite config if we have a server
+              if (viteServer) {
+                updateViteConfig();
+                // Trigger optimization in development mode
+                viteServer.optimizeDeps();
+              }
+
+              logTransform("✅ Resolved on-the-fly: %s → %s", raw, virtualId);
+              ms.overwrite(i.s, i.e, virtualId);
+              modified = true;
+            }
+          } catch (err) {
+            logError("❌ Failed to resolve bare import %s: %O", raw, err);
+          }
+        } else {
+          // For relative/absolute imports
           const resolved = await context.resolve(raw, id);
 
-          if (!resolved) {
-            logTransform("⚠️ Failed to resolve import: %s", raw);
-            continue;
-          }
-
-          logTransform("📍 Resolved to: %s", resolved.id);
-
-          if (!isDep(resolved.id)) {
-            // For imports that start with '.', we need to handle the resolution carefully
+          if (resolved && !isDep(resolved.id)) {
             const moduleId = getVirtualModuleId(resolved.id);
-            // Add the prefix to create the final virtual ID
             const virtualId = SSR_NAMESPACE + moduleId;
 
             logTransform(
-              "🔁 Rewriting import: %s → %s (resolved: %s → module ID: %s)",
+              "🔁 Rewriting relative/absolute import: %s → %s",
               raw,
               virtualId,
-              resolved.id,
-              moduleId,
             );
             ms.overwrite(i.s, i.e, virtualId);
             modified = true;
           } else {
             logTransform(
-              "⏭️ Skipping dependency import: %s (resolved to %s)",
+              "⏭️ Skipping import: %s (resolved to %s)",
               raw,
-              resolved.id,
+              resolved?.id || "unresolved",
             );
           }
-        } catch (err) {
-          logError("❌ Failed to resolve %s from %s: %O", raw, id, err);
         }
+      } catch (err) {
+        logError("❌ Error processing import %s: %O", raw, err);
       }
     }
 
@@ -293,6 +562,33 @@ export function virtualizedSSRPlugin({
 
   return {
     name: "rwsdk:virtualized-ssr",
+
+    configureServer(server) {
+      viteServer = server;
+
+      // Set up watcher for src directory
+      const srcDir = path.join(projectRootDir, "src");
+      logWatch("👀 Setting up file watcher for: %s", srcDir);
+
+      // Watch for file changes in src directory
+      server.watcher.on("add", (path: string) => {
+        if (
+          path.startsWith(srcDir) &&
+          /\.(js|jsx|ts|tsx|mjs|mts)$/.test(path)
+        ) {
+          processNewFile(path);
+        }
+      });
+
+      server.watcher.on("change", (path: string) => {
+        if (
+          path.startsWith(srcDir) &&
+          /\.(js|jsx|ts|tsx|mjs|mts)$/.test(path)
+        ) {
+          processNewFile(path);
+        }
+      });
+    },
 
     async configEnvironment(env, config) {
       logInfo("⚙️ Configuring environment: %s", env);
@@ -318,29 +614,15 @@ export function virtualizedSSRPlugin({
         );
       }
 
-      const pkgPath = path.join(projectRootDir, "package.json");
-      logInfo("📦 Reading package.json from: %s", pkgPath);
+      // Scan src directory for imports
+      const depsMap = await resolvePackageDeps();
 
-      const pkgRaw = await fs.readFile(pkgPath, "utf-8");
-      const pkg = JSON.parse(pkgRaw);
-      const deps = Object.keys(pkg.dependencies ?? {});
-      logInfo("📦 Found %d dependencies to process", deps.length);
-
-      for (const dep of deps) {
-        if (dep === "rwsdk") {
-          logInfo("⏭️ Skipping rwsdk package");
-          continue;
-        }
-
-        logInfo("🔍 Processing dependency: %s", dep);
-        const resolved = await resolvePackageDeps(dep);
-
-        for (const [vId, real] of resolved.entries()) {
-          virtualSsrDeps.set(vId, real);
-          logInfo("➕ Added virtual SSR dep: %s -> %s", vId, real);
-        }
+      // Add all found deps to virtualSsrDeps
+      for (const [vId, real] of depsMap.entries()) {
+        virtualSsrDeps.set(vId, real);
       }
 
+      // Add all aliases to config
       for (const [vId, realPath] of virtualSsrDeps) {
         (config.resolve as any).alias.push({
           find: new RegExp(`^${vId.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")}$`),
@@ -401,31 +683,38 @@ export function virtualizedSSRPlugin({
       const moduleId = id.slice(SSR_NAMESPACE.length);
       logLoad("🔍 Module ID: %s", moduleId);
 
-      logLoad("📂 Checking for file: %s", moduleId);
+      // Check if this is in our known dependencies
+      if (virtualSsrDeps.has(id)) {
+        const resolvedPath = virtualSsrDeps.get(id)!;
+        logLoad("✅ Using known mapping: %s → %s", id, resolvedPath);
+        try {
+          const code = await fs.readFile(resolvedPath, "utf-8");
+          logLoad(
+            "📄 Loaded %d bytes of content from resolved path",
+            code.length,
+          );
 
-      // Check if this is a file that exists
-      try {
-        await fs.access(moduleId);
-        logLoad("✅ File exists, loading content directly");
-        // Load the content directly
-        const code = await fs.readFile(moduleId, "utf-8");
-        logLoad("📄 Loaded %d bytes of content", code.length);
+          // Process the imports in this module
+          logLoad("🔄 Processing imports in resolved module");
+          const result = await processImports(this, code, resolvedPath, true);
 
-        // Process the imports in this module
-        logLoad("🔄 Processing imports in loaded module");
-        const result = await processImports(this, code, moduleId, true);
-
-        return result || { code };
-      } catch (err) {
-        // If not found as a direct file, try to resolve through Vite
-        logLoad("⚠️ File not found directly, falling back to Vite resolution");
-        const resolved = await this.resolve(moduleId);
-        if (!resolved) {
-          logError("❌ Failed to resolve module: %s", moduleId);
+          return result || { code };
+        } catch (err) {
+          logError("❌ Failed to read file at %s: %O", resolvedPath, err);
           return null;
         }
+      }
 
-        logLoad("✅ Resolved through Vite to: %s", resolved.id);
+      // Not in our mappings, try to resolve through Vite
+      logLoad("🔍 Resolving through Vite: %s", moduleId);
+      const resolved = await this.resolve(moduleId);
+      if (!resolved) {
+        logError("❌ Failed to resolve module: %s", moduleId);
+        return null;
+      }
+
+      logLoad("✅ Resolved through Vite to: %s", resolved.id);
+      try {
         // Load the content
         const code = await fs.readFile(resolved.id, "utf-8");
         logLoad("📄 Loaded %d bytes of content", code.length);
@@ -435,6 +724,9 @@ export function virtualizedSSRPlugin({
         const result = await processImports(this, code, resolved.id, true);
 
         return result || { code };
+      } catch (err) {
+        logError("❌ Failed to read file at %s: %O", resolved.id, err);
+        return null;
       }
     },
 
@@ -458,6 +750,25 @@ export function virtualizedSSRPlugin({
             resolvedPath,
           );
           return resolvedPath;
+        }
+
+        // If it's not in our known mappings but is a bare import, try to resolve it
+        if (!moduleId.startsWith("/") && !moduleId.includes(":")) {
+          try {
+            const resolved = ssrResolver(projectRootDir, moduleId);
+            if (resolved) {
+              // Add to our mappings for future use
+              virtualSsrDeps.set(source, resolved);
+              logResolve(
+                "✅ Resolved unmapped virtual module on-the-fly: %s → %s",
+                source,
+                resolved,
+              );
+              return resolved;
+            }
+          } catch (err) {
+            logError("❌ Failed to resolve %s on-the-fly: %O", moduleId, err);
+          }
         }
 
         logResolve(
