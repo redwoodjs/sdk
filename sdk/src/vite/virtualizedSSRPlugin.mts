@@ -149,8 +149,8 @@ export function virtualizedSSRPlugin({
   }
 
   // Helper function to check if a path is in node_modules
-  function isNodeModules(id: string): boolean {
-    return id.includes("node_modules");
+  function isDep(id: string): boolean {
+    return id.includes("node_modules") || id.includes(".vite");
   }
 
   // Helper function to process imports in a code string
@@ -182,7 +182,7 @@ export function virtualizedSSRPlugin({
         // Not in our mapping, use context.resolve() to check if it's a non-node_modules import
         try {
           const resolved = await context.resolve(raw, id);
-          if (resolved && !isNodeModules(resolved.id)) {
+          if (resolved && !isDep(resolved.id)) {
             const virtualId = SSR_NAMESPACE + raw;
             logTransform(
               "🔁 Rewriting non-node_modules import %s -> %s in %s",
@@ -294,7 +294,10 @@ export function virtualizedSSRPlugin({
         id.endsWith(".mjs")
       ) {
         const firstLine = code.split("\n", 1)[0]?.trim();
-        if (firstLine === "'use client'" || firstLine === '"use client"') {
+        if (
+          firstLine.startsWith("'use client'") ||
+          firstLine.startsWith('"use client"')
+        ) {
           logTransform("🎯 Found SSR entrypoint: %s", id);
           isClientModule = true;
         }
@@ -329,10 +332,6 @@ export function virtualizedSSRPlugin({
       const result = await processImports(this, code, resolved.id, true);
 
       return result || { code };
-    },
-
-    buildEnd() {
-      logInfo("🏁 Build ended");
     },
   };
 }
