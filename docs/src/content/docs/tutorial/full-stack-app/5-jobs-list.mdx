@@ -1324,6 +1324,12 @@ Now, let's go down to our `TableBody`. First we want to loop over all the applic
 </TableBody>
 ```
 
+We also need to add a `key` to our `TableRow` component. This helps React identify which items have changed, been added, or been removed.
+
+```tsx title="src/app/components/ApplicationsTable.tsx" ins={2,21} startLineNumber=22 "key={application.id}"
+<TableRow key={application.id}>
+```
+
 Now, we can start replacing the static content with dynamic content.
 
 For our application status and our `Badge` component, we can swap out the `new` text with `{application.status.status}`.
@@ -1342,7 +1348,7 @@ I'm starting to get an error within my code editor.
 
 Basically, it's saying that it's not aware of the `status` relationship.
 
-### Setting up Table Relationships
+### Using Relationships
 
 Let's go back to our `List.tsx` file. On **line 6**, we're getting all the applications from our table:
 
@@ -1391,7 +1397,7 @@ type ApplicationWithRelations = (Application & {
 
 However, Prisma has a special way to do this.
 
-```tsx
+```tsx showLineNumbers=false
 import { Prisma } from "@prisma/client"
 ...
 export type ApplicationWithRelations = Prisma.ApplicationGetPayload<{
@@ -1404,6 +1410,30 @@ export type ApplicationWithRelations = Prisma.ApplicationGetPayload<{
     }
   }
 }>
+---
+- With `export type ApplicationWithRelations` we're creating a new type called `ApplicationWithRelations`, but you could name this whatever you want.
+- We're `export`ing the type so that we can use it in other files. I like to to put this as close to my Prisma query as possible since the type is directly related to the data I'm getting back. Then, we can use this type in other components, like the `ApplicationsTable.tsx` file.
+- `Prisma` is a utility object that we're using to create a new type. This is provided by the Prisma client.
+- `ApplicationGetPayload` is a method that takes an object as an argument. The object uses the `include` property, to _include_ the data relationships.
+  - Each model has it's own `GetPayload` method. Since we're referencing the `Application` model, we're using `ApplicationGetPayload`.
+---
+```
+
+At first glance, this looks like more lines of code, but it's a lot easier to write. When trying to write it by hand with unions (`&`), you have to determine what the resulting shape of data is. In the second method, Prisma determines the shape of data for us and the `include` object looks similar our original Prisma call.
+
+For reference, this was the original Prisma query. You can see that the `include` object matches the `ApplicationGetPayload` object:
+
+```tsx title="src/app/pages/applications/List.tsx" showLineNumbers=false
+const applications = await db.application.findMany({
+  include: {
+    status: true,
+    company: {
+      include: {
+        contacts: true,
+      },
+    },
+  },
+});
 ```
 
 <Aside type="tip" title="TypeScript">
@@ -1414,7 +1444,41 @@ If this starts to feel a little overwhelming, a few things that have helped me:
     This is incredibly helpful when trying to create the type definition. You can also send the data to AI and ask it to help you create the type definition.
 </Aside>
 
-If you look at your `TableCell` again, you're probably still seeing an error 🤯
+Awesome. Let's add our `ApplicationWithRelations` at the top of our `List.tsx` file. This goes _outside_ the component definition:
+
+```tsx title="src/app/pages/applications/List.tsx" showLineNumbers=false
+import { Prisma } from "@prisma/client"
+...
+export type ApplicationWithRelations = Prisma.ApplicationGetPayload<{
+  include: {
+    status: true,
+    company: {
+      include: {
+        contacts: true
+      }
+    }
+  }
+}>
+
+const List = async () => {
+  ...
+```
+
+Now, we can use it in our `ApplicationsTable.tsx` file:
+
+```tsx title="src/app/components/ApplicationsTable.tsx" {1,6} startLineNumber=14
+import { ApplicationWithRelations } from "../pages/applications/List";
+
+const ApplicationsTable = ({
+  applications,
+}: {
+  applications: ApplicationWithRelations[];
+}) => {
+```
+
+If you look at the `TableCell` with the `status` again, you're probably _still_ seeing an error 🤯
+
+![](./images/button-variant-error.png)
 
 ```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=31
 <TableCell>
@@ -1428,7 +1492,7 @@ When we pass in the `variant` prop for our `Badge` component, it's not just look
 
 Inside our `badge` component, when we defined our `badgeVariants` for styles, it used our variant options to create a type definition. `badgeVariants` is exported from the `badge.tsx` component, making it easy to reuse and reference within our `ApplicationsTable.tsx`:
 
-```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=32 "as VariantProps<typeof badgeVariants>['variant']}"
+```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=32 ".toLowerCase()" "as VariantProps<typeof badgeVariants>['variant']}"
 <Badge variant={application.applicationStatus?.status.toLowerCase() as VariantProps<typeof badgeVariants>['variant']}>
   {application.applicationStatus?.status}
 </Badge>
@@ -1436,8 +1500,15 @@ Inside our `badge` component, when we defined our `badgeVariants` for styles, it
 - On the `application.applicationStatus?.status`, we can append `.toLowerCase()` to make sure the status is formatted correctly and always lowercase.
 - `typeof badgeVariants` - Gets the type of our `badgeVariants` configuration object, created with `cva()`. This includes all our variant definitions.
 - `VariantProps<...>` - This is a utility type from [class-variance-authority](https://cva.style/docs) that extracts the prop types. It creates a type that includes all possible variants as properties.
-- `['variant']` - This accesses just the `variant` property type from those props. In our case, it resolves to the union type: `"default" | "secondary" | "destructive" | "outline" | "applied" | "interview" | "new" | "rejected" | "offer" | null | undefined`
+- `['variant']` - This accesses the `variant` property type only from those props. In our case, it resolves to the union type: `"default" | "secondary" | "destructive" | "outline" | "applied" | "interview" | "new" | "rejected" | "offer" | null | undefined`
 ---
+```
+
+At the top of the `ApplicationsTable.tsx` file, be sure to update your imports:
+
+```tsx showLineNumbers=false "badgeVariants" {2}
+import { Badge, badgeVariants } from "./ui/badge";
+import { VariantProps } from "class-variance-authority";
 ```
 
 <Aside type="note" title="Class Variance Authority">
@@ -1500,7 +1571,7 @@ For the salary range:
 ```diff title="src/app/components/ApplicationsTable.tsx" startLineNumber=55
 <TableCell>
 -  $150,000-$250,000
-+  ${application.salaryMin}-${application.salaryMax}
++  {application.salaryMin}-{application.salaryMax}
 </TableCell>
 ```
 
@@ -1521,7 +1592,11 @@ Be sure to import `link` at the top of the file:
 import { link } from "../shared/links";
 ```
 
-You'll probably see another error. We need to do a little more setup to make this work.
+You'll probably see another error.
+
+![](./images/applications-id-link-error.png)
+
+We need to do a little more setup to make this work.
 
 In our `worker.tsx` file, let's add our route:
 
@@ -1561,64 +1636,78 @@ Perfect. Everything should check out. Try clicking on the view icon in the brows
 <summary>Final `ApplicationsTable.tsx` file</summary>
 
 ```tsx title="src/app/components/ApplicationsTable.tsx"
-import { Application, ApplicationStatus, Company, Contact } from "@prisma/client"
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "./ui/table"
-import { Avatar, AvatarFallback } from "./ui/avatar"
-import { Badge } from "./ui/badge"
-import { Icon } from "./Icon"
-import type { badgeVariants } from "./ui/badge"
-import { VariantProps } from "class-variance-authority"
-import { link } from "../shared/links"
+import { Icon } from "./Icon";
+import { Avatar, AvatarFallback } from "./ui/avatar";
+import { Badge, badgeVariants } from "./ui/badge";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./ui/table";
+import { ApplicationWithRelations } from "../pages/applications/List";
+import { VariantProps } from "class-variance-authority";
+import { link } from "../shared/links";
 
-const ApplicationsTable = ({ applications }: {
-  applications: (Application & {
-    applicationStatus: ApplicationStatus,
-    company: Company & {
-      contacts: Contact[]
-    },
-  })[]
+const ApplicationsTable = ({
+  applications,
+}: {
+  applications: ApplicationWithRelations[];
 }) => {
   return (
     <Table>
       <TableHeader>
-        <TableHead className="w-[100px]">Status</TableHead>
-        <TableHead>Date Applied</TableHead>
-        <TableHead>Job Title</TableHead>
-        <TableHead>Company</TableHead>
-        <TableHead>Contact</TableHead>
-        <TableHead>Salary Range</TableHead>
-        <TableHead></TableHead>
+        <TableRow>
+          <TableHead className="w-[100px]">Status</TableHead>
+          <TableHead>Date Applied</TableHead>
+          <TableHead>Job Title</TableHead>
+          <TableHead>Company</TableHead>
+          <TableCell className="flex items-center gap-2">
+            <Avatar>
+              <AvatarFallback>J</AvatarFallback>
+            </Avatar>
+            John Doe
+          </TableCell>
+          <TableHead>Salary Range</TableHead>
+          <TableHead></TableHead>
+        </TableRow>
       </TableHeader>
       <TableBody>
-        {applications.map(application => (
-        <TableRow>
-          <TableCell>
-              <Badge variant={application.applicationStatus?.status.toLowerCase() as VariantProps<typeof badgeVariants>['variant']}>
-                {application.applicationStatus?.status}
-              </Badge>
-          </TableCell>
+        {applications.map((application) => (
+          <TableRow>
             <TableCell>
-              {application.dateApplied?.toLocaleDateString('en-US', {
-                  year: 'numeric',
-                  month: 'long',
-                  day: 'numeric'
+              <Badge
+                variant={
+                  application.status.status.toLowerCase() as VariantProps<
+                    typeof badgeVariants
+                  >["variant"]
+                }
+              >
+                {application.status.status}
+              </Badge>
+            </TableCell>
+            <TableCell>
+              {application.dateApplied?.toLocaleDateString("en-US", {
+                year: "numeric",
+                month: "long",
+                day: "numeric",
               })}
             </TableCell>
-            <TableCell>
-              {application.jobTitle}
-            </TableCell>
-            <TableCell>
-              {application.company.name}
-            </TableCell>
+            <TableCell>{application.jobTitle}</TableCell>
+            <TableCell>{application.company.name}</TableCell>
             <TableCell className="flex items-center gap-2">
               <Avatar>
-                <AvatarFallback>{application.company.contacts[0].firstName.charAt(0).toUpperCase()}</AvatarFallback>
+                <AvatarFallback>
+                  {application.company.contacts[0].firstName
+                    .charAt(0)
+                    .toUpperCase()}
+                </AvatarFallback>
               </Avatar>
-              {application.company.contacts[0].firstName} {application.company.contacts[0].lastName}
+              {application.salaryMin}-{application.salaryMax}
             </TableCell>
-            <TableCell>
-              ${application.salaryMin}-${application.salaryMax}
-            </TableCell>
+            <TableCell>$150,000-$250,000</TableCell>
             <TableCell>
               <a href={link("/applications/:id", { id: application.id })}>
                 <Icon id="view" />
@@ -1628,10 +1717,10 @@ const ApplicationsTable = ({ applications }: {
         ))}
       </TableBody>
     </Table>
-  )
-}
+  );
+};
 
-export { ApplicationsTable }
+export { ApplicationsTable };
 ```
 </details>
 
@@ -1639,7 +1728,7 @@ export { ApplicationsTable }
 
 Now, let's go back to our `List.tsx` and tidy up a few things.
 
-On **line 27**, we can remove our `JSON.stringify` function:
+On **line 42**, we can remove our `JSON.stringify` function:
 
 ```diff title="src/app/pages/applications/List.tsx" startLineNumber=27
 - <pre>{JSON.stringify(applications, null, 2)}</pre>
@@ -1647,7 +1736,7 @@ On **line 27**, we can remove our `JSON.stringify` function:
 
 Below our table, let's add a couple of buttons. An "Archive" button on the left and another "New Application" button on the right:
 
-```tsx title="src/app/pages/applications/List.tsx" startLineNumber=28
+```tsx title="src/app/pages/applications/List.tsx" startLineNumber=42
 <div className="flex justify-between items-center">
   <Button asChild variant="secondary">
     <a href="#">
@@ -1670,17 +1759,29 @@ Below our table, let's add a couple of buttons. An "Archive" button on the left 
 ---
 ```
 
+You'll also need to import the `Icon` component at the top of the file:
+
+```tsx title="src/app/pages/applications/List.tsx" showLineNumbers=false
+import { Icon } from "@/app/components/Icon";
+```
+
 If you look at this within the browser, we're getting closer:
 
 ![](./images/application-list-table-preview.png)
 
 The `Archive` button should _link_ to a filtered view of all applications that have been archived. Let's update our link:
 
-```tsx title="src/app/pages/applications/List.tsx" startLineNumber=31
+```tsx title="src/app/pages/applications/List.tsx" startLineNumber=45
 <a href={`${link("/applications")}?status=archived`}>
   <Icon id="archive" />
   Archive
 </a>
+```
+
+Be sure to import the `link` object at the top of the file:
+
+```tsx title="src/app/pages/applications/List.tsx" showLineNumbers=false
+import { link } from "@/app/shared/links";
 ```
 
 This is really a filtered view of our existing `/applications` page, so we can use the existing `/applications` link. Then, we're attaching the query parameter: `?status=archived`. We don't need to do anything extra to make this link work, but we do need to adjust our List page to account for the `status` query parameter. We'll come back to this!
@@ -1710,6 +1811,14 @@ prefix("/applications", [
 - Temporarily, we'll display an `<h1>` New Application heading.
 ---
 ```
+
+<Aside type="caution" title="Order of Routes">
+  The order of the routes within your `worker.tsx` file is important. The code will work it's way down through each array, in order, looking for a match.
+
+  If you list the `/applications/:id` route before the `/applications/new` route, it will match the `/applications/:id` route and display the application details page instead of the new application page.
+
+  However, if you list the `/applications/new` route before the `/applications/:id` route, it will match the `/applications/new` route and display the new application page instead of the application details page.
+</Aside>
 
 Now, let's add our link to the `links.ts` file:
 
@@ -1768,21 +1877,26 @@ return (
 )
 ```
 
-Now, let's adjust the spacing around our table. On **line 22**, we're using a class of `px-page-side` to add some padding to the left and right side.
+Now, let's adjust the spacing around our table. On **line 35**, we're using a class of `px-page-side` to add some padding to the left and right side.
 
-```tsx title="src/app/pages/applications/List.tsx" startLineNumber=22 "px-page-side"
-<div className="px-page-side flex justify-between items-center">
+```tsx title="src/app/pages/applications/List.tsx" startLineNumber=32 "px-page-side"
+return (
+  <InteriorLayout>
+    <>
+      <div className="px-page-side flex justify-between items-center">
 ```
 
 Let's _remove_ this from the `div` and add it to a wrapping `div`.
 
-```tsx title="src/app/pages/applications/List.tsx" "px-page-side"
+```diff title="src/app/pages/applications/List.tsx" "px-page-side"
 <InteriorLayout>
-  <div className="px-page-side">
++  <div className="px-page-side">
+-  <>
     <div className="flex justify-between items-center">
     ...
     </div>
-  </div>
++  </div>
+- </>
 </InteriorLayout>
 ---
 - You'll notice, we converted the React Fragment `<>` to a `div` and added a class of `px-page-side` to it.
@@ -1804,7 +1918,7 @@ Before we preview this in the browser, let's adjust the vertical spacing.
   This means that when you use a top and bottom margin, it can sometimes produce unexpected results. If you only use margin bottom, you can avoid this issue altogether.
 </Aside>
 
-```tsx title="src/app/pages/applications/List.tsx" "mb-5" "mb-8" "mb-10" collapse={4-13} startLineNumber=20
+```tsx title="src/app/pages/applications/List.tsx" "mb-5" "mb-8" "mb-10" collapse={4-13} startLineNumber=33 {14}
 <InteriorLayout>
   <div className="px-page-side">
     <div className="flex justify-between items-center mb-5">
@@ -1839,7 +1953,7 @@ On every page we get an object that contains `ctx`, `request`, and `headers`. In
 
 On `List.tsx`, when we define our `List` function, let's accept `request` as a prop:
 
-```tsx title="src/app/pages/applications/List.tsx" startLineNumber=8
+```tsx title="src/app/pages/applications/List.tsx" startLineNumber=20
 const List = async ({ request }: { request: Request }) => {
 ---
 You'll notice when I type the `request`, I'm using a standard `Request` type.
@@ -1848,7 +1962,7 @@ You'll notice when I type the `request`, I'm using a standard `Request` type.
 
 Now, at the top of our function, we can get the `status` query parameter using the `URLSearchParams` method from the standard WebAPI:
 
-```tsx title="src/app/pages/applications/List.tsx" startLineNumber=9
+```tsx title="src/app/pages/applications/List.tsx" startLineNumber=21
 const url = new URL(request.url);
 const status = url.searchParams.get("status");
 
@@ -1867,7 +1981,7 @@ Now, that we've checked that our query parameter is working, we can remove our `
 
 After the `include` object, let's add a `where` object:
 
-```tsx title="src/app/pages/applications/List.tsx" {10-12} startLineNumber=12
+```tsx title="src/app/pages/applications/List.tsx" {10-12} startLineNumber=24
 const applications = await db.application.findMany({
   include: {
     applicationStatus: true,
@@ -1889,7 +2003,7 @@ You can test this in the browser, by clicking on the **Archive** button. You sho
 
 Let's make this better by adding an empty state:
 
-```tsx title="src/app/pages/applications/List.tsx" {2,5-7} startLineNumber=40
+```tsx title="src/app/pages/applications/List.tsx" {2,5-7} startLineNumber=52
 <div className="mb-8">
   {applications.length > 0 ? (
     <ApplicationsTable applications={applications} />
@@ -1913,7 +2027,7 @@ Once we click on the "Archive" button, it's easy to feel "stuck".
 
 Let's change the "Archive" button so that it toggles based on the query parameter.
 
-```tsx title="src/app/pages/applications/List.tsx" {2-6} startLineNumber=51
+```tsx title="src/app/pages/applications/List.tsx" {2-7, 12} startLineNumber=61
 <Button asChild variant="secondary">
   {status === "archived" ? (
     <a href={`${link("/applications")}`}>
@@ -1940,88 +2054,6 @@ Test it out in the browser:
 It looks and works great!
 
 Remember, you can use [Prisma Studio](/tutorial/full-stack-app/database-setup#prisma-studio-recommended) to add more seed data, if you want to test various states.
-
-<details>
-<summary>Final code for `List.tsx`</summary>
-
-```tsx title="src/app/pages/applications/List.tsx"
-import { InteriorLayout } from "@/app/layouts/InteriorLayout";
-import { db } from "@/db";
-import { Button } from "@/app/components/ui/button";
-import { ApplicationsTable } from "@/app/components/ApplicationsTable";
-import { Icon } from "@/app/components/Icon";
-import { link } from "@/app/shared/links";
-
-const List = async ({ request }: { request: Request }) => {
-  const url = new URL(request.url);
-  const status = url.searchParams.get("status");
-
-  const applications = await db.application.findMany({
-    include: {
-      applicationStatus: true,
-      company: {
-        include: {
-          contacts: true
-        }
-      }
-    },
-    where: {
-      archived: status === "archived" ? true : false
-    }
-  });
-
-  return (
-    <InteriorLayout>
-      <div className="px-page-side">
-        <div className="flex justify-between items-center mb-5">
-          <h1 className="page-title">All Applications</h1>
-          <div>
-            <Button asChild>
-              <a href={link("/applications/new")}>
-                <Icon id="plus" />
-                New Application
-              </a>
-            </Button>
-          </div>
-        </div>
-        <div className="mb-8">
-          {applications.length > 0 ? (
-            <ApplicationsTable applications={applications} />
-          ) : (
-            <div className="text-center text-sm text-muted-foreground">
-              No applications found
-            </div>
-          )}
-        </div>
-        <div className="flex justify-between items-center mb-10">
-          <Button asChild variant="secondary">
-            {status === "archived" ? (
-              <a href={`${link("/applications")}`}>
-                <Icon id="archive" />
-                Active
-              </a>
-            ) : (
-              <a href={`${link("/applications")}?status=archived`}>
-                <Icon id="archive" />
-                Archive
-              </a>
-            )}
-          </Button>
-          <Button asChild>
-            <a href={link("/applications/new")}>
-              <Icon id="plus" />
-              New Application
-            </a>
-          </Button>
-        </div>
-      </div>
-    </InteriorLayout>
-  )
-}
-
-export { List }
-```
-</details>
 
 <Aside type="tip" title="Code on GitHub">
 You can find the final code for this step on [GitHub](https://github.com/redwoodjs/applywize/tree/main/end-of-5).
