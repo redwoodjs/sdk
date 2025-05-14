@@ -52,6 +52,7 @@ import MagicString from "magic-string";
 import debug from "debug";
 import { glob } from "glob";
 import { $ } from "../lib/$.mjs";
+import { fileURLToPath } from "url";
 
 const SSR_NAMESPACE = "virtual:rwsdk:ssr:";
 const log = debug("rwsdk:vite:virtualized-ssr");
@@ -61,9 +62,12 @@ const logError = log.extend("error");
 const logResolve = log.extend("resolve");
 const logTransform = log.extend("transform");
 const logLoad = log.extend("load");
+const logVirtualIds = log.extend("virtual-ids");
 const logModuleIds = log.extend("module-ids");
 const logScan = log.extend("scan");
 const logWatch = log.extend("watch");
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 const ssrResolver = enhancedResolve.create.sync({
   conditionNames: ["workerd", "edge", "import", "default"],
@@ -216,82 +220,9 @@ export function virtualizedSSRPlugin({
   }
 
   /**
-   * Scans source files using ast-grep to find bare imports
+   * Scans source directory using glob + es-module-lexer to find bare imports
    */
-  async function scanWithAstGrep(srcDir: string): Promise<Set<string>> {
-    const imports = new Set<string>();
-
-    // Try multiple patterns to cover different import styles
-    const patterns = [
-      "import { $$ } from '$importPath'", // named imports
-      "import $name from '$importPath'", // default import
-      "import * as $name from '$importPath'", // namespace import
-      "import '$importPath'", // side-effect import
-      "export * from '$importPath'", // re-export all
-      "export { $$ } from '$importPath'", // named re-exports
-    ];
-
-    for (const pattern of patterns) {
-      try {
-        logScan("🔍 Running ast-grep with pattern: %s", pattern);
-
-        const result =
-          await $`npx ast-grep run -p "${pattern}" --json=compact --lang=tsx ${srcDir}`.catch(
-            (err: Error) => {
-              logError(
-                "❌ Error running ast-grep with pattern %s: %O",
-                pattern,
-                err,
-              );
-              return { stdout: "[]" };
-            },
-          );
-
-        const matches = JSON.parse(result.stdout || "[]");
-        logScan(
-          "📊 Found %d potential matches with pattern: %s",
-          matches.length,
-          pattern,
-        );
-
-        // Extract bare imports from the matches
-        for (const match of matches) {
-          if (!match.capture || !match.capture.importPath) continue;
-
-          const importPath = match.capture.importPath;
-
-          // Skip relative/absolute imports, only process bare imports
-          if (importPath.startsWith('"') || importPath.startsWith("'")) {
-            // Remove quotes from the import path
-            const cleanImportPath = importPath.slice(1, -1);
-
-            if (
-              cleanImportPath.startsWith(".") ||
-              cleanImportPath.startsWith("/") ||
-              cleanImportPath.startsWith("virtual:")
-            ) {
-              continue;
-            }
-
-            imports.add(cleanImportPath);
-          }
-        }
-      } catch (err) {
-        logError(
-          "❌ Error processing ast-grep results for pattern %s: %O",
-          pattern,
-          err,
-        );
-      }
-    }
-
-    return imports;
-  }
-
-  /**
-   * Fallback method to scan files using es-module-lexer
-   */
-  async function scanWithEsModuleLexer(srcDir: string): Promise<Set<string>> {
+  async function scanWithGlobAndLexer(srcDir: string): Promise<Set<string>> {
     const imports = new Set<string>();
 
     // Get all JS/TS files in src directory
@@ -324,32 +255,13 @@ export function virtualizedSSRPlugin({
       const srcDir = path.join(projectRootDir, "src");
       logScan("📂 Scanning directory: %s", srcDir);
 
-      // Try using ast-grep for scanning (it's best for finding all import patterns)
-      try {
-        logScan("✅ Using npx ast-grep for import scanning");
-        const bareImports = await scanWithAstGrep(srcDir);
-        logScan(
-          "📊 Found %d unique bare imports with ast-grep",
-          bareImports.size,
-        );
+      // Use glob + es-module-lexer for scanning
+      logScan("✅ Using glob + es-module-lexer for import scanning");
+      const bareImports = await scanWithGlobAndLexer(srcDir);
+      logScan("📊 Found %d unique bare imports", bareImports.size);
 
-        // Process and resolve all the bare imports
-        await processBareImports(bareImports);
-      } catch (astGrepError) {
-        // If ast-grep fails, fall back to es-module-lexer
-        logError(
-          "❌ ast-grep failed, falling back to es-module-lexer: %O",
-          astGrepError,
-        );
-        const bareImports = await scanWithEsModuleLexer(srcDir);
-        logScan(
-          "📊 Found %d unique bare imports with es-module-lexer",
-          bareImports.size,
-        );
-
-        // Process and resolve all the bare imports
-        await processBareImports(bareImports);
-      }
+      // Process and resolve all the bare imports
+      await processBareImports(bareImports);
 
       // Copy dependencies to the return mapping
       for (const [vId, real] of virtualSsrDeps.entries()) {

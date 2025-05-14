@@ -50,8 +50,7 @@
       "esbuild",
       "prisma",
       "sharp",
-      "workerd",
-      "@ast-grep/cli"
+      "workerd"
     ]
   }
 }
