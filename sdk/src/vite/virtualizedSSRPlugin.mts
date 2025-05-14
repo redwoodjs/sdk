@@ -51,6 +51,8 @@ const logError = log.extend("error");
 const logResolve = log.extend("resolve");
 const logTransform = log.extend("transform");
 const logLoad = log.extend("load");
+const logVirtualIds = log.extend("virtual-ids");
+const logModuleIds = log.extend("module-ids");
 
 const ssrResolver = enhancedResolve.create.sync({
   conditionNames: ["workerd", "edge", "import", "default"],
@@ -65,12 +67,52 @@ export function virtualizedSSRPlugin({
     "🚀 Initializing VirtualizedSSR plugin with root: %s",
     projectRootDir,
   );
+  logInfo(
+    "📂 Plugin will handle client/server module resolution in a single Vite worker environment",
+  );
 
   const virtualSsrDeps = new Map<string, string>();
   const depPrefixMap = new Map<string, string>();
+  const moduleIdMap = new Map<string, string>();
+
+  // Generate a stable virtual module ID without exposing file system paths
+  function getVirtualModuleId(fullPath: string): string {
+    // Check if we already have a virtual ID for this path
+    if (moduleIdMap.has(fullPath)) {
+      const cachedId = moduleIdMap.get(fullPath)!;
+      logModuleIds("📋 Using cached module ID for %s: %s", fullPath, cachedId);
+      return cachedId;
+    }
+
+    // Make sure the path is absolute before getting the relative path
+    const absolutePath = path.isAbsolute(fullPath)
+      ? fullPath
+      : path.resolve(projectRootDir, fullPath);
+
+    logModuleIds(
+      "🔍 Generating module ID for %s (absolute: %s)",
+      fullPath,
+      absolutePath,
+    );
+
+    // Get the project-relative path
+    const relativePath = path.relative(projectRootDir, absolutePath);
+    // Replace backslashes with forward slashes for consistent IDs across platforms
+    const normalizedPath = relativePath.replace(/\\/g, "/");
+
+    logModuleIds("✅ Generated module ID: %s → %s", fullPath, normalizedPath);
+
+    // Store the mapping for future lookups
+    moduleIdMap.set(fullPath, normalizedPath);
+
+    return normalizedPath;
+  }
 
   async function resolvePackageDeps(dep: string): Promise<Map<string, string>> {
     logResolve("🔍 Resolving package dependencies for: %s", dep);
+    logResolve(
+      "   Using resolver with conditions: workerd, edge, import, default",
+    );
 
     const mappings = new Map<string, string>();
     try {
@@ -85,6 +127,8 @@ export function virtualizedSSRPlugin({
 
       // Find the root package.json
       let dir = path.dirname(entry);
+      logResolve("📂 Starting package.json search from: %s", dir);
+
       while (dir !== projectRootDir) {
         const pkgJsonPath = path.join(dir, "package.json");
         logResolve("📦 Looking for package.json at: %s", pkgJsonPath);
@@ -94,6 +138,11 @@ export function virtualizedSSRPlugin({
           const raw = await fs.readFile(pkgJsonPath, "utf-8");
           const pkg = JSON.parse(raw);
           logResolve("📦 Found package.json for %s", dep);
+          logResolve(
+            "   Name: %s, Version: %s",
+            pkg.name || "unknown",
+            pkg.version || "unknown",
+          );
 
           // Resolve root entry
           const virtualId = SSR_NAMESPACE + dep;
@@ -106,17 +155,22 @@ export function virtualizedSSRPlugin({
 
           // Resolve exports subpaths
           if (typeof pkg.exports === "object" && pkg.exports !== null) {
+            const exportKeys = Object.keys(pkg.exports);
             logResolve(
-              "📦 Processing exports for %s: %O",
+              "📦 Processing exports for %s: Found %d export paths",
               dep,
-              Object.keys(pkg.exports),
+              exportKeys.length,
             );
 
-            for (const key of Object.keys(pkg.exports)) {
-              if (!key.startsWith("./") || key === "./package.json") continue;
+            for (const key of exportKeys) {
+              if (!key.startsWith("./") || key === "./package.json") {
+                logResolve("⏭️ Skipping export path: %s", key);
+                continue;
+              }
 
               const sub = key.slice(2); // './infinite' -> 'infinite'
               const full = `${dep}/${sub}`;
+              logResolve("🔍 Processing export subpath: %s → %s", key, full);
 
               logResolve("🔍 Resolving subpath %s from %s", "./" + sub, dir);
               const resolved = ssrResolver(dir, "./" + sub);
@@ -145,6 +199,13 @@ export function virtualizedSSRPlugin({
     }
 
     logResolve("📊 Resolved %d mappings for %s", mappings.size, dep);
+    if (mappings.size > 0) {
+      logResolve("📋 Summary of mappings for %s:", dep);
+      for (const [vId, real] of mappings.entries()) {
+        logResolve("   %s → %s", vId, real);
+      }
+    }
+
     return mappings;
   }
 
@@ -161,11 +222,15 @@ export function virtualizedSSRPlugin({
     isClientModule: boolean,
   ): Promise<{ code: string; map: any } | null> {
     if (!isClientModule) {
+      logTransform("⏭️ Skipping non-client module: %s", id);
       return null;
     }
 
+    logTransform("🔎 Processing imports in client module: %s", id);
     await init;
     const [imports] = parse(code);
+    logTransform("📊 Found %d imports to process", imports.length);
+
     const ms = new MagicString(code);
     let modified = false;
 
@@ -175,23 +240,43 @@ export function virtualizedSSRPlugin({
       const prefix = depPrefixMap.get(raw);
 
       if (prefix) {
-        logTransform("🔁 Rewriting %s -> %s in %s", raw, prefix, id);
+        logTransform("🔄 Found dependency import: %s → %s", raw, prefix);
         ms.overwrite(i.s, i.e, prefix);
         modified = true;
       } else {
         // Not in our mapping, use context.resolve() to check if it's a non-node_modules import
         try {
+          logTransform("🔍 Resolving import: %s from %s", raw, id);
           const resolved = await context.resolve(raw, id);
-          if (resolved && !isDep(resolved.id)) {
-            const virtualId = SSR_NAMESPACE + raw;
+
+          if (!resolved) {
+            logTransform("⚠️ Failed to resolve import: %s", raw);
+            continue;
+          }
+
+          logTransform("📍 Resolved to: %s", resolved.id);
+
+          if (!isDep(resolved.id)) {
+            // For imports that start with '.', we need to handle the resolution carefully
+            const moduleId = getVirtualModuleId(resolved.id);
+            // Add the prefix to create the final virtual ID
+            const virtualId = SSR_NAMESPACE + moduleId;
+
             logTransform(
-              "🔁 Rewriting non-node_modules import %s -> %s in %s",
+              "🔁 Rewriting import: %s → %s (resolved: %s → module ID: %s)",
               raw,
               virtualId,
-              id,
+              resolved.id,
+              moduleId,
             );
             ms.overwrite(i.s, i.e, virtualId);
             modified = true;
+          } else {
+            logTransform(
+              "⏭️ Skipping dependency import: %s (resolved to %s)",
+              raw,
+              resolved.id,
+            );
           }
         } catch (err) {
           logError("❌ Failed to resolve %s from %s: %O", raw, id, err);
@@ -207,6 +292,7 @@ export function virtualizedSSRPlugin({
       };
     }
 
+    logTransform("⏭️ No modifications needed for: %s", id);
     return null;
   }
 
@@ -222,6 +308,9 @@ export function virtualizedSSRPlugin({
       }
 
       logInfo("⚙️ Setting up aliases for worker environment");
+      logInfo("📊 Configuration state:");
+      logInfo("   - Project root: %s", projectRootDir);
+      logInfo("   - Virtual SSR namespace: %s", SSR_NAMESPACE);
 
       config.resolve ??= {};
       (config.resolve as any).alias ??= [];
@@ -240,7 +329,7 @@ export function virtualizedSSRPlugin({
       const pkgRaw = await fs.readFile(pkgPath, "utf-8");
       const pkg = JSON.parse(pkgRaw);
       const deps = Object.keys(pkg.dependencies ?? {});
-      logInfo("📦 Found %d dependencies", deps.length);
+      logInfo("📦 Found %d dependencies to process", deps.length);
 
       for (const dep of deps) {
         if (dep === "rwsdk") {
@@ -314,24 +403,84 @@ export function virtualizedSSRPlugin({
 
       logLoad("📥 Loading virtualized module: %s", id);
 
-      // Strip the prefix to get the real ID
-      const realId = id.slice(SSR_NAMESPACE.length);
-      logLoad("🔍 Real module ID: %s", realId);
+      // Strip the prefix to get the module ID
+      const moduleId = id.slice(SSR_NAMESPACE.length);
+      logLoad("🔍 Module ID: %s", moduleId);
 
-      // Resolve the module
-      const resolved = await this.resolve(realId);
-      if (!resolved) {
-        logError("❌ Failed to resolve real module: %s", realId);
-        return null;
+      // For module IDs, they are project-relative paths
+      const absolutePath = path.join(projectRootDir, moduleId);
+      logLoad("📂 Checking for file at absolute path: %s", absolutePath);
+
+      // Check if this is a file that exists
+      try {
+        await fs.access(absolutePath);
+        logLoad("✅ File exists, loading content directly");
+        // Load the content directly
+        const code = await fs.readFile(absolutePath, "utf-8");
+        logLoad("📄 Loaded %d bytes of content", code.length);
+
+        // Process the imports in this module
+        logLoad("🔄 Processing imports in loaded module");
+        const result = await processImports(this, code, absolutePath, true);
+
+        return result || { code };
+      } catch (err) {
+        // If not found as a direct file, try to resolve through Vite
+        logLoad("⚠️ File not found directly, falling back to Vite resolution");
+        const resolved = await this.resolve(moduleId);
+        if (!resolved) {
+          logError("❌ Failed to resolve module: %s", moduleId);
+          return null;
+        }
+
+        logLoad("✅ Resolved through Vite to: %s", resolved.id);
+        // Load the content
+        const code = await fs.readFile(resolved.id, "utf-8");
+        logLoad("📄 Loaded %d bytes of content", code.length);
+
+        // Process the imports in this module
+        logLoad("🔄 Processing imports in resolved module");
+        const result = await processImports(this, code, resolved.id, true);
+
+        return result || { code };
+      }
+    },
+
+    resolveId(source, importer, options) {
+      if (source.startsWith(SSR_NAMESPACE)) {
+        // Get the module ID from the virtual ID
+        const moduleId = source.slice(SSR_NAMESPACE.length);
+        logResolve(
+          "🔍 Resolving virtual module: %s from %s",
+          moduleId,
+          importer || "unknown",
+        );
+
+        // For module IDs that are project-relative paths
+        const absolutePath = path.resolve(projectRootDir, moduleId);
+        logResolve(
+          "🔄 Converting to absolute path: %s → %s",
+          moduleId,
+          absolutePath,
+        );
+
+        // Check if this is one of our known dependencies
+        if (virtualSsrDeps.has(source)) {
+          const resolvedPath = virtualSsrDeps.get(source)!;
+          logResolve(
+            "✨ Using predefined alias for dependency: %s → %s",
+            source,
+            resolvedPath,
+          );
+          return resolvedPath;
+        }
+
+        // Return the resolved path
+        logResolve("✅ Resolved to: %s", absolutePath);
+        return absolutePath;
       }
 
-      // Load the content
-      let code = await fs.readFile(resolved.id, "utf-8");
-
-      // Process the imports in this module as if it's a client module
-      const result = await processImports(this, code, resolved.id, true);
-
-      return result || { code };
+      return null;
     },
   };
 }
