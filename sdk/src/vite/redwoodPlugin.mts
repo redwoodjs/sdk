@@ -20,7 +20,7 @@ import { pathExists } from "fs-extra";
 import { injectVitePreamble } from "./injectVitePreamblePlugin.mjs";
 import { vitePreamblePlugin } from "./vitePreamblePlugin.mjs";
 import { checkIsUsingPrisma } from "./checkIsUsingPrisma.mjs";
-import { rwsdkRscSsrPlugin } from "./virtualizedSSRPlugin.mjs";
+import { virtualizedSSRPlugin } from "./virtualizedSSRPlugin.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -86,7 +86,7 @@ export const redwoodPlugin = async (
       workerEntryPathname,
       isUsingPrisma,
     }),
-    rwsdkRscSsrPlugin({ projectRootDir }),
+    virtualizedSSRPlugin({ projectRootDir }),
     reactConditionsResolverPlugin({ projectRootDir, mode }),
     tsconfigPaths({ root: projectRootDir }),
     miniflarePlugin({

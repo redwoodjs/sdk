@@ -24,7 +24,7 @@
  *
  * - The RSC graph is canonical — modules resolve as-is using "react-server"
  * - The SSR graph is virtualised — import paths are rewritten to `virtual:rwsdk:ssr/...`
- *   to break Vite’s resolution cache and apply different conditions
+ *   to break Vite's resolution cache and apply different conditions
  *
  * A module whose contents begin with "use client" acts as the entry point
  * into this virtualised SSR graph. All of its imports — and their transitive imports —
@@ -32,15 +32,21 @@
  *
  * Bare imports like `react` become `virtual:rwsdk:ssr/react`, and normal relative
  * imports like `./foo.ts` become `virtual:rwsdk:ssr/abs/path/to/foo.ts`.
- * These are then aliased back to real files only during `worker` env setup,
- * bypassing the need for multiple bundles.
+ *
+ * To support optimizeDeps and alias resolution, we eagerly resolve all declared
+ * `dependencies` from the user's `package.json` using SSR conditions and map them
+ * to virtual IDs during the `configEnvironment()` hook.
  */
 
 import path from "path";
+import fs from "fs/promises";
 import { Plugin } from "vite";
 import enhancedResolve from "enhanced-resolve";
+import debug from "debug";
 
 const SSR_NAMESPACE = "virtual:rwsdk:ssr/";
+
+const log = debug("rwsdk:vite:virtualized-ssr");
 
 const ssrGraph = new Set<string>();
 const virtualSsrDeps = new Map<string, string>();
@@ -49,47 +55,38 @@ const ssrResolver = enhancedResolve.create.sync({
   conditionNames: ["edge", "default"],
 });
 
-export function rwsdkRscSsrPlugin({
+export function virtualizedSSRPlugin({
   projectRootDir,
 }: {
   projectRootDir: string;
 }): Plugin {
+  log("Initializing with projectRootDir: %s", projectRootDir);
+
   return {
-    name: "rwsdk:rsc-ssr",
+    name: "rwsdk:virtualized-ssr",
 
-    transform(code, id) {
-      if (this.environment.name !== "worker") {
-        return;
-      }
+    async transform(code, id) {
+      if (this.environment.name !== "worker") return;
 
-      if (!id.match(/\.(tsx?|jsx?|mjs|mts|cjs)$/)) {
-        return;
-      }
+      if (!id.match(/\.(tsx?|jsx?|mjs|mts|cjs)$/)) return;
 
       const firstLine = code.split("\n", 1)[0]?.trim();
       if (firstLine === '"use client"' || firstLine === "'use client'") {
         ssrGraph.add(id);
+        log("Discovered SSR entrypoint via 'use client': %s", id);
       }
 
       return null;
     },
 
     resolveId(source, importer) {
-      if (this.environment.name !== "worker") {
-        return;
-      }
-
-      if (!importer) {
-        return;
-      }
+      if (this.environment.name !== "worker" || !importer) return;
 
       const isBare = !source.startsWith(".") && !source.startsWith("/");
 
       if (importer.startsWith(SSR_NAMESPACE) && isBare) {
         const resolved = ssrResolver(projectRootDir, source);
-        if (!resolved) {
-          return;
-        }
+        if (!resolved) return;
 
         const virtualId = SSR_NAMESPACE + source;
         virtualSsrDeps.set(virtualId, resolved);
@@ -98,9 +95,7 @@ export function rwsdkRscSsrPlugin({
 
       if (ssrGraph.has(importer)) {
         const resolved = ssrResolver(path.dirname(importer), source);
-        if (!resolved) {
-          return;
-        }
+        if (!resolved) return;
 
         const virtualResolved = SSR_NAMESPACE + resolved;
         ssrGraph.add(resolved);
@@ -110,10 +105,10 @@ export function rwsdkRscSsrPlugin({
       return null;
     },
 
-    configEnvironment(env, config) {
-      if (env !== "worker") {
-        return;
-      }
+    async configEnvironment(env, config) {
+      if (env !== "worker") return;
+
+      log("Setting up aliases for worker environment");
 
       config.resolve ??= {};
       (config.resolve as any).alias ??= [];
@@ -125,12 +120,40 @@ export function rwsdkRscSsrPlugin({
         );
       }
 
+      const pkgJsonPath = path.join(projectRootDir, "package.json");
+      let dependencies: string[] = [];
+
+      try {
+        const pkgRaw = await fs.readFile(pkgJsonPath, "utf-8");
+        const pkg = JSON.parse(pkgRaw);
+        dependencies = Object.keys(pkg.dependencies ?? {});
+      } catch (err) {
+        log("Failed to read package.json from %s", pkgJsonPath);
+        return;
+      }
+
+      for (const dep of dependencies) {
+        try {
+          const resolved = ssrResolver(projectRootDir, dep);
+          const virtualId = SSR_NAMESPACE + dep;
+          virtualSsrDeps.set(virtualId, resolved);
+        } catch {
+          log("Could not resolve %s using SSR resolver", dep);
+        }
+      }
+
       for (const [virtualId, resolvedPath] of virtualSsrDeps.entries()) {
         (config.resolve as any).alias.push({
           find: virtualId,
           replacement: resolvedPath,
         });
       }
+
+      config.optimizeDeps ??= {};
+      config.optimizeDeps.include ??= [];
+      config.optimizeDeps.include.push(...virtualSsrDeps.keys());
+
+      log("Registered %d SSR aliases", virtualSsrDeps.size);
     },
   };
 }
