@@ -67,11 +67,19 @@ const logModuleIds = log.extend("module-ids");
 const logScan = log.extend("scan");
 const logWatch = log.extend("watch");
 
-const __dirname = path.dirname(fileURLToPath(import.meta.url));
-
 const ssrResolver = enhancedResolve.create.sync({
   conditionNames: ["workerd", "edge", "import", "default"],
 });
+
+const IGNORED_IMPORT_PATTERNS = [
+  /^cloudflare:.*$/,
+  /^rwsdk\/.*$/,
+  /^react$/,
+  /^react\/.*$/,
+  /^react-dom$/,
+  /^react-dom\/.*$/,
+  /^@rwsdk\/.*$/,
+];
 
 // Define import patterns directly in code (from allImportsRule.yml)
 const IMPORT_PATTERNS = [
@@ -127,25 +135,16 @@ async function extractBareImports(
           if (moduleCapture) {
             // Get the module text exactly as it appears in the code
             // The AST node text includes the quotes for string literals
-            const moduleText = moduleCapture.text();
-
-            // AST-grep returns the entire string literal including quotes
-            // e.g., '"react"' or "'lodash'"
-            // We need to strip these quotes to get the actual module name
-            let importPath = moduleText;
-            if (
-              (moduleText.startsWith('"') && moduleText.endsWith('"')) ||
-              (moduleText.startsWith("'") && moduleText.endsWith("'")) ||
-              (moduleText.startsWith("`") && moduleText.endsWith("`"))
-            ) {
-              importPath = moduleText.slice(1, -1);
-            }
+            const importPath = moduleCapture.text();
 
             // Only include bare imports (not relative paths, absolute paths, or virtual modules)
             if (
               !importPath.startsWith(".") &&
               !importPath.startsWith("/") &&
-              !importPath.startsWith("virtual:")
+              !importPath.startsWith("virtual:") &&
+              !IGNORED_IMPORT_PATTERNS.some((pattern) =>
+                pattern.test(importPath),
+              )
             ) {
               // Add the bare import path to our set
               imports.add(importPath);
@@ -478,7 +477,8 @@ export function virtualizedSSRPlugin({
         } else if (
           !raw.startsWith(".") &&
           !raw.startsWith("/") &&
-          !raw.startsWith("virtual:")
+          !raw.startsWith("virtual:") &&
+          !IGNORED_IMPORT_PATTERNS.some((pattern) => pattern.test(raw))
         ) {
           // This is a bare import not in our mapping, try to resolve it on-the-fly
           logTransform(
