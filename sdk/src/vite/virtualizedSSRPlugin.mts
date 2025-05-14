@@ -44,7 +44,7 @@ import { Plugin } from "vite";
 import enhancedResolve from "enhanced-resolve";
 import debug from "debug";
 
-const SSR_NAMESPACE = "virtual:rwsdk:ssr/";
+const SSR_NAMESPACE = "virtual:rwsdk:ssr:";
 
 const log = debug("rwsdk:vite:virtualized-ssr");
 
@@ -52,11 +52,11 @@ const ssrGraph = new Set<string>();
 const virtualSsrDeps = new Map<string, string>();
 
 const ssrResolver = enhancedResolve.create.sync({
-  conditionNames: ["workerd", "edge", "default"],
+  conditionNames: ["workerd", "edge", "import", "default"],
 });
 
 /**
- * Resolves a package and its export paths using SSR resolution rules
+ * Resolves a package and its export paths
  */
 async function resolvePackageDeps(
   dep: string,
@@ -69,7 +69,6 @@ async function resolvePackageDeps(
 
   try {
     log("🔍 Resolving package entry point for: %s", dep);
-    // Use our SSR resolver to find the package entry point
     const entryPoint = resolver(projectRootDir, dep);
     if (!entryPoint) {
       log("❌ Failed to resolve entry point for %s", dep);
@@ -254,12 +253,17 @@ export function virtualizedSSRPlugin({
       }
 
       log(
-        "🔧 Adding %d virtual SSR aliases to Vite config",
+        "🔧 Adding %d virtual SSR aliases to Vite config: %O",
         virtualSsrDeps.size,
+        virtualSsrDeps,
       );
       for (const [virtualId, resolvedPath] of virtualSsrDeps.entries()) {
+        const exactMatchRegex = new RegExp(
+          `^${virtualId.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
+        );
+
         (config.resolve as any).alias.push({
-          find: virtualId,
+          find: exactMatchRegex,
           replacement: resolvedPath,
         });
       }
@@ -283,7 +287,9 @@ export function virtualizedSSRPlugin({
         return;
       }
 
-      if (!id.match(/\.(tsx?|jsx?|mjs|mts|cjs)$/)) return;
+      if (!id.match(/\.(tsx?|jsx?|mjs|mts|cjs)$/)) {
+        return;
+      }
 
       const firstLine = code.split("\n", 1)[0]?.trim();
       if (firstLine === '"use client"' || firstLine === "'use client'") {
