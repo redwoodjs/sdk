@@ -100,110 +100,82 @@ export function virtualizedSSRPlugin({
     return fullPath;
   }
 
-  async function resolvePackageDeps(dep: string): Promise<Map<string, string>> {
-    logResolve("🔍 Resolving package dependencies for: %s", dep);
-    logResolve(
-      "   Using resolver with conditions: workerd, edge, import, default",
-    );
-
-    const mappings = new Map<string, string>();
-    try {
-      const entry = ssrResolver(projectRootDir, dep);
-
-      if (!entry) {
-        logResolve("⚠️ Could not resolve entry for %s", dep);
-        return mappings;
-      }
-
-      logResolve("✅ Resolved entry for %s: %s", dep, entry);
-
-      // Find the root package.json
-      let dir = path.dirname(entry);
-      logResolve("📂 Starting package.json search from: %s", dir);
-
-      while (dir !== projectRootDir) {
-        const pkgJsonPath = path.join(dir, "package.json");
-        logResolve("📦 Looking for package.json at: %s", pkgJsonPath);
-
-        try {
-          await fs.access(pkgJsonPath);
-          const raw = await fs.readFile(pkgJsonPath, "utf-8");
-          const pkg = JSON.parse(raw);
-          logResolve("📦 Found package.json for %s", dep);
-          logResolve(
-            "   Name: %s, Version: %s",
-            pkg.name || "unknown",
-            pkg.version || "unknown",
-          );
-
-          // Resolve root entry
-          const virtualId = SSR_NAMESPACE + dep;
-          mappings.set(virtualId, entry);
-          logResolve("➕ Mapping %s -> %s", virtualId, entry);
-
-          // Track rewrite mapping
-          depPrefixMap.set(dep, virtualId);
-          logResolve("📝 Added rewrite mapping %s -> %s", dep, virtualId);
-
-          // Resolve exports subpaths
-          if (typeof pkg.exports === "object" && pkg.exports !== null) {
-            const exportKeys = Object.keys(pkg.exports);
-            logResolve(
-              "📦 Processing exports for %s: Found %d export paths",
-              dep,
-              exportKeys.length,
-            );
-
-            for (const key of exportKeys) {
-              if (!key.startsWith("./") || key === "./package.json") {
-                logResolve("⏭️ Skipping export path: %s", key);
-                continue;
-              }
-
-              const sub = key.slice(2); // './infinite' -> 'infinite'
-              const full = `${dep}/${sub}`;
-              logResolve("🔍 Processing export subpath: %s → %s", key, full);
-
-              logResolve("🔍 Resolving subpath %s from %s", "./" + sub, dir);
-              const resolved = ssrResolver(dir, "./" + sub);
-
-              const vId = SSR_NAMESPACE + full;
-              if (resolved) {
-                mappings.set(vId, resolved);
-                depPrefixMap.set(full, vId);
-                logResolve("➕ Mapping %s -> %s", vId, resolved);
-              } else {
-                logResolve("⚠️ Failed to resolve %s", "./" + sub);
-              }
-            }
-          } else {
-            logResolve("📦 No exports field in package.json for %s", dep);
-          }
-
-          break;
-        } catch (err) {
-          logResolve("⚠️ No package.json at %s, moving up", pkgJsonPath);
-          dir = path.dirname(dir);
-        }
-      }
-    } catch (err) {
-      logError("❌ Failed to resolve %s: %O", dep, err);
-    }
-
-    logResolve("📊 Resolved %d mappings for %s", mappings.size, dep);
-    if (mappings.size > 0) {
-      logResolve("📋 Summary of mappings for %s:", dep);
-      for (const [vId, real] of mappings.entries()) {
-        logResolve("   %s → %s", vId, real);
-      }
-    }
-
-    return mappings;
-  }
-
   // Helper function to check if a path is in node_modules
   function isDep(id: string): boolean {
     return id.includes("node_modules") || id.includes(".vite");
+  }
+
+  // Helper function to dynamically resolve and register a bare import
+  async function resolveBareImport(
+    context: any,
+    importPath: string,
+  ): Promise<string | undefined> {
+    if (depPrefixMap.has(importPath)) {
+      return depPrefixMap.get(importPath);
+    }
+
+    logResolve("�� Lazily reonlvi gabtre impor: %s", pimportath);
+
+    try {
+      // Resolve the package entry point
+      const entry = ssrResolver(projectRootDir, importPath);
+
+      if (!entry) {
+        logResolve("⚠️ Could not resolve entry for %s", importPath);
+        return undefined;
+      }
+
+      logResolve("✅ Lazily resolved entry for %s: %s", importPath, entry);
+
+      // Create the virtual ID
+      const virtualId = SSR_NAMESPACE + importPath;
+
+      // Register the mapping
+      virtualSsrDeps.set(virtualId, entry);
+      depPrefixMap.set(importPath, virtualId);
+
+      // Dynamically add to the environment config
+      if (context.environment?.config) {
+        // Add to aliases
+        context.environment.config.resolve ??= {};
+        context.environment.config.resolve.alias ??= [];
+
+        if (!Array.isArray(context.environment.config.resolve.alias)) {
+          const aliasObj = context.environment.config.resolve.alias;
+          context.environment.config.resolve.alias = Object.entries(
+            aliasObj,
+          ).map(([find, replacement]) => ({ find, replacement }));
+        }
+
+        context.environment.config.resolve.alias.push({
+          find: new RegExp(
+            `^${virtualId.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
+          ),
+          replacement: entry,
+        });
+
+        // Add to optimizeDeps
+        context.environment.config.optimizeDeps ??= {};
+        context.environment.config.optimizeDeps.include ??= [];
+
+        if (
+          !context.environment.config.optimizeDeps.include.includes(virtualId)
+        ) {
+          context.environment.config.optimizeDeps.include.push(virtualId);
+        }
+
+        logInfo("🔄 Dynamically added alias: %s -> %s", virtualId, entry);
+      } else {
+        logError(
+          "⚠️ Could not access environment config for dynamic registration",
+        );
+      }
+
+      return virtualId;
+    } catch (err) {
+      logError("❌ Failed to lazily resolve %s: %O", importPath, err);
+      return undefined;
+    }
   }
 
   // Helper function to process imports in a code string
@@ -231,16 +203,13 @@ export function virtualizedSSRPlugin({
 
     for (const i of imports) {
       const raw = code.slice(i.s, i.e);
-      // Check if it's in our known deps mapping
-      const prefix = depPrefixMap.get(raw);
 
-      if (prefix) {
-        logTransform("🔄 Found dependency import: %s → %s", raw, prefix);
-        ms.overwrite(i.s, i.e, prefix);
-        modified = true;
-      } else {
-        // Not in our mapping, use context.resolve() to check if it's a non-node_modules import
-        try {
+      try {
+        // First check if it's already in our known deps mapping
+        let prefix = depPrefixMap.get(raw);
+
+        if (!prefix) {
+          // Try to resolve the import
           logTransform("🔍 Resolving import: %s from %s", raw, id);
           const resolved = await context.resolve(raw, id);
 
@@ -251,8 +220,26 @@ export function virtualizedSSRPlugin({
 
           logTransform("📍 Resolved to: %s", resolved.id);
 
-          if (!isDep(resolved.id)) {
-            // For imports that start with '.', we need to handle the resolution carefully
+          if (
+            isDep(resolved.id) &&
+            !raw.startsWith(".") &&
+            !raw.startsWith("/")
+          ) {
+            // This is a bare import that resolved to a dependency
+            // Try to lazily resolve and register it
+            prefix = await resolveBareImport(context, raw);
+
+            if (prefix) {
+              logTransform(
+                "🔄 Lazily resolved dependency import: %s → %s",
+                raw,
+                prefix,
+              );
+              ms.overwrite(i.s, i.e, prefix);
+              modified = true;
+            }
+          } else if (!isDep(resolved.id)) {
+            // For relative imports to non-dependencies
             const moduleId = getVirtualModuleId(resolved.id);
             // Add the prefix to create the final virtual ID
             const virtualId = SSR_NAMESPACE + moduleId;
@@ -273,9 +260,18 @@ export function virtualizedSSRPlugin({
               resolved.id,
             );
           }
-        } catch (err) {
-          logError("❌ Failed to resolve %s from %s: %O", raw, id, err);
+        } else {
+          // We already have this in our mapping
+          logTransform(
+            "🔄 Found cached dependency import: %s → %s",
+            raw,
+            prefix,
+          );
+          ms.overwrite(i.s, i.e, prefix);
+          modified = true;
         }
+      } catch (err) {
+        logError("❌ Failed to resolve %s from %s: %O", raw, id, err);
       }
     }
 
@@ -302,7 +298,7 @@ export function virtualizedSSRPlugin({
         return;
       }
 
-      logInfo("⚙️ Setting up aliases for worker environment");
+      logInfo("⚙️ Setting up basic environment for worker");
       logInfo("📊 Configuration state:");
       logInfo("   - Project root: %s", projectRootDir);
       logInfo("   - Virtual SSR namespace: %s", SSR_NAMESPACE);
@@ -318,46 +314,13 @@ export function virtualizedSSRPlugin({
         );
       }
 
-      const pkgPath = path.join(projectRootDir, "package.json");
-      logInfo("📦 Reading package.json from: %s", pkgPath);
-
-      const pkgRaw = await fs.readFile(pkgPath, "utf-8");
-      const pkg = JSON.parse(pkgRaw);
-      const deps = Object.keys(pkg.dependencies ?? {});
-      logInfo("📦 Found %d dependencies to process", deps.length);
-
-      for (const dep of deps) {
-        if (dep === "rwsdk") {
-          logInfo("⏭️ Skipping rwsdk package");
-          continue;
-        }
-
-        logInfo("🔍 Processing dependency: %s", dep);
-        const resolved = await resolvePackageDeps(dep);
-
-        for (const [vId, real] of resolved.entries()) {
-          virtualSsrDeps.set(vId, real);
-          logInfo("➕ Added virtual SSR dep: %s -> %s", vId, real);
-        }
-      }
-
-      for (const [vId, realPath] of virtualSsrDeps) {
-        (config.resolve as any).alias.push({
-          find: new RegExp(`^${vId.replace(/[-/\\^$*+?.()|[\]{}]/g, "\\$&")}$`),
-          replacement: realPath,
-        });
-        logInfo("🔗 Added alias: %s -> %s", vId, realPath);
-      }
-
+      // Initialize optimizeDeps but don't pre-populate with dependencies
       config.optimizeDeps ??= {};
       config.optimizeDeps.include ??= [];
-      config.optimizeDeps.include.push(...virtualSsrDeps.keys());
-      logInfo(
-        "⚡ Added %d virtual deps to optimizeDeps.include",
-        virtualSsrDeps.size,
-      );
 
-      logInfo("✅ Registered %d SSR virtual aliases", virtualSsrDeps.size);
+      logInfo(
+        "✅ Basic environment configuration complete, dependencies will be resolved lazily",
+      );
     },
 
     async transform(code, id, options) {
