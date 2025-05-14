@@ -2,37 +2,45 @@
  * context(justinvdm, 2025-05-14):
  *
  * ## Problem
- * React Server Components (RSC) and traditional SSR require different module resolution:
+ * React Server Components (RSC) and traditional SSR require different module
+ * resolution:
  * - RSC modules must resolve with the "react-server" export condition
  * - SSR modules must resolve without it
  *
- * This presents a challenge in projects like ours, where the same modules
- * often need to run in both modes — within a single Cloudflare Worker runtime.
- * We can't split execution contexts or afford duplicated builds.
+ * This presents a challenge in projects like ours, where the same modules often
+ * need to run in both modes — within a single Cloudflare Worker runtime. We
+ * can't split execution contexts or afford duplicated builds.
  *
  * Vite provides an elegant way to manage distinct resolution graphs via its
  * `environments` feature (`client`, `ssr`, `worker`, etc.). Each environment
  * can use different export conditions, plugins, and optimizeDeps configs.
  *
- * However, using separate environments implies separate output bundles.
- * In our case, that would nearly double the final bundle size — which is not
- * viable given Cloudflare Workers' strict 3MB limit.
+ * However, using separate environments implies separate output bundles. In our
+ * case, that would nearly double the final bundle size — which is not viable
+ * given Cloudflare Workers' strict 3MB limit.
  *
  * ## Solution
- * We run both RSC and SSR from a single Vite `worker` environment.
- * To simulate distinct resolution graphs, we virtualize SSR imports using a prefix.
+ * We run both RSC and SSR from a single Vite `worker` environment. To simulate
+ * distinct resolution graphs, we virtualize SSR imports using a prefix.
  *
  * How it works:
  * - Any module beginning with `"use client"` is treated as an SSR boundary.
+ * - We configure optimizeDeps to include virtualized SSR modules, resolved
+ *   using SSR export conditions and no "react-server" export condition
  * - When we encounter a "use client" module in transform:
  *   - For each import, we check if it's a dependency from our mapping
  *   - If it's a dependency, we prefix it with our virtual namespace
- *   - If not, we resolve it on-the-fly and prefix non-node_modules imports
- * - In load(), we intercept prefixed modules, strip the prefix, and apply the same logic
- *   to its imports recursively
+ *     (optimizeDeps will pick it up due to our configuration described above)
+ *   - If not, we resolve it on-the-fly and prefix non-dep imports
+ * - In load(), we intercept prefixed modules, strip the prefix, and then
+ *   transform the code the same as we did for modules that made their way to
+ *   transform()
+ * - Basically: load() is used to process our virtualized modules, transform()
+ *   is for the "use client" modules that we encounter, though we reuse the same
+ *   logic for both
  *
- * This approach eliminates the need for tracking a custom module graph, making the
- * process more direct and following Vite's plugin lifecycle more naturally.
+ * This approach eliminates the need for tracking a custom module graph, making
+ * the process more direct and following Vite's plugin lifecycle more naturally.
  */
 
 import path from "path";
