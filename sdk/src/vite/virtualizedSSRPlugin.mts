@@ -2,12 +2,21 @@
  * context(justinvdm, 2025-05-14):
  *
  * ## Problem
- * React Server Components (RSC) and SSR use different export conditions:
- * - RSC modules resolve with "react-server"
+ * React Server Components (RSC) and traditional SSR require different module resolution:
+ * - RSC modules must resolve with the "react-server" export condition
  * - SSR modules must resolve without it
  *
- * In apps like ours, many modules are used in both modes, but Cloudflare Workers
- * have a strict 3MB limit — so we can't bundle separately per mode.
+ * This presents a challenge in projects like ours, where the same modules
+ * often need to run in both modes — within a single Cloudflare Worker runtime.
+ * We can't split execution contexts or afford duplicated builds.
+ *
+ * Vite provides an elegant way to manage distinct resolution graphs via its
+ * `environments` feature (`client`, `ssr`, `worker`, etc.). Each environment
+ * can use different export conditions, plugins, and optimizeDeps configs.
+ *
+ * However, using separate environments implies separate output bundles.
+ * In our case, that would nearly double the final bundle size — which is not
+ * viable given Cloudflare Workers' strict 3MB limit.
  *
  * ## Solution
  * We run both RSC and SSR from a single Vite `worker` environment.
@@ -44,7 +53,6 @@ import debug from "debug";
 const SSR_NAMESPACE = "virtual:rwsdk:ssr:";
 const log = debug("rwsdk:vite:virtualized-ssr");
 
-// Enable more verbose debug logs with different levels
 const logInfo = log.extend("info");
 const logError = log.extend("error");
 const logTrace = log.extend("trace");
@@ -239,11 +247,6 @@ export function virtualizedSSRPlugin({
 
   return {
     name: "rwsdk:virtualized-ssr",
-    enforce: "pre",
-
-    buildStart() {
-      logInfo("🏗️ Build started");
-    },
 
     async configEnvironment(env, config) {
       logInfo("⚙️ Configuring environment: %s", env);
