@@ -48,6 +48,17 @@ export const SmokeTestInfo: React.FC = async () => {
       >
         Server Timestamp: {timestamp}
       </div>
+      
+      {/* HMR Testing Marker - Do not modify this comment */}
+      <div 
+        id="server-hmr-marker"
+        data-testid="server-hmr-marker"
+        data-hmr-text="original"
+        data-hmr-timestamp={Date.now()}
+      >
+        Server Component HMR: <span>Original Text</span>
+      </div>
+      
       <details style={{ marginTop: "10px" }}>
         <summary>Details</summary>
         <pre

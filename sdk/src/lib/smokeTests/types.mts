@@ -24,6 +24,7 @@ export interface SmokeTestOptions {
   bail?: boolean;
   copyProject?: boolean;
   realtime?: boolean;
+  skipHmr?: boolean;
 }
 
 export interface TestResources {
@@ -52,4 +53,36 @@ export interface StreamCapturer {
   ) => boolean;
   start: (artifactDir: string) => void;
   stop: () => void;
+}
+
+export interface TestStatus {
+  dev: {
+    overall: string;
+    initialServerSide: string;
+    initialClientSide: string;
+    initialServerRenderCheck: string;
+    realtimeUpgrade: string;
+    realtimeServerSide: string;
+    realtimeClientSide: string;
+    realtimeServerRenderCheck: string;
+    initialServerHmr: string;
+    initialClientHmr: string;
+    realtimeServerHmr: string;
+    realtimeClientHmr: string;
+  };
+  production: {
+    overall: string;
+    releaseCommand: string;
+    initialServerSide: string;
+    initialClientSide: string;
+    initialServerRenderCheck: string;
+    realtimeUpgrade: string;
+    realtimeServerSide: string;
+    realtimeClientSide: string;
+    realtimeServerRenderCheck: string;
+    initialServerHmr: string;
+    initialClientHmr: string;
+    realtimeServerHmr: string;
+    realtimeClientHmr: string;
+  };
 }

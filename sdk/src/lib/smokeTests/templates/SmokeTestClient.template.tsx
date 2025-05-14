@@ -80,6 +80,16 @@ export const SmokeTestClient: React.FC = () => {
         {loading ? "Checking..." : "Run Smoke Test"}
       </button>
 
+      {/* HMR Testing Marker - Do not modify this comment */}
+      <div 
+        id="client-hmr-marker"
+        data-testid="client-hmr-marker"
+        data-hmr-text="original"
+        data-hmr-timestamp={Date.now()}
+      >
+        Client Component HMR: <span>Original Text</span>
+      </div>
+
       {lastCheck && (
         <div style={{ marginTop: "15px" }}>
           <div

@@ -166,6 +166,8 @@ export async function checkUrl(
   skipClient: boolean = false,
   environment: string = "Development",
   realtime: boolean = false,
+  targetDir?: string,
+  skipHmr: boolean = false,
 ): Promise<void> {
   console.log(`🔍 Testing URL: ${url}`);
 
@@ -214,6 +216,8 @@ export async function checkUrl(
           skipClient,
           environment,
           timestampState,
+          targetDir,
+          skipHmr,
         );
 
         // Take a screenshot of the realtime test
@@ -257,6 +261,8 @@ export async function checkUrl(
           skipClient,
           environment,
           timestampState,
+          targetDir,
+          skipHmr,
         );
       } catch (error) {
         hasFailures = true;
@@ -291,8 +297,6 @@ export async function checkUrl(
       let realtimeTestStatus = "passed";
       try {
         await upgradeToRealtime(page, environment, bail);
-        log("Reloading page after realtime upgrade");
-        await page.reload({ waitUntil: "networkidle0" });
         log("Performing post-upgrade smoke test");
         await checkUrlSmoke(
           page,
@@ -302,6 +306,8 @@ export async function checkUrl(
           skipClient,
           environment,
           timestampState,
+          targetDir,
+          skipHmr,
         );
       } catch (error) {
         hasFailures = true;
@@ -370,6 +376,8 @@ export async function checkUrlSmoke(
     initialServerValue: number;
     clientUpdatedValue: number | null;
   },
+  targetDir?: string,
+  skipHmr: boolean = false,
 ): Promise<void> {
   const phase = isRealtime ? "Post-upgrade" : "Initial";
   console.log(`🔍 Testing ${phase} smoke tests at ${url}`);
@@ -401,6 +409,7 @@ export async function checkUrlSmoke(
   let initialServerTestError: Error | null = null;
   let clientTestError: Error | null = null;
   let serverRenderCheckError: Error | null = null;
+  let hmrTestError: Error | null = null;
 
   // Step 1: Run initial server-side smoke test to check the server state
   log("Running initial server-side smoke test");
@@ -408,8 +417,9 @@ export async function checkUrlSmoke(
   try {
     // For initial checks: use the fixed initial value (23)
     // For realtime checks: if we've previously updated the value, use that instead of 23
+    // For HMR tests: if HMR happened, we'll be back to the initial value (23)
     const expectedValue =
-      isRealtime && timestampState.clientUpdatedValue !== null
+      isRealtime && timestampState.clientUpdatedValue !== null && skipHmr
         ? timestampState.clientUpdatedValue
         : timestampState.initialServerValue;
 
@@ -453,6 +463,25 @@ export async function checkUrlSmoke(
   if (skipClient) {
     log("Skipping client-side smoke test as requested");
     console.log("⏩ Skipping client-side smoke test as requested");
+
+    // If we're running HMR tests and have a target directory
+    if (!skipHmr && targetDir) {
+      try {
+        // Run server HMR test if client tests are skipped
+        log("Running server HMR test");
+        await testServerComponentHmr(page, targetDir, phase, environment, bail);
+      } catch (error) {
+        hasFailures = true;
+        hmrTestError =
+          error instanceof Error ? error : new Error(String(error));
+        log("Error during HMR test: %O", error);
+
+        if (bail) {
+          throw error;
+        }
+      }
+    }
+
     return;
   }
 
@@ -536,6 +565,58 @@ export async function checkUrlSmoke(
     );
   }
 
+  // Step 4: Run HMR tests if target directory is provided and HMR tests are not skipped
+  if (!skipHmr && targetDir && environment === "Development") {
+    log(`Starting HMR tests for ${phase} phase`);
+    console.log(`\n🔄 Running HMR tests for ${phase} phase...`);
+
+    try {
+      // Test server component HMR
+      await testServerComponentHmr(page, targetDir, phase, environment, bail);
+
+      // Test client component HMR if client tests aren't skipped
+      if (!skipClient) {
+        await testClientComponentHmr(page, targetDir, phase, environment, bail);
+      }
+    } catch (error) {
+      hasFailures = true;
+      hmrTestError = error instanceof Error ? error : new Error(String(error));
+      log("Error during HMR tests: %O", error);
+      console.error(`❌ HMR tests failed: ${hmrTestError.message}`);
+
+      // If bail is true, stop the tests
+      if (bail) {
+        throw error;
+      }
+    }
+  } else {
+    log(
+      "Skipping HMR tests - targetDir not provided or skipHmr is true or not in Development environment",
+    );
+    if (skipHmr) {
+      console.log("⏩ Skipping HMR tests as requested");
+    } else if (!targetDir) {
+      console.log("⏩ Skipping HMR tests - target directory not provided");
+    } else if (environment !== "Development") {
+      console.log(
+        `⏩ Skipping HMR tests - not applicable in ${environment} environment`,
+      );
+    }
+
+    // Update test status for HMR tests as skipped
+    const env = environment === "Development" ? "dev" : "production";
+    updateTestStatus(
+      env,
+      phase === "Initial" ? "initialServerHmr" : "realtimeServerHmr",
+      "SKIPPED",
+    );
+    updateTestStatus(
+      env,
+      phase === "Initial" ? "initialClientHmr" : "realtimeClientHmr",
+      "SKIPPED",
+    );
+  }
+
   // If there were failures, propagate them
   if (hasFailures) {
     // Combine errors
@@ -548,6 +629,9 @@ export async function checkUrlSmoke(
     }
     if (serverRenderCheckError) {
       errors.push(`Server render check: ${serverRenderCheckError.message}`);
+    }
+    if (hmrTestError) {
+      errors.push(`HMR test: ${hmrTestError.message}`);
     }
 
     throw new Error(`Multiple test failures: ${errors.join(", ")}`);
@@ -1027,6 +1111,8 @@ async function realtimeOnlyFlow(
   bail: boolean,
   skipClient: boolean,
   environment: string,
+  targetDir?: string,
+  skipHmr: boolean = false,
 ): Promise<{ hasFailures: boolean; error: Error | null }> {
   let hasFailures = false;
   let realtimeError: Error | null = null;
@@ -1038,15 +1124,6 @@ async function realtimeOnlyFlow(
   };
 
   try {
-    // Directly upgrade to realtime mode
-    console.log(
-      "\n📡 Directly upgrading to realtime mode (skipping initial tests)",
-    );
-    await upgradeToRealtime(page, environment, bail);
-
-    log("Reloading page after realtime upgrade");
-    await page.reload({ waitUntil: "networkidle0" });
-
     log("Performing realtime-only smoke test");
     await checkUrlSmoke(
       page,
@@ -1056,6 +1133,8 @@ async function realtimeOnlyFlow(
       skipClient,
       environment,
       timestampState,
+      targetDir,
+      skipHmr,
     );
 
     // Take a screenshot of the realtime test
@@ -1086,4 +1165,416 @@ async function realtimeOnlyFlow(
   }
 
   return { hasFailures, error: realtimeError };
+}
+
+/**
+ * HMR test for server component
+ * Updates the server component and verifies that HMR applies the changes
+ */
+export async function testServerComponentHmr(
+  page: Page,
+  targetDir: string,
+  phase: string = "",
+  environment: string = "Development",
+  bail: boolean = false,
+): Promise<boolean> {
+  const testPhase = phase ? phase : "Initial";
+
+  // Skip HMR tests in production environments
+  if (environment !== "Development") {
+    console.log(`⏩ Skipping server HMR test in ${environment} environment`);
+
+    // Update test status to SKIPPED
+    const env = environment === "Development" ? "dev" : "production";
+    const testKey =
+      testPhase === "Initial" || !testPhase
+        ? "initialServerHmr"
+        : "realtimeServerHmr";
+    updateTestStatus(env, testKey as keyof TestStatus[typeof env], "SKIPPED");
+
+    return false;
+  }
+
+  console.log(`🔄 Testing ${testPhase} Server Component HMR`);
+
+  // Determine the environment and test key for state update
+  const env = environment === "Development" ? "dev" : "production";
+  const testKey =
+    testPhase === "Initial" || !testPhase
+      ? "initialServerHmr"
+      : "realtimeServerHmr";
+
+  try {
+    // First, verify the server HMR marker exists
+    log("Checking for server HMR marker");
+    const markerExists = await page.evaluate(() => {
+      const marker = document.querySelector(
+        '[data-testid="server-hmr-marker"]',
+      );
+      return !!marker;
+    });
+
+    if (!markerExists) {
+      log("Server HMR marker not found");
+      console.warn(
+        "⚠️ Server HMR marker not found in the page - skipping server HMR test",
+      );
+      updateTestStatus(env, testKey as keyof TestStatus[typeof env], "SKIPPED");
+      return false;
+    }
+
+    // Get the initial attributes before making changes
+    const initialAttributes = await page.evaluate(() => {
+      const marker = document.querySelector(
+        '[data-testid="server-hmr-marker"]',
+      );
+      if (!marker) return null;
+      return {
+        text: marker.getAttribute("data-hmr-text"),
+        timestamp: marker.getAttribute("data-hmr-timestamp"),
+        content: marker.textContent,
+      };
+    });
+
+    log("Initial server HMR marker state: %O", initialAttributes);
+
+    // Find the SmokeTest.tsx file path
+    const smokePath = join(
+      targetDir,
+      "src",
+      "app",
+      "components",
+      "__SmokeTest.tsx",
+    );
+    log("Looking for smoke test file at: %s", smokePath);
+
+    // Read the current file content
+    const fs = await import("fs/promises");
+    const fileContent = await fs.readFile(smokePath, "utf-8");
+
+    // Define the new content with updated HMR marker
+    const newTimestamp = Date.now();
+    const updatedContent = fileContent
+      .replace(
+        /data-hmr-text="[^"]*"/g,
+        `data-hmr-text="updated-${newTimestamp}"`,
+      )
+      .replace(
+        /data-hmr-timestamp=\{[^}]*\}/g,
+        `data-hmr-timestamp={${newTimestamp}}`,
+      )
+      .replace(
+        /Server Component HMR: <span>[^<]*<\/span>/g,
+        `Server Component HMR: <span>Updated Text ${newTimestamp}</span>`,
+      );
+
+    // Write the updated file
+    log("Writing updated server component content");
+    await fs.writeFile(smokePath, updatedContent, "utf-8");
+
+    // Wait for HMR to apply changes
+    console.log("Waiting for server HMR to update component...");
+
+    // Wait for the data-hmr-text attribute to change
+    log("Waiting for server HMR update to apply");
+    try {
+      await page.waitForFunction(
+        (timestamp) => {
+          const marker = document.querySelector(
+            '[data-testid="server-hmr-marker"]',
+          );
+          if (!marker) return false;
+          const currentText = marker.getAttribute("data-hmr-text");
+          return (
+            currentText &&
+            currentText.includes("updated-") &&
+            currentText.includes(timestamp)
+          );
+        },
+        { timeout: 10000 },
+        newTimestamp.toString(),
+      );
+      log("Server HMR update detected");
+    } catch (error) {
+      log("ERROR: Server HMR update not detected: %O", error);
+      updateTestStatus(env, testKey as keyof TestStatus[typeof env], "FAILED");
+
+      if (bail) {
+        await fail(
+          new Error(
+            `Server HMR test failed: Update not detected within timeout`,
+          ),
+          1,
+          `${environment} - Server HMR Test (${testPhase})`,
+        );
+      }
+      return false;
+    }
+
+    // Verify final state
+    const updatedAttributes = await page.evaluate(() => {
+      const marker = document.querySelector(
+        '[data-testid="server-hmr-marker"]',
+      );
+      if (!marker) return null;
+      return {
+        text: marker.getAttribute("data-hmr-text"),
+        timestamp: marker.getAttribute("data-hmr-timestamp"),
+        content: marker.textContent,
+      };
+    });
+
+    log("Updated server HMR marker state: %O", updatedAttributes);
+
+    const hmrSuccess =
+      updatedAttributes &&
+      updatedAttributes.text &&
+      updatedAttributes.text.includes("updated-");
+
+    updateTestStatus(
+      env,
+      testKey as keyof TestStatus[typeof env],
+      hmrSuccess ? "PASSED" : "FAILED",
+    );
+
+    if (hmrSuccess) {
+      console.log("✅ Server component HMR test passed");
+      return true;
+    } else {
+      console.error(
+        "❌ Server component HMR test failed: Content did not update properly",
+      );
+
+      if (bail) {
+        await fail(
+          new Error(`Server HMR test failed: Content did not update properly`),
+          1,
+          `${environment} - Server HMR Test (${testPhase})`,
+        );
+      }
+      return false;
+    }
+  } catch (error) {
+    log("Error during server HMR test: %O", error);
+    console.error(
+      `❌ Server HMR test failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+
+    updateTestStatus(env, testKey as keyof TestStatus[typeof env], "FAILED");
+
+    if (bail) {
+      await fail(
+        error instanceof Error ? error : new Error(String(error)),
+        1,
+        `${environment} - Server HMR Test (${testPhase})`,
+      );
+    }
+    return false;
+  }
+}
+
+/**
+ * HMR test for client component
+ * Updates the client component and verifies that HMR applies the changes
+ */
+export async function testClientComponentHmr(
+  page: Page,
+  targetDir: string,
+  phase: string = "",
+  environment: string = "Development",
+  bail: boolean = false,
+): Promise<boolean> {
+  const testPhase = phase ? phase : "Initial";
+
+  // Skip HMR tests in production environments
+  if (environment !== "Development") {
+    console.log(`⏩ Skipping client HMR test in ${environment} environment`);
+
+    // Update test status to SKIPPED
+    const env = environment === "Development" ? "dev" : "production";
+    const testKey =
+      testPhase === "Initial" || !testPhase
+        ? "initialClientHmr"
+        : "realtimeClientHmr";
+    updateTestStatus(env, testKey as keyof TestStatus[typeof env], "SKIPPED");
+
+    return false;
+  }
+
+  console.log(`🔄 Testing ${testPhase} Client Component HMR`);
+
+  // Determine the environment and test key for state update
+  const env = environment === "Development" ? "dev" : "production";
+  const testKey =
+    testPhase === "Initial" || !testPhase
+      ? "initialClientHmr"
+      : "realtimeClientHmr";
+
+  try {
+    // First, verify the client HMR marker exists
+    log("Checking for client HMR marker");
+    const markerExists = await page.evaluate(() => {
+      const marker = document.querySelector(
+        '[data-testid="client-hmr-marker"]',
+      );
+      return !!marker;
+    });
+
+    if (!markerExists) {
+      log("Client HMR marker not found");
+      console.warn(
+        "⚠️ Client HMR marker not found in the page - skipping client HMR test",
+      );
+      updateTestStatus(env, testKey as keyof TestStatus[typeof env], "SKIPPED");
+      return false;
+    }
+
+    // Get the initial attributes before making changes
+    const initialAttributes = await page.evaluate(() => {
+      const marker = document.querySelector(
+        '[data-testid="client-hmr-marker"]',
+      );
+      if (!marker) return null;
+      return {
+        text: marker.getAttribute("data-hmr-text"),
+        timestamp: marker.getAttribute("data-hmr-timestamp"),
+        content: marker.textContent,
+      };
+    });
+
+    log("Initial client HMR marker state: %O", initialAttributes);
+
+    // Find the SmokeTestClient.tsx file path
+    const clientPath = join(
+      targetDir,
+      "src",
+      "app",
+      "components",
+      "__SmokeTestClient.tsx",
+    );
+    log("Looking for client component file at: %s", clientPath);
+
+    // Read the current file content
+    const fs = await import("fs/promises");
+    const fileContent = await fs.readFile(clientPath, "utf-8");
+
+    // Define the new content with updated HMR marker
+    const newTimestamp = Date.now();
+    const updatedContent = fileContent
+      .replace(
+        /data-hmr-text="[^"]*"/g,
+        `data-hmr-text="updated-${newTimestamp}"`,
+      )
+      .replace(
+        /data-hmr-timestamp=\{[^}]*\}/g,
+        `data-hmr-timestamp={${newTimestamp}}`,
+      )
+      .replace(
+        /Client Component HMR: <span>[^<]*<\/span>/g,
+        `Client Component HMR: <span>Updated Text ${newTimestamp}</span>`,
+      );
+
+    // Write the updated file
+    log("Writing updated client component content");
+    await fs.writeFile(clientPath, updatedContent, "utf-8");
+
+    // Wait for HMR to apply changes
+    console.log("Waiting for client HMR to update component...");
+
+    // Wait for the data-hmr-text attribute to change
+    log("Waiting for client HMR update to apply");
+    try {
+      await page.waitForFunction(
+        (timestamp) => {
+          const marker = document.querySelector(
+            '[data-testid="client-hmr-marker"]',
+          );
+          if (!marker) return false;
+          const currentText = marker.getAttribute("data-hmr-text");
+          return (
+            currentText &&
+            currentText.includes("updated-") &&
+            currentText.includes(timestamp)
+          );
+        },
+        { timeout: 10000 },
+        newTimestamp.toString(),
+      );
+      log("Client HMR update detected");
+    } catch (error) {
+      log("ERROR: Client HMR update not detected: %O", error);
+      updateTestStatus(env, testKey as keyof TestStatus[typeof env], "FAILED");
+
+      if (bail) {
+        await fail(
+          new Error(
+            `Client HMR test failed: Update not detected within timeout`,
+          ),
+          1,
+          `${environment} - Client HMR Test (${testPhase})`,
+        );
+      }
+      return false;
+    }
+
+    // Verify final state
+    const updatedAttributes = await page.evaluate(() => {
+      const marker = document.querySelector(
+        '[data-testid="client-hmr-marker"]',
+      );
+      if (!marker) return null;
+      return {
+        text: marker.getAttribute("data-hmr-text"),
+        timestamp: marker.getAttribute("data-hmr-timestamp"),
+        content: marker.textContent,
+      };
+    });
+
+    log("Updated client HMR marker state: %O", updatedAttributes);
+
+    const hmrSuccess =
+      updatedAttributes &&
+      updatedAttributes.text &&
+      updatedAttributes.text.includes("updated-");
+
+    updateTestStatus(
+      env,
+      testKey as keyof TestStatus[typeof env],
+      hmrSuccess ? "PASSED" : "FAILED",
+    );
+
+    if (hmrSuccess) {
+      console.log("✅ Client component HMR test passed");
+      return true;
+    } else {
+      console.error(
+        "❌ Client component HMR test failed: Content did not update properly",
+      );
+
+      if (bail) {
+        await fail(
+          new Error(`Client HMR test failed: Content did not update properly`),
+          1,
+          `${environment} - Client HMR Test (${testPhase})`,
+        );
+      }
+      return false;
+    }
+  } catch (error) {
+    log("Error during client HMR test: %O", error);
+    console.error(
+      `❌ Client HMR test failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+
+    updateTestStatus(env, testKey as keyof TestStatus[typeof env], "FAILED");
+
+    if (bail) {
+      await fail(
+        error instanceof Error ? error : new Error(String(error)),
+        1,
+        `${environment} - Client HMR Test (${testPhase})`,
+      );
+    }
+    return false;
+  }
 }

@@ -177,3 +177,8 @@ dist
 
 .artifacts/
 smoke-test-artifacts
+
+# Cursor rules are auto-generated via vibe-rules
+# We don't want to add a gitignore in starter - users need to check this into their repo
+# But we also don't want to commit the cursor rules to this repo
+starters/standard/.cursor/rules/*
