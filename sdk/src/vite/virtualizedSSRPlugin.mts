@@ -7,7 +7,7 @@
  * - RSC modules must resolve with the "react-server" export condition
  * - SSR modules must resolve without it
  *
- * This presents a challenge in projects like ours, where the same modules often
+ * This presents a challenge for our framework, where the same modules often
  * need to run in both modes — within a single Cloudflare Worker runtime. We
  * can't split execution contexts or afford duplicated builds.
  *
