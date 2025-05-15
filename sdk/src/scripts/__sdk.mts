@@ -5,7 +5,7 @@ export const __sdk = async (...args: string[]) => {
 
   await $({
     shell: true,
-  })`(cd ../../sdk && NODE_ENV=development pnpm build) && pnpm clean:vite && rm -r node_modules/@redwoodjs/sdk/dist && cp -r ../../sdk/{package.json,dist} node_modules/@redwoodjs/sdk/`;
+  })`(cd ../../sdk && NODE_ENV=development pnpm build) && pnpm clean:vite && rm -r node_modules/rwsdk/dist && cp -r ../../sdk/{package.json,dist} node_modules/rwsdk/`;
 
   if (args.length > 0) {
     await $({ stdio: "inherit" })`pnpm ${args.join(" ")}`;

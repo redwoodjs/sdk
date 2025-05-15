@@ -1,0 +1,115 @@
+name: Starter Smoke Tests
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "docs/**"
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - "docs/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+jobs:
+  # Job for the minimal starter
+  smoke-test-minimal:
+    name: Minimal Starter
+    runs-on: ubuntu-latest
+
+    # context(justinvdm, 2025-05-12):
+    # Only run this job for PRs from the same repository and pushes to main
+    # For security, GH won't expose secrets for fork PRs
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          corepack enable
+          pnpm install
+
+      - name: Run smoke test for minimal starter
+        run: |
+          # Create artifact directory
+          mkdir -p smoke-test-artifacts/minimal
+
+          # Build SDK
+          cd sdk
+          pnpm build
+
+          # Run the minimal starter test
+          pnpm smoke-test --url="/" --path="../starters/minimal" --artifact-dir="../smoke-test-artifacts/minimal" --sync --copy-project
+        env:
+          CHROME_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
+
+      - name: Upload minimal starter artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-test-artifacts-minimal
+          path: smoke-test-artifacts/minimal
+          retention-days: 7
+
+  # Job for the standard starter
+  smoke-test-standard:
+    name: Standard Starter
+    runs-on: ubuntu-latest
+
+    # context(justinvdm, 2025-05-12):
+    # Only run this job for PRs from the same repository and pushes to main
+    # For security, GH won't expose secrets for fork PRs
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          corepack enable
+          pnpm install
+
+      - name: Run smoke test for standard starter
+        run: |
+          # Create artifact directory
+          mkdir -p smoke-test-artifacts/standard
+
+          # Build SDK
+          cd sdk
+          pnpm build
+
+          # Run the standard starter test
+          pnpm smoke-test --url="/user/login" --path="../starters/standard" --artifact-dir="../smoke-test-artifacts/standard" --sync --copy-project
+        env:
+          CHROME_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
+
+      - name: Upload standard starter artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-test-artifacts-standard
+          path: smoke-test-artifacts/standard
+          retention-days: 7

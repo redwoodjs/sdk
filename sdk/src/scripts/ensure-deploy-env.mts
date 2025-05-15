@@ -12,6 +12,21 @@ import {
 } from "unique-names-generator";
 import * as readline from "readline";
 import { pathExists } from "fs-extra";
+import { parseJson, extractAllJson } from "../lib/jsonUtils.mjs";
+// Define interface for the database info returned by wrangler
+interface D1DatabaseInfo {
+  uuid?: string;
+  name?: string;
+  version?: string;
+  [key: string]: any;
+}
+
+// Define interface for the secrets list returned by wrangler
+interface Secret {
+  name: string;
+  type?: string;
+  [key: string]: any;
+}
 
 const promptForDeployment = async (): Promise<boolean> => {
   const rl = readline.createInterface({
@@ -57,7 +72,7 @@ const hasAuthUsage = async () => {
   const files = await glob("src/**/*.{ts,tsx}", { ignore: "node_modules/**" });
   for (const file of files) {
     const content = await readFile(file, "utf-8");
-    if (content.includes("@redwoodjs/sdk/auth")) {
+    if (content.includes("rwsdk/auth")) {
       return true;
     }
   }
@@ -82,7 +97,10 @@ export const ensureDeployEnv = async () => {
   const wranglerConfig = parseJsonc(await readFile(wranglerPath, "utf-8"));
 
   // Update wrangler name if needed
-  if (wranglerConfig.name === "__change_me__") {
+  if (
+    wranglerConfig.name === "__change_me__" ||
+    process.env.RWSDK_RENAME_WORKER === "1"
+  ) {
     const dirName = basename(process.cwd());
     wranglerConfig.name = dirName;
     console.log(`Set wrangler name to ${dirName}`);
@@ -90,22 +108,28 @@ export const ensureDeployEnv = async () => {
     console.log("Updated wrangler.jsonc configuration");
   }
 
-  // Trigger account selection prompt if needed
-  console.log("Checking Cloudflare account setup...");
-  const accountCachePath = join(
-    process.cwd(),
-    "node_modules/.cache/wrangler/wrangler-account.json",
-  );
+  if (
+    process.env.CLOUDFLARE_ACCOUNT_ID == null ||
+    process.env.CLOUDFLARE_API_TOKEN == null
+  ) {
+    // Trigger account selection prompt if needed
+    console.log("Checking Cloudflare account setup...");
+    const accountCachePath = join(
+      process.cwd(),
+      "node_modules/.cache/wrangler/wrangler-account.json",
+    );
 
-  // todo(justinvdm): this is a hack to force the account selection prompt,
-  // we need to find a better way
-  if (!(await pathExists(accountCachePath))) {
-    await $({ stdio: "inherit" })`wrangler d1 list --json`;
+    // todo(justinvdm): this is a hack to force the account selection prompt,
+    // we need to find a better way
+    if (!(await pathExists(accountCachePath))) {
+      await $({ stdio: "inherit" })`wrangler d1 list --json`;
+    }
   }
 
   // Create a no-op secret to ensure worker exists
   console.log(`Ensuring worker ${wranglerConfig.name} exists...`);
-  await $`echo "true"`.pipe`wrangler secret put TMP_WORKER_CREATED`;
+  await $({ stdio: "pipe" })`echo "true"`
+    .pipe`wrangler secret put TMP_WORKER_CREATED`;
 
   // Check D1 database setup
   const needsDatabase = await hasD1Database();
@@ -117,7 +141,11 @@ export const ensureDeployEnv = async () => {
       const existingDb = wranglerConfig.d1_databases?.find(
         (db: any) => db.binding === "DB",
       );
-      if (existingDb && existingDb.database_id !== "__change_me__") {
+      if (
+        existingDb &&
+        existingDb.database_id !== "__change_me__" &&
+        process.env.RWSDK_RENAME_DB !== "1"
+      ) {
         console.log(
           "D1 database already configured in wrangler.jsonc, skipping creation",
         );
@@ -129,28 +157,82 @@ export const ensureDeployEnv = async () => {
           style: "lowerCase",
         });
         const dbName = `${wranglerConfig.name}-${suffix}`;
-        await $({ stdio: "inherit" })`wrangler d1 create ${dbName}`;
-        const result = await $`wrangler d1 info ${dbName} --json`;
-        const dbInfo = JSON.parse(result.stdout ?? "{}");
 
-        if (!dbInfo.uuid) {
-          throw new Error("Failed to get database ID from wrangler output");
+        try {
+          // Create the database with real-time output so the user can see progress
+          console.log(`Creating D1 database: ${dbName}...`);
+          const createResult = await $({
+            stdio: "pipe",
+          })`wrangler d1 create ${dbName}`;
+
+          // Log the result to the console
+          console.log(createResult.stdout);
+
+          // Parse all JSON objects from the output
+          const allJsonObjects = extractAllJson(createResult.stdout);
+
+          // First look for object with uuid directly
+          let dbInfo: D1DatabaseInfo = { uuid: undefined, name: undefined };
+
+          for (const obj of allJsonObjects) {
+            if (obj && obj.uuid) {
+              dbInfo = obj;
+              break;
+            }
+          }
+
+          // If not found, look for the d1_databases structure
+          if (!dbInfo.uuid) {
+            for (const obj of allJsonObjects) {
+              if (obj && obj.d1_databases && Array.isArray(obj.d1_databases)) {
+                const dbConfig = obj.d1_databases.find(
+                  (db: any) =>
+                    db.binding === "DB" || db.database_name === dbName,
+                );
+                if (dbConfig && dbConfig.database_id) {
+                  dbInfo.uuid = dbConfig.database_id;
+                  dbInfo.name = dbConfig.database_name || dbName;
+                  break;
+                }
+              }
+            }
+          }
+
+          if (!dbInfo.uuid) {
+            throw new Error(
+              "Failed to extract database ID from wrangler output",
+            );
+          }
+
+          // Update wrangler config with database info, preserving other databases
+          const existingDatabases = wranglerConfig.d1_databases || [];
+          wranglerConfig.d1_databases = [
+            ...existingDatabases.filter((db: any) => db.binding !== "DB"),
+            {
+              binding: "DB",
+              database_name: dbName,
+              database_id: dbInfo.uuid,
+            },
+          ];
+
+          await writeFile(
+            wranglerPath,
+            JSON.stringify(wranglerConfig, null, 2),
+          );
+          console.log("Updated wrangler.jsonc configuration");
+          console.log(
+            `D1 database configured: ${dbName} with ID: ${dbInfo.uuid}`,
+          );
+        } catch (error) {
+          console.error(
+            "Failed to create D1 database:",
+            error instanceof Error ? error.message : String(error),
+          );
+          console.error("Please create it manually:");
+          console.error("1. Run: wrangler d1 create <your-db-name>");
+          console.error("2. Update wrangler.jsonc with the database details");
+          process.exit(1);
         }
-
-        // Update wrangler config with database info, preserving other databases
-        const existingDatabases = wranglerConfig.d1_databases || [];
-        wranglerConfig.d1_databases = [
-          ...existingDatabases.filter((db: any) => db.binding !== "DB"),
-          {
-            binding: "DB",
-            database_name: dbName,
-            database_id: dbInfo.uuid,
-          },
-        ];
-
-        await writeFile(wranglerPath, JSON.stringify(wranglerConfig, null, 2));
-        console.log("Updated wrangler.jsonc configuration");
-        console.log(`Created D1 database: ${dbName}`);
       }
     } catch (error) {
       console.error("Failed to create D1 database. Please create it manually:");
@@ -170,8 +252,8 @@ export const ensureDeployEnv = async () => {
     try {
       // Get list of all secrets
       const secretsResult = await $`wrangler secret list --format=json`;
-      const existingSecrets = JSON.parse(secretsResult.stdout ?? "[]").map(
-        (secret: any) => secret.name,
+      const existingSecrets = parseJson<Secret[]>(secretsResult.stdout, []).map(
+        (secret) => secret.name,
       );
 
       // Check if AUTH_SECRET_KEY already exists
@@ -182,7 +264,9 @@ export const ensureDeployEnv = async () => {
       } else {
         // Secret doesn't exist, create it
         const secretKey = generateSecretKey();
-        await $`echo ${secretKey}`.pipe`wrangler secret put AUTH_SECRET_KEY`;
+        // Use the same pattern as TMP_WORKER_CREATED for consistency
+        await $({ stdio: "pipe" })`echo "${secretKey}"`
+          .pipe`wrangler secret put AUTH_SECRET_KEY`;
         console.log("Set AUTH_SECRET_KEY secret");
       }
     } catch (error) {

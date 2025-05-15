@@ -12,6 +12,8 @@ import {
   Code,
 } from "@astrojs/starlight/components";
 
+import { PackageManagers } from "starlight-package-managers";
+
 In this quick start you'll go from zero to request/response in seconds and deploy to production in minutes!
 
 <Aside type="note" title="System requirements">
@@ -20,28 +22,30 @@ In this quick start you'll go from zero to request/response in seconds and deplo
 
 Create a new project by running the following command, replacing `<project-name>` with your project name:
 
-```bash showLineNumbers=false
-npx degit redwoodjs/sdk/starters/standard <project-name>
-```
+<PackageManagers
+  type="dlx"
+  pkg="degit"
+  args="redwoodjs/sdk/starters/standard <project-name>"
+/>
 
 ## Start developing
 
 ### Install the dependencies
 
-<Tabs syncKey="package-manager">
-  <TabItem label="pnpm">
-    ```bash frame="none" showLineNumbers=false
-    cd <project-name>
-    pnpm install
-    ```
-  </TabItem>
-  <TabItem label="npm">
+<Tabs syncKey="starlight-package-managers-pkg">
+  <TabItem label="npm" icon="seti:npm">
     ```bash frame="none" showLineNumbers=false  
     cd <project-name>
     npm install
     ```
   </TabItem>
-  <TabItem label="yarn">
+    <TabItem label="pnpm" icon="pnpm">
+    ```bash frame="none" showLineNumbers=false
+    cd <project-name>
+    pnpm install
+    ```
+  </TabItem>
+  <TabItem label="yarn" icon="seti:yarn">
     ```bash frame="none" showLineNumbers=false
     cd <project-name>
     yarn install
@@ -53,28 +57,11 @@ npx degit redwoodjs/sdk/starters/standard <project-name>
 
 RedwoodSDK is just a plugin for Vite, so you can use the same commands to run the development server as you would with any other Vite project.
 
-<Tabs syncKey="package-manager">
-  <TabItem label="pnpm">
-    ```bash frame="none" showLineNumbers=false
-
-    pnpm dev
-    ```
-
-  </TabItem>
-  <TabItem label="npm">
-    ```bash frame="none" showLineNumbers=false
-
-    npm run dev
-    ```
-
-  </TabItem>
-  <TabItem label="yarn">
-    ```bash frame="none" showLineNumbers=false
-    
-    yarn dev
-    ```
-  </TabItem>
-</Tabs>
+<PackageManagers
+  frame="none"
+  type="run"
+  args="dev"
+/>
 
 ```bash frame="none" showLineNumbers=false
 VITE v6.2.0  ready in 500 ms
@@ -98,8 +85,8 @@ The entry point of your webapp is `src/worker.tsx`, open that file in your favor
 Here you'll see the `defineApp` function, this is the main function that "defines your webapp," where the purpose is to handle requests by returning responses to the client.
 
 ```tsx title="src/worker.tsx" showLineNumbers=false "defineApp"
-import { defineApp } from "@redwoodjs/sdk/worker";
-import { route, render } from "@redwoodjs/sdk/router";
+import { defineApp } from "rwsdk/worker";
+import { route, render } from "rwsdk/router";
 
 import { Document } from "@/app/Document";
 import { Home } from "@/app/pages/Home";
@@ -112,8 +99,8 @@ export default defineApp([
 You're going to add your own route, insert the `"/ping"` route handler:
 
 ```tsx title="src/worker.tsx" ins={7-9} showLineNumbers=false
-import { defineApp } from "@redwoodjs/sdk/worker";
-import { route, render } from "@redwoodjs/sdk/router";
+import { defineApp } from "rwsdk/worker";
+import { route, render } from "rwsdk/router";
 
 export default defineApp([
   render(Document, [
@@ -138,27 +125,11 @@ Now when you navigate to [http://localhost:5173/ping](http://localhost:5173/ping
 
 RedwoodSDK is built for the Cloudflare Development Platform. You can deploy your webapp to Cloudflare with a single command:
 
-<Tabs syncKey="package-manager">
-  <TabItem label="pnpm">
-    ```bash frame="none" showLineNumbers=false
-    
-    pnpm release
-    ```
-  </TabItem>
-  <TabItem label="npm">
-    ```bash frame="none" showLineNumbers=false
-
-    npm run release
-    ```
-
-  </TabItem>
-  <TabItem label="yarn">
-    ```bash frame="none" showLineNumbers=false
-    
-    yarn release
-    ```
-  </TabItem>
-</Tabs>
+<PackageManagers
+  frame="none"
+  type="run"
+  args="release"
+/>
 
 <LinkCard
   title="What's next?"

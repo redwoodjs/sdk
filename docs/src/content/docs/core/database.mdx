@@ -6,7 +6,7 @@ description: Store & retrieve data from the database.
 import { Aside, Tabs, TabItem, LinkCard } from "@astrojs/starlight/components";
 
 <Aside type="caution">
-  The [Quick Start Guide](getting-started/quick-start) uses the **minimal
+  The [Quick Start Guide](/getting-started/quick-start) uses the **minimal
   starter**, you should use the **standard starter** to get you set up and ready
   for using Database, Queues, Sessions and Authentication.
 </Aside>
@@ -40,11 +40,11 @@ We've run a command to create a database called `my-database`. Copy those values
 
 ## Usage with Prisma
 
-<Aside type="note" title="Prisma Starter">
-RedwoodSDK ships with a [Prisma starter project](https://github.com/redwoodjs/sdk/tree/main/starters/prisma), you can use it to get started with a database in seconds.
+<Aside type="note" title="Standard Starter">
+RedwoodSDK ships with a [Standard starter project](https://github.com/redwoodjs/sdk/tree/main/starters/standard), you can use it to get started with a database in seconds.
 
 ```bash frame="none"
-npx degit redwoodjs/sdk/starters/prisma#main <project-name>
+npx degit redwoodjs/sdk/starters/standard#main <project-name>
 ```
 
 </Aside>
@@ -54,7 +54,7 @@ npx degit redwoodjs/sdk/starters/prisma#main <project-name>
 Install the Prisma packages, as well as the adapter for D1, and create a `prisma` directory.
 
 ```bash showLineNumbers=false
-npm install @prisma/adapter-d1 @prisma/client prisma
+pnpm install @prisma/adapter-d1 @prisma/client prisma
 mkdir prisma
 touch prisma/schema.prisma
 ```

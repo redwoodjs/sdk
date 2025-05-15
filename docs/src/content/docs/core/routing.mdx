@@ -8,8 +8,8 @@ import { Aside, Tabs, TabItem, LinkCard } from "@astrojs/starlight/components";
 The request/response paradigm is at the heart of web development - when a browser makes a request, your server needs to respond with content. RedwoodSDK makes this easy with the `defineApp` function, which lets you elegantly handle incoming requests and return the right responses.
 
 ```tsx title="src/worker.tsx"
-import { defineApp } from "@redwoodjs/sdk/worker";
-import { route } from "@redwoodjs/sdk/router";
+import { defineApp } from "rwsdk/worker";
+import { route } from "rwsdk/router";
 import { env } from "cloudflare:workers";
 
 export default defineApp([
@@ -35,7 +35,7 @@ The `defineApp` function takes an array of middleware and route handlers that ar
 Routes are matched in the order they are defined. You define routes using the `route` function. Trailing slashes are optional and normalized internally.
 
 ```tsx title="src/worker.tsx" mark={4}
-import { route } from "@redwoodjs/sdk/router";
+import { route } from "rwsdk/router";
 
 defineApp([
   route("/match-this", () => new Response("Hello, world!"))
@@ -82,10 +82,10 @@ route("/files/*/download/*", ...)
 
 ## Request Handlers
 
-The request handler is a function, or array of functions (See [Interruptors](#interruptors)), that are executed when a request is matched.
+The request handler is a function, or array of functions (See [Interrupters](#interrupters)), that are executed when a request is matched.
 
 ```tsx title="src/worker.tsx" mark={4-9}
-import { route } from "@redwoodjs/sdk/router";
+import { route } from "rwsdk/router";
 
 defineApp([
   route("/a-standard-response", ({ request, params, ctx }) => {
@@ -105,13 +105,13 @@ Return values:
 ---
 ```
 
-### Interruptors
+### Interrupters
 
-Interruptors are an array of functions that are executed in sequence for each matched request. They can be used to modify the request, context, or to short-circuit the response. A typical use-case is to check for authentication on a per-request basis, as an example you're trying to ensure that a specific user can access a specific resource.
+Interrupters are an array of functions that are executed in sequence for each matched request. They can be used to modify the request, context, or to short-circuit the response. A typical use-case is to check for authentication on a per-request basis, as an example you're trying to ensure that a specific user can access a specific resource.
 
 ```tsx title="src/worker.tsx" mark={5-10, 13} collapse={1-2}
-import { defineApp } from "@redwoodjs/sdk/worker";
-import { route } from "@redwoodjs/sdk/router";
+import { defineApp } from "rwsdk/worker";
+import { route } from "rwsdk/router";
 import { EditBlogPage } from "src/pages/blog/EditBlogPage";
 
 function isAuthenticated({ request, ctx }) {
@@ -132,13 +132,13 @@ For the `/blog/:slug/edit` route, the `isAuthenticated` function will be execute
 
 ## Middleware & Context
 
-The context object (`ctx`) is a mutable object that is passed to each request handler, interruptors, and React Server Functions. It's used to share data between the different parts of your application. You populate the context on a per-request basis via Middleware.
+The context object (`ctx`) is a mutable object that is passed to each request handler, interrupters, and React Server Functions. It's used to share data between the different parts of your application. You populate the context on a per-request basis via Middleware.
 
 Middleware runs before the request is matched to a route. You can specify multiple middleware functions, they'll be executed in the order they are defined.
 
 ```tsx title="src/worker.tsx" mark={5-10}
-import { defineApp } from "@redwoodjs/sdk/worker";
-import { route } from "@redwoodjs/sdk/router";
+import { defineApp } from "rwsdk/worker";
+import { route } from "rwsdk/router";
 import { env } from "cloudflare:workers";
 
 defineApp([
@@ -177,8 +177,8 @@ The context object:
 Documents are how you define the "shell" of your application's html: the `<html>`, `<head>`, `<meta>` tags, scripts, stylesheets, `<body>`, and where in the `<body>` your actual page content is rendered. In RedwoodSDK, you tell it which document to use with the `render()` function in `defineApp`. In other words, you're asking RedwoodSDK to "render" the document.
 
 ```tsx title="src/worker.tsx" "document"
-import { defineApp } from "@redwoodjs/sdk/worker";
-import { route, render } from "@redwoodjs/sdk/router";
+import { defineApp } from "rwsdk/worker";
+import { route, render } from "rwsdk/router";
 
 import { Document } from "@/pages/Document";
 import { HomePage } from "@/pages/HomePage";
@@ -217,10 +217,10 @@ export const Document = ({ children }) => (
 
 ## Request Info
 
-The `requestInfo` object is available in server functions and provides access to the current request's context. Import it from `@redwoodjs/sdk/worker`:
+The `requestInfo` object is available in server functions and provides access to the current request's context. Import it from `rwsdk/worker`:
 
 ```tsx
-import { requestInfo } from "@redwoodjs/sdk/worker";
+import { requestInfo } from "rwsdk/worker";
 
 export async function myServerFunction() {
   const { request, headers, ctx } = requestInfo;
