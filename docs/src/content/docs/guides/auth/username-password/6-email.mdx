@@ -385,6 +385,10 @@ route("/protected", [
 ]),
 ```
 
+<Aside type="note" title="Checking if the user is verified">
+  We placed the verified check on the interrupter. However, you could also place this check in the `handleLogin` function to prevent the session from being set at all.
+</Aside>
+
 <Aside type="tip" title="Additional Functionality">
   In an ideal world, we'd have a separate check to see if the user is verified. If they're not, we could redirect them to a page that explains that they need to verify their email address and include a button to resend the verification email.
 

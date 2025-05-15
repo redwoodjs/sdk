@@ -120,9 +120,9 @@ At the top of our component, let's `useState` to keep track of our error state.
 const [error, setError] = useState<string | null>(null);
 ```
 
-Of course, we'll also need to import `useState` at the top of the file.
+Of course, we'll also need to import `useState` at the top of the file (below `"use client"`).
 
-```tsx title="src/app/pages/auth/RegisterPage.tsx"  startLineNumber={1}
+```tsx title="src/app/pages/auth/RegisterPage.tsx"  startLineNumber={3}
 import { useState } from "react";
 ```
 
@@ -136,7 +136,7 @@ if (result.error) {
 
 Then, let's display the error state to the user. Right above our `h1` tag, let's add a `p` that displays the error state.
 
-```tsx title="src/app/pages/auth/RegisterPage.tsx"  startLineNumber={91}
+```tsx title="src/app/pages/auth/RegisterPage.tsx"  startLineNumber={19}
 { error && <p style={{ color: "red" }}>{error}</p> }
 ---
 - We're displaying our error conditionally.

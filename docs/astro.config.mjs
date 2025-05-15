@@ -121,6 +121,19 @@ export default defineConfig({
               label: 'Authentication & Security',
               collapsed: true,
               items: [
+                { label: 'Session Based Auth', slug: 'guides/auth/session-based-auth' },
+                {
+                  label: 'Magic Links',
+                  collapsed: true,
+                  items: [
+                    { label: 'Flow', slug: 'guides/auth/magic-links/flow' },
+                    { label: 'Register', slug: 'guides/auth/magic-links/register' },
+                    { label: 'Verification', slug: 'guides/auth/magic-links/verification' },
+                    { label: 'Login', slug: 'guides/auth/magic-links/login' },
+                    { label: 'Middleware', slug: 'guides/auth/magic-links/middleware' },
+                    { label: 'Logout', slug: 'guides/auth/magic-links/logout' },
+                  ]
+                },
                 {
                   label: 'Username & Password',
                   collapsed: true,

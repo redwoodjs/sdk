@@ -74,7 +74,7 @@ The form itself is pretty straight forward, with generic HTML. The main differen
 
 Now, let's write our `handleForgotPassword` function. On the `src/app/pages/auth/actions.ts` file:
 
-```tsx title="src/app/pages/auth/actions.ts" {"1. Take the form data and get the email address": 2} {"2. Validate the form": 5} {"3. Look for the email address in the database": 14} {"4. If the email address is not found, return an error": 21} {"5. Create a reset token": 30} {"6. Update the user with the reset token and expire date": 33} {"7. If there was an error sending the email, return it": 51} {"8. Send the reset token to the user's email address": 42} {"8. Return a success message": 57} startLineNumber={135}
+```tsx title="src/app/pages/auth/actions.ts" {"1. Take the form data and get the email address": 2} {"2. Validate the form": 5} {"3. Look for the email address in the database": 14} {"4. If the email address is not found, return an error": 21} {"5. If the user is not verified, return an error": 31} {"6. Create a reset token": 39} {"7. Update the user with the reset token and expire date": 42} {"8. Send the reset token to the user's email address": 51} {"9. If there was an error sending the email, return it": 60} {"10. Return a success message": 66}
 export const handleForgotPassword = async (formData: FormData) => {
 
   const email = formData.get("email");
@@ -101,6 +101,15 @@ export const handleForgotPassword = async (formData: FormData) => {
     return {
       success: null,
       error: "User not found",
+    };
+  }
+
+
+
+  if (!user.verified) {
+    return {
+      success: null,
+      error: "User not verified",
     };
   }
 

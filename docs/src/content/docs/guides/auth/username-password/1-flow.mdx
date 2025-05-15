@@ -6,32 +6,12 @@ description: Learn how to use the username and password flow with RedwoodJS.
 
 import { Aside, FileTree } from "@astrojs/starlight/components";
 
-## Overview
-Before we get into the details of writing code, let's take a step back and talk about the flow, security decisions, and best practices.
-
-## Sessions and Durable Objects
-There are plenty of strategies for handling authentication in web applications. One of the most popular is session-based authentication.
-
-With this method, when a user successfully logs in, the server creates a session and saves it on the server.
-
-### Pros
-1. **Server Control**: Complete control over session validity and revocation
-2. **Security**: Session ID is an opaque reference, revealing no information if intercepted
-3. **Easy Revocation**: Can invalidate sessions instantly server-side
-4. **Storage Efficiency**: Minimal data sent to client (just the session ID)
-5. **Flexibility**: Can store rich session data server-side without size constraints
-6. **Simpler Implementation**: Often easier to reason about and implement correctly
-
-Seems like a no-brainer, right? One of the main reasons that people avoid this strategy is that it requires server state, typically Redis or within the database. There are also scalability challenges and an impact on performance. Fortunate for us, though, since we're using Cloudflare services, we have access to Durable Objects for storing our session state, removing _all_ of these concerns.
-
-### What's a Durable Object?
-
-> A Durable Object is a special kind of Cloudflare Worker which uniquely combines compute with storage. Like a Worker, a Durable Object is automatically provisioned geographically close to where it is first requested, starts up quickly when needed, and shuts down when idle. You can have millions of them around the world.
-
-<cite>[Official Cloudflare Documentation](https://developers.cloudflare.com/durable-objects/#what-are-durable-objects)</cite>
-
 ## Setup
 Our [standard starter](https://github.com/redwoodjs/sdk/tree/main/starters/standard) includes Passkeys out of the box. This provides a passwordless experience, eliminating a lot of the risks associated with password-based authentication. However, there still might be instances where you want to use email addresses and passwords.
+
+<Aside type="tip" title="Standard Starter">
+You can find the final code for this guide in the [auth-kitchen/username-password folder](https://github.com/ahaywood/auth-kitchen/tree/main/username-password) branch.
+</Aside>
 
 Let's start with the standard starter and make adjustments. Within the Terminal, we'll create a new project and install the dependencies.
 
@@ -61,7 +41,7 @@ The `durableObject.ts` file sets up the Durable Object. The `store.ts` file cont
 
 We're also going to keep the authentication logic within our `worker.tsx` file. Most of this functionality will still apply:
 
-```tsx title="src/worker.tsx" showLineNumbers=true {"1. Set up security headers": 2} {"2. Setup our middleware": 4} {"3. Set up our session store (Durable Object)": 7} {"4. Check to see if a session exists in our Durable Object": 11} {"5. If there's an error, redirect the user to the login page": 14} {"6. If there's a session, get the user details from the database": 28} {"7. Save the results on ctx.user object": 30} {"8. Set up a protected route. The user must be logged in": 40} {"9. Interruptor checks to see if ctx.user exists": 43}
+```tsx title="src/worker.tsx" showLineNumbers=true {"1. Set up security headers": 2} {"2. Setup our middleware": 4} {"3. Set up our session store (Durable Object)": 7} {"4. Check to see if a session exists in our Durable Object": 11} {"5. If there's an error, redirect the user to the login page": 14} {"6. If there's a session, get the user details from the database": 28} {"7. Save the results on ctx.user object": 30} {"8. Set up a protected route. The user must be logged in": 40} {"9. Interrupter checks to see if ctx.user exists": 43}
 export default defineApp([
 
   setCommonHeaders(),
