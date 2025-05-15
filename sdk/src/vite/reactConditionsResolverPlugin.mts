@@ -4,7 +4,6 @@ import { ROOT_DIR } from "../lib/constants.mjs";
 import debug from "debug";
 import { pathExists } from "fs-extra";
 import enhancedResolve from "enhanced-resolve";
-import { VENDOR_DIST_DIR } from "../lib/constants.mjs";
 import { createRequire } from "node:module";
 const log = debug("rwsdk:vite:react-conditions");
 
@@ -62,7 +61,6 @@ export const reactConditionsResolverPlugin = async ({
     command,
   );
 
-  const vendorDir = VENDOR_DIST_DIR;
   const sdkRequire = createRequire(ROOT_DIR);
 
   const workerResolver = enhancedResolve.create.sync({
@@ -81,14 +79,6 @@ export const reactConditionsResolverPlugin = async ({
     packageName: string,
     environment: string,
   ) => {
-    if (packageName === "react") {
-      const modePath = resolve(vendorDir, `react.${mode}.js`);
-      if (await pathExists(modePath)) {
-        log("Using custom %s mode build for %s", mode, packageName);
-        return modePath;
-      }
-    }
-
     try {
       let resolver;
 
