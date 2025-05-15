@@ -3,7 +3,9 @@ import { transformClientComponents } from "./useClientPlugin.mjs";
 
 describe("transformClientComponents", () => {
   async function transform(code: string) {
-    const result = await transformClientComponents(code, "/test/file.tsx");
+    const result = await transformClientComponents(code, "/test/file.tsx", {
+      environmentName: "worker",
+    });
     return result?.code;
   }
 

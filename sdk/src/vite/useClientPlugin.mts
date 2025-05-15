@@ -15,16 +15,18 @@ interface TransformResult {
   map?: any;
 }
 
+interface TransformEnv {
+  environmentName: string;
+  topLevelRoot?: string;
+}
+
 export async function transformClientComponents(
   code: string,
   id: string,
-  opts?: {
-    environmentName?: string;
-    topLevelRoot?: string;
-  },
+  env: TransformEnv,
 ): Promise<TransformResult | undefined> {
   // 1. Skip if not in worker environment
-  if (opts?.environmentName && opts.environmentName !== "worker") {
+  if (env.environmentName !== "worker") {
     return;
   }
   // 2. Skip node_modules and vite deps
@@ -196,7 +198,7 @@ export const useClientPlugin = (): Plugin => ({
   name: "rwsdk:use-client",
   async transform(code, id) {
     return transformClientComponents(code, id, {
-      environmentName: this.environment?.name,
+      environmentName: this.environment?.name ?? "worker",
       topLevelRoot: this.environment?.getTopLevelConfig?.().root,
     });
   },
