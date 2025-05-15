@@ -1,11 +1,22 @@
 ---
-title: Cron Jobs
+title: Cron Triggers
 description: Schedule background tasks
 ---
 
 If you want to schedule a background task, [Cloudflare supports Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/).
 
 ## Setup
+
+Within your `wrangler.jsonc` file, add a new section called `triggers`:
+
+```jsonc title="wrangler.jsonc"
+"triggers": {
+  "crons": ["* * * * *"]
+}
+---
+Where `crons` includes an array of cron schedules.
+---
+```
 
 Within your `worker.tsx` file, adjust your `defineApp` function:
 
@@ -17,7 +28,6 @@ const app = defineApp([
 export default {
   fetch: app.fetch,
   async scheduled(controller: ScheduledController) {
-    // Write code for updating your API
     switch (controller.cron) {
       // Runs every minute
       case "* * * * *":
@@ -29,19 +39,24 @@ export default {
 } satisfies ExportedHandler<Env>;
 ```
 
-Cron jobs are "named" based on their schedule. In the example above, `console.log("🧹 Clean up Unverified Users");` runs every minute. However, you could account for different schedules by adding more cases to your `switch` statement:
+Notice the `case` matches the cron schedule defined within the `wrangler.jsonc` file.
 
-```tsx
+In the example above, `console.log("🧹 Clean up Unverified Users");` runs every minute. However, you could account for different schedules by adding more triggers to your `wrangler.jsonc` file and more cases to your `switch` statement:
+
+```jsonc title="wrangler.jsonc"
+"crons": ["* * * * *", "0 0 * * *"]
+```
+
+```tsx title="worker.tsx"
 // Runs every hour
 case "0 0 * * *":
   console.log("🔄 Update something");
   break;
-}
 ```
 
 ## Cloudflare Cron Triggers
 
-To view the Cron Triggers for your worker, within the Cloudflare Dashboard, navigate to the appropriate worker, click on the **Settings** tab, and then click on the **Cron Triggers** section.
+Within the Cloudflare Dashboard UI, you can view all the cron triggers for your worker. Click on the **Settings** tab, and then click on the **Cron Triggers** section.
 
 ![](./images/trigger-events.png)
 

@@ -2,8 +2,7 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import partytown from "@astrojs/partytown";
-import starlightLlmsTxt from 'starlight-llms-txt'
-
+import starlightLlmsTxt from "starlight-llms-txt";
 
 // https://astro.build/config
 export default defineConfig({
@@ -48,6 +47,7 @@ export default defineConfig({
             { slug: "core/storage" },
             { slug: "core/realtime" },
             { slug: "core/queues" },
+            { slug: "core/cron" },
             { label: "Environment variables", slug: "core/env-vars" },
             { slug: "core/authentication" },
             { slug: "core/security" },
@@ -95,23 +95,26 @@ export default defineConfig({
                   slug: "tutorial/full-stack-app/deploying",
                 },
               ],
-            }
-          ]
+            },
+          ],
         },
         {
           label: "Guides",
           items: [
             {
-              label: 'Frontend Development',
+              label: "Frontend Development",
               collapsed: true,
               items: [
-                { label: 'TailwindCSS', slug: 'guides/frontend/tailwind' },
-                { label: 'shadcn/ui', slug: 'guides/frontend/shadcn' },
-                { label: 'Layouts', slug: 'guides/frontend/layouts' },
-                { label: 'Documents', slug: 'guides/frontend/documents' },
-                { label: 'Public Assets', slug: 'guides/frontend/public-assets' },
-                { label: 'Metadata', slug: 'guides/frontend/metadata' },
-              ]
+                { label: "TailwindCSS", slug: "guides/frontend/tailwind" },
+                { label: "shadcn/ui", slug: "guides/frontend/shadcn" },
+                { label: "Layouts", slug: "guides/frontend/layouts" },
+                { label: "Documents", slug: "guides/frontend/documents" },
+                {
+                  label: "Public Assets",
+                  slug: "guides/frontend/public-assets",
+                },
+                { label: "Metadata", slug: "guides/frontend/metadata" },
+              ],
             },
             { label: "Server Function Streams", slug: "guides/rsc-streams" },
           ],
