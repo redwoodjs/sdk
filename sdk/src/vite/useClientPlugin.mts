@@ -1,14 +1,7 @@
 import { relative } from "node:path";
 import { Plugin } from "vite";
-import {
-  Project,
-  SyntaxKind,
-  Node,
-  ExportDeclaration,
-  ExportAssignment,
-  Identifier,
-  FunctionDeclaration,
-} from "ts-morph";
+import { Project, SyntaxKind, Node } from "ts-morph";
+import MagicString from "magic-string";
 
 interface TransformResult {
   code: string;
@@ -41,7 +34,8 @@ export async function transformClientComponents(
   if (!hasUseClient) {
     return { code, map: undefined };
   }
-  // 4. Remove 'use client' directive using ts-morph
+
+  // Use ts-morph to collect all export info in source order
   const project = new Project({
     useInMemoryFileSystem: true,
     compilerOptions: {
@@ -52,89 +46,54 @@ export async function transformClientComponents(
     },
   });
   const sourceFile = project.createSourceFile("temp.tsx", code);
-  sourceFile.getDescendantsOfKind(SyntaxKind.StringLiteral).forEach((node) => {
-    if (
-      node.getText() === "'use client'" ||
-      node.getText() === '"use client"'
-    ) {
-      const parentExpr = node.getFirstAncestorByKind(
-        SyntaxKind.ExpressionStatement,
-      );
-      if (parentExpr) {
-        parentExpr.remove();
-      }
+
+  // We'll collect named and default exports in order
+  type ExportInfo = {
+    local: string;
+    exported: string;
+    isDefault: boolean;
+    statementIdx: number;
+  };
+  const exportInfos: ExportInfo[] = [];
+  let defaultExportInfo: ExportInfo | undefined;
+
+  // Helper to add export info
+  function addExport(
+    local: string,
+    exported: string,
+    isDefault: boolean,
+    statementIdx: number,
+  ) {
+    if (isDefault) {
+      defaultExportInfo = { local, exported, isDefault, statementIdx };
+    } else {
+      exportInfos.push({ local, exported, isDefault, statementIdx });
     }
-  });
-  // 5. If not a virtual SSR file, just remove the directive and return
-  if (!id.includes("virtual:rwsdk:ssr")) {
-    return {
-      code: sourceFile.getFullText(),
-      map: undefined,
-    };
   }
-  // 6. For SSR files, apply the complete transformation
-  // (ts-morph export handling logic follows)
-  // Add import for registerClientReference if not present
-  const hasImport = sourceFile
-    .getImportDeclarations()
-    .some((imp) => imp.getModuleSpecifierValue() === "rwsdk/worker");
-  if (!hasImport) {
-    sourceFile.addImportDeclaration({
-      moduleSpecifier: "rwsdk/worker",
-      namedImports: [{ name: "registerClientReference" }],
-    });
-  }
-  const registrations: string[] = [];
-  const exportStatements: string[] = [];
-  const handledExports = new Set<string>();
-  let hasDefaultExport = false;
-  // Handle export default ...
-  sourceFile
-    .getDescendantsOfKind(SyntaxKind.ExportAssignment)
-    .forEach((node) => {
-      hasDefaultExport = true;
-      const expr = node.getExpression();
+
+  // Walk through statements in order
+  const statements = sourceFile.getStatements();
+  statements.forEach((stmt, idx) => {
+    // export default function ...
+    if (
+      Node.isFunctionDeclaration(stmt) &&
+      stmt.hasModifier(SyntaxKind.ExportKeyword) &&
+      stmt.hasModifier(SyntaxKind.DefaultKeyword)
+    ) {
+      addExport("default", "default", true, idx);
+      return;
+    }
+    // export default ... (assignment)
+    if (Node.isExportAssignment(stmt)) {
+      const expr = stmt.getExpression();
       if (Node.isIdentifier(expr)) {
-        // export default Component;
-        registrations.push(
-          `export default registerClientReference("${id}", "${expr.getText()}");`,
-        );
+        addExport(expr.getText(), "default", true, idx);
       } else {
-        // export default () => ... or export default function ...
-        registrations.push(
-          `export default registerClientReference("${id}", "default");`,
-        );
+        addExport("default", "default", true, idx);
       }
-      node.remove();
-    });
-
-  // Handle export declarations (grouped/aliased)
-  sourceFile
-    .getDescendantsOfKind(SyntaxKind.ExportDeclaration)
-    .forEach((node) => {
-      const namedExports = node.getNamedExports();
-      if (namedExports.length > 0) {
-        const bindings: string[] = [];
-        namedExports.forEach((exp) => {
-          const local = exp.getAliasNode()
-            ? exp.getNameNode().getText()
-            : exp.getName();
-          const exported = exp.getAliasNode()
-            ? exp.getAliasNode()!.getText()
-            : exp.getName();
-          registrations.push(
-            `const ${local} = registerClientReference("${id}", "${exported}");`,
-          );
-          bindings.push(exp.getText());
-          handledExports.add(local);
-        });
-        exportStatements.push(`export { ${bindings.join(", ")} };`);
-        node.remove();
-      }
-    });
-
-  // Handle named exports (export const foo = ..., export function bar() ..., etc)
-  sourceFile.getStatements().forEach((stmt) => {
+      return;
+    }
+    // export const foo = ...
     if (
       Node.isVariableStatement(stmt) &&
       stmt.hasModifier(SyntaxKind.ExportKeyword)
@@ -144,52 +103,95 @@ export async function transformClientComponents(
         .getDeclarations()
         .forEach((decl) => {
           const name = decl.getName();
-          if (!handledExports.has(name)) {
-            registrations.push(
-              `const ${name} = registerClientReference("${id}", "${name}");`,
-            );
-            exportStatements.push(`export { ${name} };`);
-            handledExports.add(name);
-          }
+          addExport(name, name, false, idx);
         });
-      stmt.toggleModifier("export", false);
+      return;
     }
+    // export function foo() ...
     if (
       Node.isFunctionDeclaration(stmt) &&
       stmt.hasModifier(SyntaxKind.ExportKeyword)
     ) {
-      const name = stmt.getName();
-      if (name && !handledExports.has(name)) {
-        registrations.push(
-          `const ${name} = registerClientReference("${id}", "${name}");`,
-        );
-        exportStatements.push(`export { ${name} };`);
-        handledExports.add(name);
+      if (!stmt.hasModifier(SyntaxKind.DefaultKeyword)) {
+        const name = stmt.getName();
+        if (name) {
+          addExport(name, name, false, idx);
+        }
       }
-      stmt.toggleModifier("export", false);
+      return;
+    }
+    // export { ... } or export { ... } from ...
+    if (Node.isExportDeclaration(stmt)) {
+      const namedExports = stmt.getNamedExports();
+      if (namedExports.length > 0) {
+        namedExports.forEach((exp) => {
+          const local = exp.getAliasNode()
+            ? exp.getNameNode().getText()
+            : exp.getName();
+          const exported = exp.getAliasNode()
+            ? exp.getAliasNode()!.getText()
+            : exp.getName();
+          addExport(local, exported, exported === "default", idx);
+        });
+      }
+      return;
     }
   });
 
-  // Compose the final code
-  // Insert registrations after the last import declaration, or at the top if none
-  const importDecls = sourceFile.getImportDeclarations();
-  const insertIndex =
-    importDecls.length > 0
-      ? importDecls[importDecls.length - 1].getChildIndex() + 1
-      : 0;
-  sourceFile.insertStatements(insertIndex, registrations.join("\n"));
-  // Insert export statements at the end
-  sourceFile.addStatements(exportStatements.join("\n"));
+  // 4. SSR files: just remove the directive
+  if (id.startsWith("virtual:rwsdk:ssr")) {
+    const s = new MagicString(code);
+    const directiveMatch = code.match(/^(\s*)(["'])use client\2/);
+    if (directiveMatch) {
+      const fullDirective = directiveMatch[0];
+      const directivePos = code.indexOf(fullDirective);
+      const directiveEnd = directivePos + fullDirective.length;
+      // If followed by a semicolon, include it in the removal
+      if (code[directiveEnd] === ";") {
+        s.remove(directivePos, directiveEnd + 1);
+      } else {
+        s.remove(directivePos, directiveEnd);
+      }
+    }
+    return {
+      code: s.toString(),
+      map: s.generateMap({ hires: true }),
+    };
+  }
 
-  // If there was a default export not handled above, add it
-  if (!hasDefaultExport && handledExports.has("default")) {
-    sourceFile.addStatements(
-      `export default registerClientReference("${id}", "default");`,
+  // 5. Non-SSR files: replace all implementation with registerClientReference logic
+  // Remove all original imports for non-SSR 'use client' files
+  // Only add the registerClientReference import
+  const importLine = 'import { registerClientReference } from "rwsdk/worker";';
+  let resultLines: string[] = [];
+  resultLines.push(importLine);
+
+  // Add registerClientReference assignments for named exports in order
+  for (const info of exportInfos) {
+    resultLines.push(
+      `const ${info.local} = registerClientReference("${id}", "${info.exported}");`,
     );
   }
 
+  // Add grouped export statement for named exports (preserving order and alias)
+  if (exportInfos.length > 0) {
+    const exportNames = exportInfos.map((e) =>
+      e.local === e.exported ? e.local : `${e.local} as ${e.exported}`,
+    );
+    resultLines.push(`export { ${exportNames.join(", ")} };`);
+  }
+
+  // Add default export if present
+  if (defaultExportInfo) {
+    resultLines.push(
+      `export default registerClientReference("${id}", "${defaultExportInfo.exported}");`,
+    );
+  }
+
+  // Join all lines with a blank line between each statement, and end with a single trailing newline
+  const finalResult = resultLines.join("\n");
   return {
-    code: sourceFile.getFullText(),
+    code: finalResult + "\n",
     map: undefined,
   };
 }

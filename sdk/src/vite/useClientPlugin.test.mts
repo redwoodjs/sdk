@@ -11,101 +11,82 @@ describe("transformClientComponents", () => {
 
   it("transforms arrow function component", async () => {
     expect(
-      await transform(`"use client"
+      (await transform(`"use client"
 
 export const Component = () => {
   return jsx('div', { children: 'Hello' });
-}`),
-    ).toEqual(`
-import { registerClientReference } from "rwsdk/worker";
-
+}
+`)) ?? "",
+    ).toEqual(
+      `import { registerClientReference } from "rwsdk/worker";
 const Component = registerClientReference("/test/file.tsx", "Component");
-
 export { Component };
-`);
-  });
-
-  it("does nothing for irrelevant exports", async () => {
-    expect(
-      await transform(`"use client"
-
-export const foo = "bar"
-export const baz = 23
-`),
-    ).toEqual(`
-import { registerClientReference } from "rwsdk/worker";
-
-const foo = registerClientReference("/test/file.tsx", "foo");
-const baz = registerClientReference("/test/file.tsx", "baz");
-
-export { foo, baz };
-`);
+`,
+    );
   });
 
   it("transforms async arrow function component", async () => {
     expect(
-      await transform(`"use client"
+      (await transform(`"use client"
 
 export const Component = async () => {
   return jsx('div', { children: 'Hello' });
 }
-  `),
-    ).toEqual(`
-import { registerClientReference } from "rwsdk/worker";
-
+  `)) ?? "",
+    ).toEqual(
+      `import { registerClientReference } from "rwsdk/worker";
 const Component = registerClientReference("/test/file.tsx", "Component");
-
 export { Component };
-`);
+`,
+    );
   });
 
   it("transforms function declaration component", async () => {
     expect(
-      await transform(`"use client"
+      (await transform(`"use client"
 
 export function Component() {
   return jsx('div', { children: 'Hello' });
-}`),
-    ).toEqual(`
-import { registerClientReference } from "rwsdk/worker";
-
+}`)) ?? "",
+    ).toEqual(
+      `import { registerClientReference } from "rwsdk/worker";
 const Component = registerClientReference("/test/file.tsx", "Component");
-
 export { Component };
-`);
+`,
+    );
   });
 
   it("transforms default export arrow function component", async () => {
     expect(
-      await transform(`"use client"
+      (await transform(`"use client"
 
 export default () => {
   return jsx('div', { children: 'Hello' });
-}`),
-    ).toEqual(`
-import { registerClientReference } from "rwsdk/worker";
-
+}`)) ?? "",
+    ).toEqual(
+      `import { registerClientReference } from "rwsdk/worker";
 export default registerClientReference("/test/file.tsx", "default");
-`);
+`,
+    );
   });
 
   it("transforms default export function declaration component", async () => {
     expect(
-      await transform(`"use client"
+      (await transform(`"use client"
 
 export default function Component({ prop1, prop2 }) {
   return jsx('div', { children: 'Hello' });
-}`),
-    ).toEqual(`
-import { registerClientReference } from "rwsdk/worker";
-
+}`)) ?? "",
+    ).toEqual(
+      `import { registerClientReference } from "rwsdk/worker";
 export default registerClientReference("/test/file.tsx", "default");
-`);
+`,
+    );
   });
 
   it("transforms mixed export styles (inline, grouped, and default)", async () => {
     expect(
-      await transform(`"use client"
+      (await transform(`"use client"
 
 export const First = () => {
   return jsx('div', { children: 'First' });
@@ -128,40 +109,39 @@ export default function Main() {
 }
 
 export { Second, Third }
-export { Fourth as AnotherName }`),
-    ).toEqual(`
-import { registerClientReference } from "rwsdk/worker";
-
+export { Fourth as AnotherName }`)) ?? "",
+    ).toEqual(
+      `import { registerClientReference } from "rwsdk/worker";
 const First = registerClientReference("/test/file.tsx", "First");
 const Second = registerClientReference("/test/file.tsx", "Second");
 const Third = registerClientReference("/test/file.tsx", "Third");
-const Fourth = registerClientReference("/test/file.tsx", "Fourth");
-
-export { First, Second, Third, Fourth };
-export default registerClientReference("/test/file.tsx", "Main");
-`);
+const Fourth = registerClientReference("/test/file.tsx", "AnotherName");
+export { First, Second, Third, Fourth as AnotherName };
+export default registerClientReference("/test/file.tsx", "default");
+`,
+    );
   });
 
   it("transforms function declaration that is exported default separately", async () => {
     expect(
-      await transform(`
+      (await transform(`
 "use client"
 
 function Component({ prop1, prop2 }) {
   return jsx('div', { children: 'Hello' });
 }
 
-export default Component;`),
-    ).toEqual(`
-import { registerClientReference } from "rwsdk/worker";
-
-export default registerClientReference("/test/file.tsx", "Component");
-`);
+export default Component;`)) ?? "",
+    ).toEqual(
+      `import { registerClientReference } from "rwsdk/worker";
+export default registerClientReference("/test/file.tsx", "default");
+`,
+    );
   });
 
   it("Works in dev", async () => {
     expect(
-      await transform(`"use client"
+      (await transform(`"use client"
 import { jsxDEV } from "react/jsx-dev-runtime";
 import { sendMessage } from "./functions";
 import { useState } from "react";
@@ -241,78 +221,74 @@ export function Chat() {
     columnNumber: 5
   }, this);
 }
-`),
-    ).toEqual(`
-import { registerClientReference } from "rwsdk/worker";
-
+`)) ?? "",
+    ).toEqual(
+      `import { registerClientReference } from "rwsdk/worker";
 const Chat = registerClientReference("/test/file.tsx", "Chat");
-
 export { Chat };
-`);
+`,
+    );
   });
 
   it("Does not transform when 'use client' is not directive", async () => {
-    expect(await transform(`const message = "use client";`)).toEqual(
+    expect((await transform(`const message = "use client";`)) ?? "").toEqual(
       `const message = "use client";`,
     );
   });
 
   it("properly handles export alias", async () => {
     expect(
-      await transform(`"use client"
+      (await transform(`"use client"
 
 const MyComponent = () => {
   return jsx('div', { children: 'Hello' });
 }
 
-export { MyComponent as CustomName }`),
-    ).toEqual(`
-import { registerClientReference } from "rwsdk/worker";
-
+export { MyComponent as CustomName }`)) ?? "",
+    ).toEqual(
+      `import { registerClientReference } from "rwsdk/worker";
 const MyComponent = registerClientReference("/test/file.tsx", "CustomName");
-
 export { MyComponent as CustomName };
-`);
+`,
+    );
   });
 
   it("correctly processes multiple component exports", async () => {
     expect(
-      await transform(`"use client"
+      (await transform(`"use client"
 
 const First = () => jsx('div', { children: 'First' });
 const Second = () => jsx('div', { children: 'Second' });
 const Third = () => jsx('div', { children: 'Third' });
 
-export { First, Second, Third }`),
-    ).toEqual(`
-import { registerClientReference } from "rwsdk/worker";
-
+export { First, Second, Third }`)) ?? "",
+    ).toEqual(
+      `import { registerClientReference } from "rwsdk/worker";
 const First = registerClientReference("/test/file.tsx", "First");
 const Second = registerClientReference("/test/file.tsx", "Second");
 const Third = registerClientReference("/test/file.tsx", "Third");
-
 export { First, Second, Third };
-`);
+`,
+    );
   });
 
   it("handles combination of JSX and non-JSX exports", async () => {
     expect(
-      await transform(`"use client"
+      (await transform(`"use client"
 
 const Component = () => jsx('div', {});
 const data = { value: 42 };
 const helper = () => console.log('helper');
 
-export { Component, data, helper }`),
-    ).toEqual(`
-import { registerClientReference } from "rwsdk/worker";
-
+export { Component, data, helper }`)) ?? "",
+    ).toEqual(
+      `import { registerClientReference } from "rwsdk/worker";
 const Component = registerClientReference("/test/file.tsx", "Component");
 const data = registerClientReference("/test/file.tsx", "data");
 const helper = registerClientReference("/test/file.tsx", "helper");
-
 export { Component, data, helper };
-`);
+`,
+    );
   });
 });
 
@@ -355,23 +331,13 @@ describe("transformClientComponents logic branches", () => {
 
   it("removes directive but does not transform if not a virtual SSR file", async () => {
     const code = '"use client"\nexport const foo = 1;';
-    const result = await transformClientComponents(code, "/test/file.tsx", {
-      environmentName: "worker",
-    });
-    expect(result?.code).not.toContain('"use client"');
-    expect(result?.code).toContain("export const foo = 1;");
-    expect(result?.code).not.toContain("registerClientReference");
-  });
-
-  it("applies full transform for SSR files with 'use client'", async () => {
-    const code = '"use client"\nexport const foo = 1;';
     const result = await transformClientComponents(
       code,
-      "/virtual:rwsdk:ssr/file.tsx",
-      { environmentName: "worker" },
+      "virtual:rwsdk:ssr/test/file.tsx",
+      {
+        environmentName: "worker",
+      },
     );
-    expect(result?.code).toContain("registerClientReference");
-    expect(result?.code).toContain("const foo = registerClientReference");
-    expect(result?.code).toContain("export { foo };");
+    expect(result?.code).toEqual("\nexport const foo = 1;");
   });
 });
