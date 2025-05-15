@@ -46,12 +46,12 @@ import { init, parse } from "es-module-lexer";
 import MagicString from "magic-string";
 import debug from "debug";
 import { glob } from "glob";
-import { fileURLToPath } from "url";
 import { parse as sgParse, Lang as SgLang } from "@ast-grep/napi";
 
-const SSR_BASE_NAMESPACE = "virtual:rwsdk:ssr:";
-const SSR_MODULE_NAMESPACE = SSR_BASE_NAMESPACE + "module:";
-const SSR_DEP_NAMESPACE = SSR_BASE_NAMESPACE + "dep:";
+export const SSR_BASE_NAMESPACE = "virtual:rwsdk:ssr:";
+export const SSR_MODULE_NAMESPACE = SSR_BASE_NAMESPACE + "module:";
+export const SSR_DEP_NAMESPACE = SSR_BASE_NAMESPACE + "dep:";
+
 const log = debug("rwsdk:vite:virtualized-ssr");
 
 const logInfo = log.extend("info");
@@ -69,10 +69,6 @@ const ssrResolver = enhancedResolve.create.sync({
 const IGNORED_IMPORT_PATTERNS = [
   /^cloudflare:.*$/,
   /^rwsdk\/.*$/,
-  /^react$/,
-  /^react\/.*$/,
-  /^react-dom$/,
-  /^react-dom\/.*$/,
   /^@rwsdk\/.*$/,
 ];
 

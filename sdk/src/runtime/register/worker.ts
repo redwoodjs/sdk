@@ -21,10 +21,9 @@ export function registerServerReference(
 export function registerClientReference<Target extends Record<string, any>>(
   id: string,
   exportName: string,
-  target: Target,
 ) {
   const reference = baseRegisterClientReference({}, id, exportName);
-  return Object.defineProperties(target, {
+  return Object.defineProperties(reference, {
     ...Object.getOwnPropertyDescriptors(reference),
     $$async: { value: true },
     $$isClientReference: { value: true },
