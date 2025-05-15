@@ -665,8 +665,7 @@ export function virtualizedSSRPlugin({
       // Fallback to trying to read the file directly
       try {
         logResolve(
-          "📄 load() attempting fallback read: %s → %s",
-          id,
+          "📄 load() reading file for transform() as separate SSR module: %s",
           maybePath,
         );
         return fs.readFile(maybePath, "utf-8");
