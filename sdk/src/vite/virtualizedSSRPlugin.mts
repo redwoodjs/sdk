@@ -47,6 +47,7 @@ import MagicString from "magic-string";
 import debug from "debug";
 import { glob } from "glob";
 import { parse as sgParse, Lang as SgLang } from "@ast-grep/napi";
+import { ROOT_DIR } from "../lib/constants.mjs";
 
 export const SSR_BASE_NAMESPACE = "virtual:rwsdk:ssr:";
 export const SSR_MODULE_NAMESPACE = SSR_BASE_NAMESPACE + "module:";
@@ -62,9 +63,6 @@ const logScan = log.extend("scan");
 const logWatch = log.extend("watch");
 
 // Enhanced resolver for SSR modules - only used in resolveBareImport
-const ssrResolver = enhancedResolve.create.sync({
-  conditionNames: ["workerd", "edge", "import", "default"],
-});
 
 const IGNORED_IMPORT_PATTERNS = [
   /^cloudflare:.*$/,
@@ -165,6 +163,11 @@ export function virtualizedSSRPlugin({
   logInfo(
     "📂 Plugin will handle client/server module resolution in a single Vite worker environment",
   );
+
+  const ssrResolver = enhancedResolve.create.sync({
+    conditionNames: ["workerd", "edge", "import", "default"],
+    roots: [projectRootDir, ROOT_DIR],
+  });
 
   const virtualSsrDeps = new Map<string, string>();
   const depPrefixMap = new Map<string, string>();
