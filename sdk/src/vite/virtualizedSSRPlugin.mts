@@ -53,11 +53,10 @@ const logInfo = log.extend("info");
 const logError = log.extend("error");
 const logResolve = log.extend("resolve");
 const logTransform = log.extend("transform");
-const logLoad = log.extend("load");
-const logModuleIds = log.extend("module-ids");
 const logScan = log.extend("scan");
 const logWatch = log.extend("watch");
 
+// Enhanced resolver for SSR modules - only used in resolveBareImport
 const ssrResolver = enhancedResolve.create.sync({
   conditionNames: ["workerd", "edge", "import", "default"],
 });
@@ -168,31 +167,17 @@ export function virtualizedSSRPlugin({
 
   const virtualSsrDeps = new Map<string, string>();
   const depPrefixMap = new Map<string, string>();
-  const moduleIdMap = new Map<string, string>();
+  const seenBareImports = new Set<string>();
   let viteServer: any = null;
-
-  // Generate a stable virtual module ID without exposing file system paths
-  function getVirtualModuleId(fullPath: string): string {
-    // Check if we already have a virtual ID for this path
-    if (moduleIdMap.has(fullPath)) {
-      const cachedId = moduleIdMap.get(fullPath)!;
-      logModuleIds("📋 Using cached module ID for %s: %s", fullPath, cachedId);
-      return cachedId;
-    }
-
-    logModuleIds("✅ Generated module ID: %s", fullPath);
-
-    // Store the mapping for future lookups
-    moduleIdMap.set(fullPath, fullPath);
-
-    return fullPath;
-  }
 
   /**
    * Resolves a bare import and adds it to our dependency mappings
+   * This is the ONLY place where ssrResolver should be used
    * @returns true if a new dependency was resolved and added
    */
   async function resolveBareImport(importPath: string): Promise<boolean> {
+    seenBareImports.add(importPath);
+
     // Skip if already in our mappings
     if (depPrefixMap.has(importPath)) {
       return false;
@@ -201,7 +186,14 @@ export function virtualizedSSRPlugin({
     logResolve("🔍 Resolving bare import: %s", importPath);
 
     try {
-      const resolved = ssrResolver(projectRootDir, importPath);
+      let resolved: string | false = false;
+
+      try {
+        // This is the only place where ssrResolver should be used
+        resolved = ssrResolver(projectRootDir, importPath);
+      } catch {
+        resolved = false;
+      }
 
       if (!resolved) {
         logResolve("⚠️ Could not resolve: %s", importPath);
@@ -427,121 +419,6 @@ export function virtualizedSSRPlugin({
     return id.includes("node_modules") || id.includes(".vite");
   }
 
-  // Helper function to process imports in a code string
-  async function processImports(
-    context: any,
-    code: string,
-    id: string,
-    isClientModule: boolean,
-  ): Promise<{ code: string; map: any } | null> {
-    if (!isClientModule) {
-      logTransform("⏭️ Skipping non-client module: %s", id);
-      return null;
-    }
-
-    logTransform(
-      "🔎 Processing imports in client module or module imported by one: %s",
-      id,
-    );
-    await init;
-    const [imports] = parse(code);
-    logTransform("📊 Found %d imports to process", imports.length);
-
-    const ms = new MagicString(code);
-    let modified = false;
-
-    for (const i of imports) {
-      const raw = code.slice(i.s, i.e);
-
-      try {
-        // First check if it's in our known deps mapping
-        const prefix = depPrefixMap.get(raw);
-
-        if (prefix) {
-          logTransform(
-            "🔄 Found mapped dependency import: %s → %s",
-            raw,
-            prefix,
-          );
-          ms.overwrite(i.s, i.e, prefix);
-          modified = true;
-        } else if (
-          !raw.startsWith(".") &&
-          !raw.startsWith("/") &&
-          !raw.startsWith("virtual:") &&
-          !IGNORED_IMPORT_PATTERNS.some((pattern) => pattern.test(raw))
-        ) {
-          // This is a bare import not in our mapping, try to resolve it on-the-fly
-          logTransform(
-            "🔍 Attempting to resolve unmapped bare import: %s",
-            raw,
-          );
-
-          try {
-            const resolved = ssrResolver(projectRootDir, raw);
-
-            if (resolved) {
-              // Create virtual ID and add to mappings
-              const virtualId = SSR_NAMESPACE + raw;
-              virtualSsrDeps.set(virtualId, resolved);
-
-              // Add to prefix map for rewriting imports
-              depPrefixMap.set(raw, virtualId);
-
-              // Update Vite config if we have a server
-              if (viteServer) {
-                updateViteConfig();
-                // Trigger optimization in development mode
-                viteServer.optimizeDeps();
-              }
-
-              logTransform("✅ Resolved on-the-fly: %s → %s", raw, virtualId);
-              ms.overwrite(i.s, i.e, virtualId);
-              modified = true;
-            }
-          } catch (err) {
-            logError("❌ Failed to resolve bare import %s: %O", raw, err);
-          }
-        } else {
-          // For relative/absolute imports
-          const resolved = await context.resolve(raw, id);
-
-          if (resolved && !isDep(resolved.id)) {
-            const moduleId = getVirtualModuleId(resolved.id);
-            const virtualId = SSR_NAMESPACE + moduleId;
-
-            logTransform(
-              "🔁 Rewriting relative/absolute import: %s → %s",
-              raw,
-              virtualId,
-            );
-            ms.overwrite(i.s, i.e, virtualId);
-            modified = true;
-          } else {
-            logTransform(
-              "⏭️ Skipping import: %s (resolved to %s)",
-              raw,
-              resolved?.id || "unresolved",
-            );
-          }
-        }
-      } catch (err) {
-        logError("❌ Error processing import %s: %O", raw, err);
-      }
-    }
-
-    if (modified) {
-      logTransform("✏️ Modified code in: %s", id);
-      return {
-        code: ms.toString(),
-        map: ms.generateMap({ hires: true }),
-      };
-    }
-
-    logTransform("⏭️ No modifications needed for: %s", id);
-    return null;
-  }
-
   return {
     name: "rwsdk:virtualized-ssr",
 
@@ -629,7 +506,7 @@ export function virtualizedSSRPlugin({
         return null;
       }
 
-      logTransform("🔄 Transform: %s", id);
+      logTransform("📝 Transform: %s", id);
 
       // Check if this is a "use client" module
       let isClientModule = false;
@@ -653,100 +530,150 @@ export function virtualizedSSRPlugin({
         }
       }
 
-      return processImports(this, code, id, isClientModule);
+      // Skip non-client modules
+      if (!isClientModule) {
+        logTransform("⏭️ Skipping non-client module: %s", id);
+        return null;
+      }
+
+      // Process imports directly in transform
+      logTransform("🔎 Processing imports in client module: %s", id);
+      await init;
+      const [imports] = parse(code);
+      const ms = new MagicString(code);
+      let modified = false;
+
+      const resolveId = id.startsWith(SSR_NAMESPACE)
+        ? id.slice(SSR_NAMESPACE.length)
+        : id;
+
+      for (const i of imports) {
+        const raw = code.slice(i.s, i.e);
+
+        try {
+          // Case 1: Known mapped dependency
+          if (depPrefixMap.has(raw)) {
+            const virtualId = depPrefixMap.get(raw)!;
+            logTransform("🔄 Rewriting mapped dep: %s → %s", raw, virtualId);
+            ms.overwrite(i.s, i.e, virtualId);
+            modified = true;
+            continue;
+          }
+
+          logTransform("🔍 Resolving %s from %s", raw, resolveId);
+          const resolved = await this.resolve(raw, resolveId, {
+            skipSelf: true,
+          });
+
+          if (!resolved?.id) {
+            logTransform("⛔ Unresolvable import: %s - skipping", raw);
+            continue;
+          }
+
+          // Case 2: Ignored import patterns
+          if (IGNORED_IMPORT_PATTERNS.some((pattern) => pattern.test(raw))) {
+            logTransform(
+              "🛡️ Ignoring pattern-matched import: %s → %s",
+              raw,
+              resolved.id,
+            );
+            ms.overwrite(i.s, i.e, resolved.id);
+            modified = true;
+            continue;
+          }
+
+          // Case 3: User code imports (not from node_modules)
+          if (!isDep(resolved.id)) {
+            const virtualId = SSR_NAMESPACE + resolved.id;
+            logTransform("🔁 Rewriting user import: %s → %s", raw, virtualId);
+            ms.overwrite(i.s, i.e, virtualId);
+            modified = true;
+          } else {
+            logTransform("⏭️ Skipping rewrite for dep: %s", raw);
+          }
+        } catch (err) {
+          logError("❌ Error processing import %s: %O", raw, err);
+        }
+      }
+
+      return modified
+        ? { code: ms.toString(), map: ms.generateMap({ hires: true }) }
+        : null;
     },
 
     resolveId(source, importer, options) {
-      // Handle virtual client imports (already namespaced)
+      // Handle virtualized imports
       if (source.startsWith(SSR_NAMESPACE)) {
         const moduleId = source.slice(SSR_NAMESPACE.length);
+        logResolve("🔍 Resolving virtual module: %s", moduleId);
 
-        logResolve(
-          "🔍 Resolving virtual module: %s from %s",
-          moduleId,
-          importer || "unknown",
-        );
-
-        // Check known SSR virtual deps
+        // Check if it's a known virtual dependency
         if (virtualSsrDeps.has(source)) {
-          const resolvedPath = virtualSsrDeps.get(source)!;
-          logResolve(
-            "✨ Using predefined alias: %s → %s",
-            source,
-            resolvedPath,
-          );
-          return resolvedPath;
+          const realPath = virtualSsrDeps.get(source)!;
+          logResolve("✨ Using cached virtual dep: %s → %s", source, realPath);
+          return realPath;
         }
 
-        // Try to resolve unknown bare imports like 'some-lib'
-        if (!moduleId.startsWith("/") && !moduleId.includes(":")) {
-          try {
-            const resolved = ssrResolver(projectRootDir, moduleId);
-            if (resolved) {
-              virtualSsrDeps.set(source, resolved);
-              logResolve(
-                "✅ Resolved unmapped bare virtual dep: %s → %s",
-                moduleId,
-                resolved,
-              );
-              return resolved;
-            }
-          } catch (err) {
-            logError("❌ Failed to resolve %s on-the-fly: %O", moduleId, err);
-          }
-        }
-
-        // Let Vite continue with this virtual ID so transform() can run
-        logResolve(
-          "📦 Returning unresolved virtual ID for transform(): %s",
-          source,
-        );
+        // Return the virtual ID for further processing
+        logResolve("📦 Returning virtual ID for transform(): %s", source);
         return source;
       }
 
-      // Handle imports coming from virtual modules
+      // Handle imports coming from within the virtual graph
       if (importer?.startsWith(SSR_NAMESPACE)) {
-        const importerPath = importer.slice(SSR_NAMESPACE.length);
-
-        // Bare imports inside virtual client context
+        // Known bare import mapping
         if (depPrefixMap.has(source)) {
-          const virtualDepId = depPrefixMap.get(source)!;
+          const virtualId = depPrefixMap.get(source)!;
           logResolve(
-            "🔁 Rewriting bare import in client graph: %s → %s",
-            source,
-            virtualDepId,
-          );
-          return virtualDepId;
-        }
-
-        // Relative/absolute import → stay in virtual namespace
-        if (source.startsWith(".") || source.startsWith("/")) {
-          const resolved = path.resolve(path.dirname(importerPath), source);
-          const virtualId = SSR_NAMESPACE + resolved;
-          logResolve(
-            "🔁 Rewriting relative import in client graph: %s → %s",
+            "🔁 Rewriting known dep inside virtual graph: %s → %s",
             source,
             virtualId,
           );
           return virtualId;
         }
+
+        // For relative or absolute paths, just prefix with namespace and let Vite resolve
+        if (source.startsWith(".") || source.startsWith("/")) {
+          const virtualId = SSR_NAMESPACE + source;
+          logResolve(
+            "🔁 Prefixing relative/absolute import for virtual resolution: %s → %s",
+            source,
+            virtualId,
+          );
+          return virtualId;
+        }
+
+        logResolve("⚠️ Unresolved import in virtual context: %s", source);
       }
 
+      // Let Vite handle other imports
       return null;
     },
 
     load(id) {
-      if (id.startsWith(SSR_NAMESPACE)) {
-        const realId = id.slice(SSR_NAMESPACE.length);
-        logResolve(
-          "📄 load() returning source for virtual ID: %s → %s",
-          id,
-          realId,
-        );
-        return fs.readFile(realId, "utf-8"); // ✅ this triggers transform()
+      if (!id.startsWith(SSR_NAMESPACE)) return null;
+
+      const maybePath = id.slice(SSR_NAMESPACE.length);
+
+      // Handle known virtual dependencies
+      if (virtualSsrDeps.has(id)) {
+        const realPath = virtualSsrDeps.get(id)!;
+        logResolve("📄 load() returning known dep: %s → %s", id, realPath);
+        return fs.readFile(realPath, "utf-8");
       }
 
-      return null;
+      // Fallback to trying to read the file directly
+      try {
+        logResolve(
+          "📄 load() attempting fallback read: %s → %s",
+          id,
+          maybePath,
+        );
+        return fs.readFile(maybePath, "utf-8");
+      } catch {
+        logResolve("❌ load() fallback read failed for: %s", maybePath);
+        return null;
+      }
     },
   };
 }
