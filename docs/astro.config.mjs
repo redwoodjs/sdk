@@ -102,10 +102,19 @@ export default defineConfig({
           label: "Guides",
           items: [
             {
-              label: "Frontend Development",
+              label: 'Email',
               collapsed: true,
               items: [
-                { label: "TailwindCSS", slug: "guides/frontend/tailwind" },
+                { label: 'Sending Email', slug: 'guides/email/sending-email' },
+                { label: 'Email Templates', slug: 'guides/email/email-templates' },
+              ]
+            },
+            {
+              label: 'Frontend Development',
+              collapsed: true,
+              items: [
+                { label: "Tailwind CSS", slug: "guides/frontend/tailwind" },
+                { label: "Storybook", slug: "guides/frontend/storybook" },
                 { label: "shadcn/ui", slug: "guides/frontend/shadcn" },
                 { label: "Layouts", slug: "guides/frontend/layouts" },
                 { label: "Documents", slug: "guides/frontend/documents" },
@@ -144,7 +153,7 @@ export default defineConfig({
           attrs: {
             property: "og:description",
             content:
-              "RedwoodSDK is a React Framework for Cloudflare. It begins as a Vite plugin that unlocks SSR, React Server Components, Server Functions, and realtime features.  Its standards-based router, with support for middleware and  interruptors, gives you fine-grained control over every request and  response.",
+              "RedwoodSDK is a React Framework for Cloudflare. It begins as a Vite plugin that unlocks SSR, React Server Components, Server Functions, and realtime features.  Its standards-based router, with support for middleware and  interrupters, gives you fine-grained control over every request and  response.",
           },
         },
         {

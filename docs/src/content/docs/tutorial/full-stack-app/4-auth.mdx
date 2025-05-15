@@ -304,105 +304,6 @@ Within our browser, let's go to http://localhost:4321/user/signup and you should
 
 Now, let's move over some of the functionality from our `Login.tsx` to our `Signup.tsx`. But first, let's make sure we understand what's happening in our `Login.tsx`.
 
-<details>
-<summary>Full `Login.tsx` code</summary>
-
-```tsx title="src/app/pages/user/Login.tsx" collapse={2-16}
-"use client";
-
-import { useState, useTransition } from "react";
-import {
-  startAuthentication,
-  startRegistration,
-} from "@simplewebauthn/browser";
-import {
-  finishPasskeyLogin,
-  finishPasskeyRegistration,
-  startPasskeyLogin,
-  startPasskeyRegistration,
-} from "./functions";
-import { useTurnstile } from "rwsdk/turnstile";
-import { Button } from "@/app/components/ui/button";
-// >>> Replace this with your own Cloudflare Turnstile site key
-const TURNSTILE_SITE_KEY = "0x4AAAAAABBM92GLK3VnyFAr";
-
-export function Login() {
-  const [username, setUsername] = useState("");
-  const [result, setResult] = useState("");
-  const [isPending, startTransition] = useTransition();
-  const turnstile = useTurnstile(TURNSTILE_SITE_KEY);
-
-  const passkeyLogin = async () => {
-    // 1. Get a challenge from the worker
-    const options = await startPasskeyLogin();
-
-    // 2. Ask the browser to sign the challenge
-    const login = await startAuthentication({ optionsJSON: options });
-
-    // 3. Give the signed challenge to the worker to finish the login process
-    const success = await finishPasskeyLogin(login);
-
-    if (!success) {
-      setResult("Login failed");
-    } else {
-      setResult("Login successful!");
-    }
-  };
-
-  const passkeyRegister = async () => {
-    // 1. Get a challenge from the worker
-    const options = await startPasskeyRegistration(username);
-
-    // 2. Ask the browser to sign the challenge
-    const registration = await startRegistration({ optionsJSON: options });
-
-    const turnstileToken = await turnstile.challenge();
-
-    // 3. Give the signed challenge to the worker to finish the registration process
-    const success = await finishPasskeyRegistration(
-      username,
-      registration,
-      turnstileToken,
-    );
-
-    if (!success) {
-      setResult("Registration failed");
-    } else {
-      setResult("Registration successful!");
-    }
-  };
-
-  const handlePerformPasskeyLogin = () => {
-    startTransition(() => void passkeyLogin());
-  };
-
-  const handlePerformPasskeyRegister = () => {
-    startTransition(() => void passkeyRegister());
-  };
-
-  return (
-    <main className="bg-bg">
-      <h1 className="text-4xl font-bold text-red-500">YOLO</h1>
-      <div ref={turnstile.ref} />
-      <input
-        type="text"
-        value={username}
-        onChange={(e) => setUsername(e.target.value)}
-        placeholder="Username"
-      />
-      <Button onClick={handlePerformPasskeyLogin} disabled={isPending}>
-        {isPending ? <>...</> : "Login with passkey"}
-      </Button>
-      <Button onClick={handlePerformPasskeyRegister} disabled={isPending}>
-        {isPending ? <>...</> : "Register with passkey"}
-      </Button>
-      {result && <div>{result}</div>}
-    </main>
-  );
-}
-```
-</details>
-
 Let's break it down, chunk by chunk:
 
 ```tsx title="src/app/pages/user/Login.tsx"
@@ -413,37 +314,23 @@ Let's break it down, chunk by chunk:
 ```
 
 ```tsx title="src/app/pages/user/Login.tsx" startLineNumber=17
-const TURNSTILE_SITE_KEY = "0xXXXXXXXXXXXXXXXXXXXXXX";
----
-- **On line 17**, we're setting up our Turnstile site key. [We already set this up.](/tutorial/full-stack-app/create-app#setting-up-cloudflare-turnstile)
----
-```
-
-```tsx title="src/app/pages/user/Login.tsx" startLineNumber=20
 const [username, setUsername] = useState("");
 const [result, setResult] = useState("");
 ---
-- **On lines 20-21**, we're setting a couple pieces of state.
+- We're setting a couple pieces of state.
   - `username` is tied to our username input value.
   - `result` contains our result message.
 ---
 ```
 
-```tsx title="src/app/pages/user/Login.tsx" startLineNumber=22
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=19
 const [isPending, startTransition] = useTransition();
 ---
-- **On line 22**, we're using React's `useTransition` hook to manage our loading state. (More on this later, but you can also find more within [the official React documentation](https://react.dev/reference/react/useTransition).)
+- We're using React's `useTransition` hook to manage our loading state. (More on this later, but you can also find more within [the official React documentation](https://react.dev/reference/react/useTransition).)
 ---
 ```
 
-```tsx title="src/app/pages/user/Login.tsx" startLineNumber=23
-const turnstile = useTurnstile(TURNSTILE_SITE_KEY);
----
-- **On line 23**, the `useTurnstile` hook gets our Turnstile instance. This hook is coming from RedwoodSDK and is used to handle the challenge and verify our Turnstile token.
----
-```
-
-```tsx title="src/app/pages/user/Login.tsx" startLineNumber=25
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=21
 const passkeyLogin = async () => {
   // 1. Get a challenge from the worker
   const options = await startPasskeyLogin();
@@ -461,7 +348,7 @@ const passkeyLogin = async () => {
   }
 };
 ---
-- **On line 25**, we're defining our `passkeyLogin` function.
+- **On line 21**, we're defining our `passkeyLogin` function.
 - The functions `startPasskeyLogin`, `startAuthentication`, and `finishPasskeyLogin` are all defined in the `src/app/pages/user/functions.ts` file. You can find more information about these functions in the [Authentication docs](/core/authentication).
 - We start the Passkey login authentication `startPasskeyLogin()`, and then determine whether it was successful or not.
 - If it wasn't successful, we set the result message to "Login failed".
@@ -469,7 +356,7 @@ const passkeyLogin = async () => {
 ---
 ```
 
-```tsx title="src/app/pages/user/Login.tsx" startLineNumber=42
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=38
   const passkeyRegister = async () => {
     // 1. Get a challenge from the worker
     const options = await startPasskeyRegistration(username);
@@ -477,14 +364,8 @@ const passkeyLogin = async () => {
     // 2. Ask the browser to sign the challenge
     const registration = await startRegistration({ optionsJSON: options });
 
-    const turnstileToken = await turnstile.challenge();
-
     // 3. Give the signed challenge to the worker to finish the registration process
-    const success = await finishPasskeyRegistration(
-      username,
-      registration,
-      turnstileToken,
-    );
+    const success = await finishPasskeyRegistration(username, registration);
 
     if (!success) {
       setResult("Registration failed");
@@ -493,32 +374,32 @@ const passkeyLogin = async () => {
     }
   };
 ---
-- **On lines 42-63**, we're defining our `passkeyRegister` function. This is similar the `passkeyLogin` function, but this handles the registration process.
+- Here, we're defining our `passkeyRegister` function. This is similar the `passkeyLogin` function, but this handles the registration process.
   - The functions `startPasskeyRegistration`, `startRegistration`, and `finishPasskeyRegistration` are all defined in the `src/app/pages/user/functions.ts` file. You can find more information about these functions in the [Passkey Authentication docs](/docs/auth/passkeys).
   - If the registration isn't successful, we set the result message to "Registration failed".
   - Otherwise, we set the result message to "Registration successful!".
 ---
 ```
 
-```tsx title="src/app/pages/user/Login.tsx" startLineNumber=65
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=55
 const handlePerformPasskeyLogin = () => {
   startTransition(() => void passkeyLogin());
 };
 ---
-- **On lines 65**, the`handlePerformPasskeyLogin` function handles the transition and calls the `passkeyLogin` function.
+- The`handlePerformPasskeyLogin` function handles the transition and calls the `passkeyLogin` function.
 ---
 ```
 
-```tsx title="src/app/pages/user/Login.tsx" startLineNumber=69
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=59
 const handlePerformPasskeyRegister = () => {
   startTransition(() => void passkeyRegister());
 };
 ---
-- **On lines 60-62**, the`handlePerformPasskeyRegister` function handles the transition and calls the `passkeyRegister` function.
+- The`handlePerformPasskeyRegister` function handles the transition and calls the `passkeyRegister` function.
 ---
 ```
 
-```tsx title="src/app/pages/user/Login.tsx" startLineNumber=77
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=66
 <input
   type="text"
   value={username}
@@ -526,7 +407,7 @@ const handlePerformPasskeyRegister = () => {
   placeholder="Username"
 />
 ---
-- **On lines 77-82**, we're rendering an input field. This is tied to our `username` state (line 20).
+- We're rendering an input field. This is tied to our `username` state (line 17).
 ---
 ```
 
@@ -534,7 +415,7 @@ const handlePerformPasskeyRegister = () => {
 We're intentionally using usernames instead of emails. This decision prevents enumeration attacks and avoids requiring valid email addresses for registration.
 </Aside>
 
-```tsx title="src/app/pages/user/Login.tsx" startLineNumber=74
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=72
 <Button onClick={handlePerformPasskeyLogin} disabled={isPending}>
   {isPending ? <>...</> : "Login with passkey"}
 </Button>
@@ -542,14 +423,14 @@ We're intentionally using usernames instead of emails. This decision prevents en
   {isPending ? <>...</> : "Register with passkey"}
 </Button>
 ---
-- **On lines 74-79**, we're rendering two buttons. These buttons are tied to our `handlePerformPasskeyLogin` and `handlePerformPasskeyRegister` functions.
+- We're rendering two buttons. These buttons are tied to our `handlePerformPasskeyLogin` and `handlePerformPasskeyRegister` functions.
 ---
 ```
 
-```tsx title="src/app/pages/user/Login.tsx" startLineNumber=80
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=76
 {result && <div>{result}</div>}
 ---
-- **On lines 80**, we're rendering the result message.
+- We're rendering the result message.
 ---
 ```
 
@@ -562,9 +443,9 @@ export function Signup() {
 ```
 
 Let's remove all the pieces that aren't related to registering.
-- We don't need the `passkeyLogin` function (lines 26-36)
-- You can delete the `handlePerformPasskeyLogin` function (originally lines 56-58)
-- Let's also remove the "Login with passkey" button (originally lines 74-76)
+- We don't need the `passkeyLogin` function (lines 21-36)
+- You can delete the `handlePerformPasskeyLogin` function (originally lines 55-57)
+- Let's also remove the "Login with passkey" button (originally lines 72-74)
 
 Now, we need to clean up our unused imports. Within our IDE, these should be grayed out:
 
@@ -577,35 +458,27 @@ Now, we need to clean up our unused imports. Within our IDE, these should be gra
 "use client";
 
 import { useState, useTransition } from "react";
-import {
-  startRegistration,
-} from "@simplewebauthn/browser";
+import { startRegistration } from "@simplewebauthn/browser";
 import {
   finishPasskeyRegistration,
   startPasskeyRegistration,
 } from "./functions";
-import { useTurnstile } from "rwsdk/turnstile";
 import { Button } from "@/app/components/ui/button";
-
-// >>> Replace this with your own Cloudflare Turnstile site key
-const TURNSTILE_SITE_KEY = "0x4AAAAAABCpUSmzOt7TgetS";
 
 export function Signup() {
   const [username, setUsername] = useState("");
   const [result, setResult] = useState("");
   const [isPending, startTransition] = useTransition();
-  const turnstile = useTurnstile(TURNSTILE_SITE_KEY);
 
   const passkeyRegister = async () => {
+    // 1. Get a challenge from the worker
     const options = await startPasskeyRegistration(username);
-    const registration = await startRegistration({ optionsJSON: options });
-    const turnstileToken = await turnstile.challenge();
 
-    const success = await finishPasskeyRegistration(
-      username,
-      registration,
-      turnstileToken,
-    );
+    // 2. Ask the browser to sign the challenge
+    const registration = await startRegistration({ optionsJSON: options });
+
+    // 3. Give the signed challenge to the worker to finish the registration process
+    const success = await finishPasskeyRegistration(username, registration);
 
     if (!success) {
       setResult("Registration failed");
@@ -621,7 +494,6 @@ export function Signup() {
   return (
     <main className="bg-bg">
       <h1 className="text-4xl font-bold text-red-500">YOLO</h1>
-      <div ref={turnstile.ref} />
       <input
         type="text"
         value={username}
@@ -642,9 +514,9 @@ export function Signup() {
 
 Now, let's do the opposite for our `Login.tsx`.
 
-- We can remove the `passkeyRegister` function (lines 38-54)
-- and the `handlePerformPasskeyRegister` function (originally lines 60-62)
-- We don't need the `Register with passkey` button (originally lines 77-79)
+- We can remove the `passkeyRegister` function (lines 38-53)
+- and the `handlePerformPasskeyRegister` function (originally lines 59-61)
+- We don't need the `Register with passkey` button (originally lines 75-77)
 
 Don't forget to clean up your unused imports, too.
 
@@ -657,21 +529,21 @@ Don't forget to clean up your unused imports, too.
 import { useState, useTransition } from "react";
 import { startAuthentication } from "@simplewebauthn/browser";
 import { finishPasskeyLogin, startPasskeyLogin } from "./functions";
-import { useTurnstile } from "rwsdk/turnstile";
 import { Button } from "@/app/components/ui/button";
 
-// >>> Replace this with your own Cloudflare Turnstile site key
-const TURNSTILE_SITE_KEY = "0x4AAAAAABBM92GLK3VnyFAr";
-
-export function LoginPage() {
+export function Login() {
   const [username, setUsername] = useState("");
   const [result, setResult] = useState("");
   const [isPending, startTransition] = useTransition();
-  const turnstile = useTurnstile(TURNSTILE_SITE_KEY);
 
   const passkeyLogin = async () => {
+    // 1. Get a challenge from the worker
     const options = await startPasskeyLogin();
+
+    // 2. Ask the browser to sign the challenge
     const login = await startAuthentication({ optionsJSON: options });
+
+    // 3. Give the signed challenge to the worker to finish the login process
     const success = await finishPasskeyLogin(login);
 
     if (!success) {
@@ -688,7 +560,6 @@ export function LoginPage() {
   return (
     <main className="bg-bg">
       <h1 className="text-4xl font-bold text-red-500">YOLO</h1>
-      <div ref={turnstile.ref} />
       <input
         type="text"
         value={username}
@@ -719,7 +590,7 @@ If you're using a Password Manager, like [1Password](https://1password.com/produ
 
 ![](./images/register-with-passkey.png)
 
-Once you've successfully logged in, you should see a successful Cloudflare Turnstile widget. And our `result` message displayed at the bottom of the form.
+Once you've successfully logged in our `result` message displayed at the bottom of the form.
 
 ![](./images/successful-registration.png)
 
@@ -731,7 +602,17 @@ And the related entry in the `Credential` table:
 
 ![](./images/related-credential-in-database.png)
 
-Now, let's try logging in. Go to http://localhost:2332/user/login, enter your username and click on the **Login with passkey** button. Then, you should be prompted for the passkey.
+Before we move on to the Login page, let's adjust the success conditional. If the user is able to successfully register, we want to redirect them to the Login page:
+
+```tsx title="src/app/pages/Signup.tsx" startLineNumber=30
+if (!success) {
+  setResult("Registration failed");
+} else {
+  window.location.href = link("/user/login");
+}
+```
+
+Now, let's try logging in. Go to http://localhost:5173/user/login, enter your username and click on the **Login with passkey** button. Then, you should be prompted for the passkey.
 
 ![](./images/login-with-passkey.png)
 
@@ -739,18 +620,16 @@ Once you've successfully logged in, you should see a successful `result` message
 
 ![](./images/successful-login.png)
 
-Now, navigate to http://localhost:2332/. You should see a message that you're logged in as the user you just created.
+Now, navigate to http://localhost:5173/protected. You should see a message that you're logged in as the user you just created.
 
 ![](./images/home-page-logged-in-as.png)
 
-Did you realize we haven't been able to access the home page before because it was protected by an interruptor?
-<details>
-<summary>Interruptor code (`worker.tsx`, lines 35-42)</summary>
+Did you realize we haven't been able to access the `/protected` route before because it was protected by an interrupter?
 
 ```tsx title="src/worker.tsx" startLineNumber=34 {3-7}
-index([
-  ({ appContext }) => {
-    if (!appContext.user) {
+route("/protected", [
+  ({ ctx }) => {
+    if (!ctx.user) {
       return new Response(null, {
         status: 302,
         headers: { Location: "/user/login" },
@@ -759,14 +638,16 @@ index([
   },
   Home,
 ]),
+---
+**On line 36**, we're checking to see if the `user` object exists on the `ctx` object. If it doesn't, we redirect the user to the `/user/login` page.
+---
 ```
-</details>
 
-Try logging out, by going to http://localhost:2332/user/logout. You should be redirected to the login page.
+Try logging out, by going to http://localhost:5173/user/logout. You should be redirected to the login page.
 
-Now, try going to the homepage again: http://localhost:2332/. You should be redirected to the login page.
+Now, try going to the protected route again: http://localhost:5173/protected. You should be redirected to the login page.
 
-Login and then you can visit the home page again.
+Login and then you can visit the protected route again.
 
 😎 Cool, right?
 
@@ -783,7 +664,7 @@ Let's create a layout component, that we can use in both places.
 
 ### Creating a Layout Component
 
-When we installed shadcn/ui, it added a lot of variables to the bottom of our `styles.css` file. In CSS, order matters. So, let's move our `@theme` definition to the bottom of the file so that it reads as more important and will override any shadcn/ui default values.
+When we installed shadcn/ui, it added a lot of variables to the bottom of our `styles.css` file. In CSS, order matters. So, let's move our `@theme` definition to the bottom of the file, but above the `@layer base` definition so that it reads as more important and will override any shadcn/ui default values.
 
 <details>
 <summary>Updated `styles.css` file</summary>
@@ -909,15 +790,6 @@ body {
   --color-sidebar-ring: var(--sidebar-ring);
 }
 
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-
 @theme {
   --font-display: "Poppins", sans-serif;
   --font-body: "Inter", sans-serif;
@@ -934,6 +806,15 @@ body {
   --color-tag-new: #db9a9f;
   --color-tag-rejected: #e4e3d4;
   --color-tag-offer: #aae198;
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
 }
 ```
 </details>
@@ -954,7 +835,7 @@ Now, let's start on our layout component. Inside our `app` directory, create a n
 Let's start by stubbing out our component:
 
 ```tsx title="src/app/layouts/AuthLayout.tsx"
-const AuthLayout = ({ children }: { children: React.ReactNode}) => {
+const AuthLayout = ({ children }) => {
   return (
     <div className="bg-bg min-h-screen min-w-screen p-12">
       {children}
@@ -1068,7 +949,7 @@ Cool. 😎 We're almost there, we just need to tighten up a few more things.
 
 I want the content to be centered vertically and horizontally. You can do this by adding a class of `flex` and `items-center` and `justify-center`. But, I do this a lot. So, let's turn this into a utility function that we can reuse.
 
-Inside our `styles.css` file, let's add a new utility function. At the very bottom of the file, add:
+Inside our `styles.css` file, let's add a new utility function. Below our `@theme` definition, add:
 
 ```css title="src/styles.css" showLineNumbers=false
 @utility center {
@@ -1266,16 +1147,14 @@ const AuthLayout = ({ children }: { children: React.ReactNode }) => {
         <div className="relative center bg-[url('/images/bg.png')] bg-repeat rounded-l-xl">
           <div className="-top-[100px] relative">
             <img src="/images/logo.svg" alt="Apply Wize" className="mx-auto" />
-            <div className="text-5xl text-white font-bold">
-              Apply Wize
-            </div>
+            <div className="text-5xl text-white font-bold">Apply Wize</div>
           </div>
           <div className="text-white text-sm absolute bottom-0 left-0 right-0 p-10">
             “Transform the job hunt from a maze into a map.”
           </div>
         </div>
         <div className="center bg-white rounded-r-xl">
-          <div>{children}</div>
+          <div className="w-full">{children}</div>
         </div>
       </div>
     </div>
@@ -1369,12 +1248,21 @@ I like to order my CSS:
 
 Based on this ordering, we get more specific as we move down the file.
 
-At the very bottom of our `styles.css` file, let's start by setting up `@layer` for each grouping:
+let's start by setting up `@layer` for each grouping.
 
-```css title="src/styles.css" startLineNumber=238
+At the very bottom of our `styles.css` file, we already have a `@layer base` that shadcn/ui created.
+
+```css title="src/styles.css" startLineNumber=139
 @layer base, components, page;
 
-@layer base {}
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+}
 
 @layer components {}
 
@@ -1401,7 +1289,10 @@ For all our headings (`h1, h2, h3, etc.`), we want to use the font Poppins, `fon
 
 ```css title="src/styles.css" showLineNumbers=false
 @layer base {
-  h1, h2, h3 {
+  ...
+  h1,
+  h2,
+  h3 {
     @apply font-display font-bold;
   }
 }
@@ -1422,18 +1313,16 @@ Then, let's also add some more specific styles for our `h1` since it's a page ti
 
 Back in our `Login` component, let's add the class of `page-title` to our `h1`:
 
-```tsx title="src/app/pages/user/Login.tsx" "page-title" startLineNumber=47
+```tsx title="src/app/pages/user/Login.tsx" "page-title" startLineNumber=46
 <h1 className="page-title text-center">Login</h1>
 ```
 
 We have a couple of paragraphs of text, but I only want these classes to be applied to our auth forms. Let's add a class of `auth-form` to our wrapping `div`:
 
-```tsx title="src/app/pages/user/Login.tsx" "auth-form" startLineNumber=46 collapse={2-15}
+```tsx title="src/app/pages/user/Login.tsx" "auth-form" startLineNumber=45
 <div className="auth-form max-w-[400px] w-full mx-auto px-10">
-  <h1 className="text-center">Login</h1>
+  <h1 className="text-center page-title">Login</h1>
   <p className="py-6">Enter your username below to sign-in.</p>
-
-  <div ref={turnstile.ref} />
   <input
     type="text"
     value={username}
@@ -1441,9 +1330,13 @@ We have a couple of paragraphs of text, but I only want these classes to be appl
     placeholder="Username"
   />
   <Button onClick={handlePerformPasskeyLogin} disabled={isPending}>
-    {isPending ? <>...</> : "Login with Passkey"}
+    {isPending ? <>...</> : "Login with passkey"}
   </Button>
   {result && <div>{result}</div>}
+  <p>
+    By clicking continue, you agree to our{" "}
+    <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+  </p>
 </div>
 ```
 
@@ -1471,12 +1364,9 @@ In our `styles.css` file, let's target the `auth-form` class:
 
 If we take a look in the browser, this looks great. The only thing we lack is the input field and button styles. Let's head back to our `styles.css` file:
 
-```css title="src/styles.css" showLineNumbers=false collapse={2-5}
+```css title="src/styles.css" showLineNumbers=false
 @layer base {
-  h1, h2, h3 {
-    @apply font-display font-bold;
-  }
-
+  ...
   /* form elements */
   input[type="text"] {
     @apply border-border border-1 rounded-md px-3 h-9 block w-full mb-2 text-base;
@@ -1497,9 +1387,9 @@ If we take a look in the browser, this looks great. The only thing we lack is th
 
 For the button, we're using the shadcn/ui button component. Let's crack it open:
 
-```tsx title="src/components/ui/button.tsx" collapse={8-29} startLineNumber=9 "buttonVariants" "default:" "font-bold"
+```tsx title="src/components/ui/button.tsx" collapse={8-29} startLineNumber=9 "buttonVariants" "default:" "font-bold" del="font-medium"
 const buttonVariants = cva(
-  "font-bold inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
+  "font-bold inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
   {
     variants: {
       variant: {
@@ -1545,7 +1435,7 @@ We can override this by adding a class of `--color-primary-foreground` within ou
   --color-primary-foreground: #000;
 ```
 
-Let's also add a few specific classes just for login button. I don't want this to get applied by default to every button we use.
+Let's also add a few specific classes just for login button. I don't want this to get applied by default to every button we use, so I'm going to apply these to the `Button` component on the Login page.
 
 ```tsx title="src/app/pages/user/Login.tsx" startLineNumber=56 "className="font-display w-full mb-6""
 <Button onClick={handlePerformPasskeyLogin} disabled={isPending} className="font-display w-full mb-6">
@@ -1564,26 +1454,12 @@ Let's take a look at the final result within the browser:
 
 But, there's one more thing. Let's move the `result` message above the form and below our text:
 
-```tsx title="src/app/pages/user/Login.tsx" collapse={6-18} startLineNumber=46 "{result && <div>{result}</div>}"
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=45 "{result && <div>{result}</div>}"
 <div className="auth-form max-w-[400px] w-full mx-auto px-10">
   <h1 className="page-title text-center">Login</h1>
   <p className="py-6">Enter your username below to sign-in.</p>
-
   {result && <div>{result}</div>}
-
-  <div ref={turnstile.ref} />
-  <input
-    type="text"
-    value={username}
-    onChange={(e) => setUsername(e.target.value)}
-    placeholder="Username"
-  />
-  <Button onClick={handlePerformPasskeyLogin} disabled={isPending} className="font-display w-full mb-6">
-    {isPending ? <>...</> : "Login with Passkey"}
-  </Button>
-
-  <p>By clicking continue, you agree to our <a href={link('/legal/terms')}>Terms of Service</a> and <a href={link('/legal/privacy')}>Privacy Policy</a>.</p>
-</div>
+  ...
 ```
 
 We can also style this, using an `<Alert />` shadcn/ui component. We just need to import our component at the top and and wrap our `{result}`.
@@ -1609,9 +1485,9 @@ You'll need to login (successfully or unsuccessfully) to see the alert.
 
 ![](./images/alert-message-successful-login.png)
 
-I know, it feels strange to see a red alert message when we were able to successfully login. But, really, if we were able to login successfully, we want to be redirected to the homepage. We can update the `passkeyLogin` function (starts on line 30):
+I know, it feels strange to see a red alert message when we were able to successfully login. But, really, if we were able to login successfully, we want to be redirected to the homepage. We can update the `passkeyLogin` function (starts on line 16):
 
-```tsx title="src/app/pages/user/Login.tsx" {14} collapse={2-10} startLineNumber=30
+```tsx title="src/app/pages/user/Login.tsx" {14} collapse={2-10} startLineNumber=16
 const passkeyLogin = async () => {
   // 1. Get a challenge from the worker
   const options = await startPasskeyLogin();
@@ -1625,7 +1501,7 @@ const passkeyLogin = async () => {
   if (!success) {
     setResult("Login failed");
   } else {
-    window.location.href = link('/');
+    window.location.href = "/";
   }
 };
 ---
@@ -1653,17 +1529,20 @@ Within our `src/app/shared` folder, there's a file inside called `links.ts`.
 ```tsx title="src/app/shared/links.ts"
 import { defineLinks } from "rwsdk/router";
 
-export const link = defineLinks(["/"]);
+export const link = defineLinks(["/", "/user/login", "/user/logout"]);
 ---
 At first glance, this file is a little sparse.
 - **On line 1**, we're importing the `defineLinks` from the RedwoodSDK.
-- **On line 3**, we're defining an array of all our links or routes. Right now, there's only one, our home page, at `"/"`.
+- **On line 3**, we're defining an array of all our links or routes. Right now, there's are three:
+  1. Our home page, at `"/"`
+  2. Our login page, at `/user/login`
+  3. Our logout page, at `/user/logout`
 ---
 ```
 
-Let's add reference links for all our other pages:
+Let's add reference links for our other pages:
 
-```tsx title="src/app/shared/links.ts" {3-7} startLineNumber=3
+```tsx title="src/app/shared/links.ts" {4, 6-7} startLineNumber=3
 export const link = defineLinks([
   "/",
   "/user/login",
@@ -1673,6 +1552,10 @@ export const link = defineLinks([
   "/legal/terms",
 ]);
 ```
+
+<Aside type="note" title="Protected Page Route">
+  I didn't add the `/protected` route to our `links.ts` file because it's a temporary route. We'll eventually remove it from our application.
+</Aside>
 
 Now, let's go back to our `Login` component and update our **Register** link.
 
@@ -1784,592 +1667,18 @@ Now, if you check your work in the browser, you should see the Terms of Service 
   ```
 </Aside>
 
-We've touched a few files, if you want to see the full code for each:
-
-<details>
-<summary>Final code for our `Login.tsx`</summary>
-
-```tsx title="src/app/pages/user/Login.tsx"
-"use client";
-
-import { useState, useTransition } from "react";
-import { link } from "@/app/shared/links";
-import {
-  startAuthentication,
-  startRegistration,
-} from "@simplewebauthn/browser";
-import {
-  finishPasskeyLogin,
-  finishPasskeyRegistration,
-  startPasskeyLogin,
-  startPasskeyRegistration,
-} from "./functions";
-import { useTurnstile } from "rwsdk/turnstile";
-import { AuthLayout } from "@/app/layouts/AuthLayout";
-import { Button } from "@/app/components/ui/button";
-import { Alert, AlertTitle } from "@/app/components/ui/alert";
-import { AlertCircle } from "lucide-react";
-
-// >>> Replace this with your own Cloudflare Turnstile site key
-const TURNSTILE_SITE_KEY = "1x00000000000000000000AA";
-
-export function Login() {
-  const [username, setUsername] = useState("");
-  const [result, setResult] = useState("");
-  const [isPending, startTransition] = useTransition();
-  const turnstile = useTurnstile(TURNSTILE_SITE_KEY);
-
-  const passkeyLogin = async () => {
-    // 1. Get a challenge from the worker
-    const options = await startPasskeyLogin();
-
-    // 2. Ask the browser to sign the challenge
-    const login = await startAuthentication({ optionsJSON: options });
-
-    // 3. Give the signed challenge to the worker to finish the login process
-    const success = await finishPasskeyLogin(login);
-
-    if (!success) {
-      setResult("Login failed");
-    } else {
-      setResult("Login successful!");
-    }
-  };
-
-  const handlePerformPasskeyLogin = () => {
-    startTransition(() => void passkeyLogin());
-  };
-
-  return (
-    <AuthLayout>
-      <div className="auth-form max-w-[400px] w-full mx-auto px-10">
-        <h1 className="page-title text-center">Login</h1>
-        <p className="py-6">Enter your username below to sign-in.</p>
-
-        {result && (
-        <Alert variant="destructive" className="mb-5">
-          <AlertCircle className="h-4 w-4"/>
-          <AlertTitle>{result}</AlertTitle>
-        </Alert>
-        )}
-
-        <div className="absolute top-0 right-0 p-10">
-          <a href={link("/user/signup")} className="font-display font-bold text-black text-sm underline underline-offset-8 hover:decoration-primary">
-            Register
-          </a>
-        </div>
-        <div ref={turnstile.ref} />
-        <input
-          type="text"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          placeholder="Username"
-        />
-        <Button onClick={handlePerformPasskeyLogin} disabled={isPending} className="font-display w-full mb-6">
-          {isPending ? <>...</> : "Login with passkey"}
-        </Button>
-
-        <p>By clicking continue, you agree to our <a href={link("/legal/terms")}>Terms of Service</a> and <a href={link("/legal/privacy")}>Privacy Policy</a>.</p>
-      </div>
-    </AuthLayout>
-  );
-}
-```
-
-</details>
-
-<details>
-<summary>Final code for our `AuthLayout.tsx`</summary>
-
-```tsx title="src/app/layouts/AuthLayout.tsx"
-const AuthLayout = ({ children }: { children: React.ReactNode}) => {
-  return (
-    <div className="bg-bg min-h-screen min-w-screen p-12">
-      <div className="grid grid-cols-2 min-h-[calc(100vh-96px)] rounded-xl border-2 border-[#D6D5C5]">
-        <div className="relative center bg-[url('/images/bg.png')] bg-repeat rounded-l-xl">
-          <div className="-top-[100px] relative">
-            <img src="/images/logo.svg" alt="Apply Wize" className="mx-auto" />
-            <div className="text-5xl text-white font-bold">
-              Apply Wize
-            </div>
-          </div>
-          <div className="text-white text-sm absolute bottom-0 left-0 right-0 p-10">
-            “Transform the job hunt from a maze into a map.”
-          </div>
-        </div>
-        <div className="center bg-white rounded-r-xl relative">
-          {children}
-        </div>
-      </div>
-    </div>
-  )
-}
-
-export { AuthLayout }
-```
-</details>
-
-<details>
-<summary>Final code for our `styles.css`</summary>
-
-```css title="src/styles.css"
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
-
-@import "tailwindcss";
-@import "tw-animate-css";
-
-@custom-variant dark (&:is(.dark *));
-
-body {
-  @apply bg-white;
-}
-
-@theme inline {
-
-  --radius-sm: calc(var(--radius) - 4px);
-
-  --radius-md: calc(var(--radius) - 2px);
-
-  --radius-lg: var(--radius);
-
-  --radius-xl: calc(var(--radius) + 4px);
-
-  --color-background: var(--background);
-
-  --color-foreground: var(--foreground);
-
-  --color-card: var(--card);
-
-  --color-card-foreground: var(--card-foreground);
-
-  --color-popover: var(--popover);
-
-  --color-popover-foreground: var(--popover-foreground);
-
-  --color-primary: var(--primary);
-
-  --color-primary-foreground: var(--primary-foreground);
-
-  --color-secondary: var(--secondary);
-
-  --color-secondary-foreground: var(--secondary-foreground);
-
-  --color-muted: var(--muted);
-
-  --color-muted-foreground: var(--muted-foreground);
-
-  --color-accent: var(--accent);
-
-  --color-accent-foreground: var(--accent-foreground);
-
-  --color-destructive: var(--destructive);
-
-  --color-border: var(--border);
-
-  --color-input: var(--input);
-
-  --color-ring: var(--ring);
-
-  --color-chart-1: var(--chart-1);
-
-  --color-chart-2: var(--chart-2);
-
-  --color-chart-3: var(--chart-3);
-
-  --color-chart-4: var(--chart-4);
-
-  --color-chart-5: var(--chart-5);
-
-  --color-sidebar: var(--sidebar);
-
-  --color-sidebar-foreground: var(--sidebar-foreground);
-
-  --color-sidebar-primary: var(--sidebar-primary);
-
-  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
-
-  --color-sidebar-accent: var(--sidebar-accent);
-
-  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
-
-  --color-sidebar-border: var(--sidebar-border);
-
-  --color-sidebar-ring: var(--sidebar-ring);
-}
-
-:root {
-
-  --radius: 0.625rem;
-
-  --background: oklch(1 0 0);
-
-  --foreground: oklch(0.145 0 0);
-
-  --card: oklch(1 0 0);
-
-  --card-foreground: oklch(0.145 0 0);
-
-  --popover: oklch(1 0 0);
-
-  --popover-foreground: oklch(0.145 0 0);
-
-  --primary: oklch(0.205 0 0);
-
-  --primary-foreground: oklch(0.985 0 0);
-
-  --secondary: oklch(0.97 0 0);
-
-  --secondary-foreground: oklch(0.205 0 0);
-
-  --muted: oklch(0.97 0 0);
-
-  --muted-foreground: oklch(0.556 0 0);
-
-  --accent: oklch(0.97 0 0);
-
-  --accent-foreground: oklch(0.205 0 0);
-
-  --destructive: oklch(0.577 0.245 27.325);
-
-  --border: oklch(0.922 0 0);
-
-  --input: oklch(0.922 0 0);
-
-  --ring: oklch(0.708 0 0);
-
-  --chart-1: oklch(0.646 0.222 41.116);
-
-  --chart-2: oklch(0.6 0.118 184.704);
-
-  --chart-3: oklch(0.398 0.07 227.392);
-
-  --chart-4: oklch(0.828 0.189 84.429);
-
-  --chart-5: oklch(0.769 0.188 70.08);
-
-  --sidebar: oklch(0.985 0 0);
-
-  --sidebar-foreground: oklch(0.145 0 0);
-
-  --sidebar-primary: oklch(0.205 0 0);
-
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-
-  --sidebar-accent: oklch(0.97 0 0);
-
-  --sidebar-accent-foreground: oklch(0.205 0 0);
-
-  --sidebar-border: oklch(0.922 0 0);
-
-  --sidebar-ring: oklch(0.708 0 0);
-}
-
-.dark {
-
-  --background: oklch(0.145 0 0);
-
-  --foreground: oklch(0.985 0 0);
-
-  --card: oklch(0.205 0 0);
-
-  --card-foreground: oklch(0.985 0 0);
-
-  --popover: oklch(0.205 0 0);
-
-  --popover-foreground: oklch(0.985 0 0);
-
-  --primary: oklch(0.922 0 0);
-
-  --primary-foreground: oklch(0.205 0 0);
-
-  --secondary: oklch(0.269 0 0);
-
-  --secondary-foreground: oklch(0.985 0 0);
-
-  --muted: oklch(0.269 0 0);
-
-  --muted-foreground: oklch(0.708 0 0);
-
-  --accent: oklch(0.269 0 0);
-
-  --accent-foreground: oklch(0.985 0 0);
-
-  --destructive: oklch(0.704 0.191 22.216);
-
-  --border: oklch(1 0 0 / 10%);
-
-  --input: oklch(1 0 0 / 15%);
-
-  --ring: oklch(0.556 0 0);
-
-  --chart-1: oklch(0.488 0.243 264.376);
-
-  --chart-2: oklch(0.696 0.17 162.48);
-
-  --chart-3: oklch(0.769 0.188 70.08);
-
-  --chart-4: oklch(0.627 0.265 303.9);
-
-  --chart-5: oklch(0.645 0.246 16.439);
-
-  --sidebar: oklch(0.205 0 0);
-
-  --sidebar-foreground: oklch(0.985 0 0);
-
-  --sidebar-primary: oklch(0.488 0.243 264.376);
-
-  --sidebar-primary-foreground: oklch(0.985 0 0);
-
-  --sidebar-accent: oklch(0.269 0 0);
-
-  --sidebar-accent-foreground: oklch(0.985 0 0);
-
-  --sidebar-border: oklch(1 0 0 / 10%);
-
-  --sidebar-ring: oklch(0.556 0 0);
-}
-
-@theme {
-  --font-display: "Poppins", sans-serif;
-  --font-body: "Inter", sans-serif;
-
-  --color-bg: #e4e3d4;
-  --color-border: #eeeef0;
-
-  --color-primary: #f7b736;
-  --color-secondary: #f1f1e8;
-  --color-destructive: #ef533f;
-
-  --color-tag-applied: #b1c7c0;
-  --color-tag-interview: #da9b7c;
-  --color-tag-new: #db9a9f;
-  --color-tag-rejected: #e4e3d4;
-  --color-tag-offer: #aae198;
-
-  --color-primary-foreground: #000;
-}
-
-@layer base, components, page;
-
-@layer base {
-
-  h1,
-  h2,
-  h3 {
-    @apply font-display font-bold;
-  }
-}
-
-@layer components {
-  .page-title {
-    @apply text-3xl
-  }
-}
-
-@layer page {
-
-  /* login page */
-  .auth-form {
-    p {
-      @apply text-sm text-zinc-500 text-center;
-
-      a {
-        @apply text-zinc-500 hover:text-black underline whitespace-nowrap;
-      }
-    }
-  }
-
-  /* form elements */
-  input[type="text"] {
-    @apply border-border border-1 rounded-md px-3 h-9 block w-full mb-2 text-base;
-  }
-}
-
-@utility center {
-  @apply flex items-center justify-center;
-}
-
-@layer base {
-  * {
-    @apply border-border outline-ring/50;
-  }
-
-  body {
-    @apply bg-background text-foreground;
-  }
-}
-```
-</details>
-
-<details>
-<summary>Final code for our `button.tsx`</summary>
-
-```tsx title="src/components/ui/button.tsx"
-"use client";
-
-import * as React from "react"
-import { Slot } from "@radix-ui/react-slot"
-import { cva, type VariantProps } from "class-variance-authority"
-
-import { cn } from "@/lib/utils"
-
-const buttonVariants = cva(
-  "font-bold inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
-  {
-    variants: {
-      variant: {
-        default:
-          "bg-primary text-primary-foreground shadow-xs hover:bg-primary/90",
-        destructive:
-          "bg-destructive text-white shadow-xs hover:bg-destructive/90 focus-visible:ring-destructive/20 dark:focus-visible:ring-destructive/40 dark:bg-destructive/60",
-        outline:
-          "border bg-background shadow-xs hover:bg-accent hover:text-accent-foreground dark:bg-input/30 dark:border-input dark:hover:bg-input/50",
-        secondary:
-          "bg-secondary text-secondary-foreground shadow-xs hover:bg-secondary/80",
-        ghost:
-          "hover:bg-accent hover:text-accent-foreground dark:hover:bg-accent/50",
-        link: "text-primary underline-offset-4 hover:underline",
-      },
-      size: {
-        default: "h-9 px-4 py-2 has-[>svg]:px-3",
-        sm: "h-8 rounded-md gap-1.5 px-3 has-[>svg]:px-2.5",
-        lg: "h-10 rounded-md px-6 has-[>svg]:px-4",
-        icon: "size-9",
-      },
-    },
-    defaultVariants: {
-      variant: "default",
-      size: "default",
-    },
-  }
-)
-
-function Button({
-  className,
-  variant,
-  size,
-  asChild = false,
-  ...props
-}: React.ComponentProps<"button"> &
-  VariantProps<typeof buttonVariants> & {
-    asChild?: boolean
-  }) {
-  const Comp = asChild ? Slot : "button"
-
-  return (
-    <Comp
-      data-slot="button"
-      className={cn(buttonVariants({ variant, size, className }))}
-      {...props}
-    />
-  )
-}
-
-export { Button, buttonVariants }
-```
-</details>
-
-<details>
-<summary>Final code for our `links.ts`</summary>
-
-```tsx title="src/app/shared/links.ts"
-import { defineLinks } from "rwsdk/router";
-
-export const link = defineLinks([
-  "/",
-  "/user/login",
-  "/user/signup",
-  "/legal/privacy",
-  "/legal/terms",
-]);
-```
-</details>
-
-<details>
-<summary>Final code for our `worker.tsx`</summary>
-
-```tsx title="src/worker.tsx"
-import { defineApp, ErrorResponse } from "rwsdk/worker";
-import { route, render, prefix } from "rwsdk/router";
-import { Document } from "@/app/Document";
-import { Home } from "@/app/pages/Home";
-import { setCommonHeaders } from "@/app/headers";
-import { userRoutes } from "@/app/pages/user/routes";
-import { sessions, setupSessionStore } from "./session/store";
-import { Session } from "./session/durableObject";
-import { db, setupDb } from "./db";
-import type { User } from "@prisma/client";
-import { env } from "cloudflare:workers";
-export { SessionDurableObject } from "./session/durableObject";
-
-export type AppContext = {
-  session: Session | null;
-  user: User | null;
-};
-
-export default defineApp([
-  setCommonHeaders(),
-  async ({ ctx, request, headers }) => {
-    await setupDb(env);
-    setupSessionStore(env);
-
-    try {
-      ctx.session = await sessions.load(request);
-    } catch (error) {
-      if (error instanceof ErrorResponse && error.code === 401) {
-        await sessions.remove(request, headers);
-        headers.set("Location", "/user/login");
-
-        return new Response(null, {
-          status: 302,
-          headers,
-        });
-      }
-
-      throw error;
-    }
-
-    if (ctx.session?.userId) {
-      ctx.user = await db.user.findUnique({
-        where: {
-          id: ctx.session.userId,
-        },
-      });
-    }
-  },
-  render(Document, [
-    route("/", Home),
-    route("/protected", [
-      ({ ctx }) => {
-        if (!ctx.user) {
-          return new Response(null, {
-            status: 302,
-            headers: { Location: "/user/login" },
-          });
-        }
-      },
-      Home,
-    ]),
-    prefix("/user", userRoutes),
-    route("/legal/privacy", () => <h1>Privacy Policy</h1>),
-    route("/legal/terms", () => <h1>Terms of Service</h1>),
-  ]),
-]);
-```
-</details>
-
-
 ## Styling the Signup Page
 
 😅 Don't worry, we've already done all the heavy lifting. This will be a breeze.
 
-```tsx title="src/app/pages/user/Signup.tsx" del={4, 8} ins={1,5,7} showLineNumbers=false
+```tsx title="src/app/pages/user/Signup.tsx" del={4, 7} ins={1,5,8} showLineNumbers=false
 import { AuthLayout } from "@/app/layouts/AuthLayout";
 ...
 return (
+  <main className="bg-bg">
   <AuthLayout>
   ...
+  </main>
   </AuthLayout>
 )
 ---
@@ -2380,7 +1689,7 @@ return (
 
 Right inside our `AuthLayout` component, let's add our Login link:
 
-```tsx title="src/app/pages/user/Signup.tsx" showLineNumbers=false "/user/login" "Login"
+```tsx title="src/app/pages/user/Signup.tsx" showLineNumbers=false "/user/login" "Login" ins={1, 4-8}
 import { link } from "@/app/shared/links";
 ...
 <AuthLayout>
@@ -2398,10 +1707,9 @@ import { link } from "@/app/shared/links";
 
 Next, let's wrap all of our form content with a `div`:
 
-```tsx title="src/app/pages/user/Signup.tsx" startLineNumber=56 "auth-form max-w-[400px] px-10"
+```tsx title="src/app/pages/user/Signup.tsx" startLineNumber=56 "auth-form max-w-[400px] px-10" ins={2,9}
 <AuthLayout>
   <div className="auth-form max-w-[400px] w-full mx-auto px-10">
-    ...
     <div className="absolute top-0 right-0 p-10">
       <a href={link('/user/login')} className="font-display font-bold text-black text-sm underline underline-offset-8 hover:decoration-primary">
         Login
@@ -2427,24 +1735,25 @@ We can get rid of our red YOLO heading at the top and replace it with:
 
 Let's move our `result` message to appear below our heading:
 
-```tsx title="src/app/pages/user/Signup.tsx" showLineNumbers=false {1-2, 7-12}
+```tsx title="src/app/pages/user/Signup.tsx" showLineNumbers=false ins={1-2, 6-11} del={13}
 import { Alert, AlertTitle } from "@/app/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 ...
 <h1 className="page-title text-center">Create an Account</h1>
 <p className="py-6">Enter a username to setup an account.</p>
-
 {result && (
   <Alert variant="destructive" className="mb-5">
     <AlertCircle className="h-4 w-4"/>
     <AlertTitle>{result}</AlertTitle>
   </Alert>
 )}
+...
+{result && <div>{result}</div>}
 ```
 
 Jumping down a little bit, on our `Button` component, let's add a few classes to the end:
 
-```tsx title="src/app/pages/user/Signup.tsx" "className="font-display w-full mb-6"" startLineNumber=83
+```tsx title="src/app/pages/user/Signup.tsx" ins="className="font-display w-full mb-6"" startLineNumber=83
 <Button onClick={handlePerformPasskeyRegister} disabled={isPending} className="font-display w-full mb-6">
   {isPending ? <>...</> : "Register with Passkey"}
 </Button>
@@ -2465,98 +1774,8 @@ Then, right below the button, we can add our legal statement:
 
 See, I told you! Easy peasy. 🍋
 
-<details>
-<summary>Final code for our `Signup.tsx`</summary>
-
-```tsx title="src/app/pages/user/Signup.tsx"
-"use client";
-
-import { useState, useTransition } from "react";
-import {
-  startRegistration,
-} from "@simplewebauthn/browser";
-import {
-  finishPasskeyRegistration,
-  startPasskeyRegistration,
-} from "./functions";
-import { useTurnstile } from "rwsdk/turnstile";
-import { Button } from "@/app/components/ui/button";
-import { AuthLayout } from "@/app/layouts/AuthLayout";
-import { Alert, AlertTitle } from "@/app/components/ui/alert";
-import { AlertCircle } from "lucide-react";
-import { link } from "@/app/shared/links";
-
-// >>> Replace this with your own Cloudflare Turnstile site key
-const TURNSTILE_SITE_KEY = "0xXXXXXXXXXXXXXXXXXXXXXX";
-
-export function SignupPage() {
-  const [username, setUsername] = useState("");
-  const [result, setResult] = useState("");
-  const [isPending, startTransition] = useTransition();
-  const turnstile = useTurnstile(TURNSTILE_SITE_KEY);
-
-  const passkeyRegister = async () => {
-    const options = await startPasskeyRegistration(username);
-    const registration = await startRegistration({ optionsJSON: options });
-    const turnstileToken = await turnstile.challenge();
-
-    const success = await finishPasskeyRegistration(
-      username,
-      registration,
-      turnstileToken,
-    );
-
-    if (!success) {
-      setResult("Registration failed");
-    } else {
-      setResult("Registration successful!");
-    }
-  };
-
-  const handlePerformPasskeyRegister = () => {
-    startTransition(() => void passkeyRegister());
-  };
-
-  return (
-    <AuthLayout>
-      <div className="absolute top-0 right-0 p-10">
-        <a href={link('/user/login')} className="font-display font-bold text-black text-sm underline underline-offset-8 hover:decoration-primary">
-          Login
-        </a>
-      </div>
-
-      <div className="auth-form max-w-[400px] w-full px-10">
-        <h1 className="page-title text-center">Create an Account</h1>
-        <p className="py-6">Enter a username to setup an account.</p>
-
-        {result && (
-          <Alert variant="destructive" className="mb-5">
-            <AlertCircle className="h-4 w-4"/>
-            <AlertTitle>{result}</AlertTitle>
-          </Alert>
-        )}
-
-        <div ref={turnstile.ref} />
-        <input
-          type="text"
-          value={username}
-          onChange={(e) => setUsername(e.target.value)}
-          placeholder="Username"
-        />
-        <Button onClick={handlePerformPasskeyRegister} disabled={isPending} className="font-display w-full mb-6">
-          {isPending ? <>...</> : "Register with Passkey"}
-        </Button>
-
-        <p>By clicking continue, you agree to our <a href={link('/legal/terms')}>Terms of Service</a> and <a href={link('/legal/privacy')}>Privacy Policy</a>.</p>
-      </div>
-    </AuthLayout>
-  );
-}
-```
-</details>
-
 <Aside type="tip" title="Code on GitHub">
-You can find the final code for this step on [GitHub](https://github.com/ahaywood/applywize/tree/main/end-of-4).
+You can find the final code for this step on [GitHub](https://github.com/redwoodjs/applywize/tree/main/end-of-4).
 </Aside>
 
 ## Further reading
