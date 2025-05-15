@@ -2,8 +2,7 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import partytown from "@astrojs/partytown";
-import starlightLlmsTxt from 'starlight-llms-txt'
-
+import starlightLlmsTxt from "starlight-llms-txt";
 
 // https://astro.build/config
 export default defineConfig({
@@ -48,6 +47,7 @@ export default defineConfig({
             { slug: "core/storage" },
             { slug: "core/realtime" },
             { slug: "core/queues" },
+            { slug: "core/cron" },
             { label: "Environment variables", slug: "core/env-vars" },
             { slug: "core/authentication" },
             { slug: "core/security" },
