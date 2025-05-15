@@ -5,6 +5,8 @@ description: Cloudflare's Developer Platform provides out-of-the-box access to e
 
 import { Aside, Tabs, TabItem } from "@astrojs/starlight/components";
 
+import { PackageManagers } from "starlight-package-managers";
+
 Cloudflare's Developer Platform provides out-of-the-box access to essential services:
 
 - [Compute](https://developers.cloudflare.com/workers/) (Workers) for serverless functions
@@ -25,23 +27,10 @@ Not only does Cloudflare have the world's best network, but they also have the b
 
 Ship your webapp to Cloudflare with the following command:
 
-<Tabs syncKey="package-manager">
-  <TabItem label="pnpm">
-    ```bash frame="none" showLineNumbers=false
-    pnpm release
-    ```
-  </TabItem>
-  <TabItem label="npm">
-    ```bash frame="none" showLineNumbers=false
-    npm run release
-    ```
-  </TabItem>
-  <TabItem label="yarn">
-    ```bash frame="none" showLineNumbers=false
-    yarn release
-    ```
-  </TabItem>
-</Tabs>
+<PackageManagers
+  type="run"
+  args="release"
+/>
 
 Within the Terminal, it will ask you: **Do you want to proceed with deployment? (y/N):** Type `y` and press Enter.
 
