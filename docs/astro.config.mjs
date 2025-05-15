@@ -2,8 +2,7 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import partytown from "@astrojs/partytown";
-import starlightLlmsTxt from 'starlight-llms-txt'
-
+import starlightLlmsTxt from "starlight-llms-txt";
 
 // https://astro.build/config
 export default defineConfig({
@@ -48,6 +47,7 @@ export default defineConfig({
             { slug: "core/storage" },
             { slug: "core/realtime" },
             { slug: "core/queues" },
+            { slug: "core/cron" },
             { label: "Environment variables", slug: "core/env-vars" },
             { slug: "core/authentication" },
             { slug: "core/security" },
@@ -102,7 +102,15 @@ export default defineConfig({
           label: "Guides",
           items: [
             {
-              label: "Frontend Development",
+              label: 'Email',
+              collapsed: true,
+              items: [
+                { label: 'Sending Email', slug: 'guides/email/sending-email' },
+                { label: 'Email Templates', slug: 'guides/email/email-templates' },
+              ]
+            },
+            {
+              label: 'Frontend Development',
               collapsed: true,
               items: [
                 { label: "Tailwind CSS", slug: "guides/frontend/tailwind" },
