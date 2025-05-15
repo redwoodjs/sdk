@@ -5,6 +5,7 @@ import { renderToRscStream } from "./render/renderToRscStream";
 import { loadModule, ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import { injectRSCPayload } from "rsc-html-stream/server";
+import { isClientReference } from "./lib/router";
 import { ErrorResponse } from "./error";
 import {
   getRequestInfo,
@@ -238,7 +239,3 @@ export const DefaultDocument: React.FC<{ children: React.ReactNode }> = ({
     </body>
   </html>
 );
-
-const isClientReference = (Component: React.FC<any>) => {
-  return Object.prototype.hasOwnProperty.call(Component, "$$isClientReference");
-};

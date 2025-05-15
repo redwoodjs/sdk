@@ -27,8 +27,6 @@ const CLIENT_PACKAGES = [
   "react/jsx-runtime",
   "react/jsx-dev-runtime",
   "react-server-dom-webpack/client.browser",
-  "react-server-dom-webpack/client.edge",
-  "react-server-dom-webpack/server.edge",
 ];
 
 // Skip react-server condition for these packages
@@ -172,7 +170,7 @@ export const reactConditionsResolverPlugin = async ({
         `^${id.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
       );
 
-      (config.resolve as any).alias.push({
+      (config.resolve as any).alias.unshift({
         find: exactMatchRegex,
         replacement: resolvedPath,
       });

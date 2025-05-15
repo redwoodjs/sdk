@@ -62,6 +62,10 @@
     "./realtime/durableObject": {
       "default": "./dist/runtime/lib/realtime/durableObject.js",
       "types": "./dist/runtime/lib/realtime/durableObject.d.ts"
+    },
+    "./__ssr_bridge": {
+      "default": "./dist/runtime/render/ssrBridge.js",
+      "types": "./dist/runtime/render/ssrBridge.d.ts"
     }
   },
   "keywords": [

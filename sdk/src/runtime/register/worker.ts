@@ -23,11 +23,15 @@ export function registerClientReference<Target extends Record<string, any>>(
   exportName: string,
 ) {
   const reference = baseRegisterClientReference({}, id, exportName);
-  return Object.defineProperties(reference, {
-    ...Object.getOwnPropertyDescriptors(reference),
-    $$async: { value: true },
-    $$isClientReference: { value: true },
-  });
+
+  return Object.defineProperties(
+    {},
+    {
+      ...Object.getOwnPropertyDescriptors(reference),
+      $$async: { value: true },
+      $$isClientReference: { value: true },
+    },
+  );
 }
 
 export async function __smokeTestActionHandler(

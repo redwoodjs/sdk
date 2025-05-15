@@ -220,5 +220,12 @@ export function render(
 }
 
 function isRouteComponent(handler: any) {
-  return isValidElementType(handler) && handler.toString().includes("jsx");
+  return (
+    (isValidElementType(handler) && handler.toString().includes("jsx")) ||
+    isClientReference(handler)
+  );
 }
+
+export const isClientReference = (Component: React.FC<any>) => {
+  return Object.prototype.hasOwnProperty.call(Component, "$$isClientReference");
+};

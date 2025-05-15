@@ -70,6 +70,15 @@ const IGNORED_IMPORT_PATTERNS = [
   /^@rwsdk\/.*$/,
 ];
 
+const EXTRA_IMPORTS = [
+  "react",
+  "react-dom/server.edge",
+  "react-dom/server",
+  "react-dom",
+  "react/jsx-runtime",
+  "react/jsx-dev-runtime",
+];
+
 // Define import patterns directly in code (from allImportsRule.yml)
 const IMPORT_PATTERNS = [
   // Static Imports
@@ -166,7 +175,6 @@ export function virtualizedSSRPlugin({
 
   const ssrResolver = enhancedResolve.create.sync({
     conditionNames: ["workerd", "edge", "import", "default"],
-    roots: [projectRootDir, ROOT_DIR],
   });
 
   const virtualSsrDeps = new Map<string, string>();
@@ -200,7 +208,15 @@ export function virtualizedSSRPlugin({
       }
 
       if (!resolved) {
-        logResolve("⚠️ Could not resolve: %s", importPath);
+        logResolve(
+          "⚠️ Could not resolve in projectRootDir, trying sdk: %s",
+          importPath,
+        );
+        resolved = ssrResolver(ROOT_DIR, importPath);
+      }
+
+      if (!resolved) {
+        logResolve("⚠️ Could not resolve in sdk: %s", importPath);
         return false;
       }
 
@@ -292,6 +308,10 @@ export function virtualizedSSRPlugin({
         } catch (err) {
           logError("❌ Error scanning file %s: %O", file, err);
         }
+      }
+
+      for (const extra of EXTRA_IMPORTS) {
+        imports.add(extra);
       }
 
       // Process and resolve all the unique bare imports we found
@@ -499,9 +519,10 @@ export function virtualizedSSRPlugin({
 
       logTransform("📝 Transform: %s", id);
 
-      // Check if this is a "use client" module
       let isClientModule = false;
-      if (id.startsWith(SSR_BASE_NAMESPACE)) {
+      if (id === "rwsdk/__ssr_bridge") {
+        isClientModule = true;
+      } else if (id.startsWith(SSR_BASE_NAMESPACE)) {
         isClientModule = true;
         logTransform("🔁 Virtual client context: %s", id);
       } else if (
@@ -544,6 +565,11 @@ export function virtualizedSSRPlugin({
 
       for (const i of imports) {
         const raw = code.slice(i.s, i.e);
+
+        // Do not rewrite the SSR bridge import itself
+        if (raw === "rwsdk/__ssr_bridge") {
+          continue;
+        }
 
         try {
           // Case 1: Known mapped dependency
@@ -597,6 +623,7 @@ export function virtualizedSSRPlugin({
     },
 
     resolveId(source, importer, options) {
+      logResolve("🔍 Resolving %s", source);
       // Handle virtualized imports
       if (source.startsWith(SSR_BASE_NAMESPACE)) {
         const isDepNamespace = source.startsWith(SSR_DEP_NAMESPACE);
