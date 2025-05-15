@@ -24,23 +24,16 @@
  * distinct resolution graphs, we virtualize SSR imports using a prefix.
  *
  * How it works:
- * - Any module beginning with `"use client"` is treated as an SSR boundary.
- * - We configure optimizeDeps to include virtualized SSR modules, resolved
- *   using SSR export conditions and no "react-server" export condition
- * - When we encounter a "use client" module in transform:
- *   - For each import, we check if it's a dependency from our mapping
- *   - If it's a dependency, we prefix it with our virtual namespace
- *     (optimizeDeps will pick it up due to our configuration described above)
- *   - If not, we resolve it on-the-fly and prefix non-dep imports
- * - In load(), we intercept prefixed modules, strip the prefix, and then
- *   transform the code the same as we did for modules that made their way to
- *   transform()
- * - Basically: load() is used to process our virtualized modules, transform()
- *   is for the "use client" modules that we encounter, though we reuse the same
- *   logic for both
+ * - Any module beginning with "use client" is treated as the root of a client-boundary graph.
+ * - In `transform()`, we parse and rewrite its import specifiers:
+ *   - If it's a bare import and appears in our resolved dependency map (`resolvePackageDeps()`),
+ *     we rewrite it to a virtual ID (e.g. `virtual:rwsdk:ssr:react`).
+ *   - If it's a relative/userland import, we resolve it and rewrite it under the same virtual prefix.
+ * - In `resolveId()`, we ensure that all imports *from* virtual modules remain in the same namespace,
+ *   forming an isolated subgraph.
  *
- * This approach eliminates the need for tracking a custom module graph, making
- * the process more direct and following Vite's plugin lifecycle more naturally.
+ * This allows the client-only subgraph to resolve without the "react-server" condition, within a single
+ * Cloudflare Worker bundle, without a custom module graph or duplicated builds.
  */
 
 import path from "path";
@@ -722,8 +715,8 @@ export function virtualizedSSRPlugin({
     },
 
     resolveId(source, importer, options) {
+      // Handle virtual client imports (already namespaced)
       if (source.startsWith(SSR_NAMESPACE)) {
-        // Get the module ID from the virtual ID
         const moduleId = source.slice(SSR_NAMESPACE.length);
 
         logResolve(
@@ -732,27 +725,26 @@ export function virtualizedSSRPlugin({
           importer || "unknown",
         );
 
-        // Check if this is one of our known dependencies
+        // Check known SSR virtual deps
         if (virtualSsrDeps.has(source)) {
           const resolvedPath = virtualSsrDeps.get(source)!;
           logResolve(
-            "✨ Using predefined alias for dependency: %s → %s",
+            "✨ Using predefined alias: %s → %s",
             source,
             resolvedPath,
           );
           return resolvedPath;
         }
 
-        // If it's not in our known mappings but is a bare import, try to resolve it
+        // Try to resolve unknown bare imports like 'some-lib'
         if (!moduleId.startsWith("/") && !moduleId.includes(":")) {
           try {
             const resolved = ssrResolver(projectRootDir, moduleId);
             if (resolved) {
-              // Add to our mappings for future use
               virtualSsrDeps.set(source, resolved);
               logResolve(
-                "✅ Resolved unmapped virtual module on-the-fly: %s → %s",
-                source,
+                "✅ Resolved unmapped bare virtual dep: %s → %s",
+                moduleId,
                 resolved,
               );
               return resolved;
@@ -762,11 +754,40 @@ export function virtualizedSSRPlugin({
           }
         }
 
+        // Let Vite continue with this virtual ID so transform() can run
         logResolve(
-          "🔍 Keeping original ID as resolveId() result so we transform its imports: %s",
+          "📦 Returning unresolved virtual ID for transform(): %s",
           source,
         );
         return source;
+      }
+
+      // Handle imports coming from virtual modules
+      if (importer?.startsWith(SSR_NAMESPACE)) {
+        const importerPath = importer.slice(SSR_NAMESPACE.length);
+
+        // Bare imports inside virtual client context
+        if (depPrefixMap.has(source)) {
+          const virtualDepId = depPrefixMap.get(source)!;
+          logResolve(
+            "🔁 Rewriting bare import in client graph: %s → %s",
+            source,
+            virtualDepId,
+          );
+          return virtualDepId;
+        }
+
+        // Relative/absolute import → stay in virtual namespace
+        if (source.startsWith(".") || source.startsWith("/")) {
+          const resolved = path.resolve(path.dirname(importerPath), source);
+          const virtualId = SSR_NAMESPACE + resolved;
+          logResolve(
+            "🔁 Rewriting relative import in client graph: %s → %s",
+            source,
+            virtualId,
+          );
+          return virtualId;
+        }
       }
 
       return null;
