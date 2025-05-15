@@ -8,6 +8,8 @@ description: A guide in my new Starlight docs site.
 
 import { Aside } from '@astrojs/starlight/components';
 
+import { PackageManagers } from "starlight-package-managers";
+
 Now that our application is complete 🥳, let's deploy it! This is the _easiest_ step in the whole process.
 
 When you first run `pnpm dev`, Redwood creates a `.wrangler` directory with a D1 database inside.
@@ -16,9 +18,10 @@ You can create a D1 database on your Cloudflare account with
 
 Within the Terminal, run:
 
-```bash
-pnpm release
-```
+<PackageManagers
+  type="run"
+  pkg="release"
+/>
 
 Within the Terminal, it will ask you: **Do you want to proceed with deployment? (y/N):** Type `y` and press Enter.
 
