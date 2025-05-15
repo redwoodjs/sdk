@@ -670,7 +670,7 @@ export function virtualizedSSRPlugin({
         );
         return fs.readFile(maybePath, "utf-8");
       } catch {
-        logResolve("❌ load() fallback read failed for: %s", maybePath);
+        logResolve("❌ load() read failed for: %s", maybePath);
         return null;
       }
     },
