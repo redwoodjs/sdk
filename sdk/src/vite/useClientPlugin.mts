@@ -1,154 +1,203 @@
 import { relative } from "node:path";
 import { Plugin } from "vite";
-import debug from "debug";
-import MagicString from "magic-string";
-import { init, parse } from "es-module-lexer";
+import {
+  Project,
+  SyntaxKind,
+  Node,
+  ExportDeclaration,
+  ExportAssignment,
+  Identifier,
+  FunctionDeclaration,
+} from "ts-morph";
 
 interface TransformResult {
   code: string;
   map?: any;
 }
 
-const log = debug("rwsdk:vite:use-client");
-
-function isJsxFunction(text: string): boolean {
-  return (
-    text.includes("jsx(") || text.includes("jsxs(") || text.includes("jsxDEV(")
-  );
-}
-
-/**
- * Transforms a "use client" component file by creating SSR-compatible exports
- * that leverage registerClientReference in the worker runtime
- */
 export async function transformClientComponents(
   code: string,
   id: string,
+  opts?: {
+    environmentName?: string;
+    topLevelRoot?: string;
+  },
 ): Promise<TransformResult | undefined> {
-  // Skip if not starting with use client directive
+  // 1. Skip if not in worker environment
+  if (opts?.environmentName && opts.environmentName !== "worker") {
+    return;
+  }
+  // 2. Skip node_modules and vite deps
+  if (id.includes(".vite/deps") || id.includes("node_modules")) {
+    return;
+  }
+  // 3. Only transform files that start with 'use client'
   const cleanCode = code.trimStart();
-  if (
-    !cleanCode.startsWith('"use client"') &&
-    !cleanCode.startsWith("'use client'")
-  ) {
-    log("Skipping file without use client directive:", id);
-    return;
+  const hasUseClient =
+    cleanCode.startsWith('"use client"') ||
+    cleanCode.startsWith("'use client'");
+  if (!hasUseClient) {
+    return { code, map: undefined };
   }
-
-  await init;
-  const [parsedExports] = parse(code);
-  const components: Record<string, string> = {};
-
-  // Process all exports
-  for (const exp of parsedExports) {
-    const exportName = exp.n;
-
-    // Skip if no name (probably a side effect import)
-    if (!exportName) continue;
-
-    // For each export, check if it's a React component
-    const exportCode = code.substring(exp.s, exp.e);
-    if (isJsxFunction(exportCode)) {
-      const ssrName = `${exportName}SSR`;
-      components[exportName] = ssrName;
-    }
-  }
-
-  // Only proceed if we found components
-  if (Object.keys(components).length === 0) {
-    log("No JSX components found in:", id);
-    return;
-  }
-
-  // Create transformed code
-  const s = new MagicString(code);
-
-  // Remove use client directive
-  const directiveMatch = code.match(/^(\s*)(["'])use client\2/);
-  if (directiveMatch) {
-    const fullDirective = directiveMatch[0];
-    const directivePos = code.indexOf(fullDirective);
-    const directiveEnd = directivePos + fullDirective.length;
-    // If followed by a semicolon, include it in the removal
-    if (code[directiveEnd] === ";") {
-      s.remove(directivePos, directiveEnd + 1);
-    } else {
-      s.remove(directivePos, directiveEnd);
-    }
-  }
-
-  // Add import for registerClientReference
-  s.prepend('import { registerClientReference } from "rwsdk/worker";\n');
-
-  // Add component registrations
-  let registrations = "\n";
-  Object.entries(components).forEach(([name, ssrName]) => {
-    registrations += `const ${name} = registerClientReference("${id}", "${name === "default" ? "default" : name}");\n`;
+  // 4. Remove 'use client' directive using ts-morph
+  const project = new Project({
+    useInMemoryFileSystem: true,
+    compilerOptions: {
+      sourceMap: true,
+      target: 2, // ES6
+      module: 1, // CommonJS
+      jsx: 2, // React
+    },
   });
-
-  s.append(registrations);
-
-  // Export all components
-  let exportStatements = "\n";
-  Object.entries(components).forEach(([name, ssrName]) => {
-    if (name === "default") {
-      exportStatements += `export { ${name} as default };\n`;
-    } else {
-      exportStatements += `export { ${name} };\n`;
+  const sourceFile = project.createSourceFile("temp.tsx", code);
+  sourceFile.getDescendantsOfKind(SyntaxKind.StringLiteral).forEach((node) => {
+    if (
+      node.getText() === "'use client'" ||
+      node.getText() === '"use client"'
+    ) {
+      const parentExpr = node.getFirstAncestorByKind(
+        SyntaxKind.ExpressionStatement,
+      );
+      if (parentExpr) {
+        parentExpr.remove();
+      }
     }
   });
+  // 5. If not a virtual SSR file, just remove the directive and return
+  if (!id.includes("virtual:rwsdk:ssr")) {
+    return {
+      code: sourceFile.getFullText(),
+      map: undefined,
+    };
+  }
+  // 6. For SSR files, apply the complete transformation
+  // (ts-morph export handling logic follows)
+  // Add import for registerClientReference if not present
+  const hasImport = sourceFile
+    .getImportDeclarations()
+    .some((imp) => imp.getModuleSpecifierValue() === "rwsdk/worker");
+  if (!hasImport) {
+    sourceFile.addImportDeclaration({
+      moduleSpecifier: "rwsdk/worker",
+      namedImports: [{ name: "registerClientReference" }],
+    });
+  }
+  const registrations: string[] = [];
+  const exportStatements: string[] = [];
+  const handledExports = new Set<string>();
+  let hasDefaultExport = false;
+  // Handle export default ...
+  sourceFile
+    .getDescendantsOfKind(SyntaxKind.ExportAssignment)
+    .forEach((node) => {
+      hasDefaultExport = true;
+      const expr = node.getExpression();
+      if (Node.isIdentifier(expr)) {
+        // export default Component;
+        registrations.push(
+          `export default registerClientReference("${id}", "${expr.getText()}");`,
+        );
+      } else {
+        // export default () => ... or export default function ...
+        registrations.push(
+          `export default registerClientReference("${id}", "default");`,
+        );
+      }
+      node.remove();
+    });
 
-  s.append(exportStatements);
+  // Handle export declarations (grouped/aliased)
+  sourceFile
+    .getDescendantsOfKind(SyntaxKind.ExportDeclaration)
+    .forEach((node) => {
+      const namedExports = node.getNamedExports();
+      if (namedExports.length > 0) {
+        const bindings: string[] = [];
+        namedExports.forEach((exp) => {
+          const local = exp.getAliasNode()
+            ? exp.getNameNode().getText()
+            : exp.getName();
+          const exported = exp.getAliasNode()
+            ? exp.getAliasNode()!.getText()
+            : exp.getName();
+          registrations.push(
+            `const ${local} = registerClientReference("${id}", "${exported}");`,
+          );
+          bindings.push(exp.getText());
+          handledExports.add(local);
+        });
+        exportStatements.push(`export { ${bindings.join(", ")} };`);
+        node.remove();
+      }
+    });
+
+  // Handle named exports (export const foo = ..., export function bar() ..., etc)
+  sourceFile.getStatements().forEach((stmt) => {
+    if (
+      Node.isVariableStatement(stmt) &&
+      stmt.hasModifier(SyntaxKind.ExportKeyword)
+    ) {
+      stmt
+        .getDeclarationList()
+        .getDeclarations()
+        .forEach((decl) => {
+          const name = decl.getName();
+          if (!handledExports.has(name)) {
+            registrations.push(
+              `const ${name} = registerClientReference("${id}", "${name}");`,
+            );
+            exportStatements.push(`export { ${name} };`);
+            handledExports.add(name);
+          }
+        });
+      stmt.toggleModifier("export", false);
+    }
+    if (
+      Node.isFunctionDeclaration(stmt) &&
+      stmt.hasModifier(SyntaxKind.ExportKeyword)
+    ) {
+      const name = stmt.getName();
+      if (name && !handledExports.has(name)) {
+        registrations.push(
+          `const ${name} = registerClientReference("${id}", "${name}");`,
+        );
+        exportStatements.push(`export { ${name} };`);
+        handledExports.add(name);
+      }
+      stmt.toggleModifier("export", false);
+    }
+  });
+
+  // Compose the final code
+  // Insert registrations after the last import declaration, or at the top if none
+  const importDecls = sourceFile.getImportDeclarations();
+  const insertIndex =
+    importDecls.length > 0
+      ? importDecls[importDecls.length - 1].getChildIndex() + 1
+      : 0;
+  sourceFile.insertStatements(insertIndex, registrations.join("\n"));
+  // Insert export statements at the end
+  sourceFile.addStatements(exportStatements.join("\n"));
+
+  // If there was a default export not handled above, add it
+  if (!hasDefaultExport && handledExports.has("default")) {
+    sourceFile.addStatements(
+      `export default registerClientReference("${id}", "default");`,
+    );
+  }
 
   return {
-    code: s.toString(),
-    map: s.generateMap({ hires: true }),
+    code: sourceFile.getFullText(),
+    map: undefined,
   };
 }
 
 export const useClientPlugin = (): Plugin => ({
   name: "rwsdk:use-client",
   async transform(code, id) {
-    // Skip if not in worker environment
-    if (this.environment.name !== "worker") {
-      log("Skipping due to non-worker environment");
-      return;
-    }
-
-    // Skip node_modules and vite deps
-    if (id.includes(".vite/deps") || id.includes("node_modules")) {
-      log("Skipping node_modules or .vite/deps file:", id);
-      return;
-    }
-
-    // Skip files that don't start with use client directive
-    if (!code.startsWith('"use client"') && !code.startsWith("'use client'")) {
-      log("Skipping file without use client directive:", id);
-      return;
-    }
-
-    // Remove use client directive using magic-string
-    const s = new MagicString(code);
-    if (code.startsWith('"use client"')) {
-      s.remove(0, '"use client"'.length);
-    } else if (code.startsWith("'use client'")) {
-      s.remove(0, "'use client'".length);
-    }
-
-    // If not a virtual SSR file, just remove the directive and return
-    if (!id.includes("virtual:rwsdk:ssr")) {
-      log("Not an SSR file, returning code with directive removed");
-      return {
-        code: s.toString(),
-        map: s.generateMap({ hires: true }),
-      };
-    }
-
-    // For SSR files, apply the complete transformation
-    log("Transforming SSR file:", id);
-    const relFilePath = id.includes("?") ? id.split("?")[0] : id;
-    const relativeId = relative(process.cwd(), relFilePath);
-
-    return transformClientComponents(code, relativeId);
+    return transformClientComponents(code, id, {
+      environmentName: this.environment?.name,
+      topLevelRoot: this.environment?.getTopLevelConfig?.().root,
+    });
   },
 });
