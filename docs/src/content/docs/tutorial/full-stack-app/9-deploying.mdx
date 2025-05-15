@@ -12,6 +12,10 @@ import { PackageManagers } from "starlight-package-managers";
 
 Now that our application is complete 🥳, let's deploy it! This is the _easiest_ step in the whole process.
 
+When you first run `pnpm dev`, Redwood creates a `.wrangler` directory with a D1 database inside.
+
+You can create a D1 database on your Cloudflare account with
+
 Within the Terminal, run:
 
 <PackageManagers
@@ -26,20 +30,6 @@ Everything should just work! 🙌
 Go to your dashboard in Cloudflare, on the left side navigation click on **Workers & Pages**. You should see your application in the list. Then, you can click on the **Visit** link to see your application online.
 
 ![](./images/cloudflare-visit-website.png)
-
-## Adjust The Security Headers
-
-You may need to update the security headers to allow your Cloudflare URL.
-
-Within the content loading and script execution section, add the `workers.dev` or your custom domain name:
-
-```ts title="src/app/headers.ts" "https://applywize.redwoodjs.workers.dev" startLineNumber={27}
-// Defines trusted sources for content loading and script execution:
-headers.set(
-  "Content-Security-Policy",
-  `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://applywize.redwoodjs.workers.dev; font-src 'self' https://fonts.gstatic.com; frame-src https://challenges.cloudflare.com; object-src 'none';`
-);
-```
 
 ## Deleting Your Project
 

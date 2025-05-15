@@ -57,7 +57,7 @@ If you copied and pasted the code I provided, it's already correct. 😉
 
 Then, for our side bar:
 
-```tsx
+```tsx showLineNumbers=false
 <Sheet>
   <SheetTrigger>Open</SheetTrigger>
   <SheetContent>
@@ -74,7 +74,7 @@ Then, for our side bar:
 
 This code will go below our `<div>Contact Card</div>` placeholder:
 
-```tsx title="/src/app/components/ApplicationForm.tsx" startLineNumber={99}
+```tsx title="/src/app/components/ApplicationForm.tsx" startLineNumber={106}
 <div className="box">
   <h3>Contacts</h3>
   <p className="input-description">Invite your team members to collaborate.</p>
@@ -127,6 +127,12 @@ First, let's adjust the `SheetTrigger`:
 ---
 ```
 
+You'll also need to import the `Icon` component at the top of our file:
+
+```tsx title="/src/app/components/ApplicationForm.tsx" showLineNumbers=false
+import { Icon } from "./Icon";
+```
+
 ![](./images/styled-add-a-contact-button.png)
 
 Much better! Then, for our `SheetContent`:
@@ -161,7 +167,7 @@ Now, let's create our `ContactForm` component. Inside our `src/app/components` d
 Then, be sure to import the `ContactForm` component at the top of our `ApplicationForm` component:
 
 ```tsx title="/src/app/components/ApplicationForm.tsx" startLineNumber={10}
-import { ContactForm } from "@/app/components/ContactForm"
+import { ContactForm } from "./ContactForm";
 ```
 
 <Aside type="tip" title="Linting Error">
@@ -242,13 +248,13 @@ Great! Now, let's hotwire this together. We'll follow a similar approach to what
 
 On the `ContactForm` component, let's set an `action` on the `form` element:
 
-```tsx title="/src/app/components/ContactForm.tsx" startLineNumber={10} "action={handleSubmit}"
+```tsx title="/src/app/components/ContactForm.tsx" startLineNumber={6} "action={handleSubmit}"
 <form action={handleSubmit}>
 ```
 
 Now, we need to write the `handleSubmit` function. We can add this code right above our `return` statement:
 
-```tsx title="/src/app/components/ContactForm.tsx" startLineNumber={10} "handleSubmit"
+```tsx title="/src/app/components/ContactForm.tsx" startLineNumber={5}
 const handleSubmit = async (formData: FormData) => {
   const result = await createContact(formData);
   if (result.success) {
@@ -265,9 +271,9 @@ const handleSubmit = async (formData: FormData) => {
 ---
 ```
 
-Now, inside our `src/app/pages/applications/actions.ts` file, let's create a new function at the very bottom of our file:
+Now, inside our `src/app/pages/applications/functions.ts` file, let's create a new function at the very bottom of our file:
 
-```tsx title="/src/app/pages/applications/actions.ts" startLineNumber={56}
+```tsx title="/src/app/pages/applications/functions.ts" startLineNumber={56}
 export const createContact = async (formData: FormData) => {
   try {
     await db.contact.create({
@@ -298,7 +304,7 @@ export const createContact = async (formData: FormData) => {
 Let's go back to our `ContactForm` component and import the `createContact` function at the top of our file:
 
 ```tsx title="/src/app/components/ContactForm.tsx" startLineNumber={3}
-import { createContact } from "../pages/applications/actions";
+import { createContact } from "../pages/applications/functions";
 ```
 
 Let's test it out! But, before you do, open up your developer tools and go to the console tab. If everything goes through successfully, you should see a success message in the console:
@@ -397,19 +403,19 @@ You'll notice that this component is built on top of the Radix UI [`Dialog` comp
 
 First, at the top of our `ApplicationsForm` component, let's add a piece of state that keeps track of whether the `Sheet` is open or not:
 
-```tsx title="/src/app/components/ApplicationForm.tsx" startLineNumber={21}
+```tsx title="/src/app/components/ApplicationForm.tsx" startLineNumber={26}
 const [isContactSheetOpen, setIsContactSheetOpen] = useState(false);
 ```
 
 Then, be sure to import `useState` at the top of our file:
 
-```tsx title="/src/app/components/ApplicationForm.tsx" startLineNumber={11}
+```tsx title="/src/app/components/ApplicationForm.tsx" showLineNumbers=false
 import { useState } from "react"
 ```
 
 Now, scroll down to the bottom of the `ApplicationForm` component, to our `Sheet` component:
 
-```tsx title="/src/app/components/ApplicationForm.tsx" startLineNumber={108} {1, 11} "open={isContactSheetOpen}" "onOpenChange={setIsContactSheetOpen}" "callback={() => setIsContactSheetOpen(false)}"
+```tsx title="/src/app/components/ApplicationForm.tsx" startLineNumber={117} {1, 11} "open={isContactSheetOpen}" "onOpenChange={setIsContactSheetOpen}" "callback={() => setIsContactSheetOpen(false)}"
 <Sheet open={isContactSheetOpen} onOpenChange={setIsContactSheetOpen}>
   <SheetTrigger className="flex items-center gap-2 font-display text-sm font-bold bg-secondary py-3 px-6 rounded-md cursor-pointer">
     <Icon id="plus" size={16} />Add a Contact
@@ -433,7 +439,7 @@ Now, scroll down to the bottom of the `ApplicationForm` component, to our `Sheet
 
 Now, head over to our `ContactForm` component and update the `handleSubmit` function.
 
-```tsx title="/src/app/components/ContactForm.tsx" startLineNumber={8} {"1. Updated the props we're passing in.": 1} {"2. If we're successful, we'll call the callback function.": 8}
+```tsx title="/src/app/components/ContactForm.tsx" showLineNumbers=false {"1. Updated the props we're passing in.": 1} {"2. If we're successful, we'll call the callback function.": 8} {2,9}
 .
 const ContactForm = ({ callback }: { callback: () => void }) => {
 
@@ -480,7 +486,7 @@ Even though our contacts will be displayed in the `ApplicationForm` component, t
 
 Inside our `New` page, let's get all of our contacts, where the `companyId` is `null`:
 
-```tsx title="/src/app/pages/applications/New.tsx" {4-8} startLineNumber={7}
+```tsx title="/src/app/pages/applications/New.tsx" {4-8} startLineNumber={13}
 const New = async () => {
   const statuses = await db.applicationStatus.findMany()
 
@@ -514,14 +520,16 @@ import { ApplicationStatus, Contact } from "@prisma/client"
 
 Scroll down to our `<div>Contact Card</div>` placeholder and replace it with a `ul` element:
 
-```tsx title="/src/app/components/ApplicationForm.tsx" startLineNumber={106} {"1. Check to see if any contacts exist.": 1} {"2. Map over the contacts and display them in a list.": 4} {"3. Temporarily display all the contact details": 6}
+```tsx title="/src/app/components/ApplicationForm.tsx" startLineNumber={106} {"1. Check to see if any contacts exist.": 1} {"2. Map over the contacts and display them in a list.": 4} {"3. Temporarily display all the contact details": 6} {2, 5, 7-9}
 .
 {contacts && (
   <ul>
 
     {contacts.map((contact) => (
 
-      <li key={contact.id}>{contact.firstName} {contact.lastName} {contact.email} {contact.role}</li>
+      <li key={contact.id}>
+        {contact.firstName} {contact.lastName}
+      </li>
     ))}
   </ul>
 )}
@@ -619,11 +627,28 @@ return (
 
 Let's swap out our placeholder content with our component. Inside the `ApplicationsForm`:
 
-```tsx title="/src/app/components/ApplicationForm.tsx" startLineNumber={108}
+```tsx title="/src/app/components/ApplicationForm.tsx" startLineNumber={125}
 {contacts.map((contact) => (
-  <li key={contact.id}><ContactCard contact={contact} /></li>
+  <li key={contact.id}>
+    <ContactCard contact={contact} />
+  </li>
 ))}
 ```
+
+<Aside title="Managing the User ID" type="tip">
+If you have several places within your seeds that reference a specific `userId`, you can always save this value in a variable at the top of your file, making it easier to update.
+
+Or, you could even make the `userId` dynamic. At the top of your seed file, you can grab a user from the database and use their ID:
+
+```tsx title="/src/app/seed.ts" startLineNumber={10}
+const user = await db.user.findFirst()
+if (!user) {
+  throw new Error("User not found");
+}
+```
+
+Now, you can reference `user.id` within your seed file (assuming at least one user exists).
+</Aside>
 
 At the top our file:
 
@@ -631,7 +656,7 @@ At the top our file:
 import { ContactCard } from "./ContactCard"
 ```
 
-If you take a look at this within the browser, you'll see our styledcontact list:
+If you take a look at this within the browser, you'll see our styled contact list:
 
 ![](./images/styled-contact-card.png)
 
@@ -751,9 +776,9 @@ Now, you can run:
   pkg='seed:application'
 />
 
-We also need to update our `createContact` function, inside our `actions.ts` file, to include the `userId` column:
+We also need to update our `createContact` function, inside our `functions.ts` file, to include the `userId` column:
 
-```tsx title="/src/app/pages/applications/actions.ts" collapse={11-14} startLineNumber={56} {3, 5-7, 15-18}
+```tsx title="/src/app/pages/applications/functions.ts" collapse={11-14} startLineNumber={56} {3, 5-7, 15-18}
 export const createContact = async (formData: FormData) => {
   try {
     const { ctx } = requestInfo;
@@ -786,9 +811,9 @@ export const createContact = async (formData: FormData) => {
 Now, we need to update our database query on the `New` page.
 
 ```tsx title="/src/app/pages/applications/New.tsx" startLineNumber={5} "{ ctx }: { ctx: AppContext }" "ctx.user?.id" {3,9}
-import { AppContext } from "@/worker"
+import { RequestInfo } from "rwsdk/worker";
 
-const New = async ({ ctx }: { ctx: AppContext }) => {
+const New = async ({ ctx }: { ctx: RequestInfo }) => {
   const statuses = await db.applicationStatus.findMany()
 
   const contacts = await db.contact.findMany({
@@ -798,7 +823,7 @@ const New = async ({ ctx }: { ctx: AppContext }) => {
     }
   })
 ---
-- On each page, we have access to the `ctx` object. This has a type of `AppContext`, defined in `src/worker`.
+- On each page, we have access to the `ctx` object. This has a type of `RequestInfo`, defined in `rwsdk/worker`.
 - From `ctx`, we can access the `user` object and the user's ID.
 - On our database call, we can add another property to our `where` clause, saying that the `userId` should match the logged in user's ID.
 ---
@@ -808,15 +833,20 @@ If you try adding contacts using our form, the display will look the same as bef
 
 ### Associating the Contact with a Company
 
-Now, when we add a job application, we need to associate the contact with the company. We'll need to adjust our `createApplication` function within the `src/app/pages/applications/actions.ts` file slightly.
+Now, when we add a job application, we need to associate the contact with the company. We'll need to adjust our `createApplication` function within the `src/app/pages/applications/functions.ts` file slightly.
 
 First, let's ensure that we're passing our contacts into our `createApplication` function properly.
 
 Within the `ApplicationForm` component, go to the `handleSubmit` function:
 
-```tsx title="/src/app/components/ApplicationForm.tsx" startLineNumber={21} {6}
-const ApplicationsForm = ({ statuses, contacts }:
-  { statuses: ApplicationStatus[], contacts: Contact[] }) => {
+```tsx title="/src/app/components/ApplicationForm.tsx" startLineNumber={27} {11}
+const ApplicationForm = ({
+  statuses,
+  contacts,
+}: {
+  statuses: ApplicationStatus[];
+  contacts: Contact[];
+}) => {
   const [isContactSheetOpen, setIsContactSheetOpen] = useState(false);
 
   const handleSubmit = async (formData: FormData) => {
@@ -828,9 +858,9 @@ const ApplicationsForm = ({ statuses, contacts }:
 ---
 ```
 
-Now, within our `src/app/pages/applications/actions.ts` file, inside our `createApplication` function, we need to parse our `JSON` string:
+Now, within our `src/app/pages/applications/functions.ts` file, inside our `createApplication` function, we need to parse our `JSON` string:
 
-```tsx title="/src/app/pages/applications/actions.ts" collapse={2-8} startLineNumber={14} {9}
+```tsx title="/src/app/pages/applications/functions.ts" collapse={2-8} startLineNumber={6} {9-11}
 export const createApplication = async (formData: FormData) => {
   try {
     const { ctx } = requestInfo;
@@ -839,7 +869,9 @@ export const createApplication = async (formData: FormData) => {
       throw new Error("User not found");
     }
 
-    const contacts = JSON.parse(formData.get("contacts") as string) as Contact[];
+    const contacts = JSON.parse(
+      formData.get("contacts") as string
+    ) as Contact[];
 ---
 - We get the `contacts` off the `formData` which is a string: `formData.get("contacts") as string`
 - Then, we use `JSON.parse` to convert the string into an array of `Contact` objects.
@@ -848,13 +880,13 @@ export const createApplication = async (formData: FormData) => {
 
 Be sure to import the `Contact` type at the top of the file from `@prisma/client`:
 
-```tsx title="/src/app/pages/applications/actions.ts" startLineNumber={4}
+```tsx title="/src/app/pages/applications/functions.ts" showLineNumbers=false
 import { Contact } from "@prisma/client"
 ```
 
 Then, when we're creating our company, inside the Prisma `create` method, we can connect our `contacts` to the company:
 
-```diff title="/src/app/pages/applications/actions.ts" startLineNumber={29}
+```diff title="/src/app/pages/applications/functions.ts" startLineNumber={29}
 company: {
   create: {
     name: formData.get("company") as string,
@@ -911,7 +943,7 @@ return (
 
 Now, we need to add some styles.
 
-```tsx title="/src/app/components/ContactCard.tsx" startLineNumber={6}
+```tsx title="/src/app/components/ContactCard.tsx" startLineNumber={6} "relative" "className="absolute top-2 -left-[37px]"" "className="rounded-full bg-destructive p-1""
 return (
   <div className="relative flex items-center gap-4 mb-6">
     <div className="absolute top-2 -left-[37px]">
@@ -1011,7 +1043,7 @@ To do this, we'll need to add a `group` to the `ContactCard` component.
 On the `div` wrapping the button:
 
 ```tsx title="/src/app/components/ContactCard.tsx" startLineNumber={8} "hidden group-hover/card:block"
-<div className="hidden group-hover/card:block pr-10 absolute top-1 -left-[37px]">
+<div className="hidden group-hover/card:block absolute top-1 -left-[37px]">
   <button
     role="button"
     className="hover:bg-black cursor-pointer text-white fill-current rounded-full bg-destructive p-1">
@@ -1033,7 +1065,7 @@ Now, if you test this in the browser, you might feel like you're chasing the but
     <Icon id="close" size={16} />
   </button>
 </div>
----
+```
 
 Perfect! With the styling applied, let's give this button the functionality it needs.
 
@@ -1058,7 +1090,7 @@ Now that we've introduced interactivity, this component needs to be a client com
 
 Now, let's create the `handleDelete` function that we referenced in the `onClick` handler. Right above our `return` statement:
 
-```tsx title="/src/app/components/ContactCard.tsx" startLineNumber={8} "handleDelete"
+```tsx title="/src/app/components/ContactCard.tsx" startLineNumber={8}
 const handleDelete = async () => {
   const result = await deleteContact(contact.id);
   if (result.error) {
@@ -1080,12 +1112,12 @@ Now, we need to import `toast` and `deleteContact` at the top of our file:
 
 ```tsx title="/src/app/components/ContactCard.tsx" startLineNumber={6}
 import { toast } from "sonner"
-import { deleteContact } from "../pages/applications/actions"
+import { deleteContact } from "../pages/applications/functions"
 ```
 
-Now, let's head over to our `actions.ts` file and create the `deleteContact` function.
+Now, let's head over to our `functions.ts` file and create the `deleteContact` function.
 
-```tsx title="/src/app/pages/applications/actions.ts" startLineNumber={82}
+```tsx title="/src/app/pages/applications/functions.ts" startLineNumber={82}
 export const deleteContact = async (contactId: string) => {
   try {
     await db.contact.delete({
@@ -1113,10 +1145,11 @@ Now, if you try running this in the browser, you'll probably run into an error:
 
 This is because when the use clicks on the button, the page tries to submit the form. To prevent the default browser behavior, we can update the `onClick` handler to capture the event:
 
-```tsx title="/src/app/components/ContactCard.tsx" startLineNumber={22} "onClick={(e) => handleDelete(e)}" {3}
-<button role="button"
-  className="hover:bg-black cursor-pointer text-white fill-current rounded-full bg-destructive p-1"
+```tsx title="/src/app/components/ContactCard.tsx" startLineNumber={22} "onClick={(e) => handleDelete(e)}" {2}
+<button
   onClick={(e) => handleDelete(e)}
+  role="button"
+  className="hover:bg-black cursor-pointer text-white fill-current rounded-full bg-destructive p-1"
 >
   <Icon id="close" size={16} />
 </button>
