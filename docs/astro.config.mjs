@@ -102,7 +102,15 @@ export default defineConfig({
           label: "Guides",
           items: [
             {
-              label: "Frontend Development",
+              label: 'Email',
+              collapsed: true,
+              items: [
+                { label: 'Sending Email', slug: 'guides/email/sending-email' },
+                { label: 'Email Templates', slug: 'guides/email/email-templates' },
+              ]
+            },
+            {
+              label: 'Frontend Development',
               collapsed: true,
               items: [
                 { label: "Tailwind CSS", slug: "guides/frontend/tailwind" },
