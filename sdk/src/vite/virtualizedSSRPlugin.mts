@@ -62,7 +62,12 @@ const logTransform = log.extend("transform");
 const logScan = log.extend("scan");
 const logWatch = log.extend("watch");
 
-// Enhanced resolver for SSR modules - only used in resolveBareImport
+// Esbuild-specific loggers
+const logEsbuild = debug("rwsdk:vite:virtualized-ssr:esbuild");
+const logEsbuildInfo = logEsbuild.extend("info");
+const logEsbuildError = logEsbuild.extend("error");
+const logEsbuildResolve = logEsbuild.extend("resolve");
+const logEsbuildTransform = logEsbuild.extend("transform");
 
 const IGNORED_IMPORT_PATTERNS = [
   /^cloudflare:.*$/,
@@ -102,6 +107,12 @@ const IMPORT_PATTERNS = [
   "import('$MODULE')",
   "import(`$MODULE`)",
 ];
+
+// Shared state for both Vite and esbuild plugins
+const virtualSsrDeps = new Map<string, string>();
+const depPrefixMap = new Map<string, string>();
+const seenBareImports = new Set<string>();
+let viteServer: any = null;
 
 /**
  * Extract bare imports from code content using ast-grep
@@ -160,6 +171,129 @@ async function extractBareImports(
   return imports;
 }
 
+const logEsbuildPlugin = {
+  name: "log-esbuild-plugin",
+  setup(build: any) {
+    build.onResolve({ filter: /.*/ }, (args: any) => {
+      console.log("");
+    });
+  },
+};
+
+// --- SSR-aware esbuild plugin for optimizeDeps ---
+function virtualizedSSREsbuildPlugin() {
+  return {
+    name: "virtualized-ssr-esbuild-plugin",
+    setup(build: any) {
+      build.onResolve({ filter: /.*/ }, (args: any) => {
+        // If the importer or the path is in the SSR subgraph, use the same logic as Vite
+        const isSSRSubgraph =
+          args.importer?.startsWith(SSR_BASE_NAMESPACE) ||
+          args.path.startsWith(SSR_BASE_NAMESPACE);
+
+        if (isSSRSubgraph) {
+          // Known bare import mapping
+          if (depPrefixMap.has(args.path)) {
+            const virtualId = depPrefixMap.get(args.path)!;
+            logEsbuildResolve(
+              "🔁 Rewriting dep in SSR subgraph: %s → %s",
+              args.path,
+              virtualId,
+            );
+            return { path: virtualId, external: false };
+          }
+
+          // For relative or absolute paths, just prefix with module namespace
+          if (args.path.startsWith(".") || args.path.startsWith("/")) {
+            const virtualId = SSR_MODULE_NAMESPACE + args.path;
+            logEsbuildResolve(
+              "🔁 Prefixing relative/absolute import: %s → %s",
+              args.path,
+              virtualId,
+            );
+            return { path: virtualId, external: false };
+          }
+        }
+        // Let esbuild handle other cases
+        return undefined;
+      });
+
+      // --- onLoad for 'use client' modules ---
+      build.onLoad(
+        { filter: /\.(js|jsx|ts|tsx|mjs|mts)$/ },
+        async (args: any) => {
+          const fs = await import("fs/promises");
+          let code: string;
+          try {
+            code = await fs.readFile(args.path, "utf-8");
+          } catch (err) {
+            logEsbuildError("❌ Failed to read file in onLoad: %s", args.path);
+            return undefined;
+          }
+          const firstLine = code.split("\n", 1)[0]?.trim();
+          if (firstLine === "'use client'" || firstLine === '"use client"') {
+            logEsbuildTransform("🎯 Found 'use client' in: %s", args.path);
+            await init;
+            const [imports] = parse(code);
+            const ms = new MagicString(code);
+            let modified = false;
+
+            for (const i of imports) {
+              const raw = code.slice(i.s, i.e);
+              // Do not rewrite the SSR bridge import itself
+              if (raw === "rwsdk/__ssr_bridge") {
+                continue;
+              }
+              // Case 1: Known mapped dependency
+              if (depPrefixMap.has(raw)) {
+                const virtualId = depPrefixMap.get(raw)!;
+                logEsbuildTransform(
+                  "🔄 Rewriting mapped dep: %s → %s",
+                  raw,
+                  virtualId,
+                );
+                ms.overwrite(i.s, i.e, virtualId);
+                modified = true;
+                continue;
+              }
+              // Case 2: Ignored import patterns
+              if (
+                IGNORED_IMPORT_PATTERNS.some((pattern) => pattern.test(raw))
+              ) {
+                logEsbuildTransform(
+                  "🛡️ Ignoring pattern-matched import: %s",
+                  raw,
+                );
+                continue;
+              }
+              // Case 3: User code imports (not from node_modules)
+              // We'll use a simple heuristic: if not in node_modules or .vite
+              if (!raw.includes("node_modules") && !raw.includes(".vite")) {
+                const virtualId = SSR_MODULE_NAMESPACE + raw;
+                logEsbuildTransform(
+                  "🔁 Rewriting user import: %s → %s",
+                  raw,
+                  virtualId,
+                );
+                ms.overwrite(i.s, i.e, virtualId);
+                modified = true;
+              }
+            }
+            if (modified) {
+              return {
+                contents: ms.toString(),
+                loader: args.path.endsWith("x") ? "tsx" : "ts",
+              };
+            }
+          }
+          // Not a 'use client' module, or no changes needed
+          return undefined;
+        },
+      );
+    },
+  };
+}
+
 export function virtualizedSSRPlugin({
   projectRootDir,
 }: {
@@ -176,11 +310,6 @@ export function virtualizedSSRPlugin({
   const ssrResolver = enhancedResolve.create.sync({
     conditionNames: ["workerd", "edge", "import", "default"],
   });
-
-  const virtualSsrDeps = new Map<string, string>();
-  const depPrefixMap = new Map<string, string>();
-  const seenBareImports = new Set<string>();
-  let viteServer: any = null;
 
   /**
    * Resolves a bare import and adds it to our dependency mappings
@@ -408,6 +537,14 @@ export function virtualizedSSRPlugin({
       }
     }
 
+    // Add the logging esbuild plugin and the SSR esbuild plugin
+    config.optimizeDeps.esbuildOptions ??= {};
+    config.optimizeDeps.esbuildOptions.plugins ??= [];
+    config.optimizeDeps.esbuildOptions.plugins.push(logEsbuildPlugin);
+    config.optimizeDeps.esbuildOptions.plugins.push(
+      virtualizedSSREsbuildPlugin(),
+    );
+
     logInfo(
       "✅ Updated Vite config with %d SSR virtual aliases",
       virtualSsrDeps.size,
@@ -507,6 +644,14 @@ export function virtualizedSSRPlugin({
       logInfo(
         "⚡ Added %d virtual deps to optimizeDeps.include",
         virtualSsrDeps.size,
+      );
+
+      // Add the logging esbuild plugin and the SSR esbuild plugin
+      config.optimizeDeps.esbuildOptions ??= {};
+      config.optimizeDeps.esbuildOptions.plugins ??= [];
+      config.optimizeDeps.esbuildOptions.plugins.push(logEsbuildPlugin);
+      config.optimizeDeps.esbuildOptions.plugins.push(
+        virtualizedSSREsbuildPlugin(),
       );
 
       logInfo("✅ Registered %d SSR virtual aliases", virtualSsrDeps.size);
