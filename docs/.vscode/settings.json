@@ -1,9 +1,5 @@
 {
-  "cSpell.words": [
-    "redwoodsdk",
-    "svgs",
-    "Wize"
-  ],
+  "cSpell.words": ["redwoodsdk", "rwsdk", "svgs", "Wize"],
   "workbench.colorCustomizations": {
     "activityBar.background": "#540B4D",
     "titleBar.activeBackground": "#760F6C",
