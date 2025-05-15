@@ -633,7 +633,10 @@ export function virtualizedSSRPlugin({
 
       // Check if this is a "use client" module
       let isClientModule = false;
-      if (
+      if (id.startsWith(SSR_NAMESPACE)) {
+        isClientModule = true;
+        logTransform("🔁 Virtual client context: %s", id);
+      } else if (
         id.endsWith(".ts") ||
         id.endsWith(".js") ||
         id.endsWith(".tsx") ||
@@ -727,6 +730,20 @@ export function virtualizedSSRPlugin({
           );
           return virtualId;
         }
+      }
+
+      return null;
+    },
+
+    load(id) {
+      if (id.startsWith(SSR_NAMESPACE)) {
+        const realId = id.slice(SSR_NAMESPACE.length);
+        logResolve(
+          "📄 load() returning source for virtual ID: %s → %s",
+          id,
+          realId,
+        );
+        return fs.readFile(realId, "utf-8"); // ✅ this triggers transform()
       }
 
       return null;
