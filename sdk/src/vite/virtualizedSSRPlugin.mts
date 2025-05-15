@@ -297,7 +297,7 @@ export function virtualizedSSRPlugin({
       // Process and resolve all the unique bare imports we found
       await processBareImports(imports);
 
-      logScan("📊 Found %d unique bare imports", imports.size);
+      logScan("📊 Found %d unique bare imports: %O", imports.size, imports);
     } catch (err) {
       logError("❌ Error during ast-grep scan: %O", err);
     }
