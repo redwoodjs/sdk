@@ -301,30 +301,6 @@ export function virtualizedSSRPlugin({
     return imports;
   }
 
-  async function resolvePackageDeps(): Promise<Map<string, string>> {
-    logResolve("🔍 Scanning src directory for bare imports");
-    const mappings = new Map<string, string>();
-
-    try {
-      const srcDir = path.join(projectRootDir, "src");
-      logScan("📂 Scanning directory: %s", srcDir);
-
-      logScan("✅ Using ast-grep for import scanning");
-      // This will find all imports and add them to virtualSsrDeps internally
-      await scanWithAstGrep(srcDir);
-
-      // Copy dependencies to the return mapping
-      for (const [vId, real] of virtualSsrDeps.entries()) {
-        mappings.set(vId, real);
-      }
-    } catch (err) {
-      logError("❌ Error scanning src directory: %O", err);
-    }
-
-    logResolve("📊 Found %d dependencies during scan", mappings.size);
-    return mappings;
-  }
-
   async function processNewFile(filePath: string): Promise<void> {
     logWatch("🔄 Processing file change: %s", filePath);
 
@@ -474,12 +450,23 @@ export function virtualizedSSRPlugin({
       }
 
       // Scan src directory for imports
-      const depsMap = await resolvePackageDeps();
+      logResolve("🔍 Scanning src directory for bare imports");
 
-      // Add all found deps to virtualSsrDeps
-      for (const [vId, real] of depsMap.entries()) {
-        virtualSsrDeps.set(vId, real);
+      try {
+        const srcDir = path.join(projectRootDir, "src");
+        logScan("📂 Scanning directory: %s", srcDir);
+
+        logScan("✅ Using ast-grep for import scanning");
+        // This will find all imports and add them to virtualSsrDeps internally
+        await scanWithAstGrep(srcDir);
+      } catch (err) {
+        logError("❌ Error scanning src directory: %O", err);
       }
+
+      logResolve(
+        "📊 Found %d dependencies after scanning",
+        virtualSsrDeps.size,
+      );
 
       // Add all aliases to config
       for (const [vId, realPath] of virtualSsrDeps) {
