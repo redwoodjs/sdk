@@ -30,7 +30,6 @@
  *     we rewrite it to a virtual ID (e.g. `virtual:rwsdk:ssr:react`).
  *   - If it's a relative/userland import, we resolve it and rewrite it under the same virtual prefix.
  * - In `resolveId()`, we ensure that all imports *from* virtual modules remain in the same namespace,
- *   forming an isolated subgraph.
  *
  * This allows the client-only subgraph to resolve without the "react-server" condition, within a single
  * Cloudflare Worker bundle, without a custom module graph or duplicated builds.
@@ -55,7 +54,6 @@ const logError = log.extend("error");
 const logResolve = log.extend("resolve");
 const logTransform = log.extend("transform");
 const logLoad = log.extend("load");
-const logVirtualIds = log.extend("virtual-ids");
 const logModuleIds = log.extend("module-ids");
 const logScan = log.extend("scan");
 const logWatch = log.extend("watch");
@@ -653,65 +651,6 @@ export function virtualizedSSRPlugin({
       }
 
       return processImports(this, code, id, isClientModule);
-    },
-
-    async load(id) {
-      // Only handle prefixed IDs
-      if (!id.startsWith(SSR_NAMESPACE)) {
-        return null;
-      }
-
-      logLoad("📥 Loading virtualized module: %s", id);
-
-      // Strip the prefix to get the module ID
-      const moduleId = id.slice(SSR_NAMESPACE.length);
-      logLoad("🔍 Module ID: %s", moduleId);
-
-      // Check if this is in our known dependencies
-      if (virtualSsrDeps.has(id)) {
-        const resolvedPath = virtualSsrDeps.get(id)!;
-        logLoad("✅ Using known mapping: %s → %s", id, resolvedPath);
-        try {
-          const code = await fs.readFile(resolvedPath, "utf-8");
-          logLoad(
-            "📄 Loaded %d bytes of content from resolved path",
-            code.length,
-          );
-
-          // Process the imports in this module
-          logLoad("🔄 Processing imports in resolved module");
-          const result = await processImports(this, code, resolvedPath, true);
-
-          return result || { code };
-        } catch (err) {
-          logError("❌ Failed to read file at %s: %O", resolvedPath, err);
-          return null;
-        }
-      }
-
-      // Not in our mappings, try to resolve through Vite
-      logLoad("🔍 Resolving through Vite: %s", moduleId);
-      const resolved = await this.resolve(moduleId);
-      if (!resolved) {
-        logError("❌ Failed to resolve module: %s", moduleId);
-        return null;
-      }
-
-      logLoad("✅ Resolved through Vite to: %s", resolved.id);
-      try {
-        // Load the content
-        const code = await fs.readFile(resolved.id, "utf-8");
-        logLoad("📄 Loaded %d bytes of content", code.length);
-
-        // Process the imports in this module
-        logLoad("🔄 Processing imports in resolved module");
-        const result = await processImports(this, code, resolved.id, true);
-
-        return result || { code };
-      } catch (err) {
-        logError("❌ Failed to read file at %s: %O", resolved.id, err);
-        return null;
-      }
     },
 
     resolveId(source, importer, options) {
