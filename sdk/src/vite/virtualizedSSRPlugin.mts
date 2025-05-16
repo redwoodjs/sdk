@@ -53,15 +53,12 @@ const logError = log.extend("error");
 const logResolve = log.extend("resolve");
 const logTransform = log.extend("transform");
 
-// Esbuild-specific loggers
 const logEsbuild = debug("rwsdk:vite:virtualized-ssr:esbuild");
 const logEsbuildTransform = logEsbuild.extend("transform");
 
 const IGNORED_IMPORT_PATTERNS = [/^cloudflare:.*$/];
 
-// Define import patterns directly in code (from allImportsRule.yml)
 const IMPORT_PATTERNS = [
-  // Static Imports
   'import { $$$ } from "$MODULE"',
   "import { $$$ } from '$MODULE'",
   'import $DEFAULT from "$MODULE"',
@@ -120,10 +117,6 @@ const createSSRDepResolver = ({
   return resolveSSRDep;
 };
 
-/**
- * Find all import specifiers and their positions using ast-grep
- * Returns an array of { s, e, raw } for each import specifier
- */
 function findImportSpecifiersWithPositions(
   code: string,
   lang: typeof SgLang.TypeScript | typeof SgLang.Tsx,
@@ -137,17 +130,13 @@ function findImportSpecifiersWithPositions(
         for (const match of matches) {
           const moduleCapture = match.getMatch("MODULE");
           if (moduleCapture) {
-            // The AST node text includes the quotes for string literals
             const importPath = moduleCapture.text();
-            // Only include bare imports (not relative paths, absolute paths, or virtual modules)
             if (
               !importPath.startsWith("virtual:") &&
               !IGNORED_IMPORT_PATTERNS.some((pattern) =>
                 pattern.test(importPath),
               )
             ) {
-              // Find the start and end positions of the import string in the code
-              // This is the range of the moduleCapture node
               const { start, end } = moduleCapture.range();
               results.push({ s: start.index, e: end.index, raw: importPath });
             }
@@ -163,7 +152,6 @@ function findImportSpecifiersWithPositions(
   return results;
 }
 
-// --- Context type for shared state ---
 export type VirtualizedSSRContext = {
   projectRootDir: string;
   resolveModule: (
@@ -173,7 +161,6 @@ export type VirtualizedSSRContext = {
   resolveDep: (request: string) => string | false;
 };
 
-// Utility to check for bare imports (not relative, not absolute, not virtual)
 function isBareImport(importPath: string): boolean {
   return (
     !importPath.startsWith(".") &&
@@ -193,6 +180,8 @@ async function rewriteSSRClientImports({
   context: VirtualizedSSRContext;
   logFn?: (...args: any[]) => void;
 }): Promise<MagicString | null> {
+  const filePath = getRealPath(id);
+
   logFn?.("[rewriteSSRClientImports] called for id: %s", id);
   const ext = path.extname(id).toLowerCase();
   const lang =
@@ -215,7 +204,7 @@ async function rewriteSSRClientImports({
       i.s,
       i.e,
     );
-    // Skip rewriting if already a virtual SSR ID
+
     if (raw.startsWith(SSR_NAMESPACE)) {
       logFn?.(
         "[rewriteSSRClientImports] Skipping already-virtual import: %s",
@@ -227,7 +216,6 @@ async function rewriteSSRClientImports({
     let virtualId: string | null = null;
 
     if (isBareImport(raw)) {
-      // Try SSR resolver first
       const ssrResolved = context.resolveDep(raw);
 
       if (ssrResolved !== false) {
@@ -241,7 +229,7 @@ async function rewriteSSRClientImports({
     }
 
     if (virtualId === null) {
-      const moduleResolved = await context.resolveModule(id, raw);
+      const moduleResolved = await context.resolveModule(raw, filePath);
 
       if (moduleResolved) {
         logFn?.(
@@ -275,7 +263,6 @@ async function rewriteSSRClientImports({
   }
 }
 
-// Helper to check if a module is a client module (for SSR virtualization)
 function isClientModule({
   id,
   code,
@@ -329,22 +316,6 @@ function isClientModule({
   return false;
 }
 
-// Helper to check if a path or importer is in the SSR subgraph
-function isSSRSubgraph({
-  importer,
-  path,
-}: {
-  importer?: string;
-  path: string;
-}): boolean {
-  return (
-    (importer && importer.startsWith(SSR_NAMESPACE)) ||
-    path.startsWith(SSR_NAMESPACE) ||
-    path.includes("__rwsdk_ssr")
-  );
-}
-
-// Shared function to rewrite imports if needed (no file reading)
 async function maybeRewriteSSRClientImports({
   code,
   id,
@@ -392,7 +363,11 @@ async function maybeRewriteSSRClientImports({
   return null;
 }
 
-// Loads a file, maybe rewrites SSR client imports, then always runs transformClientComponents
+const getRealPath = (filePath: string) =>
+  filePath.startsWith(SSR_NAMESPACE)
+    ? filePath.slice(SSR_NAMESPACE.length)
+    : filePath;
+
 async function loadAndTransformClientModule({
   filePath,
   context,
@@ -402,9 +377,8 @@ async function loadAndTransformClientModule({
   context: VirtualizedSSRContext;
   logFn: (...args: any[]) => void;
 }) {
-  const realPath = filePath.startsWith(SSR_NAMESPACE)
-    ? filePath.slice(SSR_NAMESPACE.length)
-    : filePath;
+  const realPath = getRealPath(filePath);
+
   let code: string;
   try {
     code = await fs.readFile(realPath, "utf-8");
