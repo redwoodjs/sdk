@@ -387,7 +387,8 @@ async function loadAndMaybeRewrite({
     });
     if (rewritten) {
       return {
-        contents: rewritten,
+        contents: rewritten.toString(),
+        map: rewritten.generateMap({ hires: true }),
         loader: filePath.endsWith("x") ? "tsx" : "ts",
         resolveDir: path.dirname(filePath),
       };
@@ -397,11 +398,7 @@ async function loadAndMaybeRewrite({
     `[loadAndMaybeRewrite] Not a client module, no rewrite needed: %s`,
     inputPath,
   );
-  return {
-    contents: code,
-    loader: filePath.endsWith("x") ? "tsx" : "ts",
-    resolveDir: path.dirname(filePath),
-  };
+  return null;
 }
 
 // Update virtualizedSSREsbuildPlugin to accept context
