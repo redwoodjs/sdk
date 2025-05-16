@@ -54,9 +54,6 @@ const logTransform = log.extend("transform");
 
 // Esbuild-specific loggers
 const logEsbuild = debug("rwsdk:vite:virtualized-ssr:esbuild");
-const logEsbuildInfo = logEsbuild.extend("info");
-const logEsbuildError = logEsbuild.extend("error");
-const logEsbuildResolve = logEsbuild.extend("resolve");
 const logEsbuildTransform = logEsbuild.extend("transform");
 
 const IGNORED_IMPORT_PATTERNS = [/^cloudflare:.*$/];
@@ -90,24 +87,40 @@ const IMPORT_PATTERNS = [
   "require(`$MODULE`)",
 ];
 
-const createSSRResolver = ({ projectRootDir }: { projectRootDir: string }) => {
-  const ssrResolver = enhancedResolve.create.sync({
-    conditionNames: ["workerd", "edge", "import", "default"],
-  });
+const baseSSRResolver = enhancedResolve.create.sync({
+  conditionNames: ["workerd", "edge", "import", "default"],
+});
 
-  const ssrResolverFn = (request: string): string | false => {
+const ssrResolver = (from: string, request: string): string | false => {
+  try {
+    return baseSSRResolver(from, request);
+  } catch {
     try {
-      return ssrResolver(projectRootDir, request);
+      return baseSSRResolver(ROOT_DIR, request);
+    } catch {
+      return false;
+    }
+  }
+};
+
+const createSSRDepResolver = ({
+  projectRootDir,
+}: {
+  projectRootDir: string;
+}) => {
+  const resolveSSRDep = (request: string): string | false => {
+    try {
+      return baseSSRResolver(projectRootDir, request);
     } catch {
       try {
-        return ssrResolver(ROOT_DIR, request);
+        return baseSSRResolver(ROOT_DIR, request);
       } catch {
         return false;
       }
     }
   };
 
-  return ssrResolverFn;
+  return resolveSSRDep;
 };
 
 /**
@@ -156,7 +169,11 @@ function findImportSpecifiersWithPositions(
 // --- Context type for shared state ---
 export type VirtualizedSSRContext = {
   projectRootDir: string;
-  ssrResolver: (request: string) => string | false;
+  resolveModule: (
+    from: string,
+    request: string,
+  ) => string | false | Promise<string | false>;
+  resolveDep: (request: string) => string | false;
 };
 
 // Utility to check for bare imports (not relative, not absolute, not virtual)
@@ -174,14 +191,12 @@ async function rewriteSSRClientImports({
   id,
   context,
   logFn,
-  viteContext,
 }: {
   code: string;
   id: string;
   context: VirtualizedSSRContext;
   logFn?: (...args: any[]) => void;
-  viteContext: any;
-}): Promise<string | null> {
+}): Promise<MagicString | null> {
   logFn?.("[rewriteSSRClientImports] called for id: %s", id);
   const ext = path.extname(id).toLowerCase();
   const lang =
@@ -210,39 +225,50 @@ async function rewriteSSRClientImports({
       );
       continue;
     }
-    let virtualId;
     if (isBareImport(raw)) {
       // Try SSR resolver first
-      const ssrResolved = context.ssrResolver(raw);
+      const ssrResolved = context.resolveDep(raw);
+
       if (ssrResolved !== false) {
-        virtualId = SSR_NAMESPACE + ssrResolved;
+        const virtualId = SSR_NAMESPACE + ssrResolved;
         logFn?.(
           "[rewriteSSRClientImports] SSR resolver succeeded for '%s', rewriting to '%s'",
           raw,
           virtualId,
         );
-      } else {
-        virtualId = SSR_NAMESPACE + raw;
-        logFn?.(
-          "[rewriteSSRClientImports] SSR resolver failed for '%s', rewriting to '%s'",
-          raw,
-          virtualId,
-        );
+        ms.overwrite(i.s, i.e, virtualId);
+        modified = true;
+        continue;
       }
-    } else {
-      virtualId = SSR_NAMESPACE + raw;
+      // SSR resolver failed, try module resolver
+      const moduleResolved = await context.resolveModule(id, raw);
+      if (moduleResolved) {
+        logFn?.(
+          "[rewriteSSRClientImports] Module resolver succeeded for '%s', rewriting to '%s'",
+          raw,
+          moduleResolved,
+        );
+        ms.overwrite(i.s, i.e, moduleResolved);
+        modified = true;
+        continue;
+      }
+      // If both fail, leave as is
       logFn?.(
-        "[rewriteSSRClientImports] Non-bare import '%s', rewriting to '%s'",
+        "[rewriteSSRClientImports] Both SSR and Vite resolver failed for '%s', leaving as is",
         raw,
-        virtualId,
       );
+    } else {
+      // Not a bare import: do not rewrite
+      logFn?.(
+        "[rewriteSSRClientImports] Not a bare import '%s', not rewriting",
+        raw,
+      );
+      continue;
     }
-    ms.overwrite(i.s, i.e, virtualId);
-    modified = true;
   }
   if (modified) {
     logFn?.("[rewriteSSRClientImports] Rewriting complete for %s", id);
-    return ms.toString();
+    return ms;
   } else {
     logFn?.("[rewriteSSRClientImports] No changes made for %s", id);
     return null;
@@ -358,7 +384,6 @@ async function loadAndMaybeRewrite({
       id: inputPath,
       context,
       logFn,
-      viteContext,
     });
     if (rewritten) {
       return {
@@ -437,7 +462,8 @@ export function virtualizedSSRPlugin({
 
   const context: VirtualizedSSRContext = {
     projectRootDir,
-    ssrResolver: createSSRResolver({ projectRootDir }),
+    resolveModule: ssrResolver,
+    resolveDep: createSSRDepResolver({ projectRootDir }),
   };
 
   return {
@@ -483,35 +509,11 @@ export function virtualizedSSRPlugin({
       );
     },
 
-    resolveId(source, importer, options) {
-      logResolve("🔍 Resolving %s", source);
-      if (source.startsWith(SSR_NAMESPACE)) {
-        const moduleId = source.slice(SSR_NAMESPACE.length);
-        logResolve("🔍 Resolving virtual import: %s", moduleId);
-        // Try SSR resolver for bare imports
-        if (!moduleId.startsWith(".") && !moduleId.startsWith("/")) {
-          const resolved = context.ssrResolver(moduleId);
-          if (typeof resolved === "string") {
-            logResolve("✨ SSR resolver resolved: %s → %s", moduleId, resolved);
-            return resolved;
-          }
-          logResolve("❌ SSR resolver failed for: %s", moduleId);
-          // Delegate to Vite
-          return null;
-        }
-        // For relative/absolute, just strip prefix and let Vite handle
-        return moduleId;
-      }
-      // Let Vite handle other imports
-      return null;
-    },
-
     load(id) {
       if (!id.startsWith(SSR_NAMESPACE)) return null;
 
       const moduleId = id.slice(SSR_NAMESPACE.length);
 
-      // Fallback to trying to read the file directly
       try {
         logResolve(
           "📄 load() reading file for transform() as separate SSR module: %s",
@@ -524,31 +526,44 @@ export function virtualizedSSRPlugin({
       }
     },
 
-    async transform(code, id, options) {
+    async transform(code, id) {
       if (this.environment.name !== "worker") {
         return null;
       }
+
       logTransform("📝 Transform: %s", id);
+
       if (!isClientModule({ id, code, logFn: logTransform, esbuild: false })) {
         logTransform("⏭️ Skipping non-client module: %s", id);
         return null;
       }
-      // Process imports directly in transform
+
       logTransform("🔎 Processing imports in client module: %s", id);
-      // Use context and pass this as viteContext
+
+      const resolveModule = async (from: string, request: string) => {
+        const result = await this.resolve(request, from);
+        return result == null ? false : result.id;
+      };
+
       const rewritten = await rewriteSSRClientImports({
         code,
         id,
-        context,
+        context: {
+          ...context,
+          resolveModule,
+        },
         logFn: logTransform,
-        viteContext: this,
       });
-      return rewritten
-        ? {
-            code: rewritten,
-            map: new MagicString(rewritten).generateMap({ hires: true }),
-          }
-        : null;
+
+      if (!rewritten) {
+        logTransform("⏭️ No changes made for %s", id);
+        return null;
+      }
+
+      return {
+        code: rewritten.toString(),
+        map: rewritten.generateMap({ hires: true }),
+      };
     },
   };
 }
