@@ -327,6 +327,63 @@ function isSSRSubgraph({
   );
 }
 
+// Shared function to load a file and rewrite imports if needed
+async function loadAndMaybeRewrite({
+  path: filePath,
+  context,
+  viteContext,
+  logFn,
+}: {
+  path: string;
+  context: VirtualizedSSRContext;
+  viteContext: any;
+  logFn: (...args: any[]) => void;
+}) {
+  let code: string;
+  try {
+    code = await fs.readFile(filePath, "utf-8");
+  } catch (err) {
+    logFn("❌ Failed to read file: %s", filePath);
+    return undefined;
+  }
+  const isClient = isClientModule({
+    id: filePath,
+    code,
+    logFn,
+    esbuild: true,
+  });
+  if (isClient) {
+    logFn(
+      `[loadAndMaybeRewrite] Rewriting imports for %s (isClient: %s)`,
+      filePath,
+      isClient,
+    );
+    const rewritten = await rewriteSSRClientImports({
+      code,
+      id: filePath,
+      context,
+      logFn,
+      viteContext,
+    });
+    if (rewritten) {
+      return {
+        contents: rewritten,
+        loader: filePath.endsWith("x") ? "tsx" : "ts",
+        resolveDir: path.dirname(filePath),
+      };
+    }
+  }
+  logFn(
+    `[loadAndMaybeRewrite] Not a client module, no rewrite needed: %s`,
+    filePath,
+  );
+  return {
+    contents: code,
+    loader: filePath.endsWith("x") ? "tsx" : "ts",
+    resolveDir: path.dirname(filePath),
+  };
+}
+
 // Update virtualizedSSREsbuildPlugin to accept context
 function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
   return {
@@ -345,23 +402,12 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
         async (args: any) => {
           logEsbuild("[esbuild:onLoad:module] called with args: %O", args);
           const realPath = args.path.slice(SSR_NAMESPACE.length);
-          try {
-            const contents = await (
-              await import("fs/promises")
-            ).readFile(realPath, "utf-8");
-            logEsbuild(
-              "[esbuild:onLoad:module] Loaded contents for %s",
-              realPath,
-            );
-            return {
-              contents,
-              loader: realPath.endsWith("x") ? "tsx" : "ts",
-              resolveDir: path.dirname(realPath),
-            };
-          } catch (err) {
-            logEsbuildError("❌ Failed to read real module file: %s", realPath);
-            return undefined;
-          }
+          return loadAndMaybeRewrite({
+            path: realPath,
+            context,
+            viteContext: this,
+            logFn: logEsbuildTransform,
+          });
         },
       );
 
@@ -370,42 +416,12 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
         { filter: /\.(js|jsx|ts|tsx|mjs|mts)$/ },
         async (args: any) => {
           logEsbuild("[esbuild:onLoad:rewrite] called with args: %O", args);
-          let code: string;
-          try {
-            code = await fs.readFile(args.path, "utf-8");
-          } catch (err) {
-            logEsbuildError("❌ Failed to read file in onLoad: %s", args.path);
-            return undefined;
-          }
-          const isClient = isClientModule({
-            id: args.path,
-            code,
+          return loadAndMaybeRewrite({
+            path: args.path,
+            context,
+            viteContext: this,
             logFn: logEsbuildTransform,
-            esbuild: true,
           });
-          if (isClient) {
-            logEsbuildTransform(
-              `[esbuild:onLoad:rewrite] Rewriting imports for %s (isClient: %s)`,
-              args.path,
-              isClient,
-            );
-            // Use context
-            const rewritten = await rewriteSSRClientImports({
-              code,
-              id: args.path,
-              context,
-              logFn: logEsbuildTransform,
-              viteContext: this,
-            });
-            if (rewritten) {
-              return {
-                contents: rewritten,
-                loader: args.path.endsWith("x") ? "tsx" : "ts",
-              };
-            }
-          }
-          // Not a 'use client' module or SSR subgraph, or no changes needed
-          return undefined;
         },
       );
     },
