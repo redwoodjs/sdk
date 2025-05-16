@@ -316,7 +316,7 @@ function isSSRSubgraph({
   return (
     (importer && importer.startsWith(SSR_BASE_NAMESPACE)) ||
     path.startsWith(SSR_BASE_NAMESPACE) ||
-    path === "rwsdk/__ssr_bridge"
+    path.includes("__rwsdk_ssr")
   );
 }
 
