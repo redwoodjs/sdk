@@ -171,15 +171,6 @@ async function extractBareImports(
   return imports;
 }
 
-const logEsbuildPlugin = {
-  name: "log-esbuild-plugin",
-  setup(build: any) {
-    build.onResolve({ filter: /.*/ }, (args: any) => {
-      console.log("");
-    });
-  },
-};
-
 // --- SSR-aware esbuild plugin for optimizeDeps ---
 function virtualizedSSREsbuildPlugin() {
   return {
@@ -537,14 +528,6 @@ export function virtualizedSSRPlugin({
       }
     }
 
-    // Add the logging esbuild plugin and the SSR esbuild plugin
-    config.optimizeDeps.esbuildOptions ??= {};
-    config.optimizeDeps.esbuildOptions.plugins ??= [];
-    config.optimizeDeps.esbuildOptions.plugins.push(logEsbuildPlugin);
-    config.optimizeDeps.esbuildOptions.plugins.push(
-      virtualizedSSREsbuildPlugin(),
-    );
-
     logInfo(
       "✅ Updated Vite config with %d SSR virtual aliases",
       virtualSsrDeps.size,
@@ -646,15 +629,10 @@ export function virtualizedSSRPlugin({
         virtualSsrDeps.size,
       );
 
-      // Add the logging esbuild plugin and the SSR esbuild plugin
-      config.optimizeDeps.esbuildOptions ??= {};
-      config.optimizeDeps.esbuildOptions.plugins ??= [];
-      config.optimizeDeps.esbuildOptions.plugins.push(logEsbuildPlugin);
-      config.optimizeDeps.esbuildOptions.plugins.push(
-        virtualizedSSREsbuildPlugin(),
+      logInfo(
+        "✅ Updated Vite config with %d SSR virtual aliases",
+        virtualSsrDeps.size,
       );
-
-      logInfo("✅ Registered %d SSR virtual aliases", virtualSsrDeps.size);
     },
 
     async transform(code, id, options) {
