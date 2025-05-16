@@ -103,7 +103,7 @@ export const redwoodPlugin = async (
     injectVitePreamble({ clientEntryPathname, mode }),
     useClientLookupPlugin({
       rootDir: projectRootDir,
-      containingPath: "./src/app",
+      containingPaths: ["./src/app", "./node_modules"],
     }),
     transformJsxScriptTagsPlugin({
       manifestPath: resolve(

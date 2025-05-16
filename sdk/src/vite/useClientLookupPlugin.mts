@@ -53,20 +53,29 @@ export const findFilesContainingUseClient = async ({
 
 export const useClientLookupPlugin = ({
   rootDir,
-  containingPath,
+  containingPaths,
 }: {
   rootDir: string;
-  containingPath: string;
+  containingPaths: string[];
 }): Plugin =>
   virtualPlugin("use-client-lookup", async () => {
-    const files = await findFilesContainingUseClient({
+    let files: string[] = [];
+    for (const containingPath of containingPaths) {
+      const found = await glob("**/*.{ts,tsx}", {
+        cwd: path.resolve(rootDir, containingPath),
+        absolute: true,
+      });
+      files.push(...found);
+    }
+
+    const clientFiles = await findFilesContainingUseClient({
       rootDir,
-      containingPath,
+      containingPath: containingPaths[0],
     });
 
     const s = new MagicString(`
 export const useClientLookup = {
-  ${files
+  ${clientFiles
     .map(
       (file: string) => `
   "${file}": () => import("${file}"),
