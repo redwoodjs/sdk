@@ -1,15 +1,23 @@
 import memoize from "lodash/memoize";
 
-const modules = (
-  import.meta as object as {
-    glob: (
-      pattern: string,
-    ) => Record<string, () => Promise<Record<string, unknown>>>;
-  }
-).glob("/src/app/**/*.{ts,tsx}");
+export const loadModule = memoize(async (id: string) => {
+  if (import.meta.env.DEV && !process.env.PREVIEW) {
+    return await import(/* @vite-ignore */ id);
+  } else {
+    const { useClientLookup } = await import(
+      "virtual:use-client-lookup" as string
+    );
 
-export const loadModule = memoize(async (moduleName: string) => {
-  return await modules[moduleName]();
+    const moduleFn = useClientLookup[id];
+
+    if (!moduleFn) {
+      throw new Error(
+        `No module found for '${id}' in module lookup for "use client" directive`,
+      );
+    }
+
+    return await moduleFn();
+  }
 });
 
 export const getModuleExport = async (id: string) => {
