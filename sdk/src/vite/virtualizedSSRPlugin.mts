@@ -160,6 +160,8 @@ async function rewriteSSRClientImports({
   IGNORED_IMPORT_PATTERNS,
   isDep,
   logFn,
+  ssrResolver,
+  virtualSsrDeps,
 }: {
   code: string;
   id: string;
@@ -168,6 +170,12 @@ async function rewriteSSRClientImports({
   IGNORED_IMPORT_PATTERNS: RegExp[];
   isDep: (id: string) => boolean;
   logFn?: (...args: any[]) => void;
+  ssrResolver: (
+    context: any,
+    path: string,
+    request: string,
+  ) => string | undefined;
+  virtualSsrDeps: Map<string, string>;
 }): Promise<string | null> {
   logFn?.("[rewriteSSRClientImports] called for id: %s", id);
   // Determine language based on file extension
@@ -198,14 +206,17 @@ async function rewriteSSRClientImports({
       );
       continue;
     }
-    const virtualId = getVirtualSSRImport({
-      raw,
-      depPrefixMap,
-      SSR_MODULE_NAMESPACE,
-      IGNORED_IMPORT_PATTERNS,
-      isDep,
-      logFn,
-    });
+    const { virtualId, resolvedPath } =
+      getVirtualSSRImport({
+        raw,
+        depPrefixMap,
+        SSR_MODULE_NAMESPACE,
+        IGNORED_IMPORT_PATTERNS,
+        isDep,
+        logFn,
+        ssrResolver,
+        importer: id,
+      }) || {};
     if (virtualId) {
       logFn?.(
         "[rewriteSSRClientImports] Rewriting import '%s' → '%s'",
@@ -214,6 +225,11 @@ async function rewriteSSRClientImports({
       );
       ms.overwrite(i.s, i.e, virtualId);
       modified = true;
+      // Store mapping for bare deps
+      if (resolvedPath) {
+        depPrefixMap.set(raw, virtualId);
+        virtualSsrDeps.set(virtualId, resolvedPath);
+      }
     } else {
       logFn?.("[rewriteSSRClientImports] No rewrite needed for '%s'", raw);
     }
@@ -313,6 +329,8 @@ function getVirtualSSRImport({
   IGNORED_IMPORT_PATTERNS,
   isDep,
   logFn,
+  ssrResolver,
+  importer,
 }: {
   raw: string;
   depPrefixMap: Map<string, string>;
@@ -320,36 +338,74 @@ function getVirtualSSRImport({
   IGNORED_IMPORT_PATTERNS: RegExp[];
   isDep: (id: string) => boolean;
   logFn?: (...args: any[]) => void;
-}): string | null {
+  ssrResolver: (
+    context: any,
+    path: string,
+    request: string,
+  ) => string | undefined;
+  importer: string;
+}): { virtualId: string; resolvedPath?: string } | null {
   if (raw === "rwsdk/__ssr_bridge") {
     const virtualId = SSR_DEP_NAMESPACE + "rwsdk/__ssr_bridge";
     logFn?.("🔁 Rewriting bridge import: %s → %s", raw, virtualId);
-    return virtualId;
+    return { virtualId };
   }
-
   // Known mapped dependency
   if (depPrefixMap.has(raw)) {
     const virtualId = depPrefixMap.get(raw)!;
     logFn?.("🔄 Rewriting mapped dep: %s → %s", raw, virtualId);
-    return virtualId;
+    return { virtualId };
   }
   // Ignored import patterns
   if (IGNORED_IMPORT_PATTERNS.some((pattern) => pattern.test(raw))) {
     logFn?.("🛡️ Ignoring pattern-matched import: %s", raw);
     return null;
   }
+  // Bare import (not relative, not absolute, not virtual)
+  if (
+    !raw.startsWith(".") &&
+    !raw.startsWith("/") &&
+    !raw.startsWith("virtual:")
+  ) {
+    // Only resolve bare imports with ssrResolver
+    let resolvedPath: string | undefined;
+    try {
+      resolvedPath = ssrResolver(undefined, importer, raw);
+    } catch (e) {
+      logFn?.("❌ ssrResolver failed for %s: %O", raw, e);
+    }
+    if (resolvedPath) {
+      const virtualId = SSR_DEP_NAMESPACE + raw;
+      logFn?.(
+        "🔁 Rewriting bare import: %s → %s (resolved: %s)",
+        raw,
+        virtualId,
+        resolvedPath,
+      );
+      return { virtualId, resolvedPath };
+    } else {
+      logFn?.("❌ Could not resolve bare import: %s", raw);
+      return null;
+    }
+  }
   // User code import (not from node_modules)
   if (!isDep(raw)) {
     const virtualId = SSR_MODULE_NAMESPACE + raw;
     logFn?.("🔁 Rewriting user import: %s → %s", raw, virtualId);
-    return virtualId;
+    return { virtualId };
   }
   // No rewrite
   return null;
 }
 
 // --- SSR-aware esbuild plugin for optimizeDeps ---
-function virtualizedSSREsbuildPlugin() {
+function virtualizedSSREsbuildPlugin(
+  ssrResolver: (
+    context: any,
+    path: string,
+    request: string,
+  ) => string | undefined,
+) {
   return {
     name: "virtualized-ssr-esbuild-plugin",
     setup(build: any) {
@@ -361,14 +417,17 @@ function virtualizedSSREsbuildPlugin() {
             args.path,
             args.importer,
           );
-          const virtualId = getVirtualSSRImport({
-            raw: args.path,
-            depPrefixMap,
-            SSR_MODULE_NAMESPACE,
-            IGNORED_IMPORT_PATTERNS,
-            isDep,
-            logFn: logEsbuildResolve,
-          });
+          const { virtualId } =
+            getVirtualSSRImport({
+              raw: args.path,
+              depPrefixMap,
+              SSR_MODULE_NAMESPACE,
+              IGNORED_IMPORT_PATTERNS,
+              isDep,
+              logFn: logEsbuildResolve,
+              ssrResolver,
+              importer: args.importer,
+            }) || {};
           if (virtualId) {
             logEsbuildResolve(
               "[esbuild:onResolve] Returning virtualId: %s",
@@ -480,6 +539,8 @@ function virtualizedSSREsbuildPlugin() {
               IGNORED_IMPORT_PATTERNS,
               isDep,
               logFn: logEsbuildTransform,
+              ssrResolver,
+              virtualSsrDeps,
             });
             if (rewritten) {
               return {
@@ -511,14 +572,10 @@ export function virtualizedSSRPlugin({
 
   const ssrResolver = enhancedResolve.create.sync({
     conditionNames: ["workerd", "edge", "import", "default"],
-  });
+  }) as (context: any, path: string, request: string) => string | undefined;
 
   return {
     name: "rwsdk:virtualized-ssr",
-
-    configureServer(server) {
-      viteServer = server;
-    },
 
     async configEnvironment(env, config) {
       logInfo("⚙️ Configuring environment: %s", env);
@@ -552,7 +609,7 @@ export function virtualizedSSRPlugin({
           (p: any) => p?.name !== "virtualized-ssr-esbuild-plugin",
         );
       config.optimizeDeps.esbuildOptions.plugins.unshift(
-        virtualizedSSREsbuildPlugin(),
+        virtualizedSSREsbuildPlugin(ssrResolver),
       );
 
       logInfo(
@@ -665,6 +722,8 @@ export function virtualizedSSRPlugin({
         IGNORED_IMPORT_PATTERNS,
         isDep,
         logFn: logTransform,
+        ssrResolver,
+        virtualSsrDeps,
       });
       return rewritten
         ? {
