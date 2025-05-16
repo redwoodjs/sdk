@@ -60,9 +60,6 @@ const logEsbuildTransform = logEsbuild.extend("transform");
 
 const IGNORED_IMPORT_PATTERNS = [/^cloudflare:.*$/];
 
-// Shared state for both Vite and esbuild plugins
-const virtualSsrDeps = new Map<string, string>();
-
 // Define import patterns directly in code (from allImportsRule.yml)
 const IMPORT_PATTERNS = [
   // Static Imports
@@ -152,9 +149,6 @@ function findImportSpecifiersWithPositions(
 export type VirtualizedSSRContext = {
   projectRootDir: string;
   ssrResolver: (request: string) => string | false;
-  IGNORED_IMPORT_PATTERNS: RegExp[];
-  SSR_NAMESPACE: string;
-  virtualSsrDeps: Map<string, string>;
 };
 
 // Utility to check for bare imports (not relative, not absolute, not virtual)
@@ -201,7 +195,7 @@ async function rewriteSSRClientImports({
       i.e,
     );
     // Skip rewriting if already a virtual SSR ID
-    if (raw.startsWith(context.SSR_NAMESPACE)) {
+    if (raw.startsWith(SSR_NAMESPACE)) {
       logFn?.(
         "[rewriteSSRClientImports] Skipping already-virtual import: %s",
         raw,
@@ -212,7 +206,7 @@ async function rewriteSSRClientImports({
       // Try SSR resolver first
       const ssrResolved = context.ssrResolver(raw);
       if (ssrResolved !== false) {
-        const virtualId = context.SSR_NAMESPACE + raw;
+        const virtualId = SSR_NAMESPACE + raw;
         logFn?.(
           "[rewriteSSRClientImports] SSR resolver succeeded for '%s', rewriting to '%s'",
           raw,
@@ -333,41 +327,8 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
   return {
     name: "virtualized-ssr-esbuild-plugin",
     setup(build: any) {
-      build.onResolve({ filter: /.*/ }, (args: any) => {
-        logEsbuildResolve("[esbuild:onResolve] called with args: %O", args);
-        if (isSSRSubgraph({ importer: args.importer, path: args.path })) {
-          logEsbuildResolve(
-            "[esbuild:onResolve] SSR subgraph detected for %s (importer: %s)",
-            args.path,
-            args.importer,
-          );
-          // Inline SSR resolver logic
-          const ssrResolved = context.ssrResolver(args.path);
-          if (ssrResolved !== false) {
-            const virtualId = context.SSR_NAMESPACE + ssrResolved;
-            logEsbuildResolve(
-              "[esbuild:onResolve] SSR resolver succeeded for %s → %s",
-              args.path,
-              virtualId,
-            );
-            return {
-              path: virtualId,
-              namespace: SSR_NAMESPACE,
-            };
-          } else {
-            logEsbuildResolve(
-              "[esbuild:onResolve] SSR resolver failed for %s",
-              args.path,
-            );
-          }
-        }
-        logEsbuildResolve(
-          "[esbuild:onResolve] Letting esbuild handle %s",
-          args.path,
-        );
-        return undefined;
-      });
-
+      // Remove onResolve handler entirely
+      // Only keep onLoad handlers
       build.onLoad(
         { filter: /.*/, namespace: SSR_NAMESPACE },
         async (args: any) => {
@@ -452,13 +413,9 @@ export function virtualizedSSRPlugin({
     "📂 Plugin will handle client/server module resolution in a single Vite worker environment",
   );
 
-  // Create context object
   const context: VirtualizedSSRContext = {
     projectRootDir,
     ssrResolver: createSSRResolver({ projectRootDir }),
-    IGNORED_IMPORT_PATTERNS,
-    SSR_NAMESPACE,
-    virtualSsrDeps,
   };
 
   return {
@@ -506,8 +463,8 @@ export function virtualizedSSRPlugin({
 
     resolveId(source, importer, options) {
       logResolve("🔍 Resolving %s", source);
-      if (source.startsWith(context.SSR_NAMESPACE)) {
-        const moduleId = source.slice(context.SSR_NAMESPACE.length);
+      if (source.startsWith(SSR_NAMESPACE)) {
+        const moduleId = source.slice(SSR_NAMESPACE.length);
         logResolve("🔍 Resolving virtual import: %s", moduleId);
         // Try SSR resolver for bare imports
         if (!moduleId.startsWith(".") && !moduleId.startsWith("/")) {
@@ -528,16 +485,9 @@ export function virtualizedSSRPlugin({
     },
 
     load(id) {
-      if (!id.startsWith(context.SSR_NAMESPACE)) return null;
+      if (!id.startsWith(SSR_NAMESPACE)) return null;
 
-      const moduleId = id.slice(context.SSR_NAMESPACE.length);
-
-      // Handle known virtual dependencies
-      if (context.virtualSsrDeps.has(id)) {
-        const realPath = context.virtualSsrDeps.get(id)!;
-        logResolve("📄 load() returning known dep: %s → %s", id, realPath);
-        return fs.readFile(realPath, "utf-8");
-      }
+      const moduleId = id.slice(SSR_NAMESPACE.length);
 
       // Fallback to trying to read the file directly
       try {
