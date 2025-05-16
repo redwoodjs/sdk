@@ -1,9 +1,7 @@
 import { createModuleMap } from "./createModuleMap.js";
 import { createFromReadableStream } from "react-server-dom-webpack/client.edge";
-import { use } from "react";
 
-// @ts-ignore
-import { ssrRenderToReadableStream } from "./__rwsdk_ssr_bridge.js";
+import { use, ssrRenderToReadableStream } from "./__rwsdk_ssr_bridge.js";
 
 export const transformRscToHtmlStream = ({
   stream,
