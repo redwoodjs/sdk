@@ -45,6 +45,7 @@ import { ROOT_DIR } from "../lib/constants.mjs";
 import { transformClientComponents } from "./useClientPlugin.mjs";
 
 export const SSR_NAMESPACE = "virtual:rwsdk:ssr:";
+export const SSR_ESBUILD_NAMESPACE = "rwsdk:ssr:esbuildns";
 
 const log = debug("rwsdk:vite:virtualized-ssr");
 
@@ -214,6 +215,14 @@ async function rewriteSSRClientImports({
         "[rewriteSSRClientImports] Skipping already-virtual import: %s",
         raw,
       );
+      if (raw.startsWith(SSR_NAMESPACE + SSR_NAMESPACE)) {
+        logFn?.(
+          "[rewriteSSRClientImports] ⚠️ Double prefix detected: %s (from %s)\nStack: %s",
+          raw,
+          id,
+          new Error().stack,
+        );
+      }
       continue;
     }
 
@@ -253,7 +262,21 @@ async function rewriteSSRClientImports({
     }
 
     if (virtualId !== null) {
+      if (virtualId.startsWith(SSR_NAMESPACE + SSR_NAMESPACE)) {
+        logFn?.(
+          "[rewriteSSRClientImports] ⚠️ About to write double-prefixed import: %s (from %s)\nStack: %s",
+          virtualId,
+          id,
+          new Error().stack,
+        );
+      }
       ms.overwrite(i.s, i.e, virtualId);
+      logFn?.(
+        "[rewriteSSRClientImports] Rewrote import '%s' to '%s' in %s",
+        raw,
+        virtualId,
+        id,
+      );
       modified = true;
     }
   }
@@ -331,6 +354,11 @@ async function maybeRewriteSSRClientImports({
   context: VirtualizedSSRContext;
   logFn: (...args: any[]) => void;
 }) {
+  logFn?.(
+    "[maybeRewriteSSRClientImports] Called for id: %s (startsWith SSR_NAMESPACE: %s)",
+    id,
+    id.startsWith(SSR_NAMESPACE),
+  );
   const isClient = isClientModule({
     id,
     code,
@@ -367,10 +395,11 @@ async function maybeRewriteSSRClientImports({
   return null;
 }
 
-const getRealPath = (filePath: string) =>
-  filePath.startsWith(SSR_NAMESPACE)
+export const getRealPath = (filePath: string) => {
+  return filePath.startsWith(SSR_NAMESPACE)
     ? filePath.slice(SSR_NAMESPACE.length)
     : filePath;
+};
 
 async function loadAndTransformClientModule({
   filePath,
@@ -427,11 +456,11 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
     setup(build: any) {
       build.onResolve({ filter: /^virtual:rwsdk:ssr:/ }, (args: any) => ({
         path: args.path,
-        namespace: SSR_NAMESPACE,
+        namespace: SSR_ESBUILD_NAMESPACE,
       }));
 
       build.onLoad(
-        { filter: /.*/, namespace: SSR_NAMESPACE },
+        { filter: /.*/, namespace: SSR_ESBUILD_NAMESPACE },
         async (args: any) => {
           logEsbuild("[esbuild:onLoad:module] called with args: %O", args);
           return loadAndTransformClientModule({
@@ -519,7 +548,35 @@ export function virtualizedSSRPlugin({
       );
     },
 
+    resolveId(id, importer) {
+      if (id.startsWith(SSR_NAMESPACE)) {
+        if (id.includes("node_modules")) {
+          const filePath = getRealPath(id);
+          logResolve(
+            "[plugin:resolveId] virtualized SSR dependency, returning real path: %s, importer: %s",
+            filePath,
+            importer,
+          );
+          return filePath;
+        } else {
+          logResolve(
+            "[plugin:resolveId] virtualized SSR module, returning as is: %s, importer: %s",
+            id,
+          );
+          return id;
+        }
+      }
+    },
+
     load(id) {
+      logResolve("[plugin:load] called with id: %s", id);
+      if (id.startsWith(SSR_NAMESPACE + SSR_NAMESPACE)) {
+        logResolve(
+          "⚠️ [plugin:load] Double SSR_NAMESPACE prefix detected: %s\nStack: %s",
+          id,
+          new Error().stack,
+        );
+      }
       if (!id.startsWith(SSR_NAMESPACE)) return null;
 
       const moduleId = id.slice(SSR_NAMESPACE.length);
@@ -537,6 +594,8 @@ export function virtualizedSSRPlugin({
     },
 
     async transform(code, id) {
+      logTransform("[plugin:transform] called with id: %s", id);
+
       if (this.environment.name !== "worker") {
         return null;
       }

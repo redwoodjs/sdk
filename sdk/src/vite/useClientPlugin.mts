@@ -2,7 +2,8 @@ import { Plugin } from "vite";
 import { Project, SyntaxKind, Node } from "ts-morph";
 import MagicString from "magic-string";
 import debug from "debug";
-
+import { SSR_NAMESPACE, getRealPath } from "./virtualizedSSRPlugin.mjs";
+import fs from "fs/promises";
 interface TransformResult {
   code: string;
   map?: any;
@@ -36,6 +37,9 @@ export async function transformClientComponents(
     cleanCode.startsWith("'use client'");
   if (!hasUseClient) {
     log("Skipping: no 'use client' directive in %s", id);
+    if (process.env.VERBOSE) {
+      log("[VERBOSE] Returning code unchanged for %s:\n%s", id, code);
+    }
     return { code, map: undefined };
   }
   log("Processing 'use client' module: %s", id);
@@ -159,18 +163,26 @@ export async function transformClientComponents(
         s.remove(directivePos, directiveEnd);
       }
     }
-    return {
+    const transformed = {
       code: s.toString(),
       map: s.generateMap({ hires: true }),
     };
+    if (process.env.VERBOSE) {
+      log("[VERBOSE] SSR transformed code for %s:\n%s", id, transformed.code);
+    }
+    return transformed;
   }
 
   // 4. Non-SSR files: replace all implementation with registerClientReference logic
   // Remove all original imports for non-SSR 'use client' files
   // Only add the registerClientReference import
+  const ssrModuleId = `${SSR_NAMESPACE}${id}`;
+
   const importLine = 'import { registerClientReference } from "rwsdk/worker";';
+  const ssrModuleImportLine = `import "${ssrModuleId}";`;
   let resultLines: string[] = [];
   resultLines.push(importLine);
+  resultLines.push(ssrModuleImportLine);
 
   // Add registerClientReference assignments for named exports in order
   for (const info of exportInfos) {
@@ -181,7 +193,7 @@ export async function transformClientComponents(
       info.exported,
     );
     resultLines.push(
-      `const ${info.local} = registerClientReference("${id}", "${info.exported}");`,
+      `const ${info.local} = registerClientReference("${ssrModuleId}", "${info.exported}");`,
     );
   }
 
@@ -218,6 +230,13 @@ export async function transformClientComponents(
     id,
     finalResult,
   );
+  if (process.env.VERBOSE) {
+    log(
+      "[VERBOSE] Non-SSR transformed code for %s:\n%s",
+      id,
+      finalResult + "\n",
+    );
+  }
   return {
     code: finalResult + "\n",
     map: undefined,
@@ -227,6 +246,7 @@ export async function transformClientComponents(
 export const useClientPlugin = (): Plugin => ({
   name: "rwsdk:use-client",
   async transform(code, id) {
+    console.log("########### transform", id);
     return transformClientComponents(code, id, {
       environmentName: this.environment?.name ?? "worker",
       topLevelRoot: this.environment?.getTopLevelConfig?.().root,
