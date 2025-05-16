@@ -347,7 +347,13 @@ function virtualizedSSREsbuildPlugin() {
     name: "virtualized-ssr-esbuild-plugin",
     setup(build: any) {
       build.onResolve({ filter: /.*/ }, (args: any) => {
+        logEsbuildResolve("[esbuild:onResolve] called with args: %O", args);
         if (isSSRSubgraph({ importer: args.importer, path: args.path })) {
+          logEsbuildResolve(
+            "[esbuild:onResolve] SSR subgraph detected for %s (importer: %s)",
+            args.path,
+            args.importer,
+          );
           const virtualId = getVirtualSSRImport({
             raw: args.path,
             depPrefixMap,
@@ -358,6 +364,10 @@ function virtualizedSSREsbuildPlugin() {
             esbuildHeuristic: true,
           });
           if (virtualId) {
+            logEsbuildResolve(
+              "[esbuild:onResolve] Returning virtualId: %s",
+              virtualId,
+            );
             if (virtualId.startsWith(SSR_DEP_NAMESPACE)) {
               return { path: virtualId, namespace: ESBUILD_SSR_DEP_NAMESPACE };
             } else if (virtualId.startsWith(SSR_MODULE_NAMESPACE)) {
@@ -366,14 +376,24 @@ function virtualizedSSREsbuildPlugin() {
                 namespace: ESBUILD_SSR_MODULE_NAMESPACE,
               };
             }
+          } else {
+            logEsbuildResolve(
+              "[esbuild:onResolve] No virtualId for %s",
+              args.path,
+            );
           }
         }
+        logEsbuildResolve(
+          "[esbuild:onResolve] Letting esbuild handle %s",
+          args.path,
+        );
         return undefined;
       });
 
       build.onLoad(
         { filter: /.*/, namespace: ESBUILD_SSR_DEP_NAMESPACE },
         async (args: any) => {
+          logEsbuild("[esbuild:onLoad:dep] called with args: %O", args);
           const realPath = virtualSsrDeps.get(args.path);
           if (!realPath) {
             logEsbuildError(
@@ -386,6 +406,7 @@ function virtualizedSSREsbuildPlugin() {
             const contents = await (
               await import("fs/promises")
             ).readFile(realPath, "utf-8");
+            logEsbuild("[esbuild:onLoad:dep] Loaded contents for %s", realPath);
             return {
               contents,
               loader: realPath.endsWith("x") ? "tsx" : "ts",
@@ -400,11 +421,16 @@ function virtualizedSSREsbuildPlugin() {
       build.onLoad(
         { filter: /.*/, namespace: ESBUILD_SSR_MODULE_NAMESPACE },
         async (args: any) => {
+          logEsbuild("[esbuild:onLoad:module] called with args: %O", args);
           const realPath = args.path.slice(SSR_MODULE_NAMESPACE.length);
           try {
             const contents = await (
               await import("fs/promises")
             ).readFile(realPath, "utf-8");
+            logEsbuild(
+              "[esbuild:onLoad:module] Loaded contents for %s",
+              realPath,
+            );
             return {
               contents,
               loader: realPath.endsWith("x") ? "tsx" : "ts",
@@ -413,6 +439,54 @@ function virtualizedSSREsbuildPlugin() {
             logEsbuildError("❌ Failed to read real module file: %s", realPath);
             return undefined;
           }
+        },
+      );
+
+      // Add import rewriting for relevant file types (js, jsx, ts, tsx, mjs, mts)
+      build.onLoad(
+        { filter: /\.(js|jsx|ts|tsx|mjs|mts)$/ },
+        async (args: any) => {
+          logEsbuild("[esbuild:onLoad:rewrite] called with args: %O", args);
+          let code: string;
+          try {
+            code = await fs.readFile(args.path, "utf-8");
+          } catch (err) {
+            logEsbuildError("❌ Failed to read file in onLoad: %s", args.path);
+            return undefined;
+          }
+          const isClient = isClientModule({
+            id: args.path,
+            code,
+            logFn: logEsbuildTransform,
+            esbuild: true,
+          });
+          const isSSR = args.path.startsWith(SSR_BASE_NAMESPACE);
+          if (isClient || isSSR) {
+            logEsbuildTransform(
+              `[esbuild:onLoad:rewrite] Rewriting imports for %s (isClient: %s, isSSR: %s)`,
+              args.path,
+              isClient,
+              isSSR,
+            );
+            const rewritten = await rewriteSSRClientImports({
+              code,
+              id: args.path,
+              depPrefixMap,
+              SSR_MODULE_NAMESPACE,
+              IGNORED_IMPORT_PATTERNS,
+              isDep,
+              logFn: logEsbuildTransform,
+              // esbuildHeuristic: true, // not needed, we have SSR check
+            });
+            if (rewritten) {
+              return {
+                contents: rewritten,
+                loader: args.path.endsWith("x") ? "tsx" : "ts",
+              };
+            }
+          }
+          // Not a 'use client' module or SSR subgraph, or no changes needed
+          return undefined;
         },
       );
     },
@@ -527,7 +601,7 @@ export function virtualizedSSRPlugin({
         if (source.startsWith(".") || source.startsWith("/")) {
           const virtualId = SSR_MODULE_NAMESPACE + source;
           logResolve(
-            "🔁 Prefixing relative/absolute import for virtual resolution: %s → %s",
+            "�� Prefixing relative/absolute import for virtual resolution: %s → %s",
             source,
             virtualId,
           );
