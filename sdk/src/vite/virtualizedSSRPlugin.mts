@@ -356,6 +356,7 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
             return {
               contents,
               loader: realPath.endsWith("x") ? "tsx" : "ts",
+              resolveDir: path.dirname(realPath),
             };
           } catch (err) {
             logEsbuildError("❌ Failed to read real module file: %s", realPath);
