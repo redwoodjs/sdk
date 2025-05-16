@@ -329,7 +329,7 @@ function isSSRSubgraph({
 
 // Shared function to load a file and rewrite imports if needed
 async function loadAndMaybeRewrite({
-  path: filePath,
+  path: inputPath,
   context,
   viteContext,
   logFn,
@@ -339,6 +339,10 @@ async function loadAndMaybeRewrite({
   viteContext: any;
   logFn: (...args: any[]) => void;
 }) {
+  // If the path is virtual, strip the prefix
+  const filePath = inputPath.startsWith(SSR_NAMESPACE)
+    ? inputPath.slice(SSR_NAMESPACE.length)
+    : inputPath;
   let code: string;
   try {
     code = await fs.readFile(filePath, "utf-8");
@@ -347,7 +351,7 @@ async function loadAndMaybeRewrite({
     return undefined;
   }
   const isClient = isClientModule({
-    id: filePath,
+    id: inputPath,
     code,
     logFn,
     esbuild: true,
@@ -355,12 +359,12 @@ async function loadAndMaybeRewrite({
   if (isClient) {
     logFn(
       `[loadAndMaybeRewrite] Rewriting imports for %s (isClient: %s)`,
-      filePath,
+      inputPath,
       isClient,
     );
     const rewritten = await rewriteSSRClientImports({
       code,
-      id: filePath,
+      id: inputPath,
       context,
       logFn,
       viteContext,
@@ -375,7 +379,7 @@ async function loadAndMaybeRewrite({
   }
   logFn(
     `[loadAndMaybeRewrite] Not a client module, no rewrite needed: %s`,
-    filePath,
+    inputPath,
   );
   return {
     contents: code,
@@ -401,9 +405,8 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
         { filter: /.*/, namespace: SSR_NAMESPACE },
         async (args: any) => {
           logEsbuild("[esbuild:onLoad:module] called with args: %O", args);
-          const realPath = args.path.slice(SSR_NAMESPACE.length);
           return loadAndMaybeRewrite({
-            path: realPath,
+            path: args.path,
             context,
             viteContext: this,
             logFn: logEsbuildTransform,
