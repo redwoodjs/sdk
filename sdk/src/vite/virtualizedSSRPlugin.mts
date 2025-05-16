@@ -24,11 +24,14 @@
  * distinct resolution graphs, we virtualize SSR imports using a prefix.
  *
  * How it works:
- * - Maintain an SSR subgraph as part of the worker environment's module graph. Any time we see "use client",
- * we enter the subgraph.
+ * - Maintain an SSR subgraph as part of the worker environment's module graph.
+ *   Any time we see "use client", we enter the subgraph.
  * - We keep the graphs separate by rewriting imports to map to virtual files.
- * - Bare imports to deps get resolved using a custom resolver that only sees the SSR subgraph.
- * - All imports within the subgraph get their path rewritten with the SSR module namespace prefix so that we stay within the subgraph.
+ * - Bare imports to deps get resolved using a custom resolver so that we use
+ *   import conditions relevant to SSR - note the lack of "react-server"
+ *   condition: ["workerd", "edge", "import", "default"]
+ * - All imports within the subgraph get their path rewritten with the SSR
+ *   module namespace prefix so that we stay within the subgraph.
  */
 
 import path from "path";
@@ -301,7 +304,7 @@ function getVirtualSSRImport({
   }
   // All imports get the prefix
   const virtualId = context.SSR_BASE_NAMESPACE + raw;
-  logFn?.("🔁 Rewriting import: %s → %s", raw, virtualId);
+  logFn?.("��Rewriting bimport %s → %s , raw, virtualId,);
   return virtualId;
 }
 
