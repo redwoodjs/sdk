@@ -328,26 +328,6 @@ function isSSRSubgraph({
   );
 }
 
-// Update getVirtualSSRImport to accept context
-function getVirtualSSRImport({
-  raw,
-  context,
-  logFn,
-}: {
-  raw: string;
-  context: VirtualizedSSRContext;
-  logFn?: (...args: any[]) => void;
-}): string | null {
-  if (context.IGNORED_IMPORT_PATTERNS.some((pattern) => pattern.test(raw))) {
-    logFn?.("🛡️ Ignoring pattern-matched import: %s", raw);
-    return null;
-  }
-  // All imports get the prefix
-  const virtualId = context.SSR_NAMESPACE + raw;
-  logFn?.("🔗 Rewriting bare import %s → %s", raw, virtualId);
-  return virtualId;
-}
-
 // Update virtualizedSSREsbuildPlugin to accept context
 function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
   return {
@@ -361,25 +341,22 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
             args.path,
             args.importer,
           );
-          // Use context's ssrResolver
-          const virtualId = getVirtualSSRImport({
-            raw: args.path,
-            context,
-            logFn: logEsbuildResolve,
-          });
-          if (virtualId) {
+          // Inline SSR resolver logic
+          const ssrResolved = context.ssrResolver(args.path);
+          if (ssrResolved !== false) {
+            const virtualId = context.SSR_NAMESPACE + ssrResolved;
             logEsbuildResolve(
-              "[esbuild:onResolve] Returning virtualId: %s",
+              "[esbuild:onResolve] SSR resolver succeeded for %s → %s",
+              args.path,
               virtualId,
             );
-            // Use SSR_NAMESPACE for all virtualized imports
             return {
               path: virtualId,
               namespace: SSR_NAMESPACE,
             };
           } else {
             logEsbuildResolve(
-              "[esbuild:onResolve] No virtualId for %s",
+              "[esbuild:onResolve] SSR resolver failed for %s",
               args.path,
             );
           }
