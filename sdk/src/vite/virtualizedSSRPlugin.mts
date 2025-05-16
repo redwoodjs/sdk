@@ -42,7 +42,6 @@ import path from "path";
 import fs from "fs/promises";
 import { Plugin } from "vite";
 import enhancedResolve from "enhanced-resolve";
-import { init, parse } from "es-module-lexer";
 import MagicString from "magic-string";
 import debug from "debug";
 import { glob } from "glob";
@@ -111,37 +110,24 @@ const seenBareImports = new Set<string>();
 let viteServer: any = null;
 
 /**
- * Extract bare imports from code content using ast-grep
- * @param content The source code content to parse
- * @param lang The language to use for parsing
- * @param logFn Optional logging function for debugging
- * @returns A set of bare import paths
+ * Find all import specifiers and their positions using ast-grep
+ * Returns an array of { s, e, raw } for each import specifier
  */
-async function extractBareImports(
-  content: string,
+function findImportSpecifiersWithPositions(
+  code: string,
   lang: typeof SgLang.TypeScript | typeof SgLang.Tsx,
-  logFn = logTransform,
-): Promise<Set<string>> {
-  const imports = new Set<string>();
-
+): Array<{ s: number; e: number; raw: string }> {
+  const results: Array<{ s: number; e: number; raw: string }> = [];
   try {
-    // Parse the file with ast-grep
-    const root = sgParse(lang, content);
-
-    // Try each pattern against the content
+    const root = sgParse(lang, code);
     for (const pattern of IMPORT_PATTERNS) {
       try {
         const matches = root.root().findAll(pattern);
-
         for (const match of matches) {
-          // Get the module name from the capture
           const moduleCapture = match.getMatch("MODULE");
-
           if (moduleCapture) {
-            // Get the module text exactly as it appears in the code
             // The AST node text includes the quotes for string literals
             const importPath = moduleCapture.text();
-
             // Only include bare imports (not relative paths, absolute paths, or virtual modules)
             if (
               !importPath.startsWith(".") &&
@@ -151,8 +137,10 @@ async function extractBareImports(
                 pattern.test(importPath),
               )
             ) {
-              // Add the bare import path to our set
-              imports.add(importPath);
+              // Find the start and end positions of the import string in the code
+              // This is the range of the moduleCapture node
+              const { start, end } = moduleCapture.range();
+              results.push({ s: start.index, e: end.index, raw: importPath });
             }
           }
         }
@@ -163,8 +151,7 @@ async function extractBareImports(
   } catch (err) {
     logError("❌ Error parsing content: %O", err);
   }
-
-  return imports;
+  return results;
 }
 
 // Helper function to check if a path is in node_modules
@@ -328,12 +315,15 @@ async function rewriteSSRClientImports({
   resolveImport?: (raw: string, id: string) => Promise<{ id: string } | null>;
   esbuildHeuristic?: boolean;
 }): Promise<string | null> {
-  await init;
-  const [imports] = parse(code);
+  // Determine language based on file extension
+  const ext = path.extname(id).toLowerCase();
+  const lang =
+    ext === ".tsx" || ext === ".jsx" ? SgLang.Tsx : SgLang.TypeScript;
+  const imports = findImportSpecifiersWithPositions(code, lang);
   const ms = new MagicString(code);
   let modified = false;
   for (const i of imports) {
-    const raw = code.slice(i.s, i.e);
+    const raw = i.raw;
     if (raw === "rwsdk/__ssr_bridge") continue;
     let resolvedId: string | undefined = undefined;
     if (resolveImport) {
@@ -569,10 +559,10 @@ export function virtualizedSSRPlugin({
             ext === ".tsx" || ext === ".jsx" ? SgLang.Tsx : SgLang.TypeScript;
 
           // Extract bare imports from this file
-          const fileImports = await extractBareImports(content, lang, logScan);
+          const fileImports = findImportSpecifiersWithPositions(content, lang);
 
           // Add to our collective set
-          for (const importPath of fileImports) {
+          for (const importPath of fileImports.map((i) => i.raw)) {
             imports.add(importPath);
           }
         } catch (err) {
@@ -611,17 +601,19 @@ export function virtualizedSSRPlugin({
         ext === ".tsx" || ext === ".jsx" ? SgLang.Tsx : SgLang.TypeScript;
 
       // Use our shared function to extract bare imports
-      const bareImports = await extractBareImports(content, lang, logWatch);
+      const bareImports = findImportSpecifiersWithPositions(content, lang);
 
-      if (bareImports.size === 0) {
+      if (bareImports.length === 0) {
         logWatch("⏭️ No bare imports found in changed file");
         return;
       }
 
-      logWatch("📊 Found %d bare imports in changed file", bareImports.size);
+      logWatch("📊 Found %d bare imports in changed file", bareImports.length);
 
       // Process the imports and check if any new ones were added
-      const newDepsFound = await processBareImports(bareImports);
+      const newDepsFound = await processBareImports(
+        bareImports.map((i) => i.raw),
+      );
 
       // If new dependencies were found, update Vite config
       if (newDepsFound && viteServer) {
