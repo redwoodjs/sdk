@@ -304,7 +304,7 @@ function getVirtualSSRImport({
   }
   // All imports get the prefix
   const virtualId = context.SSR_BASE_NAMESPACE + raw;
-  logFn?.("��Rewriting bimport %s → %s , raw, virtualId,);
+  logFn?.("🔗 Rewriting bare import %s → %s", raw, virtualId);
   return virtualId;
 }
 
