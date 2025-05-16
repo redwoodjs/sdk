@@ -329,6 +329,8 @@ async function rewriteSSRClientImports({
   for (const i of imports) {
     const raw = i.raw;
     if (raw === "rwsdk/__ssr_bridge") continue;
+    // Skip rewriting if already a virtual SSR ID
+    if (raw.startsWith(SSR_BASE_NAMESPACE)) continue;
     let resolvedId: string | undefined = undefined;
     if (resolveImport) {
       try {
