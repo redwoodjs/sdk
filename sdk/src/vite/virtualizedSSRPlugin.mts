@@ -41,6 +41,7 @@ import enhancedResolve from "enhanced-resolve";
 import MagicString from "magic-string";
 import debug from "debug";
 import { parse as sgParse, Lang as SgLang } from "@ast-grep/napi";
+import { ROOT_DIR } from "../lib/constants.mjs";
 
 export const SSR_NAMESPACE = "virtual:rwsdk:ssr:";
 
@@ -93,7 +94,11 @@ const createSSRResolver = ({ projectRootDir }: { projectRootDir: string }) => {
     try {
       return ssrResolver(projectRootDir, request);
     } catch {
-      return false;
+      try {
+        return ssrResolver(ROOT_DIR, request);
+      } catch {
+        return false;
+      }
     }
   };
 
