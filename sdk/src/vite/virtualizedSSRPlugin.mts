@@ -173,9 +173,34 @@ function isDep(id: string): boolean {
 }
 
 // Helper to check if a module is a client module (for SSR virtualization)
-function isClientModule({ id, code }: { id: string; code?: string }): boolean {
-  if (id === "rwsdk/__ssr_bridge") return true;
-  if (id.startsWith(SSR_BASE_NAMESPACE)) return true;
+function isClientModule({
+  id,
+  code,
+  logFn,
+  esbuild,
+}: {
+  id: string;
+  code?: string;
+  logFn?: (...args: any[]) => void;
+  esbuild?: boolean;
+}): boolean {
+  const logger = logFn ?? (() => {});
+  if (id === "rwsdk/__ssr_bridge") {
+    logger(
+      `[isClientModule] Detected client module (ssr_bridge): id=%s esbuild=%s`,
+      id,
+      !!esbuild,
+    );
+    return true;
+  }
+  if (id.startsWith(SSR_BASE_NAMESPACE)) {
+    logger(
+      `[isClientModule] Detected client module (SSR_BASE_NAMESPACE): id=%s esbuild=%s`,
+      id,
+      !!esbuild,
+    );
+    return true;
+  }
   if (
     id.endsWith(".ts") ||
     id.endsWith(".js") ||
@@ -186,6 +211,11 @@ function isClientModule({ id, code }: { id: string; code?: string }): boolean {
     if (code) {
       const firstLine = code.split("\n", 1)[0]?.trim();
       if (firstLine === "'use client'" || firstLine === '"use client"') {
+        logger(
+          `[isClientModule] Detected client module (use client directive): id=%s esbuild=%s`,
+          id,
+          !!esbuild,
+        );
         return true;
       }
     }
@@ -364,7 +394,14 @@ function virtualizedSSREsbuildPlugin() {
             logEsbuildError("❌ Failed to read file in onLoad: %s", args.path);
             return undefined;
           }
-          if (isClientModule({ id: args.path, code })) {
+          if (
+            isClientModule({
+              id: args.path,
+              code,
+              logFn: logEsbuildTransform,
+              esbuild: true,
+            })
+          ) {
             logEsbuildTransform("🎯 Found 'use client' in: %s", args.path);
             const rewritten = await rewriteSSRClientImports({
               code,
@@ -753,7 +790,7 @@ export function virtualizedSSRPlugin({
         return null;
       }
       logTransform("📝 Transform: %s", id);
-      if (!isClientModule({ id, code })) {
+      if (!isClientModule({ id, code, logFn: logTransform, esbuild: false })) {
         logTransform("⏭️ Skipping non-client module: %s", id);
         return null;
       }
