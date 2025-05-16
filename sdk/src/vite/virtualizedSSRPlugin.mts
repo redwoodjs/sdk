@@ -42,10 +42,7 @@ import MagicString from "magic-string";
 import debug from "debug";
 import { parse as sgParse, Lang as SgLang } from "@ast-grep/napi";
 
-export const SSR_BASE_NAMESPACE = "virtual:rwsdk:ssr:";
-
-const ESBUILD_SSR_DEP_NAMESPACE = "rwsdk:ssr:dep";
-const ESBUILD_SSR_MODULE_NAMESPACE = "rwsdk:ssr:module";
+export const SSR_NAMESPACE = "virtual:rwsdk:ssr:";
 
 const log = debug("rwsdk:vite:virtualized-ssr");
 
@@ -156,7 +153,7 @@ export type VirtualizedSSRContext = {
   projectRootDir: string;
   ssrResolver: (request: string) => string | false;
   IGNORED_IMPORT_PATTERNS: RegExp[];
-  SSR_BASE_NAMESPACE: string;
+  SSR_NAMESPACE: string;
   virtualSsrDeps: Map<string, string>;
 };
 
@@ -193,7 +190,7 @@ async function rewriteSSRClientImports({
       i.e,
     );
     // Skip rewriting if already a virtual SSR ID
-    if (raw.startsWith(context.SSR_BASE_NAMESPACE)) {
+    if (raw.startsWith(context.SSR_NAMESPACE)) {
       logFn?.(
         "[rewriteSSRClientImports] Skipping already-virtual import: %s",
         raw,
@@ -201,7 +198,7 @@ async function rewriteSSRClientImports({
       continue;
     }
     // All imports get the prefix
-    const virtualId = context.SSR_BASE_NAMESPACE + raw;
+    const virtualId = context.SSR_NAMESPACE + raw;
     logFn?.(
       "[rewriteSSRClientImports] Rewriting import '%s' → '%s'",
       raw,
@@ -240,9 +237,9 @@ function isClientModule({
     );
     return true;
   }
-  if (id.startsWith(SSR_BASE_NAMESPACE)) {
+  if (id.startsWith(SSR_NAMESPACE)) {
     logger(
-      `[isClientModule] Detected client module (SSR_BASE_NAMESPACE): id=%s esbuild=%s`,
+      `[isClientModule] Detected client module (SSR_NAMESPACE): id=%s esbuild=%s`,
       id,
       !!esbuild,
     );
@@ -282,8 +279,8 @@ function isSSRSubgraph({
   path: string;
 }): boolean {
   return (
-    (importer && importer.startsWith(SSR_BASE_NAMESPACE)) ||
-    path.startsWith(SSR_BASE_NAMESPACE) ||
+    (importer && importer.startsWith(SSR_NAMESPACE)) ||
+    path.startsWith(SSR_NAMESPACE) ||
     path.includes("__rwsdk_ssr")
   );
 }
@@ -303,7 +300,7 @@ function getVirtualSSRImport({
     return null;
   }
   // All imports get the prefix
-  const virtualId = context.SSR_BASE_NAMESPACE + raw;
+  const virtualId = context.SSR_NAMESPACE + raw;
   logFn?.("🔗 Rewriting bare import %s → %s", raw, virtualId);
   return virtualId;
 }
@@ -332,10 +329,10 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
               "[esbuild:onResolve] Returning virtualId: %s",
               virtualId,
             );
-            // Always use ESBUILD_SSR_MODULE_NAMESPACE for all virtualized imports
+            // Use SSR_NAMESPACE for all virtualized imports
             return {
               path: virtualId,
-              namespace: ESBUILD_SSR_MODULE_NAMESPACE,
+              namespace: SSR_NAMESPACE,
             };
           } else {
             logEsbuildResolve(
@@ -352,10 +349,10 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
       });
 
       build.onLoad(
-        { filter: /.*/, namespace: ESBUILD_SSR_MODULE_NAMESPACE },
+        { filter: /.*/, namespace: SSR_NAMESPACE },
         async (args: any) => {
           logEsbuild("[esbuild:onLoad:module] called with args: %O", args);
-          const realPath = args.path.slice(context.SSR_BASE_NAMESPACE.length);
+          const realPath = args.path.slice(SSR_NAMESPACE.length);
           try {
             const contents = await (
               await import("fs/promises")
@@ -439,7 +436,7 @@ export function virtualizedSSRPlugin({
     projectRootDir,
     ssrResolver: createSSRResolver({ projectRootDir }),
     IGNORED_IMPORT_PATTERNS,
-    SSR_BASE_NAMESPACE,
+    SSR_NAMESPACE,
     virtualSsrDeps,
   };
 
@@ -457,7 +454,7 @@ export function virtualizedSSRPlugin({
       logInfo("⚙️ Setting up aliases for worker environment");
       logInfo("📊 Configuration state:");
       logInfo("   - Project root: %s", projectRootDir);
-      logInfo("   - Virtual SSR namespace: %s", SSR_BASE_NAMESPACE);
+      logInfo("   - Virtual SSR namespace: %s", SSR_NAMESPACE);
 
       config.resolve ??= {};
       (config.resolve as any).alias ??= [];
@@ -488,8 +485,8 @@ export function virtualizedSSRPlugin({
 
     resolveId(source, importer, options) {
       logResolve("🔍 Resolving %s", source);
-      if (source.startsWith(context.SSR_BASE_NAMESPACE)) {
-        const moduleId = source.slice(context.SSR_BASE_NAMESPACE.length);
+      if (source.startsWith(context.SSR_NAMESPACE)) {
+        const moduleId = source.slice(context.SSR_NAMESPACE.length);
         logResolve("🔍 Resolving virtual import: %s", moduleId);
         // Try SSR resolver for bare imports
         if (!moduleId.startsWith(".") && !moduleId.startsWith("/")) {
@@ -510,9 +507,9 @@ export function virtualizedSSRPlugin({
     },
 
     load(id) {
-      if (!id.startsWith(context.SSR_BASE_NAMESPACE)) return null;
+      if (!id.startsWith(context.SSR_NAMESPACE)) return null;
 
-      const moduleId = id.slice(context.SSR_BASE_NAMESPACE.length);
+      const moduleId = id.slice(context.SSR_NAMESPACE.length);
 
       // Handle known virtual dependencies
       if (context.virtualSsrDeps.has(id)) {
