@@ -50,14 +50,15 @@ export const SSR_BASE_NAMESPACE = "virtual:rwsdk:ssr:";
 export const SSR_MODULE_NAMESPACE = SSR_BASE_NAMESPACE + "module:";
 export const SSR_DEP_NAMESPACE = SSR_BASE_NAMESPACE + "dep:";
 
+const ESBUILD_SSR_DEP_NAMESPACE = "rwsdk:ssr:dep";
+const ESBUILD_SSR_MODULE_NAMESPACE = "rwsdk:ssr:module";
+
 const log = debug("rwsdk:vite:virtualized-ssr");
 
 const logInfo = log.extend("info");
 const logError = log.extend("error");
 const logResolve = log.extend("resolve");
 const logTransform = log.extend("transform");
-const logScan = log.extend("scan");
-const logWatch = log.extend("watch");
 
 // Esbuild-specific loggers
 const logEsbuild = debug("rwsdk:vite:virtualized-ssr:esbuild");
@@ -71,12 +72,6 @@ const IGNORED_IMPORT_PATTERNS = [/^cloudflare:.*$/];
 // Shared state for both Vite and esbuild plugins
 const virtualSsrDeps = new Map<string, string>();
 const depPrefixMap = new Map<string, string>();
-const seenBareImports = new Set<string>();
-let viteServer: any = null;
-
-// Esbuild namespaces for virtual SSR modules
-const ESBUILD_SSR_DEP_NAMESPACE = "ssr-dep";
-const ESBUILD_SSR_MODULE_NAMESPACE = "ssr-module";
 
 // Define import patterns directly in code (from allImportsRule.yml)
 const IMPORT_PATTERNS = [
@@ -195,10 +190,6 @@ async function rewriteSSRClientImports({
       i.s,
       i.e,
     );
-    if (raw === "rwsdk/__ssr_bridge") {
-      logFn?.("[rewriteSSRClientImports] Skipping bridge import: %s", raw);
-      continue;
-    }
     // Skip rewriting if already a virtual SSR ID
     if (raw.startsWith(SSR_BASE_NAMESPACE)) {
       logFn?.(
@@ -330,6 +321,12 @@ function getVirtualSSRImport({
   isDep: (id: string) => boolean;
   logFn?: (...args: any[]) => void;
 }): string | null {
+  if (raw === "rwsdk/__ssr_bridge") {
+    const virtualId = SSR_DEP_NAMESPACE + "rwsdk/__ssr_bridge";
+    logFn?.("🔁 Rewriting bridge import: %s → %s", raw, virtualId);
+    return virtualId;
+  }
+
   // Known mapped dependency
   if (depPrefixMap.has(raw)) {
     const virtualId = depPrefixMap.get(raw)!;
