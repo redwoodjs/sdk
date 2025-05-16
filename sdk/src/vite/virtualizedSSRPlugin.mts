@@ -210,7 +210,10 @@ function isClientModule({
   ) {
     if (code) {
       const firstLine = code.split("\n", 1)[0]?.trim();
-      if (firstLine === "'use client'" || firstLine === '"use client"') {
+      if (
+        firstLine.startsWith("'use client'") ||
+        firstLine.startsWith('"use client"')
+      ) {
         logger(
           `[isClientModule] Detected client module (use client directive): id=%s esbuild=%s`,
           id,
