@@ -404,7 +404,13 @@ async function loadAndMaybeRewrite({
 
   return {
     contents: code,
-    loader: filePath.endsWith("x") ? "tsx" : "ts",
+    loader: filePath.endsWith(".tsx")
+      ? "tsx"
+      : filePath.endsWith(".jsx")
+        ? "jsx"
+        : filePath.endsWith(".ts")
+          ? "ts"
+          : "js",
     resolveDir: path.dirname(filePath),
   };
 }
