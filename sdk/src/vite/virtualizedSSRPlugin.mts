@@ -332,6 +332,12 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
   return {
     name: "virtualized-ssr-esbuild-plugin",
     setup(build: any) {
+      // Minimal onResolve handler to assign SSR_NAMESPACE to virtual SSR imports
+      build.onResolve({ filter: /^virtual:rwsdk:ssr:/ }, (args: any) => ({
+        path: args.path,
+        namespace: SSR_NAMESPACE,
+      }));
+
       // Remove onResolve handler entirely
       // Only keep onLoad handlers
       build.onLoad(
