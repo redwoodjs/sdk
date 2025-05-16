@@ -83,6 +83,11 @@ const IMPORT_PATTERNS = [
   'import("$MODULE")',
   "import('$MODULE')",
   "import(`$MODULE`)",
+
+  // CommonJS require
+  'require("$MODULE")',
+  "require('$MODULE')",
+  "require(`$MODULE`)",
 ];
 
 const createSSRResolver = ({ projectRootDir }: { projectRootDir: string }) => {
@@ -126,8 +131,6 @@ function findImportSpecifiersWithPositions(
             const importPath = moduleCapture.text();
             // Only include bare imports (not relative paths, absolute paths, or virtual modules)
             if (
-              !importPath.startsWith(".") &&
-              !importPath.startsWith("/") &&
               !importPath.startsWith("virtual:") &&
               !IGNORED_IMPORT_PATTERNS.some((pattern) =>
                 pattern.test(importPath),
@@ -141,11 +144,11 @@ function findImportSpecifiersWithPositions(
           }
         }
       } catch (err) {
-        // logError("❌ Error processing pattern %s: %O", pattern, err);
+        logError("❌ Error processing pattern %s: %O", pattern, err);
       }
     }
   } catch (err) {
-    // logError("❌ Error parsing content: %O", err);
+    logError("❌ Error parsing content: %O", err);
   }
   return results;
 }
@@ -207,47 +210,35 @@ async function rewriteSSRClientImports({
       );
       continue;
     }
+    let virtualId;
     if (isBareImport(raw)) {
       // Try SSR resolver first
       const ssrResolved = context.ssrResolver(raw);
       if (ssrResolved !== false) {
-        const virtualId = SSR_NAMESPACE + ssrResolved;
+        virtualId = SSR_NAMESPACE + ssrResolved;
         logFn?.(
           "[rewriteSSRClientImports] SSR resolver succeeded for '%s', rewriting to '%s'",
           raw,
           virtualId,
         );
-        ms.overwrite(i.s, i.e, virtualId);
-        modified = true;
-        continue;
+      } else {
+        virtualId = SSR_NAMESPACE + raw;
+        logFn?.(
+          "[rewriteSSRClientImports] SSR resolver failed for '%s', rewriting to '%s'",
+          raw,
+          virtualId,
+        );
       }
-      // SSR resolver failed, try Vite's resolver
-      if (viteContext && typeof viteContext.resolve === "function") {
-        const viteResolved = await viteContext.resolve(raw, id);
-        if (viteResolved && viteResolved.id) {
-          logFn?.(
-            "[rewriteSSRClientImports] Vite resolver succeeded for '%s', rewriting to '%s'",
-            raw,
-            viteResolved.id,
-          );
-          ms.overwrite(i.s, i.e, viteResolved.id);
-          modified = true;
-          continue;
-        }
-      }
-      // If both fail, leave as is
-      logFn?.(
-        "[rewriteSSRClientImports] Both SSR and Vite resolver failed for '%s', leaving as is",
-        raw,
-      );
     } else {
-      // Not a bare import: do not rewrite
+      virtualId = SSR_NAMESPACE + raw;
       logFn?.(
-        "[rewriteSSRClientImports] Not a bare import '%s', not rewriting",
+        "[rewriteSSRClientImports] Non-bare import '%s', rewriting to '%s'",
         raw,
+        virtualId,
       );
-      continue;
     }
+    ms.overwrite(i.s, i.e, virtualId);
+    modified = true;
   }
   if (modified) {
     logFn?.("[rewriteSSRClientImports] Rewriting complete for %s", id);
