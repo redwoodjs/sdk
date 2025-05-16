@@ -165,7 +165,6 @@ async function rewriteSSRClientImports({
   IGNORED_IMPORT_PATTERNS,
   isDep,
   logFn,
-  resolveImport,
 }: {
   code: string;
   id: string;
@@ -174,30 +173,42 @@ async function rewriteSSRClientImports({
   IGNORED_IMPORT_PATTERNS: RegExp[];
   isDep: (id: string) => boolean;
   logFn?: (...args: any[]) => void;
-  resolveImport?: (raw: string, id: string) => Promise<{ id: string } | null>;
 }): Promise<string | null> {
+  logFn?.("[rewriteSSRClientImports] called for id: %s", id);
   // Determine language based on file extension
   const ext = path.extname(id).toLowerCase();
   const lang =
     ext === ".tsx" || ext === ".jsx" ? SgLang.Tsx : SgLang.TypeScript;
   const imports = findImportSpecifiersWithPositions(code, lang);
+  logFn?.(
+    "[rewriteSSRClientImports] Found %d imports in %s",
+    imports.length,
+    id,
+  );
   const ms = new MagicString(code);
   let modified = false;
   for (const i of imports) {
     const raw = i.raw;
-    if (raw === "rwsdk/__ssr_bridge") continue;
+    logFn?.(
+      "[rewriteSSRClientImports] Processing import '%s' at [%d, %d]",
+      raw,
+      i.s,
+      i.e,
+    );
+    if (raw === "rwsdk/__ssr_bridge") {
+      logFn?.("[rewriteSSRClientImports] Skipping bridge import: %s", raw);
+      continue;
+    }
     // Skip rewriting if already a virtual SSR ID
-    if (raw.startsWith(SSR_BASE_NAMESPACE)) continue;
-    let resolvedId: string | undefined = undefined;
-    if (resolveImport) {
-      try {
-        const resolved = await resolveImport(raw, id);
-        resolvedId = resolved?.id;
-      } catch {}
+    if (raw.startsWith(SSR_BASE_NAMESPACE)) {
+      logFn?.(
+        "[rewriteSSRClientImports] Skipping already-virtual import: %s",
+        raw,
+      );
+      continue;
     }
     const virtualId = getVirtualSSRImport({
       raw,
-      resolvedId,
       depPrefixMap,
       SSR_MODULE_NAMESPACE,
       IGNORED_IMPORT_PATTERNS,
@@ -205,11 +216,24 @@ async function rewriteSSRClientImports({
       logFn,
     });
     if (virtualId) {
+      logFn?.(
+        "[rewriteSSRClientImports] Rewriting import '%s' → '%s'",
+        raw,
+        virtualId,
+      );
       ms.overwrite(i.s, i.e, virtualId);
       modified = true;
+    } else {
+      logFn?.("[rewriteSSRClientImports] No rewrite needed for '%s'", raw);
     }
   }
-  return modified ? ms.toString() : null;
+  if (modified) {
+    logFn?.("[rewriteSSRClientImports] Rewriting complete for %s", id);
+    return ms.toString();
+  } else {
+    logFn?.("[rewriteSSRClientImports] No changes made for %s", id);
+    return null;
+  }
 }
 
 // Helper function to check if a path is in node_modules
@@ -293,22 +317,18 @@ function isSSRSubgraph({
  */
 function getVirtualSSRImport({
   raw,
-  resolvedId,
   depPrefixMap,
   SSR_MODULE_NAMESPACE,
   IGNORED_IMPORT_PATTERNS,
   isDep,
   logFn,
-  esbuildHeuristic = false,
 }: {
   raw: string;
-  resolvedId?: string;
   depPrefixMap: Map<string, string>;
   SSR_MODULE_NAMESPACE: string;
   IGNORED_IMPORT_PATTERNS: RegExp[];
   isDep: (id: string) => boolean;
   logFn?: (...args: any[]) => void;
-  esbuildHeuristic?: boolean;
 }): string | null {
   // Known mapped dependency
   if (depPrefixMap.has(raw)) {
@@ -322,19 +342,9 @@ function getVirtualSSRImport({
     return null;
   }
   // User code import (not from node_modules)
-  if (resolvedId && !isDep(resolvedId)) {
-    const virtualId = SSR_MODULE_NAMESPACE + resolvedId;
-    logFn?.("🔁 Rewriting user import: %s → %s", raw, virtualId);
-    return virtualId;
-  }
-  // esbuild fallback: if not node_modules/.vite, treat as user code
-  if (
-    esbuildHeuristic &&
-    !raw.includes("node_modules") &&
-    !raw.includes(".vite")
-  ) {
+  if (!isDep(raw)) {
     const virtualId = SSR_MODULE_NAMESPACE + raw;
-    logFn?.("🔁 Rewriting user import (esbuild): %s → %s", raw, virtualId);
+    logFn?.("🔁 Rewriting user import: %s → %s", raw, virtualId);
     return virtualId;
   }
   // No rewrite
@@ -361,7 +371,6 @@ function virtualizedSSREsbuildPlugin() {
             IGNORED_IMPORT_PATTERNS,
             isDep,
             logFn: logEsbuildResolve,
-            esbuildHeuristic: true,
           });
           if (virtualId) {
             logEsbuildResolve(
@@ -460,13 +469,11 @@ function virtualizedSSREsbuildPlugin() {
             logFn: logEsbuildTransform,
             esbuild: true,
           });
-          const isSSR = args.path.startsWith(SSR_BASE_NAMESPACE);
-          if (isClient || isSSR) {
+          if (isClient) {
             logEsbuildTransform(
-              `[esbuild:onLoad:rewrite] Rewriting imports for %s (isClient: %s, isSSR: %s)`,
+              `[esbuild:onLoad:rewrite] Rewriting imports for %s (isClient: %s)`,
               args.path,
               isClient,
-              isSSR,
             );
             const rewritten = await rewriteSSRClientImports({
               code,
@@ -476,7 +483,6 @@ function virtualizedSSREsbuildPlugin() {
               IGNORED_IMPORT_PATTERNS,
               isDep,
               logFn: logEsbuildTransform,
-              // esbuildHeuristic: true, // not needed, we have SSR check
             });
             if (rewritten) {
               return {
@@ -601,7 +607,7 @@ export function virtualizedSSRPlugin({
         if (source.startsWith(".") || source.startsWith("/")) {
           const virtualId = SSR_MODULE_NAMESPACE + source;
           logResolve(
-            "�� Prefixing relative/absolute import for virtual resolution: %s → %s",
+            "🔁 Prefixing relative/absolute import for virtual resolution: %s → %s",
             source,
             virtualId,
           );
@@ -662,12 +668,6 @@ export function virtualizedSSRPlugin({
         IGNORED_IMPORT_PATTERNS,
         isDep,
         logFn: logTransform,
-        resolveImport: async (raw: string, importer: string) => {
-          const resolved = await this.resolve(raw, importer, {
-            skipSelf: true,
-          });
-          return resolved && resolved.id ? { id: resolved.id } : null;
-        },
       });
       return rewritten
         ? {
