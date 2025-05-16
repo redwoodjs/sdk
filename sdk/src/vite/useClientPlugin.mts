@@ -30,18 +30,13 @@ export async function transformClientComponents(
     log("Skipping: not in worker environment (%s)", env.environmentName);
     return;
   }
-  // 2. Skip node_modules and vite deps
-  if (id.includes(".vite/deps") || id.includes("node_modules")) {
-    log("Skipping: id includes .vite/deps or node_modules (%s)", id);
-    return;
-  }
-  // 3. Only transform files that start with 'use client'
+  // 2. Only transform files that start with 'use client'
   const cleanCode = code.trimStart();
   const hasUseClient =
     cleanCode.startsWith('"use client"') ||
     cleanCode.startsWith("'use client'");
   if (!hasUseClient) {
-    log("Skipping: no 'use client' directive in %s", id);
+    log("Skipping: no 'use 2lient' directive in %s", id);
     return { code, map: undefined };
   }
   log("Processing 'use client' module: %s", id);
@@ -149,7 +144,7 @@ export async function transformClientComponents(
     }
   });
 
-  // 4. SSR files: just remove the directive
+  // 3. SSR files: just remove the directive
   if (id.startsWith("virtual:rwsdk:ssr")) {
     log("[isEsbuild=%s] Handling SSR virtual module: %s", !!env.isEsbuild, id);
     const s = new MagicString(code);
@@ -171,7 +166,7 @@ export async function transformClientComponents(
     };
   }
 
-  // 5. Non-SSR files: replace all implementation with registerClientReference logic
+  // 4. Non-SSR files: replace all implementation with registerClientReference logic
   // Remove all original imports for non-SSR 'use client' files
   // Only add the registerClientReference import
   const importLine = 'import { registerClientReference } from "rwsdk/worker";';
