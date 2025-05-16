@@ -93,13 +93,9 @@ const baseSSRResolver = enhancedResolve.create.sync({
 
 const ssrResolver = (from: string, request: string): string | false => {
   try {
-    return baseSSRResolver(from, request);
+    return baseSSRResolver(path.dirname(from), request);
   } catch {
-    try {
-      return baseSSRResolver(ROOT_DIR, request);
-    } catch {
-      return false;
-    }
+    return false;
   }
 };
 
@@ -249,15 +245,17 @@ async function rewriteSSRClientImports({
 
       if (moduleResolved) {
         logFn?.(
-          "[rewriteSSRClientImports] Module resolver succeeded for import '%s', rewriting to '%s'",
+          "[rewriteSSRClientImports] Module resolver succeeded for import '%s' from %s, rewriting to '%s'",
           raw,
+          id,
           moduleResolved,
         );
-        virtualId = moduleResolved;
+        virtualId = SSR_NAMESPACE + moduleResolved;
       } else {
         logFn?.(
-          "[rewriteSSRClientImports] Module resolver failed for import '%s', leaving as is",
+          "[rewriteSSRClientImports] Module resolver failed for import '%s' from %s, leaving as is",
           raw,
+          id,
         );
       }
     }
@@ -383,23 +381,32 @@ async function loadAndMaybeRewrite({
     );
     const rewritten = await rewriteSSRClientImports({
       code,
-      id: inputPath,
+      id: filePath,
       context,
       logFn,
     });
     if (rewritten) {
-      return {
-        contents: rewritten.toString(),
-        loader: filePath.endsWith("x") ? "tsx" : "ts",
-        resolveDir: path.dirname(filePath),
-      };
+      code = rewritten.toString();
+    } else {
+      logFn(
+        `[loadAndMaybeRewrite] No rewrite needed for %s (isClient: %s)`,
+        inputPath,
+        isClient,
+      );
     }
+  } else {
+    logFn(
+      `[loadAndMaybeRewrite] Not a client module, no rewrite needed: %s`,
+      inputPath,
+    );
+    return null;
   }
-  logFn(
-    `[loadAndMaybeRewrite] Not a client module, no rewrite needed: %s`,
-    inputPath,
-  );
-  return null;
+
+  return {
+    contents: code,
+    loader: filePath.endsWith("x") ? "tsx" : "ts",
+    resolveDir: path.dirname(filePath),
+  };
 }
 
 // Update virtualizedSSREsbuildPlugin to accept context
