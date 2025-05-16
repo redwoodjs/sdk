@@ -1,7 +1,4 @@
 import { $ } from "../lib/$.mjs";
-import { readFile } from "fs/promises";
-import { resolve } from "path";
-import { fileURLToPath } from "url";
 export interface DebugSyncOptions {
   targetDir: string;
   dev?: boolean;
@@ -9,27 +6,12 @@ export interface DebugSyncOptions {
   build?: boolean;
 }
 
-const __dirname = fileURLToPath(import.meta.url);
-
 export const debugSync = async (opts: DebugSyncOptions) => {
   const { targetDir, dev, watch, build } = opts;
 
   if (!targetDir) {
     console.error("❌ Please provide a target directory as an argument.");
     process.exit(1);
-  }
-
-  // Detect if we are in the sdk monorepo by checking ../../../../package.json
-  let runCmd = "npm";
-  try {
-    const monorepoPkgPath = resolve(__dirname, "../../../../package.json");
-    const pkgRaw = await readFile(monorepoPkgPath, "utf-8");
-    const pkg = JSON.parse(pkgRaw);
-    if (pkg.name === "rw-sdk-monorepo") {
-      runCmd = "pnpm";
-    }
-  } catch (e) {
-    // ignore, fallback to npm
   }
 
   const syncCommand = `echo 🏗️ rebuilding... && pnpm build && rm -rf ${targetDir}/node_modules/rwsdk/dist && echo 📁 syncing sdk from ${process.cwd()} to ${targetDir}/node_modules/rwsdk/... && cp -r dist ${targetDir}/node_modules/rwsdk/ && echo ✅ done syncing`;
@@ -43,7 +25,7 @@ export const debugSync = async (opts: DebugSyncOptions) => {
     stdio: "inherit",
     shell: true,
     cwd: targetDir,
-  })`${runCmd} run clean:vite`;
+  })`pnpm run clean:vite`;
 
   // If dev flag is present, clean vite cache and start dev server
   if (dev) {
@@ -52,7 +34,7 @@ export const debugSync = async (opts: DebugSyncOptions) => {
       stdio: "inherit",
       shell: true,
       cwd: targetDir,
-    })`${runCmd} run dev -- --clearScreen=false`;
+    })`pnpm run dev`;
   }
   // Start watching if watch flag is present
   else if (watch) {
@@ -67,7 +49,7 @@ export const debugSync = async (opts: DebugSyncOptions) => {
       stdio: "inherit",
       shell: true,
       cwd: targetDir,
-    })`${runCmd} run build`;
+    })`pnpm run build`;
   }
 };
 
