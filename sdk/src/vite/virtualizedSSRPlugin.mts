@@ -38,10 +38,13 @@
  * Cloudflare Worker bundle, without a custom module graph or duplicated builds.
  */
 
+import path from "path";
 import fs from "fs/promises";
 import { Plugin } from "vite";
 import enhancedResolve from "enhanced-resolve";
+import MagicString from "magic-string";
 import debug from "debug";
+import { parse as sgParse, Lang as SgLang } from "@ast-grep/napi";
 
 export const SSR_BASE_NAMESPACE = "virtual:rwsdk:ssr:";
 export const SSR_MODULE_NAMESPACE = SSR_BASE_NAMESPACE + "module:";
@@ -74,6 +77,140 @@ let viteServer: any = null;
 // Esbuild namespaces for virtual SSR modules
 const ESBUILD_SSR_DEP_NAMESPACE = "ssr-dep";
 const ESBUILD_SSR_MODULE_NAMESPACE = "ssr-module";
+
+// Define import patterns directly in code (from allImportsRule.yml)
+const IMPORT_PATTERNS = [
+  // Static Imports
+  'import { $$$ } from "$MODULE"',
+  "import { $$$ } from '$MODULE'",
+  'import $DEFAULT from "$MODULE"',
+  "import $DEFAULT from '$MODULE'",
+  'import * as $NS from "$MODULE"',
+  "import * as $NS from '$MODULE'",
+  'import "$MODULE"',
+  "import '$MODULE'",
+
+  // Static Re-exports
+  'export { $$$ } from "$MODULE"',
+  "export { $$$ } from '$MODULE'",
+  'export * from "$MODULE"',
+  "export * from '$MODULE'",
+
+  // Dynamic Imports
+  'import("$MODULE")',
+  "import('$MODULE')",
+  "import(`$MODULE`)",
+];
+
+/**
+ * Find all import specifiers and their positions using ast-grep
+ * Returns an array of { s, e, raw } for each import specifier
+ */
+function findImportSpecifiersWithPositions(
+  code: string,
+  lang: typeof SgLang.TypeScript | typeof SgLang.Tsx,
+): Array<{ s: number; e: number; raw: string }> {
+  const results: Array<{ s: number; e: number; raw: string }> = [];
+  try {
+    const root = sgParse(lang, code);
+    for (const pattern of IMPORT_PATTERNS) {
+      try {
+        const matches = root.root().findAll(pattern);
+        for (const match of matches) {
+          const moduleCapture = match.getMatch("MODULE");
+          if (moduleCapture) {
+            // The AST node text includes the quotes for string literals
+            const importPath = moduleCapture.text();
+            // Only include bare imports (not relative paths, absolute paths, or virtual modules)
+            if (
+              !importPath.startsWith(".") &&
+              !importPath.startsWith("/") &&
+              !importPath.startsWith("virtual:") &&
+              !IGNORED_IMPORT_PATTERNS.some((pattern) =>
+                pattern.test(importPath),
+              )
+            ) {
+              // Find the start and end positions of the import string in the code
+              // This is the range of the moduleCapture node
+              const { start, end } = moduleCapture.range();
+              results.push({ s: start.index, e: end.index, raw: importPath });
+            }
+          }
+        }
+      } catch (err) {
+        // logError("❌ Error processing pattern %s: %O", pattern, err);
+      }
+    }
+  } catch (err) {
+    // logError("❌ Error parsing content: %O", err);
+  }
+  return results;
+}
+
+/**
+ * Rewrites imports in a module to their virtual SSR IDs as needed.
+ * Used by Vite transform hook.
+ *
+ * @param code The source code
+ * @param id The module id (for Vite, used for resolution)
+ * @param options Shared and plugin-specific options
+ * @param resolveImport Optional async resolver (Vite only)
+ * @returns {Promise<string|null>} The rewritten code, or null if unchanged
+ */
+async function rewriteSSRClientImports({
+  code,
+  id,
+  depPrefixMap,
+  SSR_MODULE_NAMESPACE,
+  IGNORED_IMPORT_PATTERNS,
+  isDep,
+  logFn,
+  resolveImport,
+}: {
+  code: string;
+  id: string;
+  depPrefixMap: Map<string, string>;
+  SSR_MODULE_NAMESPACE: string;
+  IGNORED_IMPORT_PATTERNS: RegExp[];
+  isDep: (id: string) => boolean;
+  logFn?: (...args: any[]) => void;
+  resolveImport?: (raw: string, id: string) => Promise<{ id: string } | null>;
+}): Promise<string | null> {
+  // Determine language based on file extension
+  const ext = path.extname(id).toLowerCase();
+  const lang =
+    ext === ".tsx" || ext === ".jsx" ? SgLang.Tsx : SgLang.TypeScript;
+  const imports = findImportSpecifiersWithPositions(code, lang);
+  const ms = new MagicString(code);
+  let modified = false;
+  for (const i of imports) {
+    const raw = i.raw;
+    if (raw === "rwsdk/__ssr_bridge") continue;
+    // Skip rewriting if already a virtual SSR ID
+    if (raw.startsWith(SSR_BASE_NAMESPACE)) continue;
+    let resolvedId: string | undefined = undefined;
+    if (resolveImport) {
+      try {
+        const resolved = await resolveImport(raw, id);
+        resolvedId = resolved?.id;
+      } catch {}
+    }
+    const virtualId = getVirtualSSRImport({
+      raw,
+      resolvedId,
+      depPrefixMap,
+      SSR_MODULE_NAMESPACE,
+      IGNORED_IMPORT_PATTERNS,
+      isDep,
+      logFn,
+    });
+    if (virtualId) {
+      ms.overwrite(i.s, i.e, virtualId);
+      modified = true;
+    }
+  }
+  return modified ? ms.toString() : null;
+}
 
 // Helper function to check if a path is in node_modules
 function isDep(id: string): boolean {
@@ -430,6 +567,40 @@ export function virtualizedSSRPlugin({
         logResolve("❌ load() read failed for: %s", maybePath);
         return null;
       }
+    },
+
+    async transform(code, id, options) {
+      if (this.environment.name !== "worker") {
+        return null;
+      }
+      logTransform("📝 Transform: %s", id);
+      if (!isClientModule({ id, code, logFn: logTransform, esbuild: false })) {
+        logTransform("⏭️ Skipping non-client module: %s", id);
+        return null;
+      }
+      // Process imports directly in transform
+      logTransform("🔎 Processing imports in client module: %s", id);
+      const rewritten = await rewriteSSRClientImports({
+        code,
+        id,
+        depPrefixMap,
+        SSR_MODULE_NAMESPACE,
+        IGNORED_IMPORT_PATTERNS,
+        isDep,
+        logFn: logTransform,
+        resolveImport: async (raw: string, importer: string) => {
+          const resolved = await this.resolve(raw, importer, {
+            skipSelf: true,
+          });
+          return resolved && resolved.id ? { id: resolved.id } : null;
+        },
+      });
+      return rewritten
+        ? {
+            code: rewritten,
+            map: new MagicString(rewritten).generateMap({ hires: true }),
+          }
+        : null;
     },
   };
 }
