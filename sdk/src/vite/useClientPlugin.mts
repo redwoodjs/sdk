@@ -36,7 +36,7 @@ export async function transformClientComponents(
     cleanCode.startsWith('"use client"') ||
     cleanCode.startsWith("'use client'");
   if (!hasUseClient) {
-    log("Skipping: no 'use 2lient' directive in %s", id);
+    log("Skipping: no 'use client' directive in %s", id);
     return { code, map: undefined };
   }
   log("Processing 'use client' module: %s", id);
