@@ -475,7 +475,11 @@ export function virtualizedSSRPlugin({
           "⚠️ Could not resolve in projectRootDir, trying sdk: %s",
           importPath,
         );
-        resolved = ssrResolver(ROOT_DIR, importPath);
+        try {
+          resolved = ssrResolver(ROOT_DIR, importPath);
+        } catch {
+          resolved = false;
+        }
       }
 
       if (!resolved) {
