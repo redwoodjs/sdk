@@ -1,4 +1,3 @@
-import { relative } from "node:path";
 import { Plugin } from "vite";
 import { Project, SyntaxKind, Node } from "ts-morph";
 import MagicString from "magic-string";
@@ -233,55 +232,4 @@ export const useClientPlugin = (): Plugin => ({
       topLevelRoot: this.environment?.getTopLevelConfig?.().root,
     });
   },
-  configEnvironment(env, config) {
-    // Only add for worker environment
-    if (env !== "worker") return;
-    config.optimizeDeps ??= {};
-    config.optimizeDeps.esbuildOptions ??= {};
-    config.optimizeDeps.esbuildOptions.plugins ??= [];
-    // Avoid duplicate registration
-    if (
-      !config.optimizeDeps.esbuildOptions.plugins.some(
-        (p) => p?.name === "use-client-esbuild-plugin",
-      )
-    ) {
-      config.optimizeDeps.esbuildOptions.plugins.push(useClientEsbuildPlugin());
-    }
-  },
 });
-
-/**
- * Returns an esbuild plugin that applies the same 'use client' transformation as Vite.
- * Register this in your configEnvironment hook (e.g. in optimizeDeps.esbuildOptions.plugins).
- */
-export function useClientEsbuildPlugin() {
-  return {
-    name: "use-client-esbuild-plugin",
-    setup(build: any) {
-      build.onLoad(
-        { filter: /\.(js|jsx|ts|tsx|mjs|mts)$/ },
-        async (args: any) => {
-          const fs = await import("fs/promises");
-          let code: string;
-          try {
-            code = await fs.readFile(args.path, "utf-8");
-          } catch (err) {
-            // Optionally log error here
-            return undefined;
-          }
-          const result = await transformClientComponents(code, args.path, {
-            environmentName: "worker",
-            isEsbuild: true,
-          });
-          if (result && result.code !== code) {
-            return {
-              contents: result.code,
-              loader: args.path.endsWith("x") ? "tsx" : "ts",
-            };
-          }
-          return undefined;
-        },
-      );
-    },
-  };
-}

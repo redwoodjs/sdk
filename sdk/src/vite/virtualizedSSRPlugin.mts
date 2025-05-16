@@ -42,6 +42,7 @@ import MagicString from "magic-string";
 import debug from "debug";
 import { parse as sgParse, Lang as SgLang } from "@ast-grep/napi";
 import { ROOT_DIR } from "../lib/constants.mjs";
+import { transformClientComponents } from "./useClientPlugin.mjs";
 
 export const SSR_NAMESPACE = "virtual:rwsdk:ssr:";
 
@@ -420,38 +421,68 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
   return {
     name: "virtualized-ssr-esbuild-plugin",
     setup(build: any) {
-      // Minimal onResolve handler to assign SSR_NAMESPACE to virtual SSR imports
       build.onResolve({ filter: /^virtual:rwsdk:ssr:/ }, (args: any) => ({
         path: args.path,
         namespace: SSR_NAMESPACE,
       }));
 
-      // Remove onResolve handler entirely
-      // Only keep onLoad handlers
       build.onLoad(
         { filter: /.*/, namespace: SSR_NAMESPACE },
         async (args: any) => {
           logEsbuild("[esbuild:onLoad:module] called with args: %O", args);
-          return loadAndMaybeRewrite({
+          const result = await loadAndMaybeRewrite({
             path: args.path,
             context,
             viteContext: this,
             logFn: logEsbuildTransform,
           });
+          if (result) {
+            const clientResult = await transformClientComponents(
+              result.contents,
+              args.path,
+              {
+                environmentName: "worker",
+                isEsbuild: true,
+              },
+            );
+            if (clientResult) {
+              return {
+                ...result,
+                contents: clientResult.code,
+              };
+            }
+          }
+          return result;
         },
       );
 
-      // Add import rewriting for relevant file types (js, jsx, ts, tsx, mjs, mts)
       build.onLoad(
         { filter: /\.(js|jsx|ts|tsx|mjs|mts)$/ },
         async (args: any) => {
           logEsbuild("[esbuild:onLoad:rewrite] called with args: %O", args);
-          return loadAndMaybeRewrite({
+          const result = await loadAndMaybeRewrite({
             path: args.path,
             context,
             viteContext: this,
             logFn: logEsbuildTransform,
           });
+          if (result) {
+            const clientResult = await transformClientComponents(
+              result.contents,
+              args.path,
+              {
+                environmentName: "worker",
+                isEsbuild: true,
+              },
+            );
+            if (clientResult) {
+              return {
+                ...result,
+                contents: clientResult.code,
+              };
+            }
+          }
+          return result;
         },
       );
     },
