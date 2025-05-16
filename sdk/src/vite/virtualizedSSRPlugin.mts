@@ -109,6 +109,10 @@ const depPrefixMap = new Map<string, string>();
 const seenBareImports = new Set<string>();
 let viteServer: any = null;
 
+// Esbuild namespaces for virtual SSR modules
+const ESBUILD_SSR_DEP_NAMESPACE = "ssr-dep";
+const ESBUILD_SSR_MODULE_NAMESPACE = "ssr-module";
+
 /**
  * Find all import specifiers and their positions using ast-grep
  * Returns an array of { s, e, raw } for each import specifier
@@ -369,13 +373,72 @@ function virtualizedSSREsbuildPlugin() {
             esbuildHeuristic: true,
           });
           if (virtualId) {
-            return { path: virtualId, external: false };
+            // Determine which esbuild namespace to use
+            if (virtualId.startsWith(SSR_DEP_NAMESPACE)) {
+              return { path: virtualId, namespace: ESBUILD_SSR_DEP_NAMESPACE };
+            } else if (virtualId.startsWith(SSR_MODULE_NAMESPACE)) {
+              return {
+                path: virtualId,
+                namespace: ESBUILD_SSR_MODULE_NAMESPACE,
+              };
+            }
+            // fallback: let esbuild handle
           }
         }
         // Let esbuild handle other cases
         return undefined;
       });
-      // --- onLoad for 'use client' modules ---
+
+      // onLoad for SSR dep namespace
+      build.onLoad(
+        { filter: /.*/, namespace: ESBUILD_SSR_DEP_NAMESPACE },
+        async (args: any) => {
+          // args.path is the virtual dep id
+          const realPath = virtualSsrDeps.get(args.path);
+          if (!realPath) {
+            logEsbuildError(
+              "❌ No real path found for virtual dep: %s",
+              args.path,
+            );
+            return undefined;
+          }
+          try {
+            const contents = await (
+              await import("fs/promises")
+            ).readFile(realPath, "utf-8");
+            return {
+              contents,
+              loader: realPath.endsWith("x") ? "tsx" : "ts",
+            };
+          } catch (err) {
+            logEsbuildError("❌ Failed to read real dep file: %s", realPath);
+            return undefined;
+          }
+        },
+      );
+
+      // onLoad for SSR module namespace
+      build.onLoad(
+        { filter: /.*/, namespace: ESBUILD_SSR_MODULE_NAMESPACE },
+        async (args: any) => {
+          // args.path is the virtual module id
+          const realPath = args.path.slice(SSR_MODULE_NAMESPACE.length);
+          try {
+            const contents = await (
+              await import("fs/promises")
+            ).readFile(realPath, "utf-8");
+            return {
+              contents,
+              loader: realPath.endsWith("x") ? "tsx" : "ts",
+            };
+          } catch (err) {
+            logEsbuildError("❌ Failed to read real module file: %s", realPath);
+            return undefined;
+          }
+        },
+      );
+
+      // --- onLoad for 'use client' modules (unchanged) ---
       build.onLoad(
         { filter: /\.(js|jsx|ts|tsx|mjs|mts)$/ },
         async (args: any) => {
