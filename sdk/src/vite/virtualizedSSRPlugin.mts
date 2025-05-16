@@ -208,7 +208,9 @@ async function rewriteSSRClientImports({
     id,
   );
   const ms = new MagicString(code);
+
   let modified = false;
+
   for (const i of imports) {
     const raw = i.raw;
     logFn?.(
@@ -225,47 +227,47 @@ async function rewriteSSRClientImports({
       );
       continue;
     }
+
+    let virtualId: string | null = null;
+
     if (isBareImport(raw)) {
       // Try SSR resolver first
       const ssrResolved = context.resolveDep(raw);
 
       if (ssrResolved !== false) {
-        const virtualId = SSR_NAMESPACE + ssrResolved;
         logFn?.(
-          "[rewriteSSRClientImports] SSR resolver succeeded for '%s', rewriting to '%s'",
+          "[rewriteSSRClientImports] SSR resolver succeeded for bare import '%s', rewriting to '%s'",
           raw,
-          virtualId,
+          ssrResolved,
         );
-        ms.overwrite(i.s, i.e, virtualId);
-        modified = true;
-        continue;
+        virtualId = SSR_NAMESPACE + ssrResolved;
       }
-      // SSR resolver failed, try module resolver
+    }
+
+    if (virtualId === null) {
       const moduleResolved = await context.resolveModule(id, raw);
+
       if (moduleResolved) {
         logFn?.(
-          "[rewriteSSRClientImports] Module resolver succeeded for '%s', rewriting to '%s'",
+          "[rewriteSSRClientImports] Module resolver succeeded for import '%s', rewriting to '%s'",
           raw,
           moduleResolved,
         );
-        ms.overwrite(i.s, i.e, moduleResolved);
-        modified = true;
-        continue;
+        virtualId = moduleResolved;
+      } else {
+        logFn?.(
+          "[rewriteSSRClientImports] Module resolver failed for import '%s', leaving as is",
+          raw,
+        );
       }
-      // If both fail, leave as is
-      logFn?.(
-        "[rewriteSSRClientImports] Both SSR and Vite resolver failed for '%s', leaving as is",
-        raw,
-      );
-    } else {
-      // Not a bare import: do not rewrite
-      logFn?.(
-        "[rewriteSSRClientImports] Not a bare import '%s', not rewriting",
-        raw,
-      );
-      continue;
+    }
+
+    if (virtualId !== null) {
+      ms.overwrite(i.s, i.e, virtualId);
+      modified = true;
     }
   }
+
   if (modified) {
     logFn?.("[rewriteSSRClientImports] Rewriting complete for %s", id);
     return ms;
