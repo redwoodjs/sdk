@@ -171,6 +171,166 @@ async function extractBareImports(
   return imports;
 }
 
+// Helper function to check if a path is in node_modules
+function isDep(id: string): boolean {
+  return id.includes("node_modules") || id.includes(".vite");
+}
+
+// Helper to check if a module is a client module (for SSR virtualization)
+function isClientModule({ id, code }: { id: string; code?: string }): boolean {
+  if (id === "rwsdk/__ssr_bridge") return true;
+  if (id.startsWith(SSR_BASE_NAMESPACE)) return true;
+  if (
+    id.endsWith(".ts") ||
+    id.endsWith(".js") ||
+    id.endsWith(".tsx") ||
+    id.endsWith(".jsx") ||
+    id.endsWith(".mjs")
+  ) {
+    if (code) {
+      const firstLine = code.split("\n", 1)[0]?.trim();
+      if (firstLine === "'use client'" || firstLine === '"use client"') {
+        return true;
+      }
+    }
+  }
+  return false;
+}
+
+// Helper to check if a path or importer is in the SSR subgraph
+function isSSRSubgraph({
+  importer,
+  path,
+}: {
+  importer?: string;
+  path: string;
+}): boolean {
+  return (
+    (importer && importer.startsWith(SSR_BASE_NAMESPACE)) ||
+    path.startsWith(SSR_BASE_NAMESPACE)
+  );
+}
+
+// --- Shared helpers for SSR subgraph resolution and import rewriting ---
+
+/**
+ * Resolves an import to a virtual SSR ID if needed, or returns null if no rewrite is needed.
+ * Used by both Vite and esbuild plugins.
+ */
+function getVirtualSSRImport({
+  raw,
+  resolvedId,
+  depPrefixMap,
+  SSR_MODULE_NAMESPACE,
+  IGNORED_IMPORT_PATTERNS,
+  isDep,
+  logFn,
+  esbuildHeuristic = false,
+}: {
+  raw: string;
+  resolvedId?: string;
+  depPrefixMap: Map<string, string>;
+  SSR_MODULE_NAMESPACE: string;
+  IGNORED_IMPORT_PATTERNS: RegExp[];
+  isDep: (id: string) => boolean;
+  logFn?: (...args: any[]) => void;
+  esbuildHeuristic?: boolean;
+}): string | null {
+  // Known mapped dependency
+  if (depPrefixMap.has(raw)) {
+    const virtualId = depPrefixMap.get(raw)!;
+    logFn?.("🔄 Rewriting mapped dep: %s → %s", raw, virtualId);
+    return virtualId;
+  }
+  // Ignored import patterns
+  if (IGNORED_IMPORT_PATTERNS.some((pattern) => pattern.test(raw))) {
+    logFn?.("🛡️ Ignoring pattern-matched import: %s", raw);
+    return null;
+  }
+  // User code import (not from node_modules)
+  if (resolvedId && !isDep(resolvedId)) {
+    const virtualId = SSR_MODULE_NAMESPACE + resolvedId;
+    logFn?.("🔁 Rewriting user import: %s → %s", raw, virtualId);
+    return virtualId;
+  }
+  // esbuild fallback: if not node_modules/.vite, treat as user code
+  if (
+    esbuildHeuristic &&
+    !raw.includes("node_modules") &&
+    !raw.includes(".vite")
+  ) {
+    const virtualId = SSR_MODULE_NAMESPACE + raw;
+    logFn?.("🔁 Rewriting user import (esbuild): %s → %s", raw, virtualId);
+    return virtualId;
+  }
+  // No rewrite
+  return null;
+}
+
+/**
+ * Rewrites imports in a module to their virtual SSR IDs as needed.
+ * Used by both Vite and esbuild plugins.
+ *
+ * @param code The source code
+ * @param id The module id (for Vite, used for resolution)
+ * @param options Shared and plugin-specific options
+ * @param resolveImport Optional async resolver (Vite only)
+ * @param esbuildHeuristic If true, use esbuild's heuristic for user code
+ * @returns {Promise<string|null>} The rewritten code, or null if unchanged
+ */
+async function rewriteSSRClientImports({
+  code,
+  id,
+  depPrefixMap,
+  SSR_MODULE_NAMESPACE,
+  IGNORED_IMPORT_PATTERNS,
+  isDep,
+  logFn,
+  resolveImport,
+  esbuildHeuristic = false,
+}: {
+  code: string;
+  id: string;
+  depPrefixMap: Map<string, string>;
+  SSR_MODULE_NAMESPACE: string;
+  IGNORED_IMPORT_PATTERNS: RegExp[];
+  isDep: (id: string) => boolean;
+  logFn?: (...args: any[]) => void;
+  resolveImport?: (raw: string, id: string) => Promise<{ id: string } | null>;
+  esbuildHeuristic?: boolean;
+}): Promise<string | null> {
+  await init;
+  const [imports] = parse(code);
+  const ms = new MagicString(code);
+  let modified = false;
+  for (const i of imports) {
+    const raw = code.slice(i.s, i.e);
+    if (raw === "rwsdk/__ssr_bridge") continue;
+    let resolvedId: string | undefined = undefined;
+    if (resolveImport) {
+      try {
+        const resolved = await resolveImport(raw, id);
+        resolvedId = resolved?.id;
+      } catch {}
+    }
+    const virtualId = getVirtualSSRImport({
+      raw,
+      resolvedId,
+      depPrefixMap,
+      SSR_MODULE_NAMESPACE,
+      IGNORED_IMPORT_PATTERNS,
+      isDep,
+      logFn,
+      esbuildHeuristic,
+    });
+    if (virtualId) {
+      ms.overwrite(i.s, i.e, virtualId);
+      modified = true;
+    }
+  }
+  return modified ? ms.toString() : null;
+}
+
 // --- SSR-aware esbuild plugin for optimizeDeps ---
 function virtualizedSSREsbuildPlugin() {
   return {
@@ -178,37 +338,24 @@ function virtualizedSSREsbuildPlugin() {
     setup(build: any) {
       build.onResolve({ filter: /.*/ }, (args: any) => {
         // If the importer or the path is in the SSR subgraph, use the same logic as Vite
-        const isSSRSubgraph =
-          args.importer?.startsWith(SSR_BASE_NAMESPACE) ||
-          args.path.startsWith(SSR_BASE_NAMESPACE);
-
-        if (isSSRSubgraph) {
-          // Known bare import mapping
-          if (depPrefixMap.has(args.path)) {
-            const virtualId = depPrefixMap.get(args.path)!;
-            logEsbuildResolve(
-              "🔁 Rewriting dep in SSR subgraph: %s → %s",
-              args.path,
-              virtualId,
-            );
-            return { path: virtualId, external: false };
-          }
-
-          // For relative or absolute paths, just prefix with module namespace
-          if (args.path.startsWith(".") || args.path.startsWith("/")) {
-            const virtualId = SSR_MODULE_NAMESPACE + args.path;
-            logEsbuildResolve(
-              "🔁 Prefixing relative/absolute import: %s → %s",
-              args.path,
-              virtualId,
-            );
+        if (isSSRSubgraph({ importer: args.importer, path: args.path })) {
+          // Use shared logic for SSR subgraph resolution
+          const virtualId = getVirtualSSRImport({
+            raw: args.path,
+            depPrefixMap,
+            SSR_MODULE_NAMESPACE,
+            IGNORED_IMPORT_PATTERNS,
+            isDep,
+            logFn: logEsbuildResolve,
+            esbuildHeuristic: true,
+          });
+          if (virtualId) {
             return { path: virtualId, external: false };
           }
         }
         // Let esbuild handle other cases
         return undefined;
       });
-
       // --- onLoad for 'use client' modules ---
       build.onLoad(
         { filter: /\.(js|jsx|ts|tsx|mjs|mts)$/ },
@@ -221,58 +368,21 @@ function virtualizedSSREsbuildPlugin() {
             logEsbuildError("❌ Failed to read file in onLoad: %s", args.path);
             return undefined;
           }
-          const firstLine = code.split("\n", 1)[0]?.trim();
-          if (firstLine === "'use client'" || firstLine === '"use client"') {
+          if (isClientModule({ id: args.path, code })) {
             logEsbuildTransform("🎯 Found 'use client' in: %s", args.path);
-            await init;
-            const [imports] = parse(code);
-            const ms = new MagicString(code);
-            let modified = false;
-
-            for (const i of imports) {
-              const raw = code.slice(i.s, i.e);
-              // Do not rewrite the SSR bridge import itself
-              if (raw === "rwsdk/__ssr_bridge") {
-                continue;
-              }
-              // Case 1: Known mapped dependency
-              if (depPrefixMap.has(raw)) {
-                const virtualId = depPrefixMap.get(raw)!;
-                logEsbuildTransform(
-                  "🔄 Rewriting mapped dep: %s → %s",
-                  raw,
-                  virtualId,
-                );
-                ms.overwrite(i.s, i.e, virtualId);
-                modified = true;
-                continue;
-              }
-              // Case 2: Ignored import patterns
-              if (
-                IGNORED_IMPORT_PATTERNS.some((pattern) => pattern.test(raw))
-              ) {
-                logEsbuildTransform(
-                  "🛡️ Ignoring pattern-matched import: %s",
-                  raw,
-                );
-                continue;
-              }
-              // Case 3: User code imports (not from node_modules)
-              // We'll use a simple heuristic: if not in node_modules or .vite
-              if (!raw.includes("node_modules") && !raw.includes(".vite")) {
-                const virtualId = SSR_MODULE_NAMESPACE + raw;
-                logEsbuildTransform(
-                  "🔁 Rewriting user import: %s → %s",
-                  raw,
-                  virtualId,
-                );
-                ms.overwrite(i.s, i.e, virtualId);
-                modified = true;
-              }
-            }
-            if (modified) {
+            const rewritten = await rewriteSSRClientImports({
+              code,
+              id: args.path,
+              depPrefixMap,
+              SSR_MODULE_NAMESPACE,
+              IGNORED_IMPORT_PATTERNS,
+              isDep,
+              logFn: logEsbuildTransform,
+              esbuildHeuristic: true,
+            });
+            if (rewritten) {
               return {
-                contents: ms.toString(),
+                contents: rewritten,
                 loader: args.path.endsWith("x") ? "tsx" : "ts",
               };
             }
@@ -528,15 +638,16 @@ export function virtualizedSSRPlugin({
       }
     }
 
+    config.optimizeDeps.esbuildOptions ??= {};
+    config.optimizeDeps.esbuildOptions.plugins ??= [];
+    config.optimizeDeps.esbuildOptions.plugins.push(
+      virtualizedSSREsbuildPlugin(),
+    );
+
     logInfo(
       "✅ Updated Vite config with %d SSR virtual aliases",
       virtualSsrDeps.size,
     );
-  }
-
-  // Helper function to check if a path is in node_modules
-  function isDep(id: string): boolean {
-    return id.includes("node_modules") || id.includes(".vite");
   }
 
   return {
@@ -629,6 +740,12 @@ export function virtualizedSSRPlugin({
         virtualSsrDeps.size,
       );
 
+      config.optimizeDeps.esbuildOptions ??= {};
+      config.optimizeDeps.esbuildOptions.plugins ??= [];
+      config.optimizeDeps.esbuildOptions.plugins.push(
+        virtualizedSSREsbuildPlugin(),
+      );
+
       logInfo(
         "✅ Updated Vite config with %d SSR virtual aliases",
         virtualSsrDeps.size,
@@ -639,109 +756,33 @@ export function virtualizedSSRPlugin({
       if (this.environment.name !== "worker") {
         return null;
       }
-
       logTransform("📝 Transform: %s", id);
-
-      let isClientModule = false;
-      if (id === "rwsdk/__ssr_bridge") {
-        isClientModule = true;
-      } else if (id.startsWith(SSR_BASE_NAMESPACE)) {
-        isClientModule = true;
-        logTransform("🔁 Virtual client context: %s", id);
-      } else if (
-        id.endsWith(".ts") ||
-        id.endsWith(".js") ||
-        id.endsWith(".tsx") ||
-        id.endsWith(".jsx") ||
-        id.endsWith(".mjs")
-      ) {
-        const firstLine = code.split("\n", 1)[0]?.trim();
-        if (
-          firstLine.startsWith("'use client'") ||
-          firstLine.startsWith('"use client"')
-        ) {
-          logTransform("🎯 Found SSR entrypoint: %s", id);
-          isClientModule = true;
-        }
-      }
-
-      // Skip non-client modules
-      if (!isClientModule) {
+      if (!isClientModule({ id, code })) {
         logTransform("⏭️ Skipping non-client module: %s", id);
         return null;
       }
-
       // Process imports directly in transform
       logTransform("🔎 Processing imports in client module: %s", id);
-      await init;
-      const [imports] = parse(code);
-      const ms = new MagicString(code);
-      let modified = false;
-
-      // Get the original ID for resolution
-      let resolveId = id;
-      if (id.startsWith(SSR_MODULE_NAMESPACE)) {
-        resolveId = id.slice(SSR_MODULE_NAMESPACE.length);
-      } else if (id.startsWith(SSR_DEP_NAMESPACE)) {
-        resolveId = id.slice(SSR_DEP_NAMESPACE.length);
-      }
-
-      for (const i of imports) {
-        const raw = code.slice(i.s, i.e);
-
-        // Do not rewrite the SSR bridge import itself
-        if (raw === "rwsdk/__ssr_bridge") {
-          continue;
-        }
-
-        try {
-          // Case 1: Known mapped dependency
-          if (depPrefixMap.has(raw)) {
-            const virtualId = depPrefixMap.get(raw)!;
-            logTransform("🔄 Rewriting mapped dep: %s → %s", raw, virtualId);
-            ms.overwrite(i.s, i.e, virtualId);
-            modified = true;
-            continue;
-          }
-
-          logTransform("🔍 Resolving %s from %s", raw, resolveId);
-          const resolved = await this.resolve(raw, resolveId, {
+      const rewritten = await rewriteSSRClientImports({
+        code,
+        id,
+        depPrefixMap,
+        SSR_MODULE_NAMESPACE,
+        IGNORED_IMPORT_PATTERNS,
+        isDep,
+        logFn: logTransform,
+        resolveImport: async (raw, importer) => {
+          const resolved = await this.resolve(raw, importer, {
             skipSelf: true,
           });
-
-          if (!resolved?.id) {
-            logTransform("⛔ Unresolvable import: %s - skipping", raw);
-            continue;
+          return resolved && resolved.id ? { id: resolved.id } : null;
+        },
+      });
+      return rewritten
+        ? {
+            code: rewritten,
+            map: new MagicString(rewritten).generateMap({ hires: true }),
           }
-
-          // Case 2: Ignored import patterns
-          if (IGNORED_IMPORT_PATTERNS.some((pattern) => pattern.test(raw))) {
-            logTransform(
-              "🛡️ Ignoring pattern-matched import: %s → %s",
-              raw,
-              resolved.id,
-            );
-            ms.overwrite(i.s, i.e, resolved.id);
-            modified = true;
-            continue;
-          }
-
-          // Case 3: User code imports (not from node_modules)
-          if (!isDep(resolved.id)) {
-            const virtualId = SSR_MODULE_NAMESPACE + resolved.id;
-            logTransform("🔁 Rewriting user import: %s → %s", raw, virtualId);
-            ms.overwrite(i.s, i.e, virtualId);
-            modified = true;
-          } else {
-            logTransform("⏭️ Skipping rewrite for dep: %s", raw);
-          }
-        } catch (err) {
-          logError("❌ Error processing import %s: %O", raw, err);
-        }
-      }
-
-      return modified
-        ? { code: ms.toString(), map: ms.generateMap({ hires: true }) }
         : null;
     },
 
@@ -773,7 +814,7 @@ export function virtualizedSSRPlugin({
       }
 
       // Handle imports coming from within the virtual graph
-      if (importer?.startsWith(SSR_BASE_NAMESPACE)) {
+      if (isSSRSubgraph({ importer, path: source })) {
         // Known bare import mapping
         if (depPrefixMap.has(source)) {
           const virtualId = depPrefixMap.get(source)!;
