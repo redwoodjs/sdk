@@ -69,11 +69,7 @@ const logEsbuildError = logEsbuild.extend("error");
 const logEsbuildResolve = logEsbuild.extend("resolve");
 const logEsbuildTransform = logEsbuild.extend("transform");
 
-const IGNORED_IMPORT_PATTERNS = [
-  /^cloudflare:.*$/,
-  /^rwsdk\/.*$/,
-  /^@rwsdk\/.*$/,
-];
+const IGNORED_IMPORT_PATTERNS = [/^cloudflare:.*$/];
 
 const EXTRA_IMPORTS = [
   "react",
