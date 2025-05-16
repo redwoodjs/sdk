@@ -56,7 +56,11 @@ const logTransform = log.extend("transform");
 const logEsbuild = debug("rwsdk:vite:virtualized-ssr:esbuild");
 const logEsbuildTransform = logEsbuild.extend("transform");
 
-const IGNORED_IMPORT_PATTERNS = [/^cloudflare:.*$/];
+const IGNORED_IMPORT_PATTERNS = [
+  /^cloudflare:.*$/,
+  /^react\/jsx-runtime$/,
+  /^react\/jsx-dev-runtime$/,
+];
 
 const IMPORT_PATTERNS = [
   'import { $$$ } from "$MODULE"',
@@ -89,9 +93,9 @@ const baseSSRResolver = enhancedResolve.create.sync({
   conditionNames: ["workerd", "edge", "import", "default"],
 });
 
-const ssrResolver = (from: string, request: string): string | false => {
+const ssrResolver = (request: string, importer: string): string | false => {
   try {
-    return baseSSRResolver(path.dirname(from), request);
+    return baseSSRResolver(path.dirname(importer), request);
   } catch {
     return false;
   }
