@@ -677,7 +677,13 @@ export function virtualizedSSRPlugin({
 
     config.optimizeDeps.esbuildOptions ??= {};
     config.optimizeDeps.esbuildOptions.plugins ??= [];
-    config.optimizeDeps.esbuildOptions.plugins.push(
+    // Remove any existing instance to avoid duplicates
+    config.optimizeDeps.esbuildOptions.plugins =
+      config.optimizeDeps.esbuildOptions.plugins.filter(
+        (p: any) => p?.name !== "virtualized-ssr-esbuild-plugin",
+      );
+    // Insert at the start so it runs before use-client-esbuild-plugin
+    config.optimizeDeps.esbuildOptions.plugins.unshift(
       virtualizedSSREsbuildPlugin(),
     );
 
@@ -779,7 +785,13 @@ export function virtualizedSSRPlugin({
 
       config.optimizeDeps.esbuildOptions ??= {};
       config.optimizeDeps.esbuildOptions.plugins ??= [];
-      config.optimizeDeps.esbuildOptions.plugins.push(
+      // Remove any existing instance to avoid duplicates
+      config.optimizeDeps.esbuildOptions.plugins =
+        config.optimizeDeps.esbuildOptions.plugins.filter(
+          (p: any) => p?.name !== "virtualized-ssr-esbuild-plugin",
+        );
+      // Insert at the start so it runs before use-client-esbuild-plugin
+      config.optimizeDeps.esbuildOptions.plugins.unshift(
         virtualizedSSREsbuildPlugin(),
       );
 
