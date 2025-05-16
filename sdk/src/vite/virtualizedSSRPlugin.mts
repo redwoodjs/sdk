@@ -266,9 +266,9 @@ function isClientModule({
   esbuild?: boolean;
 }): boolean {
   const logger = logFn ?? (() => {});
-  if (id === "rwsdk/__ssr_bridge") {
+  if (id.includes("__rwsdk_ssr")) {
     logger(
-      `[isClientModule] Detected client module (ssr_bridge): id=%s esbuild=%s`,
+      `[isClientModule] Detected client module (includes __rwsdk_ssr): id=%s esbuild=%s`,
       id,
       !!esbuild,
     );
