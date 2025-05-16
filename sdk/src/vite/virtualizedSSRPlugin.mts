@@ -315,7 +315,8 @@ function isSSRSubgraph({
 }): boolean {
   return (
     (importer && importer.startsWith(SSR_BASE_NAMESPACE)) ||
-    path.startsWith(SSR_BASE_NAMESPACE)
+    path.startsWith(SSR_BASE_NAMESPACE) ||
+    path === "rwsdk/__ssr_bridge"
   );
 }
 
@@ -342,12 +343,6 @@ function getVirtualSSRImport({
   logFn?: (...args: any[]) => void;
   ssrResolver: (request: string) => string | false;
 }): string | null {
-  if (raw === "rwsdk/__ssr_bridge") {
-    const virtualId = SSR_DEP_NAMESPACE + "rwsdk/__ssr_bridge";
-    logFn?.("🔁 Rewriting bridge import: %s → %s", raw, virtualId);
-    return virtualId;
-  }
-
   // Known mapped dependency
   if (depPrefixMap.has(raw)) {
     const virtualId = depPrefixMap.get(raw)!;
@@ -366,22 +361,20 @@ function getVirtualSSRImport({
     return virtualId;
   }
   // Bare dep: resolve with ssrResolver
-  if (ssrResolver) {
-    const resolved = ssrResolver(raw);
-    if (typeof resolved === "string") {
-      const virtualId = SSR_DEP_NAMESPACE + raw;
-      depPrefixMap.set(raw, virtualId);
-      virtualSsrDeps.set(virtualId, resolved);
-      logFn?.(
-        "🔁 Rewriting bare dep with ssrResolver: %s → %s (real: %s)",
-        raw,
-        virtualId,
-        resolved,
-      );
-      return virtualId;
-    } else {
-      logFn?.("❌ ssrResolver failed for bare dep: %s", raw);
-    }
+  const resolved = ssrResolver(raw);
+  if (typeof resolved === "string") {
+    const virtualId = SSR_DEP_NAMESPACE + raw;
+    depPrefixMap.set(raw, virtualId);
+    virtualSsrDeps.set(virtualId, resolved);
+    logFn?.(
+      "�� Rewriting bare dep with ssrResolver: %s → %s (real: %s)",
+      raw,
+      virtualId,
+      resolved,
+    );
+    return virtualId;
+  } else {
+    logFn?.("❌ ssrResolver failed for bare dep: %s", raw);
   }
   // No rewrite
   return null;

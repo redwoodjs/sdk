@@ -3,7 +3,7 @@ import { createFromReadableStream } from "react-server-dom-webpack/client.edge";
 import { use } from "react";
 
 // @ts-ignore
-import { ssrRenderToReadableStream } from "rwsdk/__ssr_bridge";
+import { ssrRenderToReadableStream } from "./__rwsdk_ssr_bridge.js";
 
 export const transformRscToHtmlStream = ({
   stream,
