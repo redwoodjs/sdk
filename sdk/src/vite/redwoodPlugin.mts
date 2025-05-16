@@ -87,7 +87,6 @@ export const redwoodPlugin = async (
       isUsingPrisma,
     }),
     virtualizedSSRPlugin({ projectRootDir }),
-    reactConditionsResolverPlugin({ projectRootDir, mode }),
     tsconfigPaths({ root: projectRootDir }),
     miniflarePlugin({
       rootDir: projectRootDir,

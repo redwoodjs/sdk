@@ -38,15 +38,10 @@
  * Cloudflare Worker bundle, without a custom module graph or duplicated builds.
  */
 
-import path from "path";
 import fs from "fs/promises";
 import { Plugin } from "vite";
 import enhancedResolve from "enhanced-resolve";
-import MagicString from "magic-string";
 import debug from "debug";
-import { glob } from "glob";
-import { parse as sgParse, Lang as SgLang } from "@ast-grep/napi";
-import { ROOT_DIR } from "../lib/constants.mjs";
 
 export const SSR_BASE_NAMESPACE = "virtual:rwsdk:ssr:";
 export const SSR_MODULE_NAMESPACE = SSR_BASE_NAMESPACE + "module:";
