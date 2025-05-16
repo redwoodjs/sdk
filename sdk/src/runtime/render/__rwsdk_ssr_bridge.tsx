@@ -7,10 +7,12 @@ export const renderRscThenableToHtmlStream = ({
   thenable,
   Document,
   requestInfo,
+  nonce,
 }: {
   thenable: any;
   Document: React.FC<DocumentProps>;
   requestInfo: RequestInfo;
+  nonce?: string;
 }) => {
   const Component = () => (
     <Document {...requestInfo}>
@@ -18,5 +20,5 @@ export const renderRscThenableToHtmlStream = ({
     </Document>
   );
 
-  return renderToReadableStream(<Component />);
+  return renderToReadableStream(<Component />, { nonce });
 };

@@ -345,78 +345,105 @@ function isSSRSubgraph({
   );
 }
 
-// Shared function to load a file and rewrite imports if needed
-async function loadAndMaybeRewrite({
-  path: inputPath,
+// Shared function to rewrite imports if needed (no file reading)
+async function maybeRewriteSSRClientImports({
+  code,
+  id,
   context,
-  viteContext,
   logFn,
 }: {
-  path: string;
+  code: string;
+  id: string;
   context: VirtualizedSSRContext;
-  viteContext: any;
   logFn: (...args: any[]) => void;
 }) {
-  // If the path is virtual, strip the prefix
-  const filePath = inputPath.startsWith(SSR_NAMESPACE)
-    ? inputPath.slice(SSR_NAMESPACE.length)
-    : inputPath;
-  let code: string;
-  try {
-    code = await fs.readFile(filePath, "utf-8");
-  } catch (err) {
-    logFn("❌ Failed to read file: %s", filePath);
-    return undefined;
-  }
   const isClient = isClientModule({
-    id: inputPath,
+    id,
     code,
     logFn,
     esbuild: true,
   });
   if (isClient) {
     logFn(
-      `[loadAndMaybeRewrite] Rewriting imports for %s (isClient: %s)`,
-      inputPath,
+      `[maybeRewriteSSRClientImports] Rewriting imports for %s (isClient: %s)`,
+      id,
       isClient,
     );
     const rewritten = await rewriteSSRClientImports({
       code,
-      id: filePath,
+      id,
       context,
       logFn,
     });
     if (rewritten) {
-      code = rewritten.toString();
+      return rewritten.toString();
     } else {
       logFn(
-        `[loadAndMaybeRewrite] No rewrite needed for %s (isClient: %s)`,
-        inputPath,
+        `[maybeRewriteSSRClientImports] No rewrite needed for %s (isClient: %s)`,
+        id,
         isClient,
       );
     }
   } else {
     logFn(
-      `[loadAndMaybeRewrite] Not a client module, no rewrite needed: %s`,
-      inputPath,
+      `[maybeRewriteSSRClientImports] Not a client module, no rewrite needed: %s`,
+      id,
     );
-    return null;
   }
+  return null;
+}
 
+// Loads a file, maybe rewrites SSR client imports, then always runs transformClientComponents
+async function loadAndTransformClientModule({
+  filePath,
+  context,
+  logFn,
+}: {
+  filePath: string;
+  context: VirtualizedSSRContext;
+  logFn: (...args: any[]) => void;
+}) {
+  const realPath = filePath.startsWith(SSR_NAMESPACE)
+    ? filePath.slice(SSR_NAMESPACE.length)
+    : filePath;
+  let code: string;
+  try {
+    code = await fs.readFile(realPath, "utf-8");
+  } catch (err) {
+    logFn("❌ Failed to read file: %s", realPath);
+    return undefined;
+  }
+  const rewritten = await maybeRewriteSSRClientImports({
+    code,
+    id: filePath,
+    context,
+    logFn,
+  });
+
+  const codeToTransform = rewritten ?? code;
+
+  const clientResult = await transformClientComponents(
+    codeToTransform,
+    filePath,
+    {
+      environmentName: "worker",
+      isEsbuild: true,
+    },
+  );
+  const finalCode = clientResult?.code ?? codeToTransform;
   return {
-    contents: code,
-    loader: filePath.endsWith(".tsx")
+    contents: finalCode,
+    loader: realPath.endsWith(".tsx")
       ? "tsx"
-      : filePath.endsWith(".jsx")
+      : realPath.endsWith(".jsx")
         ? "jsx"
-        : filePath.endsWith(".ts")
+        : realPath.endsWith(".ts")
           ? "ts"
           : "js",
-    resolveDir: path.dirname(filePath),
+    resolveDir: path.dirname(realPath),
   };
 }
 
-// Update virtualizedSSREsbuildPlugin to accept context
 function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
   return {
     name: "virtualized-ssr-esbuild-plugin",
@@ -430,29 +457,11 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
         { filter: /.*/, namespace: SSR_NAMESPACE },
         async (args: any) => {
           logEsbuild("[esbuild:onLoad:module] called with args: %O", args);
-          const result = await loadAndMaybeRewrite({
-            path: args.path,
+          return loadAndTransformClientModule({
+            filePath: args.path,
             context,
-            viteContext: this,
             logFn: logEsbuildTransform,
           });
-          if (result) {
-            const clientResult = await transformClientComponents(
-              result.contents,
-              args.path,
-              {
-                environmentName: "worker",
-                isEsbuild: true,
-              },
-            );
-            if (clientResult) {
-              return {
-                ...result,
-                contents: clientResult.code,
-              };
-            }
-          }
-          return result;
         },
       );
 
@@ -460,29 +469,11 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
         { filter: /\.(js|jsx|ts|tsx|mjs|mts)$/ },
         async (args: any) => {
           logEsbuild("[esbuild:onLoad:rewrite] called with args: %O", args);
-          const result = await loadAndMaybeRewrite({
-            path: args.path,
+          return loadAndTransformClientModule({
+            filePath: args.path,
             context,
-            viteContext: this,
             logFn: logEsbuildTransform,
           });
-          if (result) {
-            const clientResult = await transformClientComponents(
-              result.contents,
-              args.path,
-              {
-                environmentName: "worker",
-                isEsbuild: true,
-              },
-            );
-            if (clientResult) {
-              return {
-                ...result,
-                contents: clientResult.code,
-              };
-            }
-          }
-          return result;
         },
       );
     },
@@ -582,18 +573,10 @@ export function virtualizedSSRPlugin({
 
       logTransform("🔎 Processing imports in client module: %s", id);
 
-      const resolveModule = async (from: string, request: string) => {
-        const result = await this.resolve(request, from);
-        return result == null ? false : result.id;
-      };
-
-      const rewritten = await rewriteSSRClientImports({
+      const rewritten = await maybeRewriteSSRClientImports({
         code,
         id,
-        context: {
-          ...context,
-          resolveModule,
-        },
+        context,
         logFn: logTransform,
       });
 
@@ -603,8 +586,8 @@ export function virtualizedSSRPlugin({
       }
 
       return {
-        code: rewritten.toString(),
-        map: rewritten.generateMap({ hires: true }),
+        code: rewritten,
+        map: undefined,
       };
     },
   };

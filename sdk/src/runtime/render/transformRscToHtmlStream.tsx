@@ -24,5 +24,6 @@ export const transformRscToHtmlStream = ({
     thenable,
     Document,
     requestInfo,
+    nonce,
   });
 };
