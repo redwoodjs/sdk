@@ -211,7 +211,7 @@ async function rewriteSSRClientImports({
       // Try SSR resolver first
       const ssrResolved = context.ssrResolver(raw);
       if (ssrResolved !== false) {
-        const virtualId = SSR_NAMESPACE + raw;
+        const virtualId = SSR_NAMESPACE + ssrResolved;
         logFn?.(
           "[rewriteSSRClientImports] SSR resolver succeeded for '%s', rewriting to '%s'",
           raw,
