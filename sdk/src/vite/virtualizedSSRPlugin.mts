@@ -182,7 +182,6 @@ function isBareImport(importPath: string): boolean {
   );
 }
 
-// Update rewriteSSRClientImports to use SSR resolver and Vite's resolver for bare imports
 async function rewriteSSRClientImports({
   code,
   id,
@@ -227,23 +226,37 @@ async function rewriteSSRClientImports({
 
     let virtualId: string | null = null;
 
+    let moduleResolved: string | false = false;
+
+    try {
+      moduleResolved = await context.resolveModule(id, raw);
+    } catch (err) {
+      logError("❌ Error resolving module: %s", err);
+    }
+
     if (isBareImport(raw)) {
-      // Try SSR resolver first
       const ssrResolved = context.resolveDep(raw);
 
       if (ssrResolved !== false) {
-        logFn?.(
-          "[rewriteSSRClientImports] SSR resolver succeeded for bare import '%s', rewriting to '%s'",
-          raw,
-          ssrResolved,
-        );
-        virtualId = SSR_NAMESPACE + ssrResolved;
+        if (ssrResolved === moduleResolved) {
+          logFn?.(
+            "[rewriteSSRClientImports] SSR resolver matched module resolver result for bare import '%s', treating it as a non-virtual module: %s",
+            raw,
+            ssrResolved,
+          );
+          virtualId = moduleResolved;
+        } else {
+          logFn?.(
+            "[rewriteSSRClientImports] SSR resolver succeeded for bare import '%s', rewriting to '%s'",
+            raw,
+            ssrResolved,
+          );
+          virtualId = SSR_NAMESPACE + ssrResolved;
+        }
       }
     }
 
     if (virtualId === null) {
-      const moduleResolved = await context.resolveModule(id, raw);
-
       if (moduleResolved) {
         logFn?.(
           "[rewriteSSRClientImports] Module resolver succeeded for import '%s' from %s, rewriting to '%s'",
