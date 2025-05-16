@@ -388,7 +388,7 @@ async function loadAndMaybeRewrite({
     if (rewritten) {
       return {
         contents: rewritten.toString(),
-        map: rewritten.generateMap({ hires: true }),
+        sourcemap: rewritten.generateMap({ hires: true }),
         loader: filePath.endsWith("x") ? "tsx" : "ts",
         resolveDir: path.dirname(filePath),
       };
