@@ -2,6 +2,7 @@ import { relative } from "node:path";
 import { Plugin } from "vite";
 import { Project, SyntaxKind, Node } from "ts-morph";
 import MagicString from "magic-string";
+import debug from "debug";
 
 interface TransformResult {
   code: string;
@@ -11,19 +12,27 @@ interface TransformResult {
 interface TransformEnv {
   environmentName: string;
   topLevelRoot?: string;
+  isEsbuild?: boolean;
 }
+
+const logVite = debug("rwsdk:vite:use-client:vite");
+const logEsbuild = debug("rwsdk:vite:use-client:esbuild");
 
 export async function transformClientComponents(
   code: string,
   id: string,
   env: TransformEnv,
 ): Promise<TransformResult | undefined> {
+  const log = env.isEsbuild ? logEsbuild : logVite;
+  log("Called transformClientComponents for id: %s, env: %O", id, env);
   // 1. Skip if not in worker environment
   if (env.environmentName !== "worker") {
+    log("Skipping: not in worker environment (%s)", env.environmentName);
     return;
   }
   // 2. Skip node_modules and vite deps
   if (id.includes(".vite/deps") || id.includes("node_modules")) {
+    log("Skipping: id includes .vite/deps or node_modules (%s)", id);
     return;
   }
   // 3. Only transform files that start with 'use client'
@@ -32,8 +41,10 @@ export async function transformClientComponents(
     cleanCode.startsWith('"use client"') ||
     cleanCode.startsWith("'use client'");
   if (!hasUseClient) {
+    log("Skipping: no 'use client' directive in %s", id);
     return { code, map: undefined };
   }
+  log("Processing 'use client' module: %s", id);
 
   // Use ts-morph to collect all export info in source order
   const project = new Project({
@@ -140,6 +151,7 @@ export async function transformClientComponents(
 
   // 4. SSR files: just remove the directive
   if (id.startsWith("virtual:rwsdk:ssr")) {
+    log("[isEsbuild=%s] Handling SSR virtual module: %s", !!env.isEsbuild, id);
     const s = new MagicString(code);
     const directiveMatch = code.match(/^(\s*)(["'])use client\2/);
     if (directiveMatch) {
@@ -168,6 +180,12 @@ export async function transformClientComponents(
 
   // Add registerClientReference assignments for named exports in order
   for (const info of exportInfos) {
+    log(
+      "[isEsbuild=%s] Registering client reference for named export: %s as %s",
+      !!env.isEsbuild,
+      info.local,
+      info.exported,
+    );
     resultLines.push(
       `const ${info.local} = registerClientReference("${id}", "${info.exported}");`,
     );
@@ -178,11 +196,21 @@ export async function transformClientComponents(
     const exportNames = exportInfos.map((e) =>
       e.local === e.exported ? e.local : `${e.local} as ${e.exported}`,
     );
+    log(
+      "[isEsbuild=%s] Exporting named exports: %O",
+      !!env.isEsbuild,
+      exportNames,
+    );
     resultLines.push(`export { ${exportNames.join(", ")} };`);
   }
 
   // Add default export if present
   if (defaultExportInfo) {
+    log(
+      "[isEsbuild=%s] Registering client reference for default export: %s",
+      !!env.isEsbuild,
+      defaultExportInfo.exported,
+    );
     resultLines.push(
       `export default registerClientReference("${id}", "${defaultExportInfo.exported}");`,
     );
@@ -190,6 +218,12 @@ export async function transformClientComponents(
 
   // Join all lines with a blank line between each statement, and end with a single trailing newline
   const finalResult = resultLines.join("\n");
+  log(
+    "[isEsbuild=%s] Final transformed code for %s:\n%s",
+    !!env.isEsbuild,
+    id,
+    finalResult,
+  );
   return {
     code: finalResult + "\n",
     map: undefined,
@@ -230,7 +264,7 @@ export function useClientEsbuildPlugin() {
     name: "use-client-esbuild-plugin",
     setup(build: any) {
       build.onLoad(
-        { filter: /\\.(js|jsx|ts|tsx|mjs|mts)$/ },
+        { filter: /\.(js|jsx|ts|tsx|mjs|mts)$/ },
         async (args: any) => {
           const fs = await import("fs/promises");
           let code: string;
@@ -242,6 +276,7 @@ export function useClientEsbuildPlugin() {
           }
           const result = await transformClientComponents(code, args.path, {
             environmentName: "worker",
+            isEsbuild: true,
           });
           if (result && result.code !== code) {
             return {

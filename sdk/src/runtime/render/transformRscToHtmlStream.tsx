@@ -1,20 +1,9 @@
 import { createModuleMap } from "./createModuleMap.js";
 import { createFromReadableStream } from "react-server-dom-webpack/client.edge";
 import { use } from "react";
-import { type RenderToReadableStreamOptions } from "react-dom/server.edge";
 
-const renderToReadableStream = async (
-  el: React.ReactNode,
-  options?: RenderToReadableStreamOptions,
-) => {
-  const bridgePath = "rwsdk/__ssr_bridge";
-
-  const { ssrRenderToReadableStream } = (await import(
-    bridgePath
-  )) as unknown as typeof import("./ssrBridge.js");
-
-  return ssrRenderToReadableStream(el, options);
-};
+// @ts-ignore
+import { ssrRenderToReadableStream } from "rwsdk/__ssr_bridge";
 
 export const transformRscToHtmlStream = ({
   stream,
@@ -37,5 +26,5 @@ export const transformRscToHtmlStream = ({
   );
   const el = <Component />;
 
-  return renderToReadableStream(el);
+  return ssrRenderToReadableStream(el);
 };
