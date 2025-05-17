@@ -544,18 +544,6 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
         };
       });
 
-      build.onLoad({ filter: /^virtual:rwsdk:ssr:/ }, async (args: any) => {
-        logEsbuild(
-          "[esbuild:onLoad:ssr] [esbuild:onLoad:module] called with args: %O",
-          args,
-        );
-        return loadAndTransformClientModule({
-          filePath: args.path,
-          context,
-          logFn: logEsbuildTransform,
-        });
-      });
-
       build.onLoad(
         { filter: /\.(js|jsx|ts|tsx|mjs|mts)$/ },
         async (args: any) => {
