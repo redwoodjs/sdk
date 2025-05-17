@@ -2,10 +2,6 @@ import path from "path";
 import enhancedResolve from "enhanced-resolve";
 import debug from "debug";
 
-const baseSSRResolver = enhancedResolve.create.sync({
-  conditionNames: ["workerd", "edge", "import", "default"],
-});
-
 function applyAlias(request: string, aliasEntries: any, name: string): string {
   if (!aliasEntries) return request;
   const logPrefix = `[${name}]`;
@@ -20,7 +16,7 @@ function applyAlias(request: string, aliasEntries: any, name: string): string {
     const { find, replacement } = entry;
     if (typeof find === "string") {
       if (request === find || request.startsWith(find + "/")) {
-        debug("rwsdk:vite:aliased-ssr-resolver")(
+        debug("rwsdk:vite:aliased-module-resolver")(
           "%s [applyAlias] Matched string alias: '%s' -> '%s' for request '%s'",
           logPrefix,
           find,
@@ -31,7 +27,7 @@ function applyAlias(request: string, aliasEntries: any, name: string): string {
       }
     } else if (find instanceof RegExp) {
       if (find.test(request)) {
-        debug("rwsdk:vite:aliased-ssr-resolver")(
+        debug("rwsdk:vite:aliased-module-resolver")(
           "%s [applyAlias] Matched RegExp alias: %O -> '%s' for request '%s'",
           logPrefix,
           find,
@@ -45,17 +41,23 @@ function applyAlias(request: string, aliasEntries: any, name: string): string {
   return request;
 }
 
-export function createAliasedSSRResolver({
-  getResolveConfig,
+export function createAliasedModuleResolver({
+  getAliases,
   roots,
-  name = "aliasedSSRResolver",
+  conditionNames = ["workerd", "edge", "import", "default"],
+  name = "aliasedModuleResolver",
 }: {
-  getResolveConfig: () => any;
+  getAliases?: () => Array<{ find: string | RegExp; replacement: string }>;
   roots: string[];
+  conditionNames?: string[];
   name?: string;
 }) {
-  const log = debug("rwsdk:vite:aliased-ssr-resolver");
+  const log = debug("rwsdk:vite:aliased-module-resolver");
   const logPrefix = `[${name}]`;
+  // Create a resolver instance with the provided conditionNames
+  const baseModuleResolver = enhancedResolve.create.sync({
+    conditionNames,
+  });
   return function resolveModule(
     request: string,
     importer: string,
@@ -67,8 +69,7 @@ export function createAliasedSSRResolver({
       importer,
     );
     let normalized = request;
-    const resolveConfig = getResolveConfig?.() || {};
-    const aliasEntries = resolveConfig.alias;
+    const aliasEntries = getAliases ? getAliases() : [];
     log("%s Alias entries: %O", logPrefix, aliasEntries);
     normalized = applyAlias(normalized, aliasEntries, name);
     log("%s After aliasing: '%s'", logPrefix, normalized);
@@ -98,7 +99,7 @@ export function createAliasedSSRResolver({
     for (const root of rootsToTry) {
       try {
         log("%s Trying root: '%s'", logPrefix, root);
-        const result = baseSSRResolver(root, normalized);
+        const result = baseModuleResolver(root, normalized);
         log("%s Resolved to: '%s' with root '%s'", logPrefix, result, root);
         return result;
       } catch (err) {

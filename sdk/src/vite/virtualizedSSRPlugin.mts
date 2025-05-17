@@ -37,13 +37,12 @@
 import path from "path";
 import fs from "fs/promises";
 import { Plugin } from "vite";
-import { createAliasedSSRResolver } from "./aliasedSSRResolver.mjs";
+import { createAliasedModuleResolver } from "./aliasedModuleResolver.mjs";
 import MagicString from "magic-string";
 import debug from "debug";
 import { parse as sgParse, Lang as SgLang } from "@ast-grep/napi";
 import { ROOT_DIR } from "../lib/constants.mjs";
 import { transformClientComponents } from "./transformClientComponents.mjs";
-import { glob } from "glob";
 import { transformServerReferences } from "./transformServerReferences.mjs";
 
 export const SSR_NAMESPACE = "virtual:rwsdk:ssr";
@@ -96,15 +95,13 @@ const IMPORT_PATTERNS = [
 
 const createSSRDepResolver = ({
   projectRootDir,
-  getResolveConfig,
 }: {
   projectRootDir: string;
-  getResolveConfig: () => any;
 }) => {
-  const resolver = createAliasedSSRResolver({
-    getResolveConfig,
+  const resolver = createAliasedModuleResolver({
     roots: [projectRootDir, ROOT_DIR],
     name: "resolveDep",
+    conditionNames: ["workerd", "edge", "import", "default"],
   });
   return (request: string): string | false => resolver(request, "/");
 };
@@ -599,16 +596,14 @@ export function virtualizedSSRPlugin({
 
       ensureConfigArrays(config);
 
-      const getResolveConfig = () => config.resolve ?? {};
-
-      context.resolveModule = createAliasedSSRResolver({
-        getResolveConfig,
+      context.resolveModule = createAliasedModuleResolver({
+        getAliases: () => getAliases(config.resolve ?? {}),
         roots: [projectRootDir],
         name: "resolveModule",
+        conditionNames: ["workerd", "edge", "import", "default"],
       });
 
       context.resolveDep = createSSRDepResolver({
-        getResolveConfig,
         projectRootDir,
       });
 
@@ -713,4 +708,19 @@ export function virtualizedSSRPlugin({
       };
     },
   };
+}
+
+function getAliases(
+  resolveConfig: any,
+): Array<{ find: string | RegExp; replacement: string }> {
+  if (!resolveConfig?.alias) return [];
+  const alias = resolveConfig.alias;
+  if (Array.isArray(alias)) {
+    return alias;
+  }
+  // Convert object form to array, ensuring replacement is a string
+  return Object.entries(alias).map(([find, replacement]) => ({
+    find,
+    replacement: String(replacement),
+  }));
 }
