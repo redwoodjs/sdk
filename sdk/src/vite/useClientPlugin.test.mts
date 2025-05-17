@@ -1,7 +1,7 @@
 import { describe, it, expect } from "vitest";
-import { transformClientComponents } from "./useClientPlugin.mjs";
+import { transformClientComponents } from "./transformClientComponents.mjs";
 
-describe("transformClientComponents", () => {
+describe("transformClientComponents (from transformClientComponents.mts)", () => {
   async function transform(code: string) {
     const result = await transformClientComponents(code, "/test/file.tsx", {
       environmentName: "worker",
@@ -292,7 +292,7 @@ export { Component, data, helper };
   });
 });
 
-describe("transformClientComponents logic branches", () => {
+describe("transformClientComponents logic branches (from transformClientComponents.mts)", () => {
   it("skips transformation if not in worker environment", async () => {
     const code = '"use client"\nexport const foo = 1;';
     const result = await transformClientComponents(code, "/test/file.tsx", {

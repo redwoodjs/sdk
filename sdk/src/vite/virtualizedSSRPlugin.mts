@@ -42,7 +42,7 @@ import MagicString from "magic-string";
 import debug from "debug";
 import { parse as sgParse, Lang as SgLang } from "@ast-grep/napi";
 import { ROOT_DIR } from "../lib/constants.mjs";
-import { transformClientComponents } from "./useClientPlugin.mjs";
+import { transformClientComponents } from "./transformClientComponents.mjs";
 
 // context(justinvdm, 2025-05-17): We have esbuild via vite, would like to use the same version for
 // compatibility/consistency
