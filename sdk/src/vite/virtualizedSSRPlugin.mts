@@ -114,7 +114,7 @@ async function rewriteSSRClientImports({
 }): Promise<MagicString | null> {
   const filePath = getRealPathFromSSRNamespace(id);
 
-  logFn?.("[rewriteSSRClientImports] called for id: **id** ==> %s", id);
+  logFn?.("[rewriteSSRClientImports] called for id: id=%s", id);
   const imports = findImportSpecifiers(
     id,
     code,
@@ -122,7 +122,7 @@ async function rewriteSSRClientImports({
     logFn,
   );
   logFn?.(
-    "[rewriteSSRClientImports] Found %d imports in **id** ==> %s",
+    "[rewriteSSRClientImports] Found %d imports in id=%s",
     imports.length,
     id,
   );
@@ -133,7 +133,7 @@ async function rewriteSSRClientImports({
   for (const i of imports) {
     const raw = i.raw;
     logFn?.(
-      "[rewriteSSRClientImports] Processing import '%s' at [%d, %d] in **id** ==> %s",
+      "[rewriteSSRClientImports] Processing import '%s' at [%d, %d] in id=%s",
       raw,
       i.s,
       i.e,
@@ -142,7 +142,7 @@ async function rewriteSSRClientImports({
 
     if (raw.startsWith(SSR_NAMESPACE)) {
       logFn?.(
-        "[rewriteSSRClientImports] Skipping already-virtual import: **import** ==> %s",
+        "[rewriteSSRClientImports] Skipping already-virtual import: import=%s",
         raw,
       );
       continue;
@@ -154,7 +154,7 @@ async function rewriteSSRClientImports({
       if (shouldRewriteBareImports) {
         virtualId = ensureSSRNamespace(raw);
         logFn?.(
-          "[rewriteSSRClientImports] Rewriting bare import **import** ==> '%s' to virtual id **virtualId** ==> '%s' (shouldRewriteBareImports: %s)",
+          "[rewriteSSRClientImports] Rewriting bare import import='%s' to virtual id virtualId='%s' (shouldRewriteBareImports: %s)",
           raw,
           virtualId,
           shouldRewriteBareImports,
@@ -165,7 +165,7 @@ async function rewriteSSRClientImports({
         if (ssrResolved !== false) {
           virtualId = ensureSSRNamespace(ssrResolved);
           logFn?.(
-            "[rewriteSSRClientImports] SSR resolver succeeded for bare import **import** ==> '%s', rewriting to **ssrResolved** ==> '%s'",
+            "[rewriteSSRClientImports] SSR resolver succeeded for bare import import='%s', rewriting to ssrResolved='%s'",
             raw,
             virtualId,
           );
@@ -179,14 +179,14 @@ async function rewriteSSRClientImports({
       if (moduleResolved) {
         virtualId = ensureSSRNamespace(moduleResolved);
         logFn?.(
-          "[rewriteSSRClientImports] Module resolver succeeded for import **import** ==> '%s' from **id** ==> %s, rewriting to **moduleResolved** ==> '%s'",
+          "[rewriteSSRClientImports] Module resolver succeeded for import import='%s' from id=%s, rewriting to moduleResolved='%s'",
           raw,
           id,
           virtualId,
         );
       } else {
         logFn?.(
-          "[rewriteSSRClientImports] Module resolver failed for import **import** ==> '%s' from **id** ==> %s, leaving as is",
+          "[rewriteSSRClientImports] Module resolver failed for import import='%s' from id=%s, leaving as is",
           raw,
           id,
         );
@@ -196,7 +196,7 @@ async function rewriteSSRClientImports({
     if (virtualId !== null) {
       ms.overwrite(i.s, i.e, virtualId);
       logFn?.(
-        "[rewriteSSRClientImports] Rewrote import **import** ==> '%s' to **virtualId** ==> '%s' in **id** ==> %s",
+        "[rewriteSSRClientImports] Rewrote import import='%s' to virtualId='%s' in id=%s",
         raw,
         virtualId,
         id,
@@ -206,13 +206,10 @@ async function rewriteSSRClientImports({
   }
 
   if (modified) {
-    logFn?.(
-      "[rewriteSSRClientImports] Rewriting complete for **id** ==> %s",
-      id,
-    );
+    logFn?.("[rewriteSSRClientImports] Rewriting complete for id=%s", id);
     return ms;
   } else {
-    logFn?.("[rewriteSSRClientImports] No changes made for **id** ==> %s", id);
+    logFn?.("[rewriteSSRClientImports] No changes made for id=%s", id);
     return null;
   }
 }

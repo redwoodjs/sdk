@@ -56,21 +56,21 @@ export function findImportSpecifiers(
             const importPath = moduleCapture.text();
             if (importPath.startsWith("virtual:")) {
               logger(
-                "[findImportSpecifiersWithPositions] Ignoring import because it starts with 'virtual:': **importPath** ==> %s",
+                "[findImportSpecifiersWithPositions] Ignoring import because it starts with 'virtual:': importPath=%s",
                 importPath,
               );
             } else if (
               ignoredImportPatterns.some((pattern) => pattern.test(importPath))
             ) {
               logger(
-                "[findImportSpecifiersWithPositions] Ignoring import because it matches IGNORED_IMPORT_PATTERNS: **importPath** ==> %s",
+                "[findImportSpecifiersWithPositions] Ignoring import because it matches IGNORED_IMPORT_PATTERNS: importPath=%s",
                 importPath,
               );
             } else {
               const { start, end } = moduleCapture.range();
               results.push({ s: start.index, e: end.index, raw: importPath });
               logger(
-                "[findImportSpecifiersWithPositions] Including import specifier: **importPath** ==> %s, **range** ==> [%d, %d]",
+                "[findImportSpecifiersWithPositions] Including import specifier: importPath=%s, range=[%d, %d]",
                 importPath,
                 start.index,
                 end.index,
