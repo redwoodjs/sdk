@@ -50,6 +50,13 @@ export const SSR_NAMESPACE_PREFIX = SSR_NAMESPACE + ":";
 
 export const SSR_ESBUILD_NAMESPACE = "__rwsdk_ssr_esbuild_namespace__";
 
+export const SSR_RESOLVER_CONDITION_NAMES = [
+  "workerd",
+  "edge",
+  "import",
+  "default",
+];
+
 const log = debug("rwsdk:vite:virtualized-ssr");
 
 const logInfo = log.extend("info");
@@ -97,7 +104,7 @@ const createSSRDepResolver = ({ projectRootDir }: { projectRootDir: string }) =>
   createModuleResolver({
     roots: [projectRootDir, ROOT_DIR],
     name: "resolveDep",
-    conditionNames: ["workerd", "edge", "import", "default"],
+    conditionNames: SSR_RESOLVER_CONDITION_NAMES,
   });
 
 function findImportSpecifiersWithPositions(
@@ -594,7 +601,7 @@ export function virtualizedSSRPlugin({
         getAliases: () => getAliases(config.resolve ?? {}),
         roots: [projectRootDir],
         name: "resolveModule",
-        conditionNames: ["workerd", "edge", "import", "default"],
+        conditionNames: SSR_RESOLVER_CONDITION_NAMES,
       });
 
       context.resolveDep = createSSRDepResolver({

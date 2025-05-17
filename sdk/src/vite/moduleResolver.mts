@@ -54,10 +54,11 @@ export function createModuleResolver({
 }) {
   const log = debug("rwsdk:vite:aliased-module-resolver");
   const logPrefix = `[${name}]`;
-  // Create a resolver instance with the provided conditionNames
+
   const baseModuleResolver = enhancedResolve.create.sync({
     conditionNames,
   });
+
   return function resolveModule(
     request: string,
     importer?: string,
