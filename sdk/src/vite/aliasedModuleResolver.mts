@@ -68,39 +68,28 @@ export function createAliasedModuleResolver({
       request,
       importer,
     );
-    let normalized = request;
     const aliasEntries = getAliases ? getAliases() : [];
     log("%s Alias entries: %O", logPrefix, aliasEntries);
-    normalized = applyAlias(normalized, aliasEntries, name);
+    const normalized = applyAlias(request, aliasEntries, name);
     log("%s After aliasing: '%s'", logPrefix, normalized);
 
-    let rootsToTry = roots && roots.length > 0 ? roots : [];
-    // If leading slash, treat as first root-rooted (for compatibility)
-    if (normalized.startsWith("/")) {
-      if (rootsToTry.length > 0) {
-        const rooted = path.join(rootsToTry[0], normalized);
-        log(
-          "%s Leading slash detected, resolving as root[0]-rooted: '%s'",
-          logPrefix,
-          rooted,
-        );
-        normalized = rooted;
-        rootsToTry = [rootsToTry[0]];
-      }
+    const result = baseModuleResolver(normalized, path.dirname(importer));
+
+    if (result) {
+      log("%s Resolved %s relative to: '%s'", logPrefix, result, importer);
+      return result;
     }
 
-    const isAbsolute = path.isAbsolute(normalized);
-
-    if (isAbsolute) {
-      log("%s Resolving absolute path: '%s'", logPrefix, normalized);
-      return normalized;
-    }
-
-    for (const root of rootsToTry) {
+    for (const root of roots) {
       try {
-        log("%s Trying root: '%s'", logPrefix, root);
         const result = baseModuleResolver(root, normalized);
-        log("%s Resolved to: '%s' with root '%s'", logPrefix, result, root);
+        log(
+          "%s Resolved %s to: '%s' with root '%s'",
+          logPrefix,
+          normalized,
+          result,
+          root,
+        );
         return result;
       } catch (err) {
         log(
