@@ -58,17 +58,12 @@ export async function transformServerReferences(
     } catch {}
   }
 
-  // SSR import path logic
   let importLine = "";
   let exportLines: string[] = [];
   if (env.importSSR) {
-    // SSR: import from rwsdk/ssr
-    importLine = 'import { createServerReference } from "rwsdk/ssr";';
-    for (const e of exports) {
-      exportLines.push(
-        `export const ${e.ln} = createServerReference(${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)});`,
-      );
-    }
+    // Just re-export everything from the original module in SSR
+    importLine = `export * from ${JSON.stringify(id)};`;
+    exportLines = [];
   } else if (env.environmentName === "worker") {
     importLine = 'import { registerServerReference } from "rwsdk/worker";';
     for (const e of exports) {

@@ -301,7 +301,7 @@ function isClientModule({
   esbuild?: boolean;
 }): boolean {
   const logger = logFn ?? (() => {});
-  if (id.includes("__rwsdk_ssr")) {
+  if (id.includes("__rwsdkssr")) {
     logger(
       `[isClientModule] Detected client module (includes __rwsdk_ssr): id=%s esbuild=%s`,
       id,
@@ -469,7 +469,7 @@ async function esbuildLoadAndTransformClientModule({
 
   // --- Server reference transform for SSR ---
   if (isClient) {
-    const serverResult = await transformServerReferences(code, filePath, {
+    const serverResult = await transformServerReferences(code, realPath, {
       environmentName: "worker",
       isEsbuild: true,
       importSSR: true,
