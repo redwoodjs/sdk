@@ -87,7 +87,12 @@ export function createModuleResolver({
       const result = attemptResolve(path.dirname(importer), normalized);
 
       if (result) {
-        log("%s Resolved %s relative to: '%s'", logPrefix, result, importer);
+        log(
+          "%s Resolved **module** ==> %s relative to: **importer** ==> %s",
+          logPrefix,
+          result,
+          importer,
+        );
         return result;
       }
     }

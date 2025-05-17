@@ -26,7 +26,7 @@
  * How it works:
  * - Maintain an SSR subgraph as part of the worker environment's module graph.
  *   Any time we see "use client", we enter the subgraph.
- * - We keep the graphs separate by rewriting imports to map to virtual files.
+ * - We keep the graphs separate by rewriting imports in SSR graph to map to virtual files.
  * - Bare imports to deps get resolved using a custom resolver so that we use
  *   import conditions relevant to SSR - note the lack of "react-server"
  *   condition: ["workerd", "edge", "import", "default"]
@@ -175,7 +175,7 @@ async function rewriteSSRClientImports({
 }): Promise<MagicString | null> {
   const filePath = getRealPathFromSSRNamespace(id);
 
-  logFn?.("[rewriteSSRClientImports] called for id: %s", id);
+  logFn?.("[rewriteSSRClientImports] called for id: **id** ==> %s", id);
   const ext = path.extname(id).toLowerCase();
   const lang =
     ext === ".tsx" || ext === ".jsx" ? SgLang.Tsx : SgLang.TypeScript;

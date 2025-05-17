@@ -23,7 +23,11 @@ export async function transformClientComponents(
   env: TransformEnv,
 ): Promise<TransformResult | undefined> {
   const log = env.isEsbuild ? logEsbuild : logVite;
-  log("Called transformClientComponents for id: %s, env: %O", id, env);
+  log(
+    "Called transformClientComponents for id: **id** ==> %s, env: %O",
+    id,
+    env,
+  );
   // 1. Skip if not in worker environment
   if (env.environmentName !== "worker") {
     log("Skipping: not in worker environment (%s)", env.environmentName);
@@ -41,7 +45,7 @@ export async function transformClientComponents(
     }
     return;
   }
-  log("Processing 'use client' module: %s", id);
+  log("Processing 'use client' module: **id** ==> %s", id);
 
   // Use ts-morph to collect all export info in source order
   const project = new Project({

@@ -25,7 +25,11 @@ export async function transformServerReferences(
   env: TransformServerEnv,
 ): Promise<TransformResult | undefined> {
   const log = env.isEsbuild ? logEsbuild : logVite;
-  log("Called transformServerReferences for id: %s, env: %O", id, env);
+  log(
+    "Called transformServerReferences for id: **id** ==> %s, env: %O",
+    id,
+    env,
+  );
 
   // Only transform files that start with 'use server'
   const cleanCode = code.trimStart();
@@ -33,13 +37,17 @@ export async function transformServerReferences(
     cleanCode.startsWith('"use server"') ||
     cleanCode.startsWith("'use server'");
   if (!hasUseServer) {
-    log("Skipping: no 'use server' directive in %s", id);
+    log("Skipping: no 'use server' directive in **id** ==> %s", id);
     if (process.env.VERBOSE) {
-      log("[VERBOSE] Returning code unchanged for %s:\n%s", id, code);
+      log(
+        "[VERBOSE] Returning code unchanged for **id** ==> %s:\n%s",
+        id,
+        code,
+      );
     }
     return;
   }
-  log("Processing 'use server' module: %s", id);
+  log("Processing 'use server' module: **id** ==> %s", id);
 
   // Remove all 'use server' directives
   let s = new MagicString(code);
@@ -84,13 +92,13 @@ export async function transformServerReferences(
   // Compose result
   const result = [importLine, ...exportLines].join("\n");
   log(
-    "[isEsbuild=%s] Final transformed code for %s:\n%s",
+    "[isEsbuild=%s] Final transformed code for **id** ==> %s:\n%s",
     !!env.isEsbuild,
     id,
     result,
   );
   if (process.env.VERBOSE) {
-    log("[VERBOSE] Transformed code for %s:\n%s", id, result);
+    log("[VERBOSE] Transformed code for **id** ==> %s:\n%s", id, result);
   }
   return {
     code: result + "\n",
