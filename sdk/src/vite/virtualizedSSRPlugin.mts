@@ -164,50 +164,6 @@ function findImportSpecifiersWithPositions(
   return results;
 }
 
-function appendNamedExportsForCJSExportDefault(code: string): string {
-  if (!code.includes("export default require_")) {
-    return code;
-  }
-
-  const root = sgParse(SgLang.JavaScript, code).root();
-
-  const exportAssignPattern = "exports.$NAME = $VAL";
-  const exportNames = new Set<string>();
-  for (const match of root.findAll(exportAssignPattern)) {
-    const nameCap = match.getMatch("NAME");
-    if (nameCap) {
-      exportNames.add(nameCap.text());
-    }
-  }
-
-  const exportDefaultPattern = "export default $DEF";
-  const defaultExportMatch = root.find(exportDefaultPattern);
-  if (!defaultExportMatch) {
-    return code;
-  }
-
-  let appended = "";
-
-  const defaultIdentifierCapture = defaultExportMatch.getMatch("DEF");
-
-  const defaultIdentifier = defaultIdentifierCapture
-    ? defaultIdentifierCapture.text()
-    : null;
-
-  if (!defaultIdentifier) {
-    return code;
-  }
-
-  for (const name of exportNames) {
-    const exportConstPattern = `export const ${name} =`;
-    if (!code.includes(exportConstPattern)) {
-      appended += `\nexport const ${name} = ${defaultIdentifier}.${name};`;
-    }
-  }
-
-  return code + appended;
-}
-
 export type VirtualizedSSRContext = {
   projectRootDir: string;
   resolveModule: (
@@ -439,31 +395,6 @@ export const ensureNamespace = (filePath: string) => {
 function detectLoader(filePath: string) {
   const ext = path.extname(filePath).toLowerCase();
   return ext === ".tsx" || ext === ".jsx" ? "tsx" : ext === ".ts" ? "ts" : "js";
-}
-
-async function convertCJSToESM({
-  filePath,
-  code: inputCode,
-}: {
-  filePath: string;
-  code: string;
-}) {
-  const loader = detectLoader(filePath);
-
-  let { code } = await esbuild.transform(inputCode, {
-    loader: detectLoader(filePath),
-    format: "esm",
-    target: "esnext",
-    sourcefile: filePath,
-    sourcemap: false,
-  });
-
-  code = appendNamedExportsForCJSExportDefault(code as string);
-
-  return {
-    code,
-    loader,
-  };
 }
 
 async function loadAndTransformClientModule({

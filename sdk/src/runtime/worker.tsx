@@ -144,7 +144,7 @@ export const defineApp = (routes: Route[]) => {
 
           const [rscPayloadStream1, rscPayloadStream2] = rscPayloadStream.tee();
 
-          const htmlStream = transformRscToHtmlStream({
+          const htmlStream = await transformRscToHtmlStream({
             stream: rscPayloadStream1,
             Document: rw.Document,
             nonce: rw.nonce,
