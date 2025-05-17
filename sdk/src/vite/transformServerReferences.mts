@@ -89,7 +89,6 @@ export async function transformServerReferences(
     }
   }
 
-  // Compose result
   const result = [importLine, ...exportLines].join("\n");
   log(
     "[isEsbuild=%s] Final transformed code for **id** ==> %s:\n%s",

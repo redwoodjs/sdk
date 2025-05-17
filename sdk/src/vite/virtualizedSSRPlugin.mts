@@ -44,6 +44,7 @@ import { parse as sgParse, Lang as SgLang } from "@ast-grep/napi";
 import { ROOT_DIR } from "../lib/constants.mjs";
 import { transformClientComponents } from "./transformClientComponents.mjs";
 import { transformServerReferences } from "./transformServerReferences.mjs";
+import { findImportSpecifiers } from "./findImportSpecifiers.mjs";
 
 export const SSR_NAMESPACE = "virtual:rwsdk:ssr";
 export const SSR_NAMESPACE_PREFIX = SSR_NAMESPACE + ":";
@@ -67,103 +68,12 @@ const logTransform = log.extend("transform");
 const logEsbuild = debug("rwsdk:vite:virtualized-ssr:esbuild");
 const logEsbuildTransform = logEsbuild.extend("transform");
 
-const IGNORED_IMPORT_PATTERNS = [
-  /^cloudflare:.*$/,
-  /^rwsdk\/worker$/,
-  /^react\/jsx-runtime$/,
-  /^react\/jsx-dev-runtime$/,
-];
-
-const IMPORT_PATTERNS = [
-  'import { $$$ } from "$MODULE"',
-  "import { $$$ } from '$MODULE'",
-  'import $DEFAULT from "$MODULE"',
-  "import $DEFAULT from '$MODULE'",
-  'import * as $NS from "$MODULE"',
-  "import * as $NS from '$MODULE'",
-  'import "$MODULE"',
-  "import '$MODULE'",
-
-  // Static Re-exports
-  'export { $$$ } from "$MODULE"',
-  "export { $$$ } from '$MODULE'",
-  'export * from "$MODULE"',
-  "export * from '$MODULE'",
-
-  // Dynamic Imports
-  'import("$MODULE")',
-  "import('$MODULE')",
-  "import(`$MODULE`)",
-
-  // CommonJS require
-  'require("$MODULE")',
-  "require('$MODULE')",
-  "require(`$MODULE`)",
-];
-
 const createSSRDepResolver = ({ projectRootDir }: { projectRootDir: string }) =>
   createModuleResolver({
     roots: [projectRootDir, ROOT_DIR],
     name: "resolveDep",
     conditionNames: SSR_RESOLVER_CONDITION_NAMES,
   });
-
-function findImportSpecifiersWithPositions(
-  code: string,
-  lang: typeof SgLang.TypeScript | typeof SgLang.Tsx,
-): Array<{ s: number; e: number; raw: string }> {
-  const results: Array<{ s: number; e: number; raw: string }> = [];
-  try {
-    const root = sgParse(lang, code);
-    for (const pattern of IMPORT_PATTERNS) {
-      try {
-        const matches = root.root().findAll(pattern);
-        for (const match of matches) {
-          const moduleCapture = match.getMatch("MODULE");
-          if (moduleCapture) {
-            const importPath = moduleCapture.text();
-            if (importPath.startsWith("virtual:")) {
-              log(
-                "[findImportSpecifiersWithPositions] Ignoring import because it starts with 'virtual:': **importPath** ==> %s",
-                importPath,
-              );
-            } else if (
-              IGNORED_IMPORT_PATTERNS.some((pattern) =>
-                pattern.test(importPath),
-              )
-            ) {
-              log(
-                "[findImportSpecifiersWithPositions] Ignoring import because it matches IGNORED_IMPORT_PATTERNS: **importPath** ==> %s",
-                importPath,
-              );
-            } else {
-              const { start, end } = moduleCapture.range();
-              results.push({ s: start.index, e: end.index, raw: importPath });
-              log(
-                "[findImportSpecifiersWithPositions] Including import specifier: **importPath** ==> %s, **range** ==> [%d, %d]",
-                importPath,
-                start.index,
-                end.index,
-              );
-            }
-          }
-        }
-      } catch (err) {
-        logError(
-          "[findImportSpecifiersWithPositions] Error processing **pattern** ==> %s: **err** ==> %O",
-          pattern,
-          err,
-        );
-      }
-    }
-  } catch (err) {
-    logError(
-      "[findImportSpecifiersWithPositions] Error parsing content: **err** ==> %O",
-      err,
-    );
-  }
-  return results;
-}
 
 export type VirtualizedSSRContext = {
   projectRootDir: string;
@@ -202,7 +112,12 @@ async function rewriteSSRClientImports({
   const ext = path.extname(id).toLowerCase();
   const lang =
     ext === ".tsx" || ext === ".jsx" ? SgLang.Tsx : SgLang.TypeScript;
-  const imports = findImportSpecifiersWithPositions(code, lang);
+  const imports = findImportSpecifiers(
+    code,
+    lang,
+    IGNORED_IMPORT_PATTERNS,
+    logFn,
+  );
   logFn?.(
     "[rewriteSSRClientImports] Found %d imports in **id** ==> %s",
     imports.length,
@@ -355,52 +270,29 @@ function isClientModule({
 async function maybeRewriteSSRClientImports({
   code,
   id,
-  isClient,
   shouldRewriteBareImports,
   context,
   logFn,
 }: {
   code: string;
   id: string;
-  isClient: boolean;
   context: VirtualizedSSRContext;
   shouldRewriteBareImports: boolean;
   logFn: (...args: any[]) => void;
 }) {
-  logFn?.(
-    "[maybeRewriteSSRClientImports] Called for id: %s (startsWith SSR_NAMESPACE: %s)",
+  logFn(`[maybeRewriteSSRClientImports] Rewriting imports for %s`, id);
+  const rewritten = await rewriteSSRClientImports({
+    code,
     id,
-    id.startsWith(SSR_NAMESPACE),
-  );
-  if (isClient) {
-    logFn(
-      `[maybeRewriteSSRClientImports] Rewriting imports for %s (isClient: %s)`,
-      id,
-      isClient,
-    );
-    const rewritten = await rewriteSSRClientImports({
-      code,
-      id,
-      context,
-      logFn,
-      shouldRewriteBareImports,
-    });
-    if (rewritten) {
-      return rewritten.toString();
-    } else {
-      logFn(
-        `[maybeRewriteSSRClientImports] No rewrite needed for %s (isClient: %s)`,
-        id,
-        isClient,
-      );
-    }
+    context,
+    logFn,
+    shouldRewriteBareImports,
+  });
+  if (rewritten) {
+    return rewritten.toString();
   } else {
-    logFn(
-      `[maybeRewriteSSRClientImports] Not a client module, no rewrite needed: %s`,
-      id,
-    );
+    logFn(`[maybeRewriteSSRClientImports] No rewrite needed for %s`, id);
   }
-  return null;
 }
 
 export const getRealPathFromSSRNamespace = (filePath: string): string => {
@@ -443,10 +335,25 @@ async function esbuildLoadAndTransformClientModule({
     esbuild: true,
   });
 
+  if (
+    !isClientModule({
+      id: filePath,
+      code: inputCode,
+      logFn,
+      esbuild: true,
+    })
+  ) {
+    logFn(
+      "⏭️ Skipping non-client module %s, returning undefined so that esbuild will handle it",
+      filePath,
+    );
+
+    return undefined;
+  }
+
   const rewritten = await maybeRewriteSSRClientImports({
     code: inputCode,
     id: filePath,
-    isClient,
     context,
     logFn,
     shouldRewriteBareImports: false,
@@ -477,41 +384,38 @@ async function esbuildLoadAndTransformClientModule({
     logFn("⏭️ No client component transform needed for %s", filePath);
   }
 
-  // --- Server reference transform for SSR ---
-  if (isClient) {
-    const serverResult = await transformServerReferences(code, realPath, {
-      environmentName: "worker",
-      isEsbuild: true,
-      importSSR: true,
-      topLevelRoot: context.projectRootDir,
-    });
-    if (serverResult) {
-      logFn("🔎 Server reference transform complete for %s", filePath);
-      code = serverResult.code;
-      modified = true;
-    } else {
-      logFn("⏭️ No server reference transform needed for %s", filePath);
-    }
+  const serverResult = await transformServerReferences(code, realPath, {
+    environmentName: "worker",
+    isEsbuild: true,
+    importSSR: true,
+    topLevelRoot: context.projectRootDir,
+  });
+  if (serverResult) {
+    logFn("🔎 Server reference transform complete for %s", filePath);
+    code = serverResult.code;
+    modified = true;
+  } else {
+    logFn("⏭️ No server reference transform needed for %s", filePath);
   }
 
   if (!modified) {
-    logFn("⏭️ No changes made for %s", filePath);
-    if (!isClient) {
+    logFn("⏭️ Returning code unmodified for client module %s", filePath);
+  } else {
+    logFn("🔎 Returning modified code for client module %s", filePath);
+    if (process.env.VERBOSE) {
       logFn(
-        "⏭️ No changes made for non-client module %s, returning undefined so that esbuild will handle it",
+        "[VERBOSE] Code for modified client module %s:\n%s",
         filePath,
+        code,
       );
-      return undefined;
-    } else {
-      logFn("🔎 Returning code unmodified for client module %s", filePath);
-      return {
-        contents: code,
-        loader: detectLoader(filePath),
-      };
     }
   }
 
-  logFn("🔎 Returning modified code for client module %s", filePath);
+  return {
+    contents: code,
+    loader: detectLoader(filePath),
+    resolveDir: path.dirname(realPath),
+  };
 
   return {
     contents: code,
@@ -720,7 +624,6 @@ export function virtualizedSSRPlugin({
       const rewritten = await maybeRewriteSSRClientImports({
         code,
         id,
-        isClient,
         context,
         logFn: logTransform,
         shouldRewriteBareImports: false,
@@ -753,3 +656,10 @@ function getAliases(
     replacement: String(replacement),
   }));
 }
+
+const IGNORED_IMPORT_PATTERNS = [
+  /^cloudflare:.*/,
+  /^rwsdk\/worker$/,
+  /^react\/jsx-runtime$/,
+  /^react\/jsx-dev-runtime$/,
+];
