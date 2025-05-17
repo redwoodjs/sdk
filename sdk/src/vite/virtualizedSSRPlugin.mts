@@ -45,11 +45,6 @@ import { ROOT_DIR } from "../lib/constants.mjs";
 import { transformClientComponents } from "./transformClientComponents.mjs";
 import { glob } from "glob";
 
-// context(justinvdm, 2025-05-17): We have esbuild via vite, would like to use the same version for
-// compatibility/consistency
-// @ts-ignore:
-import esbuild from "esbuild";
-
 export const SSR_NAMESPACE = "virtual:rwsdk:ssr";
 export const SSR_NAMESPACE_PREFIX = SSR_NAMESPACE + ":";
 
@@ -475,7 +470,7 @@ async function esbuildLoadAndTransformClientModule({
     logFn("⏭️ No changes made for %s", filePath);
     if (!isClient) {
       logFn(
-        "⏭️ Not a client module, returning undefined so that esbuild will handle it for %s",
+        "⏭️ No changes made for non-client module %s, returning undefined so that esbuild will handle it",
         filePath,
       );
       return undefined;
@@ -487,6 +482,9 @@ async function esbuildLoadAndTransformClientModule({
       };
     }
   }
+
+  logFn("🔎 Returning modified code for client module %s", filePath);
+
   return {
     contents: code,
     loader: detectLoader(filePath),
@@ -536,11 +534,15 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
         { filter: /\.(js|jsx|ts|tsx|mjs|mts)$/ },
         async (args: any) => {
           logEsbuild("[esbuild:onLoad:entry] called with args: %O", args);
-          return esbuildLoadAndTransformClientModule({
+          const result = await esbuildLoadAndTransformClientModule({
             filePath: args.path,
             context,
             logFn: logEsbuildTransform,
           });
+          if (process.env.VERBOSE) {
+            logEsbuild("[esbuild:onLoad:entry] result: %O", result);
+          }
+          return result;
         },
       );
     },
