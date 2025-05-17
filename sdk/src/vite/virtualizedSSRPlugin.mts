@@ -40,7 +40,6 @@ import { Plugin } from "vite";
 import { createModuleResolver } from "./moduleResolver.mjs";
 import MagicString from "magic-string";
 import debug from "debug";
-import { parse as sgParse, Lang as SgLang } from "@ast-grep/napi";
 import { ROOT_DIR } from "../lib/constants.mjs";
 import { transformClientComponents } from "./transformClientComponents.mjs";
 import { transformServerReferences } from "./transformServerReferences.mjs";

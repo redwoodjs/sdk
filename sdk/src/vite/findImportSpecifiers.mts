@@ -1,3 +1,5 @@
+import { parse as sgParse, Lang as SgLang } from "@ast-grep/napi";
+
 // These patterns are used to match import statements in code for SSR transformations.
 export const IMPORT_PATTERNS = [
   'import { $$$ } from "$MODULE"',
@@ -33,7 +35,7 @@ export const IMPORT_PATTERNS = [
  */
 export function findImportSpecifiers(
   code: string,
-  lang: any, // Use 'any' to avoid dependency on SgLang type here
+  lang: SgLang,
   ignoredImportPatterns: RegExp[],
   log?: (...args: any[]) => void,
 ): Array<{ s: number; e: number; raw: string }> {
@@ -41,7 +43,7 @@ export function findImportSpecifiers(
   const results: Array<{ s: number; e: number; raw: string }> = [];
   try {
     // sgParse and lang must be provided by the consumer
-    const root = (globalThis as any).sgParse(lang, code);
+    const root = sgParse(lang, code);
     for (const pattern of IMPORT_PATTERNS) {
       try {
         const matches = root.root().findAll(pattern);
