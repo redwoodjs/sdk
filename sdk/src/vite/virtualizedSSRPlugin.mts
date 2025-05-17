@@ -656,14 +656,30 @@ export function virtualizedSSRPlugin({
 
       ensureConfigArrays(config);
 
+      const getResolveConfig = () => config.resolve ?? {};
+
+      context.resolveModule = createAliasedSSRResolver({
+        getResolveConfig,
+        roots: [projectRootDir],
+        name: "resolveModule",
+      });
+
+      context.resolveDep = createSSRDepResolver({
+        getResolveConfig,
+        projectRootDir,
+      });
+
       for (const importPath of bareImports) {
-        if (!(config.optimizeDeps as any).include.includes(importPath)) {
-          (config.optimizeDeps as any).include.push(importPath);
+        const resolved = context.resolveDep(importPath);
+        if (resolved && typeof resolved === "string") {
+          if (!(config.optimizeDeps as any).include.includes(importPath)) {
+            (config.optimizeDeps as any).include.push(importPath);
+          }
+          (config.resolve as any).alias.unshift({
+            find: importPath,
+            replacement: SSR_NAMESPACE_PREFIX + resolved,
+          });
         }
-        (config.resolve as any).alias.unshift({
-          find: importPath,
-          replacement: importPath,
-        });
       }
 
       logInfo("⚙️ Setting up aliases for worker environment");
@@ -685,19 +701,6 @@ export function virtualizedSSRPlugin({
       );
 
       context.config = config;
-
-      const getResolveConfig = () => config.resolve ?? {};
-
-      context.resolveModule = createAliasedSSRResolver({
-        getResolveConfig,
-        roots: [projectRootDir],
-        name: "resolveModule",
-      });
-
-      context.resolveDep = createSSRDepResolver({
-        getResolveConfig,
-        projectRootDir,
-      });
     },
 
     resolveId(id) {
