@@ -57,7 +57,16 @@ export function createModuleResolver({
 
   const baseModuleResolver = enhancedResolve.create.sync({
     conditionNames,
+    extensions: [".mjs", ".js", ".ts", ".jsx", ".tsx"],
   });
+
+  const attemptResolve = (from: string, request: string) => {
+    try {
+      return baseModuleResolver(from, request);
+    } catch {
+      return false;
+    }
+  };
 
   return function resolveModule(
     request: string,
@@ -75,7 +84,7 @@ export function createModuleResolver({
     log("%s After aliasing: '%s'", logPrefix, normalized);
 
     if (importer != null) {
-      const result = baseModuleResolver(path.dirname(importer), normalized);
+      const result = attemptResolve(path.dirname(importer), normalized);
 
       if (result) {
         log("%s Resolved %s relative to: '%s'", logPrefix, result, importer);
@@ -85,7 +94,7 @@ export function createModuleResolver({
 
     for (const root of roots) {
       try {
-        const result = baseModuleResolver(root, normalized);
+        const result = attemptResolve(root, normalized);
         log(
           "%s Resolved %s to: '%s' with root '%s'",
           logPrefix,
