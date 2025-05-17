@@ -2,6 +2,7 @@ import { relative } from "node:path";
 import MagicString from "magic-string";
 import debug from "debug";
 import { parse } from "es-module-lexer";
+import { getRealPathFromSSRNamespace } from "./virtualizedSSRPlugin.mjs";
 
 export interface TransformServerEnv {
   environmentName: string;
@@ -62,7 +63,7 @@ export async function transformServerReferences(
   let exportLines: string[] = [];
   if (env.importSSR) {
     // Just re-export everything from the original module in SSR
-    importLine = `export * from ${JSON.stringify(id)};`;
+    importLine = `export * from ${JSON.stringify(getRealPathFromSSRNamespace(id))};`;
     exportLines = [];
   } else if (env.environmentName === "worker") {
     importLine = 'import { registerServerReference } from "rwsdk/worker";';

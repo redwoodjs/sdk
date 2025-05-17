@@ -1,7 +1,7 @@
 import { Project, SyntaxKind, Node } from "ts-morph";
 import MagicString from "magic-string";
 import debug from "debug";
-import { SSR_NAMESPACE } from "./virtualizedSSRPlugin.mjs";
+import { ensureSSRNamespace } from "./virtualizedSSRPlugin.mjs";
 
 interface TransformResult {
   code: string;
@@ -175,7 +175,7 @@ export async function transformClientComponents(
   // 4. Non-SSR files: replace all implementation with registerClientReference logic
   // Remove all original imports for non-SSR 'use client' files
   // Only add the registerClientReference import
-  const ssrModuleId = `${SSR_NAMESPACE}${id}`;
+  const ssrModuleId = ensureSSRNamespace(id);
 
   const importLine = 'import { registerClientReference } from "rwsdk/worker";';
   const ssrModuleImportLine = `import "${ssrModuleId}";`;
