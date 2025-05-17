@@ -72,23 +72,18 @@ export function createModuleResolver({
     request: string,
     importer?: string,
   ): string | false {
-    log(
-      "%s Called with request: '%s', importer: '%s'",
-      logPrefix,
-      request,
-      importer,
-    );
+    log("%s Called with request=%s, importer=%s", logPrefix, request, importer);
     const aliasEntries = getAliases ? getAliases() : [];
     log("%s Alias entries: %O", logPrefix, aliasEntries);
     const normalized = applyAlias(request, aliasEntries, name);
-    log("%s After aliasing: '%s'", logPrefix, normalized);
+    log("%s After aliasing: %s", logPrefix, normalized);
 
     if (importer != null) {
       const result = attemptResolve(path.dirname(importer), normalized);
 
       if (result) {
         log(
-          "%s Resolved **module** ==> %s relative to: **importer** ==> %s",
+          "%s Resolved module=%s relative to: importer=%s",
           logPrefix,
           result,
           importer,
@@ -100,7 +95,7 @@ export function createModuleResolver({
     for (const root of roots) {
       try {
         log(
-          "%s Attempting to resolve **module** ==> %s relative to: **root** ==> %s",
+          "%s Attempting to resolve module=%s relative to: root=%s",
           logPrefix,
           normalized,
           root,
@@ -108,7 +103,7 @@ export function createModuleResolver({
         const result = attemptResolve(root, normalized);
         if (result) {
           log(
-            "%s Resolved **module** ==> %s relative to: **root** ==> %s",
+            "%s Resolved module=%s relative to: root=%s",
             logPrefix,
             result,
             importer,
@@ -117,7 +112,7 @@ export function createModuleResolver({
         }
       } catch (err) {
         log(
-          "%s Resolution failed for **normalized** ==> %s from **root** ==> %s: %O",
+          "%s Resolution failed for normalized=%s from root=%s: %O",
           logPrefix,
           normalized,
           root,
