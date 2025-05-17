@@ -10,7 +10,7 @@ import {
 export interface TransformServerEnv {
   environmentName: string;
   isEsbuild?: boolean;
-  importSSR?: boolean;
+  isSSR?: boolean;
   topLevelRoot?: string;
 }
 
@@ -76,7 +76,7 @@ export async function transformServerReferences(
 
   let importLines: string[] = [];
   let exportLines: string[] = [];
-  if (env.importSSR) {
+  if (env.isSSR) {
     log("SSR import detected for id: %s", id);
     // Just re-export everything from the original module in SSR
     importLines.push(

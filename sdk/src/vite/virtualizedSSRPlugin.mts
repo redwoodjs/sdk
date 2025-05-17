@@ -217,7 +217,7 @@ async function rewriteSSRClientImports({
   }
 }
 
-function isClientModule({
+function isSSRModule({
   id,
   code,
   logFn,
@@ -231,7 +231,7 @@ function isClientModule({
   const logger = logFn ?? (() => {});
   if (id.includes("__rwsdkssr")) {
     logger(
-      `[isClientModule] Detected client module (includes __rwsdk_ssr): id=%s esbuild=%s`,
+      `[isSSRModule] Detected SSR module (includes __rwsdk_ssr): id=%s esbuild=%s`,
       id,
       !!esbuild,
     );
@@ -239,33 +239,11 @@ function isClientModule({
   }
   if (id.startsWith(SSR_NAMESPACE)) {
     logger(
-      `[isClientModule] Detected client module (SSR_NAMESPACE): id=%s esbuild=%s`,
+      `[isSSRModule] Detected SSR module (SSR_NAMESPACE): id=%s esbuild=%s`,
       id,
       !!esbuild,
     );
     return true;
-  }
-  if (
-    id.endsWith(".ts") ||
-    id.endsWith(".js") ||
-    id.endsWith(".tsx") ||
-    id.endsWith(".jsx") ||
-    id.endsWith(".mjs")
-  ) {
-    if (code) {
-      const firstLine = code.split("\n", 1)[0]?.trim();
-      if (
-        firstLine.startsWith("'use client'") ||
-        firstLine.startsWith('"use client"')
-      ) {
-        logger(
-          `[isClientModule] Detected client module (use client directive): id=%s esbuild=%s`,
-          id,
-          !!esbuild,
-        );
-        return true;
-      }
-    }
   }
   return false;
 }
@@ -331,47 +309,32 @@ async function esbuildLoadAndTransformClientModule({
     logFn("❌ Failed to read file: %s", realPath);
     return undefined;
   }
-  const isClient = isClientModule({
+  const isSSR = isSSRModule({
     id: filePath,
     code: inputCode,
     logFn,
     esbuild: true,
   });
 
-  if (
-    !isClientModule({
-      id: filePath,
-      code: inputCode,
-      logFn,
-      esbuild: true,
-    })
-  ) {
-    logFn(
-      "⏭️ Skipping non-client module %s, returning undefined so that esbuild will handle it",
-      filePath,
-    );
-
-    return undefined;
-  }
-
-  const rewritten = await maybeRewriteSSRClientImports({
-    code: inputCode,
-    id: filePath,
-    context,
-    logFn,
-    shouldRewriteBareImports: false,
-  });
-
   let code: string = inputCode;
   let modified: boolean = false;
 
-  if (rewritten) {
-    logFn("🔎 Import rewriting complete for %s", filePath);
-    code = rewritten;
-    modified = true;
-  } else {
-    logFn("⏭️ No import rewriting needed for %s", filePath);
-    code = inputCode;
+  if (isSSR) {
+    const rewritten = await maybeRewriteSSRClientImports({
+      code: inputCode,
+      id: filePath,
+      context,
+      logFn,
+      shouldRewriteBareImports: false,
+    });
+
+    if (rewritten) {
+      logFn("🔎 Import rewriting complete for %s", filePath);
+      code = rewritten;
+      modified = true;
+    } else {
+      logFn("⏭️ No import rewriting needed for %s", filePath);
+    }
   }
 
   const clientResult = await transformClientComponents(code, filePath, {
@@ -390,7 +353,7 @@ async function esbuildLoadAndTransformClientModule({
   const serverResult = await transformServerReferences(code, filePath, {
     environmentName: "worker",
     isEsbuild: true,
-    importSSR: true,
+    isSSR,
     topLevelRoot: context.projectRootDir,
   });
 
@@ -403,15 +366,16 @@ async function esbuildLoadAndTransformClientModule({
   }
 
   if (!modified) {
-    logFn("⏭️ Returning code unmodified for client module %s", filePath);
+    if (isSSR) {
+      logFn("⏭️ Returning code unmodified for SSR module %s", filePath);
+    } else {
+      logFn("⏭️ Returning code unmodified for non-SSR module %s", filePath);
+      return undefined;
+    }
   } else {
-    logFn("🔎 Returning modified code for client module %s", filePath);
+    logFn("🔎 Returning modified code for %s", filePath);
     if (process.env.VERBOSE) {
-      logFn(
-        "[VERBOSE] Code for modified client module %s:\n%s",
-        filePath,
-        code,
-      );
+      logFn("[VERBOSE] Code for modified %s:\n%s", filePath, code);
     }
   }
 
@@ -605,19 +569,19 @@ export function virtualizedSSRPlugin({
 
       logTransform("📝 Transform: %s", id);
 
-      const isClient = isClientModule({
+      const isSSR = isSSRModule({
         id,
         code,
         logFn: logTransform,
         esbuild: false,
       });
 
-      if (!isClient) {
-        logTransform("⏭️ Skipping non-client module: %s", id);
+      if (!isSSR) {
+        logTransform("⏭️ Skipping non-SSR module: %s", id);
         return null;
       }
 
-      logTransform("🔎 Processing imports in client module: %s", id);
+      logTransform("🔎 Processing imports in SSR module: %s", id);
 
       const rewritten = await maybeRewriteSSRClientImports({
         code,
