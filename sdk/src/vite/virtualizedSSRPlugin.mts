@@ -673,8 +673,11 @@ export function virtualizedSSRPlugin({
         const resolved = context.resolveDep(importPath);
         if (resolved && typeof resolved === "string") {
           if (!(config.optimizeDeps as any).include.includes(importPath)) {
-            (config.optimizeDeps as any).include.push(importPath);
+            (config.optimizeDeps as any).include.push(
+              ensureNamespace(importPath),
+            );
           }
+
           (config.resolve as any).alias.unshift({
             find: importPath,
             replacement: SSR_NAMESPACE_PREFIX + resolved,
