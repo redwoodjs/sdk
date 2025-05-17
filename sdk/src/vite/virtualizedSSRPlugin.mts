@@ -52,6 +52,8 @@ import esbuild from "esbuild";
 export const SSR_NAMESPACE = "virtual:rwsdk:ssr";
 export const SSR_NAMESPACE_PREFIX = SSR_NAMESPACE + ":";
 
+export const SSR_ESBUILD_NAMESPACE = "__rwsdk_ssr_esbuild_namespace__";
+
 const log = debug("rwsdk:vite:virtualized-ssr");
 
 const logInfo = log.extend("info");
@@ -278,7 +280,7 @@ async function rewriteSSRClientImports({
           raw,
           ssrResolved,
         );
-        virtualId = SSR_NAMESPACE_PREFIX + ssrResolved;
+        virtualId = ensureNamespace(ssrResolved);
       }
     }
 
@@ -292,7 +294,7 @@ async function rewriteSSRClientImports({
           id,
           moduleResolved,
         );
-        virtualId = SSR_NAMESPACE_PREFIX + moduleResolved;
+        virtualId = ensureNamespace(moduleResolved);
       } else {
         logFn?.(
           "[rewriteSSRClientImports] Module resolver failed for import '%s' from %s, leaving as is",
@@ -428,10 +430,14 @@ async function maybeRewriteSSRClientImports({
   return null;
 }
 
-export const getRealPath = (filePath: string) => {
+export const getRealPath = (filePath: string): string => {
   return filePath.startsWith(SSR_NAMESPACE_PREFIX)
     ? filePath.slice(SSR_NAMESPACE_PREFIX.length)
     : filePath;
+};
+
+export const ensureNamespace = (filePath: string) => {
+  return SSR_NAMESPACE_PREFIX + getRealPath(filePath);
 };
 
 function detectLoader(filePath: string) {
@@ -537,17 +543,44 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
   return {
     name: "virtualized-ssr-esbuild-plugin",
     setup(build: any) {
+      build.onResolve(
+        { filter: /.*/, namespace: SSR_ESBUILD_NAMESPACE },
+        (args: any) => {
+          logEsbuild(
+            "[esbuild:onResolve:namespace] called with args: %O",
+            args,
+          );
+          return {
+            path: args.path,
+            namespace: SSR_ESBUILD_NAMESPACE,
+          };
+        },
+      );
+
+      build.onLoad(
+        { filter: /.*/, namespace: SSR_ESBUILD_NAMESPACE },
+        async (args: any) => {
+          logEsbuild("[esbuild:onLoad:namespace] called with args: %O", args);
+          return loadAndTransformClientModule({
+            filePath: args.path,
+            context,
+            logFn: logEsbuildTransform,
+          });
+        },
+      );
+
       build.onResolve({ filter: /^virtual:rwsdk:ssr:/ }, (args: any) => {
-        logEsbuild("[esbuild:onResolve:ssr] called with args: %O", args);
+        logEsbuild("[esbuild:onResolve:prefix] called with args: %O", args);
         return {
-          path: getRealPath(args.path),
+          path: args.path,
+          namespace: SSR_ESBUILD_NAMESPACE,
         };
       });
 
       build.onLoad(
         { filter: /\.(js|jsx|ts|tsx|mjs|mts)$/ },
         async (args: any) => {
-          logEsbuild("[esbuild:onLoad:rewrite] called with args: %O", args);
+          logEsbuild("[esbuild:onLoad:entry] called with args: %O", args);
           return loadAndTransformClientModule({
             filePath: args.path,
             context,
