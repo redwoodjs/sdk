@@ -37,7 +37,7 @@
 import path from "path";
 import fs from "fs/promises";
 import { Plugin } from "vite";
-import enhancedResolve from "enhanced-resolve";
+import { createAliasedSSRResolver } from "./aliasedSSRResolver.mjs";
 import MagicString from "magic-string";
 import debug from "debug";
 import { parse as sgParse, Lang as SgLang } from "@ast-grep/napi";
@@ -93,18 +93,6 @@ const IMPORT_PATTERNS = [
   "require('$MODULE')",
   "require(`$MODULE`)",
 ];
-
-const baseSSRResolver = enhancedResolve.create.sync({
-  conditionNames: ["workerd", "edge", "import", "default"],
-});
-
-const ssrResolver = (request: string, importer: string): string | false => {
-  try {
-    return baseSSRResolver(path.dirname(importer), request);
-  } catch {
-    return false;
-  }
-};
 
 const createSSRDepResolver = ({
   projectRootDir,
@@ -163,9 +151,10 @@ function findImportSpecifiersWithPositions(
 
 export type VirtualizedSSRContext = {
   projectRootDir: string;
+  config: any;
   resolveModule: (
-    from: string,
     request: string,
+    importer: string,
   ) => string | false | Promise<string | false>;
   resolveDep: (request: string) => string | false;
 };
@@ -647,7 +636,8 @@ export function virtualizedSSRPlugin({
 
   const context: VirtualizedSSRContext = {
     projectRootDir,
-    resolveModule: ssrResolver,
+    config: undefined,
+    resolveModule: (request, importer) => false,
     resolveDep: createSSRDepResolver({ projectRootDir }),
   };
 
@@ -698,6 +688,14 @@ export function virtualizedSSRPlugin({
       logInfo(
         "✅ Updated Vite config to use only esbuild plugin for SSR virtual deps",
       );
+
+      // Attach config to context for later use
+      context.config = config;
+      // Always use the up-to-date config.resolve
+      context.resolveModule = createAliasedSSRResolver({
+        projectRootDir,
+        getResolveConfig: () => config.resolve,
+      });
     },
 
     resolveId(id) {
