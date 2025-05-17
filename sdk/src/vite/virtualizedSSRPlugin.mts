@@ -44,6 +44,11 @@ import { parse as sgParse, Lang as SgLang } from "@ast-grep/napi";
 import { ROOT_DIR } from "../lib/constants.mjs";
 import { transformClientComponents } from "./useClientPlugin.mjs";
 
+// context(justinvdm, 2025-05-17): We have esbuild via vite, would like to use the same version for
+// compatibility/consistency
+// @ts-ignore:
+import esbuild from "esbuild";
+
 export const SSR_NAMESPACE = "virtual:rwsdk:ssr:";
 export const SSR_ESBUILD_NAMESPACE = "rwsdk:ssr:esbuildns";
 
@@ -155,6 +160,50 @@ function findImportSpecifiersWithPositions(
     logError("❌ Error parsing content: %O", err);
   }
   return results;
+}
+
+function appendNamedExportsForCJSExportDefault(code: string): string {
+  if (!code.includes("export default require_")) {
+    return code;
+  }
+
+  const root = sgParse(SgLang.JavaScript, code).root();
+
+  const exportAssignPattern = "exports.$NAME = $VAL";
+  const exportNames = new Set<string>();
+  for (const match of root.findAll(exportAssignPattern)) {
+    const nameCap = match.getMatch("NAME");
+    if (nameCap) {
+      exportNames.add(nameCap.text());
+    }
+  }
+
+  const exportDefaultPattern = "export default $DEF";
+  const defaultExportMatch = root.find(exportDefaultPattern);
+  if (!defaultExportMatch) {
+    return code;
+  }
+
+  let appended = "";
+
+  const defaultIdentifierCapture = defaultExportMatch.getMatch("DEF");
+
+  const defaultIdentifier = defaultIdentifierCapture
+    ? defaultIdentifierCapture.text()
+    : null;
+
+  if (!defaultIdentifier) {
+    return code;
+  }
+
+  for (const name of exportNames) {
+    const exportConstPattern = `export const ${name} =`;
+    if (!code.includes(exportConstPattern)) {
+      appended += `\nexport const ${name} = ${defaultIdentifier}.${name};`;
+    }
+  }
+
+  return code + appended;
 }
 
 export type VirtualizedSSRContext = {
@@ -401,6 +450,36 @@ export const getRealPath = (filePath: string) => {
     : filePath;
 };
 
+function detectLoader(filePath: string) {
+  const ext = path.extname(filePath).toLowerCase();
+  return ext === ".tsx" || ext === ".jsx" ? "tsx" : ext === ".ts" ? "ts" : "js";
+}
+
+async function convertCJSToESM({
+  filePath,
+  code: inputCode,
+}: {
+  filePath: string;
+  code: string;
+}) {
+  const loader = detectLoader(filePath);
+
+  let { code } = await esbuild.transform(inputCode, {
+    loader: detectLoader(filePath),
+    format: "esm",
+    target: "esnext",
+    sourcefile: filePath,
+    sourcemap: false,
+  });
+
+  code = appendNamedExportsForCJSExportDefault(code as string);
+
+  return {
+    code,
+    loader,
+  };
+}
+
 async function loadAndTransformClientModule({
   filePath,
   context,
@@ -412,40 +491,60 @@ async function loadAndTransformClientModule({
 }) {
   const realPath = getRealPath(filePath);
 
-  let code: string;
+  let inputCode: string;
   try {
-    code = await fs.readFile(realPath, "utf-8");
+    inputCode = await fs.readFile(realPath, "utf-8");
   } catch (err) {
     logFn("❌ Failed to read file: %s", realPath);
     return undefined;
   }
   const rewritten = await maybeRewriteSSRClientImports({
-    code,
+    code: inputCode,
     id: filePath,
     context,
     logFn,
   });
 
-  const codeToTransform = rewritten ?? code;
+  let code: string = inputCode;
+  let modified: boolean = false;
 
-  const clientResult = await transformClientComponents(
-    codeToTransform,
+  if (rewritten) {
+    logFn("🔎 Import rewriting complete for %s", filePath);
+    code = rewritten;
+    modified = true;
+  } else {
+    logFn("⏭️ No import rewriting needed for %s", filePath);
+    code = inputCode;
+  }
+
+  const clientResult = await transformClientComponents(code, filePath, {
+    environmentName: "worker",
+    isEsbuild: true,
+  });
+
+  if (clientResult) {
+    logFn("🔎 Client component transform complete for %s", filePath);
+    code = clientResult.code;
+    modified = true;
+  } else {
+    logFn("⏭️ No client component transform needed for %s", filePath);
+  }
+
+  if (!modified) {
+    logFn("⏭️ No changes made for %s", filePath);
+    return undefined;
+  }
+
+  logFn("🔎 Changes made, converting CJS to ESM for %s", filePath);
+
+  const { code: transformedCode, loader } = await convertCJSToESM({
     filePath,
-    {
-      environmentName: "worker",
-      isEsbuild: true,
-    },
-  );
-  const finalCode = clientResult?.code ?? codeToTransform;
+    code,
+  });
+
   return {
-    contents: finalCode,
-    loader: realPath.endsWith(".tsx")
-      ? "tsx"
-      : realPath.endsWith(".jsx")
-        ? "jsx"
-        : realPath.endsWith(".ts")
-          ? "ts"
-          : "js",
+    contents: transformedCode,
+    loader,
     resolveDir: path.dirname(realPath),
   };
 }

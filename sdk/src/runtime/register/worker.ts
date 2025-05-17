@@ -1,10 +1,12 @@
-import {
-  registerServerReference as baseRegisterServerReference,
-  registerClientReference as baseRegisterClientReference,
-  decodeReply,
-} from "react-server-dom-webpack/server.edge";
+import ReactServerDom from "react-server-dom-webpack/server.edge";
 import { getModuleExport } from "../imports/worker";
 import { IS_DEV } from "../constants";
+
+const {
+  registerServerReference: baseRegisterServerReference,
+  registerClientReference: baseRegisterClientReference,
+  decodeReply,
+} = ReactServerDom;
 
 export function registerServerReference(
   action: Function,

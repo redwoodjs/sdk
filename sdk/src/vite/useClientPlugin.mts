@@ -2,8 +2,7 @@ import { Plugin } from "vite";
 import { Project, SyntaxKind, Node } from "ts-morph";
 import MagicString from "magic-string";
 import debug from "debug";
-import { SSR_NAMESPACE, getRealPath } from "./virtualizedSSRPlugin.mjs";
-import fs from "fs/promises";
+import { SSR_NAMESPACE } from "./virtualizedSSRPlugin.mjs";
 interface TransformResult {
   code: string;
   map?: any;
@@ -40,7 +39,7 @@ export async function transformClientComponents(
     if (process.env.VERBOSE) {
       log("[VERBOSE] Returning code unchanged for %s:\n%s", id, code);
     }
-    return { code, map: undefined };
+    return;
   }
   log("Processing 'use client' module: %s", id);
 
@@ -246,7 +245,6 @@ export async function transformClientComponents(
 export const useClientPlugin = (): Plugin => ({
   name: "rwsdk:use-client",
   async transform(code, id) {
-    console.log("########### transform", id);
     return transformClientComponents(code, id, {
       environmentName: this.environment?.name ?? "worker",
       topLevelRoot: this.environment?.getTopLevelConfig?.().root,

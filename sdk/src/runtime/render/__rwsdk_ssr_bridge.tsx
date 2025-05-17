@@ -1,7 +1,9 @@
 import { use } from "react";
 import { DocumentProps } from "../lib/router";
 import { RequestInfo } from "../requestInfo/types";
-import { renderToReadableStream } from "react-dom/server.edge";
+import ReactServerDom from "react-server-dom-webpack/server.edge";
+
+const { renderToReadableStream } = ReactServerDom;
 
 export const renderRscThenableToHtmlStream = ({
   thenable,
