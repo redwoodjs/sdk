@@ -522,19 +522,18 @@ async function loadAndTransformClientModule({
 
   if (!modified) {
     logFn("⏭️ No changes made for %s", filePath);
-    return undefined;
+  } else {
+    logFn("🔎 Changes made, converting CJS to ESM for %s", filePath);
+    const { code: transformedCode, loader } = await convertCJSToESM({
+      filePath,
+      code,
+    });
+    code = transformedCode;
   }
 
-  logFn("🔎 Changes made, converting CJS to ESM for %s", filePath);
-
-  const { code: transformedCode, loader } = await convertCJSToESM({
-    filePath,
-    code,
-  });
-
   return {
-    contents: transformedCode,
-    loader,
+    contents: code,
+    loader: detectLoader(filePath),
     resolveDir: path.dirname(realPath),
   };
 }
