@@ -115,12 +115,9 @@ async function rewriteSSRClientImports({
   const filePath = getRealPathFromSSRNamespace(id);
 
   logFn?.("[rewriteSSRClientImports] called for id: **id** ==> %s", id);
-  const ext = path.extname(id).toLowerCase();
-  const lang =
-    ext === ".tsx" || ext === ".jsx" ? SgLang.Tsx : SgLang.TypeScript;
   const imports = findImportSpecifiers(
+    id,
     code,
-    lang,
     IGNORED_IMPORT_PATTERNS,
     logFn,
   );

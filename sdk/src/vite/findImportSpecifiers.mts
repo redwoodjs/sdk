@@ -1,4 +1,5 @@
-import { parse as sgParse, Lang as SgLang } from "@ast-grep/napi";
+import { parse as sgParse, Lang as SgLang, Lang } from "@ast-grep/napi";
+import path from "path";
 
 // These patterns are used to match import statements in code for SSR transformations.
 export const IMPORT_PATTERNS = [
@@ -34,11 +35,13 @@ export const IMPORT_PATTERNS = [
  * @returns Array of objects with start, end, and raw import string.
  */
 export function findImportSpecifiers(
+  id: string,
   code: string,
-  lang: SgLang,
   ignoredImportPatterns: RegExp[],
   log?: (...args: any[]) => void,
 ): Array<{ s: number; e: number; raw: string }> {
+  const ext = path.extname(id).toLowerCase();
+  const lang = ext === ".tsx" || ext === ".jsx" ? Lang.Tsx : SgLang.TypeScript;
   const logger = log ?? (() => {});
   const results: Array<{ s: number; e: number; raw: string }> = [];
   try {
