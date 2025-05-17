@@ -152,23 +152,23 @@ async function rewriteSSRClientImports({
 
     if (isBareImport(raw)) {
       if (shouldRewriteBareImports) {
+        virtualId = ensureSSRNamespace(raw);
         logFn?.(
           "[rewriteSSRClientImports] Rewriting bare import **import** ==> '%s' to virtual id **virtualId** ==> '%s' (shouldRewriteBareImports: %s)",
           raw,
-          ensureSSRNamespace(raw),
+          virtualId,
           shouldRewriteBareImports,
         );
-        virtualId = ensureSSRNamespace(raw);
       } else {
         const ssrResolved = context.resolveDep(raw);
 
         if (ssrResolved !== false) {
+          virtualId = ensureSSRNamespace(ssrResolved);
           logFn?.(
             "[rewriteSSRClientImports] SSR resolver succeeded for bare import **import** ==> '%s', rewriting to **ssrResolved** ==> '%s'",
             raw,
-            ssrResolved,
+            virtualId,
           );
-          virtualId = ensureSSRNamespace(ssrResolved);
         }
       }
     }
@@ -177,13 +177,13 @@ async function rewriteSSRClientImports({
       const moduleResolved = await context.resolveModule(raw, filePath);
 
       if (moduleResolved) {
+        virtualId = ensureSSRNamespace(moduleResolved);
         logFn?.(
           "[rewriteSSRClientImports] Module resolver succeeded for import **import** ==> '%s' from **id** ==> %s, rewriting to **moduleResolved** ==> '%s'",
           raw,
           id,
-          moduleResolved,
+          virtualId,
         );
-        virtualId = ensureSSRNamespace(moduleResolved);
       } else {
         logFn?.(
           "[rewriteSSRClientImports] Module resolver failed for import **import** ==> '%s' from **id** ==> %s, leaving as is",
