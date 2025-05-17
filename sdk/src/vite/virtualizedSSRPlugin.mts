@@ -68,6 +68,13 @@ const logTransform = log.extend("transform");
 const logEsbuild = debug("rwsdk:vite:virtualized-ssr:esbuild");
 const logEsbuildTransform = logEsbuild.extend("transform");
 
+const IGNORED_IMPORT_PATTERNS = [
+  /^cloudflare:.*/,
+  /^rwsdk\/worker$/,
+  /^react\/jsx-runtime$/,
+  /^react\/jsx-dev-runtime$/,
+];
+
 const createSSRDepResolver = ({ projectRootDir }: { projectRootDir: string }) =>
   createModuleResolver({
     roots: [projectRootDir, ROOT_DIR],
@@ -650,10 +657,3 @@ function getAliases(
     replacement: String(replacement),
   }));
 }
-
-const IGNORED_IMPORT_PATTERNS = [
-  /^cloudflare:.*/,
-  /^rwsdk\/worker$/,
-  /^react\/jsx-runtime$/,
-  /^react\/jsx-dev-runtime$/,
-];
