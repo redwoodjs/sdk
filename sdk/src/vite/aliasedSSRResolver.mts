@@ -88,6 +88,13 @@ export function createAliasedSSRResolver({
       }
     }
 
+    const isAbsolute = path.isAbsolute(normalized);
+
+    if (isAbsolute) {
+      log("%s Resolving absolute path: '%s'", logPrefix, normalized);
+      return normalized;
+    }
+
     for (const root of rootsToTry) {
       try {
         log("%s Trying root: '%s'", logPrefix, root);
@@ -104,6 +111,7 @@ export function createAliasedSSRResolver({
         );
       }
     }
+
     return false;
   };
 }
