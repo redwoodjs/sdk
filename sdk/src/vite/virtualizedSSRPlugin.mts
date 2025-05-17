@@ -416,12 +416,6 @@ async function esbuildLoadAndTransformClientModule({
     loader: detectLoader(filePath),
     resolveDir: path.dirname(realPath),
   };
-
-  return {
-    contents: code,
-    loader: detectLoader(filePath),
-    resolveDir: path.dirname(realPath),
-  };
 }
 
 function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
