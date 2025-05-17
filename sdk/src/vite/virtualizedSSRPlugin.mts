@@ -37,7 +37,7 @@
 import path from "path";
 import fs from "fs/promises";
 import { Plugin } from "vite";
-import { createAliasedModuleResolver } from "./aliasedModuleResolver.mjs";
+import { createModuleResolver } from "./moduleResolver.mjs";
 import MagicString from "magic-string";
 import debug from "debug";
 import { parse as sgParse, Lang as SgLang } from "@ast-grep/napi";
@@ -93,18 +93,12 @@ const IMPORT_PATTERNS = [
   "require(`$MODULE`)",
 ];
 
-const createSSRDepResolver = ({
-  projectRootDir,
-}: {
-  projectRootDir: string;
-}) => {
-  const resolver = createAliasedModuleResolver({
+const createSSRDepResolver = ({ projectRootDir }: { projectRootDir: string }) =>
+  createModuleResolver({
     roots: [projectRootDir, ROOT_DIR],
     name: "resolveDep",
     conditionNames: ["workerd", "edge", "import", "default"],
   });
-  return (request: string): string | false => resolver(request, "/");
-};
 
 function findImportSpecifiersWithPositions(
   code: string,
@@ -596,7 +590,7 @@ export function virtualizedSSRPlugin({
 
       ensureConfigArrays(config);
 
-      context.resolveModule = createAliasedModuleResolver({
+      context.resolveModule = createModuleResolver({
         getAliases: () => getAliases(config.resolve ?? {}),
         roots: [projectRootDir],
         name: "resolveModule",

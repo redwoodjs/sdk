@@ -41,7 +41,7 @@ function applyAlias(request: string, aliasEntries: any, name: string): string {
   return request;
 }
 
-export function createAliasedModuleResolver({
+export function createModuleResolver({
   getAliases,
   roots,
   conditionNames = ["workerd", "edge", "import", "default"],
@@ -60,7 +60,7 @@ export function createAliasedModuleResolver({
   });
   return function resolveModule(
     request: string,
-    importer: string,
+    importer?: string,
   ): string | false {
     log(
       "%s Called with request: '%s', importer: '%s'",
@@ -73,11 +73,13 @@ export function createAliasedModuleResolver({
     const normalized = applyAlias(request, aliasEntries, name);
     log("%s After aliasing: '%s'", logPrefix, normalized);
 
-    const result = baseModuleResolver(normalized, path.dirname(importer));
+    if (importer != null) {
+      const result = baseModuleResolver(normalized, path.dirname(importer));
 
-    if (result) {
-      log("%s Resolved %s relative to: '%s'", logPrefix, result, importer);
-      return result;
+      if (result) {
+        log("%s Resolved %s relative to: '%s'", logPrefix, result, importer);
+        return result;
+      }
     }
 
     for (const root of roots) {
