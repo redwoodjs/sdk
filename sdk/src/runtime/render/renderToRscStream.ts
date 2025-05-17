@@ -1,7 +1,5 @@
-import ReactServerDom from "react-server-dom-webpack/server.edge";
+import { renderToReadableStream as baseRenderToRscStream } from "react-server-dom-webpack/server.edge";
 import { createClientManifest } from "./createClientManifest.js";
-
-const { renderToReadableStream: baseRenderToRscStream } = ReactServerDom;
 
 // context(justinvdm, 24 Mar 2025): React flight limits chunks to 28 bytes, so we need to rechunk
 // the stream to avoid losing data

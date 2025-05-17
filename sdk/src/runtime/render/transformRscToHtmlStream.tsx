@@ -1,10 +1,8 @@
 import { createModuleMap } from "./createModuleMap.js";
-import ReactServerDom from "react-server-dom-webpack/client.edge";
+import { createFromReadableStream } from "react-server-dom-webpack/client.edge";
 import { DocumentProps } from "../lib/router";
 import { renderRscThenableToHtmlStream } from "./__rwsdk_ssr_bridge.js";
 import { requestInfo } from "../requestInfo/worker.js";
-
-const { createFromReadableStream } = ReactServerDom;
 
 export const transformRscToHtmlStream = ({
   stream,
