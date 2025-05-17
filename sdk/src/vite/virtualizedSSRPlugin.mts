@@ -96,22 +96,17 @@ const IMPORT_PATTERNS = [
 
 const createSSRDepResolver = ({
   projectRootDir,
+  getResolveConfig,
 }: {
   projectRootDir: string;
+  getResolveConfig: () => any;
 }) => {
-  const resolveSSRDep = (request: string): string | false => {
-    try {
-      return baseSSRResolver(projectRootDir, request);
-    } catch {
-      try {
-        return baseSSRResolver(ROOT_DIR, request);
-      } catch {
-        return false;
-      }
-    }
-  };
-
-  return resolveSSRDep;
+  const resolver = createAliasedSSRResolver({
+    getResolveConfig,
+    roots: [projectRootDir, ROOT_DIR],
+    name: "resolveDep",
+  });
+  return (request: string): string | false => resolver(request, "/");
 };
 
 function findImportSpecifiersWithPositions(
@@ -637,8 +632,8 @@ export function virtualizedSSRPlugin({
   const context: VirtualizedSSRContext = {
     projectRootDir,
     config: undefined,
-    resolveModule: (request, importer) => false,
-    resolveDep: createSSRDepResolver({ projectRootDir }),
+    resolveModule: () => false,
+    resolveDep: () => false,
   };
 
   return {
@@ -689,13 +684,22 @@ export function virtualizedSSRPlugin({
         "✅ Updated Vite config to use only esbuild plugin for SSR virtual deps",
       );
 
-      // Attach config to context for later use
       context.config = config;
-      // Always use the up-to-date config.resolve
+
+      const getResolveConfig = () => config.resolve ?? {};
+
       context.resolveModule = createAliasedSSRResolver({
-        projectRootDir,
-        getResolveConfig: () => config.resolve,
+        getResolveConfig,
+        roots: [projectRootDir],
+        name: "resolveModule",
       });
+
+      context.resolveDep = (request: string) =>
+        createAliasedSSRResolver({
+          getResolveConfig,
+          roots: [projectRootDir, ROOT_DIR],
+          name: "resolveDep",
+        })(request, "/");
     },
 
     resolveId(id) {

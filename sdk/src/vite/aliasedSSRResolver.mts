@@ -2,14 +2,13 @@ import path from "path";
 import enhancedResolve from "enhanced-resolve";
 import debug from "debug";
 
-const log = debug("rwsdk:vite:aliased-ssr-resolver");
-
 const baseSSRResolver = enhancedResolve.create.sync({
   conditionNames: ["workerd", "edge", "import", "default"],
 });
 
-function applyAlias(request: string, aliasEntries: any): string {
+function applyAlias(request: string, aliasEntries: any, name: string): string {
   if (!aliasEntries) return request;
+  const logPrefix = `[${name}]`;
   // Support both array and object forms
   const entries = Array.isArray(aliasEntries)
     ? aliasEntries
@@ -21,8 +20,9 @@ function applyAlias(request: string, aliasEntries: any): string {
     const { find, replacement } = entry;
     if (typeof find === "string") {
       if (request === find || request.startsWith(find + "/")) {
-        log(
-          "[applyAlias] Matched string alias: '%s' -> '%s' for request '%s'",
+        debug("rwsdk:vite:aliased-ssr-resolver")(
+          "%s [applyAlias] Matched string alias: '%s' -> '%s' for request '%s'",
+          logPrefix,
           find,
           replacement,
           request,
@@ -31,8 +31,9 @@ function applyAlias(request: string, aliasEntries: any): string {
       }
     } else if (find instanceof RegExp) {
       if (find.test(request)) {
-        log(
-          "[applyAlias] Matched RegExp alias: %O -> '%s' for request '%s'",
+        debug("rwsdk:vite:aliased-ssr-resolver")(
+          "%s [applyAlias] Matched RegExp alias: %O -> '%s' for request '%s'",
+          logPrefix,
           find,
           replacement,
           request,
@@ -45,49 +46,69 @@ function applyAlias(request: string, aliasEntries: any): string {
 }
 
 export function createAliasedSSRResolver({
-  projectRootDir,
   getResolveConfig,
+  roots,
+  name = "aliasedSSRResolver",
 }: {
-  projectRootDir: string;
   getResolveConfig: () => any;
+  roots: string[];
+  name?: string;
 }) {
+  const log = debug("rwsdk:vite:aliased-ssr-resolver");
+  const logPrefix = `[${name}]`;
   return function resolveModule(
     request: string,
     importer: string,
   ): string | false {
     log(
-      "[resolveModule] Called with request: '%s', importer: '%s'",
+      "%s [resolveModule] Called with request: '%s', importer: '%s'",
+      logPrefix,
       request,
       importer,
     );
     let normalized = request;
     const resolveConfig = getResolveConfig?.() || {};
     const aliasEntries = resolveConfig.alias;
-    log("[resolveModule] Alias entries: %O", aliasEntries);
-    normalized = applyAlias(normalized, aliasEntries);
-    log("[resolveModule] After aliasing: '%s'", normalized);
+    log("%s [resolveModule] Alias entries: %O", logPrefix, aliasEntries);
+    normalized = applyAlias(normalized, aliasEntries, name);
+    log("%s [resolveModule] After aliasing: '%s'", logPrefix, normalized);
 
+    let rootsToTry = roots && roots.length > 0 ? roots : [];
+    // If leading slash, treat as first root-rooted (for compatibility)
     if (normalized.startsWith("/")) {
-      const rooted = path.join(projectRootDir, normalized);
-      log(
-        "[resolveModule] Leading slash detected, resolving as projectRootDir-rooted: '%s'",
-        rooted,
-      );
-      normalized = rooted;
+      if (rootsToTry.length > 0) {
+        const rooted = path.join(rootsToTry[0], normalized);
+        log(
+          "%s [resolveModule] Leading slash detected, resolving as root[0]-rooted: '%s'",
+          logPrefix,
+          rooted,
+        );
+        normalized = rooted;
+        rootsToTry = [rootsToTry[0]];
+      }
     }
 
-    try {
-      const result = baseSSRResolver(path.dirname(importer), normalized);
-      log("[resolveModule] Resolved to: '%s'", result);
-      return result;
-    } catch (err) {
-      log(
-        "[resolveModule] Resolution failed for '%s' from '%s': %O",
-        normalized,
-        importer,
-        err,
-      );
-      return false;
+    for (const root of rootsToTry) {
+      try {
+        log("%s [resolveModule] Trying root: '%s'", logPrefix, root);
+        const result = baseSSRResolver(root, normalized);
+        log(
+          "%s [resolveModule] Resolved to: '%s' with root '%s'",
+          logPrefix,
+          result,
+          root,
+        );
+        return result;
+      } catch (err) {
+        log(
+          "%s [resolveModule] Resolution failed for '%s' from root '%s': %O",
+          logPrefix,
+          normalized,
+          root,
+          err,
+        );
+      }
     }
+    return false;
   };
 }
