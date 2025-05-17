@@ -61,7 +61,7 @@ export function createAliasedSSRResolver({
     importer: string,
   ): string | false {
     log(
-      "%s [resolveModule] Called with request: '%s', importer: '%s'",
+      "%s Called with request: '%s', importer: '%s'",
       logPrefix,
       request,
       importer,
@@ -69,9 +69,9 @@ export function createAliasedSSRResolver({
     let normalized = request;
     const resolveConfig = getResolveConfig?.() || {};
     const aliasEntries = resolveConfig.alias;
-    log("%s [resolveModule] Alias entries: %O", logPrefix, aliasEntries);
+    log("%s Alias entries: %O", logPrefix, aliasEntries);
     normalized = applyAlias(normalized, aliasEntries, name);
-    log("%s [resolveModule] After aliasing: '%s'", logPrefix, normalized);
+    log("%s After aliasing: '%s'", logPrefix, normalized);
 
     let rootsToTry = roots && roots.length > 0 ? roots : [];
     // If leading slash, treat as first root-rooted (for compatibility)
@@ -79,7 +79,7 @@ export function createAliasedSSRResolver({
       if (rootsToTry.length > 0) {
         const rooted = path.join(rootsToTry[0], normalized);
         log(
-          "%s [resolveModule] Leading slash detected, resolving as root[0]-rooted: '%s'",
+          "%s Leading slash detected, resolving as root[0]-rooted: '%s'",
           logPrefix,
           rooted,
         );
@@ -90,18 +90,13 @@ export function createAliasedSSRResolver({
 
     for (const root of rootsToTry) {
       try {
-        log("%s [resolveModule] Trying root: '%s'", logPrefix, root);
+        log("%s Trying root: '%s'", logPrefix, root);
         const result = baseSSRResolver(root, normalized);
-        log(
-          "%s [resolveModule] Resolved to: '%s' with root '%s'",
-          logPrefix,
-          result,
-          root,
-        );
+        log("%s Resolved to: '%s' with root '%s'", logPrefix, result, root);
         return result;
       } catch (err) {
         log(
-          "%s [resolveModule] Resolution failed for '%s' from root '%s': %O",
+          "%s Resolution failed for '%s' from root '%s': %O",
           logPrefix,
           normalized,
           root,

@@ -506,7 +506,7 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
             args,
           );
           return {
-            path: args.path,
+            path: ensureSSRNamespace(args.path),
             namespace: SSR_ESBUILD_NAMESPACE,
           };
         },
@@ -527,7 +527,7 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
       build.onResolve({ filter: /^virtual:rwsdk:ssr:/ }, (args: any) => {
         logEsbuild("[esbuild:onResolve:prefix] called with args: %O", args);
         return {
-          path: args.path,
+          path: ensureSSRNamespace(args.path),
           namespace: SSR_ESBUILD_NAMESPACE,
         };
       });
