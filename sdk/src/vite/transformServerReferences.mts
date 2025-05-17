@@ -2,7 +2,10 @@ import { relative } from "node:path";
 import MagicString from "magic-string";
 import debug from "debug";
 import { parse } from "es-module-lexer";
-import { getRealPathFromSSRNamespace } from "./virtualizedSSRPlugin.mjs";
+import {
+  getRealPathFromSSRNamespace,
+  ensureSSRNamespace,
+} from "./virtualizedSSRPlugin.mjs";
 
 export interface TransformServerEnv {
   environmentName: string;
@@ -71,16 +74,19 @@ export async function transformServerReferences(
     }
   }
 
-  let importLine = "";
+  let importLines: string[] = [];
   let exportLines: string[] = [];
   if (env.importSSR) {
     log("SSR import detected for id: %s", id);
     // Just re-export everything from the original module in SSR
-    importLine = `export * from ${JSON.stringify(getRealPathFromSSRNamespace(id))};`;
+    importLines.push(
+      `export * from ${JSON.stringify(getRealPathFromSSRNamespace(id))};`,
+    );
     exportLines = [];
   } else if (env.environmentName === "worker") {
     log("Worker environment detected for id: %s", id);
-    importLine = 'import { registerServerReference } from "rwsdk/worker";';
+    importLines.push('import { registerServerReference } from "rwsdk/worker";');
+    importLines.push(`import ${JSON.stringify(ensureSSRNamespace(id))};`);
     for (const e of exports) {
       log("Registering server reference for export: %O in id: %s", e, id);
       exportLines.push(
@@ -89,7 +95,7 @@ export async function transformServerReferences(
     }
   } else if (env.environmentName === "client") {
     log("Client environment detected for id: %s", id);
-    importLine = 'import { createServerReference } from "rwsdk/client";';
+    importLines.push('import { createServerReference } from "rwsdk/client";');
     for (const e of exports) {
       log("Creating client server reference for export: %O in id: %s", e, id);
       exportLines.push(
@@ -100,7 +106,8 @@ export async function transformServerReferences(
 
   log("Processing complete for id: %s", id);
 
-  const result = [importLine, ...exportLines].join("\n");
+  const result = [...importLines, ...exportLines].join("\n");
+
   if (process.env.VERBOSE) {
     log("[VERBOSE] Transformed code for **id** ==> %s:\n%s", id, result);
   }

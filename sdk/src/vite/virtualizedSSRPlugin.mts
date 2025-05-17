@@ -387,12 +387,13 @@ async function esbuildLoadAndTransformClientModule({
     logFn("⏭️ No client component transform needed for %s", filePath);
   }
 
-  const serverResult = await transformServerReferences(code, realPath, {
+  const serverResult = await transformServerReferences(code, filePath, {
     environmentName: "worker",
     isEsbuild: true,
     importSSR: true,
     topLevelRoot: context.projectRootDir,
   });
+
   if (serverResult) {
     logFn("🔎 Server reference transform complete for %s", filePath);
     code = serverResult.code;
