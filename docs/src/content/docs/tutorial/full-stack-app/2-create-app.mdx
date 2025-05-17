@@ -126,7 +126,7 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
     />
 
 2. Configure the Vite Plugin
-    ```ts ins="import tailwindcss from '@tailwindcss/vite'" ins="tailwindcss()," title="vite.config.mts" ins="environments: {" ins="ssr: {}," ins="}," {2, 6-8, 11}
+    ```ts ins="import tailwindcss from '@tailwindcss/vite'" ins="tailwindcss()," title="vite.config.mts" ins={6-8} {2, 11}
     import { defineConfig } from "vite";
     import tailwindcss from '@tailwindcss/vite'
     import { redwood } from "rwsdk/vite";
@@ -381,7 +381,7 @@ Let's test to make sure our custom colors are working. On the `Login.tsx` file, 
 }
 ```
 
-When you visit https://localhost:5173/user/login, you should see a beige background color:
+When you visit http://localhost:5173/user/login, you should see a beige background color:
 
 ![](./images/testing-custom-tailwind-colors.png)
 
@@ -623,7 +623,7 @@ return (
 );
 ```
 
-Now, when you visit https://localhost:5173/user/login, you should see styled buttons:
+Now, when you visit http://localhost:5173/user/login, you should see styled buttons:
 
 ![](./images/shadcn-working.png)
 
