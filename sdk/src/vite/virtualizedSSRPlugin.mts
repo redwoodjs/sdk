@@ -381,11 +381,13 @@ function isClientModule({
 async function maybeRewriteSSRClientImports({
   code,
   id,
+  isClient,
   context,
   logFn,
 }: {
   code: string;
   id: string;
+  isClient: boolean;
   context: VirtualizedSSRContext;
   logFn: (...args: any[]) => void;
 }) {
@@ -394,12 +396,6 @@ async function maybeRewriteSSRClientImports({
     id,
     id.startsWith(SSR_NAMESPACE),
   );
-  const isClient = isClientModule({
-    id,
-    code,
-    logFn,
-    esbuild: true,
-  });
   if (isClient) {
     logFn(
       `[maybeRewriteSSRClientImports] Rewriting imports for %s (isClient: %s)`,
@@ -488,9 +484,16 @@ async function loadAndTransformClientModule({
     logFn("❌ Failed to read file: %s", realPath);
     return undefined;
   }
+  const isClient = isClientModule({
+    id: filePath,
+    code: inputCode,
+    logFn,
+    esbuild: true,
+  });
   const rewritten = await maybeRewriteSSRClientImports({
     code: inputCode,
     id: filePath,
+    isClient,
     context,
     logFn,
   });
@@ -522,18 +525,31 @@ async function loadAndTransformClientModule({
 
   if (!modified) {
     logFn("⏭️ No changes made for %s", filePath);
-  } else {
-    logFn("🔎 Changes made, converting CJS to ESM for %s", filePath);
-    const { code: transformedCode, loader } = await convertCJSToESM({
-      filePath,
-      code,
-    });
-    code = transformedCode;
+    if (!isClient) {
+      logFn(
+        "⏭️ Not a client module, returning undefined so that esbuild will handle it for %s",
+        filePath,
+      );
+      return undefined;
+    } else {
+      logFn("🔎 Returning code unmodified for client module %s", filePath);
+      return {
+        contents: code,
+        loader: detectLoader(filePath),
+      };
+    }
   }
 
+  logFn("🔎 Changes made, converting CJS to ESM for %s", filePath);
+
+  const { code: transformedCode, loader } = await convertCJSToESM({
+    filePath,
+    code,
+  });
+
   return {
-    contents: code,
-    loader: detectLoader(filePath),
+    contents: transformedCode,
+    loader,
     resolveDir: path.dirname(realPath),
   };
 }
@@ -700,7 +716,14 @@ export function virtualizedSSRPlugin({
 
       logTransform("📝 Transform: %s", id);
 
-      if (!isClientModule({ id, code, logFn: logTransform, esbuild: false })) {
+      const isClient = isClientModule({
+        id,
+        code,
+        logFn: logTransform,
+        esbuild: false,
+      });
+
+      if (!isClient) {
         logTransform("⏭️ Skipping non-client module: %s", id);
         return null;
       }
@@ -710,6 +733,7 @@ export function virtualizedSSRPlugin({
       const rewritten = await maybeRewriteSSRClientImports({
         code,
         id,
+        isClient,
         context,
         logFn: logTransform,
       });

@@ -1,5 +1,5 @@
 import type React from "react";
-import { isValidElementType } from "react-is";
+import ReactIs, { isValidElementType } from "react-is";
 import { RequestInfo } from "../requestInfo/types";
 
 export type DocumentProps = RequestInfo & {
@@ -221,7 +221,8 @@ export function render(
 
 function isRouteComponent(handler: any) {
   return (
-    (isValidElementType(handler) && handler.toString().includes("jsx")) ||
+    (ReactIs.isValidElementType(handler) &&
+      handler.toString().includes("jsx")) ||
     isClientReference(handler)
   );
 }
