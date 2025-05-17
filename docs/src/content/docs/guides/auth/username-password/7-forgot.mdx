@@ -1,0 +1,190 @@
+---
+title: Forgot Password
+slug: guides/auth/username-password/forgot
+description: Learn how to use the username and password flow with RedwoodJS.
+---
+
+import { Aside, FileTree } from "@astrojs/starlight/components";
+
+Let's start by creating a route in our `worker.tsx` file to handle the forgot password flow.
+
+```tsx title="src/app/pages/auth/worker.tsx" showLineNumbers={false}
+import { ForgotPage } from "./ForgotPage";
+...
+route("/forgot", ForgotPage),
+```
+
+Now, let's create a `ForgotPage` component.
+
+<FileTree>
+- src/
+  - app/
+    - pages/
+      - auth/
+        - ForgotPage.tsx
+</FileTree>
+
+## Setting up the Forgot Password Form
+
+Inside the `ForgotPage.tsx` file, we'll create a form that allows users to enter their email address.
+
+```tsx title="src/app/pages/auth/ForgotPage.tsx" {"1. We're using the client component in order to track state": 1} {"2. We're using state to display a message to the user": 8} {"3. This function gets called when the form is submitted": 11} {"4. We're calling the handleForgotPassword action on the server": 13} {"5. If there's an error, we display the error message": 15} {"6. If it's successful, we display a success message": 18}
+.
+"use client";
+
+import { useState } from "react";
+import { handleForgotPassword } from "./actions";
+
+const ForgotPage = () => {
+
+  const [message, setMessage] = useState<string | null>(null);
+
+
+  const handleSubmit = async (formData: FormData) => {
+
+    const result = await handleForgotPassword(formData);
+
+    if (result.error) {
+      setMessage(result.error);
+
+    } else {
+      setMessage("Please check your email for a link to reset your password.");
+    }
+  };
+
+  return (
+    <form action={handleSubmit}>
+      <h1>Forgot Your Password?</h1>
+      {message && <p className="text-red-500">{message}</p>}
+      <div>
+        <label htmlFor="email">Email</label>
+        <input type="email" name="email" placeholder="Email" />
+      </div>
+      <button type="submit">Reset Password</button>
+    </form>
+  );
+};
+
+export { ForgotPage };
+```
+
+The form itself is pretty straight forward, with generic HTML. The main difference between this form and the other forms we've created is if the form is successful, we display a success message and stay on this page. The link to reset the password will be sent to the user's email address.
+
+## Handling the Forgot Password Action
+
+Now, let's write our `handleForgotPassword` function. On the `src/app/pages/auth/actions.ts` file:
+
+```tsx title="src/app/pages/auth/actions.ts" {"1. Take the form data and get the email address": 2} {"2. Validate the form": 5} {"3. Look for the email address in the database": 14} {"4. If the email address is not found, return an error": 21} {"5. If the user is not verified, return an error": 31} {"6. Create a reset token": 39} {"7. Update the user with the reset token and expire date": 42} {"8. Send the reset token to the user's email address": 51} {"9. If there was an error sending the email, return it": 60} {"10. Return a success message": 66}
+export const handleForgotPassword = async (formData: FormData) => {
+
+  const email = formData.get("email");
+
+
+  if (!email) {
+    console.log("All fields are required");
+    return {
+      success: null,
+      error: "All fields are required",
+    };
+  }
+
+
+  const user = await db.user.findUnique({
+    where: {
+      email: email as string,
+    },
+  });
+
+
+  if (!user) {
+    console.log("User not found");
+    return {
+      success: null,
+      error: "User not found",
+    };
+  }
+
+
+
+  if (!user.verified) {
+    return {
+      success: null,
+      error: "User not verified",
+    };
+  }
+
+
+  const resetToken = crypto.randomUUID().replace(/-/g, "");
+
+
+  await db.user.update({
+    where: { id: user.id },
+    data: {
+      resetToken,
+      resetTokenExpires: new Date(Date.now() + 1000 * 60 * 60 * 24),
+    },
+  });
+
+
+  const resend = new Resend(env.RESEND_API);
+  const { data, error } = await resend.emails.send({
+    from: "Acme <onboarding@resend.dev>",
+    to: email as string,
+    subject: "Reset Your Password",
+    text: `Reset your password by clicking the link below: ${Constants.BASE_URL}/reset?token=${resetToken}`,
+  });
+
+
+  if (error) {
+    console.log("📥 Error sending email", error);
+    return { success: null, error: "Error sending email" };
+  }
+
+
+  return { success: true, error: null };
+};
+```
+
+<Aside type="caution" title="Sending Emails within Resend">
+Remember: within Resend, you'll need to verify the sending email address domain in order to send emails.
+</Aside>
+
+## Updating the User Model
+
+Now, we need to create a couple of additional columns in our `prisma.schema` file to account for the `resetToken` and `resetTokenExpires` fields.
+
+```prisma title="prisma.schema" {8-9, 13}
+model User {
+  id                  String   @id @default(uuid()) // User ID (UUID-based)
+  username            String   @unique
+  password            String
+  verificationToken   String? @unique
+  verificationExpires DateTime?
+  verified            Boolean @default(false)
+  resetToken          String? @unique
+  resetTokenExpires   DateTime?
+  email               String   @unique
+  createdAt           DateTime @default(now())
+
+  @@index([username, email, verificationToken, resetToken])
+}
+```
+
+We need to create a new migration to account for the change to the `User` model. Within the Terminal, run:
+
+```bash
+pnpm migrate:dev "Add a reset token"
+```
+
+Cool, cool, cool. Let's test this out.
+
+- Assuming the server is running (`pnpm dev`), navigate to the forgot password page: `http://localhost:3000/auth/forgot`.
+- Enter an email address that you've verified and click the "Reset Password" button.
+- Check your email for a link to reset your password.
+- Check the database to make sure that the `resetToken` and `resetTokenExpires` fields were updated.
+
+Now, we just need to handle the reset password page, for when the user clicks on the link in the email.
+
+
+
+

@@ -1,0 +1,31 @@
+---
+title: Session Based Auth
+slug: guides/auth/session-based-auth
+description: Learn how to use the session based auth flow with RedwoodJS.
+---
+
+## Overview
+Before we get into the details of writing code, let's take a step back and talk about session based authentication, the flow, security decisions, and best practices.
+
+## Sessions and Durable Objects
+There are plenty of strategies for handling authentication in web applications. One of the most popular is session-based authentication.
+
+With this method, when a user successfully logs in, the server creates a session and saves it on the server.
+
+### Pros
+1. **Server Control**: Complete control over session validity and revocation
+2. **Security**: Session ID is an opaque reference, revealing no information if intercepted
+3. **Easy Revocation**: Can invalidate sessions instantly server-side
+4. **Storage Efficiency**: Minimal data sent to client (just the session ID)
+5. **Flexibility**: Can store rich session data server-side without size constraints
+6. **Simpler Implementation**: Often easier to reason about and implement correctly
+
+Seems like a no-brainer, right? One of the main reasons that people avoid this strategy is that it requires server state, typically Redis or within the database. There are also scalability challenges and an impact on performance. Fortunate for us, though, since we're using Cloudflare services, we have access to Durable Objects for storing our session state, removing _all_ of these concerns.
+
+### What's a Durable Object?
+
+> A Durable Object is a special kind of Cloudflare Worker which uniquely combines compute with storage. Like a Worker, a Durable Object is automatically provisioned geographically close to where it is first requested, starts up quickly when needed, and shuts down when idle. You can have millions of them around the world.
+
+<cite>[Official Cloudflare Documentation](https://developers.cloudflare.com/durable-objects/#what-are-durable-objects)</cite>
+
+Regardless of whether you choose to use WebAuthn (included in the standard starter), [magic links](/guides/auth/magic-links/flow), or [username and password](/guides/auth/username-password/flow), each method will use the same session-based authentication flow, leveraging Durable Objects to store session state.
