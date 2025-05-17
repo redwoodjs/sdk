@@ -16,8 +16,8 @@ export interface TransformResult {
   map?: any;
 }
 
-const logVite = debug("rwsdk:transform-server-references:vite");
-const logEsbuild = debug("rwsdk:transform-server-references:esbuild");
+const logVite = debug("rwsdk:vite:transform-server-references:vite");
+const logEsbuild = debug("rwsdk:vite:transform-server-references:esbuild");
 
 export async function transformServerReferences(
   code: string,
@@ -58,47 +58,53 @@ export async function transformServerReferences(
   // Parse exports
   await import("es-module-lexer"); // ensure parse is initialized
   const [_, exports] = parse(code);
+  log("Parsed exports for id: %s: %O", id, exports);
 
   // Compute relativeId for registration
   let relativeId = id;
   if (env.topLevelRoot) {
     try {
       relativeId = `/${relative(env.topLevelRoot, id)}`;
-    } catch {}
+      log("Computed relativeId for id: %s: %s", id, relativeId);
+    } catch (e) {
+      log("Error computing relativeId for id: %s: %O", id, e);
+    }
   }
 
   let importLine = "";
   let exportLines: string[] = [];
   if (env.importSSR) {
+    log("SSR import detected for id: %s", id);
     // Just re-export everything from the original module in SSR
     importLine = `export * from ${JSON.stringify(getRealPathFromSSRNamespace(id))};`;
     exportLines = [];
   } else if (env.environmentName === "worker") {
+    log("Worker environment detected for id: %s", id);
     importLine = 'import { registerServerReference } from "rwsdk/worker";';
     for (const e of exports) {
+      log("Registering server reference for export: %O in id: %s", e, id);
       exportLines.push(
         `registerServerReference(${e.ln}, ${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)});`,
       );
     }
   } else if (env.environmentName === "client") {
+    log("Client environment detected for id: %s", id);
     importLine = 'import { createServerReference } from "rwsdk/client";';
     for (const e of exports) {
+      log("Creating client server reference for export: %O in id: %s", e, id);
       exportLines.push(
         `export const ${e.ln} = createServerReference(${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)});`,
       );
     }
   }
 
+  log("Processing complete for id: %s", id);
+
   const result = [importLine, ...exportLines].join("\n");
-  log(
-    "[isEsbuild=%s] Final transformed code for **id** ==> %s:\n%s",
-    !!env.isEsbuild,
-    id,
-    result,
-  );
   if (process.env.VERBOSE) {
     log("[VERBOSE] Transformed code for **id** ==> %s:\n%s", id, result);
   }
+
   return {
     code: result + "\n",
     map: s.generateMap({ hires: true }),
