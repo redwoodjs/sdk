@@ -49,8 +49,8 @@ import { transformClientComponents } from "./transformClientComponents.mjs";
 // @ts-ignore:
 import esbuild from "esbuild";
 
-export const SSR_NAMESPACE = "virtual:rwsdk:ssr:";
-export const SSR_ESBUILD_NAMESPACE = "rwsdk:ssr:esbuildns";
+export const SSR_NAMESPACE = "virtual:rwsdk:ssr";
+export const SSR_NAMESPACE_PREFIX = SSR_NAMESPACE + ":";
 
 const log = debug("rwsdk:vite:virtualized-ssr");
 
@@ -264,14 +264,6 @@ async function rewriteSSRClientImports({
         "[rewriteSSRClientImports] Skipping already-virtual import: %s",
         raw,
       );
-      if (raw.startsWith(SSR_NAMESPACE + SSR_NAMESPACE)) {
-        logFn?.(
-          "[rewriteSSRClientImports] ⚠️ Double prefix detected: %s (from %s)\nStack: %s",
-          raw,
-          id,
-          new Error().stack,
-        );
-      }
       continue;
     }
 
@@ -286,7 +278,7 @@ async function rewriteSSRClientImports({
           raw,
           ssrResolved,
         );
-        virtualId = SSR_NAMESPACE + ssrResolved;
+        virtualId = SSR_NAMESPACE_PREFIX + ssrResolved;
       }
     }
 
@@ -300,7 +292,7 @@ async function rewriteSSRClientImports({
           id,
           moduleResolved,
         );
-        virtualId = SSR_NAMESPACE + moduleResolved;
+        virtualId = SSR_NAMESPACE_PREFIX + moduleResolved;
       } else {
         logFn?.(
           "[rewriteSSRClientImports] Module resolver failed for import '%s' from %s, leaving as is",
@@ -311,14 +303,6 @@ async function rewriteSSRClientImports({
     }
 
     if (virtualId !== null) {
-      if (virtualId.startsWith(SSR_NAMESPACE + SSR_NAMESPACE)) {
-        logFn?.(
-          "[rewriteSSRClientImports] ⚠️ About to write double-prefixed import: %s (from %s)\nStack: %s",
-          virtualId,
-          id,
-          new Error().stack,
-        );
-      }
       ms.overwrite(i.s, i.e, virtualId);
       logFn?.(
         "[rewriteSSRClientImports] Rewrote import '%s' to '%s' in %s",
@@ -445,8 +429,8 @@ async function maybeRewriteSSRClientImports({
 }
 
 export const getRealPath = (filePath: string) => {
-  return filePath.startsWith(SSR_NAMESPACE)
-    ? filePath.slice(SSR_NAMESPACE.length)
+  return filePath.startsWith(SSR_NAMESPACE_PREFIX)
+    ? filePath.slice(SSR_NAMESPACE_PREFIX.length)
     : filePath;
 };
 
@@ -553,22 +537,54 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
   return {
     name: "virtualized-ssr-esbuild-plugin",
     setup(build: any) {
-      build.onResolve({ filter: /^virtual:rwsdk:ssr:/ }, (args: any) => ({
-        path: args.path,
-        namespace: SSR_ESBUILD_NAMESPACE,
-      }));
+      build.onResolve({ filter: /^virtual:rwsdk:ssr:/ }, (args: any) => {
+        logEsbuild("[esbuild:onResolve:ssr] called with args: %O", args);
+        return {
+          path: getRealPath(args.path),
+          //namespace: SSR_NAMESPACE,
+        };
+      });
 
-      build.onLoad(
-        { filter: /.*/, namespace: SSR_ESBUILD_NAMESPACE },
-        async (args: any) => {
-          logEsbuild("[esbuild:onLoad:module] called with args: %O", args);
-          return loadAndTransformClientModule({
-            filePath: args.path,
-            context,
-            logFn: logEsbuildTransform,
-          });
-        },
-      );
+      //build.onResolve(
+      //  { filter: /.*/, namespace: SSR_NAMESPACE },
+      //  (args: any) => {
+      //    logEsbuild(
+      //      "[esbuild:onResolve:ssr-namespace] called with args: %O",
+      //      args,
+      //    );
+      //    return {
+      //      path: getRealPath(args.path),
+      //      namespace: SSR_NAMESPACE,
+      //    };
+      //  },
+      //);
+
+      build.onLoad({ filter: /^virtual:rwsdk:ssr:/ }, async (args: any) => {
+        logEsbuild(
+          "[esbuild:onLoad:ssr] [esbuild:onLoad:module] called with args: %O",
+          args,
+        );
+        return loadAndTransformClientModule({
+          filePath: args.path,
+          context,
+          logFn: logEsbuildTransform,
+        });
+      });
+
+      //build.onLoad(
+      //  { filter: /.*/, namespace: SSR_NAMESPACE },
+      //  async (args: any) => {
+      //    logEsbuild(
+      //      "[esbuild:onLoad:ssr-namespace] [esbuild:onLoad:module] called with args: %O",
+      //      args,
+      //    );
+      //    return loadAndTransformClientModule({
+      //      filePath: SSR_NAMESPACE_PREFIX + args.path,
+      //      context,
+      //      logFn: logEsbuildTransform,
+      //    });
+      //  },
+      //);
 
       build.onLoad(
         { filter: /\.(js|jsx|ts|tsx|mjs|mts)$/ },
@@ -669,13 +685,6 @@ export function virtualizedSSRPlugin({
 
     load(id) {
       logResolve("[plugin:load] called with id: %s", id);
-      if (id.startsWith(SSR_NAMESPACE + SSR_NAMESPACE)) {
-        logResolve(
-          "⚠️ [plugin:load] Double SSR_NAMESPACE prefix detected: %s\nStack: %s",
-          id,
-          new Error().stack,
-        );
-      }
       if (!id.startsWith(SSR_NAMESPACE)) return null;
 
       const moduleId = id.slice(SSR_NAMESPACE.length);
