@@ -74,7 +74,7 @@ export function createModuleResolver({
     log("%s After aliasing: '%s'", logPrefix, normalized);
 
     if (importer != null) {
-      const result = baseModuleResolver(normalized, path.dirname(importer));
+      const result = baseModuleResolver(path.dirname(importer), normalized);
 
       if (result) {
         log("%s Resolved %s relative to: '%s'", logPrefix, result, importer);
@@ -84,7 +84,7 @@ export function createModuleResolver({
 
     for (const root of roots) {
       try {
-        const result = baseModuleResolver(normalized, root);
+        const result = baseModuleResolver(root, normalized);
         log(
           "%s Resolved %s to: '%s' with root '%s'",
           logPrefix,
