@@ -43,6 +43,7 @@ import debug from "debug";
 import { parse as sgParse, Lang as SgLang } from "@ast-grep/napi";
 import { ROOT_DIR } from "../lib/constants.mjs";
 import { transformClientComponents } from "./transformClientComponents.mjs";
+import { glob } from "glob";
 
 // context(justinvdm, 2025-05-17): We have esbuild via vite, would like to use the same version for
 // compatibility/consistency
@@ -546,6 +547,71 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
   };
 }
 
+async function scanForBareImports({
+  projectRootDir,
+  logInfo,
+  findImportSpecifiersWithPositions,
+  isBareImport,
+}: {
+  projectRootDir: string;
+  logInfo: (...args: any[]) => void;
+  findImportSpecifiersWithPositions: (
+    code: string,
+    lang: any,
+  ) => Array<{ s: number; e: number; raw: string }>;
+  isBareImport: (importPath: string) => boolean;
+}): Promise<Set<string>> {
+  const globPattern = "src/**/*.{ts,tsx,js,jsx}";
+  let bareImports = new Set<string>();
+  try {
+    const files = await glob(globPattern, {
+      cwd: projectRootDir,
+      absolute: true,
+    });
+    for (const file of files) {
+      const filePath = file as string;
+      let code;
+      try {
+        code = await fs.readFile(filePath, "utf-8");
+      } catch (err) {
+        logInfo("❌ Failed to read file during scan: %s", filePath);
+        continue;
+      }
+      const ext = path.extname(filePath).toLowerCase();
+      const lang =
+        ext === ".tsx" || ext === ".jsx" ? SgLang.Tsx : SgLang.TypeScript;
+      const imports = findImportSpecifiersWithPositions(code, lang);
+      for (const i of imports) {
+        if (isBareImport(i.raw)) {
+          bareImports.add(i.raw);
+        }
+      }
+    }
+    logInfo("🔎 Initial scan found %d unique bare imports:", bareImports.size);
+    for (const imp of bareImports) {
+      logInfo("   - %s", imp);
+    }
+  } catch (err) {
+    logInfo("❌ Error during initial scan for bare imports: %O", err);
+  }
+  return bareImports;
+}
+
+function ensureConfigArrays(config: any) {
+  config.optimizeDeps ??= {};
+  config.optimizeDeps.include ??= [];
+  config.optimizeDeps.esbuildOptions ??= {};
+  config.optimizeDeps.esbuildOptions.plugins ??= [];
+  config.resolve ??= {};
+  (config.resolve as any).alias ??= [];
+  if (!Array.isArray((config.resolve as any).alias)) {
+    const aliasObj = (config.resolve as any).alias;
+    (config.resolve as any).alias = Object.entries(aliasObj).map(
+      ([find, replacement]) => ({ find, replacement }),
+    );
+  }
+}
+
 export function virtualizedSSRPlugin({
   projectRootDir,
 }: {
@@ -576,30 +642,36 @@ export function virtualizedSSRPlugin({
         return;
       }
 
+      const bareImports = await scanForBareImports({
+        projectRootDir,
+        logInfo,
+        findImportSpecifiersWithPositions,
+        isBareImport,
+      });
+
+      ensureConfigArrays(config);
+
+      for (const importPath of bareImports) {
+        if (!(config.optimizeDeps as any).include.includes(importPath)) {
+          (config.optimizeDeps as any).include.push(importPath);
+        }
+        (config.resolve as any).alias.unshift({
+          find: importPath,
+          replacement: importPath,
+        });
+      }
+
       logInfo("⚙️ Setting up aliases for worker environment");
       logInfo("📊 Configuration state:");
       logInfo("   - Project root: %s", projectRootDir);
       logInfo("   - Virtual SSR namespace: %s", SSR_NAMESPACE);
 
-      config.resolve ??= {};
-      (config.resolve as any).alias ??= [];
-
-      if (!Array.isArray((config.resolve as any).alias)) {
-        logInfo("⚙️ Converting alias object to array");
-        const aliasObj = (config.resolve as any).alias;
-        (config.resolve as any).alias = Object.entries(aliasObj).map(
-          ([find, replacement]) => ({ find, replacement }),
-        );
-      }
-
-      config.optimizeDeps ??= {};
-      config.optimizeDeps.esbuildOptions ??= {};
-      config.optimizeDeps.esbuildOptions.plugins ??= [];
-      config.optimizeDeps.esbuildOptions.plugins =
-        config.optimizeDeps.esbuildOptions.plugins.filter(
-          (p: any) => p?.name !== "virtualized-ssr-esbuild-plugin",
-        );
-      config.optimizeDeps.esbuildOptions.plugins.unshift(
+      (config.optimizeDeps as any).esbuildOptions.plugins = (
+        config.optimizeDeps as any
+      ).esbuildOptions.plugins.filter(
+        (p: any) => p?.name !== "virtualized-ssr-esbuild-plugin",
+      );
+      (config.optimizeDeps as any).esbuildOptions.plugins.unshift(
         virtualizedSSREsbuildPlugin(context),
       );
 
