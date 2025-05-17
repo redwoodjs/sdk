@@ -99,18 +99,25 @@ export function createModuleResolver({
 
     for (const root of roots) {
       try {
-        const result = attemptResolve(root, normalized);
         log(
-          "%s Resolved %s to: '%s' with root '%s'",
+          "%s Attempting to resolve **module** ==> %s relative to: **root** ==> %s",
           logPrefix,
           normalized,
-          result,
           root,
         );
-        return result;
+        const result = attemptResolve(root, normalized);
+        if (result) {
+          log(
+            "%s Resolved **module** ==> %s relative to: **root** ==> %s",
+            logPrefix,
+            result,
+            importer,
+          );
+          return result;
+        }
       } catch (err) {
         log(
-          "%s Resolution failed for '%s' from root '%s': %O",
+          "%s Resolution failed for **normalized** ==> %s from **root** ==> %s: %O",
           logPrefix,
           normalized,
           root,

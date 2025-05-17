@@ -147,7 +147,7 @@ export const defineApp = (routes: Route[]) => {
           const htmlStream = await transformRscToHtmlStream({
             stream: rscPayloadStream1,
             Document: rw.Document,
-            nonce: rw.nonce,
+            requestInfo,
           });
 
           const html = htmlStream.pipeThrough(

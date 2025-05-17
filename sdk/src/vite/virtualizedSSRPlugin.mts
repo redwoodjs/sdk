@@ -69,6 +69,7 @@ const logEsbuildTransform = logEsbuild.extend("transform");
 
 const IGNORED_IMPORT_PATTERNS = [
   /^cloudflare:.*$/,
+  /^rwsdk\/worker$/,
   /^react\/jsx-runtime$/,
   /^react\/jsx-dev-runtime$/,
 ];
@@ -121,23 +122,45 @@ function findImportSpecifiersWithPositions(
           const moduleCapture = match.getMatch("MODULE");
           if (moduleCapture) {
             const importPath = moduleCapture.text();
-            if (
-              !importPath.startsWith("virtual:") &&
-              !IGNORED_IMPORT_PATTERNS.some((pattern) =>
+            if (importPath.startsWith("virtual:")) {
+              log(
+                "[findImportSpecifiersWithPositions] Ignoring import because it starts with 'virtual:': **importPath** ==> %s",
+                importPath,
+              );
+            } else if (
+              IGNORED_IMPORT_PATTERNS.some((pattern) =>
                 pattern.test(importPath),
               )
             ) {
+              log(
+                "[findImportSpecifiersWithPositions] Ignoring import because it matches IGNORED_IMPORT_PATTERNS: **importPath** ==> %s",
+                importPath,
+              );
+            } else {
               const { start, end } = moduleCapture.range();
               results.push({ s: start.index, e: end.index, raw: importPath });
+              log(
+                "[findImportSpecifiersWithPositions] Including import specifier: **importPath** ==> %s, **range** ==> [%d, %d]",
+                importPath,
+                start.index,
+                end.index,
+              );
             }
           }
         }
       } catch (err) {
-        logError("❌ Error processing pattern %s: %O", pattern, err);
+        logError(
+          "[findImportSpecifiersWithPositions] Error processing **pattern** ==> %s: **err** ==> %O",
+          pattern,
+          err,
+        );
       }
     }
   } catch (err) {
-    logError("❌ Error parsing content: %O", err);
+    logError(
+      "[findImportSpecifiersWithPositions] Error parsing content: **err** ==> %O",
+      err,
+    );
   }
   return results;
 }
@@ -181,7 +204,7 @@ async function rewriteSSRClientImports({
     ext === ".tsx" || ext === ".jsx" ? SgLang.Tsx : SgLang.TypeScript;
   const imports = findImportSpecifiersWithPositions(code, lang);
   logFn?.(
-    "[rewriteSSRClientImports] Found %d imports in %s",
+    "[rewriteSSRClientImports] Found %d imports in **id** ==> %s",
     imports.length,
     id,
   );
@@ -192,15 +215,16 @@ async function rewriteSSRClientImports({
   for (const i of imports) {
     const raw = i.raw;
     logFn?.(
-      "[rewriteSSRClientImports] Processing import '%s' at [%d, %d]",
+      "[rewriteSSRClientImports] Processing import '%s' at [%d, %d] in **id** ==> %s",
       raw,
       i.s,
       i.e,
+      id,
     );
 
     if (raw.startsWith(SSR_NAMESPACE)) {
       logFn?.(
-        "[rewriteSSRClientImports] Skipping already-virtual import: %s",
+        "[rewriteSSRClientImports] Skipping already-virtual import: **import** ==> %s",
         raw,
       );
       continue;
@@ -211,9 +235,10 @@ async function rewriteSSRClientImports({
     if (isBareImport(raw)) {
       if (shouldRewriteBareImports) {
         logFn?.(
-          "[rewriteSSRClientImports] Rewriting bare import '%s' to virtual id '%s' (shouldRewriteBareImports: %s)",
+          "[rewriteSSRClientImports] Rewriting bare import **import** ==> '%s' to virtual id **virtualId** ==> '%s' (shouldRewriteBareImports: %s)",
           raw,
           ensureSSRNamespace(raw),
+          shouldRewriteBareImports,
         );
         virtualId = ensureSSRNamespace(raw);
       } else {
@@ -221,7 +246,7 @@ async function rewriteSSRClientImports({
 
         if (ssrResolved !== false) {
           logFn?.(
-            "[rewriteSSRClientImports] SSR resolver succeeded for bare import '%s', rewriting to '%s'",
+            "[rewriteSSRClientImports] SSR resolver succeeded for bare import **import** ==> '%s', rewriting to **ssrResolved** ==> '%s'",
             raw,
             ssrResolved,
           );
@@ -235,7 +260,7 @@ async function rewriteSSRClientImports({
 
       if (moduleResolved) {
         logFn?.(
-          "[rewriteSSRClientImports] Module resolver succeeded for import '%s' from %s, rewriting to '%s'",
+          "[rewriteSSRClientImports] Module resolver succeeded for import **import** ==> '%s' from **id** ==> %s, rewriting to **moduleResolved** ==> '%s'",
           raw,
           id,
           moduleResolved,
@@ -243,7 +268,7 @@ async function rewriteSSRClientImports({
         virtualId = ensureSSRNamespace(moduleResolved);
       } else {
         logFn?.(
-          "[rewriteSSRClientImports] Module resolver failed for import '%s' from %s, leaving as is",
+          "[rewriteSSRClientImports] Module resolver failed for import **import** ==> '%s' from **id** ==> %s, leaving as is",
           raw,
           id,
         );
@@ -253,7 +278,7 @@ async function rewriteSSRClientImports({
     if (virtualId !== null) {
       ms.overwrite(i.s, i.e, virtualId);
       logFn?.(
-        "[rewriteSSRClientImports] Rewrote import '%s' to '%s' in %s",
+        "[rewriteSSRClientImports] Rewrote import **import** ==> '%s' to **virtualId** ==> '%s' in **id** ==> %s",
         raw,
         virtualId,
         id,
@@ -263,10 +288,13 @@ async function rewriteSSRClientImports({
   }
 
   if (modified) {
-    logFn?.("[rewriteSSRClientImports] Rewriting complete for %s", id);
+    logFn?.(
+      "[rewriteSSRClientImports] Rewriting complete for **id** ==> %s",
+      id,
+    );
     return ms;
   } else {
-    logFn?.("[rewriteSSRClientImports] No changes made for %s", id);
+    logFn?.("[rewriteSSRClientImports] No changes made for **id** ==> %s", id);
     return null;
   }
 }

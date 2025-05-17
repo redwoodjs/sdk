@@ -2,18 +2,18 @@ import { createModuleMap } from "./createModuleMap.js";
 import ReactServerDom from "react-server-dom-webpack/client.edge";
 import { DocumentProps } from "../lib/router";
 import { renderRscThenableToHtmlStream } from "./__rwsdkssr_render.js";
-import { requestInfo } from "../requestInfo/worker.js";
+import { RequestInfo } from "../requestInfo/types";
 
 const { createFromReadableStream } = ReactServerDom;
 
 export const transformRscToHtmlStream = ({
   stream,
   Document,
-  nonce,
+  requestInfo,
 }: {
   stream: ReadableStream;
   Document: React.FC<DocumentProps>;
-  nonce?: string;
+  requestInfo: RequestInfo;
 }) => {
   const thenable = createFromReadableStream(stream, {
     serverConsumerManifest: {
@@ -26,6 +26,5 @@ export const transformRscToHtmlStream = ({
     thenable,
     Document,
     requestInfo,
-    nonce,
   });
 };
