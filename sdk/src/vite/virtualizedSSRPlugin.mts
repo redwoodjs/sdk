@@ -694,12 +694,10 @@ export function virtualizedSSRPlugin({
         name: "resolveModule",
       });
 
-      context.resolveDep = (request: string) =>
-        createAliasedSSRResolver({
-          getResolveConfig,
-          roots: [projectRootDir, ROOT_DIR],
-          name: "resolveDep",
-        })(request, "/");
+      context.resolveDep = createSSRDepResolver({
+        getResolveConfig,
+        projectRootDir,
+      });
     },
 
     resolveId(id) {
