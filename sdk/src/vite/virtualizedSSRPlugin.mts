@@ -551,56 +551,6 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
   };
 }
 
-async function scanForBareImports({
-  projectRootDir,
-  logInfo,
-  findImportSpecifiersWithPositions,
-  isBareImport,
-}: {
-  projectRootDir: string;
-  logInfo: (...args: any[]) => void;
-  findImportSpecifiersWithPositions: (
-    code: string,
-    lang: any,
-  ) => Array<{ s: number; e: number; raw: string }>;
-  isBareImport: (importPath: string) => boolean;
-}): Promise<Set<string>> {
-  const globPattern = "src/**/*.{ts,tsx,js,jsx}";
-  let bareImports = new Set<string>();
-  try {
-    const files = await glob(globPattern, {
-      cwd: projectRootDir,
-      absolute: true,
-    });
-    for (const file of files) {
-      const filePath = file as string;
-      let code;
-      try {
-        code = await fs.readFile(filePath, "utf-8");
-      } catch (err) {
-        logInfo("❌ Failed to read file during scan: %s", filePath);
-        continue;
-      }
-      const ext = path.extname(filePath).toLowerCase();
-      const lang =
-        ext === ".tsx" || ext === ".jsx" ? SgLang.Tsx : SgLang.TypeScript;
-      const imports = findImportSpecifiersWithPositions(code, lang);
-      for (const i of imports) {
-        if (isBareImport(i.raw)) {
-          bareImports.add(i.raw);
-        }
-      }
-    }
-    logInfo("🔎 Initial scan found %d unique bare imports:", bareImports.size);
-    for (const imp of bareImports) {
-      logInfo("   - %s", imp);
-    }
-  } catch (err) {
-    logInfo("❌ Error during initial scan for bare imports: %O", err);
-  }
-  return bareImports;
-}
-
 function ensureConfigArrays(config: any) {
   config.optimizeDeps ??= {};
   config.optimizeDeps.include ??= [];
@@ -647,13 +597,6 @@ export function virtualizedSSRPlugin({
         return;
       }
 
-      const bareImports = await scanForBareImports({
-        projectRootDir,
-        logInfo,
-        findImportSpecifiersWithPositions,
-        isBareImport,
-      });
-
       ensureConfigArrays(config);
 
       const getResolveConfig = () => config.resolve ?? {};
@@ -668,22 +611,6 @@ export function virtualizedSSRPlugin({
         getResolveConfig,
         projectRootDir,
       });
-
-      for (const importPath of bareImports) {
-        const resolved = context.resolveDep(importPath);
-        if (resolved && typeof resolved === "string") {
-          if (!(config.optimizeDeps as any).include.includes(importPath)) {
-            (config.optimizeDeps as any).include.push(
-              ensureNamespace(importPath),
-            );
-          }
-
-          (config.resolve as any).alias.unshift({
-            find: importPath,
-            replacement: SSR_NAMESPACE_PREFIX + resolved,
-          });
-        }
-      }
 
       logInfo("⚙️ Setting up aliases for worker environment");
       logInfo("📊 Configuration state:");
