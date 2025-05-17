@@ -84,7 +84,7 @@ export function createModuleResolver({
 
     for (const root of roots) {
       try {
-        const result = baseModuleResolver(root, normalized);
+        const result = baseModuleResolver(normalized, root);
         log(
           "%s Resolved %s to: '%s' with root '%s'",
           logPrefix,
