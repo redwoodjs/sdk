@@ -44,6 +44,7 @@ import { parse as sgParse, Lang as SgLang } from "@ast-grep/napi";
 import { ROOT_DIR } from "../lib/constants.mjs";
 import { transformClientComponents } from "./transformClientComponents.mjs";
 import { glob } from "glob";
+import { transformServerReferences } from "./transformServerReferences.mjs";
 
 export const SSR_NAMESPACE = "virtual:rwsdk:ssr";
 export const SSR_NAMESPACE_PREFIX = SSR_NAMESPACE + ":";
@@ -464,6 +465,23 @@ async function esbuildLoadAndTransformClientModule({
     modified = true;
   } else {
     logFn("⏭️ No client component transform needed for %s", filePath);
+  }
+
+  // --- Server reference transform for SSR ---
+  if (isClient) {
+    const serverResult = await transformServerReferences(code, filePath, {
+      environmentName: "worker",
+      isEsbuild: true,
+      importSSR: true,
+      topLevelRoot: context.projectRootDir,
+    });
+    if (serverResult) {
+      logFn("🔎 Server reference transform complete for %s", filePath);
+      code = serverResult.code;
+      modified = true;
+    } else {
+      logFn("⏭️ No server reference transform needed for %s", filePath);
+    }
   }
 
   if (!modified) {
