@@ -186,11 +186,13 @@ async function rewriteSSRClientImports({
   id,
   context,
   logFn,
+  shouldRewriteBareImports,
 }: {
   code: string;
   id: string;
   context: VirtualizedSSRContext;
   logFn?: (...args: any[]) => void;
+  shouldRewriteBareImports: boolean;
 }): Promise<MagicString | null> {
   const filePath = getRealPath(id);
 
@@ -228,15 +230,24 @@ async function rewriteSSRClientImports({
     let virtualId: string | null = null;
 
     if (isBareImport(raw)) {
-      const ssrResolved = context.resolveDep(raw);
-
-      if (ssrResolved !== false) {
+      if (shouldRewriteBareImports) {
         logFn?.(
-          "[rewriteSSRClientImports] SSR resolver succeeded for bare import '%s', rewriting to '%s'",
+          "[rewriteSSRClientImports] Rewriting bare import '%s' to virtual id '%s' (shouldRewriteBareImports: %s)",
           raw,
-          ssrResolved,
+          ensureNamespace(raw),
         );
-        virtualId = ensureNamespace(ssrResolved);
+        virtualId = ensureNamespace(raw);
+      } else {
+        const ssrResolved = context.resolveDep(raw);
+
+        if (ssrResolved !== false) {
+          logFn?.(
+            "[rewriteSSRClientImports] SSR resolver succeeded for bare import '%s', rewriting to '%s'",
+            raw,
+            ssrResolved,
+          );
+          virtualId = ensureNamespace(ssrResolved);
+        }
       }
     }
 
@@ -338,6 +349,7 @@ async function maybeRewriteSSRClientImports({
   code,
   id,
   isClient,
+  shouldRewriteBareImports,
   context,
   logFn,
 }: {
@@ -345,6 +357,7 @@ async function maybeRewriteSSRClientImports({
   id: string;
   isClient: boolean;
   context: VirtualizedSSRContext;
+  shouldRewriteBareImports: boolean;
   logFn: (...args: any[]) => void;
 }) {
   logFn?.(
@@ -363,6 +376,7 @@ async function maybeRewriteSSRClientImports({
       id,
       context,
       logFn,
+      shouldRewriteBareImports,
     });
     if (rewritten) {
       return rewritten.toString();
@@ -397,7 +411,7 @@ function detectLoader(filePath: string) {
   return ext === ".tsx" || ext === ".jsx" ? "tsx" : ext === ".ts" ? "ts" : "js";
 }
 
-async function loadAndTransformClientModule({
+async function esbuildLoadAndTransformClientModule({
   filePath,
   context,
   logFn,
@@ -421,12 +435,14 @@ async function loadAndTransformClientModule({
     logFn,
     esbuild: true,
   });
+
   const rewritten = await maybeRewriteSSRClientImports({
     code: inputCode,
     id: filePath,
     isClient,
     context,
     logFn,
+    shouldRewriteBareImports: false,
   });
 
   let code: string = inputCode;
@@ -499,7 +515,7 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
         { filter: /.*/, namespace: SSR_ESBUILD_NAMESPACE },
         async (args: any) => {
           logEsbuild("[esbuild:onLoad:namespace] called with args: %O", args);
-          return loadAndTransformClientModule({
+          return esbuildLoadAndTransformClientModule({
             filePath: args.path,
             context,
             logFn: logEsbuildTransform,
@@ -519,7 +535,7 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
         { filter: /\.(js|jsx|ts|tsx|mjs|mts)$/ },
         async (args: any) => {
           logEsbuild("[esbuild:onLoad:entry] called with args: %O", args);
-          return loadAndTransformClientModule({
+          return esbuildLoadAndTransformClientModule({
             filePath: args.path,
             context,
             logFn: logEsbuildTransform,
@@ -592,35 +608,33 @@ export function virtualizedSSRPlugin({
       );
     },
 
-    resolveId(id, importer) {
+    resolveId(id) {
       if (id.startsWith(SSR_NAMESPACE)) {
-        if (id.includes("node_modules")) {
-          const filePath = getRealPath(id);
-          logResolve(
-            "[plugin:resolveId] virtualized SSR dependency, returning real path: %s, importer: %s",
-            filePath,
-            importer,
-          );
-          return filePath;
+        if (isBareImport(getRealPath(id))) {
+          logResolve("[plugin:resolveId] bare import, returning as is: %s", id);
+          return id;
         } else {
           logResolve(
-            "[plugin:resolveId] virtualized SSR module, returning as is: %s, importer: %s",
+            "[plugin:resolveId] virtualized SSR module, returning real path: %s",
             id,
           );
-          return id;
+          return getRealPath(id);
         }
       }
     },
 
     load(id) {
       logResolve("[plugin:load] called with id: %s", id);
-      if (!id.startsWith(SSR_NAMESPACE)) return null;
 
-      const moduleId = id.slice(SSR_NAMESPACE.length);
+      if (!id.startsWith(SSR_NAMESPACE)) {
+        return null;
+      }
+
+      const moduleId = getRealPath(id);
 
       try {
         logResolve(
-          "📄 load() reading file for transform() as separate SSR module: %s",
+          "📄 load() reading file as separate SSR module: %s",
           moduleId,
         );
         return fs.readFile(moduleId, "utf-8");
@@ -659,6 +673,7 @@ export function virtualizedSSRPlugin({
         isClient,
         context,
         logFn: logTransform,
+        shouldRewriteBareImports: false,
       });
 
       if (!rewritten) {
