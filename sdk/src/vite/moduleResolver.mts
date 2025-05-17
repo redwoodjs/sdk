@@ -74,7 +74,6 @@ export function createModuleResolver({
   ): string | false {
     log("%s Called with request=%s, importer=%s", logPrefix, request, importer);
     const aliasEntries = getAliases ? getAliases() : [];
-    log("%s Alias entries: %O", logPrefix, aliasEntries);
     const normalized = applyAlias(request, aliasEntries, name);
     log("%s After aliasing: %s", logPrefix, normalized);
 
