@@ -541,23 +541,8 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
         logEsbuild("[esbuild:onResolve:ssr] called with args: %O", args);
         return {
           path: getRealPath(args.path),
-          //namespace: SSR_NAMESPACE,
         };
       });
-
-      //build.onResolve(
-      //  { filter: /.*/, namespace: SSR_NAMESPACE },
-      //  (args: any) => {
-      //    logEsbuild(
-      //      "[esbuild:onResolve:ssr-namespace] called with args: %O",
-      //      args,
-      //    );
-      //    return {
-      //      path: getRealPath(args.path),
-      //      namespace: SSR_NAMESPACE,
-      //    };
-      //  },
-      //);
 
       build.onLoad({ filter: /^virtual:rwsdk:ssr:/ }, async (args: any) => {
         logEsbuild(
@@ -570,21 +555,6 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
           logFn: logEsbuildTransform,
         });
       });
-
-      //build.onLoad(
-      //  { filter: /.*/, namespace: SSR_NAMESPACE },
-      //  async (args: any) => {
-      //    logEsbuild(
-      //      "[esbuild:onLoad:ssr-namespace] [esbuild:onLoad:module] called with args: %O",
-      //      args,
-      //    );
-      //    return loadAndTransformClientModule({
-      //      filePath: SSR_NAMESPACE_PREFIX + args.path,
-      //      context,
-      //      logFn: logEsbuildTransform,
-      //    });
-      //  },
-      //);
 
       build.onLoad(
         { filter: /\.(js|jsx|ts|tsx|mjs|mts)$/ },
