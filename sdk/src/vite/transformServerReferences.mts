@@ -37,9 +37,6 @@ export async function transformServerReferences(
     cleanCode.startsWith("'use server'");
   if (!hasUseServer) {
     log("Skipping: no 'use server' directive in id=%s", id);
-    if (process.env.VERBOSE) {
-      log("[VERBOSE] Returning code unchanged for id=%s:\n%s", id, code);
-    }
     return;
   }
   log("Processing 'use server' module: id=%s", id);
