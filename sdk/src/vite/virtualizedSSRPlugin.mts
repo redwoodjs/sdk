@@ -69,7 +69,6 @@ const logEsbuildTransform = logEsbuild.extend("transform");
 
 const IGNORED_IMPORT_PATTERNS = [
   /^cloudflare:.*/,
-  /^rwsdk\/worker$/,
   /^react\/jsx-runtime$/,
   /^react\/jsx-dev-runtime$/,
 ];
@@ -323,12 +322,10 @@ async function esbuildResolveSSRModule({
 
   if (resolved?.startsWith(SSR_NAMESPACE)) {
     result.namespace = SSR_ESBUILD_NAMESPACE;
+  } else if (isBareImport(resolved)) {
+    result.external = true;
   } else {
     result.namespace = "file";
-
-    if (isBareImport(resolved)) {
-      result.external = true;
-    }
   }
 
   logEsbuild(
@@ -610,7 +607,10 @@ export function virtualizedSSRPlugin({
 
       if (isBareImport(realPath)) {
         logResolve(":plugin:resolveId: Found bare import, returning as is: %s");
-        return id;
+        return {
+          id: realPath,
+          external: true,
+        };
       }
 
       const result = await resolveSSRPath({
