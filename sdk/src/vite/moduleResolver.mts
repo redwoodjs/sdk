@@ -47,12 +47,12 @@ export function createModuleResolver({
   getAliases,
   roots,
   conditionNames = ["workerd", "edge", "import", "default"],
-  name = "aliasedModuleResolver",
+  name,
 }: {
   getAliases?: () => Array<{ find: string | RegExp; replacement: string }>;
   roots: string[];
   conditionNames?: string[];
-  name?: string;
+  name: string;
 }) {
   const log = debug("rwsdk:vite:aliased-module-resolver");
   const logPrefix = `:${name}:`;

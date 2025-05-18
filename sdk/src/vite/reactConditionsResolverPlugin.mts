@@ -57,6 +57,7 @@ export const reactConditionsResolverPlugin = async ({
           ...config,
           environment,
           resolver: createModuleResolver({
+            name: `react-conditions-resolver:${environment}`,
             conditionNames: config.conditionNames,
             roots: [projectRootDir, ROOT_DIR],
           }),
