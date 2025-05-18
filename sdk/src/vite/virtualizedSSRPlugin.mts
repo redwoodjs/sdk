@@ -47,6 +47,7 @@ import { findImportSpecifiers } from "./findImportSpecifiers.mjs";
 
 export const SSR_NAMESPACE = "virtual:rwsdk:ssr";
 export const SSR_NAMESPACE_PREFIX = SSR_NAMESPACE + ":";
+export const SSR_URL_PREFIX = "/" + SSR_NAMESPACE_PREFIX;
 
 export const SSR_ESBUILD_NAMESPACE = "__rwsdk_ssr_esbuild_namespace__";
 
@@ -279,10 +280,23 @@ function isSSRModule({
   return false;
 }
 
+export const isSSRPath = (filePath: string): boolean => {
+  return (
+    filePath.startsWith(SSR_NAMESPACE_PREFIX) ||
+    filePath.startsWith(SSR_URL_PREFIX)
+  );
+};
+
 export const getRealPathFromSSRNamespace = (filePath: string): string => {
-  return filePath.startsWith(SSR_NAMESPACE_PREFIX)
-    ? filePath.slice(SSR_NAMESPACE_PREFIX.length)
-    : filePath;
+  if (filePath.startsWith(SSR_NAMESPACE_PREFIX)) {
+    return filePath.slice(SSR_NAMESPACE_PREFIX.length);
+  }
+
+  if (filePath.startsWith(SSR_URL_PREFIX)) {
+    return filePath.slice(SSR_URL_PREFIX.length);
+  }
+
+  return filePath;
 };
 
 export const ensureSSRNamespace = (filePath: string) => {
@@ -602,7 +616,7 @@ export function virtualizedSSRPlugin({
 
       logResolve(":plugin:resolveId: called with id: %s", id);
 
-      if (!id.startsWith(SSR_NAMESPACE)) {
+      if (!isSSRPath(id)) {
         logResolve(":plugin:resolveId: Skipping non-SSR namespace: %s", id);
         return id;
       }
