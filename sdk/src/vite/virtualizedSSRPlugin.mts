@@ -370,22 +370,6 @@ async function esbuildLoadAndTransformSSRModule({
   let code: string = inputCode;
   let modified: boolean = false;
 
-  if (isSSR) {
-    let rewritten = await rewriteSSRImports({
-      code: inputCode,
-      id: filePath,
-      context,
-      logFn,
-    });
-    if (rewritten) {
-      logFn("🔎 Import rewriting complete for %s", filePath);
-      code = rewritten.toString();
-      modified = true;
-    } else {
-      logFn("⏭️ No import rewriting needed for %s", filePath);
-    }
-  }
-
   const clientResult = await transformClientComponents(code, filePath, {
     environmentName: "worker",
     isEsbuild: true,
@@ -412,6 +396,22 @@ async function esbuildLoadAndTransformSSRModule({
     modified = true;
   } else {
     logFn("⏭️ No server reference transform needed for %s", filePath);
+  }
+
+  if (isSSR) {
+    let rewritten = await rewriteSSRImports({
+      code: inputCode,
+      id: filePath,
+      context,
+      logFn,
+    });
+    if (rewritten) {
+      logFn("🔎 Import rewriting complete for %s", filePath);
+      code = rewritten.toString();
+      modified = true;
+    } else {
+      logFn("⏭️ No import rewriting needed for %s", filePath);
+    }
   }
 
   if (!modified) {

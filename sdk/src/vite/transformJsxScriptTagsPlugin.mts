@@ -302,7 +302,7 @@ export async function transformJsxScriptTagsCode(
             // Add nonce property to the props object
             propsArg.addPropertyAssignment({
               name: "nonce",
-              initializer: "requestInfo.rw.nonce",
+              initializer: "requestInfo.rw?.nonce",
             });
 
             if (!hasRequestInfoImport) {

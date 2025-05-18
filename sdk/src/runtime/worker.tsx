@@ -56,9 +56,6 @@ export const defineApp = (routes: Route[]) => {
         const isSmokeTest = url.searchParams.has("__smoke_test");
         const userHeaders = new Headers();
 
-        console.log(
-          "############################################## setting rw",
-        );
         const rw = {
           Document: DefaultDocument,
           nonce: generateNonce(),
