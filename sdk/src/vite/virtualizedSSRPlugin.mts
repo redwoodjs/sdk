@@ -114,16 +114,7 @@ async function resolveSSRPath({
   const raw = ensureNoSSRNamespace(path);
 
   if (isBareImport(raw)) {
-    const ssrResolved = context.resolveDep(raw);
-    if (ssrResolved !== false) {
-      const resolved = ensureSSRNamespace(ssrResolved);
-      logFn?.(
-        ":resolveSSRPath: SSR resolver succeeded for bare import import='%s', resolved to resolved='%s'",
-        path,
-        resolved,
-      );
-      return resolved;
-    }
+    return path;
   }
 
   const moduleResolved = await context.resolveModule(
@@ -327,17 +318,9 @@ async function esbuildResolveSSRModule({
 
   const result: {
     path: string;
-    namespace?: string;
-    external?: boolean;
   } = {
     path: resolved,
   };
-
-  if (resolved.startsWith(SSR_NAMESPACE)) {
-    result.namespace = SSR_ESBUILD_NAMESPACE;
-  } else if (!isBareImport(resolved)) {
-    result.namespace = "file";
-  }
 
   logEsbuild(
     ":esbuildResolveSSRModule: resolved result for path=%s: result=%O",
