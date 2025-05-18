@@ -1,0 +1,146 @@
+// Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
+
+exports[`useServerPlugin > TRANSFORMS > ARROW_FUNCTION_EXPORT_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+export let sum = createServerReference("/test.tsx", "sum");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > ARROW_FUNCTION_EXPORT_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+export const sum = () => {
+  return 1 + 1
+}
+registerServerReference(sum, "/test.tsx", "sum")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > ASYNC_FUNCTION_EXPORT_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+export let sum = createServerReference("/test.tsx", "sum");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > ASYNC_FUNCTION_EXPORT_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+export async function sum() {
+  return 1 + 1
+}
+registerServerReference(sum, "/test.tsx", "sum")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > COMMENT_BLOCK_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+export let sum = createServerReference("/test.tsx", "sum");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > COMMENT_BLOCK_CODE > WORKER 1`] = `
+"
+/* Giant
+ * Comment
+ * Block
+ */
+import { registerServerReference } from "rwsdk/worker";
+
+export function sum() {
+  return 1 + 1
+}
+registerServerReference(sum, "/test.tsx", "sum")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > COMMENT_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+export let sum = createServerReference("/test.tsx", "sum");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > COMMENT_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+// Comment
+
+
+export function sum() {
+  return 1 + 1;
+}
+registerServerReference(sum, "/test.tsx", "sum")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > DEFAULT_EXPORT_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+export let sum = createServerReference("/test.tsx", "sum");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > DEFAULT_EXPORT_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+export function sum() {
+  return 1 + 1;
+}
+
+export default sum;
+registerServerReference(sum, "/test.tsx", "sum")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > IGNORE_NON_FUNCTION_EXPORT_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > IGNORE_NON_FUNCTION_EXPORT_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+export const a = "string";
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > MULTI_LINE_COMMENT_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+export let sum = createServerReference("/test.tsx", "sum");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > MULTI_LINE_COMMENT_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+// Multi-line
+// Comment
+
+
+export function sum() {
+  return 1 + 1
+}
+registerServerReference(sum, "/test.tsx", "sum")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > NAMED_EXPORT_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+export let sum = createServerReference("/test.tsx", "sum");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > NAMED_EXPORT_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+export function sum() {
+  return 1 + 1
+}
+registerServerReference(sum, "/test.tsx", "sum")
+"
+`;

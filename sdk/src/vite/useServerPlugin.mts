@@ -1,6 +1,54 @@
 import { relative } from "node:path";
 import { Plugin } from "vite";
-import { Project, SyntaxKind, Node } from "ts-morph";
+import { Project, SyntaxKind, Node, SourceFile } from "ts-morph";
+
+export const findExportedFunctions = (sourceFile: SourceFile) => {
+  const exportedFunctions = new Set<string>();
+
+  // Handle export assignments
+  const exportAssignments = sourceFile.getDescendantsOfKind(
+    SyntaxKind.ExportAssignment,
+  );
+  for (const e of exportAssignments) {
+    const name = e.getExpression().getText();
+    if (name === "default") {
+      continue;
+    }
+    exportedFunctions.add(name);
+  }
+
+  // Handle named function exports
+  const functionDeclarations = sourceFile.getDescendantsOfKind(
+    SyntaxKind.FunctionDeclaration,
+  );
+  for (const func of functionDeclarations) {
+    if (func.hasModifier(SyntaxKind.ExportKeyword)) {
+      const name = func.getName();
+      if (name) exportedFunctions.add(name);
+    }
+  }
+
+  // Handle exported arrow functions
+  const variableStatements = sourceFile.getDescendantsOfKind(
+    SyntaxKind.VariableStatement,
+  );
+  for (const statement of variableStatements) {
+    if (statement.hasModifier(SyntaxKind.ExportKeyword)) {
+      const declarations = statement.getDeclarationList().getDeclarations();
+      for (const declaration of declarations) {
+        const initializer = declaration.getInitializer();
+        if (initializer && Node.isArrowFunction(initializer)) {
+          const name = declaration.getName();
+          if (name) {
+            exportedFunctions.add(name);
+          }
+        }
+      }
+    }
+  }
+
+  return exportedFunctions;
+};
 
 export const transformServerFunctions = (
   code: string,
@@ -21,15 +69,15 @@ export const transformServerFunctions = (
   const firstString = sourceFile.getFirstDescendantByKind(
     SyntaxKind.StringLiteral,
   );
-
   if (!firstString) {
+    console.log("no string literal found");
     return;
   }
-
   if (
     firstString?.getText().indexOf("use server") === -1 &&
     firstString?.getStart() !== sourceFile.getStart() // `getStart` does not include the leading comments + whitespace
   ) {
+    console.log("no use server directive found");
     return;
   }
 
@@ -60,54 +108,47 @@ export const transformServerFunctions = (
   }
 
   if (environment === "worker") {
-    // Add import declaration
+    // import { registerServerReference } from "rwsdk/worker";
     sourceFile.addImportDeclaration({
       moduleSpecifier: "rwsdk/worker",
       namedImports: ["registerServerReference"],
     });
 
-    // Create a new line for each export
-    const exports = sourceFile.getDescendantsOfKind(
-      SyntaxKind.ExportAssignment,
-    );
-    //   registerServerReference(${e.ln}, ${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)});
-    const statements = exports.map((e) => {
-      const name = e.getExpression().getText();
-      return `registerServerReference(${name}, ${JSON.stringify(relativeId)}, ${JSON.stringify(name)});`;
-    });
-    sourceFile.insertStatements(sourceFile.getChildCount(), statements);
+    // Append the registerServerReference calls for each exported function:
+    // registerServerReference("sum", "/test.tsx", "sum");
+    const exports = findExportedFunctions(sourceFile);
+    for (const name of exports) {
+      sourceFile.addStatements(
+        `registerServerReference(${name}, ${JSON.stringify(relativeId)}, ${JSON.stringify(name)})`,
+      );
+    }
 
     return sourceFile.getFullText();
   } else if (environment === "client") {
-    // create a new sourcefile for the client
     const clientSourceFile = project.createSourceFile("client.tsx", "");
 
-    // Add import declaration
+    // import { createServerReference } from "rwsdk/client";
     clientSourceFile.addImportDeclaration({
       moduleSpecifier: "rwsdk/client",
       namedImports: ["createServerReference"],
     });
 
-    const exports = sourceFile.getDescendantsOfKind(
-      SyntaxKind.ExportAssignment,
-    );
-
-    for (const e of exports) {
-      // skip the default export.
-      if (e.getExpression().getText() === "default") {
-        continue;
-      }
-
-      const name = e.getExpression().getText();
-
-      // add a new export
-      clientSourceFile.addExportAssignment({
-        expression: `createServerReference(${JSON.stringify(relativeId)}, ${JSON.stringify(name)});`,
-        isExportEquals: false,
+    // Export the createServerReference calls for each exported function.
+    // export const sum = createServerReference("/test.tsx", "sum");
+    const exports = findExportedFunctions(sourceFile);
+    for (const name of exports) {
+      clientSourceFile.addVariableStatement({
+        isExported: true,
+        declarations: [
+          {
+            name: name,
+            initializer: `createServerReference(${JSON.stringify(relativeId)}, ${JSON.stringify(name)})`,
+          },
+        ],
       });
-
-      return clientSourceFile.getFullText();
     }
+
+    return clientSourceFile.getFullText();
   }
 };
 
@@ -122,7 +163,7 @@ export const useServerPlugin = (): Plugin => ({
       return;
     }
 
-    transformServerFunctions(
+    return transformServerFunctions(
       code,
       `/${relative(this.environment.getTopLevelConfig().root, id)}`,
       this.environment.name as "client" | "worker",
