@@ -335,9 +335,7 @@ async function esbuildResolveSSRModule({
 
   if (resolved.startsWith(SSR_NAMESPACE)) {
     result.namespace = SSR_ESBUILD_NAMESPACE;
-  } else if (isBareImport(resolved)) {
-    result.external = true;
-  } else {
+  } else if (!isBareImport(resolved)) {
     result.namespace = "file";
   }
 

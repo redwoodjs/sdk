@@ -156,10 +156,7 @@ export const reactConditionsResolverPlugin = async ({
                   resolved,
                 );
 
-                return {
-                  path: resolved,
-                  external: true,
-                };
+                return { path: resolved };
               } else {
                 log(
                   ":react-conditions-resolver:esbuild:onResolve environment=%s: No result found for import: %s",
@@ -192,10 +189,7 @@ export const reactConditionsResolverPlugin = async ({
                   resolved,
                 );
 
-                return {
-                  path: resolved,
-                  external: true,
-                };
+                return { path: resolved };
               } else {
                 log(
                   ":react-conditions-resolver:esbuild:onResolve environment=%s: No result found for import: %s",
