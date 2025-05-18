@@ -565,8 +565,20 @@ export function virtualizedSSRPlugin({
     async resolveId(id) {
       logResolve(":plugin:resolveId: called with id: %s", id);
 
+      if (!id.startsWith(SSR_NAMESPACE)) {
+        logResolve(":plugin:resolveId: Skipping non-SSR namespace: %s", id);
+        return id;
+      }
+
+      const realPath = getRealPathFromSSRNamespace(id);
+
+      if (isBareImport(realPath)) {
+        logResolve(":plugin:resolveId: Found bare import, returning as is: %s");
+        return id;
+      }
+
       const result = await resolveSSRPath({
-        path: id,
+        path: realPath,
         importer: id,
         context,
         logFn: logResolve,
