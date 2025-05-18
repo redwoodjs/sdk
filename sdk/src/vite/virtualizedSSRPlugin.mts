@@ -70,7 +70,11 @@ const logTransform = log.extend("transform");
 const logEsbuild = debug("rwsdk:vite:virtualized-ssr:esbuild");
 const logEsbuildTransform = logEsbuild.extend("transform");
 
-const IGNORED_IMPORT_PATTERNS = [/^cloudflare:.*/];
+const IGNORED_IMPORT_PATTERNS = [
+  /^cloudflare:.*/,
+  /^react\/jsx-runtime$/,
+  /^react\/jsx-dev-runtime$/,
+];
 
 export const createSSRDepResolver = ({
   projectRootDir,
@@ -106,7 +110,7 @@ async function resolveSSRPath({
 }): Promise<string | undefined> {
   logFn?.(":resolveSSRPath: called with path=%s, importer=%s", path, importer);
 
-  if (!isSSRPath(path)) {
+  if (!path.startsWith(SSR_NAMESPACE)) {
     logFn?.(":resolveSSRPath: Skipping non-SSR path: path=%s", path);
     return;
   }
@@ -114,7 +118,16 @@ async function resolveSSRPath({
   const raw = ensureNoSSRNamespace(path);
 
   if (isBareImport(raw)) {
-    return path;
+    const ssrResolved = context.resolveDep(raw);
+    if (ssrResolved !== false) {
+      const resolved = ensureSSRNamespace(ssrResolved);
+      logFn?.(
+        ":resolveSSRPath: SSR resolver succeeded for bare import import='%s', resolved to resolved='%s'",
+        path,
+        resolved,
+      );
+      return resolved;
+    }
   }
 
   const moduleResolved = await context.resolveModule(
@@ -254,7 +267,7 @@ function isSSRModule({
     );
     return true;
   }
-  if (isSSRPath(id)) {
+  if (id.startsWith(SSR_NAMESPACE)) {
     logger(
       ":isSSRModule: Detected SSR module (SSR_NAMESPACE): id=%s esbuild=%s",
       id,
@@ -318,9 +331,19 @@ async function esbuildResolveSSRModule({
 
   const result: {
     path: string;
+    namespace?: string;
+    external?: boolean;
   } = {
     path: resolved,
   };
+
+  if (resolved.startsWith(SSR_NAMESPACE)) {
+    result.namespace = SSR_ESBUILD_NAMESPACE;
+  } else if (isBareImport(resolved)) {
+    result.external = true;
+  } else {
+    result.namespace = "file";
+  }
 
   logEsbuild(
     ":esbuildResolveSSRModule: resolved result for path=%s: result=%O",
@@ -433,6 +456,39 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
   return {
     name: "virtualized-ssr-esbuild-plugin",
     setup(build: any) {
+      build.onResolve(
+        { filter: /.*/, namespace: SSR_ESBUILD_NAMESPACE },
+        async (args: any) => {
+          logEsbuild(":esbuild:onResolve:namespace called with args: %O", args);
+
+          const result = await esbuildResolveSSRModule({
+            context,
+            path: args.path,
+            importer: args.importer,
+          });
+
+          logEsbuild(
+            ":esbuild:onResolve:namespace resolved result for path=%s: result=%O",
+            args.path,
+            result,
+          );
+
+          return result;
+        },
+      );
+
+      build.onLoad(
+        { filter: /.*/, namespace: SSR_ESBUILD_NAMESPACE },
+        async (args: any) => {
+          logEsbuild(":esbuild:onLoad:namespace called with args: %O", args);
+          return esbuildLoadAndTransformSSRModule({
+            filePath: args.path,
+            context,
+            logFn: logEsbuildTransform,
+          });
+        },
+      );
+
       build.onResolve({ filter: /^virtual:rwsdk:ssr:/ }, async (args: any) => {
         logEsbuild(":esbuild:onResolve:prefix called with args: %O", args);
 

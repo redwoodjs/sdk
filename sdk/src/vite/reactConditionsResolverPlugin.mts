@@ -348,14 +348,6 @@ export const reactConditionsResolverPlugin = async ({
           configureWorkerEnvironment(config);
         }
       },
-
-      config(config: EnvironmentOptions) {
-        removeReactImportsToAllowCustomResolution(config, [
-          ...CLIENT_IMPORTS,
-          ...RSC_IMPORTS,
-          ...SSR_IMPORTS,
-        ]);
-      },
     },
     {
       name: `rwsdk:react-conditions-resolver:resolveId:${mode}`,
