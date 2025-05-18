@@ -9,6 +9,7 @@ export type DocumentProps = RequestInfo & {
 export type RwContext = {
   nonce: string;
   Document: React.FC<DocumentProps>;
+  rscPayload: boolean;
 };
 
 export type RouteMiddleware = (

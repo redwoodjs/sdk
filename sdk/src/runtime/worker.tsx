@@ -13,7 +13,7 @@ import {
 } from "./requestInfo/worker";
 import { RequestInfo } from "./requestInfo/types";
 
-import { Route, defineRoutes, route } from "./lib/router";
+import { Route, type RwContext, defineRoutes, route } from "./lib/router";
 import { generateNonce } from "./lib/utils";
 import { IS_DEV } from "./constants";
 
@@ -55,9 +55,10 @@ export const defineApp = (routes: Route[]) => {
         const isSmokeTest = url.searchParams.has("__smoke_test");
         const userHeaders = new Headers();
 
-        const rw = {
+        const rw: RwContext = {
           Document: DefaultDocument,
           nonce: generateNonce(),
+          rscPayload: true,
         };
 
         const outerRequestInfo: RequestInfo = {
@@ -151,11 +152,14 @@ export const defineApp = (routes: Route[]) => {
             nonce: rw.nonce,
           });
 
-          const html = htmlStream.pipeThrough(
-            injectRSCPayload(rscPayloadStream2, {
-              nonce: rw.nonce,
-            }),
-          );
+          let html = htmlStream;
+          if (rw.rscPayload) {
+            html.pipeThrough(
+              injectRSCPayload(rscPayloadStream2, {
+                nonce: rw.nonce,
+              }),
+            );
+          }
 
           return new Response(html, {
             headers: {
