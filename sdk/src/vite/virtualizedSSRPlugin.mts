@@ -281,12 +281,18 @@ async function esbuildResolveSSRModule({
     logFn: logEsbuild,
   });
 
-  const result: { path: string; namespace?: string } = {
+  const result: {
+    path: string;
+    namespace?: string;
+    external?: boolean;
+  } = {
     path: resolved,
   };
 
   if (resolved?.startsWith(SSR_NAMESPACE)) {
     result.namespace = SSR_ESBUILD_NAMESPACE;
+  } else if (isBareImport(resolved)) {
+    result.external = true;
   }
 
   logEsbuild(
