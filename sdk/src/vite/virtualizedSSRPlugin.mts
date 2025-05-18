@@ -69,11 +69,7 @@ const logTransform = log.extend("transform");
 const logEsbuild = debug("rwsdk:vite:virtualized-ssr:esbuild");
 const logEsbuildTransform = logEsbuild.extend("transform");
 
-const IGNORED_IMPORT_PATTERNS = [
-  /^cloudflare:.*/,
-  /^react\/jsx-runtime$/,
-  /^react\/jsx-dev-runtime$/,
-];
+const IGNORED_IMPORT_PATTERNS = [/^cloudflare:.*/];
 
 const createSSRDepResolver = ({ projectRootDir }: { projectRootDir: string }) =>
   createModuleResolver({
