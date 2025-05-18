@@ -106,12 +106,12 @@ async function resolveSSRPath({
   importer: string;
   context: VirtualizedSSRContext;
   logFn?: (...args: any[]) => void;
-}): Promise<string> {
+}): Promise<string | undefined> {
   logFn?.(":resolveSSRPath: called with path=%s, importer=%s", path, importer);
 
   if (!path.startsWith(SSR_NAMESPACE)) {
     logFn?.(":resolveSSRPath: Skipping non-SSR path: path=%s", path);
-    return path;
+    return;
   }
 
   const raw = getRealPathFromSSRNamespace(path);
@@ -322,6 +322,11 @@ async function esbuildResolveSSRModule({
     context,
     logFn: logEsbuild,
   });
+
+  if (!resolved) {
+    logEsbuild(":esbuildResolveSSRModule: path=%s skipped", path);
+    return undefined;
+  }
 
   const result: {
     path: string;
@@ -619,6 +624,11 @@ export function virtualizedSSRPlugin({
         context,
         logFn: logResolve,
       });
+
+      if (!result) {
+        logResolve(":plugin:resolveId: path=%s skipped", realPath);
+        return;
+      }
 
       logResolve(
         ":plugin:resolveId: resolved result for id=%s: result=%O",

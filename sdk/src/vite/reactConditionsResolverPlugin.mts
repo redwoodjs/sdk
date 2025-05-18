@@ -183,17 +183,6 @@ export const reactConditionsResolverPlugin = async ({
       reactConditionsResolverEsbuildPlugin(context),
     );
 
-    config.optimizeDeps?.include?.push(...context.imports);
-
-    for (const importPath of context.imports) {
-      (config.resolve as any).alias.push({
-        find: new RegExp(
-          `^${importPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
-        ),
-        replacement: context.resolver(importPath),
-      });
-    }
-
     removeReactImportsToAllowCustomResolution(config, context.imports);
   };
 
