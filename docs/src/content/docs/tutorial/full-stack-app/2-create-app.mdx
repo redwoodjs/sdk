@@ -8,20 +8,14 @@ description: A guide in my new Starlight docs site.
 
 import { FileTree, Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
 
+import { PackageManagers } from "starlight-package-managers";
+
 ## Project Generation and Structure
 
 The first thing we'll do is set up our project.
 
-<Tabs>
-  <TabItem label="pnpm">
-  ```shell
-  npx degit redwoodjs/sdk/starters/standard applywize
-  cd applywize
-  pnpm install
-  pnpm dev
-  ```
-  </TabItem>
-  <TabItem label="npm">
+<Tabs syncKey="starlight-package-managers-pkg">
+  <TabItem label="npm" icon="seti:npm">
   ```shell
   npx degit redwoodjs/sdk/starters/standard applywize
   cd applywize
@@ -29,7 +23,15 @@ The first thing we'll do is set up our project.
   npm run dev
   ```
   </TabItem>
-  <TabItem label="yarn">
+  <TabItem label="pnpm" icon="pnpm">
+  ```shell
+  npx degit redwoodjs/sdk/starters/standard applywize
+  cd applywize
+  pnpm install
+  pnpm dev
+  ```
+  </TabItem>
+  <TabItem label="yarn" icon="seti:yarn">
   ```shell
   npx degit redwoodjs/sdk/starters/standard applywize
   cd applywize
@@ -43,31 +45,22 @@ Check it out! You're up and running!
 
 ![](./images/initial-look.png)
 
-The commands you just ran created a directory called `applywize` with the RedwoodSDK project structure.
+The commands you just ran created a directory called `applywize` with the RedwoodSDK standard starter project structure.
 
 ![](./images/terminal-install-starter.png)
 
 Inside, the `applywize` directory, you should have the following files and folders:
 
 <FileTree>
-- .dev.vars # environment variables for development
-- .env # environment variables
-- .env.example # example environment variables
-- .gitignore # files to ignore in git
-- .prettierrc # prettier configuration
+- .cursor # Cursor rules
 - .wrangler # Cloudflare configuration
 - migrations # database migrations
   - 0001_init.sql # initial migration
 - node_modules # dependencies
-- package.json # lists all the dependencies and scripts
-- pnpm-lock.yaml # lock file for pnpm
 - prisma # prisma configuration
   - schema.prisma # database schema
-- README.md # project overview
 - src
   - app
-    - Document.tsx # Main HTML document
-    - headers.ts # Sets up page headers
     - pages
       - Home.tsx # Home page
       - user
@@ -76,133 +69,46 @@ Inside, the `applywize` directory, you should have the following files and folde
         - routes.ts # authentication routes
       - shared
         - links.ts # list of links
-  - client.tsx # initializes the client
-  - db.ts # database client
+    - Document.tsx # Main HTML document
+    - headers.ts # Sets up page headers
   - scripts
     - seed.ts # seed the database
   - session # sets up sessions for authentication
+    - durableObject.ts # sets up a Cloudflare Durable Object for a session
+    - store.ts # sets up a store for working with sessions
+  - client.tsx # initializes the client
+  - db.ts # database client
   - worker.tsx # Cloudflare worker
-- tsconfig.json # TypeScript configuration
 - types
+  - rw.d.ts # Redwood types
   - vite.d.ts # Vite types
+- .dev.vars # environment variables for Cloudflare development
+- .env # environment variables
+- .env.example # example environment variables
+- .gitignore # files to ignore in git
+- .prettierrc # prettier configuration
+- package.json # lists all the dependencies and scripts
+- pnpm-lock.yaml # lock file for pnpm
+- README.md # project overview
+- tsconfig.json # TypeScript configuration
 - vite.config.mts # Vite configuration
 - worker-configuration.d.ts # Generated types based on your worker config
 - wrangler.jsonc # Cloudflare configuration
 </FileTree>
 
+At first glance, this might feel a little overwhelming, but as we build out our project, it will be easy to see how all the pieces fit together.
+
 <Aside type="note" title="Starter Projects">
   For the tutorial, we're starting with the standard starter project. When you start building your own projects, if you use a different starter template, the files and folders may vary slightly.
 </Aside>
 
-## Setting up our Database
+## Our Database
 
-The first time you run `pnpm dev`, it creates the `.wrangler` directory. This directory is used by Cloudflare's Miniflare for storing assets. It contains your local database, caching information, and configuration data.
-
-First, we can create a D1 database that's connected to our Cloudflare account using the following command:
-
-```shell
-npx wrangler d1 create applywize
-```
-
-Here, `applywize` is the name of our database.
-
-![](./images/wrangler-d1-create.png)
-
-Copy the database ID provided and paste it into your project's `wrangler.jsonc` file:
-
-{/* TODO: Add a screenshot of the terminal */}
-
-```jsonc title="wrangler.jsonc"
-{
-  "d1_databases": [
-    {
-      "binding": "DB",
-      "database_name": "__change_me__",
-      "database_id": "__change_me__"
-    }
-  ]
-}
-```
-
-While we're in our `wrangler.jsonc` file, let's also update our worker name:
-```jsonc title="wrangler.jsonc" startLineNumber={6}
-"name": "applywize",
-```
-
-and the `APP_name`:
-```jsonc title="wrangler.jsonc" startLineNumber={36}
-"vars": {
-  "APP_NAME": "applywize"
-},
-```
-
-### Generating Secret Keys
-Next, we need to generate a strong `SECRET_KEY` for signing session IDs. You can generate a secure random key using OpenSSL. This command will generate a 32-byte random key and encode it as a base64 string.
-
-```shell
-openssl rand -base64 32
-```
-
-![](./images/openssl-rand-base64.png)
-
-Then set this key as a Cloudflare secret, where `SECRET_KEY` is the name of the key. It will prompt us for the random string we generated.
-
-```shell
-npx wrangler secret put SECRET_KEY
-```
-
-![](./images/wrangler-secret-key.png)
-
-<Aside type="caution" title="Secrets">
-  Never use the same secret key for development and production environments, and avoid committing your secret keys to version control.
-</Aside>
-
-For production, set your domain as the `RP_ID` via Cloudflare secrets:
-
-```shell
-npx wrangler secret put RP_ID
-```
-
-![](./images/wrangler-rp-id.png)
-
-When prompted, enter your production domain (e.g., my-app.example.com).
-
-<Aside type="caution" title="RP_ID">
-The RP_ID must be a valid domain that matches your application's origin. For security reasons, WebAuthn will not work if these don't match.
-</Aside>
-
-### Setting up Cloudflare Turnstile
-Next, let's set up Cloudflare Turnstile for bot protection.
-
-<Steps>
-1. Visit [Cloudflare Turnstile Dashboard](https://dash.cloudflare.com/?to=/:account/turnstile).
-    ![](./images/turnstile-add-widget.png)
-2. Create a new Turnstile widget:
-    - Set Widget Mode to **Invisible**. This will prevent users from having to solve a challenge or see the widget loading bar.
-    - Add your application's hostname to Allowed hostnames, e.g., my-project-name.example.com
-    ![](./images/turnstile-add-widget-form.png)
-    - Mark "Would you like to opt for pre-clearance for this site?" as **No**.
-3. After you click the **Create** button, you'll be redirected to the confirmation screen with your **Site Key** and **Secret Key**.
-    ![](./images/turnstile-site-key.png)
-4. Copy your Site Key and paste it into your application's `Login.tsx`. This is defined on line 18.
-    ```tsx title="src/app/pages/auth/Login.tsx" startLineNumber={18}
-    const TURNSTILE_SITE_KEY = "<YOUR_SITE_KEY>";
-    ```
-5. Set your Turnstile Secret Key via Cloudflare secrets for production:
-    ```shell
-    npx wrangler secret put TURNSTILE_SECRET_KEY
-    ```
-    When prompted, enter your Turnstile Secret Key.
-    ![](./images/wrangler-turnstile-secret-key.png)
-6. Our starter kit already has a couple of tables set up, to support the authentication process. This will set up Prisma and create a `.wrangler` file within our project and setup the Cloudflare d1 database locally. (More on Prisma, migrations, and databases later.)
-    ```shell
-    pnpm dev
-    ```
-</Steps>
+The first time you run `pnpm dev`, it creates the `.wrangler` directory. This directory is used by Cloudflare's Miniflare (your local Cloudflare environment). It contains your local database, caching information, and configuration data.
 
 ## Setting up TailwindCSS and shadcn/ui
 
-Now, let's install [TailwindCSS](https://tailwindcss.com/) and [shadcn/ui](https://ui.shadcn.com/).
+Let's start by installing [TailwindCSS](https://tailwindcss.com/) and [shadcn/ui](https://ui.shadcn.com/).
 
 **TailwindCSS** is a utility-first CSS framework that makes it easy to style your components.
 
@@ -214,26 +120,13 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
 
 <Steps>
 1. Install Tailwind CSS
-    <Tabs>
-    <TabItem label="pnpm">
-    ```bash
-    pnpm install tailwindcss @tailwindcss/vite
-    ```
-    </TabItem>
-    <TabItem label="npm">
-    ```bash
-    npm install tailwindcss @tailwindcss/vite
-    ```
-    </TabItem>
-    <TabItem label="yarn">
-    ```bash
-    yarn install tailwindcss @tailwindcss/vite
-    ```
-    </TabItem>
-    </Tabs>
+    <PackageManagers
+      type="install"
+      pkg="tailwindcss @tailwindcss/vite"
+    />
 
 2. Configure the Vite Plugin
-    ```ts ins="import tailwindcss from '@tailwindcss/vite'" ins="tailwindcss()," title="vite.config.mts"
+    ```ts ins="import tailwindcss from '@tailwindcss/vite'" ins="tailwindcss()," title="vite.config.mts" ins={6-8} {2, 11}
     import { defineConfig } from "vite";
     import tailwindcss from '@tailwindcss/vite'
     import { redwood } from "rwsdk/vite";
@@ -272,16 +165,18 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
     ```
 
 5. Now, you can run `pnpm run dev` and go to `http://localhost:5173/user/login`.
-    ```bash
-    pnpm run dev
-    ```
+    <PackageManagers
+      type="run"
+      args="dev"
+    />
+
     ![](./images/passkey-starter-tailwind-working.png)
     For reference, before adding TailwindCSS, the login page looked like this:
     ![](./images/passkey-form-before-tailwind.png)
 </Steps>
 
 You can test this even further by going to the `src/app/pages/user/Login.tsx` file and adding an `h1` at the top of the return statement:
-```tsx title="src/app/pages/user/Login.tsx" startLineNumber={63} collapse={4-17} {3}
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber={62} collapse={4-17} {3}
 return (
   <>
     <h1 className="text-4xl font-bold text-red-500">YOLO</h1>
@@ -486,7 +381,7 @@ Let's test to make sure our custom colors are working. On the `Login.tsx` file, 
 }
 ```
 
-When you visit https://localhost:5173/user/login, you should see a beige background color:
+When you visit http://localhost:5173/user/login, you should see a beige background color:
 
 ![](./images/testing-custom-tailwind-colors.png)
 
@@ -496,9 +391,11 @@ You can also use the [shadcn/ui Vite Installation instructions](https://ui.shadc
 
 <Steps>
 1. Install shadcn/ui
-    ```bash
-    pnpm dlx shadcn@latest init
-    ```
+    <PackageManagers
+      type="dlx"
+      pkg="shadcn@latest"
+      args="init"
+    />
 
     It will ask you what theme you want to use. Let's go with **Neutral**.
 
@@ -523,18 +420,13 @@ You can also use the [shadcn/ui Vite Installation instructions](https://ui.shadc
     ```diff title="tsconfig.json"
     {
       "compilerOptions": {
+        ...
     +   "baseUrl": ".",
-        "paths": {
-          "@/*": ["./src/*"]
-        }
+        ...
       }
     }
     ```
-4. Install `@types/node`
-    ```bash
-    pnpm add -D @types/node
-    ```
-5. Add resolve alias config to `vite.config.mts`:
+3. Add resolve alias config to `vite.config.mts`:
     ```diff title="vite.config.mts"
     +import path from "path"
     import { defineConfig } from "vite";
@@ -542,6 +434,9 @@ You can also use the [shadcn/ui Vite Installation instructions](https://ui.shadc
     import { redwood } from "rwsdk/vite";
 
     export default defineConfig({
+      environments: {
+        ssr: {},
+      },
       plugins: [redwood(), tailwindcss()],
     + resolve: {
     +   alias: {
@@ -551,9 +446,11 @@ You can also use the [shadcn/ui Vite Installation instructions](https://ui.shadc
     )
     ```
 6. You should now be able to add components:
-    ```bash
-    pnpm dlx shadcn@latest add
-    ```
+    <PackageManagers
+      type="dlx"
+      pkg="shadcn@latest"
+      args="add"
+    />
 
     Select the following by hitting the `Space` key:
     - Alert
@@ -575,8 +472,6 @@ You can also use the [shadcn/ui Vite Installation instructions](https://ui.shadc
 
     ![](./images/terminal-shadcn-bulk-add-result.png)
 
-    This will install all of our components into the `src/app/components/ui` folder.
-
     ![](./images/shad-cn-components-in-finder.png)
 
     <Aside type="tip" title="Adding shadcn/ui Components individually">
@@ -584,9 +479,17 @@ You can also use the [shadcn/ui Vite Installation instructions](https://ui.shadc
     </Aside>
 
     <Aside type="note" title="shadcn/ui Components">
-      You can find a list of all the components [here](https://ui.shadcn.com/docs/components).
+      You can find a complete list of all the shadcn/ui components on their [official documentation](https://ui.shadcn.com/docs/components).
     </Aside>
 </Steps>
+
+<Aside type="caution" title="Restart Dev Server">
+  After installing the shadcn/ui, you'll probably need to restart the dev server.
+
+  ```bash
+  pnpm dev
+  ```
+</Aside>
 
 Even though we specified the path to the `lib` directory in the `components.json` file, the script still placed the folder inside the `src` directory. You'll need to move it into the `app` directory.
 
@@ -599,20 +502,20 @@ Even though we specified the path to the `lib` directory in the `components.json
       - utils.ts
 </FileTree>
 
-We also need the date picker component, but it can't be installed using the `pnpm dlx shadcn@latest add` command.
+We also need the date picker component, but it's not available to install using the `pnpm dlx shadcn@latest add` command, probably due to dependencies.
 
-Instead, we'll need to install it manually. It's built using the `<Popover />` and `<Calendar />` components and we just installed those.
+Instead, we'll install it manually. It's built using the `<Popover />` and `<Calendar />` components and we just installed those.
 
 Within the `src/app/components/ui` folder, create a new file called `datepicker.tsx`.
 
 <Aside type="note" title="Component Naming Conventions">
-  Normally, I like to capitalize and camel case my component file names (`DatePicker.tsx`), but since this code is coming from shadcn/ui, I'll use their naming convention and put and put it in the `components/ui` folder.
+  Normally, I like to capitalize and use Pascal Case for my component file names (`DatePicker.tsx`), but since this code is coming from shadcn/ui, I'll use their naming convention and put it in the `components/ui` folder.
 
-  Any custom components we make, will live in the `components` directory and be named like `CustomComponent.tsx`.
+  Any custom components we make, will live in the `components` directory and will use Pascal Case: `CustomComponent.tsx`.
 
-  Any shadcn/ui components will live in the `components/ui` folder.
+  This helps delineate between our custom components and shadcn/ui components.
 
-  Even though, we're creating the `datepicker.tsx` file manually, it's still a shadcn/ui component, so it will still live in the `components/ui` folder.
+  Even though, we're creating the `datepicker.tsx` file manually, the code still originates from shadcn/ui, so it will still live in the `components/ui` folder.
 </Aside>
 
 Add the following code to the `datepicker.tsx` file:
@@ -664,7 +567,7 @@ export function DatePicker() {
 ```
 
 - [Official Date Picker documentation.](https://ui.shadcn.com/docs/components/date-picker)
-- If you copy and paste directly from the shadcn/ui documentation, though, you'll find a few errors. In the code I provided, I adjusted the paths on some of the `@import` statements.
+- If you copy and paste directly from the shadcn/ui documentation, though, you'll find a few path errors. In the code I provided, I adjusted the paths on some of the `@import` statements.
 
 ```diff
 - import { cn } from "@/lib/utils"
@@ -692,7 +595,7 @@ export function DatePicker() {
 + export function DatePicker() {
 ```
 
-If you want to make sure everything is installed correctly, head over to the `src/app/pages/user/Login.tsx` file and let's use our `Button` component.
+If you want to make sure everything is installed correctly, head over to the `src/app/pages/user/Login.tsx` file and let's use our shadcn/ui `Button` component.
 
 Change the `<button>` tag to use a capital `B`. This will reference the `Button` component, instead of the standard HTML button. You'll also need to import the `Button` component at the top of the file.
 
@@ -720,14 +623,14 @@ return (
 );
 ```
 
-Now, when you visit https://localhost:5173/user/login, you should see styled buttons:
+Now, when you visit http://localhost:5173/user/login, you should see styled buttons:
 
 ![](./images/shadcn-working.png)
 
 Perfect, now that we have our project setup, and all the frontend components installed, [let's start building the backend.](/tutorial/full-stack-app/database-setup)
 
 <Aside type="tip" title="Code on GitHub">
-You can find the final code for this step on [GitHub](https://github.com/ahaywood/applywize/tree/main/end-of-2).
+You can find the final code for this step on [GitHub](https://github.com/redwoodjs/applywize/tree/main/end-of-2).
 </Aside>
 
 ## Further reading

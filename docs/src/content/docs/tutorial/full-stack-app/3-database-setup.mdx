@@ -10,6 +10,8 @@ description: Setting up the database for the application
 
 import { Aside, FileTree } from '@astrojs/starlight/components';
 
+import { PackageManagers } from "starlight-package-managers";
+
 ## Setting up our Database Tables or Models
 
 For this project, we'll use [Prisma](https://www.prisma.io/) as our ORM (Object Relational Mapper). This makes it easy to define our database and generate migrations.
@@ -22,7 +24,7 @@ For this project, we'll use [Prisma](https://www.prisma.io/) as our ORM (Object 
 
 I like to start by going through the [application design files]() and making a list of all the tables (models) and fields we need.
 
-Each model represents the type of data that will be stored in the table.
+Each model represents the type of data that will be stored in the database.
 
 We need models for:
 
@@ -96,7 +98,7 @@ For example, if the URL for my job application is `https://applywize.app/applica
 
 This is where a UUID comes in handy. A UUID is a unique, random string of characters. It's almost impossible to guess an entry's ID. The URL `https://applywize.app/applications/2b22ee49-d788-4bf0-bacd-380b351ca1e0` isn't quite as user friendly, but it's security by obscurity.
 
-Which is better? It depends. My general rule of thumb is if the user is going to see the ID, use a UUID (string). If the ID is an internal identifier, use an integer.
+Which is better? It depends. My general rule of thumb is if the user is going to see the ID (like our example, in the URL), use a UUID (string). If the ID is an internal identifier, use an integer.
 
 ## Application Model
 
@@ -155,7 +157,7 @@ A few things worth noting:
   - The `@default(now())` means that the field will be the current date and time
 - The `@updatedAt` directive is a special directive that tells Prisma to update the field with the current date and time whenever the record is updated.
 
-We can do the same for the remaining models.
+We can do the same for the remaining models (I didn't make any changes to the provided `User` and `Credential` models, but included them here for reference).
 
 ```prisma  title="src/db/schema.prisma"
 ...
@@ -214,9 +216,9 @@ model User {
 <Aside type="tip" title="Naming Conventions">
   When working with Prisma, there a couple of naming conventions you should follow:
   - Use singular names for your models. For example, `Application` not `Applications`.
-  - The model name should start with an uppercase letter, in PascalCase. 
+  - The model name should start with an uppercase letter, in PascalCase.
     - For example:  ✅ `ApplicationStatus` not ❌ `applicationStatus` or ❌ `Application_Status`.
-  - The field names should start with a lowercase letter, in camelCase. 
+  - The field names should start with a lowercase letter, in camelCase.
     - For example, ✅ `jobTitle` not ❌ `JobTitle` or ❌ `job_title`.
   - Avoid underscores (_) in names.
 </Aside>
@@ -263,7 +265,7 @@ Here's a diagram of all the models and their relationships for this project.
 Coincidentally, all the relationships in our project are one-to-one or one-to-many.
 
 <Aside type="note" title="Crendential Table">
-  Most of the tables in our database are self explanatory. But, let's look take a second look at the `Credential` table. This model was included within the standard starter kit and will hold all the details for our passkeys.
+  Most of the tables in our database are self explanatory. However, the `Credential` table might not be as obvious. This model is included within the standard starter kit and will hold all the details for our passkeys.
 </Aside>
 
 <Aside type="tip" title="Database Diagram">
@@ -449,22 +451,25 @@ A migration is a change to the database schema. It's a way to keep track of the 
 
 When we create the migration, Prisma will look at our `schema.prisma` file and determine what has changed since our last migration. Then, it will generate a SQL file that will update our database with the changes.
 
-Let's create the migration by running `pnpm migrate:new` and give our migration a name. Since this is our first migration, we'll say: `setup all database models`.
+Let's create the migration by running `migrate:new` and give our migration a name. Since this is our first migration, we'll say: `setup all database models`.
 
-```shell
-pnpm migrate:new "setup all database models"
-```
+<PackageManagers
+  type="run"
+  pkg='migrate:new "setup all database models"'
+/>
 
 ![](./images/setup-all-tables-migration.png)
 
-<Aside type="note" title="Troubleshooting a Migration">
-  {/* TODO: Add a screenshot of this error message. */}
+<Aside type="note" title="New Migration">
+  When you run `pnpm migrate:new`, it will create a new migration file _and_ apply it. There's no need to run `pnpm migrate:dev` (unless of course the migration failed).
+</Aside>
 
+<Aside type="note" title="Troubleshooting a Migration">
   Occasionally, you may run into an error where there are multiple sqlite files in the `.wrangler > state > v3 > d1 > miniflare-D1DatabaseObject` folder.
 
-  If this happens, you can delete the `.wrangler` folder and rerun `pnpm dev` to regenerate it.
+  If this happens, you can delete the `.wrangler` folder and rerun `dev` to regenerate it.
 
-  Then, try running `pnpm migrate:dev` to apply the migration.
+  Then, try running `migrate:dev` to apply the migration.
 </Aside>
 
 Our generated `sql` file will be in the `migrations` folder.
@@ -490,6 +495,14 @@ Our generated `sql` file will be in the `migrations` folder.
   Database changes can be tied to a branch and a specific feature or bug fix.
 
   Keeping another team member's database in sync is as simple as running the migration: `npm migrate:dev`
+</Aside>
+
+<Aside type="note" title="If the Migration Didn't Run">
+If the migration didn't run, there are a few things you can check:
+- How many SQLlite files are in the `.wrangler > state > v3 > d1 > miniflare-D1DatabaseObject` folder? There should be one. You can always delete the `.wrangler` folder and rerun `pnpm dev` to regenerate it.
+- Try running `pnpm migrate:dev`. This will apply any new migrations.
+- Try running `pnpm dev`. This will also apply any new migrations.
+- Ensure that the `database_id` within the `wrangler.jsonc` file matches the database id in your Cloudflare account.
 </Aside>
 
 <Aside type="note" title="Migration Commands">
@@ -529,7 +542,7 @@ Right click on the sqlite file and click `Copy Relative Path`.
 Inside your `.env` file, create a `DATABASE_URL` variable. We need to specify that this is a file:
 
 ```
-DATABASE_URL="file:"
+DATABASE_URL="file:../"
 ```
 
 Then, paste in the database path:
@@ -558,6 +571,10 @@ This will open a new tab in your default browser at `http://localhost:5555`.
 
 Right now, we don't have any data in our table, but at least we can tell that our migration ran successfully.
 
+<Aside type="caution" title="Deleting the .wrangler folder">
+  If you ever delete the `.wrangler` folder, it will automatically generate a new one the next time you run `pnpm dev`. However, you'll need to update the path within your `.env` file, as the hash will change.
+</Aside>
+
 ### SQLite Viewer
 
 The [VS Code extension, SQLite Viewer](https://marketplace.visualstudio.com/items?itemName=qwtel.sqlite-viewer) is perfect for previewing your SQLite database directly within VS Code.
@@ -580,14 +597,6 @@ Click on the sqlite file and a preview should open within VSCode.
 ![](./images/vs-code-sqlite.png)
 
 The viewer will only let you preview the database. If you want to create, update, or delete, you'll need a pro (premium) account.
-
-<Aside type="note" title="If the Migration Didn't Run">
-If the migration didn't run, there are a few things you can check:
-- How many SQLlite files are in the `.wrangler > state > v3 > d1 > miniflare-D1DatabaseObject` folder? There should be one. You can always delete the `.wrangler` folder and rerun `pnpm dev` to regenerate it.
-- Try running `pnpm migrate:dev`. This will apply any new migrations.
-- Try running `pnpm dev`. This will also apply any new migrations.
-- Ensure that the `database_id` within the `wrangler.jsonc` file matches the database id in your Cloudflare account.
-</Aside>
 
 ## Seed the database
 
@@ -632,9 +641,9 @@ If you want to start fresh with your own seed file, you could delete lines 7-17,
 ```
 
 <Aside type="tip" title="Seed File Structure">
-  In order for our seed file to run properly, we have to run it inside a Cloudflare worker.
+  In order for our seed file to run properly, we have to run our script inside a Cloudflare worker.
 
-  Why? Since we're using a Cloudflare D1 database, we need a worker in order to access it.
+  Why? Since we're using a Cloudflare D1 database, we need a worker to access it.
 </Aside>
 
 You can copy and paste the following code to your project:
@@ -681,19 +690,23 @@ Let's make sure we understand what's happening:
 <Aside type="caution" title="Troubleshooting">
 Are you getting an error that says: `"Property 'applicationStatus' does not exist on type 'PrismaClient<PrismaClientOptions, never, DefaultArgs>'"`
 
+![](./images/application-status-does-not-exist-on-type.png)
+
 This means that the Prisma types haven't been generated for your model. Within the Terminal, run:
 
 ```shell
 npx prisma generate
 ```
-Problem solved.
+
+That should resolve your problem. Otherwise, ensure the `ApplicationStatus` table exists in your database.
 </Aside>
 
 To seed the database, run the following command:
 
-```bash
-pnpm seed
-```
+<PackageManagers
+  type="run"
+  pkg="seed"
+/>
 
 Within the Terminal, you should see something like this:
 
@@ -715,7 +728,7 @@ You can also leverage libraries, like [Faker](https://fakerjs.dev/) and [Snaplet
 
 
 <Aside type="tip" title="Code on GitHub">
-You can find the final code for this step on [GitHub](https://github.com/ahaywood/applywize/tree/main/end-of-3).
+You can find the final code for this step on [GitHub](https://github.com/redwoodjs/applywize/tree/main/end-of-3).
 </Aside>
 
 ## Further reading
