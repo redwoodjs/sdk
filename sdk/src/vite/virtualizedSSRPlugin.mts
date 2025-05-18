@@ -45,6 +45,7 @@ import { transformClientComponents } from "./transformClientComponents.mjs";
 import { transformServerReferences } from "./transformServerReferences.mjs";
 import { findImportSpecifiers } from "./findImportSpecifiers.mjs";
 import { ensureConfigArrays } from "./ensureConfigArrays.mjs";
+import { isBareImport } from "./isBareImport.mjs";
 
 export const SSR_NAMESPACE = "virtual:rwsdk:ssr";
 export const SSR_NAMESPACE_PREFIX = SSR_NAMESPACE + ":";
@@ -87,14 +88,6 @@ export type VirtualizedSSRContext = {
   ) => string | false | Promise<string | false>;
   resolveDep: (request: string) => string | false;
 };
-
-function isBareImport(importPath: string): boolean {
-  return (
-    !importPath.startsWith(".") &&
-    !importPath.startsWith("/") &&
-    !importPath.startsWith("virtual:")
-  );
-}
 
 async function resolveSSRPath({
   path,
@@ -609,14 +602,6 @@ export function virtualizedSSRPlugin({
       }
 
       const realPath = getRealPathFromSSRNamespace(id);
-
-      if (isBareImport(realPath)) {
-        logResolve(":plugin:resolveId: Found bare import, returning as is: %s");
-        return {
-          id: realPath,
-          external: true,
-        };
-      }
 
       const result = await resolveSSRPath({
         path: realPath,

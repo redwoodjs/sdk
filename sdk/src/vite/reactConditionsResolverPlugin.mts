@@ -74,7 +74,7 @@ export const reactConditionsResolverPlugin = async ({
   projectRootDir: string;
   mode?: "development" | "production";
   command?: "build" | "serve";
-}): Promise<Plugin> => {
+}): Promise<Plugin[]> => {
   log(
     ":react-conditions-resolver:Initializing React conditions resolver plugin in :mode: mode for :command:",
     mode,
@@ -186,71 +186,77 @@ export const reactConditionsResolverPlugin = async ({
     removeReactImportsToAllowCustomResolution(config, context.imports);
   };
 
-  return {
-    name: `rwsdk:react-conditions-resolver:${mode}`,
-    enforce: "post",
+  return [
+    {
+      name: `rwsdk:react-conditions-resolver:config:${mode}`,
+      enforce: "post",
 
-    configEnvironment(name: string, config: EnvironmentOptions) {
-      const context = contexts[name];
-      if (context) {
-        configureEnvironment(context, config);
-      }
+      configEnvironment(name: string, config: EnvironmentOptions) {
+        const context = contexts[name];
+        if (context) {
+          configureEnvironment(context, config);
+        }
+      },
+
+      config(config: EnvironmentOptions) {
+        for (const context of Object.values(contexts)) {
+          removeReactImportsToAllowCustomResolution(config, context.imports);
+        }
+      },
     },
+    {
+      name: `rwsdk:react-conditions-resolver:resolveId:${mode}`,
+      enforce: "pre",
 
-    config(config: EnvironmentOptions) {
-      for (const context of Object.values(contexts)) {
-        removeReactImportsToAllowCustomResolution(config, context.imports);
-      }
-    },
+      resolveId(id: string) {
+        const context = contexts[this.environment.name];
 
-    resolveId(id: string) {
-      const context = contexts[this.environment.name];
+        if (!context) {
+          return;
+        }
 
-      if (!context) {
-        return;
-      }
-
-      log(
-        ":react-conditions-resolver:resolveId called for environment=%s id=%s",
-        this.environment.name,
-        id,
-      );
-
-      if (isSSRPath(id)) {
         log(
-          ":react-conditions-resolver:resolveId environment=%s: Skipping SSR path: %s",
+          ":react-conditions-resolver:resolveId called for environment=%s id=%s",
           this.environment.name,
           id,
         );
-        return;
-      }
 
-      if (context.imports.includes(id)) {
-        log(
-          ":react-conditions-resolver:resolveId environment=%s: Resolving import: %s",
-          context.environment,
-          id,
-        );
-
-        const resolved = context.resolver(id);
-
-        if (resolved) {
+        if (isSSRPath(id)) {
           log(
-            ":react-conditions-resolver:resolveId environment=%s: Resolved import: %s -> %s",
-            context.environment,
-            id,
-            resolved,
-          );
-
-          return resolved;
-        } else {
-          log(
-            ":react-conditions-resolver:resolveId environment=%s: No result found for import: %s",
-            context.environment,
+            ":react-conditions-resolver:resolveId environment=%s: Skipping SSR path: %s",
+            this.environment.name,
             id,
           );
+          return;
         }
-      }
+
+        if (context.imports.includes(id)) {
+          log(
+            ":react-conditions-resolver:resolveId environment=%s: Resolving import: %s",
+            context.environment,
+            id,
+          );
+
+          const resolved = context.resolver(id);
+
+          if (resolved) {
+            log(
+              ":react-conditions-resolver:resolveId environment=%s: Resolved import: %s -> %s",
+              context.environment,
+              id,
+              resolved,
+            );
+
+            return resolved;
+          } else {
+            log(
+              ":react-conditions-resolver:resolveId environment=%s: No result found for import: %s",
+              context.environment,
+              id,
+            );
+          }
+        }
+      },
     },
-  };
+  ];
 };
