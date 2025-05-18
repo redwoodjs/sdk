@@ -106,7 +106,7 @@ async function resolveSSRPath({
 }): Promise<string | undefined> {
   logFn?.(":resolveSSRPath: called with path=%s, importer=%s", path, importer);
 
-  if (!path.startsWith(SSR_NAMESPACE)) {
+  if (!isSSRPath(path)) {
     logFn?.(":resolveSSRPath: Skipping non-SSR path: path=%s", path);
     return;
   }
@@ -263,7 +263,7 @@ function isSSRModule({
     );
     return true;
   }
-  if (id.startsWith(SSR_NAMESPACE)) {
+  if (isSSRPath(id)) {
     logger(
       ":isSSRModule: Detected SSR module (SSR_NAMESPACE): id=%s esbuild=%s",
       id,
