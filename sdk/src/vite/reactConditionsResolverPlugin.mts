@@ -20,6 +20,7 @@ const ENV_CONFIG = {
       "react/jsx-dev-runtime",
       "react-server-dom-webpack/client.edge",
     ],
+    optimize: ["react/jsx-runtime", "react/jsx-dev-runtime"],
   },
   client: {
     conditionNames: ["browser", "default"],
@@ -31,6 +32,7 @@ const ENV_CONFIG = {
       "react/jsx-dev-runtime",
       "react-server-dom-webpack/client.browser",
     ],
+    optimize: ["react/jsx-runtime", "react/jsx-dev-runtime"],
   },
 };
 
@@ -184,6 +186,33 @@ export const reactConditionsResolverPlugin = async ({
     );
 
     removeReactImportsToAllowCustomResolution(config, context.imports);
+
+    for (const dep of context.optimize) {
+      const resolved = context.resolver(dep);
+
+      if (!resolved) {
+        log(
+          ":react-conditions-resolver:configEnvironment: environment=%s: Skipping optimize for dep=%s because it could not be resolved",
+          context.environment,
+          dep,
+        );
+        continue;
+      }
+
+      log(
+        ":react-conditions-resolver:configEnvironment: environment=%s: Adding optimizeDep for dep=%s and alias to %s",
+        context.environment,
+        dep,
+        resolved,
+      );
+
+      config.optimizeDeps.include?.push(dep);
+
+      (config.resolve as any).alias.push({
+        find: new RegExp(`^${dep.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`),
+        replacement: resolved,
+      });
+    }
   };
 
   return [
