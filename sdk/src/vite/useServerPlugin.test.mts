@@ -4,25 +4,37 @@ import { transformServerFunctions } from "./useServerPlugin.mjs";
 describe("useServerPlugin", () => {
   it("determines react server directive", () => {
     expect(
-      transformServerFunctions(`\
+      transformServerFunctions(
+        `\
 "use server";
-            `),
+            `,
+        "/test.tsx",
+        "client",
+      ),
     ).toMatchInlineSnapshot(`
       "
                   "
     `);
 
     expect(
-      transformServerFunctions(`\
+      transformServerFunctions(
+        `\
 // These are not server functions
-            `),
+            `,
+        "/test.tsx",
+        "client",
+      ),
     ).toMatchInlineSnapshot(`undefined`);
 
     expect(
-      transformServerFunctions(`\
+      transformServerFunctions(
+        `\
 // Comment
 "use server";
-              `),
+              `,
+        "/test.tsx",
+        "client",
+      ),
     ).toMatchInlineSnapshot(`
       "// Comment
 
@@ -30,11 +42,15 @@ describe("useServerPlugin", () => {
     `);
 
     expect(
-      transformServerFunctions(`\
+      transformServerFunctions(
+        `\
 // Multi-line
 // Comment
 "use server";
-                `),
+                `,
+        "/test.tsx",
+        "client",
+      ),
     ).toMatchInlineSnapshot(`
       "// Multi-line
       // Comment
@@ -43,14 +59,18 @@ describe("useServerPlugin", () => {
     `);
 
     expect(
-      transformServerFunctions(`\
+      transformServerFunctions(
+        `\
 /* Giant
  * Comment
  * Block
  */
 
 "use server";
-                  `),
+                  `,
+        "/test.tsx",
+        "client",
+      ),
     ).toMatchInlineSnapshot(`
       "/* Giant
        * Comment
@@ -64,13 +84,17 @@ describe("useServerPlugin", () => {
 
   it("supports default exports", () => {
     expect(
-      transformServerFunctions(`\
+      transformServerFunctions(
+        `\
   "use server";
 
   export default function execute() {
     return 1 + 1;
   }
-              `),
+              `,
+        "/test.tsx",
+        "client",
+      ),
     ).toMatchInlineSnapshot(`
       "  
 

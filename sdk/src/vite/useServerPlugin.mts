@@ -2,9 +2,13 @@ import { relative } from "node:path";
 import { Plugin } from "vite";
 import { parse } from "es-module-lexer";
 import MagicString from "magic-string";
-import { Project, SyntaxKind, Node } from "ts-morph";
+import { Project, SyntaxKind, Node, SourceFile } from "ts-morph";
 
-export const transformServerFunctions = (code: string) => {
+export const transformServerFunctions = (
+  code: string,
+  relativeId: string,
+  environment: "client" | "worker",
+) => {
   const project = new Project({
     useInMemoryFileSystem: true,
     compilerOptions: {
@@ -19,9 +23,11 @@ export const transformServerFunctions = (code: string) => {
   const firstString = sourceFile.getFirstDescendantByKind(
     SyntaxKind.StringLiteral,
   );
+
   if (!firstString) {
     return;
   }
+
   if (
     firstString?.getText().indexOf("use server") === -1 &&
     firstString?.getStart() !== sourceFile.getStart() // `getStart` does not include the leading comments + whitespace
@@ -55,6 +61,27 @@ export const transformServerFunctions = (code: string) => {
     });
   }
 
+  if (environment === "worker") {
+    // s.prepend(`
+    //   import { registerServerReference } from "rwsdk/worker";
+    //   `);
+    // const [_, exports] = parse(code);
+    // for (const e of exports) {
+    //   s.append(`
+    //   registerServerReference(${e.ln}, ${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)});
+    //   `);
+    // }
+  } else if (environment === "client") {
+    // s = new MagicString(`\
+    //   import { createServerReference } from "rwsdk/client";
+    //   `);
+    //         const [_, exports] = parse(code);
+    //         for (const e of exports) {
+    //           s.append(`\
+    //   export const ${e.ln} = createServerReference(${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)})
+    //   `);
+  }
+
   return sourceFile.getFullText();
 };
 
@@ -65,47 +92,14 @@ export const useServerPlugin = (): Plugin => ({
       return;
     }
 
-    const relativeId = `/${relative(this.environment.getTopLevelConfig().root, id)}`;
-
     if (code.indexOf("use server") === -1) {
       return;
     }
 
-    code = transformServerFunctions(code);
-
-    // context(justinvdm, 5 Dec 2024): they've served their purpose at this point, keeping them around just causes rollup warnings since module level directives can't easily be applied to bundled
-    // modules
-    let s = new MagicString(code);
-
-    if (this.environment.name === "worker") {
-      // TODO: Rewrite the code, but register the "function" against
-      s.prepend(`
-import { registerServerReference } from "rwsdk/worker";
-`);
-      const [_, exports] = parse(code);
-
-      for (const e of exports) {
-        s.append(`
-registerServerReference(${e.ln}, ${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)});
-`);
-      }
-    }
-    if (this.environment.name === "client") {
-      s = new MagicString(`\
-import { createServerReference } from "rwsdk/client";
-`);
-      const [_, exports] = parse(code);
-      for (const e of exports) {
-        s.append(`\
-export const ${e.ln} = createServerReference(${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)})
-`);
-      }
-    }
-
-    return {
-      code: s.toString(),
-      map: s.generateMap(),
-    };
-    // }
+    transformServerFunctions(
+      code,
+      `/${relative(this.environment.getTopLevelConfig().root, id)}`,
+      this.environment.name as "client" | "worker",
+    );
   },
 });
