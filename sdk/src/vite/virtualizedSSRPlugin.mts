@@ -131,7 +131,12 @@ async function resolveSSRPath({
       return resolved;
     }
   }
-  const moduleResolved = await context.resolveModule(raw, importer);
+
+  const moduleResolved = await context.resolveModule(
+    raw,
+    getRealPathFromSSRNamespace(importer),
+  );
+
   if (moduleResolved) {
     const resolved = ensureSSRNamespace(moduleResolved);
     logFn?.(
@@ -261,15 +266,17 @@ function detectLoader(filePath: string) {
 async function esbuildResolveSSRModule({
   path,
   context,
+  importer,
 }: {
   path: string;
   context: VirtualizedSSRContext;
+  importer: string;
 }) {
   logEsbuild(":esbuildResolveSSRModule: called with path=%s", path);
 
   const resolved = await resolveSSRPath({
     path,
-    importer: path,
+    importer,
     context,
     logFn: logEsbuild,
   });
@@ -399,8 +406,9 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
           logEsbuild(":esbuild:onResolve:namespace called with args: %O", args);
 
           const result = esbuildResolveSSRModule({
-            path: args.path,
             context,
+            path: args.path,
+            importer: args.importer,
           });
 
           logEsbuild(
@@ -429,8 +437,9 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
         logEsbuild(":esbuild:onResolve:prefix called with args: %O", args);
 
         const result = esbuildResolveSSRModule({
-          path: args.path,
           context,
+          path: args.path,
+          importer: args.importer,
         });
 
         logEsbuild(
