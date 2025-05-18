@@ -3,38 +3,55 @@ import debug from "debug";
 
 import { ROOT_DIR } from "../lib/constants.mjs";
 import { createModuleResolver } from "./moduleResolver.mjs";
-import { isSSRPath } from "./virtualizedSSRPlugin.mjs";
+import {
+  createSSRDepResolver,
+  isSSRPath,
+  ensureNoSSRNamespace,
+  ensureSSRNamespace,
+} from "./virtualizedSSRPlugin.mjs";
 import { ensureConfigArrays } from "./ensureConfigArrays.mjs";
+import { isBareImport } from "./isBareImport.mjs";
 
 const log = debug("rwsdk:vite:react-conditions");
 
-const ENV_CONFIG = {
-  worker: {
+const SSR_IMPORTS = [
+  "react",
+  "react/jsx-runtime",
+  "react/jsx-dev-runtime",
+  "react-dom/server.edge",
+  "react-dom/server",
+  "react-server-dom-webpack/client.edge",
+];
+
+const RSC_IMPORTS = [
+  "react",
+  "react/jsx-runtime",
+  "react/jsx-dev-runtime",
+  "react-server-dom-webpack/server.edge",
+  "react-server-dom-webpack/client.edge",
+];
+
+const CLIENT_IMPORTS = [
+  "react",
+  "react/jsx-runtime",
+  "react/jsx-dev-runtime",
+  "react-dom/client",
+  "react-server-dom-webpack/client.browser",
+];
+
+const createRscResolver = ({ projectRootDir }: { projectRootDir: string }) =>
+  createModuleResolver({
+    name: "rscReact",
+    roots: [projectRootDir, ROOT_DIR],
     conditionNames: ["react-server", "workerd", "worker", "edge", "default"],
-    imports: [
-      "react",
-      "react-dom/server.edge",
-      "react-dom/server",
-      "react-dom",
-      "react/jsx-runtime",
-      "react/jsx-dev-runtime",
-      "react-server-dom-webpack/client.edge",
-    ],
-    optimize: ["react/jsx-runtime", "react/jsx-dev-runtime"],
-  },
-  client: {
+  });
+
+const createClientResolver = ({ projectRootDir }: { projectRootDir: string }) =>
+  createModuleResolver({
+    name: "clientReact",
+    roots: [projectRootDir, ROOT_DIR],
     conditionNames: ["browser", "default"],
-    imports: [
-      "react",
-      "react-dom/client",
-      "react-dom",
-      "react/jsx-runtime",
-      "react/jsx-dev-runtime",
-      "react-server-dom-webpack/client.browser",
-    ],
-    optimize: ["react/jsx-runtime", "react/jsx-dev-runtime"],
-  },
-};
+  });
 
 // context(justinvdm, 18 May 2025): We remove the relevant React import paths
 // from Vite's optimizeDeps.include and resolve.alias arrays to prevent Vite's
@@ -83,91 +100,125 @@ export const reactConditionsResolverPlugin = async ({
     command,
   );
 
-  const contexts = Object.fromEntries(
-    Object.entries(ENV_CONFIG).map(([environment, config]) => {
-      return [
-        environment,
-        {
-          ...config,
-          environment,
-          resolver: createModuleResolver({
-            name: `react-conditions-resolver:${environment}`,
-            conditionNames: config.conditionNames,
-            roots: [projectRootDir, ROOT_DIR],
-          }),
-        },
-      ];
-    }),
-  );
+  const resolvers = {
+    ssr: createSSRDepResolver({ projectRootDir }),
+    rsc: createRscResolver({ projectRootDir }),
+    client: createClientResolver({ projectRootDir }),
+  };
 
-  type Context = (typeof contexts)[keyof typeof contexts];
-
-  const reactConditionsResolverEsbuildPlugin = (context: Context) => {
+  const reactConditionsResolverEsbuildPlugin = (
+    environmentName: "client" | "worker",
+  ) => {
     return {
-      name: `react-conditions-resolver-esbuild-plugin:${context.environment}`,
+      name: `rwsdk:react-conditions-resolver-esbuild-plugin:${environmentName}`,
       setup(build: any) {
         build.onResolve({ filter: /.*/ }, (args: any) => {
           log(
-            ":react-conditions-resolver:onResolve called for environment=%s with args=%O",
+            ":react-conditions-resolver:esbuild:onResolve called for environment=%s with args=%O",
             args,
           );
 
+          const id = ensureNoSSRNamespace(args.path);
+
+          if (!isBareImport(id)) {
+            log(
+              ":react-conditions-resolver:esbuild:onResolve environment=%s: Skipping non-bare import: %s",
+              environmentName,
+              id,
+            );
+            return;
+          }
+
           if (isSSRPath(args.path)) {
             log(
-              ":react-conditions-resolver:onResolve environment=%s: Skipping SSR path: %s",
-              context.environment,
+              ":react-conditions-resolver:esbuild:onResolve environment=%s: Skipping SSR path for virtualizedSSRPlugin to handle: %s",
+              environmentName,
               args.path,
             );
             return;
           }
 
-          const found = context.imports.find((importPath) => {
-            return args.path === importPath;
-          });
-
-          if (found) {
-            log(
-              ":react-conditions-resolver:onResolve environment=%s: Found matching import: %s",
-              context.environment,
-              found,
-            );
-
-            const path = context.resolver(args.path);
-
-            if (path) {
+          if (environmentName === "client") {
+            if (CLIENT_IMPORTS.includes(id)) {
               log(
-                ":react-conditions-resolver:onResolve environment=%s: Resolved matching import: %s -> %s",
-                context.environment,
-                args.path,
-                path,
+                ":react-conditions-resolver:esbuild:onResolve environment=%s: Resolving import: %s",
+                environmentName,
+                id,
               );
-              return { path };
+
+              const resolved = resolvers.client(id);
+
+              if (resolved) {
+                log(
+                  ":react-conditions-resolver:esbuild:onResolve environment=%s: Resolved import: %s -> %s",
+                  environmentName,
+                  id,
+                  resolved,
+                );
+
+                return {
+                  path: resolved,
+                  external: true,
+                };
+              } else {
+                log(
+                  ":react-conditions-resolver:esbuild:onResolve environment=%s: No result found for import: %s",
+                  environmentName,
+                  id,
+                );
+              }
             } else {
               log(
-                ":react-conditions-resolver:onResolve environment=%s: No result found for import: %s",
-                context.environment,
-                args.path,
+                ":react-conditions-resolver:esbuild:onResolve environment=%s: Skipping import: %s",
+                environmentName,
+                id,
               );
             }
-          } else {
-            log(
-              ":react-conditions-resolver:onResolve environment=%s: No matching import found for path: %s",
-              context.environment,
-              args.path,
-            );
+          } else if (environmentName === "worker") {
+            if (RSC_IMPORTS.includes(id)) {
+              log(
+                ":react-conditions-resolver:esbuild:onResolve environment=%s: Resolving import: %s",
+                environmentName,
+                id,
+              );
+
+              const resolved = resolvers.rsc(id);
+
+              if (resolved) {
+                log(
+                  ":react-conditions-resolver:esbuild:onResolve environment=%s: Resolved import: %s -> %s",
+                  environmentName,
+                  id,
+                  resolved,
+                );
+
+                return {
+                  path: resolved,
+                  external: true,
+                };
+              } else {
+                log(
+                  ":react-conditions-resolver:esbuild:onResolve environment=%s: No result found for import: %s",
+                  environmentName,
+                  id,
+                );
+              }
+            } else {
+              log(
+                ":react-conditions-resolver:esbuild:onResolve environment=%s: Skipping import: %s",
+                environmentName,
+                id,
+              );
+            }
           }
         });
       },
     };
   };
 
-  const configureEnvironment = (
-    context: Context,
-    config: EnvironmentOptions,
-  ) => {
+  const configureClientEnvironment = (config: EnvironmentOptions) => {
     log(
-      ":react-conditions-resolver:Applying React conditions resolver for name=%s environment in mode=%s",
-      context.environment,
+      ":react-conditions-resolver:Applying React conditions resolver for client environment in mode=%s",
       mode,
     );
 
@@ -182,26 +233,24 @@ export const reactConditionsResolverPlugin = async ({
 
     config.optimizeDeps.esbuildOptions.plugins ??= [];
     config.optimizeDeps.esbuildOptions.plugins.push(
-      reactConditionsResolverEsbuildPlugin(context),
+      reactConditionsResolverEsbuildPlugin("client"),
     );
 
-    removeReactImportsToAllowCustomResolution(config, context.imports);
+    removeReactImportsToAllowCustomResolution(config, CLIENT_IMPORTS);
 
-    for (const dep of context.optimize) {
-      const resolved = context.resolver(dep);
+    for (const dep of CLIENT_IMPORTS) {
+      const resolved = resolvers.client(dep);
 
       if (!resolved) {
         log(
-          ":react-conditions-resolver:configEnvironment: environment=%s: Skipping optimize for dep=%s because it could not be resolved",
-          context.environment,
+          ":react-conditions-resolver:vite:configEnvironment: client: Skipping optimize for dep=%s because it could not be resolved",
           dep,
         );
         continue;
       }
 
       log(
-        ":react-conditions-resolver:configEnvironment: environment=%s: Adding optimizeDep for dep=%s and alias to %s",
-        context.environment,
+        ":react-conditions-resolver:vite:configEnvironment: client: Adding optimizeDep for dep=%s and alias to %s",
         dep,
         resolved,
       );
@@ -215,22 +264,103 @@ export const reactConditionsResolverPlugin = async ({
     }
   };
 
+  const configureWorkerEnvironment = (config: EnvironmentOptions) => {
+    log(
+      ":react-conditions-resolver:Applying React conditions resolver for client environment in mode=%s",
+      mode,
+    );
+
+    ensureConfigArrays(config);
+
+    (config.optimizeDeps ??= {}).esbuildOptions ??= {};
+
+    config.optimizeDeps.esbuildOptions.define = {
+      ...(config.optimizeDeps.esbuildOptions.define || {}),
+      "process.env.NODE_ENV": JSON.stringify(mode),
+    };
+
+    config.optimizeDeps.esbuildOptions.plugins ??= [];
+    config.optimizeDeps.esbuildOptions.plugins.push(
+      reactConditionsResolverEsbuildPlugin("worker"),
+    );
+
+    removeReactImportsToAllowCustomResolution(config, [
+      ...RSC_IMPORTS,
+      ...SSR_IMPORTS,
+    ]);
+
+    for (const dep of RSC_IMPORTS) {
+      const resolved = resolvers.client(dep);
+
+      if (!resolved) {
+        log(
+          ":react-conditions-resolver:vite:configEnvironment: rsc: Skipping optimize for dep=%s because it could not be resolved",
+          dep,
+        );
+        continue;
+      }
+
+      log(
+        ":react-conditions-resolver:vite:configEnvironment: rsc: Adding optimizeDep for dep=%s and alias to %s",
+        dep,
+        resolved,
+      );
+
+      config.optimizeDeps.include?.push(dep);
+
+      (config.resolve as any).alias.push({
+        find: new RegExp(`^${dep.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`),
+        replacement: resolved,
+      });
+    }
+
+    for (const dep of SSR_IMPORTS) {
+      const resolved = resolvers.client(dep);
+
+      if (!resolved) {
+        log(
+          ":react-conditions-resolver:vite:configEnvironment: ssr: Skipping optimize for dep=%s because it could not be resolved",
+          dep,
+        );
+        continue;
+      }
+
+      const id = ensureSSRNamespace(dep);
+
+      log(
+        ":react-conditions-resolver:vite:configEnvironment: ssr: Adding optimizeDep for dep=%s and alias to %s",
+        id,
+        resolved,
+      );
+
+      config.optimizeDeps.include?.push(id);
+
+      (config.resolve as any).alias.push({
+        find: new RegExp(`^${id.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`),
+        replacement: resolved,
+      });
+    }
+  };
+
   return [
     {
       name: `rwsdk:react-conditions-resolver:config:${mode}`,
       enforce: "post",
 
       configEnvironment(name: string, config: EnvironmentOptions) {
-        const context = contexts[name];
-        if (context) {
-          configureEnvironment(context, config);
+        if (name === "client") {
+          configureClientEnvironment(config);
+        } else if (name === "worker") {
+          configureWorkerEnvironment(config);
         }
       },
 
       config(config: EnvironmentOptions) {
-        for (const context of Object.values(contexts)) {
-          removeReactImportsToAllowCustomResolution(config, context.imports);
-        }
+        removeReactImportsToAllowCustomResolution(config, [
+          ...CLIENT_IMPORTS,
+          ...RSC_IMPORTS,
+          ...SSR_IMPORTS,
+        ]);
       },
     },
     {
@@ -238,49 +368,86 @@ export const reactConditionsResolverPlugin = async ({
       enforce: "pre",
 
       resolveId(id: string) {
-        const context = contexts[this.environment.name];
-
-        if (!context) {
-          return;
-        }
+        const environmentName = this.environment.name;
 
         log(
           ":react-conditions-resolver:resolveId called for environment=%s id=%s",
-          this.environment.name,
+          environmentName,
           id,
         );
 
         if (isSSRPath(id)) {
           log(
-            ":react-conditions-resolver:resolveId environment=%s: Skipping SSR path: %s",
-            this.environment.name,
+            ":react-conditions-resolver:resolveId environment=%s: Skipping SSR path for virtualizedSSRPlugin to handle: %s",
+            environmentName,
             id,
           );
           return;
         }
 
-        if (context.imports.includes(id)) {
-          log(
-            ":react-conditions-resolver:resolveId environment=%s: Resolving import: %s",
-            context.environment,
-            id,
-          );
-
-          const resolved = context.resolver(id);
-
-          if (resolved) {
+        if (environmentName === "client") {
+          if (CLIENT_IMPORTS.includes(id)) {
             log(
-              ":react-conditions-resolver:resolveId environment=%s: Resolved import: %s -> %s",
-              context.environment,
+              ":react-conditions-resolver:vite:resolveId environment=%s: Resolving import: %s",
+              environmentName,
               id,
-              resolved,
             );
 
-            return resolved;
+            const resolved = resolvers.client(id);
+
+            if (resolved) {
+              log(
+                ":react-conditions-resolver:vite:resolveId environment=%s: Resolved import: %s -> %s",
+                environmentName,
+                id,
+                resolved,
+              );
+
+              return resolved;
+            } else {
+              log(
+                ":react-conditions-resolver:vite:resolveId environment=%s: No result found for import: %s",
+                environmentName,
+                id,
+              );
+            }
           } else {
             log(
-              ":react-conditions-resolver:resolveId environment=%s: No result found for import: %s",
-              context.environment,
+              ":react-conditions-resolver:vite:resolveId environment=%s: Skipping import: %s",
+              environmentName,
+              id,
+            );
+          }
+        } else if (environmentName === "worker") {
+          if (RSC_IMPORTS.includes(id)) {
+            log(
+              ":react-conditions-resolver:vite:resolveId environment=%s: Resolving import: %s",
+              environmentName,
+              id,
+            );
+
+            const resolved = resolvers.rsc(id);
+
+            if (resolved) {
+              log(
+                ":react-conditions-resolver:vite:resolveId environment=%s: Resolved import: %s -> %s",
+                environmentName,
+                id,
+                resolved,
+              );
+
+              return resolved;
+            } else {
+              log(
+                ":react-conditions-resolver:vite:resolveId environment=%s: No result found for import: %s",
+                environmentName,
+                id,
+              );
+            }
+          } else {
+            log(
+              ":react-conditions-resolver:vite:resolveId environment=%s: Skipping import: %s",
+              environmentName,
               id,
             );
           }

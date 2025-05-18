@@ -3,7 +3,7 @@ import MagicString from "magic-string";
 import debug from "debug";
 import { parse } from "es-module-lexer";
 import {
-  getRealPathFromSSRNamespace,
+  ensureNoSSRNamespace,
   ensureSSRNamespace,
 } from "./virtualizedSSRPlugin.mjs";
 
@@ -69,7 +69,7 @@ export async function transformServerReferences(
     log("SSR import detected for id=%s", id);
     // Just re-export everything from the original module in SSR
     importLines.push(
-      `export * from ${JSON.stringify(getRealPathFromSSRNamespace(id))};`,
+      `export * from ${JSON.stringify(ensureNoSSRNamespace(id))};`,
     );
     exportLines = [];
   } else if (env.environmentName === "worker") {

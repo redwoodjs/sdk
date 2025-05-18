@@ -72,10 +72,14 @@ const logEsbuildTransform = logEsbuild.extend("transform");
 
 const IGNORED_IMPORT_PATTERNS = [/^cloudflare:.*/];
 
-const createSSRDepResolver = ({ projectRootDir }: { projectRootDir: string }) =>
+export const createSSRDepResolver = ({
+  projectRootDir,
+}: {
+  projectRootDir: string;
+}) =>
   createModuleResolver({
     roots: [projectRootDir, ROOT_DIR],
-    name: "resolveDep",
+    name: "ssrDep",
     conditionNames: SSR_RESOLVER_CONDITION_NAMES,
   });
 
@@ -91,12 +95,12 @@ export type VirtualizedSSRContext = {
 
 async function resolveSSRPath({
   path,
-  importer,
+  importer = ".",
   context,
   logFn,
 }: {
   path: string;
-  importer: string;
+  importer?: string;
   context: VirtualizedSSRContext;
   logFn?: (...args: any[]) => void;
 }): Promise<string | undefined> {
@@ -107,7 +111,7 @@ async function resolveSSRPath({
     return;
   }
 
-  const raw = getRealPathFromSSRNamespace(path);
+  const raw = ensureNoSSRNamespace(path);
 
   if (isBareImport(raw)) {
     const ssrResolved = context.resolveDep(raw);
@@ -124,7 +128,7 @@ async function resolveSSRPath({
 
   const moduleResolved = await context.resolveModule(
     raw,
-    getRealPathFromSSRNamespace(importer),
+    ensureNoSSRNamespace(importer),
   );
 
   if (moduleResolved) {
@@ -174,7 +178,7 @@ async function rewriteSSRImports({
   context: VirtualizedSSRContext;
   logFn?: (...args: any[]) => void;
 }): Promise<MagicString | null> {
-  const isSDKPath = getRealPathFromSSRNamespace(id).startsWith(DIST_DIR);
+  const isSDKPath = ensureNoSSRNamespace(id).startsWith(DIST_DIR);
 
   logFn?.(
     ":rewriteSSRImports: called for id: id=%s, isSDKPath=%s",
@@ -203,7 +207,7 @@ async function rewriteSSRImports({
       id,
     );
 
-    const realPath = getRealPathFromSSRNamespace(raw);
+    const realPath = ensureNoSSRNamespace(raw);
 
     if (
       isSDKPath &&
@@ -277,7 +281,7 @@ export const isSSRPath = (filePath: string): boolean => {
   );
 };
 
-export const getRealPathFromSSRNamespace = (filePath: string): string => {
+export const ensureNoSSRNamespace = (filePath: string): string => {
   if (filePath.startsWith(SSR_NAMESPACE_PREFIX)) {
     return filePath.slice(SSR_NAMESPACE_PREFIX.length);
   }
@@ -290,7 +294,7 @@ export const getRealPathFromSSRNamespace = (filePath: string): string => {
 };
 
 export const ensureSSRNamespace = (filePath: string) => {
-  return SSR_NAMESPACE_PREFIX + getRealPathFromSSRNamespace(filePath);
+  return SSR_NAMESPACE_PREFIX + ensureNoSSRNamespace(filePath);
 };
 
 function detectLoader(filePath: string) {
@@ -355,7 +359,7 @@ async function esbuildLoadAndTransformSSRModule({
   context: VirtualizedSSRContext;
   logFn: (...args: any[]) => void;
 }) {
-  const realPath = getRealPathFromSSRNamespace(filePath);
+  const realPath = ensureNoSSRNamespace(filePath);
 
   if (isBareImport(realPath)) {
     logFn("⏭️ Skipping bare import: %s", realPath);
@@ -589,7 +593,7 @@ export function virtualizedSSRPlugin({
       context.config = config;
     },
 
-    async resolveId(id) {
+    async resolveId(id, importer) {
       if (this.environment.name !== "worker") {
         return;
       }
@@ -601,11 +605,11 @@ export function virtualizedSSRPlugin({
         return id;
       }
 
-      const realPath = getRealPathFromSSRNamespace(id);
+      const realPath = ensureNoSSRNamespace(id);
 
       const result = await resolveSSRPath({
-        path: realPath,
-        importer: id,
+        path: id,
+        importer,
         context,
         logFn: logResolve,
       });
@@ -631,11 +635,12 @@ export function virtualizedSSRPlugin({
 
       logResolve(":plugin:load: called with id: %s", id);
 
-      if (!id.startsWith(SSR_NAMESPACE)) {
-        return null;
+      if (!isSSRPath(id)) {
+        logResolve("plugin:load: Skipping non-SSR namespaced id: %s", id);
+        return;
       }
 
-      const moduleId = getRealPathFromSSRNamespace(id);
+      const moduleId = ensureNoSSRNamespace(id);
 
       try {
         logResolve(
