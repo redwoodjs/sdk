@@ -44,10 +44,10 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
     @import "tailwindcss";
     ```
 
-4. Import your CSS and add a `<link>` to the `styles.css` file.
+4. Import your CSS and add a `<link>` to the `styles.css` file.<br />
     In the `Document.tsx` file, within the `<head>` section, add:
 
-    ```tsx title="src/app/Document.tsx" {3}
+    ```tsx title="src/app/Document.tsx" add={1, 5}
     import styles from "./styles.css?url";
     ...
     <head>
