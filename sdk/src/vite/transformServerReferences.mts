@@ -98,7 +98,7 @@ export async function transformServerReferences(
   const result = [...importLines, ...exportLines].join("\n");
 
   if (process.env.VERBOSE) {
-    log("[VERBOSE] Transformed code for id=%s:\n%s", id, result);
+    log(":VERBOSE: Transformed code for id=%s:\n%s", id, result);
   }
 
   return {

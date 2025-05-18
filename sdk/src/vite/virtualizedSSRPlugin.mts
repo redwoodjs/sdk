@@ -110,10 +110,10 @@ async function resolveSSRPath({
   context: VirtualizedSSRContext;
   logFn?: (...args: any[]) => void;
 }): Promise<string> {
-  logFn?.("[resolveSSRPath] called with path=%s, importer=%s", path, importer);
+  logFn?.(":resolveSSRPath: called with path=%s, importer=%s", path, importer);
 
   if (!path.startsWith(SSR_NAMESPACE)) {
-    logFn?.("[resolveSSRPath] Skipping non-SSR path: path=%s", path);
+    logFn?.(":resolveSSRPath: Skipping non-SSR path: path=%s", path);
     return path;
   }
 
@@ -124,7 +124,7 @@ async function resolveSSRPath({
     if (ssrResolved !== false) {
       const resolved = ensureSSRNamespace(ssrResolved);
       logFn?.(
-        "[resolveSSRPath] SSR resolver succeeded for bare import import='%s', resolved to resolved='%s'",
+        ":resolveSSRPath: SSR resolver succeeded for bare import import='%s', resolved to resolved='%s'",
         path,
         resolved,
       );
@@ -135,7 +135,7 @@ async function resolveSSRPath({
   if (moduleResolved) {
     const resolved = ensureSSRNamespace(moduleResolved);
     logFn?.(
-      "[resolveSSRPath] Module resolver succeeded for import import='%s' from importer=%s, resolved to moduleResolved='%s'",
+      ":resolveSSRPath: Module resolver succeeded for import import='%s' from importer=%s, resolved to moduleResolved='%s'",
       raw,
       importer,
       resolved,
@@ -143,7 +143,7 @@ async function resolveSSRPath({
     return resolved;
   } else {
     logFn?.(
-      "[resolveSSRPath] Module resolver failed for import import='%s' from importer=%s, returning raw path without SSR namespace",
+      ":resolveSSRPath: Module resolver failed for import import='%s' from importer=%s, returning raw path without SSR namespace",
       raw,
       importer,
     );
@@ -162,14 +162,14 @@ async function rewriteSSRImports({
   context: VirtualizedSSRContext;
   logFn?: (...args: any[]) => void;
 }): Promise<MagicString | null> {
-  logFn?.("[rewriteSSRImports] called for id: id=%s", id);
+  logFn?.(":rewriteSSRImports: called for id: id=%s", id);
   const imports = findImportSpecifiers(
     id,
     code,
     IGNORED_IMPORT_PATTERNS,
     logFn,
   );
-  logFn?.("[rewriteSSRImports] Found %d imports in id=%s", imports.length, id);
+  logFn?.(":rewriteSSRImports: Found %d imports in id=%s", imports.length, id);
   const ms = new MagicString(code);
 
   let modified = false;
@@ -177,7 +177,7 @@ async function rewriteSSRImports({
   for (const i of imports) {
     const raw = i.raw;
     logFn?.(
-      "[rewriteSSRImports] Processing import '%s' at [%d, %d] in id=%s",
+      ":rewriteSSRImports: Processing import '%s' at [%d, %d] in id=%s",
       raw,
       i.s,
       i.e,
@@ -186,7 +186,7 @@ async function rewriteSSRImports({
 
     if (raw.startsWith(SSR_NAMESPACE)) {
       logFn?.(
-        "[rewriteSSRImports] Skipping already-virtual import: import=%s",
+        ":rewriteSSRImports: Skipping already-virtual import: import=%s",
         raw,
       );
       continue;
@@ -195,7 +195,7 @@ async function rewriteSSRImports({
     const virtualId = ensureSSRNamespace(raw);
     ms.overwrite(i.s, i.e, virtualId);
     logFn?.(
-      "[rewriteSSRImports] Rewrote import import='%s' to virtualId='%s' in id=%s",
+      ":rewriteSSRImports: Rewrote import import='%s' to virtualId='%s' in id=%s",
       raw,
       virtualId,
       id,
@@ -204,10 +204,10 @@ async function rewriteSSRImports({
   }
 
   if (modified) {
-    logFn?.("[rewriteSSRImports] Rewriting complete for id=%s", id);
+    logFn?.(":rewriteSSRImports: Rewriting complete for id=%s", id);
     return ms;
   } else {
-    logFn?.("[rewriteSSRImports] No changes made for id=%s", id);
+    logFn?.(":rewriteSSRImports: No changes made for id=%s", id);
     return null;
   }
 }
@@ -226,7 +226,7 @@ function isSSRModule({
   const logger = logFn ?? (() => {});
   if (id.includes("__rwsdkssr")) {
     logger(
-      `[isSSRModule] Detected SSR module (includes __rwsdk_ssr): id=%s esbuild=%s`,
+      ":isSSRModule: Detected SSR module (includes __rwsdk_ssr): id=%s esbuild=%s",
       id,
       !!esbuild,
     );
@@ -234,7 +234,7 @@ function isSSRModule({
   }
   if (id.startsWith(SSR_NAMESPACE)) {
     logger(
-      `[isSSRModule] Detected SSR module (SSR_NAMESPACE): id=%s esbuild=%s`,
+      ":isSSRModule: Detected SSR module (SSR_NAMESPACE): id=%s esbuild=%s",
       id,
       !!esbuild,
     );
@@ -265,7 +265,7 @@ async function esbuildResolveSSRModule({
   path: string;
   context: VirtualizedSSRContext;
 }) {
-  logEsbuild("🔎 Resolving SSR path: %s", path);
+  logEsbuild(":esbuildResolveSSRModule: called with path=%s", path);
 
   const resolved = await resolveSSRPath({
     path,
@@ -283,7 +283,7 @@ async function esbuildResolveSSRModule({
   }
 
   logEsbuild(
-    "🔎 Resolved result for SSR path path=%s: result=%O",
+    ":esbuildResolveSSRModule: resolved result for path=%s: result=%O",
     path,
     result,
   );
@@ -378,7 +378,7 @@ async function esbuildLoadAndTransformSSRModule({
   } else {
     logFn("🔎 Returning modified code for %s", filePath);
     if (process.env.VERBOSE) {
-      logFn("[VERBOSE] Code for modified %s:\n%s", filePath, code);
+      logFn(":VERBOSE: Code for modified %s:\n%s", filePath, code);
     }
   }
 
@@ -396,10 +396,7 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
       build.onResolve(
         { filter: /.*/, namespace: SSR_ESBUILD_NAMESPACE },
         (args: any) => {
-          logEsbuild(
-            "[esbuild:onResolve:namespace] called with args: %O",
-            args,
-          );
+          logEsbuild(":esbuild:onResolve:namespace called with args: %O", args);
 
           const result = esbuildResolveSSRModule({
             path: args.path,
@@ -407,7 +404,7 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
           });
 
           logEsbuild(
-            "[esbuild:onResolve:namespace] resolved result for path=%s: result=%O",
+            ":esbuild:onResolve:namespace resolved result for path=%s: result=%O",
             args.path,
             result,
           );
@@ -419,7 +416,7 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
       build.onLoad(
         { filter: /.*/, namespace: SSR_ESBUILD_NAMESPACE },
         async (args: any) => {
-          logEsbuild("[esbuild:onLoad:namespace] called with args: %O", args);
+          logEsbuild(":esbuild:onLoad:namespace called with args: %O", args);
           return esbuildLoadAndTransformSSRModule({
             filePath: args.path,
             context,
@@ -429,7 +426,7 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
       );
 
       build.onResolve({ filter: /^virtual:rwsdk:ssr:/ }, (args: any) => {
-        logEsbuild("[esbuild:onResolve:prefix] called with args: %O", args);
+        logEsbuild(":esbuild:onResolve:prefix called with args: %O", args);
 
         const result = esbuildResolveSSRModule({
           path: args.path,
@@ -437,7 +434,7 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
         });
 
         logEsbuild(
-          "[esbuild:onResolve:prefix] resolved result for path=%s: result=%O",
+          ":esbuild:onResolve:prefix resolved result for path=%s: result=%O",
           args.path,
           result,
         );
@@ -448,7 +445,7 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
       build.onLoad(
         { filter: /\.(js|jsx|ts|tsx|mjs|mts)$/ },
         async (args: any) => {
-          logEsbuild("[esbuild:onLoad:entry] called with args: %O", args);
+          logEsbuild(":esbuild:onLoad:entry called with args: %O", args);
 
           const result = await esbuildLoadAndTransformSSRModule({
             filePath: args.path,
@@ -457,7 +454,7 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
           });
 
           if (process.env.VERBOSE) {
-            logEsbuild("[esbuild:onLoad:entry] result: %O", result);
+            logEsbuild(":esbuild:onLoad:entry result: %O", result);
           }
 
           return result;
@@ -506,10 +503,10 @@ export function virtualizedSSRPlugin({
     name: "rwsdk:virtualized-ssr",
 
     async configEnvironment(env, config) {
-      logInfo("⚙️ Configuring environment: %s", env);
+      logInfo(":configEnvironment: Configuring environment: %s", env);
 
       if (env !== "worker") {
-        logInfo("⏭️ Skipping non-worker environment");
+        logInfo(":configEnvironment: Skipping non-worker environment");
         return;
       }
 
@@ -526,10 +523,13 @@ export function virtualizedSSRPlugin({
         projectRootDir,
       });
 
-      logInfo("⚙️ Setting up aliases for worker environment");
-      logInfo("📊 Configuration state:");
-      logInfo("   - Project root: %s", projectRootDir);
-      logInfo("   - Virtual SSR namespace: %s", SSR_NAMESPACE);
+      logInfo(":configEnvironment: Setting up aliases for worker environment");
+      logInfo(":configEnvironment: Configuration state:");
+      logInfo(":configEnvironment:    - Project root: %s", projectRootDir);
+      logInfo(
+        ":configEnvironment:    - Virtual SSR namespace: %s",
+        SSR_NAMESPACE,
+      );
 
       (config.optimizeDeps as any).esbuildOptions.plugins = (
         config.optimizeDeps as any
@@ -548,7 +548,7 @@ export function virtualizedSSRPlugin({
     },
 
     async resolveId(id) {
-      logResolve("[plugin:resolveId] called with id: %s", id);
+      logResolve(":plugin:resolveId: called with id: %s", id);
 
       const result = await resolveSSRPath({
         path: id,
@@ -558,7 +558,7 @@ export function virtualizedSSRPlugin({
       });
 
       logResolve(
-        "[plugin:resolveId] resolved result for id=%s: result=%O",
+        ":plugin:resolveId: resolved result for id=%s: result=%O",
         id,
         result,
       );
@@ -567,7 +567,7 @@ export function virtualizedSSRPlugin({
     },
 
     load(id) {
-      logResolve("[plugin:load] called with id: %s", id);
+      logResolve(":plugin:load: called with id: %s", id);
 
       if (!id.startsWith(SSR_NAMESPACE)) {
         return null;
@@ -588,7 +588,7 @@ export function virtualizedSSRPlugin({
     },
 
     async transform(code, id) {
-      logTransform("[plugin:transform] called with id: %s", id);
+      logTransform(":plugin:transform: called with id: %s", id);
 
       if (this.environment.name !== "worker") {
         return null;
@@ -624,7 +624,7 @@ export function virtualizedSSRPlugin({
         logTransform("🔎 Rewrote imports for %s", id);
         if (process.env.VERBOSE) {
           logTransform(
-            "[VERBOSE] Rewritten code for %s:\n%s",
+            ":VERBOSE: Rewritten code for %s:\n%s",
             id,
             rewritten.toString(),
           );

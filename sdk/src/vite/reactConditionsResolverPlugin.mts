@@ -54,7 +54,7 @@ export const reactConditionsResolverPlugin = async ({
   command?: "build" | "serve";
 }): Promise<Plugin> => {
   log(
-    "Initializing React conditions resolver plugin in %s mode for %s",
+    ":react-conditions-resolver:Initializing React conditions resolver plugin in :mode: mode for :command:",
     mode,
     command,
   );
@@ -83,32 +83,49 @@ export const reactConditionsResolverPlugin = async ({
       if (environment === "worker") {
         if (SKIP_REACT_SERVER.includes(packageName)) {
           resolver = skipReactServerResolver;
-          log("Using skipReactServer resolver for %s", packageName);
+          log(
+            ":react-conditions-resolver:Using skipReactServer resolver for :packageName:",
+          );
         } else {
           resolver = workerResolver;
-          log("Using worker resolver with react-server for %s", packageName);
+          log(
+            ":react-conditions-resolver:Using worker resolver with react-server for :packageName:",
+          );
         }
       } else {
         resolver = clientResolver;
-        log("Using client resolver for %s", packageName);
+        log(
+          ":react-conditions-resolver:Using client resolver for :packageName:",
+        );
       }
 
       const resolved = resolver(ROOT_DIR, packageName);
       if (resolved) {
-        log("Resolved %s to %s using enhanced-resolve", packageName, resolved);
+        log(
+          ":react-conditions-resolver:Resolved :packageName: to :resolved: using enhanced-resolve",
+        );
         return resolved;
       }
     } catch (error) {
-      log("Enhanced resolution failed for %s: %o", packageName, error);
+      log(
+        ":react-conditions-resolver:Enhanced resolution failed for :packageName: :error:",
+        error,
+      );
     }
 
     try {
       const resolved = sdkRequire.resolve(packageName);
-      log("Standard resolution for %s: %s", packageName, resolved);
+      log(
+        ":react-conditions-resolver:Standard resolution for :packageName: :resolved:",
+        resolved,
+      );
       return resolved;
     } catch (fallbackError) {
-      log("All resolution failed for %s: %o", packageName, fallbackError);
-      throw new Error(`Failed to resolve ${packageName}`);
+      log(
+        ":react-conditions-resolver:All resolution failed for :packageName: :fallbackError:",
+        fallbackError,
+      );
+      throw new Error(`Failed to resolve :packageName:`);
     }
   };
 
@@ -126,9 +143,9 @@ export const reactConditionsResolverPlugin = async ({
 
   // Log the resolved paths
   const logImports = (env: string, imports: Record<string, string>) => {
-    log(`Resolved ${env} paths (${mode} mode):`);
+    log(":react-conditions-resolver:Resolved :env: paths (:mode: mode):");
     Object.entries(imports).forEach(([id, path]) => {
-      log("- %s: %s", id, path);
+      log("- :id: : path:");
     });
   };
 
@@ -141,7 +158,7 @@ export const reactConditionsResolverPlugin = async ({
     imports: Record<string, string>,
   ) => {
     log(
-      `Applying React conditions resolver for ${name} environment in ${mode} mode`,
+      ":react-conditions-resolver:Applying React conditions resolver for :name: environment in :mode: mode",
     );
 
     (config.optimizeDeps ??= {}).esbuildOptions ??= {};
@@ -175,7 +192,7 @@ export const reactConditionsResolverPlugin = async ({
         replacement: resolvedPath,
       });
 
-      log(`${name}: Added alias for ${id} -> ${resolvedPath}`);
+      log(":react-conditions-resolver:Added alias for :id: -> :resolvedPath:");
     });
   };
 
@@ -204,7 +221,9 @@ export const reactConditionsResolverPlugin = async ({
             find: exactMatchRegex,
             replacement: resolvedPath,
           });
-          log(`Global: Added alias for ${id} -> ${resolvedPath}`);
+          log(
+            ":react-conditions-resolver:Global: Added alias for :id: -> :resolvedPath:",
+          );
         }
       }
 

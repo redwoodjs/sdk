@@ -4,7 +4,7 @@ import debug from "debug";
 
 function applyAlias(request: string, aliasEntries: any, name: string): string {
   if (!aliasEntries) return request;
-  const logPrefix = `[${name}]`;
+  const logPrefix = `:${name}:`;
   // Support both array and object forms
   const entries = Array.isArray(aliasEntries)
     ? aliasEntries
@@ -17,7 +17,7 @@ function applyAlias(request: string, aliasEntries: any, name: string): string {
     if (typeof find === "string") {
       if (request === find || request.startsWith(find + "/")) {
         debug("rwsdk:vite:aliased-module-resolver")(
-          "%s [applyAlias] Matched string alias: '%s' -> '%s' for request '%s'",
+          "%s :applyAlias: Matched string alias: '%s' -> '%s' for request '%s'",
           logPrefix,
           find,
           replacement,
@@ -28,7 +28,7 @@ function applyAlias(request: string, aliasEntries: any, name: string): string {
     } else if (find instanceof RegExp) {
       if (find.test(request)) {
         debug("rwsdk:vite:aliased-module-resolver")(
-          "%s [applyAlias] Matched RegExp alias: %O -> '%s' for request '%s'",
+          "%s :applyAlias: Matched RegExp alias: %O -> '%s' for request '%s'",
           logPrefix,
           find,
           replacement,
@@ -53,7 +53,7 @@ export function createModuleResolver({
   name?: string;
 }) {
   const log = debug("rwsdk:vite:aliased-module-resolver");
-  const logPrefix = `[${name}]`;
+  const logPrefix = `:${name}:`;
 
   const baseModuleResolver = enhancedResolve.create.sync({
     conditionNames,

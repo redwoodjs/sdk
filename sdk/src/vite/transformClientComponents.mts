@@ -37,7 +37,7 @@ export async function transformClientComponents(
   if (!hasUseClient) {
     log("Skipping: no 'use client' directive in id=%s", id);
     if (process.env.VERBOSE) {
-      log("[VERBOSE] Returning code unchanged for id=%s:\n%s", id, code);
+      log(":VERBOSE: Returning code unchanged for id=%s:\n%s", id, code);
     }
     return;
   }
@@ -148,7 +148,7 @@ export async function transformClientComponents(
 
   // 3. SSR files: just remove the directive
   if (id.startsWith("virtual:rwsdk:ssr")) {
-    log("[isEsbuild=%s] Handling SSR virtual module: %s", !!env.isEsbuild, id);
+    log(":isEsbuild=%s: Handling SSR virtual module: %s", !!env.isEsbuild, id);
     const s = new MagicString(code);
     const directiveMatch = code.match(/^(\s*)(["'])use client\2/);
     if (directiveMatch) {
@@ -167,7 +167,7 @@ export async function transformClientComponents(
       map: s.generateMap({ hires: true }),
     };
     if (process.env.VERBOSE) {
-      log("[VERBOSE] SSR transformed code for %s:\n%s", id, transformed.code);
+      log(":VERBOSE: SSR transformed code for %s:\n%s", id, transformed.code);
     }
     return transformed;
   }
@@ -186,7 +186,7 @@ export async function transformClientComponents(
   // Add registerClientReference assignments for named exports in order
   for (const info of exportInfos) {
     log(
-      "[isEsbuild=%s] Registering client reference for named export: %s as %s",
+      ":isEsbuild=%s: Registering client reference for named export: %s as %s",
       !!env.isEsbuild,
       info.local,
       info.exported,
@@ -202,7 +202,7 @@ export async function transformClientComponents(
       e.local === e.exported ? e.local : `${e.local} as ${e.exported}`,
     );
     log(
-      "[isEsbuild=%s] Exporting named exports: %O",
+      ":isEsbuild=%s: Exporting named exports: %O",
       !!env.isEsbuild,
       exportNames,
     );
@@ -212,7 +212,7 @@ export async function transformClientComponents(
   // Add default export if present
   if (defaultExportInfo) {
     log(
-      "[isEsbuild=%s] Registering client reference for default export: %s",
+      ":isEsbuild=%s: Registering client reference for default export: %s",
       !!env.isEsbuild,
       defaultExportInfo.exported,
     );
@@ -224,13 +224,13 @@ export async function transformClientComponents(
   // Join all lines with a blank line between each statement, and end with a single trailing newline
   const finalResult = resultLines.join("\n");
   log(
-    "[isEsbuild=%s] Final transformed code for %s:\n%s",
+    ":isEsbuild=%s: Final transformed code for %s:\n%s",
     !!env.isEsbuild,
     id,
     finalResult,
   );
   if (process.env.VERBOSE) {
-    log("[VERBOSE] Transformed code for %s:\n%s", id, finalResult + "\n");
+    log(":VERBOSE: Transformed code for %s:\n%s", id, finalResult + "\n");
   }
   return {
     code: finalResult + "\n",
