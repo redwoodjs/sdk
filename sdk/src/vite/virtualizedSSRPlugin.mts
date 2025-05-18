@@ -456,10 +456,10 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
     setup(build: any) {
       build.onResolve(
         { filter: /.*/, namespace: SSR_ESBUILD_NAMESPACE },
-        (args: any) => {
+        async (args: any) => {
           logEsbuild(":esbuild:onResolve:namespace called with args: %O", args);
 
-          const result = esbuildResolveSSRModule({
+          const result = await esbuildResolveSSRModule({
             context,
             path: args.path,
             importer: args.importer,
@@ -487,10 +487,10 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
         },
       );
 
-      build.onResolve({ filter: /^virtual:rwsdk:ssr:/ }, (args: any) => {
+      build.onResolve({ filter: /^virtual:rwsdk:ssr:/ }, async (args: any) => {
         logEsbuild(":esbuild:onResolve:prefix called with args: %O", args);
 
-        const result = esbuildResolveSSRModule({
+        const result = await esbuildResolveSSRModule({
           context,
           path: args.path,
           importer: args.importer,
