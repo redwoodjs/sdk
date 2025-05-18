@@ -62,7 +62,7 @@ export function matchPath(
   }
 
   // Check for invalid pattern: double wildcard (e.g., /**/)
-  if (routePath.includes("**")) {
+  if (routePath.indexOf("**") !== -1) {
     throw new Error(
       `Invalid route pattern: "${routePath}" contains "**". Use "*" for a single wildcard segment.`,
     );
