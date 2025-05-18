@@ -34,6 +34,38 @@ const ENV_CONFIG = {
   },
 };
 
+// context(justinvdm, 18 May 2025): We remove the relevant React import paths
+// from Vite's optimizeDeps.include and resolve.alias arrays to prevent Vite's
+// up-front dependency optimization and aliasing from blocking our plugin from
+// intercepting and resolving these imports. If these imports remain in
+// optimizeDeps.include or resolve.alias, Vite will short-circuit and always use
+// its default resolution, which prevents us having different React builds for
+// SSR (Server-Side Rendering) and RSC (React Server Components) in the same
+// Cloudflare runtime environment. By removing these imports from the up-front
+// optimizations, we ensure our plugin's esbuild plugin (for optimizeDeps in
+// development) and resolveId hook (for builds) can handle these React imports
+// as needed.
+const removeReactImportsToAllowCustomResolution = (
+  config: any,
+  imports: string[],
+) => {
+  ensureConfigArrays(config);
+  config.optimizeDeps.include = config.optimizeDeps.include.filter(
+    (dep: string) => !imports.includes(dep),
+  );
+  (config.resolve.alias as any) = (config.resolve.alias as any).filter(
+    (alias: { find: RegExp | string }) => {
+      if (alias.find instanceof RegExp) {
+        return !imports.some((imp) =>
+          alias.find instanceof RegExp ? alias.find.test(imp) : false,
+        );
+      } else {
+        return !imports.includes(alias.find);
+      }
+    },
+  );
+};
+
 export const reactConditionsResolverPlugin = async ({
   mode = "development",
   command = "serve",
@@ -146,38 +178,23 @@ export const reactConditionsResolverPlugin = async ({
       "process.env.NODE_ENV": JSON.stringify(mode),
     };
 
-    config.optimizeDeps.include ??= [];
-    config.optimizeDeps.include.push(...context.imports);
-
     config.optimizeDeps.esbuildOptions.plugins ??= [];
     config.optimizeDeps.esbuildOptions.plugins.push(
       reactConditionsResolverEsbuildPlugin(context),
     );
 
-    for (const importPath of context.imports) {
-      const resolved = context.resolver(importPath);
-      if (resolved) {
-        log(
-          ":react-conditions-resolver:resolveId environment=%s: Resolved import, adding alias: %s -> %s",
-          context.environment,
-          importPath,
-          resolved,
-        );
+    config.optimizeDeps?.include?.push(...context.imports);
 
-        (config.resolve as any).alias.push({
-          find: new RegExp(
-            `^${importPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
-          ),
-          replacement: resolved,
-        });
-      } else {
-        log(
-          ":react-conditions-resolver:resolveId environment=%s: No result found for import, skipping aliasing: %s",
-          context.environment,
-          importPath,
-        );
-      }
+    for (const importPath of context.imports) {
+      (config.resolve as any).alias.push({
+        find: new RegExp(
+          `^${importPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+        ),
+        replacement: context.resolver(importPath),
+      });
     }
+
+    removeReactImportsToAllowCustomResolution(config, context.imports);
   };
 
   return {
@@ -188,6 +205,12 @@ export const reactConditionsResolverPlugin = async ({
       const context = contexts[name];
       if (context) {
         configureEnvironment(context, config);
+      }
+    },
+
+    config(config: EnvironmentOptions) {
+      for (const context of Object.values(contexts)) {
+        removeReactImportsToAllowCustomResolution(config, context.imports);
       }
     },
 
