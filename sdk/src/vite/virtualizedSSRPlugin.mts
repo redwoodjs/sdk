@@ -44,6 +44,7 @@ import { ROOT_DIR, DIST_DIR } from "../lib/constants.mjs";
 import { transformClientComponents } from "./transformClientComponents.mjs";
 import { transformServerReferences } from "./transformServerReferences.mjs";
 import { findImportSpecifiers } from "./findImportSpecifiers.mjs";
+import { ensureConfigArrays } from "./ensureConfigArrays.mjs";
 
 export const SSR_NAMESPACE = "virtual:rwsdk:ssr";
 export const SSR_NAMESPACE_PREFIX = SSR_NAMESPACE + ":";
@@ -524,21 +525,6 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
       );
     },
   };
-}
-
-function ensureConfigArrays(config: any) {
-  config.optimizeDeps ??= {};
-  config.optimizeDeps.include ??= [];
-  config.optimizeDeps.esbuildOptions ??= {};
-  config.optimizeDeps.esbuildOptions.plugins ??= [];
-  config.resolve ??= {};
-  (config.resolve as any).alias ??= [];
-  if (!Array.isArray((config.resolve as any).alias)) {
-    const aliasObj = (config.resolve as any).alias;
-    (config.resolve as any).alias = Object.entries(aliasObj).map(
-      ([find, replacement]) => ({ find, replacement }),
-    );
-  }
 }
 
 export function virtualizedSSRPlugin({

@@ -4,6 +4,7 @@ import debug from "debug";
 import { ROOT_DIR } from "../lib/constants.mjs";
 import { createModuleResolver } from "./moduleResolver.mjs";
 import { isSSRPath } from "./virtualizedSSRPlugin.mjs";
+import { ensureConfigArrays } from "./ensureConfigArrays.mjs";
 
 const log = debug("rwsdk:vite:react-conditions");
 
@@ -76,6 +77,15 @@ export const reactConditionsResolverPlugin = async ({
             args,
           );
 
+          if (isSSRPath(args.path)) {
+            log(
+              ":react-conditions-resolver:onResolve environment=%s: Skipping SSR path: %s",
+              context.environment,
+              args.path,
+            );
+            return;
+          }
+
           const found = context.imports.find((importPath) => {
             return args.path === importPath;
           });
@@ -125,6 +135,8 @@ export const reactConditionsResolverPlugin = async ({
       context.environment,
       mode,
     );
+
+    ensureConfigArrays(config);
 
     (config.optimizeDeps ??= {}).esbuildOptions ??= {};
 
@@ -179,14 +191,24 @@ export const reactConditionsResolverPlugin = async ({
     },
 
     resolveId(id: string) {
-      log(":react-conditions-resolver:resolveId called for id=%s", id);
       const context = contexts[this.environment.name];
 
       if (!context) {
         return;
       }
 
+      log(
+        ":react-conditions-resolver:resolveId called for environment=%s id=%s",
+        this.environment.name,
+        id,
+      );
+
       if (isSSRPath(id)) {
+        log(
+          ":react-conditions-resolver:resolveId environment=%s: Skipping SSR path: %s",
+          this.environment.name,
+          id,
+        );
         return;
       }
 
