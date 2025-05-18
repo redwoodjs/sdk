@@ -16,7 +16,11 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, mockManifest);
+    const result = await transformJsxScriptTagsCode(
+      "test.tsx",
+      code,
+      mockManifest,
+    );
 
     expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
@@ -36,7 +40,11 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, mockManifest);
+    const result = await transformJsxScriptTagsCode(
+      "test.tsx",
+      code,
+      mockManifest,
+    );
 
     expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
@@ -53,7 +61,11 @@ describe("transformJsxScriptTagsCode", () => {
       jsx("script", { type: "module", children: "import('/src/client.tsx')" })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, mockManifest);
+    const result = await transformJsxScriptTagsCode(
+      "test.tsx",
+      code,
+      mockManifest,
+    );
 
     expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
@@ -78,7 +90,11 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, mockManifest);
+    const result = await transformJsxScriptTagsCode(
+      "test.tsx",
+      code,
+      mockManifest,
+    );
 
     expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
@@ -108,7 +124,11 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, mockManifest);
+    const result = await transformJsxScriptTagsCode(
+      "test.tsx",
+      code,
+      mockManifest,
+    );
 
     expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
@@ -132,7 +152,11 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, mockManifest);
+    const result = await transformJsxScriptTagsCode(
+      "test.tsx",
+      code,
+      mockManifest,
+    );
 
     expect(result?.code).toEqual(`
       jsx("link", {
@@ -151,7 +175,11 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, mockManifest);
+    const result = await transformJsxScriptTagsCode(
+      "test.tsx",
+      code,
+      mockManifest,
+    );
 
     expect(result?.code).toEqual(`
       jsx("link", {
@@ -184,7 +212,11 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, mockManifest);
+    const result = await transformJsxScriptTagsCode(
+      "test.tsx",
+      code,
+      mockManifest,
+    );
 
     expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
@@ -217,7 +249,11 @@ describe("transformJsxScriptTagsCode", () => {
       jsx("div", { children: "No scripts or links here" })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, mockManifest);
+    const result = await transformJsxScriptTagsCode(
+      "test.tsx",
+      code,
+      mockManifest,
+    );
 
     expect(result).toBeUndefined();
   });
@@ -230,7 +266,11 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, mockManifest);
+    const result = await transformJsxScriptTagsCode(
+      "test.tsx",
+      code,
+      mockManifest,
+    );
 
     expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
@@ -250,7 +290,11 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, mockManifest);
+    const result = await transformJsxScriptTagsCode(
+      "test.tsx",
+      code,
+      mockManifest,
+    );
 
     expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
@@ -270,7 +314,7 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, {});
+    const result = await transformJsxScriptTagsCode("test.tsx", code, {});
 
     expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
@@ -290,7 +334,7 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, {});
+    const result = await transformJsxScriptTagsCode("test.tsx", code, {});
 
     expect(result?.code).toEqual(undefined);
   });
@@ -304,7 +348,7 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, {});
+    const result = await transformJsxScriptTagsCode("test.tsx", code, {});
 
     expect(result?.code).toEqual(undefined);
   });
@@ -320,7 +364,7 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, {});
+    const result = await transformJsxScriptTagsCode("test.tsx", code, {});
 
     expect(result?.code).toEqual(`
       import { foo } from 'bar';
@@ -350,7 +394,7 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, {});
+    const result = await transformJsxScriptTagsCode("test.tsx", code, {});
 
     expect(result?.code).toEqual(`
       import { foo } from 'bar';
@@ -373,7 +417,7 @@ describe("transformJsxScriptTagsCode", () => {
     `;
 
     // Call without providing manifest (simulating dev mode)
-    const result = await transformJsxScriptTagsCode(code);
+    const result = await transformJsxScriptTagsCode("test.tsx", code, {});
 
     expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 

@@ -245,34 +245,6 @@ function isSSRModule({
   return false;
 }
 
-async function maybeRewriteSSRClientImports({
-  code,
-  id,
-  shouldRewriteBareImports,
-  context,
-  logFn,
-}: {
-  code: string;
-  id: string;
-  context: VirtualizedSSRContext;
-  shouldRewriteBareImports: boolean;
-  logFn: (...args: any[]) => void;
-}) {
-  logFn(`[maybeRewriteSSRClientImports] Rewriting imports for %s`, id);
-  const rewritten = await rewriteSSRClientImports({
-    code,
-    id,
-    context,
-    logFn,
-    shouldRewriteBareImports,
-  });
-  if (rewritten) {
-    return rewritten.toString();
-  } else {
-    logFn(`[maybeRewriteSSRClientImports] No rewrite needed for %s`, id);
-  }
-}
-
 export const getRealPathFromSSRNamespace = (filePath: string): string => {
   return filePath.startsWith(SSR_NAMESPACE_PREFIX)
     ? filePath.slice(SSR_NAMESPACE_PREFIX.length)
@@ -317,17 +289,16 @@ async function esbuildLoadAndTransformClientModule({
   let modified: boolean = false;
 
   if (isSSR) {
-    const rewritten = await maybeRewriteSSRClientImports({
+    let rewritten = await rewriteSSRClientImports({
       code: inputCode,
       id: filePath,
       context,
       logFn,
       shouldRewriteBareImports: false,
     });
-
     if (rewritten) {
       logFn("🔎 Import rewriting complete for %s", filePath);
-      code = rewritten;
+      code = rewritten.toString();
       modified = true;
     } else {
       logFn("⏭️ No import rewriting needed for %s", filePath);
@@ -580,7 +551,7 @@ export function virtualizedSSRPlugin({
 
       logTransform("🔎 Processing imports in SSR module: %s", id);
 
-      const rewritten = await maybeRewriteSSRClientImports({
+      const rewritten = await rewriteSSRClientImports({
         code,
         id,
         context,
@@ -591,11 +562,20 @@ export function virtualizedSSRPlugin({
       if (!rewritten) {
         logTransform("⏭️ No changes made for %s", id);
         return null;
+      } else {
+        logTransform("🔎 Rewrote imports for %s", id);
+        if (process.env.VERBOSE) {
+          logTransform(
+            "[VERBOSE] Rewritten code for %s:\n%s",
+            id,
+            rewritten.toString(),
+          );
+        }
       }
 
       return {
-        code: rewritten,
-        map: undefined,
+        code: rewritten.toString(),
+        map: rewritten.generateMap(),
       };
     },
   };

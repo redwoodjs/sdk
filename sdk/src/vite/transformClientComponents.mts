@@ -230,11 +230,7 @@ export async function transformClientComponents(
     finalResult,
   );
   if (process.env.VERBOSE) {
-    log(
-      "[VERBOSE] Non-SSR transformed code for %s:\n%s",
-      id,
-      finalResult + "\n",
-    );
+    log("[VERBOSE] Transformed code for %s:\n%s", id, finalResult + "\n");
   }
   return {
     code: finalResult + "\n",
