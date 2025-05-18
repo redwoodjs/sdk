@@ -9,6 +9,7 @@ export type DocumentProps = RequestInfo & {
 export type RwContext = {
   nonce: string;
   Document: React.FC<DocumentProps>;
+  rscPayload: boolean;
 };
 
 export type RouteMiddleware = (
@@ -211,9 +212,17 @@ export function prefix(
 export function render(
   Document: React.FC<DocumentProps>,
   routes: Route[],
+  /**
+   * @param options - Configuration options for rendering.
+   * @param options.rscPayload - Toggle the RSC payload that's appended to the Document. Disabling this will mean that interactivity no longer works.
+   */
+  options: {
+    rscPayload: boolean;
+  } = { rscPayload: true },
 ): Route[] {
   const documentMiddleware: RouteMiddleware = ({ rw }) => {
     rw.Document = Document;
+    rw.rscPayload = options.rscPayload;
   };
 
   return [documentMiddleware, ...routes];
