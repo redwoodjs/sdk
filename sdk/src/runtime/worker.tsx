@@ -152,9 +152,9 @@ export const defineApp = (routes: Route[]) => {
             nonce: rw.nonce,
           });
 
-          let html = htmlStream;
+          let html: ReadableStream<any> = htmlStream;
           if (rw.rscPayload) {
-            html.pipeThrough(
+            html = htmlStream.pipeThrough(
               injectRSCPayload(rscPayloadStream2, {
                 nonce: rw.nonce,
               }),
