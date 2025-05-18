@@ -5,6 +5,11 @@ import debug from "debug";
 import { pathExists } from "fs-extra";
 import enhancedResolve from "enhanced-resolve";
 import { createRequire } from "node:module";
+import {
+  createModuleResolver,
+  type ModuleResolver,
+} from "./moduleResolver.mjs";
+
 const log = debug("rwsdk:vite:react-conditions");
 
 // Define package sets for each environment
@@ -29,25 +34,21 @@ const CLIENT_PACKAGES = [
   "react-server-dom-webpack/client.browser",
 ];
 
-// Skip react-server condition for these packages
-const SKIP_REACT_SERVER = [
-  "react-dom/server",
-  "react-dom/client",
-  "react-dom/server.edge",
-  "react-dom/server.browser",
-];
-
-// Global server packages that need aliases regardless of environment
-const GLOBAL_SERVER_PACKAGES = [
-  "react-dom/server.edge",
-  "react-dom/server",
-  "react-server-dom-webpack/server.edge",
-  "react-server-dom-webpack/client.edge",
-];
+const ENV_CONFIG = {
+  worker: {
+    conditionNames: ["react-server", "workerd", "worker", "edge", "default"],
+    imports: WORKER_PACKAGES,
+  },
+  client: {
+    conditionNames: ["browser", "default"],
+    imports: CLIENT_PACKAGES,
+  },
+};
 
 export const reactConditionsResolverPlugin = async ({
   mode = "development",
   command = "serve",
+  projectRootDir,
 }: {
   projectRootDir: string;
   mode?: "development" | "production";
@@ -61,117 +62,90 @@ export const reactConditionsResolverPlugin = async ({
 
   const sdkRequire = createRequire(ROOT_DIR);
 
-  const workerResolver = enhancedResolve.create.sync({
+  const workerResolver = createModuleResolver({
     conditionNames: ["react-server", "workerd", "worker", "edge", "default"],
+    roots: [projectRootDir, ROOT_DIR],
   });
 
-  const clientResolver = enhancedResolve.create.sync({
+  const clientResolver = createModuleResolver({
     conditionNames: ["browser", "default"],
+    roots: [projectRootDir, ROOT_DIR],
   });
 
-  const skipReactServerResolver = enhancedResolve.create.sync({
-    conditionNames: ["workerd", "worker", "edge", "default"],
-  });
-
-  const resolveWithConditions = async (
-    packageName: string,
-    environment: string,
-  ) => {
-    try {
-      let resolver;
-
-      if (environment === "worker") {
-        if (SKIP_REACT_SERVER.includes(packageName)) {
-          resolver = skipReactServerResolver;
+  const reactConditionsResolverEsbuildPlugin = ({
+    environment,
+    config,
+    imports,
+    resolver,
+  }: {
+    environment: "worker" | "client";
+    config: EnvironmentOptions;
+    imports: string[];
+    resolver: ModuleResolver;
+  }) => {
+    return {
+      name: `react-conditions-resolver-esbuild-plugin:${environment}`,
+      setup(build: any) {
+        build.onResolve({ filter: /.*/ }, (args: any) => {
           log(
-            ":react-conditions-resolver:Using skipReactServer resolver for packageName=%s",
-            packageName,
+            ":react-conditions-resolver:onResolve called for environment=%s with args=%O",
+            args,
           );
-        } else {
-          resolver = workerResolver;
-          log(
-            ":react-conditions-resolver:Using worker resolver with react-server for packageName=%s",
-            packageName,
-          );
-        }
-      } else {
-        resolver = clientResolver;
-        log(
-          ":react-conditions-resolver:Using client resolver for packageName=%s",
-          packageName,
-        );
-      }
 
-      const resolved = resolver(ROOT_DIR, packageName);
-      if (resolved) {
-        log(
-          ":react-conditions-resolver:Resolved packageName=%s to resolved=%s using enhanced-resolve",
-          packageName,
-          resolved,
-        );
-        return resolved;
-      }
-    } catch (error) {
-      log(
-        ":react-conditions-resolver:Enhanced resolution failed for packageName=%s error=%s",
-        packageName,
-        error,
-      );
-    }
+          const found = imports.find((importPath) => {
+            return args.path === importPath;
+          });
 
-    try {
-      const resolved = sdkRequire.resolve(packageName);
-      log(
-        ":react-conditions-resolver:Standard resolution for packageName=%s resolved=%s",
-        packageName,
-        resolved,
-      );
-      return resolved;
-    } catch (fallbackError) {
-      log(
-        ":react-conditions-resolver:All resolution failed for packageName=%s fallbackError=%s",
-        packageName,
-        fallbackError,
-      );
-      throw new Error(`Failed to resolve :packageName:`);
-    }
+          if (found) {
+            log(
+              ":react-conditions-resolver:onResolve environment=%s: Found matching import: %s",
+              environment,
+              found,
+            );
+
+            const path = resolver(args.path);
+
+            if (path) {
+              log(
+                ":react-conditions-resolver:onResolve environment=%s: Resolved matching import: %s -> %s",
+                environment,
+                args.path,
+                path,
+              );
+              return { path };
+            } else {
+              log(
+                ":react-conditions-resolver:onResolve environment=%s: No result found for import: %s",
+                environment,
+                args.path,
+              );
+            }
+          } else {
+            log(
+              ":react-conditions-resolver:onResolve environment=%s: No matching import found for path: %s",
+              environment,
+              args.path,
+            );
+          }
+        });
+      },
+    };
   };
 
-  const generateImports = async (packages: string[], env: string) => {
-    const imports: Record<string, string> = {};
-    for (const pkg of packages) {
-      imports[pkg] = await resolveWithConditions(pkg, env);
-    }
-    return imports;
-  };
-
-  // Generate import mappings for both environments
-  const workerImports = await generateImports(WORKER_PACKAGES, "worker");
-  const clientImports = await generateImports(CLIENT_PACKAGES, "client");
-
-  // Log the resolved paths
-  const logImports = (env: string, imports: Record<string, string>) => {
-    log(
-      ":react-conditions-resolver:Resolved env=%s paths (mode=%s)",
-      env,
-      mode,
-    );
-    Object.entries(imports).forEach(([id, path]) => {
-      log("- id=%s path=%s", id, path);
-    });
-  };
-
-  logImports("worker", workerImports);
-  logImports("client", clientImports);
-
-  const configureEnvironment = (
-    name: string,
-    config: EnvironmentOptions,
-    imports: Record<string, string>,
-  ) => {
+  const configureEnvironment = ({
+    environment,
+    config,
+    imports,
+    resolver,
+  }: {
+    environment: "worker" | "client";
+    config: EnvironmentOptions;
+    imports: string[];
+    resolver: ModuleResolver;
+  }) => {
     log(
       ":react-conditions-resolver:Applying React conditions resolver for name=%s environment in mode=%s",
-      name,
+      environment,
       mode,
     );
 
@@ -185,79 +159,43 @@ export const reactConditionsResolverPlugin = async ({
     config.optimizeDeps.include ??= [];
     config.optimizeDeps.include.push(...Object.keys(imports));
 
-    config.resolve ??= {};
-
-    (config.resolve as any).alias ??= [];
-
-    if (!Array.isArray((config.resolve as any).alias)) {
-      const existingAlias = (config.resolve as any).alias;
-      (config.resolve as any).alias = Object.entries(existingAlias).map(
-        ([find, replacement]) => ({ find, replacement }),
-      );
-    }
-
-    Object.entries(imports).forEach(([id, resolvedPath]) => {
-      const exactMatchRegex = new RegExp(
-        `^${id.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
-      );
-
-      (config.resolve as any).alias.unshift({
-        find: exactMatchRegex,
-        replacement: resolvedPath,
-      });
-
-      log(
-        ":react-conditions-resolver:Added alias for id=%s -> resolvedPath=%s",
-        id,
-        resolvedPath,
-      );
-    });
+    config.optimizeDeps.esbuildOptions.plugins ??= [];
+    config.optimizeDeps.esbuildOptions.plugins.push(
+      reactConditionsResolverEsbuildPlugin({
+        environment,
+        config,
+        imports,
+        resolver,
+      }),
+    );
   };
 
   return {
     name: `rwsdk:react-conditions-resolver:${mode}`,
     enforce: "post",
 
-    config(config) {
-      config.resolve ??= {};
-      (config.resolve as any).alias ??= [];
-
-      if (!Array.isArray((config.resolve as any).alias)) {
-        const existingAlias = (config.resolve as any).alias;
-        (config.resolve as any).alias = Object.entries(existingAlias).map(
-          ([find, replacement]) => ({ find, replacement }),
-        );
+    configEnvironment(name: string, config: EnvironmentOptions) {
+      if (name === "worker") {
+        configureEnvironment({
+          environment: "worker",
+          config,
+          imports: WORKER_PACKAGES,
+          resolver: workerResolver,
+        });
       }
 
-      for (const id of GLOBAL_SERVER_PACKAGES) {
-        const resolvedPath = workerImports[id];
-        if (resolvedPath) {
-          const exactMatchRegex = new RegExp(
-            `^${id.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
-          );
-          (config.resolve as any).alias.push({
-            find: exactMatchRegex,
-            replacement: resolvedPath,
-          });
-          log(
-            ":react-conditions-resolver:Global: Added alias for id=%s -> resolvedPath=%s",
-            id,
-            resolvedPath,
-          );
-        }
+      if (name === "client") {
+        configureEnvironment({
+          environment: "client",
+          config,
+          imports: CLIENT_PACKAGES,
+          resolver: clientResolver,
+        });
       }
-
-      return config;
     },
 
-    configEnvironment(name: string, config: EnvironmentOptions) {
-      if (name === "client") {
-        configureEnvironment("client", config, clientImports);
-      }
-
-      if (name === "worker") {
-        configureEnvironment("worker", config, workerImports);
-      }
+    resolveId(id: string) {
+      log(":react-conditions-resolver:resolveId called for id=%s", id);
     },
   };
 };

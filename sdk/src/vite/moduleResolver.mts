@@ -41,6 +41,8 @@ function applyAlias(request: string, aliasEntries: any, name: string): string {
   return request;
 }
 
+export type ModuleResolver = ReturnType<typeof createModuleResolver>;
+
 export function createModuleResolver({
   getAliases,
   roots,
