@@ -45,10 +45,29 @@ type RouteMatch = {
   handler: RouteHandler;
 };
 
-function matchPath(
+export function matchPath(
   routePath: string,
   requestPath: string,
 ): RequestInfo["params"] | null {
+  // Check for invalid pattern: multiple colons in a segment (e.g., /:param1:param2/)
+  if (routePath.includes(":")) {
+    const segments = routePath.split("/");
+    for (const segment of segments) {
+      if ((segment.match(/:/g) || []).length > 1) {
+        throw new Error(
+          `Invalid route pattern: segment "${segment}" in "${routePath}" contains multiple colons.`,
+        );
+      }
+    }
+  }
+
+  // Check for invalid pattern: double wildcard (e.g., /**/)
+  if (routePath.includes("**")) {
+    throw new Error(
+      `Invalid route pattern: "${routePath}" contains "**". Use "*" for a single wildcard segment.`,
+    );
+  }
+
   const pattern = routePath
     .replace(/:[a-zA-Z0-9]+/g, "([^/]+)") // Convert :param to capture group
     .replace(/\*/g, "(.*)"); // Convert * to wildcard capture group
@@ -60,22 +79,36 @@ function matchPath(
     return null;
   }
 
-  // Extract named parameters and wildcards
+  // Revised parameter extraction:
   const params: RequestInfo["params"] = {};
-  const paramNames = [...routePath.matchAll(/:[a-zA-Z0-9]+/g)].map((m) =>
-    m[0].slice(1),
-  );
-  const wildcardCount = (routePath.match(/\*/g) || []).length;
+  let currentMatchIndex = 1; // Regex matches are 1-indexed
 
-  // Add named parameters
-  paramNames.forEach((name, i) => {
-    params[name] = matches[i + 1];
-  });
+  // This regex finds either a named parameter token (e.g., ":id") or a wildcard star token ("*").
+  const tokenRegex = /:([a-zA-Z0-9_]+)|\*/g;
+  let matchToken;
+  let wildcardCounter = 0;
 
-  // Add wildcard parameters with numeric indices
-  for (let i = 0; i < wildcardCount; i++) {
-    const wildcardIndex = paramNames.length + i + 1;
-    params[`$${i}`] = matches[wildcardIndex];
+  // Ensure regex starts from the beginning of the routePath for each call if it's stateful (it is with /g)
+  tokenRegex.lastIndex = 0;
+
+  while ((matchToken = tokenRegex.exec(routePath)) !== null) {
+    // Ensure we have a corresponding match from the regex execution
+    if (matches[currentMatchIndex] === undefined) {
+      // This case should ideally not be hit if routePath and pattern generation are correct
+      // and all parts of the regex matched.
+      // Consider logging a warning or throwing an error if critical.
+      break;
+    }
+
+    if (matchToken[1]) {
+      // This token is a named parameter (e.g., matchToken[1] is "id" for ":id")
+      params[matchToken[1]] = matches[currentMatchIndex];
+    } else {
+      // This token is a wildcard "*"
+      params[`$${wildcardCounter}`] = matches[currentMatchIndex];
+      wildcardCounter++;
+    }
+    currentMatchIndex++;
   }
 
   return params;
