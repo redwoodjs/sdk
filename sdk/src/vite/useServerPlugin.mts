@@ -2,6 +2,33 @@ import { relative } from "node:path";
 import { Plugin } from "vite";
 import { parse } from "es-module-lexer";
 import MagicString from "magic-string";
+import { Project, SyntaxKind } from "ts-morph";
+
+export const includesReactServerDirective = (code: string) => {
+  if (code.indexOf("use server") === -1) {
+    return false;
+  }
+  const project = new Project({
+    useInMemoryFileSystem: true,
+    compilerOptions: {
+      sourceMap: true,
+      target: 2, // ES6
+      module: 1, // CommonJS
+      jsx: 2, // React
+    },
+  });
+  const sourceFile = project.createSourceFile("temp.tsx", code);
+  const firstString = sourceFile.getFirstDescendantByKind(
+    SyntaxKind.StringLiteral,
+  );
+  if (
+    firstString?.getText().indexOf("use client") === -1 &&
+    firstString?.getStart() !== sourceFile.getStart() // `getStart` does not include the leading comments + whitespace
+  ) {
+    return false;
+  }
+  return true;
+};
 
 export const useServerPlugin = (): Plugin => ({
   name: "rwsdk:use-server",
@@ -12,7 +39,7 @@ export const useServerPlugin = (): Plugin => ({
 
     const relativeId = `/${relative(this.environment.getTopLevelConfig().root, id)}`;
 
-    if (code.includes('"use server"') || code.includes("'use server'")) {
+    if (includesReactServerDirective(code)) {
       // context(justinvdm, 5 Dec 2024): they've served their purpose at this point, keeping them around just causes rollup warnings since module level directives can't easily be applied to bundled
       // modules
       let s = new MagicString(code);
