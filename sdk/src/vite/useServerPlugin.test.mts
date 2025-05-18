@@ -1,37 +1,49 @@
 import { describe, expect, it } from "vitest";
-import { includesReactServerDirective } from "./useServerPlugin.mjs";
+import { transformServerFunctions } from "./useServerPlugin.mjs";
 
 describe("useServerPlugin", () => {
   it("determines react server directive", () => {
     expect(
-      includesReactServerDirective(`\
+      transformServerFunctions(`\
 "use server";
             `),
-    ).toEqual(true);
+    ).toMatchInlineSnapshot(`
+      "
+                  "
+    `);
 
     expect(
-      includesReactServerDirective(`\
+      transformServerFunctions(`\
 // These are not server functions
             `),
-    ).toEqual(false);
+    ).toMatchInlineSnapshot(`undefined`);
 
     expect(
-      includesReactServerDirective(`\
+      transformServerFunctions(`\
 // Comment
 "use server";
               `),
-    ).toEqual(true);
+    ).toMatchInlineSnapshot(`
+      "// Comment
+
+                    "
+    `);
 
     expect(
-      includesReactServerDirective(`\
+      transformServerFunctions(`\
 // Multi-line
 // Comment
 "use server";
                 `),
-    ).toEqual(true);
+    ).toMatchInlineSnapshot(`
+      "// Multi-line
+      // Comment
+
+                      "
+    `);
 
     expect(
-      includesReactServerDirective(`\
+      transformServerFunctions(`\
 /* Giant
  * Comment
  * Block
@@ -39,6 +51,35 @@ describe("useServerPlugin", () => {
 
 "use server";
                   `),
-    ).toEqual(true);
+    ).toMatchInlineSnapshot(`
+      "/* Giant
+       * Comment
+       * Block
+       */
+
+
+                        "
+    `);
+  });
+
+  it("supports default exports", () => {
+    expect(
+      transformServerFunctions(`\
+  "use server";
+
+  export default function execute() {
+    return 1 + 1;
+  }
+              `),
+    ).toMatchInlineSnapshot(`
+      "  
+
+        export function execute() {
+          return 1 + 1;
+        }
+
+      export default execute;
+                    "
+    `);
   });
 });
