@@ -100,44 +100,55 @@ function isBareImport(importPath: string): boolean {
 }
 
 async function resolveSSRPath({
-  raw,
-  filePath,
+  path,
+  importer,
   context,
   logFn,
 }: {
-  raw: string;
-  filePath: string;
+  path: string;
+  importer: string;
   context: VirtualizedSSRContext;
   logFn?: (...args: any[]) => void;
-}): Promise<string | null> {
+}): Promise<string> {
+  logFn?.("[resolveSSRPath] called with path=%s, importer=%s", path, importer);
+
+  if (!path.startsWith(SSR_NAMESPACE)) {
+    logFn?.("[resolveSSRPath] Skipping non-SSR path: path=%s", path);
+    return path;
+  }
+
+  const raw = getRealPathFromSSRNamespace(path);
+
   if (isBareImport(raw)) {
     const ssrResolved = context.resolveDep(raw);
     if (ssrResolved !== false) {
+      const resolved = ensureSSRNamespace(ssrResolved);
       logFn?.(
-        "[resolveSSRPath] SSR resolver succeeded for bare import import='%s', resolved to ssrResolved='%s'",
-        raw,
-        ssrResolved,
+        "[resolveSSRPath] SSR resolver succeeded for bare import import='%s', resolved to resolved='%s'",
+        path,
+        resolved,
       );
-      return ssrResolved;
+      return resolved;
     }
   }
-  const moduleResolved = await context.resolveModule(raw, filePath);
+  const moduleResolved = await context.resolveModule(raw, importer);
   if (moduleResolved) {
+    const resolved = ensureSSRNamespace(moduleResolved);
     logFn?.(
-      "[resolveSSRPath] Module resolver succeeded for import import='%s' from filePath=%s, resolved to moduleResolved='%s'",
+      "[resolveSSRPath] Module resolver succeeded for import import='%s' from importer=%s, resolved to moduleResolved='%s'",
       raw,
-      filePath,
-      moduleResolved,
+      importer,
+      resolved,
     );
-    return moduleResolved;
+    return resolved;
   } else {
     logFn?.(
-      "[resolveSSRPath] Module resolver failed for import import='%s' from filePath=%s, leaving as is",
+      "[resolveSSRPath] Module resolver failed for import import='%s' from importer=%s, returning raw path without SSR namespace",
       raw,
-      filePath,
+      importer,
     );
+    return raw;
   }
-  return raw;
 }
 
 async function rewriteSSRImports({
@@ -248,23 +259,36 @@ function detectLoader(filePath: string) {
 }
 
 async function esbuildResolveSSRModule({
-  filePath,
+  path,
   context,
-  logFn,
 }: {
-  filePath: string;
+  path: string;
   context: VirtualizedSSRContext;
-  logFn: (...args: any[]) => void;
 }) {
-  logEsbuild("🔎 Resolving SSR module: %s", filePath);
-  const realPath = getRealPathFromSSRNamespace(filePath);
+  logEsbuild("🔎 Resolving SSR path: %s", path);
 
-  if (isBareImport(realPath)) {
-    logEsbuild("⏭️ Skipping bare import: %s", realPath);
-    return {
-      path: realPath,
-    };
+  const resolved = await resolveSSRPath({
+    path,
+    importer: path,
+    context,
+    logFn: logEsbuild,
+  });
+
+  const result: { path: string; namespace?: string } = {
+    path: resolved,
+  };
+
+  if (resolved?.startsWith(SSR_NAMESPACE)) {
+    result.namespace = SSR_ESBUILD_NAMESPACE;
   }
+
+  logEsbuild(
+    "🔎 Resolved result for SSR path path=%s: result=%O",
+    path,
+    result,
+  );
+
+  return result;
 }
 
 async function esbuildLoadAndTransformSSRModule({
@@ -376,10 +400,19 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
             "[esbuild:onResolve:namespace] called with args: %O",
             args,
           );
-          return {
-            path: ensureSSRNamespace(args.path),
-            namespace: SSR_ESBUILD_NAMESPACE,
-          };
+
+          const result = esbuildResolveSSRModule({
+            path: args.path,
+            context,
+          });
+
+          logEsbuild(
+            "[esbuild:onResolve:namespace] resolved result for path=%s: result=%O",
+            args.path,
+            result,
+          );
+
+          return result;
         },
       );
 
@@ -397,24 +430,36 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
 
       build.onResolve({ filter: /^virtual:rwsdk:ssr:/ }, (args: any) => {
         logEsbuild("[esbuild:onResolve:prefix] called with args: %O", args);
-        return {
-          path: ensureSSRNamespace(args.path),
-          namespace: SSR_ESBUILD_NAMESPACE,
-        };
+
+        const result = esbuildResolveSSRModule({
+          path: args.path,
+          context,
+        });
+
+        logEsbuild(
+          "[esbuild:onResolve:prefix] resolved result for path=%s: result=%O",
+          args.path,
+          result,
+        );
+
+        return result;
       });
 
       build.onLoad(
         { filter: /\.(js|jsx|ts|tsx|mjs|mts)$/ },
         async (args: any) => {
           logEsbuild("[esbuild:onLoad:entry] called with args: %O", args);
+
           const result = await esbuildLoadAndTransformSSRModule({
             filePath: args.path,
             context,
             logFn: logEsbuildTransform,
           });
+
           if (process.env.VERBOSE) {
             logEsbuild("[esbuild:onLoad:entry] result: %O", result);
           }
+
           return result;
         },
       );
@@ -502,20 +547,23 @@ export function virtualizedSSRPlugin({
       context.config = config;
     },
 
-    resolveId(id) {
-      if (id.startsWith(SSR_NAMESPACE)) {
-        if (isBareImport(getRealPathFromSSRNamespace(id))) {
-          logResolve("[plugin:resolveId] bare import, returning as is: %s", id);
-          return id;
-        } else {
-          logResolve(
-            "[plugin:resolveId] virtualized SSR module, returning real path: %s -> %s",
-            id,
-            getRealPathFromSSRNamespace(id),
-          );
-          return getRealPathFromSSRNamespace(id);
-        }
-      }
+    async resolveId(id) {
+      logResolve("[plugin:resolveId] called with id: %s", id);
+
+      const result = await resolveSSRPath({
+        path: id,
+        importer: id,
+        context,
+        logFn: logResolve,
+      });
+
+      logResolve(
+        "[plugin:resolveId] resolved result for id=%s: result=%O",
+        id,
+        result,
+      );
+
+      return result;
     },
 
     load(id) {
