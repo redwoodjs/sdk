@@ -40,7 +40,7 @@ import { Plugin } from "vite";
 import { createModuleResolver } from "./moduleResolver.mjs";
 import MagicString from "magic-string";
 import debug from "debug";
-import { ROOT_DIR } from "../lib/constants.mjs";
+import { ROOT_DIR, DIST_DIR } from "../lib/constants.mjs";
 import { transformClientComponents } from "./transformClientComponents.mjs";
 import { transformServerReferences } from "./transformServerReferences.mjs";
 import { findImportSpecifiers } from "./findImportSpecifiers.mjs";
@@ -138,7 +138,25 @@ async function resolveSSRPath({
   );
 
   if (moduleResolved) {
+    if (moduleResolved.startsWith(DIST_DIR)) {
+      if (moduleResolved.includes("__rwsdkssr")) {
+        const resolved = ensureSSRNamespace(moduleResolved);
+        logFn?.(
+          ":resolveSSRPath: Module resolved to an SDK path that contains __rwsdkssr, returning resolved path *with* SSR namespace: moduleResolved=%s",
+          moduleResolved,
+        );
+        return resolved;
+      } else {
+        logFn?.(
+          ":resolveSSRPath: Module resolved to an SDK path, returning resolved path *without* SSR namespace: moduleResolved=%s",
+          moduleResolved,
+        );
+        return moduleResolved;
+      }
+    }
+
     const resolved = ensureSSRNamespace(moduleResolved);
+
     logFn?.(
       ":resolveSSRPath: Module resolver succeeded for import import='%s' from importer=%s, resolved to moduleResolved='%s'",
       raw,
@@ -159,7 +177,6 @@ async function resolveSSRPath({
 async function rewriteSSRImports({
   code,
   id,
-  context,
   logFn,
 }: {
   code: string;
@@ -167,13 +184,20 @@ async function rewriteSSRImports({
   context: VirtualizedSSRContext;
   logFn?: (...args: any[]) => void;
 }): Promise<MagicString | null> {
-  logFn?.(":rewriteSSRImports: called for id: id=%s", id);
+  const isSDKPath = getRealPathFromSSRNamespace(id).startsWith(DIST_DIR);
+
+  logFn?.(
+    ":rewriteSSRImports: called for id: id=%s, isSDKPath=%s",
+    id,
+    isSDKPath,
+  );
   const imports = findImportSpecifiers(
     id,
     code,
     IGNORED_IMPORT_PATTERNS,
     logFn,
   );
+
   logFn?.(":rewriteSSRImports: Found %d imports in id=%s", imports.length, id);
   const ms = new MagicString(code);
 
@@ -189,10 +213,18 @@ async function rewriteSSRImports({
       id,
     );
 
-    if (raw.startsWith(SSR_NAMESPACE)) {
+    const realPath = getRealPathFromSSRNamespace(raw);
+
+    if (
+      isSDKPath &&
+      !isBareImport(realPath) &&
+      !path.isAbsolute(realPath) &&
+      !realPath.includes("__rwsdkssr")
+    ) {
       logFn?.(
-        ":rewriteSSRImports: Skipping already-virtual import: import=%s",
+        ":rewriteSSRImports: Skipping import because it is a relative import within the SDK: import='%s', in id=%s",
         raw,
+        id,
       );
       continue;
     }
@@ -291,8 +323,12 @@ async function esbuildResolveSSRModule({
 
   if (resolved?.startsWith(SSR_NAMESPACE)) {
     result.namespace = SSR_ESBUILD_NAMESPACE;
-  } else if (isBareImport(resolved)) {
-    result.external = true;
+  } else {
+    result.namespace = "file";
+
+    if (isBareImport(resolved)) {
+      result.external = true;
+    }
   }
 
   logEsbuild(

@@ -59,6 +59,11 @@ export function findImportSpecifiers(
                 ":findImportSpecifiersWithPositions: Ignoring import because it starts with 'virtual:': importPath=%s",
                 importPath,
               );
+            } else if (importPath.includes("__rwsdknossr")) {
+              logger(
+                ":findImportSpecifiersWithPositions: Ignoring import because it includes '__rwsdknossr': importPath=%s",
+                importPath,
+              );
             } else if (
               ignoredImportPatterns.some((pattern) => pattern.test(importPath))
             ) {

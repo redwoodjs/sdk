@@ -386,7 +386,7 @@ export async function transformJsxScriptTagsCode(
 
     if (process.env.VERBOSE) {
       logTransform(
-        ":VERBOSE: Transformed code for %s:\n%s",
+        "[VERBOSE] Transformed code for %s:\n%s",
         id,
         sourceFile.getFullText(),
       );
