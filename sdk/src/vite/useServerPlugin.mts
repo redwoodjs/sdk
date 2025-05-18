@@ -70,14 +70,12 @@ export const transformServerFunctions = (
     SyntaxKind.StringLiteral,
   );
   if (!firstString) {
-    console.log("no string literal found");
     return;
   }
   if (
     firstString?.getText().indexOf("use server") === -1 &&
     firstString?.getStart() !== sourceFile.getStart() // `getStart` does not include the leading comments + whitespace
   ) {
-    console.log("no use server directive found");
     return;
   }
 
