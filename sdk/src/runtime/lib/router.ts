@@ -211,9 +211,14 @@ export function prefix(
 export function render(
   Document: React.FC<DocumentProps>,
   routes: Route[],
+  options: {
+    // Toggle the RSC payload that's appended to the Document. Disabling this will mean that interactivity no longer works.
+    rscPayload?: boolean;
+  } = { rscPayload: true },
 ): Route[] {
   const documentMiddleware: RouteMiddleware = ({ rw }) => {
     rw.Document = Document;
+    rw.rscPayload = options.rscPayload;
   };
 
   return [documentMiddleware, ...routes];
