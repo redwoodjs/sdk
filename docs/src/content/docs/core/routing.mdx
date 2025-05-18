@@ -82,7 +82,7 @@ route("/files/*/download/*", ...)
 
 ## Request Handlers
 
-The request handler is a function, or array of functions (See [Interruptors](#interruptors)), that are executed when a request is matched.
+The request handler is a function, or array of functions (See [Interrupters](#interrupters)), that are executed when a request is matched.
 
 ```tsx title="src/worker.tsx" mark={4-9}
 import { route } from "rwsdk/router";
@@ -105,9 +105,9 @@ Return values:
 ---
 ```
 
-### Interruptors
+### Interrupters
 
-Interruptors are an array of functions that are executed in sequence for each matched request. They can be used to modify the request, context, or to short-circuit the response. A typical use-case is to check for authentication on a per-request basis, as an example you're trying to ensure that a specific user can access a specific resource.
+Interrupters are an array of functions that are executed in sequence for each matched request. They can be used to modify the request, context, or to short-circuit the response. A typical use-case is to check for authentication on a per-request basis, as an example you're trying to ensure that a specific user can access a specific resource.
 
 ```tsx title="src/worker.tsx" mark={5-10, 13} collapse={1-2}
 import { defineApp } from "rwsdk/worker";
@@ -132,7 +132,7 @@ For the `/blog/:slug/edit` route, the `isAuthenticated` function will be execute
 
 ## Middleware & Context
 
-The context object (`ctx`) is a mutable object that is passed to each request handler, interruptors, and React Server Functions. It's used to share data between the different parts of your application. You populate the context on a per-request basis via Middleware.
+The context object (`ctx`) is a mutable object that is passed to each request handler, interrupters, and React Server Functions. It's used to share data between the different parts of your application. You populate the context on a per-request basis via Middleware.
 
 Middleware runs before the request is matched to a route. You can specify multiple middleware functions, they'll be executed in the order they are defined.
 
