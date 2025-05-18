@@ -11,7 +11,7 @@ import { Steps } from '@astrojs/starlight/components';
 Since the RedwoodSDK is based on React and Vite, we can work through the ["Using Vite" documentation](https://tailwindcss.com/docs/installation/using-vite).
 
 <Steps>
-1. Install Tailwind CSS
+1. Install Tailwind CSS.
     ```bash
     npm install tailwindcss @tailwindcss/vite
     ```
@@ -39,9 +39,8 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
     This isn't the case for us, since we only have a `worker` environment instead of `ssr`. To prevent builds from getting blocked on this, we stub out the ssr environment here.
     </Aside>
 
-3. Import Tailwind CSS
-    Create a `src/app/styles.css` file.
-    ```css
+3. Create a `src/app/styles.css` file, and import Tailwind CSS
+    ```css title="src/app/styles.css"
     @import "tailwindcss";
     ```
 
