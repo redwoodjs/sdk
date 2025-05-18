@@ -12,7 +12,7 @@ describe("useServerPlugin", () => {
         "client",
       ),
     ).toMatchInlineSnapshot(`
-      "
+      "import { createServerReference } from "rwsdk/client";
                   "
     `);
 
@@ -36,7 +36,9 @@ describe("useServerPlugin", () => {
         "client",
       ),
     ).toMatchInlineSnapshot(`
-      "// Comment
+      "import { createServerReference } from "rwsdk/client";
+
+      // Comment
 
                     "
     `);
@@ -52,7 +54,9 @@ describe("useServerPlugin", () => {
         "client",
       ),
     ).toMatchInlineSnapshot(`
-      "// Multi-line
+      "import { createServerReference } from "rwsdk/client";
+
+      // Multi-line
       // Comment
 
                       "
@@ -76,8 +80,7 @@ describe("useServerPlugin", () => {
        * Comment
        * Block
        */
-
-
+      import { createServerReference } from "rwsdk/client";
                         "
     `);
   });
@@ -93,17 +96,34 @@ describe("useServerPlugin", () => {
   }
               `,
         "/test.tsx",
-        "client",
+        "worker",
       ),
     ).toMatchInlineSnapshot(`
-      "  
+      "import { registerServerReference } from "rwsdk/worker";
 
         export function execute() {
           return 1 + 1;
         }
+      registerServerReference(execute, "/test.tsx", "execute");
 
       export default execute;
                     "
     `);
+  });
+
+  it.only("supports default exports", () => {
+    expect(
+      transformServerFunctions(
+        `\
+  "use server";
+
+  export default function execute() {
+    return 1 + 1;
+  }
+              `,
+        "/test.tsx",
+        "client",
+      ),
+    ).toBeTruthy();
   });
 });

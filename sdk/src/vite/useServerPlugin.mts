@@ -1,8 +1,6 @@
 import { relative } from "node:path";
 import { Plugin } from "vite";
-import { parse } from "es-module-lexer";
-import MagicString from "magic-string";
-import { Project, SyntaxKind, Node, SourceFile } from "ts-morph";
+import { Project, SyntaxKind, Node } from "ts-morph";
 
 export const transformServerFunctions = (
   code: string,
@@ -62,27 +60,55 @@ export const transformServerFunctions = (
   }
 
   if (environment === "worker") {
-    // s.prepend(`
-    //   import { registerServerReference } from "rwsdk/worker";
-    //   `);
-    // const [_, exports] = parse(code);
-    // for (const e of exports) {
-    //   s.append(`
-    //   registerServerReference(${e.ln}, ${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)});
-    //   `);
-    // }
-  } else if (environment === "client") {
-    // s = new MagicString(`\
-    //   import { createServerReference } from "rwsdk/client";
-    //   `);
-    //         const [_, exports] = parse(code);
-    //         for (const e of exports) {
-    //           s.append(`\
-    //   export const ${e.ln} = createServerReference(${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)})
-    //   `);
-  }
+    // Add import declaration
+    sourceFile.addImportDeclaration({
+      moduleSpecifier: "rwsdk/worker",
+      namedImports: ["registerServerReference"],
+    });
 
-  return sourceFile.getFullText();
+    // Create a new line for each export
+    const exports = sourceFile.getDescendantsOfKind(
+      SyntaxKind.ExportAssignment,
+    );
+    //   registerServerReference(${e.ln}, ${JSON.stringify(relativeId)}, ${JSON.stringify(e.ln)});
+    const statements = exports.map((e) => {
+      const name = e.getExpression().getText();
+      return `registerServerReference(${name}, ${JSON.stringify(relativeId)}, ${JSON.stringify(name)});`;
+    });
+    sourceFile.insertStatements(sourceFile.getChildCount(), statements);
+
+    return sourceFile.getFullText();
+  } else if (environment === "client") {
+    // create a new sourcefile for the client
+    const clientSourceFile = project.createSourceFile("client.tsx", "");
+
+    // Add import declaration
+    clientSourceFile.addImportDeclaration({
+      moduleSpecifier: "rwsdk/client",
+      namedImports: ["createServerReference"],
+    });
+
+    const exports = sourceFile.getDescendantsOfKind(
+      SyntaxKind.ExportAssignment,
+    );
+
+    for (const e of exports) {
+      // skip the default export.
+      if (e.getExpression().getText() === "default") {
+        continue;
+      }
+
+      const name = e.getExpression().getText();
+
+      // add a new export
+      clientSourceFile.addExportAssignment({
+        expression: `createServerReference(${JSON.stringify(relativeId)}, ${JSON.stringify(name)});`,
+        isExportEquals: false,
+      });
+
+      return clientSourceFile.getFullText();
+    }
+  }
 };
 
 export const useServerPlugin = (): Plugin => ({
