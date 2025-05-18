@@ -3,6 +3,7 @@ import debug from "debug";
 
 import { ROOT_DIR } from "../lib/constants.mjs";
 import { createModuleResolver } from "./moduleResolver.mjs";
+import { isSSRPath } from "./virtualizedSSRPlugin.mjs";
 
 const log = debug("rwsdk:vite:react-conditions");
 
@@ -16,9 +17,7 @@ const ENV_CONFIG = {
       "react-dom",
       "react/jsx-runtime",
       "react/jsx-dev-runtime",
-      "react-server-dom-webpack/client.browser",
       "react-server-dom-webpack/client.edge",
-      "react-server-dom-webpack/server.edge",
     ],
   },
   client: {
@@ -29,6 +28,7 @@ const ENV_CONFIG = {
       "react-dom",
       "react/jsx-runtime",
       "react/jsx-dev-runtime",
+      "react-server-dom-webpack/client.browser",
     ],
   },
 };
@@ -134,12 +134,37 @@ export const reactConditionsResolverPlugin = async ({
     };
 
     config.optimizeDeps.include ??= [];
-    config.optimizeDeps.include.push(...Object.keys(context.imports));
+    config.optimizeDeps.include.push(...context.imports);
 
     config.optimizeDeps.esbuildOptions.plugins ??= [];
     config.optimizeDeps.esbuildOptions.plugins.push(
       reactConditionsResolverEsbuildPlugin(context),
     );
+
+    for (const importPath of context.imports) {
+      const resolved = context.resolver(importPath);
+      if (resolved) {
+        log(
+          ":react-conditions-resolver:resolveId environment=%s: Resolved import, adding alias: %s -> %s",
+          context.environment,
+          importPath,
+          resolved,
+        );
+
+        (config.resolve as any).alias.push({
+          find: new RegExp(
+            `^${importPath.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}$`,
+          ),
+          replacement: resolved,
+        });
+      } else {
+        log(
+          ":react-conditions-resolver:resolveId environment=%s: No result found for import, skipping aliasing: %s",
+          context.environment,
+          importPath,
+        );
+      }
+    }
   };
 
   return {
@@ -147,12 +172,23 @@ export const reactConditionsResolverPlugin = async ({
     enforce: "post",
 
     configEnvironment(name: string, config: EnvironmentOptions) {
-      configureEnvironment(contexts[name], config);
+      const context = contexts[name];
+      if (context) {
+        configureEnvironment(context, config);
+      }
     },
 
     resolveId(id: string) {
       log(":react-conditions-resolver:resolveId called for id=%s", id);
       const context = contexts[this.environment.name];
+
+      if (!context) {
+        return;
+      }
+
+      if (isSSRPath(id)) {
+        return;
+      }
 
       if (context.imports.includes(id)) {
         log(
