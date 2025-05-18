@@ -1,6 +1,6 @@
 {
   "name": "rwsdk",
-  "version": "0.0.83",
+  "version": "0.0.83-test.20250515153707",
   "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime",
   "type": "module",
   "bin": {
@@ -12,10 +12,7 @@
     "./vendor/dist"
   ],
   "scripts": {
-    "build": "pnpm build:src && pnpm build:vendor",
-    "build:src": "tsc --build --clean && tsc",
-    "build:vendor": "node ./dist/scripts/build-vendor-bundles.mjs",
-    "clean:vendor": "rm -rf ./vendor/dist",
+    "build": "tsc --build --clean && tsc",
     "release": "./scripts/release.sh",
     "test": "vitest",
     "debug:sync": "tsx ./src/scripts/debug-sync.mts",
@@ -99,6 +96,7 @@
   "author": "RedwoodSDK <peter@redwoodjs.com>",
   "license": "MIT",
   "dependencies": {
+    "@ast-grep/napi": "^0.38.1",
     "@cloudflare/vite-plugin": "^1.1.0",
     "@cloudflare/workers-types": "^4.20250407.0",
     "@puppeteer/browsers": "^2.8.0",

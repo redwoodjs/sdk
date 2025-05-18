@@ -4,14 +4,26 @@ import { Plugin } from "vite";
 import { readFile } from "fs/promises";
 import { glob } from "glob";
 import path from "path";
+import debug from "debug";
+
+const logWorker = debug("rwsdk:vite:use-client-lookup:worker");
+const logClient = debug("rwsdk:vite:use-client-lookup:client");
 
 export const findFilesContainingUseClient = async ({
   rootDir,
   containingPath,
+  environmentName,
 }: {
   rootDir: string;
   containingPath: string;
+  environmentName?: string;
 }): Promise<string[]> => {
+  const log = environmentName === "worker" ? logWorker : logClient;
+  log(
+    "Called findFilesContainingUseClient with rootDir: %s, containingPath: %s",
+    rootDir,
+    containingPath,
+  );
   // Get all TypeScript and TSX files in the containing path
   const files = await glob("**/*.{ts,tsx}", {
     cwd: path.resolve(rootDir, containingPath),
@@ -23,6 +35,7 @@ export const findFilesContainingUseClient = async ({
   // Check each file for 'use client' in the first non-empty line
   for (const file of files) {
     try {
+      log("Checking file: %s", file);
       const content = await readFile(file, "utf-8");
       const lines = content.split("\n");
 
@@ -37,6 +50,11 @@ export const findFilesContainingUseClient = async ({
           ) {
             // Make the path relative to rootDir and add leading slash
             const relativePath = "/" + path.relative(rootDir, file);
+            log(
+              "Found 'use client' directive in: %s (relative: %s)",
+              file,
+              relativePath,
+            );
             clientFiles.push(relativePath);
           }
           break; // Only check the first non-empty line
@@ -44,29 +62,41 @@ export const findFilesContainingUseClient = async ({
       }
     } catch (error) {
       // Skip files that can't be read
-      console.error(`Error reading file ${file}:`, error);
+      log("Error reading file %s: %O", file, error);
     }
   }
 
+  log("Final clientFiles found: %O", clientFiles);
   return clientFiles;
 };
 
 export const useClientLookupPlugin = ({
   rootDir,
-  containingPath,
+  containingPaths,
 }: {
   rootDir: string;
-  containingPath: string;
+  containingPaths: string[];
 }): Plugin =>
-  virtualPlugin("use-client-lookup", async () => {
-    const files = await findFilesContainingUseClient({
+  virtualPlugin("use-client-lookup", async function () {
+    let files: string[] = [];
+    for (const containingPath of containingPaths) {
+      const found = await glob("**/*.{ts,tsx}", {
+        cwd: path.resolve(rootDir, containingPath),
+        absolute: true,
+      });
+      files.push(...found);
+    }
+
+    const environmentName = this?.environment?.name;
+    const clientFiles = await findFilesContainingUseClient({
       rootDir,
-      containingPath,
+      containingPath: containingPaths[0],
+      environmentName,
     });
 
     const s = new MagicString(`
 export const useClientLookup = {
-  ${files
+  ${clientFiles
     .map(
       (file: string) => `
   "${file}": () => import("${file}"),

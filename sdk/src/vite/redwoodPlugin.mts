@@ -20,6 +20,7 @@ import { pathExists } from "fs-extra";
 import { injectVitePreamble } from "./injectVitePreamblePlugin.mjs";
 import { vitePreamblePlugin } from "./vitePreamblePlugin.mjs";
 import { checkIsUsingPrisma } from "./checkIsUsingPrisma.mjs";
+import { virtualizedSSRPlugin } from "./virtualizedSSRPlugin.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -85,6 +86,7 @@ export const redwoodPlugin = async (
       workerEntryPathname,
       isUsingPrisma,
     }),
+    virtualizedSSRPlugin({ projectRootDir }),
     reactConditionsResolverPlugin({ projectRootDir, mode }),
     tsconfigPaths({ root: projectRootDir }),
     miniflarePlugin({
@@ -101,7 +103,7 @@ export const redwoodPlugin = async (
     injectVitePreamble({ clientEntryPathname, mode }),
     useClientLookupPlugin({
       rootDir: projectRootDir,
-      containingPath: "./src/app",
+      containingPaths: ["./src/app", "./node_modules"],
     }),
     transformJsxScriptTagsPlugin({
       manifestPath: resolve(

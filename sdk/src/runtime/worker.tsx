@@ -5,6 +5,7 @@ import { renderToRscStream } from "./render/renderToRscStream";
 import { loadModule, ssrWebpackRequire } from "./imports/worker";
 import { rscActionHandler } from "./register/worker";
 import { injectRSCPayload } from "rsc-html-stream/server";
+import { isClientReference } from "./lib/router";
 import { ErrorResponse } from "./error";
 import {
   getRequestInfo,
@@ -145,10 +146,8 @@ export const defineApp = (routes: Route[]) => {
 
           const htmlStream = await transformRscToHtmlStream({
             stream: rscPayloadStream1,
-            Parent: ({ children }) => (
-              <rw.Document {...requestInfo} children={children} />
-            ),
-            nonce: rw.nonce,
+            Document: rw.Document,
+            requestInfo,
           });
 
           const html = htmlStream.pipeThrough(
@@ -238,7 +237,3 @@ export const DefaultDocument: React.FC<{ children: React.ReactNode }> = ({
     </body>
   </html>
 );
-
-const isClientReference = (Component: React.FC<any>) => {
-  return Object.prototype.hasOwnProperty.call(Component, "$$isClientReference");
-};

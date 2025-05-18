@@ -2,6 +2,9 @@ import { Project, Node, SyntaxKind, ImportDeclaration } from "ts-morph";
 import { type Plugin } from "vite";
 import { readFile } from "node:fs/promises";
 import { pathExists } from "fs-extra";
+import debug from "debug";
+
+const logTransform = debug("rwsdk:vite:transform-jsx-script-tags");
 
 let manifestCache: Record<string, { file: string }> | undefined;
 
@@ -101,14 +104,18 @@ function transformScriptImports(
 }
 
 export async function transformJsxScriptTagsCode(
+  id: string,
   code: string,
   manifest: Record<string, any> = {},
 ) {
+  logTransform("transformJsxScriptTagsCode called for id=%s", id);
   // Quick heuristic check if there's JSX in the code
   if (!hasJsxFunctions(code)) {
+    logTransform("⏭️ No JSX functions found in id=%s", id);
     return;
   }
 
+  logTransform("🔎 Processing imports in SSR module: %s", id);
   const project = new Project({ useInMemoryFileSystem: true });
   const sourceFile = project.createSourceFile("temp.tsx", code);
 
@@ -295,7 +302,7 @@ export async function transformJsxScriptTagsCode(
             // Add nonce property to the props object
             propsArg.addPropertyAssignment({
               name: "nonce",
-              initializer: "requestInfo.rw.nonce",
+              initializer: "requestInfo.rw?.nonce",
             });
 
             if (!hasRequestInfoImport) {
@@ -365,11 +372,29 @@ export async function transformJsxScriptTagsCode(
     }
   }
 
-  // Return the transformed code only if modifications were made
   if (hasModifications) {
+    const emitOutput = sourceFile.getEmitOutput();
+    let sourceMap: any;
+
+    for (const outputFile of emitOutput.getOutputFiles()) {
+      if (outputFile.getFilePath().endsWith(".js.map")) {
+        sourceMap = JSON.parse(outputFile.getText());
+      }
+    }
+
+    logTransform("🔎 Transformed code for %s", id);
+
+    if (process.env.VERBOSE) {
+      logTransform(
+        "[VERBOSE] Transformed code for %s:\n%s",
+        id,
+        sourceFile.getFullText(),
+      );
+    }
+
     return {
       code: sourceFile.getFullText(),
-      map: null,
+      map: sourceMap,
     };
   }
 
@@ -390,14 +415,14 @@ export const transformJsxScriptTagsPlugin = ({
       isBuild = config.command === "build";
     },
 
-    async transform(code) {
+    async transform(code, id) {
       if (this.environment.name !== "worker") {
         return;
       }
 
       const manifest = isBuild ? await readManifest(manifestPath) : {};
 
-      return transformJsxScriptTagsCode(code, manifest);
+      return transformJsxScriptTagsCode(id, code, manifest);
     },
   };
 };

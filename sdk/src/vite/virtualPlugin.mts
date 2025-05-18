@@ -13,7 +13,7 @@ export const virtualPlugin = (name: string, load: Plugin["load"]): Plugin => {
     },
     load(id, options) {
       if (id === `\0${name}` || id.startsWith(`\0${name}?`)) {
-        return (load as any).apply(this, [id, options]);
+        return (load as any).call(this, this, id, options);
       }
     },
   };
