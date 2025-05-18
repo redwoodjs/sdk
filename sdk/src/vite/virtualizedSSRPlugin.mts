@@ -596,6 +596,10 @@ export function virtualizedSSRPlugin({
     },
 
     async resolveId(id) {
+      if (this.environment.name !== "worker") {
+        return;
+      }
+
       logResolve(":plugin:resolveId: called with id: %s", id);
 
       if (!id.startsWith(SSR_NAMESPACE)) {
@@ -630,6 +634,10 @@ export function virtualizedSSRPlugin({
     },
 
     load(id) {
+      if (this.environment.name !== "worker") {
+        return;
+      }
+
       logResolve(":plugin:load: called with id: %s", id);
 
       if (!id.startsWith(SSR_NAMESPACE)) {
