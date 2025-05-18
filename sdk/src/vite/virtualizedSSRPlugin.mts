@@ -99,33 +99,66 @@ function isBareImport(importPath: string): boolean {
   );
 }
 
-async function rewriteSSRClientImports({
+async function resolveSSRPath({
+  raw,
+  filePath,
+  context,
+  logFn,
+}: {
+  raw: string;
+  filePath: string;
+  context: VirtualizedSSRContext;
+  logFn?: (...args: any[]) => void;
+}): Promise<string | null> {
+  if (isBareImport(raw)) {
+    const ssrResolved = context.resolveDep(raw);
+    if (ssrResolved !== false) {
+      logFn?.(
+        "[resolveSSRPath] SSR resolver succeeded for bare import import='%s', resolved to ssrResolved='%s'",
+        raw,
+        ssrResolved,
+      );
+      return ssrResolved;
+    }
+  }
+  const moduleResolved = await context.resolveModule(raw, filePath);
+  if (moduleResolved) {
+    logFn?.(
+      "[resolveSSRPath] Module resolver succeeded for import import='%s' from filePath=%s, resolved to moduleResolved='%s'",
+      raw,
+      filePath,
+      moduleResolved,
+    );
+    return moduleResolved;
+  } else {
+    logFn?.(
+      "[resolveSSRPath] Module resolver failed for import import='%s' from filePath=%s, leaving as is",
+      raw,
+      filePath,
+    );
+  }
+  return raw;
+}
+
+async function rewriteSSRImports({
   code,
   id,
   context,
   logFn,
-  shouldRewriteBareImports,
 }: {
   code: string;
   id: string;
   context: VirtualizedSSRContext;
   logFn?: (...args: any[]) => void;
-  shouldRewriteBareImports: boolean;
 }): Promise<MagicString | null> {
-  const filePath = getRealPathFromSSRNamespace(id);
-
-  logFn?.("[rewriteSSRClientImports] called for id: id=%s", id);
+  logFn?.("[rewriteSSRImports] called for id: id=%s", id);
   const imports = findImportSpecifiers(
     id,
     code,
     IGNORED_IMPORT_PATTERNS,
     logFn,
   );
-  logFn?.(
-    "[rewriteSSRClientImports] Found %d imports in id=%s",
-    imports.length,
-    id,
-  );
+  logFn?.("[rewriteSSRImports] Found %d imports in id=%s", imports.length, id);
   const ms = new MagicString(code);
 
   let modified = false;
@@ -133,7 +166,7 @@ async function rewriteSSRClientImports({
   for (const i of imports) {
     const raw = i.raw;
     logFn?.(
-      "[rewriteSSRClientImports] Processing import '%s' at [%d, %d] in id=%s",
+      "[rewriteSSRImports] Processing import '%s' at [%d, %d] in id=%s",
       raw,
       i.s,
       i.e,
@@ -142,74 +175,28 @@ async function rewriteSSRClientImports({
 
     if (raw.startsWith(SSR_NAMESPACE)) {
       logFn?.(
-        "[rewriteSSRClientImports] Skipping already-virtual import: import=%s",
+        "[rewriteSSRImports] Skipping already-virtual import: import=%s",
         raw,
       );
       continue;
     }
 
-    let virtualId: string | null = null;
-
-    if (isBareImport(raw)) {
-      if (shouldRewriteBareImports) {
-        virtualId = ensureSSRNamespace(raw);
-        logFn?.(
-          "[rewriteSSRClientImports] Rewriting bare import import='%s' to virtual id virtualId='%s' (shouldRewriteBareImports: %s)",
-          raw,
-          virtualId,
-          shouldRewriteBareImports,
-        );
-      } else {
-        const ssrResolved = context.resolveDep(raw);
-
-        if (ssrResolved !== false) {
-          virtualId = ensureSSRNamespace(ssrResolved);
-          logFn?.(
-            "[rewriteSSRClientImports] SSR resolver succeeded for bare import import='%s', rewriting to ssrResolved='%s'",
-            raw,
-            virtualId,
-          );
-        }
-      }
-    }
-
-    if (virtualId === null) {
-      const moduleResolved = await context.resolveModule(raw, filePath);
-
-      if (moduleResolved) {
-        virtualId = ensureSSRNamespace(moduleResolved);
-        logFn?.(
-          "[rewriteSSRClientImports] Module resolver succeeded for import import='%s' from id=%s, rewriting to moduleResolved='%s'",
-          raw,
-          id,
-          virtualId,
-        );
-      } else {
-        logFn?.(
-          "[rewriteSSRClientImports] Module resolver failed for import import='%s' from id=%s, leaving as is",
-          raw,
-          id,
-        );
-      }
-    }
-
-    if (virtualId !== null) {
-      ms.overwrite(i.s, i.e, virtualId);
-      logFn?.(
-        "[rewriteSSRClientImports] Rewrote import import='%s' to virtualId='%s' in id=%s",
-        raw,
-        virtualId,
-        id,
-      );
-      modified = true;
-    }
+    const virtualId = ensureSSRNamespace(raw);
+    ms.overwrite(i.s, i.e, virtualId);
+    logFn?.(
+      "[rewriteSSRImports] Rewrote import import='%s' to virtualId='%s' in id=%s",
+      raw,
+      virtualId,
+      id,
+    );
+    modified = true;
   }
 
   if (modified) {
-    logFn?.("[rewriteSSRClientImports] Rewriting complete for id=%s", id);
+    logFn?.("[rewriteSSRImports] Rewriting complete for id=%s", id);
     return ms;
   } else {
-    logFn?.("[rewriteSSRClientImports] No changes made for id=%s", id);
+    logFn?.("[rewriteSSRImports] No changes made for id=%s", id);
     return null;
   }
 }
@@ -260,7 +247,27 @@ function detectLoader(filePath: string) {
   return ext === ".tsx" || ext === ".jsx" ? "tsx" : ext === ".ts" ? "ts" : "js";
 }
 
-async function esbuildLoadAndTransformClientModule({
+async function esbuildResolveSSRModule({
+  filePath,
+  context,
+  logFn,
+}: {
+  filePath: string;
+  context: VirtualizedSSRContext;
+  logFn: (...args: any[]) => void;
+}) {
+  logEsbuild("🔎 Resolving SSR module: %s", filePath);
+  const realPath = getRealPathFromSSRNamespace(filePath);
+
+  if (isBareImport(realPath)) {
+    logEsbuild("⏭️ Skipping bare import: %s", realPath);
+    return {
+      path: realPath,
+    };
+  }
+}
+
+async function esbuildLoadAndTransformSSRModule({
   filePath,
   context,
   logFn,
@@ -270,6 +277,11 @@ async function esbuildLoadAndTransformClientModule({
   logFn: (...args: any[]) => void;
 }) {
   const realPath = getRealPathFromSSRNamespace(filePath);
+
+  if (isBareImport(realPath)) {
+    logFn("⏭️ Skipping bare import: %s", realPath);
+    return undefined;
+  }
 
   let inputCode: string;
   try {
@@ -289,12 +301,11 @@ async function esbuildLoadAndTransformClientModule({
   let modified: boolean = false;
 
   if (isSSR) {
-    let rewritten = await rewriteSSRClientImports({
+    let rewritten = await rewriteSSRImports({
       code: inputCode,
       id: filePath,
       context,
       logFn,
-      shouldRewriteBareImports: false,
     });
     if (rewritten) {
       logFn("🔎 Import rewriting complete for %s", filePath);
@@ -376,7 +387,7 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
         { filter: /.*/, namespace: SSR_ESBUILD_NAMESPACE },
         async (args: any) => {
           logEsbuild("[esbuild:onLoad:namespace] called with args: %O", args);
-          return esbuildLoadAndTransformClientModule({
+          return esbuildLoadAndTransformSSRModule({
             filePath: args.path,
             context,
             logFn: logEsbuildTransform,
@@ -396,7 +407,7 @@ function virtualizedSSREsbuildPlugin(context: VirtualizedSSRContext) {
         { filter: /\.(js|jsx|ts|tsx|mjs|mts)$/ },
         async (args: any) => {
           logEsbuild("[esbuild:onLoad:entry] called with args: %O", args);
-          const result = await esbuildLoadAndTransformClientModule({
+          const result = await esbuildLoadAndTransformSSRModule({
             filePath: args.path,
             context,
             logFn: logEsbuildTransform,
@@ -551,12 +562,11 @@ export function virtualizedSSRPlugin({
 
       logTransform("🔎 Processing imports in SSR module: %s", id);
 
-      const rewritten = await rewriteSSRClientImports({
+      const rewritten = await rewriteSSRImports({
         code,
         id,
         context,
         logFn: logTransform,
-        shouldRewriteBareImports: false,
       });
 
       if (!rewritten) {
