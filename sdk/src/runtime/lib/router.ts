@@ -214,7 +214,7 @@ export function render(
   routes: Route[],
   options: {
     // Toggle the RSC payload that's appended to the Document. Disabling this will mean that interactivity no longer works.
-    rscPayload?: boolean;
+    rscPayload: boolean;
   } = { rscPayload: true },
 ): Route[] {
   const documentMiddleware: RouteMiddleware = ({ rw }) => {
