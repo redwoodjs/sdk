@@ -84,31 +84,37 @@ export const reactConditionsResolverPlugin = async ({
         if (SKIP_REACT_SERVER.includes(packageName)) {
           resolver = skipReactServerResolver;
           log(
-            ":react-conditions-resolver:Using skipReactServer resolver for :packageName:",
+            ":react-conditions-resolver:Using skipReactServer resolver for packageName=%s",
+            packageName,
           );
         } else {
           resolver = workerResolver;
           log(
-            ":react-conditions-resolver:Using worker resolver with react-server for :packageName:",
+            ":react-conditions-resolver:Using worker resolver with react-server for packageName=%s",
+            packageName,
           );
         }
       } else {
         resolver = clientResolver;
         log(
-          ":react-conditions-resolver:Using client resolver for :packageName:",
+          ":react-conditions-resolver:Using client resolver for packageName=%s",
+          packageName,
         );
       }
 
       const resolved = resolver(ROOT_DIR, packageName);
       if (resolved) {
         log(
-          ":react-conditions-resolver:Resolved :packageName: to :resolved: using enhanced-resolve",
+          ":react-conditions-resolver:Resolved packageName=%s to resolved=%s using enhanced-resolve",
+          packageName,
+          resolved,
         );
         return resolved;
       }
     } catch (error) {
       log(
-        ":react-conditions-resolver:Enhanced resolution failed for :packageName: :error:",
+        ":react-conditions-resolver:Enhanced resolution failed for packageName=%s error=%s",
+        packageName,
         error,
       );
     }
@@ -116,13 +122,15 @@ export const reactConditionsResolverPlugin = async ({
     try {
       const resolved = sdkRequire.resolve(packageName);
       log(
-        ":react-conditions-resolver:Standard resolution for :packageName: :resolved:",
+        ":react-conditions-resolver:Standard resolution for packageName=%s resolved=%s",
+        packageName,
         resolved,
       );
       return resolved;
     } catch (fallbackError) {
       log(
-        ":react-conditions-resolver:All resolution failed for :packageName: :fallbackError:",
+        ":react-conditions-resolver:All resolution failed for packageName=%s fallbackError=%s",
+        packageName,
         fallbackError,
       );
       throw new Error(`Failed to resolve :packageName:`);
@@ -143,9 +151,13 @@ export const reactConditionsResolverPlugin = async ({
 
   // Log the resolved paths
   const logImports = (env: string, imports: Record<string, string>) => {
-    log(":react-conditions-resolver:Resolved :env: paths (:mode: mode):");
+    log(
+      ":react-conditions-resolver:Resolved env=%s paths (mode=%s)",
+      env,
+      mode,
+    );
     Object.entries(imports).forEach(([id, path]) => {
-      log("- :id: : path:");
+      log("- id=%s path=%s", id, path);
     });
   };
 
@@ -158,7 +170,9 @@ export const reactConditionsResolverPlugin = async ({
     imports: Record<string, string>,
   ) => {
     log(
-      ":react-conditions-resolver:Applying React conditions resolver for :name: environment in :mode: mode",
+      ":react-conditions-resolver:Applying React conditions resolver for name=%s environment in mode=%s",
+      name,
+      mode,
     );
 
     (config.optimizeDeps ??= {}).esbuildOptions ??= {};
@@ -192,7 +206,11 @@ export const reactConditionsResolverPlugin = async ({
         replacement: resolvedPath,
       });
 
-      log(":react-conditions-resolver:Added alias for :id: -> :resolvedPath:");
+      log(
+        ":react-conditions-resolver:Added alias for id=%s -> resolvedPath=%s",
+        id,
+        resolvedPath,
+      );
     });
   };
 
@@ -222,7 +240,9 @@ export const reactConditionsResolverPlugin = async ({
             replacement: resolvedPath,
           });
           log(
-            ":react-conditions-resolver:Global: Added alias for :id: -> :resolvedPath:",
+            ":react-conditions-resolver:Global: Added alias for id=%s -> resolvedPath=%s",
+            id,
+            resolvedPath,
           );
         }
       }
