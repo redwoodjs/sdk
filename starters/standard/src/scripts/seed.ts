@@ -1,9 +1,7 @@
 import { defineScript } from "rwsdk/worker";
-import { db, setupDb } from "@/db";
+import { db } from "@/db";
 
-export default defineScript(async ({ env }) => {
-  setupDb(env);
-
+export default defineScript(async () => {
   await db.$executeRawUnsafe(`\
     DELETE FROM User;
     DELETE FROM sqlite_sequence;
