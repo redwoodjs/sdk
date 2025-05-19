@@ -35,12 +35,7 @@ export async function transformUseClientCode(
   code: string,
   relativeId: string,
 ): Promise<TransformResult | undefined> {
-  const cleanCode = code.trimStart();
-
-  if (
-    !cleanCode.startsWith('"use client"') &&
-    !cleanCode.startsWith("'use client'")
-  ) {
+  if (code.indexOf("use client") === -1) {
     return;
   }
 
@@ -54,6 +49,15 @@ export async function transformUseClientCode(
     },
   });
   const sourceFile = project.createSourceFile("temp.tsx", code);
+  const firstString = sourceFile.getFirstDescendantByKind(
+    SyntaxKind.StringLiteral,
+  );
+  if (
+    firstString?.getText().indexOf("use client") === -1 &&
+    firstString?.getStart() !== sourceFile.getStart() // `getStart` does not include the leading comments + whitespace
+  ) {
+    return;
+  }
 
   // Add import declaration properly through the AST
   sourceFile.addImportDeclaration({
