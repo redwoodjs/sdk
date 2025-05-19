@@ -41,6 +41,18 @@ export default function sum() {
 }
 `;
 
+  let DEFAULT_AND_NAMED_EXPORTS_CODE = `
+"use server";
+
+export function sum() {
+  return 1 + 1;
+}
+
+export default function sum() {
+  return 1 + 2;
+}
+`;
+
   let NAMED_EXPORT_CODE = `
 "use server";
 
@@ -80,6 +92,7 @@ export const a = "string";
     ARROW_FUNCTION_EXPORT_CODE,
     ASYNC_FUNCTION_EXPORT_CODE,
     IGNORE_NON_FUNCTION_EXPORT_CODE,
+    DEFAULT_AND_NAMED_EXPORTS_CODE,
   };
 
   describe("TRANSFORMS", () => {

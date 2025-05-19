@@ -87,24 +87,6 @@ export const transformServerFunctions = (
     }
   }
 
-  const defaultExport = sourceFile
-    .getDefaultExportSymbol()
-    ?.getDeclarations()[0];
-  if (defaultExport && Node.isFunctionDeclaration(defaultExport)) {
-    // remove the default export, and instead make it a named export called "defaultServerFunction"
-    const name = defaultExport.getName() || "defaultServerFunction";
-    // Remove the default export
-    defaultExport.setIsDefaultExport(false);
-    // Change to a named export
-    defaultExport.setIsExported(true);
-
-    // Add a default export that references the named export
-    sourceFile.addExportAssignment({
-      expression: name,
-      isExportEquals: false,
-    });
-  }
-
   if (environment === "worker") {
     // import { registerServerReference } from "rwsdk/worker";
     sourceFile.addImportDeclaration({
@@ -112,10 +94,31 @@ export const transformServerFunctions = (
       namedImports: ["registerServerReference"],
     });
 
-    // Append the registerServerReference calls for each exported function:
-    // registerServerReference("sum", "/test.tsx", "sum");
+    // Special handling for default export: always use a unique name
+    const defaultExportSymbol = sourceFile.getDefaultExportSymbol();
+    const defaultExportDecl = defaultExportSymbol?.getDeclarations()[0];
+    let hasDefaultExport = false;
+    if (defaultExportDecl && Node.isFunctionDeclaration(defaultExportDecl)) {
+      hasDefaultExport = true;
+      // Remove the default export from the function declaration
+      defaultExportDecl.setIsDefaultExport(false);
+      // Rename the function to __defaultServerFunction__
+      defaultExportDecl.rename("__defaultServerFunction__");
+      // Export as default
+      sourceFile.addExportAssignment({
+        expression: "__defaultServerFunction__",
+        isExportEquals: false,
+      });
+      // Register the default export
+      sourceFile.addStatements(
+        `registerServerReference(__defaultServerFunction__, ${JSON.stringify(relativeId)}, "default")`,
+      );
+    }
+
+    // Append the registerServerReference calls for each exported function (excluding default)
     const exports = findExportedFunctions(sourceFile);
     for (const name of exports) {
+      if (name === "__defaultServerFunction__") continue;
       sourceFile.addStatements(
         `registerServerReference(${name}, ${JSON.stringify(relativeId)}, ${JSON.stringify(name)})`,
       );
@@ -143,6 +146,15 @@ export const transformServerFunctions = (
             initializer: `createServerReference(${JSON.stringify(relativeId)}, ${JSON.stringify(name)})`,
           },
         ],
+      });
+    }
+
+    // If the original file had a default export, also export default
+    const hadDefaultExport = !!sourceFile.getDefaultExportSymbol();
+    if (hadDefaultExport) {
+      clientSourceFile.addExportAssignment({
+        expression: `createServerReference(${JSON.stringify(relativeId)}, "default")`,
+        isExportEquals: false,
       });
     }
 
