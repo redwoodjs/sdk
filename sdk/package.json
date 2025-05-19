@@ -1,6 +1,6 @@
 {
   "name": "rwsdk",
-  "version": "0.0.83-test.20250513055247",
+  "version": "0.0.84",
   "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime",
   "type": "module",
   "bin": {
@@ -109,7 +109,6 @@
     "@vitejs/plugin-react": "^4.3.4",
     "debug": "^4.4.0",
     "enhanced-resolve": "^5.18.1",
-    "es-module-lexer": "^1.5.4",
     "eventsource-parser": "^3.0.0",
     "execa": "^9.5.2",
     "fs-extra": "^11.3.0",

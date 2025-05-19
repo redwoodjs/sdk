@@ -1272,6 +1272,108 @@ export function Chat() {
   it("Does not transform when 'use client' is not directive", async () => {
     expect(
       await transform(`const message = "use client";`),
-    ).toMatchInlineSnapshot(`undefined`);
+    ).toMatchInlineSnapshot(`
+      "import { registerClientReference } from "rwsdk/worker";
+
+      const message = "use client";"
+    `);
+  });
+
+  it("Comments are allowed in front of 'use client'", async () => {
+    expect(
+      await transform(`\
+// Single line comment
+"use client"
+
+export const Component = () => {
+    return jsx('div', { children: 'Hello' })
+}
+`),
+    ).toMatchInlineSnapshot(`
+      "import { registerClientReference } from "rwsdk/worker";
+
+      // Single line comment
+      const ComponentSSR = () => {
+          return jsx('div', { children: 'Hello' })
+      }
+      const Component = registerClientReference("/test/file.tsx", "Component", ComponentSSR);
+      export { ComponentSSR, Component };
+      "
+    `);
+
+    expect(
+      await transform(`\
+// Multi-line
+// comments
+"use client"
+
+export const Component = () => {
+    return jsx('div', { children: 'Hello' })
+}
+`),
+    ).toMatchInlineSnapshot(`
+      "import { registerClientReference } from "rwsdk/worker";
+
+      // Multi-line
+      // comments
+      const ComponentSSR = () => {
+          return jsx('div', { children: 'Hello' })
+      }
+      const Component = registerClientReference("/test/file.tsx", "Component", ComponentSSR);
+      export { ComponentSSR, Component };
+      "
+    `);
+
+    expect(
+      await transform(`\
+// Single line comment
+
+
+// With Whitespace
+
+"use client"
+
+export const Component = () => {
+    return jsx('div', { children: 'Hello' })
+}
+`),
+    ).toMatchInlineSnapshot(`
+      "import { registerClientReference } from "rwsdk/worker";
+
+      // Single line comment
+
+
+      // With Whitespace
+      const ComponentSSR = () => {
+          return jsx('div', { children: 'Hello' })
+      }
+      const Component = registerClientReference("/test/file.tsx", "Component", ComponentSSR);
+      export { ComponentSSR, Component };
+      "
+    `);
+  });
+
+  it("Multiline are allowed in front of 'use client'", async () => {
+    expect(
+      await transform(`"/* This is a
+      multi line comment
+      */
+        "use client"
+
+export const Component = () => {
+  return jsx('div', { children: 'Hello' });
+}`),
+    ).toMatchInlineSnapshot(`
+      "import { registerClientReference } from "rwsdk/worker";
+
+      "/* This is a
+            multi line comment
+            */
+      const ComponentSSR = () => {
+        return jsx('div', { children: 'Hello' });
+      }
+      const Component = registerClientReference("/test/file.tsx", "Component", ComponentSSR);
+      export { ComponentSSR, Component };"
+    `);
   });
 });

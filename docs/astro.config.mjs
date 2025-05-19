@@ -2,6 +2,7 @@
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
 import partytown from "@astrojs/partytown";
+import starlightLlmsTxt from "starlight-llms-txt";
 
 // https://astro.build/config
 export default defineConfig({
@@ -13,6 +14,7 @@ export default defineConfig({
       },
     }),
     starlight({
+      plugins: [starlightLlmsTxt()],
       expressiveCode: {
         shiki: {
           bundledLangs: ["bash", "ts", "tsx"],
@@ -45,6 +47,7 @@ export default defineConfig({
             { slug: "core/storage" },
             { slug: "core/realtime" },
             { slug: "core/queues" },
+            { slug: "core/cron" },
             { label: "Environment variables", slug: "core/env-vars" },
             { slug: "core/authentication" },
             { slug: "core/security" },
@@ -92,23 +95,35 @@ export default defineConfig({
                   slug: "tutorial/full-stack-app/deploying",
                 },
               ],
-            }
-          ]
+            },
+          ],
         },
         {
           label: "Guides",
           items: [
             {
+              label: 'Email',
+              collapsed: true,
+              items: [
+                { label: 'Sending Email', slug: 'guides/email/sending-email' },
+                { label: 'Email Templates', slug: 'guides/email/email-templates' },
+              ]
+            },
+            {
               label: 'Frontend Development',
               collapsed: true,
               items: [
-                { label: 'TailwindCSS', slug: 'guides/frontend/tailwind' },
-                { label: 'shadcn/ui', slug: 'guides/frontend/shadcn' },
-                { label: 'Layouts', slug: 'guides/frontend/layouts' },
-                { label: 'Documents', slug: 'guides/frontend/documents' },
-                { label: 'Public Assets', slug: 'guides/frontend/public-assets' },
-                { label: 'Metadata', slug: 'guides/frontend/metadata' },
-              ]
+                { label: "Tailwind CSS", slug: "guides/frontend/tailwind" },
+                { label: "Storybook", slug: "guides/frontend/storybook" },
+                { label: "shadcn/ui", slug: "guides/frontend/shadcn" },
+                { label: "Layouts", slug: "guides/frontend/layouts" },
+                { label: "Documents", slug: "guides/frontend/documents" },
+                {
+                  label: "Public Assets",
+                  slug: "guides/frontend/public-assets",
+                },
+                { label: "Metadata", slug: "guides/frontend/metadata" },
+              ],
             },
             { label: "Server Function Streams", slug: "guides/rsc-streams" },
           ],
@@ -138,7 +153,7 @@ export default defineConfig({
           attrs: {
             property: "og:description",
             content:
-              "RedwoodSDK is a React Framework for Cloudflare. It begins as a Vite plugin that unlocks SSR, React Server Components, Server Functions, and realtime features.  Its standards-based router, with support for middleware and  interruptors, gives you fine-grained control over every request and  response.",
+              "RedwoodSDK is a React Framework for Cloudflare. It begins as a Vite plugin that unlocks SSR, React Server Components, Server Functions, and realtime features.  Its standards-based router, with support for middleware and  interrupters, gives you fine-grained control over every request and  response.",
           },
         },
         {

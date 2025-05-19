@@ -48,6 +48,7 @@ This will match `/user/login` and `/user/logout`
 ## render
 
 The `render` function is used to statically render the contents of a JSX element. It cannot contain any dynamic content. Use this to control the output of your HTML.
+The `rscPayload` option is used to toggle the RSC payload that's appended to the Document. Disabling this will mean that interactivity can no longer work. Your document should not include any client side initialization.
 
 ```tsx
 import { render } from "rwsdk/router";
@@ -60,6 +61,6 @@ import { routes as docsRoutes } from "@/app/pages/docs/routes";
 
 export default defineApp([
   render(ReactDocument, [prefix("/app", appRoutes)]),
-  render(StaticDocument, [prefix("/docs", docsRoutes)]),
+  render(StaticDocument, [prefix("/docs", docsRoutes)], { rscPayload: false }),
 ]);
 ```
