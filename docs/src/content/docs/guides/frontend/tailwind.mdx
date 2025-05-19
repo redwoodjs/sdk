@@ -1,6 +1,6 @@
 ---
-title: TailwindCSS
-description: A step-by-step guide for installing and configuring TailwindCSS v4 in Redwood SDK projects, including customization options and font integration techniques.
+title: Tailwind CSS
+description: A step-by-step guide for installing and configuring Tailwind CSS v4 in Redwood SDK projects, including customization options and font integration techniques.
 ---
 
 import { Aside } from '@astrojs/starlight/components';
@@ -13,14 +13,14 @@ import { PackageManagers } from "starlight-package-managers";
 Since the RedwoodSDK is based on React and Vite, we can work through the ["Using Vite" documentation](https://tailwindcss.com/docs/installation/using-vite).
 
 <Steps>
+
 1. Install Tailwind CSS
     <PackageManagers
       pkg="tailwindcss @tailwindcss/vite"
     />
 
 2. Configure the Vite Plugin
-    ```ts ins="import tailwindcss from '@tailwindcss/vite'" ins="tailwindcss()," {3, 12} ins={7-9}
-    // vite.config.mts
+    ```ts ins="import tailwindcss from '@tailwindcss/vite'" ins="tailwindcss()," {3, 12} ins={7-9} title="vite.config.mts"
     import { defineConfig } from "vite";
     import tailwindcss from '@tailwindcss/vite'
     import { redwood } from "rwsdk/vite";
@@ -42,16 +42,15 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
     This isn't the case for us, since we only have a `worker` environment instead of `ssr`. To prevent builds from getting blocked on this, we stub out the ssr environment here.
     </Aside>
 
-3. Import Tailwind CSS
-    Create a `src/app/styles.css` file.
-    ```css
+3. Create a `src/app/styles.css` file, and import Tailwind CSS
+    ```css title="src/app/styles.css"
     @import "tailwindcss";
     ```
 
-4. Import your CSS and add a `<link>` to the `styles.css` file.
+4. Import your CSS and add a `<link>` to the `styles.css` file.<br />
     In the `Document.tsx` file, within the `<head>` section, add:
 
-    ```tsx title="src/app/Document.tsx" {1, 5}
+    ```tsx title="src/app/Document.tsx" add={1, 5}
     import styles from "./styles.css?url";
     ...
     <head>
@@ -61,7 +60,10 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
     </head>
     ```
 
-5. Now, you can run `dev` and the "Hello World" text should look different.
+5. To test that Tailwind is working, you'll need to style something in your app. Use the <a href="https://tailwindcss.com/docs/styling-with-utility-classes" target="_blank">Tailwind CSS docs</a> to understand how to use the utility classes.<br />
+    For example, you can just pick a random element in your app and add a blue background color to it by adding `className="bg-blue-500"` to it.`
+
+6. Now, you can run `dev` and the element you styled should look different.
     <PackageManagers
       type="run"
       args="dev"
