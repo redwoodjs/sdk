@@ -9,7 +9,6 @@ import { useServerPlugin } from "./useServerPlugin.mjs";
 import { useClientPlugin } from "./useClientPlugin.mjs";
 import { useClientLookupPlugin } from "./useClientLookupPlugin.mjs";
 import { miniflarePlugin } from "./miniflarePlugin.mjs";
-import { copyPrismaWasmPlugin } from "./copyPrismaWasmPlugin.mjs";
 import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
 import { configPlugin } from "./configPlugin.mjs";
 import { $ } from "../lib/$.mjs";
@@ -20,7 +19,6 @@ import { pathExists } from "fs-extra";
 import { injectVitePreamble } from "./injectVitePreamblePlugin.mjs";
 import { vitePreamblePlugin } from "./vitePreamblePlugin.mjs";
 import { checkPrismaStatus } from "./checkIsUsingPrisma.mjs";
-import { prismaPlugin } from "./prismaPlugin.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -112,9 +110,6 @@ export const redwoodPlugin = async (
         ".vite",
         "manifest.json",
       ),
-    }),
-    prismaPlugin({
-      projectRootDir,
     }),
     moveStaticAssetsPlugin({ rootDir: projectRootDir }),
   ];

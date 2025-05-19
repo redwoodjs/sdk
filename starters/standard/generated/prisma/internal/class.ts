@@ -26,10 +26,10 @@ const config: runtime.GetPrismaClientConfig = {
       "fromEnvVar": null
     },
     "config": {
-      "runtime": "workerd",
-      "generatedFileExtension": "ts",
       "importFileExtension": "ts",
       "moduleFormat": "esm",
+      "generatedFileExtension": "ts",
+      "runtime": "workerd",
       "engineType": "client"
     },
     "binaryTargets": [
