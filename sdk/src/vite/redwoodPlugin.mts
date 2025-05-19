@@ -20,6 +20,7 @@ import { pathExists } from "fs-extra";
 import { injectVitePreamble } from "./injectVitePreamblePlugin.mjs";
 import { vitePreamblePlugin } from "./vitePreamblePlugin.mjs";
 import { checkPrismaStatus } from "./checkIsUsingPrisma.mjs";
+import { prismaPlugin } from "./prismaPlugin.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -112,9 +113,9 @@ export const redwoodPlugin = async (
         "manifest.json",
       ),
     }),
-    ...(prismaStatus.isUsingPrisma && prismaStatus.requiresWasmSupport
-      ? [copyPrismaWasmPlugin({ rootDir: projectRootDir })]
-      : []),
+    prismaPlugin({
+      projectRootDir,
+    }),
     moveStaticAssetsPlugin({ rootDir: projectRootDir }),
   ];
 };

@@ -68,36 +68,38 @@ export const configPlugin = ({
             noDiscovery: false,
             esbuildOptions: {
               conditions: ["workerd", "react-server"],
-              plugins: [
-                ...(prismaStatus.isUsingPrisma
-                  ? [
-                      {
-                        name: "rwsdk:prisma-client-wasm",
-                        setup(build: any) {
-                          build.onResolve(
-                            { filter: /.prisma\/client\/default/ },
-                            async (args: any) => {
-                              return {
-                                path: resolve(
-                                  projectRootDir,
-                                  "node_modules",
-                                  ".prisma",
-                                  "client",
-                                  prismaStatus.requiresWasmSupport
-                                    ? "wasm.js"
-                                    : "edge.js",
-                                ),
-                              };
-                            },
-                          );
-                        },
-                      },
-                    ]
-                  : []),
-                ignoreVirtualModules,
-              ],
+              //plugins: [
+              //  ...(prismaStatus.isUsingPrisma &&
+              //  prismaStatus.requiresWasmSupport
+              //    ? [
+              //        {
+              //          name: "rwsdk:prisma-client-resolve",
+              //          setup(build: any) {
+              //            build.onResolve(
+              //              { filter: /.prisma\/client\/default/ },
+              //              async (args: any) => {
+              //                return {
+              //                  path: resolve(
+              //                    projectRootDir,
+              //                    "node_modules",
+              //                    ".prisma",
+              //                    "client",
+              //                    prismaStatus.requiresWasmSupport
+              //                      ? "wasm.js"
+              //                      : "edge.js",
+              //                  ),
+              //                };
+              //              },
+              //            );
+              //          },
+              //        },
+              //      ]
+              //    : []),
+              //  ignoreVirtualModules,
+              //],
             },
             include: [
+              //".prisma/client/default",
               "react/jsx-runtime",
               "react/jsx-dev-runtime",
               "react-server-dom-webpack/client.edge",
@@ -124,19 +126,19 @@ export const configPlugin = ({
       },
       resolve: {
         conditions: ["workerd"],
-        alias: {
-          ...(prismaStatus.isUsingPrisma
-            ? {
-                ".prisma/client/default": resolve(
-                  projectRootDir,
-                  "node_modules",
-                  ".prisma",
-                  "client",
-                  prismaStatus.requiresWasmSupport ? "wasm.js" : "default.js",
-                ),
-              }
-            : {}),
-        },
+        //alias: {
+        //  ...(prismaStatus.isUsingPrisma
+        //    ? {
+        //        ".prisma/client/default": resolve(
+        //          projectRootDir,
+        //          "node_modules",
+        //          ".prisma",
+        //          "client",
+        //          prismaStatus.requiresWasmSupport ? "wasm.js" : "default.js",
+        //        ),
+        //      }
+        //    : {}),
+        //},
       },
     };
 
