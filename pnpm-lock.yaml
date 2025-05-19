@@ -171,9 +171,6 @@ importers:
       '@types/node':
         specifier: ^22.14.0
         version: 22.14.0
-      '@types/semver':
-        specifier: ^7.7.0
-        version: 7.7.0
       semver:
         specifier: ^7.7.1
         version: 7.7.1
@@ -1652,9 +1649,6 @@ packages:
 
   '@types/sax@1.2.7':
     resolution: {integrity: sha512-rO73L89PJxeYM3s3pPPjiPgVVcymqU490g0YO5n5By0k2Erzj6tay/4lr1CHAAU4JyOWd1rpQ8bCf6cZfHU96A==}
-
-  '@types/semver@7.7.0':
-    resolution: {integrity: sha512-k107IF4+Xr7UHjwDc7Cfd6PRQfbdkiRabXGRjo07b4WyPahFBZCZ1sE+BNxYIJPPg73UkfOsVOLwqVc/6ETrIA==}
 
   '@types/unist@2.0.11':
     resolution: {integrity: sha512-CmBKiL6NNo/OqgmMn95Fk9Whlp2mtvIv+KNpQKN2F4SjvrEesubTRWGYSg+BnWZOnlCaSTU1sMpsBOzgbYhnsA==}
@@ -5646,8 +5640,6 @@ snapshots:
   '@types/sax@1.2.7':
     dependencies:
       '@types/node': 22.14.0
-
-  '@types/semver@7.7.0': {}
 
   '@types/unist@2.0.11': {}
 
