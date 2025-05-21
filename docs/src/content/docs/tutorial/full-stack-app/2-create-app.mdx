@@ -120,10 +120,7 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
 
 <Steps>
 1. Install Tailwind CSS
-    <PackageManagers
-      type="install"
-      pkg="tailwindcss @tailwindcss/vite"
-    />
+    <PackageManagers pkg="tailwindcss @tailwindcss/vite" />
 
 2. Configure the Vite Plugin
     ```ts ins="import tailwindcss from '@tailwindcss/vite'" ins="tailwindcss()," title="vite.config.mts" ins={6-8} {2, 11}
@@ -180,7 +177,6 @@ You can test this even further by going to the `src/app/pages/user/Login.tsx` fi
 return (
   <>
     <h1 className="text-4xl font-bold text-red-500">YOLO</h1>
-    <div ref={turnstile.ref} />
     <input
       type="text"
       value={username}
@@ -362,7 +358,6 @@ Let's test to make sure our custom colors are working. On the `Login.tsx` file, 
   return (
     <main className="bg-bg">
       <h1 className="text-4xl font-bold text-red-500">YOLO</h1>
-      <div ref={turnstile.ref} />
       <input
         type="text"
         value={username}
@@ -605,7 +600,6 @@ import { Button } from "@/app/components/ui/button";
 return (
   <>
     <h1 className="text-4xl font-bold text-red-500">YOLO</h1>
-    <div ref={turnstile.ref} />
     <input
       type="text"
       value={username}
