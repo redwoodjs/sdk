@@ -31,7 +31,7 @@
     "@prisma/client": "6.8.2",
     "@simplewebauthn/browser": "^13.1.0",
     "@simplewebauthn/server": "^13.1.1",
-    "rwsdk": "0.0.84-test.20250521160715"
+    "rwsdk": "0.0.84-test.20250521170045"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
