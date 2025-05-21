@@ -19,8 +19,8 @@ export type AppContext = {
 export default defineApp([
   setCommonHeaders(),
   async ({ ctx, request, headers }) => {
-    await setupDb(env);
     setupSessionStore(env);
+    await setupDb();
 
     try {
       ctx.session = await sessions.load(request);
