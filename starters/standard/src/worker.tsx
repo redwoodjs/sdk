@@ -6,7 +6,7 @@ import { setCommonHeaders } from "@/app/headers";
 import { userRoutes } from "@/app/pages/user/routes";
 import { sessions, setupSessionStore } from "./session/store";
 import { Session } from "./session/durableObject";
-import { db } from "./db";
+import { db, setupDb } from "./db";
 import type { User } from "@prisma/client";
 import { env } from "cloudflare:workers";
 export { SessionDurableObject } from "./session/durableObject";
@@ -20,6 +20,7 @@ export default defineApp([
   setCommonHeaders(),
   async ({ ctx, request, headers }) => {
     setupSessionStore(env);
+    await setupDb();
 
     try {
       ctx.session = await sessions.load(request);
