@@ -9,7 +9,7 @@ export let db: PrismaClient;
 // are instantiating the prisma client later in the flow when the wasm would
 // have been initialized.
 export const setupDb = async () => {
-  const db = new PrismaClient({
+  db = new PrismaClient({
     adapter: new PrismaD1(env.DB),
   });
 
