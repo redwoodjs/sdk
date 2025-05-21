@@ -105,7 +105,7 @@ export const configPlugin = ({
           worker: {
             build: {
               rollupOptions: {
-                external: ["cloudflare:workers", "node:stream", /\.wasm$/],
+                external: ["cloudflare:workers", "node:stream"],
               },
             },
           },
