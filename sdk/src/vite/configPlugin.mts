@@ -1,6 +1,7 @@
 import { Plugin } from "vite";
 import { resolve } from "node:path";
 import { mergeConfig, InlineConfig } from "vite";
+import { PrismaCheckResult } from "./checkIsUsingPrisma.mjs";
 
 const ignoreVirtualModules = {
   name: "rwsdk:ignore-virtual-modules",
@@ -17,14 +18,14 @@ export const configPlugin = ({
   projectRootDir,
   clientEntryPathname,
   workerEntryPathname,
-  isUsingPrisma,
+  prismaStatus,
 }: {
   mode: "development" | "production";
   silent: boolean;
   projectRootDir: string;
   clientEntryPathname: string;
   workerEntryPathname: string;
-  isUsingPrisma: boolean;
+  prismaStatus: PrismaCheckResult;
 }): Plugin => ({
   name: "rwsdk:config",
   config: (_, { command }) => {
@@ -67,29 +68,6 @@ export const configPlugin = ({
             noDiscovery: false,
             esbuildOptions: {
               conditions: ["workerd", "react-server"],
-              plugins: [
-                ...(isUsingPrisma
-                  ? [
-                      {
-                        name: "rwsdk:prisma-client-wasm",
-                        setup(build: any) {
-                          build.onResolve(
-                            { filter: /.prisma\/client\/default/ },
-                            async (args: any) => {
-                              return {
-                                path: resolve(
-                                  projectRootDir,
-                                  "node_modules/.prisma/client/wasm.js",
-                                ),
-                              };
-                            },
-                          );
-                        },
-                      },
-                    ]
-                  : []),
-                ignoreVirtualModules,
-              ],
             },
             include: [
               "react/jsx-runtime",
@@ -119,7 +97,7 @@ export const configPlugin = ({
       resolve: {
         conditions: ["workerd"],
         alias: {
-          ...(isUsingPrisma
+          ...(prismaStatus.hasNodeModulesGeneratedPrismaClient
             ? {
                 ".prisma/client/default": resolve(
                   projectRootDir,
@@ -137,7 +115,7 @@ export const configPlugin = ({
           worker: {
             build: {
               rollupOptions: {
-                external: ["cloudflare:workers", "node:stream", /\.wasm$/],
+                external: ["cloudflare:workers", "node:stream"],
               },
             },
           },

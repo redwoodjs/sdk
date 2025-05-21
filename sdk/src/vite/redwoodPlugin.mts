@@ -9,7 +9,6 @@ import { useServerPlugin } from "./useServerPlugin.mjs";
 import { useClientPlugin } from "./useClientPlugin.mjs";
 import { useClientLookupPlugin } from "./useClientLookupPlugin.mjs";
 import { miniflarePlugin } from "./miniflarePlugin.mjs";
-import { copyPrismaWasmPlugin } from "./copyPrismaWasmPlugin.mjs";
 import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
 import { configPlugin } from "./configPlugin.mjs";
 import { $ } from "../lib/$.mjs";
@@ -19,7 +18,7 @@ import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
 import { pathExists } from "fs-extra";
 import { injectVitePreamble } from "./injectVitePreamblePlugin.mjs";
 import { vitePreamblePlugin } from "./vitePreamblePlugin.mjs";
-import { checkIsUsingPrisma } from "./checkIsUsingPrisma.mjs";
+import { checkPrismaStatus } from "./checkIsUsingPrisma.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -65,7 +64,7 @@ export const redwoodPlugin = async (
     })`npm run dev:init`;
   }
 
-  const isUsingPrisma = checkIsUsingPrisma({ projectRootDir });
+  const prismaStatus = await checkPrismaStatus({ projectRootDir });
 
   // context(justinvdm, 10 Mar 2025): We need to use vite optimizeDeps for all deps to work with @cloudflare/vite-plugin.
   // Thing is, @prisma/client has generated code. So users end up with a stale @prisma/client
@@ -83,7 +82,7 @@ export const redwoodPlugin = async (
       projectRootDir,
       clientEntryPathname,
       workerEntryPathname,
-      isUsingPrisma,
+      prismaStatus,
     }),
     reactConditionsResolverPlugin({ projectRootDir, mode }),
     tsconfigPaths({ root: projectRootDir }),
@@ -112,9 +111,6 @@ export const redwoodPlugin = async (
         "manifest.json",
       ),
     }),
-    ...(isUsingPrisma
-      ? [copyPrismaWasmPlugin({ rootDir: projectRootDir })]
-      : []),
     moveStaticAssetsPlugin({ rootDir: projectRootDir }),
   ];
 };
