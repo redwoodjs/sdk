@@ -99,7 +99,7 @@
   "author": "RedwoodSDK <peter@redwoodjs.com>",
   "license": "MIT",
   "dependencies": {
-    "@cloudflare/vite-plugin": "^1.1.0",
+    "@cloudflare/vite-plugin": "^1.2.3",
     "@cloudflare/workers-types": "^4.20250407.0",
     "@puppeteer/browsers": "^2.8.0",
     "@types/fs-extra": "^11.0.4",
@@ -130,7 +130,7 @@
     "unique-names-generator": "^4.7.1",
     "vibe-rules": "^0.2.31",
     "vite-tsconfig-paths": "^5.1.4",
-    "wrangler": "^4.14.1"
+    "wrangler": "^4.16.0"
   },
   "peerDependencies": {
     "vite": "^6.2.6"
