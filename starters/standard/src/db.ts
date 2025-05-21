@@ -4,6 +4,10 @@ import { env } from "cloudflare:workers";
 
 export let db: PrismaClient;
 
+// context(justinvdm, 21-05-2025): For prisma-generator-js or cases where there
+// are dynamic import to the prisma wasm modules, we need to make sure we are
+// instantiating the prisma client later in the flow when the wasm would have
+// been initialized.
 export const setupDb = async () => {
   const db = new PrismaClient({
     adapter: new PrismaD1(env.DB),
