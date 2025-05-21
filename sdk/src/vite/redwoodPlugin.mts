@@ -9,6 +9,7 @@ import { useServerPlugin } from "./useServerPlugin.mjs";
 import { useClientPlugin } from "./useClientPlugin.mjs";
 import { useClientLookupPlugin } from "./useClientLookupPlugin.mjs";
 import { miniflarePlugin } from "./miniflarePlugin.mjs";
+import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
 import { configPlugin } from "./configPlugin.mjs";
 import { $ } from "../lib/$.mjs";
 import { reactConditionsResolverPlugin } from "./reactConditionsResolverPlugin.mjs";
@@ -110,5 +111,6 @@ export const redwoodPlugin = async (
         "manifest.json",
       ),
     }),
+    moveStaticAssetsPlugin({ rootDir: projectRootDir }),
   ];
 };
