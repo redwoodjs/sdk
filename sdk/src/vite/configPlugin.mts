@@ -96,6 +96,16 @@ export const configPlugin = ({
       },
       resolve: {
         conditions: ["workerd"],
+        alias: {
+          ...(prismaStatus.hasNodeModulesGeneratedPrismaClient
+            ? {
+                ".prisma/client/default": resolve(
+                  projectRootDir,
+                  "node_modules/.prisma/client/wasm.js",
+                ),
+              }
+            : {}),
+        },
       },
     };
 

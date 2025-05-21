@@ -64,7 +64,7 @@ export const redwoodPlugin = async (
     })`npm run dev:init`;
   }
 
-  const prismaStatus = checkPrismaStatus({ projectRootDir });
+  const prismaStatus = await checkPrismaStatus({ projectRootDir });
 
   // context(justinvdm, 10 Mar 2025): We need to use vite optimizeDeps for all deps to work with @cloudflare/vite-plugin.
   // Thing is, @prisma/client has generated code. So users end up with a stale @prisma/client
