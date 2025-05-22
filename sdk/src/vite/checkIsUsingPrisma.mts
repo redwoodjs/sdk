@@ -1,4 +1,6 @@
 import enhancedResolve from "enhanced-resolve";
+import { pathExists } from "fs-extra";
+import { resolve } from "path";
 
 export type PrismaCheckResult = {
   isUsingPrisma: boolean;

@@ -1,8 +1,9 @@
 import { defineScript } from "rwsdk/worker";
 import { db, setupDb } from "@/db";
+import { env } from "cloudflare:workers";
 
 export default defineScript(async () => {
-  await setupDb();
+  await setupDb(env);
 
   await db.$executeRawUnsafe(`\
     DELETE FROM User;
