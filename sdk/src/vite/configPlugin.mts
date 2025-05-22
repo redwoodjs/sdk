@@ -18,14 +18,12 @@ export const configPlugin = ({
   projectRootDir,
   clientEntryPathname,
   workerEntryPathname,
-  prismaStatus,
 }: {
   mode: "development" | "production";
   silent: boolean;
   projectRootDir: string;
   clientEntryPathname: string;
   workerEntryPathname: string;
-  prismaStatus: PrismaCheckResult;
 }): Plugin => ({
   name: "rwsdk:config",
   config: (_, { command }) => {
@@ -68,6 +66,7 @@ export const configPlugin = ({
             noDiscovery: false,
             esbuildOptions: {
               conditions: ["workerd", "react-server"],
+              plugins: [ignoreVirtualModules],
             },
             include: [
               "react/jsx-runtime",
@@ -96,16 +95,7 @@ export const configPlugin = ({
       },
       resolve: {
         conditions: ["workerd"],
-        alias: {
-          ...(prismaStatus.hasNodeModulesGeneratedPrismaClient
-            ? {
-                ".prisma/client/default": resolve(
-                  projectRootDir,
-                  "node_modules/.prisma/client/wasm.js",
-                ),
-              }
-            : {}),
-        },
+        alias: [],
       },
     };
 

@@ -4,7 +4,6 @@ import { resolve } from "path";
 
 export type PrismaCheckResult = {
   isUsingPrisma: boolean;
-  hasNodeModulesGeneratedPrismaClient: boolean;
 };
 
 const isUsingPrisma = ({ projectRootDir }: { projectRootDir: string }) => {
@@ -22,30 +21,12 @@ const isUsingPrisma = ({ projectRootDir }: { projectRootDir: string }) => {
   }
 };
 
-const hasNodeModulesGeneratedPrismaClient = ({
+export const checkPrismaStatus = ({
   projectRootDir,
 }: {
   projectRootDir: string;
-}) => {
-  try {
-    return pathExists(
-      resolve(projectRootDir, "node_modules", ".prisma", "client"),
-    );
-  } catch {
-    return false;
-  }
-};
-
-export const checkPrismaStatus = async ({
-  projectRootDir,
-}: {
-  projectRootDir: string;
-}): Promise<PrismaCheckResult> => {
+}): PrismaCheckResult => {
   return {
     isUsingPrisma: isUsingPrisma({ projectRootDir }),
-    hasNodeModulesGeneratedPrismaClient:
-      await hasNodeModulesGeneratedPrismaClient({
-        projectRootDir,
-      }),
   };
 };
