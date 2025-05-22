@@ -6,6 +6,8 @@ import { pathExists } from "fs-extra";
 import enhancedResolve from "enhanced-resolve";
 import { VENDOR_DIST_DIR } from "../lib/constants.mjs";
 import { createRequire } from "node:module";
+import { ensureAliasArray } from "./ensureAliasArray.mjs";
+
 const log = debug("rwsdk:vite:react-conditions");
 
 // Define package sets for each environment
@@ -168,14 +170,7 @@ export const reactConditionsResolverPlugin = async ({
 
     config.resolve ??= {};
 
-    (config.resolve as any).alias ??= [];
-
-    if (!Array.isArray((config.resolve as any).alias)) {
-      const existingAlias = (config.resolve as any).alias;
-      (config.resolve as any).alias = Object.entries(existingAlias).map(
-        ([find, replacement]) => ({ find, replacement }),
-      );
-    }
+    ensureAliasArray(config);
 
     Object.entries(imports).forEach(([id, resolvedPath]) => {
       const exactMatchRegex = new RegExp(
