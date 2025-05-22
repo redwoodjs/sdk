@@ -19,11 +19,11 @@ const isUsingPrisma = ({ projectRootDir }: { projectRootDir: string }) => {
   }
 };
 
-export const checkPrismaStatus = async ({
+export const checkPrismaStatus = ({
   projectRootDir,
 }: {
   projectRootDir: string;
-}): Promise<PrismaCheckResult> => {
+}): PrismaCheckResult => {
   return {
     isUsingPrisma: isUsingPrisma({ projectRootDir }),
   };
