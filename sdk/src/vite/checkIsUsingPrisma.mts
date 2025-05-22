@@ -1,10 +1,7 @@
 import enhancedResolve from "enhanced-resolve";
-import { pathExists } from "fs-extra";
-import { resolve } from "path";
 
 export type PrismaCheckResult = {
   isUsingPrisma: boolean;
-  hasNodeModulesGeneratedPrismaClient: boolean;
 };
 
 const isUsingPrisma = ({ projectRootDir }: { projectRootDir: string }) => {
@@ -22,20 +19,6 @@ const isUsingPrisma = ({ projectRootDir }: { projectRootDir: string }) => {
   }
 };
 
-const hasNodeModulesGeneratedPrismaClient = ({
-  projectRootDir,
-}: {
-  projectRootDir: string;
-}) => {
-  try {
-    return pathExists(
-      resolve(projectRootDir, "node_modules", ".prisma", "client"),
-    );
-  } catch {
-    return false;
-  }
-};
-
 export const checkPrismaStatus = async ({
   projectRootDir,
 }: {
@@ -43,9 +26,5 @@ export const checkPrismaStatus = async ({
 }): Promise<PrismaCheckResult> => {
   return {
     isUsingPrisma: isUsingPrisma({ projectRootDir }),
-    hasNodeModulesGeneratedPrismaClient:
-      await hasNodeModulesGeneratedPrismaClient({
-        projectRootDir,
-      }),
   };
 };

@@ -97,7 +97,7 @@ export const configPlugin = ({
       resolve: {
         conditions: ["workerd"],
         alias: {
-          ...(prismaStatus.hasNodeModulesGeneratedPrismaClient
+          ...(prismaStatus.isUsingPrisma
             ? {
                 ".prisma/client/default": resolve(
                   projectRootDir,
