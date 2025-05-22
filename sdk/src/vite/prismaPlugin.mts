@@ -34,7 +34,7 @@ export const prismaPlugin = async ({
       config.optimizeDeps.esbuildOptions.plugins ??= [];
 
       ensureAliasArray(config).push({
-        find: /\.prisma\/client\/default/,
+        find: /^\.prisma\/client\/default/,
         replacement: resolve(
           projectRootDir,
           "node_modules/.prisma/client/wasm.js",
