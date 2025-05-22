@@ -21,7 +21,7 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@generated/prisma": ["./generated/prisma"]
+      "@generated/*": ["./generated/*"]
     },
     /* Enable importing .json files */
     "resolveJsonModule": true,
