@@ -23,22 +23,35 @@ export const prismaPlugin = async ({
   });
 
   return {
-    name: "rwsdk:prisma-client",
+    name: "rwsdk:prisma",
     configEnvironment(name, config, env) {
       if (name !== "worker") {
         return;
       }
 
+      const wasmPath = resolve(
+        projectRootDir,
+        "node_modules/.prisma/client/wasm.js",
+      );
+
       config.optimizeDeps ??= {};
       config.optimizeDeps.esbuildOptions ??= {};
       config.optimizeDeps.esbuildOptions.plugins ??= [];
 
+      config.optimizeDeps.esbuildOptions.plugins.push({
+        name: "rwsdk:prisma",
+        setup(build: any) {
+          build.onResolve({ filter: /^.prisma\/client\/default/ }, async () => {
+            return {
+              path: wasmPath,
+            };
+          });
+        },
+      });
+
       ensureAliasArray(config).push({
         find: /^\.prisma\/client\/default/,
-        replacement: resolve(
-          projectRootDir,
-          "node_modules/.prisma/client/wasm.js",
-        ),
+        replacement: wasmPath,
       });
     },
   };
