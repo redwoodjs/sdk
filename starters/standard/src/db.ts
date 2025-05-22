@@ -5,13 +5,13 @@ export type * from "@generated/prisma";
 
 export let db: PrismaClient;
 
-// context(justinvdm, 21-05-2025):
-// We need to instantiate the client via a function rather that at the module level for several reasons:
-// * For prisma-client-js generator or cases where
-// there are dynamic import to the prisma wasm modules, we need to make sure we
-// are instantiating the prisma client later in the flow when the wasm would
-// have been initialized
-// * So that we can encapsulate workarounds, e.g. see `SELECT 1` workaround below
+// context(justinvdm, 21-05-2025): We need to instantiate the client via a
+// function rather that at the module level for several reasons:
+// * For prisma-client-js generator or cases where there are dynamic import to
+//   the prisma wasm modules, we need to make sure we are instantiating the
+//   prisma client later in the flow when the wasm would have been initialized
+// * So that we can encapsulate workarounds, e.g. see `SELECT 1` workaround
+//   below
 export const setupDb = async (env: Env) => {
   db = new PrismaClient({
     // context(justinvdm, 21-05-2025): prisma-client generated type appears to
