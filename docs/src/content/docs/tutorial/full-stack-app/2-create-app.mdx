@@ -411,36 +411,7 @@ You can also use the [shadcn/ui Vite Installation instructions](https://ui.shadc
     },
     ```
 
-2. Add path aliases to `tsconfig.json`:
-    ```diff title="tsconfig.json"
-    {
-      "compilerOptions": {
-        ...
-    +   "baseUrl": ".",
-        ...
-      }
-    }
-    ```
-3. Add resolve alias config to `vite.config.mts`:
-    ```diff title="vite.config.mts"
-    +import path from "path"
-    import { defineConfig } from "vite";
-    import tailwindcss from "@tailwindcss/vite"
-    import { redwood } from "rwsdk/vite";
-
-    export default defineConfig({
-      environments: {
-        ssr: {},
-      },
-      plugins: [redwood(), tailwindcss()],
-    + resolve: {
-    +   alias: {
-    +     "@": path.resolve(__dirname, "./src"),
-    +   },
-    + },
-    )
-    ```
-6. You should now be able to add components:
+2. You should now be able to add components:
     <PackageManagers
       type="dlx"
       pkg="shadcn@latest"
