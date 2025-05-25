@@ -1,0 +1,65 @@
+---
+title: Verification
+slug: guides/auth/magic-links/verification
+description: Learn how to use the magic links flow with RedwoodJS.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+Now, that we've registered a user, we need to verify them when they click on the magic link. We'll use the same logic whether this is their first time to log in or their 4,213rd time.
+
+We can stick all this code within the `worker.tsx` file. Let's start by adding a new route to `render` array:
+
+```tsx title="src/app/auth/worker.tsx" {"1. By default we get the headers and request": 4} {"2. Get the token from the URL": 6} {"3. If the token doesn't exist return a new Response": 10} {"4. Verify the token": 15} {"5. If we can't find the token (or the user), return a new Response": 20} {"6. Check to see if the token has expired": 25} {"7. Update the user's verified status": 30} {"8. Set up the session": 36} {"9. Everything is great, redirect the user to the protected page": 41}
+...
+render(Document, [
+  ...
+
+  route("/verify", async ({ headers, request }) => {
+
+      const url = new URL(request.url);
+      const token = url.searchParams.get("token");
+
+
+      if (!token) {
+        return new Response("No token provided", { status: 400 });
+      }
+
+
+      const user = await db.user.findUnique({
+        where: { magicLink: token },
+      });
+
+
+      if (!user) {
+        return new Response("Invalid token", { status: 400 });
+      }
+
+
+      if (user.magicLinkExpiresAt && user.magicLinkExpiresAt < new Date()) {
+        return new Response("Token expired", { status: 400 });
+      }
+
+
+      await db.user.update({
+        where: { id: user.id },
+        data: { verified: true, magicLink: null, magicLinkExpiresAt: null },
+      });
+
+
+      await sessions.save(headers, {
+        userId: user.id,
+      });
+
+
+      return new Response(null, {
+        status: 302,
+        headers: { Location: "/protected" },
+      });
+    }),
+])
+```
+
+<Aside title="Redirecting the user" type="note">
+Of course, instead of returning a `new Response`, we could also redirect the user to a specific page with the appropriate error message.
+</Aside>

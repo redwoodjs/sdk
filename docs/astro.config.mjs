@@ -102,15 +102,18 @@ export default defineConfig({
           label: "Guides",
           items: [
             {
-              label: 'Email',
+              label: "Email",
               collapsed: true,
               items: [
-                { label: 'Sending Email', slug: 'guides/email/sending-email' },
-                { label: 'Email Templates', slug: 'guides/email/email-templates' },
-              ]
+                { label: "Sending Email", slug: "guides/email/sending-email" },
+                {
+                  label: "Email Templates",
+                  slug: "guides/email/email-templates",
+                },
+              ],
             },
             {
-              label: 'Frontend Development',
+              label: "Frontend Development",
               collapsed: true,
               items: [
                 { label: "Tailwind CSS", slug: "guides/frontend/tailwind" },
@@ -125,7 +128,89 @@ export default defineConfig({
                 { label: "Metadata", slug: "guides/frontend/metadata" },
               ],
             },
-            { label: "Server Function Streams", slug: "guides/rsc-streams" },
+            {
+              label: "Authentication & Security",
+              collapsed: true,
+              items: [
+                {
+                  label: "Session Based Auth",
+                  slug: "guides/auth/session-based-auth",
+                },
+                {
+                  label: "Magic Links",
+                  collapsed: true,
+                  items: [
+                    { label: "Flow", slug: "guides/auth/magic-links/flow" },
+                    {
+                      label: "Register",
+                      slug: "guides/auth/magic-links/register",
+                    },
+                    {
+                      label: "Verification",
+                      slug: "guides/auth/magic-links/verification",
+                    },
+                    { label: "Login", slug: "guides/auth/magic-links/login" },
+                    {
+                      label: "Middleware",
+                      slug: "guides/auth/magic-links/middleware",
+                    },
+                    { label: "Logout", slug: "guides/auth/magic-links/logout" },
+                    {
+                      label: "Cleanup",
+                      slug: "guides/auth/magic-links/cleanup",
+                    },
+                  ],
+                },
+                {
+                  label: "Username & Password",
+                  collapsed: true,
+                  items: [
+                    {
+                      label: "Flow",
+                      slug: "guides/auth/username-password/flow",
+                    },
+                    {
+                      label: "Register",
+                      slug: "guides/auth/username-password/register",
+                    },
+                    {
+                      label: "Login",
+                      slug: "guides/auth/username-password/login",
+                    },
+                    {
+                      label: "Middleware",
+                      slug: "guides/auth/username-password/middleware",
+                    },
+                    {
+                      label: "Logout",
+                      slug: "guides/auth/username-password/logout",
+                    },
+                    {
+                      label: "Verifying Email Addresses",
+                      slug: "guides/auth/username-password/email",
+                    },
+                    {
+                      label: "Forgot Password",
+                      slug: "guides/auth/username-password/forgot",
+                    },
+                    {
+                      label: "Reset Password",
+                      slug: "guides/auth/username-password/reset",
+                    },
+                  ],
+                },
+              ],
+            },
+            {
+              label: "Backend",
+              collapsed: true,
+              items: [
+                {
+                  label: "Server Function Streams",
+                  slug: "guides/rsc-streams",
+                },
+              ],
+            },
           ],
           collapsed: true,
         },

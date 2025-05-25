@@ -1,0 +1,130 @@
+---
+title: Middleware
+slug: guides/auth/username-password/middleware
+description: Learn how to use the username and password flow with RedwoodJS.
+---
+
+This is easy, this code has already been written and is included in the [Standard Starter](https://github.com/redwoodjs/sdk/tree/main/starters/standard). However, I want to make sure you understand how it works.
+
+This works the same, regardless of your authentication strategy.
+
+Within the `worker.tsx` file, we have the `defineApp` function.
+
+```tsx title="src/worker.tsx" showLineNumbers={false}
+export default defineApp([
+  ...
+]);
+```
+
+This function takes an array and will execute everything in order.
+
+The first function we're passing in is the `setCommonHeaders` function. This is where we set all the security headers for our application. You can find this (and adjust it) in `src/app/headers.ts`.
+
+In fact, if you open this file, you'll notice that it's returning a type of `RouteMiddleware`. This is Middleware!
+
+```tsx title="src/app/headers.ts" startLineNumber={4}
+export const setCommonHeaders =
+  (): RouteMiddleware =>
+    ({ headers, rw: { nonce } }) => {
+```
+
+The second function in our `defineApp` array is another piece of middleware. But, this time it's inline. This function doesn't protect any routes, but it checks our Durable Object for the user's session. If there user is logged in, it will add the user to the context object so we can access the user anywhere in our application.
+
+```tsx title="src/worker.tsx" {"1. It receives the context, request, and headers by default": 4} {"2. Set up the database": 6} {"3. Set up the session store (Durable Object)": 8} {"4. Try to load the session": 12} {"5. If there's an error with a status code of 401, redirect the user": 15} {"6. If the userId exists on the session object": 29} {"7. Get the user from the database and add them to the ctx object": 31}
+export default defineApp([
+  setCommonHeaders(),
+
+
+  async ({ ctx, request, headers }) => {
+
+    await setupDb(env);
+
+    setupSessionStore(env);
+
+    try {
+
+      ctx.session = await sessions.load(request);
+    } catch (error) {
+
+      if (error instanceof ErrorResponse && error.code === 401) {
+        await sessions.remove(request, headers);
+        headers.set("Location", "/login");
+
+        return new Response(null, {
+          status: 302,
+          headers,
+        });
+      }
+
+      throw error;
+    }
+
+
+    if (ctx.session?.userId) {
+
+      ctx.user = await db.user.findUnique({
+        where: {
+          id: ctx.session.userId,
+        },
+      });
+    }
+  },
+```
+
+## Protecting a Route
+Now, let's look at an example of how we can use the context object to get the current user and protect a route.
+
+Still on the `worker.tsx` file, look at the `/protected` route:
+
+```tsx title="src/pages/protected/index.tsx" startLineNumber={53} {3-13}
+  render(Document, [
+    route("/", () => new Response(`Hello, World!`)),
+    route("/protected", [
+      ({ ctx }) => {
+        if (!ctx.user) {
+          return new Response(null, {
+            status: 302,
+            headers: { Location: "/login" },
+          });
+        }
+      },
+      Home,
+    ]),
+```
+
+Just like the middleware, each route automatically receives the `ctx`, `request`, and `headers` objects.
+
+**On line 57**, we're checking to see if the `user` object exists on the context (`ctx`). If it does not, then we redirect the user to the `/login` route. Otherwise, we render the `Home` component.
+
+## Accessing the User Data
+
+Now, let's look at the `Home` component:
+
+```tsx title="src/pages/protected/Home.tsx" {7-9}
+import { RequestInfo } from "@redwoodjs/sdk/worker";
+
+export function Home({ ctx }: RequestInfo) {
+  return (
+    <div>
+      <p>
+        {ctx.user?.username
+          ? `You are logged in as user ${ctx.user.username}`
+          : "You are not logged in"}
+      </p>
+    </div>
+  );
+}
+```
+
+Same thing, by default, our page component gets the `ctx`, `request`, and `headers` objects.
+
+Then, we can check to see if the `ctx.user` exists. We can access the `username` property because our middleware grabbed the entire user record from the database and added it to the context object.  You could just as easily add additional properties or data:
+
+```tsx title="src/worker.tsx" startLineNumber={44}
+ctx.user = await db.user.findUnique({
+  where: {
+    id: ctx.session.userId,
+  },
+});
+```
+
