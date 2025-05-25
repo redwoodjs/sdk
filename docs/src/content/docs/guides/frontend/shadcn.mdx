@@ -40,35 +40,8 @@ import { PackageManagers } from "starlight-package-managers";
     </Aside>
 
 2. [Install TailwindCSS](/guides/frontend/tailwind).
-3. Add `baseUrl` to your `tsconfig.json`:
-    ```json title="tsconfig.json" showLineNumbers={false} ins="baseUrl": ".","
-    {
-      "compilerOptions": {
-        "baseUrl": ".",
-        "paths": {
-          "@/*": ["./src/*"]
-        }
-      }
-    }
-    ```
-4. Add resolve alias config to `vite.config.ts`:
-    ```ts title="vite.config.ts" {1, 8-12}
-    import path from "path"
-    import tailwindcss from "@tailwindcss/vite"
-    import react from "@vitejs/plugin-react"
-    import { defineConfig } from "vite"
 
-    export default defineConfig({
-      plugins: [react(), tailwindcss()],
-      resolve: {
-        alias: {
-          "@": path.resolve(__dirname, "./src"),
-        },
-      },
-    })
-    ```
-
-5. Now, you should be able to add components:
+3. Now, you should be able to add components:
     You can add components in bulk by running:
     <PackageManagers
       type="dlx"
