@@ -41,5 +41,6 @@ jobs:
         uses: softprops/action-gh-release@v2
         with:
           files: output/*
+          tag_name: ${{ steps.vars.outputs.version }}
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
