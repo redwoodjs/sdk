@@ -3,24 +3,32 @@ name: Release Starters
 on:
   push:
     tags:
-      - "*"
-    branches:
-      - main
+      - "v*.*.*" # Trigger on any tag push
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "Version name (optional, used for filenames)"
+        required: false
+        default: ""
 
 jobs:
   release:
     runs-on: ubuntu-latest
-    if: github.ref_type == 'tag'
 
     steps:
       - name: Checkout repository
         uses: actions/checkout@v4
 
-      - name: Get tag name
+      - name: Get tag or input version
         id: vars
-        run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_dispatch" ] && [ -n "${{ github.event.inputs.version }}" ]; then
+            echo "version=${{ github.event.inputs.version }}" >> $GITHUB_OUTPUT
+          else
+            echo "version=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+          fi
 
-      - name: Create tar files
+      - name: Package each starter folder
         run: |
           mkdir -p output
           for dir in ./starters/*/ ; do
@@ -29,7 +37,7 @@ jobs:
             zip -r output/${folder_name}-${{ steps.vars.outputs.version }}.zip "$dir"
           done
 
-      - name: Upload release assets
+      - name: Upload all packaged starters to GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: output/*
