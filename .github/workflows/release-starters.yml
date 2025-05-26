@@ -1,0 +1,37 @@
+name: Release Starters
+
+on:
+  push:
+    tags:
+      - "*"
+    branches:
+      - main
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    if: github.ref_type == 'tag'
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Get tag name
+        id: vars
+        run: echo "tag=${GITHUB_REF#refs/tags/}" >> $GITHUB_OUTPUT
+
+      - name: Create tar files
+        run: |
+          mkdir -p output
+          for dir in ./starters/*/ ; do
+            folder_name=$(basename "$dir")
+            tar -czvf output/${folder_name}-${{ steps.vars.outputs.version }}.tar.gz -C "$dir" .
+            zip -r output/${folder_name}-${{ steps.vars.outputs.version }}.zip "$dir"
+          done
+
+      - name: Upload release assets
+        uses: softprops/action-gh-release@v2
+        with:
+          files: output/*
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
