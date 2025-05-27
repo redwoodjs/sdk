@@ -2,6 +2,8 @@ import path from "node:path";
 import type { Plugin, ViteDevServer } from "vite";
 import { DIST_DIR } from "../lib/constants.mjs";
 
+export const VIRTUAL_SSR_PREFIX = "virtual:rwsdk:ssr:";
+
 export const ssrBridgePlugin = ({
   projectRootDir,
 }: {
@@ -47,7 +49,7 @@ export const ssrBridgePlugin = ({
       // context(justinvdm, 27 May 2025): In dev, we need to dynamically load
       // SSR modules, so we return the virtual id so that the dynamic loading
       // can happen in load()
-      if (id.startsWith("virtual:ssr:") && isDev) {
+      if (id.startsWith(VIRTUAL_SSR_PREFIX) && isDev) {
         return id;
       }
 
@@ -55,13 +57,13 @@ export const ssrBridgePlugin = ({
       // originate at SSR bridge module, we return the path to the already built
       // SSR bridge bundle - SSR env builds it, worker build tries to resolve it
       // here and uses it
-      if (id === "virtual:ssr:/src/ssrBridge.ts" && !isDev) {
+      if (id === `${VIRTUAL_SSR_PREFIX}${srcSsrBridgePath}` && !isDev) {
         return distSsrBridgePath;
       }
     },
     async load(id) {
-      if (id.startsWith("virtual:ssr:")) {
-        const realPath = id.slice("virtual:ssr:".length);
+      if (id.startsWith(VIRTUAL_SSR_PREFIX)) {
+        const realPath = id.slice(VIRTUAL_SSR_PREFIX.length);
 
         if (isDev) {
           await devServer?.environments.ssr.warmupRequest(realPath);
@@ -75,15 +77,10 @@ export const ssrBridgePlugin = ({
 ;(async function(__vite_ssr_import__, __vite_ssr_dynamic_import__) {
 ${code}
 })(
-  (id) => __vite_ssr_import__('/@id/virtual:ssr:'+id),
-  (id) => __vite_ssr_dynamic_import__('/@id/virtual:ssr:'+id),
+  (id) => __vite_ssr_import__('/@id/${VIRTUAL_SSR_PREFIX}'+id),
+  (id) => __vite_ssr_dynamic_import__('/@id/${VIRTUAL_SSR_PREFIX}'+id),
 );
 `;
-          console.log(
-            `################## reached load() ssr virtual path ${realPath} in environment ${this.environment.name}, fetched and transformed code:`,
-          );
-
-          console.log(transformedCode);
 
           return transformedCode;
         }
