@@ -1,4 +1,5 @@
 import { Project, SyntaxKind, Node, SourceFile } from "ts-morph";
+import { VIRTUAL_RSC_PREFIX } from "./ssrBridgePlugin.mjs";
 
 interface TransformResult {
   code: string;
@@ -53,7 +54,7 @@ export const findExportedFunctions = (sourceFile: SourceFile) => {
 export const transformServerFunctions = (
   code: string,
   relativeId: string,
-  environment: "client" | "worker",
+  environment: "client" | "worker" | "ssr",
 ): TransformResult | undefined => {
   const project = new Project({
     useInMemoryFileSystem: true,
@@ -86,7 +87,11 @@ export const transformServerFunctions = (
     }
   }
 
-  if (environment === "worker") {
+  if (environment === "ssr") {
+    return {
+      code: `export * from "${VIRTUAL_RSC_PREFIX}${relativeId}";`,
+    };
+  } else if (environment === "worker") {
     sourceFile.addImportDeclaration({
       moduleSpecifier: "rwsdk/worker",
       namedImports: ["registerServerReference"],

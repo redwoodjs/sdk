@@ -7,6 +7,8 @@ export let sum = createServerReference("/test.tsx", "sum");
 "
 `;
 
+exports[`useServerPlugin > TRANSFORMS > ARROW_FUNCTION_EXPORT_CODE > SSR 1`] = `"export * from "virtual:rwsdk:rsc:/test.tsx";"`;
+
 exports[`useServerPlugin > TRANSFORMS > ARROW_FUNCTION_EXPORT_CODE > WORKER 1`] = `
 "import { registerServerReference } from "rwsdk/worker";
 
@@ -24,6 +26,8 @@ export let sum = createServerReference("/test.tsx", "sum");
 "
 `;
 
+exports[`useServerPlugin > TRANSFORMS > ASYNC_FUNCTION_EXPORT_CODE > SSR 1`] = `"export * from "virtual:rwsdk:rsc:/test.tsx";"`;
+
 exports[`useServerPlugin > TRANSFORMS > ASYNC_FUNCTION_EXPORT_CODE > WORKER 1`] = `
 "import { registerServerReference } from "rwsdk/worker";
 
@@ -40,6 +44,8 @@ exports[`useServerPlugin > TRANSFORMS > COMMENT_BLOCK_CODE > CLIENT 1`] = `
 export let sum = createServerReference("/test.tsx", "sum");
 "
 `;
+
+exports[`useServerPlugin > TRANSFORMS > COMMENT_BLOCK_CODE > SSR 1`] = `"export * from "virtual:rwsdk:rsc:/test.tsx";"`;
 
 exports[`useServerPlugin > TRANSFORMS > COMMENT_BLOCK_CODE > WORKER 1`] = `
 "
@@ -63,6 +69,8 @@ export let sum = createServerReference("/test.tsx", "sum");
 "
 `;
 
+exports[`useServerPlugin > TRANSFORMS > COMMENT_CODE > SSR 1`] = `"export * from "virtual:rwsdk:rsc:/test.tsx";"`;
+
 exports[`useServerPlugin > TRANSFORMS > COMMENT_CODE > WORKER 1`] = `
 "import { registerServerReference } from "rwsdk/worker";
 
@@ -84,6 +92,8 @@ export let sum = createServerReference("/test.tsx", "sum");
 export default createServerReference("/test.tsx", "default");
 "
 `;
+
+exports[`useServerPlugin > TRANSFORMS > DEFAULT_AND_NAMED_EXPORTS_CODE > SSR 1`] = `"export * from "virtual:rwsdk:rsc:/test.tsx";"`;
 
 exports[`useServerPlugin > TRANSFORMS > DEFAULT_AND_NAMED_EXPORTS_CODE > WORKER 1`] = `
 "import { registerServerReference } from "rwsdk/worker";
@@ -111,6 +121,8 @@ export default createServerReference("/test.tsx", "default");
 "
 `;
 
+exports[`useServerPlugin > TRANSFORMS > DEFAULT_EXPORT_CODE > SSR 1`] = `"export * from "virtual:rwsdk:rsc:/test.tsx";"`;
+
 exports[`useServerPlugin > TRANSFORMS > DEFAULT_EXPORT_CODE > WORKER 1`] = `
 "import { registerServerReference } from "rwsdk/worker";
 
@@ -128,6 +140,8 @@ exports[`useServerPlugin > TRANSFORMS > IGNORE_NON_FUNCTION_EXPORT_CODE > CLIENT
 "
 `;
 
+exports[`useServerPlugin > TRANSFORMS > IGNORE_NON_FUNCTION_EXPORT_CODE > SSR 1`] = `"export * from "virtual:rwsdk:rsc:/test.tsx";"`;
+
 exports[`useServerPlugin > TRANSFORMS > IGNORE_NON_FUNCTION_EXPORT_CODE > WORKER 1`] = `
 "import { registerServerReference } from "rwsdk/worker";
 
@@ -141,6 +155,8 @@ exports[`useServerPlugin > TRANSFORMS > MULTI_LINE_COMMENT_CODE > CLIENT 1`] = `
 export let sum = createServerReference("/test.tsx", "sum");
 "
 `;
+
+exports[`useServerPlugin > TRANSFORMS > MULTI_LINE_COMMENT_CODE > SSR 1`] = `"export * from "virtual:rwsdk:rsc:/test.tsx";"`;
 
 exports[`useServerPlugin > TRANSFORMS > MULTI_LINE_COMMENT_CODE > WORKER 1`] = `
 "import { registerServerReference } from "rwsdk/worker";
@@ -162,6 +178,8 @@ exports[`useServerPlugin > TRANSFORMS > NAMED_EXPORT_CODE > CLIENT 1`] = `
 export let sum = createServerReference("/test.tsx", "sum");
 "
 `;
+
+exports[`useServerPlugin > TRANSFORMS > NAMED_EXPORT_CODE > SSR 1`] = `"export * from "virtual:rwsdk:rsc:/test.tsx";"`;
 
 exports[`useServerPlugin > TRANSFORMS > NAMED_EXPORT_CODE > WORKER 1`] = `
 "import { registerServerReference } from "rwsdk/worker";

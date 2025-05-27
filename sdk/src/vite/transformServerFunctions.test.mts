@@ -107,6 +107,11 @@ export const a = "string";
           const result = transformServerFunctions(CODE, "/test.tsx", "worker");
           expect(result?.code).toMatchSnapshot();
         });
+
+        it(`SSR`, () => {
+          const result = transformServerFunctions(CODE, "/test.tsx", "ssr");
+          expect(result?.code).toMatchSnapshot();
+        });
       });
     }
   });

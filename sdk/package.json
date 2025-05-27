@@ -17,7 +17,7 @@
     "build:vendor": "node ./dist/scripts/build-vendor-bundles.mjs",
     "clean:vendor": "rm -rf ./vendor/dist",
     "release": "./scripts/release.sh",
-    "test": "vitest",
+    "test": "vitest --run",
     "debug:sync": "tsx ./src/scripts/debug-sync.mts",
     "smoke-test": "tsx ./src/scripts/smoke-test.mts"
   },

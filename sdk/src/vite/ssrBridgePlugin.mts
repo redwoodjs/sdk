@@ -3,6 +3,7 @@ import type { Plugin, ViteDevServer } from "vite";
 import { DIST_DIR } from "../lib/constants.mjs";
 
 export const VIRTUAL_SSR_PREFIX = "virtual:rwsdk:ssr:";
+export const VIRTUAL_RSC_PREFIX = "virtual:rwsdk:rsc:";
 
 export const ssrBridgePlugin = ({
   projectRootDir,
