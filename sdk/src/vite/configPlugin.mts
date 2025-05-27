@@ -54,6 +54,9 @@ export const configPlugin = ({
             noDiscovery: false,
             esbuildOptions: {
               plugins: [ignoreVirtualModules],
+              define: {
+                "process.env.NODE_ENV": JSON.stringify(mode),
+              },
             },
           },
         },
