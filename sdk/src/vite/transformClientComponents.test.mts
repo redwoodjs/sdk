@@ -6,6 +6,7 @@ describe("transformClientComponents", () => {
     const result = await transformClientComponents(code, "/test/file.tsx", {
       environmentName: "worker",
     });
+
     return result?.toString();
   }
 

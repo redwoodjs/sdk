@@ -212,7 +212,7 @@ export async function transformClientComponents(
 
   // Replace the entire file content with the new code
   const finalResult = resultLines.join("\n");
-  s.overwrite(0, code.length, finalResult);
+  s.overwrite(0, code.length, finalResult + "\n");
 
   log(
     ":isEsbuild=%s: Final transformed code for %s:\n%s",
@@ -220,6 +220,7 @@ export async function transformClientComponents(
     id,
     finalResult,
   );
+
   if (process.env.VERBOSE) {
     log(":VERBOSE: Transformed code for %s:\n%s", id, finalResult + "\n");
   }
