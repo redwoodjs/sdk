@@ -1,10 +1,14 @@
 import { describe, it, expect } from "vitest";
-import { transformUseClientCode } from "./useClientPlugin.mjs";
+import { transformClientComponents } from "./transformClientComponents.mjs";
 
 describe("transformUseClientCode", () => {
   async function transform(code: string) {
-    const result = await transformUseClientCode(code, "/test/file.tsx");
-    return result?.code;
+    const result = await transformClientComponents(code, "/test/file.tsx", {
+      environmentName: "worker",
+      clientFiles: new Set(),
+      isEsbuild: false,
+    });
+    return result?.toString();
   }
 
   it("transforms arrow function component", async () => {
@@ -1270,9 +1274,8 @@ export function Chat() {
   });
 
   it("Does not transform when 'use client' is not directive", async () => {
-    expect(
-      await transform(`const message = "use client";`),
-    ).toMatchInlineSnapshot(`
+    expect(await transform(`const message = "use client";`))
+      .toMatchInlineSnapshot(`
       "import { registerClientReference } from "rwsdk/worker";
 
       const message = "use client";"

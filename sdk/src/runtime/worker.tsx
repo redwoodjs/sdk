@@ -146,10 +146,8 @@ export const defineApp = (routes: Route[]) => {
 
           const htmlStream = await transformRscToHtmlStream({
             stream: rscPayloadStream1,
-            Parent: ({ children }) => (
-              <rw.Document {...requestInfo} children={children} />
-            ),
-            nonce: rw.nonce,
+            Document: rw.Document,
+            requestInfo: requestInfo,
           });
 
           let html: ReadableStream<any> = htmlStream;
