@@ -35,8 +35,8 @@
       "types": "./dist/runtime/entries/client.d.ts"
     },
     "./__ssr": {
-      "default": "./dist/runtime/entries/ssrBridge.js",
-      "types": "./dist/runtime/entries/ssrBridge.d.ts"
+      "default": "./dist/runtime/entries/ssr.js",
+      "types": "./dist/runtime/entries/ssr.d.ts"
     },
     "./router": {
       "default": "./dist/runtime/entries/router.js",
