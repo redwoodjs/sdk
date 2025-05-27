@@ -1,5 +1,10 @@
 import { Project, SyntaxKind, Node, SourceFile } from "ts-morph";
 
+interface TransformResult {
+  code: string;
+  map?: any;
+}
+
 export const findExportedFunctions = (sourceFile: SourceFile) => {
   const exportedFunctions = new Set<string>();
 
@@ -49,7 +54,7 @@ export const transformServerFunctions = (
   code: string,
   relativeId: string,
   environment: "client" | "worker",
-) => {
+): TransformResult | undefined => {
   const project = new Project({
     useInMemoryFileSystem: true,
     compilerOptions: {
@@ -111,7 +116,19 @@ export const transformServerFunctions = (
       );
     }
 
-    return sourceFile.getFullText();
+    const emitOutput = sourceFile.getEmitOutput();
+    let sourceMap: any;
+
+    for (const outputFile of emitOutput.getOutputFiles()) {
+      if (outputFile.getFilePath().endsWith(".js.map")) {
+        sourceMap = JSON.parse(outputFile.getText());
+      }
+    }
+
+    return {
+      code: sourceFile.getFullText(),
+      map: sourceMap,
+    };
   } else if (environment === "client") {
     const clientSourceFile = project.createSourceFile("client.tsx", "");
 
@@ -141,6 +158,20 @@ export const transformServerFunctions = (
       });
     }
 
-    return clientSourceFile.getFullText();
+    const emitOutput = clientSourceFile.getEmitOutput();
+    let sourceMap: any;
+
+    for (const outputFile of emitOutput.getOutputFiles()) {
+      if (outputFile.getFilePath().endsWith(".js.map")) {
+        sourceMap = JSON.parse(outputFile.getText());
+      }
+    }
+
+    return {
+      code: clientSourceFile.getFullText(),
+      map: sourceMap,
+    };
   }
 };
+
+export type { TransformResult };

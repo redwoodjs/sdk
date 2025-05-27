@@ -7,7 +7,7 @@ describe("transformClientComponents", () => {
       environmentName: "worker",
     });
 
-    return result?.toString();
+    return result?.code;
   }
 
   it("transforms arrow function component", async () => {
@@ -313,6 +313,6 @@ describe("transformClientComponents logic branches (from transformClientComponen
     const result = await transformClientComponents(code, "/test/file.tsx", {
       environmentName: "ssr",
     });
-    expect(result?.toString()).toEqual("\nexport const foo = 1;");
+    expect(result?.code).toEqual("export const foo = 1;");
   });
 });

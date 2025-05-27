@@ -10,10 +10,6 @@ export const rscDirectivesPlugin = ({
 }): Plugin => ({
   name: "rwsdk:rsc-directives",
   async transform(code, id) {
-    if (id.includes(".vite/deps") || id.includes("node_modules")) {
-      return;
-    }
-
     const clientResult = await transformClientComponents(code, id, {
       environmentName: this.environment.name,
       clientFiles,
@@ -21,13 +17,9 @@ export const rscDirectivesPlugin = ({
 
     if (clientResult) {
       return {
-        code: clientResult.toString(),
-        map: clientResult.generateMap({ hires: true }),
+        code: clientResult.code,
+        map: clientResult.map,
       };
-    }
-
-    if (code.indexOf("use server") === -1) {
-      return;
     }
 
     const serverResult = transformServerFunctions(
@@ -38,7 +30,8 @@ export const rscDirectivesPlugin = ({
 
     if (serverResult) {
       return {
-        code: serverResult,
+        code: serverResult.code,
+        map: serverResult.map,
       };
     }
   },
@@ -73,8 +66,9 @@ export const rscDirectivesPlugin = ({
 
           if (clientResult) {
             return {
-              contents: clientResult.toString(),
+              contents: clientResult.code,
               loader: path.extname(args.path).slice(1) as any,
+              sourcemap: clientResult.map,
             };
           }
 
@@ -90,8 +84,9 @@ export const rscDirectivesPlugin = ({
 
           if (serverResult) {
             return {
-              contents: serverResult,
+              contents: serverResult.code,
               loader: path.extname(args.path).slice(1) as any,
+              sourcemap: serverResult.map,
             };
           }
         });

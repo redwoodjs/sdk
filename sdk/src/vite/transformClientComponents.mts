@@ -1,11 +1,15 @@
 import { Project, SyntaxKind, Node } from "ts-morph";
-import MagicString from "magic-string";
 import debug from "debug";
 
 interface TransformContext {
   environmentName: string;
   clientFiles?: Set<string>;
   isEsbuild?: boolean;
+}
+
+interface TransformResult {
+  code: string;
+  map?: any;
 }
 
 const logVite = debug("rwsdk:transform-client-components:vite");
@@ -15,14 +19,16 @@ export async function transformClientComponents(
   code: string,
   id: string,
   ctx: TransformContext,
-): Promise<MagicString | undefined> {
+): Promise<TransformResult | undefined> {
   const log = ctx.isEsbuild ? logEsbuild : logVite;
   log("Called transformClientComponents for id: id=%s, ctx: %O", id, ctx);
+
   // 1. Skip if not in worker environment
   if (ctx.environmentName !== "worker" && ctx.environmentName !== "ssr") {
     log("Skipping: not in worker environment (%s)", ctx.environmentName);
     return;
   }
+
   // 2. Only transform files that start with 'use client'
   const cleanCode = code.trimStart();
   const hasUseClient =
@@ -39,7 +45,7 @@ export async function transformClientComponents(
 
   ctx.clientFiles?.add(id);
 
-  // Use ts-morph to collect all export info in source order
+  // Use ts-morph to collect all export info and perform transformations
   const project = new Project({
     useInMemoryFileSystem: true,
     compilerOptions: {
@@ -75,7 +81,7 @@ export async function transformClientComponents(
     }
   }
 
-  // Walk through statements in order
+  // Walk through statements in order to collect export information
   const statements = sourceFile.getStatements();
   statements.forEach((stmt, idx) => {
     // export default function ...
@@ -147,32 +153,56 @@ export async function transformClientComponents(
   // 3. SSR files: just remove the directive
   if (ctx.environmentName === "ssr") {
     log(":isEsbuild=%s: Handling SSR virtual module: %s", !!ctx.isEsbuild, id);
-    const s = new MagicString(code);
 
-    const directiveMatch = code.match(/^(\s*)(["'])use client\2/);
-    if (directiveMatch) {
-      const fullDirective = directiveMatch[0];
-      const directivePos = code.indexOf(fullDirective);
-      const directiveEnd = directivePos + fullDirective.length;
-      // If followed by a semicolon, include it in the removal
-      if (code[directiveEnd] === ";") {
-        s.remove(directivePos, directiveEnd + 1);
-      } else {
-        s.remove(directivePos, directiveEnd);
+    // Remove 'use client' directive using ts-morph
+    sourceFile
+      .getDescendantsOfKind(SyntaxKind.StringLiteral)
+      .forEach((node) => {
+        if (
+          node.getText() === "'use client'" ||
+          node.getText() === '"use client"'
+        ) {
+          const parentExpr = node.getFirstAncestorByKind(
+            SyntaxKind.ExpressionStatement,
+          );
+          if (parentExpr) {
+            parentExpr.remove();
+          }
+        }
+      });
+
+    const emitOutput = sourceFile.getEmitOutput();
+    let sourceMap: any;
+
+    for (const outputFile of emitOutput.getOutputFiles()) {
+      if (outputFile.getFilePath().endsWith(".js.map")) {
+        sourceMap = JSON.parse(outputFile.getText());
       }
     }
+
     if (process.env.VERBOSE) {
-      log(":VERBOSE: SSR transformed code for %s:\n%s", id, s.toString());
+      log(
+        ":VERBOSE: SSR transformed code for %s:\n%s",
+        id,
+        sourceFile.getFullText(),
+      );
     }
-    return s;
+
+    return {
+      code: sourceFile.getFullText(),
+      map: sourceMap,
+    };
   }
 
   // 4. Non-SSR files: replace all implementation with registerClientReference logic
-  const s = new MagicString(code);
+  // Clear the source file and rebuild it
+  sourceFile.removeText();
 
-  const importLine = 'import { registerClientReference } from "rwsdk/worker";';
-  let resultLines: string[] = [];
-  resultLines.push(importLine);
+  // Add import declaration
+  sourceFile.addImportDeclaration({
+    moduleSpecifier: "rwsdk/worker",
+    namedImports: [{ name: "registerClientReference" }],
+  });
 
   // Add registerClientReference assignments for named exports in order
   for (const info of exportInfos) {
@@ -182,7 +212,7 @@ export async function transformClientComponents(
       info.local,
       info.exported,
     );
-    resultLines.push(
+    sourceFile.addStatements(
       `const ${info.local} = registerClientReference("${id}", "${info.exported}");`,
     );
   }
@@ -197,7 +227,7 @@ export async function transformClientComponents(
       !!ctx.isEsbuild,
       exportNames,
     );
-    resultLines.push(`export { ${exportNames.join(", ")} };`);
+    sourceFile.addStatements(`export { ${exportNames.join(", ")} };`);
   }
 
   // Add default export if present
@@ -207,14 +237,21 @@ export async function transformClientComponents(
       !!ctx.isEsbuild,
       defaultExportInfo.exported,
     );
-    resultLines.push(
+    sourceFile.addStatements(
       `export default registerClientReference("${id}", "${defaultExportInfo.exported}");`,
     );
   }
 
-  // Replace the entire file content with the new code
-  const finalResult = resultLines.join("\n");
-  s.overwrite(0, code.length, finalResult + "\n");
+  const emitOutput = sourceFile.getEmitOutput();
+  let sourceMap: any;
+
+  for (const outputFile of emitOutput.getOutputFiles()) {
+    if (outputFile.getFilePath().endsWith(".js.map")) {
+      sourceMap = JSON.parse(outputFile.getText());
+    }
+  }
+
+  const finalResult = sourceFile.getFullText();
 
   log(
     ":isEsbuild=%s: Final transformed code for %s:\n%s",
@@ -224,10 +261,13 @@ export async function transformClientComponents(
   );
 
   if (process.env.VERBOSE) {
-    log(":VERBOSE: Transformed code for %s:\n%s", id, finalResult + "\n");
+    log(":VERBOSE: Transformed code for %s:\n%s", id, finalResult);
   }
 
-  return s;
+  return {
+    code: finalResult,
+    map: sourceMap,
+  };
 }
 
-export type { TransformContext };
+export type { TransformContext, TransformResult };

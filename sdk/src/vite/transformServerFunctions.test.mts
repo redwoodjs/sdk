@@ -99,15 +99,13 @@ export const a = "string";
     for (const [key, CODE] of Object.entries(TEST_CASES)) {
       describe(key, () => {
         it(`CLIENT`, () => {
-          expect(
-            transformServerFunctions(CODE, "/test.tsx", "client"),
-          ).toMatchSnapshot();
+          const result = transformServerFunctions(CODE, "/test.tsx", "client");
+          expect(result?.code).toMatchSnapshot();
         });
 
         it(`WORKER`, () => {
-          expect(
-            transformServerFunctions(CODE, "/test.tsx", "worker"),
-          ).toMatchSnapshot();
+          const result = transformServerFunctions(CODE, "/test.tsx", "worker");
+          expect(result?.code).toMatchSnapshot();
         });
       });
     }
