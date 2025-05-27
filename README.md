@@ -37,7 +37,7 @@ It features:
 Start a new project:
 
 ```bash
-npx degit redwoodjs/sdk/starters/standard <project-name>
+npx create-rwsdk <project-name>
 ```
 
 Install dependencies:
