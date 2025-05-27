@@ -9,7 +9,7 @@ export const ssrBridgePlugin = ({
 }: {
   projectRootDir: string;
 }): Plugin => {
-  const srcSsrBridgePath = path.resolve(DIST_DIR, "ssrBridge.js");
+  const srcSsrBridgePath = path.resolve(DIST_DIR, "ssrBridge.jsx");
 
   const distSsrBridgePath = path.resolve(
     projectRootDir,
@@ -46,19 +46,29 @@ export const ssrBridgePlugin = ({
       }
     },
     async resolveId(id) {
-      // context(justinvdm, 27 May 2025): In dev, we need to dynamically load
-      // SSR modules, so we return the virtual id so that the dynamic loading
-      // can happen in load()
-      if (id.startsWith(VIRTUAL_SSR_PREFIX) && isDev) {
-        return id;
-      }
+      if (isDev) {
+        // context(justinvdm, 27 May 2025): In dev, we need to dynamically load
+        // SSR modules, so we return the virtual id so that the dynamic loading
+        // can happen in load()
+        if (id.startsWith(VIRTUAL_SSR_PREFIX)) {
+          return id;
+        }
 
-      // context(justinvdm, 27 May 2025): In builds, since all SSR import chains
-      // originate at SSR bridge module, we return the path to the already built
-      // SSR bridge bundle - SSR env builds it, worker build tries to resolve it
-      // here and uses it
-      if (id === `${VIRTUAL_SSR_PREFIX}${srcSsrBridgePath}` && !isDev) {
-        return distSsrBridgePath;
+        // context(justinvdm, 28 May 2025): The SSR bridge module is a special case -
+        // it is the entry point for all SSR modules, so to trigger the
+        // same dynamic loading logic as other SSR modules (as the case above),
+        // we return a virtual id
+        if (id === srcSsrBridgePath && this.environment.name === "rsc") {
+          return `${VIRTUAL_SSR_PREFIX}${srcSsrBridgePath}`;
+        }
+      } else {
+        // context(justinvdm, 27 May 2025): In builds, since all SSR import chains
+        // originate at SSR bridge module, we return the path to the already built
+        // SSR bridge bundle - SSR env builds it, worker build tries to resolve it
+        // here and uses it
+        if (id === srcSsrBridgePath && this.environment.name === "rsc") {
+          return distSsrBridgePath;
+        }
       }
     },
     async load(id) {
@@ -74,9 +84,7 @@ export const ssrBridgePlugin = ({
 
           // context(justinvdm, 27 May 2025): Prefix all imports in SSR modules so that they're separate in module graph from non-SSR
           const transformedCode = `
-;(async function(__vite_ssr_import__, __vite_ssr_dynamic_import__) {
-${code}
-})(
+;(async function(__vite_ssr_import__, __vite_ssr_dynamic_import__) {${code}})(
   (id) => __vite_ssr_import__('/@id/${VIRTUAL_SSR_PREFIX}'+id),
   (id) => __vite_ssr_dynamic_import__('/@id/${VIRTUAL_SSR_PREFIX}'+id),
 );
