@@ -26,6 +26,10 @@
       "default": "./dist/vite/index.mjs",
       "types": "./dist/vite/index.d.mts"
     },
+    "./vite/legacy": {
+      "default": "./dist/vite_legacy/index.mjs",
+      "types": "./dist/vite_legacy/index.d.mts"
+    },
     "./worker": {
       "default": "./dist/runtime/entries/worker.js",
       "types": "./dist/runtime/entries/worker.d.ts"
