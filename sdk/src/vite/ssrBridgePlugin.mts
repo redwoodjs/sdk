@@ -10,7 +10,7 @@ export const ssrBridgePlugin = ({
 }: {
   projectRootDir: string;
 }): Plugin => {
-  const srcSsrBridgePath = path.resolve(DIST_DIR, "ssrBridge.jsx");
+  const srcSsrBridgePath = path.resolve(DIST_DIR, "ssrBridge.js");
 
   const distSsrBridgePath = path.resolve(
     projectRootDir,

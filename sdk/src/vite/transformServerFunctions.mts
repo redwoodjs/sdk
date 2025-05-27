@@ -1,5 +1,4 @@
 import { Project, SyntaxKind, Node, SourceFile } from "ts-morph";
-import { VIRTUAL_RSC_PREFIX } from "./ssrBridgePlugin.mjs";
 
 interface TransformResult {
   code: string;
@@ -88,8 +87,46 @@ export const transformServerFunctions = (
   }
 
   if (environment === "ssr") {
+    const ssrSourceFile = project.createSourceFile("ssr.tsx", "");
+
+    ssrSourceFile.addImportDeclaration({
+      moduleSpecifier: "rwsdk/__ssr",
+      namedImports: ["createServerReference"],
+    });
+
+    const exports = findExportedFunctions(sourceFile);
+    for (const name of exports) {
+      ssrSourceFile.addVariableStatement({
+        isExported: true,
+        declarations: [
+          {
+            name: name,
+            initializer: `createServerReference(${JSON.stringify(relativeId)}, ${JSON.stringify(name)})`,
+          },
+        ],
+      });
+    }
+
+    const hadDefaultExport = !!sourceFile.getDefaultExportSymbol();
+    if (hadDefaultExport) {
+      ssrSourceFile.addExportAssignment({
+        expression: `createServerReference(${JSON.stringify(relativeId)}, "default")`,
+        isExportEquals: false,
+      });
+    }
+
+    const emitOutput = ssrSourceFile.getEmitOutput();
+    let sourceMap: any;
+
+    for (const outputFile of emitOutput.getOutputFiles()) {
+      if (outputFile.getFilePath().endsWith(".js.map")) {
+        sourceMap = JSON.parse(outputFile.getText());
+      }
+    }
+
     return {
-      code: `export * from "${VIRTUAL_RSC_PREFIX}${relativeId}";`,
+      code: ssrSourceFile.getFullText(),
+      map: sourceMap,
     };
   } else if (environment === "worker") {
     sourceFile.addImportDeclaration({

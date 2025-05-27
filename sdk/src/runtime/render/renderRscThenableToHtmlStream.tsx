@@ -1,7 +1,7 @@
 import React from "react";
 import ReactServerDom from "react-dom/server.edge";
-import { type DocumentProps } from "./lib/router";
-import { type RequestInfo } from "./requestInfo/types";
+import { type DocumentProps } from "../lib/router";
+import { type RequestInfo } from "../requestInfo/types";
 
 const { use } = React;
 const { renderToReadableStream } = ReactServerDom;

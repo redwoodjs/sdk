@@ -5,6 +5,7 @@ import {
 } from "react-server-dom-webpack/server.edge";
 import { getModuleExport } from "../imports/worker";
 import { IS_DEV } from "../constants";
+import { registeredServerFunctions } from "../ssrBridge";
 
 export function registerServerReference(
   action: Function,
@@ -15,6 +16,7 @@ export function registerServerReference(
     return action;
   }
 
+  registeredServerFunctions.set(id, action);
   return baseRegisterServerReference(action, id, name);
 }
 
