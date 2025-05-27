@@ -10,45 +10,60 @@ import { ensureAliasArray } from "./ensureAliasArray.mjs";
 
 const log = debug("rwsdk:vite:react-conditions");
 
-// Define package sets for each environment
-const WORKER_PACKAGES = [
+export const REACT_IMPORTS = [
   "react",
-  "react-dom/server.edge",
-  "react-dom/server",
   "react-dom",
+  "react-dom/client",
   "react/jsx-runtime",
   "react/jsx-dev-runtime",
+  "react-dom/server.edge",
+  "react-dom/server",
   "react-server-dom-webpack/client.browser",
   "react-server-dom-webpack/client.edge",
   "react-server-dom-webpack/server.edge",
 ];
 
-const CLIENT_PACKAGES = [
-  "react",
-  "react-dom/client",
-  "react-dom",
-  "react/jsx-runtime",
-  "react/jsx-dev-runtime",
-  "react-server-dom-webpack/client.browser",
-  "react-server-dom-webpack/client.edge",
-  "react-server-dom-webpack/server.edge",
-];
+export const ENV_RESOLVERS = {
+  ssr: enhancedResolve.create.sync({
+    conditionNames: ["workerd", "worker", "edge", "default"],
+  }),
 
-// Skip react-server condition for these packages
-const SKIP_REACT_SERVER = [
-  "react-dom/server",
-  "react-dom/client",
-  "react-dom/server.edge",
-  "react-dom/server.browser",
-];
+  worker: enhancedResolve.create.sync({
+    conditionNames: ["react-server", "workerd", "worker", "edge", "default"],
+  }),
 
-// Global server packages that need aliases regardless of environment
-const GLOBAL_SERVER_PACKAGES = [
-  "react-dom/server.edge",
-  "react-dom/server",
-  "react-server-dom-webpack/server.edge",
-  "react-server-dom-webpack/client.edge",
-];
+  client: enhancedResolve.create.sync({
+    conditionNames: ["browser", "default"],
+  }),
+};
+
+export const ENV_ALIASES = Object.keys(ENV_RESOLVERS).map((env) => [
+  env,
+  resolveEnvAliases(env as keyof typeof ENV_RESOLVERS),
+]);
+
+const resolveEnvAliases = (env: keyof typeof ENV_RESOLVERS) => {
+  const aliases = [];
+
+  for (const importRequest of REACT_IMPORTS) {
+    let resolved: string | false = false;
+
+    try {
+      resolved = ENV_RESOLVERS[env](ROOT_DIR, importRequest);
+    } catch {}
+
+    if (resolved) {
+      const exactMatchRegex = new RegExp(
+        `^${resolved.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
+      );
+
+      aliases.push({
+        find: exactMatchRegex,
+        replacement: resolved,
+      });
+    }
+  }
+};
 
 export const reactConditionsResolverPlugin = async ({
   mode = "development",
