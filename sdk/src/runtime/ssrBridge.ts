@@ -4,7 +4,14 @@
 // import conditions and bundling logic
 //
 // **NOTE:** Any time we need to import from SSR side in RSC side, we need to
-// import it through this bridge file We have bundler logic (ssrBridgePlugin)
-// that looks out for imports to this file
+// import it through this bridge file. We have bundler logic (ssrBridgePlugin)
+// that looks out for imports to this exact file.
+
 export { renderRscThenableToHtmlStream } from "./render/renderRscThenableToHtmlStream";
 export { registeredServerFunctions } from "./register/ssr";
+
+export {
+  ssrLoadModule,
+  ssrGetModuleExport,
+  ssrWebpackRequire,
+} from "./imports/ssr";

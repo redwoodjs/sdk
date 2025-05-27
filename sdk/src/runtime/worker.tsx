@@ -2,7 +2,7 @@ import React from "react";
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 import { renderToRscStream } from "./render/renderToRscStream";
 
-import { loadModule, ssrWebpackRequire } from "./imports/worker";
+import { ssrLoadModule, ssrWebpackRequire } from "./ssrBridge";
 import { rscActionHandler } from "./register/worker";
 import { injectRSCPayload } from "rsc-html-stream/server";
 import { ErrorResponse } from "./error";
@@ -13,7 +13,7 @@ import {
 } from "./requestInfo/worker";
 import { RequestInfo } from "./requestInfo/types";
 
-import { Route, type RwContext, defineRoutes, route } from "./lib/router";
+import { Route, type RwContext, defineRoutes } from "./lib/router";
 import { generateNonce } from "./lib/utils";
 import { IS_DEV } from "./constants";
 
@@ -216,7 +216,9 @@ export const defineApp = (routes: Route[]) => {
 export const SmokeTestWrapper: React.FC<{
   children: React.ReactNode;
 }> = async ({ children }) => {
-  const smokeTestInfo = await loadModule("/src/app/components/__SmokeTest.tsx");
+  const smokeTestInfo = await ssrLoadModule(
+    "/src/app/components/__SmokeTest.tsx",
+  );
   const SmokeTestInfo = smokeTestInfo.SmokeTestInfo as React.FC<any>;
 
   return (

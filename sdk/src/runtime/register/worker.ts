@@ -3,7 +3,7 @@ import {
   registerClientReference as baseRegisterClientReference,
   decodeReply,
 } from "react-server-dom-webpack/server.edge";
-import { getModuleExport } from "../imports/worker";
+import { ssrGetModuleExport } from "../ssrBridge";
 import { IS_DEV } from "../constants";
 import { registeredServerFunctions } from "../ssrBridge";
 
@@ -55,7 +55,7 @@ export async function rscActionHandler(req: Request): Promise<unknown> {
     return null;
   }
 
-  const action = await getModuleExport(actionId!);
+  const action = await ssrGetModuleExport(actionId!);
 
   if (typeof action !== "function") {
     throw new Error(`Action ${actionId} is not a function`);
