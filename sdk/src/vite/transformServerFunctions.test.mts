@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { transformServerFunctions } from "./useServerPlugin.mjs";
+import { transformServerFunctions } from "./transformServerFunctions.mjs";
 
 describe("useServerPlugin", () => {
   let COMMENT_CODE = `

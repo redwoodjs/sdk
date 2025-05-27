@@ -5,8 +5,7 @@ import reactPlugin from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 import { transformJsxScriptTagsPlugin } from "./transformJsxScriptTagsPlugin.mjs";
-import { useServerPlugin } from "./useServerPlugin.mjs";
-import { useClientPlugin } from "./useClientPlugin.mjs";
+import { rscDirectivesPlugin } from "./rscDirectivesPlugin.mjs";
 import { useClientLookupPlugin } from "./useClientLookupPlugin.mjs";
 import { miniflarePlugin } from "./miniflarePlugin.mjs";
 import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
@@ -82,8 +81,7 @@ export const redwoodPlugin = async (
         options.configPath ?? (await findWranglerConfig(projectRootDir)),
     }),
     reactPlugin(),
-    useServerPlugin(),
-    useClientPlugin({ clientFiles }),
+    rscDirectivesPlugin({ clientFiles }),
     vitePreamblePlugin(),
     injectVitePreamble({ clientEntryPathname, mode }),
     useClientLookupPlugin({
