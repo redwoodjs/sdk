@@ -44,30 +44,22 @@ export const ssrBridgePlugin = ({
       }
     },
     async resolveId(id) {
-      console.log("################## resolveId", id);
-
+      // context(justinvdm, 27 May 2025): In dev, we need to dynamically load
+      // SSR modules, so we return the virtual id so that the dynamic loading
+      // can happen in load()
       if (id.startsWith("virtual:ssr:") && isDev) {
-        // context(justinvdm, 26 May 2025): In dev, we want to dynamically load the bridge
-        // via the SSR environment. In build, we want to use the already built bridge.
-        console.log(
-          "################## reached resolveId() virtual:ssr: in dev for environment",
-          this.environment.name,
-          id,
-        );
         return id;
       }
 
+      // context(justinvdm, 27 May 2025): In builds, since all SSR import chains
+      // originate at SSR bridge module, we return the path to the already built
+      // SSR bridge bundle - SSR env builds it, worker build tries to resolve it
+      // here and uses it
       if (id === "virtual:ssr:/src/ssrBridge.ts" && !isDev) {
-        console.log(
-          "################## reached load() virtual:ssrBridge for build in environment",
-          this.environment.name,
-        );
         return distSsrBridgePath;
       }
     },
     async load(id) {
-      console.log("################## load", id, this.environment.name);
-
       if (id.startsWith("virtual:ssr:")) {
         const realPath = id.slice("virtual:ssr:".length);
 
@@ -77,12 +69,14 @@ export const ssrBridgePlugin = ({
             await devServer?.environments.ssr.fetchModule(realPath);
 
           const code = "code" in result ? result.code : undefined;
+
+          // context(justinvdm, 27 May 2025): Prefix all imports in SSR modules so that they're separate in module graph from non-SSR
           const transformedCode = `
 ;(async function(__vite_ssr_import__, __vite_ssr_dynamic_import__) {
 ${code}
 })(
-  (id) => console.log('### runtime import for %s', id) || __vite_ssr_import__('/@id/virtual:ssr:'+id),
-  (id) => console.log('### runtime dynamic import for %s', id) || __vite_ssr_dynamic_import__('/@id/virtual:ssr:'+id),
+  (id) => __vite_ssr_import__('/@id/virtual:ssr:'+id),
+  (id) => __vite_ssr_dynamic_import__('/@id/virtual:ssr:'+id),
 );
 `;
           console.log(
