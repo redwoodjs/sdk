@@ -2,9 +2,9 @@ import { Project, SyntaxKind, Node } from "ts-morph";
 import MagicString from "magic-string";
 import debug from "debug";
 
-interface TransformEnv {
+interface TransformContext {
   environmentName: string;
-  topLevelRoot?: string;
+  clientFiles?: Set<string>;
   isEsbuild?: boolean;
 }
 
@@ -14,13 +14,13 @@ const logEsbuild = debug("rwsdk:transform-client-components:esbuild");
 export async function transformClientComponents(
   code: string,
   id: string,
-  env: TransformEnv,
+  ctx: TransformContext,
 ): Promise<MagicString | undefined> {
-  const log = env.isEsbuild ? logEsbuild : logVite;
-  log("Called transformClientComponents for id: id=%s, env: %O", id, env);
+  const log = ctx.isEsbuild ? logEsbuild : logVite;
+  log("Called transformClientComponents for id: id=%s, ctx: %O", id, ctx);
   // 1. Skip if not in worker environment
-  if (env.environmentName !== "worker" && env.environmentName !== "ssr") {
-    log("Skipping: not in worker environment (%s)", env.environmentName);
+  if (ctx.environmentName !== "worker" && ctx.environmentName !== "ssr") {
+    log("Skipping: not in worker environment (%s)", ctx.environmentName);
     return;
   }
   // 2. Only transform files that start with 'use client'
@@ -36,6 +36,8 @@ export async function transformClientComponents(
     return;
   }
   log("Processing 'use client' module: id=%s", id);
+
+  ctx.clientFiles?.add(id);
 
   // Use ts-morph to collect all export info in source order
   const project = new Project({
@@ -143,8 +145,8 @@ export async function transformClientComponents(
   });
 
   // 3. SSR files: just remove the directive
-  if (env.environmentName === "ssr") {
-    log(":isEsbuild=%s: Handling SSR virtual module: %s", !!env.isEsbuild, id);
+  if (ctx.environmentName === "ssr") {
+    log(":isEsbuild=%s: Handling SSR virtual module: %s", !!ctx.isEsbuild, id);
     const s = new MagicString(code);
 
     const directiveMatch = code.match(/^(\s*)(["'])use client\2/);
@@ -176,7 +178,7 @@ export async function transformClientComponents(
   for (const info of exportInfos) {
     log(
       ":isEsbuild=%s: Registering client reference for named export: %s as %s",
-      !!env.isEsbuild,
+      !!ctx.isEsbuild,
       info.local,
       info.exported,
     );
@@ -192,7 +194,7 @@ export async function transformClientComponents(
     );
     log(
       ":isEsbuild=%s: Exporting named exports: %O",
-      !!env.isEsbuild,
+      !!ctx.isEsbuild,
       exportNames,
     );
     resultLines.push(`export { ${exportNames.join(", ")} };`);
@@ -202,7 +204,7 @@ export async function transformClientComponents(
   if (defaultExportInfo) {
     log(
       ":isEsbuild=%s: Registering client reference for default export: %s",
-      !!env.isEsbuild,
+      !!ctx.isEsbuild,
       defaultExportInfo.exported,
     );
     resultLines.push(
@@ -216,7 +218,7 @@ export async function transformClientComponents(
 
   log(
     ":isEsbuild=%s: Final transformed code for %s:\n%s",
-    !!env.isEsbuild,
+    !!ctx.isEsbuild,
     id,
     finalResult,
   );
@@ -228,4 +230,4 @@ export async function transformClientComponents(
   return s;
 }
 
-export type { TransformEnv };
+export type { TransformContext };

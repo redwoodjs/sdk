@@ -46,6 +46,8 @@ export const redwoodPlugin = async (
     options?.entry?.worker ?? "src/worker.tsx",
   );
 
+  const clientFiles = new Set<string>();
+
   // context(justinvdm, 31 Mar 2025): We assume that if there is no .wrangler directory,
   // then this is fresh install, and we run `npm run dev:init` here.
   if (
@@ -70,7 +72,7 @@ export const redwoodPlugin = async (
       clientEntryPathname,
       workerEntryPathname,
     }),
-    reactConditionsResolverPlugin({ projectRootDir, mode }),
+    reactConditionsResolverPlugin(),
     tsconfigPaths({ root: projectRootDir }),
     miniflarePlugin({
       rootDir: projectRootDir,
@@ -81,12 +83,12 @@ export const redwoodPlugin = async (
     }),
     reactPlugin(),
     useServerPlugin(),
-    useClientPlugin(),
+    useClientPlugin({ clientFiles }),
     vitePreamblePlugin(),
     injectVitePreamble({ clientEntryPathname, mode }),
     useClientLookupPlugin({
-      rootDir: projectRootDir,
-      containingPath: "./src/app",
+      projectRootDir,
+      clientFiles,
     }),
     transformJsxScriptTagsPlugin({
       manifestPath: resolve(
