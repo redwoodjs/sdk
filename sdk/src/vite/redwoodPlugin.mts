@@ -17,6 +17,7 @@ import { pathExists } from "fs-extra";
 import { injectVitePreamble } from "./injectVitePreamblePlugin.mjs";
 import { vitePreamblePlugin } from "./vitePreamblePlugin.mjs";
 import { prismaPlugin } from "./prismaPlugin.mjs";
+import { ssrBridgePlugin } from "./ssrBridgePlugin.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -71,6 +72,7 @@ export const redwoodPlugin = async (
       clientEntryPathname,
       workerEntryPathname,
     }),
+    ssrBridgePlugin({ projectRootDir }),
     reactConditionsResolverPlugin(),
     tsconfigPaths({ root: projectRootDir }),
     miniflarePlugin({

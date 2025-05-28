@@ -12,27 +12,6 @@ export const rscDirectivesPlugin = ({
   clientFiles: Set<string>;
 }): Plugin => ({
   name: "rwsdk:rsc-directives",
-  config(config) {
-    log("Configuring global esbuild options");
-    config.optimizeDeps ??= {};
-    config.optimizeDeps.esbuildOptions ??= {};
-    config.optimizeDeps.esbuildOptions.plugins ??= [];
-
-    config.optimizeDeps.esbuildOptions.plugins.push({
-      name: "rwsdk-ssr-external",
-      setup(build) {
-        log("Setting up esbuild plugin to mark rwsdk/__ssr paths as external");
-        build.onResolve({ filter: /^rwsdk\/__ssr/ }, (args) => {
-          log("Marking as external: %s", args.path);
-          return {
-            path: args.path,
-            external: true,
-          };
-        });
-      },
-    });
-    log("Global esbuild configuration complete");
-  },
   async transform(code, id) {
     if (process.env.VERBOSE) {
       log(
