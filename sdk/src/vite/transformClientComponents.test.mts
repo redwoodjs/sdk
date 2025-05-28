@@ -5,6 +5,7 @@ describe("transformClientComponents", () => {
   async function transform(code: string) {
     const result = await transformClientComponents(code, "/test/file.tsx", {
       environmentName: "worker",
+      projectRootDir: "/test",
     });
 
     return result?.code;
@@ -296,6 +297,7 @@ describe("transformClientComponents logic branches (from transformClientComponen
     const code = '"use client"\nexport const foo = 1;';
     const result = await transformClientComponents(code, "/test/file.tsx", {
       environmentName: "browser",
+      projectRootDir: "/test",
     });
     expect(result).toBeUndefined();
   });
@@ -304,6 +306,7 @@ describe("transformClientComponents logic branches (from transformClientComponen
     const code = "const foo = 1;";
     const result = await transformClientComponents(code, "/test/file.tsx", {
       environmentName: "worker",
+      projectRootDir: "/test",
     });
     expect(result).toBeUndefined();
   });
@@ -312,6 +315,7 @@ describe("transformClientComponents logic branches (from transformClientComponen
     const code = '"use client"\nexport const foo = 1;';
     const result = await transformClientComponents(code, "/test/file.tsx", {
       environmentName: "ssr",
+      projectRootDir: "/test",
     });
     expect(result?.code).toEqual("export const foo = 1;");
   });

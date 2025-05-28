@@ -2,7 +2,7 @@ import MagicString from "magic-string";
 import { Plugin } from "vite";
 import { readFile } from "fs/promises";
 import { glob } from "glob";
-import path from "path";
+import { normalizeModulePath } from "./normalizeModulePath.mjs";
 
 export const findFilesContainingUseClient = async ({
   projectRootDir,
@@ -28,8 +28,7 @@ export const findFilesContainingUseClient = async ({
             trimmedLine.startsWith('"use client"') ||
             trimmedLine.startsWith("'use client'")
           ) {
-            const relativePath = "/" + path.relative(projectRootDir, file);
-            clientFiles.add(relativePath);
+            clientFiles.add(normalizeModulePath(projectRootDir, file));
           }
           break;
         }

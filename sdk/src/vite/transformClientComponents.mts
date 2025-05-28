@@ -1,10 +1,12 @@
 import { Project, SyntaxKind, Node } from "ts-morph";
 import debug from "debug";
+import { normalizeModulePath } from "./normalizeModulePath.mjs";
 
 interface TransformContext {
   environmentName: string;
   clientFiles?: Set<string>;
   isEsbuild?: boolean;
+  projectRootDir: string;
 }
 
 interface TransformResult {
@@ -48,7 +50,7 @@ export async function transformClientComponents(
   }
   log("Processing 'use client' module: id=%s", id);
 
-  ctx.clientFiles?.add(id);
+  ctx.clientFiles?.add(normalizeModulePath(ctx.projectRootDir, id));
 
   // Use ts-morph to collect all export info and perform transformations
   const project = new Project({

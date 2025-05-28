@@ -1,15 +1,17 @@
-import { relative } from "node:path";
 import { Plugin } from "vite";
 import debug from "debug";
 import { transformClientComponents } from "./transformClientComponents.mjs";
 import { transformServerFunctions } from "./transformServerFunctions.mjs";
+import { normalizeModulePath } from "./normalizeModulePath.mjs";
 
 const log = debug("rwsdk:vite:rsc-directives-plugin");
 const verboseLog = debug("verbose:rwsdk:vite:rsc-directives-plugin");
 
 export const rscDirectivesPlugin = ({
+  projectRootDir,
   clientFiles,
 }: {
+  projectRootDir: string;
   clientFiles: Set<string>;
 }): Plugin => ({
   name: "rwsdk:rsc-directives",
@@ -23,6 +25,7 @@ export const rscDirectivesPlugin = ({
     const clientResult = await transformClientComponents(code, id, {
       environmentName: this.environment.name,
       clientFiles,
+      projectRootDir,
     });
 
     if (clientResult) {
@@ -35,7 +38,7 @@ export const rscDirectivesPlugin = ({
 
     const serverResult = transformServerFunctions(
       code,
-      `/${relative(this.environment.getTopLevelConfig().root, id)}`,
+      normalizeModulePath(projectRootDir, id),
       this.environment.name as "client" | "worker",
     );
 
@@ -80,6 +83,7 @@ export const rscDirectivesPlugin = ({
               environmentName: env,
               clientFiles,
               isEsbuild: true,
+              projectRootDir,
             },
           );
 
@@ -96,7 +100,7 @@ export const rscDirectivesPlugin = ({
 
           const serverResult = transformServerFunctions(
             code,
-            `/${relative(process.cwd(), args.path)}`,
+            normalizeModulePath(projectRootDir, args.path),
             env as "client" | "worker",
           );
 

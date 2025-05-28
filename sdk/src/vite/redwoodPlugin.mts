@@ -83,7 +83,10 @@ export const redwoodPlugin = async (
         options.configPath ?? (await findWranglerConfig(projectRootDir)),
     }),
     reactPlugin(),
-    rscDirectivesPlugin({ clientFiles }),
+    rscDirectivesPlugin({
+      projectRootDir,
+      clientFiles,
+    }),
     vitePreamblePlugin(),
     injectVitePreamble({ clientEntryPathname, mode }),
     useClientLookupPlugin({
