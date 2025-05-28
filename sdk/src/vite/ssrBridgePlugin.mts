@@ -2,6 +2,7 @@ import path from "node:path";
 import type { Plugin, ViteDevServer } from "vite";
 import debug from "debug";
 import { DIST_DIR } from "../lib/constants.mjs";
+import { ensureAliasArray } from "./ensureAliasArray.mjs";
 
 const log = debug("rwsdk:vite:ssr-bridge-plugin");
 const verboseLog = debug("verbose:rwsdk:vite:ssr-bridge-plugin");
@@ -48,6 +49,7 @@ export const ssrBridgePlugin = ({
         config.optimizeDeps ??= {};
         config.optimizeDeps.esbuildOptions ??= {};
         config.optimizeDeps.esbuildOptions.plugins ??= [];
+        config.optimizeDeps.include ??= [];
 
         config.optimizeDeps.esbuildOptions.plugins.push({
           name: "rwsdk-ssr-external",
@@ -72,6 +74,7 @@ export const ssrBridgePlugin = ({
             });
           },
         });
+
         log("Worker environment esbuild configuration complete");
       }
     },
@@ -144,6 +147,10 @@ export const ssrBridgePlugin = ({
           );
           await devServer?.environments.ssr.warmupRequest(realId);
           const result = await devServer?.environments.ssr.fetchModule(realId);
+
+          if (!result) {
+            return;
+          }
 
           const code = "code" in result ? result.code : undefined;
           log("Fetched SSR module code length: %d", code?.length || 0);

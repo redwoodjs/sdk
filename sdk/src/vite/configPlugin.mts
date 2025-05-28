@@ -37,6 +37,9 @@ export const configPlugin = ({
       define: {
         "process.env.NODE_ENV": JSON.stringify(mode),
       },
+      ssr: {
+        target: "webworker",
+      },
       environments: {
         client: {
           consumer: "client",
