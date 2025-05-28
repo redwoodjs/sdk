@@ -37,7 +37,7 @@ export const ssrBridgePlugin = ({
       devServer = server;
       log("Configured dev server");
     },
-    config(config, { command, isPreview }) {
+    config(_, { command, isPreview }) {
       isDev = !isPreview && command === "serve";
       log(
         "Config: command=%s, isPreview=%s, isDev=%s",
@@ -45,35 +45,6 @@ export const ssrBridgePlugin = ({
         isPreview,
         isDev,
       );
-
-      // Configure esbuild to mark rwsdk/__ssr paths as external
-      log("Configuring global esbuild options");
-      config.optimizeDeps ??= {};
-      config.optimizeDeps.esbuildOptions ??= {};
-      config.optimizeDeps.esbuildOptions.plugins ??= [];
-
-      config.optimizeDeps.esbuildOptions.plugins.push({
-        name: "rwsdk-ssr-external",
-        setup(build) {
-          log(
-            "Setting up esbuild plugin to mark rwsdk/__ssr paths as external",
-          );
-          build.onResolve({ filter: /.*/ }, (args) => {
-            if (process.env.VERBOSE) {
-              log("Esbuild onResolve called for path=%s", args.path);
-            }
-
-            if (args.path.startsWith("rwsdk/__ssr")) {
-              log("Marking as external: %s", args.path);
-              return {
-                path: args.path,
-                external: true,
-              };
-            }
-          });
-        },
-      });
-      log("Global esbuild configuration complete");
     },
     configEnvironment(env, config) {
       log("Configuring environment: env=%s", env);
@@ -95,6 +66,37 @@ export const ssrBridgePlugin = ({
           srcSsrBridgePath,
           path.dirname(distSsrBridgePath),
         );
+      }
+
+      if (env === "worker") {
+        // Configure esbuild to mark rwsdk/__ssr paths as external for worker environment
+        log("Configuring esbuild options for worker environment");
+        config.optimizeDeps ??= {};
+        config.optimizeDeps.esbuildOptions ??= {};
+        config.optimizeDeps.esbuildOptions.plugins ??= [];
+
+        config.optimizeDeps.esbuildOptions.plugins.push({
+          name: "rwsdk-ssr-external",
+          setup(build) {
+            log(
+              "Setting up esbuild plugin to mark rwsdk/__ssr paths as external for worker",
+            );
+            build.onResolve({ filter: /.*/ }, (args) => {
+              if (process.env.VERBOSE) {
+                log("Esbuild onResolve called for path=%s", args.path);
+              }
+
+              if (args.path.startsWith("rwsdk/__ssr")) {
+                log("Marking as external: %s", args.path);
+                return {
+                  path: args.path,
+                  external: true,
+                };
+              }
+            });
+          },
+        });
+        log("Worker environment esbuild configuration complete");
       }
     },
     async resolveId(id) {
