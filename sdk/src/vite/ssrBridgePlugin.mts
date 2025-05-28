@@ -41,7 +41,7 @@ export const ssrBridgePlugin = ({
     configEnvironment(env, config) {
       log("Configuring environment: env=%s", env);
 
-      if (env === "worker") {
+      if (env === "worker" || env === "ssr") {
         // Configure esbuild to mark rwsdk/__ssr paths as external for worker environment
         log("Configuring esbuild options for worker environment");
         config.optimizeDeps ??= {};
@@ -54,7 +54,7 @@ export const ssrBridgePlugin = ({
             log(
               "Setting up esbuild plugin to mark rwsdk/__ssr paths as external for worker",
             );
-            build.onResolve({ filter: /.*\.js$/ }, (args) => {
+            build.onResolve({ filter: /.*$/ }, (args) => {
               if (process.env.VERBOSE) {
                 log(
                   "Esbuild onResolve called for path=%s, args=%O",
@@ -77,14 +77,12 @@ export const ssrBridgePlugin = ({
       }
     },
     async resolveId(id) {
-      if (process.env.VERBOSE) {
-        log(
-          "Resolving id=%s, environment=%s, isDev=%s",
-          id,
-          this.environment?.name,
-          isDev,
-        );
-      }
+      log(
+        "Resolving id=%s, environment=%s, isDev=%s",
+        id,
+        this.environment?.name,
+        isDev,
+      );
 
       if (isDev) {
         // context(justinvdm, 27 May 2025): In dev, we need to dynamically load
@@ -128,14 +126,12 @@ export const ssrBridgePlugin = ({
       }
     },
     async load(id) {
-      if (process.env.VERBOSE) {
-        log(
-          "Loading id=%s, isDev=%s, environment=%s",
-          id,
-          isDev,
-          this.environment.name,
-        );
-      }
+      log(
+        "Loading id=%s, isDev=%s, environment=%s",
+        id,
+        isDev,
+        this.environment.name,
+      );
 
       if (
         id.startsWith(VIRTUAL_SSR_PREFIX) &&
@@ -165,9 +161,7 @@ export const ssrBridgePlugin = ({
 
           log("Transformed SSR module code length: %d", transformedCode.length);
 
-          if (process.env.VERBOSE) {
-            log("Transformed SSR module code: %s", transformedCode);
-          }
+          log("Transformed SSR module code: %s", transformedCode);
 
           return transformedCode;
         }
