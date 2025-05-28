@@ -27,10 +27,12 @@
       "types": "./dist/vite/index.d.mts"
     },
     "./worker": {
-      "default": "./dist/runtime/entries/worker.js",
+      "react-server": "./dist/runtime/entries/worker.js",
+      "default": "./dist/runtime/entries/react-server-only.js",
       "types": "./dist/runtime/entries/worker.d.ts"
     },
     "./client": {
+      "react-server": "./dist/runtime/entries/no-react-server.js",
       "default": "./dist/runtime/entries/client.js",
       "types": "./dist/runtime/entries/client.d.ts"
     },

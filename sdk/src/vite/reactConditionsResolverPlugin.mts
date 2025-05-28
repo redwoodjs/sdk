@@ -2,7 +2,6 @@ import { Plugin, EnvironmentOptions } from "vite";
 import debug from "debug";
 import { ROOT_DIR } from "../lib/constants.mjs";
 import enhancedResolve from "enhanced-resolve";
-import { ensureAliasArray } from "./ensureAliasArray.mjs";
 
 const log = debug("rwsdk:vite:react-conditions-resolver-plugin");
 
@@ -33,17 +32,20 @@ export const ENV_RESOLVERS = {
   }),
 };
 
-export const ENV_IMPORTS = Object.fromEntries(
+// Create a mapping of import -> resolved path for each environment
+export const ENV_IMPORT_MAPPINGS = Object.fromEntries(
   Object.keys(ENV_RESOLVERS).map((env) => [
     env,
-    resolveEnvImports(env as keyof typeof ENV_RESOLVERS),
+    resolveEnvImportMappings(env as keyof typeof ENV_RESOLVERS),
   ]),
 );
 
-function resolveEnvImports(env: keyof typeof ENV_RESOLVERS) {
-  log("Resolving environment imports for env=%s", env);
-  const aliases = [];
-  const optimizeIncludes = [];
+function resolveEnvImportMappings(env: keyof typeof ENV_RESOLVERS) {
+  if (process.env.VERBOSE) {
+    log("Resolving environment import mappings for env=%s", env);
+  }
+
+  const mappings = new Map<string, string>();
 
   for (const importRequest of REACT_IMPORTS) {
     if (process.env.VERBOSE) {
@@ -69,91 +71,129 @@ function resolveEnvImports(env: keyof typeof ENV_RESOLVERS) {
     }
 
     if (resolved) {
-      const exactMatchRegex = new RegExp(
-        `^${importRequest.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
-      );
-
-      aliases.push({
-        find: exactMatchRegex,
-        replacement: resolved,
-      });
-
-      optimizeIncludes.push(importRequest);
-      log("Added alias for %s -> %s in env=%s", importRequest, resolved, env);
+      mappings.set(importRequest, resolved);
+      log("Added mapping for %s -> %s in env=%s", importRequest, resolved, env);
     }
   }
 
   log(
-    "Environment imports resolution complete for env=%s: aliases=%d, optimizeIncludes=%d",
+    "Environment import mappings complete for env=%s: %d mappings",
     env,
-    aliases.length,
-    optimizeIncludes.length,
+    mappings.size,
   );
+  return mappings;
+}
+
+// Factory function to create esbuild plugin for a specific environment
+function createEsbuildResolverPlugin(envName: string) {
+  const mappings = ENV_IMPORT_MAPPINGS[envName];
+
+  if (!mappings) {
+    return null;
+  }
+
   return {
-    aliases,
-    optimizeIncludes,
+    name: `rwsdk:react-conditions-resolver-esbuild-${envName}`,
+    setup(build: any) {
+      build.onResolve({ filter: /.*/ }, (args: any) => {
+        const resolved = mappings.get(args.path);
+
+        if (resolved) {
+          if (process.env.VERBOSE) {
+            log(
+              "ESBuild resolving %s -> %s for env=%s",
+              args.path,
+              resolved,
+              envName,
+            );
+          }
+          return { path: resolved };
+        }
+      });
+    },
   };
 }
 
 export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
   log("Initializing react conditions resolver plugin");
+
   return {
     name: "rwsdk:react-conditions-resolver",
     enforce: "post",
 
-    configEnvironment(name: string, config: EnvironmentOptions) {
-      if (process.env.VERBOSE) {
-        log("Configuring environment: name=%s", name);
+    config(config, { command }) {
+      log("Configuring plugin for command=%s", command);
+
+      // Add esbuild plugins for each environment
+      for (const envName of Object.keys(ENV_IMPORT_MAPPINGS)) {
+        const esbuildPlugin = createEsbuildResolverPlugin(envName);
+        const mappings = ENV_IMPORT_MAPPINGS[envName];
+
+        if (esbuildPlugin && mappings) {
+          // Add to environment-specific optimizeDeps
+          if (!config.environments) {
+            config.environments = {};
+          }
+
+          if (!config.environments[envName]) {
+            config.environments[envName] = {};
+          }
+
+          const envConfig = config.environments[envName];
+          envConfig.optimizeDeps ??= {};
+          envConfig.optimizeDeps.esbuildOptions ??= {};
+          envConfig.optimizeDeps.esbuildOptions.plugins ??= [];
+          envConfig.optimizeDeps.esbuildOptions.plugins.push(esbuildPlugin);
+
+          // Add the React imports to optimizeDeps.include for this environment
+          envConfig.optimizeDeps.include ??= [];
+          const reactImportsToInclude = Array.from(mappings.keys());
+          envConfig.optimizeDeps.include.push(...reactImportsToInclude);
+
+          log(
+            "Added esbuild plugin and optimizeDeps.include for environment: %s (%d imports)",
+            envName,
+            reactImportsToInclude.length,
+          );
+        }
+      }
+    },
+
+    async resolveId(id, importer, options) {
+      const envName = this.environment?.name;
+
+      if (!envName) {
+        return;
       }
 
-      const imports = ENV_IMPORTS[name];
+      if (process.env.VERBOSE) {
+        log(
+          "Resolving id=%s, environment=%s, importer=%s",
+          id,
+          envName,
+          importer,
+        );
+      }
 
-      if (!imports) {
+      const mappings = ENV_IMPORT_MAPPINGS[envName];
+
+      if (!mappings) {
         if (process.env.VERBOSE) {
-          log("No imports configuration found for environment: %s", name);
+          log("No mappings found for environment: %s", envName);
         }
         return;
       }
 
-      log(
-        "Applying imports configuration for environment: %s (aliases=%d, optimizeIncludes=%d)",
-        name,
-        imports.aliases.length,
-        imports.optimizeIncludes.length,
-      );
+      const resolved = mappings.get(id);
 
-      // context(justinvdm 27 May 2024): Setting the alias config via
-      // configEnvironment allows us to have optimizeDeps use per-environment aliases, even though
-      // EnvironmentOptions type doesn't have it as a property
-      const aliasArray = ensureAliasArray(config);
-
-      // Remove existing aliases that match any of the imports we're about to add
-      for (let i = aliasArray.length - 1; i >= 0; i--) {
-        const alias = aliasArray[i];
-        const aliasFind = alias.find;
-
-        // Check if this alias matches any of our import requests
-        const matchesImport = imports.optimizeIncludes.some((importRequest) => {
-          if (typeof aliasFind === "string") {
-            return aliasFind === importRequest;
-          } else if (aliasFind instanceof RegExp) {
-            return aliasFind.test(importRequest);
-          }
-          return false;
-        });
-
-        if (matchesImport) {
-          aliasArray.splice(i, 1);
-        }
+      if (resolved) {
+        log("Resolved %s -> %s for env=%s", id, resolved, envName);
+        return resolved;
       }
 
-      aliasArray.push(...imports.aliases);
-
-      ((config.optimizeDeps ??= {}).include ??= []).push(
-        ...imports.optimizeIncludes,
-      );
-
-      log("Environment configuration complete for: %s", name);
+      if (process.env.VERBOSE) {
+        log("No resolution found for id=%s in env=%s", id, envName);
+      }
     },
   };
 };
