@@ -187,8 +187,8 @@ importers:
   starters/minimal:
     dependencies:
       rwsdk:
-        specifier: 0.0.85-test.20250528020012
-        version: 0.0.85-test.20250528020012(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)
+        specifier: 0.0.85-test.20250528024240
+        version: 0.0.85-test.20250528024240(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)
     devDependencies:
       '@types/node':
         specifier: ^22.14.0
@@ -224,8 +224,8 @@ importers:
         specifier: ^13.1.1
         version: 13.1.1
       rwsdk:
-        specifier: 0.0.85-test.20250528020012
-        version: 0.0.85-test.20250528020012(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)
+        specifier: 0.0.85-test.20250528024240
+        version: 0.0.85-test.20250528024240(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)
     devDependencies:
       '@types/node':
         specifier: ^22.14.0
@@ -3497,8 +3497,8 @@ packages:
   run-parallel@1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
 
-  rwsdk@0.0.85-test.20250528020012:
-    resolution: {integrity: sha512-YN4P/dq5tVHSCBZSK1+zPCV3JtSA6Je2mhAJQO/YSDlRXcADZZpH2sRSQ0Q7YaM9XB6PeINAUz9NUUz8+kf/pA==}
+  rwsdk@0.0.85-test.20250528024240:
+    resolution: {integrity: sha512-V8/eflDzkJtj8JcNDiOtf5Mcjv9y8eV2Inww6aFm3AbAJZiR6840iZxz/tZqLbuxvm6QgNEOVDAs9j2/kPM81w==}
     hasBin: true
     peerDependencies:
       vite: ^6.2.6
@@ -8202,7 +8202,7 @@ snapshots:
     dependencies:
       queue-microtask: 1.2.3
 
-  rwsdk@0.0.85-test.20250528020012(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1):
+  rwsdk@0.0.85-test.20250528024240(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1):
     dependencies:
       '@cloudflare/vite-plugin': 0.0.0-1bae8618b(rollup@4.40.0)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250508.0)(wrangler@4.16.0(@cloudflare/workers-types@4.20250407.0))
       '@cloudflare/workers-types': 4.20250407.0
