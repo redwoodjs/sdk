@@ -1,7 +1,6 @@
 import { Plugin } from "vite";
 import { resolve } from "node:path";
 import { mergeConfig, InlineConfig } from "vite";
-import { PrismaCheckResult } from "./checkIsUsingPrisma.mjs";
 
 const ignoreVirtualModules = {
   name: "rwsdk:ignore-virtual-modules",
@@ -71,7 +70,18 @@ export const configPlugin = ({
               conditions: ["workerd"],
               plugins: [],
             },
-            include: [],
+            include: [
+              "react",
+              "react-dom",
+              "react-dom/client",
+              "react/jsx-runtime",
+              "react/jsx-dev-runtime",
+              "react-dom/server.edge",
+              "react-dom/server",
+              "react-server-dom-webpack/client.browser",
+              "react-server-dom-webpack/client.edge",
+              "react-server-dom-webpack/server.edge",
+            ],
             exclude: [],
           },
         },

@@ -1,6 +1,5 @@
-import { Plugin, EnvironmentOptions } from "vite";
+import { Plugin } from "vite";
 import debug from "debug";
-import { resolve } from "path";
 import { ROOT_DIR } from "../lib/constants.mjs";
 import enhancedResolve from "enhanced-resolve";
 
@@ -85,7 +84,6 @@ function resolveEnvImportMappings(env: keyof typeof ENV_RESOLVERS) {
   return mappings;
 }
 
-// Factory function to create esbuild plugin for a specific environment
 function createEsbuildResolverPlugin(envName: string) {
   const mappings = ENV_IMPORT_MAPPINGS[envName];
 
@@ -126,12 +124,14 @@ function createEsbuildResolverPlugin(envName: string) {
 
 export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
   log("Initializing react conditions resolver plugin");
+  let isBuild = false;
 
   return {
     name: "rwsdk:react-conditions-resolver",
     enforce: "post",
 
     config(config, { command }) {
+      isBuild = command === "build";
       log("Configuring plugin for command=%s", command);
 
       // Add esbuild plugins for each environment
@@ -154,13 +154,18 @@ export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
           envConfig.optimizeDeps.esbuildOptions ??= {};
           envConfig.optimizeDeps.esbuildOptions.plugins ??= [];
           envConfig.optimizeDeps.esbuildOptions.plugins.push(esbuildPlugin);
+          envConfig.optimizeDeps.include ??= [];
 
           log("Added esbuild plugin for environment: %s", envName);
         }
       }
     },
 
-    async resolveId(id, importer, options) {
+    async resolveId(id, importer) {
+      if (!isBuild) {
+        return;
+      }
+
       const envName = this.environment?.name;
 
       if (!envName) {

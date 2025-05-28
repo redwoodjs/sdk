@@ -6,25 +6,16 @@ import { DIST_DIR } from "../lib/constants.mjs";
 const log = debug("rwsdk:vite:ssr-bridge-plugin");
 
 export const VIRTUAL_SSR_PREFIX = "virtual:rwsdk:ssr:";
-export const VIRTUAL_RSC_PREFIX = "virtual:rwsdk:rsc:";
 
 export const ssrBridgePlugin = ({
   projectRootDir,
 }: {
   projectRootDir: string;
 }): Plugin => {
-  const srcSsrBridgePath = path.resolve(DIST_DIR, "ssrBridge.js");
-
-  const distSsrBridgePath = path.resolve(
-    projectRootDir,
-    "dist",
-    "ssr",
-    "ssrBridge.js",
-  );
+  const distSsrBridgePath = path.resolve(DIST_DIR, "ssrBridge.js");
 
   log(
-    "Initializing SSR bridge plugin with srcSsrBridgePath=%s, distSsrBridgePath=%s",
-    srcSsrBridgePath,
+    "Initializing SSR bridge plugin with distSsrBridgePath=%s",
     distSsrBridgePath,
   );
 
@@ -33,6 +24,7 @@ export const ssrBridgePlugin = ({
 
   const ssrBridgePlugin: Plugin = {
     name: "rwsdk:ssr-bridge",
+    enforce: "pre",
     configureServer(server) {
       devServer = server;
       log("Configured dev server");
@@ -48,25 +40,6 @@ export const ssrBridgePlugin = ({
     },
     configEnvironment(env, config) {
       log("Configuring environment: env=%s", env);
-      if (env === "ssr") {
-        config.build ??= {};
-
-        config.build.ssr = true;
-
-        config.build.lib = {
-          ...config.build.lib,
-          entry: srcSsrBridgePath,
-          formats: ["es"],
-          fileName: path.basename(distSsrBridgePath),
-        };
-
-        config.build.outDir = path.dirname(distSsrBridgePath);
-        log(
-          "SSR environment configured with entry=%s, outDir=%s",
-          srcSsrBridgePath,
-          path.dirname(distSsrBridgePath),
-        );
-      }
 
       if (env === "worker") {
         // Configure esbuild to mark rwsdk/__ssr paths as external for worker environment
@@ -126,10 +99,10 @@ export const ssrBridgePlugin = ({
         // it is the entry point for all SSR modules, so to trigger the
         // same dynamic loading logic as other SSR modules (as the case above),
         // we return a virtual id
-        if (id === "rwsdk/__ssr_bridge" && this.environment.name === "rsc") {
+        if (id === "rwsdk/__ssr_bridge" && this.environment.name === "worker") {
           const virtualId = `${VIRTUAL_SSR_PREFIX}${id}`;
           log(
-            "Bridge module case (dev): id=%s matches rwsdk/__ssr_bridge in rsc environment, returning virtual id=%s",
+            "Bridge module case (dev): id=%s matches rwsdk/__ssr_bridge in worker environment, returning virtual id=%s",
             id,
             virtualId,
           );
@@ -140,9 +113,9 @@ export const ssrBridgePlugin = ({
         // originate at SSR bridge module, we return the path to the already built
         // SSR bridge bundle - SSR env builds it, worker build tries to resolve it
         // here and uses it
-        if (id === "rwsdk/__ssr_bridge" && this.environment.name === "rsc") {
+        if (id === "rwsdk/__ssr_bridge" && this.environment.name === "worker") {
           log(
-            "Bridge module case (build): id=%s matches rwsdk/__ssr_bridge in rsc environment, returning distSsrBridgePath=%s",
+            "Bridge module case (build): id=%s matches rwsdk/__ssr_bridge in worker environment, returning distSsrBridgePath=%s",
             id,
             distSsrBridgePath,
           );
@@ -160,17 +133,16 @@ export const ssrBridgePlugin = ({
       }
 
       if (id.startsWith(VIRTUAL_SSR_PREFIX)) {
-        const realPath = id.slice(VIRTUAL_SSR_PREFIX.length);
-        log("Virtual SSR module load: id=%s, realPath=%s", id, realPath);
+        const realId = id.slice(VIRTUAL_SSR_PREFIX.length);
+        log("Virtual SSR module load: id=%s, realId=%s", id, realId);
 
         if (isDev) {
           log(
             "Dev mode: warming up and fetching SSR module for realPath=%s",
-            realPath,
+            realId,
           );
-          await devServer?.environments.ssr.warmupRequest(realPath);
-          const result =
-            await devServer?.environments.ssr.fetchModule(realPath);
+          await devServer?.environments.ssr.warmupRequest(realId);
+          const result = await devServer?.environments.ssr.fetchModule(realId);
 
           const code = "code" in result ? result.code : undefined;
           log("Fetched SSR module code length: %d", code?.length || 0);
