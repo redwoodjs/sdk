@@ -3,7 +3,7 @@ import type { Plugin, ViteDevServer } from "vite";
 import debug from "debug";
 import { DIST_DIR } from "../lib/constants.mjs";
 
-const log = debug("rwsdk:ssr-bridge-plugin");
+const log = debug("rwsdk:vite:ssr-bridge-plugin");
 
 export const VIRTUAL_SSR_PREFIX = "virtual:rwsdk:ssr:";
 export const VIRTUAL_RSC_PREFIX = "virtual:rwsdk:rsc:";

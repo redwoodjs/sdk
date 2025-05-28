@@ -12,8 +12,8 @@ interface TransformResult {
   map?: any;
 }
 
-const logVite = debug("rwsdk:transform-client-components:vite");
-const logEsbuild = debug("rwsdk:transform-client-components:esbuild");
+const logVite = debug("rwsdk:vite:transform-client-components:vite");
+const logEsbuild = debug("rwsdk:vite:transform-client-components:esbuild");
 
 export async function transformClientComponents(
   code: string,

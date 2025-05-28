@@ -4,7 +4,7 @@ import debug from "debug";
 import { transformClientComponents } from "./transformClientComponents.mjs";
 import { transformServerFunctions } from "./transformServerFunctions.mjs";
 
-const log = debug("rwsdk:rsc-directives-plugin");
+const log = debug("rwsdk:vite:rsc-directives-plugin");
 
 export const rscDirectivesPlugin = ({
   clientFiles,

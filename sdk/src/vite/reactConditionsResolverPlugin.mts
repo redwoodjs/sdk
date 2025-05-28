@@ -4,7 +4,7 @@ import { ROOT_DIR } from "../lib/constants.mjs";
 import enhancedResolve from "enhanced-resolve";
 import { ensureAliasArray } from "./ensureAliasArray.mjs";
 
-const log = debug("rwsdk:react-conditions-resolver-plugin");
+const log = debug("rwsdk:vite:react-conditions-resolver-plugin");
 
 export const REACT_IMPORTS = [
   "react",
