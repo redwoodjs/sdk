@@ -2,6 +2,8 @@ import { Plugin } from "vite";
 import debug from "debug";
 import { ROOT_DIR } from "../lib/constants.mjs";
 import enhancedResolve from "enhanced-resolve";
+import type { Alias, UserConfig } from "vite";
+import { ensureAliasArray } from "./ensureAliasArray.mjs";
 
 const log = debug("rwsdk:vite:react-conditions-resolver-plugin");
 
@@ -155,9 +157,38 @@ export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
           envConfig.optimizeDeps.esbuildOptions.plugins ??= [];
           envConfig.optimizeDeps.esbuildOptions.plugins.push(esbuildPlugin);
           envConfig.optimizeDeps.include ??= [];
+          envConfig.optimizeDeps.include.push(...REACT_IMPORTS);
 
           log("Added esbuild plugin for environment: %s", envName);
         }
+      }
+    },
+
+    configResolved(config) {
+      log("Setting up resolve aliases for each environment");
+
+      // Set up aliases for each environment based on the import mappings
+      for (const [envName, mappings] of Object.entries(ENV_IMPORT_MAPPINGS)) {
+        if (!config.environments?.[envName]) {
+          continue;
+        }
+
+        const envConfig = config.environments[envName];
+        const aliases = ensureAliasArray(envConfig);
+
+        for (const [find, replacement] of mappings) {
+          const findRegex = new RegExp(
+            `^${find.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
+          );
+          aliases.push({ find: findRegex, replacement });
+          log("Added alias for env=%s: %s -> %s", envName, find, replacement);
+        }
+
+        log(
+          "Environment %s configured with %d aliases",
+          envName,
+          mappings.size,
+        );
       }
     },
 
