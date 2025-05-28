@@ -72,10 +72,6 @@ export const rscDirectivesPlugin = ({
             };
           }
 
-          if (code.indexOf("use server") === -1) {
-            return;
-          }
-
           const serverResult = transformServerFunctions(
             code,
             `/${relative(process.cwd(), args.path)}`,
