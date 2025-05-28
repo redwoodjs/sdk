@@ -83,7 +83,11 @@ export const ssrBridgePlugin = ({
             );
             build.onResolve({ filter: /.*/ }, (args) => {
               if (process.env.VERBOSE) {
-                log("Esbuild onResolve called for path=%s", args.path);
+                log(
+                  "Esbuild onResolve called for path=%s, args=%O",
+                  args.path,
+                  args,
+                );
               }
 
               if (args.path.startsWith("rwsdk/__ssr")) {

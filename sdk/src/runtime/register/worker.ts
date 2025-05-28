@@ -3,10 +3,12 @@ import {
   registerClientReference as baseRegisterClientReference,
   decodeReply,
 } from "react-server-dom-webpack/server.edge";
-import { ssrGetModuleExport } from "rwsdk/__ssr_bridge";
+import {
+  ssrGetModuleExport,
+  registeredServerFunctions,
+} from "rwsdk/__ssr_bridge";
 
 import { IS_DEV } from "../constants";
-import { registeredServerFunctions } from "../ssrBridge";
 
 export function registerServerReference(
   action: Function,
