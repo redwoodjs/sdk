@@ -30,15 +30,16 @@ export const ENV_RESOLVERS = {
   }),
 };
 
-export const ENV_ALIASES = Object.fromEntries(
+export const ENV_IMPORTS = Object.fromEntries(
   Object.keys(ENV_RESOLVERS).map((env) => [
     env,
-    resolveEnvAliases(env as keyof typeof ENV_RESOLVERS),
+    resolveEnvImports(env as keyof typeof ENV_RESOLVERS),
   ]),
 );
 
-function resolveEnvAliases(env: keyof typeof ENV_RESOLVERS) {
+function resolveEnvImports(env: keyof typeof ENV_RESOLVERS) {
   const aliases = [];
+  const optimizeIncludes = [];
 
   for (const importRequest of REACT_IMPORTS) {
     let resolved: string | false = false;
@@ -56,10 +57,15 @@ function resolveEnvAliases(env: keyof typeof ENV_RESOLVERS) {
         find: exactMatchRegex,
         replacement: resolved,
       });
+
+      optimizeIncludes.push(importRequest);
     }
   }
 
-  return aliases;
+  return {
+    aliases,
+    optimizeIncludes,
+  };
 }
 
 export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
@@ -68,18 +74,20 @@ export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
     enforce: "post",
 
     configEnvironment(name: string, config: EnvironmentOptions) {
-      const aliases = ENV_ALIASES[name];
+      const imports = ENV_IMPORTS[name];
 
-      if (!aliases) {
+      if (!imports) {
         return;
       }
 
       // context(justinvdm 27 May 2024): Setting the alias config via
       // configEnvironment allows us to have optimizeDeps use per-environment aliases, even though
       // EnvironmentOptions type doesn't have it as a property
-      ensureAliasArray(config).push(...aliases);
+      ensureAliasArray(config).push(...imports.aliases);
 
-      ((config.optimizeDeps ??= {}).include ??= []).push(...REACT_IMPORTS);
+      ((config.optimizeDeps ??= {}).include ??= []).push(
+        ...imports.optimizeIncludes,
+      );
     },
   };
 };
