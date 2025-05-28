@@ -2,23 +2,37 @@ import { Plugin } from "vite";
 import debug from "debug";
 import { ROOT_DIR } from "../lib/constants.mjs";
 import enhancedResolve from "enhanced-resolve";
-import type { Alias, UserConfig } from "vite";
 import { ensureAliasArray } from "./ensureAliasArray.mjs";
 
 const log = debug("rwsdk:vite:react-conditions-resolver-plugin");
 
-export const REACT_IMPORTS = [
-  "react",
-  "react-dom",
-  "react-dom/client",
-  "react/jsx-runtime",
-  "react/jsx-dev-runtime",
-  "react-dom/server.edge",
-  "react-dom/server",
-  "react-server-dom-webpack/client.browser",
-  "react-server-dom-webpack/client.edge",
-  "react-server-dom-webpack/server.edge",
-];
+export const ENV_REACT_IMPORTS = {
+  worker: [
+    "react",
+    "react-dom",
+    "react/jsx-runtime",
+    "react/jsx-dev-runtime",
+    "react-server-dom-webpack/server.edge",
+  ],
+  ssr: [
+    "react",
+    "react-dom",
+    "react/jsx-runtime",
+    "react/jsx-dev-runtime",
+    "react-dom/server.edge",
+    "react-dom/server",
+    "react-server-dom-webpack/client.edge",
+  ],
+  client: [
+    "react",
+    "react-dom",
+    "react-dom/client",
+    "react/jsx-runtime",
+    "react/jsx-dev-runtime",
+    "react-server-dom-webpack/client.browser",
+    "react-server-dom-webpack/client.edge",
+  ],
+};
 
 export const ENV_RESOLVERS = {
   ssr: enhancedResolve.create.sync({
@@ -34,7 +48,6 @@ export const ENV_RESOLVERS = {
   }),
 };
 
-// Create a mapping of import -> resolved path for each environment
 export const ENV_IMPORT_MAPPINGS = Object.fromEntries(
   Object.keys(ENV_RESOLVERS).map((env) => [
     env,
@@ -48,8 +61,9 @@ function resolveEnvImportMappings(env: keyof typeof ENV_RESOLVERS) {
   }
 
   const mappings = new Map<string, string>();
+  const reactImports = ENV_REACT_IMPORTS[env];
 
-  for (const importRequest of REACT_IMPORTS) {
+  for (const importRequest of reactImports) {
     if (process.env.VERBOSE) {
       log("Resolving import request=%s for env=%s", importRequest, env);
     }
@@ -135,45 +149,43 @@ export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
     config(config, { command }) {
       isBuild = command === "build";
       log("Configuring plugin for command=%s", command);
+    },
 
-      // Add esbuild plugins for each environment
-      for (const envName of Object.keys(ENV_IMPORT_MAPPINGS)) {
+    configResolved(config) {
+      log("Setting up resolve aliases and optimizeDeps for each environment");
+
+      // Set up aliases and optimizeDeps for each environment
+      for (const [envName, mappings] of Object.entries(ENV_IMPORT_MAPPINGS)) {
+        const reactImports =
+          ENV_REACT_IMPORTS[envName as keyof typeof ENV_REACT_IMPORTS];
+
+        // Ensure environment config exists
+        if (!(config as any).environments) {
+          (config as any).environments = {};
+        }
+
+        if (!(config as any).environments[envName]) {
+          (config as any).environments[envName] = {};
+        }
+
+        const envConfig = (config as any).environments[envName];
+
         const esbuildPlugin = createEsbuildResolverPlugin(envName);
-        const mappings = ENV_IMPORT_MAPPINGS[envName];
-
         if (esbuildPlugin && mappings) {
-          // Add to environment-specific optimizeDeps
-          if (!config.environments) {
-            config.environments = {};
-          }
-
-          if (!config.environments[envName]) {
-            config.environments[envName] = {};
-          }
-
-          const envConfig = config.environments[envName];
           envConfig.optimizeDeps ??= {};
           envConfig.optimizeDeps.esbuildOptions ??= {};
           envConfig.optimizeDeps.esbuildOptions.plugins ??= [];
           envConfig.optimizeDeps.esbuildOptions.plugins.push(esbuildPlugin);
+
           envConfig.optimizeDeps.include ??= [];
-          envConfig.optimizeDeps.include.push(...REACT_IMPORTS);
+          envConfig.optimizeDeps.include.push(...reactImports);
 
-          log("Added esbuild plugin for environment: %s", envName);
-        }
-      }
-    },
-
-    configResolved(config) {
-      log("Setting up resolve aliases for each environment");
-
-      // Set up aliases for each environment based on the import mappings
-      for (const [envName, mappings] of Object.entries(ENV_IMPORT_MAPPINGS)) {
-        if (!config.environments?.[envName]) {
-          continue;
+          log(
+            "Added esbuild plugin and optimizeDeps includes for environment: %s",
+            envName,
+          );
         }
 
-        const envConfig = config.environments[envName];
         const aliases = ensureAliasArray(envConfig);
 
         for (const [find, replacement] of mappings) {
@@ -185,9 +197,10 @@ export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
         }
 
         log(
-          "Environment %s configured with %d aliases",
+          "Environment %s configured with %d aliases and %d optimizeDeps includes",
           envName,
           mappings.size,
+          reactImports.length,
         );
       }
     },
