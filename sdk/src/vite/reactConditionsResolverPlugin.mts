@@ -6,64 +6,46 @@ import { ensureAliasArray } from "./ensureAliasArray.mjs";
 
 const log = debug("rwsdk:vite:react-conditions-resolver-plugin");
 
-export const ENV_CONFIGS = {
-  worker: {
-    imports: [
-      "react",
-      "react-dom",
-      "react/jsx-runtime",
-      "react/jsx-dev-runtime",
-      "react-server-dom-webpack/server.edge",
-    ],
-    resolver: enhancedResolve.create.sync({
-      conditionNames: ["react-server", "workerd", "worker", "edge", "default"],
-    }),
-  },
+export const REACT_IMPORTS = [
+  "react",
+  "react-dom",
+  "react-dom/client",
+  "react/jsx-runtime",
+  "react/jsx-dev-runtime",
+  "react-dom/server.edge",
+  "react-dom/server",
+  "react-server-dom-webpack/client.browser",
+  "react-server-dom-webpack/client.edge",
+  "react-server-dom-webpack/server.edge",
+];
 
-  ssr: {
-    imports: [
-      "react",
-      "react-dom",
-      "react/jsx-runtime",
-      "react/jsx-dev-runtime",
-      "react-dom/server.edge",
-      "react-dom/server",
-      "react-server-dom-webpack/client.edge",
-    ],
-    resolver: enhancedResolve.create.sync({
-      conditionNames: ["workerd", "worker", "edge", "default"],
-    }),
-  },
+export const ENV_RESOLVERS = {
+  ssr: enhancedResolve.create.sync({
+    conditionNames: ["workerd", "worker", "edge", "default"],
+  }),
 
-  client: {
-    imports: [
-      "react",
-      "react-dom",
-      "react-dom/client",
-      "react/jsx-runtime",
-      "react/jsx-dev-runtime",
-      "react-server-dom-webpack/client.browser",
-    ],
-    resolver: enhancedResolve.create.sync({
-      conditionNames: ["browser", "default"],
-    }),
-  },
+  worker: enhancedResolve.create.sync({
+    conditionNames: ["react-server", "workerd", "worker", "edge", "default"],
+  }),
+
+  client: enhancedResolve.create.sync({
+    conditionNames: ["browser", "default"],
+  }),
 };
 
 export const ENV_IMPORTS = Object.fromEntries(
-  Object.keys(ENV_CONFIGS).map((env) => [
+  Object.keys(ENV_RESOLVERS).map((env) => [
     env,
-    resolveEnvImports(env as keyof typeof ENV_CONFIGS),
+    resolveEnvImports(env as keyof typeof ENV_RESOLVERS),
   ]),
 );
 
-function resolveEnvImports(env: keyof typeof ENV_CONFIGS) {
+function resolveEnvImports(env: keyof typeof ENV_RESOLVERS) {
   log("Resolving environment imports for env=%s", env);
   const aliases = [];
   const optimizeIncludes = [];
-  const config = ENV_CONFIGS[env];
 
-  for (const importRequest of config.imports) {
+  for (const importRequest of REACT_IMPORTS) {
     if (process.env.VERBOSE) {
       log("Resolving import request=%s for env=%s", importRequest, env);
     }
@@ -71,7 +53,7 @@ function resolveEnvImports(env: keyof typeof ENV_CONFIGS) {
     let resolved: string | false = false;
 
     try {
-      resolved = config.resolver(ROOT_DIR, importRequest);
+      resolved = ENV_RESOLVERS[env](ROOT_DIR, importRequest);
       if (process.env.VERBOSE) {
         log(
           "Successfully resolved %s to %s for env=%s",
@@ -143,7 +125,29 @@ export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
       // context(justinvdm 27 May 2024): Setting the alias config via
       // configEnvironment allows us to have optimizeDeps use per-environment aliases, even though
       // EnvironmentOptions type doesn't have it as a property
-      ensureAliasArray(config).push(...imports.aliases);
+      const aliasArray = ensureAliasArray(config);
+
+      // Remove existing aliases that match any of the imports we're about to add
+      for (let i = aliasArray.length - 1; i >= 0; i--) {
+        const alias = aliasArray[i];
+        const aliasFind = alias.find;
+
+        // Check if this alias matches any of our import requests
+        const matchesImport = imports.optimizeIncludes.some((importRequest) => {
+          if (typeof aliasFind === "string") {
+            return aliasFind === importRequest;
+          } else if (aliasFind instanceof RegExp) {
+            return aliasFind.test(importRequest);
+          }
+          return false;
+        });
+
+        if (matchesImport) {
+          aliasArray.splice(i, 1);
+        }
+      }
+
+      aliasArray.push(...imports.aliases);
 
       ((config.optimizeDeps ??= {}).include ??= []).push(
         ...imports.optimizeIncludes,

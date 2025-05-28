@@ -71,12 +71,8 @@ export const configPlugin = ({
               conditions: ["workerd", "react-server"],
               plugins: [ignoreVirtualModules],
             },
-            include: [
-              "react/jsx-runtime",
-              "react/jsx-dev-runtime",
-              "react-server-dom-webpack/client.edge",
-              "react-server-dom-webpack/server.edge",
-            ],
+            include: [],
+            exclude: [],
           },
           build: {
             outDir: resolve(projectRootDir, "dist", "worker"),

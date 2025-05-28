@@ -91,12 +91,11 @@ export const ssrBridgePlugin = ({
         // it is the entry point for all SSR modules, so to trigger the
         // same dynamic loading logic as other SSR modules (as the case above),
         // we return a virtual id
-        if (id === srcSsrBridgePath && this.environment.name === "rsc") {
-          const virtualId = `${VIRTUAL_SSR_PREFIX}${srcSsrBridgePath}`;
+        if (id === "rwsdk/__ssr_bridge" && this.environment.name === "rsc") {
+          const virtualId = `${VIRTUAL_SSR_PREFIX}${id}`;
           log(
-            "Bridge module case (dev): id=%s matches srcSsrBridgePath=%s in rsc environment, returning virtual id=%s",
+            "Bridge module case (dev): id=%s matches rwsdk/__ssr_bridge in rsc environment, returning virtual id=%s",
             id,
-            srcSsrBridgePath,
             virtualId,
           );
           return virtualId;
@@ -106,11 +105,10 @@ export const ssrBridgePlugin = ({
         // originate at SSR bridge module, we return the path to the already built
         // SSR bridge bundle - SSR env builds it, worker build tries to resolve it
         // here and uses it
-        if (id === srcSsrBridgePath && this.environment.name === "rsc") {
+        if (id === "rwsdk/__ssr_bridge" && this.environment.name === "rsc") {
           log(
-            "Bridge module case (build): id=%s matches srcSsrBridgePath=%s in rsc environment, returning distSsrBridgePath=%s",
+            "Bridge module case (build): id=%s matches rwsdk/__ssr_bridge in rsc environment, returning distSsrBridgePath=%s",
             id,
-            srcSsrBridgePath,
             distSsrBridgePath,
           );
           return distSsrBridgePath;
