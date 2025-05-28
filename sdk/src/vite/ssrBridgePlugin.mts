@@ -54,7 +54,7 @@ export const ssrBridgePlugin = ({
             log(
               "Setting up esbuild plugin to mark rwsdk/__ssr paths as external for worker",
             );
-            build.onResolve({ filter: /.*/ }, (args) => {
+            build.onResolve({ filter: /.*\.js$/ }, (args) => {
               if (process.env.VERBOSE) {
                 log(
                   "Esbuild onResolve called for path=%s, args=%O",
@@ -129,10 +129,18 @@ export const ssrBridgePlugin = ({
     },
     async load(id) {
       if (process.env.VERBOSE) {
-        log("Loading id=%s, isDev=%s", id, isDev);
+        log(
+          "Loading id=%s, isDev=%s, environment=%s",
+          id,
+          isDev,
+          this.environment.name,
+        );
       }
 
-      if (id.startsWith(VIRTUAL_SSR_PREFIX)) {
+      if (
+        id.startsWith(VIRTUAL_SSR_PREFIX) &&
+        this.environment.name === "worker"
+      ) {
         const realId = id.slice(VIRTUAL_SSR_PREFIX.length);
         log("Virtual SSR module load: id=%s, realId=%s", id, realId);
 
@@ -156,6 +164,11 @@ export const ssrBridgePlugin = ({
 `;
 
           log("Transformed SSR module code length: %d", transformedCode.length);
+
+          if (process.env.VERBOSE) {
+            log("Transformed SSR module code: %s", transformedCode);
+          }
+
           return transformedCode;
         }
       }

@@ -62,7 +62,7 @@ export const rscDirectivesPlugin = ({
       name: "rsc-directives-esbuild-transform",
       setup(build) {
         log("Setting up esbuild plugin for environment: %s", env);
-        build.onLoad({ filter: /.*/ }, async (args) => {
+        build.onLoad({ filter: /.*\.js$/ }, async (args) => {
           if (process.env.VERBOSE) {
             log("Esbuild onLoad called for path=%s", args.path);
           }
