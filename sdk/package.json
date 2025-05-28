@@ -42,8 +42,8 @@
       "types": "./dist/runtime/entries/ssr.d.ts"
     },
     "./__ssr_bridge": {
-      "react-server": "./dist/runtime/entries/no-react-server.js",
-      "default": "./dist/runtime/ssrBridge.js",
+      "react-server": "./dist/runtime/ssrBridge.js",
+      "default": "./dist/runtime/entries/react-server-only.js",
       "types": "./dist/runtime/ssrBridge.d.ts"
     },
     "./router": {
