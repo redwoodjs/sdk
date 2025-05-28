@@ -1,5 +1,4 @@
 import MagicString from "magic-string";
-import { virtualPlugin } from "./virtualPlugin.mjs";
 import { Plugin } from "vite";
 import { readFile } from "fs/promises";
 import { glob } from "glob";
@@ -41,20 +40,44 @@ export const findFilesContainingUseClient = async ({
   }
 };
 
-export const useClientLookupPlugin = ({
+export const useClientLookupPlugin = async ({
   projectRootDir,
   clientFiles,
 }: {
   projectRootDir: string;
   clientFiles: Set<string>;
-}): Plugin =>
-  virtualPlugin("use-client-lookup", async () => {
-    await findFilesContainingUseClient({
-      projectRootDir,
-      clientFiles,
-    });
+}): Promise<Plugin> => {
+  await findFilesContainingUseClient({
+    projectRootDir,
+    clientFiles,
+  });
 
-    const s = new MagicString(`
+  return {
+    name: `rwsdk:use-client-lookup`,
+    configEnvironment(env, config) {
+      config.optimizeDeps ??= {};
+      config.optimizeDeps.esbuildOptions ??= {};
+      config.optimizeDeps.esbuildOptions.plugins ??= [];
+      config.optimizeDeps.esbuildOptions.plugins.push({
+        name: "rwsdk:use-client-lookup",
+        setup(build) {
+          build.onResolve({ filter: /^virtual:use-client-lookup$/ }, () => {
+            return {
+              path: "virtual:use-client-lookup",
+              external: true,
+            };
+          });
+        },
+      });
+    },
+    resolveId(source) {
+      if (source === "virtual:use-client-lookup") {
+        return source;
+      }
+    },
+    load(id) {
+      if (id === "virtual:use-client-lookup") {
+        const s = new MagicString(`
 export const useClientLookup = {
   ${Array.from(clientFiles)
     .map(
@@ -65,8 +88,11 @@ export const useClientLookup = {
     .join("")}
 };
 `);
-    return {
-      code: s.toString(),
-      map: s.generateMap(),
-    };
-  });
+        return {
+          code: s.toString(),
+          map: s.generateMap(),
+        };
+      }
+    },
+  };
+};

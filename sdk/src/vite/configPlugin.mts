@@ -2,15 +2,6 @@ import { Plugin } from "vite";
 import { resolve } from "node:path";
 import { mergeConfig, InlineConfig } from "vite";
 
-const ignoreVirtualModules = {
-  name: "rwsdk:ignore-virtual-modules",
-  setup(build: any) {
-    build.onResolve({ filter: /^virtual:use-client-lookup$/ }, () => {
-      return { external: true };
-    });
-  },
-};
-
 export const configPlugin = ({
   mode,
   silent,
@@ -55,7 +46,7 @@ export const configPlugin = ({
           optimizeDeps: {
             noDiscovery: false,
             esbuildOptions: {
-              plugins: [ignoreVirtualModules],
+              plugins: [],
               define: {
                 "process.env.NODE_ENV": JSON.stringify(mode),
               },
@@ -86,7 +77,7 @@ export const configPlugin = ({
             noDiscovery: false,
             esbuildOptions: {
               conditions: ["workerd", "react-server"],
-              plugins: [ignoreVirtualModules],
+              plugins: [],
             },
             include: [],
             exclude: [],
