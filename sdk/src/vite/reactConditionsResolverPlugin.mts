@@ -70,7 +70,7 @@ function resolveEnvImports(env: keyof typeof ENV_RESOLVERS) {
 
     if (resolved) {
       const exactMatchRegex = new RegExp(
-        `^${resolved.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
+        `^${importRequest.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
       );
 
       aliases.push({
