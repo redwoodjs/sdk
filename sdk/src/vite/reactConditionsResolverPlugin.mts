@@ -1,5 +1,6 @@
 import { Plugin, EnvironmentOptions } from "vite";
 import debug from "debug";
+import { resolve } from "path";
 import { ROOT_DIR } from "../lib/constants.mjs";
 import enhancedResolve from "enhanced-resolve";
 
@@ -96,6 +97,15 @@ function createEsbuildResolverPlugin(envName: string) {
     name: `rwsdk:react-conditions-resolver-esbuild-${envName}`,
     setup(build: any) {
       build.onResolve({ filter: /.*/ }, (args: any) => {
+        if (process.env.VERBOSE) {
+          log(
+            "ESBuild resolving %s for env=%s, args=%O",
+            args.path,
+            envName,
+            args,
+          );
+        }
+
         const resolved = mappings.get(args.path);
 
         if (resolved) {
@@ -145,16 +155,7 @@ export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
           envConfig.optimizeDeps.esbuildOptions.plugins ??= [];
           envConfig.optimizeDeps.esbuildOptions.plugins.push(esbuildPlugin);
 
-          // Add the React imports to optimizeDeps.include for this environment
-          envConfig.optimizeDeps.include ??= [];
-          const reactImportsToInclude = Array.from(mappings.keys());
-          envConfig.optimizeDeps.include.push(...reactImportsToInclude);
-
-          log(
-            "Added esbuild plugin and optimizeDeps.include for environment: %s (%d imports)",
-            envName,
-            reactImportsToInclude.length,
-          );
+          log("Added esbuild plugin for environment: %s", envName);
         }
       }
     },

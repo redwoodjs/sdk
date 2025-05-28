@@ -60,6 +60,21 @@ export const configPlugin = ({
             },
           },
         },
+        ssr: {
+          resolve: {
+            conditions: ["workerd"],
+            noExternal: true,
+          },
+          optimizeDeps: {
+            noDiscovery: false,
+            esbuildOptions: {
+              conditions: ["workerd"],
+              plugins: [],
+            },
+            include: [],
+            exclude: [],
+          },
+        },
         worker: {
           resolve: {
             conditions: ["workerd", "react-server"],
