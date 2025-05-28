@@ -6,46 +6,64 @@ import { ensureAliasArray } from "./ensureAliasArray.mjs";
 
 const log = debug("rwsdk:vite:react-conditions-resolver-plugin");
 
-export const REACT_IMPORTS = [
-  "react",
-  "react-dom",
-  "react-dom/client",
-  "react/jsx-runtime",
-  "react/jsx-dev-runtime",
-  "react-dom/server.edge",
-  "react-dom/server",
-  "react-server-dom-webpack/client.browser",
-  "react-server-dom-webpack/client.edge",
-  "react-server-dom-webpack/server.edge",
-];
+export const ENV_CONFIGS = {
+  worker: {
+    imports: [
+      "react",
+      "react-dom",
+      "react/jsx-runtime",
+      "react/jsx-dev-runtime",
+      "react-server-dom-webpack/server.edge",
+    ],
+    resolver: enhancedResolve.create.sync({
+      conditionNames: ["react-server", "workerd", "worker", "edge", "default"],
+    }),
+  },
 
-export const ENV_RESOLVERS = {
-  ssr: enhancedResolve.create.sync({
-    conditionNames: ["workerd", "worker", "edge", "default"],
-  }),
+  ssr: {
+    imports: [
+      "react",
+      "react-dom",
+      "react/jsx-runtime",
+      "react/jsx-dev-runtime",
+      "react-dom/server.edge",
+      "react-dom/server",
+      "react-server-dom-webpack/client.edge",
+    ],
+    resolver: enhancedResolve.create.sync({
+      conditionNames: ["workerd", "worker", "edge", "default"],
+    }),
+  },
 
-  worker: enhancedResolve.create.sync({
-    conditionNames: ["react-server", "workerd", "worker", "edge", "default"],
-  }),
-
-  client: enhancedResolve.create.sync({
-    conditionNames: ["browser", "default"],
-  }),
+  client: {
+    imports: [
+      "react",
+      "react-dom",
+      "react-dom/client",
+      "react/jsx-runtime",
+      "react/jsx-dev-runtime",
+      "react-server-dom-webpack/client.browser",
+    ],
+    resolver: enhancedResolve.create.sync({
+      conditionNames: ["browser", "default"],
+    }),
+  },
 };
 
 export const ENV_IMPORTS = Object.fromEntries(
-  Object.keys(ENV_RESOLVERS).map((env) => [
+  Object.keys(ENV_CONFIGS).map((env) => [
     env,
-    resolveEnvImports(env as keyof typeof ENV_RESOLVERS),
+    resolveEnvImports(env as keyof typeof ENV_CONFIGS),
   ]),
 );
 
-function resolveEnvImports(env: keyof typeof ENV_RESOLVERS) {
+function resolveEnvImports(env: keyof typeof ENV_CONFIGS) {
   log("Resolving environment imports for env=%s", env);
   const aliases = [];
   const optimizeIncludes = [];
+  const config = ENV_CONFIGS[env];
 
-  for (const importRequest of REACT_IMPORTS) {
+  for (const importRequest of config.imports) {
     if (process.env.VERBOSE) {
       log("Resolving import request=%s for env=%s", importRequest, env);
     }
@@ -53,7 +71,7 @@ function resolveEnvImports(env: keyof typeof ENV_RESOLVERS) {
     let resolved: string | false = false;
 
     try {
-      resolved = ENV_RESOLVERS[env](ROOT_DIR, importRequest);
+      resolved = config.resolver(ROOT_DIR, importRequest);
       if (process.env.VERBOSE) {
         log(
           "Successfully resolved %s to %s for env=%s",
