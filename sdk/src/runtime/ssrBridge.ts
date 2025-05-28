@@ -4,8 +4,9 @@
 // import conditions and bundling logic
 //
 // **NOTE:** Any time we need to import from SSR side in RSC side, we need to
-// import it through this bridge file. We have bundler logic (ssrBridgePlugin)
-// that looks out for imports to this exact file.
+// import it through this bridge module, using the bare import path
+// `rwsdk/__ssr_bridge`. We have bundler logic (ssrBridgePlugin) that looks out
+// for imports to it.
 
 export { renderRscThenableToHtmlStream } from "./render/renderRscThenableToHtmlStream";
 export { registeredServerFunctions } from "./register/ssr";
