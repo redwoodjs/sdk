@@ -4,6 +4,7 @@ import debug from "debug";
 import { DIST_DIR } from "../lib/constants.mjs";
 
 const log = debug("rwsdk:vite:ssr-bridge-plugin");
+const verboseLog = debug("verbose:rwsdk:vite:ssr-bridge-plugin");
 
 export const VIRTUAL_SSR_PREFIX = "virtual:rwsdk:ssr:";
 
@@ -55,15 +56,13 @@ export const ssrBridgePlugin = ({
               "Setting up esbuild plugin to mark rwsdk/__ssr paths as external for worker",
             );
             build.onResolve({ filter: /.*$/ }, (args) => {
-              if (process.env.VERBOSE) {
-                log(
-                  "Esbuild onResolve called for path=%s, args=%O",
-                  args.path,
-                  args,
-                );
-              }
+              verboseLog(
+                "Esbuild onResolve called for path=%s, args=%O",
+                args.path,
+                args,
+              );
 
-              if (args.path.startsWith("rwsdk/__ssr")) {
+              if (args.path === "rwsdk/__ssr_bridge") {
                 log("Marking as external: %s", args.path);
                 return {
                   path: args.path,
@@ -77,7 +76,7 @@ export const ssrBridgePlugin = ({
       }
     },
     async resolveId(id) {
-      log(
+      verboseLog(
         "Resolving id=%s, environment=%s, isDev=%s",
         id,
         this.environment?.name,
@@ -121,12 +120,10 @@ export const ssrBridgePlugin = ({
         }
       }
 
-      if (process.env.VERBOSE) {
-        log("No resolution for id=%s", id);
-      }
+      verboseLog("No resolution for id=%s", id);
     },
     async load(id) {
-      log(
+      verboseLog(
         "Loading id=%s, isDev=%s, environment=%s",
         id,
         isDev,
@@ -167,9 +164,7 @@ export const ssrBridgePlugin = ({
         }
       }
 
-      if (process.env.VERBOSE) {
-        log("No load handling for id=%s", id);
-      }
+      verboseLog("No load handling for id=%s", id);
     },
   };
 

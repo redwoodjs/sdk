@@ -2,6 +2,7 @@ import { Project, SyntaxKind, Node, SourceFile } from "ts-morph";
 import debug from "debug";
 
 const log = debug("rwsdk:vite:transform-server-functions");
+const verboseLog = debug("verbose:rwsdk:vite:transform-server-functions");
 
 interface TransformResult {
   code: string;
@@ -9,9 +10,7 @@ interface TransformResult {
 }
 
 export const findExportedFunctions = (sourceFile: SourceFile) => {
-  if (process.env.VERBOSE) {
-    log("Finding exported functions in source file");
-  }
+  verboseLog("Finding exported functions in source file");
 
   const exportedFunctions = new Set<string>();
 
@@ -24,9 +23,7 @@ export const findExportedFunctions = (sourceFile: SourceFile) => {
       continue;
     }
     exportedFunctions.add(name);
-    if (process.env.VERBOSE) {
-      log("Found export assignment: %s", name);
-    }
+    verboseLog("Found export assignment: %s", name);
   }
 
   const functionDeclarations = sourceFile.getDescendantsOfKind(
@@ -37,9 +34,7 @@ export const findExportedFunctions = (sourceFile: SourceFile) => {
       const name = func.getName();
       if (name) {
         exportedFunctions.add(name);
-        if (process.env.VERBOSE) {
-          log("Found exported function declaration: %s", name);
-        }
+        verboseLog("Found exported function declaration: %s", name);
       }
     }
   }
@@ -56,9 +51,7 @@ export const findExportedFunctions = (sourceFile: SourceFile) => {
           const name = declaration.getName();
           if (name) {
             exportedFunctions.add(name);
-            if (process.env.VERBOSE) {
-              log("Found exported arrow function: %s", name);
-            }
+            verboseLog("Found exported arrow function: %s", name);
           }
         }
       }
@@ -78,13 +71,11 @@ export const transformServerFunctions = (
   relativeId: string,
   environment: "client" | "worker" | "ssr",
 ): TransformResult | undefined => {
-  if (process.env.VERBOSE) {
-    log(
-      "Transform server functions called for relativeId=%s, environment=%s",
-      relativeId,
-      environment,
-    );
-  }
+  verboseLog(
+    "Transform server functions called for relativeId=%s, environment=%s",
+    relativeId,
+    environment,
+  );
 
   const project = new Project({
     useInMemoryFileSystem: true,
@@ -101,24 +92,20 @@ export const transformServerFunctions = (
     SyntaxKind.StringLiteral,
   );
   if (!firstString) {
-    if (process.env.VERBOSE) {
-      log(
-        "No string literals found, skipping transformation for relativeId=%s",
-        relativeId,
-      );
-    }
+    verboseLog(
+      "No string literals found, skipping transformation for relativeId=%s",
+      relativeId,
+    );
     return;
   }
   if (
     firstString?.getText().indexOf("use server") === -1 &&
     firstString?.getStart() !== sourceFile.getStart()
   ) {
-    if (process.env.VERBOSE) {
-      log(
-        "No 'use server' directive found at start, skipping transformation for relativeId=%s",
-        relativeId,
-      );
-    }
+    verboseLog(
+      "No 'use server' directive found at start, skipping transformation for relativeId=%s",
+      relativeId,
+    );
     return;
   }
 
@@ -132,9 +119,10 @@ export const transformServerFunctions = (
     const parent = firstString.getParent();
     if (parent && Node.isExpressionStatement(parent)) {
       parent.replaceWithText("");
-      if (process.env.VERBOSE) {
-        log("Removed 'use server' directive from relativeId=%s", relativeId);
-      }
+      verboseLog(
+        "Removed 'use server' directive from relativeId=%s",
+        relativeId,
+      );
     }
   }
 
@@ -300,13 +288,11 @@ export const transformServerFunctions = (
     };
   }
 
-  if (process.env.VERBOSE) {
-    log(
-      "No transformation applied for environment=%s, relativeId=%s",
-      environment,
-      relativeId,
-    );
-  }
+  verboseLog(
+    "No transformation applied for environment=%s, relativeId=%s",
+    environment,
+    relativeId,
+  );
 };
 
 export type { TransformResult };

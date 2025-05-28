@@ -14,6 +14,12 @@ interface TransformResult {
 
 const logVite = debug("rwsdk:vite:transform-client-components:vite");
 const logEsbuild = debug("rwsdk:vite:transform-client-components:esbuild");
+const verboseLogVite = debug(
+  "verbose:rwsdk:vite:transform-client-components:vite",
+);
+const verboseLogEsbuild = debug(
+  "verbose:rwsdk:vite:transform-client-components:esbuild",
+);
 
 export async function transformClientComponents(
   code: string,
@@ -21,6 +27,7 @@ export async function transformClientComponents(
   ctx: TransformContext,
 ): Promise<TransformResult | undefined> {
   const log = ctx.isEsbuild ? logEsbuild : logVite;
+  const verboseLog = ctx.isEsbuild ? verboseLogEsbuild : verboseLogVite;
   log("Called transformClientComponents for id: id=%s, ctx: %O", id, ctx);
 
   // 1. Skip if not in worker environment
@@ -36,9 +43,7 @@ export async function transformClientComponents(
     cleanCode.startsWith("'use client'");
   if (!hasUseClient) {
     log("Skipping: no 'use client' directive in id=%s", id);
-    if (process.env.VERBOSE) {
-      log(":VERBOSE: Returning code unchanged for id=%s:\n%s", id, code);
-    }
+    verboseLog(":VERBOSE: Returning code unchanged for id=%s:\n%s", id, code);
     return;
   }
   log("Processing 'use client' module: id=%s", id);
@@ -180,13 +185,11 @@ export async function transformClientComponents(
       }
     }
 
-    if (process.env.VERBOSE) {
-      log(
-        ":VERBOSE: SSR transformed code for %s:\n%s",
-        id,
-        sourceFile.getFullText(),
-      );
-    }
+    verboseLog(
+      ":VERBOSE: SSR transformed code for %s:\n%s",
+      id,
+      sourceFile.getFullText(),
+    );
 
     return {
       code: sourceFile.getFullText(),
@@ -260,9 +263,7 @@ export async function transformClientComponents(
     finalResult,
   );
 
-  if (process.env.VERBOSE) {
-    log(":VERBOSE: Transformed code for %s:\n%s", id, finalResult);
-  }
+  verboseLog(":VERBOSE: Transformed code for %s:\n%s", id, finalResult);
 
   return {
     code: finalResult,

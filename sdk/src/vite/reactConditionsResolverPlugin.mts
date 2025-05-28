@@ -5,6 +5,7 @@ import enhancedResolve from "enhanced-resolve";
 import { ensureAliasArray } from "./ensureAliasArray.mjs";
 
 const log = debug("rwsdk:vite:react-conditions-resolver-plugin");
+const verboseLog = debug("verbose:rwsdk:vite:react-conditions-resolver-plugin");
 
 export const ENV_REACT_IMPORTS = {
   worker: [
@@ -56,34 +57,26 @@ export const ENV_IMPORT_MAPPINGS = Object.fromEntries(
 );
 
 function resolveEnvImportMappings(env: keyof typeof ENV_RESOLVERS) {
-  if (process.env.VERBOSE) {
-    log("Resolving environment import mappings for env=%s", env);
-  }
+  verboseLog("Resolving environment import mappings for env=%s", env);
 
   const mappings = new Map<string, string>();
   const reactImports = ENV_REACT_IMPORTS[env];
 
   for (const importRequest of reactImports) {
-    if (process.env.VERBOSE) {
-      log("Resolving import request=%s for env=%s", importRequest, env);
-    }
+    verboseLog("Resolving import request=%s for env=%s", importRequest, env);
 
     let resolved: string | false = false;
 
     try {
       resolved = ENV_RESOLVERS[env](ROOT_DIR, importRequest);
-      if (process.env.VERBOSE) {
-        log(
-          "Successfully resolved %s to %s for env=%s",
-          importRequest,
-          resolved,
-          env,
-        );
-      }
+      verboseLog(
+        "Successfully resolved %s to %s for env=%s",
+        importRequest,
+        resolved,
+        env,
+      );
     } catch {
-      if (process.env.VERBOSE) {
-        log("Failed to resolve %s for env=%s", importRequest, env);
-      }
+      verboseLog("Failed to resolve %s for env=%s", importRequest, env);
     }
 
     if (resolved) {
@@ -111,26 +104,22 @@ function createEsbuildResolverPlugin(envName: string) {
     name: `rwsdk:react-conditions-resolver-esbuild-${envName}`,
     setup(build: any) {
       build.onResolve({ filter: /.*/ }, (args: any) => {
-        if (process.env.VERBOSE) {
-          log(
-            "ESBuild resolving %s for env=%s, args=%O",
-            args.path,
-            envName,
-            args,
-          );
-        }
+        verboseLog(
+          "ESBuild resolving %s for env=%s, args=%O",
+          args.path,
+          envName,
+          args,
+        );
 
         const resolved = mappings.get(args.path);
 
         if (resolved) {
-          if (process.env.VERBOSE) {
-            log(
-              "ESBuild resolving %s -> %s for env=%s",
-              args.path,
-              resolved,
-              envName,
-            );
-          }
+          verboseLog(
+            "ESBuild resolving %s -> %s for env=%s",
+            args.path,
+            resolved,
+            envName,
+          );
           return { path: resolved };
         }
       });
@@ -216,21 +205,17 @@ export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
         return;
       }
 
-      if (process.env.VERBOSE) {
-        log(
-          "Resolving id=%s, environment=%s, importer=%s",
-          id,
-          envName,
-          importer,
-        );
-      }
+      verboseLog(
+        "Resolving id=%s, environment=%s, importer=%s",
+        id,
+        envName,
+        importer,
+      );
 
       const mappings = ENV_IMPORT_MAPPINGS[envName];
 
       if (!mappings) {
-        if (process.env.VERBOSE) {
-          log("No mappings found for environment: %s", envName);
-        }
+        verboseLog("No mappings found for environment: %s", envName);
         return;
       }
 
@@ -241,9 +226,7 @@ export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
         return resolved;
       }
 
-      if (process.env.VERBOSE) {
-        log("No resolution found for id=%s in env=%s", id, envName);
-      }
+      verboseLog("No resolution found for id=%s in env=%s", id, envName);
     },
   };
 };

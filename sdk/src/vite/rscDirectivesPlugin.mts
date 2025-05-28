@@ -5,6 +5,7 @@ import { transformClientComponents } from "./transformClientComponents.mjs";
 import { transformServerFunctions } from "./transformServerFunctions.mjs";
 
 const log = debug("rwsdk:vite:rsc-directives-plugin");
+const verboseLog = debug("verbose:rwsdk:vite:rsc-directives-plugin");
 
 export const rscDirectivesPlugin = ({
   clientFiles,
@@ -13,13 +14,11 @@ export const rscDirectivesPlugin = ({
 }): Plugin => ({
   name: "rwsdk:rsc-directives",
   async transform(code, id) {
-    if (process.env.VERBOSE) {
-      log(
-        "Transform called for id=%s, environment=%s",
-        id,
-        this.environment.name,
-      );
-    }
+    verboseLog(
+      "Transform called for id=%s, environment=%s",
+      id,
+      this.environment.name,
+    );
 
     const clientResult = await transformClientComponents(code, id, {
       environmentName: this.environment.name,
@@ -48,9 +47,7 @@ export const rscDirectivesPlugin = ({
       };
     }
 
-    if (process.env.VERBOSE) {
-      log("No transformation applied for id=%s", id);
-    }
+    verboseLog("No transformation applied for id=%s", id);
   },
   configEnvironment(env, config) {
     log("Configuring environment: env=%s", env);
@@ -63,9 +60,7 @@ export const rscDirectivesPlugin = ({
       setup(build) {
         log("Setting up esbuild plugin for environment: %s", env);
         build.onLoad({ filter: /.*\.js$/ }, async (args) => {
-          if (process.env.VERBOSE) {
-            log("Esbuild onLoad called for path=%s", args.path);
-          }
+          verboseLog("Esbuild onLoad called for path=%s", args.path);
 
           const fs = await import("node:fs/promises");
           const path = await import("node:path");
@@ -74,9 +69,7 @@ export const rscDirectivesPlugin = ({
           try {
             code = await fs.readFile(args.path, "utf-8");
           } catch {
-            if (process.env.VERBOSE) {
-              log("Failed to read file: %s", args.path);
-            }
+            verboseLog("Failed to read file: %s", args.path);
             return;
           }
 
@@ -118,9 +111,10 @@ export const rscDirectivesPlugin = ({
             };
           }
 
-          if (process.env.VERBOSE) {
-            log("Esbuild no transformation applied for path=%s", args.path);
-          }
+          verboseLog(
+            "Esbuild no transformation applied for path=%s",
+            args.path,
+          );
         });
       },
     });
