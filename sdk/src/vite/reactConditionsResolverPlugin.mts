@@ -121,6 +121,12 @@ function createEsbuildResolverPlugin(envName: string) {
             envName,
           );
           return { path: resolved };
+        } else {
+          verboseLog(
+            "ESBuild no resolution found for %s for env=%s",
+            args.path,
+            envName,
+          );
         }
       });
     },
