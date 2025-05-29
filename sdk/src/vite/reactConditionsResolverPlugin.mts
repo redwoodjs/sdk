@@ -56,6 +56,46 @@ export const ENV_IMPORT_MAPPINGS = Object.fromEntries(
   ]),
 );
 
+function createEsbuildResolverPlugin(envName: string) {
+  const mappings = ENV_IMPORT_MAPPINGS[envName];
+
+  if (!mappings) {
+    return null;
+  }
+
+  return {
+    name: `rwsdk:react-conditions-resolver-esbuild-${envName}`,
+    setup(build: any) {
+      build.onResolve({ filter: /.*/ }, (args: any) => {
+        verboseLog(
+          "ESBuild resolving %s for env=%s, args=%O",
+          args.path,
+          envName,
+          args,
+        );
+
+        const resolved = mappings.get(args.path);
+
+        if (resolved) {
+          verboseLog(
+            "ESBuild resolving %s -> %s for env=%s",
+            args.path,
+            resolved,
+            envName,
+          );
+          return { path: resolved };
+        } else {
+          verboseLog(
+            "ESBuild no resolution found for %s for env=%s",
+            args.path,
+            envName,
+          );
+        }
+      });
+    },
+  };
+}
+
 function resolveEnvImportMappings(env: keyof typeof ENV_RESOLVERS) {
   verboseLog("Resolving environment import mappings for env=%s", env);
 
@@ -116,7 +156,6 @@ export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
         const envConfig = ((config as any).environments ??= {})[envName] ?? {};
         const aliases = ensureAliasArray(envConfig);
 
-        console.log("##########aliases for env=%s before", envName, aliases);
         for (const [find, replacement] of mappings) {
           const findRegex = new RegExp(
             `^${find.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
@@ -124,6 +163,13 @@ export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
           aliases.push({ find: findRegex, replacement });
           log("Added alias for env=%s: %s -> %s", envName, find, replacement);
         }
+
+        const optimizeDeps = (envConfig.optimizeDeps ??= {});
+
+        optimizeDeps.include = [
+          ...(optimizeDeps.include ??= []),
+          ...reactImports,
+        ];
 
         log(
           "Environment %s configured with %d aliases and %d optimizeDeps includes",
