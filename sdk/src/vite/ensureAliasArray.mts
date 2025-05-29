@@ -13,7 +13,7 @@ export const ensureAliasArray = (config: UserConfig): Alias[] => {
   } else {
     // context(justinvdm, 2025-05-29): The cloning here is necessary:
     // vite (6.2.6) environments appear to be sharing the same alias
-    // array instance.
+    // array instance - presumably a result of a deep merge
     return (config.resolve.alias = [...config.resolve.alias]);
   }
 
