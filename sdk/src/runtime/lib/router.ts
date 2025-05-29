@@ -276,10 +276,10 @@ function wrapWithLayouts(
   // Create nested layout structure - layouts[0] should be outermost, so use reduceRight
   return layouts.reduceRight((WrappedComponent, Layout) => {
     const Wrapped: React.FC = (props) => {
-      const layoutStr = Layout.toString();
-      const isClientComponent =
-        layoutStr.includes('"use client"') ||
-        layoutStr.includes("'use client'");
+      const isClientComponent = Object.prototype.hasOwnProperty.call(
+        Layout,
+        "$$isClientReference",
+      );
 
       return React.createElement(Layout, {
         children: React.createElement(WrappedComponent, props),
