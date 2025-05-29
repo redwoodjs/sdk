@@ -20,38 +20,25 @@ In this quick start you'll go from zero to request/response in seconds and deplo
   - [Node.js](https://nodejs.org/en/download)
 </Aside>
 
-Create a new project by running the following command, replacing `<project-name>` with your project name:
+Create a new project by running the following command, replacing `my-project-name` with your project name:
 
 <PackageManagers
   type="dlx"
-  pkg="degit"
-  args="redwoodjs/sdk/starters/standard <project-name>"
+  pkg="create-rwsdk"
+  args="my-project-name"
 />
 
 ## Start developing
 
 ### Install the dependencies
 
-<Tabs syncKey="starlight-package-managers-pkg">
-  <TabItem label="npm" icon="seti:npm">
-    ```bash frame="none" showLineNumbers=false
-    cd <project-name>
-    npm install
-    ```
-  </TabItem>
-    <TabItem label="pnpm" icon="pnpm">
-    ```bash frame="none" showLineNumbers=false
-    cd <project-name>
-    pnpm install
-    ```
-  </TabItem>
-  <TabItem label="yarn" icon="seti:yarn">
-    ```bash frame="none" showLineNumbers=false
-    cd <project-name>
-    yarn install
-    ```
-  </TabItem>
-</Tabs>
+```bash frame="none" showLineNumbers=false
+cd my-project-name
+```
+
+<PackageManagers
+  type="install"
+/>
 
 ### Run the development server
 
