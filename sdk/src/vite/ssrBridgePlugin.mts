@@ -48,24 +48,27 @@ export const ssrBridgePlugin = ({
         log("Configuring esbuild options for worker environment");
         config.optimizeDeps ??= {};
         config.optimizeDeps.esbuildOptions ??= {};
-        config.optimizeDeps.esbuildOptions.plugins ??= [];
+        config.optimizeDeps.esbuildOptions.plugins = [];
         config.optimizeDeps.include ??= [];
 
         config.optimizeDeps.esbuildOptions.plugins.push({
           name: "rwsdk-ssr-external",
           setup(build) {
-            log(
-              "Setting up esbuild plugin to mark rwsdk/__ssr paths as external for worker",
-            );
             build.onResolve({ filter: /.*$/ }, (args) => {
               verboseLog(
-                "Esbuild onResolve called for path=%s, args=%O",
+                "Esbuild onResolve called for path=%s, args=%O, environment=%s",
                 args.path,
                 args,
+                env,
               );
 
-              if (args.path === "rwsdk/__ssr_bridge") {
-                log("Marking as external: %s", args.path);
+              if (args.path === "rwsdk/__ssr_bridge" && env === "worker") {
+                log(
+                  "Marking as external: %s, environment=%s, isDev=%s",
+                  args.path,
+                  env,
+                  isDev,
+                );
                 return {
                   path: args.path,
                   external: true,
@@ -78,10 +81,11 @@ export const ssrBridgePlugin = ({
         log("Worker environment esbuild configuration complete");
       }
     },
-    async resolveId(id) {
+    async resolveId(id, importer) {
       verboseLog(
-        "Resolving id=%s, environment=%s, isDev=%s",
+        "Resolving id=%s, importer=%s, environment=%s, isDev=%s",
         id,
+        importer,
         this.environment?.name,
         isDev,
       );
@@ -123,14 +127,20 @@ export const ssrBridgePlugin = ({
         }
       }
 
-      verboseLog("No resolution for id=%s", id);
+      verboseLog(
+        "No resolution for id=%s, environment=%s, isDev=%s, importer=%s",
+        id,
+        this.environment.name,
+        isDev,
+        importer,
+      );
     },
     async load(id) {
       verboseLog(
-        "Loading id=%s, isDev=%s, environment=%s",
+        "Loading id=%s, environment=%s, isDev=%s",
         id,
-        isDev,
         this.environment.name,
+        isDev,
       );
 
       if (
