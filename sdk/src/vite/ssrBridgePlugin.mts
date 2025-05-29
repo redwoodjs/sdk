@@ -62,7 +62,7 @@ export const ssrBridgePlugin = ({
                 env,
               );
 
-              if (args.path === "rwsdk/__ssr_bridge" && env === "worker") {
+              if (args.path === "rwsdk/__ssr_bridge") {
                 log(
                   "Marking as external: %s, environment=%s, isDev=%s",
                   args.path,
