@@ -110,6 +110,13 @@ export const useClientLookupPlugin = async ({
         return source;
       }
 
+      if (source === "/@id/virtual:use-client-lookup") {
+        log(
+          "Resolving /@id/virtual:use-client-lookup to virtual:use-client-lookup",
+        );
+        return source.slice("/@id/".length);
+      }
+
       verboseLog("No resolution for id=%s", source);
     },
     load(id) {

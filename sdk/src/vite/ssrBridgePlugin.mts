@@ -56,19 +56,14 @@ export const ssrBridgePlugin = ({
           setup(build) {
             build.onResolve({ filter: /.*$/ }, (args) => {
               verboseLog(
-                "Esbuild onResolve called for path=%s, args=%O, environment=%s",
+                "Esbuild onResolve called for path=%s, environment=%s, args=%O",
                 args.path,
-                args,
                 env,
+                args,
               );
 
-              if (args.path === "rwsdk/__ssr_bridge") {
-                log(
-                  "Marking as external: %s, environment=%s, isDev=%s",
-                  args.path,
-                  env,
-                  isDev,
-                );
+              if (args.path === "rwsdk/__ssr_bridge" && env === "worker") {
+                log("Marking as external: %s, environment=%s", args.path, env);
                 return {
                   path: args.path,
                   external: true,

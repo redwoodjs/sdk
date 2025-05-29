@@ -74,6 +74,16 @@ function createEsbuildResolverPlugin(envName: string) {
           args,
         );
 
+        if (!args.importer) {
+          verboseLog(
+            "ESBuild no importer for %s for env=%s, args=%O, skipping",
+            args.path,
+            envName,
+            args,
+          );
+          return;
+        }
+
         const resolved = mappings.get(args.path);
 
         if (resolved) {
@@ -83,7 +93,10 @@ function createEsbuildResolverPlugin(envName: string) {
             resolved,
             envName,
           );
-          return { path: resolved };
+          return {
+            path: args.path,
+            external: true,
+          };
         } else {
           verboseLog(
             "ESBuild no resolution found for %s for env=%s",
@@ -169,6 +182,12 @@ export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
         optimizeDeps.include = [
           ...(optimizeDeps.include ??= []),
           ...reactImports,
+        ];
+
+        optimizeDeps.esbuildOptions ??= {};
+        optimizeDeps.esbuildOptions.plugins = [
+          ...(optimizeDeps.esbuildOptions.plugins ?? []),
+          createEsbuildResolverPlugin(envName),
         ];
 
         log(
