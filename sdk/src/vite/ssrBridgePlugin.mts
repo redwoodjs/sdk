@@ -65,15 +65,6 @@ export const ssrBridgePlugin = ({
                 external: true,
               };
             }
-
-            // todo(justinvdm, 30 May 2025): move to its own plugin
-            if (args.path.startsWith("rwsdk/")) {
-              log("Marking as external: %s, environment=%s", args.path, env);
-              return {
-                path: args.path,
-                external: true,
-              };
-            }
           });
         },
       });

@@ -180,14 +180,8 @@ export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
         const optimizeDeps = (envConfig.optimizeDeps ??= {});
 
         optimizeDeps.include = [
-          ...(optimizeDeps.include ??= []),
           ...reactImports,
-        ];
-
-        optimizeDeps.esbuildOptions ??= {};
-        optimizeDeps.esbuildOptions.plugins = [
-          ...(optimizeDeps.esbuildOptions.plugins ?? []),
-          createEsbuildResolverPlugin(envName),
+          ...(optimizeDeps.include ??= []),
         ];
 
         log(
@@ -195,6 +189,12 @@ export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
           envName,
           mappings.size,
           reactImports.length,
+        );
+
+        verboseLog(
+          "Environment %s optimizeDeps includes: %O",
+          envName,
+          optimizeDeps.include,
         );
       }
     },

@@ -69,6 +69,7 @@ export const configPlugin = ({
           },
           optimizeDeps: {
             noDiscovery: false,
+            include: ["rwsdk/worker", "rwsdk/__register/worker"],
             esbuildOptions: {
               conditions: ["workerd", "react-server"],
             },
