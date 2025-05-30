@@ -205,7 +205,7 @@ export async function transformClientComponents(
 
   // Add import declaration
   sourceFile.addImportDeclaration({
-    moduleSpecifier: "rwsdk/worker",
+    moduleSpecifier: "rwsdk/__register/worker",
     namedImports: [{ name: "registerClientReference" }],
   });
 

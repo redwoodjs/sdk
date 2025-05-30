@@ -1,4 +1,3 @@
-export * from "../register/worker";
 export * from "../worker";
 export * from "../error";
 export * from "../script";

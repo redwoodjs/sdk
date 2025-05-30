@@ -131,7 +131,7 @@ export const transformServerFunctions = (
     const ssrSourceFile = project.createSourceFile("ssr.tsx", "");
 
     ssrSourceFile.addImportDeclaration({
-      moduleSpecifier: "rwsdk/__ssr",
+      moduleSpecifier: "rwsdk/__register/ssr",
       namedImports: ["createServerReference"],
     });
 
@@ -182,7 +182,7 @@ export const transformServerFunctions = (
   } else if (environment === "worker") {
     log("Transforming for worker environment: relativeId=%s", relativeId);
     sourceFile.addImportDeclaration({
-      moduleSpecifier: "rwsdk/worker",
+      moduleSpecifier: "rwsdk/__register/worker",
       namedImports: ["registerServerReference"],
     });
 
@@ -238,7 +238,7 @@ export const transformServerFunctions = (
     const clientSourceFile = project.createSourceFile("client.tsx", "");
 
     clientSourceFile.addImportDeclaration({
-      moduleSpecifier: "rwsdk/client",
+      moduleSpecifier: "rwsdk/__register/client",
       namedImports: ["createServerReference"],
     });
 
