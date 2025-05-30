@@ -2,7 +2,6 @@ import path from "node:path";
 import type { Plugin, ViteDevServer } from "vite";
 import debug from "debug";
 import { DIST_DIR } from "../lib/constants.mjs";
-import { ensureAliasArray } from "./ensureAliasArray.mjs";
 
 const log = debug("rwsdk:vite:ssr-bridge-plugin");
 const verboseLog = debug("verbose:rwsdk:vite:ssr-bridge-plugin");
@@ -64,7 +63,7 @@ export const ssrBridgePlugin = ({
                 env,
               );
 
-              if (args.path === "rwsdk/__ssr_bridge") {
+              if (args.path === "rwsdk/__ssr_bridge" && env === "worker") {
                 log("Marking as external: %s, environment=%s", args.path, env);
                 return {
                   path: args.path,

@@ -185,10 +185,10 @@ export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
         ];
 
         optimizeDeps.esbuildOptions ??= {};
-        //optimizeDeps.esbuildOptions.plugins = [
-        //  ...(optimizeDeps.esbuildOptions.plugins ?? []),
-        //  createEsbuildResolverPlugin(envName),
-        //];
+        optimizeDeps.esbuildOptions.plugins = [
+          ...(optimizeDeps.esbuildOptions.plugins ?? []),
+          createEsbuildResolverPlugin(envName),
+        ];
 
         log(
           "Environment %s configured with %d aliases and %d optimizeDeps includes",

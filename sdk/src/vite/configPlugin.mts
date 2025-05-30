@@ -44,6 +44,7 @@ export const configPlugin = ({
             },
           },
           optimizeDeps: {
+            include: [],
             noDiscovery: false,
             esbuildOptions: {
               plugins: [],
@@ -56,16 +57,10 @@ export const configPlugin = ({
         ssr: {
           resolve: {
             conditions: ["workerd"],
-            noExternal: true,
           },
           optimizeDeps: {
-            noDiscovery: false,
-            esbuildOptions: {
-              conditions: ["workerd"],
-              plugins: [],
-            },
-            include: [],
-            exclude: [],
+            // context(justinvdm, 30 May 2025): We'll run the deps through worker deps optimizer still
+            disabled: true,
           },
         },
         worker: {
@@ -79,7 +74,7 @@ export const configPlugin = ({
               conditions: ["workerd", "react-server"],
               plugins: [],
             },
-            include: [],
+            include: ["rwsdk/worker"],
             exclude: [],
           },
           build: {
