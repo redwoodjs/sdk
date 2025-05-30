@@ -1,53 +1,130 @@
 ---
 title: Layouts
-description: How to create and use layout components in your RedwoodSDK project
+description: How to create and use layouts in your RedwoodSDK project
 ---
 
 import { Aside, Steps } from '@astrojs/starlight/components';
 import { FileTree } from '@astrojs/starlight/components';
 
-In RedwoodSDK, layouts are simply React components that provide consistent structure and styling around your page content. Unlike some frameworks that automatically apply layouts to multiple pages based on file location, RedwoodSDK layouts are explicitly imported and used in each component where needed.
+RedwoodSDK provides a powerful `layout()` function for creating shared UI layouts across your routes. This allows you to maintain consistent page structures, implement nested layouts, and avoid code duplication.
+
+### Key Features
+- Composable: Works seamlessly with existing `prefix()`, `render()`, and `route()` functions
+- Nested Support: Multiple `layout()` calls create properly nested component hierarchies
+- SSR/RSC Safe: Automatic client component detection prevents serialization errors
+- Middleware Friendly: Preserves middleware functions in route arrays
+
+## Example with Code
 
 <Steps>
-1. Create a layouts directory to organize your layout components:
-    <FileTree>
-    - src/
-      - app/
-        - layouts/
-    </FileTree>
+1. Create a layout component:
+    ```tsx title="src/app/layouts/AppLayout.tsx"
+    import type { LayoutProps } from 'rwsdk/router'
 
-2. Create a basic layout component:
-    ```tsx title="src/app/layouts/MainLayout.tsx"
-
-    export default function MainLayout({ children }:
-      {children: React.ReactNode}) {
+    export function AppLayout({ children, requestInfo }: LayoutProps) {
       return (
-        <>
-          <Header />
-          <main>
-            {children}
-          </main>
-          <Footer />
-        </>
+        <div className="app">
+          <header>
+            <nav>
+              <a href="/">Home</a>
+              <a href="/about">About</a>
+            </nav>
+            {requestInfo && (
+              <span>Path: {new URL(requestInfo.request.url).pathname}</span>
+            )}
+          </header>
+          <main>{children}</main>
+          <footer>&copy; {new Date().getFullYear()}</footer>
+        </div>
       );
     }
     ```
 
-3. Use the layout in your page components:
-    ```tsx title="src/app/pages/HomePage.tsx"
-    import MainLayout from '../layouts/MainLayout'
+2. Use the layout in your routes:
+    ```tsx title="src/app/worker.tsx"
+    import { layout, route, render } from 'rwsdk/router'
+    import { AppLayout } from './layouts/AppLayout'
+    import HomePage from './pages/HomePage'
+    import AboutPage from './pages/AboutPage'
 
-    export default function HomePage() {
+    export default defineApp([
+      render(Document, [
+        layout(AppLayout, [
+          route("/", HomePage),
+          route("/about", AboutPage),
+        ])
+      ])
+    ])
+    ```
+
+3. Create nested layouts:
+    ```tsx title="src/app/layouts/AdminLayout.tsx"
+    import type { LayoutProps } from 'rwsdk/router'
+
+    export function AdminLayout({ children }: LayoutProps) {
+      "use client" // Client component example
+
       return (
-        <MainLayout>
-          <h1>Hello World</h1>
-          <p>This is the dream.</p>
-        </MainLayout>
+        <div className="admin-panel">
+          <aside>Admin Sidebar</aside>
+          <div className="admin-content">{children}</div>
+        </div>
       );
     }
+    ```
+
+4. Combine layouts with other router functions:
+    ```tsx title="src/app/worker.tsx"
+    export default defineApp([
+      render(Document, [
+        layout(AppLayout, [
+          route("/", HomePage),
+          prefix("/admin", [
+            layout(AdminLayout, [
+              route("/", AdminDashboard),
+              route("/users", UserManagement),
+            ])
+          ])
+        ])
+      ])
+    ])
     ```
 </Steps>
 
-<Aside type="tip" title="Organization">
-  While we recommend creating a dedicated `layouts` directory, you can organize your layout components however you prefer within your project structure.
+<Aside type="tip" title="Nesting Order">
+  Layouts are applied with outer layouts first. For example:
+  ```tsx
+  layout(Outer, [layout(Inner, [route("/", Page)])])
+  // Results in: <Outer><Inner><Page /></Inner></Outer>
+  ```
 </Aside>
+
+## Layout Props
+
+Layout components receive two props:
+- `children`: The wrapped route content
+- `requestInfo`: Request context (only passed to server components)
+
+There's a specific type for the `LayoutProps` prop:
+
+```tsx title="src/app/layouts/AppLayout.tsx"
+import type { LayoutProps } from 'rwsdk/router'
+
+export function AppLayout({ children, requestInfo }: LayoutProps) {
+...
+```
+
+<Aside type="note" title="Client Components">
+  The `layout()` function automatically detects client components and only passes `requestInfo` to server components to prevent serialization errors.
+</Aside>
+
+
+## Complex Composition
+
+Each of these examples work:
+
+```tsx title="src/app/worker.tsx" showLineNumbers=false
+prefix("/api", layout(ApiLayout, routes))          // ✅
+layout(AppLayout, prefix("/admin", routes))        // ✅
+render(Document, layout(AppLayout, routes))        // ✅
+``
