@@ -170,7 +170,7 @@ export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
           envConfig.optimizeDeps ??= {};
           envConfig.optimizeDeps.esbuildOptions ??= {};
           envConfig.optimizeDeps.esbuildOptions.plugins ??= [];
-          envConfig.optimizeDeps.esbuildOptions.plugins.push(esbuildPlugin);
+          //envConfig.optimizeDeps.esbuildOptions.plugins.push(esbuildPlugin);
 
           envConfig.optimizeDeps.include ??= [];
           envConfig.optimizeDeps.include.push(...reactImports);

@@ -61,6 +61,7 @@ export const configPlugin = ({
           optimizeDeps: {
             noDiscovery: false,
             esbuildOptions: {
+              treeShaking: false,
               conditions: ["workerd"],
               plugins: [],
             },
