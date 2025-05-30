@@ -5,7 +5,7 @@
       <img alt="RedwoodSDK logo" src="https://imagedelivery.net/EBSSfnGYYD9-tGTmYMjDgg/37162c6c-890c-48e3-790a-48b2b87fcd00/public" height="128">
     </picture>
   </a>
-  
+
   <h1>RedwoodSDK</h1>
 
   <a href="https://rwsdk.com"><img alt="Redwood Inc. logo" src="https://img.shields.io/badge/MADE%20BY%20Redwood%20Inc.-000000.svg?style=for-the-badge&logo=Redwood&labelColor=000"></a>
@@ -35,13 +35,13 @@ These are simple guidelines that help us keep the documentation consistent.
 
 Prefer "bash showLineNumbers=false" when only showing code commands.
 
-Example: 
+Example:
 
 ```bash showLineNumbers=false
-npx degit redwoodjs/sdk/starters/standard <project-name>
+npx create-rwsdk <project-name>
 ```
 
-Prefer "bash showLineNumbers=false withOutput" when showing both code commands along with the expected output. 
+Prefer "bash showLineNumbers=false withOutput" when showing both code commands along with the expected output.
 
 Example
 

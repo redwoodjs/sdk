@@ -1,4 +1,4 @@
-import type React from "react";
+import React from "react";
 import { isValidElementType } from "react-is";
 import { RequestInfo } from "../requestInfo/types";
 
@@ -6,9 +6,16 @@ export type DocumentProps = RequestInfo & {
   children: React.ReactNode;
 };
 
+export type LayoutProps = {
+  children?: React.ReactNode;
+  requestInfo?: RequestInfo;
+};
+
 export type RwContext = {
   nonce: string;
   Document: React.FC<DocumentProps>;
+  rscPayload: boolean;
+  layouts?: React.FC<LayoutProps>[];
 };
 
 export type RouteMiddleware = (
@@ -38,17 +45,38 @@ export type Route = RouteMiddleware | RouteDefinition | Array<Route>;
 export type RouteDefinition = {
   path: string;
   handler: RouteHandler;
+  layouts?: React.FC<LayoutProps>[];
 };
 
 type RouteMatch = {
   params: Record<string, string>;
   handler: RouteHandler;
+  layouts?: React.FC<LayoutProps>[];
 };
 
-function matchPath(
+export function matchPath(
   routePath: string,
   requestPath: string,
 ): RequestInfo["params"] | null {
+  // Check for invalid pattern: multiple colons in a segment (e.g., /:param1:param2/)
+  if (routePath.includes(":")) {
+    const segments = routePath.split("/");
+    for (const segment of segments) {
+      if ((segment.match(/:/g) || []).length > 1) {
+        throw new Error(
+          `Invalid route pattern: segment "${segment}" in "${routePath}" contains multiple colons.`,
+        );
+      }
+    }
+  }
+
+  // Check for invalid pattern: double wildcard (e.g., /**/)
+  if (routePath.indexOf("**") !== -1) {
+    throw new Error(
+      `Invalid route pattern: "${routePath}" contains "**". Use "*" for a single wildcard segment.`,
+    );
+  }
+
   const pattern = routePath
     .replace(/:[a-zA-Z0-9]+/g, "([^/]+)") // Convert :param to capture group
     .replace(/\*/g, "(.*)"); // Convert * to wildcard capture group
@@ -60,22 +88,36 @@ function matchPath(
     return null;
   }
 
-  // Extract named parameters and wildcards
+  // Revised parameter extraction:
   const params: RequestInfo["params"] = {};
-  const paramNames = [...routePath.matchAll(/:[a-zA-Z0-9]+/g)].map((m) =>
-    m[0].slice(1),
-  );
-  const wildcardCount = (routePath.match(/\*/g) || []).length;
+  let currentMatchIndex = 1; // Regex matches are 1-indexed
 
-  // Add named parameters
-  paramNames.forEach((name, i) => {
-    params[name] = matches[i + 1];
-  });
+  // This regex finds either a named parameter token (e.g., ":id") or a wildcard star token ("*").
+  const tokenRegex = /:([a-zA-Z0-9_]+)|\*/g;
+  let matchToken;
+  let wildcardCounter = 0;
 
-  // Add wildcard parameters with numeric indices
-  for (let i = 0; i < wildcardCount; i++) {
-    const wildcardIndex = paramNames.length + i + 1;
-    params[`$${i}`] = matches[wildcardIndex];
+  // Ensure regex starts from the beginning of the routePath for each call if it's stateful (it is with /g)
+  tokenRegex.lastIndex = 0;
+
+  while ((matchToken = tokenRegex.exec(routePath)) !== null) {
+    // Ensure we have a corresponding match from the regex execution
+    if (matches[currentMatchIndex] === undefined) {
+      // This case should ideally not be hit if routePath and pattern generation are correct
+      // and all parts of the regex matched.
+      // Consider logging a warning or throwing an error if critical.
+      break;
+    }
+
+    if (matchToken[1]) {
+      // This token is a named parameter (e.g., matchToken[1] is "id" for ":id")
+      params[matchToken[1]] = matches[currentMatchIndex];
+    } else {
+      // This token is a wildcard "*"
+      params[`$${wildcardCounter}`] = matches[currentMatchIndex];
+      wildcardCounter++;
+    }
+    currentMatchIndex++;
   }
 
   return params;
@@ -147,7 +189,7 @@ export function defineRoutes(routes: Route[]): {
 
         const params = matchPath(route.path, path);
         if (params) {
-          match = { params, handler: route.handler };
+          match = { params, handler: route.handler, layouts: route.layouts };
           break;
         }
       }
@@ -157,13 +199,20 @@ export function defineRoutes(routes: Route[]): {
         return new Response("Not Found", { status: 404 });
       }
 
-      let { params, handler } = match;
+      let { params, handler, layouts } = match;
 
       return runWithRequestInfoOverrides({ params }, async () => {
         const handlers = Array.isArray(handler) ? handler : [handler];
+
         for (const h of handlers) {
           if (isRouteComponent(h)) {
-            return await renderPage(getRequestInfo(), h as React.FC, onError);
+            const requestInfo = getRequestInfo();
+            const WrappedComponent = wrapWithLayouts(
+              h as React.FC,
+              layouts || [],
+              requestInfo,
+            );
+            return await renderPage(requestInfo, WrappedComponent, onError);
           } else {
             const r = await (h(getRequestInfo()) as Promise<Response>);
             if (r instanceof Response) {
@@ -196,14 +245,70 @@ export function index(handler: RouteHandler): RouteDefinition {
   return route("/", handler);
 }
 
-export function prefix(
-  prefix: string,
-  routes: ReturnType<typeof route>[],
-): RouteDefinition[] {
+export function prefix(prefixPath: string, routes: Route[]): Route[] {
   return routes.map((r) => {
+    if (typeof r === "function") {
+      // Pass through middleware as-is
+      return r;
+    }
+    if (Array.isArray(r)) {
+      // Recursively process nested route arrays
+      return prefix(prefixPath, r);
+    }
+    // For RouteDefinition objects, update the path and preserve layouts
     return {
-      path: prefix + r.path,
+      path: prefixPath + r.path,
       handler: r.handler,
+      ...(r.layouts && { layouts: r.layouts }),
+    };
+  });
+}
+
+function wrapWithLayouts(
+  Component: React.FC,
+  layouts: React.FC<LayoutProps>[] = [],
+  requestInfo: RequestInfo,
+): React.FC {
+  if (layouts.length === 0) {
+    return Component;
+  }
+
+  // Create nested layout structure - layouts[0] should be outermost, so use reduceRight
+  return layouts.reduceRight((WrappedComponent, Layout) => {
+    const Wrapped: React.FC = (props) => {
+      const isClientComponent = Object.prototype.hasOwnProperty.call(
+        Layout,
+        "$$isClientReference",
+      );
+
+      return React.createElement(Layout, {
+        children: React.createElement(WrappedComponent, props),
+        // Only pass requestInfo to server components to avoid serialization issues
+        ...(isClientComponent ? {} : { requestInfo }),
+      });
+    };
+    return Wrapped;
+  }, Component);
+}
+
+export function layout(
+  LayoutComponent: React.FC<LayoutProps>,
+  routes: Route[],
+): Route[] {
+  // Attach layouts directly to route definitions
+  return routes.map((route) => {
+    if (typeof route === "function") {
+      // Pass through middleware as-is
+      return route;
+    }
+    if (Array.isArray(route)) {
+      // Recursively process nested route arrays
+      return layout(LayoutComponent, route);
+    }
+    // For RouteDefinition objects, prepend the layout so outer layouts come first
+    return {
+      ...route,
+      layouts: [LayoutComponent, ...(route.layouts || [])],
     };
   });
 }
@@ -211,9 +316,17 @@ export function prefix(
 export function render(
   Document: React.FC<DocumentProps>,
   routes: Route[],
+  /**
+   * @param options - Configuration options for rendering.
+   * @param options.rscPayload - Toggle the RSC payload that's appended to the Document. Disabling this will mean that interactivity no longer works.
+   */
+  options: {
+    rscPayload: boolean;
+  } = { rscPayload: true },
 ): Route[] {
   const documentMiddleware: RouteMiddleware = ({ rw }) => {
     rw.Document = Document;
+    rw.rscPayload = options.rscPayload;
   };
 
   return [documentMiddleware, ...routes];

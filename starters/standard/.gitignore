@@ -64,3 +64,5 @@ coverage
 *.temp
 
 .wrangler
+
+generated/

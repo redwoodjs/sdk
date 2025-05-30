@@ -9,17 +9,15 @@ import { useServerPlugin } from "./useServerPlugin.mjs";
 import { useClientPlugin } from "./useClientPlugin.mjs";
 import { useClientLookupPlugin } from "./useClientLookupPlugin.mjs";
 import { miniflarePlugin } from "./miniflarePlugin.mjs";
-import { copyPrismaWasmPlugin } from "./copyPrismaWasmPlugin.mjs";
 import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
 import { configPlugin } from "./configPlugin.mjs";
 import { $ } from "../lib/$.mjs";
 import { reactConditionsResolverPlugin } from "./reactConditionsResolverPlugin.mjs";
-import { invalidateCacheIfPrismaClientChanged } from "./invalidateCacheIfPrismaClientChanged.mjs";
 import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
 import { pathExists } from "fs-extra";
 import { injectVitePreamble } from "./injectVitePreamblePlugin.mjs";
 import { vitePreamblePlugin } from "./vitePreamblePlugin.mjs";
-import { checkIsUsingPrisma } from "./checkIsUsingPrisma.mjs";
+import { prismaPlugin } from "./prismaPlugin.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -64,18 +62,6 @@ export const redwoodPlugin = async (
       stdio: ["ignore", "inherit", "inherit"],
     })`npm run dev:init`;
   }
-
-  const isUsingPrisma = checkIsUsingPrisma({ projectRootDir });
-
-  // context(justinvdm, 10 Mar 2025): We need to use vite optimizeDeps for all deps to work with @cloudflare/vite-plugin.
-  // Thing is, @prisma/client has generated code. So users end up with a stale @prisma/client
-  // when they change their prisma schema and regenerate the client, until clearing out node_modules/.vite
-  // We can't exclude @prisma/client from optimizeDeps since we need it there for @cloudflare/vite-plugin to work.
-  // But we can manually invalidate the cache if the prisma schema changes.
-  await invalidateCacheIfPrismaClientChanged({
-    projectRootDir,
-  });
-
   return [
     configPlugin({
       mode,
@@ -83,7 +69,6 @@ export const redwoodPlugin = async (
       projectRootDir,
       clientEntryPathname,
       workerEntryPathname,
-      isUsingPrisma,
     }),
     reactConditionsResolverPlugin({ projectRootDir, mode }),
     tsconfigPaths({ root: projectRootDir }),
@@ -112,9 +97,7 @@ export const redwoodPlugin = async (
         "manifest.json",
       ),
     }),
-    ...(isUsingPrisma
-      ? [copyPrismaWasmPlugin({ rootDir: projectRootDir })]
-      : []),
     moveStaticAssetsPlugin({ rootDir: projectRootDir }),
+    prismaPlugin({ projectRootDir }),
   ];
 };

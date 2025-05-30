@@ -6,8 +6,7 @@ import { setCommonHeaders } from "@/app/headers";
 import { userRoutes } from "@/app/pages/user/routes";
 import { sessions, setupSessionStore } from "./session/store";
 import { Session } from "./session/durableObject";
-import { db, setupDb } from "./db";
-import type { User } from "@prisma/client";
+import { type User, db, setupDb } from "@/db";
 import { env } from "cloudflare:workers";
 export { SessionDurableObject } from "./session/durableObject";
 

@@ -24,7 +24,7 @@ The first thing we'll do is set up our project.
 <Tabs syncKey="starlight-package-managers-pkg">
   <TabItem label="npm" icon="seti:npm">
   ```shell
-  npx degit redwoodjs/sdk/starters/standard applywize
+  npx create-rwsdk applywize
   cd applywize
   npm install
   npm run dev
@@ -32,7 +32,7 @@ The first thing we'll do is set up our project.
   </TabItem>
   <TabItem label="pnpm" icon="pnpm">
   ```shell
-  npx degit redwoodjs/sdk/starters/standard applywize
+  npx create-rwsdk applywize
   cd applywize
   pnpm install
   pnpm dev
@@ -40,7 +40,7 @@ The first thing we'll do is set up our project.
   </TabItem>
   <TabItem label="yarn" icon="seti:yarn">
   ```shell
-  npx degit redwoodjs/sdk/starters/standard applywize
+  npx create-rwsdk applywize
   cd applywize
   yarn install
   yarn run dev
@@ -129,10 +129,7 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
 
 <Steps>
 1. Install Tailwind CSS
-    <PackageManagers
-      type="install"
-      pkg="tailwindcss @tailwindcss/vite"
-    />
+    <PackageManagers pkg="tailwindcss @tailwindcss/vite" />
 
 2. Configure the Vite Plugin
     ```ts ins="import tailwindcss from '@tailwindcss/vite'" ins="tailwindcss()," title="vite.config.mts" ins={6-8} {2, 11}
@@ -187,7 +184,6 @@ You can test this even further by going to the `src/app/pages/user/Login.tsx` fi
 return (
   <>
     <h1 className="text-4xl font-bold text-red-500">YOLO</h1>
-    <div ref={turnstile.ref} />
     <input
       type="text"
       value={username}
@@ -369,7 +365,6 @@ Let's test to make sure our custom colors are working. On the `Login.tsx` file, 
   return (
     <main className="bg-bg">
       <h1 className="text-4xl font-bold text-red-500">YOLO</h1>
-      <div ref={turnstile.ref} />
       <input
         type="text"
         value={username}
@@ -423,36 +418,7 @@ You can also use the [shadcn/ui Vite Installation instructions](https://ui.shadc
     },
     ```
 
-2. Add path aliases to `tsconfig.json`:
-    ```diff title="tsconfig.json"
-    {
-      "compilerOptions": {
-        ...
-    +   "baseUrl": ".",
-        ...
-      }
-    }
-    ```
-3. Add resolve alias config to `vite.config.mts`:
-    ```diff title="vite.config.mts"
-    +import path from "path"
-    import { defineConfig } from "vite";
-    import tailwindcss from "@tailwindcss/vite"
-    import { redwood } from "rwsdk/vite";
-
-    export default defineConfig({
-      environments: {
-        ssr: {},
-      },
-      plugins: [redwood(), tailwindcss()],
-    + resolve: {
-    +   alias: {
-    +     "@": path.resolve(__dirname, "./src"),
-    +   },
-    + },
-    )
-    ```
-6. You should now be able to add components:
+2. You should now be able to add components:
     <PackageManagers
       type="dlx"
       pkg="shadcn@latest"
@@ -612,7 +578,6 @@ import { Button } from "@/app/components/ui/button";
 return (
   <>
     <h1 className="text-4xl font-bold text-red-500">YOLO</h1>
-    <div ref={turnstile.ref} />
     <input
       type="text"
       value={username}

@@ -7,7 +7,7 @@
   </a>
 
   <h1>A React Framework for <a href="https://www.cloudflare.com/">Cloudflare</a>.</h1>
-  
+
   <p><b>It begins as a Vite plugin that unlocks SSR, React Server Components, Server Functions, and realtime features.</b></p>
 
 <a href="https://rwsdk.com"><img alt="Redwood Inc. logo" src="https://img.shields.io/badge/MADE%20BY%20Redwood%20Inc.-000000.svg?style=for-the-badge&logo=Redwood&labelColor=000"></a>
@@ -37,13 +37,13 @@ It features:
 Start a new project:
 
 ```bash
-npx degit redwoodjs/sdk/starters/standard <project-name>
+npx create-rwsdk my-project-name
 ```
 
 Install dependencies:
 
 ```bash
-cd <project-name>
+cd my-project-name
 pnpm install
 ```
 

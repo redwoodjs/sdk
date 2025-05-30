@@ -14,8 +14,7 @@ export const moveStaticAssetsPlugin = ({
     if (this.environment.name === "worker") {
       await $sh({
         cwd: rootDir,
-      })`mv dist/worker/assets/* dist/client/assets || true`;
-      await $sh({ cwd: rootDir })`rmdir dist/worker/assets || true`;
+      })`mv dist/worker/assets/*.css dist/client/assets/ || true`;
     }
   },
 });

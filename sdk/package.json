@@ -1,6 +1,6 @@
 {
   "name": "rwsdk",
-  "version": "0.0.83",
+  "version": "0.0.86",
   "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime",
   "type": "module",
   "bin": {
@@ -99,7 +99,7 @@
   "author": "RedwoodSDK <peter@redwoodjs.com>",
   "license": "MIT",
   "dependencies": {
-    "@cloudflare/vite-plugin": "^1.1.0",
+    "@cloudflare/vite-plugin": "0.0.0-1bae8618b",
     "@cloudflare/workers-types": "^4.20250407.0",
     "@puppeteer/browsers": "^2.8.0",
     "@types/fs-extra": "^11.0.4",
@@ -109,7 +109,6 @@
     "@vitejs/plugin-react": "^4.3.4",
     "debug": "^4.4.0",
     "enhanced-resolve": "^5.18.1",
-    "es-module-lexer": "^1.5.4",
     "eventsource-parser": "^3.0.0",
     "execa": "^9.5.2",
     "fs-extra": "^11.3.0",
@@ -131,7 +130,7 @@
     "unique-names-generator": "^4.7.1",
     "vibe-rules": "^0.2.31",
     "vite-tsconfig-paths": "^5.1.4",
-    "wrangler": "^4.14.1"
+    "wrangler": "^4.16.0"
   },
   "peerDependencies": {
     "vite": "^6.2.6"
