@@ -40,50 +40,45 @@ export const ssrBridgePlugin = ({
       );
     },
     configEnvironment(env, config) {
-      log("Configuring environment: env=%s", env);
+      config.optimizeDeps ??= {};
+      config.optimizeDeps.esbuildOptions ??= {};
+      config.optimizeDeps.esbuildOptions.plugins = [
+        ...(config.optimizeDeps.esbuildOptions.plugins ?? []),
+      ];
+      config.optimizeDeps.include ??= [];
 
-      if (env === "worker") {
-        log("Configuring esbuild options for worker environment");
-        config.optimizeDeps ??= {};
-        config.optimizeDeps.esbuildOptions ??= {};
-        config.optimizeDeps.esbuildOptions.plugins = [
-          ...(config.optimizeDeps.esbuildOptions.plugins ?? []),
-        ];
-        config.optimizeDeps.include ??= [];
+      config.optimizeDeps.esbuildOptions.plugins.push({
+        name: "rwsdk-ssr-external",
+        setup(build) {
+          build.onResolve({ filter: /.*$/ }, (args) => {
+            verboseLog(
+              "Esbuild onResolve called for path=%s,, environment=%s args=%O",
+              args.path,
+              args,
+              env,
+            );
 
-        config.optimizeDeps.esbuildOptions.plugins.push({
-          name: "rwsdk-ssr-external",
-          setup(build) {
-            build.onResolve({ filter: /.*$/ }, (args) => {
-              verboseLog(
-                "Esbuild onResolve called for path=%s,, environment=%s args=%O",
-                args.path,
-                args,
-                env,
-              );
+            if (args.path === "rwsdk/__ssr_bridge" && env === "worker") {
+              log("Marking as external: %s, environment=%s", args.path, env);
+              return {
+                path: args.path,
+                external: true,
+              };
+            }
 
-              if (args.path === "rwsdk/__ssr_bridge" && env === "worker") {
-                log("Marking as external: %s, environment=%s", args.path, env);
-                return {
-                  path: args.path,
-                  external: true,
-                };
-              }
+            // todo(justinvdm, 30 May 2025): move to its own plugin
+            if (args.path.startsWith("rwsdk/")) {
+              log("Marking as external: %s, environment=%s", args.path, env);
+              return {
+                path: args.path,
+                external: true,
+              };
+            }
+          });
+        },
+      });
 
-              // todo(justinvdm, 30 May 2025): move to its own plugin
-              if (args.path.startsWith("rwsdk/") && env === "worker") {
-                log("Marking as external: %s, environment=%s", args.path, env);
-                return {
-                  path: args.path,
-                  external: true,
-                };
-              }
-            });
-          },
-        });
-
-        log("Worker environment esbuild configuration complete");
-      }
+      log("Worker environment esbuild configuration complete");
     },
     async resolveId(id, importer) {
       verboseLog(

@@ -44,10 +44,8 @@ export const configPlugin = ({
             },
           },
           optimizeDeps: {
-            include: ["rwsdk/__register/client"],
             noDiscovery: false,
             esbuildOptions: {
-              plugins: [],
               define: {
                 "process.env.NODE_ENV": JSON.stringify(mode),
               },
@@ -59,9 +57,10 @@ export const configPlugin = ({
             conditions: ["workerd"],
           },
           optimizeDeps: {
-            // context(justinvdm, 30 May 2025): We'll run the deps through worker deps optimizer still
-            noDiscovery: true,
-            include: [],
+            esbuildOptions: {
+              conditions: ["workerd"],
+            },
+            noDiscovery: false,
           },
         },
         worker: {
@@ -72,10 +71,7 @@ export const configPlugin = ({
             noDiscovery: false,
             esbuildOptions: {
               conditions: ["workerd", "react-server"],
-              plugins: [],
             },
-            include: ["rwsdk/__register/worker"],
-            exclude: [],
           },
           build: {
             outDir: resolve(projectRootDir, "dist", "worker"),
