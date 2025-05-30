@@ -133,6 +133,7 @@ export default defineConfig({
         {
           label: "Reference",
           items: [
+            { slug: "reference/create-rwsdk" },
             { slug: "reference/sdk-worker" },
             { slug: "reference/sdk-router" },
           ],
