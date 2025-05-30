@@ -56,59 +56,6 @@ export const ENV_IMPORT_MAPPINGS = Object.fromEntries(
   ]),
 );
 
-function createEsbuildResolverPlugin(envName: string) {
-  const mappings = ENV_IMPORT_MAPPINGS[envName];
-
-  if (!mappings) {
-    return null;
-  }
-
-  return {
-    name: `rwsdk:react-conditions-resolver-esbuild-${envName}`,
-    setup(build: any) {
-      build.onResolve({ filter: /.*/ }, (args: any) => {
-        verboseLog(
-          "ESBuild resolving %s for env=%s, args=%O",
-          args.path,
-          envName,
-          args,
-        );
-
-        if (!args.importer) {
-          verboseLog(
-            "ESBuild no importer for %s for env=%s, args=%O, skipping",
-            args.path,
-            envName,
-            args,
-          );
-          return;
-        }
-
-        const resolved = mappings.get(args.path);
-
-        if (resolved) {
-          verboseLog(
-            "ESBuild resolving %s -> %s for env=%s",
-            args.path,
-            resolved,
-            envName,
-          );
-          return {
-            path: args.path,
-            external: true,
-          };
-        } else {
-          verboseLog(
-            "ESBuild no resolution found for %s for env=%s",
-            args.path,
-            envName,
-          );
-        }
-      });
-    },
-  };
-}
-
 function resolveEnvImportMappings(env: keyof typeof ENV_RESOLVERS) {
   verboseLog("Resolving environment import mappings for env=%s", env);
 
@@ -146,6 +93,46 @@ function resolveEnvImportMappings(env: keyof typeof ENV_RESOLVERS) {
   return mappings;
 }
 
+function createEsbuildResolverPlugin(envName: string) {
+  const mappings = ENV_IMPORT_MAPPINGS[envName];
+
+  if (!mappings) {
+    return null;
+  }
+
+  return {
+    name: `rwsdk:react-conditions-resolver-esbuild-${envName}`,
+    setup(build: any) {
+      build.onResolve({ filter: /.*/ }, (args: any) => {
+        verboseLog(
+          "ESBuild resolving %s for env=%s, args=%O",
+          args.path,
+          envName,
+          args,
+        );
+
+        const resolved = mappings.get(args.path);
+
+        if (resolved) {
+          verboseLog(
+            "ESBuild resolving %s -> %s for env=%s",
+            args.path,
+            resolved,
+            envName,
+          );
+          return { path: resolved };
+        } else {
+          verboseLog(
+            "ESBuild no resolution found for %s for env=%s",
+            args.path,
+            envName,
+          );
+        }
+      });
+    },
+  };
+}
+
 export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
   log("Initializing react conditions resolver plugin");
   let isBuild = false;
@@ -162,11 +149,38 @@ export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
     configResolved(config) {
       log("Setting up resolve aliases and optimizeDeps for each environment");
 
+      // Set up aliases and optimizeDeps for each environment
       for (const [envName, mappings] of Object.entries(ENV_IMPORT_MAPPINGS)) {
         const reactImports =
           ENV_REACT_IMPORTS[envName as keyof typeof ENV_REACT_IMPORTS];
 
-        const envConfig = ((config as any).environments ??= {})[envName] ?? {};
+        // Ensure environment config exists
+        if (!(config as any).environments) {
+          (config as any).environments = {};
+        }
+
+        if (!(config as any).environments[envName]) {
+          (config as any).environments[envName] = {};
+        }
+
+        const envConfig = (config as any).environments[envName];
+
+        const esbuildPlugin = createEsbuildResolverPlugin(envName);
+        if (esbuildPlugin && mappings) {
+          envConfig.optimizeDeps ??= {};
+          envConfig.optimizeDeps.esbuildOptions ??= {};
+          envConfig.optimizeDeps.esbuildOptions.plugins ??= [];
+          envConfig.optimizeDeps.esbuildOptions.plugins.push(esbuildPlugin);
+
+          envConfig.optimizeDeps.include ??= [];
+          envConfig.optimizeDeps.include.push(...reactImports);
+
+          log(
+            "Added esbuild plugin and optimizeDeps includes for environment: %s",
+            envName,
+          );
+        }
+
         const aliases = ensureAliasArray(envConfig);
 
         for (const [find, replacement] of mappings) {
@@ -177,24 +191,11 @@ export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
           log("Added alias for env=%s: %s -> %s", envName, find, replacement);
         }
 
-        const optimizeDeps = (envConfig.optimizeDeps ??= {});
-
-        optimizeDeps.include = [
-          ...reactImports,
-          ...(optimizeDeps.include ??= []),
-        ];
-
         log(
           "Environment %s configured with %d aliases and %d optimizeDeps includes",
           envName,
           mappings.size,
           reactImports.length,
-        );
-
-        verboseLog(
-          "Environment %s optimizeDeps includes: %O",
-          envName,
-          optimizeDeps.include,
         );
       }
     },

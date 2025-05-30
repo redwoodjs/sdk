@@ -2,6 +2,7 @@ import path from "node:path";
 import type { Plugin, ViteDevServer } from "vite";
 import debug from "debug";
 import { DIST_DIR } from "../lib/constants.mjs";
+import { ensureAliasArray } from "./ensureAliasArray.mjs";
 
 const log = debug("rwsdk:vite:ssr-bridge-plugin");
 const verboseLog = debug("verbose:rwsdk:vite:ssr-bridge-plugin");
@@ -40,42 +41,47 @@ export const ssrBridgePlugin = ({
       );
     },
     configEnvironment(env, config) {
-      config.optimizeDeps ??= {};
-      config.optimizeDeps.esbuildOptions ??= {};
-      config.optimizeDeps.esbuildOptions.plugins = [
-        ...(config.optimizeDeps.esbuildOptions.plugins ?? []),
-      ];
-      config.optimizeDeps.include ??= [];
+      log("Configuring environment: env=%s", env);
 
-      config.optimizeDeps.esbuildOptions.plugins.push({
-        name: "rwsdk-ssr-external",
-        setup(build) {
-          build.onResolve({ filter: /.*$/ }, (args) => {
-            verboseLog(
-              "Esbuild onResolve called for path=%s,, environment=%s args=%O",
-              args.path,
-              args,
-              env,
+      if (env === "worker" || env === "ssr") {
+        // Configure esbuild to mark rwsdk/__ssr paths as external for worker environment
+        log("Configuring esbuild options for worker environment");
+        config.optimizeDeps ??= {};
+        config.optimizeDeps.esbuildOptions ??= {};
+        config.optimizeDeps.esbuildOptions.plugins ??= [];
+        config.optimizeDeps.include ??= [];
+
+        config.optimizeDeps.esbuildOptions.plugins.push({
+          name: "rwsdk-ssr-external",
+          setup(build) {
+            log(
+              "Setting up esbuild plugin to mark rwsdk/__ssr paths as external for worker",
             );
+            build.onResolve({ filter: /.*$/ }, (args) => {
+              verboseLog(
+                "Esbuild onResolve called for path=%s, args=%O",
+                args.path,
+                args,
+              );
 
-            if (args.path === "rwsdk/__ssr_bridge" && env === "worker") {
-              log("Marking as external: %s, environment=%s", args.path, env);
-              return {
-                path: args.path,
-                external: true,
-              };
-            }
-          });
-        },
-      });
+              if (args.path === "rwsdk/__ssr_bridge") {
+                log("Marking as external: %s", args.path);
+                return {
+                  path: args.path,
+                  external: true,
+                };
+              }
+            });
+          },
+        });
 
-      log("Worker environment esbuild configuration complete");
+        log("Worker environment esbuild configuration complete");
+      }
     },
-    async resolveId(id, importer) {
+    async resolveId(id) {
       verboseLog(
-        "Resolving id=%s, importer=%s, environment=%s, isDev=%s",
+        "Resolving id=%s, environment=%s, isDev=%s",
         id,
-        importer,
         this.environment?.name,
         isDev,
       );
@@ -117,20 +123,14 @@ export const ssrBridgePlugin = ({
         }
       }
 
-      verboseLog(
-        "No resolution for id=%s, environment=%s, isDev=%s, importer=%s",
-        id,
-        this.environment.name,
-        isDev,
-        importer,
-      );
+      verboseLog("No resolution for id=%s", id);
     },
     async load(id) {
       verboseLog(
-        "Loading id=%s, environment=%s, isDev=%s",
+        "Loading id=%s, isDev=%s, environment=%s",
         id,
-        this.environment.name,
         isDev,
+        this.environment.name,
       );
 
       if (

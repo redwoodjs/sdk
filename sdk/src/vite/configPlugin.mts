@@ -46,6 +46,7 @@ export const configPlugin = ({
           optimizeDeps: {
             noDiscovery: false,
             esbuildOptions: {
+              plugins: [],
               define: {
                 "process.env.NODE_ENV": JSON.stringify(mode),
               },
@@ -55,24 +56,31 @@ export const configPlugin = ({
         ssr: {
           resolve: {
             conditions: ["workerd"],
+            noExternal: true,
           },
           optimizeDeps: {
+            noDiscovery: false,
             esbuildOptions: {
               conditions: ["workerd"],
+              plugins: [],
             },
-            noDiscovery: false,
+            include: [],
+            exclude: [],
           },
         },
         worker: {
           resolve: {
             conditions: ["workerd", "react-server"],
+            noExternal: true,
           },
           optimizeDeps: {
             noDiscovery: false,
-            include: ["rwsdk/worker", "rwsdk/__register/worker"],
             esbuildOptions: {
               conditions: ["workerd", "react-server"],
+              plugins: [],
             },
+            include: [],
+            exclude: [],
           },
           build: {
             outDir: resolve(projectRootDir, "dist", "worker"),

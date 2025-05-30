@@ -36,20 +36,10 @@
       "default": "./dist/runtime/entries/client.js",
       "types": "./dist/runtime/entries/client.d.ts"
     },
-    "./__register/client": {
+    "./__ssr": {
       "react-server": "./dist/runtime/entries/no-react-server.js",
-      "default": "./dist/runtime/register/client.js",
-      "types": "./dist/runtime/register/client.d.ts"
-    },
-    "./__register/ssr": {
-      "react-server": "./dist/runtime/entries/no-react-server.js",
-      "default": "./dist/runtime/register/ssr.js",
-      "types": "./dist/runtime/register/ssr.d.ts"
-    },
-    "./__register/worker": {
-      "react-server": "./dist/runtime/register/worker.js",
-      "default": "./dist/runtime/entries/react-server-only.js",
-      "types": "./dist/runtime/register/worker.d.ts"
+      "default": "./dist/runtime/entries/ssr.js",
+      "types": "./dist/runtime/entries/ssr.d.ts"
     },
     "./__ssr_bridge": {
       "react-server": "./dist/runtime/entries/no-react-server.js",
