@@ -46,6 +46,8 @@ export const configPlugin = ({
           optimizeDeps: {
             noDiscovery: false,
             esbuildOptions: {
+              jsx: "automatic",
+              jsxImportSource: "react",
               plugins: [],
               define: {
                 "process.env.NODE_ENV": JSON.stringify(mode),
@@ -60,13 +62,13 @@ export const configPlugin = ({
           },
           optimizeDeps: {
             noDiscovery: false,
+            include: ["rwsdk/__ssr_bridge"],
             esbuildOptions: {
-              treeShaking: false,
+              jsx: "automatic",
+              jsxImportSource: "react",
               conditions: ["workerd"],
               plugins: [],
             },
-            include: [],
-            exclude: [],
           },
         },
         worker: {
@@ -76,12 +78,12 @@ export const configPlugin = ({
           },
           optimizeDeps: {
             noDiscovery: false,
-            esbuildOptions: {
-              conditions: ["workerd", "react-server"],
-              plugins: [],
-            },
             include: [],
             exclude: [],
+            esbuildOptions: {
+              jsx: "automatic",
+              jsxImportSource: "react",
+            },
           },
           build: {
             outDir: resolve(projectRootDir, "dist", "worker"),

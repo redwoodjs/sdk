@@ -43,7 +43,7 @@ export const ssrBridgePlugin = ({
     configEnvironment(env, config) {
       log("Configuring environment: env=%s", env);
 
-      if (env === "worker" || env === "ssr") {
+      if (env === "worker") {
         // Configure esbuild to mark rwsdk/__ssr paths as external for worker environment
         log("Configuring esbuild options for worker environment");
         config.optimizeDeps ??= {};

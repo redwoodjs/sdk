@@ -1,4 +1,5 @@
 import { Plugin } from "vite";
+import fs from "fs/promises";
 import debug from "debug";
 import { ROOT_DIR } from "../lib/constants.mjs";
 import enhancedResolve from "enhanced-resolve";
@@ -113,14 +114,16 @@ function createEsbuildResolverPlugin(envName: string) {
 
         const resolved = mappings.get(args.path);
 
-        if (resolved) {
+        if (resolved && args.importer !== "") {
           verboseLog(
             "ESBuild resolving %s -> %s for env=%s",
             args.path,
             resolved,
             envName,
           );
-          return { path: resolved };
+          return {
+            path: resolved,
+          };
         } else {
           verboseLog(
             "ESBuild no resolution found for %s for env=%s",
@@ -129,6 +132,23 @@ function createEsbuildResolverPlugin(envName: string) {
           );
         }
       });
+
+      build.onLoad(
+        { filter: /[\\/]react[\\/]jsx-runtime\.js$/ },
+        async (args: any) => {
+          const raw = await fs.readFile(args.path, "utf8");
+          const patched = raw.replace(
+            /process\.env\.NODE_ENV/g,
+            JSON.stringify(process.env.NODE_ENV || "development"),
+          );
+
+          verboseLog("Patched NODE_ENV in %s", args.path);
+          return {
+            contents: patched,
+            loader: "js",
+          };
+        },
+      );
     },
   };
 }
@@ -169,8 +189,11 @@ export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
         if (esbuildPlugin && mappings) {
           envConfig.optimizeDeps ??= {};
           envConfig.optimizeDeps.esbuildOptions ??= {};
+          envConfig.optimizeDeps.esbuildOptions.define ??= {};
+          envConfig.optimizeDeps.esbuildOptions.define["process.env.NODE_ENV"] =
+            JSON.stringify(process.env.NODE_ENV ?? "production");
           envConfig.optimizeDeps.esbuildOptions.plugins ??= [];
-          //envConfig.optimizeDeps.esbuildOptions.plugins.push(esbuildPlugin);
+          envConfig.optimizeDeps.esbuildOptions.plugins.push(esbuildPlugin);
 
           envConfig.optimizeDeps.include ??= [];
           envConfig.optimizeDeps.include.push(...reactImports);
