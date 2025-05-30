@@ -3,7 +3,8 @@ import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 import { renderToRscStream } from "./render/renderToRscStream";
 
 import { ssrLoadModule, ssrWebpackRequire } from "rwsdk/__ssr_bridge";
-import { rscActionHandler } from "./register/worker";
+// @ts-ignore
+import { rscActionHandler } from "rwsdk/__register/worker";
 import { injectRSCPayload } from "rsc-html-stream/server";
 import { ErrorResponse } from "./error";
 import {

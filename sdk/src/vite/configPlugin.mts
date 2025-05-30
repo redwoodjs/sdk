@@ -44,7 +44,7 @@ export const configPlugin = ({
             },
           },
           optimizeDeps: {
-            include: [],
+            include: ["rwsdk/__register/client"],
             noDiscovery: false,
             esbuildOptions: {
               plugins: [],
@@ -60,13 +60,13 @@ export const configPlugin = ({
           },
           optimizeDeps: {
             // context(justinvdm, 30 May 2025): We'll run the deps through worker deps optimizer still
-            disabled: true,
+            noDiscovery: true,
+            include: [],
           },
         },
         worker: {
           resolve: {
             conditions: ["workerd", "react-server"],
-            noExternal: true,
           },
           optimizeDeps: {
             noDiscovery: false,
@@ -74,7 +74,7 @@ export const configPlugin = ({
               conditions: ["workerd", "react-server"],
               plugins: [],
             },
-            include: ["rwsdk/worker"],
+            include: ["rwsdk/__register/worker"],
             exclude: [],
           },
           build: {
