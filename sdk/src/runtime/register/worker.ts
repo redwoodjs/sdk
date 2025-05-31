@@ -3,10 +3,7 @@ import {
   registerClientReference as baseRegisterClientReference,
   decodeReply,
 } from "react-server-dom-webpack/server.edge";
-import {
-  ssrGetModuleExport,
-  registeredServerFunctions,
-} from "rwsdk/__ssr_bridge";
+import { getServerModuleExport } from "../imports/worker.js";
 
 import { IS_DEV } from "../constants";
 
@@ -19,7 +16,7 @@ export function registerServerReference(
     return action;
   }
 
-  registeredServerFunctions.set(id, action);
+  // Note: We no longer need to register in a Map since we use virtual lookup
   return baseRegisterServerReference(action, id, name);
 }
 
@@ -57,7 +54,7 @@ export async function rscActionHandler(req: Request): Promise<unknown> {
     return null;
   }
 
-  const action = await ssrGetModuleExport(actionId!);
+  const action = await getServerModuleExport(actionId!);
 
   if (typeof action !== "function") {
     throw new Error(`Action ${actionId} is not a function`);

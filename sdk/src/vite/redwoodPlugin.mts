@@ -7,6 +7,7 @@ import tsconfigPaths from "vite-tsconfig-paths";
 import { transformJsxScriptTagsPlugin } from "./transformJsxScriptTagsPlugin.mjs";
 import { rscDirectivesPlugin } from "./rscDirectivesPlugin.mjs";
 import { useClientLookupPlugin } from "./useClientLookupPlugin.mjs";
+import { useServerLookupPlugin } from "./useServerLookupPlugin.mjs";
 import { miniflarePlugin } from "./miniflarePlugin.mjs";
 import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
 import { configPlugin } from "./configPlugin.mjs";
@@ -47,6 +48,7 @@ export const redwoodPlugin = async (
   );
 
   const clientFiles = new Set<string>();
+  const serverFiles = new Set<string>();
 
   // context(justinvdm, 31 Mar 2025): We assume that if there is no .wrangler directory,
   // then this is fresh install, and we run `npm run dev:init` here.
@@ -86,12 +88,17 @@ export const redwoodPlugin = async (
     rscDirectivesPlugin({
       projectRootDir,
       clientFiles,
+      serverFiles,
     }),
     vitePreamblePlugin(),
     injectVitePreamble({ clientEntryPathname, mode }),
     useClientLookupPlugin({
       projectRootDir,
       clientFiles,
+    }),
+    useServerLookupPlugin({
+      projectRootDir,
+      serverFiles,
     }),
     transformJsxScriptTagsPlugin({
       manifestPath: resolve(

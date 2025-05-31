@@ -70,6 +70,7 @@ export const transformServerFunctions = (
   code: string,
   normalizedId: string,
   environment: "client" | "worker" | "ssr",
+  serverFiles?: Set<string>,
 ): TransformResult | undefined => {
   verboseLog(
     "Transform server functions called for normalizedId=%s, environment=%s",
@@ -126,6 +127,8 @@ export const transformServerFunctions = (
     normalizedId,
     environment,
   );
+
+  serverFiles?.add(normalizedId);
 
   if (environment === "ssr") {
     log("Transforming for SSR environment: normalizedId=%s", normalizedId);

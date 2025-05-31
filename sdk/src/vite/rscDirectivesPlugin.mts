@@ -10,9 +10,11 @@ const verboseLog = debug("verbose:rwsdk:vite:rsc-directives-plugin");
 export const rscDirectivesPlugin = ({
   projectRootDir,
   clientFiles,
+  serverFiles,
 }: {
   projectRootDir: string;
   clientFiles: Set<string>;
+  serverFiles: Set<string>;
 }): Plugin => ({
   name: "rwsdk:rsc-directives",
   async transform(code, id) {
@@ -40,7 +42,8 @@ export const rscDirectivesPlugin = ({
     const serverResult = transformServerFunctions(
       code,
       normalizedId,
-      this.environment.name as "client" | "worker",
+      this.environment.name as "client" | "worker" | "ssr",
+      serverFiles,
     );
 
     if (serverResult) {
@@ -101,7 +104,8 @@ export const rscDirectivesPlugin = ({
           const serverResult = transformServerFunctions(
             code,
             normalizeModulePath(projectRootDir, args.path),
-            env as "client" | "worker",
+            env as "client" | "worker" | "ssr",
+            serverFiles,
           );
 
           if (serverResult) {

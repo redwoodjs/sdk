@@ -1,6 +1,5 @@
 import { Project, SyntaxKind, Node } from "ts-morph";
 import debug from "debug";
-import { normalizeModulePath } from "./normalizeModulePath.mjs";
 
 interface TransformContext {
   environmentName: string;
