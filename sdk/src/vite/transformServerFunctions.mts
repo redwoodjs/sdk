@@ -68,12 +68,12 @@ export const findExportedFunctions = (sourceFile: SourceFile) => {
 
 export const transformServerFunctions = (
   code: string,
-  relativeId: string,
+  normalizedId: string,
   environment: "client" | "worker" | "ssr",
 ): TransformResult | undefined => {
   verboseLog(
-    "Transform server functions called for relativeId=%s, environment=%s",
-    relativeId,
+    "Transform server functions called for normalizedId=%s, environment=%s",
+    normalizedId,
     environment,
   );
 
@@ -101,13 +101,13 @@ export const transformServerFunctions = (
     if (value === "use server") {
       hasUseServerDirective = true;
       log(
-        "Found 'use server' directive at top level for relativeId=%s",
-        relativeId,
+        "Found 'use server' directive at top level for normalizedId=%s",
+        normalizedId,
       );
       stmt.remove();
       verboseLog(
-        "Removed 'use server' directive from relativeId=%s",
-        relativeId,
+        "Removed 'use server' directive from normalizedId=%s",
+        normalizedId,
       );
       break;
     }
@@ -115,20 +115,20 @@ export const transformServerFunctions = (
 
   if (!hasUseServerDirective) {
     verboseLog(
-      "No 'use server' directive found at top-level, skipping transformation for relativeId=%s",
-      relativeId,
+      "No 'use server' directive found at top-level, skipping transformation for normalizedId=%s",
+      normalizedId,
     );
     return;
   }
 
   log(
-    "Processing 'use server' module: relativeId=%s, environment=%s",
-    relativeId,
+    "Processing 'use server' module: normalizedId=%s, environment=%s",
+    normalizedId,
     environment,
   );
 
   if (environment === "ssr") {
-    log("Transforming for SSR environment: relativeId=%s", relativeId);
+    log("Transforming for SSR environment: normalizedId=%s", normalizedId);
     const ssrSourceFile = project.createSourceFile("ssr.tsx", "");
 
     ssrSourceFile.addImportDeclaration({
@@ -143,26 +143,26 @@ export const transformServerFunctions = (
         declarations: [
           {
             name: name,
-            initializer: `createServerReference(${JSON.stringify(relativeId)}, ${JSON.stringify(name)})`,
+            initializer: `createServerReference(${JSON.stringify(normalizedId)}, ${JSON.stringify(name)})`,
           },
         ],
       });
       log(
-        "Added SSR server reference for function: %s in relativeId=%s",
+        "Added SSR server reference for function: %s in normalizedId=%s",
         name,
-        relativeId,
+        normalizedId,
       );
     }
 
     const hadDefaultExport = !!sourceFile.getDefaultExportSymbol();
     if (hadDefaultExport) {
       ssrSourceFile.addExportAssignment({
-        expression: `createServerReference(${JSON.stringify(relativeId)}, "default")`,
+        expression: `createServerReference(${JSON.stringify(normalizedId)}, "default")`,
         isExportEquals: false,
       });
       log(
-        "Added SSR server reference for default export in relativeId=%s",
-        relativeId,
+        "Added SSR server reference for default export in normalizedId=%s",
+        normalizedId,
       );
     }
 
@@ -175,13 +175,13 @@ export const transformServerFunctions = (
       }
     }
 
-    log("SSR transformation complete for relativeId=%s", relativeId);
+    log("SSR transformation complete for normalizedId=%s", normalizedId);
     return {
       code: ssrSourceFile.getFullText(),
       map: sourceMap,
     };
   } else if (environment === "worker") {
-    log("Transforming for worker environment: relativeId=%s", relativeId);
+    log("Transforming for worker environment: normalizedId=%s", normalizedId);
     sourceFile.addImportDeclaration({
       moduleSpecifier: "rwsdk/worker",
       namedImports: ["registerServerReference"],
@@ -199,11 +199,11 @@ export const transformServerFunctions = (
         isExportEquals: false,
       });
       sourceFile.addStatements(
-        `registerServerReference(__defaultServerFunction__, ${JSON.stringify(relativeId)}, "default")`,
+        `registerServerReference(__defaultServerFunction__, ${JSON.stringify(normalizedId)}, "default")`,
       );
       log(
-        "Registered worker server reference for default export in relativeId=%s",
-        relativeId,
+        "Registered worker server reference for default export in normalizedId=%s",
+        normalizedId,
       );
     }
 
@@ -211,12 +211,12 @@ export const transformServerFunctions = (
     for (const name of exports) {
       if (name === "__defaultServerFunction__") continue;
       sourceFile.addStatements(
-        `registerServerReference(${name}, ${JSON.stringify(relativeId)}, ${JSON.stringify(name)})`,
+        `registerServerReference(${name}, ${JSON.stringify(normalizedId)}, ${JSON.stringify(name)})`,
       );
       log(
-        "Registered worker server reference for function: %s in relativeId=%s",
+        "Registered worker server reference for function: %s in normalizedId=%s",
         name,
-        relativeId,
+        normalizedId,
       );
     }
 
@@ -229,13 +229,13 @@ export const transformServerFunctions = (
       }
     }
 
-    log("Worker transformation complete for relativeId=%s", relativeId);
+    log("Worker transformation complete for normalizedId=%s", normalizedId);
     return {
       code: sourceFile.getFullText(),
       map: sourceMap,
     };
   } else if (environment === "client") {
-    log("Transforming for client environment: relativeId=%s", relativeId);
+    log("Transforming for client environment: normalizedId=%s", normalizedId);
     const clientSourceFile = project.createSourceFile("client.tsx", "");
 
     clientSourceFile.addImportDeclaration({
@@ -250,26 +250,31 @@ export const transformServerFunctions = (
         declarations: [
           {
             name: name,
-            initializer: `createServerReference(${JSON.stringify(relativeId)}, ${JSON.stringify(name)})`,
+            initializer: `createServerReference(${JSON.stringify(normalizedId)}, ${JSON.stringify(name)})`,
           },
         ],
       });
       log(
-        "Added client server reference for function: %s in relativeId=%s",
+        "Added client server reference for function: %s in normalizedId=%s",
         name,
-        relativeId,
+        normalizedId,
+      );
+      verboseLog(
+        "Added client server reference for function: %s in normalizedId=%s",
+        name,
+        normalizedId,
       );
     }
 
     const hadDefaultExport = !!sourceFile.getDefaultExportSymbol();
     if (hadDefaultExport) {
       clientSourceFile.addExportAssignment({
-        expression: `createServerReference(${JSON.stringify(relativeId)}, "default")`,
+        expression: `createServerReference(${JSON.stringify(normalizedId)}, "default")`,
         isExportEquals: false,
       });
       log(
-        "Added client server reference for default export in relativeId=%s",
-        relativeId,
+        "Added client server reference for default export in normalizedId=%s",
+        normalizedId,
       );
     }
 
@@ -282,7 +287,7 @@ export const transformServerFunctions = (
       }
     }
 
-    log("Client transformation complete for relativeId=%s", relativeId);
+    log("Client transformation complete for normalizedId=%s", normalizedId);
     return {
       code: clientSourceFile.getFullText(),
       map: sourceMap,
@@ -290,9 +295,9 @@ export const transformServerFunctions = (
   }
 
   verboseLog(
-    "No transformation applied for environment=%s, relativeId=%s",
+    "No transformation applied for environment=%s, normalizedId=%s",
     environment,
-    relativeId,
+    normalizedId,
   );
 };
 

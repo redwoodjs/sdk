@@ -22,10 +22,11 @@ export const rscDirectivesPlugin = ({
       this.environment.name,
     );
 
-    const clientResult = await transformClientComponents(code, id, {
+    const normalizedId = normalizeModulePath(projectRootDir, id);
+
+    const clientResult = await transformClientComponents(code, normalizedId, {
       environmentName: this.environment.name,
       clientFiles,
-      projectRootDir,
     });
 
     if (clientResult) {
@@ -38,7 +39,7 @@ export const rscDirectivesPlugin = ({
 
     const serverResult = transformServerFunctions(
       code,
-      normalizeModulePath(projectRootDir, id),
+      normalizedId,
       this.environment.name as "client" | "worker",
     );
 

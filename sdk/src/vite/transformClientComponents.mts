@@ -6,7 +6,6 @@ interface TransformContext {
   environmentName: string;
   clientFiles?: Set<string>;
   isEsbuild?: boolean;
-  projectRootDir: string;
 }
 
 interface TransformResult {
@@ -25,12 +24,16 @@ const verboseLogEsbuild = debug(
 
 export async function transformClientComponents(
   code: string,
-  id: string,
+  normalizedId: string,
   ctx: TransformContext,
 ): Promise<TransformResult | undefined> {
   const log = ctx.isEsbuild ? logEsbuild : logVite;
   const verboseLog = ctx.isEsbuild ? verboseLogEsbuild : verboseLogVite;
-  log("Called transformClientComponents for id: id=%s, ctx: %O", id, ctx);
+  log(
+    "Called transformClientComponents for id: id=%s, ctx: %O",
+    normalizedId,
+    ctx,
+  );
 
   // 1. Skip if not in worker environment
   if (ctx.environmentName !== "worker" && ctx.environmentName !== "ssr") {
@@ -44,13 +47,17 @@ export async function transformClientComponents(
     cleanCode.startsWith('"use client"') ||
     cleanCode.startsWith("'use client'");
   if (!hasUseClient) {
-    log("Skipping: no 'use client' directive in id=%s", id);
-    verboseLog(":VERBOSE: Returning code unchanged for id=%s:\n%s", id, code);
+    log("Skipping: no 'use client' directive in id=%s", normalizedId);
+    verboseLog(
+      ":VERBOSE: Returning code unchanged for id=%s:\n%s",
+      normalizedId,
+      code,
+    );
     return;
   }
-  log("Processing 'use client' module: id=%s", id);
+  log("Processing 'use client' module: id=%s", normalizedId);
 
-  ctx.clientFiles?.add(normalizeModulePath(ctx.projectRootDir, id));
+  ctx.clientFiles?.add(normalizedId);
 
   // Use ts-morph to collect all export info and perform transformations
   const project = new Project({
@@ -159,7 +166,11 @@ export async function transformClientComponents(
 
   // 3. SSR files: just remove the directive
   if (ctx.environmentName === "ssr") {
-    log(":isEsbuild=%s: Handling SSR virtual module: %s", !!ctx.isEsbuild, id);
+    log(
+      ":isEsbuild=%s: Handling SSR virtual module: %s",
+      !!ctx.isEsbuild,
+      normalizedId,
+    );
 
     // Remove 'use client' directive using ts-morph
     sourceFile
@@ -189,7 +200,7 @@ export async function transformClientComponents(
 
     verboseLog(
       ":VERBOSE: SSR transformed code for %s:\n%s",
-      id,
+      normalizedId,
       sourceFile.getFullText(),
     );
 
@@ -218,7 +229,7 @@ export async function transformClientComponents(
       info.exported,
     );
     sourceFile.addStatements(
-      `const ${info.local} = registerClientReference("${id}", "${info.exported}");`,
+      `const ${info.local} = registerClientReference("${normalizedId}", "${info.exported}");`,
     );
   }
 
@@ -243,7 +254,7 @@ export async function transformClientComponents(
       defaultExportInfo.exported,
     );
     sourceFile.addStatements(
-      `export default registerClientReference("${id}", "${defaultExportInfo.exported}");`,
+      `export default registerClientReference("${normalizedId}", "${defaultExportInfo.exported}");`,
     );
   }
 
@@ -261,11 +272,15 @@ export async function transformClientComponents(
   log(
     ":isEsbuild=%s: Final transformed code for %s:\n%s",
     !!ctx.isEsbuild,
-    id,
+    normalizedId,
     finalResult,
   );
 
-  verboseLog(":VERBOSE: Transformed code for %s:\n%s", id, finalResult);
+  verboseLog(
+    ":VERBOSE: Transformed code for %s (normalizedId=%s):\n%s",
+    normalizedId,
+    finalResult,
+  );
 
   return {
     code: finalResult,
