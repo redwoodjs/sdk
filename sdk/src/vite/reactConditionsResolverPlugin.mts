@@ -121,6 +121,9 @@ function createEsbuildResolverPlugin(envName: string) {
             resolved,
             envName,
           );
+          if (args.path === "react-server-dom-webpack/client.edge") {
+            return;
+          }
           return {
             path: resolved,
           };
@@ -132,23 +135,6 @@ function createEsbuildResolverPlugin(envName: string) {
           );
         }
       });
-
-      build.onLoad(
-        { filter: /[\\/]react[\\/]jsx-runtime\.js$/ },
-        async (args: any) => {
-          const raw = await fs.readFile(args.path, "utf8");
-          const patched = raw.replace(
-            /process\.env\.NODE_ENV/g,
-            JSON.stringify(process.env.NODE_ENV || "development"),
-          );
-
-          verboseLog("Patched NODE_ENV in %s", args.path);
-          return {
-            contents: patched,
-            loader: "js",
-          };
-        },
-      );
     },
   };
 }

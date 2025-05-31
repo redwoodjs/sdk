@@ -73,7 +73,7 @@ export const rscDirectivesPlugin = ({
             code = await fs.readFile(args.path, "utf-8");
           } catch {
             verboseLog("Failed to read file: %s", args.path);
-            return;
+            return undefined;
           }
 
           const clientResult = await transformClientComponents(

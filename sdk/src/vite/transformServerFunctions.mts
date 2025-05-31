@@ -88,22 +88,34 @@ export const transformServerFunctions = (
   });
   const sourceFile = project.createSourceFile("temp.tsx", code);
 
-  const firstString = sourceFile.getFirstDescendantByKind(
-    SyntaxKind.StringLiteral,
-  );
-  if (!firstString) {
-    verboseLog(
-      "No string literals found, skipping transformation for relativeId=%s",
-      relativeId,
-    );
-    return;
+  const statements = sourceFile.getStatements();
+  let hasUseServerDirective = false;
+
+  for (const stmt of statements) {
+    if (!Node.isExpressionStatement(stmt)) break;
+
+    const expr = stmt.getExpression();
+    if (!expr || !Node.isStringLiteral(expr)) break;
+
+    const value = expr.getLiteralText();
+    if (value === "use server") {
+      hasUseServerDirective = true;
+      log(
+        "Found 'use server' directive at top level for relativeId=%s",
+        relativeId,
+      );
+      stmt.remove();
+      verboseLog(
+        "Removed 'use server' directive from relativeId=%s",
+        relativeId,
+      );
+      break;
+    }
   }
-  if (
-    firstString?.getText().indexOf("use server") === -1 &&
-    firstString?.getStart() !== sourceFile.getStart()
-  ) {
+
+  if (!hasUseServerDirective) {
     verboseLog(
-      "No 'use server' directive found at start, skipping transformation for relativeId=%s",
+      "No 'use server' directive found at top-level, skipping transformation for relativeId=%s",
       relativeId,
     );
     return;
@@ -114,17 +126,6 @@ export const transformServerFunctions = (
     relativeId,
     environment,
   );
-
-  if (firstString) {
-    const parent = firstString.getParent();
-    if (parent && Node.isExpressionStatement(parent)) {
-      parent.replaceWithText("");
-      verboseLog(
-        "Removed 'use server' directive from relativeId=%s",
-        relativeId,
-      );
-    }
-  }
 
   if (environment === "ssr") {
     log("Transforming for SSR environment: relativeId=%s", relativeId);
