@@ -84,7 +84,6 @@ export const rscDirectivesPlugin = ({
               environmentName: env,
               clientFiles,
               isEsbuild: true,
-              projectRootDir,
             },
           );
 
