@@ -1,23 +1,16 @@
-import path from "node:path";
 import type { Plugin, ViteDevServer } from "vite";
 import debug from "debug";
-import { DIST_DIR } from "../lib/constants.mjs";
+import { SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 
 const log = debug("rwsdk:vite:ssr-bridge-plugin");
 const verboseLog = debug("verbose:rwsdk:vite:ssr-bridge-plugin");
 
 export const VIRTUAL_SSR_PREFIX = "virtual:rwsdk:ssr:";
 
-export const ssrBridgePlugin = ({
-  projectRootDir,
-}: {
-  projectRootDir: string;
-}): Plugin => {
-  const distSsrBridgePath = path.resolve(DIST_DIR, "ssrBridge.js");
-
+export const ssrBridgePlugin = (): Plugin => {
   log(
-    "Initializing SSR bridge plugin with distSsrBridgePath=%s",
-    distSsrBridgePath,
+    "Initializing SSR bridge plugin with SSR_BRIDGE_PATH=%s",
+    SSR_BRIDGE_PATH,
   );
 
   let devServer: ViteDevServer;
@@ -114,11 +107,11 @@ export const ssrBridgePlugin = ({
         // here and uses it
         if (id === "rwsdk/__ssr_bridge" && this.environment.name === "worker") {
           log(
-            "Bridge module case (build): id=%s matches rwsdk/__ssr_bridge in worker environment, returning distSsrBridgePath=%s",
+            "Bridge module case (build): id=%s matches rwsdk/__ssr_bridge in worker environment, returning SSR_BRIDGE_PATH=%s",
             id,
-            distSsrBridgePath,
+            SSR_BRIDGE_PATH,
           );
-          return distSsrBridgePath;
+          return SSR_BRIDGE_PATH;
         }
       }
 

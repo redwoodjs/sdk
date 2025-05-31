@@ -1,6 +1,8 @@
 import { Plugin } from "vite";
-import { resolve } from "node:path";
+import path, { resolve } from "node:path";
 import { mergeConfig, InlineConfig } from "vite";
+import enhancedResolve from "enhanced-resolve";
+import { SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 
 export const configPlugin = ({
   mode,
@@ -70,6 +72,18 @@ export const configPlugin = ({
               plugins: [],
             },
           },
+          build: {
+            lib: {
+              entry: {
+                [path.basename(SSR_BRIDGE_PATH, ".js")]: enhancedResolve.sync(
+                  projectRootDir,
+                  "rwsdk/__ssr_bridge",
+                ) as string,
+              },
+              formats: ["es"],
+            },
+            outDir: path.dirname(SSR_BRIDGE_PATH),
+          },
         },
         worker: {
           resolve: {
@@ -120,7 +134,7 @@ export const configPlugin = ({
 
           await builder.build(builder.environments["client"]!);
           await builder.build(builder.environments["ssr"]!);
-          await builder.build(builder.environments["rsc"]!);
+          await builder.build(builder.environments["worker"]!);
         },
       },
     };
