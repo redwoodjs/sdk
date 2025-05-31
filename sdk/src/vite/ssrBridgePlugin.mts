@@ -2,7 +2,6 @@ import path from "node:path";
 import type { Plugin, ViteDevServer } from "vite";
 import debug from "debug";
 import { DIST_DIR } from "../lib/constants.mjs";
-import { ensureAliasArray } from "./ensureAliasArray.mjs";
 
 const log = debug("rwsdk:vite:ssr-bridge-plugin");
 const verboseLog = debug("verbose:rwsdk:vite:ssr-bridge-plugin");
@@ -157,10 +156,7 @@ export const ssrBridgePlugin = ({
 
           // context(justinvdm, 27 May 2025): Prefix all imports in SSR modules so that they're separate in module graph from non-SSR
           const transformedCode = `
-;(async function(__vite_ssr_import__, __vite_ssr_dynamic_import__) {${code}})(
-  (id) => __vite_ssr_import__('/@id/${VIRTUAL_SSR_PREFIX}'+id),
-  (id) => __vite_ssr_dynamic_import__('/@id/${VIRTUAL_SSR_PREFIX}'+id),
-);
+await (async function(__vite_ssr_import__, __vite_ssr_dynamic_import__) {${code}})((id) => __vite_ssr_import__('/@id/${VIRTUAL_SSR_PREFIX}'+id), (id) => __vite_ssr_dynamic_import__('/@id/${VIRTUAL_SSR_PREFIX}'+id));
 `;
 
           log("Transformed SSR module code length: %d", transformedCode.length);
