@@ -9,7 +9,6 @@
 // for imports to it.
 
 export { renderRscThenableToHtmlStream } from "./render/renderRscThenableToHtmlStream";
-export { registeredServerFunctions } from "./register/ssr";
 
 export {
   ssrLoadModule,
