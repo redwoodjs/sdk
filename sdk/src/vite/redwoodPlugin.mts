@@ -18,6 +18,7 @@ import { pathExists } from "fs-extra";
 import { injectVitePreamble } from "./injectVitePreamblePlugin.mjs";
 import { vitePreamblePlugin } from "./vitePreamblePlugin.mjs";
 import { prismaPlugin } from "./prismaPlugin.mjs";
+import { hasPkgScript } from "../lib/hasPkgScript.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -51,7 +52,8 @@ export const redwoodPlugin = async (
   if (
     process.env.RWSDK_WORKER_RUN !== "1" &&
     process.env.RWSDK_DEPLOY !== "1" &&
-    !(await pathExists(resolve(process.cwd(), ".wrangler")))
+    !(await pathExists(resolve(projectRootDir, ".wrangler"))) &&
+    (await hasPkgScript(projectRootDir, "dev:init"))
   ) {
     console.log(
       "🚀 Project has no .wrangler directory yet, assuming fresh install: running `npm run dev:init`...",
