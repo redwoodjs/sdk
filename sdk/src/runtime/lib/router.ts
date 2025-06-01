@@ -1,4 +1,4 @@
-import type React from "react";
+import React from "react";
 import { isValidElementType } from "react-is";
 import { RequestInfo } from "../requestInfo/types";
 
@@ -6,10 +6,16 @@ export type DocumentProps = RequestInfo & {
   children: React.ReactNode;
 };
 
+export type LayoutProps = {
+  children?: React.ReactNode;
+  requestInfo?: RequestInfo;
+};
+
 export type RwContext = {
   nonce: string;
   Document: React.FC<DocumentProps>;
   rscPayload: boolean;
+  layouts?: React.FC<LayoutProps>[];
 };
 
 export type RouteMiddleware = (
@@ -39,11 +45,13 @@ export type Route = RouteMiddleware | RouteDefinition | Array<Route>;
 export type RouteDefinition = {
   path: string;
   handler: RouteHandler;
+  layouts?: React.FC<LayoutProps>[];
 };
 
 type RouteMatch = {
   params: Record<string, string>;
   handler: RouteHandler;
+  layouts?: React.FC<LayoutProps>[];
 };
 
 export function matchPath(
@@ -181,7 +189,7 @@ export function defineRoutes(routes: Route[]): {
 
         const params = matchPath(route.path, path);
         if (params) {
-          match = { params, handler: route.handler };
+          match = { params, handler: route.handler, layouts: route.layouts };
           break;
         }
       }
@@ -191,13 +199,20 @@ export function defineRoutes(routes: Route[]): {
         return new Response("Not Found", { status: 404 });
       }
 
-      let { params, handler } = match;
+      let { params, handler, layouts } = match;
 
       return runWithRequestInfoOverrides({ params }, async () => {
         const handlers = Array.isArray(handler) ? handler : [handler];
+
         for (const h of handlers) {
           if (isRouteComponent(h)) {
-            return await renderPage(getRequestInfo(), h as React.FC, onError);
+            const requestInfo = getRequestInfo();
+            const WrappedComponent = wrapWithLayouts(
+              h as React.FC,
+              layouts || [],
+              requestInfo,
+            );
+            return await renderPage(requestInfo, WrappedComponent, onError);
           } else {
             const r = await (h(getRequestInfo()) as Promise<Response>);
             if (r instanceof Response) {
@@ -230,14 +245,70 @@ export function index(handler: RouteHandler): RouteDefinition {
   return route("/", handler);
 }
 
-export function prefix(
-  prefix: string,
-  routes: ReturnType<typeof route>[],
-): RouteDefinition[] {
+export function prefix(prefixPath: string, routes: Route[]): Route[] {
   return routes.map((r) => {
+    if (typeof r === "function") {
+      // Pass through middleware as-is
+      return r;
+    }
+    if (Array.isArray(r)) {
+      // Recursively process nested route arrays
+      return prefix(prefixPath, r);
+    }
+    // For RouteDefinition objects, update the path and preserve layouts
     return {
-      path: prefix + r.path,
+      path: prefixPath + r.path,
       handler: r.handler,
+      ...(r.layouts && { layouts: r.layouts }),
+    };
+  });
+}
+
+function wrapWithLayouts(
+  Component: React.FC,
+  layouts: React.FC<LayoutProps>[] = [],
+  requestInfo: RequestInfo,
+): React.FC {
+  if (layouts.length === 0) {
+    return Component;
+  }
+
+  // Create nested layout structure - layouts[0] should be outermost, so use reduceRight
+  return layouts.reduceRight((WrappedComponent, Layout) => {
+    const Wrapped: React.FC = (props) => {
+      const isClientComponent = Object.prototype.hasOwnProperty.call(
+        Layout,
+        "$$isClientReference",
+      );
+
+      return React.createElement(Layout, {
+        children: React.createElement(WrappedComponent, props),
+        // Only pass requestInfo to server components to avoid serialization issues
+        ...(isClientComponent ? {} : { requestInfo }),
+      });
+    };
+    return Wrapped;
+  }, Component);
+}
+
+export function layout(
+  LayoutComponent: React.FC<LayoutProps>,
+  routes: Route[],
+): Route[] {
+  // Attach layouts directly to route definitions
+  return routes.map((route) => {
+    if (typeof route === "function") {
+      // Pass through middleware as-is
+      return route;
+    }
+    if (Array.isArray(route)) {
+      // Recursively process nested route arrays
+      return layout(LayoutComponent, route);
+    }
+    // For RouteDefinition objects, prepend the layout so outer layouts come first
+    return {
+      ...route,
+      layouts: [LayoutComponent, ...(route.layouts || [])],
     };
   });
 }

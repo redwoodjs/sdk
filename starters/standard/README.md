@@ -11,7 +11,7 @@ This "standard starter" is the recommended implementation for RedwoodSDK. You ge
 ## Creating your project
 
 ```shell
-npx degit redwoodjs/sdk/starters/standard my-project-name
+npx create-rwsdk my-project-name
 cd my-project-name
 pnpm install
 ```

@@ -1,27 +1,21 @@
 import { $ } from "../lib/$.mjs";
-import { readFile, writeFile } from "fs/promises";
-import { resolve } from "path";
-import { basename } from "path";
-import { parse as parseJsonc } from "jsonc-parser";
+import { hasPkgScript } from "../lib/hasPkgScript.mjs";
 
 export const initDev = async () => {
   console.log("Initializing development environment...");
+  const projectRootDir = process.cwd();
 
-  const pkg = JSON.parse(
-    await readFile(resolve(process.cwd(), "package.json"), "utf-8"),
-  );
-
-  if (pkg.scripts?.["generate"]) {
+  if (await hasPkgScript(projectRootDir, "generate")) {
     console.log("Generating...");
     await $`npm run generate`;
   }
 
-  if (pkg.scripts?.["migrate:dev"]) {
+  if (await hasPkgScript(projectRootDir, "migrate:dev")) {
     console.log("Running migrations...");
     await $`npm run migrate:dev`;
   }
 
-  if (pkg.scripts?.["seed"]) {
+  if (await hasPkgScript(projectRootDir, "seed")) {
     console.log("Seeding database...");
     await $`npm run seed`;
   }

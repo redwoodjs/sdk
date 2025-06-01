@@ -4,6 +4,7 @@ on:
   push:
     tags:
       - "v*.*.*" # Trigger on any tag push
+      - "!v*.*.*-*" # Exclude pre-release tags (e.g., v1.2.3-alpha)
   workflow_dispatch:
     inputs:
       version:

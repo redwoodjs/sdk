@@ -8,6 +8,7 @@ yarn-error.log*
 lerna-debug.log*
 .pnpm-debug.log*
 
+
 # Diagnostic reports (https://nodejs.org/api/report.html)
 
 report.[0-9]_.[0-9]_.[0-9]_.[0-9]_.json
@@ -165,6 +166,7 @@ dist
 .yarn/build-state.yml
 .yarn/install-state.gz
 .pnp.\*
+.pnpm-store
 
 # wrangler project
 
@@ -182,3 +184,4 @@ smoke-test-artifacts
 # We don't want to add a gitignore in starter - users need to check this into their repo
 # But we also don't want to commit the cursor rules to this repo
 starters/standard/.cursor/rules/*
+starters/standard/.pnpm-store

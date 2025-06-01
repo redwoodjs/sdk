@@ -123,6 +123,7 @@ export default defineConfig({
                   slug: "guides/frontend/public-assets",
                 },
                 { label: "Metadata", slug: "guides/frontend/metadata" },
+                { label: "Dynamic OG Images", slug: "guides/frontend/og-images" },
               ],
             },
             { label: "Server Function Streams", slug: "guides/rsc-streams" },
@@ -132,6 +133,7 @@ export default defineConfig({
         {
           label: "Reference",
           items: [
+            { slug: "reference/create-rwsdk" },
             { slug: "reference/sdk-worker" },
             { slug: "reference/sdk-router" },
           ],

@@ -1,0 +1,78 @@
+---
+title: create-rwsdk
+description: A step-by-step guide for creating a new RedwoodSDK project.
+---
+
+`create-rwsdk` is a command line tool for creating new RedwoodSDK projects
+
+```bash
+npx create-rwsdk my-project
+```
+
+At Redwood, we try to reduce the magic as much as possible. So, even though we have a command line tool for creating new projects, it's important to us that we share what's happening under the hood.
+
+At it's core, the `create-rwsdk` command looks at the most recent GitHub release, downloads the attached `tar.gz` file, and extracts it to the current directory.
+
+## Usage
+
+```bash
+npx create-rwsdk [project-name] [options]
+```
+
+#### Commands
+
+- `create`: Create a new project (default command when no command is specified)
+- `list`: List and interactively select from available templates
+
+#### Arguments
+
+- `[project-name]`: Name of the project directory to create (optional, will prompt if not provided)
+
+#### Options
+
+- `-f, --force`: Force overwrite if directory exists
+- `-t, --template <template>`: Starter template to use (standard, minimal) [default: "standard"]
+- `-h, --help`: Display help information
+- `-V, --version`: Display version number
+
+### Examples
+
+Create a new project with the default (standard) template:
+
+```bash
+npx create-rwsdk my-awesome-app
+```
+
+Create a new project with an interactive prompt for the project name:
+
+```bash
+npx create-rwsdk
+# You will be prompted: What is the name of your project?
+```
+
+List and interactively select from available templates:
+
+```bash
+npx create-rwsdk list
+# You will see a list of templates to choose from and then be prompted for a project name
+```
+
+Create a project with the minimal template:
+
+```bash
+npx create-rwsdk my-awesome-app --template minimal
+```
+
+Force overwrite an existing directory:
+
+```bash
+npx create-rwsdk my-awesome-app --force
+```
+
+## Next steps after creating a project
+
+```bash
+cd <project-name>
+pnpm install
+pnpm dev
+```
