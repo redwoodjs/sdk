@@ -187,8 +187,8 @@ importers:
   starters/minimal:
     dependencies:
       rwsdk:
-        specifier: 0.0.87
-        version: 0.0.87(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)
+        specifier: 0.0.87-test.20250602013216
+        version: 0.0.87-test.20250602013216(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)
     devDependencies:
       '@types/node':
         specifier: ^22.14.0
@@ -224,8 +224,8 @@ importers:
         specifier: ^13.1.1
         version: 13.1.1
       rwsdk:
-        specifier: 0.0.85
-        version: 0.0.85(rollup@4.40.0)(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250508.0)
+        specifier: 0.0.87-test.20250602013216
+        version: 0.0.87-test.20250602013216(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)
     devDependencies:
       '@types/node':
         specifier: ^22.14.0
@@ -3497,14 +3497,8 @@ packages:
   run-parallel@1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
 
-  rwsdk@0.0.85:
-    resolution: {integrity: sha512-JARTewKaQtQRJ1HCHvSW3MmBvAQ3gqYVliXJ2fzCkB2V2Zv5C+W/wv7l33V1YxXrFBuCWtHsvfhJskEWvRV4cA==}
-    hasBin: true
-    peerDependencies:
-      vite: ^6.2.6
-
-  rwsdk@0.0.87:
-    resolution: {integrity: sha512-A+L2gut2n5a9FWljx0dX5vNsBqMU4l6qd0hzCypCuoPLDG1KUgrOXYWD1xiXaRfbLDYnbYFfdmB8zKui5RD8Sw==}
+  rwsdk@0.0.87-test.20250602013216:
+    resolution: {integrity: sha512-IimA9fJ73hBF014AloXbR7qz7ckHw/3/L4Wwqak3tvTE21z4DZEiceMjsgYZZOMRQ59/LfaNcMpuj0jtGXB2dQ==}
     hasBin: true
     peerDependencies:
       vite: ^6.2.6
@@ -8208,52 +8202,7 @@ snapshots:
     dependencies:
       queue-microtask: 1.2.3
 
-  rwsdk@0.0.85(rollup@4.40.0)(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250508.0):
-    dependencies:
-      '@cloudflare/vite-plugin': 0.0.0-1bae8618b(rollup@4.40.0)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250508.0)(wrangler@4.16.0(@cloudflare/workers-types@4.20250407.0))
-      '@cloudflare/workers-types': 4.20250407.0
-      '@puppeteer/browsers': 2.10.1
-      '@types/fs-extra': 11.0.4
-      '@types/react': 19.1.2
-      '@types/react-dom': 19.1.2(@types/react@19.1.2)
-      '@types/react-is': 19.0.0
-      '@vitejs/plugin-react': 4.3.4(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))
-      debug: 4.4.0
-      enhanced-resolve: 5.18.1
-      eventsource-parser: 3.0.0
-      execa: 9.5.2
-      fs-extra: 11.3.0
-      glob: 11.0.1
-      ignore: 7.0.4
-      jsonc-parser: 3.3.1
-      lodash: 4.17.21
-      magic-string: 0.30.17
-      miniflare: 4.20250508.3
-      picocolors: 1.1.1
-      puppeteer-core: 22.15.0
-      react: 19.2.0-canary-39cad7af-20250411
-      react-dom: 19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411)
-      react-is: 19.0.0
-      react-server-dom-webpack: 19.2.0-canary-39cad7af-20250411(react-dom@19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411))(react@19.2.0-canary-39cad7af-20250411)(webpack@5.97.1)
-      rsc-html-stream: 0.0.6
-      tmp-promise: 3.0.3
-      ts-morph: 25.0.1
-      unique-names-generator: 4.7.1
-      vibe-rules: 0.2.31
-      vite: 6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0)
-      vite-tsconfig-paths: 5.1.4(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))
-      wrangler: 4.16.0(@cloudflare/workers-types@4.20250407.0)
-    transitivePeerDependencies:
-      - bare-buffer
-      - bufferutil
-      - rollup
-      - supports-color
-      - typescript
-      - utf-8-validate
-      - webpack
-      - workerd
-
-  rwsdk@0.0.87(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1):
+  rwsdk@0.0.87-test.20250602013216(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1):
     dependencies:
       '@cloudflare/vite-plugin': 0.0.0-1bae8618b(rollup@4.40.0)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250508.0)(wrangler@4.16.0(@cloudflare/workers-types@4.20250407.0))
       '@cloudflare/workers-types': 4.20250407.0
