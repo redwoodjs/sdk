@@ -34,10 +34,31 @@ export async function transformClientComponents(
     ctx,
   );
 
-  // 1. Skip if not in worker environment
-  if (ctx.environmentName !== "worker" && ctx.environmentName !== "ssr") {
-    log("Skipping: not in worker environment (%s)", ctx.environmentName);
-    return;
+  function extractSourceMapFromEmit(sourceFile: any): any {
+    const emitOutput = sourceFile.getEmitOutput();
+    let sourceMap: any;
+
+    const outputFiles = emitOutput.getOutputFiles();
+    log(
+      ":isEsbuild=%s: EmitOutput files for %s (%s) - %d files:",
+      !!ctx.isEsbuild,
+      normalizedId,
+      ctx.environmentName,
+      outputFiles.length,
+    );
+    for (const outputFile of outputFiles) {
+      log(
+        ":isEsbuild=%s: - %s (%s)",
+        !!ctx.isEsbuild,
+        outputFile.getFilePath(),
+        ctx.environmentName,
+      );
+
+      if (outputFile.getFilePath().endsWith(".js.map")) {
+        sourceMap = JSON.parse(outputFile.getText());
+      }
+    }
+    return sourceMap;
   }
 
   // 2. Only transform files that start with 'use client'
@@ -63,12 +84,15 @@ export async function transformClientComponents(
     useInMemoryFileSystem: true,
     compilerOptions: {
       sourceMap: true,
+      inlineSourceMap: false,
+      allowJs: true,
+      checkJs: true,
       target: 2, // ES6
       module: 1, // CommonJS
       jsx: 2, // React
     },
   });
-  const sourceFile = project.createSourceFile(normalizedId, code);
+  const sourceFile = project.createSourceFile(normalizedId + ".ts", code);
 
   // We'll collect named and default exports in order
   type ExportInfo = {
@@ -163,8 +187,8 @@ export async function transformClientComponents(
     }
   });
 
-  // 3. SSR files: just remove the directive
-  if (ctx.environmentName === "ssr") {
+  // 3. Client/SSR files: just remove the directive
+  if (ctx.environmentName === "ssr" || ctx.environmentName === "client") {
     log(
       ":isEsbuild=%s: Handling SSR virtual module: %s",
       !!ctx.isEsbuild,
@@ -188,14 +212,7 @@ export async function transformClientComponents(
         }
       });
 
-    const emitOutput = sourceFile.getEmitOutput();
-    let sourceMap: any;
-
-    for (const outputFile of emitOutput.getOutputFiles()) {
-      if (outputFile.getFilePath().endsWith(".js.map")) {
-        sourceMap = JSON.parse(outputFile.getText());
-      }
-    }
+    const sourceMap = extractSourceMapFromEmit(sourceFile);
 
     verboseLog(
       ":VERBOSE: SSR transformed code for %s:\n%s",
@@ -257,14 +274,7 @@ export async function transformClientComponents(
     );
   }
 
-  const emitOutput = sourceFile.getEmitOutput();
-  let sourceMap: any;
-
-  for (const outputFile of emitOutput.getOutputFiles()) {
-    if (outputFile.getFilePath().endsWith(".js.map")) {
-      sourceMap = JSON.parse(outputFile.getText());
-    }
-  }
+  const sourceMap = extractSourceMapFromEmit(sourceFile);
 
   const finalResult = sourceFile.getFullText();
 
