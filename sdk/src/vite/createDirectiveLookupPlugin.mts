@@ -6,6 +6,7 @@ import { glob } from "glob";
 import debug from "debug";
 import { normalizeModulePath } from "./normalizeModulePath.mjs";
 import { ensureAliasArray } from "./ensureAliasArray.mjs";
+import { pathExists } from "fs-extra";
 
 interface DirectiveLookupConfig {
   directive: "use client" | "use server";
@@ -75,6 +76,63 @@ export const findFilesContainingDirective = async ({
   log("Completed scan. Found %d %s files total", files.size, directive);
 };
 
+const resolveOptimizedDep = async (
+  projectRootDir: string,
+  filePath: string,
+  environment: string,
+  debugNamespace: string,
+): Promise<string | undefined> => {
+  const log = debug(debugNamespace);
+  const verboseLog = debug(`verbose:${debugNamespace}`);
+
+  try {
+    const getDepsDir = (env: string) =>
+      env === "client" ? "deps" : `deps_${env}`;
+
+    const getManifestPath = (env: string) =>
+      path.join(
+        projectRootDir,
+        "node_modules",
+        ".vite",
+        getDepsDir(env),
+        "_metadata.json",
+      );
+
+    const getOptimizedPath = (env: string, fileName: string) =>
+      path.join("/", "node_modules", ".vite", getDepsDir(env), fileName);
+
+    const manifestPath = getManifestPath(environment);
+    verboseLog("Checking for manifest at: %s", manifestPath);
+
+    const manifestExists = await pathExists(manifestPath);
+    if (!manifestExists) {
+      verboseLog("Manifest not found at %s", manifestPath);
+      return undefined;
+    }
+
+    const manifestContent = await readFile(manifestPath, "utf-8");
+    const manifest = JSON.parse(manifestContent);
+
+    if (manifest.optimized && manifest.optimized[filePath]) {
+      const optimizedFile = manifest.optimized[filePath].file;
+      const optimizedPath = getOptimizedPath(environment, optimizedFile);
+
+      log("Found optimized dependency: %s -> %s", filePath, optimizedPath);
+      return optimizedPath;
+    }
+
+    verboseLog("File %s not found in optimized dependencies", filePath);
+    return undefined;
+  } catch (error) {
+    verboseLog(
+      "Error resolving optimized dependency for %s: %s",
+      filePath,
+      error,
+    );
+    return undefined;
+  }
+};
+
 export const createDirectiveLookupPlugin = async ({
   projectRootDir,
   files,
@@ -87,6 +145,7 @@ export const createDirectiveLookupPlugin = async ({
   const debugNamespace = `rwsdk:vite:${config.pluginName}`;
   const log = debug(debugNamespace);
   const verboseLog = debug(`verbose:${debugNamespace}`);
+  let isDev = false;
 
   log(
     "Initializing %s plugin with projectRootDir=%s",
@@ -103,6 +162,10 @@ export const createDirectiveLookupPlugin = async ({
 
   return {
     name: `rwsdk:${config.pluginName}`,
+    config(_, { command, isPreview }) {
+      isDev = !isPreview && command === "serve";
+      log("Development mode: %s", isDev);
+    },
     configEnvironment(env, viteConfig) {
       log("Configuring environment: env=%s", env);
 
@@ -197,7 +260,7 @@ export const createDirectiveLookupPlugin = async ({
 
       verboseLog("No resolution for id=%s", source);
     },
-    load(id) {
+    async load(id) {
       verboseLog("Loading id=%s", id);
 
       if (id === config.virtualModuleName) {
@@ -207,12 +270,31 @@ export const createDirectiveLookupPlugin = async ({
           files.size,
         );
 
+        const environment = this.environment?.name || "client";
+        log("Current environment: %s, isDev: %s", environment, isDev);
+
+        const optimizedDeps: Record<string, string> = {};
+
+        if (isDev) {
+          for (const file of files) {
+            const resolvedPath = await resolveOptimizedDep(
+              projectRootDir,
+              file,
+              environment,
+              debugNamespace,
+            );
+            if (resolvedPath) {
+              optimizedDeps[file] = resolvedPath;
+            }
+          }
+        }
+
         const s = new MagicString(`
 export const ${config.exportName} = {
   ${Array.from(files)
     .map(
       (file: string) => `
-  "${file}": () => import("${file}"),
+  "${file}": () => import("${optimizedDeps[file] ?? file}"),
 `,
     )
     .join("")}
