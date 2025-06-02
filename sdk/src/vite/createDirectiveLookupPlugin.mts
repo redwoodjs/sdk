@@ -1,4 +1,5 @@
 import MagicString from "magic-string";
+import path from "path";
 import { Plugin } from "vite";
 import { readFile } from "fs/promises";
 import { glob } from "glob";
@@ -145,8 +146,13 @@ export const createDirectiveLookupPlugin = async ({
       viteConfig.optimizeDeps.include ??= [];
 
       for (const file of files) {
-        verboseLog("Adding to optimizeDeps.include: %s", file);
-        viteConfig.optimizeDeps.include.push(file);
+        const denormalizedPath = path.join(projectRootDir, file);
+        verboseLog(
+          "Adding to optimizeDeps.include: %s -> %s",
+          file,
+          denormalizedPath,
+        );
+        viteConfig.optimizeDeps.include.push(denormalizedPath);
       }
 
       log(
