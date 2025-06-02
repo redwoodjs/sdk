@@ -68,7 +68,7 @@ export async function transformClientComponents(
       jsx: 2, // React
     },
   });
-  const sourceFile = project.createSourceFile("temp.tsx", code);
+  const sourceFile = project.createSourceFile(normalizedId, code);
 
   // We'll collect named and default exports in order
   type ExportInfo = {

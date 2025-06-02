@@ -110,8 +110,24 @@ export const createDirectiveLookupPlugin = async ({
         name: `rwsdk:${config.pluginName}`,
         setup(build) {
           log("Setting up esbuild plugin for %s", config.virtualModuleName);
+
+          // Handle both direct virtual module name and /@id/ prefixed version
+          const escapedVirtualModuleName = config.virtualModuleName.replace(
+            /[-\/\\^$*+?.()|[\]{}]/g,
+            "\\$&",
+          );
+          const escapedPrefixedModuleName =
+            `/@id/${config.virtualModuleName}`.replace(
+              /[-\/\\^$*+?.()|[\]{}]/g,
+              "\\$&",
+            );
+
           build.onResolve(
-            { filter: new RegExp(`^${config.virtualModuleName}$`) },
+            {
+              filter: new RegExp(
+                `^(${escapedVirtualModuleName}|${escapedPrefixedModuleName})$`,
+              ),
+            },
             () => {
               verboseLog(
                 "Esbuild onResolve: marking %s as external",
@@ -131,9 +147,12 @@ export const createDirectiveLookupPlugin = async ({
     resolveId(source) {
       verboseLog("Resolving id=%s", source);
 
-      if (source === config.virtualModuleName) {
+      if (
+        source === config.virtualModuleName ||
+        source === `/@id/${config.virtualModuleName}`
+      ) {
         log("Resolving %s module", config.virtualModuleName);
-        return source;
+        return config.virtualModuleName;
       }
 
       verboseLog("No resolution for id=%s", source);

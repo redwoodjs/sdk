@@ -87,7 +87,7 @@ export const transformServerFunctions = (
       jsx: 2,
     },
   });
-  const sourceFile = project.createSourceFile("temp.tsx", code);
+  const sourceFile = project.createSourceFile(normalizedId, code);
 
   const statements = sourceFile.getStatements();
   let hasUseServerDirective = false;
