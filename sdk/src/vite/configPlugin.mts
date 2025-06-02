@@ -3,6 +3,7 @@ import path, { resolve } from "node:path";
 import { mergeConfig, InlineConfig } from "vite";
 import enhancedResolve from "enhanced-resolve";
 import { SSR_BRIDGE_PATH } from "../lib/constants.mjs";
+import { builtinModules } from "node:module";
 
 export const configPlugin = ({
   mode,
@@ -71,6 +72,7 @@ export const configPlugin = ({
           optimizeDeps: {
             noDiscovery: false,
             entries: [workerEntryPathname],
+            exclude: ["cloudflare:workers", ...builtinModules],
             include: ["rwsdk/__ssr_bridge"],
             esbuildOptions: {
               jsx: "automatic",

@@ -39,40 +39,40 @@
     },
     "./__ssr_bridge": {
       "react-server": "./dist/runtime/entries/no-react-server.js",
-      "default": "./dist/runtime/ssrBridge.js",
-      "types": "./dist/runtime/ssrBridge.d.ts"
+      "types": "./dist/runtime/ssrBridge.d.ts",
+      "default": "./dist/runtime/ssrBridge.js"
     },
     "./router": {
-      "default": "./dist/runtime/entries/router.js",
-      "types": "./dist/runtime/entries/router.d.ts"
+      "types": "./dist/runtime/entries/router.d.ts",
+      "default": "./dist/runtime/entries/router.js"
     },
     "./auth": {
-      "default": "./dist/runtime/entries/auth.js",
-      "types": "./dist/runtime/entries/auth.d.ts"
+      "types": "./dist/runtime/entries/auth.d.ts",
+      "default": "./dist/runtime/entries/auth.js"
     },
     "./constants": {
-      "default": "./dist/runtime/constants.js",
-      "types": "./dist/runtime/constants.d.ts"
+      "types": "./dist/runtime/constants.d.ts",
+      "default": "./dist/runtime/constants.js"
     },
     "./turnstile": {
-      "default": "./dist/runtime/lib/turnstile/turnstile.js",
-      "types": "./dist/runtime/lib/turnstile/turnstile.d.ts"
+      "types": "./dist/runtime/lib/turnstile/turnstile.d.ts",
+      "default": "./dist/runtime/lib/turnstile/turnstile.js"
     },
     "./llms": {
-      "default": "./dist/llms/index.js",
-      "types": "./dist/llms/index.d.ts"
+      "types": "./dist/llms/index.d.ts",
+      "default": "./dist/llms/index.js"
     },
     "./realtime/worker": {
-      "default": "./dist/runtime/lib/realtime/worker.js",
-      "types": "./dist/runtime/lib/realtime/worker.d.ts"
+      "types": "./dist/runtime/lib/realtime/worker.d.ts",
+      "default": "./dist/runtime/lib/realtime/worker.js"
     },
     "./realtime/client": {
-      "default": "./dist/runtime/lib/realtime/client.js",
-      "types": "./dist/runtime/lib/realtime/client.d.ts"
+      "types": "./dist/runtime/lib/realtime/client.d.ts",
+      "default": "./dist/runtime/lib/realtime/client.js"
     },
     "./realtime/durableObject": {
-      "default": "./dist/runtime/lib/realtime/durableObject.js",
-      "types": "./dist/runtime/lib/realtime/durableObject.d.ts"
+      "types": "./dist/runtime/lib/realtime/durableObject.d.ts",
+      "default": "./dist/runtime/lib/realtime/durableObject.js"
     }
   },
   "keywords": [
