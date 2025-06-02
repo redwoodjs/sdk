@@ -216,13 +216,19 @@ export const createDirectiveLookupPlugin = async ({
         log("Applying optimizeDeps and aliasing for environment: %s", env);
 
         viteConfig.optimizeDeps.include ??= [];
+        viteConfig.optimizeDeps.entries = ([] as string[]).concat(
+          viteConfig.optimizeDeps.entries ?? [],
+        );
 
         for (const file of files) {
           if (file.includes("/node_modules/")) {
             verboseLog("Adding to optimizeDeps.include: %s -> %s", file);
             viteConfig.optimizeDeps.include.push(file);
           } else {
-            verboseLog("Skipping non-node_modules file: %s", file);
+            verboseLog("Adding to optimizeDeps.entries: %s", file);
+            viteConfig.optimizeDeps.entries.push(
+              path.join(projectRootDir, file),
+            );
           }
         }
 
