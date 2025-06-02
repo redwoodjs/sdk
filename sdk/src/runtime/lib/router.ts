@@ -273,6 +273,9 @@ function wrapWithLayouts(
     return Component;
   }
 
+  // Check if the final route component is a client component
+  const isRouteClientComponent = Object.prototype.hasOwnProperty.call(Component, "$$isClientReference");
+
   // Create nested layout structure - layouts[0] should be outermost, so use reduceRight
   return layouts.reduceRight((WrappedComponent, Layout) => {
     const Wrapped: React.FC = (props) => {
@@ -282,7 +285,7 @@ function wrapWithLayouts(
       );
 
       return React.createElement(Layout, {
-        children: React.createElement(WrappedComponent, props),
+        children: React.createElement(WrappedComponent, isRouteClientComponent ? {} : props),
         // Only pass requestInfo to server components to avoid serialization issues
         ...(isClientComponent ? {} : { requestInfo }),
       });
