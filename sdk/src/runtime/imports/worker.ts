@@ -9,7 +9,7 @@ export const loadServerModule = memoize(async (id: string) => {
 
   if (!moduleFn) {
     throw new Error(
-      `No module found for '${id}' in module lookup for "use server" directive`,
+      `(worker) No module found for '${id}' in module lookup for "use server" directive`,
     );
   }
 

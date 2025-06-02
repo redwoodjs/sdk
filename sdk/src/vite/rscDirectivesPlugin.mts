@@ -82,7 +82,7 @@ export const rscDirectivesPlugin = ({
 
           const clientResult = await transformClientComponents(
             code,
-            args.path,
+            normalizeModulePath(projectRootDir, args.path),
             {
               environmentName: env,
               clientFiles,
