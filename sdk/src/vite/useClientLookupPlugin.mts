@@ -16,6 +16,7 @@ export const useClientLookupPlugin = async ({
       virtualModuleName: "virtual:use-client-lookup",
       exportName: "useClientLookup",
       pluginName: "use-client-lookup",
+      optimizeForEnvironments: ["ssr", "client"],
     },
   });
 };

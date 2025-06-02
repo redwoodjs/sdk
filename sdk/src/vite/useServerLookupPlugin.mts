@@ -16,6 +16,7 @@ export const useServerLookupPlugin = async ({
       virtualModuleName: "virtual:use-server-lookup",
       exportName: "useServerLookup",
       pluginName: "use-server-lookup",
+      optimizeForEnvironments: ["ssr", "worker"],
     },
   });
 };

@@ -12,6 +12,7 @@ interface DirectiveLookupConfig {
   virtualModuleName: string;
   exportName: string;
   pluginName: string;
+  optimizeForEnvironments?: string[];
 }
 
 export const findFilesContainingDirective = async ({
@@ -144,35 +145,44 @@ export const createDirectiveLookupPlugin = async ({
         },
       });
 
-      viteConfig.optimizeDeps.include ??= [];
+      const shouldOptimizeForEnv =
+        !config.optimizeForEnvironments ||
+        config.optimizeForEnvironments.includes(env);
 
-      for (const file of files) {
-        // Only include files from node_modules
-        if (file.includes("/node_modules/")) {
-          verboseLog("Adding to optimizeDeps.include: %s -> %s", file);
-          viteConfig.optimizeDeps.include.push(file);
-        } else {
-          verboseLog("Skipping non-node_modules file: %s", file);
+      if (shouldOptimizeForEnv) {
+        log("Applying optimizeDeps and aliasing for environment: %s", env);
+
+        viteConfig.optimizeDeps.include ??= [];
+
+        for (const file of files) {
+          if (file.includes("/node_modules/")) {
+            verboseLog("Adding to optimizeDeps.include: %s -> %s", file);
+            viteConfig.optimizeDeps.include.push(file);
+          } else {
+            verboseLog("Skipping non-node_modules file: %s", file);
+          }
         }
-      }
 
-      const aliases = ensureAliasArray(viteConfig);
+        const aliases = ensureAliasArray(viteConfig);
 
-      for (const file of files) {
-        const actualFilePath = path.join(projectRootDir, file);
-        const findRegex = new RegExp(
-          `^${file.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
+        for (const file of files) {
+          const actualFilePath = path.join(projectRootDir, file);
+          const findRegex = new RegExp(
+            `^${file.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
+          );
+          aliases.push({ find: findRegex, replacement: actualFilePath });
+          log("Added alias for env=%s: %s -> %s", env, file, actualFilePath);
+        }
+
+        log(
+          "Environment configuration complete for env=%s with %d optimizeDeps includes and %d aliases",
+          env,
+          Array.from(files).filter((f) => f.includes("/node_modules/")).length,
+          files.size,
         );
-        aliases.push({ find: findRegex, replacement: actualFilePath });
-        log("Added alias for env=%s: %s -> %s", env, file, actualFilePath);
+      } else {
+        log("Skipping optimizeDeps and aliasing for environment: %s", env);
       }
-
-      log(
-        "Environment configuration complete for env=%s with %d optimizeDeps includes and %d aliases",
-        env,
-        Array.from(files).filter((f) => f.includes("/node_modules/")).length,
-        files.size,
-      );
     },
     resolveId(source) {
       verboseLog("Resolving id=%s", source);
