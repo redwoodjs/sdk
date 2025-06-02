@@ -5,6 +5,7 @@ import { readFile } from "fs/promises";
 import { glob } from "glob";
 import debug from "debug";
 import { normalizeModulePath } from "./normalizeModulePath.mjs";
+import { ensureAliasArray } from "./ensureAliasArray.mjs";
 
 interface DirectiveLookupConfig {
   directive: "use client" | "use server";
@@ -143,9 +144,33 @@ export const createDirectiveLookupPlugin = async ({
         },
       });
 
+      viteConfig.optimizeDeps.include ??= [];
+
+      for (const file of files) {
+        // Only include files from node_modules
+        if (file.includes("/node_modules/")) {
+          verboseLog("Adding to optimizeDeps.include: %s -> %s", file);
+          viteConfig.optimizeDeps.include.push(file);
+        } else {
+          verboseLog("Skipping non-node_modules file: %s", file);
+        }
+      }
+
+      const aliases = ensureAliasArray(viteConfig);
+
+      for (const file of files) {
+        const actualFilePath = path.join(projectRootDir, file);
+        const findRegex = new RegExp(
+          `^${file.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
+        );
+        aliases.push({ find: findRegex, replacement: actualFilePath });
+        log("Added alias for env=%s: %s -> %s", env, file, actualFilePath);
+      }
+
       log(
-        "Environment configuration complete for env=%s with %d optimizeDeps includes",
+        "Environment configuration complete for env=%s with %d optimizeDeps includes and %d aliases",
         env,
+        Array.from(files).filter((f) => f.includes("/node_modules/")).length,
         files.size,
       );
     },
