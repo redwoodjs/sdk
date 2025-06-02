@@ -15,7 +15,7 @@ export const debugSync = async (opts: DebugSyncOptions) => {
     process.exit(1);
   }
 
-  const syncCommand = `echo 🏗️ rebuilding... && pnpm build && rm -rf ${targetDir}/node_modules/rwsdk/{dist,vendor} && echo 📁 syncing sdk from ${process.cwd()} to ${targetDir}/node_modules/rwsdk/... && cp -r dist ${targetDir}/node_modules/rwsdk/ && cp -r vendor ${targetDir}/node_modules/rwsdk/ && echo ✅ done syncing`;
+  const syncCommand = `echo 🏗️ rebuilding... && pnpm build && rm -rf ${targetDir}/node_modules/rwsdk/{dist,vendor,package.json} && echo 📁 syncing sdk from ${process.cwd()} to ${targetDir}/node_modules/rwsdk/... && cp -r {package.json,dist} ${targetDir}/node_modules/rwsdk/ && cp -r vendor ${targetDir}/node_modules/rwsdk/ && echo ✅ done syncing`;
 
   // Run initial sync
   await $({ stdio: "inherit", shell: true })`${syncCommand}`;
