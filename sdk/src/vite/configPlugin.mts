@@ -45,6 +45,9 @@ export const configPlugin = ({
               },
             },
           },
+          define: {
+            "import.meta.env.RWSDK_ENV": JSON.stringify("client"),
+          },
           optimizeDeps: {
             noDiscovery: false,
             esbuildOptions: {
@@ -61,6 +64,9 @@ export const configPlugin = ({
           resolve: {
             conditions: ["workerd"],
             noExternal: true,
+          },
+          define: {
+            "import.meta.env.RWSDK_ENV": JSON.stringify("ssr"),
           },
           optimizeDeps: {
             noDiscovery: false,
@@ -89,6 +95,9 @@ export const configPlugin = ({
           resolve: {
             conditions: ["workerd", "react-server"],
             noExternal: true,
+          },
+          define: {
+            "import.meta.env.RWSDK_ENV": JSON.stringify("worker"),
           },
           optimizeDeps: {
             noDiscovery: false,

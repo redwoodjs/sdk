@@ -146,13 +146,18 @@ export const createDirectiveLookupPlugin = async ({
       viteConfig.optimizeDeps.include ??= [];
 
       for (const file of files) {
-        const denormalizedPath = path.join(projectRootDir, file);
-        verboseLog(
-          "Adding to optimizeDeps.include: %s -> %s",
-          file,
-          denormalizedPath,
-        );
-        viteConfig.optimizeDeps.include.push(denormalizedPath);
+        // Only include files from node_modules
+        if (file.includes("/node_modules/")) {
+          const denormalizedPath = path.join(projectRootDir, file);
+          verboseLog(
+            "Adding to optimizeDeps.include: %s -> %s",
+            file,
+            denormalizedPath,
+          );
+          viteConfig.optimizeDeps.include.push(denormalizedPath);
+        } else {
+          verboseLog("Skipping non-node_modules file: %s", file);
+        }
       }
 
       log(
