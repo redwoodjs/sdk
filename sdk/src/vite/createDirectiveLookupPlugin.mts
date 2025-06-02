@@ -142,7 +142,18 @@ export const createDirectiveLookupPlugin = async ({
         },
       });
 
-      log("Environment configuration complete for env=%s", env);
+      viteConfig.optimizeDeps.include ??= [];
+
+      for (const file of files) {
+        verboseLog("Adding to optimizeDeps.include: %s", file);
+        viteConfig.optimizeDeps.include.push(file);
+      }
+
+      log(
+        "Environment configuration complete for env=%s with %d optimizeDeps includes",
+        env,
+        files.size,
+      );
     },
     resolveId(source) {
       verboseLog("Resolving id=%s", source);
