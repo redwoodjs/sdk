@@ -70,6 +70,7 @@ export const configPlugin = ({
           },
           optimizeDeps: {
             noDiscovery: false,
+            entries: [workerEntryPathname],
             include: ["rwsdk/__ssr_bridge"],
             esbuildOptions: {
               jsx: "automatic",
@@ -103,6 +104,7 @@ export const configPlugin = ({
             noDiscovery: false,
             include: [],
             exclude: [],
+            entries: [workerEntryPathname],
             esbuildOptions: {
               jsx: "automatic",
               jsxImportSource: "react",
