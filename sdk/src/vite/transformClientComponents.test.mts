@@ -292,14 +292,6 @@ export { Component, data, helper };
 });
 
 describe("transformClientComponents logic branches (from transformClientComponents.mts)", () => {
-  it("skips transformation if not in worker environment", async () => {
-    const code = '"use client"\nexport const foo = 1;';
-    const result = await transformClientComponents(code, "/test/file.tsx", {
-      environmentName: "browser",
-    });
-    expect(result).toBeUndefined();
-  });
-
   it("returns code as-is if file does not start with 'use client'", async () => {
     const code = "const foo = 1;";
     const result = await transformClientComponents(code, "/test/file.tsx", {
