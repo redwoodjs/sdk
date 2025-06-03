@@ -9,13 +9,7 @@ const verboseLog = debug("verbose:rwsdk:vite:ssr-bridge-plugin");
 
 export const VIRTUAL_SSR_PREFIX = "virtual:rwsdk:ssr:";
 
-export const ssrBridgePlugin = ({
-  clientFiles,
-  serverFiles,
-}: {
-  clientFiles: Set<string>;
-  serverFiles: Set<string>;
-}): Plugin => {
+export const ssrBridgePlugin = (): Plugin => {
   log(
     "Initializing SSR bridge plugin with SSR_BRIDGE_PATH=%s",
     SSR_BRIDGE_PATH,
@@ -23,29 +17,28 @@ export const ssrBridgePlugin = ({
 
   let devServer: ViteDevServer;
   let isDev = false;
-  let hasSSRWarmupHappened = false;
+  let promisedSSRWarmup: Promise<void> | undefined;
 
-  const warmupSSRModules = async (devServer: ViteDevServer) => {
-    if (hasSSRWarmupHappened) {
-      log("SSR warmup already happened");
-      return;
+  const ensureWarmupSSRModules = async () => {
+    if (promisedSSRWarmup) {
+      log("SSR warmup already in progress");
+      return promisedSSRWarmup;
     }
 
+    promisedSSRWarmup = doWarmupSSRModules();
+    return promisedSSRWarmup;
+  };
+
+  const doWarmupSSRModules = async () => {
     log("Warming up SSR modules");
 
-    const files = Array.from(
-      new Set([
-        "virtual:use-server-lookup",
-        "virtual:use-client-lookup",
-        "rwsdk/__ssr",
-        "rwsdk/__ssr_bridge",
-      ]),
-    );
+    const files = [
+      "virtual:use-server-lookup",
+      "virtual:use-client-lookup",
+      "rwsdk/__ssr",
+      "rwsdk/__ssr_bridge",
+    ];
 
-    log("Warming up SSR files");
-    await Promise.all(
-      files.map((file) => devServer.environments.ssr.warmupRequest(file)),
-    );
     for (const file of files) {
       log("Warming up SSR file: %s", file);
       await devServer.environments.ssr.warmupRequest(file);
@@ -175,7 +168,7 @@ export const ssrBridgePlugin = ({
         id.startsWith(VIRTUAL_SSR_PREFIX) &&
         this.environment.name === "worker"
       ) {
-        await warmupSSRModules(devServer);
+        await ensureWarmupSSRModules();
         const realId = id.slice(VIRTUAL_SSR_PREFIX.length);
         log("Virtual SSR module load: id=%s, realId=%s", id, realId);
 
