@@ -198,6 +198,6 @@ const invalidateModule = (
       moduleNode,
     );
   } else {
-    log("Module not found: id=%s, environment=%s", id, environment);
+    verboseLog("Module not found: id=%s, environment=%s", id, environment);
   }
 };
