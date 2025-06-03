@@ -161,10 +161,6 @@ export async function runDevServer(cwd?: string): Promise<{
       const output = data.toString();
       console.error(output); // Output error messages to console
 
-      // Log output for debugging
-      log("Received stderr chunk: %O", output);
-      log("Stderr chunk as JSON: %s", JSON.stringify(output));
-
       // Check if we already found a URL
       if (url) return;
 
