@@ -180,24 +180,30 @@ else
 fi
 
 echo -e "\n🔄 Updating dependencies in monorepo..."
-while IFS= read -r package_json; do
-  if [[ "$package_json" != "./package.json" ]]; then
-    PROJECT_DIR=$(dirname "$package_json")
-    CURRENT_DEP_VERSION=$(cd "$PROJECT_DIR" && npm pkg get dependencies."$DEPENDENCY_NAME" | tr -d '"')
-    
-    # Only process if the dependency exists (not {} or empty) and isn't a workspace dependency
-    if [[ "$CURRENT_DEP_VERSION" != "{}" && -n "$CURRENT_DEP_VERSION" && "$CURRENT_DEP_VERSION" != workspace:* ]]; then
-      # Get relative path for cleaner output
-      REL_PATH=$(echo "$package_json" | sed 's/\.\.\///')
-      echo "  └─ $REL_PATH"
-      if [[ "$DRY_RUN" == true ]]; then
-        echo "     [DRY RUN] Update to $NEW_VERSION"
-      else
-        (cd "$PROJECT_DIR" && npm pkg set dependencies."$DEPENDENCY_NAME"="$NEW_VERSION")
+
+# Skip dependency updates for prerelease versions (but allow test releases)
+if [[ "$NEW_VERSION" =~ -.*\. && ! "$NEW_VERSION" =~ -test\. ]]; then
+  echo "  ⏭️  Skipping dependency updates for prerelease version $NEW_VERSION"
+else
+  while IFS= read -r package_json; do
+    if [[ "$package_json" != "./package.json" ]]; then
+      PROJECT_DIR=$(dirname "$package_json")
+      CURRENT_DEP_VERSION=$(cd "$PROJECT_DIR" && npm pkg get dependencies."$DEPENDENCY_NAME" | tr -d '"')
+      
+      # Only process if the dependency exists (not {} or empty) and isn't a workspace dependency
+      if [[ "$CURRENT_DEP_VERSION" != "{}" && -n "$CURRENT_DEP_VERSION" && "$CURRENT_DEP_VERSION" != workspace:* ]]; then
+        # Get relative path for cleaner output
+        REL_PATH=$(echo "$package_json" | sed 's/\.\.\///')
+        echo "  └─ $REL_PATH"
+        if [[ "$DRY_RUN" == true ]]; then
+          echo "     [DRY RUN] Update to $NEW_VERSION"
+        else
+          (cd "$PROJECT_DIR" && npm pkg set dependencies."$DEPENDENCY_NAME"="$NEW_VERSION")
+        fi
       fi
     fi
-  fi
-done < <(find .. -path "*/node_modules" -prune -o -name "package.json" -print)
+  done < <(find .. -path "*/node_modules" -prune -o -name "package.json" -print)
+fi
 
 echo -e "\n📥 Installing dependencies..."
 if [[ "$DRY_RUN" == true ]]; then
@@ -219,14 +225,24 @@ fi
 echo -e "\n💾 Committing changes..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] Git operations:"
-  echo "    - Add: all package.json and pnpm-lock.yaml files"
+  if [[ "$NEW_VERSION" =~ -.*\. && ! "$NEW_VERSION" =~ -test\. ]]; then
+    echo "    - Add: package.json only (prerelease - no dependency updates)"
+  else
+    echo "    - Add: all package.json and pnpm-lock.yaml files"
+  fi
   echo "    - Amend commit: release $NEW_VERSION"
   echo "    - Tag: $TAG_NAME"
   echo "    - Push: origin with tags"
 else
-  # Add all changed package.json and pnpm-lock.yaml files in the monorepo
-  (cd .. && git add $(git diff --name-only | grep -E 'package\.json|pnpm-lock\.yaml$'))
-  git commit --amend --no-edit
+  # For prerelease versions, only add the main package.json since we didn't update dependencies
+  if [[ "$NEW_VERSION" =~ -.*\. && ! "$NEW_VERSION" =~ -test\. ]]; then
+    # Just amend the existing commit (which already has package.json)
+    git commit --amend --no-edit
+  else
+    # Add all changed package.json and pnpm-lock.yaml files in the monorepo
+    (cd .. && git add $(git diff --name-only | grep -E 'package\.json|pnpm-lock\.yaml$'))
+    git commit --amend --no-edit
+  fi
   git pull --rebase
   git tag "$TAG_NAME"
   git push
