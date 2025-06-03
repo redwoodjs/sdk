@@ -12,7 +12,7 @@ export const loadModule = memoize(async (id: string) => {
 
     if (!moduleFn) {
       throw new Error(
-        `No module found for '${id}' in module lookup for "use client" directive`,
+        `(client) No module found for '${id}' in module lookup for "use client" directive`,
       );
     }
 

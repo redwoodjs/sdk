@@ -1,231 +1,247 @@
-import { resolve } from "path";
-import { Plugin, EnvironmentOptions } from "vite";
-import { ROOT_DIR } from "../lib/constants.mjs";
+import { Plugin } from "vite";
+import fs from "fs/promises";
 import debug from "debug";
-import { pathExists } from "fs-extra";
+import { ROOT_DIR } from "../lib/constants.mjs";
 import enhancedResolve from "enhanced-resolve";
-import { VENDOR_DIST_DIR } from "../lib/constants.mjs";
-import { createRequire } from "node:module";
 import { ensureAliasArray } from "./ensureAliasArray.mjs";
 
-const log = debug("rwsdk:vite:react-conditions");
+const log = debug("rwsdk:vite:react-conditions-resolver-plugin");
+const verboseLog = debug("verbose:rwsdk:vite:react-conditions-resolver-plugin");
 
-// Define package sets for each environment
-const WORKER_PACKAGES = [
-  "react",
-  "react-dom/server.edge",
-  "react-dom/server",
-  "react-dom",
-  "react/jsx-runtime",
-  "react/jsx-dev-runtime",
-  "react-server-dom-webpack/client.browser",
-  "react-server-dom-webpack/client.edge",
-  "react-server-dom-webpack/server.edge",
-];
+export const ENV_REACT_IMPORTS = {
+  worker: [
+    "react",
+    "react-dom",
+    "react/jsx-runtime",
+    "react/jsx-dev-runtime",
+    "react-server-dom-webpack/server.edge",
+  ],
+  ssr: [
+    "react",
+    "react-dom",
+    "react/jsx-runtime",
+    "react/jsx-dev-runtime",
+    "react-dom/server.edge",
+    "react-dom/server",
+    "react-server-dom-webpack/client.edge",
+  ],
+  client: [
+    "react",
+    "react-dom",
+    "react-dom/client",
+    "react/jsx-runtime",
+    "react/jsx-dev-runtime",
+    "react-server-dom-webpack/client.browser",
+    "react-server-dom-webpack/client.edge",
+  ],
+};
 
-const CLIENT_PACKAGES = [
-  "react",
-  "react-dom/client",
-  "react-dom",
-  "react/jsx-runtime",
-  "react/jsx-dev-runtime",
-  "react-server-dom-webpack/client.browser",
-  "react-server-dom-webpack/client.edge",
-  "react-server-dom-webpack/server.edge",
-];
-
-// Skip react-server condition for these packages
-const SKIP_REACT_SERVER = [
-  "react-dom/server",
-  "react-dom/client",
-  "react-dom/server.edge",
-  "react-dom/server.browser",
-];
-
-// Global server packages that need aliases regardless of environment
-const GLOBAL_SERVER_PACKAGES = [
-  "react-dom/server.edge",
-  "react-dom/server",
-  "react-server-dom-webpack/server.edge",
-  "react-server-dom-webpack/client.edge",
-];
-
-export const reactConditionsResolverPlugin = async ({
-  mode = "development",
-  command = "serve",
-}: {
-  projectRootDir: string;
-  mode?: "development" | "production";
-  command?: "build" | "serve";
-}): Promise<Plugin> => {
-  log(
-    "Initializing React conditions resolver plugin in %s mode for %s",
-    mode,
-    command,
-  );
-
-  const vendorDir = VENDOR_DIST_DIR;
-  const sdkRequire = createRequire(ROOT_DIR);
-
-  const workerResolver = enhancedResolve.create.sync({
-    conditionNames: ["react-server", "workerd", "worker", "edge", "default"],
-  });
-
-  const clientResolver = enhancedResolve.create.sync({
-    conditionNames: ["browser", "default"],
-  });
-
-  const skipReactServerResolver = enhancedResolve.create.sync({
+export const ENV_RESOLVERS = {
+  ssr: enhancedResolve.create.sync({
     conditionNames: ["workerd", "worker", "edge", "default"],
-  });
+  }),
 
-  const resolveWithConditions = async (
-    packageName: string,
-    environment: string,
-  ) => {
-    if (packageName === "react") {
-      const modePath = resolve(vendorDir, `react.${mode}.js`);
-      if (await pathExists(modePath)) {
-        log("Using custom %s mode build for %s", mode, packageName);
-        return modePath;
-      }
-    }
+  worker: enhancedResolve.create.sync({
+    conditionNames: ["react-server", "workerd", "worker", "edge", "default"],
+  }),
 
-    try {
-      let resolver;
+  client: enhancedResolve.create.sync({
+    conditionNames: ["browser", "default"],
+  }),
+};
 
-      if (environment === "worker") {
-        if (SKIP_REACT_SERVER.includes(packageName)) {
-          resolver = skipReactServerResolver;
-          log("Using skipReactServer resolver for %s", packageName);
-        } else {
-          resolver = workerResolver;
-          log("Using worker resolver with react-server for %s", packageName);
-        }
-      } else {
-        resolver = clientResolver;
-        log("Using client resolver for %s", packageName);
-      }
+export const ENV_IMPORT_MAPPINGS = Object.fromEntries(
+  Object.keys(ENV_RESOLVERS).map((env) => [
+    env,
+    resolveEnvImportMappings(env as keyof typeof ENV_RESOLVERS),
+  ]),
+);
 
-      const resolved = resolver(ROOT_DIR, packageName);
-      if (resolved) {
-        log("Resolved %s to %s using enhanced-resolve", packageName, resolved);
-        return resolved;
-      }
-    } catch (error) {
-      log("Enhanced resolution failed for %s: %o", packageName, error);
-    }
+function resolveEnvImportMappings(env: keyof typeof ENV_RESOLVERS) {
+  verboseLog("Resolving environment import mappings for env=%s", env);
+
+  const mappings = new Map<string, string>();
+  const reactImports = ENV_REACT_IMPORTS[env];
+
+  for (const importRequest of reactImports) {
+    verboseLog("Resolving import request=%s for env=%s", importRequest, env);
+
+    let resolved: string | false = false;
 
     try {
-      const resolved = sdkRequire.resolve(packageName);
-      log("Standard resolution for %s: %s", packageName, resolved);
-      return resolved;
-    } catch (fallbackError) {
-      log("All resolution failed for %s: %o", packageName, fallbackError);
-      throw new Error(`Failed to resolve ${packageName}`);
-    }
-  };
-
-  const generateImports = async (packages: string[], env: string) => {
-    const imports: Record<string, string> = {};
-    for (const pkg of packages) {
-      imports[pkg] = await resolveWithConditions(pkg, env);
-    }
-    return imports;
-  };
-
-  // Generate import mappings for both environments
-  const workerImports = await generateImports(WORKER_PACKAGES, "worker");
-  const clientImports = await generateImports(CLIENT_PACKAGES, "client");
-
-  // Log the resolved paths
-  const logImports = (env: string, imports: Record<string, string>) => {
-    log(`Resolved ${env} paths (${mode} mode):`);
-    Object.entries(imports).forEach(([id, path]) => {
-      log("- %s: %s", id, path);
-    });
-  };
-
-  logImports("worker", workerImports);
-  logImports("client", clientImports);
-
-  const configureEnvironment = (
-    name: string,
-    config: EnvironmentOptions,
-    imports: Record<string, string>,
-  ) => {
-    log(
-      `Applying React conditions resolver for ${name} environment in ${mode} mode`,
-    );
-
-    (config.optimizeDeps ??= {}).esbuildOptions ??= {};
-
-    config.optimizeDeps.esbuildOptions.define = {
-      ...(config.optimizeDeps.esbuildOptions.define || {}),
-      "process.env.NODE_ENV": JSON.stringify(mode),
-    };
-
-    config.optimizeDeps.include ??= [];
-    config.optimizeDeps.include.push(...Object.keys(imports));
-
-    config.resolve ??= {};
-
-    ensureAliasArray(config);
-
-    Object.entries(imports).forEach(([id, resolvedPath]) => {
-      const exactMatchRegex = new RegExp(
-        `^${id.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
+      resolved = ENV_RESOLVERS[env](ROOT_DIR, importRequest);
+      verboseLog(
+        "Successfully resolved %s to %s for env=%s",
+        importRequest,
+        resolved,
+        env,
       );
+    } catch {
+      verboseLog("Failed to resolve %s for env=%s", importRequest, env);
+    }
 
-      (config.resolve as any).alias.push({
-        find: exactMatchRegex,
-        replacement: resolvedPath,
-      });
+    if (resolved) {
+      mappings.set(importRequest, resolved);
+      log("Added mapping for %s -> %s in env=%s", importRequest, resolved, env);
+    }
+  }
 
-      log(`${name}: Added alias for ${id} -> ${resolvedPath}`);
-    });
-  };
+  log(
+    "Environment import mappings complete for env=%s: %d mappings",
+    env,
+    mappings.size,
+  );
+  return mappings;
+}
+
+function createEsbuildResolverPlugin(envName: string) {
+  const mappings = ENV_IMPORT_MAPPINGS[envName];
+
+  if (!mappings) {
+    return null;
+  }
 
   return {
-    name: `rwsdk:react-conditions-resolver:${mode}`,
+    name: `rwsdk:react-conditions-resolver-esbuild-${envName}`,
+    setup(build: any) {
+      build.onResolve({ filter: /.*/ }, (args: any) => {
+        verboseLog(
+          "ESBuild resolving %s for env=%s, args=%O",
+          args.path,
+          envName,
+          args,
+        );
+
+        const resolved = mappings.get(args.path);
+
+        if (resolved && args.importer !== "") {
+          verboseLog(
+            "ESBuild resolving %s -> %s for env=%s",
+            args.path,
+            resolved,
+            envName,
+          );
+          if (args.path === "react-server-dom-webpack/client.edge") {
+            return;
+          }
+          return {
+            path: resolved,
+          };
+        } else {
+          verboseLog(
+            "ESBuild no resolution found for %s for env=%s",
+            args.path,
+            envName,
+          );
+        }
+      });
+    },
+  };
+}
+
+export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
+  log("Initializing react conditions resolver plugin");
+  let isBuild = false;
+
+  return {
+    name: "rwsdk:react-conditions-resolver",
     enforce: "post",
 
-    config(config) {
-      config.resolve ??= {};
-      (config.resolve as any).alias ??= [];
-
-      if (!Array.isArray((config.resolve as any).alias)) {
-        const existingAlias = (config.resolve as any).alias;
-        (config.resolve as any).alias = Object.entries(existingAlias).map(
-          ([find, replacement]) => ({ find, replacement }),
-        );
-      }
-
-      for (const id of GLOBAL_SERVER_PACKAGES) {
-        const resolvedPath = workerImports[id];
-        if (resolvedPath) {
-          const exactMatchRegex = new RegExp(
-            `^${id.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
-          );
-          (config.resolve as any).alias.push({
-            find: exactMatchRegex,
-            replacement: resolvedPath,
-          });
-          log(`Global: Added alias for ${id} -> ${resolvedPath}`);
-        }
-      }
-
-      return config;
+    config(config, { command }) {
+      isBuild = command === "build";
+      log("Configuring plugin for command=%s", command);
     },
 
-    configEnvironment(name: string, config: EnvironmentOptions) {
-      if (name === "client") {
-        configureEnvironment("client", config, clientImports);
+    configResolved(config) {
+      log("Setting up resolve aliases and optimizeDeps for each environment");
+
+      // Set up aliases and optimizeDeps for each environment
+      for (const [envName, mappings] of Object.entries(ENV_IMPORT_MAPPINGS)) {
+        const reactImports =
+          ENV_REACT_IMPORTS[envName as keyof typeof ENV_REACT_IMPORTS];
+
+        // Ensure environment config exists
+        if (!(config as any).environments) {
+          (config as any).environments = {};
+        }
+
+        if (!(config as any).environments[envName]) {
+          (config as any).environments[envName] = {};
+        }
+
+        const envConfig = (config as any).environments[envName];
+
+        const esbuildPlugin = createEsbuildResolverPlugin(envName);
+        if (esbuildPlugin && mappings) {
+          envConfig.optimizeDeps ??= {};
+          envConfig.optimizeDeps.esbuildOptions ??= {};
+          envConfig.optimizeDeps.esbuildOptions.define ??= {};
+          envConfig.optimizeDeps.esbuildOptions.define["process.env.NODE_ENV"] =
+            JSON.stringify(process.env.NODE_ENV ?? "production");
+          envConfig.optimizeDeps.esbuildOptions.plugins ??= [];
+          envConfig.optimizeDeps.esbuildOptions.plugins.push(esbuildPlugin);
+
+          envConfig.optimizeDeps.include ??= [];
+          envConfig.optimizeDeps.include.push(...reactImports);
+
+          log(
+            "Added esbuild plugin and optimizeDeps includes for environment: %s",
+            envName,
+          );
+        }
+
+        const aliases = ensureAliasArray(envConfig);
+
+        for (const [find, replacement] of mappings) {
+          const findRegex = new RegExp(
+            `^${find.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
+          );
+          aliases.push({ find: findRegex, replacement });
+          log("Added alias for env=%s: %s -> %s", envName, find, replacement);
+        }
+
+        log(
+          "Environment %s configured with %d aliases and %d optimizeDeps includes",
+          envName,
+          mappings.size,
+          reactImports.length,
+        );
+      }
+    },
+
+    async resolveId(id, importer) {
+      if (!isBuild) {
+        return;
       }
 
-      if (name === "worker") {
-        configureEnvironment("worker", config, workerImports);
+      const envName = this.environment?.name;
+
+      if (!envName) {
+        return;
       }
+
+      verboseLog(
+        "Resolving id=%s, environment=%s, importer=%s",
+        id,
+        envName,
+        importer,
+      );
+
+      const mappings = ENV_IMPORT_MAPPINGS[envName];
+
+      if (!mappings) {
+        verboseLog("No mappings found for environment: %s", envName);
+        return;
+      }
+
+      const resolved = mappings.get(id);
+
+      if (resolved) {
+        log("Resolved %s -> %s for env=%s", id, resolved, envName);
+        return resolved;
+      }
+
+      verboseLog("No resolution found for id=%s in env=%s", id, envName);
     },
   };
 };

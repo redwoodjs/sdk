@@ -1,16 +1,9 @@
 import { Plugin } from "vite";
-import { resolve } from "node:path";
+import path, { resolve } from "node:path";
 import { mergeConfig, InlineConfig } from "vite";
-import { PrismaCheckResult } from "./checkIsUsingPrisma.mjs";
-
-const ignoreVirtualModules = {
-  name: "rwsdk:ignore-virtual-modules",
-  setup(build: any) {
-    build.onResolve({ filter: /^virtual:use-client-lookup$/ }, () => {
-      return { external: true };
-    });
-  },
-};
+import enhancedResolve from "enhanced-resolve";
+import { SSR_BRIDGE_PATH } from "../lib/constants.mjs";
+import { builtinModules } from "node:module";
 
 export const configPlugin = ({
   mode,
@@ -38,6 +31,9 @@ export const configPlugin = ({
       define: {
         "process.env.NODE_ENV": JSON.stringify(mode),
       },
+      ssr: {
+        target: "webworker",
+      },
       environments: {
         client: {
           consumer: "client",
@@ -50,11 +46,52 @@ export const configPlugin = ({
               },
             },
           },
+          define: {
+            "import.meta.env.RWSDK_ENV": JSON.stringify("client"),
+          },
           optimizeDeps: {
             noDiscovery: false,
             esbuildOptions: {
-              plugins: [ignoreVirtualModules],
+              jsx: "automatic",
+              jsxImportSource: "react",
+              plugins: [],
+              define: {
+                "process.env.NODE_ENV": JSON.stringify(mode),
+              },
             },
+          },
+        },
+        ssr: {
+          resolve: {
+            conditions: ["workerd"],
+            noExternal: true,
+          },
+          define: {
+            "import.meta.env.RWSDK_ENV": JSON.stringify("ssr"),
+          },
+          optimizeDeps: {
+            noDiscovery: false,
+            entries: [workerEntryPathname],
+            exclude: ["cloudflare:workers", ...builtinModules],
+            include: ["rwsdk/__ssr_bridge"],
+            esbuildOptions: {
+              jsx: "automatic",
+              jsxImportSource: "react",
+              conditions: ["workerd"],
+              plugins: [],
+            },
+          },
+          build: {
+            lib: {
+              entry: {
+                [path.basename(SSR_BRIDGE_PATH, ".js")]: enhancedResolve.sync(
+                  projectRootDir,
+                  "rwsdk/__ssr_bridge",
+                ) as string,
+              },
+              formats: ["es"],
+            },
+            outDir: path.dirname(SSR_BRIDGE_PATH),
           },
         },
         worker: {
@@ -62,18 +99,18 @@ export const configPlugin = ({
             conditions: ["workerd", "react-server"],
             noExternal: true,
           },
+          define: {
+            "import.meta.env.RWSDK_ENV": JSON.stringify("worker"),
+          },
           optimizeDeps: {
             noDiscovery: false,
+            include: [],
+            exclude: [],
+            entries: [workerEntryPathname],
             esbuildOptions: {
-              conditions: ["workerd", "react-server"],
-              plugins: [ignoreVirtualModules],
+              jsx: "automatic",
+              jsxImportSource: "react",
             },
-            include: [
-              "react/jsx-runtime",
-              "react/jsx-dev-runtime",
-              "react-server-dom-webpack/client.edge",
-              "react-server-dom-webpack/server.edge",
-            ],
           },
           build: {
             outDir: resolve(projectRootDir, "dist", "worker"),
@@ -96,6 +133,22 @@ export const configPlugin = ({
       resolve: {
         conditions: ["workerd"],
         alias: [],
+      },
+      builder: {
+        buildApp: async (builder) => {
+          // note(justinvdm, 27 May 2025): **Ordering is important**:
+          // * When building, client needs to be build first, so that we have a
+          //   manifest file to map to when looking at asset references in JSX
+          //   (e.g. Document.tsx)
+          // * When bundling, the RSC build imports the SSR build - this way
+          //   they each can have their own environments (e.g. with their own
+          //   import conditions), while still having all worker-run code go
+          //   through the processing done by `@cloudflare/vite-plugin`
+
+          await builder.build(builder.environments["client"]!);
+          await builder.build(builder.environments["ssr"]!);
+          await builder.build(builder.environments["worker"]!);
+        },
       },
     };
 
