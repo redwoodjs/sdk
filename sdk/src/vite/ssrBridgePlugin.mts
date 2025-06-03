@@ -52,9 +52,6 @@ export const ssrBridgePlugin = ({
       log("Deps optimizer scan processing complete");
     }
 
-    log("Waiting for SSR requests to idle");
-    await devServer.environments.ssr.waitForRequestsIdle();
-
     log("SSR warmup complete");
   };
 
