@@ -5,13 +5,14 @@ set -e  # Stop on first error
 DEPENDENCY_NAME="rwsdk"  # Replace with the actual package name
 
 show_help() {
-  echo "Usage: pnpm release <patch|minor|major|test> [--dry]"
+  echo "Usage: pnpm release <patch|minor|major|test|alpha|beta|rc> [--dry]"
   echo ""
   echo "Automates version bumping, publishing, and dependency updates for $DEPENDENCY_NAME"
   echo ""
   echo "Arguments:"
   echo "  patch|minor|major    The type of version bump to perform"
   echo "  test                 Create a test release (x.y.z-test.<timestamp>), published under --tag test"
+  echo "  alpha|beta|rc        Create a prerelease (x.y.z-alpha.0, x.y.z-beta.1, etc.)"
   echo ""
   echo "Process:"
   echo "  1. Builds package with NODE_ENV=production"
@@ -36,6 +37,8 @@ show_help() {
   echo "  pnpm release patch         # 0.1.0 -> 0.1.1"
   echo "  pnpm release minor         # 0.1.1 -> 0.2.0"
   echo "  pnpm release major         # 0.2.0 -> 1.0.0"
+  echo "  pnpm release alpha         # 1.0.0 -> 1.0.1-alpha.0 or 1.0.0-alpha.0 -> 1.0.0-alpha.1"
+  echo "  pnpm release beta          # 1.0.0 -> 1.0.1-beta.0 or 1.0.0-beta.0 -> 1.0.0-beta.1"
   echo "  pnpm release test          # 1.0.0 -> 1.0.0-test.0 (published as @test)"
   echo "  pnpm release test          # 1.0.0-test.0 -> 1.0.0-test.1 (published as @test)"
   echo "  pnpm release patch --dry   # Show what would happen"
@@ -66,14 +69,14 @@ for arg in "$@"; do
     show_help
   elif [[ "$arg" == "--dry" ]]; then
     DRY_RUN=true
-  elif [[ "$arg" == "patch" || "$arg" == "minor" || "$arg" == "major" || "$arg" == "test" ]]; then
+  elif [[ "$arg" == "patch" || "$arg" == "minor" || "$arg" == "major" || "$arg" == "test" || "$arg" == "alpha" || "$arg" == "beta" || "$arg" == "rc" ]]; then
     VERSION_TYPE=$arg
   fi
 done
 
 # Validate required arguments
 if [[ -z "$VERSION_TYPE" ]]; then
-  echo "Error: Version type (patch|minor|major|test) is required"
+  echo "Error: Version type (patch|minor|major|test|alpha|beta|rc) is required"
   echo ""
   show_help
 fi
@@ -112,9 +115,19 @@ if [[ "$VERSION_TYPE" == "test" ]]; then
     BASE_VERSION="$CURRENT_VERSION"
   fi
   NEW_VERSION="$BASE_VERSION-test.$TIMESTAMP"
+elif [[ "$VERSION_TYPE" == "alpha" || "$VERSION_TYPE" == "beta" || "$VERSION_TYPE" == "rc" ]]; then
+  # Handle prerelease versions (alpha, beta, rc)
+  if [[ "$CURRENT_VERSION" =~ ^.*-${VERSION_TYPE}\..*$ ]]; then
+    # If current version is already the same prerelease type, increment it
+    NEW_VERSION=$(npx semver -i prerelease "$CURRENT_VERSION")
+  else
+    # If not a prerelease or different prerelease type, create new prerelease
+    NEW_VERSION=$(npx semver -i prerelease --preid "$VERSION_TYPE" "$CURRENT_VERSION")
+  fi
 else
-  # If current version is a test version, use the base version for incrementing
-  if [[ "$CURRENT_VERSION" =~ ^(.*)-test\..*$ ]]; then
+  # Handle regular versions (patch, minor, major)
+  # If current version is a prerelease, use the base version for incrementing
+  if [[ "$CURRENT_VERSION" =~ ^(.*)-.*$ ]]; then
     CURRENT_VERSION="${BASH_REMATCH[1]}"
   fi
   NEW_VERSION=$(npx semver -i $VERSION_TYPE $CURRENT_VERSION)
