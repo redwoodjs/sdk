@@ -9,7 +9,13 @@ const verboseLog = debug("verbose:rwsdk:vite:ssr-bridge-plugin");
 
 export const VIRTUAL_SSR_PREFIX = "virtual:rwsdk:ssr:";
 
-export const ssrBridgePlugin = (): Plugin => {
+export const ssrBridgePlugin = ({
+  clientFiles,
+  serverFiles,
+}: {
+  clientFiles: Set<string>;
+  serverFiles: Set<string>;
+}): Plugin => {
   log(
     "Initializing SSR bridge plugin with SSR_BRIDGE_PATH=%s",
     SSR_BRIDGE_PATH,
@@ -17,6 +23,26 @@ export const ssrBridgePlugin = (): Plugin => {
 
   let devServer: ViteDevServer;
   let isDev = false;
+  let hasSSRWarmupHappened = false;
+
+  const warmupSSRModules = async (devServer: ViteDevServer) => {
+    if (hasSSRWarmupHappened) {
+      log("SSR warmup already happened");
+      return;
+    }
+
+    log("Warming up SSR modules");
+    const files = Array.from(new Set([...clientFiles, ...serverFiles]));
+
+    await Promise.all(
+      files.map((file) => devServer.environments.ssr.warmupRequest(file)),
+    );
+
+    log("Waiting for SSR requests to idle");
+    await devServer.environments.ssr.waitForRequestsIdle();
+
+    log("SSR warmup complete");
+  };
 
   const ssrBridgePlugin: Plugin = {
     name: "rwsdk:ssr-bridge",
@@ -134,6 +160,7 @@ export const ssrBridgePlugin = (): Plugin => {
         id.startsWith(VIRTUAL_SSR_PREFIX) &&
         this.environment.name === "worker"
       ) {
+        await warmupSSRModules(devServer);
         const realId = id.slice(VIRTUAL_SSR_PREFIX.length);
         log("Virtual SSR module load: id=%s, realId=%s", id, realId);
 
@@ -142,16 +169,7 @@ export const ssrBridgePlugin = (): Plugin => {
             "Dev mode: warming up and fetching SSR module for realPath=%s",
             realId,
           );
-          invalidateModule(devServer, "ssr", realId);
-          devServer?.environments.ssr.warmupRequest(realId);
-          await devServer?.environments.ssr.waitForRequestsIdle();
-          const result = await devServer?.environments.ssr.fetchModule(
-            realId,
-            undefined,
-            {
-              cached: false,
-            },
-          );
+          const result = await devServer?.environments.ssr.fetchModule(realId);
 
           verboseLog("Fetch module result: id=%s, result=%O", realId, result);
 
