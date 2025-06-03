@@ -190,8 +190,8 @@ importers:
   starters/minimal:
     dependencies:
       rwsdk:
-        specifier: 0.0.88-test.20250603022108
-        version: 0.0.88-test.20250603022108(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)
+        specifier: 0.0.88-test.20250603060211
+        version: 0.0.88-test.20250603060211(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)
     devDependencies:
       '@types/node':
         specifier: ^22.14.0
@@ -227,8 +227,8 @@ importers:
         specifier: ^13.1.1
         version: 13.1.1
       rwsdk:
-        specifier: 0.0.88-test.20250603022108
-        version: 0.0.88-test.20250603022108(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)
+        specifier: 0.0.88-test.20250603060211
+        version: 0.0.88-test.20250603060211(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)
     devDependencies:
       '@types/node':
         specifier: ^22.14.0
@@ -3508,8 +3508,8 @@ packages:
   run-parallel@1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
 
-  rwsdk@0.0.88-test.20250603022108:
-    resolution: {integrity: sha512-mMJ0A2haNZcg/O9ujE/8Hrbzxuwolkpts1LRwgCx9iJhhsCbsBvEen+9mgLNfDpVeYAiMx/5dBxxHh3j5ngEUw==}
+  rwsdk@0.0.88-test.20250603060211:
+    resolution: {integrity: sha512-N1ArG9f+N4WKhO0TUAFOOt+A89vRNhxobRe72JizjTjhckEpap5vQPjh4IYqxPalE7w7dxfQ+3+0fiFA4A7gBA==}
     hasBin: true
     peerDependencies:
       vite: ^6.2.6
@@ -8219,7 +8219,7 @@ snapshots:
     dependencies:
       queue-microtask: 1.2.3
 
-  rwsdk@0.0.88-test.20250603022108(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1):
+  rwsdk@0.0.88-test.20250603060211(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1):
     dependencies:
       '@cloudflare/vite-plugin': 0.0.0-1bae8618b(rollup@4.40.0)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250508.0)(wrangler@4.16.0(@cloudflare/workers-types@4.20250407.0))
       '@cloudflare/workers-types': 4.20250407.0
@@ -8229,6 +8229,7 @@ snapshots:
       '@types/react-dom': 19.1.2(@types/react@19.1.2)
       '@types/react-is': 19.0.0
       '@vitejs/plugin-react': 4.3.4(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))
+      chokidar: 4.0.3
       debug: 4.4.0
       enhanced-resolve: 5.18.1
       eventsource-parser: 3.0.0
