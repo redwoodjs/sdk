@@ -32,8 +32,15 @@ export const ssrBridgePlugin = ({
     }
 
     log("Warming up SSR modules");
+
+    log("Waiting for SSR deps optimizer to scan processing");
+    await devServer.environments.ssr.depsOptimizer?.scanProcessing;
+    log("SSR deps optimizer scan processing complete");
+
+    log("Getting SSR files");
     const files = Array.from(new Set([...clientFiles, ...serverFiles]));
 
+    log("Warming up SSR files");
     await Promise.all(
       files.map((file) => devServer.environments.ssr.warmupRequest(file)),
     );

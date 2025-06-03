@@ -240,7 +240,7 @@ export const createDirectiveLookupPlugin = async ({
               actualFilePath,
             );
           } else {
-            verboseLog("Adding to optimizeDeps.entries: %s", file);
+            verboseLog("Adding to optimizeDeps.entries: %s", actualFilePath);
             viteConfig.optimizeDeps.entries.push(actualFilePath);
           }
         }
