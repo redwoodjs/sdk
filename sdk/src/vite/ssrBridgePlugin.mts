@@ -1,4 +1,5 @@
 import type { Plugin, ViteDevServer } from "vite";
+import path from "path";
 import debug from "debug";
 import { SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 
@@ -19,8 +20,9 @@ export const ssrBridgePlugin = (): Plugin => {
   const ssrBridgePlugin: Plugin = {
     name: "rwsdk:ssr-bridge",
     enforce: "pre",
-    configureServer(server) {
+    async configureServer(server) {
       devServer = server;
+      await invalidateSSRModulesOnDepsChange(devServer);
       log("Configured dev server");
     },
     config(_, { command, isPreview }) {
@@ -137,8 +139,16 @@ export const ssrBridgePlugin = (): Plugin => {
             "Dev mode: warming up and fetching SSR module for realPath=%s",
             realId,
           );
-          await devServer?.environments.ssr.warmupRequest(realId);
-          const result = await devServer?.environments.ssr.fetchModule(realId);
+          devServer?.environments.ssr.warmupRequest(realId);
+          await devServer?.environments.ssr.waitForRequestsIdle();
+          devServer?.environments.ssr.moduleGraph.invalidateAll();
+          const result = await devServer?.environments.ssr.fetchModule(
+            realId,
+            undefined,
+            {
+              cached: false,
+            },
+          );
 
           verboseLog("Fetch module result: id=%s, result=%O", realId, result);
 
@@ -168,3 +178,49 @@ await (async function(__vite_ssr_import__, __vite_ssr_dynamic_import__) {${code}
 
   return ssrBridgePlugin;
 };
+
+export async function invalidateSSRModulesOnDepsChange(
+  devServer: ViteDevServer,
+) {
+  const chokidar = await import("chokidar");
+  const depsSSRPath = path.join(
+    devServer.config.root,
+    "node_modules",
+    ".vite",
+    "deps_ssr",
+  );
+
+  log("Setting up chokidar watcher for deps_ssr directory: %s", depsSSRPath);
+
+  const watcher = chokidar.watch(depsSSRPath);
+
+  let debounceTimer: NodeJS.Timeout | null = null;
+
+  const invalidateModules = () => {
+    log("Invalidating SSR modules due to deps_ssr change");
+
+    for (const [id, mod] of devServer.moduleGraph.idToModuleMap) {
+      if (id?.startsWith(VIRTUAL_SSR_PREFIX)) {
+        devServer.moduleGraph.invalidateModule(mod);
+      }
+    }
+  };
+
+  watcher.on("all", (event: string, filePath: string) => {
+    log("Detected deps_ssr change: event=%s, path=%s", event, filePath);
+
+    if (debounceTimer) {
+      clearTimeout(debounceTimer);
+    }
+
+    debounceTimer = setTimeout(() => {
+      invalidateModules();
+      debounceTimer = null;
+    }, 200);
+  });
+
+  devServer.httpServer?.on("close", () => {
+    log("Closing chokidar watcher");
+    watcher.close();
+  });
+}
