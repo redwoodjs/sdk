@@ -33,10 +33,14 @@ export const ssrBridgePlugin = ({
 
     log("Warming up SSR modules");
 
-    log("SSR deps optimizer scan processing complete");
-
-    log("Getting SSR files");
-    const files = Array.from(new Set([...clientFiles, ...serverFiles]));
+    const files = Array.from(
+      new Set([
+        "virtual:use-server-lookup",
+        "virtual:use-client-lookup",
+        "rwsdk/__ssr",
+        "rwsdk/__ssr_bridge",
+      ]),
+    );
 
     log("Warming up SSR files");
     await Promise.all(

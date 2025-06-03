@@ -216,9 +216,6 @@ export const createDirectiveLookupPlugin = async ({
         log("Applying optimizeDeps and aliasing for environment: %s", env);
 
         viteConfig.optimizeDeps.include ??= [];
-        viteConfig.optimizeDeps.entries = ([] as string[]).concat(
-          viteConfig.optimizeDeps.entries ?? [],
-        );
 
         const aliases = ensureAliasArray(viteConfig);
 
@@ -239,9 +236,6 @@ export const createDirectiveLookupPlugin = async ({
               file,
               actualFilePath,
             );
-          } else {
-            verboseLog("Adding to optimizeDeps.entries: %s", actualFilePath);
-            viteConfig.optimizeDeps.entries.push(actualFilePath);
           }
         }
 
