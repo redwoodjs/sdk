@@ -278,16 +278,10 @@ export async function transformClientComponents(
 
   const finalResult = sourceFile.getFullText();
 
-  log(
-    ":isEsbuild=%s: Final transformed code for %s:\n%s",
-    !!ctx.isEsbuild,
-    normalizedId,
-    finalResult,
-  );
-
   verboseLog(
-    ":VERBOSE: Transformed code for %s (normalizedId=%s):\n%s",
+    ":VERBOSE: Transformed code (env=%s, normalizedId=%s):\n%s",
     normalizedId,
+    ctx.environmentName,
     finalResult,
   );
 
