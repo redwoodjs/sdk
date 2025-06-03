@@ -22,7 +22,7 @@
     "types": "tsc"
   },
   "dependencies": {
-    "rwsdk": "0.0.88"
+    "rwsdk": "0.0.88-test.20250603022108"
   },
   "devDependencies": {
     "@types/node": "^22.14.0",
