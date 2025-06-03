@@ -1,8 +1,6 @@
 import type { Plugin, ViteDevServer } from "vite";
-import path from "path";
 import debug from "debug";
 import { SSR_BRIDGE_PATH } from "../lib/constants.mjs";
-import { inspect } from "util";
 
 const log = debug("rwsdk:vite:ssr-bridge-plugin");
 const verboseLog = debug("verbose:rwsdk:vite:ssr-bridge-plugin");
