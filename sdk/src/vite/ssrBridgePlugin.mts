@@ -22,7 +22,6 @@ export const ssrBridgePlugin = (): Plugin => {
     enforce: "pre",
     async configureServer(server) {
       devServer = server;
-      await invalidateSSRModulesOnDepsChange(devServer);
       log("Configured dev server");
     },
     config(_, { command, isPreview }) {
@@ -100,6 +99,8 @@ export const ssrBridgePlugin = (): Plugin => {
             id,
             virtualId,
           );
+
+          invalidateModule(devServer, "worker", virtualId);
           return virtualId;
         }
       } else {
@@ -113,6 +114,7 @@ export const ssrBridgePlugin = (): Plugin => {
             id,
             SSR_BRIDGE_PATH,
           );
+          invalidateModule(devServer, "worker", id);
           return SSR_BRIDGE_PATH;
         }
       }
@@ -139,9 +141,9 @@ export const ssrBridgePlugin = (): Plugin => {
             "Dev mode: warming up and fetching SSR module for realPath=%s",
             realId,
           );
+          invalidateModule(devServer, "ssr", realId);
           devServer?.environments.ssr.warmupRequest(realId);
           await devServer?.environments.ssr.waitForRequestsIdle();
-          devServer?.environments.ssr.moduleGraph.invalidateAll();
           const result = await devServer?.environments.ssr.fetchModule(
             realId,
             undefined,
@@ -179,50 +181,19 @@ await (async function(__vite_ssr_import__, __vite_ssr_dynamic_import__) {${code}
   return ssrBridgePlugin;
 };
 
-export async function invalidateSSRModulesOnDepsChange(
+const invalidateModule = (
   devServer: ViteDevServer,
-) {
-  const chokidar = await import("chokidar");
-  const depsSSRPath = path.join(
-    devServer.config.root,
-    "node_modules",
-    ".vite",
-    "deps_ssr",
-  );
+  environment: string,
+  id: string,
+) => {
+  log("Invalidating module: id=%s, environment=%s", id, environment);
 
-  log("Setting up chokidar watcher for deps_ssr directory: %s", depsSSRPath);
+  const moduleNode =
+    devServer?.environments[environment]?.moduleGraph.idToModuleMap.get(id);
 
-  const watcher = chokidar.watch(depsSSRPath);
-
-  let debounceTimer: NodeJS.Timeout | null = null;
-
-  const invalidateModules = () => {
-    log("Invalidating SSR modules due to deps_ssr change");
-
-    for (const [id, mod] of devServer.environments.worker?.moduleGraph
-      .idToModuleMap || []) {
-      if (id?.startsWith(VIRTUAL_SSR_PREFIX)) {
-        log("Invalidating SSR module: %s", id);
-        devServer.environments.worker?.moduleGraph.invalidateModule(mod);
-      }
-    }
-  };
-
-  watcher.on("all", (event: string, filePath: string) => {
-    log("Detected deps_ssr change: event=%s, path=%s", event, filePath);
-
-    if (debounceTimer) {
-      clearTimeout(debounceTimer);
-    }
-
-    debounceTimer = setTimeout(() => {
-      invalidateModules();
-      debounceTimer = null;
-    }, 200);
-  });
-
-  devServer.httpServer?.on("close", () => {
-    log("Closing chokidar watcher");
-    watcher.close();
-  });
-}
+  if (moduleNode) {
+    devServer?.environments[environment]?.moduleGraph.invalidateModule(
+      moduleNode,
+    );
+  }
+};
