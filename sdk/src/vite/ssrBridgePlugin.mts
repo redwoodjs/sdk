@@ -199,9 +199,11 @@ export async function invalidateSSRModulesOnDepsChange(
   const invalidateModules = () => {
     log("Invalidating SSR modules due to deps_ssr change");
 
-    for (const [id, mod] of devServer.moduleGraph.idToModuleMap) {
+    for (const [id, mod] of devServer.environments.worker?.moduleGraph
+      .idToModuleMap || []) {
       if (id?.startsWith(VIRTUAL_SSR_PREFIX)) {
-        devServer.moduleGraph.invalidateModule(mod);
+        log("Invalidating SSR module: %s", id);
+        devServer.environments.worker?.moduleGraph.invalidateModule(mod);
       }
     }
   };
