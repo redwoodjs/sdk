@@ -216,9 +216,14 @@ export const defineApp = (routes: Route[]) => {
 export const SmokeTestWrapper: React.FC<{
   children: React.ReactNode;
 }> = async ({ children }) => {
-  const smokeTestInfo = await ssrLoadModule(
-    "/src/app/components/__SmokeTest.tsx",
-  );
+  const smokeTestInfo = await Object.values(
+    await (
+      import.meta as any as {
+        glob: (path: string) => Promise<Record<string, () => Promise<any>>>;
+      }
+    ).glob("/src/app/components/__SmokeTest.tsx"),
+  )[0]();
+
   const SmokeTestInfo = smokeTestInfo.SmokeTestInfo as React.FC<any>;
 
   return (
