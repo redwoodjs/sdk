@@ -187,10 +187,11 @@ const invalidateModule = (
   environment: string,
   id: string,
 ) => {
+  const [rawId, _query] = id.split("?");
   log("Invalidating module: id=%s, environment=%s", id, environment);
 
   const moduleNode =
-    devServer?.environments[environment]?.moduleGraph.idToModuleMap.get(id);
+    devServer?.environments[environment]?.moduleGraph.idToModuleMap.get(rawId);
 
   if (moduleNode) {
     devServer?.environments[environment]?.moduleGraph.invalidateModule(
