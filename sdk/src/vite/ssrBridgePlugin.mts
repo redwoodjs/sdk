@@ -2,6 +2,7 @@ import type { Plugin, ViteDevServer } from "vite";
 import path from "path";
 import debug from "debug";
 import { SSR_BRIDGE_PATH } from "../lib/constants.mjs";
+import { inspect } from "util";
 
 const log = debug("rwsdk:vite:ssr-bridge-plugin");
 const verboseLog = debug("verbose:rwsdk:vite:ssr-bridge-plugin");
@@ -84,6 +85,7 @@ export const ssrBridgePlugin = (): Plugin => {
         // SSR modules, so we return the virtual id so that the dynamic loading
         // can happen in load()
         if (id.startsWith(VIRTUAL_SSR_PREFIX)) {
+          invalidateModule(devServer, "worker", id);
           log("Returning virtual SSR id for dev: %s", id);
           return id;
         }
@@ -114,7 +116,6 @@ export const ssrBridgePlugin = (): Plugin => {
             id,
             SSR_BRIDGE_PATH,
           );
-          invalidateModule(devServer, "worker", id);
           return SSR_BRIDGE_PATH;
         }
       }
