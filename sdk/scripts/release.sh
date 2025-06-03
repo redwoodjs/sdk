@@ -5,14 +5,16 @@ set -e  # Stop on first error
 DEPENDENCY_NAME="rwsdk"  # Replace with the actual package name
 
 show_help() {
-  echo "Usage: pnpm release <patch|minor|major|test|alpha|beta|rc> [--dry]"
+  echo "Usage: pnpm release <patch|minor|major|prepatch|preminor|premajor|test> [--preid <identifier>] [--dry]"
   echo ""
   echo "Automates version bumping, publishing, and dependency updates for $DEPENDENCY_NAME"
   echo ""
   echo "Arguments:"
   echo "  patch|minor|major    The type of version bump to perform"
+  echo "  prepatch             Create a prerelease patch (x.y.z -> x.y.(z+1)-<preid>.0)"
+  echo "  preminor             Create a prerelease minor (x.y.z -> x.(y+1).0-<preid>.0)"
+  echo "  premajor             Create a prerelease major (x.y.z -> (x+1).0.0-<preid>.0)"
   echo "  test                 Create a test release (x.y.z-test.<timestamp>), published under --tag test"
-  echo "  alpha|beta|rc        Create a prerelease (x.y.z-alpha.0, x.y.z-beta.1, etc.)"
   echo ""
   echo "Process:"
   echo "  1. Builds package with NODE_ENV=production"
@@ -30,24 +32,25 @@ show_help() {
   echo "     - Reverts version commit"
   echo ""
   echo "Options:"
-  echo "  --dry    Simulate the release process without making changes"
-  echo "  --help   Show this help message"
+  echo "  --preid <id>  Prerelease identifier (default: alpha). Used with prepatch/preminor/premajor"
+  echo "  --dry         Simulate the release process without making changes"
+  echo "  --help        Show this help message"
   echo ""
   echo "Examples:"
-  echo "  pnpm release patch         # 0.1.0 -> 0.1.1"
-  echo "  pnpm release minor         # 0.1.1 -> 0.2.0"
-  echo "  pnpm release major         # 0.2.0 -> 1.0.0"
-  echo "  pnpm release alpha         # 1.0.0 -> 1.0.1-alpha.0 or 1.0.0-alpha.0 -> 1.0.0-alpha.1"
-  echo "  pnpm release beta          # 1.0.0 -> 1.0.1-beta.0 or 1.0.0-beta.0 -> 1.0.0-beta.1"
-  echo "  pnpm release test          # 1.0.0 -> 1.0.0-test.0 (published as @test)"
-  echo "  pnpm release test          # 1.0.0-test.0 -> 1.0.0-test.1 (published as @test)"
-  echo "  pnpm release patch --dry   # Show what would happen"
+  echo "  pnpm release patch                    # 0.1.0 -> 0.1.1"
+  echo "  pnpm release minor                    # 0.1.1 -> 0.2.0"
+  echo "  pnpm release major                    # 0.2.0 -> 1.0.0"
+  echo "  pnpm release preminor                 # 0.0.80 -> 0.1.0-alpha.0"
+  echo "  pnpm release preminor --preid beta    # 0.0.80 -> 0.1.0-beta.0"
+  echo "  pnpm release prepatch --preid rc      # 0.1.0 -> 0.1.1-rc.0"
+  echo "  pnpm release test                     # 1.0.0 -> 1.0.0-test.0 (published as @test)"
+  echo "  pnpm release patch --dry              # Show what would happen"
   exit 0
 }
 
 validate_args() {
   for arg in "$@"; do
-    if [[ "$arg" == --* && "$arg" != "--dry" && "$arg" != "--help" ]]; then
+    if [[ "$arg" == --* && "$arg" != "--dry" && "$arg" != "--help" && "$arg" != "--preid" ]]; then
       echo "Error: Unknown flag '$arg'"
       echo "Use --help to see available options"
       echo ""
@@ -59,24 +62,36 @@ validate_args() {
 # Reorder argument handling
 validate_args "$@"
 
-# Initialize DRY_RUN first
+# Initialize variables
 DRY_RUN=false
 VERSION_TYPE=""
+PREID="alpha"
 
 # Process all arguments
+i=1
 for arg in "$@"; do
   if [[ "$arg" == "--help" ]]; then
     show_help
   elif [[ "$arg" == "--dry" ]]; then
     DRY_RUN=true
-  elif [[ "$arg" == "patch" || "$arg" == "minor" || "$arg" == "major" || "$arg" == "test" || "$arg" == "alpha" || "$arg" == "beta" || "$arg" == "rc" ]]; then
+  elif [[ "$arg" == "--preid" ]]; then
+    # Get the next argument as the preid value
+    i=$((i + 1))
+    eval "PREID=\${$i}"
+    if [[ -z "$PREID" ]]; then
+      echo "Error: --preid requires a value"
+      echo ""
+      show_help
+    fi
+  elif [[ "$arg" == "patch" || "$arg" == "minor" || "$arg" == "major" || "$arg" == "prepatch" || "$arg" == "preminor" || "$arg" == "premajor" || "$arg" == "test" ]]; then
     VERSION_TYPE=$arg
   fi
+  i=$((i + 1))
 done
 
 # Validate required arguments
 if [[ -z "$VERSION_TYPE" ]]; then
-  echo "Error: Version type (patch|minor|major|test|alpha|beta|rc) is required"
+  echo "Error: Version type (patch|minor|major|prepatch|preminor|premajor|test) is required"
   echo ""
   show_help
 fi
@@ -115,14 +130,14 @@ if [[ "$VERSION_TYPE" == "test" ]]; then
     BASE_VERSION="$CURRENT_VERSION"
   fi
   NEW_VERSION="$BASE_VERSION-test.$TIMESTAMP"
-elif [[ "$VERSION_TYPE" == "alpha" || "$VERSION_TYPE" == "beta" || "$VERSION_TYPE" == "rc" ]]; then
-  # Handle prerelease versions (alpha, beta, rc)
-  if [[ "$CURRENT_VERSION" =~ ^.*-${VERSION_TYPE}\..*$ ]]; then
+elif [[ "$VERSION_TYPE" == "prepatch" || "$VERSION_TYPE" == "preminor" || "$VERSION_TYPE" == "premajor" ]]; then
+  # Handle prerelease versions with explicit preid
+  if [[ "$CURRENT_VERSION" =~ ^.*-${PREID}\..*$ ]]; then
     # If current version is already the same prerelease type, increment it
     NEW_VERSION=$(npx semver -i prerelease "$CURRENT_VERSION")
   else
-    # If not a prerelease or different prerelease type, create new prerelease
-    NEW_VERSION=$(npx semver -i prerelease --preid "$VERSION_TYPE" "$CURRENT_VERSION")
+    # Create new prerelease with the specified type and preid
+    NEW_VERSION=$(npx semver -i "$VERSION_TYPE" --preid "$PREID" "$CURRENT_VERSION")
   fi
 else
   # Handle regular versions (patch, minor, major)
