@@ -140,6 +140,8 @@ export const ssrBridgePlugin = (): Plugin => {
           await devServer?.environments.ssr.warmupRequest(realId);
           const result = await devServer?.environments.ssr.fetchModule(realId);
 
+          verboseLog("Fetch module result: id=%s, result=%O", realId, result);
+
           if (!result) {
             return;
           }

@@ -70,7 +70,7 @@ export const configPlugin = ({
             "import.meta.env.RWSDK_ENV": JSON.stringify("ssr"),
           },
           optimizeDeps: {
-            noDiscovery: true,
+            noDiscovery: false,
             entries: [workerEntryPathname],
             exclude: ["cloudflare:workers", ...builtinModules],
             include: ["rwsdk/__ssr_bridge"],
