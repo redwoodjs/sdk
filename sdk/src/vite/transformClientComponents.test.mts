@@ -116,8 +116,8 @@ export { Fourth as AnotherName }`)) ?? "",
 const First = registerClientReference("/test/file.tsx", "First");
 const Second = registerClientReference("/test/file.tsx", "Second");
 const Third = registerClientReference("/test/file.tsx", "Third");
-const Fourth = registerClientReference("/test/file.tsx", "AnotherName");
-export { First, Second, Third, Fourth as AnotherName };
+const Fourth_AnotherName = registerClientReference("/test/file.tsx", "AnotherName");
+export { First, Second, Third, Fourth_AnotherName as AnotherName };
 export default registerClientReference("/test/file.tsx", "default");
 `,
     );
@@ -246,8 +246,8 @@ const MyComponent = () => {
 export { MyComponent as CustomName }`)) ?? "",
     ).toEqual(
       `import { registerClientReference } from "rwsdk/worker";
-const MyComponent = registerClientReference("/test/file.tsx", "CustomName");
-export { MyComponent as CustomName };
+const MyComponent_CustomName = registerClientReference("/test/file.tsx", "CustomName");
+export { MyComponent_CustomName as CustomName };
 `,
     );
   });
@@ -286,6 +286,25 @@ const Component = registerClientReference("/test/file.tsx", "Component");
 const data = registerClientReference("/test/file.tsx", "data");
 const helper = registerClientReference("/test/file.tsx", "helper");
 export { Component, data, helper };
+`,
+    );
+  });
+
+  it("transforms multiple exports aliases for the same component", async () => {
+    expect(
+      (await transform(`"use client"
+
+export const Slot = () => {
+  return jsx('div', { children: 'Slot' });
+}
+
+export { Slot, Slot as Root }
+`)) ?? "",
+    ).toEqual(
+      `import { registerClientReference } from "rwsdk/worker";
+const Slot = registerClientReference("/test/file.tsx", "Slot");
+const Slot_Root = registerClientReference("/test/file.tsx", "Root");
+export { Slot, Slot_Root as Root };
 `,
     );
   });

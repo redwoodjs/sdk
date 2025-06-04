@@ -100,9 +100,16 @@ export async function transformClientComponents(
     exported: string;
     isDefault: boolean;
     statementIdx: number;
+    alias?: string;
   };
+
   const exportInfos: ExportInfo[] = [];
   let defaultExportInfo: ExportInfo | undefined;
+
+  // Helper to get the computed local name (with alias suffix if present)
+  function getComputedLocalName(info: ExportInfo): string {
+    return `${info.local}${info.alias ? `_${info.alias}` : ""}`;
+  }
 
   // Helper to add export info
   function addExport(
@@ -110,11 +117,12 @@ export async function transformClientComponents(
     exported: string,
     isDefault: boolean,
     statementIdx: number,
+    alias?: string,
   ) {
     if (isDefault) {
       defaultExportInfo = { local, exported, isDefault, statementIdx };
     } else {
-      exportInfos.push({ local, exported, isDefault, statementIdx });
+      exportInfos.push({ local, exported, isDefault, statementIdx, alias });
     }
   }
 
@@ -174,13 +182,10 @@ export async function transformClientComponents(
       const namedExports = stmt.getNamedExports();
       if (namedExports.length > 0) {
         namedExports.forEach((exp) => {
-          const local = exp.getAliasNode()
-            ? exp.getNameNode().getText()
-            : exp.getName();
-          const exported = exp.getAliasNode()
-            ? exp.getAliasNode()!.getText()
-            : exp.getName();
-          addExport(local, exported, exported === "default", idx);
+          const alias = exp.getAliasNode()?.getText();
+          const local = alias ? exp.getNameNode().getText() : exp.getName();
+          const exported = alias ? alias : exp.getName();
+          addExport(local, exported, exported === "default", idx, alias);
         });
       }
       return;
@@ -236,23 +241,31 @@ export async function transformClientComponents(
     namedImports: [{ name: "registerClientReference" }],
   });
 
-  // Add registerClientReference assignments for named exports in order
-  for (const info of exportInfos) {
+  // Compute unique computed local names first
+  const computedLocalNames = new Map(
+    exportInfos.map((info) => [getComputedLocalName(info), info]),
+  );
+
+  // Add registerClientReference assignments for unique names
+  for (const [computedLocalName, correspondingInfo] of computedLocalNames) {
     log(
       ":isEsbuild=%s: Registering client reference for named export: %s as %s",
       !!ctx.isEsbuild,
-      info.local,
-      info.exported,
+      correspondingInfo.local,
+      correspondingInfo.exported,
     );
     sourceFile.addStatements(
-      `const ${info.local} = registerClientReference("${normalizedId}", "${info.exported}");`,
+      `const ${computedLocalName} = registerClientReference("${normalizedId}", "${correspondingInfo.exported}");`,
     );
   }
 
   // Add grouped export statement for named exports (preserving order and alias)
   if (exportInfos.length > 0) {
-    const exportNames = exportInfos.map((e) =>
-      e.local === e.exported ? e.local : `${e.local} as ${e.exported}`,
+    const exportNames = Array.from(computedLocalNames.entries()).map(
+      ([computedLocalName, correspondingInfo]) =>
+        correspondingInfo.local === correspondingInfo.exported
+          ? computedLocalName
+          : `${computedLocalName} as ${correspondingInfo.exported}`,
     );
     log(
       ":isEsbuild=%s: Exporting named exports: %O",
