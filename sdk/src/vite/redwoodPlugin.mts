@@ -5,7 +5,7 @@ import reactPlugin from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 import { transformJsxScriptTagsPlugin } from "./transformJsxScriptTagsPlugin.mjs";
-import { rscDirectivesPlugin } from "./rscDirectivesPlugin.mjs";
+import { directivesPlugin } from "./directivesPlugin.mjs";
 import { useClientLookupPlugin } from "./useClientLookupPlugin.mjs";
 import { useServerLookupPlugin } from "./useServerLookupPlugin.mjs";
 import { miniflarePlugin } from "./miniflarePlugin.mjs";
@@ -87,7 +87,7 @@ export const redwoodPlugin = async (
         options.configPath ?? (await findWranglerConfig(projectRootDir)),
     }),
     reactPlugin(),
-    rscDirectivesPlugin({
+    directivesPlugin({
       projectRootDir,
       clientFiles,
       serverFiles,
