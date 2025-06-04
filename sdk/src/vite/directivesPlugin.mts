@@ -7,7 +7,7 @@ import { normalizeModulePath } from "./normalizeModulePath.mjs";
 const log = debug("rwsdk:vite:rsc-directives-plugin");
 const verboseLog = debug("verbose:rwsdk:vite:rsc-directives-plugin");
 
-export const rscDirectivesPlugin = ({
+export const directivesPlugin = ({
   projectRootDir,
   clientFiles,
   serverFiles,
