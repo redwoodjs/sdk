@@ -36,10 +36,24 @@ export const findFilesContainingDirective = async ({
     projectRootDir,
   );
 
-  const allFiles = await glob("**/*.{ts,tsx,js,jsx,mjs,mts}", {
-    cwd: projectRootDir,
-    absolute: true,
-  });
+  const filesOutsideNodeModules = await glob(
+    "**/*.{ts,tsx,js,jsx,mjs,mts,cjs}",
+    {
+      cwd: projectRootDir,
+      absolute: true,
+      ignore: ["**/node_modules/**"],
+    },
+  );
+
+  const filesInsideNodeModules = await glob(
+    "**/node_modules/**/*.{js,mjs,cjs}",
+    {
+      cwd: projectRootDir,
+      absolute: true,
+    },
+  );
+
+  const allFiles = [...filesOutsideNodeModules, ...filesInsideNodeModules];
 
   log("Found %d files to scan for '%s' directive", allFiles.length, directive);
 
