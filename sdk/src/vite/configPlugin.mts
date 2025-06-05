@@ -130,10 +130,6 @@ export const configPlugin = ({
       server: {
         hmr: true,
       },
-      resolve: {
-        conditions: ["workerd"],
-        alias: [],
-      },
       builder: {
         buildApp: async (builder) => {
           // note(justinvdm, 27 May 2025): **Ordering is important**:
