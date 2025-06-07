@@ -5,7 +5,7 @@ This starter gives you a bare-bones RedwoodSDK project.
 Create your new project:
 
 ```shell
-npx create-rwsdk my-project-name
+npx create-rwsdk my-project-name -t minimal
 cd my-project-name
 pnpm install
 ```
