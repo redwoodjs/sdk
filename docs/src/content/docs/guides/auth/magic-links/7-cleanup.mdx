@@ -1,0 +1,83 @@
+---
+title: Cleanup
+slug: guides/auth/magic-links/cleanup
+description: Learn how to use the magic links flow with RedwoodJS.
+---
+
+import { Aside } from "@astrojs/starlight/components";
+
+Our login flow is working great. However, we might run into a situation where someone registers with the wrong email address and we end up with a bunch of unverified users in our database.
+
+To clean this up, we can set up a [cron trigger](/core/cron/) to delete these users after a certain period of time.
+
+## Set up the Trigger
+
+Within our `wrangler.josnc` file, add a new section called `triggers`:
+
+```json title="wrangler.json"
+"triggers": {
+  "crons": ["0 0 * * *"]
+},
+```
+
+The `crons` array takes all of our cron schedules. Here, we're using `0 0 * * *` which will run every day at midnight. If we wanted to add another task to run once a month, we would update the array to: `"crons": ["0 0 * * *", "0 0 1 * *"]`.
+
+- The first number says the minute to run.
+- The second number says the hour to run.
+- The third number says the day of the month to run.
+- The fourth number says the month to run.
+- The fifth number says the day of the week to run.
+
+A `*` means that the task will run every time that period occurs. So, if you used `* * * * *` it would run every minute.
+
+## Set up the Scheduled Tasks
+
+Now, we need to update our `worker.tsx` file. Let's "save" our `defineApp` function, into a variable called `app`:
+
+```tsx title="src/worker.tsx" showLineNumbers=false
+const app = defineApp([
+  ...
+]);
+```
+
+Then, add the following code to the very bottom of the file:
+
+```tsx title="src/worker.tsx" showLineNumbers=false {"1. Set up our App (referencing defineApp)": 2} {"2. Set up the functions we want to run": 4} {"3. Set up a case for each cron schedule, matches our triggers": 7} {"4. Figure out 30 days ago": 11} {"5. Delete the users that are unverified and older than 30 days": 14} {"6. Call the function": 24}
+export default {
+
+  fetch: app.fetch,
+
+  async scheduled(controller: ScheduledController) {
+    switch (controller.cron) {
+
+      case "0 0 * * *":
+        const cleanUnverifiedUsers = async () => {
+          console.log("🧹 Clean up Unverified Users");
+
+          const now = new Date();
+          const thirtyDaysAgo = new Date(now.setDate(now.getDate() - 30));
+
+          return await db.user.deleteMany({
+            where: {
+              verified: false,
+              createdAt: {
+                lte: thirtyDaysAgo,
+              },
+            },
+          });
+        };
+
+        await cleanUnverifiedUsers();
+        break;
+    }
+    console.log("⏰ cron processed");
+  },
+} satisfies ExportedHandler<Env>;
+```
+
+<Aside title="cleanUnverifiedUsers function" type="note">
+In this code example, I included the `cleanupUnverifiedUsers` function directly within the `scheduled` function. However, you can also move it outside of the `scheduled` function or to a separate file, making your code cleaner and more reusable.
+</Aside>
+
+<Aside title="Final Code" type="note">
+You can find the final code for this guide in the [auth-kitchen/magic-links folder](https://github.com/ahaywood/auth-kitchen/tree/main/magic-links) branch.
