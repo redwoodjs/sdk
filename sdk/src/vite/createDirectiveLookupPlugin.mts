@@ -7,6 +7,7 @@ import debug from "debug";
 import { normalizeModulePath } from "./normalizeModulePath.mjs";
 import { ensureAliasArray } from "./ensureAliasArray.mjs";
 import { pathExists } from "fs-extra";
+import { getSrcPaths } from "../lib/getSrcPaths.js";
 
 interface DirectiveLookupConfig {
   directive: "use client" | "use server";
@@ -36,14 +37,7 @@ export const findFilesContainingDirective = async ({
     projectRootDir,
   );
 
-  const filesOutsideNodeModules = await glob(
-    "**/*.{ts,tsx,js,jsx,mjs,mts,cjs}",
-    {
-      cwd: projectRootDir,
-      absolute: true,
-      ignore: ["**/node_modules/**"],
-    },
-  );
+  const filesOutsideNodeModules = await getSrcPaths(projectRootDir);
 
   const filesInsideNodeModules = await glob(
     "**/node_modules/**/*.{js,mjs,cjs}",
