@@ -90,6 +90,7 @@ export const configPlugin = ({
                 ) as string,
               },
               formats: ["es"],
+              fileName: () => path.basename(SSR_BRIDGE_PATH),
             },
             outDir: path.dirname(SSR_BRIDGE_PATH),
           },
