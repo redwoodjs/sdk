@@ -15,19 +15,9 @@ export const ssrBridgePlugin = (): Plugin => {
 
   let devServer: ViteDevServer;
   let isDev = false;
-  let promisedSSRWarmup: Promise<void> | undefined;
+  const ssrBareImportPromises = new Map<string, Promise<any>>();
 
-  const ensureWarmupSSRModules = async () => {
-    if (promisedSSRWarmup) {
-      log("SSR warmup already in progress");
-      return promisedSSRWarmup;
-    }
-
-    promisedSSRWarmup = doWarmupSSRModules();
-    return promisedSSRWarmup;
-  };
-
-  const doWarmupSSRModules = async () => {
+  const startSSRModulesWarmup = async () => {
     log("Warming up SSR modules");
 
     const files = [
@@ -56,6 +46,7 @@ export const ssrBridgePlugin = (): Plugin => {
     async configureServer(server) {
       devServer = server;
       log("Configured dev server");
+      startSSRModulesWarmup();
     },
     config(_, { command, isPreview }) {
       isDev = !isPreview && command === "serve";
@@ -166,16 +157,45 @@ export const ssrBridgePlugin = (): Plugin => {
         id.startsWith(VIRTUAL_SSR_PREFIX) &&
         this.environment.name === "worker"
       ) {
-        await ensureWarmupSSRModules();
-        const realId = id.slice(VIRTUAL_SSR_PREFIX.length);
+        const realId = id.slice(VIRTUAL_SSR_PREFIX.length).split("?")[0];
         log("Virtual SSR module load: id=%s, realId=%s", id, realId);
 
         if (isDev) {
           log(
-            "Dev mode: warming up and fetching SSR module for realPath=%s",
+            "Dev mode: warming up and fetching SSR module for realId=%s",
             realId,
           );
+
+          let deferredLoad: PromiseWithResolvers<any> | undefined;
+
+          // context(justinvdm, 09 Jun 2025): For bare imports, we need to avoid
+          // race conditions occuring because of optimize deps being called concurrently
+          // for the same dependency. So if we are trying to load a bare import, we first make sure
+          // any existing loads for that import have completed
+          if (isBareImport(realId)) {
+            let promise = ssrBareImportPromises.get(realId);
+
+            if (promise) {
+              log(
+                "Bare import promise already exists for realId=%s, waiting for it",
+                realId,
+              );
+              await promise;
+            } else {
+              log(
+                "Bare import promise does not exist for realId=%s, creating it",
+                realId,
+              );
+              deferredLoad = Promise.withResolvers();
+              ssrBareImportPromises.set(realId, deferredLoad.promise);
+            }
+          }
+
           const result = await devServer?.environments.ssr.fetchModule(realId);
+
+          if (deferredLoad) {
+            deferredLoad.resolve(undefined);
+          }
 
           verboseLog("Fetch module result: id=%s, result=%O", realId, result);
 
@@ -224,4 +244,17 @@ const invalidateModule = (
   } else {
     verboseLog("Module not found: id=%s, environment=%s", id, environment);
   }
+};
+
+const isBareImport = (id: string) => {
+  // A bare import is one that doesn't start with '.', '..', '/', or a protocol
+  // Examples: 'react', 'lodash', '@babel/core'
+  return (
+    !id.startsWith("./") &&
+    !id.startsWith("../") &&
+    !id.startsWith("/") &&
+    !id.includes("://") &&
+    !id.startsWith("virtual:") &&
+    !id.startsWith("node:")
+  );
 };
