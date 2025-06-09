@@ -164,20 +164,6 @@ export const configPlugin = ({
       },
     };
 
-    if (command === "build") {
-      return mergeConfig(baseConfig, {
-        environments: {
-          worker: {
-            build: {
-              rollupOptions: {
-                external: externalModules,
-              },
-            },
-          },
-        },
-      });
-    }
-
     return baseConfig;
   },
 });
