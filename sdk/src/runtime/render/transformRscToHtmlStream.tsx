@@ -1,16 +1,19 @@
 import { createModuleMap } from "./createModuleMap.js";
-import { createFromReadableStream } from "react-server-dom-webpack/client.edge";
-import { use } from "react";
-import { renderToReadableStream } from "react-dom/server.edge";
+import ReactServerDom from "react-server-dom-webpack/client.edge";
+import { DocumentProps } from "../lib/router";
+import { renderRscThenableToHtmlStream } from "rwsdk/__ssr_bridge";
+import { RequestInfo } from "../requestInfo/types";
+
+const { createFromReadableStream } = ReactServerDom;
 
 export const transformRscToHtmlStream = ({
   stream,
-  Parent = ({ children }) => <>{children}</>,
-  nonce,
+  Document,
+  requestInfo,
 }: {
   stream: ReadableStream;
-  Parent: React.ComponentType<{ children: React.ReactNode }>;
-  nonce?: string;
+  Document: React.FC<DocumentProps>;
+  requestInfo: RequestInfo;
 }) => {
   const thenable = createFromReadableStream(stream, {
     serverConsumerManifest: {
@@ -19,12 +22,9 @@ export const transformRscToHtmlStream = ({
     },
   });
 
-  const Component = () => (
-    <Parent>{(use(thenable) as { node: React.ReactNode }).node}</Parent>
-  );
-  const el = <Component />;
-
-  return renderToReadableStream(el, {
-    nonce,
+  return renderRscThenableToHtmlStream({
+    thenable,
+    Document,
+    requestInfo,
   });
 };

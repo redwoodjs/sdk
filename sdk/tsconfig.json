@@ -37,6 +37,10 @@
 
     "outDir": "./dist",
 
+    "paths": {
+      "rwsdk/__ssr_bridge": ["./src/runtime/ssrBridge.ts"]
+    },
+
     "types": [
       "./types/react.d.ts",
       "./types/global.d.ts",

@@ -5,9 +5,9 @@ import reactPlugin from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
 
 import { transformJsxScriptTagsPlugin } from "./transformJsxScriptTagsPlugin.mjs";
-import { useServerPlugin } from "./useServerPlugin.mjs";
-import { useClientPlugin } from "./useClientPlugin.mjs";
+import { directivesPlugin } from "./directivesPlugin.mjs";
 import { useClientLookupPlugin } from "./useClientLookupPlugin.mjs";
+import { useServerLookupPlugin } from "./useServerLookupPlugin.mjs";
 import { miniflarePlugin } from "./miniflarePlugin.mjs";
 import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
 import { configPlugin } from "./configPlugin.mjs";
@@ -18,6 +18,7 @@ import { pathExists } from "fs-extra";
 import { injectVitePreamble } from "./injectVitePreamblePlugin.mjs";
 import { vitePreamblePlugin } from "./vitePreamblePlugin.mjs";
 import { prismaPlugin } from "./prismaPlugin.mjs";
+import { ssrBridgePlugin } from "./ssrBridgePlugin.mjs";
 import { hasPkgScript } from "../lib/hasPkgScript.mjs";
 
 export type RedwoodPluginOptions = {
@@ -47,6 +48,9 @@ export const redwoodPlugin = async (
     options?.entry?.worker ?? "src/worker.tsx",
   );
 
+  const clientFiles = new Set<string>();
+  const serverFiles = new Set<string>();
+
   // context(justinvdm, 31 Mar 2025): We assume that if there is no .wrangler directory,
   // then this is fresh install, and we run `npm run dev:init` here.
   if (
@@ -72,7 +76,8 @@ export const redwoodPlugin = async (
       clientEntryPathname,
       workerEntryPathname,
     }),
-    reactConditionsResolverPlugin({ projectRootDir, mode }),
+    ssrBridgePlugin(),
+    reactConditionsResolverPlugin(),
     tsconfigPaths({ root: projectRootDir }),
     miniflarePlugin({
       rootDir: projectRootDir,
@@ -82,13 +87,20 @@ export const redwoodPlugin = async (
         options.configPath ?? (await findWranglerConfig(projectRootDir)),
     }),
     reactPlugin(),
-    useServerPlugin(),
-    useClientPlugin(),
+    directivesPlugin({
+      projectRootDir,
+      clientFiles,
+      serverFiles,
+    }),
     vitePreamblePlugin(),
     injectVitePreamble({ clientEntryPathname, mode }),
     useClientLookupPlugin({
-      rootDir: projectRootDir,
-      containingPath: "./src/app",
+      projectRootDir,
+      clientFiles,
+    }),
+    useServerLookupPlugin({
+      projectRootDir,
+      serverFiles,
     }),
     transformJsxScriptTagsPlugin({
       manifestPath: resolve(

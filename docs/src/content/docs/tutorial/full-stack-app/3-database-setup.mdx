@@ -132,7 +132,7 @@ For now, I'm going to hit the easy button, and use a `String`.
 
 Now, we need to translate all this information into a Prisma model. Prisma has it's own syntax for defining models. You'll notice that it looks similar to an object definition:
 
-```prisma title="src/db/schema.prisma"
+```prisma title="prisma/schema.prisma"
 model Application {
   id             String            @id @default(uuid())
   salaryMin      String?
@@ -159,7 +159,7 @@ A few things worth noting:
 
 We can do the same for the remaining models (I didn't make any changes to the provided `User` and `Credential` models, but included them here for reference).
 
-```prisma  title="src/db/schema.prisma"
+```prisma  title="prisma/schema.prisma"
 ...
 
 model ApplicationStatus {
@@ -297,7 +297,7 @@ When establishing a relationship within your schema, there are 3 parts.
 
 Let's look at this in practice. On the `Company` and `Contact` models:
 
-```prisma {"3. The Implicit Relationship Field": 4-5} {"1. The Foreign Key": 16-17} {"2. The Relation Field": 18-19} title="src/db/schema.prisma"
+```prisma {"3. The Implicit Relationship Field": 4-5} {"1. The Foreign Key": 16-17} {"2. The Relation Field": 18-19} title="prisma/schema.prisma"
 model Company {
   id           String        @id @default(uuid())
   name         String
@@ -342,7 +342,7 @@ In some cases, you might need to give the relationship a name. This is particula
 
 As an example, I've named the relationship `CompanyContacts`. Notice this is defined on both the relation field and the implicit relationship field.
 
-```prisma ins="CompanyContacts" title="src/db/schema.prisma"
+```prisma ins="CompanyContacts" title="prisma/schema.prisma"
 model Company {
   id           String        @id @default(uuid())
   contacts     Contact[]     @relation("CompanyContacts")
@@ -360,11 +360,23 @@ You can find more information about naming relationships in the [Prisma document
 
 Now, we need to create the remaining relationships. Here's my final `schema.prisma` file.
 
-```prisma showLineNumbers=true title="src/db/schema.prisma" {15-16, 27-28, 34, 40-41, 52-53}
+```prisma showLineNumbers=true title="prisma/schema.prisma" {26-29, 39-40, 46, 52-53, 64-65, 88}
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
 generator client {
-  provider        = "prisma-client-js"
-  previewFeatures = ["driverAdapters"]
-  output          = "../node_modules/.prisma/client"
+  provider = "prisma-client"
+
+  runtime                = "workerd"
+  moduleFormat           = "esm"
+  generatedFileExtension = "ts"
+  importFileExtension    = "ts"
+
+  output          = "../generated/prisma"
+  previewFeatures = ["queryCompiler", "driverAdapters"]
 }
 
 datasource db {
@@ -426,7 +438,7 @@ model Credential {
   credentialId  String   @unique // WebAuthn credential identifier
   publicKey     Bytes
   counter       Int      @default(0)
-
+  
   @@index([credentialId])
   @@index([userId])
 }
@@ -522,7 +534,7 @@ Prisma Studio ships with Prisma, so there’s nothing extra to install.
 
 Let's start by opening the `schema.prisma` file.
 
-```tsx title="src/schema.prisma" {3}
+```tsx title="prisma/schema.prisma" {3}
 datasource db {
   provider = "sqlite"
   url      = env("DATABASE_URL")

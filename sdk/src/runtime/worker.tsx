@@ -2,7 +2,7 @@ import React from "react";
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 import { renderToRscStream } from "./render/renderToRscStream";
 
-import { loadModule, ssrWebpackRequire } from "./imports/worker";
+import { ssrLoadModule, ssrWebpackRequire } from "rwsdk/__ssr_bridge";
 import { rscActionHandler } from "./register/worker";
 import { injectRSCPayload } from "rsc-html-stream/server";
 import { ErrorResponse } from "./error";
@@ -13,7 +13,7 @@ import {
 } from "./requestInfo/worker";
 import { RequestInfo } from "./requestInfo/types";
 
-import { Route, type RwContext, defineRoutes, route } from "./lib/router";
+import { Route, type RwContext, defineRoutes } from "./lib/router";
 import { generateNonce } from "./lib/utils";
 import { IS_DEV } from "./constants";
 
@@ -146,10 +146,8 @@ export const defineApp = (routes: Route[]) => {
 
           const htmlStream = await transformRscToHtmlStream({
             stream: rscPayloadStream1,
-            Parent: ({ children }) => (
-              <rw.Document {...requestInfo} children={children} />
-            ),
-            nonce: rw.nonce,
+            Document: rw.Document,
+            requestInfo: requestInfo,
           });
 
           let html: ReadableStream<any> = htmlStream;
@@ -218,7 +216,14 @@ export const defineApp = (routes: Route[]) => {
 export const SmokeTestWrapper: React.FC<{
   children: React.ReactNode;
 }> = async ({ children }) => {
-  const smokeTestInfo = await loadModule("/src/app/components/__SmokeTest.tsx");
+  const smokeTestInfo = await Object.values(
+    await (
+      import.meta as any as {
+        glob: (path: string) => Promise<Record<string, () => Promise<any>>>;
+      }
+    ).glob("/src/app/components/__SmokeTest.tsx"),
+  )[0]();
+
   const SmokeTestInfo = smokeTestInfo.SmokeTestInfo as React.FC<any>;
 
   return (

@@ -5,12 +5,15 @@ set -e  # Stop on first error
 DEPENDENCY_NAME="rwsdk"  # Replace with the actual package name
 
 show_help() {
-  echo "Usage: pnpm release <patch|minor|major|test> [--dry]"
+  echo "Usage: pnpm release <patch|minor|major|prepatch|preminor|premajor|test> [--preid <identifier>] [--dry]"
   echo ""
   echo "Automates version bumping, publishing, and dependency updates for $DEPENDENCY_NAME"
   echo ""
   echo "Arguments:"
   echo "  patch|minor|major    The type of version bump to perform"
+  echo "  prepatch             Create a prerelease patch (x.y.z -> x.y.(z+1)-<preid>.0)"
+  echo "  preminor             Create a prerelease minor (x.y.z -> x.(y+1).0-<preid>.0)"
+  echo "  premajor             Create a prerelease major (x.y.z -> (x+1).0.0-<preid>.0)"
   echo "  test                 Create a test release (x.y.z-test.<timestamp>), published under --tag test"
   echo ""
   echo "Process:"
@@ -29,22 +32,25 @@ show_help() {
   echo "     - Reverts version commit"
   echo ""
   echo "Options:"
-  echo "  --dry    Simulate the release process without making changes"
-  echo "  --help   Show this help message"
+  echo "  --preid <id>  Prerelease identifier (default: alpha). Used with prepatch/preminor/premajor"
+  echo "  --dry         Simulate the release process without making changes"
+  echo "  --help        Show this help message"
   echo ""
   echo "Examples:"
-  echo "  pnpm release patch         # 0.1.0 -> 0.1.1"
-  echo "  pnpm release minor         # 0.1.1 -> 0.2.0"
-  echo "  pnpm release major         # 0.2.0 -> 1.0.0"
-  echo "  pnpm release test          # 1.0.0 -> 1.0.0-test.0 (published as @test)"
-  echo "  pnpm release test          # 1.0.0-test.0 -> 1.0.0-test.1 (published as @test)"
-  echo "  pnpm release patch --dry   # Show what would happen"
+  echo "  pnpm release patch                    # 0.1.0 -> 0.1.1"
+  echo "  pnpm release minor                    # 0.1.1 -> 0.2.0"
+  echo "  pnpm release major                    # 0.2.0 -> 1.0.0"
+  echo "  pnpm release preminor                 # 0.0.80 -> 0.1.0-alpha.0"
+  echo "  pnpm release preminor --preid beta    # 0.0.80 -> 0.1.0-beta.0"
+  echo "  pnpm release prepatch --preid rc      # 0.1.0 -> 0.1.1-rc.0"
+  echo "  pnpm release test                     # 1.0.0 -> 1.0.0-test.0 (published as @test)"
+  echo "  pnpm release patch --dry              # Show what would happen"
   exit 0
 }
 
 validate_args() {
   for arg in "$@"; do
-    if [[ "$arg" == --* && "$arg" != "--dry" && "$arg" != "--help" ]]; then
+    if [[ "$arg" == --* && "$arg" != "--dry" && "$arg" != "--help" && "$arg" != "--preid" ]]; then
       echo "Error: Unknown flag '$arg'"
       echo "Use --help to see available options"
       echo ""
@@ -56,24 +62,36 @@ validate_args() {
 # Reorder argument handling
 validate_args "$@"
 
-# Initialize DRY_RUN first
+# Initialize variables
 DRY_RUN=false
 VERSION_TYPE=""
+PREID="alpha"
 
 # Process all arguments
+i=1
 for arg in "$@"; do
   if [[ "$arg" == "--help" ]]; then
     show_help
   elif [[ "$arg" == "--dry" ]]; then
     DRY_RUN=true
-  elif [[ "$arg" == "patch" || "$arg" == "minor" || "$arg" == "major" || "$arg" == "test" ]]; then
+  elif [[ "$arg" == "--preid" ]]; then
+    # Get the next argument as the preid value
+    i=$((i + 1))
+    eval "PREID=\${$i}"
+    if [[ -z "$PREID" ]]; then
+      echo "Error: --preid requires a value"
+      echo ""
+      show_help
+    fi
+  elif [[ "$arg" == "patch" || "$arg" == "minor" || "$arg" == "major" || "$arg" == "prepatch" || "$arg" == "preminor" || "$arg" == "premajor" || "$arg" == "test" ]]; then
     VERSION_TYPE=$arg
   fi
+  i=$((i + 1))
 done
 
 # Validate required arguments
 if [[ -z "$VERSION_TYPE" ]]; then
-  echo "Error: Version type (patch|minor|major|test) is required"
+  echo "Error: Version type (patch|minor|major|prepatch|preminor|premajor|test) is required"
   echo ""
   show_help
 fi
@@ -112,9 +130,19 @@ if [[ "$VERSION_TYPE" == "test" ]]; then
     BASE_VERSION="$CURRENT_VERSION"
   fi
   NEW_VERSION="$BASE_VERSION-test.$TIMESTAMP"
+elif [[ "$VERSION_TYPE" == "prepatch" || "$VERSION_TYPE" == "preminor" || "$VERSION_TYPE" == "premajor" ]]; then
+  # Handle prerelease versions with explicit preid
+  if [[ "$CURRENT_VERSION" =~ ^.*-${PREID}\..*$ ]]; then
+    # If current version is already the same prerelease type, increment it
+    NEW_VERSION=$(npx semver -i prerelease "$CURRENT_VERSION")
+  else
+    # Create new prerelease with the specified type and preid
+    NEW_VERSION=$(npx semver -i "$VERSION_TYPE" --preid "$PREID" "$CURRENT_VERSION")
+  fi
 else
-  # If current version is a test version, use the base version for incrementing
-  if [[ "$CURRENT_VERSION" =~ ^(.*)-test\..*$ ]]; then
+  # Handle regular versions (patch, minor, major)
+  # If current version is a prerelease, use the base version for incrementing
+  if [[ "$CURRENT_VERSION" =~ ^(.*)-.*$ ]]; then
     CURRENT_VERSION="${BASH_REMATCH[1]}"
   fi
   NEW_VERSION=$(npx semver -i $VERSION_TYPE $CURRENT_VERSION)
@@ -152,24 +180,30 @@ else
 fi
 
 echo -e "\n🔄 Updating dependencies in monorepo..."
-while IFS= read -r package_json; do
-  if [[ "$package_json" != "./package.json" ]]; then
-    PROJECT_DIR=$(dirname "$package_json")
-    CURRENT_DEP_VERSION=$(cd "$PROJECT_DIR" && npm pkg get dependencies."$DEPENDENCY_NAME" | tr -d '"')
-    
-    # Only process if the dependency exists (not {} or empty) and isn't a workspace dependency
-    if [[ "$CURRENT_DEP_VERSION" != "{}" && -n "$CURRENT_DEP_VERSION" && "$CURRENT_DEP_VERSION" != workspace:* ]]; then
-      # Get relative path for cleaner output
-      REL_PATH=$(echo "$package_json" | sed 's/\.\.\///')
-      echo "  └─ $REL_PATH"
-      if [[ "$DRY_RUN" == true ]]; then
-        echo "     [DRY RUN] Update to $NEW_VERSION"
-      else
-        (cd "$PROJECT_DIR" && npm pkg set dependencies."$DEPENDENCY_NAME"="$NEW_VERSION")
+
+# Skip dependency updates for prerelease versions (but allow test releases)
+if [[ "$NEW_VERSION" =~ -.*\. && ! "$NEW_VERSION" =~ -test\. ]]; then
+  echo "  ⏭️  Skipping dependency updates for prerelease version $NEW_VERSION"
+else
+  while IFS= read -r package_json; do
+    if [[ "$package_json" != "./package.json" ]]; then
+      PROJECT_DIR=$(dirname "$package_json")
+      CURRENT_DEP_VERSION=$(cd "$PROJECT_DIR" && npm pkg get dependencies."$DEPENDENCY_NAME" | tr -d '"')
+      
+      # Only process if the dependency exists (not {} or empty) and isn't a workspace dependency
+      if [[ "$CURRENT_DEP_VERSION" != "{}" && -n "$CURRENT_DEP_VERSION" && "$CURRENT_DEP_VERSION" != workspace:* ]]; then
+        # Get relative path for cleaner output
+        REL_PATH=$(echo "$package_json" | sed 's/\.\.\///')
+        echo "  └─ $REL_PATH"
+        if [[ "$DRY_RUN" == true ]]; then
+          echo "     [DRY RUN] Update to $NEW_VERSION"
+        else
+          (cd "$PROJECT_DIR" && npm pkg set dependencies."$DEPENDENCY_NAME"="$NEW_VERSION")
+        fi
       fi
     fi
-  fi
-done < <(find .. -path "*/node_modules" -prune -o -name "package.json" -print)
+  done < <(find .. -path "*/node_modules" -prune -o -name "package.json" -print)
+fi
 
 echo -e "\n📥 Installing dependencies..."
 if [[ "$DRY_RUN" == true ]]; then
@@ -191,14 +225,24 @@ fi
 echo -e "\n💾 Committing changes..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] Git operations:"
-  echo "    - Add: all package.json and pnpm-lock.yaml files"
+  if [[ "$NEW_VERSION" =~ -.*\. && ! "$NEW_VERSION" =~ -test\. ]]; then
+    echo "    - Add: package.json only (prerelease - no dependency updates)"
+  else
+    echo "    - Add: all package.json and pnpm-lock.yaml files"
+  fi
   echo "    - Amend commit: release $NEW_VERSION"
   echo "    - Tag: $TAG_NAME"
   echo "    - Push: origin with tags"
 else
-  # Add all changed package.json and pnpm-lock.yaml files in the monorepo
-  (cd .. && git add $(git diff --name-only | grep -E 'package\.json|pnpm-lock\.yaml$'))
-  git commit --amend --no-edit
+  # For prerelease versions, only add the main package.json since we didn't update dependencies
+  if [[ "$NEW_VERSION" =~ -.*\. && ! "$NEW_VERSION" =~ -test\. ]]; then
+    # Just amend the existing commit (which already has package.json)
+    git commit --amend --no-edit
+  else
+    # Add all changed package.json and pnpm-lock.yaml files in the monorepo
+    (cd .. && git add $(git diff --name-only | grep -E 'package\.json|pnpm-lock\.yaml$'))
+    git commit --amend --no-edit
+  fi
   git pull --rebase
   git tag "$TAG_NAME"
   git push

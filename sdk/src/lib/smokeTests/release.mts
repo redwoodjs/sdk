@@ -205,7 +205,6 @@ export async function $expect(
       childProcess.stderr.on("data", (data: Buffer) => {
         const chunk = data.toString();
         stderr += chunk;
-        log("Received stderr chunk (%d bytes): %s", chunk.length, chunk.trim());
         // Also write stderr to console
         process.stderr.write(chunk);
       });

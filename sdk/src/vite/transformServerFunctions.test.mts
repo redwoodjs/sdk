@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { transformServerFunctions } from "./useServerPlugin.mjs";
+import { transformServerFunctions } from "./transformServerFunctions.mjs";
 
 describe("useServerPlugin", () => {
   let COMMENT_CODE = `
@@ -99,15 +99,18 @@ export const a = "string";
     for (const [key, CODE] of Object.entries(TEST_CASES)) {
       describe(key, () => {
         it(`CLIENT`, () => {
-          expect(
-            transformServerFunctions(CODE, "/test.tsx", "client"),
-          ).toMatchSnapshot();
+          const result = transformServerFunctions(CODE, "/test.tsx", "client");
+          expect(result?.code).toMatchSnapshot();
         });
 
         it(`WORKER`, () => {
-          expect(
-            transformServerFunctions(CODE, "/test.tsx", "worker"),
-          ).toMatchSnapshot();
+          const result = transformServerFunctions(CODE, "/test.tsx", "worker");
+          expect(result?.code).toMatchSnapshot();
+        });
+
+        it(`SSR`, () => {
+          const result = transformServerFunctions(CODE, "/test.tsx", "ssr");
+          expect(result?.code).toMatchSnapshot();
         });
       });
     }

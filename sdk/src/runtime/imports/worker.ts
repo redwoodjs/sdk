@@ -1,26 +1,30 @@
 import memoize from "lodash/memoize";
 
-const modules = (
-  import.meta as object as {
-    glob: (
-      pattern: string,
-    ) => Record<string, () => Promise<Record<string, unknown>>>;
-  }
-).glob("/src/app/**/*.{ts,tsx}");
+export const loadServerModule = memoize(async (id: string) => {
+  const { useServerLookup } = await import(
+    "virtual:use-server-lookup" as string
+  );
 
-export const loadModule = memoize(async (moduleName: string) => {
-  return await modules[moduleName]();
+  const moduleFn = useServerLookup[id];
+
+  if (!moduleFn) {
+    throw new Error(
+      `(worker) No module found for '${id}' in module lookup for "use server" directive`,
+    );
+  }
+
+  return await moduleFn();
 });
 
-export const getModuleExport = async (id: string) => {
+export const getServerModuleExport = async (id: string) => {
   const [file, name] = id.split("#");
-  const module = await loadModule(file);
+  const module = await loadServerModule(file);
   return module[name];
 };
 
 // context(justinvdm, 2 Dec 2024): re memoize(): React relies on the same promise instance being returned for the same id
-export const ssrWebpackRequire = memoize(async (id: string) => {
+export const serverWebpackRequire = memoize(async (id: string) => {
   const [file, name] = id.split("#");
-  const module = await loadModule(file);
+  const module = await loadServerModule(file);
   return { [id]: module[name] };
 });

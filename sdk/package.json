@@ -1,6 +1,6 @@
 {
   "name": "rwsdk",
-  "version": "0.0.88",
+  "version": "0.1.0-alpha.8",
   "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime",
   "type": "module",
   "bin": {
@@ -8,16 +8,12 @@
   },
   "files": [
     "./README.md",
-    "./dist",
-    "./vendor/dist"
+    "./dist"
   ],
   "scripts": {
-    "build": "pnpm build:src && pnpm build:vendor",
-    "build:src": "tsc --build --clean && tsc",
-    "build:vendor": "node ./dist/scripts/build-vendor-bundles.mjs",
-    "clean:vendor": "rm -rf ./vendor/dist",
+    "build": "tsc --build --clean && tsc",
     "release": "./scripts/release.sh",
-    "test": "vitest",
+    "test": "vitest --run",
     "debug:sync": "tsx ./src/scripts/debug-sync.mts",
     "smoke-test": "tsx ./src/scripts/smoke-test.mts"
   },
@@ -27,44 +23,57 @@
       "types": "./dist/vite/index.d.mts"
     },
     "./worker": {
-      "default": "./dist/runtime/entries/worker.js",
-      "types": "./dist/runtime/entries/worker.d.ts"
-    },
-    "./router": {
-      "default": "./dist/runtime/entries/router.js",
-      "types": "./dist/runtime/entries/router.d.ts"
+      "react-server": "./dist/runtime/entries/worker.js",
+      "types": "./dist/runtime/entries/worker.d.ts",
+      "default": "./dist/runtime/entries/react-server-only.js"
     },
     "./client": {
-      "default": "./dist/runtime/entries/client.js",
-      "types": "./dist/runtime/entries/client.d.ts"
+      "react-server": "./dist/runtime/entries/no-react-server.js",
+      "workerd": "./dist/runtime/entries/clientSSR.js",
+      "types": "./dist/runtime/entries/client.d.ts",
+      "default": "./dist/runtime/entries/client.js"
+    },
+    "./__ssr": {
+      "react-server": "./dist/runtime/entries/no-react-server.js",
+      "types": "./dist/runtime/entries/ssr.d.ts",
+      "default": "./dist/runtime/entries/ssr.js"
+    },
+    "./__ssr_bridge": {
+      "react-server": "./dist/runtime/entries/no-react-server.js",
+      "types": "./dist/runtime/ssrBridge.d.ts",
+      "default": "./dist/runtime/ssrBridge.js"
+    },
+    "./router": {
+      "types": "./dist/runtime/entries/router.d.ts",
+      "default": "./dist/runtime/entries/router.js"
     },
     "./auth": {
-      "default": "./dist/runtime/entries/auth.js",
-      "types": "./dist/runtime/entries/auth.d.ts"
+      "types": "./dist/runtime/entries/auth.d.ts",
+      "default": "./dist/runtime/entries/auth.js"
     },
     "./constants": {
-      "default": "./dist/runtime/constants.js",
-      "types": "./dist/runtime/constants.d.ts"
+      "types": "./dist/runtime/constants.d.ts",
+      "default": "./dist/runtime/constants.js"
     },
     "./turnstile": {
-      "default": "./dist/runtime/lib/turnstile/turnstile.js",
-      "types": "./dist/runtime/lib/turnstile/turnstile.d.ts"
+      "types": "./dist/runtime/lib/turnstile/turnstile.d.ts",
+      "default": "./dist/runtime/lib/turnstile/turnstile.js"
     },
     "./llms": {
-      "default": "./dist/llms/index.js",
-      "types": "./dist/llms/index.d.ts"
+      "types": "./dist/llms/index.d.ts",
+      "default": "./dist/llms/index.js"
     },
     "./realtime/worker": {
-      "default": "./dist/runtime/lib/realtime/worker.js",
-      "types": "./dist/runtime/lib/realtime/worker.d.ts"
+      "types": "./dist/runtime/lib/realtime/worker.d.ts",
+      "default": "./dist/runtime/lib/realtime/worker.js"
     },
     "./realtime/client": {
-      "default": "./dist/runtime/lib/realtime/client.js",
-      "types": "./dist/runtime/lib/realtime/client.d.ts"
+      "types": "./dist/runtime/lib/realtime/client.d.ts",
+      "default": "./dist/runtime/lib/realtime/client.js"
     },
     "./realtime/durableObject": {
-      "default": "./dist/runtime/lib/realtime/durableObject.js",
-      "types": "./dist/runtime/lib/realtime/durableObject.d.ts"
+      "types": "./dist/runtime/lib/realtime/durableObject.d.ts",
+      "default": "./dist/runtime/lib/realtime/durableObject.js"
     }
   },
   "keywords": [
