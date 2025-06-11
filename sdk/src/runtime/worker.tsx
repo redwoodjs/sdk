@@ -173,7 +173,7 @@ export const defineApp = <T extends RequestInfo = RequestInfo<any, DefaultAppCon
                   await router.handle({
                     request,
                     renderPage,
-                    getRequestInfo,
+                    getRequestInfo: getRequestInfo as () => T,
                     runWithRequestInfoOverrides,
                     onError: reject,
                   }),
