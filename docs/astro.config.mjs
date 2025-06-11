@@ -130,7 +130,7 @@ export default defineConfig({
               ],
             },
             {
-              label: "Authentication & Security",
+              label: "Authentication & Authorization",
               collapsed: true,
               items: [
                 {
@@ -161,6 +161,10 @@ export default defineConfig({
                       slug: "guides/auth/magic-links/cleanup",
                     },
                   ],
+                },
+                {
+                  label: "Role-Based Access",
+                  slug: "guides/auth/role-based-access/overview",
                 },
                 {
                   label: "Username & Password",
