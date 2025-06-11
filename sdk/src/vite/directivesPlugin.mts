@@ -1,4 +1,6 @@
 import { Plugin } from "vite";
+import path from "node:path";
+import fs from "node:fs/promises";
 import debug from "debug";
 import { transformClientComponents } from "./transformClientComponents.mjs";
 import { transformServerFunctions } from "./transformServerFunctions.mjs";
@@ -6,6 +8,27 @@ import { normalizeModulePath } from "./normalizeModulePath.mjs";
 
 const log = debug("rwsdk:vite:rsc-directives-plugin");
 const verboseLog = debug("verbose:rwsdk:vite:rsc-directives-plugin");
+
+const getLoader = (filePath: string) => {
+  const ext = path.extname(filePath).slice(1);
+  switch (ext) {
+    case "mjs":
+    case "cjs":
+      return "js";
+    case "mts":
+    case "cts":
+      return "ts";
+    case "jsx":
+      return "jsx";
+    case "tsx":
+      return "tsx";
+    case "ts":
+      return "ts";
+    case "js":
+    default:
+      return "js";
+  }
+};
 
 export const directivesPlugin = ({
   projectRootDir,
@@ -66,64 +89,65 @@ export const directivesPlugin = ({
       name: "rsc-directives-esbuild-transform",
       setup(build) {
         log("Setting up esbuild plugin for environment: %s", env);
-        build.onLoad({ filter: /.*\.js$/ }, async (args) => {
-          verboseLog("Esbuild onLoad called for path=%s", args.path);
+        build.onLoad(
+          { filter: /\.(js|ts|jsx|tsx|mts|mjs|cjs)$/ },
+          async (args) => {
+            verboseLog("Esbuild onLoad called for path=%s", args.path);
 
-          const fs = await import("node:fs/promises");
-          const path = await import("node:path");
-          let code: string;
+            let code: string;
 
-          try {
-            code = await fs.readFile(args.path, "utf-8");
-          } catch {
-            verboseLog("Failed to read file: %s", args.path);
-            return undefined;
-          }
+            try {
+              code = await fs.readFile(args.path, "utf-8");
+            } catch {
+              verboseLog("Failed to read file: %s", args.path);
+              return undefined;
+            }
 
-          const clientResult = await transformClientComponents(
-            code,
-            normalizeModulePath(projectRootDir, args.path),
-            {
-              environmentName: env,
-              clientFiles,
-              isEsbuild: true,
-            },
-          );
+            const clientResult = await transformClientComponents(
+              code,
+              normalizeModulePath(projectRootDir, args.path),
+              {
+                environmentName: env,
+                clientFiles,
+                isEsbuild: true,
+              },
+            );
 
-          if (clientResult) {
-            log(
-              "Esbuild client component transformation successful for path=%s",
+            if (clientResult) {
+              log(
+                "Esbuild client component transformation successful for path=%s",
+                args.path,
+              );
+              return {
+                contents: clientResult.code,
+                loader: getLoader(args.path),
+              };
+            }
+
+            const serverResult = transformServerFunctions(
+              code,
+              normalizeModulePath(projectRootDir, args.path),
+              env as "client" | "worker" | "ssr",
+              serverFiles,
+            );
+
+            if (serverResult) {
+              log(
+                "Esbuild server function transformation successful for path=%s",
+                args.path,
+              );
+              return {
+                contents: serverResult.code,
+                loader: getLoader(args.path),
+              };
+            }
+
+            verboseLog(
+              "Esbuild no transformation applied for path=%s",
               args.path,
             );
-            return {
-              contents: clientResult.code,
-              loader: path.extname(args.path).slice(1) as any,
-            };
-          }
-
-          const serverResult = transformServerFunctions(
-            code,
-            normalizeModulePath(projectRootDir, args.path),
-            env as "client" | "worker" | "ssr",
-            serverFiles,
-          );
-
-          if (serverResult) {
-            log(
-              "Esbuild server function transformation successful for path=%s",
-              args.path,
-            );
-            return {
-              contents: serverResult.code,
-              loader: path.extname(args.path).slice(1) as any,
-            };
-          }
-
-          verboseLog(
-            "Esbuild no transformation applied for path=%s",
-            args.path,
-          );
-        });
+          },
+        );
       },
     });
     log("Environment configuration complete for env=%s", env);
