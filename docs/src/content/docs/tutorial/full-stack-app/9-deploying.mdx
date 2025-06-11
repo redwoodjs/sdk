@@ -12,16 +12,32 @@ import { PackageManagers } from "starlight-package-managers";
 
 Now that our application is complete 🥳, let's deploy it! This is the _easiest_ step in the whole process.
 
-When you first run `pnpm dev`, Redwood creates a `.wrangler` directory with a D1 database inside.
-
-You can create a D1 database on your Cloudflare account with
-
 Within the Terminal, run:
 
 <PackageManagers
   type="run"
   pkg="release"
 />
+
+<Aside type="note" title="Deploying your D1 Database">
+When you run `pnpm run release`, Redwood will automatically create a D1 database for you, within your Cloudflare account and update your `wrangler.jsonc` file for you. However, if you want to run these commands manually, you can do so by running:
+
+```bash
+pnpm wrangler d1 create DATABASE-NAME
+```
+
+Then, use the provided output to update the `database_name` and `database_id` within your `wrangler.jsonc` file:
+
+```json showLineNumbers=false title="wrangler.jsonc"
+"d1_databases": [
+  {
+    "binding": "DB",
+    "database_name": "__change_me__",
+    "database_id": "__change_me__"
+  }
+]
+```
+</Aside>
 
 Within the Terminal, it will ask you: **Do you want to proceed with deployment? (y/N):** Type `y` and press Enter.
 
