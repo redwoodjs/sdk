@@ -48,6 +48,7 @@ export async function getSrcPaths(
     const files = await glob(globPattern, {
       ignore: ["**/node_modules/**", "**/dist/**", "**/*.d.ts"],
       absolute: true,
+      nodir: true,
     });
     return files;
   } catch (error) {

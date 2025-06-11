@@ -7,6 +7,7 @@ import debug from "debug";
 import { normalizeModulePath } from "./normalizeModulePath.mjs";
 import { ensureAliasArray } from "./ensureAliasArray.mjs";
 import { pathExists } from "fs-extra";
+import { stat } from "fs/promises";
 import { getSrcPaths } from "../lib/getSrcPaths.js";
 
 interface DirectiveLookupConfig {
@@ -44,6 +45,7 @@ export const findFilesContainingDirective = async ({
     {
       cwd: projectRootDir,
       absolute: true,
+      nodir: true,
     },
   );
 
@@ -53,6 +55,13 @@ export const findFilesContainingDirective = async ({
 
   for (const file of allFiles) {
     try {
+      const stats = await stat(file);
+
+      if (!stats.isFile()) {
+        verboseLog("Skipping %s (not a file)", file);
+        continue;
+      }
+
       verboseLog("Scanning file: %s", file);
       const content = await readFile(file, "utf-8");
       const lines = content.split("\n");
