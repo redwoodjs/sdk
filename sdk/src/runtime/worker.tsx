@@ -11,9 +11,9 @@ import {
   runWithRequestInfo,
   runWithRequestInfoOverrides,
 } from "./requestInfo/worker";
-import { RequestInfo } from "./requestInfo/types";
+import { RequestInfo, DefaultAppContext } from "./requestInfo/types";
 
-import { Route, type RwContext, defineRoutes } from "./lib/router";
+import { Route, type RwContext, defineRoutes, route } from "./lib/router";
 import { generateNonce } from "./lib/utils";
 import { IS_DEV } from "./constants";
 
@@ -23,13 +23,12 @@ declare global {
     DB: D1Database;
   };
 }
-
-export const defineApp = (routes: Route[]) => {
+export const defineApp = <T extends RequestInfo = RequestInfo<any, DefaultAppContext>>(routes: Route<T>[]) => {
   return {
     fetch: async (request: Request, env: Env, cf: ExecutionContext) => {
       globalThis.__webpack_require__ = ssrWebpackRequire;
 
-      const router = defineRoutes(routes);
+      const router = defineRoutes<T>(routes);
 
       // context(justinvdm, 5 Feb 2025): Serve assets requests using the assets service binding
       // todo(justinvdm, 5 Feb 2025): Find a way to avoid this so asset requests are served directly
@@ -61,7 +60,7 @@ export const defineApp = (routes: Route[]) => {
           rscPayload: true,
         };
 
-        const outerRequestInfo: RequestInfo = {
+        const outerRequestInfo: RequestInfo<any, T["ctx"]> = {
           request,
           headers: userHeaders,
           cf,
@@ -71,13 +70,12 @@ export const defineApp = (routes: Route[]) => {
         };
 
         const createPageElement = (
-          requestInfo: RequestInfo,
+          requestInfo: RequestInfo<any, T["ctx"]>,
           Page: React.FC<any>,
         ) => {
           let pageElement;
           if (isClientReference(Page)) {
-            const { ctx, params } = requestInfo;
-            // context(justinvdm, 25 Feb 2025): If the page is a client reference, we need to avoid passing
+            const { ctx, params } = requestInfo; // context(justinvdm, 25 Feb 2025): If the page is a client reference, we need to avoid passing
             // down props the client shouldn't get (e.g. env). For safety, we pick the allowed props explicitly.
             pageElement = <Page ctx={ctx} params={params} />;
           } else {
@@ -104,7 +102,7 @@ export const defineApp = (routes: Route[]) => {
         };
 
         const renderPage = async (
-          requestInfo: RequestInfo,
+          requestInfo: RequestInfo<T>,
           Page: React.FC<any>,
           onError: (error: unknown) => void,
         ) => {
