@@ -253,6 +253,15 @@ export const createDirectiveLookupPlugin = async ({
               file,
               actualFilePath,
             );
+          } else {
+            verboseLog("Adding to optimizeDeps.entries: %s", actualFilePath);
+
+            const entries = Array.isArray(viteConfig.optimizeDeps.entries)
+              ? viteConfig.optimizeDeps.entries
+              : ([] as string[]).concat(viteConfig.optimizeDeps.entries ?? []);
+
+            viteConfig.optimizeDeps.entries = entries;
+            entries.push(actualFilePath);
           }
         }
 
