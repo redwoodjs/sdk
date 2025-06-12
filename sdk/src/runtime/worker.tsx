@@ -50,7 +50,9 @@ export const defineApp = <T extends RequestInfo = RequestInfo<any, DefaultAppCon
 
       try {
         const url = new URL(request.url);
-        const isRSCRequest = url.searchParams.has("__rsc");
+        const isRSCRequest =
+          url.searchParams.has("__rsc") ||
+          request.headers.get("accept")?.includes("text/x-component");
         const isSmokeTest = url.searchParams.has("__smoke_test");
         const userHeaders = new Headers();
 

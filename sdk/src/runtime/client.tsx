@@ -86,9 +86,9 @@ export const initClient = async ({
 
   const React = await import("react");
   const { hydrateRoot } = await import("react-dom/client");
-  // @ts-ignore: todo(peterp, 2024-11-27): Type these properly.
-  const { createFromReadableStream, createFromFetch, encodeReply } =
-    await import("react-server-dom-webpack/client.browser");
+  const { createFromReadableStream } = await import(
+    "react-server-dom-webpack/client.browser"
+  );
   const { rscStream } = await import("rsc-html-stream/client");
 
   let rscPayload: any;
@@ -108,7 +108,7 @@ export const initClient = async ({
 
   if (import.meta.hot) {
     import.meta.hot.on("rsc:update", (e) => {
-      console.log("[rw-sdk] hot update", e.file);
+      console.log("[rwsdk] hot update", e.file);
       callServer("__rsc_hot_update", [e.file]);
     });
   }
