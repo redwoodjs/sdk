@@ -51,7 +51,9 @@ export const defineApp = (routes: Route[]) => {
 
       try {
         const url = new URL(request.url);
-        const isRSCRequest = url.searchParams.has("__rsc");
+        const isRSCRequest =
+          url.searchParams.has("__rsc") ||
+          request.headers.get("accept")?.includes("text/x-component");
         const isSmokeTest = url.searchParams.has("__smoke_test");
         const userHeaders = new Headers();
 
