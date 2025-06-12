@@ -2,24 +2,24 @@ import React from "react";
 import { isValidElementType } from "react-is";
 import { RequestInfo } from "../requestInfo/types";
 
-export type DocumentProps = RequestInfo & {
+export type DocumentProps<T extends RequestInfo = RequestInfo> = T & {
   children: React.ReactNode;
 };
 
-export type LayoutProps = {
+export type LayoutProps<T extends RequestInfo = RequestInfo> = {
   children?: React.ReactNode;
-  requestInfo?: RequestInfo;
+  requestInfo?: T;
 };
 
 export type RwContext = {
   nonce: string;
-  Document: React.FC<DocumentProps>;
+  Document: React.FC<DocumentProps<any>>;
   rscPayload: boolean;
-  layouts?: React.FC<LayoutProps>[];
+  layouts?: React.FC<LayoutProps<any>>[];
 };
 
-export type RouteMiddleware = (
-  requestInfo: RequestInfo,
+export type RouteMiddleware<T extends RequestInfo = RequestInfo> = (
+  requestInfo: T,
 ) =>
   | Response
   | Promise<Response>
@@ -27,37 +27,37 @@ export type RouteMiddleware = (
   | Promise<void>
   | Promise<Response | void>;
 
-type RouteFunction = (requestInfo: RequestInfo) => Response | Promise<Response>;
+type RouteFunction<T extends RequestInfo = RequestInfo> = (requestInfo: T) => Response | Promise<Response>;
 
 type MaybePromise<T> = T | Promise<T>;
 
-type RouteComponent = (
-  requestInfo: RequestInfo,
+type RouteComponent<T extends RequestInfo = RequestInfo> = (
+  requestInfo: T,
 ) => MaybePromise<React.JSX.Element | Response>;
 
-type RouteHandler =
-  | RouteFunction
-  | RouteComponent
-  | [...RouteMiddleware[], RouteFunction | RouteComponent];
+type RouteHandler<T extends RequestInfo = RequestInfo> =
+  | RouteFunction<T>
+  | RouteComponent<T>
+  | [...RouteMiddleware<T>[], RouteFunction<T> | RouteComponent<T>];
 
-export type Route = RouteMiddleware | RouteDefinition | Array<Route>;
+export type Route<T extends RequestInfo = RequestInfo> = RouteMiddleware<T> | RouteDefinition<T> | Array<Route<T>>;
 
-export type RouteDefinition = {
+export type RouteDefinition<T extends RequestInfo = RequestInfo> = {
   path: string;
-  handler: RouteHandler;
-  layouts?: React.FC<LayoutProps>[];
+  handler: RouteHandler<T>;
+  layouts?: React.FC<LayoutProps<T>>[];
 };
 
-type RouteMatch = {
+type RouteMatch<T extends RequestInfo = RequestInfo> = {
   params: Record<string, string>;
-  handler: RouteHandler;
-  layouts?: React.FC<LayoutProps>[];
+  handler: RouteHandler<T>;
+  layouts?: React.FC<LayoutProps<T>>[];
 };
 
-export function matchPath(
+export function matchPath<T extends RequestInfo = RequestInfo>(
   routePath: string,
   requestPath: string,
-): RequestInfo["params"] | null {
+): T["params"] | null {
   // Check for invalid pattern: multiple colons in a segment (e.g., /:param1:param2/)
   if (routePath.includes(":")) {
     const segments = routePath.split("/");
@@ -89,7 +89,7 @@ export function matchPath(
   }
 
   // Revised parameter extraction:
-  const params: RequestInfo["params"] = {};
+  const params: T["params"] = {};
   let currentMatchIndex = 1; // Regex matches are 1-indexed
 
   // This regex finds either a named parameter token (e.g., ":id") or a wildcard star token ("*").
@@ -123,17 +123,17 @@ export function matchPath(
   return params;
 }
 
-function flattenRoutes(routes: Route[]): (RouteMiddleware | RouteDefinition)[] {
-  return routes.reduce((acc: Route[], route) => {
+function flattenRoutes<T extends RequestInfo = RequestInfo>(routes: Route<T>[]): (RouteMiddleware<T> | RouteDefinition<T>)[] {
+  return routes.reduce((acc: Route<T>[], route) => {
     if (Array.isArray(route)) {
       return [...acc, ...flattenRoutes(route)];
     }
     return [...acc, route];
-  }, []) as (RouteMiddleware | RouteDefinition)[];
+  }, []) as (RouteMiddleware<T> | RouteDefinition<T>)[];
 }
 
-export function defineRoutes(routes: Route[]): {
-  routes: Route[];
+export function defineRoutes<T extends RequestInfo = RequestInfo>(routes: Route<T>[]): {
+  routes: Route<T>[];
   handle: ({
     request,
     renderPage,
@@ -143,19 +143,19 @@ export function defineRoutes(routes: Route[]): {
   }: {
     request: Request;
     renderPage: (
-      requestInfo: RequestInfo,
+      requestInfo: T,
       Page: React.FC,
       onError: (error: unknown) => void,
     ) => Promise<Response>;
-    getRequestInfo: () => RequestInfo;
+    getRequestInfo: () => T;
     onError: (error: unknown) => void;
     runWithRequestInfoOverrides: <Result>(
-      overrides: Partial<RequestInfo>,
+      overrides: Partial<T>,
       fn: () => Promise<Result>,
     ) => Promise<Result>;
   }) => Response | Promise<Response>;
 } {
-  const flattenedRoutes = flattenRoutes(routes);
+  const flattenedRoutes = flattenRoutes<T>(routes);
   return {
     routes: flattenedRoutes,
     async handle({
@@ -174,7 +174,7 @@ export function defineRoutes(routes: Route[]): {
       }
 
       // Find matching route
-      let match: RouteMatch | null = null;
+      let match: RouteMatch<T> | null = null;
 
       for (const route of flattenedRoutes) {
         if (typeof route === "function") {
@@ -187,7 +187,7 @@ export function defineRoutes(routes: Route[]): {
           continue;
         }
 
-        const params = matchPath(route.path, path);
+        const params = matchPath<T>(route.path, path);
         if (params) {
           match = { params, handler: route.handler, layouts: route.layouts };
           break;
@@ -201,7 +201,7 @@ export function defineRoutes(routes: Route[]): {
 
       let { params, handler, layouts } = match;
 
-      return runWithRequestInfoOverrides({ params }, async () => {
+      return runWithRequestInfoOverrides({ params } as Partial<T>, async () => {
         const handlers = Array.isArray(handler) ? handler : [handler];
 
         for (const h of handlers) {
@@ -230,7 +230,7 @@ export function defineRoutes(routes: Route[]): {
   };
 }
 
-export function route(path: string, handler: RouteHandler): RouteDefinition {
+export function route<T extends RequestInfo = RequestInfo>(path: string, handler: RouteHandler<T>): RouteDefinition<T> {
   if (!path.endsWith("/")) {
     path = path + "/";
   }
@@ -241,11 +241,11 @@ export function route(path: string, handler: RouteHandler): RouteDefinition {
   };
 }
 
-export function index(handler: RouteHandler): RouteDefinition {
+export function index<T extends RequestInfo = RequestInfo>(handler: RouteHandler<T>): RouteDefinition<T> {
   return route("/", handler);
 }
 
-export function prefix(prefixPath: string, routes: Route[]): Route[] {
+export function prefix<T extends RequestInfo = RequestInfo>(prefixPath: string, routes: Route<T>[]): Route<T>[] {
   return routes.map((r) => {
     if (typeof r === "function") {
       // Pass through middleware as-is
@@ -264,10 +264,10 @@ export function prefix(prefixPath: string, routes: Route[]): Route[] {
   });
 }
 
-function wrapWithLayouts(
+function wrapWithLayouts<T extends RequestInfo = RequestInfo>(
   Component: React.FC,
-  layouts: React.FC<LayoutProps>[] = [],
-  requestInfo: RequestInfo,
+  layouts: React.FC<LayoutProps<T>>[] = [],
+  requestInfo: T,
 ): React.FC {
   if (layouts.length === 0) {
     return Component;
@@ -294,10 +294,10 @@ function wrapWithLayouts(
   }, Component);
 }
 
-export function layout(
-  LayoutComponent: React.FC<LayoutProps>,
-  routes: Route[],
-): Route[] {
+export function layout<T extends RequestInfo = RequestInfo>(
+  LayoutComponent: React.FC<LayoutProps<T>>,
+  routes: Route<T>[],
+): Route<T>[] {
   // Attach layouts directly to route definitions
   return routes.map((route) => {
     if (typeof route === "function") {
@@ -316,9 +316,9 @@ export function layout(
   });
 }
 
-export function render(
-  Document: React.FC<DocumentProps>,
-  routes: Route[],
+export function render<T extends RequestInfo = RequestInfo>(
+  Document: React.FC<DocumentProps<T>>,
+  routes: Route<T>[],
   /**
    * @param options - Configuration options for rendering.
    * @param options.rscPayload - Toggle the RSC payload that's appended to the Document. Disabling this will mean that interactivity no longer works.
@@ -326,8 +326,8 @@ export function render(
   options: {
     rscPayload: boolean;
   } = { rscPayload: true },
-): Route[] {
-  const documentMiddleware: RouteMiddleware = ({ rw }) => {
+): Route<T>[] {
+  const documentMiddleware: RouteMiddleware<T> = ({ rw }) => {
     rw.Document = Document;
     rw.rscPayload = options.rscPayload;
   };

@@ -1,5 +1,5 @@
 import { defineApp } from "rwsdk/worker";
-import { index, render } from "rwsdk/router";
+import { render, route } from "rwsdk/router";
 
 import { Document } from "@/app/Document";
 import { Home } from "@/app/pages/Home";
@@ -11,7 +11,9 @@ export default defineApp([
   setCommonHeaders(),
   ({ ctx }) => {
     // setup ctx here
-    ctx;
+    ctx
   },
-  render(Document, [index([Home])]),
+  render(Document, [
+    route('/', Home)
+  ])
 ]);
