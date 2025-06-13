@@ -101,7 +101,7 @@ export const configPlugin = ({
             noDiscovery: false,
             entries: [workerEntryPathname],
             exclude: externalModules,
-            include: ["rwsdk/__ssr_bridge"],
+            include: ["rwsdk/__ssr", "rwsdk/__ssr_bridge"],
             esbuildOptions: {
               jsx: "automatic",
               jsxImportSource: "react",
