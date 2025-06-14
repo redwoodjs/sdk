@@ -20,27 +20,18 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
     />
 
 2. Configure the Vite Plugin
-    ```ts ins="import tailwindcss from '@tailwindcss/vite'" ins="tailwindcss()," {3, 12} ins={7-9} title="vite.config.mts"
+    ```ts ins="import tailwindcss from '@tailwindcss/vite'" ins="tailwindcss()," title="vite.config.mts"
     import { defineConfig } from "vite";
     import tailwindcss from '@tailwindcss/vite'
     import { redwood } from "rwsdk/vite";
 
     export default defineConfig({
-      environments: {
-        ssr: {},
-      },
       plugins: [
         redwood(),
         tailwindcss(),
       ],
     });
     ```
-
-    <Aside type="note" title="Environment Configuration">
-    Tailwindcss currently uses [the non-deprecated internal `createResolver()` vite API method.](https://github.com/tailwindlabs/tailwindcss/blob/main/packages/%40tailwindcss-vite/src/index.ts#L22) [The code and its docstring indicate that it relies on an `ssr` being present](https://github.com/vitejs/vite/blob/c0e3dba3108e479ab839205cfb046db327bdaf43/packages/vite/src/node/config.ts#L1498).
-
-    This isn't the case for us, since we only have a `worker` environment instead of `ssr`. To prevent builds from getting blocked on this, we stub out the ssr environment here.
-    </Aside>
 
 3. Create a `src/app/styles.css` file, and import Tailwind CSS
     ```css title="src/app/styles.css"
