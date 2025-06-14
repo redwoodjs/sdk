@@ -232,19 +232,15 @@ export const createDirectiveLookupPlugin = async ({
 
         viteConfig.optimizeDeps.include ??= [];
 
-        const aliases = ensureAliasArray(viteConfig);
-
         for (const file of files) {
           const actualFilePath = path.join(projectRootDir, file);
 
-          if (!file.includes("/node_modules/")) {
-            verboseLog("Adding to optimizeDeps.entries: %s", actualFilePath);
-            const entries = Array.isArray(viteConfig.optimizeDeps.entries)
-              ? viteConfig.optimizeDeps.entries
-              : ([] as string[]).concat(viteConfig.optimizeDeps.entries ?? []);
-            viteConfig.optimizeDeps.entries = entries;
-            entries.push(actualFilePath);
-          }
+          verboseLog("Adding to optimizeDeps.entries: %s", actualFilePath);
+          const entries = Array.isArray(viteConfig.optimizeDeps.entries)
+            ? viteConfig.optimizeDeps.entries
+            : ([] as string[]).concat(viteConfig.optimizeDeps.entries ?? []);
+          viteConfig.optimizeDeps.entries = entries;
+          entries.push(actualFilePath);
         }
 
         log(
