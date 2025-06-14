@@ -237,20 +237,7 @@ export const createDirectiveLookupPlugin = async ({
         for (const file of files) {
           const actualFilePath = path.join(projectRootDir, file);
 
-          if (file.includes("/node_modules/")) {
-            //verboseLog("Adding to optimizeDeps.include: %s -> %s", file);
-            ////viteConfig.optimizeDeps.include.push(file);
-            //const findRegex = new RegExp(
-            //  `^${file.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
-            //);
-            //aliases.push({ find: findRegex, replacement: actualFilePath });
-            //verboseLog(
-            //  "Added alias for `node_modules` module matching directive in env=%s: %s -> %s",
-            //  env,
-            //  file,
-            //  actualFilePath,
-            //);
-          } else {
+          if (!file.includes("/node_modules/")) {
             verboseLog("Adding to optimizeDeps.entries: %s", actualFilePath);
             const entries = Array.isArray(viteConfig.optimizeDeps.entries)
               ? viteConfig.optimizeDeps.entries
