@@ -136,10 +136,7 @@ export const ssrBridgePlugin = (): Plugin => {
         log("Virtual SSR module load: id=%s, realId=%s", id, realId);
 
         if (isDev) {
-          log(
-            "Dev mode: warming up and fetching SSR module for realPath=%s",
-            realId,
-          );
+          log("Fetching SSR module for realPath=%s", realId);
           const result = await devServer?.environments.ssr.fetchModule(realId);
 
           verboseLog("Fetch module result: id=%s, result=%O", realId, result);

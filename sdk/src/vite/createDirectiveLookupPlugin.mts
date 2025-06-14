@@ -38,16 +38,19 @@ export const findFilesContainingDirective = async ({
     projectRootDir,
   );
 
-  const filesOutsideNodeModules = await getSrcPaths(projectRootDir);
+  //const filesOutsideNodeModules = await getSrcPaths(projectRootDir);
+  const filesOutsideNodeModules: string[] = [];
 
-  const filesInsideNodeModules = await glob(
-    "**/node_modules/**/*.{js,mjs,cjs}",
-    {
-      cwd: projectRootDir,
-      absolute: true,
-      nodir: true,
-    },
-  );
+  //const filesInsideNodeModules = await glob(
+  //  "**/node_modules/**/*.{js,mjs,cjs}",
+  //  {
+  //    cwd: projectRootDir,
+  //    absolute: true,
+  //    nodir: true,
+  //    dot: true,
+  //  },
+  //);
+  const filesInsideNodeModules: string[] = [];
 
   const allFiles = [...filesOutsideNodeModules, ...filesInsideNodeModules];
 
@@ -81,6 +84,11 @@ export const findFilesContainingDirective = async ({
               normalizedPath,
             );
             files.add(normalizedPath);
+          } else if (
+            trimmedLine.startsWith("'use strict'") ||
+            trimmedLine.startsWith('"use strict"')
+          ) {
+            continue;
           }
           break;
         }
@@ -91,6 +99,7 @@ export const findFilesContainingDirective = async ({
   }
 
   log("Completed scan. Found %d %s files total", files.size, directive);
+  verboseLog("Found files for %s: %j", directive, Array.from(files));
 };
 
 const resolveOptimizedDep = async (
@@ -240,28 +249,25 @@ export const createDirectiveLookupPlugin = async ({
           const actualFilePath = path.join(projectRootDir, file);
 
           if (file.includes("/node_modules/")) {
-            verboseLog("Adding to optimizeDeps.include: %s -> %s", file);
-            viteConfig.optimizeDeps.include.push(file);
-
-            const findRegex = new RegExp(
-              `^${file.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
-            );
-            aliases.push({ find: findRegex, replacement: actualFilePath });
-            verboseLog(
-              "Added alias for `node_modules` module matching directive in env=%s: %s -> %s",
-              env,
-              file,
-              actualFilePath,
-            );
+            //verboseLog("Adding to optimizeDeps.include: %s -> %s", file);
+            ////viteConfig.optimizeDeps.include.push(file);
+            //const findRegex = new RegExp(
+            //  `^${file.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
+            //);
+            //aliases.push({ find: findRegex, replacement: actualFilePath });
+            //verboseLog(
+            //  "Added alias for `node_modules` module matching directive in env=%s: %s -> %s",
+            //  env,
+            //  file,
+            //  actualFilePath,
+            //);
           } else {
-            verboseLog("Adding to optimizeDeps.entries: %s", actualFilePath);
-
-            const entries = Array.isArray(viteConfig.optimizeDeps.entries)
-              ? viteConfig.optimizeDeps.entries
-              : ([] as string[]).concat(viteConfig.optimizeDeps.entries ?? []);
-
-            viteConfig.optimizeDeps.entries = entries;
-            entries.push(actualFilePath);
+            //verboseLog("Adding to optimizeDeps.entries: %s", actualFilePath);
+            //const entries = Array.isArray(viteConfig.optimizeDeps.entries)
+            //  ? viteConfig.optimizeDeps.entries
+            //  : ([] as string[]).concat(viteConfig.optimizeDeps.entries ?? []);
+            //viteConfig.optimizeDeps.entries = entries;
+            //entries.push(actualFilePath);
           }
         }
 
