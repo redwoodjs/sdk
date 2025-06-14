@@ -9,7 +9,10 @@ interface TransformResult {
   map?: any;
 }
 
-export const findExportedFunctions = (sourceFile: SourceFile) => {
+export const findExportedFunctions = (
+  sourceFile: SourceFile,
+  normalizedId?: string,
+) => {
   verboseLog("Finding exported functions in source file");
 
   const exportedFunctions = new Set<string>();
@@ -80,10 +83,11 @@ export const findExportedFunctions = (sourceFile: SourceFile) => {
     // Check for export * from - log warning and skip
     if (!namedExports.length && !exportDecl.getNamespaceExport()) {
       // This is an export * from statement
-      log(
+      console.warn(
         "Warning: 'export * from' re-exports are not supported in server functions. " +
           "Please use named exports instead (e.g., 'export { functionName } from \"./module\"'). " +
-          "Ignoring: %s",
+          "File: %s, Ignoring: %s",
+        normalizedId,
         exportDecl.getText().trim(),
       );
     }
@@ -170,7 +174,7 @@ export const transformServerFunctions = (
       namedImports: ["createServerReference"],
     });
 
-    const exports = findExportedFunctions(sourceFile);
+    const exports = findExportedFunctions(sourceFile, normalizedId);
     for (const name of exports) {
       ssrSourceFile.addVariableStatement({
         isExported: true,
@@ -241,7 +245,7 @@ export const transformServerFunctions = (
       );
     }
 
-    const exports = findExportedFunctions(sourceFile);
+    const exports = findExportedFunctions(sourceFile, normalizedId);
     for (const name of exports) {
       if (name === "__defaultServerFunction__") continue;
       sourceFile.addStatements(
@@ -277,7 +281,7 @@ export const transformServerFunctions = (
       namedImports: ["createServerReference"],
     });
 
-    const exports = findExportedFunctions(sourceFile);
+    const exports = findExportedFunctions(sourceFile, normalizedId);
     for (const name of exports) {
       clientSourceFile.addVariableStatement({
         isExported: true,
