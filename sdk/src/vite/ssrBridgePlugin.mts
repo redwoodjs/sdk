@@ -15,6 +15,7 @@ export const ssrBridgePlugin = (): Plugin => {
 
   let devServer: ViteDevServer;
   let isDev = false;
+  let lastOptimizationHash: any = null;
 
   const ssrBridgePlugin: Plugin = {
     name: "rwsdk:ssr-bridge",
@@ -22,6 +23,17 @@ export const ssrBridgePlugin = (): Plugin => {
     async configureServer(server) {
       devServer = server;
       log("Configured dev server");
+
+      const originalSend = devServer.ws.send;
+      devServer.ws.send = (data: any) => {
+        if (data.type === "full-reload") {
+          console.log("########################## full-reload");
+          server.environments.ssr.moduleGraph.invalidateAll();
+          server.environments.worker.moduleGraph.invalidateAll();
+        }
+
+        return originalSend.call(devServer.ws, data);
+      };
     },
     config(_, { command, isPreview }) {
       isDev = !isPreview && command === "serve";
@@ -140,81 +152,52 @@ export const ssrBridgePlugin = (): Plugin => {
 
           let result;
           let retries = 0;
-          const maxRetries = 3;
+          const maxRetries = 1; // Just one retry, then reload
 
           while (retries <= maxRetries) {
-            // Wait for scan processing
             await devServer?.environments.ssr.depsOptimizer?.scanProcessing;
 
-            // Get the browserHash before fetch
             const hashBefore =
               devServer?.environments.ssr.depsOptimizer?.metadata.browserHash;
 
-            log(
-              "Starting fetch attempt %d/%d with hash: %s, id=%s, realId=%s",
-              retries + 1,
-              maxRetries + 1,
-              hashBefore,
-              id,
-              realId,
-            );
-
-            // Do the fetchModule
             devServer?.environments.ssr.moduleGraph.invalidateAll();
             result = await devServer?.environments.ssr.fetchModule(
               realId,
               undefined,
-              {
-                cached: false,
-              },
+              { cached: false },
             );
 
-            // Wait for scan processing again
             await devServer?.environments.ssr.depsOptimizer?.scanProcessing;
 
-            // Get browser hash again
             const hashAfter =
               devServer?.environments.ssr.depsOptimizer?.metadata.browserHash;
 
-            // Check if browser hash changed
             if (hashBefore === hashAfter) {
-              // Hash didn't change, we're good
-              log(
-                "Hash stable (%s), fetch successful on attempt %d, id=%s, realId=%s",
-                hashBefore,
-                retries + 1,
-                id,
-                realId,
-              );
+              // Hash stable, we're good
               break;
             }
 
-            // Hash changed, retry
-            log(
-              "Browser hash changed during fetch (before: %s, after: %s), retrying... (attempt %d/%d), id=%s, realId=%s",
-              hashBefore,
-              hashAfter,
-              retries + 1,
-              maxRetries + 1,
-              id,
-              realId,
-            );
-
-            retries++;
-
-            if (retries <= maxRetries) {
-              // Add delay when hash changes to let optimization complete
-              log("Adding 500ms delay to let optimization complete...");
-              await new Promise((resolve) => setTimeout(resolve, 3000));
+            if (retries === 0) {
+              // First retry - try once more
+              log(
+                "Browser hash changed during fetch (before: %s, after: %s), retrying once...",
+                hashBefore,
+                hashAfter,
+              );
+              retries++;
+              continue;
             }
-          }
 
-          if (retries > maxRetries) {
+            // Hash changed again, nuclear option
             log(
-              "Max retries reached, proceeding with last result, id=%s, realId=%s",
-              id,
-              realId,
+              "Browser hash unstable, triggering full reload to clear all stale references",
             );
+            devServer?.environments.ssr.moduleGraph.invalidateAll();
+            devServer?.environments.worker.moduleGraph.invalidateAll();
+            devServer?.ws.send({ type: "full-reload" });
+
+            // Still return the result for this request, but client will reload
+            break;
           }
 
           verboseLog(
@@ -267,6 +250,29 @@ await (async function(__vite_ssr_import__, __vite_ssr_dynamic_import__) {${code}
       }
 
       verboseLog("No load handling for id=%s", id);
+    },
+    handleHotUpdate({ server }) {
+      // Check current optimization hash
+      const currentHash =
+        devServer?.environments.ssr.depsOptimizer?.metadata.browserHash;
+
+      if (lastOptimizationHash && lastOptimizationHash !== currentHash) {
+        log(
+          `Optimization hash changed: ${lastOptimizationHash} -> ${currentHash}`,
+        );
+
+        // Cross-environment invalidation
+        server.environments.ssr.moduleGraph.invalidateAll();
+        server.environments.worker.moduleGraph.invalidateAll();
+
+        // Full reload
+        server.ws.send({ type: "full-reload" });
+
+        return []; // Stop normal HMR
+      }
+
+      lastOptimizationHash = currentHash;
+      return undefined; // Continue normal HMR
     },
   };
 
