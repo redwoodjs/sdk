@@ -15,7 +15,40 @@ export const ssrBridgePlugin = (): Plugin => {
 
   let devServer: ViteDevServer;
   let isDev = false;
-  let lastOptimizationHash: any = null;
+  let promisedSSRWarmup: Promise<void> | undefined;
+
+  const ensureWarmupSSRModules = async () => {
+    if (promisedSSRWarmup) {
+      log("SSR warmup already in progress");
+      return promisedSSRWarmup;
+    }
+
+    promisedSSRWarmup = doWarmupSSRModules();
+    return promisedSSRWarmup;
+  };
+
+  const doWarmupSSRModules = async () => {
+    log("Warming up SSR modules");
+
+    const files = [
+      "virtual:use-server-lookup",
+      "virtual:use-client-lookup",
+      "rwsdk/__ssr",
+      "rwsdk/__ssr_bridge",
+    ];
+
+    for (const file of files) {
+      log("Warming up SSR file: %s", file);
+      await devServer.environments.ssr.warmupRequest(file);
+      log("Waiting for SSR requests to idle");
+      await devServer.environments.ssr.waitForRequestsIdle();
+      log("Deps optimizer scan processing");
+      await devServer.environments.ssr.depsOptimizer?.scanProcessing;
+      log("Deps optimizer scan processing complete");
+    }
+
+    log("SSR warmup complete");
+  };
 
   const ssrBridgePlugin: Plugin = {
     name: "rwsdk:ssr-bridge",
@@ -23,17 +56,6 @@ export const ssrBridgePlugin = (): Plugin => {
     async configureServer(server) {
       devServer = server;
       log("Configured dev server");
-
-      const originalSend = devServer.ws.send;
-      devServer.ws.send = (data: any) => {
-        if (data.type === "full-reload") {
-          console.log("########################## full-reload");
-          server.environments.ssr.moduleGraph.invalidateAll();
-          server.environments.worker.moduleGraph.invalidateAll();
-        }
-
-        return originalSend.call(devServer.ws, data);
-      };
     },
     config(_, { command, isPreview }) {
       isDev = !isPreview && command === "serve";
@@ -144,135 +166,40 @@ export const ssrBridgePlugin = (): Plugin => {
         id.startsWith(VIRTUAL_SSR_PREFIX) &&
         this.environment.name === "worker"
       ) {
+        await ensureWarmupSSRModules();
         const realId = id.slice(VIRTUAL_SSR_PREFIX.length);
         log("Virtual SSR module load: id=%s, realId=%s", id, realId);
 
         if (isDev) {
-          log("Fetching SSR module for realPath=%s", realId);
-
-          let result;
-          let retries = 0;
-          const maxRetries = 1; // Just one retry, then reload
-
-          while (retries <= maxRetries) {
-            await devServer?.environments.ssr.depsOptimizer?.scanProcessing;
-
-            const hashBefore =
-              devServer?.environments.ssr.depsOptimizer?.metadata.browserHash;
-
-            devServer?.environments.ssr.moduleGraph.invalidateAll();
-            result = await devServer?.environments.ssr.fetchModule(
-              realId,
-              undefined,
-              { cached: false },
-            );
-
-            await devServer?.environments.ssr.depsOptimizer?.scanProcessing;
-
-            const hashAfter =
-              devServer?.environments.ssr.depsOptimizer?.metadata.browserHash;
-
-            if (hashBefore === hashAfter) {
-              // Hash stable, we're good
-              break;
-            }
-
-            if (retries === 0) {
-              // First retry - try once more
-              log(
-                "Browser hash changed during fetch (before: %s, after: %s), retrying once...",
-                hashBefore,
-                hashAfter,
-              );
-              retries++;
-              continue;
-            }
-
-            // Hash changed again, nuclear option
-            log(
-              "Browser hash unstable, triggering full reload to clear all stale references",
-            );
-            devServer?.environments.ssr.moduleGraph.invalidateAll();
-            devServer?.environments.worker.moduleGraph.invalidateAll();
-            devServer?.ws.send({ type: "full-reload" });
-
-            // Still return the result for this request, but client will reload
-            break;
-          }
-
-          verboseLog(
-            "Fetch module result: id=%s, realId=%s, result=%O",
-            id,
+          log(
+            "Dev mode: warming up and fetching SSR module for realPath=%s",
             realId,
-            result,
           );
+          const result = await devServer?.environments.ssr.fetchModule(realId);
+
+          verboseLog("Fetch module result: id=%s, result=%O", realId, result);
 
           if (!result) {
             return;
           }
 
           const code = "code" in result ? result.code : undefined;
-          log(
-            "Fetched SSR module code length: %d, id=%s, realId=%s",
-            code?.length || 0,
-            id,
-            realId,
-          );
-
-          // Log import paths to see if they're fresh
-          if (code && realId.includes("sonner")) {
-            const importMatches =
-              code.match(/from\s+["'][^"']*\.vite\/deps[^"']*["']/g) || [];
-            log(
-              "Sonner imports: %O, id=%s, realId=%s",
-              importMatches,
-              id,
-              realId,
-            );
-          }
+          log("Fetched SSR module code length: %d", code?.length || 0);
 
           // context(justinvdm, 27 May 2025): Prefix all imports in SSR modules so that they're separate in module graph from non-SSR
           const transformedCode = `
 await (async function(__vite_ssr_import__, __vite_ssr_dynamic_import__) {${code}})((id) => __vite_ssr_import__('/@id/${VIRTUAL_SSR_PREFIX}'+id), (id) => __vite_ssr_dynamic_import__('/@id/${VIRTUAL_SSR_PREFIX}'+id));
 `;
 
-          log(
-            "Transformed SSR module code length: %d, id=%s, realId=%s",
-            transformedCode.length,
-            id,
-            realId,
-          );
+          log("Transformed SSR module code length: %d", transformedCode.length);
 
-          verboseLog("Transformed SSR module code: %s", transformedCode);
+          log("Transformed SSR module code: %s", transformedCode);
 
           return transformedCode;
         }
       }
 
       verboseLog("No load handling for id=%s", id);
-    },
-    handleHotUpdate({ server }) {
-      // Check current optimization hash
-      const currentHash =
-        devServer?.environments.ssr.depsOptimizer?.metadata.browserHash;
-
-      if (lastOptimizationHash && lastOptimizationHash !== currentHash) {
-        log(
-          `Optimization hash changed: ${lastOptimizationHash} -> ${currentHash}`,
-        );
-
-        // Cross-environment invalidation
-        server.environments.ssr.moduleGraph.invalidateAll();
-        server.environments.worker.moduleGraph.invalidateAll();
-
-        // Full reload
-        server.ws.send({ type: "full-reload" });
-
-        return []; // Stop normal HMR
-      }
-
-      lastOptimizationHash = currentHash;
-      return undefined; // Continue normal HMR
     },
   };
 
