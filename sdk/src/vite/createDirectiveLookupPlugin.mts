@@ -38,8 +38,7 @@ export const findFilesContainingDirective = async ({
     projectRootDir,
   );
 
-  //const filesOutsideNodeModules = await getSrcPaths(projectRootDir);
-  const filesOutsideNodeModules: string[] = [];
+  const filesOutsideNodeModules = await getSrcPaths(projectRootDir);
 
   //const filesInsideNodeModules = await glob(
   //  "**/node_modules/**/*.{js,mjs,cjs}",
@@ -262,12 +261,12 @@ export const createDirectiveLookupPlugin = async ({
             //  actualFilePath,
             //);
           } else {
-            //verboseLog("Adding to optimizeDeps.entries: %s", actualFilePath);
-            //const entries = Array.isArray(viteConfig.optimizeDeps.entries)
-            //  ? viteConfig.optimizeDeps.entries
-            //  : ([] as string[]).concat(viteConfig.optimizeDeps.entries ?? []);
-            //viteConfig.optimizeDeps.entries = entries;
-            //entries.push(actualFilePath);
+            verboseLog("Adding to optimizeDeps.entries: %s", actualFilePath);
+            const entries = Array.isArray(viteConfig.optimizeDeps.entries)
+              ? viteConfig.optimizeDeps.entries
+              : ([] as string[]).concat(viteConfig.optimizeDeps.entries ?? []);
+            viteConfig.optimizeDeps.entries = entries;
+            entries.push(actualFilePath);
           }
         }
 
