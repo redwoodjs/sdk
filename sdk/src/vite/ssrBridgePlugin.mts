@@ -25,7 +25,6 @@ export const ssrBridgePlugin = ({
   let devServer: ViteDevServer;
   let isDev = false;
   let promisedSSRModuleWarmups: Map<string, Promise<any>>;
-  let promisedSSRModuleWarmupsDone: Promise<void>;
 
   const warmupSSRModules = async () => {
     promisedSSRModuleWarmups = new Map();
@@ -37,8 +36,7 @@ export const ssrBridgePlugin = ({
         const promisedModuleWarmup = Promise.withResolvers();
 
         try {
-          await devServer.environments.ssr.warmupRequest(file),
-            log("Warming up SSR file: %s", file);
+          log("Warming up SSR file: %s", file);
           await devServer.environments.ssr.warmupRequest(file);
           log("Warming up SSR file: %s done", file);
           promisedModuleWarmup.resolve(null);
@@ -48,13 +46,11 @@ export const ssrBridgePlugin = ({
       },
     );
 
-    promisedSSRModuleWarmupsDone = Promise.all(warmupPromises).then(
-      async () => {
-        log("SSR module fetches done, waiting for requests to idle");
-        await devServer.environments.ssr.waitForRequestsIdle();
-        log("SSR module requests idle, SSR warmup complete");
-      },
-    );
+    Promise.all(warmupPromises).then(async () => {
+      log("SSR module fetches done, waiting for requests to idle");
+      await devServer?.environments.ssr.waitForRequestsIdle();
+      log("SSR module requests idle, SSR warmup complete");
+    });
   };
 
   const ssrBridgePlugin: Plugin = {
