@@ -1,5 +1,6 @@
 import { Project, SyntaxKind, Node } from "ts-morph";
 import debug from "debug";
+import { hasDirective } from "./hasDirective.mjs";
 
 interface TransformContext {
   environmentName: string;
@@ -34,11 +35,7 @@ export async function transformClientComponents(
     ctx,
   );
 
-  const cleanCode = code.trimStart();
-  const hasUseClient =
-    cleanCode.startsWith('"use client"') ||
-    cleanCode.startsWith("'use client'");
-  if (!hasUseClient) {
+  if (!hasDirective(code, "use client")) {
     log("Skipping: no 'use client' directive in id=%s", normalizedId);
     verboseLog(
       ":VERBOSE: Returning code unchanged for id=%s:\n%s",
