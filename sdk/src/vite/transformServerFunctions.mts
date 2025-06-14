@@ -58,6 +58,37 @@ export const findExportedFunctions = (sourceFile: SourceFile) => {
     }
   }
 
+  // Handle re-exports
+  const exportDeclarations = sourceFile.getDescendantsOfKind(
+    SyntaxKind.ExportDeclaration,
+  );
+  for (const exportDecl of exportDeclarations) {
+    const moduleSpecifier = exportDecl.getModuleSpecifier();
+    if (!moduleSpecifier) continue; // Skip re-exports without module specifier
+
+    const namedExports = exportDecl.getNamedExports();
+    for (const namedExport of namedExports) {
+      // Use the alias if present, otherwise use the original name
+      const name =
+        namedExport.getAliasNode()?.getText() || namedExport.getName();
+      if (name) {
+        exportedFunctions.add(name);
+        verboseLog("Found re-exported function: %s", name);
+      }
+    }
+
+    // Check for export * from - log warning and skip
+    if (!namedExports.length && !exportDecl.getNamespaceExport()) {
+      // This is an export * from statement
+      log(
+        "Warning: 'export * from' re-exports are not supported in server functions. " +
+          "Please use named exports instead (e.g., 'export { functionName } from \"./module\"'). " +
+          "Ignoring: %s",
+        exportDecl.getText().trim(),
+      );
+    }
+  }
+
   log(
     "Found %d exported functions: %O",
     exportedFunctions.size,
