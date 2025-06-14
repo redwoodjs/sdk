@@ -1,5 +1,6 @@
 import { Project, SyntaxKind, Node, SourceFile } from "ts-morph";
 import debug from "debug";
+import { hasDirective } from "./hasDirective.mjs";
 
 const log = debug("rwsdk:vite:transform-server-functions");
 const verboseLog = debug("verbose:rwsdk:vite:transform-server-functions");
@@ -144,6 +145,16 @@ export const transformServerFunctions = (
     normalizedId,
     environment,
   );
+
+  if (!hasDirective(code, "use server")) {
+    log("Skipping: no 'use server' directive in id=%s", normalizedId);
+    verboseLog(
+      ":VERBOSE: Returning code unchanged for id=%s:\n%s",
+      normalizedId,
+      code,
+    );
+    return;
+  }
 
   const project = new Project({
     useInMemoryFileSystem: true,

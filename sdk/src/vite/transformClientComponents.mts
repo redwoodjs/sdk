@@ -1,5 +1,6 @@
 import { Project, SyntaxKind, Node } from "ts-morph";
 import debug from "debug";
+import { hasDirective } from "./hasDirective.mjs";
 
 interface TransformContext {
   environmentName: string;
@@ -34,6 +35,18 @@ export async function transformClientComponents(
     ctx,
   );
 
+  if (!hasDirective(code, "use client")) {
+    log("Skipping: no 'use client' directive in id=%s", normalizedId);
+    verboseLog(
+      ":VERBOSE: Returning code unchanged for id=%s:\n%s",
+      normalizedId,
+      code,
+    );
+    return;
+  }
+
+  log("Processing 'use client' module: id=%s", normalizedId);
+
   function extractSourceMapFromEmit(sourceFile: any): any {
     const emitOutput = sourceFile.getEmitOutput();
     let sourceMap: any;
@@ -60,22 +73,6 @@ export async function transformClientComponents(
     }
     return sourceMap;
   }
-
-  // 2. Only transform files that start with 'use client'
-  const cleanCode = code.trimStart();
-  const hasUseClient =
-    cleanCode.startsWith('"use client"') ||
-    cleanCode.startsWith("'use client'");
-  if (!hasUseClient) {
-    log("Skipping: no 'use client' directive in id=%s", normalizedId);
-    verboseLog(
-      ":VERBOSE: Returning code unchanged for id=%s:\n%s",
-      normalizedId,
-      code,
-    );
-    return;
-  }
-  log("Processing 'use client' module: id=%s", normalizedId);
 
   ctx.clientFiles?.add(normalizedId);
 

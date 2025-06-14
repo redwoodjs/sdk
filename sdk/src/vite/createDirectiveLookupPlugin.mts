@@ -9,6 +9,7 @@ import { ensureAliasArray } from "./ensureAliasArray.mjs";
 import { pathExists } from "fs-extra";
 import { stat } from "fs/promises";
 import { getSrcPaths } from "../lib/getSrcPaths.js";
+import { hasDirective } from "./hasDirective.mjs";
 
 interface DirectiveLookupConfig {
   directive: "use client" | "use server";
@@ -56,31 +57,16 @@ export const findFilesContainingDirective = async ({
 
       verboseLog("Scanning file: %s", file);
       const content = await readFile(file, "utf-8");
-      const lines = content.split("\n");
 
-      for (const line of lines) {
-        const trimmedLine = line.trim();
-        if (trimmedLine.length > 0) {
-          if (
-            trimmedLine.startsWith(`"${directive}"`) ||
-            trimmedLine.startsWith(`'${directive}'`)
-          ) {
-            const normalizedPath = normalizeModulePath(projectRootDir, file);
-            log(
-              "Found '%s' directive in file: %s -> %s",
-              directive,
-              file,
-              normalizedPath,
-            );
-            files.add(normalizedPath);
-          } else if (
-            trimmedLine.startsWith("'use strict'") ||
-            trimmedLine.startsWith('"use strict"')
-          ) {
-            continue;
-          }
-          break;
-        }
+      if (hasDirective(content, directive)) {
+        const normalizedPath = normalizeModulePath(projectRootDir, file);
+        log(
+          "Found '%s' directive in file: %s -> %s",
+          directive,
+          file,
+          normalizedPath,
+        );
+        files.add(normalizedPath);
       }
     } catch (error) {
       console.error(`Error reading file ${file}:`, error);
