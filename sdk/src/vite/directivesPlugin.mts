@@ -92,14 +92,22 @@ export const directivesPlugin = ({
         build.onLoad(
           { filter: /\.(js|ts|jsx|tsx|mts|mjs|cjs)$/ },
           async (args) => {
-            verboseLog("Esbuild onLoad called for path=%s", args.path);
+            verboseLog(
+              "Esbuild onLoad called for environment=%s, path=%s",
+              env,
+              args.path,
+            );
 
             let code: string;
 
             try {
               code = await fs.readFile(args.path, "utf-8");
             } catch {
-              verboseLog("Failed to read file: %s", args.path);
+              verboseLog(
+                "Failed to read file: %s, environment=%s",
+                args.path,
+                env,
+              );
               return undefined;
             }
 
@@ -115,8 +123,15 @@ export const directivesPlugin = ({
 
             if (clientResult) {
               log(
-                "Esbuild client component transformation successful for path=%s",
+                "Esbuild client component transformation successful for environment=%s, path=%s",
+                env,
                 args.path,
+              );
+              verboseLog(
+                "Esbuild client component transformation for environment=%s, path=%s, code: %j",
+                env,
+                args.path,
+                clientResult.code,
               );
               return {
                 contents: clientResult.code,
@@ -133,7 +148,8 @@ export const directivesPlugin = ({
 
             if (serverResult) {
               log(
-                "Esbuild server function transformation successful for path=%s",
+                "Esbuild server function transformation successful for environment=%s, path=%s",
+                env,
                 args.path,
               );
               return {
@@ -143,7 +159,8 @@ export const directivesPlugin = ({
             }
 
             verboseLog(
-              "Esbuild no transformation applied for path=%s",
+              "Esbuild no transformation applied for environment=%s, path=%s",
+              env,
               args.path,
             );
           },

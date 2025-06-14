@@ -7,7 +7,14 @@ const verboseLog = debug("verbose:rwsdk:vite:ssr-bridge-plugin");
 
 export const VIRTUAL_SSR_PREFIX = "virtual:rwsdk:ssr:";
 
-export const ssrBridgePlugin = (): Plugin => {
+export const ssrBridgePlugin = ({
+  clientFiles,
+  serverFiles,
+}: {
+  clientFiles: Set<string>;
+  serverFiles: Set<string>;
+  projectRootDir: string;
+}): Plugin => {
   log(
     "Initializing SSR bridge plugin with SSR_BRIDGE_PATH=%s",
     SSR_BRIDGE_PATH,
@@ -15,40 +22,6 @@ export const ssrBridgePlugin = (): Plugin => {
 
   let devServer: ViteDevServer;
   let isDev = false;
-  let promisedSSRWarmup: Promise<void> | undefined;
-
-  const ensureWarmupSSRModules = async () => {
-    if (promisedSSRWarmup) {
-      log("SSR warmup already in progress");
-      return promisedSSRWarmup;
-    }
-
-    promisedSSRWarmup = doWarmupSSRModules();
-    return promisedSSRWarmup;
-  };
-
-  const doWarmupSSRModules = async () => {
-    log("Warming up SSR modules");
-
-    const files = [
-      "virtual:use-server-lookup",
-      "virtual:use-client-lookup",
-      "rwsdk/__ssr",
-      "rwsdk/__ssr_bridge",
-    ];
-
-    for (const file of files) {
-      log("Warming up SSR file: %s", file);
-      await devServer.environments.ssr.warmupRequest(file);
-      log("Waiting for SSR requests to idle");
-      await devServer.environments.ssr.waitForRequestsIdle();
-      log("Deps optimizer scan processing");
-      await devServer.environments.ssr.depsOptimizer?.scanProcessing;
-      log("Deps optimizer scan processing complete");
-    }
-
-    log("SSR warmup complete");
-  };
 
   const ssrBridgePlugin: Plugin = {
     name: "rwsdk:ssr-bridge",
@@ -166,15 +139,12 @@ export const ssrBridgePlugin = (): Plugin => {
         id.startsWith(VIRTUAL_SSR_PREFIX) &&
         this.environment.name === "worker"
       ) {
-        await ensureWarmupSSRModules();
         const realId = id.slice(VIRTUAL_SSR_PREFIX.length);
+
         log("Virtual SSR module load: id=%s, realId=%s", id, realId);
 
         if (isDev) {
-          log(
-            "Dev mode: warming up and fetching SSR module for realPath=%s",
-            realId,
-          );
+          log("Dev mode: fetching SSR module for realPath=%s", realId);
           const result = await devServer?.environments.ssr.fetchModule(realId);
 
           verboseLog("Fetch module result: id=%s, result=%O", realId, result);
@@ -193,7 +163,11 @@ await (async function(__vite_ssr_import__, __vite_ssr_dynamic_import__) {${code}
 
           log("Transformed SSR module code length: %d", transformedCode.length);
 
-          log("Transformed SSR module code: %s", transformedCode);
+          verboseLog(
+            "Transformed SSR module code for realId=%s: %s",
+            realId,
+            transformedCode,
+          );
 
           return transformedCode;
         }

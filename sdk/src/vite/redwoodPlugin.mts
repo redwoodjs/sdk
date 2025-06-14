@@ -76,7 +76,11 @@ export const redwoodPlugin = async (
       clientEntryPathname,
       workerEntryPathname,
     }),
-    ssrBridgePlugin(),
+    ssrBridgePlugin({
+      clientFiles,
+      serverFiles,
+      projectRootDir,
+    }),
     reactConditionsResolverPlugin(),
     tsconfigPaths({ root: projectRootDir }),
     miniflarePlugin({
