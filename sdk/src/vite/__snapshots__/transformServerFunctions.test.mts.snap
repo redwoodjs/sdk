@@ -165,6 +165,7 @@ function __defaultServerFunction__() {
 
 export default __defaultServerFunction__;
 registerServerReference(__defaultServerFunction__, "/test.tsx", "default")
+registerServerReference(sum, "/test.tsx", "sum")
 "
 `;
 
@@ -233,5 +234,34 @@ export function sum() {
   return 1 + 1
 }
 registerServerReference(sum, "/test.tsx", "sum")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > RE_EXPORT_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+export let sum = createServerReference("/test.tsx", "sum");
+export let multiply = createServerReference("/test.tsx", "multiply");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > RE_EXPORT_CODE > SSR 1`] = `
+"import { createServerReference } from "rwsdk/__ssr";
+
+export let sum = createServerReference("/test.tsx", "sum");
+export let multiply = createServerReference("/test.tsx", "multiply");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > RE_EXPORT_CODE > WORKER 1`] = `
+"import { sum } from "./math";
+import { default as multiply } from "./multiply";
+import { registerServerReference } from "rwsdk/worker";
+
+export { sum } from './math';
+export { default as multiply } from './multiply';
+export * from './utils';
+registerServerReference(sum, "/test.tsx", "sum")
+registerServerReference(multiply, "/test.tsx", "multiply")
 "
 `;

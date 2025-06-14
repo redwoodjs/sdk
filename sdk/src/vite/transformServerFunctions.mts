@@ -9,10 +9,30 @@ interface TransformResult {
   map?: any;
 }
 
-export const findExportedFunctions = (sourceFile: SourceFile) => {
+type ExportInfo = {
+  localFunctions: Set<string>;
+  reExports: Array<{
+    localName: string;
+    originalName: string;
+    moduleSpecifier: string;
+  }>;
+};
+
+export const findExportedFunctions = (
+  sourceFile: SourceFile,
+  normalizedId?: string,
+): Set<string> => {
+  return findExportInfo(sourceFile, normalizedId).localFunctions;
+};
+
+export const findExportInfo = (
+  sourceFile: SourceFile,
+  normalizedId?: string,
+): ExportInfo => {
   verboseLog("Finding exported functions in source file");
 
-  const exportedFunctions = new Set<string>();
+  const localFunctions = new Set<string>();
+  const reExports: ExportInfo["reExports"] = [];
 
   const exportAssignments = sourceFile.getDescendantsOfKind(
     SyntaxKind.ExportAssignment,
@@ -22,7 +42,7 @@ export const findExportedFunctions = (sourceFile: SourceFile) => {
     if (name === "default") {
       continue;
     }
-    exportedFunctions.add(name);
+    localFunctions.add(name);
     verboseLog("Found export assignment: %s", name);
   }
 
@@ -33,7 +53,7 @@ export const findExportedFunctions = (sourceFile: SourceFile) => {
     if (func.hasModifier(SyntaxKind.ExportKeyword)) {
       const name = func.getName();
       if (name) {
-        exportedFunctions.add(name);
+        localFunctions.add(name);
         verboseLog("Found exported function declaration: %s", name);
       }
     }
@@ -50,7 +70,7 @@ export const findExportedFunctions = (sourceFile: SourceFile) => {
         if (initializer && Node.isArrowFunction(initializer)) {
           const name = declaration.getName();
           if (name) {
-            exportedFunctions.add(name);
+            localFunctions.add(name);
             verboseLog("Found exported arrow function: %s", name);
           }
         }
@@ -58,12 +78,59 @@ export const findExportedFunctions = (sourceFile: SourceFile) => {
     }
   }
 
-  log(
-    "Found %d exported functions: %O",
-    exportedFunctions.size,
-    Array.from(exportedFunctions),
+  // Handle re-exports
+  const exportDeclarations = sourceFile.getDescendantsOfKind(
+    SyntaxKind.ExportDeclaration,
   );
-  return exportedFunctions;
+  for (const exportDecl of exportDeclarations) {
+    const moduleSpecifier = exportDecl.getModuleSpecifier();
+    if (!moduleSpecifier) continue; // Skip re-exports without module specifier
+
+    const namedExports = exportDecl.getNamedExports();
+    for (const namedExport of namedExports) {
+      // Use the alias if present, otherwise use the original name
+      const localName =
+        namedExport.getAliasNode()?.getText() || namedExport.getName();
+      const originalName = namedExport.getName();
+      if (localName && originalName) {
+        reExports.push({
+          localName,
+          originalName,
+          moduleSpecifier: moduleSpecifier.getLiteralText(),
+        });
+        verboseLog(
+          "Found re-exported function: %s from %s",
+          localName,
+          moduleSpecifier.getLiteralText(),
+        );
+      }
+    }
+
+    // Check for export * from - log warning and skip
+    if (!namedExports.length && !exportDecl.getNamespaceExport()) {
+      // This is an export * from statement
+      console.warn(
+        "Warning: 'export * from' re-exports are not supported in server functions. " +
+          "Please use named exports instead (e.g., 'export { functionName } from \"./module\"'). " +
+          "File: %s, Ignoring: %s",
+        normalizedId,
+        exportDecl.getText().trim(),
+      );
+    }
+  }
+
+  log(
+    "Found %d local functions: %O",
+    localFunctions.size,
+    Array.from(localFunctions),
+  );
+  log(
+    "Found %d re-exports: %O",
+    reExports.length,
+    reExports.map((r) => `${r.localName} from ${r.moduleSpecifier}`),
+  );
+
+  return { localFunctions, reExports };
 };
 
 export const transformServerFunctions = (
@@ -139,8 +206,12 @@ export const transformServerFunctions = (
       namedImports: ["createServerReference"],
     });
 
-    const exports = findExportedFunctions(sourceFile);
-    for (const name of exports) {
+    const exportInfo = findExportInfo(sourceFile, normalizedId);
+    const allExports = new Set([
+      ...exportInfo.localFunctions,
+      ...exportInfo.reExports.map((r) => r.localName),
+    ]);
+    for (const name of allExports) {
       ssrSourceFile.addVariableStatement({
         isExported: true,
         declarations: [
@@ -185,6 +256,30 @@ export const transformServerFunctions = (
     };
   } else if (environment === "worker") {
     log("Transforming for worker environment: normalizedId=%s", normalizedId);
+
+    const exportInfo = findExportInfo(sourceFile, normalizedId);
+
+    // Add imports for re-exported functions so they exist in scope
+    for (const reExport of exportInfo.reExports) {
+      sourceFile.addImportDeclaration({
+        moduleSpecifier: reExport.moduleSpecifier,
+        namedImports:
+          reExport.originalName === "default"
+            ? [{ name: "default", alias: reExport.localName }]
+            : [
+                reExport.originalName === reExport.localName
+                  ? reExport.originalName
+                  : { name: reExport.originalName, alias: reExport.localName },
+              ],
+      });
+      log(
+        "Added import for re-exported function: %s from %s in normalizedId=%s",
+        reExport.localName,
+        reExport.moduleSpecifier,
+        normalizedId,
+      );
+    }
+
     sourceFile.addImportDeclaration({
       moduleSpecifier: "rwsdk/worker",
       namedImports: ["registerServerReference"],
@@ -210,15 +305,27 @@ export const transformServerFunctions = (
       );
     }
 
-    const exports = findExportedFunctions(sourceFile);
-    for (const name of exports) {
+    // Register local functions
+    for (const name of exportInfo.localFunctions) {
       if (name === "__defaultServerFunction__") continue;
       sourceFile.addStatements(
         `registerServerReference(${name}, ${JSON.stringify(normalizedId)}, ${JSON.stringify(name)})`,
       );
       log(
-        "Registered worker server reference for function: %s in normalizedId=%s",
+        "Registered worker server reference for local function: %s in normalizedId=%s",
         name,
+        normalizedId,
+      );
+    }
+
+    // Register re-exported functions
+    for (const reExport of exportInfo.reExports) {
+      sourceFile.addStatements(
+        `registerServerReference(${reExport.localName}, ${JSON.stringify(normalizedId)}, ${JSON.stringify(reExport.localName)})`,
+      );
+      log(
+        "Registered worker server reference for re-exported function: %s in normalizedId=%s",
+        reExport.localName,
         normalizedId,
       );
     }
@@ -246,8 +353,12 @@ export const transformServerFunctions = (
       namedImports: ["createServerReference"],
     });
 
-    const exports = findExportedFunctions(sourceFile);
-    for (const name of exports) {
+    const exportInfo = findExportInfo(sourceFile, normalizedId);
+    const allExports = new Set([
+      ...exportInfo.localFunctions,
+      ...exportInfo.reExports.map((r) => r.localName),
+    ]);
+    for (const name of allExports) {
       clientSourceFile.addVariableStatement({
         isExported: true,
         declarations: [

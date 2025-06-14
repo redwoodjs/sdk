@@ -83,6 +83,14 @@ export async function sum() {
 export const a = "string";
 `;
 
+  let RE_EXPORT_CODE = `
+"use server";
+
+export { sum } from './math';
+export { default as multiply } from './multiply';
+export * from './utils';
+`;
+
   const TEST_CASES = {
     COMMENT_CODE,
     MULTI_LINE_COMMENT_CODE,
@@ -93,6 +101,7 @@ export const a = "string";
     ASYNC_FUNCTION_EXPORT_CODE,
     IGNORE_NON_FUNCTION_EXPORT_CODE,
     DEFAULT_AND_NAMED_EXPORTS_CODE,
+    RE_EXPORT_CODE,
   };
 
   describe("TRANSFORMS", () => {
