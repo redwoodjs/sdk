@@ -155,7 +155,7 @@ await (async function(__vite_ssr_import__, __vite_ssr_dynamic_import__) {${code}
 
           log("Transformed SSR module code length: %d", transformedCode.length);
 
-          log("Transformed SSR module code: %s", transformedCode);
+          verboseLog("Transformed SSR module code: %s", transformedCode);
 
           return transformedCode;
         }
