@@ -137,23 +137,128 @@ export const ssrBridgePlugin = (): Plugin => {
 
         if (isDev) {
           log("Fetching SSR module for realPath=%s", realId);
-          const result = await devServer?.environments.ssr.fetchModule(realId);
 
-          verboseLog("Fetch module result: id=%s, result=%O", realId, result);
+          let result;
+          let retries = 0;
+          const maxRetries = 3;
+
+          while (retries <= maxRetries) {
+            // Wait for scan processing
+            await devServer?.environments.ssr.depsOptimizer?.scanProcessing;
+
+            // Get the browserHash before fetch
+            const hashBefore =
+              devServer?.environments.ssr.depsOptimizer?.metadata.browserHash;
+
+            log(
+              "Starting fetch attempt %d/%d with hash: %s, id=%s, realId=%s",
+              retries + 1,
+              maxRetries + 1,
+              hashBefore,
+              id,
+              realId,
+            );
+
+            // Do the fetchModule
+            devServer?.environments.ssr.moduleGraph.invalidateAll();
+            result = await devServer?.environments.ssr.fetchModule(
+              realId,
+              undefined,
+              {
+                cached: false,
+              },
+            );
+
+            // Wait for scan processing again
+            await devServer?.environments.ssr.depsOptimizer?.scanProcessing;
+
+            // Get browser hash again
+            const hashAfter =
+              devServer?.environments.ssr.depsOptimizer?.metadata.browserHash;
+
+            // Check if browser hash changed
+            if (hashBefore === hashAfter) {
+              // Hash didn't change, we're good
+              log(
+                "Hash stable (%s), fetch successful on attempt %d, id=%s, realId=%s",
+                hashBefore,
+                retries + 1,
+                id,
+                realId,
+              );
+              break;
+            }
+
+            // Hash changed, retry
+            log(
+              "Browser hash changed during fetch (before: %s, after: %s), retrying... (attempt %d/%d), id=%s, realId=%s",
+              hashBefore,
+              hashAfter,
+              retries + 1,
+              maxRetries + 1,
+              id,
+              realId,
+            );
+
+            retries++;
+
+            if (retries <= maxRetries) {
+              // Add delay when hash changes to let optimization complete
+              log("Adding 500ms delay to let optimization complete...");
+              await new Promise((resolve) => setTimeout(resolve, 3000));
+            }
+          }
+
+          if (retries > maxRetries) {
+            log(
+              "Max retries reached, proceeding with last result, id=%s, realId=%s",
+              id,
+              realId,
+            );
+          }
+
+          verboseLog(
+            "Fetch module result: id=%s, realId=%s, result=%O",
+            id,
+            realId,
+            result,
+          );
 
           if (!result) {
             return;
           }
 
           const code = "code" in result ? result.code : undefined;
-          log("Fetched SSR module code length: %d", code?.length || 0);
+          log(
+            "Fetched SSR module code length: %d, id=%s, realId=%s",
+            code?.length || 0,
+            id,
+            realId,
+          );
+
+          // Log import paths to see if they're fresh
+          if (code && realId.includes("sonner")) {
+            const importMatches =
+              code.match(/from\s+["'][^"']*\.vite\/deps[^"']*["']/g) || [];
+            log(
+              "Sonner imports: %O, id=%s, realId=%s",
+              importMatches,
+              id,
+              realId,
+            );
+          }
 
           // context(justinvdm, 27 May 2025): Prefix all imports in SSR modules so that they're separate in module graph from non-SSR
           const transformedCode = `
 await (async function(__vite_ssr_import__, __vite_ssr_dynamic_import__) {${code}})((id) => __vite_ssr_import__('/@id/${VIRTUAL_SSR_PREFIX}'+id), (id) => __vite_ssr_dynamic_import__('/@id/${VIRTUAL_SSR_PREFIX}'+id));
 `;
 
-          log("Transformed SSR module code length: %d", transformedCode.length);
+          log(
+            "Transformed SSR module code length: %d, id=%s, realId=%s",
+            transformedCode.length,
+            id,
+            realId,
+          );
 
           verboseLog("Transformed SSR module code: %s", transformedCode);
 
