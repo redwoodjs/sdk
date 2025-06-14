@@ -20,7 +20,7 @@ Where `crons` includes an array of cron schedules.
 
 Within your `worker.tsx` file, adjust your `defineApp` function:
 
-```tsx
+```tsx title="src/worker.tsx" showLineNumbers=false
 const app = defineApp([
   ...
 ]);
@@ -47,7 +47,7 @@ In the example above, `console.log("🧹 Clean up Unverified Users");` runs ever
 "crons": ["* * * * *", "0 0 * * *"]
 ```
 
-```tsx title="worker.tsx"
+```tsx title="worker.tsx" showLineNumbers=false
 // Runs every hour
 case "0 0 * * *":
   console.log("🔄 Update something");

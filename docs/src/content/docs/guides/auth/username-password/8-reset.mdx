@@ -1,0 +1,172 @@
+---
+title: Reset Password
+slug: guides/auth/username-password/reset
+description: Learn how to use the username and password flow with RedwoodJS.
+---
+
+import { Aside, FileTree } from "@astrojs/starlight/components";
+
+Let's start by creating a new route in our `worker.tsx` file to handle the reset password flow.
+
+```tsx title="src/app/pages/auth/worker.tsx"
+import { ResetPage } from "./ResetPage";
+....
+route("/reset", ResetPage),
+```
+
+Now, let's create the `ResetPage` component. Within the `src/app/pages/auth` directory, create a new file called `ResetPage.tsx`.
+
+<FileTree>
+- src/
+  - app/
+    - pages/
+      - auth/
+        - ResetPage.tsx
+</FileTree>
+
+## Setting up the Reset Password Form
+
+Inside the `ResetPage.tsx` file, we'll need to create a form to handle the reset password flow.
+
+```tsx title="src/app/pages/auth/ResetPage.tsx" {"1. Set the page to be a client component": 1} {"2. By default we get a request object": 8} {"3. Create a piece of state for the error message": 10} {"4. Get the URL from the request": 13} {"5. Get the token from the URL": 15} {"6. When the user submits the form, call the handleSubmit function": 31} {"7. Handle the form submission": 18} {"8. Call the handleResetPassword server action": 20} {"9. If there's an error, update the error state": 22} {"10. If we were successful, redirect the user to the login page": 25}
+.
+"use client";
+
+import { useState } from "react";
+import { handleResetPassword } from "./actions";
+import { RequestInfo } from "@redwoodjs/sdk/worker";
+
+
+const ResetPage = ({ request }: RequestInfo) => {
+
+  const [error, setError] = useState<string | null>(null);
+
+
+  const url = new URL(request.url);
+
+  const token = url.searchParams.get("token") ?? "";
+
+
+  const handleSubmit = async (formData: FormData) => {
+
+    const result = await handleResetPassword(formData);
+
+    if (result.error) {
+      setError(result.error);
+
+    } else {
+      window.location.href = "/login";
+    }
+  };
+  return (
+
+    <form action={handleSubmit}>
+      <h1>Reset Password</h1>
+      {error && <p className="text-red-500">{error}</p>}
+      <div>
+        <label htmlFor="password">Password</label>
+        <input type="password" name="password" placeholder="Password" />
+      </div>
+      <div>
+        <label htmlFor="confirmPassword">Confirm Password</label>
+        <input
+          type="password"
+          name="confirmPassword"
+          placeholder="Confirm Password"
+        />
+      </div>
+      <input type="hidden" name="token" value={token} />
+      <button type="submit">Reset Password</button>
+    </form>
+  );
+};
+
+export { ResetPage };
+```
+
+The form is pretty generic, mostly standard HTML/JSX. When the form is submitted, we use a form `action` to call an action on the server.
+
+## Handling the Reset Password Server Action
+
+Now, let's create the `handleResetPassword` action. In the `actions.ts` file:
+
+```tsx title="src/app/pages/auth/actions.ts" {"1. Pass in all the form data": 1} {"2. Get all the details from the form": 3} {"3. If any of the fields were empty, return an error": 8} {"4. Check to ensure the password and confirm password match": 13} {"5. Check to ensure the token is valid": 18} {"6. If you didn't find the user, return an error": 29} {"7. Check to see if the token has expired": 34} {"8. Generate a salt": 39} {"9. Hash the password": 41} {"10. Update the user on the database": 44} {"11. Return a success message": 54}
+.
+export const handleResetPassword = async (formData: FormData) => {
+
+  const token = formData.get("token");
+  const password = formData.get("password");
+  const confirmPassword = formData.get("confirmPassword");
+
+
+  if (!token || !password || !confirmPassword) {
+    return { success: null, error: "All fields are required" };
+  }
+
+
+  if (password !== confirmPassword) {
+    return { success: null, error: "Passwords do not match" };
+  }
+
+
+  const user = await db.user.findUnique({
+    select: {
+      id: true,
+      resetTokenExpires: true,
+    },
+    where: {
+      resetToken: token as string,
+    },
+  });
+
+
+  if (!user) {
+    return { success: null, error: "Invalid token" };
+  }
+
+
+  if (user.resetTokenExpires && user.resetTokenExpires < new Date()) {
+    return { success: null, error: "Token has expired" };
+  }
+
+
+  const salt = await bcrypt.genSalt(10);
+
+  const hashedPassword = await bcrypt.hash(password as string, salt);
+
+
+  await db.user.update({
+    where: { id: user.id },
+    data: {
+      password: hashedPassword, // update their password
+      resetToken: null, // clear the token
+      resetTokenExpires: null, // clear the token expiration
+    },
+  });
+
+
+  return { success: true, error: null };
+};
+```
+
+Now, test this out.
+
+- Assuming the server is running (`pnpm dev`), navigate to the reset password page: `http://localhost:3000/auth/reset?token=<token>`. (You can copy the reset token from the [email](/guides/auth/username-password/forgot) or directly from the database.)
+- Enter a new password and confirm the password.
+- Click the "Reset Password" button.
+- You should be redirected to the login page.
+- Try logging in with the new password.
+
+👏 Well, done!
+
+<Aside type="note" title="Additional Functionality">
+One feature you might want to consider, in the future: What happens if the user isn't verified and they try to reset their password?
+
+You could add an additional validation step on the forgot password flow to ensure that the user is verified before they can reset their password.
+</Aside>
+
+<Aside type="note" title="Final Code">
+  You can find [the final code for this guide on GitHub.](https://github.com/ahaywood/auth-kitchen/tree/main/username-password)
+</Aside>
+
+

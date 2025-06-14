@@ -1,0 +1,24 @@
+---
+title: Logout
+slug: guides/auth/otp/logout
+description: Learn how to use the OTP flow with RedwoodJS.
+---
+
+For the log out functionality, let's start by going back to our `worker.tsx` file. Within our `render` function, let's add a new route for the `/logout` route. We can do everything within our route function. We don't even need to create a page component.
+
+```tsx title="src/worker.tsx" startLineNumber={74} {"1. Create new headers": 2} {"2. Remove the session": 4} {"3. Redirect the user to the home page": 6}
+route("/logout", async function ({ request }) {
+
+  const headers = new Headers();
+
+  await sessions.remove(request, headers);
+
+  headers.set("Location", "/");
+  return new Response(null, {
+    status: 302,
+    headers,
+  });
+}),
+```
+
+If you app is still running (`pnpm dev`), head over to `localhost:5173/logout` and you should be logged out and redirected to the home page. Now, if you try to revisit the `/protected` page, you should be redirected to the `/login` page.

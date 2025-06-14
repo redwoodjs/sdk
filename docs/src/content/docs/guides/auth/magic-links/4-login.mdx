@@ -1,0 +1,161 @@
+---
+title: Login
+slug: guides/auth/magic-links/login
+description: Learn how to use the magic links flow with RedwoodJS.
+---
+
+import { Aside, FileTree, Steps } from "@astrojs/starlight/components";
+
+This should start to feel familiar.
+
+Let's create a new route to handle the login flow. Inside the `worker.tsx` file, within the `render` array, add the following:
+
+```tsx title="src/app/auth/worker.tsx" showLineNumbers=false
+import { LoginPage } from "src/app/auth/LoginPage";
+...
+render(Document, [
+  ...
+  route("/login", LoginPage),
+]);
+```
+
+Now, let's create the `LoginPage` file:
+
+<FileTree>
+- src
+  - app
+    -pages
+      - auth
+        - actions.ts
+        - LoginPage.tsx
+        - RegisterPage.tsx
+</FileTree>
+
+within the `LoginPage.tsx` file, let's add the following:
+
+```tsx title="src/app/auth/LoginPage.tsx" showLineNumbers=false {"1. This will be a client component": 1} {"2. Setup state to hold the message from the server": 8} {"3. When the form is submitted, call handleSubmit function": 25} {"4. Send the form data to the server": 12} {"6. If there was an error, set an error message": 14} {"7. If there wasn't an error, set a success message": 18} {"8. Display the error message": 28}
+.
+"use client";
+
+import { useState } from "react";
+import { HandleLogin } from "./actions";
+
+const LoginPage = () => {
+
+  const [message, setMessage] = useState<string | null>(null);
+
+  const handleSubmit = async (formData: FormData) => {
+
+    const result = await HandleLogin(formData);
+
+    if (result.error) {
+      setMessage(result.error);
+    }
+
+    else {
+      setMessage("Please check your email for a magic link");
+    }
+  };
+
+  return (
+
+    <form action={handleSubmit}>
+      <h1>Login</h1>
+
+      {message && <p>{message}</p>}
+      <div>
+        <label htmlFor="email">Email</label>
+        <input type="text" name="email" />
+      </div>
+      <button type="submit">Login</button>
+    </form>
+  );
+};
+
+export { LoginPage };
+```
+
+This is a pretty standard form. When the user submits the form, the `handleSubmit` function is called. This function sends the form data to the server, using the `HandleLogin` function. Now, Now, we just need to write it!
+
+Inside the `actions.ts` file, add the `HandleLogin` function:
+
+```tsx title="src/app/auth/actions.ts" showLineNumbers=false {"1. Get the data from the form": 2} {"2. Validate the form": 5} {"3. Check if the user exists": 10} {"4. If the user doesn't exist, return an error": 15} {"5. (Optional) Check to see if the user is verified - details below": 20} {"6. Generate a magic link": 25} {"7. Save the magic link to the database": 28} {"8. Send the magic link to the user's email address": 37} {"9. If there's an error, return it.": 46} {"9. Otherwise, return a success message": 51}
+export async function HandleLogin(formData: FormData) {
+
+  const email = formData.get("email") as string;
+
+
+  if (!email) {
+    return { error: "Email is required" };
+  }
+
+
+  const user = await db.user.findUnique({
+    where: { email },
+  });
+
+
+  if (!user) {
+    return { error: "User not found" };
+  }
+
+
+  if (!user.verified) {
+    return { error: "User not verified yet" };
+  }
+
+
+  const magicLink = crypto.randomUUID().replace(/-/g, "");
+
+
+  await db.user.update({
+    where: { id: user.id },
+    data: {
+      magicLink,
+      magicLinkExpiresAt: new Date(Date.now() + 1000 * 60 * 60 * 24), // 1 day
+    },
+  });
+
+
+  const resend = new Resend(env.RESEND_API);
+  const { data, error } = await resend.emails.send({
+    from: Constants.FROM_EMAIL,
+    to: email,
+    subject: "🪄 Magic Link",
+    text: `Magic link: ${Constants.BASE_URL}/verify?token=${magicLink}`,
+  });
+
+
+  if (error) {
+    return { error: "Failed to send email" };
+  }
+
+
+  return { success: true };
+}
+```
+
+<Aside title="Verifying the User" type="note">
+In the code above, were checking to see if the user is verified:
+
+```
+if (!user.verified) {
+  return { error: "User not verified yet" };
+}
+```
+
+I marked this as optional. Let's play this out:
+
+**If we remove this code**, the only "problem" is that the email might go to the wrong place because it hasn't been verified. _But_ that also means that the user would have entered the wrong email address when they registered and then again when they tried to login.
+
+Assuming the email address does exist, when they click on the magic link to login, it will also verify them.
+
+**If we leave this code**, then we need a separate flow to verify the user, which feels a little redundant since we're already verifying the user when they click on a magic link to login. However, I wanted to point out where a verification check would go.
+
+**What's the point of verifying the user?** A couple of options:
+
+1. You could have set up a separate onboarding flow.
+2. Later, we can [set up a cron job to clean out unverified users.](/guides/auth/magic-links/cleanup)
+</Aside>
+
+When the user receives the email and clicks on the magic link, it will send them through the [verification flow that we already created.](/guides/auth/magic-links/verification)
