@@ -87,22 +87,15 @@ const resolveOptimizedDep = async (
   const verboseLog = debug(`verbose:${debugNamespace}`);
 
   try {
-    const getDepsDir = (env: string) =>
-      env === "client" ? "deps" : `deps_${env}`;
+    const depsDir = environment === "client" ? "deps" : `deps_${environment}`;
+    const nodeModulesDepsDirPath = path.join("node_modules", ".vite", depsDir);
+    const depsDirPath = path.join(projectRootDir, nodeModulesDepsDirPath);
+    const manifestPath = path.join(depsDirPath, "_metadata.json");
+    const relativePath = path.relative(
+      nodeModulesDepsDirPath,
+      filePath.slice(1),
+    );
 
-    const getManifestPath = (env: string) =>
-      path.join(
-        projectRootDir,
-        "node_modules",
-        ".vite",
-        getDepsDir(env),
-        "_metadata.json",
-      );
-
-    const getOptimizedPath = (env: string, fileName: string) =>
-      path.join("/", "node_modules", ".vite", getDepsDir(env), fileName);
-
-    const manifestPath = getManifestPath(environment);
     verboseLog("Checking for manifest at: %s", manifestPath);
 
     const manifestExists = await pathExists(manifestPath);
@@ -114,15 +107,28 @@ const resolveOptimizedDep = async (
     const manifestContent = await readFile(manifestPath, "utf-8");
     const manifest = JSON.parse(manifestContent);
 
-    if (manifest.optimized && manifest.optimized[filePath]) {
-      const optimizedFile = manifest.optimized[filePath].file;
-      const optimizedPath = getOptimizedPath(environment, optimizedFile);
+    if (manifest.optimized && manifest.optimized[relativePath]) {
+      const optimizedFile = manifest.optimized[relativePath].file;
+      const optimizedPath = path.join(
+        "/",
+        nodeModulesDepsDirPath,
+        optimizedFile,
+      );
 
-      log("Found optimized dependency: %s -> %s", filePath, optimizedPath);
+      log(
+        "Found optimized dependency: filePath=%s, relativePath=%s, optimizedPath=%s",
+        filePath,
+        relativePath,
+        optimizedPath,
+      );
       return optimizedPath;
     }
 
-    verboseLog("File %s not found in optimized dependencies", filePath);
+    verboseLog(
+      "File not found in optimized dependencies: filePath=%s, relativePath=%s",
+      filePath,
+      relativePath,
+    );
     return undefined;
   } catch (error) {
     verboseLog(
