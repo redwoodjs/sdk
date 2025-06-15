@@ -8,7 +8,7 @@ interface TransformContext {
   environmentName: string;
   clientFiles?: Set<string>;
   isEsbuild?: boolean;
-  addClientModule: (environment: string, id: string) => void;
+  addClientModule?: (environment: string, id: string) => void;
 }
 
 interface TransformResult {
@@ -77,7 +77,7 @@ export async function transformClientComponents(
     return sourceMap;
   }
 
-  ctx.addClientModule(ctx.environmentName, normalizedId);
+  ctx.addClientModule?.(ctx.environmentName, normalizedId);
 
   // Use ts-morph to collect all export info and perform transformations
   const project = new Project({
