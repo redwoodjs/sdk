@@ -91,7 +91,7 @@ export const ssrBridgePlugin = ({
         // SSR modules, so we return the virtual id so that the dynamic loading
         // can happen in load()
         if (id.startsWith(VIRTUAL_SSR_PREFIX)) {
-          invalidateModule(devServer, "worker", id);
+          invalidateModule(devServer, "worker", id, log, verboseLog);
           log("Returning virtual SSR id for dev: %s", id);
           return id;
         }
@@ -108,7 +108,7 @@ export const ssrBridgePlugin = ({
             virtualId,
           );
 
-          invalidateModule(devServer, "worker", virtualId);
+          invalidateModule(devServer, "worker", virtualId, log, verboseLog);
           return virtualId;
         }
       } else {
