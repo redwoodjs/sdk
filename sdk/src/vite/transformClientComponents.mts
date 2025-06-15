@@ -8,7 +8,7 @@ interface TransformContext {
   environmentName: string;
   clientFiles?: Set<string>;
   isEsbuild?: boolean;
-  devServer?: ViteDevServer;
+  addClientModule: (environment: string, id: string) => void;
 }
 
 interface TransformResult {
@@ -29,7 +29,6 @@ export async function transformClientComponents(
   code: string,
   normalizedId: string,
   ctx: TransformContext,
-  devServer?: ViteDevServer,
 ): Promise<TransformResult | undefined> {
   const log = ctx.isEsbuild ? logEsbuild : logVite;
   const verboseLog = ctx.isEsbuild ? verboseLogEsbuild : verboseLogVite;
@@ -78,16 +77,7 @@ export async function transformClientComponents(
     return sourceMap;
   }
 
-  if (!ctx.clientFiles?.has(normalizedId)) {
-    log(
-      "Adding client file to clientFiles and invalidating cache: normalizedId=%s",
-      normalizedId,
-    );
-    ctx.clientFiles?.add(normalizedId);
-    if (devServer) {
-      invalidateModule(devServer, ctx.environmentName, normalizedId);
-    }
-  }
+  ctx.addClientModule(ctx.environmentName, normalizedId);
 
   // Use ts-morph to collect all export info and perform transformations
   const project = new Project({

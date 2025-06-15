@@ -1,8 +1,6 @@
 import { Project, SyntaxKind, Node, SourceFile } from "ts-morph";
 import debug from "debug";
 import { hasDirective } from "./hasDirective.mjs";
-import type { ViteDevServer } from "vite";
-import { invalidateModule } from "./invalidateModule.mjs";
 
 const log = debug("rwsdk:vite:transform-server-functions");
 const verboseLog = debug("verbose:rwsdk:vite:transform-server-functions");
@@ -141,7 +139,7 @@ export const transformServerFunctions = (
   normalizedId: string,
   environment: "client" | "worker" | "ssr",
   serverFiles?: Set<string>,
-  devServer?: ViteDevServer,
+  addServerModule?: (environment: string, id: string) => void,
 ): TransformResult | undefined => {
   verboseLog(
     "Transform server functions called for normalizedId=%s, environment=%s",
@@ -209,16 +207,7 @@ export const transformServerFunctions = (
     environment,
   );
 
-  if (!serverFiles?.has(normalizedId)) {
-    log(
-      "Adding server file to serverFiles and invalidating cache: normalizedId=%s",
-      normalizedId,
-    );
-    serverFiles?.add(normalizedId);
-    if (devServer) {
-      invalidateModule(devServer, environment, normalizedId);
-    }
-  }
+  addServerModule?.(environment, normalizedId);
 
   if (environment === "ssr") {
     log("Transforming for SSR environment: normalizedId=%s", normalizedId);

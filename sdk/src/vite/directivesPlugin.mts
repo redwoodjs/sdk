@@ -6,6 +6,7 @@ import { transformClientComponents } from "./transformClientComponents.mjs";
 import { transformServerFunctions } from "./transformServerFunctions.mjs";
 import { normalizeModulePath } from "./normalizeModulePath.mjs";
 import type { ViteDevServer } from "vite";
+import { invalidateModule } from "./invalidateModule.mjs";
 
 const log = debug("rwsdk:vite:rsc-directives-plugin");
 const verboseLog = debug("verbose:rwsdk:vite:rsc-directives-plugin");
@@ -41,10 +42,53 @@ export const directivesPlugin = ({
   serverFiles: Set<string>;
 }): Plugin => {
   let devServer: ViteDevServer;
+  let isAfterFirstResponse = false;
+
+  const addClientModule = (environment: string, id: string) => {
+    if (!clientFiles.has(id)) {
+      log(
+        "Adding client module to clientFiles and invalidating cache: id=%s",
+        id,
+      );
+      clientFiles.add(id);
+
+      if (devServer && isAfterFirstResponse) {
+        invalidateModule(devServer, environment, id);
+      }
+    }
+  };
+
+  const addServerModule = (environment: string, id: string) => {
+    if (!serverFiles.has(id)) {
+      log(
+        "Adding server module to serverFiles and invalidating cache: id=%s",
+        id,
+      );
+      serverFiles.add(id);
+      if (devServer && isAfterFirstResponse) {
+        invalidateModule(devServer, environment, id);
+      }
+    }
+  };
+
   return {
     name: "rwsdk:rsc-directives",
     configureServer(server) {
       devServer = server;
+      devServer.middlewares.use((_req, res, next) => {
+        // context(justinvdm, 15 Jun 2025): We want to watch for new client and server modules
+        // and invalidate their respective module lookups when this happens, but
+        // we only want to do this after the first render
+        if (!isAfterFirstResponse) {
+          res.on("finish", () => {
+            if (!isAfterFirstResponse) {
+              isAfterFirstResponse = true;
+              log("Dev server first response completed");
+            }
+          });
+        }
+        next();
+      });
     },
     async transform(code, id) {
       verboseLog(
@@ -58,7 +102,7 @@ export const directivesPlugin = ({
       const clientResult = await transformClientComponents(code, normalizedId, {
         environmentName: this.environment.name,
         clientFiles,
-        devServer,
+        addClientModule,
       });
 
       if (clientResult) {
@@ -74,7 +118,7 @@ export const directivesPlugin = ({
         normalizedId,
         this.environment.name as "client" | "worker" | "ssr",
         serverFiles,
-        devServer,
+        addServerModule,
       );
 
       if (serverResult) {
@@ -186,6 +230,7 @@ export const directivesPlugin = ({
                   environmentName: env,
                   clientFiles,
                   isEsbuild: true,
+                  addClientModule,
                 },
               );
 
@@ -212,6 +257,7 @@ export const directivesPlugin = ({
                 normalizeModulePath(projectRootDir, args.path),
                 env as "client" | "worker" | "ssr",
                 serverFiles,
+                addServerModule,
               );
 
               if (serverResult) {
