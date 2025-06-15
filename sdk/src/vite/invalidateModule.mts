@@ -1,11 +1,13 @@
+import debug from "debug";
 import type { ViteDevServer } from "vite";
+
+const log = debug("rwsdk:vite:invalidate-module");
+const verboseLog = debug("verbose:rwsdk:vite:invalidate-module");
 
 export const invalidateModule = (
   devServer: ViteDevServer,
   environment: string,
   id: string,
-  log: (message: string, ...args: any[]) => void,
-  verboseLog: (message: string, ...args: any[]) => void,
 ) => {
   const [rawId, _query] = id.split("?");
   log("Invalidating module: id=%s, environment=%s", id, environment);

@@ -1,11 +1,14 @@
 import { Project, SyntaxKind, Node } from "ts-morph";
 import debug from "debug";
 import { hasDirective } from "./hasDirective.mjs";
+import { invalidateModule } from "./invalidateModule.mjs";
+import type { ViteDevServer } from "vite";
 
 interface TransformContext {
   environmentName: string;
   clientFiles?: Set<string>;
   isEsbuild?: boolean;
+  devServer?: ViteDevServer;
 }
 
 interface TransformResult {
@@ -26,6 +29,7 @@ export async function transformClientComponents(
   code: string,
   normalizedId: string,
   ctx: TransformContext,
+  devServer?: ViteDevServer,
 ): Promise<TransformResult | undefined> {
   const log = ctx.isEsbuild ? logEsbuild : logVite;
   const verboseLog = ctx.isEsbuild ? verboseLogEsbuild : verboseLogVite;
@@ -74,7 +78,16 @@ export async function transformClientComponents(
     return sourceMap;
   }
 
-  ctx.clientFiles?.add(normalizedId);
+  if (!ctx.clientFiles?.has(normalizedId)) {
+    log(
+      "Adding client file to clientFiles and invalidating cache: normalizedId=%s",
+      normalizedId,
+    );
+    ctx.clientFiles?.add(normalizedId);
+    if (devServer) {
+      invalidateModule(devServer, ctx.environmentName, normalizedId);
+    }
+  }
 
   // Use ts-morph to collect all export info and perform transformations
   const project = new Project({

@@ -5,6 +5,7 @@ import debug from "debug";
 import { transformClientComponents } from "./transformClientComponents.mjs";
 import { transformServerFunctions } from "./transformServerFunctions.mjs";
 import { normalizeModulePath } from "./normalizeModulePath.mjs";
+import type { ViteDevServer } from "vite";
 
 const log = debug("rwsdk:vite:rsc-directives-plugin");
 const verboseLog = debug("verbose:rwsdk:vite:rsc-directives-plugin");
@@ -39,8 +40,7 @@ export const directivesPlugin = ({
   clientFiles: Set<string>;
   serverFiles: Set<string>;
 }): Plugin => {
-  let devServer: any;
-
+  let devServer: ViteDevServer;
   return {
     name: "rwsdk:rsc-directives",
     configureServer(server) {
@@ -73,7 +73,8 @@ export const directivesPlugin = ({
         code,
         normalizedId,
         this.environment.name as "client" | "worker" | "ssr",
-        { serverFiles, devServer },
+        serverFiles,
+        devServer,
       );
 
       if (serverResult) {
@@ -210,7 +211,7 @@ export const directivesPlugin = ({
                 code,
                 normalizeModulePath(projectRootDir, args.path),
                 env as "client" | "worker" | "ssr",
-                { serverFiles, isEsbuild: true },
+                serverFiles,
               );
 
               if (serverResult) {
