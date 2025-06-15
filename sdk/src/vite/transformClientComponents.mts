@@ -1,7 +1,8 @@
-import { Project, SyntaxKind, Node } from "ts-morph";
+import MagicString from "magic-string";
 import debug from "debug";
 import { hasDirective } from "./hasDirective.mjs";
 import { invalidateModule } from "./invalidateModule.mjs";
+import { findExports, type ExportInfo } from "./findImportSpecifiers.mjs";
 import type { ViteDevServer } from "vite";
 
 interface TransformContext {
@@ -50,52 +51,13 @@ export async function transformClientComponents(
 
   log("Processing 'use client' module: id=%s", normalizedId);
 
-  function extractSourceMapFromEmit(sourceFile: any): any {
-    const emitOutput = sourceFile.getEmitOutput();
-    let sourceMap: any;
-
-    const outputFiles = emitOutput.getOutputFiles();
-    log(
-      ":isEsbuild=%s: EmitOutput files for %s (%s) - %d files:",
-      !!ctx.isEsbuild,
-      normalizedId,
-      ctx.environmentName,
-      outputFiles.length,
-    );
-    for (const outputFile of outputFiles) {
-      log(
-        ":isEsbuild=%s: - %s (%s)",
-        !!ctx.isEsbuild,
-        outputFile.getFilePath(),
-        ctx.environmentName,
-      );
-
-      if (outputFile.getFilePath().endsWith(".js.map")) {
-        sourceMap = JSON.parse(outputFile.getText());
-      }
-    }
-    return sourceMap;
-  }
-
   ctx.addClientModule?.(ctx.environmentName, normalizedId);
 
-  // Use ts-morph to collect all export info and perform transformations
-  const project = new Project({
-    useInMemoryFileSystem: true,
-    compilerOptions: {
-      sourceMap: true,
-      inlineSourceMap: false,
-      allowJs: true,
-      checkJs: true,
-      target: 2, // ES6
-      module: 1, // CommonJS
-      jsx: 2, // React
-    },
-  });
-  const sourceFile = project.createSourceFile(normalizedId + ".ts", code);
+  // Parse exports using the findExports helper
+  const exportInfos = findExports(normalizedId, code, verboseLog);
 
-  // We'll collect named and default exports in order
-  type ExportInfo = {
+  // Process exports into the format expected by the rest of the function
+  type ProcessedExportInfo = {
     local: string;
     exported: string;
     isDefault: boolean;
@@ -103,92 +65,35 @@ export async function transformClientComponents(
     alias?: string;
   };
 
-  const exportInfos: ExportInfo[] = [];
-  let defaultExportInfo: ExportInfo | undefined;
+  const processedExports: ProcessedExportInfo[] = [];
+  let defaultExportInfo: ProcessedExportInfo | undefined;
 
   // Helper to get the computed local name (with alias suffix if present)
-  function getComputedLocalName(info: ExportInfo): string {
+  function getComputedLocalName(info: ProcessedExportInfo): string {
     return `${info.local}${info.alias ? `_${info.alias}` : ""}`;
   }
 
-  // Helper to add export info
-  function addExport(
-    local: string,
-    exported: string,
-    isDefault: boolean,
-    statementIdx: number,
-    alias?: string,
-  ) {
-    if (isDefault) {
-      defaultExportInfo = { local, exported, isDefault, statementIdx };
+  // Convert ExportInfo to ProcessedExportInfo
+  exportInfos.forEach((exportInfo, idx) => {
+    if (exportInfo.isDefault) {
+      defaultExportInfo = {
+        local: exportInfo.alias || "default",
+        exported: "default",
+        isDefault: true,
+        statementIdx: idx,
+      };
     } else {
-      exportInfos.push({ local, exported, isDefault, statementIdx, alias });
-    }
-  }
-
-  // Walk through statements in order to collect export information
-  const statements = sourceFile.getStatements();
-  statements.forEach((stmt, idx) => {
-    // export default function ...
-    if (
-      Node.isFunctionDeclaration(stmt) &&
-      stmt.hasModifier(SyntaxKind.ExportKeyword) &&
-      stmt.hasModifier(SyntaxKind.DefaultKeyword)
-    ) {
-      addExport("default", "default", true, idx);
-      return;
-    }
-    // export default ... (assignment)
-    if (Node.isExportAssignment(stmt)) {
-      const expr = stmt.getExpression();
-      if (Node.isIdentifier(expr)) {
-        addExport(expr.getText(), "default", true, idx);
-      } else {
-        addExport("default", "default", true, idx);
-      }
-      return;
-    }
-    // export const foo = ...
-    if (
-      Node.isVariableStatement(stmt) &&
-      stmt.hasModifier(SyntaxKind.ExportKeyword)
-    ) {
-      stmt
-        .getDeclarationList()
-        .getDeclarations()
-        .forEach((decl) => {
-          const name = decl.getName();
-          addExport(name, name, false, idx);
-        });
-      return;
-    }
-
-    // export function foo() ...
-    if (
-      Node.isFunctionDeclaration(stmt) &&
-      stmt.hasModifier(SyntaxKind.ExportKeyword)
-    ) {
-      if (!stmt.hasModifier(SyntaxKind.DefaultKeyword)) {
-        const name = stmt.getName();
-        if (name) {
-          addExport(name, name, false, idx);
-        }
-      }
-      return;
-    }
-
-    // export { ... } or export { ... } from ...
-    if (Node.isExportDeclaration(stmt)) {
-      const namedExports = stmt.getNamedExports();
-      if (namedExports.length > 0) {
-        namedExports.forEach((exp) => {
-          const alias = exp.getAliasNode()?.getText();
-          const local = alias ? exp.getNameNode().getText() : exp.getName();
-          const exported = alias ? alias : exp.getName();
-          addExport(local, exported, exported === "default", idx, alias);
-        });
-      }
-      return;
+      const alias =
+        exportInfo.alias && exportInfo.alias !== exportInfo.name
+          ? exportInfo.alias
+          : undefined;
+      processedExports.push({
+        local: exportInfo.name,
+        exported: exportInfo.alias || exportInfo.name,
+        isDefault: false,
+        statementIdx: idx,
+        alias: alias,
+      });
     }
   });
 
@@ -200,50 +105,51 @@ export async function transformClientComponents(
       normalizedId,
     );
 
-    // Remove 'use client' directive using ts-morph
-    sourceFile
-      .getDescendantsOfKind(SyntaxKind.StringLiteral)
-      .forEach((node) => {
-        if (
-          node.getText() === "'use client'" ||
-          node.getText() === '"use client"'
-        ) {
-          const parentExpr = node.getFirstAncestorByKind(
-            SyntaxKind.ExpressionStatement,
-          );
-          if (parentExpr) {
-            parentExpr.remove();
-          }
-        }
-      });
+    // Remove 'use client' directive using magic-string
+    const s = new MagicString(code);
 
-    const sourceMap = extractSourceMapFromEmit(sourceFile);
+    // Find and remove "use client" directives
+    const directiveRegex = /^(\s*)(['"]use client['"])\s*;?\s*$/gm;
+    let match;
+    while ((match = directiveRegex.exec(code)) !== null) {
+      const start = match.index;
+      const end = match.index + match[0].length;
+      s.remove(start, end);
+      verboseLog(
+        "Removed 'use client' directive from normalizedId=%s",
+        normalizedId,
+      );
+      break; // Only remove the first one
+    }
+
+    const sourceMap = s.generateMap({
+      source: normalizedId,
+      includeContent: true,
+      hires: true,
+    });
 
     verboseLog(
       ":VERBOSE: SSR transformed code for %s:\n%s",
       normalizedId,
-      sourceFile.getFullText(),
+      s.toString(),
     );
 
     return {
-      code: sourceFile.getFullText(),
+      code: s.toString(),
       map: sourceMap,
     };
   }
 
   // 4. Non-SSR files: replace all implementation with registerClientReference logic
-  // Clear the source file and rebuild it
-  sourceFile.removeText();
+  // Generate completely new code for worker/client environments
+  const s = new MagicString("");
 
   // Add import declaration
-  sourceFile.addImportDeclaration({
-    moduleSpecifier: "rwsdk/worker",
-    namedImports: [{ name: "registerClientReference" }],
-  });
+  s.append('import { registerClientReference } from "rwsdk/worker";\n');
 
   // Compute unique computed local names first
   const computedLocalNames = new Map(
-    exportInfos.map((info) => [getComputedLocalName(info), info]),
+    processedExports.map((info) => [getComputedLocalName(info), info]),
   );
 
   // Add registerClientReference assignments for unique names
@@ -254,13 +160,13 @@ export async function transformClientComponents(
       correspondingInfo.local,
       correspondingInfo.exported,
     );
-    sourceFile.addStatements(
-      `const ${computedLocalName} = registerClientReference("${normalizedId}", "${correspondingInfo.exported}");`,
+    s.append(
+      `const ${computedLocalName} = registerClientReference("${normalizedId}", "${correspondingInfo.exported}");\n`,
     );
   }
 
   // Add grouped export statement for named exports (preserving order and alias)
-  if (exportInfos.length > 0) {
+  if (processedExports.length > 0) {
     const exportNames = Array.from(computedLocalNames.entries()).map(
       ([computedLocalName, correspondingInfo]) =>
         correspondingInfo.local === correspondingInfo.exported
@@ -272,7 +178,7 @@ export async function transformClientComponents(
       !!ctx.isEsbuild,
       exportNames,
     );
-    sourceFile.addStatements(`export { ${exportNames.join(", ")} };`);
+    s.append(`export { ${exportNames.join(", ")} };\n`);
   }
 
   // Add default export if present
@@ -282,14 +188,18 @@ export async function transformClientComponents(
       !!ctx.isEsbuild,
       defaultExportInfo.exported,
     );
-    sourceFile.addStatements(
-      `export default registerClientReference("${normalizedId}", "${defaultExportInfo.exported}");`,
+    s.append(
+      `export default registerClientReference("${normalizedId}", "${defaultExportInfo.exported}");\n`,
     );
   }
 
-  const sourceMap = extractSourceMapFromEmit(sourceFile);
+  const sourceMap = s.generateMap({
+    source: normalizedId,
+    includeContent: true,
+    hires: true,
+  });
 
-  const finalResult = sourceFile.getFullText();
+  const finalResult = s.toString();
 
   verboseLog(
     ":VERBOSE: Transformed code (env=%s, normalizedId=%s):\n%s",
