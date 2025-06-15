@@ -229,12 +229,7 @@ export const createDirectiveLookupPlugin = async ({
           entries.push(actualFilePath);
         }
 
-        log(
-          "Environment configuration complete for env=%s with %d optimizeDeps includes and %d aliases",
-          env,
-          Array.from(files).filter((f) => f.includes("/node_modules/")).length,
-          files.size,
-        );
+        log("Environment configuration complete for env=%s", env);
       } else {
         log("Skipping optimizeDeps and aliasing for environment: %s", env);
       }
