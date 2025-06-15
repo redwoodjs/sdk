@@ -28,6 +28,14 @@ export const debugSync = async (opts: DebugSyncOptions) => {
     cwd: targetDir,
   })`npm run clean:vite`;
 
+  if (!process.env.NO_CLEAN_VITE) {
+    await $({
+      stdio: "inherit",
+      shell: true,
+      cwd: targetDir,
+    })`rm -rf node_modules/.vite`;
+  }
+
   // If dev flag is present, clean vite cache and start dev server
   if (dev) {
     console.log("🚀 Starting dev server...");
