@@ -83,16 +83,17 @@ export async function transformClientComponents(
         statementIdx: idx,
       };
     } else {
-      const alias =
-        exportInfo.alias && exportInfo.alias !== exportInfo.name
-          ? exportInfo.alias
-          : undefined;
+      // For aliases like "export { MyComponent as CustomName }", we need:
+      // - local: "MyComponent" (the original name)
+      // - exported: "CustomName" (the alias name)
+      // - alias: "CustomName" (to generate MyComponent_CustomName)
+      const hasAlias = exportInfo.alias && exportInfo.originalName;
       processedExports.push({
-        local: exportInfo.name,
-        exported: exportInfo.alias || exportInfo.name,
+        local: exportInfo.originalName || exportInfo.name, // Use originalName if available
+        exported: exportInfo.name, // The exported name (alias if present)
         isDefault: false,
         statementIdx: idx,
-        alias: alias,
+        alias: hasAlias ? exportInfo.alias : undefined,
       });
     }
   });
@@ -109,7 +110,7 @@ export async function transformClientComponents(
     const s = new MagicString(code);
 
     // Find and remove "use client" directives
-    const directiveRegex = /^(\s*)(['"]use client['"])\s*;?\s*$/gm;
+    const directiveRegex = /^(\s*)(['"]use client['"])\s*;?\s*\n?/gm;
     let match;
     while ((match = directiveRegex.exec(code)) !== null) {
       const start = match.index;
