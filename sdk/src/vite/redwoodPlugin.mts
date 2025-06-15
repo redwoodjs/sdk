@@ -20,6 +20,7 @@ import { vitePreamblePlugin } from "./vitePreamblePlugin.mjs";
 import { prismaPlugin } from "./prismaPlugin.mjs";
 import { ssrBridgePlugin } from "./ssrBridgePlugin.mjs";
 import { hasPkgScript } from "../lib/hasPkgScript.mjs";
+import { devServerTimingPlugin } from "./devServerTimingPlugin.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -69,6 +70,7 @@ export const redwoodPlugin = async (
     })`npm run dev:init`;
   }
   return [
+    devServerTimingPlugin(),
     configPlugin({
       mode,
       silent: options.silent ?? false,

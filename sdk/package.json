@@ -108,6 +108,7 @@
   "author": "RedwoodSDK <peter@redwoodjs.com>",
   "license": "MIT",
   "dependencies": {
+    "@ast-grep/napi": "^0.38.5",
     "@cloudflare/vite-plugin": "0.0.0-1bae8618b",
     "@cloudflare/workers-types": "^4.20250407.0",
     "@puppeteer/browsers": "^2.8.0",
