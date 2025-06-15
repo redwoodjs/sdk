@@ -98,6 +98,50 @@ export const directivesPlugin = ({
               args.path,
             );
 
+            const normalizedPath = normalizeModulePath(
+              projectRootDir,
+              args.path,
+            );
+
+            // context(justinvdm,2025-06-15): If we're in app code,
+            // we will be doing the transform work in the vite plugin hooks,
+            // the only reason we're in esbuild land for app code is for
+            // dependency discovery, so we can skip transform work
+            // and use heuristics instead - see below inside if block
+            if (!args.path.includes("node_modules")) {
+              verboseLog("Esbuild onLoad found app code, path=%s", args.path);
+
+              if (clientFiles.has(normalizedPath)) {
+                // context(justinvdm,2025-06-15): If this is a client file:
+                // * for ssr and client envs we can skip so esbuild looks at the
+                // original source code to discovery dependencies
+                // * for worker env, the transform would have just created
+                // references and dropped all imports, so we can just return empty code
+                if (env === "client" || env === "ssr") {
+                  return undefined;
+                } else {
+                  return {
+                    contents: "",
+                    loader: "js",
+                  };
+                }
+              } else if (serverFiles.has(normalizedPath)) {
+                // context(justinvdm,2025-06-15): If this is a server file:
+                // * for worker env, we can skip so esbuild looks at the
+                // original source code to discovery dependencies
+                // * for ssr and client envs, the transform would have just created
+                // references and dropped all imports, so we can just return empty code
+                if (env === "worker") {
+                  return undefined;
+                } else if (env === "ssr" || env === "client") {
+                  return {
+                    contents: "",
+                    loader: "js",
+                  };
+                }
+              }
+            }
+
             let code: string;
 
             try {
