@@ -1,8 +1,7 @@
 import MagicString from "magic-string";
 import debug from "debug";
 import { hasDirective } from "./hasDirective.mjs";
-import { invalidateModule } from "./invalidateModule.mjs";
-import { findExports, type ExportInfo } from "./findImportSpecifiers.mjs";
+import { findExports, type ExportInfo } from "./findSpecifiers.mjs";
 import type { ViteDevServer } from "vite";
 
 interface TransformContext {

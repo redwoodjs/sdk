@@ -1,7 +1,7 @@
 import MagicString from "magic-string";
 import debug from "debug";
 import { hasDirective } from "./hasDirective.mjs";
-import { findExports, type ExportInfo } from "./findImportSpecifiers.mjs";
+import { findExports, type ExportInfo } from "./findSpecifiers.mjs";
 import { parse as sgParse, Lang as SgLang, Lang } from "@ast-grep/napi";
 import path from "path";
 
