@@ -109,7 +109,7 @@ export const directivesPlugin = ({
             // dependency discovery, so we can skip transform work
             // and use heuristics instead - see below inside if block
             if (!args.path.includes("node_modules")) {
-              verboseLog("Esbuild onLoad found app code, path=%s", args.path);
+              log("Esbuild onLoad found app code, path=%s", args.path);
 
               if (clientFiles.has(normalizedPath)) {
                 // context(justinvdm,2025-06-15): If this is a client file:
@@ -118,8 +118,16 @@ export const directivesPlugin = ({
                 // * for worker env, the transform would have just created
                 // references and dropped all imports, so we can just return empty code
                 if (env === "client" || env === "ssr") {
+                  log(
+                    "Esbuild onLoad skipping app code for client or ssr env, path=%s",
+                    args.path,
+                  );
                   return undefined;
                 } else {
+                  log(
+                    "Esbuild onLoad returning empty code for worker env, path=%s",
+                    args.path,
+                  );
                   return {
                     contents: "",
                     loader: "js",
@@ -132,8 +140,16 @@ export const directivesPlugin = ({
                 // * for ssr and client envs, the transform would have just created
                 // references and dropped all imports, so we can just return empty code
                 if (env === "worker") {
+                  log(
+                    "Esbuild onLoad skipping app code for worker env, path=%s",
+                    args.path,
+                  );
                   return undefined;
                 } else if (env === "ssr" || env === "client") {
+                  log(
+                    "Esbuild onLoad returning empty code for ssr or client env, path=%s",
+                    args.path,
+                  );
                   return {
                     contents: "",
                     loader: "js",
