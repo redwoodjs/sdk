@@ -23,10 +23,20 @@ const readManifest = async (
   return manifestCache!;
 };
 
-// Check if a string includes any jsx function calls
 function hasJsxFunctions(text: string): boolean {
   return (
-    text.includes("jsx(") || text.includes("jsxs(") || text.includes("jsxDEV(")
+    text.includes('jsx("script"') ||
+    text.includes("jsx('script'") ||
+    text.includes('jsx("link"') ||
+    text.includes("jsx('link'") ||
+    text.includes('jsxs("script"') ||
+    text.includes("jsxs('script'") ||
+    text.includes('jsxs("link"') ||
+    text.includes("jsxs('link'") ||
+    text.includes('jsxDEV("script"') ||
+    text.includes("jsxDEV('script'") ||
+    text.includes('jsxDEV("link"') ||
+    text.includes("jsxDEV('link'")
   );
 }
 
@@ -104,7 +114,8 @@ export async function transformJsxScriptTagsCode(
   code: string,
   manifest: Record<string, any> = {},
 ) {
-  // Quick heuristic check if there's JSX in the code
+  // context(justinvdm, 15 Jun 2025): Optimization to exit early
+  // to avoidunnecessary ts-morph parsing
   if (!hasJsxFunctions(code)) {
     return;
   }
