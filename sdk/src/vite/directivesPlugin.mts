@@ -147,7 +147,7 @@ export const directivesPlugin = ({
                   return undefined;
                 } else if (env === "ssr" || env === "client") {
                   log(
-                    "Esbuild onLoad returning empty code for server module in app code for ssr or client env, path=%s to bypass esbuild dependency discovery",
+                    "Esbuild onLoad returning empty code for server module in app code for ssr or client env, path=%s",
                     args.path,
                   );
                   return {
