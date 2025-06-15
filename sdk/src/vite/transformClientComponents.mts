@@ -180,7 +180,14 @@ export async function transformClientComponents(
 
   const finalResult = {
     code: result,
-    // No source map for complete rewrite - not needed since it's a complete transformation
+    map: {
+      version: 3,
+      file: normalizedId,
+      names: [],
+      sources: [normalizedId],
+      sourcesContent: [code],
+      mappings: "",
+    },
   };
 
   verboseLog(

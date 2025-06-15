@@ -73,6 +73,7 @@ export const directivesPlugin = ({
         code,
         normalizedId,
         this.environment.name as "client" | "worker" | "ssr",
+        { serverFiles, devServer },
       );
 
       if (serverResult) {
@@ -209,6 +210,7 @@ export const directivesPlugin = ({
                 code,
                 normalizeModulePath(projectRootDir, args.path),
                 env as "client" | "worker" | "ssr",
+                { serverFiles, isEsbuild: true },
               );
 
               if (serverResult) {

@@ -1,149 +1,60 @@
-import { Project, SyntaxKind, Node, SourceFile } from "ts-morph";
 import debug from "debug";
 import { hasDirective } from "./hasDirective.mjs";
+import { findExports, type ExportInfo } from "./findImportSpecifiers.mjs";
+import { invalidateModule } from "./invalidateModule.mjs";
+import type { ViteDevServer } from "vite";
 
 const log = debug("rwsdk:vite:transform-server-functions");
 const verboseLog = debug("verbose:rwsdk:vite:transform-server-functions");
 
 interface TransformResult {
   code: string;
-  map?: any;
+  map: any | null;
 }
 
-type ExportInfo = {
-  localFunctions: Set<string>;
-  reExports: Array<{
-    localName: string;
-    originalName: string;
-    moduleSpecifier: string;
-  }>;
-};
+interface TransformContext {
+  serverFiles?: Set<string>;
+  isEsbuild?: boolean;
+  devServer?: ViteDevServer;
+}
 
-export const findExportedFunctions = (
-  sourceFile: SourceFile,
-  normalizedId?: string,
-): Set<string> => {
-  return findExportInfo(sourceFile, normalizedId).localFunctions;
-};
+// Creates a minimal, valid sourcemap linking generated output back to the original file.
+function createEmptySourceMap(originalCode: string, id: string) {
+  return {
+    version: 3,
+    file: id,
+    names: [],
+    sources: [id],
+    sourcesContent: [originalCode],
+    mappings: "", // No mappings, treated as generated code without positions
+  };
+}
 
-export const findExportInfo = (
-  sourceFile: SourceFile,
-  normalizedId?: string,
-): ExportInfo => {
-  verboseLog("Finding exported functions in source file");
-
-  const localFunctions = new Set<string>();
-  const reExports: ExportInfo["reExports"] = [];
-
-  const exportAssignments = sourceFile.getDescendantsOfKind(
-    SyntaxKind.ExportAssignment,
-  );
-  for (const e of exportAssignments) {
-    const name = e.getExpression().getText();
-    if (name === "default") {
-      continue;
-    }
-    localFunctions.add(name);
-    verboseLog("Found export assignment: %s", name);
+/**
+ * Overloaded helper: resolve the optional context argument which may be a Set<string>
+ * (for historical compatibility) or a full context object.
+ */
+function resolveCtx(
+  ctxLike?: Set<string> | TransformContext,
+): TransformContext {
+  if (!ctxLike) return {};
+  if (ctxLike instanceof Set) {
+    return { serverFiles: ctxLike };
   }
+  return ctxLike;
+}
 
-  const functionDeclarations = sourceFile.getDescendantsOfKind(
-    SyntaxKind.FunctionDeclaration,
-  );
-  for (const func of functionDeclarations) {
-    if (func.hasModifier(SyntaxKind.ExportKeyword)) {
-      const name = func.getName();
-      if (name) {
-        localFunctions.add(name);
-        verboseLog("Found exported function declaration: %s", name);
-      }
-    }
-  }
-
-  const variableStatements = sourceFile.getDescendantsOfKind(
-    SyntaxKind.VariableStatement,
-  );
-  for (const statement of variableStatements) {
-    if (statement.hasModifier(SyntaxKind.ExportKeyword)) {
-      const declarations = statement.getDeclarationList().getDeclarations();
-      for (const declaration of declarations) {
-        const initializer = declaration.getInitializer();
-        if (initializer && Node.isArrowFunction(initializer)) {
-          const name = declaration.getName();
-          if (name) {
-            localFunctions.add(name);
-            verboseLog("Found exported arrow function: %s", name);
-          }
-        }
-      }
-    }
-  }
-
-  // Handle re-exports
-  const exportDeclarations = sourceFile.getDescendantsOfKind(
-    SyntaxKind.ExportDeclaration,
-  );
-  for (const exportDecl of exportDeclarations) {
-    const moduleSpecifier = exportDecl.getModuleSpecifier();
-    if (!moduleSpecifier) continue; // Skip re-exports without module specifier
-
-    const namedExports = exportDecl.getNamedExports();
-    for (const namedExport of namedExports) {
-      // Use the alias if present, otherwise use the original name
-      const localName =
-        namedExport.getAliasNode()?.getText() || namedExport.getName();
-      const originalName = namedExport.getName();
-      if (localName && originalName) {
-        reExports.push({
-          localName,
-          originalName,
-          moduleSpecifier: moduleSpecifier.getLiteralText(),
-        });
-        verboseLog(
-          "Found re-exported function: %s from %s",
-          localName,
-          moduleSpecifier.getLiteralText(),
-        );
-      }
-    }
-
-    // Check for export * from - log warning and skip
-    if (!namedExports.length && !exportDecl.getNamespaceExport()) {
-      // This is an export * from statement
-      console.warn(
-        "Warning: 'export * from' re-exports are not supported in server functions. " +
-          "Please use named exports instead (e.g., 'export { functionName } from \"./module\"'). " +
-          "File: %s, Ignoring: %s",
-        normalizedId,
-        exportDecl.getText().trim(),
-      );
-    }
-  }
-
-  log(
-    "Found %d local functions: %O",
-    localFunctions.size,
-    Array.from(localFunctions),
-  );
-  log(
-    "Found %d re-exports: %O",
-    reExports.length,
-    reExports.map((r) => `${r.localName} from ${r.moduleSpecifier}`),
-  );
-
-  return { localFunctions, reExports };
-};
-
-export const transformServerFunctions = (
+export function transformServerFunctions(
   code: string,
   normalizedId: string,
   environment: "client" | "worker" | "ssr",
-  serverFiles?: Set<string>,
-): TransformResult | undefined => {
+  ctxLike?: Set<string> | TransformContext,
+): TransformResult | undefined {
   verboseLog(
-    "Transform server functions called for normalizedId=%s, environment=%s",
+    "Called transformServerFunctions: id=%s, env=%s, ctx=%O",
     normalizedId,
     environment,
+    ctxLike,
   );
 
   if (!hasDirective(code, "use server")) {
@@ -156,274 +67,191 @@ export const transformServerFunctions = (
     return;
   }
 
-  const project = new Project({
-    useInMemoryFileSystem: true,
-    compilerOptions: {
-      sourceMap: true,
-      target: 2,
-      module: 1,
-      jsx: 2,
-    },
-  });
-  const sourceFile = project.createSourceFile(normalizedId, code);
+  const ctx = resolveCtx(ctxLike);
 
-  const statements = sourceFile.getStatements();
-  let hasUseServerDirective = false;
+  // Track file as server file
+  ctx.serverFiles?.add(normalizedId);
 
-  for (const stmt of statements) {
-    if (!Node.isExpressionStatement(stmt)) break;
-
-    const expr = stmt.getExpression();
-    if (!expr || !Node.isStringLiteral(expr)) break;
-
-    const value = expr.getLiteralText();
-    if (value === "use server") {
-      hasUseServerDirective = true;
+  // Invalidate the lookup module when a server file is added (vite runtime only)
+  if (ctx.devServer && !ctx.isEsbuild) {
+    try {
+      invalidateModule(
+        ctx.devServer,
+        environment,
+        "virtual:use-server-lookup",
+        log,
+        verboseLog,
+      );
       log(
-        "Found 'use server' directive at top level for normalizedId=%s",
-        normalizedId,
+        "Invalidated use-server-lookup module for environment: %s",
+        environment,
       );
-      stmt.remove();
-      verboseLog(
-        "Removed 'use server' directive from normalizedId=%s",
-        normalizedId,
-      );
-      break;
+    } catch (error) {
+      verboseLog("Failed to invalidate use-server-lookup module: %O", error);
     }
   }
 
-  if (!hasUseServerDirective) {
-    verboseLog(
-      "No 'use server' directive found at top-level, skipping transformation for normalizedId=%s",
-      normalizedId,
-    );
-    return;
+  // ----------------------------------------
+  // Gather export information
+  // ----------------------------------------
+  const exportInfos = findExports(normalizedId, code, log);
+
+  const namedExports: ExportInfo[] = [];
+  let defaultExport: ExportInfo | undefined;
+
+  const seen = new Set<string>();
+  for (const exp of exportInfos) {
+    const key = `${exp.name}:${exp.isDefault}`;
+    if (seen.has(key)) continue;
+    seen.add(key);
+
+    if (exp.isDefault && !exp.isReExport) {
+      // Local default export
+      if (!defaultExport) defaultExport = exp;
+      // Also expose the function name (if it has one) as a named export for parity with previous behaviour
+      if (exp.name && exp.name !== "default") {
+        const dupKey = `${exp.name}:false`;
+        if (!seen.has(dupKey)) {
+          namedExports.push({ ...exp, isDefault: false });
+          seen.add(dupKey);
+        }
+      }
+    } else {
+      namedExports.push(exp);
+    }
   }
 
   log(
-    "Processing 'use server' module: normalizedId=%s, environment=%s",
-    normalizedId,
-    environment,
+    "Found %d named exports, %s default export",
+    namedExports.length,
+    defaultExport ? "1" : "no",
   );
 
-  serverFiles?.add(normalizedId);
+  // Helper: build registerServerReference line
+  const buildRegisterLine = (varName: string, exportName: string) =>
+    `registerServerReference(${varName}, ${JSON.stringify(normalizedId)}, ${JSON.stringify(exportName)})`;
 
-  if (environment === "ssr") {
-    log("Transforming for SSR environment: normalizedId=%s", normalizedId);
-    const ssrSourceFile = project.createSourceFile("ssr.tsx", "");
+  // ----------------------------------------
+  // CLIENT / SSR  -> full rewrite similar to transformClientComponents
+  // ----------------------------------------
+  if (environment === "client" || environment === "ssr") {
+    const importPath =
+      environment === "client" ? "rwsdk/client" : "rwsdk/__ssr";
+    let result = `import { createServerReference } from "${importPath}";\n\n`;
 
-    ssrSourceFile.addImportDeclaration({
-      moduleSpecifier: "rwsdk/__ssr",
-      namedImports: ["createServerReference"],
-    });
-
-    const exportInfo = findExportInfo(sourceFile, normalizedId);
-    const allExports = new Set([
-      ...exportInfo.localFunctions,
-      ...exportInfo.reExports.map((r) => r.localName),
-    ]);
-    for (const name of allExports) {
-      ssrSourceFile.addVariableStatement({
-        isExported: true,
-        declarations: [
-          {
-            name: name,
-            initializer: `createServerReference(${JSON.stringify(normalizedId)}, ${JSON.stringify(name)})`,
-          },
-        ],
-      });
-      log(
-        "Added SSR server reference for function: %s in normalizedId=%s",
-        name,
+    for (const exp of namedExports) {
+      result += `export let ${exp.name} = createServerReference(${JSON.stringify(
         normalizedId,
-      );
+      )}, ${JSON.stringify(exp.name)});\n`;
     }
 
-    const hadDefaultExport = !!sourceFile.getDefaultExportSymbol();
-    if (hadDefaultExport) {
-      ssrSourceFile.addExportAssignment({
-        expression: `createServerReference(${JSON.stringify(normalizedId)}, "default")`,
-        isExportEquals: false,
-      });
-      log(
-        "Added SSR server reference for default export in normalizedId=%s",
-        normalizedId,
-      );
+    if (defaultExport) {
+      if (namedExports.length > 0) result += `\n`;
+      result += `export default createServerReference(${JSON.stringify(normalizedId)}, "default");\n`;
     }
 
-    const emitOutput = ssrSourceFile.getEmitOutput();
-    let sourceMap: any;
-
-    for (const outputFile of emitOutput.getOutputFiles()) {
-      if (outputFile.getFilePath().endsWith(".js.map")) {
-        sourceMap = JSON.parse(outputFile.getText());
-      }
-    }
-
-    log("SSR transformation complete for normalizedId=%s", normalizedId);
     return {
-      code: ssrSourceFile.getFullText(),
-      map: sourceMap,
-    };
-  } else if (environment === "worker") {
-    log("Transforming for worker environment: normalizedId=%s", normalizedId);
-
-    const exportInfo = findExportInfo(sourceFile, normalizedId);
-
-    // Add imports for re-exported functions so they exist in scope
-    for (const reExport of exportInfo.reExports) {
-      sourceFile.addImportDeclaration({
-        moduleSpecifier: reExport.moduleSpecifier,
-        namedImports:
-          reExport.originalName === "default"
-            ? [{ name: "default", alias: reExport.localName }]
-            : [
-                reExport.originalName === reExport.localName
-                  ? reExport.originalName
-                  : { name: reExport.originalName, alias: reExport.localName },
-              ],
-      });
-      log(
-        "Added import for re-exported function: %s from %s in normalizedId=%s",
-        reExport.localName,
-        reExport.moduleSpecifier,
-        normalizedId,
-      );
-    }
-
-    sourceFile.addImportDeclaration({
-      moduleSpecifier: "rwsdk/worker",
-      namedImports: ["registerServerReference"],
-    });
-
-    const defaultExportSymbol = sourceFile.getDefaultExportSymbol();
-    const defaultExportDecl = defaultExportSymbol?.getDeclarations()[0];
-    let hasDefaultExport = false;
-    if (defaultExportDecl && Node.isFunctionDeclaration(defaultExportDecl)) {
-      hasDefaultExport = true;
-      defaultExportDecl.setIsDefaultExport(false);
-      defaultExportDecl.rename("__defaultServerFunction__");
-      sourceFile.addExportAssignment({
-        expression: "__defaultServerFunction__",
-        isExportEquals: false,
-      });
-      sourceFile.addStatements(
-        `registerServerReference(__defaultServerFunction__, ${JSON.stringify(normalizedId)}, "default")`,
-      );
-      log(
-        "Registered worker server reference for default export in normalizedId=%s",
-        normalizedId,
-      );
-    }
-
-    // Register local functions
-    for (const name of exportInfo.localFunctions) {
-      if (name === "__defaultServerFunction__") continue;
-      sourceFile.addStatements(
-        `registerServerReference(${name}, ${JSON.stringify(normalizedId)}, ${JSON.stringify(name)})`,
-      );
-      log(
-        "Registered worker server reference for local function: %s in normalizedId=%s",
-        name,
-        normalizedId,
-      );
-    }
-
-    // Register re-exported functions
-    for (const reExport of exportInfo.reExports) {
-      sourceFile.addStatements(
-        `registerServerReference(${reExport.localName}, ${JSON.stringify(normalizedId)}, ${JSON.stringify(reExport.localName)})`,
-      );
-      log(
-        "Registered worker server reference for re-exported function: %s in normalizedId=%s",
-        reExport.localName,
-        normalizedId,
-      );
-    }
-
-    const emitOutput = sourceFile.getEmitOutput();
-    let sourceMap: any;
-
-    for (const outputFile of emitOutput.getOutputFiles()) {
-      if (outputFile.getFilePath().endsWith(".js.map")) {
-        sourceMap = JSON.parse(outputFile.getText());
-      }
-    }
-
-    log("Worker transformation complete for normalizedId=%s", normalizedId);
-    return {
-      code: sourceFile.getFullText(),
-      map: sourceMap,
-    };
-  } else if (environment === "client") {
-    log("Transforming for client environment: normalizedId=%s", normalizedId);
-    const clientSourceFile = project.createSourceFile("client.tsx", "");
-
-    clientSourceFile.addImportDeclaration({
-      moduleSpecifier: "rwsdk/client",
-      namedImports: ["createServerReference"],
-    });
-
-    const exportInfo = findExportInfo(sourceFile, normalizedId);
-    const allExports = new Set([
-      ...exportInfo.localFunctions,
-      ...exportInfo.reExports.map((r) => r.localName),
-    ]);
-    for (const name of allExports) {
-      clientSourceFile.addVariableStatement({
-        isExported: true,
-        declarations: [
-          {
-            name: name,
-            initializer: `createServerReference(${JSON.stringify(normalizedId)}, ${JSON.stringify(name)})`,
-          },
-        ],
-      });
-      log(
-        "Added client server reference for function: %s in normalizedId=%s",
-        name,
-        normalizedId,
-      );
-      verboseLog(
-        "Added client server reference for function: %s in normalizedId=%s",
-        name,
-        normalizedId,
-      );
-    }
-
-    const hadDefaultExport = !!sourceFile.getDefaultExportSymbol();
-    if (hadDefaultExport) {
-      clientSourceFile.addExportAssignment({
-        expression: `createServerReference(${JSON.stringify(normalizedId)}, "default")`,
-        isExportEquals: false,
-      });
-      log(
-        "Added client server reference for default export in normalizedId=%s",
-        normalizedId,
-      );
-    }
-
-    const emitOutput = clientSourceFile.getEmitOutput();
-    let sourceMap: any;
-
-    for (const outputFile of emitOutput.getOutputFiles()) {
-      if (outputFile.getFilePath().endsWith(".js.map")) {
-        sourceMap = JSON.parse(outputFile.getText());
-      }
-    }
-
-    log("Client transformation complete for normalizedId=%s", normalizedId);
-    return {
-      code: clientSourceFile.getFullText(),
-      map: sourceMap,
+      code: result,
+      map: createEmptySourceMap(code, normalizedId),
     };
   }
 
-  verboseLog(
-    "No transformation applied for environment=%s, normalizedId=%s",
-    environment,
-    normalizedId,
-  );
-};
+  // ----------------------------------------
+  // WORKER  -> keep implementation, inject registrations
+  // ----------------------------------------
+  if (environment === "worker") {
+    // Remove the 'use server' directive first
+    let processedCode = code.replace(/^(\s*)(["'])use server\2\s*;?\s*/m, "");
+
+    // Detect leading block comment (/* ... */) at the very top so we can keep it before imports
+    let leadingComment = "";
+    const leadingBlockMatch = processedCode.match(/^\s*\/\*[\s\S]*?\*\//);
+    if (leadingBlockMatch && leadingBlockMatch.index === 0) {
+      leadingComment = leadingBlockMatch[0] + "\n";
+      processedCode = processedCode.slice(leadingComment.length);
+    }
+
+    // Handle default export transformation
+    let hasTransformedDefault = false;
+    processedCode = processedCode.replace(
+      /export\s+default\s+(async\s+)?function\s+([A-Za-z_$][A-Za-z0-9_$]*)\s*\(/m,
+      (match, asyncKeyword, originalName) => {
+        hasTransformedDefault = true;
+        const asyncStr = asyncKeyword ? "async " : "";
+        return `${asyncStr}function __defaultServerFunction__(`;
+      },
+    );
+
+    // Fallback for anonymous default function
+    if (!hasTransformedDefault) {
+      processedCode = processedCode.replace(
+        /export\s+default\s+(async\s+)?function\s*\(/m,
+        (match, asyncKeyword) => {
+          hasTransformedDefault = true;
+          const asyncStr = asyncKeyword ? "async " : "";
+          return `${asyncStr}function __defaultServerFunction__(`;
+        },
+      );
+    }
+
+    // Build imports for re-exports so variables are in scope for registration
+    const reExportImports: string[] = [];
+    for (const exp of namedExports) {
+      if (exp.isReExport && exp.moduleSpecifier) {
+        if (exp.isDefault) {
+          reExportImports.push(
+            `import { default as ${exp.name} } from ${JSON.stringify(exp.moduleSpecifier)};`,
+          );
+        } else {
+          reExportImports.push(
+            `import { ${exp.name} } from ${JSON.stringify(exp.moduleSpecifier)};`,
+          );
+        }
+      }
+    }
+
+    const importLines = [
+      ...reExportImports,
+      'import { registerServerReference } from "rwsdk/worker";',
+    ].join("\n");
+
+    // Build registration lines (default first if present)
+    const registerLines: string[] = [];
+    if (hasTransformedDefault || defaultExport) {
+      registerLines.push(
+        buildRegisterLine("__defaultServerFunction__", "default"),
+      );
+    }
+
+    for (const exp of namedExports) {
+      registerLines.push(buildRegisterLine(exp.name, exp.name));
+    }
+
+    // When we transformed default export, we need to append export statement
+    let exportDefaultLine = "";
+    if (hasTransformedDefault) {
+      exportDefaultLine = `export default __defaultServerFunction__;\n`;
+    }
+
+    const finalCode =
+      leadingComment +
+      importLines +
+      "\n\n" +
+      processedCode.trimStart() +
+      "\n" +
+      exportDefaultLine +
+      registerLines.join("\n") +
+      "\n";
+
+    return {
+      code: finalCode,
+      map: createEmptySourceMap(code, normalizedId),
+    };
+  }
+
+  // Fallback (should not reach here)
+  verboseLog("No transformation applied for id=%s", normalizedId);
+  return;
+}
 
 export type { TransformResult };

@@ -77,12 +77,6 @@ export async function sum() {
 }
 `;
 
-  let IGNORE_NON_FUNCTION_EXPORT_CODE = `
-"use server";
-
-export const a = "string";
-`;
-
   let RE_EXPORT_CODE = `
 "use server";
 
@@ -99,7 +93,6 @@ export * from './utils';
     NAMED_EXPORT_CODE,
     ARROW_FUNCTION_EXPORT_CODE,
     ASYNC_FUNCTION_EXPORT_CODE,
-    IGNORE_NON_FUNCTION_EXPORT_CODE,
     DEFAULT_AND_NAMED_EXPORTS_CODE,
     RE_EXPORT_CODE,
   };
