@@ -119,13 +119,13 @@ export const directivesPlugin = ({
                 // references and dropped all imports, so we can just return empty code
                 if (env === "client" || env === "ssr") {
                   log(
-                    "Esbuild onLoad skipping app code for client or ssr env, path=%s",
+                    "Esbuild onLoad skipping client module in app code for client or ssr env, path=%s",
                     args.path,
                   );
                   return undefined;
                 } else {
                   log(
-                    "Esbuild onLoad returning empty code for worker env, path=%s",
+                    "Esbuild onLoad returning empty code for server module in app code for worker env, path=%s to bypass esbuild dependency discovery",
                     args.path,
                   );
                   return {
@@ -141,13 +141,13 @@ export const directivesPlugin = ({
                 // references and dropped all imports, so we can just return empty code
                 if (env === "worker") {
                   log(
-                    "Esbuild onLoad skipping app code for worker env, path=%s",
+                    "Esbuild onLoad skipping server module in app code for worker env, path=%s",
                     args.path,
                   );
                   return undefined;
                 } else if (env === "ssr" || env === "client") {
                   log(
-                    "Esbuild onLoad returning empty code for ssr or client env, path=%s",
+                    "Esbuild onLoad returning empty code for server module in app code for ssr or client env, path=%s to bypass esbuild dependency discovery",
                     args.path,
                   );
                   return {
