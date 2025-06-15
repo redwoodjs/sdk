@@ -91,9 +91,7 @@ export function transformServerFunctions(
     }
   }
 
-  // ----------------------------------------
   // Gather export information
-  // ----------------------------------------
   const exportInfos = findExports(normalizedId, code, log);
 
   const namedExports: ExportInfo[] = [];
@@ -131,9 +129,7 @@ export function transformServerFunctions(
   const buildRegisterLine = (varName: string, exportName: string) =>
     `registerServerReference(${varName}, ${JSON.stringify(normalizedId)}, ${JSON.stringify(exportName)})`;
 
-  // ----------------------------------------
   // CLIENT / SSR  -> full rewrite similar to transformClientComponents
-  // ----------------------------------------
   if (environment === "client" || environment === "ssr") {
     const importPath =
       environment === "client" ? "rwsdk/client" : "rwsdk/__ssr";
@@ -156,9 +152,6 @@ export function transformServerFunctions(
     };
   }
 
-  // ----------------------------------------
-  // WORKER  -> keep implementation, inject registrations
-  // ----------------------------------------
   if (environment === "worker") {
     // Remove the 'use server' directive first
     let processedCode = code.replace(/^(\s*)(["'])use server\2\s*;?\s*/m, "");
