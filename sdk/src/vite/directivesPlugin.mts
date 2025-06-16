@@ -5,6 +5,7 @@ import debug from "debug";
 import { transformClientComponents } from "./transformClientComponents.mjs";
 import { transformServerFunctions } from "./transformServerFunctions.mjs";
 import { normalizeModulePath } from "./normalizeModulePath.mjs";
+import { resolveModuleId } from "./resolveModuleId.mjs";
 import type { ViteDevServer } from "vite";
 import { invalidateModule } from "./invalidateModule.mjs";
 
@@ -50,12 +51,12 @@ export const directivesPlugin = ({
     id: string,
   ) => {
     const files = kind === "client" ? clientFiles : serverFiles;
-    const hadFile = files.has(id);
-    const rawId = id.split("?")[0];
+    const rawId = id.split("?")[0].replace(/^\/rwsdk:[^/]+/, "");
     const relativePath = rawId.slice("/".length);
     const fullPath = path.resolve(projectRootDir, relativePath);
     const isNodeModule = id.includes("node_modules");
-    const resolvedId = isNodeModule ? `/rwsdk:${kind}/${relativePath}` : rawId;
+    const resolvedId = resolveModuleId(id, kind, projectRootDir);
+    const hadFile = files.has(resolvedId);
 
     log(
       "Adding %s module to %s and invalidating cache: id=%s",
@@ -63,7 +64,7 @@ export const directivesPlugin = ({
       files,
       resolvedId,
     );
-    files.add(id);
+    files.add(resolvedId);
 
     if (devServer && isNodeModule) {
       const lookupModule =
@@ -72,9 +73,9 @@ export const directivesPlugin = ({
           : "virtual:use-server-lookup";
 
       log(
-        "Registering missing import for %s module id=%s in environment %s, fullPath=%s",
+        "Registering missing import for %s module resolvedId=%s in environment %s, fullPath=%s",
         kind,
-        rawId,
+        resolvedId,
         environment,
         fullPath,
       );
@@ -90,7 +91,7 @@ export const directivesPlugin = ({
           id,
         );
 
-        invalidateModule(devServer, lookupModule, id);
+        invalidateModule(devServer, environment, `virtual:use-${kind}-lookup`);
       }
     }
   };
@@ -129,13 +130,15 @@ export const directivesPlugin = ({
         this.environment.name,
       );
 
-      const normalizedId = normalizeModulePath(projectRootDir, id);
-
-      const clientResult = await transformClientComponents(code, normalizedId, {
-        environmentName: this.environment.name,
-        clientFiles,
-        addClientModule,
-      });
+      const clientResult = await transformClientComponents(
+        code,
+        resolveModuleId(id, "client", projectRootDir),
+        {
+          environmentName: this.environment.name,
+          clientFiles,
+          addClientModule,
+        },
+      );
 
       if (clientResult) {
         log("Client component transformation successful for id=%s", id);
@@ -147,7 +150,7 @@ export const directivesPlugin = ({
 
       const serverResult = transformServerFunctions(
         code,
-        normalizedId,
+        resolveModuleId(id, "server", projectRootDir),
         this.environment.name as "client" | "worker" | "ssr",
         serverFiles,
         addServerModule,
@@ -182,11 +185,6 @@ export const directivesPlugin = ({
                 args.path,
               );
 
-              const normalizedPath = normalizeModulePath(
-                projectRootDir,
-                args.path,
-              );
-
               // context(justinvdm,2025-06-15): If we're in app code,
               // we will be doing the transform work in the vite plugin hooks,
               // the only reason we're in esbuild land for app code is for
@@ -195,7 +193,11 @@ export const directivesPlugin = ({
               if (!args.path.includes("node_modules")) {
                 log("Esbuild onLoad found app code, path=%s", args.path);
 
-                if (clientFiles.has(normalizedPath)) {
+                if (
+                  clientFiles.has(
+                    resolveModuleId(args.path, "client", projectRootDir),
+                  )
+                ) {
                   // context(justinvdm,2025-06-15): If this is a client file:
                   // * for ssr and client envs we can skip so esbuild looks at the
                   // original source code to discovery dependencies
@@ -217,7 +219,11 @@ export const directivesPlugin = ({
                       loader: "js",
                     };
                   }
-                } else if (serverFiles.has(normalizedPath)) {
+                } else if (
+                  serverFiles.has(
+                    resolveModuleId(args.path, "server", projectRootDir),
+                  )
+                ) {
                   // context(justinvdm,2025-06-15): If this is a server file:
                   // * for worker env, we can skip so esbuild looks at the
                   // original source code to discovery dependencies
@@ -257,7 +263,7 @@ export const directivesPlugin = ({
 
               const clientResult = await transformClientComponents(
                 code,
-                normalizeModulePath(projectRootDir, args.path),
+                resolveModuleId(args.path, "client", projectRootDir),
                 {
                   environmentName: env,
                   clientFiles,
@@ -286,7 +292,7 @@ export const directivesPlugin = ({
 
               const serverResult = transformServerFunctions(
                 code,
-                normalizeModulePath(projectRootDir, args.path),
+                resolveModuleId(args.path, "server", projectRootDir),
                 env as "client" | "worker" | "ssr",
                 serverFiles,
                 addServerModule,

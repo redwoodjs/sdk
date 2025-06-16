@@ -5,7 +5,6 @@ import { readFile } from "fs/promises";
 import { glob } from "glob";
 import debug from "debug";
 import { normalizeModulePath } from "./normalizeModulePath.mjs";
-import { ensureAliasArray } from "./ensureAliasArray.mjs";
 import { pathExists } from "fs-extra";
 import { stat } from "fs/promises";
 import { getSrcPaths } from "../lib/getSrcPaths.js";
@@ -92,11 +91,11 @@ const resolveOptimizedDep = async (
     const nodeModulesDepsDirPath = path.join("node_modules", ".vite", depsDir);
     const depsDirPath = path.join(projectRootDir, nodeModulesDepsDirPath);
     const manifestPath = path.join(depsDirPath, "_metadata.json");
-    verboseLog("Checking for manifest at: %s", manifestPath);
+    log("Checking for manifest at: %s", manifestPath);
 
     const manifestExists = await pathExists(manifestPath);
     if (!manifestExists) {
-      verboseLog("Manifest not found at %s", manifestPath);
+      log("Manifest not found at %s", manifestPath);
       return undefined;
     }
 
