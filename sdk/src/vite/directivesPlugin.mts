@@ -55,7 +55,7 @@ export const directivesPlugin = ({
     const relativePath = rawId.slice("/".length);
     const fullPath = path.resolve(projectRootDir, relativePath);
     const isNodeModule = id.includes("node_modules");
-    const resolvedId = isNodeModule ? `/rwsdk:${kind}${relativePath}` : rawId;
+    const resolvedId = isNodeModule ? `/rwsdk:${kind}/${relativePath}` : rawId;
 
     log(
       "Adding %s module to %s and invalidating cache: id=%s",
