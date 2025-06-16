@@ -12,6 +12,7 @@ import { getSrcPaths } from "../lib/getSrcPaths.js";
 import { hasDirective } from "./hasDirective.mjs";
 
 interface DirectiveLookupConfig {
+  kind: "client" | "server";
   directive: "use client" | "use server";
   virtualModuleName: string;
   exportName: string;
@@ -79,7 +80,7 @@ export const findFilesContainingDirective = async ({
 
 const resolveOptimizedDep = async (
   projectRootDir: string,
-  filePath: string,
+  id: string,
   environment: string,
   debugNamespace: string,
 ): Promise<string | undefined> => {
@@ -102,8 +103,8 @@ const resolveOptimizedDep = async (
     const manifestContent = await readFile(manifestPath, "utf-8");
     const manifest = JSON.parse(manifestContent);
 
-    if (manifest.optimized && manifest.optimized[filePath]) {
-      const optimizedFile = manifest.optimized[filePath].file;
+    if (manifest.optimized && manifest.optimized[id]) {
+      const optimizedFile = manifest.optimized[id].file;
       const optimizedPath = path.join(
         "/",
         nodeModulesDepsDirPath,
@@ -112,24 +113,76 @@ const resolveOptimizedDep = async (
 
       log(
         "Found optimized dependency: filePath=%s, optimizedPath=%s",
-        filePath,
+        id,
         optimizedPath,
       );
       return optimizedPath;
     }
 
-    verboseLog(
-      "File not found in optimized dependencies: filePath=%s",
-      filePath,
-    );
+    verboseLog("File not found in optimized dependencies: id=%s", id);
     return undefined;
   } catch (error) {
-    verboseLog(
-      "Error resolving optimized dependency for %s: %s",
-      filePath,
-      error,
-    );
+    verboseLog("Error resolving optimized dependency for id=%s: %s", id, error);
     return undefined;
+  }
+};
+
+const addOptimizedDepsEntries = async ({
+  projectRootDir,
+  files,
+  kind,
+  environment,
+  debugNamespace,
+}: {
+  projectRootDir: string;
+  files: Set<string>;
+  kind: string;
+  environment: string;
+  debugNamespace: string;
+}) => {
+  const log = debug(debugNamespace);
+  const verboseLog = debug(`verbose:${debugNamespace}`);
+
+  try {
+    const depsDir = environment === "client" ? "deps" : `deps_${environment}`;
+    const depsDirPath = path.join(
+      projectRootDir,
+      "node_modules",
+      ".vite",
+      depsDir,
+    );
+    const manifestPath = path.join(depsDirPath, "_metadata.json");
+    verboseLog("Checking for manifest at: %s", manifestPath);
+
+    const manifestExists = await pathExists(manifestPath);
+    if (!manifestExists) {
+      verboseLog("Manifest not found at %s", manifestPath);
+      return;
+    }
+
+    const manifestContent = await readFile(manifestPath, "utf-8");
+    const manifest = JSON.parse(manifestContent);
+
+    if (manifest.optimized) {
+      const prefix = `/rwsdk:${kind}`;
+      const matchingEntries = Object.keys(manifest.optimized).filter((key) =>
+        key.startsWith(prefix),
+      );
+
+      log(
+        "Found %d optimized entries starting with '%s'",
+        matchingEntries.length,
+        prefix,
+      );
+
+      for (const entry of matchingEntries) {
+        const normalizedPath = normalizeModulePath(projectRootDir, entry);
+        log("Adding optimized entry to files: %s -> %s", entry, normalizedPath);
+        files.add(normalizedPath);
+      }
+    }
+  } catch (error) {
+    verboseLog("Error adding optimized deps entries: %s", error);
   }
 };
 
@@ -166,8 +219,17 @@ export const createDirectiveLookupPlugin = async ({
       isDev = !isPreview && command === "serve";
       log("Development mode: %s", isDev);
     },
-    configEnvironment(env, viteConfig) {
+    async configEnvironment(env, viteConfig) {
       log("Configuring environment: env=%s", env);
+
+      // Add optimized deps entries that match our pattern
+      await addOptimizedDepsEntries({
+        projectRootDir,
+        files,
+        kind: config.kind,
+        environment: env,
+        debugNamespace,
+      });
 
       viteConfig.optimizeDeps ??= {};
       viteConfig.optimizeDeps.esbuildOptions ??= {};

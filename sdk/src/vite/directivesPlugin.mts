@@ -51,24 +51,25 @@ export const directivesPlugin = ({
   ) => {
     const files = kind === "client" ? clientFiles : serverFiles;
     const hadFile = files.has(id);
+    const rawId = id.split("?")[0];
+    const relativePath = rawId.slice("/".length);
+    const fullPath = path.resolve(projectRootDir, relativePath);
+    const isNodeModule = id.includes("node_modules");
+    const resolvedId = isNodeModule ? `/rwsdk:${kind}${relativePath}` : rawId;
 
     log(
       "Adding %s module to %s and invalidating cache: id=%s",
       kind,
       files,
-      id,
+      resolvedId,
     );
     files.add(id);
 
-    if (devServer && id.includes("node_modules")) {
+    if (devServer && isNodeModule) {
       const lookupModule =
         kind === "client"
           ? "virtual:use-client-lookup"
           : "virtual:use-server-lookup";
-
-      const rawId = id.split("?")[0];
-
-      const fullPath = path.resolve(projectRootDir, rawId.slice("/".length));
 
       log(
         "Registering missing import for %s module id=%s in environment %s, fullPath=%s",
@@ -78,7 +79,7 @@ export const directivesPlugin = ({
         fullPath,
       );
       devServer.environments[environment].depsOptimizer?.registerMissingImport(
-        rawId,
+        resolvedId,
         fullPath,
       );
 
