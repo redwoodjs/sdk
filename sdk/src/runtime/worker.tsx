@@ -152,31 +152,27 @@ export const defineApp = <
           let html: ReadableStream<any>;
 
           if (rw.ssr) {
-            // SSR enabled: convert RSC payload to HTML
             html = await transformRscToHtmlStream({
               stream: rscPayloadStream1,
               Document: rw.Document,
               requestInfo: requestInfo,
             });
-
-            if (rw.rscPayload) {
-              html = html.pipeThrough(
-                injectRSCPayload(rscPayloadStream2, {
-                  nonce: rw.nonce,
-                }),
-              );
-            }
           } else {
-            // SSR disabled: return only RSC payload as script in minimal HTML shell
-            const emptyStream = new ReadableStream({
-              start(controller) {
-                controller.enqueue(new TextEncoder().encode(""));
-                controller.close();
-              },
+            const emptyRscStream = renderToRscStream({
+              node: React.createElement(React.Fragment, null, null),
+              actionResult: undefined,
+              onError,
             });
+            html = await transformRscToHtmlStream({
+              stream: emptyRscStream,
+              Document: rw.Document,
+              requestInfo: requestInfo,
+            });
+          }
 
-            html = emptyStream.pipeThrough(
-              injectRSCPayload(rscPayloadStream1, {
+          if (rw.rscPayload) {
+            html = html.pipeThrough(
+              injectRSCPayload(rscPayloadStream2, {
                 nonce: rw.nonce,
               }),
             );
