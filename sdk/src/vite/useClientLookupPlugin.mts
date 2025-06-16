@@ -12,6 +12,7 @@ export const useClientLookupPlugin = async ({
     projectRootDir,
     files: clientFiles,
     config: {
+      kind: "client",
       directive: "use client",
       virtualModuleName: "virtual:use-client-lookup",
       exportName: "useClientLookup",

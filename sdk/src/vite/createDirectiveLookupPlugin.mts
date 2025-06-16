@@ -176,9 +176,8 @@ const addOptimizedDepsEntries = async ({
       );
 
       for (const entry of matchingEntries) {
-        const normalizedPath = normalizeModulePath(projectRootDir, entry);
-        log("Adding optimized entry to files: %s -> %s", entry, normalizedPath);
-        files.add(normalizedPath);
+        log("Adding optimized entry to files: %s", entry);
+        files.add(entry);
       }
     }
   } catch (error) {
