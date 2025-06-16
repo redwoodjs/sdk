@@ -66,17 +66,19 @@ export const directivesPlugin = ({
           ? "virtual:use-client-lookup"
           : "virtual:use-server-lookup";
 
-      const fullPath = path.resolve(projectRootDir, id.slice("/".length));
+      const rawId = id.split("?")[0];
+
+      const fullPath = path.resolve(projectRootDir, rawId.slice("/".length));
 
       log(
         "Registering missing import for %s module id=%s in environment %s, fullPath=%s",
         kind,
-        id,
+        rawId,
         environment,
         fullPath,
       );
       devServer.environments[environment].depsOptimizer?.registerMissingImport(
-        id,
+        rawId,
         fullPath,
       );
 
