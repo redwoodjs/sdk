@@ -15,6 +15,7 @@ export type RwContext = {
   nonce: string;
   Document: React.FC<DocumentProps<any>>;
   rscPayload: boolean;
+  ssr: boolean;
   layouts?: React.FC<LayoutProps<any>>[];
 };
 
@@ -27,7 +28,9 @@ export type RouteMiddleware<T extends RequestInfo = RequestInfo> = (
   | Promise<void>
   | Promise<Response | void>;
 
-type RouteFunction<T extends RequestInfo = RequestInfo> = (requestInfo: T) => Response | Promise<Response>;
+type RouteFunction<T extends RequestInfo = RequestInfo> = (
+  requestInfo: T,
+) => Response | Promise<Response>;
 
 type MaybePromise<T> = T | Promise<T>;
 
@@ -40,7 +43,10 @@ type RouteHandler<T extends RequestInfo = RequestInfo> =
   | RouteComponent<T>
   | [...RouteMiddleware<T>[], RouteFunction<T> | RouteComponent<T>];
 
-export type Route<T extends RequestInfo = RequestInfo> = RouteMiddleware<T> | RouteDefinition<T> | Array<Route<T>>;
+export type Route<T extends RequestInfo = RequestInfo> =
+  | RouteMiddleware<T>
+  | RouteDefinition<T>
+  | Array<Route<T>>;
 
 export type RouteDefinition<T extends RequestInfo = RequestInfo> = {
   path: string;
@@ -123,7 +129,9 @@ export function matchPath<T extends RequestInfo = RequestInfo>(
   return params;
 }
 
-function flattenRoutes<T extends RequestInfo = RequestInfo>(routes: Route<T>[]): (RouteMiddleware<T> | RouteDefinition<T>)[] {
+function flattenRoutes<T extends RequestInfo = RequestInfo>(
+  routes: Route<T>[],
+): (RouteMiddleware<T> | RouteDefinition<T>)[] {
   return routes.reduce((acc: Route<T>[], route) => {
     if (Array.isArray(route)) {
       return [...acc, ...flattenRoutes(route)];
@@ -132,7 +140,9 @@ function flattenRoutes<T extends RequestInfo = RequestInfo>(routes: Route<T>[]):
   }, []) as (RouteMiddleware<T> | RouteDefinition<T>)[];
 }
 
-export function defineRoutes<T extends RequestInfo = RequestInfo>(routes: Route<T>[]): {
+export function defineRoutes<T extends RequestInfo = RequestInfo>(
+  routes: Route<T>[],
+): {
   routes: Route<T>[];
   handle: ({
     request,
@@ -230,7 +240,10 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(routes: Route<
   };
 }
 
-export function route<T extends RequestInfo = RequestInfo>(path: string, handler: RouteHandler<T>): RouteDefinition<T> {
+export function route<T extends RequestInfo = RequestInfo>(
+  path: string,
+  handler: RouteHandler<T>,
+): RouteDefinition<T> {
   if (!path.endsWith("/")) {
     path = path + "/";
   }
@@ -241,11 +254,16 @@ export function route<T extends RequestInfo = RequestInfo>(path: string, handler
   };
 }
 
-export function index<T extends RequestInfo = RequestInfo>(handler: RouteHandler<T>): RouteDefinition<T> {
+export function index<T extends RequestInfo = RequestInfo>(
+  handler: RouteHandler<T>,
+): RouteDefinition<T> {
   return route("/", handler);
 }
 
-export function prefix<T extends RequestInfo = RequestInfo>(prefixPath: string, routes: Route<T>[]): Route<T>[] {
+export function prefix<T extends RequestInfo = RequestInfo>(
+  prefixPath: string,
+  routes: Route<T>[],
+): Route<T>[] {
   return routes.map((r) => {
     if (typeof r === "function") {
       // Pass through middleware as-is
@@ -274,7 +292,10 @@ function wrapWithLayouts<T extends RequestInfo = RequestInfo>(
   }
 
   // Check if the final route component is a client component
-  const isRouteClientComponent = Object.prototype.hasOwnProperty.call(Component, "$$isClientReference");
+  const isRouteClientComponent = Object.prototype.hasOwnProperty.call(
+    Component,
+    "$$isClientReference",
+  );
 
   // Create nested layout structure - layouts[0] should be outermost, so use reduceRight
   return layouts.reduceRight((WrappedComponent, Layout) => {
@@ -285,7 +306,10 @@ function wrapWithLayouts<T extends RequestInfo = RequestInfo>(
       );
 
       return React.createElement(Layout, {
-        children: React.createElement(WrappedComponent, isRouteClientComponent ? {} : props),
+        children: React.createElement(
+          WrappedComponent,
+          isRouteClientComponent ? {} : props,
+        ),
         // Only pass requestInfo to server components to avoid serialization issues
         ...(isClientComponent ? {} : { requestInfo }),
       });
@@ -322,14 +346,17 @@ export function render<T extends RequestInfo = RequestInfo>(
   /**
    * @param options - Configuration options for rendering.
    * @param options.rscPayload - Toggle the RSC payload that's appended to the Document. Disabling this will mean that interactivity no longer works.
+   * @param options.ssr - Disable sever side rendering for all these routes. This only allow client side rendering`, which requires `rscPayload` to be enabled.
    */
   options: {
     rscPayload: boolean;
-  } = { rscPayload: true },
+    ssr: boolean;
+  } = { rscPayload: true, ssr: true },
 ): Route<T>[] {
   const documentMiddleware: RouteMiddleware<T> = ({ rw }) => {
     rw.Document = Document;
     rw.rscPayload = options.rscPayload;
+    rw.ssr = options.ssr;
   };
 
   return [documentMiddleware, ...routes];
