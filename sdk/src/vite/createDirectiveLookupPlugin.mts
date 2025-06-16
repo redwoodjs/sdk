@@ -168,6 +168,7 @@ const addOptimizedDepsEntries = async ({
         const srcPath = manifest.optimized[entryId].src;
         const resolvedSrcPath = path.resolve(
           projectRootDir,
+          "node_modules",
           ".vite",
           "deps",
           srcPath,
@@ -183,6 +184,12 @@ const addOptimizedDepsEntries = async ({
         if (hasDirective(contents, directive)) {
           log("Adding optimized entry to files: %s", entryId);
           files.add(entryId);
+        } else {
+          log(
+            "Skipping optimized entry %s because it does not contain the '%s' directive",
+            entryId,
+            directive,
+          );
         }
       }
     }
