@@ -44,31 +44,60 @@ export const directivesPlugin = ({
   let devServer: ViteDevServer;
   let isAfterFirstResponse = false;
 
-  const addClientModule = (environment: string, id: string) => {
-    if (!clientFiles.has(id)) {
-      log(
-        "Adding client module to clientFiles and invalidating cache: id=%s",
-        id,
-      );
-      clientFiles.add(id);
+  const addModule = (
+    kind: "client" | "server",
+    environment: string,
+    id: string,
+  ) => {
+    const files = kind === "client" ? clientFiles : serverFiles;
+    const hadFile = files.has(id);
 
-      if (devServer && isAfterFirstResponse) {
-        invalidateModule(devServer, environment, id);
+    log(
+      "Adding %s module to %s and invalidating cache: id=%s",
+      kind,
+      files,
+      id,
+    );
+    files.add(id);
+
+    if (devServer && id.includes("node_modules")) {
+      const lookupModule =
+        kind === "client"
+          ? "virtual:use-client-lookup"
+          : "virtual:use-server-lookup";
+
+      const fullPath = path.resolve(projectRootDir, id.slice("/".length));
+
+      log(
+        "Registering missing import for %s module id=%s in environment %s, fullPath=%s",
+        kind,
+        id,
+        environment,
+        fullPath,
+      );
+      devServer.environments[environment].depsOptimizer?.registerMissingImport(
+        id,
+        fullPath,
+      );
+
+      if (isAfterFirstResponse && !hadFile) {
+        log(
+          "Invalidating cache for lookup module %s after adding module id=%s",
+          lookupModule,
+          id,
+        );
+
+        invalidateModule(devServer, lookupModule, id);
       }
     }
   };
 
+  const addClientModule = (environment: string, id: string) => {
+    addModule("client", environment, id);
+  };
+
   const addServerModule = (environment: string, id: string) => {
-    if (!serverFiles.has(id)) {
-      log(
-        "Adding server module to serverFiles and invalidating cache: id=%s",
-        id,
-      );
-      serverFiles.add(id);
-      if (devServer && isAfterFirstResponse) {
-        invalidateModule(devServer, environment, id);
-      }
-    }
+    addModule("server", environment, id);
   };
 
   return {

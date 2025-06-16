@@ -91,11 +91,6 @@ const resolveOptimizedDep = async (
     const nodeModulesDepsDirPath = path.join("node_modules", ".vite", depsDir);
     const depsDirPath = path.join(projectRootDir, nodeModulesDepsDirPath);
     const manifestPath = path.join(depsDirPath, "_metadata.json");
-    const relativePath = path.relative(
-      nodeModulesDepsDirPath,
-      filePath.slice(1),
-    );
-
     verboseLog("Checking for manifest at: %s", manifestPath);
 
     const manifestExists = await pathExists(manifestPath);
@@ -107,8 +102,8 @@ const resolveOptimizedDep = async (
     const manifestContent = await readFile(manifestPath, "utf-8");
     const manifest = JSON.parse(manifestContent);
 
-    if (manifest.optimized && manifest.optimized[relativePath]) {
-      const optimizedFile = manifest.optimized[relativePath].file;
+    if (manifest.optimized && manifest.optimized[filePath]) {
+      const optimizedFile = manifest.optimized[filePath].file;
       const optimizedPath = path.join(
         "/",
         nodeModulesDepsDirPath,
@@ -116,18 +111,16 @@ const resolveOptimizedDep = async (
       );
 
       log(
-        "Found optimized dependency: filePath=%s, relativePath=%s, optimizedPath=%s",
+        "Found optimized dependency: filePath=%s, optimizedPath=%s",
         filePath,
-        relativePath,
         optimizedPath,
       );
       return optimizedPath;
     }
 
     verboseLog(
-      "File not found in optimized dependencies: filePath=%s, relativePath=%s",
+      "File not found in optimized dependencies: filePath=%s",
       filePath,
-      relativePath,
     );
     return undefined;
   } catch (error) {
