@@ -32,11 +32,7 @@ export async function transformClientComponents(
 ): Promise<TransformResult | undefined> {
   const log = ctx.isEsbuild ? logEsbuild : logVite;
   const verboseLog = ctx.isEsbuild ? verboseLogEsbuild : verboseLogVite;
-  log(
-    "Called transformClientComponents for id: id=%s, ctx: %O",
-    normalizedId,
-    ctx,
-  );
+  log("Called transformClientComponents for id: id=%s", normalizedId);
 
   if (!hasDirective(code, "use client")) {
     log("Skipping: no 'use client' directive in id=%s", normalizedId);

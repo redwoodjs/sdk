@@ -67,7 +67,6 @@ export const configPlugin = ({
           optimizeDeps: {
             noDiscovery: false,
             include: ["rwsdk/client"],
-            entries: ["virtual:use-client-lookup", "virtual:use-server-lookup"],
             esbuildOptions: {
               jsx: "automatic",
               jsxImportSource: "react",
@@ -101,11 +100,7 @@ export const configPlugin = ({
           },
           optimizeDeps: {
             noDiscovery: false,
-            entries: [
-              workerEntryPathname,
-              "virtual:use-client-lookup",
-              "virtual:use-server-lookup",
-            ],
+            entries: [workerEntryPathname],
             exclude: externalModules,
             include: ["rwsdk/__ssr", "rwsdk/__ssr_bridge"],
             esbuildOptions: {
