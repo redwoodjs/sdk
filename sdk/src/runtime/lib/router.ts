@@ -349,14 +349,20 @@ export function render<T extends RequestInfo = RequestInfo>(
    * @param options.ssr - Disable sever side rendering for all these routes. This only allow client side rendering`, which requires `rscPayload` to be enabled.
    */
   options: {
-    rscPayload: boolean;
-    ssr: boolean;
-  } = { rscPayload: true, ssr: true },
+    rscPayload?: boolean;
+    ssr?: boolean;
+  } = {},
 ): Route<T>[] {
+  options = {
+    rscPayload: true,
+    ssr: true,
+    ...options,
+  };
+
   const documentMiddleware: RouteMiddleware<T> = ({ rw }) => {
     rw.Document = Document;
-    rw.rscPayload = options.rscPayload;
-    rw.ssr = options.ssr;
+    rw.rscPayload = options.rscPayload ?? true;
+    rw.ssr = options.ssr ?? true;
   };
 
   return [documentMiddleware, ...routes];
