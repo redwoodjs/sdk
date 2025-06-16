@@ -23,7 +23,11 @@ declare global {
     DB: D1Database;
   };
 }
-export const defineApp = <T extends RequestInfo = RequestInfo<any, DefaultAppContext>>(routes: Route<T>[]) => {
+export const defineApp = <
+  T extends RequestInfo = RequestInfo<any, DefaultAppContext>,
+>(
+  routes: Route<T>[],
+) => {
   return {
     fetch: async (request: Request, env: Env, cf: ExecutionContext) => {
       globalThis.__webpack_require__ = ssrWebpackRequire;
@@ -60,6 +64,7 @@ export const defineApp = <T extends RequestInfo = RequestInfo<any, DefaultAppCon
           Document: DefaultDocument,
           nonce: generateNonce(),
           rscPayload: true,
+          ssr: true,
         };
 
         const outerRequestInfo: RequestInfo<any, T["ctx"]> = {
@@ -144,15 +149,29 @@ export const defineApp = <T extends RequestInfo = RequestInfo<any, DefaultAppCon
 
           const [rscPayloadStream1, rscPayloadStream2] = rscPayloadStream.tee();
 
-          const htmlStream = await transformRscToHtmlStream({
-            stream: rscPayloadStream1,
-            Document: rw.Document,
-            requestInfo: requestInfo,
-          });
+          let html: ReadableStream<any>;
 
-          let html: ReadableStream<any> = htmlStream;
+          if (rw.ssr) {
+            html = await transformRscToHtmlStream({
+              stream: rscPayloadStream1,
+              Document: rw.Document,
+              requestInfo: requestInfo,
+            });
+          } else {
+            const emptyRscStream = renderToRscStream({
+              node: React.createElement(React.Fragment, null, null),
+              actionResult: undefined,
+              onError,
+            });
+            html = await transformRscToHtmlStream({
+              stream: emptyRscStream,
+              Document: rw.Document,
+              requestInfo: requestInfo,
+            });
+          }
+
           if (rw.rscPayload) {
-            html = htmlStream.pipeThrough(
+            html = html.pipeThrough(
               injectRSCPayload(rscPayloadStream2, {
                 nonce: rw.nonce,
               }),
