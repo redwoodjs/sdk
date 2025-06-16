@@ -66,6 +66,7 @@ export const configPlugin = ({
           },
           optimizeDeps: {
             noDiscovery: false,
+            include: ["rwsdk/client"],
             esbuildOptions: {
               jsx: "automatic",
               jsxImportSource: "react",
@@ -146,7 +147,7 @@ export const configPlugin = ({
           },
           optimizeDeps: {
             noDiscovery: false,
-            include: [],
+            include: ["rwsdk/worker"],
             exclude: [],
             entries: [workerEntryPathname],
             esbuildOptions: {

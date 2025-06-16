@@ -1,6 +1,9 @@
-import { Project, SyntaxKind, Node, SourceFile } from "ts-morph";
+import MagicString from "magic-string";
 import debug from "debug";
 import { hasDirective } from "./hasDirective.mjs";
+import { findExports, type ExportInfo } from "./findSpecifiers.mjs";
+import { parse as sgParse, Lang as SgLang, Lang } from "@ast-grep/napi";
+import path from "path";
 
 const log = debug("rwsdk:vite:transform-server-functions");
 const verboseLog = debug("verbose:rwsdk:vite:transform-server-functions");
@@ -10,7 +13,7 @@ interface TransformResult {
   map?: any;
 }
 
-type ExportInfo = {
+type ExportInfoCompat = {
   localFunctions: Set<string>;
   reExports: Array<{
     localName: string;
@@ -20,103 +23,50 @@ type ExportInfo = {
 };
 
 export const findExportedFunctions = (
-  sourceFile: SourceFile,
+  code: string,
   normalizedId?: string,
 ): Set<string> => {
-  return findExportInfo(sourceFile, normalizedId).localFunctions;
+  return findExportInfo(code, normalizedId).localFunctions;
 };
 
 export const findExportInfo = (
-  sourceFile: SourceFile,
+  code: string,
   normalizedId?: string,
-): ExportInfo => {
+): ExportInfoCompat => {
   verboseLog("Finding exported functions in source file");
 
   const localFunctions = new Set<string>();
-  const reExports: ExportInfo["reExports"] = [];
+  const reExports: ExportInfoCompat["reExports"] = [];
 
-  const exportAssignments = sourceFile.getDescendantsOfKind(
-    SyntaxKind.ExportAssignment,
-  );
-  for (const e of exportAssignments) {
-    const name = e.getExpression().getText();
-    if (name === "default") {
-      continue;
-    }
-    localFunctions.add(name);
-    verboseLog("Found export assignment: %s", name);
-  }
+  const exportInfos = findExports(normalizedId || "file.ts", code, verboseLog);
 
-  const functionDeclarations = sourceFile.getDescendantsOfKind(
-    SyntaxKind.FunctionDeclaration,
-  );
-  for (const func of functionDeclarations) {
-    if (func.hasModifier(SyntaxKind.ExportKeyword)) {
-      const name = func.getName();
-      if (name) {
-        localFunctions.add(name);
-        verboseLog("Found exported function declaration: %s", name);
+  for (const exportInfo of exportInfos) {
+    if (exportInfo.isReExport && exportInfo.moduleSpecifier) {
+      // For re-exports, we need to determine the original name by parsing the code
+      // For "export { default as multiply }", we want localName="multiply", originalName="default"
+      // For "export { sum }", we want localName="sum", originalName="sum"
+
+      let originalName = exportInfo.name;
+
+      // Check if this is a default re-export with alias
+      if (exportInfo.isDefault && exportInfo.alias) {
+        originalName = "default";
       }
-    }
-  }
 
-  const variableStatements = sourceFile.getDescendantsOfKind(
-    SyntaxKind.VariableStatement,
-  );
-  for (const statement of variableStatements) {
-    if (statement.hasModifier(SyntaxKind.ExportKeyword)) {
-      const declarations = statement.getDeclarationList().getDeclarations();
-      for (const declaration of declarations) {
-        const initializer = declaration.getInitializer();
-        if (initializer && Node.isArrowFunction(initializer)) {
-          const name = declaration.getName();
-          if (name) {
-            localFunctions.add(name);
-            verboseLog("Found exported arrow function: %s", name);
-          }
-        }
-      }
-    }
-  }
-
-  // Handle re-exports
-  const exportDeclarations = sourceFile.getDescendantsOfKind(
-    SyntaxKind.ExportDeclaration,
-  );
-  for (const exportDecl of exportDeclarations) {
-    const moduleSpecifier = exportDecl.getModuleSpecifier();
-    if (!moduleSpecifier) continue; // Skip re-exports without module specifier
-
-    const namedExports = exportDecl.getNamedExports();
-    for (const namedExport of namedExports) {
-      // Use the alias if present, otherwise use the original name
-      const localName =
-        namedExport.getAliasNode()?.getText() || namedExport.getName();
-      const originalName = namedExport.getName();
-      if (localName && originalName) {
-        reExports.push({
-          localName,
-          originalName,
-          moduleSpecifier: moduleSpecifier.getLiteralText(),
-        });
-        verboseLog(
-          "Found re-exported function: %s from %s",
-          localName,
-          moduleSpecifier.getLiteralText(),
-        );
-      }
-    }
-
-    // Check for export * from - log warning and skip
-    if (!namedExports.length && !exportDecl.getNamespaceExport()) {
-      // This is an export * from statement
-      console.warn(
-        "Warning: 'export * from' re-exports are not supported in server functions. " +
-          "Please use named exports instead (e.g., 'export { functionName } from \"./module\"'). " +
-          "File: %s, Ignoring: %s",
-        normalizedId,
-        exportDecl.getText().trim(),
+      reExports.push({
+        localName: exportInfo.name,
+        originalName: originalName,
+        moduleSpecifier: exportInfo.moduleSpecifier,
+      });
+      verboseLog(
+        "Found re-exported function: %s (original: %s) from %s",
+        exportInfo.name,
+        originalName,
+        exportInfo.moduleSpecifier,
       );
+    } else {
+      localFunctions.add(exportInfo.name);
+      verboseLog("Found exported function: %s", exportInfo.name);
     }
   }
 
@@ -134,11 +84,61 @@ export const findExportInfo = (
   return { localFunctions, reExports };
 };
 
+// Helper function to find default function names using ast-grep
+function findDefaultFunctionName(
+  code: string,
+  normalizedId: string,
+): string | null {
+  const ext = path.extname(normalizedId).toLowerCase();
+  const lang = ext === ".tsx" || ext === ".jsx" ? Lang.Tsx : SgLang.TypeScript;
+
+  try {
+    const root = sgParse(lang, code);
+    const matches = root
+      .root()
+      .findAll("export default function $NAME($$$) { $$$ }");
+    if (matches.length > 0) {
+      const nameCapture = matches[0].getMatch("NAME");
+      return nameCapture?.text() || null;
+    }
+  } catch (err) {
+    verboseLog("Error finding default function name: %O", err);
+  }
+  return null;
+}
+
+// Helper function to check if there's a default export (not re-export)
+function hasDefaultExport(code: string, normalizedId: string): boolean {
+  const ext = path.extname(normalizedId).toLowerCase();
+  const lang = ext === ".tsx" || ext === ".jsx" ? Lang.Tsx : SgLang.TypeScript;
+
+  try {
+    const root = sgParse(lang, code);
+    // Check for any export default statements
+    const patterns = [
+      "export default function $$$",
+      "export default function($$$) { $$$ }",
+      "export default $$$",
+    ];
+
+    for (const pattern of patterns) {
+      const matches = root.root().findAll(pattern);
+      if (matches.length > 0) {
+        return true;
+      }
+    }
+  } catch (err) {
+    verboseLog("Error checking for default export: %O", err);
+  }
+  return false;
+}
+
 export const transformServerFunctions = (
   code: string,
   normalizedId: string,
   environment: "client" | "worker" | "ssr",
   serverFiles?: Set<string>,
+  addServerModule?: (environment: string, id: string) => void,
 ): TransformResult | undefined => {
   verboseLog(
     "Transform server functions called for normalizedId=%s, environment=%s",
@@ -156,133 +156,100 @@ export const transformServerFunctions = (
     return;
   }
 
-  const project = new Project({
-    useInMemoryFileSystem: true,
-    compilerOptions: {
-      sourceMap: true,
-      target: 2,
-      module: 1,
-      jsx: 2,
-    },
-  });
-  const sourceFile = project.createSourceFile(normalizedId, code);
-
-  const statements = sourceFile.getStatements();
-  let hasUseServerDirective = false;
-
-  for (const stmt of statements) {
-    if (!Node.isExpressionStatement(stmt)) break;
-
-    const expr = stmt.getExpression();
-    if (!expr || !Node.isStringLiteral(expr)) break;
-
-    const value = expr.getLiteralText();
-    if (value === "use server") {
-      hasUseServerDirective = true;
-      log(
-        "Found 'use server' directive at top level for normalizedId=%s",
-        normalizedId,
-      );
-      stmt.remove();
-      verboseLog(
-        "Removed 'use server' directive from normalizedId=%s",
-        normalizedId,
-      );
-      break;
-    }
-  }
-
-  if (!hasUseServerDirective) {
-    verboseLog(
-      "No 'use server' directive found at top-level, skipping transformation for normalizedId=%s",
-      normalizedId,
-    );
-    return;
-  }
-
   log(
     "Processing 'use server' module: normalizedId=%s, environment=%s",
     normalizedId,
     environment,
   );
 
-  serverFiles?.add(normalizedId);
+  addServerModule?.(environment, normalizedId);
 
   if (environment === "ssr") {
     log("Transforming for SSR environment: normalizedId=%s", normalizedId);
-    const ssrSourceFile = project.createSourceFile("ssr.tsx", "");
 
-    ssrSourceFile.addImportDeclaration({
-      moduleSpecifier: "rwsdk/__ssr",
-      namedImports: ["createServerReference"],
-    });
-
-    const exportInfo = findExportInfo(sourceFile, normalizedId);
+    const exportInfo = findExportInfo(code, normalizedId);
     const allExports = new Set([
       ...exportInfo.localFunctions,
       ...exportInfo.reExports.map((r) => r.localName),
     ]);
-    for (const name of allExports) {
-      ssrSourceFile.addVariableStatement({
-        isExported: true,
-        declarations: [
-          {
-            name: name,
-            initializer: `createServerReference(${JSON.stringify(normalizedId)}, ${JSON.stringify(name)})`,
-          },
-        ],
-      });
-      log(
-        "Added SSR server reference for function: %s in normalizedId=%s",
-        name,
-        normalizedId,
-      );
+
+    // Check for default function exports that should also be named exports
+    const defaultFunctionName = findDefaultFunctionName(code, normalizedId);
+    if (defaultFunctionName) {
+      allExports.add(defaultFunctionName);
     }
 
-    const hadDefaultExport = !!sourceFile.getDefaultExportSymbol();
-    if (hadDefaultExport) {
-      ssrSourceFile.addExportAssignment({
-        expression: `createServerReference(${JSON.stringify(normalizedId)}, "default")`,
-        isExportEquals: false,
-      });
+    // Generate completely new code for SSR
+    const s = new MagicString("");
+    s.append('import { createServerReference } from "rwsdk/__ssr";\n\n');
+
+    for (const name of allExports) {
+      if (name !== "default") {
+        s.append(
+          `export let ${name} = createServerReference(${JSON.stringify(normalizedId)}, ${JSON.stringify(name)});\n`,
+        );
+        log(
+          "Added SSR server reference for function: %s in normalizedId=%s",
+          name,
+          normalizedId,
+        );
+      }
+    }
+
+    // Check for default export in the actual module (not re-exports)
+    if (hasDefaultExport(code, normalizedId)) {
+      s.append(
+        `\nexport default createServerReference(${JSON.stringify(normalizedId)}, "default");\n`,
+      );
       log(
         "Added SSR server reference for default export in normalizedId=%s",
         normalizedId,
       );
     }
 
-    const emitOutput = ssrSourceFile.getEmitOutput();
-    let sourceMap: any;
-
-    for (const outputFile of emitOutput.getOutputFiles()) {
-      if (outputFile.getFilePath().endsWith(".js.map")) {
-        sourceMap = JSON.parse(outputFile.getText());
-      }
-    }
-
     log("SSR transformation complete for normalizedId=%s", normalizedId);
     return {
-      code: ssrSourceFile.getFullText(),
-      map: sourceMap,
+      code: s.toString(),
+      map: s.generateMap({
+        source: normalizedId,
+        includeContent: true,
+        hires: true,
+      }),
     };
   } else if (environment === "worker") {
     log("Transforming for worker environment: normalizedId=%s", normalizedId);
 
-    const exportInfo = findExportInfo(sourceFile, normalizedId);
+    const exportInfo = findExportInfo(code, normalizedId);
+    const s = new MagicString(code);
+
+    // Remove "use server" directive first
+    const directiveRegex = /^(\s*)(['"]use server['"])\s*;?\s*$/gm;
+    let match;
+    while ((match = directiveRegex.exec(code)) !== null) {
+      const start = match.index;
+      const end = match.index + match[0].length;
+      s.remove(start, end);
+      verboseLog(
+        "Removed 'use server' directive from normalizedId=%s",
+        normalizedId,
+      );
+      break; // Only remove the first one
+    }
+
+    // Add imports at the very beginning
+    let importsToAdd = [];
 
     // Add imports for re-exported functions so they exist in scope
     for (const reExport of exportInfo.reExports) {
-      sourceFile.addImportDeclaration({
-        moduleSpecifier: reExport.moduleSpecifier,
-        namedImports:
-          reExport.originalName === "default"
-            ? [{ name: "default", alias: reExport.localName }]
-            : [
-                reExport.originalName === reExport.localName
-                  ? reExport.originalName
-                  : { name: reExport.originalName, alias: reExport.localName },
-              ],
-      });
+      // Fix the import statement - the originalName is what we import, localName is the alias
+      const importStatement =
+        reExport.originalName === "default"
+          ? `import { default as ${reExport.localName} } from "${reExport.moduleSpecifier}";`
+          : reExport.originalName === reExport.localName
+            ? `import { ${reExport.originalName} } from "${reExport.moduleSpecifier}";`
+            : `import { ${reExport.originalName} as ${reExport.localName} } from "${reExport.moduleSpecifier}";`;
+
+      importsToAdd.push(importStatement);
       log(
         "Added import for re-exported function: %s from %s in normalizedId=%s",
         reExport.localName,
@@ -291,25 +258,98 @@ export const transformServerFunctions = (
       );
     }
 
-    sourceFile.addImportDeclaration({
-      moduleSpecifier: "rwsdk/worker",
-      namedImports: ["registerServerReference"],
-    });
+    // Add registerServerReference import
+    importsToAdd.push(
+      'import { registerServerReference } from "rwsdk/worker";',
+    );
 
-    const defaultExportSymbol = sourceFile.getDefaultExportSymbol();
-    const defaultExportDecl = defaultExportSymbol?.getDeclarations()[0];
-    let hasDefaultExport = false;
-    if (defaultExportDecl && Node.isFunctionDeclaration(defaultExportDecl)) {
-      hasDefaultExport = true;
-      defaultExportDecl.setIsDefaultExport(false);
-      defaultExportDecl.rename("__defaultServerFunction__");
-      sourceFile.addExportAssignment({
-        expression: "__defaultServerFunction__",
-        isExportEquals: false,
-      });
-      sourceFile.addStatements(
+    // Add imports - position depends on whether file starts with block comment
+    if (importsToAdd.length > 0) {
+      const trimmedCode = code.trim();
+      if (trimmedCode.startsWith("/*")) {
+        // Find the end of the block comment
+        const blockCommentEnd = code.indexOf("*/");
+        if (blockCommentEnd !== -1) {
+          // Insert after the block comment
+          const insertPos = blockCommentEnd + 2;
+          // Find the next newline after the block comment
+          const nextNewline = code.indexOf("\n", insertPos);
+          const actualInsertPos =
+            nextNewline !== -1 ? nextNewline + 1 : insertPos;
+          s.appendLeft(actualInsertPos, importsToAdd.join("\n") + "\n");
+        } else {
+          s.prepend(importsToAdd.join("\n") + "\n");
+        }
+      } else {
+        // No block comment at start, add at beginning
+        s.prepend(importsToAdd.join("\n") + "\n");
+      }
+    }
+
+    // Handle default export renaming if present
+    const hasDefExport = hasDefaultExport(code, normalizedId);
+
+    if (hasDefExport) {
+      // Find and rename default function export using ast-grep
+      const ext = path.extname(normalizedId).toLowerCase();
+      const lang =
+        ext === ".tsx" || ext === ".jsx" ? Lang.Tsx : SgLang.TypeScript;
+
+      try {
+        const root = sgParse(lang, code);
+
+        // Handle named default function: export default function myFunc() {}
+        const namedMatches = root
+          .root()
+          .findAll("export default function $NAME($$$) { $$$ }");
+        if (namedMatches.length > 0) {
+          const match = namedMatches[0];
+          const range = match.range();
+          const funcName = match.getMatch("NAME")?.text();
+
+          if (funcName) {
+            // Replace "export default function myFunc" with "function __defaultServerFunction__"
+            const newText = match
+              .text()
+              .replace(
+                `export default function ${funcName}`,
+                "function __defaultServerFunction__",
+              );
+            s.overwrite(range.start.index, range.end.index, newText);
+            s.append("\nexport default __defaultServerFunction__;\n");
+          }
+        } else {
+          // Handle anonymous default function: export default function() {}
+          const anonMatches = root
+            .root()
+            .findAll("export default function($$$) { $$$ }");
+          if (anonMatches.length > 0) {
+            const match = anonMatches[0];
+            const range = match.range();
+            const newText = match
+              .text()
+              .replace(
+                "export default function",
+                "function __defaultServerFunction__",
+              );
+            s.overwrite(range.start.index, range.end.index, newText);
+            s.append("\nexport default __defaultServerFunction__;\n");
+          }
+        }
+      } catch (err) {
+        verboseLog("Error processing default function: %O", err);
+      }
+    }
+
+    // Add registration calls at the end
+    let registrationCalls = [];
+    const registeredFunctions = new Set<string>(); // Track to avoid duplicates
+
+    if (hasDefExport) {
+      registrationCalls.push(
         `registerServerReference(__defaultServerFunction__, ${JSON.stringify(normalizedId)}, "default")`,
       );
+      registeredFunctions.add("default");
       log(
         "Registered worker server reference for default export in normalizedId=%s",
         normalizedId,
@@ -317,11 +357,16 @@ export const transformServerFunctions = (
     }
 
     // Register local functions
+    const defaultFunctionName = findDefaultFunctionName(code, normalizedId);
     for (const name of exportInfo.localFunctions) {
-      if (name === "__defaultServerFunction__") continue;
-      sourceFile.addStatements(
+      if (name === "__defaultServerFunction__" || name === "default") continue;
+      // Skip if already registered
+      if (registeredFunctions.has(name)) continue;
+
+      registrationCalls.push(
         `registerServerReference(${name}, ${JSON.stringify(normalizedId)}, ${JSON.stringify(name)})`,
       );
+      registeredFunctions.add(name);
       log(
         "Registered worker server reference for local function: %s in normalizedId=%s",
         name,
@@ -331,9 +376,13 @@ export const transformServerFunctions = (
 
     // Register re-exported functions
     for (const reExport of exportInfo.reExports) {
-      sourceFile.addStatements(
+      // Skip if already registered
+      if (registeredFunctions.has(reExport.localName)) continue;
+
+      registrationCalls.push(
         `registerServerReference(${reExport.localName}, ${JSON.stringify(normalizedId)}, ${JSON.stringify(reExport.localName)})`,
       );
+      registeredFunctions.add(reExport.localName);
       log(
         "Registered worker server reference for re-exported function: %s in normalizedId=%s",
         reExport.localName,
@@ -341,81 +390,70 @@ export const transformServerFunctions = (
       );
     }
 
-    const emitOutput = sourceFile.getEmitOutput();
-    let sourceMap: any;
-
-    for (const outputFile of emitOutput.getOutputFiles()) {
-      if (outputFile.getFilePath().endsWith(".js.map")) {
-        sourceMap = JSON.parse(outputFile.getText());
-      }
+    if (registrationCalls.length > 0) {
+      s.append(registrationCalls.join("\n") + "\n");
     }
 
     log("Worker transformation complete for normalizedId=%s", normalizedId);
     return {
-      code: sourceFile.getFullText(),
-      map: sourceMap,
+      code: s.toString(),
+      map: s.generateMap({
+        source: normalizedId,
+        includeContent: true,
+        hires: true,
+      }),
     };
   } else if (environment === "client") {
     log("Transforming for client environment: normalizedId=%s", normalizedId);
-    const clientSourceFile = project.createSourceFile("client.tsx", "");
 
-    clientSourceFile.addImportDeclaration({
-      moduleSpecifier: "rwsdk/client",
-      namedImports: ["createServerReference"],
-    });
-
-    const exportInfo = findExportInfo(sourceFile, normalizedId);
+    const exportInfo = findExportInfo(code, normalizedId);
     const allExports = new Set([
       ...exportInfo.localFunctions,
       ...exportInfo.reExports.map((r) => r.localName),
     ]);
-    for (const name of allExports) {
-      clientSourceFile.addVariableStatement({
-        isExported: true,
-        declarations: [
-          {
-            name: name,
-            initializer: `createServerReference(${JSON.stringify(normalizedId)}, ${JSON.stringify(name)})`,
-          },
-        ],
-      });
-      log(
-        "Added client server reference for function: %s in normalizedId=%s",
-        name,
-        normalizedId,
-      );
-      verboseLog(
-        "Added client server reference for function: %s in normalizedId=%s",
-        name,
-        normalizedId,
-      );
+
+    // Check for default function exports that should also be named exports
+    const defaultFunctionName = findDefaultFunctionName(code, normalizedId);
+    if (defaultFunctionName) {
+      allExports.add(defaultFunctionName);
     }
 
-    const hadDefaultExport = !!sourceFile.getDefaultExportSymbol();
-    if (hadDefaultExport) {
-      clientSourceFile.addExportAssignment({
-        expression: `createServerReference(${JSON.stringify(normalizedId)}, "default")`,
-        isExportEquals: false,
-      });
+    // Generate completely new code for client
+    const s = new MagicString("");
+    s.append('import { createServerReference } from "rwsdk/client";\n\n');
+
+    for (const name of allExports) {
+      if (name !== "default") {
+        s.append(
+          `export let ${name} = createServerReference(${JSON.stringify(normalizedId)}, ${JSON.stringify(name)});\n`,
+        );
+        log(
+          "Added client server reference for function: %s in normalizedId=%s",
+          name,
+          normalizedId,
+        );
+      }
+    }
+
+    // Check for default export in the actual module (not re-exports)
+    if (hasDefaultExport(code, normalizedId)) {
+      s.append(
+        `\nexport default createServerReference(${JSON.stringify(normalizedId)}, "default");\n`,
+      );
       log(
         "Added client server reference for default export in normalizedId=%s",
         normalizedId,
       );
     }
 
-    const emitOutput = clientSourceFile.getEmitOutput();
-    let sourceMap: any;
-
-    for (const outputFile of emitOutput.getOutputFiles()) {
-      if (outputFile.getFilePath().endsWith(".js.map")) {
-        sourceMap = JSON.parse(outputFile.getText());
-      }
-    }
-
     log("Client transformation complete for normalizedId=%s", normalizedId);
     return {
-      code: clientSourceFile.getFullText(),
-      map: sourceMap,
+      code: s.toString(),
+      map: s.generateMap({
+        source: normalizedId,
+        includeContent: true,
+        hires: true,
+      }),
     };
   }
 
