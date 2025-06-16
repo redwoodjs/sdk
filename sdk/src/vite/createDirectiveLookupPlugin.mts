@@ -9,6 +9,7 @@ import { pathExists } from "fs-extra";
 import { stat } from "fs/promises";
 import { getSrcPaths } from "../lib/getSrcPaths.js";
 import { hasDirective } from "./hasDirective.mjs";
+import { ViteDevServer } from "vite";
 
 interface DirectiveLookupConfig {
   kind: "client" | "server";
@@ -128,16 +129,16 @@ const resolveOptimizedDep = async (
 
 const addOptimizedDepsEntries = async ({
   projectRootDir,
-  files,
-  kind,
+  directive,
   environment,
   debugNamespace,
+  files,
 }: {
   projectRootDir: string;
-  files: Set<string>;
-  kind: string;
+  directive: string;
   environment: string;
   debugNamespace: string;
+  files: Set<string>;
 }) => {
   const log = debug(debugNamespace);
   const verboseLog = debug(`verbose:${debugNamespace}`);
@@ -162,21 +163,27 @@ const addOptimizedDepsEntries = async ({
     const manifestContent = await readFile(manifestPath, "utf-8");
     const manifest = JSON.parse(manifestContent);
 
-    if (manifest.optimized) {
-      const prefix = `/rwsdk:${kind}`;
-      const matchingEntries = Object.keys(manifest.optimized).filter((key) =>
-        key.startsWith(prefix),
-      );
+    for (const entryId of Object.keys(manifest.optimized)) {
+      if (entryId.startsWith("/node_modules/")) {
+        const srcPath = manifest.optimized[entryId].src;
+        const resolvedSrcPath = path.resolve(
+          projectRootDir,
+          ".vite",
+          "deps",
+          srcPath,
+        );
+        let contents: string;
+        try {
+          contents = await readFile(resolvedSrcPath, "utf-8");
+        } catch (error) {
+          verboseLog("Error reading file %s: %s", resolvedSrcPath, error);
+          continue;
+        }
 
-      log(
-        "Found %d optimized entries starting with '%s'",
-        matchingEntries.length,
-        prefix,
-      );
-
-      for (const entry of matchingEntries) {
-        log("Adding optimized entry to files: %s", entry);
-        files.add(entry);
+        if (hasDirective(contents, directive)) {
+          log("Adding optimized entry to files: %s", entryId);
+          files.add(entryId);
+        }
       }
     }
   } catch (error) {
@@ -211,11 +218,16 @@ export const createDirectiveLookupPlugin = async ({
     debugNamespace,
   });
 
+  let devServer: ViteDevServer;
+
   return {
     name: `rwsdk:${config.pluginName}`,
     config(_, { command, isPreview }) {
       isDev = !isPreview && command === "serve";
       log("Development mode: %s", isDev);
+    },
+    configureServer(server) {
+      devServer = server;
     },
     async configEnvironment(env, viteConfig) {
       log("Configuring environment: env=%s", env);
@@ -224,7 +236,7 @@ export const createDirectiveLookupPlugin = async ({
       await addOptimizedDepsEntries({
         projectRootDir,
         files,
-        kind: config.kind,
+        directive: config.directive,
         environment: env,
         debugNamespace,
       });
@@ -323,7 +335,7 @@ export const createDirectiveLookupPlugin = async ({
 
         const optimizedDeps: Record<string, string> = {};
 
-        if (isDev) {
+        if (isDev && devServer) {
           for (const file of files) {
             const resolvedPath = await resolveOptimizedDep(
               projectRootDir,

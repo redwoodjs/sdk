@@ -5,7 +5,6 @@ import debug from "debug";
 import { transformClientComponents } from "./transformClientComponents.mjs";
 import { transformServerFunctions } from "./transformServerFunctions.mjs";
 import { normalizeModulePath } from "./normalizeModulePath.mjs";
-import { resolveModuleId } from "./resolveModuleId.mjs";
 import type { ViteDevServer } from "vite";
 import { invalidateModule } from "./invalidateModule.mjs";
 
@@ -51,12 +50,12 @@ export const directivesPlugin = ({
     id: string,
   ) => {
     const files = kind === "client" ? clientFiles : serverFiles;
-    const rawId = id.split("?")[0].replace(/^\/rwsdk:[^/]+/, "");
+    const rawId = id.split("?")[0];
+    const resolvedId = rawId;
     const relativePath = rawId.slice("/".length);
     const fullPath = path.resolve(projectRootDir, relativePath);
     const isNodeModule = id.includes("node_modules");
-    const resolvedId = resolveModuleId(id, kind, projectRootDir);
-    const hadFile = files.has(resolvedId);
+    const hadFile = files.has(id);
 
     log(
       "Adding %s module to %s and invalidating cache: id=%s",
@@ -130,15 +129,13 @@ export const directivesPlugin = ({
         this.environment.name,
       );
 
-      const clientResult = await transformClientComponents(
-        code,
-        resolveModuleId(id, "client", projectRootDir),
-        {
-          environmentName: this.environment.name,
-          clientFiles,
-          addClientModule,
-        },
-      );
+      const normalizedId = normalizeModulePath(projectRootDir, id);
+
+      const clientResult = await transformClientComponents(code, normalizedId, {
+        environmentName: this.environment.name,
+        clientFiles,
+        addClientModule,
+      });
 
       if (clientResult) {
         log("Client component transformation successful for id=%s", id);
@@ -150,7 +147,7 @@ export const directivesPlugin = ({
 
       const serverResult = transformServerFunctions(
         code,
-        resolveModuleId(id, "server", projectRootDir),
+        normalizedId,
         this.environment.name as "client" | "worker" | "ssr",
         serverFiles,
         addServerModule,
@@ -185,6 +182,11 @@ export const directivesPlugin = ({
                 args.path,
               );
 
+              const normalizedPath = normalizeModulePath(
+                projectRootDir,
+                args.path,
+              );
+
               // context(justinvdm,2025-06-15): If we're in app code,
               // we will be doing the transform work in the vite plugin hooks,
               // the only reason we're in esbuild land for app code is for
@@ -193,11 +195,7 @@ export const directivesPlugin = ({
               if (!args.path.includes("node_modules")) {
                 log("Esbuild onLoad found app code, path=%s", args.path);
 
-                if (
-                  clientFiles.has(
-                    resolveModuleId(args.path, "client", projectRootDir),
-                  )
-                ) {
+                if (clientFiles.has(normalizedPath)) {
                   // context(justinvdm,2025-06-15): If this is a client file:
                   // * for ssr and client envs we can skip so esbuild looks at the
                   // original source code to discovery dependencies
@@ -219,11 +217,7 @@ export const directivesPlugin = ({
                       loader: "js",
                     };
                   }
-                } else if (
-                  serverFiles.has(
-                    resolveModuleId(args.path, "server", projectRootDir),
-                  )
-                ) {
+                } else if (serverFiles.has(normalizedPath)) {
                   // context(justinvdm,2025-06-15): If this is a server file:
                   // * for worker env, we can skip so esbuild looks at the
                   // original source code to discovery dependencies
@@ -263,7 +257,7 @@ export const directivesPlugin = ({
 
               const clientResult = await transformClientComponents(
                 code,
-                resolveModuleId(args.path, "client", projectRootDir),
+                normalizedPath,
                 {
                   environmentName: env,
                   clientFiles,
@@ -292,7 +286,7 @@ export const directivesPlugin = ({
 
               const serverResult = transformServerFunctions(
                 code,
-                resolveModuleId(args.path, "server", projectRootDir),
+                normalizedPath,
                 env as "client" | "worker" | "ssr",
                 serverFiles,
                 addServerModule,
