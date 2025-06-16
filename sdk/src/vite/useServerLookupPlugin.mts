@@ -12,6 +12,7 @@ export const useServerLookupPlugin = async ({
     projectRootDir,
     files: serverFiles,
     config: {
+      kind: "server",
       directive: "use server",
       virtualModuleName: "virtual:use-server-lookup",
       exportName: "useServerLookup",

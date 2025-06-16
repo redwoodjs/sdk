@@ -5,13 +5,13 @@ import { readFile } from "fs/promises";
 import { glob } from "glob";
 import debug from "debug";
 import { normalizeModulePath } from "./normalizeModulePath.mjs";
-import { ensureAliasArray } from "./ensureAliasArray.mjs";
 import { pathExists } from "fs-extra";
 import { stat } from "fs/promises";
 import { getSrcPaths } from "../lib/getSrcPaths.js";
 import { hasDirective } from "./hasDirective.mjs";
 
 interface DirectiveLookupConfig {
+  kind: "client" | "server";
   directive: "use client" | "use server";
   virtualModuleName: string;
   exportName: string;
@@ -79,7 +79,7 @@ export const findFilesContainingDirective = async ({
 
 const resolveOptimizedDep = async (
   projectRootDir: string,
-  filePath: string,
+  id: string,
   environment: string,
   debugNamespace: string,
 ): Promise<string | undefined> => {
@@ -87,50 +87,100 @@ const resolveOptimizedDep = async (
   const verboseLog = debug(`verbose:${debugNamespace}`);
 
   try {
-    const getDepsDir = (env: string) =>
-      env === "client" ? "deps" : `deps_${env}`;
-
-    const getManifestPath = (env: string) =>
-      path.join(
-        projectRootDir,
-        "node_modules",
-        ".vite",
-        getDepsDir(env),
-        "_metadata.json",
-      );
-
-    const getOptimizedPath = (env: string, fileName: string) =>
-      path.join("/", "node_modules", ".vite", getDepsDir(env), fileName);
-
-    const manifestPath = getManifestPath(environment);
-    verboseLog("Checking for manifest at: %s", manifestPath);
+    const depsDir = environment === "client" ? "deps" : `deps_${environment}`;
+    const nodeModulesDepsDirPath = path.join("node_modules", ".vite", depsDir);
+    const depsDirPath = path.join(projectRootDir, nodeModulesDepsDirPath);
+    const manifestPath = path.join(depsDirPath, "_metadata.json");
+    log("Checking for manifest at: %s", manifestPath);
 
     const manifestExists = await pathExists(manifestPath);
     if (!manifestExists) {
-      verboseLog("Manifest not found at %s", manifestPath);
+      log("Manifest not found at %s", manifestPath);
       return undefined;
     }
 
     const manifestContent = await readFile(manifestPath, "utf-8");
     const manifest = JSON.parse(manifestContent);
 
-    if (manifest.optimized && manifest.optimized[filePath]) {
-      const optimizedFile = manifest.optimized[filePath].file;
-      const optimizedPath = getOptimizedPath(environment, optimizedFile);
+    if (manifest.optimized && manifest.optimized[id]) {
+      const optimizedFile = manifest.optimized[id].file;
+      const optimizedPath = path.join(
+        "/",
+        nodeModulesDepsDirPath,
+        optimizedFile,
+      );
 
-      log("Found optimized dependency: %s -> %s", filePath, optimizedPath);
+      log(
+        "Found optimized dependency: filePath=%s, optimizedPath=%s",
+        id,
+        optimizedPath,
+      );
       return optimizedPath;
     }
 
-    verboseLog("File %s not found in optimized dependencies", filePath);
+    verboseLog("File not found in optimized dependencies: id=%s", id);
     return undefined;
   } catch (error) {
-    verboseLog(
-      "Error resolving optimized dependency for %s: %s",
-      filePath,
-      error,
-    );
+    verboseLog("Error resolving optimized dependency for id=%s: %s", id, error);
     return undefined;
+  }
+};
+
+const addOptimizedDepsEntries = async ({
+  projectRootDir,
+  files,
+  kind,
+  environment,
+  debugNamespace,
+}: {
+  projectRootDir: string;
+  files: Set<string>;
+  kind: string;
+  environment: string;
+  debugNamespace: string;
+}) => {
+  const log = debug(debugNamespace);
+  const verboseLog = debug(`verbose:${debugNamespace}`);
+
+  try {
+    const depsDir = environment === "client" ? "deps" : `deps_${environment}`;
+    const depsDirPath = path.join(
+      projectRootDir,
+      "node_modules",
+      ".vite",
+      depsDir,
+    );
+    const manifestPath = path.join(depsDirPath, "_metadata.json");
+    verboseLog("Checking for manifest at: %s", manifestPath);
+
+    const manifestExists = await pathExists(manifestPath);
+    if (!manifestExists) {
+      verboseLog("Manifest not found at %s", manifestPath);
+      return;
+    }
+
+    const manifestContent = await readFile(manifestPath, "utf-8");
+    const manifest = JSON.parse(manifestContent);
+
+    if (manifest.optimized) {
+      const prefix = `/rwsdk:${kind}`;
+      const matchingEntries = Object.keys(manifest.optimized).filter((key) =>
+        key.startsWith(prefix),
+      );
+
+      log(
+        "Found %d optimized entries starting with '%s'",
+        matchingEntries.length,
+        prefix,
+      );
+
+      for (const entry of matchingEntries) {
+        log("Adding optimized entry to files: %s", entry);
+        files.add(entry);
+      }
+    }
+  } catch (error) {
+    verboseLog("Error adding optimized deps entries: %s", error);
   }
 };
 
@@ -167,8 +217,17 @@ export const createDirectiveLookupPlugin = async ({
       isDev = !isPreview && command === "serve";
       log("Development mode: %s", isDev);
     },
-    configEnvironment(env, viteConfig) {
+    async configEnvironment(env, viteConfig) {
       log("Configuring environment: env=%s", env);
+
+      // Add optimized deps entries that match our pattern
+      await addOptimizedDepsEntries({
+        projectRootDir,
+        files,
+        kind: config.kind,
+        environment: env,
+        debugNamespace,
+      });
 
       viteConfig.optimizeDeps ??= {};
       viteConfig.optimizeDeps.esbuildOptions ??= {};
@@ -229,12 +288,7 @@ export const createDirectiveLookupPlugin = async ({
           entries.push(actualFilePath);
         }
 
-        log(
-          "Environment configuration complete for env=%s with %d optimizeDeps includes and %d aliases",
-          env,
-          Array.from(files).filter((f) => f.includes("/node_modules/")).length,
-          files.size,
-        );
+        log("Environment configuration complete for env=%s", env);
       } else {
         log("Skipping optimizeDeps and aliasing for environment: %s", env);
       }
@@ -247,7 +301,9 @@ export const createDirectiveLookupPlugin = async ({
         source === `/@id/${config.virtualModuleName}`
       ) {
         log("Resolving %s module", config.virtualModuleName);
-        return config.virtualModuleName;
+        // context(justinvdm, 16 Jun 2025): Include .js extension
+        // so it goes through vite processing chain
+        return config.virtualModuleName + ".js";
       }
 
       verboseLog("No resolution for id=%s", source);
@@ -255,7 +311,7 @@ export const createDirectiveLookupPlugin = async ({
     async load(id) {
       verboseLog("Loading id=%s", id);
 
-      if (id === config.virtualModuleName) {
+      if (id === config.virtualModuleName + ".js") {
         log(
           "Loading %s module with %d files",
           config.virtualModuleName,

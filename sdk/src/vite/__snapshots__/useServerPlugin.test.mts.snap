@@ -123,18 +123,6 @@ registerServerReference(__defaultServerFunction__, "/test.tsx", "default")
 "
 `;
 
-exports[`useServerPlugin > TRANSFORMS > IGNORE_NON_FUNCTION_EXPORT_CODE > CLIENT 1`] = `
-"import { createServerReference } from "rwsdk/client";
-"
-`;
-
-exports[`useServerPlugin > TRANSFORMS > IGNORE_NON_FUNCTION_EXPORT_CODE > WORKER 1`] = `
-"import { registerServerReference } from "rwsdk/worker";
-
-export const a = "string";
-"
-`;
-
 exports[`useServerPlugin > TRANSFORMS > MULTI_LINE_COMMENT_CODE > CLIENT 1`] = `
 "import { createServerReference } from "rwsdk/client";
 
