@@ -82,21 +82,7 @@ export const configPlugin = ({
         },
         ssr: {
           resolve: {
-            conditions: [
-              "workerd",
-              "module",
-              // context(justinvdm, 11 Jun 2025): Some packages meant for cloudflare workers, yet
-              // their deps have only node import conditions, e.g. `agents` package (meant for CF),
-              // has `pkce-challenge` package as a dep, which has only node import conditions.
-              // https://github.com/crouchcd/pkce-challenge/blob/master/package.json#L17
-              //
-              // Once the transformed code for this environment is in turn processed in the `worker` environment,
-              // @cloudflare/vite-plugin should take care of any relevant polyfills for deps with
-              // node builtins imports that can be polyfilled though, so it is worth us including this condition here.
-              // However, it does mean we will try to run packages meant for node that cannot be run on cloudflare workers.
-              // That's the trade-off, but arguably worth it. (context(justinvdm, 11 Jun 2025))
-              "node",
-            ],
+            conditions: ["workerd", "module", "browser"],
             noExternal: true,
           },
           define: {
