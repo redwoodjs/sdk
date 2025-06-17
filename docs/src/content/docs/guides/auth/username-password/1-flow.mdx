@@ -1,0 +1,161 @@
+---
+title: Username and Password Flow
+slug: guides/auth/username-password/flow
+description: Learn how to use the username and password flow with RedwoodJS.
+---
+
+import { Aside, FileTree } from "@astrojs/starlight/components";
+
+## Setup
+Our [standard starter](https://github.com/redwoodjs/sdk/tree/main/starters/standard) includes Passkeys out of the box. This provides a passwordless experience, eliminating a lot of the risks associated with password-based authentication. However, there still might be instances where you want to use email addresses and passwords.
+
+<Aside type="tip" title="Standard Starter">
+You can find the final code for this guide in the [auth-kitchen/username-password folder](https://github.com/ahaywood/auth-kitchen/tree/main/username-password) branch.
+</Aside>
+
+Let's start with the standard starter and make adjustments. Within the Terminal, we'll create a new project and install the dependencies.
+
+```bash
+npx degit redwoodjs/sdk/starters/standard <project-name>
+cd <project-name>
+pnpm install
+```
+
+Let's start by removing the `src/app/pages/users` directory. This contains all the routes for our passkey authentication.
+
+Then, within our `src/worker.tsx` file, we can remove the user routes:
+
+```diff title="src/worker.tsx" showLineNumbers=false
+- import { userRoutes } from "@/app/pages/user/routes";
+...
+- prefix("/user", userRoutes),
+```
+
+You may have noticed, we're keeping our session Durable Object. We can repurpose this.
+
+<Aside type="note" title="Session Durable Object">
+The session durable object is stored within the `src/session` directory. There, you'll find two files: `durableObject.ts` and `store.ts`.
+
+The `durableObject.ts` file sets up the Durable Object. The `store.ts` file contains helper functions for interacting with the Durable Object: `createSessionStore` and `setupSessionStore`.
+</Aside>
+
+We're also going to keep the authentication logic within our `worker.tsx` file. Most of this functionality will still apply:
+
+```tsx title="src/worker.tsx" showLineNumbers=true {"1. Set up security headers": 2} {"2. Setup our middleware": 4} {"3. Set up our session store (Durable Object)": 7} {"4. Check to see if a session exists in our Durable Object": 11} {"5. If there's an error, redirect the user to the login page": 14} {"6. If there's a session, get the user details from the database": 28} {"7. Save the results on ctx.user object": 30} {"8. Set up a protected route. The user must be logged in": 40} {"9. Interrupter checks to see if ctx.user exists": 43}
+export default defineApp([
+
+  setCommonHeaders(),
+
+  async ({ ctx, request, headers }) => {
+    await setupDb(env);
+
+    setupSessionStore(env);
+
+    try {
+
+      ctx.session = await sessions.load(request);
+    } catch (error) {
+
+      if (error instanceof ErrorResponse && error.code === 401) {
+        await sessions.remove(request, headers);
+        headers.set("Location", "/user/login");
+
+        return new Response(null, {
+          status: 302,
+          headers,
+        });
+      }
+
+      throw error;
+    }
+
+
+    if (ctx.session?.userId) {
+
+      ctx.user = await db.user.findUnique({
+        where: {
+          id: ctx.session.userId,
+        },
+      });
+    }
+  },
+  render(Document, [
+    route("/", () => new Response("Hello, World!")),
+
+    route("/protected", [
+      ({ ctx }) => {
+
+        if (!ctx.user) {
+          return new Response(null, {
+            status: 302,
+            headers: { Location: "/user/login" },
+          });
+        }
+      },
+      Home,
+    ]),
+  ]),
+]);
+```
+
+<Aside type="note" title="Middleware vs Interruptors">
+### Middleware
+Middleware is a function that runs in the _middle_, between your request to the server and the its response.
+
+It allows you to:
+- Modify or inspect requests before they reach the main application logic
+- Perform operations like authentication, logging, and error handling
+- Transform or validate data
+- Add headers or perform other preprocessing tasks
+
+### Interrupters
+Interrupters will _interrupt_ the flow. Before, the server returns a response, the interrupter will run.
+
+### These sound similar, what’s the difference?
+- Middleware will run before _every single route_.
+- Interrupters will only run on _specific routes_.
+
+In our code, we’re using middleware to attach the user session to our context object, on every request. But, we’re only checking to see if the user is logged in on the home page.
+</Aside>
+
+### Database Setup
+
+Let's update our `prisma/prisma.schema` file to include an email and password field.
+
+```diff lang="prisma" title="prisma/prisma.schema" showLineNumbers=false
+model User {
+  id        String   @id @default(uuid()) // User ID (UUID-based)
+  username  String   @unique
++  password  String
++  email     String   @unique
+  createdAt DateTime @default(now())
+
+-  credentials Credential[] // Relationship: One user can have many credentials
++  @@index([username, email])
+}
+
+- model Credential {
+-   id            String   @id @default(uuid()) // Internal DB ID
+-   userId        String   @unique // Every credential is linked to a specific user
+-   user          User     @relation(fields: [userId], references: [id])
+-   createdAt     DateTime @default(now())
+-   credentialId  String   @unique // WebAuthn credential identifier
+-   publicKey     Bytes
+-   counter       Int      @default(0)
+-
+-   @@index([credentialId])
+-   @@index([userId])
+- }
+```
+
+You'll notice we also created an `@@index` for the username and email fields. This will help us speed up our queries, since we'll need to look up our users by username and/or email.
+
+We also removed the `Credential` model and its relationship on the `User` model.
+
+Now, let's run our migration:
+
+```bash
+pnpm migrate:new "update the user table with email and password fields"
+```
+
+With the foundation laid, let's build our registration page.

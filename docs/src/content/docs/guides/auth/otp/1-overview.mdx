@@ -1,0 +1,56 @@
+---
+title: Overview
+slug: guides/auth/otp/overview
+description: Learn how to use the OTP flow with RedwoodJS.
+---
+
+## Overview
+
+The flow for One Time Password (OTP) is very similar to the [Magic Link](/guides/auth/magic-links/overview) flow, with a couple of key differences.
+
+With the Magic Link flow, each user is getting a unique link with a token to click on.
+
+## SMS
+
+### Twilio
+
+## Email
+
+---
+
+
+import { Aside, FileTree } from "@astrojs/starlight/components";
+
+## Setup
+
+Our [standard starter](https://github.com/redwoodjs/sdk/tree/main/starters/standard) includes Passkeys out of the box. This provides a passwordless experience, eliminating a lot of the risks associated with password-based authentication. However, there still might be instances where you don't want to use Passkeys, but still want to avoid the hassle of passwords.
+
+<Aside type="tip" title="Standard Starter">
+You can find the final code for this guide in the [auth-kitchen/magic-links folder](https://github.com/ahaywood/auth-kitchen/tree/main/magic-links) branch.
+</Aside>
+
+Let’s start with the standard starter and make adjustments. Within the Terminal, we’ll create a new project and install the dependencies.
+
+```bash
+npx degit redwoodjs/sdk/starters/standard <project-name>
+cd <project-name>
+pnpm install
+```
+
+Let's start by removing the `src/app/pages/users` directory. This contains all the routes for our passkey authentication.
+
+Then, within our `src/worker.tsx` file, we can remove the user routes:
+
+```diff title="src/worker.tsx" showLineNumbers=false
+- import { userRoutes } from "@/app/pages/user/routes";
+...
+- prefix("/user", userRoutes),
+```
+
+You may have noticed, we're keeping our session Durable Object. We can repurpose this.
+
+<Aside type="note" title="Session Durable Object">
+The session durable object is stored within the `src/session` directory. There, you'll find two files: `durableObject.ts` and `store.ts`.
+
+The `durableObject.ts` file sets up the Durable Object. The `store.ts` file contains helper functions for interacting with the Durable Object: `createSessionStore` and `setupSessionStore`.
+</Aside>

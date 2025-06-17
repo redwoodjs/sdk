@@ -3,12 +3,19 @@ title: Create the Application
 slug: tutorial/full-stack-app/create-app
 sidebar:
   label: Create the Application
-description: A guide in my new Starlight docs site.
+description: Create your RedwoodSDK project and set up the essential development tools. Install TailwindCSS, configure custom fonts, and add shadcn/ui components to build professional interfaces.
 ---
 
 import { FileTree, Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/components';
-
 import { PackageManagers } from "starlight-package-managers";
+
+## What We're Setting Up
+
+In this lesson, we'll install and configure:
+- Set up our project and local development environment
+- **[TailwindCSS](https://tailwindcss.com/)**: For styling our components
+- **Custom fonts**: Poppins and Inter from [Google Fonts](https://fonts.google.com/)
+- **[shadcn/ui](https://ui.shadcn.com/)**: Pre-built React components
 
 ## Project Generation and Structure
 
@@ -98,6 +105,8 @@ Inside, the `applywize` directory, you should have the following files and folde
 
 At first glance, this might feel a little overwhelming, but as we build out our project, it will be easy to see how all the pieces fit together.
 
+You'll spend a majority of your time in the `src/app` folder and in the `worker.tsx` file.
+
 <Aside type="note" title="Starter Projects">
   For the tutorial, we're starting with the standard starter project. When you start building your own projects, if you use a different starter template, the files and folders may vary slightly.
 </Aside>
@@ -140,9 +149,7 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
     ```
 
     <Aside type="note" title="Environment Configuration">
-    Tailwindcss currently uses [the non-deprecated internal `createResolver()` vite API method.](https://github.com/tailwindlabs/tailwindcss/blob/main/packages/%40tailwindcss-vite/src/index.ts#L22) [The code and its docstring indicate that it relies on an `ssr` being present](https://github.com/vitejs/vite/blob/c0e3dba3108e479ab839205cfb046db327bdaf43/packages/vite/src/node/config.ts#L1498).
-
-    This isn't the case for us, since we only have a `worker` environment instead of `ssr`. To prevent builds from getting blocked on this, we stub out the ssr environment here.
+    We need to add an empty `ssr` environment to prevent build errors. This is a temporary requirement that will be resolved in future versions.
     </Aside>
 
 3. Import Tailwind CSS. (You'll need to create the `src/app/styles.css` file.)
@@ -253,7 +260,7 @@ If you're unsure how the font-family is written, you can find it in the CSS clas
 
 Now, you can use the class `font-display` and `font-body` in your project.
 
-Before this will work in production, we need to update our security headers to allow `googleapis` and `fonts.gstatic`:
+We need to update security headers to allow Google Fonts to load properly in production.
 
 ```tsx title="src/app/headers.ts" collapse={1-26} {30}
 import { RouteMiddleware } from "rwsdk/router";
