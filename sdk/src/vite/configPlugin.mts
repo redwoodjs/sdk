@@ -76,11 +76,15 @@ export const configPlugin = ({
               },
             },
           },
+          resolve: {
+            conditions: ["browser", "module"],
+          },
         },
         ssr: {
           resolve: {
             conditions: [
               "workerd",
+              "module",
               // context(justinvdm, 11 Jun 2025): Some packages meant for cloudflare workers, yet
               // their deps have only node import conditions, e.g. `agents` package (meant for CF),
               // has `pkce-challenge` package as a dep, which has only node import conditions.
@@ -106,7 +110,6 @@ export const configPlugin = ({
             esbuildOptions: {
               jsx: "automatic",
               jsxImportSource: "react",
-              conditions: ["workerd"],
               plugins: [],
             },
           },
@@ -129,6 +132,7 @@ export const configPlugin = ({
             conditions: [
               "workerd",
               "react-server",
+              "module",
               // context(justinvdm, 11 Jun 2025): Some packages meant for cloudflare workers, yet
               // their deps have only node import conditions, e.g. `agents` package (meant for CF),
               // has `pkce-challenge` package as a dep, which has only node import conditions.
