@@ -5,3 +5,5 @@ export * from "../script";
 export * from "../lib/utils";
 export * from "../requestInfo/types";
 export * from "../requestInfo/worker";
+export * from "../render/renderToString";
+export * from "../render/renderToStream";
