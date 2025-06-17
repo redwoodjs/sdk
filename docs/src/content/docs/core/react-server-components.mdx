@@ -100,3 +100,46 @@ export default function AddTodo() {
 ### Context
 
 Context is a way to share data globally between server components on a per-request basis. The context is populated by middleware, and is available to all React Server Components Pages and Server Functions via the `ctx` prop or `requestInfo.ctx`.
+
+
+## Advanced usage
+
+### Manual rendering
+
+RedwoodSDK also provides a way to render your React Server Components imperatively with `renderToStream()` and `renderToString()`.
+
+To render your component tree to a [`ReadableStream`](https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream)
+
+
+### `renderToStream(element[, options]): Promise<ReadableStream>`
+
+Takes in a React Server Component (can be a client component or server component), and returns a stream that decodes to html.
+
+```tsx
+const stream = await renderToStream(<NotFound />, { Document })
+
+const response = new Response(stream, {
+  status: 404,
+});
+```
+
+#### Options
+* `Document`: The [document](/core/routing/#documents) component to wrap around the React Server Component `element`. If not given, will return the rendered React Server Component without any wrapping.
+* `injectRSCPayload = false`: Whether to inject the corresponding RSC payload for the React Server Component to use for client-side hydration
+* `onError`: A callback function called with the relevant error as the only paramter if any errors happen during rendering
+
+### `renderToString(element[, options]): Promise<string>`
+
+Takes in a React Server Component (can be a client component or server component), and returns an html string.
+
+```tsx
+const html = await renderToString(<NotFound />, { Document })
+
+const response = new Response(html, {
+  status: 404,
+});
+```
+
+#### Options
+* `Document`: The [document](/core/routing/#documents) component to wrap around the React Server Component `element`. If not given, will return the rendered React Server Component without any wrapping.
+* `injectRSCPayload = false`: Whether to inject the corresponding RSC payload for the React Server Component to use for client-side hydration
