@@ -24,7 +24,6 @@ export const loadModule = memoize(async (id: string) => {
 // context(justinvdm, 2 Dec 2024): re memoize(): React relies on the same promise instance being returned for the same id
 export const clientWebpackRequire = memoize(async (id: string) => {
   const [file, name] = id.split("#");
-  //const module = await loadModule(file);
   const promisedModule = loadModule(file);
   const promisedComponent = promisedModule.then((module) => module[name]);
 
