@@ -1,4 +1,6 @@
 import memoize from "lodash/memoize";
+import { ssrWebpackRequire as baseSsrWebpackRequire } from "rwsdk/__ssr_bridge";
+import { requestInfo } from "../requestInfo/worker";
 
 export const loadServerModule = memoize(async (id: string) => {
   const { useServerLookup } = await import(
@@ -27,4 +29,13 @@ export const serverWebpackRequire = memoize(async (id: string) => {
   const [file, name] = id.split("#");
   const module = await loadServerModule(file);
   return { [id]: module[name] };
+});
+
+export const ssrWebpackRequire = memoize(async (id: string) => {
+  console.log("############## ssrWebpackRequire", id, requestInfo.rw.ssr);
+  if (!requestInfo.rw.ssr) {
+    return { [id]: () => null };
+  }
+
+  return baseSsrWebpackRequire(id);
 });

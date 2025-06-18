@@ -86,15 +86,20 @@ export const initClient = async ({
 
   const React = await import("react");
   const { hydrateRoot } = await import("react-dom/client");
-  const { createFromReadableStream } = await import(
-    "react-server-dom-webpack/client.browser"
-  );
-  const { rscStream } = await import("rsc-html-stream/client");
 
   let rscPayload: any;
-  rscPayload ??= createFromReadableStream(rscStream, {
-    callServer,
-  });
+
+  // context(justinvdm, 18 Jun 2025): We inject the RSC payload
+  // unless render(Document, [...], { rscPayload: false }) was used.
+  if ((globalThis as any).__FLIGHT_DATA) {
+    const { createFromReadableStream } = await import(
+      "react-server-dom-webpack/client.browser"
+    );
+    const { rscStream } = await import("rsc-html-stream/client");
+    rscPayload = createFromReadableStream(rscStream, {
+      callServer,
+    });
+  }
 
   function Content() {
     const [streamData, setStreamData] = React.useState(rscPayload);
