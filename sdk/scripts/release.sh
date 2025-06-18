@@ -133,8 +133,15 @@ if [[ "$VERSION_TYPE" == "test" ]]; then
 elif [[ "$VERSION_TYPE" == "prepatch" || "$VERSION_TYPE" == "preminor" || "$VERSION_TYPE" == "premajor" ]]; then
   # Handle prerelease versions with explicit preid
   if [[ "$CURRENT_VERSION" =~ ^.*-${PREID}\..*$ ]]; then
-    # If current version is already the same prerelease type, increment it
-    NEW_VERSION=$(npx semver -i prerelease "$CURRENT_VERSION")
+    # Check if this is a test version with the same preid
+    if [[ "$CURRENT_VERSION" =~ ^(.*-${PREID}\.[0-9]+)-test\..*$ ]]; then
+      # Extract base prerelease version and increment it
+      BASE_PRERELEASE_VERSION="${BASH_REMATCH[1]}"
+      NEW_VERSION=$(npx semver -i prerelease "$BASE_PRERELEASE_VERSION")
+    else
+      # If current version is already the same prerelease type, increment it
+      NEW_VERSION=$(npx semver -i prerelease "$CURRENT_VERSION")
+    fi
   else
     # Create new prerelease with the specified type and preid
     NEW_VERSION=$(npx semver -i "$VERSION_TYPE" --preid "$PREID" "$CURRENT_VERSION")
