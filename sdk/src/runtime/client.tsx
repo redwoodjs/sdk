@@ -78,10 +78,10 @@ export const initClient = async ({
     upgradeToRealtime,
   };
 
-  const rootEl = document.getElementById("root");
+  const rootEl = document.getElementById("hydrate-root");
 
   if (!rootEl) {
-    throw new Error('no element with id "root"');
+    throw new Error('no element with id "hydrate-root"');
   }
 
   const React = await import("react");
@@ -106,7 +106,17 @@ export const initClient = async ({
     const [_isPending, startTransition] = React.useTransition();
     transportContext.setRscPayload = (v) =>
       startTransition(() => setStreamData(v));
-    return <>{React.use<{ node: React.ReactNode }>(streamData).node}</>;
+    const didSSR = (globalThis as any).__RWSDK_CONTEXT?.rw?.ssr;
+    const node = React.use<{ node: React.ReactNode }>(streamData).node;
+    return (
+      <>
+        {didSSR ? (
+          node
+        ) : (
+          <React.Suspense fallback={null}>{node}</React.Suspense>
+        )}
+      </>
+    );
   }
 
   hydrateRoot(rootEl, <Content />);

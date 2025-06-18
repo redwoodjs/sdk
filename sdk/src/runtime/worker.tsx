@@ -132,7 +132,7 @@ export const defineApp = <
 
           const pageElement = createPageElement(requestInfo, Page);
 
-          const { ssr, rscPayload: shouldInjectRSCPayload } = rw;
+          const { rscPayload: shouldInjectRSCPayload } = rw;
 
           let rscPayloadStream = renderToRscStream({
             node: pageElement,
