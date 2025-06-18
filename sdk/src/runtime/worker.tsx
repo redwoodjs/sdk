@@ -2,7 +2,6 @@ import React from "react";
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
 import { renderToRscStream } from "./render/renderToRscStream";
 
-import { ssrWebpackRequire } from "rwsdk/__ssr_bridge";
 import { rscActionHandler } from "./register/worker";
 import { injectRSCPayload } from "rsc-html-stream/server";
 import { ErrorResponse } from "./error";
@@ -13,9 +12,10 @@ import {
 } from "./requestInfo/worker";
 import { RequestInfo, DefaultAppContext } from "./requestInfo/types";
 
-import { Route, type RwContext, defineRoutes, route } from "./lib/router";
+import { Route, type RwContext, defineRoutes } from "./lib/router";
 import { generateNonce } from "./lib/utils";
 import { IS_DEV } from "./constants";
+import { ssrWebpackRequire } from "./imports/worker";
 
 declare global {
   type Env = {
@@ -132,7 +132,9 @@ export const defineApp = <
 
           const pageElement = createPageElement(requestInfo, Page);
 
-          const rscPayloadStream = renderToRscStream({
+          const { rscPayload: shouldInjectRSCPayload } = rw;
+
+          let rscPayloadStream = renderToRscStream({
             node: pageElement,
             actionResult:
               actionResult instanceof Response ? null : actionResult,
@@ -147,35 +149,27 @@ export const defineApp = <
             });
           }
 
-          const [rscPayloadStream1, rscPayloadStream2] = rscPayloadStream.tee();
+          let injectRSCPayloadStream: TransformStream<any, any> | undefined;
 
-          let html: ReadableStream<any>;
+          if (shouldInjectRSCPayload) {
+            const [rscPayloadStream1, rscPayloadStream2] =
+              rscPayloadStream.tee();
 
-          if (rw.ssr) {
-            html = await transformRscToHtmlStream({
-              stream: rscPayloadStream1,
-              Document: rw.Document,
-              requestInfo: requestInfo,
-            });
-          } else {
-            const emptyRscStream = renderToRscStream({
-              node: React.createElement(React.Fragment, null, null),
-              actionResult: undefined,
-              onError,
-            });
-            html = await transformRscToHtmlStream({
-              stream: emptyRscStream,
-              Document: rw.Document,
-              requestInfo: requestInfo,
+            rscPayloadStream = rscPayloadStream1;
+
+            injectRSCPayloadStream = injectRSCPayload(rscPayloadStream2, {
+              nonce: rw.nonce,
             });
           }
 
-          if (rw.rscPayload) {
-            html = html.pipeThrough(
-              injectRSCPayload(rscPayloadStream2, {
-                nonce: rw.nonce,
-              }),
-            );
+          let html: ReadableStream<any> = await transformRscToHtmlStream({
+            stream: rscPayloadStream,
+            Document: rw.Document,
+            requestInfo: requestInfo,
+          });
+
+          if (injectRSCPayloadStream) {
+            html = html.pipeThrough(injectRSCPayloadStream);
           }
 
           return new Response(html, {

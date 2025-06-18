@@ -1,4 +1,6 @@
 import memoize from "lodash/memoize";
+import { requestInfo } from "../requestInfo/worker";
+import { ssrWebpackRequire as baseSsrWebpackRequire } from "rwsdk/__ssr_bridge";
 
 export const loadServerModule = memoize(async (id: string) => {
   const { useServerLookup } = await import(
@@ -22,9 +24,10 @@ export const getServerModuleExport = async (id: string) => {
   return module[name];
 };
 
-// context(justinvdm, 2 Dec 2024): re memoize(): React relies on the same promise instance being returned for the same id
-export const serverWebpackRequire = memoize(async (id: string) => {
-  const [file, name] = id.split("#");
-  const module = await loadServerModule(file);
-  return { [id]: module[name] };
+export const ssrWebpackRequire = memoize(async (id: string) => {
+  if (!requestInfo.rw.ssr) {
+    return { [id]: () => null };
+  }
+
+  return baseSsrWebpackRequire(id);
 });
