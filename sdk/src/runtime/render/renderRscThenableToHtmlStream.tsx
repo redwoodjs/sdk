@@ -1,4 +1,4 @@
-import { Suspense, use } from "react";
+import { use } from "react";
 import { renderToReadableStream } from "react-dom/server.edge";
 import { type DocumentProps } from "../lib/router";
 import { type RequestInfo } from "../requestInfo/types";
@@ -16,16 +16,19 @@ export const renderRscThenableToHtmlStream = async ({
 }) => {
   const Component = () => {
     const node = (use(thenable) as { node: React.ReactNode }).node;
+
+    const clientContext = JSON.stringify({
+      rw: {
+        ssr: shouldSSR,
+      },
+    });
+
     return (
       <Document {...requestInfo}>
         <script
           nonce={requestInfo.rw.nonce}
           dangerouslySetInnerHTML={{
-            __html: `globalThis.__RWSDK_CONTEXT = JSON.{stringify(
-              rw: {
-                ssr: shouldSSR,
-              },
-            })}`,
+            __html: `globalThis.__RWSDK_CONTEXT = ${clientContext}`,
           }}
         />
         <div id="hydrate-root">{node}</div>

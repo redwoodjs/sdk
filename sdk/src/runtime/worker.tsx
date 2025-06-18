@@ -12,7 +12,7 @@ import {
 } from "./requestInfo/worker";
 import { RequestInfo, DefaultAppContext } from "./requestInfo/types";
 
-import { Route, type RwContext, defineRoutes, route } from "./lib/router";
+import { Route, type RwContext, defineRoutes } from "./lib/router";
 import { generateNonce } from "./lib/utils";
 import { IS_DEV } from "./constants";
 import { ssrWebpackRequire } from "./imports/worker";

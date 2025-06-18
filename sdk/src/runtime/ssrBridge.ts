@@ -15,3 +15,5 @@ export {
   ssrGetModuleExport,
   ssrWebpackRequire,
 } from "./imports/ssr";
+
+export { NoSSRStub } from "./imports/NoSSRStub";
