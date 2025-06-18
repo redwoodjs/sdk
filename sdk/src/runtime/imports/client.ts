@@ -1,6 +1,5 @@
 import React from "react";
 import memoize from "lodash/memoize";
-import { ClientOnly } from "./ClientOnly";
 
 export const loadModule = memoize(async (id: string) => {
   if (import.meta.env.DEV && !process.env.PREVIEW) {

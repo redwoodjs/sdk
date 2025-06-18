@@ -57,6 +57,9 @@ export const initClient = async ({
 }: {
   transport?: Transport;
 } = {}) => {
+  const React = await import("react");
+  const { hydrateRoot } = await import("react-dom/client");
+
   const transportContext: TransportContext = {
     setRscPayload: () => {},
   };
@@ -83,9 +86,6 @@ export const initClient = async ({
   if (!rootEl) {
     throw new Error('no element with id "hydrate-root"');
   }
-
-  const React = await import("react");
-  const { hydrateRoot } = await import("react-dom/client");
 
   let rscPayload: any;
 
