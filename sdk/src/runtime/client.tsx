@@ -1,5 +1,6 @@
 import { clientWebpackRequire } from "./imports/client";
 import { type CallServerCallback } from "react-server-dom-webpack/client.browser";
+import { type HydrationOptions } from "react-dom/client";
 
 // NOTE: `react-server-dom-webpack` uses this global to load modules,
 // so we need to define it here before importing "react-server-dom-webpack."
@@ -54,8 +55,10 @@ export const fetchTransport: Transport = (transportContext) => {
 
 export const initClient = async ({
   transport = fetchTransport,
+  hydrateRootOptions,
 }: {
   transport?: Transport;
+  hydrateRootOptions?: HydrationOptions;
 } = {}) => {
   const React = await import("react");
   const { hydrateRoot } = await import("react-dom/client");
@@ -109,7 +112,7 @@ export const initClient = async ({
     return <>{React.use<{ node: React.ReactNode }>(streamData).node}</>;
   }
 
-  hydrateRoot(rootEl, <Content />);
+  hydrateRoot(rootEl, <Content />, hydrateRootOptions);
 
   if (import.meta.hot) {
     import.meta.hot.on("rsc:update", (e) => {
