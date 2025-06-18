@@ -16,24 +16,7 @@ export const renderRscThenableToHtmlStream = async ({
 }) => {
   const Component = () => {
     const node = (use(thenable) as { node: React.ReactNode }).node;
-
-    const clientContext = JSON.stringify({
-      rw: {
-        ssr: shouldSSR,
-      },
-    });
-
-    return (
-      <Document {...requestInfo}>
-        <script
-          nonce={requestInfo.rw.nonce}
-          dangerouslySetInnerHTML={{
-            __html: `globalThis.__RWSDK_CONTEXT = ${clientContext}`,
-          }}
-        />
-        <div id="hydrate-root">{node}</div>
-      </Document>
-    );
+    return <Document {...requestInfo}>{node}</Document>;
   };
 
   return await renderToReadableStream(<Component />, {
