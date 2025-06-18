@@ -81,10 +81,10 @@ export const initClient = async ({
     upgradeToRealtime,
   };
 
-  const rootEl = document.getElementById("root");
+  const rootEl = document.getElementById("hydrate-root");
 
   if (!rootEl) {
-    throw new Error('no element with id "root"');
+    throw new Error('no element with id "hydrate-root"');
   }
 
   let rscPayload: any;
