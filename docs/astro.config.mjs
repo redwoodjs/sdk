@@ -41,7 +41,7 @@ export default defineConfig({
           label: "Core",
           items: [
             { slug: "core/overview" },
-            { label: "Request Handling", slug: "core/routing" },
+            { label: "Request Handling & Routing", slug: "core/routing" },
             { slug: "core/react-server-components" },
             { slug: "core/database" },
             { slug: "core/storage" },
@@ -102,16 +102,19 @@ export default defineConfig({
           label: "Guides",
           items: [
             {
-              label: 'Email',
-              collapsed: true,
+              label: "Email",
+              collapsed: false,
               items: [
-                { label: 'Sending Email', slug: 'guides/email/sending-email' },
-                { label: 'Email Templates', slug: 'guides/email/email-templates' },
-              ]
+                { label: "Sending Email", slug: "guides/email/sending-email" },
+                {
+                  label: "Email Templates",
+                  slug: "guides/email/email-templates",
+                },
+              ],
             },
             {
-              label: 'Frontend Development',
-              collapsed: true,
+              label: "Frontend Development",
+              collapsed: false,
               items: [
                 { label: "Tailwind CSS", slug: "guides/frontend/tailwind" },
                 { label: "Storybook", slug: "guides/frontend/storybook" },
@@ -123,7 +126,14 @@ export default defineConfig({
                   slug: "guides/frontend/public-assets",
                 },
                 { label: "Metadata", slug: "guides/frontend/metadata" },
-                { label: "Dynamic OG Images", slug: "guides/frontend/og-images" },
+                {
+                  label: "Dynamic OG Images",
+                  slug: "guides/frontend/og-images",
+                },
+                {
+                  label: "Client Side Navigation (SPA)",
+                  slug: "guides/frontend/client-side-nav",
+                },
               ],
             },
             { label: "Server Function Streams", slug: "guides/rsc-streams" },
@@ -136,6 +146,7 @@ export default defineConfig({
             { slug: "reference/create-rwsdk" },
             { slug: "reference/sdk-worker" },
             { slug: "reference/sdk-router" },
+            { slug: "reference/sdk-client" },
           ],
           collapsed: true,
         },
