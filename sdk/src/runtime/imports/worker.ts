@@ -1,4 +1,3 @@
-import React from "react";
 import memoize from "lodash/memoize";
 import { requestInfo } from "../requestInfo/worker";
 import { ssrWebpackRequire as baseSsrWebpackRequire } from "rwsdk/__ssr_bridge";
