@@ -106,17 +106,7 @@ export const initClient = async ({
     const [_isPending, startTransition] = React.useTransition();
     transportContext.setRscPayload = (v) =>
       startTransition(() => setStreamData(v));
-    const didSSR = (globalThis as any).__RWSDK_CONTEXT?.rw?.ssr;
-    const node = React.use<{ node: React.ReactNode }>(streamData).node;
-    return (
-      <>
-        {didSSR ? (
-          node
-        ) : (
-          <React.Suspense fallback={null}>{node}</React.Suspense>
-        )}
-      </>
-    );
+    return <>{React.use<{ node: React.ReactNode }>(streamData).node}</>;
   }
 
   hydrateRoot(rootEl, <Content />);

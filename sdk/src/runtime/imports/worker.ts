@@ -1,4 +1,5 @@
 import memoize from "lodash/memoize";
+import React from "react";
 import { ssrWebpackRequire as baseSsrWebpackRequire } from "rwsdk/__ssr_bridge";
 import { requestInfo } from "../requestInfo/worker";
 
@@ -33,7 +34,9 @@ export const serverWebpackRequire = memoize(async (id: string) => {
 
 export const ssrWebpackRequire = memoize(async (id: string) => {
   if (!requestInfo.rw.ssr) {
-    return { [id]: () => null };
+    return {
+      [id]: () => React.createElement(React.Suspense, { fallback: null }, null),
+    };
   }
 
   return baseSsrWebpackRequire(id);

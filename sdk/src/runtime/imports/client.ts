@@ -1,3 +1,4 @@
+import React from "react";
 import memoize from "lodash/memoize";
 
 export const loadModule = memoize(async (id: string) => {
@@ -24,5 +25,17 @@ export const loadModule = memoize(async (id: string) => {
 export const clientWebpackRequire = memoize(async (id: string) => {
   const [file, name] = id.split("#");
   const module = await loadModule(file);
-  return { [id]: module[name] };
+  const didSSR = (globalThis as any).__RWSDK_CONTEXT?.rw?.ssr;
+  const Component = module[name];
+
+  const Wrapped = didSSR
+    ? Component
+    : () =>
+        React.createElement(
+          React.Suspense,
+          { fallback: null },
+          React.createElement(Component),
+        );
+
+  return { [id]: Wrapped };
 });
