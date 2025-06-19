@@ -1,6 +1,7 @@
 import React from "react";
 import { isValidElementType } from "react-is";
 import { RequestInfo } from "../requestInfo/types";
+import type { Kysely } from "kysely";
 
 export type DocumentProps<T extends RequestInfo = RequestInfo> = T & {
   children: React.ReactNode;
@@ -17,6 +18,7 @@ export type RwContext = {
   rscPayload: boolean;
   ssr: boolean;
   layouts?: React.FC<LayoutProps<any>>[];
+  databases: Map<string, Kysely<any>>;
 };
 
 export type RouteMiddleware<T extends RequestInfo = RequestInfo> = (
