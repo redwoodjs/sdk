@@ -196,8 +196,8 @@ importers:
   starters/minimal:
     dependencies:
       rwsdk:
-        specifier: 0.1.0-alpha.17-test.20250619021613
-        version: 0.1.0-alpha.17-test.20250619021613(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)
+        specifier: 0.1.0-alpha.17-test.20250619030106
+        version: 0.1.0-alpha.17-test.20250619030106(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)
     devDependencies:
       '@types/node':
         specifier: ^22.14.0
@@ -233,8 +233,8 @@ importers:
         specifier: ^13.1.1
         version: 13.1.1
       rwsdk:
-        specifier: 0.1.0-alpha.17-test.20250619021613
-        version: 0.1.0-alpha.17-test.20250619021613(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)
+        specifier: 0.1.0-alpha.17-test.20250619030106
+        version: 0.1.0-alpha.17-test.20250619030106(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)
     devDependencies:
       '@types/node':
         specifier: ^22.14.0
@@ -3573,8 +3573,8 @@ packages:
   run-parallel@1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
 
-  rwsdk@0.1.0-alpha.17-test.20250619021613:
-    resolution: {integrity: sha512-pArctQ+xi9NC8XFNRRc70RGrL3vE+0hC3LoYbDEBinopA6/gYW0zt1r0HRPIHXcDMjCQ2t9wCn6rQCLagak8Zg==}
+  rwsdk@0.1.0-alpha.17-test.20250619030106:
+    resolution: {integrity: sha512-lVeLf3Dw/Rp9101tka7Ussp9PRcRl13iH6hqKLXbfjlTcJ0UDrO2qdDKF67dfN9p3gj74n3I5vgyawZNinWpkA==}
     hasBin: true
     peerDependencies:
       vite: ^6.2.6
@@ -8323,7 +8323,7 @@ snapshots:
     dependencies:
       queue-microtask: 1.2.3
 
-  rwsdk@0.1.0-alpha.17-test.20250619021613(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1):
+  rwsdk@0.1.0-alpha.17-test.20250619030106(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1):
     dependencies:
       '@ast-grep/napi': 0.38.5
       '@cloudflare/vite-plugin': 0.0.0-1bae8618b(rollup@4.40.0)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250508.0)(wrangler@4.16.0(@cloudflare/workers-types@4.20250407.0))
