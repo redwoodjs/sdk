@@ -51,6 +51,14 @@
       "types": "./dist/runtime/entries/auth.d.ts",
       "default": "./dist/runtime/entries/auth.js"
     },
+    "./db": {
+      "types": "./dist/runtime/lib/db/index.d.ts",
+      "default": "./dist/runtime/lib/db/index.js"
+    },
+    "./debug": {
+      "types": "./dist/runtime/lib/debug.d.ts",
+      "default": "./dist/runtime/lib/debug.js"
+    },
     "./constants": {
       "types": "./dist/runtime/constants.d.ts",
       "default": "./dist/runtime/constants.js"
@@ -125,6 +133,8 @@
     "glob": "^11.0.1",
     "ignore": "^7.0.4",
     "jsonc-parser": "^3.3.1",
+    "kysely": "^0.28.2",
+    "kysely-do": "^0.0.1-rc.1",
     "lodash": "^4.17.21",
     "magic-string": "^0.30.17",
     "miniflare": "^4.20250405.0",

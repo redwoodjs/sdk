@@ -1,6 +1,6 @@
 import { RwContext } from "../lib/router";
 
-export interface DefaultAppContext { }
+export interface DefaultAppContext {}
 
 export interface RequestInfo<Params = any, AppContext = DefaultAppContext> {
   request: Request;

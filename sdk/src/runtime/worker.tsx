@@ -65,6 +65,7 @@ export const defineApp = <
           nonce: generateNonce(),
           rscPayload: true,
           ssr: true,
+          databases: new Map(),
         };
 
         const outerRequestInfo: RequestInfo<any, T["ctx"]> = {
