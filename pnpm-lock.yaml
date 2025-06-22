@@ -113,6 +113,12 @@ importers:
       jsonc-parser:
         specifier: ^3.3.1
         version: 3.3.1
+      kysely:
+        specifier: ^0.28.2
+        version: 0.28.2
+      kysely-do:
+        specifier: ^0.0.1-rc.1
+        version: 0.0.1-rc.1(kysely@0.28.2)
       lodash:
         specifier: ^4.17.21
         version: 4.17.21
@@ -190,8 +196,8 @@ importers:
   starters/minimal:
     dependencies:
       rwsdk:
-        specifier: 0.1.0-alpha.16-test.20250618133922
-        version: 0.1.0-alpha.16-test.20250618133922(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250617.0)
+        specifier: 0.1.0-alpha.17-test.20250619030106
+        version: 0.1.0-alpha.17-test.20250619030106(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250617.0)
     devDependencies:
       '@types/node':
         specifier: ^22.14.0
@@ -227,8 +233,8 @@ importers:
         specifier: ^13.1.1
         version: 13.1.1
       rwsdk:
-        specifier: 0.1.0-alpha.16-test.20250618133922
-        version: 0.1.0-alpha.16-test.20250618133922(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250617.0)
+        specifier: 0.1.0-alpha.17-test.20250619030106
+        version: 0.1.0-alpha.17-test.20250619030106(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250617.0)
     devDependencies:
       '@types/node':
         specifier: ^22.14.0
@@ -2875,6 +2881,15 @@ packages:
     resolution: {integrity: sha512-HzhziW6sc5m0pwi5M196+7cEBtbt0lCYi67wNsiwMUmz833wloE0gbzJPWKs1gliFKQb34huItDQX97LyOdPdA==}
     engines: {node: '>=18'}
 
+  kysely-do@0.0.1-rc.1:
+    resolution: {integrity: sha512-sI9Pyga89eIkHkVCyBPgPVSuzv0JnmBlIusdLzJJvryG35QkWQElQ4TbPtMPT8l+ABnJL/ktZqlfcd5oKSocew==}
+    peerDependencies:
+      kysely: '*'
+
+  kysely@0.28.2:
+    resolution: {integrity: sha512-4YAVLoF0Sf0UTqlhgQMFU9iQECdah7n+13ANkiuVfRvlK+uI0Etbgd7bVP36dKlG+NXWbhGua8vnGt+sdhvT7A==}
+    engines: {node: '>=18.0.0'}
+
   linkedom@0.14.26:
     resolution: {integrity: sha512-mK6TrydfFA7phrnp+1j57ycBwFI5bGSW6YXlw9acHoqF+mP/y+FooEYYyniOt5Ot57FSKB3iwmnuQ1UUyNLm5A==}
 
@@ -3602,8 +3617,8 @@ packages:
   run-parallel@1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
 
-  rwsdk@0.1.0-alpha.16-test.20250618133922:
-    resolution: {integrity: sha512-oNioaONyPdtxen4TwlAxWPuUjAI7zsUFG9RSbDrJbN6b0lvmxoSlOyO79Ec46VJ55fDblCHZU/9zDA1L8iNYBQ==}
+  rwsdk@0.1.0-alpha.17-test.20250619030106:
+    resolution: {integrity: sha512-lVeLf3Dw/Rp9101tka7Ussp9PRcRl13iH6hqKLXbfjlTcJ0UDrO2qdDKF67dfN9p3gj74n3I5vgyawZNinWpkA==}
     hasBin: true
     peerDependencies:
       vite: ^6.2.6
@@ -7222,6 +7237,12 @@ snapshots:
 
   ky@1.7.5: {}
 
+  kysely-do@0.0.1-rc.1(kysely@0.28.2):
+    dependencies:
+      kysely: 0.28.2
+
+  kysely@0.28.2: {}
+
   linkedom@0.14.26:
     dependencies:
       css-select: 5.1.0
@@ -8425,7 +8446,7 @@ snapshots:
     dependencies:
       queue-microtask: 1.2.3
 
-  rwsdk@0.1.0-alpha.16-test.20250618133922(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250617.0):
+  rwsdk@0.1.0-alpha.17-test.20250619030106(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250617.0):
     dependencies:
       '@ast-grep/napi': 0.38.5
       '@cloudflare/vite-plugin': 0.0.0-1bae8618b(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250617.0)(wrangler@4.20.3(@cloudflare/workers-types@4.20250407.0))
@@ -8444,9 +8465,11 @@ snapshots:
       glob: 11.0.1
       ignore: 7.0.4
       jsonc-parser: 3.3.1
+      kysely: 0.28.2
+      kysely-do: 0.0.1-rc.1(kysely@0.28.2)
       lodash: 4.17.21
       magic-string: 0.30.17
-      miniflare: 4.20250508.3
+      miniflare: 4.20250617.1
       picocolors: 1.1.1
       puppeteer-core: 22.15.0
       react: 19.2.0-canary-39cad7af-20250411
