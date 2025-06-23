@@ -164,8 +164,11 @@ export const transformServerFunctions = (
 
   addServerModule?.(environment, normalizedId);
 
-  if (environment === "ssr") {
-    log("Transforming for SSR environment: normalizedId=%s", normalizedId);
+  if (environment === "ssr" || environment === "client") {
+    log(
+      `Transforming for ${environment} environment: normalizedId=%s`,
+      normalizedId,
+    );
 
     const exportInfo = findExportInfo(code, normalizedId);
     const allExports = new Set([
@@ -181,15 +184,19 @@ export const transformServerFunctions = (
 
     // Generate completely new code for SSR
     const s = new MagicString("");
-    s.append('import { createServerReference } from "rwsdk/__ssr";\n\n');
+    if (environment === "ssr") {
+      s.append('import { createServerReference } from "rwsdk/__ssr";\n\n');
+    } else {
+      s.append('import { createServerReference } from "rwsdk/client";\n\n');
+    }
 
     for (const name of allExports) {
-      if (name !== "default") {
+      if (name !== "default" && name !== defaultFunctionName) {
         s.append(
           `export let ${name} = createServerReference(${JSON.stringify(normalizedId)}, ${JSON.stringify(name)});\n`,
         );
         log(
-          "Added SSR server reference for function: %s in normalizedId=%s",
+          `Added ${environment} server reference for function: %s in normalizedId=%s`,
           name,
           normalizedId,
         );
@@ -202,12 +209,15 @@ export const transformServerFunctions = (
         `\nexport default createServerReference(${JSON.stringify(normalizedId)}, "default");\n`,
       );
       log(
-        "Added SSR server reference for default export in normalizedId=%s",
+        `Added ${environment} server reference for default export in normalizedId=%s`,
         normalizedId,
       );
     }
 
-    log("SSR transformation complete for normalizedId=%s", normalizedId);
+    log(
+      `${environment} transformation complete for normalizedId=%s`,
+      normalizedId,
+    );
     return {
       code: s.toString(),
       map: s.generateMap({
@@ -334,6 +344,17 @@ export const transformServerFunctions = (
               );
             s.overwrite(range.start.index, range.end.index, newText);
             s.append("\nexport default __defaultServerFunction__;\n");
+          } else {
+            const predefinedMatches = root
+              .root()
+              .findAll("export default $NAME");
+            if (predefinedMatches.length > 0) {
+              const match = predefinedMatches[0];
+              const nameCapture = match.getMatch("NAME")?.text();
+              if (nameCapture) {
+                s.append(`const __defaultServerFunction__ = ${nameCapture};\n`);
+              }
+            }
           }
         }
       } catch (err) {
@@ -359,7 +380,12 @@ export const transformServerFunctions = (
     // Register local functions
     const defaultFunctionName = findDefaultFunctionName(code, normalizedId);
     for (const name of exportInfo.localFunctions) {
-      if (name === "__defaultServerFunction__" || name === "default") continue;
+      if (
+        name === "__defaultServerFunction__" ||
+        name === "default" ||
+        name === defaultFunctionName
+      )
+        continue;
       // Skip if already registered
       if (registeredFunctions.has(name)) continue;
 
@@ -395,58 +421,6 @@ export const transformServerFunctions = (
     }
 
     log("Worker transformation complete for normalizedId=%s", normalizedId);
-    return {
-      code: s.toString(),
-      map: s.generateMap({
-        source: normalizedId,
-        includeContent: true,
-        hires: true,
-      }),
-    };
-  } else if (environment === "client") {
-    log("Transforming for client environment: normalizedId=%s", normalizedId);
-
-    const exportInfo = findExportInfo(code, normalizedId);
-    const allExports = new Set([
-      ...exportInfo.localFunctions,
-      ...exportInfo.reExports.map((r) => r.localName),
-    ]);
-
-    // Check for default function exports that should also be named exports
-    const defaultFunctionName = findDefaultFunctionName(code, normalizedId);
-    if (defaultFunctionName) {
-      allExports.add(defaultFunctionName);
-    }
-
-    // Generate completely new code for client
-    const s = new MagicString("");
-    s.append('import { createServerReference } from "rwsdk/client";\n\n');
-
-    for (const name of allExports) {
-      if (name !== "default") {
-        s.append(
-          `export let ${name} = createServerReference(${JSON.stringify(normalizedId)}, ${JSON.stringify(name)});\n`,
-        );
-        log(
-          "Added client server reference for function: %s in normalizedId=%s",
-          name,
-          normalizedId,
-        );
-      }
-    }
-
-    // Check for default export in the actual module (not re-exports)
-    if (hasDefaultExport(code, normalizedId)) {
-      s.append(
-        `\nexport default createServerReference(${JSON.stringify(normalizedId)}, "default");\n`,
-      );
-      log(
-        "Added client server reference for default export in normalizedId=%s",
-        normalizedId,
-      );
-    }
-
-    log("Client transformation complete for normalizedId=%s", normalizedId);
     return {
       code: s.toString(),
       map: s.generateMap({

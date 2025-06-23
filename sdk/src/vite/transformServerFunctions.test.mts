@@ -53,6 +53,23 @@ export default function sum() {
 }
 `;
 
+  let PREDEFINED_DEFAULT_EXPORT_CODE = `
+"use server";
+
+const sum = () => {
+  return 1 + 1;
+}
+
+export default sum;
+`;
+
+  let EXPORT_DEFAULT_FUNCTION_CODE = `
+"use server";
+export default function sum() {
+  return 1 + 1;
+}
+`;
+
   let NAMED_EXPORT_CODE = `
 "use server";
 
@@ -95,6 +112,8 @@ export * from './utils';
     ASYNC_FUNCTION_EXPORT_CODE,
     DEFAULT_AND_NAMED_EXPORTS_CODE,
     RE_EXPORT_CODE,
+    PREDEFINED_DEFAULT_EXPORT_CODE,
+    EXPORT_DEFAULT_FUNCTION_CODE,
   };
 
   describe("TRANSFORMS", () => {
