@@ -106,7 +106,6 @@ registerServerReference(sum, "/test.tsx", "sum")
 exports[`useServerPlugin > TRANSFORMS > DEFAULT_AND_NAMED_EXPORTS_CODE > CLIENT 1`] = `
 "import { createServerReference } from "rwsdk/client";
 
-export let sum = createServerReference("/test.tsx", "sum");
 
 export default createServerReference("/test.tsx", "default");
 "
@@ -115,7 +114,6 @@ export default createServerReference("/test.tsx", "default");
 exports[`useServerPlugin > TRANSFORMS > DEFAULT_AND_NAMED_EXPORTS_CODE > SSR 1`] = `
 "import { createServerReference } from "rwsdk/__ssr";
 
-export let sum = createServerReference("/test.tsx", "sum");
 
 export default createServerReference("/test.tsx", "default");
 "
@@ -134,14 +132,12 @@ function __defaultServerFunction__() {
 
 export default __defaultServerFunction__;
 registerServerReference(__defaultServerFunction__, "/test.tsx", "default")
-registerServerReference(sum, "/test.tsx", "sum")
 "
 `;
 
 exports[`useServerPlugin > TRANSFORMS > DEFAULT_EXPORT_CODE > CLIENT 1`] = `
 "import { createServerReference } from "rwsdk/client";
 
-export let sum = createServerReference("/test.tsx", "sum");
 
 export default createServerReference("/test.tsx", "default");
 "
@@ -150,7 +146,6 @@ export default createServerReference("/test.tsx", "default");
 exports[`useServerPlugin > TRANSFORMS > DEFAULT_EXPORT_CODE > SSR 1`] = `
 "import { createServerReference } from "rwsdk/__ssr";
 
-export let sum = createServerReference("/test.tsx", "sum");
 
 export default createServerReference("/test.tsx", "default");
 "
@@ -165,7 +160,34 @@ function __defaultServerFunction__() {
 
 export default __defaultServerFunction__;
 registerServerReference(__defaultServerFunction__, "/test.tsx", "default")
-registerServerReference(sum, "/test.tsx", "sum")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > EXPORT_DEFAULT_FUNCTION_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+
+export default createServerReference("/test.tsx", "default");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > EXPORT_DEFAULT_FUNCTION_CODE > SSR 1`] = `
+"import { createServerReference } from "rwsdk/__ssr";
+
+
+export default createServerReference("/test.tsx", "default");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > EXPORT_DEFAULT_FUNCTION_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+function __defaultServerFunction__() {
+  return 1 + 1;
+}
+
+export default __defaultServerFunction__;
+registerServerReference(__defaultServerFunction__, "/test.tsx", "default")
 "
 `;
 
