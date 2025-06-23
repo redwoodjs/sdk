@@ -54,6 +54,7 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
       plugins: [
         redwood({
           configPath: tmpWorkerPath.path,
+          includeCloudflarePlugin: true,
           entry: {
             worker: scriptPath,
           },

@@ -22,15 +22,17 @@
     "types": "tsc"
   },
   "dependencies": {
-    "rwsdk": "0.1.0-alpha.18-test.20250623021216"
+    "rwsdk": "0.1.0-alpha.19-test.20250623033339"
   },
   "devDependencies": {
+    "@cloudflare/vite-plugin": "1.7.4",
+    "@cloudflare/workers-types": "^4.20250407.0",
     "@types/node": "^22.14.0",
     "@types/react": "^19.1.2",
     "@types/react-dom": "^19.1.2",
     "typescript": "^5.8.3",
     "vite": "^6.2.6",
-    "wrangler": "^4.20.3"
+    "wrangler": "^4.20.5"
   },
   "pnpm": {
     "onlyBuiltDependencies": [

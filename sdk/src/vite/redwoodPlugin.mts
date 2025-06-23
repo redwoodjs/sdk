@@ -1,5 +1,7 @@
 import { resolve } from "node:path";
 import { InlineConfig } from "vite";
+import { cloudflare } from "@cloudflare/vite-plugin";
+import { hasOwnCloudflareVitePlugin } from "./hasOwnCloudflareVitePlugin.mjs";
 
 import reactPlugin from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
@@ -8,7 +10,7 @@ import { transformJsxScriptTagsPlugin } from "./transformJsxScriptTagsPlugin.mjs
 import { directivesPlugin } from "./directivesPlugin.mjs";
 import { useClientLookupPlugin } from "./useClientLookupPlugin.mjs";
 import { useServerLookupPlugin } from "./useServerLookupPlugin.mjs";
-import { miniflarePlugin } from "./miniflarePlugin.mjs";
+import { miniflareHMRPlugin } from "./miniflareHMRPlugin.mjs";
 import { moveStaticAssetsPlugin } from "./moveStaticAssetsPlugin.mjs";
 import { configPlugin } from "./configPlugin.mjs";
 import { $ } from "../lib/$.mjs";
@@ -26,6 +28,7 @@ export type RedwoodPluginOptions = {
   silent?: boolean;
   rootDir?: string;
   mode?: "development" | "production";
+  includeCloudflarePlugin?: boolean;
   configPath?: string;
   entry?: {
     client?: string;
@@ -37,6 +40,7 @@ export const redwoodPlugin = async (
   options: RedwoodPluginOptions = {},
 ): Promise<InlineConfig["plugins"]> => {
   const projectRootDir = process.cwd();
+
   const mode =
     options.mode ??
     (process.env.NODE_ENV === "development" ? "development" : "production");
@@ -51,6 +55,10 @@ export const redwoodPlugin = async (
 
   const clientFiles = new Set<string>();
   const serverFiles = new Set<string>();
+
+  const shouldIncludeCloudflarePlugin =
+    options.includeCloudflarePlugin ??
+    !(await hasOwnCloudflareVitePlugin({ rootProjectDir: projectRootDir }));
 
   // context(justinvdm, 31 Mar 2025): We assume that if there is no .wrangler directory,
   // then this is fresh install, and we run `npm run dev:init` here.
@@ -69,6 +77,7 @@ export const redwoodPlugin = async (
       stdio: ["ignore", "inherit", "inherit"],
     })`npm run dev:init`;
   }
+
   return [
     devServerTimingPlugin(),
     configPlugin({
@@ -85,12 +94,17 @@ export const redwoodPlugin = async (
     }),
     reactConditionsResolverPlugin(),
     tsconfigPaths({ root: projectRootDir }),
-    miniflarePlugin({
+    shouldIncludeCloudflarePlugin
+      ? cloudflare({
+          viteEnvironment: { name: "worker" },
+          configPath:
+            options.configPath ?? (await findWranglerConfig(projectRootDir)),
+        })
+      : [],
+    miniflareHMRPlugin({
       rootDir: projectRootDir,
       viteEnvironment: { name: "worker" },
       workerEntryPathname,
-      configPath:
-        options.configPath ?? (await findWranglerConfig(projectRootDir)),
     }),
     reactPlugin(),
     directivesPlugin({
