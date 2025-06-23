@@ -1,4 +1,4 @@
-import { readJson } from "fs-extra";
+import { readFile } from "fs/promises";
 import path from "path";
 
 export async function hasOwnCloudflareVitePlugin({
@@ -8,7 +8,7 @@ export async function hasOwnCloudflareVitePlugin({
 }) {
   const packageJsonPath = path.join(rootProjectDir, "package.json");
   try {
-    const packageJson = await readJson(packageJsonPath);
+    const packageJson = JSON.parse(await readFile(packageJsonPath, "utf-8"));
     return !!(
       packageJson.dependencies?.["@cloudflare/vite-plugin"] ||
       packageJson.devDependencies?.["@cloudflare/vite-plugin"]
