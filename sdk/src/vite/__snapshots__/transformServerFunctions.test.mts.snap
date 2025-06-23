@@ -1,34 +1,5 @@
 // Vitest Snapshot v1, https://vitest.dev/guide/snapshot.html
 
-exports[`useServerPlugin > TRANSFORMS > ALREADY_DEFINED_DEFAULT_EXPORT_CODE > CLIENT 1`] = `
-"import { createServerReference } from "rwsdk/client";
-
-
-export default createServerReference("/test.tsx", "default");
-"
-`;
-
-exports[`useServerPlugin > TRANSFORMS > ALREADY_DEFINED_DEFAULT_EXPORT_CODE > SSR 1`] = `
-"import { createServerReference } from "rwsdk/__ssr";
-
-
-export default createServerReference("/test.tsx", "default");
-"
-`;
-
-exports[`useServerPlugin > TRANSFORMS > ALREADY_DEFINED_DEFAULT_EXPORT_CODE > WORKER 1`] = `
-"import { registerServerReference } from "rwsdk/worker";
-
-const sum = () => {
-  return 1 + 1;
-}
-
-export default sum;
-const __defaultServerFunction__ = sum;
-registerServerReference(__defaultServerFunction__, "/test.tsx", "default")
-"
-`;
-
 exports[`useServerPlugin > TRANSFORMS > ARROW_FUNCTION_EXPORT_CODE > CLIENT 1`] = `
 "import { createServerReference } from "rwsdk/client";
 
@@ -246,6 +217,35 @@ export function sum() {
   return 1 + 1
 }
 registerServerReference(sum, "/test.tsx", "sum")
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > PREDEFINED_DEFAULT_EXPORT_CODE > CLIENT 1`] = `
+"import { createServerReference } from "rwsdk/client";
+
+
+export default createServerReference("/test.tsx", "default");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > PREDEFINED_DEFAULT_EXPORT_CODE > SSR 1`] = `
+"import { createServerReference } from "rwsdk/__ssr";
+
+
+export default createServerReference("/test.tsx", "default");
+"
+`;
+
+exports[`useServerPlugin > TRANSFORMS > PREDEFINED_DEFAULT_EXPORT_CODE > WORKER 1`] = `
+"import { registerServerReference } from "rwsdk/worker";
+
+const sum = () => {
+  return 1 + 1;
+}
+
+export default sum;
+const __defaultServerFunction__ = sum;
+registerServerReference(__defaultServerFunction__, "/test.tsx", "default")
 "
 `;
 
