@@ -7,10 +7,6 @@ import { readFile } from "node:fs/promises";
 import { getShortName } from "../lib/getShortName.mjs";
 import { pathExists } from "fs-extra";
 
-type BasePluginOptions = Parameters<typeof cloudflare>[0];
-
-type MiniflarePluginOptions = BasePluginOptions & {};
-
 const hasEntryAsAncestor = (
   module: any,
   entryFile: string,
@@ -89,17 +85,15 @@ const isUseClientModule = async (
   }
 };
 
-export const miniflarePlugin = (
-  givenOptions: MiniflarePluginOptions & {
-    rootDir: string;
-    workerEntryPathname: string;
-  },
-): (Plugin | Plugin[])[] => [
-  cloudflare(givenOptions),
+export const miniflareHMRPlugin = (givenOptions: {
+  rootDir: string;
+  viteEnvironment: { name: string };
+  workerEntryPathname: string;
+}): (Plugin | Plugin[])[] => [
   {
     name: "rwsdk:miniflare-hmr",
     async hotUpdate(ctx) {
-      const environment = givenOptions.viteEnvironment?.name ?? "worker";
+      const environment = givenOptions.viteEnvironment.name;
       const entry = givenOptions.workerEntryPathname;
 
       if (!["client", environment].includes(this.environment.name)) {
