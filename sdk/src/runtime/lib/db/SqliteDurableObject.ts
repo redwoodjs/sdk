@@ -29,7 +29,7 @@ export class SqliteDurableObject<T = any> extends DurableObject {
     });
   }
 
-  private async initialize(): Promise<void> {
+  public async initialize(): Promise<void> {
     if (this.initialized) {
       log("Database already initialized, skipping");
       return;
