@@ -33,6 +33,8 @@ export function createDb<T>(
     return db;
   };
 
+  doCreateDb();
+
   return new Proxy({} as Kysely<T>, {
     get(target, prop, receiver) {
       const db = doCreateDb();
