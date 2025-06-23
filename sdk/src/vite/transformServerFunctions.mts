@@ -334,6 +334,17 @@ export const transformServerFunctions = (
               );
             s.overwrite(range.start.index, range.end.index, newText);
             s.append("\nexport default __defaultServerFunction__;\n");
+          } else {
+            const predefinedMatches = root
+              .root()
+              .findAll("export default $NAME");
+            if (predefinedMatches.length > 0) {
+              const match = predefinedMatches[0];
+              const nameCapture = match.getMatch("NAME")?.text();
+              if (nameCapture) {
+                s.append(`const __defaultServerFunction__ = ${nameCapture};\n`);
+              }
+            }
           }
         }
       } catch (err) {
