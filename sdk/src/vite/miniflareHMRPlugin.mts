@@ -1,5 +1,4 @@
 import { HotUpdateOptions, Plugin } from "vite";
-import { cloudflare } from "@cloudflare/vite-plugin";
 import { resolve } from "node:path";
 import colors from "picocolors";
 import { readFile } from "node:fs/promises";
