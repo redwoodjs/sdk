@@ -22,7 +22,7 @@
     "types": "tsc"
   },
   "dependencies": {
-    "rwsdk": "0.1.0-alpha.18-test.20250623021216"
+    "rwsdk": "0.1.0-alpha.19-test.20250623025634"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.7.4",
