@@ -1,6 +1,6 @@
 {
   "name": "rwsdk",
-  "version": "0.1.0-alpha.18",
+  "version": "0.1.0-alpha.18-test.20250623021216",
   "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime",
   "type": "module",
   "bin": {
@@ -117,7 +117,7 @@
   "license": "MIT",
   "dependencies": {
     "@ast-grep/napi": "^0.38.5",
-    "@cloudflare/vite-plugin": "0.0.0-1bae8618b",
+    "@cloudflare/vite-plugin": "1.7.4",
     "@cloudflare/workers-types": "^4.20250407.0",
     "@puppeteer/browsers": "^2.8.0",
     "@types/fs-extra": "^11.0.4",
@@ -150,7 +150,7 @@
     "unique-names-generator": "^4.7.1",
     "vibe-rules": "^0.2.31",
     "vite-tsconfig-paths": "^5.1.4",
-    "wrangler": "^4.16.0"
+    "wrangler": "^4.20.5"
   },
   "peerDependencies": {
     "vite": "^6.2.6"
