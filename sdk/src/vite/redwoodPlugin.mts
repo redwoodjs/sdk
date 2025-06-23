@@ -96,6 +96,7 @@ export const redwoodPlugin = async (
     tsconfigPaths({ root: projectRootDir }),
     shouldIncludeCloudflarePlugin
       ? cloudflare({
+          viteEnvironment: { name: "worker" },
           configPath:
             options.configPath ?? (await findWranglerConfig(projectRootDir)),
         })

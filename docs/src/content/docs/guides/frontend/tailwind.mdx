@@ -31,7 +31,13 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
       environments: {
         ssr: {},
       },
-      plugins: [cloudflare(), redwood(), tailwindcss()],
+      plugins: [
+        cloudflare({
+          viteEnvironment: { name: "worker" },
+        }),
+        redwood(),
+        tailwindcss()
+      ],
     });
     ```
 

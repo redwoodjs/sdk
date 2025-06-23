@@ -3,5 +3,10 @@ import { redwood } from "rwsdk/vite";
 import { cloudflare } from "@cloudflare/vite-plugin";
 
 export default defineConfig({
-  plugins: [cloudflare(), redwood()],
+  plugins: [
+    cloudflare({
+      viteEnvironment: { name: "worker" },
+    }),
+    redwood(),
+  ],
 });
