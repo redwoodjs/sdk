@@ -1,5 +1,6 @@
 import { resolve } from "node:path";
 import { InlineConfig } from "vite";
+import { unstable_readConfig } from "wrangler";
 import { cloudflare } from "@cloudflare/vite-plugin";
 import { hasOwnCloudflareVitePlugin } from "./hasOwnCloudflareVitePlugin.mjs";
 
@@ -36,6 +37,20 @@ export type RedwoodPluginOptions = {
   };
 };
 
+const determineWorkerEntryPathname = async (
+  projectRootDir: string,
+  workerConfigPath: string,
+  options: RedwoodPluginOptions,
+) => {
+  if (options.entry?.worker) {
+    return resolve(projectRootDir, options.entry.worker);
+  }
+
+  const workerConfig = unstable_readConfig({ config: workerConfigPath });
+
+  return resolve(projectRootDir, workerConfig.main ?? "src/worker.tsx");
+};
+
 export const redwoodPlugin = async (
   options: RedwoodPluginOptions = {},
 ): Promise<InlineConfig["plugins"]> => {
@@ -45,16 +60,20 @@ export const redwoodPlugin = async (
     options.mode ??
     (process.env.NODE_ENV === "development" ? "development" : "production");
 
+  const workerConfigPath =
+    options.configPath ?? (await findWranglerConfig(projectRootDir));
+
+  const workerEntryPathname = await determineWorkerEntryPathname(
+    projectRootDir,
+    workerConfigPath,
+    options,
+  );
+
   const clientEntryPathnames = (
     Array.isArray(options.entry?.client)
       ? options.entry.client
       : [options.entry?.client ?? "src/client.tsx"]
   ).map((entry) => resolve(projectRootDir, entry));
-
-  const workerEntryPathname = resolve(
-    projectRootDir,
-    options?.entry?.worker ?? "src/worker.tsx",
-  );
 
   const clientFiles = new Set<string>();
   const serverFiles = new Set<string>();
@@ -100,8 +119,7 @@ export const redwoodPlugin = async (
     shouldIncludeCloudflarePlugin
       ? cloudflare({
           viteEnvironment: { name: "worker" },
-          configPath:
-            options.configPath ?? (await findWranglerConfig(projectRootDir)),
+          configPath: workerConfigPath,
         })
       : [],
     miniflareHMRPlugin({
