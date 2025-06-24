@@ -139,109 +139,118 @@ function createEsbuildResolverPlugin(envName: string) {
   };
 }
 
-export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
+export const reactConditionsResolverPlugin = (): Plugin[] => {
   log("Initializing react conditions resolver plugin");
   let isBuild = false;
 
-  return {
-    name: "rwsdk:react-conditions-resolver",
-    enforce: "post",
+  return [
+    {
+      name: "rwsdk:react-conditions-resolver:config",
+      enforce: "post",
 
-    config(config, { command }) {
-      isBuild = command === "build";
-      log("Configuring plugin for command=%s", command);
-    },
+      config(config, { command }) {
+        isBuild = command === "build";
+        log("Configuring plugin for command=%s", command);
+      },
 
-    configResolved(config) {
-      log("Setting up resolve aliases and optimizeDeps for each environment");
+      configResolved(config) {
+        log("Setting up resolve aliases and optimizeDeps for each environment");
 
-      // Set up aliases and optimizeDeps for each environment
-      for (const [envName, mappings] of Object.entries(ENV_IMPORT_MAPPINGS)) {
-        const reactImports =
-          ENV_REACT_IMPORTS[envName as keyof typeof ENV_REACT_IMPORTS];
+        // Set up aliases and optimizeDeps for each environment
+        for (const [envName, mappings] of Object.entries(ENV_IMPORT_MAPPINGS)) {
+          const reactImports =
+            ENV_REACT_IMPORTS[envName as keyof typeof ENV_REACT_IMPORTS];
 
-        // Ensure environment config exists
-        if (!(config as any).environments) {
-          (config as any).environments = {};
-        }
+          // Ensure environment config exists
+          if (!(config as any).environments) {
+            (config as any).environments = {};
+          }
 
-        if (!(config as any).environments[envName]) {
-          (config as any).environments[envName] = {};
-        }
+          if (!(config as any).environments[envName]) {
+            (config as any).environments[envName] = {};
+          }
 
-        const envConfig = (config as any).environments[envName];
+          const envConfig = (config as any).environments[envName];
 
-        const esbuildPlugin = createEsbuildResolverPlugin(envName);
-        if (esbuildPlugin && mappings) {
-          envConfig.optimizeDeps ??= {};
-          envConfig.optimizeDeps.esbuildOptions ??= {};
-          envConfig.optimizeDeps.esbuildOptions.define ??= {};
-          envConfig.optimizeDeps.esbuildOptions.define["process.env.NODE_ENV"] =
-            JSON.stringify(process.env.NODE_ENV ?? "production");
-          envConfig.optimizeDeps.esbuildOptions.plugins ??= [];
-          envConfig.optimizeDeps.esbuildOptions.plugins.push(esbuildPlugin);
+          const esbuildPlugin = createEsbuildResolverPlugin(envName);
+          if (esbuildPlugin && mappings) {
+            envConfig.optimizeDeps ??= {};
+            envConfig.optimizeDeps.esbuildOptions ??= {};
+            envConfig.optimizeDeps.esbuildOptions.define ??= {};
+            envConfig.optimizeDeps.esbuildOptions.define[
+              "process.env.NODE_ENV"
+            ] = JSON.stringify(process.env.NODE_ENV ?? "production");
+            envConfig.optimizeDeps.esbuildOptions.plugins ??= [];
+            envConfig.optimizeDeps.esbuildOptions.plugins.push(esbuildPlugin);
 
-          envConfig.optimizeDeps.include ??= [];
-          envConfig.optimizeDeps.include.push(...reactImports);
+            envConfig.optimizeDeps.include ??= [];
+            envConfig.optimizeDeps.include.push(...reactImports);
+
+            log(
+              "Added esbuild plugin and optimizeDeps includes for environment: %s",
+              envName,
+            );
+          }
+
+          const aliases = ensureAliasArray(envConfig);
+
+          for (const [find, replacement] of mappings) {
+            const findRegex = new RegExp(
+              `^${find.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
+            );
+            aliases.push({ find: findRegex, replacement });
+            log("Added alias for env=%s: %s -> %s", envName, find, replacement);
+          }
 
           log(
-            "Added esbuild plugin and optimizeDeps includes for environment: %s",
+            "Environment %s configured with %d aliases and %d optimizeDeps includes",
             envName,
+            mappings.size,
+            reactImports.length,
           );
         }
-
-        const aliases = ensureAliasArray(envConfig);
-
-        for (const [find, replacement] of mappings) {
-          const findRegex = new RegExp(
-            `^${find.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
-          );
-          aliases.push({ find: findRegex, replacement });
-          log("Added alias for env=%s: %s -> %s", envName, find, replacement);
+      },
+    },
+    {
+      name: "rwsdk:react-conditions-resolver:resolveId",
+      enforce: "pre",
+      async resolveId(
+        id: string,
+        importer: string | undefined,
+      ): Promise<string | undefined> {
+        if (!isBuild) {
+          return;
         }
 
-        log(
-          "Environment %s configured with %d aliases and %d optimizeDeps includes",
+        const envName = this.environment?.name;
+
+        if (!envName) {
+          return;
+        }
+
+        verboseLog(
+          "Resolving id=%s, environment=%s, importer=%s",
+          id,
           envName,
-          mappings.size,
-          reactImports.length,
+          importer,
         );
-      }
+
+        const mappings = ENV_IMPORT_MAPPINGS[envName];
+
+        if (!mappings) {
+          verboseLog("No mappings found for environment: %s", envName);
+          return;
+        }
+
+        const resolved = mappings.get(id);
+
+        if (resolved) {
+          log("Resolved %s -> %s for env=%s", id, resolved, envName);
+          return resolved;
+        }
+
+        verboseLog("No resolution found for id=%s in env=%s", id, envName);
+      },
     },
-
-    async resolveId(id, importer) {
-      if (!isBuild) {
-        return;
-      }
-
-      const envName = this.environment?.name;
-
-      if (!envName) {
-        return;
-      }
-
-      verboseLog(
-        "Resolving id=%s, environment=%s, importer=%s",
-        id,
-        envName,
-        importer,
-      );
-
-      const mappings = ENV_IMPORT_MAPPINGS[envName];
-
-      if (!mappings) {
-        verboseLog("No mappings found for environment: %s", envName);
-        return;
-      }
-
-      const resolved = mappings.get(id);
-
-      if (resolved) {
-        log("Resolved %s -> %s for env=%s", id, resolved, envName);
-        return resolved;
-      }
-
-      verboseLog("No resolution found for id=%s in env=%s", id, envName);
-    },
-  };
+  ];
 };
