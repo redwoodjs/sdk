@@ -24,13 +24,13 @@ export const configPlugin = ({
   mode,
   silent,
   projectRootDir,
-  clientEntryPathname,
+  clientEntryPathnames,
   workerEntryPathname,
 }: {
   mode: "development" | "production";
   silent: boolean;
   projectRootDir: string;
-  clientEntryPathname: string;
+  clientEntryPathnames: string[];
   workerEntryPathname: string;
 }): Plugin => ({
   name: "rwsdk:config",
@@ -56,9 +56,7 @@ export const configPlugin = ({
             outDir: resolve(projectRootDir, "dist", "client"),
             manifest: true,
             rollupOptions: {
-              input: {
-                client: clientEntryPathname,
-              },
+              input: clientEntryPathnames,
             },
           },
           define: {

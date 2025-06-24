@@ -2,16 +2,20 @@ import { type Plugin } from "vite";
 import MagicString from "magic-string";
 
 export const injectVitePreamble = ({
-  clientEntryPathname,
+  clientEntryPathnames,
   mode,
 }: {
-  clientEntryPathname: string;
+  clientEntryPathnames: string[];
   mode: "development" | "production";
 }): Plugin => ({
   name: "rwsdk:inject-vite-preamble",
   apply: "serve",
   transform(code: string, id: string) {
-    if (id !== clientEntryPathname) {
+    if (this.environment.name !== "client") {
+      return;
+    }
+
+    if (!clientEntryPathnames.includes(id)) {
       return;
     }
 
