@@ -145,7 +145,7 @@ export const reactConditionsResolverPlugin = async (): Promise<Plugin> => {
 
   return {
     name: "rwsdk:react-conditions-resolver",
-    enforce: "post",
+    enforce: "pre",
 
     config(config, { command }) {
       isBuild = command === "build";
