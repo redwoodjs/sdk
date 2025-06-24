@@ -31,7 +31,7 @@ export type RedwoodPluginOptions = {
   includeCloudflarePlugin?: boolean;
   configPath?: string;
   entry?: {
-    client?: string;
+    client?: string | string[];
     worker?: string;
   };
 };
@@ -44,10 +44,13 @@ export const redwoodPlugin = async (
   const mode =
     options.mode ??
     (process.env.NODE_ENV === "development" ? "development" : "production");
-  const clientEntryPathname = resolve(
-    projectRootDir,
-    options?.entry?.client ?? "src/client.tsx",
-  );
+
+  const clientEntryPathnames = (
+    Array.isArray(options.entry?.client)
+      ? options.entry.client
+      : [options.entry?.client ?? "src/client.tsx"]
+  ).map((entry) => resolve(projectRootDir, entry));
+
   const workerEntryPathname = resolve(
     projectRootDir,
     options?.entry?.worker ?? "src/worker.tsx",
@@ -84,7 +87,7 @@ export const redwoodPlugin = async (
       mode,
       silent: options.silent ?? false,
       projectRootDir,
-      clientEntryPathname,
+      clientEntryPathnames,
       workerEntryPathname,
     }),
     ssrBridgePlugin({
@@ -113,7 +116,7 @@ export const redwoodPlugin = async (
       serverFiles,
     }),
     vitePreamblePlugin(),
-    injectVitePreamble({ clientEntryPathname, mode }),
+    injectVitePreamble({ clientEntryPathnames, mode }),
     useClientLookupPlugin({
       projectRootDir,
       clientFiles,
