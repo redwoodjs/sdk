@@ -15,218 +15,183 @@ import type { Expect, Equal } from "./test-utils";
     },
   } satisfies Migrations;
 
+  type Actual = Database<typeof migrations>;
   type Expected = {
     users: {
       username: string;
     };
   };
 
-  (_test: Expect<Equal<Database<typeof migrations>, Expected>>) => {};
+  (_test: Expect<Equal<Actual, Expected>>) => {};
 };
 
-//(test = "addColumn with default value") => {
-//  const migrations = {
-//    "0": {
-//      async up(db: Kysely<any>) {
-//        return db.schema
-//          .createTable("users")
-//          .addColumn("username", "text", (col) => col.notNull().unique())
-//          .addColumn("posts", "integer", (col) => col.defaultTo(0).notNull())
-//          .execute();
-//      },
-//    },
-//  } as const;
-//
-//  type DB = Database<typeof migrations>;
-//
-//  type test = [
-//    Expect<
-//      Equal<
-//        DB,
-//        {
-//          users: {
-//            username: string;
-//            posts: number;
-//          };
-//        }
-//      >
-//    >,
-//  ];
-//};
-//
-//(test = "alterTable") => {
-//  const migrations = {
-//    "0": {
-//      async up(db: Kysely<any>) {
-//        return db.schema
-//          .createTable("users")
-//          .addColumn("username", "text", (col) => col.notNull().unique())
-//          .execute();
-//      },
-//    },
-//    "1": {
-//      async up(db: Kysely<any>) {
-//        return db.schema
-//          .alterTable("users")
-//          .addColumn("displayName", "text")
-//          .execute();
-//      },
-//    },
-//  } as const;
-//
-//  type DB = Database<typeof migrations>;
-//
-//  type test = [
-//    Expect<
-//      Equal<
-//        DB,
-//        {
-//          users: {
-//            username: string;
-//            displayName: string;
-//          };
-//        }
-//      >
-//    >,
-//  ];
-//};
-//
-//(test = "dropTable") => {
-//  const migrations = {
-//    "0": {
-//      async up(db: Kysely<any>) {
-//        return [
-//          db.schema
-//            .createTable("users")
-//            .addColumn("username", "text", (col) => col.notNull().unique())
-//            .execute(),
-//          db.schema.createTable("posts").addColumn("title", "text").execute(),
-//        ];
-//      },
-//    },
-//    "1": {
-//      async up(db: Kysely<any>) {
-//        return db.schema.dropTable("posts").execute();
-//      },
-//    },
-//  } as const;
-//
-//  type DB = Database<typeof migrations>;
-//
-//  type test = [
-//    Expect<
-//      Equal<
-//        DB,
-//        {
-//          users: {
-//            username: string;
-//          };
-//        }
-//      >
-//    >,
-//  ];
-//};
-//
-//(test = "renameTable") => {
-//  const migrations = {
-//    "0": {
-//      async up(db: Kysely<any>) {
-//        return db.schema
-//          .createTable("users")
-//          .addColumn("username", "text", (col) => col.notNull().unique())
-//          .execute();
-//      },
-//    },
-//    "1": {
-//      async up(db: Kysely<any>) {
-//        return db.schema.renameTable("users", "users_new").execute();
-//      },
-//    },
-//  } as const;
-//
-//  type DB = Database<typeof migrations>;
-//
-//  type test = [
-//    Expect<
-//      Equal<
-//        DB,
-//        {
-//          users_new: {
-//            username: string;
-//          };
-//        }
-//      >
-//    >,
-//  ];
-//};
-//
-//(test = "dropColumn") => {
-//  const migrations = {
-//    "0": {
-//      async up(db: Kysely<any>) {
-//        return db.schema
-//          .createTable("users")
-//          .addColumn("username", "text", (col) => col.notNull().unique())
-//          .addColumn("posts", "integer", (col) => col.defaultTo(0).notNull())
-//          .execute();
-//      },
-//    },
-//    "1": {
-//      async up(db: Kysely<any>) {
-//        return db.schema.alterTable("users").dropColumn("posts").execute();
-//      },
-//    },
-//  } as const;
-//
-//  type DB = Database<typeof migrations>;
-//
-//  type test = [
-//    Expect<
-//      Equal<
-//        DB,
-//        {
-//          users: {
-//            username: string;
-//          };
-//        }
-//      >
-//    >,
-//  ];
-//};
-//
-//(test = "renameColumn") => {
-//  const migrations = {
-//    "0": {
-//      async up(db: Kysely<any>) {
-//        return db.schema
-//          .createTable("users")
-//          .addColumn("username", "text", (col) => col.notNull().unique())
-//          .execute();
-//      },
-//    },
-//    "1": {
-//      async up(db: Kysely<any>) {
-//        return db.schema
-//          .alterTable("users")
-//          .renameColumn("username", "handle")
-//          .execute();
-//      },
-//    },
-//  } as const;
-//
-//  type DB = Database<typeof migrations>;
-//
-//  type test = [
-//    Expect<
-//      Equal<
-//        DB,
-//        {
-//          users: {
-//            handle: string;
-//          };
-//        }
-//      >
-//    >,
-//  ];
-//};
-//
+(_it = "addColumn with default value") => {
+  const migrations = {
+    "0": {
+      async up(db: MigrationDatabase) {
+        return db.schema
+          .createTable("users")
+          .addColumn("username", "text", (col) => col.notNull().unique())
+          .addColumn("posts", "integer", (col) => col.defaultTo(0).notNull())
+          .execute();
+      },
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+
+  type Expected = {
+    users: {
+      username: string;
+      posts: number;
+    };
+  };
+
+  (_test: Expect<Equal<Actual, Expected>>) => {};
+};
+
+(_it = "alterTable") => {
+  const migrations = {
+    "0": {
+      async up(db: MigrationDatabase) {
+        return db.schema
+          .createTable("users")
+          .addColumn("username", "text", (col) => col.notNull().unique())
+          .execute();
+      },
+    },
+    "1": {
+      async up(db: MigrationDatabase) {
+        return db.schema
+          .alterTable("users")
+          .addColumn("displayName", "text")
+          .execute();
+      },
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+  type Expected = {
+    users: {
+      username: string;
+      displayName: string;
+    };
+  };
+
+  (_test: Expect<Equal<Actual, Expected>>) => {};
+};
+
+(_it = "dropTable") => {
+  const migrations = {
+    "0": {
+      async up(db: MigrationDatabase) {
+        return [
+          db.schema
+            .createTable("users")
+            .addColumn("username", "text", (col) => col.notNull().unique())
+            .execute(),
+          db.schema.createTable("posts").addColumn("title", "text").execute(),
+        ];
+      },
+    },
+    "1": {
+      async up(db: MigrationDatabase) {
+        return db.schema.dropTable("posts").execute();
+      },
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+  type Expected = {
+    users: {
+      username: string;
+    };
+  };
+
+  (_test: Expect<Equal<Actual, Expected>>) => {};
+};
+
+(_it = "renameTable") => {
+  const migrations = {
+    "0": {
+      async up(db: MigrationDatabase) {
+        return db.schema
+          .createTable("users")
+          .addColumn("username", "text", (col) => col.notNull().unique())
+          .execute();
+      },
+    },
+    "1": {
+      async up(db: MigrationDatabase) {
+        return db.schema.renameTable("users", "users_new").execute();
+      },
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+  type Expected = {
+    users_new: {
+      username: string;
+    };
+  };
+
+  (_test: Expect<Equal<Actual, Expected>>) => {};
+};
+
+(_it = "dropColumn") => {
+  const migrations = {
+    "0": {
+      async up(db: MigrationDatabase) {
+        return db.schema
+          .createTable("users")
+          .addColumn("username", "text", (col) => col.notNull().unique())
+          .addColumn("posts", "integer", (col) => col.defaultTo(0).notNull())
+          .execute();
+      },
+    },
+    "1": {
+      async up(db: MigrationDatabase) {
+        return db.schema.alterTable("users").dropColumn("posts").execute();
+      },
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+  type Expected = {
+    users: {
+      username: string;
+    };
+  };
+
+  (_test: Expect<Equal<Actual, Expected>>) => {};
+};
+
+(_it = "renameColumn") => {
+  const migrations = {
+    "0": {
+      async up(db: MigrationDatabase) {
+        return db.schema
+          .createTable("users")
+          .addColumn("username", "text", (col) => col.notNull().unique())
+          .execute();
+      },
+    },
+    "1": {
+      async up(db: MigrationDatabase) {
+        return db.schema
+          .alterTable("users")
+          .renameColumn("username", "handle")
+          .execute();
+      },
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+  type Expected = {
+    users: {
+      handle: string;
+    };
+  };
+
+  (_test: Expect<Equal<Actual, Expected>>) => {};
+};
