@@ -1,7 +1,7 @@
 import type { Database, Migrations, MigrationDatabase } from "../typeInference";
 import type { Expect, Equal } from "./test-utils";
 
-(test = "createTable") => {
+(_it = "createTable") => {
   const migrations = {
     "001_init": {
       async up(db: MigrationDatabase) {
@@ -21,7 +21,7 @@ import type { Expect, Equal } from "./test-utils";
     };
   };
 
-  type test = Expect<Equal<Database<typeof migrations>, Expected>>;
+  (_test: Expect<Equal<Database<typeof migrations>, Expected>>) => {};
 };
 
 //(test = "addColumn with default value") => {
