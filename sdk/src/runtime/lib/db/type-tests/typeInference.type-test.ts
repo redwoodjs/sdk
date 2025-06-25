@@ -1,33 +1,27 @@
-import type { Kysely } from "kysely";
-import type { Migration, Database } from "../typeInference";
+import type { Database, Migrations, MigrationDatabase } from "../typeInference";
 import type { Expect, Equal } from "./test-utils";
 
 (test = "createTable") => {
   const migrations = {
-    "0": {
-      async up(db: Kysely<any>) {
-        return db.schema
-          .createTable("users")
-          .addColumn("username", "text", (col) => col.notNull().unique())
-          .execute();
+    "001_init": {
+      async up(db: MigrationDatabase) {
+        return [
+          db.schema
+            .createTable("users")
+            .addColumn("username", "text", (col) => col.notNull().unique())
+            .execute(),
+        ];
       },
     },
-  } as const;
+  } satisfies Migrations;
 
-  type DB = Database<typeof migrations>;
+  type Expected = {
+    users: {
+      username: string;
+    };
+  };
 
-  type test = [
-    Expect<
-      Equal<
-        DB,
-        {
-          users: {
-            username: number;
-          };
-        }
-      >
-    >,
-  ];
+  type test = Expect<Equal<Database<typeof migrations>, Expected>>;
 };
 
 //(test = "addColumn with default value") => {
