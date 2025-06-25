@@ -149,11 +149,13 @@ type ApplyBuilders<DB, Bs extends any[]> = Bs extends [
   ? ApplyBuilders<ApplyBuilder<DB, B>, Rest>
   : DB;
 
+type UnwrapPromise<T> = T extends Promise<infer U> ? U : T;
+
 type ApplyUpResult<DB, R> =
-  R extends ExecutedBuilder<infer B>
+  UnwrapPromise<R> extends ExecutedBuilder<infer B>
     ? ApplyBuilder<DB, B>
-    : R extends ExecutedBuilder<any>[]
-      ? ApplyBuilders<DB, R>
+    : UnwrapPromise<R> extends ExecutedBuilder<any>[]
+      ? ApplyBuilders<DB, UnwrapPromise<R>>
       : DB;
 
 type ApplyMigration<DB, M extends Migration> =
@@ -179,3 +181,9 @@ export interface Migration<TUpReturn = unknown> {
 }
 
 export type Migrations = Record<string, Migration>;
+
+type Values<T> = T[keyof T];
+type MigrationsToArray<T extends Migrations> = Values<T>[];
+export type Database<T extends Migrations> = ComputeDatabase<
+  MigrationsToArray<T>
+>;
