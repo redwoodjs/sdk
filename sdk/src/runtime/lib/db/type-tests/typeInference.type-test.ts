@@ -29,17 +29,18 @@ import type { Expect, Equal } from "./test-utils";
   const migrations = {
     "0": {
       async up(db: MigrationDatabase) {
-        return db.schema
-          .createTable("users")
-          .addColumn("username", "text", (col) => col.notNull().unique())
-          .addColumn("posts", "integer", (col) => col.defaultTo(0).notNull())
-          .execute();
+        return [
+          db.schema
+            .createTable("users")
+            .addColumn("username", "text", (col) => col.notNull().unique())
+            .addColumn("posts", "integer", (col) => col.defaultTo(0).notNull())
+            .execute(),
+        ];
       },
     },
   } satisfies Migrations;
 
   type Actual = Database<typeof migrations>;
-
   type Expected = {
     users: {
       username: string;
@@ -54,23 +55,28 @@ import type { Expect, Equal } from "./test-utils";
   const migrations = {
     "0": {
       async up(db: MigrationDatabase) {
-        return db.schema
-          .createTable("users")
-          .addColumn("username", "text", (col) => col.notNull().unique())
-          .execute();
+        return [
+          db.schema
+            .createTable("users")
+            .addColumn("username", "text", (col) => col.notNull().unique())
+            .execute(),
+        ];
       },
     },
     "1": {
       async up(db: MigrationDatabase) {
-        return db.schema
-          .alterTable("users")
-          .addColumn("displayName", "text")
-          .execute();
+        return [
+          db.schema
+            .alterTable("users")
+            .addColumn("displayName", "text")
+            .execute(),
+        ];
       },
     },
   } satisfies Migrations;
 
   type Actual = Database<typeof migrations>;
+
   type Expected = {
     users: {
       username: string;
@@ -96,7 +102,7 @@ import type { Expect, Equal } from "./test-utils";
     },
     "1": {
       async up(db: MigrationDatabase) {
-        return db.schema.dropTable("posts").execute();
+        return [db.schema.dropTable("posts").execute()];
       },
     },
   } satisfies Migrations;
@@ -115,15 +121,17 @@ import type { Expect, Equal } from "./test-utils";
   const migrations = {
     "0": {
       async up(db: MigrationDatabase) {
-        return db.schema
-          .createTable("users")
-          .addColumn("username", "text", (col) => col.notNull().unique())
-          .execute();
+        return [
+          db.schema
+            .createTable("users")
+            .addColumn("username", "text", (col) => col.notNull().unique())
+            .execute(),
+        ];
       },
     },
     "1": {
       async up(db: MigrationDatabase) {
-        return db.schema.renameTable("users", "users_new").execute();
+        return [db.schema.renameTable("users", "users_new").execute()];
       },
     },
   } satisfies Migrations;
@@ -142,16 +150,18 @@ import type { Expect, Equal } from "./test-utils";
   const migrations = {
     "0": {
       async up(db: MigrationDatabase) {
-        return db.schema
-          .createTable("users")
-          .addColumn("username", "text", (col) => col.notNull().unique())
-          .addColumn("posts", "integer", (col) => col.defaultTo(0).notNull())
-          .execute();
+        return [
+          db.schema
+            .createTable("users")
+            .addColumn("username", "text", (col) => col.notNull().unique())
+            .addColumn("posts", "integer", (col) => col.defaultTo(0).notNull())
+            .execute(),
+        ];
       },
     },
     "1": {
       async up(db: MigrationDatabase) {
-        return db.schema.alterTable("users").dropColumn("posts").execute();
+        return [db.schema.alterTable("users").dropColumn("posts").execute()];
       },
     },
   } satisfies Migrations;
@@ -170,18 +180,22 @@ import type { Expect, Equal } from "./test-utils";
   const migrations = {
     "0": {
       async up(db: MigrationDatabase) {
-        return db.schema
-          .createTable("users")
-          .addColumn("username", "text", (col) => col.notNull().unique())
-          .execute();
+        return [
+          db.schema
+            .createTable("users")
+            .addColumn("username", "text", (col) => col.notNull().unique())
+            .execute(),
+        ];
       },
     },
     "1": {
       async up(db: MigrationDatabase) {
-        return db.schema
-          .alterTable("users")
-          .renameColumn("username", "handle")
-          .execute();
+        return [
+          db.schema
+            .alterTable("users")
+            .renameColumn("username", "handle")
+            .execute(),
+        ];
       },
     },
   } satisfies Migrations;
