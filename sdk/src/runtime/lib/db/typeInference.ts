@@ -1,4 +1,4 @@
-import { Kysely } from "kysely";
+import { Kysely, DropTableBuilder as KyselyDropTableBuilder } from "kysely";
 
 export type SqlToTsType<T extends string> = T extends "text"
   ? string
@@ -57,6 +57,14 @@ export interface AlterTableBuilder<
   execute(): ExecutedBuilder<this>;
 }
 
+export interface DropTableBuilder<TName extends string>
+  extends KyselyDropTableBuilder {
+  readonly __tableName: TName;
+  ifExists(): DropTableBuilder<TName>;
+  cascade(): DropTableBuilder<TName>;
+  execute(): ExecutedBuilder<this>;
+}
+
 export interface IndexBuilder {
   on(table: string): IndexBuilder;
   column(column: string): IndexBuilder;
@@ -66,7 +74,7 @@ export interface IndexBuilder {
 export interface SchemaBuilder {
   createTable<TName extends string>(name: TName): TableBuilder<TName, {}>;
   alterTable<TName extends string>(name: TName): AlterTableBuilder<TName, {}>;
-  dropTable(name: string): any;
+  dropTable<TName extends string>(name: TName): DropTableBuilder<TName>;
   createIndex(name: string): IndexBuilder;
 }
 
@@ -79,6 +87,9 @@ export type ExtractAlterSchema<T> =
   T extends AlterTableBuilder<infer TName, infer TSchema>
     ? Record<TName, TSchema>
     : never;
+
+export type ExtractDroppedTableName<T> =
+  T extends DropTableBuilder<infer TName> ? TName : never;
 
 export type MergeSchemas<A, B> = {
   [K in keyof A | keyof B]: K extends keyof A
@@ -130,9 +141,14 @@ type AlteredTables<TMigrations extends Migrations> = UnionToIntersection<
   >
 >;
 
-type InferredDatabase<TMigrations extends Migrations> = MergeSchemas<
-  CreatedTables<TMigrations>,
-  AlteredTables<TMigrations>
+type DroppedTableNames<TMigrations extends Migrations> =
+  ExtractDroppedTableName<
+    Extract<AllBuilders<TMigrations>, DropTableBuilder<any>>
+  >;
+
+type InferredDatabase<TMigrations extends Migrations> = Omit<
+  MergeSchemas<CreatedTables<TMigrations>, AlteredTables<TMigrations>>,
+  DroppedTableNames<TMigrations>
 >;
 
 export type Database<TMigrations extends Migrations = Migrations> = Prettify<

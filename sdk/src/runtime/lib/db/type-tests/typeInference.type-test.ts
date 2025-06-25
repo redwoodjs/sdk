@@ -96,6 +96,7 @@ import type { Expect, Equal } from "./test-utils";
             .createTable("users")
             .addColumn("username", "text", (col) => col.notNull().unique())
             .execute(),
+
           db.schema.createTable("posts").addColumn("title", "text").execute(),
         ];
       },
