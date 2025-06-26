@@ -1,4 +1,4 @@
-import type { Database, Migrations } from "../typeInference";
+import type { Database, Migrations } from "../database";
 import type { Expect, Equal } from "./testUtils";
 
 (_it = "createTable") => {
