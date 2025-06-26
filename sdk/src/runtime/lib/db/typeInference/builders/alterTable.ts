@@ -1,6 +1,6 @@
 import { SqlToTsType, ExecutedBuilder, Prettify } from "../utils";
 import { ColumnDefinitionBuilder } from "./columnDefinition";
-import { AlterColumnBuilder, AlterColumnBuilderCallback } from "./alterColumn";
+import { AlterColumnBuilderCallback } from "./alterColumn";
 
 export interface AlterTableBuilder<
   TName extends string,
