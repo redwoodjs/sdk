@@ -3,12 +3,12 @@ import { Kysely } from "kysely";
 export type SqlToTsType<T extends string> = T extends "text"
   ? string
   : T extends "integer"
-  ? number
-  : T extends "blob"
-  ? Uint8Array
-  : T extends "real"
-  ? number
-  : never;
+    ? number
+    : T extends "blob"
+      ? Uint8Array
+      : T extends "real"
+        ? number
+        : never;
 
 export interface ColumnBuilder<T = any> {
   primaryKey(): ColumnBuilder<T>;
@@ -134,8 +134,8 @@ export type MergeSchemas<A, B> = {
       ? Prettify<A[K] & B[K]>
       : A[K]
     : K extends keyof B
-    ? B[K]
-    : never;
+      ? B[K]
+      : never;
 };
 
 export interface InferenceBuilder {
@@ -175,7 +175,9 @@ type CreatedTables<TMigrations extends Migrations> = UnionToIntersection<
 >;
 
 type CreatedViews<TMigrations extends Migrations> = UnionToIntersection<
-  ExtractViewSchema<Extract<AllBuilders<TMigrations>, CreateViewBuilder<any, any>>>
+  ExtractViewSchema<
+    Extract<AllBuilders<TMigrations>, CreateViewBuilder<any, any>>
+  >
 >;
 
 type AlteredTables<TMigrations extends Migrations> = UnionToIntersection<
@@ -189,10 +191,9 @@ type DroppedTableNames<TMigrations extends Migrations> =
     Extract<AllBuilders<TMigrations>, DropTableBuilder<any>>
   >;
 
-type DroppedViewNames<TMigrations extends Migrations> =
-  ExtractDroppedViewName<
-    Extract<AllBuilders<TMigrations>, DropViewBuilder<any>>
-  >;
+type DroppedViewNames<TMigrations extends Migrations> = ExtractDroppedViewName<
+  Extract<AllBuilders<TMigrations>, DropViewBuilder<any>>
+>;
 
 type OmitNever<T> = { [K in keyof T as T[K] extends never ? never : K]: T[K] };
 
