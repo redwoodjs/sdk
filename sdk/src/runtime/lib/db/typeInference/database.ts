@@ -11,6 +11,7 @@ import { CreateViewBuilder } from "./builders/createView.js";
 import { AlterTableBuilder } from "./builders/alterTable.js";
 import { DropTableBuilder } from "./builders/dropTable.js";
 import { DropViewBuilder } from "./builders/dropView.js";
+import { SchemaBuilder } from "./builders/schema";
 
 export interface InferenceBuilder {
   schema: SchemaBuilder;
@@ -88,14 +89,6 @@ type InferredDatabase<TMigrations extends Migrations> = Omit<
 export type Database<TMigrations extends Migrations = Migrations> = Prettify<
   InferredDatabase<TMigrations>
 >;
-
-export interface SchemaBuilder {
-  createTable<TName extends string>(name: TName): TableBuilder<TName, {}>;
-  alterTable<TName extends string>(name: TName): AlterTableBuilder<TName, {}>;
-  dropTable<TName extends string>(name: TName): DropTableBuilder<TName>;
-  createView<TName extends string>(name: TName): CreateViewBuilder<TName, {}>;
-  dropView<TName extends string>(name: TName): DropViewBuilder<TName>;
-}
 
 export type ExtractTableSchema<T> =
   T extends TableBuilder<infer TName, infer TSchema>
