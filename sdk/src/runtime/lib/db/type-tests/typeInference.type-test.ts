@@ -1,10 +1,10 @@
-import type { Database, Migrations, MigrationDatabase } from "../typeInference";
+import type { Database, Migrations } from "../typeInference";
 import type { Expect, Equal } from "./test-utils";
 
 (_it = "createTable") => {
   const migrations = {
     "001_init": {
-      async up(db: MigrationDatabase) {
+      async up(db) {
         return [
           db.schema
             .createTable("users")
@@ -16,6 +16,7 @@ import type { Expect, Equal } from "./test-utils";
   } satisfies Migrations;
 
   type Actual = Database<typeof migrations>;
+
   type Expected = {
     users: {
       username: string;
@@ -28,7 +29,7 @@ import type { Expect, Equal } from "./test-utils";
 (_it = "addColumn with default value") => {
   const migrations = {
     "0": {
-      async up(db: MigrationDatabase) {
+      async up(db) {
         return [
           db.schema
             .createTable("users")
@@ -54,7 +55,7 @@ import type { Expect, Equal } from "./test-utils";
 (_it = "alterTable") => {
   const migrations = {
     "0": {
-      async up(db: MigrationDatabase) {
+      async up(db) {
         return [
           db.schema
             .createTable("users")
@@ -64,7 +65,7 @@ import type { Expect, Equal } from "./test-utils";
       },
     },
     "1": {
-      async up(db: MigrationDatabase) {
+      async up(db) {
         return [
           db.schema
             .alterTable("users")
@@ -90,7 +91,7 @@ import type { Expect, Equal } from "./test-utils";
 (_it = "dropTable") => {
   const migrations = {
     "0": {
-      async up(db: MigrationDatabase) {
+      async up(db) {
         return [
           db.schema
             .createTable("users")
@@ -102,7 +103,7 @@ import type { Expect, Equal } from "./test-utils";
       },
     },
     "1": {
-      async up(db: MigrationDatabase) {
+      async up(db) {
         return [db.schema.dropTable("posts").execute()];
       },
     },
@@ -121,7 +122,7 @@ import type { Expect, Equal } from "./test-utils";
 (_it = "renameTable") => {
   const migrations = {
     "0": {
-      async up(db: MigrationDatabase) {
+      async up(db) {
         return [
           db.schema
             .createTable("users")
@@ -131,7 +132,7 @@ import type { Expect, Equal } from "./test-utils";
       },
     },
     "1": {
-      async up(db: MigrationDatabase) {
+      async up(db) {
         return [db.schema.renameTable("users", "users_new").execute()];
       },
     },
@@ -150,7 +151,7 @@ import type { Expect, Equal } from "./test-utils";
 (_it = "dropColumn") => {
   const migrations = {
     "0": {
-      async up(db: MigrationDatabase) {
+      async up(db) {
         return [
           db.schema
             .createTable("users")
@@ -161,7 +162,7 @@ import type { Expect, Equal } from "./test-utils";
       },
     },
     "1": {
-      async up(db: MigrationDatabase) {
+      async up(db) {
         return [db.schema.alterTable("users").dropColumn("posts").execute()];
       },
     },
@@ -180,7 +181,7 @@ import type { Expect, Equal } from "./test-utils";
 (_it = "renameColumn") => {
   const migrations = {
     "0": {
-      async up(db: MigrationDatabase) {
+      async up(db) {
         return [
           db.schema
             .createTable("users")
@@ -190,7 +191,7 @@ import type { Expect, Equal } from "./test-utils";
       },
     },
     "1": {
-      async up(db: MigrationDatabase) {
+      async up(db) {
         return [
           db.schema
             .alterTable("users")

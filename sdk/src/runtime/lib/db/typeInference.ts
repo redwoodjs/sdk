@@ -101,9 +101,11 @@ export type MergeSchemas<A, B> = {
       : never;
 };
 
-export interface MigrationDatabase {
+export interface InferenceBuilder {
   schema: SchemaBuilder;
 }
+
+export type MigrationDatabase = InferenceBuilder & Kysely<any>;
 
 export interface Migration<TUpReturn = unknown> {
   up(db: MigrationDatabase): TUpReturn;
