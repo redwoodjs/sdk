@@ -99,27 +99,12 @@ export interface DropViewBuilder<TName extends string> {
   execute(): ExecutedBuilder<this>;
 }
 
-export interface IndexBuilder {
-  on(table: string): IndexBuilder;
-  column(column: string): IndexBuilder;
-  execute(): Promise<void>;
-}
-
-export interface DropIndexBuilder {
-  on(table: string): this;
-  ifExists(): this;
-  cascade(): this;
-  execute(): Promise<void>;
-}
-
 export interface SchemaBuilder {
   createTable<TName extends string>(name: TName): TableBuilder<TName, {}>;
   alterTable<TName extends string>(name: TName): AlterTableBuilder<TName, {}>;
   dropTable<TName extends string>(name: TName): DropTableBuilder<TName>;
-  createIndex(name: string): IndexBuilder;
   createView<TName extends string>(name: TName): CreateViewBuilder<TName, {}>;
   dropView<TName extends string>(name: TName): DropViewBuilder<TName>;
-  dropIndex(name: string): DropIndexBuilder;
 }
 
 export type ExtractTableSchema<T> =
