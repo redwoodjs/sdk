@@ -26,5 +26,3 @@ import type { Expect, Equal } from "./testUtils";
 
   (_test: Expect<Equal<Actual, Expected>>) => {};
 };
-
-// All tests for createTable, dropTable, and alterTable have been moved to their own files.
