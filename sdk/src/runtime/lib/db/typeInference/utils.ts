@@ -6,7 +6,9 @@ export type SqlToTsType<T extends string> = T extends "text"
       ? Uint8Array
       : T extends "real"
         ? number
-        : never;
+        : T extends "boolean"
+          ? boolean
+          : never;
 
 export type Prettify<T> = {
   [K in keyof T]: T[K];
