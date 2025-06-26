@@ -74,17 +74,14 @@ import type { Expect, Equal } from "./testUtils";
     "0": {
       async up(db) {
         return [
-          await db.schema
-            .createTable("users")
-            .addColumn("age", "integer")
-            .execute(),
+          db.schema.createTable("users").addColumn("age", "integer").execute(),
         ];
       },
     },
     "1": {
       async up(db) {
         return [
-          await db.schema
+          db.schema
             .alterTable("users")
             .alterColumn("age", (col) => col.setDataType("text"))
             .alterColumn("age", (col) => col.setDefault("unknown"))
