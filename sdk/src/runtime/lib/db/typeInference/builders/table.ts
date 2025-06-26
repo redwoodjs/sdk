@@ -1,5 +1,5 @@
 import { SqlToTsType, ExecutedBuilder, Prettify } from "../utils";
-import { CreateColumnBuilder } from "./createColumn";
+import { ColumnDefinitionBuilder } from "./columnDefinition";
 
 export interface TableBuilder<
   TName extends string,
@@ -11,8 +11,8 @@ export interface TableBuilder<
     name: K,
     type: T,
     build?: (
-      col: CreateColumnBuilder<SqlToTsType<T>>,
-    ) => CreateColumnBuilder<SqlToTsType<T>>,
+      col: ColumnDefinitionBuilder<SqlToTsType<T>>,
+    ) => ColumnDefinitionBuilder<SqlToTsType<T>>,
   ): TableBuilder<TName, Prettify<TSchema & Record<K, SqlToTsType<T>>>>;
   temporary(): this;
   ifNotExists(): this;

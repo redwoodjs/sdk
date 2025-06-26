@@ -2,7 +2,7 @@ import { ExecutedBuilder } from "../utils";
 
 export interface DropViewBuilder<TName extends string> {
   readonly __viewName: TName;
-  ifExists(): this;
-  cascade(): this;
+  ifExists(): DropViewBuilder<TName>;
+  cascade(): DropViewBuilder<TName>;
   execute(): ExecutedBuilder<this>;
 }

@@ -7,10 +7,10 @@ export interface CreateViewBuilder<
   readonly __viewName: TName;
   readonly __schema: TSchema;
   withSchema<S extends Record<string, any>>(): CreateViewBuilder<TName, S>;
-  temporary(): this;
-  orReplace(): this;
-  ifNotExists(): this;
-  columns(columns: string[]): this;
-  as(query: any): this;
+  temporary(): CreateViewBuilder<TName>;
+  orReplace(): CreateViewBuilder<TName>;
+  ifNotExists(): CreateViewBuilder<TName>;
+  columns(columns: string[]): CreateViewBuilder<TName>;
+  as(expression: string): CreateViewBuilder<TName>;
   execute(): ExecutedBuilder<this>;
 }
