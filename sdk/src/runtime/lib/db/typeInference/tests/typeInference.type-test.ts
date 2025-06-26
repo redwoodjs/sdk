@@ -1,5 +1,5 @@
 import type { Database, Migrations } from "../typeInference";
-import type { Expect, Equal } from "./test-utils";
+import type { Expect, Equal } from "./testUtils";
 
 (_it = "createTable") => {
   const migrations = {

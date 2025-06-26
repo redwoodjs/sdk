@@ -1,4 +1,4 @@
 export * from "./migrations.js";
 export * from "./SqliteDurableObject.js";
 export * from "./createDb.js";
-export type * from "./typeInference.js";
+export type * from "./typeInference/typeInference.js";
