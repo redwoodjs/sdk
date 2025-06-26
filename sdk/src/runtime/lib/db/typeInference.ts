@@ -105,10 +105,10 @@ export interface InferenceBuilder {
   schema: SchemaBuilder;
 }
 
-export type MigrationDatabase = InferenceBuilder & Kysely<any>;
+export type MigrationBuilder = InferenceBuilder & Kysely<any>;
 
 export interface Migration<TUpReturn = unknown> {
-  up(db: MigrationDatabase): TUpReturn;
+  up(db: MigrationBuilder): TUpReturn;
   down?(db: Kysely<any>): any;
 }
 
