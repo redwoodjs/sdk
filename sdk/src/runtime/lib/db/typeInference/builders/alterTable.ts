@@ -40,5 +40,5 @@ export interface AlterTableBuilder<
       col: ColumnDefinitionBuilder<SqlToTsType<T>>,
     ) => ColumnDefinitionBuilder<SqlToTsType<T>>,
   ): AlterTableBuilder<TName, Prettify<TSchema & Record<K, SqlToTsType<T>>>>;
-  execute(): ExecutedBuilder<this>;
+  execute(): Promise<ExecutedBuilder<this>>;
 }

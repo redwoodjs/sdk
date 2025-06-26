@@ -6,7 +6,7 @@ import type { Expect, Equal } from "./testUtils";
     "0": {
       async up(db) {
         return [
-          db.schema
+          await db.schema
             .createTable("users")
             .addColumn("username", "text", (col) => col.notNull().unique())
             .execute(),
@@ -16,7 +16,7 @@ import type { Expect, Equal } from "./testUtils";
     "1": {
       async up(db) {
         return [
-          db.schema
+          await db.schema
             .alterTable("users")
             .addColumn("displayName", "text")
             .execute(),
@@ -40,7 +40,7 @@ import type { Expect, Equal } from "./testUtils";
     "0": {
       async up(db) {
         return [
-          db.schema
+          await db.schema
             .createTable("users")
             .addColumn("username", "text")
             .addColumn("displayName", "text")
@@ -51,7 +51,7 @@ import type { Expect, Equal } from "./testUtils";
     "1": {
       async up(db) {
         return [
-          db.schema
+          await db.schema
             .alterTable("users")
             .renameColumn("displayName", "nickname")
             .dropColumn("username")
@@ -74,14 +74,17 @@ import type { Expect, Equal } from "./testUtils";
     "0": {
       async up(db) {
         return [
-          db.schema.createTable("users").addColumn("age", "integer").execute(),
+          await db.schema
+            .createTable("users")
+            .addColumn("age", "integer")
+            .execute(),
         ];
       },
     },
     "1": {
       async up(db) {
         return [
-          db.schema
+          await db.schema
             .alterTable("users")
             .alterColumn("age", (col) => col.setDataType("text"))
             .alterColumn("age", (col) => col.setDefault("unknown"))
@@ -107,14 +110,17 @@ import type { Expect, Equal } from "./testUtils";
     "0": {
       async up(db) {
         return [
-          db.schema.createTable("users").addColumn("age", "integer").execute(),
+          await db.schema
+            .createTable("users")
+            .addColumn("age", "integer")
+            .execute(),
         ];
       },
     },
     "1": {
       async up(db) {
         return [
-          db.schema
+          await db.schema
             .alterTable("users")
             .alterColumn("age", (col) => col.dropDefault())
             .alterColumn("age", (col) => col.setNotNull())

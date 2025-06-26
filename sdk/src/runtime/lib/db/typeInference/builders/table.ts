@@ -16,5 +16,5 @@ export interface TableBuilder<
   ): TableBuilder<TName, Prettify<TSchema & Record<K, SqlToTsType<T>>>>;
   temporary(): this;
   ifNotExists(): this;
-  execute(): ExecutedBuilder<this>;
+  execute(): Promise<ExecutedBuilder<this>>;
 }
