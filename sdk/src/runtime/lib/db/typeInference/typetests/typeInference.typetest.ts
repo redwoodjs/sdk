@@ -6,7 +6,7 @@ import type { Expect, Equal } from "./testUtils";
     "0": {
       async up(db) {
         return [
-          db.schema
+          await db.schema
             .createTable("users")
             .addColumn("username", "text", (col) => col.notNull().unique())
             .addColumn("posts", "integer", (col) => col.defaultTo(0).notNull())

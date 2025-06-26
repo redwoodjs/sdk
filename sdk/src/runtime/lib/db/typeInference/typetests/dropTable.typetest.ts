@@ -6,18 +6,21 @@ import type { Expect, Equal } from "./testUtils";
     "0": {
       async up(db) {
         return [
-          db.schema
+          await db.schema
             .createTable("users")
             .addColumn("username", "text", (col) => col.notNull().unique())
             .execute(),
 
-          db.schema.createTable("posts").addColumn("title", "text").execute(),
+          await db.schema
+            .createTable("posts")
+            .addColumn("title", "text")
+            .execute(),
         ];
       },
     },
     "1": {
       async up(db) {
-        return [db.schema.dropTable("posts").execute()];
+        return [await db.schema.dropTable("posts").execute()];
       },
     },
   } satisfies Migrations;
@@ -36,7 +39,7 @@ import type { Expect, Equal } from "./testUtils";
   const migrations = {
     "0": {
       async up(db) {
-        return [db.schema.dropTable("ghost").execute()];
+        return [await db.schema.dropTable("ghost").execute()];
       },
     },
   } satisfies Migrations;
@@ -50,16 +53,16 @@ import type { Expect, Equal } from "./testUtils";
     "0": {
       async up(db) {
         return [
-          db.schema.createTable("a").addColumn("x", "text").execute(),
-          db.schema.createTable("b").addColumn("y", "text").execute(),
+          await db.schema.createTable("a").addColumn("x", "text").execute(),
+          await db.schema.createTable("b").addColumn("y", "text").execute(),
         ];
       },
     },
     "1": {
       async up(db) {
         return [
-          db.schema.dropTable("a").execute(),
-          db.schema.dropTable("b").execute(),
+          await db.schema.dropTable("a").execute(),
+          await db.schema.dropTable("b").execute(),
         ];
       },
     },
@@ -74,19 +77,25 @@ import type { Expect, Equal } from "./testUtils";
     "0": {
       async up(db) {
         return [
-          db.schema
+          await db.schema
             .createTable("users")
             .addColumn("username", "text")
             .execute(),
-          db.schema.createTable("posts").addColumn("title", "text").execute(),
+          await db.schema
+            .createTable("posts")
+            .addColumn("title", "text")
+            .execute(),
         ];
       },
     },
     "1": {
       async up(db) {
         return [
-          db.schema.dropTable("posts").execute(),
-          db.schema.createTable("comments").addColumn("text", "text").execute(),
+          await db.schema.dropTable("posts").execute(),
+          await db.schema
+            .createTable("comments")
+            .addColumn("text", "text")
+            .execute(),
         ];
       },
     },

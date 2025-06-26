@@ -20,5 +20,5 @@ export interface CreateViewBuilder<
   as<E extends string>(
     expression: E,
   ): CreateViewBuilder<TName, TSchema, TColumns>;
-  execute(): ExecutedBuilder<this>;
+  execute(): Promise<ExecutedBuilder<this>>;
 }

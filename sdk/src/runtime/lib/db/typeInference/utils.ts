@@ -14,7 +14,7 @@ export type Prettify<T> = {
   [K in keyof T]: T[K];
 } & {};
 
-export type ExecutedBuilder<T> = Promise<void> & { __builder_type: T };
+export type ExecutedBuilder<T> = { __builder_type: T };
 
 export type MergeSchemas<A, B> = {
   [K in keyof A | keyof B]: K extends keyof A

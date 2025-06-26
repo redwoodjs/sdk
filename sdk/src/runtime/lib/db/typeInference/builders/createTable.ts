@@ -22,5 +22,5 @@ export interface CreateTableBuilder<
   modifyFront(modifier: string): CreateTableBuilder<TName, TSchema>;
   modifyEnd(modifier: string): CreateTableBuilder<TName, TSchema>;
   as(expression: string): CreateTableBuilder<TName, TSchema>;
-  execute(): ExecutedBuilder<this>;
+  execute(): Promise<ExecutedBuilder<this>>;
 }
