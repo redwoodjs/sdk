@@ -35,6 +35,14 @@ const promptForDeployment = async (): Promise<boolean> => {
   });
 
   return new Promise((resolve) => {
+
+    // Handle Ctrl+C (SIGINT)
+    rl.on('SIGINT', () => {
+      rl.close();
+      console.log('\nDeployment cancelled.');
+      process.exit(1);
+    });
+
     rl.question("Do you want to proceed with deployment? (y/N): ", (answer) => {
       rl.close();
       resolve(answer.toLowerCase() === "y");
