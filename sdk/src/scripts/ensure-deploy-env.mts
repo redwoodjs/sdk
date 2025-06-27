@@ -122,14 +122,14 @@ export const ensureDeployEnv = async () => {
     // todo(justinvdm): this is a hack to force the account selection prompt,
     // we need to find a better way
     if (!(await pathExists(accountCachePath))) {
-      await $({ stdio: "inherit" })`wrangler d1 list --json`;
+      await $({ stdio: "inherit" })`npx wrangler d1 list --json`;
     }
   }
 
   // Create a no-op secret to ensure worker exists
   console.log(`Ensuring worker ${wranglerConfig.name} exists...`);
   await $({ stdio: "pipe" })`echo "true"`
-    .pipe`wrangler secret put TMP_WORKER_CREATED`;
+    .pipe`npx wrangler secret put TMP_WORKER_CREATED`;
 
   // Check D1 database setup
   const needsDatabase = await hasD1Database();
@@ -163,7 +163,7 @@ export const ensureDeployEnv = async () => {
           console.log(`Creating D1 database: ${dbName}...`);
           const createResult = await $({
             stdio: "pipe",
-          })`wrangler d1 create ${dbName}`;
+          })`npx wrangler d1 create ${dbName}`;
 
           // Log the result to the console
           console.log(createResult.stdout);
@@ -229,14 +229,14 @@ export const ensureDeployEnv = async () => {
             error instanceof Error ? error.message : String(error),
           );
           console.error("Please create it manually:");
-          console.error("1. Run: wrangler d1 create <your-db-name>");
+          console.error("1. Run: npx wrangler d1 create <your-db-name>");
           console.error("2. Update wrangler.jsonc with the database details");
           process.exit(1);
         }
       }
     } catch (error) {
       console.error("Failed to create D1 database. Please create it manually:");
-      console.error("1. Run: wrangler d1 create <your-db-name>");
+      console.error("1. Run: npx wrangler d1 create <your-db-name>");
       console.error("2. Update wrangler.jsonc with the database details");
       process.exit(1);
     }
@@ -251,7 +251,7 @@ export const ensureDeployEnv = async () => {
     console.log("Found auth usage, checking secret setup...");
     try {
       // Get list of all secrets
-      const secretsResult = await $`wrangler secret list --format=json`;
+      const secretsResult = await $`npx wrangler secret list --format=json`;
       const existingSecrets = parseJson<Secret[]>(secretsResult.stdout, []).map(
         (secret) => secret.name,
       );
@@ -266,7 +266,7 @@ export const ensureDeployEnv = async () => {
         const secretKey = generateSecretKey();
         // Use the same pattern as TMP_WORKER_CREATED for consistency
         await $({ stdio: "pipe" })`echo "${secretKey}"`
-          .pipe`wrangler secret put AUTH_SECRET_KEY`;
+          .pipe`npx wrangler secret put AUTH_SECRET_KEY`;
         console.log("Set AUTH_SECRET_KEY secret");
       }
     } catch (error) {
@@ -276,7 +276,7 @@ export const ensureDeployEnv = async () => {
       console.error(
         "1. Generate a secret key: node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\"",
       );
-      console.error("2. Set the secret: wrangler secret put AUTH_SECRET_KEY");
+      console.error("2. Set the secret: npx wrangler secret put AUTH_SECRET_KEY");
       process.exit(1);
     }
   }
