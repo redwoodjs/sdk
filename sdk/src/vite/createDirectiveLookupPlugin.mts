@@ -317,7 +317,8 @@ export const createDirectiveLookupPlugin = async ({
 
       if (
         source === config.virtualModuleName ||
-        source === `/@id/${config.virtualModuleName}`
+        source === `/@id/${config.virtualModuleName}` ||
+        source === `/@id/${config.virtualModuleName}.js`
       ) {
         log("Resolving %s module", config.virtualModuleName);
         // context(justinvdm, 16 Jun 2025): Include .js extension
