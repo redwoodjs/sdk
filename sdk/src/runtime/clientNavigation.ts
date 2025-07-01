@@ -56,10 +56,12 @@ export function initClientNavigation(
         return;
       }
 
-      const href = (event.target as HTMLAnchorElement).href;
       event.preventDefault();
 
-      // push this to the history stack.
+      const el = event.target as HTMLElement;
+      const a = el.closest("a");
+      const href = a?.getAttribute("href") as string;
+
       window.history.pushState(
         { path: href },
         "",

@@ -82,10 +82,10 @@ export class RealtimeDurableObject extends DurableObject {
     if (messageType === MESSAGE_TYPE.ACTION_REQUEST) {
       const decoder = new TextDecoder();
       const jsonData = decoder.decode(message.slice(1));
-      const { id, args, requestId } = JSON.parse(jsonData);
+      const { id, args, requestId, clientUrl } = JSON.parse(jsonData);
 
       try {
-        await this.handleAction(ws, id, args, clientInfo, requestId);
+        await this.handleAction(ws, id, args, clientInfo, requestId, clientUrl);
       } catch (error) {
         const encoder = new TextEncoder();
         const requestIdBytes = encoder.encode(requestId);
@@ -150,10 +150,13 @@ export class RealtimeDurableObject extends DurableObject {
     args: string,
     clientInfo: ClientInfo,
     requestId: string,
+    clientUrl: string,
   ): Promise<void> {
-    const url = new URL(clientInfo.url);
-    url.searchParams.set("__rsc", "true");
-    url.searchParams.set("__rsc_action_id", id);
+    const url = new URL(clientUrl);
+    url.searchParams.set("__rsc", "");
+    if (id != null) {
+      url.searchParams.set("__rsc_action_id", id);
+    }
 
     const response = await fetch(url.toString(), {
       method: "POST",
