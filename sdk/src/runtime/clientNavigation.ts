@@ -43,6 +43,10 @@ export function initClientNavigation(
         return;
       }
 
+      if (href.startsWith("http")) {
+        return;
+      }
+
       // Prevent default navigation
       event.preventDefault();
 
