@@ -1,7 +1,7 @@
 export function validateClickEvent(event: MouseEvent, target: HTMLElement) {
   // should this only work for left click?
   if (event.button !== 0) {
-    return;
+    return false;
   }
 
   if (event.ctrlKey || event.metaKey || event.shiftKey || event.altKey) {
@@ -24,12 +24,12 @@ export function validateClickEvent(event: MouseEvent, target: HTMLElement) {
     return false;
   }
 
-  // Skip if download attribute
-  if (link.hasAttribute("download")) {
+  if (href.startsWith("http")) {
     return false;
   }
 
-  if (href.startsWith("http")) {
+  // Skip if download attribute
+  if (link.hasAttribute("download")) {
     return false;
   }
 
