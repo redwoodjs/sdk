@@ -44,6 +44,7 @@ export default defineConfig({
             { label: "Request Handling & Routing", slug: "core/routing" },
             { slug: "core/react-server-components" },
             { slug: "core/database" },
+            { slug: "core/database-do" },
             { slug: "core/storage" },
             { slug: "core/realtime" },
             { slug: "core/queues" },
