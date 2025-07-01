@@ -1,0 +1,339 @@
+---
+title: Database (Durable Objects)
+description: Build isolated, zero-setup databases using SQLite Durable Objects and SQL-based queries with full TypeScript support.
+---
+
+import { Aside, Code, LinkCard } from "@astrojs/starlight/components";
+
+The SDK includes a built-in database solution using **SQLite Durable Objects** and **Kysely** for SQL queries. Create isolated databases at runtime with minimal setup.
+
+<Aside type="caution">
+  This is a **preview feature**. The API is experimental and may change as we gather feedback from early adopters.
+</Aside>
+
+---
+
+## Motivation
+
+We believe a lightweight, SQL-based query builder is the best fit as the out of the box solution. With just SQL, **you either already know it** (so you can be immediately productive) **or learning it is transferrable knowledge**. This doesn't replace your existing ORMs - you're always free to use your preferred database solution where it makes sense.
+
+For applications with modular components or add-ons, there's an additional benefit: natural isolation. Each database instance is completely separate, giving you explicit control over how components communicate with each other's data.
+
+`rwsdk/db` delivers both simplicity and isolation in one package: Write your migrations, call `createDb()`, and start querying with full type safety. Types are inferred directly from your migrations.
+
+---
+
+## How It Works
+
+Under the hood, `rwsdk/db` combines three key technologies:
+
+1. **SQLite Durable Objects** - Each database instance runs in its own isolated Durable Object
+2. **Kysely** - A lightweight, type-safe SQL query builder with the same API naming and semantics as SQL
+
+### Type Inference
+
+Instead of code generation or handwritten types, we infer your database schema directly from your migrations:
+
+```ts
+import { type Migrations } from "rwsdk/db";
+
+export const migrations = {
+  "001_initial_schema": {
+    async up(db) {
+      return [
+        await db.schema
+          .createTable("users")
+          .addColumn("id", "text", (col) => col.primaryKey())
+          .addColumn("username", "text", (col) => col.notNull().unique())
+          .execute(),
+      ];
+    },
+  },
+} satisfies Migrations;
+
+// TypeScript automatically knows about your 'users' table and its columns
+const user = await db.selectFrom("users").selectAll().executeTakeFirst();
+```
+
+### When Migrations Run
+
+Migrations run when `createDb()` is called. If that happens at the module level (shown in the examples), then:
+
+**Development**:. Runs when start your development server.
+
+**Production**: When you deploy with `npm run release`, the deployment process includes an initial request to your application, which triggers migration updates.
+
+---
+
+## Setup
+
+You'll need to create three files and update your Wrangler configuration:
+
+### 1. Define Your Migrations
+
+```ts title="src/db/migrations.ts"
+import { type Migrations } from "rwsdk/db";
+
+export const migrations = {
+  "001_initial_schema": {
+    async up(db) {
+      return [
+        await db.schema
+          .createTable("users")
+          .addColumn("id", "text", (col) => col.primaryKey())
+          .addColumn("username", "text", (col) => col.notNull().unique())
+          .addColumn("createdAt", "text", (col) => col.notNull())
+          .execute(),
+
+        await db.schema
+          .createTable("posts")
+          .addColumn("id", "text", (col) => col.primaryKey())
+          .addColumn("userId", "text", (col) =>
+            col.notNull().references("users.id").onDelete("cascade")
+          )
+          .addColumn("title", "text", (col) => col.notNull())
+          .addColumn("content", "text")
+          .execute(),
+      ];
+    },
+
+    async down(db) {
+      await db.schema.dropTable("posts").execute();
+      await db.schema.dropTable("users").execute();
+    },
+  },
+} satisfies Migrations;
+```
+
+### 2. Create Your Database Instance
+
+```ts title="src/db/db.ts"
+import { env } from "cloudflare:workers";
+import { type Database, createDb } from "rwsdk/db";
+import { type migrations } from "@/db/migrations";
+
+export type AppDatabase = Database<typeof migrations>;
+export type User = AppDatabase["users"];
+export type Post = AppDatabase["posts"];
+
+export const db = createDb<AppDatabase>(
+  env.APP_DURABLE_OBJECT,
+  "main-database" // unique key for this database instance
+);
+```
+
+### 3. Create Your Durable Object Class
+
+```ts title="src/db/durableObject.ts"
+import { SqliteDurableObject } from "rwsdk/db";
+import { migrations } from "@/db/migrations";
+
+export class AppDurableObject extends SqliteDurableObject {
+  migrations = migrations;
+}
+```
+
+### 4. Export from Worker
+
+```ts title="src/worker.tsx"
+export { AppDurableObject } from "@/db/durableObject";
+
+// ... rest of your worker code
+```
+
+### 5. Configure Wrangler
+
+```jsonc title="wrangler.jsonc"
+{
+  "durable_objects": {
+    "bindings": [
+      {
+        "name": "APP_DURABLE_OBJECT",
+        "class_name": "AppDurableObject"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_sqlite_classes": ["AppDurableObject"]
+    }
+  ]
+}
+```
+
+---
+
+## Usage Examples
+
+### Basic CRUD Operations
+
+```ts
+import { db } from "@/db";
+
+// Create a user
+const user = {
+  id: crypto.randomUUID(),
+  username: "alice",
+  createdAt: new Date().toISOString(),
+};
+await db.insertInto("users").values(user).execute();
+
+// Find a user
+const foundUser = await db
+  .selectFrom("users")
+  .selectAll()
+  .where("username", "=", "alice")
+  .executeTakeFirst();
+
+// Update a user
+await db
+  .updateTable("users")
+  .set({ username: "alice_updated" })
+  .where("id", "=", user.id)
+  .execute();
+
+// Delete a user
+await db
+  .deleteFrom("users")
+  .where("id", "=", user.id)
+  .execute();
+```
+
+### Complex Queries with Joins
+
+```ts
+// Get all posts with their authors
+const postsWithAuthors = await db
+  .selectFrom("posts")
+  .innerJoin("users", "users.id", "posts.userId")
+  .select([
+    "posts.id",
+    "posts.title",
+    "posts.content",
+    "users.username as author",
+  ])
+  .execute();
+
+// Get user with post count
+const usersWithPostCount = await db
+  .selectFrom("users")
+  .leftJoin("posts", "posts.userId", "users.id")
+  .select([
+    "users.id",
+    "users.username",
+    (eb) => eb.fn.count("posts.id").as("postCount"),
+  ])
+  .groupBy("users.id")
+  .execute();
+```
+
+### Real-World Example: Passkey Authentication
+
+Here's how the [passkey addon](https://github.com/redwoodjs/passkey-addon) uses `rwsdk/db`:
+
+```ts
+// Create a new credential
+export async function createCredential(
+  credential: Omit<Credential, "id" | "createdAt">
+): Promise<Credential> {
+  const newCredential: Credential = {
+    id: crypto.randomUUID(),
+    createdAt: new Date().toISOString(),
+    ...credential,
+  };
+
+  await db.insertInto("credentials").values(newCredential).execute();
+  return newCredential;
+}
+
+// Find credentials for a user
+export async function getUserCredentials(
+  userId: string
+): Promise<Credential[]> {
+  return await db
+    .selectFrom("credentials")
+    .selectAll()
+    .where("userId", "=", userId)
+    .execute();
+}
+```
+
+---
+
+## API Reference
+
+### `createDb()`
+
+Creates a database instance connected to a Durable Object.
+
+```ts
+createDb<T>(durableObjectNamespace: DurableObjectNamespace, key: string): Database<T>
+```
+
+- `durableObjectNamespace`: Your Durable Object binding from the environment
+- `key`: Unique identifier for this database instance
+- Returns: Kysely database instance with your inferred types
+
+### `Database<T>` Type
+
+The main database type that provides access to your tables and their schemas.
+
+```ts
+type AppDatabase = Database<typeof migrations>;
+type User = AppDatabase["users"]; // Inferred table type
+```
+
+### `Migrations` Type
+
+Use to define the structure for your database migrations.
+
+```ts
+export const migrations = {
+  "001_create_users": {
+    async up(db) {
+      return [
+        await db.schema
+          .createTable("users")
+          .addColumn("id", "text", (col) => col.primaryKey())
+          .execute(),
+      ];
+    },
+    async down(db) {
+      await db.schema.dropTable("users").execute();
+    },
+  },
+} satisfies Migrations;
+```
+
+### `SqliteDurableObject`
+
+Base class for your Durable Object that handles SQLite operations.
+
+```ts
+class YourDurableObject extends SqliteDurableObject {
+  migrations = yourMigrations;
+}
+```
+
+For complete query builder documentation, see the [Kysely documentation](https://kysely.dev/docs). Everything you can do with Kysely, you can do with `rwsdk/db`.
+
+---
+
+## FAQ
+
+**Q: Why use SQL instead of an ORM?**
+
+A: We're not replacing ORMs - `rwsdk/db` works alongside your existing tools. We believe a lightweight, SQL-based query builder is a better fit as the out of the box solution, but you're always free to use your preferred ORM or database solution where it makes sense for your application.
+
+**Q: What about latency and performance?**
+
+A: Durable Objects run in a single location, so there's a latency consideration compared to globally distributed databases. However, they excel at simplicity and isolation. For many use cases, the ease of setup benefit outweighs the latency trade-off. You can also create multiple database instances with different keys to distribute load geographically if needed.
+
+**Q: Is this suitable for production use?**
+
+A: This is currently a preview feature, which means the API may evolve based on feedback. The underlying technologies (SQLite, Durable Objects, Kysely) are all production-ready, but we recommend testing thoroughly and having migration strategies ready as the API stabilizes.
+
+**Q: How do I handle database backups?**
+
+A: Durable Objects automatically persist data, but like D1, there aren't built-in backup features. For critical applications, implement additional backup strategies. You can export data periodically or replicate to external systems as needed.
