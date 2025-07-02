@@ -8,11 +8,13 @@ export const renderRscThenableToHtmlStream = async ({
   Document,
   requestInfo,
   shouldSSR,
+  onError,
 }: {
   thenable: any;
   Document: React.FC<DocumentProps>;
   requestInfo: RequestInfo;
   shouldSSR: boolean;
+  onError: (error: unknown) => void;
 }) => {
   const Component = () => {
     const node = (use(thenable) as { node: React.ReactNode }).node;
@@ -44,5 +46,27 @@ export const renderRscThenableToHtmlStream = async ({
 
   return await renderToReadableStream(<Component />, {
     nonce: requestInfo.rw.nonce,
+    onError(error, { componentStack }) {
+      try {
+        const message = error
+          ? ((error as any).stack ?? (error as any).message ?? error)
+          : error;
+
+        const wrappedMessage = `Error rendering RSC to HTML stream: ${message}\n\nComponent stack:\n${componentStack}`;
+
+        if (error instanceof Error) {
+          const wrappedError = new Error(wrappedMessage);
+          wrappedError.stack = error.stack;
+          error = wrappedError;
+        } else {
+          error = new Error(wrappedMessage);
+          (error as any).stack = componentStack;
+        }
+
+        onError(error);
+      } catch {
+        onError(error);
+      }
+    },
   });
 };

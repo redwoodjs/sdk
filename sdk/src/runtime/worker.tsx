@@ -167,6 +167,7 @@ export const defineApp = <
             stream: rscPayloadStream,
             Document: rw.Document,
             requestInfo: requestInfo,
+            onError,
           });
 
           if (injectRSCPayloadStream) {

@@ -11,10 +11,12 @@ export const transformRscToHtmlStream = ({
   stream,
   Document,
   requestInfo,
+  onError,
 }: {
   stream: ReadableStream;
   Document: React.FC<DocumentProps>;
   requestInfo: RequestInfo;
+  onError: (error: unknown) => void;
 }) => {
   const thenable = createFromReadableStream(stream, {
     serverConsumerManifest: {
@@ -28,5 +30,6 @@ export const transformRscToHtmlStream = ({
     Document,
     requestInfo,
     shouldSSR: requestInfo.rw.ssr,
+    onError,
   });
 };

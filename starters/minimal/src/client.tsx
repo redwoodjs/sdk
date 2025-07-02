@@ -1,6 +1,6 @@
 import { initRealtimeClient } from "rwsdk/realtime/client";
 
-import { initClient, initClientNavigation } from "rwsdk/client";
+//import { initClient, initClientNavigation } from "rwsdk/client";
 
 // initClient();
 

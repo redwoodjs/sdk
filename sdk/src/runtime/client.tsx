@@ -112,7 +112,17 @@ export const initClient = async ({
     return <>{React.use<{ node: React.ReactNode }>(streamData).node}</>;
   }
 
-  hydrateRoot(rootEl, <Content />, hydrateRootOptions);
+  hydrateRoot(rootEl, <Content />, {
+    onUncaughtError: (error, { componentStack }) => {
+      console.error(
+        "Uncaught error: %O\n\nComponent stack:\n%s",
+        error,
+        componentStack,
+      );
+    },
+
+    ...hydrateRootOptions,
+  });
 
   if (import.meta.hot) {
     import.meta.hot.on("rsc:update", (e) => {
