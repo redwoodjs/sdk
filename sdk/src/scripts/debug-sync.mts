@@ -130,8 +130,8 @@ if (import.meta.url === new URL(process.argv[1], import.meta.url).href) {
     const targetDir = positionalArgs[0] ?? process.cwd();
     debugSync({
       targetDir,
-      sdkDir: process.env.SDK_REPO
-        ? path.resolve(__dirname, process.env.SDK_REPO, "sdk")
+      sdkDir: process.env.RWSDK_REPO
+        ? path.resolve(__dirname, process.env.RWSDK_REPO, "sdk")
         : path.resolve(__dirname, "..", ".."),
       dev: flags.has("--dev"),
       watch: flags.has("--watch"),
