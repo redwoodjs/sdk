@@ -51,6 +51,6 @@ Run this following in the project's root directory:
 # maybe put this in something your shell will `source` (e.g. ~/.bashrc)
 export RWSDK_REPO=/path/to/sdk/repo
 
-# then `npx rwsync` to sync
+# then run `npx rwsync` from the project's root dir to sync changes to the local checkout of the sdk
 npx rwsync && npm run dev
 ```
