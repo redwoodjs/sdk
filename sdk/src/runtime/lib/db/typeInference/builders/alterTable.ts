@@ -10,8 +10,35 @@ import {
   AlterTableBuilder as KyselyAlterTableBuilder,
   ForeignKeyConstraintBuilder,
   Expression,
+  CheckConstraintNode,
+  UniqueConstraintNode,
+  PrimaryKeyConstraintNode,
 } from "kysely";
 import type { Assert, AssertStillImplements } from "../assert";
+
+interface CheckConstraintBuilder {
+  $call<T>(func: (qb: this) => T): T;
+  toOperationNode(): CheckConstraintNode;
+}
+
+interface UniqueConstraintBuilder {
+  nullsNotDistinct(): UniqueConstraintBuilder;
+  deferrable(): UniqueConstraintBuilder;
+  notDeferrable(): UniqueConstraintBuilder;
+  initiallyDeferred(): UniqueConstraintBuilder;
+  initiallyImmediate(): UniqueConstraintBuilder;
+  $call<T>(func: (qb: this) => T): T;
+  toOperationNode(): UniqueConstraintNode;
+}
+
+interface PrimaryKeyConstraintBuilder {
+  deferrable(): PrimaryKeyConstraintBuilder;
+  notDeferrable(): PrimaryKeyConstraintBuilder;
+  initiallyDeferred(): PrimaryKeyConstraintBuilder;
+  initiallyImmediate(): PrimaryKeyConstraintBuilder;
+  $call<T>(func: (qb: this) => T): T;
+  toOperationNode(): PrimaryKeyConstraintNode;
+}
 
 export interface AlterTableBuilder<
   TName extends string,
@@ -57,14 +84,19 @@ export interface AlterTableBuilder<
   addUniqueConstraint(
     constraintName: string,
     columns: (keyof TSchema)[],
+    build?: (builder: UniqueConstraintBuilder) => UniqueConstraintBuilder,
   ): AlterTableBuilder<TName, TSchema>;
   addPrimaryKeyConstraint(
     constraintName: string,
     columns: (keyof TSchema)[],
+    build?: (
+      builder: PrimaryKeyConstraintBuilder,
+    ) => PrimaryKeyConstraintBuilder,
   ): AlterTableBuilder<TName, TSchema>;
   addCheckConstraint(
     constraintName: string,
     checkExpression: Expression<any>,
+    build?: (builder: CheckConstraintBuilder) => CheckConstraintBuilder,
   ): AlterTableBuilder<TName, TSchema>;
   addForeignKeyConstraint(
     constraintName: string,
@@ -86,8 +118,6 @@ export interface AlterTableBuilder<
   $call<T>(func: (qb: this) => T): T;
 }
 
-/*
 type _Assert = Assert<
   AssertStillImplements<AlterTableBuilder<any, any>, KyselyAlterTableBuilder>
 >;
-*/

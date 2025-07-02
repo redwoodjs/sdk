@@ -6,8 +6,35 @@ import {
   Expression,
   ForeignKeyConstraintBuilder,
   CreateTableBuilder as KyselyCreateTableBuilder,
+  CheckConstraintNode,
+  UniqueConstraintNode,
+  PrimaryKeyConstraintNode,
 } from "kysely";
 import type { Assert, AssertStillImplements } from "../assert";
+
+interface CheckConstraintBuilder {
+  $call<T>(func: (qb: this) => T): T;
+  toOperationNode(): CheckConstraintNode;
+}
+
+interface UniqueConstraintBuilder {
+  nullsNotDistinct(): UniqueConstraintBuilder;
+  deferrable(): UniqueConstraintBuilder;
+  notDeferrable(): UniqueConstraintBuilder;
+  initiallyDeferred(): UniqueConstraintBuilder;
+  initiallyImmediate(): UniqueConstraintBuilder;
+  $call<T>(func: (qb: this) => T): T;
+  toOperationNode(): UniqueConstraintNode;
+}
+
+interface PrimaryKeyConstraintBuilder {
+  deferrable(): PrimaryKeyConstraintBuilder;
+  notDeferrable(): PrimaryKeyConstraintBuilder;
+  initiallyDeferred(): PrimaryKeyConstraintBuilder;
+  initiallyImmediate(): PrimaryKeyConstraintBuilder;
+  $call<T>(func: (qb: this) => T): T;
+  toOperationNode(): PrimaryKeyConstraintNode;
+}
 
 export interface CreateTableBuilder<
   TName extends string,
@@ -30,17 +57,19 @@ export interface CreateTableBuilder<
   addUniqueConstraint(
     constraintName: string,
     columns: (keyof TSchema)[],
-    build?: (builder: any) => any,
+    build?: (builder: UniqueConstraintBuilder) => UniqueConstraintBuilder,
   ): CreateTableBuilder<TName, TSchema>;
   addPrimaryKeyConstraint(
     constraintName: string,
     columns: (keyof TSchema)[],
-    build?: (builder: any) => any,
+    build?: (
+      builder: PrimaryKeyConstraintBuilder,
+    ) => PrimaryKeyConstraintBuilder,
   ): CreateTableBuilder<TName, TSchema>;
   addCheckConstraint(
     constraintName: string,
     checkExpression: Expression<any>,
-    build?: (builder: any) => any,
+    build?: (builder: CheckConstraintBuilder) => CheckConstraintBuilder,
   ): CreateTableBuilder<TName, TSchema>;
   addForeignKeyConstraint(
     constraintName: string,

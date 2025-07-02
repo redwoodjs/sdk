@@ -15,7 +15,6 @@ export interface DropViewBuilder<TName extends string> {
   compile(): CompiledQuery;
   $call<T>(func: (qb: this) => T): T;
   materialized(): DropViewBuilder<TName>;
-  withSchema(schema: string): DropViewBuilder<TName>;
 }
 
 type _Assert = Assert<

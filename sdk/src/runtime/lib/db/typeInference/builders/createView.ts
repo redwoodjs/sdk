@@ -3,6 +3,8 @@ import {
   CreateViewBuilder as KyselyCreateViewBuilder,
   CreateViewNode,
   CompiledQuery,
+  SelectQueryBuilder,
+  RawBuilder,
 } from "kysely";
 import type { Assert, AssertStillImplements } from "../assert";
 
@@ -14,12 +16,13 @@ export interface CreateViewBuilder<
   readonly __viewName: TName;
   readonly __schema: TSchema;
   readonly __columns: TColumns;
-  withSchema(schema: string): CreateViewBuilder<TName, TSchema, TColumns>;
   temporary(): CreateViewBuilder<TName, TSchema, TColumns>;
   orReplace(): CreateViewBuilder<TName, TSchema, TColumns>;
   ifNotExists(): CreateViewBuilder<TName, TSchema, TColumns>;
   columns<C extends string[]>(columns: C): CreateViewBuilder<TName, TSchema, C>;
-  as(expression: any): CreateViewBuilder<TName, TSchema, TColumns>;
+  as(
+    query: SelectQueryBuilder<any, any, any> | RawBuilder<any>,
+  ): CreateViewBuilder<TName, TSchema, TColumns>;
   execute(): Promise<ExecutedBuilder<this>>;
   toOperationNode(): CreateViewNode;
   compile(): CompiledQuery;

@@ -8,12 +8,13 @@ import type { Assert, AssertStillImplements } from "../assert";
 // This is not exported from Kysely, so we have to define it ourselves
 // based on the Kysely source code.
 type DefaultValueExpression = string | number | boolean | null | typeof sql;
+type DataTypeExpression = string | typeof sql;
 
 export class AlterColumnBuilder {
-  setDataType<T extends string>(dataType: T): AlteredColumnBuilder {
+  setDataType(dataType: DataTypeExpression): AlteredColumnBuilder {
     return new AlteredColumnBuilder({
       kind: "setDataType",
-      dataType,
+      dataType: dataType as string,
     });
   }
   setDefault(value: DefaultValueExpression): AlteredColumnBuilder {
