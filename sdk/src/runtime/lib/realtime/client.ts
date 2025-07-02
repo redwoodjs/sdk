@@ -19,13 +19,14 @@ export const realtimeTransport =
     const clientId = crypto.randomUUID();
 
     const clientUrl = new URL(window.location.href);
+    const isHttps = clientUrl.protocol === "https:";
     clientUrl.protocol = "";
     clientUrl.host = "";
 
     const setupWebSocket = () => {
       if (ws) return;
 
-      const protocol = IS_DEV ? "ws" : "wss";
+      const protocol = isHttps ? "wss" : "ws";
 
       ws = new WebSocket(
         `${protocol}://${window.location.host}/__realtime?` +
