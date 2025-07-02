@@ -1,14 +1,16 @@
 {
   "name": "rwsdk",
-  "version": "0.1.7",
+  "version": "0.1.7-test.20250702145135",
   "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime",
   "type": "module",
   "bin": {
-    "rw-scripts": "./bin/rw-scripts.mjs"
+    "rw-scripts": "./bin/rw-scripts.mjs",
+    "rwsync": "./bin/rwsync"
   },
   "files": [
     "./README.md",
-    "./dist"
+    "./dist",
+    "./bin"
   ],
   "scripts": {
     "build": "tsc --build --clean && tsc",
