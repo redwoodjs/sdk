@@ -15,13 +15,21 @@ export interface DebugSyncOptions {
 }
 
 const getPackageManagerInfo = (targetDir: string) => {
+  const pnpmResult = {
+    name: "pnpm",
+    lockFile: "pnpm-lock.yaml",
+    command: "add",
+  };
   if (existsSync(path.join(targetDir, "yarn.lock"))) {
     return { name: "yarn", lockFile: "yarn.lock", command: "add" };
   }
   if (existsSync(path.join(targetDir, "pnpm-lock.yaml"))) {
-    return { name: "pnpm", lockFile: "pnpm-lock.yaml", command: "add" };
+    return pnpmResult;
   }
-  return { name: "npm", lockFile: "package-lock.json", command: "install" };
+  if (existsSync(path.join(targetDir, "package-lock.json"))) {
+    return { name: "npm", lockFile: "package-lock.json", command: "install" };
+  }
+  return pnpmResult;
 };
 
 const performFullSync = async (sdkDir: string, targetDir: string) => {
