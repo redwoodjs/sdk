@@ -20,7 +20,7 @@ export const debugSync = async (opts: DebugSyncOptions) => {
     process.exit(1);
   }
 
-  const syncCommand = `echo 🏗️ rebuilding... && pnpm build && rm -rf ${targetDir}/node_modules/rwsdk/dist ${targetDir}/node_modules/rwsdk/package.json && echo 📁 syncing sdk from ${sdkDir} to ${targetDir}/node_modules/rwsdk/... && cp -r package.json dist ${targetDir}/node_modules/rwsdk/ && echo ✅ done syncing`;
+  const syncCommand = `echo 🏗️ rebuilding... && pnpm build && rm -rf ${targetDir}/node_modules/rwsdk/dist ${targetDir}/node_modules/rwsdk/package.json && echo 📁 syncing sdk from ${sdkDir} to ${targetDir}/node_modules/rwsdk/... && cp -r ${sdkDir}/package.json ${sdkDir}/dist ${targetDir}/node_modules/rwsdk/ && echo ✅ done syncing`;
 
   // Run initial sync
   await $({ stdio: "inherit", shell: true })`${syncCommand}`;
@@ -58,7 +58,7 @@ export const debugSync = async (opts: DebugSyncOptions) => {
 
 if (import.meta.url === new URL(process.argv[1], import.meta.url).href) {
   const args = process.argv.slice(2);
-  const targetDir = args[0] ?? ".";
+  const targetDir = args[0] ?? process.cwd();
   const flags = new Set(args.slice(1));
   debugSync({
     targetDir,
