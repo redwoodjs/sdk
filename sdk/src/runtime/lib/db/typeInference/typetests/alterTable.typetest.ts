@@ -135,3 +135,38 @@ import type { Expect, Equal } from "./testUtils";
   };
   (_test: Expect<Equal<Actual, Expected>>) => {};
 };
+
+(_it = "alterTable addUniqueConstraint") => {
+  const migrations = {
+    "0": {
+      async up(db) {
+        return [
+          await db.schema
+            .createTable("users")
+            .addColumn("firstName", "text")
+            .addColumn("lastName", "text")
+            .execute(),
+        ];
+      },
+    },
+    "1": {
+      async up(db) {
+        return [
+          await db.schema
+            .alterTable("users")
+            .addUniqueConstraint("unique_name", ["firstName", "lastName"])
+            .execute(),
+        ];
+      },
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+  type Expected = {
+    users: {
+      firstName: string;
+      lastName: string;
+    };
+  };
+  (_test: Expect<Equal<Actual, Expected>>) => {};
+};

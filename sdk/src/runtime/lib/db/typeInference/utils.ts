@@ -35,3 +35,7 @@ export type UnionToIntersection<U> = (
 ) extends (k: infer I) => void
   ? I
   : never;
+
+export type RemoveNeverValues<T> = {
+  [K in keyof T as T[K] extends never ? never : K]: T[K];
+};

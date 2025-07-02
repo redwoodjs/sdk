@@ -1,5 +1,11 @@
 import { SqlToTsType, ExecutedBuilder, Prettify } from "../utils";
 import { ColumnDefinitionBuilder } from "./columnDefinition";
+import { CompiledQuery, CreateTableNode } from "kysely";
+import {
+  CreateTableBuilder as KyselyCreateTableBuilder,
+  ForeignKeyConstraintBuilder,
+} from "kysely";
+import type { Assert, AssertStillImplements } from "../assert";
 
 export interface CreateTableBuilder<
   TName extends string,
@@ -19,8 +25,47 @@ export interface CreateTableBuilder<
       col: ColumnDefinitionBuilder<SqlToTsType<T>>,
     ) => ColumnDefinitionBuilder<SqlToTsType<T>>,
   ): CreateTableBuilder<TName, Prettify<TSchema & Record<K, SqlToTsType<T>>>>;
+  addUniqueConstraint(
+    constraintName: string,
+    columns: (keyof TSchema)[],
+  ): CreateTableBuilder<TName, TSchema>;
+  addPrimaryKeyConstraint(
+    constraintName: string,
+    columns: (keyof TSchema)[],
+  ): CreateTableBuilder<TName, TSchema>;
+  addCheckConstraint(
+    constraintName: string,
+    checkExpression: any,
+  ): CreateTableBuilder<TName, TSchema>;
+  addForeignKeyConstraint(
+    constraintName: string,
+    columns: (keyof TSchema)[],
+    targetTable: string,
+    targetColumns: string[],
+    build?: (
+      builder: ForeignKeyConstraintBuilder,
+    ) => ForeignKeyConstraintBuilder,
+  ): CreateTableBuilder<TName, TSchema>;
   modifyFront(modifier: string): CreateTableBuilder<TName, TSchema>;
   modifyEnd(modifier: string): CreateTableBuilder<TName, TSchema>;
   as(expression: string): CreateTableBuilder<TName, TSchema>;
   execute(): Promise<ExecutedBuilder<this>>;
+  $call<T>(func: (qb: this) => T): T;
+  compile(): CompiledQuery;
+  toOperationNode(): CreateTableNode;
+  withSchema(schema: string): CreateTableBuilder<TName, TSchema>;
+  ownerTo(owner: string): CreateTableBuilder<TName, TSchema>;
+  replace(): CreateTableBuilder<TName, TSchema>;
+  ignore(): CreateTableBuilder<TName, TSchema>;
+  withoutTableConstraintValidation(): CreateTableBuilder<TName, TSchema>;
 }
+
+type KyselyKeys = keyof KyselyCreateTableBuilder<any>;
+type OurKeys = keyof CreateTableBuilder<any, any>;
+type Missing = Exclude<KyselyKeys, OurKeys>;
+type _Assert = Assert<
+  AssertStillImplements<
+    CreateTableBuilder<any, any>,
+    KyselyCreateTableBuilder<any, any>
+  >
+>;

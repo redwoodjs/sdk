@@ -1,18 +1,27 @@
-export interface AlterColumnBuilder {
-  setDataType<T extends string>(
-    dataType: T,
-  ): AlteredColumnBuilder<"setDataType", T>;
-  setDefault<T>(value: T): AlteredColumnBuilder<"setDefault", T>;
-  dropDefault(): AlteredColumnBuilder<"dropDefault", true>;
-  setNotNull(): AlteredColumnBuilder<"setNotNull", true>;
-  dropNotNull(): AlteredColumnBuilder<"dropNotNull", true>;
-}
+import { AlterColumnBuilder as KyselyAlterColumnBuilder } from "kysely";
+import type { Assert, AssertStillImplements } from "../assert";
 
-export interface AlteredColumnBuilder<Kind extends string, Value> {
-  readonly kind: Kind;
-  readonly value: Value;
+export type AlteredColumn =
+  | { kind: "setDataType"; dataType: string }
+  | { kind: "setDefault"; value: any }
+  | { kind: "dropDefault" }
+  | { kind: "setNotNull" }
+  | { kind: "dropNotNull" };
+
+export interface AlterColumnBuilder {
+  setDataType<T extends string>(dataType: T): AlteredColumn;
+  setDefault(value: any): AlteredColumn;
+  dropDefault(): AlteredColumn;
+  setNotNull(): AlteredColumn;
+  dropNotNull(): AlteredColumn;
 }
 
 export type AlterColumnBuilderCallback = (
   builder: AlterColumnBuilder,
-) => AlteredColumnBuilder<any, any>;
+) => AlteredColumn;
+
+/*
+type _Assert = Assert<
+  AssertStillImplements<AlterColumnBuilder, KyselyAlterColumnBuilder>
+>;
+*/
