@@ -1,5 +1,5 @@
 ## To debug changes to the sdk locally
 
 ```sh
-npx rwsync /path/to/sdk/repo && pnpm dev
+SDK_REPO=/path/to/sdk/repo npx rwsync && pnpm dev
 ```
