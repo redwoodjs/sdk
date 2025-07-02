@@ -48,5 +48,9 @@ pnpm format
 Run this following in the project's root directory:
 
 ```sh
-RWSDK_REPO=/path/to/sdk/repo npx rwsync && npm run dev
+# maybe put this in something your shell will `source` (e.g. ~/.bashrc)
+export RWSDK_REPO=/path/to/sdk/repo
+
+# then `npx rwsync` to sync
+npx rwsync && npm run dev
 ```
