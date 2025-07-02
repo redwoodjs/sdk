@@ -1,17 +1,16 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { $ } from "../lib/$.mjs";
+import { $ } from "execa";
 import fs from "node:fs/promises";
 import { existsSync } from "node:fs";
+import chokidar from "chokidar";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export interface DebugSyncOptions {
   targetDir: string;
   sdkDir?: string;
-  dev?: boolean;
-  watch?: boolean;
-  build?: boolean;
+  watch?: string | boolean;
 }
 
 const getPackageManagerInfo = (targetDir: string) => {
@@ -26,7 +25,7 @@ const getPackageManagerInfo = (targetDir: string) => {
 
 const performFullSync = async (sdkDir: string, targetDir: string) => {
   console.log("📦 Packing SDK...");
-  const packResult = await $({ cwd: sdkDir, shell: true })`npm pack`;
+  const packResult = await $`npm pack`;
   const tarballName = packResult.stdout?.trim() ?? "";
   if (!tarballName) {
     console.error("❌ Failed to get tarball name from npm pack.");
@@ -52,11 +51,7 @@ const performFullSync = async (sdkDir: string, targetDir: string) => {
     if (pm.name === "yarn") {
       installCommand = `yarn add file:${tarballPath}`;
     }
-    await $({
-      cwd: targetDir,
-      stdio: "inherit",
-      shell: true,
-    })`${installCommand}`;
+    await $`${installCommand}`;
   } finally {
     if (originalPackageJson) {
       console.log("Restoring package.json...");
@@ -74,22 +69,29 @@ const performFullSync = async (sdkDir: string, targetDir: string) => {
 
 const performFastSync = async (sdkDir: string, targetDir: string) => {
   console.log("⚡️ No dependency changes, performing fast sync...");
-  const sourceDist = path.join(sdkDir, "dist");
-  const targetDist = path.join(targetDir, "node_modules/rwsdk/dist");
-  const sourcePackageJson = path.join(sdkDir, "package.json");
-  const targetPackageJsonPath = path.join(
-    targetDir,
-    "node_modules/rwsdk/package.json",
-  );
 
-  await fs.rm(targetDist, { recursive: true, force: true });
-  await fs.cp(sourceDist, targetDist, { recursive: true });
-  await fs.copyFile(sourcePackageJson, targetPackageJsonPath);
+  const sdkPackageJson = JSON.parse(
+    await fs.readFile(path.join(sdkDir, "package.json"), "utf-8"),
+  );
+  const filesToSync = sdkPackageJson.files || [];
+
+  for (const file of filesToSync) {
+    const source = path.join(sdkDir, file);
+    const destination = path.join(targetDir, "node_modules/rwsdk", file);
+    if (existsSync(source)) {
+      await fs.cp(source, destination, { recursive: true, force: true });
+    }
+  }
+  // Always copy package.json
+  await fs.copyFile(
+    path.join(sdkDir, "package.json"),
+    path.join(targetDir, "node_modules/rwsdk/package.json"),
+  );
 };
 
 const performSync = async (sdkDir: string, targetDir: string) => {
   console.log("🏗️  Rebuilding SDK...");
-  await $({ cwd: sdkDir, stdio: "inherit", shell: true })`pnpm build`;
+  await $`pnpm build`;
 
   const sdkPackageJsonPath = path.join(sdkDir, "package.json");
   const installedSdkPackageJsonPath = path.join(
@@ -97,28 +99,25 @@ const performSync = async (sdkDir: string, targetDir: string) => {
     "node_modules/rwsdk/package.json",
   );
 
-  let dependenciesChanged = true;
+  let packageJsonChanged = true;
 
   if (existsSync(installedSdkPackageJsonPath)) {
-    const sdkPackageJson = JSON.parse(
-      await fs.readFile(sdkPackageJsonPath, "utf-8"),
+    const sdkPackageJsonContent = await fs.readFile(
+      sdkPackageJsonPath,
+      "utf-8",
     );
-    const installedSdkPackageJson = JSON.parse(
-      await fs.readFile(installedSdkPackageJsonPath, "utf-8"),
+    const installedSdkPackageJsonContent = await fs.readFile(
+      installedSdkPackageJsonPath,
+      "utf-8",
     );
 
-    if (
-      JSON.stringify(sdkPackageJson.dependencies || {}) ===
-        JSON.stringify(installedSdkPackageJson.dependencies || {}) &&
-      JSON.stringify(sdkPackageJson.peerDependencies || {}) ===
-        JSON.stringify(installedSdkPackageJson.peerDependencies || {})
-    ) {
-      dependenciesChanged = false;
+    if (sdkPackageJsonContent === installedSdkPackageJsonContent) {
+      packageJsonChanged = false;
     }
   }
 
-  if (dependenciesChanged) {
-    console.log("📦 Dependencies changed, performing full sync...");
+  if (packageJsonChanged) {
+    console.log("📦 package.json changed, performing full sync...");
     await performFullSync(sdkDir, targetDir);
   } else {
     await performFastSync(sdkDir, targetDir);
@@ -128,69 +127,98 @@ const performSync = async (sdkDir: string, targetDir: string) => {
 };
 
 export const debugSync = async (opts: DebugSyncOptions) => {
-  const { targetDir, sdkDir = process.cwd(), dev, watch, build } = opts;
+  const { targetDir, sdkDir = process.cwd(), watch } = opts;
 
   if (!targetDir) {
     console.error("❌ Please provide a target directory as an argument.");
     process.exit(1);
   }
 
-  const thisScriptPath = fileURLToPath(import.meta.url);
-  const syncCommand = `tsx ${thisScriptPath} --_sync ${sdkDir} ${targetDir}`;
-
-  // Run initial sync
+  // Initial sync
   await performSync(sdkDir, targetDir);
 
-  if (!process.env.NO_CLEAN_VITE) {
-    console.log("🧹 Cleaning Vite cache...");
-    await $({
-      stdio: "inherit",
-      shell: true,
-      cwd: targetDir,
-    })`rm -rf ${targetDir}/node_modules/.vite*`;
-  }
+  if (watch) {
+    const sdkPackageJson = JSON.parse(
+      await fs.readFile(path.join(sdkDir, "package.json"), "utf-8"),
+    );
+    const filesToWatch = (sdkPackageJson.files || []).map((p: string) =>
+      path.join(sdkDir, p),
+    );
+    filesToWatch.push(path.join(sdkDir, "package.json"));
 
-  // If dev flag is present, clean vite cache and start dev server
-  if (dev) {
-    console.log("🚀 Starting dev server...");
-    await $({ stdio: "inherit", shell: true, cwd: targetDir })`npm run dev`;
-  }
-  // Start watching if watch flag is present
-  else if (watch) {
     console.log("👀 Watching for changes...");
-    $({
-      stdio: "inherit",
-      shell: true,
+
+    let childProc: ReturnType<typeof $> | null = null;
+    const runWatchedCommand = () => {
+      if (typeof watch === "string") {
+        console.log(`\n> ${watch}\n`);
+        childProc = $({
+          stdio: "inherit",
+          shell: true,
+          cwd: targetDir,
+          reject: false,
+        })`${watch}`;
+      }
+    };
+
+    const watcher = chokidar.watch(filesToWatch, {
+      ignoreInitial: true,
       cwd: sdkDir,
-    })`npx chokidar-cli './src/**' './package.json' -c "${syncCommand}"`;
-  } else if (build) {
-    console.log("🏗️ Running build in target directory...");
-    await $({
-      stdio: "inherit",
-      shell: true,
-      cwd: targetDir,
-    })`npm run build`;
+    });
+
+    watcher.on("all", async () => {
+      console.log("\n Detected change, re-syncing...");
+      if (childProc && !childProc.killed) {
+        console.log("Stopping running process...");
+        childProc.kill();
+        await childProc.catch(() => {
+          /* ignore kill errors */
+        });
+      }
+      await performSync(sdkDir, targetDir);
+      runWatchedCommand();
+    });
+
+    const cleanup = () => {
+      if (childProc && !childProc.killed) {
+        childProc.kill();
+      }
+    };
+
+    process.on("SIGINT", cleanup);
+    process.on("SIGTERM", cleanup);
+
+    runWatchedCommand();
   }
 };
 
 if (import.meta.url === new URL(process.argv[1], import.meta.url).href) {
   const args = process.argv.slice(2);
-  const flags = new Set(args.filter((arg) => arg.startsWith("--")));
-  const positionalArgs = args.filter((arg) => !arg.startsWith("--"));
 
-  if (flags.has("--_sync")) {
-    const [sdkDir, targetDir] = positionalArgs;
-    await performSync(sdkDir, targetDir);
-  } else {
-    const targetDir = positionalArgs[0] ?? process.cwd();
-    debugSync({
-      targetDir,
-      sdkDir: process.env.RWSDK_REPO
-        ? path.resolve(__dirname, process.env.RWSDK_REPO, "sdk")
-        : path.resolve(__dirname, "..", ".."),
-      dev: flags.has("--dev"),
-      watch: flags.has("--watch"),
-      build: flags.has("--build"),
-    });
+  const watchFlagIndex = args.indexOf("--watch");
+  let watchCmd: string | boolean = watchFlagIndex !== -1;
+  let cmdArgs = args;
+
+  if (watchFlagIndex !== -1) {
+    if (
+      watchFlagIndex + 1 < args.length &&
+      !args[watchFlagIndex + 1].startsWith("--")
+    ) {
+      watchCmd = args[watchFlagIndex + 1];
+    }
+    // remove --watch and its potential command from args
+    const watchArgCount = typeof watchCmd === "string" ? 2 : 1;
+    cmdArgs = args.filter(
+      (_, i) => i < watchFlagIndex || i >= watchFlagIndex + watchArgCount,
+    );
   }
+
+  const targetDir = cmdArgs[0] ?? process.cwd();
+  const sdkDir = path.resolve(__dirname, "..", "..");
+
+  debugSync({
+    targetDir,
+    sdkDir,
+    watch: watchCmd,
+  });
 }
