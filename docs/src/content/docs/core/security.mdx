@@ -49,6 +49,33 @@ headers.set(
 );
 ```
 
+#### Allowing images from multiple sources
+
+When working with images in your RedwoodJS application, you may need to load images from different sources such as remote URLs or data URIs. The default CSP configuration doesn't include an `img-src` directive, which means images from external sources will be blocked.
+
+To allow images from remote URLs and data URIs, add the `img-src` directive to your CSP:
+
+```diff
+// In app/headers.ts
+headers.set(
+  "Content-Security-Policy",
+- `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; frame-src https://challenges.cloudflare.com; object-src 'none';`,
++ `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; frame-src https://challenges.cloudflare.com; img-src 'self' https://trusted-images.example.com data:; object-src 'none';`,
+);
+```
+
+This configuration allows:
+
+- `'self'` - Images from your own domain
+- `https://trusted-images.example.com` - Images from specific trusted domains
+- `data:` - Data URIs (base64 encoded images)
+
+<Aside type="caution">
+  Be cautious when using `data:` URIs as they can significantly increase the
+  size of your HTML. Only allow specific remote domains that you trust, and
+  consider using a more restrictive CSP in production environments.
+</Aside>
+
 #### Using `nonce` for inline scripts
 
 Sometimes you need to include inline scripts in your application, but Content Security Policy (CSP) blocks them by default for security reasons. RedwoodSDK automatically generates a fresh, cryptographically secure nonce value for each request You can access this nonce in document or page components rendered by the [router](./routing), using `rw.nonce`.
