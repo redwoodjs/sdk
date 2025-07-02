@@ -9,7 +9,8 @@
   },
   "files": [
     "./README.md",
-    "./dist"
+    "./dist",
+    "./bin"
   ],
   "scripts": {
     "build": "tsc --build --clean && tsc",
