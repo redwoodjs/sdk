@@ -152,15 +152,12 @@ export class RealtimeDurableObject extends DurableObject {
     requestId: string,
     clientUrl: string,
   ): Promise<void> {
-    const url = new URL(clientInfo.url);
-    url.searchParams.set("__rsc", "true");
-    url.searchParams.set("__rsc_action_id", id);
+    const url = new URL(clientUrl);
+    url.searchParams.set("__rsc", "");
 
-    //const url = new URL(clientUrl);
-    //url.searchParams.set("__rsc", "");
-    //if (id != null) {
-    //  url.searchParams.set("__rsc_action_id", id);
-    //}
+    if (id != null) {
+      url.searchParams.set("__rsc_action_id", id);
+    }
 
     const response = await fetch(url.toString(), {
       method: "POST",
