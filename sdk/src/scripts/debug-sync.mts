@@ -4,6 +4,7 @@ import { $ } from "execa";
 import fs from "node:fs/promises";
 import { existsSync } from "node:fs";
 import chokidar from "chokidar";
+import { lock } from "proper-lockfile";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
@@ -142,61 +143,92 @@ export const debugSync = async (opts: DebugSyncOptions) => {
     process.exit(1);
   }
 
-  // Initial sync
+  // If not in watch mode, just do a one-time sync and exit.
+  if (!watch) {
+    await performSync(sdkDir, targetDir);
+    return;
+  }
+
+  // --- Watch Mode Logic ---
+  const lockfilePath = path.join(targetDir, "node_modules", ".rwsync.lock");
+  let release: () => Promise<void>;
+
+  // Ensure the directory for the lockfile exists
+  await fs.mkdir(path.dirname(lockfilePath), { recursive: true });
+  // "Touch" the file to ensure it exists before locking
+  await fs.appendFile(lockfilePath, "").catch(() => {});
+
+  try {
+    release = await lock(lockfilePath, { retries: 0 });
+  } catch (e: any) {
+    if (e.code === "ELOCKED") {
+      console.error(
+        `❌ Another rwsync process is already watching ${targetDir}.`,
+      );
+      console.error(
+        `   If this is not correct, please remove the lockfile at ${lockfilePath}`,
+      );
+      process.exit(1);
+    }
+    throw e;
+  }
+
+  // Initial sync for watch mode. We do it *after* acquiring the lock.
   await performSync(sdkDir, targetDir);
 
-  if (watch) {
-    const filesToWatch = [
-      path.join(sdkDir, "src"),
-      path.join(sdkDir, "types"),
-      path.join(sdkDir, "bin"),
-      path.join(sdkDir, "package.json"),
-    ];
+  const filesToWatch = [
+    path.join(sdkDir, "src"),
+    path.join(sdkDir, "types"),
+    path.join(sdkDir, "bin"),
+    path.join(sdkDir, "package.json"),
+  ];
 
-    console.log("👀 Watching for changes...");
+  console.log("👀 Watching for changes...");
 
-    let childProc: ReturnType<typeof $> | null = null;
-    const runWatchedCommand = () => {
-      if (typeof watch === "string") {
-        console.log(`\n> ${watch}\n`);
-        childProc = $({
-          stdio: "inherit",
-          shell: true,
-          cwd: targetDir,
-          reject: false,
-        })`${watch}`;
-      }
-    };
+  let childProc: ReturnType<typeof $> | null = null;
+  const runWatchedCommand = () => {
+    if (typeof watch === "string") {
+      console.log(`\n> ${watch}\n`);
+      childProc = $({
+        stdio: "inherit",
+        shell: true,
+        cwd: targetDir,
+        reject: false,
+      })`${watch}`;
+    }
+  };
 
-    const watcher = chokidar.watch(filesToWatch, {
-      ignoreInitial: true,
-      cwd: sdkDir,
-    });
+  const watcher = chokidar.watch(filesToWatch, {
+    ignoreInitial: true,
+    cwd: sdkDir,
+  });
 
-    watcher.on("all", async () => {
-      console.log("\n Detected change, re-syncing...");
-      if (childProc && !childProc.killed) {
-        console.log("Stopping running process...");
-        childProc.kill();
-        await childProc.catch(() => {
-          /* ignore kill errors */
-        });
-      }
-      await performSync(sdkDir, targetDir);
-      runWatchedCommand();
-    });
-
-    const cleanup = () => {
-      if (childProc && !childProc.killed) {
-        childProc.kill();
-      }
-    };
-
-    process.on("SIGINT", cleanup);
-    process.on("SIGTERM", cleanup);
-
+  watcher.on("all", async () => {
+    console.log("\nDetected change, re-syncing...");
+    if (childProc && !childProc.killed) {
+      console.log("Stopping running process...");
+      childProc.kill();
+      await childProc.catch(() => {
+        /* ignore kill errors */
+      });
+    }
+    await performSync(sdkDir, targetDir);
     runWatchedCommand();
-  }
+  });
+
+  const cleanup = async () => {
+    console.log("\nCleaning up...");
+    if (childProc && !childProc.killed) {
+      childProc.kill();
+    }
+    await release();
+    process.exit();
+  };
+
+  process.on("SIGINT", cleanup);
+  process.on("SIGTERM", cleanup);
+
+  runWatchedCommand();
 };
 
 if (import.meta.url === new URL(process.argv[1], import.meta.url).href) {
