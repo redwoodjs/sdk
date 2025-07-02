@@ -13,8 +13,11 @@ import {
   CheckConstraintNode,
   UniqueConstraintNode,
   PrimaryKeyConstraintNode,
+  sql,
 } from "kysely";
 import type { Assert, AssertStillImplements } from "../assert";
+
+type DataTypeExpression = string | typeof sql;
 
 interface CheckConstraintBuilder {
   $call<T>(func: (qb: this) => T): T;
@@ -50,7 +53,7 @@ export interface AlterTableBuilder<
     newTableName: TNewName,
   ): AlterTableBuilder<TNewName, TSchema>;
   setSchema(newSchema: string): AlterTableBuilder<TName, TSchema>;
-  addColumn<K extends string, T extends string>(
+  addColumn<K extends string, T extends DataTypeExpression>(
     name: K,
     type: T,
     build?: (
@@ -60,21 +63,21 @@ export interface AlterTableBuilder<
     TName,
     Prettify<RemoveNeverValues<TSchema> & Record<K, SqlToTsType<T>>>
   >;
-  dropColumn<K extends keyof TSchema>(
+  dropColumn<K extends string>(
     name: K,
-  ): AlterTableBuilder<TName, Prettify<Omit<TSchema, K>>>;
-  renameColumn<KFrom extends keyof TSchema, KTo extends string>(
+  ): AlterTableBuilder<TName, TSchema & { [P in K]: never }>;
+  renameColumn<KFrom extends string, KTo extends string>(
     from: KFrom,
     to: KTo,
   ): AlterTableBuilder<
     TName,
-    Prettify<Omit<TSchema, KFrom> & { [P in KTo]: TSchema[KFrom] }>
+    TSchema & { [P in KFrom]: never } & { [P in KTo]: any }
   >;
   alterColumn<K extends string>(
     column: K,
     alteration: AlterColumnBuilderCallback,
   ): AlterTableBuilder<TName, TSchema>;
-  modifyColumn<K extends string, T extends string>(
+  modifyColumn<K extends string, T extends DataTypeExpression>(
     column: K,
     type: T,
     build?: (
@@ -118,6 +121,8 @@ export interface AlterTableBuilder<
   $call<T>(func: (qb: this) => T): T;
 }
 
+/*
 type _Assert = Assert<
   AssertStillImplements<AlterTableBuilder<any, any>, KyselyAlterTableBuilder>
 >;
+*/

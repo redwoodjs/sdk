@@ -1,4 +1,6 @@
-export type SqlToTsType<T extends string> = T extends "text"
+import { sql } from "kysely";
+
+export type SqlToTsType<T extends string | typeof sql> = T extends "text"
   ? string
   : T extends "integer"
     ? number
@@ -8,7 +10,9 @@ export type SqlToTsType<T extends string> = T extends "text"
         ? number
         : T extends "boolean"
           ? boolean
-          : never;
+          : T extends typeof sql
+            ? any
+            : never;
 
 export type Prettify<T> = {
   [K in keyof T]: T[K];
