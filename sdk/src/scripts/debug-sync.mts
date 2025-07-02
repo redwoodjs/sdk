@@ -1,5 +1,8 @@
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { $ } from "../lib/$.mjs";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export interface DebugSyncOptions {
   targetDir: string;
