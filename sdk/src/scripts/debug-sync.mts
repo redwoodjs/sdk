@@ -3,14 +3,14 @@ import { $ } from "../lib/$.mjs";
 
 export interface DebugSyncOptions {
   targetDir: string;
-  sdkDir: string;
+  sdkDir?: string;
   dev?: boolean;
   watch?: boolean;
   build?: boolean;
 }
 
 export const debugSync = async (opts: DebugSyncOptions) => {
-  const { targetDir, sdkDir, dev, watch, build } = opts;
+  const { targetDir, sdkDir = process.cwd(), dev, watch, build } = opts;
 
   if (!targetDir) {
     console.error("❌ Please provide a target directory as an argument.");
