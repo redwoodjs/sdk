@@ -25,8 +25,8 @@ export const setCommonHeaders =
     );
 
     // Defines trusted sources for content loading and script execution:
-    headers.set(
-      "Content-Security-Policy",
-      `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; frame-src https://challenges.cloudflare.com; object-src 'none';`,
-    );
+    // headers.set(
+    //   "Content-Security-Policy",
+    //   `default-src 'self'; script-src 'self' 'nonce-${nonce}' https://challenges.cloudflare.com; style-src 'self' 'unsafe-inline'; frame-src https://challenges.cloudflare.com; object-src 'none';`,
+    // );
   };

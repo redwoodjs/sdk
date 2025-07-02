@@ -25,5 +25,21 @@
   // Environment variables
   "vars": {
     // Add your environment variables here
-  }
+  },
+
+  "durable_objects": {
+    "bindings": [
+      // ...
+      {
+        "name": "REALTIME_DURABLE_OBJECT",
+        "class_name": "RealtimeDurableObject"
+      }
+    ]
+  },
+  "migrations": [
+    {
+      "tag": "v1",
+      "new_classes": ["RealtimeDurableObject"]
+    }
+  ]
 }
