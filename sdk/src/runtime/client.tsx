@@ -115,7 +115,7 @@ export const initClient = async ({
   hydrateRoot(rootEl, <Content />, {
     onUncaughtError: (error, { componentStack }) => {
       console.error(
-        "Uncaught error: %O\n\nComponent stack:\n%s",
+        "Uncaught error: %O\n\nComponent stack:%s",
         error,
         componentStack,
       );
