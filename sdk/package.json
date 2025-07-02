@@ -4,7 +4,8 @@
   "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime",
   "type": "module",
   "bin": {
-    "rw-scripts": "./bin/rw-scripts.mjs"
+    "rw-scripts": "./bin/rw-scripts.mjs",
+    "rwsync": "./bin/rwsync"
   },
   "files": [
     "./README.md",
