@@ -47,11 +47,19 @@ const performFullSync = async (sdkDir: string, targetDir: string) => {
     .catch(() => null);
 
   try {
-    let installCommand = `${pm.name} ${pm.command} ${tarballPath}`;
+    const cmd = pm.name;
+    const args = [pm.command];
+
     if (pm.name === "yarn") {
-      installCommand = `yarn add file:${tarballPath}`;
+      args.push(`file:${tarballPath}`);
+    } else {
+      args.push(tarballPath);
     }
-    await $`${installCommand}`;
+
+    await $(cmd, args, {
+      cwd: targetDir,
+      stdio: "inherit",
+    });
   } finally {
     if (originalPackageJson) {
       console.log("Restoring package.json...");
