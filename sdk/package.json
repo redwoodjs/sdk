@@ -1,6 +1,6 @@
 {
   "name": "rwsdk",
-  "version": "0.1.8",
+  "version": "0.1.8-test.20250702232536",
   "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime",
   "type": "module",
   "bin": {
@@ -127,6 +127,7 @@
     "@types/react-dom": "^19.1.2",
     "@types/react-is": "^19.0.0",
     "@vitejs/plugin-react": "^4.3.4",
+    "chokidar": "^3.6.0",
     "debug": "^4.4.0",
     "enhanced-resolve": "^5.18.1",
     "eventsource-parser": "^3.0.0",
@@ -141,6 +142,7 @@
     "magic-string": "^0.30.17",
     "miniflare": "^4.20250405.0",
     "picocolors": "^1.1.1",
+    "proper-lockfile": "^4.1.2",
     "puppeteer-core": "^22.8.1",
     "react": "19.2.0-canary-39cad7af-20250411",
     "react-dom": "19.2.0-canary-39cad7af-20250411",
@@ -162,6 +164,7 @@
     "@types/debug": "^4.1.12",
     "@types/lodash": "^4.17.16",
     "@types/node": "^22.14.0",
+    "@types/proper-lockfile": "^4.1.4",
     "semver": "^7.7.1",
     "tsx": "^4.19.4",
     "typescript": "^5.8.3",

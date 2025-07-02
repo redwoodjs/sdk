@@ -1,17 +1,17 @@
 import path from "node:path";
 import { fileURLToPath } from "node:url";
-import { $ } from "../lib/$.mjs";
+import { $ } from "execa";
 import fs from "node:fs/promises";
 import { existsSync } from "node:fs";
+import chokidar from "chokidar";
+import { lock } from "proper-lockfile";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export interface DebugSyncOptions {
   targetDir: string;
   sdkDir?: string;
-  dev?: boolean;
-  watch?: boolean;
-  build?: boolean;
+  watch?: string | boolean;
 }
 
 const getPackageManagerInfo = (targetDir: string) => {
@@ -24,16 +24,17 @@ const getPackageManagerInfo = (targetDir: string) => {
   return { name: "npm", lockFile: "package-lock.json", command: "install" };
 };
 
-const performSync = async (sdkDir: string, targetDir: string) => {
-  console.log("🏗️  rebuilding sdk...");
-  await $({ cwd: sdkDir, stdio: "inherit", shell: true })`pnpm build`;
-
-  console.log("📦 packing sdk...");
-  const packResult = await $({ cwd: sdkDir, shell: true })`npm pack`;
+const performFullSync = async (sdkDir: string, targetDir: string) => {
+  console.log("📦 Packing SDK...");
+  const packResult = await $`npm pack`;
   const tarballName = packResult.stdout?.trim() ?? "";
+  if (!tarballName) {
+    console.error("❌ Failed to get tarball name from npm pack.");
+    return;
+  }
   const tarballPath = path.resolve(sdkDir, tarballName);
 
-  console.log(` installing ${tarballName} in ${targetDir}...`);
+  console.log(`💿 Installing ${tarballName} in ${targetDir}...`);
 
   const pm = getPackageManagerInfo(targetDir);
   const packageJsonPath = path.join(targetDir, "package.json");
@@ -47,15 +48,19 @@ const performSync = async (sdkDir: string, targetDir: string) => {
     .catch(() => null);
 
   try {
-    let installCommand = `${pm.name} ${pm.command} ${tarballPath}`;
+    const cmd = pm.name;
+    const args = [pm.command];
+
     if (pm.name === "yarn") {
-      installCommand = `yarn add file:${tarballPath}`;
+      args.push(`file:${tarballPath}`);
+    } else {
+      args.push(tarballPath);
     }
-    await $({
+
+    await $(cmd, args, {
       cwd: targetDir,
       stdio: "inherit",
-      shell: true,
-    })`${installCommand}`;
+    });
   } finally {
     if (originalPackageJson) {
       console.log("Restoring package.json...");
@@ -69,73 +74,190 @@ const performSync = async (sdkDir: string, targetDir: string) => {
       // ignore if deletion fails
     });
   }
-  console.log("✅ done syncing");
+};
+
+const performFastSync = async (sdkDir: string, targetDir: string) => {
+  console.log("⚡️ No dependency changes, performing fast sync...");
+
+  const sdkPackageJson = JSON.parse(
+    await fs.readFile(path.join(sdkDir, "package.json"), "utf-8"),
+  );
+  const filesToSync = sdkPackageJson.files || [];
+
+  for (const file of filesToSync) {
+    const source = path.join(sdkDir, file);
+    const destination = path.join(targetDir, "node_modules/rwsdk", file);
+    if (existsSync(source)) {
+      await fs.cp(source, destination, { recursive: true, force: true });
+    }
+  }
+  // Always copy package.json
+  await fs.copyFile(
+    path.join(sdkDir, "package.json"),
+    path.join(targetDir, "node_modules/rwsdk/package.json"),
+  );
+};
+
+const performSync = async (sdkDir: string, targetDir: string) => {
+  console.log("🏗️  Rebuilding SDK...");
+  await $`pnpm build`;
+
+  const sdkPackageJsonPath = path.join(sdkDir, "package.json");
+  const installedSdkPackageJsonPath = path.join(
+    targetDir,
+    "node_modules/rwsdk/package.json",
+  );
+
+  let packageJsonChanged = true;
+
+  if (existsSync(installedSdkPackageJsonPath)) {
+    const sdkPackageJsonContent = await fs.readFile(
+      sdkPackageJsonPath,
+      "utf-8",
+    );
+    const installedSdkPackageJsonContent = await fs.readFile(
+      installedSdkPackageJsonPath,
+      "utf-8",
+    );
+
+    if (sdkPackageJsonContent === installedSdkPackageJsonContent) {
+      packageJsonChanged = false;
+    }
+  }
+
+  if (packageJsonChanged) {
+    console.log("📦 package.json changed, performing full sync...");
+    await performFullSync(sdkDir, targetDir);
+  } else {
+    await performFastSync(sdkDir, targetDir);
+  }
+
+  console.log("✅ Done syncing");
 };
 
 export const debugSync = async (opts: DebugSyncOptions) => {
-  const { targetDir, sdkDir = process.cwd(), dev, watch, build } = opts;
+  const { targetDir, sdkDir = process.cwd(), watch } = opts;
 
   if (!targetDir) {
     console.error("❌ Please provide a target directory as an argument.");
     process.exit(1);
   }
 
-  const thisScriptPath = fileURLToPath(import.meta.url);
-  const syncCommand = `tsx ${thisScriptPath} --_sync ${sdkDir} ${targetDir}`;
+  // If not in watch mode, just do a one-time sync and exit.
+  if (!watch) {
+    await performSync(sdkDir, targetDir);
+    return;
+  }
 
-  // Run initial sync
+  // --- Watch Mode Logic ---
+  const lockfilePath = path.join(targetDir, "node_modules", ".rwsync.lock");
+  let release: () => Promise<void>;
+
+  // Ensure the directory for the lockfile exists
+  await fs.mkdir(path.dirname(lockfilePath), { recursive: true });
+  // "Touch" the file to ensure it exists before locking
+  await fs.appendFile(lockfilePath, "").catch(() => {});
+
+  try {
+    release = await lock(lockfilePath, { retries: 0 });
+  } catch (e: any) {
+    if (e.code === "ELOCKED") {
+      console.error(
+        `❌ Another rwsync process is already watching ${targetDir}.`,
+      );
+      console.error(
+        `   If this is not correct, please remove the lockfile at ${lockfilePath}`,
+      );
+      process.exit(1);
+    }
+    throw e;
+  }
+
+  // Initial sync for watch mode. We do it *after* acquiring the lock.
   await performSync(sdkDir, targetDir);
 
-  if (!process.env.NO_CLEAN_VITE) {
-    console.log("🧹 Cleaning Vite cache...");
-    await $({
-      stdio: "inherit",
-      shell: true,
-      cwd: targetDir,
-    })`rm -rf ${targetDir}/node_modules/.vite*`;
-  }
+  const filesToWatch = [
+    path.join(sdkDir, "src"),
+    path.join(sdkDir, "types"),
+    path.join(sdkDir, "bin"),
+    path.join(sdkDir, "package.json"),
+  ];
 
-  // If dev flag is present, clean vite cache and start dev server
-  if (dev) {
-    console.log("🚀 Starting dev server...");
-    await $({ stdio: "inherit", shell: true, cwd: targetDir })`npm run dev`;
-  }
-  // Start watching if watch flag is present
-  else if (watch) {
-    console.log("👀 Watching for changes...");
-    $({
-      stdio: "inherit",
-      shell: true,
-      cwd: sdkDir,
-    })`npx chokidar-cli './src/**' './package.json' -c "${syncCommand}"`;
-  } else if (build) {
-    console.log("🏗️ Running build in target directory...");
-    await $({
-      stdio: "inherit",
-      shell: true,
-      cwd: targetDir,
-    })`npm run build`;
-  }
+  console.log("👀 Watching for changes...");
+
+  let childProc: ReturnType<typeof $> | null = null;
+  const runWatchedCommand = () => {
+    if (typeof watch === "string") {
+      console.log(`\n> ${watch}\n`);
+      childProc = $({
+        stdio: "inherit",
+        shell: true,
+        cwd: targetDir,
+        reject: false,
+      })`${watch}`;
+    }
+  };
+
+  const watcher = chokidar.watch(filesToWatch, {
+    ignoreInitial: true,
+    cwd: sdkDir,
+  });
+
+  watcher.on("all", async () => {
+    console.log("\nDetected change, re-syncing...");
+    if (childProc && !childProc.killed) {
+      console.log("Stopping running process...");
+      childProc.kill();
+      await childProc.catch(() => {
+        /* ignore kill errors */
+      });
+    }
+    await performSync(sdkDir, targetDir);
+    runWatchedCommand();
+  });
+
+  const cleanup = async () => {
+    console.log("\nCleaning up...");
+    if (childProc && !childProc.killed) {
+      childProc.kill();
+    }
+    await release();
+    process.exit();
+  };
+
+  process.on("SIGINT", cleanup);
+  process.on("SIGTERM", cleanup);
+
+  runWatchedCommand();
 };
 
 if (import.meta.url === new URL(process.argv[1], import.meta.url).href) {
   const args = process.argv.slice(2);
-  const flags = new Set(args.filter((arg) => arg.startsWith("--")));
-  const positionalArgs = args.filter((arg) => !arg.startsWith("--"));
 
-  if (flags.has("--_sync")) {
-    const [sdkDir, targetDir] = positionalArgs;
-    await performSync(sdkDir, targetDir);
-  } else {
-    const targetDir = positionalArgs[0] ?? process.cwd();
-    debugSync({
-      targetDir,
-      sdkDir: process.env.RWSDK_REPO
-        ? path.resolve(__dirname, process.env.RWSDK_REPO, "sdk")
-        : path.resolve(__dirname, "..", ".."),
-      dev: flags.has("--dev"),
-      watch: flags.has("--watch"),
-      build: flags.has("--build"),
-    });
+  const watchFlagIndex = args.indexOf("--watch");
+  let watchCmd: string | boolean = watchFlagIndex !== -1;
+  let cmdArgs = args;
+
+  if (watchFlagIndex !== -1) {
+    if (
+      watchFlagIndex + 1 < args.length &&
+      !args[watchFlagIndex + 1].startsWith("--")
+    ) {
+      watchCmd = args[watchFlagIndex + 1];
+    }
+    // remove --watch and its potential command from args
+    const watchArgCount = typeof watchCmd === "string" ? 2 : 1;
+    cmdArgs = args.filter(
+      (_, i) => i < watchFlagIndex || i >= watchFlagIndex + watchArgCount,
+    );
   }
+
+  const targetDir = cmdArgs[0] ?? process.cwd();
+  const sdkDir = path.resolve(__dirname, "..", "..");
+
+  debugSync({
+    targetDir,
+    sdkDir,
+    watch: watchCmd,
+  });
 }
