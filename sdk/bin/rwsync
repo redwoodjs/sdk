@@ -1,0 +1,2 @@
+#!/bin/sh
+DIR=$PWD && (cd "${@:-SDK_REPO}/sdk" && pnpm debug-sync $DIR)
