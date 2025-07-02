@@ -106,6 +106,7 @@ export const debugSync = async (opts: DebugSyncOptions) => {
     $({
       stdio: "inherit",
       shell: true,
+      cwd: sdkDir,
     })`npx chokidar-cli './src/**' './package.json' -c "${syncCommand}"`;
   } else if (build) {
     console.log("🏗️ Running build in target directory...");
