@@ -65,7 +65,7 @@ rwsync
 This will build the SDK, copy the relevant files into your project's `node_modules`, and then you can start your development server.
 
 ```sh
-rwsync && pnpm dev
+rwsync && npm run dev
 ```
 
 ### Watch Mode
