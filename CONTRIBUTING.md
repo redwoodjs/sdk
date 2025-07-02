@@ -74,7 +74,7 @@ For continuous development, you can use the watch mode. This will automatically 
 
 ```sh
 # This will watch for changes, and cancel + re-run `pnpm dev` after each sync
-rwsync --watch "pnpm dev"
+rwsync --watch "npm run dev"
 ```
 
 ---
