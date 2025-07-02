@@ -31,6 +31,10 @@ To run the test suite for the `rwsdk` package, run this command from the root of
 pnpm --filter rwsdk test
 ```
 
+## Smoke Testing
+
+For details on how to run smoke tests, please see the [smoke testing documentation](./SMOKE-TESTING.md).
+
 ## Formatting
 
 This project uses Prettier for code formatting. To format the code, run:
