@@ -1,21 +1,26 @@
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 import { $ } from "../lib/$.mjs";
+
+const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
 export interface DebugSyncOptions {
   targetDir: string;
+  sdkDir?: string;
   dev?: boolean;
   watch?: boolean;
   build?: boolean;
 }
 
 export const debugSync = async (opts: DebugSyncOptions) => {
-  const { targetDir, dev, watch, build } = opts;
+  const { targetDir, sdkDir = process.cwd(), dev, watch, build } = opts;
 
   if (!targetDir) {
     console.error("❌ Please provide a target directory as an argument.");
     process.exit(1);
   }
 
-  const syncCommand = `echo 🏗️ rebuilding... && pnpm build && rm -rf ${targetDir}/node_modules/rwsdk/dist ${targetDir}/node_modules/rwsdk/package.json && echo 📁 syncing sdk from ${process.cwd()} to ${targetDir}/node_modules/rwsdk/... && cp -r package.json dist ${targetDir}/node_modules/rwsdk/ && echo ✅ done syncing`;
+  const syncCommand = `echo 🏗️ rebuilding... && pnpm build && rm -rf ${targetDir}/node_modules/rwsdk/dist ${targetDir}/node_modules/rwsdk/package.json && echo 📁 syncing sdk from ${sdkDir} to ${targetDir}/node_modules/rwsdk/... && cp -r ${sdkDir}/package.json ${sdkDir}/dist ${targetDir}/node_modules/rwsdk/ && echo ✅ done syncing`;
 
   // Run initial sync
   await $({ stdio: "inherit", shell: true })`${syncCommand}`;
@@ -26,7 +31,7 @@ export const debugSync = async (opts: DebugSyncOptions) => {
       stdio: "inherit",
       shell: true,
       cwd: targetDir,
-    })`rm -rf node_modules/.vite`;
+    })`rm -rf ${targetDir}/node_modules/.vite*`;
   }
 
   // If dev flag is present, clean vite cache and start dev server
@@ -53,10 +58,13 @@ export const debugSync = async (opts: DebugSyncOptions) => {
 
 if (import.meta.url === new URL(process.argv[1], import.meta.url).href) {
   const args = process.argv.slice(2);
-  const targetDir = args[0];
+  const targetDir = args[0] ?? process.cwd();
   const flags = new Set(args.slice(1));
   debugSync({
     targetDir,
+    sdkDir: process.env.SDK_REPO
+      ? path.resolve(__dirname, process.env.SDK_REPO, "sdk")
+      : path.resolve(__dirname, "..", ".."),
     dev: flags.has("--dev"),
     watch: flags.has("--watch"),
     build: flags.has("--build"),

@@ -114,12 +114,19 @@ export const realtimeTransport =
           "react-server-dom-webpack/client.browser"
         );
 
+        // Note(peterp, 2025-07-02): We need to send the "current URL" per message,
+        // in case the user has enabled client side navigation.
+        const clientUrl = new URL(window.location.href);
+        clientUrl.protocol = "";
+        clientUrl.host = "";
+
         const encodedArgs = args != null ? await encodeReply(args) : null;
         const requestId = crypto.randomUUID();
         const messageData = JSON.stringify({
           id,
           args: encodedArgs,
           requestId,
+          clientUrl,
         });
 
         const encoder = new TextEncoder();

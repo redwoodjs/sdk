@@ -20,7 +20,7 @@ export const renderToStream = async (
   {
     Document = IdentityDocument,
     injectRSCPayload: shouldInjectRSCPayload = false,
-    onError,
+    onError = () => {},
   }: RenderToStreamOptions = {},
 ): Promise<ReadableStream> => {
   let rscStream = renderToRscStream({
@@ -44,6 +44,7 @@ export const renderToStream = async (
     stream: rscStream,
     Document,
     requestInfo,
+    onError,
   });
 
   return htmlStream;

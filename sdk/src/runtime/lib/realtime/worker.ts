@@ -12,8 +12,7 @@ export const realtimeRoute = (
     env: Cloudflare.Env,
   ) => DurableObjectNamespace<RealtimeDurableObject>,
 ) =>
-  route("/__realtime", async function () {
-    const { request } = requestInfo;
+  route("/__realtime", async function ({ request }) {
     const validation = validateUpgradeRequest(request);
 
     if (!validation.valid) {

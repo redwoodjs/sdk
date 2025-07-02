@@ -7,3 +7,5 @@ The RedwoodSDK team has built several experiments to validate that we're buildin
 - [Billable](https://github.com/redwoodjs/example-billable): Invoice form to PDF webapp. Workers, Auth, Database (D1), & Storage (R2)
 - [Kitchensink](https://github.com/redwoodjs/kitchensink): The "kitchensink" implements all the interesting parts of RedwoodSDK. This is primarily used for demoes.
 - [Drizzle](https://github.com/redwoodjs/example-drizzle): RedwoodSDK usage with Drizzle.
+
+For more community-maintained examples, check out the [awesome Redwood SDK repo](https://github.com/redwoodjs/awesome-rwsdk).
