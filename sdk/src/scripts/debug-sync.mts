@@ -31,7 +31,7 @@ export const debugSync = async (opts: DebugSyncOptions) => {
       stdio: "inherit",
       shell: true,
       cwd: targetDir,
-    })`rm -rf ${targetDir}/node_modules/.vite`;
+    })`rm -rf ${targetDir}/node_modules/.vite*`;
   }
 
   // If dev flag is present, clean vite cache and start dev server
