@@ -146,13 +146,12 @@ export const debugSync = async (opts: DebugSyncOptions) => {
   await performSync(sdkDir, targetDir);
 
   if (watch) {
-    const sdkPackageJson = JSON.parse(
-      await fs.readFile(path.join(sdkDir, "package.json"), "utf-8"),
-    );
-    const filesToWatch = (sdkPackageJson.files || []).map((p: string) =>
-      path.join(sdkDir, p),
-    );
-    filesToWatch.push(path.join(sdkDir, "package.json"));
+    const filesToWatch = [
+      path.join(sdkDir, "src"),
+      path.join(sdkDir, "types"),
+      path.join(sdkDir, "bin"),
+      path.join(sdkDir, "package.json"),
+    ];
 
     console.log("👀 Watching for changes...");
 
