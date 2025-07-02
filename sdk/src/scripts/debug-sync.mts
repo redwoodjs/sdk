@@ -24,16 +24,17 @@ const getPackageManagerInfo = (targetDir: string) => {
   return { name: "npm", lockFile: "package-lock.json", command: "install" };
 };
 
-const performSync = async (sdkDir: string, targetDir: string) => {
-  console.log("🏗️  rebuilding sdk...");
-  await $({ cwd: sdkDir, stdio: "inherit", shell: true })`pnpm build`;
-
-  console.log("📦 packing sdk...");
+const performFullSync = async (sdkDir: string, targetDir: string) => {
+  console.log("📦 Packing SDK...");
   const packResult = await $({ cwd: sdkDir, shell: true })`npm pack`;
   const tarballName = packResult.stdout?.trim() ?? "";
+  if (!tarballName) {
+    console.error("❌ Failed to get tarball name from npm pack.");
+    return;
+  }
   const tarballPath = path.resolve(sdkDir, tarballName);
 
-  console.log(` installing ${tarballName} in ${targetDir}...`);
+  console.log(`💿 Installing ${tarballName} in ${targetDir}...`);
 
   const pm = getPackageManagerInfo(targetDir);
   const packageJsonPath = path.join(targetDir, "package.json");
@@ -69,7 +70,61 @@ const performSync = async (sdkDir: string, targetDir: string) => {
       // ignore if deletion fails
     });
   }
-  console.log("✅ done syncing");
+};
+
+const performFastSync = async (sdkDir: string, targetDir: string) => {
+  console.log("⚡️ No dependency changes, performing fast sync...");
+  const sourceDist = path.join(sdkDir, "dist");
+  const targetDist = path.join(targetDir, "node_modules/rwsdk/dist");
+  const sourcePackageJson = path.join(sdkDir, "package.json");
+  const targetPackageJsonPath = path.join(
+    targetDir,
+    "node_modules/rwsdk/package.json",
+  );
+
+  await fs.rm(targetDist, { recursive: true, force: true });
+  await fs.cp(sourceDist, targetDist, { recursive: true });
+  await fs.copyFile(sourcePackageJson, targetPackageJsonPath);
+};
+
+const performSync = async (sdkDir: string, targetDir: string) => {
+  console.log("🏗️  Rebuilding SDK...");
+  await $({ cwd: sdkDir, stdio: "inherit", shell: true })`pnpm build`;
+
+  const sdkPackageJsonPath = path.join(sdkDir, "package.json");
+  const installedSdkPackageJsonPath = path.join(
+    targetDir,
+    "node_modules/rwsdk/package.json",
+  );
+
+  let dependenciesChanged = true;
+
+  if (existsSync(installedSdkPackageJsonPath)) {
+    const sdkPackageJson = JSON.parse(
+      await fs.readFile(sdkPackageJsonPath, "utf-8"),
+    );
+    const installedSdkPackageJson = JSON.parse(
+      await fs.readFile(installedSdkPackageJsonPath, "utf-8"),
+    );
+
+    if (
+      JSON.stringify(sdkPackageJson.dependencies || {}) ===
+        JSON.stringify(installedSdkPackageJson.dependencies || {}) &&
+      JSON.stringify(sdkPackageJson.peerDependencies || {}) ===
+        JSON.stringify(installedSdkPackageJson.peerDependencies || {})
+    ) {
+      dependenciesChanged = false;
+    }
+  }
+
+  if (dependenciesChanged) {
+    console.log("📦 Dependencies changed, performing full sync...");
+    await performFullSync(sdkDir, targetDir);
+  } else {
+    await performFastSync(sdkDir, targetDir);
+  }
+
+  console.log("✅ Done syncing");
 };
 
 export const debugSync = async (opts: DebugSyncOptions) => {
