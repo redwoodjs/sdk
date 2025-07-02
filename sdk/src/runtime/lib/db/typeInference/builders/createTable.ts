@@ -1,9 +1,11 @@
 import { SqlToTsType, ExecutedBuilder, Prettify } from "../utils";
 import { ColumnDefinitionBuilder } from "./columnDefinition";
-import { CompiledQuery, CreateTableNode } from "kysely";
 import {
-  CreateTableBuilder as KyselyCreateTableBuilder,
+  CompiledQuery,
+  CreateTableNode,
+  Expression,
   ForeignKeyConstraintBuilder,
+  CreateTableBuilder as KyselyCreateTableBuilder,
 } from "kysely";
 import type { Assert, AssertStillImplements } from "../assert";
 
@@ -28,14 +30,17 @@ export interface CreateTableBuilder<
   addUniqueConstraint(
     constraintName: string,
     columns: (keyof TSchema)[],
+    build?: (builder: any) => any,
   ): CreateTableBuilder<TName, TSchema>;
   addPrimaryKeyConstraint(
     constraintName: string,
     columns: (keyof TSchema)[],
+    build?: (builder: any) => any,
   ): CreateTableBuilder<TName, TSchema>;
   addCheckConstraint(
     constraintName: string,
-    checkExpression: any,
+    checkExpression: Expression<any>,
+    build?: (builder: any) => any,
   ): CreateTableBuilder<TName, TSchema>;
   addForeignKeyConstraint(
     constraintName: string,
@@ -46,9 +51,9 @@ export interface CreateTableBuilder<
       builder: ForeignKeyConstraintBuilder,
     ) => ForeignKeyConstraintBuilder,
   ): CreateTableBuilder<TName, TSchema>;
-  modifyFront(modifier: string): CreateTableBuilder<TName, TSchema>;
-  modifyEnd(modifier: string): CreateTableBuilder<TName, TSchema>;
-  as(expression: string): CreateTableBuilder<TName, TSchema>;
+  modifyFront(modifier: Expression<any>): CreateTableBuilder<TName, TSchema>;
+  modifyEnd(modifier: Expression<any>): CreateTableBuilder<TName, TSchema>;
+  as(expression: Expression<any>): CreateTableBuilder<TName, TSchema>;
   execute(): Promise<ExecutedBuilder<this>>;
   $call<T>(func: (qb: this) => T): T;
   compile(): CompiledQuery;

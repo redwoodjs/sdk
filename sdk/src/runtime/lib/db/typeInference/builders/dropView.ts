@@ -1,5 +1,9 @@
 import { ExecutedBuilder } from "../utils";
-import { DropViewBuilder as KyselyDropViewBuilder } from "kysely";
+import {
+  DropViewBuilder as KyselyDropViewBuilder,
+  DropViewNode,
+  CompiledQuery,
+} from "kysely";
 import type { Assert, AssertStillImplements } from "../assert";
 
 export interface DropViewBuilder<TName extends string> {
@@ -7,8 +11,8 @@ export interface DropViewBuilder<TName extends string> {
   ifExists(): DropViewBuilder<TName>;
   cascade(): DropViewBuilder<TName>;
   execute(): Promise<ExecutedBuilder<this>>;
-  toOperationNode(): any;
-  compile(): any;
+  toOperationNode(): DropViewNode;
+  compile(): CompiledQuery;
   $call<T>(func: (qb: this) => T): T;
   materialized(): DropViewBuilder<TName>;
   withSchema(schema: string): DropViewBuilder<TName>;

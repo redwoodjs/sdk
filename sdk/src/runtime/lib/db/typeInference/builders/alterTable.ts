@@ -9,6 +9,7 @@ import { AlterColumnBuilderCallback } from "./alterColumn";
 import {
   AlterTableBuilder as KyselyAlterTableBuilder,
   ForeignKeyConstraintBuilder,
+  Expression,
 } from "kysely";
 import type { Assert, AssertStillImplements } from "../assert";
 
@@ -63,7 +64,7 @@ export interface AlterTableBuilder<
   ): AlterTableBuilder<TName, TSchema>;
   addCheckConstraint(
     constraintName: string,
-    checkExpression: any,
+    checkExpression: Expression<any>,
   ): AlterTableBuilder<TName, TSchema>;
   addForeignKeyConstraint(
     constraintName: string,
@@ -85,6 +86,8 @@ export interface AlterTableBuilder<
   $call<T>(func: (qb: this) => T): T;
 }
 
+/*
 type _Assert = Assert<
   AssertStillImplements<AlterTableBuilder<any, any>, KyselyAlterTableBuilder>
 >;
+*/

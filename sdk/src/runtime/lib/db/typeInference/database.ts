@@ -6,7 +6,7 @@ import {
   OmitNever,
   UnionToIntersection,
 } from "./utils";
-import { TableBuilder } from "./builders/table";
+import { CreateTableBuilder } from "./builders/createTable";
 import { CreateViewBuilder } from "./builders/createView.js";
 import { AlterTableBuilder } from "./builders/alterTable.js";
 import { DropTableBuilder } from "./builders/dropTable.js";
@@ -40,7 +40,9 @@ type AllBuilders<TMigrations extends Migrations> = BuildersFromMigration<
 >;
 
 type CreatedTables<TMigrations extends Migrations> = UnionToIntersection<
-  ExtractTableSchema<Extract<AllBuilders<TMigrations>, TableBuilder<any, any>>>
+  ExtractTableSchema<
+    Extract<AllBuilders<TMigrations>, CreateTableBuilder<any, any>>
+  >
 >;
 
 type CreatedViews<TMigrations extends Migrations> = UnionToIntersection<
@@ -91,7 +93,7 @@ export type Database<TMigrations extends Migrations = Migrations> = Prettify<
 >;
 
 export type ExtractTableSchema<T> =
-  T extends TableBuilder<infer TName, infer TSchema>
+  T extends CreateTableBuilder<infer TName, infer TSchema>
     ? Record<TName, TSchema>
     : never;
 

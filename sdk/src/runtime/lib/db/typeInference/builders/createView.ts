@@ -1,5 +1,9 @@
 import { ExecutedBuilder } from "../utils";
-import { CreateViewBuilder as KyselyCreateViewBuilder } from "kysely";
+import {
+  CreateViewBuilder as KyselyCreateViewBuilder,
+  CreateViewNode,
+  CompiledQuery,
+} from "kysely";
 import type { Assert, AssertStillImplements } from "../assert";
 
 export interface CreateViewBuilder<
@@ -15,12 +19,10 @@ export interface CreateViewBuilder<
   orReplace(): CreateViewBuilder<TName, TSchema, TColumns>;
   ifNotExists(): CreateViewBuilder<TName, TSchema, TColumns>;
   columns<C extends string[]>(columns: C): CreateViewBuilder<TName, TSchema, C>;
-  as<E extends string>(
-    expression: E,
-  ): CreateViewBuilder<TName, TSchema, TColumns>;
+  as(expression: any): CreateViewBuilder<TName, TSchema, TColumns>;
   execute(): Promise<ExecutedBuilder<this>>;
-  toOperationNode(): any;
-  compile(): any;
+  toOperationNode(): CreateViewNode;
+  compile(): CompiledQuery;
   $call<T>(func: (qb: this) => T): T;
   materialized(): CreateViewBuilder<TName, TSchema, TColumns>;
 }
