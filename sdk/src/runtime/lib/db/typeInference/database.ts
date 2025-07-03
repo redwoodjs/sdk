@@ -37,23 +37,31 @@ type BuildersFromMigration<TMigration extends Migration> =
       : GetBuilder<Awaited<TUpReturn>>
     : never;
 
-type AllBuilders<TMigrations extends Migrations> = BuildersFromMigration<
+export type AllBuilders<TMigrations extends Migrations> = BuildersFromMigration<
   TMigrations[keyof TMigrations]
 >;
 
-type CreatedTables<TMigrations extends Migrations> = UnionToIntersection<
+export type CreatedTables<TMigrations extends Migrations> = UnionToIntersection<
   ExtractTableSchema<
     Extract<AllBuilders<TMigrations>, CreateTableBuilder<any, any>>
   >
 >;
 
-type CreatedViews<TMigrations extends Migrations> = UnionToIntersection<
+export type CreatedViews<TMigrations extends Migrations> = UnionToIntersection<
   ExtractViewSchema<
     Extract<AllBuilders<TMigrations>, CreateViewBuilder<any, any>>
   >
 >;
 
-type AlteredTables<TMigrations extends Migrations> = UnionToIntersection<
+type Merge<U> = {
+  [K in U extends infer T ? keyof T : never]: U extends infer T
+    ? K extends keyof T
+      ? T[K]
+      : never
+    : never;
+};
+
+export type AlteredTables<TMigrations extends Migrations> = Merge<
   ExtractAlterSchema<
     Extract<AllBuilders<TMigrations>, AlterTableBuilder<any, any>>
   >
@@ -73,10 +81,8 @@ type AllCreated<TMigrations extends Migrations> = MergeSchemas<
   CreatedViews<TMigrations>
 >;
 
-type MergedSchemaBeforeDrop<TMigrations extends Migrations> = MergeSchemas<
-  AllCreated<TMigrations>,
-  AlteredTables<TMigrations>
->;
+export type MergedSchemaBeforeDrop<TMigrations extends Migrations> =
+  MergeSchemas<AllCreated<TMigrations>, AlteredTables<TMigrations>>;
 
 type CleanedSchema<T> = {
   [K in keyof T]: OmitNever<T[K]>;

@@ -20,15 +20,7 @@ export type Prettify<T> = {
 
 export type ExecutedBuilder<T> = { __builder_type: T };
 
-export type MergeSchemas<A, B> = {
-  [K in keyof A | keyof B]: K extends keyof A
-    ? K extends keyof B
-      ? Prettify<A[K] & B[K]>
-      : A[K]
-    : K extends keyof B
-      ? B[K]
-      : never;
-};
+export type MergeSchemas<A, B> = Prettify<Omit<A, keyof B> & B>;
 
 export type OmitNever<T> = {
   [K in keyof T as T[K] extends never ? never : K]: T[K];

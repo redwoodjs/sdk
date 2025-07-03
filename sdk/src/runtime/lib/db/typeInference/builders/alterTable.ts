@@ -24,6 +24,14 @@ type MapAlterationToSchema<
   ? { [P in K]: SqlToTsType<T> }
   : {};
 
+type AlterColumnResult<
+  TSchema,
+  K extends string,
+  TAlteration,
+> = TAlteration extends { kind: "setDataType" }
+  ? Omit<TSchema, K> & MapAlterationToSchema<K, TAlteration>
+  : TSchema;
+
 interface CheckConstraintBuilder {
   $call<T>(func: (qb: this) => T): T;
   toOperationNode(): CheckConstraintNode;
@@ -83,8 +91,7 @@ export interface AlterTableBuilder<
     alteration: TCallback,
   ): AlterTableBuilder<
     TName,
-    Omit<TSchema, K> &
-      MapAlterationToSchema<K, ReturnType<TCallback>["__alteration"]>
+    AlterColumnResult<TSchema, K, ReturnType<TCallback>["__alteration"]>
   >;
   modifyColumn<K extends string, T extends DataTypeExpression>(
     column: K,
