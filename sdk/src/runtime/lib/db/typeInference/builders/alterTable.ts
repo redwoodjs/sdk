@@ -5,7 +5,7 @@ import {
   RemoveNeverValues,
 } from "../utils";
 import { ColumnDefinitionBuilder } from "./columnDefinition";
-import { AlterColumnBuilderCallback } from "./alterColumn";
+import { AlterColumnBuilderCallback, AlteredColumn } from "./alterColumn";
 import {
   AlterTableBuilder as KyselyAlterTableBuilder,
   ForeignKeyConstraintBuilder,
@@ -18,6 +18,16 @@ import {
 import type { Assert, AssertStillImplements } from "../assert";
 
 type DataTypeExpression = string | typeof sql;
+
+type MapAlterationToSchema<
+  K extends string,
+  TAlteration,
+> = TAlteration extends {
+  kind: "setDataType";
+  dataType: infer T extends DataTypeExpression;
+}
+  ? { [P in K]: SqlToTsType<T> }
+  : {};
 
 interface CheckConstraintBuilder {
   $call<T>(func: (qb: this) => T): T;
@@ -73,10 +83,16 @@ export interface AlterTableBuilder<
     TName,
     TSchema & { [P in KFrom]: never } & { [P in KTo]: any }
   >;
-  alterColumn<K extends string>(
+  alterColumn<
+    K extends string,
+    const TCallback extends AlterColumnBuilderCallback,
+  >(
     column: K,
-    alteration: AlterColumnBuilderCallback,
-  ): AlterTableBuilder<TName, TSchema>;
+    alteration: TCallback,
+  ): AlterTableBuilder<
+    TName,
+    TSchema & MapAlterationToSchema<K, ReturnType<TCallback>["__alteration"]>
+  >;
   modifyColumn<K extends string, T extends DataTypeExpression>(
     column: K,
     type: T,

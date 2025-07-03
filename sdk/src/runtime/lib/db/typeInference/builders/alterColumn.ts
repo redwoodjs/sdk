@@ -11,29 +11,34 @@ type DefaultValueExpression = string | number | boolean | null | typeof sql;
 type DataTypeExpression = string | typeof sql;
 
 export class AlterColumnBuilder {
-  setDataType(dataType: DataTypeExpression): AlteredColumnBuilder {
+  setDataType<T extends DataTypeExpression>(
+    dataType: T,
+  ): AlteredColumnBuilder<{ kind: "setDataType"; dataType: T }> {
     return new AlteredColumnBuilder({
       kind: "setDataType",
-      dataType: dataType as string,
+      dataType: dataType as any,
     });
   }
-  setDefault(value: DefaultValueExpression): AlteredColumnBuilder {
+  setDefault(value: DefaultValueExpression): AlteredColumnBuilder<{
+    kind: "setDefault";
+    value: DefaultValueExpression;
+  }> {
     return new AlteredColumnBuilder({
       kind: "setDefault",
       value,
     });
   }
-  dropDefault(): AlteredColumnBuilder {
+  dropDefault(): AlteredColumnBuilder<{ kind: "dropDefault" }> {
     return new AlteredColumnBuilder({
       kind: "dropDefault",
     });
   }
-  setNotNull(): AlteredColumnBuilder {
+  setNotNull(): AlteredColumnBuilder<{ kind: "setNotNull" }> {
     return new AlteredColumnBuilder({
       kind: "setNotNull",
     });
   }
-  dropNotNull(): AlteredColumnBuilder {
+  dropNotNull(): AlteredColumnBuilder<{ kind: "dropNotNull" }> {
     return new AlteredColumnBuilder({
       kind: "dropNotNull",
     });
@@ -43,11 +48,13 @@ export class AlterColumnBuilder {
   }
 }
 
-export class AlteredColumnBuilder {
-  readonly #alteredColumn: AlteredColumn;
+export class AlteredColumnBuilder<TAlteration extends AlteredColumn> {
+  readonly __alteration: TAlteration;
+  #alteredColumn: AlteredColumn;
 
   constructor(alteredColumn: AlteredColumn) {
     this.#alteredColumn = alteredColumn;
+    this.__alteration = alteredColumn as TAlteration;
   }
 
   toOperationNode(): AlterColumnNode {
@@ -58,7 +65,7 @@ export class AlteredColumnBuilder {
 }
 
 export type AlteredColumn =
-  | { kind: "setDataType"; dataType: string }
+  | { kind: "setDataType"; dataType: DataTypeExpression }
   | { kind: "setDefault"; value: DefaultValueExpression }
   | { kind: "dropDefault" }
   | { kind: "setNotNull" }
@@ -66,7 +73,7 @@ export type AlteredColumn =
 
 export type AlterColumnBuilderCallback = (
   builder: AlterColumnBuilder,
-) => AlteredColumnBuilder;
+) => AlteredColumnBuilder<any>;
 
 type _Assert = Assert<
   AssertStillImplements<AlterColumnBuilder, KyselyAlterColumnBuilder>
