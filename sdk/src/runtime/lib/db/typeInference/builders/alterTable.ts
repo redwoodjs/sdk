@@ -1,9 +1,4 @@
-import {
-  SqlToTsType,
-  ExecutedBuilder,
-  Prettify,
-  RemoveNeverValues,
-} from "../utils";
+import { SqlToTsType, ExecutedBuilder, Prettify, OmitNever } from "../utils";
 import { ColumnDefinitionBuilder } from "./columnDefinition";
 import { AlterColumnBuilderCallback } from "./alterColumn";
 import {
@@ -71,7 +66,7 @@ export interface AlterTableBuilder<
     ) => ColumnDefinitionBuilder<SqlToTsType<T>>,
   ): AlterTableBuilder<
     TName,
-    Prettify<RemoveNeverValues<TSchema> & Record<K, SqlToTsType<T>>>
+    Prettify<OmitNever<TSchema> & Record<K, SqlToTsType<T>>>
   >;
   dropColumn<K extends string>(
     name: K,

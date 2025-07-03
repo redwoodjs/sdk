@@ -40,6 +40,10 @@ export type UnionToIntersection<U> = (
   ? I
   : never;
 
-export type RemoveNeverValues<T> = {
-  [K in keyof T as T[K] extends never ? never : K]: T[K];
-};
+export type DeepClean<T> = T extends Uint8Array
+  ? T
+  : T extends Record<string, any>
+    ? {
+        [K in keyof T as T[K] extends never ? never : K]: DeepClean<T[K]>;
+      } & {}
+    : T;

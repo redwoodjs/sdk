@@ -5,6 +5,7 @@ import {
   MergeSchemas,
   OmitNever,
   UnionToIntersection,
+  DeepClean,
 } from "./utils";
 import { CreateTableBuilder } from "./builders/createTable";
 import { CreateViewBuilder } from "./builders/createView.js";
@@ -88,7 +89,7 @@ type InferredDatabase<TMigrations extends Migrations> = Omit<
   DroppedViewNames<TMigrations>
 >;
 
-export type Database<TMigrations extends Migrations = Migrations> = Prettify<
+export type Database<TMigrations extends Migrations = Migrations> = DeepClean<
   InferredDatabase<TMigrations>
 >;
 
