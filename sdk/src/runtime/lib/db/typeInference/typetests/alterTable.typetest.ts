@@ -1,8 +1,4 @@
-import type {
-  Database,
-  Migrations,
-  MergedSchemaBeforeDrop,
-} from "../database";
+import type { Database, Migrations, MergedSchemaBeforeDrop } from "../database";
 import type { Expect, Equal } from "./testUtils";
 import { Prettify } from "../utils";
 
@@ -101,7 +97,9 @@ declare let _it: any;
     },
   } satisfies Migrations;
 
-  type PrintedSigh = PrintType<Sigh>
+  type Actual = Database<typeof migrations>;
+  type Expected = {
+    users: {
       age: string;
     };
   };
@@ -193,10 +191,7 @@ declare let _it: any;
     "1": {
       async up(db) {
         return [
-          await db.schema
-            .alterTable("users")
-            .dropColumn("age")
-            .execute(),
+          await db.schema.alterTable("users").dropColumn("age").execute(),
         ];
       },
     },
