@@ -5,7 +5,7 @@ import {
   RemoveNeverValues,
 } from "../utils";
 import { ColumnDefinitionBuilder } from "./columnDefinition";
-import { AlterColumnBuilderCallback, AlteredColumn } from "./alterColumn";
+import { AlterColumnBuilderCallback } from "./alterColumn";
 import {
   AlterTableBuilder as KyselyAlterTableBuilder,
   ForeignKeyConstraintBuilder,

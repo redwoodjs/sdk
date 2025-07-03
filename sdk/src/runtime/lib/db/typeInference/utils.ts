@@ -75,7 +75,7 @@ type NewColumnsFromRenames<Original, Altered> = {
 };
 
 export type MergeAlteredTable<Original, Altered> = Prettify<
-  Omit<Original, KeysToOmit<Altered>> &
+  Omit<Original, KeysToOmit<Altered> | keyof Altered> &
     AddedColumns<Altered> &
     NewColumnsFromRenames<Original, Altered>
 >;

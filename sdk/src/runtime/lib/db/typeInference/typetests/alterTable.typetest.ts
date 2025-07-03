@@ -97,8 +97,6 @@ import type { Expect, Equal } from "./testUtils";
     };
   };
 
-  // todo(justinvdm, 2024-01-08): Support setDataType()
-  // @ts-ignore
   (_test: Expect<Equal<Actual, Expected>>) => {};
 };
 
