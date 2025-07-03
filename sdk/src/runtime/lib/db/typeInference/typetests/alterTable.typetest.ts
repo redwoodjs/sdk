@@ -63,7 +63,7 @@ import type { Expect, Equal } from "./testUtils";
   type Actual = Database<typeof migrations>;
   type Expected = {
     users: {
-      nickname: any;
+      nickname: string;
     };
   };
   (_test: Expect<Equal<Actual, Expected>>) => {};

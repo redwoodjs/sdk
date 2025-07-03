@@ -5,6 +5,7 @@ import {
   MergeSchemas,
   OmitNever,
   UnionToIntersection,
+  MergeAlteredTable,
 } from "./utils";
 import { CreateTableBuilder } from "./builders/createTable";
 import { CreateViewBuilder } from "./builders/createView.js";
@@ -71,10 +72,20 @@ type AllCreated<TMigrations extends Migrations> = MergeSchemas<
   CreatedViews<TMigrations>
 >;
 
-type MergedSchemaBeforeDrop<TMigrations extends Migrations> = MergeSchemas<
-  AllCreated<TMigrations>,
-  AlteredTables<TMigrations>
->;
+type MergedSchemaBeforeDrop<TMigrations extends Migrations> = {
+  [K in
+    | keyof AllCreated<TMigrations>
+    | keyof AlteredTables<TMigrations>]: K extends keyof AllCreated<TMigrations>
+    ? K extends keyof AlteredTables<TMigrations>
+      ? MergeAlteredTable<
+          AllCreated<TMigrations>[K],
+          AlteredTables<TMigrations>[K]
+        >
+      : AllCreated<TMigrations>[K]
+    : K extends keyof AlteredTables<TMigrations>
+      ? AlteredTables<TMigrations>[K]
+      : never;
+};
 
 type CleanedSchema<T> = {
   [K in keyof T]: Prettify<OmitNever<T[K]>>;

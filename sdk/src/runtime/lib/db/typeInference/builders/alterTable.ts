@@ -81,7 +81,7 @@ export interface AlterTableBuilder<
     to: KTo,
   ): AlterTableBuilder<
     TName,
-    TSchema & { [P in KFrom]: never } & { [P in KTo]: any }
+    TSchema & { [P in KFrom]: never } & { [P in KTo]: { __renamed: KFrom } }
   >;
   alterColumn<
     K extends string,
