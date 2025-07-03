@@ -5,7 +5,6 @@ import {
   MergeSchemas,
   OmitNever,
   UnionToIntersection,
-  DeepClean,
   FinalizeSchema,
 } from "./utils";
 import { CreateTableBuilder } from "./builders/createTable";
@@ -82,7 +81,7 @@ type AllCreated<TMigrations extends Migrations> = MergeSchemas<
 >;
 
 export type MergedSchemaBeforeDrop<TMigrations extends Migrations> =
-  MergeSchemas<AllCreated<TMigrations>, AlteredTables<TMigrations>>;
+  FinalizeSchema<AllCreated<TMigrations>, AlteredTables<TMigrations>>;
 
 type CleanedSchema<T> = {
   [K in keyof T]: OmitNever<T[K]>;
@@ -97,7 +96,7 @@ type InferredDatabase<TMigrations extends Migrations> = Omit<
 >;
 
 export type Database<TMigrations extends Migrations = Migrations> =
-  FinalizeSchema<InferredDatabase<TMigrations>>;
+  InferredDatabase<TMigrations>;
 
 export type ExtractTableSchema<T> =
   T extends CreateTableBuilder<infer TName, infer TSchema>

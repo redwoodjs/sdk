@@ -40,21 +40,35 @@ export type DeepClean<T> = T extends Uint8Array
       } & {}
     : T;
 
-type ProcessTable<T> = Prettify<{
-  [K in keyof T as T[K] extends never
-    ? never
-    : K extends {
-          [P in keyof T]: T[P] extends { __renamed: infer From } ? From : never;
-        }[keyof T]
-      ? never
-      : K]: T[K] extends { __renamed: infer From extends keyof T }
-    ? T[From]
-    : T[K];
-}>;
+type RenamedFromKeys<Altered> = {
+  [P in keyof Altered]: Altered[P] extends { __renamed: infer From }
+    ? From
+    : never;
+}[keyof Altered];
 
-export type FinalizeSchema<T> =
-  T extends Record<string, any>
+type ProcessAlteredTable<
+  Original,
+  Altered,
+  TRenamed = RenamedFromKeys<Altered>,
+> = Prettify<
+  Omit<Original, TRenamed extends PropertyKey ? TRenamed : never> & {
+    [K in keyof Altered]: Altered[K] extends {
+      __renamed: infer From extends keyof Original;
+    }
+      ? Original[From]
+      : Altered[K];
+  }
+>;
+
+export type FinalizeSchema<TAll, TAltered> =
+  TAll extends Record<string, any>
     ? {
-        [TableName in keyof T]: ProcessTable<T[TableName]>;
+        [TableName in keyof (TAll & TAltered)]: TableName extends keyof TAltered
+          ? TableName extends keyof TAll
+            ? ProcessAlteredTable<TAll[TableName], TAltered[TableName]>
+            : TAltered[TableName]
+          : TableName extends keyof TAll
+            ? TAll[TableName]
+            : never;
       }
-    : T;
+    : TAll;
