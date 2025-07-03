@@ -102,12 +102,12 @@ export interface AlterTableBuilder<
   ): AlterTableBuilder<TName, Prettify<TSchema & Record<K, SqlToTsType<T>>>>;
   addUniqueConstraint(
     constraintName: string,
-    columns: (keyof TSchema)[],
+    columns: string[],
     build?: (builder: UniqueConstraintBuilder) => UniqueConstraintBuilder,
   ): AlterTableBuilder<TName, TSchema>;
   addPrimaryKeyConstraint(
     constraintName: string,
-    columns: (keyof TSchema)[],
+    columns: string[],
     build?: (
       builder: PrimaryKeyConstraintBuilder,
     ) => PrimaryKeyConstraintBuilder,
@@ -119,7 +119,7 @@ export interface AlterTableBuilder<
   ): AlterTableBuilder<TName, TSchema>;
   addForeignKeyConstraint(
     constraintName: string,
-    columns: (keyof TSchema)[],
+    columns: string[],
     targetTable: string,
     targetColumns: string[],
     build?: (
@@ -137,8 +137,6 @@ export interface AlterTableBuilder<
   $call<T>(func: (qb: this) => T): T;
 }
 
-/*
 type _Assert = Assert<
   AssertStillImplements<AlterTableBuilder<any, any>, KyselyAlterTableBuilder>
 >;
-*/

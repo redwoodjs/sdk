@@ -71,12 +71,13 @@ type AllCreated<TMigrations extends Migrations> = MergeSchemas<
   CreatedViews<TMigrations>
 >;
 
-type MergedSchemaBeforeDrop<TMigrations extends Migrations> = OmitNever<
-  MergeSchemas<AllCreated<TMigrations>, AlteredTables<TMigrations>>
+type MergedSchemaBeforeDrop<TMigrations extends Migrations> = MergeSchemas<
+  AllCreated<TMigrations>,
+  AlteredTables<TMigrations>
 >;
 
 type CleanedSchema<T> = {
-  [K in keyof T]: T[K];
+  [K in keyof T]: Prettify<OmitNever<T[K]>>;
 };
 
 type InferredDatabase<TMigrations extends Migrations> = Omit<
