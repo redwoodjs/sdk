@@ -1,5 +1,12 @@
 import type { Database, Migrations } from "../database";
+import type {
+  AlteredTables,
+  AllBuilders,
+  CreatedTables,
+  MergedSchemaBeforeDrop,
+} from "../database";
 import type { Expect, Equal } from "./testUtils";
+import { PrintType } from "./print";
 
 (_it = "alterTable addColumn") => {
   const migrations = {
@@ -74,14 +81,17 @@ import type { Expect, Equal } from "./testUtils";
     "0": {
       async up(db) {
         return [
-          db.schema.createTable("users").addColumn("age", "integer").execute(),
+          await db.schema
+            .createTable("users")
+            .addColumn("age", "integer")
+            .execute(),
         ];
       },
     },
     "1": {
       async up(db) {
         return [
-          db.schema
+          await db.schema
             .alterTable("users")
             .alterColumn("age", (col) => col.setDataType("text"))
             .alterColumn("age", (col) => col.setDefault("unknown"))
@@ -90,13 +100,13 @@ import type { Expect, Equal } from "./testUtils";
       },
     },
   } satisfies Migrations;
+
   type Actual = Database<typeof migrations>;
   type Expected = {
     users: {
       age: string;
     };
   };
-
   (_test: Expect<Equal<Actual, Expected>>) => {};
 };
 

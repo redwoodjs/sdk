@@ -75,10 +75,17 @@ export interface AlterTableBuilder<
     from: KFrom,
     to: KTo,
   ): AlterTableBuilder<TName, TSchema & { [P in KTo]: { __renamed: KFrom } }>;
-  alterColumn<K extends string>(
+  alterColumn<
+    K extends string,
+    const TCallback extends AlterColumnBuilderCallback,
+  >(
     column: K,
-    alteration: AlterColumnBuilderCallback,
-  ): AlterTableBuilder<TName, TSchema>;
+    alteration: TCallback,
+  ): AlterTableBuilder<
+    TName,
+    Omit<TSchema, K> &
+      MapAlterationToSchema<K, ReturnType<TCallback>["__alteration"]>
+  >;
   modifyColumn<K extends string, T extends DataTypeExpression>(
     column: K,
     type: T,
