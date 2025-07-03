@@ -74,10 +74,7 @@ export interface AlterTableBuilder<
   renameColumn<KFrom extends string, KTo extends string>(
     from: KFrom,
     to: KTo,
-  ): AlterTableBuilder<
-    TName,
-    Prettify<TSchema & { [P in KFrom]: never } & { [P in KTo]: any }>
-  >;
+  ): AlterTableBuilder<TName, TSchema & { [P in KTo]: { __renamed: KFrom } }>;
   alterColumn<K extends string>(
     column: K,
     alteration: AlterColumnBuilderCallback,

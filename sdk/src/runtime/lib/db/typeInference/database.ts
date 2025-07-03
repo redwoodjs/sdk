@@ -6,6 +6,7 @@ import {
   OmitNever,
   UnionToIntersection,
   DeepClean,
+  FinalizeSchema,
 } from "./utils";
 import { CreateTableBuilder } from "./builders/createTable";
 import { CreateViewBuilder } from "./builders/createView.js";
@@ -89,9 +90,8 @@ type InferredDatabase<TMigrations extends Migrations> = Omit<
   DroppedViewNames<TMigrations>
 >;
 
-export type Database<TMigrations extends Migrations = Migrations> = DeepClean<
-  InferredDatabase<TMigrations>
->;
+export type Database<TMigrations extends Migrations = Migrations> =
+  FinalizeSchema<InferredDatabase<TMigrations>>;
 
 export type ExtractTableSchema<T> =
   T extends CreateTableBuilder<infer TName, infer TSchema>

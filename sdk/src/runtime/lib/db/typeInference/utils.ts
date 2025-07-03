@@ -47,3 +47,22 @@ export type DeepClean<T> = T extends Uint8Array
         [K in keyof T as T[K] extends never ? never : K]: DeepClean<T[K]>;
       } & {}
     : T;
+
+type ProcessTable<T> = Prettify<{
+  [K in keyof T as T[K] extends never
+    ? never
+    : K extends {
+          [P in keyof T]: T[P] extends { __renamed: infer From } ? From : never;
+        }[keyof T]
+      ? never
+      : K]: T[K] extends { __renamed: infer From extends keyof T }
+    ? T[From]
+    : T[K];
+}>;
+
+export type FinalizeSchema<T> =
+  T extends Record<string, any>
+    ? {
+        [TableName in keyof T]: ProcessTable<T[TableName]>;
+      }
+    : T;
