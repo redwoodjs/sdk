@@ -39,7 +39,7 @@ declare let _it: any;
       displayName: string;
     };
   };
-  //(_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: Expect<Equal<Actual, Expected>>) => {};
 };
 
 (_it = "alterTable renameColumn") => {
@@ -64,43 +64,6 @@ declare let _it: any;
     },
   } satisfies Migrations;
 
-  // --- Start Debugging ProcessTable ---
-  type Migs = typeof migrations;
-  type UsersTable = MergedSchemaBeforeDrop<Migs>["users"];
-
-  // This extracts the original column name from the __renamed tag.
-  // Should resolve to "displayName".
-  type RenamedFromKeys = {
-    [P in keyof UsersTable]: UsersTable[P] extends { __renamed: infer From }
-      ? From
-      : never;
-  }[keyof UsersTable];
-
-  // These are the keys that should be left after filtering.
-  // Should be "nickname".
-  type KeptKeys = keyof {
-    [K in keyof UsersTable as UsersTable[K] extends never
-      ? never
-      : K extends RenamedFromKeys
-      ? never
-      : K]: any;
-  };
-
-  // This is the table after we've removed the old/dropped columns.
-  type TableWithKeysKept = {
-    [K in KeptKeys]: UsersTable[K];
-  };
-
-  // This is the final table after we've mapped the __renamed tag to the original type.
-  type FinalTable = Prettify<{
-    [K in keyof TableWithKeysKept]: TableWithKeysKept[K] extends {
-      __renamed: infer From extends keyof UsersTable;
-    }
-      ? UsersTable[From]
-      : TableWithKeysKept[K];
-  }>;
-  // --- End Debugging ProcessTable ---
-
   type Actual = Database<typeof migrations>;
   type Expected = {
     users: {
@@ -110,7 +73,7 @@ declare let _it: any;
     };
   };
 
-  type Test = Expect<Equal<Actual, Expected>>;
+  (_test: Expect<Equal<Actual, Expected>>) => {};
 };
 
 (_it = "alterTable alterColumn setDataType and setDefault") => {
