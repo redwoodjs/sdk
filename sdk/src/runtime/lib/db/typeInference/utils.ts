@@ -44,31 +44,36 @@ export type RemoveNeverValues<T> = {
   [K in keyof T as T[K] extends never ? never : K]: T[K];
 };
 
-type KeysToOmit<Altered> = {
-  [K in keyof Altered]: Altered[K] extends never ? K : never;
+type RenamedKeys<Altered> = {
+  [K in keyof Altered]: Altered[K] extends { __renamed: string } ? K : never;
 }[keyof Altered];
 
-type RenamedKeys<Altered> = {
-  [K in keyof Altered]: Altered[K] extends { __renamed: any } ? K : never;
-}[keyof Altered] &
-  PropertyKey;
-
-type RenamedSourceKeys<Altered> = {
+type RenamedFromKeys<Altered> = {
   [K in keyof Altered]: Altered[K] extends { __renamed: infer From }
     ? From
     : never;
 }[keyof Altered] &
-  PropertyKey;
+  string;
+
+type DroppedKeys<Altered> = {
+  [K in keyof Altered]: Altered[K] extends never ? K : never;
+}[keyof Altered];
+
+type AddedColumns<Altered> = Omit<
+  Altered,
+  RenamedKeys<Altered> | DroppedKeys<Altered>
+>;
+
+type NewColumnsFromRenames<Original, Altered> = {
+  [K in RenamedKeys<Altered> & keyof Altered]: Altered[K] extends {
+    __renamed: infer From extends keyof Original;
+  }
+    ? Original[From]
+    : never;
+};
 
 export type MergeAlteredTable<Original, Altered> = Prettify<
-  // Pick the renamed columns from Altered, and assign them the type from Original
-  {
-    [K in RenamedKeys<Altered>]: Altered[K] extends { __renamed: infer From }
-      ? From extends keyof Original
-        ? Original[From]
-        : any
-      : never;
-  } & Omit<Altered, KeysToOmit<Altered> | RenamedKeys<Altered>> & // Pick the columns from Altered that are not never or renamed
-    // Pick the columns from Original that are not omitted or renamed
-    Omit<Original, KeysToOmit<Altered> | RenamedSourceKeys<Altered>>
+  Omit<Original, DroppedKeys<Altered> | RenamedFromKeys<Altered>> &
+    AddedColumns<Altered> &
+    NewColumnsFromRenames<Original, Altered>
 >;

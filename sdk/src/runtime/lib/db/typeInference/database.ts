@@ -72,20 +72,19 @@ type AllCreated<TMigrations extends Migrations> = MergeSchemas<
   CreatedViews<TMigrations>
 >;
 
-type MergedSchemaBeforeDrop<TMigrations extends Migrations> = {
-  [K in
-    | keyof AllCreated<TMigrations>
-    | keyof AlteredTables<TMigrations>]: K extends keyof AllCreated<TMigrations>
-    ? K extends keyof AlteredTables<TMigrations>
+type MergedSchemaBeforeDrop<TMigrations extends Migrations> = Prettify<{
+  [TableName in keyof (AllCreated<TMigrations> &
+    AlteredTables<TMigrations>)]: TableName extends keyof AlteredTables<TMigrations>
+    ? TableName extends keyof AllCreated<TMigrations>
       ? MergeAlteredTable<
-          AllCreated<TMigrations>[K],
-          AlteredTables<TMigrations>[K]
+          AllCreated<TMigrations>[TableName],
+          AlteredTables<TMigrations>[TableName]
         >
-      : AllCreated<TMigrations>[K]
-    : K extends keyof AlteredTables<TMigrations>
-      ? AlteredTables<TMigrations>[K]
+      : OmitNever<AlteredTables<TMigrations>[TableName]>
+    : TableName extends keyof AllCreated<TMigrations>
+      ? AllCreated<TMigrations>[TableName]
       : never;
-};
+}>;
 
 type CleanedSchema<T> = {
   [K in keyof T]: Prettify<OmitNever<T[K]>>;
