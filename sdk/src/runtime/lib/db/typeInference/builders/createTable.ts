@@ -53,7 +53,13 @@ export interface CreateTableBuilder<
     build?: (
       col: ColumnDefinitionBuilder<SqlToTsType<T>>,
     ) => ColumnDefinitionBuilder<SqlToTsType<T>>,
-  ): CreateTableBuilder<TName, Prettify<TSchema & Record<K, SqlToTsType<T>>>>;
+  ): CreateTableBuilder<
+    TName,
+    Prettify<
+      (TSchema extends Record<string, any> ? TSchema : {}) &
+        Record<K, SqlToTsType<T>>
+    >
+  >;
   addUniqueConstraint(
     constraintName: string,
     columns: (keyof TSchema)[],

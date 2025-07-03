@@ -17,9 +17,7 @@ import {
 import type { Assert, AssertStillImplements } from "../assert";
 
 export interface SchemaBuilder {
-  createTable<TName extends string>(
-    name: TName,
-  ): CreateTableBuilder<TName, never>;
+  createTable<TName extends string>(name: TName): CreateTableBuilder<TName, {}>;
   alterTable<TName extends string>(name: TName): AlterTableBuilder<TName, {}>;
   dropTable<TName extends string>(name: TName): DropTableBuilder<TName>;
   createView<TName extends string>(
