@@ -53,11 +53,11 @@ export type CreatedViews<TMigrations extends Migrations> = UnionToIntersection<
 >;
 
 type Merge<U> = {
-  [K in U extends infer T ? keyof T : never]: U extends infer T
-    ? K extends keyof T
-      ? T[K]
-      : never
-    : never;
+  [K in U extends infer T ? keyof T : never]: Prettify<
+    UnionToIntersection<
+      U extends Record<K, infer Alteration> ? Alteration : never
+    >
+  >;
 };
 
 export type AlteredTables<TMigrations extends Migrations> = Merge<

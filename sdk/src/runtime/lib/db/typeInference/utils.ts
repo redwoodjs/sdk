@@ -40,28 +40,38 @@ export type DeepClean<T> = T extends Uint8Array
       } & {}
     : T;
 
-type RenamedFromKeys<Altered> = {
-  [P in keyof Altered]: Altered[P] extends { __renamed: infer From }
-    ? From
-    : never;
-}[keyof Altered];
+type ResolveRename<TColumn, TAltered> = TColumn extends keyof TAltered
+  ? TAltered[TColumn] extends { __renamed: infer RFrom extends PropertyKey }
+    ? ResolveRename<RFrom, TAltered>
+    : TColumn
+  : TColumn;
 
-type ProcessAlteredTable<
-  Original,
-  Altered,
-  TRenamed = RenamedFromKeys<Altered>,
-> = Prettify<
-  Omit<
-    Original,
-    keyof Altered | (TRenamed extends PropertyKey ? TRenamed : never)
-  > & {
-    [K in keyof Altered as Altered[K] extends { __dropped: true }
-      ? never
-      : K]: Altered[K] extends {
-      __renamed: infer From extends keyof Original;
+// Gets all column names that were renamed from.
+type RenamedFromValues<TAltered> = {
+  [K in keyof TAltered]: TAltered[K] extends {
+    __renamed: infer RFrom extends PropertyKey;
+  }
+    ? RFrom
+    : never;
+}[keyof TAltered];
+
+// The final column names in the altered schema (not intermediate rename steps).
+type FinalAlteredColumnNames<TAltered> = Exclude<
+  keyof TAltered,
+  RenamedFromValues<TAltered>
+>;
+
+type ProcessAlteredTable<TOriginal, TAltered> = Prettify<
+  Omit<TOriginal, keyof TAltered | RenamedFromValues<TAltered>> & {
+    [K in FinalAlteredColumnNames<TAltered> as TAltered[K] extends {
+      __dropped: true;
     }
-      ? Original[From]
-      : Altered[K];
+      ? never
+      : K]: TAltered[K] extends { __renamed: any } // It's a rename
+      ? ResolveRename<K, TAltered> extends keyof TOriginal
+        ? TOriginal[ResolveRename<K, TAltered>]
+        : never
+      : TAltered[K]; // It's an added column, or something else.
   }
 >;
 
