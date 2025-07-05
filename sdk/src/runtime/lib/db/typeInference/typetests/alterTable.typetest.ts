@@ -220,22 +220,6 @@ declare let _it: any;
     },
   } satisfies Migrations;
 
-  // For debugging:
-  type M = typeof migrations;
-  type Keys = import("../utils").UnionToTuple<keyof M>;
-  type Key1 = Keys[0];
-  type Key2 = Keys[1];
-
-  type Builders1 = import("../database").BuildersFromMigration<M[Key1]>;
-  type BuildersTuple1 = import("../utils").UnionToTuple<Builders1>;
-
-  type Builders2 = import("../database").BuildersFromMigration<M[Key2]>;
-  type BuildersTuple2 = import("../utils").UnionToTuple<Builders2>;
-
-  type Schema0 = {};
-  type Schema1 = import("../database").ApplyBuilders<Schema0, BuildersTuple1>;
-  type Schema2 = import("../database").ApplyBuilders<Schema1, BuildersTuple2>;
-
   type Actual = Database<typeof migrations>;
   type Expected = {
     customers: {
@@ -280,12 +264,6 @@ declare let _it: any;
     },
   } satisfies Migrations;
 
-  // For debugging:
-  // type M = typeof migrations;
-  // type AllAlteredRaw = import("../database").AlteredTables<M>;
-  // type FinalAltered = import("../database").FinalAlteredTables<M>;
-  // type Merged = import("../database").MergedSchemaBeforeDrop<M>;
-
   type Actual = Database<typeof migrations>;
   type Expected = {
     users: {
@@ -329,12 +307,6 @@ declare let _it: any;
       },
     },
   } satisfies Migrations;
-
-  // For debugging:
-  // type M = typeof migrations;
-  // type AllCreated = CreatedTables<M>;
-  // type AllAltered = AlteredTables<M>;
-  // type Merged = MergedSchemaBeforeDrop<M>;
 
   type Actual = Database<typeof migrations>;
   type Expected = {

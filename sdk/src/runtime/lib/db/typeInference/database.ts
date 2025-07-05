@@ -26,7 +26,7 @@ export type Migrations = Record<string, Migration>;
 
 type GetBuilder<T> = T extends ExecutedBuilder<infer B> ? B : never;
 
-export type BuildersFromMigration<TMigration extends Migration> =
+type BuildersFromMigration<TMigration extends Migration> =
   TMigration extends Migration<infer TUpReturn>
     ? Awaited<TUpReturn> extends Array<infer Item>
       ? GetBuilder<Item>
@@ -61,7 +61,7 @@ type ApplyBuilder<TSchema, TBuilder> =
             : TSchema // Altering a non-existent table.
         : TSchema;
 
-export type ApplyBuilders<TSchema, TBuildersTuple> = TBuildersTuple extends [
+type ApplyBuilders<TSchema, TBuildersTuple> = TBuildersTuple extends [
   infer THead,
   ...infer TRest,
 ]
