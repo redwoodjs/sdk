@@ -4,7 +4,6 @@ import {
   Prettify,
   ProcessAlteredTable,
   UnionToTuple,
-  UnionToIntersection,
 } from "./utils";
 import { CreateTableBuilder } from "./builders/createTable";
 import { AlterTableBuilder } from "./builders/alterTable";
@@ -34,73 +33,57 @@ export type BuildersFromMigration<TMigration extends Migration> =
       : GetBuilder<Awaited<TUpReturn>>
     : never;
 
-// --- Schema Inference Logic ---
+// --- Sequential Schema Inference Logic ---
 
-export type AllBuilders<TMigrations extends Migrations> = BuildersFromMigration<
-  TMigrations[keyof TMigrations]
->;
+type ApplyBuilder<TSchema, TBuilder> =
+  // Handle CreateTable
+  TBuilder extends CreateTableBuilder<infer TName, infer TSch>
+    ? Prettify<TSchema & Record<TName, TSch>>
+    : // Handle DropTable
+      TBuilder extends DropTableBuilder<infer TName>
+      ? Omit<TSchema, TName>
+      : // Handle AlterTable (including renames)
+        TBuilder extends AlterTableBuilder<infer TName, infer TOps>
+        ? TBuilder extends { __renamedFrom: infer From extends string }
+          ? // It's a rename. The operations in TOps apply to the 'From' table.
+            From extends keyof TSchema
+            ? Prettify<
+                Omit<TSchema, From> &
+                  Record<TName, ProcessAlteredTable<TSchema[From], TOps>>
+              >
+            : TSchema // Renaming a non-existent table.
+          : // It's not a rename. The operations apply to TName.
+            TName extends keyof TSchema
+            ? Prettify<
+                Omit<TSchema, TName> &
+                  Record<TName, ProcessAlteredTable<TSchema[TName], TOps>>
+              >
+            : TSchema // Altering a non-existent table.
+        : TSchema;
 
-export type CreatedTables<TMigrations extends Migrations> = UnionToIntersection<
-  ExtractTableSchema<
-    Extract<AllBuilders<TMigrations>, CreateTableBuilder<any, any>>
-  >
->;
+export type ApplyBuilders<TSchema, TBuildersTuple> = TBuildersTuple extends [
+  infer THead,
+  ...infer TRest,
+]
+  ? ApplyBuilders<ApplyBuilder<TSchema, THead>, TRest>
+  : TSchema;
 
-type AllAlterBuilders<TMigrations extends Migrations> = Extract<
-  AllBuilders<TMigrations>,
-  AlterTableBuilder<any, any>
->;
+type ProcessMigrations<
+  TMigrations extends Migrations,
+  TKeys,
+  TSchema = {},
+> = TKeys extends [infer THeadKey, ...infer TRestKeys]
+  ? THeadKey extends keyof TMigrations
+    ? ProcessMigrations<
+        TMigrations,
+        TRestKeys,
+        ApplyBuilders<
+          TSchema,
+          UnionToTuple<BuildersFromMigration<TMigrations[THeadKey]>>
+        >
+      >
+    : TSchema
+  : TSchema;
 
-type Flatten<T> = T extends [infer Head, ...infer Tail]
-  ? [...(Head extends any[] ? Head : []), ...Flatten<Tail>]
-  : [];
-
-type ProcessAlterBuilderOps<TAll, TName extends string> =
-  TAll extends AlterTableBuilder<TName, infer TOps> ? TOps : never;
-
-export type AlteredTables<TMigrations extends Migrations> = {
-  [TName in keyof CreatedTables<TMigrations> & string]: {
-    __operations: Flatten<
-      UnionToTuple<ProcessAlterBuilderOps<AllAlterBuilders<TMigrations>, TName>>
-    >;
-  };
-};
-
-type DroppedTableNames<TMigrations extends Migrations> =
-  ExtractDroppedTableName<
-    Extract<AllBuilders<TMigrations>, DropTableBuilder<any>>
-  >;
-
-type MergedSchema<TMigrations extends Migrations> = Prettify<
-  {
-    [TName in keyof CreatedTables<TMigrations>]: TName extends keyof AlteredTables<TMigrations>
-      ? AlteredTables<TMigrations>[TName] extends { __operations: infer TOps }
-        ? ProcessAlteredTable<CreatedTables<TMigrations>[TName], TOps>
-        : CreatedTables<TMigrations>[TName]
-      : CreatedTables<TMigrations>[TName];
-  } & {
-    [TName in keyof AlteredTables<TMigrations> as TName extends keyof CreatedTables<TMigrations>
-      ? never
-      : TName]: AlteredTables<TMigrations>[TName];
-  }
->;
-
-export type Database<TMigrations extends Migrations = Migrations> = Omit<
-  MergedSchema<TMigrations>,
-  DroppedTableNames<TMigrations>
->;
-
-// --- Builder Extractors ---
-
-export type ExtractTableSchema<T> =
-  T extends CreateTableBuilder<infer TName, infer TSchema>
-    ? Record<TName, TSchema>
-    : never;
-
-export type ExtractAlterSchema<T> =
-  T extends AlterTableBuilder<infer TName, infer TOps>
-    ? Record<TName, { __operations: TOps }>
-    : never;
-
-export type ExtractDroppedTableName<T> =
-  T extends DropTableBuilder<infer TName> ? TName : never;
+export type Database<TMigrations extends Migrations = Migrations> =
+  ProcessMigrations<TMigrations, UnionToTuple<keyof TMigrations>>;
