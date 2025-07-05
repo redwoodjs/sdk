@@ -240,3 +240,247 @@ declare let _it: any;
 
   (_test: Expect<Equal<Actual, Expected>>) => {};
 };
+
+(_it = "alterTable renameColumn then rename again") => {
+  const migrations = {
+    "0": {
+      async up(db) {
+        return [
+          await db.schema
+            .createTable("users")
+            .addColumn("name", "text")
+            .execute(),
+        ];
+      },
+    },
+    "1": {
+      async up(db) {
+        return [
+          await db.schema
+            .alterTable("users")
+            .renameColumn("name", "firstName")
+            .execute(),
+        ];
+      },
+    },
+    "2": {
+      async up(db) {
+        return [
+          await db.schema
+            .alterTable("users")
+            .renameColumn("firstName", "givenName")
+            .execute(),
+        ];
+      },
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+  type Expected = {
+    users: {
+      givenName: string;
+    };
+  };
+
+  (_test: Expect<Equal<Actual, Expected>>) => {};
+};
+
+(_it = "alterTable renameColumn then rename back") => {
+  const migrations = {
+    "0": {
+      async up(db) {
+        return [
+          await db.schema
+            .createTable("users")
+            .addColumn("name", "text")
+            .execute(),
+        ];
+      },
+    },
+    "1": {
+      async up(db) {
+        return [
+          await db.schema
+            .alterTable("users")
+            .renameColumn("name", "firstName")
+            .execute(),
+        ];
+      },
+    },
+    "2": {
+      async up(db) {
+        return [
+          await db.schema
+            .alterTable("users")
+            .renameColumn("firstName", "name")
+            .execute(),
+        ];
+      },
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+  type Expected = {
+    users: {
+      name: string;
+    };
+  };
+
+  (_test: Expect<Equal<Actual, Expected>>) => {};
+};
+
+(_it = "alterTable renameTable then rename again") => {
+  const migrations = {
+    "0": {
+      async up(db) {
+        return [
+          await db.schema
+            .createTable("users")
+            .addColumn("id", "integer")
+            .execute(),
+        ];
+      },
+    },
+    "1": {
+      async up(db) {
+        return [
+          await db.schema.alterTable("users").renameTo("customers").execute(),
+        ];
+      },
+    },
+    "2": {
+      async up(db) {
+        return [
+          await db.schema.alterTable("customers").renameTo("clients").execute(),
+        ];
+      },
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+  type Expected = {
+    clients: {
+      id: number;
+    };
+  };
+
+  (_test: Expect<Equal<Actual, Expected>>) => {};
+};
+
+(_it = "alterTable renameTable then rename back") => {
+  const migrations = {
+    "0": {
+      async up(db) {
+        return [
+          await db.schema
+            .createTable("users")
+            .addColumn("id", "integer")
+            .execute(),
+        ];
+      },
+    },
+    "1": {
+      async up(db) {
+        return [
+          await db.schema.alterTable("users").renameTo("customers").execute(),
+        ];
+      },
+    },
+    "2": {
+      async up(db) {
+        return [
+          await db.schema.alterTable("customers").renameTo("users").execute(),
+        ];
+      },
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+  type Expected = {
+    users: {
+      id: number;
+    };
+  };
+
+  (_test: Expect<Equal<Actual, Expected>>) => {};
+};
+
+(_it = "alterTable renameColumn then drop") => {
+  const migrations = {
+    "0": {
+      async up(db) {
+        return [
+          await db.schema
+            .createTable("users")
+            .addColumn("name", "text")
+            .execute(),
+        ];
+      },
+    },
+    "1": {
+      async up(db) {
+        return [
+          await db.schema
+            .alterTable("users")
+            .renameColumn("name", "firstName")
+            .execute(),
+        ];
+      },
+    },
+    "2": {
+      async up(db) {
+        return [
+          await db.schema.alterTable("users").dropColumn("firstName").execute(),
+        ];
+      },
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+  type Expected = {
+    users: {};
+  };
+
+  (_test: Expect<Equal<Actual, Expected>>) => {};
+};
+
+(_it = "alterTable dropColumn then add back") => {
+  const migrations = {
+    "0": {
+      async up(db) {
+        return [
+          await db.schema
+            .createTable("users")
+            .addColumn("name", "text")
+            .execute(),
+        ];
+      },
+    },
+    "1": {
+      async up(db) {
+        return [
+          await db.schema.alterTable("users").dropColumn("name").execute(),
+        ];
+      },
+    },
+    "2": {
+      async up(db) {
+        return [
+          await db.schema
+            .alterTable("users")
+            .addColumn("name", "text")
+            .execute(),
+        ];
+      },
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+  type Expected = {
+    users: {
+      name: string;
+    };
+  };
+
+  (_test: Expect<Equal<Actual, Expected>>) => {};
+};

@@ -113,3 +113,74 @@ import type { Expect, Equal } from "./testUtils";
 
   (_test: Expect<Equal<Actual, Expected>>) => {};
 };
+
+(_it = "drop table then add it back") => {
+  const migrations = {
+    "0": {
+      async up(db) {
+        return [
+          await db.schema
+            .createTable("users")
+            .addColumn("username", "text")
+            .execute(),
+        ];
+      },
+    },
+    "1": {
+      async up(db) {
+        return [await db.schema.dropTable("users").execute()];
+      },
+    },
+    "2": {
+      async up(db) {
+        return [
+          await db.schema
+            .createTable("users")
+            .addColumn("username", "text")
+            .execute(),
+        ];
+      },
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+  type Expected = {
+    users: {
+      username: string;
+    };
+  };
+
+  (_test: Expect<Equal<Actual, Expected>>) => {};
+};
+
+(_it = "rename table then drop it") => {
+  const migrations = {
+    "0": {
+      async up(db) {
+        return [
+          await db.schema
+            .createTable("users")
+            .addColumn("username", "text")
+            .execute(),
+        ];
+      },
+    },
+    "1": {
+      async up(db) {
+        return [
+          await db.schema.alterTable("users").renameTo("customers").execute(),
+        ];
+      },
+    },
+    "2": {
+      async up(db) {
+        return [await db.schema.dropTable("customers").execute()];
+      },
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+  type Expected = {};
+
+  (_test: Expect<Equal<Actual, Expected>>) => {};
+};
