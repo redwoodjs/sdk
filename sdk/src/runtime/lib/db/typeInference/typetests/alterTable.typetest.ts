@@ -213,3 +213,30 @@ declare let _it: any;
   };
   (_test: Expect<Equal<Actual, Expected>>) => {};
 };
+
+(_it = "alterTable renameTable") => {
+  const migrations = {
+    "0001_initial": {
+      up: async (db) => [
+        await db.schema
+          .createTable("users")
+          .addColumn("id", "integer")
+          .execute(),
+      ],
+    },
+    "0002_rename_table": {
+      up: async (db) => [
+        await db.schema.alterTable("users").renameTo("customers").execute(),
+      ],
+    },
+  } satisfies Migrations;
+
+  type Actual = Database<typeof migrations>;
+  type Expected = {
+    customers: {
+      id: number;
+    };
+  };
+
+  (_test: Expect<Equal<Actual, Expected>>) => {};
+};

@@ -64,7 +64,7 @@ export interface AlterTableBuilder<
   readonly __addedColumns: TSchema;
   renameTo<TNewName extends string>(
     newTableName: TNewName,
-  ): AlterTableBuilder<TNewName, TSchema>;
+  ): AlterTableBuilder<TNewName, TSchema> & { readonly __renamedFrom: TName };
   setSchema(newSchema: string): AlterTableBuilder<TName, TSchema>;
   addColumn<K extends string, T extends DataTypeExpression>(
     name: K,

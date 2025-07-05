@@ -65,15 +65,29 @@ type ProcessAlteredTable<
   }
 >;
 
-export type FinalizeSchema<TAll, TAltered> =
+type ApplyRenames<TAll, TRenames> = Prettify<
+  {
+    [K in keyof TAll as K extends keyof TRenames ? never : K]: TAll[K];
+  } & {
+    [OldName in keyof TRenames as TRenames[OldName] extends PropertyKey
+      ? TRenames[OldName]
+      : never]: OldName extends keyof TAll ? TAll[OldName] : never;
+  }
+>;
+
+type FinalizeAlters<TAll, TAltered> = {
+  [TableName in keyof TAll | keyof TAltered]: TableName extends keyof TAltered
+    ? TableName extends keyof TAll
+      ? ProcessAlteredTable<TAll[TableName], TAltered[TableName]>
+      : TAltered[TableName]
+    : TableName extends keyof TAll
+      ? TAll[TableName]
+      : never;
+};
+
+export type FinalizeSchema<TAll, TAltered, TRenames> =
   TAll extends Record<string, any>
-    ? {
-        [TableName in keyof (TAll & TAltered)]: TableName extends keyof TAltered
-          ? TableName extends keyof TAll
-            ? ProcessAlteredTable<TAll[TableName], TAltered[TableName]>
-            : TAltered[TableName]
-          : TableName extends keyof TAll
-            ? TAll[TableName]
-            : never;
-      }
+    ? keyof TRenames extends never
+      ? FinalizeAlters<TAll, TAltered>
+      : FinalizeAlters<ApplyRenames<TAll, TRenames>, TAltered>
     : TAll;

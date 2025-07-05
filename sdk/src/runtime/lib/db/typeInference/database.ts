@@ -80,8 +80,25 @@ type AllCreated<TMigrations extends Migrations> = MergeSchemas<
   CreatedViews<TMigrations>
 >;
 
+type RenamedTables<TMigrations extends Migrations> = Extract<
+  AllBuilders<TMigrations>,
+  { __renamedFrom: string }
+>;
+
+type TableRenameMap<TMigrations extends Migrations> = UnionToIntersection<{
+  [B in RenamedTables<TMigrations> as B extends {
+    __renamedFrom: infer From extends string;
+  }
+    ? From
+    : never]: B extends { __tableName: infer TName } ? TName : never;
+}>;
+
 export type MergedSchemaBeforeDrop<TMigrations extends Migrations> =
-  FinalizeSchema<AllCreated<TMigrations>, AlteredTables<TMigrations>>;
+  FinalizeSchema<
+    AllCreated<TMigrations>,
+    AlteredTables<TMigrations>,
+    TableRenameMap<TMigrations>
+  >;
 
 type CleanedSchema<T> = {
   [K in keyof T]: OmitNever<T[K]>;
@@ -95,8 +112,12 @@ type InferredDatabase<TMigrations extends Migrations> = Omit<
   DroppedViewNames<TMigrations>
 >;
 
+type OmitNeverTables<T> = {
+  [K in keyof T as T[K] extends never ? never : K]: T[K];
+};
+
 export type Database<TMigrations extends Migrations = Migrations> =
-  InferredDatabase<TMigrations>;
+  OmitNeverTables<InferredDatabase<TMigrations>>;
 
 export type ExtractTableSchema<T> =
   T extends CreateTableBuilder<infer TName, infer TSchema>
