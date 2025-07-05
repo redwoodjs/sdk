@@ -6,6 +6,7 @@ import {
   OmitNever,
   UnionToIntersection,
   FinalizeSchema,
+  Cast,
 } from "./utils";
 import { CreateTableBuilder } from "./builders/createTable";
 import { CreateViewBuilder } from "./builders/createView.js";
@@ -58,34 +59,31 @@ export type AlteredTables<TMigrations extends Migrations> = ExtractAlterSchema<
 
 // --- START: Sequential Alteration Processing ---
 
-// Takes two alteration schemas for a single table and composes them.
-// This is the core of building the AST across migrations.
-type RenamedKeys<TLeft, TRight> = {
-  [K in keyof TRight]: TRight[K] extends { __renamed: infer RFrom }
-    ? RFrom extends keyof TLeft
-      ? RFrom
+// This is the new entry point that replaces the old AlteredTables logic.
+// It finds all tables that have been altered across all migrations,
+// then processes each one sequentially.
+type FinalAlteredTables<TMigrations extends Migrations> = {
+  // Get all unique table names that have been altered.
+  [TTableName in AlteredTables<TMigrations> extends infer U
+    ? U extends {}
+      ? keyof U
       : never
-    : never;
-}[keyof TRight];
-
-type ComposeAlteration<TLeft, TRight> = Prettify<
-  Omit<TLeft, RenamedKeys<TLeft, TRight>> & {
-    [K in keyof TRight]: TRight[K] extends { __renamed: infer RFrom }
-      ? RFrom extends keyof TLeft
-        ? { __renamed: TLeft[RFrom] }
-        : TRight[K]
-      : TRight[K];
-  }
->;
-
-// Composes two full sets of altered tables.
-type ComposeAlteredTables<TLeft, TRight> = Prettify<
-  Omit<TLeft, keyof TRight> & {
-    [K in keyof TRight]: K extends keyof TLeft
-      ? ComposeAlteration<TLeft[K], TRight[K]>
-      : TRight[K];
-  }
->;
+    : never]: {
+    // For each table, create a list of all operations from all migrations in order.
+    __operations: Prettify<
+      // We do this with a recursive type that iterates through the sorted migration keys.
+      Cast<
+        SequentiallyProcessTable<
+          TTableName,
+          // We assume the keys are alphabetically sorted, which TS does for string literals.
+          (keyof TMigrations)[],
+          TMigrations
+        >,
+        any[] // Cast to any[] to satisfy the compiler, we know it's an array of operations.
+      >
+    >;
+  };
+};
 
 // Recursively processes migrations for a single table, composing their alterations.
 type SequentiallyProcessTable<
@@ -96,35 +94,26 @@ type SequentiallyProcessTable<
   infer TKey extends keyof TMigrations,
   ...infer TRest extends (keyof TMigrations)[],
 ]
-  ? ComposeAlteration<
-      ExtractAlterSchema<
-        Extract<
-          BuildersFromMigration<TMigrations[TKey]>,
-          AlterTableBuilder<TTableName, any>
-        >
-      > extends infer Alteration extends Record<TTableName, any>
-        ? Alteration[TTableName]
-        : {},
-      SequentiallyProcessTable<TTableName, TRest, TMigrations>
-    >
-  : {};
+  ? // Concat the operations from the current migration with the operations from the rest.
+    [
+      ...GetOpsFromMigration<TTableName, TMigrations[TKey]>,
+      ...SequentiallyProcessTable<TTableName, TRest, TMigrations>,
+    ]
+  : [];
 
-// This is the new entry point that replaces the old AlteredTables logic.
-// It finds all tables that have been altered across all migrations,
-// then processes each one sequentially.
-export type FinalAlteredTables<TMigrations extends Migrations> = {
-  [TTableName in AlteredTables<TMigrations> extends infer U
-    ? U extends {}
-      ? keyof U
-      : never
-    : never]: SequentiallyProcessTable<
-    TTableName,
-    // We assume the keys are alphabetically sorted, which TS does for string literals.
-    // This is a limitation but inherent to the problem.
-    (keyof TMigrations)[],
-    TMigrations
-  >;
-};
+// Helper to extract the operations list for a specific table from a single migration.
+type GetOpsFromMigration<
+  TTableName extends string,
+  TMigration extends Migration,
+> =
+  ExtractAlterSchema<
+    Extract<
+      BuildersFromMigration<TMigration>,
+      AlterTableBuilder<TTableName, any>
+    >
+  > extends infer Alteration extends Record<TTableName, { __operations: any[] }>
+    ? Alteration[TTableName]["__operations"]
+    : [];
 
 // --- END: Sequential Alteration Processing ---
 
@@ -192,8 +181,8 @@ export type ExtractViewSchema<T> =
     : never;
 
 export type ExtractAlterSchema<T> =
-  T extends AlterTableBuilder<infer TName, infer TSchema>
-    ? Record<TName, TSchema>
+  T extends AlterTableBuilder<infer TName, infer TOps>
+    ? Record<TName, { __operations: TOps }>
     : never;
 
 export type ExtractDroppedTableName<T> =
@@ -201,3 +190,16 @@ export type ExtractDroppedTableName<T> =
 
 export type ExtractDroppedViewName<T> =
   T extends DropViewBuilder<infer TName> ? TName : never;
+
+type FinalizeAlters<TAll, TAltered> = {
+  [TableName in keyof TAll | keyof TAltered]: TableName extends keyof TAltered
+    ? TableName extends keyof TAll
+      ? ProcessAlteredTable<TAll[TableName], TAltered[TableName]>
+      : TAltered[TableName]
+    : TableName extends keyof TAll
+      ? TAll[TableName]
+      : never;
+};
+
+export type FinalizeSchema<TAll, TAltered, TRenames> =
+  TAll extends Record<string, any> ? FinalizeAlters<TAll, TAltered> : never;

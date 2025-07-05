@@ -56,51 +56,49 @@ interface PrimaryKeyConstraintBuilder {
   toOperationNode(): PrimaryKeyConstraintNode;
 }
 
+// --- AST Node Types for Alterations ---
+type AddColumnOp<K extends string, T extends DataTypeExpression> = {
+  op: "addColumn";
+  name: K;
+  type: T;
+  // build?: (col: ColumnDefinitionBuilder<SqlToTsType<T>>) => ColumnDefinitionBuilder<SqlToTsType<T>>
+};
+type DropColumnOp<K extends string> = { op: "dropColumn"; name: K };
+type RenameColumnOp<KFrom extends string, KTo extends string> = {
+  op: "renameColumn";
+  from: KFrom;
+  to: KTo;
+};
+type AlterOperation =
+  | AddColumnOp<any, any>
+  | DropColumnOp<any>
+  | RenameColumnOp<any, any>;
+// --- End AST Node Types ---
+
 export interface AlterTableBuilder<
   TName extends string,
-  TSchema extends Record<string, any> = {},
+  TOps extends AlterOperation[] = [],
 > {
   readonly __tableName: TName;
-  readonly __addedColumns: TSchema;
+  readonly __operations: TOps;
   renameTo<TNewName extends string>(
     newTableName: TNewName,
-  ): AlterTableBuilder<TNewName, TSchema> & { readonly __renamedFrom: TName };
-  setSchema(newSchema: string): AlterTableBuilder<TName, TSchema>;
+  ): AlterTableBuilder<TNewName, TOps> & { readonly __renamedFrom: TName };
+  setSchema(newSchema: string): AlterTableBuilder<TName, TOps>;
   addColumn<K extends string, T extends DataTypeExpression>(
     name: K,
     type: T,
     build?: (
       col: ColumnDefinitionBuilder<SqlToTsType<T>>,
     ) => ColumnDefinitionBuilder<SqlToTsType<T>>,
-  ): AlterTableBuilder<
-    TName,
-    Prettify<OmitNever<TSchema> & Record<K, SqlToTsType<T>>>
-  >;
+  ): AlterTableBuilder<TName, [...TOps, AddColumnOp<K, T>]>;
   dropColumn<K extends string>(
     name: K,
-  ): AlterTableBuilder<
-    TName,
-    Prettify<
-      TSchema & {
-        [P in K]: (K extends keyof TSchema ? TSchema[K] : {}) & {
-          __dropped: true;
-        };
-      }
-    >
-  >;
+  ): AlterTableBuilder<TName, [...TOps, DropColumnOp<K>]>;
   renameColumn<KFrom extends string, KTo extends string>(
     from: KFrom,
     to: KTo,
-  ): AlterTableBuilder<
-    TName,
-    Prettify<
-      Omit<TSchema, KFrom & keyof TSchema> & {
-        [P in KTo]: {
-          __renamed: KFrom extends keyof TSchema ? TSchema[KFrom] : KFrom;
-        };
-      }
-    >
-  >;
+  ): AlterTableBuilder<TName, [...TOps, RenameColumnOp<KFrom, KTo>]>;
   alterColumn<
     K extends string,
     const TCallback extends AlterColumnBuilderCallback,
@@ -109,7 +107,9 @@ export interface AlterTableBuilder<
     alteration: TCallback,
   ): AlterTableBuilder<
     TName,
-    AlterColumnResult<TSchema, K, ReturnType<TCallback>["__alteration"]>
+    // TODO: Implement this properly as an AST node.
+    TOps
+    // AlterColumnResult<TSchema, K, ReturnType<TCallback>["__alteration"]>
   >;
   modifyColumn<K extends string, T extends DataTypeExpression>(
     column: K,
@@ -117,24 +117,27 @@ export interface AlterTableBuilder<
     build?: (
       col: ColumnDefinitionBuilder<SqlToTsType<T>>,
     ) => ColumnDefinitionBuilder<SqlToTsType<T>>,
-  ): AlterTableBuilder<TName, Prettify<TSchema & Record<K, SqlToTsType<T>>>>;
+  ): AlterTableBuilder<
+    TName,
+    any /*Prettify<TSchema & Record<K, SqlToTsType<T>>>*/
+  >;
   addUniqueConstraint(
     constraintName: string,
     columns: string[],
     build?: (builder: UniqueConstraintBuilder) => UniqueConstraintBuilder,
-  ): AlterTableBuilder<TName, TSchema>;
+  ): AlterTableBuilder<TName, TOps>;
   addPrimaryKeyConstraint(
     constraintName: string,
     columns: string[],
     build?: (
       builder: PrimaryKeyConstraintBuilder,
     ) => PrimaryKeyConstraintBuilder,
-  ): AlterTableBuilder<TName, TSchema>;
+  ): AlterTableBuilder<TName, TOps>;
   addCheckConstraint(
     constraintName: string,
     checkExpression: Expression<any>,
     build?: (builder: CheckConstraintBuilder) => CheckConstraintBuilder,
-  ): AlterTableBuilder<TName, TSchema>;
+  ): AlterTableBuilder<TName, TOps>;
   addForeignKeyConstraint(
     constraintName: string,
     columns: string[],
@@ -143,14 +146,14 @@ export interface AlterTableBuilder<
     build?: (
       builder: ForeignKeyConstraintBuilder,
     ) => ForeignKeyConstraintBuilder,
-  ): AlterTableBuilder<TName, TSchema>;
-  dropConstraint(constraintName: string): AlterTableBuilder<TName, TSchema>;
+  ): AlterTableBuilder<TName, TOps>;
+  dropConstraint(constraintName: string): AlterTableBuilder<TName, TOps>;
   renameConstraint(
     oldName: string,
     newName: string,
-  ): AlterTableBuilder<TName, TSchema>;
-  addIndex(indexName: string): AlterTableBuilder<TName, TSchema>;
-  dropIndex(indexName: string): AlterTableBuilder<TName, TSchema>;
+  ): AlterTableBuilder<TName, TOps>;
+  addIndex(indexName: string): AlterTableBuilder<TName, TOps>;
+  dropIndex(indexName: string): AlterTableBuilder<TName, TOps>;
   execute(): Promise<ExecutedBuilder<this>>;
   $call<T>(func: (qb: this) => T): T;
 }
