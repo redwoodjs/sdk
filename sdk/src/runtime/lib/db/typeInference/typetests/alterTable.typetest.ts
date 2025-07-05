@@ -1,6 +1,14 @@
-import type { Database, Migrations, MergedSchemaBeforeDrop } from "../database";
+import type {
+  Database,
+  Migrations,
+  MergedSchemaBeforeDrop,
+  AllBuilders,
+  AlteredTables,
+  CreatedTables,
+} from "../database";
 import type { Expect, Equal } from "./testUtils";
 import { Prettify } from "../utils";
+import type { AlterTableBuilder } from "../builders/alterTable";
 
 declare let _it: any;
 
@@ -59,6 +67,8 @@ declare let _it: any;
       ],
     },
   } satisfies Migrations;
+
+  type AuthDatabase = Database<typeof migrations>;
 
   type Actual = Database<typeof migrations>;
   type Expected = {
@@ -197,11 +207,16 @@ declare let _it: any;
     },
   } satisfies Migrations;
 
+  // For debugging:
+  type M = typeof migrations;
+  type B = AllBuilders<M>;
+  type AllAltered = AlteredTables<M>;
+  type AllCreated = CreatedTables<M>;
+  type Merged = MergedSchemaBeforeDrop<M>;
+
   type Actual = Database<typeof migrations>;
   type Expected = {
-    users: {
-      age: number;
-    };
+    users: {};
   };
-  //(_test: Expect<Equal<Actual, Expected>>) => {};
+  (_test: Expect<Equal<Actual, Expected>>) => {};
 };
