@@ -2,14 +2,12 @@ import { Kysely } from "kysely";
 import {
   ExecutedBuilder,
   Prettify,
-  MergeSchemas,
-  OmitNever,
-  UnionToIntersection,
+  ProcessAlteredTable,
+  UnionToTuple,
 } from "./utils";
-import { TableBuilder } from "./builders/table";
-import { CreateViewBuilder } from "./builders/createView.js";
-import { AlterTableBuilder } from "./builders/alterTable.js";
-import { DropTableBuilder } from "./builders/dropTable.js";
+import { CreateTableBuilder } from "./builders/createTable";
+import { AlterTableBuilder } from "./builders/alterTable";
+import { DropTableBuilder } from "./builders/dropTable";
 import { DropViewBuilder } from "./builders/dropView.js";
 import { SchemaBuilder } from "./builders/schema";
 
@@ -35,78 +33,57 @@ type BuildersFromMigration<TMigration extends Migration> =
       : GetBuilder<Awaited<TUpReturn>>
     : never;
 
-type AllBuilders<TMigrations extends Migrations> = BuildersFromMigration<
-  TMigrations[keyof TMigrations]
->;
+// --- Sequential Schema Inference Logic ---
 
-type CreatedTables<TMigrations extends Migrations> = UnionToIntersection<
-  ExtractTableSchema<Extract<AllBuilders<TMigrations>, TableBuilder<any, any>>>
->;
+type ApplyBuilder<TSchema, TBuilder> =
+  // Handle CreateTable
+  TBuilder extends CreateTableBuilder<infer TName, infer TSch>
+    ? Prettify<TSchema & Record<TName, TSch>>
+    : // Handle DropTable
+      TBuilder extends DropTableBuilder<infer TName>
+      ? Omit<TSchema, TName>
+      : // Handle AlterTable (including renames)
+        TBuilder extends AlterTableBuilder<infer TName, infer TOps>
+        ? TBuilder extends { __renamedFrom: infer From extends string }
+          ? // It's a rename. The operations in TOps apply to the 'From' table.
+            From extends keyof TSchema
+            ? Prettify<
+                Omit<TSchema, From> &
+                  Record<TName, ProcessAlteredTable<TSchema[From], TOps>>
+              >
+            : TSchema // Renaming a non-existent table.
+          : // It's not a rename. The operations apply to TName.
+            TName extends keyof TSchema
+            ? Prettify<
+                Omit<TSchema, TName> &
+                  Record<TName, ProcessAlteredTable<TSchema[TName], TOps>>
+              >
+            : TSchema // Altering a non-existent table.
+        : TSchema;
 
-type CreatedViews<TMigrations extends Migrations> = UnionToIntersection<
-  ExtractViewSchema<
-    Extract<AllBuilders<TMigrations>, CreateViewBuilder<any, any>>
-  >
->;
+type ApplyBuilders<TSchema, TBuildersTuple> = TBuildersTuple extends [
+  infer THead,
+  ...infer TRest,
+]
+  ? ApplyBuilders<ApplyBuilder<TSchema, THead>, TRest>
+  : TSchema;
 
-type AlteredTables<TMigrations extends Migrations> = UnionToIntersection<
-  ExtractAlterSchema<
-    Extract<AllBuilders<TMigrations>, AlterTableBuilder<any, any>>
-  >
->;
+type ProcessMigrations<
+  TMigrations extends Migrations,
+  TKeys,
+  TSchema = {},
+> = TKeys extends [infer THeadKey, ...infer TRestKeys]
+  ? THeadKey extends keyof TMigrations
+    ? ProcessMigrations<
+        TMigrations,
+        TRestKeys,
+        ApplyBuilders<
+          TSchema,
+          UnionToTuple<BuildersFromMigration<TMigrations[THeadKey]>>
+        >
+      >
+    : TSchema
+  : TSchema;
 
-type DroppedTableNames<TMigrations extends Migrations> =
-  ExtractDroppedTableName<
-    Extract<AllBuilders<TMigrations>, DropTableBuilder<any>>
-  >;
-
-type DroppedViewNames<TMigrations extends Migrations> = ExtractDroppedViewName<
-  Extract<AllBuilders<TMigrations>, DropViewBuilder<any>>
->;
-
-type AllCreated<TMigrations extends Migrations> = MergeSchemas<
-  CreatedTables<TMigrations>,
-  CreatedViews<TMigrations>
->;
-
-type MergedSchemaBeforeDrop<TMigrations extends Migrations> = MergeSchemas<
-  AllCreated<TMigrations>,
-  AlteredTables<TMigrations>
->;
-
-type CleanedSchema<T> = {
-  [K in keyof T]: OmitNever<T[K]>;
-};
-
-type InferredDatabase<TMigrations extends Migrations> = Omit<
-  Omit<
-    CleanedSchema<MergedSchemaBeforeDrop<TMigrations>>,
-    DroppedTableNames<TMigrations>
-  >,
-  DroppedViewNames<TMigrations>
->;
-
-export type Database<TMigrations extends Migrations = Migrations> = Prettify<
-  InferredDatabase<TMigrations>
->;
-
-export type ExtractTableSchema<T> =
-  T extends TableBuilder<infer TName, infer TSchema>
-    ? Record<TName, TSchema>
-    : never;
-
-export type ExtractViewSchema<T> =
-  T extends CreateViewBuilder<infer TName, infer TSchema>
-    ? Record<TName, TSchema>
-    : never;
-
-export type ExtractAlterSchema<T> =
-  T extends AlterTableBuilder<infer TName, infer TSchema>
-    ? Record<TName, TSchema>
-    : never;
-
-export type ExtractDroppedTableName<T> =
-  T extends DropTableBuilder<infer TName> ? TName : never;
-
-export type ExtractDroppedViewName<T> =
-  T extends DropViewBuilder<infer TName> ? TName : never;
+export type Database<TMigrations extends Migrations = Migrations> =
+  ProcessMigrations<TMigrations, UnionToTuple<keyof TMigrations>>;

@@ -1,18 +1,37 @@
+import {
+  AlterColumnBuilder as KyselyAlterColumnBuilder,
+  AlterColumnNode,
+} from "kysely";
+import type { Assert, AssertStillImplements } from "../assert";
+import { Alteration } from "../utils";
+
+export interface AlteredColumnBuilder<TAlteration extends Alteration> {
+  readonly __alteration: TAlteration;
+  toOperationNode(): AlterColumnNode;
+}
+
 export interface AlterColumnBuilder {
   setDataType<T extends string>(
     dataType: T,
-  ): AlteredColumnBuilder<"setDataType", T>;
-  setDefault<T>(value: T): AlteredColumnBuilder<"setDefault", T>;
-  dropDefault(): AlteredColumnBuilder<"dropDefault", true>;
-  setNotNull(): AlteredColumnBuilder<"setNotNull", true>;
-  dropNotNull(): AlteredColumnBuilder<"dropNotNull", true>;
-}
+  ): AlteredColumnBuilder<{ kind: "setDataType"; dataType: T }>;
 
-export interface AlteredColumnBuilder<Kind extends string, Value> {
-  readonly kind: Kind;
-  readonly value: Value;
+  setDefault<T>(
+    value: T,
+  ): AlteredColumnBuilder<{ kind: "setDefault"; value: T }>;
+
+  dropDefault(): AlteredColumnBuilder<{ kind: "dropDefault" }>;
+
+  setNotNull(): AlteredColumnBuilder<{ kind: "setNotNull" }>;
+
+  dropNotNull(): AlteredColumnBuilder<{ kind: "dropNotNull" }>;
+
+  $call<T>(func: (qb: this) => T): T;
 }
 
 export type AlterColumnBuilderCallback = (
   builder: AlterColumnBuilder,
-) => AlteredColumnBuilder<any, any>;
+) => AlteredColumnBuilder<any>;
+
+type _Assert = Assert<
+  AssertStillImplements<AlterColumnBuilder, KyselyAlterColumnBuilder>
+>;
