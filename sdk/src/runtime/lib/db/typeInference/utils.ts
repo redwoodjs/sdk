@@ -53,9 +53,11 @@ type ProcessAlteredTable<
 > = Prettify<
   Omit<
     Original,
-    (TRenamed extends PropertyKey ? TRenamed : never) | keyof Altered
+    keyof Altered | (TRenamed extends PropertyKey ? TRenamed : never)
   > & {
-    [K in keyof Altered]: Altered[K] extends {
+    [K in keyof Altered as Altered[K] extends { __dropped: true }
+      ? never
+      : K]: Altered[K] extends {
       __renamed: infer From extends keyof Original;
     }
       ? Original[From]

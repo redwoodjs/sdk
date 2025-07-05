@@ -207,13 +207,6 @@ declare let _it: any;
     },
   } satisfies Migrations;
 
-  // For debugging:
-  type M = typeof migrations;
-  type B = AllBuilders<M>;
-  type AllAltered = AlteredTables<M>;
-  type AllCreated = CreatedTables<M>;
-  type Merged = MergedSchemaBeforeDrop<M>;
-
   type Actual = Database<typeof migrations>;
   type Expected = {
     users: {};

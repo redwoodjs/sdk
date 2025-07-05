@@ -78,7 +78,7 @@ export interface AlterTableBuilder<
   >;
   dropColumn<K extends string>(
     name: K,
-  ): AlterTableBuilder<TName, TSchema & { [P in K]: never }>;
+  ): AlterTableBuilder<TName, TSchema & { [P in K]: { __dropped: true } }>;
   renameColumn<KFrom extends string, KTo extends string>(
     from: KFrom,
     to: KTo,
