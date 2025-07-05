@@ -277,9 +277,9 @@ declare let _it: any;
 
   // For debugging:
   type M = typeof migrations;
-  type AllCreated = CreatedTables<M>;
-  type AllAltered = AlteredTables<M>;
-  type Merged = MergedSchemaBeforeDrop<M>;
+  type AllAlteredRaw = import("../database").AlteredTables<M>;
+  type FinalAltered = import("../database").FinalAlteredTables<M>;
+  type Merged = import("../database").MergedSchemaBeforeDrop<M>;
 
   type Actual = Database<typeof migrations>;
   type Expected = {
@@ -324,6 +324,12 @@ declare let _it: any;
       },
     },
   } satisfies Migrations;
+
+  // For debugging:
+  type M = typeof migrations;
+  type AllCreated = CreatedTables<M>;
+  type AllAltered = AlteredTables<M>;
+  type Merged = MergedSchemaBeforeDrop<M>;
 
   type Actual = Database<typeof migrations>;
   type Expected = {

@@ -52,19 +52,81 @@ export type CreatedViews<TMigrations extends Migrations> = UnionToIntersection<
   >
 >;
 
-type Merge<U> = {
-  [K in U extends infer T ? keyof T : never]: Prettify<
-    UnionToIntersection<
-      U extends Record<K, infer Alteration> ? Alteration : never
+export type AlteredTables<TMigrations extends Migrations> = ExtractAlterSchema<
+  Extract<AllBuilders<TMigrations>, AlterTableBuilder<any, any>>
+>;
+
+// --- START: Sequential Alteration Processing ---
+
+// Takes two alteration schemas for a single table and composes them.
+// This is the core of building the AST across migrations.
+type RenamedKeys<TLeft, TRight> = {
+  [K in keyof TRight]: TRight[K] extends { __renamed: infer RFrom }
+    ? RFrom extends keyof TLeft
+      ? RFrom
+      : never
+    : never;
+}[keyof TRight];
+
+type ComposeAlteration<TLeft, TRight> = Prettify<
+  Omit<TLeft, RenamedKeys<TLeft, TRight>> & {
+    [K in keyof TRight]: TRight[K] extends { __renamed: infer RFrom }
+      ? RFrom extends keyof TLeft
+        ? { __renamed: TLeft[RFrom] }
+        : TRight[K]
+      : TRight[K];
+  }
+>;
+
+// Composes two full sets of altered tables.
+type ComposeAlteredTables<TLeft, TRight> = Prettify<
+  Omit<TLeft, keyof TRight> & {
+    [K in keyof TRight]: K extends keyof TLeft
+      ? ComposeAlteration<TLeft[K], TRight[K]>
+      : TRight[K];
+  }
+>;
+
+// Recursively processes migrations for a single table, composing their alterations.
+type SequentiallyProcessTable<
+  TTableName extends string,
+  TMigrationKeys extends PropertyKey[],
+  TMigrations extends Migrations,
+> = TMigrationKeys extends [
+  infer TKey extends keyof TMigrations,
+  ...infer TRest extends (keyof TMigrations)[],
+]
+  ? ComposeAlteration<
+      ExtractAlterSchema<
+        Extract<
+          BuildersFromMigration<TMigrations[TKey]>,
+          AlterTableBuilder<TTableName, any>
+        >
+      > extends infer Alteration extends Record<TTableName, any>
+        ? Alteration[TTableName]
+        : {},
+      SequentiallyProcessTable<TTableName, TRest, TMigrations>
     >
+  : {};
+
+// This is the new entry point that replaces the old AlteredTables logic.
+// It finds all tables that have been altered across all migrations,
+// then processes each one sequentially.
+export type FinalAlteredTables<TMigrations extends Migrations> = {
+  [TTableName in AlteredTables<TMigrations> extends infer U
+    ? U extends {}
+      ? keyof U
+      : never
+    : never]: SequentiallyProcessTable<
+    TTableName,
+    // We assume the keys are alphabetically sorted, which TS does for string literals.
+    // This is a limitation but inherent to the problem.
+    (keyof TMigrations)[],
+    TMigrations
   >;
 };
 
-export type AlteredTables<TMigrations extends Migrations> = Merge<
-  ExtractAlterSchema<
-    Extract<AllBuilders<TMigrations>, AlterTableBuilder<any, any>>
-  >
->;
+// --- END: Sequential Alteration Processing ---
 
 type DroppedTableNames<TMigrations extends Migrations> =
   ExtractDroppedTableName<
@@ -96,7 +158,7 @@ type TableRenameMap<TMigrations extends Migrations> = UnionToIntersection<{
 export type MergedSchemaBeforeDrop<TMigrations extends Migrations> =
   FinalizeSchema<
     AllCreated<TMigrations>,
-    AlteredTables<TMigrations>,
+    FinalAlteredTables<TMigrations>,
     TableRenameMap<TMigrations>
   >;
 

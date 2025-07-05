@@ -40,38 +40,55 @@ export type DeepClean<T> = T extends Uint8Array
       } & {}
     : T;
 
-type ResolveRename<TColumn, TAltered> = TColumn extends keyof TAltered
-  ? TAltered[TColumn] extends { __renamed: infer RFrom extends PropertyKey }
-    ? ResolveRename<RFrom, TAltered>
-    : TColumn
-  : TColumn;
+type FindRenameTarget<TKey extends PropertyKey, TAltered> = keyof {
+  [P in keyof TAltered as TAltered[P] extends { __renamed: TKey }
+    ? P
+    : never]: 1;
+};
 
-// Gets all column names that were renamed from.
-type RenamedFromValues<TAltered> = {
-  [K in keyof TAltered]: TAltered[K] extends {
-    __renamed: infer RFrom extends PropertyKey;
-  }
-    ? RFrom
-    : never;
-}[keyof TAltered];
+type FollowChain<
+  TKey extends PropertyKey,
+  TAltered,
+  TSeen extends PropertyKey[] = [],
+> = TKey extends TSeen[number]
+  ? TKey
+  : FindRenameTarget<TKey, TAltered> extends never
+    ? TKey
+    : FollowChain<
+        Extract<FindRenameTarget<TKey, TAltered>, PropertyKey>,
+        TAltered,
+        [...TSeen, TKey]
+      >;
 
-// The final column names in the altered schema (not intermediate rename steps).
-type FinalAlteredColumnNames<TAltered> = Exclude<
-  keyof TAltered,
-  RenamedFromValues<TAltered>
->;
+type GetFinalSchema<TOriginal, TAltered> = {
+  [K in keyof TOriginal as FollowChain<
+    Extract<K, PropertyKey>,
+    TAltered
+  > extends infer FinalName extends PropertyKey
+    ? FinalName extends keyof TAltered
+      ? TAltered[FinalName] extends { __dropped: true }
+        ? never
+        : FinalName
+      : FinalName
+    : never]: TOriginal[K];
+};
+
+type AddedColumns<TOriginal, TAltered> = {
+  [K in keyof TAltered as TAltered[K] extends { __renamed: infer RFrom }
+    ? RFrom extends keyof TOriginal
+      ? never
+      : K
+    : K]: TAltered[K];
+};
 
 type ProcessAlteredTable<TOriginal, TAltered> = Prettify<
-  Omit<TOriginal, keyof TAltered | RenamedFromValues<TAltered>> & {
-    [K in FinalAlteredColumnNames<TAltered> as TAltered[K] extends {
-      __dropped: true;
-    }
+  GetFinalSchema<TOriginal, TAltered> & {
+    [K in keyof AddedColumns<TOriginal, TAltered> as AddedColumns<
+      TOriginal,
+      TAltered
+    >[K] extends { __dropped: true }
       ? never
-      : K]: TAltered[K] extends { __renamed: any } // It's a rename
-      ? ResolveRename<K, TAltered> extends keyof TOriginal
-        ? TOriginal[ResolveRename<K, TAltered>]
-        : never
-      : TAltered[K]; // It's an added column, or something else.
+      : K]: AddedColumns<TOriginal, TAltered>[K];
   }
 >;
 

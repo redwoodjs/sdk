@@ -78,11 +78,29 @@ export interface AlterTableBuilder<
   >;
   dropColumn<K extends string>(
     name: K,
-  ): AlterTableBuilder<TName, TSchema & { [P in K]: { __dropped: true } }>;
+  ): AlterTableBuilder<
+    TName,
+    Prettify<
+      TSchema & {
+        [P in K]: (K extends keyof TSchema ? TSchema[K] : {}) & {
+          __dropped: true;
+        };
+      }
+    >
+  >;
   renameColumn<KFrom extends string, KTo extends string>(
     from: KFrom,
     to: KTo,
-  ): AlterTableBuilder<TName, TSchema & { [P in KTo]: { __renamed: KFrom } }>;
+  ): AlterTableBuilder<
+    TName,
+    Prettify<
+      Omit<TSchema, KFrom & keyof TSchema> & {
+        [P in KTo]: {
+          __renamed: KFrom extends keyof TSchema ? TSchema[KFrom] : KFrom;
+        };
+      }
+    >
+  >;
   alterColumn<
     K extends string,
     const TCallback extends AlterColumnBuilderCallback,
