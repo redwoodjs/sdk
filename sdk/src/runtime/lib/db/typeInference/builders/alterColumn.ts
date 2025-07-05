@@ -3,13 +3,7 @@ import {
   AlterColumnNode,
 } from "kysely";
 import type { Assert, AssertStillImplements } from "../assert";
-
-export type Alteration =
-  | { kind: "setDataType"; dataType: string }
-  | { kind: "setDefault"; value: any }
-  | { kind: "dropDefault" }
-  | { kind: "setNotNull" }
-  | { kind: "dropNotNull" };
+import { Alteration } from "../utils";
 
 export interface AlteredColumnBuilder<TAlteration extends Alteration> {
   readonly __alteration: TAlteration;

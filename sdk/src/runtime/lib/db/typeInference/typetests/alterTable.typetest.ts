@@ -1,14 +1,5 @@
-import type {
-  Database,
-  Migrations,
-  MergedSchemaBeforeDrop,
-  AllBuilders,
-  AlteredTables,
-  CreatedTables,
-} from "../database";
+import type { Database, Migrations } from "../database";
 import type { Expect, Equal } from "./testUtils";
-import { Prettify } from "../utils";
-import type { AlterTableBuilder } from "../builders/alterTable";
 
 declare let _it: any;
 
@@ -67,6 +58,18 @@ declare let _it: any;
       ],
     },
   } satisfies Migrations;
+
+  // For debugging:
+  type M = typeof migrations;
+  type AllBuilders = import("../database").AllBuilders<M>;
+  type Created = import("../database").CreatedTables<M>;
+  type Alterations = import("../database").AlteredTables<M>;
+  type InitialUserSchema = Created["users"];
+  type UserAlterOps = Alterations["users"]["__operations"];
+  type Processed = import("../utils").ProcessAlteredTable<
+    InitialUserSchema,
+    UserAlterOps
+  >;
 
   type AuthDatabase = Database<typeof migrations>;
 
@@ -276,10 +279,10 @@ declare let _it: any;
   } satisfies Migrations;
 
   // For debugging:
-  type M = typeof migrations;
-  type AllAlteredRaw = import("../database").AlteredTables<M>;
-  type FinalAltered = import("../database").FinalAlteredTables<M>;
-  type Merged = import("../database").MergedSchemaBeforeDrop<M>;
+  // type M = typeof migrations;
+  // type AllAlteredRaw = import("../database").AlteredTables<M>;
+  // type FinalAltered = import("../database").FinalAlteredTables<M>;
+  // type Merged = import("../database").MergedSchemaBeforeDrop<M>;
 
   type Actual = Database<typeof migrations>;
   type Expected = {
@@ -326,10 +329,10 @@ declare let _it: any;
   } satisfies Migrations;
 
   // For debugging:
-  type M = typeof migrations;
-  type AllCreated = CreatedTables<M>;
-  type AllAltered = AlteredTables<M>;
-  type Merged = MergedSchemaBeforeDrop<M>;
+  // type M = typeof migrations;
+  // type AllCreated = CreatedTables<M>;
+  // type AllAltered = AlteredTables<M>;
+  // type Merged = MergedSchemaBeforeDrop<M>;
 
   type Actual = Database<typeof migrations>;
   type Expected = {

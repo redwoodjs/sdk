@@ -1,5 +1,46 @@
 import { sql } from "kysely";
-import { AlterTableBuilder } from "./builders/alterTable.js";
+
+// --- AST Node Types for Alterations ---
+// These will be consumed by ProcessAlteredTable to calculate the final schema.
+type DataTypeExpression = string | typeof sql;
+export type AddColumnOp<K extends string, T extends DataTypeExpression> = {
+  op: "addColumn";
+  name: K;
+  type: T;
+  // TODO: we need to handle modifiers like notNull, etc.
+};
+export type DropColumnOp<K extends string> = { op: "dropColumn"; name: K };
+export type RenameColumnOp<KFrom extends string, KTo extends string> = {
+  op: "renameColumn";
+  from: KFrom;
+  to: KTo;
+};
+export type ModifyColumnOp<K extends string, T extends DataTypeExpression> = {
+  op: "modifyColumn";
+  name: K;
+  type: T;
+};
+// This is not exhaustive yet.
+export type Alteration =
+  | { kind: "setDataType"; dataType: string }
+  | { kind: "setDefault"; value: any }
+  | { kind: "dropDefault" }
+  | { kind: "setNotNull" }
+  | { kind: "dropNotNull" };
+
+export type AlterColumnOp<K extends string, TAlteration extends Alteration> = {
+  op: "alterColumn";
+  name: K;
+  alteration: TAlteration;
+};
+
+export type AlterOperation =
+  | AddColumnOp<any, any>
+  | DropColumnOp<any>
+  | RenameColumnOp<any, any>
+  | AlterColumnOp<any, any>
+  | ModifyColumnOp<any, any>;
+// --- End AST Node Types ---
 
 export type SqlToTsType<T extends string | typeof sql> = T extends "text"
   ? string
@@ -43,99 +84,48 @@ export type DeepClean<T> = T extends Uint8Array
 
 export type Cast<A, B> = A extends B ? A : B;
 
-type FindRenameTarget<TKey extends PropertyKey, TAltered> = keyof {
-  [P in keyof TAltered as TAltered[P] extends { __renamed: TKey }
-    ? P
-    : never]: 1;
-};
+/**
+ * Applies a single alteration operation to a schema.
+ */
+type ApplyOp<TSchema, THeadOp> =
+  THeadOp extends AddColumnOp<infer K, infer T>
+    ? Prettify<TSchema & { [P in K]: SqlToTsType<T> }>
+    : THeadOp extends DropColumnOp<infer K>
+      ? Omit<TSchema, K>
+      : THeadOp extends RenameColumnOp<infer KFrom, infer KTo>
+        ? KFrom extends keyof TSchema
+          ? Prettify<Omit<TSchema, KFrom> & { [P in KTo]: TSchema[KFrom] }>
+          : TSchema // If KFrom is not in TSchema, do nothing.
+        : THeadOp extends AlterColumnOp<infer K, infer TAlt>
+          ? TAlt extends {
+              kind: "setDataType";
+              dataType: infer DT extends string;
+            }
+            ? Prettify<Omit<TSchema, K> & { [P in K]: SqlToTsType<DT> }>
+            : TSchema // For other alterations (e.g., setDefault), the TS type doesn't change.
+          : THeadOp extends ModifyColumnOp<infer K, infer T>
+            ? Prettify<Omit<TSchema, K> & { [P in K]: SqlToTsType<T> }>
+            : TSchema;
 
-type FollowChain<
-  TKey extends PropertyKey,
-  TAltered,
-  TSeen extends PropertyKey[] = [],
-> = TKey extends TSeen[number]
-  ? TKey
-  : FindRenameTarget<TKey, TAltered> extends never
-    ? TKey
-    : FollowChain<
-        Extract<FindRenameTarget<TKey, TAltered>, PropertyKey>,
-        TAltered,
-        [...TSeen, TKey]
-      >;
+/**
+ * Recursively processes a list of alteration operations (AST)
+ * to transform an initial schema into the final schema.
+ */
+export type ProcessAlteredTable<TInitialSchema, TOps> = TOps extends [
+  infer THeadOp,
+  ...infer TRestOps,
+]
+  ? ProcessAlteredTable<ApplyOp<TInitialSchema, THeadOp>, TRestOps>
+  : TInitialSchema;
 
-type GetFinalSchema<TOriginal, TAltered> = {
-  [K in keyof TOriginal as FollowChain<
-    Extract<K, PropertyKey>,
-    TAltered
-  > extends infer FinalName extends PropertyKey
-    ? FinalName extends keyof TAltered
-      ? TAltered[FinalName] extends { __dropped: true }
-        ? never
-        : FinalName
-      : FinalName
-    : never]: TOriginal[K];
-};
+// --- Union to Tuple Helpers ---
+// These are used to convert a union of types into a tuple, which allows for iteration.
+type LastOf<U> =
+  UnionToIntersection<U extends any ? () => U : never> extends () => infer R
+    ? R
+    : never;
 
-type AddedColumns<TOriginal, TAltered> = {
-  [K in keyof TAltered as TAltered[K] extends { __renamed: infer RFrom }
-    ? RFrom extends keyof TOriginal
-      ? never
-      : K
-    : K]: TAltered[K];
-};
-
-type ApplyAlterOp<TSchema, TOp> = TOp extends {
-  op: "addColumn";
-  name: infer K;
-  type: infer T extends string | typeof sql;
-}
-  ? K extends string
-    ? TSchema & Record<K, SqlToTsType<T>>
-    : TSchema
-  : TOp extends { op: "dropColumn"; name: infer K }
-    ? Omit<TSchema, K & keyof TSchema>
-    : TOp extends { op: "renameColumn"; from: infer F; to: infer T }
-      ? F extends keyof TSchema
-        ? T extends string
-          ? Omit<TSchema, F> & Record<T, TSchema[F]>
-          : TSchema
-        : TSchema
-      : TSchema;
-
-type ProcessAlteredTable<
-  TOriginal,
-  TAltered extends { __operations: any[] },
-> = Prettify<
-  TAltered["__operations"] extends [infer H, ...infer R]
-    ? ProcessAlteredTable<ApplyAlterOp<TOriginal, H>, { __operations: R }>
-    : TOriginal
->;
-
-type ApplyRenames<TAll, TRenames> = Prettify<
-  {
-    [K in keyof TAll as K extends keyof TRenames ? never : K]: TAll[K];
-  } & {
-    [OldName in keyof TRenames as TRenames[OldName] extends PropertyKey
-      ? TRenames[OldName]
-      : never]: OldName extends keyof TAll ? TAll[OldName] : never;
-  }
->;
-
-type FinalizeAlters<TAll, TAltered> = {
-  [TableName in keyof TAll | keyof TAltered]: TableName extends keyof TAltered
-    ? TableName extends keyof TAll
-      ? TAltered[TableName] extends { __operations: any[] }
-        ? ProcessAlteredTable<TAll[TableName], TAltered[TableName]>
-        : TAll[TableName]
-      : TAltered[TableName]
-    : TableName extends keyof TAll
-      ? TAll[TableName]
-      : never;
-};
-
-export type FinalizeSchema<TAll, TAltered, TRenames> =
-  TAll extends Record<string, any>
-    ? keyof TRenames extends never
-      ? FinalizeAlters<TAll, TAltered>
-      : FinalizeAlters<ApplyRenames<TAll, TRenames>, TAltered>
-    : TAll;
+export type UnionToTuple<U, Last = LastOf<U>> = [U] extends [never]
+  ? []
+  : [...UnionToTuple<Exclude<U, Last>>, Last];
+// --- End Union to Tuple Helpers ---

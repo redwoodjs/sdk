@@ -1,4 +1,13 @@
-import { SqlToTsType, ExecutedBuilder, Prettify, OmitNever } from "../utils";
+import {
+  SqlToTsType,
+  ExecutedBuilder,
+  AlterOperation,
+  AddColumnOp,
+  DropColumnOp,
+  RenameColumnOp,
+  AlterColumnOp,
+  ModifyColumnOp,
+} from "../utils";
 import { ColumnDefinitionBuilder } from "./columnDefinition";
 import { AlterColumnBuilderCallback } from "./alterColumn";
 import {
@@ -56,25 +65,6 @@ interface PrimaryKeyConstraintBuilder {
   toOperationNode(): PrimaryKeyConstraintNode;
 }
 
-// --- AST Node Types for Alterations ---
-type AddColumnOp<K extends string, T extends DataTypeExpression> = {
-  op: "addColumn";
-  name: K;
-  type: T;
-  // build?: (col: ColumnDefinitionBuilder<SqlToTsType<T>>) => ColumnDefinitionBuilder<SqlToTsType<T>>
-};
-type DropColumnOp<K extends string> = { op: "dropColumn"; name: K };
-type RenameColumnOp<KFrom extends string, KTo extends string> = {
-  op: "renameColumn";
-  from: KFrom;
-  to: KTo;
-};
-type AlterOperation =
-  | AddColumnOp<any, any>
-  | DropColumnOp<any>
-  | RenameColumnOp<any, any>;
-// --- End AST Node Types ---
-
 export interface AlterTableBuilder<
   TName extends string,
   TOps extends AlterOperation[] = [],
@@ -107,9 +97,7 @@ export interface AlterTableBuilder<
     alteration: TCallback,
   ): AlterTableBuilder<
     TName,
-    // TODO: Implement this properly as an AST node.
-    TOps
-    // AlterColumnResult<TSchema, K, ReturnType<TCallback>["__alteration"]>
+    [...TOps, AlterColumnOp<K, ReturnType<TCallback>["__alteration"]>]
   >;
   modifyColumn<K extends string, T extends DataTypeExpression>(
     column: K,
@@ -117,10 +105,7 @@ export interface AlterTableBuilder<
     build?: (
       col: ColumnDefinitionBuilder<SqlToTsType<T>>,
     ) => ColumnDefinitionBuilder<SqlToTsType<T>>,
-  ): AlterTableBuilder<
-    TName,
-    any /*Prettify<TSchema & Record<K, SqlToTsType<T>>>*/
-  >;
+  ): AlterTableBuilder<TName, [...TOps, ModifyColumnOp<K, T>]>;
   addUniqueConstraint(
     constraintName: string,
     columns: string[],
