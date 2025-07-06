@@ -1294,14 +1294,14 @@ When you first set this up, you'll probably see an error
 Our component isn't expecting the `applications` data we're passing it. Inside our `ApplicationsTable` component:
 
 ```tsx title="src/app/components/ApplicationsTable.tsx"
-import { Application } from "@prisma/client"
+import { Application } from "@generated/prisma/client"
 ...
 const ApplicationsTable = ({ applications }: { applications: Application[] }) => {
 ```
 
 - We'll set it up to receive the `applications` data as a prop.
 - Then, we need to set the type. Fortunate for us, Prisma generates these for us. So, we can use the `Application` type and since there's an array of them, we'll use square brackets `[]`.
-- At the top of our, file we can import the `Application` type from `@prisma/client`.
+- At the top of our, file we can import the `Application` type from `@generated/prisma/client`.
 
 Now, let's go down to our `TableBody`. First we want to loop over all the applications within our `applications` array and display a row in the table for each:
 
@@ -1388,7 +1388,7 @@ You might need to temporarily comment out the `Badge` component inside the `Appl
 
 Now, if we go back to our `ApplicationsTable.tsx` file, the TypeScript error is still there. We're getting the `status` information now, but we need to make sure the type is updated to include it.
 
-We're already getting the `Application` type from `@prisma/client`. We need a way to also include the `ApplicationStatus`, `Company`, and `Contact` types.
+We're already getting the `Application` type from `@generated/prisma/client`. We need a way to also include the `ApplicationStatus`, `Company`, and `Contact` types.
 
 We could use the `&` to create a new type that has `status` and `company`. Contacts is an array, nested inside the `company` object.
 
@@ -1404,7 +1404,7 @@ type ApplicationWithRelations = (Application & {
 However, Prisma has a special way to do this.
 
 ```tsx showLineNumbers=false
-import { Prisma } from "@prisma/client"
+import { Prisma } from "@generated/prisma/client"
 ...
 export type ApplicationWithRelations = Prisma.ApplicationGetPayload<{
   include: {
@@ -1453,7 +1453,7 @@ If this starts to feel a little overwhelming, a few things that have helped me:
 Awesome. Let's add our `ApplicationWithRelations` at the top of our `List.tsx` file. This goes _outside_ the component definition:
 
 ```tsx title="src/app/pages/applications/List.tsx" showLineNumbers=false
-import { Prisma } from "@prisma/client"
+import { Prisma } from "@generated/prisma/client"
 ...
 export type ApplicationWithRelations = Prisma.ApplicationGetPayload<{
   include: {
