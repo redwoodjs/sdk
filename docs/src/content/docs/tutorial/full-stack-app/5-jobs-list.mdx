@@ -28,7 +28,7 @@ In the `src > app > pages` directory, create a new folder called `applications`.
     - pages/
       - applications/
         - List.tsx
-      - auth/
+      - user/
       - Home.tsx
 </FileTree>
 
@@ -1488,8 +1488,8 @@ If you look at the `TableCell` with the `status` again, you're probably _still_ 
 
 ```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=31
 <TableCell>
-    <Badge variant={application.applicationStatus.status}>
-      {application.applicationStatus.status}
+    <Badge variant={application.status.status}>
+      {application.status.status}
     </Badge>
 </TableCell>
 ```
@@ -1499,11 +1499,11 @@ When we pass in the `variant` prop for our `Badge` component, it's not just look
 Inside our `badge` component, when we defined our `badgeVariants` for styles, it used our variant options to create a type definition. `badgeVariants` is exported from the `badge.tsx` component, making it easy to reuse and reference within our `ApplicationsTable.tsx`:
 
 ```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=32 ".toLowerCase()" "as VariantProps<typeof badgeVariants>['variant']}"
-<Badge variant={application.applicationStatus?.status.toLowerCase() as VariantProps<typeof badgeVariants>['variant']}>
-  {application.applicationStatus?.status}
+<Badge variant={application.status?.status.toLowerCase() as VariantProps<typeof badgeVariants>['variant']}>
+  {application.status?.status}
 </Badge>
 ---
-- On the `application.applicationStatus?.status`, we can append `.toLowerCase()` to make sure the status is formatted correctly and always lowercase.
+- On the `application.status?.status`, we can append `.toLowerCase()` to make sure the status is formatted correctly and always lowercase.
 - `typeof badgeVariants` - Gets the type of our `badgeVariants` configuration object, created with `cva()`. This includes all our variant definitions.
 - `VariantProps<...>` - This is a utility type from [class-variance-authority](https://cva.style/docs) that extracts the prop types. It creates a type that includes all possible variants as properties.
 - `['variant']` - This accesses the `variant` property type only from those props. In our case, it resolves to the union type: `"default" | "secondary" | "destructive" | "outline" | "applied" | "interview" | "new" | "rejected" | "offer" | null | undefined`
@@ -1587,7 +1587,7 @@ For the view link:
 <TableCell>
 -  <a href="#">
 +  <a href={link("/applications/:id", { id: application.id })}>
-    <Icon id="view" />
++   <Icon id="view" />
   </a>
 </TableCell>
 ```
@@ -1713,7 +1713,6 @@ const ApplicationsTable = ({
               </Avatar>
               {application.salaryMin}-{application.salaryMax}
             </TableCell>
-            <TableCell>$150,000-$250,000</TableCell>
             <TableCell>
               <a href={link("/applications/:id", { id: application.id })}>
                 <Icon id="view" />
