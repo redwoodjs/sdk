@@ -813,7 +813,7 @@ Now, we need to update our database query on the `New` page.
 ```tsx title="/src/app/pages/applications/New.tsx" startLineNumber={5} "{ ctx }: { ctx: AppContext }" "ctx.user?.id" {3,9}
 import { RequestInfo } from "rwsdk/worker";
 
-const New = async ({ ctx }: { ctx: RequestInfo }) => {
+const New = async ({ ctx }: RequestInfo) => {
   const statuses = await db.applicationStatus.findMany()
 
   const contacts = await db.contact.findMany({
