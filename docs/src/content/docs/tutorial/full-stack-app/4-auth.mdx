@@ -233,9 +233,9 @@ prefix("/user", userRoutes),
 
 We're co-locating the file that defines our auth routes with our auth pages.
 
-Let's take a look at `userRoutes`. This is coming from `src/app/pages/user/routes.tsx`.
+Let's take a look at `userRoutes`. This is coming from `src/app/pages/user/routes.ts`.
 
-```tsx title="src/app/pages/user/routes.tsx"
+```tsx title="src/app/pages/user/routes.ts"
 import { route } from "rwsdk/router";
 import { Login } from "./Login";
 import { sessions } from "@/session/store";
