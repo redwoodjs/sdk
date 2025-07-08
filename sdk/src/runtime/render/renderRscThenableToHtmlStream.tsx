@@ -48,11 +48,17 @@ export const renderRscThenableToHtmlStream = async ({
     nonce: requestInfo.rw.nonce,
     onError(error, { componentStack }) {
       try {
+        if (!error) {
+          error = new Error(
+            `A falsy value was thrown during rendering: ${String(error)}.`,
+          );
+        }
+
         const message = error
           ? ((error as any).stack ?? (error as any).message ?? error)
           : error;
 
-        const wrappedMessage = `Error rendering RSC to HTML stream: ${message}\n\nComponent stack:\n${componentStack}`;
+        const wrappedMessage = `${message}\n\nComponent stack:${componentStack}`;
 
         if (error instanceof Error) {
           const wrappedError = new Error(wrappedMessage);
