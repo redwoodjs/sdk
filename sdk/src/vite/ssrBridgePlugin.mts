@@ -148,20 +148,12 @@ export const ssrBridgePlugin = ({
 
           verboseLog("Fetch module result: id=%s, result=%O", realId, result);
 
-          if (!result) {
-            return;
-          }
-
           const code = "code" in result ? result.code : undefined;
           log("Fetched SSR module code length: %d", code?.length || 0);
 
-          if (!code) {
-            return;
-          }
-
           const { imports, dynamicImports } = findSsrImportSpecifiers(
             realId,
-            code,
+            code || "",
             verboseLog,
           );
 
@@ -176,17 +168,14 @@ export const ssrBridgePlugin = ({
 
           const transformedCode = `
 await (async function(__vite_ssr_import__, __vite_ssr_dynamic_import__) {${code}})(
-  (id, ...args) => ssrImport(id, false, ...args),
-  (id, ...args) => ssrImport(id, true, ...args)
+  (id, ...args) => {ssrImport(id); return __vite_ssr_import__('/@id/${VIRTUAL_SSR_PREFIX}' + id, ...args);},
+  (id, ...args) => {ssrImport(id); return __vite_ssr_dynamic_import__('/@id/${VIRTUAL_SSR_PREFIX}' + id, ...args);}
 );
 
-function ssrImport(id, isDynamic, ...args) {
+function ssrImport(id) {
   switch (id) {
 ${switchCases}
   }
-
-  const virtualId = '/@id/${VIRTUAL_SSR_PREFIX}' + id;
-  return isDynamic ? __vite_ssr_dynamic_import__(virtualId, ...args) : __vite_ssr_import__(virtualId, ...args);
 }
 `;
 
