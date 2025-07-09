@@ -188,6 +188,22 @@ export const miniflareHMRPlugin = (givenOptions: {
           );
         }
 
+        const virtualSSRModule = ctx.server.environments[
+          environment
+        ].moduleGraph.idToModuleMap.get(
+          VIRTUAL_SSR_PREFIX +
+            normalizeModulePath(givenOptions.rootDir, ctx.file),
+        );
+
+        if (virtualSSRModule) {
+          ctx.server.environments.client.moduleGraph.invalidateModule(
+            virtualSSRModule,
+            new Set(),
+            ctx.timestamp,
+            true,
+          );
+        }
+
         ctx.server.environments.client.hot.send({
           type: "custom",
           event: "rsc:update",
@@ -196,7 +212,6 @@ export const miniflareHMRPlugin = (givenOptions: {
           },
         });
 
-        //return [bridgeModule, virtualSSRModule];
         return [];
       }
     },
