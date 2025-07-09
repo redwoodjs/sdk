@@ -182,7 +182,14 @@ export const debugSync = async (opts: DebugSyncOptions) => {
   }
 
   // Initial sync for watch mode. We do it *after* acquiring the lock.
-  await performSync(sdkDir, targetDir);
+  let initialSyncOk = false;
+  try {
+    await performSync(sdkDir, targetDir);
+    initialSyncOk = true;
+  } catch (error) {
+    console.error("❌ Initial sync failed:", error);
+    console.log("   Still watching for changes...");
+  }
 
   const filesToWatch = [
     path.join(sdkDir, "src"),
@@ -220,8 +227,13 @@ export const debugSync = async (opts: DebugSyncOptions) => {
         /* ignore kill errors */
       });
     }
-    await performSync(sdkDir, targetDir);
-    runWatchedCommand();
+    try {
+      await performSync(sdkDir, targetDir);
+      runWatchedCommand();
+    } catch (error) {
+      console.error("❌ Sync failed:", error);
+      console.log("   Still watching for changes...");
+    }
   });
 
   const cleanup = async () => {
@@ -236,7 +248,9 @@ export const debugSync = async (opts: DebugSyncOptions) => {
   process.on("SIGINT", cleanup);
   process.on("SIGTERM", cleanup);
 
-  runWatchedCommand();
+  if (initialSyncOk) {
+    runWatchedCommand();
+  }
 };
 
 if (import.meta.url === new URL(process.argv[1], import.meta.url).href) {

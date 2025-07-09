@@ -90,7 +90,7 @@ export const directivesPlugin = ({
           id,
         );
 
-        invalidateModule(devServer, environment, `virtual:use-${kind}-lookup`);
+        //invalidateModule(devServer, environment, `virtual:use-${kind}-lookup`);
       }
     }
   };
