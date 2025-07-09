@@ -196,7 +196,7 @@ export const miniflareHMRPlugin = (givenOptions: {
         );
 
         if (virtualSSRModule) {
-          ctx.server.environments.client.moduleGraph.invalidateModule(
+          ctx.server.environments.worker.moduleGraph.invalidateModule(
             virtualSSRModule,
             new Set(),
             ctx.timestamp,

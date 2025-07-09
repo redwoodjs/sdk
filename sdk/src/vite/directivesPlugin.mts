@@ -6,7 +6,6 @@ import { transformClientComponents } from "./transformClientComponents.mjs";
 import { transformServerFunctions } from "./transformServerFunctions.mjs";
 import { normalizeModulePath } from "./normalizeModulePath.mjs";
 import type { ViteDevServer } from "vite";
-import { invalidateModule } from "./invalidateModule.mjs";
 
 const log = debug("rwsdk:vite:rsc-directives-plugin");
 const verboseLog = debug("verbose:rwsdk:vite:rsc-directives-plugin");
@@ -89,8 +88,6 @@ export const directivesPlugin = ({
           lookupModule,
           id,
         );
-
-        //invalidateModule(devServer, environment, `virtual:use-${kind}-lookup`);
       }
     }
   };
