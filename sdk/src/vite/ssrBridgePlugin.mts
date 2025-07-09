@@ -165,15 +165,29 @@ export const ssrBridgePlugin = ({
             verboseLog,
           );
 
-          // context(justinvdm, 27 May 2025): Prefix all imports in SSR modules so that they're separate in module graph from non-SSR
+          const allSpecifiers = [...new Set([...imports, ...dynamicImports])];
+
+          const switchCases = allSpecifiers
+            .map(
+              (specifier) =>
+                `    case "${specifier}": return import("${VIRTUAL_SSR_PREFIX}${specifier}");`,
+            )
+            .join("\n");
+
           const transformedCode = `
-${imports
-  .map((specifier) => `import "${VIRTUAL_SSR_PREFIX}${specifier}";`)
-  .join("\n")}
-${dynamicImports
-  .map((specifier) => `import("${VIRTUAL_SSR_PREFIX}${specifier}");`)
-  .join("\n")}
-await (async function(__vite_ssr_import__, __vite_ssr_dynamic_import__) {${code}})((id) => __vite_ssr_import__('/@id/${VIRTUAL_SSR_PREFIX}'+id), (id) => __vite_ssr_dynamic_import__('/@id/${VIRTUAL_SSR_PREFIX}'+id));
+await (async function(__vite_ssr_import__, __vite_ssr_dynamic_import__) {${code}})(
+  (id, ...args) => ssrImport(id, false, ...args),
+  (id, ...args) => ssrImport(id, true, ...args)
+);
+
+function ssrImport(id, isDynamic, ...args) {
+  switch (id) {
+${switchCases}
+  }
+
+  const virtualId = '/@id/${VIRTUAL_SSR_PREFIX}' + id;
+  return isDynamic ? __vite_ssr_dynamic_import__(virtualId, ...args) : __vite_ssr_import__(virtualId, ...args);
+}
 `;
 
           log("Transformed SSR module code length: %d", transformedCode.length);
