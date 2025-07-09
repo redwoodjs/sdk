@@ -1,10 +1,16 @@
-import { HotUpdateOptions, Plugin } from "vite";
+import { HotUpdateOptions, Plugin, EnvironmentModuleNode } from "vite";
 import { resolve } from "node:path";
 import colors from "picocolors";
 import { readFile } from "node:fs/promises";
+import { ViteDevServer } from "vite";
+import debug from "debug";
+import { VIRTUAL_SSR_PREFIX } from "./ssrBridgePlugin.mjs";
+import { normalizeModulePath } from "./normalizeModulePath.mjs";
 
 import { getShortName } from "../lib/getShortName.mjs";
 import { pathExists } from "fs-extra";
+
+const verboseLog = debug("verbose:rwsdk:vite:hmr-plugin");
 
 const hasEntryAsAncestor = (
   module: any,
@@ -92,11 +98,17 @@ export const miniflareHMRPlugin = (givenOptions: {
   {
     name: "rwsdk:miniflare-hmr",
     async hotUpdate(ctx) {
+      verboseLog(
+        "Hot update: (env=%s) %s\nModule graph:\n\n%s",
+        this.environment.name,
+        ctx.file,
+        dumpFullModuleGraph(ctx.server, this.environment.name),
+      );
       const environment = givenOptions.viteEnvironment.name;
       const entry = givenOptions.workerEntryPathname;
 
       if (!["client", environment].includes(this.environment.name)) {
-        return;
+        return [];
       }
 
       // todo(justinvdm, 12 Dec 2024): Skip client references
@@ -184,8 +196,54 @@ export const miniflareHMRPlugin = (givenOptions: {
           },
         });
 
+        //return [bridgeModule, virtualSSRModule];
         return [];
       }
     },
   },
 ];
+
+function dumpFullModuleGraph(
+  server: ViteDevServer,
+  environment: string,
+  { includeDisconnected = true } = {},
+) {
+  const moduleGraph = server.environments[environment].moduleGraph;
+  const seen = new Set<string>();
+  const output: string[] = [];
+
+  function walk(node: EnvironmentModuleNode, depth = 0) {
+    const id = node.id || node.url;
+    if (!id || seen.has(id)) return;
+    seen.add(id);
+
+    const pad = "  ".repeat(depth);
+    const suffix = node.id?.startsWith("virtual:") ? " [virtual]" : "";
+    output.push(`${pad}- ${id}${suffix}`);
+
+    for (const dep of node.importedModules) {
+      walk(dep, depth + 1);
+    }
+  }
+
+  // Start with all modules with no importers (roots)
+  const roots = Array.from(moduleGraph.urlToModuleMap.values()).filter(
+    (mod) => mod.importers.size === 0,
+  );
+
+  for (const root of roots) {
+    walk(root);
+  }
+
+  // If requested, show disconnected modules too
+  if (includeDisconnected) {
+    for (const mod of moduleGraph.urlToModuleMap.values()) {
+      const id = mod.id || mod.url;
+      if (!seen.has(id)) {
+        output.push(`- ${id} [disconnected]`);
+      }
+    }
+  }
+
+  return output.join("\n");
+}

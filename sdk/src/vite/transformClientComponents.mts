@@ -2,7 +2,6 @@ import MagicString from "magic-string";
 import debug from "debug";
 import { hasDirective } from "./hasDirective.mjs";
 import { findExports, type ExportInfo } from "./findSpecifiers.mjs";
-import type { ViteDevServer } from "vite";
 
 interface TransformContext {
   environmentName: string;
