@@ -101,14 +101,12 @@ export const miniflareHMRPlugin = (givenOptions: {
             ctx.server,
             environment,
             "virtual:use-client-lookup.js",
-            { invalidateImportersRecursively: true },
           );
         });
         invalidateModule(
           ctx.server,
           environment,
           VIRTUAL_SSR_PREFIX + "/@id/virtual:use-client-lookup.js",
-          { invalidateImportersRecursively: true },
         );
       }
 
@@ -118,14 +116,12 @@ export const miniflareHMRPlugin = (givenOptions: {
             ctx.server,
             environment,
             "virtual:use-server-lookup.js",
-            { invalidateImportersRecursively: true },
           );
         });
         invalidateModule(
           ctx.server,
           environment,
           VIRTUAL_SSR_PREFIX + "/@id/virtual:use-server-lookup.js",
-          { invalidateImportersRecursively: true },
         );
       }
 
@@ -168,7 +164,9 @@ export const miniflareHMRPlugin = (givenOptions: {
           }
         }
 
-        return;
+        // context(justinvdm, 10 Jul 2025): If this isn't a file with a client directive,
+        // we shouldn't invalidate anything else to avoid full page reload
+        return hasClientDirective ? undefined : [];
       }
 
       // The worker needs an update, and the hot check is for the worker environment
