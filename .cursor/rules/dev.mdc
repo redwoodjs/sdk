@@ -1,0 +1,5 @@
+---
+description: When importing from `.mts` source files, use the `.mjs` extension in the import path. TypeScript will handle the resolution.
+globs: ['**/*.mts']
+alwaysApply: true
+---

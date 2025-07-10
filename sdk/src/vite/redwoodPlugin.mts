@@ -123,6 +123,8 @@ export const redwoodPlugin = async (
         })
       : [],
     miniflareHMRPlugin({
+      clientFiles,
+      serverFiles,
       rootDir: projectRootDir,
       viteEnvironment: { name: "worker" },
       workerEntryPathname,

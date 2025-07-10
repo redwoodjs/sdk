@@ -6,11 +6,22 @@ import { ViteDevServer } from "vite";
 import debug from "debug";
 import { VIRTUAL_SSR_PREFIX } from "./ssrBridgePlugin.mjs";
 import { normalizeModulePath } from "./normalizeModulePath.mjs";
-
+import { hasDirective as sourceHasDirective } from "./hasDirective.mjs";
+import { isJsFile } from "./isJsFile.mjs";
+import { invalidateModule } from "./invalidateModule.mjs";
 import { getShortName } from "../lib/getShortName.mjs";
-import { pathExists } from "fs-extra";
 
 const verboseLog = debug("verbose:rwsdk:vite:hmr-plugin");
+
+const hasDirective = async (filepath: string, directive: string) => {
+  if (!isJsFile(filepath)) {
+    return false;
+  }
+
+  const content = await readFile(filepath, "utf-8");
+
+  return sourceHasDirective(content, directive);
+};
 
 const hasEntryAsAncestor = (
   module: any,
@@ -18,7 +29,10 @@ const hasEntryAsAncestor = (
   seen = new Set(),
 ): boolean => {
   // Prevent infinite recursion
-  if (seen.has(module)) return false;
+  if (seen.has(module)) {
+    return false;
+  }
+
   seen.add(module);
 
   // Check direct importers
@@ -31,66 +45,9 @@ const hasEntryAsAncestor = (
   return false;
 };
 
-// Cache for "use client" status results
-const useClientCache = new Map<string, boolean>();
-
-// Function to invalidate cache for a file
-const invalidateUseClientCache = (file: string) => {
-  useClientCache.delete(file);
-};
-
-const isUseClientModule = async (
-  ctx: HotUpdateOptions,
-  file: string,
-  seen = new Set<string>(),
-): Promise<boolean> => {
-  // Prevent infinite recursion
-  if (seen.has(file)) return false;
-  seen.add(file);
-
-  try {
-    // Check cache first
-    if (useClientCache.has(file)) {
-      return useClientCache.get(file)!;
-    }
-
-    // Read and check the file
-    const content = (await pathExists(file))
-      ? await readFile(file, "utf-8")
-      : "";
-
-    const hasUseClient =
-      content.includes("'use client'") || content.includes('"use client"');
-
-    if (hasUseClient) {
-      useClientCache.set(file, true);
-      return true;
-    }
-
-    // Get the module from the module graph to find importers
-    const module = ctx.server.moduleGraph.getModuleById(file);
-    if (!module) {
-      useClientCache.set(file, false);
-      return false;
-    }
-
-    // Check all importers recursively
-    for (const importer of module.importers) {
-      if (await isUseClientModule(ctx, importer.url, seen)) {
-        useClientCache.set(file, true);
-        return true;
-      }
-    }
-
-    useClientCache.set(file, false);
-    return false;
-  } catch (error) {
-    useClientCache.set(file, false);
-    return false;
-  }
-};
-
 export const miniflareHMRPlugin = (givenOptions: {
+  clientFiles: Set<string>;
+  serverFiles: Set<string>;
   rootDir: string;
   viteEnvironment: { name: string };
   workerEntryPathname: string;
@@ -98,17 +55,74 @@ export const miniflareHMRPlugin = (givenOptions: {
   {
     name: "rwsdk:miniflare-hmr",
     async hotUpdate(ctx) {
+      const {
+        clientFiles,
+        serverFiles,
+        viteEnvironment: { name: environment },
+        workerEntryPathname: entry,
+      } = givenOptions;
+
       verboseLog(
         "Hot update: (env=%s) %s\nModule graph:\n\n%s",
         this.environment.name,
         ctx.file,
         dumpFullModuleGraph(ctx.server, this.environment.name),
       );
-      const environment = givenOptions.viteEnvironment.name;
-      const entry = givenOptions.workerEntryPathname;
 
       if (!["client", environment].includes(this.environment.name)) {
         return [];
+      }
+
+      const hasClientDirective = await hasDirective(ctx.file, "use client");
+      const hasServerDirective =
+        !hasClientDirective && (await hasDirective(ctx.file, "use server"));
+      let clientDirectiveChanged = false;
+      let serverDirectiveChanged = false;
+
+      if (!clientFiles.has(ctx.file) && hasClientDirective) {
+        clientFiles.add(ctx.file);
+        clientDirectiveChanged = true;
+      } else if (clientFiles.has(ctx.file) && !hasClientDirective) {
+        clientFiles.delete(ctx.file);
+        clientDirectiveChanged = true;
+      }
+
+      if (!serverFiles.has(ctx.file) && hasServerDirective) {
+        serverFiles.add(ctx.file);
+        serverDirectiveChanged = true;
+      } else if (serverFiles.has(ctx.file) && !hasServerDirective) {
+        serverFiles.delete(ctx.file);
+        serverDirectiveChanged = true;
+      }
+
+      if (clientDirectiveChanged) {
+        ["client", "ssr", environment].forEach((environment) => {
+          invalidateModule(
+            ctx.server,
+            environment,
+            "virtual:use-client-lookup.js",
+          );
+        });
+        invalidateModule(
+          ctx.server,
+          environment,
+          VIRTUAL_SSR_PREFIX + "/@id/virtual:use-client-lookup.js",
+        );
+      }
+
+      if (serverDirectiveChanged) {
+        ["client", "ssr", environment].forEach((environment) => {
+          invalidateModule(
+            ctx.server,
+            environment,
+            "virtual:use-server-lookup.js",
+          );
+        });
+        invalidateModule(
+          ctx.server,
+          environment,
+          VIRTUAL_SSR_PREFIX + "/@id/virtual:use-server-lookup.js",
+        );
       }
 
       // todo(justinvdm, 12 Dec 2024): Skip client references
@@ -133,8 +147,6 @@ export const miniflareHMRPlugin = (givenOptions: {
       // => Notify for HMR update of any css files imported by in worker, that are also in the client module graph
       // Why: There may have been changes to css classes referenced, which might css modules to change
       if (this.environment.name === "client") {
-        const cssModules = [];
-
         for (const [_, module] of ctx.server.environments[environment]
           .moduleGraph.idToModuleMap) {
           // todo(justinvdm, 13 Dec 2024): We check+update _all_ css files in worker module graph,
@@ -146,17 +158,16 @@ export const miniflareHMRPlugin = (givenOptions: {
                 module.file,
               );
 
-            if (clientModules) {
-              cssModules.push(...clientModules.values());
+            for (const clientModule of clientModules ?? []) {
+              invalidateModule(ctx.server, "client", clientModule);
             }
           }
         }
 
-        invalidateUseClientCache(ctx.file);
-
-        return (await isUseClientModule(ctx, ctx.file))
-          ? [...ctx.modules, ...cssModules]
-          : cssModules;
+        // context(justinvdm, 10 Jul 2025): If this isn't a file with a client
+        // directive or a css file, we shouldn't invalidate anything else to
+        // avoid full page reload
+        return hasClientDirective || ctx.file.endsWith(".css") ? undefined : [];
       }
 
       // The worker needs an update, and the hot check is for the worker environment
@@ -180,12 +191,7 @@ export const miniflareHMRPlugin = (givenOptions: {
           .next().value;
 
         if (m) {
-          ctx.server.environments.client.moduleGraph.invalidateModule(
-            m,
-            new Set(),
-            ctx.timestamp,
-            true,
-          );
+          invalidateModule(ctx.server, environment, m);
         }
 
         const virtualSSRModule = ctx.server.environments[
@@ -196,12 +202,7 @@ export const miniflareHMRPlugin = (givenOptions: {
         );
 
         if (virtualSSRModule) {
-          ctx.server.environments.worker.moduleGraph.invalidateModule(
-            virtualSSRModule,
-            new Set(),
-            ctx.timestamp,
-            true,
-          );
+          invalidateModule(ctx.server, environment, virtualSSRModule);
         }
 
         ctx.server.environments.client.hot.send({
