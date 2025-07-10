@@ -6,10 +6,22 @@ import { ViteDevServer } from "vite";
 import debug from "debug";
 import { VIRTUAL_SSR_PREFIX } from "./ssrBridgePlugin.mjs";
 import { normalizeModulePath } from "./normalizeModulePath.mjs";
-
+import { hasDirective as sourceHasDirective } from "./hasDirective.mjs";
+import { isJsFile } from "./isJsFile.mjs";
+import { invalidateModule } from "./invalidateModule.mjs";
 import { getShortName } from "../lib/getShortName.mjs";
 
 const verboseLog = debug("verbose:rwsdk:vite:hmr-plugin");
+
+const hasDirective = async (filepath: string, directive: string) => {
+  if (!isJsFile(filepath)) {
+    return false;
+  }
+
+  const content = await readFile(filepath, "utf-8");
+
+  return sourceHasDirective(content, directive);
+};
 
 const hasEntryAsAncestor = (
   module: any,
@@ -17,7 +29,10 @@ const hasEntryAsAncestor = (
   seen = new Set(),
 ): boolean => {
   // Prevent infinite recursion
-  if (seen.has(module)) return false;
+  if (seen.has(module)) {
+    return false;
+  }
+
   seen.add(module);
 
   // Check direct importers
@@ -40,9 +55,12 @@ export const miniflareHMRPlugin = (givenOptions: {
   {
     name: "rwsdk:miniflare-hmr",
     async hotUpdate(ctx) {
-      const { clientFiles, serverFiles } = givenOptions;
-      const environment = givenOptions.viteEnvironment.name;
-      const entry = givenOptions.workerEntryPathname;
+      const {
+        clientFiles,
+        serverFiles,
+        viteEnvironment: { name: environment },
+        workerEntryPathname: entry,
+      } = givenOptions;
 
       verboseLog(
         "Hot update: (env=%s) %s\nModule graph:\n\n%s",
@@ -53,6 +71,62 @@ export const miniflareHMRPlugin = (givenOptions: {
 
       if (!["client", environment].includes(this.environment.name)) {
         return [];
+      }
+
+      const hasClientDirective = await hasDirective(ctx.file, "use client");
+      const hasServerDirective =
+        !hasClientDirective && (await hasDirective(ctx.file, "use server"));
+      let clientDirectiveChanged = false;
+      let serverDirectiveChanged = false;
+
+      if (!clientFiles.has(ctx.file) && hasClientDirective) {
+        clientFiles.add(ctx.file);
+        clientDirectiveChanged = true;
+      } else if (clientFiles.has(ctx.file) && !hasClientDirective) {
+        clientFiles.delete(ctx.file);
+        clientDirectiveChanged = true;
+      }
+
+      if (!serverFiles.has(ctx.file) && hasServerDirective) {
+        serverFiles.add(ctx.file);
+        serverDirectiveChanged = true;
+      } else if (serverFiles.has(ctx.file) && !hasServerDirective) {
+        serverFiles.delete(ctx.file);
+        serverDirectiveChanged = true;
+      }
+
+      if (clientDirectiveChanged) {
+        ["client", "ssr", environment].forEach((environment) => {
+          invalidateModule(
+            ctx.server,
+            environment,
+            "virtual:use-client-lookup.js",
+            { invalidateImportersRecursively: true },
+          );
+        });
+        invalidateModule(
+          ctx.server,
+          environment,
+          VIRTUAL_SSR_PREFIX + "/@id/virtual:use-client-lookup.js",
+          { invalidateImportersRecursively: true },
+        );
+      }
+
+      if (serverDirectiveChanged) {
+        ["client", "ssr", environment].forEach((environment) => {
+          invalidateModule(
+            ctx.server,
+            environment,
+            "virtual:use-server-lookup.js",
+            { invalidateImportersRecursively: true },
+          );
+        });
+        invalidateModule(
+          ctx.server,
+          environment,
+          VIRTUAL_SSR_PREFIX + "/@id/virtual:use-server-lookup.js",
+          { invalidateImportersRecursively: true },
+        );
       }
 
       // todo(justinvdm, 12 Dec 2024): Skip client references
@@ -77,8 +151,6 @@ export const miniflareHMRPlugin = (givenOptions: {
       // => Notify for HMR update of any css files imported by in worker, that are also in the client module graph
       // Why: There may have been changes to css classes referenced, which might css modules to change
       if (this.environment.name === "client") {
-        const cssModules = [];
-
         for (const [_, module] of ctx.server.environments[environment]
           .moduleGraph.idToModuleMap) {
           // todo(justinvdm, 13 Dec 2024): We check+update _all_ css files in worker module graph,
@@ -91,12 +163,7 @@ export const miniflareHMRPlugin = (givenOptions: {
               );
 
             for (const clientModule of clientModules ?? []) {
-              ctx.server.environments.worker.moduleGraph.invalidateModule(
-                clientModule,
-                new Set(),
-                ctx.timestamp,
-                true,
-              );
+              invalidateModule(ctx.server, environment, clientModule);
             }
           }
         }
@@ -125,12 +192,7 @@ export const miniflareHMRPlugin = (givenOptions: {
           .next().value;
 
         if (m) {
-          ctx.server.environments.client.moduleGraph.invalidateModule(
-            m,
-            new Set(),
-            ctx.timestamp,
-            true,
-          );
+          invalidateModule(ctx.server, environment, m);
         }
 
         const virtualSSRModule = ctx.server.environments[
@@ -141,12 +203,7 @@ export const miniflareHMRPlugin = (givenOptions: {
         );
 
         if (virtualSSRModule) {
-          ctx.server.environments.worker.moduleGraph.invalidateModule(
-            virtualSSRModule,
-            new Set(),
-            ctx.timestamp,
-            true,
-          );
+          invalidateModule(ctx.server, environment, virtualSSRModule);
         }
 
         ctx.server.environments.client.hot.send({

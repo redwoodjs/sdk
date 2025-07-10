@@ -1,25 +1,58 @@
 import debug from "debug";
-import type { ViteDevServer } from "vite";
+import type { EnvironmentModuleNode, ViteDevServer } from "vite";
 
 const log = debug("rwsdk:vite:invalidate-module");
-const verboseLog = debug("verbose:rwsdk:vite:invalidate-module");
+
+interface InvalidatableModuleOptions {
+  invalidateImportersRecursively?: boolean;
+}
 
 export const invalidateModule = (
   devServer: ViteDevServer,
   environment: string,
-  id: string,
+  target: string | EnvironmentModuleNode,
+  options: InvalidatableModuleOptions = {},
+  seen: Set<EnvironmentModuleNode> = new Set(),
 ) => {
-  const [rawId, _query] = id.split("?");
-  log("Invalidating module: id=%s, environment=%s", id, environment);
+  let moduleNode: EnvironmentModuleNode | undefined;
+  if (typeof target === "string") {
+    const id = target;
+    const [rawId, _query] = id.split("?");
 
-  const moduleNode =
-    devServer?.environments[environment]?.moduleGraph.idToModuleMap.get(rawId);
+    moduleNode =
+      devServer?.environments[environment]?.moduleGraph.idToModuleMap.get(
+        rawId,
+      );
+  } else {
+    moduleNode = target;
+  }
 
   if (moduleNode) {
-    devServer?.environments[environment]?.moduleGraph.invalidateModule(
+    if (seen.has(moduleNode)) {
+      return;
+    }
+    seen.add(moduleNode);
+
+    devServer.environments[environment]?.moduleGraph.invalidateModule(
       moduleNode,
+      seen,
     );
+    log(
+      "Invalidating module: id=%s, environment=%s",
+      moduleNode.id,
+      environment,
+    );
+
+    if (options.invalidateImportersRecursively) {
+      for (const importer of moduleNode.importers) {
+        invalidateModule(devServer, environment, importer, options, seen);
+      }
+    }
   } else {
-    verboseLog("Module not found: id=%s, environment=%s", id, environment);
+    log(
+      "Module not found: id=%s, environment=%s",
+      typeof target === "string" ? target : target.id,
+      environment,
+    );
   }
 };
