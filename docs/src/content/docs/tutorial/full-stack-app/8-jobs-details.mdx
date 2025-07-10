@@ -27,7 +27,7 @@ Let's start by creating a new file in our `src/app/pages/applications` folder ca
   - app
     - pages
       - applications
-        - actions.ts
+        - functions.ts
         - Details.tsx
         - List.tsx
         - New.tsx
@@ -59,7 +59,7 @@ render(Document, [
     route("/", [isAuthenticated, List]),
     route("/new", [isAuthenticated, New]),
 -    route("/:id", [isAuthenticated, () => <h1>Application</h1>]),
-+    route("/:id", [isAuthenticated, () => Details]),
++    route("/:id", [isAuthenticated, Details]),
   ]),
 ]),
 ---
@@ -1034,7 +1034,7 @@ Let's take the smarter, not harder approach and start with our `New` application
   - app/
     - pages/
       - applications/
-        - actions.ts
+        - functions.ts
         - Details.tsx
         - Edit.tsx
         - List.tsx
@@ -1256,7 +1256,7 @@ We updated the types that we're importing from Prisma to remove `Contact` and in
 
 You'll notice that we imported `ApplicationWithRelations` from our `List` page. This is a type that we created to include the `company` and `contacts` details.
 
-Now, et's work our way through the form, for each input field, we want to set a `defaultValue`, referencing the application details.
+Now, let's work our way through the form, for each input field, we want to set a `defaultValue`, referencing the application details.
 
 ```tsx title="/src/app/components/EditApplicationForm.tsx" showLineNumbers=false {"Company Name": 1} "defaultValue={application?.company?.name ?? ''}" {"Job Title": 3} "defaultValue={application?.jobTitle ?? ''}" {"Job Description": 5} "defaultValue={application?.jobDescription ?? ''}" {"Salary Min": 7} "defaultValue={application?.salaryMin ?? ''}" {"Salary Max": 9} "defaultValue={application?.salaryMax ?? ''}" {"Posting URL": 11} "defaultValue={application?.postingUrl ?? ''}"
 .
