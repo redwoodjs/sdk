@@ -164,9 +164,10 @@ export const miniflareHMRPlugin = (givenOptions: {
           }
         }
 
-        // context(justinvdm, 10 Jul 2025): If this isn't a file with a client directive,
-        // we shouldn't invalidate anything else to avoid full page reload
-        return hasClientDirective ? undefined : [];
+        // context(justinvdm, 10 Jul 2025): If this isn't a file with a client
+        // directive or a css file, we shouldn't invalidate anything else to
+        // avoid full page reload
+        return hasClientDirective || ctx.file.endsWith(".css") ? undefined : [];
       }
 
       // The worker needs an update, and the hot check is for the worker environment
