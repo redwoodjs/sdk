@@ -8,7 +8,6 @@ import { VIRTUAL_SSR_PREFIX } from "./ssrBridgePlugin.mjs";
 import { normalizeModulePath } from "./normalizeModulePath.mjs";
 
 import { getShortName } from "../lib/getShortName.mjs";
-import { pathExists } from "fs-extra";
 
 const verboseLog = debug("verbose:rwsdk:vite:hmr-plugin");
 
@@ -31,66 +30,9 @@ const hasEntryAsAncestor = (
   return false;
 };
 
-// Cache for "use client" status results
-const useClientCache = new Map<string, boolean>();
-
-// Function to invalidate cache for a file
-const invalidateUseClientCache = (file: string) => {
-  useClientCache.delete(file);
-};
-
-const isUseClientModule = async (
-  ctx: HotUpdateOptions,
-  file: string,
-  seen = new Set<string>(),
-): Promise<boolean> => {
-  // Prevent infinite recursion
-  if (seen.has(file)) return false;
-  seen.add(file);
-
-  try {
-    // Check cache first
-    if (useClientCache.has(file)) {
-      return useClientCache.get(file)!;
-    }
-
-    // Read and check the file
-    const content = (await pathExists(file))
-      ? await readFile(file, "utf-8")
-      : "";
-
-    const hasUseClient =
-      content.includes("'use client'") || content.includes('"use client"');
-
-    if (hasUseClient) {
-      useClientCache.set(file, true);
-      return true;
-    }
-
-    // Get the module from the module graph to find importers
-    const module = ctx.server.moduleGraph.getModuleById(file);
-    if (!module) {
-      useClientCache.set(file, false);
-      return false;
-    }
-
-    // Check all importers recursively
-    for (const importer of module.importers) {
-      if (await isUseClientModule(ctx, importer.url, seen)) {
-        useClientCache.set(file, true);
-        return true;
-      }
-    }
-
-    useClientCache.set(file, false);
-    return false;
-  } catch (error) {
-    useClientCache.set(file, false);
-    return false;
-  }
-};
-
 export const miniflareHMRPlugin = (givenOptions: {
+  clientFiles: Set<string>;
+  serverFiles: Set<string>;
   rootDir: string;
   viteEnvironment: { name: string };
   workerEntryPathname: string;
@@ -98,14 +40,16 @@ export const miniflareHMRPlugin = (givenOptions: {
   {
     name: "rwsdk:miniflare-hmr",
     async hotUpdate(ctx) {
+      const { clientFiles, serverFiles } = givenOptions;
+      const environment = givenOptions.viteEnvironment.name;
+      const entry = givenOptions.workerEntryPathname;
+
       verboseLog(
         "Hot update: (env=%s) %s\nModule graph:\n\n%s",
         this.environment.name,
         ctx.file,
         dumpFullModuleGraph(ctx.server, this.environment.name),
       );
-      const environment = givenOptions.viteEnvironment.name;
-      const entry = givenOptions.workerEntryPathname;
 
       if (!["client", environment].includes(this.environment.name)) {
         return [];
@@ -146,17 +90,18 @@ export const miniflareHMRPlugin = (givenOptions: {
                 module.file,
               );
 
-            if (clientModules) {
-              cssModules.push(...clientModules.values());
+            for (const clientModule of clientModules ?? []) {
+              ctx.server.environments.worker.moduleGraph.invalidateModule(
+                clientModule,
+                new Set(),
+                ctx.timestamp,
+                true,
+              );
             }
           }
         }
 
-        invalidateUseClientCache(ctx.file);
-
-        return (await isUseClientModule(ctx, ctx.file))
-          ? [...ctx.modules, ...cssModules]
-          : cssModules;
+        return;
       }
 
       // The worker needs an update, and the hot check is for the worker environment
