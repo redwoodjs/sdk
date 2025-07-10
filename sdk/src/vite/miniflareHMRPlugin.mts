@@ -159,7 +159,7 @@ export const miniflareHMRPlugin = (givenOptions: {
               );
 
             for (const clientModule of clientModules ?? []) {
-              invalidateModule(ctx.server, environment, clientModule);
+              invalidateModule(ctx.server, "client", clientModule);
             }
           }
         }
