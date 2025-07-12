@@ -707,7 +707,7 @@ Are you getting an error that says: `"Property 'applicationStatus' does not exis
 This means that the Prisma types haven't been generated for your model. Within the Terminal, run:
 
 ```shell
-npx prisma generate
+pnpm prisma generate
 ```
 
 That should resolve your problem. Otherwise, ensure the `ApplicationStatus` table exists in your database.
