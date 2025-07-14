@@ -10,7 +10,7 @@
   "private": true,
   "scripts": {
     "build": "vite build",
-    "dev": "NODE_ENV=${NODE_ENV:-development} vite dev",
+    "dev": "vite dev",
     "dev:init": "rw-scripts dev-init",
     "preview": "vite preview",
     "worker:run": "rw-scripts worker-run",
