@@ -23,19 +23,19 @@ export function findSsrImportSpecifiers(
     const root = sgParse(lang, code);
     const patterns = [
       {
-        pattern: `__vite_ssr_import__("$SPECIFIER")`,
+        pattern: `__vite_ssr_import__("$SPECIFIER", $$$REST)`,
         list: imports,
       },
       {
-        pattern: `__vite_ssr_import__('$SPECIFIER')`,
+        pattern: `__vite_ssr_import__('$SPECIFIER', $$$REST)`,
         list: imports,
       },
       {
-        pattern: `__vite_ssr_dynamic_import__("$SPECIFIER")`,
+        pattern: `__vite_ssr_dynamic_import__("$SPECIFIER", $$$REST)`,
         list: dynamicImports,
       },
       {
-        pattern: `__vite_ssr_dynamic_import__('$SPECIFIER')`,
+        pattern: `__vite_ssr_dynamic_import__('$SPECIFIER', $$$REST)`,
         list: dynamicImports,
       },
     ];

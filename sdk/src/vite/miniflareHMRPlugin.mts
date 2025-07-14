@@ -63,7 +63,7 @@ export const miniflareHMRPlugin = (givenOptions: {
       } = givenOptions;
 
       if (process.env.VERBOSE) {
-        this.environment.logger.info(
+        log(
           `Hot update: (env=${
             this.environment.name
           }) ${ctx.file}\nModule graph:\n\n${dumpFullModuleGraph(
@@ -137,33 +137,30 @@ export const miniflareHMRPlugin = (givenOptions: {
         ) ?? [],
       );
 
+      console.log("######", ctx.file, this.environment.name);
       const isWorkerUpdate =
         ctx.file === entry ||
         modules.some((module) => hasEntryAsAncestor(module, entry));
-
-      // The worker doesnt need an update
-      // => Short circuit HMR
-      if (!isWorkerUpdate) {
-        return [];
-      }
 
       // The worker needs an update, but this is the client environment
       // => Notify for HMR update of any css files imported by in worker, that are also in the client module graph
       // Why: There may have been changes to css classes referenced, which might css modules to change
       if (this.environment.name === "client") {
-        for (const [_, module] of ctx.server.environments[environment]
-          .moduleGraph.idToModuleMap) {
-          // todo(justinvdm, 13 Dec 2024): We check+update _all_ css files in worker module graph,
-          // but it could just be a subset of css files that are actually affected, depending
-          // on the importers and imports of the changed file. We should be smarter about this.
-          if (module.file && module.file.endsWith(".css")) {
-            const clientModules =
-              ctx.server.environments.client.moduleGraph.getModulesByFile(
-                module.file,
-              );
+        if (isWorkerUpdate) {
+          for (const [_, module] of ctx.server.environments[environment]
+            .moduleGraph.idToModuleMap) {
+            // todo(justinvdm, 13 Dec 2024): We check+update _all_ css files in worker module graph,
+            // but it could just be a subset of css files that are actually affected, depending
+            // on the importers and imports of the changed file. We should be smarter about this.
+            if (module.file && module.file.endsWith(".css")) {
+              const clientModules =
+                ctx.server.environments.client.moduleGraph.getModulesByFile(
+                  module.file,
+                );
 
-            for (const clientModule of clientModules ?? []) {
-              invalidateModule(ctx.server, "client", clientModule);
+              for (const clientModule of clientModules ?? []) {
+                invalidateModule(ctx.server, "client", clientModule);
+              }
             }
           }
         }
