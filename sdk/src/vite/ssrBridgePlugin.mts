@@ -160,25 +160,35 @@ export const ssrBridgePlugin = ({
             log,
           );
 
-          const allSpecifiers = [...new Set([...imports, ...dynamicImports])];
+          const allSpecifiers = [
+            ...new Set([...imports, ...dynamicImports]),
+          ].map((id) =>
+            id.startsWith("/@id/") ? id.slice("/@id/".length) : id,
+          );
 
           const switchCases = allSpecifiers
             .map(
               (specifier) =>
-                `    case "${specifier}": return import("${VIRTUAL_SSR_PREFIX}${specifier}");`,
+                `    case "${specifier}": import("${VIRTUAL_SSR_PREFIX}${specifier}");`,
             )
             .join("\n");
 
           const transformedCode = `
 await (async function(__vite_ssr_import__, __vite_ssr_dynamic_import__) {${code}})(
-  (id, ...args) => {ssrImport(id); return __vite_ssr_import__('/@id/${VIRTUAL_SSR_PREFIX}' + id, ...args);},
-  (id, ...args) => {ssrImport(id); return __vite_ssr_dynamic_import__('/@id/${VIRTUAL_SSR_PREFIX}' + id, ...args);}
+  __ssrImport.bind(null, false),
+  __ssrImport.bind(null, true)
 );
 
-function ssrImport(id) {
+function __ssrImport(isDynamic, id, ...args) {
+  id = id.startsWith('/@id/') ? id.slice('/@id/'.length) : id;
+
   switch (id) {
 ${switchCases}
   }
+
+  return isDynamic
+    ? __vite_ssr_dynamic_import__("/@id/${VIRTUAL_SSR_PREFIX}" + id, ...args)
+    : __vite_ssr_import__("/@id/${VIRTUAL_SSR_PREFIX}" + id, ...args);
 }
 `;
 

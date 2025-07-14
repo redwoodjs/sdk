@@ -73,6 +73,21 @@ export const miniflareHMRPlugin = (givenOptions: {
         );
       }
 
+      if (this.environment.name === "ssr") {
+        log("SSR update, invalidating recursively", ctx.file);
+        invalidateModule(ctx.server, "ssr", ctx.file, {
+          invalidateImportersRecursively: true,
+        });
+        invalidateModule(
+          ctx.server,
+          environment,
+          VIRTUAL_SSR_PREFIX +
+            normalizeModulePath(givenOptions.rootDir, ctx.file),
+          { invalidateImportersRecursively: true },
+        );
+        return [];
+      }
+
       if (!["client", environment].includes(this.environment.name)) {
         return [];
       }
@@ -137,7 +152,6 @@ export const miniflareHMRPlugin = (givenOptions: {
         ) ?? [],
       );
 
-      console.log("######", ctx.file, this.environment.name);
       const isWorkerUpdate =
         ctx.file === entry ||
         modules.some((module) => hasEntryAsAncestor(module, entry));
@@ -165,10 +179,7 @@ export const miniflareHMRPlugin = (givenOptions: {
           }
         }
 
-        // context(justinvdm, 10 Jul 2025): If this isn't a file with a client
-        // directive or a css file, we shouldn't invalidate anything else to
-        // avoid full page reload
-        return hasClientDirective || ctx.file.endsWith(".css") ? undefined : [];
+        return ctx.modules;
       }
 
       // The worker needs an update, and the hot check is for the worker environment

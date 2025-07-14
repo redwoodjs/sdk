@@ -2,7 +2,7 @@ import memoize from "lodash/memoize";
 
 export const ssrLoadModule = memoize(async (id: string) => {
   const { useClientLookup } = await import(
-    "virtual:use-client-lookup" as string
+    "virtual:use-client-lookup.js" as string
   );
 
   const moduleFn = useClientLookup[id];

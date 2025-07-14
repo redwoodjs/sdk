@@ -3,7 +3,7 @@ import { createServerReference as baseCreateServerReference } from "react-server
 
 export const loadServerModule = memoize(async (id: string) => {
   const { useServerLookup } = await import(
-    "virtual:use-server-lookup" as string
+    "virtual:use-server-lookup.js" as string
   );
 
   const moduleFn = useServerLookup[id];
