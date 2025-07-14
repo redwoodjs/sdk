@@ -4,7 +4,6 @@ import { SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import { findSsrImportSpecifiers } from "./findSsrSpecifiers.mjs";
 
 const log = debug("rwsdk:vite:ssr-bridge-plugin");
-const verboseLog = debug("verbose:rwsdk:vite:ssr-bridge-plugin");
 
 export const VIRTUAL_SSR_PREFIX = "virtual:rwsdk:ssr:";
 
@@ -58,11 +57,12 @@ export const ssrBridgePlugin = ({
               "Setting up esbuild plugin to mark rwsdk/__ssr paths as external for worker",
             );
             build.onResolve({ filter: /.*$/ }, (args) => {
-              verboseLog(
-                "Esbuild onResolve called for path=%s, args=%O",
-                args.path,
-                args,
-              );
+              process.env.VERBOSE &&
+                log(
+                  "Esbuild onResolve called for path=%s, args=%O",
+                  args.path,
+                  args,
+                );
 
               if (args.path === "rwsdk/__ssr_bridge") {
                 log("Marking as external: %s", args.path);
@@ -79,12 +79,13 @@ export const ssrBridgePlugin = ({
       }
     },
     async resolveId(id) {
-      verboseLog(
-        "Resolving id=%s, environment=%s, isDev=%s",
-        id,
-        this.environment?.name,
-        isDev,
-      );
+      process.env.VERBOSE &&
+        log(
+          "Resolving id=%s, environment=%s, isDev=%s",
+          id,
+          this.environment?.name,
+          isDev,
+        );
 
       if (isDev) {
         // context(justinvdm, 27 May 2025): In dev, we need to dynamically load
@@ -124,15 +125,16 @@ export const ssrBridgePlugin = ({
         }
       }
 
-      verboseLog("No resolution for id=%s", id);
+      process.env.VERBOSE && log("No resolution for id=%s", id);
     },
     async load(id) {
-      verboseLog(
-        "Loading id=%s, isDev=%s, environment=%s",
-        id,
-        isDev,
-        this.environment.name,
-      );
+      process.env.VERBOSE &&
+        log(
+          "Loading id=%s, isDev=%s, environment=%s",
+          id,
+          isDev,
+          this.environment.name,
+        );
 
       if (
         id.startsWith(VIRTUAL_SSR_PREFIX) &&
@@ -146,7 +148,8 @@ export const ssrBridgePlugin = ({
           log("Dev mode: fetching SSR module for realPath=%s", realId);
           const result = await devServer?.environments.ssr.fetchModule(realId);
 
-          verboseLog("Fetch module result: id=%s, result=%O", realId, result);
+          process.env.VERBOSE &&
+            log("Fetch module result: id=%s, result=%O", realId, result);
 
           const code = "code" in result ? result.code : undefined;
           log("Fetched SSR module code length: %d", code?.length || 0);
@@ -154,7 +157,7 @@ export const ssrBridgePlugin = ({
           const { imports, dynamicImports } = findSsrImportSpecifiers(
             realId,
             code || "",
-            verboseLog,
+            log,
           );
 
           const allSpecifiers = [...new Set([...imports, ...dynamicImports])];
@@ -181,17 +184,18 @@ ${switchCases}
 
           log("Transformed SSR module code length: %d", transformedCode.length);
 
-          verboseLog(
-            "Transformed SSR module code for realId=%s: %s",
-            realId,
-            transformedCode,
-          );
+          process.env.VERBOSE &&
+            log(
+              "Transformed SSR module code for realId=%s: %s",
+              realId,
+              transformedCode,
+            );
 
           return transformedCode;
         }
       }
 
-      verboseLog("No load handling for id=%s", id);
+      process.env.VERBOSE && log("No load handling for id=%s", id);
     },
   };
 

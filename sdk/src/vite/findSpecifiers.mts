@@ -69,7 +69,7 @@ export function findImportSpecifiers(
 ): Array<{ s: number; e: number; raw: string }> {
   const ext = path.extname(id).toLowerCase();
   const lang = ext === ".tsx" || ext === ".jsx" ? Lang.Tsx : SgLang.TypeScript;
-  const logger = log ?? (() => {});
+  const logger = process.env.VERBOSE ? (log ?? (() => {})) : () => {};
   const results: Array<{ s: number; e: number; raw: string }> = [];
   try {
     // sgParse and lang must be provided by the consumer
@@ -140,7 +140,7 @@ export function findExports(
 ): ExportInfo[] {
   const ext = path.extname(id).toLowerCase();
   const lang = ext === ".tsx" || ext === ".jsx" ? Lang.Tsx : SgLang.TypeScript;
-  const logger = log ?? (() => {});
+  const logger = process.env.VERBOSE ? (log ?? (() => {})) : () => {};
   const results: ExportInfo[] = [];
   const seen = new Set<string>(); // Track seen exports to avoid duplicates
 

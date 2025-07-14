@@ -6,7 +6,6 @@ import enhancedResolve from "enhanced-resolve";
 import { ensureAliasArray } from "./ensureAliasArray.mjs";
 
 const log = debug("rwsdk:vite:react-conditions-resolver-plugin");
-const verboseLog = debug("verbose:rwsdk:vite:react-conditions-resolver-plugin");
 
 export const ENV_REACT_IMPORTS = {
   worker: [
@@ -58,26 +57,30 @@ export const ENV_IMPORT_MAPPINGS = Object.fromEntries(
 );
 
 function resolveEnvImportMappings(env: keyof typeof ENV_RESOLVERS) {
-  verboseLog("Resolving environment import mappings for env=%s", env);
+  process.env.VERBOSE &&
+    log("Resolving environment import mappings for env=%s", env);
 
   const mappings = new Map<string, string>();
   const reactImports = ENV_REACT_IMPORTS[env];
 
   for (const importRequest of reactImports) {
-    verboseLog("Resolving import request=%s for env=%s", importRequest, env);
+    process.env.VERBOSE &&
+      log("Resolving import request=%s for env=%s", importRequest, env);
 
     let resolved: string | false = false;
 
     try {
       resolved = ENV_RESOLVERS[env](ROOT_DIR, importRequest);
-      verboseLog(
-        "Successfully resolved %s to %s for env=%s",
-        importRequest,
-        resolved,
-        env,
-      );
+      process.env.VERBOSE &&
+        log(
+          "Successfully resolved %s to %s for env=%s",
+          importRequest,
+          resolved,
+          env,
+        );
     } catch {
-      verboseLog("Failed to resolve %s for env=%s", importRequest, env);
+      process.env.VERBOSE &&
+        log("Failed to resolve %s for env=%s", importRequest, env);
     }
 
     if (resolved) {
@@ -105,22 +108,24 @@ function createEsbuildResolverPlugin(envName: string) {
     name: `rwsdk:react-conditions-resolver-esbuild-${envName}`,
     setup(build: any) {
       build.onResolve({ filter: /.*/ }, (args: any) => {
-        verboseLog(
-          "ESBuild resolving %s for env=%s, args=%O",
-          args.path,
-          envName,
-          args,
-        );
+        process.env.VERBOSE &&
+          log(
+            "ESBuild resolving %s for env=%s, args=%O",
+            args.path,
+            envName,
+            args,
+          );
 
         const resolved = mappings.get(args.path);
 
         if (resolved && args.importer !== "") {
-          verboseLog(
-            "ESBuild resolving %s -> %s for env=%s",
-            args.path,
-            resolved,
-            envName,
-          );
+          process.env.VERBOSE &&
+            log(
+              "ESBuild resolving %s -> %s for env=%s",
+              args.path,
+              resolved,
+              envName,
+            );
           if (args.path === "react-server-dom-webpack/client.edge") {
             return;
           }
@@ -128,11 +133,12 @@ function createEsbuildResolverPlugin(envName: string) {
             path: resolved,
           };
         } else {
-          verboseLog(
-            "ESBuild no resolution found for %s for env=%s",
-            args.path,
-            envName,
-          );
+          process.env.VERBOSE &&
+            log(
+              "ESBuild no resolution found for %s for env=%s",
+              args.path,
+              envName,
+            );
         }
       });
     },
@@ -228,17 +234,19 @@ export const reactConditionsResolverPlugin = (): Plugin[] => {
           return;
         }
 
-        verboseLog(
-          "Resolving id=%s, environment=%s, importer=%s",
-          id,
-          envName,
-          importer,
-        );
+        process.env.VERBOSE &&
+          log(
+            "Resolving id=%s, environment=%s, importer=%s",
+            id,
+            envName,
+            importer,
+          );
 
         const mappings = ENV_IMPORT_MAPPINGS[envName];
 
         if (!mappings) {
-          verboseLog("No mappings found for environment: %s", envName);
+          process.env.VERBOSE &&
+            log("No mappings found for environment: %s", envName);
           return;
         }
 
@@ -249,7 +257,8 @@ export const reactConditionsResolverPlugin = (): Plugin[] => {
           return resolved;
         }
 
-        verboseLog("No resolution found for id=%s in env=%s", id, envName);
+        process.env.VERBOSE &&
+          log("No resolution found for id=%s in env=%s", id, envName);
       },
     },
   ];

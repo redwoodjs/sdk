@@ -6,7 +6,6 @@ import { parse as sgParse, Lang as SgLang, Lang } from "@ast-grep/napi";
 import path from "path";
 
 const log = debug("rwsdk:vite:transform-server-functions");
-const verboseLog = debug("verbose:rwsdk:vite:transform-server-functions");
 
 interface TransformResult {
   code: string;
@@ -33,12 +32,12 @@ export const findExportInfo = (
   code: string,
   normalizedId?: string,
 ): ExportInfoCompat => {
-  verboseLog("Finding exported functions in source file");
+  process.env.VERBOSE && log("Finding exported functions in source file");
 
   const localFunctions = new Set<string>();
   const reExports: ExportInfoCompat["reExports"] = [];
 
-  const exportInfos = findExports(normalizedId || "file.ts", code, verboseLog);
+  const exportInfos = findExports(normalizedId || "file.ts", code, log);
 
   for (const exportInfo of exportInfos) {
     if (exportInfo.isReExport && exportInfo.moduleSpecifier) {
@@ -58,15 +57,17 @@ export const findExportInfo = (
         originalName: originalName,
         moduleSpecifier: exportInfo.moduleSpecifier,
       });
-      verboseLog(
-        "Found re-exported function: %s (original: %s) from %s",
-        exportInfo.name,
-        originalName,
-        exportInfo.moduleSpecifier,
-      );
+      process.env.VERBOSE &&
+        log(
+          "Found re-exported function: %s (original: %s) from %s",
+          exportInfo.name,
+          originalName,
+          exportInfo.moduleSpecifier,
+        );
     } else {
       localFunctions.add(exportInfo.name);
-      verboseLog("Found exported function: %s", exportInfo.name);
+      process.env.VERBOSE &&
+        log("Found exported function: %s", exportInfo.name);
     }
   }
 
@@ -102,7 +103,7 @@ function findDefaultFunctionName(
       return nameCapture?.text() || null;
     }
   } catch (err) {
-    verboseLog("Error finding default function name: %O", err);
+    process.env.VERBOSE && log("Error finding default function name: %O", err);
   }
   return null;
 }
@@ -128,7 +129,7 @@ function hasDefaultExport(code: string, normalizedId: string): boolean {
       }
     }
   } catch (err) {
-    verboseLog("Error checking for default export: %O", err);
+    process.env.VERBOSE && log("Error checking for default export: %O", err);
   }
   return false;
 }
@@ -140,19 +141,21 @@ export const transformServerFunctions = (
   serverFiles?: Set<string>,
   addServerModule?: (environment: string, id: string) => void,
 ): TransformResult | undefined => {
-  verboseLog(
-    "Transform server functions called for normalizedId=%s, environment=%s",
-    normalizedId,
-    environment,
-  );
+  process.env.VERBOSE &&
+    log(
+      "Transform server functions called for normalizedId=%s, environment=%s",
+      normalizedId,
+      environment,
+    );
 
   if (!hasDirective(code, "use server")) {
     log("Skipping: no 'use server' directive in id=%s", normalizedId);
-    verboseLog(
-      ":VERBOSE: Returning code unchanged for id=%s:\n%s",
-      normalizedId,
-      code,
-    );
+    process.env.VERBOSE &&
+      log(
+        ":VERBOSE: Returning code unchanged for id=%s:\n%s",
+        normalizedId,
+        code,
+      );
     return;
   }
 
@@ -239,10 +242,11 @@ export const transformServerFunctions = (
       const start = match.index;
       const end = match.index + match[0].length;
       s.remove(start, end);
-      verboseLog(
-        "Removed 'use server' directive from normalizedId=%s",
-        normalizedId,
-      );
+      process.env.VERBOSE &&
+        log(
+          "Removed 'use server' directive from normalizedId=%s",
+          normalizedId,
+        );
       break; // Only remove the first one
     }
 
@@ -358,7 +362,8 @@ export const transformServerFunctions = (
           }
         }
       } catch (err) {
-        verboseLog("Error processing default function: %O", err);
+        process.env.VERBOSE &&
+          log("Error processing default function: %O", err);
       }
     }
 
@@ -431,11 +436,12 @@ export const transformServerFunctions = (
     };
   }
 
-  verboseLog(
-    "No transformation applied for environment=%s, normalizedId=%s",
-    environment,
-    normalizedId,
-  );
+  process.env.VERBOSE &&
+    log(
+      "No transformation applied for environment=%s, normalizedId=%s",
+      environment,
+      normalizedId,
+    );
 };
 
 export type { TransformResult };

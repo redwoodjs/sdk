@@ -8,7 +8,6 @@ import { normalizeModulePath } from "./normalizeModulePath.mjs";
 import type { ViteDevServer } from "vite";
 
 const log = debug("rwsdk:vite:rsc-directives-plugin");
-const verboseLog = debug("verbose:rwsdk:vite:rsc-directives-plugin");
 
 const getLoader = (filePath: string) => {
   const ext = path.extname(filePath).slice(1);
@@ -120,11 +119,12 @@ export const directivesPlugin = ({
       });
     },
     async transform(code, id) {
-      verboseLog(
-        "Transform called for id=%s, environment=%s",
-        id,
-        this.environment.name,
-      );
+      process.env.VERBOSE &&
+        log(
+          "Transform called for id=%s, environment=%s",
+          id,
+          this.environment.name,
+        );
 
       const normalizedId = normalizeModulePath(projectRootDir, id);
 
@@ -158,7 +158,7 @@ export const directivesPlugin = ({
         };
       }
 
-      verboseLog("No transformation applied for id=%s", id);
+      process.env.VERBOSE && log("No transformation applied for id=%s", id);
     },
     configEnvironment(env, config) {
       log("Configuring environment: env=%s", env);
@@ -173,11 +173,12 @@ export const directivesPlugin = ({
           build.onLoad(
             { filter: /\.(js|ts|jsx|tsx|mts|mjs|cjs)$/ },
             async (args) => {
-              verboseLog(
-                "Esbuild onLoad called for environment=%s, path=%s",
-                env,
-                args.path,
-              );
+              process.env.VERBOSE &&
+                log(
+                  "Esbuild onLoad called for environment=%s, path=%s",
+                  env,
+                  args.path,
+                );
 
               const normalizedPath = normalizeModulePath(
                 projectRootDir,
@@ -244,11 +245,12 @@ export const directivesPlugin = ({
               try {
                 code = await fs.readFile(args.path, "utf-8");
               } catch {
-                verboseLog(
-                  "Failed to read file: %s, environment=%s",
-                  args.path,
-                  env,
-                );
+                process.env.VERBOSE &&
+                  log(
+                    "Failed to read file: %s, environment=%s",
+                    args.path,
+                    env,
+                  );
                 return undefined;
               }
 
@@ -269,12 +271,13 @@ export const directivesPlugin = ({
                   env,
                   args.path,
                 );
-                verboseLog(
-                  "Esbuild client component transformation for environment=%s, path=%s, code: %j",
-                  env,
-                  args.path,
-                  clientResult.code,
-                );
+                process.env.VERBOSE &&
+                  log(
+                    "Esbuild client component transformation for environment=%s, path=%s, code: %j",
+                    env,
+                    args.path,
+                    clientResult.code,
+                  );
                 return {
                   contents: clientResult.code,
                   loader: getLoader(args.path),
@@ -301,11 +304,12 @@ export const directivesPlugin = ({
                 };
               }
 
-              verboseLog(
-                "Esbuild no transformation applied for environment=%s, path=%s",
-                env,
-                args.path,
-              );
+              process.env.VERBOSE &&
+                log(
+                  "Esbuild no transformation applied for environment=%s, path=%s",
+                  env,
+                  args.path,
+                );
             },
           );
         },
