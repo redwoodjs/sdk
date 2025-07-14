@@ -11,7 +11,7 @@ import { isJsFile } from "./isJsFile.mjs";
 import { invalidateModule } from "./invalidateModule.mjs";
 import { getShortName } from "../lib/getShortName.mjs";
 
-const verboseLog = debug("verbose:rwsdk:vite:hmr-plugin");
+const log = debug("rwsdk:vite:hmr-plugin");
 
 const hasDirective = async (filepath: string, directive: string) => {
   if (!isJsFile(filepath)) {
@@ -62,12 +62,16 @@ export const miniflareHMRPlugin = (givenOptions: {
         workerEntryPathname: entry,
       } = givenOptions;
 
-      verboseLog(
-        "Hot update: (env=%s) %s\nModule graph:\n\n%s",
-        this.environment.name,
-        ctx.file,
-        dumpFullModuleGraph(ctx.server, this.environment.name),
-      );
+      if (process.env.VERBOSE) {
+        this.environment.logger.info(
+          `Hot update: (env=${
+            this.environment.name
+          }) ${ctx.file}\nModule graph:\n\n${dumpFullModuleGraph(
+            ctx.server,
+            this.environment.name,
+          )}`,
+        );
+      }
 
       if (!["client", environment].includes(this.environment.name)) {
         return [];

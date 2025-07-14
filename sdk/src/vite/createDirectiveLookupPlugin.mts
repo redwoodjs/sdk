@@ -32,7 +32,6 @@ export const findFilesContainingDirective = async ({
   debugNamespace: string;
 }) => {
   const log = debug(debugNamespace);
-  const verboseLog = debug(`verbose:${debugNamespace}`);
 
   log(
     "Starting search for '%s' files in projectRootDir=%s",
@@ -52,11 +51,11 @@ export const findFilesContainingDirective = async ({
       const stats = await stat(file);
 
       if (!stats.isFile()) {
-        verboseLog("Skipping %s (not a file)", file);
+        process.env.VERBOSE && log("Skipping %s (not a file)", file);
         continue;
       }
 
-      verboseLog("Scanning file: %s", file);
+      process.env.VERBOSE && log("Scanning file: %s", file);
       const content = await readFile(file, "utf-8");
 
       if (hasDirective(content, directive)) {
@@ -75,7 +74,8 @@ export const findFilesContainingDirective = async ({
   }
 
   log("Completed scan. Found %d %s files total", files.size, directive);
-  verboseLog("Found files for %s: %j", directive, Array.from(files));
+  process.env.VERBOSE &&
+    log("Found files for %s: %j", directive, Array.from(files));
 };
 
 const resolveOptimizedDep = async (
@@ -85,7 +85,6 @@ const resolveOptimizedDep = async (
   debugNamespace: string,
 ): Promise<string | undefined> => {
   const log = debug(debugNamespace);
-  const verboseLog = debug(`verbose:${debugNamespace}`);
 
   try {
     const depsDir = environment === "client" ? "deps" : `deps_${environment}`;
@@ -119,10 +118,12 @@ const resolveOptimizedDep = async (
       return optimizedPath;
     }
 
-    verboseLog("File not found in optimized dependencies: id=%s", id);
+    process.env.VERBOSE &&
+      log("File not found in optimized dependencies: id=%s", id);
     return undefined;
   } catch (error) {
-    verboseLog("Error resolving optimized dependency for id=%s: %s", id, error);
+    process.env.VERBOSE &&
+      log("Error resolving optimized dependency for id=%s: %s", id, error);
     return undefined;
   }
 };
@@ -141,7 +142,6 @@ const addOptimizedDepsEntries = async ({
   files: Set<string>;
 }) => {
   const log = debug(debugNamespace);
-  const verboseLog = debug(`verbose:${debugNamespace}`);
 
   try {
     const depsDir = environment === "client" ? "deps" : `deps_${environment}`;
@@ -152,11 +152,11 @@ const addOptimizedDepsEntries = async ({
       depsDir,
     );
     const manifestPath = path.join(depsDirPath, "_metadata.json");
-    verboseLog("Checking for manifest at: %s", manifestPath);
+    process.env.VERBOSE && log("Checking for manifest at: %s", manifestPath);
 
     const manifestExists = await pathExists(manifestPath);
     if (!manifestExists) {
-      verboseLog("Manifest not found at %s", manifestPath);
+      process.env.VERBOSE && log("Manifest not found at %s", manifestPath);
       return;
     }
 
@@ -177,7 +177,8 @@ const addOptimizedDepsEntries = async ({
         try {
           contents = await readFile(resolvedSrcPath, "utf-8");
         } catch (error) {
-          verboseLog("Error reading file %s: %s", resolvedSrcPath, error);
+          process.env.VERBOSE &&
+            log("Error reading file %s: %s", resolvedSrcPath, error);
           continue;
         }
 
@@ -194,7 +195,8 @@ const addOptimizedDepsEntries = async ({
       }
     }
   } catch (error) {
-    verboseLog("Error adding optimized deps entries: %s", error);
+    process.env.VERBOSE &&
+      log("Error adding optimized deps entries: %s", error);
   }
 };
 
@@ -209,7 +211,6 @@ export const createDirectiveLookupPlugin = async ({
 }): Promise<Plugin> => {
   const debugNamespace = `rwsdk:vite:${config.pluginName}`;
   const log = debug(debugNamespace);
-  const verboseLog = debug(`verbose:${debugNamespace}`);
   let isDev = false;
 
   log(
@@ -274,10 +275,11 @@ export const createDirectiveLookupPlugin = async ({
               ),
             },
             () => {
-              verboseLog(
-                "Esbuild onResolve: marking %s as external",
-                config.virtualModuleName,
-              );
+              process.env.VERBOSE &&
+                log(
+                  "Esbuild onResolve: marking %s as external",
+                  config.virtualModuleName,
+                );
               return {
                 path: config.virtualModuleName,
                 external: true,
@@ -299,7 +301,8 @@ export const createDirectiveLookupPlugin = async ({
         for (const file of files) {
           const actualFilePath = path.join(projectRootDir, file);
 
-          verboseLog("Adding to optimizeDeps.entries: %s", actualFilePath);
+          process.env.VERBOSE &&
+            log("Adding to optimizeDeps.entries: %s", actualFilePath);
           const entries = Array.isArray(viteConfig.optimizeDeps.entries)
             ? viteConfig.optimizeDeps.entries
             : ([] as string[]).concat(viteConfig.optimizeDeps.entries ?? []);
@@ -313,7 +316,7 @@ export const createDirectiveLookupPlugin = async ({
       }
     },
     resolveId(source) {
-      verboseLog("Resolving id=%s", source);
+      process.env.VERBOSE && log("Resolving id=%s", source);
 
       if (
         source === config.virtualModuleName ||
@@ -323,13 +326,13 @@ export const createDirectiveLookupPlugin = async ({
         log("Resolving %s module", config.virtualModuleName);
         // context(justinvdm, 16 Jun 2025): Include .js extension
         // so it goes through vite processing chain
-        return config.virtualModuleName + ".js";
+        return `${config.virtualModuleName}.js`;
       }
 
-      verboseLog("No resolution for id=%s", source);
+      process.env.VERBOSE && log("No resolution for id=%s", source);
     },
     async load(id) {
-      verboseLog("Loading id=%s", id);
+      process.env.VERBOSE && log("Loading id=%s", id);
 
       if (id === config.virtualModuleName + ".js") {
         log(
@@ -373,7 +376,7 @@ export const ${config.exportName} = {
         const map = s.generateMap();
 
         log("Generated virtual module code length: %d", code.length);
-        verboseLog("Generated virtual module code: %s", code);
+        process.env.VERBOSE && log("Generated virtual module code: %s", code);
 
         return {
           code,
@@ -381,7 +384,7 @@ export const ${config.exportName} = {
         };
       }
 
-      verboseLog("No load handling for id=%s", id);
+      process.env.VERBOSE && log("No load handling for id=%s", id);
     },
   };
 };

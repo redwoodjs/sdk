@@ -15,7 +15,7 @@ export function findSsrImportSpecifiers(
 ): { imports: string[]; dynamicImports: string[] } {
   const ext = path.extname(id).toLowerCase();
   const lang = ext === ".tsx" || ext === ".jsx" ? Lang.Tsx : SgLang.TypeScript;
-  const logger = log ?? (() => {});
+  const logger = process.env.VERBOSE ? (log ?? (() => {})) : () => {};
   const imports: string[] = [];
   const dynamicImports: string[] = [];
 

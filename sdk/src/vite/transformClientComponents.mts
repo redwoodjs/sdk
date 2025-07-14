@@ -17,12 +17,6 @@ interface TransformResult {
 
 const logVite = debug("rwsdk:vite:transform-client-components:vite");
 const logEsbuild = debug("rwsdk:vite:transform-client-components:esbuild");
-const verboseLogVite = debug(
-  "verbose:rwsdk:vite:transform-client-components:vite",
-);
-const verboseLogEsbuild = debug(
-  "verbose:rwsdk:vite:transform-client-components:esbuild",
-);
 
 export async function transformClientComponents(
   code: string,
@@ -30,16 +24,16 @@ export async function transformClientComponents(
   ctx: TransformContext,
 ): Promise<TransformResult | undefined> {
   const log = ctx.isEsbuild ? logEsbuild : logVite;
-  const verboseLog = ctx.isEsbuild ? verboseLogEsbuild : verboseLogVite;
   log("Called transformClientComponents for id: id=%s", normalizedId);
 
   if (!hasDirective(code, "use client")) {
     log("Skipping: no 'use client' directive in id=%s", normalizedId);
-    verboseLog(
-      ":VERBOSE: Returning code unchanged for id=%s:\n%s",
-      normalizedId,
-      code,
-    );
+    process.env.VERBOSE &&
+      log(
+        ":VERBOSE: Returning code unchanged for id=%s:\n%s",
+        normalizedId,
+        code,
+      );
     return;
   }
 
@@ -48,7 +42,7 @@ export async function transformClientComponents(
   ctx.addClientModule?.(ctx.environmentName, normalizedId);
 
   // Parse exports using the findExports helper
-  const exportInfos = findExports(normalizedId, code, verboseLog);
+  const exportInfos = findExports(normalizedId, code, log);
 
   // Process exports into the format expected by the rest of the function
   type ProcessedExportInfo = {
@@ -110,10 +104,11 @@ export async function transformClientComponents(
       const start = match.index;
       const end = match.index + match[0].length;
       s.remove(start, end);
-      verboseLog(
-        "Removed 'use client' directive from normalizedId=%s",
-        normalizedId,
-      );
+      process.env.VERBOSE &&
+        log(
+          "Removed 'use client' directive from normalizedId=%s",
+          normalizedId,
+        );
       break; // Only remove the first one
     }
 
@@ -123,11 +118,12 @@ export async function transformClientComponents(
       hires: true,
     });
 
-    verboseLog(
-      ":VERBOSE: SSR transformed code for %s:\n%s",
-      normalizedId,
-      s.toString(),
-    );
+    process.env.VERBOSE &&
+      log(
+        ":VERBOSE: SSR transformed code for %s:\n%s",
+        normalizedId,
+        s.toString(),
+      );
 
     return {
       code: s.toString(),
@@ -196,12 +192,13 @@ export async function transformClientComponents(
 
   const finalResult = s.toString();
 
-  verboseLog(
-    ":VERBOSE: Transformed code (env=%s, normalizedId=%s):\n%s",
-    normalizedId,
-    ctx.environmentName,
-    finalResult,
-  );
+  process.env.VERBOSE &&
+    log(
+      ":VERBOSE: Transformed code (env=%s, normalizedId=%s):\n%s",
+      normalizedId,
+      ctx.environmentName,
+      finalResult,
+    );
 
   return {
     code: finalResult,
