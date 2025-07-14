@@ -1,9 +1,10 @@
 import { Plugin } from "vite";
 import path, { resolve } from "node:path";
-import { mergeConfig, InlineConfig } from "vite";
-import enhancedResolve from "enhanced-resolve";
-import { SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import { builtinModules } from "node:module";
+import { InlineConfig } from "vite";
+import enhancedResolve from "enhanced-resolve";
+
+import { SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 
 // port(justinvdm, 09 Jun 2025):
 // https://github.com/cloudflare/workers-sdk/blob/d533f5ee7da69c205d8d5e2a5f264d2370fc612b/packages/vite-plugin-cloudflare/src/cloudflare-environment.ts#L123-L128
@@ -21,20 +22,19 @@ export const externalModules = [
 ];
 
 export const configPlugin = ({
-  mode,
   silent,
   projectRootDir,
   clientEntryPathnames,
   workerEntryPathname,
 }: {
-  mode: "development" | "production";
   silent: boolean;
   projectRootDir: string;
   clientEntryPathnames: string[];
   workerEntryPathname: string;
 }): Plugin => ({
   name: "rwsdk:config",
-  config: (_, { command }) => {
+  config: async (_) => {
+    const mode = process.env.NODE_ENV;
     const baseConfig: InlineConfig = {
       appType: "custom",
       mode,
@@ -95,6 +95,9 @@ export const configPlugin = ({
               jsx: "automatic",
               jsxImportSource: "react",
               plugins: [],
+              define: {
+                "process.env.NODE_ENV": JSON.stringify(mode),
+              },
             },
           },
           build: {
@@ -141,6 +144,9 @@ export const configPlugin = ({
             esbuildOptions: {
               jsx: "automatic",
               jsxImportSource: "react",
+              define: {
+                "process.env.NODE_ENV": JSON.stringify(mode),
+              },
             },
           },
           build: {

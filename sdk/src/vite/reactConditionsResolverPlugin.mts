@@ -185,7 +185,7 @@ export const reactConditionsResolverPlugin = (): Plugin[] => {
             envConfig.optimizeDeps.esbuildOptions.define ??= {};
             envConfig.optimizeDeps.esbuildOptions.define[
               "process.env.NODE_ENV"
-            ] = JSON.stringify(process.env.NODE_ENV ?? "production");
+            ] = JSON.stringify(process.env.NODE_ENV);
             envConfig.optimizeDeps.esbuildOptions.plugins ??= [];
             envConfig.optimizeDeps.esbuildOptions.plugins.push(esbuildPlugin);
 

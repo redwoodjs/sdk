@@ -28,7 +28,6 @@ import { devServerTimingPlugin } from "./devServerTimingPlugin.mjs";
 export type RedwoodPluginOptions = {
   silent?: boolean;
   rootDir?: string;
-  mode?: "development" | "production";
   includeCloudflarePlugin?: boolean;
   configPath?: string;
   entry?: {
@@ -55,10 +54,6 @@ export const redwoodPlugin = async (
   options: RedwoodPluginOptions = {},
 ): Promise<InlineConfig["plugins"]> => {
   const projectRootDir = process.cwd();
-
-  const mode =
-    options.mode ??
-    (process.env.NODE_ENV === "development" ? "development" : "production");
 
   const workerConfigPath =
     options.configPath ?? (await findWranglerConfig(projectRootDir));
@@ -103,7 +98,6 @@ export const redwoodPlugin = async (
   return [
     devServerTimingPlugin(),
     configPlugin({
-      mode,
       silent: options.silent ?? false,
       projectRootDir,
       clientEntryPathnames,
@@ -136,7 +130,7 @@ export const redwoodPlugin = async (
       serverFiles,
     }),
     vitePreamblePlugin(),
-    injectVitePreamble({ clientEntryPathnames, mode }),
+    injectVitePreamble({ clientEntryPathnames }),
     useClientLookupPlugin({
       projectRootDir,
       clientFiles,

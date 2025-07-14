@@ -3,10 +3,8 @@ import MagicString from "magic-string";
 
 export const injectVitePreamble = ({
   clientEntryPathnames,
-  mode,
 }: {
   clientEntryPathnames: string[];
-  mode: "development" | "production";
 }): Plugin => ({
   name: "rwsdk:inject-vite-preamble",
   apply: "serve",
@@ -20,7 +18,7 @@ export const injectVitePreamble = ({
     }
 
     // Only inject preamble in development mode
-    if (mode !== "development") {
+    if (process.env.NODE_ENV !== "development") {
       return;
     }
 
