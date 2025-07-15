@@ -214,23 +214,29 @@ TEMP_DIR=$(mktemp -d)
 # Set the trap *after* creating the temp dir, so the variable is available.
 trap cleanup EXIT
 
-echo "  - Created temp dir for testing: $TEMP_DIR"
+# Sanitize the version to create a valid directory name, which in turn
+# will be used to generate a valid worker name for the smoke test.
+VERSION_SLUG=$(echo "$NEW_VERSION" | sed -e 's/\./-/g' -e 's/+/_/g')
+PROJECT_DIR="$TEMP_DIR/release-test-$VERSION_SLUG"
+mkdir -p "$PROJECT_DIR"
 
-echo "  - Copying minimal starter to temp dir..."
+echo "  - Created temp project dir for testing: $PROJECT_DIR"
+
+echo "  - Copying minimal starter to project dir..."
 # Get the absolute path of the script's directory
 SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 # The monorepo root is two levels up from the script's directory
 MONOREPO_ROOT="$SCRIPT_DIR/../.."
-cp -a "$MONOREPO_ROOT/starters/minimal/." "$TEMP_DIR/"
+cp -a "$MONOREPO_ROOT/starters/minimal/." "$PROJECT_DIR/"
 
 # The tarball is in the current directory (sdk/sdk)
 TARBALL_PATH="$PWD/$TARBALL_NAME"
 
-echo "  - Installing packed tarball in temp dir..."
-(cd "$TEMP_DIR" && npm install "$TARBALL_PATH" --no-save)
+echo "  - Installing packed tarball in project dir..."
+(cd "$PROJECT_DIR" && npm install "$TARBALL_PATH" --no-save)
 
 PACKAGE_NAME=$(npm pkg get name | tr -d '"')
-INSTALLED_DIST_PATH="$TEMP_DIR/node_modules/$PACKAGE_NAME/dist"
+INSTALLED_DIST_PATH="$PROJECT_DIR/node_modules/$PACKAGE_NAME/dist"
 
 echo "  - Verifying installed package contents..."
 if [ ! -d "$INSTALLED_DIST_PATH" ]; then
@@ -257,8 +263,8 @@ fi
 
 echo "  - Running smoke tests..."
 # The CWD is the package root (sdk/sdk), so we can run pnpm smoke-test directly.
-# We pass the path to the temp directory where the minimal starter was installed.
-if ! pnpm smoke-test --path="$TEMP_DIR" --no-sync; then
+# We pass the path to the temp project directory where the minimal starter was installed.
+if ! pnpm smoke-test --path="$PROJECT_DIR" --no-sync; then
   echo "  ❌ Smoke tests failed."
   exit 1
 fi
