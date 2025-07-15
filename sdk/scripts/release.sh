@@ -113,10 +113,58 @@ fi
 
 echo -e "\n🏗️  Building package..."
 if [[ "$DRY_RUN" == true ]]; then
-  echo "  [DRY RUN] NODE_ENV=production pnpm build"
+  echo "  [DRY RUN] NOTE: Running build to allow for artifact verification."
 else
   NODE_ENV=production pnpm build
 fi
+
+echo -e "\n🔍 Verifying build artifacts..."
+if [[ "$DRY_RUN" == true ]]; then
+  echo "  [DRY RUN] Running verification checks..."
+fi
+# This check runs in both normal and dry-run modes.
+
+# Count all relevant source files
+SRC_COUNT=$(find src -type f \( -name "*.ts" -o -name "*.tsx" -o -name "*.mts" -o -name "*.mjs" \) \
+  -not -path '*/__snapshots__/*' \
+  -not -name '.DS_Store' \
+  | wc -l)
+
+# Count all generated JS files
+DIST_JS_COUNT=$(find dist -type f \( -name "*.js" -o -name "*.mjs" \) | wc -l)
+# Count all generated declaration files
+DIST_DTS_COUNT=$(find dist -type f \( -name "*.d.ts" -o -name "*.d.mts" \) | wc -l)
+
+# Count the test files we expect to be in the source
+SRC_TEST_COUNT=$(find src -type f \( -name "*.test.ts" -o -name "*.test.mts" -o -name "*.typetest.ts" \) | wc -l)
+
+# The number of generated files should equal the number of source files,
+# minus the test files (since they don't all generate corresponding files
+# in the same way, and we are excluding them from our final check).
+# This is not perfect, but it's a much closer approximation.
+# The core logic is: (Total JS files) - (Total Source Files) should equal (Test files)
+JS_DIFF=$((DIST_JS_COUNT - SRC_COUNT))
+DTS_DIFF=$((DIST_DTS_COUNT - (SRC_COUNT - 1))) # -1 for the .mjs file with no .d.mts
+
+echo "  - Source files (total): $SRC_COUNT"
+echo "  - Source test files: $SRC_TEST_COUNT"
+echo "  - Generated JS files (total): $DIST_JS_COUNT"
+echo "  - Generated Declaration files (total): $DIST_DTS_COUNT"
+echo "  - Calculated JS difference (should be close to test count): $JS_DIFF"
+echo "  - Calculated Declaration difference (should be close to test count): $DTS_DIFF"
+
+if [[ "$JS_DIFF" -ne "$SRC_TEST_COUNT" ]]; then
+    echo "  ❌ Mismatch in JS file count. The difference ($JS_DIFF) does not match the source test count ($SRC_TEST_COUNT)."
+    exit 1
+fi
+
+if [[ "$DTS_DIFF" -ne "$SRC_TEST_COUNT" ]]; then
+    echo "  ❌ Mismatch in Declaration file count. The difference ($DTS_DIFF) does not match the source test count ($SRC_TEST_COUNT)."
+    exit 1
+fi
+
+echo "  ✅ Build artifacts verified successfully."
+
 
 CURRENT_VERSION=$(npm pkg get version | tr -d '"')
 if [[ "$VERSION_TYPE" == "test" ]]; then
@@ -167,21 +215,97 @@ fi
 
 TAG_NAME="v$NEW_VERSION"
 
+echo -e "\n📦 Packing package..."
+if [[ "$DRY_RUN" == true ]]; then
+  echo "  [DRY RUN] npm pack"
+  # Construct a plausible tarball name for dry run
+  PACKAGE_NAME_FOR_TARBALL=$(npm pkg get name | tr -d '"' | sed 's/@//; s/\//-/')
+  TARBALL_NAME="$PACKAGE_NAME_FOR_TARBALL-$NEW_VERSION.tgz"
+  echo "  [DRY RUN] Tarball name: $TARBALL_NAME"
+else
+  # npm pack creates the tarball and prints its name to stdout
+  TARBALL_NAME=$(npm pack)
+  if [ ! -f "$TARBALL_NAME" ]; then
+    echo "❌ npm pack failed to create tarball"
+    exit 1
+  fi
+  echo "  ✅ Packed to $TARBALL_NAME"
+fi
+
+echo -e "\n🔬 Smoke testing package..."
+if [[ "$DRY_RUN" == true ]]; then
+  echo "  [DRY RUN] Skipping smoke tests."
+else
+  TEMP_DIR=$(mktemp -d)
+  echo "  - Created temp dir for testing: $TEMP_DIR"
+
+  # On exit, ensure temp dir and tarball are cleaned up. We use a trap that will
+  # fire on EXIT, whether it's successful or due to an error.
+  trap 'echo "  - Cleaning up..."; rm -rf "$TEMP_DIR"; rm -f "$TARBALL_NAME"' EXIT
+
+  echo "  - Copying minimal starter to temp dir..."
+  # We are in sdk/sdk, starter is in ../../starters/minimal
+  cp -a ../../starters/minimal/. "$TEMP_DIR/"
+
+  # The tarball is in the current directory (sdk/sdk)
+  TARBALL_PATH="$PWD/$TARBALL_NAME"
+
+  echo "  - Installing packed tarball in temp dir..."
+  (cd "$TEMP_DIR" && npm install "$TARBALL_PATH" --no-save)
+
+  PACKAGE_NAME=$(npm pkg get name | tr -d '"')
+  INSTALLED_DIST_PATH="$TEMP_DIR/node_modules/$PACKAGE_NAME/dist"
+
+  echo "  - Verifying installed package contents..."
+  if [ ! -d "$INSTALLED_DIST_PATH" ]; then
+      echo "  ❌ Error: dist/ directory not found in installed package at $INSTALLED_DIST_PATH."
+      exit 1
+  fi
+
+  # To ensure the package is built and packed correctly, we'll compare
+  # a checksum of the file lists from the original `dist` directory and the
+  # one installed from the tarball. They must match exactly.
+  ORIGINAL_DIST_CHECKSUM=$(find dist -type f | sort | md5sum)
+  INSTALLED_DIST_CHECKSUM=$(find "$INSTALLED_DIST_PATH" -type f | sort | md5sum)
+
+  echo "    - Original dist checksum: $ORIGINAL_DIST_CHECKSUM"
+  echo "    - Installed dist checksum: $INSTALLED_DIST_CHECKSUM"
+
+  if [[ "$ORIGINAL_DIST_CHECKSUM" != "$INSTALLED_DIST_CHECKSUM" ]]; then
+    echo "  ❌ Error: File list in installed dist/ does not match original dist/."
+    echo "  This indicates an issue with the build or packaging process."
+    exit 1
+  else
+    echo "  ✅ Installed package contents match the local build."
+  fi
+
+  echo "  - Running smoke tests in temp dir..."
+  (
+    cd "$TEMP_DIR"
+    if ! npx rw-scripts smoke-tests; then
+      echo "  ❌ Smoke tests failed."
+      exit 1
+    fi
+  )
+  echo "  ✅ Smoke tests passed."
+fi
+
 echo -e "\n🚀 Publishing version $NEW_VERSION..."
 if [[ "$DRY_RUN" == true ]]; then
   if [[ "$VERSION_TYPE" == "test" ]]; then
-    echo "  [DRY RUN] pnpm publish --tag test"
+    echo "  [DRY RUN] pnpm publish $TARBALL_NAME --tag test"
   else
-    echo "  [DRY RUN] pnpm publish"
+    echo "  [DRY RUN] pnpm publish $TARBALL_NAME"
   fi
 else
-  PUBLISH_CMD="pnpm publish"
+  PUBLISH_CMD="pnpm publish \"$TARBALL_NAME\""
   if [[ "$VERSION_TYPE" == "test" ]]; then
     PUBLISH_CMD="$PUBLISH_CMD --tag test"
   fi
-  if ! $PUBLISH_CMD; then
+  if ! eval $PUBLISH_CMD; then
     echo -e "\n❌ Publish failed. Rolling back version commit..."
     git reset --hard HEAD~1
+    # The trap will clean up the tarball
     exit 1
   fi
 fi

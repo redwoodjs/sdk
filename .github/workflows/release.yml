@@ -1,0 +1,65 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: "The type of version bump to perform (patch, minor, major, prepatch, preminor, premajor, test)"
+        required: true
+        type: choice
+        options:
+          - patch
+          - minor
+          - major
+          - prepatch
+          - preminor
+          - premajor
+          - test
+      preid:
+        description: "Prerelease identifier (e.g., alpha, beta, rc). Used with prepatch/preminor/premajor."
+        required: false
+        default: "alpha"
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # We need to fetch all history for semver to work correctly and to push changes.
+          fetch-depth: 0
+          # This token should have write permissions to the repository.
+          # It's recommended to use a dedicated bot account's PAT.
+          # The secret should be named GH_TOKEN_FOR_RELEASES
+          token: ${{ secrets.GH_TOKEN_FOR_RELEASES }}
+
+      - name: Set up Git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v3
+        with:
+          version: 8
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Run release script
+        working-directory: ./sdk/sdk
+        run: |
+          COMMAND="./scripts/release.sh ${{ github.event.inputs.version_type }}"
+          if [[ "${{ github.event.inputs.version_type }}" == "pre"* ]]; then
+            COMMAND="$COMMAND --preid ${{ github.event.inputs.preid }}"
+          fi
+          echo "Running command: $COMMAND"
+          eval $COMMAND

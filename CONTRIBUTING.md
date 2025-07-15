@@ -76,3 +76,37 @@ Here is a full example command that enables verbose logging for the HMR plugin, 
 ```sh
 VERBOSE=1 DEBUG='rwsdk:vite:hmr-plugin' npx rwsync --watch "npm run dev" 2>&1 | tee /tmp/out.log
 ```
+
+## Releasing (for Core Contributors)
+
+Releases are managed by a GitHub Actions workflow that automates versioning, publishing, and dependency updates.
+
+### How to Create a Release
+
+1.  Navigate to the [Release workflow](.github/workflows/release.yml) in the repository's "Actions" tab.
+2.  Click the "Run workflow" dropdown.
+3.  Choose the `version_type` for the release. The options are:
+    *   `patch`, `minor`, `major`: For standard releases.
+    *   `prepatch`, `preminor`, `premajor`: For pre-releases (e.g., `1.0.0-alpha.0`).
+    *   `test`: For internal test releases. These are tagged with `test` on npm and are not considered "latest".
+4.  If you are creating a pre-release, you can specify a `preid` (e.g., `beta`, `rc`). The default is `alpha`.
+5.  Click the "Run workflow" button.
+
+### Release Process and Sanity Checks
+
+The release workflow and underlying script (`sdk/sdk/scripts/release.sh`) perform several checks to ensure the integrity of the release:
+
+1.  **Build**: The `rwsdk` package is built.
+2.  **Pack**: The package is bundled into a `.tgz` tarball using `npm pack`.
+3.  **Smoke Test & Verify**: A comprehensive smoke test is run against the packed tarball:
+    *   A temporary directory is created.
+    *   The `starters/minimal` project is copied into it.
+    *   The `.tgz` tarball is installed as a dependency in the temporary project.
+    *   **Verification**: The script verifies that the contents of the `dist` directory in the installed package are *identical* to the local `dist` directory created during the build step. It does this by comparing a checksum of the file lists, ensuring there are no extra or missing files.
+    *   The `npx rw-scripts smoke-tests` command is run within the temporary project to execute a suite of automated checks against a real browser.
+4.  **Publish**: Only if all previous steps (including the verification and smoke tests) pass, the script publishes the `.tgz` tarball to npm. This ensures that the exact package that was tested is the one that gets published.
+5.  **Update Dependencies**: For non-prerelease versions, the script updates the `rwsdk` dependency version in other packages within the monorepo, commits the changes, tags the release, and pushes everything to the repository.
+
+### GitHub Token
+
+The release workflow requires a GitHub personal access token (PAT) with `repo` scope to be configured as a repository secret named `GH_TOKEN_FOR_RELEASES`. This is necessary for the workflow to push version bump commits and tags.
