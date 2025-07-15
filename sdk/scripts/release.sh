@@ -216,8 +216,7 @@ trap cleanup EXIT
 
 # Sanitize the version to create a valid directory name, which in turn
 # will be used to generate a valid worker name for the smoke test.
-VERSION_SLUG=$(echo "$NEW_VERSION" | sed -e 's/\./-/g' -e 's/+/_/g')
-PROJECT_DIR="$TEMP_DIR/release-test-$VERSION_SLUG"
+PROJECT_DIR="$TEMP_DIR/test"
 mkdir -p "$PROJECT_DIR"
 
 echo "  - Created temp project dir for testing: $PROJECT_DIR"
