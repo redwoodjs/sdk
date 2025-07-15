@@ -42,17 +42,14 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 8
-
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
-          cache: "pnpm"
-          registry-url: "https://registry.npmjs.org"
+          node-version: 22
+
+      - run: |
+          corepack enable
+          pnpm install
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
