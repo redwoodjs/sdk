@@ -45,6 +45,40 @@ const hasEntryAsAncestor = (
   return false;
 };
 
+const isInUseClientGraph = ({
+  file,
+  clientFiles,
+  server,
+}: {
+  file: string;
+  clientFiles: Set<string>;
+  server: ViteDevServer;
+}) => {
+  const id = normalizeModulePath(server.config.root, file);
+  if (clientFiles.has(id)) {
+    return true;
+  }
+
+  const modules = server.environments.client.moduleGraph.getModulesByFile(file);
+
+  if (!modules) {
+    return false;
+  }
+
+  for (const m of modules) {
+    for (const importer of m.importers) {
+      if (
+        importer.file &&
+        isInUseClientGraph({ file: importer.file, clientFiles, server })
+      ) {
+        return true;
+      }
+    }
+  }
+
+  return false;
+};
+
 export const miniflareHMRPlugin = (givenOptions: {
   clientFiles: Set<string>;
   serverFiles: Set<string>;
@@ -71,6 +105,32 @@ export const miniflareHMRPlugin = (givenOptions: {
             this.environment.name,
           )}`,
         );
+      }
+
+      if (!isJsFile(ctx.file) && !ctx.file.endsWith(".css")) {
+        return;
+      }
+
+      if (this.environment.name === "ssr") {
+        log("SSR update, invalidating recursively", ctx.file);
+        const isUseClientUpdate = isInUseClientGraph({
+          file: ctx.file,
+          clientFiles,
+          server: ctx.server,
+        });
+
+        if (!isUseClientUpdate) {
+          return [];
+        }
+
+        invalidateModule(ctx.server, "ssr", ctx.file);
+        invalidateModule(
+          ctx.server,
+          environment,
+          VIRTUAL_SSR_PREFIX +
+            normalizeModulePath(givenOptions.rootDir, ctx.file),
+        );
+        return [];
       }
 
       if (!["client", environment].includes(this.environment.name)) {
@@ -137,9 +197,7 @@ export const miniflareHMRPlugin = (givenOptions: {
         ) ?? [],
       );
 
-      const isWorkerUpdate =
-        ctx.file === entry ||
-        modules.some((module) => hasEntryAsAncestor(module, entry));
+      const isWorkerUpdate = Boolean(modules);
 
       // The worker needs an update, but this is the client environment
       // => Notify for HMR update of any css files imported by in worker, that are also in the client module graph
@@ -162,7 +220,16 @@ export const miniflareHMRPlugin = (givenOptions: {
               }
             }
           }
-          return undefined;
+        }
+
+        const isUseClientUpdate = isInUseClientGraph({
+          file: ctx.file,
+          clientFiles,
+          server: ctx.server,
+        });
+
+        if (!isUseClientUpdate && !ctx.file.endsWith(".css")) {
+          return [];
         }
 
         return ctx.modules;
