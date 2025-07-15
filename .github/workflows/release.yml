@@ -55,7 +55,7 @@ jobs:
         run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Run release script
-        working-directory: ./sdk/sdk
+        working-directory: sdk
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
