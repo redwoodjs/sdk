@@ -73,21 +73,6 @@ export const miniflareHMRPlugin = (givenOptions: {
         );
       }
 
-      if (this.environment.name === "ssr") {
-        log("SSR update, invalidating recursively", ctx.file);
-        invalidateModule(ctx.server, "ssr", ctx.file, {
-          invalidateImportersRecursively: true,
-        });
-        invalidateModule(
-          ctx.server,
-          environment,
-          VIRTUAL_SSR_PREFIX +
-            normalizeModulePath(givenOptions.rootDir, ctx.file),
-          { invalidateImportersRecursively: true },
-        );
-        return [];
-      }
-
       if (!["client", environment].includes(this.environment.name)) {
         return [];
       }
@@ -177,6 +162,7 @@ export const miniflareHMRPlugin = (givenOptions: {
               }
             }
           }
+          return undefined;
         }
 
         return ctx.modules;

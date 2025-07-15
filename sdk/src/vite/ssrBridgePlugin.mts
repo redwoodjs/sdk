@@ -2,6 +2,7 @@ import type { Plugin, ViteDevServer } from "vite";
 import debug from "debug";
 import { SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import { findSsrImportSpecifiers } from "./findSsrSpecifiers.mjs";
+import { isJsFile } from "./isJsFile.mjs";
 
 const log = debug("rwsdk:vite:ssr-bridge-plugin");
 
@@ -152,6 +153,13 @@ export const ssrBridgePlugin = ({
             log("Fetch module result: id=%s, result=%O", realId, result);
 
           const code = "code" in result ? result.code : undefined;
+
+          if (realId.endsWith(".css")) {
+            process.env.VERBOSE &&
+              log("Not a JS file, returning code: %s", code);
+            return code ?? "";
+          }
+
           log("Fetched SSR module code length: %d", code?.length || 0);
 
           const { imports, dynamicImports } = findSsrImportSpecifiers(
@@ -169,7 +177,7 @@ export const ssrBridgePlugin = ({
           const switchCases = allSpecifiers
             .map(
               (specifier) =>
-                `    case "${specifier}": import("${VIRTUAL_SSR_PREFIX}${specifier}");`,
+                `    case "${specifier}": void import("${VIRTUAL_SSR_PREFIX}${specifier}");`,
             )
             .join("\n");
 
