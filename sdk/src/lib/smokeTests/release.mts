@@ -424,27 +424,62 @@ export async function runRelease(
       }
     }
 
-    // Run release command with our interactive $expect utility
-    log("Running release command with interactive prompts");
-    const result = await $expect(
-      "npm run release",
-      [
-        {
-          // Make the pattern more flexible to account for potential whitespace differences
-          expect: /Do you want to proceed with deployment\?\s*\(y\/N\)/i,
-          send: "y\r",
-        },
-      ],
-      {
-        reject: false, // Add reject: false to prevent uncaught promise rejections
-        env: {
-          RWSDK_RENAME_WORKER: "1",
-          RWSDK_RENAME_DB: "1",
-          ...process.env,
-        },
-        cwd,
-      },
-    );
+    // Run release command with our interactive $expect utility and retry logic
+    log("Running release command with interactive prompts and retries");
+
+    const MAX_RETRIES = 3;
+    let lastError: Error | null = null;
+    let result: ExpectResult | null = null;
+
+    for (let i = 0; i < MAX_RETRIES; i++) {
+      try {
+        console.log(
+          `\n🚀 Deploying worker to Cloudflare (Attempt ${i + 1}/${MAX_RETRIES})...`,
+        );
+        result = await $expect(
+          "npm run release",
+          [
+            {
+              // Make the pattern more flexible to account for potential whitespace differences
+              expect: /Do you want to proceed with deployment\?\s*\(y\/N\)/i,
+              send: "y\r",
+            },
+          ],
+          {
+            reject: false, // Add reject: false to prevent uncaught promise rejections
+            env: {
+              RWSDK_RENAME_WORKER: "1",
+              RWSDK_RENAME_DB: "1",
+              ...process.env,
+            },
+            cwd,
+          },
+        );
+
+        // Check exit code to ensure command succeeded
+        if (result.code === 0) {
+          log(`Release command succeeded on attempt ${i + 1}`);
+          lastError = null; // Clear last error on success
+          break; // Exit the loop on success
+        } else {
+          throw new Error(
+            `Release command failed with exit code ${result.code}`,
+          );
+        }
+      } catch (error) {
+        lastError = error as Error;
+        log(`Attempt ${i + 1} failed: ${lastError.message}`);
+        if (i < MAX_RETRIES - 1) {
+          console.log(`   Waiting 5 seconds before retrying...`);
+          await setTimeout(5000);
+        }
+      }
+    }
+
+    if (lastError || !result) {
+      log("ERROR: Release command failed after all retries.");
+      throw lastError || new Error("Release command failed after all retries.");
+    }
 
     // Check exit code to ensure command succeeded
     if (result.code !== 0) {
