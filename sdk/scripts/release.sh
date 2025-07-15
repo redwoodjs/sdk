@@ -118,6 +118,43 @@ else
   NODE_ENV=production pnpm build
 fi
 
+CURRENT_VERSION=$(npm pkg get version | tr -d '"')
+if [[ "$VERSION_TYPE" == "test" ]]; then
+  # Use a timestamp for test versions instead of a counter to avoid conflicts between branches
+  # Format: YYYYMMDDHHMMSS
+  TIMESTAMP=$(date "+%Y%m%d%H%M%S")
+  # Extract base version (strip any existing test suffix)
+  if [[ "$CURRENT_VERSION" =~ ^(.*)-test\..*$ ]]; then
+    BASE_VERSION="${BASH_REMATCH[1]}"
+  else
+    BASE_VERSION="$CURRENT_VERSION"
+  fi
+  NEW_VERSION="$BASE_VERSION-test.$TIMESTAMP"
+elif [[ "$VERSION_TYPE" == "prepatch" || "$VERSION_TYPE" == "preminor" || "$VERSION_TYPE" == "premajor" ]]; then
+  # Handle prerelease versions with explicit preid
+  if [[ "$CURRENT_VERSION" =~ ^.*-${PREID}\..*$ ]]; then
+    # Check if this is a test version with the same preid
+    if [[ "$CURRENT_VERSION" =~ ^(.*-${PREID}\.[0-9]+)-test\..*$ ]]; then
+      # Extract base prerelease version and increment it
+      BASE_PRERELEASE_VERSION="${BASH_REMATCH[1]}"
+      NEW_VERSION=$(npx semver -i prerelease "$BASE_PRERELEASE_VERSION")
+    else
+      # If current version is already the same prerelease type, increment it
+      NEW_VERSION=$(npx semver -i prerelease "$CURRENT_VERSION")
+    fi
+  else
+    # Create new prerelease with the specified type and preid
+    NEW_VERSION=$(npx semver -i "$VERSION_TYPE" --preid "$PREID" "$CURRENT_VERSION")
+  fi
+else
+  # Handle regular versions (patch, minor, major)
+  # If current version is a prerelease, use the base version for incrementing
+  if [[ "$CURRENT_VERSION" =~ ^(.*)-.*$ ]]; then
+    CURRENT_VERSION="${BASH_REMATCH[1]}"
+  fi
+  NEW_VERSION=$(npx semver -i $VERSION_TYPE $CURRENT_VERSION)
+fi
+
 echo -e "\n📦 Planning version bump to $NEW_VERSION ($VERSION_TYPE)..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] npm pkg set version=$NEW_VERSION"
