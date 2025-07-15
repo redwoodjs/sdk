@@ -67,7 +67,7 @@ jobs:
         if: failure()
         run: |
           echo "Pruning node_modules to reduce artifact size..."
-          find ${{ env.TEMP_DIR_PATH }}/node_modules -mindepth 1 -maxdepth 1 -not -name "rwsdk" -exec rm -rf {} +
+          find ${{ env.TEMP_DIR_PATH }}/test/node_modules -mindepth 1 -maxdepth 1 -not -name "rwsdk" -exec rm -rf {} +
           echo "Pruning complete."
 
       - name: Upload logs on failure
