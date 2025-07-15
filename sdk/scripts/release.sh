@@ -192,17 +192,21 @@ echo -e "\n🔬 Smoke testing package..."
 cleanup() {
   # If we are in a dry run and the script did not complete successfully...
   if [[ "$DRY_RUN" == true && "$SUCCESS_FLAG" == false ]]; then
-    echo -e "\n❌ A dry run failure occurred. Preserving assets for inspection:"
+    echo -e "\n❌ A dry run failure occurred. Preserving temp directory for inspection:"
     echo "  - Temp directory: $TEMP_DIR"
-    echo "  - Tarball: $TARBALL_NAME"
     # Let the script exit with its original error code.
   else
-    # Otherwise (on success or a real run), always clean up.
-    if [[ -n "$TEMP_DIR" ]]; then
-      echo "  - Cleaning up..."
+    # Otherwise (on success or a real run), clean up the temp dir.
+    if [[ -n "$TEMP_DIR" && -d "$TEMP_DIR" ]]; then
+      echo "  - Cleaning up temp directory..."
       rm -rf "$TEMP_DIR"
-      rm -f "$TARBALL_NAME"
     fi
+  fi
+
+  # Always clean up the tarball, regardless of success, failure, or dry run.
+  if [[ -n "$TARBALL_NAME" && -f "$TARBALL_NAME" ]]; then
+    echo "  - Cleaning up package tarball $TARBALL_NAME..."
+    rm -f "$TARBALL_NAME"
   fi
 }
 
