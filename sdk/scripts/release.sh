@@ -237,8 +237,8 @@ fi
 # To ensure the package is built and packed correctly, we'll compare
 # a checksum of the file lists from the original `dist` directory and the
 # one installed from the tarball. They must match exactly.
-ORIGINAL_DIST_CHECKSUM=$(find dist -type f | sort | md5sum)
-INSTALLED_DIST_CHECKSUM=$(find "$INSTALLED_DIST_PATH" -type f | sort | md5sum)
+ORIGINAL_DIST_CHECKSUM=$( (cd dist && find . -type f | sort) | md5sum)
+INSTALLED_DIST_CHECKSUM=$( (cd "$INSTALLED_DIST_PATH" && find . -type f | sort) | md5sum)
 
 echo "    - Original dist checksum: $ORIGINAL_DIST_CHECKSUM"
 echo "    - Installed dist checksum: $INSTALLED_DIST_CHECKSUM"
