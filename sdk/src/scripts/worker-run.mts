@@ -1,3 +1,4 @@
+import path from "path";
 import { resolve } from "path";
 import { writeFile } from "fs/promises";
 import { unstable_readConfig } from "wrangler";
@@ -30,22 +31,39 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
     config: workerConfigPath,
   });
 
-  const tmpWorkerPath = await tmp.file({
-    postfix: ".json",
+  const workerEntryRelativePath = workerConfig.main;
+
+  const workerEntryPath =
+    workerEntryRelativePath ?? path.join(process.cwd(), "src/worker.tsx");
+
+  const tmpDir = await tmp.dir({
+    prefix: "rw-worker-run-",
+    unsafeCleanup: true,
   });
+
+  const relativeTmpWorkerEntryPath = "worker.tsx";
+  const tmpWorkerPath = path.join(tmpDir.path, "wrangler.json");
+  const tmpWorkerEntryPath = path.join(tmpDir.path, relativeTmpWorkerEntryPath);
+
   const scriptWorkerConfig = {
     ...workerConfig,
-    configPath: tmpWorkerPath.path,
-    userConfigPath: tmpWorkerPath.path,
-    main: scriptPath,
+    configPath: tmpWorkerPath,
+    userConfigPath: tmpWorkerPath,
+    main: relativeTmpWorkerEntryPath,
   };
 
   try {
+    await writeFile(tmpWorkerPath, JSON.stringify(scriptWorkerConfig, null, 2));
     await writeFile(
-      tmpWorkerPath.path,
-      JSON.stringify(scriptWorkerConfig, null, 2),
+      tmpWorkerEntryPath,
+      `
+export * from "${workerEntryPath}";
+export { default } from "${scriptPath}";
+`,
     );
-    debug("Worker config written to: %s", tmpWorkerPath.path);
+
+    debug("Worker config written to: %s", tmpWorkerPath);
+    debug("Worker entry written to: %s", tmpWorkerEntryPath);
 
     process.env.RWSDK_WORKER_RUN = "1";
 
@@ -53,10 +71,10 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
       configFile: false,
       plugins: [
         redwood({
-          configPath: tmpWorkerPath.path,
+          configPath: tmpWorkerPath,
           includeCloudflarePlugin: true,
           entry: {
-            worker: scriptPath,
+            worker: tmpWorkerEntryPath,
           },
         }),
       ],
@@ -85,7 +103,6 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
     }
   } finally {
     debug("Closing inspector servers...");
-    await tmpWorkerPath.cleanup();
     debug("Temporary files cleaned up");
   }
 

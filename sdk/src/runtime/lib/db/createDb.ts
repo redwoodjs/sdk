@@ -1,5 +1,5 @@
 import { Kysely } from "kysely";
-import { requestInfo } from "../../requestInfo/worker.js";
+import { requestInfo, waitForRequestInfo } from "../../requestInfo/worker.js";
 import { DOWorkerDialect } from "./DOWorkerDialect.js";
 import { type SqliteDurableObject } from "./index.js";
 
@@ -23,6 +23,16 @@ export function createDb<T>(
   const cacheKey = `${durableObjectBinding}_${name}`;
 
   const doCreateDb = () => {
+    if (!requestInfo.rw) {
+      throw new Error(
+        `
+  rwsdk: A database created using createDb() was accessed before requestInfo was available.
+
+  Please make sure database access is happening in a request handler or action handler.
+  `,
+      );
+    }
+
     let db = requestInfo.rw.databases.get(cacheKey);
 
     if (!db) {
@@ -33,7 +43,7 @@ export function createDb<T>(
     return db;
   };
 
-  doCreateDb();
+  waitForRequestInfo().then(() => doCreateDb());
 
   return new Proxy({} as Kysely<T>, {
     get(target, prop, receiver) {
