@@ -94,18 +94,19 @@ Releases are managed by a GitHub Actions workflow that automates versioning, pub
 
 ### Release Process and Sanity Checks
 
-The release workflow and underlying script (`sdk/sdk/scripts/release.sh`) perform several checks to ensure the integrity of the release:
+The release workflow and underlying script (`sdk/sdk/scripts/release.sh`) follow a strict procedure to ensure the integrity of every release:
 
-1.  **Build**: The `rwsdk` package is built.
-2.  **Pack**: The package is bundled into a `.tgz` tarball using `npm pack`.
-3.  **Smoke Test & Verify**: A comprehensive smoke test is run against the packed tarball:
-    *   A temporary directory is created.
-    *   The `starters/minimal` project is copied into it.
-    *   The `.tgz` tarball is installed as a dependency in the temporary project.
-    *   **Verification**: The script verifies that the contents of the `dist` directory in the installed package are *identical* to the local `dist` directory created during the build step. It does this by comparing a checksum of the file lists, ensuring there are no extra or missing files.
-    *   The `npx rw-scripts smoke-tests` command is run within the temporary project to execute a suite of automated checks against a real browser.
-4.  **Publish**: Only if all previous steps (including the verification and smoke tests) pass, the script publishes the `.tgz` tarball to npm. This ensures that the exact package that was tested is the one that gets published.
-5.  **Update Dependencies**: For non-prerelease versions, the script updates the `rwsdk` dependency version in other packages within the monorepo, commits the changes, tags the release, and pushes everything to the repository.
+1.  **Version & Commit**: Calculates the new version, updates `package.json`, and creates an initial version commit.
+2.  **Build**: The `rwsdk` package is built with `NODE_ENV=production`.
+3.  **Pack**: The package is bundled into a `.tgz` tarball using `npm pack`.
+4.  **Smoke Test & Verify**: A comprehensive smoke test is run against the packed tarball:
+    *   A temporary project is created using the `starters/minimal` template.
+    *   The `.tgz` tarball is installed as a dependency.
+    *   **Verification**: The script verifies that the contents of the `dist` directory in the installed package are *identical* to the local `dist` directory from the build step by comparing checksums.
+    *   The `npx rw-scripts smoke-tests` command is run to execute a suite of automated checks.
+5.  **Publish**: Only if all smoke tests and verification checks pass, the script publishes the `.tgz` tarball to npm. This guarantees the exact package that was tested is the one that gets published.
+6.  **Finalize Commit**: For non-prerelease versions, the script updates dependencies in the monorepo, amends the version commit with these changes, tags the commit, and pushes everything to the remote repository.
+7.  **Rollback**: If any step fails, the script reverts the version commit and cleans up all temporary files, leaving the repository in a clean state.
 
 ### GitHub Token
 
