@@ -2,6 +2,8 @@
 
 set -e  # Stop on first error
 
+SUCCESS_FLAG=false # Default to failure. This will be checked by the cleanup trap.
+
 DEPENDENCY_NAME="rwsdk"  # Replace with the actual package name
 
 show_help() {
@@ -179,6 +181,7 @@ if [ ! -f "$TARBALL_NAME" ]; then
   exit 1
 fi
 echo "  ✅ Packed to $TARBALL_NAME"
+fi
 
 echo -e "\n🔬 Smoke testing package..."
 if [[ "$DRY_RUN" == true ]]; then
@@ -186,7 +189,29 @@ if [[ "$DRY_RUN" == true ]]; then
 fi
 # The smoke test runs in both normal and dry-run modes.
 
+# This cleanup function will be called on EXIT.
+# It checks if the script is finishing successfully or not.
+cleanup() {
+  # If we are in a dry run and the script did not complete successfully...
+  if [[ "$DRY_RUN" == true && "$SUCCESS_FLAG" == false ]]; then
+    echo -e "\n❌ A dry run failure occurred. Preserving assets for inspection:"
+    echo "  - Temp directory: $TEMP_DIR"
+    echo "  - Tarball: $TARBALL_NAME"
+    # Let the script exit with its original error code.
+  else
+    # Otherwise (on success or a real run), always clean up.
+    if [[ -n "$TEMP_DIR" ]]; then
+      echo "  - Cleaning up..."
+      rm -rf "$TEMP_DIR"
+      rm -f "$TARBALL_NAME"
+    fi
+  fi
+}
+
 TEMP_DIR=$(mktemp -d)
+# Set the trap *after* creating the temp dir, so the variable is available.
+trap cleanup EXIT
+
 echo "  - Created temp dir for testing: $TEMP_DIR"
 
 # On exit, ensure temp dir and tarball are cleaned up. We use a trap that will
@@ -331,6 +356,9 @@ else
   git push
   git push --tags
 fi
+
+# If we've reached the end of the script, it was successful.
+SUCCESS_FLAG=true
 
 if [[ "$DRY_RUN" == true ]]; then
   echo -e "\n✨ Done! Released version $NEW_VERSION (DRY RUN)\n"
