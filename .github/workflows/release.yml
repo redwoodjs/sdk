@@ -20,6 +20,9 @@ on:
         required: false
         default: "alpha"
 
+permissions:
+  contents: write
+
 jobs:
   release:
     runs-on: ubuntu-latest
@@ -50,12 +53,15 @@ jobs:
         with:
           node-version: "18"
           cache: "pnpm"
+          registry-url: "https://registry.npmjs.org"
 
       - name: Install dependencies
         run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Run release script
         working-directory: ./sdk/sdk
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           COMMAND="./scripts/release.sh ${{ github.event.inputs.version_type }}"
           if [[ "${{ github.event.inputs.version_type }}" == "pre"* ]]; then
