@@ -271,7 +271,7 @@ export const createDirectiveLookupPlugin = async ({
           build.onResolve(
             {
               filter: new RegExp(
-                `^(${escapedVirtualModuleName}|${escapedPrefixedModuleName})$`,
+                `^(${escapedVirtualModuleName}|${escapedPrefixedModuleName})\.js$`,
               ),
             },
             () => {
@@ -281,7 +281,7 @@ export const createDirectiveLookupPlugin = async ({
                   config.virtualModuleName,
                 );
               return {
-                path: config.virtualModuleName,
+                path: `${config.virtualModuleName}.js`,
                 external: true,
               };
             },
@@ -318,15 +318,11 @@ export const createDirectiveLookupPlugin = async ({
     resolveId(source) {
       process.env.VERBOSE && log("Resolving id=%s", source);
 
-      if (
-        source === config.virtualModuleName ||
-        source === `/@id/${config.virtualModuleName}` ||
-        source === `/@id/${config.virtualModuleName}.js`
-      ) {
+      if (source === `${config.virtualModuleName}.js`) {
         log("Resolving %s module", config.virtualModuleName);
         // context(justinvdm, 16 Jun 2025): Include .js extension
         // so it goes through vite processing chain
-        return `${config.virtualModuleName}.js`;
+        return source;
       }
 
       process.env.VERBOSE && log("No resolution for id=%s", source);

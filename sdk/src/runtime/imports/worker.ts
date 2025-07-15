@@ -4,7 +4,7 @@ import { ssrWebpackRequire as baseSsrWebpackRequire } from "rwsdk/__ssr_bridge";
 
 export const loadServerModule = memoize(async (id: string) => {
   const { useServerLookup } = await import(
-    "virtual:use-server-lookup" as string
+    "virtual:use-server-lookup.js" as string
   );
 
   const moduleFn = useServerLookup[id];

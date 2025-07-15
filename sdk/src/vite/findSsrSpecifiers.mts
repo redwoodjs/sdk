@@ -38,6 +38,22 @@ export function findSsrImportSpecifiers(
         pattern: `__vite_ssr_dynamic_import__('$SPECIFIER')`,
         list: dynamicImports,
       },
+      {
+        pattern: `__vite_ssr_import__("$SPECIFIER", $$$REST)`,
+        list: imports,
+      },
+      {
+        pattern: `__vite_ssr_import__('$SPECIFIER', $$$REST)`,
+        list: imports,
+      },
+      {
+        pattern: `__vite_ssr_dynamic_import__("$SPECIFIER", $$$REST)`,
+        list: dynamicImports,
+      },
+      {
+        pattern: `__vite_ssr_dynamic_import__('$SPECIFIER', $$$REST)`,
+        list: dynamicImports,
+      },
     ];
 
     for (const { pattern, list } of patterns) {
