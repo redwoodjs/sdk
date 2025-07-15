@@ -181,12 +181,8 @@ if [ ! -f "$TARBALL_NAME" ]; then
   exit 1
 fi
 echo "  ✅ Packed to $TARBALL_NAME"
-fi
 
 echo -e "\n🔬 Smoke testing package..."
-if [[ "$DRY_RUN" == true ]]; then
-  echo "  [DRY RUN] NOTE: Running smoke tests to validate the package."
-fi
 # The smoke test runs in both normal and dry-run modes.
 
 # This cleanup function will be called on EXIT.
@@ -213,10 +209,6 @@ TEMP_DIR=$(mktemp -d)
 trap cleanup EXIT
 
 echo "  - Created temp dir for testing: $TEMP_DIR"
-
-# On exit, ensure temp dir and tarball are cleaned up. We use a trap that will
-# fire on EXIT, whether it's successful or due to an error.
-trap 'echo "  - Cleaning up..."; rm -rf "$TEMP_DIR"; rm -f "$TARBALL_NAME"' EXIT
 
 echo "  - Copying minimal starter to temp dir..."
 # Get the absolute path of the script's directory
