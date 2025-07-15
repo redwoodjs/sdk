@@ -1,24 +1,27 @@
 name: Release
 
 on:
-  workflow_dispatch:
-    inputs:
-      version_type:
-        description: "The type of version bump to perform (patch, minor, major, prepatch, preminor, premajor, test)"
-        required: true
-        type: choice
-        options:
-          - patch
-          - minor
-          - major
-          - prepatch
-          - preminor
-          - premajor
-          - test
-      preid:
-        description: "Prerelease identifier (e.g., alpha, beta, rc). Used with prepatch/preminor/premajor."
-        required: false
-        default: "alpha"
+  push:
+    branches:
+      - sanity-checks-for-release-script
+  # workflow_dispatch:
+  #   inputs:
+  #     version_type:
+  #       description: "The type of version bump to perform (patch, minor, major, prepatch, preminor, premajor, test)"
+  #       required: true
+  #       type: choice
+  #       options:
+  #         - patch
+  #         - minor
+  #         - major
+  #         - prepatch
+  #         - preminor
+  #         - premajor
+  #         - test
+  #     preid:
+  #       description: "Prerelease identifier (e.g., alpha, beta, rc). Used with prepatch/preminor/premajor."
+  #       required: false
+  #       default: "alpha"
 
 permissions:
   contents: write
@@ -63,9 +66,6 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          COMMAND="./scripts/release.sh ${{ github.event.inputs.version_type }}"
-          if [[ "${{ github.event.inputs.version_type }}" == "pre"* ]]; then
-            COMMAND="$COMMAND --preid ${{ github.event.inputs.preid }}"
-          fi
-          echo "Running command: $COMMAND"
-          eval $COMMAND
+          # This command is hardcoded to 'test --dry' for safe testing on this branch.
+          # It will be reverted to use inputs before merging.
+          ./scripts/release.sh test --dry
