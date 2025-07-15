@@ -255,14 +255,13 @@ else
   echo "  ✅ Installed package contents match the local build."
 fi
 
-echo "  - Running smoke tests in temp dir..."
-(
-  cd "$TEMP_DIR"
-  if ! npx rw-scripts smoke-tests; then
-    echo "  ❌ Smoke tests failed."
-    exit 1
-  fi
-)
+echo "  - Running smoke tests..."
+# The CWD is the package root (sdk/sdk), so we can run pnpm smoke-test directly.
+# We pass the path to the temp directory where the minimal starter was installed.
+if ! pnpm smoke-test --path="$TEMP_DIR" --no-sync; then
+  echo "  ❌ Smoke tests failed."
+  exit 1
+fi
 echo "  ✅ Smoke tests passed."
 
 echo -e "\n🚀 Publishing version $NEW_VERSION..."
