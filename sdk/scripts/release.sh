@@ -190,13 +190,16 @@ echo -e "\n🔬 Smoke testing package..."
 # This cleanup function will be called on EXIT.
 # It checks if the script is finishing successfully or not.
 cleanup() {
-  # If we are in a dry run and the script did not complete successfully...
-  if [[ "$DRY_RUN" == true && "$SUCCESS_FLAG" == false ]]; then
-    echo -e "\n❌ A dry run failure occurred. Preserving temp directory for inspection:"
+  # If the script did not complete successfully, preserve assets for inspection.
+  if [[ "$SUCCESS_FLAG" == false ]]; then
+    echo -e "\n❌ A failure occurred. Preserving temp directory for inspection:"
     echo "  - Temp directory: $TEMP_DIR"
-    # Let the script exit with its original error code.
+    # If in GitHub Actions, export the path for the artifact upload step.
+    if [[ -n "$GITHUB_ENV" ]]; then
+      echo "TEMP_DIR_PATH=$TEMP_DIR" >> "$GITHUB_ENV"
+    fi
   else
-    # Otherwise (on success or a real run), clean up the temp dir.
+    # Otherwise (on success), clean up the temp dir.
     if [[ -n "$TEMP_DIR" && -d "$TEMP_DIR" ]]; then
       echo "  - Cleaning up temp directory..."
       rm -rf "$TEMP_DIR"

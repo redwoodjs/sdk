@@ -62,3 +62,10 @@ jobs:
           # This command is hardcoded to 'test --dry' for safe testing on this branch.
           # It will be reverted to use inputs before merging.
           ./scripts/release.sh test --dry
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-failure-logs
+          path: ${{ env.TEMP_DIR_PATH }}
