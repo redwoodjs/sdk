@@ -102,7 +102,7 @@ A separate, manually-triggered workflow exists to unrelease a version.
 4.  Provide a `reason` for the action.
 
 Running this workflow does the following:
-*   Deprecates the specified package version on npm with the provided reason.
+*   Deprecates the specified package version on npm. This acts as a warning to users that the version should not be used, without removing it from the registry. A warning message with the provided reason is shown when the version is installed.
 *   Deletes the corresponding GitHub Release. If the deleted release was marked as "latest," the workflow automatically finds the most recent stable release and promotes it to "latest".
 *   Deletes the corresponding git tag from the remote repository.
 
