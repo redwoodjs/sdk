@@ -8,9 +8,9 @@ on:
         required: true
         type: choice
         options:
-          - minor
-          - test
           - patch
+          - test
+          - minor
           - major
           - prepatch
           - preminor
