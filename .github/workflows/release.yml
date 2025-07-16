@@ -93,8 +93,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_RELEASES }}
         run: |
-          echo "Creating GitHub release for tag ${{ env.TAG_NAME }}..."
-          gh release create ${{ env.TAG_NAME }} --generate-notes
+          FLAGS="--generate-notes"
+          VERSION_TYPE="${{ github.event.inputs.version_type }}"
+          if [[ "$VERSION_TYPE" == "patch" || "$VERSION_TYPE" == "minor" || "$VERSION_TYPE" == "major" ]]; then
+            FLAGS="$FLAGS --latest"
+          elif [[ "$VERSION_TYPE" == "pre"* ]]; then
+            FLAGS="$FLAGS --prerelease"
+          fi
+          echo "Creating GitHub release for tag ${{ env.TAG_NAME }} with flags: $FLAGS"
+          gh release create ${{ env.TAG_NAME }} $FLAGS
 
       - name: Prune node_modules for artifact upload
         if: failure() && steps.release_script.outputs.project-dir
