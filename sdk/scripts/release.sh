@@ -117,10 +117,9 @@ fi
 
 echo -e "\n🏗️  Building package..."
 if [[ "$DRY_RUN" == true ]]; then
-  echo "  [DRY RUN] NOTE: Running build to allow for artifact verification."
-else
-  NODE_ENV=production pnpm build
+  echo "  [DRY RUN] NOTE: Forcing build to allow for artifact verification."
 fi
+NODE_ENV=production pnpm build
 
 CURRENT_VERSION=$(npm pkg get version | tr -d '"')
 if [[ "$VERSION_TYPE" == "test" ]]; then
@@ -193,16 +192,16 @@ cleanup() {
   # If the script did not complete successfully, preserve assets for inspection.
   if [[ "$SUCCESS_FLAG" == false ]]; then
     echo -e "\n❌ A failure occurred. Preserving temp directory for inspection:"
-    echo "  - Temp directory: $TEMP_DIR"
+    echo "  - Temp directory: $PROJECT_DIR"
     # If in GitHub Actions, export the path for the artifact upload step.
     if [[ -n "$GITHUB_ENV" ]]; then
-      echo "TEMP_DIR_PATH=$TEMP_DIR" >> "$GITHUB_ENV"
+      echo "TEMP_DIR_PATH=$PROJECT_DIR" >> "$GITHUB_ENV"
     fi
   else
     # Otherwise (on success), clean up the temp dir.
-    if [[ -n "$TEMP_DIR" && -d "$TEMP_DIR" ]]; then
+    if [[ -n "$PROJECT_DIR" && -d "$PROJECT_DIR" ]]; then
       echo "  - Cleaning up temp directory..."
-      rm -rf "$TEMP_DIR"
+      rm -rf "$PROJECT_DIR"
     fi
   fi
 
