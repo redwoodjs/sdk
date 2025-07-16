@@ -277,12 +277,12 @@ echo "  ✅ Smoke tests passed."
 echo -e "\n🚀 Publishing version $NEW_VERSION..."
 if [[ "$DRY_RUN" == true ]]; then
   if [[ "$VERSION_TYPE" == "test" ]]; then
-    echo "  [DRY RUN] pnpm publish '$TARBALL_PATH' --tag test"
+    echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag test"
   else
-    echo "  [DRY RUN] pnpm publish '$TARBALL_PATH'"
+    echo "  [DRY RUN] npm publish '$TARBALL_PATH'"
   fi
 else
-  PUBLISH_CMD="pnpm publish \"$TARBALL_PATH\""
+  PUBLISH_CMD="npm publish \"$TARBALL_PATH\""
   if [[ "$VERSION_TYPE" == "test" ]]; then
     PUBLISH_CMD="$PUBLISH_CMD --tag test"
   fi
@@ -292,6 +292,7 @@ else
     # The trap will clean up the tarball
     exit 1
   fi
+  echo "  ✅ Published successfully."
 fi
 
 echo -e "\n🔄 Updating dependencies in monorepo..."
