@@ -104,3 +104,11 @@ jobs:
         with:
           name: smoke-test-failure-logs
           path: ${{ steps.release_script.outputs.project-dir }}
+
+      - name: Upload smoke test artifacts
+        if: always() && steps.release_script.outputs.project-dir
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-smoke-test-artifacts
+          path: ${{ steps.release_script.outputs.project-dir }}/artifacts
+          retention-days: 7
