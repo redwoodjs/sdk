@@ -24,6 +24,11 @@ on:
         required: false
         type: boolean
         default: true
+      force_gh_release_for_test:
+        description: "If true, forces creation of a GitHub release even for a 'test' version."
+        required: false
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -82,7 +87,7 @@ jobs:
       - name: Create GitHub Release
         if: >
           success() &&
-          github.event.inputs.version_type != 'test' &&
+          (github.event.inputs.version_type != 'test' || github.event.inputs.force_gh_release_for_test == 'true') &&
           github.event.inputs.create_gh_release == 'true'
         env:
           GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
