@@ -67,11 +67,16 @@ jobs:
           corepack enable
           pnpm install
 
+      - name: Setup .npmrc for publishing
+        working-directory: sdk
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
+          echo "registry=https://registry.npmjs.org/" >> .npmrc
+          echo "always-auth=true" >> .npmrc
+
       - name: Run release script
         id: release_script
         working-directory: sdk
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
           COMMAND="./scripts/release.sh ${{ github.event.inputs.version_type }}"
           if [[ "${{ github.event.inputs.version_type }}" == "pre"* ]]; then
