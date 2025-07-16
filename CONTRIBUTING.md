@@ -106,6 +106,15 @@ Running this workflow does the following:
 *   Deletes the corresponding GitHub Release. If the deleted release was marked as "latest," the workflow automatically finds the most recent stable release and promotes it to "latest".
 *   Deletes the corresponding git tag from the remote repository.
 
+#### Why Deprecate Instead of Unpublish?
+
+This project uses `npm deprecate` instead of `npm unpublish` because unpublishing is highly restrictive and can be unreliable in an automated CI environment. The npm registry has strict policies to prevent breaking the package ecosystem:
+
+*   A package version can only be unpublished without restrictions within 72 hours of its release.
+*   After 72 hours, unpublishing is only allowed if the package has very few downloads and no other public packages depend on it.
+
+Deprecation is a safer and more reliable method. It immediately warns users about a problematic version while ensuring that existing projects that depend on it do not break.
+
 ### Release Process and Sanity Checks
 
 The release workflow and underlying script (`sdk/sdk/scripts/release.sh`) follow a strict procedure to ensure the integrity of every release:
