@@ -92,6 +92,20 @@ Releases are managed by a GitHub Actions workflow that automates versioning, pub
 4.  If you are creating a pre-release, you can specify a `preid` (e.g., `beta`, `rc`). The default is `alpha`.
 5.  Click the "Run workflow" button.
 
+### How to Unrelease a Version
+
+A separate, manually-triggered workflow exists to unrelease a version.
+
+1.  Navigate to the [Unrelease workflow](.github/workflows/unrelease.yml) in the repository's "Actions" tab.
+2.  Click the "Run workflow" dropdown.
+3.  Enter the full `version` to unrelease (e.g., `0.1.15`).
+4.  Provide a `reason` for the action.
+
+Running this workflow does the following:
+*   Deprecates the specified package version on npm with the provided reason.
+*   Deletes the corresponding GitHub Release.
+*   Deletes the corresponding git tag from the remote repository.
+
 ### Release Process and Sanity Checks
 
 The release workflow and underlying script (`sdk/sdk/scripts/release.sh`) follow a strict procedure to ensure the integrity of every release:
@@ -103,7 +117,7 @@ The release workflow and underlying script (`sdk/sdk/scripts/release.sh`) follow
     *   A temporary project is created using the `starters/minimal` template.
     *   The `.tgz` tarball is installed as a dependency.
     *   **Verification**: The script verifies that the contents of the `dist` directory in the installed package are *identical* to the local `dist` directory from the build step by comparing checksums.
-    *   The `npx rw-scripts smoke-tests` command is run to execute a suite of automated checks.
+    *  Smoke tests are then installed
 5.  **Publish**: Only if all smoke tests and verification checks pass, the script publishes the `.tgz` tarball to npm. This guarantees the exact package that was tested is the one that gets published.
 6.  **Finalize Commit**: For non-prerelease versions, the script updates dependencies in the monorepo, amends the version commit with these changes, tags the commit, and pushes everything to the remote repository.
 7.  **Rollback**: If any step fails, the script reverts the version commit and cleans up all temporary files, leaving the repository in a clean state.
