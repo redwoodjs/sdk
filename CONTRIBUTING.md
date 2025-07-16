@@ -102,8 +102,8 @@ A separate, manually-triggered workflow exists to unrelease a version.
 4.  Provide a `reason` for the action.
 
 Running this workflow does the following:
-*   Deprecates the specified package version on npm with the provided reason.
-*   Deletes the corresponding GitHub Release.
+*   Deprecates the specified package version on npm. This acts as a warning to users that the version should not be used, without removing it from the registry. A warning message with the provided reason is shown when the version is installed.
+*   Deletes the corresponding GitHub Release. If the deleted release was marked as "latest," the workflow automatically finds the most recent stable release and promotes it to "latest".
 *   Deletes the corresponding git tag from the remote repository.
 
 ### Release Process and Sanity Checks
@@ -121,6 +121,10 @@ The release workflow and underlying script (`sdk/sdk/scripts/release.sh`) follow
 5.  **Publish**: Only if all smoke tests and verification checks pass, the script publishes the `.tgz` tarball to npm. This guarantees the exact package that was tested is the one that gets published.
 6.  **Finalize Commit**: For non-prerelease versions, the script updates dependencies in the monorepo, amends the version commit with these changes, tags the commit, and pushes everything to the remote repository.
 7.  **Rollback**: If any step fails, the script reverts the version commit and cleans up all temporary files, leaving the repository in a clean state.
+
+#### Test Releases
+
+Test releases receive special handling. They are published to npm under the `test` tag, but the release commit itself is not pushed to any branch. Instead, the script creates a release commit, tags it, and pushes *only the tag* to the remote. The local branch is then reset to its previous state. This makes the release commit available on the remote, referenced only by its tag, without including it in the main branch history.
 
 ### GitHub Token
 

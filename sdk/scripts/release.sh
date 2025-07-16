@@ -177,14 +177,19 @@ echo -e "\n📦 Packing package..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] NOTE: Actually packing package to allow for smoke testing."
 fi
+
+# The `TEMP_DIR` is created here so we can pack the tarball into it
+# and keep the git working directory clean.
+TEMP_DIR=$(mktemp -d)
+
 # Always pack the package to allow for smoke testing, even in a dry run.
-# The trap will clean up the tarball.
-TARBALL_NAME=$(npm pack)
-if [ ! -f "$TARBALL_NAME" ]; then
+TARBALL_NAME=$(npm pack --pack-destination "$TEMP_DIR" | tail -n 1)
+TARBALL_PATH="$TEMP_DIR/$TARBALL_NAME"
+if [ ! -f "$TARBALL_PATH" ]; then
   echo "❌ npm pack failed to create tarball"
   exit 1
 fi
-echo "  ✅ Packed to $TARBALL_NAME"
+echo "  ✅ Packed to $TARBALL_PATH"
 
 echo -e "\n🔬 Smoke testing package..."
 # The smoke test runs in both normal and dry-run modes.
@@ -195,23 +200,17 @@ cleanup() {
   # If the script did not complete successfully, preserve assets for inspection.
   if [[ "$SUCCESS_FLAG" == false ]]; then
     echo -e "\n❌ A failure occurred. Preserving temp directory for inspection:"
-    echo "  - Temp directory: $PROJECT_DIR"
+    echo "  - Temp directory: $TEMP_DIR"
   else
     # Otherwise (on success), clean up the temp dir.
-    if [[ -n "$PROJECT_DIR" && -d "$PROJECT_DIR" ]]; then
+    if [[ -n "$TEMP_DIR" && -d "$TEMP_DIR" ]]; then
       echo "  - Cleaning up temp directory..."
-      rm -rf "$PROJECT_DIR"
+      rm -rf "$TEMP_DIR"
     fi
   fi
-
-  # Always clean up the tarball, regardless of success, failure, or dry run.
-  if [[ -n "$TARBALL_NAME" && -f "$TARBALL_NAME" ]]; then
-    echo "  - Cleaning up package tarball $TARBALL_NAME..."
-    rm -f "$TARBALL_NAME"
-  fi
+  # The tarball is stored in TEMP_DIR and cleaned up with it.
 }
 
-TEMP_DIR=$(mktemp -d)
 # Set the trap *after* creating the temp dir, so the variable is available.
 trap cleanup EXIT
 
@@ -233,11 +232,11 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 MONOREPO_ROOT="$SCRIPT_DIR/../.."
 cp -a "$MONOREPO_ROOT/starters/minimal/." "$PROJECT_DIR/"
 
-# The tarball is in the current directory (sdk/sdk)
-TARBALL_PATH="$PWD/$TARBALL_NAME"
+echo "  - Configuring temp project to not use frozen lockfile..."
+echo "frozen-lockfile=false" > "$PROJECT_DIR/.npmrc"
 
 echo "  - Installing packed tarball in project dir..."
-(cd "$PROJECT_DIR" && pnpm install "$TARBALL_PATH")
+(cd "$PROJECT_DIR" && pnpm add "$TARBALL_PATH")
 
 PACKAGE_NAME=$(npm pkg get name | tr -d '"')
 INSTALLED_DIST_PATH="$PROJECT_DIR/node_modules/$PACKAGE_NAME/dist"
@@ -268,7 +267,8 @@ fi
 echo "  - Running smoke tests..."
 # The CWD is the package root (sdk/sdk), so we can run pnpm smoke-test directly.
 # We pass the path to the temp project directory where the minimal starter was installed.
-if ! pnpm smoke-test --path="$PROJECT_DIR" --no-sync; then
+# We also specify an artifact directory *within* the temp directory.
+if ! pnpm smoke-test --path="$PROJECT_DIR" --no-sync --artifact-dir="$TEMP_DIR/artifacts"; then
   echo "  ❌ Smoke tests failed."
   exit 1
 fi
@@ -277,12 +277,12 @@ echo "  ✅ Smoke tests passed."
 echo -e "\n🚀 Publishing version $NEW_VERSION..."
 if [[ "$DRY_RUN" == true ]]; then
   if [[ "$VERSION_TYPE" == "test" ]]; then
-    echo "  [DRY RUN] pnpm publish $TARBALL_NAME --tag test"
+    echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag test"
   else
-    echo "  [DRY RUN] pnpm publish $TARBALL_NAME"
+    echo "  [DRY RUN] npm publish '$TARBALL_PATH'"
   fi
 else
-  PUBLISH_CMD="pnpm publish \"$TARBALL_NAME\""
+  PUBLISH_CMD="npm publish \"$TARBALL_PATH\""
   if [[ "$VERSION_TYPE" == "test" ]]; then
     PUBLISH_CMD="$PUBLISH_CMD --tag test"
   fi
@@ -292,6 +292,7 @@ else
     # The trap will clean up the tarball
     exit 1
   fi
+  echo "  ✅ Published successfully."
 fi
 
 echo -e "\n🔄 Updating dependencies in monorepo..."
@@ -322,18 +323,31 @@ fi
 
 echo -e "\n📥 Installing dependencies..."
 if [[ "$DRY_RUN" == true ]]; then
-  echo "  [DRY RUN] pnpm install"
+  echo "  [DRY RUN] pnpm install --no-frozen-lockfile --ignore-scripts"
 else
-  for i in {1..3}; do
-    echo "Attempt $i of 3: Running pnpm install"
-    pnpm install --ignore-scripts && break
-    if [ $i -lt 3 ]; then
-      echo "pnpm install failed, retrying in 3 seconds..."
-      sleep 3
-    else
-      echo "pnpm install failed after 3 attempts, exiting"
+  # context(justinvdm, 2025-07-16): Sometimes the rwsdk package we just released has not yet become available on the registry, so we retry a few times.
+  for i in {1..10}; do
+    echo "Attempt $i of 10: Running pnpm install"
+    if pnpm install --no-frozen-lockfile --ignore-scripts; then
+      break # Success
+    fi
+
+    if [ $i -eq 10 ]; then
+      echo "pnpm install failed after 10 attempts, exiting"
       exit 1
     fi
+
+    sleep_time=0
+    if [ $i -le 3 ]; then
+      sleep_time=3
+    elif [ $i -le 7 ]; then
+      sleep_time=5
+    else
+      sleep_time=10
+    fi
+
+    echo "pnpm install failed, retrying in ${sleep_time}s..."
+    sleep $sleep_time
   done
 fi
 
@@ -346,8 +360,15 @@ if [[ "$DRY_RUN" == true ]]; then
     echo "    - Add: all package.json and pnpm-lock.yaml files"
   fi
   echo "    - Amend commit: release $NEW_VERSION"
-  echo "    - Tag: $TAG_NAME"
-  echo "    - Push: origin with tags"
+  if [[ "$VERSION_TYPE" == "test" ]]; then
+    echo "    - Tag: $TAG_NAME"
+    echo "    - Push tag $TAG_NAME to remote"
+    echo "    - Reset branch to previous commit (commit will be on remote via tag)"
+    echo "    - No branch push will be performed"
+  else
+    echo "    - Tag: $TAG_NAME"
+    echo "    - Push: origin with tags"
+  fi
 else
   # For prerelease versions, only add the main package.json since we didn't update dependencies
   if [[ "$NEW_VERSION" =~ -.*\. && ! "$NEW_VERSION" =~ -test\. ]]; then
@@ -358,10 +379,20 @@ else
     (cd .. && git add $(git diff --name-only | grep -E 'package\.json|pnpm-lock\.yaml$'))
     git commit --amend --no-edit
   fi
-  git pull --rebase
-  git tag "$TAG_NAME"
-  git push
-  git push --tags
+
+  if [[ "$VERSION_TYPE" == "test" ]]; then
+    echo "  - Creating tag for test release..."
+    git tag "$TAG_NAME"
+    echo "  - Pushing tag to remote..."
+    git push origin "$TAG_NAME"
+    echo "  - Rolling back local commit for test release. The commit is available via the remote tag."
+    git reset --hard HEAD~1
+  else
+    git pull --rebase
+    git tag "$TAG_NAME"
+    git push
+    git push --tags
+  fi
 fi
 
 # If we've reached the end of the script, it was successful.
