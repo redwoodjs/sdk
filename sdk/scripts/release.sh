@@ -237,9 +237,7 @@ cp -a "$MONOREPO_ROOT/starters/minimal/." "$PROJECT_DIR/"
 TARBALL_PATH="$PWD/$TARBALL_NAME"
 
 echo "  - Installing packed tarball in project dir..."
-# Starters don't have a lockfile. In CI, pnpm defaults to --frozen-lockfile.
-# We explicitly use `pnpm install --no-frozen-lockfile` to bypass this for the temp starter project.
-(cd "$PROJECT_DIR" && pnpm install "$TARBALL_PATH" --no-save --no-frozen-lockfile)
+(cd "$PROJECT_DIR" && pnpm install "$TARBALL_PATH")
 
 PACKAGE_NAME=$(npm pkg get name | tr -d '"')
 INSTALLED_DIST_PATH="$PROJECT_DIR/node_modules/$PACKAGE_NAME/dist"
@@ -326,28 +324,16 @@ echo -e "\n📥 Installing dependencies..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] pnpm install"
 else
-  for i in {1..10}; do
-    echo "Attempt $i of 10: Running pnpm install"
-    if pnpm install --ignore-scripts; then
-      break # Success
-    fi
-
-    if [ $i -eq 10 ]; then
-      echo "pnpm install failed after 10 attempts, exiting"
+  for i in {1..3}; do
+    echo "Attempt $i of 3: Running pnpm install"
+    pnpm install --ignore-scripts && break
+    if [ $i -lt 3 ]; then
+      echo "pnpm install failed, retrying in 3 seconds..."
+      sleep 3
+    else
+      echo "pnpm install failed after 3 attempts, exiting"
       exit 1
     fi
-
-    sleep_time=0
-    if [ $i -le 3 ]; then
-      sleep_time=3
-    elif [ $i -le 7 ]; then
-      sleep_time=5
-    else
-      sleep_time=10
-    fi
-
-    echo "pnpm install failed, retrying in ${sleep_time}s..."
-    sleep $sleep_time
   done
 fi
 
@@ -385,5 +371,4 @@ if [[ "$DRY_RUN" == true ]]; then
   echo -e "\n✨ Done! Released version $NEW_VERSION (DRY RUN)\n"
 else
   echo -e "\n✨ Done! Released version $NEW_VERSION\n"
-fi
 fi
