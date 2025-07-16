@@ -8,13 +8,13 @@ on:
         required: true
         type: choice
         options:
-          - patch
           - minor
+          - test
+          - patch
           - major
           - prepatch
           - preminor
           - premajor
-          - test
       preid:
         description: "Prerelease identifier (e.g., alpha, beta, rc). Used with prepatch/preminor/premajor."
         required: false
