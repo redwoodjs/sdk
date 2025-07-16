@@ -237,7 +237,9 @@ cp -a "$MONOREPO_ROOT/starters/minimal/." "$PROJECT_DIR/"
 TARBALL_PATH="$PWD/$TARBALL_NAME"
 
 echo "  - Installing packed tarball in project dir..."
-(cd "$PROJECT_DIR" && npm install "$TARBALL_PATH" --no-save)
+# Starters don't have a lockfile. In CI, pnpm defaults to --frozen-lockfile.
+# We explicitly use `pnpm install --no-frozen-lockfile` to bypass this for the temp starter project.
+(cd "$PROJECT_DIR" && pnpm install "$TARBALL_PATH" --no-save --no-frozen-lockfile)
 
 PACKAGE_NAME=$(npm pkg get name | tr -d '"')
 INSTALLED_DIST_PATH="$PROJECT_DIR/node_modules/$PACKAGE_NAME/dist"

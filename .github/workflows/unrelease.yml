@@ -25,11 +25,10 @@ jobs:
           # This token should have write permissions to the repository.
           token: ${{ secrets.GH_TOKEN_FOR_RELEASES }}
 
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
-          registry-url: "https://registry.npmjs.org"
+          node-version: 22
 
       - name: Deprecate package on npm
         env:

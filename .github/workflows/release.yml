@@ -57,20 +57,15 @@ jobs:
           git config user.name "github-actions[bot]"
           git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
 
-      - name: Set up pnpm
-        uses: pnpm/action-setup@v3
-        with:
-          version: 8
-
-      - name: Set up Node.js
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: "18"
-          cache: "pnpm"
-          registry-url: "https://registry.npmjs.org"
+          node-version: 22
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile --ignore-scripts
+        run: |
+          corepack enable
+          pnpm install
 
       - name: Run release script
         id: release_script
@@ -94,14 +89,14 @@ jobs:
           gh release create ${{ env.TAG_NAME }} --generate-notes
 
       - name: Prune node_modules for artifact upload
-        if: failure()
+        if: failure() && steps.release_script.outputs.project-dir
         run: |
           echo "Pruning node_modules to reduce artifact size..."
           find ${{ steps.release_script.outputs.project-dir }}/node_modules -mindepth 1 -maxdepth 1 -not -name "rwsdk" -exec rm -rf {} +
           echo "Pruning complete."
 
       - name: Upload logs on failure
-        if: failure()
+        if: failure() && steps.release_script.outputs.project-dir
         uses: actions/upload-artifact@v4
         with:
           name: smoke-test-failure-logs
