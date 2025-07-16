@@ -126,7 +126,7 @@ The release workflow and underlying script (`sdk/sdk/scripts/release.sh`) follow
     *   A temporary project is created using the `starters/minimal` template.
     *   The `.tgz` tarball is installed as a dependency.
     *   **Verification**: The script verifies that the contents of the `dist` directory in the installed package are *identical* to the local `dist` directory from the build step by comparing checksums.
-    *  Smoke tests are then installed
+    *  Smoke tests are then run for this same test project, validating that the installed tarball is working correctly
 5.  **Publish**: Only if all smoke tests and verification checks pass, the script publishes the `.tgz` tarball to npm. This guarantees the exact package that was tested is the one that gets published.
 6.  **Finalize Commit**: For non-prerelease versions, the script updates dependencies in the monorepo, amends the version commit with these changes, tags the commit, and pushes everything to the remote repository.
 7.  **Rollback**: If any step fails, the script reverts the version commit and cleans up all temporary files, leaving the repository in a clean state.
