@@ -103,7 +103,7 @@ A separate, manually-triggered workflow exists to unrelease a version.
 
 Running this workflow does the following:
 *   Deprecates the specified package version on npm with the provided reason.
-*   Deletes the corresponding GitHub Release.
+*   Deletes the corresponding GitHub Release. If the deleted release was marked as "latest," the workflow automatically finds the most recent stable release and promotes it to "latest".
 *   Deletes the corresponding git tag from the remote repository.
 
 ### Release Process and Sanity Checks
