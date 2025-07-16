@@ -177,14 +177,19 @@ echo -e "\n📦 Packing package..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] NOTE: Actually packing package to allow for smoke testing."
 fi
+
+# The `TEMP_DIR` is created here so we can pack the tarball into it
+# and keep the git working directory clean.
+TEMP_DIR=$(mktemp -d)
+
 # Always pack the package to allow for smoke testing, even in a dry run.
-# The trap will clean up the tarball.
-TARBALL_NAME=$(npm pack)
-if [ ! -f "$TARBALL_NAME" ]; then
+TARBALL_NAME=$(npm pack --pack-destination "$TEMP_DIR" | tail -n 1)
+TARBALL_PATH="$TEMP_DIR/$TARBALL_NAME"
+if [ ! -f "$TARBALL_PATH" ]; then
   echo "❌ npm pack failed to create tarball"
   exit 1
 fi
-echo "  ✅ Packed to $TARBALL_NAME"
+echo "  ✅ Packed to $TARBALL_PATH"
 
 echo -e "\n🔬 Smoke testing package..."
 # The smoke test runs in both normal and dry-run modes.
@@ -195,23 +200,17 @@ cleanup() {
   # If the script did not complete successfully, preserve assets for inspection.
   if [[ "$SUCCESS_FLAG" == false ]]; then
     echo -e "\n❌ A failure occurred. Preserving temp directory for inspection:"
-    echo "  - Temp directory: $PROJECT_DIR"
+    echo "  - Temp directory: $TEMP_DIR"
   else
     # Otherwise (on success), clean up the temp dir.
-    if [[ -n "$PROJECT_DIR" && -d "$PROJECT_DIR" ]]; then
+    if [[ -n "$TEMP_DIR" && -d "$TEMP_DIR" ]]; then
       echo "  - Cleaning up temp directory..."
-      rm -rf "$PROJECT_DIR"
+      rm -rf "$TEMP_DIR"
     fi
   fi
-
-  # Always clean up the tarball, regardless of success, failure, or dry run.
-  if [[ -n "$TARBALL_NAME" && -f "$TARBALL_NAME" ]]; then
-    echo "  - Cleaning up package tarball $TARBALL_NAME..."
-    rm -f "$TARBALL_NAME"
-  fi
+  # The tarball is stored in TEMP_DIR and cleaned up with it.
 }
 
-TEMP_DIR=$(mktemp -d)
 # Set the trap *after* creating the temp dir, so the variable is available.
 trap cleanup EXIT
 
@@ -232,9 +231,6 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 # The monorepo root is two levels up from the script's directory
 MONOREPO_ROOT="$SCRIPT_DIR/../.."
 cp -a "$MONOREPO_ROOT/starters/minimal/." "$PROJECT_DIR/"
-
-# The tarball is in the current directory (sdk/sdk)
-TARBALL_PATH="$PWD/$TARBALL_NAME"
 
 echo "  - Installing packed tarball in project dir..."
 (cd "$PROJECT_DIR" && pnpm add "$TARBALL_PATH" --no-frozen-lockfile)
@@ -277,12 +273,12 @@ echo "  ✅ Smoke tests passed."
 echo -e "\n🚀 Publishing version $NEW_VERSION..."
 if [[ "$DRY_RUN" == true ]]; then
   if [[ "$VERSION_TYPE" == "test" ]]; then
-    echo "  [DRY RUN] pnpm publish $TARBALL_NAME --tag test"
+    echo "  [DRY RUN] pnpm publish '$TARBALL_PATH' --tag test"
   else
-    echo "  [DRY RUN] pnpm publish $TARBALL_NAME"
+    echo "  [DRY RUN] pnpm publish '$TARBALL_PATH'"
   fi
 else
-  PUBLISH_CMD="pnpm publish \"$TARBALL_NAME\""
+  PUBLISH_CMD="pnpm publish \"$TARBALL_PATH\""
   if [[ "$VERSION_TYPE" == "test" ]]; then
     PUBLISH_CMD="$PUBLISH_CMD --tag test"
   fi
@@ -401,5 +397,6 @@ if [[ "$DRY_RUN" == true ]]; then
   echo -e "\n✨ Done! Released version $NEW_VERSION (DRY RUN)\n"
 else
   echo -e "\n✨ Done! Released version $NEW_VERSION\n"
+fi
 fi
 fi
