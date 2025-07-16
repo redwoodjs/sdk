@@ -196,10 +196,6 @@ cleanup() {
   if [[ "$SUCCESS_FLAG" == false ]]; then
     echo -e "\n❌ A failure occurred. Preserving temp directory for inspection:"
     echo "  - Temp directory: $PROJECT_DIR"
-    # If in GitHub Actions, export the path for the artifact upload step.
-    if [[ -n "$GITHUB_ENV" ]]; then
-      echo "TEMP_DIR_PATH=$PROJECT_DIR" >> "$GITHUB_ENV"
-    fi
   else
     # Otherwise (on success), clean up the temp dir.
     if [[ -n "$PROJECT_DIR" && -d "$PROJECT_DIR" ]]; then
@@ -223,6 +219,10 @@ trap cleanup EXIT
 # will be used to generate a valid worker name for the smoke test.
 PROJECT_DIR="$TEMP_DIR/test"
 mkdir -p "$PROJECT_DIR"
+
+if [[ -n "$GITHUB_OUTPUT" ]]; then
+  echo "project-dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
+fi
 
 echo "  - Created temp project dir for testing: $PROJECT_DIR"
 

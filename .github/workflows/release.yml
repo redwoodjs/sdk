@@ -73,16 +73,14 @@ jobs:
         run: pnpm install --frozen-lockfile --ignore-scripts
 
       - name: Run release script
+        id: release_script
         working-directory: ./sdk/sdk
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          COMMAND="./scripts/release.sh ${{ github.event.inputs.version_type }}"
-          if [[ "${{ github.event.inputs.version_type }}" == "pre"* ]]; then
-            COMMAND="$COMMAND --preid ${{ github.event.inputs.preid }}"
-          fi
-          echo "Running command: $COMMAND"
-          eval $COMMAND
+          # This command is hardcoded to 'test --dry' for safe testing on this branch.
+          # It will be reverted to use inputs before merging.
+          ./scripts/release.sh test --dry
 
       - name: Create GitHub Release
         if: >
@@ -90,7 +88,7 @@ jobs:
           (github.event.inputs.version_type != 'test' || github.event.inputs.force_gh_release_for_test == 'true') &&
           github.event.inputs.create_gh_release == 'true'
         env:
-          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_RELEASES }}
         run: |
           echo "Creating GitHub release for tag ${{ env.TAG_NAME }}..."
           gh release create ${{ env.TAG_NAME }} --generate-notes
@@ -99,7 +97,7 @@ jobs:
         if: failure()
         run: |
           echo "Pruning node_modules to reduce artifact size..."
-          find ${{ env.TEMP_DIR_PATH }}/node_modules -mindepth 1 -maxdepth 1 -not -name "rwsdk" -exec rm -rf {} +
+          find ${{ steps.release_script.outputs.project-dir }}/node_modules -mindepth 1 -maxdepth 1 -not -name "rwsdk" -exec rm -rf {} +
           echo "Pruning complete."
 
       - name: Upload logs on failure
@@ -107,4 +105,4 @@ jobs:
         uses: actions/upload-artifact@v4
         with:
           name: smoke-test-failure-logs
-          path: ${{ env.TEMP_DIR_PATH }}
+          path: ${{ steps.release_script.outputs.project-dir }}
