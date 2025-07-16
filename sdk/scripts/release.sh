@@ -232,8 +232,11 @@ SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
 MONOREPO_ROOT="$SCRIPT_DIR/../.."
 cp -a "$MONOREPO_ROOT/starters/minimal/." "$PROJECT_DIR/"
 
+echo "  - Configuring temp project to not use frozen lockfile..."
+echo "frozen-lockfile=false" > "$PROJECT_DIR/.npmrc"
+
 echo "  - Installing packed tarball in project dir..."
-(cd "$PROJECT_DIR" && pnpm add "$TARBALL_PATH" --no-frozen-lockfile)
+(cd "$PROJECT_DIR" && pnpm add "$TARBALL_PATH")
 
 PACKAGE_NAME=$(npm pkg get name | tr -d '"')
 INSTALLED_DIST_PATH="$PROJECT_DIR/node_modules/$PACKAGE_NAME/dist"
