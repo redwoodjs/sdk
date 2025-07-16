@@ -73,9 +73,12 @@ jobs:
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          # This command is hardcoded to 'test --dry' for safe testing on this branch.
-          # It will be reverted to use inputs before merging.
-          ./scripts/release.sh test --dry
+          COMMAND="./scripts/release.sh ${{ github.event.inputs.version_type }}"
+          if [[ "${{ github.event.inputs.version_type }}" == "pre"* ]]; then
+            COMMAND="$COMMAND --preid ${{ github.event.inputs.preid }}"
+          fi
+          echo "Running command: $COMMAND"
+          eval $COMMAND
 
       - name: Create GitHub Release
         if: >
