@@ -1,18 +1,12 @@
 // @ts-check
 import { defineConfig } from "astro/config";
 import starlight from "@astrojs/starlight";
-import partytown from "@astrojs/partytown";
 import starlightLlmsTxt from "starlight-llms-txt";
 
 // https://astro.build/config
 export default defineConfig({
   site: "https://docs.rwsdk.com",
   integrations: [
-    partytown({
-      config: {
-        forward: ["dataLayer.push"],
-      },
-    }),
     starlight({
       plugins: [starlightLlmsTxt()],
       expressiveCode: {
@@ -226,22 +220,14 @@ export default defineConfig({
         {
           tag: "script",
           attrs: {
-            src: "https://www.googletagmanager.com/gtag/js?id=G-NVF3LN88NZ",
+            src: "https://scripts.simpleanalyticscdn.com/latest.js",
             async: true,
-            type: "text/partytown",
+            defer: true,
           },
         },
         {
-          tag: "script",
-          attrs: {
-            type: "text/partytown",
-          },
-          content: `
-          window.dataLayer = window.dataLayer || [];
-          function gtag(){dataLayer.push(arguments);}
-          gtag('js', new Date());
-          gtag('config', 'G-NVF3LN88NZ');
-        `,
+          tag: "noscript",
+          content: `<img src="https://queue.simpleanalyticscdn.com/noscript.gif" alt="" referrerpolicy="no-referrer-when-downgrade" />`,
         },
       ],
     }),
