@@ -322,12 +322,12 @@ fi
 
 echo -e "\n📥 Installing dependencies..."
 if [[ "$DRY_RUN" == true ]]; then
-  echo "  [DRY RUN] pnpm install"
+  echo "  [DRY RUN] pnpm install --no-frozen-lockfile --ignore-scripts"
 else
   # context(justinvdm, 2025-07-16): Sometimes the rwsdk package we just released has not yet become available on the registry, so we retry a few times.
   for i in {1..10}; do
     echo "Attempt $i of 10: Running pnpm install"
-    if pnpm install --ignore-scripts; then
+    if pnpm install --no-frozen-lockfile --ignore-scripts; then
       break # Success
     fi
 
