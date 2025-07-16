@@ -13,7 +13,7 @@ export type ActionResponse<Result> = {
 
 type TransportContext = {
   setRscPayload: <Result>(v: Promise<ActionResponse<Result>>) => void;
-  handleResponse?: (response: Response, url: URL) => boolean; // Returns false to stop normal processing
+  handleResponse?: (response: Response) => boolean; // Returns false to stop normal processing
 };
 
 export type Transport = (context: TransportContext) => CallServerCallback;
@@ -46,7 +46,7 @@ export const fetchTransport: Transport = (transportContext) => {
     // If there's a response handler, check the response first
     if (transportContext.handleResponse) {
       const response = await fetchPromise;
-      const shouldContinue = transportContext.handleResponse(response, url);
+      const shouldContinue = transportContext.handleResponse(response);
       if (!shouldContinue) {
         return;
       }
@@ -81,7 +81,7 @@ export const initClient = async ({
 }: {
   transport?: Transport;
   hydrateRootOptions?: HydrationOptions;
-  handleResponse?: (response: Response, url: URL) => boolean;
+  handleResponse?: (response: Response) => boolean;
 } = {}) => {
   const React = await import("react");
   const { hydrateRoot } = await import("react-dom/client");

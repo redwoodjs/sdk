@@ -79,12 +79,14 @@ export function initClientNavigation(
   });
 
   // Return a handleResponse function for use with initClient
-  return function handleResponse(response: Response, url: URL): boolean {
-    if (!response.ok) {
-      // Redirect to the current page (window.location) to show the error
-      window.location.href = window.location.href;
-      return false;
-    }
-    return true;
+  return {
+    handleResponse: function handleResponse(response: Response): boolean {
+      if (!response.ok) {
+        // Redirect to the current page (window.location) to show the error
+        window.location.href = window.location.href;
+        return false;
+      }
+      return true;
+    },
   };
 }
