@@ -324,16 +324,29 @@ echo -e "\n📥 Installing dependencies..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] pnpm install"
 else
-  for i in {1..3}; do
-    echo "Attempt $i of 3: Running pnpm install"
-    pnpm install --ignore-scripts && break
-    if [ $i -lt 3 ]; then
-      echo "pnpm install failed, retrying in 3 seconds..."
-      sleep 3
-    else
-      echo "pnpm install failed after 3 attempts, exiting"
+  # context(justinvdm, 2025-07-16): Sometimes the rwsdk package we just released has not yet become available on the registry, so we retry a few times.
+  for i in {1..10}; do
+    echo "Attempt $i of 10: Running pnpm install"
+    if pnpm install --ignore-scripts; then
+      break # Success
+    fi
+
+    if [ $i -eq 10 ]; then
+      echo "pnpm install failed after 10 attempts, exiting"
       exit 1
     fi
+
+    sleep_time=0
+    if [ $i -le 3 ]; then
+      sleep_time=3
+    elif [ $i -le 7 ]; then
+      sleep_time=5
+    else
+      sleep_time=10
+    fi
+
+    echo "pnpm install failed, retrying in ${sleep_time}s..."
+    sleep $sleep_time
   done
 fi
 
@@ -346,8 +359,15 @@ if [[ "$DRY_RUN" == true ]]; then
     echo "    - Add: all package.json and pnpm-lock.yaml files"
   fi
   echo "    - Amend commit: release $NEW_VERSION"
-  echo "    - Tag: $TAG_NAME"
-  echo "    - Push: origin with tags"
+  if [[ "$VERSION_TYPE" == "test" ]]; then
+    echo "    - Tag: $TAG_NAME"
+    echo "    - Push tag $TAG_NAME to remote"
+    echo "    - Reset branch to previous commit (commit will be on remote via tag)"
+    echo "    - No branch push will be performed"
+  else
+    echo "    - Tag: $TAG_NAME"
+    echo "    - Push: origin with tags"
+  fi
 else
   # For prerelease versions, only add the main package.json since we didn't update dependencies
   if [[ "$NEW_VERSION" =~ -.*\. && ! "$NEW_VERSION" =~ -test\. ]]; then
@@ -358,10 +378,20 @@ else
     (cd .. && git add $(git diff --name-only | grep -E 'package\.json|pnpm-lock\.yaml$'))
     git commit --amend --no-edit
   fi
-  git pull --rebase
-  git tag "$TAG_NAME"
-  git push
-  git push --tags
+
+  if [[ "$VERSION_TYPE" == "test" ]]; then
+    echo "  - Creating tag for test release..."
+    git tag "$TAG_NAME"
+    echo "  - Pushing tag to remote..."
+    git push origin "$TAG_NAME"
+    echo "  - Rolling back local commit for test release. The commit is available via the remote tag."
+    git reset --hard HEAD~1
+  else
+    git pull --rebase
+    git tag "$TAG_NAME"
+    git push
+    git push --tags
+  fi
 fi
 
 # If we've reached the end of the script, it was successful.
@@ -371,4 +401,5 @@ if [[ "$DRY_RUN" == true ]]; then
   echo -e "\n✨ Done! Released version $NEW_VERSION (DRY RUN)\n"
 else
   echo -e "\n✨ Done! Released version $NEW_VERSION\n"
+fi
 fi

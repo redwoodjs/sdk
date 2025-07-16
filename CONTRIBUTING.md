@@ -122,6 +122,10 @@ The release workflow and underlying script (`sdk/sdk/scripts/release.sh`) follow
 6.  **Finalize Commit**: For non-prerelease versions, the script updates dependencies in the monorepo, amends the version commit with these changes, tags the commit, and pushes everything to the remote repository.
 7.  **Rollback**: If any step fails, the script reverts the version commit and cleans up all temporary files, leaving the repository in a clean state.
 
+#### Test Releases
+
+Test releases receive special handling. They are published to npm under the `test` tag, but the release commit itself is not pushed to any branch. Instead, the script creates a release commit, tags it, and pushes *only the tag* to the remote. The local branch is then reset to its previous state. This makes the release commit available on the remote, referenced only by its tag, without including it in the main branch history.
+
 ### GitHub Token
 
 The release workflow requires a GitHub personal access token (PAT) with `repo` scope to be configured as a repository secret named `GH_TOKEN_FOR_RELEASES`. This is necessary for the workflow to push version bump commits and tags.
