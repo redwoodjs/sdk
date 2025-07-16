@@ -237,7 +237,7 @@ cp -a "$MONOREPO_ROOT/starters/minimal/." "$PROJECT_DIR/"
 TARBALL_PATH="$PWD/$TARBALL_NAME"
 
 echo "  - Installing packed tarball in project dir..."
-(cd "$PROJECT_DIR" && pnpm install "$TARBALL_PATH")
+(cd "$PROJECT_DIR" && pnpm install "$TARBALL_PATH" --no-frozen-lockfile)
 
 PACKAGE_NAME=$(npm pkg get name | tr -d '"')
 INSTALLED_DIST_PATH="$PROJECT_DIR/node_modules/$PACKAGE_NAME/dist"
