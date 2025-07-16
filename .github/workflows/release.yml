@@ -69,7 +69,7 @@ jobs:
 
       - name: Run release script
         id: release_script
-        working-directory: ./sdk/sdk
+        working-directory: sdk
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |

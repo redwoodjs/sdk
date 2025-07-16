@@ -33,6 +33,7 @@ jobs:
       - name: Deprecate package on npm
         env:
           NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        working-directory: sdk
         run: |
           echo "Deprecating rwsdk@${{ github.event.inputs.version }} on npm..."
           npm deprecate rwsdk@"${{ github.event.inputs.version }}" "${{ github.event.inputs.reason }}"
