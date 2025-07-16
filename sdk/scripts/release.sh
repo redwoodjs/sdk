@@ -169,6 +169,9 @@ else
 fi
 
 TAG_NAME="v$NEW_VERSION"
+if [[ -n "$GITHUB_ENV" ]]; then
+  echo "TAG_NAME=$TAG_NAME" >> "$GITHUB_ENV"
+fi
 
 echo -e "\n📦 Packing package..."
 if [[ "$DRY_RUN" == true ]]; then

@@ -22,6 +22,11 @@ on:
   #       description: "Prerelease identifier (e.g., alpha, beta, rc). Used with prepatch/preminor/premajor."
   #       required: false
   #       default: "alpha"
+  #     create_gh_release:
+  #       description: "If true, creates a GitHub release with auto-generated notes."
+  #       required: false
+  #       type: boolean
+  #       default: true
 
 permissions:
   contents: write
@@ -66,6 +71,17 @@ jobs:
           # This command is hardcoded to 'test --dry' for safe testing on this branch.
           # It will be reverted to use inputs before merging.
           ./scripts/release.sh test --dry
+
+      # - name: Create GitHub Release
+      #   if: >
+      #     success() &&
+      #     github.event.inputs.version_type != 'test' &&
+      #     github.event.inputs.create_gh_release == 'true'
+      #   env:
+      #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   run: |
+      #     echo "Creating GitHub release for tag ${{ env.TAG_NAME }}..."
+      #     gh release create ${{ env.TAG_NAME }} --generate-notes
 
       - name: Prune node_modules for artifact upload
         if: failure()
