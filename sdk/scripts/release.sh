@@ -403,5 +403,3 @@ if [[ "$DRY_RUN" == true ]]; then
 else
   echo -e "\n✨ Done! Released version $NEW_VERSION\n"
 fi
-fi
-fi
