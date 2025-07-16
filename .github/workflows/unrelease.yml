@@ -1,0 +1,50 @@
+name: Unrelease
+
+on:
+  workflow_dispatch:
+    inputs:
+      version:
+        description: "The full version to unrelease (e.g., 0.1.15)"
+        required: true
+      reason:
+        description: "The reason for deprecating the package on npm"
+        required: true
+        default: "This version has been unpublished due to a critical issue."
+
+permissions:
+  contents: write
+
+jobs:
+  unrelease:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # This token should have write permissions to the repository.
+          token: ${{ secrets.GH_TOKEN_FOR_RELEASES }}
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "18"
+          registry-url: "https://registry.npmjs.org"
+
+      - name: Deprecate package on npm
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          echo "Deprecating rwsdk@${{ github.event.inputs.version }} on npm..."
+          npm deprecate rwsdk@"${{ github.event.inputs.version }}" "${{ github.event.inputs.reason }}"
+
+      - name: Delete GitHub Release and Git Tag
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_RELEASES }}
+        run: |
+          TAG_NAME="v${{ github.event.inputs.version }}"
+          echo "Deleting GitHub release for tag $TAG_NAME..."
+          gh release delete $TAG_NAME --yes
+
+          echo "Deleting git tag $TAG_NAME..."
+          git push --delete origin $TAG_NAME

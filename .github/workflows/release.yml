@@ -1,0 +1,98 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - sanity-checks-for-release-script
+  # workflow_dispatch:
+  #   inputs:
+  #     version_type:
+  #       description: "The type of version bump to perform (patch, minor, major, prepatch, preminor, premajor, test)"
+  #       required: true
+  #       type: choice
+  #       options:
+  #         - patch
+  #         - minor
+  #         - major
+  #         - prepatch
+  #         - preminor
+  #         - premajor
+  #         - test
+  #     preid:
+  #       description: "Prerelease identifier (e.g., alpha, beta, rc). Used with prepatch/preminor/premajor."
+  #       required: false
+  #       default: "alpha"
+  #     create_gh_release:
+  #       description: "If true, creates a GitHub release with auto-generated notes."
+  #       required: false
+  #       type: boolean
+  #       default: true
+
+permissions:
+  contents: write
+
+env:
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # We need to fetch all history for semver to work correctly and to push changes.
+          fetch-depth: 0
+
+      - name: Set up Git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - run: |
+          corepack enable
+          pnpm install
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile --ignore-scripts
+
+      - name: Run release script
+        working-directory: sdk
+        env:
+          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
+        run: |
+          # This command is hardcoded to 'test --dry' for safe testing on this branch.
+          # It will be reverted to use inputs before merging.
+          ./scripts/release.sh test --dry
+
+      # - name: Create GitHub Release
+      #   if: >
+      #     success() &&
+      #     github.event.inputs.version_type != 'test' &&
+      #     github.event.inputs.create_gh_release == 'true'
+      #   env:
+      #     GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      #   run: |
+      #     echo "Creating GitHub release for tag ${{ env.TAG_NAME }}..."
+      #     gh release create ${{ env.TAG_NAME }} --generate-notes
+
+      - name: Prune node_modules for artifact upload
+        if: failure()
+        run: |
+          echo "Pruning node_modules to reduce artifact size..."
+          find ${{ env.TEMP_DIR_PATH }}/node_modules -mindepth 1 -maxdepth 1 -not -name "rwsdk" -exec rm -rf {} +
+          echo "Pruning complete."
+
+      - name: Upload logs on failure
+        if: failure()
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-failure-logs
+          path: ${{ env.TEMP_DIR_PATH }}
