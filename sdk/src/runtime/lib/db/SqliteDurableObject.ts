@@ -1,7 +1,12 @@
 import { DODialect } from "kysely-do";
 import { DurableObject } from "cloudflare:workers";
 
-import { Kysely, CompiledQuery, QueryResult } from "kysely";
+import {
+  Kysely,
+  CompiledQuery,
+  QueryResult,
+  ParseJSONResultsPlugin,
+} from "kysely";
 import { createMigrator } from "./index.js";
 import debug from "../debug.js";
 
@@ -26,6 +31,7 @@ export class SqliteDurableObject<T = any> extends DurableObject {
 
     this.kysely = new Kysely<T>({
       dialect: new DODialect({ ctx }),
+      plugins: [new ParseJSONResultsPlugin()],
     });
   }
 
@@ -41,7 +47,16 @@ export class SqliteDurableObject<T = any> extends DurableObject {
       this.migrations,
       this.migrationTableName,
     );
-    await migrator.migrateToLatest();
+    const result = await migrator.migrateToLatest();
+    if (result.error) {
+      console.log(
+        "rwsdk/db: Migrations failed, rolling back and throwing with the migration error: %O",
+        result.results,
+      );
+      await migrator.migrateDown();
+      throw result.error;
+    }
+    log("Migrations results", result.results);
     this.initialized = true;
     log("Database initialization complete");
   }

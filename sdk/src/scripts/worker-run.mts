@@ -1,9 +1,13 @@
+import path from "path";
 import { resolve } from "path";
 import { writeFile } from "fs/promises";
 import { unstable_readConfig } from "wrangler";
 import { createServer as createViteServer } from "vite";
 import tmp from "tmp-promise";
 import baseDebug from "debug";
+import enhancedResolve from "enhanced-resolve";
+import { readFile } from "fs/promises";
+import { Lang, parse } from "@ast-grep/napi";
 
 import { redwood } from "../vite/index.mjs";
 import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
@@ -28,24 +32,86 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
 
   const workerConfig = unstable_readConfig({
     config: workerConfigPath,
+    env: "dev",
   });
 
-  const tmpWorkerPath = await tmp.file({
-    postfix: ".json",
+  const durableObjectsToExport =
+    workerConfig.durable_objects?.bindings
+      .filter((binding) => !binding.script_name)
+      .map((binding) => binding.class_name) ?? [];
+
+  const workerEntryRelativePath = workerConfig.main;
+
+  const workerEntryPath =
+    workerEntryRelativePath ?? path.join(process.cwd(), "src/worker.tsx");
+
+  const durableObjectExports = [];
+  if (durableObjectsToExport.length > 0) {
+    const resolver = enhancedResolve.create.sync({
+      extensions: [".mts", ".ts", ".tsx", ".mjs", ".js", ".jsx", ".json"],
+    });
+
+    const workerEntryContents = await readFile(workerEntryPath, "utf-8");
+    const workerEntryAst = parse(Lang.Tsx, workerEntryContents);
+    const exportDeclarations = [
+      ...workerEntryAst.root().findAll('export { $$$EXPORTS } from "$MODULE"'),
+      ...workerEntryAst.root().findAll("export { $$$EXPORTS } from '$MODULE'"),
+      ...workerEntryAst.root().findAll("export { $$$EXPORTS } from '$MODULE'"),
+    ];
+
+    for (const exportDeclaration of exportDeclarations) {
+      const moduleMatch = exportDeclaration.getMatch("MODULE");
+      const exportsMatch = exportDeclaration.getMultipleMatches("EXPORTS");
+
+      if (!moduleMatch || exportsMatch.length === 0) {
+        continue;
+      }
+
+      const modulePath = moduleMatch.text();
+      const specifiers = exportsMatch.map((m) => m.text().trim());
+
+      for (const specifier of specifiers) {
+        if (durableObjectsToExport.includes(specifier)) {
+          const resolvedPath = resolver(
+            path.dirname(workerEntryPath),
+            modulePath,
+          );
+          durableObjectExports.push(
+            `export { ${specifier} } from "${resolvedPath}";`,
+          );
+        }
+      }
+    }
+  }
+
+  const tmpDir = await tmp.dir({
+    prefix: "rw-worker-run-",
+    unsafeCleanup: true,
   });
+
+  const relativeTmpWorkerEntryPath = "worker.tsx";
+  const tmpWorkerPath = path.join(tmpDir.path, "wrangler.json");
+  const tmpWorkerEntryPath = path.join(tmpDir.path, relativeTmpWorkerEntryPath);
+
   const scriptWorkerConfig = {
     ...workerConfig,
-    configPath: tmpWorkerPath.path,
-    userConfigPath: tmpWorkerPath.path,
-    main: scriptPath,
+    configPath: tmpWorkerPath,
+    userConfigPath: tmpWorkerPath,
+    main: relativeTmpWorkerEntryPath,
   };
 
   try {
+    await writeFile(tmpWorkerPath, JSON.stringify(scriptWorkerConfig, null, 2));
     await writeFile(
-      tmpWorkerPath.path,
-      JSON.stringify(scriptWorkerConfig, null, 2),
+      tmpWorkerEntryPath,
+      `
+${durableObjectExports.join("\n")}
+export { default } from "${scriptPath}";
+`,
     );
-    debug("Worker config written to: %s", tmpWorkerPath.path);
+
+    debug("Worker config written to: %s", tmpWorkerPath);
+    debug("Worker entry written to: %s", tmpWorkerEntryPath);
 
     process.env.RWSDK_WORKER_RUN = "1";
 
@@ -53,10 +119,10 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
       configFile: false,
       plugins: [
         redwood({
-          configPath: tmpWorkerPath.path,
+          configPath: tmpWorkerPath,
           includeCloudflarePlugin: true,
           entry: {
-            worker: scriptPath,
+            worker: tmpWorkerEntryPath,
           },
         }),
       ],
@@ -80,12 +146,11 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
       debug("Worker fetched successfully");
     } finally {
       debug("Closing server...");
-      await server.close();
+      server.close();
       debug("Server closed");
     }
   } finally {
     debug("Closing inspector servers...");
-    await tmpWorkerPath.cleanup();
     debug("Temporary files cleaned up");
   }
 

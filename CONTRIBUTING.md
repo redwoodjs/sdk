@@ -106,6 +106,18 @@ Running this workflow does the following:
 *   Deletes the corresponding GitHub Release. If the deleted release was marked as "latest," the workflow automatically finds the most recent stable release and promotes it to "latest".
 *   Deletes the corresponding git tag from the remote repository.
 
+### Creating a Test Release from a Branch
+Sometimes you have changes made in your branch and would like to test them out or share them with others before making a new release. To create a test release from a branch to test changes:
+
+1.  In the GitHub UI, navigate to the [Release workflow](.github/workflows/release.yml).
+2.  From the "Use workflow from" dropdown, select the branch with the changes you want to test.
+3.  Choose `test` as the `version_type`.
+4.  Run the workflow.
+
+The easiest way to get the version string (e.g., `0.1.19-test.20250717130914`) is from the npm email notification. Alternatively, the workflow output will contain a line: `✨ Done! Released version 0.1.19-test.20250717130914`.
+
+Test releases receive special handling. They are published to npm under the `test` tag, but the release commit itself is not pushed to any branch. Instead, the script creates a release commit, tags it, and pushes *only the tag* to the remote. The local branch is then reset to its previous state. This makes the release commit available on the remote, referenced only by its tag, without including it in the main branch history.
+
 #### Why Deprecate Instead of Unpublish?
 
 This project uses `npm deprecate` instead of `npm unpublish` because unpublishing is highly restrictive and can be unreliable in an automated CI environment. The npm registry has strict policies to prevent breaking the package ecosystem:
@@ -132,9 +144,3 @@ The release workflow and underlying script (`sdk/sdk/scripts/release.sh`) follow
 7.  **Rollback**: If any step fails, the script reverts the version commit and cleans up all temporary files, leaving the repository in a clean state.
 
 #### Test Releases
-
-Test releases receive special handling. They are published to npm under the `test` tag, but the release commit itself is not pushed to any branch. Instead, the script creates a release commit, tags it, and pushes *only the tag* to the remote. The local branch is then reset to its previous state. This makes the release commit available on the remote, referenced only by its tag, without including it in the main branch history.
-
-### GitHub Token
-
-The release workflow requires a GitHub personal access token (PAT) with `repo` scope to be configured as a repository secret named `GH_TOKEN_FOR_RELEASES`. This is necessary for the workflow to push version bump commits and tags.

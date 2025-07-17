@@ -1,6 +1,10 @@
 import { AsyncLocalStorage } from "async_hooks";
 import { RequestInfo, DefaultAppContext } from "./types";
 
+type DefaultRequestInfo = RequestInfo<DefaultAppContext>;
+
+const requestInfoDeferred = Promise.withResolvers<DefaultRequestInfo>();
+
 const requestInfoStore = new AsyncLocalStorage<Record<string, any>>();
 
 const requestInfoBase = {};
@@ -18,9 +22,9 @@ REQUEST_INFO_KEYS.forEach((key) => {
   });
 });
 
-export const requestInfo: RequestInfo<DefaultAppContext> = Object.freeze(
+export const requestInfo: DefaultRequestInfo = Object.freeze(
   requestInfoBase,
-) as RequestInfo<DefaultAppContext>;
+) as DefaultRequestInfo;
 
 export function getRequestInfo(): RequestInfo {
   const store = requestInfoStore.getStore();
@@ -30,15 +34,23 @@ export function getRequestInfo(): RequestInfo {
   return store as RequestInfo;
 }
 
+export function waitForRequestInfo() {
+  return requestInfoDeferred.promise;
+}
+
 export function runWithRequestInfo<Result>(
-  context: Record<string, any>,
+  nextRequestInfo: DefaultRequestInfo,
   fn: () => Result,
 ): Result {
-  return requestInfoStore.run(context, fn);
+  const runWithRequestInfoFn = () => {
+    requestInfoDeferred.resolve(nextRequestInfo);
+    return fn();
+  };
+  return requestInfoStore.run(nextRequestInfo, runWithRequestInfoFn);
 }
 
 export function runWithRequestInfoOverrides<Result>(
-  overrides: Record<string, any>,
+  overrides: Partial<DefaultRequestInfo>,
   fn: () => Result,
 ): Result {
   const requestInfo = requestInfoStore.getStore();
@@ -46,7 +58,7 @@ export function runWithRequestInfoOverrides<Result>(
   const newRequestInfo = {
     ...requestInfo,
     ...overrides,
-  };
+  } as DefaultRequestInfo;
 
-  return requestInfoStore.run(newRequestInfo, fn);
+  return runWithRequestInfo(newRequestInfo, fn);
 }
