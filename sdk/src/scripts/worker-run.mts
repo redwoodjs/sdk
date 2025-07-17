@@ -5,6 +5,9 @@ import { unstable_readConfig } from "wrangler";
 import { createServer as createViteServer } from "vite";
 import tmp from "tmp-promise";
 import baseDebug from "debug";
+import enhancedResolve from "enhanced-resolve";
+import { readFile } from "fs/promises";
+import { Lang, parse } from "@ast-grep/napi";
 
 import { redwood } from "../vite/index.mjs";
 import { findWranglerConfig } from "../lib/findWranglerConfig.mjs";
@@ -29,12 +32,57 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
 
   const workerConfig = unstable_readConfig({
     config: workerConfigPath,
+    env: "dev",
   });
+
+  const durableObjectsToExport =
+    workerConfig.durable_objects?.bindings
+      .filter((binding) => !binding.script_name)
+      .map((binding) => binding.class_name) ?? [];
 
   const workerEntryRelativePath = workerConfig.main;
 
   const workerEntryPath =
     workerEntryRelativePath ?? path.join(process.cwd(), "src/worker.tsx");
+
+  const durableObjectExports = [];
+  if (durableObjectsToExport.length > 0) {
+    const resolver = enhancedResolve.create.sync({
+      extensions: [".mts", ".ts", ".tsx", ".mjs", ".js", ".jsx", ".json"],
+    });
+
+    const workerEntryContents = await readFile(workerEntryPath, "utf-8");
+    const workerEntryAst = parse(Lang.Tsx, workerEntryContents);
+    const exportDeclarations = [
+      ...workerEntryAst.root().findAll('export { $$$EXPORTS } from "$MODULE"'),
+      ...workerEntryAst.root().findAll("export { $$$EXPORTS } from '$MODULE'"),
+      ...workerEntryAst.root().findAll("export { $$$EXPORTS } from '$MODULE'"),
+    ];
+
+    for (const exportDeclaration of exportDeclarations) {
+      const moduleMatch = exportDeclaration.getMatch("MODULE");
+      const exportsMatch = exportDeclaration.getMultipleMatches("EXPORTS");
+
+      if (!moduleMatch || exportsMatch.length === 0) {
+        continue;
+      }
+
+      const modulePath = moduleMatch.text();
+      const specifiers = exportsMatch.map((m) => m.text().trim());
+
+      for (const specifier of specifiers) {
+        if (durableObjectsToExport.includes(specifier)) {
+          const resolvedPath = resolver(
+            path.dirname(workerEntryPath),
+            modulePath,
+          );
+          durableObjectExports.push(
+            `export { ${specifier} } from "${resolvedPath}";`,
+          );
+        }
+      }
+    }
+  }
 
   const tmpDir = await tmp.dir({
     prefix: "rw-worker-run-",
@@ -57,7 +105,7 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
     await writeFile(
       tmpWorkerEntryPath,
       `
-export * from "${workerEntryPath}";
+${durableObjectExports.join("\n")}
 export { default } from "${scriptPath}";
 `,
     );
@@ -98,7 +146,7 @@ export { default } from "${scriptPath}";
       debug("Worker fetched successfully");
     } finally {
       debug("Closing server...");
-      await server.close();
+      server.close();
       debug("Server closed");
     }
   } finally {
