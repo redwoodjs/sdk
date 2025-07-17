@@ -51,7 +51,10 @@ export class SqliteDurableObject<T = any> extends DurableObject {
       this.migrationTableName,
     );
     console.log("################################ migrating");
-    await migrator.migrateToLatest();
+    const result = await migrator.migrateToLatest();
+    if (result.error) {
+      throw result.error;
+    }
     this.initialized = true;
     console.log(
       "################################ initialized",
