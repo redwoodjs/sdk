@@ -1,7 +1,12 @@
 import { DODialect } from "kysely-do";
 import { DurableObject } from "cloudflare:workers";
 
-import { Kysely, CompiledQuery, QueryResult } from "kysely";
+import {
+  Kysely,
+  CompiledQuery,
+  QueryResult,
+  ParseJSONResultsPlugin,
+} from "kysely";
 import { createMigrator } from "./index.js";
 import debug from "../debug.js";
 
@@ -26,6 +31,7 @@ export class SqliteDurableObject<T = any> extends DurableObject {
 
     this.kysely = new Kysely<T>({
       dialect: new DODialect({ ctx }),
+      plugins: [new ParseJSONResultsPlugin()],
     });
   }
 
