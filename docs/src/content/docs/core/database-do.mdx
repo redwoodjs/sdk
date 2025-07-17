@@ -63,6 +63,21 @@ Migrations run when `createDb()` is called. If that happens at the module level 
 
 **Production**: When you deploy with `npm run release`, the deployment process includes an initial request to your application, which triggers migration updates.
 
+### Migration Failures and Rollback
+
+If a migration’s `up()` function fails, `rwsdk/db` automatically calls the corresponding `down()` function to undo any partial changes. This rollback is per-migration—previously successful ones are not affected.
+
+Because SQLite doesn’t support transactional DDL (Data Definition Language) statements, a failed migration can leave the database in a partially modified state. It is therefore important to write `down()` functions that are idempotent and can run safely even if `up()` only partially succeeded.
+
+```ts
+// Example of a defensive down() function
+async down(db) {
+  // Defensively drop tables that might not exist if `up()` failed
+  await db.schema.dropTable("posts").ifExists().execute();
+  await db.schema.dropTable("users").ifExists().execute();
+}
+```
+
 ---
 
 ## Setup
@@ -337,3 +352,11 @@ A: This is currently a preview feature, which means the API may evolve based on 
 **Q: How do I handle database backups?**
 
 A: Durable Objects automatically persist data, but like D1, there aren't built-in backup features. For critical applications, implement additional backup strategies. You can export data periodically or replicate to external systems as needed.
+
+**Q: Why does rwsdk/db auto-rollback failed migrations instead of leaving recovery to the developer?**
+
+A: We recognize that in many scenarios, particularly in production, a developer is best equipped to handle a failed migration with full context. Manual recovery can offer more granular control than a one-size-fits-all automated approach.
+
+However, `rwsdk/db` opts for automated rollbacks by default to ensure database integrity. The primary reason is that SQLite does not support transactions for schema changes (DDL). A failed `up()` migration could otherwise leave the database in an inconsistent, half-migrated state. By automatically running the `down()` function, we return the database to a known-good state. This is critical for the zero-setup, runtime-isolated environments `rwsdk/db` is designed for, where direct manual intervention may not be feasible.
+
+To work effectively with this automated system, it's best to plan migrations carefully. Each `down()` function should be written to cleanly undo only what its corresponding `up()` function does. This practice makes it much easier and safer to reason about the database state, fix the migration, and redeploy.
