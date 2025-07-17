@@ -77,4 +77,16 @@ export function initClientNavigation(
   window.addEventListener("popstate", async function handlePopState() {
     await opts.onNavigate();
   });
+
+  // Return a handleResponse function for use with initClient
+  return {
+    handleResponse: function handleResponse(response: Response): boolean {
+      if (!response.ok) {
+        // Redirect to the current page (window.location) to show the error
+        window.location.href = window.location.href;
+        return false;
+      }
+      return true;
+    },
+  };
 }

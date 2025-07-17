@@ -1,14 +1,14 @@
 import { initClient, type Transport, type ActionResponse } from "../../client";
 import { createFromReadableStream } from "react-server-dom-webpack/client.browser";
-import { IS_DEV } from "../../constants";
 import { MESSAGE_TYPE } from "./shared";
 const DEFAULT_KEY = "default";
 
 export const initRealtimeClient = ({
   key = DEFAULT_KEY,
-}: { key?: string } = {}) => {
+  handleResponse,
+}: { key?: string; handleResponse?: (response: Response) => boolean } = {}) => {
   const transport = realtimeTransport({ key });
-  return initClient({ transport });
+  return initClient({ transport, handleResponse });
 };
 
 export const realtimeTransport =
