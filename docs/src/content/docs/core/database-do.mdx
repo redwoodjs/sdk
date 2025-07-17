@@ -276,6 +276,113 @@ export async function getUserCredentials(
 
 ---
 
+## Patterns
+
+### Nesting Relational Data (ORM-like Behavior)
+
+While `rwsdk/db` uses a query builder instead of a full ORM, you can still structure your query results to include nested relational data. This is useful for avoiding N+1 query problems and for shaping data directly in the database layer. Kysely provides helper functions like `jsonObjectFrom` and `jsonArrayFrom` that make this easy.
+
+Here's an example that fetches testimonials and nests the related `status`, `source`, and `tags` information within each testimonial object.
+
+**1. The Schema**
+
+First, let's assume a schema with testimonials, statuses, sources, and a many-to-many relationship with tags.
+
+```ts title="src/db/migrations.ts"
+// Abridged for clarity
+await db.schema
+  .createTable("testimonials")
+  // ... other columns
+  .addColumn("sourceId", "integer", (col) =>
+    col.notNull().references("testimonial_sources.id")
+  )
+  .addColumn("statusId", "integer", (col) =>
+    col.notNull().references("testimonial_statuses.id")
+  )
+  .execute();
+
+await db.schema
+  .createTable("testimonial_taggings")
+  .addColumn("testimonialId", "text", (col) =>
+    col.notNull().references("testimonials.id")
+  )
+  .addColumn("tagId", "integer", (col) =>
+    col.notNull().references("testimonial_tags.id")
+  )
+  .execute();
+```
+
+**2. The Query**
+
+With the schema in place, you can write a query to fetch testimonials and embed the related data.
+
+```ts title="src/db/queries.ts"
+import { db } from "@/db";
+import { jsonObjectFrom, jsonArrayFrom } from "kysely/helpers/sqlite";
+
+export async function getAllTestimonials() {
+  return await db
+    .selectFrom("testimonials")
+    .selectAll("testimonials")
+    .select((eb) => [
+      // Embed the related status object (many-to-one)
+      jsonObjectFrom(
+        eb
+          .selectFrom("testimonial_statuses")
+          .selectAll()
+          .whereRef("testimonial_statuses.id", "=", "testimonials.statusId")
+      ).as("status"),
+      // Embed the related source object (many-to-one)
+      jsonObjectFrom(
+        eb
+          .selectFrom("testimonial_sources")
+          .selectAll()
+          .whereRef("testimonial_sources.id", "=", "testimonials.sourceId")
+      ).as("source"),
+      // Embed an array of related tags (many-to-many)
+      jsonArrayFrom(
+        eb
+          .selectFrom("testimonial_taggings")
+          .innerJoin(
+            "testimonial_tags",
+            "testimonial_tags.id",
+            "testimonial_taggings.tagId"
+          )
+          .select(["testimonial_tags.id", "testimonial_tags.name"])
+          .whereRef(
+            "testimonial_taggings.testimonialId",
+            "=",
+            "testimonials.id"
+          )
+      ).as("tags"),
+    ])
+    .execute();
+}
+```
+
+**3. The Result**
+
+The `getAllTestimonials` function will return an array of testimonial objects, each structured with nested data:
+
+```json
+[
+  {
+    "id": "abc-123",
+    "content": "This is a great product!",
+    "status": { "id": 1, "name": "Published" },
+    "source": { "id": 2, "name": "Website Form" },
+    "tags": [
+      { "id": 10, "name": "Positive Feedback" },
+      { "id": 12, "name": "Feature Request" }
+    ]
+  }
+]
+```
+
+This pattern allows you to fetch complex, nested data structures in a single, efficient query.
+
+---
+
 ## API Reference
 
 ### `createDb()`
