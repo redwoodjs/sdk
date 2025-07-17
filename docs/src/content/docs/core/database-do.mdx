@@ -329,14 +329,14 @@ export async function getAllTestimonials() {
       jsonObjectFrom(
         eb
           .selectFrom("testimonial_statuses")
-          .selectAll()
+          .select(["id", "name"])
           .whereRef("testimonial_statuses.id", "=", "testimonials.statusId")
       ).as("status"),
       // Embed the related source object (many-to-one)
       jsonObjectFrom(
         eb
           .selectFrom("testimonial_sources")
-          .selectAll()
+          .select(["id", "name"])
           .whereRef("testimonial_sources.id", "=", "testimonials.sourceId")
       ).as("source"),
       // Embed an array of related tags (many-to-many)
