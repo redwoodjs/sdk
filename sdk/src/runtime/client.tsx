@@ -1,6 +1,7 @@
 import { clientWebpackRequire } from "./imports/client";
 import { type CallServerCallback } from "react-server-dom-webpack/client.browser";
 import { type HydrationOptions } from "react-dom/client";
+import { initClientNavigation } from "./clientNavigation";
 
 // NOTE: `react-server-dom-webpack` uses this global to load modules,
 // so we need to define it here before importing "react-server-dom-webpack."
@@ -15,39 +16,65 @@ type TransportContext = {
   setRscPayload: <Result>(v: Promise<ActionResponse<Result>>) => void;
 };
 
-export type Transport = (context: TransportContext) => CallServerCallback;
+export type Transport = (
+  context: TransportContext,
+  options?: { spaMode?: boolean },
+) => CallServerCallback;
 
 export type CreateCallServer = (
   context: TransportContext,
 ) => <Result>(id: null | string, args: null | unknown[]) => Promise<Result>;
 
-export const fetchTransport: Transport = (transportContext) => {
+export const fetchTransport: Transport = (
+  transportContext,
+  { spaMode = false } = {},
+) => {
   const fetchCallServer = async <Result,>(
     id: null | string,
     args: null | unknown[],
-  ): Promise<Result> => {
+  ): Promise<Result | void> => {
     const { createFromFetch, encodeReply } = await import(
       "react-server-dom-webpack/client.browser"
     );
 
-    const url = new URL(window.location.href);
-    url.searchParams.set("__rsc", "");
+    try {
+      const fetchData = async (): Promise<Response> => {
+        const url = new URL(window.location.href);
+        url.searchParams.set("__rsc", "");
+        if (id != null) {
+          url.searchParams.set("__rsc_action_id", id);
+        }
 
-    if (id != null) {
-      url.searchParams.set("__rsc_action_id", id);
+        return fetch(url, {
+          method: "POST",
+          body: args != null ? await encodeReply(args) : null,
+        }).then((response) => {
+          if (spaMode && response.redirected) {
+            window.history.replaceState(window.history.state, "", response.url);
+            return fetchData();
+          }
+
+          return response;
+        });
+      };
+
+      const streamData = createFromFetch(fetchData(), {
+        callServer: fetchCallServer,
+      }) as Promise<ActionResponse<Result | void>>;
+
+      transportContext.setRscPayload(streamData);
+      const result = await streamData;
+      return (result as { actionResult: Result }).actionResult;
+    } catch (e) {
+      if (
+        e instanceof Error &&
+        e.message === "Failed to fetch" &&
+        e.name === "TypeError"
+      ) {
+        window.location.replace(window.location.href);
+      }
+      throw e;
     }
-
-    const streamData = createFromFetch(
-      fetch(url, {
-        method: "POST",
-        body: args != null ? await encodeReply(args) : null,
-      }),
-      { callServer: fetchCallServer },
-    ) as Promise<ActionResponse<Result>>;
-
-    transportContext.setRscPayload(streamData);
-    const result = await streamData;
-    return (result as { actionResult: Result }).actionResult;
   };
 
   return fetchCallServer;
@@ -56,18 +83,24 @@ export const fetchTransport: Transport = (transportContext) => {
 export const initClient = async ({
   transport = fetchTransport,
   hydrateRootOptions,
+  spaMode,
 }: {
   transport?: Transport;
   hydrateRootOptions?: HydrationOptions;
+  spaMode?: boolean;
 } = {}) => {
   const React = await import("react");
   const { hydrateRoot } = await import("react-dom/client");
+
+  if (spaMode) {
+    initClientNavigation();
+  }
 
   const transportContext: TransportContext = {
     setRscPayload: () => {},
   };
 
-  let transportCallServer = transport(transportContext);
+  let transportCallServer = transport(transportContext, { spaMode });
 
   const callServer = (id: any, args: any) => transportCallServer(id, args);
 
