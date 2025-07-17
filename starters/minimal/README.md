@@ -7,13 +7,13 @@ Create your new project:
 ```shell
 npx create-rwsdk my-project-name -t minimal
 cd my-project-name
-pnpm install
+npm install
 ```
 
 ## Running the dev server
 
 ```shell
-pnpm dev
+npm run dev
 ```
 
 Point your browser to the URL displayed in the terminal (e.g. `http://localhost:5173/`). You should see a "Hello World" message in your browser.

@@ -1,0 +1,126 @@
+name: Release
+
+on:
+  workflow_dispatch:
+    inputs:
+      version_type:
+        description: "The type of version bump to perform (patch, minor, major, prepatch, preminor, premajor, test)"
+        required: true
+        type: choice
+        options:
+          - patch
+          - test
+          - minor
+          - major
+          - prepatch
+          - preminor
+          - premajor
+      preid:
+        description: "Prerelease identifier (e.g., alpha, beta, rc). Used with prepatch/preminor/premajor."
+        required: false
+        default: "alpha"
+      create_gh_release:
+        description: "If true, creates a GitHub release with auto-generated notes."
+        required: false
+        type: boolean
+        default: true
+      force_gh_release_for_test:
+        description: "If true, forces creation of a GitHub release even for a 'test' version."
+        required: false
+        type: boolean
+        default: false
+
+permissions:
+  contents: write
+
+env:
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          # We need to fetch all history for semver to work correctly and to push changes.
+          fetch-depth: 0
+          # This token should have write permissions to the repository.
+          # It's recommended to use a dedicated bot account's PAT.
+          # The secret should be named GH_TOKEN_FOR_RELEASES
+          token: ${{ secrets.GH_TOKEN_FOR_RELEASES }}
+
+      - name: Set up Git user
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: |
+          corepack enable
+          pnpm install
+
+      - name: Setup .npmrc for publishing
+        working-directory: sdk
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
+          echo "registry=https://registry.npmjs.org/" >> .npmrc
+          echo "always-auth=true" >> .npmrc
+
+      - name: Run release script
+        id: release_script
+        working-directory: sdk
+        run: |
+          COMMAND="./scripts/release.sh ${{ github.event.inputs.version_type }}"
+          if [[ "${{ github.event.inputs.version_type }}" == "pre"* ]]; then
+            COMMAND="$COMMAND --preid ${{ github.event.inputs.preid }}"
+          fi
+          echo "Running command: $COMMAND"
+          eval $COMMAND
+
+      - name: Create GitHub Release
+        if: >
+          success() &&
+          (github.event.inputs.version_type != 'test' || github.event.inputs.force_gh_release_for_test == 'true') &&
+          github.event.inputs.create_gh_release == 'true'
+        env:
+          GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_RELEASES }}
+        run: |
+          FLAGS="--generate-notes"
+          VERSION_TYPE="${{ github.event.inputs.version_type }}"
+          if [[ "$VERSION_TYPE" == "patch" || "$VERSION_TYPE" == "minor" || "$VERSION_TYPE" == "major" ]]; then
+            FLAGS="$FLAGS --latest"
+          elif [[ "$VERSION_TYPE" == "pre"* ]]; then
+            FLAGS="$FLAGS --prerelease"
+          fi
+          echo "Creating GitHub release for tag ${{ env.TAG_NAME }} with flags: $FLAGS"
+          gh release create ${{ env.TAG_NAME }} $FLAGS
+
+      - name: Prune node_modules for artifact upload
+        if: failure() && steps.release_script.outputs.project-dir
+        run: |
+          echo "Pruning node_modules to reduce artifact size..."
+          find ${{ steps.release_script.outputs.project-dir }}/node_modules -mindepth 1 -maxdepth 1 -not -name "rwsdk" -exec rm -rf {} +
+          echo "Pruning complete."
+
+      - name: Upload logs on failure
+        if: failure() && steps.release_script.outputs.project-dir
+        uses: actions/upload-artifact@v4
+        with:
+          name: smoke-test-failure-logs
+          path: ${{ steps.release_script.outputs.project-dir }}
+
+      - name: Upload smoke test artifacts
+        if: always() && steps.release_script.outputs.project-dir
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-smoke-test-artifacts
+          path: ${{ steps.release_script.outputs.project-dir }}/artifacts
+          retention-days: 7

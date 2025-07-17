@@ -2,6 +2,8 @@
 
 set -e  # Stop on first error
 
+SUCCESS_FLAG=false # Default to failure. This will be checked by the cleanup trap.
+
 DEPENDENCY_NAME="rwsdk"  # Replace with the actual package name
 
 show_help() {
@@ -17,19 +19,21 @@ show_help() {
   echo "  test                 Create a test release (x.y.z-test.<timestamp>), published under --tag test"
   echo ""
   echo "Process:"
-  echo "  1. Builds package with NODE_ENV=production"
-  echo "  2. Calculates new version using semver"
-  echo "  3. Updates package.json with new version"
-  echo "  4. Commits version change"
-  echo "  5. Publishes package to npm"
-  echo "  6. On successful publish:"
-  echo "     - Updates dependent packages in the monorepo"
-  echo "     - Runs pnpm install to update lockfile"
-  echo "     - Amends initial commit with dependency updates"
-  echo "     - Tags the commit"
-  echo "     - Pushes to origin"
-  echo "  7. On failed publish:"
-  echo "     - Reverts version commit"
+  echo "  1.  Calculates new version using semver and updates package.json."
+  echo "  2.  Commits the version change."
+  echo "  3.  Builds the package with NODE_ENV=production."
+  echo "  4.  Bundles the package into a .tgz tarball using \`npm pack\`."
+  echo "  5.  Performs a comprehensive smoke test on the packed tarball:"
+  echo "      - Verifies the packed \`dist\` contents match the local build via checksum."
+  echo "      - Runs \`npx rw-scripts smoke-tests\` in a temporary project."
+  echo "  6.  If smoke tests pass, publishes the .tgz tarball to npm."
+  echo "  7.  On successful publish (for non-prereleases):"
+  echo "      - Updates dependencies in the monorepo."
+  echo "      - Amends the initial commit with dependency updates."
+  echo "      - Tags the commit and pushes to the remote repository."
+  echo "  8.  On failure (publish or smoke test):"
+  echo "      - The version commit is reverted."
+  echo "      - Temporary files are cleaned up."
   echo ""
   echo "Options:"
   echo "  --preid <id>  Prerelease identifier (default: alpha). Used with prepatch/preminor/premajor"
@@ -113,10 +117,9 @@ fi
 
 echo -e "\n🏗️  Building package..."
 if [[ "$DRY_RUN" == true ]]; then
-  echo "  [DRY RUN] NODE_ENV=production pnpm build"
-else
-  NODE_ENV=production pnpm build
+  echo "  [DRY RUN] NOTE: Forcing build to allow for artifact verification."
 fi
+NODE_ENV=production pnpm build
 
 CURRENT_VERSION=$(npm pkg get version | tr -d '"')
 if [[ "$VERSION_TYPE" == "test" ]]; then
@@ -166,24 +169,130 @@ else
 fi
 
 TAG_NAME="v$NEW_VERSION"
+if [[ -n "$GITHUB_ENV" ]]; then
+  echo "TAG_NAME=$TAG_NAME" >> "$GITHUB_ENV"
+fi
+
+echo -e "\n📦 Packing package..."
+if [[ "$DRY_RUN" == true ]]; then
+  echo "  [DRY RUN] NOTE: Actually packing package to allow for smoke testing."
+fi
+
+# The `TEMP_DIR` is created here so we can pack the tarball into it
+# and keep the git working directory clean.
+TEMP_DIR=$(mktemp -d)
+
+# Always pack the package to allow for smoke testing, even in a dry run.
+TARBALL_NAME=$(npm pack --pack-destination "$TEMP_DIR" | tail -n 1)
+TARBALL_PATH="$TEMP_DIR/$TARBALL_NAME"
+if [ ! -f "$TARBALL_PATH" ]; then
+  echo "❌ npm pack failed to create tarball"
+  exit 1
+fi
+echo "  ✅ Packed to $TARBALL_PATH"
+
+echo -e "\n🔬 Smoke testing package..."
+# The smoke test runs in both normal and dry-run modes.
+
+# This cleanup function will be called on EXIT.
+# It checks if the script is finishing successfully or not.
+cleanup() {
+  # If the script did not complete successfully, preserve assets for inspection.
+  if [[ "$SUCCESS_FLAG" == false ]]; then
+    echo -e "\n❌ A failure occurred. Preserving temp directory for inspection:"
+    echo "  - Temp directory: $TEMP_DIR"
+  else
+    # Otherwise (on success), clean up the temp dir.
+    if [[ -n "$TEMP_DIR" && -d "$TEMP_DIR" ]]; then
+      echo "  - Cleaning up temp directory..."
+      rm -rf "$TEMP_DIR"
+    fi
+  fi
+  # The tarball is stored in TEMP_DIR and cleaned up with it.
+}
+
+# Set the trap *after* creating the temp dir, so the variable is available.
+trap cleanup EXIT
+
+# Sanitize the version to create a valid directory name, which in turn
+# will be used to generate a valid worker name for the smoke test.
+PROJECT_DIR="$TEMP_DIR/test"
+mkdir -p "$PROJECT_DIR"
+
+if [[ -n "$GITHUB_OUTPUT" ]]; then
+  echo "project-dir=$PROJECT_DIR" >> "$GITHUB_OUTPUT"
+fi
+
+echo "  - Created temp project dir for testing: $PROJECT_DIR"
+
+echo "  - Copying minimal starter to project dir..."
+# Get the absolute path of the script's directory
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
+# The monorepo root is two levels up from the script's directory
+MONOREPO_ROOT="$SCRIPT_DIR/../.."
+cp -a "$MONOREPO_ROOT/starters/minimal/." "$PROJECT_DIR/"
+
+echo "  - Configuring temp project to not use frozen lockfile..."
+echo "frozen-lockfile=false" > "$PROJECT_DIR/.npmrc"
+
+echo "  - Installing packed tarball in project dir..."
+(cd "$PROJECT_DIR" && pnpm add "$TARBALL_PATH")
+
+PACKAGE_NAME=$(npm pkg get name | tr -d '"')
+INSTALLED_DIST_PATH="$PROJECT_DIR/node_modules/$PACKAGE_NAME/dist"
+
+echo "  - Verifying installed package contents..."
+if [ ! -d "$INSTALLED_DIST_PATH" ]; then
+    echo "  ❌ Error: dist/ directory not found in installed package at $INSTALLED_DIST_PATH."
+    exit 1
+fi
+
+# To ensure the package is built and packed correctly, we'll compare
+# a checksum of the file lists from the original `dist` directory and the
+# one installed from the tarball. They must match exactly.
+ORIGINAL_DIST_CHECKSUM=$( (cd dist && find . -type f | sort) | md5sum)
+INSTALLED_DIST_CHECKSUM=$( (cd "$INSTALLED_DIST_PATH" && find . -type f | sort) | md5sum)
+
+echo "    - Original dist checksum: $ORIGINAL_DIST_CHECKSUM"
+echo "    - Installed dist checksum: $INSTALLED_DIST_CHECKSUM"
+
+if [[ "$ORIGINAL_DIST_CHECKSUM" != "$INSTALLED_DIST_CHECKSUM" ]]; then
+  echo "  ❌ Error: File list in installed dist/ does not match original dist/."
+  echo "  This indicates an issue with the build or packaging process."
+  exit 1
+else
+  echo "  ✅ Installed package contents match the local build."
+fi
+
+echo "  - Running smoke tests..."
+# The CWD is the package root (sdk/sdk), so we can run pnpm smoke-test directly.
+# We pass the path to the temp project directory where the minimal starter was installed.
+# We also specify an artifact directory *within* the temp directory.
+if ! pnpm smoke-test --path="$PROJECT_DIR" --no-sync --artifact-dir="$TEMP_DIR/artifacts"; then
+  echo "  ❌ Smoke tests failed."
+  exit 1
+fi
+echo "  ✅ Smoke tests passed."
 
 echo -e "\n🚀 Publishing version $NEW_VERSION..."
 if [[ "$DRY_RUN" == true ]]; then
   if [[ "$VERSION_TYPE" == "test" ]]; then
-    echo "  [DRY RUN] pnpm publish --tag test"
+    echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag test"
   else
-    echo "  [DRY RUN] pnpm publish"
+    echo "  [DRY RUN] npm publish '$TARBALL_PATH'"
   fi
 else
-  PUBLISH_CMD="pnpm publish"
+  PUBLISH_CMD="npm publish \"$TARBALL_PATH\""
   if [[ "$VERSION_TYPE" == "test" ]]; then
     PUBLISH_CMD="$PUBLISH_CMD --tag test"
   fi
-  if ! $PUBLISH_CMD; then
+  if ! eval $PUBLISH_CMD; then
     echo -e "\n❌ Publish failed. Rolling back version commit..."
     git reset --hard HEAD~1
+    # The trap will clean up the tarball
     exit 1
   fi
+  echo "  ✅ Published successfully."
 fi
 
 echo -e "\n🔄 Updating dependencies in monorepo..."
@@ -214,18 +323,31 @@ fi
 
 echo -e "\n📥 Installing dependencies..."
 if [[ "$DRY_RUN" == true ]]; then
-  echo "  [DRY RUN] pnpm install"
+  echo "  [DRY RUN] pnpm install --no-frozen-lockfile --ignore-scripts"
 else
-  for i in {1..3}; do
-    echo "Attempt $i of 3: Running pnpm install"
-    pnpm install --ignore-scripts && break
-    if [ $i -lt 3 ]; then
-      echo "pnpm install failed, retrying in 3 seconds..."
-      sleep 3
-    else
-      echo "pnpm install failed after 3 attempts, exiting"
+  # context(justinvdm, 2025-07-16): Sometimes the rwsdk package we just released has not yet become available on the registry, so we retry a few times.
+  for i in {1..10}; do
+    echo "Attempt $i of 10: Running pnpm install"
+    if pnpm install --no-frozen-lockfile --ignore-scripts; then
+      break # Success
+    fi
+
+    if [ $i -eq 10 ]; then
+      echo "pnpm install failed after 10 attempts, exiting"
       exit 1
     fi
+
+    sleep_time=0
+    if [ $i -le 3 ]; then
+      sleep_time=3
+    elif [ $i -le 7 ]; then
+      sleep_time=5
+    else
+      sleep_time=10
+    fi
+
+    echo "pnpm install failed, retrying in ${sleep_time}s..."
+    sleep $sleep_time
   done
 fi
 
@@ -238,8 +360,15 @@ if [[ "$DRY_RUN" == true ]]; then
     echo "    - Add: all package.json and pnpm-lock.yaml files"
   fi
   echo "    - Amend commit: release $NEW_VERSION"
-  echo "    - Tag: $TAG_NAME"
-  echo "    - Push: origin with tags"
+  if [[ "$VERSION_TYPE" == "test" ]]; then
+    echo "    - Tag: $TAG_NAME"
+    echo "    - Push tag $TAG_NAME to remote"
+    echo "    - Reset branch to previous commit (commit will be on remote via tag)"
+    echo "    - No branch push will be performed"
+  else
+    echo "    - Tag: $TAG_NAME"
+    echo "    - Push: origin with tags"
+  fi
 else
   # For prerelease versions, only add the main package.json since we didn't update dependencies
   if [[ "$NEW_VERSION" =~ -.*\. && ! "$NEW_VERSION" =~ -test\. ]]; then
@@ -250,11 +379,24 @@ else
     (cd .. && git add $(git diff --name-only | grep -E 'package\.json|pnpm-lock\.yaml$'))
     git commit --amend --no-edit
   fi
-  git pull --rebase
-  git tag "$TAG_NAME"
-  git push
-  git push --tags
+
+  if [[ "$VERSION_TYPE" == "test" ]]; then
+    echo "  - Creating tag for test release..."
+    git tag "$TAG_NAME"
+    echo "  - Pushing tag to remote..."
+    git push origin "$TAG_NAME"
+    echo "  - Rolling back local commit for test release. The commit is available via the remote tag."
+    git reset --hard HEAD~1
+  else
+    git pull --rebase
+    git tag "$TAG_NAME"
+    git push
+    git push --tags
+  fi
 fi
+
+# If we've reached the end of the script, it was successful.
+SUCCESS_FLAG=true
 
 if [[ "$DRY_RUN" == true ]]; then
   echo -e "\n✨ Done! Released version $NEW_VERSION (DRY RUN)\n"
