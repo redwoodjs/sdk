@@ -38,7 +38,7 @@ export function validateClickEvent(event: MouseEvent, target: HTMLElement) {
 
 export function initClientNavigation(
   opts: {
-    onNavigate: () => void;
+    onNavigate: () => Promise<void>;
   } = {
     onNavigate: async function onNavigate() {
       // @ts-expect-error
