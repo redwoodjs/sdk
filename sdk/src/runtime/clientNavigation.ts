@@ -46,6 +46,11 @@ export function initClientNavigation(
     },
   },
 ) {
+  if (document.body.getAttribute("data-rw-init-client-nav") === "true") {
+    return;
+  }
+
+  document.body.setAttribute("data-rw-init-client-nav", "true");
   // Intercept all anchor tag clicks
   document.addEventListener(
     "click",
