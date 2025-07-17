@@ -30,36 +30,28 @@ export class SqliteDurableObject<T = any> extends DurableObject {
   }
 
   public async initialize(): Promise<void> {
-    console.log(
-      "################################ initialize called",
-      this.initialized,
-    );
     if (this.initialized) {
-      console.log("################################ already initialized");
       log("Database already initialized, skipping");
       return;
     }
 
     log("Initializing Durable Object database");
-    console.log(
-      "################################ initializing",
-      this.initialized,
-    );
     const migrator = createMigrator(
       this.kysely,
       this.migrations,
       this.migrationTableName,
     );
-    console.log("################################ migrating");
     const result = await migrator.migrateToLatest();
     if (result.error) {
+      console.log(
+        "rwsdk/db: Migrations failed, rolling back and throwing with the migration error: %O",
+        result.results,
+      );
+      await migrator.migrateDown();
       throw result.error;
     }
+    log("Migrations results", result.results);
     this.initialized = true;
-    console.log(
-      "################################ initialized",
-      this.initialized,
-    );
     log("Database initialization complete");
   }
 
