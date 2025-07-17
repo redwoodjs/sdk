@@ -65,7 +65,7 @@ Migrations run when `createDb()` is called. If that happens at the module level 
 
 ### Migration Failures and Rollback
 
-If a migration’s `up()` function fails, `rwsdk/db` automatically calls the corresponding `down()` function to undo any partial changes. This rollback is per-migration—previously successful ones are not affected.
+If a migration’s `up()` function fails, `rwsdk/db` automatically calls the corresponding `down()` function to undo any partial changes. This rollback is per-migration - previously successful ones are not affected.
 
 Because SQLite doesn’t support transactional DDL (Data Definition Language) statements, a failed migration can leave the database in a partially modified state. It is therefore important to write `down()` functions that are idempotent and can run safely even if `up()` only partially succeeded.
 
