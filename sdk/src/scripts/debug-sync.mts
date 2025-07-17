@@ -182,10 +182,8 @@ export const debugSync = async (opts: DebugSyncOptions) => {
   }
 
   // Initial sync for watch mode. We do it *after* acquiring the lock.
-  let initialSyncOk = false;
   try {
     await performSync(sdkDir, targetDir);
-    initialSyncOk = true;
   } catch (error) {
     console.error("❌ Initial sync failed:", error);
     console.log("   Still watching for changes...");
@@ -248,9 +246,9 @@ export const debugSync = async (opts: DebugSyncOptions) => {
   process.on("SIGINT", cleanup);
   process.on("SIGTERM", cleanup);
 
-  if (initialSyncOk) {
-    runWatchedCommand();
-  }
+  // Run the watched command even if the initial sync fails. This allows the
+  // user to see application errors and iterate more quickly.
+  runWatchedCommand();
 };
 
 if (import.meta.url === new URL(process.argv[1], import.meta.url).href) {
