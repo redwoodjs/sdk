@@ -102,9 +102,30 @@ A separate, manually-triggered workflow exists to unrelease a version.
 4.  Provide a `reason` for the action.
 
 Running this workflow does the following:
-*   Deprecates the specified package version on npm with the provided reason.
-*   Deletes the corresponding GitHub Release.
+*   Deprecates the specified package version on npm. This acts as a warning to users that the version should not be used, without removing it from the registry. A warning message with the provided reason is shown when the version is installed.
+*   Deletes the corresponding GitHub Release. If the deleted release was marked as "latest," the workflow automatically finds the most recent stable release and promotes it to "latest".
 *   Deletes the corresponding git tag from the remote repository.
+
+### Creating a Test Release from a Branch
+Sometimes you have changes made in your branch and would like to test them out or share them with others before making a new release. To create a test release from a branch to test changes:
+
+1.  In the GitHub UI, navigate to the [Release workflow](.github/workflows/release.yml).
+2.  From the "Use workflow from" dropdown, select the branch with the changes you want to test.
+3.  Choose `test` as the `version_type`.
+4.  Run the workflow.
+
+The easiest way to get the version string (e.g., `0.1.19-test.20250717130914`) is from the npm email notification. Alternatively, the workflow output will contain a line: `✨ Done! Released version 0.1.19-test.20250717130914`.
+
+Test releases receive special handling. They are published to npm under the `test` tag, but the release commit itself is not pushed to any branch. Instead, the script creates a release commit, tags it, and pushes *only the tag* to the remote. The local branch is then reset to its previous state. This makes the release commit available on the remote, referenced only by its tag, without including it in the main branch history.
+
+#### Why Deprecate Instead of Unpublish?
+
+This project uses `npm deprecate` instead of `npm unpublish` because unpublishing is highly restrictive and can be unreliable in an automated CI environment. The npm registry has strict policies to prevent breaking the package ecosystem:
+
+*   A package version can only be unpublished without restrictions within 72 hours of its release.
+*   After 72 hours, unpublishing is only allowed if the package has very few downloads and no other public packages depend on it.
+
+Deprecation is a safer and more reliable method. It immediately warns users about a problematic version while ensuring that existing projects that depend on it do not break.
 
 ### Release Process and Sanity Checks
 
@@ -117,11 +138,9 @@ The release workflow and underlying script (`sdk/sdk/scripts/release.sh`) follow
     *   A temporary project is created using the `starters/minimal` template.
     *   The `.tgz` tarball is installed as a dependency.
     *   **Verification**: The script verifies that the contents of the `dist` directory in the installed package are *identical* to the local `dist` directory from the build step by comparing checksums.
-    *  Smoke tests are then installed
+    *  Smoke tests are then run for this same test project, validating that the installed tarball is working correctly
 5.  **Publish**: Only if all smoke tests and verification checks pass, the script publishes the `.tgz` tarball to npm. This guarantees the exact package that was tested is the one that gets published.
 6.  **Finalize Commit**: For non-prerelease versions, the script updates dependencies in the monorepo, amends the version commit with these changes, tags the commit, and pushes everything to the remote repository.
 7.  **Rollback**: If any step fails, the script reverts the version commit and cleans up all temporary files, leaving the repository in a clean state.
 
-### GitHub Token
-
-The release workflow requires a GitHub personal access token (PAT) with `repo` scope to be configured as a repository secret named `GH_TOKEN_FOR_RELEASES`. This is necessary for the workflow to push version bump commits and tags.
+#### Test Releases

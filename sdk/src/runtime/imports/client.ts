@@ -2,7 +2,7 @@ import React from "react";
 import memoize from "lodash/memoize";
 
 export const loadModule = memoize(async (id: string) => {
-  if (import.meta.env.DEV && !process.env.PREVIEW) {
+  if (import.meta.env.VITE_IS_DEV_SERVER) {
     return await import(/* @vite-ignore */ id);
   } else {
     const { useClientLookup } = await import(

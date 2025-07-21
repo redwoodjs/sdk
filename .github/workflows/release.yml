@@ -9,12 +9,12 @@ on:
         type: choice
         options:
           - patch
+          - test
           - minor
           - major
           - prepatch
           - preminor
           - premajor
-          - test
       preid:
         description: "Prerelease identifier (e.g., alpha, beta, rc). Used with prepatch/preminor/premajor."
         required: false
@@ -67,15 +67,23 @@ jobs:
           corepack enable
           pnpm install
 
+      - name: Setup .npmrc for publishing
+        working-directory: sdk
+        run: |
+          echo "//registry.npmjs.org/:_authToken=${{ secrets.NPM_TOKEN }}" > .npmrc
+          echo "registry=https://registry.npmjs.org/" >> .npmrc
+          echo "always-auth=true" >> .npmrc
+
       - name: Run release script
         id: release_script
         working-directory: sdk
-        env:
-          NODE_AUTH_TOKEN: ${{ secrets.NPM_TOKEN }}
         run: |
-          # This command is hardcoded to 'test --dry' for safe testing on this branch.
-          # It will be reverted to use inputs before merging.
-          ./scripts/release.sh test --dry
+          COMMAND="./scripts/release.sh ${{ github.event.inputs.version_type }}"
+          if [[ "${{ github.event.inputs.version_type }}" == "pre"* ]]; then
+            COMMAND="$COMMAND --preid ${{ github.event.inputs.preid }}"
+          fi
+          echo "Running command: $COMMAND"
+          eval $COMMAND
 
       - name: Create GitHub Release
         if: >
@@ -85,8 +93,15 @@ jobs:
         env:
           GH_TOKEN: ${{ secrets.GH_TOKEN_FOR_RELEASES }}
         run: |
-          echo "Creating GitHub release for tag ${{ env.TAG_NAME }}..."
-          gh release create ${{ env.TAG_NAME }} --generate-notes
+          FLAGS="--generate-notes"
+          VERSION_TYPE="${{ github.event.inputs.version_type }}"
+          if [[ "$VERSION_TYPE" == "patch" || "$VERSION_TYPE" == "minor" || "$VERSION_TYPE" == "major" ]]; then
+            FLAGS="$FLAGS --latest"
+          elif [[ "$VERSION_TYPE" == "pre"* ]]; then
+            FLAGS="$FLAGS --prerelease"
+          fi
+          echo "Creating GitHub release for tag ${{ env.TAG_NAME }} with flags: $FLAGS"
+          gh release create ${{ env.TAG_NAME }} $FLAGS
 
       - name: Prune node_modules for artifact upload
         if: failure() && steps.release_script.outputs.project-dir
@@ -101,3 +116,11 @@ jobs:
         with:
           name: smoke-test-failure-logs
           path: ${{ steps.release_script.outputs.project-dir }}
+
+      - name: Upload smoke test artifacts
+        if: always() && steps.release_script.outputs.project-dir
+        uses: actions/upload-artifact@v4
+        with:
+          name: release-smoke-test-artifacts
+          path: ${{ steps.release_script.outputs.project-dir }}/artifacts
+          retention-days: 7
