@@ -121,14 +121,23 @@ export class RealtimeDurableObject extends DurableObject {
     response: Response,
     ws: WebSocket,
     messageTypes: {
+      start: number;
       chunk: number;
       end: number;
     },
     streamId: string,
   ): Promise<void> {
-    const reader = response.body!.getReader();
     const encoder = new TextEncoder();
     const streamIdBytes = encoder.encode(streamId);
+
+    // Send the start message with the status code
+    const startMessage = new Uint8Array(2 + streamIdBytes.length);
+    startMessage[0] = messageTypes.start;
+    startMessage[1] = response.status;
+    startMessage.set(streamIdBytes, 2);
+    ws.send(startMessage);
+
+    const reader = response.body!.getReader();
 
     try {
       while (true) {
@@ -190,6 +199,7 @@ export class RealtimeDurableObject extends DurableObject {
       response,
       ws,
       {
+        start: MESSAGE_TYPE.ACTION_START,
         chunk: MESSAGE_TYPE.ACTION_CHUNK,
         end: MESSAGE_TYPE.ACTION_END,
       },
@@ -257,15 +267,11 @@ export class RealtimeDurableObject extends DurableObject {
 
           const rscId = crypto.randomUUID();
 
-          const startMessage = new Uint8Array(1 + 36);
-          startMessage[0] = MESSAGE_TYPE.RSC_START;
-          startMessage.set(new TextEncoder().encode(rscId), 1);
-          socket.send(startMessage);
-
           await this.streamResponse(
             response,
             socket,
             {
+              start: MESSAGE_TYPE.RSC_START,
               chunk: MESSAGE_TYPE.RSC_CHUNK,
               end: MESSAGE_TYPE.RSC_END,
             },
