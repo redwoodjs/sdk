@@ -2,6 +2,7 @@ import React from "react";
 import memoize from "lodash/memoize";
 
 export const loadModule = memoize(async (id: string) => {
+  console.log("#########", import.meta.env.DEV, process.env.PREVIEW);
   if (import.meta.env.DEV && !process.env.PREVIEW) {
     return await import(/* @vite-ignore */ id);
   } else {

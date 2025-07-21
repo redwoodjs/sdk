@@ -1,6 +1,5 @@
 import { initClient, type Transport, type ActionResponse } from "../../client";
 import { createFromReadableStream } from "react-server-dom-webpack/client.browser";
-import { IS_DEV } from "../../constants";
 import { MESSAGE_TYPE } from "./shared";
 const DEFAULT_KEY = "default";
 
