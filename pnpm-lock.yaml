@@ -205,8 +205,8 @@ importers:
   starters/minimal:
     dependencies:
       rwsdk:
-        specifier: 0.1.20
-        version: 0.1.20(rollup@4.40.0)(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250617.0)
+        specifier: file:/Users/justin/rw/sdk/sdk/rwsdk-0.1.20.tgz
+        version: file:sdk/rwsdk-0.1.20.tgz(rollup@4.40.0)(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250617.0)
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.7.4
@@ -248,8 +248,8 @@ importers:
         specifier: ^13.1.1
         version: 13.1.1
       rwsdk:
-        specifier: file:/Users/justin/rw/sdk/sdk/rwsdk-0.1.20.tgz
-        version: file:sdk/rwsdk-0.1.20.tgz(rollup@4.40.0)(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250617.0)
+        specifier: 0.1.20
+        version: 0.1.20(rollup@4.40.0)(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250617.0)
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.7.4
@@ -3609,7 +3609,7 @@ packages:
       vite: ^6.2.6
 
   rwsdk@file:sdk/rwsdk-0.1.20.tgz:
-    resolution: {integrity: sha512-GHOlVQXix4fZZTSrr1/ldAT6GDDs8LUxBz5Yq8ihDOqwLbF8tP4n6ha8LtrTvUbxSSN4uhUi1q6cJk+subW9bw==, tarball: file:sdk/rwsdk-0.1.20.tgz}
+    resolution: {integrity: sha512-aPdnk9Dc6Wkr+BrCCJt+BN5OTqxvV0CGtu4AkJLAn6/wstQhqHOrRe6tvDjSfU5oUqKvBSdH5OEJ7pNcoqvFqg==, tarball: file:sdk/rwsdk-0.1.20.tgz}
     version: 0.1.20
     hasBin: true
     peerDependencies:

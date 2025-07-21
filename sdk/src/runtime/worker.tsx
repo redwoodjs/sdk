@@ -14,7 +14,6 @@ import { RequestInfo, DefaultAppContext } from "./requestInfo/types";
 
 import { Route, type RwContext, defineRoutes } from "./lib/router";
 import { generateNonce } from "./lib/utils";
-import { IS_DEV } from "./constants";
 import { ssrWebpackRequire } from "./imports/worker";
 
 declare global {
@@ -118,7 +117,7 @@ export const defineApp = <
           onError: (error: unknown) => void,
         ) => {
           if (isClientReference(requestInfo.rw.Document)) {
-            if (IS_DEV) {
+            if (import.meta.env.DEV) {
               console.error("Document cannot be a client component");
             }
 

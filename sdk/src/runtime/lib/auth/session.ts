@@ -1,10 +1,11 @@
 import { ErrorResponse } from "../../error";
-import { IS_DEV } from "../../constants";
 import { env } from "cloudflare:workers";
 
 const AUTH_SECRET_KEY =
   (env as { AUTH_SECRET_KEY?: string }).AUTH_SECRET_KEY ??
-  (IS_DEV ? "development-secret-key-do-not-use-in-production" : undefined);
+  (import.meta.env.VITE_IS_DEV_SERVER
+    ? "development-secret-key-do-not-use-in-production"
+    : undefined);
 
 if (AUTH_SECRET_KEY === "") {
   console.warn(

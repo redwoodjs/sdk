@@ -13,11 +13,11 @@ import { requestInfo } from "rwsdk/worker";
 import { db } from "@/db";
 import { env } from "cloudflare:workers";
 
-const IS_DEV = process.env.NODE_ENV === "development";
-
 function getWebAuthnConfig(request: Request) {
   const rpID = env.WEBAUTHN_RP_ID ?? new URL(request.url).hostname;
-  const rpName = IS_DEV ? "Development App" : env.WEBAUTHN_APP_NAME;
+  const rpName = import.meta.env.VITE_IS_DEV_SERVER
+    ? "Development App"
+    : env.WEBAUTHN_APP_NAME;
   return {
     rpName,
     rpID,
