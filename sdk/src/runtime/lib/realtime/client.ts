@@ -58,7 +58,7 @@ export const realtimeTransport =
 
         if (messageType === MESSAGE_TYPE.RSC_START) {
           const decoder = new TextDecoder();
-          const rscId = decoder.decode(data.slice(1, 37)); // Extract RSC stream ID
+          const rscId = decoder.decode(data.slice(2, 38)); // Extract RSC stream ID
 
           const stream = new ReadableStream({
             start(controller) {
@@ -151,39 +151,42 @@ export const realtimeTransport =
               const messageHandler = (event: MessageEvent) => {
                 const data = new Uint8Array(event.data);
                 const messageType = data[0];
-
-                // First byte is message type
-                // Next 36 bytes (or fixed size) should be UUID as requestId
-                // Remaining bytes are the payload
-
-                // Extract the requestId from the message
                 const decoder = new TextDecoder();
-                const responseId = decoder.decode(data.slice(1, 37)); // Assuming UUID is 36 chars
+                let responseId;
 
-                // Only process messages meant for this request
-                if (responseId !== requestId) {
-                  return;
-                }
-
-                // The actual payload starts after the requestId
-                const payload = data.slice(37);
-
-                if (messageType === MESSAGE_TYPE.ACTION_CHUNK) {
-                  controller.enqueue(payload);
-                } else if (messageType === MESSAGE_TYPE.ACTION_END) {
-                  controller.close();
-                  socket.removeEventListener("message", messageHandler);
-                } else if (messageType === MESSAGE_TYPE.ACTION_ERROR) {
-                  const errorJson = decoder.decode(payload);
-                  let errorMsg = "Unknown error";
-                  try {
-                    const errorObj = JSON.parse(errorJson);
-                    errorMsg = errorObj.error || errorMsg;
-                  } catch (e) {
-                    // Use default error message
+                if (messageType === MESSAGE_TYPE.ACTION_START) {
+                  responseId = decoder.decode(data.slice(2, 38));
+                  if (responseId !== requestId) {
+                    return;
                   }
-                  controller.error(new Error(errorMsg));
-                  socket.removeEventListener("message", messageHandler);
+                  // Start message received, do nothing further with this message.
+                  // The stream is now ready for chunks.
+                } else {
+                  // Handle CHUNK, END, ERROR
+                  responseId = decoder.decode(data.slice(1, 37));
+                  if (responseId !== requestId) {
+                    return;
+                  }
+
+                  const payload = data.slice(37);
+
+                  if (messageType === MESSAGE_TYPE.ACTION_CHUNK) {
+                    controller.enqueue(payload);
+                  } else if (messageType === MESSAGE_TYPE.ACTION_END) {
+                    controller.close();
+                    socket.removeEventListener("message", messageHandler);
+                  } else if (messageType === MESSAGE_TYPE.ACTION_ERROR) {
+                    const errorJson = decoder.decode(payload);
+                    let errorMsg = "Unknown error";
+                    try {
+                      const errorObj = JSON.parse(errorJson);
+                      errorMsg = errorObj.error || errorMsg;
+                    } catch (e) {
+                      // Use default error message
+                    }
+                    controller.error(new Error(errorMsg));
+                    socket.removeEventListener("message", messageHandler);
+                  }
                 }
               };
               socket.addEventListener("message", messageHandler);
