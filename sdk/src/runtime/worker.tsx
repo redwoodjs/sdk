@@ -14,7 +14,6 @@ import { RequestInfo, DefaultAppContext } from "./requestInfo/types";
 
 import { Route, type RwContext, defineRoutes } from "./lib/router";
 import { generateNonce } from "./lib/utils";
-import { IS_DEV } from "./constants";
 import { ssrWebpackRequire } from "./imports/worker";
 
 declare global {
@@ -41,7 +40,10 @@ export const defineApp = <
         const url = new URL(request.url);
         url.pathname = url.pathname.slice("/assets/".length);
         return env.ASSETS.fetch(new Request(url.toString(), request));
-      } else if (IS_DEV && request.url.includes("/__vite_preamble__")) {
+      } else if (
+        import.meta.env.VITE_IS_DEV_SERVER &&
+        request.url.includes("/__vite_preamble__")
+      ) {
         return new Response(
           'import RefreshRuntime from "/@react-refresh"; RefreshRuntime.injectIntoGlobalHook(window); window.$RefreshReg$ = () => {}; window.$RefreshSig$ = () => (type) => type; window.__vite_plugin_react_preamble_installed__ = true;',
           {
@@ -115,7 +117,7 @@ export const defineApp = <
           onError: (error: unknown) => void,
         ) => {
           if (isClientReference(requestInfo.rw.Document)) {
-            if (IS_DEV) {
+            if (import.meta.env.DEV) {
               console.error("Document cannot be a client component");
             }
 

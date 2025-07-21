@@ -2,6 +2,8 @@ import { resolve } from "node:path";
 import { InlineConfig } from "vite";
 import { unstable_readConfig } from "wrangler";
 import { cloudflare } from "@cloudflare/vite-plugin";
+
+import { devServerConstantPlugin } from "./devServerConstant.mjs";
 import { hasOwnCloudflareVitePlugin } from "./hasOwnCloudflareVitePlugin.mjs";
 
 import reactPlugin from "@vitejs/plugin-react";
@@ -97,6 +99,7 @@ export const redwoodPlugin = async (
 
   return [
     devServerTimingPlugin(),
+    devServerConstantPlugin(),
     configPlugin({
       silent: options.silent ?? false,
       projectRootDir,

@@ -5,8 +5,6 @@ import {
 } from "react-server-dom-webpack/server.edge";
 import { getServerModuleExport } from "../imports/worker.js";
 
-import { IS_DEV } from "../constants";
-
 export function registerServerReference(
   action: Function,
   id: string,
@@ -56,7 +54,7 @@ export async function rscActionHandler(req: Request): Promise<unknown> {
   const args = (await decodeReply(data, null)) as unknown[];
   const actionId = url.searchParams.get("__rsc_action_id");
 
-  if (IS_DEV && actionId === "__rsc_hot_update") {
+  if (import.meta.env.VITE_IS_DEV_SERVER && actionId === "__rsc_hot_update") {
     return null;
   }
 

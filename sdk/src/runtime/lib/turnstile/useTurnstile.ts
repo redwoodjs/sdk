@@ -1,7 +1,6 @@
 "use client";
 
 import { useRef, useCallback } from "react";
-import { IS_DEV } from "../../constants";
 
 export function useTurnstile(siteKey: string) {
   const containerRef = useRef<HTMLDivElement>(null);
@@ -17,7 +16,9 @@ export function useTurnstile(siteKey: string) {
       widgetIdRef.current = (window as any).turnstile.render(
         containerRef.current,
         {
-          sitekey: IS_DEV ? "1x00000000000000000000AA" : siteKey,
+          sitekey: import.meta.env.VITE_IS_DEV_SERVER
+            ? "1x00000000000000000000AA"
+            : siteKey,
           callback: (token: string) => resolverRef.current.resolve(token),
         },
       );

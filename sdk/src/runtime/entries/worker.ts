@@ -1,3 +1,4 @@
+import "./types/worker";
 export * from "../register/worker";
 export * from "../worker";
 export * from "../error";
