@@ -12,7 +12,13 @@ export const initRealtimeClient = ({
 };
 
 export const realtimeTransport =
-  ({ key = DEFAULT_KEY }: { key?: string }): Transport =>
+  ({
+    key = DEFAULT_KEY,
+    handleResponse,
+  }: {
+    key?: string;
+    handleResponse?: (response: Response) => boolean;
+  }): Transport =>
   (transportContext) => {
     let ws: WebSocket | null = null;
     let isConnected = false;
@@ -32,7 +38,8 @@ export const realtimeTransport =
         `${protocol}://${window.location.host}/__realtime?` +
           `key=${encodeURIComponent(key)}&` +
           `url=${encodeURIComponent(clientUrl.toString())}&` +
-          `clientId=${encodeURIComponent(clientId)}`,
+          `clientId=${encodeURIComponent(clientId)}&` +
+          `shouldForwardResponses=${encodeURIComponent(handleResponse ? "true" : "false")}`,
       );
 
       ws.binaryType = "arraybuffer";

@@ -6,6 +6,7 @@ interface ClientInfo {
   url: string;
   clientId: string;
   cookieHeaders: string;
+  shouldForwardResponses: boolean;
 }
 export class RealtimeDurableObject extends DurableObject {
   state: DurableObjectState;
@@ -38,6 +39,8 @@ export class RealtimeDurableObject extends DurableObject {
       url: url.searchParams.get("url")!,
       clientId: url.searchParams.get("clientId")!,
       cookieHeaders: request.headers.get("Cookie") || "",
+      shouldForwardResponses:
+        url.searchParams.get("shouldForwardResponses") === "true",
     };
   }
 
@@ -175,7 +178,7 @@ export class RealtimeDurableObject extends DurableObject {
       },
     });
 
-    if (!response.ok) {
+    if (!response.ok && !clientInfo.shouldForwardResponses) {
       throw new Error(`Action failed: ${response.statusText}`);
     }
 
