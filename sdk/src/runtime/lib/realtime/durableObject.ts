@@ -74,7 +74,7 @@ export class RealtimeDurableObject extends DurableObject {
 
   async webSocketMessage(ws: WebSocket, data: ArrayBuffer) {
     const clientId = ws.deserializeAttachment() as string;
-    const clientInfo = await this.getClientInfo(clientId);
+    let clientInfo = await this.getClientInfo(clientId);
 
     const message = new Uint8Array(data);
     const messageType = message[0];
@@ -83,6 +83,13 @@ export class RealtimeDurableObject extends DurableObject {
       const decoder = new TextDecoder();
       const jsonData = decoder.decode(message.slice(1));
       const { id, args, requestId, clientUrl } = JSON.parse(jsonData);
+
+      clientInfo = {
+        ...clientInfo,
+        url: clientUrl,
+      };
+
+      await this.storeClientInfo(clientInfo);
 
       try {
         await this.handleAction(ws, id, args, clientInfo, requestId, clientUrl);
