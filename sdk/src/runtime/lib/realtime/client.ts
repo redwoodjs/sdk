@@ -52,33 +52,15 @@ export const realtimeTransport =
         console.error("[Realtime] WebSocket error", event);
       });
 
-      ws.addEventListener("message", async (event) => {
-        const data = new Uint8Array(event.data);
-        const messageType = data[0];
-
-        if (messageType === MESSAGE_TYPE.RSC_START) {
-          const decoder = new TextDecoder();
-          const rscId = decoder.decode(data.slice(2, 38));
-
-          const response = await createResponseFromSocket(rscId, ws!, {
-            start: MESSAGE_TYPE.RSC_START,
-            chunk: MESSAGE_TYPE.RSC_CHUNK,
-            end: MESSAGE_TYPE.RSC_END,
-          });
-
-          const rscPayload = createFromReadableStream(response.body!, {
-            callServer: realtimeCallServer,
-          }) as Promise<ActionResponse<unknown>>;
-
-          transportContext.setRscPayload(rscPayload);
-        }
-      });
-
       ws.addEventListener("close", () => {
         console.warn("[Realtime] WebSocket closed, attempting to reconnect...");
         ws = null;
         isConnected = false;
         setTimeout(setupWebSocket, 5000);
+      });
+
+      listenForUpdates(ws!, (response) => {
+        processResponse(response);
       });
     };
 
@@ -127,40 +109,42 @@ export const realtimeTransport =
 
         socket.send(message);
 
-        try {
-          const response = await createResponseFromSocket(requestId, socket, {
-            start: MESSAGE_TYPE.ACTION_START,
-            chunk: MESSAGE_TYPE.ACTION_CHUNK,
-            end: MESSAGE_TYPE.ACTION_END,
-            error: MESSAGE_TYPE.ACTION_ERROR,
-          });
-
-          let streamForRsc: ReadableStream<Uint8Array>;
-          let shouldContinue = true;
-
-          if (transportContext.handleResponse) {
-            const [stream1, stream2] = response.body!.tee();
-            const clonedResponse = new Response(stream1, response);
-            streamForRsc = stream2;
-            shouldContinue = transportContext.handleResponse(clonedResponse);
-          } else {
-            streamForRsc = response.body!;
-          }
-
-          if (!shouldContinue) {
-            return undefined as unknown as T;
-          }
-
-          const rscResponse = (await createFromReadableStream(streamForRsc!, {
-            callServer: realtimeCallServer as any,
-          })) as { actionResult: T };
-          return rscResponse.actionResult;
-        } catch (err) {
-          throw err;
-        }
+        const response = await respondToRequest(requestId, socket);
+        return await processResponse(response);
       } catch (e) {
         console.error("[Realtime] Error calling server", e);
         return null;
+      }
+    };
+
+    const processResponse = async <T>(
+      response: Response,
+    ): Promise<T | null> => {
+      try {
+        let streamForRsc: ReadableStream<Uint8Array>;
+        let shouldContinue = true;
+
+        if (transportContext.handleResponse) {
+          const [stream1, stream2] = response.body!.tee();
+          const clonedResponse = new Response(stream1, response);
+          streamForRsc = stream2;
+          shouldContinue = transportContext.handleResponse(clonedResponse);
+        } else {
+          streamForRsc = response.body!;
+        }
+
+        if (!shouldContinue) {
+          return null;
+        }
+
+        const rscPayload = createFromReadableStream(streamForRsc!, {
+          callServer: realtimeCallServer as any,
+        }) as Promise<ActionResponse<unknown>>;
+
+        transportContext.setRscPayload(rscPayload);
+        return (await rscPayload).actionResult as T | null;
+      } catch (err) {
+        throw err;
       }
     };
 
@@ -169,67 +153,147 @@ export const realtimeTransport =
     return realtimeCallServer;
   };
 
-function createResponseFromSocket(
-  id: string,
+function respondToRequest(
+  requestId: string,
   socket: WebSocket,
-  messageTypes: {
-    start: number;
-    chunk: number;
-    end: number;
-    error?: number;
-  },
 ): Promise<Response> {
-  return new Promise((resolve) => {
-    let streamController: ReadableStreamDefaultController<Uint8Array> | null =
-      null;
+  const messageTypes = {
+    start: MESSAGE_TYPE.ACTION_START,
+    chunk: MESSAGE_TYPE.ACTION_CHUNK,
+    end: MESSAGE_TYPE.ACTION_END,
+    error: MESSAGE_TYPE.ACTION_ERROR,
+  };
 
+  return new Promise((resolve, reject) => {
     const handler = (event: MessageEvent) => {
       const data = new Uint8Array(event.data);
       const messageType = data[0];
       const decoder = new TextDecoder();
-      const responseId = decoder.decode(data.slice(1, 37));
+      const messageRequestId = decoder.decode(data.slice(1, 37));
 
-      if (responseId !== id) {
+      if (messageRequestId !== requestId) {
         return;
       }
 
       if (messageType === messageTypes.start) {
-        const stream = new ReadableStream({
-          start(controller) {
-            streamController = controller;
-          },
-        });
+        socket.removeEventListener("message", handler);
 
         const status = data[1];
+
+        const stream = createUpdateStreamFromSocket(
+          requestId,
+          socket,
+          messageTypes,
+          reject,
+        );
+
         const response = new Response(stream, {
           status,
           headers: { "Content-Type": "text/plain" },
         });
 
         resolve(response);
-      } else if (streamController) {
-        if (messageType === messageTypes.chunk) {
-          const payload = data.slice(37);
-          streamController.enqueue(payload);
-        } else if (messageType === messageTypes.end) {
-          streamController.close();
-          socket.removeEventListener("message", handler);
-        } else if (messageTypes.error && messageType === messageTypes.error) {
-          const payload = data.slice(37);
-          const errorJson = decoder.decode(payload);
-          let errorMsg = "Unknown error";
-          try {
-            const errorObj = JSON.parse(errorJson);
-            errorMsg = errorObj.error || errorMsg;
-          } catch (e) {
-            //
-          }
-          streamController.error(new Error(errorMsg));
-          socket.removeEventListener("message", handler);
-        }
       }
     };
 
     socket.addEventListener("message", handler);
   });
 }
+
+function listenForUpdates(
+  socket: WebSocket,
+  onUpdate: (response: Response) => void,
+) {
+  const messageTypes = {
+    start: MESSAGE_TYPE.RSC_START,
+    chunk: MESSAGE_TYPE.RSC_CHUNK,
+    end: MESSAGE_TYPE.RSC_END,
+  };
+
+  const handler = async (event: MessageEvent) => {
+    const data = new Uint8Array(event.data);
+    const messageType = data[0];
+
+    if (messageType === messageTypes.start) {
+      socket.removeEventListener("message", handler);
+
+      const decoder = new TextDecoder();
+      const status = data[1];
+      const rscId = decoder.decode(data.slice(2, 38));
+
+      const stream = createUpdateStreamFromSocket(
+        rscId,
+        socket,
+        messageTypes,
+        (error) => {
+          console.error("[Realtime] Error creating update stream", error);
+        },
+      );
+
+      const response = new Response(stream, {
+        status,
+        headers: { "Content-Type": "text/plain" },
+      });
+
+      onUpdate(response);
+    }
+  };
+
+  socket.addEventListener("message", handler);
+}
+
+const createUpdateStreamFromSocket = (
+  id: string,
+  socket: WebSocket,
+  messageTypes: {
+    chunk: number;
+    end: number;
+    error?: number;
+  },
+  onError: (error: Error) => void,
+) => {
+  let deferredStreamController =
+    Promise.withResolvers<ReadableStreamDefaultController<Uint8Array>>();
+
+  const stream = new ReadableStream({
+    start(controller) {
+      deferredStreamController.resolve(controller);
+    },
+  });
+
+  const handler = async (event: MessageEvent) => {
+    const data = new Uint8Array(event.data);
+    const messageType = data[0];
+    const decoder = new TextDecoder();
+    const messageRequestId = decoder.decode(data.slice(1, 37));
+    if (messageRequestId !== id) {
+      return;
+    }
+
+    const streamController = await deferredStreamController.promise;
+
+    if (messageType === messageTypes.chunk) {
+      const payload = data.slice(37);
+      streamController.enqueue(payload);
+    } else if (messageType === messageTypes.end) {
+      streamController.close();
+      socket.removeEventListener("message", handler);
+    } else if (messageTypes.error && messageType === messageTypes.error) {
+      const payload = data.slice(37);
+      const errorJson = decoder.decode(payload);
+      let errorMsg = "Unknown error";
+      try {
+        const errorObj = JSON.parse(errorJson);
+        errorMsg = errorObj.error || errorMsg;
+      } catch (e) {
+        //
+      }
+      onError(new Error(errorMsg));
+      socket.removeEventListener("message", handler);
+    }
+  };
+
+  socket.addEventListener("message", handler);
+
+  return stream;
+};
