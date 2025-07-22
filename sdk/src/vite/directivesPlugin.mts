@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import debug from "debug";
 import { transformClientComponents } from "./transformClientComponents.mjs";
 import { transformServerFunctions } from "./transformServerFunctions.mjs";
-import { normalizeModulePath } from "./normalizeModulePath.mjs";
+import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import type { ViteDevServer } from "vite";
 
 const log = debug("rwsdk:vite:rsc-directives-plugin");

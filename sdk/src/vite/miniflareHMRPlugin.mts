@@ -5,7 +5,7 @@ import { readFile } from "node:fs/promises";
 import { ViteDevServer } from "vite";
 import debug from "debug";
 import { VIRTUAL_SSR_PREFIX } from "./ssrBridgePlugin.mjs";
-import { normalizeModulePath } from "./normalizeModulePath.mjs";
+import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { hasDirective as sourceHasDirective } from "./hasDirective.mjs";
 import { isJsFile } from "./isJsFile.mjs";
 import { invalidateModule } from "./invalidateModule.mjs";
