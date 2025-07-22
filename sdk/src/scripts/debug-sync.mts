@@ -23,7 +23,10 @@ const getPackageManagerInfo = (targetDir: string) => {
   if (existsSync(path.join(targetDir, "yarn.lock"))) {
     return { name: "yarn", lockFile: "yarn.lock", command: "add" };
   }
-  if (existsSync(path.join(targetDir, "pnpm-lock.yaml"))) {
+  if (
+    existsSync(path.join(targetDir, "pnpm-lock.yaml")) ||
+    existsSync(path.join(targetDir, "node_modules", ".pnpm"))
+  ) {
     return pnpmResult;
   }
   if (existsSync(path.join(targetDir, "package-lock.json"))) {
@@ -32,55 +35,87 @@ const getPackageManagerInfo = (targetDir: string) => {
   return pnpmResult;
 };
 
-const performFullSync = async (sdkDir: string, targetDir: string) => {
-  console.log("📦 Packing SDK...");
-  const packResult = await $`npm pack`;
-  const tarballName = packResult.stdout?.trim() ?? "";
-  if (!tarballName) {
-    console.error("❌ Failed to get tarball name from npm pack.");
-    return;
-  }
-  const tarballPath = path.resolve(sdkDir, tarballName);
-
-  console.log(`💿 Installing ${tarballName} in ${targetDir}...`);
-
-  const pm = getPackageManagerInfo(targetDir);
-  const packageJsonPath = path.join(targetDir, "package.json");
-  const lockfilePath = path.join(targetDir, pm.lockFile);
-
-  const originalPackageJson = await fs
-    .readFile(packageJsonPath, "utf-8")
-    .catch(() => null);
-  const originalLockfile = await fs
-    .readFile(lockfilePath, "utf-8")
-    .catch(() => null);
+const performFullSync = async (
+  sdkDir: string,
+  targetDir: string,
+  cacheBust = false,
+) => {
+  const sdkPackageJsonPath = path.join(sdkDir, "package.json");
+  let originalSdkPackageJson: string | null = null;
+  let tarballPath = "";
+  let tarballName = "";
 
   try {
-    const cmd = pm.name;
-    const args = [pm.command];
-
-    if (pm.name === "yarn") {
-      args.push(`file:${tarballPath}`);
-    } else {
-      args.push(tarballPath);
+    if (cacheBust) {
+      console.log("💥 Cache-busting version for full sync...");
+      originalSdkPackageJson = await fs.readFile(sdkPackageJsonPath, "utf-8");
+      const packageJson = JSON.parse(originalSdkPackageJson);
+      const now = Date.now();
+      // This is a temporary version used for cache busting
+      packageJson.version = `${packageJson.version}-dev.${now}`;
+      await fs.writeFile(
+        sdkPackageJsonPath,
+        JSON.stringify(packageJson, null, 2),
+      );
     }
 
-    await $(cmd, args, {
-      cwd: targetDir,
-      stdio: "inherit",
-    });
+    console.log("📦 Packing SDK...");
+    const packResult = await $({ cwd: sdkDir })`npm pack`;
+    tarballName = packResult.stdout?.trim() ?? "";
+    if (!tarballName) {
+      console.error("❌ Failed to get tarball name from npm pack.");
+      return;
+    }
+    tarballPath = path.resolve(sdkDir, tarballName);
+
+    console.log(`💿 Installing ${tarballName} in ${targetDir}...`);
+
+    const pm = getPackageManagerInfo(targetDir);
+    const packageJsonPath = path.join(targetDir, "package.json");
+    const lockfilePath = path.join(targetDir, pm.lockFile);
+
+    const originalPackageJson = await fs
+      .readFile(packageJsonPath, "utf-8")
+      .catch(() => null);
+    const originalLockfile = await fs
+      .readFile(lockfilePath, "utf-8")
+      .catch(() => null);
+
+    try {
+      const cmd = pm.name;
+      const args = [pm.command];
+
+      if (pm.name === "yarn") {
+        args.push(`file:${tarballPath}`);
+      } else {
+        args.push(tarballPath);
+      }
+
+      await $(cmd, args, {
+        cwd: targetDir,
+        stdio: "inherit",
+      });
+    } finally {
+      if (originalPackageJson) {
+        console.log("Restoring package.json...");
+        await fs.writeFile(packageJsonPath, originalPackageJson);
+      }
+      if (originalLockfile) {
+        console.log(`Restoring ${pm.lockFile}...`);
+        await fs.writeFile(lockfilePath, originalLockfile);
+      }
+    }
   } finally {
-    if (originalPackageJson) {
+    if (originalSdkPackageJson) {
       console.log("Restoring package.json...");
-      await fs.writeFile(packageJsonPath, originalPackageJson);
+      await fs.writeFile(sdkPackageJsonPath, originalSdkPackageJson);
     }
-    if (originalLockfile) {
-      console.log(`Restoring ${pm.lockFile}...`);
-      await fs.writeFile(lockfilePath, originalLockfile);
+    if (tarballPath) {
+      console.log("Removing tarball...");
+      await fs.unlink(tarballPath).catch(() => {
+        // ignore if deletion fails
+      });
     }
-    await fs.unlink(tarballPath).catch(() => {
-      // ignore if deletion fails
-    });
   }
 };
 
@@ -109,6 +144,15 @@ const performFastSync = async (sdkDir: string, targetDir: string) => {
 const performSync = async (sdkDir: string, targetDir: string) => {
   console.log("🏗️  Rebuilding SDK...");
   await $`pnpm build`;
+
+  const forceFullSync = Boolean(process.env.RWSDK_FORCE_FULL_SYNC);
+
+  if (forceFullSync) {
+    console.log("🏃 Force full sync mode is enabled.");
+    await performFullSync(sdkDir, targetDir, true);
+    console.log("✅ Done syncing");
+    return;
+  }
 
   const sdkPackageJsonPath = path.join(sdkDir, "package.json");
   const installedSdkPackageJsonPath = path.join(
@@ -216,8 +260,26 @@ export const debugSync = async (opts: DebugSyncOptions) => {
     cwd: sdkDir,
   });
 
-  watcher.on("all", async () => {
-    console.log("\nDetected change, re-syncing...");
+  let syncing = false;
+
+  // todo(justinvdm, 2025-07-22): Figure out wtf makes the full sync
+  // cause chokidar to find out about package.json after sync has resolved
+  let expectingFileChanges = Boolean(process.env.RWSDK_FORCE_FULL_SYNC);
+
+  watcher.on("all", async (_event, filePath) => {
+    if (syncing || filePath.endsWith(".tgz")) {
+      return;
+    }
+
+    if (expectingFileChanges && process.env.RWSDK_FORCE_FULL_SYNC) {
+      expectingFileChanges = false;
+      return;
+    }
+
+    syncing = true;
+    expectingFileChanges = true;
+    console.log(`\nDetected change, re-syncing... (file: ${filePath})`);
+
     if (childProc && !childProc.killed) {
       console.log("Stopping running process...");
       childProc.kill();
@@ -226,11 +288,15 @@ export const debugSync = async (opts: DebugSyncOptions) => {
       });
     }
     try {
+      watcher.unwatch(filesToWatch);
       await performSync(sdkDir, targetDir);
       runWatchedCommand();
     } catch (error) {
       console.error("❌ Sync failed:", error);
       console.log("   Still watching for changes...");
+    } finally {
+      syncing = false;
+      watcher.add(filesToWatch);
     }
   });
 

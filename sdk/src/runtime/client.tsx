@@ -13,6 +13,7 @@ export type ActionResponse<Result> = {
 
 type TransportContext = {
   setRscPayload: <Result>(v: Promise<ActionResponse<Result>>) => void;
+  handleResponse?: (response: Response) => boolean; // Returns false to stop normal processing
 };
 
 export type Transport = (context: TransportContext) => CallServerCallback;
@@ -25,7 +26,7 @@ export const fetchTransport: Transport = (transportContext) => {
   const fetchCallServer = async <Result,>(
     id: null | string,
     args: null | unknown[],
-  ): Promise<Result> => {
+  ): Promise<Result | undefined> => {
     const { createFromFetch, encodeReply } = await import(
       "react-server-dom-webpack/client.browser"
     );
@@ -37,13 +38,33 @@ export const fetchTransport: Transport = (transportContext) => {
       url.searchParams.set("__rsc_action_id", id);
     }
 
-    const streamData = createFromFetch(
-      fetch(url, {
-        method: "POST",
-        body: args != null ? await encodeReply(args) : null,
-      }),
-      { callServer: fetchCallServer },
-    ) as Promise<ActionResponse<Result>>;
+    const fetchPromise = fetch(url, {
+      method: "POST",
+      body: args != null ? await encodeReply(args) : null,
+    });
+
+    // If there's a response handler, check the response first
+    if (transportContext.handleResponse) {
+      const response = await fetchPromise;
+      const shouldContinue = transportContext.handleResponse(response);
+      if (!shouldContinue) {
+        return;
+      }
+
+      // Continue with the response if handler returned true
+      const streamData = createFromFetch(Promise.resolve(response), {
+        callServer: fetchCallServer,
+      }) as Promise<ActionResponse<Result>>;
+
+      transportContext.setRscPayload(streamData);
+      const result = await streamData;
+      return (result as { actionResult: Result }).actionResult;
+    }
+
+    // Original behavior when no handler is present
+    const streamData = createFromFetch(fetchPromise, {
+      callServer: fetchCallServer,
+    }) as Promise<ActionResponse<Result>>;
 
     transportContext.setRscPayload(streamData);
     const result = await streamData;
@@ -56,15 +77,18 @@ export const fetchTransport: Transport = (transportContext) => {
 export const initClient = async ({
   transport = fetchTransport,
   hydrateRootOptions,
+  handleResponse,
 }: {
   transport?: Transport;
   hydrateRootOptions?: HydrationOptions;
+  handleResponse?: (response: Response) => boolean;
 } = {}) => {
   const React = await import("react");
   const { hydrateRoot } = await import("react-dom/client");
 
   const transportContext: TransportContext = {
     setRscPayload: () => {},
+    handleResponse,
   };
 
   let transportCallServer = transport(transportContext);

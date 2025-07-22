@@ -1,17 +1,33 @@
 import { initClient, type Transport, type ActionResponse } from "../../client";
 import { createFromReadableStream } from "react-server-dom-webpack/client.browser";
 import { MESSAGE_TYPE } from "./shared";
+import {
+  packMessage,
+  unpackMessage,
+  ActionStartMessage,
+  RscStartMessage,
+  ActionChunkMessage,
+  ActionEndMessage,
+  ActionErrorMessage,
+} from "./protocol";
 const DEFAULT_KEY = "default";
 
 export const initRealtimeClient = ({
   key = DEFAULT_KEY,
-}: { key?: string } = {}) => {
-  const transport = realtimeTransport({ key });
-  return initClient({ transport });
+  handleResponse,
+}: { key?: string; handleResponse?: (response: Response) => boolean } = {}) => {
+  const transport = realtimeTransport({ key, handleResponse });
+  return initClient({ transport, handleResponse });
 };
 
 export const realtimeTransport =
-  ({ key = DEFAULT_KEY }: { key?: string }): Transport =>
+  ({
+    key = DEFAULT_KEY,
+    handleResponse,
+  }: {
+    key?: string;
+    handleResponse?: (response: Response) => boolean;
+  }): Transport =>
   (transportContext) => {
     let ws: WebSocket | null = null;
     let isConnected = false;
@@ -22,7 +38,7 @@ export const realtimeTransport =
     clientUrl.protocol = "";
     clientUrl.host = "";
 
-    const setupWebSocket = () => {
+    const setupWebSocket = async () => {
       if (ws) return;
 
       const protocol = isHttps ? "wss" : "ws";
@@ -31,7 +47,8 @@ export const realtimeTransport =
         `${protocol}://${window.location.host}/__realtime?` +
           `key=${encodeURIComponent(key)}&` +
           `url=${encodeURIComponent(clientUrl.toString())}&` +
-          `clientId=${encodeURIComponent(clientId)}`,
+          `clientId=${encodeURIComponent(clientId)}&` +
+          `shouldForwardResponses=${encodeURIComponent(handleResponse ? "true" : "false")}`,
       );
 
       ws.binaryType = "arraybuffer";
@@ -44,51 +61,15 @@ export const realtimeTransport =
         console.error("[Realtime] WebSocket error", event);
       });
 
-      ws.addEventListener("message", (event) => {
-        const data = new Uint8Array(event.data);
-        const messageType = data[0];
-
-        if (messageType === MESSAGE_TYPE.RSC_START) {
-          const decoder = new TextDecoder();
-          const rscId = decoder.decode(data.slice(1, 37)); // Extract RSC stream ID
-
-          const stream = new ReadableStream({
-            start(controller) {
-              ws!.addEventListener("message", function streamHandler(event) {
-                const data = new Uint8Array(event.data);
-                const messageType = data[0];
-
-                // Extract the RSC stream ID and verify it matches
-                const responseId = decoder.decode(data.slice(1, 37));
-                if (responseId !== rscId) {
-                  return; // Not for this stream
-                }
-
-                const payload = data.slice(37);
-
-                if (messageType === MESSAGE_TYPE.RSC_CHUNK) {
-                  controller.enqueue(payload);
-                } else if (messageType === MESSAGE_TYPE.RSC_END) {
-                  controller.close();
-                  ws!.removeEventListener("message", streamHandler);
-                }
-              });
-            },
-          });
-
-          const rscPayload = createFromReadableStream(stream, {
-            callServer: realtimeCallServer,
-          }) as Promise<ActionResponse<unknown>>;
-
-          transportContext.setRscPayload(rscPayload);
-        }
-      });
-
       ws.addEventListener("close", () => {
         console.warn("[Realtime] WebSocket closed, attempting to reconnect...");
         ws = null;
         isConnected = false;
         setTimeout(setupWebSocket, 5000);
+      });
+
+      listenForUpdates(ws!, (response) => {
+        processResponse(response);
       });
     };
 
@@ -104,10 +85,10 @@ export const realtimeTransport =
       return ws;
     };
 
-    const realtimeCallServer = async <Result>(
+    const realtimeCallServer = async <T>(
       id: string | null,
       args: unknown[],
-    ): Promise<Result | null> => {
+    ): Promise<T | null> => {
       try {
         const socket = ensureWs();
         const { encodeReply } = await import(
@@ -122,82 +103,53 @@ export const realtimeTransport =
 
         const encodedArgs = args != null ? await encodeReply(args) : null;
         const requestId = crypto.randomUUID();
-        const messageData = JSON.stringify({
+
+        const message = packMessage({
+          type: MESSAGE_TYPE.ACTION_REQUEST,
           id,
           args: encodedArgs,
           requestId,
-          clientUrl,
+          clientUrl: clientUrl.toString(),
         });
 
-        const encoder = new TextEncoder();
-        const messageBytes = encoder.encode(messageData);
-        const message = new Uint8Array(messageBytes.length + 1);
-        message[0] = MESSAGE_TYPE.ACTION_REQUEST;
-        message.set(messageBytes, 1);
-
+        const promisedResponse = respondToRequest(requestId, socket);
         socket.send(message);
 
-        return new Promise(async (resolve, reject) => {
-          const stream = new ReadableStream({
-            start(controller) {
-              const messageHandler = (event: MessageEvent) => {
-                const data = new Uint8Array(event.data);
-                const messageType = data[0];
-
-                // First byte is message type
-                // Next 36 bytes (or fixed size) should be UUID as requestId
-                // Remaining bytes are the payload
-
-                // Extract the requestId from the message
-                const decoder = new TextDecoder();
-                const responseId = decoder.decode(data.slice(1, 37)); // Assuming UUID is 36 chars
-
-                // Only process messages meant for this request
-                if (responseId !== requestId) {
-                  return;
-                }
-
-                // The actual payload starts after the requestId
-                const payload = data.slice(37);
-
-                if (messageType === MESSAGE_TYPE.ACTION_CHUNK) {
-                  controller.enqueue(payload);
-                } else if (messageType === MESSAGE_TYPE.ACTION_END) {
-                  controller.close();
-                  socket.removeEventListener("message", messageHandler);
-                } else if (messageType === MESSAGE_TYPE.ACTION_ERROR) {
-                  const errorJson = decoder.decode(payload);
-                  let errorMsg = "Unknown error";
-                  try {
-                    const errorObj = JSON.parse(errorJson);
-                    errorMsg = errorObj.error || errorMsg;
-                  } catch (e) {
-                    // Use default error message
-                  }
-                  controller.error(new Error(errorMsg));
-                  socket.removeEventListener("message", messageHandler);
-                }
-              };
-              socket.addEventListener("message", messageHandler);
-            },
-          });
-
-          const rscPayload = createFromReadableStream(stream, {
-            callServer: realtimeCallServer,
-          });
-          transportContext.setRscPayload(
-            rscPayload as Promise<ActionResponse<unknown>>,
-          );
-          try {
-            const result = await rscPayload;
-            resolve((result as { actionResult: Result }).actionResult);
-          } catch (rscPayloadError) {
-            reject(rscPayloadError);
-          }
-        });
+        return await processResponse(await promisedResponse);
       } catch (e) {
         console.error("[Realtime] Error calling server", e);
         return null;
+      }
+    };
+
+    const processResponse = async <T>(
+      response: Response,
+    ): Promise<T | null> => {
+      try {
+        let streamForRsc: ReadableStream<Uint8Array>;
+        let shouldContinue = true;
+
+        if (transportContext.handleResponse) {
+          const [stream1, stream2] = response.body!.tee();
+          const clonedResponse = new Response(stream1, response);
+          streamForRsc = stream2;
+          shouldContinue = transportContext.handleResponse(clonedResponse);
+        } else {
+          streamForRsc = response.body!;
+        }
+
+        if (!shouldContinue) {
+          return null;
+        }
+
+        const rscPayload = createFromReadableStream(streamForRsc!, {
+          callServer: realtimeCallServer as any,
+        }) as Promise<ActionResponse<unknown>>;
+
+        transportContext.setRscPayload(rscPayload);
+        return (await rscPayload).actionResult as T | null;
+      } catch (err) {
+        throw err;
       }
     };
 
@@ -205,3 +157,145 @@ export const realtimeTransport =
 
     return realtimeCallServer;
   };
+
+function respondToRequest(
+  requestId: string,
+  socket: WebSocket,
+): Promise<Response> {
+  const messageTypes = {
+    start: MESSAGE_TYPE.ACTION_START,
+    chunk: MESSAGE_TYPE.ACTION_CHUNK,
+    end: MESSAGE_TYPE.ACTION_END,
+    error: MESSAGE_TYPE.ACTION_ERROR,
+  };
+
+  return new Promise((resolve, reject) => {
+    const handler = (event: MessageEvent) => {
+      const unpacked = unpackMessage(new Uint8Array(event.data));
+
+      if (unpacked.type === MESSAGE_TYPE.ACTION_REQUEST) {
+        return;
+      }
+
+      if (unpacked.id !== requestId) {
+        return;
+      }
+
+      if (unpacked.type === messageTypes.start) {
+        const message = unpacked as ActionStartMessage;
+        socket.removeEventListener("message", handler);
+
+        const stream = createUpdateStreamFromSocket(
+          requestId,
+          socket,
+          messageTypes,
+          reject,
+        );
+
+        const response = new Response(stream, {
+          status: message.status,
+          headers: { "Content-Type": "text/plain" },
+        });
+
+        resolve(response);
+      }
+    };
+
+    socket.addEventListener("message", handler);
+  });
+}
+
+function listenForUpdates(
+  socket: WebSocket,
+  onUpdate: (response: Response) => void,
+) {
+  const messageTypes = {
+    start: MESSAGE_TYPE.RSC_START,
+    chunk: MESSAGE_TYPE.RSC_CHUNK,
+    end: MESSAGE_TYPE.RSC_END,
+  };
+
+  const handler = async (event: MessageEvent) => {
+    const unpacked = unpackMessage(new Uint8Array(event.data));
+
+    if (
+      unpacked.type === MESSAGE_TYPE.ACTION_REQUEST ||
+      unpacked.type === MESSAGE_TYPE.ACTION_CHUNK ||
+      unpacked.type === MESSAGE_TYPE.ACTION_END ||
+      unpacked.type === MESSAGE_TYPE.ACTION_ERROR
+    ) {
+      return;
+    }
+    if (unpacked.type === messageTypes.start) {
+      const message = unpacked as RscStartMessage;
+
+      const stream = createUpdateStreamFromSocket(
+        message.id,
+        socket,
+        messageTypes,
+        (error) => {
+          console.error("[Realtime] Error creating update stream", error);
+        },
+      );
+
+      const response = new Response(stream, {
+        status: message.status,
+        headers: { "Content-Type": "text/plain" },
+      });
+
+      onUpdate(response);
+    }
+  };
+
+  socket.addEventListener("message", handler);
+}
+
+const createUpdateStreamFromSocket = (
+  id: string,
+  socket: WebSocket,
+  messageTypes: {
+    chunk: number;
+    end: number;
+    error?: number;
+  },
+  onError: (error: Error) => void,
+) => {
+  let deferredStreamController =
+    Promise.withResolvers<ReadableStreamDefaultController<Uint8Array>>();
+
+  const stream = new ReadableStream({
+    start(controller) {
+      deferredStreamController.resolve(controller);
+    },
+  });
+
+  const handler = async (event: MessageEvent) => {
+    const unpacked = unpackMessage(new Uint8Array(event.data));
+
+    if (unpacked.type === MESSAGE_TYPE.ACTION_REQUEST) {
+      return;
+    }
+
+    if (unpacked.id !== id) {
+      return;
+    }
+
+    const streamController = await deferredStreamController.promise;
+
+    if (unpacked.type === messageTypes.chunk) {
+      const message = unpacked as ActionChunkMessage;
+      streamController.enqueue(message.payload);
+    } else if (unpacked.type === messageTypes.end) {
+      streamController.close();
+      socket.removeEventListener("message", handler);
+    } else if (messageTypes.error && unpacked.type === messageTypes.error) {
+      const message = unpacked as ActionErrorMessage;
+      onError(new Error(message.error));
+      socket.removeEventListener("message", handler);
+    }
+  };
+
+  socket.addEventListener("message", handler);
+
+  return stream;
+};
