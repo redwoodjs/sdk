@@ -3,7 +3,6 @@ import { createFromReadableStream } from "react-server-dom-webpack/client.browse
 import { MESSAGE_TYPE } from "./shared";
 const DEFAULT_KEY = "default";
 
-console.log("######### initRealtimeClient 22222222");
 export const initRealtimeClient = ({
   key = DEFAULT_KEY,
   handleResponse,
@@ -108,10 +107,10 @@ export const realtimeTransport =
         message[0] = MESSAGE_TYPE.ACTION_REQUEST;
         message.set(messageBytes, 1);
 
+        const promisedResponse = respondToRequest(requestId, socket);
         socket.send(message);
 
-        const response = await respondToRequest(requestId, socket);
-        return await processResponse(response);
+        return await processResponse(await promisedResponse);
       } catch (e) {
         console.error("[Realtime] Error calling server", e);
         return null;
@@ -169,8 +168,10 @@ function respondToRequest(
     const handler = (event: MessageEvent) => {
       const data = new Uint8Array(event.data);
       const messageType = data[0];
-      const decoder = new TextDecoder();
-      const messageRequestId = decoder.decode(data.slice(1, 37));
+      const messageRequestId = extractMessageRequestId(
+        data,
+        messageTypes.start,
+      );
 
       if (messageRequestId !== requestId) {
         return;
@@ -212,17 +213,14 @@ function listenForUpdates(
   };
 
   const handler = async (event: MessageEvent) => {
-    console.log("######### listenForUpdates", event);
     const data = new Uint8Array(event.data);
     const messageType = data[0];
 
     if (messageType === messageTypes.start) {
       socket.removeEventListener("message", handler);
 
-      const decoder = new TextDecoder();
       const status = data[1];
-      console.log("######### listenForUpdates", status);
-      const rscId = decoder.decode(data.slice(2, 38));
+      const rscId = extractMessageRequestId(data, messageTypes.chunk);
 
       const stream = createUpdateStreamFromSocket(
         rscId,
@@ -244,6 +242,19 @@ function listenForUpdates(
 
   socket.addEventListener("message", handler);
 }
+
+const extractMessageRequestId = (data: Uint8Array, messageType: number) => {
+  const decoder = new TextDecoder();
+  return decoder.decode(
+    data.slice(
+      messageType === MESSAGE_TYPE.ACTION_START ||
+        messageType === MESSAGE_TYPE.RSC_START
+        ? 2
+        : 1,
+      38,
+    ),
+  );
+};
 
 const createUpdateStreamFromSocket = (
   id: string,
@@ -267,13 +278,15 @@ const createUpdateStreamFromSocket = (
   const handler = async (event: MessageEvent) => {
     const data = new Uint8Array(event.data);
     const messageType = data[0];
-    const decoder = new TextDecoder();
-    const messageRequestId = decoder.decode(data.slice(1, 37));
+    const messageRequestId = extractMessageRequestId(data, messageType);
+
     if (messageRequestId !== id) {
       return;
     }
 
     const streamController = await deferredStreamController.promise;
+
+    const decoder = new TextDecoder();
 
     if (messageType === messageTypes.chunk) {
       const payload = data.slice(37);
