@@ -228,7 +228,6 @@ function listenForUpdates(
     }
     if (unpacked.type === messageTypes.start) {
       const message = unpacked as RscStartMessage;
-      socket.removeEventListener("message", handler);
 
       const stream = createUpdateStreamFromSocket(
         message.id,
