@@ -76,6 +76,7 @@ export class RealtimeDurableObject extends DurableObject {
   }
 
   async webSocketMessage(ws: WebSocket, data: ArrayBuffer) {
+    console.log("######### webSocketMessage", data);
     const clientId = ws.deserializeAttachment() as string;
     let clientInfo = await this.getClientInfo(clientId);
 
@@ -171,6 +172,7 @@ export class RealtimeDurableObject extends DurableObject {
     requestId: string,
     clientUrl: string,
   ): Promise<void> {
+    console.log("######### handleAction", clientInfo);
     const url = new URL(clientUrl);
     url.searchParams.set("__rsc", "");
 
@@ -187,6 +189,10 @@ export class RealtimeDurableObject extends DurableObject {
       },
     });
 
+    console.log(
+      "######### clientInfo.shouldForwardResponses",
+      clientInfo.shouldForwardResponses,
+    );
     if (!response.ok && !clientInfo.shouldForwardResponses) {
       throw new Error(`Action failed: ${response.statusText}`);
     }

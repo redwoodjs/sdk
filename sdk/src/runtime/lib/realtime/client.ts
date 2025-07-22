@@ -7,7 +7,7 @@ export const initRealtimeClient = ({
   key = DEFAULT_KEY,
   handleResponse,
 }: { key?: string; handleResponse?: (response: Response) => boolean } = {}) => {
-  const transport = realtimeTransport({ key });
+  const transport = realtimeTransport({ key, handleResponse });
   return initClient({ transport, handleResponse });
 };
 
