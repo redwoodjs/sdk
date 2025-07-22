@@ -23,7 +23,10 @@ const getPackageManagerInfo = (targetDir: string) => {
   if (existsSync(path.join(targetDir, "yarn.lock"))) {
     return { name: "yarn", lockFile: "yarn.lock", command: "add" };
   }
-  if (existsSync(path.join(targetDir, "pnpm-lock.yaml"))) {
+  if (
+    existsSync(path.join(targetDir, "pnpm-lock.yaml")) ||
+    existsSync(path.join(targetDir, "node_modules", ".pnpm"))
+  ) {
     return pnpmResult;
   }
   if (existsSync(path.join(targetDir, "package-lock.json"))) {
