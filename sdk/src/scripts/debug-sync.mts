@@ -107,9 +107,11 @@ const performFullSync = async (
     }
   } finally {
     if (originalSdkPackageJson) {
+      console.log("Restoring package.json...");
       await fs.writeFile(sdkPackageJsonPath, originalSdkPackageJson);
     }
     if (tarballPath) {
+      console.log("Removing tarball...");
       await fs.unlink(tarballPath).catch(() => {
         // ignore if deletion fails
       });
@@ -231,12 +233,11 @@ export const debugSync = async (opts: DebugSyncOptions) => {
     console.log("   Still watching for changes...");
   }
 
-  const sdkPackageJsonPath = path.join(sdkDir, "package.json");
   const filesToWatch = [
     path.join(sdkDir, "src"),
     path.join(sdkDir, "types"),
     path.join(sdkDir, "bin"),
-    sdkPackageJsonPath,
+    path.join(sdkDir, "package.json"),
   ];
 
   console.log("👀 Watching for changes...");
@@ -259,14 +260,26 @@ export const debugSync = async (opts: DebugSyncOptions) => {
     cwd: sdkDir,
   });
 
-  let isSyncing = false;
-  watcher.on("all", async () => {
-    if (isSyncing) {
+  let syncing = false;
+
+  // todo(justinvdm, 2025-07-22): Figure out wtf makes the full sync
+  // cause chokidar to find out about package.json after sync has resolved
+  let expectingFileChanges = Boolean(process.env.RWSDK_FORCE_FULL_SYNC);
+
+  watcher.on("all", async (_event, filePath) => {
+    if (syncing || filePath.endsWith(".tgz")) {
       return;
     }
-    isSyncing = true;
 
-    console.log("\nDetected change, re-syncing...");
+    if (expectingFileChanges && process.env.RWSDK_FORCE_FULL_SYNC) {
+      expectingFileChanges = false;
+      return;
+    }
+
+    syncing = true;
+    expectingFileChanges = true;
+    console.log(`\nDetected change, re-syncing... (file: ${filePath})`);
+
     if (childProc && !childProc.killed) {
       console.log("Stopping running process...");
       childProc.kill();
@@ -275,15 +288,15 @@ export const debugSync = async (opts: DebugSyncOptions) => {
       });
     }
     try {
-      watcher.unwatch(sdkPackageJsonPath);
+      watcher.unwatch(filesToWatch);
       await performSync(sdkDir, targetDir);
       runWatchedCommand();
     } catch (error) {
       console.error("❌ Sync failed:", error);
       console.log("   Still watching for changes...");
     } finally {
-      watcher.add(sdkPackageJsonPath);
-      isSyncing = false;
+      syncing = false;
+      watcher.add(filesToWatch);
     }
   });
 
