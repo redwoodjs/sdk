@@ -2,8 +2,8 @@ import { initClient, type Transport, type ActionResponse } from "../../client";
 import { createFromReadableStream } from "react-server-dom-webpack/client.browser";
 import { MESSAGE_TYPE } from "./shared";
 const DEFAULT_KEY = "default";
-console.log("######### initRealtimeClient");
 
+console.log("######### initRealtimeClient 22222222");
 export const initRealtimeClient = ({
   key = DEFAULT_KEY,
   handleResponse,
@@ -212,6 +212,7 @@ function listenForUpdates(
   };
 
   const handler = async (event: MessageEvent) => {
+    console.log("######### listenForUpdates", event);
     const data = new Uint8Array(event.data);
     const messageType = data[0];
 
@@ -220,6 +221,7 @@ function listenForUpdates(
 
       const decoder = new TextDecoder();
       const status = data[1];
+      console.log("######### listenForUpdates", status);
       const rscId = decoder.decode(data.slice(2, 38));
 
       const stream = createUpdateStreamFromSocket(

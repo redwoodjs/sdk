@@ -35,55 +35,85 @@ const getPackageManagerInfo = (targetDir: string) => {
   return pnpmResult;
 };
 
-const performFullSync = async (sdkDir: string, targetDir: string) => {
-  console.log("📦 Packing SDK...");
-  const packResult = await $`npm pack`;
-  const tarballName = packResult.stdout?.trim() ?? "";
-  if (!tarballName) {
-    console.error("❌ Failed to get tarball name from npm pack.");
-    return;
-  }
-  const tarballPath = path.resolve(sdkDir, tarballName);
-
-  console.log(`💿 Installing ${tarballName} in ${targetDir}...`);
-
-  const pm = getPackageManagerInfo(targetDir);
-  const packageJsonPath = path.join(targetDir, "package.json");
-  const lockfilePath = path.join(targetDir, pm.lockFile);
-
-  const originalPackageJson = await fs
-    .readFile(packageJsonPath, "utf-8")
-    .catch(() => null);
-  const originalLockfile = await fs
-    .readFile(lockfilePath, "utf-8")
-    .catch(() => null);
+const performFullSync = async (
+  sdkDir: string,
+  targetDir: string,
+  cacheBust = false,
+) => {
+  const sdkPackageJsonPath = path.join(sdkDir, "package.json");
+  let originalSdkPackageJson: string | null = null;
+  let tarballPath = "";
+  let tarballName = "";
 
   try {
-    const cmd = pm.name;
-    const args = [pm.command];
-
-    if (pm.name === "yarn") {
-      args.push(`file:${tarballPath}`);
-    } else {
-      args.push(tarballPath);
+    if (cacheBust) {
+      console.log("💥 Cache-busting version for full sync...");
+      originalSdkPackageJson = await fs.readFile(sdkPackageJsonPath, "utf-8");
+      const packageJson = JSON.parse(originalSdkPackageJson);
+      const now = Date.now();
+      // This is a temporary version used for cache busting
+      packageJson.version = `${packageJson.version}-dev.${now}`;
+      await fs.writeFile(
+        sdkPackageJsonPath,
+        JSON.stringify(packageJson, null, 2),
+      );
     }
 
-    await $(cmd, args, {
-      cwd: targetDir,
-      stdio: "inherit",
-    });
+    console.log("📦 Packing SDK...");
+    const packResult = await $({ cwd: sdkDir })`npm pack`;
+    tarballName = packResult.stdout?.trim() ?? "";
+    if (!tarballName) {
+      console.error("❌ Failed to get tarball name from npm pack.");
+      return;
+    }
+    tarballPath = path.resolve(sdkDir, tarballName);
+
+    console.log(`💿 Installing ${tarballName} in ${targetDir}...`);
+
+    const pm = getPackageManagerInfo(targetDir);
+    const packageJsonPath = path.join(targetDir, "package.json");
+    const lockfilePath = path.join(targetDir, pm.lockFile);
+
+    const originalPackageJson = await fs
+      .readFile(packageJsonPath, "utf-8")
+      .catch(() => null);
+    const originalLockfile = await fs
+      .readFile(lockfilePath, "utf-8")
+      .catch(() => null);
+
+    try {
+      const cmd = pm.name;
+      const args = [pm.command];
+
+      if (pm.name === "yarn") {
+        args.push(`file:${tarballPath}`);
+      } else {
+        args.push(tarballPath);
+      }
+
+      await $(cmd, args, {
+        cwd: targetDir,
+        stdio: "inherit",
+      });
+    } finally {
+      if (originalPackageJson) {
+        console.log("Restoring package.json...");
+        await fs.writeFile(packageJsonPath, originalPackageJson);
+      }
+      if (originalLockfile) {
+        console.log(`Restoring ${pm.lockFile}...`);
+        await fs.writeFile(lockfilePath, originalLockfile);
+      }
+    }
   } finally {
-    if (originalPackageJson) {
-      console.log("Restoring package.json...");
-      await fs.writeFile(packageJsonPath, originalPackageJson);
+    if (originalSdkPackageJson) {
+      await fs.writeFile(sdkPackageJsonPath, originalSdkPackageJson);
     }
-    if (originalLockfile) {
-      console.log(`Restoring ${pm.lockFile}...`);
-      await fs.writeFile(lockfilePath, originalLockfile);
+    if (tarballPath) {
+      await fs.unlink(tarballPath).catch(() => {
+        // ignore if deletion fails
+      });
     }
-    await fs.unlink(tarballPath).catch(() => {
-      // ignore if deletion fails
-    });
   }
 };
 
@@ -112,6 +142,15 @@ const performFastSync = async (sdkDir: string, targetDir: string) => {
 const performSync = async (sdkDir: string, targetDir: string) => {
   console.log("🏗️  Rebuilding SDK...");
   await $`pnpm build`;
+
+  const forceFullSync = process.env.RW_SDK_FORCE_FULL_SYNC === "true";
+
+  if (forceFullSync) {
+    console.log("🏃 Force full sync mode is enabled.");
+    await performFullSync(sdkDir, targetDir, true);
+    console.log("✅ Done syncing");
+    return;
+  }
 
   const sdkPackageJsonPath = path.join(sdkDir, "package.json");
   const installedSdkPackageJsonPath = path.join(
