@@ -13,25 +13,21 @@ import { normalizePath as normalizePathSeparators } from "vite";
  *   /Users/justin/other/foo.ts           → /../justin/other/foo.ts
  */
 export function normalizeModulePath(
-  projectRootDir: string,
   modulePath: string,
+  projectRootDir: string,
 ): string {
-  // Step 0: Normalize slashes for consistency
   modulePath = normalizePathSeparators(modulePath);
-  projectRootDir = normalizePathSeparators(projectRootDir);
+  projectRootDir = normalizePathSeparators(path.resolve(projectRootDir));
 
-  // Step 1: Ensure projectRootDir is absolute
-  const resolvedProjectRoot = path.resolve(projectRootDir);
+  // Vite-style paths like `/src/foo.ts` (not actual absolute system paths)
+  const looksLikeViteStyle =
+    modulePath.startsWith("/") && !modulePath.startsWith(projectRootDir);
 
-  // Step 2: Resolve modulePath relative to project root
-  // If modulePath is absolute, we keep it; if not, resolve against root
-  const resolvedModulePath = path.isAbsolute(modulePath)
-    ? modulePath
-    : path.resolve(resolvedProjectRoot, modulePath);
+  const resolved = looksLikeViteStyle
+    ? path.resolve(projectRootDir, modulePath.slice(1))
+    : path.resolve(projectRootDir, modulePath);
 
-  // Step 3: Make modulePath relative to the project root
-  const relativePath = path.relative(resolvedProjectRoot, resolvedModulePath);
+  const relative = path.relative(projectRootDir, resolved);
 
-  // Step 4: Normalize separators again and ensure leading slash
-  return "/" + normalizePathSeparators(relativePath);
+  return "/" + normalizePathSeparators(relative);
 }

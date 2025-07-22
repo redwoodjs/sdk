@@ -2,41 +2,39 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 import { normalizeModulePath } from "./normalizeModulePath.mjs";
 
 describe("normalizeModulePath", () => {
-  const projectRootDir = "/Users/justin/code/my-app";
-
   describe("1. Project-local paths", () => {
     it("Relative file", () => {
-      expect(normalizeModulePath("src/page.tsx", projectRootDir)).toBe(
-        "/src/page.tsx",
-      );
+      expect(
+        normalizeModulePath("src/page.tsx", "/Users/name/code/my-app"),
+      ).toBe("/src/page.tsx");
     });
     it("Relative file in subdir", () => {
-      expect(normalizeModulePath("src/utils/index.ts", projectRootDir)).toBe(
-        "/src/utils/index.ts",
-      );
+      expect(
+        normalizeModulePath("src/utils/index.ts", "/Users/name/code/my-app"),
+      ).toBe("/src/utils/index.ts");
     });
     it("Relative file with ./", () => {
-      expect(normalizeModulePath("./src/page.tsx", projectRootDir)).toBe(
-        "/src/page.tsx",
-      );
+      expect(
+        normalizeModulePath("./src/page.tsx", "/Users/name/code/my-app"),
+      ).toBe("/src/page.tsx");
     });
     it("Relative file with ../", () => {
-      expect(normalizeModulePath("../shared/foo.ts", projectRootDir)).toBe(
-        "/../shared/foo.ts",
-      );
+      expect(
+        normalizeModulePath("../shared/foo.ts", "/Users/name/code/my-app"),
+      ).toBe("/../shared/foo.ts");
     });
   });
 
   describe("2. Vite-style absolute paths", () => {
     it("Vite-style root import", () => {
-      expect(normalizeModulePath("/src/page.tsx", projectRootDir)).toBe(
-        "/src/page.tsx",
-      );
+      expect(
+        normalizeModulePath("/src/page.tsx", "/Users/name/code/my-app"),
+      ).toBe("/src/page.tsx");
     });
     it("Vite-style node_modules", () => {
-      expect(normalizeModulePath("/node_modules/foo.js", projectRootDir)).toBe(
-        "/node_modules/foo.js",
-      );
+      expect(
+        normalizeModulePath("/node_modules/foo.js", "/Users/name/code/my-app"),
+      ).toBe("/node_modules/foo.js");
     });
   });
 
@@ -44,16 +42,16 @@ describe("normalizeModulePath", () => {
     it("Real abs path (inside)", () => {
       expect(
         normalizeModulePath(
-          "/Users/justin/code/my-app/src/page.tsx",
-          projectRootDir,
+          "/Users/name/code/my-app/src/page.tsx",
+          "/Users/name/code/my-app",
         ),
       ).toBe("/src/page.tsx");
     });
     it("Real abs path (deep inside)", () => {
       expect(
         normalizeModulePath(
-          "/Users/justin/code/my-app/src/features/auth.ts",
-          projectRootDir,
+          "/Users/name/code/my-app/src/features/auth.ts",
+          "/Users/name/code/my-app",
         ),
       ).toBe("/src/features/auth.ts");
     });
@@ -63,55 +61,54 @@ describe("normalizeModulePath", () => {
     it("External shared pkg", () => {
       expect(
         normalizeModulePath(
-          "/Users/justin/code/my-monorepo/packages/shared/utils.ts",
-          projectRootDir,
+          "/Users/name/code/my-monorepo/packages/shared/utils.ts",
+          "/Users/name/code/my-monorepo/packages/app",
         ),
-      ).toBe("/../my-monorepo/packages/shared/utils.ts");
+      ).toBe("/../packages/shared/utils.ts");
     });
     it("External node_modules", () => {
       expect(
         normalizeModulePath(
-          "/Users/justin/code/my-monorepo/node_modules/foo/index.js",
-          projectRootDir,
+          "/Users/name/code/my-monorepo/node_modules/foo/index.js",
+          "/Users/name/code/my-monorepo/packages/app",
         ),
-      ).toBe("/../my-monorepo/node_modules/foo/index.js");
+      ).toBe("/../../node_modules/foo/index.js");
     });
     it("Completely external path", () => {
-      expect(normalizeModulePath("/opt/tools/logger.ts", projectRootDir)).toBe(
-        "/../../opt/tools/logger.ts",
-      );
+      expect(
+        normalizeModulePath("/opt/tools/logger.ts", "/Users/name/code/my-app"),
+      ).toBe("/../../../../opt/tools/logger.ts");
     });
   });
 
   describe("6. Edge and weird cases", () => {
     it("Empty string", () => {
-      expect(normalizeModulePath("", projectRootDir)).toBe("/");
+      expect(normalizeModulePath("", "/Users/name/code/my-app")).toBe("/");
     });
     it("Dot current dir", () => {
-      expect(normalizeModulePath(".", projectRootDir)).toBe("/");
+      expect(normalizeModulePath(".", "/Users/name/code/my-app")).toBe("/");
     });
     it("Dot parent dir", () => {
-      expect(normalizeModulePath("..", projectRootDir)).toBe("/..");
+      expect(normalizeModulePath("..", "/Users/name/code/my-app")).toBe("/..");
     });
     it("Trailing slash", () => {
-      expect(normalizeModulePath("src/", projectRootDir)).toBe("/src");
+      expect(normalizeModulePath("src/", "/Users/name/code/my-app")).toBe(
+        "/src",
+      );
     });
     it("Leading and trailing slashes", () => {
-      expect(normalizeModulePath("/src/", projectRootDir)).toBe("/src");
+      expect(normalizeModulePath("/src/", "/Users/name/code/my-app")).toBe(
+        "/src",
+      );
     });
   });
 
   describe("7. Project root is /", () => {
-    const rootProjectRootDir = "/";
     it("Root-based path", () => {
-      expect(normalizeModulePath("/src/index.ts", rootProjectRootDir)).toBe(
-        "/src/index.ts",
-      );
+      expect(normalizeModulePath("/src/index.ts", "/")).toBe("/src/index.ts");
     });
     it("System path", () => {
-      expect(normalizeModulePath("/etc/hosts", rootProjectRootDir)).toBe(
-        "/etc/hosts",
-      );
+      expect(normalizeModulePath("/etc/hosts", "/")).toBe("/etc/hosts");
     });
   });
 });
