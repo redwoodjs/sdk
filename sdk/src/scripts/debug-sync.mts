@@ -143,7 +143,7 @@ const performSync = async (sdkDir: string, targetDir: string) => {
   console.log("🏗️  Rebuilding SDK...");
   await $`pnpm build`;
 
-  const forceFullSync = process.env.RWSDK_FORCE_FULL_SYNC === "true";
+  const forceFullSync = Boolean(process.env.RWSDK_FORCE_FULL_SYNC);
 
   if (forceFullSync) {
     console.log("🏃 Force full sync mode is enabled.");
