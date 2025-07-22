@@ -258,7 +258,13 @@ export const debugSync = async (opts: DebugSyncOptions) => {
     cwd: sdkDir,
   });
 
+  let isSyncing = false;
   watcher.on("all", async () => {
+    if (isSyncing) {
+      return;
+    }
+    isSyncing = true;
+
     console.log("\nDetected change, re-syncing...");
     if (childProc && !childProc.killed) {
       console.log("Stopping running process...");
@@ -273,6 +279,8 @@ export const debugSync = async (opts: DebugSyncOptions) => {
     } catch (error) {
       console.error("❌ Sync failed:", error);
       console.log("   Still watching for changes...");
+    } finally {
+      isSyncing = false;
     }
   });
 
