@@ -90,10 +90,11 @@ export function packMessage(message: Message): Uint8Array {
       if (idBytes.length !== ID_LENGTH) {
         throw new Error("Invalid message ID length for START message");
       }
-      const packed = new Uint8Array(2 + ID_LENGTH);
-      packed[0] = msg.type;
-      packed[1] = msg.status;
-      packed.set(idBytes, 2);
+      const packed = new Uint8Array(1 + 2 + ID_LENGTH); // 1 for type, 2 for status
+      const view = new DataView(packed.buffer);
+      view.setUint8(0, msg.type);
+      view.setUint16(1, msg.status, false); // Big-endian
+      packed.set(idBytes, 3);
       return packed;
     }
 
@@ -164,11 +165,12 @@ export function unpackMessage(data: Uint8Array): Message {
 
     case MESSAGE_TYPE.ACTION_START:
     case MESSAGE_TYPE.RSC_START: {
-      if (data.length !== 2 + ID_LENGTH) {
+      if (data.length !== 1 + 2 + ID_LENGTH) {
         throw new Error("Invalid START message length");
       }
-      const id = TEXT_DECODER.decode(data.slice(2, 2 + ID_LENGTH));
-      const status = data[1];
+      const view = new DataView(data.buffer);
+      const status = view.getUint16(1, false);
+      const id = TEXT_DECODER.decode(data.slice(3));
       return { type: messageType, id, status };
     }
 
