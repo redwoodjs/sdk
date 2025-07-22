@@ -2,6 +2,28 @@ import * as path from "node:path";
 import { normalizePath as normalizePathSeparators } from "vite";
 
 /**
+ * Find the number of common ancestor segments between two absolute paths.
+ * Returns the count of shared directory segments from the root.
+ */
+function findCommonAncestorDepth(path1: string, path2: string): number {
+  const segments1 = path1.split("/").filter(Boolean);
+  const segments2 = path2.split("/").filter(Boolean);
+
+  let commonLength = 0;
+  const minLength = Math.min(segments1.length, segments2.length);
+
+  for (let i = 0; i < minLength; i++) {
+    if (segments1[i] === segments2[i]) {
+      commonLength++;
+    } else {
+      break;
+    }
+  }
+
+  return commonLength;
+}
+
+/**
  * Normalize a module path to a consistent form.
  * Returns slash-prefixed paths for files within project root,
  * or absolute paths for external files.
@@ -28,48 +50,47 @@ export function normalizeModulePath(
     return options.absolute ? projectRootDir : "/";
   }
 
-  // Check if it's a real absolute filesystem path
-  // Real absolute paths: start with project root OR look like system paths (/Users, /opt, /home, /etc, etc.)
-  const isRealAbsolutePath =
-    modulePath.startsWith("/") &&
-    (modulePath.startsWith(projectRootDir) || // Starts with project root
-      modulePath.match(
-        /^\/(?:Users|home|opt|etc|var|tmp|usr|bin|sbin|lib|mnt|media|proc|sys|dev|root)\//,
-      )); // Known system paths
-
-  // Vite-style paths like `/src/foo.ts`, `/node_modules/foo.js`
-  // These start with / but are meant to be project-relative
-  const isViteStylePath = modulePath.startsWith("/") && !isRealAbsolutePath;
-
+  // For relative paths, resolve them first
   let resolved: string;
+  if (path.isAbsolute(modulePath)) {
+    if (
+      modulePath.startsWith(projectRootDir + "/") ||
+      modulePath === projectRootDir
+    ) {
+      // Path starts with project root - it's a real absolute path inside project
+      resolved = modulePath;
+    } else {
+      // Check how the path relates to the project root
+      const commonDepth = findCommonAncestorDepth(modulePath, projectRootDir);
 
-  if (isRealAbsolutePath) {
-    // Already an absolute path, use as-is
-    resolved = modulePath;
-  } else if (isViteStylePath) {
-    // Vite-style path: resolve relative to project root
-    resolved = path.resolve(projectRootDir, modulePath.slice(1));
+      if (commonDepth > 0) {
+        // Paths share meaningful common ancestor - treat as real absolute path
+        resolved = modulePath;
+      } else {
+        // No meaningful common ancestor - assume Vite-style path within project
+        resolved = path.resolve(projectRootDir, modulePath.slice(1));
+      }
+    }
   } else {
-    // Relative path: resolve relative to project root
     resolved = path.resolve(projectRootDir, modulePath);
   }
 
-  const normalizedResolved = normalizePathSeparators(resolved);
+  resolved = normalizePathSeparators(resolved);
 
   // If absolute option is set, always return absolute paths
   if (options.absolute) {
-    return normalizedResolved;
+    return resolved;
   }
 
+  // Check if the resolved path is within the project root
   const relative = path.relative(projectRootDir, resolved);
 
   // If the path goes outside the project root (starts with ..), return absolute
   if (relative.startsWith("..")) {
-    return normalizedResolved;
+    return resolved;
   }
 
-  // Clean up current directory references
+  // Path is within project root, return as Vite-style relative path
   const cleanRelative = relative === "." ? "" : relative;
-
   return "/" + normalizePathSeparators(cleanRelative);
 }
