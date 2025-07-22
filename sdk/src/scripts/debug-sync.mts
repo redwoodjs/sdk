@@ -231,11 +231,12 @@ export const debugSync = async (opts: DebugSyncOptions) => {
     console.log("   Still watching for changes...");
   }
 
+  const sdkPackageJsonPath = path.join(sdkDir, "package.json");
   const filesToWatch = [
     path.join(sdkDir, "src"),
     path.join(sdkDir, "types"),
     path.join(sdkDir, "bin"),
-    path.join(sdkDir, "package.json"),
+    sdkPackageJsonPath,
   ];
 
   console.log("👀 Watching for changes...");
@@ -274,12 +275,14 @@ export const debugSync = async (opts: DebugSyncOptions) => {
       });
     }
     try {
+      watcher.unwatch(sdkPackageJsonPath);
       await performSync(sdkDir, targetDir);
       runWatchedCommand();
     } catch (error) {
       console.error("❌ Sync failed:", error);
       console.log("   Still watching for changes...");
     } finally {
+      watcher.add(sdkPackageJsonPath);
       isSyncing = false;
     }
   });
