@@ -1,6 +1,17 @@
 import { DurableObject } from "cloudflare:workers";
 import { MESSAGE_TYPE } from "./shared";
 import { validateUpgradeRequest } from "./validateUpgradeRequest";
+import {
+  packMessage,
+  unpackMessage,
+  ActionChunkMessage,
+  ActionEndMessage,
+  ActionStartMessage,
+  RscChunkMessage,
+  RscEndMessage,
+  RscStartMessage,
+  ActionRequestMessage,
+} from "./protocol";
 
 interface ClientInfo {
   url: string;
@@ -79,40 +90,34 @@ export class RealtimeDurableObject extends DurableObject {
     const clientId = ws.deserializeAttachment() as string;
     let clientInfo = await this.getClientInfo(clientId);
 
-    const message = new Uint8Array(data);
-    const messageType = message[0];
+    const unpacked = unpackMessage(new Uint8Array(data));
 
-    if (messageType === MESSAGE_TYPE.ACTION_REQUEST) {
-      const decoder = new TextDecoder();
-      const jsonData = decoder.decode(message.slice(1));
-      const { id, args, requestId, clientUrl } = JSON.parse(jsonData);
-
+    if (unpacked.type === MESSAGE_TYPE.ACTION_REQUEST) {
+      const message = unpacked as ActionRequestMessage;
       clientInfo = {
         ...clientInfo,
-        url: clientUrl,
+        url: message.clientUrl,
       };
 
       await this.storeClientInfo(clientInfo);
 
       try {
-        await this.handleAction(ws, id, args, clientInfo, requestId, clientUrl);
-      } catch (error) {
-        const encoder = new TextEncoder();
-        const requestIdBytes = encoder.encode(requestId);
-
-        const errorData = JSON.stringify({
-          error: error instanceof Error ? error.message : String(error),
-        });
-        const errorBytes = encoder.encode(errorData);
-
-        const errorResponse = new Uint8Array(
-          1 + requestIdBytes.length + errorBytes.length,
+        await this.handleAction(
+          ws,
+          message.id,
+          message.args,
+          clientInfo,
+          message.requestId,
+          message.clientUrl,
         );
-        errorResponse[0] = MESSAGE_TYPE.ACTION_ERROR;
-        errorResponse.set(requestIdBytes, 1);
-        errorResponse.set(errorBytes, 1 + requestIdBytes.length);
-
-        ws.send(errorResponse);
+      } catch (error) {
+        ws.send(
+          packMessage({
+            type: MESSAGE_TYPE.ACTION_ERROR,
+            id: message.requestId,
+            error: error instanceof Error ? error.message : String(error),
+          }),
+        );
       }
     }
   }
@@ -127,15 +132,20 @@ export class RealtimeDurableObject extends DurableObject {
     },
     streamId: string,
   ): Promise<void> {
-    const encoder = new TextEncoder();
-    const streamIdBytes = encoder.encode(streamId);
+    const startMessage: ActionStartMessage | RscStartMessage =
+      messageTypes.start === MESSAGE_TYPE.ACTION_START
+        ? {
+            type: MESSAGE_TYPE.ACTION_START,
+            id: streamId,
+            status: response.status,
+          }
+        : {
+            type: MESSAGE_TYPE.RSC_START,
+            id: streamId,
+            status: response.status,
+          };
 
-    // Send the start message with the status code
-    const startMessage = new Uint8Array(2 + streamIdBytes.length);
-    startMessage[0] = messageTypes.start;
-    startMessage[1] = response.status;
-    startMessage.set(streamIdBytes, 2);
-    ws.send(startMessage);
+    ws.send(packMessage(startMessage));
 
     const reader = response.body!.getReader();
 
@@ -143,20 +153,26 @@ export class RealtimeDurableObject extends DurableObject {
       while (true) {
         const { done, value } = await reader.read();
         if (done) {
-          const endMessage = new Uint8Array(1 + streamIdBytes.length);
-          endMessage[0] = messageTypes.end;
-          endMessage.set(streamIdBytes, 1);
-          ws.send(endMessage);
+          const endMessage: ActionEndMessage | RscEndMessage =
+            messageTypes.end === MESSAGE_TYPE.ACTION_END
+              ? { type: MESSAGE_TYPE.ACTION_END, id: streamId }
+              : { type: MESSAGE_TYPE.RSC_END, id: streamId };
+          ws.send(packMessage(endMessage));
           break;
         }
-
-        const chunkMessage = new Uint8Array(
-          1 + streamIdBytes.length + value.length,
-        );
-        chunkMessage[0] = messageTypes.chunk;
-        chunkMessage.set(streamIdBytes, 1);
-        chunkMessage.set(value, 1 + streamIdBytes.length);
-        ws.send(chunkMessage);
+        const chunkMessage: ActionChunkMessage | RscChunkMessage =
+          messageTypes.chunk === MESSAGE_TYPE.ACTION_CHUNK
+            ? {
+                type: MESSAGE_TYPE.ACTION_CHUNK,
+                id: streamId,
+                payload: value,
+              }
+            : {
+                type: MESSAGE_TYPE.RSC_CHUNK,
+                id: streamId,
+                payload: value,
+              };
+        ws.send(packMessage(chunkMessage));
       }
     } finally {
       reader.releaseLock();
@@ -165,7 +181,7 @@ export class RealtimeDurableObject extends DurableObject {
 
   private async handleAction(
     ws: WebSocket,
-    id: string,
+    id: string | null,
     args: string,
     clientInfo: ClientInfo,
     requestId: string,

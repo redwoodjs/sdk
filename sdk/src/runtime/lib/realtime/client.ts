@@ -1,6 +1,15 @@
 import { initClient, type Transport, type ActionResponse } from "../../client";
 import { createFromReadableStream } from "react-server-dom-webpack/client.browser";
 import { MESSAGE_TYPE } from "./shared";
+import {
+  packMessage,
+  unpackMessage,
+  ActionStartMessage,
+  RscStartMessage,
+  ActionChunkMessage,
+  ActionEndMessage,
+  ActionErrorMessage,
+} from "./protocol";
 const DEFAULT_KEY = "default";
 
 export const initRealtimeClient = ({
@@ -94,18 +103,14 @@ export const realtimeTransport =
 
         const encodedArgs = args != null ? await encodeReply(args) : null;
         const requestId = crypto.randomUUID();
-        const messageData = JSON.stringify({
+
+        const message = packMessage({
+          type: MESSAGE_TYPE.ACTION_REQUEST,
           id,
           args: encodedArgs,
           requestId,
-          clientUrl,
+          clientUrl: clientUrl.toString(),
         });
-
-        const encoder = new TextEncoder();
-        const messageBytes = encoder.encode(messageData);
-        const message = new Uint8Array(messageBytes.length + 1);
-        message[0] = MESSAGE_TYPE.ACTION_REQUEST;
-        message.set(messageBytes, 1);
 
         const promisedResponse = respondToRequest(requestId, socket);
         socket.send(message);
@@ -166,21 +171,19 @@ function respondToRequest(
 
   return new Promise((resolve, reject) => {
     const handler = (event: MessageEvent) => {
-      const data = new Uint8Array(event.data);
-      const messageType = data[0];
-      const messageRequestId = extractMessageRequestId(
-        data,
-        messageTypes.start,
-      );
+      const unpacked = unpackMessage(new Uint8Array(event.data));
 
-      if (messageRequestId !== requestId) {
+      if (unpacked.type === MESSAGE_TYPE.ACTION_REQUEST) {
         return;
       }
 
-      if (messageType === messageTypes.start) {
-        socket.removeEventListener("message", handler);
+      if (unpacked.id !== requestId) {
+        return;
+      }
 
-        const status = data[1];
+      if (unpacked.type === messageTypes.start) {
+        const message = unpacked as ActionStartMessage;
+        socket.removeEventListener("message", handler);
 
         const stream = createUpdateStreamFromSocket(
           requestId,
@@ -190,7 +193,7 @@ function respondToRequest(
         );
 
         const response = new Response(stream, {
-          status,
+          status: message.status,
           headers: { "Content-Type": "text/plain" },
         });
 
@@ -213,17 +216,22 @@ function listenForUpdates(
   };
 
   const handler = async (event: MessageEvent) => {
-    const data = new Uint8Array(event.data);
-    const messageType = data[0];
+    const unpacked = unpackMessage(new Uint8Array(event.data));
 
-    if (messageType === messageTypes.start) {
+    if (
+      unpacked.type === MESSAGE_TYPE.ACTION_REQUEST ||
+      unpacked.type === MESSAGE_TYPE.ACTION_CHUNK ||
+      unpacked.type === MESSAGE_TYPE.ACTION_END ||
+      unpacked.type === MESSAGE_TYPE.ACTION_ERROR
+    ) {
+      return;
+    }
+    if (unpacked.type === messageTypes.start) {
+      const message = unpacked as RscStartMessage;
       socket.removeEventListener("message", handler);
 
-      const status = data[1];
-      const rscId = extractMessageRequestId(data, messageTypes.chunk);
-
       const stream = createUpdateStreamFromSocket(
-        rscId,
+        message.id,
         socket,
         messageTypes,
         (error) => {
@@ -232,7 +240,7 @@ function listenForUpdates(
       );
 
       const response = new Response(stream, {
-        status,
+        status: message.status,
         headers: { "Content-Type": "text/plain" },
       });
 
@@ -242,19 +250,6 @@ function listenForUpdates(
 
   socket.addEventListener("message", handler);
 }
-
-const extractMessageRequestId = (data: Uint8Array, messageType: number) => {
-  const decoder = new TextDecoder();
-  return decoder.decode(
-    data.slice(
-      messageType === MESSAGE_TYPE.ACTION_START ||
-        messageType === MESSAGE_TYPE.RSC_START
-        ? 2
-        : 1,
-      38,
-    ),
-  );
-};
 
 const createUpdateStreamFromSocket = (
   id: string,
@@ -276,35 +271,27 @@ const createUpdateStreamFromSocket = (
   });
 
   const handler = async (event: MessageEvent) => {
-    const data = new Uint8Array(event.data);
-    const messageType = data[0];
-    const messageRequestId = extractMessageRequestId(data, messageType);
+    const unpacked = unpackMessage(new Uint8Array(event.data));
 
-    if (messageRequestId !== id) {
+    if (unpacked.type === MESSAGE_TYPE.ACTION_REQUEST) {
+      return;
+    }
+
+    if (unpacked.id !== id) {
       return;
     }
 
     const streamController = await deferredStreamController.promise;
 
-    const decoder = new TextDecoder();
-
-    if (messageType === messageTypes.chunk) {
-      const payload = data.slice(37);
-      streamController.enqueue(payload);
-    } else if (messageType === messageTypes.end) {
+    if (unpacked.type === messageTypes.chunk) {
+      const message = unpacked as ActionChunkMessage;
+      streamController.enqueue(message.payload);
+    } else if (unpacked.type === messageTypes.end) {
       streamController.close();
       socket.removeEventListener("message", handler);
-    } else if (messageTypes.error && messageType === messageTypes.error) {
-      const payload = data.slice(37);
-      const errorJson = decoder.decode(payload);
-      let errorMsg = "Unknown error";
-      try {
-        const errorObj = JSON.parse(errorJson);
-        errorMsg = errorObj.error || errorMsg;
-      } catch (e) {
-        //
-      }
-      onError(new Error(errorMsg));
+    } else if (messageTypes.error && unpacked.type === messageTypes.error) {
+      const message = unpacked as ActionErrorMessage;
+      onError(new Error(message.error));
       socket.removeEventListener("message", handler);
     }
   };
