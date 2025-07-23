@@ -82,7 +82,7 @@ const readManifest = async (
   return manifest!;
 };
 
-export async function getStylesForEntryPoint(
+export async function getStylesheetsForEntryPoint(
   entryPoint: string,
 ): Promise<string[]> {
   const entryPointUrl = normalizeModulePath(entryPoint, config.root, {
