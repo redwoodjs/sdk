@@ -36,11 +36,19 @@ function findCommonAncestorDepth(path1: string, path2: string): number {
  *
  * With { absolute: true }:
  *   /Users/justin/my-app/src/page.ts      → /Users/justin/my-app/src/page.ts
+ *
+ * With { isViteStyle: false }:
+ *   /opt/tools/logger.ts                  → /opt/tools/logger.ts (treated as external)
+ *   /src/page.tsx                         → /src/page.tsx (treated as external)
+ *
+ * With { isViteStyle: true }:
+ *   /opt/tools/logger.ts                  → /opt/tools/logger.ts (resolved as Vite-style)
+ *   /src/page.tsx, { absolute: true }     → /Users/justin/my-app/src/page.tsx
  */
 export function normalizeModulePath(
   modulePath: string,
   projectRootDir: string,
-  options: { absolute?: boolean } = {},
+  options: { absolute?: boolean; isViteStyle?: boolean } = {},
 ): string {
   modulePath = normalizePathSeparators(modulePath);
   projectRootDir = normalizePathSeparators(path.resolve(projectRootDir));
@@ -61,14 +69,24 @@ export function normalizeModulePath(
       resolved = modulePath;
     } else {
       // Check how the path relates to the project root
-      const commonDepth = findCommonAncestorDepth(modulePath, projectRootDir);
-
-      if (commonDepth > 0) {
-        // Paths share meaningful common ancestor - treat as real absolute path
-        resolved = modulePath;
+      if (options.isViteStyle !== undefined) {
+        // User explicitly specified whether this should be treated as Vite-style
+        if (options.isViteStyle) {
+          resolved = path.resolve(projectRootDir, modulePath.slice(1));
+        } else {
+          resolved = modulePath;
+        }
       } else {
-        // No meaningful common ancestor - assume Vite-style path within project
-        resolved = path.resolve(projectRootDir, modulePath.slice(1));
+        // Fall back to heuristics using common ancestor depth
+        const commonDepth = findCommonAncestorDepth(modulePath, projectRootDir);
+
+        if (commonDepth > 0) {
+          // Paths share meaningful common ancestor - treat as real absolute path
+          resolved = modulePath;
+        } else {
+          // No meaningful common ancestor - assume Vite-style path within project
+          resolved = path.resolve(projectRootDir, modulePath.slice(1));
+        }
       }
     }
   } else {

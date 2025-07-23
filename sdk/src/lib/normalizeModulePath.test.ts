@@ -169,12 +169,16 @@ describe("normalizeModulePath", () => {
           ),
         ).toBe("/Users/name/code/my-monorepo/node_modules/foo/index.js");
       });
+
       it("Completely external path", () => {
         expect(
           normalizeModulePath(
             "/opt/tools/logger.ts",
             "/Users/name/code/my-app",
-            { absolute: true },
+            {
+              absolute: true,
+              isViteStyle: false,
+            },
           ),
         ).toBe("/opt/tools/logger.ts");
       });
@@ -262,6 +266,82 @@ describe("normalizeModulePath", () => {
     });
     it("System path", () => {
       expect(normalizeModulePath("/etc/hosts", "/")).toBe("/etc/hosts");
+    });
+  });
+
+  describe("8. isViteStyle option", () => {
+    describe("isViteStyle: false (treat as external)", () => {
+      it("System path that would normally be Vite-style", () => {
+        expect(
+          normalizeModulePath(
+            "/opt/tools/logger.ts",
+            "/Users/name/code/my-app",
+            {
+              isViteStyle: false,
+            },
+          ),
+        ).toBe("/opt/tools/logger.ts");
+      });
+      it("Src path with isViteStyle: false", () => {
+        expect(
+          normalizeModulePath("/src/page.tsx", "/Users/name/code/my-app", {
+            isViteStyle: false,
+          }),
+        ).toBe("/src/page.tsx");
+      });
+      it("With absolute option", () => {
+        expect(
+          normalizeModulePath(
+            "/opt/tools/logger.ts",
+            "/Users/name/code/my-app",
+            {
+              absolute: true,
+              isViteStyle: false,
+            },
+          ),
+        ).toBe("/opt/tools/logger.ts");
+      });
+    });
+
+    describe("isViteStyle: true (force Vite-style)", () => {
+      it("System path forced to Vite-style", () => {
+        expect(
+          normalizeModulePath(
+            "/opt/tools/logger.ts",
+            "/Users/name/code/my-app",
+            {
+              isViteStyle: true,
+            },
+          ),
+        ).toBe("/opt/tools/logger.ts");
+      });
+      it("Src path with isViteStyle: true", () => {
+        expect(
+          normalizeModulePath("/src/page.tsx", "/Users/name/code/my-app", {
+            isViteStyle: true,
+          }),
+        ).toBe("/src/page.tsx");
+      });
+      it("With absolute option", () => {
+        expect(
+          normalizeModulePath("/src/page.tsx", "/Users/name/code/my-app", {
+            absolute: true,
+            isViteStyle: true,
+          }),
+        ).toBe("/Users/name/code/my-app/src/page.tsx");
+      });
+      it("System path forced to Vite-style with absolute option", () => {
+        expect(
+          normalizeModulePath(
+            "/opt/tools/logger.ts",
+            "/Users/name/code/my-app",
+            {
+              absolute: true,
+              isViteStyle: true,
+            },
+          ),
+        ).toBe("/Users/name/code/my-app/opt/tools/logger.ts");
+      });
     });
   });
 });
