@@ -14,12 +14,12 @@ let devServer: ViteDevServer | undefined;
 let config: ResolvedConfig;
 let manifest: Record<string, { file: string; css?: string[] }> | undefined;
 
-const devCache = new Map<string, string[]>();
+const jsEntryPointToStylesheetsCache = new Map<string, string[]>();
 
-const isCss = (file: string) =>
+const isStylesheet = (file: string) =>
   /\.(css|scss|sass|less|styl|stylus)($|\?)/.test(file);
 
-const collectCss = async (
+const collectStylesheetsForJsEntryPoint = async (
   entryPointUrl: string,
   server: ViteDevServer,
 ): Promise<string[]> => {
@@ -40,7 +40,7 @@ const collectCss = async (
   while (queue.length > 0) {
     const mod = queue.shift()!;
 
-    if (mod.file && isCss(mod.file)) {
+    if (mod.file && isStylesheet(mod.file)) {
       styles.add(mod.file);
     }
 
@@ -81,13 +81,16 @@ export async function getStylesForEntryPoint(
   });
 
   if (devServer) {
-    const cached = devCache.get(entryPointUrl);
+    const cached = jsEntryPointToStylesheetsCache.get(entryPointUrl);
     if (cached) {
       return cached;
     }
 
-    const styles = await collectCss(entryPointUrl, devServer);
-    devCache.set(entryPointUrl, styles);
+    const styles = await collectStylesheetsForJsEntryPoint(
+      entryPointUrl,
+      devServer,
+    );
+    jsEntryPointToStylesheetsCache.set(entryPointUrl, styles);
     return styles;
   }
 
@@ -106,6 +109,42 @@ export async function getStylesForEntryPoint(
   return [];
 }
 
+const getJsEntryPointsForStylesheet = (
+  modules: EnvironmentModuleNode[],
+): Set<string> => {
+  const affectedEntryPoints = new Set<string>();
+
+  const findEntryPoints = (
+    mod: EnvironmentModuleNode,
+    visited = new Set<string>(),
+  ) => {
+    if (mod.id && visited.has(mod.id)) {
+      return;
+    }
+
+    if (mod.id) {
+      visited.add(mod.id);
+    }
+
+    if (mod.importers.size === 0 && mod.url) {
+      // This is a root module in the graph, i.e., an entry point.
+      // The `url` is what we use to query the cache
+      affectedEntryPoints.add(mod.url);
+      return;
+    }
+
+    for (const importer of mod.importers) {
+      findEntryPoints(importer, visited);
+    }
+  };
+
+  for (const mod of modules) {
+    findEntryPoints(mod);
+  }
+
+  return affectedEntryPoints;
+};
+
 export const stylesLookupPlugin = (): Plugin => {
   return {
     name: "rwsdk:styles-lookup",
@@ -114,15 +153,14 @@ export const stylesLookupPlugin = (): Plugin => {
     },
     configureServer(server) {
       devServer = server;
-      devCache.clear();
+      jsEntryPointToStylesheetsCache.clear();
     },
     async handleHotUpdate({ file, server, modules }) {
-      if (!isCss(file)) {
+      if (!isStylesheet(file)) {
         return;
       }
 
       const clientModuleGraph = server.environments.client.moduleGraph;
-      const affectedEntryPoints = new Set<string>();
 
       const clientModules = (
         await Promise.all(
@@ -130,41 +168,15 @@ export const stylesLookupPlugin = (): Plugin => {
         )
       ).filter((m): m is EnvironmentModuleNode => !!m);
 
-      const findEntryPoints = (
-        mod: EnvironmentModuleNode,
-        visited = new Set<string>(),
-      ) => {
-        if (mod.id && visited.has(mod.id)) {
-          return;
-        }
-
-        if (mod.id) {
-          visited.add(mod.id);
-        }
-
-        if (mod.importers.size === 0 && mod.url) {
-          // This is a root module in the graph, i.e., an entry point.
-          // The `url` is what we use to query the cache
-          affectedEntryPoints.add(mod.url);
-          return;
-        }
-
-        for (const importer of mod.importers) {
-          findEntryPoints(importer, visited);
-        }
-      };
-
-      for (const mod of clientModules) {
-        findEntryPoints(mod);
-      }
+      const affectedEntryPoints = getJsEntryPointsForStylesheet(clientModules);
 
       if (affectedEntryPoints.size > 0) {
         for (const entryPoint of affectedEntryPoints) {
-          devCache.delete(entryPoint);
+          jsEntryPointToStylesheetsCache.delete(entryPoint);
         }
       } else {
         // Fallback to clearing everything if we can't trace back to an entry point
-        devCache.clear();
+        jsEntryPointToStylesheetsCache.clear();
       }
 
       return modules;
