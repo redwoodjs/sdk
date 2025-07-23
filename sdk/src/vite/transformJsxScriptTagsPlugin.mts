@@ -3,6 +3,9 @@ import { type Plugin } from "vite";
 import { readFile } from "node:fs/promises";
 import { pathExists } from "fs-extra";
 import { getStylesheetsForEntryPoint } from "./jsEntryPointsToStylesheetsPlugin.mjs";
+import debug from "debug";
+
+const log = debug("rwsdk:vite:transform-jsx-script-tags");
 
 let manifestCache: Record<string, { file: string }> | undefined;
 
@@ -19,6 +22,7 @@ const readManifest = async (
     }
 
     manifestCache = JSON.parse(await readFile(manifestPath, "utf-8"));
+    log("Read and cached manifest from %s", manifestPath);
   }
 
   return manifestCache!;
@@ -121,6 +125,7 @@ export async function transformJsxScriptTagsCode(
     return;
   }
 
+  log("Transforming JSX script tags in code.");
   const project = new Project({ useInMemoryFileSystem: true });
   const sourceFile = project.createSourceFile("temp.tsx", code);
 
@@ -229,6 +234,7 @@ export async function transformJsxScriptTagsCode(
                     ", ",
                   )}, ${scriptElement}]`;
 
+                  log("Injecting stylesheets for script src:", src);
                   callExpr.replaceWithText(replacement);
                 }
               }
@@ -258,6 +264,11 @@ export async function transformJsxScriptTagsCode(
                     initializer.replaceWithText(`'/${transformedSrc}'`);
                   }
                   hasModifications = true;
+                  log(
+                    "Transformed script src: %s -> %s",
+                    srcValue,
+                    `/${transformedSrc}`,
+                  );
                 }
               }
             }
@@ -292,6 +303,7 @@ export async function transformJsxScriptTagsCode(
                 }
 
                 hasModifications = true;
+                log("Transformed inline script content.");
               }
             }
 
@@ -331,6 +343,7 @@ export async function transformJsxScriptTagsCode(
             name: "nonce",
             initializer: "requestInfo.rw.nonce",
           });
+          log("Added nonce to script tag.");
 
           if (!hasRequestInfoImport) {
             needsRequestInfoImport = true;
@@ -370,6 +383,11 @@ export async function transformJsxScriptTagsCode(
                   initializer.replaceWithText(`'/${transformedHref}'`);
                 }
                 hasModifications = true;
+                log(
+                  "Transformed preload link href: %s -> %s",
+                  hrefValue,
+                  `/${transformedHref}`,
+                );
               }
             }
           }
@@ -384,6 +402,7 @@ export async function transformJsxScriptTagsCode(
       // Module is imported but need to add requestInfo
       if (!hasRequestInfoImport) {
         sdkWorkerImportDecl.addNamedImport("requestInfo");
+        log("Added requestInfo named import to existing rwsdk/worker import.");
       }
     } else {
       // Add new import declaration
@@ -391,17 +410,20 @@ export async function transformJsxScriptTagsCode(
         moduleSpecifier: "rwsdk/worker",
         namedImports: ["requestInfo"],
       });
+      log("Added new import for requestInfo from rwsdk/worker.");
     }
   }
 
   // Return the transformed code only if modifications were made
   if (hasModifications) {
+    log("Finished transforming JSX script tags. Code was modified.");
     return {
       code: sourceFile.getFullText(),
       map: null,
     };
   }
 
+  log("Finished transforming JSX script tags. No modifications were made.");
   return;
 }
 
@@ -417,6 +439,7 @@ export const transformJsxScriptTagsPlugin = ({
 
     configResolved(config) {
       isBuild = config.command === "build";
+      log(`Plugin configured. isBuild: ${isBuild}`);
     },
 
     async transform(code) {
