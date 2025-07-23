@@ -50,8 +50,9 @@ export const directivesPlugin = ({
     const files = kind === "client" ? clientFiles : serverFiles;
     const rawId = id.split("?")[0];
     const resolvedId = normalizeModulePath(rawId, projectRootDir);
-    const relativePath = rawId.slice("/".length);
-    const fullPath = path.resolve(projectRootDir, relativePath);
+    const fullPath = normalizeModulePath(rawId, projectRootDir, {
+      absolute: true,
+    });
     const isNodeModule = id.includes("node_modules");
     const hadFile = files.has(id);
 
