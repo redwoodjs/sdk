@@ -1,5 +1,6 @@
 import path from "node:path";
 import fs from "node:fs/promises";
+import debug from "debug";
 
 import type {
   Plugin,
@@ -9,6 +10,8 @@ import type {
   ModuleNode,
 } from "vite";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
+
+const log = debug("rwsdk:vite:js-entry-points-to-stylesheets");
 
 let devServer: ViteDevServer | undefined;
 let config: ResolvedConfig;
@@ -23,14 +26,14 @@ const collectStylesheetsForJsEntryPoint = async (
   entryPointUrl: string,
   server: ViteDevServer,
 ): Promise<string[]> => {
+  process.env.VERBOSE &&
+    log("Collecting stylesheets for JS entry point: %s", entryPointUrl);
   const styles = new Set<string>();
   const entryModule =
     await server.environments.client.moduleGraph.getModuleByUrl(entryPointUrl);
 
   if (!entryModule) {
-    console.warn(
-      `[stylesLookupPlugin] Could not find module for entry point: ${entryPointUrl}`,
-    );
+    log(`Could not find module for entry point: ${entryPointUrl}`);
     return [];
   }
 
@@ -52,6 +55,12 @@ const collectStylesheetsForJsEntryPoint = async (
     }
   }
 
+  process.env.VERBOSE &&
+    log(
+      "Collected stylesheets for entry point %s: %O",
+      entryPointUrl,
+      Array.from(styles),
+    );
   return Array.from(styles);
 };
 
@@ -83,14 +92,18 @@ export async function getStylesForEntryPoint(
   if (devServer) {
     const cached = jsEntryPointToStylesheetsCache.get(entryPointUrl);
     if (cached) {
+      process.env.VERBOSE &&
+        log("Cache hit for entry point: %s", entryPointUrl);
       return cached;
     }
+    process.env.VERBOSE && log("Cache miss for entry point: %s", entryPointUrl);
 
     const styles = await collectStylesheetsForJsEntryPoint(
       entryPointUrl,
       devServer,
     );
     jsEntryPointToStylesheetsCache.set(entryPointUrl, styles);
+    log("Cached stylesheets for entry point: %s", entryPointUrl);
     return styles;
   }
 
@@ -101,9 +114,18 @@ export async function getStylesForEntryPoint(
       "client/.vite/manifest.json",
     );
     const man = await readManifest(manifestPath);
+    process.env.VERBOSE && log("Read manifest for build: %s", manifestPath);
 
     const entry = man[entryPoint];
-    return entry?.css?.map((p) => path.join(config.build.outDir, p)) ?? [];
+    const stylesheets =
+      entry?.css?.map((p) => path.join(config.build.outDir, p)) ?? [];
+    process.env.VERBOSE &&
+      log(
+        "Stylesheets from manifest for entry point %s: %O",
+        entryPoint,
+        stylesheets,
+      );
+    return stylesheets;
   }
 
   return [];
@@ -112,6 +134,8 @@ export async function getStylesForEntryPoint(
 const getJsEntryPointsForStylesheet = (
   modules: EnvironmentModuleNode[],
 ): Set<string> => {
+  process.env.VERBOSE &&
+    log("Getting JS entry points for stylesheet modules: %O", modules);
   const affectedEntryPoints = new Set<string>();
 
   const findEntryPoints = (
@@ -142,23 +166,28 @@ const getJsEntryPointsForStylesheet = (
     findEntryPoints(mod);
   }
 
+  process.env.VERBOSE &&
+    log("Found affected entry points: %O", Array.from(affectedEntryPoints));
   return affectedEntryPoints;
 };
 
-export const stylesLookupPlugin = (): Plugin => {
+export const jsEntryPointsToStylesheetsPlugin = (): Plugin => {
   return {
-    name: "rwsdk:styles-lookup",
+    name: "rwsdk:js-entry-points-to-stylesheets",
     configResolved(resolvedConfig) {
       config = resolvedConfig;
+      log("Plugin configured");
     },
     configureServer(server) {
       devServer = server;
       jsEntryPointToStylesheetsCache.clear();
+      log("Server configured, cache cleared");
     },
     async handleHotUpdate({ file, server, modules }) {
       if (!isStylesheet(file)) {
         return;
       }
+      log("HMR update for stylesheet: %s", file);
 
       const clientModuleGraph = server.environments.client.moduleGraph;
 
@@ -171,11 +200,15 @@ export const stylesLookupPlugin = (): Plugin => {
       const affectedEntryPoints = getJsEntryPointsForStylesheet(clientModules);
 
       if (affectedEntryPoints.size > 0) {
+        log(
+          "Invalidating cache for affected entry points: %O",
+          Array.from(affectedEntryPoints),
+        );
         for (const entryPoint of affectedEntryPoints) {
           jsEntryPointToStylesheetsCache.delete(entryPoint);
         }
       } else {
-        // Fallback to clearing everything if we can't trace back to an entry point
+        log("Could not find entry points, clearing entire stylesheet cache");
         jsEntryPointToStylesheetsCache.clear();
       }
 
