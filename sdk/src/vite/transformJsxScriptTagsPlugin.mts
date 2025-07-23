@@ -2,6 +2,7 @@ import { Project, Node, SyntaxKind, ImportDeclaration } from "ts-morph";
 import { type Plugin } from "vite";
 import { readFile } from "node:fs/promises";
 import { pathExists } from "fs-extra";
+import { getStylesheetsForEntryPoint } from "./jsEntryPointsToStylesheetsPlugin.mjs";
 
 let manifestCache: Record<string, { file: string }> | undefined;
 
@@ -125,6 +126,7 @@ export async function transformJsxScriptTagsCode(
 
   let hasModifications = false;
   let needsRequestInfoImport = false;
+  const stylesheetsToInject = new Set<string>();
 
   // Check for existing imports up front
   let hasRequestInfoImport = false;
@@ -146,196 +148,100 @@ export async function transformJsxScriptTagsCode(
     }
   });
 
+  const callExpressions = sourceFile.getDescendantsOfKind(
+    SyntaxKind.CallExpression,
+  );
+
   // Look for jsx function calls (jsx, jsxs, jsxDEV)
-  sourceFile
-    .getDescendantsOfKind(SyntaxKind.CallExpression)
-    .forEach((callExpr) => {
-      const expression = callExpr.getExpression();
-      const expressionText = expression.getText();
+  for (const callExpr of callExpressions) {
+    const expression = callExpr.getExpression();
+    const expressionText = expression.getText();
 
-      // Only process jsx/jsxs/jsxDEV calls
-      if (
-        expressionText !== "jsx" &&
-        expressionText !== "jsxs" &&
-        expressionText !== "jsxDEV"
-      ) {
-        return;
-      }
+    // Only process jsx/jsxs/jsxDEV calls
+    if (
+      expressionText !== "jsx" &&
+      expressionText !== "jsxs" &&
+      expressionText !== "jsxDEV"
+    ) {
+      continue;
+    }
 
-      // Get arguments of the jsx call
-      const args = callExpr.getArguments();
-      if (args.length < 2) return;
+    // Get arguments of the jsx call
+    const args = callExpr.getArguments();
+    if (args.length < 2) continue;
 
-      // First argument should be the element type
-      const elementType = args[0];
-      if (!Node.isStringLiteral(elementType)) return;
+    // First argument should be the element type
+    const elementType = args[0];
+    if (!Node.isStringLiteral(elementType)) continue;
 
-      const tagName = elementType.getLiteralValue();
+    const tagName = elementType.getLiteralValue();
 
-      // Process script and link tags
-      if (tagName === "script" || tagName === "link") {
-        // Second argument should be the props object
-        const propsArg = args[1];
+    // Process script and link tags
+    if (tagName === "script" || tagName === "link") {
+      // Second argument should be the props object
+      const propsArg = args[1];
 
-        // Handle object literals with properties
-        if (Node.isObjectLiteralExpression(propsArg)) {
-          const properties = propsArg.getProperties();
+      // Handle object literals with properties
+      if (Node.isObjectLiteralExpression(propsArg)) {
+        const properties = propsArg.getProperties();
 
-          // Variables to track script attributes
-          let hasDangerouslySetInnerHTML = false;
-          let hasNonce = false;
-          let hasStringLiteralChildren = false;
-          let hasSrc = false;
+        // Variables to track script attributes
+        let hasDangerouslySetInnerHTML = false;
+        let hasNonce = false;
+        let hasStringLiteralChildren = false;
+        let hasSrc = false;
 
-          // Variables to track link attributes
-          let isPreload = false;
-          let hrefValue = null;
+        // Variables to track link attributes
+        let isPreload = false;
+        let hrefValue = null;
 
-          for (const prop of properties) {
-            if (Node.isPropertyAssignment(prop)) {
-              const propName = prop.getName();
-              const initializer = prop.getInitializer();
+        for (const prop of properties) {
+          if (Node.isPropertyAssignment(prop)) {
+            const propName = prop.getName();
+            const initializer = prop.getInitializer();
 
-              // Check for existing nonce
-              if (propName === "nonce") {
-                hasNonce = true;
-              }
+            // Check for existing nonce
+            if (propName === "nonce") {
+              hasNonce = true;
+            }
 
-              // Check for dangerouslySetInnerHTML
-              if (propName === "dangerouslySetInnerHTML") {
-                hasDangerouslySetInnerHTML = true;
-              }
+            // Check for dangerouslySetInnerHTML
+            if (propName === "dangerouslySetInnerHTML") {
+              hasDangerouslySetInnerHTML = true;
+            }
 
-              // Check for src attribute
-              if (tagName === "script" && propName === "src") {
-                hasSrc = true;
+            // Check for src attribute
+            if (tagName === "script" && propName === "src") {
+              hasSrc = true;
 
-                // Also process src for manifest transformation if needed
-                if (
-                  Node.isStringLiteral(initializer) ||
-                  Node.isNoSubstitutionTemplateLiteral(initializer)
-                ) {
-                  const srcValue = initializer.getLiteralValue();
-                  if (srcValue.startsWith("/") && manifest[srcValue.slice(1)]) {
-                    const path = srcValue.slice(1); // Remove leading slash
-                    const transformedSrc = manifest[path].file;
-                    const originalText = initializer.getText();
-                    const isTemplateLiteral =
-                      Node.isNoSubstitutionTemplateLiteral(initializer);
-                    const quote = isTemplateLiteral
-                      ? "`"
-                      : originalText.charAt(0);
+              if (Node.isStringLiteral(initializer)) {
+                const src = initializer.getLiteralValue();
+                const stylesheets = await getStylesheetsForEntryPoint(src);
 
-                    // Preserve the original quote style
-                    if (isTemplateLiteral) {
-                      initializer.replaceWithText(`\`/${transformedSrc}\``);
-                    } else if (quote === '"') {
-                      initializer.replaceWithText(`"/${transformedSrc}"`);
-                    } else {
-                      initializer.replaceWithText(`'/${transformedSrc}'`);
-                    }
-                    hasModifications = true;
-                  }
-                }
-              }
-
-              // Check for string literal children
-              if (
-                tagName === "script" &&
-                propName === "children" &&
-                (Node.isStringLiteral(initializer) ||
-                  Node.isNoSubstitutionTemplateLiteral(initializer))
-              ) {
-                hasStringLiteralChildren = true;
-
-                const scriptContent = initializer.getLiteralValue();
-
-                // Transform import statements in script content using ts-morph
-                const { content: transformedContent, hasChanges } =
-                  transformScriptImports(scriptContent, manifest);
-
-                if (hasChanges && transformedContent) {
-                  // Get the raw text with quotes to determine the exact format
-                  const isTemplateLiteral =
-                    Node.isNoSubstitutionTemplateLiteral(initializer);
-
-                  if (isTemplateLiteral) {
-                    // Simply wrap the transformed content in backticks
-                    initializer.replaceWithText("`" + transformedContent + "`");
-                  } else {
-                    initializer.replaceWithText(
-                      JSON.stringify(transformedContent),
-                    );
-                  }
-
+                if (stylesheets.length > 0) {
                   hasModifications = true;
+                  const linkElements = stylesheets.map(
+                    (href) =>
+                      `jsx("link", { rel: "stylesheet", href: "${href}" })`,
+                  );
+                  const scriptElement = callExpr.getText();
+                  const replacement = `[${linkElements.join(
+                    ", ",
+                  )}, ${scriptElement}]`;
+
+                  callExpr.replaceWithText(replacement);
                 }
               }
 
-              // For link tags, first check if it's a preload/modulepreload
-              if (tagName === "link") {
-                if (
-                  propName === "rel" &&
-                  (Node.isStringLiteral(initializer) ||
-                    Node.isNoSubstitutionTemplateLiteral(initializer))
-                ) {
-                  const relValue = initializer.getLiteralValue();
-                  if (relValue === "preload" || relValue === "modulepreload") {
-                    isPreload = true;
-                  }
-                }
-
-                if (
-                  propName === "href" &&
-                  (Node.isStringLiteral(initializer) ||
-                    Node.isNoSubstitutionTemplateLiteral(initializer))
-                ) {
-                  hrefValue = initializer.getLiteralValue();
-                }
-              }
-            }
-          }
-
-          // Add nonce to script tags if needed
-          if (
-            tagName === "script" &&
-            !hasNonce &&
-            !hasDangerouslySetInnerHTML &&
-            (hasStringLiteralChildren || hasSrc)
-          ) {
-            // Add nonce property to the props object
-            propsArg.addPropertyAssignment({
-              name: "nonce",
-              initializer: "requestInfo.rw.nonce",
-            });
-
-            if (!hasRequestInfoImport) {
-              needsRequestInfoImport = true;
-            }
-
-            hasModifications = true;
-          }
-
-          // Transform href if this is a preload link
-          if (
-            tagName === "link" &&
-            isPreload &&
-            hrefValue &&
-            hrefValue.startsWith("/") &&
-            manifest[hrefValue.slice(1)]
-          ) {
-            const path = hrefValue.slice(1); // Remove leading slash
-            for (const prop of properties) {
+              // Also process src for manifest transformation if needed
               if (
-                Node.isPropertyAssignment(prop) &&
-                prop.getName() === "href"
+                Node.isStringLiteral(initializer) ||
+                Node.isNoSubstitutionTemplateLiteral(initializer)
               ) {
-                const initializer = prop.getInitializer();
-                if (
-                  Node.isStringLiteral(initializer) ||
-                  Node.isNoSubstitutionTemplateLiteral(initializer)
-                ) {
-                  const transformedHref = manifest[path].file;
+                const srcValue = initializer.getLiteralValue();
+                if (srcValue.startsWith("/") && manifest[srcValue.slice(1)]) {
+                  const path = srcValue.slice(1); // Remove leading slash
+                  const transformedSrc = manifest[path].file;
                   const originalText = initializer.getText();
                   const isTemplateLiteral =
                     Node.isNoSubstitutionTemplateLiteral(initializer);
@@ -345,20 +251,132 @@ export async function transformJsxScriptTagsCode(
 
                   // Preserve the original quote style
                   if (isTemplateLiteral) {
-                    initializer.replaceWithText(`\`/${transformedHref}\``);
+                    initializer.replaceWithText(`\`/${transformedSrc}\``);
                   } else if (quote === '"') {
-                    initializer.replaceWithText(`"/${transformedHref}"`);
+                    initializer.replaceWithText(`"/${transformedSrc}"`);
                   } else {
-                    initializer.replaceWithText(`'/${transformedHref}'`);
+                    initializer.replaceWithText(`'/${transformedSrc}'`);
                   }
                   hasModifications = true;
                 }
               }
             }
+
+            // Check for string literal children
+            if (
+              tagName === "script" &&
+              propName === "children" &&
+              (Node.isStringLiteral(initializer) ||
+                Node.isNoSubstitutionTemplateLiteral(initializer))
+            ) {
+              hasStringLiteralChildren = true;
+
+              const scriptContent = initializer.getLiteralValue();
+
+              // Transform import statements in script content using ts-morph
+              const { content: transformedContent, hasChanges } =
+                transformScriptImports(scriptContent, manifest);
+
+              if (hasChanges && transformedContent) {
+                // Get the raw text with quotes to determine the exact format
+                const isTemplateLiteral =
+                  Node.isNoSubstitutionTemplateLiteral(initializer);
+
+                if (isTemplateLiteral) {
+                  // Simply wrap the transformed content in backticks
+                  initializer.replaceWithText("`" + transformedContent + "`");
+                } else {
+                  initializer.replaceWithText(
+                    JSON.stringify(transformedContent),
+                  );
+                }
+
+                hasModifications = true;
+              }
+            }
+
+            // For link tags, first check if it's a preload/modulepreload
+            if (tagName === "link") {
+              if (
+                propName === "rel" &&
+                (Node.isStringLiteral(initializer) ||
+                  Node.isNoSubstitutionTemplateLiteral(initializer))
+              ) {
+                const relValue = initializer.getLiteralValue();
+                if (relValue === "preload" || relValue === "modulepreload") {
+                  isPreload = true;
+                }
+              }
+
+              if (
+                propName === "href" &&
+                (Node.isStringLiteral(initializer) ||
+                  Node.isNoSubstitutionTemplateLiteral(initializer))
+              ) {
+                hrefValue = initializer.getLiteralValue();
+              }
+            }
+          }
+        }
+
+        // Add nonce to script tags if needed
+        if (
+          tagName === "script" &&
+          !hasNonce &&
+          !hasDangerouslySetInnerHTML &&
+          (hasStringLiteralChildren || hasSrc)
+        ) {
+          // Add nonce property to the props object
+          propsArg.addPropertyAssignment({
+            name: "nonce",
+            initializer: "requestInfo.rw.nonce",
+          });
+
+          if (!hasRequestInfoImport) {
+            needsRequestInfoImport = true;
+          }
+
+          hasModifications = true;
+        }
+
+        // Transform href if this is a preload link
+        if (
+          tagName === "link" &&
+          isPreload &&
+          hrefValue &&
+          hrefValue.startsWith("/") &&
+          manifest[hrefValue.slice(1)]
+        ) {
+          const path = hrefValue.slice(1); // Remove leading slash
+          for (const prop of properties) {
+            if (Node.isPropertyAssignment(prop) && prop.getName() === "href") {
+              const initializer = prop.getInitializer();
+              if (
+                Node.isStringLiteral(initializer) ||
+                Node.isNoSubstitutionTemplateLiteral(initializer)
+              ) {
+                const transformedHref = manifest[path].file;
+                const originalText = initializer.getText();
+                const isTemplateLiteral =
+                  Node.isNoSubstitutionTemplateLiteral(initializer);
+                const quote = isTemplateLiteral ? "`" : originalText.charAt(0);
+
+                // Preserve the original quote style
+                if (isTemplateLiteral) {
+                  initializer.replaceWithText(`\`/${transformedHref}\``);
+                } else if (quote === '"') {
+                  initializer.replaceWithText(`"/${transformedHref}"`);
+                } else {
+                  initializer.replaceWithText(`'/${transformedHref}'`);
+                }
+                hasModifications = true;
+              }
+            }
           }
         }
       }
-    });
+    }
+  }
 
   // Add requestInfo import if needed and not already imported
   if (needsRequestInfoImport && hasModifications) {

@@ -43,8 +43,8 @@ const collectStylesheetsForJsEntryPoint = async (
   while (queue.length > 0) {
     const mod = queue.shift()!;
 
-    if (mod.file && isStylesheet(mod.file)) {
-      styles.add(mod.file);
+    if (mod.file && isStylesheet(mod.file) && mod.url) {
+      styles.add(mod.url);
     }
 
     for (const imported of mod.importedModules) {
@@ -117,8 +117,7 @@ export async function getStylesheetsForEntryPoint(
     process.env.VERBOSE && log("Read manifest for build: %s", manifestPath);
 
     const entry = man[entryPoint];
-    const stylesheets =
-      entry?.css?.map((p) => path.join(config.build.outDir, p)) ?? [];
+    const stylesheets = entry?.css?.map((p) => `/${p}`) ?? [];
     process.env.VERBOSE &&
       log(
         "Stylesheets from manifest for entry point %s: %O",
