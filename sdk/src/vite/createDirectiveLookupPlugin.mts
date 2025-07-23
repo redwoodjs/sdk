@@ -2,9 +2,8 @@ import MagicString from "magic-string";
 import path from "path";
 import { Plugin } from "vite";
 import { readFile } from "fs/promises";
-import { glob } from "glob";
 import debug from "debug";
-import { normalizeModulePath } from "./normalizeModulePath.mjs";
+import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { pathExists } from "fs-extra";
 import { stat } from "fs/promises";
 import { getSrcPaths } from "../lib/getSrcPaths.js";
@@ -59,7 +58,7 @@ export const findFilesContainingDirective = async ({
       const content = await readFile(file, "utf-8");
 
       if (hasDirective(content, directive)) {
-        const normalizedPath = normalizeModulePath(projectRootDir, file);
+        const normalizedPath = normalizeModulePath(file, projectRootDir);
         log(
           "Found '%s' directive in file: %s -> %s",
           directive,

@@ -4,7 +4,7 @@ import fs from "node:fs/promises";
 import debug from "debug";
 import { transformClientComponents } from "./transformClientComponents.mjs";
 import { transformServerFunctions } from "./transformServerFunctions.mjs";
-import { normalizeModulePath } from "./normalizeModulePath.mjs";
+import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import type { ViteDevServer } from "vite";
 
 const log = debug("rwsdk:vite:rsc-directives-plugin");
@@ -49,9 +49,10 @@ export const directivesPlugin = ({
   ) => {
     const files = kind === "client" ? clientFiles : serverFiles;
     const rawId = id.split("?")[0];
-    const resolvedId = rawId;
-    const relativePath = rawId.slice("/".length);
-    const fullPath = path.resolve(projectRootDir, relativePath);
+    const resolvedId = normalizeModulePath(rawId, projectRootDir);
+    const fullPath = normalizeModulePath(rawId, projectRootDir, {
+      absolute: true,
+    });
     const isNodeModule = id.includes("node_modules");
     const hadFile = files.has(id);
 
@@ -126,7 +127,7 @@ export const directivesPlugin = ({
           this.environment.name,
         );
 
-      const normalizedId = normalizeModulePath(projectRootDir, id);
+      const normalizedId = normalizeModulePath(id, projectRootDir);
 
       const clientResult = await transformClientComponents(code, normalizedId, {
         environmentName: this.environment.name,
@@ -181,8 +182,8 @@ export const directivesPlugin = ({
                 );
 
               const normalizedPath = normalizeModulePath(
-                projectRootDir,
                 args.path,
+                projectRootDir,
               );
 
               // context(justinvdm,2025-06-15): If we're in app code,
