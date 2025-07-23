@@ -54,7 +54,8 @@ const isInUseClientGraph = ({
   clientFiles: Set<string>;
   server: ViteDevServer;
 }) => {
-  const id = normalizeModulePath(server.config.root, file);
+  const id = normalizeModulePath(file, server.config.root);
+
   if (clientFiles.has(id)) {
     return true;
   }
@@ -128,7 +129,7 @@ export const miniflareHMRPlugin = (givenOptions: {
           ctx.server,
           environment,
           VIRTUAL_SSR_PREFIX +
-            normalizeModulePath(givenOptions.rootDir, ctx.file),
+            normalizeModulePath(ctx.file, givenOptions.rootDir),
         );
         return [];
       }
@@ -263,7 +264,7 @@ export const miniflareHMRPlugin = (givenOptions: {
           environment
         ].moduleGraph.idToModuleMap.get(
           VIRTUAL_SSR_PREFIX +
-            normalizeModulePath(givenOptions.rootDir, ctx.file),
+            normalizeModulePath(ctx.file, givenOptions.rootDir),
         );
 
         if (virtualSSRModule) {

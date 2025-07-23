@@ -58,7 +58,7 @@ export const findFilesContainingDirective = async ({
       const content = await readFile(file, "utf-8");
 
       if (hasDirective(content, directive)) {
-        const normalizedPath = normalizeModulePath(projectRootDir, file);
+        const normalizedPath = normalizeModulePath(file, projectRootDir);
         log(
           "Found '%s' directive in file: %s -> %s",
           directive,

@@ -49,7 +49,7 @@ export const directivesPlugin = ({
   ) => {
     const files = kind === "client" ? clientFiles : serverFiles;
     const rawId = id.split("?")[0];
-    const resolvedId = rawId;
+    const resolvedId = normalizeModulePath(rawId, projectRootDir);
     const relativePath = rawId.slice("/".length);
     const fullPath = path.resolve(projectRootDir, relativePath);
     const isNodeModule = id.includes("node_modules");
@@ -126,7 +126,7 @@ export const directivesPlugin = ({
           this.environment.name,
         );
 
-      const normalizedId = normalizeModulePath(projectRootDir, id);
+      const normalizedId = normalizeModulePath(id, projectRootDir);
 
       const clientResult = await transformClientComponents(code, normalizedId, {
         environmentName: this.environment.name,
@@ -181,8 +181,8 @@ export const directivesPlugin = ({
                 );
 
               const normalizedPath = normalizeModulePath(
-                projectRootDir,
                 args.path,
+                projectRootDir,
               );
 
               // context(justinvdm,2025-06-15): If we're in app code,
