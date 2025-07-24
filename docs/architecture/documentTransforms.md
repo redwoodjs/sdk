@@ -42,4 +42,14 @@ This ensures that all asset links in the final HTML are valid and point to the o
 
 To enhance security, the plugin automatically injects a `nonce` attribute into every `<script>` tag that doesn't have one and isn't inherently unsafe (e.g., using `dangerouslySetInnerHTML`).
 
-The nonce value is set to a placeholder expression that references a `requestInfo` object available at runtime. If this `requestInfo` object is not already imported in the `Document`, the plugin will also add the necessary `import` statement at the top of the file. This ensures that every server-rendered script is tagged with the per-request CSP nonce, mitigating XSS risks. 
+The nonce value is set to a placeholder expression that references a `requestInfo` object available at runtime. If this `requestInfo` object is not already imported in the `Document`, the plugin will also add the necessary `import` statement at the top of the file. This ensures that every server-rendered script is tagged with the per-request CSP nonce, mitigating XSS risks.
+
+### Important Design Considerations
+
+#### Performance: Early Exit for Unrelated Files
+
+Parsing source code into an AST is a relatively expensive operation. Running this transformation on every file processed by Vite—including files that contain no JSX or have no `<script>` or `<link>` tags—would introduce a significant performance overhead during development and builds.
+
+To mitigate this, the plugin first performs a quick, lightweight check on the raw source code. It uses a simple string search to look for keywords that indicate the presence of a transpiled `<script>` or `<link>` element (e.g., `jsx("script"`, `jsxs("link"`).
+
+If none of these keywords are found, the plugin exits immediately, skipping the expensive AST parsing and transformation steps entirely for that file. This optimization ensures that the plugin has a negligible performance impact on the vast majority of files in a project that do not require this specific transformation. 
