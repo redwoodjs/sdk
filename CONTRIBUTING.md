@@ -1,6 +1,8 @@
 # Contributing
 
-This document provides instructions for contributing to the SDK.
+This document provides context on contributing to the SDK.
+
+For context on how the system works, check out the [architecture documents](./docs/architecture/).
 
 ## Getting Started
 
