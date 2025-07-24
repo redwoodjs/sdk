@@ -60,8 +60,13 @@ function hasJsxFunctions(text: string): boolean {
 function transformScriptImports(
   scriptContent: string,
   manifest: Record<string, any>,
-): { content: string | undefined; hasChanges: boolean } {
+): {
+  content: string | undefined;
+  hasChanges: boolean;
+  entryPoints: Set<string>;
+} {
   const scriptProject = new Project({ useInMemoryFileSystem: true });
+  const entryPoints = new Set<string>();
 
   try {
     // Wrap in a function to make it valid JavaScript
@@ -92,6 +97,7 @@ function transformScriptImports(
 
           if (args.length > 0 && Node.isStringLiteral(args[0])) {
             const importPath = args[0].getLiteralValue();
+            entryPoints.add(importPath);
 
             if (importPath.startsWith("/")) {
               const path = importPath.slice(1); // Remove leading slash
@@ -114,15 +120,15 @@ function transformScriptImports(
       const endPos = fullText.lastIndexOf("}");
       const transformedContent = fullText.substring(startPos, endPos);
 
-      return { content: transformedContent, hasChanges: true };
+      return { content: transformedContent, hasChanges: true, entryPoints };
     }
 
     // Return the original content when no changes are made
-    return { content: scriptContent, hasChanges: false };
+    return { content: scriptContent, hasChanges: false, entryPoints };
   } catch (error) {
     // If parsing fails, fall back to the original content
     console.warn("Failed to parse inline script content:", error);
-    return { content: undefined, hasChanges: false };
+    return { content: undefined, hasChanges: false, entryPoints };
   }
 }
 
@@ -152,34 +158,48 @@ function getJsxTagName(callExpr: CallExpression): string | null {
 }
 
 async function injectStylesheetLinks(
-  scriptCall: CallExpression,
-  props: ObjectLiteralExpression,
+  sourceFile: SourceFile,
+  entryPoints: Set<string>,
   context: StylesheetContext,
 ): Promise<boolean> {
-  const srcProp = props.getProperty("src");
-  if (!srcProp || !Node.isPropertyAssignment(srcProp)) {
+  if (entryPoints.size === 0) {
     return false;
   }
 
-  const srcInitializer = srcProp.getInitializer();
-  if (!Node.isStringLiteral(srcInitializer)) {
+  const allStylesheets = new Set<string>();
+
+  for (const entryPoint of entryPoints) {
+    const stylesheets = await getStylesheetsForEntryPoint(entryPoint, context);
+    for (const stylesheet of stylesheets) {
+      allStylesheets.add(stylesheet);
+    }
+  }
+
+  if (allStylesheets.size === 0) {
     return false;
   }
 
-  const src = srcInitializer.getLiteralValue();
-  const stylesheets = await getStylesheetsForEntryPoint(src, context);
+  const firstScript = sourceFile
+    .getDescendantsOfKind(SyntaxKind.CallExpression)
+    .find((callExpr) => {
+      if (!isJsxCall(callExpr)) {
+        return false;
+      }
+      const tagName = getJsxTagName(callExpr);
+      return tagName === "script";
+    });
 
-  if (stylesheets.length === 0) {
+  if (!firstScript) {
     return false;
   }
 
-  const linkElements = stylesheets.map(
+  const linkElements = Array.from(allStylesheets).map(
     (href) => `jsx("link", { rel: "stylesheet", href: "${href}" })`,
   );
-  const scriptElement = scriptCall.getText();
+  const scriptElement = firstScript.getText();
   const replacement = `[${linkElements.join(", ")}, ${scriptElement}]`;
 
-  scriptCall.replaceWithText(replacement);
+  firstScript.replaceWithText(replacement);
   return true;
 }
 
@@ -227,23 +247,9 @@ async function transformScriptTag(
   callExpr: CallExpression,
   props: ObjectLiteralExpression,
   manifest: Record<string, any>,
-  context: StylesheetContext,
-) {
+): Promise<{ hasModifications: boolean; entryPoints: Set<string> }> {
+  const entryPoints = new Set<string>();
   let hasModifications = false;
-  const stylesheetInjected = await injectStylesheetLinks(
-    callExpr,
-    props,
-    context,
-  );
-
-  if (stylesheetInjected) {
-    // The original callExpr was replaced, we can't do more work on its props.
-    // The props would need to be re-parsed from the new fragment's script element.
-    // For now, we assume this is the only transformation needed for this node.
-    // This is a limitation: we won't add a nonce or transform the src of a script
-    // that also had stylesheets injected.
-    return true;
-  }
 
   const properties = props.getProperties();
 
@@ -260,6 +266,8 @@ async function transformScriptTag(
           Node.isNoSubstitutionTemplateLiteral(initializer))
       ) {
         const srcValue = initializer.getLiteralValue();
+        entryPoints.add(srcValue);
+
         if (srcValue.startsWith("/") && manifest[srcValue.slice(1)]) {
           const path = srcValue.slice(1);
           const transformedSrc = manifest[path].file;
@@ -278,8 +286,16 @@ async function transformScriptTag(
           Node.isNoSubstitutionTemplateLiteral(initializer))
       ) {
         const scriptContent = initializer.getLiteralValue();
-        const { content: transformedContent, hasChanges } =
-          transformScriptImports(scriptContent, manifest);
+        const {
+          content: transformedContent,
+          hasChanges,
+          entryPoints: inlineEntryPoints,
+        } = transformScriptImports(scriptContent, manifest);
+
+        for (const entryPoint of inlineEntryPoints) {
+          entryPoints.add(entryPoint);
+        }
+
         if (hasChanges && transformedContent) {
           const quote = Node.isNoSubstitutionTemplateLiteral(initializer)
             ? ""
@@ -294,7 +310,7 @@ async function transformScriptTag(
     }
   }
 
-  return hasModifications;
+  return { hasModifications, entryPoints };
 }
 
 function shouldScriptHaveNonce(props: ObjectLiteralExpression): boolean {
@@ -397,6 +413,7 @@ export async function transformJsxScriptTagsCode(
     findRwsdkWorkerImport(sourceFile);
 
   const scriptsNeedingNonce: ObjectLiteralExpression[] = [];
+  const allEntryPoints = new Set<string>();
   const callExpressions = sourceFile.getDescendantsOfKind(
     SyntaxKind.CallExpression,
   );
@@ -418,19 +435,15 @@ export async function transformJsxScriptTagsCode(
     }
 
     if (tagName === "script") {
-      const modified = await transformScriptTag(
-        callExpr,
-        props,
-        manifest,
-        context,
-      );
+      const { hasModifications: modified, entryPoints } =
+        await transformScriptTag(callExpr, props, manifest);
+
+      for (const entryPoint of entryPoints) {
+        allEntryPoints.add(entryPoint);
+      }
+
       if (modified) {
         hasModifications = true;
-        // If the node was replaced (e.g., by stylesheet injection),
-        // we should skip the rest of the logic for this node.
-        if (callExpr.wasForgotten()) {
-          continue;
-        }
       }
 
       if (shouldScriptHaveNonce(props)) {
@@ -440,6 +453,16 @@ export async function transformJsxScriptTagsCode(
       const modified = transformLinkTag(props, manifest);
       if (modified) hasModifications = true;
     }
+  }
+
+  const stylesheetsInjected = await injectStylesheetLinks(
+    sourceFile,
+    allEntryPoints,
+    context,
+  );
+
+  if (stylesheetsInjected) {
+    hasModifications = true;
   }
 
   let needsRequestInfoImport = false;

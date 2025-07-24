@@ -25,9 +25,9 @@ This lookup system effectively becomes the source of truth for which stylesheets
 
 The second plugin is responsible for transforming the user's `Document` component source code.
 
-Its job is to find every `<script>` tag that points to a client-side JavaScript entry point. For each script it finds, it consults the lookup system to retrieve the corresponding list of stylesheet URLs.
+Its job is to find all client-side JavaScript entry points. It does this by inspecting both the `src` attribute of `<script>` tags and by parsing inline scripts for dynamic `import()` calls.
 
-It then dynamically modifies the `Document`'s JSX, injecting the necessary `<link rel="stylesheet" ...>` tags into the component.
+It then consults the lookup system to retrieve the complete list of stylesheet URLs for all discovered entry points and dynamically modifies the `Document`'s JSX, injecting the necessary `<link rel="stylesheet" ...>` tags.
 
 ### Important Design Considerations
 

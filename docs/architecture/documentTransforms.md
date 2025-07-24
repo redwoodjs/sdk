@@ -24,17 +24,19 @@ The plugin inspects the AST for specific JSX elements (`<script>` and `<link>`) 
 
 #### 1. Stylesheet Injection
 
-For every `<script>` tag that references a client-side entry point, the plugin automatically injects the necessary `<link rel="stylesheet">` tags alongside it.
+For every `<script>` tag that references a client-side entry point, the plugin automatically injects the necessary `<link rel="stylesheet">` tags alongside it. It discovers these entry points by analyzing both the `src` attribute of script tags and dynamic `import()` calls inside inline scripts.
 
 This process is orchestrated with another plugin that maintains a mapping of entry points to their style dependencies. For a detailed explanation of this mechanism, see the [Supporting Client-Side Stylesheet Imports](./clientStylesheets.md) architecture document.
 
 #### 2. Asset Path Rewriting (Production Builds)
 
-During a production `build`, all asset paths must be updated to point to their final, hashed filenames. The plugin handles this by consulting the Vite build manifest.
+During a production `build`, all references to client-side assets must be updated to point to their final, hashed filenames. The plugin inspects both `src` attributes on `<script>` tags and dynamic `import()` calls within inline scripts, rewriting their paths by consulting the Vite build manifest.
 
--   `<script src="/src/client.tsx">` is transformed to `<script src="/assets/client.a1b2c3d4.js">`.
--   Preload links like `<link rel="modulepreload" href="/src/client.tsx">` are similarly transformed.
--   Dynamic `import()` calls within inline `<script>` tags are also found and rewritten.
+This transformation applies to:
+
+-   `<script>` tags: `<script src="/src/client.tsx">` becomes `<script src="/assets/client.a1b2c3d4.js">`.
+-   Preload links: `<link rel="modulepreload" href="/src/client.tsx">` is similarly transformed.
+-   Inline script imports: Dynamic `import()` calls are also found and rewritten.
 
 This ensures that all asset links in the final HTML are valid and point to the optimized production bundles.
 

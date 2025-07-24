@@ -3,22 +3,14 @@
 exports[`transformJsxScriptTagsCode > adds nonce to script tags with src attribute and imports requestInfo 1`] = `
 "import { requestInfo } from "rwsdk/worker";
 
-      jsx("script", {
-        src: "/src/client.tsx",
-        type: "module",
-          nonce: requestInfo.rw.nonce
-    })
+      jsx("script", { src: "/src/client.tsx", type: "module", nonce: requestInfo.rw.nonce })
     "
 `;
 
 exports[`transformJsxScriptTagsCode > adds nonce to script tags with string literal children 1`] = `
 "import { requestInfo } from "rwsdk/worker";
 
-      jsx("script", {
-        type: "module",
-        children: "console.log('hello world')",
-          nonce: requestInfo.rw.nonce
-    })
+      jsx("script", { type: "module", children: "console.log('hello world')", nonce: requestInfo.rw.nonce })
     "
 `;
 
@@ -27,22 +19,42 @@ exports[`transformJsxScriptTagsCode > adds requestInfo to existing SDK import if
       import { foo } from 'bar';
       import { someOtherThing, requestInfo } from "rwsdk/worker";
       
-      jsx("script", {
-        type: "module",
-        children: "console.log('hello world')",
-          nonce: requestInfo.rw.nonce
-    })
+      jsx("script", { type: "module", children: "console.log('hello world')", nonce: requestInfo.rw.nonce })
     "
 `;
 
 exports[`transformJsxScriptTagsCode > handles paths not found in manifest 1`] = `
 "import { requestInfo } from "rwsdk/worker";
 
-      jsx("script", {
-        src: "/src/non-existent.js",
-        type: "module",
-          nonce: requestInfo.rw.nonce
-    })
+      jsx("script", { src: "/src/non-existent.js", type: "module", nonce: requestInfo.rw.nonce })
+    "
+`;
+
+exports[`transformJsxScriptTagsCode > injects stylesheet links for inline script imports 1`] = `
+"
+      import { jsx } from 'react/jsx-runtime';
+import { requestInfo } from "rwsdk/worker";
+
+      function Document() {
+        return jsx("body", { children: [
+          jsx("script", { children: 'import("/src/client.tsx")',
+              nonce: requestInfo.rw.nonce
+        })
+        ]});
+      }
+    "
+`;
+
+exports[`transformJsxScriptTagsCode > injects stylesheet links for scripts with inline import 1`] = `
+"
+      import { jsx } from 'react/jsx-runtime';
+import { requestInfo } from "rwsdk/worker";
+
+      function Document() {
+        return jsx("body", { children: [
+          [jsx("link", { rel: "stylesheet", href: "/assets/style.css" }), jsx("script", { children: "import('/src/client.tsx')", nonce: requestInfo.rw.nonce })]
+        ]});
+      }
     "
 `;
 
@@ -53,9 +65,20 @@ import { requestInfo } from "rwsdk/worker";
 
       function Document() {
         return jsx("body", { children: [
-          jsx("script", { src: "/src/client.tsx",
-              nonce: requestInfo.rw.nonce
-        })
+          [jsx("link", { rel: "stylesheet", href: "/assets/style.css" }), jsx("script", { src: "/src/client.tsx", nonce: requestInfo.rw.nonce })]
+        ]});
+      }
+    "
+`;
+
+exports[`transformJsxScriptTagsCode > injects stylesheet links for scripts with src attribute 1`] = `
+"
+      import { jsx } from 'react/jsx-runtime';
+import { requestInfo } from "rwsdk/worker";
+
+      function Document() {
+        return jsx("body", { children: [
+          [jsx("link", { rel: "stylesheet", href: "/assets/style.css" }), jsx("script", { src: "/src/client.tsx", nonce: requestInfo.rw.nonce })]
         ]});
       }
     "
@@ -64,11 +87,7 @@ import { requestInfo } from "rwsdk/worker";
 exports[`transformJsxScriptTagsCode > transforms inline scripts with dynamic imports 1`] = `
 "import { requestInfo } from "rwsdk/worker";
 
-      jsx("script", {
-        type: "module",
-        children: "import(\\"/assets/client-a1b2c3d4.js\\").then(module => { console.log(module); })",
-          nonce: requestInfo.rw.nonce
-    })
+      jsx("script", { type: "module", children: "import('/src/client.tsx').then(module => { console.log(module); })", nonce: requestInfo.rw.nonce })
     "
 `;
 
@@ -93,9 +112,7 @@ exports[`transformJsxScriptTagsCode > transforms inline scripts with multiline c
 exports[`transformJsxScriptTagsCode > transforms inline scripts with type=module 1`] = `
 "import { requestInfo } from "rwsdk/worker";
 
-      jsx("script", { type: "module", children: "import(\\"/assets/client-a1b2c3d4.js\\")",
-          nonce: requestInfo.rw.nonce
-    })
+      jsx("script", { type: "module", children: "import('/src/client.tsx')", nonce: requestInfo.rw.nonce })
     "
 `;
 
@@ -143,15 +160,13 @@ exports[`transformJsxScriptTagsCode > transforms real-world Document component e
               jsx("meta", { charSet: "utf-8" }),
               jsx("meta", { name: "viewport", content: "width=device-width, initial-scale=1" }),
               jsx("title", { children: "@redwoodjs/starter-standard" }),
-              jsx("link", { rel: "modulepreload", href: "/assets/client-a1b2c3d4.js", as: "script" })
+              jsx("link", { rel: "modulepreload", href: "/src/client.tsx", as: "script" })
             ]
           }),
           jsx("body", {
             children: [
               jsx("div", { id: "root", children: props.children }),
-              jsx("script", { children: "import(\\"/assets/client-a1b2c3d4.js\\")",
-                  nonce: requestInfo.rw.nonce
-            })
+              jsx("script", { children: 'import("/src/client.tsx")', nonce: requestInfo.rw.nonce })
             ]
           })
         ]
@@ -162,11 +177,7 @@ exports[`transformJsxScriptTagsCode > transforms real-world Document component e
 exports[`transformJsxScriptTagsCode > transforms script src attributes in JSX 1`] = `
 "import { requestInfo } from "rwsdk/worker";
 
-      jsx("script", {
-        src: "/assets/client-a1b2c3d4.js",
-        type: "module",
-          nonce: requestInfo.rw.nonce
-    })
+      jsx("script", { src: "/assets/client-a1b2c3d4.js", type: "module", nonce: requestInfo.rw.nonce })
     "
 `;
 
@@ -175,21 +186,13 @@ exports[`transformJsxScriptTagsCode > uses existing requestInfo import if alread
       import { foo } from 'bar';
       import { requestInfo, someOtherThing } from "rwsdk/worker";
       
-      jsx("script", {
-        type: "module",
-        children: "console.log('hello world')",
-          nonce: requestInfo.rw.nonce
-    })
+      jsx("script", { type: "module", children: "console.log('hello world')", nonce: requestInfo.rw.nonce })
     "
 `;
 
 exports[`transformJsxScriptTagsCode > works in development mode without a manifest 1`] = `
 "import { requestInfo } from "rwsdk/worker";
 
-      jsx("script", {
-        src: "/src/client.tsx",
-        type: "module",
-          nonce: requestInfo.rw.nonce
-    })
+      jsx("script", { src: "/src/client.tsx", type: "module", nonce: requestInfo.rw.nonce })
     "
 `;
