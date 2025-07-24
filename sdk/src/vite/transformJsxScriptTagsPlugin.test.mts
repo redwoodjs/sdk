@@ -25,6 +25,7 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
     const result = await transformJsxScriptTagsCode(
+      "test.tsx",
       code,
       mockManifest,
       createMockContext(true),
@@ -47,6 +48,7 @@ describe("transformJsxScriptTagsCode", () => {
       return [];
     };
     const result = await transformJsxScriptTagsCode(
+      "test.tsx",
       code,
       mockManifest,
       createMockContext(true),
@@ -70,6 +72,7 @@ describe("transformJsxScriptTagsCode", () => {
       return [];
     };
     const result = await transformJsxScriptTagsCode(
+      "test.tsx",
       code,
       mockManifest,
       createMockContext(true),
@@ -87,6 +90,7 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
     const result = await transformJsxScriptTagsCode(
+      "test.tsx",
       code,
       mockManifest,
       createMockContext(true),
@@ -100,6 +104,7 @@ describe("transformJsxScriptTagsCode", () => {
       jsx("script", { type: "module", children: "import('/src/client.tsx')" })
     `;
     const result = await transformJsxScriptTagsCode(
+      "test.tsx",
       code,
       mockManifest,
       createMockContext(true),
@@ -123,6 +128,7 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
     const result = await transformJsxScriptTagsCode(
+      "test.tsx",
       code,
       mockManifest,
       createMockContext(true),
@@ -142,6 +148,7 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
     const result = await transformJsxScriptTagsCode(
+      "test.tsx",
       code,
       mockManifest,
       createMockContext(true),
@@ -159,6 +166,7 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
     const result = await transformJsxScriptTagsCode(
+      "test.tsx",
       code,
       mockManifest,
       createMockContext(true),
@@ -175,6 +183,7 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
     const result = await transformJsxScriptTagsCode(
+      "test.tsx",
       code,
       mockManifest,
       createMockContext(true),
@@ -206,6 +215,7 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
     const result = await transformJsxScriptTagsCode(
+      "test.tsx",
       code,
       mockManifest,
       createMockContext(true),
@@ -219,6 +229,7 @@ describe("transformJsxScriptTagsCode", () => {
       jsx("div", { children: "No scripts or links here" })
     `;
     const result = await transformJsxScriptTagsCode(
+      "test.tsx",
       code,
       mockManifest,
       createMockContext(true),
@@ -234,6 +245,7 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
     const result = await transformJsxScriptTagsCode(
+      "test.tsx",
       code,
       mockManifest,
       createMockContext(true),
@@ -250,6 +262,7 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
     const result = await transformJsxScriptTagsCode(
+      "test.tsx",
       code,
       {},
       createMockContext(false),
@@ -266,6 +279,7 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
     const result = await transformJsxScriptTagsCode(
+      "test.tsx",
       code,
       {},
       createMockContext(false),
@@ -282,6 +296,7 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
     const result = await transformJsxScriptTagsCode(
+      "test.tsx",
       code,
       {},
       createMockContext(false),
@@ -298,6 +313,7 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
     const result = await transformJsxScriptTagsCode(
+      "test.tsx",
       code,
       {},
       createMockContext(false),
@@ -316,6 +332,7 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
     const result = await transformJsxScriptTagsCode(
+      "test.tsx",
       code,
       {},
       createMockContext(false),
@@ -335,6 +352,7 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
     const result = await transformJsxScriptTagsCode(
+      "test.tsx",
       code,
       {},
       createMockContext(false),
@@ -351,6 +369,7 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
     const result = await transformJsxScriptTagsCode(
+      "test.tsx",
       code,
       {},
       createMockContext(false),
