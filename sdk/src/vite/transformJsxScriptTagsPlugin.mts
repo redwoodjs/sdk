@@ -7,10 +7,13 @@ import {
   ObjectLiteralExpression,
   SourceFile,
 } from "ts-morph";
-import { type Plugin } from "vite";
+import { type Plugin, type ResolvedConfig } from "vite";
 import { readFile } from "node:fs/promises";
 import { pathExists } from "fs-extra";
-import { getStylesheetsForEntryPoint } from "./jsEntryPointsToStylesheetsPlugin.mjs";
+import {
+  getStylesheetsForEntryPoint,
+  type StylesheetContext,
+} from "./jsEntryPointsToStylesheetsPlugin.mjs";
 import debug from "debug";
 
 const log = debug("rwsdk:vite:transform-jsx-script-tags");
@@ -151,6 +154,7 @@ function getJsxTagName(callExpr: CallExpression): string | null {
 async function injectStylesheetLinks(
   scriptCall: CallExpression,
   props: ObjectLiteralExpression,
+  context: StylesheetContext,
 ): Promise<boolean> {
   const srcProp = props.getProperty("src");
   if (!srcProp || !Node.isPropertyAssignment(srcProp)) {
@@ -163,7 +167,7 @@ async function injectStylesheetLinks(
   }
 
   const src = srcInitializer.getLiteralValue();
-  const stylesheets = await getStylesheetsForEntryPoint(src);
+  const stylesheets = await getStylesheetsForEntryPoint(src, context);
 
   if (stylesheets.length === 0) {
     return false;
@@ -223,9 +227,14 @@ async function transformScriptTag(
   callExpr: CallExpression,
   props: ObjectLiteralExpression,
   manifest: Record<string, any>,
+  context: StylesheetContext,
 ) {
   let hasModifications = false;
-  const stylesheetInjected = await injectStylesheetLinks(callExpr, props);
+  const stylesheetInjected = await injectStylesheetLinks(
+    callExpr,
+    props,
+    context,
+  );
 
   if (stylesheetInjected) {
     // The original callExpr was replaced, we can't do more work on its props.
@@ -372,6 +381,7 @@ function transformLinkTag(
 export async function transformJsxScriptTagsCode(
   code: string,
   manifest: Record<string, any> = {},
+  context: StylesheetContext,
 ) {
   // context(justinvdm, 15 Jun 2025): Optimization to exit early
   // to avoidunnecessary ts-morph parsing
@@ -408,13 +418,21 @@ export async function transformJsxScriptTagsCode(
     }
 
     if (tagName === "script") {
-      const modified = await transformScriptTag(callExpr, props, manifest);
-      if (modified) hasModifications = true;
+      const modified = await transformScriptTag(
+        callExpr,
+        props,
+        manifest,
+        context,
+      );
+      if (modified) {
+        hasModifications = true;
+        // If the node was replaced (e.g., by stylesheet injection),
+        // we should skip the rest of the logic for this node.
+        if (callExpr.wasForgotten()) {
+          continue;
+        }
+      }
 
-      // Because `transformScriptTag` might replace the node, we can't reliably
-      // check for nonce afterwards in this loop. We'll stick to the original logic
-      // of checking properties within the loop for now. A deeper refactor would be
-      // needed to handle this more gracefully post-node-replacement.
       if (shouldScriptHaveNonce(props)) {
         scriptsNeedingNonce.push(props);
       }
@@ -455,13 +473,14 @@ export const transformJsxScriptTagsPlugin = ({
   manifestPath: string;
 }): Plugin => {
   let isBuild = false;
+  let config: ResolvedConfig;
 
   return {
     name: "rwsdk:transform-jsx-script-tags",
 
-    configResolved(config) {
-      isBuild = config.command === "build";
-      log(`Plugin configured. isBuild: ${isBuild}`);
+    configResolved(resolvedConfig) {
+      isBuild = resolvedConfig.command === "build";
+      config = resolvedConfig;
     },
 
     async transform(code) {
@@ -470,8 +489,13 @@ export const transformJsxScriptTagsPlugin = ({
       }
 
       const manifest = isBuild ? await readManifest(manifestPath) : {};
+      const context: StylesheetContext = {
+        isBuild,
+        projectRootDir: config.root,
+        buildOutDir: config.build.outDir,
+      };
 
-      return transformJsxScriptTagsCode(code, manifest);
+      return transformJsxScriptTagsCode(code, manifest, context);
     },
   };
 };

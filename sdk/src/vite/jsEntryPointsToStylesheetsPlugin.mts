@@ -13,8 +13,13 @@ import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 
 const log = debug("rwsdk:vite:js-entry-points-to-stylesheets");
 
+export interface StylesheetContext {
+  isBuild: boolean;
+  projectRootDir: string;
+  buildOutDir: string;
+}
+
 let devServer: ViteDevServer | undefined;
-let config: ResolvedConfig;
 let manifest: Record<string, { file: string; css?: string[] }> | undefined;
 
 const jsEntryPointToStylesheetsCache = new Map<string, string[]>();
@@ -84,10 +89,15 @@ const readManifest = async (
 
 export async function getStylesheetsForEntryPoint(
   entryPoint: string,
+  context: StylesheetContext,
 ): Promise<string[]> {
-  const entryPointUrl = normalizeModulePath(entryPoint, config.root, {
-    isViteStyle: true,
-  });
+  const entryPointUrl = normalizeModulePath(
+    entryPoint,
+    context.projectRootDir,
+    {
+      isViteStyle: true,
+    },
+  );
 
   if (devServer) {
     const cached = jsEntryPointToStylesheetsCache.get(entryPointUrl);
@@ -107,10 +117,10 @@ export async function getStylesheetsForEntryPoint(
     return styles;
   }
 
-  if (config.command === "build") {
+  if (context.isBuild) {
     const manifestPath = path.join(
-      config.root,
-      config.build.outDir,
+      context.projectRootDir,
+      context.buildOutDir,
       "client/.vite/manifest.json",
     );
     const man = await readManifest(manifestPath);
@@ -174,7 +184,6 @@ export const jsEntryPointsToStylesheetsPlugin = (): Plugin => {
   return {
     name: "rwsdk:js-entry-points-to-stylesheets",
     configResolved(resolvedConfig) {
-      config = resolvedConfig;
       log("Plugin configured");
     },
     configureServer(server) {
