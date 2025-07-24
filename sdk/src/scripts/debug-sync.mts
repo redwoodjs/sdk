@@ -35,6 +35,106 @@ const getPackageManagerInfo = (targetDir: string) => {
   return pnpmResult;
 };
 
+/**
+ * @summary Workaround for pnpm's local tarball dependency resolution.
+ *
+ * @description
+ * When installing a new version of the SDK from a local tarball (e.g., during
+ * development with `rwsync`), pnpm creates a new, uniquely-named directory in
+ * the `.pnpm` store (e.g., `rwsdk@file+...`).
+ *
+ * A challenge arises when other packages list `rwsdk` as a peer dependency.
+ * pnpm may not consistently update the symlinks for these peer dependencies
+ * to point to the newest `rwsdk` instance. This can result in a state where
+ * multiple versions of `rwsdk` coexist in `node_modules`, with some parts of
+ * the application using a stale version.
+ *
+ * This function addresses the issue by:
+ * 1. Identifying the most recently installed `rwsdk` instance in the `.pnpm`
+ *    store after a `pnpm install` run.
+ * 2. Forcefully updating the top-level `node_modules/rwsdk` symlink to point
+ *    to this new instance.
+ * 3. Traversing all other `rwsdk`-related directories in the `.pnpm` store
+ *    and updating their internal `rwsdk` symlinks to also point to the correct
+ *    new instance.
+ *
+ * I am sorry for this ugly hack, I am sure there is a better way, and that it is me
+ * doing something wrong. The aim is not to go down this rabbit hole right now
+ * -- @justinvdm
+ */
+const hackyPnpmSymlinkFix = async (targetDir: string) => {
+  console.log("💣 Performing pnpm symlink fix...");
+  const pnpmDir = path.join(targetDir, "node_modules", ".pnpm");
+  if (!existsSync(pnpmDir)) {
+    return;
+  }
+
+  try {
+    const entries = await fs.readdir(pnpmDir);
+    // Find ALL rwsdk directories, not just file-based ones, to handle
+    // all kinds of stale peer dependencies.
+    const rwsdkDirs = entries.filter((e) => e.startsWith("rwsdk@"));
+
+    if (rwsdkDirs.length === 0) {
+      console.log("   🤔 No rwsdk directories found to hack.");
+      return;
+    }
+
+    let latestDir = "";
+    let latestMtime = new Date(0);
+
+    for (const dir of rwsdkDirs) {
+      const fullPath = path.join(pnpmDir, dir);
+      const stats = await fs.stat(fullPath);
+      if (stats.mtime > latestMtime) {
+        latestMtime = stats.mtime;
+        latestDir = dir;
+      }
+    }
+
+    if (!latestDir) {
+      console.log("   🤔 Could not determine the latest rwsdk directory.");
+      return;
+    }
+
+    const goldenSourcePath = path.join(
+      pnpmDir,
+      latestDir,
+      "node_modules",
+      "rwsdk",
+    );
+
+    if (!existsSync(goldenSourcePath)) {
+      console.error(
+        `   ❌ Golden source path does not exist: ${goldenSourcePath}`,
+      );
+      return;
+    }
+    console.log(`   🎯 Golden rwsdk path is: ${goldenSourcePath}`);
+
+    // 1. Fix top-level symlink
+    const topLevelSymlink = path.join(targetDir, "node_modules", "rwsdk");
+    await fs.rm(topLevelSymlink, { recursive: true, force: true });
+    await fs.symlink(goldenSourcePath, topLevelSymlink, "dir");
+    console.log(`   ✅ Symlinked node_modules/rwsdk`);
+
+    // 2. Fix peer dependency symlinks
+    const allPnpmDirs = await fs.readdir(pnpmDir);
+    for (const dir of allPnpmDirs) {
+      if (dir === latestDir || !dir.includes("rwsdk")) continue;
+
+      const peerSymlink = path.join(pnpmDir, dir, "node_modules", "rwsdk");
+      if (existsSync(peerSymlink)) {
+        await fs.rm(peerSymlink, { recursive: true, force: true });
+        await fs.symlink(goldenSourcePath, peerSymlink, "dir");
+        console.log(`   ✅ Hijacked symlink in ${dir}`);
+      }
+    }
+  } catch (error) {
+    console.error("   ❌ Failed during hacky pnpm symlink fix:", error);
+  }
+};
+
 const performFullSync = async (
   sdkDir: string,
   targetDir: string,
@@ -102,6 +202,7 @@ const performFullSync = async (
           cwd: targetDir,
           stdio: "inherit",
         });
+        await hackyPnpmSymlinkFix(targetDir);
       } else {
         const cmd = pm.name;
         const args = [pm.command];
@@ -122,7 +223,7 @@ const performFullSync = async (
         console.log("Restoring package.json...");
         await fs.writeFile(packageJsonPath, originalPackageJson);
       }
-      if (originalLockfile) {
+      if (originalLockfile && pm.name !== "pnpm") {
         console.log(`Restoring ${pm.lockFile}...`);
         await fs.writeFile(lockfilePath, originalLockfile);
       }
@@ -201,7 +302,9 @@ const performSync = async (sdkDir: string, targetDir: string) => {
 
   if (packageJsonChanged) {
     console.log("📦 package.json changed, performing full sync...");
-    await performFullSync(sdkDir, targetDir);
+    // We always cache-bust on a full sync now to ensure pnpm's overrides
+    // see a new version and the hacky symlink fix runs on a clean slate.
+    await performFullSync(sdkDir, targetDir, true);
   } else {
     await performFastSync(sdkDir, targetDir);
   }
