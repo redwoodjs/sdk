@@ -358,7 +358,7 @@ function shouldScriptHaveNonce(props: ObjectLiteralExpression): boolean {
   return !hasNonce && !hasDangerouslySetInnerHTML && (hasChildren || hasSrc);
 }
 
-function injectNonces(nodes: ObjectLiteralExpression[]) {
+function injectNonces(id: string, nodes: ObjectLiteralExpression[]) {
   for (const props of nodes) {
     props.addPropertyAssignment({
       name: "nonce",
@@ -498,7 +498,7 @@ export async function transformJsxScriptTagsCode(
       id,
       scriptsNeedingNonce.length,
     );
-    injectNonces(scriptsNeedingNonce);
+    injectNonces(id, scriptsNeedingNonce);
     hasModifications = true;
     if (!hasRequestInfoImport) {
       needsRequestInfoImport = true;
@@ -519,6 +519,7 @@ export async function transformJsxScriptTagsCode(
 
   // Add requestInfo import if needed and not already imported
   if (needsRequestInfoImport) {
+    log("[%s] Adding import for requestInfo from rwsdk/worker", id);
     addRequestInfoImport(sourceFile, sdkWorkerImportDecl);
   }
 

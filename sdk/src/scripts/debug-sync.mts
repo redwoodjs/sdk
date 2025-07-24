@@ -82,19 +82,41 @@ const performFullSync = async (
       .catch(() => null);
 
     try {
-      const cmd = pm.name;
-      const args = [pm.command];
-
-      if (pm.name === "yarn") {
-        args.push(`file:${tarballPath}`);
+      if (pm.name === "pnpm") {
+        console.log("🛠️  Using pnpm overrides to install SDK...");
+        if (originalPackageJson) {
+          const targetPackageJson = JSON.parse(originalPackageJson);
+          targetPackageJson.pnpm = targetPackageJson.pnpm || {};
+          targetPackageJson.pnpm.overrides =
+            targetPackageJson.pnpm.overrides || {};
+          const relativeTarballPath = path.relative(targetDir, tarballPath);
+          targetPackageJson.pnpm.overrides.rwsdk = `file:${relativeTarballPath}`;
+          await fs.writeFile(
+            packageJsonPath,
+            JSON.stringify(targetPackageJson, null, 2),
+          );
+        }
+        // We use install here, which respects the overrides.
+        // We also don't want to fail if the lockfile is out of date.
+        await $("pnpm", ["install", "--no-frozen-lockfile"], {
+          cwd: targetDir,
+          stdio: "inherit",
+        });
       } else {
-        args.push(tarballPath);
-      }
+        const cmd = pm.name;
+        const args = [pm.command];
 
-      await $(cmd, args, {
-        cwd: targetDir,
-        stdio: "inherit",
-      });
+        if (pm.name === "yarn") {
+          args.push(`file:${tarballPath}`);
+        } else {
+          args.push(tarballPath);
+        }
+
+        await $(cmd, args, {
+          cwd: targetDir,
+          stdio: "inherit",
+        });
+      }
     } finally {
       if (originalPackageJson) {
         console.log("Restoring package.json...");
