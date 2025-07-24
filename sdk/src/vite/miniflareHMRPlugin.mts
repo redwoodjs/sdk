@@ -1,4 +1,4 @@
-import { HotUpdateOptions, Plugin, EnvironmentModuleNode } from "vite";
+import { Plugin, EnvironmentModuleNode, Connect } from "vite";
 import { resolve } from "node:path";
 import colors from "picocolors";
 import { readFile } from "node:fs/promises";
@@ -12,6 +12,8 @@ import { invalidateModule } from "./invalidateModule.mjs";
 import { getShortName } from "../lib/getShortName.mjs";
 
 const log = debug("rwsdk:vite:hmr-plugin");
+
+let hasErrored = false;
 
 const hasDirective = async (filepath: string, directive: string) => {
   if (!isJsFile(filepath)) {
@@ -89,7 +91,42 @@ export const miniflareHMRPlugin = (givenOptions: {
 }): (Plugin | Plugin[])[] => [
   {
     name: "rwsdk:miniflare-hmr",
+    configureServer(server) {
+      return () => {
+        server.middlewares.use(function rwsdkDevServerErrorHandler(
+          err: unknown,
+          _req: any,
+          _res: any,
+          next: Connect.NextFunction,
+        ) {
+          if (err) {
+            hasErrored = true;
+          }
+          next(err);
+        });
+      };
+    },
     async hotUpdate(ctx) {
+      if (hasErrored) {
+        const shortName = getShortName(ctx.file, ctx.server.config.root);
+        this.environment.logger.info(
+          `${colors.cyan(
+            `attempting to recover from error`,
+          )}: update to ${colors.dim(shortName)}`,
+          {
+            clear: true,
+            timestamp: true,
+          },
+        );
+        hasErrored = false;
+        ctx.server.hot.send({
+          type: "full-reload",
+          path: "*",
+        });
+        // We don't reset `hasErrored` here.
+        // We wait for a successful request to confirm the server is healthy.
+        return [];
+      }
       const {
         clientFiles,
         serverFiles,
