@@ -123,8 +123,6 @@ export const miniflareHMRPlugin = (givenOptions: {
           type: "full-reload",
           path: "*",
         });
-        // We don't reset `hasErrored` here.
-        // We wait for a successful request to confirm the server is healthy.
         return [];
       }
       const {
