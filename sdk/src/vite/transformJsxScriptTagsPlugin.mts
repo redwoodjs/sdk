@@ -58,6 +58,7 @@ function hasJsxFunctions(text: string): boolean {
 
 // Transform import statements in script content using ts-morph
 function transformScriptImports(
+  id: string,
   scriptContent: string,
   manifest: Record<string, any>,
 ): {
@@ -97,6 +98,7 @@ function transformScriptImports(
 
           if (args.length > 0 && Node.isStringLiteral(args[0])) {
             const importPath = args[0].getLiteralValue();
+            log("[%s] Found inline import() to '%s'", id, importPath);
             entryPoints.add(importPath);
 
             if (importPath.startsWith("/")) {
@@ -158,6 +160,7 @@ function getJsxTagName(callExpr: CallExpression): string | null {
 }
 
 async function injectStylesheetLinks(
+  id: string,
   sourceFile: SourceFile,
   entryPoints: Set<string>,
   context: StylesheetContext,
@@ -167,19 +170,33 @@ async function injectStylesheetLinks(
   ) => Promise<string[]>,
 ): Promise<boolean> {
   if (entryPoints.size === 0) {
+    log("[%s] No entry points found, skipping stylesheet injection", id);
     return false;
   }
+  log(
+    "[%s] Attempting to inject stylesheets for entry points: %o",
+    id,
+    entryPoints,
+  );
 
   const allStylesheets = new Set<string>();
 
   for (const entryPoint of entryPoints) {
     const stylesheets = await getStylesheetsForEntryPoint(entryPoint, context);
+    log(
+      "[%s] Found %d stylesheet(s) for entry point '%s': %o",
+      id,
+      stylesheets.length,
+      entryPoint,
+      stylesheets,
+    );
     for (const stylesheet of stylesheets) {
       allStylesheets.add(stylesheet);
     }
   }
 
   if (allStylesheets.size === 0) {
+    log("[%s] No stylesheets to inject after processing all entry points", id);
     return false;
   }
 
@@ -203,6 +220,7 @@ async function injectStylesheetLinks(
   const scriptElement = firstScript.getText();
   const replacement = `[${linkElements.join(", ")}, ${scriptElement}]`;
 
+  log("[%s] Injecting %d stylesheet link(s)", id, linkElements.length);
   firstScript.replaceWithText(replacement);
   return true;
 }
@@ -248,6 +266,7 @@ function addRequestInfoImport(
 }
 
 async function transformScriptTag(
+  id: string,
   callExpr: CallExpression,
   props: ObjectLiteralExpression,
   manifest: Record<string, any>,
@@ -270,6 +289,7 @@ async function transformScriptTag(
           Node.isNoSubstitutionTemplateLiteral(initializer))
       ) {
         const srcValue = initializer.getLiteralValue();
+        log("[%s] Found script with src='%s'", id, srcValue);
         entryPoints.add(srcValue);
 
         if (srcValue.startsWith("/") && manifest[srcValue.slice(1)]) {
@@ -289,12 +309,13 @@ async function transformScriptTag(
         (Node.isStringLiteral(initializer) ||
           Node.isNoSubstitutionTemplateLiteral(initializer))
       ) {
+        log("[%s] Found inline script, transforming its imports...", id);
         const scriptContent = initializer.getLiteralValue();
         const {
           content: transformedContent,
           hasChanges,
           entryPoints: inlineEntryPoints,
-        } = transformScriptImports(scriptContent, manifest);
+        } = transformScriptImports(id, scriptContent, manifest);
 
         for (const entryPoint of inlineEntryPoints) {
           entryPoints.add(entryPoint);
@@ -399,6 +420,7 @@ function transformLinkTag(
 }
 
 export async function transformJsxScriptTagsCode(
+  id: string,
   code: string,
   manifest: Record<string, any> = {},
   context: StylesheetContext,
@@ -409,6 +431,7 @@ export async function transformJsxScriptTagsCode(
   if (!hasJsxFunctions(code)) {
     return;
   }
+  log("[%s] Starting JSX script tag transformation", id);
 
   const project = new Project({ useInMemoryFileSystem: true });
   const sourceFile = project.createSourceFile("temp.tsx", code);
@@ -440,8 +463,9 @@ export async function transformJsxScriptTagsCode(
     }
 
     if (tagName === "script") {
+      log("[%s] Found <script> tag, processing...", id);
       const { hasModifications: modified, entryPoints } =
-        await transformScriptTag(callExpr, props, manifest);
+        await transformScriptTag(id, callExpr, props, manifest);
 
       for (const entryPoint of entryPoints) {
         allEntryPoints.add(entryPoint);
@@ -460,8 +484,20 @@ export async function transformJsxScriptTagsCode(
     }
   }
 
+  log(
+    "[%s] Found %d total entry points: %o",
+    id,
+    allEntryPoints.size,
+    allEntryPoints,
+  );
+
   let needsRequestInfoImport = false;
   if (scriptsNeedingNonce.length > 0) {
+    log(
+      "[%s] Injecting nonces into %d script tag(s)",
+      id,
+      scriptsNeedingNonce.length,
+    );
     injectNonces(scriptsNeedingNonce);
     hasModifications = true;
     if (!hasRequestInfoImport) {
@@ -470,6 +506,7 @@ export async function transformJsxScriptTagsCode(
   }
 
   const stylesheetsInjected = await injectStylesheetLinks(
+    id,
     sourceFile,
     allEntryPoints,
     context,
@@ -485,6 +522,13 @@ export async function transformJsxScriptTagsCode(
     addRequestInfoImport(sourceFile, sdkWorkerImportDecl);
   }
 
+  log(
+    "[%s] %s",
+    id,
+    hasModifications
+      ? "Transformation complete, returning modified code"
+      : "No modifications made, returning original code",
+  );
   // Return the transformed code only if modifications were made
   if (hasModifications) {
     return {
@@ -512,10 +556,12 @@ export const transformJsxScriptTagsPlugin = ({
       config = resolvedConfig;
     },
 
-    async transform(code) {
+    async transform(code, id) {
       if (this.environment.name !== "worker") {
         return;
       }
+
+      log("Running transform-jsx-script-tags plugin for %s", id);
 
       const manifest = isBuild ? await readManifest(manifestPath) : {};
       const context: StylesheetContext = {
@@ -524,7 +570,7 @@ export const transformJsxScriptTagsPlugin = ({
         buildOutDir: config.build.outDir,
       };
 
-      return transformJsxScriptTagsCode(code, manifest, context);
+      return transformJsxScriptTagsCode(id, code, manifest, context);
     },
   };
 };
