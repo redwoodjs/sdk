@@ -11,7 +11,7 @@ import { type Plugin, type ResolvedConfig } from "vite";
 import { readFile } from "node:fs/promises";
 import { pathExists } from "fs-extra";
 import {
-  getStylesheetsForEntryPoint,
+  getStylesheetsForEntryPoint as realGetStylesheetsForEntryPoint,
   type StylesheetContext,
 } from "./jsEntryPointsToStylesheetsPlugin.mjs";
 import debug from "debug";
@@ -161,6 +161,10 @@ async function injectStylesheetLinks(
   sourceFile: SourceFile,
   entryPoints: Set<string>,
   context: StylesheetContext,
+  getStylesheetsForEntryPoint: (
+    entryPoint: string,
+    context: StylesheetContext,
+  ) => Promise<string[]>,
 ): Promise<boolean> {
   if (entryPoints.size === 0) {
     return false;
@@ -398,6 +402,7 @@ export async function transformJsxScriptTagsCode(
   code: string,
   manifest: Record<string, any> = {},
   context: StylesheetContext,
+  getStylesheetsForEntryPoint = realGetStylesheetsForEntryPoint,
 ) {
   // context(justinvdm, 15 Jun 2025): Optimization to exit early
   // to avoidunnecessary ts-morph parsing
@@ -455,16 +460,6 @@ export async function transformJsxScriptTagsCode(
     }
   }
 
-  const stylesheetsInjected = await injectStylesheetLinks(
-    sourceFile,
-    allEntryPoints,
-    context,
-  );
-
-  if (stylesheetsInjected) {
-    hasModifications = true;
-  }
-
   let needsRequestInfoImport = false;
   if (scriptsNeedingNonce.length > 0) {
     injectNonces(scriptsNeedingNonce);
@@ -472,6 +467,17 @@ export async function transformJsxScriptTagsCode(
     if (!hasRequestInfoImport) {
       needsRequestInfoImport = true;
     }
+  }
+
+  const stylesheetsInjected = await injectStylesheetLinks(
+    sourceFile,
+    allEntryPoints,
+    context,
+    getStylesheetsForEntryPoint,
+  );
+
+  if (stylesheetsInjected) {
+    hasModifications = true;
   }
 
   // Add requestInfo import if needed and not already imported

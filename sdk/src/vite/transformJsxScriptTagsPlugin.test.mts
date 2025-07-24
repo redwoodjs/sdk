@@ -14,6 +14,7 @@ describe("transformJsxScriptTagsCode", () => {
     "src/entry.js": { file: "assets/entry-e5f6g7h8.js" },
     "src/styles.css": { file: "assets/styles-i9j0k1l2.css" },
     "src/other.ts": { file: "assets/other-a1b2c3d4.js" },
+    "src/more.css": { file: "assets/more-i9j0k1l2.css" },
   };
 
   test("transforms script src attributes in JSX", async () => {
@@ -32,21 +33,47 @@ describe("transformJsxScriptTagsCode", () => {
     expect(result!.code).toMatchSnapshot();
   });
 
-  test("injects stylesheet links for scripts with src", async () => {
+  test("injects stylesheets for src entry point", async () => {
     const code = `
-      import { jsx } from 'react/jsx-runtime';
-      
-      function Document() {
-        return jsx("body", { children: [
-          jsx("script", { src: "/src/client.tsx" })
-        ]});
-      }
+      jsx("script", {
+        src: "/src/client.tsx",
+        type: "module"
+      })
     `;
-
+    const getStylesheetsForEntryPoint = async (entryPoint: string) => {
+      if (entryPoint === "/src/client.tsx") {
+        return ["/src/styles.css"];
+      }
+      return [];
+    };
     const result = await transformJsxScriptTagsCode(
       code,
-      {},
-      createMockContext(false),
+      mockManifest,
+      createMockContext(true),
+      getStylesheetsForEntryPoint,
+    );
+    expect(result).toBeDefined();
+    expect(result!.code).toMatchSnapshot();
+  });
+
+  test("injects stylesheets for import() entry point", async () => {
+    const code = `
+      jsx("script", {
+        children: "import('/src/entry.js')",
+        type: "module"
+      })
+    `;
+    const getStylesheetsForEntryPoint = async (entryPoint: string) => {
+      if (entryPoint === "/src/entry.js") {
+        return ["/src/styles.css", "/src/more.css"];
+      }
+      return [];
+    };
+    const result = await transformJsxScriptTagsCode(
+      code,
+      mockManifest,
+      createMockContext(true),
+      getStylesheetsForEntryPoint,
     );
     expect(result).toBeDefined();
     expect(result!.code).toMatchSnapshot();
