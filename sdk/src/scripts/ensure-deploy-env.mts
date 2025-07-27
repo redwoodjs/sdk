@@ -35,11 +35,10 @@ const promptForDeployment = async (): Promise<boolean> => {
   });
 
   return new Promise((resolve) => {
-
     // Handle Ctrl+C (SIGINT)
-    rl.on('SIGINT', () => {
+    rl.on("SIGINT", () => {
       rl.close();
-      console.log('\nDeployment cancelled.');
+      console.log("\nDeployment cancelled.");
       process.exit(1);
     });
 
@@ -284,7 +283,9 @@ export const ensureDeployEnv = async () => {
       console.error(
         "1. Generate a secret key: node -e \"console.log(require('crypto').randomBytes(32).toString('base64'))\"",
       );
-      console.error("2. Set the secret: npx wrangler secret put AUTH_SECRET_KEY");
+      console.error(
+        "2. Set the secret: npx wrangler secret put AUTH_SECRET_KEY",
+      );
       process.exit(1);
     }
   }
