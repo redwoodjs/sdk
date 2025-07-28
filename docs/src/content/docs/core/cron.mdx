@@ -5,6 +5,8 @@ description: Schedule background tasks
 
 If you want to schedule a background task, [Cloudflare supports Cron Triggers](https://developers.cloudflare.com/workers/configuration/cron-triggers/).
 
+> ⚠️ **Warning:** Cron triggers currently only work when deployed to Cloudflare Workers in production. Local development does not support cron trigger testing yet. This is a known limitation tracked in [Cloudflare Workers SDK issue #8466](https://github.com/cloudflare/workers-sdk/issues/8466).
+
 ## Setup
 
 Within your `wrangler.jsonc` file, add a new section called `triggers`:

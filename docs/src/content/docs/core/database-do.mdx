@@ -25,7 +25,7 @@ For applications with modular components or add-ons, there's an additional benef
 
 ## How It Works
 
-Under the hood, `rwsdk/db` combines three key technologies:
+Under the hood, `rwsdk/db` combines:
 
 1. **SQLite Durable Objects** - Each database instance runs in its own isolated Durable Object
 2. **Kysely** - A lightweight, type-safe SQL query builder with the same API naming and semantics as SQL
@@ -59,7 +59,7 @@ const user = await db.selectFrom("users").selectAll().executeTakeFirst();
 
 Migrations run when `createDb()` is called. If that happens at the module level (shown in the examples), then:
 
-**Development**:. Runs when start your development server.
+**Development**:. Runs when you start your development server.
 
 **Production**: When you deploy with `npm run release`, the deployment process includes an initial request to your application, which triggers migration updates.
 
@@ -280,7 +280,7 @@ export async function getUserCredentials(
 
 ### Nesting Relational Data (ORM-like Behavior)
 
-While `rwsdk/db` uses a query builder instead of a full ORM, you can still structure your query results to include nested relational data. This is useful for avoiding N+1 query problems and for shaping data directly in the database layer. Kysely provides helper functions like `jsonObjectFrom` and `jsonArrayFrom` that make this easy.
+While `rwsdk/db` uses a query builder instead of a full ORM, you can still structure your query results to include nested relational data. Kysely provides helper functions like `jsonObjectFrom` and `jsonArrayFrom` that make this easy.
 
 Here's an example that fetches testimonials and nests the related `status`, `source`, and `tags` information within each testimonial object.
 
