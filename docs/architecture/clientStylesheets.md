@@ -2,15 +2,17 @@
 
 **Goal:** Allow developers to `import './styles.css'` inside a "use client" component and have it "just work," without causing a Flash of Unstyled Content (FOUC).
 
-## The Core Problem: Who Knows about the CSS? And When?
+## The Core Problem: Discovering Dynamic Dependencies in a Streaming World
 
-Our framework renders HTML on the server in a stream. This is great for performance, but it creates a difficult timing problem.
+Our framework uses a server-rendered `Document.tsx` file, giving developers full control over the HTML shell. We also use React Server Components (RSC) to stream the UI, which is great for performance. This combination, however, creates a difficult set of challenges when it comes to stylesheets.
 
-1.  To prevent FOUC, the `<link rel="stylesheet">` tags for a page must be in the `<head>` of the HTML.
-2.  The `<head>` is the very first thing we send to the browser.
-3.  However, we don't know which stylesheets are needed until we render the React Server Components (RSC) stream much later in the process. Some components, and their CSS, are loaded dynamically based on application logic.
+1.  **The Injection Timing Problem:** To avoid a Flash of Unstyled Content (FOUC), all `<link rel="stylesheet">` tags for a page must be in the `<head>`. But the `<head>` is the very first thing sent to the browser, long before we know what all the CSS dependencies are.
 
-We can't just wait for the whole stream to finish to find the CSS, as that would defeat the purpose of streaming. This means we need a way to discover all CSS dependencies *before* we render the final HTML, even though those dependencies are revealed dynamically over time.
+2.  **The Dynamic Component Problem:** We don't know the full list of components for a page ahead of time. As the RSC stream is rendered on the server, it can dynamically decide to include new "use client" components (islands). If `ComponentA` imports `./styles.css`, we only discover that this stylesheet is needed when `ComponentA` is actually rendered.
+
+3.  **The Entry Point Discovery Problem:** The framework has no built-in knowledge of the main client-side entry point (e.g., `<script src="/src/client.tsx">`). This script is referenced inside the developer's `Document.tsx` file, and we need a way to find it so we can also find *its* CSS dependencies.
+
+We cannot simply pause rendering to find all these dependencies, as that would eliminate the benefits of streaming. We need a system that can discover all these scripts—both the static entry points and the dynamically loaded components—and then use that complete list to inject all the necessary `<link>` tags into the `<head>` just in time.
 
 ## The Solution: A Unified Discovery and Injection Process
 
