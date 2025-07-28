@@ -22,11 +22,19 @@ The plugin inspects the AST for specific JSX elements (`<script>` and `<link>`) 
 
 ### Key Transformations
 
-#### 1. Stylesheet Injection
+#### 1. Client Entry Point Discovery
 
-For every `<script>` tag that references a client-side entry point, the plugin automatically injects the necessary `<link rel="stylesheet">` tags alongside it. It discovers these entry points by analyzing both the `src` attribute of script tags and dynamic `import()` calls inside inline scripts.
+To support automatic stylesheet injection, the framework first needs to discover all client-side JavaScript entry points for a given page. The transformation plugin is responsible for this discovery.
 
-This process is orchestrated with another plugin that maintains a mapping of entry points to their style dependencies. For a detailed explanation of this mechanism, see the [Supporting Client-Side Stylesheet Imports](./clientStylesheets.md) architecture document.
+Instead of directly injecting `<link>` tags, the plugin modifies the AST to inject a small piece of code—a side effect—that runs on the server during rendering. This code adds the module ID of each discovered client entry point to a shared list (`requestInfo.rw.scriptsToBeLoaded`).
+
+The plugin finds these entry points in two ways:
+- **`src` attribute**: A `<script src="/src/client.tsx">` tag is transformed to register its `src` path before it is rendered.
+- **Inline `import()`**: A dynamic `import('/src/client.tsx')` inside an inline `<script>` tag is also detected, and the registration logic is prepended to the script's content.
+
+This process ensures that by the time the final HTML is ready to be streamed, a complete list of all necessary client scripts has been collected. A separate runtime mechanism then uses this list to look up all associated CSS dependencies and inject the final `<link rel="stylesheet">` tags into the document `<head>`.
+
+For a detailed explanation of the end-to-end stylesheet handling mechanism, see the [Supporting Client-Side Stylesheet Imports](./clientStylesheets.md) architecture document.
 
 #### 2. Asset Path Rewriting (Production Builds)
 
