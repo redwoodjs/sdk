@@ -2,6 +2,7 @@ import type { Plugin } from "vite";
 import { readFile } from "node:fs/promises";
 import { join } from "node:path";
 import { findStylesheetsInGraph } from "./stylesheetDiscovery.mjs";
+import { getDocumentEntryPointsMap } from "./transformJsxScriptTagsPlugin.mjs";
 
 const VIRTUAL_MODULE_ID = "virtual:stylesheet-lookup";
 const RESOLVED_VIRTUAL_MODULE_ID = "\0" + VIRTUAL_MODULE_ID;
@@ -60,10 +61,20 @@ export function virtualStylesheetPlugin(): Plugin {
 
         if (this.environment.config.command === "serve") {
           return `
-            export async function findStylesheetsForEntryPoint(moduleId) {
+            export async function findStylesheetsForRsc(moduleId) {
               const res = await fetch('/__rws_stylesheets?id=' + moduleId);
               if (!res.ok) {
                 console.error('Failed to fetch stylesheets for', moduleId);
+                return new Set();
+              }
+              const stylesheets = await res.json();
+              return new Set(stylesheets);
+            }
+
+            export async function findStylesheetsForDocument(documentId) {
+              const res = await fetch('/__rws_stylesheets?documentId=' + documentId);
+              if (!res.ok) {
+                console.error('Failed to fetch stylesheets for', documentId);
                 return new Set();
               }
               const stylesheets = await res.json();
@@ -88,10 +99,25 @@ export function virtualStylesheetPlugin(): Plugin {
           }
           return `
             const manifest = ${JSON.stringify(manifest)};
+            const documentEntryPoints = new Map(JSON.parse('${JSON.stringify(
+              Array.from(getDocumentEntryPointsMap().entries()),
+            )}'));
             const getCssFromManifest = ${getCssFromManifest.toString()};
 
-            export function findStylesheetsForEntryPoint(moduleId) {
+            export function findStylesheetsForRsc(moduleId) {
               return getCssFromManifest(moduleId, manifest);
+            }
+
+            export function findStylesheetsForDocument(documentId) {
+              const entryPoints = documentEntryPoints.get(documentId) || [];
+              const allCss = new Set();
+              for (const entryPoint of entryPoints) {
+                const css = getCssFromManifest(entryPoint, manifest);
+                for (const href of css) {
+                  allCss.add(href);
+                }
+              }
+              return allCss;
             }
           `;
         }
@@ -103,24 +129,48 @@ export function virtualStylesheetPlugin(): Plugin {
         if (req.url?.startsWith(VIRTUAL_STYLESHEET_ENDPOINT)) {
           const url = new URL(req.url, `http://${req.headers.host}`);
           const moduleId = url.searchParams.get("id");
+          const documentId = url.searchParams.get("documentId");
 
-          if (!moduleId) {
+          if (!moduleId && !documentId) {
             res.statusCode = 400;
-            res.end("Missing module ID");
+            res.end("Missing module ID or document ID");
             return;
           }
 
           try {
-            const stylesheets = await findStylesheetsInGraph(
-              moduleId,
-              server.config.root,
-              server,
-            );
+            let stylesheets: Set<string>;
+            if (moduleId) {
+              stylesheets = await findStylesheetsInGraph(
+                moduleId,
+                server.config.root,
+                server,
+              );
+            } else {
+              // Document lookup
+              const entryPoints = getDocumentEntryPointsMap().get(documentId!);
+              stylesheets = new Set();
+              if (entryPoints) {
+                for (const entryPoint of entryPoints) {
+                  const resolvedStylesheets = await findStylesheetsInGraph(
+                    entryPoint,
+                    server.config.root,
+                    server,
+                  );
+                  for (const stylesheet of resolvedStylesheets) {
+                    stylesheets.add(stylesheet);
+                  }
+                }
+              }
+            }
+
             res.statusCode = 200;
             res.setHeader("Content-Type", "application/json");
             res.end(JSON.stringify([...stylesheets]));
           } catch (error) {
-            console.error(`Error finding stylesheets for ${moduleId}:`, error);
+            console.error(
+              `Error finding stylesheets for ${moduleId || documentId}:`,
+              error,
+            );
             res.statusCode = 500;
             res.end("Error finding stylesheets");
           }

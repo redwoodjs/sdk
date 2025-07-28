@@ -1,86 +1,86 @@
-# Supporting Client-Side Stylesheet Imports
+# Architecture: Supporting Client-Side Stylesheet Imports
 
-This document outlines the architecture that enables developers to import stylesheets directly into "use client" components and have them automatically included in the final rendered HTML document, even when those components are loaded asynchronously as part of a React Server Components (RSC) stream.
+**Goal:** Allow developers to `import './styles.css'` inside a "use client" component and have it "just work," without causing a Flash of Unstyled Content (FOUC).
 
-## The Challenge: The Server-Side Rendering Race Condition
+## The Core Problem: Who Knows about the CSS? And When?
 
-Our framework uses a server-rendered `Document` component, which gives developers full control over the HTML shell but bypasses Vite's standard `index.html`-based asset discovery. This creates a fundamental "chicken and egg" problem when dealing with stylesheets for client-side components, especially within a React Server Components (RSC) architecture.
+Our framework renders HTML on the server in a stream. This is great for performance, but it creates a difficult timing problem.
 
-The core challenges are:
+1.  To prevent FOUC, the `<link rel="stylesheet">` tags for a page must be in the `<head>` of the HTML.
+2.  The `<head>` is the very first thing we send to the browser.
+3.  However, we don't know which stylesheets are needed until we render the React Server Components (RSC) stream much later in the process. Some components, and their CSS, are loaded dynamically based on application logic.
 
-1.  **The Ordering Problem:** To avoid a Flash of Unstyled Content (FOUC), `<link rel="stylesheet">` tags must be injected into the `<head>` of the HTML document. However, the decision to load a specific client component (and therefore its CSS) is made *during* the RSC stream rendering on the server. This happens long after the initial `<head>` has already been sent to the browser.
+We can't just wait for the whole stream to finish to find the CSS, as that would defeat the purpose of streaming. This means we need a way to discover all CSS dependencies *before* we render the final HTML, even though those dependencies are revealed dynamically over time.
 
-2.  **Dynamic and Asynchronous Discovery:** We do not know the full set of client components that will be rendered on a page upfront. They are discovered dynamically as the RSC payload is generated. This is true for the main client entry point and, more critically, for any client component "island" that is rendered asynchronously.
+## The Solution: A Unified Discovery and Injection Process
 
-3.  **The Streaming Dilemma:** We cannot simply wait for the entire RSC stream to be processed on the server to collect all stylesheet dependencies before sending the HTML. Doing so would buffer the entire response, negating the primary benefits of streaming, such as a fast Time To First Byte (TTFB) and progressive page loading.
+Our solution is to create a single, unified set of all client-side scripts that will be loaded on the page. By collecting every script module ID first, we can then, in a single final step, look up all their combined CSS dependencies and inject them.
 
-In short, we need a way to inject stylesheet links into the `<head>` of the document *as they are discovered on the server*, without blocking the stream, and in a way that aligns with React's rendering lifecycle. The initial approach of trying to find all stylesheets before rendering the `Document` is not viable in this dynamic, streaming environment.
+This process has two main phases: **Discovery** (populating the list of scripts) and **Injection** (finding and rendering their stylesheets).
 
-### The Environment Mismatch: Worker vs. Node.js
+### Phase 1 (Runtime): Unified Script Discovery
 
-Beyond the timing issue, a second fundamental challenge is the environment boundary between the Vite dev server and the worker runtime.
+The core of this architecture is a single `Set` on the per-request `requestInfo` object: `requestInfo.rw.scriptsToBeLoaded`. This set collects the mVdule IDs of every client script that is needed for the current page render.
 
--   The Vite dev server runs in a Node.js process, with full access to the file system and Vite's internal module graphs.
--   The worker, however, runs in a restrictive sandbox environment (Cloudflare Workers or Miniflare locally) that intentionally lacks file system access and cannot directly interact with the Vite server's memory or internals.
+This set is populated from two different sources at two different times, allowing us to capture all scripts, both static and dynamic:
 
-This sandbox makes it impossible for the runtime code inside the worker to directly look up a module in the Vite dev server's graph or read a manifest file from the disk. Any solution must respect this boundary and establish a clean communication channel between the two environments.
+**A) Static Entry Points from the `Document`**
 
-## The Solution: A Unified Runtime Injection Model
+During the build, a simple Vite plugin scans `Document.tsx` files. When it finds a `<script>` tag that looks like a client entry point (e.g., `<script src="/src/client.tsx">`), it injects a tiny, stateless piece of code. This code runs on the server during the `Document` render and performs a side effect: it adds the entry point's path to our `scriptsToBeLoaded` set.
 
-The solution is a two-phase discovery process that feeds a single, unified runtime injection mechanism. It uses a Vite plugin to collect information at build-time and a virtual module to expose that information to the runtime, ensuring all `<link>` tags are injected in one place, at the right time. This avoids the complexity and brittleness of having a build-time plugin directly manipulate the `Document`'s JSX.
+```diff
+- jsx("script", { src: "/src/client.tsx" })
++ [
++   (requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
++   jsx("script", { src: "/src/client.tsx" })
++ ]
+```
 
-### Phase 1 (Build-Time): Entry Point Mapping
+**B) Dynamic Components from the RSC Stream**
 
-The first phase solves the problem of discovering the static client entry point (e.g., `<script src="/src/client.tsx">`) without giving the build-time plugin the messy job of injecting code.
+As the RSC stream renders, it may dynamically load other client components ("islands"). Our `__webpack_require__` hook intercepts these loads and adds the module ID of *that specific component* to the very same `scriptsToBeLoaded` set.
 
-Our `transformJsxScriptTagsPlugin` is simplified to a "mapper". Its only responsibility is to:
-1.  Scan `Document.tsx` files for `<script>` tags that point to client entry points.
-2.  Generate a mapping: `{ 'path/to/Document.tsx': ['/src/client.tsx'] }`.
-3.  This mapping is then made available to our `virtual:stylesheet-lookup` plugin.
+At the end of these two steps, `requestInfo.rw.scriptsToBeLoaded` contains a complete list of every client module required to render the page.
 
-### Phase 2 (Runtime): Two-Stage Stylesheet Discovery
+### Phase 2 (Runtime): Unified Stylesheet Injection
 
-At runtime, the worker uses the `virtual:stylesheet-lookup` module to discover all necessary CSS. To manage this process, the framework creates a temporary context object for each incoming HTTP request. This object holds data relevant only to that single request, ensuring that state is properly isolated between concurrent users. A `Set<string>` named `discoveredStyleSheets` is attached to this context to collect all unique stylesheet URLs as they are found.
+This is the final, unified step. The component that wraps the RSC stream (`RscApp` in our conceptual example) waits for the entire stream to be processed using React Suspense (`use(thenable)`).
 
-This collection process happens in two stages:
-
-1.  **Initial Stylesheet Lookup:** Before the RSC render stream begins, the worker identifies the `Document` component being used for the current request. It calls a function like `getInitialStylesheets(documentModuleId)` from the virtual module. The virtual module uses the pre-computed map from Phase 1 to find the static entry points and their corresponding CSS. These are added to the per-request `discoveredStyleSheets` set.
-
-2.  **Dynamic Stylesheet Lookup (RSC Islands):** As the RSC stream renders, our `__webpack_require__` hook is called for any dynamically loaded client components. This hook *also* calls a function on the virtual module to find the stylesheets for that specific component island. These are also added to the same per-request `discoveredStyleSheets` set.
-
-### Phase 3 (Runtime): Unified Injection via React Suspense
-
-This is the final, unified step. The component that wraps the RSC stream (`RscApp` in our conceptual example) works exactly as before. It uses React Suspense (`use(thenable)`) to wait for the entire stream to be processed. Once resolved, it takes the **complete** set of stylesheets—both initial and dynamic—from the per-request `discoveredStyleSheets` set and renders them as `<link>` tags.
-
-Here is a conceptual example of how it works inside our `renderRscThenableToHtmlStream` function:
+Once the stream is fully resolved, this component performs the stylesheet logic:
+1.  It gets the project's asset manifest by calling a runtime helper, `getManifest()`. This function abstracts away the difference between development (fetching from a dev server endpoint) and production (reading a static object).
+2.  It iterates over the complete `requestInfo.rw.scriptsToBeLoaded` set.
+3.  For each script ID, it walks the asset manifest to find all of its dependent CSS files.
+4.  It collects all unique stylesheet URLs into a final list.
+5.  It renders the final `<link>` tags. React's streaming renderer automatically hoists these tags into the document's `<head>`, solving the ordering problem.
 
 ```tsx
-// Conceptual example of the rendering component
 const RscApp = ({ thenable, requestInfo }) => {
-  // 1. This hook suspends rendering until the entire RSC stream is processed.
-  //    During suspension, our ssrWebpackRequire hook is called for each
-  //    client component, populating `requestInfo.rw.discoveredStyleSheets`.
+  // This suspends until the stream is fully processed and all scripts are discovered.
   const rscVDOM = use(thenable);
 
-  // 2. This code only runs AFTER the `thenable` has resolved, meaning
-  //    discovery is complete.
-  const discoveredStyles = [...requestInfo.rw.discoveredStyleSheets];
+  // This code only runs AFTER the `thenable` has resolved.
+  const allStylesheets = new Set<string>();
+  const manifest = getManifest(); // Simplified for example
 
-  // 3. Render the collected <link> tags. React hoists them to the <head>.
+  for (const scriptId of requestInfo.rw.scriptsToBeLoaded) {
+    const css = findCssForModule(scriptId, manifest); // Simplified
+    for (const href of css) {
+      allStylesheets.add(href);
+    }
+  }
+
   return (
     <>
-      {discoveredStyles.map(href => <link key={href} rel="stylesheet" href={href} />)}
+      {Array.from(allStylesheets).map(href => <link key={href} rel="stylesheet" href={href} />)}
       <div id="hydrate-root">{rscVDOM.node}</div>
     </>
   );
 };
 ```
 
-This pattern solves the timing problem. We don't need to know when the stream is "done"; React tells us by resolving the `thenable`.
-
-We then rely on a standard behavior of React's streaming renderer. As documented on [react.dev](https://react.dev/reference/react-dom/components/link#special-rendering-behavior), React automatically detects `<link>` components rendered anywhere in the tree and ensures they are hoisted into the document's `<head>` in the final HTML stream. This allows us to inject links as they are discovered without blocking the stream, preventing any Flash of Unstyled Content (FOUC).
+We rely on a standard behavior of React's streaming renderer, as documented on [react.dev](https://react.dev/reference/react-dom/components/link#special-rendering-behavior). React automatically detects `<link>` components rendered anywhere in the tree and ensures they are hoisted into the document's `<head>` in the final HTML stream. This allows us to inject links as they are discovered without blocking the stream, preventing any Flash of Unstyled Content (FOUC).
 
 This architecture is superior because it:
--   **Decouples Discovery from Injection:** The transform plugin only discovers entry points; it doesn't inject `<link>` tags.
--   **Centralizes Injection Logic:** All `<link>` tags are created and rendered in one place, making the process predictable and easier to debug.
--   **Maintains Environment Boundaries:** The virtual module continues to act as a clean bridge between the Vite/Node.js environment and the worker sandbox.
+-   **Is Unified and Simple:** It uses a single list (`scriptsToBeLoaded`) and a single injection point, removing the artificial distinction between "initial" and "dynamic" lookup logic.
+-   **Decouples Discovery from Injection:** The transform plugin only adds a side-effect; it doesn't need to know anything about CSS or manifests.
+-   **Centralizes Injection Logic:** All stylesheet resolution happens in one place at the very end of the process, making it predictable and easy to debug.

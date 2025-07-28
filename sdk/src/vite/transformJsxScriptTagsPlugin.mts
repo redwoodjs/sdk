@@ -21,6 +21,10 @@ export function getDocumentEntryPoints(docId: string): Set<string> {
   return documentEntryPoints.get(docId) ?? new Set();
 }
 
+export function getDocumentEntryPointsMap(): Map<string, Set<string>> {
+  return documentEntryPoints;
+}
+
 export function __test_only_resetDocumentEntryPoints() {
   documentEntryPoints.clear();
 }
