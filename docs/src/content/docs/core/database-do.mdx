@@ -59,7 +59,7 @@ const user = await db.selectFrom("users").selectAll().executeTakeFirst();
 
 Migrations run when `createDb()` is called. If that happens at the module level (shown in the examples), then:
 
-**Development**:. Runs when start your development server.
+**Development**:. Runs when you start your development server.
 
 **Production**: When you deploy with `npm run release`, the deployment process includes an initial request to your application, which triggers migration updates.
 
