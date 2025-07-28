@@ -2,7 +2,6 @@ import React from "react";
 import { isValidElementType } from "react-is";
 import { RequestInfo } from "../requestInfo/types";
 import type { Kysely } from "kysely";
-import type { ViteDevServer } from "vite";
 
 export type DocumentProps<T extends RequestInfo = RequestInfo> = T & {
   children: React.ReactNode;
@@ -20,9 +19,6 @@ export type RwContext = {
   ssr: boolean;
   layouts?: React.FC<LayoutProps<any>>[];
   databases: Map<string, Kysely<any>>;
-  discoveredStyleSheets: Set<string>;
-  projectRootDir: string;
-  viteDevServer?: ViteDevServer;
 };
 
 export type RouteMiddleware<T extends RequestInfo = RequestInfo> = (

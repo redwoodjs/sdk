@@ -18,7 +18,6 @@ export const renderRscThenableToHtmlStream = async ({
 }) => {
   const Component = () => {
     const node = (use(thenable) as { node: React.ReactNode }).node;
-    const discoveredStyles = [...requestInfo.rw.discoveredStyleSheets];
 
     // todo(justinvdm, 18 Jun 2025): We can build on this later to allow users
     // surface context. e.g:
@@ -37,14 +36,9 @@ export const renderRscThenableToHtmlStream = async ({
         <script
           nonce={requestInfo.rw.nonce}
           dangerouslySetInnerHTML={{
-            __html: `globalThis.__RWSDK_CONTEXT = ${JSON.stringify(
-              clientContext,
-            )}`,
+            __html: `globalThis.__RWSDK_CONTEXT = ${JSON.stringify(clientContext)}`,
           }}
         />
-        {discoveredStyles.map((href) => (
-          <link key={href} rel="stylesheet" href={href} />
-        ))}
         <div id="hydrate-root">{node}</div>
       </Document>
     );

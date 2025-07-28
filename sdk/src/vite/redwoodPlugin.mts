@@ -26,7 +26,6 @@ import { prismaPlugin } from "./prismaPlugin.mjs";
 import { ssrBridgePlugin } from "./ssrBridgePlugin.mjs";
 import { hasPkgScript } from "../lib/hasPkgScript.mjs";
 import { devServerTimingPlugin } from "./devServerTimingPlugin.mjs";
-import { virtualStylesheetPlugin } from "./virtualStylesheetPlugin.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -99,7 +98,6 @@ export const redwoodPlugin = async (
   }
 
   return [
-    virtualStylesheetPlugin(),
     devServerTimingPlugin(),
     devServerConstantPlugin(),
     configPlugin({
