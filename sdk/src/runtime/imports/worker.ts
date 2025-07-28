@@ -29,5 +29,7 @@ export const ssrWebpackRequire = memoize(async (id: string) => {
     return { [id]: () => null };
   }
 
+  requestInfo.rw.scriptsToBeLoaded.add(id);
+
   return baseSsrWebpackRequire(id);
 });

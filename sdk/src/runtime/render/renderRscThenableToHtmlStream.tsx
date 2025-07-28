@@ -2,6 +2,37 @@ import { use } from "react";
 import { renderToReadableStream } from "react-dom/server.edge";
 import { type DocumentProps } from "../lib/router";
 import { type RequestInfo } from "../requestInfo/types";
+import { getManifest } from "../lib/manifest";
+
+const findCssForModule = (
+  scriptId: string,
+  manifest: Record<string, { file: string; css?: string[] }>,
+) => {
+  const css = new Set<string>();
+  const visited = new Set<string>();
+
+  const inner = (id: string) => {
+    if (visited.has(id)) {
+      return;
+    }
+    visited.add(id);
+
+    const entry = manifest[id];
+    if (!entry) {
+      return;
+    }
+
+    if (entry.css) {
+      for (const href of entry.css) {
+        css.add(href);
+      }
+    }
+  };
+
+  inner(scriptId);
+
+  return Array.from(css);
+};
 
 export const renderRscThenableToHtmlStream = async ({
   thenable,
@@ -18,6 +49,15 @@ export const renderRscThenableToHtmlStream = async ({
 }) => {
   const Component = () => {
     const node = (use(thenable) as { node: React.ReactNode }).node;
+    const manifest = use(getManifest());
+    const allStylesheets = new Set<string>();
+
+    for (const scriptId of requestInfo.rw.scriptsToBeLoaded) {
+      const css = findCssForModule(scriptId, manifest);
+      for (const href of css) {
+        allStylesheets.add(href);
+      }
+    }
 
     // todo(justinvdm, 18 Jun 2025): We can build on this later to allow users
     // surface context. e.g:
@@ -33,10 +73,15 @@ export const renderRscThenableToHtmlStream = async ({
 
     return (
       <Document {...requestInfo}>
+        {Array.from(allStylesheets).map((href) => (
+          <link key={href} rel="stylesheet" href={href} />
+        ))}
         <script
           nonce={requestInfo.rw.nonce}
           dangerouslySetInnerHTML={{
-            __html: `globalThis.__RWSDK_CONTEXT = ${JSON.stringify(clientContext)}`,
+            __html: `globalThis.__RWSDK_CONTEXT = ${JSON.stringify(
+              clientContext,
+            )}`,
           }}
         />
         <div id="hydrate-root">{node}</div>

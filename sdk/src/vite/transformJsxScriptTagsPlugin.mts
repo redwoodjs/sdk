@@ -44,6 +44,7 @@ function hasJsxFunctions(text: string): boolean {
 function transformScriptImports(
   scriptContent: string,
   manifest: Record<string, any>,
+  needsRequestInfoImportRef: { value: boolean },
 ): { content: string | undefined; hasChanges: boolean } {
   const scriptProject = new Project({ useInMemoryFileSystem: true });
 
@@ -76,6 +77,12 @@ function transformScriptImports(
 
           if (args.length > 0 && Node.isStringLiteral(args[0])) {
             const importPath = args[0].getLiteralValue();
+
+            if (importPath.startsWith("/src/client.tsx")) {
+              needsRequestInfoImportRef.value = true;
+              hasChanges = true;
+              scriptContent = `requestInfo.rw.scriptsToBeLoaded.add("${importPath}");\n${scriptContent}`;
+            }
 
             if (importPath.startsWith("/")) {
               const path = importPath.slice(1); // Remove leading slash
@@ -124,7 +131,7 @@ export async function transformJsxScriptTagsCode(
   const sourceFile = project.createSourceFile("temp.tsx", code);
 
   let hasModifications = false;
-  let needsRequestInfoImport = false;
+  const needsRequestInfoImportRef = { value: false };
 
   // Check for existing imports up front
   let hasRequestInfoImport = false;
@@ -216,6 +223,23 @@ export async function transformJsxScriptTagsCode(
                   Node.isNoSubstitutionTemplateLiteral(initializer)
                 ) {
                   const srcValue = initializer.getLiteralValue();
+
+                  if (srcValue.startsWith("/src/client.tsx")) {
+                    needsRequestInfoImportRef.value = true;
+                    hasModifications = true;
+
+                    const callExpression = prop.getFirstAncestorByKindOrThrow(
+                      SyntaxKind.CallExpression,
+                    );
+
+                    callExpression.replaceWithText(
+                      `[
+                        (requestInfo.rw.scriptsToBeLoaded.add("${srcValue}")),
+                        ${callExpression.getText()}
+                      ]`,
+                    );
+                  }
+
                   if (srcValue.startsWith("/") && manifest[srcValue.slice(1)]) {
                     const path = srcValue.slice(1); // Remove leading slash
                     const transformedSrc = manifest[path].file;
@@ -252,7 +276,11 @@ export async function transformJsxScriptTagsCode(
 
                 // Transform import statements in script content using ts-morph
                 const { content: transformedContent, hasChanges } =
-                  transformScriptImports(scriptContent, manifest);
+                  transformScriptImports(
+                    scriptContent,
+                    manifest,
+                    needsRequestInfoImportRef,
+                  );
 
                 if (hasChanges && transformedContent) {
                   // Get the raw text with quotes to determine the exact format
@@ -310,7 +338,7 @@ export async function transformJsxScriptTagsCode(
             });
 
             if (!hasRequestInfoImport) {
-              needsRequestInfoImport = true;
+              needsRequestInfoImportRef.value = true;
             }
 
             hasModifications = true;
@@ -361,7 +389,7 @@ export async function transformJsxScriptTagsCode(
     });
 
   // Add requestInfo import if needed and not already imported
-  if (needsRequestInfoImport && hasModifications) {
+  if (needsRequestInfoImportRef.value && hasModifications) {
     if (sdkWorkerImportDecl) {
       // Module is imported but need to add requestInfo
       if (!hasRequestInfoImport) {
