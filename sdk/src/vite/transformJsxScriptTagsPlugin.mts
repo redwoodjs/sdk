@@ -10,7 +10,7 @@ import {
 import { type Plugin, type ResolvedConfig, type ViteDevServer } from "vite";
 import { readFile } from "node:fs/promises";
 import { pathExists } from "fs-extra";
-import { findStylesheetsForEntryPoint } from "./stylesheetDiscovery.mjs";
+import { findStylesheetsInGraph } from "./stylesheetDiscovery.mjs";
 import debug from "debug";
 
 const log = debug("rwsdk:vite:transform-jsx-script-tags");
@@ -162,7 +162,7 @@ async function injectStylesheetLinks(
   entryPoints: Set<string>,
   projectRootDir: string,
   viteDevServer: ViteDevServer | undefined,
-  getStylesheetsForEntryPoint: typeof findStylesheetsForEntryPoint,
+  getStylesheetsForEntryPoint: typeof findStylesheetsInGraph,
 ): Promise<boolean> {
   if (entryPoints.size === 0) {
     log("[%s] No entry points found, skipping stylesheet injection", id);
@@ -424,7 +424,7 @@ export async function transformJsxScriptTagsCode(
   manifest: Record<string, any> = {},
   projectRootDir: string,
   viteDevServer: ViteDevServer | undefined,
-  getStylesheetsForEntryPoint = findStylesheetsForEntryPoint,
+  getStylesheetsForEntryPoint = findStylesheetsInGraph,
 ) {
   // context(justinvdm, 15 Jun 2025): Optimization to exit early
   // to avoidunnecessary ts-morph parsing
@@ -576,6 +576,7 @@ export const transformJsxScriptTagsPlugin = ({
         manifest,
         config.root,
         viteDevServer,
+        findStylesheetsInGraph,
       );
     },
   };

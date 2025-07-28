@@ -1,6 +1,10 @@
 import type { Manifest, ModuleNode, ViteDevServer } from "vite";
 import { extname, join } from "node:path";
 import { readFile } from "node:fs/promises";
+import { pathExists } from "fs-extra";
+import debug from "debug";
+
+const log = debug("rwsdk:vite:stylesheet-discovery");
 
 const CSS_LANGS = [
   ".css",
@@ -24,7 +28,13 @@ async function getViteManifest(
     "manifest.json",
   );
 
+  if (!(await pathExists(manifestPath))) {
+    log("Vite manifest not found at %s", manifestPath);
+    return undefined;
+  }
+
   try {
+    log("Reading Vite manifest from %s", manifestPath);
     return JSON.parse(await readFile(manifestPath, "utf-8"));
   } catch (e) {
     console.error(`Could not load Vite manifest at ${manifestPath}`, e);
@@ -32,7 +42,7 @@ async function getViteManifest(
   }
 }
 
-function getCssFromModule(
+function getCssFromModuleGraph(
   moduleId: string,
   viteDevServer: ViteDevServer,
 ): Set<string> {
@@ -96,14 +106,14 @@ function getCssFromManifest(moduleId: string, manifest: Manifest): Set<string> {
   return css;
 }
 
-export async function findStylesheetsForEntryPoint(
+export async function findStylesheetsInGraph(
   moduleId: string,
   projectRootDir: string,
   viteDevServer?: ViteDevServer,
 ): Promise<Set<string>> {
   if (viteDevServer) {
     await viteDevServer.environments.client.transformRequest(moduleId);
-    return getCssFromModule(moduleId, viteDevServer);
+    return getCssFromModuleGraph(moduleId, viteDevServer);
   } else {
     const manifest = await getViteManifest(projectRootDir);
 

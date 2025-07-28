@@ -25,29 +25,32 @@ Beyond the timing issue, a second fundamental challenge is the environment bound
 
 This sandbox makes it impossible for the runtime code inside the worker to directly look up a module in the Vite dev server's graph or read a manifest file from the disk. Any solution must respect this boundary and establish a clean communication channel between the two environments.
 
-## The Solution: A Virtual Module Bridge
+## The Solution: A Unified Runtime Injection Model
 
-The solution is a unified system that uses a **virtual module** to create a clean bridge between the Vite/Node.js environment and the worker sandbox. This approach solves both the timing problem and the environment mismatch by hooking into the RSC rendering lifecycle to discover stylesheet dependencies precisely when they are needed, using an environment-aware mechanism.
+The solution is a two-phase discovery process that feeds a single, unified runtime injection mechanism. It uses a Vite plugin to collect information at build-time and a virtual module to expose that information to the runtime, ensuring all `<link>` tags are injected in one place, at the right time. This avoids the complexity and brittleness of having a build-time plugin directly manipulate the `Document`'s JSX.
 
-### 1. Central Hook: The RSC Renderer Integration
+### Phase 1 (Build-Time): Entry Point Mapping
 
-The core of this architecture is an integration with the React renderer itself. When React processes the RSC stream on the server, it needs to resolve the client components it encounters. We provide it with a custom function for this resolution (via `__webpack_require__`). This function serves as the perfect hook, as it is called by React at the exact moment a client component is identified, giving us its module ID.
+The first phase solves the problem of discovering the static client entry point (e.g., `<script src="/src/client.tsx">`) without giving the build-time plugin the messy job of injecting code.
 
-### 2. On-Demand Stylesheet Discovery via a Virtual Module
+Our `transformJsxScriptTagsPlugin` is simplified to a "mapper". Its only responsibility is to:
+1.  Scan `Document.tsx` files for `<script>` tags that point to client entry points.
+2.  Generate a mapping: `{ 'path/to/Document.tsx': ['/src/client.tsx'] }`.
+3.  This mapping is then made available to our `virtual:stylesheet-lookup` plugin.
 
-To bridge the environment gap, we use a custom Vite plugin that provides a virtual module (e.g., `virtual:stylesheet-lookup`). When the worker needs to find stylesheets for a component, it imports a function from this virtual module. The plugin's `load` hook, which runs in the Node.js environment, is responsible for providing the code for this module.
+### Phase 2 (Runtime): Two-Stage Stylesheet Discovery
 
-This `load` hook is the core of the bridge. It generates a different implementation for the module depending on the context:
+At runtime, the worker uses the `virtual:stylesheet-lookup` module to discover all necessary CSS. To manage this process, the framework creates a temporary context object for each incoming HTTP request. This object holds data relevant only to that single request, ensuring that state is properly isolated between concurrent users. A `Set<string>` named `discoveredStyleSheets` is attached to this context to collect all unique stylesheet URLs as they are found.
 
--   **In Development**: The plugin's `load` hook generates a module that exports a `findStylesheetsForEntryPoint` function. This generated function uses `fetch` to make a network request back to a special endpoint on the Vite dev server (e.g., `/__rws_stylesheets`). This endpoint, also exposed by our plugin, has access to the dev server instance and can perform the module graph traversal on behalf of the worker.
+This collection process happens in two stages:
 
--   **In Production**: During a build, the plugin's `load` hook reads the `dist/client/.vite/manifest.json`. It then generates a module string that hardcodes the relevant parts of the manifest into the exported `findStylesheetsForEntryPoint` function. This allows the worker to perform the lookup at runtime using the embedded manifest data, with no need for file system access.
+1.  **Initial Stylesheet Lookup:** Before the RSC render stream begins, the worker identifies the `Document` component being used for the current request. It calls a function like `getInitialStylesheets(documentModuleId)` from the virtual module. The virtual module uses the pre-computed map from Phase 1 to find the static entry points and their corresponding CSS. These are added to the per-request `discoveredStyleSheets` set.
 
-This approach cleanly separates concerns. All Node.js- and Vite-specific logic lives within the plugin, running in the Node.js environment. The worker runtime remains completely isolated in its sandbox, interacting with the system through a clean, well-defined API provided by the virtual module.
+2.  **Dynamic Stylesheet Lookup (RSC Islands):** As the RSC stream renders, our `__webpack_require__` hook is called for any dynamically loaded client components. This hook *also* calls a function on the virtual module to find the stylesheets for that specific component island. These are also added to the same per-request `discoveredStyleSheets` set.
 
-### 3. Injecting the Stylesheets via React Suspense
+### Phase 3 (Runtime): Unified Injection via React Suspense
 
-Discovered stylesheet URLs are collected in a request-scoped `Set` to prevent duplicates. The final injection is orchestrated by a component that uses React Suspense to wait for the RSC stream to be fully processed.
+This is the final, unified step. The component that wraps the RSC stream (`RscApp` in our conceptual example) works exactly as before. It uses React Suspense (`use(thenable)`) to wait for the entire stream to be processed. Once resolved, it takes the **complete** set of stylesheets—both initial and dynamic—from the per-request `discoveredStyleSheets` set and renders them as `<link>` tags.
 
 Here is a conceptual example of how it works inside our `renderRscThenableToHtmlStream` function:
 
@@ -73,6 +76,11 @@ const RscApp = ({ thenable, requestInfo }) => {
 };
 ```
 
-This pattern elegantly solves the timing problem. We don't need to know when the stream is "done"; React tells us by resolving the `thenable`.
+This pattern solves the timing problem. We don't need to know when the stream is "done"; React tells us by resolving the `thenable`.
 
 We then rely on a standard behavior of React's streaming renderer. As documented on [react.dev](https://react.dev/reference/react-dom/components/link#special-rendering-behavior), React automatically detects `<link>` components rendered anywhere in the tree and ensures they are hoisted into the document's `<head>` in the final HTML stream. This allows us to inject links as they are discovered without blocking the stream, preventing any Flash of Unstyled Content (FOUC).
+
+This architecture is superior because it:
+-   **Decouples Discovery from Injection:** The transform plugin only discovers entry points; it doesn't inject `<link>` tags.
+-   **Centralizes Injection Logic:** All `<link>` tags are created and rendered in one place, making the process predictable and easier to debug.
+-   **Maintains Environment Boundaries:** The virtual module continues to act as a clean bridge between the Vite/Node.js environment and the worker sandbox.
