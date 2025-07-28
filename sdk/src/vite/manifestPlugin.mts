@@ -1,5 +1,6 @@
 import { readFile } from "node:fs/promises";
 import { type Plugin, type ViteDevServer } from "vite";
+import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 
 const virtualModuleId = "virtual:manifest.js";
 const resolvedVirtualModuleId = "\0" + virtualModuleId;
@@ -68,10 +69,11 @@ export const manifestPlugin = ({
                 const css = new Set<string>();
                 getCssForModule(server, module.id!, css);
 
-                manifest[module.file.replace(server.config.root, "")] = {
-                  file: module.url,
-                  css: Array.from(css),
-                };
+                manifest[normalizeModulePath(module.file, server.config.root)] =
+                  {
+                    file: module.url,
+                    css: Array.from(css),
+                  };
               }
             }
           }
