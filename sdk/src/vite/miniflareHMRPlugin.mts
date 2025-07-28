@@ -320,7 +320,7 @@ export const miniflareHMRPlugin = (givenOptions: {
   },
 ];
 
-function dumpFullModuleGraph(
+export function dumpFullModuleGraph(
   server: ViteDevServer,
   environment: string,
   { includeDisconnected = true } = {},

@@ -562,8 +562,6 @@ export const transformJsxScriptTagsPlugin = ({
         return;
       }
 
-      log("Running transform-jsx-script-tags plugin for %s", id);
-
       const manifest = isBuild ? await readManifest(manifestPath) : {};
       const context: StylesheetContext = {
         isBuild,

@@ -10,6 +10,7 @@ import type {
   ModuleNode,
 } from "vite";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
+import { dumpFullModuleGraph } from "./miniflareHMRPlugin.mjs";
 
 const log = debug("rwsdk:vite:js-entry-points-to-stylesheets");
 
@@ -39,6 +40,8 @@ const collectStylesheetsForJsEntryPoint = async (
 
   if (!entryModule) {
     log(`Could not find module for entry point: ${entryPointUrl}`);
+    process.env.VERBOSE &&
+      log("Module graph:\n\n", dumpFullModuleGraph(server, "client"));
     return [];
   }
 
