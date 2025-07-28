@@ -16,20 +16,34 @@ The core challenges are:
 
 In short, we need a way to inject stylesheet links into the `<head>` of the document *as they are discovered on the server*, without blocking the stream, and in a way that aligns with React's rendering lifecycle. The initial approach of trying to find all stylesheets before rendering the `Document` is not viable in this dynamic, streaming environment.
 
-## The Solution: Dynamic, Renderer-Aware Stylesheet Injection
+### The Environment Mismatch: Worker vs. Node.js
 
-The solution is a unified system that hooks into the RSC rendering lifecycle to discover stylesheet dependencies precisely when they are needed. This approach abandons a static, pre-built lookup map in favor of on-demand discovery and leverages React's streaming and Suspense capabilities to avoid blocking the render.
+Beyond the timing issue, a second fundamental challenge is the environment boundary between the Vite dev server and the worker runtime.
+
+-   The Vite dev server runs in a Node.js process, with full access to the file system and Vite's internal module graphs.
+-   The worker, however, runs in a restrictive sandbox environment (Cloudflare Workers or Miniflare locally) that intentionally lacks file system access and cannot directly interact with the Vite server's memory or internals.
+
+This sandbox makes it impossible for the runtime code inside the worker to directly look up a module in the Vite dev server's graph or read a manifest file from the disk. Any solution must respect this boundary and establish a clean communication channel between the two environments.
+
+## The Solution: A Virtual Module Bridge
+
+The solution is a unified system that uses a **virtual module** to create a clean bridge between the Vite/Node.js environment and the worker sandbox. This approach solves both the timing problem and the environment mismatch by hooking into the RSC rendering lifecycle to discover stylesheet dependencies precisely when they are needed, using an environment-aware mechanism.
 
 ### 1. Central Hook: The RSC Renderer Integration
 
 The core of this architecture is an integration with the React renderer itself. When React processes the RSC stream on the server, it needs to resolve the client components it encounters. We provide it with a custom function for this resolution (via `__webpack_require__`). This function serves as the perfect hook, as it is called by React at the exact moment a client component is identified, giving us its module ID.
 
-### 2. On-Demand Stylesheet Discovery
+### 2. On-Demand Stylesheet Discovery via a Virtual Module
 
-A single, unified utility is responsible for finding all stylesheet dependencies for a given JavaScript module ID. It operates in two modes:
+To bridge the environment gap, we use a custom Vite plugin that provides a virtual module (e.g., `virtual:stylesheet-lookup`). When the worker needs to find stylesheets for a component, it imports a function from this virtual module. The plugin's `load` hook, which runs in the Node.js environment, is responsible for providing the code for this module.
 
--   **In Production**: For builds, the utility consults the Vite build manifest (`manifest.json`). This manifest contains a definitive mapping of every client component entry point to its final, bundled CSS files. This lookup is fast and efficient.
--   **In Development**: During development, a module's dependency graph may not yet exist in Vite's module graph when our hook is called. To solve this, we use the Vite Dev Server API directly. By calling `viteDevServer.transformRequest(moduleId)`, we instruct Vite to process the file immediately. This populates its module graph for that specific component and all of its imports. We can then traverse this newly-available graph to find all imported stylesheets.
+This `load` hook is the core of the bridge. It generates a different implementation for the module depending on the context:
+
+-   **In Development**: The plugin's `load` hook generates a module that exports a `findStylesheetsForEntryPoint` function. This generated function uses `fetch` to make a network request back to a special endpoint on the Vite dev server (e.g., `/__rws_stylesheets`). This endpoint, also exposed by our plugin, has access to the dev server instance and can perform the module graph traversal on behalf of the worker.
+
+-   **In Production**: During a build, the plugin's `load` hook reads the `dist/client/.vite/manifest.json`. It then generates a module string that hardcodes the relevant parts of the manifest into the exported `findStylesheetsForEntryPoint` function. This allows the worker to perform the lookup at runtime using the embedded manifest data, with no need for file system access.
+
+This approach cleanly separates concerns. All Node.js- and Vite-specific logic lives within the plugin, running in the Node.js environment. The worker runtime remains completely isolated in its sandbox, interacting with the system through a clean, well-defined API provided by the virtual module.
 
 ### 3. Injecting the Stylesheets via React Suspense
 
