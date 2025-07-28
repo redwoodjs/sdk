@@ -10,5 +10,5 @@ alwaysApply: true
   - Code for the vite plugin is situated at `<repo_dir>/sdk/src/vite/`
 - When importing from `.mts` source files, use the `.mjs` extension in the import path. TypeScript will handle the resolution. **Note** the real file extensions on disk will be `.mts` - it is only for TypeScript's benefit that the import specifiers are `.mjs` in imports, even though the file extensions of the actual files are in fact `.mts`.
 - For context on contribution guidelines and dev workflow commands, refer to CONTRIBUTING.md in the repo root. 
-- Avoid mocking (e.g. `vi.mock()`), prefer depending injection, see CONTRIBUTING.md for more context
+- In tests, avoid mocking (e.g. `vi.mock()`), prefer depending injection, see CONTRIBUTING.md for more context
 - For context on how the system works, refer to the architecture documentation located in the `docs/architecture` directory.
