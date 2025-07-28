@@ -1,5 +1,9 @@
 import { vi, test, expect, describe, beforeEach } from "vitest";
-import { transformJsxScriptTagsCode } from "./transformJsxScriptTagsPlugin.mjs";
+import {
+  transformJsxScriptTagsCode,
+  getDocumentEntryPoints,
+  __test_only_resetDocumentEntryPoints,
+} from "./transformJsxScriptTagsPlugin.mjs";
 import type { ViteDevServer } from "vite";
 
 describe("transformJsxScriptTagsCode", () => {
@@ -13,6 +17,10 @@ describe("transformJsxScriptTagsCode", () => {
     "src/other.ts": { file: "assets/other-a1b2c3d4.js" },
     "src/more.css": { file: "assets/more-i9j0k1l2.css" },
   };
+
+  beforeEach(() => {
+    __test_only_resetDocumentEntryPoints();
+  });
 
   test("transforms script src attributes in JSX", async () => {
     const code = `
@@ -32,58 +40,24 @@ describe("transformJsxScriptTagsCode", () => {
     expect(result!.code).toMatchSnapshot();
   });
 
-  test("injects stylesheets for src entry point", async () => {
+  test("finds and stores entry points from script tags", async () => {
     const code = `
       jsx("script", {
         src: "/src/client.tsx",
         type: "module"
       })
     `;
-    const getStylesheetsForEntryPoint = async (
-      entryPoint: string,
-    ): Promise<Set<string>> => {
-      if (entryPoint === "/src/client.tsx") {
-        return new Set(["/src/styles.css"]);
-      }
-      return new Set();
-    };
-    const result = await transformJsxScriptTagsCode(
-      "test.tsx",
+    const docId = "test-doc.tsx";
+    await transformJsxScriptTagsCode(
+      docId,
       code,
       mockManifest,
       projectRootDir,
       undefined,
-      getStylesheetsForEntryPoint,
     );
-    expect(result).toBeDefined();
-    expect(result!.code).toMatchSnapshot();
-  });
 
-  test("injects stylesheets for import() entry point", async () => {
-    const code = `
-      jsx("script", {
-        children: "import('/src/entry.js')",
-        type: "module"
-      })
-    `;
-    const getStylesheetsForEntryPoint = async (
-      entryPoint: string,
-    ): Promise<Set<string>> => {
-      if (entryPoint === "/src/entry.js") {
-        return new Set(["/src/styles.css", "/src/more.css"]);
-      }
-      return new Set();
-    };
-    const result = await transformJsxScriptTagsCode(
-      "test.tsx",
-      code,
-      mockManifest,
-      projectRootDir,
-      undefined,
-      getStylesheetsForEntryPoint,
-    );
-    expect(result).toBeDefined();
-    expect(result!.code).toMatchSnapshot();
+    const entryPoints = getDocumentEntryPoints(docId);
+    expect(entryPoints).toEqual(new Set(["/src/client.tsx"]));
   });
 
   test("transforms inline scripts with dynamic imports", async () => {

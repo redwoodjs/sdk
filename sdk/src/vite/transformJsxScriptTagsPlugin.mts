@@ -15,6 +15,16 @@ import debug from "debug";
 
 const log = debug("rwsdk:vite:transform-jsx-script-tags");
 
+const documentEntryPoints = new Map<string, Set<string>>();
+
+export function getDocumentEntryPoints(docId: string): Set<string> {
+  return documentEntryPoints.get(docId) ?? new Set();
+}
+
+export function __test_only_resetDocumentEntryPoints() {
+  documentEntryPoints.clear();
+}
+
 let manifestCache: Record<string, { file: string }> | undefined;
 
 const readManifest = async (
@@ -154,74 +164,6 @@ function getJsxTagName(callExpr: CallExpression): string | null {
   if (!Node.isStringLiteral(elementType)) return null;
 
   return elementType.getLiteralValue();
-}
-
-async function injectStylesheetLinks(
-  id: string,
-  sourceFile: SourceFile,
-  entryPoints: Set<string>,
-  projectRootDir: string,
-  viteDevServer: ViteDevServer | undefined,
-  getStylesheetsForEntryPoint: typeof findStylesheetsInGraph,
-): Promise<boolean> {
-  if (entryPoints.size === 0) {
-    log("[%s] No entry points found, skipping stylesheet injection", id);
-    return false;
-  }
-  log(
-    "[%s] Attempting to inject stylesheets for entry points: %o",
-    id,
-    entryPoints,
-  );
-
-  const allStylesheets = new Set<string>();
-
-  for (const entryPoint of entryPoints) {
-    const stylesheets = await getStylesheetsForEntryPoint(
-      entryPoint,
-      projectRootDir,
-      viteDevServer,
-    );
-    log(
-      "[%s] Found %d stylesheet(s) for entry point '%s': %o",
-      id,
-      stylesheets.size,
-      entryPoint,
-      stylesheets,
-    );
-    for (const stylesheet of stylesheets) {
-      allStylesheets.add(stylesheet);
-    }
-  }
-
-  if (allStylesheets.size === 0) {
-    log("[%s] No stylesheets to inject after processing all entry points", id);
-    return false;
-  }
-
-  const firstScript = sourceFile
-    .getDescendantsOfKind(SyntaxKind.CallExpression)
-    .find((callExpr) => {
-      if (!isJsxCall(callExpr)) {
-        return false;
-      }
-      const tagName = getJsxTagName(callExpr);
-      return tagName === "script";
-    });
-
-  if (!firstScript) {
-    return false;
-  }
-
-  const linkElements = Array.from(allStylesheets).map(
-    (href) => `jsx("link", { rel: "stylesheet", href: "${href}" })`,
-  );
-  const scriptElement = firstScript.getText();
-  const replacement = `[${linkElements.join(", ")}, ${scriptElement}]`;
-
-  log("[%s] Injecting %d stylesheet link(s)", id, linkElements.length);
-  firstScript.replaceWithText(replacement);
-  return true;
 }
 
 function findRwsdkWorkerImport(sourceFile: SourceFile): {
@@ -424,7 +366,6 @@ export async function transformJsxScriptTagsCode(
   manifest: Record<string, any> = {},
   projectRootDir: string,
   viteDevServer: ViteDevServer | undefined,
-  getStylesheetsForEntryPoint = findStylesheetsInGraph,
 ) {
   // context(justinvdm, 15 Jun 2025): Optimization to exit early
   // to avoidunnecessary ts-morph parsing
@@ -491,6 +432,10 @@ export async function transformJsxScriptTagsCode(
     allEntryPoints,
   );
 
+  if (allEntryPoints.size > 0) {
+    documentEntryPoints.set(id, allEntryPoints);
+  }
+
   let needsRequestInfoImport = false;
   if (scriptsNeedingNonce.length > 0) {
     log(
@@ -503,19 +448,6 @@ export async function transformJsxScriptTagsCode(
     if (!hasRequestInfoImport) {
       needsRequestInfoImport = true;
     }
-  }
-
-  const stylesheetsInjected = await injectStylesheetLinks(
-    id,
-    sourceFile,
-    allEntryPoints,
-    projectRootDir,
-    viteDevServer,
-    getStylesheetsForEntryPoint,
-  );
-
-  if (stylesheetsInjected) {
-    hasModifications = true;
   }
 
   // Add requestInfo import if needed and not already imported
@@ -568,6 +500,12 @@ export const transformJsxScriptTagsPlugin = ({
         return;
       }
 
+      // We are only interested in Document files, which are likely to contain
+      // script tags. We use a heuristic to identify them.
+      if (!/Document\.(t|j)sx?$/.test(id)) {
+        return;
+      }
+
       const manifest = isBuild ? await readManifest(manifestPath) : {};
 
       return transformJsxScriptTagsCode(
@@ -576,7 +514,6 @@ export const transformJsxScriptTagsPlugin = ({
         manifest,
         config.root,
         viteDevServer,
-        findStylesheetsInGraph,
       );
     },
   };
