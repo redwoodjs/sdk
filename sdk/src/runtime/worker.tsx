@@ -68,7 +68,6 @@ export const defineApp = <
           rscPayload: true,
           ssr: true,
           databases: new Map(),
-          discoveredStyleSheets: new Set<string>(),
         };
 
         const outerRequestInfo: RequestInfo<any, T["ctx"]> = {

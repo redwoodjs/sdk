@@ -10,9 +10,11 @@ import {
 import { type Plugin, type ResolvedConfig } from "vite";
 import { readFile } from "node:fs/promises";
 import { pathExists } from "fs-extra";
-import { findStylesheetsForEntryPoint } from "./stylesheetDiscovery.mjs";
+import {
+  getStylesheetsForEntryPoint as realGetStylesheetsForEntryPoint,
+  type StylesheetContext,
+} from "./jsEntryPointsToStylesheetsPlugin.mjs";
 import debug from "debug";
-import { devServer } from "./devServer.mjs";
 
 const log = debug("rwsdk:vite:transform-jsx-script-tags");
 
@@ -161,7 +163,11 @@ async function injectStylesheetLinks(
   id: string,
   sourceFile: SourceFile,
   entryPoints: Set<string>,
-  projectRootDir: string,
+  context: StylesheetContext,
+  getStylesheetsForEntryPoint: (
+    entryPoint: string,
+    context: StylesheetContext,
+  ) => Promise<string[]>,
 ): Promise<boolean> {
   if (entryPoints.size === 0) {
     log("[%s] No entry points found, skipping stylesheet injection", id);
@@ -176,11 +182,7 @@ async function injectStylesheetLinks(
   const allStylesheets = new Set<string>();
 
   for (const entryPoint of entryPoints) {
-    const stylesheets = await findStylesheetsForEntryPoint(
-      entryPoint,
-      projectRootDir,
-      devServer,
-    );
+    const stylesheets = await getStylesheetsForEntryPoint(entryPoint, context);
     log(
       "[%s] Found %d stylesheet(s) for entry point '%s': %o",
       id,
@@ -421,7 +423,8 @@ export async function transformJsxScriptTagsCode(
   id: string,
   code: string,
   manifest: Record<string, any> = {},
-  projectRootDir: string,
+  context: StylesheetContext,
+  getStylesheetsForEntryPoint = realGetStylesheetsForEntryPoint,
 ) {
   // context(justinvdm, 15 Jun 2025): Optimization to exit early
   // to avoidunnecessary ts-morph parsing
@@ -506,7 +509,8 @@ export async function transformJsxScriptTagsCode(
     id,
     sourceFile,
     allEntryPoints,
-    projectRootDir,
+    context,
+    getStylesheetsForEntryPoint,
   );
 
   if (stylesheetsInjected) {
@@ -559,8 +563,13 @@ export const transformJsxScriptTagsPlugin = ({
       }
 
       const manifest = isBuild ? await readManifest(manifestPath) : {};
+      const context: StylesheetContext = {
+        isBuild,
+        projectRootDir: config.root,
+        buildOutDir: config.build.outDir,
+      };
 
-      return transformJsxScriptTagsCode(id, code, manifest, config.root);
+      return transformJsxScriptTagsCode(id, code, manifest, context);
     },
   };
 };
