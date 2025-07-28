@@ -1,5 +1,0 @@
----
-description: For context on how the system works, refer to the architecture documentation located in the `docs/architecture` directory.
-globs: ['**/*']
-alwaysApply: true
----

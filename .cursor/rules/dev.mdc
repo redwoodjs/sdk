@@ -1,7 +1,0 @@
----
-description:
-- For context on contribution guidelines and dev workflow commands, refer to CONTRIBUTING.md in the repo root. 
-- Note that the monorepo dir might share the same name as the package dir for the sdk. Any code written or changed for the sdk package should go underneath the `sdk/` subdirectory.
-globs: ['**/*']
-alwaysApply: true
----
