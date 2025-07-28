@@ -26,7 +26,6 @@ import { prismaPlugin } from "./prismaPlugin.mjs";
 import { ssrBridgePlugin } from "./ssrBridgePlugin.mjs";
 import { hasPkgScript } from "../lib/hasPkgScript.mjs";
 import { devServerTimingPlugin } from "./devServerTimingPlugin.mjs";
-import { jsEntryPointsToStylesheetsPlugin } from "./jsEntryPointsToStylesheetsPlugin.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -112,7 +111,6 @@ export const redwoodPlugin = async (
       serverFiles,
       projectRootDir,
     }),
-    jsEntryPointsToStylesheetsPlugin(),
     reactConditionsResolverPlugin(),
     tsconfigPaths({ root: projectRootDir }),
     shouldIncludeCloudflarePlugin

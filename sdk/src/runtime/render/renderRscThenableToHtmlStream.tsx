@@ -31,8 +31,13 @@ export const renderRscThenableToHtmlStream = async ({
       },
     };
 
+    const discoveredStyles = [...requestInfo.rw.discoveredStyleSheets];
+
     return (
       <Document {...requestInfo}>
+        {discoveredStyles.map((href) => (
+          <link key={href} rel="stylesheet" href={href} />
+        ))}
         <script
           nonce={requestInfo.rw.nonce}
           dangerouslySetInnerHTML={{

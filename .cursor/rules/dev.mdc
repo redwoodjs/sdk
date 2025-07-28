@@ -1,5 +1,7 @@
 ---
-description: For context on contribution guidelines and dev workflow commands, refer to CONTRIBUTING.md in the repo root.
+description:
+- For context on contribution guidelines and dev workflow commands, refer to CONTRIBUTING.md in the repo root.
+- Note the monorepo name and package name are the same - `sdk`. The `sdk` codebase is in the `sdk/` sub-directory
 globs: ['**/*']
 alwaysApply: true
 ---
