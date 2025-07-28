@@ -1,0 +1,59 @@
+import { type Plugin, type ViteDevServer } from "vite";
+
+const getCssForModule = (
+  server: ViteDevServer,
+  moduleId: string,
+  css: Set<string>,
+) => {
+  const moduleNode = server.moduleGraph.getModuleById(moduleId);
+
+  if (!moduleNode) {
+    return;
+  }
+
+  for (const importedModule of moduleNode.importedModules) {
+    if (importedModule.url.endsWith(".css")) {
+      css.add(importedModule.url);
+    }
+
+    getCssForModule(server, importedModule.id!, css);
+  }
+};
+
+export const devManifestPlugin = (): Plugin => {
+  return {
+    name: "rwsdk:dev-manifest",
+    configureServer(server) {
+      server.middlewares.use("/__rwsdk_manifest", async (req, res, next) => {
+        try {
+          const manifest: Record<string, { file: string; css: string[] }> = {};
+
+          for (const file of server.moduleGraph.fileToModulesMap.keys()) {
+            const modules = server.moduleGraph.getModulesByFile(file);
+
+            if (!modules) {
+              continue;
+            }
+
+            for (const module of modules) {
+              if (module.file) {
+                const css = new Set<string>();
+                getCssForModule(server, module.id!, css);
+
+                manifest[module.file.replace(server.config.root, "")] = {
+                  file: module.url,
+                  css: Array.from(css),
+                };
+              }
+            }
+          }
+
+          res.setHeader("Content-Type", "application/json");
+          res.end(JSON.stringify(manifest));
+        } catch (e) {
+          next(e);
+        }
+      });
+    },
+  };
+};

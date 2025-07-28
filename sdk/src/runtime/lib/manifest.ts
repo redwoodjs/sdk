@@ -6,7 +6,7 @@ export const getManifest = async () => {
   }
 
   if (import.meta.env.VITE_IS_DEV_SERVER) {
-    const res = await fetch("/.vite/manifest.json");
+    const res = await fetch("/__rwsdk_manifest");
     manifest = await res.json();
   } else {
     const { default: prodManifest } = await import(

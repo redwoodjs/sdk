@@ -27,6 +27,7 @@ import { ssrBridgePlugin } from "./ssrBridgePlugin.mjs";
 import { hasPkgScript } from "../lib/hasPkgScript.mjs";
 import { devServerTimingPlugin } from "./devServerTimingPlugin.mjs";
 import { manifestPlugin } from "./manifestPlugin.mjs";
+import { devManifestPlugin } from "./devManifestPlugin.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -161,6 +162,7 @@ export const redwoodPlugin = async (
         "manifest.json",
       ),
     }),
+    devManifestPlugin(),
     moveStaticAssetsPlugin({ rootDir: projectRootDir }),
     prismaPlugin({ projectRootDir }),
   ];
