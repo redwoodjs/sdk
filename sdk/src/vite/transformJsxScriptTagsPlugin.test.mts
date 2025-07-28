@@ -1,14 +1,11 @@
 import { vi, test, expect, describe, beforeEach } from "vitest";
 import { transformJsxScriptTagsCode } from "./transformJsxScriptTagsPlugin.mjs";
-import type { StylesheetContext } from "./jsEntryPointsToStylesheetsPlugin.mjs";
-
-const createMockContext = (isBuild: boolean): StylesheetContext => ({
-  isBuild,
-  projectRootDir: "/path/to/project",
-  buildOutDir: "dist",
-});
+import type { ViteDevServer } from "vite";
 
 describe("transformJsxScriptTagsCode", () => {
+  const projectRootDir = "/path/to/project";
+  const mockViteDevServer = {} as ViteDevServer;
+
   const mockManifest = {
     "src/client.tsx": { file: "assets/client-a1b2c3d4.js" },
     "src/entry.js": { file: "assets/entry-e5f6g7h8.js" },
@@ -28,7 +25,8 @@ describe("transformJsxScriptTagsCode", () => {
       "test.tsx",
       code,
       mockManifest,
-      createMockContext(true),
+      projectRootDir,
+      undefined,
     );
     expect(result).toBeDefined();
     expect(result!.code).toMatchSnapshot();
@@ -41,17 +39,20 @@ describe("transformJsxScriptTagsCode", () => {
         type: "module"
       })
     `;
-    const getStylesheetsForEntryPoint = async (entryPoint: string) => {
+    const getStylesheetsForEntryPoint = async (
+      entryPoint: string,
+    ): Promise<Set<string>> => {
       if (entryPoint === "/src/client.tsx") {
-        return ["/src/styles.css"];
+        return new Set(["/src/styles.css"]);
       }
-      return [];
+      return new Set();
     };
     const result = await transformJsxScriptTagsCode(
       "test.tsx",
       code,
       mockManifest,
-      createMockContext(true),
+      projectRootDir,
+      undefined,
       getStylesheetsForEntryPoint,
     );
     expect(result).toBeDefined();
@@ -65,17 +66,20 @@ describe("transformJsxScriptTagsCode", () => {
         type: "module"
       })
     `;
-    const getStylesheetsForEntryPoint = async (entryPoint: string) => {
+    const getStylesheetsForEntryPoint = async (
+      entryPoint: string,
+    ): Promise<Set<string>> => {
       if (entryPoint === "/src/entry.js") {
-        return ["/src/styles.css", "/src/more.css"];
+        return new Set(["/src/styles.css", "/src/more.css"]);
       }
-      return [];
+      return new Set();
     };
     const result = await transformJsxScriptTagsCode(
       "test.tsx",
       code,
       mockManifest,
-      createMockContext(true),
+      projectRootDir,
+      undefined,
       getStylesheetsForEntryPoint,
     );
     expect(result).toBeDefined();
@@ -93,7 +97,8 @@ describe("transformJsxScriptTagsCode", () => {
       "test.tsx",
       code,
       mockManifest,
-      createMockContext(true),
+      projectRootDir,
+      undefined,
     );
     expect(result).toBeDefined();
     expect(result!.code).toMatchSnapshot();
@@ -107,7 +112,8 @@ describe("transformJsxScriptTagsCode", () => {
       "test.tsx",
       code,
       mockManifest,
-      createMockContext(true),
+      projectRootDir,
+      undefined,
     );
     expect(result).toBeDefined();
     expect(result!.code).toMatchSnapshot();
@@ -131,7 +137,8 @@ describe("transformJsxScriptTagsCode", () => {
       "test.tsx",
       code,
       mockManifest,
-      createMockContext(true),
+      projectRootDir,
+      undefined,
     );
     expect(result).toBeDefined();
     expect(result!.code).toMatchSnapshot();
@@ -151,7 +158,8 @@ describe("transformJsxScriptTagsCode", () => {
       "test.tsx",
       code,
       mockManifest,
-      createMockContext(true),
+      projectRootDir,
+      undefined,
     );
     expect(result).toBeDefined();
     expect(result!.code).toMatchSnapshot();
@@ -169,7 +177,8 @@ describe("transformJsxScriptTagsCode", () => {
       "test.tsx",
       code,
       mockManifest,
-      createMockContext(true),
+      projectRootDir,
+      undefined,
     );
     expect(result).toBeDefined();
     expect(result!.code).toMatchSnapshot();
@@ -186,7 +195,8 @@ describe("transformJsxScriptTagsCode", () => {
       "test.tsx",
       code,
       mockManifest,
-      createMockContext(true),
+      projectRootDir,
+      undefined,
     );
     expect(result).toBeDefined();
     expect(result!.code).toMatchSnapshot();
@@ -218,7 +228,8 @@ describe("transformJsxScriptTagsCode", () => {
       "test.tsx",
       code,
       mockManifest,
-      createMockContext(true),
+      projectRootDir,
+      undefined,
     );
     expect(result).toBeDefined();
     expect(result!.code).toMatchSnapshot();
@@ -232,7 +243,8 @@ describe("transformJsxScriptTagsCode", () => {
       "test.tsx",
       code,
       mockManifest,
-      createMockContext(true),
+      projectRootDir,
+      undefined,
     );
     expect(result).toBeUndefined();
   });
@@ -248,7 +260,8 @@ describe("transformJsxScriptTagsCode", () => {
       "test.tsx",
       code,
       mockManifest,
-      createMockContext(true),
+      projectRootDir,
+      undefined,
     );
     expect(result).toBeDefined();
     expect(result!.code).toMatchSnapshot();
@@ -265,7 +278,8 @@ describe("transformJsxScriptTagsCode", () => {
       "test.tsx",
       code,
       {},
-      createMockContext(false),
+      projectRootDir,
+      mockViteDevServer,
     );
     expect(result).toBeDefined();
     expect(result!.code).toMatchSnapshot();
@@ -282,7 +296,8 @@ describe("transformJsxScriptTagsCode", () => {
       "test.tsx",
       code,
       {},
-      createMockContext(false),
+      projectRootDir,
+      mockViteDevServer,
     );
     expect(result).toBeDefined();
     expect(result!.code).toMatchSnapshot();
@@ -299,7 +314,8 @@ describe("transformJsxScriptTagsCode", () => {
       "test.tsx",
       code,
       {},
-      createMockContext(false),
+      projectRootDir,
+      mockViteDevServer,
     );
     expect(result).toBeUndefined();
   });
@@ -316,7 +332,8 @@ describe("transformJsxScriptTagsCode", () => {
       "test.tsx",
       code,
       {},
-      createMockContext(false),
+      projectRootDir,
+      mockViteDevServer,
     );
     expect(result).toBeUndefined();
   });
@@ -335,7 +352,8 @@ describe("transformJsxScriptTagsCode", () => {
       "test.tsx",
       code,
       {},
-      createMockContext(false),
+      projectRootDir,
+      mockViteDevServer,
     );
     expect(result).toBeDefined();
     expect(result!.code).toMatchSnapshot();
@@ -355,7 +373,8 @@ describe("transformJsxScriptTagsCode", () => {
       "test.tsx",
       code,
       {},
-      createMockContext(false),
+      projectRootDir,
+      mockViteDevServer,
     );
     expect(result).toBeDefined();
     expect(result!.code).toMatchSnapshot();
@@ -372,7 +391,8 @@ describe("transformJsxScriptTagsCode", () => {
       "test.tsx",
       code,
       {},
-      createMockContext(false),
+      projectRootDir,
+      mockViteDevServer,
     );
     expect(result).toBeDefined();
     expect(result!.code).toMatchSnapshot();

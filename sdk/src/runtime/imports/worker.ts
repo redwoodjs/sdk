@@ -1,6 +1,7 @@
 import memoize from "lodash/memoize";
-import { requestInfo } from "../requestInfo/worker";
+import { getRequestInfo } from "../requestInfo/worker";
 import { ssrWebpackRequire as baseSsrWebpackRequire } from "rwsdk/__ssr_bridge";
+import { findStylesheetsForEntryPoint } from "../../vite/stylesheetDiscovery.mjs";
 
 export const loadServerModule = memoize(async (id: string) => {
   const { useServerLookup } = await import(
@@ -25,8 +26,20 @@ export const getServerModuleExport = async (id: string) => {
 };
 
 export const ssrWebpackRequire = memoize(async (id: string) => {
+  const requestInfo = getRequestInfo();
+
   if (!requestInfo.rw.ssr) {
     return { [id]: () => null };
+  }
+
+  const discoveredStyles = await findStylesheetsForEntryPoint(
+    id,
+    requestInfo.rw.projectRootDir,
+    requestInfo.rw.viteDevServer,
+  );
+
+  for (const style of discoveredStyles) {
+    requestInfo.rw.discoveredStyleSheets.add(style);
   }
 
   return baseSsrWebpackRequire(id);
