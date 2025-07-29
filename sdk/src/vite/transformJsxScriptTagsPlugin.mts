@@ -409,7 +409,11 @@ export async function transformJsxScriptTagsCode(
   return;
 }
 
-export const transformJsxScriptTagsPlugin = (manifestPath: string): Plugin => {
+export const transformJsxScriptTagsPlugin = ({
+  manifestPath,
+}: {
+  manifestPath: string;
+}): Plugin => {
   let isBuild = false;
 
   return {
