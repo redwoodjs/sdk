@@ -1,6 +1,6 @@
 ---
 title: shadcn/ui
-description: A comprehensive guide to installing and configuring ShadCN UI components within Redwood SDK projects, with step-by-step instructions for proper integration with TailwindCSS v4.
+description: A comprehensive guide to installing and configuring ShadCN UI components within RedwoodSDK projects, with step-by-step instructions for proper integration with TailwindCSS v4.
 ---
 
 import { Aside, Steps, FileTree } from '@astrojs/starlight/components';
@@ -10,7 +10,9 @@ import { PackageManagers } from "starlight-package-managers";
 ## Installing shadcn/ui
 
 <Steps>
-1. Install shadcn/ui
+1. [Install TailwindCSS](/guides/frontend/tailwind).
+
+2. Install shadcn/ui
     <PackageManagers
       type="dlx"
       pkg="shadcn@latest"
@@ -22,9 +24,9 @@ import { PackageManagers } from "starlight-package-managers";
 
     This command will create a `components.json` file in the root of your project. It contains all the configuration for our shadcn/ui components.
 
-    If you want to modify the default paths so that it will put our components in the `src/app/components/ui` folder.
-
-    ```json title="components.json" startLineNumber={12}
+    If you want to match RedwoodSDK conventions, add the following aliases to the `components.json` file: 
+    
+    ``` json title="components.json" startLineNumber={12}
     ...
     "aliases": {
       "components": "@/app/components",
@@ -36,10 +38,10 @@ import { PackageManagers } from "starlight-package-managers";
     ```
 
     <Aside type="note" title="shadcn/ui Organization">
-    You'll notice that the `lib` directory is directly inside the `app` directory. You may have to manually move the folder or adjust the import paths when you start adding and using shadcn/ui components.
-    </Aside>
+    You’ll notice that in our configuration, the `lib` directory is directly inside the `app` directory. The shadcn installer may create `lib` in the `src` directory (or `@`). You'll need to manually move the folder to the `app` directory.
 
-2. [Install TailwindCSS](/guides/frontend/tailwind).
+    Installing components through the shadcn/ui CLI should use the correct paths. However, if you're copying and pasting code from the shadcn/ui website, you may need to update the import paths.
+    </Aside>
 
 3. Now, you should be able to add components:
     You can add components in bulk by running:
@@ -56,7 +58,7 @@ import { PackageManagers } from "starlight-package-managers";
       args="add <COMPONENT-NAME>"
     />
 
-    Components will be added to the `src/components/ui` folder.
+    Components will be added to the `src/app/components/ui` folder.
 
     <FileTree>
     - src/
@@ -68,12 +70,6 @@ import { PackageManagers } from "starlight-package-managers";
 
 <Aside type="caution" title="React Server Components">
 By default, all pages and components within Redwood are server components. However, most of the ShadCN components require reactivity. Therefore, you may need to add `use client` to the top of your component file.
-</Aside>
-
-<Aside type="caution" title="lib/utils path">
-Even though we defined our `lib/utils` directory in the `components.json` file as `"lib": "@/app/lib"`, it may still install the `lib` folder in the `src` directory (or `@`). You'll need to manually move the folder to the `app` directory.
-
-Installing components through the shadcn/ui CLI should use the correct paths. However, if you're copying and pasting code from the shadcn/ui website, you may need to update the import paths.
 </Aside>
 
 ## Further reading
