@@ -93,6 +93,16 @@ export const ssrBridgePlugin = ({
         // SSR modules, so we return the virtual id so that the dynamic loading
         // can happen in load()
         if (id.startsWith(VIRTUAL_SSR_PREFIX)) {
+          if (id.endsWith(".css")) {
+            const newId = id + ".js";
+            log(
+              "Virtual CSS module, adding .js suffix. old: %s, new: %s",
+              id,
+              newId,
+            );
+            return newId;
+          }
+
           log("Returning virtual SSR id for dev: %s", id);
           return id;
         }
@@ -187,12 +197,10 @@ export const ssrBridgePlugin = ({
           );
 
           const switchCases = allSpecifiers
-            .map((specifier) => {
-              const virtualSpecifier = specifier.endsWith(".css")
-                ? `${specifier}.js`
-                : specifier;
-              return `    case "${specifier}": void import("${VIRTUAL_SSR_PREFIX}${virtualSpecifier}");`;
-            })
+            .map(
+              (specifier) =>
+                `    case "${specifier}": void import("${VIRTUAL_SSR_PREFIX}${specifier}");`,
+            )
             .join("\n");
 
           const transformedCode = `
