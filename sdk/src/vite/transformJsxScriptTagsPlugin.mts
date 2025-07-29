@@ -409,28 +409,36 @@ export async function transformJsxScriptTagsCode(
   return;
 }
 
-export const transformJsxScriptTagsPlugin = ({
-  manifestPath,
-}: {
-  manifestPath: string;
-}): Plugin => {
+export const transformJsxScriptTagsPlugin = (manifestPath: string): Plugin => {
   let isBuild = false;
 
   return {
-    name: "rwsdk:transform-jsx-script-tags",
-
+    name: "rwsdk:vite:transform-jsx-script-tags",
     configResolved(config) {
       isBuild = config.command === "build";
     },
-
-    async transform(code) {
-      if (this.environment.name !== "worker") {
-        return;
+    async transform(code, id) {
+      if (
+        this.environment?.name === "worker" &&
+        id.endsWith(".tsx") &&
+        !id.includes("node_modules") &&
+        hasJsxFunctions(code)
+      ) {
+        const manifest = await readManifest(manifestPath);
+        if (manifest) {
+          const result = await transformJsxScriptTagsCode(code, manifest);
+          if (result) {
+            log("Transformed JSX script tags in %s", id);
+            process.env.VERBOSE &&
+              log("New Document code for %s:\n%s", id, result.code);
+            return {
+              code: result.code,
+              map: null,
+            };
+          }
+        }
       }
-
-      const manifest = isBuild ? await readManifest(manifestPath) : {};
-
-      return transformJsxScriptTagsCode(code, manifest);
+      return null;
     },
   };
 };
