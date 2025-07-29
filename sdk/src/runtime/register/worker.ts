@@ -30,12 +30,12 @@ export function registerClientReference<Target extends Record<string, any>>(
       : () => null;
 
   const reference = baseRegisterClientReference({}, id, exportName);
-  const descriptors = Object.getOwnPropertyDescriptors(reference);
-  const idDescriptor = descriptors.$$id;
+  const finalDescriptors = Object.getOwnPropertyDescriptors(reference);
+  const idDescriptor = finalDescriptors.$$id;
 
   if (idDescriptor && idDescriptor.hasOwnProperty("value")) {
     const originalValue = idDescriptor.value;
-    descriptors.$$id = {
+    finalDescriptors.$$id = {
       configurable: idDescriptor.configurable,
       enumerable: idDescriptor.enumerable,
       get() {
@@ -45,11 +45,10 @@ export function registerClientReference<Target extends Record<string, any>>(
     };
   }
 
-  return Object.defineProperties(wrappedValue, {
-    ...descriptors,
-    $$async: { value: true },
-    $$isClientReference: { value: true },
-  });
+  finalDescriptors.$$async = { value: true };
+  finalDescriptors.$$isClientReference = { value: true };
+
+  return Object.defineProperties(wrappedValue, finalDescriptors);
 }
 
 export async function __smokeTestActionHandler(
