@@ -49,7 +49,7 @@ export const renderRscThenableToHtmlStream = async ({
 }) => {
   const Component = () => {
     const node = (use(thenable) as { node: React.ReactNode }).node;
-    const manifest = use(getManifest());
+    const manifest = use(getManifest(requestInfo));
     const allStylesheets = new Set<string>();
 
     for (const scriptId of requestInfo.rw.scriptsToBeLoaded) {

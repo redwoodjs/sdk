@@ -1,6 +1,11 @@
+import { type RequestInfo } from "../requestInfo/types";
+
 let manifest: Record<string, any>;
 
-export const getManifest = async (scriptsToBeLoaded?: Set<string>) => {
+export const getManifest = async (
+  requestInfo: RequestInfo,
+  scriptsToBeLoaded?: Set<string>,
+) => {
   if (manifest) {
     return manifest;
   }
@@ -8,8 +13,10 @@ export const getManifest = async (scriptsToBeLoaded?: Set<string>) => {
   if (import.meta.env.VITE_IS_DEV_SERVER) {
     const scripts = Array.from(scriptsToBeLoaded || []);
     const params = new URLSearchParams({ scripts: JSON.stringify(scripts) });
-    const res = await fetch(`/__rwsdk_manifest?${params.toString()}`);
-    manifest = await res.json();
+    const url = new URL(requestInfo.request.url);
+    url.searchParams.set("scripts", JSON.stringify(scripts));
+    url.pathname = "/__rwsdk_manifest";
+    manifest = await fetch(url.toString()).then((res) => res.json());
   } else {
     const { default: prodManifest } = await import(
       "virtual:rwsdk:manifest.js" as any
