@@ -2,6 +2,7 @@ import { readFile } from "node:fs/promises";
 import { type Plugin, type ViteDevServer } from "vite";
 import debug from "debug";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
+import { type ModuleNode } from "vite";
 
 const log = debug("rwsdk:vite:manifest-plugin");
 
@@ -11,7 +12,11 @@ const resolvedVirtualModuleId = "\0" + virtualModuleId;
 const getCssForModule = (
   server: ViteDevServer,
   moduleId: string,
-  css: Set<string>,
+  css: Set<{
+    url: string;
+    content: string;
+    absolutePath: string;
+  }>,
 ) => {
   const moduleNode =
     server.environments.client.moduleGraph.getModuleById(moduleId);
@@ -22,7 +27,14 @@ const getCssForModule = (
 
   for (const importedModule of moduleNode.importedModules) {
     if (importedModule.url.endsWith(".css")) {
-      css.add(importedModule.url);
+      const absolutePath = importedModule.file!;
+      css.add({
+        url: importedModule.url,
+        // The `ssrTransformResult` has the CSS content, because the default
+        // transform for CSS is to a string of the CSS content.
+        content: (importedModule as any).ssrTransformResult?.code ?? "",
+        absolutePath,
+      });
     }
 
     getCssForModule(server, importedModule.id!, css);
@@ -99,7 +111,17 @@ export const manifestPlugin = ({
             await server.environments.client.transformRequest(script);
           }
 
-          const manifest: Record<string, { file: string; css: string[] }> = {};
+          const manifest: Record<
+            string,
+            {
+              file: string;
+              css: {
+                url: string;
+                content: string;
+                absolutePath: string;
+              }[];
+            }
+          > = {};
 
           log("Building manifest from module graph");
           for (const file of server.environments.client.moduleGraph.fileToModulesMap.keys()) {
@@ -112,7 +134,7 @@ export const manifestPlugin = ({
 
             for (const module of modules) {
               if (module.file) {
-                const css = new Set<string>();
+                const css = new Set<any>();
                 getCssForModule(server, module.id!, css);
 
                 manifest[normalizeModulePath(module.file, server.config.root)] =

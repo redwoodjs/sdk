@@ -26,9 +26,21 @@ Because of these architectural choices, we cannot rely on Vite's built-in mechan
 
 We cannot simply pause rendering to find all these dependencies, as that would eliminate the benefits of streaming. We need a system that can discover all these scripts—both the static entry points and the dynamically loaded components—and then use that complete list to inject all the necessary `<link>` tags into the `<head>` just in time.
 
-## The Solution: A Unified Discovery and Injection Process
+#### The HMR-FOUC Dilemma in Development
 
-Our solution is to create a single, unified set of all client-side scripts that will be loaded on the page. By collecting every script module ID first, we can then, in a single final step, look up all their combined CSS dependencies and inject them.
+While injecting `<link>` tags on the server solves FOUC in production, it creates a new problem in the development environment: it conflicts with Vite's own Hot Module Replacement (HMR) system.
+
+Vite's dev server is designed to manage CSS updates on the client. When a JavaScript module imports a CSS file, Vite's client-side runtime injects the styles using a `<style>` tag, which it can then hot-swap when the file changes. If we pre-inject a `<link>` tag on the server, the browser loads the stylesheet twice—once from our tag and once from Vite's.
+
+This leads to a dilemma:
+- If we use `<link>` tags, we get duplicated styles and interfere with HMR.
+- If we *don't* use `<link>` tags, we get a Flash of Unstyled Content (FOUC) because the styles are only injected after the client-side JavaScript loads and executes.
+
+To solve this, we cannot simply disable one of the injection methods. We need a solution that provides the initial styles on the server to prevent FOUC while still allowing Vite's HMR to function correctly on the client.
+
+## The Solution: A Unified Discovery and Environment-Aware Injection Process
+
+Our solution is to create a single, unified set of all client-side scripts that will be loaded on the page. By collecting every script module ID first, we can then, in a single final step, look up all their combined CSS dependencies and inject them in an environment-aware manner.
 
 This process has two main phases: **Discovery** (populating the list of scripts) and **Injection** (finding and rendering their stylesheets).
 
@@ -67,9 +79,9 @@ The core of this phase is looking up the CSS dependencies for every script in ou
 This lookup process is different in production and development.
 
 #### Production: Reading a Static Manifest
-In a production build, this is straightforward. The client build runs first, generating a `manifest.json` file. When the worker build runs, it can treat this manifest as a static asset. Our runtime code simply imports and reads this JSON file.
+In a production build, this is straightforward. The client build runs first, generating a `manifest.json` file. When the worker build runs, it can treat this manifest as a static asset. Our runtime code simply imports and reads this JSON file. The manifest contains mappings from source file IDs to their final, hashed CSS asset URLs.
 
-#### Development: Computing the Manifest On-the-Fly
+#### Development: Computing the Manifest and Styles On-the-Fly
 In development, no static manifest exists. Dependency information lives in Vite's live, in-memory **module graph**. This presents two challenges:
 1.  The worker runs in a sandboxed process and cannot access the main Vite server's memory to read the graph.
 2.  The Vite dev server itself maintains separate module graphs for each of its "environments" (e.g., `client`, `ssr`, `worker`). A module imported in the `worker` environment is not automatically present in the `client` graph.
@@ -78,10 +90,10 @@ We solve this with a runtime helper, `getManifest()`, and a development-only end
 -   The `getManifest()` function, when running in dev, makes a `fetch` call to a local endpoint (`/__rwsdk_manifest`).
 -   The endpoint handler, running inside the main Vite server process, receives a list of script module IDs.
 -   For each script, it uses `server.environments.client.transformRequest()` to ensure the module is processed by the client environment's plugin pipeline. This correctly populates the client module graph.
--   It then inspects `server.environments.client.moduleGraph` to find the module and all its imported dependencies, collecting all CSS files along the way.
--   Finally, it constructs a manifest-like JSON object from this data and returns it to the worker's `fetch` call.
+-   It then inspects `server.environments.client.moduleGraph` to find the module and all its imported dependencies.
+-   Finally, it constructs a manifest-like JSON object and returns it to the worker's `fetch` call. Crucially, for each CSS dependency, this manifest includes not only its URL but also its **full text content** and its **absolute file path**.
 
-Once `getManifest()` has provided the appropriate manifest for the environment, the `RscApp` component can perform its final task of iterating over the `scriptsToBeLoaded` set, finding all the CSS files in the manifest, and rendering the `<link>` tags.
+Once `getManifest()` has provided the appropriate manifest for the environment, the `RscApp` component can perform its final task. The injection logic is now environment-specific.
 
 ```tsx
 const RscApp = ({ thenable, requestInfo }) => {
@@ -89,31 +101,48 @@ const RscApp = ({ thenable, requestInfo }) => {
   const rscVDOM = use(thenable);
 
   // This code only runs AFTER the `thenable` has resolved.
+  const manifest = use(getManifest(requestInfo)); // Simplified for example
   const allStylesheets = new Set<string>();
-  const manifest = getManifest(); // Simplified for example
 
   for (const scriptId of requestInfo.rw.scriptsToBeLoaded) {
     const css = findCssForModule(scriptId, manifest); // Simplified
-    for (const href of css) {
-      allStylesheets.add(href);
+    for (const entry of css) {
+      allStylesheets.add(entry);
     }
   }
 
   return (
     <>
-      {Array.from(allStylesheets).map(href => <link key={href} rel="stylesheet" href={href} />)}
+      {Array.from(allStylesheets).map((entry) => {
+        // In development, we render a <style> tag with the CSS content.
+        // The `data-vite-dev-id` attribute is the key that allows Vite's HMR
+        // client to find and manage this style tag.
+        if (import.meta.env.VITE_IS_DEV_SERVER && typeof entry === 'object') {
+          return (
+            <style
+              data-vite-dev-id={entry.absolutePath}
+              dangerouslySetInnerHTML={{ __html: entry.content }}
+              key={entry.url}
+            />
+          );
+        }
+
+        // In production, we render a standard <link> tag.
+        const href = typeof entry === 'string' ? entry : entry.url;
+        return <link key={href} rel="stylesheet" href={href} precedence="first" />;
+      })}
       <div id="hydrate-root">{rscVDOM.node}</div>
     </>
   );
 };
 ```
 
-We then rely on a standard behavior of React's streaming renderer, as documented on [react.dev](https://react.dev/reference/react-dom/components/link#special-rendering-behavior). React automatically detects `<link>` components rendered anywhere in the tree and ensures they are hoisted into the document's `<head>` in the final HTML stream. This allows us to inject links as they are discovered without blocking the stream, preventing any Flash of Unstyled Content (FOUC).
+We then rely on a standard behavior of React's streaming renderer. React automatically detects `<link>` and `<style>` components rendered anywhere in the tree and ensures they are hoisted into the document's `<head>` in the final HTML stream. This allows us to inject stylesheets as they are discovered without blocking the stream, preventing any Flash of Unstyled Content (FOUC). In development, this approach gives Vite's client-side HMR script the exact `<style>` tag it needs to take over, solving the FOUC-HMR dilemma.
 
 This architecture separates concerns:
 -   **Discovery** is handled by a simple, stateless build transform.
 -   **Collection** happens at runtime, using the manifest as a source of truth.
--   **Injection** is delegated entirely to React's standard, predictable rendering behavior.
+-   **Injection** is now environment-aware, delegating to React's standard rendering behavior while supporting Vite's HMR in development.
 
 ### A Note on CSS Handling in the SSR Environment
 

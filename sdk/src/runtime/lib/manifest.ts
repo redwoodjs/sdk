@@ -9,10 +9,6 @@ export const getManifest = async (requestInfo: RequestInfo) => {
 
   if (import.meta.env.VITE_IS_DEV_SERVER) {
     const url = new URL(requestInfo.request.url);
-    console.log(
-      "############ in getManifest",
-      requestInfo.rw.scriptsToBeLoaded,
-    );
     url.searchParams.set(
       "scripts",
       JSON.stringify(Array.from(requestInfo.rw.scriptsToBeLoaded)),

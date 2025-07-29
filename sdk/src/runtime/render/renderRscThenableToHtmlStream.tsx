@@ -1,38 +1,8 @@
 import { use } from "react";
 import { renderToReadableStream } from "react-dom/server.edge";
-import { type DocumentProps } from "../lib/router";
-import { type RequestInfo } from "../requestInfo/types";
-import { getManifest } from "../lib/manifest";
-
-const findCssForModule = (
-  scriptId: string,
-  manifest: Record<string, { file: string; css?: string[] }>,
-) => {
-  const css = new Set<string>();
-  const visited = new Set<string>();
-
-  const inner = (id: string) => {
-    if (visited.has(id)) {
-      return;
-    }
-    visited.add(id);
-
-    const entry = manifest[id];
-    if (!entry) {
-      return;
-    }
-
-    if (entry.css) {
-      for (const href of entry.css) {
-        css.add(href);
-      }
-    }
-  };
-
-  inner(scriptId);
-
-  return Array.from(css);
-};
+import { type DocumentProps } from "../lib/router.js";
+import { type RequestInfo } from "../requestInfo/types.js";
+import { Stylesheets } from "./stylesheets.js";
 
 export const renderRscThenableToHtmlStream = async ({
   thenable,
@@ -50,21 +20,10 @@ export const renderRscThenableToHtmlStream = async ({
   const Component = () => {
     const RscApp = () => {
       const node = (use(thenable) as { node: React.ReactNode }).node;
-      const manifest = use(getManifest(requestInfo));
-      const allStylesheets = new Set<string>();
-
-      for (const scriptId of requestInfo.rw.scriptsToBeLoaded) {
-        const css = findCssForModule(scriptId, manifest);
-        for (const href of css) {
-          allStylesheets.add(href);
-        }
-      }
 
       return (
         <>
-          {Array.from(allStylesheets).map((href) => (
-            <link key={href} rel="stylesheet" href={href} />
-          ))}
+          <Stylesheets requestInfo={requestInfo} />
           <div id="hydrate-root">{node}</div>
         </>
       );
