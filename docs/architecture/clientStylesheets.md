@@ -34,7 +34,7 @@ This process has two main phases: **Discovery** (populating the list of scripts)
 
 ### Phase 1 (Runtime): Unified Script Discovery
 
-The core of this architecture is a single `Set` on the per-request `requestInfo` object: `requestInfo.rw.scriptsToBeLoaded`. This set collects the mVdule IDs of every client script that is needed for the current page render.
+The core of this architecture is a single `Set` on the per-request `requestInfo` object: `requestInfo.rw.scriptsToBeLoaded`. This set collects the module IDs of every client script that is needed for the current page render.
 
 This set is populated from two different sources at two different times, allowing us to capture all scripts, both static and dynamic:
 

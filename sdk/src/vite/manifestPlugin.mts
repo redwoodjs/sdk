@@ -10,7 +10,8 @@ const getCssForModule = (
   moduleId: string,
   css: Set<string>,
 ) => {
-  const moduleNode = server.moduleGraph.getModuleById(moduleId);
+  const moduleNode =
+    server.environments.client.moduleGraph.getModuleById(moduleId);
 
   if (!moduleNode) {
     return;
@@ -55,10 +56,18 @@ export const manifestPlugin = ({
     configureServer(server) {
       server.middlewares.use("/__rwsdk_manifest", async (req, res, next) => {
         try {
+          const url = new URL(req.url!, `http://${req.headers.host}`);
+          const scripts = JSON.parse(url.searchParams.get("scripts") || "[]");
+
+          for (const script of scripts) {
+            await server.environments.client.transformRequest(script);
+          }
+
           const manifest: Record<string, { file: string; css: string[] }> = {};
 
-          for (const file of server.moduleGraph.fileToModulesMap.keys()) {
-            const modules = server.moduleGraph.getModulesByFile(file);
+          for (const file of server.environments.client.moduleGraph.fileToModulesMap.keys()) {
+            const modules =
+              server.environments.client.moduleGraph.getModulesByFile(file);
 
             if (!modules) {
               continue;
