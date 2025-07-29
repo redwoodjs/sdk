@@ -12,7 +12,10 @@ export const getManifest = async (
 
   if (import.meta.env.VITE_IS_DEV_SERVER) {
     const url = new URL(requestInfo.request.url);
-    url.searchParams.set("scripts", JSON.stringify(scriptsToBeLoaded));
+    url.searchParams.set(
+      "scripts",
+      JSON.stringify(Array.from(scriptsToBeLoaded || [])),
+    );
     url.pathname = "/__rwsdk_manifest";
     manifest = await fetch(url.toString()).then((res) => res.json());
   } else {
