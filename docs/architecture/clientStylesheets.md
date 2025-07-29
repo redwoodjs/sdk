@@ -114,3 +114,17 @@ This architecture separates concerns:
 -   **Discovery** is handled by a simple, stateless build transform.
 -   **Collection** happens at runtime, using the manifest as a source of truth.
 -   **Injection** is delegated entirely to React's standard, predictable rendering behavior.
+
+### A Note on CSS Handling in the SSR Environment
+
+A unique challenge arises from how stylesheet imports are processed in the development server's SSR environment. When a client component imports a CSS file, that import travels through the [SSR Bridge](./ssrBridge.md), which must correctly handle it. If not managed properly, plugins like Tailwind CSS might try to parse transformed JavaScript (from a CSS module) as if it were raw CSS, causing build failures.
+
+To solve this, the `ssrBridgePlugin` performs a specific transformation:
+
+1.  **Identifier Transformation:** When resolving a module ID for a stylesheet (e.g., `/src/components/Button.module.css`), the plugin appends a `.js` extension to its virtualized path (e.g., `virtual:rwsdk:ssr:/src/components/Button.module.css.js`). This signals to all subsequent Vite plugins that the module should be treated as JavaScript.
+
+2.  **Specialized Loading:** In the `load` hook, the plugin distinguishes between two types of CSS imports:
+    -   For **standard `.css` files**, it returns an empty JavaScript module (`export default {};`). This is because global stylesheets are injected directly into the `<head>` and do not need to be processed as part of the server-rendered component tree.
+    -   For **CSS Modules (`.module.css`)**, it first strips the `.js` suffix from the module ID before calling `devServer.environments.ssr.fetchModule()`. This ensures the original CSS module is fetched and transformed by Vite into its JavaScript object representation. This object, which maps class names to their unique generated hashes, is then returned to the `worker` environment so that server-rendered components receive the correct class names.
+
+This two-pronged approach ensures that CSS dependencies are correctly processed according to their type, preventing downstream errors and allowing seamless integration of styles in the server environment.
