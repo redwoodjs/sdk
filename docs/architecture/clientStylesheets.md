@@ -137,7 +137,11 @@ const RscApp = ({ thenable, requestInfo }) => {
 };
 ```
 
-We then rely on a standard behavior of React's streaming renderer. React automatically detects `<link>` and `<style>` components rendered anywhere in the tree and ensures they are hoisted into the document's `<head>` in the final HTML stream. This allows us to inject stylesheets as they are discovered without blocking the stream, preventing any Flash of Unstyled Content (FOUC). In development, this approach gives Vite's client-side HMR script the exact `<style>` tag it needs to take over, solving the FOUC-HMR dilemma.
+This leads to a subtle but important interaction. While React 19 automatically hoists `<link>` tags with a `precedence` prop into the `<head>`, it does not do the same for `<style>` tags unless they also have `href` and `precedence` props. We do not include an `href` because we want the styles to be inline to match Vite's behavior.
+
+As a result, in development, our `<style>` tags are rendered inline, just before the main `<div id="hydrate-root">`. This is the desired outcome for two reasons:
+1.  **FOUC Prevention:** The HTML stream will pause at the `<style>` tags. The browser will parse them and apply the styles before it proceeds to render the application DOM inside `<div id="hydrate-root">`. Because no content has been rendered yet, there is no layout shift.
+2.  **HMR Compatibility:** Vite's HMR client successfully finds the `<style data-vite-dev-id="...">` tags, even though they are in the `<body>`, and takes over their management. This prevents style duplication and ensures HMR works correctly.
 
 This architecture separates concerns:
 -   **Discovery** is handled by a simple, stateless build transform.
