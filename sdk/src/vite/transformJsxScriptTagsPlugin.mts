@@ -380,12 +380,46 @@ export async function transformJsxScriptTagsCode(
           .map((p) => `(requestInfo.rw.scriptsToBeLoaded.add("${p}"))`)
           .join(",\n");
 
-        callExpr.replaceWithText(
-          `(
-            ${sideEffects},
-            ${callExpr.getText()}
-          )`,
+        const leadingCommentRanges = callExpr.getLeadingCommentRanges();
+        const pureComment = leadingCommentRanges.find((r) =>
+          r.getText().includes("@__PURE__"),
         );
+        const callExprText = callExpr.getText();
+
+        if (pureComment) {
+          const pureCommentText = pureComment.getText();
+          const newText = `(
+            ${sideEffects},
+            ${pureCommentText} ${callExprText}
+          )`;
+
+          const fullText = callExpr.getFullText();
+          const leadingTriviaText = fullText.substring(
+            0,
+            fullText.length - callExprText.length,
+          );
+          const newLeadingTriviaText = leadingTriviaText.replace(
+            pureCommentText,
+            "",
+          );
+
+          // By replacing from `getFullStart`, we remove the original node and all its leading trivia
+          // and replace it with our manually reconstructed string.
+          // This should correctly move the pure comment and preserve other comments and whitespace.
+          callExpr
+            .getSourceFile()
+            .replaceText(
+              [callExpr.getFullStart(), callExpr.getEnd()],
+              newLeadingTriviaText + newText,
+            );
+        } else {
+          callExpr.replaceWithText(
+            `(
+              ${sideEffects},
+              ${callExprText}
+            )`,
+          );
+        }
         needsRequestInfoImportRef.value = true;
         hasModifications = true;
       }
