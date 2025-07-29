@@ -4,6 +4,7 @@ import {
   decodeReply,
 } from "react-server-dom-webpack/server.edge";
 import { getServerModuleExport } from "../imports/worker.js";
+import { requestInfo } from "../requestInfo/worker.js";
 
 export function registerServerReference(
   action: Function,
@@ -29,8 +30,19 @@ export function registerClientReference<Target extends Record<string, any>>(
       : () => null;
 
   const reference = baseRegisterClientReference({}, id, exportName);
+  const descriptors = Object.getOwnPropertyDescriptors(reference);
+  const idDescriptor = descriptors.$$id;
+
+  if (idDescriptor && idDescriptor.get) {
+    const originalGet = idDescriptor.get;
+    idDescriptor.get = function getIdWrapper() {
+      requestInfo.rw.scriptsToBeLoaded.add(id);
+      return originalGet.call(this);
+    };
+  }
+
   return Object.defineProperties(wrappedValue, {
-    ...Object.getOwnPropertyDescriptors(reference),
+    ...descriptors,
     $$async: { value: true },
     $$isClientReference: { value: true },
   });

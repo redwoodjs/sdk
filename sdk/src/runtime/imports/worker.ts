@@ -25,8 +25,6 @@ export const getServerModuleExport = async (id: string) => {
 };
 
 export const ssrWebpackRequire = memoize(async (id: string) => {
-  requestInfo.rw.scriptsToBeLoaded.add(id);
-
   if (!requestInfo.rw.ssr) {
     return { [id]: () => null };
   }

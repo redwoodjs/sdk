@@ -20,7 +20,7 @@ Because of these architectural choices, we cannot rely on Vite's built-in mechan
 
 2.  **The Server Evaluation Ordering Problem:** In development, the Vite dev server does not know a client module's full dependency graph until that module is requested and evaluated. When a server request comes in, our worker code needs to know the CSS dependencies for client scripts so that we can put the `<links>`s in the head instead of adding them dynamically and ending up with a Flash of Unstyled Content (FOUC). But at that exact moment, the Vite `client` environment has not yet evaluated those scripts, so their CSS dependencies are not yet discoverable in the client module graph.
 
-3.  **The Dynamic Component Problem:** We don't know the full list of components for a page ahead of time. As the RSC stream is rendered on the server, it can dynamically decide to include new "use client" components (islands). If `ComponentA` imports `./styles.css`, we only discover that this stylesheet is needed when `ComponentA` is actually rendered. Preventing FOUC in these dynamic cases requires framework-specific hooks into the server rendering lifecycle to ensure these stylesheets are discovered before the HTML is flushed.
+3.  **The Render-Time Discovery Problem:** We don't know the full list of components for a page ahead of time. As the RSC stream is rendered on the server, it can dynamically decide to include new "use client" components (islands). If `ComponentA` imports `./styles.css`, we only discover that this stylesheet is needed when `ComponentA` is actually rendered. Our build process transforms all "use client" modules into calls to a `registerClientReference` function at module-load time, which gives us a complete list of all *potential* client components that could be used. However, we have no way of knowing which ones are *actually* used in a specific request until render time. Preventing FOUC requires a render-time hook to know precisely which components are being rendered, but React's server-side rendering APIs do not provide a public hook for this.
 
 4.  **The Entry Point Discovery Problem:** The framework has no built-in knowledge of the main client-side entry point (e.g., `<script src="/src/client.tsx">`). This script is referenced inside the developer's `Document.tsx` file, and we need a way to find it so we can also find *its* CSS dependencies.
 
@@ -52,7 +52,9 @@ During the build, a simple Vite plugin scans `Document.tsx` files. When it finds
 
 **B) Dynamic Components from the RSC Stream**
 
-As the RSC stream renders, it may dynamically load other client components ("islands"). Our `__webpack_require__` hook intercepts these loads and adds the module ID of *that specific component* to the very same `scriptsToBeLoaded` set.
+As the RSC stream renders, it may dynamically load other client components ("islands"). Our build process transforms all "use client" modules into calls to a `registerClientReference` function. This function wraps the client component in a proxy-like object.
+
+When React's server renderer encounters one of these objects, it accesses a special `$$id` property on it to identify the component and serialize it for the client. We intercept the getter for this specific property. The first time the `$$id` property is accessed on a client component's reference during a render, we know that component is being used on the page. At that exact moment, we add the component's module ID to the `scriptsToBeLoaded` set. This gives us a precise, render-time mechanism for discovering exactly which components are needed for the current page without introducing any performance overhead.
 
 At the end of these two steps, `requestInfo.rw.scriptsToBeLoaded` contains a complete list of every client module required to render the page.
 
