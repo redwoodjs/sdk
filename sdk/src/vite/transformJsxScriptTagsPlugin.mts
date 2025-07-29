@@ -2,6 +2,10 @@ import { Project, Node, SyntaxKind, ImportDeclaration } from "ts-morph";
 import { type Plugin } from "vite";
 import { readFile } from "node:fs/promises";
 import { pathExists } from "fs-extra";
+import path from "node:path";
+import debug from "debug";
+
+const log = debug("rwsdk:vite:transform-jsx-script-tags");
 
 let manifestCache: Record<string, { file: string }> | undefined;
 
@@ -78,19 +82,20 @@ function transformScriptImports(
           if (args.length > 0 && Node.isStringLiteral(args[0])) {
             const importPath = args[0].getLiteralValue();
 
-            if (importPath.startsWith("/src/client.tsx")) {
+            if (importPath.startsWith("/")) {
+              log(
+                "Found dynamic import with root-relative path, adding to scripts to be loaded: %s",
+                importPath,
+              );
               needsRequestInfoImportRef.value = true;
               hasChanges = true;
               scriptContent = `requestInfo.rw.scriptsToBeLoaded.add("${importPath}");\n${scriptContent}`;
-            }
 
-            if (importPath.startsWith("/")) {
               const path = importPath.slice(1); // Remove leading slash
 
               if (manifest[path]) {
-                const transformedPath = manifest[path].file;
-                args[0].replaceWithText(`"/${transformedPath}"`);
-                hasChanges = true;
+                const transformedSrc = manifest[path].file;
+                args[0].setLiteralValue(transformedSrc);
               }
             }
           }
@@ -224,7 +229,11 @@ export async function transformJsxScriptTagsCode(
                 ) {
                   const srcValue = initializer.getLiteralValue();
 
-                  if (srcValue.startsWith("/src/client.tsx")) {
+                  if (srcValue.startsWith("/")) {
+                    log(
+                      "Found src prop with root-relative path, adding to scripts to be loaded: %s",
+                      srcValue,
+                    );
                     needsRequestInfoImportRef.value = true;
                     hasModifications = true;
 
@@ -238,27 +247,12 @@ export async function transformJsxScriptTagsCode(
                         ${callExpression.getText()}
                       ]`,
                     );
-                  }
 
-                  if (srcValue.startsWith("/") && manifest[srcValue.slice(1)]) {
-                    const path = srcValue.slice(1); // Remove leading slash
-                    const transformedSrc = manifest[path].file;
-                    const originalText = initializer.getText();
-                    const isTemplateLiteral =
-                      Node.isNoSubstitutionTemplateLiteral(initializer);
-                    const quote = isTemplateLiteral
-                      ? "`"
-                      : originalText.charAt(0);
-
-                    // Preserve the original quote style
-                    if (isTemplateLiteral) {
-                      initializer.replaceWithText(`\`/${transformedSrc}\``);
-                    } else if (quote === '"') {
-                      initializer.replaceWithText(`"/${transformedSrc}"`);
-                    } else {
-                      initializer.replaceWithText(`'/${transformedSrc}'`);
+                    if (manifest[srcValue.slice(1)]) {
+                      const path = srcValue.slice(1); // Remove leading slash
+                      const transformedSrc = manifest[path].file;
+                      initializer.setLiteralValue(transformedSrc);
                     }
-                    hasModifications = true;
                   }
                 }
               }
