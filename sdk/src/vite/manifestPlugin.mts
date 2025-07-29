@@ -47,12 +47,14 @@ export const manifestPlugin = ({
   manifestPath: string;
 }): Plugin => {
   let isBuild = false;
+  let root: string;
 
   return {
     name: "rwsdk:manifest",
     configResolved(config) {
       log("Config resolved, command=%s", config.command);
       isBuild = config.command === "build";
+      root = config.root;
     },
     resolveId(id) {
       if (id === virtualModuleId) {
@@ -70,7 +72,18 @@ export const manifestPlugin = ({
 
         log("Reading manifest from %s", manifestPath);
         const manifestContent = await readFile(manifestPath, "utf-8");
-        return `export default ${manifestContent}`;
+        const manifest = JSON.parse(manifestContent);
+        const normalizedManifest: Record<string, unknown> = {};
+
+        for (const key in manifest) {
+          const normalizedKey = normalizeModulePath(key, root, {
+            isViteStyle: false,
+          });
+
+          normalizedManifest[normalizedKey] = manifest[key];
+        }
+
+        return `export default ${JSON.stringify(normalizedManifest)}`;
       }
     },
     configEnvironment(name, config) {
