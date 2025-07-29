@@ -381,10 +381,10 @@ export async function transformJsxScriptTagsCode(
           .join(",\n");
 
         callExpr.replaceWithText(
-          `[
+          `(
             ${sideEffects},
             ${callExpr.getText()}
-          ]`,
+          )`,
         );
         needsRequestInfoImportRef.value = true;
         hasModifications = true;

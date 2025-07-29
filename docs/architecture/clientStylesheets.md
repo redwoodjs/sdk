@@ -44,10 +44,10 @@ During the build, a simple Vite plugin scans `Document.tsx` files. When it finds
 
 ```diff
 - jsx("script", { src: "/src/client.tsx" })
-+ [
++ (
 +   (requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
 +   jsx("script", { src: "/src/client.tsx" })
-+ ]
++ )
 ```
 
 **B) Dynamic Components from the RSC Stream**

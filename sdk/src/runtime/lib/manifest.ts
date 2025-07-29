@@ -2,10 +2,7 @@ import { type RequestInfo } from "../requestInfo/types";
 
 let manifest: Record<string, any>;
 
-export const getManifest = async (
-  requestInfo: RequestInfo,
-  scriptsToBeLoaded?: Set<string>,
-) => {
+export const getManifest = async (requestInfo: RequestInfo) => {
   if (manifest) {
     return manifest;
   }
@@ -14,7 +11,7 @@ export const getManifest = async (
     const url = new URL(requestInfo.request.url);
     url.searchParams.set(
       "scripts",
-      JSON.stringify(Array.from(scriptsToBeLoaded || [])),
+      JSON.stringify(Array.from(requestInfo.rw.scriptsToBeLoaded)),
     );
     url.pathname = "/__rwsdk_manifest";
     manifest = await fetch(url.toString()).then((res) => res.json());

@@ -48,16 +48,27 @@ export const renderRscThenableToHtmlStream = async ({
   onError: (error: unknown) => void;
 }) => {
   const Component = () => {
-    const node = (use(thenable) as { node: React.ReactNode }).node;
-    const manifest = use(getManifest(requestInfo));
-    const allStylesheets = new Set<string>();
+    const RscApp = () => {
+      const node = (use(thenable) as { node: React.ReactNode }).node;
+      const manifest = use(getManifest(requestInfo));
+      const allStylesheets = new Set<string>();
 
-    for (const scriptId of requestInfo.rw.scriptsToBeLoaded) {
-      const css = findCssForModule(scriptId, manifest);
-      for (const href of css) {
-        allStylesheets.add(href);
+      for (const scriptId of requestInfo.rw.scriptsToBeLoaded) {
+        const css = findCssForModule(scriptId, manifest);
+        for (const href of css) {
+          allStylesheets.add(href);
+        }
       }
-    }
+
+      return (
+        <>
+          {Array.from(allStylesheets).map((href) => (
+            <link key={href} rel="stylesheet" href={href} />
+          ))}
+          <div id="hydrate-root">{node}</div>
+        </>
+      );
+    };
 
     // todo(justinvdm, 18 Jun 2025): We can build on this later to allow users
     // surface context. e.g:
@@ -73,9 +84,6 @@ export const renderRscThenableToHtmlStream = async ({
 
     return (
       <Document {...requestInfo}>
-        {Array.from(allStylesheets).map((href) => (
-          <link key={href} rel="stylesheet" href={href} />
-        ))}
         <script
           nonce={requestInfo.rw.nonce}
           dangerouslySetInnerHTML={{
@@ -84,7 +92,7 @@ export const renderRscThenableToHtmlStream = async ({
             )}`,
           }}
         />
-        <div id="hydrate-root">{node}</div>
+        <RscApp />
       </Document>
     );
   };
