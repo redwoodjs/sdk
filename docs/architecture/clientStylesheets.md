@@ -4,13 +4,23 @@
 
 ## The Core Problem: Discovering Dynamic Dependencies in a Streaming World
 
-Our framework uses a server-rendered `Document.tsx` file and streams the UI using React Server Components (RSC). This combination creates a difficult set of challenges related to stylesheets.
+### Why Vite's Default Behavior Isn't Enough
+In a standard Vite-based Single-Page Application (SPA), stylesheet handling is managed through a well-defined process.
+- In **development**, Vite serves an `index.html` file. When the browser requests a JavaScript module that imports a CSS file, Vite intercepts the import, injects the styles via a `<style>` tag, and enables Hot Module Replacement (HMR).
+- In **production**, Vite uses the `index.html` file as the entry point. During the build, it scans all the JavaScript modules linked from that HTML file, finds their CSS imports, bundles the CSS into files, and automatically injects the final `<link>` tags back into the `index.html`.
 
+Our framework's architecture makes this standard approach impossible for two main reasons:
+1.  **No `index.html`:** We use a dynamic, server-rendered `Document.tsx` component as the HTML shell. This gives developers full control, but it means Vite has no static entry point to analyze.
+2.  **React Server Components (RSC):** The full list of components (and therefore their CSS dependencies) is not known upfront. It is discovered dynamically as the RSC stream is rendered on the server.
+
+Because of these architectural choices, we cannot rely on Vite's built-in mechanisms. We must build a system that can discover all static and dynamic CSS dependencies during a server-side render and ensure the necessary `<link>` tags are injected into the final HTML `<head>`. This leads to a specific set of challenges.
+
+### The Challenges
 1.  **The HTML Stream Ordering Problem:** To avoid a Flash of Unstyled Content (FOUC), all `<link rel="stylesheet">` tags for a page must be in the `<head>`. However, the `<head>` is the very first part of the HTML document sent to the browser, long before we have processed the server components that would tell us which CSS to include.
 
 2.  **The Server Evaluation Ordering Problem:** In development, the Vite dev server does not know a client module's full dependency graph until that module is requested and evaluated. When a server request comes in, our worker code needs to know the CSS dependencies for client scripts so that we can put the `<links>`s in the head instead of adding them dynamically and ending up with a Flash of Unstyled Content (FOUC). But at that exact moment, the Vite `client` environment has not yet evaluated those scripts, so their CSS dependencies are not yet discoverable in the client module graph.
 
-3.  **The Dynamic Component Problem:** We don't know the full list of components for a page ahead of time. As the RSC stream is rendered on the server, it can dynamically decide to include new "use client" components (islands). If `ComponentA` imports `./styles.css`, we only discover that this stylesheet is needed when `ComponentA` is actually rendered.
+3.  **The Dynamic Component Problem:** We don't know the full list of components for a page ahead of time. As the RSC stream is rendered on the server, it can dynamically decide to include new "use client" components (islands). If `ComponentA` imports `./styles.css`, we only discover that this stylesheet is needed when `ComponentA` is actually rendered. Preventing FOUC in these dynamic cases requires framework-specific hooks into the server rendering lifecycle to ensure these stylesheets are discovered before the HTML is flushed.
 
 4.  **The Entry Point Discovery Problem:** The framework has no built-in knowledge of the main client-side entry point (e.g., `<script src="/src/client.tsx">`). This script is referenced inside the developer's `Document.tsx` file, and we need a way to find it so we can also find *its* CSS dependencies.
 
