@@ -9,11 +9,11 @@ Client-side navigation is a technique that allows users to move between pages wi
 
 This approach is commonly referred to as a Single Page App (SPA). In RedwoodSDK, you get SPA-like navigation with server-fetched React Server Components (RSC), so it's fast and dynamic, but still uses the server for rendering.
 
-```tsx title="src/client.tsx" ins="initClientNavigation()"
+```tsx title="src/client.tsx" ins="initClientNavigation({ scrollBehavior: 'smooth' })"
 import { initClient, initClientNavigation } from "rwsdk/client";
 
 initClient();
-initClientNavigation();
+initClientNavigation({ scrollBehavior: "smooth" });
 ```
 
 Once this is initialized, internal `<a href="/some-path">` links will no longer trigger full-page reloads. Instead, the SDK will:
@@ -36,3 +36,56 @@ No routing system is included: RedwoodSDK doesn't provide a client-side router. 
 Only internal links are intercepted: RedwoodSDK will only handle links pointing to the same origin. External links (https://example.com) or those with `target="\_blank"` behave normally.
 
 Middleware still runs: Every navigation hits your server again — so auth checks, headers, and streaming behavior remain intact.
+
+## Configuring Scroll Behaviour
+
+By default RedwoodSDK jumps to the **top** of the new page the moment the
+content finishes rendering – just like a traditional full page load.
+
+If you would like a different experience you can adjust it with
+`initClientNavigation`:
+
+```tsx title="Smooth scroll"
+import { initClientNavigation } from "rwsdk/client";
+
+initClientNavigation({
+  scrollBehavior: "smooth",
+});
+```
+
+### Disable automatic scrolling
+
+For infinite-scroll feeds or chat applications you might want to _keep_ the user
+exactly where they were:
+
+```tsx title="Keep current position"
+initClientNavigation({
+  scrollToTop: false,
+});
+```
+
+### Advanced: custom navigation callback
+
+Need to run analytics or state updates before the request is sent? Provide your
+own `onNavigate` handler:
+
+```tsx
+initClientNavigation({
+  scrollBehavior: "auto",
+  onNavigate: async () => {
+    await analytics.track("page_view", { path: window.location.pathname });
+  },
+});
+```
+
+### Best Practices
+
+- Use the default instant jump for content-heavy pages – it feels identical to a
+  classic navigation and is the least surprising.
+- Prefer `scrollBehavior: "smooth"` for marketing sites where visual polish is
+  important.
+- Set `scrollToTop: false` for timelines or lists that the user is expected to
+  scroll through continuously.
+
+That’s it! No additional code or router configuration required – RedwoodSDK
+watches for DOM updates and performs the scroll automatically.

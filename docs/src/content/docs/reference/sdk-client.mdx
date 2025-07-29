@@ -13,3 +13,51 @@ The `initClient` function is used to initialize the React Client. This hydrates 
 ## `initClientNavigation`
 
 The `initClientNavigation` function is used to initialize the client side navigation. An event handler is assocated to clicking the document. If the clicked element contains a link, href, and the href is a relative path, the event handler will be triggered. This will then fetch the RSC payload for the new page, and hydrate it on the client.
+
+## `ClientNavigationOptions`
+
+`initClientNavigation()` accepts an optional **`ClientNavigationOptions`** object that lets you
+control how the browser scrolls after each navigation:
+
+| Option           | Type                              | Default     | Description                                                                                                                                                                              |
+| ---------------- | --------------------------------- | ----------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `scrollToTop`    | `boolean`                         | `true`      | Whether to scroll to the top of the page after a successful navigation. Set it to `false` when you want to preserve the existing scroll position (for example, an infinite-scroll list). |
+| `scrollBehavior` | `'instant' \| 'smooth' \| 'auto'` | `'instant'` | How the scroll _happens_ when `scrollToTop` is `true` (ignored otherwise).                                                                                                               |
+| `onNavigate`     | `() => Promise<void> \| void`     | —           | Callback executed **after** the history entry is pushed but **before** the new RSC payload is fetched. Use it to run custom analytics or side-effects.                                   |
+
+### Usage Examples
+
+```tsx title="Default behaviour – jump to top instantly"
+import { initClientNavigation } from "rwsdk/client";
+
+initClientNavigation();
+```
+
+```tsx title="Smooth scrolling to top"
+initClientNavigation({
+  scrollBehavior: "smooth",
+});
+```
+
+```tsx title="Preserve scroll position"
+initClientNavigation({
+  scrollToTop: false,
+});
+```
+
+```tsx title="Custom onNavigate logic"
+initClientNavigation({
+  scrollBehavior: "auto",
+  onNavigate: async () => {
+    // e.g. send page-view to analytics before RSC fetch starts
+    await myAnalytics.track(window.location.pathname);
+  },
+});
+```
+
+### Rationale & Defaults
+
+RedwoodSDK mirrors the behaviour of classic Multi Page Apps where each link click
+brings you back to the **top** of the next page. This is the most common
+expectation and is therefore the default. You can turn it off or make it smooth
+with a single option – no additional libraries required.
