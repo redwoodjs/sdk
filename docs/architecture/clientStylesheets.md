@@ -109,7 +109,7 @@ The `getManifest()` function's main responsibility is to provide this manifest o
 The `getManifest()` function hides this complexity behind a single interface. It uses the `import.meta.env.VITE_IS_DEV_SERVER` flag to switch its behavior:
 
 -   In **production** (`import.meta.env.VITE_IS_DEV_SERVER` is false), it imports the static `manifest.json` file directly. We use a simple build-time alias to ensure the path to the manifest is correct without cluttering the runtime code.
--   In **development** (`import.meta.env.VITE_IS_DEV_SERVER` is true), it becomes an async function that makes a `fetch` call to a local endpoint on the Vite server (e.g., `/__rws_manifest`). This endpoint's handler, running inside the Vite process, can access the live module graph, compute a manifest-like object on the fly, and return it to the worker as JSON.
+-   In **development** (`import.meta.env.VITE_IS_DEV_SERVER` is true), it becomes an async function that makes a `fetch` call to a local endpoint on the Vite server (e.g., `/__rwsdk_manifest`). This endpoint's handler, running inside the Vite process, can access the live module graph, compute a manifest-like object on the fly, and return it to the worker as JSON.
 
 This design allows the rest of our runtime code to remain clean and unaware of the environment-specific details of how the manifest data is obtained.
 
