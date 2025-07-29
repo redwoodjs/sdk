@@ -33,11 +33,15 @@ export function registerClientReference<Target extends Record<string, any>>(
   const descriptors = Object.getOwnPropertyDescriptors(reference);
   const idDescriptor = descriptors.$$id;
 
-  if (idDescriptor && idDescriptor.get) {
-    const originalGet = idDescriptor.get;
-    idDescriptor.get = function getIdWrapper() {
-      requestInfo.rw.scriptsToBeLoaded.add(id);
-      return originalGet.call(this);
+  if (idDescriptor && idDescriptor.hasOwnProperty("value")) {
+    const originalValue = idDescriptor.value;
+    descriptors.$$id = {
+      configurable: idDescriptor.configurable,
+      enumerable: idDescriptor.enumerable,
+      get() {
+        requestInfo.rw.scriptsToBeLoaded.add(id);
+        return originalValue;
+      },
     };
   }
 
