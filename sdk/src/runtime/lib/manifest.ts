@@ -12,7 +12,7 @@ export const getManifest = async (scriptsToBeLoaded?: Set<string>) => {
     manifest = await res.json();
   } else {
     const { default: prodManifest } = await import(
-      "virtual:manifest.js" as any
+      "virtual:rwsdk:manifest.js" as any
     );
     manifest = prodManifest;
   }

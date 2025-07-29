@@ -2,7 +2,7 @@ import { readFile } from "node:fs/promises";
 import { type Plugin, type ViteDevServer } from "vite";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 
-const virtualModuleId = "virtual:manifest.js";
+const virtualModuleId = "virtual:rwsdk:manifest.js";
 const resolvedVirtualModuleId = "\0" + virtualModuleId;
 
 const getCssForModule = (
@@ -52,6 +52,25 @@ export const manifestPlugin = ({
         const manifestContent = await readFile(manifestPath, "utf-8");
         return `export default ${manifestContent}`;
       }
+    },
+    configEnvironment(name, config) {
+      if (name !== "worker" && name !== "ssr") {
+        return;
+      }
+      config.optimizeDeps ??= {};
+      config.optimizeDeps.esbuildOptions ??= {};
+      config.optimizeDeps.esbuildOptions.plugins ??= [];
+      config.optimizeDeps.esbuildOptions.plugins.push({
+        name: "rwsdk:manifest:esbuild",
+        setup(build) {
+          build.onResolve({ filter: /^virtual:rwsdk:manifest\.js$/ }, () => {
+            return {
+              path: "virtual:rwsdk:manifest.js",
+              external: true,
+            };
+          });
+        },
+      });
     },
     configureServer(server) {
       server.middlewares.use("/__rwsdk_manifest", async (req, res, next) => {
