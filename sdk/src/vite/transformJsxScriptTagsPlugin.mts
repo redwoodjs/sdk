@@ -48,8 +48,11 @@ function hasJsxFunctions(text: string): boolean {
 function transformScriptImports(
   scriptContent: string,
   manifest: Record<string, any>,
-  needsRequestInfoImportRef: { value: boolean },
-): { content: string | undefined; hasChanges: boolean } {
+): {
+  content: string | undefined;
+  hasChanges: boolean;
+  entryPoints: string[];
+} {
   const scriptProject = new Project({ useInMemoryFileSystem: true });
 
   try {
@@ -61,6 +64,7 @@ function transformScriptImports(
     );
 
     let hasChanges = false;
+    const entryPoints: string[] = [];
 
     // Find all CallExpressions that look like import("path")
     scriptFile
@@ -84,18 +88,17 @@ function transformScriptImports(
 
             if (importPath.startsWith("/")) {
               log(
-                "Found dynamic import with root-relative path, adding to scripts to be loaded: %s",
+                "Found dynamic import with root-relative path: %s",
                 importPath,
               );
-              needsRequestInfoImportRef.value = true;
-              hasChanges = true;
-              scriptContent = `requestInfo.rw.scriptsToBeLoaded.add("${importPath}");\n${scriptContent}`;
+              entryPoints.push(importPath);
 
               const path = importPath.slice(1); // Remove leading slash
 
               if (manifest[path]) {
                 const transformedSrc = manifest[path].file;
                 args[0].setLiteralValue(transformedSrc);
+                hasChanges = true;
               }
             }
           }
@@ -110,15 +113,15 @@ function transformScriptImports(
       const endPos = fullText.lastIndexOf("}");
       const transformedContent = fullText.substring(startPos, endPos);
 
-      return { content: transformedContent, hasChanges: true };
+      return { content: transformedContent, hasChanges: true, entryPoints };
     }
 
     // Return the original content when no changes are made
-    return { content: scriptContent, hasChanges: false };
+    return { content: scriptContent, hasChanges: false, entryPoints };
   } catch (error) {
     // If parsing fails, fall back to the original content
     console.warn("Failed to parse inline script content:", error);
-    return { content: undefined, hasChanges: false };
+    return { content: undefined, hasChanges: false, entryPoints: [] };
   }
 }
 
@@ -183,6 +186,7 @@ export async function transformJsxScriptTagsCode(
       if (!Node.isStringLiteral(elementType)) return;
 
       const tagName = elementType.getLiteralValue();
+      const entryPoints: string[] = [];
 
       // Process script and link tags
       if (tagName === "script" || tagName === "link") {
@@ -230,28 +234,13 @@ export async function transformJsxScriptTagsCode(
                   const srcValue = initializer.getLiteralValue();
 
                   if (srcValue.startsWith("/")) {
-                    log(
-                      "Found src prop with root-relative path, adding to scripts to be loaded: %s",
-                      srcValue,
-                    );
-                    needsRequestInfoImportRef.value = true;
-                    hasModifications = true;
-
-                    const callExpression = prop.getFirstAncestorByKindOrThrow(
-                      SyntaxKind.CallExpression,
-                    );
-
-                    callExpression.replaceWithText(
-                      `[
-                        (requestInfo.rw.scriptsToBeLoaded.add("${srcValue}")),
-                        ${callExpression.getText()}
-                      ]`,
-                    );
+                    entryPoints.push(srcValue);
 
                     if (manifest[srcValue.slice(1)]) {
                       const path = srcValue.slice(1); // Remove leading slash
                       const transformedSrc = manifest[path].file;
                       initializer.setLiteralValue(transformedSrc);
+                      hasModifications = true;
                     }
                   }
                 }
@@ -269,14 +258,15 @@ export async function transformJsxScriptTagsCode(
                 const scriptContent = initializer.getLiteralValue();
 
                 // Transform import statements in script content using ts-morph
-                const { content: transformedContent, hasChanges } =
-                  transformScriptImports(
-                    scriptContent,
-                    manifest,
-                    needsRequestInfoImportRef,
-                  );
+                const {
+                  content: transformedContent,
+                  hasChanges: contentHasChanges,
+                  entryPoints: dynamicEntryPoints,
+                } = transformScriptImports(scriptContent, manifest);
 
-                if (hasChanges && transformedContent) {
+                entryPoints.push(...dynamicEntryPoints);
+
+                if (contentHasChanges && transformedContent) {
                   // Get the raw text with quotes to determine the exact format
                   const isTemplateLiteral =
                     Node.isNoSubstitutionTemplateLiteral(initializer);
@@ -379,6 +369,25 @@ export async function transformJsxScriptTagsCode(
             }
           }
         }
+      }
+      if (entryPoints.length > 0) {
+        log(
+          "Found %d script entry points, adding to scripts to be loaded: %o",
+          entryPoints.length,
+          entryPoints,
+        );
+        const sideEffects = entryPoints
+          .map((p) => `(requestInfo.rw.scriptsToBeLoaded.add("${p}"))`)
+          .join(",\n");
+
+        callExpr.replaceWithText(
+          `[
+            ${sideEffects},
+            ${callExpr.getText()}
+          ]`,
+        );
+        needsRequestInfoImportRef.value = true;
+        hasModifications = true;
       }
     });
 
