@@ -80,11 +80,27 @@ export const manifestPlugin = ({
             isViteStyle: false,
           });
 
-          normalizedManifest[normalizedKey] = manifest[key];
-          (normalizedManifest[normalizedKey] as { file: string }).file =
-            normalizeModulePath(manifest[key].file, root, {
-              isViteStyle: false,
-            });
+          const entry = manifest[key];
+          delete manifest[key];
+          normalizedManifest[normalizedKey] = entry;
+
+          entry.file = normalizeModulePath(entry.file, root, {
+            isViteStyle: false,
+          });
+
+          const normalizedCss: string[] = [];
+
+          if (entry.css) {
+            for (const css of entry.css) {
+              normalizedCss.push(
+                normalizeModulePath(css, root, {
+                  isViteStyle: false,
+                }),
+              );
+            }
+
+            entry.css = normalizedCss;
+          }
         }
 
         return `export default ${JSON.stringify(normalizedManifest)}`;

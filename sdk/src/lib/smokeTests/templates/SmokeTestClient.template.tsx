@@ -3,8 +3,10 @@ export function getSmokeTestClientTemplate(): string {
 
 import React, { useState } from "react";
 import { smokeTestAction } from "./__smokeTestFunctions";
-import smokeTestUrlStyles from "./smokeTestUrlStyles.css?url";
+import smokeTestUrlStyles from "../smokeTestUrlStyles.css?url";
 import clientStyles from "./smokeTestClientStyles.module.css";
+
+console.log("smokeTestUrlStyles", smokeTestUrlStyles);
 
 interface SmokeTestStatus {
   status: string;

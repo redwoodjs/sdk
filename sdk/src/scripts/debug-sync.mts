@@ -66,6 +66,7 @@ const hackyPnpmSymlinkFix = async (targetDir: string) => {
   console.log("💣 Performing pnpm symlink fix...");
   const pnpmDir = path.join(targetDir, "node_modules", ".pnpm");
   if (!existsSync(pnpmDir)) {
+    console.log("   🤔 No .pnpm directory found.");
     return;
   }
 
@@ -74,6 +75,7 @@ const hackyPnpmSymlinkFix = async (targetDir: string) => {
     // Find ALL rwsdk directories, not just file-based ones, to handle
     // all kinds of stale peer dependencies.
     const rwsdkDirs = entries.filter((e) => e.startsWith("rwsdk@"));
+    console.log("   Found rwsdk directories:", rwsdkDirs);
 
     if (rwsdkDirs.length === 0) {
       console.log("   🤔 No rwsdk directories found to hack.");
@@ -91,6 +93,8 @@ const hackyPnpmSymlinkFix = async (targetDir: string) => {
         latestDir = dir;
       }
     }
+
+    console.log("   Latest rwsdk directory:", latestDir);
 
     if (!latestDir) {
       console.log("   🤔 Could not determine the latest rwsdk directory.");
@@ -116,7 +120,7 @@ const hackyPnpmSymlinkFix = async (targetDir: string) => {
     const topLevelSymlink = path.join(targetDir, "node_modules", "rwsdk");
     await fs.rm(topLevelSymlink, { recursive: true, force: true });
     await fs.symlink(goldenSourcePath, topLevelSymlink, "dir");
-    console.log(`   ✅ Symlinked node_modules/rwsdk`);
+    console.log(`   ✅ Symlinked ${topLevelSymlink} -> ${goldenSourcePath}`);
 
     // 2. Fix peer dependency symlinks
     const allPnpmDirs = await fs.readdir(pnpmDir);
@@ -189,8 +193,7 @@ const performFullSync = async (
           targetPackageJson.pnpm = targetPackageJson.pnpm || {};
           targetPackageJson.pnpm.overrides =
             targetPackageJson.pnpm.overrides || {};
-          const relativeTarballPath = path.relative(targetDir, tarballPath);
-          targetPackageJson.pnpm.overrides.rwsdk = `file:${relativeTarballPath}`;
+          targetPackageJson.pnpm.overrides.rwsdk = `file:${tarballPath}`;
           await fs.writeFile(
             packageJsonPath,
             JSON.stringify(targetPackageJson, null, 2),
