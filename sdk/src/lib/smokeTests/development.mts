@@ -6,10 +6,6 @@ import { fail } from "./utils.mjs";
 import { state } from "./state.mjs";
 import { createSmokeTestStylesheets } from "./codeUpdates.mjs";
 
-import { join } from "path";
-import * as fs from "fs/promises";
-import { Page } from "puppeteer-core";
-
 /**
  * Run the local development server and return the URL
  */
