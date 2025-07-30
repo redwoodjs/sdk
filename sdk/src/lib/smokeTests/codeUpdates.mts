@@ -4,6 +4,8 @@ import { log } from "./constants.mjs";
 import { getSmokeTestFunctionsTemplate } from "./templates/smokeTestFunctions.template";
 import { getSmokeTestTemplate } from "./templates/SmokeTest.template";
 import { getSmokeTestClientTemplate } from "./templates/SmokeTestClient.template";
+import { getSmokeTestUrlStylesCssTemplate } from "./templates/smokeTestUrlStyles.css.template";
+import { getSmokeTestClientStylesCssTemplate } from "./templates/smokeTestClientStyles.module.css.template";
 import MagicString from "magic-string";
 import { parse as parseJsonc } from "jsonc-parser";
 
@@ -37,6 +39,9 @@ export async function createSmokeTestComponents(
   log("Writing SmokeTest component file");
   await fs.writeFile(smokeTestPath, smokeTestContent);
 
+  // Create smoke test stylesheet files
+  await createSmokeTestStylesheets(targetDir, "blue");
+
   // Only create client component if not skipping client-side tests
   if (!skipClient) {
     // Create SmokeTestClient.tsx
@@ -60,9 +65,46 @@ export async function createSmokeTestComponents(
   console.log(`- ${smokeTestPath}`);
   if (!skipClient) {
     console.log(`- ${join(componentsDir, "__SmokeTestClient.tsx")}`);
+    console.log(
+      `- ${join(componentsDir, "smoke_tests_client_styles.module.css")}`,
+    );
   } else {
     console.log("- Client component skipped (--skip-client was specified)");
   }
+  console.log(
+    `- ${join(targetDir, "src", "app", "smoke_tests_url_styles.css")}`,
+  );
+}
+
+export async function createSmokeTestStylesheets(
+  targetDir: string,
+  clientStyle: "blue" | "green",
+  urlStyle: "red" | "green" = "red",
+) {
+  log("Creating smoke test stylesheets in project...");
+
+  // Create directories if they don't exist
+  const componentsDir = join(targetDir, "src", "app", "components");
+  const appDir = join(targetDir, "src", "app");
+  await fs.mkdir(componentsDir, { recursive: true });
+  await fs.mkdir(appDir, { recursive: true });
+
+  // Create smoke_tests_client_styles.module.css
+  const clientStylesPath = join(
+    componentsDir,
+    "smoke_tests_client_styles.module.css",
+  );
+  log("Creating smoke_tests_client_styles.module.css at: %s", clientStylesPath);
+  const clientStylesContent = getSmokeTestClientStylesCssTemplate(clientStyle);
+  await fs.writeFile(clientStylesPath, clientStylesContent);
+
+  // Create smoke_tests_url_styles.css
+  const urlStylesPath = join(appDir, "smoke_tests_url_styles.css");
+  log("Creating smoke_tests_url_styles.css at: %s", urlStylesPath);
+  const urlStylesContent = getSmokeTestUrlStylesCssTemplate(urlStyle);
+  await fs.writeFile(urlStylesPath, urlStylesContent);
+
+  log("Smoke test stylesheets created successfully");
 }
 
 /**

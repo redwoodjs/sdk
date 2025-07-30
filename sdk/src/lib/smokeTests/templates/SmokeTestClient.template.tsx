@@ -3,6 +3,7 @@ export function getSmokeTestClientTemplate(): string {
 
 import React, { useState } from "react";
 import { smokeTestAction } from "./__smokeTestFunctions";
+import styles from "./smoke_tests_client_styles.module.css";
 
 interface SmokeTestStatus {
   status: string;
@@ -79,6 +80,9 @@ export const SmokeTestClient: React.FC = () => {
       >
         {loading ? "Checking..." : "Run Smoke Test"}
       </button>
+
+      {/* Client Stylesheet Marker */}
+      <div data-testid="client-stylesheet-marker" className={styles.testBackground}></div>
 
       {/* HMR Testing Marker - Do not modify this comment */}
       <div 

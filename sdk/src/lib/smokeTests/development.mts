@@ -1,9 +1,15 @@
 import { setTimeout } from "node:timers/promises";
 import { log, RETRIES } from "./constants.mjs";
 import { $ } from "../$.mjs";
-import { checkUrl, checkServerUp } from "./browser.mjs";
+import {
+  checkUrl,
+  checkServerUp,
+  checkBackgroundColor,
+  checkClientStyle,
+} from "./browser.mjs";
 import { fail } from "./utils.mjs";
 import { state } from "./state.mjs";
+import { createSmokeTestStylesheets } from "./codeUpdates.mjs";
 
 /**
  * Run the local development server and return the URL
@@ -259,6 +265,22 @@ export async function runDevTest(
       targetDir, // Add target directory for HMR testing
       skipHmr, // Add skip HMR option
     );
+
+    // Check stylesheets
+    log("Checking stylesheets");
+    await checkInitialStyles(testUrl, artifactDir, browserPath, headless);
+
+    if (!skipHmr) {
+      log("Performing HMR tests for stylesheets");
+      await testStyleHMR(
+        targetDir,
+        testUrl,
+        artifactDir,
+        browserPath,
+        headless,
+      );
+    }
+
     log("Development server test completed successfully");
   } catch (error) {
     // Add more context about the specific part that failed
@@ -273,4 +295,68 @@ export async function runDevTest(
     // Make sure we throw the error so it's properly handled upstream
     throw error;
   }
+}
+
+async function checkInitialStyles(
+  testUrl: string,
+  artifactDir: string,
+  browserPath: string | undefined,
+  headless: boolean,
+) {
+  // Check URL-based stylesheet
+  await checkBackgroundColor(
+    testUrl,
+    "red",
+    artifactDir,
+    "stylesheet-url-initial",
+    browserPath,
+    headless,
+  );
+
+  // Check client-module stylesheet
+  await checkClientStyle(
+    testUrl,
+    "blue",
+    artifactDir,
+    "stylesheet-client-initial",
+    browserPath,
+    headless,
+  );
+}
+
+async function testStyleHMR(
+  targetDir: string,
+  testUrl: string,
+  artifactDir: string,
+  browserPath: string | undefined,
+  headless: boolean,
+) {
+  // Update both stylesheets to green
+  await createSmokeTestStylesheets(targetDir, "green", "green");
+
+  // Allow time for HMR to kick in
+  await setTimeout(5000);
+
+  // Check URL-based stylesheet HMR
+  await checkBackgroundColor(
+    testUrl,
+    "green",
+    artifactDir,
+    "stylesheet-url-hmr",
+    browserPath,
+    headless,
+  );
+
+  // Check client-module stylesheet HMR
+  await checkClientStyle(
+    testUrl,
+    "green",
+    artifactDir,
+    "stylesheet-client-hmr",
+    browserPath,
+    headless,
+  );
+
+  // Restore original red for URL-based stylesheet for next potential checks
+  await createSmokeTestStylesheets(targetDir, "blue", "red");
 }

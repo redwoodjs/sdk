@@ -23,6 +23,77 @@ import { reportSmokeTestResult } from "./reporting.mjs";
 import { updateTestStatus } from "./state.mjs";
 import { TestStatus } from "./state.mjs";
 
+export async function checkBackgroundColor(
+  pageUrl: string,
+  expectedColor: "red" | "green",
+  artifactDir: string,
+  screenshotName: string,
+  browserPath: string | undefined,
+  headless: boolean = true,
+): Promise<void> {
+  const browser = await launchBrowser(browserPath, headless);
+  const page = await browser.newPage();
+  try {
+    await page.goto(pageUrl, { waitUntil: "networkidle0" });
+    const backgroundColor = await page.evaluate(() => {
+      return window.getComputedStyle(document.body).backgroundColor;
+    });
+
+    const expectedRgb =
+      expectedColor === "red" ? "rgb(255, 0, 0)" : "rgb(0, 128, 0)";
+    if (backgroundColor !== expectedRgb) {
+      throw new Error(
+        `URL-based stylesheet check failed: expected background color ${expectedRgb}, but got ${backgroundColor}`,
+      );
+    }
+    log(
+      `URL-based stylesheet check passed: background color is ${backgroundColor}`,
+    );
+  } finally {
+    await takeScreenshot(page, pageUrl, artifactDir, screenshotName);
+    await browser.close();
+  }
+}
+
+export async function checkClientStyle(
+  pageUrl: string,
+  expectedColor: "blue" | "green",
+  artifactDir: string,
+  screenshotName: string,
+  browserPath: string | undefined,
+  headless: boolean = true,
+): Promise<void> {
+  const browser = await launchBrowser(browserPath, headless);
+  const page = await browser.newPage();
+  try {
+    await page.goto(pageUrl, { waitUntil: "networkidle0" });
+    const marker = await page.waitForSelector(
+      '[data-testid="client-stylesheet-marker"]',
+    );
+    if (!marker) {
+      throw new Error("Client stylesheet marker not found");
+    }
+    const backgroundColor = await page.evaluate(
+      (el) => window.getComputedStyle(el).backgroundColor,
+      marker,
+    );
+
+    const expectedRgb =
+      expectedColor === "blue" ? "rgb(0, 0, 255)" : "rgb(0, 128, 0)";
+    if (backgroundColor !== expectedRgb) {
+      throw new Error(
+        `Client module stylesheet check failed: expected background color ${expectedRgb}, but got ${backgroundColor}`,
+      );
+    }
+    log(
+      `Client module stylesheet check passed: background color is ${backgroundColor}`,
+    );
+  } finally {
+    await takeScreenshot(page, pageUrl, artifactDir, screenshotName);
+    await browser.close();
+  }
+}
+
 /**
  * Launch a browser instance
  */
