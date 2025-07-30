@@ -85,7 +85,7 @@ export const SmokeTestClient: React.FC = () => {
       <div data-testid="client-stylesheet-marker" className={styles.testBackground}></div>
 
       {/* HMR Testing Marker - Do not modify this comment */}
-      <div 
+      <div
         id="client-hmr-marker"
         data-testid="client-hmr-marker"
         data-hmr-text="original"
