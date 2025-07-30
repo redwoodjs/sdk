@@ -684,7 +684,10 @@ export async function checkUrlSmoke(
       ? "realtimeClientModuleStyles"
       : "initialClientModuleStyles";
 
-    const stylesheetState = { hasFailures, errorVar: stylesheetTestError };
+    const stylesheetState: {
+      hasFailures: boolean;
+      errorVar: Error | null;
+    } = { hasFailures, errorVar: stylesheetTestError };
 
     // Initial style checks
     await executeTestWithErrorHandling(
@@ -823,7 +826,7 @@ export async function checkUrlSmoke(
   if (clientResult && clientResult.clientTimestamp) {
     log("Running server render check with client timestamp");
     // Wait a moment for any server renders to complete
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await setTimeout(500);
 
     try {
       await checkServerSmoke(
@@ -1399,7 +1402,7 @@ export async function checkServerUp(
         }
         log("Server not up yet, retrying in 2 seconds");
         console.log(`Server not up yet, retrying in 2 seconds...`);
-        await new Promise<void>((resolve) => setTimeout(() => resolve(), 2000));
+        await setTimeout(2000);
       }
     }
     if (!up) return false;
