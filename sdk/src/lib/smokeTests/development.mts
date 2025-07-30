@@ -1,21 +1,10 @@
 import { setTimeout } from "node:timers/promises";
 import { log, RETRIES } from "./constants.mjs";
 import { $ } from "../$.mjs";
-import {
-  checkUrl,
-  checkServerUp,
-  checkUrlStyles,
-  checkClientModuleStyles,
-  launchBrowser,
-} from "./browser.mjs";
+import { checkUrl, checkServerUp, launchBrowser } from "./browser.mjs";
 import { fail } from "./utils.mjs";
 import { state } from "./state.mjs";
 import { createSmokeTestStylesheets } from "./codeUpdates.mjs";
-import { template as urlStylesTemplate } from "./templates/smokeTestUrlStyles.css.template";
-import { template as clientStylesTemplate } from "./templates/smokeTestClientStyles.module.css.template";
-import { join } from "path";
-import * as fs from "fs/promises";
-import { Page } from "puppeteer-core";
 
 /**
  * Run the local development server and return the URL
@@ -277,15 +266,6 @@ export async function runDevTest(
       skipHmr, // Add skip HMR option
     );
 
-    // Check stylesheets
-    log("Checking stylesheets");
-    await checkInitialStyles(page, artifactDir);
-
-    if (!skipHmr) {
-      log("Performing HMR tests for stylesheets");
-      await testStyleHMR(page, targetDir!, artifactDir);
-    }
-
     log("Development server test completed successfully");
   } catch (error) {
     // Add more context about the specific part that failed
@@ -302,53 +282,4 @@ export async function runDevTest(
   } finally {
     await browser.close();
   }
-}
-
-async function checkInitialStyles(page: Page, artifactDir: string) {
-  // Check URL-based stylesheet
-  await checkUrlStyles(page, "red");
-
-  // Check client-module stylesheet
-  await checkClientModuleStyles(page, "blue");
-}
-
-async function testStyleHMR(
-  page: Page,
-  targetDir: string,
-  artifactDir: string,
-) {
-  // --- HMR Test for URL-based Stylesheet ---
-  const urlStylePath = join(targetDir, "src", "app", "smokeTestUrlStyles.css");
-  const updatedUrlStyle = urlStylesTemplate.replace(
-    "rgb(255, 0, 0)",
-    "rgb(0, 128, 0)",
-  );
-  await fs.writeFile(urlStylePath, updatedUrlStyle);
-
-  // --- HMR Test for Client Module Stylesheet ---
-  const clientStylePath = join(
-    targetDir,
-    "src",
-    "app",
-    "components",
-    "smokeTestClientStyles.module.css",
-  );
-  const updatedClientStyle = clientStylesTemplate.replace(
-    "rgb(0, 0, 255)",
-    "rgb(0, 128, 0)",
-  );
-  await fs.writeFile(clientStylePath, updatedClientStyle);
-
-  // Allow time for HMR to kick in
-  await setTimeout(5000);
-
-  // Check URL-based stylesheet HMR
-  await checkUrlStyles(page, "green");
-
-  // Check client-module stylesheet HMR
-  await checkClientModuleStyles(page, "green");
-
-  // Restore original styles
-  await fs.writeFile(urlStylePath, urlStylesTemplate);
-  await fs.writeFile(clientStylePath, clientStylesTemplate);
 }

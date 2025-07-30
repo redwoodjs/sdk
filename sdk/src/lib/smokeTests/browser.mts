@@ -22,6 +22,9 @@ import { fail } from "./utils.mjs";
 import { reportSmokeTestResult } from "./reporting.mjs";
 import { updateTestStatus } from "./state.mjs";
 import { TestStatus } from "./state.mjs";
+import * as fs from "fs/promises";
+import { template as urlStylesTemplate } from "./templates/smokeTestUrlStyles.css.template";
+import { template as clientStylesTemplate } from "./templates/smokeTestClientStyles.module.css.template";
 
 export async function checkUrlStyles(
   page: Page,
@@ -583,6 +586,32 @@ export async function checkUrlSmoke(
     );
   }
 
+  // Skip client tests if requested
+  if (skipClient) {
+    log("Skipping client-side smoke test as requested");
+    console.log("⏩ Skipping client-side smoke test as requested");
+
+    // If we're running HMR tests and have a target directory
+    if (!skipHmr && targetDir) {
+      try {
+        // Run server HMR test if client tests are skipped
+        log("Running server HMR test");
+        await testServerComponentHmr(page, targetDir, phase, environment, bail);
+      } catch (error) {
+        hasFailures = true;
+        hmrTestError =
+          error instanceof Error ? error : new Error(String(error));
+        log("Error during HMR test: %O", error);
+
+        if (bail) {
+          throw error;
+        }
+      }
+    }
+
+    return;
+  }
+
   // Step 1.5: Run stylesheet checks
   const env = environment === "Development" ? "dev" : "production";
   const urlStylesKey = isRealtime ? "realtimeUrlStyles" : "initialUrlStyles";
@@ -644,32 +673,6 @@ export async function checkUrlSmoke(
     if (bail) {
       throw error;
     }
-  }
-
-  // Skip client tests if requested
-  if (skipClient) {
-    log("Skipping client-side smoke test as requested");
-    console.log("⏩ Skipping client-side smoke test as requested");
-
-    // If we're running HMR tests and have a target directory
-    if (!skipHmr && targetDir) {
-      try {
-        // Run server HMR test if client tests are skipped
-        log("Running server HMR test");
-        await testServerComponentHmr(page, targetDir, phase, environment, bail);
-      } catch (error) {
-        hasFailures = true;
-        hmrTestError =
-          error instanceof Error ? error : new Error(String(error));
-        log("Error during HMR test: %O", error);
-
-        if (bail) {
-          throw error;
-        }
-      }
-    }
-
-    return;
   }
 
   // Step 2: Run client-side smoke test to update the server timestamp
@@ -764,6 +767,9 @@ export async function checkUrlSmoke(
       // Test client component HMR if client tests aren't skipped
       if (!skipClient) {
         await testClientComponentHmr(page, targetDir, phase, environment, bail);
+
+        // Test style HMR
+        await testStyleHMR(page, targetDir);
       }
     } catch (error) {
       hasFailures = true;
@@ -1767,4 +1773,47 @@ export async function testClientComponentHmr(
     }
     return false;
   }
+}
+
+async function testStyleHMR(page: Page, targetDir: string): Promise<void> {
+  log("Running style HMR tests");
+  console.log("🎨 Testing style HMR...");
+
+  // --- HMR Test for URL-based Stylesheet ---
+  const urlStylePath = join(targetDir, "src", "app", "smokeTestUrlStyles.css");
+  const updatedUrlStyle = urlStylesTemplate.replace(
+    "rgb(255, 0, 0)",
+    "rgb(0, 128, 0)",
+  );
+  await fs.writeFile(urlStylePath, updatedUrlStyle);
+
+  // --- HMR Test for Client Module Stylesheet ---
+  const clientStylePath = join(
+    targetDir,
+    "src",
+    "app",
+    "components",
+    "smokeTestClientStyles.module.css",
+  );
+  const updatedClientStyle = clientStylesTemplate.replace(
+    "rgb(0, 0, 255)",
+    "rgb(0, 128, 0)",
+  );
+  await fs.writeFile(clientStylePath, updatedClientStyle);
+
+  // Allow time for HMR to kick in
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+
+  // Check URL-based stylesheet HMR
+  await checkUrlStyles(page, "green");
+
+  // Check client-module stylesheet HMR
+  await checkClientModuleStyles(page, "green");
+
+  // Restore original styles
+  await fs.writeFile(urlStylePath, urlStylesTemplate);
+  await fs.writeFile(clientStylePath, clientStylesTemplate);
+
+  log("Style HMR tests completed successfully");
+  console.log("✅ Style HMR tests passed");
 }
