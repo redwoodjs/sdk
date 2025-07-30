@@ -522,16 +522,61 @@ export async function checkUrlSmoke(
   }
 
   // Step 1.5: Run stylesheet checks
+  const env = environment === "Development" ? "dev" : "production";
+  const urlStylesKey = isRealtime ? "realtimeUrlStyles" : "initialUrlStyles";
+  const clientModuleStylesKey = isRealtime
+    ? "realtimeClientModuleStyles"
+    : "initialClientModuleStyles";
+
   try {
     await checkUrlStyles(page, "red");
-    await checkClientModuleStyles(page, "blue");
+    updateTestStatus(
+      env,
+      urlStylesKey as keyof TestStatus[typeof env],
+      "PASSED",
+    );
+    log(`${phase} URL styles check passed`);
   } catch (error) {
     hasFailures = true;
+    updateTestStatus(
+      env,
+      urlStylesKey as keyof TestStatus[typeof env],
+      "FAILED",
+    );
     stylesheetTestError =
       error instanceof Error ? error : new Error(String(error));
-    log("Error during stylesheet checks: %O", error);
+    log("Error during URL styles check: %O", error);
     console.error(
-      `❌ Stylesheet checks failed: ${error instanceof Error ? error.message : String(error)}`,
+      `❌ URL styles check failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+
+    if (bail) {
+      throw error;
+    }
+  }
+
+  try {
+    await checkClientModuleStyles(page, "blue");
+    updateTestStatus(
+      env,
+      clientModuleStylesKey as keyof TestStatus[typeof env],
+      "PASSED",
+    );
+    log(`${phase} client module styles check passed`);
+  } catch (error) {
+    hasFailures = true;
+    updateTestStatus(
+      env,
+      clientModuleStylesKey as keyof TestStatus[typeof env],
+      "FAILED",
+    );
+    if (!stylesheetTestError) {
+      stylesheetTestError =
+        error instanceof Error ? error : new Error(String(error));
+    }
+    log("Error during client module styles check: %O", error);
+    console.error(
+      `❌ Client module styles check failed: ${error instanceof Error ? error.message : String(error)}`,
     );
 
     if (bail) {
