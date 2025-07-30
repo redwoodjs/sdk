@@ -96,7 +96,7 @@ function transformScriptImports(
               const path = importPath.slice(1); // Remove leading slash
 
               if (manifest[path]) {
-                const transformedSrc = manifest[path].file;
+                const transformedSrc = `/${manifest[path].file}`;
                 args[0].setLiteralValue(transformedSrc);
                 hasChanges = true;
               }
@@ -236,9 +236,9 @@ export async function transformJsxScriptTagsCode(
                   if (srcValue.startsWith("/")) {
                     entryPoints.push(srcValue);
 
-                    if (manifest[srcValue.slice(1)]) {
-                      const path = srcValue.slice(1); // Remove leading slash
-                      const transformedSrc = manifest[path].file;
+                    const path = srcValue.slice(1); // Remove leading slash
+                    if (manifest[path]) {
+                      const transformedSrc = `/${manifest[path].file}`;
                       initializer.setLiteralValue(transformedSrc);
                       hasModifications = true;
                     }
