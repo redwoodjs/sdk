@@ -94,20 +94,31 @@ export async function createSmokeTestStylesheets(targetDir: string) {
   log("Creating smokeTestUrlStyles.css at: %s", urlStylesPath);
   await fs.writeFile(urlStylesPath, smokeTestUrlStylesCssTemplate);
 
-  // Modify Document.tsx to include the URL stylesheet
+  // Modify Document.tsx to include the URL stylesheet using CSS URL import
   const documentPath = join(appDir, "Document.tsx");
   log("Modifying Document.tsx to include URL stylesheet at: %s", documentPath);
   try {
     const documentContent = await fs.readFile(documentPath, "utf-8");
     const s = new MagicString(documentContent);
+
+    // Add the CSS URL import at the top of the file
+    const importMatch = documentContent.match(/^(import\s+.*?;\s*\n)*/m);
+    const insertPosition = importMatch ? importMatch[0].length : 0;
+
+    s.appendLeft(
+      insertPosition,
+      'import smokeTestUrlStyles from "./smokeTestUrlStyles.css?url";\n',
+    );
+
+    // Add the link tag in the head using the imported variable
     const headTagEnd = documentContent.indexOf("</head>");
     if (headTagEnd !== -1) {
       s.appendLeft(
         headTagEnd,
-        '    <link rel="stylesheet" href="./smokeTestUrlStyles.css" />\n',
+        '      <link rel="stylesheet" href={smokeTestUrlStyles} />\n',
       );
       await fs.writeFile(documentPath, s.toString(), "utf-8");
-      log("Successfully modified Document.tsx");
+      log("Successfully modified Document.tsx with CSS URL import pattern");
     } else {
       log("Could not find </head> tag in Document.tsx");
     }
