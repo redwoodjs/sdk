@@ -99,10 +99,22 @@ async function modifyDocumentForSmokeTest(targetDir: string): Promise<void> {
   if (await fs.stat(documentPath).catch(() => null)) {
     log("Found Document.tsx, modifying it for smoke tests");
     const content = await fs.readFile(documentPath, "utf-8");
-    const newImport = 'import "./smoke_tests_url_styles.css";';
+    const newImport =
+      'import smokeStyles from "./smoke_tests_url_styles.css?url";';
+    const newLink = '<link rel="stylesheet" href={smokeStyles} />';
+
+    let newContent = content;
 
     if (!content.includes(newImport)) {
-      const newContent = `${newImport}\n${content}`;
+      newContent = `${newImport}\n${newContent}`;
+    }
+
+    if (!content.includes(newLink)) {
+      // Add the link tag before the closing </head> tag
+      newContent = newContent.replace("</head>", `  ${newLink}\n</head>`);
+    }
+
+    if (newContent !== content) {
       await fs.writeFile(documentPath, newContent);
       log("Added smoke test stylesheet import to Document.tsx");
     } else {

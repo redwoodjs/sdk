@@ -160,10 +160,10 @@ const performFullSync = async (
     }
 
     console.log("📦 Packing SDK...");
-    const packResult = await $({ cwd: sdkDir })`npm pack`;
+    const packResult = await $({ cwd: sdkDir })`pnpm pack`;
     tarballName = packResult.stdout?.trim() ?? "";
     if (!tarballName) {
-      console.error("❌ Failed to get tarball name from npm pack.");
+      console.error("❌ Failed to get tarball name from pnpm pack.");
       return;
     }
     tarballPath = path.resolve(sdkDir, tarballName);
@@ -265,8 +265,9 @@ const performFastSync = async (sdkDir: string, targetDir: string) => {
 };
 
 const performSync = async (sdkDir: string, targetDir: string) => {
+  const projectRoot = path.resolve(sdkDir, "..");
   console.log("🏗️  Rebuilding SDK...");
-  await $`pnpm build`;
+  await $({ cwd: projectRoot })`pnpm --filter rwsdk build`;
 
   const forceFullSync = Boolean(process.env.RWSDK_FORCE_FULL_SYNC);
 
