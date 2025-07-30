@@ -35,10 +35,10 @@ export async function checkUrlStyles(
   }
 
   const backgroundColor = await page.evaluate(
-    (selector) =>
-      window.getComputedStyle(document.querySelector(selector)!)
-        .backgroundColor,
-    selector,
+    () =>
+      window.getComputedStyle(
+        document.querySelector('[data-testid="smoke-test-url-styles"]')!,
+      ).backgroundColor,
   );
 
   const expectedRgb =
@@ -67,10 +67,10 @@ export async function checkClientModuleStyles(
   }
 
   const backgroundColor = await page.evaluate(
-    (selector) =>
-      window.getComputedStyle(document.querySelector(selector)!)
-        .backgroundColor,
-    selector,
+    () =>
+      window.getComputedStyle(
+        document.querySelector('[data-testid="smoke-test-client-styles"]')!,
+      ).backgroundColor,
   );
 
   const expectedRgb =
