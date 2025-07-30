@@ -205,7 +205,9 @@ const performFullSync = async (
           cwd: targetDir,
           stdio: "inherit",
         });
-        await hackyPnpmSymlinkFix(targetDir);
+        if (process.env.RWSDK_PNPM_SYMLINK_FIX) {
+          await hackyPnpmSymlinkFix(targetDir);
+        }
       } else {
         const cmd = pm.name;
         const args = [pm.command];
