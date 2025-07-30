@@ -265,9 +265,8 @@ const performFastSync = async (sdkDir: string, targetDir: string) => {
 };
 
 const performSync = async (sdkDir: string, targetDir: string) => {
-  const projectRoot = path.resolve(sdkDir, "..");
   console.log("🏗️  Rebuilding SDK...");
-  await $({ cwd: projectRoot })`pnpm --filter rwsdk build`;
+  await $`pnpm build`;
 
   const forceFullSync = Boolean(process.env.RWSDK_FORCE_FULL_SYNC);
 
