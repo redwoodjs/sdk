@@ -332,7 +332,8 @@ export const debugSync = async (opts: DebugSyncOptions) => {
   }
 
   // --- Watch Mode Logic ---
-  const lockfilePath = path.join(targetDir, "node_modules", ".rwsync.lock");
+  // Use global lock based on SDK directory since all instances sync from the same source
+  const lockfilePath = path.join(sdkDir, ".rwsync.lock");
   let release: () => Promise<void>;
 
   // Ensure the directory for the lockfile exists
@@ -345,7 +346,7 @@ export const debugSync = async (opts: DebugSyncOptions) => {
   } catch (e: any) {
     if (e.code === "ELOCKED") {
       console.error(
-        `❌ Another rwsync process is already watching ${targetDir}.`,
+        `❌ Another rwsync process is already running for this SDK.`,
       );
       console.error(
         `   If this is not correct, please remove the lockfile at ${lockfilePath}`,

@@ -1,6 +1,6 @@
 /* eslint-disable quotes */
 export const template = `
-#redwood-app .smoke-test-url-styles {
+.smoke-test-url-styles {
   /* This is a comment to test HMR */
   background-color: rgb(255, 0, 0);
   width: 100px;
