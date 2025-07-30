@@ -67,14 +67,6 @@ Note the extra `--` before the `-u` flag. This is necessary to pass the flag to 
 
 When writing tests, we prefer using **dependency injection** over module-level mocking (e.g., `vi.mock()`). [[memory:4223216]] This approach makes our tests more explicit, robust, and easier to maintain.
 
-**The Problem with Mocking**
-
--   **Hidden Dependencies**: `vi.mock()` can hide the dependencies of a function, making it harder to understand what it relies on.
--   **Brittle Tests**: Mocks can be tightly coupled to implementation details. A small refactor of the mocked module can break many tests.
--   **Leaky State**: Mocks can sometimes leak state between tests, leading to flaky and unpredictable results.
-
-**The Solution: Dependency Injection**
-
 The preferred pattern is to design functions to accept their dependencies as arguments. This allows you to pass in a controlled, "fake" version of the dependency during tests.
 
 **Example: What Not to Do**
