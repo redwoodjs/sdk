@@ -22,6 +22,10 @@ import { fail } from "./utils.mjs";
 import { reportSmokeTestResult } from "./reporting.mjs";
 import { updateTestStatus } from "./state.mjs";
 import { TestStatus } from "./state.mjs";
+import { template as urlStylesTemplate } from "./templates/smokeTestUrlStyles.css.template.js";
+import { template as clientStylesTemplate } from "./templates/smokeTestClientStyles.module.css.template.js";
+import { promises as fs } from "fs";
+import { setTimeout } from "timers/promises";
 
 export async function checkUrlStyles(
   page: Page,
@@ -486,6 +490,92 @@ export async function checkUrl(
 }
 
 /**
+ * Test style HMR functionality by modifying stylesheets and verifying changes
+ */
+async function testStyleHMR(page: Page, targetDir: string): Promise<void> {
+  // --- HMR Test for URL-based Stylesheet ---
+  const urlStylePath = join(targetDir, "src", "app", "smokeTestUrlStyles.css");
+  const updatedUrlStyle = urlStylesTemplate.replace(
+    "rgb(255, 0, 0)",
+    "rgb(0, 128, 0)",
+  );
+  await fs.writeFile(urlStylePath, updatedUrlStyle);
+
+  // --- HMR Test for Client Module Stylesheet ---
+  const clientStylePath = join(
+    targetDir,
+    "src",
+    "app",
+    "components",
+    "smokeTestClientStyles.module.css",
+  );
+  const updatedClientStyle = clientStylesTemplate.replace(
+    "rgb(0, 0, 255)",
+    "rgb(0, 128, 0)",
+  );
+  await fs.writeFile(clientStylePath, updatedClientStyle);
+
+  // Allow time for HMR to kick in
+  await setTimeout(5000);
+
+  // Check URL-based stylesheet HMR
+  await checkUrlStyles(page, "green");
+
+  // Check client-module stylesheet HMR
+  await checkClientModuleStyles(page, "green");
+
+  // Restore original styles
+  await fs.writeFile(urlStylePath, urlStylesTemplate);
+  await fs.writeFile(clientStylePath, clientStylesTemplate);
+}
+
+/**
+ * Wrapper function to handle test execution with consistent error handling and status tracking
+ */
+async function executeTestWithErrorHandling<T>(
+  testName: string,
+  testFn: () => Promise<T>,
+  phase: string,
+  environment: string,
+  testStatusKey: keyof TestStatus["dev"] | keyof TestStatus["production"],
+  bail: boolean,
+  state: {
+    hasFailures: boolean;
+    errorVar: Error | null;
+  },
+): Promise<T | null> {
+  const env = environment === "Development" ? "dev" : "production";
+
+  try {
+    const result = await testFn();
+    updateTestStatus(
+      env,
+      testStatusKey as keyof TestStatus[typeof env],
+      "PASSED",
+    );
+    log(`${phase} ${testName} passed`);
+    return result;
+  } catch (error) {
+    state.hasFailures = true;
+    updateTestStatus(
+      env,
+      testStatusKey as keyof TestStatus[typeof env],
+      "FAILED",
+    );
+    state.errorVar = error instanceof Error ? error : new Error(String(error));
+    log(`Error during ${testName}: %O`, error);
+    console.error(
+      `❌ ${testName} failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+
+    if (bail) {
+      throw error;
+    }
+    return null;
+  }
+}
+
+/**
  * Check smoke test status for a specific URL
  */
 export async function checkUrlSmoke(
@@ -583,67 +673,96 @@ export async function checkUrlSmoke(
     );
   }
 
-  // Step 1.5: Run stylesheet checks
-  const env = environment === "Development" ? "dev" : "production";
-  const urlStylesKey = isRealtime ? "realtimeUrlStyles" : "initialUrlStyles";
-  const clientModuleStylesKey = isRealtime
-    ? "realtimeClientModuleStyles"
-    : "initialClientModuleStyles";
+  // Step 1.5: Run stylesheet checks (skip if client tests are disabled)
+  if (!skipClient) {
+    log("Running stylesheet checks");
+    console.log(`🎨 Running ${phase} stylesheet checks...`);
 
-  try {
-    await checkUrlStyles(page, "red");
+    const env = environment === "Development" ? "dev" : "production";
+    const urlStylesKey = isRealtime ? "realtimeUrlStyles" : "initialUrlStyles";
+    const clientModuleStylesKey = isRealtime
+      ? "realtimeClientModuleStyles"
+      : "initialClientModuleStyles";
+
+    const stylesheetState: {
+      hasFailures: boolean;
+      errorVar: Error | null;
+    } = { hasFailures, errorVar: stylesheetTestError };
+
+    // Initial style checks
+    await executeTestWithErrorHandling(
+      "URL styles check",
+      () => checkUrlStyles(page, "red"),
+      phase,
+      environment,
+      urlStylesKey as keyof TestStatus[typeof env],
+      bail,
+      stylesheetState,
+    );
+
+    await executeTestWithErrorHandling(
+      "client module styles check",
+      () => checkClientModuleStyles(page, "blue"),
+      phase,
+      environment,
+      clientModuleStylesKey as keyof TestStatus[typeof env],
+      bail,
+      stylesheetState,
+    );
+
+    // Style HMR tests (only in development with target directory)
+    if (!skipHmr && targetDir && environment === "Development") {
+      log(`Starting style HMR tests for ${phase} phase`);
+      console.log(`🔄 Running ${phase} style HMR tests...`);
+
+      await executeTestWithErrorHandling(
+        "style HMR test",
+        () => testStyleHMR(page, targetDir),
+        phase,
+        environment,
+        // Use the same keys as regular style tests for HMR
+        urlStylesKey as keyof TestStatus[typeof env],
+        bail,
+        stylesheetState,
+      );
+    } else {
+      log("Skipping style HMR tests - conditions not met");
+      if (skipHmr) {
+        console.log("⏩ Skipping style HMR tests as requested");
+      } else if (!targetDir) {
+        console.log(
+          "⏩ Skipping style HMR tests - target directory not provided",
+        );
+      } else if (environment !== "Development") {
+        console.log(
+          `⏩ Skipping style HMR tests - not applicable in ${environment} environment`,
+        );
+      }
+    }
+
+    hasFailures = stylesheetState.hasFailures;
+    stylesheetTestError = stylesheetState.errorVar;
+  } else {
+    log("Skipping stylesheet checks - client tests disabled");
+    console.log("⏩ Skipping stylesheet checks - client tests disabled");
+
+    // Update test status to SKIPPED for style tests
+    const env = environment === "Development" ? "dev" : "production";
+    const urlStylesKey = isRealtime ? "realtimeUrlStyles" : "initialUrlStyles";
+    const clientModuleStylesKey = isRealtime
+      ? "realtimeClientModuleStyles"
+      : "initialClientModuleStyles";
+
     updateTestStatus(
       env,
       urlStylesKey as keyof TestStatus[typeof env],
-      "PASSED",
+      "SKIPPED",
     );
-    log(`${phase} URL styles check passed`);
-  } catch (error) {
-    hasFailures = true;
-    updateTestStatus(
-      env,
-      urlStylesKey as keyof TestStatus[typeof env],
-      "FAILED",
-    );
-    stylesheetTestError =
-      error instanceof Error ? error : new Error(String(error));
-    log("Error during URL styles check: %O", error);
-    console.error(
-      `❌ URL styles check failed: ${error instanceof Error ? error.message : String(error)}`,
-    );
-
-    if (bail) {
-      throw error;
-    }
-  }
-
-  try {
-    await checkClientModuleStyles(page, "blue");
     updateTestStatus(
       env,
       clientModuleStylesKey as keyof TestStatus[typeof env],
-      "PASSED",
+      "SKIPPED",
     );
-    log(`${phase} client module styles check passed`);
-  } catch (error) {
-    hasFailures = true;
-    updateTestStatus(
-      env,
-      clientModuleStylesKey as keyof TestStatus[typeof env],
-      "FAILED",
-    );
-    if (!stylesheetTestError) {
-      stylesheetTestError =
-        error instanceof Error ? error : new Error(String(error));
-    }
-    log("Error during client module styles check: %O", error);
-    console.error(
-      `❌ Client module styles check failed: ${error instanceof Error ? error.message : String(error)}`,
-    );
-
-    if (bail) {
-      throw error;
-    }
   }
 
   // Skip client tests if requested
@@ -707,7 +826,7 @@ export async function checkUrlSmoke(
   if (clientResult && clientResult.clientTimestamp) {
     log("Running server render check with client timestamp");
     // Wait a moment for any server renders to complete
-    await new Promise((resolve) => setTimeout(resolve, 500));
+    await setTimeout(500);
 
     try {
       await checkServerSmoke(
@@ -1283,7 +1402,7 @@ export async function checkServerUp(
         }
         log("Server not up yet, retrying in 2 seconds");
         console.log(`Server not up yet, retrying in 2 seconds...`);
-        await new Promise<void>((resolve) => setTimeout(() => resolve(), 2000));
+        await setTimeout(2000);
       }
     }
     if (!up) return false;
