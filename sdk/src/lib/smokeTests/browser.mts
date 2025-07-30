@@ -49,8 +49,6 @@ export async function checkUrlStyles(
         if (!element) return false;
         const backgroundColor =
           window.getComputedStyle(element).backgroundColor;
-        console.log("######## 1", element);
-        console.log("########## 1", backgroundColor);
         return backgroundColor === expectedRgb;
       },
       { timeout: 10000 }, // 10 second timeout
@@ -115,8 +113,6 @@ export async function checkClientModuleStyles(
         if (!element) return false;
         const backgroundColor =
           window.getComputedStyle(element).backgroundColor;
-        console.log("######## 2", element);
-        console.log("####### 2", backgroundColor);
         return backgroundColor === expectedRgb;
       },
       { timeout: 10000 }, // 10 second timeout
