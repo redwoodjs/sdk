@@ -81,6 +81,10 @@ export const manifestPlugin = ({
           });
 
           normalizedManifest[normalizedKey] = manifest[key];
+          (normalizedManifest[normalizedKey] as { file: string }).file =
+            normalizeModulePath(manifest[key].file, root, {
+              isViteStyle: false,
+            });
         }
 
         return `export default ${JSON.stringify(normalizedManifest)}`;
