@@ -35,8 +35,10 @@ export async function checkUrlStyles(
   }
 
   const backgroundColor = await page.evaluate(
-    (el) => window.getComputedStyle(el).backgroundColor,
-    element,
+    (selector) =>
+      window.getComputedStyle(document.querySelector(selector)!)
+        .backgroundColor,
+    selector,
   );
 
   const expectedRgb =
@@ -65,8 +67,10 @@ export async function checkClientModuleStyles(
   }
 
   const backgroundColor = await page.evaluate(
-    (el) => window.getComputedStyle(el).backgroundColor,
-    element,
+    (selector) =>
+      window.getComputedStyle(document.querySelector(selector)!)
+        .backgroundColor,
+    selector,
   );
 
   const expectedRgb =
