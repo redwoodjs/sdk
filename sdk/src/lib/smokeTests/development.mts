@@ -273,7 +273,7 @@ export async function runDevTest(
     if (!skipHmr) {
       log("Performing HMR tests for stylesheets");
       await testStyleHMR(
-        targetDir,
+        targetDir!,
         testUrl,
         artifactDir,
         browserPath,
@@ -309,7 +309,7 @@ async function checkInitialStyles(
     "red",
     artifactDir,
     "stylesheet-url-initial",
-    browserPath,
+    browserPath ?? "",
     headless,
   );
 
@@ -319,7 +319,7 @@ async function checkInitialStyles(
     "blue",
     artifactDir,
     "stylesheet-client-initial",
-    browserPath,
+    browserPath ?? "",
     headless,
   );
 }
@@ -343,7 +343,7 @@ async function testStyleHMR(
     "green",
     artifactDir,
     "stylesheet-url-hmr",
-    browserPath,
+    browserPath ?? "",
     headless,
   );
 
@@ -353,7 +353,7 @@ async function testStyleHMR(
     "green",
     artifactDir,
     "stylesheet-client-hmr",
-    browserPath,
+    browserPath ?? "",
     headless,
   );
 

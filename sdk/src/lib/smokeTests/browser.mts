@@ -28,7 +28,7 @@ export async function checkBackgroundColor(
   expectedColor: "red" | "green",
   artifactDir: string,
   screenshotName: string,
-  browserPath: string | undefined,
+  browserPath?: string,
   headless: boolean = true,
 ): Promise<void> {
   const browser = await launchBrowser(browserPath, headless);
@@ -60,7 +60,7 @@ export async function checkClientStyle(
   expectedColor: "blue" | "green",
   artifactDir: string,
   screenshotName: string,
-  browserPath: string | undefined,
+  browserPath?: string,
   headless: boolean = true,
 ): Promise<void> {
   const browser = await launchBrowser(browserPath, headless);
