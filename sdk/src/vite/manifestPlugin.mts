@@ -18,26 +18,40 @@ const getCssForModule = (
     absolutePath: string;
   }>,
 ) => {
-  const moduleNode =
-    server.environments.client.moduleGraph.getModuleById(moduleId);
+  const stack: string[] = [moduleId];
+  const visited = new Set<string>();
 
-  if (!moduleNode) {
-    return;
-  }
+  while (stack.length > 0) {
+    const currentModuleId = stack.pop()!;
 
-  for (const importedModule of moduleNode.importedModules) {
-    if (importedModule.url.endsWith(".css")) {
-      const absolutePath = importedModule.file!;
-      css.add({
-        url: importedModule.url,
-        // The `ssrTransformResult` has the CSS content, because the default
-        // transform for CSS is to a string of the CSS content.
-        content: (importedModule as any).ssrTransformResult?.code ?? "",
-        absolutePath,
-      });
+    if (visited.has(currentModuleId)) {
+      continue;
+    }
+    visited.add(currentModuleId);
+
+    const moduleNode =
+      server.environments.client.moduleGraph.getModuleById(currentModuleId);
+
+    if (!moduleNode) {
+      continue;
     }
 
-    getCssForModule(server, importedModule.id!, css);
+    for (const importedModule of moduleNode.importedModules) {
+      if (importedModule.url.endsWith(".css")) {
+        const absolutePath = importedModule.file!;
+        css.add({
+          url: importedModule.url,
+          // The `ssrTransformResult` has the CSS content, because the default
+          // transform for CSS is to a string of the CSS content.
+          content: (importedModule as any).ssrTransformResult?.code ?? "",
+          absolutePath,
+        });
+      }
+
+      if (importedModule.id) {
+        stack.push(importedModule.id);
+      }
+    }
   }
 };
 
