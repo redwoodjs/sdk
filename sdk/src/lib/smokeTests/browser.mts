@@ -34,23 +34,53 @@ export async function checkUrlStyles(
     throw new Error(`URL styles element not found with selector: ${selector}`);
   }
 
-  const backgroundColor = await page.evaluate(
-    () =>
-      window.getComputedStyle(
-        document.querySelector('[data-testid="smoke-test-url-styles"]')!,
-      ).backgroundColor,
-  );
-
   const expectedRgb =
     expectedColor === "red" ? "rgb(255, 0, 0)" : "rgb(0, 128, 0)";
-  if (backgroundColor !== expectedRgb) {
+
+  log(`Waiting for URL styles to apply with expected color: ${expectedRgb}`);
+
+  try {
+    // Wait for the background color to match the expected value with a timeout
+    await page.waitForFunction(
+      (expectedRgb) => {
+        const element = document.querySelector(
+          '[data-testid="smoke-test-url-styles"]',
+        );
+        if (!element) return false;
+        const backgroundColor =
+          window.getComputedStyle(element).backgroundColor;
+        return backgroundColor === expectedRgb;
+      },
+      { timeout: 10000 }, // 10 second timeout
+      expectedRgb,
+    );
+
+    // Get the final background color for logging
+    const backgroundColor = await page.evaluate(
+      () =>
+        window.getComputedStyle(
+          document.querySelector('[data-testid="smoke-test-url-styles"]')!,
+        ).backgroundColor,
+    );
+
+    log(
+      `URL-based stylesheet check passed: background color is ${backgroundColor}`,
+    );
+  } catch (error) {
+    // Get the actual background color for better error reporting
+    const actualBackgroundColor = await page.evaluate(() => {
+      const element = document.querySelector(
+        '[data-testid="smoke-test-url-styles"]',
+      );
+      return element
+        ? window.getComputedStyle(element).backgroundColor
+        : "element not found";
+    });
+
     throw new Error(
-      `URL-based stylesheet check failed: expected background color ${expectedRgb}, but got ${backgroundColor}`,
+      `URL-based stylesheet check failed: expected background color ${expectedRgb}, but got ${actualBackgroundColor} (timeout after 10 seconds)`,
     );
   }
-  log(
-    `URL-based stylesheet check passed: background color is ${backgroundColor}`,
-  );
 }
 
 export async function checkClientModuleStyles(
@@ -66,23 +96,55 @@ export async function checkClientModuleStyles(
     );
   }
 
-  const backgroundColor = await page.evaluate(
-    () =>
-      window.getComputedStyle(
-        document.querySelector('[data-testid="smoke-test-client-styles"]')!,
-      ).backgroundColor,
-  );
-
   const expectedRgb =
     expectedColor === "blue" ? "rgb(0, 0, 255)" : "rgb(0, 128, 0)";
-  if (backgroundColor !== expectedRgb) {
+
+  log(
+    `Waiting for client module styles to apply with expected color: ${expectedRgb}`,
+  );
+
+  try {
+    // Wait for the background color to match the expected value with a timeout
+    await page.waitForFunction(
+      (expectedRgb) => {
+        const element = document.querySelector(
+          '[data-testid="smoke-test-client-styles"]',
+        );
+        if (!element) return false;
+        const backgroundColor =
+          window.getComputedStyle(element).backgroundColor;
+        return backgroundColor === expectedRgb;
+      },
+      { timeout: 10000 }, // 10 second timeout
+      expectedRgb,
+    );
+
+    // Get the final background color for logging
+    const backgroundColor = await page.evaluate(
+      () =>
+        window.getComputedStyle(
+          document.querySelector('[data-testid="smoke-test-client-styles"]')!,
+        ).backgroundColor,
+    );
+
+    log(
+      `Client module stylesheet check passed: background color is ${backgroundColor}`,
+    );
+  } catch (error) {
+    // Get the actual background color for better error reporting
+    const actualBackgroundColor = await page.evaluate(() => {
+      const element = document.querySelector(
+        '[data-testid="smoke-test-client-styles"]',
+      );
+      return element
+        ? window.getComputedStyle(element).backgroundColor
+        : "element not found";
+    });
+
     throw new Error(
-      `Client module stylesheet check failed: expected background color ${expectedRgb}, but got ${backgroundColor}`,
+      `Client module stylesheet check failed: expected background color ${expectedRgb}, but got ${actualBackgroundColor} (timeout after 10 seconds)`,
     );
   }
-  log(
-    `Client module stylesheet check passed: background color is ${backgroundColor}`,
-  );
 }
 
 /**
