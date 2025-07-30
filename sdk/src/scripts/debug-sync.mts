@@ -160,10 +160,10 @@ const performFullSync = async (
     }
 
     console.log("📦 Packing SDK...");
-    const packResult = await $({ cwd: sdkDir })`pnpm pack`;
+    const packResult = await $({ cwd: sdkDir })`npm pack`;
     tarballName = packResult.stdout?.trim() ?? "";
     if (!tarballName) {
-      console.error("❌ Failed to get tarball name from pnpm pack.");
+      console.error("❌ Failed to get tarball name from npm pack.");
       return;
     }
     tarballPath = path.resolve(sdkDir, tarballName);
