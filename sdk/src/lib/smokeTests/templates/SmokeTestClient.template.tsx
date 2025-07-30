@@ -3,7 +3,8 @@ export function getSmokeTestClientTemplate(): string {
 
 import React, { useState } from "react";
 import { smokeTestAction } from "./__smokeTestFunctions";
-import styles from "./smoke_tests_client_styles.module.css";
+import smokeTestUrlStyles from "./smokeTestUrlStyles.css?url";
+import clientStyles from "./smokeTestClientStyles.module.css";
 
 interface SmokeTestStatus {
   status: string;
@@ -82,7 +83,18 @@ export const SmokeTestClient: React.FC = () => {
       </button>
 
       {/* Client Stylesheet Marker */}
-      <div data-testid="client-stylesheet-marker" className={styles.testBackground}></div>
+      <div
+        className="smoke-test-url-styles"
+        data-testid="smoke-test-url-styles"
+      >
+        <p>A red box should appear above this text (from URL import)</p>
+      </div>
+      <div
+        className={clientStyles.smokeTestClientStyles}
+        data-testid="smoke-test-client-styles"
+      >
+        <p>A blue box should appear above this text (from CSS module)</p>
+      </div>
 
       {/* HMR Testing Marker - Do not modify this comment */}
       <div
@@ -150,7 +162,7 @@ export const SmokeTestClient: React.FC = () => {
         </div>
       )}
 
-      <div 
+      <div
         id="smoke-test-client-timestamp"
         data-client-timestamp={lastCheck?.timestamp ?? ""}
         data-status={lastCheck?.status ?? ""}

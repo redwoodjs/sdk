@@ -4,8 +4,8 @@ import { log } from "./constants.mjs";
 import { getSmokeTestFunctionsTemplate } from "./templates/smokeTestFunctions.template";
 import { getSmokeTestTemplate } from "./templates/SmokeTest.template";
 import { getSmokeTestClientTemplate } from "./templates/SmokeTestClient.template";
-import { getSmokeTestUrlStylesCssTemplate } from "./templates/smokeTestUrlStyles.css.template";
-import { getSmokeTestClientStylesCssTemplate } from "./templates/smokeTestClientStyles.module.css.template";
+import { template as smokeTestUrlStylesCssTemplate } from "./templates/smokeTestUrlStyles.css.template";
+import { template as smokeTestClientStylesCssTemplate } from "./templates/smokeTestClientStyles.module.css.template";
 import MagicString from "magic-string";
 import { parse as parseJsonc } from "jsonc-parser";
 
@@ -40,7 +40,7 @@ export async function createSmokeTestComponents(
   await fs.writeFile(smokeTestPath, smokeTestContent);
 
   // Create smoke test stylesheet files
-  await createSmokeTestStylesheets(targetDir, "blue");
+  await createSmokeTestStylesheets(targetDir);
 
   // Only create client component if not skipping client-side tests
   if (!skipClient) {
@@ -65,22 +65,14 @@ export async function createSmokeTestComponents(
   console.log(`- ${smokeTestPath}`);
   if (!skipClient) {
     console.log(`- ${join(componentsDir, "__SmokeTestClient.tsx")}`);
-    console.log(
-      `- ${join(componentsDir, "smoke_tests_client_styles.module.css")}`,
-    );
+    console.log(`- ${join(componentsDir, "smokeTestClientStyles.module.css")}`);
   } else {
     console.log("- Client component skipped (--skip-client was specified)");
   }
-  console.log(
-    `- ${join(targetDir, "src", "app", "smoke_tests_url_styles.css")}`,
-  );
+  console.log(`- ${join(targetDir, "src", "app", "smokeTestUrlStyles.css")}`);
 }
 
-export async function createSmokeTestStylesheets(
-  targetDir: string,
-  clientStyle: "blue" | "green",
-  urlStyle: "red" | "green" = "red",
-) {
+export async function createSmokeTestStylesheets(targetDir: string) {
   log("Creating smoke test stylesheets in project...");
 
   // Create directories if they don't exist
@@ -92,17 +84,36 @@ export async function createSmokeTestStylesheets(
   // Create smoke_tests_client_styles.module.css
   const clientStylesPath = join(
     componentsDir,
-    "smoke_tests_client_styles.module.css",
+    "smokeTestClientStyles.module.css",
   );
-  log("Creating smoke_tests_client_styles.module.css at: %s", clientStylesPath);
-  const clientStylesContent = getSmokeTestClientStylesCssTemplate(clientStyle);
-  await fs.writeFile(clientStylesPath, clientStylesContent);
+  log("Creating smokeTestClientStyles.module.css at: %s", clientStylesPath);
+  await fs.writeFile(clientStylesPath, smokeTestClientStylesCssTemplate);
 
   // Create smoke_tests_url_styles.css
-  const urlStylesPath = join(appDir, "smoke_tests_url_styles.css");
-  log("Creating smoke_tests_url_styles.css at: %s", urlStylesPath);
-  const urlStylesContent = getSmokeTestUrlStylesCssTemplate(urlStyle);
-  await fs.writeFile(urlStylesPath, urlStylesContent);
+  const urlStylesPath = join(appDir, "smokeTestUrlStyles.css");
+  log("Creating smokeTestUrlStyles.css at: %s", urlStylesPath);
+  await fs.writeFile(urlStylesPath, smokeTestUrlStylesCssTemplate);
+
+  // Modify Document.tsx to include the URL stylesheet
+  const documentPath = join(appDir, "Document.tsx");
+  log("Modifying Document.tsx to include URL stylesheet at: %s", documentPath);
+  try {
+    const documentContent = await fs.readFile(documentPath, "utf-8");
+    const s = new MagicString(documentContent);
+    const headTagEnd = documentContent.indexOf("</head>");
+    if (headTagEnd !== -1) {
+      s.appendLeft(
+        headTagEnd,
+        '    <link rel="stylesheet" href="./smokeTestUrlStyles.css" />\n',
+      );
+      await fs.writeFile(documentPath, s.toString(), "utf-8");
+      log("Successfully modified Document.tsx");
+    } else {
+      log("Could not find </head> tag in Document.tsx");
+    }
+  } catch (e) {
+    log("Could not modify Document.tsx: %s", e);
+  }
 
   log("Smoke test stylesheets created successfully");
 }

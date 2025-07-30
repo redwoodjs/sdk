@@ -23,75 +23,62 @@ import { reportSmokeTestResult } from "./reporting.mjs";
 import { updateTestStatus } from "./state.mjs";
 import { TestStatus } from "./state.mjs";
 
-export async function checkBackgroundColor(
-  pageUrl: string,
+export async function checkUrlStyles(
+  page: Page,
   expectedColor: "red" | "green",
-  artifactDir: string,
-  screenshotName: string,
-  browserPath?: string,
-  headless: boolean = true,
 ): Promise<void> {
-  const browser = await launchBrowser(browserPath, headless);
-  const page = await browser.newPage();
-  try {
-    await page.goto(pageUrl, { waitUntil: "networkidle0" });
-    const backgroundColor = await page.evaluate(() => {
-      return window.getComputedStyle(document.body).backgroundColor;
-    });
-
-    const expectedRgb =
-      expectedColor === "red" ? "rgb(255, 0, 0)" : "rgb(0, 128, 0)";
-    if (backgroundColor !== expectedRgb) {
-      throw new Error(
-        `URL-based stylesheet check failed: expected background color ${expectedRgb}, but got ${backgroundColor}`,
-      );
-    }
-    log(
-      `URL-based stylesheet check passed: background color is ${backgroundColor}`,
-    );
-  } finally {
-    await takeScreenshot(page, pageUrl, artifactDir, screenshotName);
-    await browser.close();
+  const selector = '[data-testid="smoke-test-url-styles"]';
+  log(`Checking for element with selector: ${selector}`);
+  const element = await page.waitForSelector(selector);
+  if (!element) {
+    throw new Error(`URL styles element not found with selector: ${selector}`);
   }
+
+  const backgroundColor = await page.evaluate(
+    (el) => window.getComputedStyle(el).backgroundColor,
+    element,
+  );
+
+  const expectedRgb =
+    expectedColor === "red" ? "rgb(255, 0, 0)" : "rgb(0, 128, 0)";
+  if (backgroundColor !== expectedRgb) {
+    throw new Error(
+      `URL-based stylesheet check failed: expected background color ${expectedRgb}, but got ${backgroundColor}`,
+    );
+  }
+  log(
+    `URL-based stylesheet check passed: background color is ${backgroundColor}`,
+  );
 }
 
-export async function checkClientStyle(
-  pageUrl: string,
+export async function checkClientModuleStyles(
+  page: Page,
   expectedColor: "blue" | "green",
-  artifactDir: string,
-  screenshotName: string,
-  browserPath?: string,
-  headless: boolean = true,
 ): Promise<void> {
-  const browser = await launchBrowser(browserPath, headless);
-  const page = await browser.newPage();
-  try {
-    await page.goto(pageUrl, { waitUntil: "networkidle0" });
-    const marker = await page.waitForSelector(
-      '[data-testid="client-stylesheet-marker"]',
+  const selector = '[data-testid="smoke-test-client-styles"]';
+  log(`Checking for element with selector: ${selector}`);
+  const element = await page.waitForSelector(selector);
+  if (!element) {
+    throw new Error(
+      `Client module styles element not found with selector: ${selector}`,
     );
-    if (!marker) {
-      throw new Error("Client stylesheet marker not found");
-    }
-    const backgroundColor = await page.evaluate(
-      (el) => window.getComputedStyle(el).backgroundColor,
-      marker,
-    );
-
-    const expectedRgb =
-      expectedColor === "blue" ? "rgb(0, 0, 255)" : "rgb(0, 128, 0)";
-    if (backgroundColor !== expectedRgb) {
-      throw new Error(
-        `Client module stylesheet check failed: expected background color ${expectedRgb}, but got ${backgroundColor}`,
-      );
-    }
-    log(
-      `Client module stylesheet check passed: background color is ${backgroundColor}`,
-    );
-  } finally {
-    await takeScreenshot(page, pageUrl, artifactDir, screenshotName);
-    await browser.close();
   }
+
+  const backgroundColor = await page.evaluate(
+    (el) => window.getComputedStyle(el).backgroundColor,
+    element,
+  );
+
+  const expectedRgb =
+    expectedColor === "blue" ? "rgb(0, 0, 255)" : "rgb(0, 128, 0)";
+  if (backgroundColor !== expectedRgb) {
+    throw new Error(
+      `Client module stylesheet check failed: expected background color ${expectedRgb}, but got ${backgroundColor}`,
+    );
+  }
+  log(
+    `Client module stylesheet check passed: background color is ${backgroundColor}`,
+  );
 }
 
 /**
@@ -279,14 +266,13 @@ export async function checkUrl(
       // Skip upgradeToRealtime and just run the realtime tests directly
       try {
         log("Performing realtime-only smoke test");
-        await checkUrlSmoke(
+        await realtimeOnlyFlow(
           page,
           url,
-          true,
+          artifactDir,
           bail,
           skipClient,
           environment,
-          timestampState,
           targetDir,
           skipHmr,
         );
@@ -481,6 +467,7 @@ export async function checkUrlSmoke(
   let clientTestError: Error | null = null;
   let serverRenderCheckError: Error | null = null;
   let hmrTestError: Error | null = null;
+  let stylesheetTestError: Error | null = null;
 
   // Step 1: Run initial server-side smoke test to check the server state
   log("Running initial server-side smoke test");
@@ -528,6 +515,24 @@ export async function checkUrlSmoke(
     console.log(
       "Continuing with client-side smoke test since --bail is not enabled...",
     );
+  }
+
+  // Step 1.5: Run stylesheet checks
+  try {
+    await checkUrlStyles(page, "red");
+    await checkClientModuleStyles(page, "blue");
+  } catch (error) {
+    hasFailures = true;
+    stylesheetTestError =
+      error instanceof Error ? error : new Error(String(error));
+    log("Error during stylesheet checks: %O", error);
+    console.error(
+      `❌ Stylesheet checks failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+
+    if (bail) {
+      throw error;
+    }
   }
 
   // Skip client tests if requested
@@ -703,6 +708,9 @@ export async function checkUrlSmoke(
     }
     if (hmrTestError) {
       errors.push(`HMR test: ${hmrTestError.message}`);
+    }
+    if (stylesheetTestError) {
+      errors.push(`Stylesheet test: ${stylesheetTestError.message}`);
     }
 
     throw new Error(`Multiple test failures: ${errors.join(", ")}`);

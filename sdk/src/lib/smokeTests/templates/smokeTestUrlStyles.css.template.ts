@@ -1,8 +1,9 @@
-export function getSmokeTestUrlStylesCssTemplate(
-  color: "red" | "green",
-): string {
-  const backgroundColor = color === "red" ? "rgb(255, 0, 0)" : "rgb(0, 128, 0)";
-  return `* {
-  background-color: ${backgroundColor} !important;
-}`;
+/* eslint-disable quotes */
+export const template = `
+#redwood-app .smoke-test-url-styles {
+  /* This is a comment to test HMR */
+  background-color: rgb(255, 0, 0);
+  width: 100px;
+  height: 100px;
 }
+`;

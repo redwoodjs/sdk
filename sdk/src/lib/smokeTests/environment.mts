@@ -75,10 +75,6 @@ export async function setupTestEnvironment(
       // Create the smoke test components in the user's project
       log("Creating smoke test components");
       await createSmokeTestComponents(targetDir, options.skipClient);
-
-      // Modify Document.tsx to include the URL-based stylesheet
-      log("Modifying Document.tsx for smoke tests");
-      await modifyDocumentForSmokeTest(targetDir);
     } else {
       log("No project directory specified, using current directory");
       // When no project dir is specified, we'll use the current directory
@@ -89,39 +85,6 @@ export async function setupTestEnvironment(
   } catch (error) {
     log("Error during test environment setup: %O", error);
     throw error;
-  }
-}
-
-async function modifyDocumentForSmokeTest(targetDir: string): Promise<void> {
-  const documentPath = join(targetDir, "src", "app", "Document.tsx");
-  log("Looking for Document.tsx at: %s", documentPath);
-
-  if (await fs.stat(documentPath).catch(() => null)) {
-    log("Found Document.tsx, modifying it for smoke tests");
-    const content = await fs.readFile(documentPath, "utf-8");
-    const newImport =
-      'import smokeStyles from "./smoke_tests_url_styles.css?url";';
-    const newLink = '<link rel="stylesheet" href={smokeStyles} />';
-
-    let newContent = content;
-
-    if (!content.includes(newImport)) {
-      newContent = `${newImport}\n${newContent}`;
-    }
-
-    if (!content.includes(newLink)) {
-      // Add the link tag before the closing </head> tag
-      newContent = newContent.replace("</head>", `  ${newLink}\n</head>`);
-    }
-
-    if (newContent !== content) {
-      await fs.writeFile(documentPath, newContent);
-      log("Added smoke test stylesheet import to Document.tsx");
-    } else {
-      log("Document.tsx already has the smoke test stylesheet import");
-    }
-  } else {
-    log("Document.tsx not found, skipping modification");
   }
 }
 
