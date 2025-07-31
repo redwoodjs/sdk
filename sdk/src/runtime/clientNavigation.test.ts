@@ -54,7 +54,7 @@ describe("clientNavigation", () => {
     expect(
       validateClickEvent(mockEvent, {
         closest: () => ({
-          getAttribute: () => "/test#anchor",
+          getAttribute: () => "/test#hash",
           hasAttribute: () => false,
         }),
       } as unknown as HTMLElement),
