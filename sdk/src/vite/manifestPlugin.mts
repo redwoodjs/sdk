@@ -56,10 +56,12 @@ const getCssForModule = (
 
 export const manifestPlugin = ({
   clientManifestPath,
+  workerManifestPath,
   workerSsrManifestPath,
   workerEntryPathname,
 }: {
   clientManifestPath: string;
+  workerManifestPath: string;
   workerSsrManifestPath: string;
   workerEntryPathname: string;
 }): Plugin => {
@@ -134,6 +136,14 @@ export const manifestPlugin = ({
           },
         };
 
+        // Read both worker manifests
+        log("Reading worker manifest from %s", workerManifestPath);
+        const workerManifestContent = await readFile(
+          workerManifestPath,
+          "utf-8",
+        );
+        const workerManifest = JSON.parse(workerManifestContent);
+
         log("Reading worker SSR manifest from %s", workerSsrManifestPath);
         const workerSsrManifestContent = await readFile(
           workerSsrManifestPath,
@@ -141,24 +151,45 @@ export const manifestPlugin = ({
         );
         const workerSsrManifest = JSON.parse(workerSsrManifestContent);
 
-        for (const key in workerSsrManifest) {
-          const cssFiles = workerSsrManifest[key];
+        // 1. Get all CSS bundles for the worker entry point
+        const workerManifestEntry = Object.entries(workerManifest).find(
+          ([key]) => key.endsWith(workerEntryPathname),
+        );
+        const allWorkerCssBundles = new Set<string>(
+          (workerManifestEntry?.[1] as any)?.css || [],
+        );
 
+        // 2. Build a map of module CSS source files to their output bundles
+        const moduleCssMap = new Map<string, string[]>();
+        for (const key in workerSsrManifest) {
           if (key.endsWith(".module.css")) {
+            const cssFiles = workerSsrManifest[key];
             const normalizedKey = normalizeModulePath(key, root, {
               isViteStyle: true,
             });
-            rscManifest[normalizedKey] = {
-              css: cssFiles.map((file: string) =>
-                normalizeModulePath(file, root, { isViteStyle: false }),
-              ),
-            };
-          } else if (key.endsWith(".css")) {
-            rscManifest.global.css.push(
-              ...cssFiles.map((file: string) =>
-                normalizeModulePath(file, root, { isViteStyle: false }),
-              ),
-            );
+            moduleCssMap.set(normalizedKey, cssFiles);
+          }
+        }
+
+        // 3. Populate rscManifest for CSS modules and track which bundles are used
+        const usedModuleBundles = new Set<string>();
+        for (const [key, cssFiles] of moduleCssMap.entries()) {
+          const normalizedCssFiles = cssFiles.map((file) =>
+            normalizeModulePath(file, root, { isViteStyle: false }),
+          );
+          rscManifest[key] = { css: normalizedCssFiles };
+          for (const file of normalizedCssFiles) {
+            usedModuleBundles.add(file);
+          }
+        }
+
+        // 4. Add remaining bundles as global CSS
+        for (const bundle of allWorkerCssBundles) {
+          const normalizedBundle = normalizeModulePath(bundle, root, {
+            isViteStyle: false,
+          });
+          if (!usedModuleBundles.has(normalizedBundle)) {
+            rscManifest.global.css.push(normalizedBundle);
           }
         }
 
