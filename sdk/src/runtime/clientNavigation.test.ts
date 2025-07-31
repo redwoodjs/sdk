@@ -50,12 +50,11 @@ describe("clientNavigation", () => {
     ).toBe(false);
   });
 
-  it("should not have a target attribute", () => {
+  it("should not include an #hash", () => {
     expect(
       validateClickEvent(mockEvent, {
         closest: () => ({
-          target: "_blank",
-          getAttribute: () => "/test",
+          getAttribute: () => "/test#anchor",
           hasAttribute: () => false,
         }),
       } as unknown as HTMLElement),
