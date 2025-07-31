@@ -133,7 +133,13 @@ export const initClient = async ({
     const [_isPending, startTransition] = React.useTransition();
     transportContext.setRscPayload = (v) =>
       startTransition(() => setStreamData(v));
-    return <>{React.use<{ node: React.ReactNode }>(streamData).node}</>;
+    return (
+      <>
+        {streamData
+          ? React.use<{ node: React.ReactNode }>(streamData).node
+          : null}
+      </>
+    );
   }
 
   hydrateRoot(rootEl, <Content />, {
