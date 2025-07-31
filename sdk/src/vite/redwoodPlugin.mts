@@ -129,7 +129,7 @@ export const redwoodPlugin = async (
       workerEntryPathname,
     }),
     reactPlugin(),
-    cssModuleProxyPlugin(),
+    cssModuleProxyPlugin({ projectRootDir }),
     directivesPlugin({
       projectRootDir,
       clientFiles,

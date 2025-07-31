@@ -326,7 +326,7 @@ export async function generateFinalReport(): Promise<void> {
           console.log(`Failure #${index + 1}: ${failure.step}`);
 
           // Split error message into lines if it's long
-          const errorLines = (failure.error || '').split("\n");
+          const errorLines = (failure.error || "").split("\n");
           console.log(`Error: ${errorLines[0]}`);
           for (let i = 1; i < errorLines.length; i++) {
             console.log(`       ${errorLines[i]}`);
@@ -344,7 +344,7 @@ export async function generateFinalReport(): Promise<void> {
           console.log(`Failure #${index + 1}: ${failure.step}`);
 
           // Split error message into lines if it's long
-          const errorLines = (failure.error || '').split("\n");
+          const errorLines = (failure.error || "").split("\n");
           console.log(`Error: ${errorLines[0]}`);
           for (let i = 1; i < errorLines.length; i++) {
             console.log(`       ${errorLines[i]}`);
@@ -365,7 +365,7 @@ export async function generateFinalReport(): Promise<void> {
           console.log(`Failure #${index + 1}: ${failure.step}`);
 
           // Split error message into lines if it's long
-          const errorLines = (failure.error || '').split("\n");
+          const errorLines = (failure.error || "").split("\n");
           console.log(`Error: ${errorLines[0]}`);
           for (let i = 1; i < errorLines.length; i++) {
             console.log(`       ${errorLines[i]}`);
@@ -444,7 +444,6 @@ export function initializeTestStatus(): void {
   state.testStatus.dev.realtimeClientModuleStyles = "DID_NOT_RUN";
   state.testStatus.dev.realtimeServerUrlStyles = "DID_NOT_RUN";
   state.testStatus.dev.realtimeServerModuleStyles = "DID_NOT_RUN";
-
 
   // Production tests
   state.testStatus.production.overall = "DID_NOT_RUN";

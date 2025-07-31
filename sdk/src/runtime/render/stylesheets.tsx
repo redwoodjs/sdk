@@ -67,14 +67,10 @@ export const Stylesheets = ({ requestInfo }: { requestInfo: RequestInfo }) => {
   return (
     <>
       {Array.from(allStylesheets).map((entry) => {
-        if (typeof entry === "string") {
+        const url = typeof entry === "string" ? entry : entry.url;
+        if (typeof entry === "string" || !entry.content) {
           return (
-            <link
-              key={entry}
-              rel="stylesheet"
-              href={entry}
-              precedence="first"
-            />
+            <link key={url} rel="stylesheet" href={url} precedence="first" />
           );
         }
 

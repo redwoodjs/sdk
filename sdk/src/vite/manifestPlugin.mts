@@ -150,12 +150,15 @@ export const manifestPlugin = ({
         if (workerManifestEntry) {
           const css = (workerManifestEntry[1] as any).css || [];
           for (const cssFile of css) {
+            const normalizedCssFile = normalizeModulePath(cssFile, root, {
+              isViteStyle: false,
+            });
             if (cssFile.endsWith(".module.css")) {
-              rscManifest[cssFile] = {
-                css: [cssFile],
+              rscManifest[normalizedCssFile] = {
+                css: [normalizedCssFile],
               };
             } else {
-              rscManifest.global.css.push(cssFile);
+              rscManifest.global.css.push(normalizedCssFile);
             }
           }
         }
