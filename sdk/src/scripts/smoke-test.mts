@@ -62,13 +62,8 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
       options.skipClient = true;
     } else if (arg === "--skip-hmr") {
       options.skipHmr = true;
-<<<<<<< Updated upstream
-    } else if (arg === "--skip-style-tests") {
-      options.skipStyleTests = true;
-=======
     } else if (arg === "--run-style-tests") {
       options.skipStyleTests = false;
->>>>>>> Stashed changes
     } else if (arg === "--keep") {
       options.keep = true;
     } else if (arg === "--no-headless") {
@@ -97,11 +92,7 @@ Options:
   --skip-release          Skip testing the release/production deployment
   --skip-client           Skip client-side tests, only run server-side checks
   --skip-hmr              Skip hot module replacement (HMR) tests
-<<<<<<< Updated upstream
-  --skip-style-tests      Skip all stylesheet-related tests
-=======
   --run-style-tests       Enable stylesheet-related tests (disabled by default)
->>>>>>> Stashed changes
   --path=PATH             Project directory to test
   --artifact-dir=DIR      Directory to store test artifacts (default: .artifacts)
   --keep                  Keep temporary test directory after tests complete
