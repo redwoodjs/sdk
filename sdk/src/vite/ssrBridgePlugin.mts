@@ -93,6 +93,16 @@ export const ssrBridgePlugin = ({
         // SSR modules, so we return the virtual id so that the dynamic loading
         // can happen in load()
         if (id.startsWith(VIRTUAL_SSR_PREFIX)) {
+          if (id.endsWith(".css")) {
+            const newId = id + ".js";
+            log(
+              "Virtual CSS module, adding .js suffix. old: %s, new: %s",
+              id,
+              newId,
+            );
+            return newId;
+          }
+
           log("Returning virtual SSR id for dev: %s", id);
           return id;
         }
@@ -142,28 +152,40 @@ export const ssrBridgePlugin = ({
         this.environment.name === "worker"
       ) {
         const realId = id.slice(VIRTUAL_SSR_PREFIX.length);
+        const idForFetch = realId.endsWith(".css.js")
+          ? realId.slice(0, -3)
+          : realId;
 
-        log("Virtual SSR module load: id=%s, realId=%s", id, realId);
+        log(
+          "Virtual SSR module load: id=%s, realId=%s, idForFetch=%s",
+          id,
+          realId,
+          idForFetch,
+        );
 
         if (isDev) {
-          log("Dev mode: fetching SSR module for realPath=%s", realId);
-          const result = await devServer?.environments.ssr.fetchModule(realId);
+          log("Dev mode: fetching SSR module for realPath=%s", idForFetch);
+          const result =
+            await devServer?.environments.ssr.fetchModule(idForFetch);
 
           process.env.VERBOSE &&
-            log("Fetch module result: id=%s, result=%O", realId, result);
+            log("Fetch module result: id=%s, result=%O", idForFetch, result);
 
           const code = "code" in result ? result.code : undefined;
 
-          if (realId.endsWith(".css")) {
+          if (
+            idForFetch.endsWith(".css") &&
+            !idForFetch.endsWith(".module.css")
+          ) {
             process.env.VERBOSE &&
-              log("Not a JS file, returning code: %s", code);
-            return code ?? "";
+              log("Plain CSS file, returning empty module for %s", idForFetch);
+            return "export default {};";
           }
 
           log("Fetched SSR module code length: %d", code?.length || 0);
 
           const { imports, dynamicImports } = findSsrImportSpecifiers(
-            realId,
+            idForFetch,
             code || "",
             log,
           );

@@ -1,7 +1,8 @@
 import { use } from "react";
 import { renderToReadableStream } from "react-dom/server.edge";
-import { type DocumentProps } from "../lib/router";
-import { type RequestInfo } from "../requestInfo/types";
+import { type DocumentProps } from "../lib/router.js";
+import { type RequestInfo } from "../requestInfo/types.js";
+import { Stylesheets } from "./stylesheets.js";
 
 export const renderRscThenableToHtmlStream = async ({
   thenable,
@@ -17,7 +18,16 @@ export const renderRscThenableToHtmlStream = async ({
   onError: (error: unknown) => void;
 }) => {
   const Component = () => {
-    const node = (use(thenable) as { node: React.ReactNode }).node;
+    const RscApp = () => {
+      const node = (use(thenable) as { node: React.ReactNode }).node;
+
+      return (
+        <>
+          <Stylesheets requestInfo={requestInfo} />
+          <div id="hydrate-root">{node}</div>
+        </>
+      );
+    };
 
     // todo(justinvdm, 18 Jun 2025): We can build on this later to allow users
     // surface context. e.g:
@@ -36,10 +46,12 @@ export const renderRscThenableToHtmlStream = async ({
         <script
           nonce={requestInfo.rw.nonce}
           dangerouslySetInnerHTML={{
-            __html: `globalThis.__RWSDK_CONTEXT = ${JSON.stringify(clientContext)}`,
+            __html: `globalThis.__RWSDK_CONTEXT = ${JSON.stringify(
+              clientContext,
+            )}`,
           }}
         />
-        <div id="hydrate-root">{node}</div>
+        <RscApp />
       </Document>
     );
   };

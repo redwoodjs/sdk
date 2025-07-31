@@ -2,6 +2,10 @@ import { Project, Node, SyntaxKind, ImportDeclaration } from "ts-morph";
 import { type Plugin } from "vite";
 import { readFile } from "node:fs/promises";
 import { pathExists } from "fs-extra";
+import path from "node:path";
+import debug from "debug";
+
+const log = debug("rwsdk:vite:transform-jsx-script-tags");
 
 let manifestCache: Record<string, { file: string }> | undefined;
 
@@ -44,7 +48,11 @@ function hasJsxFunctions(text: string): boolean {
 function transformScriptImports(
   scriptContent: string,
   manifest: Record<string, any>,
-): { content: string | undefined; hasChanges: boolean } {
+): {
+  content: string | undefined;
+  hasChanges: boolean;
+  entryPoints: string[];
+} {
   const scriptProject = new Project({ useInMemoryFileSystem: true });
 
   try {
@@ -56,6 +64,7 @@ function transformScriptImports(
     );
 
     let hasChanges = false;
+    const entryPoints: string[] = [];
 
     // Find all CallExpressions that look like import("path")
     scriptFile
@@ -78,11 +87,17 @@ function transformScriptImports(
             const importPath = args[0].getLiteralValue();
 
             if (importPath.startsWith("/")) {
+              log(
+                "Found dynamic import with root-relative path: %s",
+                importPath,
+              );
+              entryPoints.push(importPath);
+
               const path = importPath.slice(1); // Remove leading slash
 
               if (manifest[path]) {
-                const transformedPath = manifest[path].file;
-                args[0].replaceWithText(`"/${transformedPath}"`);
+                const transformedSrc = `/${manifest[path].file}`;
+                args[0].setLiteralValue(transformedSrc);
                 hasChanges = true;
               }
             }
@@ -98,15 +113,15 @@ function transformScriptImports(
       const endPos = fullText.lastIndexOf("}");
       const transformedContent = fullText.substring(startPos, endPos);
 
-      return { content: transformedContent, hasChanges: true };
+      return { content: transformedContent, hasChanges: true, entryPoints };
     }
 
     // Return the original content when no changes are made
-    return { content: scriptContent, hasChanges: false };
+    return { content: scriptContent, hasChanges: false, entryPoints };
   } catch (error) {
     // If parsing fails, fall back to the original content
     console.warn("Failed to parse inline script content:", error);
-    return { content: undefined, hasChanges: false };
+    return { content: undefined, hasChanges: false, entryPoints: [] };
   }
 }
 
@@ -124,7 +139,7 @@ export async function transformJsxScriptTagsCode(
   const sourceFile = project.createSourceFile("temp.tsx", code);
 
   let hasModifications = false;
-  let needsRequestInfoImport = false;
+  const needsRequestInfoImportRef = { value: false };
 
   // Check for existing imports up front
   let hasRequestInfoImport = false;
@@ -171,6 +186,7 @@ export async function transformJsxScriptTagsCode(
       if (!Node.isStringLiteral(elementType)) return;
 
       const tagName = elementType.getLiteralValue();
+      const entryPoints: string[] = [];
 
       // Process script and link tags
       if (tagName === "script" || tagName === "link") {
@@ -216,25 +232,16 @@ export async function transformJsxScriptTagsCode(
                   Node.isNoSubstitutionTemplateLiteral(initializer)
                 ) {
                   const srcValue = initializer.getLiteralValue();
-                  if (srcValue.startsWith("/") && manifest[srcValue.slice(1)]) {
-                    const path = srcValue.slice(1); // Remove leading slash
-                    const transformedSrc = manifest[path].file;
-                    const originalText = initializer.getText();
-                    const isTemplateLiteral =
-                      Node.isNoSubstitutionTemplateLiteral(initializer);
-                    const quote = isTemplateLiteral
-                      ? "`"
-                      : originalText.charAt(0);
 
-                    // Preserve the original quote style
-                    if (isTemplateLiteral) {
-                      initializer.replaceWithText(`\`/${transformedSrc}\``);
-                    } else if (quote === '"') {
-                      initializer.replaceWithText(`"/${transformedSrc}"`);
-                    } else {
-                      initializer.replaceWithText(`'/${transformedSrc}'`);
+                  if (srcValue.startsWith("/")) {
+                    entryPoints.push(srcValue);
+
+                    const path = srcValue.slice(1); // Remove leading slash
+                    if (manifest[path]) {
+                      const transformedSrc = `/${manifest[path].file}`;
+                      initializer.setLiteralValue(transformedSrc);
+                      hasModifications = true;
                     }
-                    hasModifications = true;
                   }
                 }
               }
@@ -251,10 +258,15 @@ export async function transformJsxScriptTagsCode(
                 const scriptContent = initializer.getLiteralValue();
 
                 // Transform import statements in script content using ts-morph
-                const { content: transformedContent, hasChanges } =
-                  transformScriptImports(scriptContent, manifest);
+                const {
+                  content: transformedContent,
+                  hasChanges: contentHasChanges,
+                  entryPoints: dynamicEntryPoints,
+                } = transformScriptImports(scriptContent, manifest);
 
-                if (hasChanges && transformedContent) {
+                entryPoints.push(...dynamicEntryPoints);
+
+                if (contentHasChanges && transformedContent) {
                   // Get the raw text with quotes to determine the exact format
                   const isTemplateLiteral =
                     Node.isNoSubstitutionTemplateLiteral(initializer);
@@ -310,7 +322,7 @@ export async function transformJsxScriptTagsCode(
             });
 
             if (!hasRequestInfoImport) {
-              needsRequestInfoImport = true;
+              needsRequestInfoImportRef.value = true;
             }
 
             hasModifications = true;
@@ -358,10 +370,63 @@ export async function transformJsxScriptTagsCode(
           }
         }
       }
+      if (entryPoints.length > 0) {
+        log(
+          "Found %d script entry points, adding to scripts to be loaded: %o",
+          entryPoints.length,
+          entryPoints,
+        );
+        const sideEffects = entryPoints
+          .map((p) => `(requestInfo.rw.scriptsToBeLoaded.add("${p}"))`)
+          .join(",\n");
+
+        const leadingCommentRanges = callExpr.getLeadingCommentRanges();
+        const pureComment = leadingCommentRanges.find((r) =>
+          r.getText().includes("@__PURE__"),
+        );
+        const callExprText = callExpr.getText();
+
+        if (pureComment) {
+          const pureCommentText = pureComment.getText();
+          const newText = `(
+            ${sideEffects},
+            ${pureCommentText} ${callExprText}
+          )`;
+
+          const fullText = callExpr.getFullText();
+          const leadingTriviaText = fullText.substring(
+            0,
+            fullText.length - callExprText.length,
+          );
+          const newLeadingTriviaText = leadingTriviaText.replace(
+            pureCommentText,
+            "",
+          );
+
+          // By replacing from `getFullStart`, we remove the original node and all its leading trivia
+          // and replace it with our manually reconstructed string.
+          // This should correctly move the pure comment and preserve other comments and whitespace.
+          callExpr
+            .getSourceFile()
+            .replaceText(
+              [callExpr.getFullStart(), callExpr.getEnd()],
+              newLeadingTriviaText + newText,
+            );
+        } else {
+          callExpr.replaceWithText(
+            `(
+              ${sideEffects},
+              ${callExprText}
+            )`,
+          );
+        }
+        needsRequestInfoImportRef.value = true;
+        hasModifications = true;
+      }
     });
 
   // Add requestInfo import if needed and not already imported
-  if (needsRequestInfoImport && hasModifications) {
+  if (needsRequestInfoImportRef.value && hasModifications) {
     if (sdkWorkerImportDecl) {
       // Module is imported but need to add requestInfo
       if (!hasRequestInfoImport) {
@@ -395,20 +460,30 @@ export const transformJsxScriptTagsPlugin = ({
   let isBuild = false;
 
   return {
-    name: "rwsdk:transform-jsx-script-tags",
-
+    name: "rwsdk:vite:transform-jsx-script-tags",
     configResolved(config) {
       isBuild = config.command === "build";
     },
-
-    async transform(code) {
-      if (this.environment.name !== "worker") {
-        return;
+    async transform(code, id) {
+      if (
+        this.environment?.name === "worker" &&
+        id.endsWith(".tsx") &&
+        !id.includes("node_modules") &&
+        hasJsxFunctions(code)
+      ) {
+        const manifest = isBuild ? await readManifest(manifestPath) : {};
+        const result = await transformJsxScriptTagsCode(code, manifest);
+        if (result) {
+          log("Transformed JSX script tags in %s", id);
+          process.env.VERBOSE &&
+            log("New Document code for %s:\n%s", id, result.code);
+          return {
+            code: result.code,
+            map: null,
+          };
+        }
       }
-
-      const manifest = isBuild ? await readManifest(manifestPath) : {};
-
-      return transformJsxScriptTagsCode(code, manifest);
+      return null;
     },
   };
 };

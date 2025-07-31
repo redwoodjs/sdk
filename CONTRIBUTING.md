@@ -1,6 +1,8 @@
 # Contributing
 
-This document provides instructions for contributing to the SDK.
+This document provides context on contributing to the SDK.
+
+For context on how the system works, check out the [architecture documents](./docs/architecture/).
 
 ## Getting Started
 
@@ -15,6 +17,15 @@ This document provides instructions for contributing to the SDK.
 pnpm install
 ```
 
+## Project Structure
+
+This repository is a monorepo containing several key parts:
+
+-   `sdk/`: This is the heart of the project. It contains the source code for the `rwsdk` npm package. When you're working on the core SDK functionality, this is where you'll spend most of your time. **All commands for building, testing, or formatting the SDK should be run from within this directory.**
+-   `starters/`: This directory holds the template projects, like `minimal` and `standard`, that users can create with `create-rwsdk`. These are used for testing and demonstrating features.
+-   `docs/`: Contains the user-facing documentation for the SDK, which is published as a website.
+-   `docs/architecture/`: A special section within the docs that contains in-depth architecture documents. These explain the "why" behind key design decisions and provide context on how the system works under the hood. If you're making a significant change, you should read these. If you're changing the system in a significant way, check whether these docs need revising to account for the update.
+
 ## Building
 
 To build the `rwsdk` package, run the following command from the root of the `sdk` directory:
@@ -25,11 +36,113 @@ pnpm --filter rwsdk build
 
 ## Testing
 
-To run the test suite for the `rwsdk` package, run this command from the root of the `sdk` directory:
+To run the full test suite for the `rwsdk` package, navigate to the `sdk` directory and run the `test` script:
 
 ```sh
-pnpm --filter rwsdk test
+cd sdk
+pnpm test
 ```
+
+When working on a specific feature, you'll often want to run tests only for the files you're changing. To run tests for a single file, you can pass the path to that file to `pnpm test`.
+
+For example, to run tests for `transformJsxScriptTagsPlugin.test.mts`:
+
+```sh
+# from within the sdk/ directory
+pnpm test -- src/vite/transformJsxScriptTagsPlugin.test.mts
+```
+
+If you make changes that affect test snapshots, you'll need to update them. You can do this by adding the `-u` flag.
+
+```sh
+# from within the sdk/ directory
+pnpm test -- -u src/vite/transformJsxScriptTagsPlugin.test.mts
+```
+
+Note the extra `--` before the `-u` flag. This is necessary to pass the flag to the underlying test runner (`vitest`) instead of `pnpm`.
+
+## Contribution Guidelines
+
+### Dependency Injection over Mocking
+
+When writing tests, we prefer using **dependency injection** over module-level mocking (e.g., `vi.mock()`). [[memory:4223216]] This approach makes our tests more explicit, robust, and easier to maintain.
+
+The preferred pattern is to design functions to accept their dependencies as arguments. This allows you to pass in a controlled, "fake" version of the dependency during tests.
+
+**Example: What Not to Do**
+
+Let's say you have a function that calls `getStylesheetsForEntryPoint`:
+
+```typescript
+// in transformJsxScriptTagsPlugin.mts
+import { getStylesheetsForEntryPoint } from "./jsEntryPointsToStylesheetsPlugin.mjs";
+
+export async function transformJsxScriptTagsCode(code: string) {
+  // ...
+  const stylesheets = await getStylesheetsForEntryPoint(entryPoint, context);
+  // ...
+}
+```
+
+A test for this might be tempted to use `vi.mock()`:
+
+```typescript
+// in transformJsxScriptTagsPlugin.test.mts
+import { getStylesheetsForEntryPoint } from "./jsEntryPointsToStylesheetsPlugin.mjs";
+
+vi.mock("./jsEntryPointsToStylesheetsPlugin.mjs", () => ({
+  getStylesheetsForEntryPoint: vi.fn().mockResolvedValue(["/src/styles.css"]),
+}));
+
+test("injects stylesheets", async () => {
+  // ...
+});
+```
+
+**Example: The Preferred Pattern**
+
+Instead, refactor `transformJsxScriptTagsCode` to accept `getStylesheetsForEntryPoint` as an argument with a default value for production use.
+
+```typescript
+// in transformJsxScriptTagsPlugin.mts
+import {
+  getStylesheetsForEntryPoint as realGetStylesheetsForEntryPoint,
+} from "./jsEntryPointsToStylesheetsPlugin.mjs";
+
+export async function transformJsxScriptTagsCode(
+  code: string,
+  // ... other args
+  getStylesheetsForEntryPoint = realGetStylesheetsForEntryPoint,
+) {
+  // ...
+  const stylesheets = await getStylesheetsForEntryPoint(entryPoint, context);
+  // ...
+}
+```
+
+Now, your test can simply pass a fake function directly, making the dependency explicit and the test cleaner:
+
+```typescript
+// in transformJsxScriptTagsPlugin.test.mts
+test("injects stylesheets for src entry point", async () => {
+  const code = `...`;
+  const getStylesheetsForEntryPoint = async (entryPoint: string) => {
+    if (entryPoint === "/src/client.tsx") {
+      return ["/src/styles.css"];
+    }
+    return [];
+  };
+
+  const result = await transformJsxScriptTagsCode(
+    code,
+    // ... other args
+    getStylesheetsForEntryPoint,
+  );
+  // ... assertions
+});
+```
+
+This approach makes dependencies clear, avoids the pitfalls of global mocks, and leads to more resilient tests.
 
 ## Smoke Testing
 
@@ -75,6 +188,14 @@ For more detailed "verbose" output, set the `VERBOSE` environment variable to `1
 Here is a full example command that enables verbose logging for the HMR plugin, starts `rwsync` in watch mode to sync your local SDK changes with a test project, and redirects all output to a log file for analysis:
 ```sh
 VERBOSE=1 DEBUG='rwsdk:vite:hmr-plugin' npx rwsync --watch "npm run dev" 2>&1 | tee /tmp/out.log
+```
+
+## Forcing re-syncing
+Some projects (e.g. ones with lockfiles disabled) have proven challenging for working with the `rwsync`. For these cases, it might work better to force a full sync on each change:
+
+```sh
+export RWSDK_FORCE_FULL_SYNC=1
+npx rwsync --watch "npm run dev"
 ```
 
 ## Releasing (for Core Contributors)
@@ -142,5 +263,3 @@ The release workflow and underlying script (`sdk/sdk/scripts/release.sh`) follow
 5.  **Publish**: Only if all smoke tests and verification checks pass, the script publishes the `.tgz` tarball to npm. This guarantees the exact package that was tested is the one that gets published.
 6.  **Finalize Commit**: For non-prerelease versions, the script updates dependencies in the monorepo, amends the version commit with these changes, tags the commit, and pushes everything to the remote repository.
 7.  **Rollback**: If any step fails, the script reverts the version commit and cleans up all temporary files, leaving the repository in a clean state.
-
-#### Test Releases

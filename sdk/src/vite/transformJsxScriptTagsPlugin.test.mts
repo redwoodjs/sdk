@@ -20,11 +20,14 @@ describe("transformJsxScriptTagsCode", () => {
 
     expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
-      jsx("script", {
+      (
+              (requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
+              jsx("script", {
         src: "/assets/client-a1b2c3d4.js",
         type: "module",
           nonce: requestInfo.rw.nonce
     })
+            )
     `);
   });
 
@@ -40,11 +43,14 @@ describe("transformJsxScriptTagsCode", () => {
 
     expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
-      jsx("script", {
+      (
+              (requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
+              jsx("script", {
         type: "module",
-        children: "import(\\"\/assets\/client-a1b2c3d4.js\\").then(module => { console.log(module); })",
+        children: "import('/assets/client-a1b2c3d4.js').then(module => { console.log(module); })",
           nonce: requestInfo.rw.nonce
     })
+            )
     `);
   });
 
@@ -57,9 +63,12 @@ describe("transformJsxScriptTagsCode", () => {
 
     expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
-      jsx("script", { type: "module", children: "import(\\"\/assets\/client-a1b2c3d4.js\\")",
+      (
+              (requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
+              jsx("script", { type: "module", children: "import('/assets/client-a1b2c3d4.js')",
           nonce: requestInfo.rw.nonce
     })
+            )
     `);
   });
 
@@ -82,18 +91,21 @@ describe("transformJsxScriptTagsCode", () => {
 
     expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
-      jsx("script", {
+      (
+              (requestInfo.rw.scriptsToBeLoaded.add("/src/entry.js")),
+              jsx("script", {
         type: "module",
         children: \`
           // Some comments here
           const init = async () => {
-            await import("/assets/entry-e5f6g7h8.js");
+            await import('/assets/entry-e5f6g7h8.js');
             console.log('initialized');
           };
           init();
         \`,
           nonce: requestInfo.rw.nonce
     })
+            )
     `);
   });
 
@@ -112,14 +124,18 @@ describe("transformJsxScriptTagsCode", () => {
 
     expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
-      jsx("script", {
+      (
+              (requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
+(requestInfo.rw.scriptsToBeLoaded.add("/src/entry.js")),
+              jsx("script", {
         type: "module",
         children: \`
-          import("/assets/client-a1b2c3d4.js");
-          import("/assets/entry-e5f6g7h8.js");
+          import('/assets/client-a1b2c3d4.js');
+          import('/assets/entry-e5f6g7h8.js');
         \`,
           nonce: requestInfo.rw.nonce
     })
+            )
     `);
   });
 
@@ -202,9 +218,12 @@ describe("transformJsxScriptTagsCode", () => {
           jsx("body", {
             children: [
               jsx("div", { id: "root", children: props.children }),
-              jsx("script", { children: "import(\\"\/assets\/client-a1b2c3d4.js\\")",
-                  nonce: requestInfo.rw.nonce
-            })
+              (
+                              (requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
+                              jsx("script", { children: "import(\\"\/assets\/client-a1b2c3d4.js\\")",
+                                  nonce: requestInfo.rw.nonce
+                            })
+                            )
             ]
           })
         ]
@@ -234,11 +253,14 @@ describe("transformJsxScriptTagsCode", () => {
 
     expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
-      jsx("script", {
+      (
+              (requestInfo.rw.scriptsToBeLoaded.add("/src/non-existent.js")),
+              jsx("script", {
         src: "/src/non-existent.js",
         type: "module",
           nonce: requestInfo.rw.nonce
     })
+            )
     `);
   });
 
@@ -254,11 +276,14 @@ describe("transformJsxScriptTagsCode", () => {
 
     expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
-      jsx("script", {
+      (
+              (requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
+              jsx("script", {
         src: "/assets/client-a1b2c3d4.js",
         type: "module",
           nonce: requestInfo.rw.nonce
     })
+            )
     `);
   });
 
@@ -377,11 +402,14 @@ describe("transformJsxScriptTagsCode", () => {
 
     expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
-      jsx("script", {
+      (
+              (requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
+              jsx("script", {
         src: "/src/client.tsx",
         type: "module",
           nonce: requestInfo.rw.nonce
     })
+            )
     `);
   });
 });

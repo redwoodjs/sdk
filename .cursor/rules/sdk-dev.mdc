@@ -1,0 +1,19 @@
+---
+description: Rules on how to make changes to the rwsdk package (in sdk/ subdirectory)
+globs: ['**/*']
+alwaysApply: true
+---
+- Note that the monorepo dir might share the same name as the package dir for the sdk. Any code written or changed for the sdk package should go underneath the `sdk/` subdirectory.
+  - e.g. `<repo_dir>/sdk/src/runtime/worker.tsx`
+  - e.g. if `<repo_dir>` name is `sdk`, then an example path would be: `sdk/sdk/src/runtime/worker.tsx`
+  - Runtime code is situated at `<repo_dir>/sdk/src/runtime/`
+  - Code for the vite plugin is situated at `<repo_dir>/sdk/src/vite/`
+- When importing from `.mts` source files, use the `.mjs` extension in the import path. TypeScript will handle the resolution. **Note** the real file extensions on disk will be `.mts` - it is only for TypeScript's benefit that the import specifiers are `.mjs` in imports, even though the file extensions of the actual files are in fact `.mts`.
+- For context on contribution guidelines and dev workflow commands, refer to CONTRIBUTING.md in the repo root. 
+- In tests, avoid mocking (e.g. `vi.mock()`), prefer depending injection, see CONTRIBUTING.md for more context
+- For context on how the system works, refer to the architecture documentation located in the `docs/architecture` directory.
+- If making changes to the way the system works that would affect the architecture documentation, revise the documentation to keep it up to date
+- When changing architecture documentation
+  - Make sure the document is understandable without prior context
+  - Keep a coherent narrative - start with the challenge(s) so that the user has context on the _why_'s that informed the solution, before explaining the solution.
+  - Keep it high level - do not mention identifiers in the code unless it is accompanied by a simplified code example for conceptual understanding of their purpose

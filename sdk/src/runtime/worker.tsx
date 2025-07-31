@@ -68,6 +68,7 @@ export const defineApp = <
           rscPayload: true,
           ssr: true,
           databases: new Map(),
+          scriptsToBeLoaded: new Set(),
         };
 
         const outerRequestInfo: RequestInfo<any, T["ctx"]> = {

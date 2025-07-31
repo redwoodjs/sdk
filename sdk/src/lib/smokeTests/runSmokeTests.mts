@@ -89,6 +89,7 @@ export async function runSmokeTests(
           options.skipClient,
           options.realtime,
           options.skipHmr,
+          options.skipStyleTests,
         );
 
         // Mark that dev tests have run successfully
@@ -149,6 +150,7 @@ export async function runSmokeTests(
             options.projectDir,
             options.realtime,
             options.skipHmr,
+            options.skipStyleTests,
           );
           // Update release command status to PASSED
           updateTestStatus("production", "releaseCommand", "PASSED");

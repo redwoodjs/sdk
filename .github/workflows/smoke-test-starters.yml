@@ -56,7 +56,7 @@ jobs:
           pnpm build
 
           # Run the minimal starter test
-          pnpm smoke-test --url="/" --path="../starters/minimal" --artifact-dir="../smoke-test-artifacts/minimal" --sync --copy-project
+          pnpm smoke-test --url="/" --path="../starters/minimal" --artifact-dir="../smoke-test-artifacts/minimal" --sync --copy-project --skip-style-tests
         env:
           CHROME_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
 
@@ -102,7 +102,7 @@ jobs:
           pnpm build
 
           # Run the standard starter test
-          pnpm smoke-test --url="/user/login" --path="../starters/standard" --artifact-dir="../smoke-test-artifacts/standard" --sync --copy-project
+          pnpm smoke-test --url="/user/login" --path="../starters/standard" --artifact-dir="../smoke-test-artifacts/standard" --sync --copy-project --skip-style-tests
         env:
           CHROME_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
 

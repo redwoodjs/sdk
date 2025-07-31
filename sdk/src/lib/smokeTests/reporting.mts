@@ -164,6 +164,12 @@ export async function generateFinalReport(): Promise<void> {
         `  │  ├─ Server Render Check: ${formatTestStatus(state.testStatus.dev.initialServerRenderCheck)}`,
       );
       console.log(
+        `  │  ├─ URL Styles: ${formatTestStatus(state.testStatus.dev.initialUrlStyles)}`,
+      );
+      console.log(
+        `  │  ├─ Client Module Styles: ${formatTestStatus(state.testStatus.dev.initialClientModuleStyles)}`,
+      );
+      console.log(
         `  │  ├─ Server HMR: ${formatTestStatus(state.testStatus.dev.initialServerHmr)}`,
       );
       console.log(
@@ -181,6 +187,12 @@ export async function generateFinalReport(): Promise<void> {
       );
       console.log(
         `     ├─ Server Render Check: ${formatTestStatus(state.testStatus.dev.realtimeServerRenderCheck)}`,
+      );
+      console.log(
+        `     ├─ URL Styles: ${formatTestStatus(state.testStatus.dev.realtimeUrlStyles)}`,
+      );
+      console.log(
+        `     ├─ Client Module Styles: ${formatTestStatus(state.testStatus.dev.realtimeClientModuleStyles)}`,
       );
       console.log(
         `     ├─ Server HMR: ${formatTestStatus(state.testStatus.dev.realtimeServerHmr)}`,
@@ -214,7 +226,13 @@ export async function generateFinalReport(): Promise<void> {
           `  │  ├─ Client-side: ${formatTestStatus(state.testStatus.production.initialClientSide)}`,
         );
         console.log(
-          `  │  └─ Server Render Check: ${formatTestStatus(state.testStatus.production.initialServerRenderCheck)}`,
+          `  │  ├─ Server Render Check: ${formatTestStatus(state.testStatus.production.initialServerRenderCheck)}`,
+        );
+        console.log(
+          `  │  ├─ URL Styles: ${formatTestStatus(state.testStatus.production.initialUrlStyles)}`,
+        );
+        console.log(
+          `  │  └─ Client Module Styles: ${formatTestStatus(state.testStatus.production.initialClientModuleStyles)}`,
         );
         console.log(`  └─ Realtime Tests:`);
         console.log(
@@ -227,7 +245,13 @@ export async function generateFinalReport(): Promise<void> {
           `     ├─ Client-side: ${formatTestStatus(state.testStatus.production.realtimeClientSide)}`,
         );
         console.log(
-          `     └─ Server Render Check: ${formatTestStatus(state.testStatus.production.realtimeServerRenderCheck)}`,
+          `     ├─ Server Render Check: ${formatTestStatus(state.testStatus.production.realtimeServerRenderCheck)}`,
+        );
+        console.log(
+          `     ├─ URL Styles: ${formatTestStatus(state.testStatus.production.realtimeUrlStyles)}`,
+        );
+        console.log(
+          `     └─ Client Module Styles: ${formatTestStatus(state.testStatus.production.realtimeClientModuleStyles)}`,
         );
       } else {
         console.log(`  └─ Tests: ⏩ SKIPPED (release command failed)`);
@@ -388,6 +412,10 @@ export function initializeTestStatus(): void {
   state.testStatus.dev.initialClientHmr = "DID_NOT_RUN";
   state.testStatus.dev.realtimeServerHmr = "DID_NOT_RUN";
   state.testStatus.dev.realtimeClientHmr = "DID_NOT_RUN";
+  state.testStatus.dev.initialUrlStyles = "DID_NOT_RUN";
+  state.testStatus.dev.initialClientModuleStyles = "DID_NOT_RUN";
+  state.testStatus.dev.realtimeUrlStyles = "DID_NOT_RUN";
+  state.testStatus.dev.realtimeClientModuleStyles = "DID_NOT_RUN";
 
   // Production tests
   state.testStatus.production.overall = "DID_NOT_RUN";
@@ -403,6 +431,10 @@ export function initializeTestStatus(): void {
   state.testStatus.production.initialClientHmr = "DID_NOT_RUN";
   state.testStatus.production.realtimeServerHmr = "DID_NOT_RUN";
   state.testStatus.production.realtimeClientHmr = "DID_NOT_RUN";
+  state.testStatus.production.initialUrlStyles = "DID_NOT_RUN";
+  state.testStatus.production.initialClientModuleStyles = "DID_NOT_RUN";
+  state.testStatus.production.realtimeUrlStyles = "DID_NOT_RUN";
+  state.testStatus.production.realtimeClientModuleStyles = "DID_NOT_RUN";
 
   // Now override with specific statuses based on options
 
@@ -420,6 +452,10 @@ export function initializeTestStatus(): void {
     state.testStatus.dev.initialClientHmr = "SKIPPED";
     state.testStatus.dev.realtimeServerHmr = "SKIPPED";
     state.testStatus.dev.realtimeClientHmr = "SKIPPED";
+    state.testStatus.dev.initialUrlStyles = "SKIPPED";
+    state.testStatus.dev.initialClientModuleStyles = "SKIPPED";
+    state.testStatus.dev.realtimeUrlStyles = "SKIPPED";
+    state.testStatus.dev.realtimeClientModuleStyles = "SKIPPED";
   }
 
   if (state.options.skipRelease) {
@@ -436,6 +472,10 @@ export function initializeTestStatus(): void {
     state.testStatus.production.initialClientHmr = "SKIPPED";
     state.testStatus.production.realtimeServerHmr = "SKIPPED";
     state.testStatus.production.realtimeClientHmr = "SKIPPED";
+    state.testStatus.production.initialUrlStyles = "SKIPPED";
+    state.testStatus.production.initialClientModuleStyles = "SKIPPED";
+    state.testStatus.production.realtimeUrlStyles = "SKIPPED";
+    state.testStatus.production.realtimeClientModuleStyles = "SKIPPED";
   }
 
   if (state.options.skipClient) {
@@ -475,6 +515,8 @@ export function initializeTestStatus(): void {
       state.testStatus.dev.initialServerRenderCheck = "SKIPPED";
       state.testStatus.dev.initialServerHmr = "SKIPPED";
       state.testStatus.dev.initialClientHmr = "SKIPPED";
+      state.testStatus.dev.initialUrlStyles = "SKIPPED";
+      state.testStatus.dev.initialClientModuleStyles = "SKIPPED";
       // Set the upgrade test to PASSED as it's implicitly run for realtime mode
       state.testStatus.dev.realtimeUpgrade = "PASSED";
     }
@@ -485,6 +527,8 @@ export function initializeTestStatus(): void {
       state.testStatus.production.initialServerRenderCheck = "SKIPPED";
       state.testStatus.production.initialServerHmr = "SKIPPED";
       state.testStatus.production.initialClientHmr = "SKIPPED";
+      state.testStatus.production.initialUrlStyles = "SKIPPED";
+      state.testStatus.production.initialClientModuleStyles = "SKIPPED";
       // Set release command to PASSED since it must have succeeded for realtime tests to run
       state.testStatus.production.releaseCommand = "PASSED";
       // Set the upgrade test to PASSED as it's implicitly run for realtime mode

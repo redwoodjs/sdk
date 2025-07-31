@@ -1,5 +1,0 @@
----
-description: When importing from `.mts` source files, use the `.mjs` extension in the import path. TypeScript will handle the resolution. Not though that the actual file extensions will be `.mts` though - it is only for TypeScript's benefit that the specifiers are `.mjs` in imports, even though the file extensions of the actual files are in fact `.mts`.
-globs: ['**/*.mts']
-alwaysApply: true
----

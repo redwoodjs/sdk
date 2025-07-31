@@ -25,6 +25,7 @@ export interface SmokeTestOptions {
   copyProject?: boolean;
   realtime?: boolean;
   skipHmr?: boolean;
+  skipStyleTests?: boolean;
 }
 
 export interface TestResources {

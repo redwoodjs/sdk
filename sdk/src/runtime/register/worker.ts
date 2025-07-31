@@ -4,6 +4,7 @@ import {
   decodeReply,
 } from "react-server-dom-webpack/server.edge";
 import { getServerModuleExport } from "../imports/worker.js";
+import { requestInfo } from "../requestInfo/worker.js";
 
 export function registerServerReference(
   action: Function,
@@ -29,11 +30,25 @@ export function registerClientReference<Target extends Record<string, any>>(
       : () => null;
 
   const reference = baseRegisterClientReference({}, id, exportName);
-  return Object.defineProperties(wrappedValue, {
-    ...Object.getOwnPropertyDescriptors(reference),
-    $$async: { value: true },
-    $$isClientReference: { value: true },
-  });
+  const finalDescriptors = Object.getOwnPropertyDescriptors(reference);
+  const idDescriptor = finalDescriptors.$$id;
+
+  if (idDescriptor && idDescriptor.hasOwnProperty("value")) {
+    const originalValue = idDescriptor.value;
+    finalDescriptors.$$id = {
+      configurable: idDescriptor.configurable,
+      enumerable: idDescriptor.enumerable,
+      get() {
+        requestInfo.rw.scriptsToBeLoaded.add(id);
+        return originalValue;
+      },
+    };
+  }
+
+  finalDescriptors.$$async = { value: true };
+  finalDescriptors.$$isClientReference = { value: true };
+
+  return Object.defineProperties(wrappedValue, finalDescriptors);
 }
 
 export async function __smokeTestActionHandler(
