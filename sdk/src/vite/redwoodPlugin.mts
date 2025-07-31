@@ -100,6 +100,14 @@ export const redwoodPlugin = async (
     })`npm run dev:init`;
   }
 
+  const rscCssMapPath = resolve(
+    projectRootDir,
+    "dist",
+    "worker",
+    ".vite",
+    "rsc-css-map.json",
+  );
+
   return [
     devServerTimingPlugin(),
     devServerConstantPlugin(),
@@ -170,23 +178,13 @@ export const redwoodPlugin = async (
         ".vite",
         "manifest.json",
       ),
-      rscCssMapPath: resolve(
-        projectRootDir,
-        "dist",
-        "worker",
-        "rsc-css-map.json",
-      ),
+      rscCssMapPath,
       workerEntryPathname,
     }),
     moveStaticAssetsPlugin({ rootDir: projectRootDir }),
     prismaPlugin({ projectRootDir }),
     rscCssMapPlugin({
-      rscCssMapPath: resolve(
-        projectRootDir,
-        "dist",
-        "worker",
-        "rsc-css-map.json",
-      ),
+      rscCssMapPath,
     }),
   ];
 };

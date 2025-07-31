@@ -1,13 +1,10 @@
-import { readFile } from "node:fs/promises";
+import { readFile, writeFile } from "node:fs/promises";
 import { type Plugin, type ViteDevServer } from "vite";
 import debug from "debug";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
-import { type ModuleNode } from "vite";
+import path from "node:path";
 
 const log = debug("rwsdk:vite:manifest-plugin");
-
-const virtualModuleId = "virtual:rwsdk:manifest.js";
-const resolvedVirtualModuleId = "\0" + virtualModuleId;
 
 const getCssForModule = (
   server: ViteDevServer,
@@ -38,8 +35,6 @@ const getCssForModule = (
         const absolutePath = importedModule.file!;
         css.add({
           url: importedModule.url,
-          // The `ssrTransformResult` has the CSS content, because the default
-          // transform for CSS is to a string of the CSS content.
           content: (importedModule as any).ssrTransformResult?.code ?? "",
           absolutePath,
         });
@@ -65,153 +60,122 @@ export const manifestPlugin = ({
   rscCssMapPath: string;
   workerEntryPathname: string;
 }): Plugin => {
-  let isBuild = false;
   let root: string;
 
   return {
     name: "rwsdk:manifest",
     configResolved(config) {
       log("Config resolved, command=%s", config.command);
-      isBuild = config.command === "build";
       root = config.root;
     },
-    resolveId(id) {
-      if (id === virtualModuleId) {
-        process.env.VERBOSE && log("Resolving virtual module id=%s", id);
-        return resolvedVirtualModuleId;
-      }
-    },
-    async load(id) {
-      if (id === resolvedVirtualModuleId) {
-        process.env.VERBOSE && log("Loading virtual module id=%s", id);
-        if (!isBuild) {
-          process.env.VERBOSE && log("Not a build, returning empty manifest");
-          return `export default {}`;
-        }
-
-        log("Reading client manifest from %s", clientManifestPath);
-        const clientManifestContent = await readFile(
-          clientManifestPath,
-          "utf-8",
-        );
-        const clientManifest = JSON.parse(clientManifestContent);
-        const normalizedClientManifest: Record<string, unknown> = {};
-
-        for (const key in clientManifest) {
-          const normalizedKey = normalizeModulePath(key, root, {
-            isViteStyle: false,
-          });
-
-          const entry = clientManifest[key];
-          delete clientManifest[key];
-          normalizedClientManifest[normalizedKey] = entry;
-
-          entry.file = normalizeModulePath(entry.file, root, {
-            isViteStyle: false,
-          });
-
-          const normalizedCss: string[] = [];
-
-          if (entry.css) {
-            for (const css of entry.css) {
-              normalizedCss.push(
-                normalizeModulePath(css, root, {
-                  isViteStyle: false,
-                }),
-              );
-            }
-
-            entry.css = normalizedCss;
-          }
-        }
-
-        const rscManifest: Record<
-          string,
-          {
-            css: string[];
-          }
-        > = {
-          global: {
-            css: [],
-          },
-        };
-
-        // Read worker manifest and rsc css map
-        log("Reading worker manifest from %s", workerManifestPath);
-        const workerManifestContent = await readFile(
-          workerManifestPath,
-          "utf-8",
-        );
-        const workerManifest = JSON.parse(workerManifestContent);
-
-        log("Reading RSC CSS map from %s", rscCssMapPath);
-        const rscCssMapContent = await readFile(rscCssMapPath, "utf-8");
-        const rscCssMap = JSON.parse(rscCssMapContent);
-
-        // 1. Get all CSS bundles for the worker entry point
-        const workerManifestEntry = Object.entries(workerManifest).find(
-          ([key]) => key.endsWith(workerEntryPathname),
-        );
-        const allWorkerCssBundles = new Set<string>(
-          (workerManifestEntry?.[1] as any)?.css || [],
-        );
-
-        // 2. Populate rscManifest for CSS modules from the map
-        const usedModuleBundles = new Set<string>();
-        for (const moduleId in rscCssMap) {
-          const normalizedModuleId = normalizeModulePath(moduleId, root, {
-            isViteStyle: true,
-          });
-          const cssFile = rscCssMap[moduleId];
-          const normalizedCssFile = normalizeModulePath(cssFile, root, {
-            isViteStyle: false,
-          });
-
-          rscManifest[normalizedModuleId] = { css: [normalizedCssFile] };
-          usedModuleBundles.add(normalizedCssFile);
-        }
-
-        // 3. Add remaining bundles as global CSS
-        for (const bundle of allWorkerCssBundles) {
-          const normalizedBundle = normalizeModulePath(bundle, root, {
-            isViteStyle: false,
-          });
-          if (!usedModuleBundles.has(normalizedBundle)) {
-            rscManifest.global.css.push(normalizedBundle);
-          }
-        }
-
-        const manifest = {
-          client: normalizedClientManifest,
-          rsc: rscManifest,
-        };
-
-        return `export default ${JSON.stringify(manifest)}`;
-      }
-    },
-    configEnvironment(name, config) {
-      if (name !== "worker" && name !== "ssr") {
+    async writeBundle(options, bundle) {
+      if (this.environment.name !== "worker") {
         return;
       }
 
-      log("Configuring environment: name=%s", name);
+      log("writeBundle hook for worker environment");
 
-      config.optimizeDeps ??= {};
-      config.optimizeDeps.esbuildOptions ??= {};
-      config.optimizeDeps.esbuildOptions.plugins ??= [];
-      config.optimizeDeps.esbuildOptions.plugins.push({
-        name: "rwsdk:manifest:esbuild",
-        setup(build) {
-          log("Setting up esbuild plugin for environment: %s", name);
-          build.onResolve({ filter: /^virtual:rwsdk:manifest\.js$/ }, () => {
-            log("Resolving virtual manifest module in esbuild");
-            return {
-              path: "virtual:rwsdk:manifest.js",
-              external: true,
-            };
-          });
+      log("Reading client manifest from %s", clientManifestPath);
+      const clientManifestContent = await readFile(clientManifestPath, "utf-8");
+      const clientManifest = JSON.parse(clientManifestContent);
+      const normalizedClientManifest: Record<string, unknown> = {};
+
+      for (const key in clientManifest) {
+        const normalizedKey = normalizeModulePath(key, root, {
+          isViteStyle: false,
+        });
+
+        const entry = clientManifest[key];
+        delete clientManifest[key];
+        normalizedClientManifest[normalizedKey] = entry;
+
+        entry.file = normalizeModulePath(entry.file, root, {
+          isViteStyle: false,
+        });
+
+        const normalizedCss: string[] = [];
+
+        if (entry.css) {
+          for (const css of entry.css) {
+            normalizedCss.push(
+              normalizeModulePath(css, root, {
+                isViteStyle: false,
+              }),
+            );
+          }
+
+          entry.css = normalizedCss;
+        }
+      }
+
+      const rscManifest: Record<
+        string,
+        {
+          css: string[];
+        }
+      > = {
+        global: {
+          css: [],
         },
-      });
+      };
+
+      log("Reading worker manifest from %s", workerManifestPath);
+      const workerManifestContent = await readFile(workerManifestPath, "utf-8");
+      const workerManifest = JSON.parse(workerManifestContent);
+
+      log("Reading RSC CSS map from %s", rscCssMapPath);
+      const rscCssMapContent = await readFile(rscCssMapPath, "utf-8");
+      const rscCssMap = JSON.parse(rscCssMapContent);
+
+      const workerManifestEntry = Object.entries(workerManifest).find(([key]) =>
+        key.endsWith(workerEntryPathname),
+      );
+      const allWorkerCssBundles = new Set<string>(
+        (workerManifestEntry?.[1] as any)?.css || [],
+      );
+
+      const usedModuleBundles = new Set<string>();
+      for (const moduleId in rscCssMap) {
+        const normalizedModuleId = normalizeModulePath(moduleId, root, {
+          isViteStyle: true,
+        });
+        const cssFile = rscCssMap[moduleId];
+        const normalizedCssFile = normalizeModulePath(cssFile, root, {
+          isViteStyle: false,
+        });
+
+        rscManifest[normalizedModuleId] = { css: [normalizedCssFile] };
+        usedModuleBundles.add(normalizedCssFile);
+      }
+
+      for (const bundlePath of allWorkerCssBundles) {
+        const normalizedBundle = normalizeModulePath(bundlePath, root, {
+          isViteStyle: false,
+        });
+        if (!usedModuleBundles.has(normalizedBundle)) {
+          rscManifest.global.css.push(normalizedBundle);
+        }
+      }
+
+      const manifest = {
+        client: normalizedClientManifest,
+        rsc: rscManifest,
+      };
+
+      const manifestString = JSON.stringify(manifest);
+
+      const workerBundlePath = path.join(options.dir!, "worker.js");
+      log("Reading worker bundle from %s", workerBundlePath);
+      const workerBundleContent = await readFile(workerBundlePath, "utf-8");
+
+      log("Replacing manifest placeholder in worker bundle");
+      const newBundleContent = workerBundleContent.replace(
+        '"__RWS_MANIFEST_PLACEHOLDER__"',
+        manifestString,
+      );
+
+      log("Writing updated worker bundle to %s", workerBundlePath);
+      await writeFile(workerBundlePath, newBundleContent);
     },
     configureServer(server) {
       log("Configuring server middleware for manifest");

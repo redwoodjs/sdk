@@ -33,6 +33,7 @@ export function rscCssMapPlugin(options: RscCssMapPluginOptions): Plugin {
     },
 
     async generateBundle(outputOptions, bundle) {
+      console.log("############################33", this.environment.name);
       if (this.environment.name !== "worker") {
         return;
       }
