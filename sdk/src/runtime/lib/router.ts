@@ -351,6 +351,10 @@ export const wrapHandlerToThrowResponses = <
     return handler;
   }
 
+  if (!isRouteComponent(handler)) {
+    return handler;
+  }
+
   const ComponentWrappedToThrowResponses = async (requestInfo: T) => {
     const result = await handler(requestInfo);
 
