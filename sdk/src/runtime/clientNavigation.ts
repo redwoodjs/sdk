@@ -9,7 +9,7 @@ function saveScrollPosition(x: number, y: number) {
     {
       ...window.history.state,
       scrollX: x,
-      scrollY: x,
+      scrollY: y,
     },
     "",
     window.location.href,
