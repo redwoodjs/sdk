@@ -25,6 +25,10 @@ export function validateClickEvent(event: MouseEvent, target: HTMLElement) {
     return false;
   }
 
+  if (href.includes("#")) {
+    return false;
+  }
+
   // Skip if target="_blank" or similar
   if (link.target && link.target !== "_self") {
     return false;
@@ -42,9 +46,7 @@ export function validateClickEvent(event: MouseEvent, target: HTMLElement) {
   return true;
 }
 
-export function initClientNavigation(
-  opts: ClientNavigationOptions = {},
-) {
+export function initClientNavigation(opts: ClientNavigationOptions = {}) {
   // Merge user options with defaults
   const options: Required<ClientNavigationOptions> = {
     onNavigate: async function onNavigate() {
@@ -52,15 +54,15 @@ export function initClientNavigation(
       await globalThis.__rsc_callServer();
     },
     scrollToTop: true,
-    scrollBehavior: 'instant',
+    scrollBehavior: "instant",
     ...opts,
   };
-  
+
   // Prevent browser's automatic scroll restoration for popstate
-  if ('scrollRestoration' in history) {
-    history.scrollRestoration = 'manual';
+  if ("scrollRestoration" in history) {
+    history.scrollRestoration = "manual";
   }
-  
+
   // Set up scroll behavior management
   let popStateWasCalled = false;
   let savedScrollPosition: { x: number; y: number } | null = null;
@@ -71,7 +73,7 @@ export function initClientNavigation(
       window.scrollTo({
         top: savedScrollPosition.y,
         left: savedScrollPosition.x,
-        behavior: 'instant',
+        behavior: "instant",
       });
       savedScrollPosition = null;
     } else if (options.scrollToTop && !popStateWasCalled) {
@@ -81,7 +83,7 @@ export function initClientNavigation(
         left: 0,
         behavior: options.scrollBehavior,
       });
-      
+
       // Update the current history entry with the new scroll position (top)
       // This ensures that if we navigate back and then forward again,
       // we return to the top position, not some previous scroll position
@@ -89,7 +91,7 @@ export function initClientNavigation(
         {
           ...window.history.state,
           scrollX: 0,
-          scrollY: 0
+          scrollY: 0,
         },
         "",
         window.location.href,
@@ -102,7 +104,12 @@ export function initClientNavigation(
     popStateWasCalled = true;
     // Save the scroll position that the browser would have restored to
     const state = event.state;
-    if (state && typeof state === 'object' && 'scrollX' in state && 'scrollY' in state) {
+    if (
+      state &&
+      typeof state === "object" &&
+      "scrollX" in state &&
+      "scrollY" in state
+    ) {
       savedScrollPosition = { x: state.scrollX, y: state.scrollY };
     } else {
       // Fallback: try to get scroll position from browser's session history
@@ -135,15 +142,15 @@ export function initClientNavigation(
 
       // Save current scroll position before navigating
       window.history.replaceState(
-        { 
+        {
           path: window.location.pathname,
           scrollX: window.scrollX,
-          scrollY: window.scrollY
+          scrollY: window.scrollY,
         },
         "",
         window.location.href,
       );
-      
+
       window.history.pushState(
         { path: href },
         "",
