@@ -222,14 +222,16 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
           if (isRouteComponent(h)) {
             const requestInfo = getRequestInfo();
             const WrappedComponent = wrapWithLayouts(
-              h as React.FC,
+              wrapHandlerToThrowResponses(h as RouteComponent<T>) as React.FC,
               layouts || [],
               requestInfo,
             );
-            // context(justinvdm, 31 Jul 2025): We now know we're dealing with a page route,
-            // so we create a deferred so that we can signal when we're done determining whether
-            // we're returning a response or a react element
-            requestInfo.rw.pageRouteResolved = Promise.withResolvers();
+            if (!isClientReference(WrappedComponent)) {
+              // context(justinvdm, 31 Jul 2025): We now know we're dealing with a page route,
+              // so we create a deferred so that we can signal when we're done determining whether
+              // we're returning a response or a react element
+              requestInfo.rw.pageRouteResolved = Promise.withResolvers();
+            }
             return await renderPage(requestInfo, WrappedComponent, onError);
           } else {
             const r = await (h(getRequestInfo()) as Promise<Response>);
@@ -258,7 +260,7 @@ export function route<T extends RequestInfo = RequestInfo>(
 
   return {
     path,
-    handler: wrapHandlerToThrowResponses(handler),
+    handler,
   };
 }
 
@@ -333,25 +335,13 @@ function wrapWithLayouts<T extends RequestInfo = RequestInfo>(
 export const wrapHandlerToThrowResponses = <
   T extends RequestInfo = RequestInfo,
 >(
-  handler: RouteHandler<T>,
+  handler: RouteFunction<T> | RouteComponent<T>,
 ): RouteHandler<T> => {
-  if (Array.isArray(handler)) {
-    return [
-      ...handler.slice(0, -1),
-      wrapHandlerToThrowResponses(
-        handler[handler.length - 1] as RouteHandler<any>,
-      ),
-    ] as RouteHandler<T>;
-  }
-
   if (
     isClientReference(handler) ||
+    !isRouteComponent(handler) ||
     Object.prototype.hasOwnProperty.call(handler, "__rwsdk_route_component")
   ) {
-    return handler;
-  }
-
-  if (!isRouteComponent(handler)) {
     return handler;
   }
 
@@ -367,14 +357,7 @@ export const wrapHandlerToThrowResponses = <
     return result;
   };
 
-  Object.defineProperty(
-    ComponentWrappedToThrowResponses,
-    "__rwsdk_route_component",
-    {
-      value: true,
-    },
-  );
-
+  ComponentWrappedToThrowResponses.__rwsdk_route_component = true;
   return ComponentWrappedToThrowResponses;
 };
 
@@ -431,7 +414,8 @@ export function render<T extends RequestInfo = RequestInfo>(
 function isRouteComponent(handler: any) {
   return (
     Object.prototype.hasOwnProperty.call(handler, "__rwsdk_route_component") ||
-    (isValidElementType(handler) && handler.toString().includes("jsx"))
+    (isValidElementType(handler) && handler.toString().includes("jsx")) ||
+    isClientReference(handler)
   );
 }
 
