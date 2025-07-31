@@ -1,6 +1,6 @@
-# Architecture: Supporting Client-Side Stylesheet Imports
+# Architecture: Supporting Stylesheet Imports
 
-**Goal:** Allow developers to `import './styles.css'` inside a "use client" component and have it "just work," without causing a Flash of Unstyled Content (FOUC).
+**Goal:** Allow developers to `import './styles.css'` in both server and client components and have it "just work," without causing a Flash of Unstyled Content (FOUC).
 
 ## The Core Problem: Discovering Dynamic Dependencies in a Streaming World
 
@@ -147,6 +147,24 @@ This architecture separates concerns:
 -   **Discovery** is handled by a simple, stateless build transform.
 -   **Collection** happens at runtime, using the manifest as a source of truth.
 -   **Injection** is now environment-aware, delegating to React's standard rendering behavior while supporting Vite's HMR in development.
+
+### Supporting Server-Side Stylesheet Imports
+
+In addition to client components, we must also support stylesheets imported directly into server-side code (i.e., any module that is not a "use client" component). Because server code does not run on the client, we cannot rely on client-side injection. All server-side styles must be discovered during the build or at request-time and injected directly into the `<head>`.
+
+The approach mirrors the client-side solution, but targets the `worker` environment instead of the `client` environment.
+
+#### Discovery of Server-Side Stylesheets
+
+The key difference is that we only need to analyze a single entry point: the main server entry file (e.g., `worker.tsx`). All other server-side code is imported from this root, so by analyzing its dependency graph, we can find all server-side CSS.
+
+**Production:**
+In a production build, the Vite build for the `worker` environment will generate its own chunk in the manifest. This chunk will contain a `css` array listing all the CSS files that were imported by the worker and its dependencies. We can read this from the manifest and inject `<link>` tags for each CSS file.
+
+**Development:**
+In development, we will extend the `/__rwsdk_manifest` endpoint. It will now also inspect the `server.environments.worker.moduleGraph`. By traversing the dependencies of the main worker entry point, we can collect all imported CSS files, read their content, and return it in the manifest payload alongside the client styles.
+
+Unlike client-side styles, server-side styles do not need special HMR handling, as they are not managed by the client-side Vite runtime. Therefore, we can consistently use `<link>` tags in both development and production for server-originated CSS. For development, these links will point to the source files served by Vite; for production, they will point to the hashed output files.
 
 ### A Note on CSS Handling in the SSR Environment
 

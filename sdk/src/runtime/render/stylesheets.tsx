@@ -43,8 +43,14 @@ export const Stylesheets = ({ requestInfo }: { requestInfo: RequestInfo }) => {
   const allStylesheets = new Set<string | CssEntry>();
 
   for (const scriptId of requestInfo.rw.scriptsToBeLoaded) {
-    const css = findCssForModule(scriptId, manifest);
+    const css = findCssForModule(scriptId, manifest.client);
     for (const entry of css) {
+      allStylesheets.add(entry);
+    }
+  }
+
+  if (manifest.rsc?.css) {
+    for (const entry of manifest.rsc.css) {
       allStylesheets.add(entry);
     }
   }

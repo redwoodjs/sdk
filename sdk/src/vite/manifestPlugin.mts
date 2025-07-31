@@ -17,6 +17,7 @@ const getCssForModule = (
     content: string;
     absolutePath: string;
   }>,
+  env: "client" | "worker" | "ssr",
 ) => {
   const stack: string[] = [moduleId];
   const visited = new Set<string>();
@@ -30,7 +31,7 @@ const getCssForModule = (
     visited.add(currentModuleId);
 
     const moduleNode =
-      server.environments.client.moduleGraph.getModuleById(currentModuleId);
+      server.environments[env].moduleGraph.getModuleById(currentModuleId);
 
     if (!moduleNode) {
       continue;
@@ -56,9 +57,13 @@ const getCssForModule = (
 };
 
 export const manifestPlugin = ({
-  manifestPath,
+  clientManifestPath,
+  workerManifestPath,
+  workerEntryPathname,
 }: {
-  manifestPath: string;
+  clientManifestPath: string;
+  workerManifestPath: string;
+  workerEntryPathname: string;
 }): Plugin => {
   let isBuild = false;
   let root: string;
@@ -84,19 +89,35 @@ export const manifestPlugin = ({
           return `export default {}`;
         }
 
-        log("Reading manifest from %s", manifestPath);
-        const manifestContent = await readFile(manifestPath, "utf-8");
-        const manifest = JSON.parse(manifestContent);
-        const normalizedManifest: Record<string, unknown> = {};
+        log("Reading client manifest from %s", clientManifestPath);
+        const clientManifestContent = await readFile(
+          clientManifestPath,
+          "utf-8",
+        );
+        const clientManifest = JSON.parse(clientManifestContent);
+        const normalizedClientManifest: Record<string, unknown> = {};
 
-        for (const key in manifest) {
+        log("Reading worker manifest from %s", workerManifestPath);
+        const workerManifestContent = await readFile(
+          workerManifestPath,
+          "utf-8",
+        );
+        const workerManifest = JSON.parse(workerManifestContent);
+
+        const workerManifestEntry = Object.entries(workerManifest).find(
+          ([key]) => {
+            return key.endsWith(workerEntryPathname);
+          },
+        );
+
+        for (const key in clientManifest) {
           const normalizedKey = normalizeModulePath(key, root, {
             isViteStyle: false,
           });
 
-          const entry = manifest[key];
-          delete manifest[key];
-          normalizedManifest[normalizedKey] = entry;
+          const entry = clientManifest[key];
+          delete clientManifest[key];
+          normalizedClientManifest[normalizedKey] = entry;
 
           entry.file = normalizeModulePath(entry.file, root, {
             isViteStyle: false,
@@ -117,7 +138,16 @@ export const manifestPlugin = ({
           }
         }
 
-        return `export default ${JSON.stringify(normalizedManifest)}`;
+        const manifest = {
+          client: normalizedClientManifest,
+          rsc: {
+            css: workerManifestEntry
+              ? (workerManifestEntry[1] as any).css || []
+              : [],
+          },
+        };
+
+        return `export default ${JSON.stringify(manifest)}`;
       }
     },
     configEnvironment(name, config) {
@@ -158,7 +188,13 @@ export const manifestPlugin = ({
             await server.environments.client.transformRequest(script);
           }
 
-          const manifest: Record<
+          if (workerEntryPathname) {
+            await server.environments.worker.transformRequest(
+              workerEntryPathname,
+            );
+          }
+
+          const clientManifest: Record<
             string,
             {
               file: string;
@@ -170,7 +206,7 @@ export const manifestPlugin = ({
             }
           > = {};
 
-          log("Building manifest from module graph");
+          log("Building client manifest from module graph");
           for (const file of server.environments.client.moduleGraph.fileToModulesMap.keys()) {
             const modules =
               server.environments.client.moduleGraph.getModulesByFile(file);
@@ -182,16 +218,37 @@ export const manifestPlugin = ({
             for (const module of modules) {
               if (module.file) {
                 const css = new Set<any>();
-                getCssForModule(server, module.id!, css);
+                getCssForModule(server, module.id!, css, "client");
 
-                manifest[normalizeModulePath(module.file, server.config.root)] =
-                  {
-                    file: module.url,
-                    css: Array.from(css),
-                  };
+                clientManifest[
+                  normalizeModulePath(module.file, server.config.root)
+                ] = {
+                  file: module.url,
+                  css: Array.from(css),
+                };
               }
             }
           }
+
+          const rscCss = new Set<any>();
+          if (workerEntryPathname) {
+            log("Building worker manifest from module graph");
+            const workerModule =
+              await server.environments.worker.moduleGraph.getModuleByUrl(
+                workerEntryPathname,
+              );
+
+            if (workerModule) {
+              getCssForModule(server, workerModule.id!, rscCss, "worker");
+            }
+          }
+
+          const manifest = {
+            client: clientManifest,
+            rsc: {
+              css: Array.from(rscCss),
+            },
+          };
 
           log("Manifest built successfully");
           process.env.VERBOSE && log("Manifest: %o", manifest);
