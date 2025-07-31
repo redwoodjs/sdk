@@ -28,6 +28,7 @@ import { hasPkgScript } from "../lib/hasPkgScript.mjs";
 import { devServerTimingPlugin } from "./devServerTimingPlugin.mjs";
 import { manifestPlugin } from "./manifestPlugin.mjs";
 import { cssModuleProxyPlugin } from "./cssModuleProxyPlugin.mjs";
+import { rscCssMapPlugin } from "./rscCssMapPlugin.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -169,16 +170,23 @@ export const redwoodPlugin = async (
         ".vite",
         "manifest.json",
       ),
-      workerSsrManifestPath: resolve(
+      rscCssMapPath: resolve(
         projectRootDir,
         "dist",
         "worker",
-        ".vite",
-        "ssr-manifest.json",
+        "rsc-css-map.json",
       ),
       workerEntryPathname,
     }),
     moveStaticAssetsPlugin({ rootDir: projectRootDir }),
     prismaPlugin({ projectRootDir }),
+    rscCssMapPlugin({
+      rscCssMapPath: resolve(
+        projectRootDir,
+        "dist",
+        "worker",
+        "rsc-css-map.json",
+      ),
+    }),
   ];
 };
