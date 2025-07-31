@@ -170,7 +170,6 @@ export function initClientNavigation(opts: ClientNavigationOptions = {}) {
   // Return a handleResponse function for use with initClient
   return {
     handleResponse: function handleResponse(response: Response): boolean {
-      console.log("handleResponse", response, response.ok);
       if (!response.ok) {
         // Redirect to the current page (window.location) to show the error
         window.location.href = window.location.href;
