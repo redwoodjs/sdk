@@ -61,6 +61,7 @@ export const defineApp = <
           request.headers.get("accept")?.includes("text/x-component");
         const isSmokeTest = url.searchParams.has("__smoke_test");
         const userHeaders = new Headers();
+        let deferredPageResolved: PromiseWithResolvers<void> | undefined;
 
         const rw: RwContext = {
           Document: DefaultDocument,
@@ -96,12 +97,15 @@ export const defineApp = <
               const result = await Page(requestInfo);
 
               if (result instanceof Response) {
+                deferredPageResolved?.reject(result);
                 throw result;
               }
 
+              deferredPageResolved?.resolve();
               return result;
             };
 
+            deferredPageResolved = Promise.withResolvers();
             pageElement = <PageWrapper />;
           }
 
@@ -214,6 +218,7 @@ export const defineApp = <
           }
         }
 
+        await deferredPageResolved?.promise;
         return mutableResponse;
       } catch (e) {
         if (e instanceof ErrorResponse) {
