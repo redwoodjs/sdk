@@ -1,58 +1,52 @@
-# Architecture: Supporting Stylesheet Imports
+# Architecture: Unified Stylesheet Handling
 
-**Goal:** Allow developers to `import './styles.css'` in both server and client components and have it "just work," without causing a Flash of Unstyled Content (FOUC).
+**Goal:** Allow developers to import stylesheets (`.css` and `.module.css`) in both server and client components and have them injected correctly and efficiently, without causing a Flash of Unstyled Content (FOUC).
 
-## The Core Problem: Discovering Dynamic Dependencies in a Streaming World
+## The Core Problem: Asset Discovery in a Streaming, Server-First World
 
-### Why Vite's Default Behavior Isn't Enough
-In a standard Vite-based Single-Page Application (SPA), stylesheet handling is managed through a well-defined process.
-- In **development**, Vite serves an `index.html` file. When the browser requests a JavaScript module that imports a CSS file, Vite intercepts the import, injects the styles via a `<style>` tag, and enables Hot Module Replacement (HMR).
-- In **production**, Vite uses the `index.html` file as the entry point. During the build, it scans all the JavaScript modules linked from that HTML file, finds their CSS imports, bundles the CSS into files, and automatically injects the final `<link>` tags back into the `index.html`.
+In a traditional Vite-based Single-Page Application (SPA), all roads lead back to a single `index.html` file. Vite uses this static entry point to discover every script and stylesheet needed for the application, making it easy to bundle them and inject the appropriate `<link>` tags into the HTML `<head>`.
 
-Our framework's architecture makes this standard approach impossible for two main reasons:
-1.  **No `index.html`:** We use a dynamic, server-rendered `Document.tsx` component as the HTML shell. This gives developers full control, but it means Vite has no static entry point to analyze.
-2.  **React Server Components (RSC):** The full list of components (and therefore their CSS dependencies) is not known upfront. It is discovered dynamically as the RSC stream is rendered on the server.
+Our framework's architecture is fundamentally different, which makes Vite's standard approach unworkable:
 
-Because of these architectural choices, we cannot rely on Vite's built-in mechanisms. We must build a system that can discover all static and dynamic CSS dependencies during a server-side render and ensure the necessary `<link>` tags are injected into the final HTML `<head>`. This leads to a specific set of challenges.
+1.  **No `index.html`**: We use a dynamic, server-rendered `Document.tsx` component as the HTML shell. This provides developers with full control but removes the static entry point that Vite relies on for asset discovery.
+2.  **Server-First Rendering with RSC**: The complete list of components and their dependencies for a given page is not known ahead of time. It is discovered on the server, at request time, as the React Server Component (RSC) stream is rendered.
+
+These architectural choices create a core challenge: **how do we discover all the necessary CSS for a page and get it into the `<head>` *before* we've finished rendering the page?** This problem has several facets.
 
 ### The Challenges
-1.  **The HTML Stream Ordering Problem:** To avoid a Flash of Unstyled Content (FOUC), all `<link rel="stylesheet">` tags for a page must be in the `<head>`. However, the `<head>` is the very first part of the HTML document sent to the browser, long before we have processed the server components that would tell us which CSS to include.
 
-2.  **The Server Evaluation Ordering Problem:** In development, the Vite dev server does not know a client module's full dependency graph until that module is requested and evaluated. When a server request comes in, our worker code needs to know the CSS dependencies for client scripts so that we can put the `<links>`s in the head instead of adding them dynamically and ending up with a Flash of Unstyled Content (FOUC). But at that exact moment, the Vite `client` environment has not yet evaluated those scripts, so their CSS dependencies are not yet discoverable in the client module graph.
+#### 1. The HTML Stream Ordering Problem
+To prevent a Flash of Unstyled Content (FOUC), all `<link rel="stylesheet">` tags must be placed in the `<head>` of the HTML document. However, the `<head>` is the very first part of the document we send to the browser. We only discover which stylesheets are needed later, as we render the components in the `<body>`. This creates a classic chicken-and-egg problem.
 
-3.  **The Render-Time Discovery Problem:** We don't know the full list of components for a page ahead of time. As the RSC stream is rendered on the server, it can dynamically decide to include new "use client" components (islands). If `ComponentA` imports `./styles.css`, we only discover that this stylesheet is needed when `ComponentA` is actually rendered. Our build process transforms all "use client" modules into calls to a `registerClientReference` function at module-load time, which gives us a complete list of all *potential* client components that could be used. However, we have no way of knowing which ones are *actually* used in a specific request until render time. Preventing FOUC requires a render-time hook to know precisely which components are being rendered, but React's server-side rendering APIs do not provide a public hook for this.
+#### 2. The Dynamic Dependency Problem
+We don't know the full list of assets for a page ahead of time. Dependencies are revealed dynamically during the render process.
 
-4.  **The Entry Point Discovery Problem:** The framework has no built-in knowledge of the main client-side entry point (e.g., `<script src="/src/client.tsx">`). This script is referenced inside the developer's `Document.tsx` file, and we need a way to find it so we can also find *its* CSS dependencies.
+*   **For Client Components ("Islands")**: The RSC stream can decide to render any "use client" component at any time. We only learn that `ChatWindow.tsx` and its associated `ChatWindow.css` are needed for a page when the server actually renders the `<ChatWindow />` component.
 
-We cannot simply pause rendering to find all these dependencies, as that would eliminate the benefits of streaming. We need a system that can discover all these scripts—both the static entry points and the dynamically loaded components—and then use that complete list to inject all the necessary `<link>` tags into the `<head>` just in time.
+*   **For Server CSS Modules**: A similar issue exists for server-only components. A request to `/` might render `HomePage.tsx`, which uses `HomePage.module.css`. A request to `/about` might render `AboutPage.tsx` with `AboutPage.module.css`. Globally injecting both stylesheets on every page would be inefficient and lead to bloat. We need a way to know which server-side CSS Modules are actually used for the current request.
 
-#### The HMR-FOUC Dilemma in Development
+#### 3. The HMR-FOUC Dilemma (Development Mode)
+While solving FOUC in production is the primary goal, we must also preserve Vite's Hot Module Replacement (HMR) in development. Vite's dev server injects CSS via client-side JavaScript using `<style>` tags, which it can then hot-swap. If we solve FOUC by injecting server-rendered `<link>` tags in development, we create a conflict: the browser loads the CSS twice, and Vite's HMR system breaks. We need a solution that prevents FOUC without interfering with HMR.
 
-While injecting `<link>` tags on the server solves FOUC in production, it creates a new problem in the development environment: it conflicts with Vite's own Hot Module Replacement (HMR) system.
+## The Solution: A Hybrid, Render-Time Discovery System
 
-Vite's dev server is designed to manage CSS updates on the client. When a JavaScript module imports a CSS file, Vite's client-side runtime injects the styles using a `<style>` tag, which it can then hot-swap when the file changes. If we pre-inject a `<link>` tag on the server, the browser loads the stylesheet twice—once from our tag and once from Vite's.
+Our solution is a hybrid system that uses different discovery mechanisms depending on the type of stylesheet, collects them on a per-request basis, and uses an environment-aware injection strategy.
 
-This leads to a dilemma:
-- If we use `<link>` tags, we get duplicated styles and interfere with HMR.
-- If we *don't* use `<link>` tags, we get a Flash of Unstyled Content (FOUC) because the styles are only injected after the client-side JavaScript loads and executes.
+The process has two main phases: **Discovery** (finding out which assets are needed) and **Injection** (rendering the stylesheets).
 
-To solve this, we cannot simply disable one of the injection methods. We need a solution that provides the initial styles on the server to prevent FOUC while still allowing Vite's HMR to function correctly on the client.
+### Phase 1: Per-Request Asset Discovery
 
-## The Solution: A Unified Discovery and Environment-Aware Injection Process
+The core of this architecture is the per-request `requestInfo` object. We attach two sets to it:
 
-Our solution is to create a single, unified set of all client-side scripts that will be loaded on the page. By collecting every script module ID first, we can then, in a single final step, look up all their combined CSS dependencies and inject them in an environment-aware manner.
+*   `requestInfo.rw.scriptsToBeLoaded`: Collects the module IDs of all "use client" components used in the request.
+*   `requestInfo.rw.usedCssModules`: Collects the module IDs of all server-side CSS Modules used in the request.
 
-This process has two main phases: **Discovery** (populating the list of scripts) and **Injection** (finding and rendering their stylesheets).
+These sets are populated at render time using two different "proxying" techniques.
 
-### Phase 1 (Runtime): Unified Script Discovery
+#### A) Discovering Client Scripts
+Our system discovers client scripts from two sources: static `<script>` tags in the `Document` and dynamic component usage in the RSC stream.
 
-The core of this architecture is a single `Set` on the per-request `requestInfo` object: `requestInfo.rw.scriptsToBeLoaded`. This set collects the module IDs of every client script that is needed for the current page render.
-
-This set is populated from two different sources at two different times, allowing us to capture all scripts, both static and dynamic:
-
-**A) Static Entry Points from the `Document`**
-
-During the build, a simple Vite plugin scans `Document.tsx` files. When it finds a `<script>` tag that looks like a client entry point (e.g., `<script src="/src/client.tsx">`), it injects a tiny, stateless piece of code. This code runs on the server during the `Document` render and performs a side effect: it adds the entry point's path to our `scriptsToBeLoaded` set.
+During the build, a Vite plugin scans `Document.tsx` files. When it finds a `<script>` tag pointing to a client entry point, it injects a small piece of code that adds the script's path to our `scriptsToBeLoaded` set at render time.
 
 ```diff
 - jsx("script", { src: "/src/client.tsx" })
@@ -62,61 +56,64 @@ During the build, a simple Vite plugin scans `Document.tsx` files. When it finds
 + )
 ```
 
-**B) Dynamic Components from the RSC Stream**
+For dynamically loaded components ("islands"), our build process transforms all "use client" modules into special proxy-like objects. When React's server renderer accesses a special `$$id` property on these objects, we intercept the access and add the component's module ID to the `scriptsToBeLoaded` set.
 
-As the RSC stream renders, it may dynamically load other client components ("islands"). Our build process transforms all "use client" modules into calls to a `registerClientReference` function. This function wraps the client component in a proxy-like object.
+#### B) Discovering Server CSS Modules via `Proxy`
+For server-side `.module.css` files, we use a similar trick. A Vite plugin wraps the exported `styles` object in a JavaScript `Proxy`.
 
-When React's server renderer encounters one of these objects, it accesses a special `$$id` property on it to identify the component and serialize it for the client. We intercept the getter for this specific property. The first time the `$$id` property is accessed on a client component's reference during a render, we know that component is being used on the page. At that exact moment, we add the component's module ID to the `scriptsToBeLoaded` set. This gives us a precise, render-time mechanism for discovering exactly which components are needed for the current page without introducing any performance overhead.
+```javascript
+// Conceptual code injected by our Vite plugin for MyComponent.module.css
+import { requestInfo } from "rwsdk/requestInfo/worker";
+const originalStyles = { "myClass": "MyComponent_myClass__a1b2c" };
+const moduleId = "/src/components/MyComponent.module.css";
 
-At the end of these two steps, `requestInfo.rw.scriptsToBeLoaded` contains a complete list of every client module required to render the page.
+export default new Proxy(originalStyles, {
+  get(target, prop, receiver) {
+    // When code asks for styles.myClass, this `get` trap fires.
+    if (requestInfo.rw) { // Check that we are inside a request
+      requestInfo.rw.usedCssModules.add(moduleId);
+    }
+    return Reflect.get(target, prop, receiver);
+  }
+});
+```
+When a component accesses a class name (e.g., `className={styles.myClass}`), the proxy's `get` handler fires, adding the module's ID to the `usedCssModules` set. This tells us exactly which CSS Modules are needed for this specific request.
 
-### Phase 2 (Runtime): Unified Stylesheet Injection
+#### C) Handling Global Styles
+For standard `.css` files (not modules), we cannot track usage. These are treated as global.
+*   **Client Global CSS**: Any `.css` file imported by a "use client" script will be discovered when we process the `scriptsToBeLoaded` set.
+*   **Server Global CSS**: Any `.css` file imported by server code is discovered by analyzing the dependency graph of the main server entry point (`worker.tsx`). These are collected and injected into every document.
 
-This is the final, unified step. The component that wraps the RSC stream (`RscApp` in our conceptual example) waits for the entire stream to be processed using React Suspense (`use(thenable)`). Once the stream is fully resolved, this component performs the stylesheet logic.
+### Phase 2: Unified Stylesheet Injection
 
-The core of this phase is looking up the CSS dependencies for every script in our `scriptsToBeLoaded` list. To do this, we need a lookup table, or **asset manifest**, that maps a source file like `Button.tsx` to its final CSS output file, like `assets/Button.i9j0k1l2.css`.
+Once the RSC stream is fully processed, a component called `<Stylesheets />` performs the final injection logic.
 
-This lookup process is different in production and development.
-
-#### Production: Reading a Static Manifest
-In a production build, this is straightforward. The client build runs first, generating a `manifest.json` file. When the worker build runs, it can treat this manifest as a static asset. Our runtime code simply imports and reads this JSON file. The manifest contains mappings from source file IDs to their final, hashed CSS asset URLs.
-
-#### Development: Computing the Manifest and Styles On-the-Fly
-In development, no static manifest exists. Dependency information lives in Vite's live, in-memory **module graph**. This presents two challenges:
-1.  The worker runs in a sandboxed process and cannot access the main Vite server's memory to read the graph.
-2.  The Vite dev server itself maintains separate module graphs for each of its "environments" (e.g., `client`, `ssr`, `worker`). A module imported in the `worker` environment is not automatically present in the `client` graph.
-
-We solve this with a runtime helper, `getManifest()`, and a development-only endpoint.
--   The `getManifest()` function, when running in dev, makes a `fetch` call to a local endpoint (`/__rwsdk_manifest`).
--   The endpoint handler, running inside the main Vite server process, receives a list of script module IDs.
--   For each script, it uses `server.environments.client.transformRequest()` to ensure the module is processed by the client environment's plugin pipeline. This correctly populates the client module graph.
--   It then inspects `server.environments.client.moduleGraph` to find the module and all its imported dependencies.
--   Finally, it constructs a manifest-like JSON object and returns it to the worker's `fetch` call. Crucially, for each CSS dependency, this manifest includes not only its URL but also its **full text content** and its **absolute file path**.
-
-Once `getManifest()` has provided the appropriate manifest for the environment, the `RscApp` component can perform its final task. The injection logic is now environment-specific.
+1.  **Gather All Stylesheets**: It reads the `scriptsToBeLoaded` and `usedCssModules` sets from `requestInfo`, and also gets the list of global server CSS.
+2.  **Consult the Manifest**: It uses a manifest (either generated on-the-fly in dev via the `/__rwsdk_manifest` endpoint, or read from `dist` in prod) to look up the final output CSS file for every collected module ID.
+3.  **Perform Environment-Aware Injection**: It renders the appropriate `<link>` or `<style>` tags based on the environment.
 
 ```tsx
-const RscApp = ({ thenable, requestInfo }) => {
-  // This suspends until the stream is fully processed and all scripts are discovered.
-  const rscVDOM = use(thenable);
-
-  // This code only runs AFTER the `thenable` has resolved.
+const Stylesheets = ({ requestInfo }) => {
+  // This code only runs AFTER the RSC stream has resolved.
   const manifest = use(getManifest(requestInfo)); // Simplified for example
-  const allStylesheets = new Set<string>();
+  const allStylesheets = new Set<string | { url: string; content: string; absolutePath: string; }>();
 
+  // 1. Add server CSS modules used in this request
+  for (constmoduleId of requestInfo.rw.usedCssModules) {
+    const css = findCssForModule(moduleId, manifest.rsc); // Simplified
+    for (const entry of css) { allStylesheets.add(entry); }
+  }
+
+  // 2. Add client CSS used in this request
   for (const scriptId of requestInfo.rw.scriptsToBeLoaded) {
-    const css = findCssForModule(scriptId, manifest); // Simplified
-    for (const entry of css) {
-      allStylesheets.add(entry);
-    }
+    const css = findCssForModule(scriptId, manifest.client); // Simplified
+    for (const entry of css) { allStylesheets.add(entry); }
   }
 
   return (
     <>
       {Array.from(allStylesheets).map((entry) => {
-        // In development, we render a <style> tag with the CSS content.
-        // The `data-vite-dev-id` attribute is the key that allows Vite's HMR
-        // client to find and manage this style tag.
+        // In development, render <style> tag for HMR compatibility.
         if (import.meta.env.VITE_IS_DEV_SERVER && typeof entry === 'object') {
           return (
             <style
@@ -127,55 +124,13 @@ const RscApp = ({ thenable, requestInfo }) => {
           );
         }
 
-        // In production, we render a standard <link> tag.
+        // In production, render a standard <link> tag.
         const href = typeof entry === 'string' ? entry : entry.url;
         return <link key={href} rel="stylesheet" href={href} precedence="first" />;
       })}
-      <div id="hydrate-root">{rscVDOM.node}</div>
     </>
   );
 };
 ```
 
-This leads to a subtle but important interaction. While React 19 automatically hoists `<link>` tags with a `precedence` prop into the `<head>`, it does not do the same for `<style>` tags unless they also have `href` and `precedence` props. We do not include an `href` because we want the styles to be inline to match Vite's behavior.
-
-As a result, in development, our `<style>` tags are rendered inline, just before the main `<div id="hydrate-root">`. This is the desired outcome for two reasons:
-1.  **FOUC Prevention:** The HTML stream will pause at the `<style>` tags. The browser will parse them and apply the styles before it proceeds to render the application DOM inside `<div id="hydrate-root">`. Because no content has been rendered yet, there is no layout shift.
-2.  **HMR Compatibility:** Vite's HMR client successfully finds the `<style data-vite-dev-id="...">` tags, even though they are in the `<body>`, and takes over their management. This prevents style duplication and ensures HMR works correctly.
-
-This architecture separates concerns:
--   **Discovery** is handled by a simple, stateless build transform.
--   **Collection** happens at runtime, using the manifest as a source of truth.
--   **Injection** is now environment-aware, delegating to React's standard rendering behavior while supporting Vite's HMR in development.
-
-### Supporting Server-Side Stylesheet Imports
-
-In addition to client components, we must also support stylesheets imported directly into server-side code (i.e., any module that is not a "use client" component). Because server code does not run on the client, we cannot rely on client-side injection. All server-side styles must be discovered during the build or at request-time and injected directly into the `<head>`.
-
-The approach mirrors the client-side solution, but targets the `worker` environment instead of the `client` environment.
-
-#### Discovery of Server-Side Stylesheets
-
-The key difference is that we only need to analyze a single entry point: the main server entry file (e.g., `worker.tsx`). All other server-side code is imported from this root, so by analyzing its dependency graph, we can find all server-side CSS.
-
-**Production:**
-In a production build, the Vite build for the `worker` environment will generate its own chunk in the manifest. This chunk will contain a `css` array listing all the CSS files that were imported by the worker and its dependencies. We can read this from the manifest and inject `<link>` tags for each CSS file.
-
-**Development:**
-In development, we will extend the `/__rwsdk_manifest` endpoint. It will now also inspect the `server.environments.worker.moduleGraph`. By traversing the dependencies of the main worker entry point, we can collect all imported CSS files, read their content, and return it in the manifest payload alongside the client styles.
-
-Unlike client-side styles, server-side styles do not need special HMR handling, as they are not managed by the client-side Vite runtime. Therefore, we can consistently use `<link>` tags in both development and production for server-originated CSS. For development, these links will point to the source files served by Vite; for production, they will point to the hashed output files.
-
-### A Note on CSS Handling in the SSR Environment
-
-A unique challenge arises from how stylesheet imports are processed in the development server's SSR environment. When a client component imports a CSS file, that import travels through the [SSR Bridge](./ssrBridge.md), which must correctly handle it. If not managed properly, plugins like Tailwind CSS might try to parse transformed JavaScript (from a CSS module) as if it were raw CSS, causing build failures.
-
-To solve this, the `ssrBridgePlugin` performs a specific transformation:
-
-1.  **Identifier Transformation:** When resolving a module ID for a stylesheet (e.g., `/src/components/Button.module.css`), the plugin appends a `.js` extension to its virtualized path (e.g., `virtual:rwsdk:ssr:/src/components/Button.module.css.js`). This signals to all subsequent Vite plugins that the module should be treated as JavaScript.
-
-2.  **Specialized Loading:** In the `load` hook, the plugin distinguishes between two types of CSS imports:
-    -   For **standard `.css` files**, it returns an empty JavaScript module (`export default {};`). This is because global stylesheets are injected directly into the `<head>` and do not need to be processed as part of the server-rendered component tree.
-    -   For **CSS Modules (`.module.css`)**, it first strips the `.js` suffix from the module ID before calling `devServer.environments.ssr.fetchModule()`. This ensures the original CSS module is fetched and transformed by Vite into its JavaScript object representation. This object, which maps class names to their unique generated hashes, is then returned to the `worker` environment so that server-rendered components receive the correct class names.
-
-This two-pronged approach ensures that CSS dependencies are correctly processed according to their type, preventing downstream errors and allowing seamless integration of styles in the server environment.
+This architecture solves all our challenges: FOUC is prevented because the styles are present in the initial server-rendered HTML, HMR is preserved through environment-aware injection, and server-side CSS is handled efficiently on a per-request basis.
