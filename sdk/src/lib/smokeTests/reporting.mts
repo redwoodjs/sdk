@@ -170,6 +170,12 @@ export async function generateFinalReport(): Promise<void> {
         `  │  ├─ Client Module Styles: ${formatTestStatus(state.testStatus.dev.initialClientModuleStyles)}`,
       );
       console.log(
+        `  │  ├─ Server URL Styles: ${formatTestStatus(state.testStatus.dev.initialServerUrlStyles)}`,
+      );
+      console.log(
+        `  │  ├─ Server Module Styles: ${formatTestStatus(state.testStatus.dev.initialServerModuleStyles)}`,
+      );
+      console.log(
         `  │  ├─ Server HMR: ${formatTestStatus(state.testStatus.dev.initialServerHmr)}`,
       );
       console.log(
@@ -193,6 +199,12 @@ export async function generateFinalReport(): Promise<void> {
       );
       console.log(
         `     ├─ Client Module Styles: ${formatTestStatus(state.testStatus.dev.realtimeClientModuleStyles)}`,
+      );
+      console.log(
+        `     ├─ Server URL Styles: ${formatTestStatus(state.testStatus.dev.realtimeServerUrlStyles)}`,
+      );
+      console.log(
+        `     ├─ Server Module Styles: ${formatTestStatus(state.testStatus.dev.realtimeServerModuleStyles)}`,
       );
       console.log(
         `     ├─ Server HMR: ${formatTestStatus(state.testStatus.dev.realtimeServerHmr)}`,
@@ -232,7 +244,13 @@ export async function generateFinalReport(): Promise<void> {
           `  │  ├─ URL Styles: ${formatTestStatus(state.testStatus.production.initialUrlStyles)}`,
         );
         console.log(
-          `  │  └─ Client Module Styles: ${formatTestStatus(state.testStatus.production.initialClientModuleStyles)}`,
+          `  │  ├─ Client Module Styles: ${formatTestStatus(state.testStatus.production.initialClientModuleStyles)}`,
+        );
+        console.log(
+          `  │  ├─ Server URL Styles: ${formatTestStatus(state.testStatus.production.initialServerUrlStyles)}`,
+        );
+        console.log(
+          `  │  └─ Server Module Styles: ${formatTestStatus(state.testStatus.production.initialServerModuleStyles)}`,
         );
         console.log(`  └─ Realtime Tests:`);
         console.log(
@@ -251,7 +269,13 @@ export async function generateFinalReport(): Promise<void> {
           `     ├─ URL Styles: ${formatTestStatus(state.testStatus.production.realtimeUrlStyles)}`,
         );
         console.log(
-          `     └─ Client Module Styles: ${formatTestStatus(state.testStatus.production.realtimeClientModuleStyles)}`,
+          `     ├─ Client Module Styles: ${formatTestStatus(state.testStatus.production.realtimeClientModuleStyles)}`,
+        );
+        console.log(
+          `     ├─ Server URL Styles: ${formatTestStatus(state.testStatus.production.realtimeServerUrlStyles)}`,
+        );
+        console.log(
+          `     └─ Server Module Styles: ${formatTestStatus(state.testStatus.production.realtimeServerModuleStyles)}`,
         );
       } else {
         console.log(`  └─ Tests: ⏩ SKIPPED (release command failed)`);
@@ -302,7 +326,7 @@ export async function generateFinalReport(): Promise<void> {
           console.log(`Failure #${index + 1}: ${failure.step}`);
 
           // Split error message into lines if it's long
-          const errorLines = failure.error.split("\n");
+          const errorLines = (failure.error || '').split("\n");
           console.log(`Error: ${errorLines[0]}`);
           for (let i = 1; i < errorLines.length; i++) {
             console.log(`       ${errorLines[i]}`);
@@ -320,7 +344,7 @@ export async function generateFinalReport(): Promise<void> {
           console.log(`Failure #${index + 1}: ${failure.step}`);
 
           // Split error message into lines if it's long
-          const errorLines = failure.error.split("\n");
+          const errorLines = (failure.error || '').split("\n");
           console.log(`Error: ${errorLines[0]}`);
           for (let i = 1; i < errorLines.length; i++) {
             console.log(`       ${errorLines[i]}`);
@@ -341,7 +365,7 @@ export async function generateFinalReport(): Promise<void> {
           console.log(`Failure #${index + 1}: ${failure.step}`);
 
           // Split error message into lines if it's long
-          const errorLines = failure.error.split("\n");
+          const errorLines = (failure.error || '').split("\n");
           console.log(`Error: ${errorLines[0]}`);
           for (let i = 1; i < errorLines.length; i++) {
             console.log(`       ${errorLines[i]}`);
@@ -414,8 +438,13 @@ export function initializeTestStatus(): void {
   state.testStatus.dev.realtimeClientHmr = "DID_NOT_RUN";
   state.testStatus.dev.initialUrlStyles = "DID_NOT_RUN";
   state.testStatus.dev.initialClientModuleStyles = "DID_NOT_RUN";
+  state.testStatus.dev.initialServerUrlStyles = "DID_NOT_RUN";
+  state.testStatus.dev.initialServerModuleStyles = "DID_NOT_RUN";
   state.testStatus.dev.realtimeUrlStyles = "DID_NOT_RUN";
   state.testStatus.dev.realtimeClientModuleStyles = "DID_NOT_RUN";
+  state.testStatus.dev.realtimeServerUrlStyles = "DID_NOT_RUN";
+  state.testStatus.dev.realtimeServerModuleStyles = "DID_NOT_RUN";
+
 
   // Production tests
   state.testStatus.production.overall = "DID_NOT_RUN";
@@ -433,8 +462,12 @@ export function initializeTestStatus(): void {
   state.testStatus.production.realtimeClientHmr = "DID_NOT_RUN";
   state.testStatus.production.initialUrlStyles = "DID_NOT_RUN";
   state.testStatus.production.initialClientModuleStyles = "DID_NOT_RUN";
+  state.testStatus.production.initialServerUrlStyles = "DID_NOT_RUN";
+  state.testStatus.production.initialServerModuleStyles = "DID_NOT_RUN";
   state.testStatus.production.realtimeUrlStyles = "DID_NOT_RUN";
   state.testStatus.production.realtimeClientModuleStyles = "DID_NOT_RUN";
+  state.testStatus.production.realtimeServerUrlStyles = "DID_NOT_RUN";
+  state.testStatus.production.realtimeServerModuleStyles = "DID_NOT_RUN";
 
   // Now override with specific statuses based on options
 
@@ -454,8 +487,12 @@ export function initializeTestStatus(): void {
     state.testStatus.dev.realtimeClientHmr = "SKIPPED";
     state.testStatus.dev.initialUrlStyles = "SKIPPED";
     state.testStatus.dev.initialClientModuleStyles = "SKIPPED";
+    state.testStatus.dev.initialServerUrlStyles = "SKIPPED";
+    state.testStatus.dev.initialServerModuleStyles = "SKIPPED";
     state.testStatus.dev.realtimeUrlStyles = "SKIPPED";
     state.testStatus.dev.realtimeClientModuleStyles = "SKIPPED";
+    state.testStatus.dev.realtimeServerUrlStyles = "SKIPPED";
+    state.testStatus.dev.realtimeServerModuleStyles = "SKIPPED";
   }
 
   if (state.options.skipRelease) {
@@ -474,8 +511,12 @@ export function initializeTestStatus(): void {
     state.testStatus.production.realtimeClientHmr = "SKIPPED";
     state.testStatus.production.initialUrlStyles = "SKIPPED";
     state.testStatus.production.initialClientModuleStyles = "SKIPPED";
+    state.testStatus.production.initialServerUrlStyles = "SKIPPED";
+    state.testStatus.production.initialServerModuleStyles = "SKIPPED";
     state.testStatus.production.realtimeUrlStyles = "SKIPPED";
     state.testStatus.production.realtimeClientModuleStyles = "SKIPPED";
+    state.testStatus.production.realtimeServerUrlStyles = "SKIPPED";
+    state.testStatus.production.realtimeServerModuleStyles = "SKIPPED";
   }
 
   if (state.options.skipClient) {
@@ -517,6 +558,8 @@ export function initializeTestStatus(): void {
       state.testStatus.dev.initialClientHmr = "SKIPPED";
       state.testStatus.dev.initialUrlStyles = "SKIPPED";
       state.testStatus.dev.initialClientModuleStyles = "SKIPPED";
+      state.testStatus.dev.initialServerUrlStyles = "SKIPPED";
+      state.testStatus.dev.initialServerModuleStyles = "SKIPPED";
       // Set the upgrade test to PASSED as it's implicitly run for realtime mode
       state.testStatus.dev.realtimeUpgrade = "PASSED";
     }
@@ -529,6 +572,8 @@ export function initializeTestStatus(): void {
       state.testStatus.production.initialClientHmr = "SKIPPED";
       state.testStatus.production.initialUrlStyles = "SKIPPED";
       state.testStatus.production.initialClientModuleStyles = "SKIPPED";
+      state.testStatus.production.initialServerUrlStyles = "SKIPPED";
+      state.testStatus.production.initialServerModuleStyles = "SKIPPED";
       // Set release command to PASSED since it must have succeeded for realtime tests to run
       state.testStatus.production.releaseCommand = "PASSED";
       // Set the upgrade test to PASSED as it's implicitly run for realtime mode

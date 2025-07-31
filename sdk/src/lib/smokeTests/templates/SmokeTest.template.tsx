@@ -3,6 +3,8 @@ export function getSmokeTestTemplate(skipClient: boolean = false): string {
 import React from "react";
 import { RequestInfo } from "rwsdk/worker";
 ${skipClient ? "" : 'import { SmokeTestClient } from "./__SmokeTestClient";'}
+import serverStyles from "./smokeTestServerStyles.module.css";
+import "./smokeTestServerStyles.css";
 import { getSmokeTestTimestamp } from "./__smokeTestFunctions";
 
 export const SmokeTestInfo: React.FC = async () => {
@@ -47,6 +49,20 @@ export const SmokeTestInfo: React.FC = async () => {
         id="smoke-test-result"
       >
         Server Timestamp: {timestamp}
+      </div>
+
+      {/* Server Stylesheet Marker */}
+      <div
+        className="smoke-test-server-url-styles"
+        data-testid="smoke-test-server-url-styles"
+      >
+        <p>A green box should appear above this text (from URL import)</p>
+      </div>
+      <div
+        className={serverStyles.smokeTestServerStyles}
+        data-testid="smoke-test-server-styles"
+      >
+        <p>A purple box should appear above this text (from CSS module)</p>
       </div>
       
       {/* HMR Testing Marker - Do not modify this comment */}

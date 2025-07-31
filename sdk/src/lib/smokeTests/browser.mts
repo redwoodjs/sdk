@@ -26,6 +26,189 @@ import * as fs from "fs/promises";
 import { template as urlStylesTemplate } from "./templates/smokeTestUrlStyles.css.template";
 import { template as clientStylesTemplate } from "./templates/smokeTestClientStyles.module.css.template";
 
+export async function checkServerUrlStyles(
+  page: Page,
+  expectedColor: "green" | "orange",
+): Promise<void> {
+  const selector = '[data-testid="smoke-test-server-url-styles"]';
+  log(`Checking for element with selector: ${selector}`);
+  const element = await page.waitForSelector(selector);
+  if (!element) {
+    throw new Error(
+      `Server URL styles element not found with selector: ${selector}`,
+    );
+  }
+
+  const expectedRgb =
+    expectedColor === "green" ? "rgb(0, 128, 0)" : "rgb(255, 165, 0)";
+
+  log(
+    `Waiting for server URL styles to apply with expected color: ${expectedRgb}`,
+  );
+
+  try {
+    await page.waitForFunction(
+      (expectedRgb) => {
+        const element = document.querySelector(
+          '[data-testid="smoke-test-server-url-styles"]',
+        );
+        if (!element) return false;
+        const backgroundColor =
+          window.getComputedStyle(element).backgroundColor;
+        return backgroundColor === expectedRgb;
+      },
+      { timeout: 10000 },
+      expectedRgb,
+    );
+
+    const backgroundColor = await page.evaluate(
+      () =>
+        window.getComputedStyle(
+          document.querySelector(
+            '[data-testid="smoke-test-server-url-styles"]',
+          )!,
+        ).backgroundColor,
+    );
+
+    log(
+      `Server URL-based stylesheet check passed: background color is ${backgroundColor}`,
+    );
+  } catch (error) {
+    const actualBackgroundColor = await page.evaluate(() => {
+      const element = document.querySelector(
+        '[data-testid="smoke-test-server-url-styles"]',
+      );
+      return element
+        ? window.getComputedStyle(element).backgroundColor
+        : "element not found";
+    });
+
+    throw new Error(
+      `Server URL-based stylesheet check failed: expected background color ${expectedRgb}, but got ${actualBackgroundColor} (timeout after 10 seconds)`,
+    );
+  }
+}
+
+export async function checkServerModuleStyles(
+  page: Page,
+  expectedColor: "purple" | "yellow",
+): Promise<void> {
+  const selector = '[data-testid="smoke-test-server-styles"]';
+  log(`Checking for element with selector: ${selector}`);
+  const element = await page.waitForSelector(selector);
+  if (!element) {
+    throw new Error(
+      `Server module styles element not found with selector: ${selector}`,
+    );
+  }
+
+  const expectedRgb =
+    expectedColor === "purple" ? "rgb(128, 0, 128)" : "rgb(255, 255, 0)";
+
+  log(
+    `Waiting for server module styles to apply with expected color: ${expectedRgb}`,
+  );
+
+  try {
+    await page.waitForFunction(
+      (expectedRgb) => {
+        const element = document.querySelector(
+          '[data-testid="smoke-test-server-styles"]',
+        );
+        if (!element) return false;
+        const backgroundColor =
+          window.getComputedStyle(element).backgroundColor;
+        return backgroundColor === expectedRgb;
+      },
+      { timeout: 10000 },
+      expectedRgb,
+    );
+
+    const backgroundColor = await page.evaluate(
+      () =>
+        window.getComputedStyle(
+          document.querySelector('[data-testid="smoke-test-server-styles"]')!,
+        ).backgroundColor,
+    );
+
+    log(
+      `Server module stylesheet check passed: background color is ${backgroundColor}`,
+    );
+  } catch (error) {
+    const actualBackgroundColor = await page.evaluate(() => {
+      const element = document.querySelector(
+        '[data-testid="smoke-test-server-styles"]',
+      );
+      return element
+        ? window.getComputedStyle(element).backgroundColor
+        : "element not found";
+    });
+
+    throw new Error(
+      `Server module stylesheet check failed: expected background color ${expectedRgb}, but got ${actualBackgroundColor} (timeout after 10 seconds)`,
+    );
+  }
+}
+
+export async function testServerStyleHMR(
+  page: Page,
+  targetDir: string,
+): Promise<void> {
+  log("Running server style HMR tests");
+  console.log("🎨 Testing server style HMR...");
+
+  // --- HMR Test for Server URL-based Stylesheet ---
+  const serverUrlStylePath = join(
+    targetDir,
+    "src",
+    "app",
+    "components",
+    "smokeTestServerStyles.css",
+  );
+  const updatedServerUrlStyle = (
+    await fs.readFile(serverUrlStylePath, "utf-8")
+  ).replace("green", "orange");
+  await fs.writeFile(serverUrlStylePath, updatedServerUrlStyle);
+
+  // --- HMR Test for Server Module Stylesheet ---
+  const serverModuleStylePath = join(
+    targetDir,
+    "src",
+    "app",
+    "components",
+    "smokeTestServerStyles.module.css",
+  );
+  const updatedServerModuleStyle = (
+    await fs.readFile(serverModuleStylePath, "utf-8")
+  ).replace("purple", "yellow");
+  await fs.writeFile(serverModuleStylePath, updatedServerModuleStyle);
+
+  // Allow time for HMR to kick in
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+
+  // Check URL-based stylesheet HMR
+  await checkServerUrlStyles(page, "orange");
+
+  // Check client-module stylesheet HMR
+  await checkServerModuleStyles(page, "yellow");
+
+  // Restore original styles
+  await fs.writeFile(
+    serverUrlStylePath,
+    (await fs.readFile(serverUrlStylePath, "utf-8")).replace("orange", "green"),
+  );
+  await fs.writeFile(
+    serverModuleStylePath,
+    (await fs.readFile(serverModuleStylePath, "utf-8")).replace(
+      "yellow",
+      "purple",
+    ),
+  );
+
+  log("Server style HMR tests completed successfully");
+  console.log("✅ Server style HMR tests passed");
+}
+
 export async function checkUrlStyles(
   page: Page,
   expectedColor: "red" | "green",
@@ -536,7 +719,8 @@ export async function checkUrlSmoke(
   let clientTestError: Error | null = null;
   let serverRenderCheckError: Error | null = null;
   let hmrTestError: Error | null = null;
-  let stylesheetTestError: Error | null = null;
+  let clientStylesheetTestError: Error | null = null;
+  let serverStylesheetTestError: Error | null = null;
 
   // Step 1: Run initial server-side smoke test to check the server state
   log("Running initial server-side smoke test");
@@ -634,7 +818,7 @@ export async function checkUrlSmoke(
       urlStylesKey as keyof TestStatus[typeof env],
       "FAILED",
     );
-    stylesheetTestError =
+    clientStylesheetTestError =
       error instanceof Error ? error : new Error(String(error));
     log("Error during URL styles check: %O", error);
     console.error(
@@ -661,13 +845,77 @@ export async function checkUrlSmoke(
       clientModuleStylesKey as keyof TestStatus[typeof env],
       "FAILED",
     );
-    if (!stylesheetTestError) {
-      stylesheetTestError =
+    if (!clientStylesheetTestError) {
+      clientStylesheetTestError =
         error instanceof Error ? error : new Error(String(error));
     }
     log("Error during client module styles check: %O", error);
     console.error(
       `❌ Client module styles check failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+
+    if (bail) {
+      throw error;
+    }
+  }
+
+  // Step 1.6: Run server stylesheet checks
+  const serverUrlStylesKey = isRealtime
+    ? "realtimeServerUrlStyles"
+    : "initialServerUrlStyles";
+  const serverModuleStylesKey = isRealtime
+    ? "realtimeServerModuleStyles"
+    : "initialServerModuleStyles";
+
+  try {
+    await checkServerUrlStyles(page, "green");
+    updateTestStatus(
+      env,
+      serverUrlStylesKey as keyof TestStatus[typeof env],
+      "PASSED",
+    );
+    log(`${phase} server URL styles check passed`);
+  } catch (error) {
+    hasFailures = true;
+    updateTestStatus(
+      env,
+      serverUrlStylesKey as keyof TestStatus[typeof env],
+      "FAILED",
+    );
+    serverStylesheetTestError =
+      error instanceof Error ? error : new Error(String(error));
+    log("Error during server URL styles check: %O", error);
+    console.error(
+      `❌ Server URL styles check failed: ${error instanceof Error ? error.message : String(error)}`,
+    );
+
+    if (bail) {
+      throw error;
+    }
+  }
+
+  try {
+    await checkServerModuleStyles(page, "purple");
+    updateTestStatus(
+      env,
+      serverModuleStylesKey as keyof TestStatus[typeof env],
+      "PASSED",
+    );
+    log(`${phase} server module styles check passed`);
+  } catch (error) {
+    hasFailures = true;
+    updateTestStatus(
+      env,
+      serverModuleStylesKey as keyof TestStatus[typeof env],
+      "FAILED",
+    );
+    if (!serverStylesheetTestError) {
+      serverStylesheetTestError =
+        error instanceof Error ? error : new Error(String(error));
+    }
+    log("Error during server module styles check: %O", error);
+    console.error(
+      `❌ Server module styles check failed: ${error instanceof Error ? error.message : String(error)}`,
     );
 
     if (bail) {
@@ -770,6 +1018,7 @@ export async function checkUrlSmoke(
 
         // Test style HMR
         await testStyleHMR(page, targetDir);
+        await testServerStyleHMR(page, targetDir);
       }
     } catch (error) {
       hasFailures = true;
@@ -826,8 +1075,15 @@ export async function checkUrlSmoke(
     if (hmrTestError) {
       errors.push(`HMR test: ${hmrTestError.message}`);
     }
-    if (stylesheetTestError) {
-      errors.push(`Stylesheet test: ${stylesheetTestError.message}`);
+    if (clientStylesheetTestError) {
+      errors.push(
+        `Client Stylesheet test: ${clientStylesheetTestError.message}`,
+      );
+    }
+    if (serverStylesheetTestError) {
+      errors.push(
+        `Server Stylesheet test: ${serverStylesheetTestError.message}`,
+      );
     }
 
     throw new Error(`Multiple test failures: ${errors.join(", ")}`);
