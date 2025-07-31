@@ -61,7 +61,6 @@ export const defineApp = <
           request.headers.get("accept")?.includes("text/x-component");
         const isSmokeTest = url.searchParams.has("__smoke_test");
         const userHeaders = new Headers();
-        let deferredPageResolved: PromiseWithResolvers<void> | undefined;
 
         const rw: RwContext = {
           Document: DefaultDocument,
@@ -70,6 +69,7 @@ export const defineApp = <
           ssr: true,
           databases: new Map(),
           scriptsToBeLoaded: new Set(),
+          pageRouteResolved: undefined,
         };
 
         const outerRequestInfo: RequestInfo<any, T["ctx"]> = {
@@ -91,22 +91,7 @@ export const defineApp = <
             // down props the client shouldn't get (e.g. env). For safety, we pick the allowed props explicitly.
             pageElement = <Page ctx={ctx} params={params} />;
           } else {
-            // context(justinvdm, 24 Apr 2025): We need to wrap the page in a component that throws the response to bubble it up and break out of react rendering context
-            // This way, we're able to return a response from the page component while still staying within react rendering context
-            const PageWrapper = async () => {
-              const result = await Page(requestInfo);
-
-              if (result instanceof Response) {
-                deferredPageResolved?.reject(result);
-                throw result;
-              }
-
-              deferredPageResolved?.resolve();
-              return result;
-            };
-
-            deferredPageResolved = Promise.withResolvers();
-            pageElement = <PageWrapper />;
+            pageElement = <Page {...requestInfo} />;
           }
 
           if (isSmokeTest) {
@@ -218,7 +203,7 @@ export const defineApp = <
           }
         }
 
-        await deferredPageResolved?.promise;
+        await rw.pageRouteResolved?.promise;
         return mutableResponse;
       } catch (e) {
         if (e instanceof ErrorResponse) {

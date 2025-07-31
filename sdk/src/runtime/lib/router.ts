@@ -20,6 +20,7 @@ export type RwContext = {
   layouts?: React.FC<LayoutProps<any>>[];
   databases: Map<string, Kysely<any>>;
   scriptsToBeLoaded: Set<string>;
+  pageRouteResolved: PromiseWithResolvers<void> | undefined;
 };
 
 export type RouteMiddleware<T extends RequestInfo = RequestInfo> = (
@@ -225,6 +226,10 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
               layouts || [],
               requestInfo,
             );
+            // context(justinvdm, 31 Jul 2025): We now know we're dealing with a page route,
+            // so we create a deferred so that we can signal when we're done determining whether
+            // we're returning a response or a react element
+            requestInfo.rw.pageRouteResolved = Promise.withResolvers();
             return await renderPage(requestInfo, WrappedComponent, onError);
           } else {
             const r = await (h(getRequestInfo()) as Promise<Response>);
@@ -253,7 +258,7 @@ export function route<T extends RequestInfo = RequestInfo>(
 
   return {
     path,
-    handler,
+    handler: wrapHandlerToThrowResponses(handler),
   };
 }
 
@@ -321,6 +326,54 @@ function wrapWithLayouts<T extends RequestInfo = RequestInfo>(
   }, Component);
 }
 
+// context(justinvdm, 31 Jul 2025): We need to wrap the handler's that might
+// return react elements, so that it throws the response to bubble it up and
+// break out of react rendering context This way, we're able to return a
+// response from the handler while still staying within react rendering context
+export const wrapHandlerToThrowResponses = <
+  T extends RequestInfo = RequestInfo,
+>(
+  handler: RouteHandler<T>,
+): RouteHandler<T> => {
+  if (Array.isArray(handler)) {
+    return [
+      ...handler.slice(0, -1),
+      wrapHandlerToThrowResponses(
+        handler[handler.length - 1] as RouteHandler<any>,
+      ),
+    ] as RouteHandler<T>;
+  }
+
+  if (
+    isClientReference(handler) ||
+    Object.prototype.hasOwnProperty.call(handler, "__rwsdk_route_component")
+  ) {
+    return handler;
+  }
+
+  const ComponentWrappedToThrowResponses = async (requestInfo: T) => {
+    const result = await handler(requestInfo);
+
+    if (result instanceof Response) {
+      requestInfo.rw.pageRouteResolved?.reject(result);
+      throw result;
+    }
+
+    requestInfo.rw.pageRouteResolved?.resolve();
+    return result;
+  };
+
+  Object.defineProperty(
+    ComponentWrappedToThrowResponses,
+    "__rwsdk_route_component",
+    {
+      value: true,
+    },
+  );
+
+  return ComponentWrappedToThrowResponses;
+};
+
 export function layout<T extends RequestInfo = RequestInfo>(
   LayoutComponent: React.FC<LayoutProps<T>>,
   routes: Route<T>[],
@@ -373,11 +426,11 @@ export function render<T extends RequestInfo = RequestInfo>(
 
 function isRouteComponent(handler: any) {
   return (
-    (isValidElementType(handler) && handler.toString().includes("jsx")) ||
-    isClientReference(handler)
+    Object.prototype.hasOwnProperty.call(handler, "__rwsdk_route_component") ||
+    (isValidElementType(handler) && handler.toString().includes("jsx"))
   );
 }
 
-export const isClientReference = (Component: React.FC<any>) => {
-  return Object.prototype.hasOwnProperty.call(Component, "$$isClientReference");
+export const isClientReference = (value: any) => {
+  return Object.prototype.hasOwnProperty.call(value, "$$isClientReference");
 };
