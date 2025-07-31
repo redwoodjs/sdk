@@ -27,6 +27,7 @@ import { ssrBridgePlugin } from "./ssrBridgePlugin.mjs";
 import { hasPkgScript } from "../lib/hasPkgScript.mjs";
 import { devServerTimingPlugin } from "./devServerTimingPlugin.mjs";
 import { manifestPlugin } from "./manifestPlugin.mjs";
+import { cssModuleProxyPlugin } from "./cssModuleProxyPlugin.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -128,6 +129,7 @@ export const redwoodPlugin = async (
       workerEntryPathname,
     }),
     reactPlugin(),
+    cssModuleProxyPlugin(),
     directivesPlugin({
       projectRootDir,
       clientFiles,

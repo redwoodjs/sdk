@@ -20,6 +20,7 @@ export type RwContext = {
   layouts?: React.FC<LayoutProps<any>>[];
   databases: Map<string, Kysely<any>>;
   scriptsToBeLoaded: Set<string>;
+  usedCssModules: Set<string>;
 };
 
 export type RouteMiddleware<T extends RequestInfo = RequestInfo> = (

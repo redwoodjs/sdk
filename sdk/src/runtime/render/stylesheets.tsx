@@ -42,6 +42,7 @@ export const Stylesheets = ({ requestInfo }: { requestInfo: RequestInfo }) => {
   const manifest = use(getManifest(requestInfo));
   const allStylesheets = new Set<string | CssEntry>();
 
+  // 1. Add client CSS used in this request
   for (const scriptId of requestInfo.rw.scriptsToBeLoaded) {
     const css = findCssForModule(scriptId, manifest.client);
     for (const entry of css) {
@@ -49,10 +50,18 @@ export const Stylesheets = ({ requestInfo }: { requestInfo: RequestInfo }) => {
     }
   }
 
-  if (manifest.rsc?.css) {
-    for (const entry of manifest.rsc.css) {
+  // 2. Add server CSS modules used in this request
+  for (const moduleId of requestInfo.rw.usedCssModules) {
+    const css = manifest.rsc[moduleId]?.css || [];
+    for (const entry of css) {
       allStylesheets.add(entry);
     }
+  }
+
+  // 3. Add global server CSS
+  const globalCss = manifest.rsc.global?.css || [];
+  for (const entry of globalCss) {
+    allStylesheets.add(entry);
   }
 
   return (

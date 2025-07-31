@@ -69,6 +69,7 @@ export const defineApp = <
           ssr: true,
           databases: new Map(),
           scriptsToBeLoaded: new Set(),
+          usedCssModules: new Set(),
         };
 
         const outerRequestInfo: RequestInfo<any, T["ctx"]> = {

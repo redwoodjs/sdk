@@ -12,13 +12,9 @@ const resolvedVirtualModuleId = "\0" + virtualModuleId;
 const getCssForModule = (
   server: ViteDevServer,
   moduleId: string,
-  css: Set<{
-    url: string;
-    content: string;
-    absolutePath: string;
-  }>,
   env: "client" | "worker" | "ssr",
 ) => {
+  const css = new Set<any>();
   const stack: string[] = [moduleId];
   const visited = new Set<string>();
 
@@ -54,6 +50,8 @@ const getCssForModule = (
       }
     }
   }
+
+  return css;
 };
 
 export const manifestPlugin = ({
@@ -97,19 +95,6 @@ export const manifestPlugin = ({
         const clientManifest = JSON.parse(clientManifestContent);
         const normalizedClientManifest: Record<string, unknown> = {};
 
-        log("Reading worker manifest from %s", workerManifestPath);
-        const workerManifestContent = await readFile(
-          workerManifestPath,
-          "utf-8",
-        );
-        const workerManifest = JSON.parse(workerManifestContent);
-
-        const workerManifestEntry = Object.entries(workerManifest).find(
-          ([key]) => {
-            return key.endsWith(workerEntryPathname);
-          },
-        );
-
         for (const key in clientManifest) {
           const normalizedKey = normalizeModulePath(key, root, {
             isViteStyle: false,
@@ -138,13 +123,46 @@ export const manifestPlugin = ({
           }
         }
 
+        const rscManifest: Record<
+          string,
+          {
+            css: string[];
+          }
+        > = {
+          global: {
+            css: [],
+          },
+        };
+
+        log("Reading worker manifest from %s", workerManifestPath);
+        const workerManifestContent = await readFile(
+          workerManifestPath,
+          "utf-8",
+        );
+        const workerManifest = JSON.parse(workerManifestContent);
+
+        const workerManifestEntry = Object.entries(workerManifest).find(
+          ([key]) => {
+            return key.endsWith(workerEntryPathname);
+          },
+        );
+
+        if (workerManifestEntry) {
+          const css = (workerManifestEntry[1] as any).css || [];
+          for (const cssFile of css) {
+            if (cssFile.endsWith(".module.css")) {
+              rscManifest[cssFile] = {
+                css: [cssFile],
+              };
+            } else {
+              rscManifest.global.css.push(cssFile);
+            }
+          }
+        }
+
         const manifest = {
           client: normalizedClientManifest,
-          rsc: {
-            css: workerManifestEntry
-              ? (workerManifestEntry[1] as any).css || []
-              : [],
-          },
+          rsc: rscManifest,
         };
 
         return `export default ${JSON.stringify(manifest)}`;
@@ -217,8 +235,7 @@ export const manifestPlugin = ({
 
             for (const module of modules) {
               if (module.file) {
-                const css = new Set<any>();
-                getCssForModule(server, module.id!, css, "client");
+                const css = getCssForModule(server, module.id!, "client");
 
                 clientManifest[
                   normalizeModulePath(module.file, server.config.root)
@@ -230,7 +247,21 @@ export const manifestPlugin = ({
             }
           }
 
-          const rscCss = new Set<any>();
+          const rscManifest: Record<
+            string,
+            {
+              css: {
+                url: string;
+                content: string;
+                absolutePath: string;
+              }[];
+            }
+          > = {
+            global: {
+              css: [],
+            },
+          };
+
           if (workerEntryPathname) {
             log("Building worker manifest from module graph");
             const workerModule =
@@ -239,15 +270,27 @@ export const manifestPlugin = ({
               );
 
             if (workerModule) {
-              getCssForModule(server, workerModule.id!, rscCss, "worker");
+              const allCss = getCssForModule(
+                server,
+                workerModule.id!,
+                "worker",
+              );
+
+              for (const css of allCss) {
+                if (css.url.endsWith(".module.css")) {
+                  rscManifest[css.url] = {
+                    css: [css],
+                  };
+                } else {
+                  rscManifest.global.css.push(css);
+                }
+              }
             }
           }
 
           const manifest = {
             client: clientManifest,
-            rsc: {
-              css: Array.from(rscCss),
-            },
+            rsc: rscManifest,
           };
 
           log("Manifest built successfully");
