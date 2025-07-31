@@ -295,6 +295,7 @@ export async function checkUrl(
   realtime: boolean = false,
   targetDir?: string,
   skipHmr: boolean = false,
+  skipStyleTests: boolean = false,
 ): Promise<void> {
   console.log(`🔍 Testing URL: ${url}`);
 
@@ -344,6 +345,7 @@ export async function checkUrl(
           environment,
           targetDir,
           skipHmr,
+          skipStyleTests,
         );
 
         // Take a screenshot of the realtime test
@@ -389,6 +391,7 @@ export async function checkUrl(
           timestampState,
           targetDir,
           skipHmr,
+          skipStyleTests,
         );
       } catch (error) {
         hasFailures = true;
@@ -434,6 +437,7 @@ export async function checkUrl(
           timestampState,
           targetDir,
           skipHmr,
+          skipStyleTests,
         );
       } catch (error) {
         hasFailures = true;
@@ -504,6 +508,7 @@ export async function checkUrlSmoke(
   },
   targetDir?: string,
   skipHmr: boolean = false,
+  skipStyleTests: boolean = false,
 ): Promise<void> {
   const phase = isRealtime ? "Post-upgrade" : "Initial";
   console.log(`🔍 Testing ${phase} smoke tests at ${url}`);
@@ -613,66 +618,71 @@ export async function checkUrlSmoke(
   }
 
   // Step 1.5: Run stylesheet checks
-  const env = environment === "Development" ? "dev" : "production";
-  const urlStylesKey = isRealtime ? "realtimeUrlStyles" : "initialUrlStyles";
-  const clientModuleStylesKey = isRealtime
-    ? "realtimeClientModuleStyles"
-    : "initialClientModuleStyles";
+  if (!skipStyleTests) {
+    const env = environment === "Development" ? "dev" : "production";
+    const urlStylesKey = isRealtime ? "realtimeUrlStyles" : "initialUrlStyles";
+    const clientModuleStylesKey = isRealtime
+      ? "realtimeClientModuleStyles"
+      : "initialClientModuleStyles";
 
-  try {
-    await checkUrlStyles(page, "red");
-    updateTestStatus(
-      env,
-      urlStylesKey as keyof TestStatus[typeof env],
-      "PASSED",
-    );
-    log(`${phase} URL styles check passed`);
-  } catch (error) {
-    hasFailures = true;
-    updateTestStatus(
-      env,
-      urlStylesKey as keyof TestStatus[typeof env],
-      "FAILED",
-    );
-    stylesheetTestError =
-      error instanceof Error ? error : new Error(String(error));
-    log("Error during URL styles check: %O", error);
-    console.error(
-      `❌ URL styles check failed: ${error instanceof Error ? error.message : String(error)}`,
-    );
-
-    if (bail) {
-      throw error;
-    }
-  }
-
-  try {
-    await checkClientModuleStyles(page, "blue");
-    updateTestStatus(
-      env,
-      clientModuleStylesKey as keyof TestStatus[typeof env],
-      "PASSED",
-    );
-    log(`${phase} client module styles check passed`);
-  } catch (error) {
-    hasFailures = true;
-    updateTestStatus(
-      env,
-      clientModuleStylesKey as keyof TestStatus[typeof env],
-      "FAILED",
-    );
-    if (!stylesheetTestError) {
+    try {
+      await checkUrlStyles(page, "red");
+      updateTestStatus(
+        env,
+        urlStylesKey as keyof TestStatus[typeof env],
+        "PASSED",
+      );
+      log(`${phase} URL styles check passed`);
+    } catch (error) {
+      hasFailures = true;
+      updateTestStatus(
+        env,
+        urlStylesKey as keyof TestStatus[typeof env],
+        "FAILED",
+      );
       stylesheetTestError =
         error instanceof Error ? error : new Error(String(error));
-    }
-    log("Error during client module styles check: %O", error);
-    console.error(
-      `❌ Client module styles check failed: ${error instanceof Error ? error.message : String(error)}`,
-    );
+      log("Error during URL styles check: %O", error);
+      console.error(
+        `❌ URL styles check failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
 
-    if (bail) {
-      throw error;
+      if (bail) {
+        throw error;
+      }
     }
+
+    try {
+      await checkClientModuleStyles(page, "blue");
+      updateTestStatus(
+        env,
+        clientModuleStylesKey as keyof TestStatus[typeof env],
+        "PASSED",
+      );
+      log(`${phase} client module styles check passed`);
+    } catch (error) {
+      hasFailures = true;
+      updateTestStatus(
+        env,
+        clientModuleStylesKey as keyof TestStatus[typeof env],
+        "FAILED",
+      );
+      if (!stylesheetTestError) {
+        stylesheetTestError =
+          error instanceof Error ? error : new Error(String(error));
+      }
+      log("Error during client module styles check: %O", error);
+      console.error(
+        `❌ Client module styles check failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+
+      if (bail) {
+        throw error;
+      }
+    }
+  } else {
+    log("Skipping stylesheet checks as requested");
+    console.log("⏩ Skipping stylesheet checks as requested");
   }
 
   // Step 2: Run client-side smoke test to update the server timestamp
@@ -768,8 +778,13 @@ export async function checkUrlSmoke(
       if (!skipClient) {
         await testClientComponentHmr(page, targetDir, phase, environment, bail);
 
-        // Test style HMR
-        await testStyleHMR(page, targetDir);
+        // Test style HMR if style tests aren't skipped
+        if (!skipStyleTests) {
+          await testStyleHMR(page, targetDir);
+        } else {
+          log("Skipping style HMR test as requested");
+          console.log("⏩ Skipping style HMR test as requested");
+        }
       }
     } catch (error) {
       hasFailures = true;
@@ -1309,6 +1324,7 @@ async function realtimeOnlyFlow(
   environment: string,
   targetDir?: string,
   skipHmr: boolean = false,
+  skipStyleTests: boolean = false,
 ): Promise<{ hasFailures: boolean; error: Error | null }> {
   let hasFailures = false;
   let realtimeError: Error | null = null;
@@ -1331,6 +1347,7 @@ async function realtimeOnlyFlow(
       timestampState,
       targetDir,
       skipHmr,
+      skipStyleTests,
     );
 
     // Take a screenshot of the realtime test

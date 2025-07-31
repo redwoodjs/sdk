@@ -228,6 +228,7 @@ export async function runDevTest(
   skipClient: boolean = false,
   realtime: boolean = false,
   skipHmr: boolean = false,
+  skipStyleTests: boolean = false,
 ): Promise<void> {
   log("Starting dev server test with path: %s", customPath || "/");
   console.log("🚀 Testing local development server");
@@ -264,6 +265,7 @@ export async function runDevTest(
       realtime, // Add realtime parameter
       targetDir, // Add target directory for HMR testing
       skipHmr, // Add skip HMR option
+      skipStyleTests, // Add skip style tests option
     );
 
     log("Development server test completed successfully");
