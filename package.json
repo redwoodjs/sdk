@@ -7,7 +7,6 @@
     "link-sdk": "(cd sdk && pnpm build) && for starter in starters/*; do (cd $starter && npm pkg set dependencies.rwsdk='workspace:*'); done && pnpm install --ignore-scripts --no-frozen-lockfile",
     "check-starters:dev": "for starter in starters/*; do ./scripts/check-app.sh dev $starter; done",
     "check-starters:preview": "for starter in starters/*; do ./scripts/check-app.sh preview $starter; done",
-    "smoke-test-starters": "./scripts/smoke-test-starters.sh",
     "format": "prettier --write ./sdk/src starters/*/src"
   },
   "engines": {
