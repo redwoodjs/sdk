@@ -169,6 +169,13 @@ export const redwoodPlugin = async (
         ".vite",
         "manifest.json",
       ),
+      workerSsrManifestPath: resolve(
+        projectRootDir,
+        "dist",
+        "worker",
+        ".vite",
+        "ssr-manifest.json",
+      ),
       workerEntryPathname,
     }),
     moveStaticAssetsPlugin({ rootDir: projectRootDir }),

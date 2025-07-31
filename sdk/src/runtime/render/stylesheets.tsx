@@ -40,13 +40,22 @@ const findCssForModule = (
 
 export const Stylesheets = ({ requestInfo }: { requestInfo: RequestInfo }) => {
   const manifest = use(getManifest(requestInfo));
-  const allStylesheets = new Set<string | CssEntry>();
+  const seenUrls = new Set<string>();
+  const uniqueStylesheets: (string | CssEntry)[] = [];
+
+  const addStylesheet = (entry: string | CssEntry) => {
+    const url = typeof entry === "string" ? entry : entry.url;
+    if (!seenUrls.has(url)) {
+      seenUrls.add(url);
+      uniqueStylesheets.push(entry);
+    }
+  };
 
   // 1. Add client CSS used in this request
   for (const scriptId of requestInfo.rw.scriptsToBeLoaded) {
     const css = findCssForModule(scriptId, manifest.client);
     for (const entry of css) {
-      allStylesheets.add(entry);
+      addStylesheet(entry);
     }
   }
 
@@ -54,19 +63,19 @@ export const Stylesheets = ({ requestInfo }: { requestInfo: RequestInfo }) => {
   for (const moduleId of requestInfo.rw.usedCssModules) {
     const css = manifest.rsc[moduleId]?.css || [];
     for (const entry of css) {
-      allStylesheets.add(entry);
+      addStylesheet(entry);
     }
   }
 
   // 3. Add global server CSS
   const globalCss = manifest.rsc.global?.css || [];
   for (const entry of globalCss) {
-    allStylesheets.add(entry);
+    addStylesheet(entry);
   }
 
   return (
     <>
-      {Array.from(allStylesheets).map((entry) => {
+      {uniqueStylesheets.map((entry) => {
         const url = typeof entry === "string" ? entry : entry.url;
         if (typeof entry === "string" || !entry.content) {
           return (

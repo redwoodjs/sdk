@@ -56,11 +56,11 @@ const getCssForModule = (
 
 export const manifestPlugin = ({
   clientManifestPath,
-  workerManifestPath,
+  workerSsrManifestPath,
   workerEntryPathname,
 }: {
   clientManifestPath: string;
-  workerManifestPath: string;
+  workerSsrManifestPath: string;
   workerEntryPathname: string;
 }): Plugin => {
   let isBuild = false;
@@ -134,32 +134,31 @@ export const manifestPlugin = ({
           },
         };
 
-        log("Reading worker manifest from %s", workerManifestPath);
-        const workerManifestContent = await readFile(
-          workerManifestPath,
+        log("Reading worker SSR manifest from %s", workerSsrManifestPath);
+        const workerSsrManifestContent = await readFile(
+          workerSsrManifestPath,
           "utf-8",
         );
-        const workerManifest = JSON.parse(workerManifestContent);
+        const workerSsrManifest = JSON.parse(workerSsrManifestContent);
 
-        const workerManifestEntry = Object.entries(workerManifest).find(
-          ([key]) => {
-            return key.endsWith(workerEntryPathname);
-          },
-        );
+        for (const key in workerSsrManifest) {
+          const cssFiles = workerSsrManifest[key];
 
-        if (workerManifestEntry) {
-          const css = (workerManifestEntry[1] as any).css || [];
-          for (const cssFile of css) {
-            const normalizedCssFile = normalizeModulePath(cssFile, root, {
-              isViteStyle: false,
+          if (key.endsWith(".module.css")) {
+            const normalizedKey = normalizeModulePath(key, root, {
+              isViteStyle: true,
             });
-            if (cssFile.endsWith(".module.css")) {
-              rscManifest[normalizedCssFile] = {
-                css: [normalizedCssFile],
-              };
-            } else {
-              rscManifest.global.css.push(normalizedCssFile);
-            }
+            rscManifest[normalizedKey] = {
+              css: cssFiles.map((file: string) =>
+                normalizeModulePath(file, root, { isViteStyle: false }),
+              ),
+            };
+          } else if (key.endsWith(".css")) {
+            rscManifest.global.css.push(
+              ...cssFiles.map((file: string) =>
+                normalizeModulePath(file, root, { isViteStyle: false }),
+              ),
+            );
           }
         }
 
