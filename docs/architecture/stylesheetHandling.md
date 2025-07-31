@@ -26,7 +26,7 @@ We don't know the full list of assets for a page ahead of time. Dependencies are
 *   **For Server CSS Modules**: A similar issue exists for server-only components. A request to `/` might render `HomePage.tsx`, which uses `HomePage.module.css`. A request to `/about` might render `AboutPage.tsx` with `AboutPage.module.css`. Globally injecting both stylesheets on every page would be inefficient and lead to bloat. We need a way to know which server-side CSS Modules are actually used for the current request.
 
 #### 3. The Production Build Mapping Problem
-In development, Vite's module graph gives us a direct, one-to-one mapping of a `.css` file to its content. In a production build, however, Vite bundles multiple CSS files into a single, hash-named output file (e.g., `assets/worker-Dc1rrpqn.css`). The standard build manifest (`manifest.json`) maps an *entry point* (like `src/worker.tsx`) to its final CSS bundle, but it loses the crucial information about which original `.module.css` files are contained within that bundle. This makes it impossible to selectively inject only the CSS Modules that were used in a given request.
+In development, Vite's module graph gives us a direct, one-to-one mapping of a `.css` file to its content. In a production build, however, Vite bundles multiple CSS files into a single, hash-named output file (e.g., `assets/worker-Dc1rrpqn.css`). The standard build manifest (`manifest.json`) maps an *entry point* (like `src/worker.tsx`) to its final CSS bundle, but it loses the crucial information about which original `.module.css` files are contained within that bundle. Vite's `ssr-manifest.json` also proves unreliable for this, as it may not correctly map a CSS module to its final, non-empty bundle. This makes it impossible to selectively inject only the CSS Modules that were used in a given request.
 
 #### 4. The HMR-FOUC Dilemma (Development Mode)
 While solving FOUC in production is the primary goal, we must also preserve Vite's Hot Module Replacement (HMR) in development. Vite's dev server injects CSS via client-side JavaScript using `<style>` tags, which it can then hot-swap. If we solve FOUC by injecting server-rendered `<link>` tags in development, we create a conflict: the browser loads the CSS twice, and Vite's HMR system breaks. We need a solution that prevents FOUC without interfering with HMR.
@@ -94,20 +94,22 @@ Once the RSC stream is fully processed, a component called `<Stylesheets />` per
 1.  **Gather All Stylesheets**: It reads the `scriptsToBeLoaded` and `usedCssModules` sets from `requestInfo`, and also gets the list of global server CSS.
 2.  **Consult the Manifest**: It uses a manifest to look up the final output CSS file for every collected module ID. This is the key to solving the mapping problem.
     *   **In Development**: It calls a virtual `/__rwsdk_manifest` endpoint on the Vite dev server, which dynamically traverses the module graph to build a manifest on-the-fly.
-    *   **In Production**: It reads the `ssr-manifest.json` file generated during the worker build. This special manifest provides a direct mapping from each source module (including every `.module.css` file) to its final, bundled CSS output file(s). This solves the production mapping problem.
+    *   **In Production**: It uses a two-part manifest strategy. First, it reads Vite's standard `manifest.json` to get the list of all CSS bundles associated with the worker entry point. Second, it reads a custom-generated `rsc-css-map.json`. This map is created by a dedicated Vite plugin during the build. The plugin inspects the final CSS chunks and creates a reliable mapping from each source `.module.css` file to its final, non-empty CSS bundle. This custom map solves the production mapping problem.
 3.  **Perform Environment-Aware Injection**: It renders the appropriate `<link>` or `<style>` tags based on the environment.
 
 ```tsx
 const Stylesheets = ({ requestInfo }) => {
   // This code only runs AFTER the RSC stream has resolved.
   const manifest = use(getManifest(requestInfo)); // Simplified for example
-  const allStylesheets = new Map<string, string | { url: string; content: string; absolutePath: string; }>();
+  const seenUrls = new Set<string>();
+  const uniqueStylesheets = [];
 
-  // Helper to add stylesheets to the map, deduplicating by URL
+  // Helper to add stylesheets, deduplicating by URL
   const addStylesheet = (entry) => {
     const url = typeof entry === 'string' ? entry : entry.url;
-    if (!allStylesheets.has(url)) {
-      allStylesheets.set(url, entry);
+    if (!seenUrls.has(url)) {
+      seenUrls.add(url);
+      uniqueStylesheets.push(entry);
     }
   };
 
@@ -125,7 +127,7 @@ const Stylesheets = ({ requestInfo }) => {
 
   return (
     <>
-      {Array.from(allStylesheets.values()).map((entry) => {
+      {uniqueStylesheets.map((entry) => {
         // In development, render <style> tag for HMR compatibility.
         if (import.meta.env.VITE_IS_DEV_SERVER && typeof entry === 'object') {
           return (
@@ -146,4 +148,4 @@ const Stylesheets = ({ requestInfo }) => {
 };
 ```
 
-This architecture solves all our challenges: FOUC is prevented because the styles are present in the initial server-rendered HTML, HMR is preserved through environment-aware injection, and server-side CSS is handled efficiently on a per-request basis by leveraging the SSR manifest in production.
+This architecture solves all our challenges: FOUC is prevented because the styles are present in the initial server-rendered HTML, HMR is preserved through environment-aware injection, and server-side CSS is handled efficiently on a per-request basis by leveraging our custom-generated CSS map in production.
