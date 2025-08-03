@@ -71,6 +71,11 @@ export const defineApp = <
           pageRouteResolved: undefined,
         };
 
+        const userResponseInit: ResponseInit = {
+          status: 200,
+          headers: new Headers(),
+        };
+
         const outerRequestInfo: RequestInfo<any, T["ctx"]> = {
           request,
           headers: userHeaders,
@@ -78,6 +83,7 @@ export const defineApp = <
           params: {},
           ctx: {},
           rw,
+          response: userResponseInit,
         };
 
         const createPageElement = (
@@ -134,10 +140,13 @@ export const defineApp = <
           });
 
           if (isRSCRequest) {
+            const responseHeaders = new Headers(userResponseInit.headers);
+            responseHeaders.set("content-type", "text/x-component; charset=utf-8");
+            
             return new Response(rscPayloadStream, {
-              headers: {
-                "content-type": "text/x-component; charset=utf-8",
-              },
+              status: userResponseInit.status,
+              statusText: userResponseInit.statusText,
+              headers: responseHeaders,
             });
           }
 
@@ -165,10 +174,13 @@ export const defineApp = <
             html = html.pipeThrough(injectRSCPayloadStream);
           }
 
+          const responseHeaders = new Headers(userResponseInit.headers);
+          responseHeaders.set("content-type", "text/html; charset=utf-8");
+          
           return new Response(html, {
-            headers: {
-              "content-type": "text/html; charset=utf-8",
-            },
+            status: userResponseInit.status,
+            statusText: userResponseInit.statusText,
+            headers: responseHeaders,
           });
         };
 
@@ -196,9 +208,20 @@ export const defineApp = <
         // we need to return a mutable response object.
         const mutableResponse = new Response(response.body, response);
 
+        // Merge user headers from the legacy headers object
         for (const [key, value] of userHeaders.entries()) {
           if (!response.headers.has(key)) {
             mutableResponse.headers.set(key, value);
+          }
+        }
+
+        // Merge headers from user response init (these take precedence)
+        if (userResponseInit.headers) {
+          const userResponseHeaders = new Headers(userResponseInit.headers);
+          for (const [key, value] of userResponseHeaders.entries()) {
+            if (!response.headers.has(key)) {
+              mutableResponse.headers.set(key, value);
+            }
           }
         }
 
