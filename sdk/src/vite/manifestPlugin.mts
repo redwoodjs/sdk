@@ -24,35 +24,42 @@ const getCssForModule = async (
   while (stack.length > 0) {
     const currentModuleUrl = stack.pop()!;
 
-    if (visited.has(currentModuleUrl)) {
-      continue;
-    }
-    visited.add(currentModuleUrl);
+    try {
+      if (visited.has(currentModuleUrl)) {
+        continue;
+      }
+      visited.add(currentModuleUrl);
 
-    const moduleNode =
-      await server.environments.client.moduleGraph.getModuleByUrl(
-        currentModuleUrl,
+      const moduleNode =
+        await server.environments.client.moduleGraph.getModuleByUrl(
+          currentModuleUrl,
+        );
+
+      if (!moduleNode) {
+        continue;
+      }
+
+      for (const importedModule of moduleNode.importedModules) {
+        if (importedModule.url.endsWith(".css")) {
+          const absolutePath = importedModule.file!;
+          css.add({
+            url: importedModule.url,
+            // The `ssrTransformResult` has the CSS content, because the default
+            // transform for CSS is to a string of the CSS content.
+            content: (importedModule as any).ssrTransformResult?.code ?? "",
+            absolutePath,
+          });
+        }
+
+        if (importedModule.id) {
+          stack.push(importedModule.id);
+        }
+      }
+    } catch (e) {
+      console.error(
+        `[rwsdk] Failed to process module ${currentModuleUrl} during CSS collection.`,
+        e,
       );
-
-    if (!moduleNode) {
-      continue;
-    }
-
-    for (const importedModule of moduleNode.importedModules) {
-      if (importedModule.url.endsWith(".css")) {
-        const absolutePath = importedModule.file!;
-        css.add({
-          url: importedModule.url,
-          // The `ssrTransformResult` has the CSS content, because the default
-          // transform for CSS is to a string of the CSS content.
-          content: (importedModule as any).ssrTransformResult?.code ?? "",
-          absolutePath,
-        });
-      }
-
-      if (importedModule.id) {
-        stack.push(importedModule.id);
-      }
     }
   }
 };
@@ -182,15 +189,23 @@ export const manifestPlugin = ({
             }
 
             for (const module of modules) {
-              if (module.file) {
-                const css = new Set<any>();
-                await getCssForModule(server, module.url, css);
+              try {
+                if (module.file) {
+                  const css = new Set<any>();
+                  await getCssForModule(server, module.url, css);
 
-                manifest[normalizeModulePath(module.file, server.config.root)] =
-                  {
+                  manifest[
+                    normalizeModulePath(module.file, server.config.root)
+                  ] = {
                     file: module.url,
                     css: Array.from(css),
                   };
+                }
+              } catch (e) {
+                console.error(
+                  `[rwsdk] Failed to build manifest for module: ${module.url}`,
+                  e,
+                );
               }
             }
           }
