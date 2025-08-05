@@ -1,68 +1,12 @@
 import { readFile } from "node:fs/promises";
-import { type Plugin, type ViteDevServer } from "vite";
+import { type Plugin } from "vite";
 import debug from "debug";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
-import { type ModuleNode } from "vite";
 
 const log = debug("rwsdk:vite:manifest-plugin");
 
 const virtualModuleId = "virtual:rwsdk:manifest.js";
 const resolvedVirtualModuleId = "\0" + virtualModuleId;
-
-const getCssForModule = async (
-  server: ViteDevServer,
-  moduleUrl: string,
-  css: Set<{
-    url: string;
-    content: string;
-    absolutePath: string;
-  }>,
-): Promise<void> => {
-  const stack: string[] = [moduleUrl];
-  const visited = new Set<string>();
-
-  while (stack.length > 0) {
-    const currentModuleUrl = stack.pop()!;
-
-    try {
-      if (visited.has(currentModuleUrl)) {
-        continue;
-      }
-      visited.add(currentModuleUrl);
-
-      const moduleNode =
-        await server.environments.client.moduleGraph.getModuleByUrl(
-          currentModuleUrl,
-        );
-
-      if (!moduleNode) {
-        continue;
-      }
-
-      for (const importedModule of moduleNode.importedModules) {
-        if (importedModule.url.endsWith(".css")) {
-          const absolutePath = importedModule.file!;
-          css.add({
-            url: importedModule.url,
-            // The `ssrTransformResult` has the CSS content, because the default
-            // transform for CSS is to a string of the CSS content.
-            content: (importedModule as any).ssrTransformResult?.code ?? "",
-            absolutePath,
-          });
-        }
-
-        if (importedModule.id) {
-          stack.push(importedModule.id);
-        }
-      }
-    } catch (e) {
-      console.error(
-        `[rwsdk] Failed to process module ${currentModuleUrl} during CSS collection.`,
-        e,
-      );
-    }
-  }
-};
 
 export const manifestPlugin = ({
   manifestPath,
@@ -151,74 +95,6 @@ export const manifestPlugin = ({
             };
           });
         },
-      });
-    },
-    configureServer(server) {
-      log("Configuring server middleware for manifest");
-      server.middlewares.use("/__rwsdk_manifest", async (req, res, next) => {
-        log("Manifest request received: %s", req.url);
-        try {
-          const url = new URL(req.url!, `http://${req.headers.host}`);
-          const scripts = JSON.parse(url.searchParams.get("scripts") || "[]");
-
-          process.env.VERBOSE && log("Transforming scripts: %o", scripts);
-
-          for (const script of scripts) {
-            await server.environments.client.transformRequest(script);
-          }
-
-          const manifest: Record<
-            string,
-            {
-              file: string;
-              css: {
-                url: string;
-                content: string;
-                absolutePath: string;
-              }[];
-            }
-          > = {};
-
-          log("Building manifest from module graph");
-          for (const file of server.environments.client.moduleGraph.fileToModulesMap.keys()) {
-            const modules =
-              server.environments.client.moduleGraph.getModulesByFile(file);
-
-            if (!modules) {
-              continue;
-            }
-
-            for (const module of modules) {
-              try {
-                if (module.file) {
-                  const css = new Set<any>();
-                  await getCssForModule(server, module.url, css);
-
-                  manifest[
-                    normalizeModulePath(module.file, server.config.root)
-                  ] = {
-                    file: module.url,
-                    css: Array.from(css),
-                  };
-                }
-              } catch (e) {
-                console.error(
-                  `[rwsdk] Failed to build manifest for module: ${module.url}`,
-                  e,
-                );
-              }
-            }
-          }
-
-          log("Manifest built successfully");
-          process.env.VERBOSE && log("Manifest: %o", manifest);
-
-          res.setHeader("Content-Type", "application/json");
-          res.end(JSON.stringify(manifest));
-        } catch (e) {
-          log("Error building manifest: %o", e);
-          next(e);
-        }
       });
     },
   };

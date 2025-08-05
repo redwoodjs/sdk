@@ -8,13 +8,7 @@ export const getManifest = async (requestInfo: RequestInfo) => {
   }
 
   if (import.meta.env.VITE_IS_DEV_SERVER) {
-    const url = new URL(requestInfo.request.url);
-    url.searchParams.set(
-      "scripts",
-      JSON.stringify(Array.from(requestInfo.rw.scriptsToBeLoaded)),
-    );
-    url.pathname = "/__rwsdk_manifest";
-    manifest = await fetch(url.toString()).then((res) => res.json());
+    manifest = {};
   } else {
     const { default: prodManifest } = await import(
       "virtual:rwsdk:manifest.js" as any
