@@ -141,6 +141,14 @@ const performFastSync = async (sdkDir: string, targetDir: string) => {
   );
 };
 
+const areDependenciesEqual = (
+  deps1?: Record<string, string>,
+  deps2?: Record<string, string>,
+) => {
+  // Simple string comparison for this use case is sufficient
+  return JSON.stringify(deps1 ?? {}) === JSON.stringify(deps2 ?? {});
+};
+
 const performSync = async (sdkDir: string, targetDir: string) => {
   console.log("🏗️  Rebuilding SDK...");
   await $`pnpm build`;
@@ -172,7 +180,20 @@ const performSync = async (sdkDir: string, targetDir: string) => {
       "utf-8",
     );
 
-    if (sdkPackageJsonContent === installedSdkPackageJsonContent) {
+    const sdkPkg = JSON.parse(sdkPackageJsonContent);
+    const installedPkg = JSON.parse(installedSdkPackageJsonContent);
+
+    if (
+      areDependenciesEqual(sdkPkg.dependencies, installedPkg.dependencies) &&
+      areDependenciesEqual(
+        sdkPkg.devDependencies,
+        installedPkg.devDependencies,
+      ) &&
+      areDependenciesEqual(
+        sdkPkg.peerDependencies,
+        installedPkg.peerDependencies,
+      )
+    ) {
       packageJsonChanged = false;
     }
   }
