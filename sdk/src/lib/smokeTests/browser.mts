@@ -18,7 +18,7 @@ import puppeteer from "puppeteer-core";
 import { takeScreenshot } from "./artifacts.mjs";
 import { RETRIES } from "./constants.mjs";
 import { $ } from "../$.mjs";
-import { fail } from "./utils.mjs";
+import { fail, withRetries } from "./utils.mjs";
 import { reportSmokeTestResult } from "./reporting.mjs";
 import { updateTestStatus } from "./state.mjs";
 import { TestStatus } from "./state.mjs";
@@ -626,7 +626,7 @@ export async function checkUrlSmoke(
       : "initialClientModuleStyles";
 
     try {
-      await checkUrlStyles(page, "red");
+      await withRetries(() => checkUrlStyles(page, "red"), "URL styles check");
       updateTestStatus(
         env,
         urlStylesKey as keyof TestStatus[typeof env],
@@ -653,7 +653,10 @@ export async function checkUrlSmoke(
     }
 
     try {
-      await checkClientModuleStyles(page, "blue");
+      await withRetries(
+        () => checkClientModuleStyles(page, "blue"),
+        "Client module styles check",
+      );
       updateTestStatus(
         env,
         clientModuleStylesKey as keyof TestStatus[typeof env],
@@ -780,7 +783,29 @@ export async function checkUrlSmoke(
 
         // Test style HMR if style tests aren't skipped
         if (!skipStyleTests) {
-          await testStyleHMR(page, targetDir);
+          await withRetries(
+            () => testStyleHMR(page, targetDir),
+            "Style HMR test",
+            async () => {
+              // This logic runs before each retry of testStyleHMR
+              const urlStylePath = join(
+                targetDir,
+                "src",
+                "app",
+                "smokeTestUrlStyles.css",
+              );
+              const clientStylePath = join(
+                targetDir,
+                "src",
+                "app",
+                "components",
+                "smokeTestClientStyles.module.css",
+              );
+              // Restore original styles before re-running HMR test
+              await fs.writeFile(urlStylePath, urlStylesTemplate);
+              await fs.writeFile(clientStylePath, clientStylesTemplate);
+            },
+          );
         } else {
           log("Skipping style HMR test as requested");
           console.log("⏩ Skipping style HMR test as requested");
@@ -1822,10 +1847,16 @@ async function testStyleHMR(page: Page, targetDir: string): Promise<void> {
   await new Promise((resolve) => setTimeout(resolve, 5000));
 
   // Check URL-based stylesheet HMR
-  await checkUrlStyles(page, "green");
+  await withRetries(
+    () => checkUrlStyles(page, "green"),
+    "URL styles HMR check",
+  );
 
   // Check client-module stylesheet HMR
-  await checkClientModuleStyles(page, "green");
+  await withRetries(
+    () => checkClientModuleStyles(page, "green"),
+    "Client module styles HMR check",
+  );
 
   // Restore original styles
   await fs.writeFile(urlStylePath, urlStylesTemplate);

@@ -181,3 +181,40 @@ export function formatPathSuffix(customPath?: string): string {
   log("Formatted path suffix: %s", suffix);
   return suffix;
 }
+
+/**
+ * Wraps an async function with retry logic.
+ * @param fn The async function to execute.
+ * @param description A description of the operation for logging.
+ * @param beforeRetry A function to run before each retry attempt.
+ * @param maxRetries The maximum number of retries.
+ * @param delay The delay between retries in milliseconds.
+ */
+export async function withRetries<T>(
+  fn: () => Promise<T>,
+  description: string,
+  beforeRetry?: () => Promise<void>,
+  maxRetries = 5,
+  delay = 2000,
+): Promise<T> {
+  for (let i = 0; i < maxRetries; i++) {
+    try {
+      if (i > 0 && beforeRetry) {
+        log(`Running beforeRetry hook for "${description}"`);
+        await beforeRetry();
+      }
+      return await fn();
+    } catch (error) {
+      log(
+        `Attempt ${i + 1} of ${maxRetries} failed for "${description}": ${error instanceof Error ? error.message : String(error)}`,
+      );
+      if (i === maxRetries - 1) {
+        log(`All ${maxRetries} retries failed for "${description}".`);
+        throw error;
+      }
+      log(`Retrying in ${delay}ms...`);
+      await setTimeout(delay);
+    }
+  }
+  throw new Error("Retry loop failed unexpectedly.");
+}
