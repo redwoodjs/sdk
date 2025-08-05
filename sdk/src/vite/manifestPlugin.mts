@@ -9,28 +9,30 @@ const log = debug("rwsdk:vite:manifest-plugin");
 const virtualModuleId = "virtual:rwsdk:manifest.js";
 const resolvedVirtualModuleId = "\0" + virtualModuleId;
 
-const getCssForModule = (
+const getCssForModule = async (
   server: ViteDevServer,
-  moduleId: string,
+  moduleUrl: string,
   css: Set<{
     url: string;
     content: string;
     absolutePath: string;
   }>,
-) => {
-  const stack: string[] = [moduleId];
+): Promise<void> => {
+  const stack: string[] = [moduleUrl];
   const visited = new Set<string>();
 
   while (stack.length > 0) {
-    const currentModuleId = stack.pop()!;
+    const currentModuleUrl = stack.pop()!;
 
-    if (visited.has(currentModuleId)) {
+    if (visited.has(currentModuleUrl)) {
       continue;
     }
-    visited.add(currentModuleId);
+    visited.add(currentModuleUrl);
 
     const moduleNode =
-      server.environments.client.moduleGraph.getModuleById(currentModuleId);
+      await server.environments.client.moduleGraph.getModuleByUrl(
+        currentModuleUrl,
+      );
 
     if (!moduleNode) {
       continue;
@@ -182,7 +184,7 @@ export const manifestPlugin = ({
             for (const module of modules) {
               if (module.file) {
                 const css = new Set<any>();
-                getCssForModule(server, module.id!, css);
+                await getCssForModule(server, module.url, css);
 
                 manifest[normalizeModulePath(module.file, server.config.root)] =
                   {
