@@ -180,18 +180,18 @@ export const miniflareHMRPlugin = (givenOptions: {
       let serverDirectiveChanged = false;
 
       if (!clientFiles.has(ctx.file) && hasClientDirective) {
-        clientFiles.add(ctx.file);
+        clientFiles.add(normalizeModulePath(ctx.file, givenOptions.rootDir));
         clientDirectiveChanged = true;
       } else if (clientFiles.has(ctx.file) && !hasClientDirective) {
-        clientFiles.delete(ctx.file);
+        clientFiles.delete(normalizeModulePath(ctx.file, givenOptions.rootDir));
         clientDirectiveChanged = true;
       }
 
       if (!serverFiles.has(ctx.file) && hasServerDirective) {
-        serverFiles.add(ctx.file);
+        serverFiles.add(normalizeModulePath(ctx.file, givenOptions.rootDir));
         serverDirectiveChanged = true;
       } else if (serverFiles.has(ctx.file) && !hasServerDirective) {
-        serverFiles.delete(ctx.file);
+        serverFiles.delete(normalizeModulePath(ctx.file, givenOptions.rootDir));
         serverDirectiveChanged = true;
       }
 
@@ -208,6 +208,11 @@ export const miniflareHMRPlugin = (givenOptions: {
           environment,
           VIRTUAL_SSR_PREFIX + "/@id/virtual:use-client-lookup.js",
         );
+        invalidateModule(
+          ctx.server,
+          environment,
+          VIRTUAL_SSR_PREFIX + "virtual:use-client-lookup.js",
+        );
       }
 
       if (serverDirectiveChanged) {
@@ -222,6 +227,11 @@ export const miniflareHMRPlugin = (givenOptions: {
           ctx.server,
           environment,
           VIRTUAL_SSR_PREFIX + "/@id/virtual:use-server-lookup.js",
+        );
+        invalidateModule(
+          ctx.server,
+          environment,
+          VIRTUAL_SSR_PREFIX + "virtual:use-server-lookup.js",
         );
       }
 
