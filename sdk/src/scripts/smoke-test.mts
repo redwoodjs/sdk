@@ -37,8 +37,7 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
     copyProject: false, // Default to false - don't copy project to artifacts
     realtime: false, // Default to false - don't just test realtime
     skipHmr: false, // Default to false - run HMR tests
-    // todo(justinvdm, 2025-07-31): Remove this once style tests working with headless
-    skipStyleTests: true, // Default to true - skip style tests
+    skipStyleTests: false,
     // sync: will be set below
   };
 
