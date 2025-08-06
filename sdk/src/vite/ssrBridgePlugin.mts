@@ -190,11 +190,11 @@ export const ssrBridgePlugin = ({
             log,
           );
 
-          const allSpecifiers = [
-            ...new Set([...imports, ...dynamicImports]),
-          ].map((id) =>
-            id.startsWith("/@id/") ? id.slice("/@id/".length) : id,
-          );
+          const allSpecifiers = [...new Set([...imports, ...dynamicImports])]
+            .filter((id) => !id.includes("node_modules"))
+            .map((id) =>
+              id.startsWith("/@id/") ? id.slice("/@id/".length) : id,
+            );
 
           const switchCases = allSpecifiers
             .map(
