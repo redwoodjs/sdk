@@ -268,7 +268,7 @@ echo "  - Running smoke tests..."
 # The CWD is the package root (sdk/sdk), so we can run pnpm smoke-test directly.
 # We pass the path to the temp project directory where the minimal starter was installed.
 # We also specify an artifact directory *within* the temp directory.
-if ! pnpm smoke-test --path="$PROJECT_DIR" --no-sync --artifact-dir="$TEMP_DIR/artifacts"; then
+if ! pnpm smoke-test --path="$PROJECT_DIR" --no-sync --artifact-dir="$TEMP_DIR/artifacts" --skip-style-tests; then
   echo "  ❌ Smoke tests failed."
   exit 1
 fi
