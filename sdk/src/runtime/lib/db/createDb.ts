@@ -1,7 +1,9 @@
 import { Kysely } from "kysely";
-import { requestInfo, waitForRequestInfo } from "../../requestInfo/worker.js";
+import { waitForRequestInfo } from "../../requestInfo/worker.js";
 import { DOWorkerDialect } from "./DOWorkerDialect.js";
 import { type SqliteDurableObject } from "./index.js";
+
+const databases = new Map<string, Kysely<any>>();
 
 const createDurableObjectDb = <T>(
   durableObjectBinding: DurableObjectNamespace<SqliteDurableObject>,
@@ -23,21 +25,11 @@ export function createDb<T>(
   const cacheKey = `${durableObjectBinding}_${name}`;
 
   const doCreateDb = () => {
-    if (!requestInfo.rw) {
-      throw new Error(
-        `
-  rwsdk: A database created using createDb() was accessed before requestInfo was available.
-
-  Please make sure database access is happening in a request handler or action handler.
-  `,
-      );
-    }
-
-    let db = requestInfo.rw.databases.get(cacheKey);
+    let db = databases.get(cacheKey);
 
     if (!db) {
       db = createDurableObjectDb<T>(durableObjectBinding, name);
-      requestInfo.rw.databases.set(cacheKey, db);
+      databases.set(cacheKey, db);
     }
 
     return db;
