@@ -35,30 +35,13 @@ const getPackageManagerInfo = (targetDir: string) => {
   return pnpmResult;
 };
 
-const performFullSync = async (
-  sdkDir: string,
-  targetDir: string,
-  cacheBust = false,
-) => {
+const performFullSync = async (sdkDir: string, targetDir: string) => {
   const sdkPackageJsonPath = path.join(sdkDir, "package.json");
   let originalSdkPackageJson: string | null = null;
   let tarballPath = "";
   let tarballName = "";
 
   try {
-    if (cacheBust) {
-      console.log("💥 Cache-busting version for full sync...");
-      originalSdkPackageJson = await fs.readFile(sdkPackageJsonPath, "utf-8");
-      const packageJson = JSON.parse(originalSdkPackageJson);
-      const now = Date.now();
-      // This is a temporary version used for cache busting
-      packageJson.version = `${packageJson.version}-dev.${now}`;
-      await fs.writeFile(
-        sdkPackageJsonPath,
-        JSON.stringify(packageJson, null, 2),
-      );
-    }
-
     console.log("📦 Packing SDK...");
     const packResult = await $({ cwd: sdkDir })`npm pack`;
     tarballName = packResult.stdout?.trim() ?? "";
@@ -157,7 +140,7 @@ const performSync = async (sdkDir: string, targetDir: string) => {
 
   if (forceFullSync) {
     console.log("🏃 Force full sync mode is enabled.");
-    await performFullSync(sdkDir, targetDir, true);
+    await performFullSync(sdkDir, targetDir);
     console.log("✅ Done syncing");
     return;
   }
