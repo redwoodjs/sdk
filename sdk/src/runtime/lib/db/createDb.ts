@@ -23,39 +23,20 @@ export function createDb<T>(
   name = "main",
 ): Kysely<T> {
   const getDb = () => {
-    // requestInfo is available
-    if (requestInfo.rw) {
-      if (!requestInfo.rw.databases) {
-        requestInfo.rw.databases = new Map();
-      }
-
-      let db = requestInfo.rw.databases.get(name);
-
-      // db is in requestInfo cache
-      if (db) {
-        return db;
-      }
-
-      // db is in module-level cache
-      const moduleDb = moduleLevelDbCache.get(name);
-      if (moduleDb) {
-        requestInfo.rw.databases.set(name, moduleDb);
-        moduleLevelDbCache.delete(name);
-        return moduleDb;
-      }
-
-      // db is not in any cache
-      db = createDurableObjectDb<T>(durableObjectBinding, name);
-      requestInfo.rw.databases.set(name, db);
-      return db;
-    }
-
-    // requestInfo is not available, use module-level cache
     let db = moduleLevelDbCache.get(name);
+
     if (!db) {
       db = createDurableObjectDb<T>(durableObjectBinding, name);
       moduleLevelDbCache.set(name, db);
     }
+
+    if (requestInfo.rw) {
+      if (!requestInfo.rw.databases) {
+        requestInfo.rw.databases = new Map();
+      }
+      requestInfo.rw.databases.set(name, db);
+    }
+
     return db;
   };
 
