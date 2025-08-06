@@ -1,9 +1,9 @@
 import { Kysely } from "kysely";
-import { waitForRequestInfo } from "../../requestInfo/worker.js";
+import { requestInfo } from "../../requestInfo/worker.js";
 import { DOWorkerDialect } from "./DOWorkerDialect.js";
 import { type SqliteDurableObject } from "./index.js";
 
-const databases = new Map<string, Kysely<any>>();
+const moduleLevelDbCache = new Map<string, Kysely<any>>();
 
 const createDurableObjectDb = <T>(
   durableObjectBinding: DurableObjectNamespace<SqliteDurableObject>,
@@ -22,24 +22,48 @@ export function createDb<T>(
   durableObjectBinding: any,
   name = "main",
 ): Kysely<T> {
-  const cacheKey = `${durableObjectBinding}_${name}`;
+  const cacheKey = `${durableObjectBinding.toString()}_${name}`;
 
-  const doCreateDb = () => {
-    let db = databases.get(cacheKey);
+  const getDb = () => {
+    // requestInfo is available
+    if (requestInfo.rw) {
+      if (!requestInfo.rw.databases) {
+        requestInfo.rw.databases = new Map();
+      }
 
-    if (!db) {
+      let db = requestInfo.rw.databases.get(cacheKey);
+
+      // db is in requestInfo cache
+      if (db) {
+        return db;
+      }
+
+      // db is in module-level cache
+      const moduleDb = moduleLevelDbCache.get(cacheKey);
+      if (moduleDb) {
+        requestInfo.rw.databases.set(cacheKey, moduleDb);
+        moduleLevelDbCache.delete(cacheKey);
+        return moduleDb;
+      }
+
+      // db is not in any cache
       db = createDurableObjectDb<T>(durableObjectBinding, name);
-      databases.set(cacheKey, db);
+      requestInfo.rw.databases.set(cacheKey, db);
+      return db;
     }
 
+    // requestInfo is not available, use module-level cache
+    let db = moduleLevelDbCache.get(cacheKey);
+    if (!db) {
+      db = createDurableObjectDb<T>(durableObjectBinding, name);
+      moduleLevelDbCache.set(cacheKey, db);
+    }
     return db;
   };
 
-  waitForRequestInfo().then(() => doCreateDb());
-
   return new Proxy({} as Kysely<T>, {
-    get(target, prop, receiver) {
-      const db = doCreateDb();
+    get(target, prop) {
+      const db = getDb();
       const value = db[prop as keyof Kysely<T>];
 
       if (typeof value === "function") {
