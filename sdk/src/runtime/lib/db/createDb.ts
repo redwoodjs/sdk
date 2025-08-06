@@ -22,8 +22,6 @@ export function createDb<T>(
   durableObjectBinding: any,
   name = "main",
 ): Kysely<T> {
-  const cacheKey = `${durableObjectBinding.toString()}_${name}`;
-
   const getDb = () => {
     // requestInfo is available
     if (requestInfo.rw) {
@@ -31,7 +29,7 @@ export function createDb<T>(
         requestInfo.rw.databases = new Map();
       }
 
-      let db = requestInfo.rw.databases.get(cacheKey);
+      let db = requestInfo.rw.databases.get(name);
 
       // db is in requestInfo cache
       if (db) {
@@ -39,24 +37,24 @@ export function createDb<T>(
       }
 
       // db is in module-level cache
-      const moduleDb = moduleLevelDbCache.get(cacheKey);
+      const moduleDb = moduleLevelDbCache.get(name);
       if (moduleDb) {
-        requestInfo.rw.databases.set(cacheKey, moduleDb);
-        moduleLevelDbCache.delete(cacheKey);
+        requestInfo.rw.databases.set(name, moduleDb);
+        moduleLevelDbCache.delete(name);
         return moduleDb;
       }
 
       // db is not in any cache
       db = createDurableObjectDb<T>(durableObjectBinding, name);
-      requestInfo.rw.databases.set(cacheKey, db);
+      requestInfo.rw.databases.set(name, db);
       return db;
     }
 
     // requestInfo is not available, use module-level cache
-    let db = moduleLevelDbCache.get(cacheKey);
+    let db = moduleLevelDbCache.get(name);
     if (!db) {
       db = createDurableObjectDb<T>(durableObjectBinding, name);
-      moduleLevelDbCache.set(cacheKey, db);
+      moduleLevelDbCache.set(name, db);
     }
     return db;
   };
