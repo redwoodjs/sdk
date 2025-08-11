@@ -192,6 +192,13 @@ export const ssrBridgePlugin = ({
             const normalized = site.specifier.startsWith("/@id/")
               ? site.specifier.slice("/@id/".length)
               : site.specifier;
+            // context(justinvdm, 11 Aug 2025):
+            // - We replace __vite_ssr_import__ and __vite_ssr_dynamic_import__
+            //   with import() calls so that the module graph can be built
+            //   correctly (vite looks for imports and import()s to build module
+            //   graph)
+            // - We prepend /@id/$VIRTUAL_SSR_PREFIX to the specifier so that we
+            //   can stay within the SSR subgraph of the worker module graph
             const replacement = `import("/@id/${VIRTUAL_SSR_PREFIX}${normalized}")`;
             s.overwrite(site.start, site.end, replacement);
           }
