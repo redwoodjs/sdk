@@ -10,10 +10,17 @@ import {
 
 const log = debug("sdk:db:do-worker-dialect");
 
-export class DOWorkerDialect {
-  config: { stub: any };
+type DOWorkerDialectConfig = {
+  kyselyExecuteQuery: (compiledQuery: {
+    sql: string;
+    parameters: readonly unknown[];
+  }) => Promise<QueryResult<any>>;
+};
 
-  constructor(config: { stub: any }) {
+export class DOWorkerDialect {
+  config: DOWorkerDialectConfig;
+
+  constructor(config: DOWorkerDialectConfig) {
     this.config = config;
   }
 
@@ -35,16 +42,16 @@ export class DOWorkerDialect {
 }
 
 class DOWorkerDriver implements Driver {
-  config: { stub: any };
+  config: DOWorkerDialectConfig;
 
-  constructor(config: { stub: any }) {
+  constructor(config: DOWorkerDialectConfig) {
     this.config = config;
   }
 
   async init() {}
 
   async acquireConnection(): Promise<DatabaseConnection> {
-    return new DOWorkerConnection(this.config.stub.kyselyExecuteQuery);
+    return new DOWorkerConnection(this.config.kyselyExecuteQuery);
   }
 
   async beginTransaction(conn: any) {
