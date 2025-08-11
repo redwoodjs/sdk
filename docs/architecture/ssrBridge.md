@@ -6,6 +6,7 @@
 > - Document optimizations related to `optimizeDeps` and avoiding transforms for application code.
 > - Detail performance improvements made to directive transformations.
 > - Explain the logic for invalidating module lookups during development.
+> - Maintaining module graph for SSR subgraph
 
 ## The Challenge: Supporting Multiple Runtimes in One Environment
 

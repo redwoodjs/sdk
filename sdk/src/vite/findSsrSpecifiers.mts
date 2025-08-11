@@ -2,77 +2,91 @@ import { parse as sgParse, Lang as SgLang, Lang } from "@ast-grep/napi";
 import path from "path";
 
 /**
- * Finds __vite_ssr_import__ and __vite_ssr_dynamic_import__ specifiers in the code.
- * @param id The file identifier for language detection.
- * @param code The code to search for SSR imports.
- * @param log Optional logger function for debug output.
- * @returns Object with arrays of static and dynamic import specifiers.
+ * Finds callsites for __vite_ssr_import__ and __vite_ssr_dynamic_import__ with their ranges.
+ * The returned ranges can be used with MagicString to overwrite the entire call expression.
  */
-export function findSsrImportSpecifiers(
+export function findSsrImportCallSites(
   id: string,
   code: string,
   log?: (...args: any[]) => void,
-): { imports: string[]; dynamicImports: string[] } {
+): Array<{
+  start: number;
+  end: number;
+  specifier: string;
+  kind: "import" | "dynamic_import";
+}> {
   const ext = path.extname(id).toLowerCase();
   const lang = ext === ".tsx" || ext === ".jsx" ? Lang.Tsx : SgLang.TypeScript;
   const logger = process.env.VERBOSE ? (log ?? (() => {})) : () => {};
-  const imports: string[] = [];
-  const dynamicImports: string[] = [];
+  const results: Array<{
+    start: number;
+    end: number;
+    specifier: string;
+    kind: "import" | "dynamic_import";
+  }> = [];
 
   try {
     const root = sgParse(lang, code);
     const patterns = [
       {
         pattern: `__vite_ssr_import__("$SPECIFIER")`,
-        list: imports,
+        kind: "import" as const,
       },
       {
         pattern: `__vite_ssr_import__('$SPECIFIER')`,
-        list: imports,
+        kind: "import" as const,
       },
       {
         pattern: `__vite_ssr_dynamic_import__("$SPECIFIER")`,
-        list: dynamicImports,
+        kind: "dynamic_import" as const,
       },
       {
         pattern: `__vite_ssr_dynamic_import__('$SPECIFIER')`,
-        list: dynamicImports,
+        kind: "dynamic_import" as const,
       },
       {
         pattern: `__vite_ssr_import__("$SPECIFIER", $$$REST)`,
-        list: imports,
+        kind: "import" as const,
       },
       {
         pattern: `__vite_ssr_import__('$SPECIFIER', $$$REST)`,
-        list: imports,
+        kind: "import" as const,
       },
       {
         pattern: `__vite_ssr_dynamic_import__("$SPECIFIER", $$$REST)`,
-        list: dynamicImports,
+        kind: "dynamic_import" as const,
       },
       {
         pattern: `__vite_ssr_dynamic_import__('$SPECIFIER', $$$REST)`,
-        list: dynamicImports,
+        kind: "dynamic_import" as const,
       },
     ];
 
-    for (const { pattern, list } of patterns) {
+    for (const { pattern, kind } of patterns) {
       const matches = root.root().findAll(pattern);
       for (const match of matches) {
         const specifier = match.getMatch("SPECIFIER")?.text();
         if (specifier) {
-          list.push(specifier);
-          logger(
-            `Found SSR import specifier: %s in pattern: %s`,
+          const range = match.range();
+          results.push({
+            start: range.start.index,
+            end: range.end.index,
             specifier,
-            pattern,
+            kind,
+          });
+          logger(
+            `Found SSR import callsite: %s [%s] at %d-%d`,
+            specifier,
+            kind,
+            range.start.index,
+            range.end.index,
           );
         }
       }
     }
   } catch (err) {
-    logger("Error parsing code for SSR imports: %O", err);
+    logger("Error parsing code for SSR import callsites: %O", err);
   }
 
-  return { imports, dynamicImports };
+  return results;
 }
