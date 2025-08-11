@@ -2,6 +2,7 @@ import { Kysely } from "kysely";
 import { requestInfo, waitForRequestInfo } from "../../requestInfo/worker.js";
 import { DOWorkerDialect } from "./DOWorkerDialect.js";
 import { type SqliteDurableObject } from "./index.js";
+import { env } from "cloudflare:workers";
 
 const createDurableObjectDb = <T>(
   durableObjectBinding: DurableObjectNamespace<SqliteDurableObject>,
@@ -20,34 +21,25 @@ export function createDb<T>(
   durableObjectBinding: any,
   name = "main",
 ): Kysely<T> {
-  const cacheKey = `${durableObjectBinding}_${name}`;
+  // context(justinvdm, 11 Aug 2025): We fall back to this map if we're not in a request context.
+  // It'll only ever store a single instance of the db.
+  const singletonDbInstanceMap = new Map();
 
-  const doCreateDb = () => {
-    if (!requestInfo.rw) {
-      throw new Error(
-        `
-  rwsdk: A database created using createDb() was accessed before requestInfo was available.
-
-  Please make sure database access is happening in a request handler or action handler.
-  `,
-      );
-    }
-
-    let db = requestInfo.rw.databases.get(cacheKey);
+  const getOrCreateDb = () => {
+    const instanceMap = requestInfo.rw?.databases ?? singletonDbInstanceMap;
+    let db = instanceMap.get(name);
 
     if (!db) {
       db = createDurableObjectDb<T>(durableObjectBinding, name);
-      requestInfo.rw.databases.set(cacheKey, db);
+      instanceMap.set(name, db);
     }
 
     return db;
   };
 
-  waitForRequestInfo().then(() => doCreateDb());
-
   return new Proxy({} as Kysely<T>, {
     get(target, prop, receiver) {
-      const db = doCreateDb();
+      const db = getOrCreateDb();
       const value = db[prop as keyof Kysely<T>];
 
       if (typeof value === "function") {
