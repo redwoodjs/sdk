@@ -21,8 +21,10 @@ export function createDb<T>(
   durableObjectBinding: any,
   name = "main",
 ): Kysely<T> {
-  // context(justinvdm, 11 Aug 2025): We fall back to this map if we're not in a request context.
-  // It'll only ever store a single instance of the db.
+  // context(justinvdm, 11 Aug 2025): We fall back to this map if we're not in a
+  // request context. For example, if `createDb` is called in a handler other
+  // than `fetch`, such as `queue`. It'll only ever store a single instance of
+  // the db.
   const singletonDbInstanceMap = new Map();
 
   const getOrCreateDb = () => {
