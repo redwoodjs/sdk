@@ -25,22 +25,17 @@ export type RwContext = {
 
 export type RouteMiddleware<T extends RequestInfo = RequestInfo> = (
   requestInfo: T,
-) =>
-  | Response
-  | Promise<Response>
-  | void
-  | Promise<void>
-  | Promise<Response | void>;
+) => MaybePromise<React.JSX.Element | Response | void>;
 
 type RouteFunction<T extends RequestInfo = RequestInfo> = (
   requestInfo: T,
-) => Response | Promise<Response>;
+) => MaybePromise<Response>;
 
 type MaybePromise<T> = T | Promise<T>;
 
 type RouteComponent<T extends RequestInfo = RequestInfo> = (
   requestInfo: T,
-) => MaybePromise<React.JSX.Element | Response>;
+) => MaybePromise<React.JSX.Element | Response | void>;
 
 type RouteHandler<T extends RequestInfo = RequestInfo> =
   | RouteFunction<T>
