@@ -184,46 +184,53 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
 
       // Flow below; helpers are declared after the main flow for readability
 
-      // 1) Global middlewares
-      // ----------------------
-      const globalResult = await handleGlobalMiddlewares();
-
-      if (globalResult) {
-        return globalResult;
-      }
-
-      // 2) Match route
-      // ----------------------
-      const match: RouteMatch<T> | null = matchRoute();
-
-      if (!match) {
-        // todo(peterp, 2025-01-28): Allow the user to define their own "not found" route.
-        return new Response("Not Found", { status: 404 });
-      }
-
-      return await runWithRequestInfoOverrides(
-        { params: match.params } as Partial<T>,
-        async () => {
-          const { routeMiddlewares, componentHandler } = parseHandlers(
-            match.handler,
-          );
-
-          // 3) Route-specific middlewares
-          // -----------------------------
-          const mwHandled = await handleRouteMiddlewares(routeMiddlewares);
-
-          if (mwHandled) {
-            return mwHandled;
+      // 1) Global middlewares: run any middleware functions encountered (Response short-circuits, element renders)
+      // 2) Route matching: skip non-matching route definitions; stop at first match
+      // 3) Route-specific middlewares: run middlewares attached to the matched route
+      // 4) Final component: render the matched route's final component (layouts apply only here)
+      for (const route of flattenedRoutes) {
+        // 1) Global middlewares (encountered before a match)
+        if (typeof route === "function") {
+          const result = await route(getRequestInfo());
+          const handled = await handleMiddlewareResult(result);
+          if (handled) {
+            return handled;
           }
+          continue;
+        }
 
-          // 4) Final component (always last item)
-          // -------------------------------------
-          return await handleRouteComponent(
-            componentHandler,
-            match.layouts || [],
-          );
-        },
-      );
+        // 2) Route matching (skip if not matched)
+        const params = matchPath<T>(route.path, path);
+        if (!params) {
+          continue;
+        }
+
+        // Found a match: 3) route middlewares, then 4) final component, then stop
+        return await runWithRequestInfoOverrides(
+          { params } as Partial<T>,
+          async () => {
+            const { routeMiddlewares, componentHandler } = parseHandlers(
+              route.handler,
+            );
+
+            // 3) Route-specific middlewares
+            const mwHandled = await handleRouteMiddlewares(routeMiddlewares);
+            if (mwHandled) {
+              return mwHandled;
+            }
+
+            // 4) Final component (always last item)
+            return await handleRouteComponent(
+              componentHandler,
+              route.layouts || [],
+            );
+          },
+        );
+      }
+
+      // No route matched and no middleware handled the request
+      // todo(peterp, 2025-01-28): Allow the user to define their own "not found" route.
+      return new Response("Not Found", { status: 404 });
 
       // --- Helpers ---
       function parseHandlers(handler: RouteHandler<T>) {
@@ -257,28 +264,8 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
         return undefined;
       }
 
-      async function handleGlobalMiddlewares(): Promise<Response | undefined> {
-        for (const route of flattenedRoutes) {
-          if (typeof route !== "function") {
-            continue;
-          }
-          const result = await route(getRequestInfo());
-          const handled = await handleMiddlewareResult(result);
-          if (handled) return handled;
-        }
-        return undefined;
-      }
-
-      function matchRoute(): RouteMatch<T> | null {
-        for (const route of flattenedRoutes) {
-          if (typeof route === "function") continue;
-          const params = matchPath<T>(route.path, path);
-          if (params) {
-            return { params, handler: route.handler, layouts: route.layouts };
-          }
-        }
-        return null;
-      }
+      // Note: We no longer have separate global pass or match-only pass;
+      // the outer single pass above handles both behaviors correctly.
 
       async function handleRouteMiddlewares(
         mws: RouteMiddleware<T>[],
