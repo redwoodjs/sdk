@@ -259,7 +259,9 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
 
       async function handleGlobalMiddlewares(): Promise<Response | undefined> {
         for (const route of flattenedRoutes) {
-          if (typeof route !== "function") break; // stop at first route definition
+          if (typeof route !== "function") {
+            break; // stop at first route definition
+          }
           const result = await route(getRequestInfo());
           const handled = await handleMiddlewareResult(result);
           if (handled) return handled;
