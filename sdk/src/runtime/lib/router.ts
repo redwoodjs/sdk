@@ -225,12 +225,14 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
               layouts || [],
               requestInfo,
             );
-            if (!isClientReference(WrappedComponent)) {
+
+            if (!isClientReference(h)) {
               // context(justinvdm, 31 Jul 2025): We now know we're dealing with a page route,
               // so we create a deferred so that we can signal when we're done determining whether
               // we're returning a response or a react element
               requestInfo.rw.pageRouteResolved = Promise.withResolvers();
             }
+
             return await renderPage(requestInfo, WrappedComponent, onError);
           } else {
             const r = await (h(getRequestInfo()) as Promise<Response>);
