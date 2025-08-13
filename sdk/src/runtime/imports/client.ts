@@ -42,8 +42,8 @@ export const clientWebpackRequire = memoize(async (id: string) => {
 
   const Lazy = React.lazy(() => promisedDefault);
 
-  const Wrapped = () =>
-    React.createElement(ClientOnly, null, React.createElement(Lazy));
+  const Wrapped = (props: any) =>
+    React.createElement(ClientOnly, null, React.createElement(Lazy, props));
 
   return { [id]: Wrapped };
 });
