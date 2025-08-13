@@ -265,24 +265,21 @@ export const debugSync = async (opts: DebugSyncOptions) => {
   });
 
   let syncing = false;
+  let pendingResync = false;
 
-  // todo(justinvdm, 2025-07-22): Figure out wtf makes the full sync
-  // cause chokidar to find out about package.json after sync has resolved
-  let expectingFileChanges = Boolean(process.env.RWSDK_FORCE_FULL_SYNC);
-
-  watcher.on("all", async (_event, filePath) => {
-    if (syncing || filePath.endsWith(".tgz")) {
-      return;
-    }
-
-    if (expectingFileChanges && process.env.RWSDK_FORCE_FULL_SYNC) {
-      expectingFileChanges = false;
+  const triggerResync = async (reason?: string) => {
+    if (syncing) {
+      pendingResync = true;
       return;
     }
 
     syncing = true;
-    expectingFileChanges = true;
-    console.log(`\nDetected change, re-syncing... (file: ${filePath})`);
+
+    if (reason) {
+      console.log(`\nDetected change, re-syncing... (file: ${reason})`);
+    } else {
+      console.log(`\nDetected change, re-syncing...`);
+    }
 
     if (childProc && !childProc.killed) {
       console.log("Stopping running process...");
@@ -291,8 +288,8 @@ export const debugSync = async (opts: DebugSyncOptions) => {
         /* ignore kill errors */
       });
     }
+
     try {
-      watcher.unwatch(filesToWatch);
       await performSync(sdkDir, targetDir);
       runWatchedCommand();
     } catch (error) {
@@ -300,8 +297,22 @@ export const debugSync = async (opts: DebugSyncOptions) => {
       console.log("   Still watching for changes...");
     } finally {
       syncing = false;
-      watcher.add(filesToWatch);
     }
+
+    if (pendingResync) {
+      pendingResync = false;
+      // Coalesce any rapid additional events into a single follow-up sync
+      await new Promise((r) => setTimeout(r, 50));
+      return triggerResync();
+    }
+  };
+
+  watcher.on("all", async (_event, filePath) => {
+    if (filePath.endsWith(".tgz")) {
+      return;
+    }
+
+    await triggerResync(filePath);
   });
 
   const cleanup = async () => {
