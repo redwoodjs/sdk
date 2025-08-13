@@ -123,6 +123,7 @@ export const miniflareHMRPlugin = (givenOptions: {
           type: "full-reload",
           path: "*",
         });
+        log("hmr: Full reload after error");
         return [];
       }
       const {
@@ -144,6 +145,7 @@ export const miniflareHMRPlugin = (givenOptions: {
       }
 
       if (!isJsFile(ctx.file) && !ctx.file.endsWith(".css")) {
+        log(`hmr: not a js file, skipping`);
         return;
       }
 
@@ -156,6 +158,7 @@ export const miniflareHMRPlugin = (givenOptions: {
         });
 
         if (!isUseClientUpdate) {
+          log("hmr: not a use client update, short circuiting");
           return [];
         }
 
@@ -166,10 +169,14 @@ export const miniflareHMRPlugin = (givenOptions: {
           VIRTUAL_SSR_PREFIX +
             normalizeModulePath(ctx.file, givenOptions.rootDir),
         );
+        log("hmr: invalidated ssr module");
         return [];
       }
 
       if (!["client", environment].includes(this.environment.name)) {
+        log(
+          `hmr: incorrect env, skipping (env=${this.environment.name}, worker env=${environment})`,
+        );
         return [];
       }
 
@@ -275,9 +282,11 @@ export const miniflareHMRPlugin = (givenOptions: {
         });
 
         if (!isUseClientUpdate && !ctx.file.endsWith(".css")) {
+          log("hmr: not a use client update and not css, short circuiting");
           return [];
         }
 
+        log("hmr: returning client modules for hmr");
         return ctx.modules;
       }
 
@@ -305,12 +314,18 @@ export const miniflareHMRPlugin = (givenOptions: {
           invalidateModule(ctx.server, environment, m);
         }
 
-        const virtualSSRModule = ctx.server.environments[
-          environment
-        ].moduleGraph.idToModuleMap.get(
+        let virtualSSRModuleId =
           VIRTUAL_SSR_PREFIX +
-            normalizeModulePath(ctx.file, givenOptions.rootDir),
-        );
+          normalizeModulePath(ctx.file, givenOptions.rootDir);
+
+        if (ctx.file.endsWith(".css")) {
+          virtualSSRModuleId += ".js";
+        }
+
+        const virtualSSRModule =
+          ctx.server.environments[environment].moduleGraph.idToModuleMap.get(
+            virtualSSRModuleId,
+          );
 
         if (virtualSSRModule) {
           invalidateModule(ctx.server, environment, virtualSSRModule);
@@ -324,6 +339,7 @@ export const miniflareHMRPlugin = (givenOptions: {
           },
         });
 
+        log("hmr: sent rsc update");
         return [];
       }
     },
