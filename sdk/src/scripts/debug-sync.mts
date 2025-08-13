@@ -8,6 +8,8 @@ import { lock } from "proper-lockfile";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Any change triggers an update; no publish file list caching needed
+
 export interface DebugSyncOptions {
   targetDir: string;
   sdkDir?: string;
@@ -35,16 +37,52 @@ const getPackageManagerInfo = (targetDir: string) => {
   return pnpmResult;
 };
 
+const cleanupViteEntries = async (targetDir: string) => {
+  const nodeModulesDir = path.join(targetDir, "node_modules");
+  if (!existsSync(nodeModulesDir)) {
+    return;
+  }
+
+  try {
+    const entries = await fs.readdir(nodeModulesDir);
+    const viteEntries = entries.filter((entry) => entry.startsWith(".vite"));
+
+    for (const entry of viteEntries) {
+      const entryPath = path.join(nodeModulesDir, entry);
+      try {
+        const stat = await fs.lstat(entryPath);
+        if (!stat.isSymbolicLink()) {
+          console.log(`Removing vite cache entry: ${entry}`);
+          await fs.rm(entryPath, { recursive: true, force: true });
+        } else {
+          console.log(`Skipping symlinked vite cache entry: ${entry}`);
+        }
+      } catch {
+        // If we can't stat it, try to remove it
+        console.log(`Removing vite cache entry: ${entry}`);
+        await fs.rm(entryPath, { recursive: true, force: true });
+      }
+    }
+  } catch (error) {
+    console.log(`Failed to cleanup vite cache entries: ${error}`);
+  }
+};
+
 const performFullSync = async (sdkDir: string, targetDir: string) => {
   const sdkPackageJsonPath = path.join(sdkDir, "package.json");
   let originalSdkPackageJson: string | null = null;
   let tarballPath = "";
   let tarballName = "";
 
+  // Clean up vite cache
+  await cleanupViteEntries(targetDir);
+
   try {
     console.log("📦 Packing SDK...");
-    const packResult = await $({ cwd: sdkDir })`npm pack`;
-    tarballName = packResult.stdout?.trim() ?? "";
+    const packResult = await $({ cwd: sdkDir })`npm pack --json`;
+    const json = JSON.parse(packResult.stdout || "[]");
+    const packInfo = Array.isArray(json) ? json[0] : undefined;
+    tarballName = (packInfo && (packInfo.filename || packInfo.name)) || "";
     if (!tarballName) {
       console.error("❌ Failed to get tarball name from npm pack.");
       return;
@@ -102,34 +140,75 @@ const performFullSync = async (sdkDir: string, targetDir: string) => {
   }
 };
 
+const syncFilesWithRsyncOrFs = async (
+  sdkDir: string,
+  destDir: string,
+  filesEntries: string[],
+) => {
+  const sources = filesEntries.map((p) => path.join(sdkDir, p));
+
+  // Always include package.json in sync
+  const pkgJsonPath = path.join(sdkDir, "package.json");
+  sources.push(pkgJsonPath);
+
+  await fs.mkdir(destDir, { recursive: true });
+
+  // Try rsync across all sources in one shot
+  try {
+    if (sources.length > 0) {
+      const rsyncArgs = [
+        "-a",
+        "--delete",
+        "--omit-dir-times",
+        "--no-perms",
+        "--no-owner",
+        "--no-group",
+        ...sources,
+        destDir + path.sep,
+      ];
+      await $({ stdio: "inherit" })("rsync", rsyncArgs);
+      return;
+    }
+  } catch {
+    // fall through to fs fallback
+  }
+
+  console.log("Rsync failed, falling back to fs");
+  // Fallback: destructive copy using Node fs to mirror content
+  await fs.rm(destDir, { recursive: true, force: true });
+  await fs.mkdir(destDir, { recursive: true });
+
+  for (const src of sources) {
+    const rel = path.relative(sdkDir, src);
+    const dst = path.join(destDir, rel);
+    await fs.mkdir(path.dirname(dst), { recursive: true });
+    try {
+      const stat = await fs.lstat(src);
+      if (stat.isDirectory()) {
+        await fs.cp(src, dst, { recursive: true, force: true });
+      } else {
+        await fs.copyFile(src, dst);
+      }
+    } catch {
+      await fs.cp(src, dst, { recursive: true, force: true }).catch(() => {});
+    }
+  }
+};
+
 const performFastSync = async (sdkDir: string, targetDir: string) => {
   console.log("⚡️ No dependency changes, performing fast sync...");
 
-  const sdkPackageJson = JSON.parse(
-    await fs.readFile(path.join(sdkDir, "package.json"), "utf-8"),
-  );
-  const filesToSync = sdkPackageJson.files || [];
+  // Clean up vite cache
+  await cleanupViteEntries(targetDir);
 
-  for (const file of filesToSync) {
-    const source = path.join(sdkDir, file);
-    const destination = path.join(targetDir, "node_modules/rwsdk", file);
-    if (existsSync(source)) {
-      await fs.cp(source, destination, { recursive: true, force: true });
-    }
-  }
-  // Always copy package.json
-  await fs.copyFile(
-    path.join(sdkDir, "package.json"),
-    path.join(targetDir, "node_modules/rwsdk/package.json"),
-  );
-};
+  const nodeModulesPkgDir = path.join(targetDir, "node_modules", "rwsdk");
 
-const areDependenciesEqual = (
-  deps1?: Record<string, string>,
-  deps2?: Record<string, string>,
-) => {
-  // Simple string comparison for this use case is sufficient
-  return JSON.stringify(deps1 ?? {}) === JSON.stringify(deps2 ?? {});
+  // Copy directories/files declared in package.json#files (plus package.json)
+  const filesToSync =
+    JSON.parse(await fs.readFile(path.join(sdkDir, "package.json"), "utf-8"))
+      .files || [];
+
+  await syncFilesWithRsyncOrFs(sdkDir, nodeModulesPkgDir, filesToSync);
 };
 
 const performSync = async (sdkDir: string, targetDir: string) => {
@@ -163,22 +242,8 @@ const performSync = async (sdkDir: string, targetDir: string) => {
       "utf-8",
     );
 
-    const sdkPkg = JSON.parse(sdkPackageJsonContent);
-    const installedPkg = JSON.parse(installedSdkPackageJsonContent);
-
-    if (
-      areDependenciesEqual(sdkPkg.dependencies, installedPkg.dependencies) &&
-      areDependenciesEqual(
-        sdkPkg.devDependencies,
-        installedPkg.devDependencies,
-      ) &&
-      areDependenciesEqual(
-        sdkPkg.peerDependencies,
-        installedPkg.peerDependencies,
-      )
-    ) {
-      packageJsonChanged = false;
-    }
+    packageJsonChanged =
+      sdkPackageJsonContent !== installedSdkPackageJsonContent;
   }
 
   if (packageJsonChanged) {
