@@ -18,8 +18,7 @@ import "./prefetchClientComponents";
 // context(justinvdm, 14 Aug 2025): Prefetch the hydration bundle ASAP
 import("./hydrateClient");
 
-import { type Transport } from "./hydrateClient";
-import { type HydrationOptions } from "./types";
+import { type Transport, type HydrationOptions } from "./types";
 
 export const initClient = async ({
   transport,

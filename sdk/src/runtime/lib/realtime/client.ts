@@ -1,8 +1,5 @@
-import {
-  initClient,
-  type Transport,
-  type ActionResponse,
-} from "../../client/client";
+import { initClient } from "../../client/client";
+import { type Transport, type ActionResponse } from "../../client/types";
 import { createFromReadableStream } from "react-server-dom-webpack/client.browser";
 import { MESSAGE_TYPE } from "./shared";
 import {
@@ -11,7 +8,6 @@ import {
   ActionStartMessage,
   RscStartMessage,
   ActionChunkMessage,
-  ActionEndMessage,
   ActionErrorMessage,
 } from "./protocol";
 const DEFAULT_KEY = "default";

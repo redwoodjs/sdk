@@ -19,23 +19,13 @@ import { rscStream } from "rsc-html-stream/client";
 export { ClientOnly } from "./ClientOnly.js";
 export { default as React } from "react";
 
-import { CallServerCallback, HydrationOptions } from "./types";
-
-export type ActionResponse<Result> = {
-  node: React.ReactNode;
-  actionResult: Result;
-};
-
-type TransportContext = {
-  setRscPayload: <Result>(v: Promise<ActionResponse<Result>>) => void;
-  handleResponse?: (response: Response) => boolean; // Returns false to stop normal processing
-};
-
-export type Transport = (context: TransportContext) => CallServerCallback;
-
-export type CreateCallServer = (
-  context: TransportContext,
-) => <Result>(id: null | string, args: null | unknown[]) => Promise<Result>;
+import type {
+  Transport,
+  CallServerCallback,
+  HydrationOptions,
+  ActionResponse,
+  TransportContext,
+} from "./types";
 
 export const fetchTransport: Transport = (transportContext) => {
   const fetchCallServer = async <Result,>(
