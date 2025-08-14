@@ -107,6 +107,10 @@ export const miniflareHMRPlugin = (givenOptions: {
       };
     },
     async hotUpdate(ctx) {
+      if (ctx.file.includes(".wrangler")) {
+        return;
+      }
+
       if (hasErrored) {
         const shortName = getShortName(ctx.file, ctx.server.config.root);
         this.environment.logger.info(

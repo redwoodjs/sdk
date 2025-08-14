@@ -1,14 +1,14 @@
 import React from "react";
-import memoize from "lodash/memoize";
+import { ClientOnly } from "../client/client";
+import { memoizeOnId } from "../lib/memoizeOnId";
 
-export const loadModule = memoize(async (id: string) => {
+// @ts-ignore
+import { useClientLookup } from "virtual:use-client-lookup.js";
+
+export const loadModule = memoizeOnId(async (id: string) => {
   if (import.meta.env.VITE_IS_DEV_SERVER) {
     return await import(/* @vite-ignore */ id);
   } else {
-    const { useClientLookup } = await import(
-      "virtual:use-client-lookup.js" as string
-    );
-
     const moduleFn = useClientLookup[id];
 
     if (!moduleFn) {
@@ -22,7 +22,7 @@ export const loadModule = memoize(async (id: string) => {
 });
 
 // context(justinvdm, 2 Dec 2024): re memoize(): React relies on the same promise instance being returned for the same id
-export const clientWebpackRequire = memoize(async (id: string) => {
+export const clientWebpackRequire = memoizeOnId(async (id: string) => {
   const [file, name] = id.split("#");
   const promisedModule = loadModule(file);
   const promisedComponent = promisedModule.then((module) => module[name]);
@@ -33,8 +33,6 @@ export const clientWebpackRequire = memoize(async (id: string) => {
     const awaitedComponent = await promisedComponent;
     return { [id]: awaitedComponent };
   }
-
-  const { ClientOnly } = await import("./ClientOnly");
 
   const promisedDefault = promisedComponent.then((Component) => ({
     default: Component,

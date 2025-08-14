@@ -1,5 +1,5 @@
 import { describe, it, expect } from "vitest";
-import { validateClickEvent } from "./clientNavigation";
+import { validateClickEvent } from "./navigation";
 
 describe("clientNavigation", () => {
   let mockEvent: MouseEvent = {

@@ -142,8 +142,11 @@ export const defineApp = <
 
           if (isRSCRequest) {
             const responseHeaders = new Headers(userResponseInit.headers);
-            responseHeaders.set("content-type", "text/x-component; charset=utf-8");
-            
+            responseHeaders.set(
+              "content-type",
+              "text/x-component; charset=utf-8",
+            );
+
             return new Response(rscPayloadStream, {
               status: userResponseInit.status,
               statusText: userResponseInit.statusText,
@@ -177,7 +180,7 @@ export const defineApp = <
 
           const responseHeaders = new Headers(userResponseInit.headers);
           responseHeaders.set("content-type", "text/html; charset=utf-8");
-          
+
           return new Response(html, {
             status: userResponseInit.status,
             statusText: userResponseInit.statusText,
@@ -237,7 +240,7 @@ export const defineApp = <
           return e;
         }
 
-        console.error("Unhandled error", e);
+        console.error("rwsdk: Received an unhandled error:\n\n%s", e);
         throw e;
       }
     },

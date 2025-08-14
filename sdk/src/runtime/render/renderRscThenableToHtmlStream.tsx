@@ -2,6 +2,7 @@ import { use } from "react";
 import { renderToReadableStream } from "react-dom/server.edge";
 import { type DocumentProps } from "../lib/router.js";
 import { type RequestInfo } from "../requestInfo/types.js";
+import { Preloads } from "./preloads.js";
 import { Stylesheets } from "./stylesheets.js";
 
 export const renderRscThenableToHtmlStream = async ({
@@ -24,6 +25,7 @@ export const renderRscThenableToHtmlStream = async ({
       return (
         <>
           <Stylesheets requestInfo={requestInfo} />
+          <Preloads requestInfo={requestInfo} />
           <div id="hydrate-root">{node}</div>
         </>
       );
