@@ -1,4 +1,4 @@
-import memoize from "lodash/memoize";
+import memoize from "micro-memoize";
 
 export const ssrLoadModule = memoize(async (id: string) => {
   const { useClientLookup } = await import(

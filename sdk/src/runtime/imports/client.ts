@@ -1,14 +1,12 @@
 import React from "react";
-import memoize from "lodash/memoize";
+import memoize from "micro-memoize";
+import { ClientOnly } from "./ClientOnly";
+import { useClientLookup } from "../client/imports";
 
 export const loadModule = memoize(async (id: string) => {
   if (import.meta.env.VITE_IS_DEV_SERVER) {
     return await import(/* @vite-ignore */ id);
   } else {
-    const { useClientLookup } = await import(
-      "virtual:use-client-lookup.js" as string
-    );
-
     const moduleFn = useClientLookup[id];
 
     if (!moduleFn) {
@@ -33,8 +31,6 @@ export const clientWebpackRequire = memoize(async (id: string) => {
     const awaitedComponent = await promisedComponent;
     return { [id]: awaitedComponent };
   }
-
-  const { ClientOnly } = await import("./ClientOnly");
 
   const promisedDefault = promisedComponent.then((Component) => ({
     default: Component,

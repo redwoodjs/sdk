@@ -1,4 +1,8 @@
-import { initClient, type Transport, type ActionResponse } from "../../client";
+import {
+  initClient,
+  type Transport,
+  type ActionResponse,
+} from "../../client/client";
 import { createFromReadableStream } from "react-server-dom-webpack/client.browser";
 import { MESSAGE_TYPE } from "./shared";
 import {

@@ -1,4 +1,4 @@
-import memoize from "lodash/memoize";
+import memoize from "micro-memoize";
 import { createServerReference as baseCreateServerReference } from "react-server-dom-webpack/client.edge";
 
 export const loadServerModule = memoize(async (id: string) => {
