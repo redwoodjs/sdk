@@ -2,7 +2,12 @@ import { use } from "react";
 import { renderToReadableStream } from "react-dom/server.edge";
 import { type DocumentProps } from "../lib/router.js";
 import { type RequestInfo } from "../requestInfo/types.js";
-import { Stylesheets } from "./stylesheets.js";
+import {
+  DevTools,
+  ServerAuthRefresh,
+  ServerRequestProvider,
+} from "./DevTools.js";
+import { Preloads, Stylesheets } from "./stylesheets.js";
 
 export const renderRscThenableToHtmlStream = async ({
   thenable,
@@ -19,12 +24,17 @@ export const renderRscThenableToHtmlStream = async ({
 }) => {
   const Component = () => {
     const RscApp = () => {
-      const node = (use(thenable) as { node: React.ReactNode }).node;
+      const rscPayload = use(thenable);
 
       return (
         <>
-          <Stylesheets requestInfo={requestInfo} />
-          <div id="hydrate-root">{node}</div>
+          <DevTools requestInfo={requestInfo} />
+          <ServerRequestProvider requestInfo={requestInfo}>
+            <ServerAuthRefresh />
+            <Stylesheets requestInfo={requestInfo} />
+            <Preloads requestInfo={requestInfo} />
+            <div id="root">{rscPayload.node}</div>
+          </ServerRequestProvider>
         </>
       );
     };

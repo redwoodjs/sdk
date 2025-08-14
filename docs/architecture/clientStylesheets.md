@@ -20,7 +20,7 @@ Because of these architectural choices, we cannot rely on Vite's built-in mechan
 
 2.  **The Dev Server Performance Problem:** In development, the Vite dev server does not know a client module's full dependency graph until that module is requested and evaluated. An initial approach to solve this involved forcing this evaluation on the server by using Vite's `transformRequest()` API for every potential client-side script. While this worked for simple applications, it introduced a significant performance bottleneck. As an application's dependency graph grew, the cost of these synchronous transforms became prohibitive, leading to unacceptably slow server response times.
 
-3.  **The Render-Time Discovery Problem:** We don't know the full list of components for a page ahead of time. As the RSC stream is rendered on the server, it can dynamically decide to include new "use client" components (islands). If `ComponentA` imports `./styles.css`, we only discover that this stylesheet is needed when `ComponentA` is actually rendered. Our build process transforms all "use client" modules into calls to a `registerClientReference` function at module-load time, which gives us a complete list of all *potential* client components that could be used. However, we have no way of knowing which ones are *actually* used in a specific request until render time.
+3.  **The Render-Time Discovery Problem:** We don't know the full list of components for a page ahead of time. As the RSC stream is rendered on the server, it can dynamically decide to include "use client" components (islands). If `ComponentA` imports `./styles.css`, we only discover that this stylesheet is needed when `ComponentA` is actually rendered. Our build process transforms all "use client" modules into calls to a `registerClientReference` function at module-load time, which gives us a complete list of all *potential* client components that could be used. However, we have no way of knowing which ones are *actually* used in a specific request until render time.
 
 4.  **The Entry Point Discovery Problem:** The framework has no built-in knowledge of the main client-side entry point (e.g., `<script src="/src/client.tsx">`). This script is referenced inside the developer's `Document.tsx` file, and we need a way to find it so we can also find *its* CSS dependencies.
 
@@ -38,33 +38,7 @@ This decision simplifies the development process immensely. We no longer need to
 
 Our solution is to create a single, unified set of all client-side scripts that will be loaded on the page. By collecting every script module ID first, we can then, in a single final step, look up all their combined CSS dependencies and inject them in an environment-aware manner.
 
-This process has two main phases: **Discovery** (populating the list of scripts) and **Injection** (finding and rendering their stylesheets).
-
-### Phase 1 (Runtime): Unified Script Discovery
-
-The core of this architecture is a single `Set` on the per-request `requestInfo` object: `requestInfo.rw.scriptsToBeLoaded`. This set collects the module IDs of every client script that is needed for the current page render.
-
-This set is populated from two different sources at two different times, allowing us to capture all scripts, both static and dynamic:
-
-**A) Static Entry Points from the `Document`**
-
-During the build, a simple Vite plugin scans `Document.tsx` files. When it finds a `<script>` tag that looks like a client entry point (e.g., `<script src="/src/client.tsx">`), it injects a tiny, stateless piece of code. This code runs on the server during the `Document` render and performs a side effect: it adds the entry point's path to our `scriptsToBeLoaded` set.
-
-```diff
-- jsx("script", { src: "/src/client.tsx" })
-+ (
-+   (requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
-+   jsx("script", { src: "/src/client.tsx" })
-+ )
-```
-
-**B) Dynamic Components from the RSC Stream**
-
-As the RSC stream renders, it may dynamically load other client components ("islands"). Our build process transforms all "use client" modules into calls to a `registerClientReference` function. This function wraps the client component in a proxy-like object.
-
-When React's server renderer encounters one of these objects, it accesses a special `$$id` property on it to identify the component and serialize it for the client. We intercept the getter for this specific property. The first time the `$$id` property is accessed on a client component's reference during a render, we know that component is being used on the page. At that exact moment, we add the component's module ID to the `scriptsToBeLoaded` set. This gives us a precise, render-time mechanism for discovering exactly which components are needed for the current page without introducing any performance overhead.
-
-At the end of these two steps, `requestInfo.rw.scriptsToBeLoaded` contains a complete list of every client module required to render the page.
+This process is detailed in the [Unified Script Discovery](./unifiedScriptDiscovery.md) documentation. This process has two main phases: **Discovery** (populating the list of scripts) and **Injection** (finding and rendering their stylesheets).
 
 ### Phase 2 (Runtime): Unified Stylesheet Injection
 
@@ -135,3 +109,7 @@ To solve this, the `ssrBridgePlugin` performs a specific transformation:
     -   For **CSS Modules (`.module.css`)**, it first strips the `.js` suffix from the module ID before calling `devServer.environments.ssr.fetchModule()`. This ensures the original CSS module is fetched and transformed by Vite into its JavaScript object representation. This object, which maps class names to their unique generated hashes, is then returned to the `worker` environment so that server-rendered components receive the correct class names.
 
 This two-pronged approach ensures that CSS dependencies are correctly processed according to their type, preventing downstream errors and allowing seamless integration of styles in the server environment, independent of the strategy for final style injection.
+
+This system relies on [React's Hoisting Behavior for `<link>`](./reactHoisting.md) to correctly position the final asset links in the document `<head>`.
+
+Similarly, we will also add `<link rel="preload" as="style">` for our stylesheets to start fetching them earlier.
