@@ -1,6 +1,3 @@
-// note(justinvdm, 14 Aug 2025): Rendering related imports and logic go here.
-// See client.tsx for the actual client entrypoint.
-
 // context(justinvdm, 14 Aug 2025): `react-server-dom-webpack` uses this global
 // to load modules, so we need to define it here before importing
 // "react-server-dom-webpack."

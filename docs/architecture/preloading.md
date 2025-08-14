@@ -17,18 +17,15 @@ Our framework architecture, which relies on dynamically discovering client compo
 
 ### The Challenge: Getting Hints to the Browser
 
-The challenge is to communicate this list of required scripts to the browser so it can start downloading them in parallel with other resources, effectively flattening the request waterfall. We need a mechanism that:
-
-1.  Uses a unified script discovery process, as detailed in [Unified Script Discovery](./unifiedScriptDiscovery.md).
-2.  Injects the correct resource hints into the HTML `<head>`.
-3.  Relies on [React's Hoisting Behavior for `<link>`](./reactHoisting.md) to place the hints correctly.
-4.  Does this only in production, as it is unnecessary and could interfere with Vite's optimized development workflow.
+The challenge is to communicate this list of required scripts to the browser so it can start downloading them in parallel with other resources, effectively flattening the request waterfall.
 
 ## The Solution: A `<Preloads>` Component
 
-The solution is to introduce a server-side React component, `<Preloads>`, whose sole responsibility is to render `<link rel="modulepreload">` tags for every client-side script that will be loaded on the page.
+The solution is a server-side React component, `<Preloads>`, that renders `<link rel="modulepreload">` tags for every client-side script that will be loaded on the page. This component uses our [unified script discovery](./unifiedScriptDiscovery.md) process to identify the necessary scripts.
 
-This component is rendered within the part of the application that wraps the RSC stream. It only runs its logic in a production environment. In development, it renders nothing, delegating all module loading to Vite's client-side runtime.
+This component is rendered within the part of the application that wraps the RSC stream. By rendering `<link>` tags, it relies on [React's hoisting behavior](./reactHoisting.md) to place them into the HTML `<head>`.
+
+This preloading logic only runs in a production environment. In development, the component renders nothing, delegating all module loading to Vite's client-side runtime to avoid interfering with its development workflow.
 
 ```tsx
 const Preloads = ({ requestInfo }) => {
