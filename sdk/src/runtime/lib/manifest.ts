@@ -14,7 +14,7 @@ export interface ManifestChunk {
 
 let manifest: Manifest;
 
-export const getManifest = async (requestInfo: RequestInfo) => {
+export const getManifest = async () => {
   if (manifest) {
     return manifest;
   }
