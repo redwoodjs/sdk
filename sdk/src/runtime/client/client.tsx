@@ -3,13 +3,13 @@
 import {
   React,
   hydrateRoot,
-  createFromFetch,
-  encodeReply,
   createFromReadableStream,
   rscStream,
-  type CallServerCallback,
-  type HydrationOptions,
-} from "./imports";
+} from "./blockingVendor";
+
+import { getAsyncImports } from "./imports";
+
+import { CallServerCallback, HydrationOptions } from "./types";
 
 export type ActionResponse<Result> = {
   node: React.ReactNode;
@@ -32,6 +32,7 @@ export const fetchTransport: Transport = (transportContext) => {
     id: null | string,
     args: null | unknown[],
   ): Promise<Result | undefined> => {
+    const { createFromFetch, encodeReply } = await getAsyncImports();
     const url = new URL(window.location.href);
     url.searchParams.set("__rsc", "");
 
