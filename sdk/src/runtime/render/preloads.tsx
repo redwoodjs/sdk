@@ -41,11 +41,15 @@ export const Preloads = ({ requestInfo }: { requestInfo: RequestInfo }) => {
   const manifest = use(getManifest(requestInfo));
   const allScripts = new Set<string>();
 
-  for (const scriptId of requestInfo.rw.scriptsToBeLoaded) {
-    const script = findScriptForModule(scriptId, manifest);
-    if (script) {
-      allScripts.add(script.file);
+  try {
+    for (const scriptId of requestInfo.rw.scriptsToBeLoaded) {
+      const script = findScriptForModule(scriptId, manifest);
+      if (script) {
+        allScripts.add(script.file);
+      }
     }
+  } catch (e) {
+    console.error("Error finding scripts for module", e);
   }
 
   return (
