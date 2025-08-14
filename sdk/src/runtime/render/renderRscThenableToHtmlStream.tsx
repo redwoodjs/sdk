@@ -2,11 +2,6 @@ import { use } from "react";
 import { renderToReadableStream } from "react-dom/server.edge";
 import { type DocumentProps } from "../lib/router.js";
 import { type RequestInfo } from "../requestInfo/types.js";
-import {
-  DevTools,
-  ServerAuthRefresh,
-  ServerRequestProvider,
-} from "./DevTools.js";
 import { Preloads, Stylesheets } from "./stylesheets.js";
 
 export const renderRscThenableToHtmlStream = async ({
@@ -28,13 +23,9 @@ export const renderRscThenableToHtmlStream = async ({
 
       return (
         <>
-          <DevTools requestInfo={requestInfo} />
-          <ServerRequestProvider requestInfo={requestInfo}>
-            <ServerAuthRefresh />
-            <Stylesheets requestInfo={requestInfo} />
-            <Preloads requestInfo={requestInfo} />
-            <div id="root">{rscPayload.node}</div>
-          </ServerRequestProvider>
+          <Stylesheets requestInfo={requestInfo} />
+          <Preloads requestInfo={requestInfo} />
+          <div id="hydrate-root">{rscPayload.node}</div>
         </>
       );
     };
