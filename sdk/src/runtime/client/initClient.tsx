@@ -21,7 +21,6 @@ export { default as React } from "react";
 
 import type {
   Transport,
-  CallServerCallback,
   HydrationOptions,
   ActionResponse,
   TransportContext,
@@ -75,7 +74,7 @@ export const fetchTransport: Transport = (transportContext) => {
   return fetchCallServer;
 };
 
-export const hydrateClient = async ({
+export const initClient = async ({
   transport = fetchTransport,
   hydrateRootOptions,
   handleResponse,
