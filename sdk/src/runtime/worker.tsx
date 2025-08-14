@@ -37,6 +37,7 @@ export const defineApp = <
       // todo(justinvdm, 5 Feb 2025): Find a way to avoid this so asset requests are served directly
       // rather than first needing to go through the worker
       if (request.url.includes("/assets/")) {
+        await new Promise((resolve) => setTimeout(resolve, 5000));
         const url = new URL(request.url);
         url.pathname = url.pathname.slice("/assets/".length);
         return env.ASSETS.fetch(new Request(url.toString(), request));
@@ -142,8 +143,11 @@ export const defineApp = <
 
           if (isRSCRequest) {
             const responseHeaders = new Headers(userResponseInit.headers);
-            responseHeaders.set("content-type", "text/x-component; charset=utf-8");
-            
+            responseHeaders.set(
+              "content-type",
+              "text/x-component; charset=utf-8",
+            );
+
             return new Response(rscPayloadStream, {
               status: userResponseInit.status,
               statusText: userResponseInit.statusText,
@@ -177,7 +181,7 @@ export const defineApp = <
 
           const responseHeaders = new Headers(userResponseInit.headers);
           responseHeaders.set("content-type", "text/html; charset=utf-8");
-          
+
           return new Response(html, {
             status: userResponseInit.status,
             statusText: userResponseInit.statusText,

@@ -27,6 +27,7 @@ import { ssrBridgePlugin } from "./ssrBridgePlugin.mjs";
 import { hasPkgScript } from "../lib/hasPkgScript.mjs";
 import { devServerTimingPlugin } from "./devServerTimingPlugin.mjs";
 import { manifestPlugin } from "./manifestPlugin.mjs";
+import { assetDelayPlugin } from "./assetDelayPlugin.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -100,6 +101,7 @@ export const redwoodPlugin = async (
 
   return [
     devServerTimingPlugin(),
+    assetDelayPlugin({ delay: 1000 }),
     devServerConstantPlugin(),
     configPlugin({
       silent: options.silent ?? false,
