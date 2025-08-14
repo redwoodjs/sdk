@@ -1,75 +1,28 @@
-// imports to include in the client bundle
+// context(justinvdm, 14 Aug 2025): This is the entrypoint for the client bundle.
+// All render-blocking deps (e.g. react related) should go in hydrateClient.tsx, not here.
+// This is so that we can kick off prefetching (e.g of client components) ASAP, and to avoid
+// risk of duplicating across the bundles for deps
 
-import { CallServerCallback, HydrationOptions } from "./types";
+// note(justinvdm, 14 Aug 2025): Import order here is important. We use this to
+// control what gets bundled into the main client bundle, or if it isnt bundled,
+// when it gets fetched, and in both cases, the order in which code is evaluated.
+// For instance, we need to set the `__webpack_require__` global before importing
+// `react-server-dom-webpack/client.browser`.
 
-export type ActionResponse<Result> = {
-  node: React.ReactNode;
-  actionResult: Result;
-};
+// @ts-ignore
+// context(justinvdm, 14 Aug 2025): We bundle the client lookup in the main client
+// bundle so that we can find out client modules to fetch ASAP (no waterfall/round-trip delay)
+export { useClientLookup } from "virtual:use-client-lookup.js";
+import "./prefetchClientComponents";
 
-type TransportContext = {
-  setRscPayload: <Result>(v: Promise<ActionResponse<Result>>) => void;
-  handleResponse?: (response: Response) => boolean; // Returns false to stop normal processing
-};
+// context(justinvdm, 14 Aug 2025): Prefetch the hydration bundle ASAP
+import("./hydrateClient");
 
-export type Transport = (context: TransportContext) => CallServerCallback;
-
-export type CreateCallServer = (
-  context: TransportContext,
-) => <Result>(id: null | string, args: null | unknown[]) => Promise<Result>;
-
-export const fetchTransport: Transport = (transportContext) => {
-  const fetchCallServer = async <Result,>(
-    id: null | string,
-    args: null | unknown[],
-  ): Promise<Result | undefined> => {
-    const { createFromFetch, encodeReply } = await import("./renderDeps");
-
-    const url = new URL(window.location.href);
-    url.searchParams.set("__rsc", "");
-
-    if (id != null) {
-      url.searchParams.set("__rsc_action_id", id);
-    }
-
-    const fetchPromise = fetch(url, {
-      method: "POST",
-      body: args != null ? await encodeReply(args) : null,
-    });
-
-    // If there's a response handler, check the response first
-    if (transportContext.handleResponse) {
-      const response = await fetchPromise;
-      const shouldContinue = transportContext.handleResponse(response);
-      if (!shouldContinue) {
-        return;
-      }
-
-      // Continue with the response if handler returned true
-      const streamData = createFromFetch(Promise.resolve(response), {
-        callServer: fetchCallServer,
-      }) as Promise<ActionResponse<Result>>;
-
-      transportContext.setRscPayload(streamData);
-      const result = await streamData;
-      return (result as { actionResult: Result }).actionResult;
-    }
-
-    // Original behavior when no handler is present
-    const streamData = createFromFetch(fetchPromise, {
-      callServer: fetchCallServer,
-    }) as Promise<ActionResponse<Result>>;
-
-    transportContext.setRscPayload(streamData);
-    const result = await streamData;
-    return (result as { actionResult: Result }).actionResult;
-  };
-
-  return fetchCallServer;
-};
+import { type Transport } from "./hydrateClient";
+import { type HydrationOptions } from "./types";
 
 export const initClient = async ({
-  transport = fetchTransport,
+  transport,
   hydrateRootOptions,
   handleResponse,
 }: {
@@ -77,77 +30,10 @@ export const initClient = async ({
   hydrateRootOptions?: HydrationOptions;
   handleResponse?: (response: Response) => boolean;
 } = {}) => {
-  const { React, hydrateRoot, createFromReadableStream, rscStream } =
-    await import("./renderDeps");
-
-  const transportContext: TransportContext = {
-    setRscPayload: () => {},
+  const { hydrateClient } = await import("./hydrateClient");
+  return hydrateClient({
+    transport,
+    hydrateRootOptions,
     handleResponse,
-  };
-
-  let transportCallServer = transport(transportContext);
-
-  const callServer = (id: any, args: any) => transportCallServer(id, args);
-
-  const upgradeToRealtime = async ({ key }: { key?: string } = {}) => {
-    const { realtimeTransport } = await import("../lib/realtime/client");
-    const createRealtimeTransport = realtimeTransport({ key });
-    transportCallServer = createRealtimeTransport(transportContext);
-  };
-
-  globalThis.__rsc_callServer = callServer;
-
-  globalThis.__rw = {
-    callServer,
-    upgradeToRealtime,
-  };
-
-  const rootEl = document.getElementById("hydrate-root");
-
-  if (!rootEl) {
-    throw new Error('no element with id "hydrate-root"');
-  }
-
-  let rscPayload: any;
-
-  // context(justinvdm, 18 Jun 2025): We inject the RSC payload
-  // unless render(Document, [...], { rscPayload: false }) was used.
-  if ((globalThis as any).__FLIGHT_DATA) {
-    rscPayload = createFromReadableStream(rscStream, {
-      callServer,
-    });
-  }
-
-  function Content() {
-    const [streamData, setStreamData] = React.useState(rscPayload);
-    const [_isPending, startTransition] = React.useTransition();
-    transportContext.setRscPayload = (v) =>
-      startTransition(() => setStreamData(v));
-    return (
-      <>
-        {streamData
-          ? React.use<{ node: React.ReactNode }>(streamData).node
-          : null}
-      </>
-    );
-  }
-
-  hydrateRoot(rootEl, <Content />, {
-    onUncaughtError: (error, { componentStack }) => {
-      console.error(
-        "Uncaught error: %O\n\nComponent stack:%s",
-        error,
-        componentStack,
-      );
-    },
-
-    ...hydrateRootOptions,
   });
-
-  if (import.meta.hot) {
-    import.meta.hot.on("rsc:update", (e: { file: string }) => {
-      console.log("[rwsdk] hot update", e.file);
-      callServer("__rsc_hot_update", [e.file]);
-    });
-  }
 };

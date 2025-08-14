@@ -15,4 +15,4 @@ import "./prefetchClientComponents";
 // "react-server-dom-webpack."
 import "./setWebpackRequire";
 
-import("./renderDeps");
+import("./hydrateClient");
