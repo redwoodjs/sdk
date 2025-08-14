@@ -58,7 +58,7 @@ export const renderRscThenableToHtmlStream = async ({
     );
   };
 
-  return await renderToReadableStream(<Component />, {
+  const stream = await renderToReadableStream(<Component />, {
     nonce: requestInfo.rw.nonce,
     onError(error, { componentStack }) {
       try {
@@ -89,4 +89,5 @@ export const renderRscThenableToHtmlStream = async ({
       }
     },
   });
+  return stream;
 };

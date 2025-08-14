@@ -111,5 +111,3 @@ To solve this, the `ssrBridgePlugin` performs a specific transformation:
 This two-pronged approach ensures that CSS dependencies are correctly processed according to their type, preventing downstream errors and allowing seamless integration of styles in the server environment, independent of the strategy for final style injection.
 
 This system relies on [React's Hoisting Behavior for `<link>`](./reactHoisting.md) to correctly position the final asset links in the document `<head>`.
-
-Similarly, we will also add `<link rel="preload" as="style">` for our stylesheets to start fetching them earlier.
