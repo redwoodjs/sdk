@@ -1,4 +1,4 @@
-import { memoizeOnId } from "./memoizeOnId";
+import { memoizeOnId } from "../lib/memoizeOnId";
 
 export const ssrLoadModule = memoizeOnId(async (id: string) => {
   const { useClientLookup } = await import(

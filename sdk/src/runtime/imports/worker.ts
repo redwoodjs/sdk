@@ -1,6 +1,6 @@
 import { requestInfo } from "../requestInfo/worker";
 import { ssrWebpackRequire as baseSsrWebpackRequire } from "rwsdk/__ssr_bridge";
-import { memoizeOnId } from "./memoizeOnId";
+import { memoizeOnId } from "../lib/memoizeOnId";
 
 export const loadServerModule = memoizeOnId(async (id: string) => {
   const { useServerLookup } = await import(

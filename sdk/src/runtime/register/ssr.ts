@@ -1,7 +1,7 @@
-import memoize from "micro-memoize";
 import { createServerReference as baseCreateServerReference } from "react-server-dom-webpack/client.edge";
+import { memoizeOnId } from "../lib/memoizeOnId";
 
-export const loadServerModule = memoize(async (id: string) => {
+export const loadServerModule = memoizeOnId(async (id: string) => {
   const { useServerLookup } = await import(
     "virtual:use-server-lookup.js" as string
   );

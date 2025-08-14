@@ -1,6 +1,6 @@
 import React from "react";
 import { ClientOnly } from "../client/client";
-import { memoizeOnId } from "./memoizeOnId";
+import { memoizeOnId } from "../lib/memoizeOnId";
 
 // @ts-ignore
 import { useClientLookup } from "virtual:use-client-lookup.js";
