@@ -38,7 +38,7 @@ export function findScriptForModule(
 }
 
 export const Preloads = ({ requestInfo }: { requestInfo: RequestInfo }) => {
-  const manifest = use(getManifest(requestInfo));
+  const manifest = use(getManifest());
   const allScripts = new Set<string>();
 
   for (const scriptId of requestInfo.rw.scriptsToBeLoaded) {
