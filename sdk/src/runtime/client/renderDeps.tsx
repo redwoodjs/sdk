@@ -7,3 +7,5 @@ export {
   encodeReply,
 } from "react-server-dom-webpack/client.browser";
 export { rscStream } from "rsc-html-stream/client";
+
+export { ClientOnly } from "./ClientOnly.js";

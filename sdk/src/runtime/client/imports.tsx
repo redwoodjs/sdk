@@ -15,5 +15,4 @@ import "./prefetchClientComponents";
 // "react-server-dom-webpack."
 import "./setWebpackRequire";
 
-// context(justinvdm, 14 Aug 2025):
 import("./renderDeps");

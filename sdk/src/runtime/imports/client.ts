@@ -1,6 +1,4 @@
-import React from "react";
 import memoize from "micro-memoize";
-import { ClientOnly } from "./ClientOnly";
 import { useClientLookup } from "../client/imports";
 
 export const loadModule = memoize(async (id: string) => {
@@ -36,6 +34,7 @@ export const clientWebpackRequire = memoize(async (id: string) => {
     default: Component,
   }));
 
+  const { React, ClientOnly } = await import("../client/renderDeps");
   const Lazy = React.lazy(() => promisedDefault);
 
   const Wrapped = (props: any) =>
