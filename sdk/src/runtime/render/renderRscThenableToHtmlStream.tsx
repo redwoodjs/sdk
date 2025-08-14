@@ -19,13 +19,13 @@ export const renderRscThenableToHtmlStream = async ({
 }) => {
   const Component = () => {
     const RscApp = () => {
-      const rscPayload = use(thenable);
+      const node = (use(thenable) as { node: React.ReactNode }).node;
 
       return (
         <>
           <Stylesheets requestInfo={requestInfo} />
           <Preloads requestInfo={requestInfo} />
-          <div id="hydrate-root">{rscPayload.node}</div>
+          <div id="hydrate-root">{node}</div>
         </>
       );
     };
