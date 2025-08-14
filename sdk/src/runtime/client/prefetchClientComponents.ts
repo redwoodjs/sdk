@@ -9,7 +9,7 @@ function parseFlightData(flightData: string[]): string[] {
       const lines = payload.split("\n");
 
       lines.forEach((line) => {
-        const match = line.match(/^\d+:I\[(.*?)\]/);
+        const match = line.match(/^\d+:I\[(.*)]/);
         if (match) {
           try {
             const jsonContent = JSON.parse(`[${match[1]}]`);
@@ -19,6 +19,10 @@ function parseFlightData(flightData: string[]): string[] {
             }
           } catch (error) {
             // Skip any errors during parsing, as this is an optimization.
+            console.error(
+              "rwsdk: Error parsing flight data, skipping prefetching for",
+              line,
+            );
           }
         }
       });
@@ -27,16 +31,30 @@ function parseFlightData(flightData: string[]): string[] {
     return Array.from(clientComponents);
   } catch (error) {
     // If parsing flight data fails, we don't want break rendering as this is an optimization.
+    console.error("rwsdk: Error parsing flight data, skipping prefetching");
     return [];
   }
 }
 
-const onError = () => {};
+const onError = (error: Error) => {
+  console.error("rwsdk: Error prefetching client component:", error);
+};
 
 const doPrefetchClientComponents = () => {
-  const clientComponents = parseFlightData((globalThis as any).__FLIGHT_DATA);
+  const flightData = (globalThis as any).__FLIGHT_DATA;
+
+  if (!flightData) {
+    console.log("No flight data found, skipping prefetching client components");
+    return;
+  }
+
+  const clientComponents = parseFlightData(flightData);
+  console.log("Prefetching client components:", clientComponents);
   for (const id of clientComponents) {
-    loadModule(id)
+    Promise.resolve()
+      .then(() => id.split("#")[0])
+      .then(loadModule)
+      .then(() => console.log(`Prefetched client component: ${id}`))
       // If loading the module fails, we don't want to break rendering as this is an optimization.
       .catch(onError);
   }

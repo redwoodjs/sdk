@@ -1,12 +1,5 @@
 // imports to include in the client bundle
 
-import {
-  React,
-  hydrateRoot,
-  createFromReadableStream,
-  rscStream,
-} from "./renderDeps";
-
 import { CallServerCallback, HydrationOptions } from "./types";
 
 export type ActionResponse<Result> = {
@@ -30,9 +23,7 @@ export const fetchTransport: Transport = (transportContext) => {
     id: null | string,
     args: null | unknown[],
   ): Promise<Result | undefined> => {
-    const { createFromFetch, encodeReply } = await import(
-      "./interactivityBlockers"
-    );
+    const { createFromFetch, encodeReply } = await import("./renderDeps");
 
     const url = new URL(window.location.href);
     url.searchParams.set("__rsc", "");
@@ -86,6 +77,9 @@ export const initClient = async ({
   hydrateRootOptions?: HydrationOptions;
   handleResponse?: (response: Response) => boolean;
 } = {}) => {
+  const { React, hydrateRoot, createFromReadableStream, rscStream } =
+    await import("./renderDeps");
+
   const transportContext: TransportContext = {
     setRscPayload: () => {},
     handleResponse,

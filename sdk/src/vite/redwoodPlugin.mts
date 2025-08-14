@@ -101,7 +101,6 @@ export const redwoodPlugin = async (
 
   return [
     devServerTimingPlugin(),
-    assetDelayPlugin({ delay: 1000 }),
     devServerConstantPlugin(),
     configPlugin({
       silent: options.silent ?? false,
