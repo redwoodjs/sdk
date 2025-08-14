@@ -1,5 +1,7 @@
 import memoize from "micro-memoize";
-import { useClientLookup } from "../client/imports";
+
+// @ts-ignore
+import { useClientLookup } from "virtual:use-client-lookup.js";
 
 export const loadModule = memoize(async (id: string) => {
   if (import.meta.env.VITE_IS_DEV_SERVER) {

@@ -1,5 +1,7 @@
 import { loadModule } from "../imports/client";
-import { useClientLookup } from "./imports";
+
+// @ts-ignore
+import { useClientLookup } from "virtual:use-client-lookup.js";
 
 function parseFlightData(flightData: string[]): string[] {
   try {

@@ -1,4 +1,3 @@
-import "../client/imports";
 import "./types/client";
 export * from "../client/client";
 export * from "../register/client";
