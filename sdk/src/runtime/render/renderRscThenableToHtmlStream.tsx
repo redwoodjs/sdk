@@ -58,36 +58,41 @@ export const renderRscThenableToHtmlStream = async ({
     );
   };
 
-  const stream = await renderToReadableStream(<Component />, {
-    nonce: requestInfo.rw.nonce,
-    onError(error, { componentStack }) {
-      try {
-        if (!error) {
-          error = new Error(
-            `A falsy value was thrown during rendering: ${String(error)}.`,
-          );
+  try {
+    return await renderToReadableStream(<Component />, {
+      nonce: requestInfo.rw.nonce,
+      onError(error, { componentStack }) {
+        console.log("rwsdk: renderRscThenableToHtmlStream onError", error);
+        try {
+          if (!error) {
+            error = new Error(
+              `A falsy value was thrown during rendering: ${String(error)}.`,
+            );
+          }
+
+          const message = error
+            ? ((error as any).stack ?? (error as any).message ?? error)
+            : error;
+
+          const wrappedMessage = `${message}\n\nComponent stack:${componentStack}`;
+
+          if (error instanceof Error) {
+            const wrappedError = new Error(wrappedMessage);
+            wrappedError.stack = error.stack;
+            error = wrappedError;
+          } else {
+            error = new Error(wrappedMessage);
+            (error as any).stack = componentStack;
+          }
+
+          onError(error);
+        } catch {
+          onError(error);
         }
-
-        const message = error
-          ? ((error as any).stack ?? (error as any).message ?? error)
-          : error;
-
-        const wrappedMessage = `${message}\n\nComponent stack:${componentStack}`;
-
-        if (error instanceof Error) {
-          const wrappedError = new Error(wrappedMessage);
-          wrappedError.stack = error.stack;
-          error = wrappedError;
-        } else {
-          error = new Error(wrappedMessage);
-          (error as any).stack = componentStack;
-        }
-
-        onError(error);
-      } catch {
-        onError(error);
-      }
-    },
-  });
-  return stream;
+      },
+    });
+  } catch (e) {
+    console.error("rwsdk: renderRscThenableToHtmlStream caught error", e);
+    throw e;
+  }
 };

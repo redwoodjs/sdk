@@ -29,7 +29,6 @@ export const defineApp = <
 ) => {
   return {
     fetch: async (request: Request, env: Env, cf: ExecutionContext) => {
-      console.log("#################", request.url);
       globalThis.__webpack_require__ = ssrWebpackRequire;
 
       const router = defineRoutes<T>(routes);
@@ -243,7 +242,6 @@ export const defineApp = <
         }
 
         console.error("rwsdk: Received an unhandled error:\n\n%s", e);
-        console.log("####################### error throw", e);
         throw e;
       }
     },
