@@ -1,6 +1,18 @@
 import { type RequestInfo } from "../requestInfo/types";
 
-let manifest: Record<string, any>;
+export type Manifest = Record<string, ManifestChunk>;
+
+export interface ManifestChunk {
+  file: string;
+  src?: string;
+  isEntry?: boolean;
+  isDynamicEntry?: boolean;
+  imports?: string[];
+  css?: string[];
+  assets?: string[];
+}
+
+let manifest: Manifest;
 
 export const getManifest = async (requestInfo: RequestInfo) => {
   if (manifest) {

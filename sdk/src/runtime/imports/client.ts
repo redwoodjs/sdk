@@ -1,4 +1,6 @@
+import React from "react";
 import memoize from "micro-memoize";
+import { ClientOnly } from "../client/client";
 
 // @ts-ignore
 import { useClientLookup } from "virtual:use-client-lookup.js";
@@ -36,10 +38,6 @@ export const clientWebpackRequire = memoize(async (id: string) => {
     default: Component,
   }));
 
-  // context(justinvdm, 14 Aug 2025): We import the hydrateClient bundle
-  // to ensure we not end up with duplicate code, and utilize the already
-  // prefetched code (see src/runtime/client/client.tsx)
-  const { React, ClientOnly } = await import("../client/hydrateClient");
   const Lazy = React.lazy(() => promisedDefault);
 
   const Wrapped = (props: any) =>
