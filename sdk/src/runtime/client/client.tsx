@@ -11,8 +11,6 @@ import { parseFlightData } from "./parseFlightData";
 
 import { CallServerCallback, HydrationOptions } from "./types";
 
-import { createFromFetch, encodeReply } from "./fetchBlockers";
-
 export type ActionResponse<Result> = {
   node: React.ReactNode;
   actionResult: Result;
@@ -34,6 +32,10 @@ export const fetchTransport: Transport = (transportContext) => {
     id: null | string,
     args: null | unknown[],
   ): Promise<Result | undefined> => {
+    const { createFromFetch, encodeReply } = await import(
+      "./interactivityBlockers"
+    );
+
     const url = new URL(window.location.href);
     url.searchParams.set("__rsc", "");
 

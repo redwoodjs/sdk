@@ -15,4 +15,4 @@ import "./setWebpackRequire";
 export { useClientLookup } from "virtual:use-client-lookup.js";
 
 import("./renderBlockers");
-import("./fetchBlockers");
+import("./interactivityBlockers");
