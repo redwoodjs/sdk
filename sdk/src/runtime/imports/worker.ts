@@ -1,8 +1,8 @@
-import memoize from "micro-memoize";
 import { requestInfo } from "../requestInfo/worker";
 import { ssrWebpackRequire as baseSsrWebpackRequire } from "rwsdk/__ssr_bridge";
+import { memoizeOnId } from "./memoizeOnId";
 
-export const loadServerModule = memoize(async (id: string) => {
+export const loadServerModule = memoizeOnId(async (id: string) => {
   const { useServerLookup } = await import(
     "virtual:use-server-lookup.js" as string
   );
@@ -24,7 +24,7 @@ export const getServerModuleExport = async (id: string) => {
   return module[name];
 };
 
-export const ssrWebpackRequire = memoize(async (id: string) => {
+export const ssrWebpackRequire = memoizeOnId(async (id: string) => {
   if (!requestInfo.rw.ssr) {
     return { [id]: () => null };
   }
