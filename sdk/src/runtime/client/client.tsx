@@ -5,11 +5,13 @@ import {
   hydrateRoot,
   createFromReadableStream,
   rscStream,
-} from "./blockingVendor";
+} from "./renderBlockers";
 
-import { getAsyncImports } from "./imports";
+import { parseFlightData } from "./parseFlightData";
 
 import { CallServerCallback, HydrationOptions } from "./types";
+
+import { createFromFetch, encodeReply } from "./fetchBlockers";
 
 export type ActionResponse<Result> = {
   node: React.ReactNode;
@@ -32,7 +34,6 @@ export const fetchTransport: Transport = (transportContext) => {
     id: null | string,
     args: null | unknown[],
   ): Promise<Result | undefined> => {
-    const { createFromFetch, encodeReply } = await getAsyncImports();
     const url = new URL(window.location.href);
     url.searchParams.set("__rsc", "");
 
@@ -121,6 +122,8 @@ export const initClient = async ({
     rscPayload = createFromReadableStream(rscStream, {
       callServer,
     });
+    const clientComponents = parseFlightData((globalThis as any).__FLIGHT_DATA);
+    console.log("Client Components:", clientComponents);
   }
 
   function Content() {

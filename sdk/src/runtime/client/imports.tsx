@@ -14,13 +14,5 @@ import "./setWebpackRequire";
 // bundle so that we can find out client modules to fetch ASAP (no waterfall/round-trip delay)
 export { useClientLookup } from "virtual:use-client-lookup.js";
 
-export const getAsyncImports = async () => {
-  return {
-    // context(justinvdm, 14 Aug 2025): Things that should be async-fetched bundles go here
-    ...(await import("./asyncVendor")),
-  };
-};
-
-// context(justinvdm, 14 Aug 2025): Run at module level, since we want these fetched ASAP, even though
-// they don't need to block initial render
-getAsyncImports();
+import("./renderBlockers");
+import("./fetchBlockers");
