@@ -14,11 +14,12 @@ export function findScriptForModule(
     }
     visited.add(id);
     const manifestEntry = manifest[id];
+
     if (!manifestEntry) {
       return;
     }
 
-    if (manifestEntry.isEntry) {
+    if (manifestEntry.isEntry || manifestEntry.isDynamicEntry) {
       return manifestEntry;
     }
 
