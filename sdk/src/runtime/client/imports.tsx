@@ -4,15 +4,16 @@
 // For instance, we need to set the `__webpack_require__` global before importing
 // `react-server-dom-webpack/client.browser`.
 
+// @ts-ignore
+// context(justinvdm, 14 Aug 2025): We bundle the client lookup in the main client
+// bundle so that we can find out client modules to fetch ASAP (no waterfall/round-trip delay)
+export { useClientLookup } from "virtual:use-client-lookup.js";
+import "./prefetchClientComponents";
+
 // context(justinvdm, 14 Aug 2025): `react-server-dom-webpack` uses this global
 // to load modules, so we need to define it here before importing
 // "react-server-dom-webpack."
 import "./setWebpackRequire";
 
-// @ts-ignore
-// context(justinvdm, 14 Aug 2025): We bundle the client lookup in the main client
-// bundle so that we can find out client modules to fetch ASAP (no waterfall/round-trip delay)
-export { useClientLookup } from "virtual:use-client-lookup.js";
-
-import("./renderBlockers");
-import("./interactivityBlockers");
+// context(justinvdm, 14 Aug 2025):
+import("./renderDeps");

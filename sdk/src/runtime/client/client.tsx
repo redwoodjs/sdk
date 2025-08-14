@@ -5,9 +5,7 @@ import {
   hydrateRoot,
   createFromReadableStream,
   rscStream,
-} from "./renderBlockers";
-
-import { parseFlightData } from "./parseFlightData";
+} from "./renderDeps";
 
 import { CallServerCallback, HydrationOptions } from "./types";
 
@@ -124,8 +122,6 @@ export const initClient = async ({
     rscPayload = createFromReadableStream(rscStream, {
       callServer,
     });
-    const clientComponents = parseFlightData((globalThis as any).__FLIGHT_DATA);
-    console.log("Client Components:", clientComponents);
   }
 
   function Content() {
