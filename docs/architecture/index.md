@@ -2,6 +2,9 @@
 
 This collection of documents provides a high-level overview of the core architectural concepts and mechanisms within the RedwoodSDK. They are intended to explain the "why" behind key design decisions, focusing on the problems encountered and the solutions implemented.
 
+- [**The SSR Bridge**](./ssrBridge.md)
+  This document details the architecture that allows the framework to support two different rendering environments (RSC and traditional SSR) within a single Cloudflare Worker. It explains how the "SSR Bridge" uses Vite's Environments API to manage conflicting dependency requirements between the two runtimes.
+
 - [**Supporting Client-Side Stylesheet Imports**](./clientStylesheets.md)
   This document explains how the framework handles CSS imports within "use client" components. It details the process of discovering, bundling, and injecting stylesheets to prevent a "Flash of Unstyled Content" (FOUC) in production environments, while managing the trade-offs for a fast development experience.
 
@@ -13,9 +16,6 @@ This collection of documents provides a high-level overview of the core architec
 
 - [**React's Hoisting Behavior for `<link>`**](./reactHoisting.md)
   A brief explanation of a key React 19 feature that underpins our entire asset handling strategy. It details how React's ability to automatically move `<link>` tags to the document `<head>` allows for a clean and effective implementation of stylesheet and script preloading.
-
-- [**The SSR Bridge**](./ssrBridge.md)
-  This document details the architecture that allows the framework to support two different rendering environments (RSC and traditional SSR) within a single Cloudflare Worker. It explains how the "SSR Bridge" uses Vite's Environments API to manage conflicting dependency requirements between the two runtimes.
 
 - [**Unified Script Discovery**](./unifiedScriptDiscovery.md)
   Discover the centralized mechanism for identifying every client-side JavaScript module required for a given page. This document explains how scripts are discovered from both static `Document` entry points and dynamically rendered components, providing a single source of truth for asset handling.
