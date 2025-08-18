@@ -215,7 +215,7 @@ importers:
         version: 19.2.0-canary-a96a0f39-20250815(react-dom@19.2.0-canary-a96a0f39-20250815(react@19.2.0-canary-a96a0f39-20250815))(react@19.2.0-canary-a96a0f39-20250815)(webpack@5.97.1)
       rwsdk:
         specifier: file:/Users/justin/rw/sdk/sdk/rwsdk-0.2.0-alpha.14.tgz
-        version: file:sdk/rwsdk-0.2.0-alpha.14.tgz(rollup@4.40.0)(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250617.0)
+        version: file:sdk/rwsdk-0.2.0-alpha.14.tgz(react-dom@19.2.0-canary-a96a0f39-20250815(react@19.2.0-canary-a96a0f39-20250815))(react-server-dom-webpack@19.2.0-canary-a96a0f39-20250815(react-dom@19.2.0-canary-a96a0f39-20250815(react@19.2.0-canary-a96a0f39-20250815))(react@19.2.0-canary-a96a0f39-20250815)(webpack@5.97.1))(react@19.2.0-canary-a96a0f39-20250815)(rollup@4.40.0)(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250617.0)
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.7.4
@@ -3635,11 +3635,21 @@ packages:
       vite: ^6.2.6
 
   rwsdk@file:sdk/rwsdk-0.2.0-alpha.14.tgz:
-    resolution: {integrity: sha512-N3i+wBc0uyjPMcITXqf8VhapLy2S04ZG4DJjajz5MhHoxSW5k0DDBJPv8cCFAKGCJmbZKdKnfHYXDetxr7Of2g==, tarball: file:sdk/rwsdk-0.2.0-alpha.14.tgz}
+    resolution: {integrity: sha512-6m8pzZLrYBhpV8RkMJz3MQrlDKcExwaUhvv6RcGAdhxcuVd5B+Y+ciKHO57kDR4Wa/mPdIbw9R8aaZkhVORrfQ==, tarball: file:sdk/rwsdk-0.2.0-alpha.14.tgz}
     version: 0.2.0-alpha.14
     hasBin: true
     peerDependencies:
+      react: '>=19.2.0-0 || >=19.2.0'
+      react-dom: '>=19.2.0-0 || >=19.2.0'
+      react-server-dom-webpack: '>=19.2.0-0 || >=19.2.0'
       vite: ^6.2.6
+    peerDependenciesMeta:
+      react:
+        optional: true
+      react-dom:
+        optional: true
+      react-server-dom-webpack:
+        optional: true
 
   safe-buffer@5.2.1:
     resolution: {integrity: sha512-rp3So07KcdmmKbGvgaNxQSJr7bGVSVk5S9Eq1F+ppbRo70+YeaDxkw5Dd8NPN+GD6bjnYm2VuPuCXmpuYvmCXQ==}
@@ -8453,7 +8463,7 @@ snapshots:
       - webpack
       - workerd
 
-  rwsdk@file:sdk/rwsdk-0.2.0-alpha.14.tgz(rollup@4.40.0)(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250617.0):
+  rwsdk@file:sdk/rwsdk-0.2.0-alpha.14.tgz(react-dom@19.2.0-canary-a96a0f39-20250815(react@19.2.0-canary-a96a0f39-20250815))(react-server-dom-webpack@19.2.0-canary-a96a0f39-20250815(react-dom@19.2.0-canary-a96a0f39-20250815(react@19.2.0-canary-a96a0f39-20250815))(react@19.2.0-canary-a96a0f39-20250815)(webpack@5.97.1))(react@19.2.0-canary-a96a0f39-20250815)(rollup@4.40.0)(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250617.0):
     dependencies:
       '@ast-grep/napi': 0.38.5
       '@cloudflare/vite-plugin': 1.7.4(rollup@4.40.0)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250617.0)(wrangler@4.20.5(@cloudflare/workers-types@4.20250407.0))
@@ -8481,10 +8491,7 @@ snapshots:
       picocolors: 1.1.1
       proper-lockfile: 4.1.2
       puppeteer-core: 22.15.0
-      react: 19.2.0-canary-39cad7af-20250411
-      react-dom: 19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411)
       react-is: 19.0.0
-      react-server-dom-webpack: 19.2.0-canary-39cad7af-20250411(react-dom@19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411))(react@19.2.0-canary-39cad7af-20250411)(webpack@5.97.1)
       rsc-html-stream: 0.0.6
       tmp-promise: 3.0.3
       ts-morph: 25.0.1
@@ -8493,6 +8500,10 @@ snapshots:
       vite: 6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0)
       vite-tsconfig-paths: 5.1.4(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.39.0)(tsx@4.19.4)(yaml@2.7.0))
       wrangler: 4.20.5(@cloudflare/workers-types@4.20250407.0)
+    optionalDependencies:
+      react: 19.2.0-canary-a96a0f39-20250815
+      react-dom: 19.2.0-canary-a96a0f39-20250815(react@19.2.0-canary-a96a0f39-20250815)
+      react-server-dom-webpack: 19.2.0-canary-a96a0f39-20250815(react-dom@19.2.0-canary-a96a0f39-20250815(react@19.2.0-canary-a96a0f39-20250815))(react@19.2.0-canary-a96a0f39-20250815)(webpack@5.97.1)
     transitivePeerDependencies:
       - bare-buffer
       - bufferutil
@@ -8500,7 +8511,6 @@ snapshots:
       - supports-color
       - typescript
       - utf-8-validate
-      - webpack
       - workerd
 
   safe-buffer@5.2.1: {}
