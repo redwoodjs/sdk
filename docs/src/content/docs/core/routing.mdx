@@ -233,11 +233,12 @@ The `requestInfo` object contains:
 You can mutate the `response` object to configure the status and headers. For example:
 
 ```tsx
+import { requestInfo } from "rwsdk/worker";
 import { route } from "rwsdk/router";
 
 const NotFound = () => <div>Not Found</div>;
 
-route('/some-resource', async ({ response }) => {
+route('/some-resource', async () => {
   // some logic to determine if the resource is not found
   
   response.status = 404;
