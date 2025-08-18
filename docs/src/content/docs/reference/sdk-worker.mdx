@@ -83,12 +83,8 @@ export default defineApp([
 
 The `requestInfo` object is used to get information about the current request. It's a singleton that's populated for each request, and constains the following information.
 
-```ts
-import { requestInfo } from "rwsdk/worker";
-
-requestInfo.request.url;
-requestInfo.request.method;
-requestInfo.request.body;
-requestInfo.ctx;
-requestInfo.headers;
-```
+- `request`: The incoming HTTP [Request](https://developer.mozilla.org/en-US/docs/Web/API/Request) object
+- `response`: A [ResponseInit](https://fetch.spec.whatwg.org/#responseinit) object used to configure the status and headers of the response
+- `ctx`: The app context (same as what's passed to components)
+- `rw`: RedwoodSDK-specific context
+- `cf`: Cloudflare's Execution Context API

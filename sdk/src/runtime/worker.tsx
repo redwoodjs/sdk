@@ -71,7 +71,7 @@ export const defineApp = <
           pageRouteResolved: undefined,
         };
 
-        const userResponseInit: ResponseInit = {
+        const userResponseInit: ResponseInit & { headers: Headers } = {
           status: 200,
           headers: new Headers(),
         };
