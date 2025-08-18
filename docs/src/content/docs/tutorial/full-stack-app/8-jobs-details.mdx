@@ -203,8 +203,8 @@ const Details = async ({ params }: RequestInfo) => {
 
 <Aside type="tip" title="RequestInfo">
 The `RequestInfo` object contains:
-- `request`: The incoming HTTP Request object
-- `headers`: Response headers
+- `request`: The incoming HTTP [Request](https://developer.mozilla.org/en-US/docs/Web/API/Request) object
+- `response`: A [ResponseInit](https://fetch.spec.whatwg.org/#responseinit) object used to configure the status and headers of the response
 - `ctx`: The app context
 
 [You can find more information here.](/reference/sdk-worker/#requestinfo-requestinfo)

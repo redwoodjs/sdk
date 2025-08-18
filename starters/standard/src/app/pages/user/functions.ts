@@ -26,7 +26,7 @@ function getWebAuthnConfig(request: Request) {
 
 export async function startPasskeyRegistration(username: string) {
   const { rpName, rpID } = getWebAuthnConfig(requestInfo.request);
-  const { headers } = requestInfo;
+  const { response } = requestInfo;
 
   const options = await generateRegistrationOptions({
     rpName,
@@ -40,7 +40,7 @@ export async function startPasskeyRegistration(username: string) {
     },
   });
 
-  await sessions.save(headers, { challenge: options.challenge });
+  await sessions.save(response.headers, { challenge: options.challenge });
 
   return options;
 }
