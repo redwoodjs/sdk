@@ -28,7 +28,6 @@ export default defineApp([
 ---
 The `defineApp` function takes an array of middleware and route handlers that are executed in the order they are defined. In this example the request is passed through two middleware functions before being "matched" by the route handlers.
 ---
-```
 
 ## Matching Patterns
 
@@ -46,7 +45,6 @@ defineApp([
 1. The matching pattern string
 2. The request handler function
 ---
-```
 
 There are three matching patterns:
 
@@ -103,7 +101,6 @@ Return values:
 - `Response`: A standard response object.
 - `JSX`: A React component, which is statically rendered to HTML on the server, streamed to the client, and then hydrated on the client side.
 ---
-```
 
 ### Interrupters
 
@@ -128,7 +125,6 @@ defineApp([
 ---
 For the `/blog/:slug/edit` route, the `isAuthenticated` function will be executed first, if the user is not authenticated, the response will be a 401 Unauthorized. If the user is authenticated, the `EditBlogPage` component will be rendered. Therefore the flow is interrupted. The `isAuthenticated` function can be shared across multiple routes.
 ---
-```
 
 ## Middleware & Context
 
@@ -170,7 +166,6 @@ The context object:
   - if the user is authenticated the request will be passed to the next request handler and `"Hello {ctx.user.username}!"` will be returned
 
 ---
-```
 
 ## Documents
 
@@ -194,7 +189,6 @@ This component will be rendered on the server side when the page loads. When def
 * Your application's stylesheets and scripts
 * A mount point for your page content (`id="root"` in the code below): this is where your actual page will be rendered - the "dynamic stuff" which updates using React Server Components.
 ---
-```
 
 ```tsx title="src/pages/Document.tsx" mark={7}
 export const Document = ({ children }) => (
@@ -223,15 +217,33 @@ The `requestInfo` object is available in server functions and provides access to
 import { requestInfo } from "rwsdk/worker";
 
 export async function myServerFunction() {
-  const { request, headers, ctx } = requestInfo;
-  // Use request, headers, or ctx as needed
+  const { request, response, ctx } = requestInfo;
+  // Use request, response, or ctx as needed
 }
 ```
 
 The `requestInfo` object contains:
 
-- `request`: The incoming HTTP Request object
-- `headers`: Response headers
+- `request`: The incoming HTTP [Request](https://developer.mozilla.org/en-US/docs/Web/API/Request) object
+- `response`: A [ResponseInit](https://fetch.spec.whatwg.org/#responseinit) object used to configure the status and headers of the response
 - `ctx`: The app context (same as what's passed to components)
 - `rw`: RedwoodSDK-specific context
 - `cf`: Cloudflare's Execution Context API
+
+You can mutate the `response` object to configure the status and headers. For example:
+
+```tsx
+import { requestInfo } from "rwsdk/worker";
+import { route } from "rwsdk/router";
+
+const NotFound = () => <div>Not Found</div>;
+
+route('/some-resource', async () => {
+  // some logic to determine if the resource is not found
+  
+  response.status = 404;
+  response.headers.set('Cache-Control', 'no-store');
+
+  return <NotFound />;
+});
+```
