@@ -1,6 +1,10 @@
 #!/bin/bash
 
 set -e  # Stop on first error
+set -x # Debugging: print all commands
+
+echo "DEBUG: Initial state of sdk/sdk/package.json:"
+cat ./package.json | grep -A 10 -B 10 "dependencies"
 
 SUCCESS_FLAG=false # Default to failure. This will be checked by the cleanup trap.
 
@@ -115,6 +119,9 @@ else
   pnpm install --frozen-lockfile --ignore-scripts
 fi
 
+echo "DEBUG: sdk/sdk/package.json after initial pnpm install:"
+cat ./package.json | grep -A 10 -B 10 "dependencies"
+
 echo -e "\n🏗️  Building package..."
 if [[ "$DRY_RUN" == true ]]; then
   echo "  [DRY RUN] NOTE: Forcing build to allow for artifact verification."
@@ -168,6 +175,9 @@ else
   git commit -m "chore(release): $NEW_VERSION"
 fi
 
+echo "DEBUG: sdk/sdk/package.json after version bump:"
+cat ./package.json | grep -A 10 -B 10 "dependencies"
+
 TAG_NAME="v$NEW_VERSION"
 if [[ -n "$GITHUB_ENV" ]]; then
   echo "TAG_NAME=$TAG_NAME" >> "$GITHUB_ENV"
@@ -190,6 +200,9 @@ if [ ! -f "$TARBALL_PATH" ]; then
   exit 1
 fi
 echo "  ✅ Packed to $TARBALL_PATH"
+
+echo "DEBUG: sdk/sdk/package.json before smoke test:"
+cat ./package.json | grep -A 10 -B 10 "dependencies"
 
 echo -e "\n🔬 Smoke testing package..."
 # The smoke test runs in both normal and dry-run modes.
