@@ -7,6 +7,8 @@ import { ensureAliasArray } from "./ensureAliasArray.mjs";
 
 const log = debug("rwsdk:vite:react-conditions-resolver-plugin");
 
+const REACT_PREFIXES = ["react", "react-dom", "react-server-dom-webpack"];
+
 export const ENV_REACT_IMPORTS = {
   worker: [
     "react",
@@ -49,14 +51,61 @@ export const ENV_RESOLVERS = {
   }),
 };
 
-export const ENV_IMPORT_MAPPINGS = Object.fromEntries(
-  Object.keys(ENV_RESOLVERS).map((env) => [
-    env,
-    resolveEnvImportMappings(env as keyof typeof ENV_RESOLVERS),
-  ]),
-);
+function resolveReactImport(
+  id: string,
+  envName: keyof typeof ENV_RESOLVERS,
+  projectRootDir: string,
+  isReactImportKnown = false,
+): string | undefined {
+  if (!isReactImportKnown) {
+    const isReactImport = REACT_PREFIXES.some(
+      (prefix) => id === prefix || id.startsWith(`${prefix}/`),
+    );
+    if (!isReactImport) {
+      return undefined;
+    }
+  }
 
-function resolveEnvImportMappings(env: keyof typeof ENV_RESOLVERS) {
+  let resolved: string | undefined;
+
+  try {
+    resolved = ENV_RESOLVERS[envName](projectRootDir, id) || undefined;
+    process.env.VERBOSE &&
+      log(
+        "Successfully resolved %s to %s for env=%s from project root",
+        id,
+        resolved,
+        envName,
+      );
+  } catch {
+    process.env.VERBOSE &&
+      log(
+        "Failed to resolve %s for env=%s from project root, trying ROOT_DIR",
+        id,
+        envName,
+      );
+    try {
+      resolved = ENV_RESOLVERS[envName](ROOT_DIR, id) || undefined;
+      process.env.VERBOSE &&
+        log(
+          "Successfully resolved %s to %s for env=%s from rwsdk root",
+          id,
+          resolved,
+          envName,
+        );
+    } catch {
+      process.env.VERBOSE &&
+        log("Failed to resolve %s for env=%s", id, envName);
+    }
+  }
+
+  return resolved;
+}
+
+function resolveEnvImportMappings(
+  env: keyof typeof ENV_RESOLVERS,
+  projectRootDir: string,
+) {
   process.env.VERBOSE &&
     log("Resolving environment import mappings for env=%s", env);
 
@@ -64,25 +113,12 @@ function resolveEnvImportMappings(env: keyof typeof ENV_RESOLVERS) {
   const reactImports = ENV_REACT_IMPORTS[env];
 
   for (const importRequest of reactImports) {
-    process.env.VERBOSE &&
-      log("Resolving import request=%s for env=%s", importRequest, env);
-
-    let resolved: string | false = false;
-
-    try {
-      resolved = ENV_RESOLVERS[env](ROOT_DIR, importRequest);
-      process.env.VERBOSE &&
-        log(
-          "Successfully resolved %s to %s for env=%s",
-          importRequest,
-          resolved,
-          env,
-        );
-    } catch {
-      process.env.VERBOSE &&
-        log("Failed to resolve %s for env=%s", importRequest, env);
-    }
-
+    const resolved = resolveReactImport(
+      importRequest,
+      env,
+      projectRootDir,
+      true,
+    );
     if (resolved) {
       mappings.set(importRequest, resolved);
       log("Added mapping for %s -> %s in env=%s", importRequest, resolved, env);
@@ -97,57 +133,80 @@ function resolveEnvImportMappings(env: keyof typeof ENV_RESOLVERS) {
   return mappings;
 }
 
-function createEsbuildResolverPlugin(envName: string) {
-  const mappings = ENV_IMPORT_MAPPINGS[envName];
-
-  if (!mappings) {
-    return null;
-  }
-
-  return {
-    name: `rwsdk:react-conditions-resolver-esbuild-${envName}`,
-    setup(build: any) {
-      build.onResolve({ filter: /.*/ }, (args: any) => {
-        process.env.VERBOSE &&
-          log(
-            "ESBuild resolving %s for env=%s, args=%O",
-            args.path,
-            envName,
-            args,
-          );
-
-        const resolved = mappings.get(args.path);
-
-        if (resolved && args.importer !== "") {
-          process.env.VERBOSE &&
-            log(
-              "ESBuild resolving %s -> %s for env=%s",
-              args.path,
-              resolved,
-              envName,
-            );
-          if (args.path === "react-server-dom-webpack/client.edge") {
-            return;
-          }
-          return {
-            path: resolved,
-          };
-        } else {
-          process.env.VERBOSE &&
-            log(
-              "ESBuild no resolution found for %s for env=%s",
-              args.path,
-              envName,
-            );
-        }
-      });
-    },
-  };
-}
-
-export const reactConditionsResolverPlugin = (): Plugin[] => {
+export const reactConditionsResolverPlugin = ({
+  projectRootDir,
+}: {
+  projectRootDir: string;
+}): Plugin[] => {
   log("Initializing react conditions resolver plugin");
   let isBuild = false;
+
+  const ENV_IMPORT_MAPPINGS = Object.fromEntries(
+    Object.keys(ENV_RESOLVERS).map((env) => [
+      env,
+      resolveEnvImportMappings(
+        env as keyof typeof ENV_RESOLVERS,
+        projectRootDir,
+      ),
+    ]),
+  );
+
+  function createEsbuildResolverPlugin(
+    envName: string,
+    mappings: Map<string, string>,
+  ) {
+    if (!mappings) {
+      return null;
+    }
+
+    return {
+      name: `rwsdk:react-conditions-resolver-esbuild-${envName}`,
+      setup(build: any) {
+        build.onResolve({ filter: /.*/ }, (args: any) => {
+          process.env.VERBOSE &&
+            log(
+              "ESBuild resolving %s for env=%s, args=%O",
+              args.path,
+              envName,
+              args,
+            );
+
+          let resolved: string | undefined = mappings.get(args.path);
+
+          if (!resolved) {
+            resolved = resolveReactImport(
+              args.path,
+              envName as keyof typeof ENV_RESOLVERS,
+              projectRootDir,
+            );
+          }
+
+          if (resolved && args.importer !== "") {
+            process.env.VERBOSE &&
+              log(
+                "ESBuild resolving %s -> %s for env=%s",
+                args.path,
+                resolved,
+                envName,
+              );
+            if (args.path === "react-server-dom-webpack/client.edge") {
+              return;
+            }
+            return {
+              path: resolved,
+            };
+          } else {
+            process.env.VERBOSE &&
+              log(
+                "ESBuild no resolution found for %s for env=%s",
+                args.path,
+                envName,
+              );
+          }
+        });
+      },
+    };
+  }
 
   return [
     {
@@ -178,7 +237,10 @@ export const reactConditionsResolverPlugin = (): Plugin[] => {
 
           const envConfig = (config as any).environments[envName];
 
-          const esbuildPlugin = createEsbuildResolverPlugin(envName);
+          const esbuildPlugin = createEsbuildResolverPlugin(
+            envName,
+            mappings as Map<string, string>,
+          );
           if (esbuildPlugin && mappings) {
             envConfig.optimizeDeps ??= {};
             envConfig.optimizeDeps.esbuildOptions ??= {};
@@ -200,7 +262,7 @@ export const reactConditionsResolverPlugin = (): Plugin[] => {
 
           const aliases = ensureAliasArray(envConfig);
 
-          for (const [find, replacement] of mappings) {
+          for (const [find, replacement] of mappings as Map<string, string>) {
             const findRegex = new RegExp(
               `^${find.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
             );
@@ -211,7 +273,7 @@ export const reactConditionsResolverPlugin = (): Plugin[] => {
           log(
             "Environment %s configured with %d aliases and %d optimizeDeps includes",
             envName,
-            mappings.size,
+            (mappings as Map<string, string>).size,
             reactImports.length,
           );
         }
@@ -242,7 +304,8 @@ export const reactConditionsResolverPlugin = (): Plugin[] => {
             importer,
           );
 
-        const mappings = ENV_IMPORT_MAPPINGS[envName];
+        const mappings =
+          ENV_IMPORT_MAPPINGS[envName as keyof typeof ENV_IMPORT_MAPPINGS];
 
         if (!mappings) {
           process.env.VERBOSE &&
@@ -250,7 +313,17 @@ export const reactConditionsResolverPlugin = (): Plugin[] => {
           return;
         }
 
-        const resolved = mappings.get(id);
+        let resolved: string | undefined = (
+          mappings as Map<string, string>
+        ).get(id);
+
+        if (!resolved) {
+          resolved = resolveReactImport(
+            id,
+            envName as keyof typeof ENV_RESOLVERS,
+            projectRootDir,
+          );
+        }
 
         if (resolved) {
           log("Resolved %s -> %s for env=%s", id, resolved, envName);

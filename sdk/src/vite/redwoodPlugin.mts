@@ -112,7 +112,7 @@ export const redwoodPlugin = async (
       serverFiles,
       projectRootDir,
     }),
-    reactConditionsResolverPlugin(),
+    reactConditionsResolverPlugin({ projectRootDir }),
     tsconfigPaths({ root: projectRootDir }),
     shouldIncludeCloudflarePlugin
       ? cloudflare({
