@@ -5,6 +5,7 @@ import { cloudflare } from "@cloudflare/vite-plugin";
 
 import { devServerConstantPlugin } from "./devServerConstant.mjs";
 import { hasOwnCloudflareVitePlugin } from "./hasOwnCloudflareVitePlugin.mjs";
+import { hasOwnReactVitePlugin } from "./hasOwnReactVitePlugin.mjs";
 
 import reactPlugin from "@vitejs/plugin-react";
 import tsconfigPaths from "vite-tsconfig-paths";
@@ -32,6 +33,7 @@ export type RedwoodPluginOptions = {
   silent?: boolean;
   rootDir?: string;
   includeCloudflarePlugin?: boolean;
+  includeReactPlugin?: boolean;
   configPath?: string;
   entry?: {
     client?: string | string[];
@@ -80,6 +82,10 @@ export const redwoodPlugin = async (
     options.includeCloudflarePlugin ??
     !(await hasOwnCloudflareVitePlugin({ rootProjectDir: projectRootDir }));
 
+  const shouldIncludeReactPlugin =
+    options.includeReactPlugin ??
+    !(await hasOwnReactVitePlugin({ rootProjectDir: projectRootDir }));
+
   // context(justinvdm, 31 Mar 2025): We assume that if there is no .wrangler directory,
   // then this is fresh install, and we run `npm run dev:init` here.
   if (
@@ -127,7 +133,7 @@ export const redwoodPlugin = async (
       viteEnvironment: { name: "worker" },
       workerEntryPathname,
     }),
-    reactPlugin(),
+    shouldIncludeReactPlugin ? reactPlugin() : [],
     directivesPlugin({
       projectRootDir,
       clientFiles,
