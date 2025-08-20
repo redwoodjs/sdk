@@ -269,7 +269,7 @@ echo "  - Running smoke tests..."
 # We pass the path to the temp project directory where the minimal starter was installed.
 # We also specify an artifact directory *within* the temp directory.
 # todo(justinvdm, 11 Aug 2025): Fix style test flakiness
-if ! VERBOSE=1 DEBUG='rwsdk:vite:react-conditions-resolver-plugin' pnpm smoke-test --path="$PROJECT_DIR" --no-sync --artifact-dir="$TEMP_DIR/artifacts" --skip-style-tests --bail; then
+if ! VERBOSE=1 DEBUG='rwsdk:vite:react-conditions-resolver-plugin' pnpm smoke-test --path="$PROJECT_DIR" --no-sync --artifact-dir="$TEMP_DIR/artifacts" --skip-style-tests --bail --keep; then
   echo "  ❌ Smoke tests failed."
   exit 1
 fi
