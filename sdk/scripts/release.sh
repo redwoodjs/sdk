@@ -160,10 +160,10 @@ fi
 
 echo -e "\n📦 Planning version bump to $NEW_VERSION ($VERSION_TYPE)..."
 if [[ "$DRY_RUN" == true ]]; then
-  echo "  [DRY RUN] sed -i '' \"s/\\\"version\\\": \\\"[^\\\"]*\\\"/\\\"version\\\": \\\"$NEW_VERSION\\\"/\" package.json"
+  echo "  [DRY RUN] sed -i.bak \"s/\\\"version\\\": \\\"[^\\\"]*\\\"/\\\"version\\\": \\\"$NEW_VERSION\\\"/\" package.json && rm package.json.bak"
   echo "  [DRY RUN] Git commit version change"
 else
-  sed -i '' "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" package.json
+  sed -i.bak "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" package.json && rm package.json.bak
   git add package.json
   git commit -m "chore(release): $NEW_VERSION"
 fi
@@ -319,7 +319,7 @@ else
         if [[ "$DRY_RUN" == true ]]; then
           echo "     [DRY RUN] Update to $NEW_VERSION"
         else
-          (cd "$PROJECT_DIR" && sed -i '' "s/\"$DEPENDENCY_NAME\": \"[^\"]*\"/\"$DEPENDENCY_NAME\": \"$NEW_VERSION\"/" package.json)
+          (cd "$PROJECT_DIR" && sed -i.bak "s/\"$DEPENDENCY_NAME\": \"[^\"]*\"/\"$DEPENDENCY_NAME\": \"$NEW_VERSION\"/" package.json && rm package.json.bak)
         fi
       fi
     fi
