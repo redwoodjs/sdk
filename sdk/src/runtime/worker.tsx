@@ -16,6 +16,7 @@ import { Route, type RwContext, defineRoutes } from "./lib/router";
 import { generateNonce } from "./lib/utils";
 import { ssrWebpackRequire } from "./imports/worker";
 import { getPublicRequestInfo } from "./requestInfo/publicRequestInfo";
+import { isClientReference } from "./lib/clientReferences";
 
 declare global {
   type Env = {
@@ -280,7 +281,3 @@ export const DefaultDocument: React.FC<{ children: React.ReactNode }> = ({
     </body>
   </html>
 );
-
-const isClientReference = (Component: React.FC<any>) => {
-  return Object.prototype.hasOwnProperty.call(Component, "$$isClientReference");
-};

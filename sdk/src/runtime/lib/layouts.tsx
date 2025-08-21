@@ -51,13 +51,13 @@ export const wrapComponentWithLayouts = (
   // components being able to return promises
   const CastComponent = Component as React.FC<any>;
 
-  const LayoutWrappedComponent = (propsWithRequestInfo: RequestInfo) => {
-    const componentProps = isRouteClientComponent
-      ? getPublicRequestInfo(propsWithRequestInfo)
-      : propsWithRequestInfo;
+  const LayoutWrappedComponent = (props: any) => (
+    <CompositeLayout children={<CastComponent {...props} />} />
+  );
 
-    return <CompositeLayout children={<CastComponent {...componentProps} />} />;
-  };
+  if (isRouteClientComponent) {
+    LayoutWrappedComponent.__rwsdk__is_client_wrapped_component = true;
+  }
 
   return LayoutWrappedComponent;
 };
