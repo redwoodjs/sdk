@@ -13,16 +13,17 @@ The React Compiler can optimize your components automatically. RedwoodSDK works 
 
 ## Install
 
-Install the React Compiler Babel plugin, runtime, and Vite's React plugin.
+First, you'll need to be on the latest pre-release of RedwoodSDK:
 
 ```bash
-# pnpm
-pnpm add -D @vitejs/plugin-react babel-plugin-react-compiler
-pnpm add react-compiler-runtime
+pnpm add rwsdk@pre
+```
 
-# npm
-npm i -D @vitejs/plugin-react babel-plugin-react-compiler
-npm i react-compiler-runtime
+Next, install the React Compiler Babel plugin, and Vite's React plugin.
+
+```bash
+pnpm add react@canary react-dom@canary react-server-dom-webpack@canary
+pnpm add -D babel-plugin-react-compiler@rc @vitejs/plugin-react
 ```
 
 <Aside type="tip" title="Versions">
@@ -67,7 +68,6 @@ react({
 
 ## Troubleshooting
 
-- "Cannot find module 'react/compiler-runtime'": install the runtime with `pnpm add react-compiler-runtime` (or `npm i react-compiler-runtime`). This resolves the import injected by the compiler plugin. See the linked issue comment above.
 - After enabling, if HMR behaves oddly, clear Vite cache: `rm -rf node_modules/.vite` and restart the dev server.
 
 ## Verify Your Setup
