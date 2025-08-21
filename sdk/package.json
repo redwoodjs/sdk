@@ -155,9 +155,9 @@
   },
   "peerDependencies": {
     "vite": "^6.2.6",
-    "react": ">=19.2.0-0 || >=19.2.0",
-    "react-dom": ">=19.2.0-0 || >=19.2.0",
-    "react-server-dom-webpack": ">=19.2.0-0 || >=19.2.0"
+    "react": ">=19.2.0-0 <20",
+    "react-dom": ">=19.2.0-0 <20",
+    "react-server-dom-webpack": ">=19.2.0-0 <20"
   },
   "optionalDependencies": {
     "react": "19.2.0-canary-39cad7af-20250411",
