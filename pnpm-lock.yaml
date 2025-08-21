@@ -140,18 +140,9 @@ importers:
       puppeteer-core:
         specifier: ^22.8.1
         version: 22.15.0
-      react:
-        specifier: 19.2.0-canary-39cad7af-20250411
-        version: 19.2.0-canary-39cad7af-20250411
-      react-dom:
-        specifier: 19.2.0-canary-39cad7af-20250411
-        version: 19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411)
       react-is:
         specifier: ^19.0.0
         version: 19.0.0
-      react-server-dom-webpack:
-        specifier: 19.2.0-canary-39cad7af-20250411
-        version: 19.2.0-canary-39cad7af-20250411(react-dom@19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411))(react@19.2.0-canary-39cad7af-20250411)(webpack@5.97.1)
       rsc-html-stream:
         specifier: ^0.0.6
         version: 0.0.6
@@ -176,6 +167,16 @@ importers:
       wrangler:
         specifier: ^4.20.5
         version: 4.20.5(@cloudflare/workers-types@4.20250407.0)
+    optionalDependencies:
+      react:
+        specifier: 19.2.0-canary-39cad7af-20250411
+        version: 19.2.0-canary-39cad7af-20250411
+      react-dom:
+        specifier: 19.2.0-canary-39cad7af-20250411
+        version: 19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411)
+      react-server-dom-webpack:
+        specifier: 19.2.0-canary-39cad7af-20250411
+        version: 19.2.0-canary-39cad7af-20250411(react-dom@19.2.0-canary-39cad7af-20250411(react@19.2.0-canary-39cad7af-20250411))(react@19.2.0-canary-39cad7af-20250411)(webpack@5.97.1)
     devDependencies:
       '@types/debug':
         specifier: ^4.1.12
