@@ -144,10 +144,7 @@
     "picocolors": "^1.1.1",
     "proper-lockfile": "^4.1.2",
     "puppeteer-core": "^22.8.1",
-    "react": "19.2.0-canary-39cad7af-20250411",
-    "react-dom": "19.2.0-canary-39cad7af-20250411",
     "react-is": "^19.0.0",
-    "react-server-dom-webpack": "19.2.0-canary-39cad7af-20250411",
     "rsc-html-stream": "^0.0.6",
     "tmp-promise": "^3.0.3",
     "ts-morph": "^25.0.1",
@@ -158,9 +155,14 @@
   },
   "peerDependencies": {
     "vite": "^6.2.6",
-    "react": ">=19.2.0-0 || >=19.2.0",
-    "react-dom": ">=19.2.0-0 || >=19.2.0",
-    "react-server-dom-webpack": ">=19.2.0-0 || >=19.2.0"
+    "react": ">=19.2.0-0 <20",
+    "react-dom": ">=19.2.0-0 <20",
+    "react-server-dom-webpack": ">=19.2.0-0 <20"
+  },
+  "optionalDependencies": {
+    "react": "19.2.0-canary-39cad7af-20250411",
+    "react-dom": "19.2.0-canary-39cad7af-20250411",
+    "react-server-dom-webpack": "19.2.0-canary-39cad7af-20250411"
   },
   "peerDependenciesMeta": {
     "react": {
