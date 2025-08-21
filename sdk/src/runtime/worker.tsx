@@ -15,6 +15,7 @@ import { RequestInfo, DefaultAppContext } from "./requestInfo/types";
 import { Route, type RwContext, defineRoutes } from "./lib/router";
 import { generateNonce } from "./lib/utils";
 import { ssrWebpackRequire } from "./imports/worker";
+import { getPublicRequestInfo } from "./requestInfo/publicRequestInfo";
 
 declare global {
   type Env = {
@@ -93,9 +94,7 @@ export const defineApp = <
         ) => {
           let pageElement;
           if (isClientReference(Page)) {
-            const { ctx, params } = requestInfo; // context(justinvdm, 25 Feb 2025): If the page is a client reference, we need to avoid passing
-            // down props the client shouldn't get (e.g. env). For safety, we pick the allowed props explicitly.
-            pageElement = <Page ctx={ctx} params={params} />;
+            pageElement = <Page {...getPublicRequestInfo(requestInfo)} />;
           } else {
             pageElement = <Page {...requestInfo} />;
           }

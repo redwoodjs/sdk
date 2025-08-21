@@ -2,6 +2,8 @@ import React from "react";
 import { isValidElementType } from "react-is";
 import { RequestInfo } from "../requestInfo/types";
 import type { Kysely } from "kysely";
+import { isClientReference } from "./clientReferences";
+import { wrapComponentWithLayouts } from "./layouts";
 
 export type DocumentProps<T extends RequestInfo = RequestInfo> = T & {
   children: React.ReactNode;
@@ -33,7 +35,7 @@ type RouteFunction<T extends RequestInfo = RequestInfo> = (
 
 type MaybePromise<T> = T | Promise<T>;
 
-type RouteComponent<T extends RequestInfo = RequestInfo> = (
+export type RouteComponent<T extends RequestInfo = RequestInfo> = (
   requestInfo: T,
 ) => MaybePromise<React.JSX.Element | Response | void>;
 
@@ -286,12 +288,13 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
       ): Promise<Response> {
         if (isRouteComponent(component)) {
           const requestInfo = getRequestInfo();
-          const WrappedComponent = wrapWithLayouts(
+
+          const WrappedComponent = wrapComponentWithLayouts(
+            requestInfo,
             wrapHandlerToThrowResponses(
               component as RouteComponent<T>,
-            ) as React.FC,
-            layouts,
-            requestInfo,
+            ) as RouteComponent,
+            layouts as React.FC<LayoutProps>[],
           );
 
           if (!isClientReference(component)) {
@@ -301,7 +304,11 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
             requestInfo.rw.pageRouteResolved = Promise.withResolvers();
           }
 
-          return await renderPage(requestInfo, WrappedComponent, onError);
+          return await renderPage(
+            requestInfo,
+            WrappedComponent as React.FC<any>,
+            onError,
+          );
         }
 
         // If the last handler is not a component, handle as middleware result (no layouts)
@@ -359,42 +366,6 @@ export function prefix<T extends RequestInfo = RequestInfo>(
       ...(r.layouts && { layouts: r.layouts }),
     };
   });
-}
-
-function wrapWithLayouts<T extends RequestInfo = RequestInfo>(
-  Component: React.FC,
-  layouts: React.FC<LayoutProps<T>>[] = [],
-  requestInfo: T,
-): React.FC {
-  if (layouts.length === 0) {
-    return Component;
-  }
-
-  // Check if the final route component is a client component
-  const isRouteClientComponent = Object.prototype.hasOwnProperty.call(
-    Component,
-    "$$isClientReference",
-  );
-
-  // Create nested layout structure - layouts[0] should be outermost, so use reduceRight
-  return layouts.reduceRight((WrappedComponent, Layout) => {
-    const Wrapped: React.FC = (props) => {
-      const isClientComponent = Object.prototype.hasOwnProperty.call(
-        Layout,
-        "$$isClientReference",
-      );
-
-      return React.createElement(Layout, {
-        children: React.createElement(
-          WrappedComponent,
-          isRouteClientComponent ? {} : props,
-        ),
-        // Only pass requestInfo to server components to avoid serialization issues
-        ...(isClientComponent ? {} : { requestInfo }),
-      });
-    };
-    return Wrapped;
-  }, Component);
 }
 
 // context(justinvdm, 31 Jul 2025): We need to wrap the handler's that might
@@ -487,7 +458,3 @@ function isRouteComponent(handler: any) {
     isClientReference(handler)
   );
 }
-
-export const isClientReference = (value: any) => {
-  return Object.prototype.hasOwnProperty.call(value, "$$isClientReference");
-};
