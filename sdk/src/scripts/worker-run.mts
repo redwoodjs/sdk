@@ -19,15 +19,24 @@ export const runWorkerScript = async (relativeScriptPath: string) => {
     console.error("Error: Script path is required");
     console.log("\nUsage:");
     console.log("  npm run worker:run <script-path>");
-    console.log("\nExample:");
-    console.log("  npm run worker:run src/scripts/seed.ts\n");
+    console.log("\nOptions:");
+    console.log(
+      "  RWSDK_WRANGLER_CONFIG      Environment variable for config path",
+    );
+    console.log("\nExamples:");
+    console.log("  npm run worker:run src/scripts/seed.ts");
+    console.log(
+      "  RWSDK_WRANGLER_CONFIG=custom.toml npm run worker:run src/scripts/seed.ts\n",
+    );
     process.exit(1);
   }
 
   const scriptPath = resolve(process.cwd(), relativeScriptPath);
   debug("Running worker script: %s", scriptPath);
 
-  const workerConfigPath = await findWranglerConfig(process.cwd());
+  const workerConfigPath = process.env.RWSDK_WRANGLER_CONFIG
+    ? resolve(process.cwd(), process.env.RWSDK_WRANGLER_CONFIG)
+    : await findWranglerConfig(process.cwd());
   debug("Using wrangler config: %s", workerConfigPath);
 
   const workerConfig = unstable_readConfig({

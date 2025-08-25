@@ -61,7 +61,10 @@ export const redwoodPlugin = async (
   const projectRootDir = process.cwd();
 
   const workerConfigPath =
-    options.configPath ?? (await findWranglerConfig(projectRootDir));
+    options.configPath ??
+    (process.env.RWSDK_WRANGLER_CONFIG
+      ? resolve(projectRootDir, process.env.RWSDK_WRANGLER_CONFIG)
+      : await findWranglerConfig(projectRootDir));
 
   const workerEntryPathname = await determineWorkerEntryPathname(
     projectRootDir,
