@@ -1,4 +1,12 @@
-import { Project, Node, SyntaxKind, ImportDeclaration } from "ts-morph";
+import {
+  Project,
+  Node,
+  SyntaxKind,
+  ImportDeclaration,
+  CallExpression,
+  CommentRange,
+  ObjectLiteralExpression,
+} from "ts-morph";
 import { type Plugin } from "vite";
 import { readFile } from "node:fs/promises";
 import { pathExists } from "fs-extra";
@@ -125,6 +133,44 @@ function transformScriptImports(
   }
 }
 
+// Types for collecting modifications before applying them
+interface LiteralValueModification {
+  type: "literalValue";
+  node: Node;
+  value: string;
+}
+
+interface ReplaceTextModification {
+  type: "replaceText";
+  node: Node;
+  text: string;
+}
+
+interface AddPropertyModification {
+  type: "addProperty";
+  node: ObjectLiteralExpression;
+  name: string;
+  initializer: string;
+}
+
+interface WrapCallExprModification {
+  type: "wrapCallExpr";
+  sideEffects: string;
+  pureCommentText?: string;
+  leadingTriviaText?: string;
+  fullStart: number;
+  end: number;
+  // Store the current state to reconstruct during application
+  callExprText: string;
+  leadingWhitespace: string;
+}
+
+type Modification =
+  | LiteralValueModification
+  | ReplaceTextModification
+  | AddPropertyModification
+  | WrapCallExprModification;
+
 export async function transformJsxScriptTagsCode(
   code: string,
   manifest: Record<string, any> = {},
@@ -138,8 +184,12 @@ export async function transformJsxScriptTagsCode(
   const project = new Project({ useInMemoryFileSystem: true });
   const sourceFile = project.createSourceFile("temp.tsx", code);
 
-  let hasModifications = false;
+  const modifications: Modification[] = [];
   const needsRequestInfoImportRef = { value: false };
+  const entryPointsPerCallExpr = new Map<
+    CallExpression,
+    { callExpr: CallExpression; sideEffects: string; pureCommentText?: string }
+  >();
 
   // Check for existing imports up front
   let hasRequestInfoImport = false;
@@ -239,8 +289,11 @@ export async function transformJsxScriptTagsCode(
                     const path = srcValue.slice(1); // Remove leading slash
                     if (manifest[path]) {
                       const transformedSrc = `/${manifest[path].file}`;
-                      initializer.setLiteralValue(transformedSrc);
-                      hasModifications = true;
+                      modifications.push({
+                        type: "literalValue",
+                        node: initializer,
+                        value: transformedSrc,
+                      });
                     }
                   }
                 }
@@ -271,16 +324,15 @@ export async function transformJsxScriptTagsCode(
                   const isTemplateLiteral =
                     Node.isNoSubstitutionTemplateLiteral(initializer);
 
-                  if (isTemplateLiteral) {
-                    // Simply wrap the transformed content in backticks
-                    initializer.replaceWithText("`" + transformedContent + "`");
-                  } else {
-                    initializer.replaceWithText(
-                      JSON.stringify(transformedContent),
-                    );
-                  }
+                  const replacementText = isTemplateLiteral
+                    ? "`" + transformedContent + "`"
+                    : JSON.stringify(transformedContent);
 
-                  hasModifications = true;
+                  modifications.push({
+                    type: "replaceText",
+                    node: initializer,
+                    text: replacementText,
+                  });
                 }
               }
 
@@ -315,8 +367,10 @@ export async function transformJsxScriptTagsCode(
             !hasDangerouslySetInnerHTML &&
             (hasStringLiteralChildren || hasSrc)
           ) {
-            // Add nonce property to the props object
-            propsArg.addPropertyAssignment({
+            // Collect nonce property addition
+            modifications.push({
+              type: "addProperty",
+              node: propsArg,
               name: "nonce",
               initializer: "requestInfo.rw.nonce",
             });
@@ -324,8 +378,6 @@ export async function transformJsxScriptTagsCode(
             if (!hasRequestInfoImport) {
               needsRequestInfoImportRef.value = true;
             }
-
-            hasModifications = true;
           }
 
           // Transform href if this is a preload link
@@ -355,15 +407,21 @@ export async function transformJsxScriptTagsCode(
                     ? "`"
                     : originalText.charAt(0);
 
-                  // Preserve the original quote style
+                  // Preserve the original quote style and prepare replacement text
+                  let replacementText: string;
                   if (isTemplateLiteral) {
-                    initializer.replaceWithText(`\`/${transformedHref}\``);
+                    replacementText = `\`/${transformedHref}\``;
                   } else if (quote === '"') {
-                    initializer.replaceWithText(`"/${transformedHref}"`);
+                    replacementText = `"/${transformedHref}"`;
                   } else {
-                    initializer.replaceWithText(`'/${transformedHref}'`);
+                    replacementText = `'/${transformedHref}'`;
                   }
-                  hasModifications = true;
+
+                  modifications.push({
+                    type: "replaceText",
+                    node: initializer,
+                    text: replacementText,
+                  });
                 }
               }
             }
@@ -384,65 +442,128 @@ export async function transformJsxScriptTagsCode(
         const pureComment = leadingCommentRanges.find((r) =>
           r.getText().includes("@__PURE__"),
         );
-        const callExprText = callExpr.getText();
 
-        if (pureComment) {
-          const pureCommentText = pureComment.getText();
-          const newText = `(
-            ${sideEffects},
-            ${pureCommentText} ${callExprText}
-          )`;
+        // Store position and static data for later processing
+        const wrapInfo = {
+          callExpr: callExpr,
+          sideEffects: sideEffects,
+          pureCommentText: pureComment?.getText(),
+        };
 
-          const fullText = callExpr.getFullText();
-          const leadingTriviaText = fullText.substring(
-            0,
-            fullText.length - callExprText.length,
-          );
-          const newLeadingTriviaText = leadingTriviaText.replace(
-            pureCommentText,
-            "",
-          );
-
-          // By replacing from `getFullStart`, we remove the original node and all its leading trivia
-          // and replace it with our manually reconstructed string.
-          // This should correctly move the pure comment and preserve other comments and whitespace.
-          callExpr
-            .getSourceFile()
-            .replaceText(
-              [callExpr.getFullStart(), callExpr.getEnd()],
-              newLeadingTriviaText + newText,
-            );
-        } else {
-          callExpr.replaceWithText(
-            `(
-              ${sideEffects},
-              ${callExprText}
-            )`,
-          );
+        // We'll collect the actual wrap modifications after simple modifications are applied
+        if (!entryPointsPerCallExpr.has(callExpr)) {
+          entryPointsPerCallExpr.set(callExpr, wrapInfo);
         }
+
         needsRequestInfoImportRef.value = true;
-        hasModifications = true;
       }
     });
 
-  // Add requestInfo import if needed and not already imported
-  if (needsRequestInfoImportRef.value && hasModifications) {
-    if (sdkWorkerImportDecl) {
-      // Module is imported but need to add requestInfo
-      if (!hasRequestInfoImport) {
-        sdkWorkerImportDecl.addNamedImport("requestInfo");
+  // Apply all collected modifications
+  if (modifications.length > 0 || entryPointsPerCallExpr.size > 0) {
+    // Apply modifications in the right order to avoid invalidating nodes
+    // Apply simple modifications first (these are less likely to invalidate other nodes)
+    for (const mod of modifications) {
+      if (mod.type === "literalValue") {
+        (mod.node as any).setLiteralValue(mod.value);
+      } else if (mod.type === "replaceText") {
+        (mod.node as any).replaceWithText(mod.text);
+      } else if (mod.type === "addProperty") {
+        mod.node.addPropertyAssignment({
+          name: mod.name,
+          initializer: mod.initializer,
+        });
       }
-    } else {
-      // Add new import declaration
-      sourceFile.addImportDeclaration({
-        moduleSpecifier: "rwsdk/worker",
-        namedImports: ["requestInfo"],
+    }
+
+    // Apply CallExpr wrapping last (these can invalidate other nodes)
+    // Now collect the wrap modifications with fresh data after simple modifications
+    const wrapModifications: WrapCallExprModification[] = [];
+
+    for (const [callExpr, wrapInfo] of entryPointsPerCallExpr) {
+      const fullStart = callExpr.getFullStart();
+      const end = callExpr.getEnd();
+      const callExprText = callExpr.getText();
+      const fullText = callExpr.getFullText();
+
+      // Extract leading whitespace/newlines before the call expression
+      const leadingWhitespace = fullText.substring(
+        0,
+        fullText.length - callExprText.length,
+      );
+
+      let pureCommentText: string | undefined;
+      let leadingTriviaText: string | undefined;
+
+      if (wrapInfo.pureCommentText) {
+        pureCommentText = wrapInfo.pureCommentText;
+        leadingTriviaText = leadingWhitespace;
+      }
+
+      wrapModifications.push({
+        type: "wrapCallExpr",
+        sideEffects: wrapInfo.sideEffects,
+        pureCommentText: pureCommentText,
+        leadingTriviaText: leadingTriviaText,
+        fullStart: fullStart,
+        end: end,
+        callExprText: callExprText,
+        leadingWhitespace: leadingWhitespace,
       });
     }
-  }
 
-  // Return the transformed code only if modifications were made
-  if (hasModifications) {
+    // Sort by position in reverse order to avoid invalidating later nodes
+    wrapModifications.sort((a, b) => b.fullStart - a.fullStart);
+
+    for (const mod of wrapModifications) {
+      if (mod.pureCommentText && mod.leadingTriviaText) {
+        const newText = `(
+${mod.sideEffects},
+${mod.pureCommentText} ${mod.callExprText}
+)`;
+
+        const newLeadingTriviaText = mod.leadingTriviaText.replace(
+          mod.pureCommentText,
+          "",
+        );
+
+        // By replacing from `getFullStart`, we remove the original node and all its leading trivia
+        // and replace it with our manually reconstructed string.
+        // This should correctly move the pure comment and preserve other comments and whitespace.
+        sourceFile.replaceText(
+          [mod.fullStart, mod.end],
+          newLeadingTriviaText + newText,
+        );
+      } else {
+        // Extract just the newlines and basic indentation, ignore extra padding
+        const leadingNewlines = mod.leadingWhitespace.match(/\n\s*/)?.[0] || "";
+
+        sourceFile.replaceText(
+          [mod.fullStart, mod.end],
+          `${leadingNewlines}(
+${mod.sideEffects},
+${mod.callExprText}
+)`,
+        );
+      }
+    }
+
+    // Add requestInfo import if needed and not already imported
+    if (needsRequestInfoImportRef.value) {
+      if (sdkWorkerImportDecl) {
+        // Module is imported but need to add requestInfo
+        if (!hasRequestInfoImport) {
+          sdkWorkerImportDecl.addNamedImport("requestInfo");
+        }
+      } else {
+        // Add new import declaration
+        sourceFile.addImportDeclaration({
+          moduleSpecifier: "rwsdk/worker",
+          namedImports: ["requestInfo"],
+        });
+      }
+    }
+
     return {
       code: sourceFile.getFullText(),
       map: null,
@@ -471,6 +592,9 @@ export const transformJsxScriptTagsPlugin = ({
         !id.includes("node_modules") &&
         hasJsxFunctions(code)
       ) {
+        log("Transforming JSX script tags in %s", id);
+        process.env.VERBOSE && log("Code:\n%s", code);
+
         const manifest = isBuild ? await readManifest(manifestPath) : {};
         const result = await transformJsxScriptTagsCode(code, manifest);
         if (result) {
