@@ -105,13 +105,13 @@ nonce: requestInfo.rw.nonce
 jsx("script", {
 type: "module",
 children: \`
-// Some comments here
-const init = async () => {
-await import('/assets/entry-e5f6g7h8.js');
-console.log('initialized');
-};
-init();
-\`,
+          // Some comments here
+          const init = async () => {
+            await import('/assets/entry-e5f6g7h8.js');
+            console.log('initialized');
+          };
+          init();
+        \`,
 nonce: requestInfo.rw.nonce
 })
 )`;
@@ -541,32 +541,118 @@ export const Document = ({
 import { jsxDEV } from "react/jsx-dev-runtime";
 import styles from "./index.css?url";
 import { requestInfo } from "rwsdk/worker";
+
 export const Document = ({
 children
-}) => jsxDEV("html", { lang: "en", children: [
-jsxDEV("head", { children: [
-jsxDEV("meta", { charSet: "utf-8" }),
-jsxDEV("meta", { name: "viewport", content: "width=device-width, initial-scale=1" }),
-jsxDEV("title", { children: "rwsdk-guestbook" }),
-jsxDEV("link", { rel: "preconnect", href: "https://fonts.googleapis.com" }),
-jsxDEV("link", { rel: "preconnect", href: "https://fonts.gstatic.com", crossOrigin: "anonymous" }),
-jsxDEV("link", { href: "https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&display=swap", rel: "stylesheet" }),
-(
+}) => /* @__PURE__ */ jsxDEV("html", { lang: "en", children: [
+/* @__PURE__ */ jsxDEV("head", { children: [
+  /* @__PURE__ */ jsxDEV("meta", { charSet: "utf-8" }, void 0, false, {
+    fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+    lineNumber: 8,
+    columnNumber: 4
+  }, this),
+  /* @__PURE__ */ jsxDEV("meta", { name: "viewport", content: "width=device-width, initial-scale=1" }, void 0, false, {
+    fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+    lineNumber: 9,
+    columnNumber: 4
+  }, this),
+  /* @__PURE__ */ jsxDEV("title", { children: "rwsdk-guestbook" }, void 0, false, {
+    fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+    lineNumber: 10,
+    columnNumber: 4
+  }, this),
+  /* @__PURE__ */ jsxDEV("link", { rel: "preconnect", href: "https://fonts.googleapis.com" }, void 0, false, {
+    fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+    lineNumber: 11,
+    columnNumber: 4
+  }, this),
+  /* @__PURE__ */ jsxDEV(
+    "link",
+    {
+      rel: "preconnect",
+      href: "https://fonts.gstatic.com",
+      crossOrigin: "anonymous"
+    },
+    void 0,
+    false,
+    {
+      fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+      lineNumber: 12,
+      columnNumber: 4
+    },
+    this
+  ),
+  /* @__PURE__ */ jsxDEV(
+    "link",
+    {
+      href: "https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&display=swap",
+      rel: "stylesheet"
+    },
+    void 0,
+    false,
+    {
+      fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+      lineNumber: 17,
+      columnNumber: 4
+    },
+    this
+  ),
+  (
 (requestInfo.rw.scriptsToBeLoaded.add("/theme-script.js")),
-jsxDEV("script", { src: "/theme-script.js", nonce: requestInfo.rw.nonce })
+/* @__PURE__ */ jsxDEV("script", { src: "/theme-script.js",
+                          nonce: requestInfo.rw.nonce
+                    }, void 0, false, {
+      fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+      lineNumber: 21,
+      columnNumber: 4
+    }, this)
 ),
-jsxDEV("link", { rel: "icon", href: "/favicon.svg" }),
-jsxDEV("link", { rel: "modulepreload", href: "/assets/client-a1b2c3d4.js" }),
-jsxDEV("link", { rel: "stylesheet", href: styles })
-] }),
-jsxDEV("body", { children: [
-jsxDEV("div", { id: "root", children }),
-(
+  /* @__PURE__ */ jsxDEV("link", { rel: "icon", href: "/favicon.svg" }, void 0, false, {
+    fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+    lineNumber: 22,
+    columnNumber: 4
+  }, this),
+  /* @__PURE__ */ jsxDEV("link", { rel: "modulepreload", href: "/assets/client-a1b2c3d4.js" }, void 0, false, {
+    fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+    lineNumber: 23,
+    columnNumber: 4
+  }, this),
+  /* @__PURE__ */ jsxDEV("link", { rel: "stylesheet", href: styles }, void 0, false, {
+    fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+    lineNumber: 24,
+    columnNumber: 4
+  }, this)
+] }, void 0, true, {
+  fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+  lineNumber: 7,
+  columnNumber: 3
+}, this),
+/* @__PURE__ */ jsxDEV("body", { children: [
+  /* @__PURE__ */ jsxDEV("div", { id: "root", children }, void 0, false, {
+    fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+    lineNumber: 27,
+    columnNumber: 4
+  }, this),
+  (
 (requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
-jsxDEV("script", { children: "import(\\"/assets/client-a1b2c3d4.js\\")", nonce: requestInfo.rw.nonce })
+/* @__PURE__ */ jsxDEV("script", { children: "import(\\"/assets/client-a1b2c3d4.js\\")",
+                        nonce: requestInfo.rw.nonce
+                  }, void 0, false, {
+      fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+      lineNumber: 28,
+      columnNumber: 4
+    }, this)
 )
-] })
-] });`;
+] }, void 0, true, {
+  fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+  lineNumber: 26,
+  columnNumber: 3
+}, this)
+] }, void 0, true, {
+fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+lineNumber: 6,
+columnNumber: 2
+}, this);`;
 
     expect(normalizeCode(result?.code || "")).toEqual(normalizeCode(expected));
   });
