@@ -1,6 +1,6 @@
 {
   "name": "rwsdk",
-  "version": "0.1.36",
+  "version": "0.1.37",
   "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime",
   "type": "module",
   "bin": {
