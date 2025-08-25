@@ -52,7 +52,6 @@ function hasJsxFunctions(text: string): boolean {
   );
 }
 
-// Transform import statements in script content using ts-morph
 function transformScriptImports(
   scriptContent: string,
   manifest: Record<string, any>,
@@ -64,7 +63,6 @@ function transformScriptImports(
   const scriptProject = new Project({ useInMemoryFileSystem: true });
 
   try {
-    // Wrap in a function to make it valid JavaScript
     const wrappedContent = `function __wrapper() {${scriptContent}}`;
     const scriptFile = scriptProject.createSourceFile(
       "script.js",
@@ -74,16 +72,13 @@ function transformScriptImports(
     let hasChanges = false;
     const entryPoints: string[] = [];
 
-    // Find all CallExpressions that look like import("path")
     scriptFile
       .getDescendantsOfKind(SyntaxKind.CallExpression)
       .forEach((callExpr) => {
         const expr = callExpr.getExpression();
 
-        // Check for both "import()" and "await import()" patterns
         const isImport = expr.getText() === "import";
 
-        // Check for await import pattern
         const isAwaitImport =
           expr.getKind() === SyntaxKind.PropertyAccessExpression &&
           expr.getText().endsWith(".import");
@@ -101,7 +96,7 @@ function transformScriptImports(
               );
               entryPoints.push(importPath);
 
-              const path = importPath.slice(1); // Remove leading slash
+              const path = importPath.slice(1);
 
               if (manifest[path]) {
                 const transformedSrc = `/${manifest[path].file}`;
@@ -114,9 +109,7 @@ function transformScriptImports(
       });
 
     if (hasChanges) {
-      // Extract the transformed content from inside the wrapper function
       const fullText = scriptFile.getFullText();
-      // Find content between the first { and the last }
       const startPos = fullText.indexOf("{") + 1;
       const endPos = fullText.lastIndexOf("}");
       const transformedContent = fullText.substring(startPos, endPos);
@@ -124,16 +117,13 @@ function transformScriptImports(
       return { content: transformedContent, hasChanges: true, entryPoints };
     }
 
-    // Return the original content when no changes are made
     return { content: scriptContent, hasChanges: false, entryPoints };
   } catch (error) {
-    // If parsing fails, fall back to the original content
     console.warn("Failed to parse inline script content:", error);
     return { content: undefined, hasChanges: false, entryPoints: [] };
   }
 }
 
-// Types for collecting modifications before applying them
 interface LiteralValueModification {
   type: "literalValue";
   node: Node;
@@ -160,7 +150,6 @@ interface WrapCallExprModification {
   leadingTriviaText?: string;
   fullStart: number;
   end: number;
-  // Store the current state to reconstruct during application
   callExprText: string;
   leadingWhitespace: string;
 }
@@ -191,16 +180,13 @@ export async function transformJsxScriptTagsCode(
     { callExpr: CallExpression; sideEffects: string; pureCommentText?: string }
   >();
 
-  // Check for existing imports up front
   let hasRequestInfoImport = false;
   let sdkWorkerImportDecl: ImportDeclaration | undefined;
 
-  // Scan for imports only once
   sourceFile.getImportDeclarations().forEach((importDecl) => {
     const moduleSpecifier = importDecl.getModuleSpecifierValue();
     if (moduleSpecifier === "rwsdk/worker") {
       sdkWorkerImportDecl = importDecl;
-      // Check if requestInfo is already imported
       if (
         importDecl
           .getNamedImports()
@@ -211,14 +197,12 @@ export async function transformJsxScriptTagsCode(
     }
   });
 
-  // Look for jsx function calls (jsx, jsxs, jsxDEV)
   sourceFile
     .getDescendantsOfKind(SyntaxKind.CallExpression)
     .forEach((callExpr) => {
       const expression = callExpr.getExpression();
       const expressionText = expression.getText();
 
-      // Only process jsx/jsxs/jsxDEV calls
       if (
         expressionText !== "jsx" &&
         expressionText !== "jsxs" &&
@@ -227,33 +211,26 @@ export async function transformJsxScriptTagsCode(
         return;
       }
 
-      // Get arguments of the jsx call
       const args = callExpr.getArguments();
       if (args.length < 2) return;
 
-      // First argument should be the element type
       const elementType = args[0];
       if (!Node.isStringLiteral(elementType)) return;
 
       const tagName = elementType.getLiteralValue();
       const entryPoints: string[] = [];
 
-      // Process script and link tags
       if (tagName === "script" || tagName === "link") {
-        // Second argument should be the props object
         const propsArg = args[1];
 
-        // Handle object literals with properties
         if (Node.isObjectLiteralExpression(propsArg)) {
           const properties = propsArg.getProperties();
 
-          // Variables to track script attributes
           let hasDangerouslySetInnerHTML = false;
           let hasNonce = false;
           let hasStringLiteralChildren = false;
           let hasSrc = false;
 
-          // Variables to track link attributes
           let isPreload = false;
           let hrefValue = null;
 
@@ -262,21 +239,17 @@ export async function transformJsxScriptTagsCode(
               const propName = prop.getName();
               const initializer = prop.getInitializer();
 
-              // Check for existing nonce
               if (propName === "nonce") {
                 hasNonce = true;
               }
 
-              // Check for dangerouslySetInnerHTML
               if (propName === "dangerouslySetInnerHTML") {
                 hasDangerouslySetInnerHTML = true;
               }
 
-              // Check for src attribute
               if (tagName === "script" && propName === "src") {
                 hasSrc = true;
 
-                // Also process src for manifest transformation if needed
                 if (
                   Node.isStringLiteral(initializer) ||
                   Node.isNoSubstitutionTemplateLiteral(initializer)
@@ -286,7 +259,7 @@ export async function transformJsxScriptTagsCode(
                   if (srcValue.startsWith("/")) {
                     entryPoints.push(srcValue);
 
-                    const path = srcValue.slice(1); // Remove leading slash
+                    const path = srcValue.slice(1);
                     if (manifest[path]) {
                       const transformedSrc = `/${manifest[path].file}`;
                       modifications.push({
@@ -299,7 +272,6 @@ export async function transformJsxScriptTagsCode(
                 }
               }
 
-              // Check for string literal children
               if (
                 tagName === "script" &&
                 propName === "children" &&
@@ -310,7 +282,6 @@ export async function transformJsxScriptTagsCode(
 
                 const scriptContent = initializer.getLiteralValue();
 
-                // Transform import statements in script content using ts-morph
                 const {
                   content: transformedContent,
                   hasChanges: contentHasChanges,
@@ -320,7 +291,6 @@ export async function transformJsxScriptTagsCode(
                 entryPoints.push(...dynamicEntryPoints);
 
                 if (contentHasChanges && transformedContent) {
-                  // Get the raw text with quotes to determine the exact format
                   const isTemplateLiteral =
                     Node.isNoSubstitutionTemplateLiteral(initializer);
 
@@ -336,7 +306,6 @@ export async function transformJsxScriptTagsCode(
                 }
               }
 
-              // For link tags, first check if it's a preload/modulepreload
               if (tagName === "link") {
                 if (
                   propName === "rel" &&
@@ -360,14 +329,12 @@ export async function transformJsxScriptTagsCode(
             }
           }
 
-          // Add nonce to script tags if needed
           if (
             tagName === "script" &&
             !hasNonce &&
             !hasDangerouslySetInnerHTML &&
             (hasStringLiteralChildren || hasSrc)
           ) {
-            // Collect nonce property addition
             modifications.push({
               type: "addProperty",
               node: propsArg,
@@ -380,7 +347,6 @@ export async function transformJsxScriptTagsCode(
             }
           }
 
-          // Transform href if this is a preload link
           if (
             tagName === "link" &&
             isPreload &&
@@ -388,7 +354,7 @@ export async function transformJsxScriptTagsCode(
             hrefValue.startsWith("/") &&
             manifest[hrefValue.slice(1)]
           ) {
-            const path = hrefValue.slice(1); // Remove leading slash
+            const path = hrefValue.slice(1);
             for (const prop of properties) {
               if (
                 Node.isPropertyAssignment(prop) &&
@@ -407,7 +373,6 @@ export async function transformJsxScriptTagsCode(
                     ? "`"
                     : originalText.charAt(0);
 
-                  // Preserve the original quote style and prepare replacement text
                   let replacementText: string;
                   if (isTemplateLiteral) {
                     replacementText = `\`/${transformedHref}\``;
@@ -443,14 +408,12 @@ export async function transformJsxScriptTagsCode(
           r.getText().includes("@__PURE__"),
         );
 
-        // Store position and static data for later processing
         const wrapInfo = {
           callExpr: callExpr,
           sideEffects: sideEffects,
           pureCommentText: pureComment?.getText(),
         };
 
-        // We'll collect the actual wrap modifications after simple modifications are applied
         if (!entryPointsPerCallExpr.has(callExpr)) {
           entryPointsPerCallExpr.set(callExpr, wrapInfo);
         }
@@ -459,10 +422,7 @@ export async function transformJsxScriptTagsCode(
       }
     });
 
-  // Apply all collected modifications
   if (modifications.length > 0 || entryPointsPerCallExpr.size > 0) {
-    // Apply modifications in the right order to avoid invalidating nodes
-    // Apply simple modifications first (these are less likely to invalidate other nodes)
     for (const mod of modifications) {
       if (mod.type === "literalValue") {
         (mod.node as any).setLiteralValue(mod.value);
@@ -476,8 +436,6 @@ export async function transformJsxScriptTagsCode(
       }
     }
 
-    // Apply CallExpr wrapping last (these can invalidate other nodes)
-    // Now collect the wrap modifications with fresh data after simple modifications
     const wrapModifications: WrapCallExprModification[] = [];
 
     for (const [callExpr, wrapInfo] of entryPointsPerCallExpr) {
@@ -486,7 +444,6 @@ export async function transformJsxScriptTagsCode(
       const callExprText = callExpr.getText();
       const fullText = callExpr.getFullText();
 
-      // Extract leading whitespace/newlines before the call expression
       const leadingWhitespace = fullText.substring(
         0,
         fullText.length - callExprText.length,
@@ -512,7 +469,6 @@ export async function transformJsxScriptTagsCode(
       });
     }
 
-    // Sort by position in reverse order to avoid invalidating later nodes
     wrapModifications.sort((a, b) => b.fullStart - a.fullStart);
 
     for (const mod of wrapModifications) {
@@ -527,15 +483,11 @@ ${mod.pureCommentText} ${mod.callExprText}
           "",
         );
 
-        // By replacing from `getFullStart`, we remove the original node and all its leading trivia
-        // and replace it with our manually reconstructed string.
-        // This should correctly move the pure comment and preserve other comments and whitespace.
         sourceFile.replaceText(
           [mod.fullStart, mod.end],
           newLeadingTriviaText + newText,
         );
       } else {
-        // Extract just the newlines and basic indentation, ignore extra padding
         const leadingNewlines = mod.leadingWhitespace.match(/\n\s*/)?.[0] || "";
 
         sourceFile.replaceText(
@@ -548,15 +500,12 @@ ${mod.callExprText}
       }
     }
 
-    // Add requestInfo import if needed and not already imported
     if (needsRequestInfoImportRef.value) {
       if (sdkWorkerImportDecl) {
-        // Module is imported but need to add requestInfo
         if (!hasRequestInfoImport) {
           sdkWorkerImportDecl.addNamedImport("requestInfo");
         }
       } else {
-        // Add new import declaration
         sourceFile.addImportDeclaration({
           moduleSpecifier: "rwsdk/worker",
           namedImports: ["requestInfo"],
