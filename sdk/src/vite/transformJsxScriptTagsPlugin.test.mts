@@ -1,27 +1,10 @@
 import { describe, it, expect } from "vitest";
 import { transformJsxScriptTagsCode } from "./transformJsxScriptTagsPlugin.mjs";
+import jsBeautify from "js-beautify";
 
 // Helper function to normalize code formatting for test comparisons
 function normalizeCode(code: string): string {
-  return (
-    code
-      .trim()
-      // Remove all JSX dev metadata (everything from void 0 to }, this)
-      .replace(/, void 0[^}]+\}, this\)/g, ")")
-      .replace(/\}, void 0[^}]+\}, this/g, "}")
-      // Remove pure comments
-      .replace(/\/\* @__PURE__ \*\/ /g, "")
-      // Normalize all whitespace to single spaces
-      .replace(/\s+/g, " ")
-      // Add back essential newlines for readability
-      .replace(/;/g, ";\n")
-      .replace(/\{/g, "{\n")
-      .replace(/\}/g, "\n}")
-      .replace(/,(?=[a-zA-Z])/g, ", ")
-      // Clean up extra newlines
-      .replace(/\n\s*\n/g, "\n")
-      .trim()
-  );
+  return jsBeautify(code, { indent_size: 2 });
 }
 
 describe("transformJsxScriptTagsCode", () => {
@@ -141,9 +124,9 @@ nonce: requestInfo.rw.nonce
       jsx("script", {
         type: "module",
         children: \`
-          import('/src/client.tsx');
-          import('/src/entry.js');
-        \`
+import('/src/client.tsx');
+import('/src/entry.js');
+\`
       })
     `;
 
