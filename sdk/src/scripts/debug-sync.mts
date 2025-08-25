@@ -17,6 +17,9 @@ export interface DebugSyncOptions {
 }
 
 const getPackageManagerInfo = (targetDir: string) => {
+  if (existsSync(path.join(targetDir, "bun.lock"))) {
+    return { name: "bun", lockFile: "bun.lock", command: "add" };
+  }
   const pnpmResult = {
     name: "pnpm",
     lockFile: "pnpm-lock.yaml",
