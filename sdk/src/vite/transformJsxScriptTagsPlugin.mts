@@ -471,6 +471,9 @@ export const transformJsxScriptTagsPlugin = ({
         !id.includes("node_modules") &&
         hasJsxFunctions(code)
       ) {
+        log("Transforming JSX script tags in %s", id);
+        process.env.VERBOSE && log("Code:\n%s", code);
+
         const manifest = isBuild ? await readManifest(manifestPath) : {};
         const result = await transformJsxScriptTagsCode(code, manifest);
         if (result) {
