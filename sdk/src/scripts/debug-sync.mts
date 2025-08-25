@@ -17,6 +17,9 @@ export interface DebugSyncOptions {
 }
 
 const getPackageManagerInfo = (targetDir: string) => {
+  if (existsSync(path.join(targetDir, "bun.lock"))) {
+    return { name: "bun", lockFile: "bun.lock", command: "add" };
+  }
   const pnpmResult = {
     name: "pnpm",
     lockFile: "pnpm-lock.yaml",
@@ -78,6 +81,27 @@ const performFullSync = async (sdkDir: string, targetDir: string) => {
   await cleanupViteEntries(targetDir);
 
   try {
+    try {
+      originalSdkPackageJson = await fs.readFile(sdkPackageJsonPath, "utf-8");
+      const packageJson = JSON.parse(originalSdkPackageJson);
+      const originalVersion = packageJson.version;
+      const timestamp = new Date()
+        .toISOString()
+        .replace(/[-:T.]/g, "")
+        .slice(0, 14);
+      const newVersion = `${originalVersion}+build.${timestamp}`;
+      console.log(`Temporarily setting version to ${newVersion}`);
+      packageJson.version = newVersion;
+      await fs.writeFile(
+        sdkPackageJsonPath,
+        JSON.stringify(packageJson, null, 2),
+      );
+    } catch (e) {
+      console.warn(
+        "Could not modify package.json version, proceeding without it.",
+      );
+      originalSdkPackageJson = null; // don't restore if we failed to modify
+    }
     console.log("📦 Packing SDK...");
     const packResult = await $({ cwd: sdkDir })`npm pack --json`;
     const json = JSON.parse(packResult.stdout || "[]");
@@ -103,6 +127,35 @@ const performFullSync = async (sdkDir: string, targetDir: string) => {
       .catch(() => null);
 
     try {
+      // For bun, we need to remove the existing dependency from package.json
+      // before adding the tarball to avoid a dependency loop error.
+      if (pm.name === "bun" && originalPackageJson) {
+        try {
+          const targetPackageJson = JSON.parse(originalPackageJson);
+          let modified = false;
+          if (targetPackageJson.dependencies?.rwsdk) {
+            delete targetPackageJson.dependencies.rwsdk;
+            modified = true;
+          }
+          if (targetPackageJson.devDependencies?.rwsdk) {
+            delete targetPackageJson.devDependencies.rwsdk;
+            modified = true;
+          }
+          if (modified) {
+            console.log(
+              "Temporarily removing rwsdk from target package.json to prevent dependency loop with bun.",
+            );
+            await fs.writeFile(
+              packageJsonPath,
+              JSON.stringify(targetPackageJson, null, 2),
+            );
+          }
+        } catch (e) {
+          console.warn(
+            "Could not modify target package.json, proceeding anyway.",
+          );
+        }
+      }
       const cmd = pm.name;
       const args = [pm.command];
 
