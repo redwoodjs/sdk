@@ -167,6 +167,20 @@ First, set the `RWSDK_REPO` environment variable in your shell's configuration f
 export RWSDK_REPO=/path/to/your/local/sdk
 ```
 
+Then run this in your project's root to sync changes to your `sdk` checkout into your project:
+
+```sh
+cd /path/to/project/
+pnpm install # you need to have installed your dependencies first
+npx rwsync
+```
+
+To keep watching for changes to the `sdk` repo, and rerun a command when this happens, use `--watch`:
+
+```sh
+npx rwsync --watch "npm run dev"
+```
+
 ## Debugging the Vite Plugin
 
 The RedwoodSDK Vite plugin is composed of several smaller, internal plugins. To debug them, you can use the [debug](https://www.npmjs.com/package/debug) package by setting the `DEBUG` environment variable.
