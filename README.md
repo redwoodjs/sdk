@@ -21,8 +21,6 @@
 ---
 
 
-[![Deploy to Cloudflare](https://deploy.workers.cloudflare.com/button)](https://deploy.workers.cloudflare.com/?url=https://github.com/redwoodjs/sdk/tree/main/starters/minimal)
-
 ## ✨ RedwoodSDK
 
 **RedwoodSDK** is the missing React framework for Cloudflare — bringing SSR, React Server Components, Server Functions, and Realtime APIs to the edge with the power of [Vite](https://vitejs.dev/).
