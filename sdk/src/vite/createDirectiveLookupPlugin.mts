@@ -338,7 +338,10 @@ export const createDirectiveLookupPlugin = async ({
       if (id === config.virtualModuleName + ".js") {
         if (isBuild) {
           log("Returning placeholder for build for %s", id);
-          return `export const ${config.exportName} = "${PLACEHOLDER}";`;
+          // context(justinvdm, 26 Aug 2025): We are still building up the set of files that contain the directive
+          // while we visit them during bundling. So we put a placeholder and replace it right at the end - when we
+          // will indeed have visited all the files - in `generateBundle()`
+          return `export const ${config.exportName} = (() => "${PLACEHOLDER}")();`;
         }
 
         log(
@@ -413,7 +416,10 @@ export const ${config.exportName} = {
         const chunk = bundle[fileName];
         if (chunk.type === "chunk" && chunk.code.includes(PLACEHOLDER)) {
           log("Replacing placeholder in chunk: %s", fileName);
-          chunk.code = chunk.code.replace(`"${PLACEHOLDER}"`, finalCode);
+          chunk.code = chunk.code.replace(
+            `(()=>"${PLACEHOLDER}")()`,
+            finalCode,
+          );
         }
       }
     },
