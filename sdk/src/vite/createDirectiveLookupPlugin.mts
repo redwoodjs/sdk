@@ -9,6 +9,8 @@ import { stat } from "fs/promises";
 import { getSrcPaths } from "../lib/getSrcPaths.js";
 import { hasDirective } from "./hasDirective.mjs";
 import { ViteDevServer } from "vite";
+import { BuildState } from "./redwoodPlugin.mjs";
+import { CLIENT_LOOKUP_PATH } from "../lib/constants.mjs";
 
 interface DirectiveLookupConfig {
   kind: "client" | "server";
@@ -211,12 +213,15 @@ export const createDirectiveLookupPlugin = async ({
   const debugNamespace = `rwsdk:vite:${config.pluginName}`;
   const log = debug(debugNamespace);
   let isDev = false;
+  let isBuild = false;
+  let buildState: BuildState | undefined;
 
-  log(
-    "Initializing %s plugin with projectRootDir=%s",
-    config.pluginName,
-    projectRootDir,
-  );
+  // This will be populated by the config plugin during the build
+  const rwsdk = {
+    setBuildState: (state: BuildState) => {
+      buildState = state;
+    },
+  };
 
   await findFilesContainingDirective({
     projectRootDir,
@@ -229,9 +234,11 @@ export const createDirectiveLookupPlugin = async ({
 
   return {
     name: `rwsdk:${config.pluginName}`,
+    rwsdk,
     config(_, { command, isPreview }) {
       isDev = !isPreview && command === "serve";
-      log("Development mode: %s", isDev);
+      isBuild = command === "build";
+      log("Development mode: %s, Build mode: %s", isDev, isBuild);
     },
     configureServer(server) {
       devServer = server;
@@ -239,14 +246,16 @@ export const createDirectiveLookupPlugin = async ({
     async configEnvironment(env, viteConfig) {
       log("Configuring environment: env=%s", env);
 
-      // Add optimized deps entries that match our pattern
-      await addOptimizedDepsEntries({
-        projectRootDir,
-        files,
-        directive: config.directive,
-        environment: env,
-        debugNamespace,
-      });
+      if (isDev) {
+        // Add optimized deps entries that match our pattern
+        await addOptimizedDepsEntries({
+          projectRootDir,
+          files,
+          directive: config.directive,
+          environment: env,
+          debugNamespace,
+        });
+      }
 
       viteConfig.optimizeDeps ??= {};
       viteConfig.optimizeDeps.esbuildOptions ??= {};
@@ -330,6 +339,16 @@ export const createDirectiveLookupPlugin = async ({
       process.env.VERBOSE && log("Loading id=%s", id);
 
       if (id === config.virtualModuleName + ".js") {
+        // In build, this will be handled by the emitted chunk.
+        // For dev, we still need to generate it dynamically.
+        if (isBuild) {
+          if (config.kind === "client") {
+            return `export const useClientLookup = {}; // Bundled in second worker pass`;
+          } else {
+            return `export const useServerLookup = {}; // Bundled in second worker pass`;
+          }
+        }
+
         log(
           "Loading %s module with %d files",
           config.virtualModuleName,
@@ -380,6 +399,41 @@ export const ${config.exportName} = {
       }
 
       process.env.VERBOSE && log("No load handling for id=%s", id);
+    },
+    async buildEnd() {
+      if (isBuild && buildState && this.environment?.name === "worker") {
+        if (config.kind === "client") {
+          log("buildEnd: Emitting client lookup module.");
+
+          const manifestPath = path.resolve(
+            projectRootDir,
+            path.dirname(CLIENT_LOOKUP_PATH),
+            "manifest.json",
+          );
+
+          const manifest = JSON.parse(await readFile(manifestPath, "utf-8"));
+
+          const finalCode = `{${Object.entries(manifest)
+            .map(([sourcePath, chunk]) => {
+              const importPath = path.relative(
+                path.dirname(CLIENT_LOOKUP_PATH),
+                path.resolve(
+                  projectRootDir,
+                  path.dirname(CLIENT_LOOKUP_PATH),
+                  (chunk as any).file,
+                ),
+              );
+              return `"${sourcePath}":()=>import("./${importPath}")`;
+            })
+            .join(",")}}`;
+
+          this.emitFile({
+            type: "asset",
+            fileName: path.basename(CLIENT_LOOKUP_PATH),
+            source: `export const useClientLookup = ${finalCode};`,
+          });
+        }
+      }
     },
   };
 };

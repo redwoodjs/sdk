@@ -1,20 +1,21 @@
 import type { Plugin, ViteDevServer } from "vite";
 import debug from "debug";
 import { SSR_BRIDGE_PATH } from "../lib/constants.mjs";
+import { CLIENT_LOOKUP_PATH } from "../lib/constants.mjs";
 import { findSsrImportCallSites } from "./findSsrSpecifiers.mjs";
 import { isJsFile } from "./isJsFile.mjs";
 import MagicString from "magic-string";
+import { BuildState } from "./redwoodPlugin.mjs";
 
 const log = debug("rwsdk:vite:ssr-bridge-plugin");
 
 export const VIRTUAL_SSR_PREFIX = "virtual:rwsdk:ssr:";
 
 export const ssrBridgePlugin = ({
-  clientFiles,
-  serverFiles,
+  buildState,
+  projectRootDir,
 }: {
-  clientFiles: Set<string>;
-  serverFiles: Set<string>;
+  buildState: BuildState;
   projectRootDir: string;
 }): Plugin => {
   log(
@@ -28,6 +29,9 @@ export const ssrBridgePlugin = ({
   const ssrBridgePlugin: Plugin = {
     name: "rwsdk:ssr-bridge",
     enforce: "pre",
+    rwsdk: {
+      buildState,
+    },
     async configureServer(server) {
       devServer = server;
       log("Configured dev server");
@@ -112,7 +116,10 @@ export const ssrBridgePlugin = ({
         // it is the entry point for all SSR modules, so to trigger the
         // same dynamic loading logic as other SSR modules (as the case above),
         // we return a virtual id
-        if (id === "rwsdk/__ssr_bridge" && this.environment.name === "worker") {
+        if (
+          (id === "rwsdk/__ssr_bridge" || id === "rwsdk/__client_lookup") &&
+          this.environment.name === "worker"
+        ) {
           const virtualId = `${VIRTUAL_SSR_PREFIX}${id}`;
           log(
             "Bridge module case (dev): id=%s matches rwsdk/__ssr_bridge in worker environment, returning virtual id=%s",
@@ -134,6 +141,18 @@ export const ssrBridgePlugin = ({
             SSR_BRIDGE_PATH,
           );
           return SSR_BRIDGE_PATH;
+        }
+
+        if (
+          id === "rwsdk/__client_lookup" &&
+          this.environment.name === "worker"
+        ) {
+          log(
+            "Client lookup module case (build): id=%s matches rwsdk/__client_lookup in worker environment, returning CLIENT_LOOKUP_PATH=%s",
+            id,
+            CLIENT_LOOKUP_PATH,
+          );
+          return CLIENT_LOOKUP_PATH;
         }
       }
 

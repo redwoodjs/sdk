@@ -29,6 +29,12 @@ import { hasPkgScript } from "../lib/hasPkgScript.mjs";
 import { devServerTimingPlugin } from "./devServerTimingPlugin.mjs";
 import { manifestPlugin } from "./manifestPlugin.mjs";
 
+export interface BuildState {
+  clientComponentPaths: Set<string>;
+  serverComponentPaths: Set<string>;
+  ssrOutputPaths?: string[];
+}
+
 export type RedwoodPluginOptions = {
   silent?: boolean;
   rootDir?: string;
@@ -78,8 +84,10 @@ export const redwoodPlugin = async (
       : [options.entry?.client ?? "src/client.tsx"]
   ).map((entry) => resolve(projectRootDir, entry));
 
-  const clientFiles = new Set<string>();
-  const serverFiles = new Set<string>();
+  const buildState: BuildState = {
+    clientComponentPaths: new Set<string>(),
+    serverComponentPaths: new Set<string>(),
+  };
 
   const shouldIncludeCloudflarePlugin =
     options.includeCloudflarePlugin ??
@@ -115,10 +123,10 @@ export const redwoodPlugin = async (
       projectRootDir,
       clientEntryPathnames,
       workerEntryPathname,
+      buildState,
     }),
     ssrBridgePlugin({
-      clientFiles,
-      serverFiles,
+      buildState,
       projectRootDir,
     }),
     reactConditionsResolverPlugin({ projectRootDir }),
@@ -130,8 +138,8 @@ export const redwoodPlugin = async (
         })
       : [],
     miniflareHMRPlugin({
-      clientFiles,
-      serverFiles,
+      clientFiles: buildState.clientComponentPaths,
+      serverFiles: buildState.serverComponentPaths,
       rootDir: projectRootDir,
       viteEnvironment: { name: "worker" },
       workerEntryPathname,
@@ -139,18 +147,17 @@ export const redwoodPlugin = async (
     shouldIncludeReactPlugin ? reactPlugin() : [],
     directivesPlugin({
       projectRootDir,
-      clientFiles,
-      serverFiles,
+      buildState,
     }),
     vitePreamblePlugin(),
     injectVitePreamble({ clientEntryPathnames }),
     useClientLookupPlugin({
       projectRootDir,
-      clientFiles,
+      buildState,
     }),
     useServerLookupPlugin({
       projectRootDir,
-      serverFiles,
+      buildState,
     }),
     transformJsxScriptTagsPlugin({
       manifestPath: resolve(

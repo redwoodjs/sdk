@@ -1,16 +1,17 @@
 import { createDirectiveLookupPlugin } from "./createDirectiveLookupPlugin.mjs";
 import { Plugin } from "vite";
+import { BuildState } from "./redwoodPlugin.mjs";
 
 export const useServerLookupPlugin = async ({
   projectRootDir,
-  serverFiles,
+  buildState,
 }: {
   projectRootDir: string;
-  serverFiles: Set<string>;
+  buildState: BuildState;
 }): Promise<Plugin> => {
-  return createDirectiveLookupPlugin({
+  const plugin = await createDirectiveLookupPlugin({
     projectRootDir,
-    files: serverFiles,
+    files: buildState.serverComponentPaths,
     config: {
       kind: "server",
       directive: "use server",
@@ -20,4 +21,12 @@ export const useServerLookupPlugin = async ({
       optimizeForEnvironments: ["ssr", "worker"],
     },
   });
+
+  return {
+    ...plugin,
+    name: "rwsdk:use-server-lookup-wrapper", // Wrapper name
+    rwsdk: {
+      buildState,
+    },
+  };
 };

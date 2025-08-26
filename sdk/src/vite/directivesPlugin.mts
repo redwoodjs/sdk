@@ -6,6 +6,7 @@ import { transformClientComponents } from "./transformClientComponents.mjs";
 import { transformServerFunctions } from "./transformServerFunctions.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import type { ViteDevServer } from "vite";
+import { BuildState } from "./redwoodPlugin.mjs";
 
 const log = debug("rwsdk:vite:rsc-directives-plugin");
 
@@ -32,12 +33,10 @@ const getLoader = (filePath: string) => {
 
 export const directivesPlugin = ({
   projectRootDir,
-  clientFiles,
-  serverFiles,
+  buildState,
 }: {
   projectRootDir: string;
-  clientFiles: Set<string>;
-  serverFiles: Set<string>;
+  buildState: BuildState;
 }): Plugin => {
   let devServer: ViteDevServer;
   let isAfterFirstResponse = false;
@@ -47,7 +46,10 @@ export const directivesPlugin = ({
     environment: string,
     id: string,
   ) => {
-    const files = kind === "client" ? clientFiles : serverFiles;
+    const files =
+      kind === "client"
+        ? buildState.clientComponentPaths
+        : buildState.serverComponentPaths;
     const rawId = id.split("?")[0];
     const resolvedId = normalizeModulePath(rawId, projectRootDir);
     const fullPath = normalizeModulePath(rawId, projectRootDir, {
@@ -102,6 +104,9 @@ export const directivesPlugin = ({
 
   return {
     name: "rwsdk:rsc-directives",
+    rwsdk: {
+      buildState,
+    },
     configureServer(server) {
       devServer = server;
       devServer.middlewares.use((_req, res, next) => {
@@ -131,7 +136,7 @@ export const directivesPlugin = ({
 
       const clientResult = await transformClientComponents(code, normalizedId, {
         environmentName: this.environment.name,
-        clientFiles,
+        clientFiles: buildState.clientComponentPaths,
         addClientModule,
       });
 
@@ -147,7 +152,7 @@ export const directivesPlugin = ({
         code,
         normalizedId,
         this.environment.name as "client" | "worker" | "ssr",
-        serverFiles,
+        buildState.serverComponentPaths,
         addServerModule,
       );
 
@@ -194,7 +199,7 @@ export const directivesPlugin = ({
               if (!args.path.includes("node_modules")) {
                 log("Esbuild onLoad found app code, path=%s", args.path);
 
-                if (clientFiles.has(normalizedPath)) {
+                if (buildState.clientComponentPaths.has(normalizedPath)) {
                   // context(justinvdm,2025-06-15): If this is a client file:
                   // * for ssr and client envs we can skip so esbuild looks at the
                   // original source code to discovery dependencies
@@ -216,7 +221,9 @@ export const directivesPlugin = ({
                       loader: "js",
                     };
                   }
-                } else if (serverFiles.has(normalizedPath)) {
+                } else if (
+                  buildState.serverComponentPaths.has(normalizedPath)
+                ) {
                   // context(justinvdm,2025-06-15): If this is a server file:
                   // * for worker env, we can skip so esbuild looks at the
                   // original source code to discovery dependencies
@@ -260,7 +267,7 @@ export const directivesPlugin = ({
                 normalizedPath,
                 {
                   environmentName: env,
-                  clientFiles,
+                  clientFiles: buildState.clientComponentPaths,
                   isEsbuild: true,
                   addClientModule,
                 },
@@ -289,7 +296,7 @@ export const directivesPlugin = ({
                 code,
                 normalizedPath,
                 env as "client" | "worker" | "ssr",
-                serverFiles,
+                buildState.serverComponentPaths,
                 addServerModule,
               );
 

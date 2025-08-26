@@ -5,6 +5,8 @@ import { InlineConfig } from "vite";
 import enhancedResolve from "enhanced-resolve";
 
 import { SSR_BRIDGE_PATH } from "../lib/constants.mjs";
+import { CLIENT_LOOKUP_PATH } from "../lib/constants.mjs";
+import { BuildState } from "./redwoodPlugin.mjs";
 
 // port(justinvdm, 09 Jun 2025):
 // https://github.com/cloudflare/workers-sdk/blob/d533f5ee7da69c205d8d5e2a5f264d2370fc612b/packages/vite-plugin-cloudflare/src/cloudflare-environment.ts#L123-L128
@@ -26,13 +28,18 @@ export const configPlugin = ({
   projectRootDir,
   clientEntryPathnames,
   workerEntryPathname,
+  buildState,
 }: {
   silent: boolean;
   projectRootDir: string;
   clientEntryPathnames: string[];
   workerEntryPathname: string;
+  buildState: BuildState;
 }): Plugin => ({
   name: "rwsdk:config",
+  rwsdk: {
+    buildState,
+  },
   config: async (_) => {
     const mode = process.env.NODE_ENV;
     const baseConfig: InlineConfig = {
@@ -112,6 +119,7 @@ export const configPlugin = ({
               fileName: () => path.basename(SSR_BRIDGE_PATH),
             },
             outDir: path.dirname(SSR_BRIDGE_PATH),
+            manifest: true,
           },
         },
         worker: {
@@ -170,17 +178,43 @@ export const configPlugin = ({
       builder: {
         buildApp: async (builder) => {
           // note(justinvdm, 27 May 2025): **Ordering is important**:
-          // * When building, client needs to be build first, so that we have a
-          //   manifest file to map to when looking at asset references in JSX
-          //   (e.g. Document.tsx)
-          // * When bundling, the RSC build imports the SSR build - this way
-          //   they each can have their own environments (e.g. with their own
-          //   import conditions), while still having all worker-run code go
-          //   through the processing done by `@cloudflare/vite-plugin`
+          // The build process is sequential and phased to resolve a circular
+          // dependency between the `worker` and `ssr` environments.
 
+          // Phase 1: Client build (for assets)
           await builder.build(builder.environments["client"]!);
-          await builder.build(builder.environments["ssr"]!);
+
+          // Phase 2: Initial Worker build (to discover client components)
           await builder.build(builder.environments["worker"]!);
+
+          // Phase 3: Dynamic SSR build
+          const ssrEnv = builder.environments["ssr"]!;
+          const ssrConfig = ssrEnv.config.build!.lib!;
+          const ssrEntries = ssrConfig.entry as Record<string, string>;
+
+          for (const clientComponentPath of buildState.clientComponentPaths) {
+            const entryName = path
+              .relative(projectRootDir, clientComponentPath)
+              .replace(/\//g, path.sep)
+              .replace(/\.[^/.]+$/, "");
+            ssrEntries[entryName] = clientComponentPath;
+          }
+
+          // Also add the client lookup module as an entry to the SSR build
+          ssrEntries[path.basename(CLIENT_LOOKUP_PATH, ".mjs")] =
+            enhancedResolve.sync(
+              projectRootDir,
+              "rwsdk/__client_lookup",
+            ) as string;
+
+          await builder.build(ssrEnv);
+
+          // Phase 4: Final Worker Re-Bundling Run
+          const workerEnv = builder.environments["worker"]!;
+          const workerConfig = workerEnv.config.build!.rollupOptions!;
+          workerConfig.input = buildState.ssrOutputPaths;
+
+          await builder.build(workerEnv);
         },
       },
     };
