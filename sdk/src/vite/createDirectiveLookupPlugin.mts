@@ -211,8 +211,6 @@ export const createDirectiveLookupPlugin = async ({
   const debugNamespace = `rwsdk:vite:${config.pluginName}`;
   const log = debug(debugNamespace);
   let isDev = false;
-  let isBuild = false;
-  const PLACEHOLDER = `__RWS_DIRECTIVE_LOOKUP_PLUGIN_PLACEHOLDER_${config.kind}__`;
 
   log(
     "Initializing %s plugin with projectRootDir=%s",
@@ -220,24 +218,20 @@ export const createDirectiveLookupPlugin = async ({
     projectRootDir,
   );
 
+  await findFilesContainingDirective({
+    projectRootDir,
+    files,
+    directive: config.directive,
+    debugNamespace,
+  });
+
   let devServer: ViteDevServer;
 
   return {
     name: `rwsdk:${config.pluginName}`,
     config(_, { command, isPreview }) {
       isDev = !isPreview && command === "serve";
-      isBuild = command === "build";
-      log("Development mode: %s, Build mode: %s", isDev, isBuild);
-    },
-    async buildStart() {
-      if (isDev) {
-        await findFilesContainingDirective({
-          projectRootDir,
-          files,
-          directive: config.directive,
-          debugNamespace,
-        });
-      }
+      log("Development mode: %s", isDev);
     },
     configureServer(server) {
       devServer = server;
@@ -336,14 +330,6 @@ export const createDirectiveLookupPlugin = async ({
       process.env.VERBOSE && log("Loading id=%s", id);
 
       if (id === config.virtualModuleName + ".js") {
-        if (isBuild) {
-          log("Returning placeholder for build for %s", id);
-          // context(justinvdm, 26 Aug 2025): We are still building up the set of files that contain the directive
-          // while we visit them during bundling. So we put a placeholder and replace it right at the end - when we
-          // will indeed have visited all the files - in `generateBundle()`
-          return `export const ${config.exportName} = (() => "${PLACEHOLDER}")();`;
-        }
-
         log(
           "Loading %s module with %d files",
           config.virtualModuleName,
@@ -394,34 +380,6 @@ export const ${config.exportName} = {
       }
 
       process.env.VERBOSE && log("No load handling for id=%s", id);
-    },
-    generateBundle(_, bundle) {
-      if (!isBuild) {
-        return;
-      }
-
-      log("generateBundle: Generating final virtual module content.");
-
-      const finalCode = `{
-  ${Array.from(files)
-    .map(
-      (file: string) => `
-  "${file}": () => import("${file}"),
-`,
-    )
-    .join("")}
-}`;
-
-      for (const fileName in bundle) {
-        const chunk = bundle[fileName];
-        if (chunk.type === "chunk" && chunk.code.includes(PLACEHOLDER)) {
-          log("Replacing placeholder in chunk: %s", fileName);
-          chunk.code = chunk.code.replace(
-            `(()=>"${PLACEHOLDER}")()`,
-            finalCode,
-          );
-        }
-      }
     },
   };
 };
