@@ -23,27 +23,18 @@ export async function transformClientComponents(
   normalizedId: string,
   ctx: TransformContext,
 ): Promise<TransformResult | undefined> {
-  const log = ctx.isEsbuild ? logEsbuild : logVite;
-
   if (!hasDirective(code, "use client")) {
-    log("Skipping: no 'use client' directive in id=%s", normalizedId);
-    process.env.VERBOSE &&
-      log(
-        ":VERBOSE: Returning code unchanged for id=%s:\n%s",
-        normalizedId,
-        code,
-      );
     return;
   }
 
-  log("Processing 'use client' module: id=%s", normalizedId);
+  const log = ctx.isEsbuild ? logEsbuild : logVite;
 
   ctx.addClientModule?.(ctx.environmentName, normalizedId);
 
   // Parse exports using the findExports helper
   const exportInfos = findExports(normalizedId, code, log);
 
-  // Process exports into the format expected by the rest of the function
+  // Process exports into the format expected by the rst of the function
   type ProcessedExportInfo = {
     local: string;
     exported: string;

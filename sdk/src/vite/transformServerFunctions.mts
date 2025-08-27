@@ -141,19 +141,25 @@ export const transformServerFunctions = (
   serverFiles?: Set<string>,
   addServerModule?: (environment: string, id: string) => void,
 ): TransformResult | undefined => {
-  log(
-    "Processing 'use server' module: normalizedId=%s, environment=%s",
-    normalizedId,
-    environment,
-  );
+  if (!hasDirective(code, "use server")) {
+    return;
+  }
+
+  process.env.VERBOSE &&
+    log(
+      "Processing 'use server' module: normalizedId=%s, environment=%s",
+      normalizedId,
+      environment,
+    );
 
   addServerModule?.(environment, normalizedId);
 
   if (environment === "ssr" || environment === "client") {
-    log(
-      `Transforming for ${environment} environment: normalizedId=%s`,
-      normalizedId,
-    );
+    process.env.VERBOSE &&
+      log(
+        `Transforming for ${environment} environment: normalizedId=%s`,
+        normalizedId,
+      );
 
     const exportInfo = findExportInfo(code, normalizedId);
     const allExports = new Set([
@@ -199,10 +205,11 @@ export const transformServerFunctions = (
       );
     }
 
-    log(
-      `${environment} transformation complete for normalizedId=%s`,
-      normalizedId,
-    );
+    process.env.VERBOSE &&
+      log(
+        `${environment} transformation complete for normalizedId=%s`,
+        normalizedId,
+      );
     return {
       code: s.toString(),
       map: s.generateMap({
@@ -212,7 +219,8 @@ export const transformServerFunctions = (
       }),
     };
   } else if (environment === "worker") {
-    log("Transforming for worker environment: normalizedId=%s", normalizedId);
+    process.env.VERBOSE &&
+      log("Transforming for worker environment: normalizedId=%s", normalizedId);
 
     const exportInfo = findExportInfo(code, normalizedId);
     const s = new MagicString(code);
@@ -407,7 +415,8 @@ export const transformServerFunctions = (
       s.append(registrationCalls.join("\n") + "\n");
     }
 
-    log("Worker transformation complete for normalizedId=%s", normalizedId);
+    process.env.VERBOSE &&
+      log("Worker transformation complete for normalizedId=%s", normalizedId);
     return {
       code: s.toString(),
       map: s.generateMap({
