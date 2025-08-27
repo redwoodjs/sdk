@@ -232,14 +232,15 @@ export const createDirectiveLookupPlugin = async ({
     async configEnvironment(env, viteConfig) {
       log("Configuring environment: env=%s", env);
 
-      // Add optimized deps entries that match our pattern
-      await addOptimizedDepsEntries({
-        projectRootDir,
-        files,
-        directive: config.directive,
-        environment: env,
-        debugNamespace,
-      });
+      if (isDev) {
+        await addOptimizedDepsEntries({
+          projectRootDir,
+          files,
+          directive: config.directive,
+          environment: env,
+          debugNamespace,
+        });
+      }
 
       viteConfig.optimizeDeps ??= {};
       viteConfig.optimizeDeps.esbuildOptions ??= {};
