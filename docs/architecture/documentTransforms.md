@@ -18,7 +18,7 @@ Manually managing these details would be tedious and error-prone. The challenge 
 
 Our solution is a dedicated Vite plugin, [`transformJsxScriptTagsPlugin.mts`](https://github.com/redwoodjs/sdk/blob/90679fbeee4af5cc2d026a42475432278d53ef55/sdk/src/vite/transformJsxScriptTagsPlugin.mts), that operates by parsing the `Document` component's source code into an Abstract Syntax Tree (AST). This allows us to programmatically understand and safely modify the code's structure.
 
-The plugin inspects the AST for specific JSX elements (`<script>` and `<link>`) and applies several transformations in a single pass.
+The plugin inspects the AST for specific JSX elements (`<script>` and `<link>`) and applies transformations to support server-side rendering, asset bundling, and security best practices.
 
 ### Key Transformations
 
@@ -33,6 +33,8 @@ For a complete explanation of the end-to-end build architecture, see the [Produc
 #### 2. Security Nonce Injection
 
 To enhance security, the plugin automatically injects a `nonce` attribute into every `<script>` tag that doesn't have one and isn't inherently unsafe (e.g., using `dangerouslySetInnerHTML`).
+
+The nonce value is set to a placeholder expression that references a `requestInfo` object available at runtime. If this `requestInfo` object is not already imported in the `Document`, the plugin will also add the necessary `import` statement at the top of the file. This ensures that every server-rendered script is tagged with the per-request CSP nonce, mitigating XSS risks.
 
 ### Important Design Considerations
 

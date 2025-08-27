@@ -12,8 +12,10 @@ import {
   SSR_CLIENT_LOOKUP_PATH,
   SSR_SERVER_LOOKUP_PATH,
   SSR_OUTPUT_DIR,
+  WORKER_OUTPUT_DIR,
 } from "../lib/constants.mjs";
 import { buildApp } from "./buildApp.mjs";
+import { linkerPlugin } from "./linkerPlugin.mjs";
 
 const log = debug("rwsdk:vite:config");
 
@@ -190,6 +192,39 @@ export const configPlugin = ({
               },
             },
           },
+        },
+        linker: {
+          // This environment is for the final assembly phase.
+          // It takes the outputs of the 'worker', 'ssr', and 'client' builds
+          // and links them into a single, deployable worker bundle.
+          resolve: {
+            // Must match the worker environment for compatibility
+            conditions: ["workerd", "react-server", "module", "node"],
+            noExternal: true,
+          },
+          define: {
+            "import.meta.env.RWSDK_ENV": JSON.stringify("worker"),
+          },
+          build: {
+            // The root for this build is the worker output directory, as all
+            // its inputs are located there.
+            root: WORKER_OUTPUT_DIR,
+            outDir: WORKER_OUTPUT_DIR,
+            emitAssets: false, // All assets are already in place
+            ssr: true,
+            minify: false, // Minification is done in the initial worker pass
+            rollupOptions: {
+              input: {
+                worker: "virtual:linker-entry",
+              },
+              output: {
+                // Ensure the final output is a single file.
+                inlineDynamicImports: true,
+                entryFileNames: "worker.js",
+              },
+            },
+          },
+          plugins: [linkerPlugin()],
         },
       },
       server: {

@@ -3,9 +3,6 @@ import path from "node:path";
 import debug from "debug";
 import {
   SSR_OUTPUT_DIR,
-  SSR_BRIDGE_PATH,
-  SSR_CLIENT_LOOKUP_PATH,
-  SSR_SERVER_LOOKUP_PATH,
   WORKER_OUTPUT_DIR,
   WORKER_MANIFEST_PATH,
 } from "../lib/constants.mjs";
@@ -32,25 +29,24 @@ export async function buildApp({
   clientFiles: Set<string>;
   projectRootDir: string;
 }) {
-  log('🔍 buildApp started - Phase 1: Worker "Discovery" Pass');
+  // Phase 1: Worker "Discovery" Pass
+  // This builds the main worker code, discovers client entry points and
+  // 'use client' modules, and leaves placeholders for assets.
   log('Phase 1: Worker "Discovery" Pass');
-
   await builder.build(builder.environments["worker"]!);
+  log("✅ Phase 1 complete");
 
-  log("🔍 Entry Point Discovery Results:");
-  log("  clientEntryPoints:", Array.from(clientEntryPoints));
-  log("  clientFiles:", Array.from(clientFiles));
   log("Discovered clientEntryPoints: %O", Array.from(clientEntryPoints));
   log("Discovered clientFiles: %O", Array.from(clientFiles));
 
+  // Phase 2: Client Build
+  // This builds the client-side assets, using the entry points
+  // discovered in Phase 1. It produces the final, hashed asset files
+  // and a manifest.json.
   log("Phase 2: Client Build");
-
   const clientEnv = builder.environments["client"]!;
-
-  // Ensure config paths exist
   clientEnv.config.build ??= {} as any;
   clientEnv.config.build.rollupOptions ??= {};
-
   const clientEntryPointsArray = Array.from(clientEntryPoints);
 
   if (clientEntryPointsArray.length === 0) {
@@ -61,6 +57,31 @@ export async function buildApp({
   }
 
   await builder.build(clientEnv);
+  log("✅ Phase 2 complete");
+
+  // Phase 3: SSR Build
+  // This builds the SSR versions of all the 'use client' components
+  // discovered in Phase 1.
+  log("Phase 3: SSR Build");
+  const ssrEnv = builder.environments["ssr"]!;
+  ssrEnv.config.build ??= {} as any;
+  ssrEnv.config.build.rollupOptions ??= {};
+  const clientFilesArray = Array.from(clientFiles);
+
+  if (clientFilesArray.length === 0) {
+    log("No client files discovered, SSR build will use default configuration");
+  } else {
+    log("Setting SSR entry points from client files: %o", clientFilesArray);
+    ssrEnv.config.build.rollupOptions.input = clientFilesArray;
+  }
+
+  await builder.build(ssrEnv);
+  log("✅ Phase 3 complete");
+
+  // Intermission: Prepare for the final linking phase
+  // We need to copy the manifest and the SSR artifacts into the final
+  // worker output directory so the linker can find them.
+  log("Preparing for final link phase...");
 
   const manifestPath = path.resolve(
     projectRootDir,
@@ -69,91 +90,29 @@ export async function buildApp({
     ".vite",
     "manifest.json",
   );
-  let clientManifest;
 
-  log("📖 Reading client manifest from %s", manifestPath);
-  try {
-    const manifestContent = await fsp.readFile(manifestPath, "utf-8");
-    clientManifest = { source: manifestContent };
-    log("  ✅ Successfully read manifest from filesystem");
-  } catch (error) {
-    console.error("  ❌ Failed to read manifest: %s", error);
-  }
+  await fsp.copyFile(manifestPath, WORKER_MANIFEST_PATH);
+  log("  Copied manifest to %s", WORKER_MANIFEST_PATH);
 
-  if (!clientManifest) {
-    console.error("❌ rwsdk: Could not find client manifest!");
-    throw new Error("rwsdk: Could not find client manifest");
-  }
-
-  log("Phase 3: SSR Build");
-
-  const ssrEnv = builder.environments["ssr"]!;
-
-  // Ensure config paths exist
-  ssrEnv.config.build ??= {} as any;
-  ssrEnv.config.build.rollupOptions ??= {};
-  const clientFilesArray = Array.from(clientFiles);
-
-  if (clientFilesArray.length === 0) {
-    log("No client files discovered, SSR build will use default configuration");
-    // Don't set input to empty array - let SSR use its default entry points
-  } else {
-    log("Setting SSR entry points from client files: %o", clientFilesArray);
-    ssrEnv.config.build.rollupOptions.input = clientFilesArray;
-  }
-
-  await builder.build(ssrEnv);
-
-  log('Phase 4: Worker "Reprocessing" Pass');
-
-  const workerEnv = builder.environments["worker"]!;
-
-  workerEnv.config.build ??= {} as any;
-  workerEnv.config.build.rollupOptions ??= {};
-
-  const entry: Record<string, string> = {
-    __ssr_bridge: SSR_BRIDGE_PATH,
-    __client_lookup: SSR_CLIENT_LOOKUP_PATH,
-    __server_lookup: SSR_SERVER_LOOKUP_PATH,
-  };
-
-  workerEnv.config.build.rollupOptions.input = entry;
-
-  workerEnv.config.build.rollupOptions.output = {
-    ...workerEnv.config.build.rollupOptions.output,
-    entryFileNames: (chunkInfo: any) => {
-      if (chunkInfo.name.includes("__ssr_bridge")) {
-        return "__ssr_bridge.js";
-      }
-      if (chunkInfo.name.includes("__client_lookup")) {
-        return "__client_lookup.mjs";
-      }
-      if (chunkInfo.name.includes("__server_lookup")) {
-        return "__server_lookup.mjs";
-      }
-      return "[name].mjs";
-    },
-  };
-
-  await builder.build(workerEnv);
-
-  log('Phase 5: Client Asset "Linking" Pass');
-
-  await fsp.writeFile(WORKER_MANIFEST_PATH, (clientManifest as any).source);
-  log("📄 Copied manifest to %s", WORKER_MANIFEST_PATH);
-
-  const workerJsPath = path.join(WORKER_OUTPUT_DIR, "worker.js");
-  const workerJs = await fsp.readFile(workerJsPath, "utf-8");
-  const manifest = JSON.parse((clientManifest as any).source);
-
-  let linkedWorkerJs = workerJs;
-
-  for (const [key, value] of Object.entries(manifest)) {
-    linkedWorkerJs = linkedWorkerJs.replaceAll(
-      `rwsdk_asset:${key}`,
-      `/${(value as { file: string }).file}`,
+  const ssrArtifacts = await fsp.readdir(SSR_OUTPUT_DIR);
+  for (const file of ssrArtifacts) {
+    await fsp.copyFile(
+      path.join(SSR_OUTPUT_DIR, file),
+      path.join(WORKER_OUTPUT_DIR, file),
     );
   }
+  log(
+    "  Copied %d SSR artifacts to worker output directory",
+    ssrArtifacts.length,
+  );
 
-  await fsp.writeFile(workerJsPath, linkedWorkerJs);
+  // Phase 4: Linker Build Pass
+  // This is the final assembly step. It uses a minimal environment to
+  // bundle the intermediate worker.js, the SSR artifacts, and the client
+  // manifest into a single, deployable worker. A custom plugin handles
+  // the replacement of asset placeholders.
+  log("Phase 4: Linker Build Pass");
+  await builder.build(builder.environments["linker"]!);
+  log("✅ Phase 4 complete");
+  log("🚀 Build complete!");
 }
