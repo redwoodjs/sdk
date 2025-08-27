@@ -197,7 +197,7 @@ export const configPlugin = ({
       },
       builder: {
         buildApp: (builder) =>
-          buildApp(builder, clientEntryPoints, clientFiles),
+          buildApp({ builder, clientEntryPoints, clientFiles }),
       },
     };
 

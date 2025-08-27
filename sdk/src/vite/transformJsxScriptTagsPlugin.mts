@@ -8,10 +8,32 @@ import {
   ObjectLiteralExpression,
 } from "ts-morph";
 import { type Plugin } from "vite";
+import { readFile } from "node:fs/promises";
+import { pathExists } from "fs-extra";
 import path from "node:path";
 import debug from "debug";
 
 const log = debug("rwsdk:vite:transform-jsx-script-tags");
+
+let manifestCache: Record<string, { file: string }> | undefined;
+
+const readManifest = async (
+  manifestPath: string,
+): Promise<Record<string, { file: string }>> => {
+  if (manifestCache === undefined) {
+    const exists = await pathExists(manifestPath);
+
+    if (!exists) {
+      throw new Error(
+        `RedwoodSDK expected client manifest to exist at ${manifestPath}. This is likely a bug. Please report it at https://github.com/redwoodjs/sdk/issues/new`,
+      );
+    }
+
+    manifestCache = JSON.parse(await readFile(manifestPath, "utf-8"));
+  }
+
+  return manifestCache!;
+};
 
 function hasJsxFunctions(text: string): boolean {
   return (
@@ -33,8 +55,6 @@ function hasJsxFunctions(text: string): boolean {
 function transformScriptImports(
   scriptContent: string,
   manifest: Record<string, any>,
-  isDiscovery: boolean,
-  clientEntryPoints: Set<string>,
 ): {
   content: string | undefined;
   hasChanges: boolean;
@@ -50,7 +70,7 @@ function transformScriptImports(
     );
 
     let hasChanges = false;
-    const localEntryPoints: string[] = [];
+    const entryPoints: string[] = [];
 
     scriptFile
       .getDescendantsOfKind(SyntaxKind.CallExpression)
@@ -74,12 +94,9 @@ function transformScriptImports(
                 "Found dynamic import with root-relative path: %s",
                 importPath,
               );
-              localEntryPoints.push(importPath);
+              entryPoints.push(importPath);
 
-              const path = importPath.slice(1);
-
-              // Always do discovery behavior in worker environment
-              clientEntryPoints.add(importPath);
+              // Always use discovery behavior in worker environment
               const transformedSrc = `rwsdk_asset:${importPath}`;
               args[0].setLiteralValue(transformedSrc);
               hasChanges = true;
@@ -94,18 +111,10 @@ function transformScriptImports(
       const endPos = fullText.lastIndexOf("}");
       const transformedContent = fullText.substring(startPos, endPos);
 
-      return {
-        content: transformedContent,
-        hasChanges: true,
-        entryPoints: localEntryPoints,
-      };
+      return { content: transformedContent, hasChanges: true, entryPoints };
     }
 
-    return {
-      content: scriptContent,
-      hasChanges: false,
-      entryPoints: localEntryPoints,
-    };
+    return { content: scriptContent, hasChanges: false, entryPoints };
   } catch (error) {
     console.warn("Failed to parse inline script content:", error);
     return { content: undefined, hasChanges: false, entryPoints: [] };
@@ -150,8 +159,6 @@ type Modification =
 
 export async function transformJsxScriptTagsCode(
   code: string,
-  isDiscovery: boolean,
-  clientEntryPoints: Set<string>,
   manifest: Record<string, any> = {},
 ) {
   // context(justinvdm, 15 Jun 2025): Optimization to exit early
@@ -249,25 +256,13 @@ export async function transformJsxScriptTagsCode(
                   if (srcValue.startsWith("/")) {
                     entryPoints.push(srcValue);
 
-                    if (isDiscovery) {
-                      clientEntryPoints.add(srcValue);
-                      const transformedSrc = `rwsdk_asset:${srcValue}`;
-                      modifications.push({
-                        type: "literalValue",
-                        node: initializer,
-                        value: transformedSrc,
-                      });
-                    } else {
-                      const path = srcValue.slice(1);
-                      if (manifest[path]) {
-                        const transformedSrc = `/${manifest[path].file}`;
-                        modifications.push({
-                          type: "literalValue",
-                          node: initializer,
-                          value: transformedSrc,
-                        });
-                      }
-                    }
+                    // Always use discovery behavior in worker environment
+                    const transformedSrc = `rwsdk_asset:${srcValue}`;
+                    modifications.push({
+                      type: "literalValue",
+                      node: initializer,
+                      value: transformedSrc,
+                    });
                   }
                 }
               }
@@ -286,12 +281,7 @@ export async function transformJsxScriptTagsCode(
                   content: transformedContent,
                   hasChanges: contentHasChanges,
                   entryPoints: dynamicEntryPoints,
-                } = transformScriptImports(
-                  scriptContent,
-                  manifest,
-                  isDiscovery,
-                  clientEntryPoints,
-                );
+                } = transformScriptImports(scriptContent, manifest);
 
                 entryPoints.push(...dynamicEntryPoints);
 
@@ -528,9 +518,9 @@ ${mod.callExprText}
 }
 
 export const transformJsxScriptTagsPlugin = ({
-  clientEntryPoints,
+  manifestPath,
 }: {
-  clientEntryPoints: Set<string>;
+  manifestPath: string;
 }): Plugin => {
   let isBuild = false;
 
@@ -549,13 +539,8 @@ export const transformJsxScriptTagsPlugin = ({
         log("Transforming JSX script tags in %s", id);
         process.env.VERBOSE && log("Code:\n%s", code);
 
-        const result = await transformJsxScriptTagsCode(
-          code,
-          isBuild,
-          clientEntryPoints,
-          isBuild ? undefined : {},
-        );
-
+        const manifest = isBuild ? await readManifest(manifestPath) : {};
+        const result = await transformJsxScriptTagsCode(code, manifest);
         if (result) {
           log("Transformed JSX script tags in %s", id);
           process.env.VERBOSE &&

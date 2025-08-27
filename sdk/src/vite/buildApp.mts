@@ -18,10 +18,14 @@ const log = debug("rwsdk:vite:build-app");
  *
  * @see docs/architecture/productionBuildProcess.md
  */
-export async function buildApp(
-  builder: ViteBuilder,
-  clientEntryPoints: Set<string>,
-  clientFiles: Set<string>,
+export async function buildApp({
+  builder,
+  clientEntryPoints,
+  clientFiles,
+}: {
+  builder: ViteBuilder;
+  clientEntryPoints: Set<string>;
+  clientFiles: Set<string>;
 ) {
   // Phase 1: Worker "Discovery" Pass
   log('🔍 buildApp started - Phase 1: Worker "Discovery" Pass');
