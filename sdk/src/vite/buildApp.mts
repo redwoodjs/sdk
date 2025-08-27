@@ -97,9 +97,8 @@ export async function buildApp(
   }
 
   if (!clientManifest) {
-    console.log("❌ Could not find client manifest!");
-    console.log("Available outputs:", JSON.stringify(clientOutput, null, 2));
-    throw new Error("Could not find client manifest");
+    console.log("❌ rwsdk: Could not find client manifest!");
+    throw new Error("rwsdk: Could not find client manifest");
   }
 
   // Phase 3: SSR Build
