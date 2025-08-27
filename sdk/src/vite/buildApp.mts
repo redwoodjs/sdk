@@ -29,29 +29,23 @@ export async function buildApp({
   clientFiles: Set<string>;
   projectRootDir: string;
 }) {
-  // Phase 1: Worker "Discovery" Pass
   log('🔍 buildApp started - Phase 1: Worker "Discovery" Pass');
   log('Phase 1: Worker "Discovery" Pass');
 
-  // The worker environment is already configured - just run the build
   await builder.build(builder.environments["worker"]!);
 
-  // Debug: Check what was discovered
   log("🔍 Entry Point Discovery Results:");
   log("  clientEntryPoints:", Array.from(clientEntryPoints));
   log("  clientFiles:", Array.from(clientFiles));
   log("Discovered clientEntryPoints: %O", Array.from(clientEntryPoints));
   log("Discovered clientFiles: %O", Array.from(clientFiles));
 
-  // Phase 2: Client Build
   log("Phase 2: Client Build");
 
-  // Update client config with discovered entry points
   const clientEnv = builder.environments["client"]!;
   if (clientEnv.config.build?.rollupOptions) {
     const entryPoints = Array.from(clientEntryPoints);
 
-    // Safety check: if no entry points discovered, use default
     if (entryPoints.length === 0) {
       log("No client entry points discovered, using default: src/client.tsx");
       clientEnv.config.build.rollupOptions.input = ["src/client.tsx"];
@@ -85,34 +79,30 @@ export async function buildApp({
     throw new Error("rwsdk: Could not find client manifest");
   }
 
-  // Phase 3: SSR Build
   log("Phase 3: SSR Build");
 
-  // Update SSR config with discovered client files
   const ssrEnv = builder.environments["ssr"]!;
-  if (
-    ssrEnv.config.build?.lib &&
-    typeof ssrEnv.config.build.lib === "object" &&
-    ssrEnv.config.build.lib.entry
-  ) {
-    // Add discovered client files to the entry points
-    const entryObj = ssrEnv.config.build.lib.entry as Record<string, string>;
-    for (const file of clientFiles) {
-      entryObj[file] = file;
+  if (ssrEnv.config.build?.rollupOptions) {
+    const entryPoints = Array.from(clientFiles);
+
+    if (entryPoints.length === 0) {
+      log(
+        "No client files discovered, SSR build will use default configuration",
+      );
+      // Don't set input to empty array - let SSR use its default entry points
+    } else {
+      log("Setting SSR entry points from client files: %o", entryPoints);
+      ssrEnv.config.build.rollupOptions.input = entryPoints;
     }
   }
 
   await builder.build(ssrEnv);
 
-  // Phase 4: Worker "Reprocessing" Pass
   log('Phase 4: Worker "Reprocessing" Pass');
 
-  // Modify the worker environment to process SSR artifacts
   const workerEnv = builder.environments["worker"]!;
 
-  // Update the worker config to use SSR artifacts as input
   if (workerEnv.config.build?.rollupOptions) {
-    // Clear the original input and replace with SSR artifacts
     const entry: Record<string, string> = {};
 
     const ssrFiles = await fsp.readdir(SSR_OUTPUT_DIR);
@@ -125,7 +115,6 @@ export async function buildApp({
 
     workerEnv.config.build.rollupOptions.input = entry;
 
-    // Ensure output paths match the external imports from Phase 1
     workerEnv.config.build.rollupOptions.output = {
       ...workerEnv.config.build.rollupOptions.output,
       entryFileNames: (chunkInfo: any) => {
@@ -145,10 +134,8 @@ export async function buildApp({
 
   await builder.build(workerEnv);
 
-  // Phase 5: Client Asset "Linking" Pass
   log('Phase 5: Client Asset "Linking" Pass');
 
-  // Copy manifest.json to worker output directory for external import resolution
   await fsp.writeFile(WORKER_MANIFEST_PATH, (clientManifest as any).source);
   log("📄 Copied manifest to %s", WORKER_MANIFEST_PATH);
 
