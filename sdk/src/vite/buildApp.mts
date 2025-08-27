@@ -64,6 +64,7 @@ export async function buildApp({
 
   const manifestPath = path.resolve(
     projectRootDir,
+    "dist",
     "client",
     ".vite",
     "manifest.json",
@@ -73,15 +74,14 @@ export async function buildApp({
   log("📖 Reading client manifest from %s", manifestPath);
   try {
     const manifestContent = await fsp.readFile(manifestPath, "utf-8");
-    await new Promise((resolve) => setTimeout(resolve, 1000));
     clientManifest = { source: manifestContent };
     log("  ✅ Successfully read manifest from filesystem");
   } catch (error) {
-    log("  ❌ Failed to read manifest: %s", error);
+    console.error("  ❌ Failed to read manifest: %s", error);
   }
 
   if (!clientManifest) {
-    log("❌ rwsdk: Could not find client manifest!");
+    console.error("❌ rwsdk: Could not find client manifest!");
     throw new Error("rwsdk: Could not find client manifest");
   }
 
