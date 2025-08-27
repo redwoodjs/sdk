@@ -3,6 +3,9 @@ import path from "node:path";
 import debug from "debug";
 import {
   SSR_OUTPUT_DIR,
+  SSR_BRIDGE_PATH,
+  SSR_CLIENT_LOOKUP_PATH,
+  SSR_SERVER_LOOKUP_PATH,
   WORKER_OUTPUT_DIR,
   WORKER_MANIFEST_PATH,
 } from "../lib/constants.mjs";
@@ -108,15 +111,11 @@ export async function buildApp({
   workerEnv.config.build ??= {} as any;
   workerEnv.config.build.rollupOptions ??= {};
 
-  const entry: Record<string, string> = {};
-
-  const ssrFiles = await fsp.readdir(SSR_OUTPUT_DIR);
-  for (const file of ssrFiles) {
-    if (file.endsWith(".js") || file.endsWith(".mjs")) {
-      const entryName = file.replace(/\.(m?js)$/, "");
-      entry[entryName] = path.join(SSR_OUTPUT_DIR, file);
-    }
-  }
+  const entry: Record<string, string> = {
+    __ssr_bridge: SSR_BRIDGE_PATH,
+    __client_lookup: SSR_CLIENT_LOOKUP_PATH,
+    __server_lookup: SSR_SERVER_LOOKUP_PATH,
+  };
 
   workerEnv.config.build.rollupOptions.input = entry;
 
