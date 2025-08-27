@@ -24,7 +24,6 @@ export async function transformClientComponents(
   ctx: TransformContext,
 ): Promise<TransformResult | undefined> {
   const log = ctx.isEsbuild ? logEsbuild : logVite;
-  log("Called transformClientComponents for id: id=%s", normalizedId);
 
   if (!hasDirective(code, "use client")) {
     log("Skipping: no 'use client' directive in id=%s", normalizedId);

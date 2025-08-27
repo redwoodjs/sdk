@@ -309,8 +309,6 @@ export const createDirectiveLookupPlugin = async ({
       }
     },
     resolveId(source) {
-      process.env.VERBOSE && log("Resolving id=%s", source);
-
       if (source === `${config.virtualModuleName}.js`) {
         log("Resolving %s module", config.virtualModuleName);
         // context(justinvdm, 16 Jun 2025): Include .js extension
@@ -321,8 +319,6 @@ export const createDirectiveLookupPlugin = async ({
       process.env.VERBOSE && log("No resolution for id=%s", source);
     },
     async load(id) {
-      process.env.VERBOSE && log("Loading id=%s", id);
-
       if (id === config.virtualModuleName + ".js") {
         log(
           "Loading %s module with %d files",

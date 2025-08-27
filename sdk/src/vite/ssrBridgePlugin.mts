@@ -81,14 +81,6 @@ export const ssrBridgePlugin = ({
       }
     },
     async resolveId(id) {
-      process.env.VERBOSE &&
-        log(
-          "Resolving id=%s, environment=%s, isDev=%s",
-          id,
-          this.environment?.name,
-          isDev,
-        );
-
       if (isDev) {
         // context(justinvdm, 27 May 2025): In dev, we need to dynamically load
         // SSR modules, so we return the virtual id so that the dynamic loading
@@ -140,14 +132,6 @@ export const ssrBridgePlugin = ({
       process.env.VERBOSE && log("No resolution for id=%s", id);
     },
     async load(id) {
-      process.env.VERBOSE &&
-        log(
-          "Loading id=%s, isDev=%s, environment=%s",
-          id,
-          isDev,
-          this.environment.name,
-        );
-
       if (
         id.startsWith(VIRTUAL_SSR_PREFIX) &&
         this.environment.name === "worker"

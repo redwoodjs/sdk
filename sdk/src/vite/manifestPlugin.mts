@@ -25,13 +25,11 @@ export const manifestPlugin = ({
     },
     resolveId(id) {
       if (id === virtualModuleId) {
-        process.env.VERBOSE && log("Resolving virtual module id=%s", id);
         return resolvedVirtualModuleId;
       }
     },
     async load(id) {
       if (id === resolvedVirtualModuleId) {
-        process.env.VERBOSE && log("Loading virtual module id=%s", id);
         if (!isBuild) {
           process.env.VERBOSE && log("Not a build, returning empty manifest");
           return `export default {}`;

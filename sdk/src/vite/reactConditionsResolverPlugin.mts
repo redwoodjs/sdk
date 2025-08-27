@@ -296,14 +296,6 @@ export const reactConditionsResolverPlugin = ({
           return;
         }
 
-        process.env.VERBOSE &&
-          log(
-            "Resolving id=%s, environment=%s, importer=%s",
-            id,
-            envName,
-            importer,
-          );
-
         const mappings =
           ENV_IMPORT_MAPPINGS[envName as keyof typeof ENV_IMPORT_MAPPINGS];
 

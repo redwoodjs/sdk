@@ -120,13 +120,6 @@ export const directivesPlugin = ({
       });
     },
     async transform(code, id) {
-      process.env.VERBOSE &&
-        log(
-          "Transform called for id=%s, environment=%s",
-          id,
-          this.environment.name,
-        );
-
       const normalizedId = normalizeModulePath(id, projectRootDir);
 
       const clientResult = await transformClientComponents(code, normalizedId, {
