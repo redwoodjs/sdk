@@ -58,9 +58,28 @@ In development, the process is dynamic.
 6.  Before finishing, the plugin wraps the returned code to ensure that any *further* imports within it are also prefixed with `virtual:rwsdk:ssr:`. This keeps the entire dependency chain within the virtual SSR subgraph, ensuring all nested modules are processed correctly by the `ssr` environment.
 
 #### In Production
-In a production build, the process is simpler and based on pre-building.
-1.  First, a separate Vite build runs for the `ssr` environment, using the bridge module as its entry point. This produces a single, self-contained SSR bundle file.
-2.  Next, the main `worker` environment build runs.
-3.  When the `worker` build encounters the import for the SSR bridge, the plugin simply resolves the import path to the location of the pre-built SSR bundle from step 1.
 
-In effect, the SSR bundle is treated like a third-party library by the main `worker` build. This two-step process ensures that both environments are built with their respective configurations and then combined to run in the final Cloudflare Worker. 
+In a production build, the process addresses a circular dependency between the `worker` and `ssr` environments.
+
+##### The Challenge: A Build-Time Circular Dependency
+
+The core challenge is that:
+1. The **`worker`** environment is the only place we can discover the complete list of modules containing a `"use client"` directive, as it is responsible for bundling the user's application code where these directives are found.
+2. However, these `"use client"` modules must be bundled by the **`ssr`** environment to ensure they are processed with the correct (non-`"react-server"`) versions of their dependencies.
+3. The final **`worker`** bundle must then consume the output of the `ssr` build, treating it as a pre-compiled dependency.
+
+This creates a deadlock: the `ssr` build cannot start until the `worker` build has finished discovering files, but the `worker` build cannot finish until the `ssr` build has produced the necessary artifacts for it to consume.
+
+One might initially think that a preliminary, "discovery-only" pass for the `worker` build would solve this. However, the nature of this problem is not that two full traversals of the module graph are required, but rather that there is "unfinished work" for the `worker` environment that can only be completed after the `ssr` build is done. A discovery pass is therefore semantically incorrect and introduces practical challenges: it creates the potential for duplicated effort, particularly where transformations are a prerequisite for module resolution, and adds significant complexity in trying to control what logic should run in a "discovery" pass versus a "build" pass.
+
+##### The Solution: A Phased, Sequential Build
+
+To solve this efficiently, we implement a multi-phase build process orchestrated by a custom plugin (`rwsdk:config`):
+
+1.  **Phase 1: Initial Worker Build.** The `worker` environment is built first, using the application's source as its entry point. This is a full, productive build, not a throwaway discovery pass. The crucial side-effect of this phase is the collection of all `"use client"` module paths.
+
+2.  **Phase 2: Dynamic SSR Build.** After Phase 1 completes, the `ssr` build is executed. Before it runs, its configuration is dynamically modified in memory. The list of `"use client"` paths collected in Phase 1 is added to its list of entry points, alongside the main SSR Bridge entry. This results in a set of output chunks in a predictable directory (`dist/ssr/`) containing the bridge and all client components, correctly bundled for the SSR environment.
+
+3.  **Phase 3: Final Worker Re-Bundling Run.** The `worker` build is run a *second time*. For this run, the bundling inputs (i.e., entry points) are the output files from the SSR build (Phase 2). This run's purpose is to take the SSR-processed code and re-bundle it through the `worker` environment's toolchain (including the `@cloudflare/vite-plugin`), producing the final, deployable Cloudflare Worker.
+
+4.  **Phase 4: The Client Lookup "Contract".** To link the `worker` to the client components, we establish a "contract". The application code contains a static import to a predictable path, like `import { useClientLookup } from 'rwsdk/__client_lookup.mjs'`. During the Final Worker Re-Bundling Run (Phase 3), a plugin generates the source code for this module—a map from original source paths to their final `ssr` chunk paths—and uses the `this.emitFile` API to create this file at the location specified in the contract. 
