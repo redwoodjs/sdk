@@ -3,8 +3,11 @@ import path, { resolve } from "node:path";
 import { builtinModules } from "node:module";
 import { InlineConfig } from "vite";
 import enhancedResolve from "enhanced-resolve";
+import debug from "debug";
 
 import { SSR_BRIDGE_PATH, SSR_CLIENT_LOOKUP_PATH } from "../lib/constants.mjs";
+
+const log = debug("rwsdk:vite:config");
 
 // port(justinvdm, 09 Jun 2025):
 // https://github.com/cloudflare/workers-sdk/blob/d533f5ee7da69c205d8d5e2a5f264d2370fc612b/packages/vite-plugin-cloudflare/src/cloudflare-environment.ts#L123-L128
@@ -184,18 +187,28 @@ export const configPlugin = ({
       builder: {
         buildApp: async (builder) => {
           // Phase 1: Worker "Discovery" Pass
-          console.log("Phase 1: Worker 'Discovery' Pass");
+          log("Phase 1: Worker 'Discovery' Pass");
           await builder.build(builder.environments["worker"]!);
 
           // Phase 2: Client Build
-          console.log("Phase 2: Client Build");
+          log("Phase 2: Client Build");
+          log(
+            "Discovered %d client entry points: %O",
+            clientEntryPoints.size,
+            Array.from(clientEntryPoints),
+          );
           // Update the client environment configuration
           baseConfig.environments!.client!.build!.rollupOptions!.input =
             Array.from(clientEntryPoints);
           await builder.build(builder.environments["client"]!);
 
           // Phase 3: SSR Build
-          console.log("Phase 3: SSR Build");
+          log("Phase 3: SSR Build");
+          log(
+            "Building SSR with %d client files: %O",
+            clientFiles.size,
+            Array.from(clientFiles),
+          );
           // Update the SSR environment configuration
           const ssrEntries: Record<string, string> = {
             [path.basename(SSR_BRIDGE_PATH, ".js")]: enhancedResolve.sync(
@@ -216,7 +229,7 @@ export const configPlugin = ({
           await builder.build(builder.environments["ssr"]!);
 
           // Phase 4: Worker "Linking" and "SSR-rebundling" Pass
-          console.log('Phase 4: Worker "Linking" and "SSR-rebundling" Pass');
+          log('Phase 4: Worker "Linking" and "SSR-rebundling" Pass');
           await builder.build(builder.environments["worker"]!);
         },
       },
