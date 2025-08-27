@@ -135,12 +135,6 @@ export async function transformClientComponents(
 
   // Add registerClientReference assignments for unique names
   for (const [computedLocalName, correspondingInfo] of computedLocalNames) {
-    log(
-      ":isEsbuild=%s: Registering client reference for named export: %s as %s",
-      !!ctx.isEsbuild,
-      correspondingInfo.local,
-      correspondingInfo.exported,
-    );
     s.append(
       `const ${computedLocalName} = registerClientReference("${normalizedId}", "${correspondingInfo.exported}");\n`,
     );
@@ -153,11 +147,6 @@ export async function transformClientComponents(
         correspondingInfo.local === correspondingInfo.exported
           ? computedLocalName
           : `${computedLocalName} as ${correspondingInfo.exported}`,
-    );
-    log(
-      ":isEsbuild=%s: Exporting named exports: %O",
-      !!ctx.isEsbuild,
-      exportNames,
     );
     s.append(`export { ${exportNames.join(", ")} };\n`);
   }
