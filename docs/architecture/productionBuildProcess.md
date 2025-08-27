@@ -6,7 +6,7 @@ This document outlines the multi-phase build process used for production environ
 
 The production build must solve several interconnected problems simultaneously, arising from the use of multiple, specialized Vite environments (`worker`, `client`, `ssr`) that have circular information dependencies:
 
-1.  **SSR / Worker Dependency:** The `worker` environment, which produces the final deployable Cloudflare Worker, must bundle the entire output of the `ssr` build via the `__ssr_bridge.js` module. This creates a build ordering dependency: the `ssr` build must complete before the final `worker` build can begin.
+1.  **SSR / Worker Dependency:** The `worker` environment, which is configured for React Server Components (RSC), must bundle the entire output of the `ssr` build. The `ssr` environment handles traditional server-side rendering. For a detailed explanation of how these environments interact, see the [SSR Bridge](./ssrBridge.md) architecture document. This creates a build ordering dependency: the `ssr` build must complete before the final `worker` build can begin.
 
 2.  **Dynamic Client Entry Points:** The `client` build needs a list of all client-side JavaScript entry points (e.g., from `<script>` tags) to know what to bundle. This information is only available by traversing the application's `Document.tsx` components, which occurs during the `worker` build.
 
@@ -20,28 +20,40 @@ These points create a deadlock. The `worker` build needs information from the `c
 
 ## The Solution: A Phased, Sequential Build
 
-To resolve this, we implement a four-phase sequential build process. This approach treats discovery as a side-effect of a full, productive build pass and defers the final "linking" of assets until all necessary information has been collected.
+To resolve this, we implement a five-phase sequential build process. The first three phases use Vite to build the necessary artifacts, while the final two phases are post-build filesystem operations that "stitch" the artifacts together into the final deployable worker.
 
 ### Phase 1: Worker "Discovery" Pass
 
-The `worker` environment is built first. This is a full build pass that performs all necessary transformations on the application source code within the worker's module graph. As a crucial **side-effect** of this traversal, two key pieces of information are collected:
--   A complete list of all actively used modules containing a `"use client"` directive.
--   A complete list of all client-side entry points.
+The `worker` environment is built first. This is a full build pass that performs all necessary transformations on the application source code. As a crucial **side-effect** of this traversal, two key pieces of information are collected:
+- A complete list of all actively used modules containing a `"use client"` directive.
+- A complete list of all client-side entry points.
 
-During this phase, transformations that reference client assets (like `<script src="...">`) do not resolve them to their final paths. Instead, they rewrite them into a special placeholder format (e.g., `rwsdk_asset:/src/client.tsx`).
+During this phase:
+- Transformations that reference client assets (like `<script src="...">`) rewrite them into a special placeholder format (e.g., `rwsdk_asset:/src/client.tsx`).
+- The import for the SSR bridge (`rwsdk/__ssr_bridge`) is marked as external, leaving a placeholder import in the final output.
+
+The output of this phase is the `worker.js` bundle. This is a non-temporary artifact that will be modified by later phases.
 
 ### Phase 2: Client Build
 
-With the list of entry points discovered in Phase 1, the `client` build is now executed. Its configuration is dynamically updated with this list. This build runs to completion, producing all the necessary hashed client assets and a `manifest.json` file that maps the original source paths to their final output filenames.
+With the list of entry points discovered in Phase 1, the `client` build is now executed. Its configuration is dynamically updated with this list. This build runs to completion, producing all the necessary hashed client assets and a `manifest.json` file.
 
 ### Phase 3: SSR Build
 
-The `ssr` build runs next. Its configuration is dynamically updated with multiple entry points: the main SSR Bridge, the list of `"use client"` components discovered in Phase 1, and a virtual module for the client lookup map. This build produces chunks for the SSR bridge, the client lookup map, and all the necessary SSR-processed client components in a predictable directory.
+The `ssr` build runs next. Its configuration is dynamically updated with multiple entry points: the main SSR Bridge, the list of `"use client"` components discovered in Phase 1, and a virtual module for the client lookup map. This build produces the SSR bridge bundle, the client lookup map, and all the necessary SSR-processed client component chunks.
 
-### Phase 4: Worker "Linking" and "SSR-rebundling" Pass
+### Phase 4: SSR Artifact Injection Pass
 
-At this point, there are two main jobs left to complete the build:
+This phase is a post-build filesystem operation. It takes the `worker.js` bundle from Phase 1 and injects the necessary SSR artifacts generated in Phase 3. It performs the following actions:
+1.  Reads the content of the `worker.js` bundle from Phase 1.
+2.  Reads the content of the `__ssr_bridge.js` bundle from Phase 3.
+3.  Replaces the external/placeholder import for the SSR bridge in `worker.js` with the actual content of the SSR bridge bundle.
+4.  Writes the modified content back to the `worker.js` file.
 
-1.  **Reprocessing of SSR Outputs:** We need to take all the outputs from the SSR build (Phase 3)—which include the `__ssr_bridge.js` bundle, the `__client_lookup.mjs` map, and all SSR-processed client component chunks—as its primary input, and re-bundle them for the Cloudflare environment.
+### Phase 5: Client Asset "Linking" Pass
 
-2.  **Client Asset Linking:** At the very end of this phase, a `generateBundle` hook is used to perform the final linking step for client assets. A plugin reads the `manifest.json` generated by the Client Build (Phase 2) and performs a search-and-replace across the final worker code, replacing all `rwsdk_asset:...` placeholders with their correct, final, hashed asset paths.
+This final step is also a post-build filesystem operation. It takes the `worker.js` file modified in Phase 4 and performs the final asset linking:
+1.  Reads the `manifest.json` generated by the Client Build (Phase 2).
+2.  Reads the content of the `worker.js` file.
+3.  Performs a search-and-replace across the worker code, replacing all `rwsdk_asset:...` placeholders with their correct, final, hashed asset paths from the manifest.
+4.  Writes the modified content back to the `worker.js` file, producing the final, deployable artifact.

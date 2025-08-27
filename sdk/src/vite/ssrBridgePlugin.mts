@@ -120,6 +120,13 @@ export const ssrBridgePlugin = ({
         // SSR bridge bundle - SSR env builds it, worker build tries to resolve it
         // here and uses it
         if (id === "rwsdk/__ssr_bridge" && this.environment.name === "worker") {
+          if (process.env.RWSDK_BUILD_PHASE === "discovery") {
+            log(
+              "Bridge module case (discovery build): marking %s as external",
+              id,
+            );
+            return { id, external: true };
+          }
           log(
             "Bridge module case (build): id=%s matches rwsdk/__ssr_bridge in worker environment, returning SSR_BRIDGE_PATH=%s",
             id,

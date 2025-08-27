@@ -186,47 +186,49 @@ export const configPlugin = ({
       },
       builder: {
         buildApp: async (builder) => {
-          // Phase 1: Worker "Discovery" Pass
-          log("Phase 1: Worker 'Discovery' Pass");
-          await builder.build(builder.environments["worker"]!);
+          try {
+            // Phase 1: Worker "Discovery" Pass
+            log("Phase 1: Worker 'Discovery' Pass");
+            process.env.RWSDK_BUILD_PHASE = "discovery";
+            await builder.build(builder.environments["worker"]!);
 
-          // Phase 2: Client Build
-          log("Phase 2: Client Build");
-          log(
-            "Discovered %d client entry points: %O",
-            clientEntryPoints.size,
-            Array.from(clientEntryPoints),
-          );
-          // Update the client environment configuration
-          baseConfig.environments!.client!.build!.rollupOptions!.input =
-            Array.from(clientEntryPoints);
-          await builder.build(builder.environments["client"]!);
+            // Phase 2: Client Build
+            log("Phase 2: Client Build");
+            log(
+              "Discovered %d client entry points: %O",
+              clientEntryPoints.size,
+              Array.from(clientEntryPoints),
+            );
+            // Update the client environment configuration
+            baseConfig.environments!.client!.build!.rollupOptions!.input =
+              Array.from(clientEntryPoints);
+            await builder.build(builder.environments["client"]!);
 
-          // Phase 3: SSR Build
-          log("Phase 3: SSR Build");
-          log(
-            "Building SSR with %d client files: %O",
-            clientFiles.size,
-            Array.from(clientFiles),
-          );
-          // Update the SSR environment configuration
-          const ssrEntries: Record<string, string> = {
-            [path.basename(SSR_BRIDGE_PATH, ".js")]: enhancedResolve.sync(
-              projectRootDir,
-              "rwsdk/__ssr_bridge",
-            ) as string,
-            "virtual:use-client-lookup.js": "virtual:use-client-lookup.js",
-          };
-          for (const file of clientFiles) {
-            ssrEntries[file] = path.resolve(projectRootDir, file);
-          }
-          if (
-            baseConfig.environments!.ssr!.build!.lib &&
-            typeof baseConfig.environments!.ssr!.build!.lib === "object"
-          ) {
-            baseConfig.environments!.ssr!.build!.lib.entry = ssrEntries;
-          }
-          await builder.build(builder.environments["ssr"]!);
+            // Phase 3: SSR Build
+            log("Phase 3: SSR Build");
+            log(
+              "Building SSR with %d client files: %O",
+              clientFiles.size,
+              Array.from(clientFiles),
+            );
+            // Update the SSR environment configuration
+            const ssrEntries: Record<string, string> = {
+              [path.basename(SSR_BRIDGE_PATH, ".js")]: enhancedResolve.sync(
+                projectRootDir,
+                "rwsdk/__ssr_bridge",
+              ) as string,
+              "virtual:use-client-lookup.js": "virtual:use-client-lookup.js",
+            };
+            for (const file of clientFiles) {
+              ssrEntries[file] = path.resolve(projectRootDir, file);
+            }
+            if (
+              baseConfig.environments!.ssr!.build!.lib &&
+              typeof baseConfig.environments!.ssr!.build!.lib === "object"
+            ) {
+              baseConfig.environments!.ssr!.build!.lib.entry = ssrEntries;
+            }
+            await builder.build(builder.environments["ssr"]!);
 
           // Phase 4: Worker "Linking" and "SSR-rebundling" Pass
           log('Phase 4: Worker "Linking" and "SSR-rebundling" Pass');
