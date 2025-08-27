@@ -8,8 +8,9 @@ export const SRC_DIR = resolve(ROOT_DIR, "src");
 export const DIST_DIR = resolve(ROOT_DIR, "dist");
 
 export const SSR_BRIDGE_PATH = resolve(DIST_DIR, "worker", "__ssr_bridge.js");
-export const CLIENT_LOOKUP_PATH = resolve(
+
+export const SSR_CLIENT_LOOKUP_PATH = resolve(
   DIST_DIR,
-  "ssr",
-  "__client_lookup.mjs",
+  "worker",
+  "__ssr_client_lookup.mjs",
 );
