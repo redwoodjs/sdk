@@ -55,6 +55,8 @@ function hasJsxFunctions(text: string): boolean {
 function transformScriptImports(
   scriptContent: string,
   manifest: Record<string, any>,
+  isDiscovery: boolean,
+  clientEntryPoints: Set<string>,
 ): {
   content: string | undefined;
   hasChanges: boolean;
@@ -70,7 +72,7 @@ function transformScriptImports(
     );
 
     let hasChanges = false;
-    const entryPoints: string[] = [];
+    const localEntryPoints: string[] = [];
 
     scriptFile
       .getDescendantsOfKind(SyntaxKind.CallExpression)
@@ -94,11 +96,16 @@ function transformScriptImports(
                 "Found dynamic import with root-relative path: %s",
                 importPath,
               );
-              entryPoints.push(importPath);
+              localEntryPoints.push(importPath);
 
               const path = importPath.slice(1);
 
-              if (manifest[path]) {
+              if (isDiscovery) {
+                clientEntryPoints.add(importPath);
+                const transformedSrc = `rwsdk_asset:${importPath}`;
+                args[0].setLiteralValue(transformedSrc);
+                hasChanges = true;
+              } else if (manifest[path]) {
                 const transformedSrc = `/${manifest[path].file}`;
                 args[0].setLiteralValue(transformedSrc);
                 hasChanges = true;
@@ -114,10 +121,18 @@ function transformScriptImports(
       const endPos = fullText.lastIndexOf("}");
       const transformedContent = fullText.substring(startPos, endPos);
 
-      return { content: transformedContent, hasChanges: true, entryPoints };
+      return {
+        content: transformedContent,
+        hasChanges: true,
+        entryPoints: localEntryPoints,
+      };
     }
 
-    return { content: scriptContent, hasChanges: false, entryPoints };
+    return {
+      content: scriptContent,
+      hasChanges: false,
+      entryPoints: localEntryPoints,
+    };
   } catch (error) {
     console.warn("Failed to parse inline script content:", error);
     return { content: undefined, hasChanges: false, entryPoints: [] };
@@ -162,6 +177,8 @@ type Modification =
 
 export async function transformJsxScriptTagsCode(
   code: string,
+  isDiscovery: boolean,
+  clientEntryPoints: Set<string>,
   manifest: Record<string, any> = {},
 ) {
   // context(justinvdm, 15 Jun 2025): Optimization to exit early
@@ -259,14 +276,24 @@ export async function transformJsxScriptTagsCode(
                   if (srcValue.startsWith("/")) {
                     entryPoints.push(srcValue);
 
-                    const path = srcValue.slice(1);
-                    if (manifest[path]) {
-                      const transformedSrc = `/${manifest[path].file}`;
+                    if (isDiscovery) {
+                      clientEntryPoints.add(srcValue);
+                      const transformedSrc = `rwsdk_asset:${srcValue}`;
                       modifications.push({
                         type: "literalValue",
                         node: initializer,
                         value: transformedSrc,
                       });
+                    } else {
+                      const path = srcValue.slice(1);
+                      if (manifest[path]) {
+                        const transformedSrc = `/${manifest[path].file}`;
+                        modifications.push({
+                          type: "literalValue",
+                          node: initializer,
+                          value: transformedSrc,
+                        });
+                      }
                     }
                   }
                 }
@@ -286,7 +313,12 @@ export async function transformJsxScriptTagsCode(
                   content: transformedContent,
                   hasChanges: contentHasChanges,
                   entryPoints: dynamicEntryPoints,
-                } = transformScriptImports(scriptContent, manifest);
+                } = transformScriptImports(
+                  scriptContent,
+                  manifest,
+                  isDiscovery,
+                  clientEntryPoints,
+                );
 
                 entryPoints.push(...dynamicEntryPoints);
 
@@ -524,8 +556,10 @@ ${mod.callExprText}
 
 export const transformJsxScriptTagsPlugin = ({
   manifestPath,
+  clientEntryPoints,
 }: {
   manifestPath: string;
+  clientEntryPoints: Set<string>;
 }): Plugin => {
   let isBuild = false;
 
@@ -544,8 +578,13 @@ export const transformJsxScriptTagsPlugin = ({
         log("Transforming JSX script tags in %s", id);
         process.env.VERBOSE && log("Code:\n%s", code);
 
-        const manifest = isBuild ? await readManifest(manifestPath) : {};
-        const result = await transformJsxScriptTagsCode(code, manifest);
+        const result = await transformJsxScriptTagsCode(
+          code,
+          isBuild,
+          clientEntryPoints,
+          isBuild ? undefined : {},
+        );
+
         if (result) {
           log("Transformed JSX script tags in %s", id);
           process.env.VERBOSE &&
@@ -557,6 +596,40 @@ export const transformJsxScriptTagsPlugin = ({
         }
       }
       return null;
+    },
+    async generateBundle(_options, bundle) {
+      if (this.environment?.name !== "worker" || !isBuild) {
+        return;
+      }
+
+      const manifest = await readManifest(manifestPath);
+      const assetRegex = /rwsdk_asset:(\/[^"']+)/g;
+
+      for (const fileName in bundle) {
+        const chunk = bundle[fileName];
+
+        if (chunk.type === "chunk" && typeof chunk.code === "string") {
+          let hasChanges = false;
+          const newCode = chunk.code.replace(assetRegex, (match, assetPath) => {
+            const manifestEntry = manifest[assetPath.slice(1)];
+
+            if (manifestEntry) {
+              hasChanges = true;
+              log(
+                "Replacing asset placeholder %s with %s",
+                match,
+                manifestEntry.file,
+              );
+              return `/${manifestEntry.file}`;
+            }
+            return match;
+          });
+
+          if (hasChanges) {
+            chunk.code = newCode;
+          }
+        }
+      }
     },
   };
 };

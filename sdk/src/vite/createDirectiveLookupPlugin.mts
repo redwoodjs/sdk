@@ -218,13 +218,6 @@ export const createDirectiveLookupPlugin = async ({
     projectRootDir,
   );
 
-  await findFilesContainingDirective({
-    projectRootDir,
-    files,
-    directive: config.directive,
-    debugNamespace,
-  });
-
   let devServer: ViteDevServer;
 
   return {

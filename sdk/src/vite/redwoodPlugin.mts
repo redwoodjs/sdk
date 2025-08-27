@@ -72,14 +72,9 @@ export const redwoodPlugin = async (
     options,
   );
 
-  const clientEntryPathnames = (
-    Array.isArray(options.entry?.client)
-      ? options.entry.client
-      : [options.entry?.client ?? "src/client.tsx"]
-  ).map((entry) => resolve(projectRootDir, entry));
-
   const clientFiles = new Set<string>();
   const serverFiles = new Set<string>();
+  const clientEntryPoints = new Set<string>();
 
   const shouldIncludeCloudflarePlugin =
     options.includeCloudflarePlugin ??
@@ -113,8 +108,10 @@ export const redwoodPlugin = async (
     configPlugin({
       silent: options.silent ?? false,
       projectRootDir,
-      clientEntryPathnames,
       workerEntryPathname,
+      clientFiles,
+      serverFiles,
+      clientEntryPoints,
     }),
     ssrBridgePlugin({
       clientFiles,
@@ -143,7 +140,12 @@ export const redwoodPlugin = async (
       serverFiles,
     }),
     vitePreamblePlugin(),
-    injectVitePreamble({ clientEntryPathnames }),
+    injectVitePreamble({
+      clientEntryPathnames: (Array.isArray(options.entry?.client)
+        ? options.entry.client
+        : [options.entry?.client ?? "src/client.tsx"]
+      ).map((entry) => resolve(projectRootDir, entry)),
+    }),
     useClientLookupPlugin({
       projectRootDir,
       clientFiles,
@@ -160,6 +162,7 @@ export const redwoodPlugin = async (
         ".vite",
         "manifest.json",
       ),
+      clientEntryPoints,
     }),
     manifestPlugin({
       manifestPath: resolve(

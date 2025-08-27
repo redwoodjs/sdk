@@ -4,7 +4,7 @@ import { builtinModules } from "node:module";
 import { InlineConfig } from "vite";
 import enhancedResolve from "enhanced-resolve";
 
-import { SSR_BRIDGE_PATH } from "../lib/constants.mjs";
+import { SSR_BRIDGE_PATH, CLIENT_LOOKUP_PATH } from "../lib/constants.mjs";
 
 // port(justinvdm, 09 Jun 2025):
 // https://github.com/cloudflare/workers-sdk/blob/d533f5ee7da69c205d8d5e2a5f264d2370fc612b/packages/vite-plugin-cloudflare/src/cloudflare-environment.ts#L123-L128
@@ -24,13 +24,15 @@ export const externalModules = [
 export const configPlugin = ({
   silent,
   projectRootDir,
-  clientEntryPathnames,
   workerEntryPathname,
+  clientFiles,
+  clientEntryPoints,
 }: {
   silent: boolean;
   projectRootDir: string;
-  clientEntryPathnames: string[];
   workerEntryPathname: string;
+  clientFiles: Set<string>;
+  clientEntryPoints: Set<string>;
 }): Plugin => ({
   name: "rwsdk:config",
   config: async (_) => {
@@ -56,7 +58,7 @@ export const configPlugin = ({
             outDir: resolve(projectRootDir, "dist", "client"),
             manifest: true,
             rollupOptions: {
-              input: clientEntryPathnames,
+              input: [],
             },
           },
           define: {
@@ -102,16 +104,28 @@ export const configPlugin = ({
           },
           build: {
             lib: {
-              entry: {
-                [path.basename(SSR_BRIDGE_PATH, ".js")]: enhancedResolve.sync(
-                  projectRootDir,
-                  "rwsdk/__ssr_bridge",
-                ) as string,
-              },
+              entry: {},
               formats: ["es"],
-              fileName: () => path.basename(SSR_BRIDGE_PATH),
             },
             outDir: path.dirname(SSR_BRIDGE_PATH),
+            rollupOptions: {
+              output: {
+                entryFileNames: (chunkInfo) => {
+                  if (chunkInfo.name === "virtual:use-client-lookup.js") {
+                    return "__client_lookup.mjs";
+                  }
+
+                  if (
+                    chunkInfo.name === path.basename(SSR_BRIDGE_PATH, ".js")
+                  ) {
+                    return path.basename(SSR_BRIDGE_PATH);
+                  }
+
+                  return "client-components/[name]-[hash].mjs";
+                },
+                chunkFileNames: "client-components/[name]-[hash].mjs",
+              },
+            },
           },
         },
         worker: {
@@ -169,17 +183,43 @@ export const configPlugin = ({
       },
       builder: {
         buildApp: async (builder) => {
-          // note(justinvdm, 27 May 2025): **Ordering is important**:
-          // * When building, client needs to be build first, so that we have a
-          //   manifest file to map to when looking at asset references in JSX
-          //   (e.g. Document.tsx)
-          // * When bundling, the RSC build imports the SSR build - this way
-          //   they each can have their own environments (e.g. with their own
-          //   import conditions), while still having all worker-run code go
-          //   through the processing done by `@cloudflare/vite-plugin`
+          // Phase 1: Worker "Discovery" Pass
+          console.log("Phase 1: Worker 'Discovery' Pass");
+          await builder.build(builder.environments["worker"]!);
 
-          await builder.build(builder.environments["client"]!);
-          await builder.build(builder.environments["ssr"]!);
+          // Phase 2: Client Build
+          console.log("Phase 2: Client Build");
+          const clientConfig = builder.environments.client;
+          if (
+            clientConfig?.build?.rollupOptions &&
+            typeof clientConfig.build.rollupOptions.input !== "string" &&
+            !Array.isArray(clientConfig.build.rollupOptions.input)
+          ) {
+            clientConfig.build.rollupOptions.input =
+              Array.from(clientEntryPoints);
+          }
+          await builder.build(clientConfig!);
+
+          // Phase 3: SSR Build
+          console.log("Phase 3: SSR Build");
+          const ssrConfig = builder.environments.ssr;
+          if (ssrConfig?.build?.lib) {
+            const ssrEntries: Record<string, string> = {
+              [path.basename(SSR_BRIDGE_PATH, ".js")]: enhancedResolve.sync(
+                projectRootDir,
+                "rwsdk/__ssr_bridge",
+              ) as string,
+              "virtual:use-client-lookup.js": "virtual:use-client-lookup.js",
+            };
+            for (const file of clientFiles) {
+              ssrEntries[file] = path.resolve(projectRootDir, file);
+            }
+            ssrConfig.build.lib.entry = ssrEntries;
+          }
+          await builder.build(ssrConfig!);
+
+          // Phase 4: Worker "Linking" and "SSR-rebundling" Pass
+          console.log('Phase 4: Worker "Linking" and "SSR-rebundling" Pass');
           await builder.build(builder.environments["worker"]!);
         },
       },
