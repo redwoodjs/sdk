@@ -382,7 +382,7 @@ export const ${config.exportName} = {
         };
       }
 
-      process.env.VERBOSE && log("No load handling for id=%s", id);
+      // Removed: too noisy even in verbose mode
     },
   };
 };

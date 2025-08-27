@@ -148,7 +148,7 @@ export const directivesPlugin = ({
         };
       }
 
-      process.env.VERBOSE && log("No transformation applied for id=%s", id);
+      // Removed: too noisy even in verbose mode
     },
     configEnvironment(env, config) {
       process.env.VERBOSE && log("Configuring environment: env=%s", env);
@@ -256,11 +256,12 @@ export const directivesPlugin = ({
               );
 
               if (clientResult) {
-                log(
-                  "Esbuild client component transformation successful for environment=%s, path=%s",
-                  env,
-                  args.path,
-                );
+                process.env.VERBOSE && 
+                  log(
+                    "Esbuild client component transformation successful for environment=%s, path=%s",
+                    env,
+                    args.path,
+                  );
                 process.env.VERBOSE &&
                   log(
                     "Esbuild client component transformation for environment=%s, path=%s, code: %j",
@@ -283,11 +284,12 @@ export const directivesPlugin = ({
               );
 
               if (serverResult) {
-                log(
-                  "Esbuild server function transformation successful for environment=%s, path=%s",
-                  env,
-                  args.path,
-                );
+                process.env.VERBOSE && 
+                  log(
+                    "Esbuild server function transformation successful for environment=%s, path=%s",
+                    env,
+                    args.path,
+                  );
                 return {
                   contents: serverResult.code,
                   loader: getLoader(args.path),

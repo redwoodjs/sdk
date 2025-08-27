@@ -129,8 +129,6 @@ export const ssrBridgePlugin = ({
           return { id: relativePath, external: true };
         }
       }
-
-      process.env.VERBOSE && log("No resolution for id=%s", id);
     },
     async load(id) {
       if (
@@ -195,8 +193,6 @@ export const ssrBridgePlugin = ({
           return out;
         }
       }
-
-      process.env.VERBOSE && log("No load handling for id=%s", id);
     },
   };
 

@@ -213,13 +213,6 @@ export const reactConditionsResolverPlugin = ({
             return {
               path: resolved,
             };
-          } else {
-            process.env.VERBOSE &&
-              log(
-                "ESBuild no resolution found for %s for env=%s",
-                args.path,
-                envName,
-              );
           }
         });
       },
@@ -285,7 +278,13 @@ export const reactConditionsResolverPlugin = ({
               `^${find.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
             );
             aliases.push({ find: findRegex, replacement });
-            log("Added alias for env=%s: %s -> %s", envName, find, replacement);
+            process.env.VERBOSE &&
+              log(
+                "Added alias for env=%s: %s -> %s",
+                envName,
+                find,
+                replacement,
+              );
           }
 
           log(

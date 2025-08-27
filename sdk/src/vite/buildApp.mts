@@ -1,5 +1,6 @@
 import fsp from "node:fs/promises";
 import path from "node:path";
+import debug from "debug";
 import {
   SSR_OUTPUT_DIR,
   WORKER_OUTPUT_DIR,
@@ -7,6 +8,8 @@ import {
 } from "../lib/constants.mjs";
 
 import type { ViteBuilder } from "vite";
+
+const log = debug("rwsdk:vite:build-app");
 
 /**
  * The build orchestrator is responsible for running the multi-phase build
@@ -21,17 +24,17 @@ export async function buildApp(
   clientFiles: Set<string>,
 ) {
   // Phase 1: Worker "Discovery" Pass
-  console.log('Phase 1: Worker "Discovery" Pass');
+  log('Phase 1: Worker "Discovery" Pass');
 
   // The worker environment is already configured - just run the build
   await builder.build(builder.environments["worker"]!);
 
   // Debug: Check what was discovered
-  console.log("Discovered clientEntryPoints:", Array.from(clientEntryPoints));
-  console.log("Discovered clientFiles:", Array.from(clientFiles));
+  log("Discovered clientEntryPoints: %O", Array.from(clientEntryPoints));
+  log("Discovered clientFiles: %O", Array.from(clientFiles));
 
   // Phase 2: Client Build
-  console.log("Phase 2: Client Build");
+  log("Phase 2: Client Build");
 
   // Update client config with discovered entry points
   const clientEnv = builder.environments["client"]!;
@@ -40,9 +43,7 @@ export async function buildApp(
 
     // Safety check: if no entry points discovered, use default
     if (entryPoints.length === 0) {
-      console.warn(
-        "No client entry points discovered, using default: src/client.tsx",
-      );
+      log("No client entry points discovered, using default: src/client.tsx");
       clientEnv.config.build.rollupOptions.input = ["src/client.tsx"];
     } else {
       clientEnv.config.build.rollupOptions.input = entryPoints;
@@ -73,7 +74,7 @@ export async function buildApp(
   }
 
   // Phase 3: SSR Build
-  console.log("Phase 3: SSR Build");
+  log("Phase 3: SSR Build");
 
   // Update SSR config with discovered client files
   const ssrEnv = builder.environments["ssr"]!;
@@ -92,7 +93,7 @@ export async function buildApp(
   await builder.build(ssrEnv);
 
   // Phase 4: Worker "Reprocessing" Pass
-  console.log('Phase 4: Worker "Reprocessing" Pass');
+  log('Phase 4: Worker "Reprocessing" Pass');
 
   // Modify the worker environment to process SSR artifacts
   const workerEnv = builder.environments["worker"]!;
@@ -133,7 +134,7 @@ export async function buildApp(
   await builder.build(workerEnv);
 
   // Phase 5: Client Asset "Linking" Pass
-  console.log('Phase 5: Client Asset "Linking" Pass');
+  log('Phase 5: Client Asset "Linking" Pass');
 
   const workerJsPath = path.join(WORKER_OUTPUT_DIR, "worker.js");
   const workerJs = await fsp.readFile(workerJsPath, "utf-8");
