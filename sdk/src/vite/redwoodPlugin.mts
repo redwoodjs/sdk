@@ -110,7 +110,6 @@ export const redwoodPlugin = async (
       projectRootDir,
       workerEntryPathname,
       clientFiles,
-      serverFiles,
       clientEntryPoints,
     }),
     ssrBridgePlugin({

@@ -189,34 +189,31 @@ export const configPlugin = ({
 
           // Phase 2: Client Build
           console.log("Phase 2: Client Build");
-          const clientConfig = builder.environments.client;
-          if (
-            clientConfig?.build?.rollupOptions &&
-            typeof clientConfig.build.rollupOptions.input !== "string" &&
-            !Array.isArray(clientConfig.build.rollupOptions.input)
-          ) {
-            clientConfig.build.rollupOptions.input =
-              Array.from(clientEntryPoints);
-          }
-          await builder.build(clientConfig!);
+          // Update the client environment configuration
+          baseConfig.environments!.client!.build!.rollupOptions!.input =
+            Array.from(clientEntryPoints);
+          await builder.build(builder.environments["client"]!);
 
           // Phase 3: SSR Build
           console.log("Phase 3: SSR Build");
-          const ssrConfig = builder.environments.ssr;
-          if (ssrConfig?.build?.lib) {
-            const ssrEntries: Record<string, string> = {
-              [path.basename(SSR_BRIDGE_PATH, ".js")]: enhancedResolve.sync(
-                projectRootDir,
-                "rwsdk/__ssr_bridge",
-              ) as string,
-              "virtual:use-client-lookup.js": "virtual:use-client-lookup.js",
-            };
-            for (const file of clientFiles) {
-              ssrEntries[file] = path.resolve(projectRootDir, file);
-            }
-            ssrConfig.build.lib.entry = ssrEntries;
+          // Update the SSR environment configuration
+          const ssrEntries: Record<string, string> = {
+            [path.basename(SSR_BRIDGE_PATH, ".js")]: enhancedResolve.sync(
+              projectRootDir,
+              "rwsdk/__ssr_bridge",
+            ) as string,
+            "virtual:use-client-lookup.js": "virtual:use-client-lookup.js",
+          };
+          for (const file of clientFiles) {
+            ssrEntries[file] = path.resolve(projectRootDir, file);
           }
-          await builder.build(ssrConfig!);
+          if (
+            baseConfig.environments!.ssr!.build!.lib &&
+            typeof baseConfig.environments!.ssr!.build!.lib === "object"
+          ) {
+            baseConfig.environments!.ssr!.build!.lib.entry = ssrEntries;
+          }
+          await builder.build(builder.environments["ssr"]!);
 
           // Phase 4: Worker "Linking" and "SSR-rebundling" Pass
           console.log('Phase 4: Worker "Linking" and "SSR-rebundling" Pass');
