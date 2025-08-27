@@ -123,7 +123,8 @@ export const directivesPlugin = ({
       });
 
       if (clientResult) {
-        log("Client component transformation successful for id=%s", id);
+        process.env.VERBOSE &&
+          log("Client component transformation successful for id=%s", id);
         return {
           code: clientResult.code,
           map: clientResult.map,
@@ -139,7 +140,8 @@ export const directivesPlugin = ({
       );
 
       if (serverResult) {
-        log("Server function transformation successful for id=%s", id);
+        process.env.VERBOSE &&
+          log("Server function transformation successful for id=%s", id);
         return {
           code: serverResult.code,
           map: serverResult.map,
@@ -149,7 +151,7 @@ export const directivesPlugin = ({
       process.env.VERBOSE && log("No transformation applied for id=%s", id);
     },
     configEnvironment(env, config) {
-      log("Configuring environment: env=%s", env);
+      process.env.VERBOSE && log("Configuring environment: env=%s", env);
       config.optimizeDeps ??= {};
       config.optimizeDeps.esbuildOptions ??= {};
       config.optimizeDeps.esbuildOptions.plugins ??= [];
@@ -302,7 +304,8 @@ export const directivesPlugin = ({
           );
         },
       });
-      log("Environment configuration complete for env=%s", env);
+      process.env.VERBOSE &&
+        log("Environment configuration complete for env=%s", env);
     },
   };
 };
