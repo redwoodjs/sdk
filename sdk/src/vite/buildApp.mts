@@ -5,7 +5,6 @@ import {
   SSR_OUTPUT_DIR,
   WORKER_OUTPUT_DIR,
   WORKER_MANIFEST_PATH,
-  DIST_DIR,
 } from "../lib/constants.mjs";
 
 import type { ViteBuilder } from "vite";
@@ -23,10 +22,12 @@ export async function buildApp({
   builder,
   clientEntryPoints,
   clientFiles,
+  projectRootDir,
 }: {
   builder: ViteBuilder;
   clientEntryPoints: Set<string>;
   clientFiles: Set<string>;
+  projectRootDir: string;
 }) {
   // Phase 1: Worker "Discovery" Pass
   log('🔍 buildApp started - Phase 1: Worker "Discovery" Pass');
@@ -59,10 +60,10 @@ export async function buildApp({
     }
   }
 
-  const clientOutput = await builder.build(clientEnv);
-  // Read manifest from filesystem instead of trying to extract from build output
+  await builder.build(clientEnv);
+
   const manifestPath = path.resolve(
-    DIST_DIR,
+    projectRootDir,
     "client",
     ".vite",
     "manifest.json",
@@ -72,6 +73,7 @@ export async function buildApp({
   log("📖 Reading client manifest from %s", manifestPath);
   try {
     const manifestContent = await fsp.readFile(manifestPath, "utf-8");
+    await new Promise((resolve) => setTimeout(resolve, 1000));
     clientManifest = { source: manifestContent };
     log("  ✅ Successfully read manifest from filesystem");
   } catch (error) {

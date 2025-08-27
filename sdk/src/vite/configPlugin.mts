@@ -196,8 +196,14 @@ export const configPlugin = ({
         hmr: true,
       },
       builder: {
-        buildApp: (builder) =>
-          buildApp({ builder, clientEntryPoints, clientFiles }),
+        async buildApp(builder) {
+          await buildApp({
+            builder,
+            projectRootDir,
+            clientEntryPoints,
+            clientFiles,
+          });
+        },
       },
     };
 
