@@ -55,6 +55,10 @@ const determineWorkerEntryPathname = async (
   return resolve(projectRootDir, workerConfig.main ?? "src/worker.tsx");
 };
 
+const clientFiles = new Set<string>();
+const serverFiles = new Set<string>();
+const clientEntryPoints = new Set<string>();
+
 export const redwoodPlugin = async (
   options: RedwoodPluginOptions = {},
 ): Promise<InlineConfig["plugins"]> => {
@@ -71,10 +75,6 @@ export const redwoodPlugin = async (
     workerConfigPath,
     options,
   );
-
-  const clientFiles = new Set<string>();
-  const serverFiles = new Set<string>();
-  const clientEntryPoints = new Set<string>();
 
   const shouldIncludeCloudflarePlugin =
     options.includeCloudflarePlugin ??

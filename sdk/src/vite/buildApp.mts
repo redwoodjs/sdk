@@ -89,7 +89,6 @@ export async function buildApp({
   // Ensure config paths exist
   ssrEnv.config.build ??= {} as any;
   ssrEnv.config.build.rollupOptions ??= {};
-
   const clientFilesArray = Array.from(clientFiles);
 
   if (clientFilesArray.length === 0) {
