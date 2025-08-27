@@ -4,8 +4,16 @@ import { builtinModules } from "node:module";
 import { InlineConfig } from "vite";
 import enhancedResolve from "enhanced-resolve";
 import debug from "debug";
+import { readFile, writeFile } from "node:fs/promises";
+import { glob } from "glob";
 
-import { SSR_BRIDGE_PATH, SSR_CLIENT_LOOKUP_PATH } from "../lib/constants.mjs";
+import {
+  SSR_BRIDGE_PATH,
+  SSR_CLIENT_LOOKUP_PATH,
+  SSR_SERVER_LOOKUP_PATH,
+  SSR_OUTPUT_DIR,
+} from "../lib/constants.mjs";
+import { buildApp } from "./buildApp.mjs";
 
 const log = debug("rwsdk:vite:config");
 
@@ -110,12 +118,15 @@ export const configPlugin = ({
               entry: {},
               formats: ["es"],
             },
-            outDir: path.dirname(SSR_BRIDGE_PATH),
+            outDir: SSR_OUTPUT_DIR,
             rollupOptions: {
               output: {
                 entryFileNames: (chunkInfo) => {
                   if (chunkInfo.name === "virtual:use-client-lookup.js") {
-                    return "__client_lookup.mjs";
+                    return path.basename(SSR_CLIENT_LOOKUP_PATH);
+                  }
+                  if (chunkInfo.name === "virtual:use-server-lookup.js") {
+                    return path.basename(SSR_SERVER_LOOKUP_PATH);
                   }
 
                   if (
@@ -185,60 +196,7 @@ export const configPlugin = ({
         hmr: true,
       },
       builder: {
-        buildApp: async (builder) => {
-          try {
-            // Phase 1: Worker "Discovery" Pass
-            log("Phase 1: Worker 'Discovery' Pass");
-            process.env.RWSDK_BUILD_PHASE = "discovery";
-            await builder.build(builder.environments["worker"]!);
-
-            // Phase 2: Client Build
-            log("Phase 2: Client Build");
-            log(
-              "Discovered %d client entry points: %O",
-              clientEntryPoints.size,
-              Array.from(clientEntryPoints),
-            );
-            // Update the client environment configuration
-            baseConfig.environments!.client!.build!.rollupOptions!.input =
-              Array.from(clientEntryPoints);
-            await builder.build(builder.environments["client"]!);
-
-            // Phase 3: SSR Build
-            log("Phase 3: SSR Build");
-            log(
-              "Building SSR with %d client files: %O",
-              clientFiles.size,
-              Array.from(clientFiles),
-            );
-            // Update the SSR environment configuration
-            const ssrEntries: Record<string, string> = {
-              [path.basename(SSR_BRIDGE_PATH, ".js")]: enhancedResolve.sync(
-                projectRootDir,
-                "rwsdk/__ssr_bridge",
-              ) as string,
-              "virtual:use-client-lookup.js": "virtual:use-client-lookup.js",
-            };
-            for (const file of clientFiles) {
-              ssrEntries[file] = path.resolve(projectRootDir, file);
-            }
-            if (
-              baseConfig.environments!.ssr!.build!.lib &&
-              typeof baseConfig.environments!.ssr!.build!.lib === "object"
-            ) {
-              baseConfig.environments!.ssr!.build!.lib.entry = ssrEntries;
-            }
-            await builder.build(builder.environments["ssr"]!);
-
-            // Phase 4: Worker "Linking" and "SSR-rebundling" Pass
-            log('Phase 4: Worker "Linking" and "SSR-rebundling" Pass');
-            process.env.RWSDK_BUILD_PHASE = "linking";
-            await builder.build(builder.environments["worker"]!);
-          } finally {
-            // Clean up environment variable
-            delete process.env.RWSDK_BUILD_PHASE;
-          }
-        },
+        buildApp: (builder) => buildApp(builder),
       },
     };
 

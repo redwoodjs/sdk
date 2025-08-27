@@ -17,6 +17,7 @@ interface DirectiveLookupConfig {
   exportName: string;
   pluginName: string;
   optimizeForEnvironments?: string[];
+  finalOutputPath: string;
 }
 
 export const findFilesContainingDirective = async ({
@@ -309,8 +310,20 @@ export const createDirectiveLookupPlugin = async ({
       }
     },
     resolveId(source) {
+      process.env.VERBOSE && log("Resolving id=%s", source);
+
       if (source === `${config.virtualModuleName}.js`) {
         log("Resolving %s module", config.virtualModuleName);
+
+        if (this.environment?.name === "worker" && !isDev) {
+          const finalPath = `./${path.basename(config.finalOutputPath)}`;
+          log(
+            "Resolving %s to final path %s for worker build",
+            config.virtualModuleName,
+            finalPath,
+          );
+          return { id: finalPath, external: true };
+        }
         // context(justinvdm, 16 Jun 2025): Include .js extension
         // so it goes through vite processing chain
         return source;

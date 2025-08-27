@@ -1,9 +1,10 @@
 import type { Plugin, ViteDevServer } from "vite";
 import debug from "debug";
-import { SSR_BRIDGE_PATH } from "../lib/constants.mjs";
+import { SSR_BRIDGE_PATH, WORKER_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import { findSsrImportCallSites } from "./findSsrSpecifiers.mjs";
 import { isJsFile } from "./isJsFile.mjs";
 import MagicString from "magic-string";
+import path from "node:path";
 
 const log = debug("rwsdk:vite:ssr-bridge-plugin");
 
@@ -115,24 +116,17 @@ export const ssrBridgePlugin = ({
           return virtualId;
         }
       } else {
-        // context(justinvdm, 27 May 2025): In builds, since all SSR import chains
-        // originate at SSR bridge module, we return the path to the already built
-        // SSR bridge bundle - SSR env builds it, worker build tries to resolve it
-        // here and uses it
+        // context(justinvdm, 27 May 2025): In builds, we resolve to an external
+        // relative path. The worker reprocessing pass (Phase 4) will place the
+        // SSR bridge at this exact location.
         if (id === "rwsdk/__ssr_bridge" && this.environment.name === "worker") {
-          if (process.env.RWSDK_BUILD_PHASE === "discovery") {
-            log(
-              "Bridge module case (discovery build): marking %s as external",
-              id,
-            );
-            return { id, external: true };
-          }
+          const relativePath = `./${path.basename(WORKER_SSR_BRIDGE_PATH)}`;
           log(
-            "Bridge module case (build): id=%s matches rwsdk/__ssr_bridge in worker environment, returning SSR_BRIDGE_PATH=%s",
+            "Bridge module case (build): id=%s matches rwsdk/__ssr_bridge in worker environment, resolving to external path=%s",
             id,
-            SSR_BRIDGE_PATH,
+            relativePath,
           );
-          return SSR_BRIDGE_PATH;
+          return { id: relativePath, external: true };
         }
       }
 

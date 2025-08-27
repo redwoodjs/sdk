@@ -8,32 +8,10 @@ import {
   ObjectLiteralExpression,
 } from "ts-morph";
 import { type Plugin } from "vite";
-import { readFile } from "node:fs/promises";
-import { pathExists } from "fs-extra";
 import path from "node:path";
 import debug from "debug";
 
 const log = debug("rwsdk:vite:transform-jsx-script-tags");
-
-let manifestCache: Record<string, { file: string }> | undefined;
-
-const readManifest = async (
-  manifestPath: string,
-): Promise<Record<string, { file: string }>> => {
-  if (manifestCache === undefined) {
-    const exists = await pathExists(manifestPath);
-
-    if (!exists) {
-      throw new Error(
-        `RedwoodSDK expected client manifest to exist at ${manifestPath}. This is likely a bug. Please report it at https://github.com/redwoodjs/sdk/issues/new`,
-      );
-    }
-
-    manifestCache = JSON.parse(await readFile(manifestPath, "utf-8"));
-  }
-
-  return manifestCache!;
-};
 
 function hasJsxFunctions(text: string): boolean {
   return (
@@ -555,10 +533,8 @@ ${mod.callExprText}
 }
 
 export const transformJsxScriptTagsPlugin = ({
-  manifestPath,
   clientEntryPoints,
 }: {
-  manifestPath: string;
   clientEntryPoints: Set<string>;
 }): Plugin => {
   let isBuild = false;
@@ -596,40 +572,6 @@ export const transformJsxScriptTagsPlugin = ({
         }
       }
       return null;
-    },
-    async generateBundle(_options, bundle) {
-      if (this.environment?.name !== "worker" || !isBuild) {
-        return;
-      }
-
-      const manifest = await readManifest(manifestPath);
-      const assetRegex = /rwsdk_asset:(\/[^"']+)/g;
-
-      for (const fileName in bundle) {
-        const chunk = bundle[fileName];
-
-        if (chunk.type === "chunk" && typeof chunk.code === "string") {
-          let hasChanges = false;
-          const newCode = chunk.code.replace(assetRegex, (match, assetPath) => {
-            const manifestEntry = manifest[assetPath.slice(1)];
-
-            if (manifestEntry) {
-              hasChanges = true;
-              log(
-                "Replacing asset placeholder %s with %s",
-                match,
-                manifestEntry.file,
-              );
-              return `/${manifestEntry.file}`;
-            }
-            return match;
-          });
-
-          if (hasChanges) {
-            chunk.code = newCode;
-          }
-        }
-      }
     },
   };
 };

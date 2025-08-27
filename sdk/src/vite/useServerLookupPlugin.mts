@@ -1,5 +1,6 @@
 import { createDirectiveLookupPlugin } from "./createDirectiveLookupPlugin.mjs";
 import { Plugin } from "vite";
+import { WORKER_SERVER_LOOKUP_PATH } from "../lib/constants.mjs";
 
 export const useServerLookupPlugin = async ({
   projectRootDir,
@@ -18,6 +19,7 @@ export const useServerLookupPlugin = async ({
       exportName: "useServerLookup",
       pluginName: "use-server-lookup",
       optimizeForEnvironments: ["ssr", "worker"],
+      finalOutputPath: WORKER_SERVER_LOOKUP_PATH,
     },
   });
 };
