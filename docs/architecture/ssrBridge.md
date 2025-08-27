@@ -49,6 +49,7 @@ graph TD
 The implementation differs slightly between development and production builds.
 
 #### In Development
+
 In development, the process is dynamic.
 1.  When the `ssrBridgePlugin` sees an import for the bridge in the `worker` environment, it returns a virtual module ID prefixed with `virtual:rwsdk:ssr:`.
 2.  Vite then asks the plugin's `load` hook how to resolve this virtual ID.
@@ -59,27 +60,10 @@ In development, the process is dynamic.
 
 #### In Production
 
-In a production build, the process addresses a circular dependency between the `worker` and `ssr` environments.
+##### The Challenge: Linking Separate Bundles
 
-##### The Challenge: A Build-Time Circular Dependency
+In a production build, the `worker` and `ssr` environments must be bundled separately to handle their unique dependency requirements (e.g., the `"react-server"` condition). This creates a complex set of build-time dependencies that must be carefully orchestrated.
 
-The core challenge is that:
-1. The **`worker`** environment is the only place we can discover the complete list of modules containing a `"use client"` directive, as it is responsible for bundling the user's application code where these directives are found.
-2. However, these `"use client"` modules must be bundled by the **`ssr`** environment to ensure they are processed with the correct (non-`"react-server"`) versions of their dependencies.
-3. The final **`worker`** bundle must then consume the output of the `ssr` build, treating it as a pre-compiled dependency.
+##### The Solution: A Multi-Phase Build
 
-This creates a deadlock: the `ssr` build cannot start until the `worker` build has finished discovering files, but the `worker` build cannot finish until the `ssr` build has produced the necessary artifacts for it to consume.
-
-One might initially think that a preliminary, "discovery-only" pass for the `worker` build would solve this. However, the nature of this problem is not that two full traversals of the module graph are required, but rather that there is "unfinished work" for the `worker` environment that can only be completed after the `ssr` build is done. A discovery pass is therefore semantically incorrect and introduces practical challenges: it creates the potential for duplicated effort, particularly where transformations are a prerequisite for module resolution, and adds significant complexity in trying to control what logic should run in a "discovery" pass versus a "build" pass.
-
-##### The Solution: A Phased, Sequential Build
-
-To solve this efficiently, we implement a multi-phase build process orchestrated by a custom plugin (`rwsdk:config`):
-
-1.  **Phase 1: Initial Worker Build.** The `worker` environment is built first, using the application's source as its entry point. This is a full, productive build, not a throwaway discovery pass. The crucial side-effect of this phase is the collection of all `"use client"` module paths.
-
-2.  **Phase 2: Dynamic SSR Build.** After Phase 1 completes, the `ssr` build is executed. Before it runs, its configuration is dynamically modified in memory. The list of `"use client"` paths collected in Phase 1 is added to its list of entry points, alongside the main SSR Bridge entry. This results in a set of output chunks in a predictable directory (`dist/ssr/`) containing the bridge and all client components, correctly bundled for the SSR environment.
-
-3.  **Phase 3: Final Worker Re-Bundling Run.** The `worker` build is run a *second time*. For this run, the bundling inputs (i.e., entry points) are the output files from the SSR build (Phase 2). This run's purpose is to take the SSR-processed code and re-bundle it through the `worker` environment's toolchain (including the `@cloudflare/vite-plugin`), producing the final, deployable Cloudflare Worker.
-
-4.  **Phase 4: The Client Lookup "Contract".** To link the `worker` to the client components, we establish a "contract". The application code contains a static import to a predictable path, like `import { useClientLookup } from 'rwsdk/__client_lookup.mjs'`. During the Final Worker Re-Bundling Run (Phase 3), a plugin generates the source code for this module—a map from original source paths to their final `ssr` chunk paths—and uses the `this.emitFile` API to create this file at the location specified in the contract. 
+The production build uses a multi-phase, sequential process to correctly bundle all environments. For a complete explanation of this architecture, see the central [Production Build Process](./productionBuildProcess.md) document. 

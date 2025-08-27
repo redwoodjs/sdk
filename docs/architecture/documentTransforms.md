@@ -22,37 +22,17 @@ The plugin inspects the AST for specific JSX elements (`<script>` and `<link>`) 
 
 ### Key Transformations
 
-#### 1. Client Entry Point Discovery
+#### 1. Client Entry Point Discovery and Asset Path Rewriting
 
-To support automatic stylesheet injection, the framework first needs to discover all client-side JavaScript entry points for a given page. The transformation plugin is responsible for this discovery.
+A key responsibility of the `Document` transformation is to handle client-side script tags. In a production build, these tags must point to the final, hashed asset files. However, this creates a circular dependency: the final asset paths are only known after the `client` build completes, but the `client` build needs to know which entry points to build, which are discovered during the `worker` build.
 
-Instead of directly injecting `<link>` tags, the plugin modifies the AST to inject a small piece of code—a side effect—that runs on the server during rendering. This code adds the module ID of each discovered client entry point to a shared list (`requestInfo.rw.scriptsToBeLoaded`).
+This is solved by the multi-phase build process. The transformation described here is responsible for discovering the entry points during the initial worker pass and then linking to the final asset paths during the final worker pass.
 
-The plugin finds these entry points in two ways:
-- **`src` attribute**: A `<script src="/src/client.tsx">` tag is transformed to register its `src` path before it is rendered.
-- **Inline `import()`**: A dynamic `import('/src/client.tsx')` inside an inline `<script>` tag is also detected, and the registration logic is prepended to the script's content.
+For a complete explanation of the end-to-end build architecture, see the [Production Build Process](./productionBuildProcess.md) document.
 
-This process ensures that by the time the final HTML is ready to be streamed, a complete list of all necessary client scripts has been collected. A separate runtime mechanism then uses this list to look up all associated CSS dependencies and inject the final `<link rel="stylesheet">` tags into the document `<head>`.
-
-For a detailed explanation of the end-to-end stylesheet handling mechanism, see the [Supporting Client-Side Stylesheet Imports](./clientStylesheets.md) architecture document.
-
-#### 2. Asset Path Rewriting (Production Builds)
-
-During a production `build`, all references to client-side assets must be updated to point to their final, hashed filenames. The plugin inspects both `src` attributes on `<script>` tags and dynamic `import()` calls within inline scripts, rewriting their paths by consulting the Vite build manifest.
-
-This transformation applies to:
-
--   `<script>` tags: `<script src="/src/client.tsx">` becomes `<script src="/assets/client.a1b2c3d4.js">`.
--   Preload links: `<link rel="modulepreload" href="/src/client.tsx">` is similarly transformed.
--   Inline script imports: Dynamic `import()` calls are also found and rewritten.
-
-This ensures that all asset links in the final HTML are valid and point to the optimized production bundles.
-
-#### 3. Security Nonce Injection
+#### 2. Security Nonce Injection
 
 To enhance security, the plugin automatically injects a `nonce` attribute into every `<script>` tag that doesn't have one and isn't inherently unsafe (e.g., using `dangerouslySetInnerHTML`).
-
-The nonce value is set to a placeholder expression that references a `requestInfo` object available at runtime. If this `requestInfo` object is not already imported in the `Document`, the plugin will also add the necessary `import` statement at the top of the file. This ensures that every server-rendered script is tagged with the per-request CSP nonce, mitigating XSS risks.
 
 ### Important Design Considerations
 

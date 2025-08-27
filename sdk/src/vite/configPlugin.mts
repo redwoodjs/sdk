@@ -170,16 +170,19 @@ export const configPlugin = ({
       builder: {
         buildApp: async (builder) => {
           // note(justinvdm, 27 May 2025): **Ordering is important**:
-          // * When building, client needs to be build first, so that we have a
-          //   manifest file to map to when looking at asset references in JSX
-          //   (e.g. Document.tsx)
-          // * When bundling, the RSC build imports the SSR build - this way
-          //   they each can have their own environments (e.g. with their own
-          //   import conditions), while still having all worker-run code go
-          //   through the processing done by `@cloudflare/vite-plugin`
+          // The build process is sequential and phased to resolve a circular
+          // dependency between the `worker` and `ssr` environments.
 
+          // Phase 1: Initial Worker build (to discover client components)
+          await builder.build(builder.environments["worker"]!);
+
+          // Phase 2: Client build (for assets)
           await builder.build(builder.environments["client"]!);
+
+          // Phase 3: Dynamic SSR build
           await builder.build(builder.environments["ssr"]!);
+
+          // Phase 4: Final Worker Re-Bundling Run
           await builder.build(builder.environments["worker"]!);
         },
       },
