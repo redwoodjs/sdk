@@ -78,16 +78,11 @@ function transformScriptImports(
 
               const path = importPath.slice(1);
 
-              if (isDiscovery) {
-                clientEntryPoints.add(importPath);
-                const transformedSrc = `rwsdk_asset:${importPath}`;
-                args[0].setLiteralValue(transformedSrc);
-                hasChanges = true;
-              } else if (manifest[path]) {
-                const transformedSrc = `/${manifest[path].file}`;
-                args[0].setLiteralValue(transformedSrc);
-                hasChanges = true;
-              }
+              // Always do discovery behavior in worker environment
+              clientEntryPoints.add(importPath);
+              const transformedSrc = `rwsdk_asset:${importPath}`;
+              args[0].setLiteralValue(transformedSrc);
+              hasChanges = true;
             }
           }
         }
