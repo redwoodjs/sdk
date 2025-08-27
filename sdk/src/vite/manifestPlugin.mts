@@ -1,7 +1,9 @@
 import { readFile } from "node:fs/promises";
+import path from "node:path";
 import { type Plugin } from "vite";
 import debug from "debug";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
+import { WORKER_MANIFEST_PATH } from "../lib/constants.mjs";
 
 const log = debug("rwsdk:vite:manifest-plugin");
 
@@ -25,6 +27,15 @@ export const manifestPlugin = ({
     },
     resolveId(id) {
       if (id === virtualModuleId) {
+        if (this.environment?.name === "worker") {
+          const relativePath = `./${path.basename(WORKER_MANIFEST_PATH)}`;
+          log(
+            "Manifest module case (build): id=%s in worker environment, resolving to external path=%s",
+            id,
+            relativePath,
+          );
+          return { id: relativePath, external: true };
+        }
         return resolvedVirtualModuleId;
       }
     },

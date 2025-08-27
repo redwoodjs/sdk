@@ -34,3 +34,7 @@ export const WORKER_SERVER_LOOKUP_PATH = resolve(
   WORKER_OUTPUT_DIR,
   "__server_lookup.mjs",
 );
+export const WORKER_MANIFEST_PATH = resolve(
+  WORKER_OUTPUT_DIR,
+  "__manifest.json",
+);

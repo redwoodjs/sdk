@@ -4,6 +4,7 @@ import debug from "debug";
 import {
   SSR_OUTPUT_DIR,
   WORKER_OUTPUT_DIR,
+  WORKER_MANIFEST_PATH,
   DIST_DIR,
 } from "../lib/constants.mjs";
 
@@ -26,7 +27,7 @@ export async function buildApp({
   builder: ViteBuilder;
   clientEntryPoints: Set<string>;
   clientFiles: Set<string>;
-) {
+}) {
   // Phase 1: Worker "Discovery" Pass
   log('🔍 buildApp started - Phase 1: Worker "Discovery" Pass');
   log('Phase 1: Worker "Discovery" Pass');
@@ -59,42 +60,22 @@ export async function buildApp({
   }
 
   const clientOutput = await builder.build(clientEnv);
+  // Read manifest from filesystem instead of trying to extract from build output
+  const manifestPath = path.resolve(
+    DIST_DIR,
+    "client",
+    ".vite",
+    "manifest.json",
+  );
   let clientManifest;
 
-  log("🔍 Searching for client manifest in build output...");
-  log(
-    "  clientOutput type:",
-    Array.isArray(clientOutput) ? "array" : typeof clientOutput,
-  );
-  log("  clientOutput keys:", Object.keys(clientOutput));
-
-  if (Array.isArray(clientOutput)) {
-    log("  Processing array of outputs, length:", clientOutput.length);
-    for (const output of clientOutput) {
-      log("    Output keys:", Object.keys(output));
-      if ("output" in output) {
-        log("    Searching in output.output, items:", output.output.length);
-        clientManifest = output.output.find(
-          (item: any) =>
-            item.type === "asset" && item.fileName === "manifest.json",
-        );
-        if (clientManifest) {
-          log("    ✅ Found manifest in array output!");
-          break;
-        }
-      }
-    }
-  } else if ("output" in clientOutput) {
-    log(
-      "  Searching in single output.output, items:",
-      clientOutput.output.length,
-    );
-    clientManifest = clientOutput.output.find(
-      (item: any) => item.type === "asset" && item.fileName === "manifest.json",
-    );
-    if (clientManifest) {
-      log("  ✅ Found manifest in single output!");
-    }
+  log("📖 Reading client manifest from %s", manifestPath);
+  try {
+    const manifestContent = await fsp.readFile(manifestPath, "utf-8");
+    clientManifest = { source: manifestContent };
+    log("  ✅ Successfully read manifest from filesystem");
+  } catch (error) {
+    log("  ❌ Failed to read manifest: %s", error);
   }
 
   if (!clientManifest) {
@@ -164,6 +145,10 @@ export async function buildApp({
 
   // Phase 5: Client Asset "Linking" Pass
   log('Phase 5: Client Asset "Linking" Pass');
+
+  // Copy manifest.json to worker output directory for external import resolution
+  await fsp.writeFile(WORKER_MANIFEST_PATH, (clientManifest as any).source);
+  log("📄 Copied manifest to %s", WORKER_MANIFEST_PATH);
 
   const workerJsPath = path.join(WORKER_OUTPUT_DIR, "worker.js");
   const workerJs = await fsp.readFile(workerJsPath, "utf-8");

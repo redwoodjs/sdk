@@ -8,32 +8,12 @@ import {
   ObjectLiteralExpression,
 } from "ts-morph";
 import { type Plugin } from "vite";
-import { readFile } from "node:fs/promises";
-import { pathExists } from "fs-extra";
-import path from "node:path";
 import debug from "debug";
 
 const log = debug("rwsdk:vite:transform-jsx-script-tags");
 
-let manifestCache: Record<string, { file: string }> | undefined;
-
-const readManifest = async (
-  manifestPath: string,
-): Promise<Record<string, { file: string }>> => {
-  if (manifestCache === undefined) {
-    const exists = await pathExists(manifestPath);
-
-    if (!exists) {
-      throw new Error(
-        `RedwoodSDK expected client manifest to exist at ${manifestPath}. This is likely a bug. Please report it at https://github.com/redwoodjs/sdk/issues/new`,
-      );
-    }
-
-    manifestCache = JSON.parse(await readFile(manifestPath, "utf-8"));
-  }
-
-  return manifestCache!;
-};
+// Note: This plugin only runs during discovery phase (Phase 1)
+// Manifest reading and asset linking happens later in Phase 5
 
 function hasJsxFunctions(text: string): boolean {
   return (
@@ -54,6 +34,7 @@ function hasJsxFunctions(text: string): boolean {
 
 function transformScriptImports(
   scriptContent: string,
+  clientEntryPoints: Set<string>,
   manifest: Record<string, any>,
 ): {
   content: string | undefined;
@@ -95,6 +76,7 @@ function transformScriptImports(
                 importPath,
               );
               entryPoints.push(importPath);
+              clientEntryPoints.add(importPath);
 
               // Always use discovery behavior in worker environment
               const transformedSrc = `rwsdk_asset:${importPath}`;
@@ -159,6 +141,7 @@ type Modification =
 
 export async function transformJsxScriptTagsCode(
   code: string,
+  clientEntryPoints: Set<string>,
   manifest: Record<string, any> = {},
 ) {
   // context(justinvdm, 15 Jun 2025): Optimization to exit early
@@ -228,8 +211,7 @@ export async function transformJsxScriptTagsCode(
           let hasStringLiteralChildren = false;
           let hasSrc = false;
 
-          let isPreload = false;
-          let hrefValue = null;
+          // Note: Link processing removed - happens in Phase 5
 
           for (const prop of properties) {
             if (Node.isPropertyAssignment(prop)) {
@@ -255,6 +237,7 @@ export async function transformJsxScriptTagsCode(
 
                   if (srcValue.startsWith("/")) {
                     entryPoints.push(srcValue);
+                    clientEntryPoints.add(srcValue);
 
                     // Always use discovery behavior in worker environment
                     const transformedSrc = `rwsdk_asset:${srcValue}`;
@@ -281,7 +264,11 @@ export async function transformJsxScriptTagsCode(
                   content: transformedContent,
                   hasChanges: contentHasChanges,
                   entryPoints: dynamicEntryPoints,
-                } = transformScriptImports(scriptContent, manifest);
+                } = transformScriptImports(
+                  scriptContent,
+                  clientEntryPoints,
+                  manifest,
+                );
 
                 entryPoints.push(...dynamicEntryPoints);
 
@@ -301,26 +288,7 @@ export async function transformJsxScriptTagsCode(
                 }
               }
 
-              if (tagName === "link") {
-                if (
-                  propName === "rel" &&
-                  (Node.isStringLiteral(initializer) ||
-                    Node.isNoSubstitutionTemplateLiteral(initializer))
-                ) {
-                  const relValue = initializer.getLiteralValue();
-                  if (relValue === "preload" || relValue === "modulepreload") {
-                    isPreload = true;
-                  }
-                }
-
-                if (
-                  propName === "href" &&
-                  (Node.isStringLiteral(initializer) ||
-                    Node.isNoSubstitutionTemplateLiteral(initializer))
-                ) {
-                  hrefValue = initializer.getLiteralValue();
-                }
-              }
+              // Note: Link tag processing removed - happens in Phase 5
             }
           }
 
@@ -342,50 +310,8 @@ export async function transformJsxScriptTagsCode(
             }
           }
 
-          if (
-            tagName === "link" &&
-            isPreload &&
-            hrefValue &&
-            hrefValue.startsWith("/") &&
-            manifest[hrefValue.slice(1)]
-          ) {
-            const path = hrefValue.slice(1);
-            for (const prop of properties) {
-              if (
-                Node.isPropertyAssignment(prop) &&
-                prop.getName() === "href"
-              ) {
-                const initializer = prop.getInitializer();
-                if (
-                  Node.isStringLiteral(initializer) ||
-                  Node.isNoSubstitutionTemplateLiteral(initializer)
-                ) {
-                  const transformedHref = manifest[path].file;
-                  const originalText = initializer.getText();
-                  const isTemplateLiteral =
-                    Node.isNoSubstitutionTemplateLiteral(initializer);
-                  const quote = isTemplateLiteral
-                    ? "`"
-                    : originalText.charAt(0);
-
-                  let replacementText: string;
-                  if (isTemplateLiteral) {
-                    replacementText = `\`/${transformedHref}\``;
-                  } else if (quote === '"') {
-                    replacementText = `"/${transformedHref}"`;
-                  } else {
-                    replacementText = `'/${transformedHref}'`;
-                  }
-
-                  modifications.push({
-                    type: "replaceText",
-                    node: initializer,
-                    text: replacementText,
-                  });
-                }
-              }
-            }
-          }
+          // Note: Link preload href transformations happen in Phase 5 (Asset Linking)
+          // During discovery phase, we only transform script tags
         }
       }
       if (entryPoints.length > 0) {
@@ -518,9 +444,9 @@ ${mod.callExprText}
 }
 
 export const transformJsxScriptTagsPlugin = ({
-  manifestPath,
+  clientEntryPoints,
 }: {
-  manifestPath: string;
+  clientEntryPoints: Set<string>;
 }): Plugin => {
   let isBuild = false;
 
@@ -539,8 +465,12 @@ export const transformJsxScriptTagsPlugin = ({
         log("Transforming JSX script tags in %s", id);
         process.env.VERBOSE && log("Code:\n%s", code);
 
-        const manifest = isBuild ? await readManifest(manifestPath) : {};
-        const result = await transformJsxScriptTagsCode(code, manifest);
+        // During discovery phase, never use manifest - it doesn't exist yet
+        const result = await transformJsxScriptTagsCode(
+          code,
+          clientEntryPoints,
+          {}, // Empty manifest during discovery
+        );
         if (result) {
           log("Transformed JSX script tags in %s", id);
           process.env.VERBOSE &&
