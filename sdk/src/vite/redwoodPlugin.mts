@@ -154,13 +154,6 @@ export const redwoodPlugin = async (
       serverFiles,
     }),
     transformJsxScriptTagsPlugin({
-      manifestPath: resolve(
-        projectRootDir,
-        "dist",
-        "client",
-        ".vite",
-        "manifest.json",
-      ),
       clientEntryPoints,
     }),
     manifestPlugin({

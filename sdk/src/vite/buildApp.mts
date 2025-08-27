@@ -15,10 +15,11 @@ import type { ViteBuilder } from "vite";
  *
  * @see docs/architecture/productionBuildProcess.md
  */
-export async function buildApp(builder: ViteBuilder) {
-  const clientEntryPoints = new Set<string>();
-  const useClientFiles = new Set<string>();
-
+export async function buildApp(
+  builder: ViteBuilder,
+  clientEntryPoints: Set<string>,
+  clientFiles: Set<string>,
+) {
   // Phase 1: Worker "Discovery" Pass
   console.log('Phase 1: Worker "Discovery" Pass');
 
@@ -69,7 +70,7 @@ export async function buildApp(builder: ViteBuilder) {
   ) {
     // Add discovered client files to the entry points
     const entryObj = ssrEnv.config.build.lib.entry as Record<string, string>;
-    for (const file of useClientFiles) {
+    for (const file of clientFiles) {
       entryObj[file] = file;
     }
   }
