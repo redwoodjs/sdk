@@ -230,9 +230,14 @@ export const configPlugin = ({
             }
             await builder.build(builder.environments["ssr"]!);
 
-          // Phase 4: Worker "Linking" and "SSR-rebundling" Pass
-          log('Phase 4: Worker "Linking" and "SSR-rebundling" Pass');
-          await builder.build(builder.environments["worker"]!);
+            // Phase 4: Worker "Linking" and "SSR-rebundling" Pass
+            log('Phase 4: Worker "Linking" and "SSR-rebundling" Pass');
+            process.env.RWSDK_BUILD_PHASE = "linking";
+            await builder.build(builder.environments["worker"]!);
+          } finally {
+            // Clean up environment variable
+            delete process.env.RWSDK_BUILD_PHASE;
+          }
         },
       },
     };
