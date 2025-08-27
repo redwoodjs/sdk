@@ -256,7 +256,7 @@ export const directivesPlugin = ({
               );
 
               if (clientResult) {
-                process.env.VERBOSE && 
+                process.env.VERBOSE &&
                   log(
                     "Esbuild client component transformation successful for environment=%s, path=%s",
                     env,
@@ -284,7 +284,7 @@ export const directivesPlugin = ({
               );
 
               if (serverResult) {
-                process.env.VERBOSE && 
+                process.env.VERBOSE &&
                   log(
                     "Esbuild server function transformation successful for environment=%s, path=%s",
                     env,

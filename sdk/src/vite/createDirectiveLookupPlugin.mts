@@ -328,8 +328,6 @@ export const createDirectiveLookupPlugin = async ({
         // so it goes through vite processing chain
         return source;
       }
-
-      process.env.VERBOSE && log("No resolution for id=%s", source);
     },
     async load(id) {
       if (id === config.virtualModuleName + ".js") {
@@ -381,8 +379,6 @@ export const ${config.exportName} = {
           map,
         };
       }
-
-      // Removed: too noisy even in verbose mode
     },
   };
 };

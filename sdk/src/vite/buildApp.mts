@@ -24,12 +24,16 @@ export async function buildApp(
   clientFiles: Set<string>,
 ) {
   // Phase 1: Worker "Discovery" Pass
+  console.log('🔍 buildApp started - Phase 1: Worker "Discovery" Pass');
   log('Phase 1: Worker "Discovery" Pass');
 
   // The worker environment is already configured - just run the build
   await builder.build(builder.environments["worker"]!);
 
   // Debug: Check what was discovered
+  console.log("🔍 Entry Point Discovery Results:");
+  console.log("  clientEntryPoints:", Array.from(clientEntryPoints));
+  console.log("  clientFiles:", Array.from(clientFiles));
   log("Discovered clientEntryPoints: %O", Array.from(clientEntryPoints));
   log("Discovered clientFiles: %O", Array.from(clientFiles));
 
@@ -53,23 +57,48 @@ export async function buildApp(
   const clientOutput = await builder.build(clientEnv);
   let clientManifest;
 
+  console.log("🔍 Searching for client manifest in build output...");
+  console.log(
+    "  clientOutput type:",
+    Array.isArray(clientOutput) ? "array" : typeof clientOutput,
+  );
+  console.log("  clientOutput keys:", Object.keys(clientOutput));
+
   if (Array.isArray(clientOutput)) {
+    console.log("  Processing array of outputs, length:", clientOutput.length);
     for (const output of clientOutput) {
+      console.log("    Output keys:", Object.keys(output));
       if ("output" in output) {
+        console.log(
+          "    Searching in output.output, items:",
+          output.output.length,
+        );
         clientManifest = output.output.find(
           (item: any) =>
             item.type === "asset" && item.fileName === "manifest.json",
         );
-        if (clientManifest) break;
+        if (clientManifest) {
+          console.log("    ✅ Found manifest in array output!");
+          break;
+        }
       }
     }
   } else if ("output" in clientOutput) {
+    console.log(
+      "  Searching in single output.output, items:",
+      clientOutput.output.length,
+    );
     clientManifest = clientOutput.output.find(
       (item: any) => item.type === "asset" && item.fileName === "manifest.json",
     );
+    if (clientManifest) {
+      console.log("  ✅ Found manifest in single output!");
+    }
   }
 
   if (!clientManifest) {
+    console.log("❌ Could not find client manifest!");
+    console.log("Available outputs:", JSON.stringify(clientOutput, null, 2));
     throw new Error("Could not find client manifest");
   }
 
