@@ -56,12 +56,6 @@ export const directivesPlugin = ({
     const isNodeModule = id.includes("node_modules");
     const hadFile = files.has(id);
 
-    log(
-      "Adding %s module to %s and invalidating cache: id=%s",
-      kind,
-      files,
-      resolvedId,
-    );
     files.add(resolvedId);
 
     if (devServer && isNodeModule) {

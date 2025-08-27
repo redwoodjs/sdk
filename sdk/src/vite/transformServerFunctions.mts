@@ -141,17 +141,6 @@ export const transformServerFunctions = (
   serverFiles?: Set<string>,
   addServerModule?: (environment: string, id: string) => void,
 ): TransformResult | undefined => {
-  if (!hasDirective(code, "use server")) {
-    log("Skipping: no 'use server' directive in id=%s", normalizedId);
-    process.env.VERBOSE &&
-      log(
-        ":VERBOSE: Returning code unchanged for id=%s:\n%s",
-        normalizedId,
-        code,
-      );
-    return;
-  }
-
   log(
     "Processing 'use server' module: normalizedId=%s, environment=%s",
     normalizedId,

@@ -26,13 +26,27 @@ export async function buildApp(
   // The worker environment is already configured - just run the build
   await builder.build(builder.environments["worker"]!);
 
+  // Debug: Check what was discovered
+  console.log("Discovered clientEntryPoints:", Array.from(clientEntryPoints));
+  console.log("Discovered clientFiles:", Array.from(clientFiles));
+
   // Phase 2: Client Build
   console.log("Phase 2: Client Build");
 
   // Update client config with discovered entry points
   const clientEnv = builder.environments["client"]!;
   if (clientEnv.config.build?.rollupOptions) {
-    clientEnv.config.build.rollupOptions.input = Array.from(clientEntryPoints);
+    const entryPoints = Array.from(clientEntryPoints);
+
+    // Safety check: if no entry points discovered, use default
+    if (entryPoints.length === 0) {
+      console.warn(
+        "No client entry points discovered, using default: src/client.tsx",
+      );
+      clientEnv.config.build.rollupOptions.input = ["src/client.tsx"];
+    } else {
+      clientEnv.config.build.rollupOptions.input = entryPoints;
+    }
   }
 
   const clientOutput = await builder.build(clientEnv);
