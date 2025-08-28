@@ -98,9 +98,18 @@ export const createDirectiveLookupPlugin = ({
 
   return {
     name: `rwsdk:${config.pluginName}`,
-    config(_, { command, isPreview }) {
+    async config(_, { command, isPreview }) {
       isDev = !isPreview && command === "serve";
       log("Development mode: %s", isDev);
+
+      if (isDev) {
+        await findFilesContainingDirective({
+          projectRootDir,
+          files,
+          directive: config.directive,
+          debugNamespace,
+        });
+      }
     },
     configureServer(server) {
       devServer = server;
@@ -137,7 +146,7 @@ export const createDirectiveLookupPlugin = ({
           build.onResolve(
             {
               filter: new RegExp(
-                `^(${escapedVirtualModuleName}|${escapedPrefixedModuleName})\\.js$`,
+                `^(${escapedVirtualModuleName}|${escapedPrefixedModuleName})\.js$`,
               ),
             },
             (args) => {

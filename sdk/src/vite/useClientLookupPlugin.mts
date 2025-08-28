@@ -1,9 +1,6 @@
 import { resolve } from "node:path";
 
-import {
-  createDirectiveLookupPlugin,
-  findAppFilesContainingDirective,
-} from "./createDirectiveLookupPlugin.mjs";
+import { createDirectiveLookupPlugin } from "./createDirectiveLookupPlugin.mjs";
 import { Plugin } from "vite";
 
 export const useClientLookupPlugin = ({

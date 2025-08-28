@@ -29,7 +29,6 @@ import { hasPkgScript } from "../lib/hasPkgScript.mjs";
 import { devServerTimingPlugin } from "./devServerTimingPlugin.mjs";
 import { manifestPlugin } from "./manifestPlugin.mjs";
 import { linkerPlugin } from "./linkerPlugin.mjs";
-import { findFilesContainingDirective } from "./createDirectiveLookupPlugin.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
