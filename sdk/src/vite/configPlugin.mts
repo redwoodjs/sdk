@@ -66,11 +66,6 @@ export const configPlugin = ({
         client: {
           consumer: "client",
           build: {
-            modulePreload: {
-              // context(justinvdm, 28 Aug 2025): We preload client components ourselves
-              // depending on RSC components that will be rendered:
-              resolveDependencies: () => [],
-            },
             outDir: resolve(projectRootDir, "dist", "client"),
             manifest: true,
             rollupOptions: {
