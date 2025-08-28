@@ -3,8 +3,19 @@ import path, { resolve } from "node:path";
 import { builtinModules } from "node:module";
 import { InlineConfig } from "vite";
 import enhancedResolve from "enhanced-resolve";
+import debug from "debug";
+import { readFile, writeFile } from "node:fs/promises";
+import { glob } from "glob";
 
-import { SSR_BRIDGE_PATH } from "../lib/constants.mjs";
+import {
+  INTERMEDIATE_SSR_BRIDGE_PATH,
+  INTERMEDIATES_OUTPUT_DIR,
+} from "../lib/constants.mjs";
+import { buildApp } from "./buildApp.mjs";
+
+const log = debug("rwsdk:vite:config");
+
+const VIRTUAL_SSR_ENTRY_ID = "virtual:rwsdk:ssr-entry";
 
 // port(justinvdm, 09 Jun 2025):
 // https://github.com/cloudflare/workers-sdk/blob/d533f5ee7da69c205d8d5e2a5f264d2370fc612b/packages/vite-plugin-cloudflare/src/cloudflare-environment.ts#L123-L128
@@ -24,13 +35,15 @@ export const externalModules = [
 export const configPlugin = ({
   silent,
   projectRootDir,
-  clientEntryPathnames,
   workerEntryPathname,
+  clientFiles,
+  clientEntryPoints,
 }: {
   silent: boolean;
   projectRootDir: string;
-  clientEntryPathnames: string[];
   workerEntryPathname: string;
+  clientFiles: Set<string>;
+  clientEntryPoints: Set<string>;
 }): Plugin => ({
   name: "rwsdk:config",
   config: async (_) => {
@@ -56,7 +69,7 @@ export const configPlugin = ({
             outDir: resolve(projectRootDir, "dist", "client"),
             manifest: true,
             rollupOptions: {
-              input: clientEntryPathnames,
+              input: [],
             },
           },
           define: {
@@ -103,15 +116,21 @@ export const configPlugin = ({
           build: {
             lib: {
               entry: {
-                [path.basename(SSR_BRIDGE_PATH, ".js")]: enhancedResolve.sync(
-                  projectRootDir,
-                  "rwsdk/__ssr_bridge",
-                ) as string,
+                [path.basename(INTERMEDIATE_SSR_BRIDGE_PATH, ".js")]:
+                  enhancedResolve.sync(
+                    projectRootDir,
+                    "rwsdk/__ssr_bridge",
+                  ) as string,
               },
               formats: ["es"],
-              fileName: () => path.basename(SSR_BRIDGE_PATH),
+              fileName: () => path.basename(INTERMEDIATE_SSR_BRIDGE_PATH),
             },
-            outDir: path.dirname(SSR_BRIDGE_PATH),
+            outDir: path.dirname(INTERMEDIATE_SSR_BRIDGE_PATH),
+            rollupOptions: {
+              output: {
+                inlineDynamicImports: true,
+              },
+            },
           },
         },
         worker: {
@@ -152,6 +171,7 @@ export const configPlugin = ({
           build: {
             outDir: resolve(projectRootDir, "dist", "worker"),
             emitAssets: true,
+            emptyOutDir: false,
             ssr: true,
             rollupOptions: {
               output: {
@@ -163,24 +183,43 @@ export const configPlugin = ({
             },
           },
         },
+        linker: {
+          resolve: {
+            conditions: ["workerd", "react-server", "module", "node"],
+            external: externalModules,
+          },
+          define: {
+            "import.meta.env.RWSDK_ENV": JSON.stringify("worker"),
+          },
+          build: {
+            outDir: resolve(projectRootDir, "dist", "worker"),
+            emptyOutDir: false,
+            emitAssets: false,
+            ssr: true,
+            minify: mode !== "development",
+            rollupOptions: {
+              input: {
+                worker: resolve(projectRootDir, "dist", "worker", "worker.js"),
+              },
+              output: {
+                inlineDynamicImports: true,
+                entryFileNames: "worker.js",
+              },
+            },
+          },
+        },
       },
       server: {
         hmr: true,
       },
       builder: {
-        buildApp: async (builder) => {
-          // note(justinvdm, 27 May 2025): **Ordering is important**:
-          // * When building, client needs to be build first, so that we have a
-          //   manifest file to map to when looking at asset references in JSX
-          //   (e.g. Document.tsx)
-          // * When bundling, the RSC build imports the SSR build - this way
-          //   they each can have their own environments (e.g. with their own
-          //   import conditions), while still having all worker-run code go
-          //   through the processing done by `@cloudflare/vite-plugin`
-
-          await builder.build(builder.environments["client"]!);
-          await builder.build(builder.environments["ssr"]!);
-          await builder.build(builder.environments["worker"]!);
+        async buildApp(builder) {
+          await buildApp({
+            builder,
+            projectRootDir,
+            clientEntryPoints,
+            clientFiles,
+          });
         },
       },
     };

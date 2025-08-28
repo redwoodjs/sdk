@@ -121,15 +121,22 @@ function resolveEnvImportMappings(
     );
     if (resolved) {
       mappings.set(importRequest, resolved);
-      log("Added mapping for %s -> %s in env=%s", importRequest, resolved, env);
+      process.env.VERBOSE &&
+        log(
+          "Added mapping for %s -> %s in env=%s",
+          importRequest,
+          resolved,
+          env,
+        );
     }
   }
 
-  log(
-    "Environment import mappings complete for env=%s: %d mappings",
-    env,
-    mappings.size,
-  );
+  process.env.VERBOSE &&
+    log(
+      "Environment import mappings complete for env=%s: %d mappings",
+      env,
+      mappings.size,
+    );
   return mappings;
 }
 
@@ -149,6 +156,17 @@ export const reactConditionsResolverPlugin = ({
         projectRootDir,
       ),
     ]),
+  );
+
+  // Log a clean summary instead of all the individual mappings
+  const totalMappings = Object.values(ENV_IMPORT_MAPPINGS).reduce(
+    (sum, mappings) => sum + (mappings as Map<string, string>).size,
+    0,
+  );
+  log(
+    "React conditions resolver configured with %d total mappings across %d environments",
+    totalMappings,
+    Object.keys(ENV_IMPORT_MAPPINGS).length,
   );
 
   function createEsbuildResolverPlugin(
@@ -195,13 +213,6 @@ export const reactConditionsResolverPlugin = ({
             return {
               path: resolved,
             };
-          } else {
-            process.env.VERBOSE &&
-              log(
-                "ESBuild no resolution found for %s for env=%s",
-                args.path,
-                envName,
-              );
           }
         });
       },
@@ -267,7 +278,13 @@ export const reactConditionsResolverPlugin = ({
               `^${find.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
             );
             aliases.push({ find: findRegex, replacement });
-            log("Added alias for env=%s: %s -> %s", envName, find, replacement);
+            process.env.VERBOSE &&
+              log(
+                "Added alias for env=%s: %s -> %s",
+                envName,
+                find,
+                replacement,
+              );
           }
 
           log(
@@ -296,14 +313,6 @@ export const reactConditionsResolverPlugin = ({
           return;
         }
 
-        process.env.VERBOSE &&
-          log(
-            "Resolving id=%s, environment=%s, importer=%s",
-            id,
-            envName,
-            importer,
-          );
-
         const mappings =
           ENV_IMPORT_MAPPINGS[envName as keyof typeof ENV_IMPORT_MAPPINGS];
 
@@ -326,12 +335,10 @@ export const reactConditionsResolverPlugin = ({
         }
 
         if (resolved) {
-          log("Resolved %s -> %s for env=%s", id, resolved, envName);
+          process.env.VERBOSE &&
+            log("Resolved %s -> %s for env=%s", id, resolved, envName);
           return resolved;
         }
-
-        process.env.VERBOSE &&
-          log("No resolution found for id=%s in env=%s", id, envName);
       },
     },
   ];

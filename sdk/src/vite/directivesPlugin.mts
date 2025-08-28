@@ -56,12 +56,6 @@ export const directivesPlugin = ({
     const isNodeModule = id.includes("node_modules");
     const hadFile = files.has(id);
 
-    log(
-      "Adding %s module to %s and invalidating cache: id=%s",
-      kind,
-      files,
-      resolvedId,
-    );
     files.add(resolvedId);
 
     if (devServer && isNodeModule) {
@@ -75,10 +69,6 @@ export const directivesPlugin = ({
         kind,
         resolvedId,
         environment,
-        fullPath,
-      );
-      devServer.environments[environment].depsOptimizer?.registerMissingImport(
-        resolvedId,
         fullPath,
       );
 
@@ -119,14 +109,41 @@ export const directivesPlugin = ({
         next();
       });
     },
-    async transform(code, id) {
+    async buildEnd() {
+      if (this.environment.name !== "worker") {
+        return;
+      }
+
+      log("Filtering client files after worker build...");
+
       process.env.VERBOSE &&
         log(
-          "Transform called for id=%s, environment=%s",
-          id,
-          this.environment.name,
+          "Client/server files before filtering: client=%O, server=%O",
+          Array.from(clientFiles),
+          Array.from(serverFiles),
         );
 
+      [clientFiles, serverFiles].forEach((files) => {
+        for (const id of files) {
+          const absoluteId = normalizeModulePath(id, projectRootDir, {
+            absolute: true,
+          });
+          const info = this.getModuleInfo(absoluteId);
+
+          if (!info?.isIncluded) {
+            clientFiles.delete(id);
+          }
+        }
+      });
+
+      process.env.VERBOSE &&
+        log(
+          "Client/server files after filtering: client=%O, server=%O",
+          Array.from(clientFiles),
+          Array.from(serverFiles),
+        );
+    },
+    async transform(code, id) {
       const normalizedId = normalizeModulePath(id, projectRootDir);
 
       const clientResult = await transformClientComponents(code, normalizedId, {
@@ -136,7 +153,8 @@ export const directivesPlugin = ({
       });
 
       if (clientResult) {
-        log("Client component transformation successful for id=%s", id);
+        process.env.VERBOSE &&
+          log("Client component transformation successful for id=%s", id);
         return {
           code: clientResult.code,
           map: clientResult.map,
@@ -152,17 +170,18 @@ export const directivesPlugin = ({
       );
 
       if (serverResult) {
-        log("Server function transformation successful for id=%s", id);
+        process.env.VERBOSE &&
+          log("Server function transformation successful for id=%s", id);
         return {
           code: serverResult.code,
           map: serverResult.map,
         };
       }
 
-      process.env.VERBOSE && log("No transformation applied for id=%s", id);
+      // Removed: too noisy even in verbose mode
     },
     configEnvironment(env, config) {
-      log("Configuring environment: env=%s", env);
+      process.env.VERBOSE && log("Configuring environment: env=%s", env);
       config.optimizeDeps ??= {};
       config.optimizeDeps.esbuildOptions ??= {};
       config.optimizeDeps.esbuildOptions.plugins ??= [];
@@ -267,11 +286,12 @@ export const directivesPlugin = ({
               );
 
               if (clientResult) {
-                log(
-                  "Esbuild client component transformation successful for environment=%s, path=%s",
-                  env,
-                  args.path,
-                );
+                process.env.VERBOSE &&
+                  log(
+                    "Esbuild client component transformation successful for environment=%s, path=%s",
+                    env,
+                    args.path,
+                  );
                 process.env.VERBOSE &&
                   log(
                     "Esbuild client component transformation for environment=%s, path=%s, code: %j",
@@ -294,11 +314,12 @@ export const directivesPlugin = ({
               );
 
               if (serverResult) {
-                log(
-                  "Esbuild server function transformation successful for environment=%s, path=%s",
-                  env,
-                  args.path,
-                );
+                process.env.VERBOSE &&
+                  log(
+                    "Esbuild server function transformation successful for environment=%s, path=%s",
+                    env,
+                    args.path,
+                  );
                 return {
                   contents: serverResult.code,
                   loader: getLoader(args.path),
@@ -315,7 +336,8 @@ export const directivesPlugin = ({
           );
         },
       });
-      log("Environment configuration complete for env=%s", env);
+      process.env.VERBOSE &&
+        log("Environment configuration complete for env=%s", env);
     },
   };
 };

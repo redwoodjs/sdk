@@ -23,28 +23,18 @@ export async function transformClientComponents(
   normalizedId: string,
   ctx: TransformContext,
 ): Promise<TransformResult | undefined> {
-  const log = ctx.isEsbuild ? logEsbuild : logVite;
-  log("Called transformClientComponents for id: id=%s", normalizedId);
-
   if (!hasDirective(code, "use client")) {
-    log("Skipping: no 'use client' directive in id=%s", normalizedId);
-    process.env.VERBOSE &&
-      log(
-        ":VERBOSE: Returning code unchanged for id=%s:\n%s",
-        normalizedId,
-        code,
-      );
     return;
   }
 
-  log("Processing 'use client' module: id=%s", normalizedId);
+  const log = ctx.isEsbuild ? logEsbuild : logVite;
 
   ctx.addClientModule?.(ctx.environmentName, normalizedId);
 
   // Parse exports using the findExports helper
   const exportInfos = findExports(normalizedId, code, log);
 
-  // Process exports into the format expected by the rest of the function
+  // Process exports into the format expected by the rst of the function
   type ProcessedExportInfo = {
     local: string;
     exported: string;
@@ -145,12 +135,6 @@ export async function transformClientComponents(
 
   // Add registerClientReference assignments for unique names
   for (const [computedLocalName, correspondingInfo] of computedLocalNames) {
-    log(
-      ":isEsbuild=%s: Registering client reference for named export: %s as %s",
-      !!ctx.isEsbuild,
-      correspondingInfo.local,
-      correspondingInfo.exported,
-    );
     s.append(
       `const ${computedLocalName} = registerClientReference("${normalizedId}", "${correspondingInfo.exported}");\n`,
     );
@@ -163,11 +147,6 @@ export async function transformClientComponents(
         correspondingInfo.local === correspondingInfo.exported
           ? computedLocalName
           : `${computedLocalName} as ${correspondingInfo.exported}`,
-    );
-    log(
-      ":isEsbuild=%s: Exporting named exports: %O",
-      !!ctx.isEsbuild,
-      exportNames,
     );
     s.append(`export { ${exportNames.join(", ")} };\n`);
   }
