@@ -186,7 +186,7 @@ export const configPlugin = ({
         linker: {
           resolve: {
             conditions: ["workerd", "react-server", "module", "node"],
-            noExternal: true,
+            external: externalModules,
           },
           define: {
             "import.meta.env.RWSDK_ENV": JSON.stringify("worker"),
