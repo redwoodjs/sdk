@@ -3,10 +3,8 @@ import fsp from "node:fs/promises";
 import type { Plugin } from "vite";
 import {
   WORKER_SSR_BRIDGE_PATH,
-  WORKER_CLIENT_LOOKUP_PATH,
-  WORKER_SERVER_LOOKUP_PATH,
-  WORKER_MANIFEST_PATH,
   WORKER_OUTPUT_DIR,
+  CLIENT_MANIFEST_RELATIVE_PATH,
 } from "../lib/constants.mjs";
 import debug from "debug";
 
@@ -14,13 +12,20 @@ const log = debug("rwsdk:vite:linker-plugin");
 
 const VIRTUAL_ENTRY_ID = "virtual:linker-entry";
 
-export const linkerPlugin = (): Plugin => {
+export const linkerPlugin = ({
+  projectRootDir,
+}: {
+  projectRootDir: string;
+}): Plugin => {
   let manifest: Record<string, any> | undefined;
 
   return {
     name: "rwsdk:linker",
     applyToEnvironment(environment) {
-      return environment.name === "linker";
+      if (environment.name === "linker") {
+        return true;
+      }
+      return false;
     },
     resolveId(id) {
       if (id === VIRTUAL_ENTRY_ID) {
@@ -33,14 +38,10 @@ export const linkerPlugin = (): Plugin => {
 
         const workerPath = path.resolve(WORKER_OUTPUT_DIR, "worker.js");
         const ssrBridgePath = WORKER_SSR_BRIDGE_PATH;
-        const clientLookupPath = WORKER_CLIENT_LOOKUP_PATH;
-        const serverLookupPath = WORKER_SERVER_LOOKUP_PATH;
 
         return `
           import '${workerPath}';
           import '${ssrBridgePath}';
-          import '${clientLookupPath}';
-          import '${serverLookupPath}';
         `;
       }
     },
@@ -51,9 +52,10 @@ export const linkerPlugin = (): Plugin => {
 
         // Read the manifest from the filesystem.
         const manifestContent = await fsp.readFile(
-          WORKER_MANIFEST_PATH,
+          path.resolve(projectRootDir, CLIENT_MANIFEST_RELATIVE_PATH),
           "utf-8",
         );
+
         const manifest = JSON.parse(manifestContent);
 
         // 1. Replace the manifest placeholder with the actual manifest content.

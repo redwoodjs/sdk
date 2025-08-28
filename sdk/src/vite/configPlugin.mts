@@ -19,6 +19,8 @@ import { linkerPlugin } from "./linkerPlugin.mjs";
 
 const log = debug("rwsdk:vite:config");
 
+const VIRTUAL_SSR_ENTRY_ID = "virtual:rwsdk:ssr-entry";
+
 // port(justinvdm, 09 Jun 2025):
 // https://github.com/cloudflare/workers-sdk/blob/d533f5ee7da69c205d8d5e2a5f264d2370fc612b/packages/vite-plugin-cloudflare/src/cloudflare-environment.ts#L123-L128
 export const cloudflareBuiltInModules = [
@@ -117,29 +119,20 @@ export const configPlugin = ({
           },
           build: {
             lib: {
-              entry: {},
+              entry: {
+                [path.basename(SSR_BRIDGE_PATH, ".js")]: enhancedResolve.sync(
+                  projectRootDir,
+                  "rwsdk/__ssr_bridge",
+                ) as string,
+              },
               formats: ["es"],
+              fileName: () => path.basename(SSR_BRIDGE_PATH),
             },
-            outDir: SSR_OUTPUT_DIR,
+            outDir: path.dirname(SSR_BRIDGE_PATH),
             rollupOptions: {
               output: {
-                entryFileNames: (chunkInfo) => {
-                  if (chunkInfo.name === "virtual:use-client-lookup.js") {
-                    return path.basename(SSR_CLIENT_LOOKUP_PATH);
-                  }
-                  if (chunkInfo.name === "virtual:use-server-lookup.js") {
-                    return path.basename(SSR_SERVER_LOOKUP_PATH);
-                  }
-
-                  if (
-                    chunkInfo.name === path.basename(SSR_BRIDGE_PATH, ".js")
-                  ) {
-                    return path.basename(SSR_BRIDGE_PATH);
-                  }
-
-                  return "client-components/[name]-[hash].mjs";
-                },
-                chunkFileNames: "client-components/[name]-[hash].mjs",
+                inlineDynamicImports: true,
+                entryFileNames: "__ssr.js",
               },
             },
           },
@@ -216,7 +209,6 @@ export const configPlugin = ({
               },
             },
           },
-          plugins: [linkerPlugin()],
         },
       },
       server: {

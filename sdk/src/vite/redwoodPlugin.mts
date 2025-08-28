@@ -168,6 +168,6 @@ export const redwoodPlugin = async (
     }),
     moveStaticAssetsPlugin({ rootDir: projectRootDir }),
     prismaPlugin({ projectRootDir }),
-    linkerPlugin(),
+    linkerPlugin({ projectRootDir }),
   ];
 };

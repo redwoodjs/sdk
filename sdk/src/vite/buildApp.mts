@@ -1,11 +1,7 @@
 import fsp from "node:fs/promises";
 import path from "node:path";
 import debug from "debug";
-import {
-  SSR_OUTPUT_DIR,
-  WORKER_OUTPUT_DIR,
-  WORKER_MANIFEST_PATH,
-} from "../lib/constants.mjs";
+import { SSR_OUTPUT_DIR, WORKER_OUTPUT_DIR } from "../lib/constants.mjs";
 
 import type { ViteBuilder } from "vite";
 
@@ -56,42 +52,16 @@ export async function buildApp({
   const ssrEnv = builder.environments["ssr"]!;
   ssrEnv.config.build ??= {} as any;
   ssrEnv.config.build.rollupOptions ??= {};
-  const clientFilesArray = Array.from(clientFiles);
 
-  if (clientFilesArray.length === 0) {
-    log("No client files discovered, SSR build will use default configuration");
-  } else {
-    log("Setting SSR entry points from client files: %o", clientFilesArray);
-    ssrEnv.config.build.rollupOptions.input = clientFilesArray;
-  }
+  // We use a single virtual entry point for the SSR build. This barrel file
+  // will import the bridge and lookup modules, and `inlineDynamicImports`
+  // will ensure everything is bundled into a single output file.
+  ssrEnv.config.build.rollupOptions.input = {
+    __ssr: "virtual:ssr-entry",
+  };
 
   await builder.build(ssrEnv);
   log("✅ Phase 3 complete");
-
-  log("Preparing for final link phase...");
-
-  const manifestPath = path.resolve(
-    projectRootDir,
-    "dist",
-    "client",
-    ".vite",
-    "manifest.json",
-  );
-
-  await fsp.copyFile(manifestPath, WORKER_MANIFEST_PATH);
-  log("  Copied manifest to %s", WORKER_MANIFEST_PATH);
-
-  const ssrArtifacts = await fsp.readdir(SSR_OUTPUT_DIR);
-  for (const file of ssrArtifacts) {
-    await fsp.copyFile(
-      path.join(SSR_OUTPUT_DIR, file),
-      path.join(WORKER_OUTPUT_DIR, file),
-    );
-  }
-  log(
-    "  Copied %d SSR artifacts to worker output directory",
-    ssrArtifacts.length,
-  );
 
   log("Phase 4: Linker Build Pass");
   await builder.build(builder.environments["linker"]!);
