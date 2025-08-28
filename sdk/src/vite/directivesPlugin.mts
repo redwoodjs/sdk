@@ -120,22 +120,32 @@ export const directivesPlugin = ({
 
       log("Filtering client files after worker build...");
 
+      process.env.VERBOSE &&
+        log(
+          "Client/server files before filtering: client=%O, server=%O",
+          Array.from(clientFiles),
+          Array.from(serverFiles),
+        );
+
       [clientFiles, serverFiles].forEach((files) => {
         for (const id of files) {
-          const info = this.getModuleInfo(id);
+          const absoluteId = normalizeModulePath(id, projectRootDir, {
+            absolute: true,
+          });
+          const info = this.getModuleInfo(absoluteId);
 
           if (!info?.isIncluded) {
-            log("Removing unused client file: %s", id);
             clientFiles.delete(id);
           }
         }
       });
 
-      log(
-        "Client/server file filtering complete. Final set: client=%O, server=%O",
-        Array.from(clientFiles),
-        Array.from(serverFiles),
-      );
+      process.env.VERBOSE &&
+        log(
+          "Client/server files after filtering: client=%O, server=%O",
+          Array.from(clientFiles),
+          Array.from(serverFiles),
+        );
     },
     async transform(code, id) {
       const normalizedId = normalizeModulePath(id, projectRootDir);
