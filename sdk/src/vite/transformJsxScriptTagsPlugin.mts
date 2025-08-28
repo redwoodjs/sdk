@@ -13,6 +13,17 @@ import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 
 const log = debug("rwsdk:vite:transform-jsx-script-tags");
 
+function transformAssetPath(
+  importPath: string,
+  projectRootDir: string,
+): string {
+  if (process.env.VITE_IS_DEV_SERVER === "1") {
+    return importPath;
+  }
+  const normalizedImportPath = normalizeModulePath(importPath, projectRootDir);
+  return `rwsdk_asset:${normalizedImportPath}`;
+}
+
 // Note: This plugin only runs during discovery phase (Phase 1)
 // Manifest reading and asset linking happens later in Phase 5
 
@@ -80,12 +91,10 @@ function transformScriptImports(
               entryPoints.push(importPath);
               clientEntryPoints.add(importPath);
 
-              const normalizedImportPath = normalizeModulePath(
+              const transformedImportPath = transformAssetPath(
                 importPath,
                 projectRootDir,
               );
-
-              const transformedImportPath = `rwsdk_asset:${normalizedImportPath}`;
               args[0].setLiteralValue(transformedImportPath);
               hasChanges = true;
             }
@@ -246,12 +255,10 @@ export async function transformJsxScriptTagsCode(
                     entryPoints.push(srcValue);
                     clientEntryPoints.add(srcValue);
 
-                    const normalizedSrcValue = normalizeModulePath(
+                    const transformedSrc = transformAssetPath(
                       srcValue,
                       projectRootDir,
                     );
-
-                    const transformedSrc = `rwsdk_asset:${normalizedSrcValue}`;
 
                     modifications.push({
                       type: "literalValue",
@@ -329,12 +336,10 @@ export async function transformJsxScriptTagsCode(
             ) {
               const hrefValue = initializer.getLiteralValue();
               if (hrefValue.startsWith("/")) {
-                const normalizedHrefValue = normalizeModulePath(
+                const transformedHref = transformAssetPath(
                   hrefValue,
                   projectRootDir,
                 );
-
-                const transformedHref = `rwsdk_asset:${normalizedHrefValue}`;
                 modifications.push({
                   type: "literalValue",
                   node: initializer,
