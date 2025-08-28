@@ -2,6 +2,9 @@
 
 This collection of documents provides a high-level overview of the core architectural concepts and mechanisms within the RedwoodSDK. They are intended to explain the "why" behind key design decisions, focusing on the problems encountered and the solutions implemented.
 
+- [**Dev Mode Discovery and Optimization**](./devModeDiscoveryAndOptimization.md)
+  This document details the strategy for optimizing the developer experience by intelligently guiding Vite's dependency pre-bundler. It explains how a hybrid approach of proactive discovery and static analysis within a virtual module eliminates the "request waterfall" problem for dependencies in a React Server Components environment.
+
 - [**The SSR Bridge**](./ssrBridge.md)
   This document details the architecture that allows the framework to support two different rendering environments (RSC and traditional SSR) within a single Cloudflare Worker. It explains how the "SSR Bridge" uses Vite's Environments API to manage conflicting dependency requirements between the two runtimes.
 

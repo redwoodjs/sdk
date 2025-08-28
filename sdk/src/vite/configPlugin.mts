@@ -77,7 +77,7 @@ export const configPlugin = ({
           },
           optimizeDeps: {
             noDiscovery: false,
-            include: ["rwsdk/client"],
+            include: ["rwsdk/client", "@mantine/core"],
             esbuildOptions: {
               jsx: "automatic",
               jsxImportSource: "react",

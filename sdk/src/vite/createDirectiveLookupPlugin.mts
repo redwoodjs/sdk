@@ -213,6 +213,11 @@ export const createDirectiveLookupPlugin = ({
         log("Current environment: %s, isDev: %s", environment, isDev);
 
         const s = new MagicString(`
+${Array.from(files)
+  .filter((file) => file.includes("node_modules"))
+  .map((file) => `import "${file}"`)
+  .join("\n")}
+
 export const ${config.exportName} = {
   ${Array.from(files)
     .map(

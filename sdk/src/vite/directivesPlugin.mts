@@ -71,10 +71,6 @@ export const directivesPlugin = ({
         environment,
         fullPath,
       );
-      devServer.environments[environment].depsOptimizer?.registerMissingImport(
-        resolvedId,
-        fullPath,
-      );
 
       if (isAfterFirstResponse && !hadFile) {
         log(
