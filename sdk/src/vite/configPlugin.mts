@@ -15,7 +15,6 @@ import {
   WORKER_OUTPUT_DIR,
 } from "../lib/constants.mjs";
 import { buildApp } from "./buildApp.mjs";
-import { linkerPlugin } from "./linkerPlugin.mjs";
 
 const log = debug("rwsdk:vite:config");
 
