@@ -16,70 +16,31 @@ export const manifestPlugin = ({
   manifestPath: string;
 }): Plugin => {
   let isBuild = false;
-  let root: string;
 
   return {
-    name: "rwsdk:manifest",
+    name: "rwsdk:vite:manifest-plugin",
+    enforce: "pre",
     configResolved(config) {
-      log("Config resolved, command=%s", config.command);
       isBuild = config.command === "build";
-      root = config.root;
     },
     resolveId(id) {
       if (id === virtualModuleId) {
-        if (this.environment?.name === "worker") {
-          const relativePath = `./${path.basename(WORKER_MANIFEST_PATH)}`;
-          log(
-            "Manifest module case (build): id=%s in worker environment, resolving to external path=%s",
-            id,
-            relativePath,
-          );
-          return { id: relativePath, external: true };
-        }
         return resolvedVirtualModuleId;
       }
     },
     async load(id) {
       if (id === resolvedVirtualModuleId) {
-        if (!isBuild) {
-          process.env.VERBOSE && log("Not a build, returning empty manifest");
-          return `export default {}`;
+        if (isBuild) {
+          // context(justinvdm, 28 Aug 2025): During the build, we don't have
+          // the manifest yet. We insert a placeholder that the linker plugin
+          // will replace in the final phase.
+          log("Returning manifest placeholder for build");
+          return `export default "__RWSDK_MANIFEST_PLACEHOLDER__"`;
         }
 
-        log("Reading manifest from %s", manifestPath);
-        const manifestContent = await readFile(manifestPath, "utf-8");
-        const manifest = JSON.parse(manifestContent);
-        const normalizedManifest: Record<string, unknown> = {};
-
-        for (const key in manifest) {
-          const normalizedKey = normalizeModulePath(key, root, {
-            isViteStyle: false,
-          });
-
-          const entry = manifest[key];
-          delete manifest[key];
-          normalizedManifest[normalizedKey] = entry;
-
-          entry.file = normalizeModulePath(entry.file, root, {
-            isViteStyle: false,
-          });
-
-          const normalizedCss: string[] = [];
-
-          if (entry.css) {
-            for (const css of entry.css) {
-              normalizedCss.push(
-                normalizeModulePath(css, root, {
-                  isViteStyle: false,
-                }),
-              );
-            }
-
-            entry.css = normalizedCss;
-          }
-        }
-
-        return `export default ${JSON.stringify(normalizedManifest)}`;
+        // In dev, we can return an empty object.
+        log("Not a build, returning empty manifest");
+        return `export default {}`;
       }
     },
     configEnvironment(name, config) {

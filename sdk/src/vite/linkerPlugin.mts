@@ -1,4 +1,5 @@
 import path from "node:path";
+import fsp from "node:fs/promises";
 import type { Plugin } from "vite";
 import {
   WORKER_SSR_BRIDGE_PATH,
@@ -18,6 +19,9 @@ export const linkerPlugin = (): Plugin => {
 
   return {
     name: "rwsdk:linker",
+    applyToEnvironment(environment) {
+      return environment.name === "linker";
+    },
     resolveId(id) {
       if (id === VIRTUAL_ENTRY_ID) {
         return `\0${VIRTUAL_ENTRY_ID}`;
@@ -31,50 +35,35 @@ export const linkerPlugin = (): Plugin => {
         const ssrBridgePath = WORKER_SSR_BRIDGE_PATH;
         const clientLookupPath = WORKER_CLIENT_LOOKUP_PATH;
         const serverLookupPath = WORKER_SERVER_LOOKUP_PATH;
-        const manifestPath = WORKER_MANIFEST_PATH;
 
         return `
-          import manifest from '${manifestPath}' assert { type: 'json' };
           import '${workerPath}';
           import '${ssrBridgePath}';
           import '${clientLookupPath}';
           import '${serverLookupPath}';
-
-          globalThis.__rw_manifest = manifest;
         `;
       }
     },
-    renderChunk(code, chunk) {
+    async renderChunk(code, chunk) {
       if (chunk.facadeModuleId?.endsWith(VIRTUAL_ENTRY_ID)) {
         log("Rendering final worker chunk");
         let newCode = code;
 
-        if (!manifest) {
-          try {
-            const manifestContent = this.getModuleInfo(
-              path.resolve(
-                WORKER_OUTPUT_DIR,
-                path.basename(WORKER_MANIFEST_PATH),
-              ),
-            )?.meta?.vite?.manifest;
-            if (manifestContent) {
-              manifest = manifestContent;
-            }
-          } catch (e) {
-            const manifestImport = /const manifest = (\{.*\});/.exec(newCode);
-            if (manifestImport?.[1]) {
-              manifest = JSON.parse(manifestImport[1]);
-            }
-          }
-        }
+        // Read the manifest from the filesystem.
+        const manifestContent = await fsp.readFile(
+          WORKER_MANIFEST_PATH,
+          "utf-8",
+        );
+        const manifest = JSON.parse(manifestContent);
 
-        if (!manifest) {
-          this.warn(
-            "Client manifest not found in linker plugin. Asset paths will not be replaced.",
-          );
-          return null;
-        }
+        // 1. Replace the manifest placeholder with the actual manifest content.
+        log("Injecting manifest into worker bundle");
+        newCode = newCode.replace(
+          '"__RWSDK_MANIFEST_PLACEHOLDER__"',
+          manifestContent,
+        );
 
+        // 2. Replace asset placeholders with their final hashed paths.
         log("Replacing asset placeholders in final worker bundle");
         for (const [key, value] of Object.entries(manifest)) {
           newCode = newCode.replaceAll(
@@ -82,8 +71,6 @@ export const linkerPlugin = (): Plugin => {
             `/${(value as { file: string }).file}`,
           );
         }
-
-        newCode = newCode.replace(/globalThis\.__rw_manifest = manifest;/, "");
 
         return {
           code: newCode,
