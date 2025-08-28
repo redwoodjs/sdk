@@ -171,6 +171,7 @@ export const configPlugin = ({
           build: {
             outDir: resolve(projectRootDir, "dist", "worker"),
             emitAssets: true,
+            emptyOutDir: false,
             ssr: true,
             rollupOptions: {
               output: {
