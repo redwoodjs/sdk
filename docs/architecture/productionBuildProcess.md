@@ -10,7 +10,7 @@ The production build must solve several interconnected problems simultaneously, 
 
 2.  **Dynamic Client Entry Points:** The `client` build needs a list of all client-side JavaScript entry points (e.g., from `<script>` tags) to know what to bundle. This information is only available by traversing the application's `Document.tsx` components, which occurs during the `worker` build.
 
-3.  **Tree-Shaking for Client Components:** The `ssr` build needs to know which `"use client"` components are actually used by the application to avoid bundling unnecessary code. This list is also only discoverable by traversing the application graph within the `worker` build.
+3.  **Tree-Shaking for Client and SSR Components:** Both the `ssr` and `client` builds need to know which `"use client"` components are actually used by the application. In the `ssr` build, this information is used to avoid bundling unnecessary server-side code for unused components. In the `client` build, it allows for more optimal code-splitting, preventing the creation of overly granular chunks that result from a bundler seeing every potential client component as a dynamic import. This list is discoverable by traversing the application graph within the `worker` build.
 
 4.  **Deferred Asset Linking:** The final `worker` bundle needs to contain the correct, hashed output paths of all client assets (e.g., `/assets/client.a1b2c3d4.js`). These paths are only known after the `client` build has run and generated its `manifest.json`.
 
@@ -24,8 +24,13 @@ To resolve this, we implement a **four-phase** sequential build process. Each of
 
 ### Phase 1: Worker Pass
 
-The `worker` environment is built first. This is a full build pass that performs all necessary transformations on the application source code (`src/worker.tsx`). As a crucial **side-effect** of this traversal, two key pieces of information are collected:
-- A complete list of all actively used modules containing a `"use client"` directive.
+The `worker` environment is built first. This is a full build pass that performs all necessary transformations on the application source code (`src/worker.tsx`). This phase involves two main stages:
+
+1.  **Discovery:** As Vite traverses the source graph, a custom plugin identifies all modules that contain a `"use client"` directive, adding them to a preliminary list of potential client components.
+2.  **Filtering:** After Vite completes its build and generates the tree-shaken module graph for the worker, another custom plugin hook (`buildEnd`) runs. This hook iterates through the preliminary list of client components. For each component, it queries Vite's module graph metadata to determine if the component was actually included in the final worker bundle (`isIncluded`). Any component that was tree-shaken away by Vite is removed from the list.
+
+The crucial **side-effects** of this phase are two refined lists:
+- A complete and accurate list of all modules containing a `"use client"` directive that are part of the worker's final module graph.
 - A complete list of all client-side entry points.
 
 During this phase:
@@ -36,11 +41,11 @@ The output of this phase is an intermediate `dist/worker/worker.js` bundle. This
 
 ### Phase 2: Client Build
 
-With the list of entry points discovered in Phase 1, the `client` build is now executed. Its configuration is dynamically updated with this list. This build runs to completion, producing all the necessary hashed client assets and a `manifest.json` file.
+With the list of entry points and the refined list of used client components discovered in Phase 1, the `client` build is now executed. Its configuration is dynamically updated. Vite uses the entry points for its initial graph traversal and the full list of used client components to inform its code-splitting strategy, resulting in more optimal, less granular chunks. This build runs to completion, producing all the necessary hashed client assets and a `manifest.json` file.
 
 ### Phase 3: SSR Build
 
-The `ssr` build runs next. Its configuration is dynamically updated with multiple entry points: the main SSR Bridge and the list of `"use client"` components discovered in Phase 1. This build produces intermediate SSR artifacts in the `dist/ssr` directory.
+The `ssr` build runs next. Its configuration is dynamically updated with multiple entry points: the main SSR Bridge and the filtered list of `"use client"` components discovered in Phase 1. This ensures that only the server-side code for components actively used by the application is included in the SSR bundle. This build produces intermediate SSR artifacts in the `dist/ssr` directory.
 
 ### Phase 4: Linker Build Pass
 
