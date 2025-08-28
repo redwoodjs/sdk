@@ -1,8 +1,4 @@
-import fsp from "node:fs/promises";
-import path from "node:path";
 import debug from "debug";
-import { SSR_OUTPUT_DIR, WORKER_OUTPUT_DIR } from "../lib/constants.mjs";
-
 import type { ViteBuilder } from "vite";
 
 const log = debug("rwsdk:vite:build-app");
@@ -49,22 +45,11 @@ export async function buildApp({
   log("✅ Phase 2 complete");
 
   log("Phase 3: SSR Build");
-  const ssrEnv = builder.environments["ssr"]!;
-  ssrEnv.config.build ??= {} as any;
-  ssrEnv.config.build.rollupOptions ??= {};
-
-  // We use a single virtual entry point for the SSR build. This barrel file
-  // will import the bridge and lookup modules, and `inlineDynamicImports`
-  // will ensure everything is bundled into a single output file.
-  ssrEnv.config.build.rollupOptions.input = {
-    __ssr: "virtual:ssr-entry",
-  };
-
-  await builder.build(ssrEnv);
+  await builder.build(builder.environments.ssr);
   log("✅ Phase 3 complete");
 
   log("Phase 4: Linker Build Pass");
-  await builder.build(builder.environments["linker"]!);
+  await builder.build(builder.environments.linker);
   log("✅ Phase 4 complete");
   log("🚀 Build complete!");
 }

@@ -8,25 +8,17 @@ export const SRC_DIR = resolve(ROOT_DIR, "src");
 export const DIST_DIR = resolve(ROOT_DIR, "dist");
 export const VITE_DIR = resolve(ROOT_DIR, "src", "vite");
 
-export const SSR_OUTPUT_DIR = resolve(DIST_DIR, "__app", "ssr");
-export const SSR_BRIDGE_PATH = resolve(SSR_OUTPUT_DIR, "__ssr_bridge.js");
-export const SSR_CLIENT_LOOKUP_PATH = resolve(
-  SSR_OUTPUT_DIR,
-  "__client_lookup.mjs",
+export const INTERMEDIATES_OUTPUT_DIR = resolve(
+  DIST_DIR,
+  "__intermediate_builds",
 );
-export const SSR_SERVER_LOOKUP_PATH = resolve(
-  SSR_OUTPUT_DIR,
-  "__server_lookup.mjs",
+export const INTERMEDIATE_SSR_BRIDGE_PATH = resolve(
+  INTERMEDIATES_OUTPUT_DIR,
+  "ssr_bridge.js",
 );
-
-export const WORKER_OUTPUT_DIR = resolve(DIST_DIR, "worker");
-export const WORKER_SSR_BRIDGE_PATH = resolve(
-  WORKER_OUTPUT_DIR,
-  "__ssr_bridge.js",
-);
-export const WORKER_MANIFEST_PATH = resolve(
-  WORKER_OUTPUT_DIR,
-  "__manifest.json",
+export const INTERMEDIATE_WORKER_PATH = resolve(
+  INTERMEDIATES_OUTPUT_DIR,
+  "worker.js",
 );
 
 export const CLIENT_MANIFEST_RELATIVE_PATH = resolve(

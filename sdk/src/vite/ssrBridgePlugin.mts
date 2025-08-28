@@ -120,13 +120,12 @@ export const ssrBridgePlugin = ({
         // relative path. The worker reprocessing pass (Phase 4) will place the
         // SSR bridge at this exact location.
         if (id === "rwsdk/__ssr_bridge" && this.environment.name === "worker") {
-          const relativePath = `./${path.basename(WORKER_SSR_BRIDGE_PATH)}`;
           log(
             "Bridge module case (build): id=%s matches rwsdk/__ssr_bridge in worker environment, resolving to external path=%s",
             id,
-            relativePath,
+            WORKER_SSR_BRIDGE_PATH,
           );
-          return { id: relativePath, external: true };
+          return { id: WORKER_SSR_BRIDGE_PATH, external: true };
         }
       }
     },

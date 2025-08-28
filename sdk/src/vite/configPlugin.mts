@@ -8,11 +8,9 @@ import { readFile, writeFile } from "node:fs/promises";
 import { glob } from "glob";
 
 import {
-  SSR_BRIDGE_PATH,
-  SSR_CLIENT_LOOKUP_PATH,
-  SSR_SERVER_LOOKUP_PATH,
-  SSR_OUTPUT_DIR,
-  WORKER_OUTPUT_DIR,
+  INTERMEDIATE_SSR_BRIDGE_PATH,
+  INTERMEDIATES_OUTPUT_DIR,
+  INTERMEDIATE_WORKER_PATH,
 } from "../lib/constants.mjs";
 import { buildApp } from "./buildApp.mjs";
 
@@ -119,15 +117,16 @@ export const configPlugin = ({
           build: {
             lib: {
               entry: {
-                [path.basename(SSR_BRIDGE_PATH, ".js")]: enhancedResolve.sync(
-                  projectRootDir,
-                  "rwsdk/__ssr_bridge",
-                ) as string,
+                [path.basename(INTERMEDIATE_SSR_BRIDGE_PATH, ".js")]:
+                  enhancedResolve.sync(
+                    projectRootDir,
+                    "rwsdk/__ssr_bridge",
+                  ) as string,
               },
               formats: ["es"],
-              fileName: () => path.basename(SSR_BRIDGE_PATH),
+              fileName: () => path.basename(INTERMEDIATE_SSR_BRIDGE_PATH),
             },
-            outDir: path.dirname(SSR_BRIDGE_PATH),
+            outDir: path.dirname(INTERMEDIATE_SSR_BRIDGE_PATH),
             rollupOptions: {
               output: {
                 inlineDynamicImports: true,
@@ -172,7 +171,7 @@ export const configPlugin = ({
             },
           },
           build: {
-            outDir: resolve(projectRootDir, "dist", "worker"),
+            outDir: INTERMEDIATES_OUTPUT_DIR,
             emitAssets: true,
             ssr: true,
             rollupOptions: {
@@ -180,7 +179,7 @@ export const configPlugin = ({
                 inlineDynamicImports: true,
               },
               input: {
-                worker: workerEntryPathname,
+                worker: path.basename(INTERMEDIATE_WORKER_PATH),
               },
             },
           },
@@ -194,13 +193,13 @@ export const configPlugin = ({
             "import.meta.env.RWSDK_ENV": JSON.stringify("worker"),
           },
           build: {
-            outDir: WORKER_OUTPUT_DIR,
+            outDir: "dist",
             emitAssets: false,
             ssr: true,
             minify: false,
             rollupOptions: {
               input: {
-                worker: "virtual:linker-entry",
+                worker: path.basename(INTERMEDIATE_WORKER_PATH),
               },
               output: {
                 inlineDynamicImports: true,
