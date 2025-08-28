@@ -3,6 +3,7 @@ import fsp from "node:fs/promises";
 import type { Plugin } from "vite";
 import { CLIENT_MANIFEST_RELATIVE_PATH } from "../lib/constants.mjs";
 import debug from "debug";
+import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 
 const log = debug("rwsdk:vite:linker-plugin");
 
@@ -38,8 +39,12 @@ export const linkerPlugin = ({
       // 2. Replace asset placeholders with their final hashed paths.
       log("Replacing asset placeholders in final worker bundle");
       for (const [key, value] of Object.entries(manifest)) {
+        const normalizedKey = normalizeModulePath(key, projectRootDir, {
+          isViteStyle: false,
+        });
+
         newCode = newCode.replaceAll(
-          `rwsdk_asset:${key}`,
+          `rwsdk_asset:${normalizedKey}`,
           `/${(value as { file: string }).file}`,
         );
       }

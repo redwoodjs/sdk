@@ -156,6 +156,7 @@ export const redwoodPlugin = async (
     }),
     transformJsxScriptTagsPlugin({
       clientEntryPoints,
+      projectRootDir,
     }),
     manifestPlugin({
       projectRootDir,

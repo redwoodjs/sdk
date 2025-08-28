@@ -9,6 +9,7 @@ import {
 } from "ts-morph";
 import { type Plugin } from "vite";
 import debug from "debug";
+import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 
 const log = debug("rwsdk:vite:transform-jsx-script-tags");
 
@@ -36,6 +37,7 @@ function transformScriptImports(
   scriptContent: string,
   clientEntryPoints: Set<string>,
   manifest: Record<string, any>,
+  projectRootDir: string,
 ): {
   content: string | undefined;
   hasChanges: boolean;
@@ -78,9 +80,13 @@ function transformScriptImports(
               entryPoints.push(importPath);
               clientEntryPoints.add(importPath);
 
-              // Always use discovery behavior in worker environment
-              const transformedSrc = `rwsdk_asset:${importPath}`;
-              args[0].setLiteralValue(transformedSrc);
+              const normalizedImportPath = normalizeModulePath(
+                importPath,
+                projectRootDir,
+              );
+
+              const transformedImportPath = `rwsdk_asset:${normalizedImportPath}`;
+              args[0].setLiteralValue(transformedImportPath);
               hasChanges = true;
             }
           }
@@ -143,6 +149,7 @@ export async function transformJsxScriptTagsCode(
   code: string,
   clientEntryPoints: Set<string>,
   manifest: Record<string, any> = {},
+  projectRootDir: string,
 ) {
   // context(justinvdm, 15 Jun 2025): Optimization to exit early
   // to avoidunnecessary ts-morph parsing
@@ -239,8 +246,13 @@ export async function transformJsxScriptTagsCode(
                     entryPoints.push(srcValue);
                     clientEntryPoints.add(srcValue);
 
-                    // Always use discovery behavior in worker environment
-                    const transformedSrc = `rwsdk_asset:${srcValue}`;
+                    const normalizedSrcValue = normalizeModulePath(
+                      srcValue,
+                      projectRootDir,
+                    );
+
+                    const transformedSrc = `rwsdk_asset:${normalizedSrcValue}`;
+
                     modifications.push({
                       type: "literalValue",
                       node: initializer,
@@ -268,6 +280,7 @@ export async function transformJsxScriptTagsCode(
                   scriptContent,
                   clientEntryPoints,
                   manifest,
+                  projectRootDir,
                 );
 
                 entryPoints.push(...dynamicEntryPoints);
@@ -445,8 +458,10 @@ ${mod.callExprText}
 
 export const transformJsxScriptTagsPlugin = ({
   clientEntryPoints,
+  projectRootDir,
 }: {
   clientEntryPoints: Set<string>;
+  projectRootDir: string;
 }): Plugin => {
   let isBuild = false;
 
@@ -470,6 +485,7 @@ export const transformJsxScriptTagsPlugin = ({
           code,
           clientEntryPoints,
           {}, // Empty manifest during discovery
+          projectRootDir,
         );
         if (result) {
           log("Transformed JSX script tags in %s", id);

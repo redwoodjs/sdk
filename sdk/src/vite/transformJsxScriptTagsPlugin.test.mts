@@ -27,6 +27,7 @@ describe("transformJsxScriptTagsCode", () => {
       code,
       clientEntryPoints,
       mockManifest,
+      "/Users/justin/rw/forks/workers-sdk/sdk/sdk",
     );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
@@ -56,6 +57,7 @@ nonce: requestInfo.rw.nonce
       code,
       clientEntryPoints,
       mockManifest,
+      "/project/root/dir",
     );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
@@ -82,6 +84,7 @@ nonce: requestInfo.rw.nonce
       code,
       clientEntryPoints,
       mockManifest,
+      "/project/root/dir",
     );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
@@ -116,6 +119,7 @@ nonce: requestInfo.rw.nonce
       code,
       clientEntryPoints,
       mockManifest,
+      "/project/root/dir",
     );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
@@ -155,6 +159,7 @@ import('/src/entry.js');
       code,
       clientEntryPoints,
       mockManifest,
+      "/project/root/dir",
     );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
@@ -189,6 +194,7 @@ nonce: requestInfo.rw.nonce
       code,
       clientEntryPoints,
       mockManifest,
+      "/project/root/dir",
     );
 
     // No transformation during discovery - link transformations happen in Phase 5
@@ -208,6 +214,7 @@ nonce: requestInfo.rw.nonce
       code,
       clientEntryPoints,
       mockManifest,
+      "/project/root/dir",
     );
 
     // No transformation during discovery - link transformations happen in Phase 5
@@ -242,6 +249,7 @@ nonce: requestInfo.rw.nonce
       code,
       clientEntryPoints,
       mockManifest,
+      "/project/root/dir",
     );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
@@ -284,6 +292,7 @@ nonce: requestInfo.rw.nonce
       code,
       clientEntryPoints,
       mockManifest,
+      "/project/root/dir",
     );
 
     expect(result).toBeUndefined();
@@ -302,6 +311,7 @@ nonce: requestInfo.rw.nonce
       code,
       clientEntryPoints,
       mockManifest,
+      "/project/root/dir",
     );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
@@ -331,6 +341,7 @@ nonce: requestInfo.rw.nonce
       code,
       clientEntryPoints,
       mockManifest,
+      "/project/root/dir",
     );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
@@ -359,7 +370,8 @@ nonce: requestInfo.rw.nonce
     const result = await transformJsxScriptTagsCode(
       code,
       clientEntryPoints,
-      {},
+      mockManifest,
+      "/project/root/dir",
     );
 
     expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
@@ -384,7 +396,8 @@ nonce: requestInfo.rw.nonce
     const result = await transformJsxScriptTagsCode(
       code,
       clientEntryPoints,
-      {},
+      mockManifest,
+      "/project/root/dir",
     );
 
     expect(result?.code).toEqual(undefined);
@@ -403,7 +416,8 @@ nonce: requestInfo.rw.nonce
     const result = await transformJsxScriptTagsCode(
       code,
       clientEntryPoints,
-      {},
+      mockManifest,
+      "/project/root/dir",
     );
 
     expect(result?.code).toEqual(undefined);
@@ -424,7 +438,8 @@ nonce: requestInfo.rw.nonce
     const result = await transformJsxScriptTagsCode(
       code,
       clientEntryPoints,
-      {},
+      mockManifest,
+      "/project/root/dir",
     );
 
     expect(result?.code).toEqual(`
@@ -459,7 +474,8 @@ nonce: requestInfo.rw.nonce
     const result = await transformJsxScriptTagsCode(
       code,
       clientEntryPoints,
-      {},
+      mockManifest,
+      "/project/root/dir",
     );
 
     expect(result?.code).toEqual(`
@@ -484,7 +500,12 @@ nonce: requestInfo.rw.nonce
 
     // Call without providing manifest (simulating dev mode)
     const clientEntryPoints = new Set<string>();
-    const result = await transformJsxScriptTagsCode(code, clientEntryPoints);
+    const result = await transformJsxScriptTagsCode(
+      code,
+      clientEntryPoints,
+      mockManifest,
+      "/project/root/dir",
+    );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
 
@@ -611,6 +632,7 @@ export const Document = ({
       code,
       clientEntryPoints,
       mockManifest,
+      "/project/root/dir",
     );
 
     // For this complex test, we'll just verify the key transformations
