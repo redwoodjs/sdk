@@ -19,6 +19,3 @@ This collection of documents provides a high-level overview of the core architec
 
 - [**Unified Script Discovery**](./unifiedScriptDiscovery.md)
   Discover the centralized mechanism for identifying every client-side JavaScript module required for a given page. This document explains how scripts are discovered from both static `Document` entry points and dynamically rendered components, providing a single source of truth for asset handling.
-
-- [**Development Mode Tree-Shaking for Dependencies**](./devModeTreeShaking.md)
-  Learn how the framework optimizes the development experience by performing a targeted tree-shaking process on third-party dependencies. This document explains how we collapse the "request waterfall" for `use client` components from libraries by providing Vite's dependency optimizer with more accurate usage information.

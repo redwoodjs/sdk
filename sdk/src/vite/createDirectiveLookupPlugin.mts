@@ -245,6 +245,7 @@ export const createDirectiveLookupPlugin = async ({
       viteConfig.optimizeDeps ??= {};
       viteConfig.optimizeDeps.esbuildOptions ??= {};
       viteConfig.optimizeDeps.esbuildOptions.plugins ??= [];
+
       viteConfig.optimizeDeps.esbuildOptions.plugins.push({
         name: `rwsdk:${config.pluginName}`,
         setup(build) {
