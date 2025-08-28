@@ -194,11 +194,7 @@ export const configPlugin = ({
           },
         },
         linker: {
-          // This environment is for the final assembly phase.
-          // It takes the outputs of the 'worker', 'ssr', and 'client' builds
-          // and links them into a single, deployable worker bundle.
           resolve: {
-            // Must match the worker environment for compatibility
             conditions: ["workerd", "react-server", "module", "node"],
             noExternal: true,
           },
@@ -206,19 +202,16 @@ export const configPlugin = ({
             "import.meta.env.RWSDK_ENV": JSON.stringify("worker"),
           },
           build: {
-            // The root for this build is the worker output directory, as all
-            // its inputs are located there.
             root: WORKER_OUTPUT_DIR,
             outDir: WORKER_OUTPUT_DIR,
-            emitAssets: false, // All assets are already in place
+            emitAssets: false,
             ssr: true,
-            minify: false, // Minification is done in the initial worker pass
+            minify: false,
             rollupOptions: {
               input: {
                 worker: "virtual:linker-entry",
               },
               output: {
-                // Ensure the final output is a single file.
                 inlineDynamicImports: true,
                 entryFileNames: "worker.js",
               },

@@ -27,16 +27,12 @@ export const linkerPlugin = (): Plugin => {
       if (id === `\0${VIRTUAL_ENTRY_ID}`) {
         log("Loading virtual linker entry");
 
-        // These paths are relative to the WORKER_OUTPUT_DIR, which is the
-        // root for the linker build.
         const workerPath = "./worker.js";
         const ssrBridgePath = `./${path.basename(WORKER_SSR_BRIDGE_PATH)}`;
         const clientLookupPath = `./${path.basename(WORKER_CLIENT_LOOKUP_PATH)}`;
         const serverLookupPath = `./${path.basename(WORKER_SERVER_LOOKUP_PATH)}`;
         const manifestPath = `./${path.basename(WORKER_MANIFEST_PATH)}`;
 
-        // This barrel file imports all the necessary artifacts.
-        // Vite will bundle these into a single output.
         return `
           import manifest from '${manifestPath}' assert { type: 'json' };
           import '${workerPath}';
@@ -44,8 +40,6 @@ export const linkerPlugin = (): Plugin => {
           import '${clientLookupPath}';
           import '${serverLookupPath}';
 
-          // We don't actually DO anything with the manifest here, but by
-          // importing it, we make it available to the renderChunk hook below.
           globalThis.__rw_manifest = manifest;
         `;
       }
@@ -55,9 +49,6 @@ export const linkerPlugin = (): Plugin => {
         log("Rendering final worker chunk");
         let newCode = code;
 
-        // The manifest is loaded into the bundle via the virtual entry,
-        // but Vite might tree-shake it out. We need to get it.
-        // A simple way is to read it from the filesystem.
         if (!manifest) {
           try {
             const manifestContent = this.getModuleInfo(
@@ -70,8 +61,6 @@ export const linkerPlugin = (): Plugin => {
               manifest = manifestContent;
             }
           } catch (e) {
-            // Fallback for getting manifest if getModuleInfo doesn't work
-            // This is a bit of a hack, but it's reliable.
             const manifestImport = /const manifest = (\{.*\});/.exec(newCode);
             if (manifestImport?.[1]) {
               manifest = JSON.parse(manifestImport[1]);
@@ -94,7 +83,6 @@ export const linkerPlugin = (): Plugin => {
           );
         }
 
-        // Clean up the temporary manifest assignment
         newCode = newCode.replace(/globalThis\.__rw_manifest = manifest;/, "");
 
         return {

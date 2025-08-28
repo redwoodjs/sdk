@@ -29,9 +29,6 @@ export async function buildApp({
   clientFiles: Set<string>;
   projectRootDir: string;
 }) {
-  // Phase 1: Worker "Discovery" Pass
-  // This builds the main worker code, discovers client entry points and
-  // 'use client' modules, and leaves placeholders for assets.
   log('Phase 1: Worker "Discovery" Pass');
   await builder.build(builder.environments["worker"]!);
   log("✅ Phase 1 complete");
@@ -39,10 +36,6 @@ export async function buildApp({
   log("Discovered clientEntryPoints: %O", Array.from(clientEntryPoints));
   log("Discovered clientFiles: %O", Array.from(clientFiles));
 
-  // Phase 2: Client Build
-  // This builds the client-side assets, using the entry points
-  // discovered in Phase 1. It produces the final, hashed asset files
-  // and a manifest.json.
   log("Phase 2: Client Build");
   const clientEnv = builder.environments["client"]!;
   clientEnv.config.build ??= {} as any;
@@ -59,9 +52,6 @@ export async function buildApp({
   await builder.build(clientEnv);
   log("✅ Phase 2 complete");
 
-  // Phase 3: SSR Build
-  // This builds the SSR versions of all the 'use client' components
-  // discovered in Phase 1.
   log("Phase 3: SSR Build");
   const ssrEnv = builder.environments["ssr"]!;
   ssrEnv.config.build ??= {} as any;
@@ -78,9 +68,6 @@ export async function buildApp({
   await builder.build(ssrEnv);
   log("✅ Phase 3 complete");
 
-  // Intermission: Prepare for the final linking phase
-  // We need to copy the manifest and the SSR artifacts into the final
-  // worker output directory so the linker can find them.
   log("Preparing for final link phase...");
 
   const manifestPath = path.resolve(
@@ -106,11 +93,6 @@ export async function buildApp({
     ssrArtifacts.length,
   );
 
-  // Phase 4: Linker Build Pass
-  // This is the final assembly step. It uses a minimal environment to
-  // bundle the intermediate worker.js, the SSR artifacts, and the client
-  // manifest into a single, deployable worker. A custom plugin handles
-  // the replacement of asset placeholders.
   log("Phase 4: Linker Build Pass");
   await builder.build(builder.environments["linker"]!);
   log("✅ Phase 4 complete");
