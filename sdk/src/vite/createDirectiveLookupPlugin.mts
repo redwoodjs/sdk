@@ -7,6 +7,7 @@ import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { stat } from "fs/promises";
 import { getSrcPaths } from "../lib/getSrcPaths.js";
 import { hasDirective } from "./hasDirective.mjs";
+import { ViteDevServer } from "vite";
 
 interface DirectiveLookupConfig {
   kind: "client" | "server";
@@ -69,6 +70,7 @@ export const createDirectiveLookupPlugin = ({
   const debugNamespace = `rwsdk:vite:${config.pluginName}`;
   const log = debug(debugNamespace);
   let isDev = false;
+  let devServer: ViteDevServer;
 
   log(
     "Initializing %s plugin with projectRootDir=%s",
@@ -82,6 +84,9 @@ export const createDirectiveLookupPlugin = ({
       isDev = !isPreview && command === "serve";
       log("Development mode: %s", isDev);
     },
+    configureServer(server) {
+      devServer = server;
+    },
     async configEnvironment(env, viteConfig) {
       log("Configuring environment: env=%s", env);
 
@@ -89,13 +94,54 @@ export const createDirectiveLookupPlugin = ({
         !config.optimizeForEnvironments ||
         config.optimizeForEnvironments.includes(env);
 
+      // Always add the esbuild resolver for virtual modules - this is needed
+      // for proper module resolution in all environments
+      viteConfig.optimizeDeps ??= {};
+      viteConfig.optimizeDeps.esbuildOptions ??= {};
+      viteConfig.optimizeDeps.esbuildOptions.plugins ??= [];
+
+      viteConfig.optimizeDeps.esbuildOptions.plugins.push({
+        name: `rwsdk:${config.pluginName}-resolver`,
+        setup(build) {
+          log("Setting up esbuild plugin for %s", config.virtualModuleName);
+
+          // Handle both direct virtual module name and /@id/ prefixed version
+          const escapedVirtualModuleName = config.virtualModuleName.replace(
+            /[-\/\\^$*+?.()|[\]{}]/g,
+            "\\$&",
+          );
+          const escapedPrefixedModuleName =
+            `/@id/${config.virtualModuleName}`.replace(
+              /[-\/\\^$*+?.()|[\]{}]/g,
+              "\\$&",
+            );
+
+          build.onResolve(
+            {
+              filter: new RegExp(
+                `^(${escapedVirtualModuleName}|${escapedPrefixedModuleName})\\.js$`,
+              ),
+            },
+            (args) => {
+              process.env.VERBOSE &&
+                log(
+                  "Esbuild onResolve: marking %s as external",
+                  config.virtualModuleName,
+                );
+              return {
+                path: `${config.virtualModuleName}.js`,
+                external: true,
+              };
+            },
+          );
+        },
+      });
+
+      // Only add optimizeDeps guidance for specific environments in dev mode
       if (isDev && shouldOptimizeForEnv) {
         log("Guiding Vite scanner with optimizeDeps.entries for env: %s", env);
 
-        viteConfig.optimizeDeps ??= {};
         viteConfig.optimizeDeps.entries ??= [];
-        viteConfig.optimizeDeps.esbuildOptions ??= {};
-        viteConfig.optimizeDeps.esbuildOptions.plugins ??= [];
 
         for (const file of files) {
           // We only add local app files to entries.
@@ -108,24 +154,6 @@ export const createDirectiveLookupPlugin = ({
           }
         }
         log("Final optimizeDeps.entries: %O", viteConfig.optimizeDeps.entries);
-
-        viteConfig.optimizeDeps.esbuildOptions.plugins.push({
-          name: `rwsdk:${config.pluginName}-resolver`,
-          setup(build) {
-            const escapedVirtualModuleName = config.virtualModuleName.replace(
-              /[-\/\\^$*+?.()|[\]{}]/g,
-              "\\$&",
-            );
-            const filter = new RegExp(`^${escapedVirtualModuleName}\\.js$`);
-
-            build.onResolve({ filter }, (args) => {
-              return {
-                path: args.path,
-                external: true,
-              };
-            });
-          },
-        });
       } else {
         log("Skipping optimizeDeps guidance for environment: %s", env);
       }
@@ -135,16 +163,25 @@ export const createDirectiveLookupPlugin = ({
 
       if (source === `${config.virtualModuleName}.js`) {
         log("Resolving %s module", config.virtualModuleName);
+        // context(justinvdm, 16 Jun 2025): Include .js extension
+        // so it goes through vite processing chain
         return source;
       }
+
+      process.env.VERBOSE && log("No resolution for id=%s", source);
     },
     async load(id) {
+      process.env.VERBOSE && log("Loading id=%s", id);
+
       if (id === config.virtualModuleName + ".js") {
         log(
           "Loading %s module with %d files",
           config.virtualModuleName,
           files.size,
         );
+
+        const environment = this.environment?.name || "client";
+        log("Current environment: %s, isDev: %s", environment, isDev);
 
         const s = new MagicString(`
 export const ${config.exportName} = {
@@ -169,6 +206,8 @@ export const ${config.exportName} = {
           map,
         };
       }
+
+      process.env.VERBOSE && log("No load handling for id=%s", id);
     },
   };
 };
