@@ -4,8 +4,8 @@ import {
   SyntaxKind,
   ImportDeclaration,
   CallExpression,
-  CommentRange,
   ObjectLiteralExpression,
+  PropertyAssignment,
 } from "ts-morph";
 import { type Plugin } from "vite";
 import debug from "debug";
@@ -217,8 +217,8 @@ export async function transformJsxScriptTagsCode(
           let hasNonce = false;
           let hasStringLiteralChildren = false;
           let hasSrc = false;
-
-          // Note: Link processing removed - happens in Phase 5
+          let isPreload = false;
+          let hrefProp: PropertyAssignment | undefined;
 
           for (const prop of properties) {
             if (Node.isPropertyAssignment(prop)) {
@@ -301,7 +301,46 @@ export async function transformJsxScriptTagsCode(
                 }
               }
 
-              // Note: Link tag processing removed - happens in Phase 5
+              if (
+                tagName === "link" &&
+                propName === "rel" &&
+                initializer &&
+                (Node.isStringLiteral(initializer) ||
+                  Node.isNoSubstitutionTemplateLiteral(initializer))
+              ) {
+                const relValue = initializer.getLiteralValue();
+                if (relValue === "preload" || relValue === "modulepreload") {
+                  isPreload = true;
+                }
+              }
+
+              if (tagName === "link" && propName === "href") {
+                hrefProp = prop;
+              }
+            }
+          }
+
+          if (isPreload && hrefProp) {
+            const initializer = hrefProp.getInitializer();
+            if (
+              initializer &&
+              (Node.isStringLiteral(initializer) ||
+                Node.isNoSubstitutionTemplateLiteral(initializer))
+            ) {
+              const hrefValue = initializer.getLiteralValue();
+              if (hrefValue.startsWith("/")) {
+                const normalizedHrefValue = normalizeModulePath(
+                  hrefValue,
+                  projectRootDir,
+                );
+
+                const transformedHref = `rwsdk_asset:${normalizedHrefValue}`;
+                modifications.push({
+                  type: "literalValue",
+                  node: initializer,
+                  value: transformedHref,
+                });
+              }
             }
           }
 

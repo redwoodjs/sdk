@@ -49,6 +49,11 @@ export const linkerPlugin = ({
         );
       }
 
+      // 3. Deprefix any remaining placeholders that were not in the manifest.
+      // This handles public assets that don't go through the bundler.
+      log("Deprefixing remaining asset placeholders");
+      newCode = newCode.replaceAll("rwsdk_asset:", "");
+
       return {
         code: newCode,
         map: null,
