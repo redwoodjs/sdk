@@ -27,11 +27,11 @@ export const linkerPlugin = (): Plugin => {
       if (id === `\0${VIRTUAL_ENTRY_ID}`) {
         log("Loading virtual linker entry");
 
-        const workerPath = "./worker.js";
-        const ssrBridgePath = `./${path.basename(WORKER_SSR_BRIDGE_PATH)}`;
-        const clientLookupPath = `./${path.basename(WORKER_CLIENT_LOOKUP_PATH)}`;
-        const serverLookupPath = `./${path.basename(WORKER_SERVER_LOOKUP_PATH)}`;
-        const manifestPath = `./${path.basename(WORKER_MANIFEST_PATH)}`;
+        const workerPath = path.resolve(WORKER_OUTPUT_DIR, "worker.js");
+        const ssrBridgePath = WORKER_SSR_BRIDGE_PATH;
+        const clientLookupPath = WORKER_CLIENT_LOOKUP_PATH;
+        const serverLookupPath = WORKER_SERVER_LOOKUP_PATH;
+        const manifestPath = WORKER_MANIFEST_PATH;
 
         return `
           import manifest from '${manifestPath}' assert { type: 'json' };

@@ -202,7 +202,6 @@ export const configPlugin = ({
             "import.meta.env.RWSDK_ENV": JSON.stringify("worker"),
           },
           build: {
-            root: WORKER_OUTPUT_DIR,
             outDir: WORKER_OUTPUT_DIR,
             emitAssets: false,
             ssr: true,
