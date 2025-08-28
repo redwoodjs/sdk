@@ -130,7 +130,6 @@ export const configPlugin = ({
             rollupOptions: {
               output: {
                 inlineDynamicImports: true,
-                entryFileNames: "__ssr.js",
               },
             },
           },
@@ -177,7 +176,6 @@ export const configPlugin = ({
             rollupOptions: {
               output: {
                 inlineDynamicImports: true,
-                entryFileNames: path.basename(INTERMEDIATE_WORKER_PATH),
               },
               input: {
                 worker: workerEntryPathname,
@@ -194,13 +192,13 @@ export const configPlugin = ({
             "import.meta.env.RWSDK_ENV": JSON.stringify("worker"),
           },
           build: {
-            outDir: "dist",
+            outDir: resolve(projectRootDir, "dist", "worker"),
             emitAssets: false,
             ssr: true,
-            minify: false,
+            minify: mode !== "development",
             rollupOptions: {
               input: {
-                worker: path.basename(INTERMEDIATE_WORKER_PATH),
+                worker: INTERMEDIATE_WORKER_PATH,
               },
               output: {
                 inlineDynamicImports: true,

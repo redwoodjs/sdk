@@ -14,10 +14,12 @@ export const INTERMEDIATES_OUTPUT_DIR = resolve(
 );
 export const INTERMEDIATE_SSR_BRIDGE_PATH = resolve(
   INTERMEDIATES_OUTPUT_DIR,
+  "ssr",
   "ssr_bridge.js",
 );
 export const INTERMEDIATE_WORKER_PATH = resolve(
   INTERMEDIATES_OUTPUT_DIR,
+  "worker",
   "worker.js",
 );
 
