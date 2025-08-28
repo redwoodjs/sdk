@@ -149,7 +149,7 @@ When a request comes in, we:
 4. If there's an active session, we pull the user ID from it and load the user from the **database ([D1](https://developers.cloudflare.com/d1/) + [Prisma](https://www.prisma.io/))**.
 
 <Code
-  language="typescript"
+  lang="typescript"
   title="src/worker.tsx"
   code={importedCodeStandardWorker}
   collapse={"2-17, 19-19, 21-22, 31-31, 33-47"}
@@ -179,14 +179,14 @@ For more on passkeys, see [passkeys.dev](https://passkeys.dev/).
 6. If successful, the session is updated with the **user ID**.
 
 <Code
-  language="typescript"
+  lang="typescript"
   title="src/app/pages/user/Login.tsx"
   code={importedCodeStandardLogin}
   collapse={"1-18, 20-24, 41-90"}
 />
 
 <Code
-  language="typescript"
+  lang="typescript"
   title="src/app/pages/user/functions.ts"
   code={importedCodeStandardAuthFunctions}
   collapse={"1-109, 111-112, 114-116, 119-169"}
@@ -199,7 +199,7 @@ For more on passkeys, see [passkeys.dev](https://passkeys.dev/).
 Registration follows a very similar 3-step WebAuthn process as login:
 
 <Code
-  language="typescript"
+  lang="typescript"
   title="src/app/pages/user/Login.tsx"
   code={importedCodeStandardLogin}
   collapse={"1-18, 20-41, 64-90"}
@@ -219,14 +219,14 @@ Cloudflare has built-in bot protection, but it works by detecting and blocking m
 4. The backend verifies the token using `verifyTurnstileToken()` before completing registration.
 
 <Code
-  language="typescript"
+  lang="typescript"
   title="src/app/pages/user/Login.tsx"
   code={importedCodeStandardLogin}
   collapse={"1-15, 18-18, 20-22, 24-41, 43-48, 57-62, 64-72, 76-88"}
 />
 
 <Code
-  language="typescript"
+  lang="typescript"
   title="src/app/pages/user/functions.ts"
   code={importedCodeStandardAuthFunctions}
   collapse={"1-38, 40-43, 45-46, 55-93, 95-176"}
