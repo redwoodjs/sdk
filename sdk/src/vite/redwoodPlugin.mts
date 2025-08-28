@@ -29,7 +29,7 @@ import { hasPkgScript } from "../lib/hasPkgScript.mjs";
 import { devServerTimingPlugin } from "./devServerTimingPlugin.mjs";
 import { manifestPlugin } from "./manifestPlugin.mjs";
 import { linkerPlugin } from "./linkerPlugin.mjs";
-import { findAppFilesContainingDirective } from "./createDirectiveLookupPlugin.mjs";
+import { findFilesContainingDirective } from "./createDirectiveLookupPlugin.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -103,28 +103,6 @@ export const redwoodPlugin = async (
   const clientFiles = new Set<string>();
   const serverFiles = new Set<string>();
   const clientEntryPoints = new Set<string>();
-
-  if (process.env.NODE_ENV === "development") {
-    const [discoveredClientFiles, discoveredServerFiles] = await Promise.all([
-      findAppFilesContainingDirective({
-        projectRootDir,
-        directive: "use client",
-        debugNamespace: "rwsdk:vite:use-client-lookup",
-      }),
-      findAppFilesContainingDirective({
-        projectRootDir,
-        directive: "use server",
-        debugNamespace: "rwsdk:vite:use-server-lookup",
-      }),
-    ]);
-
-    for (const file of discoveredClientFiles) {
-      clientFiles.add(file);
-    }
-    for (const file of discoveredServerFiles) {
-      serverFiles.add(file);
-    }
-  }
 
   return [
     devServerTimingPlugin(),

@@ -18,44 +18,62 @@ interface DirectiveLookupConfig {
   optimizeForEnvironments?: string[];
 }
 
-export const findAppFilesContainingDirective = async ({
+export const findFilesContainingDirective = async ({
   projectRootDir,
+  files,
   directive,
   debugNamespace,
 }: {
   projectRootDir: string;
+  files: Set<string>;
   directive: string;
   debugNamespace: string;
 }) => {
   const log = debug(debugNamespace);
-  const files = new Set<string>();
 
-  log("Starting search for '%s' files in application source...", directive);
+  log(
+    "Starting search for '%s' files in projectRootDir=%s",
+    directive,
+    projectRootDir,
+  );
 
-  // Note: This only scans the local app source, NOT node_modules
   const filesToScan = await getSrcPaths(projectRootDir);
+  log(
+    "Found %d files to scan for '%s' directive",
+    filesToScan.length,
+    directive,
+  );
 
   for (const file of filesToScan) {
     try {
       const stats = await stat(file);
-      if (!stats.isFile()) continue;
 
+      if (!stats.isFile()) {
+        process.env.VERBOSE && log("Skipping %s (not a file)", file);
+        continue;
+      }
+
+      process.env.VERBOSE && log("Scanning file: %s", file);
       const content = await readFile(file, "utf-8");
+
       if (hasDirective(content, directive)) {
         const normalizedPath = normalizeModulePath(file, projectRootDir);
+        log(
+          "Found '%s' directive in file: %s -> %s",
+          directive,
+          file,
+          normalizedPath,
+        );
         files.add(normalizedPath);
       }
     } catch (error) {
-      log("Could not read file during directive scan: %s", file);
+      console.error(`Error reading file ${file}:`, error);
     }
   }
 
-  log(
-    "Completed scan. Found %d %s files in app source.",
-    files.size,
-    directive,
-  );
-  return files;
+  log("Completed scan. Found %d %s files total", files.size, directive);
+  process.env.VERBOSE &&
+    log("Found files for %s: %j", directive, Array.from(files));
 };
 
 export const createDirectiveLookupPlugin = ({
@@ -139,23 +157,25 @@ export const createDirectiveLookupPlugin = ({
 
       // Only add optimizeDeps guidance for specific environments in dev mode
       if (isDev && shouldOptimizeForEnv) {
-        log("Guiding Vite scanner with optimizeDeps.entries for env: %s", env);
+        log("Applying optimizeDeps and aliasing for environment: %s", env);
 
-        viteConfig.optimizeDeps.entries ??= [];
+        viteConfig.optimizeDeps.include ??= [];
 
         for (const file of files) {
-          // We only add local app files to entries.
-          // Dependencies they import will be discovered by Vite's scanner.
-          if (!file.includes("node_modules")) {
-            const actualFilePath = path.join(projectRootDir, file);
-            if (Array.isArray(viteConfig.optimizeDeps.entries)) {
-              viteConfig.optimizeDeps.entries.push(actualFilePath);
-            }
-          }
+          const actualFilePath = path.join(projectRootDir, file);
+
+          process.env.VERBOSE &&
+            log("Adding to optimizeDeps.entries: %s", actualFilePath);
+          const entries = Array.isArray(viteConfig.optimizeDeps.entries)
+            ? viteConfig.optimizeDeps.entries
+            : ([] as string[]).concat(viteConfig.optimizeDeps.entries ?? []);
+          viteConfig.optimizeDeps.entries = entries;
+          entries.push(actualFilePath);
         }
-        log("Final optimizeDeps.entries: %O", viteConfig.optimizeDeps.entries);
+
+        log("Environment configuration complete for env=%s", env);
       } else {
-        log("Skipping optimizeDeps guidance for environment: %s", env);
+        log("Skipping optimizeDeps and aliasing for environment: %s", env);
       }
     },
     resolveId(source) {
