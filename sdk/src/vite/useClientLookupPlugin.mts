@@ -17,9 +17,9 @@ export const useClientLookupPlugin = ({
       kind: "client",
       directive: "use client",
       virtualModuleName: "virtual:use-client-lookup",
-      exportName: "__client_lookup",
+      exportName: "useClientLookup",
       pluginName: "use-client-lookup",
-      optimizeForEnvironments: ["client", "ssr"],
+      optimizeForEnvironments: ["ssr", "client"],
     },
   });
 };

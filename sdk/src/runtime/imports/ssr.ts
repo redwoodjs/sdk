@@ -1,12 +1,6 @@
 import { memoizeOnId } from "../lib/memoizeOnId";
 
 export const ssrLoadModule = memoizeOnId(async (id: string) => {
-  if (import.meta.env.VITE_IS_DEV_SERVER) {
-    const result = await import(id);
-    console.log("##########33 result", result);
-    return result;
-  }
-
   const { useClientLookup } = await import(
     "virtual:use-client-lookup.js" as string
   );

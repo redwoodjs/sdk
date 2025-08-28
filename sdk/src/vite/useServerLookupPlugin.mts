@@ -1,13 +1,13 @@
 import { createDirectiveLookupPlugin } from "./createDirectiveLookupPlugin.mjs";
 import { Plugin } from "vite";
 
-export const useServerLookupPlugin = ({
+export const useServerLookupPlugin = async ({
   projectRootDir,
   serverFiles,
 }: {
   projectRootDir: string;
   serverFiles: Set<string>;
-}): Plugin => {
+}): Promise<Plugin> => {
   return createDirectiveLookupPlugin({
     projectRootDir,
     files: serverFiles,
@@ -15,9 +15,9 @@ export const useServerLookupPlugin = ({
       kind: "server",
       directive: "use server",
       virtualModuleName: "virtual:use-server-lookup",
-      exportName: "__server_lookup",
+      exportName: "useServerLookup",
       pluginName: "use-server-lookup",
-      optimizeForEnvironments: ["worker", "ssr"],
+      optimizeForEnvironments: ["ssr", "worker"],
     },
   });
 };
