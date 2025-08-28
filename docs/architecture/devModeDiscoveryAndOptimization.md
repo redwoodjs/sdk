@@ -12,30 +12,22 @@ However, our architecture presents a different challenge. Due to the nature of R
 
 A naive implementation that dynamically imports each client component as needed (`import('/path/to/node_modules/.../Button.mjs')`) completely bypasses Vite's `optimizeDeps` feature. The dev server sees these as requests for raw source files, leading to the exact "request waterfall" problem that `optimizeDeps` was designed to solve, resulting in a slow and frustrating developer experience.
 
-## The Solution: A Surgical, Hybrid Approach
+## The Solution: "Just-in-Time" Discovery via Esbuild Plugin
 
-To solve this, we adopt a hybrid approach that guides Vite's optimizer with the information it needs, while still respecting the dynamic nature of our application. The solution has two main parts.
+The key to solving this problem lies in understanding the Vite lifecycle. While Vite's main plugin pipeline has a strict separation between dependency scanning and code transformation, the `esbuild` instance that `optimizeDeps` uses internally provides a powerful seam: `esbuild` plugins.
 
-### 1. Guiding the Optimizer
+Our `directivesPlugin` adds an `esbuild` plugin that hooks into the `onLoad` callback. This callback is executed for *every* file that Vite's dependency scanner processes, including files deep within `node_modules`. This allows us to perform "just-in-time" discovery.
 
-Instead of letting Vite's scanner discover dependencies from a single entry point (which is insufficient for our needs), we take a more proactive role.
+The process is as follows:
 
-At server startup, our build plugin performs a fast scan of the project's `node_modules` directory to find all packages that contain files with the `"use client"` directive. The names of these packages (e.g., `@mantine/core`) are then passed directly to Vite's `optimizeDeps.include` configuration.
+1.  **"Side-Effect" Discovery:** As Vite's optimizer scans the application's true entry points (e.g., `src/client.tsx`), our esbuild `onLoad` hook inspects every traversed module. When it encounters a file with a `"use client"` directive, it adds that file's path to a shared `clientFiles` set as a side effect.
 
-This forces Vite to create the comprehensive, pre-bundled chunks we need for each UI library, solving the "sane optimization" part of the problem.
+2.  **Delayed Virtual Entry Point:** We add a special, virtual module to the *end* of the `optimizeDeps.entries` list. This is a critical detail. Because it is last, Vite's scanner processes all the application's real code first, giving our `onLoad` hook the opportunity to discover all the necessary `node_modules` dependencies and populate the `clientFiles` set.
 
-### 2. Static Analysis via Virtual Module
+3.  **Dynamic Bundle Generation:** By the time `esbuild` is ready to process our virtual entry point, the `clientFiles` set is fully populated. The `load` hook for this virtual module reads the set and generates its content on the fly: a list of `export * from '...'` statements for every dependency file that was discovered.
 
-With the optimized bundles in place, we still need to bridge the gap between our runtime's need for a specific component and Vite's ability to resolve it from the correct bundle.
+4.  **A Single, Comprehensive Bundle:** Vite's optimizer then takes this dynamically generated entry point and bundles all the re-exported client components into a single, comprehensive chunk. Because this process uses absolute file paths, it correctly bypasses any `exports` map restrictions in a package's `package.json`.
 
-We achieve this with a virtual module, `virtual:use-client-lookup`. This module is generated in memory and acts as a central registry for all client components. The key to its effectiveness is how it imports dependencies from `node_modules`:
+5.  **The Final Lookup:** The main `virtual:use-client-lookup` module can then `import *` from this custom-built bundle. The resulting module namespace acts as a complete "module registry" of all dependency client components, allowing for instant, synchronous resolution at runtime without any network waterfalls.
 
-1.  **Static Imports:** For every client component discovered in `node_modules`, the virtual module includes a static `import * as _N from '...'` statement at the top level. Crucially, this import uses a **bare module specifier** (e.g., `import * as _0 from '@mantine/core/esm/Button/Button.mjs'`).
-2.  **Static Analysis:** Because these are static, top-level imports, Vite's scanner can see them during its analysis phase. It recognizes `@mantine/core` as a dependency that has been pre-bundled and correctly resolves the deep import path from within the existing optimized chunk. This all happens on the server before any code is sent to the browser.
-3.  **Instant Resolution:** The body of the virtual module then creates a lookup map. When the application's runtime asks for the Mantine `Button`, the lookup function doesn't trigger a new network request; it simply returns a promise that resolves instantly with the already-imported `_0` module namespace.
-
-For client components within the local application source (`/src`), the module continues to use standard dynamic `import()` statements, preserving the benefits of fast, individual file serving and HMR for active development.
-
-## The Trade-off
-
-This solution involves an explicit trade-off. By eagerly pre-bundling entire libraries, the **initial server startup may be slightly slower** on a cold start. However, in exchange, the **in-session developer experience is fast and smooth**, free of the request waterfalls and layout shifts that would otherwise occur. This is the correct and worthwhile trade-off for a productive development workflow.
+This approach is surgical and efficient. It avoids any slow, manual scanning of `node_modules` by leveraging Vite's own highly-optimized scanner to do the discovery work for us.

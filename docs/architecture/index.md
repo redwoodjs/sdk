@@ -2,6 +2,9 @@
 
 This collection of documents provides a high-level overview of the core architectural concepts and mechanisms within the RedwoodSDK. They are intended to explain the "why" behind key design decisions, focusing on the problems encountered and the solutions implemented.
 
+- [**Production Build Process**](./productionBuildProcess.md)
+  This document outlines the multi-phase build process used to generate production-ready artifacts. It covers the `worker`, `client`, and `ssr` builds, explaining how client and server components are discovered, filtered, and bundled for optimal performance and minimal bundle size.
+
 - [**Dev Mode Discovery and Optimization**](./devModeDiscoveryAndOptimization.md)
   This document details the strategy for optimizing the developer experience by intelligently guiding Vite's dependency pre-bundler. It explains how a hybrid approach of proactive discovery and static analysis within a virtual module eliminates the "request waterfall" problem for dependencies in a React Server Components environment.
 
