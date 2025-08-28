@@ -21,14 +21,13 @@ export async function buildApp({
   clientFiles: Set<string>;
   projectRootDir: string;
 }) {
-  log('Phase 1: Worker "Discovery" Pass');
+  console.log("Building worker...");
   await builder.build(builder.environments["worker"]!);
-  log("✅ Phase 1 complete");
 
   log("Discovered clientEntryPoints: %O", Array.from(clientEntryPoints));
   log("Discovered clientFiles: %O", Array.from(clientFiles));
 
-  log("Phase 2: Client Build");
+  console.log("Building client...");
   const clientEnv = builder.environments["client"]!;
   clientEnv.config.build ??= {} as any;
   clientEnv.config.build.rollupOptions ??= {};
@@ -42,14 +41,12 @@ export async function buildApp({
   }
 
   await builder.build(clientEnv);
-  log("✅ Phase 2 complete");
 
-  log("Phase 3: SSR Build");
+  console.log("Building SSR...");
   await builder.build(builder.environments.ssr);
-  log("✅ Phase 3 complete");
 
-  log("Phase 4: Linker Build Pass");
+  console.log("Linking worker build...");
   await builder.build(builder.environments.linker);
-  log("✅ Phase 4 complete");
-  log("🚀 Build complete!");
+
+  console.log("Build complete!");
 }

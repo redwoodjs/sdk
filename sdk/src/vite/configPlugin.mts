@@ -171,15 +171,16 @@ export const configPlugin = ({
             },
           },
           build: {
-            outDir: INTERMEDIATES_OUTPUT_DIR,
+            outDir: path.dirname(INTERMEDIATE_WORKER_PATH),
             emitAssets: true,
             ssr: true,
             rollupOptions: {
               output: {
                 inlineDynamicImports: true,
+                entryFileNames: path.basename(INTERMEDIATE_WORKER_PATH),
               },
               input: {
-                worker: path.basename(INTERMEDIATE_WORKER_PATH),
+                worker: workerEntryPathname,
               },
             },
           },
