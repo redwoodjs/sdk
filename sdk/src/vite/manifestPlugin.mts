@@ -1,9 +1,5 @@
-import { readFile } from "node:fs/promises";
-import path from "node:path";
 import { type Plugin } from "vite";
 import debug from "debug";
-import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
-import { WORKER_MANIFEST_PATH } from "../lib/constants.mjs";
 
 const log = debug("rwsdk:vite:manifest-plugin");
 
@@ -11,9 +7,9 @@ const virtualModuleId = "virtual:rwsdk:manifest.js";
 const resolvedVirtualModuleId = "\0" + virtualModuleId;
 
 export const manifestPlugin = ({
-  manifestPath,
+  projectRootDir,
 }: {
-  manifestPath: string;
+  projectRootDir: string;
 }): Plugin => {
   let isBuild = false;
 

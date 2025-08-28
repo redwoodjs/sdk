@@ -158,13 +158,7 @@ export const redwoodPlugin = async (
       clientEntryPoints,
     }),
     manifestPlugin({
-      manifestPath: resolve(
-        projectRootDir,
-        "dist",
-        "client",
-        ".vite",
-        "manifest.json",
-      ),
+      projectRootDir,
     }),
     moveStaticAssetsPlugin({ rootDir: projectRootDir }),
     prismaPlugin({ projectRootDir }),

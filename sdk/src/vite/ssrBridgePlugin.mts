@@ -1,10 +1,8 @@
 import type { Plugin, ViteDevServer } from "vite";
 import debug from "debug";
-import { SSR_BRIDGE_PATH, WORKER_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import { findSsrImportCallSites } from "./findSsrSpecifiers.mjs";
-import { isJsFile } from "./isJsFile.mjs";
+import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import MagicString from "magic-string";
-import path from "node:path";
 
 const log = debug("rwsdk:vite:ssr-bridge-plugin");
 
@@ -18,11 +16,6 @@ export const ssrBridgePlugin = ({
   serverFiles: Set<string>;
   projectRootDir: string;
 }): Plugin => {
-  log(
-    "Initializing SSR bridge plugin with SSR_BRIDGE_PATH=%s",
-    SSR_BRIDGE_PATH,
-  );
-
   let devServer: ViteDevServer;
   let isDev = false;
 
@@ -123,9 +116,9 @@ export const ssrBridgePlugin = ({
           log(
             "Bridge module case (build): id=%s matches rwsdk/__ssr_bridge in worker environment, resolving to external path=%s",
             id,
-            WORKER_SSR_BRIDGE_PATH,
+            INTERMEDIATE_SSR_BRIDGE_PATH,
           );
-          return { id: WORKER_SSR_BRIDGE_PATH, external: true };
+          return { id: INTERMEDIATE_SSR_BRIDGE_PATH, external: true };
         }
       }
     },
