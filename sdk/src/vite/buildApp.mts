@@ -14,7 +14,6 @@ export async function buildApp({
   builder,
   clientEntryPoints,
   clientFiles,
-  projectRootDir,
 }: {
   builder: ViteBuilder;
   clientEntryPoints: Set<string>;

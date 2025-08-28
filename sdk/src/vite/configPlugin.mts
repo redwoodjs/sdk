@@ -10,7 +10,6 @@ import { glob } from "glob";
 import {
   INTERMEDIATE_SSR_BRIDGE_PATH,
   INTERMEDIATES_OUTPUT_DIR,
-  INTERMEDIATE_WORKER_PATH,
 } from "../lib/constants.mjs";
 import { buildApp } from "./buildApp.mjs";
 
@@ -170,7 +169,7 @@ export const configPlugin = ({
             },
           },
           build: {
-            outDir: path.dirname(INTERMEDIATE_WORKER_PATH),
+            outDir: resolve(projectRootDir, "dist", "worker"),
             emitAssets: true,
             ssr: true,
             rollupOptions: {
@@ -193,12 +192,13 @@ export const configPlugin = ({
           },
           build: {
             outDir: resolve(projectRootDir, "dist", "worker"),
+            emptyOutDir: false,
             emitAssets: false,
             ssr: true,
             minify: mode !== "development",
             rollupOptions: {
               input: {
-                worker: INTERMEDIATE_WORKER_PATH,
+                worker: resolve(projectRootDir, "dist", "worker", "worker.js"),
               },
               output: {
                 inlineDynamicImports: true,

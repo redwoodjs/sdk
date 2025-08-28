@@ -17,11 +17,6 @@ export const INTERMEDIATE_SSR_BRIDGE_PATH = resolve(
   "ssr",
   "ssr_bridge.js",
 );
-export const INTERMEDIATE_WORKER_PATH = resolve(
-  INTERMEDIATES_OUTPUT_DIR,
-  "worker",
-  "worker.js",
-);
 
 export const CLIENT_MANIFEST_RELATIVE_PATH = resolve(
   "dist",
