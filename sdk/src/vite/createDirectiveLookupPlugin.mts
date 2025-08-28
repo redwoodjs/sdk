@@ -4,10 +4,9 @@ import { Plugin } from "vite";
 import { readFile } from "fs/promises";
 import debug from "debug";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
+import { stat } from "fs/promises";
+import { getSrcPaths } from "../lib/getSrcPaths.js";
 import { hasDirective } from "./hasDirective.mjs";
-
-// @ts-ignore
-import { build } from "esbuild";
 
 interface DirectiveLookupConfig {
   kind: "client" | "server";
@@ -16,10 +15,49 @@ interface DirectiveLookupConfig {
   exportName: string;
   pluginName: string;
   optimizeForEnvironments?: string[];
-  entryPoints: string[];
 }
 
-export const createDirectiveLookupPlugin = async ({
+export const findAppFilesContainingDirective = async ({
+  projectRootDir,
+  directive,
+  debugNamespace,
+}: {
+  projectRootDir: string;
+  directive: string;
+  debugNamespace: string;
+}) => {
+  const log = debug(debugNamespace);
+  const files = new Set<string>();
+
+  log("Starting search for '%s' files in application source...", directive);
+
+  // Note: This only scans the local app source, NOT node_modules
+  const filesToScan = await getSrcPaths(projectRootDir);
+
+  for (const file of filesToScan) {
+    try {
+      const stats = await stat(file);
+      if (!stats.isFile()) continue;
+
+      const content = await readFile(file, "utf-8");
+      if (hasDirective(content, directive)) {
+        const normalizedPath = normalizeModulePath(file, projectRootDir);
+        files.add(normalizedPath);
+      }
+    } catch (error) {
+      log("Could not read file during directive scan: %s", file);
+    }
+  }
+
+  log(
+    "Completed scan. Found %d %s files in app source.",
+    files.size,
+    directive,
+  );
+  return files;
+};
+
+export const createDirectiveLookupPlugin = ({
   projectRootDir,
   files,
   config,
@@ -27,7 +65,7 @@ export const createDirectiveLookupPlugin = async ({
   projectRootDir: string;
   files: Set<string>;
   config: DirectiveLookupConfig;
-}): Promise<Plugin> => {
+}): Plugin => {
   const debugNamespace = `rwsdk:vite:${config.pluginName}`;
   const log = debug(debugNamespace);
   let isDev = false;
@@ -37,39 +75,6 @@ export const createDirectiveLookupPlugin = async ({
     config.pluginName,
     projectRootDir,
   );
-
-  const { metafile } = await build({
-    entryPoints: config.entryPoints,
-    bundle: true,
-    write: false,
-    metafile: true,
-    absWorkingDir: projectRootDir,
-    format: "esm",
-  });
-
-  const reachableFiles = Object.keys(metafile.inputs).map((p) =>
-    path.join(projectRootDir, p),
-  );
-
-  for (const file of reachableFiles) {
-    try {
-      const content = await readFile(file, "utf-8");
-      if (hasDirective(content, config.directive)) {
-        const normalizedPath = normalizeModulePath(file, projectRootDir);
-        files.add(normalizedPath);
-      }
-    } catch (error) {
-      log("Skipping file during directive scan (could not read): %s", file);
-    }
-  }
-
-  log(
-    "Completed esbuild scan. Found %d %s files.",
-    files.size,
-    config.directive,
-  );
-  process.env.VERBOSE &&
-    log("Found files for %s: %j", config.directive, Array.from(files));
 
   return {
     name: `rwsdk:${config.pluginName}`,
@@ -84,46 +89,45 @@ export const createDirectiveLookupPlugin = async ({
         !config.optimizeForEnvironments ||
         config.optimizeForEnvironments.includes(env);
 
-      if (shouldOptimizeForEnv) {
-        log("Applying optimizeDeps and aliasing for environment: %s", env);
+      if (isDev && shouldOptimizeForEnv) {
+        log("Guiding Vite scanner with optimizeDeps.entries for env: %s", env);
 
         viteConfig.optimizeDeps ??= {};
-        viteConfig.optimizeDeps.include ??= [];
         viteConfig.optimizeDeps.entries ??= [];
-
-        const packagesToInclude = new Set<string>();
+        viteConfig.optimizeDeps.esbuildOptions ??= {};
+        viteConfig.optimizeDeps.esbuildOptions.plugins ??= [];
 
         for (const file of files) {
-          if (file.includes("node_modules")) {
-            const parts = file.split("/");
-            const packageName = parts[1].startsWith("@")
-              ? `${parts[1]}/${parts[2]}`
-              : parts[1];
-            packagesToInclude.add(packageName);
-          } else {
-            // For app code, we still add the individual files as entries so that
-            // Vite's dev server is aware of them and they can be served.
+          // We only add local app files to entries.
+          // Dependencies they import will be discovered by Vite's scanner.
+          if (!file.includes("node_modules")) {
             const actualFilePath = path.join(projectRootDir, file);
             if (Array.isArray(viteConfig.optimizeDeps.entries)) {
               viteConfig.optimizeDeps.entries.push(actualFilePath);
-            } else if (viteConfig.optimizeDeps.entries) {
-              viteConfig.optimizeDeps.entries = [
-                viteConfig.optimizeDeps.entries,
-                actualFilePath,
-              ];
-            } else {
-              viteConfig.optimizeDeps.entries = [actualFilePath];
             }
           }
         }
+        log("Final optimizeDeps.entries: %O", viteConfig.optimizeDeps.entries);
 
-        for (const pkg of packagesToInclude) {
-          viteConfig.optimizeDeps.include.push(pkg);
-        }
+        viteConfig.optimizeDeps.esbuildOptions.plugins.push({
+          name: `rwsdk:${config.pluginName}-resolver`,
+          setup(build) {
+            const escapedVirtualModuleName = config.virtualModuleName.replace(
+              /[-\/\\^$*+?.()|[\]{}]/g,
+              "\\$&",
+            );
+            const filter = new RegExp(`^${escapedVirtualModuleName}\\.js$`);
 
-        log("Environment configuration complete for env=%s", env);
+            build.onResolve({ filter }, (args) => {
+              return {
+                path: args.path,
+                external: true,
+              };
+            });
+          },
+        });
       } else {
-        log("Skipping optimizeDeps and aliasing for environment: %s", env);
+        log("Skipping optimizeDeps guidance for environment: %s", env);
       }
     },
     resolveId(source) {
@@ -131,9 +135,6 @@ export const createDirectiveLookupPlugin = async ({
 
       if (source === `${config.virtualModuleName}.js`) {
         log("Resolving %s module", config.virtualModuleName);
-
-        // context(justinvdm, 16 Jun 2025): Include .js extension
-        // so it goes through vite processing chain
         return source;
       }
     },

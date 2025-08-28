@@ -1,13 +1,18 @@
-import { createDirectiveLookupPlugin } from "./createDirectiveLookupPlugin.mjs";
+import { resolve } from "node:path";
+
+import {
+  createDirectiveLookupPlugin,
+  findAppFilesContainingDirective,
+} from "./createDirectiveLookupPlugin.mjs";
 import { Plugin } from "vite";
 
-export const useClientLookupPlugin = async ({
+export const useClientLookupPlugin = ({
   projectRootDir,
   clientFiles,
 }: {
   projectRootDir: string;
   clientFiles: Set<string>;
-}): Promise<Plugin> => {
+}) => {
   return createDirectiveLookupPlugin({
     projectRootDir,
     files: clientFiles,
@@ -15,9 +20,9 @@ export const useClientLookupPlugin = async ({
       kind: "client",
       directive: "use client",
       virtualModuleName: "virtual:use-client-lookup",
-      exportName: "useClientLookup",
+      exportName: "__client_lookup",
       pluginName: "use-client-lookup",
-      optimizeForEnvironments: ["ssr", "client"],
+      optimizeForEnvironments: ["client", "ssr"],
     },
   });
 };
