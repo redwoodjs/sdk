@@ -113,6 +113,30 @@ export const directivesPlugin = ({
         next();
       });
     },
+    async buildEnd() {
+      if (this.environment.name !== "worker") {
+        return;
+      }
+
+      log("Filtering client files after worker build...");
+
+      [clientFiles, serverFiles].forEach((files) => {
+        for (const id of files) {
+          const info = this.getModuleInfo(id);
+
+          if (!info?.isIncluded) {
+            log("Removing unused client file: %s", id);
+            clientFiles.delete(id);
+          }
+        }
+      });
+
+      log(
+        "Client/server file filtering complete. Final set: client=%O, server=%O",
+        Array.from(clientFiles),
+        Array.from(serverFiles),
+      );
+    },
     async transform(code, id) {
       const normalizedId = normalizeModulePath(id, projectRootDir);
 
