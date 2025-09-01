@@ -14,6 +14,9 @@ This collection of documents provides a high-level overview of the core architec
 - [**Preloading Client-Side Scripts**](./preloading.md)
   This document describes the strategy for improving page load performance by preloading client-side JavaScript modules. It explains how the server identifies required scripts during rendering and sends resource hints to the browser to flatten the typical request waterfall.
 
+- [**The Production Build Process**](./productionBuildProcess.md)
+  This document outlines the multi-phase build process used for production environments. It explains how the framework orchestrates multiple, inter-dependent Vite environments (`worker`, `client`, `ssr`) with circular information dependencies into a reliable, sequential build.
+
 - [**React's Hoisting Behavior for `<link>`**](./reactHoisting.md)
   A brief explanation of a key React 19 feature that underpins our entire asset handling strategy. It details how React's ability to automatically move `<link>` tags to the document `<head>` allows for a clean and effective implementation of stylesheet and script preloading.
 
