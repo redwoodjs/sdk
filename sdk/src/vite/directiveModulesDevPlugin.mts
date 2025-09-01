@@ -1,4 +1,4 @@
-import { Plugin, ResolvedConfig, ViteDevServer } from "vite";
+import { Plugin, ResolvedConfig } from "vite";
 import debug from "debug";
 import path from "node:path";
 import { ensureFileSync } from "fs-extra";
@@ -60,65 +60,11 @@ export const directiveModulesDevPlugin = ({
   return {
     name: "rwsdk:directive-modules-dev",
     enforce: "pre",
-    configureServer(server) {
-      const barrelProcessingPromises = {
-        client: Promise.withResolvers<void>(),
-        ssr: Promise.withResolvers<void>(),
-      };
-
-      server.rwsdk = {
-        barrelProcessingPromises: {
-          client: barrelProcessingPromises.client.promise,
-          ssr: barrelProcessingPromises.ssr.promise,
-        },
-      };
-
-      const originalListen = server.listen;
-      server.listen = async function (...args) {
-        const result = await originalListen.apply(this, args);
-
-        // Wait for the worker's dependency scan to complete before proceeding.
-        await server.environments.worker.depsOptimizer?.scanProcessing;
-        server.environments.worker.depsOptimizer?.getOptimizedDepId;
-
-        const dummyFilePaths = {
-          client: path.join(
-            projectRootDir,
-            "node_modules",
-            ".vite",
-            "rwsdk-client-barrel.js",
-          ),
-          server: path.join(
-            projectRootDir,
-            "node_modules",
-            ".vite",
-            "rwsdk-server-barrel.js",
-          ),
-        };
-
-        if (clientFiles.size > 0) {
-          server.environments.client.depsOptimizer?.registerMissingImport(
-            dummyFilePaths.client,
-            dummyFilePaths.client,
-          );
-          barrelProcessingPromises.client.resolve();
-        }
-
-        if (serverFiles.size > 0) {
-          server.environments.ssr.depsOptimizer?.registerMissingImport(
-            dummyFilePaths.server,
-            dummyFilePaths.server,
-          );
-          barrelProcessingPromises.ssr.resolve();
-        }
-
-        return result;
-      };
-    },
     configResolved(config) {
       if (config.command !== "serve") {
         return;
       }
+
       const dummyFilePaths = {
         client: path.join(
           projectRootDir,
@@ -134,46 +80,56 @@ export const directiveModulesDevPlugin = ({
         ),
       };
 
-      // Create the empty dummy files
+      // Create the dummy files so that Vite can resolve them
       ensureFileSync(dummyFilePaths.client);
       ensureFileSync(dummyFilePaths.server);
-      log("Created dummy barrel files at:", dummyFilePaths);
 
-      // This esbuild plugin hijacks the dummy files
       const esbuildPlugin = {
-        name: "rwsdk:directive-modules-dev-esbuild",
+        name: "rwsdk:esbuild:barrel-handler",
         setup(build: any) {
-          build.onLoad({ filter: /rwsdk-.*-barrel\.js/ }, (args: any) => {
-            log("ESBuild loading dummy file %s", args.path);
-            const isClient = args.path.includes("client");
-            const files = isClient ? clientFiles : serverFiles;
-            const contents = generateBarrelContent(files, projectRootDir);
-            log("Returning barrel content for %s", args.path);
-            return { contents, loader: "js" };
+          const barrelPaths = Object.values(dummyFilePaths);
+          const filter = new RegExp(
+            `^(${barrelPaths
+              .map((p) => p.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"))
+              .join("|")})$`,
+          );
+
+          build.onLoad({ filter }, async (args: any) => {
+            if (args.path === dummyFilePaths.client) {
+              await new Promise((resolve) => setTimeout(resolve, 2000));
+              log("onLoad for client barrel with %d files", clientFiles.size);
+              return {
+                contents: generateBarrelContent(clientFiles, projectRootDir),
+                loader: "js",
+              };
+            }
+            if (args.path === dummyFilePaths.server) {
+              await new Promise((resolve) => setTimeout(resolve, 2000));
+              log("onLoad for server barrel with %d files", serverFiles.size);
+              return {
+                contents: generateBarrelContent(serverFiles, projectRootDir),
+                loader: "js",
+              };
+            }
+            return null;
           });
         },
       };
 
-      for (const envName of ["client", "ssr"]) {
-        const envConfig = config.environments[envName];
-        if (envConfig) {
-          // 1. Add the dummy file paths to optimizeDeps.include for both barrels
-          envConfig.optimizeDeps ??= {};
-          envConfig.optimizeDeps.include ??= [];
-          envConfig.optimizeDeps.include.push(
+      for (const [envName, env] of Object.entries(config.environments)) {
+        if (envName === "client" || envName === "ssr") {
+          env.optimizeDeps.include = [
+            ...(env.optimizeDeps.include || []),
             dummyFilePaths.client,
             dummyFilePaths.server,
-          );
-          log(
-            "Added barrels to optimizeDeps.include for %s",
-            envName,
-            dummyFilePaths,
-          );
-
-          // 2. Add esbuild plugin for the dependency optimizer
-          envConfig.optimizeDeps.esbuildOptions ??= {};
-          envConfig.optimizeDeps.esbuildOptions.plugins ??= [];
-          envConfig.optimizeDeps.esbuildOptions.plugins.push(esbuildPlugin);
+          ];
+          env.optimizeDeps.esbuildOptions = {
+            ...env.optimizeDeps.esbuildOptions,
+            plugins: [
+              ...(env.optimizeDeps.esbuildOptions?.plugins || []),
+              esbuildPlugin,
+            ],
+          };
         }
       }
     },

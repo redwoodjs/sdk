@@ -103,18 +103,13 @@ export const createDirectiveLookupPlugin = async ({
     debugNamespace,
   });
 
-  let devServer: ViteDevServer;
-
   return {
     name: `rwsdk:${config.pluginName}`,
     config(_, { command, isPreview }) {
       isDev = !isPreview && command === "serve";
       log("Development mode: %s", isDev);
     },
-    configureServer(server) {
-      devServer = server;
-    },
-    async configEnvironment(env, viteConfig) {
+    configEnvironment(env, viteConfig) {
       log("Configuring environment: env=%s", env);
 
       viteConfig.optimizeDeps ??= {};
@@ -206,14 +201,6 @@ export const createDirectiveLookupPlugin = async ({
         const environment = this.environment?.name || "client";
         log("Current environment: %s, isDev: %s", environment, isDev);
 
-        if (isDev) {
-          if (config.kind === "client") {
-            await devServer.rwsdk?.barrelProcessingPromises?.client;
-          } else {
-            await devServer.rwsdk?.barrelProcessingPromises?.ssr;
-          }
-        }
-
         const s = new MagicString(`
 export const ${config.exportName} = {
   ${Array.from(files)
@@ -224,27 +211,11 @@ export const ${config.exportName} = {
             ? "rwsdk-client-barrel.js"
             : "rwsdk-server-barrel.js";
 
-        const dummyPath = path.join(
-          projectRootDir,
-          "node_modules",
+        const barrelPath = path.posix.join(
+          "/node_modules",
           ".vite",
           barrelFileName,
         );
-
-        const optimizer =
-          this.environment.name === "client"
-            ? devServer.environments.client.depsOptimizer
-            : devServer.environments.ssr.depsOptimizer;
-
-        const barrelPath = optimizer?.metadata.optimized[dummyPath]?.file;
-        if (!barrelPath) {
-          // This can happen if the barrel is empty (no client/server deps).
-          // Return an empty object to avoid breaking the import.
-          return `
-  "${file}": () => Promise.resolve({ default: {} }),
-`;
-        }
-
         return `
   "${file}": () => import("${barrelPath}").then(m => m.default["${file}"]),
 `;

@@ -194,6 +194,21 @@ The corrected flow inside our `configureServer` hook is:
 
 This ensures that we register our barrels for re-optimization at the earliest possible moment, but only *after* the necessary file discovery is complete, finally resolving the race condition.
 
+### 9.11. Backtracking: A Return to Synchronous Blocking
+
+The "Post-Scan Registration" strategy, while functional, introduces a degree of unpredictability and inefficiency. It relies on a secondary, corrective optimization pass, which is wasted effort. The core issue remains a race condition, and the most direct solution is to solve it synchronously.
+
+We are therefore backtracking to the original goal: ensuring the `client` and `ssr` environments do not process their dependency barrels until the `worker` environment has completed its scan and populated the `clientFiles` and `serverFiles` sets.
+
+The revised plan is to implement a more targeted blocking mechanism:
+
+1.  **Isolate the Block:** The dependency optimization for the `client` and `ssr` environments will be allowed to run in parallel as Vite intends. However, we will intercept the processing of our specific dummy barrel files.
+2.  **Use a Blocking `onResolve` Hook:** Inside the `directiveModulesDevPlugin`, the custom `esbuild` plugin will be enhanced with an `onResolve` hook that filters for the barrel file paths.
+3.  **Defer Resolution:** When this hook intercepts a barrel file, it will pause. For the initial implementation, this pause will be a hardcoded `setTimeout` to validate that delaying the barrel processing is sufficient to solve the race condition. The rest of the dependency scan for other modules can continue unimpeded.
+4.  **Proceed After Delay:** After the timeout, the `onResolve` hook will complete, allowing the `onLoad` hook to be called. By this time, the `worker` scan will have finished, the file sets will be populated, and the `onLoad` hook will generate the correct barrel content on its first try.
+
+If this `setTimeout` validation proves successful, the next step will be to replace it with a more robust synchronization mechanism, such as a shared promise that is resolved upon the completion of the `worker` environment's scan. This returns us to a more efficient, single-pass optimization.
+
 ### 9.9. The Final Piece: Importing the Optimized Barrel
 
 The last remaining issue was identified in the `createDirectiveLookupPlugin`. This plugin was correctly generating the `virtual:use-client-lookup` and `virtual:use-server-lookup` modules, but the dynamic `import()` statements inside them were pointing to the wrong place.
