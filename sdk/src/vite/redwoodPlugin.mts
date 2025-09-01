@@ -29,6 +29,8 @@ import { hasPkgScript } from "../lib/hasPkgScript.mjs";
 import { devServerTimingPlugin } from "./devServerTimingPlugin.mjs";
 import { manifestPlugin } from "./manifestPlugin.mjs";
 import { linkerPlugin } from "./linkerPlugin.mjs";
+import { directiveModulesDevPlugin } from "./directiveModulesDevPlugin.mjs";
+import { directiveModulesBuildPlugin } from "./directiveModulesBuildPlugin.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -105,6 +107,15 @@ export const redwoodPlugin = async (
 
   return [
     devServerTimingPlugin(),
+    directiveModulesDevPlugin({
+      clientFiles,
+      serverFiles,
+    }),
+    directiveModulesBuildPlugin({
+      clientFiles,
+      serverFiles,
+      projectRootDir,
+    }),
     devServerConstantPlugin(),
     configPlugin({
       silent: options.silent ?? false,

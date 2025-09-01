@@ -12,6 +12,10 @@ import {
   INTERMEDIATES_OUTPUT_DIR,
 } from "../lib/constants.mjs";
 import { buildApp } from "./buildApp.mjs";
+import {
+  VIRTUAL_CLIENT_BARREL_ID,
+  VIRTUAL_SERVER_BARREL_ID,
+} from "./directiveModulesDevPlugin.mjs";
 
 const log = debug("rwsdk:vite:config");
 
@@ -78,6 +82,7 @@ export const configPlugin = ({
           optimizeDeps: {
             noDiscovery: false,
             include: ["rwsdk/client"],
+            entries: [VIRTUAL_CLIENT_BARREL_ID],
             esbuildOptions: {
               jsx: "automatic",
               jsxImportSource: "react",
@@ -101,7 +106,7 @@ export const configPlugin = ({
           },
           optimizeDeps: {
             noDiscovery: false,
-            entries: [workerEntryPathname],
+            entries: [workerEntryPathname, VIRTUAL_SERVER_BARREL_ID],
             exclude: externalModules,
             include: ["rwsdk/__ssr", "rwsdk/__ssr_bridge"],
             esbuildOptions: {

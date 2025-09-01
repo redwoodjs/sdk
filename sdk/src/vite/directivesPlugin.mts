@@ -109,40 +109,6 @@ export const directivesPlugin = ({
         next();
       });
     },
-    async buildEnd() {
-      if (this.environment.name !== "worker") {
-        return;
-      }
-
-      log("Filtering client files after worker build...");
-
-      process.env.VERBOSE &&
-        log(
-          "Client/server files before filtering: client=%O, server=%O",
-          Array.from(clientFiles),
-          Array.from(serverFiles),
-        );
-
-      [clientFiles, serverFiles].forEach((files) => {
-        for (const id of files) {
-          const absoluteId = normalizeModulePath(id, projectRootDir, {
-            absolute: true,
-          });
-          const info = this.getModuleInfo(absoluteId);
-
-          if (!info?.isIncluded) {
-            clientFiles.delete(id);
-          }
-        }
-      });
-
-      process.env.VERBOSE &&
-        log(
-          "Client/server files after filtering: client=%O, server=%O",
-          Array.from(clientFiles),
-          Array.from(serverFiles),
-        );
-    },
     async transform(code, id) {
       const normalizedId = normalizeModulePath(id, projectRootDir);
 
