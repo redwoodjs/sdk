@@ -9,6 +9,10 @@ import { stat } from "fs/promises";
 import { getSrcPaths } from "../lib/getSrcPaths.js";
 import { hasDirective } from "./hasDirective.mjs";
 import { ViteDevServer } from "vite";
+import {
+  VIRTUAL_CLIENT_BARREL_ID,
+  VIRTUAL_SERVER_BARREL_ID,
+} from "./directiveModulesDevPlugin.mjs";
 
 interface DirectiveLookupConfig {
   kind: "client" | "server";
@@ -127,78 +131,6 @@ const resolveOptimizedDep = async (
   }
 };
 
-const addOptimizedDepsEntries = async ({
-  projectRootDir,
-  directive,
-  environment,
-  debugNamespace,
-  files,
-}: {
-  projectRootDir: string;
-  directive: string;
-  environment: string;
-  debugNamespace: string;
-  files: Set<string>;
-}) => {
-  const log = debug(debugNamespace);
-
-  try {
-    const depsDir = environment === "client" ? "deps" : `deps_${environment}`;
-    const depsDirPath = path.join(
-      projectRootDir,
-      "node_modules",
-      ".vite",
-      depsDir,
-    );
-    const manifestPath = path.join(depsDirPath, "_metadata.json");
-    process.env.VERBOSE && log("Checking for manifest at: %s", manifestPath);
-
-    const manifestExists = await pathExists(manifestPath);
-    if (!manifestExists) {
-      process.env.VERBOSE && log("Manifest not found at %s", manifestPath);
-      return;
-    }
-
-    const manifestContent = await readFile(manifestPath, "utf-8");
-    const manifest = JSON.parse(manifestContent);
-
-    for (const entryId of Object.keys(manifest.optimized)) {
-      if (entryId.startsWith("/node_modules/")) {
-        const srcPath = manifest.optimized[entryId].src;
-        const resolvedSrcPath = path.resolve(
-          projectRootDir,
-          "node_modules",
-          ".vite",
-          "deps",
-          srcPath,
-        );
-        let contents: string;
-        try {
-          contents = await readFile(resolvedSrcPath, "utf-8");
-        } catch (error) {
-          process.env.VERBOSE &&
-            log("Error reading file %s: %s", resolvedSrcPath, error);
-          continue;
-        }
-
-        if (hasDirective(contents, directive)) {
-          log("Adding optimized entry to files: %s", entryId);
-          files.add(entryId);
-        } else {
-          log(
-            "Skipping optimized entry %s because it does not contain the '%s' directive",
-            entryId,
-            directive,
-          );
-        }
-      }
-    }
-  } catch (error) {
-    process.env.VERBOSE &&
-      log("Error adding optimized deps entries: %s", error);
-  }
-};
-
 export const createDirectiveLookupPlugin = async ({
   projectRootDir,
   files,
@@ -238,16 +170,6 @@ export const createDirectiveLookupPlugin = async ({
     },
     async configEnvironment(env, viteConfig) {
       log("Configuring environment: env=%s", env);
-
-      if (isDev) {
-        await addOptimizedDepsEntries({
-          projectRootDir,
-          files,
-          directive: config.directive,
-          environment: env,
-          debugNamespace,
-        });
-      }
 
       viteConfig.optimizeDeps ??= {};
       viteConfig.optimizeDeps.esbuildOptions ??= {};
@@ -299,6 +221,10 @@ export const createDirectiveLookupPlugin = async ({
         viteConfig.optimizeDeps.include ??= [];
 
         for (const file of files) {
+          if (file.includes("node_modules")) {
+            continue;
+          }
+
           const actualFilePath = path.join(projectRootDir, file);
 
           process.env.VERBOSE &&
@@ -336,30 +262,24 @@ export const createDirectiveLookupPlugin = async ({
         const environment = this.environment?.name || "client";
         log("Current environment: %s, isDev: %s", environment, isDev);
 
-        const optimizedDeps: Record<string, string> = {};
-
-        if (isDev && devServer) {
-          for (const file of files) {
-            const resolvedPath = await resolveOptimizedDep(
-              projectRootDir,
-              file,
-              environment,
-              debugNamespace,
-            );
-            if (resolvedPath) {
-              optimizedDeps[file] = resolvedPath;
-            }
-          }
-        }
-
         const s = new MagicString(`
 export const ${config.exportName} = {
   ${Array.from(files)
-    .map(
-      (file: string) => `
-  "${file}": () => import("${optimizedDeps[file] ?? file}"),
-`,
-    )
+    .map((file: string) => {
+      if (file.includes("node_modules") && isDev) {
+        const barrelId =
+          config.kind === "client"
+            ? VIRTUAL_CLIENT_BARREL_ID
+            : VIRTUAL_SERVER_BARREL_ID;
+        return `
+  "${file}": () => import("${barrelId}").then(m => m.default["${file}"]),
+`;
+      } else {
+        return `
+  "${file}": () => import("${file}"),
+`;
+      }
+    })
     .join("")}
 };
 `);

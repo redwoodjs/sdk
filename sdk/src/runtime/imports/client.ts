@@ -6,19 +6,15 @@ import { memoizeOnId } from "../lib/memoizeOnId";
 import { useClientLookup } from "virtual:use-client-lookup.js";
 
 export const loadModule = memoizeOnId(async (id: string) => {
-  if (import.meta.env.VITE_IS_DEV_SERVER) {
-    return await import(/* @vite-ignore */ id);
-  } else {
-    const moduleFn = useClientLookup[id];
+  const moduleFn = useClientLookup[id];
 
-    if (!moduleFn) {
-      throw new Error(
-        `(client) No module found for '${id}' in module lookup for "use client" directive`,
-      );
-    }
-
-    return await moduleFn();
+  if (!moduleFn) {
+    throw new Error(
+      `(client) No module found for '${id}' in module lookup for "use client" directive`,
+    );
   }
+
+  return await moduleFn();
 });
 
 // context(justinvdm, 2 Dec 2024): re memoize(): React relies on the same promise instance being returned for the same id
@@ -33,7 +29,6 @@ export const clientWebpackRequire = memoizeOnId(async (id: string) => {
     const awaitedComponent = await promisedComponent;
     return { [id]: awaitedComponent };
   }
-
   const promisedDefault = promisedComponent.then((Component) => ({
     default: Component,
   }));

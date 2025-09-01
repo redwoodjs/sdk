@@ -23,11 +23,22 @@ export const directiveModulesDevPlugin = ({
       return null;
     },
     load(id) {
-      const generateBarrelContent = (files: Set<string>) =>
-        [...files]
+      const generateBarrelContent = (files: Set<string>) => {
+        const imports = [...files]
           .filter((file) => file.includes("node_modules"))
-          .map((file) => `export * from '${file}';`)
+          .map((file, i) => `import * as M${i} from '${file}';`)
           .join("\n");
+
+        const exports =
+          "export default {\n" +
+          [...files]
+            .filter((file) => file.includes("node_modules"))
+            .map((file, i) => `  '${file}': M${i},`)
+            .join("\n") +
+          "\n};";
+
+        return `${imports}\n\n${exports}`;
+      };
 
       if (id === `\0${VIRTUAL_CLIENT_BARREL_ID}`) {
         const barrelContent = generateBarrelContent(clientFiles);
