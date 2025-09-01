@@ -53,6 +53,9 @@ export const directiveModulesDevPlugin = ({
       server.listen = async function (...args) {
         const result = await originalListen.apply(this, args);
 
+        // Wait for the worker's dependency scan to complete before proceeding.
+        await server.environments.worker.depsOptimizer?.scanProcessing;
+
         const dummyFilePaths = {
           client: path.join(
             projectRootDir,

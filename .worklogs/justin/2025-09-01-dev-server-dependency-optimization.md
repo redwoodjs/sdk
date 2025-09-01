@@ -178,3 +178,19 @@ This is incorrect, as both environments may need to process modules from the oth
 
 The final correction was to modify the loop to add *both* the client and server barrel paths to the `optimizeDeps.include` array for *both* the `client` and `ssr` environments. This ensures that both optimization processes are aware of all discoverable directive-marked modules, completing the feature.
 
+### 9.8. Final Refinement: Awaiting `scanProcessing` in the `listen` Hook
+
+The `server.listen` wrapper strategy proved to be a step in the right direction, but it still contained a subtle race condition. While wrapping `listen` correctly executes our code after the server has started, it does not guarantee that the asynchronous `optimizeDeps` scans have *completed*.
+
+The `listen` method kicks off all environment optimizations in parallel. Our `registerMissingImport` call was therefore running immediately after the scans *began*, not after they had *finished*, leading to inconsistently populated barrel files.
+
+The final, definitive solution is to combine the `listen` wrapper with an explicit `await` on the `worker` environment's scan promise.
+
+The corrected flow inside our `configureServer` hook is:
+1.  Wrap the `server.listen` method.
+2.  In the wrapper, `await` the original `listen` method to ensure the server is fully started and all optimizer scans have been initiated.
+3.  **Crucially, `await server.environments.worker.depsOptimizer?.scanProcessing;`**. This pauses execution until the `worker` environment's dependency scan is guaranteed to be complete, and thus the `clientFiles` and `serverFiles` sets are fully populated.
+4.  Only then, proceed to call `registerMissingImport` for the `client` and `ssr` environments.
+
+This ensures that we register our barrels for re-optimization at the earliest possible moment, but only *after* the necessary file discovery is complete, finally resolving the race condition.
+
