@@ -127,15 +127,18 @@ export const directiveModulesDevPlugin = ({
       for (const envName of ["client", "ssr"]) {
         const envConfig = config.environments[envName];
         if (envConfig) {
-          // 1. Add the dummy file path to optimizeDeps.include
-          const dummyPath =
-            envName === "client"
-              ? dummyFilePaths.client
-              : dummyFilePaths.server;
+          // 1. Add the dummy file paths to optimizeDeps.include for both barrels
           envConfig.optimizeDeps ??= {};
           envConfig.optimizeDeps.include ??= [];
-          envConfig.optimizeDeps.include.push(dummyPath);
-          log("Added to optimizeDeps.include for %s: %s", envName, dummyPath);
+          envConfig.optimizeDeps.include.push(
+            dummyFilePaths.client,
+            dummyFilePaths.server,
+          );
+          log(
+            "Added barrels to optimizeDeps.include for %s",
+            envName,
+            dummyFilePaths,
+          );
 
           // 2. Add esbuild plugin for the dependency optimizer
           envConfig.optimizeDeps.esbuildOptions ??= {};

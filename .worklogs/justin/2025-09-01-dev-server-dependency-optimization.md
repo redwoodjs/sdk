@@ -170,3 +170,11 @@ The error (`Could not resolve "/node_modules/..."`) occurs because `esbuild` ope
 
 The solution is to modify the `generateBarrelContent` function. When generating the `import` statements for the barrel, we will use our existing `normalizeModulePath` utility, passing the `{ absolute: true }` option. This will convert each module path into a full, absolute path that `esbuild` can correctly resolve, completing the implementation.
 
+### 9.7. Final Correction: Shared Barrels Across Environments
+
+A final logic error was identified in the `configResolved` hook. The code was only adding the client barrel to the `client` environment's optimizer and the server barrel to the `ssr` environment's optimizer.
+
+This is incorrect, as both environments may need to process modules from the other. For example, the `ssr` environment needs to resolve `"use client"` components to render them on the server.
+
+The final correction was to modify the loop to add *both* the client and server barrel paths to the `optimizeDeps.include` array for *both* the `client` and `ssr` environments. This ensures that both optimization processes are aware of all discoverable directive-marked modules, completing the feature.
+
