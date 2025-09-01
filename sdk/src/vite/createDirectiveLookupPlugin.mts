@@ -324,12 +324,8 @@ export const createDirectiveLookupPlugin = async ({
         // so it goes through vite processing chain
         return source;
       }
-
-      process.env.VERBOSE && log("No resolution for id=%s", source);
     },
     async load(id) {
-      process.env.VERBOSE && log("Loading id=%s", id);
-
       if (id === config.virtualModuleName + ".js") {
         log(
           "Loading %s module with %d files",
@@ -379,8 +375,6 @@ export const ${config.exportName} = {
           map,
         };
       }
-
-      process.env.VERBOSE && log("No load handling for id=%s", id);
     },
   };
 };
