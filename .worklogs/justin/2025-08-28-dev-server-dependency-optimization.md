@@ -44,29 +44,4 @@ We landed on a pragmatic, hybrid solution that leverages the strengths of both f
 *   **Why this works:** It's fast because our manual scan is limited to a small directory. It's robust because we delegate the complex, alias-aware dependency tracing to Vite's own internal, correctly configured scanner.
 *   **The Accepted Trade-off:** We are accepting a potentially slower initial server startup because we are pre-bundling entire libraries, not just the used files. However, in exchange, the developer experience during the session will be perfectly smooth, with no request waterfalls and no disruptive re-bundling when new components from an already-bundled library are used.
 
-**End of Day Status:** The hybrid approach seemed like a most viable path forward, despite the trade-off. However, after implementation, it was found to be an **ultimately failed** attempt, for reasons that were not documented at the time.
-
-## 5. September 1, 2025: A New Approach - The Virtual Dependency Barrel
-
-After re-evaluating the problem, we identified a critical flaw in previous thinking. Approaches that relied on `optimizeDeps.include` made a dangerous assumption: that any `"use client"` file found within a package in `node_modules` would be reachable from that package's main entry point. This is not guaranteed. A library could easily use an internal, un-exported client component, which Vite's scanner would never find if it only started from the package's root.
-
-This led to a more robust solution that does not rely on package exports at all.
-
-### The Plan: A Virtual Module for Pre-Bundling
-
-The new strategy is to create a **virtual module** in memory that acts as a "barrel" file, explicitly re-exporting every `"use client"` module found in `node_modules`.
-
-1.  **Identify Client Modules:** During startup, our plugin will still scan the project and its dependencies to populate the `clientFiles` and `serverFiles` sets with the absolute paths of all modules containing the `"use client"` or `"use server"` directives.
-
-2.  **Generate a Virtual Barrel Module:** For the `client` and `ssr` environments, our plugin will create a virtual module (e.g., `virtual:rwsdk:client-module-barrel`). The content of this module will be a list of `export * from '...'` statements, one for each file in `clientFiles` that is located in `node_modules`.
-
-3.  **Configure `optimizeDeps`:** We will add the name of this single virtual module (`virtual:rwsdk:client-module-barrel`) to the `optimizeDeps.entries` array.
-
-### Rationale: Forcing a Single Dependency Graph
-
-This approach is superior because:
--   **It's Explicit:** By feeding Vite a single entry point that directly imports every required module, we leave no room for interpretation. Vite's `esbuild`-powered optimizer is forced to see all library-based client components as part of one large, interconnected dependency graph.
--   **No Unsafe Assumptions:** It completely avoids the problem of internal/un-exported components because we are pointing directly to the specific files, not relying on the library's public API.
--   **Solves the Waterfall:** The result of the optimization will be a single, large chunk containing all the necessary library client code, which can be loaded in one request, definitively solving the in-browser request waterfall.
-
-This plan is contingent on one assumption we'll validate during implementation: that the `client` and `ssr` environment plugins are configured *after* the `worker` environment has completed its initial scan and populated the `clientFiles` set.
+**End of Day Status:** The hybrid approach seemed like the most viable path forward, despite the trade-off. However, after implementation, it was found to be an **ultimately failed** attempt, for reasons that were not documented at the time.
