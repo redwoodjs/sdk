@@ -7,10 +7,7 @@ import debug from "debug";
 import { readFile, writeFile } from "node:fs/promises";
 import { glob } from "glob";
 
-import {
-  INTERMEDIATE_SSR_BRIDGE_PATH,
-  INTERMEDIATES_OUTPUT_DIR,
-} from "../lib/constants.mjs";
+import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import { buildApp } from "./buildApp.mjs";
 
 const log = debug("rwsdk:vite:config");

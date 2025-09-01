@@ -67,10 +67,11 @@ export const directiveModulesDevPlugin = ({
       log("Created dummy barrel files at:", dummyFilePaths);
 
       // This esbuild plugin hijacks the dummy files
-      const esbuildPlugin = {
+      const esbuildPlugin = (envName: string) => ({
         name: "rwsdk:directive-modules-dev-esbuild",
         setup(build: any) {
           build.onLoad({ filter: /rwsdk-.*-barrel\.js/ }, (args: any) => {
+            console.log("############### onLoad", envName);
             log("ESBuild loading dummy file %s", args.path);
             const isClient = args.path.includes("client");
             const files = isClient ? clientFiles : serverFiles;
@@ -79,7 +80,7 @@ export const directiveModulesDevPlugin = ({
             return { contents, loader: "js" };
           });
         },
-      };
+      });
 
       for (const envName of ["client", "ssr"]) {
         const envConfig = config.environments[envName];
@@ -97,7 +98,9 @@ export const directiveModulesDevPlugin = ({
           // 2. Add esbuild plugin for the dependency optimizer
           envConfig.optimizeDeps.esbuildOptions ??= {};
           envConfig.optimizeDeps.esbuildOptions.plugins ??= [];
-          envConfig.optimizeDeps.esbuildOptions.plugins.push(esbuildPlugin);
+          envConfig.optimizeDeps.esbuildOptions.plugins.push(
+            esbuildPlugin(envName),
+          );
         }
       }
     },

@@ -107,3 +107,21 @@ Finally, a guard was added to the plugin's `configResolved` hook to ensure this 
 
 The `createDirectiveLookupPlugin` was also updated to ensure its runtime `import()` statements pointed to the new physical dummy barrel files, fully removing the last reference to the old virtual module system.
 
+## 9. A New Hurdle: Inter-Environment Dependency Timing
+
+The "dummy file" solution is correct in principle, but its success depends on a critical assumption: that the `worker` environment completes its dependency scan and populates the `clientFiles` and `serverFiles` sets *before* the `client` and `ssr` environments run their own `optimizeDeps` pass.
+
+It has become clear that this assumption is false. The environment optimizers appear to run in parallel, which means `directiveModulesDevPlugin` (running in the `client` and `ssr` environments) executes with empty `clientFiles` and `serverFiles` sets, rendering the optimization useless.
+
+The next step is to investigate Vite's source code to answer a key question: how does Vite manage the `optimizeDeps` process for multiple environments? We need to determine if they are run concurrently or sequentially, and if there is any mechanism to enforce a specific order. The goal is to find a way to delay the `client` and `ssr` dependency optimization until after the `worker` environment has completed its initial scan.
+
+### 9.1. Investigation Findings: Parallel Execution
+
+A thorough investigation of Vite's source code (`packages/vite/src/node/server/index.ts`) has provided a definitive answer. During server startup, the `initServer` function calls the `listen` method on all configured environments wrapped in a `Promise.all`.
+
+The `listen` method on each `DevEnvironment` instance is responsible for calling `depsOptimizer.init()`, which is the asynchronous function that starts the dependency scanning and optimization process.
+
+Because they are called via `Promise.all`, **all environment dependency optimizers are explicitly run in parallel.** This confirms that our initial assumption was incorrect and explains why the `clientFiles` and `serverFiles` sets are empty. There is no built-in mechanism in Vite to enforce a sequential dependency optimization chain between environments.
+
+Our next task is to devise a new strategy to manually create this synchronization.
+

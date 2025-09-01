@@ -77,56 +77,6 @@ export const findFilesContainingDirective = async ({
     log("Found files for %s: %j", directive, Array.from(files));
 };
 
-const resolveOptimizedDep = async (
-  projectRootDir: string,
-  id: string,
-  environment: string,
-  debugNamespace: string,
-): Promise<string | undefined> => {
-  const log = debug(debugNamespace);
-
-  try {
-    const depsDir = environment === "client" ? "deps" : `deps_${environment}`;
-    const nodeModulesDepsDirPath = path.join("node_modules", ".vite", depsDir);
-    const depsDirPath = path.join(projectRootDir, nodeModulesDepsDirPath);
-    const manifestPath = path.join(depsDirPath, "_metadata.json");
-    log("Checking for manifest at: %s", manifestPath);
-
-    const manifestExists = await pathExists(manifestPath);
-    if (!manifestExists) {
-      log("Manifest not found at %s", manifestPath);
-      return undefined;
-    }
-
-    const manifestContent = await readFile(manifestPath, "utf-8");
-    const manifest = JSON.parse(manifestContent);
-
-    if (manifest.optimized && manifest.optimized[id]) {
-      const optimizedFile = manifest.optimized[id].file;
-      const optimizedPath = path.join(
-        "/",
-        nodeModulesDepsDirPath,
-        optimizedFile,
-      );
-
-      log(
-        "Found optimized dependency: filePath=%s, optimizedPath=%s",
-        id,
-        optimizedPath,
-      );
-      return optimizedPath;
-    }
-
-    process.env.VERBOSE &&
-      log("File not found in optimized dependencies: id=%s", id);
-    return undefined;
-  } catch (error) {
-    process.env.VERBOSE &&
-      log("Error resolving optimized dependency for id=%s: %s", id, error);
-    return undefined;
-  }
-};
-
 export const createDirectiveLookupPlugin = async ({
   projectRootDir,
   files,
@@ -238,8 +188,6 @@ export const createDirectiveLookupPlugin = async ({
       }
     },
     resolveId(source) {
-      process.env.VERBOSE && log("Resolving id=%s", source);
-
       if (source === `${config.virtualModuleName}.js`) {
         log("Resolving %s module", config.virtualModuleName);
         // context(justinvdm, 16 Jun 2025): Include .js extension

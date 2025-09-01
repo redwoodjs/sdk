@@ -4,7 +4,6 @@ export const ssrLoadModule = memoizeOnId(async (id: string) => {
   const { useClientLookup } = await import(
     "virtual:use-client-lookup.js" as string
   );
-
   const moduleFn = useClientLookup[id];
 
   if (!moduleFn) {

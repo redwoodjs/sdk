@@ -181,14 +181,6 @@ export const reactConditionsResolverPlugin = ({
       name: `rwsdk:react-conditions-resolver-esbuild-${envName}`,
       setup(build: any) {
         build.onResolve({ filter: /.*/ }, (args: any) => {
-          process.env.VERBOSE &&
-            log(
-              "ESBuild resolving %s for env=%s, args=%O",
-              args.path,
-              envName,
-              args,
-            );
-
           let resolved: string | undefined = mappings.get(args.path);
 
           if (!resolved) {
@@ -200,13 +192,6 @@ export const reactConditionsResolverPlugin = ({
           }
 
           if (resolved && args.importer !== "") {
-            process.env.VERBOSE &&
-              log(
-                "ESBuild resolving %s -> %s for env=%s",
-                args.path,
-                resolved,
-                envName,
-              );
             if (args.path === "react-server-dom-webpack/client.edge") {
               return;
             }
