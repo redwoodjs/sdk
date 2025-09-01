@@ -81,8 +81,12 @@ export const configPlugin = ({
           },
           optimizeDeps: {
             noDiscovery: false,
-            include: ["rwsdk/client"],
-            entries: [VIRTUAL_CLIENT_BARREL_ID],
+            include: [
+              "rwsdk/client",
+              VIRTUAL_CLIENT_BARREL_ID,
+              VIRTUAL_SERVER_BARREL_ID,
+            ],
+            entries: [],
             esbuildOptions: {
               jsx: "automatic",
               jsxImportSource: "react",
@@ -106,8 +110,12 @@ export const configPlugin = ({
           },
           optimizeDeps: {
             noDiscovery: false,
-            entries: [workerEntryPathname, VIRTUAL_SERVER_BARREL_ID],
-            exclude: externalModules,
+            entries: [workerEntryPathname],
+            exclude: [
+              ...externalModules,
+              VIRTUAL_CLIENT_BARREL_ID,
+              VIRTUAL_SERVER_BARREL_ID,
+            ],
             include: ["rwsdk/__ssr", "rwsdk/__ssr_bridge"],
             esbuildOptions: {
               jsx: "automatic",
