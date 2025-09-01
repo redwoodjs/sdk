@@ -277,3 +277,13 @@ This understanding leads to our final, most robust plan:
     *   **Client & SSR:** The new `client` and `ssr` `init` methods will do the opposite. They will first `await` our shared `workerScanComplete` promise. Once they receive the signal, they will then proceed to call their own original `init` methods.
 
 This creates a perfect causal chain. Vite's parallel startup process is intercepted, forcing the `client` and `ssr` optimizers to wait until the `worker` optimizer has fully completed its discovery. This ensures the `clientFiles` and `serverFiles` sets are populated *before* they are needed, definitively solving the race condition.
+
+### 9.15. The Root Cause Revealed: A Dependency Graph Schism
+
+The `init` monkey-patching strategy was successful. The optimizers now run in the correct sequence (`worker` first, then `client` and `ssr`). However, this did *not* solve the "duplicate React" error. This is a critical discovery: it proves the problem is not a simple race condition, but a more fundamental issue with how Vite is constructing its dependency graph.
+
+The network trace from the browser shows two sets of dependency chunks being loaded with different version hashes. The first set is triggered by the main application entry point. The second, conflicting set is triggered by our dynamically generated barrel file. This second set contains a duplicate copy of React (or a related library like `react-dom`), which causes the application to crash.
+
+This means that even with sequential execution, Vite's optimizer is treating the main application and our barrel file as two completely separate, unrelated entry points. It creates one optimized dependency graph for the application and a second, conflicting graph for the barrel, instead of merging them into a single, unified graph.
+
+The next step is to understand why our custom `reactConditionsResolverPlugin`, which is designed to prevent this exact problem by forcing all React imports to resolve to a single canonical file, is failing for the dependencies pulled in by our barrel file.
