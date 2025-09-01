@@ -1,10 +1,22 @@
-import { Plugin, ResolvedConfig } from "vite";
+import { Plugin, ResolvedConfig, ViteDevServer } from "vite";
 import debug from "debug";
 import path from "node:path";
 import { ensureFileSync } from "fs-extra";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 
 const log = debug("rwsdk:vite:directive-modules-dev");
+
+// Augment the ViteDevServer type to include our custom property
+declare module "vite" {
+  interface ViteDevServer {
+    rwsdk?: {
+      barrelProcessingPromises?: {
+        client?: Promise<void>;
+        ssr?: Promise<void>;
+      };
+    };
+  }
+}
 
 export const VIRTUAL_CLIENT_BARREL_ID = "virtual:rwsdk:client-module-barrel";
 export const VIRTUAL_SERVER_BARREL_ID = "virtual:rwsdk:server-module-barrel";
@@ -49,12 +61,25 @@ export const directiveModulesDevPlugin = ({
     name: "rwsdk:directive-modules-dev",
     enforce: "pre",
     configureServer(server) {
+      const barrelProcessingPromises = {
+        client: Promise.withResolvers<void>(),
+        ssr: Promise.withResolvers<void>(),
+      };
+
+      server.rwsdk = {
+        barrelProcessingPromises: {
+          client: barrelProcessingPromises.client.promise,
+          ssr: barrelProcessingPromises.ssr.promise,
+        },
+      };
+
       const originalListen = server.listen;
       server.listen = async function (...args) {
         const result = await originalListen.apply(this, args);
 
         // Wait for the worker's dependency scan to complete before proceeding.
         await server.environments.worker.depsOptimizer?.scanProcessing;
+        server.environments.worker.depsOptimizer?.getOptimizedDepId;
 
         const dummyFilePaths = {
           client: path.join(
@@ -76,6 +101,7 @@ export const directiveModulesDevPlugin = ({
             dummyFilePaths.client,
             dummyFilePaths.client,
           );
+          barrelProcessingPromises.client.resolve();
         }
 
         if (serverFiles.size > 0) {
@@ -83,6 +109,7 @@ export const directiveModulesDevPlugin = ({
             dummyFilePaths.server,
             dummyFilePaths.server,
           );
+          barrelProcessingPromises.ssr.resolve();
         }
 
         return result;

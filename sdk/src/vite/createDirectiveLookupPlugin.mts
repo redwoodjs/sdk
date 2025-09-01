@@ -206,6 +206,14 @@ export const createDirectiveLookupPlugin = async ({
         const environment = this.environment?.name || "client";
         log("Current environment: %s, isDev: %s", environment, isDev);
 
+        if (isDev) {
+          if (config.kind === "client") {
+            await devServer.rwsdk?.barrelProcessingPromises?.client;
+          } else {
+            await devServer.rwsdk?.barrelProcessingPromises?.ssr;
+          }
+        }
+
         const s = new MagicString(`
 export const ${config.exportName} = {
   ${Array.from(files)
@@ -215,7 +223,28 @@ export const ${config.exportName} = {
           config.kind === "client"
             ? "rwsdk-client-barrel.js"
             : "rwsdk-server-barrel.js";
-        const barrelPath = path.join("/node_modules", ".vite", barrelFileName);
+
+        const dummyPath = path.join(
+          projectRootDir,
+          "node_modules",
+          ".vite",
+          barrelFileName,
+        );
+
+        const optimizer =
+          config.kind === "client"
+            ? devServer.environments.client.depsOptimizer
+            : devServer.environments.ssr.depsOptimizer;
+
+        const barrelPath = optimizer?.metadata.optimized[dummyPath]?.file;
+        if (!barrelPath) {
+          // This can happen if the barrel is empty (no client/server deps).
+          // Return an empty object to avoid breaking the import.
+          return `
+  "${file}": () => Promise.resolve({ default: {} }),
+`;
+        }
+
         return `
   "${file}": () => import("${barrelPath}").then(m => m.default["${file}"]),
 `;

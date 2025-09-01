@@ -65,7 +65,7 @@ To solve the scanning problem, we inject a custom `esbuild` plugin directly into
 To ensure the virtual barrel can be resolved by the browser during development, the plugin also configures Vite's dev server:
 
 -   A Vite-level **alias** is created, mapping the clean virtual ID to a null-byte prefixed ID (`\0virtual:...`). This signals to Vite that it's a virtual module to be handled by a plugin.
--   The plugin implements Vite's standard **`resolveId` and `load` hooks**. At runtime, when the browser requests the barrel (via the `createDirectiveLookupPlugin`), the alias triggers these hooks, which serve the barrel's content.
+-   The plugin implements Vite's standard **`resolveId` and `load` hooks`. At runtime, when the browser requests the barrel (via the `createDirectiveLookupPlugin`), the alias triggers these hooks, which serve the barrel's content.
 
 This dual-mechanism approach is the complete solution. It correctly feeds the barrel to the `esbuild`-based optimizer *before* the server starts, while also making the same barrel available to the Vite dev server *at runtime*, finally eliminating the dependency waterfall.
 
@@ -193,4 +193,36 @@ The corrected flow inside our `configureServer` hook is:
 4.  Only then, proceed to call `registerMissingImport` for the `client` and `ssr` environments.
 
 This ensures that we register our barrels for re-optimization at the earliest possible moment, but only *after* the necessary file discovery is complete, finally resolving the race condition.
+
+### 9.9. The Final Piece: Importing the Optimized Barrel
+
+The last remaining issue was identified in the `createDirectiveLookupPlugin`. This plugin was correctly generating the `virtual:use-client-lookup` and `virtual:use-server-lookup` modules, but the dynamic `import()` statements inside them were pointing to the wrong place.
+
+The generated code was importing the *source* dummy file (e.g., `/node_modules/.vite/rwsdk-client-barrel.js`). However, the browser needs to import the final, *processed* file that Vite's dependency optimizer generates in its cache directory (e.g., `/node_modules/.vite/deps/_Users_..._barrel.js`).
+
+The definitive solution is to look up this final path at runtime. The implementation is as follows:
+
+1.  **Access the Dev Server:** The `createDirectiveLookupPlugin` will use the `configureServer` hook to get and store a reference to the `ViteDevServer` instance.
+2.  **Runtime Path Lookup:** The plugin's `load` hook, which generates the virtual module's code, will now perform a lookup:
+    a.  It accesses the appropriate environment's dependency optimizer via the stored server instance (e.g., `server.environments.client.depsOptimizer`).
+    b.  It constructs the absolute path to the source dummy barrel file.
+    c.  It uses this absolute path as a key to look into the `depsOptimizer.metadata.optimized` record. This returns an `OptimizedDepInfo` object containing the final processed `file` name.
+    d.  It constructs the correct, final browser-loadable path using this filename (e.g., `/node_modules/.vite/deps/PROCESSED_FILENAME.js`).
+3.  **Generate Correct Import:** This final, correct path is used in the generated `import()` statement.
+
+This completes the entire feature, ensuring that from discovery to optimization to runtime, the correct modules are being generated and loaded.
+
+### 9.10. Definitive Solution: Awaiting the Re-Optimization Promise
+
+The `Vite Error, ... optimized info should be defined` error provided the final clue. It originates from Vite's core `importAnalysis` plugin, and it confirms that our virtual module's `load` hook is executing *after* the re-optimization has been triggered but *before* the results of that re-optimization have been committed to the optimizer's metadata.
+
+This is a classic race condition. The `registerMissingImport` API is intentionally debounced and asynchronous. We need to wait for its work to be fully completed before we can safely access the results.
+
+The definitive solution is to hook into the optimizer's internal processing promise.
+
+1.  **Expose Processing Promises:** In the `directiveModulesDevPlugin`'s `configureServer` hook, after wrapping `server.listen` and awaiting the initial scans, we will call `registerMissingImport`. We will then immediately grab the *new* `processing` promise from the `depsOptimizer.metadata.discovered` record for our barrel files. These promises are the key; they will only resolve when the re-optimization for that specific dependency is complete. We will store these promises in a shared object.
+2.  **Await the Correct Promise in `load`:** The `createDirectiveLookupPlugin`'s `load` hook will be modified. When it needs to look up an optimized barrel path, it will first retrieve the corresponding promise from the shared object and `await` it. This will pause the `load` hook until the re-optimization is finished and the metadata is guaranteed to be available.
+3.  **Perform the Metadata Lookup:** Once the promise resolves, the `load` hook can safely access `depsOptimizer.metadata.optimized` to get the correct, final path to the processed barrel file.
+
+This creates the correct, final synchronization chain, resolving the race condition and completing the feature.
 
