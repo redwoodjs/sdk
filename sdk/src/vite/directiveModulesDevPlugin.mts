@@ -60,6 +60,37 @@ export const directiveModulesDevPlugin = ({
   return {
     name: "rwsdk:directive-modules-dev",
     enforce: "pre",
+    configureServer(server) {
+      const workerScanComplete = Promise.withResolvers<void>();
+
+      // Worker: Run first, then signal completion
+      const workerOptimizer = server.environments.worker.depsOptimizer;
+      if (workerOptimizer) {
+        const originalInit = workerOptimizer.init;
+        workerOptimizer.init = async function (...args) {
+          await originalInit.apply(this, args);
+          await workerOptimizer.scanProcessing;
+          log("Worker scan complete. Signaling to client and SSR optimizers.");
+          workerScanComplete.resolve();
+        };
+      }
+
+      // Client & SSR: Wait for worker, then run
+      for (const envName of ["client", "ssr"]) {
+        const optimizer = server.environments[envName]?.depsOptimizer;
+        if (optimizer) {
+          const originalInit = optimizer.init;
+          optimizer.init = async function (...args) {
+            log(`Optimizer for '${envName}' is waiting for worker scan...`);
+            await workerScanComplete.promise;
+            log(
+              `Worker scan finished. Optimizer for '${envName}' is proceeding.`,
+            );
+            await originalInit.apply(this, args);
+          };
+        }
+      }
+    },
     configResolved(config) {
       if (config.command !== "serve") {
         return;
@@ -96,7 +127,6 @@ export const directiveModulesDevPlugin = ({
 
           build.onLoad({ filter }, async (args: any) => {
             if (args.path === dummyFilePaths.client) {
-              await new Promise((resolve) => setTimeout(resolve, 2000));
               log("onLoad for client barrel with %d files", clientFiles.size);
               return {
                 contents: generateBarrelContent(clientFiles, projectRootDir),
@@ -104,7 +134,6 @@ export const directiveModulesDevPlugin = ({
               };
             }
             if (args.path === dummyFilePaths.server) {
-              await new Promise((resolve) => setTimeout(resolve, 2000));
               log("onLoad for server barrel with %d files", serverFiles.size);
               return {
                 contents: generateBarrelContent(serverFiles, projectRootDir),

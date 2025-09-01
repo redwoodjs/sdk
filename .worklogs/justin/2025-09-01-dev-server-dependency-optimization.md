@@ -194,21 +194,6 @@ The corrected flow inside our `configureServer` hook is:
 
 This ensures that we register our barrels for re-optimization at the earliest possible moment, but only *after* the necessary file discovery is complete, finally resolving the race condition.
 
-### 9.11. Backtracking: A Return to Synchronous Blocking
-
-The "Post-Scan Registration" strategy, while functional, introduces a degree of unpredictability and inefficiency. It relies on a secondary, corrective optimization pass, which is wasted effort. The core issue remains a race condition, and the most direct solution is to solve it synchronously.
-
-We are therefore backtracking to the original goal: ensuring the `client` and `ssr` environments do not process their dependency barrels until the `worker` environment has completed its scan and populated the `clientFiles` and `serverFiles` sets.
-
-The revised plan is to implement a more targeted blocking mechanism:
-
-1.  **Isolate the Block:** The dependency optimization for the `client` and `ssr` environments will be allowed to run in parallel as Vite intends. However, we will intercept the processing of our specific dummy barrel files.
-2.  **Use a Blocking `onResolve` Hook:** Inside the `directiveModulesDevPlugin`, the custom `esbuild` plugin will be enhanced with an `onResolve` hook that filters for the barrel file paths.
-3.  **Defer Resolution:** When this hook intercepts a barrel file, it will pause. For the initial implementation, this pause will be a hardcoded `setTimeout` to validate that delaying the barrel processing is sufficient to solve the race condition. The rest of the dependency scan for other modules can continue unimpeded.
-4.  **Proceed After Delay:** After the timeout, the `onResolve` hook will complete, allowing the `onLoad` hook to be called. By this time, the `worker` scan will have finished, the file sets will be populated, and the `onLoad` hook will generate the correct barrel content on its first try.
-
-If this `setTimeout` validation proves successful, the next step will be to replace it with a more robust synchronization mechanism, such as a shared promise that is resolved upon the completion of the `worker` environment's scan. This returns us to a more efficient, single-pass optimization.
-
 ### 9.9. The Final Piece: Importing the Optimized Barrel
 
 The last remaining issue was identified in the `createDirectiveLookupPlugin`. This plugin was correctly generating the `virtual:use-client-lookup` and `virtual:use-server-lookup` modules, but the dynamic `import()` statements inside them were pointing to the wrong place.
@@ -241,3 +226,54 @@ The definitive solution is to hook into the optimizer's internal processing prom
 
 This creates the correct, final synchronization chain, resolving the race condition and completing the feature.
 
+### 9.11. Backtracking: A Return to Synchronous Blocking
+
+The "Post-Scan Registration" strategy, while functional, introduces a degree of unpredictability and inefficiency. It relies on a secondary, corrective optimization pass, which is wasted effort. The core issue remains a race condition, and the most direct solution is to solve it synchronously.
+
+We are therefore backtracking to the original goal: ensuring the `client` and `ssr` environments do not process their dependency barrels until the `worker` environment has completed its scan and populated the `clientFiles` and `serverFiles` sets.
+
+The revised plan is to implement a more targeted blocking mechanism:
+
+1.  **Isolate the Block:** The dependency optimization for the `client` and `ssr` environments will be allowed to run in parallel as Vite intends. However, we will intercept the processing of our specific dummy barrel files.
+2.  **Use a Blocking `onResolve` Hook:** Inside the `directiveModulesDevPlugin`, the custom `esbuild` plugin will be enhanced with an `onResolve` hook that filters for the barrel file paths.
+3.  **Defer Resolution:** When this hook intercepts a barrel file, it will pause. For the initial implementation, this pause will be a hardcoded `setTimeout` to validate that delaying the barrel processing is sufficient to solve the race condition. The rest of the dependency scan for other modules can continue unimpeded.
+4.  **Proceed After Delay:** After the timeout, the `onResolve` hook will complete, allowing the `onLoad` hook to be called. By this time, the `worker` scan will have finished, the file sets will be populated, and the `onLoad` hook will generate the correct barrel content on its first try.
+
+If this `setTimeout` validation proves successful, the next step will be to replace it with a more robust synchronization mechanism, such as a shared promise that is resolved upon the completion of the `worker` environment's scan. This returns us to a more efficient, single-pass optimization.
+
+### 9.12. A Deeper Problem: The Duplicate Dependency Issue
+
+The targeted blocking strategy, while seeming to work initially, ultimately fails. After the initial successful load, a subsequent, automatic reload occurs, which breaks the application with a "duplicate React" error.
+
+This classic error indicates that different parts of the application are resolving React from different sources (e.g., one from an optimized chunk, another from the raw `node_modules` source). This confirms that our approach of partially blocking the optimizer is leaving it in an inconsistent state. By interfering with the timing of just one part of the dependency graph (our barrel files), we are likely causing Vite to create an incomplete or conflicting set of optimized chunks, which manifests as the duplicate dependency after a reload.
+
+This proves that trying to patch the timing of the automatic, parallel optimization process is too fragile.
+
+### 9.13. The Definitive Strategy: Manual Optimizer Control
+
+The correct path forward is to stop fighting Vite's automatic behavior and instead take full control of it. We need to find a way to disable the automatic, parallel dependency optimization and trigger each environment's optimizer manually, in the correct sequence.
+
+The new plan is:
+
+1.  **Investigate Manual Control APIs:** Search Vite's codebase for a "manual mode" for the dependency optimizer. The goal is to find a configuration option that prevents the optimizer from running automatically on server startup.
+2.  **Enforce a Sequential Workflow:**
+    a.  First, we will manually trigger and `await` the completion of the `worker` environment's dependency optimization. This will guarantee that the `clientFiles` and `serverFiles` sets are fully populated.
+    b.  Once the `worker` pass is complete, we will then manually trigger the `client` and `ssr` environment optimizations, which can run in parallel with each other.
+
+This strategy is the most robust because it eliminates the race condition at its source. By dictating the order of operations, we ensure that the `client` and `ssr` optimizers have the complete and correct information before they begin their work, leading to a stable and consistent dependency graph.
+
+### 9.14. The Definitive Strategy Refined: Monkey-Patching `init`
+
+The root of the race condition lies in how Vite starts its optimizers. At startup, the `server.listen` method calls the `depsOptimizer.init()` method for all environments in parallel. This is what we need to control.
+
+A detailed inspection of the `init` method in Vite's source code revealed a critical detail: the `init` function itself returns a promise that resolves almost immediately. It is responsible for kicking off the dependency scan, but it does not wait for it to complete. The actual completion of the scan is tracked by a separate promise, `depsOptimizer.scanProcessing`.
+
+This understanding leads to our final, most robust plan:
+
+1.  **Create a Shared Signal:** A single, shared promise (`workerScanComplete`) will be created to act as a signal that the worker environment's dependency scan is finished.
+2.  **Intercept `init` via Monkey-Patching:** Using the `configureServer` hook, which runs after the optimizers are created but before they are initialized, we will replace the `init` method on the `worker`, `client`, and `ssr` optimizers.
+3.  **Enforce a Sequential Chain:**
+    *   **Worker:** The new `worker` `init` method will first call the original `init` method. It will then `await` the `depsOptimizer.scanProcessing` promise. Once that promise resolves, it will resolve our shared `workerScanComplete` promise, sending the "all clear" signal.
+    *   **Client & SSR:** The new `client` and `ssr` `init` methods will do the opposite. They will first `await` our shared `workerScanComplete` promise. Once they receive the signal, they will then proceed to call their own original `init` methods.
+
+This creates a perfect causal chain. Vite's parallel startup process is intercepted, forcing the `client` and `ssr` optimizers to wait until the `worker` optimizer has fully completed its discovery. This ensures the `clientFiles` and `serverFiles` sets are populated *before* they are needed, definitively solving the race condition.
