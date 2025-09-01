@@ -2,6 +2,7 @@ import { Plugin, ResolvedConfig } from "vite";
 import debug from "debug";
 import path from "node:path";
 import { ensureFileSync } from "fs-extra";
+import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 
 const log = debug("rwsdk:vite:directive-modules-dev");
 
@@ -13,10 +14,15 @@ const barrelIds = {
   server: VIRTUAL_SERVER_BARREL_ID,
 };
 
-const generateBarrelContent = (files: Set<string>) => {
+const generateBarrelContent = (files: Set<string>, projectRootDir: string) => {
   const imports = [...files]
     .filter((file) => file.includes("node_modules"))
-    .map((file, i) => `import * as M${i} from '${file}';`)
+    .map(
+      (file, i) =>
+        `import * as M${i} from '${normalizeModulePath(file, projectRootDir, {
+          absolute: true,
+        })}';`,
+    )
     .join("\n");
 
   const exports =
@@ -42,6 +48,43 @@ export const directiveModulesDevPlugin = ({
   return {
     name: "rwsdk:directive-modules-dev",
     enforce: "pre",
+    configureServer(server) {
+      const originalListen = server.listen;
+      server.listen = async function (...args) {
+        const result = await originalListen.apply(this, args);
+
+        const dummyFilePaths = {
+          client: path.join(
+            projectRootDir,
+            "node_modules",
+            ".vite",
+            "rwsdk-client-barrel.js",
+          ),
+          server: path.join(
+            projectRootDir,
+            "node_modules",
+            ".vite",
+            "rwsdk-server-barrel.js",
+          ),
+        };
+
+        if (clientFiles.size > 0) {
+          server.environments.client.depsOptimizer?.registerMissingImport(
+            dummyFilePaths.client,
+            dummyFilePaths.client,
+          );
+        }
+
+        if (serverFiles.size > 0) {
+          server.environments.ssr.depsOptimizer?.registerMissingImport(
+            dummyFilePaths.server,
+            dummyFilePaths.server,
+          );
+        }
+
+        return result;
+      };
+    },
     configResolved(config) {
       if (config.command !== "serve") {
         return;
@@ -67,20 +110,19 @@ export const directiveModulesDevPlugin = ({
       log("Created dummy barrel files at:", dummyFilePaths);
 
       // This esbuild plugin hijacks the dummy files
-      const esbuildPlugin = (envName: string) => ({
+      const esbuildPlugin = {
         name: "rwsdk:directive-modules-dev-esbuild",
         setup(build: any) {
           build.onLoad({ filter: /rwsdk-.*-barrel\.js/ }, (args: any) => {
-            console.log("############### onLoad", envName);
             log("ESBuild loading dummy file %s", args.path);
             const isClient = args.path.includes("client");
             const files = isClient ? clientFiles : serverFiles;
-            const contents = generateBarrelContent(files);
+            const contents = generateBarrelContent(files, projectRootDir);
             log("Returning barrel content for %s", args.path);
             return { contents, loader: "js" };
           });
         },
-      });
+      };
 
       for (const envName of ["client", "ssr"]) {
         const envConfig = config.environments[envName];
@@ -98,9 +140,7 @@ export const directiveModulesDevPlugin = ({
           // 2. Add esbuild plugin for the dependency optimizer
           envConfig.optimizeDeps.esbuildOptions ??= {};
           envConfig.optimizeDeps.esbuildOptions.plugins ??= [];
-          envConfig.optimizeDeps.esbuildOptions.plugins.push(
-            esbuildPlugin(envName),
-          );
+          envConfig.optimizeDeps.esbuildOptions.plugins.push(esbuildPlugin);
         }
       }
     },
