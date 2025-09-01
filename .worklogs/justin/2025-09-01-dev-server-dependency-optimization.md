@@ -36,3 +36,54 @@ This approach is superior because:
 
 This plan is contingent on one assumption we'll validate during implementation: that the `client` and `ssr` environment plugins are configured *after* the `worker` environment has completed its initial scan and populated the `clientFiles` set.
 
+## 4. Implementation & Refinements
+
+As we moved from the plan to implementation, several key refinements were made to improve the modularity and robustness of the solution.
+
+### 4.1. Plugin Refactoring for Clarity
+
+The initial concept was monolithic, but the logic was broken down into two distinct and more aptly named plugins for better separation of concerns:
+
+1.  **`directiveModulesDevPlugin.mts`**: This plugin's sole responsibility is to handle the dev-server optimization. It creates the virtual "barrel" modules for both client and server dependencies found in `node_modules`.
+2.  **`directiveModulesBuildPlugin.mts`**: This plugin handles build-time optimizations. It tree-shakes (filters) any unused client or server modules that were discovered during the initial scan, ensuring they don't end up in the final production build.
+
+This separation makes the purpose of each plugin clearer and the overall architecture easier to maintain.
+
+### 4.2. Namespaced Barrel for Collision-Free Exports
+
+The original plan was to have the barrel module re-export everything (`export * from '...'`). This approach had a potential flaw: two different modules could export a binding with the same name, leading to a collision.
+
+To solve this, the implementation was changed to create a **namespaced barrel**. The virtual module now generates a default export that is an object where each key is the absolute file path of a module, and the value is the imported module itself (e.g., `import * as M0 from '...'`).
+
+```javascript
+// Example of the namespaced barrel module's content
+import * as M0 from '/path/to/node_modules/library/a.js';
+import * as M1 from '/path/to/node_modules/library/b.js';
+
+export default {
+  '/path/to/node_modules/library/a.js': M0,
+  '/path/to/node_modules/library/b.js': M1,
+};
+```
+
+### 4.3. Conditional Imports at the Lookup Level
+
+The most significant refinement was *how* the barrel file is used. Instead of changing the runtime import logic, we modified the `createDirectiveLookupPlugin`. This plugin generates the `virtual:use-client-lookup` and `virtual:use-server-lookup` modules.
+
+The generated code within these lookup modules is now "smarter." In development, it contains conditional logic:
+
+-   If a module's path is in `node_modules`, it generates a dynamic import that loads our namespaced barrel and then looks up the correct module by its file path key.
+-   If the module is a local project file, it generates a standard direct dynamic import (`import('/path/to/local/file.ts')`).
+
+This final architecture is more sophisticated and robust than the original plan, achieving the goal of eliminating the request waterfall without requiring any changes to the runtime `import` logic and correctly handling all edge cases.
+
+## 5. Lingering Problem: Fine-Grained Dependency Chunking
+
+While the virtual barrel is being correctly identified as the entry point for `node_modules` dependencies, it has not fully solved the request waterfall problem.
+
+The current observation is that the browser first loads the virtual barrel module. This module then initiates hundreds of subsequent requests for every individual dependency it imports. The initiator for this new waterfall is the barrel file itself.
+
+This indicates that Vite's `optimizeDeps` is not bundling the contents of the barrel into a single chunk as intended. The likely cause is that the barrel contains standard ESM `import` statements with absolute paths, and Vite is resolving them one-by-one instead of treating the entire collection as a single dependency to be pre-bundled.
+
+The next step is to investigate how to configure Vite to treat the entire dependency graph originating from our virtual barrel as a single entity to be flattened into one optimized file. This may require a different approach to how we use `optimizeDeps.entries` or `optimizeDeps.include`, or a change to how the imports within the barrel are structured.
+
