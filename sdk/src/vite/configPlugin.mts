@@ -12,14 +12,8 @@ import {
   INTERMEDIATES_OUTPUT_DIR,
 } from "../lib/constants.mjs";
 import { buildApp } from "./buildApp.mjs";
-import {
-  VIRTUAL_CLIENT_BARREL_ID,
-  VIRTUAL_SERVER_BARREL_ID,
-} from "./directiveModulesDevPlugin.mjs";
 
 const log = debug("rwsdk:vite:config");
-
-const VIRTUAL_SSR_ENTRY_ID = "virtual:rwsdk:ssr-entry";
 
 // port(justinvdm, 09 Jun 2025):
 // https://github.com/cloudflare/workers-sdk/blob/d533f5ee7da69c205d8d5e2a5f264d2370fc612b/packages/vite-plugin-cloudflare/src/cloudflare-environment.ts#L123-L128
@@ -81,11 +75,7 @@ export const configPlugin = ({
           },
           optimizeDeps: {
             noDiscovery: false,
-            include: [
-              "rwsdk/client",
-              VIRTUAL_CLIENT_BARREL_ID,
-              VIRTUAL_SERVER_BARREL_ID,
-            ],
+            include: ["rwsdk/client"],
             entries: [],
             esbuildOptions: {
               jsx: "automatic",
@@ -111,11 +101,7 @@ export const configPlugin = ({
           optimizeDeps: {
             noDiscovery: false,
             entries: [workerEntryPathname],
-            exclude: [
-              ...externalModules,
-              VIRTUAL_CLIENT_BARREL_ID,
-              VIRTUAL_SERVER_BARREL_ID,
-            ],
+            exclude: externalModules,
             include: ["rwsdk/__ssr", "rwsdk/__ssr_bridge"],
             esbuildOptions: {
               jsx: "automatic",

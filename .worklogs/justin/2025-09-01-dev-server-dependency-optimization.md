@@ -36,7 +36,7 @@ This approach is superior because:
 
 This plan is contingent on one assumption we'll validate during implementation: that the `client` and `ssr` environment plugins are configured *after* the `worker` environment has completed its initial scan and populated the `clientFiles` set.
 
-## 4. Implementation Journey & Final Solution
+## 4. Implementation Journey & Solution
 
 The path from the initial concept to the final working solution involved several important discoveries and course corrections, which revealed subtle but critical details about how Vite's dependency optimizer operates.
 
@@ -48,9 +48,9 @@ The initial implementation followed the plan: a virtual barrel module was create
 
 The key insight was that Vite's dependency scanner (`esbuild`) **does not run on virtual modules** specified in `optimizeDeps.entries`. The scanner requires a file it can read from the filesystem. As a result, our virtual barrel was never being pre-bundled; it was being served as plain source code to the browser.
 
-### 4.3. The Final Solution: A Dual-Mechanism Plugin
+### 4.3. A Dual-Mechanism Plugin Solution
 
-The correct solution requires acknowledging two distinct phases of Vite's operation and addressing them both: **dependency scanning (pre-bundling)** and **dev server runtime**. The final implementation handles this within a single, robust plugin (`directiveModulesDevPlugin.mts`).
+The correct solution requires acknowledging two distinct phases of Vite's operation and addressing them both: **dependency scanning (pre-bundling)** and **dev server runtime**. The implementation handles this within a single, robust plugin (`directiveModulesDevPlugin.mts`).
 
 **1. For the Dependency Optimizer (esbuild):**
 
@@ -83,13 +83,27 @@ Although the dual-mechanism solution is theoretically sound, the "Failed to reso
 
 This code trace provides definitive proof that the dependency scanner **does** respect the alias system. The `pluginContainer` is the same one used by the dev server, which means it has access to the `resolve.alias` configuration. The error message indicates that our alias is not being correctly matched or applied during this specific resolution step. The next step is to use this knowledge to debug the precise format of the alias required.
 
-## 6. The Final Insight: Using `configEnvironment`
+## 6. A Key Insight: Using `configResolved`
 
-The final piece of the puzzle was realizing *when* our alias was being added relative to Vite's environment-specific configuration creation.
+A critical piece of the puzzle was realizing *when* our alias was being added relative to Vite's environment-specific configuration creation.
 
-Our plugin was using the `config` hook to add the alias. However, this hook modifies the top-level config *before* Vite creates the isolated configs for each environment (`client`, `ssr`, `worker`). As a result, our alias was being dropped and was not present in the environment-specific config that the dependency optimizer was actually using.
+Our plugin was initially attempting to use the `config` hook, and then the `configEnvironment` hook. Both were incorrect. The `config` hook runs too early, before the `environments` object is populated. The `configEnvironment` hook is suitable for some tasks, but the definitive hook for safely accessing the complete, resolved configuration for all environments is **`configResolved`**.
 
-The correct solution, confirmed by observing the `reactConditionsResolverPlugin`, is to use the **`configEnvironment`** hook. This hook is called for each specific environment, allowing us to safely inject our alias and `esbuild` plugin into the exact configuration that will be used for the dependency scan.
+By moving our logic into this hook, we can iterate over the now-guaranteed-to-exist `config.environments` object. This ensures the alias is correctly registered in the final config, the virtual module is resolved by the dependency optimizer, the `onLoad` hook in our `esbuild` plugin fires, and the dependency waterfall is solved.
 
-By moving our logic into this hook, the alias is correctly registered, the virtual module is resolved, the `onLoad` hook in our `esbuild` plugin fires, and the dependency optimizer successfully pre-bundles the barrel file, finally solving the dependency waterfall.
+## 8. The "Dummy File" Solution
+
+After extensive debugging of Vite's internal resolver, it became clear that reliably hooking into the dependency optimizer with a purely virtual module was overly complex and brittle. The most robust solution was to abandon the virtual module approach in favor of a more direct, pragmatic strategy.
+
+The final, successful implementation uses a "dummy file" to satisfy Vite's resolver while still providing our dynamic barrel content.
+
+1.  **Create a Physical Dummy File**: In the `configResolved` hook, the plugin now creates an empty placeholder file on disk (e.g., `node_modules/.vite/rwsdk-client-barrel.js`). The file's only purpose is to exist at a predictable, absolute path.
+2.  **Use `optimizeDeps.include`**: The absolute path to this dummy file is added to the `optimizeDeps.include` array. This gives Vite's `esbuild`-based scanner a real file path to resolve, which it does successfully.
+3.  **Hijack the File with `onLoad`**: A custom `esbuild` plugin is injected into the optimizer. Its `onLoad` hook is configured to filter for the absolute path of our dummy file. When `esbuild` tries to load the file's content, this hook intercepts the process, discards the empty content, and returns our dynamically generated barrel content instead.
+
+This approach is superior because it sidesteps the complexities of virtual module resolution and aliasing within the optimizer. It works *with* Vite's file-based nature by providing a real path, and then uses a standard `esbuild` pattern to dynamically provide the content, achieving the desired result in a much cleaner and more stable way.
+
+Finally, a guard was added to the plugin's `configResolved` hook to ensure this entire optimization process only runs during development (`serve` command) and is skipped for production builds.
+
+The `createDirectiveLookupPlugin` was also updated to ensure its runtime `import()` statements pointed to the new physical dummy barrel files, fully removing the last reference to the old virtual module system.
 

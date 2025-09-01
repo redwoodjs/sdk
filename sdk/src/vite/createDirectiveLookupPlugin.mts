@@ -9,10 +9,6 @@ import { stat } from "fs/promises";
 import { getSrcPaths } from "../lib/getSrcPaths.js";
 import { hasDirective } from "./hasDirective.mjs";
 import { ViteDevServer } from "vite";
-import {
-  VIRTUAL_CLIENT_BARREL_ID,
-  VIRTUAL_SERVER_BARREL_ID,
-} from "./directiveModulesDevPlugin.mjs";
 
 interface DirectiveLookupConfig {
   kind: "client" | "server";
@@ -267,12 +263,13 @@ export const ${config.exportName} = {
   ${Array.from(files)
     .map((file: string) => {
       if (file.includes("node_modules") && isDev) {
-        const barrelId =
+        const barrelFileName =
           config.kind === "client"
-            ? VIRTUAL_CLIENT_BARREL_ID
-            : VIRTUAL_SERVER_BARREL_ID;
+            ? "rwsdk-client-barrel.js"
+            : "rwsdk-server-barrel.js";
+        const barrelPath = path.join("/node_modules", ".vite", barrelFileName);
         return `
-  "${file}": () => import("${barrelId}").then(m => m.default["${file}"]),
+  "${file}": () => import("${barrelPath}").then(m => m.default["${file}"]),
 `;
       } else {
         return `

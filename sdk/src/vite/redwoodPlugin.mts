@@ -110,6 +110,7 @@ export const redwoodPlugin = async (
     directiveModulesDevPlugin({
       clientFiles,
       serverFiles,
+      projectRootDir,
     }),
     directiveModulesBuildPlugin({
       clientFiles,
