@@ -232,7 +232,7 @@ export const ${config.exportName} = {
         );
 
         const optimizer =
-          config.kind === "client"
+          this.environment.name === "client"
             ? devServer.environments.client.depsOptimizer
             : devServer.environments.ssr.depsOptimizer;
 
