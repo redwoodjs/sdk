@@ -218,6 +218,13 @@ export const createDirectiveLookupPlugin = async ({
     projectRootDir,
   );
 
+  await findFilesContainingDirective({
+    projectRootDir,
+    files,
+    directive: config.directive,
+    debugNamespace,
+  });
+
   let devServer: ViteDevServer;
 
   return {
@@ -245,7 +252,6 @@ export const createDirectiveLookupPlugin = async ({
       viteConfig.optimizeDeps ??= {};
       viteConfig.optimizeDeps.esbuildOptions ??= {};
       viteConfig.optimizeDeps.esbuildOptions.plugins ??= [];
-
       viteConfig.optimizeDeps.esbuildOptions.plugins.push({
         name: `rwsdk:${config.pluginName}`,
         setup(build) {
@@ -314,13 +320,16 @@ export const createDirectiveLookupPlugin = async ({
 
       if (source === `${config.virtualModuleName}.js`) {
         log("Resolving %s module", config.virtualModuleName);
-
         // context(justinvdm, 16 Jun 2025): Include .js extension
         // so it goes through vite processing chain
         return source;
       }
+
+      process.env.VERBOSE && log("No resolution for id=%s", source);
     },
     async load(id) {
+      process.env.VERBOSE && log("Loading id=%s", id);
+
       if (id === config.virtualModuleName + ".js") {
         log(
           "Loading %s module with %d files",
@@ -370,6 +379,8 @@ export const ${config.exportName} = {
           map,
         };
       }
+
+      process.env.VERBOSE && log("No load handling for id=%s", id);
     },
   };
 };
