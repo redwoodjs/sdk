@@ -1,14 +1,12 @@
 import MagicString from "magic-string";
 import path from "path";
-import { Plugin } from "vite";
+import { Plugin, ViteDevServer } from "vite";
 import { readFile } from "fs/promises";
 import debug from "debug";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
-import { pathExists } from "fs-extra";
 import { stat } from "fs/promises";
 import { getSrcPaths } from "../lib/getSrcPaths.js";
 import { hasDirective } from "./hasDirective.mjs";
-import { ViteDevServer } from "vite";
 
 interface DirectiveLookupConfig {
   kind: "client" | "server";
@@ -89,6 +87,7 @@ export const createDirectiveLookupPlugin = async ({
   const debugNamespace = `rwsdk:vite:${config.pluginName}`;
   const log = debug(debugNamespace);
   let isDev = false;
+  let devServer: ViteDevServer;
 
   log(
     "Initializing %s plugin with projectRootDir=%s",
@@ -108,6 +107,9 @@ export const createDirectiveLookupPlugin = async ({
     config(_, { command, isPreview }) {
       isDev = !isPreview && command === "serve";
       log("Development mode: %s", isDev);
+    },
+    configureServer(server) {
+      devServer = server;
     },
     configEnvironment(env, viteConfig) {
       log("Configuring environment: env=%s", env);
@@ -211,11 +213,28 @@ export const ${config.exportName} = {
             ? "rwsdk-client-barrel.js"
             : "rwsdk-server-barrel.js";
 
-        const barrelPath = path.posix.join(
-          "/node_modules",
+        const dummyPath = path.join(
+          projectRootDir,
+          "node_modules",
           ".vite",
           barrelFileName,
         );
+
+        const optimizer =
+          this.environment.name === "client"
+            ? devServer.environments.client.depsOptimizer
+            : devServer.environments.ssr.depsOptimizer;
+
+        const barrelPath = optimizer?.metadata.optimized[dummyPath]?.file;
+
+        if (!barrelPath) {
+          // This can happen if the barrel is empty (no client/server deps).
+          // Return an empty object to avoid breaking the import.
+          return `
+  "${file}": () => Promise.resolve({ default: {} }),
+`;
+        }
+
         return `
   "${file}": () => import("${barrelPath}").then(m => m.default["${file}"]),
 `;
