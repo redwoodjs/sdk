@@ -46,10 +46,10 @@
       "default": "./dist/runtime/ssrBridge.js"
     },
     "./__client_barrel": {
-      "default": "./dist/__intermediate_builds/client/rwsdk-client-barrel.js"
+      "default": "./dist/__intermediate_builds/rwsdk-client-barrel.js"
     },
     "./__server_barrel": {
-      "default": "./dist/__intermediate_builds/server/rwsdk-server-barrel.js"
+      "default": "./dist/__intermediate_builds/rwsdk-server-barrel.js"
     },
     "./router": {
       "types": "./dist/runtime/entries/router.d.ts",

@@ -15,13 +15,11 @@ export const INTERMEDIATES_OUTPUT_DIR = resolve(
 
 export const CLIENT_BARREL_PATH = resolve(
   INTERMEDIATES_OUTPUT_DIR,
-  "client",
   "rwsdk-client-barrel.js",
 );
 
 export const SERVER_BARREL_PATH = resolve(
   INTERMEDIATES_OUTPUT_DIR,
-  "ssr",
   "rwsdk-server-barrel.js",
 );
 
