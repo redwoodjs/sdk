@@ -220,23 +220,8 @@ export const ${config.exportName} = {
           barrelFileName,
         );
 
-        const optimizer =
-          this.environment.name === "client"
-            ? devServer.environments.client.depsOptimizer
-            : devServer.environments.ssr.depsOptimizer;
-
-        const barrelPath = optimizer?.metadata.optimized[dummyPath]?.file;
-
-        if (!barrelPath) {
-          // This can happen if the barrel is empty (no client/server deps).
-          // Return an empty object to avoid breaking the import.
-          return `
-  "${file}": () => Promise.resolve({ default: {} }),
-`;
-        }
-
         return `
-  "${file}": () => import("${barrelPath}").then(m => m.default["${file}"]),
+  "${file}": () => import("${dummyPath}").then(m => m.default["${file}"]),
 `;
       } else {
         return `
