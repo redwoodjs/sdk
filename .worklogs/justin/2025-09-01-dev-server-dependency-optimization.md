@@ -375,3 +375,13 @@ An analysis of the optimizer's output in the `.vite/deps` directory has revealed
 This is the definitive proof of the problem. Vite is processing the application and the barrel file as two completely separate dependency graphs. It correctly identifies the need for `jsx-runtime` in the application graph, but it fails to do so for the barrel file graph. When the browser attempts to render a component from the barrel's chunk, it crashes because the necessary JSX runtime is missing from its scope.
 
 The root cause appears to be a failure in Vite's dependency scanner to detect the implicit `jsx-runtime` dependency for the modules imported within our barrel file.
+
+### 9.17. The Real Root Cause: A Re-Optimization Trigger
+
+Further investigation has revealed that the "duplicate dependency" issue is not a result of a dependency graph schism, but of a secondary re-optimization pass being triggered by Vite.
+
+After implementing the standalone `esbuild` scan based on the `worker` entry point, we observed the following behavior:
+1.  The initial page load is successful.
+2.  Shortly after, the browser re-fetches the pre-bundled dependency chunks, but with a new `?v=<hash>` query string.
+
+This confirms that Vite is performing a corrective re-optimization pass after the initial server startup has completed. The trigger for this re-optimization is the subject of our current investigation.
