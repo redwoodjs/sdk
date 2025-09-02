@@ -221,7 +221,7 @@ export async function modifyAppForRealtime(
         if (lastImportPosition > 0) {
           s.appendRight(
             lastImportPosition,
-            'import "/src/app/components/__SmokeTestClient.tsx";\n',
+            'import "@/app/components/__SmokeTestClient.tsx";\n',
           );
           log("Added __SmokeTestClient.tsx import");
         } else {
