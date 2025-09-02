@@ -9,6 +9,9 @@ import { SERVER_BARREL_PATH } from "../lib/constants.mjs";
 export const VIRTUAL_CLIENT_BARREL_ID = "virtual:rwsdk:client-module-barrel";
 export const VIRTUAL_SERVER_BARREL_ID = "virtual:rwsdk:server-module-barrel";
 
+const CLIENT_BARREL_EXPORT_PATH = "rwsdk/__client_barrel";
+const SERVER_BARREL_EXPORT_PATH = "rwsdk/__server_barrel";
+
 const generateBarrelContent = (files: Set<string>, projectRootDir: string) => {
   const imports = [...files]
     .filter((file) => file.includes("node_modules"))
@@ -88,8 +91,8 @@ export const directiveModulesDevPlugin = ({
         if (envName === "client" || envName === "ssr") {
           env.optimizeDeps.include = [
             ...(env.optimizeDeps.include || []),
-            dummyFilePaths.client,
-            dummyFilePaths.server,
+            CLIENT_BARREL_EXPORT_PATH,
+            SERVER_BARREL_EXPORT_PATH,
           ];
         }
       }

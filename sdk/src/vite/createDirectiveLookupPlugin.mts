@@ -137,7 +137,7 @@ export const createDirectiveLookupPlugin = async ({
           build.onResolve(
             {
               filter: new RegExp(
-                `^(${escapedVirtualModuleName}|${escapedPrefixedModuleName})\.js$`,
+                `^(${escapedVirtualModuleName}|${escapedPrefixedModuleName})\\.js$`,
               ),
             },
             () => {
@@ -210,14 +210,12 @@ export const ${config.exportName} = {
     .map((file: string) => {
       if (file.includes("node_modules") && isDev) {
         const barrelPath =
-          config.kind === "client" ? CLIENT_BARREL_PATH : SERVER_BARREL_PATH;
-
-        const outputBarrelPath =
-          devServer.environments[environment]?.depsOptimizer?.metadata
-            ?.optimized[barrelPath].file;
+          config.kind === "client"
+            ? "rwsdk/__client_barrel"
+            : "rwsdk/__server_barrel";
 
         return `
-  "${file}": () => import("${outputBarrelPath}").then(m => m.default["${file}"]),
+  "${file}": () => import("${barrelPath}").then(m => m.default["${file}"]),
 `;
       } else {
         return `
