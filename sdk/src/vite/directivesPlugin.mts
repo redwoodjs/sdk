@@ -62,6 +62,12 @@ export const directivesPlugin = ({
       });
     },
     async transform(code, id) {
+      if (
+        this.environment?.name === "worker" &&
+        process.env.RWSDK_BUILD_PASS !== "worker"
+      ) {
+        return;
+      }
       const normalizedId = normalizeModulePath(id, projectRootDir);
 
       const clientResult = await transformClientComponents(code, normalizedId, {
@@ -97,6 +103,12 @@ export const directivesPlugin = ({
       // Removed: too noisy even in verbose mode
     },
     configEnvironment(env, config) {
+      if (
+        this.environment?.name === "worker" &&
+        process.env.RWSDK_BUILD_PASS !== "worker"
+      ) {
+        return;
+      }
       process.env.VERBOSE && log("Configuring environment: env=%s", env);
       config.optimizeDeps ??= {};
       config.optimizeDeps.esbuildOptions ??= {};

@@ -48,6 +48,13 @@ export const createDirectiveLookupPlugin = async ({
       devServer = server;
     },
     configEnvironment(env, viteConfig) {
+      if (
+        !isDev &&
+        process.env.RWSDK_BUILD_PASS &&
+        process.env.RWSDK_BUILD_PASS !== "worker"
+      ) {
+        return;
+      }
       log("Configuring environment: env=%s", env);
 
       viteConfig.optimizeDeps ??= {};
@@ -123,8 +130,14 @@ export const createDirectiveLookupPlugin = async ({
     resolveId(source) {
       if (source === `${config.virtualModuleName}.js`) {
         log("Resolving %s module", config.virtualModuleName);
-        // context(justinvdm, 16 Jun 2025): Include .js extension
-        // so it goes through vite processing chain
+
+        if (!isDev && this.environment?.name === "worker") {
+          if (process.env.RWSDK_BUILD_PASS === "worker") {
+            log("Marking as external for worker pass");
+            return { id: source, external: true };
+          }
+        }
+
         return source;
       }
     },

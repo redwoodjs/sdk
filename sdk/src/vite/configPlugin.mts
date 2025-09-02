@@ -192,29 +192,6 @@ export const configPlugin = ({
           },
         },
         worker: workerConfig,
-        linker: {
-          ...workerConfig,
-          build: {
-            ...workerConfig.build,
-            outDir: resolve(projectRootDir, "dist", "worker"),
-            emptyOutDir: false,
-            emitAssets: false,
-            ssr: true,
-            minify: mode !== "development",
-            rollupOptions: {
-              ...workerConfig.build?.rollupOptions,
-              external: externalModules,
-              input: {
-                worker: resolve(projectRootDir, "dist", "worker", "worker.js"),
-              },
-              output: {
-                ...workerConfig.build?.rollupOptions?.output,
-                inlineDynamicImports: true,
-                entryFileNames: "worker.js",
-              },
-            },
-          },
-        },
       },
       server: {
         hmr: true,

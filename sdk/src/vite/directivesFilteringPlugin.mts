@@ -18,7 +18,10 @@ export const directivesFilteringPlugin = ({
     name: "rwsdk:directives-filtering",
     enforce: "post",
     async buildEnd() {
-      if (this.environment.name !== "worker") {
+      if (
+        this.environment.name !== "worker" ||
+        process.env.RWSDK_BUILD_PASS !== "worker"
+      ) {
         return;
       }
 

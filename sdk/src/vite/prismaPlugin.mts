@@ -25,7 +25,11 @@ export const prismaPlugin = async ({
   return {
     name: "rwsdk:prisma",
     configEnvironment(name, config) {
-      if (name !== "worker") {
+      if (
+        name !== "worker" ||
+        (process.env.RWSDK_BUILD_PASS &&
+          process.env.RWSDK_BUILD_PASS !== "worker")
+      ) {
         return;
       }
 

@@ -14,10 +14,14 @@ export const linkerPlugin = ({
 }): Plugin => {
   return {
     name: "rwsdk:linker",
-    applyToEnvironment(environment) {
-      return environment.name === "linker";
-    },
     async renderChunk(code) {
+      if (
+        this.environment.name !== "worker" ||
+        process.env.RWSDK_BUILD_PASS !== "linker"
+      ) {
+        return null;
+      }
+
       log("Rendering final worker chunk");
       let newCode = code;
 

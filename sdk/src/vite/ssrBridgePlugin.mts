@@ -109,16 +109,22 @@ export const ssrBridgePlugin = ({
           return virtualId;
         }
       } else {
-        // context(justinvdm, 2 Sep 2025): In builds, we resolve to the path
-        // of the intermediate SSR bridge build. Since we're no longer treating
-        // it as external, Vite will bundle it directly into the worker.
+        // In build mode, the behavior depends on the build pass
         if (id === "rwsdk/__ssr_bridge" && this.environment.name === "worker") {
-          log(
-            "Bridge module case (build): id=%s matches rwsdk/__ssr_bridge in worker environment, resolving to intermediate path=%s",
-            id,
-            INTERMEDIATE_SSR_BRIDGE_PATH,
-          );
-          return { id: INTERMEDIATE_SSR_BRIDGE_PATH, external: false };
+          if (process.env.RWSDK_BUILD_PASS === "worker") {
+            // First pass: resolve to a temporary, external path
+            log(
+              "Bridge module case (build-worker pass): resolving to external path",
+            );
+            return { id: INTERMEDIATE_SSR_BRIDGE_PATH, external: true };
+          } else if (process.env.RWSDK_BUILD_PASS === "linker") {
+            // Second pass (linker): resolve to the real intermediate build
+            // artifact so it can be bundled in.
+            log(
+              "Bridge module case (build-linker pass): resolving to bundleable path",
+            );
+            return { id: INTERMEDIATE_SSR_BRIDGE_PATH, external: false };
+          }
         }
       }
     },

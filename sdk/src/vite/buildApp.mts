@@ -1,3 +1,4 @@
+import { resolve } from "node:path";
 import debug from "debug";
 import path from "path";
 import type { ViteBuilder } from "vite";
@@ -26,9 +27,7 @@ export async function buildApp({
   serverFiles: Set<string>;
   projectRootDir: string;
 }) {
-  // The initial scan discovers all possible directive files. The filtering
-  // plugin will then narrow this down after the worker build.
-  await runDirectivesScan({
+  const metafile = await runDirectivesScan({
     rootConfig: builder.config,
     envName: "worker",
     clientFiles,
@@ -37,7 +36,9 @@ export async function buildApp({
   });
 
   console.log("Building worker to discover used client components...");
-  await builder.build(builder.environments.worker);
+  const workerEnv = builder.environments.worker;
+  process.env.RWSDK_BUILD_PASS = "worker";
+  await builder.build(workerEnv);
 
   log(
     "Used client files after worker build & filtering: %O",
@@ -45,7 +46,7 @@ export async function buildApp({
   );
 
   console.log("Building SSR...");
-  await builder.build(builder.environments.ssr);
+  await builder.build(ssrEnv);
 
   log("Discovered clientEntryPoints: %O", Array.from(clientEntryPoints));
 
@@ -65,7 +66,19 @@ export async function buildApp({
   await builder.build(clientEnv);
 
   console.log("Linking worker build...");
-  await builder.build(builder.environments.linker);
+  process.env.RWSDK_BUILD_PASS = "linker";
+
+  // Re-configure the worker environment for the linking pass
+  const workerConfig = workerEnv.config;
+  workerConfig.build!.emptyOutDir = false;
+  workerConfig.build!.rollupOptions!.input = {
+    worker: resolve(projectRootDir, "dist", "worker", "worker.js"),
+  };
+  workerConfig.build!.rollupOptions!.output! = {
+    entryFileNames: "worker.js",
+  };
+
+  await builder.build(workerEnv);
 
   console.log("Build complete!");
 }
