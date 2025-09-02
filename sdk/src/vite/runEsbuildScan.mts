@@ -13,6 +13,7 @@ import { hasDirective } from "./hasDirective.mjs";
 import path from "node:path";
 import debug from "debug";
 import { ensureAliasArray } from "./ensureAliasArray.mjs";
+import { getViteEsbuild } from "./getViteEsbuild.mjs";
 
 const log = debug("rwsdk:vite:esbuild-scan");
 
@@ -96,6 +97,7 @@ export async function runEsbuildScan({
   clientFiles: Set<string>;
   serverFiles: Set<string>;
 }) {
+  const esbuild = await getViteEsbuild(rootConfig.root);
   const env = rootConfig.environments[envName];
   const input = env.build.rollupOptions?.input;
   let entries: string[];

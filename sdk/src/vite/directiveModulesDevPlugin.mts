@@ -3,6 +3,7 @@ import path from "node:path";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { runEsbuildScan } from "./runEsbuildScan.mjs";
+import { getViteEsbuild } from "./getViteEsbuild.mjs";
 
 export const VIRTUAL_CLIENT_BARREL_ID = "virtual:rwsdk:client-module-barrel";
 export const VIRTUAL_SERVER_BARREL_ID = "virtual:rwsdk:server-module-barrel";
