@@ -413,3 +413,15 @@ A simplification was attempted in the `directiveModulesDevPlugin`. The `esbuild`
 Unexpectedly, this change did not work. Reverting the change also failed to fix the issue. The application has regressed to a previous failure state, exhibiting the optimizer-related problem where the pre-bundled barrel is not correctly used, causing the request waterfall to reappear.
 
 This indicates that the stability of the solution was not what it seemed, and the `onLoad` plugin's role, or some other subtle factor, was more critical than understood. The next step is to re-investigate the optimizer's behavior with the simplified code in place to find the new root cause.
+
+### 9.20. A New Approach: Leveraging Package Subpath Exports
+
+The previous regression led to a new insight. The complex, runtime lookup of the optimized barrel path within the `createDirectiveLookupPlugin` was a potential source of fragility. It relied on manually inspecting Vite's internal `depsOptimizer.metadata`, which is not a stable public API.
+
+A much cleaner and more robust strategy is to treat our generated barrel files as first-class package subpaths.
+
+1.  **Create Package Exports:** In `sdk/package.json`, new entries were added to the `exports` map (e.g., `"./__client_barrel": "..."`). This officially registers the barrel files as resolvable parts of our `rwsdk` package.
+2.  **Use Subpath in `optimizeDeps`:** The `directiveModulesDevPlugin` was updated to add the package subpaths (`rwsdk/__client_barrel`) to the `optimizeDeps.include` array, instead of the absolute file paths.
+3.  **Simplify the Lookup Plugin:** The `createDirectiveLookupPlugin` was simplified. Instead of dynamically looking up the final, hashed path from the optimizer's metadata, it now generates a simple `import("rwsdk/__client_barrel")`.
+
+This approach is superior because it relies entirely on Vite's standard, built-in module resolution for package subpaths. By treating our barrel as a legitimate dependency, we allow Vite's dev server to handle the resolution to the correct, optimized chunk automatically, removing our brittle, manual lookup and greatly simplifying the code.
