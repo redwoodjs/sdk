@@ -17,6 +17,9 @@ This collection of documents provides a high-level overview of the core architec
 - [**The Production Build Process**](./productionBuildProcess.md)
   This document outlines the multi-phase build process used for production environments. It explains how the framework orchestrates multiple, inter-dependent Vite environments (`worker`, `client`, `ssr`) with circular information dependencies into a reliable, sequential build.
 
+- [**Dev Server Dependency Optimization**](./devServerDependencyOptimization.md)
+  This document outlines the strategy and mechanisms used to optimize the development server's dependency resolution and build performance.
+
 - [**React's Hoisting Behavior for `<link>`**](./reactHoisting.md)
   A brief explanation of a key React 19 feature that underpins our entire asset handling strategy. It details how React's ability to automatically move `<link>` tags to the document `<head>` allows for a clean and effective implementation of stylesheet and script preloading.
 
