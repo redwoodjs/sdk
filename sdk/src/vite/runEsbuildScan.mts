@@ -46,7 +46,6 @@ function createEsbuildScanPlugin({
             find instanceof RegExp ? find : new RegExp(`^${find}(\\/.*)?$`);
           if (findPattern.test(args.path)) {
             const newPath = args.path.replace(findPattern, replacement);
-            log("Alias matched: %s -> %s", args.path, newPath);
             return build.resolve(newPath, {
               importer: args.importer,
               resolveDir: args.resolveDir,
@@ -57,7 +56,7 @@ function createEsbuildScanPlugin({
         return null;
       });
 
-      build.onLoad({ filter: /\.[jt]sx?$/ }, async (args: OnLoadArgs) => {
+      build.onLoad({ filter: /\.(m|c)?[jt]sx?$/ }, async (args: OnLoadArgs) => {
         if (
           !args.path.startsWith("/") ||
           args.path.includes("virtual:") ||
