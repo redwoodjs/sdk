@@ -225,6 +225,7 @@ export const configPlugin = ({
             projectRootDir,
             clientEntryPoints,
             clientFiles,
+            serverFiles,
           });
         },
       },

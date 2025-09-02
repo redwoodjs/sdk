@@ -1,5 +1,6 @@
 import debug from "debug";
 import type { ViteBuilder } from "vite";
+import { runDirectivesScan } from "./runDirectivesScan.mjs";
 
 const log = debug("rwsdk:vite:build-app");
 
@@ -14,14 +15,21 @@ export async function buildApp({
   builder,
   clientEntryPoints,
   clientFiles,
+  serverFiles,
+  projectRootDir,
 }: {
   builder: ViteBuilder;
   clientEntryPoints: Set<string>;
   clientFiles: Set<string>;
+  serverFiles: Set<string>;
   projectRootDir: string;
 }) {
-  // The pre-scan in `directiveModulesBuildPlugin` will have already run at this point,
-  // populating clientFiles.
+  await runDirectivesScan({
+    rootConfig: builder.config,
+    envName: "worker",
+    clientFiles,
+    serverFiles,
+  });
 
   console.log("Building SSR...");
   await builder.build(builder.environments.ssr);
