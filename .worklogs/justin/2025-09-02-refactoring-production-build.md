@@ -28,14 +28,20 @@ This "scan-first" model introduced a subtle but critical regression. The origina
 
 Our standalone `esbuild` scan was not a true substitute. It identified *every* file containing a `"use client"` directive anywhere in the dependency graph, not just the "entry" components used by our server code. This resulted in an enormous, unfiltered list of components being passed to the `ssr` build, defeating a critical optimization. We briefly attempted to use the `esbuild` metafile to perform tree-shaking, but this was also not a sufficiently accurate replacement for the real bundler's module graph analysis. The approach was abandoned.
 
-## 3. The Path Forward: Fixing the Linker Environment
+## 3. The Definitive Solution: A "Two-Pass Worker" Build
 
-We are now returning to the original, `worker`-first build order, as it is the only way to get the accurate, tree-shaken list of client components.
+We are returning to the original, `worker`-first build order, as it is the only way to get the accurate, tree-shaken list of client components. This brings us back to the original problem: how to ensure the `linker` pass gets the same transformations as the `worker` pass.
 
-`Worker Build -> Client Build -> SSR Build -> Linker Build`
+Our initial idea was to have the `linker` environment "inherit" the configuration from the `worker` environment. However, this approach is fundamentally flawed. Vite plugins are instantiated once at the root level. A new `linker` environment, even if created by spreading the `worker` config, would not correctly reuse the active plugin instances (like the Cloudflare plugin). The plugins would see an environment named "linker" and would not apply their necessary transformations.
 
-This means we are once again facing the original problem: the `linker` environment is not correctly configured to process the SSR artifacts. Our initial attempt to solve this by manually merging the `worker` and `linker` configurations was brittle and failed.
+The definitive solution is to eliminate the `linker` environment entirely and instead run the `worker` build twice.
 
-Our definitive solution is to make the `linker` environment a high-fidelity clone of the `worker` environment, not by merging, but by **inheritance**. The plan is to programmatically construct the `linker` configuration in `configPlugin.mts` by taking the *entire* `worker` config object as a base, and then precisely overriding only the properties essential for the linking step (like `build.rollupOptions.input`).
+1.  **Orchestration with an Environment Variable:** The `buildApp` function now orchestrates a two-pass process. It sets a `process.env.RWSDK_BUILD_PASS` variable to differentiate between the passes:
+    *   `RWSDK_BUILD_PASS='worker'`: The first pass runs. It performs source code transformation, tree-shaking, and discovers client entry points.
+    *   `RWSDK_BUILD_PASS='linker'`: The second pass runs.
 
-This ensures that all plugins (including the Cloudflare plugin), resolvers, and other critical settings from the `worker` environment are present and correctly configured for the `linker` phase. When the `linker` bundles the SSR artifacts, they will undergo the exact same transformations as the main worker code, solving the runtime error problem while preserving the necessary `worker`-first build order for accurate tree-shaking.
+2.  **In-Memory Reconfiguration:** Before the second pass, `buildApp` modifies the *existing, in-memory* worker environment configuration. It changes the `build.rollupOptions.input` to point to the intermediate worker artifact and the SSR bridge, effectively turning this second pass into our linker.
+
+3.  **Pass-Aware Plugins:** All of our custom plugins (`ssrBridgePlugin`, `linkerPlugin`, `directivesFilteringPlugin`, etc.) have been updated with a simple conditional check. They now inspect `process.env.RWSDK_BUILD_PASS` and only execute their logic during the appropriate pass.
+
+This "two-pass worker" strategy is the most robust solution. It guarantees that the final linking step runs within the *exact same*, fully-resolved `worker` environment, ensuring that all plugins—especially the critical Cloudflare plugin—are active and correctly transform the SSR artifacts before they are bundled.
