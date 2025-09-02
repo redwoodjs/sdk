@@ -182,7 +182,6 @@ export const configPlugin = ({
         linker: {
           resolve: {
             conditions: ["workerd", "react-server", "module", "node"],
-            external: externalModules,
           },
           define: {
             "import.meta.env.RWSDK_ENV": JSON.stringify("worker"),
@@ -194,6 +193,7 @@ export const configPlugin = ({
             ssr: true,
             minify: mode !== "development",
             rollupOptions: {
+              external: externalModules,
               input: {
                 worker: resolve(projectRootDir, "dist", "worker", "worker.js"),
               },
