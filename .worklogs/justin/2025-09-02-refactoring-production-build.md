@@ -45,3 +45,13 @@ The definitive solution is to eliminate the `linker` environment entirely and in
 3.  **Pass-Aware Plugins:** All of our custom plugins (`ssrBridgePlugin`, `linkerPlugin`, `directivesFilteringPlugin`, etc.) have been updated with a simple conditional check. They now inspect `process.env.RWSDK_BUILD_PASS` and only execute their logic during the appropriate pass.
 
 This "two-pass worker" strategy is the most robust solution. It guarantees that the final linking step runs within the *exact same*, fully-resolved `worker` environment, ensuring that all plugins—especially the critical Cloudflare plugin—are active and correctly transform the SSR artifacts before they are bundled.
+
+## 4. Final State & Dev Server Fix
+
+The "Two-Pass Worker" build is now fully implemented and working. However, the initial implementation of the "pass-aware" plugin logic introduced a regression that broke the development server.
+
+The conditional check (e.g., `process.env.RWSDK_BUILD_PASS !== 'worker'`) was too broad. In dev mode, the `RWSDK_BUILD_PASS` variable is `undefined`, causing the check to incorrectly evaluate to `true` and disable critical plugins like the `directivesPlugin`.
+
+The fix was to make the check more specific. We introduced an `isBuild` flag (set in the `configResolved` hook) to the plugins. The pass-aware logic is now only applied when `isBuild` is true, ensuring that the plugins run correctly and without interference in dev mode.
+
+With this final fix, the refactoring is complete. The production build is robust, and the development server is fully functional.

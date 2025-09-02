@@ -1,64 +1,45 @@
 # The Production Build Process
 
-This document outlines the multi-phase build process used for production environments.
+This document outlines the multi-phase build process used for production environments, designed to orchestrate a series of interdependent Vite builds.
 
-## The Challenge: Orchestrating Inter-Dependent Environments
+## The Challenge: A Deadlock of Circular Dependencies
 
-The production build must solve several interconnected problems simultaneously, arising from the use of multiple, specialized Vite environments (`worker`, `client`, `ssr`) that have circular information dependencies:
+The production build must solve several interconnected problems simultaneously. We use multiple, specialized Vite environments (`worker`, `client`, `ssr`), and they have circular information dependencies that create a classic build deadlock:
 
-1.  **SSR / Worker Dependency:** The `worker` environment, which is configured for React Server Components (RSC), must bundle the entire output of the `ssr` build. The `ssr` environment handles traditional server-side rendering. For a detailed explanation of how these environments interact, see the [SSR Bridge](./ssrBridge.md) architecture document. This creates a build ordering dependency: the `ssr` build must complete before the final `worker` build can begin.
+1.  **Client/Worker Dependency:** The `worker` build is responsible for traversing the application's component tree. During this traversal, it discovers all client-side JavaScript entry points (from `<script>` tags and dynamic `import()` calls). This list of entry points is the essential input for the `client` build. Therefore, the `worker` build must run *before* the `client` build.
 
-2.  **Dynamic Client Entry Points:** The `client` build needs a list of all client-side JavaScript entry points (e.g., from `<script>` tags) to know what to bundle. This information is only available by traversing the application's `Document.tsx` components, which occurs during the `worker` build.
+2.  **SSR/Worker Dependency:** The `worker` environment needs to bundle the output of the `ssr` build, which includes server-rendered component code and crucial lookup maps. Therefore, the `ssr` build must run *before* the final `worker` bundle is created.
 
-3.  **Tree-Shaking for Client and SSR Components:** Both the `ssr` and `client` builds need to know which `"use client"` components are actually used by the application. In the `ssr` build, this information is used to avoid bundling unnecessary server-side code for unused components. In the `client` build, it allows for more optimal code-splitting, preventing the creation of overly granular chunks that result from a bundler seeing every potential client component as a dynamic import. This list is discoverable by traversing the application graph within the `worker` build.
+3.  **The Deadlock:** These requirements create a contradiction. The `worker` must run before the `client`, but the `ssr` must run before the `worker`. Complicating this, the `ssr` build itself needs a tree-shaken list of *used* client components, which is only accurately produced *after* the `worker` build has performed its own tree-shaking.
 
-4.  **Deferred Asset Linking:** The final `worker` bundle needs to contain the correct, hashed output paths of all client assets (e.g., `/assets/client.a1b2c3d4.js`). These paths are only known after the `client` build has run and generated its `manifest.json`.
+## The Solution: A Scan-First, Two-Pass Build
 
-5.  **Client Component Lookup:** The `worker` environment needs to dynamically load the SSR-processed versions of client components at runtime. This requires a lookup map—the `__client_lookup.mjs` module—that translates a component's source path to its final, bundled SSR chunk path. This map can only be generated during the `ssr` build.
+To resolve this, we implement a process that begins with a broad discovery scan, followed by a two-pass `worker` build that progressively refines the build artifacts.
 
-These points create a deadlock. The `worker` build needs information from the `client` build (the manifest) and the `ssr` build (the bridge and lookup map bundles), but both of those builds need information discovered during the `worker` build.
+### Step 1: Initial Directive Scan
 
-## The Solution: A Phased, Sequential Build
+Before any Vite environments are built, we run a fast, preliminary `esbuild` scan on the application's `worker` entry point.
 
-To resolve this, we implement a **four-phase** sequential build process. Each of the first three phases produces artifacts that are used as inputs for a final "linking" phase, which assembles the deployable worker.
+-   **Purpose:** The goal of this scan is to traverse the entire potential dependency graph and create a master list of every file that contains a `"use client"` or `"use server"` directive.
+-   **Vite Compatibility:** This scan is configured to use a custom plugin that mirrors Vite's own resolving capabilities, allowing it to correctly handle project-specific configurations like `resolve.alias`.
 
-### Phase 1: Worker Pass
+This initial step provides a complete, albeit unfiltered, list of all potential directive modules.
 
-The `worker` environment is built first. This is a full build pass that performs all necessary transformations on the application source code (`src/worker.tsx`). This phase involves two main stages:
+### Step 2: The Two-Pass Worker Build
 
-1.  **Discovery:** As Vite traverses the source graph, a custom plugin identifies all modules that contain a `"use client"` directive, adding them to a preliminary list of potential client components.
-2.  **Filtering:** After Vite completes its build and generates the tree-shaken module graph for the worker, another custom plugin hook (`buildEnd`) runs. This hook iterates through the preliminary list of client components. For each component, it queries Vite's module graph metadata to determine if the component was actually included in the final worker bundle (`isIncluded`). Any component that was tree-shaken away by Vite is removed from the list.
+With the master list of directives, the sequential build can begin. The core of the solution is to run the `worker` build twice, with each pass serving a distinct purpose.
 
-The crucial **side-effects** of this phase are two refined lists:
-- A complete and accurate list of all modules containing a `"use client"` directive that are part of the worker's final module graph.
-- A complete list of all client-side entry points.
+1.  **`RWSDK_BUILD_PASS='worker'` (First Pass):** The `worker` environment is built for the first time.
+    *   **Primary Goal: Accurate Tree-Shaking.** This pass is essential because it allows Vite/Rollup to perform a full build and tree-shaking on the server-side code. At the end of this build, our custom `directivesFilteringPlugin` compares the master list from the initial scan against Vite's final module graph. It removes any directive file that was not actually included in the final bundle, producing an accurate, minimal list of *used* components.
+    *   **Other Side-Effects:** This pass also discovers client entry points, rewrites asset paths to a placeholder format (e.g., `rwsdk_asset:...`), and resolves imports for artifacts that don't exist yet (like the SSR bridge) to external paths. The output is an intermediate, non-deployable `worker.js`.
 
-During this phase:
-- Transformations that reference client assets (like `<script src="...">`) rewrite them into a special placeholder format (e.g., `rwsdk_asset:/src/client.tsx`).
-- Special imports for the SSR bridge (`rwsdk/__ssr_bridge`), lookup maps (`rwsdk/__client_lookup`, `rwsdk/__server_lookup`), and manifest (`virtual:rwsdk:manifest.js`) are intercepted. The plugins resolve these to **external, relative paths** that will be satisfied in the final linking phase (e.g., `{ id: './__ssr_bridge.js', external: true }`).
+2.  **Client Build:** With the list of entry points and the refined list of used client components from Pass 1, the `client` build is now executed, producing hashed assets and a `manifest.json`.
 
-The output of this phase is an intermediate `dist/worker/worker.js` bundle. This bundle is not yet deployable.
+3.  **SSR Build:** The `ssr` build runs next, using the refined list of `"use client"` components to ensure only the necessary server-side code is included. This build produces intermediate SSR artifacts.
 
-### Phase 2: Client Build
+4.  **`RWSDK_BUILD_PASS='linker'` (Second Pass):** The `worker` environment is built a *second* time. This pass solves the critical problem of ensuring SSR artifacts are processed by the same plugins (e.g., `@cloudflare/vite-plugin`) as the main worker code.
+    *   **Primary Goal: Consistent Transformations.** The `worker` environment is reconfigured in-memory to use the intermediate `worker.js` and the SSR artifacts as its input.
+    *   **Pass-Aware Plugins:** Our custom plugins check the `RWSDK_BUILD_PASS` variable and execute different logic. The `linkerPlugin` becomes active, replacing asset placeholders with their final paths from the manifest. The `ssrBridgePlugin` and lookup plugins switch from resolving to external paths to resolving to the *actual* SSR artifacts, allowing them to be bundled. Source-transforming plugins like `directivesPlugin` are disabled.
+    *   **Guaranteed Consistency:** Because this pass runs within the *exact same*, fully-resolved `worker` environment, the SSR artifacts are processed by the same set of plugins as the original worker code.
 
-With the list of entry points and the refined list of used client components discovered in Phase 1, the `client` build is now executed. Its configuration is dynamically updated. Vite uses the entry points for its initial graph traversal and the full list of used client components to inform its code-splitting strategy, resulting in more optimal, less granular chunks. This build runs to completion, producing all the necessary hashed client assets and a `manifest.json` file.
-
-### Phase 3: SSR Build
-
-The `ssr` build runs next. Its configuration is dynamically updated with multiple entry points: the main SSR Bridge and the filtered list of `"use client"` components discovered in Phase 1. This ensures that only the server-side code for components actively used by the application is included in the SSR bundle. This build produces intermediate SSR artifacts in the `dist/ssr` directory.
-
-### Phase 4: Linker Build Pass
-
-The final phase is a distinct Vite build pass that uses a dedicated, minimal `linker` environment. This pass does not process the original application source code. Instead, its purpose is to assemble, or "link," the artifacts from the previous three phases into a final, deployable bundle.
-
-The `linker` environment:
-- Is configured for the target worker environment (e.g., Cloudflare Workers), but includes almost none of the source-transforming plugins used in Phase 1.
-- Takes a single, virtual "barrel" file as its input. This file is generated in memory and contains only `import` statements for the key artifacts:
-  - The intermediate `worker.js` from Phase 1.
-  - The SSR bridge and lookup bundles from Phase 3.
-  - The `manifest.json` from Phase 2.
-- A custom plugin, active only in this environment, performs the final linking:
-  1.  It uses the imported manifest data to perform a search-and-replace across the worker code, replacing all `rwsdk_asset:...` placeholders with their correct, final, hashed asset paths.
-  2.  It bundles all the imported artifacts into a single, final `worker.js` file in the output directory.
-
-This approach keeps the entire build process within the Vite ecosystem, using a declarative environment to handle the final assembly cleanly and efficiently.
+The final output is a single, correctly transformed, and fully linked `worker.js` file, ready for deployment.
