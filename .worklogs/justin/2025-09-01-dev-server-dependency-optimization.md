@@ -356,3 +356,22 @@ We are pivoting to a new strategy that gives us full control over the discovery 
 4.  **Simplified Optimization:** With a complete and accurate list of directive-marked files available *before* any optimization begins, the rest of the process becomes simple and robust. We will generate our dummy barrel files and add them to `optimizeDeps.include`. This provides the necessary information to Vite's optimizer on its first pass, unifying the dependency graph correctly without any need for complex synchronization or re-optimization.
 
 This approach is superior because it separates our domain-specific discovery logic from Vite's internal machinery, giving us control and predictability while still leveraging Vite's powerful pre-bundling for the final output.
+
+### 9.15. Investigation: The Dependency Graph Schism Revisited
+
+With the standalone `esbuild` scanner now successfully implemented, we have a stable and reliable method for discovering all directive-marked modules. The scanner correctly populates our barrel files with a comprehensive list of client components before Vite's optimizer even begins.
+
+However, the "duplicate React dependency" error persists. This is a critical finding: it proves that the root cause is not a race condition or an incomplete discovery process. The problem lies in how Vite's optimizer processes our barrel file. Even when provided with a complete list of dependencies upfront, the optimizer is still creating a separate, conflicting dependency graph for the barrel file, distinct from the main application's graph.
+
+Our next step is to analyze the output of the optimizer in the `.vite/deps` and `.vite/deps_ssr` directories to pinpoint exactly which modules are being duplicated and to trace them back to their source files. This will allow us to understand why the dependency graphs are not being unified.
+
+### 9.16. The Smoking Gun: A Missing `jsx-runtime`
+
+An analysis of the optimizer's output in the `.vite/deps` directory has revealed the precise nature of the dependency schism.
+
+1.  **The Application Chunk:** The main application's dependencies are correctly bundled. A shared chunk, `chunk-VRKFJTBN.js`, is created, which explicitly contains the code from `react/cjs/react-jsx-runtime.development.js`. This is the correct, canonical source for the JSX runtime.
+2.  **The Barrel Chunk:** The massive chunk generated from our `rwsdk-client-barrel.js` file, which contains all the discovered Mantine components, **does not contain any reference to `react/jsx-runtime` at all.**
+
+This is the definitive proof of the problem. Vite is processing the application and the barrel file as two completely separate dependency graphs. It correctly identifies the need for `jsx-runtime` in the application graph, but it fails to do so for the barrel file graph. When the browser attempts to render a component from the barrel's chunk, it crashes because the necessary JSX runtime is missing from its scope.
+
+The root cause appears to be a failure in Vite's dependency scanner to detect the implicit `jsx-runtime` dependency for the modules imported within our barrel file.
