@@ -27,12 +27,11 @@ export async function buildApp({
   serverFiles: Set<string>;
   projectRootDir: string;
 }) {
-  const metafile = await runDirectivesScan({
+  await runDirectivesScan({
     rootConfig: builder.config,
     envName: "worker",
     clientFiles,
     serverFiles,
-    projectRootDir,
   });
 
   console.log("Building worker to discover used client components...");
@@ -46,7 +45,7 @@ export async function buildApp({
   );
 
   console.log("Building SSR...");
-  await builder.build(ssrEnv);
+  await builder.build(builder.environments.ssr);
 
   log("Discovered clientEntryPoints: %O", Array.from(clientEntryPoints));
 

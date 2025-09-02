@@ -60,8 +60,6 @@ export const directiveModulesDevPlugin = ({
           envName: "worker",
           clientFiles,
           serverFiles,
-          projectRootDir,
-          treeShakeLookup: false,
         });
       }
 

@@ -30,6 +30,7 @@ import { devServerTimingPlugin } from "./devServerTimingPlugin.mjs";
 import { manifestPlugin } from "./manifestPlugin.mjs";
 import { linkerPlugin } from "./linkerPlugin.mjs";
 import { directiveModulesDevPlugin } from "./directiveModulesDevPlugin.mjs";
+import { directivesFilteringPlugin } from "./directivesFilteringPlugin.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -171,5 +172,10 @@ export const redwoodPlugin = async (
     moveStaticAssetsPlugin({ rootDir: projectRootDir }),
     prismaPlugin({ projectRootDir }),
     linkerPlugin({ projectRootDir }),
+    directivesFilteringPlugin({
+      clientFiles,
+      serverFiles,
+      projectRootDir,
+    }),
   ];
 };

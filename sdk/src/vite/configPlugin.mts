@@ -96,13 +96,6 @@ export const configPlugin = ({
           },
         },
       },
-      plugins: [
-        directivesFilteringPlugin({
-          clientFiles,
-          serverFiles,
-          projectRootDir,
-        }),
-      ],
     };
 
     const baseConfig: InlineConfig = {

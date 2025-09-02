@@ -41,9 +41,13 @@ export const directivesPlugin = ({
 }): Plugin => {
   let devServer: ViteDevServer;
   let isAfterFirstResponse = false;
+  let isBuild = false;
 
   return {
     name: "rwsdk:rsc-directives",
+    configResolved(config) {
+      isBuild = config.command === "build";
+    },
     configureServer(server) {
       devServer = server;
       devServer.middlewares.use((_req, res, next) => {
@@ -63,6 +67,7 @@ export const directivesPlugin = ({
     },
     async transform(code, id) {
       if (
+        isBuild &&
         this.environment?.name === "worker" &&
         process.env.RWSDK_BUILD_PASS !== "worker"
       ) {
@@ -104,7 +109,8 @@ export const directivesPlugin = ({
     },
     configEnvironment(env, config) {
       if (
-        this.environment?.name === "worker" &&
+        isBuild &&
+        env === "worker" &&
         process.env.RWSDK_BUILD_PASS !== "worker"
       ) {
         return;
