@@ -33,6 +33,22 @@ function createEsbuildScanPlugin({
   return {
     name: "rwsdk:esbuild-scan-plugin",
     setup(build: PluginBuild) {
+      // Match Vite's behavior by externalizing assets and special queries.
+      // This prevents esbuild from trying to bundle them, which would fail.
+      const externalFilter =
+        /\.(css|less|sass|scss|styl|stylus|pcss|postcss|png|jpe?g|gif|svg|ico|webp|avif|mp4|webm|ogg|mp3|wav|flac|aac|woff2?|eot|ttf|otf)$/;
+      const specialQueryFilter = /[?&](?:url|raw|worker|sharedworker|inline)\b/;
+
+      build.onResolve({ filter: specialQueryFilter }, (args: OnResolveArgs) => {
+        log("Externalizing special query:", args.path);
+        return { external: true };
+      });
+
+      build.onResolve({ filter: externalFilter }, (args: OnResolveArgs) => {
+        log("Externalizing asset/CSS import:", args.path);
+        return { external: true };
+      });
+
       build.onResolve({ filter: /.*/ }, async (args: OnResolveArgs) => {
         // Prevent infinite recursion.
         if (args.pluginData?.rwsdkScanResolver) {
