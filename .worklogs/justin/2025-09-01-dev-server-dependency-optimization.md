@@ -439,9 +439,13 @@ This approach aligns perfectly with the intended "form factor" of the ecosystem:
 
 All the previous complexity was a symptom of fighting the tool. The final solution is robust because it works *with* the tool, leveraging its native dependency resolution mechanism to achieve the desired outcome in a clean, stable, and future-proof way. It successfully unifies the dependency graph, solving the browser request waterfall without any of the brittleness of the previous attempts.
 
-### 9.22. Making the Standalone Scan Resilient
+## 36. Filing Off Rough Edges
 
-A final refinement was made to the standalone `esbuild` scan to improve its robustness. The scan is a critical step; if it fails, the application will not work correctly at runtime. However, the initial implementation was too brittle and would crash on common, non-critical resolution failures, such as platform-specific imports (e.g., `cloudflare:workers`) or CSS files that `esbuild` cannot bundle without a loader configuration.
+With the core strategy in place, two final refinements were made to harden the implementation against common edge cases.
+
+### 36.1. Making the Standalone Scan Resilient to Resolution Failures
+
+The scan is a critical step; if it fails, the application will not work correctly at runtime. However, the initial implementation was too brittle and would crash on common, non-critical resolution failures, such as platform-specific imports (e.g., `cloudflare:workers`).
 
 Crashing the build for these predictable issues is not the correct behavior. The solution was to make the scanner's internal resolver more intelligent, allowing the scan to succeed by gracefully bypassing modules it isn't designed to handle.
 
@@ -450,3 +454,11 @@ The custom `esbuild` plugin's `onResolve` hook was updated to:
 2.  If the resolution fails for any reason, it logs a diagnostic message and returns `{ external: true }`.
 
 This tells `esbuild` to treat the unresolvable import as an external dependency and simply not traverse it. This allows the critical scan to complete successfully even in projects with non-standard imports, preventing the server from crashing on manageable resolution failures.
+
+### 36.2. Aligning the Scanner with Vite's Asset Handling
+
+The final piece of the puzzle was discovered when the scanner crashed with the error `Cannot import "src/app/styles.css?url"`. This revealed that our scanner's resilience was incomplete; while it could gracefully handle unresolvable module paths, it was still attempting to process and bundle non-JavaScript assets, which is not its purpose.
+
+A review of Vite's internal `esbuildScanPlugin` confirmed this. Vite's own scanner includes several specific `onResolve` hooks that run first to explicitly filter out and externalize common asset types (CSS, images, fonts) and special queries (like `?url` or `?raw`). This prevents `esbuild` from ever attempting to load their content.
+
+The solution was to align our scanner's behavior with Vite's. We added two `onResolve` handlers to our `esbuild` plugin that filter for these asset types and special queries and immediately mark them as `{ external: true }`. This fixed the crash and completed the scanner's implementation, making it robust to both resolution failures and non-JavaScript asset imports.
