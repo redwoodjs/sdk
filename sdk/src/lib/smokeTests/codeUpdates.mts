@@ -57,7 +57,7 @@ export async function createSmokeTestComponents(
   }
 
   // Modify worker.tsx and wrangler.jsonc for realtime support
-  await modifyAppForRealtime(targetDir);
+  await modifyAppForRealtime(targetDir, skipClient);
 
   log("Smoke test components created successfully");
   console.log("Created smoke test components:");
@@ -132,7 +132,10 @@ export async function createSmokeTestStylesheets(targetDir: string) {
 /**
  * Modifies the worker.tsx and wrangler.jsonc files to add realtime support
  */
-export async function modifyAppForRealtime(targetDir: string): Promise<void> {
+export async function modifyAppForRealtime(
+  targetDir: string,
+  skipClient = false,
+): Promise<void> {
   log("Modifying worker.tsx and wrangler.jsonc for realtime support");
 
   // Modify worker.tsx
@@ -155,8 +158,16 @@ export async function modifyAppForRealtime(targetDir: string): Promise<void> {
     const hasEnvImport = workerContent.includes(
       'import { env } from "cloudflare:workers"',
     );
+    const hasSmokeTestClientImport = workerContent.includes(
+      'import "/src/app/components/__SmokeTestClient.tsx"',
+    );
 
-    if (!hasRealtimeExport || !hasRealtimeRoute || !hasEnvImport) {
+    if (
+      !hasRealtimeExport ||
+      !hasRealtimeRoute ||
+      !hasEnvImport ||
+      (!skipClient && !hasSmokeTestClientImport)
+    ) {
       log("Need to modify worker.tsx for realtime support");
       const s = new MagicString(workerContent);
 
@@ -192,6 +203,33 @@ export async function modifyAppForRealtime(targetDir: string): Promise<void> {
             'import { env } from "cloudflare:workers";\n',
           );
           log("Added env import from cloudflare:workers");
+        }
+      }
+
+      // Add smoke test client import if needed
+      if (!skipClient && !hasSmokeTestClientImport) {
+        const importRegex = /import.*?from.*?;\n/g;
+        let lastImportMatch;
+        let lastImportPosition = 0;
+
+        // Find the position after the last import statement
+        while ((lastImportMatch = importRegex.exec(workerContent)) !== null) {
+          lastImportPosition =
+            lastImportMatch.index + lastImportMatch[0].length;
+        }
+
+        if (lastImportPosition > 0) {
+          s.appendRight(
+            lastImportPosition,
+            'import "/src/app/components/__SmokeTestClient.tsx";\n',
+          );
+          log("Added __SmokeTestClient.tsx import");
+        } else {
+          // if no imports found, just prepend to the file
+          s.prepend('import "/src/app/components/__SmokeTestClient.tsx";\n');
+          log(
+            "Added __SmokeTestClient.tsx import to the beginning of the file",
+          );
         }
       }
 
