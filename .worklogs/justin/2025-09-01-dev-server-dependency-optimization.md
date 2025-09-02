@@ -287,3 +287,72 @@ The network trace from the browser shows two sets of dependency chunks being loa
 This means that even with sequential execution, Vite's optimizer is treating the main application and our barrel file as two completely separate, unrelated entry points. It creates one optimized dependency graph for the application and a second, conflicting graph for the barrel, instead of merging them into a single, unified graph.
 
 The next step is to understand why our custom `reactConditionsResolverPlugin`, which is designed to prevent this exact problem by forcing all React imports to resolve to a single canonical file, is failing for the dependencies pulled in by our barrel file.
+
+### 9.16. The `resolveId` Hook as a Synchronization Point
+
+The `init` monkey-patching strategy, while successful in forcing the `client` and `ssr` optimizers to wait for the `worker` optimizer's completion, has proven to be unstable. The `onLoad` hook for our barrel files began firing too early, indicating that the patched `init` methods were no longer reliably blocking the `client` and `ssr` optimizers.
+
+This inconsistency demonstrates the brittleness of relying on patching internal, undocumented methods.
+
+We are therefore reverting this approach in favor of a more robust solution that uses Vite's public, stable plugin lifecycle as its foundation.
+
+**The Definitive Plan (Revisited):**
+
+1.  **The Signal - The Worker's First `resolveId` Hook:** We are returning to the insight that the first time a module is resolved in the `worker` environment, it serves as a definitive signal that its `optimizeDeps` process is complete. This is a stable, predictable event.
+2.  **Shared Promise:** A shared promise (`workerOptimizeComplete`) will be created in the main `redwoodPlugin.mts` file to communicate between plugins.
+3.  **Signaling from the `worker`:** The `directiveModulesDevPlugin` will use its `configEnvironment` and `resolveId` hooks. When running in the `worker` environment, the very first time its `resolveId` hook is called, it will resolve the shared promise.
+4.  **Blocking in `client` and `ssr`:** The `esbuild` plugin inside `directiveModulesDevPlugin` (which runs for the `client` and `ssr` optimizers) will be given an `onResolve` hook. This hook will intercept requests for our dummy barrel files and `await` the shared promise before allowing the resolution to proceed.
+
+This event-driven orchestration is superior because it is based entirely on Vite's public plugin API, making it resilient to changes in internal implementation details and finally solving the inconsistent timing issue.
+
+This creates the correct sequence at the correct stage of the process. It guarantees that the `worker` environment has fully completed its discovery, bundling, and cache commit *before* the `client` and `ssr` environments begin their optimization, which will finally resolve the dependency graph schism.
+
+### 9.18. A Return to Stability: Using Plugin Hooks for Synchronization
+
+The `init` monkey-patching strategy, while seeming to work temporarily, has proven to be unstable. The `onLoad` hook for our barrel files began firing too early, indicating that the patched `init` methods were no longer reliably blocking the `client` and `ssr` optimizers. This inconsistency demonstrates the brittleness of relying on patching internal, undocumented methods.
+
+We are therefore reverting this approach in favor of a more robust solution that uses Vite's public, stable plugin lifecycle as its foundation.
+
+**The Definitive Plan (Revisited):**
+
+1.  **The Signal - The Worker's First `resolveId` Hook:** We are returning to the insight that the first time a module is resolved in the `worker` environment, it serves as a definitive signal that its `optimizeDeps` process is complete. This is a stable, predictable event.
+2.  **Shared Promise:** A shared promise (`workerOptimizeComplete`) will be created in the main `redwoodPlugin.mts` file to communicate between plugins.
+3.  **Signaling from the `worker`:** The `directiveModulesDevPlugin` will use its `configEnvironment` and `resolveId` hooks. When running in the `worker` environment, the very first time its `resolveId` hook is called, it will resolve the shared promise.
+4.  **Blocking in `client` and `ssr`:** The `esbuild` plugin inside `directiveModulesDevPlugin` (which runs for the `client` and `ssr` optimizers) will be given an `onResolve` hook. This hook will intercept requests for our dummy barrel files and `await` the shared promise before allowing the resolution to proceed.
+
+This event-driven orchestration is superior because it is based entirely on Vite's public plugin API, making it resilient to changes in internal implementation details and finally solving the inconsistent timing issue.
+
+### 9.12. A Return to Simplicity: In-Scan Discovery
+
+After finding the previous synchronization strategies to be overly complex and brittle, we are pivoting to a simpler, more direct approach that accepts a pragmatic trade-off.
+
+**The Trade-Off:** The new strategy will only discover `"use client"` and `"use server"` modules that are statically reachable from the project's entry points. Modules from a library that are only used via dynamic imports may not be discovered during the initial optimization. We are accepting this limitation for now in exchange for a vastly simpler and more stable implementation.
+
+**The New Plan:** Instead of performing an exhaustive, separate filesystem scan and then trying to synchronize multiple optimization runs, we will integrate our discovery directly into the `worker` environment's initial dependency scan.
+
+1.  **Inject a Discovery Plugin:** In the `configResolved` hook, we will create and inject a custom `esbuild` plugin specifically into the `worker` environment's `optimizeDeps.esbuildOptions.plugins` array.
+2.  **Discover Directives with `onLoad`:** This `esbuild` plugin will use an `onLoad` hook that fires for every module the scanner processes. It will read the module's content, check for `"use client"` or `"use server"` directives, and populate the shared `clientFiles` and `serverFiles` sets accordingly.
+3.  **Synchronize via `scanProcessing`:** We will retain the `init` monkey-patching logic from the previous attempt. The `client` and `ssr` optimizers will be blocked, awaiting the `worker` optimizer's `scanProcessing` promise. This is now the correct signal, as we only need to wait for the *scan* to finish, not the full bundling process.
+
+This approach is superior because it eliminates the need for any re-optimization passes or complex promise-juggling. By the time the `client` and `ssr` optimizers are allowed to run, the `clientFiles` and `serverFiles` sets will have already been fully populated, allowing their dependency barrels to be generated correctly on the very first try.
+
+### 9.13. Final Conclusion: `optimizeDeps` is the Wrong Tool
+
+After extensive experimentation with various synchronization strategies (`init` monkey-patching, awaiting `scanProcessing`, post-scan registration), we have definitively concluded that trying to hook into or control Vite's `optimizeDeps` lifecycle is fundamentally the wrong approach for our use case.
+
+The core issues are:
+-   **Unstable Internals:** The internal timing of the multi-environment optimizer is not a public, stable API. Relying on it has proven to be brittle and unpredictable.
+-   **Incomplete Scans:** Vite's dependency scanner is designed to follow static imports from known entry points. As we've proven, it does not perform an exhaustive scan and therefore cannot, on its own, discover all potential `"use client"` modules in `node_modules`.
+
+Fighting this behavior has led to overly complex and ultimately incorrect solutions.
+
+### 9.14. The Definitive Strategy: A Standalone `esbuild` Scan
+
+We are pivoting to a new strategy that gives us full control over the discovery process by running our own, separate `esbuild` scan before Vite's optimizers begin.
+
+1.  **Standalone Scan:** In the `configResolved` hook, we will initiate a custom `esbuild` build process. This process will use the application's true entry points (e.g., from `config.build.rollupOptions.input`).
+2.  **Configuration Passthrough:** Crucially, we will create a custom `esbuild` plugin that replicates Vite's own module resolution logic. We will extract the final, resolved `resolve.alias` configuration from the `config` object and use it within our plugin's `onResolve` hook to ensure modules are found correctly.
+3.  **Exhaustive Discovery:** This controlled scan will traverse the entire application dependency graph. As it resolves modules, it will read their content and check for `"use client"` or `"use server"` directives, populating our `clientFiles` and `serverFiles` sets.
+4.  **Simplified Optimization:** With a complete and accurate list of directive-marked files available *before* any optimization begins, the rest of the process becomes simple and robust. We will generate our dummy barrel files and add them to `optimizeDeps.include`. This provides the necessary information to Vite's optimizer on its first pass, unifying the dependency graph correctly without any need for complex synchronization or re-optimization.
+
+This approach is superior because it separates our domain-specific discovery logic from Vite's internal machinery, giving us control and predictability while still leveraging Vite's powerful pre-bundling for the final output.

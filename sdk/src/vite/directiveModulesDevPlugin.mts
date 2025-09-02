@@ -1,30 +1,11 @@
-import { Plugin, ResolvedConfig } from "vite";
-import debug from "debug";
+import { Plugin } from "vite";
 import path from "node:path";
-import { ensureFileSync } from "fs-extra";
+import { writeFileSync, mkdirSync } from "node:fs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
-
-const log = debug("rwsdk:vite:directive-modules-dev");
-
-// Augment the ViteDevServer type to include our custom property
-declare module "vite" {
-  interface ViteDevServer {
-    rwsdk?: {
-      barrelProcessingPromises?: {
-        client?: Promise<void>;
-        ssr?: Promise<void>;
-      };
-    };
-  }
-}
+import { runEsbuildScan } from "./runEsbuildScan.mjs";
 
 export const VIRTUAL_CLIENT_BARREL_ID = "virtual:rwsdk:client-module-barrel";
 export const VIRTUAL_SERVER_BARREL_ID = "virtual:rwsdk:server-module-barrel";
-
-const barrelIds = {
-  client: VIRTUAL_CLIENT_BARREL_ID,
-  server: VIRTUAL_SERVER_BARREL_ID,
-};
 
 const generateBarrelContent = (files: Set<string>, projectRootDir: string) => {
   const imports = [...files]
@@ -60,42 +41,25 @@ export const directiveModulesDevPlugin = ({
   return {
     name: "rwsdk:directive-modules-dev",
     enforce: "pre",
-    configureServer(server) {
-      const workerScanComplete = Promise.withResolvers<void>();
-
-      // Worker: Run first, then signal completion
-      const workerOptimizer = server.environments.worker.depsOptimizer;
-      if (workerOptimizer) {
-        const originalInit = workerOptimizer.init;
-        workerOptimizer.init = async function (...args) {
-          await originalInit.apply(this, args);
-          await workerOptimizer.scanProcessing;
-          log("Worker scan complete. Signaling to client and SSR optimizers.");
-          workerScanComplete.resolve();
-        };
-      }
-
-      // Client & SSR: Wait for worker, then run
-      for (const envName of ["client", "ssr"]) {
-        const optimizer = server.environments[envName]?.depsOptimizer;
-        if (optimizer) {
-          const originalInit = optimizer.init;
-          optimizer.init = async function (...args) {
-            log(`Optimizer for '${envName}' is waiting for worker scan...`);
-            await workerScanComplete.promise;
-            log(
-              `Worker scan finished. Optimizer for '${envName}' is proceeding.`,
-            );
-            await originalInit.apply(this, args);
-          };
-        }
-      }
-    },
-    configResolved(config) {
+    async configResolved(config) {
       if (config.command !== "serve") {
         return;
       }
 
+      // Phase 1: Standalone esbuild scan to discover all directive files
+      for (const envName of ["client", "ssr"]) {
+        const env = config.environments[envName];
+        if (env) {
+          await runEsbuildScan({
+            rootConfig: config,
+            envName,
+            clientFiles,
+            serverFiles,
+          });
+        }
+      }
+
+      // Phase 2: Barrel Generation for Vite's optimizer
       const dummyFilePaths = {
         client: path.join(
           projectRootDir,
@@ -111,39 +75,22 @@ export const directiveModulesDevPlugin = ({
         ),
       };
 
-      // Create the dummy files so that Vite can resolve them
-      ensureFileSync(dummyFilePaths.client);
-      ensureFileSync(dummyFilePaths.server);
+      // Generate the barrel content and write it to the dummy files.
+      // We can do this now because our scan is complete.
+      const clientBarrelContent = generateBarrelContent(
+        clientFiles,
+        projectRootDir,
+      );
+      const serverBarrelContent = generateBarrelContent(
+        serverFiles,
+        projectRootDir,
+      );
 
-      const esbuildPlugin = {
-        name: "rwsdk:esbuild:barrel-handler",
-        setup(build: any) {
-          const barrelPaths = Object.values(dummyFilePaths);
-          const filter = new RegExp(
-            `^(${barrelPaths
-              .map((p) => p.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"))
-              .join("|")})$`,
-          );
+      mkdirSync(path.dirname(dummyFilePaths.client), { recursive: true });
+      writeFileSync(dummyFilePaths.client, clientBarrelContent);
 
-          build.onLoad({ filter }, async (args: any) => {
-            if (args.path === dummyFilePaths.client) {
-              log("onLoad for client barrel with %d files", clientFiles.size);
-              return {
-                contents: generateBarrelContent(clientFiles, projectRootDir),
-                loader: "js",
-              };
-            }
-            if (args.path === dummyFilePaths.server) {
-              log("onLoad for server barrel with %d files", serverFiles.size);
-              return {
-                contents: generateBarrelContent(serverFiles, projectRootDir),
-                loader: "js",
-              };
-            }
-            return null;
-          });
-        },
-      };
+      mkdirSync(path.dirname(dummyFilePaths.server), { recursive: true });
+      writeFileSync(dummyFilePaths.server, serverBarrelContent);
 
       for (const [envName, env] of Object.entries(config.environments)) {
         if (envName === "client" || envName === "ssr") {
@@ -152,13 +99,6 @@ export const directiveModulesDevPlugin = ({
             dummyFilePaths.client,
             dummyFilePaths.server,
           ];
-          env.optimizeDeps.esbuildOptions = {
-            ...env.optimizeDeps.esbuildOptions,
-            plugins: [
-              ...(env.optimizeDeps.esbuildOptions?.plugins || []),
-              esbuildPlugin,
-            ],
-          };
         }
       }
     },

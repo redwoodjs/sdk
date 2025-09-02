@@ -236,7 +236,7 @@ export const ${config.exportName} = {
         }
 
         return `
-  "${file}": () => import("${barrelPath}").then(m => m.default["${file}"]),
+  "${file}": () => import("/@id/${dummyPath}").then(m => m.default["${file}"]),
 `;
       } else {
         return `
