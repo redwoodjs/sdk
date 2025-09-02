@@ -139,7 +139,6 @@ export const transformServerFunctions = (
   normalizedId: string,
   environment: "client" | "worker" | "ssr",
   serverFiles?: Set<string>,
-  addServerModule?: (environment: string, id: string) => void,
 ): TransformResult | undefined => {
   if (!hasDirective(code, "use server")) {
     return;
@@ -151,8 +150,6 @@ export const transformServerFunctions = (
       normalizedId,
       environment,
     );
-
-  addServerModule?.(environment, normalizedId);
 
   if (environment === "ssr" || environment === "client") {
     process.env.VERBOSE &&

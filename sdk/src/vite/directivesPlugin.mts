@@ -42,54 +42,6 @@ export const directivesPlugin = ({
   let devServer: ViteDevServer;
   let isAfterFirstResponse = false;
 
-  const addModule = (
-    kind: "client" | "server",
-    environment: string,
-    id: string,
-  ) => {
-    const files = kind === "client" ? clientFiles : serverFiles;
-    const rawId = id.split("?")[0];
-    const resolvedId = normalizeModulePath(rawId, projectRootDir);
-    const fullPath = normalizeModulePath(rawId, projectRootDir, {
-      absolute: true,
-    });
-    const isNodeModule = id.includes("node_modules");
-    const hadFile = files.has(id);
-
-    files.add(resolvedId);
-
-    if (devServer && isNodeModule) {
-      const lookupModule =
-        kind === "client"
-          ? "virtual:use-client-lookup"
-          : "virtual:use-server-lookup";
-
-      log(
-        "Registering missing import for %s module resolvedId=%s in environment %s, fullPath=%s",
-        kind,
-        resolvedId,
-        environment,
-        fullPath,
-      );
-
-      if (isAfterFirstResponse && !hadFile) {
-        log(
-          "Invalidating cache for lookup module %s after adding module id=%s",
-          lookupModule,
-          id,
-        );
-      }
-    }
-  };
-
-  const addClientModule = (environment: string, id: string) => {
-    addModule("client", environment, id);
-  };
-
-  const addServerModule = (environment: string, id: string) => {
-    addModule("server", environment, id);
-  };
-
   return {
     name: "rwsdk:rsc-directives",
     configureServer(server) {
@@ -115,7 +67,6 @@ export const directivesPlugin = ({
       const clientResult = await transformClientComponents(code, normalizedId, {
         environmentName: this.environment.name,
         clientFiles,
-        addClientModule,
       });
 
       if (clientResult) {
@@ -132,7 +83,6 @@ export const directivesPlugin = ({
         normalizedId,
         this.environment.name as "client" | "worker" | "ssr",
         serverFiles,
-        addServerModule,
       );
 
       if (serverResult) {
@@ -247,7 +197,6 @@ export const directivesPlugin = ({
                   environmentName: env,
                   clientFiles,
                   isEsbuild: true,
-                  addClientModule,
                 },
               );
 
@@ -276,7 +225,6 @@ export const directivesPlugin = ({
                 normalizedPath,
                 env as "client" | "worker" | "ssr",
                 serverFiles,
-                addServerModule,
               );
 
               if (serverResult) {

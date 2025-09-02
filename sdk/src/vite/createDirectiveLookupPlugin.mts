@@ -18,64 +18,6 @@ interface DirectiveLookupConfig {
   optimizeForEnvironments?: string[];
 }
 
-export const findFilesContainingDirective = async ({
-  projectRootDir,
-  files,
-  directive,
-  debugNamespace,
-}: {
-  projectRootDir: string;
-  files: Set<string>;
-  directive: string;
-  debugNamespace: string;
-}) => {
-  const log = debug(debugNamespace);
-
-  log(
-    "Starting search for '%s' files in projectRootDir=%s",
-    directive,
-    projectRootDir,
-  );
-
-  const filesToScan = await getSrcPaths(projectRootDir);
-  log(
-    "Found %d files to scan for '%s' directive",
-    filesToScan.length,
-    directive,
-  );
-
-  for (const file of filesToScan) {
-    try {
-      const stats = await stat(file);
-
-      if (!stats.isFile()) {
-        process.env.VERBOSE && log("Skipping %s (not a file)", file);
-        continue;
-      }
-
-      process.env.VERBOSE && log("Scanning file: %s", file);
-      const content = await readFile(file, "utf-8");
-
-      if (hasDirective(content, directive)) {
-        const normalizedPath = normalizeModulePath(file, projectRootDir);
-        log(
-          "Found '%s' directive in file: %s -> %s",
-          directive,
-          file,
-          normalizedPath,
-        );
-        files.add(normalizedPath);
-      }
-    } catch (error) {
-      console.error(`Error reading file ${file}:`, error);
-    }
-  }
-
-  log("Completed scan. Found %d %s files total", files.size, directive);
-  process.env.VERBOSE &&
-    log("Found files for %s: %j", directive, Array.from(files));
-};
-
 export const createDirectiveLookupPlugin = async ({
   projectRootDir,
   files,
@@ -95,13 +37,6 @@ export const createDirectiveLookupPlugin = async ({
     config.pluginName,
     projectRootDir,
   );
-
-  await findFilesContainingDirective({
-    projectRootDir,
-    files,
-    directive: config.directive,
-    debugNamespace,
-  });
 
   return {
     name: `rwsdk:${config.pluginName}`,

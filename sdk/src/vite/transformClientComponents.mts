@@ -7,7 +7,6 @@ interface TransformContext {
   environmentName: string;
   clientFiles?: Set<string>;
   isEsbuild?: boolean;
-  addClientModule?: (environment: string, id: string) => void;
 }
 
 interface TransformResult {
@@ -28,8 +27,6 @@ export async function transformClientComponents(
   }
 
   const log = ctx.isEsbuild ? logEsbuild : logVite;
-
-  ctx.addClientModule?.(ctx.environmentName, normalizedId);
 
   // Parse exports using the findExports helper
   const exportInfos = findExports(normalizedId, code, log);
