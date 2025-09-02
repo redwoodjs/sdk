@@ -9,6 +9,7 @@ import { glob } from "glob";
 
 import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import { buildApp } from "./buildApp.mjs";
+import { directiveModulesBuildPlugin } from "./directiveModulesBuildPlugin.mjs";
 
 const log = debug("rwsdk:vite:config");
 
@@ -32,12 +33,14 @@ export const configPlugin = ({
   projectRootDir,
   workerEntryPathname,
   clientFiles,
+  serverFiles,
   clientEntryPoints,
 }: {
   silent: boolean;
   projectRootDir: string;
   workerEntryPathname: string;
   clientFiles: Set<string>;
+  serverFiles: Set<string>;
   clientEntryPoints: Set<string>;
 }): Plugin => ({
   name: "rwsdk:config",
@@ -45,6 +48,13 @@ export const configPlugin = ({
     const mode = process.env.NODE_ENV;
     const baseConfig: InlineConfig = {
       appType: "custom",
+      plugins: [
+        directiveModulesBuildPlugin({
+          clientFiles,
+          serverFiles,
+          projectRootDir,
+        }),
+      ],
       mode,
       logLevel: silent ? "silent" : "info",
       build: {

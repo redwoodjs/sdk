@@ -20,6 +20,12 @@ export async function buildApp({
   clientFiles: Set<string>;
   projectRootDir: string;
 }) {
+  // The pre-scan in `directiveModulesBuildPlugin` will have already run at this point,
+  // populating clientFiles.
+
+  console.log("Building SSR...");
+  await builder.build(builder.environments.ssr);
+
   console.log("Building worker...");
   await builder.build(builder.environments["worker"]!);
 
@@ -40,9 +46,6 @@ export async function buildApp({
   }
 
   await builder.build(clientEnv);
-
-  console.log("Building SSR...");
-  await builder.build(builder.environments.ssr);
 
   console.log("Linking worker build...");
   await builder.build(builder.environments.linker);

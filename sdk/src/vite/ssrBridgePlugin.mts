@@ -109,16 +109,16 @@ export const ssrBridgePlugin = ({
           return virtualId;
         }
       } else {
-        // context(justinvdm, 27 May 2025): In builds, we resolve to an external
-        // relative path. The worker reprocessing pass (Phase 4) will place the
-        // SSR bridge at this exact location.
+        // context(justinvdm, 2 Sep 2025): In builds, we resolve to the path
+        // of the intermediate SSR bridge build. Since we're no longer treating
+        // it as external, Vite will bundle it directly into the worker.
         if (id === "rwsdk/__ssr_bridge" && this.environment.name === "worker") {
           log(
-            "Bridge module case (build): id=%s matches rwsdk/__ssr_bridge in worker environment, resolving to external path=%s",
+            "Bridge module case (build): id=%s matches rwsdk/__ssr_bridge in worker environment, resolving to intermediate path=%s",
             id,
             INTERMEDIATE_SSR_BRIDGE_PATH,
           );
-          return { id: INTERMEDIATE_SSR_BRIDGE_PATH, external: true };
+          return { id: INTERMEDIATE_SSR_BRIDGE_PATH, external: false };
         }
       }
     },
