@@ -1,13 +1,7 @@
 // @ts-ignore
 import esbuild, { OnLoadArgs, OnResolveArgs, PluginBuild } from "esbuild";
 
-import {
-  Alias,
-  ConfigEnv,
-  Environment,
-  ResolvedConfig,
-  normalizePath,
-} from "vite";
+import { Alias, ResolvedConfig, normalizePath } from "vite";
 import fsp from "node:fs/promises";
 import { hasDirective } from "./hasDirective.mjs";
 import path from "node:path";
