@@ -115,7 +115,7 @@ It has become clear that this assumption is false. The environment optimizers ap
 
 The next step is to investigate Vite's source code to answer a key question: how does Vite manage the `optimizeDeps` process for multiple environments? We need to determine if they are run concurrently or sequentially, and if there is any mechanism to enforce a specific order. The goal is to find a way to delay the `client` and `ssr` dependency optimization until after the `worker` environment has completed its initial scan.
 
-### 9.1. Investigation Findings: Parallel Execution
+## 10. Investigation Findings: Parallel Execution
 
 A thorough investigation of Vite's source code (`packages/vite/src/node/server/index.ts`) has provided a definitive answer. During server startup, the `initServer` function calls the `listen` method on all configured environments wrapped in a `Promise.all`.
 
@@ -125,7 +125,7 @@ Because they are called via `Promise.all`, **all environment dependency optimize
 
 Our next task is to devise a new strategy to manually create this synchronization.
 
-### 9.3. Deeper Investigation: The `depsOptimizer.init()` Timing
+## 11. Deeper Investigation: The `depsOptimizer.init()` Timing
 
 Further investigation revealed another subtlety. While the `DepsOptimizer` instance is available in the `configureServer` hook, its crucial `scanProcessing` promise is not. The `scanProcessing` property is only assigned *inside* the optimizer's `init()` method.
 
@@ -133,7 +133,7 @@ The `init()` method for all environment optimizers is called when the Vite serve
 
 This means our synchronization plugin cannot simply access `depsOptimizer.scanProcessing` in the `configureServer` hook, as it will be `undefined`.
 
-### 9.4. Final Strategy: Monkey-Patching `depsOptimizer.init()`
+## 12. Final Strategy: Monkey-Patching `depsOptimizer.init()`
 
 The most robust solution is to intercept the `init` call itself. This gives us a definitive hook into the moment *after* `scanProcessing` has been created.
 
@@ -147,7 +147,7 @@ The final, successful plan is as follows:
 
 This monkey-patching approach, while complex, is the only way to reliably ensure our `esbuild` plugin for the `client` and `ssr` environments runs after the `worker` dependency scan is fully complete.
 
-### 9.5. A New Strategy: Post-Scan Registration
+## 13. A New Strategy: Post-Scan Registration
 
 The monkey-patching approach, while technically sound, proved to be unsuccessful, indicating a deeper misunderstanding of the timing of when the `clientFiles` and `serverFiles` sets are populated relative to the `worker` environment's dependency scan.
 
@@ -162,7 +162,7 @@ The new plan is as follows:
 
 This approach is superior because it avoids fighting Vite's parallel startup process and instead leverages the public API for dynamic dependency discovery in a clean and predictable way.
 
-### 9.6. Final Step: Absolute Paths for Esbuild
+## 14. Final Step: Absolute Paths for Esbuild
 
 The post-scan registration strategy was successful in triggering a re-optimization pass with the fully populated file lists. However, this revealed one final hurdle: the `esbuild` process that powers Vite's dependency optimizer could not resolve the module paths inside our generated barrel file.
 
@@ -170,7 +170,7 @@ The error (`Could not resolve "/node_modules/..."`) occurs because `esbuild` ope
 
 The solution is to modify the `generateBarrelContent` function. When generating the `import` statements for the barrel, we will use our existing `normalizeModulePath` utility, passing the `{ absolute: true }` option. This will convert each module path into a full, absolute path that `esbuild` can correctly resolve, completing the implementation.
 
-### 9.7. Final Correction: Shared Barrels Across Environments
+## 15. Final Correction: Shared Barrels Across Environments
 
 A final logic error was identified in the `configResolved` hook. The code was only adding the client barrel to the `client` environment's optimizer and the server barrel to the `ssr` environment's optimizer.
 
@@ -178,7 +178,7 @@ This is incorrect, as both environments may need to process modules from the oth
 
 The final correction was to modify the loop to add *both* the client and server barrel paths to the `optimizeDeps.include` array for *both* the `client` and `ssr` environments. This ensures that both optimization processes are aware of all discoverable directive-marked modules, completing the feature.
 
-### 9.8. Final Refinement: Awaiting `scanProcessing` in the `listen` Hook
+## 16. Final Refinement: Awaiting `scanProcessing` in the `listen` Hook
 
 The `server.listen` wrapper strategy proved to be a step in the right direction, but it still contained a subtle race condition. While wrapping `listen` correctly executes our code after the server has started, it does not guarantee that the asynchronous `optimizeDeps` scans have *completed*.
 
@@ -194,7 +194,7 @@ The corrected flow inside our `configureServer` hook is:
 
 This ensures that we register our barrels for re-optimization at the earliest possible moment, but only *after* the necessary file discovery is complete, finally resolving the race condition.
 
-### 9.9. The Final Piece: Importing the Optimized Barrel
+## 17. The Final Piece: Importing the Optimized Barrel
 
 The last remaining issue was identified in the `createDirectiveLookupPlugin`. This plugin was correctly generating the `virtual:use-client-lookup` and `virtual:use-server-lookup` modules, but the dynamic `import()` statements inside them were pointing to the wrong place.
 
@@ -212,7 +212,7 @@ The definitive solution is to look up this final path at runtime. The implementa
 
 This completes the entire feature, ensuring that from discovery to optimization to runtime, the correct modules are being generated and loaded.
 
-### 9.10. Definitive Solution: Awaiting the Re-Optimization Promise
+## 18. Definitive Solution: Awaiting the Re-Optimization Promise
 
 The `Vite Error, ... optimized info should be defined` error provided the final clue. It originates from Vite's core `importAnalysis` plugin, and it confirms that our virtual module's `load` hook is executing *after* the re-optimization has been triggered but *before* the results of that re-optimization have been committed to the optimizer's metadata.
 
@@ -226,7 +226,7 @@ The definitive solution is to hook into the optimizer's internal processing prom
 
 This creates the correct, final synchronization chain, resolving the race condition and completing the feature.
 
-### 9.11. Backtracking: A Return to Synchronous Blocking
+## 19. Backtracking: A Return to Synchronous Blocking
 
 The "Post-Scan Registration" strategy, while functional, introduces a degree of unpredictability and inefficiency. It relies on a secondary, corrective optimization pass, which is wasted effort. The core issue remains a race condition, and the most direct solution is to solve it synchronously.
 
@@ -241,7 +241,7 @@ The revised plan is to implement a more targeted blocking mechanism:
 
 If this `setTimeout` validation proves successful, the next step will be to replace it with a more robust synchronization mechanism, such as a shared promise that is resolved upon the completion of the `worker` environment's scan. This returns us to a more efficient, single-pass optimization.
 
-### 9.12. A Deeper Problem: The Duplicate Dependency Issue
+## 20. A Deeper Problem: The Duplicate Dependency Issue
 
 The targeted blocking strategy, while seeming to work initially, ultimately fails. After the initial successful load, a subsequent, automatic reload occurs, which breaks the application with a "duplicate React" error.
 
@@ -249,7 +249,7 @@ This classic error indicates that different parts of the application are resolvi
 
 This proves that trying to patch the timing of the automatic, parallel optimization process is too fragile.
 
-### 9.13. The Definitive Strategy: Manual Optimizer Control
+## 21. The Definitive Strategy: Manual Optimizer Control
 
 The correct path forward is to stop fighting Vite's automatic behavior and instead take full control of it. We need to find a way to disable the automatic, parallel dependency optimization and trigger each environment's optimizer manually, in the correct sequence.
 
@@ -262,7 +262,7 @@ The new plan is:
 
 This strategy is the most robust because it eliminates the race condition at its source. By dictating the order of operations, we ensure that the `client` and `ssr` optimizers have the complete and correct information before they begin their work, leading to a stable and consistent dependency graph.
 
-### 9.14. The Definitive Strategy Refined: Monkey-Patching `init`
+## 22. The Definitive Strategy Refined: Monkey-Patching `init`
 
 The root of the race condition lies in how Vite starts its optimizers. At startup, the `server.listen` method calls the `depsOptimizer.init()` method for all environments in parallel. This is what we need to control.
 
@@ -278,7 +278,7 @@ This understanding leads to our final, most robust plan:
 
 This creates a perfect causal chain. Vite's parallel startup process is intercepted, forcing the `client` and `ssr` optimizers to wait until the `worker` optimizer has fully completed its discovery. This ensures the `clientFiles` and `serverFiles` sets are populated *before* they are needed, definitively solving the race condition.
 
-### 9.15. The Root Cause Revealed: A Dependency Graph Schism
+## 23. The Root Cause Revealed: A Dependency Graph Schism
 
 The `init` monkey-patching strategy was successful. The optimizers now run in the correct sequence (`worker` first, then `client` and `ssr`). However, this did *not* solve the "duplicate React" error. This is a critical discovery: it proves the problem is not a simple race condition, but a more fundamental issue with how Vite is constructing its dependency graph.
 
@@ -288,7 +288,7 @@ This means that even with sequential execution, Vite's optimizer is treating the
 
 The next step is to understand why our custom `reactConditionsResolverPlugin`, which is designed to prevent this exact problem by forcing all React imports to resolve to a single canonical file, is failing for the dependencies pulled in by our barrel file.
 
-### 9.16. The `resolveId` Hook as a Synchronization Point
+## 24. The `resolveId` Hook as a Synchronization Point
 
 The `init` monkey-patching strategy, while successful in forcing the `client` and `ssr` optimizers to wait for the `worker` optimizer's completion, has proven to be unstable. The `onLoad` hook for our barrel files began firing too early, indicating that the patched `init` methods were no longer reliably blocking the `client` and `ssr` optimizers.
 
@@ -307,7 +307,7 @@ This event-driven orchestration is superior because it is based entirely on Vite
 
 This creates the correct sequence at the correct stage of the process. It guarantees that the `worker` environment has fully completed its discovery, bundling, and cache commit *before* the `client` and `ssr` environments begin their optimization, which will finally resolve the dependency graph schism.
 
-### 9.18. A Return to Stability: Using Plugin Hooks for Synchronization
+## 25. A Return to Stability: Using Plugin Hooks for Synchronization
 
 The `init` monkey-patching strategy, while seeming to work temporarily, has proven to be unstable. The `onLoad` hook for our barrel files began firing too early, indicating that the patched `init` methods were no longer reliably blocking the `client` and `ssr` optimizers. This inconsistency demonstrates the brittleness of relying on patching internal, undocumented methods.
 
@@ -322,7 +322,7 @@ We are therefore reverting this approach in favor of a more robust solution that
 
 This event-driven orchestration is superior because it is based entirely on Vite's public plugin API, making it resilient to changes in internal implementation details and finally solving the inconsistent timing issue.
 
-### 9.12. A Return to Simplicity: In-Scan Discovery
+## 26. A Return to Simplicity: In-Scan Discovery
 
 After finding the previous synchronization strategies to be overly complex and brittle, we are pivoting to a simpler, more direct approach that accepts a pragmatic trade-off.
 
@@ -336,7 +336,7 @@ After finding the previous synchronization strategies to be overly complex and b
 
 This approach is superior because it eliminates the need for any re-optimization passes or complex promise-juggling. By the time the `client` and `ssr` optimizers are allowed to run, the `clientFiles` and `serverFiles` sets will have already been fully populated, allowing their dependency barrels to be generated correctly on the very first try.
 
-### 9.13. Final Conclusion: `optimizeDeps` is the Wrong Tool
+## 27. Final Conclusion: `optimizeDeps` is the Wrong Tool
 
 After extensive experimentation with various synchronization strategies (`init` monkey-patching, awaiting `scanProcessing`, post-scan registration), we have definitively concluded that trying to hook into or control Vite's `optimizeDeps` lifecycle is fundamentally the wrong approach for our use case.
 
@@ -346,7 +346,7 @@ The core issues are:
 
 Fighting this behavior has led to overly complex and ultimately incorrect solutions.
 
-### 9.14. The Definitive Strategy: A Standalone `esbuild` Scan
+## 28. The Definitive Strategy: A Standalone `esbuild` Scan
 
 We are pivoting to a new strategy that gives us full control over the discovery process by running our own, separate `esbuild` scan before Vite's optimizers begin.
 
@@ -357,7 +357,7 @@ We are pivoting to a new strategy that gives us full control over the discovery 
 
 This approach is superior because it separates our domain-specific discovery logic from Vite's internal machinery, giving us control and predictability while still leveraging Vite's powerful pre-bundling for the final output.
 
-### 9.15. Investigation: The Dependency Graph Schism Revisited
+## 29. Investigation: The Dependency Graph Schism Revisited
 
 With the standalone `esbuild` scanner now successfully implemented, we have a stable and reliable method for discovering all directive-marked modules. The scanner correctly populates our barrel files with a comprehensive list of client components before Vite's optimizer even begins.
 
@@ -365,7 +365,7 @@ However, the "duplicate React dependency" error persists. This is a critical fin
 
 Our next step is to analyze the output of the optimizer in the `.vite/deps` and `.vite/deps_ssr` directories to pinpoint exactly which modules are being duplicated and to trace them back to their source files. This will allow us to understand why the dependency graphs are not being unified.
 
-### 9.16. The Smoking Gun: A Missing `jsx-runtime`
+## 30. The Smoking Gun: A Missing `jsx-runtime`
 
 An analysis of the optimizer's output in the `.vite/deps` directory has revealed the precise nature of the dependency schism.
 
@@ -376,7 +376,7 @@ This is the definitive proof of the problem. Vite is processing the application 
 
 The root cause appears to be a failure in Vite's dependency scanner to detect the implicit `jsx-runtime` dependency for the modules imported within our barrel file.
 
-### 9.17. The Root Cause Identified: Importing the Wrong Barrel
+## 31. The Root Cause Identified: Importing the Wrong Barrel
 
 We have confirmed that our standalone scanner and "Dummy File" + `onLoad` hook strategy are working correctly. Vite's optimizer is successfully processing our barrel file and generating a single, large, pre-bundled chunk in the `.vite/deps` directory.
 
@@ -391,7 +391,7 @@ The solution, as previously discovered, is to modify the `createDirectiveLookupP
 
 The trigger for this re-optimization is the subject of our current investigation.
 
-### 9.18. The Final Solution: Bypassing the `.vite` Directory
+## 32. The Final Solution: Bypassing the `.vite` Directory
 
 The final piece of the puzzle was discovered by identifying a subtle but critical behavior in Vite's dev server. The root cause of the persistent waterfall was the location of our dummy barrel files.
 
@@ -406,7 +406,7 @@ The final piece of the puzzle was discovered by identifying a subtle but critica
 
 This finally solves the in-browser request waterfall, achieving the original goal of the optimization.
 
-### 9.19. Regression and Re-evaluation
+## 33. Regression and Re-evaluation
 
 A simplification was attempted in the `directiveModulesDevPlugin`. The `esbuild` `onLoad` plugin, which was used to hijack the loading of the dummy barrel files, was removed. The logic was simplified to write the barrel content directly to the files on disk before the optimizer runs.
 
@@ -414,7 +414,7 @@ Unexpectedly, this change did not work. Reverting the change also failed to fix 
 
 This indicates that the stability of the solution was not what it seemed, and the `onLoad` plugin's role, or some other subtle factor, was more critical than understood. The next step is to re-investigate the optimizer's behavior with the simplified code in place to find the new root cause.
 
-### 9.20. A New Approach: Leveraging Package Subpath Exports
+## 34. A New Approach: Leveraging Package Subpath Exports
 
 The previous regression led to a new insight. The complex, runtime lookup of the optimized barrel path within the `createDirectiveLookupPlugin` was a potential source of fragility. It relied on manually inspecting Vite's internal `depsOptimizer.metadata`, which is not a stable public API.
 
@@ -426,7 +426,7 @@ A much cleaner and more robust strategy is to treat our generated barrel files a
 
 This approach is superior because it relies entirely on Vite's standard, built-in module resolution for package subpaths. By treating our barrel as a legitimate dependency, we allow Vite's dev server to handle the resolution to the correct, optimized chunk automatically, removing our brittle, manual lookup and greatly simplifying the code.
 
-### 9.21. Final Conclusion: Working With Vite's Grain, Not Against It
+## 35. Final Conclusion: Working With Vite's Grain, Not Against It
 
 The long journey of debugging and experimentation, from monkey-patching Vite's internals to orchestrating complex synchronization, culminated in a solution whose elegance lies in its simplicity. The core problem was never about timing or race conditions, but about communication. We were trying to force Vite's optimizer to understand a special type of dependency through complex, imperative means. The final solution works because it frames the problem in a way Vite is already designed to understand.
 
