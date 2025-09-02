@@ -13,22 +13,29 @@ The critical flaw in this design is that the `ssr` artifacts are generated in a 
 
 As a result, the code from the `ssr` build is not processed with the necessary polyfills and transformations (e.g., for `nodejs_compat`) required to run in the Cloudflare Workers runtime. This leads to runtime errors in `vite preview` when the final, linked worker is executed.
 
-## 2. Attempt 1: Configuration Inheritance
+## 2. Discarded Idea #1: A Scan-First, Sequential Build Process
 
-Our first attempt to solve this was to make the `linker` environment aware of the `worker` environment's configuration.
+To solve the linker transformation problem, we attempted to re-architect the build process to be more robust by eliminating the need for the linker to process untransformed SSR artifacts. The proposed sequential build process was:
 
--   **The Idea:** Programmatically merge the fully resolved Vite configuration from the `worker` environment into the `linker` environment's configuration just before the linker build pass is executed.
--   **Rationale:** We believed this would ensure the linker applied the same Cloudflare-specific transformations to all the code it was bundling, including the SSR artifacts.
--   **Outcome:** This approach was abandoned. It proved to be overly complex and brittle, requiring fragile, deep merges of Vite's internal configuration objects. It became difficult to maintain and failed to correctly combine critical settings like `rollupOptions.plugins`, which still resulted in an improperly configured build.
+1.  **Pre-Scan:** A standalone `esbuild` scan of the application source runs first, populating `clientFiles` and `serverFiles`.
+2.  **SSR Build:** With the list of client components now available, the `ssr` build can run first.
+3.  **Worker Build (with direct bundling):** The `worker` build runs next, bundling the SSR artifacts directly so they get the Cloudflare plugin transformations.
+4.  **Client Build & Simplified Linker Build:** The final steps build client assets and link them.
 
-## 3. The Solution: A Scan-First, Sequential Build Process
+### Why It Was Discarded: The Tree-Shaking Regression
 
-We are now pivoting to a new strategy that re-architects the build process to be more robust and predictable by eliminating the need for the linker to process untransformed SSR artifacts. The new, sequential build process will be:
+This "scan-first" model introduced a subtle but critical regression. The original architecture (where the `worker` build ran first) had an important side-effect: Vite/Rollup's tree-shaking would naturally filter the list of all possible `"use client"` components down to only those that were *actually imported and used* in the application.
 
-1.  **Pre-Scan:** A `directiveModulesBuildPlugin` will execute a standalone `esbuild` scan of the application source. This scan populates the `clientFiles` and `serverFiles` sets, providing a complete list of all directive-marked modules upfront.
-2.  **SSR Build:** With the list of client components now available, the `ssr` build can run first. It will generate its intermediate artifacts, including the SSR bridge.
-3.  **Worker Build (with direct bundling):** The `worker` build runs next. When it encounters the import for the SSR bridge, the `ssrBridgePlugin` will now resolve it directly to the intermediate artifact from the `ssr` build, bundling it in. The output from this phase is an intermediate `worker.js` that contains all necessary server-side code, which has been correctly processed by the Cloudflare plugin.
-4.  **Client Build:** The `worker` build also discovers the client-side entry points, which are then used to execute the `client` build, producing the final assets and `manifest.json`.
-5.  **Simplified Linker Build:** The `linker` phase's role is now greatly simplified. It no longer handles SSR artifacts. Its sole responsibility is to perform deferred asset linking by replacing placeholders in the intermediate `worker.js` with the final, hashed asset paths from the client manifest.
+Our standalone `esbuild` scan was not a true substitute. It identified *every* file containing a `"use client"` directive anywhere in the dependency graph, not just the "entry" components used by our server code. This resulted in an enormous, unfiltered list of components being passed to the `ssr` build, defeating a critical optimization. We briefly attempted to use the `esbuild` metafile to perform tree-shaking, but this was also not a sufficiently accurate replacement for the real bundler's module graph analysis. The approach was abandoned.
 
-This approach creates a more logical and linear flow of information. The `worker` environment, which is fully configured for the Cloudflare runtime, is responsible for processing *all* server-side code (including the SSR output), ensuring a consistent and correctly transformed final bundle.
+## 3. The Path Forward: Fixing the Linker Environment
+
+We are now returning to the original, `worker`-first build order, as it is the only way to get the accurate, tree-shaken list of client components.
+
+`Worker Build -> Client Build -> SSR Build -> Linker Build`
+
+This means we are once again facing the original problem: the `linker` environment is not correctly configured to process the SSR artifacts. Our initial attempt to solve this by manually merging the `worker` and `linker` configurations was brittle and failed.
+
+Our definitive solution is to make the `linker` environment a high-fidelity clone of the `worker` environment, not by merging, but by **inheritance**. The plan is to programmatically construct the `linker` configuration in `configPlugin.mts` by taking the *entire* `worker` config object as a base, and then precisely overriding only the properties essential for the linking step (like `build.rollupOptions.input`).
+
+This ensures that all plugins (including the Cloudflare plugin), resolvers, and other critical settings from the `worker` environment are present and correctly configured for the `linker` phase. When the `linker` bundles the SSR artifacts, they will undergo the exact same transformations as the main worker code, solving the runtime error problem while preserving the necessary `worker`-first build order for accurate tree-shaking.

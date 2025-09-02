@@ -1,5 +1,5 @@
 // @ts-ignore
-import esbuild, { OnLoadArgs, OnResolveArgs, PluginBuild } from "esbuild";
+import { OnLoadArgs, OnResolveArgs, PluginBuild } from "esbuild";
 
 import { Alias, ResolvedConfig } from "vite";
 import fsp from "node:fs/promises";
@@ -182,13 +182,14 @@ export async function runDirectivesScan({
   );
 
   try {
-    await esbuild.build({
+    const result = await esbuild.build({
       entryPoints: absoluteEntries,
       bundle: true,
       write: false,
       platform: "node",
       format: "esm",
       logLevel: "silent",
+      metafile: true,
       plugins: [
         createEsbuildScanPlugin({
           clientFiles,
@@ -198,14 +199,9 @@ export async function runDirectivesScan({
         }),
       ],
     });
+
+    return result.metafile;
   } catch (e: any) {
     throw new Error(`RWSDK directive scan failed:\n${e.message}`);
   }
-
-  log(
-    "Finished directives scan for environment '%s'. Found %d client files and %d server files.",
-    envName,
-    clientFiles.size,
-    serverFiles.size,
-  );
 }

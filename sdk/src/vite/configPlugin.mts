@@ -9,7 +9,7 @@ import { glob } from "glob";
 
 import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import { buildApp } from "./buildApp.mjs";
-import { directiveModulesBuildPlugin } from "./directiveModulesBuildPlugin.mjs";
+import { directivesFilteringPlugin } from "./directivesFilteringPlugin.mjs";
 
 const log = debug("rwsdk:vite:config");
 
@@ -46,15 +46,67 @@ export const configPlugin = ({
   name: "rwsdk:config",
   config: async (_) => {
     const mode = process.env.NODE_ENV;
-    const baseConfig: InlineConfig = {
-      appType: "custom",
+
+    const workerConfig: InlineConfig = {
+      resolve: {
+        conditions: [
+          "workerd",
+          "react-server",
+          "module",
+          // context(justinvdm, 11 Jun 2025): Some packages meant for cloudflare workers, yet
+          // their deps have only node import conditions, e.g. `agents` package (meant for CF),
+          // has `pkce-challenge` package as a dep, which has only node import conditions.
+          // https://github.com/crouchcd/pkce-challenge/blob/master/package.json#L17
+          //
+          // @cloudflare/vite-plugin should take care of any relevant polyfills for deps with
+          // node builtins imports that can be polyfilled though, so it is worth us including this condition here.
+          // However, it does mean we will try to run packages meant for node that cannot be run on cloudflare workers.
+          // That's the trade-off, but arguably worth it.
+          "node",
+        ],
+        noExternal: true,
+      },
+      define: {
+        "import.meta.env.RWSDK_ENV": JSON.stringify("worker"),
+      },
+      optimizeDeps: {
+        noDiscovery: false,
+        include: ["rwsdk/worker"],
+        exclude: [],
+        entries: [workerEntryPathname],
+        esbuildOptions: {
+          jsx: "automatic",
+          jsxImportSource: "react",
+          define: {
+            "process.env.NODE_ENV": JSON.stringify(mode),
+          },
+        },
+      },
+      build: {
+        outDir: resolve(projectRootDir, "dist", "worker"),
+        emitAssets: true,
+        emptyOutDir: false,
+        ssr: true,
+        rollupOptions: {
+          output: {
+            inlineDynamicImports: true,
+          },
+          input: {
+            worker: workerEntryPathname,
+          },
+        },
+      },
       plugins: [
-        directiveModulesBuildPlugin({
+        directivesFilteringPlugin({
           clientFiles,
           serverFiles,
           projectRootDir,
         }),
       ],
+    };
+
+    const baseConfig: InlineConfig = {
+      appType: "custom",
       mode,
       logLevel: silent ? "silent" : "info",
       build: {
@@ -139,75 +191,24 @@ export const configPlugin = ({
             },
           },
         },
-        worker: {
-          resolve: {
-            conditions: [
-              "workerd",
-              "react-server",
-              "module",
-              // context(justinvdm, 11 Jun 2025): Some packages meant for cloudflare workers, yet
-              // their deps have only node import conditions, e.g. `agents` package (meant for CF),
-              // has `pkce-challenge` package as a dep, which has only node import conditions.
-              // https://github.com/crouchcd/pkce-challenge/blob/master/package.json#L17
-              //
-              // @cloudflare/vite-plugin should take care of any relevant polyfills for deps with
-              // node builtins imports that can be polyfilled though, so it is worth us including this condition here.
-              // However, it does mean we will try to run packages meant for node that cannot be run on cloudflare workers.
-              // That's the trade-off, but arguably worth it.
-              "node",
-            ],
-            noExternal: true,
-          },
-          define: {
-            "import.meta.env.RWSDK_ENV": JSON.stringify("worker"),
-          },
-          optimizeDeps: {
-            noDiscovery: false,
-            include: ["rwsdk/worker"],
-            exclude: [],
-            entries: [workerEntryPathname],
-            esbuildOptions: {
-              jsx: "automatic",
-              jsxImportSource: "react",
-              define: {
-                "process.env.NODE_ENV": JSON.stringify(mode),
-              },
-            },
-          },
-          build: {
-            outDir: resolve(projectRootDir, "dist", "worker"),
-            emitAssets: true,
-            emptyOutDir: false,
-            ssr: true,
-            rollupOptions: {
-              output: {
-                inlineDynamicImports: true,
-              },
-              input: {
-                worker: workerEntryPathname,
-              },
-            },
-          },
-        },
+        worker: workerConfig,
         linker: {
-          resolve: {
-            conditions: ["workerd", "react-server", "module", "node"],
-          },
-          define: {
-            "import.meta.env.RWSDK_ENV": JSON.stringify("worker"),
-          },
+          ...workerConfig,
           build: {
+            ...workerConfig.build,
             outDir: resolve(projectRootDir, "dist", "worker"),
             emptyOutDir: false,
             emitAssets: false,
             ssr: true,
             minify: mode !== "development",
             rollupOptions: {
+              ...workerConfig.build?.rollupOptions,
               external: externalModules,
               input: {
                 worker: resolve(projectRootDir, "dist", "worker", "worker.js"),
               },
               output: {
+                ...workerConfig.build?.rollupOptions?.output,
                 inlineDynamicImports: true,
                 entryFileNames: "worker.js",
               },

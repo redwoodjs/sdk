@@ -1,6 +1,8 @@
 import debug from "debug";
+import path from "path";
 import type { ViteBuilder } from "vite";
 import { runDirectivesScan } from "./runDirectivesScan.mjs";
+import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 
 const log = debug("rwsdk:vite:build-app");
 
@@ -24,18 +26,28 @@ export async function buildApp({
   serverFiles: Set<string>;
   projectRootDir: string;
 }) {
+  // The initial scan discovers all possible directive files. The filtering
+  // plugin will then narrow this down after the worker build.
   await runDirectivesScan({
     rootConfig: builder.config,
     envName: "worker",
     clientFiles,
     serverFiles,
+    projectRootDir,
   });
+
+  console.log("Building worker to discover used client components...");
+  await builder.build(builder.environments.worker);
+
+  log(
+    "Used client files after worker build & filtering: %O",
+    Array.from(clientFiles),
+  );
 
   console.log("Building SSR...");
   await builder.build(builder.environments.ssr);
 
-  console.log("Building worker...");
-  await builder.build(builder.environments.worker);
+  log("Discovered clientEntryPoints: %O", Array.from(clientEntryPoints));
 
   console.log("Building client...");
   const clientEnv = builder.environments["client"]!;

@@ -3,9 +3,9 @@ import debug from "debug";
 
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 
-const log = debug("rwsdk:vite:directive-modules-build");
+const log = debug("rwsdk:vite:directives-filtering-plugin");
 
-export const directiveModulesBuildPlugin = ({
+export const directivesFilteringPlugin = ({
   clientFiles,
   serverFiles,
   projectRootDir,
@@ -15,7 +15,7 @@ export const directiveModulesBuildPlugin = ({
   projectRootDir: string;
 }): Plugin => {
   return {
-    name: "rwsdk:directive-modules-build",
+    name: "rwsdk:directives-filtering",
     enforce: "post",
     async buildEnd() {
       if (this.environment.name !== "worker") {
