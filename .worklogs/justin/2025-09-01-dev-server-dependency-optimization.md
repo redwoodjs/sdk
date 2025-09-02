@@ -405,3 +405,11 @@ The final piece of the puzzle was discovered by identifying a subtle but critica
 **The Result:** This combination works perfectly. The standalone `esbuild` scan discovers all client components, the barrel files are generated in a location that Vite does not treat specially, and the runtime `import()` statements correctly resolve to the single, large, pre-bundled chunk.
 
 This finally solves the in-browser request waterfall, achieving the original goal of the optimization.
+
+### 9.19. Regression and Re-evaluation
+
+A simplification was attempted in the `directiveModulesDevPlugin`. The `esbuild` `onLoad` plugin, which was used to hijack the loading of the dummy barrel files, was removed. The logic was simplified to write the barrel content directly to the files on disk before the optimizer runs.
+
+Unexpectedly, this change did not work. Reverting the change also failed to fix the issue. The application has regressed to a previous failure state, exhibiting the optimizer-related problem where the pre-bundled barrel is not correctly used, causing the request waterfall to reappear.
+
+This indicates that the stability of the solution was not what it seemed, and the `onLoad` plugin's role, or some other subtle factor, was more critical than understood. The next step is to re-investigate the optimizer's behavior with the simplified code in place to find the new root cause.

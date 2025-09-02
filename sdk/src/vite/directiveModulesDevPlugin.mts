@@ -79,41 +79,10 @@ export const directiveModulesDevPlugin = ({
       );
 
       mkdirSync(path.dirname(CLIENT_BARREL_PATH), { recursive: true });
-      writeFileSync(CLIENT_BARREL_PATH, "");
+      writeFileSync(CLIENT_BARREL_PATH, clientBarrelContent);
 
       mkdirSync(path.dirname(SERVER_BARREL_PATH), { recursive: true });
-      writeFileSync(SERVER_BARREL_PATH, "");
-
-      const esbuildPlugin = {
-        name: "rwsdk:esbuild:barrel-handler",
-        setup(build: any) {
-          const barrelPaths = Object.values([
-            CLIENT_BARREL_PATH,
-            SERVER_BARREL_PATH,
-          ]);
-          const filter = new RegExp(
-            `^(${barrelPaths
-              .map((p) => p.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"))
-              .join("|")})$`,
-          );
-
-          build.onLoad({ filter }, (args: any) => {
-            if (args.path === CLIENT_BARREL_PATH) {
-              return {
-                contents: clientBarrelContent,
-                loader: "js",
-              };
-            }
-            if (args.path === SERVER_BARREL_PATH) {
-              return {
-                contents: serverBarrelContent,
-                loader: "js",
-              };
-            }
-            return null;
-          });
-        },
-      };
+      writeFileSync(SERVER_BARREL_PATH, serverBarrelContent);
 
       for (const [envName, env] of Object.entries(config.environments)) {
         if (envName === "client" || envName === "ssr") {
@@ -122,13 +91,6 @@ export const directiveModulesDevPlugin = ({
             dummyFilePaths.client,
             dummyFilePaths.server,
           ];
-          env.optimizeDeps.esbuildOptions = {
-            ...env.optimizeDeps.esbuildOptions,
-            plugins: [
-              ...(env.optimizeDeps.esbuildOptions?.plugins || []),
-              esbuildPlugin,
-            ],
-          };
         }
       }
     },
