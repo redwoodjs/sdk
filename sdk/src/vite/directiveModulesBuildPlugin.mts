@@ -2,7 +2,7 @@ import { Plugin, ResolvedConfig } from "vite";
 import debug from "debug";
 
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
-import { runEsbuildScan } from "./runEsbuildScan.mjs";
+import { runDirectivesScan } from "./runDirectivesScan.mjs";
 
 const log = debug("rwsdk:vite:directive-modules-build");
 
@@ -26,7 +26,7 @@ export const directiveModulesBuildPlugin = ({
       }
 
       log("Running pre-scan for directive modules...");
-      await runEsbuildScan({
+      await runDirectivesScan({
         rootConfig: config,
         envName: "worker",
         clientFiles,

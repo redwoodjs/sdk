@@ -2,7 +2,7 @@ import path from "node:path";
 import { Plugin } from "vite";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
-import { runEsbuildScan } from "./runEsbuildScan.mjs";
+import { runDirectivesScan } from "./runDirectivesScan.mjs";
 import { CLIENT_BARREL_PATH } from "../lib/constants.mjs";
 import { SERVER_BARREL_PATH } from "../lib/constants.mjs";
 
@@ -56,7 +56,7 @@ export const directiveModulesDevPlugin = ({
       // Phase 1: Standalone esbuild scan to discover all directive files
       const workerEnv = config.environments["worker"];
       if (workerEnv) {
-        await runEsbuildScan({
+        await runDirectivesScan({
           rootConfig: config,
           envName: "worker",
           clientFiles,
