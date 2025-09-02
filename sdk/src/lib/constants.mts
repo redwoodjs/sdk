@@ -12,6 +12,19 @@ export const INTERMEDIATES_OUTPUT_DIR = resolve(
   DIST_DIR,
   "__intermediate_builds",
 );
+
+export const CLIENT_BARREL_PATH = resolve(
+  INTERMEDIATES_OUTPUT_DIR,
+  "client",
+  "rwsdk-client-barrel.js",
+);
+
+export const SERVER_BARREL_PATH = resolve(
+  INTERMEDIATES_OUTPUT_DIR,
+  "ssr",
+  "rwsdk-server-barrel.js",
+);
+
 export const INTERMEDIATE_SSR_BRIDGE_PATH = resolve(
   INTERMEDIATES_OUTPUT_DIR,
   "ssr",

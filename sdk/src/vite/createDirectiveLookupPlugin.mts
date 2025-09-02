@@ -7,6 +7,7 @@ import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { stat } from "fs/promises";
 import { getSrcPaths } from "../lib/getSrcPaths.js";
 import { hasDirective } from "./hasDirective.mjs";
+import { CLIENT_BARREL_PATH, SERVER_BARREL_PATH } from "../lib/constants.mjs";
 
 interface DirectiveLookupConfig {
   kind: "client" | "server";
@@ -208,20 +209,15 @@ export const ${config.exportName} = {
   ${Array.from(files)
     .map((file: string) => {
       if (file.includes("node_modules") && isDev) {
-        const barrelFileName =
-          config.kind === "client"
-            ? "rwsdk-client-barrel.js"
-            : "rwsdk-server-barrel.js";
+        const barrelPath =
+          config.kind === "client" ? CLIENT_BARREL_PATH : SERVER_BARREL_PATH;
 
-        const dummyPath = path.join(
-          projectRootDir,
-          "node_modules",
-          ".vite",
-          barrelFileName,
-        );
+        const outputBarrelPath =
+          devServer.environments[environment]?.depsOptimizer?.metadata
+            ?.optimized[barrelPath].file;
 
         return `
-  "${file}": () => import("${dummyPath}").then(m => m.default["${file}"]),
+  "${file}": () => import("${outputBarrelPath}").then(m => m.default["${file}"]),
 `;
       } else {
         return `

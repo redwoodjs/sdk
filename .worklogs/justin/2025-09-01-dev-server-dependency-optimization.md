@@ -376,12 +376,32 @@ This is the definitive proof of the problem. Vite is processing the application 
 
 The root cause appears to be a failure in Vite's dependency scanner to detect the implicit `jsx-runtime` dependency for the modules imported within our barrel file.
 
-### 9.17. The Real Root Cause: A Re-Optimization Trigger
+### 9.17. The Root Cause Identified: Importing the Wrong Barrel
 
-Further investigation has revealed that the "duplicate dependency" issue is not a result of a dependency graph schism, but of a secondary re-optimization pass being triggered by Vite.
+We have confirmed that our standalone scanner and "Dummy File" + `onLoad` hook strategy are working correctly. Vite's optimizer is successfully processing our barrel file and generating a single, large, pre-bundled chunk in the `.vite/deps` directory.
 
-After implementing the standalone `esbuild` scan based on the `worker` entry point, we observed the following behavior:
-1.  The initial page load is successful.
-2.  Shortly after, the browser re-fetches the pre-bundled dependency chunks, but with a new `?v=<hash>` query string.
+The request waterfall persists for a simple reason: our `createDirectiveLookupPlugin` is generating `import()` statements that point to the wrong file.
 
-This confirms that Vite is performing a corrective re-optimization pass after the initial server startup has completed. The trigger for this re-optimization is the subject of our current investigation.
+-   **Currently Importing:** The `load` hook is generating an `import()` that points to the *source* dummy barrel file (e.g., `/node_modules/.vite/rwsdk-client-barrel.js`).
+-   **Correct Import Path:** It should be pointing to the final, *optimized* chunk that Vite generates (e.g., `/node_modules/.vite/deps/PROCESSED_FILENAME.js`).
+
+The browser is therefore bypassing the pre-bundled chunk entirely, requesting the source file, and then triggering the waterfall as it resolves the imports inside.
+
+The solution, as previously discovered, is to modify the `createDirectiveLookupPlugin`'s `load` hook to look up the correct, final file path from the `depsOptimizer.metadata` at runtime and use that path in the generated `import()` statement.
+
+The trigger for this re-optimization is the subject of our current investigation.
+
+### 9.18. The Final Solution: Bypassing the `.vite` Directory
+
+The final piece of the puzzle was discovered by identifying a subtle but critical behavior in Vite's dev server. The root cause of the persistent waterfall was the location of our dummy barrel files.
+
+**The Hypothesis:** We hypothesized that Vite's dev server applies special, undocumented resolution rules to any path inside the `node_modules/.vite` directory. Our `createDirectiveLookupPlugin` was generating an `import()` for the *source* barrel file (e.g., `.../.vite/rwsdk-client-barrel.js`), and because of this special handling, Vite was not resolving it to the final, *optimized* chunk path (e.g., `.../.vite/deps/PROCESSED_FILENAME.js`). This bypassed the optimizer's work and triggered the waterfall.
+
+**The Solution:** The successful, definitive solution involved two key changes:
+
+1.  **Relocate the Barrel Files:** We moved the dummy barrel files from the problematic `node_modules/.vite` directory to a neutral location within our own package's distribution directory (`node_modules/rwsdk/dist/__intermediate_builds/`).
+2.  **Resolve the Optimized Path:** With the barrel files now in a standard location, we updated the `createDirectiveLookupPlugin`'s `load` hook to perform a runtime lookup. It now uses the path of the new source barrel file as a key into the `depsOptimizer.metadata.optimized` object to find the correct, final path to the processed chunk that `esbuild` generated.
+
+**The Result:** This combination works perfectly. The standalone `esbuild` scan discovers all client components, the barrel files are generated in a location that Vite does not treat specially, and the runtime `import()` statements correctly resolve to the single, large, pre-bundled chunk.
+
+This finally solves the in-browser request waterfall, achieving the original goal of the optimization.

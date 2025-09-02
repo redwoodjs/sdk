@@ -1,8 +1,10 @@
-import { Plugin } from "vite";
 import path from "node:path";
+import { Plugin } from "vite";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { runEsbuildScan } from "./runEsbuildScan.mjs";
+import { CLIENT_BARREL_PATH } from "../lib/constants.mjs";
+import { SERVER_BARREL_PATH } from "../lib/constants.mjs";
 
 export const VIRTUAL_CLIENT_BARREL_ID = "virtual:rwsdk:client-module-barrel";
 export const VIRTUAL_SERVER_BARREL_ID = "virtual:rwsdk:server-module-barrel";
@@ -61,18 +63,8 @@ export const directiveModulesDevPlugin = ({
 
       // Phase 2: Barrel Generation for Vite's optimizer
       const dummyFilePaths = {
-        client: path.join(
-          projectRootDir,
-          "node_modules",
-          ".vite",
-          "rwsdk-client-barrel.js",
-        ),
-        server: path.join(
-          projectRootDir,
-          "node_modules",
-          ".vite",
-          "rwsdk-server-barrel.js",
-        ),
+        client: CLIENT_BARREL_PATH,
+        server: SERVER_BARREL_PATH,
       };
 
       // Generate the barrel content and write it to the dummy files.
@@ -86,11 +78,42 @@ export const directiveModulesDevPlugin = ({
         projectRootDir,
       );
 
-      mkdirSync(path.dirname(dummyFilePaths.client), { recursive: true });
-      writeFileSync(dummyFilePaths.client, clientBarrelContent);
+      mkdirSync(path.dirname(CLIENT_BARREL_PATH), { recursive: true });
+      writeFileSync(CLIENT_BARREL_PATH, "");
 
-      mkdirSync(path.dirname(dummyFilePaths.server), { recursive: true });
-      writeFileSync(dummyFilePaths.server, serverBarrelContent);
+      mkdirSync(path.dirname(SERVER_BARREL_PATH), { recursive: true });
+      writeFileSync(SERVER_BARREL_PATH, "");
+
+      const esbuildPlugin = {
+        name: "rwsdk:esbuild:barrel-handler",
+        setup(build: any) {
+          const barrelPaths = Object.values([
+            CLIENT_BARREL_PATH,
+            SERVER_BARREL_PATH,
+          ]);
+          const filter = new RegExp(
+            `^(${barrelPaths
+              .map((p) => p.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&"))
+              .join("|")})$`,
+          );
+
+          build.onLoad({ filter }, (args: any) => {
+            if (args.path === CLIENT_BARREL_PATH) {
+              return {
+                contents: clientBarrelContent,
+                loader: "js",
+              };
+            }
+            if (args.path === SERVER_BARREL_PATH) {
+              return {
+                contents: serverBarrelContent,
+                loader: "js",
+              };
+            }
+            return null;
+          });
+        },
+      };
 
       for (const [envName, env] of Object.entries(config.environments)) {
         if (envName === "client" || envName === "ssr") {
@@ -99,6 +122,13 @@ export const directiveModulesDevPlugin = ({
             dummyFilePaths.client,
             dummyFilePaths.server,
           ];
+          env.optimizeDeps.esbuildOptions = {
+            ...env.optimizeDeps.esbuildOptions,
+            plugins: [
+              ...(env.optimizeDeps.esbuildOptions?.plugins || []),
+              esbuildPlugin,
+            ],
+          };
         }
       }
     },
