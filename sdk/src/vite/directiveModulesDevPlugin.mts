@@ -47,16 +47,14 @@ export const directiveModulesDevPlugin = ({
       }
 
       // Phase 1: Standalone esbuild scan to discover all directive files
-      for (const envName of ["client", "ssr"]) {
-        const env = config.environments[envName];
-        if (env) {
-          await runEsbuildScan({
-            rootConfig: config,
-            envName,
-            clientFiles,
-            serverFiles,
-          });
-        }
+      const workerEnv = config.environments["worker"];
+      if (workerEnv) {
+        await runEsbuildScan({
+          rootConfig: config,
+          envName: "worker",
+          clientFiles,
+          serverFiles,
+        });
       }
 
       // Phase 2: Barrel Generation for Vite's optimizer
