@@ -35,10 +35,7 @@ export async function buildApp({
   await builder.build(builder.environments.ssr);
 
   console.log("Building worker...");
-  await builder.build(builder.environments["worker"]!);
-
-  log("Discovered clientEntryPoints: %O", Array.from(clientEntryPoints));
-  log("Discovered clientFiles: %O", Array.from(clientFiles));
+  await builder.build(builder.environments.worker);
 
   console.log("Building client...");
   const clientEnv = builder.environments["client"]!;
