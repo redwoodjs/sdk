@@ -438,3 +438,15 @@ This approach aligns perfectly with the intended "form factor" of the ecosystem:
 3.  **It Delegates Responsibility:** We are no longer responsible for the complex task of mapping a source file to its final, optimized chunk path at runtime. By simply telling Vite to `import("rwsdk/__client_barrel")`, we delegate the resolution to Vite's core module resolver, which correctly handles the mapping automatically.
 
 All the previous complexity was a symptom of fighting the tool. The final solution is robust because it works *with* the tool, leveraging its native dependency resolution mechanism to achieve the desired outcome in a clean, stable, and future-proof way. It successfully unifies the dependency graph, solving the browser request waterfall without any of the brittleness of the previous attempts.
+
+### 9.22. Making the Standalone Scan Resilient
+
+A final refinement was made to the standalone `esbuild` scan to improve its robustness. The scan is a critical step; if it fails, the application will not work correctly at runtime. However, the initial implementation was too brittle and would crash on common, non-critical resolution failures, such as platform-specific imports (e.g., `cloudflare:workers`) or CSS files that `esbuild` cannot bundle without a loader configuration.
+
+Crashing the build for these predictable issues is not the correct behavior. The solution was to make the scanner's internal resolver more intelligent, allowing the scan to succeed by gracefully bypassing modules it isn't designed to handle.
+
+The custom `esbuild` plugin's `onResolve` hook was updated to:
+1.  Proactively check if a path can be resolved using `esbuild`'s own `build.resolve` API.
+2.  If the resolution fails for any reason, it logs a diagnostic message and returns `{ external: true }`.
+
+This tells `esbuild` to treat the unresolvable import as an external dependency and simply not traverse it. This allows the critical scan to complete successfully even in projects with non-standard imports, preventing the server from crashing on manageable resolution failures.

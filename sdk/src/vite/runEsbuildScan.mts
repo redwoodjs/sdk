@@ -34,20 +34,59 @@ function createEsbuildScanPlugin({
     name: "rwsdk:esbuild-scan-plugin",
     setup(build: PluginBuild) {
       build.onResolve({ filter: /.*/ }, async (args: OnResolveArgs) => {
-        // Apply Vite's aliases
+        // Prevent infinite recursion.
+        if (args.pluginData?.rwsdkScanResolver) {
+          return null;
+        }
+
+        // 1. First, try to resolve aliases.
         for (const { find, replacement } of aliases) {
           const findPattern =
             find instanceof RegExp ? find : new RegExp(`^${find}(\\/.*)?$`);
+
           if (findPattern.test(args.path)) {
             const newPath = args.path.replace(findPattern, replacement);
-            return build.resolve(newPath, {
+
+            const resolved = await build.resolve(newPath, {
               importer: args.importer,
               resolveDir: args.resolveDir,
               kind: args.kind,
+              pluginData: { rwsdkScanResolver: true },
             });
+
+            if (resolved.errors.length === 0) {
+              return resolved;
+            }
+
+            log(
+              "Could not resolve aliased path '%s' (from '%s'). Marking as external. Errors: %s",
+              newPath,
+              args.path,
+              resolved.errors.map((e: any) => e.text).join(", "),
+            );
+            return { external: true };
           }
         }
-        return null;
+
+        // 2. If no alias matches, try esbuild's default resolver.
+        const resolved = await build.resolve(args.path, {
+          importer: args.importer,
+          resolveDir: args.resolveDir,
+          kind: args.kind,
+          pluginData: { rwsdkScanResolver: true },
+        });
+
+        // If it fails, mark as external but don't crash.
+        if (resolved.errors.length > 0) {
+          log(
+            "Could not resolve '%s'. Marking as external. Errors: %s",
+            args.path,
+            resolved.errors.map((e: any) => e.text).join(", "),
+          );
+          return { external: true };
+        }
+
+        return resolved;
       });
 
       build.onLoad({ filter: /\.(m|c)?[jt]sx?$/ }, async (args: OnLoadArgs) => {
@@ -123,21 +162,25 @@ export async function runEsbuildScan({
     absoluteEntries,
   );
 
-  await esbuild.build({
-    entryPoints: absoluteEntries,
-    bundle: true,
-    write: false,
-    platform: "node",
-    format: "esm",
-    logLevel: "silent",
-    plugins: [
-      createEsbuildScanPlugin({
-        clientFiles,
-        serverFiles,
-        aliases: ensureAliasArray(env),
-      }),
-    ],
-  });
+  try {
+    await esbuild.build({
+      entryPoints: absoluteEntries,
+      bundle: true,
+      write: false,
+      platform: "node",
+      format: "esm",
+      logLevel: "silent",
+      plugins: [
+        createEsbuildScanPlugin({
+          clientFiles,
+          serverFiles,
+          aliases: ensureAliasArray(env),
+        }),
+      ],
+    });
+  } catch (e: any) {
+    throw new Error(`RWSDK directive scan failed:\n${e.message}`);
+  }
 
   log(
     "Finished esbuild scan for environment '%s'. Found %d client files and %d server files.",
