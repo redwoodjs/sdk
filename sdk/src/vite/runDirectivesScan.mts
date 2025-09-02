@@ -1,13 +1,14 @@
 // @ts-ignore
 import esbuild, { OnLoadArgs, OnResolveArgs, PluginBuild } from "esbuild";
 
-import { Alias, ResolvedConfig, normalizePath } from "vite";
+import { Alias, ResolvedConfig } from "vite";
 import fsp from "node:fs/promises";
 import { hasDirective } from "./hasDirective.mjs";
 import path from "node:path";
 import debug from "debug";
 import { ensureAliasArray } from "./ensureAliasArray.mjs";
 import { getViteEsbuild } from "./getViteEsbuild.mjs";
+import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 
 const log = debug("rwsdk:vite:run-directives-scan");
 
@@ -25,10 +26,12 @@ function createEsbuildScanPlugin({
   clientFiles,
   serverFiles,
   aliases,
+  projectRootDir,
 }: {
   clientFiles: Set<string>;
   serverFiles: Set<string>;
   aliases: Alias[];
+  projectRootDir: string;
 }) {
   return {
     name: "rwsdk:esbuild-scan-plugin",
@@ -118,11 +121,11 @@ function createEsbuildScanPlugin({
           const contents = await fsp.readFile(args.path, "utf-8");
           if (hasDirective(contents, "use client")) {
             log("Discovered 'use client' in:", args.path);
-            clientFiles.add(normalizePath(args.path));
+            clientFiles.add(normalizeModulePath(args.path, projectRootDir));
           }
           if (hasDirective(contents, "use server")) {
             log("Discovered 'use server' in:", args.path);
-            serverFiles.add(normalizePath(args.path));
+            serverFiles.add(normalizeModulePath(args.path, projectRootDir));
           }
           return { contents, loader: "default" };
         } catch (e) {
@@ -191,6 +194,7 @@ export async function runDirectivesScan({
           clientFiles,
           serverFiles,
           aliases: ensureAliasArray(env),
+          projectRootDir: rootConfig.root,
         }),
       ],
     });
