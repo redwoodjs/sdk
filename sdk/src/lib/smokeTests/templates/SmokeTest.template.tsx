@@ -5,7 +5,7 @@ import { RequestInfo } from "rwsdk/worker";
 ${skipClient ? "" : 'import { SmokeTestClient } from "./__SmokeTestClient";'}
 import { getSmokeTestTimestamp } from "./__smokeTestFunctions";
 
-export const SmokeTest: React.FC = async () => {
+export const SmokeTest = async () => {
   const currentTime = Date.now();
   let status = "error";
   let timestamp = 0;

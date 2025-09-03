@@ -1,11 +1,10 @@
 import { createServerReference as baseCreateServerReference } from "react-server-dom-webpack/client.edge";
 import { memoizeOnId } from "../lib/memoizeOnId";
 
-export const loadServerModule = memoizeOnId(async (id: string) => {
-  const { useServerLookup } = await import(
-    "virtual:use-server-lookup.js" as string
-  );
+// @ts-ignore
+import { useServerLookup } from "virtual:use-server-lookup.js";
 
+export const loadServerModule = memoizeOnId(async (id: string) => {
   const moduleFn = useServerLookup[id];
 
   if (!moduleFn) {

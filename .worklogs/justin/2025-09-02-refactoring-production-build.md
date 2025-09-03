@@ -55,3 +55,28 @@ The conditional check (e.g., `process.env.RWSDK_BUILD_PASS !== 'worker'`) was to
 The fix was to make the check more specific. We introduced an `isBuild` flag (set in the `configResolved` hook) to the plugins. The pass-aware logic is now only applied when `isBuild` is true, ensuring that the plugins run correctly and without interference in dev mode.
 
 With this final fix, the refactoring is complete. The production build is robust, and the development server is fully functional.
+
+## 5. Addendum: Smoke Test Refactoring for Build Compatibility
+
+During the final testing of the refactored build system, we discovered that our existing smoke test infrastructure was incompatible with the new directive scanning process.
+
+Previously, the tests worked by appending a `?__smoke_test=1` query parameter to any URL. Our SDK's worker runtime would detect this, dynamically import the `SmokeTest.tsx` component using `import.meta.glob`, and wrap the application's actual page component with our test component. This was clever, but its reliance on a dynamic, runtime import could not be statically analyzed by our new build-time directive scanner.
+
+The smoke test framework has been refactored to be more explicit and robust. Instead of using a query parameter and a runtime wrapper, the test setup process now directly modifies the application's source code. It adds a static `import` for the `SmokeTest` component and injects a dedicated `/__smoke_test` route into the app's `defineApp` configuration in `worker.tsx`. This approach is less "magical" and follows the exact same code paths as any other component in the application, making the tests more realistic and compatible with our static analysis tooling.
+
+## 6. Addendum: Diagnosing and Fixing Server Action State Loss
+
+The newly refactored smoke tests immediately revealed a critical bug: in production builds, state updated by a server action was lost on the subsequent component re-render. The test would correctly see the action complete, but the UI would not reflect the new state. This did not happen in the dev server.
+
+Analysis of the build artifacts showed that the `"use server"` module was being incorrectly split into a separate chunk (e.g., `assets/__smokeTestFunctions-....js`). This created a "split-brain" scenario:
+1. The main `worker.js` loaded the module, with its state initialized.
+2. The server action framework, when invoked, performed a dynamic `import()` on the separate chunk, loading a *second, temporary instance* of the module. The action updated the state in this temporary instance, which was then discarded.
+3. The component re-render occurred in the context of the original `worker.js`, which still had the original, unmodified module instance.
+
+The root cause was the `useServerLookupPlugin`. Our strategy to defer its execution until the final "linker" pass was correct in principle—we must wait for the `directivesFilteringPlugin` to run at the end of the first worker pass to get a tree-shaken list of actions. However, the implementation was flawed. It caused the lookup map to be regenerated with dynamic `import()`s during the final linker pass, which Rollup interpreted as code-splitting points.
+
+The definitive solution is a more nuanced, environment-aware deferral strategy for the lookup plugins:
+1.  **Worker Pass:** The lookup modules are marked as `{ external: true }`. This is the critical deferral step. It allows the `directivesFilteringPlugin` to run at the end of this pass and produce the final, tree-shaken list of client and server files *before* the lookup map is ever generated.
+2.  **SSR Pass:** The lookup modules are *also* kept external. This ensures that both the worker and SSR artifacts refer to the same single source of truth for the lookup map, preventing duplication.
+3.  **Client Pass:** The `useClientLookup` module is *not* externalized; it is resolved and bundled. The client needs its own version of the map based on the tree-shaken list of client components.
+4.  **Linker Pass:** Finally, the `useServerLookup` and `useClientLookup` modules (which were externalized in the intermediate worker/ssr artifacts) are resolved and bundled. At this stage, the `load` hook runs, generating the definitive, tree-shaken lookup maps with static imports, which are then correctly bundled into the final `worker.js`. This is analogous to how the SSR bridge is bundled.

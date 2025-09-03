@@ -128,18 +128,48 @@ export const createDirectiveLookupPlugin = async ({
       }
     },
     resolveId(source) {
-      if (source === `${config.virtualModuleName}.js`) {
-        log("Resolving %s module", config.virtualModuleName);
-
-        if (!isDev && this.environment?.name === "worker") {
-          if (process.env.RWSDK_BUILD_PASS === "worker") {
-            log("Marking as external for worker pass");
-            return { id: source, external: true };
-          }
-        }
-
-        return source;
+      if (source !== `${config.virtualModuleName}.js`) {
+        return null;
       }
+
+      // context(justinvdm, 3 Sep 2025): This logic determines *when* to
+      // generate and bundle the lookup map. By conditionally externalizing it,
+      // we ensure the map is only created after tree-shaking is complete and
+      // that it's correctly shared between the SSR and final worker builds.
+      log("Resolving %s module", config.virtualModuleName);
+      const envName = this.environment?.name;
+
+      // 1. Worker Pass -> externalize
+      if (
+        isDev &&
+        envName === "worker" &&
+        process.env.RWSDK_BUILD_PASS === "worker"
+      ) {
+        // context(justinvdm, 3 Sep 2025): We externalize the lookup during the
+        // first worker pass. This defers its bundling until after the
+        // directivesFilteringPlugin has had a chance to run and tree-shake
+        // the list of client/server files.
+        log("Marking as external for worker pass");
+        return { id: source, external: true };
+      }
+
+      // 2. SSR Pass -> externalize
+      if (isDev && envName === "ssr") {
+        // context(justinvdm, 3 Sep 2025): We also externalize during the SSR
+        // build. This ensures that both the worker and SSR artifacts refer to
+        // the same virtual module, which will be resolved into a single, shared
+        // lookup map during the final linker pass.
+        log("Marking as external for ssr pass");
+        return { id: source, external: true };
+      }
+
+      // 3. Client Pass & 4. Linker Pass -> resolve and bundle
+      // context(justinvdm, 3 Sep 2025): For the client build, the dev server,
+      // and the final linker pass, we resolve the module ID with a null-byte
+      // prefix. This signals to Vite/Rollup that this is a virtual module
+      // whose content should be provided by the `load` hook, bundling it in.
+      log("Resolving for bundling");
+      return `\0${source}`;
     },
     async load(id) {
       if (id === config.virtualModuleName + ".js") {
