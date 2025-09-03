@@ -72,8 +72,6 @@ const cleanupViteEntries = async (targetDir: string) => {
 };
 
 const performFullSync = async (sdkDir: string, targetDir: string) => {
-  const sdkPackageJsonPath = path.join(sdkDir, "package.json");
-  let originalSdkPackageJson: string | null = null;
   let tarballPath = "";
   let tarballName = "";
 
@@ -81,27 +79,6 @@ const performFullSync = async (sdkDir: string, targetDir: string) => {
   await cleanupViteEntries(targetDir);
 
   try {
-    try {
-      originalSdkPackageJson = await fs.readFile(sdkPackageJsonPath, "utf-8");
-      const packageJson = JSON.parse(originalSdkPackageJson);
-      const originalVersion = packageJson.version;
-      const timestamp = new Date()
-        .toISOString()
-        .replace(/[-:T.]/g, "")
-        .slice(0, 14);
-      const newVersion = `${originalVersion}+build.${timestamp}`;
-      console.log(`Temporarily setting version to ${newVersion}`);
-      packageJson.version = newVersion;
-      await fs.writeFile(
-        sdkPackageJsonPath,
-        JSON.stringify(packageJson, null, 2),
-      );
-    } catch (e) {
-      console.warn(
-        "Could not modify package.json version, proceeding without it.",
-      );
-      originalSdkPackageJson = null; // don't restore if we failed to modify
-    }
     console.log("📦 Packing SDK...");
     const packResult = await $({ cwd: sdkDir })`npm pack --json`;
     const json = JSON.parse(packResult.stdout || "[]");
@@ -180,10 +157,6 @@ const performFullSync = async (sdkDir: string, targetDir: string) => {
       }
     }
   } finally {
-    if (originalSdkPackageJson) {
-      console.log("Restoring package.json...");
-      await fs.writeFile(sdkPackageJsonPath, originalSdkPackageJson);
-    }
     if (tarballPath) {
       console.log("Removing tarball...");
       await fs.unlink(tarballPath).catch(() => {
