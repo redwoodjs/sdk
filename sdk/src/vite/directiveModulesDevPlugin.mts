@@ -50,13 +50,14 @@ export const directiveModulesDevPlugin = ({
   serverFiles: Set<string>;
   projectRootDir: string;
 }): Plugin => {
-  let server: ViteDevServer;
+  const deferredServer: PromiseWithResolvers<ViteDevServer> =
+    Promise.withResolvers();
 
   return {
     name: "rwsdk:directive-modules-dev",
 
-    configureServer(_server) {
-      server = _server;
+    configureServer(server) {
+      deferredServer.resolve(server);
     },
 
     configResolved(config) {
@@ -86,6 +87,8 @@ export const directiveModulesDevPlugin = ({
           build.onLoad(
             { filter: /.*/, namespace: "rwsdk-barrel" },
             async (args: any) => {
+              const server = await deferredServer.promise;
+
               if (!scanPromise) {
                 scanPromise = runDirectivesScan({
                   rootConfig: server.config,
