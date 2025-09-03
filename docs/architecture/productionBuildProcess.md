@@ -2,19 +2,15 @@
 
 This document outlines the multi-phase build process used for production environments, designed to orchestrate a series of interdependent Vite builds.
 
-## The Challenge: Waterfalls, Incorrect Builds, and a Dependency Deadlock
+## The Challenge: Waterfalls, Bundle Bloat, and a Dependency Deadlock
 
-The previous, simpler production build process suffered from several critical flaws that led to both poor performance and incorrect behavior in the final deployment. The core of the problem was an inability to discover all `"use client"` and `"use server"` modules exhaustively and upfront, which created a cascade of issues:
+The previous production build process had several limitations that led to both poor performance and incorrect behavior in the final deployment. The core of the problem stemmed from how client and server modules were discovered and bundled.
 
-1.  **Production Request Waterfalls:** Much like in the dev server, the build process was unable to correctly identify all client components from third-party libraries. This resulted in the client-side bundle being split into many small, fragmented chunks, creating a network request waterfall in production that slowed down page loads.
+1.  **Production Request Waterfalls:** The build process identified every potential client component via a scan but then generated a client-side lookup map containing a dynamic `import()` for each one, regardless of whether it was actually used. This large number of dynamic import statements caused Rollup (Vite's production bundler) to perform extreme code-splitting, creating a network waterfall of tiny, fragmented chunks that slowed down page loads.
 
-2.  **Incorrect SSR Transformations:** The build process needed to bundle code from the `ssr` environment (which is configured for React Server Components) into the final `worker` environment (which is configured for the Cloudflare Workers runtime). The previous system failed to do this correctly, resulting in SSR code not receiving the necessary polyfills and transformations, leading to runtime errors.
+2.  **SSR Bundle Bloat:** Because the list of client components was not filtered to only those used by the application, the Server-Side Rendering (SSR) bundle was larger than necessary, including code for components that would never be rendered.
 
-3.  **A Circular Dependency Deadlock:** On top of these issues, the build still had to solve a fundamental circular dependency:
-    *   The `worker` build must run *first* to discover client entry points and perform tree-shaking on server components, which are inputs for the `client` and `ssr` builds.
-    *   But, the final `worker` bundle also needs the output from the `client` build (for the asset manifest) and the `ssr` build (for the server-rendered components).
-
-These combined challenges required a complete architectural redesign.
+3.  **Incorrect Transformations & A Build Deadlock:** On top of these performance issues, the build had to solve a fundamental circular dependency between the `worker`, `client`, and `ssr` environments. The previous multi-phase approach to solving this had a critical flaw where code from the `ssr` environment was not correctly processed with necessary Cloudflare-specific transformations, leading to runtime errors.
 
 ## The Solution: A Five-Step Build Process
 
@@ -31,20 +27,20 @@ This initial step provides a complete, albeit unfiltered, list of all potential 
 
 ### Step 2: Worker Build (First Pass for Discovery & Tree-Shaking)
 
-The `worker` environment is built for the first time. This pass has two primary goals:
+The `worker` environment is built for the first time. This pass is the key to solving the production inefficiencies:
 
-- **Accurate Tree-Shaking:** This is the essential step where Vite/Rollup performs a full build and tree-shaking on the server-side code. At the end of this build, our custom `directivesFilteringPlugin` compares the master list from the initial scan against Vite's final module graph. It removes any directive file that was not actually included in the final bundle, producing an accurate, minimal list of *used* components.
+- **Accurate Tree-Shaking:** This is the essential step where Vite/Rollup performs a full build and tree-shaking on the server-side code. At the end of this build, our custom `directivesFilteringPlugin` inspects the final module graph and compares the master list of client components from the initial scan against the modules that were *actually included* in the final server bundle. This produces an accurate, minimal, and tree-shaken list of *used* client components.
 - **Discovery of Side-Effects:** This pass also discovers client entry points, rewrites asset paths to a placeholder format (e.g., `rwsdk_asset:...`), and resolves imports for artifacts that don't exist yet (like the SSR bridge) to external paths.
 
-The output of this phase is an intermediate, non-deployable `worker.js`.
+The output of this phase is an intermediate, non-deployable `worker.js` and, crucially, a pruned list of client components.
 
 ### Step 3: SSR Build
 
-The `ssr` build runs next, using the refined list of `"use client"` components from the first worker pass to ensure only the necessary server-side code is included. This build produces intermediate SSR artifacts.
+The `ssr` build runs next. By using the *pruned* list of `"use client"` components from the first worker pass, it avoids bundling unnecessary code, resulting in a smaller and more efficient SSR artifact.
 
 ### Step 4: Client Build
 
-With the list of entry points and the refined list of used client components from the first worker pass, the `client` build is now executed. It runs to completion, producing all the necessary hashed client assets and a `manifest.json` file. This solves the production waterfall issue by correctly bundling all client components based on the exhaustive initial scan.
+With the list of entry points from the worker pass and the pruned list of used client components, the `client` build is now executed. Because its lookup map now only contains dynamic imports for the components that are actually needed, Rollup can create much larger, more efficient chunks. This solves the production request waterfall. The build runs to completion, producing all the necessary hashed client assets and a `manifest.json` file.
 
 ### Step 5: Worker Build (Second "Linker" Pass)
 

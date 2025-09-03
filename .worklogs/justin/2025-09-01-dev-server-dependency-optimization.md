@@ -7,7 +7,7 @@ The primary goal is to improve the developer experience by optimizing how depend
 *   **Slow Initial Startup:** The server takes a long time to become ready.
 *   **In-Browser Request Waterfalls:** When using a component from a large library (like Mantine), the browser makes many sequential requests for individual module files, leading to noticeable lag and layout shifts during development.
 
-This is happening because our framework's method of discovering `"use client"` modules forces Vite's `optimizeDeps` feature into an inefficient mode where it creates many small, fragmented chunks for library components instead of a single, unified one.
+This was happening because our method for handling client components from third-party libraries was causing an adverse interaction with Vite's dependency optimizer (`optimizeDeps`). To support potentially internal, un-exported components, we were providing Vite with the file path of *every* discovered `"use client"` module as a distinct entry point. In response, `esbuild` would perform extreme code-splitting to maximize reuse, creating hundreds of tiny, fragmented chunks. This hyper-fragmentation was the direct cause of the request waterfall.
 
 ## 2. Investigation: Discarded Ideas & Why
 

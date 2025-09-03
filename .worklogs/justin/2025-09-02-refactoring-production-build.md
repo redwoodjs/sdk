@@ -2,16 +2,11 @@
 
 ## 1. Initial State & Problem Definition
 
-The production build process was originally designed as a four-phase sequential build to solve a series of circular dependencies between the `worker`, `client`, and `ssr` Vite environments. The process was:
+The previous production build process had several limitations that led to poor performance and incorrect runtime behavior. The core issues were:
 
-1.  **Worker Pass:** A partial worker build runs to discover client entry points and `"use client"` components.
-2.  **Client Build:** Uses information from the worker pass to build the client assets.
-3.  **SSR Build:** Also uses information from the worker pass to build server-side rendered components.
-4.  **Linker Pass:** A final pass assembles the artifacts from all previous passes into a deployable `worker.js`.
-
-The critical flaw in this design is that the `ssr` artifacts are generated in a separate environment but only bundled into the final output during the `linker` phase. The `linker` is a minimal environment and does not run the full suite of plugins that the `worker` environment does (specifically, the `@cloudflare/vite-plugin`).
-
-As a result, the code from the `ssr` build is not processed with the necessary polyfills and transformations (e.g., for `nodejs_compat`) required to run in the Cloudflare Workers runtime. This leads to runtime errors in `vite preview` when the final, linked worker is executed.
+1.  **Production Request Waterfalls:** The build generated a client-side lookup map with dynamic `import()` statements for *every* discovered client component, not just those used by the application. This caused Rollup to perform extreme code-splitting, resulting in a network waterfall of tiny, fragmented chunks that slowed page load times.
+2.  **SSR Bundle Bloat:** The server-side rendering bundle was unnecessarily large because it included code for all discovered client components, rather than a tree-shaken list of only the components actually used in the application.
+3.  **Incorrect SSR Transformations:** The build was structured in a way that code from the `ssr` environment was bundled into the final `worker.js` without being processed by necessary Cloudflare-specific plugins (like `@cloudflare/vite-plugin`). This meant the SSR code lacked required polyfills and transformations, leading to runtime errors.
 
 ## 2. Discarded Idea #1: A Scan-First, Sequential Build Process
 
