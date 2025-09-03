@@ -2,17 +2,19 @@
 
 This document outlines the multi-phase build process used for production environments, designed to orchestrate a series of interdependent Vite builds.
 
-## The Challenge: A Deadlock of Circular Dependencies
+## The Challenge: Waterfalls, Incorrect Builds, and a Dependency Deadlock
 
-The production build must solve several interconnected problems simultaneously. We use multiple, specialized Vite environments (`worker`, `client`, `ssr`), and they have circular information dependencies that create a classic build deadlock:
+The previous, simpler production build process suffered from several critical flaws that led to both poor performance and incorrect behavior in the final deployment. The core of the problem was an inability to discover all `"use client"` and `"use server"` modules exhaustively and upfront, which created a cascade of issues:
 
-1.  **Client Entry Discovery:** The `worker` build is responsible for traversing the application's component tree. During this traversal, it discovers all client-side JavaScript entry points (from `<script>` tags and dynamic `import()` calls). This list of entry points is the essential input for the `client` build. Therefore, the `worker` build must run *before* the `client` build.
+1.  **Production Request Waterfalls:** Much like in the dev server, the build process was unable to correctly identify all client components from third-party libraries. This resulted in the client-side bundle being split into many small, fragmented chunks, creating a network request waterfall in production that slowed down page loads.
 
-2.  **SSR Artifact Bundling:** The `worker` environment needs to bundle the output of the `ssr` build, which includes server-rendered component code and crucial lookup maps. Therefore, the `ssr` build must run *before* the final `worker` bundle is created.
+2.  **Incorrect SSR Transformations:** The build process needed to bundle code from the `ssr` environment (which is configured for React Server Components) into the final `worker` environment (which is configured for the Cloudflare Workers runtime). The previous system failed to do this correctly, resulting in SSR code not receiving the necessary polyfills and transformations, leading to runtime errors.
 
-3.  **Deferred Asset Linking:** The `worker` build generates references to client-side assets (like `<script src="...">`), but it can't know their final, hashed filenames. It must instead write placeholder paths (e.g., `rwsdk_asset:/src/client.tsx`). Only after the `client` build completes is a `manifest.json` file generated that maps these placeholders to their final output paths (e.g., `/assets/client.a1b2c3d4.js`). A final linking step must then run *after* the `client` build to replace the placeholders in the worker's code.
+3.  **A Circular Dependency Deadlock:** On top of these issues, the build still had to solve a fundamental circular dependency:
+    *   The `worker` build must run *first* to discover client entry points and perform tree-shaking on server components, which are inputs for the `client` and `ssr` builds.
+    *   But, the final `worker` bundle also needs the output from the `client` build (for the asset manifest) and the `ssr` build (for the server-rendered components).
 
-4.  **The Deadlock:** These requirements create a multi-faceted contradiction. The `worker` must run first to provide entry points for the `client` and a tree-shaken component list for the `ssr` build. But the final `worker` bundle also depends on the output of both the `client` (for the manifest) and `ssr` builds.
+These combined challenges required a complete architectural redesign.
 
 ## The Solution: A Five-Step Build Process
 
@@ -42,13 +44,13 @@ The `ssr` build runs next, using the refined list of `"use client"` components f
 
 ### Step 4: Client Build
 
-With the list of entry points and the refined list of used client components from the first worker pass, the `client` build is now executed. It runs to completion, producing all the necessary hashed client assets and a `manifest.json` file.
+With the list of entry points and the refined list of used client components from the first worker pass, the `client` build is now executed. It runs to completion, producing all the necessary hashed client assets and a `manifest.json` file. This solves the production waterfall issue by correctly bundling all client components based on the exhaustive initial scan.
 
 ### Step 5: Worker Build (Second "Linker" Pass)
 
 The `worker` environment is built a *second* time. This pass solves two critical problems: it performs the deferred asset linking, and it ensures the SSR artifacts are processed with the correct transformations.
 
-A naive approach would be to use a separate `linker` Vite environment for this step. However, that fails because plugins—especially complex ones like `@cloudflare/vite-plugin` that apply runtime-specific polyfills and transformations—are instantiated once and often apply their logic based on the environment's `name`. A separate `linker` environment would not be seen as a Cloudflare-compatible target, and the SSR artifacts it bundles would be missing the necessary transformations, leading to runtime errors.
+A naive approach would be to create a separate `linker` Vite environment for this step. However, that fails because plugins—especially complex ones like `@cloudflare/vite-plugin` that apply runtime-specific polyfills—are instantiated once and often apply their logic based on the environment's `name`. A separate `linker` environment would not be seen as a Cloudflare-compatible target, and the SSR artifacts it bundles would be missing the necessary transformations, re-introducing the runtime errors.
 
 Our solution is to reuse the *exact same*, fully-resolved `worker` environment object for this second pass. This guarantees consistency.
 
