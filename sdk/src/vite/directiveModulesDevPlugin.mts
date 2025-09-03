@@ -1,5 +1,5 @@
-import path from "node:path";
-import { Plugin, DevEnvironment } from "vite";
+import path from "path";
+import { Plugin, ViteDevServer } from "vite";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { CLIENT_BARREL_PATH, SERVER_BARREL_PATH } from "../lib/constants.mjs";
@@ -39,6 +39,8 @@ const generateBarrelContent = (files: Set<string>, projectRootDir: string) => {
   return `${imports}\n\n${exports}`;
 };
 
+let scanPromise: Promise<void> | null = null;
+
 export const directiveModulesDevPlugin = ({
   clientFiles,
   serverFiles,
@@ -48,82 +50,67 @@ export const directiveModulesDevPlugin = ({
   serverFiles: Set<string>;
   projectRootDir: string;
 }): Plugin => {
-  const esbuildBlockingPlugin = {
-    name: "rwsdk:esbuild-barrel-blocker",
-    setup(build: any) {
-      const barrelFilter = new RegExp(
-        `(${CLIENT_BARREL_PATH}|${SERVER_BARREL_PATH})`,
-      );
-      build.onResolve({ filter: barrelFilter }, async (args: any) => {
-        await workerScanComplete;
-        // After awaiting, we generate the barrel files with the now-populated
-        // clientFiles and serverFiles sets.
-        const clientBarrelContent = generateBarrelContent(
-          clientFiles,
-          projectRootDir,
-        );
-        const serverBarrelContent = generateBarrelContent(
-          serverFiles,
-          projectRootDir,
-        );
-        mkdirSync(path.dirname(CLIENT_BARREL_PATH), { recursive: true });
-        writeFileSync(CLIENT_BARREL_PATH, clientBarrelContent);
-        mkdirSync(path.dirname(SERVER_BARREL_PATH), { recursive: true });
-        writeFileSync(SERVER_BARREL_PATH, serverBarrelContent);
-        return args;
-      });
-    },
-  };
+  let server: ViteDevServer;
 
   return {
     name: "rwsdk:directive-modules-dev",
-    config(config, { command }) {
-      if (command !== "serve") {
-        return;
-      }
 
-      // --- Orchestration Logic (must run early) ---
-      const workerEnvOptions = config.environments?.["worker"]?.dev;
-      if (workerEnvOptions?.createEnvironment) {
-        // context(justinvdm, 3 Sep 2025): This is a workaround for a timing
-        // issue in Vite's startup process. We need to run our directive scan
-        // after the worker environment is fully initialized but before the
-        // client/ssr dependency optimizers start. No public hook exists for
-        // this, so we must patch the environment creation and init process.
-        // See the full explanation in the work log:
-        // .worklogs/justin/2025-09-03-directive-scan-timing-in-dev.md
-        const originalCreate = workerEnvOptions.createEnvironment;
-        workerEnvOptions.createEnvironment = async (...args) => {
-          const environment = await originalCreate.call(
-            workerEnvOptions,
-            ...args,
-          );
-          const originalInit = environment.init;
-          let resolveWorkerScanComplete: () => void;
-          workerScanComplete = new Promise((resolve) => {
-            resolveWorkerScanComplete = resolve;
-          });
-
-          environment.init = async (...initArgs) => {
-            await originalInit.apply(environment, initArgs);
-            await runDirectivesScan({
-              rootConfig: environment.config,
-              environment: environment as unknown as DevEnvironment,
-              clientFiles,
-              serverFiles,
-            });
-            resolveWorkerScanComplete();
-          };
-          return environment;
-        };
-      }
+    configureServer(_server) {
+      server = _server;
     },
+
     configResolved(config) {
       if (config.command !== "serve") {
         return;
       }
 
-      // --- Synchronization Logic (must run on resolved config) ---
+      // Create dummy files to give esbuild a real path to resolve.
+      mkdirSync(path.dirname(CLIENT_BARREL_PATH), { recursive: true });
+      writeFileSync(CLIENT_BARREL_PATH, "");
+      mkdirSync(path.dirname(SERVER_BARREL_PATH), { recursive: true });
+      writeFileSync(SERVER_BARREL_PATH, "");
+
+      const esbuildScanTriggerPlugin = {
+        name: "rwsdk:esbuild-scan-trigger",
+        setup(build: any) {
+          build.onResolve(
+            { filter: /rwsdk___server_barrel|rwsdk___client_barrel/ },
+            (args: any) => {
+              return {
+                path: args.path,
+                namespace: "rwsdk-barrel",
+              };
+            },
+          );
+
+          build.onLoad(
+            { filter: /.*/, namespace: "rwsdk-barrel" },
+            async (args: any) => {
+              if (!scanPromise) {
+                scanPromise = runDirectivesScan({
+                  rootConfig: server.config,
+                  environment: server.environments.worker,
+                  clientFiles,
+                  serverFiles,
+                });
+              }
+              await scanPromise;
+
+              const isClient = args.path === "rwsdk___client_barrel";
+              const content = generateBarrelContent(
+                isClient ? clientFiles : serverFiles,
+                projectRootDir,
+              );
+
+              return {
+                contents: content,
+                loader: "js",
+              };
+            },
+          );
+        },
+      };
+
       for (const [envName, env] of Object.entries(config.environments || {})) {
         if (envName === "client" || envName === "ssr") {
           env.optimizeDeps.include = [
@@ -134,7 +121,7 @@ export const directiveModulesDevPlugin = ({
           env.optimizeDeps.esbuildOptions ??= {};
           env.optimizeDeps.esbuildOptions.plugins = [
             ...(env.optimizeDeps.esbuildOptions.plugins || []),
-            esbuildBlockingPlugin,
+            esbuildScanTriggerPlugin,
           ];
         }
       }

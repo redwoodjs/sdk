@@ -40,20 +40,16 @@ This approach is superior because it works *with* the bundler's expectations.
 
 By framing our dependencies in a way Vite is designed to understand, we resolve the request waterfall and achieve the original performance goal in a clean, stable, and maintainable way.
 
-### 3. Solving the Inter-Environment Race Condition
+### 3. Solving the Inter-Environment Race Condition with a "Just-in-Time" Scan
 
-A critical challenge in this process is the timing of the standalone scan relative to the `client` and `ssr` optimizers that consume its output.
+A critical challenge in this process is the timing of the standalone scan relative to the `client` and `ssr` optimizers that consume its output. Vite's dev server initializes all environments (`worker`, `client`, `ssr`) and starts their dependency optimizers in parallel, which creates a natural race condition.
 
-**The Problem: Parallel Optimization**
+Instead of trying to intercept or patch Vite's complex startup lifecycle, the final solution is a much simpler "Just-in-Time" strategy that leverages standard plugin hooks.
 
-Vite's dev server is designed for efficiency and initializes all environments (`worker`, `client`, `ssr`) in parallel. This means their `optimizeDeps` processes also kick off concurrently. This creates a natural race condition: our standalone scan, which is triggered by the `worker` environment's initialization, is still running when the `client` and `ssr` optimizers start. Consequently, the `client` and `ssr` optimizers attempt to process our barrel files *before* the scan has finished populating them with content, leading to a failed optimization.
+1.  **Store the Server Instance:** We use the `configureServer` hook for one simple purpose: to get and store a reference to the `ViteDevServer` instance once it's created.
 
-**The Solution: A Two-Part Synchronization Strategy**
+2.  **Trigger the Scan on Demand:** We inject a custom `esbuild` plugin into the `optimizeDeps` configuration for the `client` and `ssr` environments. This plugin has an `onResolve` hook that intercepts requests for our barrel files.
 
-We solve this race condition using a single plugin (`directiveModulesDevPlugin`) that employs a two-part strategy based on patching Vite's startup process:
+3.  **Run the Scan:** The *first time* this `onResolve` hook is triggered, it uses the stored server reference to access the now-initialized `server.environments.worker`. It then executes our `runDirectivesScan`. A promise ensures the scan is only ever run once, with any subsequent, concurrent requests for the barrel files awaiting the result of the first scan.
 
-1.  **Orchestration (in the `config` hook):** We use the very early `config` hook to patch the `createEnvironment` and `init` methods of the `worker` environment. This allows us to run our standalone scan at the exact moment the `worker` is initialized. Upon completion, the scan resolves a shared promise, which acts as a signal.
-
-2.  **Synchronization (via an `esbuild` plugin):** In the same `config` hook, we inject a custom `esbuild` plugin into the `optimizeDeps` configuration for the `client` and `ssr` environments. This plugin has an `onResolve` hook that intercepts requests for our barrel files. The hook's only job is to `await` the shared promise from the worker scan. This effectively pauses the `client` and `ssr` optimizers at the critical moment, forcing them to wait until the `worker` scan is complete before they proceed.
-
-This strategy, while complex, creates a reliable causal chain. It allows Vite to retain its parallel startup for general efficiency but creates a targeted, synchronous dependency for our specific barrel files, ensuring the entire process completes in the correct order.
+4.  **Generate Content and Proceed:** Once the scan is complete and the `clientFiles` set is fully populated, the `onResolve` hook generates the barrel file content on the fly and allows the `esbuild` process to continue.

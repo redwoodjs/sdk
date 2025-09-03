@@ -6,10 +6,8 @@ import fsp from "node:fs/promises";
 import { hasDirective } from "./hasDirective.mjs";
 import path from "node:path";
 import debug from "debug";
-import { ensureAliasArray } from "./ensureAliasArray.mjs";
 import { getViteEsbuild } from "./getViteEsbuild.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
-
 import { createIdResolver } from "vite";
 
 const log = debug("rwsdk:vite:run-directives-scan");
@@ -35,7 +33,12 @@ function createEsbuildScanPlugin({
   environment: Environment;
   rootConfig: ResolvedConfig;
 }) {
-  const resolveId = createIdResolver(rootConfig);
+  const packageCache: Map<any, any> = new Map();
+  const resolveId = createIdResolver(rootConfig, {
+    scan: true,
+    asSrc: false,
+    packageCache,
+  });
 
   return {
     name: "rwsdk:esbuild-scan-plugin",
@@ -79,38 +82,26 @@ function createEsbuildScanPlugin({
           args.path,
           args.importer,
         );
+        if (args.path.includes("Login")) {
+          console.log(
+            "################# resolvedPath",
+            resolvedPath,
+            args.path,
+            args.importer,
+          );
+        }
 
         if (resolvedPath) {
-          const resolved = await build.resolve(resolvedPath, {
-            importer: args.importer,
-            resolveDir: args.resolveDir,
-            kind: args.kind,
-            pluginData: { rwsdkScanResolver: true },
-          });
-
-          if (resolved.errors.length === 0) {
-            return resolved;
+          if (path.isAbsolute(resolvedPath)) {
+            return { path: resolvedPath };
           }
+          return { path: args.path, external: true };
         }
 
-        // Fallback to esbuild's default resolver
-        const resolved = await build.resolve(args.path, {
-          importer: args.importer,
-          resolveDir: args.resolveDir,
-          kind: args.kind,
-          pluginData: { rwsdkScanResolver: true },
-        });
-
-        if (resolved.errors.length > 0) {
-          log(
-            "Could not resolve '%s'. Marking as external. Errors: %s",
-            args.path,
-            resolved.errors.map((e: any) => e.text).join(", "),
-          );
-          return { external: true };
-        }
-
-        return resolved;
+        // If we can't resolve it, mark it as external so esbuild doesn't
+        // crash the build.
+        log("Could not resolve '%s'. Marking as external.", args.path);
+        return { external: true };
       });
 
       build.onLoad({ filter: /\.(m|c)?[jt]sx?$/ }, async (args: OnLoadArgs) => {
