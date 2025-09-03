@@ -544,7 +544,6 @@ export async function runRelease(
  * Runs tests against the production deployment
  */
 export async function runReleaseTest(
-  customPath: string = "/",
   artifactDir: string,
   resources: TestResources,
   browserPath?: string,
@@ -556,7 +555,7 @@ export async function runReleaseTest(
   skipHmr: boolean = false,
   skipStyleTests: boolean = false,
 ): Promise<void> {
-  log("Starting release test with path: %s", customPath || "/");
+  log("Starting release test");
   console.log("\n🚀 Testing production deployment");
 
   try {
@@ -572,16 +571,10 @@ export async function runReleaseTest(
     await setTimeout(1000);
 
     // DRY: check both root and custom path
-    await checkServerUp(url, customPath);
+    await checkServerUp(url, "/");
 
     // Now run the tests with the custom path
-    const testUrl =
-      url +
-      (customPath === "/"
-        ? ""
-        : customPath.startsWith("/")
-          ? customPath
-          : "/" + customPath);
+    const testUrl = new URL("/__smoke_test", url).toString();
     await checkUrl(
       testUrl,
       artifactDir,

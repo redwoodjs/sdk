@@ -158,17 +158,21 @@ export async function modifyAppForRealtime(
     const hasEnvImport = workerContent.includes(
       'import { env } from "cloudflare:workers"',
     );
-    const hasSmokeTestClientImport = workerContent.includes(
-      'import "/src/app/components/__SmokeTestClient.tsx"',
+    const hasSmokeTestImport = workerContent.includes(
+      'import { SmokeTest } from "@/app/components/__SmokeTest.tsx"',
+    );
+    const hasSmokeTestRoute = workerContent.includes(
+      'route("/__smoke_test", SmokeTest)',
     );
 
     if (
       !hasRealtimeExport ||
       !hasRealtimeRoute ||
       !hasEnvImport ||
-      (!skipClient && !hasSmokeTestClientImport)
+      !hasSmokeTestImport ||
+      !hasSmokeTestRoute
     ) {
-      log("Need to modify worker.tsx for realtime support");
+      log("Need to modify worker.tsx for realtime and smoke test support");
       const s = new MagicString(workerContent);
 
       // Add the export line if it doesn't exist
@@ -206,8 +210,8 @@ export async function modifyAppForRealtime(
         }
       }
 
-      // Add smoke test client import if needed
-      if (!skipClient && !hasSmokeTestClientImport) {
+      // Add SmokeTest import if it doesn't exist
+      if (!hasSmokeTestImport) {
         const importRegex = /import.*?from.*?;\n/g;
         let lastImportMatch;
         let lastImportPosition = 0;
@@ -221,15 +225,15 @@ export async function modifyAppForRealtime(
         if (lastImportPosition > 0) {
           s.appendRight(
             lastImportPosition,
-            'import "@/app/components/__SmokeTestClient.tsx";\n',
+            'import { SmokeTest } from "@/app/components/__SmokeTest.tsx";\n',
           );
-          log("Added __SmokeTestClient.tsx import");
+          log("Added SmokeTest import");
         } else {
           // if no imports found, just prepend to the file
-          s.prepend('import "/src/app/components/__SmokeTestClient.tsx";\n');
-          log(
-            "Added __SmokeTestClient.tsx import to the beginning of the file",
+          s.prepend(
+            'import { SmokeTest } from "@/app/components/__SmokeTest.tsx";\n',
           );
+          log("Added SmokeTest import to the beginning of the file");
         }
       }
 
@@ -246,6 +250,22 @@ export async function modifyAppForRealtime(
             "\n  realtimeRoute(() => env.REALTIME_DURABLE_OBJECT),",
           );
           log("Added realtimeRoute to defineApp");
+        }
+      }
+
+      // Add the smoke test route if it doesn't exist
+      if (!hasSmokeTestRoute) {
+        const defineAppRegex =
+          /(export default defineApp\(\[)([\s\S]*)(\]\);)/m;
+        const match = workerContent.match(defineAppRegex);
+        if (match) {
+          const insertionPoint =
+            match.index + match[1].length + match[2].length;
+          s.appendLeft(
+            insertionPoint,
+            '  render(Document, [route("/__smoke_test", SmokeTest)]),\n',
+          );
+          log("Added smoke test route to defineApp");
         }
       }
 
@@ -303,7 +323,9 @@ export async function modifyAppForRealtime(
       await fs.writeFile(workerPath, s.toString(), "utf-8");
       log("Successfully modified worker.tsx");
     } else {
-      log("worker.tsx already has realtime support, no changes needed");
+      log(
+        "worker.tsx already has realtime and smoke test support, no changes needed",
+      );
     }
   } else {
     log("worker.tsx not found, skipping modification");

@@ -82,7 +82,6 @@ export async function runSmokeTests(
         await runDevTest(
           url,
           options.artifactDir,
-          options.customPath,
           browserPath,
           options.headless !== false,
           options.bail,
@@ -140,7 +139,6 @@ export async function runSmokeTests(
         try {
           console.log("\n🚀 Running release command smoke test");
           await runReleaseTest(
-            options.customPath,
             options.artifactDir,
             resources,
             browserPath,
