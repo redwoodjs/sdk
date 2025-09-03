@@ -38,8 +38,7 @@ function createEsbuildScanPlugin({
     setup(build: PluginBuild) {
       // Match Vite's behavior by externalizing assets and special queries.
       // This prevents esbuild from trying to bundle them, which would fail.
-      const externalFilter =
-        /\.(css|less|sass|scss|styl|stylus|pcss|postcss|png|jpe?g|gif|svg|ico|webp|avif|mp4|webm|ogg|mp3|wav|flac|aac|woff2?|eot|ttf|otf)$/;
+      const scriptFilter = /\.(c|m)?[jt]sx?$/;
       const specialQueryFilter = /[?&](?:url|raw|worker|sharedworker|inline)\b/;
 
       build.onResolve({ filter: specialQueryFilter }, (args: OnResolveArgs) => {
@@ -47,10 +46,16 @@ function createEsbuildScanPlugin({
         return { external: true };
       });
 
-      build.onResolve({ filter: externalFilter }, (args: OnResolveArgs) => {
-        log("Externalizing asset/CSS import:", args.path);
-        return { external: true };
-      });
+      build.onResolve(
+        { filter: /.*/, namespace: "file" },
+        (args: OnResolveArgs) => {
+          // If it's not a script-like file, externalize it.
+          if (!scriptFilter.test(args.path)) {
+            log("Externalizing non-script import:", args.path);
+            return { external: true };
+          }
+        },
+      );
 
       build.onResolve({ filter: /.*/ }, async (args: OnResolveArgs) => {
         // Prevent infinite recursion.
