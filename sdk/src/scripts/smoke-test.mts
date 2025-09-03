@@ -107,11 +107,6 @@ Options:
       options.projectDir = arg.substring(7);
     } else if (arg.startsWith("--artifact-dir=")) {
       options.artifactDir = arg.substring(15);
-    } else if (!arg.startsWith("--")) {
-      // For backwards compatibility, any non-flag argument is treated as the custom path
-      console.log(
-        `Setting URL path to "${arg}" (use --url= format in the future)`,
-      );
     } else {
       // Throw error for unknown options instead of just warning
       log("Unknown option: %s", arg);
