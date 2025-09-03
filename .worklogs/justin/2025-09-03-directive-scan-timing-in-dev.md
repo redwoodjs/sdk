@@ -37,3 +37,18 @@ The chosen strategy is to wrap Vite's internal `_initEnvironments` method on the
 3.  **Enforce the Correct Order:** Our wrapper function first `await`s the original method, ensuring Vite's environments are fully initialized. Immediately after, it runs our `runDirectivesScan`.
 
 This approach, while relying on an internal API, is a targeted and robust solution. It allows us to inject our logic at the exact moment required, ensuring our scanner uses Vite's own resolver with a fully prepared environment, and that its output is ready for the dependency optimizers. This solves both the original resolution bug and the subsequent timing issue.
+
+## 4. Final Finding & Refined Solution
+
+Further testing revealed that the initial solution of wrapping `_initEnvironments` in the `configureServer` hook was not working. The wrapper was never being called.
+
+A deeper trace of Vite's source code (`packages/vite/src/node/server/index.ts`) provided the definitive answer: the environments are created and fully initialized *before* the `configureServer` hook is ever executed. Our patch was being applied too late, to a method that had already run.
+
+The final, correct solution is to intercept the process even earlier, at the configuration stage. This is accomplished within a single, unified plugin (`directiveModulesDevPlugin`):
+
+1.  **Use the `config` Hook:** This hook runs very early in the startup process, giving us access to the configuration *before* the server and its environments are created.
+2.  **Patch `createEnvironment` and `init`:** We patch the creation and initialization process of the `worker` environment. Our wrapper on the `init` method allows us to run our `runDirectivesScan` at the precise moment the worker is ready.
+3.  **Signal Completion with a Promise:** After the scan finishes, our wrapper resolves a shared promise (`workerScanComplete`), which acts as a signal to other processes.
+4.  **Synchronize via an `esbuild` Plugin:** The core of the solution is addressing the parallel nature of Vite's startup. Vite initializes all environments (`worker`, `client`, `ssr`) and starts their dependency optimizers concurrently. This creates a race condition: the `client` and `ssr` optimizers start before our `worker` scan has finished populating the `clientFiles` set. To solve this, we inject a small `esbuild` plugin into the `client` and `ssr` optimizers. This plugin's `onResolve` hook intercepts our barrel files and `await`s the `workerScanComplete` promise. This effectively pauses their optimization process at the critical moment, forcing them to wait for the worker's signal before proceeding.
+
+This refined approach is surgically precise. It uses the earliest possible hook to orchestrate the scan and a targeted `esbuild` plugin to solve the synchronization problem caused by Vite's parallel startup, all within a single, maintainable plugin.
