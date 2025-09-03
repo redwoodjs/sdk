@@ -1,0 +1,87 @@
+name: Tutorial Documentation Change Notification
+
+on:
+  push:
+    branches: [main, master]
+    paths:
+      - "docs/src/content/docs/tutorial/**"
+  pull_request:
+    branches: [main, master]
+    paths:
+      - "docs/src/content/docs/tutorial/**"
+    types: [opened, synchronize, reopened, closed]
+
+jobs:
+  notify:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 2
+
+      - name: Get changed files
+        id: changes
+        run: |
+          if [ "${{ github.event_name }}" == "push" ]; then
+            echo "changed_files<<EOF" >> $GITHUB_OUTPUT
+            git diff --name-only ${{ github.event.before }} ${{ github.sha }} | grep "^docs/src/content/docs/tutorial/" >> $GITHUB_OUTPUT || true
+            echo "EOF" >> $GITHUB_OUTPUT
+            echo "event_type=Push" >> $GITHUB_OUTPUT
+          else
+            echo "changed_files<<EOF" >> $GITHUB_OUTPUT
+            gh pr diff ${{ github.event.number }} --name-only | grep "^docs/src/content/docs/tutorial/" >> $GITHUB_OUTPUT || true
+            echo "EOF" >> $GITHUB_OUTPUT
+            echo "event_type=Pull Request" >> $GITHUB_OUTPUT
+          fi
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Send notification email via Resend
+        if: steps.changes.outputs.changed_files != ''
+        run: |
+          # Format changed files for HTML display
+          CHANGED_FILES=$(echo '${{ steps.changes.outputs.changed_files }}' | sed 's/^/• /' | sed 's/$//')
+
+          # Create HTML email body
+          HTML_BODY="<h2>Tutorial Documentation Updated</h2>
+          <p>Hello Amy,</p>
+          <p>The tutorial documentation has been updated in the RedwoodJS SDK repository.</p>
+
+          <h3>Details:</h3>
+          <ul>
+            <li><strong>Event Type:</strong> ${{ steps.changes.outputs.event_type }}</li>
+            <li><strong>Repository:</strong> ${{ github.repository }}</li>
+            <li><strong>Branch:</strong> ${{ github.ref_name }}</li>
+            <li><strong>Commit:</strong> ${{ github.sha }}</li>
+            <li><strong>Author:</strong> ${{ github.actor }}</li>
+            <li><strong>Commit Message:</strong> ${{ github.event.head_commit.message || 'N/A' }}</li>
+          </ul>
+
+          <h3>Changed Files:</h3>
+          <div style='background: #f5f5f5; padding: 15px; border-radius: 5px; font-family: monospace; white-space: pre-line;'>
+          ${CHANGED_FILES}
+          </div>
+
+          <p style='margin-top: 20px;'>
+            <a href='${{ github.event.head_commit.url || github.event.pull_request.html_url }}' style='background: #0066cc; color: white; padding: 10px 20px; text-decoration: none; border-radius: 5px;'>View Changes</a>
+          </p>
+
+          <p>Best regards,<br>GitHub Actions Bot</p>"
+
+          # Send email using jq for proper JSON construction
+          jq -n \
+            --arg from "GitHub Actions <${{ secrets.TUTORIAL_NOTIFICATION_FROM_EMAIL }}>" \
+            --arg to "amy@redwoodjs.com" \
+            --arg subject "Tutorial Documentation Updated - ${{ github.repository }}" \
+            --arg html "$HTML_BODY" \
+            '{
+              "from": $from,
+              "to": [$to],
+              "subject": $subject,
+              "html": $html
+            }' | \
+          curl -X POST 'https://api.resend.com/emails' \
+            -H "Authorization: Bearer ${{ secrets.RESEND_API_KEY }}" \
+            -H 'Content-Type: application/json' \
+            -d @-
