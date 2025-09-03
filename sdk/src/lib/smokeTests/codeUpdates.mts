@@ -4,6 +4,8 @@ import { log } from "./constants.mjs";
 import { getSmokeTestFunctionsTemplate } from "./templates/smokeTestFunctions.template";
 import { getSmokeTestTemplate } from "./templates/SmokeTest.template";
 import { getSmokeTestClientTemplate } from "./templates/SmokeTestClient.template";
+import { template as smokeTestUrlStylesCssTemplate } from "./templates/smokeTestUrlStyles.css.template";
+import { template as smokeTestClientStylesCssTemplate } from "./templates/smokeTestClientStyles.module.css.template";
 import MagicString from "magic-string";
 import { parse as parseJsonc } from "jsonc-parser";
 
@@ -37,6 +39,9 @@ export async function createSmokeTestComponents(
   log("Writing SmokeTest component file");
   await fs.writeFile(smokeTestPath, smokeTestContent);
 
+  // Create smoke test stylesheet files
+  await createSmokeTestStylesheets(targetDir);
+
   // Only create client component if not skipping client-side tests
   if (!skipClient) {
     // Create SmokeTestClient.tsx
@@ -60,9 +65,68 @@ export async function createSmokeTestComponents(
   console.log(`- ${smokeTestPath}`);
   if (!skipClient) {
     console.log(`- ${join(componentsDir, "__SmokeTestClient.tsx")}`);
+    console.log(`- ${join(componentsDir, "smokeTestClientStyles.module.css")}`);
   } else {
     console.log("- Client component skipped (--skip-client was specified)");
   }
+  console.log(`- ${join(targetDir, "src", "app", "smokeTestUrlStyles.css")}`);
+}
+
+export async function createSmokeTestStylesheets(targetDir: string) {
+  log("Creating smoke test stylesheets in project...");
+
+  // Create directories if they don't exist
+  const componentsDir = join(targetDir, "src", "app", "components");
+  const appDir = join(targetDir, "src", "app");
+  await fs.mkdir(componentsDir, { recursive: true });
+  await fs.mkdir(appDir, { recursive: true });
+
+  // Create smoke_tests_client_styles.module.css
+  const clientStylesPath = join(
+    componentsDir,
+    "smokeTestClientStyles.module.css",
+  );
+  log("Creating smokeTestClientStyles.module.css at: %s", clientStylesPath);
+  await fs.writeFile(clientStylesPath, smokeTestClientStylesCssTemplate);
+
+  // Create smoke_tests_url_styles.css
+  const urlStylesPath = join(appDir, "smokeTestUrlStyles.css");
+  log("Creating smokeTestUrlStyles.css at: %s", urlStylesPath);
+  await fs.writeFile(urlStylesPath, smokeTestUrlStylesCssTemplate);
+
+  // Modify Document.tsx to include the URL stylesheet using CSS URL import
+  const documentPath = join(appDir, "Document.tsx");
+  log("Modifying Document.tsx to include URL stylesheet at: %s", documentPath);
+  try {
+    const documentContent = await fs.readFile(documentPath, "utf-8");
+    const s = new MagicString(documentContent);
+
+    // Add the CSS URL import at the top of the file
+    const importMatch = documentContent.match(/^(import\s+.*?;\s*\n)*/m);
+    const insertPosition = importMatch ? importMatch[0].length : 0;
+
+    s.appendLeft(
+      insertPosition,
+      'import smokeTestUrlStyles from "./smokeTestUrlStyles.css?url";\n',
+    );
+
+    // Add the link tag in the head using the imported variable
+    const headTagEnd = documentContent.indexOf("</head>");
+    if (headTagEnd !== -1) {
+      s.appendLeft(
+        headTagEnd,
+        '      <link rel="stylesheet" href={smokeTestUrlStyles} />\n',
+      );
+      await fs.writeFile(documentPath, s.toString(), "utf-8");
+      log("Successfully modified Document.tsx with CSS URL import pattern");
+    } else {
+      log("Could not find </head> tag in Document.tsx");
+    }
+  } catch (e) {
+    log("Could not modify Document.tsx: %s", e);
+  }
+
+  log("Smoke test stylesheets created successfully");
 }
 
 /**

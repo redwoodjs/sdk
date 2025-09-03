@@ -554,6 +554,7 @@ export async function runReleaseTest(
   projectDir?: string,
   realtime: boolean = false,
   skipHmr: boolean = false,
+  skipStyleTests: boolean = false,
 ): Promise<void> {
   log("Starting release test with path: %s", customPath || "/");
   console.log("\n🚀 Testing production deployment");
@@ -592,6 +593,7 @@ export async function runReleaseTest(
       realtime,
       resources.targetDir, // Add target directory parameter
       true, // Always skip HMR in production
+      skipStyleTests, // Add skip style tests option
     );
     log("Release test completed successfully");
 

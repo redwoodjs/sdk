@@ -18,10 +18,137 @@ import puppeteer from "puppeteer-core";
 import { takeScreenshot } from "./artifacts.mjs";
 import { RETRIES } from "./constants.mjs";
 import { $ } from "../$.mjs";
-import { fail } from "./utils.mjs";
+import { fail, withRetries } from "./utils.mjs";
 import { reportSmokeTestResult } from "./reporting.mjs";
 import { updateTestStatus } from "./state.mjs";
 import { TestStatus } from "./state.mjs";
+import * as fs from "fs/promises";
+import { template as urlStylesTemplate } from "./templates/smokeTestUrlStyles.css.template";
+import { template as clientStylesTemplate } from "./templates/smokeTestClientStyles.module.css.template";
+
+export async function checkUrlStyles(
+  page: Page,
+  expectedColor: "red" | "green",
+): Promise<void> {
+  const selector = '[data-testid="smoke-test-url-styles"]';
+  log(`Checking for element with selector: ${selector}`);
+  const element = await page.waitForSelector(selector);
+  if (!element) {
+    throw new Error(`URL styles element not found with selector: ${selector}`);
+  }
+
+  const expectedRgb =
+    expectedColor === "red" ? "rgb(255, 0, 0)" : "rgb(0, 128, 0)";
+
+  log(`Waiting for URL styles to apply with expected color: ${expectedRgb}`);
+
+  try {
+    // Wait for the background color to match the expected value with a timeout
+    await page.waitForFunction(
+      (expectedRgb) => {
+        const element = document.querySelector(
+          '[data-testid="smoke-test-url-styles"]',
+        );
+        if (!element) return false;
+        const backgroundColor =
+          window.getComputedStyle(element).backgroundColor;
+        return backgroundColor === expectedRgb;
+      },
+      { timeout: 10000 }, // 10 second timeout
+      expectedRgb,
+    );
+
+    // Get the final background color for logging
+    const backgroundColor = await page.evaluate(
+      () =>
+        window.getComputedStyle(
+          document.querySelector('[data-testid="smoke-test-url-styles"]')!,
+        ).backgroundColor,
+    );
+
+    log(
+      `URL-based stylesheet check passed: background color is ${backgroundColor}`,
+    );
+  } catch (error) {
+    // Get the actual background color for better error reporting
+    const actualBackgroundColor = await page.evaluate(() => {
+      const element = document.querySelector(
+        '[data-testid="smoke-test-url-styles"]',
+      );
+      return element
+        ? window.getComputedStyle(element).backgroundColor
+        : "element not found";
+    });
+
+    throw new Error(
+      `URL-based stylesheet check failed: expected background color ${expectedRgb}, but got ${actualBackgroundColor} (timeout after 10 seconds)`,
+    );
+  }
+}
+
+export async function checkClientModuleStyles(
+  page: Page,
+  expectedColor: "blue" | "green",
+): Promise<void> {
+  const selector = '[data-testid="smoke-test-client-styles"]';
+  log(`Checking for element with selector: ${selector}`);
+  const element = await page.waitForSelector(selector);
+  if (!element) {
+    throw new Error(
+      `Client module styles element not found with selector: ${selector}`,
+    );
+  }
+
+  const expectedRgb =
+    expectedColor === "blue" ? "rgb(0, 0, 255)" : "rgb(0, 128, 0)";
+
+  log(
+    `Waiting for client module styles to apply with expected color: ${expectedRgb}`,
+  );
+
+  try {
+    // Wait for the background color to match the expected value with a timeout
+    await page.waitForFunction(
+      (expectedRgb) => {
+        const element = document.querySelector(
+          '[data-testid="smoke-test-client-styles"]',
+        );
+        if (!element) return false;
+        const backgroundColor =
+          window.getComputedStyle(element).backgroundColor;
+        return backgroundColor === expectedRgb;
+      },
+      { timeout: 10000 }, // 10 second timeout
+      expectedRgb,
+    );
+
+    // Get the final background color for logging
+    const backgroundColor = await page.evaluate(
+      () =>
+        window.getComputedStyle(
+          document.querySelector('[data-testid="smoke-test-client-styles"]')!,
+        ).backgroundColor,
+    );
+
+    log(
+      `Client module stylesheet check passed: background color is ${backgroundColor}`,
+    );
+  } catch (error) {
+    // Get the actual background color for better error reporting
+    const actualBackgroundColor = await page.evaluate(() => {
+      const element = document.querySelector(
+        '[data-testid="smoke-test-client-styles"]',
+      );
+      return element
+        ? window.getComputedStyle(element).backgroundColor
+        : "element not found";
+    });
+
+    throw new Error(
+      `Client module stylesheet check failed: expected background color ${expectedRgb}, but got ${actualBackgroundColor} (timeout after 10 seconds)`,
+    );
+  }
+}
 
 /**
  * Launch a browser instance
@@ -168,6 +295,7 @@ export async function checkUrl(
   realtime: boolean = false,
   targetDir?: string,
   skipHmr: boolean = false,
+  skipStyleTests: boolean = false,
 ): Promise<void> {
   console.log(`🔍 Testing URL: ${url}`);
 
@@ -208,16 +336,16 @@ export async function checkUrl(
       // Skip upgradeToRealtime and just run the realtime tests directly
       try {
         log("Performing realtime-only smoke test");
-        await checkUrlSmoke(
+        await realtimeOnlyFlow(
           page,
           url,
-          true,
+          artifactDir,
           bail,
           skipClient,
           environment,
-          timestampState,
           targetDir,
           skipHmr,
+          skipStyleTests,
         );
 
         // Take a screenshot of the realtime test
@@ -263,6 +391,7 @@ export async function checkUrl(
           timestampState,
           targetDir,
           skipHmr,
+          skipStyleTests,
         );
       } catch (error) {
         hasFailures = true;
@@ -308,6 +437,7 @@ export async function checkUrl(
           timestampState,
           targetDir,
           skipHmr,
+          skipStyleTests,
         );
       } catch (error) {
         hasFailures = true;
@@ -378,6 +508,7 @@ export async function checkUrlSmoke(
   },
   targetDir?: string,
   skipHmr: boolean = false,
+  skipStyleTests: boolean = false,
 ): Promise<void> {
   const phase = isRealtime ? "Post-upgrade" : "Initial";
   console.log(`🔍 Testing ${phase} smoke tests at ${url}`);
@@ -410,6 +541,7 @@ export async function checkUrlSmoke(
   let clientTestError: Error | null = null;
   let serverRenderCheckError: Error | null = null;
   let hmrTestError: Error | null = null;
+  let stylesheetTestError: Error | null = null;
 
   // Step 1: Run initial server-side smoke test to check the server state
   log("Running initial server-side smoke test");
@@ -483,6 +615,77 @@ export async function checkUrlSmoke(
     }
 
     return;
+  }
+
+  // Step 1.5: Run stylesheet checks
+  if (!skipStyleTests) {
+    const env = environment === "Development" ? "dev" : "production";
+    const urlStylesKey = isRealtime ? "realtimeUrlStyles" : "initialUrlStyles";
+    const clientModuleStylesKey = isRealtime
+      ? "realtimeClientModuleStyles"
+      : "initialClientModuleStyles";
+
+    try {
+      await withRetries(() => checkUrlStyles(page, "red"), "URL styles check");
+      updateTestStatus(
+        env,
+        urlStylesKey as keyof TestStatus[typeof env],
+        "PASSED",
+      );
+      log(`${phase} URL styles check passed`);
+    } catch (error) {
+      hasFailures = true;
+      updateTestStatus(
+        env,
+        urlStylesKey as keyof TestStatus[typeof env],
+        "FAILED",
+      );
+      stylesheetTestError =
+        error instanceof Error ? error : new Error(String(error));
+      log("Error during URL styles check: %O", error);
+      console.error(
+        `❌ URL styles check failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+
+      if (bail) {
+        throw error;
+      }
+    }
+
+    try {
+      await withRetries(
+        () => checkClientModuleStyles(page, "blue"),
+        "Client module styles check",
+      );
+      updateTestStatus(
+        env,
+        clientModuleStylesKey as keyof TestStatus[typeof env],
+        "PASSED",
+      );
+      log(`${phase} client module styles check passed`);
+    } catch (error) {
+      hasFailures = true;
+      updateTestStatus(
+        env,
+        clientModuleStylesKey as keyof TestStatus[typeof env],
+        "FAILED",
+      );
+      if (!stylesheetTestError) {
+        stylesheetTestError =
+          error instanceof Error ? error : new Error(String(error));
+      }
+      log("Error during client module styles check: %O", error);
+      console.error(
+        `❌ Client module styles check failed: ${error instanceof Error ? error.message : String(error)}`,
+      );
+
+      if (bail) {
+        throw error;
+      }
+    }
+  } else {
+    log("Skipping stylesheet checks as requested");
+    console.log("⏩ Skipping stylesheet checks as requested");
   }
 
   // Step 2: Run client-side smoke test to update the server timestamp
@@ -577,6 +780,36 @@ export async function checkUrlSmoke(
       // Test client component HMR if client tests aren't skipped
       if (!skipClient) {
         await testClientComponentHmr(page, targetDir, phase, environment, bail);
+
+        // Test style HMR if style tests aren't skipped
+        if (!skipStyleTests) {
+          await withRetries(
+            () => testStyleHMR(page, targetDir),
+            "Style HMR test",
+            async () => {
+              // This logic runs before each retry of testStyleHMR
+              const urlStylePath = join(
+                targetDir,
+                "src",
+                "app",
+                "smokeTestUrlStyles.css",
+              );
+              const clientStylePath = join(
+                targetDir,
+                "src",
+                "app",
+                "components",
+                "smokeTestClientStyles.module.css",
+              );
+              // Restore original styles before re-running HMR test
+              await fs.writeFile(urlStylePath, urlStylesTemplate);
+              await fs.writeFile(clientStylePath, clientStylesTemplate);
+            },
+          );
+        } else {
+          log("Skipping style HMR test as requested");
+          console.log("⏩ Skipping style HMR test as requested");
+        }
       }
     } catch (error) {
       hasFailures = true;
@@ -632,6 +865,9 @@ export async function checkUrlSmoke(
     }
     if (hmrTestError) {
       errors.push(`HMR test: ${hmrTestError.message}`);
+    }
+    if (stylesheetTestError) {
+      errors.push(`Stylesheet test: ${stylesheetTestError.message}`);
     }
 
     throw new Error(`Multiple test failures: ${errors.join(", ")}`);
@@ -1113,6 +1349,7 @@ async function realtimeOnlyFlow(
   environment: string,
   targetDir?: string,
   skipHmr: boolean = false,
+  skipStyleTests: boolean = false,
 ): Promise<{ hasFailures: boolean; error: Error | null }> {
   let hasFailures = false;
   let realtimeError: Error | null = null;
@@ -1135,6 +1372,7 @@ async function realtimeOnlyFlow(
       timestampState,
       targetDir,
       skipHmr,
+      skipStyleTests,
     );
 
     // Take a screenshot of the realtime test
@@ -1577,4 +1815,53 @@ export async function testClientComponentHmr(
     }
     return false;
   }
+}
+
+async function testStyleHMR(page: Page, targetDir: string): Promise<void> {
+  log("Running style HMR tests");
+  console.log("🎨 Testing style HMR...");
+
+  // --- HMR Test for URL-based Stylesheet ---
+  const urlStylePath = join(targetDir, "src", "app", "smokeTestUrlStyles.css");
+  const updatedUrlStyle = urlStylesTemplate.replace(
+    "rgb(255, 0, 0)",
+    "rgb(0, 128, 0)",
+  );
+  await fs.writeFile(urlStylePath, updatedUrlStyle);
+
+  // --- HMR Test for Client Module Stylesheet ---
+  const clientStylePath = join(
+    targetDir,
+    "src",
+    "app",
+    "components",
+    "smokeTestClientStyles.module.css",
+  );
+  const updatedClientStyle = clientStylesTemplate.replace(
+    "rgb(0, 0, 255)",
+    "rgb(0, 128, 0)",
+  );
+  await fs.writeFile(clientStylePath, updatedClientStyle);
+
+  // Allow time for HMR to kick in
+  await new Promise((resolve) => setTimeout(resolve, 5000));
+
+  // Check URL-based stylesheet HMR
+  await withRetries(
+    () => checkUrlStyles(page, "green"),
+    "URL styles HMR check",
+  );
+
+  // Check client-module stylesheet HMR
+  await withRetries(
+    () => checkClientModuleStyles(page, "green"),
+    "Client module styles HMR check",
+  );
+
+  // Restore original styles
+  await fs.writeFile(urlStylePath, urlStylesTemplate);
+  await fs.writeFile(clientStylePath, clientStylesTemplate);
+
+  log("Style HMR tests completed successfully");
+  console.log("✅ Style HMR tests passed");
 }

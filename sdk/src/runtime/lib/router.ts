@@ -19,27 +19,23 @@ export type RwContext = {
   ssr: boolean;
   layouts?: React.FC<LayoutProps<any>>[];
   databases: Map<string, Kysely<any>>;
+  scriptsToBeLoaded: Set<string>;
   pageRouteResolved: PromiseWithResolvers<void> | undefined;
 };
 
 export type RouteMiddleware<T extends RequestInfo = RequestInfo> = (
   requestInfo: T,
-) =>
-  | Response
-  | Promise<Response>
-  | void
-  | Promise<void>
-  | Promise<Response | void>;
+) => MaybePromise<React.JSX.Element | Response | void>;
 
 type RouteFunction<T extends RequestInfo = RequestInfo> = (
   requestInfo: T,
-) => Response | Promise<Response>;
+) => MaybePromise<Response>;
 
 type MaybePromise<T> = T | Promise<T>;
 
 type RouteComponent<T extends RequestInfo = RequestInfo> = (
   requestInfo: T,
-) => MaybePromise<React.JSX.Element | Response>;
+) => MaybePromise<React.JSX.Element | Response | void>;
 
 type RouteHandler<T extends RequestInfo = RequestInfo> =
   | RouteFunction<T>
@@ -186,67 +182,139 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
         path = path + "/";
       }
 
-      // Find matching route
-      let match: RouteMatch<T> | null = null;
+      // Flow below; helpers are declared after the main flow for readability
 
+      // 1) Global middlewares: run any middleware functions encountered (Response short-circuits, element renders)
+      // 2) Route matching: skip non-matching route definitions; stop at first match
+      // 3) Route-specific middlewares: run middlewares attached to the matched route
+      // 4) Final component: render the matched route's final component (layouts apply only here)
       for (const route of flattenedRoutes) {
+        // 1) Global middlewares (encountered before a match)
         if (typeof route === "function") {
-          const r = await route(getRequestInfo());
-
-          if (r instanceof Response) {
-            return r;
+          const result = await route(getRequestInfo());
+          const handled = await handleMiddlewareResult(result);
+          if (handled) {
+            return handled;
           }
-
           continue;
         }
 
+        // 2) Route matching (skip if not matched)
         const params = matchPath<T>(route.path, path);
-        if (params) {
-          match = { params, handler: route.handler, layouts: route.layouts };
-          break;
+        if (!params) {
+          continue;
         }
-      }
 
-      if (!match) {
-        // todo(peterp, 2025-01-28): Allow the user to define their own "not found" route.
-        return new Response("Not Found", { status: 404 });
-      }
-
-      let { params, handler, layouts } = match;
-
-      return runWithRequestInfoOverrides({ params } as Partial<T>, async () => {
-        const handlers = Array.isArray(handler) ? handler : [handler];
-
-        for (const h of handlers) {
-          if (isRouteComponent(h)) {
-            const requestInfo = getRequestInfo();
-            const WrappedComponent = wrapWithLayouts(
-              wrapHandlerToThrowResponses(h as RouteComponent<T>) as React.FC,
-              layouts || [],
-              requestInfo,
+        // Found a match: 3) route middlewares, then 4) final component, then stop
+        return await runWithRequestInfoOverrides(
+          { params } as Partial<T>,
+          async () => {
+            const { routeMiddlewares, componentHandler } = parseHandlers(
+              route.handler,
             );
 
-            if (!isClientReference(h)) {
-              // context(justinvdm, 31 Jul 2025): We now know we're dealing with a page route,
-              // so we create a deferred so that we can signal when we're done determining whether
-              // we're returning a response or a react element
-              requestInfo.rw.pageRouteResolved = Promise.withResolvers();
+            // 3) Route-specific middlewares
+            const mwHandled = await handleRouteMiddlewares(routeMiddlewares);
+            if (mwHandled) {
+              return mwHandled;
             }
 
-            return await renderPage(requestInfo, WrappedComponent, onError);
-          } else {
-            const r = await (h(getRequestInfo()) as Promise<Response>);
-            if (r instanceof Response) {
-              return r;
-            }
+            // 4) Final component (always last item)
+            return await handleRouteComponent(
+              componentHandler,
+              route.layouts || [],
+            );
+          },
+        );
+      }
+
+      // No route matched and no middleware handled the request
+      // todo(peterp, 2025-01-28): Allow the user to define their own "not found" route.
+      return new Response("Not Found", { status: 404 });
+
+      // --- Helpers ---
+      function parseHandlers(handler: RouteHandler<T>) {
+        const handlers = Array.isArray(handler) ? handler : [handler];
+        const routeMiddlewares = handlers.slice(
+          0,
+          Math.max(handlers.length - 1, 0),
+        );
+        const componentHandler = handlers[handlers.length - 1];
+        return {
+          routeMiddlewares: routeMiddlewares as RouteMiddleware<T>[],
+          componentHandler,
+        };
+      }
+
+      function renderElement(element: React.ReactElement) {
+        const requestInfo = getRequestInfo();
+        const Element: React.FC = () => element;
+        return renderPage(requestInfo, Element, onError);
+      }
+
+      async function handleMiddlewareResult(
+        result: Response | React.JSX.Element | void,
+      ): Promise<Response | undefined> {
+        if (result instanceof Response) {
+          return result;
+        }
+        if (result && React.isValidElement(result)) {
+          return await renderElement(result);
+        }
+        return undefined;
+      }
+
+      // Note: We no longer have separate global pass or match-only pass;
+      // the outer single pass above handles both behaviors correctly.
+
+      async function handleRouteMiddlewares(
+        mws: RouteMiddleware<T>[],
+      ): Promise<Response | undefined> {
+        for (const mw of mws) {
+          const result = await (mw(getRequestInfo()) as Promise<
+            Response | React.JSX.Element | void
+          >);
+          const handled = await handleMiddlewareResult(result);
+          if (handled) return handled;
+        }
+        return undefined;
+      }
+
+      async function handleRouteComponent(
+        component: RouteFunction<T> | RouteComponent<T>,
+        layouts: React.FC<LayoutProps<T>>[],
+      ): Promise<Response> {
+        if (isRouteComponent(component)) {
+          const requestInfo = getRequestInfo();
+          const WrappedComponent = wrapWithLayouts(
+            wrapHandlerToThrowResponses(
+              component as RouteComponent<T>,
+            ) as React.FC,
+            layouts,
+            requestInfo,
+          );
+
+          if (!isClientReference(component)) {
+            // context(justinvdm, 31 Jul 2025): We now know we're dealing with a page route,
+            // so we create a deferred so that we can signal when we're done determining whether
+            // we're returning a response or a react element
+            requestInfo.rw.pageRouteResolved = Promise.withResolvers();
           }
+
+          return await renderPage(requestInfo, WrappedComponent, onError);
         }
 
-        // Add fallback return
+        // If the last handler is not a component, handle as middleware result (no layouts)
+        const tailResult = await (component(getRequestInfo()) as Promise<
+          Response | React.JSX.Element | void
+        >);
+        const handledTail = await handleMiddlewareResult(tailResult);
+        if (handledTail) return handledTail;
+
         return new Response("Response not returned from route handler", {
           status: 500,
         });
-      });
+      }
     },
   };
 }

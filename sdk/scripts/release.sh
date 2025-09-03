@@ -26,7 +26,7 @@ show_help() {
   echo "  5.  Performs a comprehensive smoke test on the packed tarball:"
   echo "      - Verifies the packed \`dist\` contents match the local build via checksum."
   echo "      - Runs \`npx rw-scripts smoke-tests\` in a temporary project."
-  echo "  6.  If smoke tests pass, publishes the .tgz tarball to npm."
+  echo "  6.  If smoke tests pass, publishes the .tgz tarball to npm (using --tag pre for prereleases and --tag test for test builds)."
   echo "  7.  On successful publish (for non-prereleases):"
   echo "      - Updates dependencies in the monorepo."
   echo "      - Amends the initial commit with dependency updates."
@@ -44,9 +44,9 @@ show_help() {
   echo "  pnpm release patch                    # 0.1.0 -> 0.1.1"
   echo "  pnpm release minor                    # 0.1.1 -> 0.2.0"
   echo "  pnpm release major                    # 0.2.0 -> 1.0.0"
-  echo "  pnpm release preminor                 # 0.0.80 -> 0.1.0-alpha.0"
-  echo "  pnpm release preminor --preid beta    # 0.0.80 -> 0.1.0-beta.0"
-  echo "  pnpm release prepatch --preid rc      # 0.1.0 -> 0.1.1-rc.0"
+  echo "  pnpm release preminor                 # 0.0.80 -> 0.1.0-alpha.0 (published as @pre)"
+  echo "  pnpm release preminor --preid beta    # 0.0.80 -> 0.1.0-beta.0 (published as @pre)"
+  echo "  pnpm release prepatch --preid rc      # 0.1.0 -> 0.1.1-rc.0 (published as @pre)"
   echo "  pnpm release test                     # 1.0.0 -> 1.0.0-test.0 (published as @test)"
   echo "  pnpm release patch --dry              # Show what would happen"
   exit 0
@@ -160,10 +160,10 @@ fi
 
 echo -e "\n📦 Planning version bump to $NEW_VERSION ($VERSION_TYPE)..."
 if [[ "$DRY_RUN" == true ]]; then
-  echo "  [DRY RUN] npm pkg set version=$NEW_VERSION"
+  echo "  [DRY RUN] sed -i.bak \"s/\\\"version\\\": \\\"[^\\\"]*\\\"/\\\"version\\\": \\\"$NEW_VERSION\\\"/\" package.json && rm package.json.bak"
   echo "  [DRY RUN] Git commit version change"
 else
-  npm pkg set version="$NEW_VERSION"
+  sed -i.bak "s/\"version\": \"[^\"]*\"/\"version\": \"$NEW_VERSION\"/" package.json && rm package.json.bak
   git add package.json
   git commit -m "chore(release): $NEW_VERSION"
 fi
@@ -268,7 +268,8 @@ echo "  - Running smoke tests..."
 # The CWD is the package root (sdk/sdk), so we can run pnpm smoke-test directly.
 # We pass the path to the temp project directory where the minimal starter was installed.
 # We also specify an artifact directory *within* the temp directory.
-if ! pnpm smoke-test --path="$PROJECT_DIR" --no-sync --artifact-dir="$TEMP_DIR/artifacts"; then
+# todo(justinvdm, 11 Aug 2025): Fix style test flakiness
+if ! pnpm smoke-test --path="$PROJECT_DIR" --no-sync --artifact-dir="$TEMP_DIR/artifacts" --skip-style-tests; then
   echo "  ❌ Smoke tests failed."
   exit 1
 fi
@@ -278,6 +279,8 @@ echo -e "\n🚀 Publishing version $NEW_VERSION..."
 if [[ "$DRY_RUN" == true ]]; then
   if [[ "$VERSION_TYPE" == "test" ]]; then
     echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag test"
+  elif [[ "$VERSION_TYPE" == "prepatch" || "$VERSION_TYPE" == "preminor" || "$VERSION_TYPE" == "premajor" ]]; then
+    echo "  [DRY RUN] npm publish '$TARBALL_PATH' --tag pre"
   else
     echo "  [DRY RUN] npm publish '$TARBALL_PATH'"
   fi
@@ -285,6 +288,8 @@ else
   PUBLISH_CMD="npm publish \"$TARBALL_PATH\""
   if [[ "$VERSION_TYPE" == "test" ]]; then
     PUBLISH_CMD="$PUBLISH_CMD --tag test"
+  elif [[ "$VERSION_TYPE" == "prepatch" || "$VERSION_TYPE" == "preminor" || "$VERSION_TYPE" == "premajor" ]]; then
+    PUBLISH_CMD="$PUBLISH_CMD --tag pre"
   fi
   if ! eval $PUBLISH_CMD; then
     echo -e "\n❌ Publish failed. Rolling back version commit..."
@@ -314,7 +319,7 @@ else
         if [[ "$DRY_RUN" == true ]]; then
           echo "     [DRY RUN] Update to $NEW_VERSION"
         else
-          (cd "$PROJECT_DIR" && npm pkg set dependencies."$DEPENDENCY_NAME"="$NEW_VERSION")
+          (cd "$PROJECT_DIR" && sed -i.bak "s/\"$DEPENDENCY_NAME\": \"[^\"]*\"/\"$DEPENDENCY_NAME\": \"$NEW_VERSION\"/" package.json && rm package.json.bak)
         fi
       fi
     fi

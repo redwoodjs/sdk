@@ -1,5 +1,11 @@
 import { describe, it, expect } from "vitest";
 import { transformJsxScriptTagsCode } from "./transformJsxScriptTagsPlugin.mjs";
+import jsBeautify from "js-beautify";
+
+// Helper function to normalize code formatting for test comparisons
+function normalizeCode(code: string): string {
+  return jsBeautify(code, { indent_size: 2 });
+}
 
 describe("transformJsxScriptTagsCode", () => {
   const mockManifest = {
@@ -18,14 +24,18 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, mockManifest);
 
-    expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
+    const expected = `import { requestInfo } from "rwsdk/worker";
 
-      jsx("script", {
-        src: "/assets/client-a1b2c3d4.js",
-        type: "module",
-          nonce: requestInfo.rw.nonce
-    })
-    `);
+(
+(requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
+jsx("script", {
+src: "/assets/client-a1b2c3d4.js",
+type: "module",
+nonce: requestInfo.rw.nonce
+})
+)`;
+
+    expect(normalizeCode(result?.code || "")).toEqual(normalizeCode(expected));
   });
 
   it("transforms inline scripts with dynamic imports", async () => {
@@ -38,14 +48,18 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, mockManifest);
 
-    expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
+    const expected = `import { requestInfo } from "rwsdk/worker";
 
-      jsx("script", {
-        type: "module",
-        children: "import(\\"\/assets\/client-a1b2c3d4.js\\").then(module => { console.log(module); })",
-          nonce: requestInfo.rw.nonce
-    })
-    `);
+(
+(requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
+jsx("script", {
+type: "module",
+children: "import('/assets/client-a1b2c3d4.js').then(module => { console.log(module); })",
+nonce: requestInfo.rw.nonce
+})
+)`;
+
+    expect(normalizeCode(result?.code || "")).toEqual(normalizeCode(expected));
   });
 
   it("transforms inline scripts with type=module", async () => {
@@ -55,12 +69,16 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, mockManifest);
 
-    expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
+    const expected = `import { requestInfo } from "rwsdk/worker";
 
-      jsx("script", { type: "module", children: "import(\\"\/assets\/client-a1b2c3d4.js\\")",
-          nonce: requestInfo.rw.nonce
-    })
-    `);
+(
+(requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
+jsx("script", { type: "module", children: "import('/assets/client-a1b2c3d4.js')",
+nonce: requestInfo.rw.nonce
+})
+)`;
+
+    expect(normalizeCode(result?.code || "")).toEqual(normalizeCode(expected));
   });
 
   it("transforms inline scripts with multiline content", async () => {
@@ -80,21 +98,25 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, mockManifest);
 
-    expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
+    const expected = `import { requestInfo } from "rwsdk/worker";
 
-      jsx("script", {
-        type: "module",
-        children: \`
+(
+(requestInfo.rw.scriptsToBeLoaded.add("/src/entry.js")),
+jsx("script", {
+type: "module",
+children: \`
           // Some comments here
           const init = async () => {
-            await import("/assets/entry-e5f6g7h8.js");
+            await import('/assets/entry-e5f6g7h8.js');
             console.log('initialized');
           };
           init();
         \`,
-          nonce: requestInfo.rw.nonce
-    })
-    `);
+nonce: requestInfo.rw.nonce
+})
+)`;
+
+    expect(normalizeCode(result?.code || "")).toEqual(normalizeCode(expected));
   });
 
   it("transforms multiple imports in the same inline script", async () => {
@@ -102,25 +124,30 @@ describe("transformJsxScriptTagsCode", () => {
       jsx("script", {
         type: "module",
         children: \`
-          import('/src/client.tsx');
-          import('/src/entry.js');
-        \`
+import('/src/client.tsx');
+import('/src/entry.js');
+\`
       })
     `;
 
     const result = await transformJsxScriptTagsCode(code, mockManifest);
 
-    expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
+    const expected = `import { requestInfo } from "rwsdk/worker";
 
-      jsx("script", {
-        type: "module",
-        children: \`
-          import("/assets/client-a1b2c3d4.js");
-          import("/assets/entry-e5f6g7h8.js");
-        \`,
-          nonce: requestInfo.rw.nonce
-    })
-    `);
+(
+(requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
+(requestInfo.rw.scriptsToBeLoaded.add("/src/entry.js")),
+jsx("script", {
+type: "module",
+children: \`
+import('/assets/client-a1b2c3d4.js');
+import('/assets/entry-e5f6g7h8.js');
+\`,
+nonce: requestInfo.rw.nonce
+})
+)`;
+
+    expect(normalizeCode(result?.code || "")).toEqual(normalizeCode(expected));
   });
 
   it("transforms link href attributes with preload rel", async () => {
@@ -186,30 +213,34 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, mockManifest);
 
-    expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
+    const expected = `import { requestInfo } from "rwsdk/worker";
 
-      jsx("html", {
-        lang: "en",
-        children: [
-          jsx("head", {
-            children: [
-              jsx("meta", { charSet: "utf-8" }),
-              jsx("meta", { name: "viewport", content: "width=device-width, initial-scale=1" }),
-              jsx("title", { children: "@redwoodjs/starter-standard" }),
-              jsx("link", { rel: "modulepreload", href: "/assets/client-a1b2c3d4.js", as: "script" })
-            ]
-          }),
-          jsx("body", {
-            children: [
-              jsx("div", { id: "root", children: props.children }),
-              jsx("script", { children: "import(\\"\/assets\/client-a1b2c3d4.js\\")",
-                  nonce: requestInfo.rw.nonce
-            })
-            ]
-          })
-        ]
-      })
-    `);
+jsx("html", {
+lang: "en",
+children: [
+jsx("head", {
+children: [
+jsx("meta", { charSet: "utf-8" }),
+jsx("meta", { name: "viewport", content: "width=device-width, initial-scale=1" }),
+jsx("title", { children: "@redwoodjs/starter-standard" }),
+jsx("link", { rel: "modulepreload", href: "/assets/client-a1b2c3d4.js", as: "script" })
+]
+}),
+jsx("body", {
+children: [
+jsx("div", { id: "root", children: props.children }),
+(
+(requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
+jsx("script", { children: "import(\\"/assets/client-a1b2c3d4.js\\")",
+nonce: requestInfo.rw.nonce
+})
+)
+]
+})
+]
+})`;
+
+    expect(normalizeCode(result?.code || "")).toEqual(normalizeCode(expected));
   });
 
   it("returns null when no transformations are needed", async () => {
@@ -232,14 +263,18 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, mockManifest);
 
-    expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
+    const expected = `import { requestInfo } from "rwsdk/worker";
 
-      jsx("script", {
-        src: "/src/non-existent.js",
-        type: "module",
-          nonce: requestInfo.rw.nonce
-    })
-    `);
+(
+(requestInfo.rw.scriptsToBeLoaded.add("/src/non-existent.js")),
+jsx("script", {
+src: "/src/non-existent.js",
+type: "module",
+nonce: requestInfo.rw.nonce
+})
+)`;
+
+    expect(normalizeCode(result?.code || "")).toEqual(normalizeCode(expected));
   });
 
   it("adds nonce to script tags with src attribute and imports requestInfo", async () => {
@@ -252,14 +287,18 @@ describe("transformJsxScriptTagsCode", () => {
 
     const result = await transformJsxScriptTagsCode(code, mockManifest);
 
-    expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
+    const expected = `import { requestInfo } from "rwsdk/worker";
 
-      jsx("script", {
-        src: "/assets/client-a1b2c3d4.js",
-        type: "module",
-          nonce: requestInfo.rw.nonce
-    })
-    `);
+(
+(requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
+jsx("script", {
+src: "/assets/client-a1b2c3d4.js",
+type: "module",
+nonce: requestInfo.rw.nonce
+})
+)`;
+
+    expect(normalizeCode(result?.code || "")).toEqual(normalizeCode(expected));
   });
 
   it("adds nonce to script tags with string literal children", async () => {
@@ -375,13 +414,246 @@ describe("transformJsxScriptTagsCode", () => {
     // Call without providing manifest (simulating dev mode)
     const result = await transformJsxScriptTagsCode(code);
 
-    expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
+    const expected = `import { requestInfo } from "rwsdk/worker";
 
-      jsx("script", {
-        src: "/src/client.tsx",
-        type: "module",
-          nonce: requestInfo.rw.nonce
-    })
-    `);
+(
+(requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
+jsx("script", {
+src: "/src/client.tsx",
+type: "module",
+nonce: requestInfo.rw.nonce
+})
+)`;
+
+    expect(normalizeCode(result?.code || "")).toEqual(normalizeCode(expected));
+  });
+
+  it("regression favicon links", async () => {
+    const code = `
+    import { jsxDEV } from "react/jsx-dev-runtime";
+import styles from "./index.css?url";
+export const Document = ({
+  children
+}) => /* @__PURE__ */ jsxDEV("html", { lang: "en", children: [
+  /* @__PURE__ */ jsxDEV("head", { children: [
+    /* @__PURE__ */ jsxDEV("meta", { charSet: "utf-8" }, void 0, false, {
+      fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+      lineNumber: 8,
+      columnNumber: 4
+    }, this),
+    /* @__PURE__ */ jsxDEV("meta", { name: "viewport", content: "width=device-width, initial-scale=1" }, void 0, false, {
+      fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+      lineNumber: 9,
+      columnNumber: 4
+    }, this),
+    /* @__PURE__ */ jsxDEV("title", { children: "rwsdk-guestbook" }, void 0, false, {
+      fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+      lineNumber: 10,
+      columnNumber: 4
+    }, this),
+    /* @__PURE__ */ jsxDEV("link", { rel: "preconnect", href: "https://fonts.googleapis.com" }, void 0, false, {
+      fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+      lineNumber: 11,
+      columnNumber: 4
+    }, this),
+    /* @__PURE__ */ jsxDEV(
+      "link",
+      {
+        rel: "preconnect",
+        href: "https://fonts.gstatic.com",
+        crossOrigin: "anonymous"
+      },
+      void 0,
+      false,
+      {
+        fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+        lineNumber: 12,
+        columnNumber: 4
+      },
+      this
+    ),
+    /* @__PURE__ */ jsxDEV(
+      "link",
+      {
+        href: "https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&display=swap",
+        rel: "stylesheet"
+      },
+      void 0,
+      false,
+      {
+        fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+        lineNumber: 17,
+        columnNumber: 4
+      },
+      this
+    ),
+    /* @__PURE__ */ jsxDEV("script", { src: "/theme-script.js" }, void 0, false, {
+      fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+      lineNumber: 21,
+      columnNumber: 4
+    }, this),
+    /* @__PURE__ */ jsxDEV("link", { rel: "icon", href: "/favicon.svg" }, void 0, false, {
+      fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+      lineNumber: 22,
+      columnNumber: 4
+    }, this),
+    /* @__PURE__ */ jsxDEV("link", { rel: "modulepreload", href: "/src/client.tsx" }, void 0, false, {
+      fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+      lineNumber: 23,
+      columnNumber: 4
+    }, this),
+    /* @__PURE__ */ jsxDEV("link", { rel: "stylesheet", href: styles }, void 0, false, {
+      fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+      lineNumber: 24,
+      columnNumber: 4
+    }, this)
+  ] }, void 0, true, {
+    fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+    lineNumber: 7,
+    columnNumber: 3
+  }, this),
+  /* @__PURE__ */ jsxDEV("body", { children: [
+    /* @__PURE__ */ jsxDEV("div", { id: "root", children }, void 0, false, {
+      fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+      lineNumber: 27,
+      columnNumber: 4
+    }, this),
+    /* @__PURE__ */ jsxDEV("script", { children: 'import("/src/client.tsx")' }, void 0, false, {
+      fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+      lineNumber: 28,
+      columnNumber: 4
+    }, this)
+  ] }, void 0, true, {
+    fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+    lineNumber: 26,
+    columnNumber: 3
+  }, this)
+] }, void 0, true, {
+  fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+  lineNumber: 6,
+  columnNumber: 2
+}, this);
+`;
+    const result = await transformJsxScriptTagsCode(code, mockManifest);
+
+    // For this complex test, we'll just verify the key transformations
+    const expected = `
+import { jsxDEV } from "react/jsx-dev-runtime";
+import styles from "./index.css?url";
+import { requestInfo } from "rwsdk/worker";
+
+export const Document = ({
+children
+}) => /* @__PURE__ */ jsxDEV("html", { lang: "en", children: [
+/* @__PURE__ */ jsxDEV("head", { children: [
+  /* @__PURE__ */ jsxDEV("meta", { charSet: "utf-8" }, void 0, false, {
+    fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+    lineNumber: 8,
+    columnNumber: 4
+  }, this),
+  /* @__PURE__ */ jsxDEV("meta", { name: "viewport", content: "width=device-width, initial-scale=1" }, void 0, false, {
+    fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+    lineNumber: 9,
+    columnNumber: 4
+  }, this),
+  /* @__PURE__ */ jsxDEV("title", { children: "rwsdk-guestbook" }, void 0, false, {
+    fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+    lineNumber: 10,
+    columnNumber: 4
+  }, this),
+  /* @__PURE__ */ jsxDEV("link", { rel: "preconnect", href: "https://fonts.googleapis.com" }, void 0, false, {
+    fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+    lineNumber: 11,
+    columnNumber: 4
+  }, this),
+  /* @__PURE__ */ jsxDEV(
+    "link",
+    {
+      rel: "preconnect",
+      href: "https://fonts.gstatic.com",
+      crossOrigin: "anonymous"
+    },
+    void 0,
+    false,
+    {
+      fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+      lineNumber: 12,
+      columnNumber: 4
+    },
+    this
+  ),
+  /* @__PURE__ */ jsxDEV(
+    "link",
+    {
+      href: "https://fonts.googleapis.com/css2?family=Geist+Mono:wght@100..900&display=swap",
+      rel: "stylesheet"
+    },
+    void 0,
+    false,
+    {
+      fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+      lineNumber: 17,
+      columnNumber: 4
+    },
+    this
+  ),
+  (
+(requestInfo.rw.scriptsToBeLoaded.add("/theme-script.js")),
+/* @__PURE__ */ jsxDEV("script", { src: "/theme-script.js",
+                          nonce: requestInfo.rw.nonce
+                    }, void 0, false, {
+      fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+      lineNumber: 21,
+      columnNumber: 4
+    }, this)
+),
+  /* @__PURE__ */ jsxDEV("link", { rel: "icon", href: "/favicon.svg" }, void 0, false, {
+    fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+    lineNumber: 22,
+    columnNumber: 4
+  }, this),
+  /* @__PURE__ */ jsxDEV("link", { rel: "modulepreload", href: "/assets/client-a1b2c3d4.js" }, void 0, false, {
+    fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+    lineNumber: 23,
+    columnNumber: 4
+  }, this),
+  /* @__PURE__ */ jsxDEV("link", { rel: "stylesheet", href: styles }, void 0, false, {
+    fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+    lineNumber: 24,
+    columnNumber: 4
+  }, this)
+] }, void 0, true, {
+  fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+  lineNumber: 7,
+  columnNumber: 3
+}, this),
+/* @__PURE__ */ jsxDEV("body", { children: [
+  /* @__PURE__ */ jsxDEV("div", { id: "root", children }, void 0, false, {
+    fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+    lineNumber: 27,
+    columnNumber: 4
+  }, this),
+  (
+(requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
+/* @__PURE__ */ jsxDEV("script", { children: "import(\\"/assets/client-a1b2c3d4.js\\")",
+                        nonce: requestInfo.rw.nonce
+                  }, void 0, false, {
+      fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+      lineNumber: 28,
+      columnNumber: 4
+    }, this)
+)
+] }, void 0, true, {
+  fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+  lineNumber: 26,
+  columnNumber: 3
+}, this)
+] }, void 0, true, {
+fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
+lineNumber: 6,
+columnNumber: 2
+}, this);`;
+
+    expect(normalizeCode(result?.code || "")).toEqual(normalizeCode(expected));
   });
 });

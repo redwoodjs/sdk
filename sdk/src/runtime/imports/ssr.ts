@@ -1,6 +1,6 @@
-import memoize from "lodash/memoize";
+import { memoizeOnId } from "../lib/memoizeOnId";
 
-export const ssrLoadModule = memoize(async (id: string) => {
+export const ssrLoadModule = memoizeOnId(async (id: string) => {
   const { useClientLookup } = await import(
     "virtual:use-client-lookup.js" as string
   );
@@ -23,7 +23,7 @@ export const ssrGetModuleExport = async (id: string) => {
 };
 
 // context(justinvdm, 2 Dec 2024): re memoize(): React relies on the same promise instance being returned for the same id
-export const ssrWebpackRequire = memoize(async (id: string) => {
+export const ssrWebpackRequire = memoizeOnId(async (id: string) => {
   const [file, name] = id.split("#");
   const module = await ssrLoadModule(file);
   return { [id]: module[name] };

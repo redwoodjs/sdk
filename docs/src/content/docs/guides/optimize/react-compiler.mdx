@@ -1,0 +1,88 @@
+---
+title: React Compiler
+description: Enable the React Compiler with RedwoodSDK (Vite)
+---
+
+import { Aside, Steps } from '@astrojs/starlight/components';
+
+The React Compiler can optimize your components automatically. RedwoodSDK works with the compiler via Vite — you only need to add the Babel plugin and runtime, and enable it in your Vite config.
+
+<Aside type="note" title="Reference">
+  See the related discussion and error context in the GitHub issue comment: [Enabling React Compiler in RedwoodSDK](https://github.com/redwoodjs/sdk/issues/623#issuecomment-3204098488).
+</Aside>
+
+## Install
+
+First, you'll need to be on the latest pre-release of RedwoodSDK:
+
+```bash
+pnpm add rwsdk@pre
+```
+
+Next, install the React Compiler Babel plugin, and Vite's React plugin.
+
+```bash
+pnpm add react@canary react-dom@canary react-server-dom-webpack@canary
+pnpm add -D babel-plugin-react-compiler@rc @vitejs/plugin-react
+```
+
+<Aside type="tip" title="Versions">
+  Use React 19, Vite 6+, and the latest RedwoodSDK. The compiler works for both client and server components; no code changes are required.
+</Aside>
+
+## Configure Vite
+
+Enable the compiler by adding the React plugin with the compiler Babel plugin. Place it before the Cloudflare and Redwood plugins.
+
+```ts ins="import react from "@vitejs/plugin-react";'" ins="tailwindcss()," {4, 12} ins={8-12} title="vite.config.mts"
+
+import { defineConfig } from "vite";
+import { redwood } from "rwsdk/vite";
+import { cloudflare } from "@cloudflare/vite-plugin";
+import react from "@vitejs/plugin-react";
+
+export default defineConfig({
+  plugins: [
+    react({
+      babel: {
+        plugins: ["babel-plugin-react-compiler"],
+      },
+    }),
+    cloudflare({
+      viteEnvironment: { name: "worker" },
+    }),
+    redwood(),
+  ],
+});
+```
+
+If you already have a Vite config, simply add this to your plugins:
+
+```ts
+react({
+  babel: {
+    plugins: ["babel-plugin-react-compiler"],
+  },
+}),
+```
+
+## Troubleshooting
+
+- After enabling, if HMR behaves oddly, clear Vite cache: `rm -rf node_modules/.vite` and restart the dev server.
+
+## Verify Your Setup
+
+Check React DevTools:
+
+1. Install the React Developer Tools browser extension
+2. Open your app in development mode
+3. Open React DevTools
+4. Look for the ✨ emoji next to component names
+
+If the compiler is working:
+
+- Components will show a “Memo ✨” badge in React DevTools
+- Expensive calculations will be automatically memoized
+- No manual `useMemo` is required
+
+Source: [React Compiler Installation](https://react.dev/learn/react-compiler/installation)

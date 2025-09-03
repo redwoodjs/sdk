@@ -24,9 +24,12 @@ export default defineApp([
     return new Response("Pong!")
   }),
 ]);
+```
 
 ---
+
 The `defineApp` function takes an array of middleware and route handlers that are executed in the order they are defined. In this example the request is passed through two middleware functions before being "matched" by the route handlers.
+
 ---
 
 ## Matching Patterns
@@ -39,11 +42,14 @@ import { route } from "rwsdk/router";
 defineApp([
   route("/match-this", () => new Response("Hello, world!"))
 ])
+```
 
 ---
+
 `route` parameters:
 1. The matching pattern string
 2. The request handler function
+
 ---
 
 There are three matching patterns:
@@ -93,13 +99,16 @@ defineApp([
     return <div>Hello, JSX world!</div>
   }),
 ])
+```
 
 ---
+
 The request handler function takes a [RequestInfo](#request-info) object as its parameter.
 
 Return values:
 - `Response`: A standard response object.
 - `JSX`: A React component, which is statically rendered to HTML on the server, streamed to the client, and then hydrated on the client side.
+
 ---
 
 ### Interrupters
@@ -121,9 +130,12 @@ function isAuthenticated({ request, ctx }) {
 defineApp([
   route("/blog/:slug/edit", [isAuthenticated, EditBlogPage])
 ])
+```
 
 ---
+
 For the `/blog/:slug/edit` route, the `isAuthenticated` function will be executed first, if the user is not authenticated, the response will be a 401 Unauthorized. If the user is authenticated, the `EditBlogPage` component will be rendered. Therefore the flow is interrupted. The `isAuthenticated` function can be shared across multiple routes.
+
 ---
 
 ## Middleware & Context
@@ -155,8 +167,10 @@ defineApp([
     },
   ]),
 ]);
+```
 
 ---
+
 The context object:
 
 1. `sessionMiddleware` is a function that is used to populate the `ctx.session` object
@@ -181,13 +195,16 @@ import { HomePage } from "@/pages/HomePage";
 export default defineApp([
   render(Document, [route("/", HomePage)])
 ]);
+```
 
 ---
+
 The `render` function takes a React component and an array of route handlers. The document will be applied to all the routes that are passed to it.
 
 This component will be rendered on the server side when the page loads. When defining this component, you'd add:
 * Your application's stylesheets and scripts
 * A mount point for your page content (`id="root"` in the code below): this is where your actual page will be rendered - the "dynamic stuff" which updates using React Server Components.
+
 ---
 
 ```tsx title="src/pages/Document.tsx" mark={7}
@@ -222,6 +239,8 @@ export async function myServerFunction() {
 }
 ```
 
+---
+
 The `requestInfo` object contains:
 
 - `request`: The incoming HTTP [Request](https://developer.mozilla.org/en-US/docs/Web/API/Request) object
@@ -233,16 +252,19 @@ The `requestInfo` object contains:
 You can mutate the `response` object to configure the status and headers. For example:
 
 ```tsx
+import { requestInfo } from "rwsdk/worker";
 import { route } from "rwsdk/router";
 
 const NotFound = () => <div>Not Found</div>;
 
-route('/some-resource', async ({ response }) => {
-  // some logic to determine if the resource is not found
-  
-  response.status = 404;
-  response.headers.set('Cache-Control', 'no-store');
+export default defineApp([
+  route('/some-resource', async () => {
+    // some logic to determine if the resource is not found
+    
+    response.status = 404;
+    response.headers.set('Cache-Control', 'no-store');
 
-  return <NotFound />;
-});
+    return <NotFound />;
+  }),
+]);
 ```

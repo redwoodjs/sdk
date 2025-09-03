@@ -193,27 +193,8 @@ async function installDependencies(targetDir: string): Promise<void> {
         error instanceof Error ? error.message : String(error)
       }`,
     );
-
-    // Try npm as fallback if pnpm fails
-    try {
-      console.log("⚠️ pnpm install failed, trying npm install as fallback...");
-
-      await $({
-        cwd: targetDir,
-        stdio: "pipe",
-      })`npm install`;
-
-      console.log("✅ Dependencies installed successfully with npm");
-    } catch (npmError) {
-      log("ERROR: Both pnpm and npm install failed: %O", npmError);
-      console.error(
-        `❌ Failed to install dependencies with npm: ${
-          npmError instanceof Error ? npmError.message : String(npmError)
-        }`,
-      );
-      throw new Error(
-        `Failed to install project dependencies. Please ensure the project can be installed with pnpm or npm.`,
-      );
-    }
+    throw new Error(
+      `Failed to install project dependencies. Please ensure the project can be installed with pnpm.`,
+    );
   }
 }

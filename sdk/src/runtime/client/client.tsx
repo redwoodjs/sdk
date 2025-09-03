@@ -1,36 +1,36 @@
-import { clientWebpackRequire } from "./imports/client";
-import { type CallServerCallback } from "react-server-dom-webpack/client.browser";
-import { type HydrationOptions } from "react-dom/client";
+// note(justinvdm, 14 Aug 2025): Rendering related imports and logic go here.
+// See client.tsx for the actual client entrypoint.
 
-// NOTE: `react-server-dom-webpack` uses this global to load modules,
-// so we need to define it here before importing "react-server-dom-webpack."
-globalThis.__webpack_require__ = clientWebpackRequire;
+// context(justinvdm, 14 Aug 2025): `react-server-dom-webpack` uses this global
+// to load modules, so we need to define it here before importing
+// "react-server-dom-webpack."
+import "./setWebpackRequire";
 
-export type ActionResponse<Result> = {
-  node: React.ReactNode;
-  actionResult: Result;
-};
+import React from "react";
 
-type TransportContext = {
-  setRscPayload: <Result>(v: Promise<ActionResponse<Result>>) => void;
-  handleResponse?: (response: Response) => boolean; // Returns false to stop normal processing
-};
+import { hydrateRoot } from "react-dom/client";
+import {
+  createFromReadableStream,
+  createFromFetch,
+  encodeReply,
+} from "react-server-dom-webpack/client.browser";
+import { rscStream } from "rsc-html-stream/client";
 
-export type Transport = (context: TransportContext) => CallServerCallback;
+export { ClientOnly } from "./ClientOnly.js";
+export { default as React } from "react";
 
-export type CreateCallServer = (
-  context: TransportContext,
-) => <Result>(id: null | string, args: null | unknown[]) => Promise<Result>;
+import type {
+  Transport,
+  HydrationOptions,
+  ActionResponse,
+  TransportContext,
+} from "./types";
 
 export const fetchTransport: Transport = (transportContext) => {
   const fetchCallServer = async <Result,>(
     id: null | string,
     args: null | unknown[],
   ): Promise<Result | undefined> => {
-    const { createFromFetch, encodeReply } = await import(
-      "react-server-dom-webpack/client.browser"
-    );
-
     const url = new URL(window.location.href);
     url.searchParams.set("__rsc", "");
 
@@ -83,9 +83,6 @@ export const initClient = async ({
   hydrateRootOptions?: HydrationOptions;
   handleResponse?: (response: Response) => boolean;
 } = {}) => {
-  const React = await import("react");
-  const { hydrateRoot } = await import("react-dom/client");
-
   const transportContext: TransportContext = {
     setRscPayload: () => {},
     handleResponse,
@@ -96,7 +93,7 @@ export const initClient = async ({
   const callServer = (id: any, args: any) => transportCallServer(id, args);
 
   const upgradeToRealtime = async ({ key }: { key?: string } = {}) => {
-    const { realtimeTransport } = await import("./lib/realtime/client");
+    const { realtimeTransport } = await import("../lib/realtime/client");
     const createRealtimeTransport = realtimeTransport({ key });
     transportCallServer = createRealtimeTransport(transportContext);
   };
@@ -119,10 +116,6 @@ export const initClient = async ({
   // context(justinvdm, 18 Jun 2025): We inject the RSC payload
   // unless render(Document, [...], { rscPayload: false }) was used.
   if ((globalThis as any).__FLIGHT_DATA) {
-    const { createFromReadableStream } = await import(
-      "react-server-dom-webpack/client.browser"
-    );
-    const { rscStream } = await import("rsc-html-stream/client");
     rscPayload = createFromReadableStream(rscStream, {
       callServer,
     });

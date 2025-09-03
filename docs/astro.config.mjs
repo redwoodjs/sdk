@@ -131,6 +131,13 @@ export default defineConfig({
                 },
               ],
             },
+            {
+              label: "Optimize",
+              collapsed: false,
+              items: [
+                { label: "React Compiler", slug: "guides/optimize/react-compiler" },
+              ],
+            },
             { label: "Server Function Streams", slug: "guides/rsc-streams" },
           ],
           collapsed: true,

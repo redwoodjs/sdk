@@ -1,5 +1,7 @@
 # Logs
 
+.rwsync.lock
+
 logs
 _.log
 npm-debug.log_

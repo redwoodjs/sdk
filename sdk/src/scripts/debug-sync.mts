@@ -8,6 +8,8 @@ import { lock } from "proper-lockfile";
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 
+// Any change triggers an update; no publish file list caching needed
+
 export interface DebugSyncOptions {
   targetDir: string;
   sdkDir?: string;
@@ -15,6 +17,9 @@ export interface DebugSyncOptions {
 }
 
 const getPackageManagerInfo = (targetDir: string) => {
+  if (existsSync(path.join(targetDir, "bun.lock"))) {
+    return { name: "bun", lockFile: "bun.lock", command: "add" };
+  }
   const pnpmResult = {
     name: "pnpm",
     lockFile: "pnpm-lock.yaml",
@@ -35,16 +40,73 @@ const getPackageManagerInfo = (targetDir: string) => {
   return pnpmResult;
 };
 
+const cleanupViteEntries = async (targetDir: string) => {
+  const nodeModulesDir = path.join(targetDir, "node_modules");
+  if (!existsSync(nodeModulesDir)) {
+    return;
+  }
+
+  try {
+    const entries = await fs.readdir(nodeModulesDir);
+    const viteEntries = entries.filter((entry) => entry.startsWith(".vite"));
+
+    for (const entry of viteEntries) {
+      const entryPath = path.join(nodeModulesDir, entry);
+      try {
+        const stat = await fs.lstat(entryPath);
+        if (!stat.isSymbolicLink()) {
+          console.log(`Removing vite cache entry: ${entry}`);
+          await fs.rm(entryPath, { recursive: true, force: true });
+        } else {
+          console.log(`Skipping symlinked vite cache entry: ${entry}`);
+        }
+      } catch {
+        // If we can't stat it, try to remove it
+        console.log(`Removing vite cache entry: ${entry}`);
+        await fs.rm(entryPath, { recursive: true, force: true });
+      }
+    }
+  } catch (error) {
+    console.log(`Failed to cleanup vite cache entries: ${error}`);
+  }
+};
+
 const performFullSync = async (sdkDir: string, targetDir: string) => {
   const sdkPackageJsonPath = path.join(sdkDir, "package.json");
   let originalSdkPackageJson: string | null = null;
   let tarballPath = "";
   let tarballName = "";
 
+  // Clean up vite cache
+  await cleanupViteEntries(targetDir);
+
   try {
+    try {
+      originalSdkPackageJson = await fs.readFile(sdkPackageJsonPath, "utf-8");
+      const packageJson = JSON.parse(originalSdkPackageJson);
+      const originalVersion = packageJson.version;
+      const timestamp = new Date()
+        .toISOString()
+        .replace(/[-:T.]/g, "")
+        .slice(0, 14);
+      const newVersion = `${originalVersion}+build.${timestamp}`;
+      console.log(`Temporarily setting version to ${newVersion}`);
+      packageJson.version = newVersion;
+      await fs.writeFile(
+        sdkPackageJsonPath,
+        JSON.stringify(packageJson, null, 2),
+      );
+    } catch (e) {
+      console.warn(
+        "Could not modify package.json version, proceeding without it.",
+      );
+      originalSdkPackageJson = null; // don't restore if we failed to modify
+    }
     console.log("📦 Packing SDK...");
-    const packResult = await $({ cwd: sdkDir })`npm pack`;
-    tarballName = packResult.stdout?.trim() ?? "";
+    const packResult = await $({ cwd: sdkDir })`npm pack --json`;
+    const json = JSON.parse(packResult.stdout || "[]");
+    const packInfo = Array.isArray(json) ? json[0] : undefined;
+    tarballName = (packInfo && (packInfo.filename || packInfo.name)) || "";
     if (!tarballName) {
       console.error("❌ Failed to get tarball name from npm pack.");
       return;
@@ -65,6 +127,35 @@ const performFullSync = async (sdkDir: string, targetDir: string) => {
       .catch(() => null);
 
     try {
+      // For bun, we need to remove the existing dependency from package.json
+      // before adding the tarball to avoid a dependency loop error.
+      if (pm.name === "bun" && originalPackageJson) {
+        try {
+          const targetPackageJson = JSON.parse(originalPackageJson);
+          let modified = false;
+          if (targetPackageJson.dependencies?.rwsdk) {
+            delete targetPackageJson.dependencies.rwsdk;
+            modified = true;
+          }
+          if (targetPackageJson.devDependencies?.rwsdk) {
+            delete targetPackageJson.devDependencies.rwsdk;
+            modified = true;
+          }
+          if (modified) {
+            console.log(
+              "Temporarily removing rwsdk from target package.json to prevent dependency loop with bun.",
+            );
+            await fs.writeFile(
+              packageJsonPath,
+              JSON.stringify(targetPackageJson, null, 2),
+            );
+          }
+        } catch (e) {
+          console.warn(
+            "Could not modify target package.json, proceeding anyway.",
+          );
+        }
+      }
       const cmd = pm.name;
       const args = [pm.command];
 
@@ -102,26 +193,75 @@ const performFullSync = async (sdkDir: string, targetDir: string) => {
   }
 };
 
+const syncFilesWithRsyncOrFs = async (
+  sdkDir: string,
+  destDir: string,
+  filesEntries: string[],
+) => {
+  const sources = filesEntries.map((p) => path.join(sdkDir, p));
+
+  // Always include package.json in sync
+  const pkgJsonPath = path.join(sdkDir, "package.json");
+  sources.push(pkgJsonPath);
+
+  await fs.mkdir(destDir, { recursive: true });
+
+  // Try rsync across all sources in one shot
+  try {
+    if (sources.length > 0) {
+      const rsyncArgs = [
+        "-a",
+        "--delete",
+        "--omit-dir-times",
+        "--no-perms",
+        "--no-owner",
+        "--no-group",
+        ...sources,
+        destDir + path.sep,
+      ];
+      await $({ stdio: "inherit" })("rsync", rsyncArgs);
+      return;
+    }
+  } catch {
+    // fall through to fs fallback
+  }
+
+  console.log("Rsync failed, falling back to fs");
+  // Fallback: destructive copy using Node fs to mirror content
+  await fs.rm(destDir, { recursive: true, force: true });
+  await fs.mkdir(destDir, { recursive: true });
+
+  for (const src of sources) {
+    const rel = path.relative(sdkDir, src);
+    const dst = path.join(destDir, rel);
+    await fs.mkdir(path.dirname(dst), { recursive: true });
+    try {
+      const stat = await fs.lstat(src);
+      if (stat.isDirectory()) {
+        await fs.cp(src, dst, { recursive: true, force: true });
+      } else {
+        await fs.copyFile(src, dst);
+      }
+    } catch {
+      await fs.cp(src, dst, { recursive: true, force: true }).catch(() => {});
+    }
+  }
+};
+
 const performFastSync = async (sdkDir: string, targetDir: string) => {
   console.log("⚡️ No dependency changes, performing fast sync...");
 
-  const sdkPackageJson = JSON.parse(
-    await fs.readFile(path.join(sdkDir, "package.json"), "utf-8"),
-  );
-  const filesToSync = sdkPackageJson.files || [];
+  // Clean up vite cache
+  await cleanupViteEntries(targetDir);
 
-  for (const file of filesToSync) {
-    const source = path.join(sdkDir, file);
-    const destination = path.join(targetDir, "node_modules/rwsdk", file);
-    if (existsSync(source)) {
-      await fs.cp(source, destination, { recursive: true, force: true });
-    }
-  }
-  // Always copy package.json
-  await fs.copyFile(
-    path.join(sdkDir, "package.json"),
-    path.join(targetDir, "node_modules/rwsdk/package.json"),
-  );
+  const nodeModulesPkgDir = path.join(targetDir, "node_modules", "rwsdk");
+
+  // Copy directories/files declared in package.json#files (plus package.json)
+  const filesToSync =
+    JSON.parse(await fs.readFile(path.join(sdkDir, "package.json"), "utf-8"))
+      .files || [];
+
+  await syncFilesWithRsyncOrFs(sdkDir, nodeModulesPkgDir, filesToSync);
 };
 
 const areDependenciesEqual = (
@@ -163,22 +303,8 @@ const performSync = async (sdkDir: string, targetDir: string) => {
       "utf-8",
     );
 
-    const sdkPkg = JSON.parse(sdkPackageJsonContent);
-    const installedPkg = JSON.parse(installedSdkPackageJsonContent);
-
-    if (
-      areDependenciesEqual(sdkPkg.dependencies, installedPkg.dependencies) &&
-      areDependenciesEqual(
-        sdkPkg.devDependencies,
-        installedPkg.devDependencies,
-      ) &&
-      areDependenciesEqual(
-        sdkPkg.peerDependencies,
-        installedPkg.peerDependencies,
-      )
-    ) {
-      packageJsonChanged = false;
-    }
+    packageJsonChanged =
+      sdkPackageJsonContent !== installedSdkPackageJsonContent;
   }
 
   if (packageJsonChanged) {
@@ -265,24 +391,21 @@ export const debugSync = async (opts: DebugSyncOptions) => {
   });
 
   let syncing = false;
+  let pendingResync = false;
 
-  // todo(justinvdm, 2025-07-22): Figure out wtf makes the full sync
-  // cause chokidar to find out about package.json after sync has resolved
-  let expectingFileChanges = Boolean(process.env.RWSDK_FORCE_FULL_SYNC);
-
-  watcher.on("all", async (_event, filePath) => {
-    if (syncing || filePath.endsWith(".tgz")) {
-      return;
-    }
-
-    if (expectingFileChanges && process.env.RWSDK_FORCE_FULL_SYNC) {
-      expectingFileChanges = false;
+  const triggerResync = async (reason?: string) => {
+    if (syncing) {
+      pendingResync = true;
       return;
     }
 
     syncing = true;
-    expectingFileChanges = true;
-    console.log(`\nDetected change, re-syncing... (file: ${filePath})`);
+
+    if (reason) {
+      console.log(`\nDetected change, re-syncing... (file: ${reason})`);
+    } else {
+      console.log(`\nDetected change, re-syncing...`);
+    }
 
     if (childProc && !childProc.killed) {
       console.log("Stopping running process...");
@@ -291,8 +414,8 @@ export const debugSync = async (opts: DebugSyncOptions) => {
         /* ignore kill errors */
       });
     }
+
     try {
-      watcher.unwatch(filesToWatch);
       await performSync(sdkDir, targetDir);
       runWatchedCommand();
     } catch (error) {
@@ -300,8 +423,22 @@ export const debugSync = async (opts: DebugSyncOptions) => {
       console.log("   Still watching for changes...");
     } finally {
       syncing = false;
-      watcher.add(filesToWatch);
     }
+
+    if (pendingResync) {
+      pendingResync = false;
+      // Coalesce any rapid additional events into a single follow-up sync
+      await new Promise((r) => setTimeout(r, 50));
+      return triggerResync();
+    }
+  };
+
+  watcher.on("all", async (_event, filePath) => {
+    if (filePath.endsWith(".tgz")) {
+      return;
+    }
+
+    await triggerResync(filePath);
   });
 
   const cleanup = async () => {

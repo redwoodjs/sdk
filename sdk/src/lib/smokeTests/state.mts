@@ -20,6 +20,11 @@ export interface TestStatus {
     initialClientHmr: TestStatusValue;
     realtimeServerHmr: TestStatusValue;
     realtimeClientHmr: TestStatusValue;
+    // Style check statuses
+    initialUrlStyles: TestStatusValue;
+    initialClientModuleStyles: TestStatusValue;
+    realtimeUrlStyles: TestStatusValue;
+    realtimeClientModuleStyles: TestStatusValue;
   };
   // Production environment tests
   production: {
@@ -37,6 +42,11 @@ export interface TestStatus {
     initialClientHmr: TestStatusValue;
     realtimeServerHmr: TestStatusValue;
     realtimeClientHmr: TestStatusValue;
+    // Style check statuses
+    initialUrlStyles: TestStatusValue;
+    initialClientModuleStyles: TestStatusValue;
+    realtimeUrlStyles: TestStatusValue;
+    realtimeClientModuleStyles: TestStatusValue;
   };
 }
 
@@ -74,6 +84,11 @@ export const state = {
       initialClientHmr: "DID_NOT_RUN",
       realtimeServerHmr: "DID_NOT_RUN",
       realtimeClientHmr: "DID_NOT_RUN",
+      // Style check statuses
+      initialUrlStyles: "DID_NOT_RUN",
+      initialClientModuleStyles: "DID_NOT_RUN",
+      realtimeUrlStyles: "DID_NOT_RUN",
+      realtimeClientModuleStyles: "DID_NOT_RUN",
     },
     production: {
       overall: "DID_NOT_RUN",
@@ -90,6 +105,11 @@ export const state = {
       initialClientHmr: "DID_NOT_RUN",
       realtimeServerHmr: "DID_NOT_RUN",
       realtimeClientHmr: "DID_NOT_RUN",
+      // Style check statuses
+      initialUrlStyles: "DID_NOT_RUN",
+      initialClientModuleStyles: "DID_NOT_RUN",
+      realtimeUrlStyles: "DID_NOT_RUN",
+      realtimeClientModuleStyles: "DID_NOT_RUN",
     },
   } as TestStatus,
 };
