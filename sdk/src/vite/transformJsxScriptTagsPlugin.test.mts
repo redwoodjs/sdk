@@ -187,7 +187,7 @@ nonce: requestInfo.rw.nonce
     expect(normalizeCode(result?.code || "")).toEqual(normalizeCode(expected));
   });
 
-  it("does not transform link href attributes during discovery phase", async () => {
+  it("transforms link href attributes with preload rel", async () => {
     const code = `
       jsx("link", {
         rel: "preload",
@@ -204,11 +204,18 @@ nonce: requestInfo.rw.nonce
       "/project/root/dir",
     );
 
-    // No transformation during discovery - link transformations happen in Phase 5
-    expect(result).toBeUndefined();
+    const expected = `
+      jsx("link", {
+        rel: "preload",
+        href: "rwsdk_asset:/src/client.tsx",
+        as: "script"
+      })
+    `;
+    expect(normalizeCode(result?.code || "")).toEqual(normalizeCode(expected));
+    expect(clientEntryPoints.size).toBe(0); // Make sure it doesn't incorrectly add to entry points
   });
 
-  it("does not transform link href attributes with modulepreload rel during discovery", async () => {
+  it("transforms link href attributes with modulepreload rel", async () => {
     const code = `
       jsx("link", {
         href: "/src/client.tsx",
@@ -224,8 +231,13 @@ nonce: requestInfo.rw.nonce
       "/project/root/dir",
     );
 
-    // No transformation during discovery - link transformations happen in Phase 5
-    expect(result).toBeUndefined();
+    const expected = `
+      jsx("link", {
+        href: "rwsdk_asset:/src/client.tsx",
+        rel: "modulepreload"
+      })
+    `;
+    expect(normalizeCode(result?.code || "")).toEqual(normalizeCode(expected));
   });
 
   it("transforms real-world Document component example", async () => {
@@ -238,7 +250,7 @@ nonce: requestInfo.rw.nonce
               jsx("meta", { charSet: "utf-8" }),
               jsx("meta", { name: "viewport", content: "width=device-width, initial-scale=1" }),
               jsx("title", { children: "@redwoodjs/starter-standard" }),
-              jsx("link", { rel: "modulepreload", href: "/src/client.tsx", as: "script" })
+              jsx("link", { rel: "modulepreload", href: "rwsdk_asset:/src/client.tsx", as: "script" })
             ]
           }),
           jsx("body", {
@@ -269,7 +281,7 @@ children: [
 jsx("meta", { charSet: "utf-8" }),
 jsx("meta", { name: "viewport", content: "width=device-width, initial-scale=1" }),
 jsx("title", { children: "@redwoodjs/starter-standard" }),
-jsx("link", { rel: "modulepreload", href: "/src/client.tsx", as: "script" })
+jsx("link", { rel: "modulepreload", href: "rwsdk_asset:/src/client.tsx", as: "script" })
 ]
 }),
 jsx("body", {
@@ -597,7 +609,7 @@ export const Document = ({
       lineNumber: 22,
       columnNumber: 4
     }, this),
-    /* @__PURE__ */ jsxDEV("link", { rel: "modulepreload", href: "/src/client.tsx" }, void 0, false, {
+    /* @__PURE__ */ jsxDEV("link", { rel: "modulepreload", href: "rwsdk_asset:/src/client.tsx" }, void 0, false, {
       fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
       lineNumber: 23,
       columnNumber: 4
@@ -718,7 +730,7 @@ children
     lineNumber: 22,
     columnNumber: 4
   }, this),
-  /* @__PURE__ */ jsxDEV("link", { rel: "modulepreload", href: "/src/client.tsx" }, void 0, false, {
+  /* @__PURE__ */ jsxDEV("link", { rel: "modulepreload", href: "rwsdk_asset:/src/client.tsx" }, void 0, false, {
     fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
     lineNumber: 23,
     columnNumber: 4
