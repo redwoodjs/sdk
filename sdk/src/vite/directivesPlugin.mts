@@ -145,8 +145,6 @@ export const directivesPlugin = ({
               // dependency discovery, so we can skip transform work
               // and use heuristics instead - see below inside if block
               if (!args.path.includes("node_modules")) {
-                log("Esbuild onLoad found app code, path=%s", args.path);
-
                 if (clientFiles.has(normalizedPath)) {
                   // context(justinvdm,2025-06-15): If this is a client file:
                   // * for ssr and client envs we can skip so esbuild looks at the
