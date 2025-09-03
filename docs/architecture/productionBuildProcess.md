@@ -36,13 +36,13 @@ The `worker` environment is built for the first time. This pass has two primary 
 
 The output of this phase is an intermediate, non-deployable `worker.js`.
 
-### Step 3: Client Build
-
-With the list of entry points and the refined list of used client components from the first worker pass, the `client` build is now executed. It runs to completion, producing all the necessary hashed client assets and a `manifest.json` file.
-
-### Step 4: SSR Build
+### Step 3: SSR Build
 
 The `ssr` build runs next, using the refined list of `"use client"` components from the first worker pass to ensure only the necessary server-side code is included. This build produces intermediate SSR artifacts.
+
+### Step 4: Client Build
+
+With the list of entry points and the refined list of used client components from the first worker pass, the `client` build is now executed. It runs to completion, producing all the necessary hashed client assets and a `manifest.json` file.
 
 ### Step 5: Worker Build (Second "Linker" Pass)
 
@@ -57,3 +57,25 @@ Our solution is to reuse the *exact same*, fully-resolved `worker` environment o
 - **Guaranteed Consistency:** Because this pass runs within the already-configured `worker` environment, the SSR artifacts are processed by the exact same set of plugins as the original worker code, ensuring a correct and consistent final bundle.
 
 The final output is a single, correctly transformed, and fully linked `worker.js` file, ready for deployment.
+
+## A Deeper Dive: Generating Directive Lookup Maps
+
+A critical but complex task in the build process is the generation of the `use client` and `use server` lookup maps. These are virtual modules that provide React with a manifest of all directive components, but they present a unique challenge that exemplifies the build's circular dependencies.
+
+### The Challenge: Post-Tree-Shaking Generation
+
+The core challenge is that the lookup maps can only be finalized *after* the tree-shaking in the first worker pass (Step 2) is complete. If we generated them during the initial scan (Step 1), they would be bloated with every potential client and server component in the project, not just the ones that are actually used.
+
+Furthermore, an early attempt to generate the maps using dynamic imports in the final linker step was found to be flawed. This approach caused the bundler to incorrectly code-split the server-side logic into separate assets, leading to "split-brain" bugs where server state was not persisted correctly between a server action's execution and the subsequent component re-render. The maps must be generated using static imports to be bundled correctly.
+
+### The Solution: Environment-Aware Deferral
+
+To solve this, our lookup plugins use a nuanced, environment-aware strategy to control exactly when the virtual lookup modules are generated and bundled.
+
+-   **Worker Pass (Step 2):** The plugins instruct the bundler to treat the lookup map modules as external references. This is the essential deferral step. It allows for a filtering process at the end of this pass to produce the final, tree-shaken list of components *before* the map's contents are ever generated. The intermediate worker artifact contains an unresolved reference to the map.
+
+-   **SSR Pass (Step 4):** The lookup maps are also kept external. This is crucial for consistency. It ensures that both the intermediate worker and SSR artifacts refer to the same abstract identifier for the map. This prevents module duplication and guarantees they will both use a single, shared lookup map in the final step.
+
+-   **Client Pass (Step 3):** The client-side lookup map is generated and bundled. At this point, the tree-shaken list of client components is available, and the client build can generate its own version of the map with static imports.
+
+-   **Linker Pass (Step 5):** Finally, the server-side lookup maps—which were treated as external references in the intermediate worker and SSR artifacts—are generated and bundled. At this stage, the plugin provides the definitive, tree-shaken contents for the lookup maps. These are then correctly bundled directly into the final `worker.js`, solving both the tree-shaking and state-loss issues.
