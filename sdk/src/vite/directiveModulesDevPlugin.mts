@@ -54,6 +54,7 @@ export const directiveModulesDevPlugin = ({
       }
 
       const workerEnv = config.environments["worker"];
+
       if (workerEnv) {
         await runDirectivesScan({
           rootConfig: config,
@@ -62,11 +63,6 @@ export const directiveModulesDevPlugin = ({
           serverFiles,
         });
       }
-
-      const dummyFilePaths = {
-        client: CLIENT_BARREL_PATH,
-        server: SERVER_BARREL_PATH,
-      };
 
       // Generate the barrel content and write it to the dummy files.
       // We can do this now because our scan is complete.
