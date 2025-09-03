@@ -108,6 +108,7 @@ export const directiveModulesDevPlugin = ({
               return {
                 contents: content,
                 loader: "js",
+                resolveDir: projectRootDir,
               };
             },
           );
