@@ -1,10 +1,13 @@
 import { type Plugin } from "vite";
 import MagicString from "magic-string";
+import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 
 export const injectVitePreamble = ({
-  clientEntryPathnames,
+  clientEntryPoints,
+  projectRootDir,
 }: {
-  clientEntryPathnames: string[];
+  clientEntryPoints: Set<string>;
+  projectRootDir: string;
 }): Plugin => ({
   name: "rwsdk:inject-vite-preamble",
   apply: "serve",
@@ -13,7 +16,8 @@ export const injectVitePreamble = ({
       return;
     }
 
-    if (!clientEntryPathnames.includes(id)) {
+    const normalizedId = normalizeModulePath(id, projectRootDir);
+    if (!clientEntryPoints.has(normalizedId)) {
       return;
     }
 

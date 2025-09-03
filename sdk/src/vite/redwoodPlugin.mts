@@ -39,7 +39,6 @@ export type RedwoodPluginOptions = {
   includeReactPlugin?: boolean;
   configPath?: string;
   entry?: {
-    client?: string | string[];
     worker?: string;
   };
 };
@@ -149,10 +148,8 @@ export const redwoodPlugin = async (
     }),
     vitePreamblePlugin(),
     injectVitePreamble({
-      clientEntryPathnames: (Array.isArray(options.entry?.client)
-        ? options.entry.client
-        : [options.entry?.client ?? "src/client.tsx"]
-      ).map((entry) => resolve(projectRootDir, entry)),
+      clientEntryPoints,
+      projectRootDir,
     }),
     useClientLookupPlugin({
       projectRootDir,
