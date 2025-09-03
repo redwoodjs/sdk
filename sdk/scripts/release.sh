@@ -151,11 +151,7 @@ elif [[ "$VERSION_TYPE" == "prepatch" || "$VERSION_TYPE" == "preminor" || "$VERS
   fi
 else
   # Handle regular versions (patch, minor, major)
-  # If current version is a prerelease, use the base version for incrementing
-  if [[ "$CURRENT_VERSION" =~ ^(.*)-.*$ ]]; then
-    CURRENT_VERSION="${BASH_REMATCH[1]}"
-  fi
-  NEW_VERSION=$(npx semver -i $VERSION_TYPE $CURRENT_VERSION)
+  NEW_VERSION=$(npx semver -i "$VERSION_TYPE" "$CURRENT_VERSION")
 fi
 
 echo -e "\n📦 Planning version bump to $NEW_VERSION ($VERSION_TYPE)..."
