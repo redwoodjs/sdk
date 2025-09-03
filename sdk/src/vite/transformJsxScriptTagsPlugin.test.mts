@@ -1,11 +1,18 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { transformJsxScriptTagsCode } from "./transformJsxScriptTagsPlugin.mjs";
 import jsBeautify from "js-beautify";
+import stubEnvVars from "../lib/testUtils/stubEnvVars.mjs";
 
 // Helper function to normalize code formatting for test comparisons
 function normalizeCode(code: string): string {
   return jsBeautify(code, { indent_size: 2 });
 }
+
+stubEnvVars();
+
+beforeEach(() => {
+  process.env.RWSDK_BUILD_PASS = "worker";
+});
 
 describe("transformJsxScriptTagsCode", () => {
   const mockManifest = {
