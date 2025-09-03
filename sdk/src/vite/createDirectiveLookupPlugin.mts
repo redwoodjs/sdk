@@ -1,14 +1,13 @@
 import MagicString from "magic-string";
 import path from "path";
-import { Plugin } from "vite";
+import { Plugin, ViteDevServer } from "vite";
 import { readFile } from "fs/promises";
 import debug from "debug";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
-import { pathExists } from "fs-extra";
 import { stat } from "fs/promises";
 import { getSrcPaths } from "../lib/getSrcPaths.js";
 import { hasDirective } from "./hasDirective.mjs";
-import { ViteDevServer } from "vite";
+import { CLIENT_BARREL_PATH, SERVER_BARREL_PATH } from "../lib/constants.mjs";
 
 interface DirectiveLookupConfig {
   kind: "client" | "server";
@@ -18,186 +17,6 @@ interface DirectiveLookupConfig {
   pluginName: string;
   optimizeForEnvironments?: string[];
 }
-
-export const findFilesContainingDirective = async ({
-  projectRootDir,
-  files,
-  directive,
-  debugNamespace,
-}: {
-  projectRootDir: string;
-  files: Set<string>;
-  directive: string;
-  debugNamespace: string;
-}) => {
-  const log = debug(debugNamespace);
-
-  log(
-    "Starting search for '%s' files in projectRootDir=%s",
-    directive,
-    projectRootDir,
-  );
-
-  const filesToScan = await getSrcPaths(projectRootDir);
-  log(
-    "Found %d files to scan for '%s' directive",
-    filesToScan.length,
-    directive,
-  );
-
-  for (const file of filesToScan) {
-    try {
-      const stats = await stat(file);
-
-      if (!stats.isFile()) {
-        process.env.VERBOSE && log("Skipping %s (not a file)", file);
-        continue;
-      }
-
-      process.env.VERBOSE && log("Scanning file: %s", file);
-      const content = await readFile(file, "utf-8");
-
-      if (hasDirective(content, directive)) {
-        const normalizedPath = normalizeModulePath(file, projectRootDir);
-        log(
-          "Found '%s' directive in file: %s -> %s",
-          directive,
-          file,
-          normalizedPath,
-        );
-        files.add(normalizedPath);
-      }
-    } catch (error) {
-      console.error(`Error reading file ${file}:`, error);
-    }
-  }
-
-  log("Completed scan. Found %d %s files total", files.size, directive);
-  process.env.VERBOSE &&
-    log("Found files for %s: %j", directive, Array.from(files));
-};
-
-const resolveOptimizedDep = async (
-  projectRootDir: string,
-  id: string,
-  environment: string,
-  debugNamespace: string,
-): Promise<string | undefined> => {
-  const log = debug(debugNamespace);
-
-  try {
-    const depsDir = environment === "client" ? "deps" : `deps_${environment}`;
-    const nodeModulesDepsDirPath = path.join("node_modules", ".vite", depsDir);
-    const depsDirPath = path.join(projectRootDir, nodeModulesDepsDirPath);
-    const manifestPath = path.join(depsDirPath, "_metadata.json");
-    log("Checking for manifest at: %s", manifestPath);
-
-    const manifestExists = await pathExists(manifestPath);
-    if (!manifestExists) {
-      log("Manifest not found at %s", manifestPath);
-      return undefined;
-    }
-
-    const manifestContent = await readFile(manifestPath, "utf-8");
-    const manifest = JSON.parse(manifestContent);
-
-    if (manifest.optimized && manifest.optimized[id]) {
-      const optimizedFile = manifest.optimized[id].file;
-      const optimizedPath = path.join(
-        "/",
-        nodeModulesDepsDirPath,
-        optimizedFile,
-      );
-
-      log(
-        "Found optimized dependency: filePath=%s, optimizedPath=%s",
-        id,
-        optimizedPath,
-      );
-      return optimizedPath;
-    }
-
-    process.env.VERBOSE &&
-      log("File not found in optimized dependencies: id=%s", id);
-    return undefined;
-  } catch (error) {
-    process.env.VERBOSE &&
-      log("Error resolving optimized dependency for id=%s: %s", id, error);
-    return undefined;
-  }
-};
-
-const addOptimizedDepsEntries = async ({
-  projectRootDir,
-  directive,
-  environment,
-  debugNamespace,
-  files,
-}: {
-  projectRootDir: string;
-  directive: string;
-  environment: string;
-  debugNamespace: string;
-  files: Set<string>;
-}) => {
-  const log = debug(debugNamespace);
-
-  try {
-    const depsDir = environment === "client" ? "deps" : `deps_${environment}`;
-    const depsDirPath = path.join(
-      projectRootDir,
-      "node_modules",
-      ".vite",
-      depsDir,
-    );
-    const manifestPath = path.join(depsDirPath, "_metadata.json");
-    process.env.VERBOSE && log("Checking for manifest at: %s", manifestPath);
-
-    const manifestExists = await pathExists(manifestPath);
-    if (!manifestExists) {
-      process.env.VERBOSE && log("Manifest not found at %s", manifestPath);
-      return;
-    }
-
-    const manifestContent = await readFile(manifestPath, "utf-8");
-    const manifest = JSON.parse(manifestContent);
-
-    for (const entryId of Object.keys(manifest.optimized)) {
-      if (entryId.startsWith("/node_modules/")) {
-        const srcPath = manifest.optimized[entryId].src;
-        const resolvedSrcPath = path.resolve(
-          projectRootDir,
-          "node_modules",
-          ".vite",
-          "deps",
-          srcPath,
-        );
-        let contents: string;
-        try {
-          contents = await readFile(resolvedSrcPath, "utf-8");
-        } catch (error) {
-          process.env.VERBOSE &&
-            log("Error reading file %s: %s", resolvedSrcPath, error);
-          continue;
-        }
-
-        if (hasDirective(contents, directive)) {
-          log("Adding optimized entry to files: %s", entryId);
-          files.add(entryId);
-        } else {
-          log(
-            "Skipping optimized entry %s because it does not contain the '%s' directive",
-            entryId,
-            directive,
-          );
-        }
-      }
-    }
-  } catch (error) {
-    process.env.VERBOSE &&
-      log("Error adding optimized deps entries: %s", error);
-  }
-};
 
 export const createDirectiveLookupPlugin = async ({
   projectRootDir,
@@ -211,21 +30,13 @@ export const createDirectiveLookupPlugin = async ({
   const debugNamespace = `rwsdk:vite:${config.pluginName}`;
   const log = debug(debugNamespace);
   let isDev = false;
+  let devServer: ViteDevServer;
 
   log(
     "Initializing %s plugin with projectRootDir=%s",
     config.pluginName,
     projectRootDir,
   );
-
-  await findFilesContainingDirective({
-    projectRootDir,
-    files,
-    directive: config.directive,
-    debugNamespace,
-  });
-
-  let devServer: ViteDevServer;
 
   return {
     name: `rwsdk:${config.pluginName}`,
@@ -236,17 +47,15 @@ export const createDirectiveLookupPlugin = async ({
     configureServer(server) {
       devServer = server;
     },
-    async configEnvironment(env, viteConfig) {
+    configEnvironment(env, viteConfig) {
+      if (
+        !isDev &&
+        process.env.RWSDK_BUILD_PASS &&
+        process.env.RWSDK_BUILD_PASS !== "worker"
+      ) {
+        return;
+      }
       log("Configuring environment: env=%s", env);
-
-      // Add optimized deps entries that match our pattern
-      await addOptimizedDepsEntries({
-        projectRootDir,
-        files,
-        directive: config.directive,
-        environment: env,
-        debugNamespace,
-      });
 
       viteConfig.optimizeDeps ??= {};
       viteConfig.optimizeDeps.esbuildOptions ??= {};
@@ -270,7 +79,7 @@ export const createDirectiveLookupPlugin = async ({
           build.onResolve(
             {
               filter: new RegExp(
-                `^(${escapedVirtualModuleName}|${escapedPrefixedModuleName})\.js$`,
+                `^(${escapedVirtualModuleName}|${escapedPrefixedModuleName})\\.js$`,
               ),
             },
             () => {
@@ -298,6 +107,10 @@ export const createDirectiveLookupPlugin = async ({
         viteConfig.optimizeDeps.include ??= [];
 
         for (const file of files) {
+          if (file.includes("node_modules")) {
+            continue;
+          }
+
           const actualFilePath = path.join(projectRootDir, file);
 
           process.env.VERBOSE &&
@@ -315,20 +128,51 @@ export const createDirectiveLookupPlugin = async ({
       }
     },
     resolveId(source) {
-      process.env.VERBOSE && log("Resolving id=%s", source);
-
-      if (source === `${config.virtualModuleName}.js`) {
-        log("Resolving %s module", config.virtualModuleName);
-        // context(justinvdm, 16 Jun 2025): Include .js extension
-        // so it goes through vite processing chain
-        return source;
+      if (source !== `${config.virtualModuleName}.js`) {
+        return null;
       }
 
-      process.env.VERBOSE && log("No resolution for id=%s", source);
+      // context(justinvdm, 3 Sep 2025): This logic determines *when* to
+      // generate and bundle the lookup map. By conditionally externalizing it,
+      // we ensure the map is only created after tree-shaking is complete and
+      // that it's correctly shared between the SSR and final worker builds.
+      log("Resolving %s module", config.virtualModuleName);
+      const envName = this.environment?.name;
+
+      // 1. Worker Pass -> externalize
+      if (
+        isDev &&
+        envName === "worker" &&
+        process.env.RWSDK_BUILD_PASS === "worker"
+      ) {
+        // context(justinvdm, 3 Sep 2025): We externalize the lookup during the
+        // first worker pass. This defers its bundling until after the
+        // directivesFilteringPlugin has had a chance to run and tree-shake
+        // the list of client/server files.
+        log("Marking as external for worker pass");
+        return { id: source, external: true };
+      }
+
+      // 2. SSR Pass -> externalize
+      if (isDev && envName === "ssr") {
+        // context(justinvdm, 3 Sep 2025): We also externalize during the SSR
+        // build. This ensures that both the worker and SSR artifacts refer to
+        // the same virtual module, which will be resolved into a single, shared
+        // lookup map during the final linker pass.
+        log("Marking as external for ssr pass");
+        return { id: source, external: true };
+      }
+
+      // 3. Client Pass & 4. Linker Pass -> resolve and bundle
+      // context(justinvdm, 3 Sep 2025): For the client build, the dev server,
+      // and the final linker pass, we resolve the module ID with a null-byte
+      // prefix. This signals to Vite/Rollup that this is a virtual module
+      // whose content should be provided by the `load` hook, bundling it in.
+      log("Resolving for bundling");
+
+      return source;
     },
     async load(id) {
-      process.env.VERBOSE && log("Loading id=%s", id);
-
       if (id === config.virtualModuleName + ".js") {
         log(
           "Loading %s module with %d files",
@@ -339,30 +183,25 @@ export const createDirectiveLookupPlugin = async ({
         const environment = this.environment?.name || "client";
         log("Current environment: %s, isDev: %s", environment, isDev);
 
-        const optimizedDeps: Record<string, string> = {};
-
-        if (isDev && devServer) {
-          for (const file of files) {
-            const resolvedPath = await resolveOptimizedDep(
-              projectRootDir,
-              file,
-              environment,
-              debugNamespace,
-            );
-            if (resolvedPath) {
-              optimizedDeps[file] = resolvedPath;
-            }
-          }
-        }
-
         const s = new MagicString(`
 export const ${config.exportName} = {
   ${Array.from(files)
-    .map(
-      (file: string) => `
-  "${file}": () => import("${optimizedDeps[file] ?? file}"),
-`,
-    )
+    .map((file: string) => {
+      if (file.includes("node_modules") && isDev) {
+        const barrelPath =
+          config.kind === "client"
+            ? "rwsdk/__client_barrel"
+            : "rwsdk/__server_barrel";
+
+        return `
+  "${file}": () => import("${barrelPath}").then(m => m.default["${file}"]),
+`;
+      } else {
+        return `
+  "${file}": () => import("${file}"),
+`;
+      }
+    })
     .join("")}
 };
 `);
@@ -378,8 +217,6 @@ export const ${config.exportName} = {
           map,
         };
       }
-
-      process.env.VERBOSE && log("No load handling for id=%s", id);
     },
   };
 };

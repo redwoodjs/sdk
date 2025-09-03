@@ -513,26 +513,9 @@ export async function checkUrlSmoke(
   const phase = isRealtime ? "Post-upgrade" : "Initial";
   console.log(`🔍 Testing ${phase} smoke tests at ${url}`);
 
-  // Parse the base URL and path to properly handle smoke test queries
-  const parsedUrl = new URL(url);
-  log("Parsed URL: %O", {
-    origin: parsedUrl.origin,
-    pathname: parsedUrl.pathname,
-    search: parsedUrl.search,
-  });
-
-  // Add __smoke_test query parameter, preserving any existing query parameters
-  if (parsedUrl.searchParams.has("__smoke_test")) {
-    console.log(`URL already has __smoke_test parameter: ${url}`);
-  } else {
-    parsedUrl.searchParams.append("__smoke_test", "1");
-    log("Added __smoke_test parameter to URL");
-  }
-
   // Navigate to smoke test page
-  const smokeUrl = parsedUrl.toString();
-  console.log(`🔍 Accessing smoke test page: ${smokeUrl}`);
-  await page.goto(smokeUrl, { waitUntil: "networkidle0" });
+  console.log(`🔍 Accessing smoke test page: ${url}`);
+  await page.goto(url, { waitUntil: "networkidle0" });
   log("Page loaded successfully");
 
   // Track failures to report at the end
@@ -1053,10 +1036,10 @@ export async function checkClientSmoke(
     // Check if we're on a smoke test page - in which case missing the refresh button is a failure
     const currentUrl = page.url();
     log("Current URL: %s", currentUrl);
-    if (currentUrl.includes("__smoke_test")) {
-      log("ERROR: Smoke test page is missing the refresh-health button");
+    if (!currentUrl.includes("/__smoke_test")) {
+      log("ERROR: Smoke test page is not the current URL");
       throw new Error(
-        "Smoke test page is missing the refresh-health button - this is a test failure",
+        "Smoke test page is not the current URL - this is a test failure",
       );
     }
 

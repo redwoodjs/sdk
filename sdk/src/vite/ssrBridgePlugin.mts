@@ -1,8 +1,7 @@
 import type { Plugin, ViteDevServer } from "vite";
 import debug from "debug";
-import { SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import { findSsrImportCallSites } from "./findSsrSpecifiers.mjs";
-import { isJsFile } from "./isJsFile.mjs";
+import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import MagicString from "magic-string";
 
 const log = debug("rwsdk:vite:ssr-bridge-plugin");
@@ -17,11 +16,6 @@ export const ssrBridgePlugin = ({
   serverFiles: Set<string>;
   projectRootDir: string;
 }): Plugin => {
-  log(
-    "Initializing SSR bridge plugin with SSR_BRIDGE_PATH=%s",
-    SSR_BRIDGE_PATH,
-  );
-
   let devServer: ViteDevServer;
   let isDev = false;
 
@@ -81,14 +75,6 @@ export const ssrBridgePlugin = ({
       }
     },
     async resolveId(id) {
-      process.env.VERBOSE &&
-        log(
-          "Resolving id=%s, environment=%s, isDev=%s",
-          id,
-          this.environment?.name,
-          isDev,
-        );
-
       if (isDev) {
         // context(justinvdm, 27 May 2025): In dev, we need to dynamically load
         // SSR modules, so we return the virtual id so that the dynamic loading
@@ -123,31 +109,26 @@ export const ssrBridgePlugin = ({
           return virtualId;
         }
       } else {
-        // context(justinvdm, 27 May 2025): In builds, since all SSR import chains
-        // originate at SSR bridge module, we return the path to the already built
-        // SSR bridge bundle - SSR env builds it, worker build tries to resolve it
-        // here and uses it
+        // In build mode, the behavior depends on the build pass
         if (id === "rwsdk/__ssr_bridge" && this.environment.name === "worker") {
-          log(
-            "Bridge module case (build): id=%s matches rwsdk/__ssr_bridge in worker environment, returning SSR_BRIDGE_PATH=%s",
-            id,
-            SSR_BRIDGE_PATH,
-          );
-          return SSR_BRIDGE_PATH;
+          if (process.env.RWSDK_BUILD_PASS === "worker") {
+            // First pass: resolve to a temporary, external path
+            log(
+              "Bridge module case (build-worker pass): resolving to external path",
+            );
+            return { id: INTERMEDIATE_SSR_BRIDGE_PATH, external: true };
+          } else if (process.env.RWSDK_BUILD_PASS === "linker") {
+            // Second pass (linker): resolve to the real intermediate build
+            // artifact so it can be bundled in.
+            log(
+              "Bridge module case (build-linker pass): resolving to bundleable path",
+            );
+            return { id: INTERMEDIATE_SSR_BRIDGE_PATH, external: false };
+          }
         }
       }
-
-      process.env.VERBOSE && log("No resolution for id=%s", id);
     },
     async load(id) {
-      process.env.VERBOSE &&
-        log(
-          "Loading id=%s, isDev=%s, environment=%s",
-          id,
-          isDev,
-          this.environment.name,
-        );
-
       if (
         id.startsWith(VIRTUAL_SSR_PREFIX) &&
         this.environment.name === "worker"
@@ -210,8 +191,6 @@ export const ssrBridgePlugin = ({
           return out;
         }
       }
-
-      process.env.VERBOSE && log("No load handling for id=%s", id);
     },
   };
 

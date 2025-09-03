@@ -221,7 +221,6 @@ export async function runDevServer(cwd?: string): Promise<{
 export async function runDevTest(
   url: string,
   artifactDir: string,
-  customPath: string = "/",
   browserPath?: string,
   headless: boolean = true,
   bail: boolean = false,
@@ -230,24 +229,16 @@ export async function runDevTest(
   skipHmr: boolean = false,
   skipStyleTests: boolean = false,
 ): Promise<void> {
-  log("Starting dev server test with path: %s", customPath || "/");
+  log("Starting dev server test");
   console.log("🚀 Testing local development server");
 
   const browser = await launchBrowser(browserPath, headless);
   const page = await browser.newPage();
 
   try {
+    const testUrl = new URL("/__smoke_test", url).toString();
     // DRY: check both root and custom path
-    await checkServerUp(url, customPath, RETRIES, bail);
-
-    // Now run the tests with the custom path
-    const testUrl =
-      url +
-      (customPath === "/"
-        ? ""
-        : customPath.startsWith("/")
-          ? customPath
-          : "/" + customPath);
+    await checkServerUp(url, "/", RETRIES, bail);
 
     // Pass the target directory to checkUrl for HMR testing
     const targetDir = state.resources.targetDir;

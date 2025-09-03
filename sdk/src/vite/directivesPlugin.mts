@@ -41,67 +41,13 @@ export const directivesPlugin = ({
 }): Plugin => {
   let devServer: ViteDevServer;
   let isAfterFirstResponse = false;
-
-  const addModule = (
-    kind: "client" | "server",
-    environment: string,
-    id: string,
-  ) => {
-    const files = kind === "client" ? clientFiles : serverFiles;
-    const rawId = id.split("?")[0];
-    const resolvedId = normalizeModulePath(rawId, projectRootDir);
-    const fullPath = normalizeModulePath(rawId, projectRootDir, {
-      absolute: true,
-    });
-    const isNodeModule = id.includes("node_modules");
-    const hadFile = files.has(id);
-
-    log(
-      "Adding %s module to %s and invalidating cache: id=%s",
-      kind,
-      files,
-      resolvedId,
-    );
-    files.add(resolvedId);
-
-    if (devServer && isNodeModule) {
-      const lookupModule =
-        kind === "client"
-          ? "virtual:use-client-lookup"
-          : "virtual:use-server-lookup";
-
-      log(
-        "Registering missing import for %s module resolvedId=%s in environment %s, fullPath=%s",
-        kind,
-        resolvedId,
-        environment,
-        fullPath,
-      );
-      devServer.environments[environment].depsOptimizer?.registerMissingImport(
-        resolvedId,
-        fullPath,
-      );
-
-      if (isAfterFirstResponse && !hadFile) {
-        log(
-          "Invalidating cache for lookup module %s after adding module id=%s",
-          lookupModule,
-          id,
-        );
-      }
-    }
-  };
-
-  const addClientModule = (environment: string, id: string) => {
-    addModule("client", environment, id);
-  };
-
-  const addServerModule = (environment: string, id: string) => {
-    addModule("server", environment, id);
-  };
+  let isBuild = false;
 
   return {
     name: "rwsdk:rsc-directives",
+    configResolved(config) {
+      isBuild = config.command === "build";
+    },
     configureServer(server) {
       devServer = server;
       devServer.middlewares.use((_req, res, next) => {
@@ -120,23 +66,23 @@ export const directivesPlugin = ({
       });
     },
     async transform(code, id) {
-      process.env.VERBOSE &&
-        log(
-          "Transform called for id=%s, environment=%s",
-          id,
-          this.environment.name,
-        );
-
+      if (
+        isBuild &&
+        this.environment?.name === "worker" &&
+        process.env.RWSDK_BUILD_PASS !== "worker"
+      ) {
+        return;
+      }
       const normalizedId = normalizeModulePath(id, projectRootDir);
 
       const clientResult = await transformClientComponents(code, normalizedId, {
         environmentName: this.environment.name,
         clientFiles,
-        addClientModule,
       });
 
       if (clientResult) {
-        log("Client component transformation successful for id=%s", id);
+        process.env.VERBOSE &&
+          log("Client component transformation successful for id=%s", id);
         return {
           code: clientResult.code,
           map: clientResult.map,
@@ -148,21 +94,28 @@ export const directivesPlugin = ({
         normalizedId,
         this.environment.name as "client" | "worker" | "ssr",
         serverFiles,
-        addServerModule,
       );
 
       if (serverResult) {
-        log("Server function transformation successful for id=%s", id);
+        process.env.VERBOSE &&
+          log("Server function transformation successful for id=%s", id);
         return {
           code: serverResult.code,
           map: serverResult.map,
         };
       }
 
-      process.env.VERBOSE && log("No transformation applied for id=%s", id);
+      // Removed: too noisy even in verbose mode
     },
     configEnvironment(env, config) {
-      log("Configuring environment: env=%s", env);
+      if (
+        isBuild &&
+        env === "worker" &&
+        process.env.RWSDK_BUILD_PASS !== "worker"
+      ) {
+        return;
+      }
+      process.env.VERBOSE && log("Configuring environment: env=%s", env);
       config.optimizeDeps ??= {};
       config.optimizeDeps.esbuildOptions ??= {};
       config.optimizeDeps.esbuildOptions.plugins ??= [];
@@ -192,8 +145,6 @@ export const directivesPlugin = ({
               // dependency discovery, so we can skip transform work
               // and use heuristics instead - see below inside if block
               if (!args.path.includes("node_modules")) {
-                log("Esbuild onLoad found app code, path=%s", args.path);
-
                 if (clientFiles.has(normalizedPath)) {
                   // context(justinvdm,2025-06-15): If this is a client file:
                   // * for ssr and client envs we can skip so esbuild looks at the
@@ -262,16 +213,16 @@ export const directivesPlugin = ({
                   environmentName: env,
                   clientFiles,
                   isEsbuild: true,
-                  addClientModule,
                 },
               );
 
               if (clientResult) {
-                log(
-                  "Esbuild client component transformation successful for environment=%s, path=%s",
-                  env,
-                  args.path,
-                );
+                process.env.VERBOSE &&
+                  log(
+                    "Esbuild client component transformation successful for environment=%s, path=%s",
+                    env,
+                    args.path,
+                  );
                 process.env.VERBOSE &&
                   log(
                     "Esbuild client component transformation for environment=%s, path=%s, code: %j",
@@ -290,15 +241,15 @@ export const directivesPlugin = ({
                 normalizedPath,
                 env as "client" | "worker" | "ssr",
                 serverFiles,
-                addServerModule,
               );
 
               if (serverResult) {
-                log(
-                  "Esbuild server function transformation successful for environment=%s, path=%s",
-                  env,
-                  args.path,
-                );
+                process.env.VERBOSE &&
+                  log(
+                    "Esbuild server function transformation successful for environment=%s, path=%s",
+                    env,
+                    args.path,
+                  );
                 return {
                   contents: serverResult.code,
                   loader: getLoader(args.path),
@@ -315,7 +266,8 @@ export const directivesPlugin = ({
           );
         },
       });
-      log("Environment configuration complete for env=%s", env);
+      process.env.VERBOSE &&
+        log("Environment configuration complete for env=%s", env);
     },
   };
 };

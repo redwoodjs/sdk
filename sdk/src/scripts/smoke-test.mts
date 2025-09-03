@@ -24,7 +24,6 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
 
   // Set initial default values (sync will be determined below)
   const options: SmokeTestOptions = {
-    customPath: "/", // Default path
     skipDev: false,
     skipRelease: false,
     skipClient: false,
@@ -86,7 +85,6 @@ Smoke Test Usage:
   node smoke-test.mjs [options]
 
 Options:
-  --url=PATH              Custom URL path to test (e.g., "/login")
   --skip-dev              Skip testing the local development server
   --skip-release          Skip testing the release/production deployment
   --skip-client           Skip client-side tests, only run server-side checks
@@ -109,14 +107,6 @@ Options:
       options.projectDir = arg.substring(7);
     } else if (arg.startsWith("--artifact-dir=")) {
       options.artifactDir = arg.substring(15);
-    } else if (arg.startsWith("--url=")) {
-      options.customPath = arg.substring(6);
-    } else if (!arg.startsWith("--")) {
-      // For backwards compatibility, any non-flag argument is treated as the custom path
-      console.log(
-        `Setting URL path to "${arg}" (use --url= format in the future)`,
-      );
-      options.customPath = arg;
     } else {
       // Throw error for unknown options instead of just warning
       log("Unknown option: %s", arg);

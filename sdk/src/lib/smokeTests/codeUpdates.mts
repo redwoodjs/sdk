@@ -57,7 +57,7 @@ export async function createSmokeTestComponents(
   }
 
   // Modify worker.tsx and wrangler.jsonc for realtime support
-  await modifyAppForRealtime(targetDir);
+  await modifyAppForRealtime(targetDir, skipClient);
 
   log("Smoke test components created successfully");
   console.log("Created smoke test components:");
@@ -132,7 +132,10 @@ export async function createSmokeTestStylesheets(targetDir: string) {
 /**
  * Modifies the worker.tsx and wrangler.jsonc files to add realtime support
  */
-export async function modifyAppForRealtime(targetDir: string): Promise<void> {
+export async function modifyAppForRealtime(
+  targetDir: string,
+  skipClient = false,
+): Promise<void> {
   log("Modifying worker.tsx and wrangler.jsonc for realtime support");
 
   // Modify worker.tsx
@@ -155,9 +158,21 @@ export async function modifyAppForRealtime(targetDir: string): Promise<void> {
     const hasEnvImport = workerContent.includes(
       'import { env } from "cloudflare:workers"',
     );
+    const hasSmokeTestImport = workerContent.includes(
+      'import { SmokeTest } from "@/app/components/__SmokeTest.tsx"',
+    );
+    const hasSmokeTestRoute = workerContent.includes(
+      'route("/__smoke_test", SmokeTest)',
+    );
 
-    if (!hasRealtimeExport || !hasRealtimeRoute || !hasEnvImport) {
-      log("Need to modify worker.tsx for realtime support");
+    if (
+      !hasRealtimeExport ||
+      !hasRealtimeRoute ||
+      !hasEnvImport ||
+      !hasSmokeTestImport ||
+      !hasSmokeTestRoute
+    ) {
+      log("Need to modify worker.tsx for realtime and smoke test support");
       const s = new MagicString(workerContent);
 
       // Add the export line if it doesn't exist
@@ -195,6 +210,33 @@ export async function modifyAppForRealtime(targetDir: string): Promise<void> {
         }
       }
 
+      // Add SmokeTest import if it doesn't exist
+      if (!hasSmokeTestImport) {
+        const importRegex = /import.*?from.*?;\n/g;
+        let lastImportMatch;
+        let lastImportPosition = 0;
+
+        // Find the position after the last import statement
+        while ((lastImportMatch = importRegex.exec(workerContent)) !== null) {
+          lastImportPosition =
+            lastImportMatch.index + lastImportMatch[0].length;
+        }
+
+        if (lastImportPosition > 0) {
+          s.appendRight(
+            lastImportPosition,
+            'import { SmokeTest } from "@/app/components/__SmokeTest";\n',
+          );
+          log("Added SmokeTest import");
+        } else {
+          // if no imports found, just prepend to the file
+          s.prepend(
+            'import { SmokeTest } from "@/app/components/__SmokeTest";\n',
+          );
+          log("Added SmokeTest import to the beginning of the file");
+        }
+      }
+
       // Add the realtimeRoute line if it doesn't exist
       if (!hasRealtimeRoute) {
         const defineAppMatch = workerContent.match(
@@ -208,6 +250,22 @@ export async function modifyAppForRealtime(targetDir: string): Promise<void> {
             "\n  realtimeRoute(() => env.REALTIME_DURABLE_OBJECT),",
           );
           log("Added realtimeRoute to defineApp");
+        }
+      }
+
+      // Add the smoke test route if it doesn't exist
+      if (!hasSmokeTestRoute) {
+        const defineAppRegex =
+          /(export default defineApp\(\[)([\s\S]*)(\]\);)/m;
+        const match = workerContent.match(defineAppRegex);
+        if (match) {
+          const insertionPoint =
+            match.index! + match[1].length + match[2].length;
+          s.appendLeft(
+            insertionPoint,
+            '  render(Document, [route("/__smoke_test", SmokeTest)]),\n',
+          );
+          log("Added smoke test route to defineApp");
         }
       }
 
@@ -265,7 +323,9 @@ export async function modifyAppForRealtime(targetDir: string): Promise<void> {
       await fs.writeFile(workerPath, s.toString(), "utf-8");
       log("Successfully modified worker.tsx");
     } else {
-      log("worker.tsx already has realtime support, no changes needed");
+      log(
+        "worker.tsx already has realtime and smoke test support, no changes needed",
+      );
     }
   } else {
     log("worker.tsx not found, skipping modification");

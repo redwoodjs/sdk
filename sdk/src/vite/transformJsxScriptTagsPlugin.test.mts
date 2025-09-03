@@ -1,11 +1,18 @@
-import { describe, it, expect } from "vitest";
+import { describe, it, expect, beforeEach } from "vitest";
 import { transformJsxScriptTagsCode } from "./transformJsxScriptTagsPlugin.mjs";
 import jsBeautify from "js-beautify";
+import stubEnvVars from "../lib/testUtils/stubEnvVars.mjs";
 
 // Helper function to normalize code formatting for test comparisons
 function normalizeCode(code: string): string {
   return jsBeautify(code, { indent_size: 2 });
 }
+
+stubEnvVars();
+
+beforeEach(() => {
+  process.env.RWSDK_BUILD_PASS = "worker";
+});
 
 describe("transformJsxScriptTagsCode", () => {
   const mockManifest = {
@@ -22,14 +29,20 @@ describe("transformJsxScriptTagsCode", () => {
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, mockManifest);
+    const clientEntryPoints = new Set<string>();
+    const result = await transformJsxScriptTagsCode(
+      code,
+      clientEntryPoints,
+      mockManifest,
+      "/Users/justin/rw/forks/workers-sdk/sdk/sdk",
+    );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
 
 (
 (requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
 jsx("script", {
-src: "/assets/client-a1b2c3d4.js",
+src: "rwsdk_asset:/src/client.tsx",
 type: "module",
 nonce: requestInfo.rw.nonce
 })
@@ -46,7 +59,13 @@ nonce: requestInfo.rw.nonce
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, mockManifest);
+    const clientEntryPoints = new Set<string>();
+    const result = await transformJsxScriptTagsCode(
+      code,
+      clientEntryPoints,
+      mockManifest,
+      "/project/root/dir",
+    );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
 
@@ -54,7 +73,7 @@ nonce: requestInfo.rw.nonce
 (requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
 jsx("script", {
 type: "module",
-children: "import('/assets/client-a1b2c3d4.js').then(module => { console.log(module); })",
+children: "import('rwsdk_asset:/src/client.tsx').then(module => { console.log(module); })",
 nonce: requestInfo.rw.nonce
 })
 )`;
@@ -67,13 +86,19 @@ nonce: requestInfo.rw.nonce
       jsx("script", { type: "module", children: "import('/src/client.tsx')" })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, mockManifest);
+    const clientEntryPoints = new Set<string>();
+    const result = await transformJsxScriptTagsCode(
+      code,
+      clientEntryPoints,
+      mockManifest,
+      "/project/root/dir",
+    );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
 
 (
 (requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
-jsx("script", { type: "module", children: "import('/assets/client-a1b2c3d4.js')",
+jsx("script", { type: "module", children: "import('rwsdk_asset:/src/client.tsx')",
 nonce: requestInfo.rw.nonce
 })
 )`;
@@ -96,7 +121,13 @@ nonce: requestInfo.rw.nonce
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, mockManifest);
+    const clientEntryPoints = new Set<string>();
+    const result = await transformJsxScriptTagsCode(
+      code,
+      clientEntryPoints,
+      mockManifest,
+      "/project/root/dir",
+    );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
 
@@ -107,7 +138,7 @@ type: "module",
 children: \`
           // Some comments here
           const init = async () => {
-            await import('/assets/entry-e5f6g7h8.js');
+            await import('rwsdk_asset:/src/entry.js');
             console.log('initialized');
           };
           init();
@@ -130,7 +161,13 @@ import('/src/entry.js');
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, mockManifest);
+    const clientEntryPoints = new Set<string>();
+    const result = await transformJsxScriptTagsCode(
+      code,
+      clientEntryPoints,
+      mockManifest,
+      "/project/root/dir",
+    );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
 
@@ -140,8 +177,8 @@ import('/src/entry.js');
 jsx("script", {
 type: "module",
 children: \`
-import('/assets/client-a1b2c3d4.js');
-import('/assets/entry-e5f6g7h8.js');
+import('rwsdk_asset:/src/client.tsx');
+import('rwsdk_asset:/src/entry.js');
 \`,
 nonce: requestInfo.rw.nonce
 })
@@ -159,15 +196,23 @@ nonce: requestInfo.rw.nonce
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, mockManifest);
+    const clientEntryPoints = new Set<string>();
+    const result = await transformJsxScriptTagsCode(
+      code,
+      clientEntryPoints,
+      mockManifest,
+      "/project/root/dir",
+    );
 
-    expect(result?.code).toEqual(`
+    const expected = `
       jsx("link", {
         rel: "preload",
-        href: "/assets/client-a1b2c3d4.js",
+        href: "rwsdk_asset:/src/client.tsx",
         as: "script"
       })
-    `);
+    `;
+    expect(normalizeCode(result?.code || "")).toEqual(normalizeCode(expected));
+    expect(clientEntryPoints.size).toBe(0); // Make sure it doesn't incorrectly add to entry points
   });
 
   it("transforms link href attributes with modulepreload rel", async () => {
@@ -178,14 +223,21 @@ nonce: requestInfo.rw.nonce
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, mockManifest);
+    const clientEntryPoints = new Set<string>();
+    const result = await transformJsxScriptTagsCode(
+      code,
+      clientEntryPoints,
+      mockManifest,
+      "/project/root/dir",
+    );
 
-    expect(result?.code).toEqual(`
+    const expected = `
       jsx("link", {
-        href: "/assets/client-a1b2c3d4.js",
+        href: "rwsdk_asset:/src/client.tsx",
         rel: "modulepreload"
       })
-    `);
+    `;
+    expect(normalizeCode(result?.code || "")).toEqual(normalizeCode(expected));
   });
 
   it("transforms real-world Document component example", async () => {
@@ -198,7 +250,7 @@ nonce: requestInfo.rw.nonce
               jsx("meta", { charSet: "utf-8" }),
               jsx("meta", { name: "viewport", content: "width=device-width, initial-scale=1" }),
               jsx("title", { children: "@redwoodjs/starter-standard" }),
-              jsx("link", { rel: "modulepreload", href: "/src/client.tsx", as: "script" })
+              jsx("link", { rel: "modulepreload", href: "rwsdk_asset:/src/client.tsx", as: "script" })
             ]
           }),
           jsx("body", {
@@ -211,7 +263,13 @@ nonce: requestInfo.rw.nonce
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, mockManifest);
+    const clientEntryPoints = new Set<string>();
+    const result = await transformJsxScriptTagsCode(
+      code,
+      clientEntryPoints,
+      mockManifest,
+      "/project/root/dir",
+    );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
 
@@ -223,7 +281,7 @@ children: [
 jsx("meta", { charSet: "utf-8" }),
 jsx("meta", { name: "viewport", content: "width=device-width, initial-scale=1" }),
 jsx("title", { children: "@redwoodjs/starter-standard" }),
-jsx("link", { rel: "modulepreload", href: "/assets/client-a1b2c3d4.js", as: "script" })
+jsx("link", { rel: "modulepreload", href: "rwsdk_asset:/src/client.tsx", as: "script" })
 ]
 }),
 jsx("body", {
@@ -231,7 +289,7 @@ children: [
 jsx("div", { id: "root", children: props.children }),
 (
 (requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
-jsx("script", { children: "import(\\"/assets/client-a1b2c3d4.js\\")",
+jsx("script", { children: "import(\\"rwsdk_asset:/src/client.tsx\\")",
 nonce: requestInfo.rw.nonce
 })
 )
@@ -248,7 +306,13 @@ nonce: requestInfo.rw.nonce
       jsx("div", { children: "No scripts or links here" })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, mockManifest);
+    const clientEntryPoints = new Set<string>();
+    const result = await transformJsxScriptTagsCode(
+      code,
+      clientEntryPoints,
+      mockManifest,
+      "/project/root/dir",
+    );
 
     expect(result).toBeUndefined();
   });
@@ -261,14 +325,20 @@ nonce: requestInfo.rw.nonce
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, mockManifest);
+    const clientEntryPoints = new Set<string>();
+    const result = await transformJsxScriptTagsCode(
+      code,
+      clientEntryPoints,
+      mockManifest,
+      "/project/root/dir",
+    );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
 
 (
 (requestInfo.rw.scriptsToBeLoaded.add("/src/non-existent.js")),
 jsx("script", {
-src: "/src/non-existent.js",
+src: "rwsdk_asset:/src/non-existent.js",
 type: "module",
 nonce: requestInfo.rw.nonce
 })
@@ -285,14 +355,20 @@ nonce: requestInfo.rw.nonce
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, mockManifest);
+    const clientEntryPoints = new Set<string>();
+    const result = await transformJsxScriptTagsCode(
+      code,
+      clientEntryPoints,
+      mockManifest,
+      "/project/root/dir",
+    );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
 
 (
 (requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
 jsx("script", {
-src: "/assets/client-a1b2c3d4.js",
+src: "rwsdk_asset:/src/client.tsx",
 type: "module",
 nonce: requestInfo.rw.nonce
 })
@@ -309,7 +385,13 @@ nonce: requestInfo.rw.nonce
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, {});
+    const clientEntryPoints = new Set<string>();
+    const result = await transformJsxScriptTagsCode(
+      code,
+      clientEntryPoints,
+      mockManifest,
+      "/project/root/dir",
+    );
 
     expect(result?.code).toEqual(`import { requestInfo } from "rwsdk/worker";
 
@@ -329,7 +411,13 @@ nonce: requestInfo.rw.nonce
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, {});
+    const clientEntryPoints = new Set<string>();
+    const result = await transformJsxScriptTagsCode(
+      code,
+      clientEntryPoints,
+      mockManifest,
+      "/project/root/dir",
+    );
 
     expect(result?.code).toEqual(undefined);
   });
@@ -343,7 +431,13 @@ nonce: requestInfo.rw.nonce
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, {});
+    const clientEntryPoints = new Set<string>();
+    const result = await transformJsxScriptTagsCode(
+      code,
+      clientEntryPoints,
+      mockManifest,
+      "/project/root/dir",
+    );
 
     expect(result?.code).toEqual(undefined);
   });
@@ -359,7 +453,13 @@ nonce: requestInfo.rw.nonce
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, {});
+    const clientEntryPoints = new Set<string>();
+    const result = await transformJsxScriptTagsCode(
+      code,
+      clientEntryPoints,
+      mockManifest,
+      "/project/root/dir",
+    );
 
     expect(result?.code).toEqual(`
       import { foo } from 'bar';
@@ -389,7 +489,13 @@ nonce: requestInfo.rw.nonce
       })
     `;
 
-    const result = await transformJsxScriptTagsCode(code, {});
+    const clientEntryPoints = new Set<string>();
+    const result = await transformJsxScriptTagsCode(
+      code,
+      clientEntryPoints,
+      mockManifest,
+      "/project/root/dir",
+    );
 
     expect(result?.code).toEqual(`
       import { foo } from 'bar';
@@ -412,14 +518,20 @@ nonce: requestInfo.rw.nonce
     `;
 
     // Call without providing manifest (simulating dev mode)
-    const result = await transformJsxScriptTagsCode(code);
+    const clientEntryPoints = new Set<string>();
+    const result = await transformJsxScriptTagsCode(
+      code,
+      clientEntryPoints,
+      mockManifest,
+      "/project/root/dir",
+    );
 
     const expected = `import { requestInfo } from "rwsdk/worker";
 
 (
 (requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
 jsx("script", {
-src: "/src/client.tsx",
+src: "rwsdk_asset:/src/client.tsx",
 type: "module",
 nonce: requestInfo.rw.nonce
 })
@@ -497,7 +609,7 @@ export const Document = ({
       lineNumber: 22,
       columnNumber: 4
     }, this),
-    /* @__PURE__ */ jsxDEV("link", { rel: "modulepreload", href: "/src/client.tsx" }, void 0, false, {
+    /* @__PURE__ */ jsxDEV("link", { rel: "modulepreload", href: "rwsdk_asset:/src/client.tsx" }, void 0, false, {
       fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
       lineNumber: 23,
       columnNumber: 4
@@ -534,7 +646,13 @@ export const Document = ({
   columnNumber: 2
 }, this);
 `;
-    const result = await transformJsxScriptTagsCode(code, mockManifest);
+    const clientEntryPoints = new Set<string>();
+    const result = await transformJsxScriptTagsCode(
+      code,
+      clientEntryPoints,
+      mockManifest,
+      "/project/root/dir",
+    );
 
     // For this complex test, we'll just verify the key transformations
     const expected = `
@@ -599,7 +717,7 @@ children
   ),
   (
 (requestInfo.rw.scriptsToBeLoaded.add("/theme-script.js")),
-/* @__PURE__ */ jsxDEV("script", { src: "/theme-script.js",
+/* @__PURE__ */ jsxDEV("script", { src: "rwsdk_asset:/theme-script.js",
                           nonce: requestInfo.rw.nonce
                     }, void 0, false, {
       fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
@@ -612,7 +730,7 @@ children
     lineNumber: 22,
     columnNumber: 4
   }, this),
-  /* @__PURE__ */ jsxDEV("link", { rel: "modulepreload", href: "/assets/client-a1b2c3d4.js" }, void 0, false, {
+  /* @__PURE__ */ jsxDEV("link", { rel: "modulepreload", href: "rwsdk_asset:/src/client.tsx" }, void 0, false, {
     fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
     lineNumber: 23,
     columnNumber: 4
@@ -635,7 +753,7 @@ children
   }, this),
   (
 (requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
-/* @__PURE__ */ jsxDEV("script", { children: "import(\\"/assets/client-a1b2c3d4.js\\")",
+/* @__PURE__ */ jsxDEV("script", { children: "import(\\"rwsdk_asset:/src/client.tsx\\")",
                         nonce: requestInfo.rw.nonce
                   }, void 0, false, {
       fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",

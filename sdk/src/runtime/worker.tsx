@@ -59,7 +59,6 @@ export const defineApp = <
         const isRSCRequest =
           url.searchParams.has("__rsc") ||
           request.headers.get("accept")?.includes("text/x-component");
-        const isSmokeTest = url.searchParams.has("__smoke_test");
         const userHeaders = new Headers();
 
         const rw: RwContext = {
@@ -98,10 +97,6 @@ export const defineApp = <
             pageElement = <Page ctx={ctx} params={params} />;
           } else {
             pageElement = <Page {...requestInfo} />;
-          }
-
-          if (isSmokeTest) {
-            pageElement = <SmokeTestWrapper>{pageElement}</SmokeTestWrapper>;
           }
 
           return pageElement;
@@ -245,27 +240,6 @@ export const defineApp = <
       }
     },
   };
-};
-
-export const SmokeTestWrapper: React.FC<{
-  children: React.ReactNode;
-}> = async ({ children }) => {
-  const smokeTestInfo = await Object.values(
-    await (
-      import.meta as any as {
-        glob: (path: string) => Promise<Record<string, () => Promise<any>>>;
-      }
-    ).glob("/src/app/components/__SmokeTest.tsx"),
-  )[0]();
-
-  const SmokeTestInfo = smokeTestInfo.SmokeTestInfo as React.FC<any>;
-
-  return (
-    <>
-      <SmokeTestInfo />
-      {children}
-    </>
-  );
 };
 
 export const DefaultDocument: React.FC<{ children: React.ReactNode }> = ({

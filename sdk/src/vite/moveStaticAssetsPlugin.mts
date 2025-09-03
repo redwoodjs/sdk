@@ -11,7 +11,10 @@ export const moveStaticAssetsPlugin = ({
   apply: "build",
 
   async closeBundle() {
-    if (this.environment.name === "worker") {
+    if (
+      this.environment.name === "worker" &&
+      process.env.RWSDK_BUILD_PASS === "linker"
+    ) {
       await $sh({
         cwd: rootDir,
       })`mv dist/worker/assets/*.css dist/client/assets/ || true`;
