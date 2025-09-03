@@ -169,7 +169,8 @@ export const createDirectiveLookupPlugin = async ({
       // prefix. This signals to Vite/Rollup that this is a virtual module
       // whose content should be provided by the `load` hook, bundling it in.
       log("Resolving for bundling");
-      return `\0${source}`;
+
+      return source;
     },
     async load(id) {
       if (id === config.virtualModuleName + ".js") {
