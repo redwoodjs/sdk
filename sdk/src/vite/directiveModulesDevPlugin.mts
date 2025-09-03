@@ -56,6 +56,8 @@ export const directiveModulesDevPlugin = ({
   return {
     name: "rwsdk:directive-modules-dev",
 
+    enforce: "post",
+
     configureServer(server) {
       deferredServer.resolve(server);
     },
