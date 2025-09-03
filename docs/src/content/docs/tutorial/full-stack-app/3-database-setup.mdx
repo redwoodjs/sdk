@@ -31,11 +31,15 @@ We need models for:
 1. Users
 2. Job Applications
 
-**The "trick" with database design is to prevent duplication.** For example, we want to store the company information for each job application. There's a chance we'll have multiple job applications for the same company. If we store the company information directly in the `Application` model, we'll have duplicate entries. This could create all kinds of problems. For example, is it `RedwoodSDK`, `redwoodsdk`, `redwood-sdk`, or `RedwoodSdk`?
+**The "trick" with database design is to prevent duplication.** For example, we want to store the company information for each job application. There's a chance we'll have multiple job applications for the same company. If we store the company information directly in the `Application` model, we might have duplicate entries. This could create all kinds of problems. For example, is it `RedwoodSDK`, `redwoodsdk`, `redwood-sdk`, or `RedwoodSdk`?
 
-Instead, we can store the company information in a separate model, with a single entry for each company, and link it to the relevant job application.
+Instead, we can store the company information in a separate model, with a single entry for each company, and "link" it to the relevant job application.
 
 ![](./images/db-application-to-company.png)
+
+<Aside type="note" title="Uniquely Identifying Entries">
+  Notice that every model has an `id` field. This is used to uniquely identify each record or row in the database.
+</Aside>
 
 The same applies to Contacts. We can create a separate model and create a relationship between the contact and the related company.
 
@@ -208,9 +212,9 @@ model User {
 ```
 
 <Aside type="note" title="@@index">
-  You may have noticed that the provided `Credential` model includes the `@@index` directive. This is used to create an index on the field. This can improve performance when querying the database.
+  You may have noticed that the provided `Credential` model includes the `@@index` directive. This is used to create an index on the field. This means that Prisma will optimize queries so that I can look up a record by the `@@index`. This can improve performance.
 
-  All the database calls we make use the `id` field, which is already indexed.
+  Prisma already recognizes the `id` field as an index.
 </Aside>
 
 <Aside type="tip" title="Naming Conventions">
@@ -223,7 +227,7 @@ model User {
   - Avoid underscores (_) in names.
 </Aside>
 
-This looks good, but we haven't defined any of the relationships between the models (Other than the preexisting relationship between `User` and `Credential` models, defined in the starter).
+This looks good, but we haven't defined any of the relationships between the models (Other than the preexisting relationship between `User` and `Credential` models, defined in the starter template).
 
 ## Relationships
 
@@ -438,7 +442,7 @@ model Credential {
   credentialId  String   @unique // WebAuthn credential identifier
   publicKey     Bytes
   counter       Int      @default(0)
-  
+
   @@index([credentialId])
   @@index([userId])
 }
@@ -509,19 +513,18 @@ Our generated `sql` file will be in the `migrations` folder.
   Keeping another team member's database in sync is as simple as running the migration: `npm migrate:dev`
 </Aside>
 
-<Aside type="note" title="If the Migration Didn't Run">
+<Aside type="caution" title="Troubleshooting: If the Migration Didn't Run">
 If the migration didn't run, there are a few things you can check:
 - How many SQLlite files are in the `.wrangler > state > v3 > d1 > miniflare-D1DatabaseObject` folder? There should be one. You can always delete the `.wrangler` folder and rerun `pnpm dev` to regenerate it.
 - Try running `pnpm migrate:dev`. This will apply any new migrations.
 - Try running `pnpm dev`. This will also apply any new migrations.
-- Ensure that the `database_id` within the `wrangler.jsonc` file matches the database id in your Cloudflare account.
 </Aside>
 
 <Aside type="note" title="Migration Commands">
   There are 3 different migration commands:
-  1. `migrate:dev`: runs the migration on your local database
-  2. `migrate:prd`: runs the migration on your production database
-  3. `migrate:new`: creates a new migration
+  1. `migrate:new`: creates a new migration
+  2. `migrate:dev`: runs the migration on your local database
+  3. `migrate:prd`: runs the migration on your production database
 </Aside>
 
 ## Previewing the Migration
@@ -584,7 +587,7 @@ This will open a new tab in your default browser at `http://localhost:5555`.
 Right now, we don't have any data in our table, but at least we can tell that our migration ran successfully.
 
 <Aside type="caution" title="Deleting the .wrangler folder">
-  If you ever delete the `.wrangler` folder, it will automatically generate a new one the next time you run `pnpm dev`. However, you'll need to update the path within your `.env` file, as the hash will change.
+  If you ever delete the `.wrangler` folder, it will automatically generate a new one the next time you run `pnpm dev`. However, you'll need to update the `DATABASE_URL` path within your `.env` file, as the hash will change.
 </Aside>
 
 ### SQLite Viewer
@@ -696,7 +699,7 @@ Let's make sure we understand what's happening:
 * **On line 4**, we're setting up our Cloudflare worker environment.
 * **On line 5**, we're setting up our database connection.
 * **On line 7-15**, we're using raw SQL to delete all the existing data from the database. This will allow us to start fresh when seeding the database.
-* **On line 16-25**, we're adding all the job application statuses to the database. You'll notice this is a standard Prisma `createMany` function.
+* **On line 17-25**, we're adding all the job application statuses to the database. We're using a standard Prisma `createMany` function. This takes a `data` array of objects. Each object contains the data for a single record.
 * **On line 27**, we're logging a message to the console saying the seeding is complete.
 
 <Aside type="caution" title="Troubleshooting">
