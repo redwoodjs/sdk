@@ -40,6 +40,8 @@ function createEsbuildScanPlugin({
       // This prevents esbuild from trying to bundle them, which would fail.
       const scriptFilter = /\.(c|m)?[jt]sx?$/;
       const specialQueryFilter = /[?&](?:url|raw|worker|sharedworker|inline)\b/;
+      // This regex is used to identify if a path has any file extension.
+      const hasExtensionRegex = /\.[^/]+$/;
 
       build.onResolve({ filter: specialQueryFilter }, (args: OnResolveArgs) => {
         log("Externalizing special query:", args.path);
@@ -49,8 +51,13 @@ function createEsbuildScanPlugin({
       build.onResolve(
         { filter: /.*/, namespace: "file" },
         (args: OnResolveArgs) => {
-          // If it's not a script-like file, externalize it.
-          if (!scriptFilter.test(args.path)) {
+          // Externalize if the path has an extension AND that extension is not a
+          // script extension. Extensionless paths are assumed to be scripts and
+          // are allowed to pass through for resolution.
+          if (
+            hasExtensionRegex.test(args.path) &&
+            !scriptFilter.test(args.path)
+          ) {
             log("Externalizing non-script import:", args.path);
             return { external: true };
           }
@@ -69,7 +76,13 @@ function createEsbuildScanPlugin({
             find instanceof RegExp ? find : new RegExp(`^${find}(\\/.*)?$`);
 
           if (findPattern.test(args.path)) {
-            const newPath = args.path.replace(findPattern, replacement);
+            const newPath = args.path.replace(
+              findPattern,
+              (_match: any, rest: any) => {
+                // `rest` is the captured group `(\\/.*)?` from the regex.
+                return replacement + (rest || "");
+              },
+            );
 
             const resolved = await build.resolve(newPath, {
               importer: args.importer,
