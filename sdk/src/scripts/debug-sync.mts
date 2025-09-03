@@ -237,6 +237,14 @@ const performFastSync = async (sdkDir: string, targetDir: string) => {
   await syncFilesWithRsyncOrFs(sdkDir, nodeModulesPkgDir, filesToSync);
 };
 
+const areDependenciesEqual = (
+  deps1?: Record<string, string>,
+  deps2?: Record<string, string>,
+) => {
+  // Simple string comparison for this use case is sufficient
+  return JSON.stringify(deps1 ?? {}) === JSON.stringify(deps2 ?? {});
+};
+
 const performSync = async (sdkDir: string, targetDir: string) => {
   console.log("🏗️  Rebuilding SDK...");
   await $`pnpm build`;
