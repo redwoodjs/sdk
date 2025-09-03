@@ -8,6 +8,7 @@ import debug from "debug";
 import { getViteEsbuild } from "./getViteEsbuild.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { createIdResolver } from "vite";
+import { externalModules } from "./constants.mjs";
 
 const log = debug("rwsdk:vite:run-directives-scan");
 
@@ -101,6 +102,10 @@ export const runDirectivesScan = async ({
         // Prevent infinite recursion.
         if (args.pluginData?.rwsdkScanResolver) {
           return null;
+        }
+
+        if (externalModules.includes(args.path)) {
+          return { external: true };
         }
 
         const resolvedPath = await resolveId(

@@ -1,32 +1,14 @@
 import { Plugin } from "vite";
 import path, { resolve } from "node:path";
-import { builtinModules } from "node:module";
 import { InlineConfig } from "vite";
 import enhancedResolve from "enhanced-resolve";
 import debug from "debug";
-import { readFile, writeFile } from "node:fs/promises";
-import { glob } from "glob";
 
 import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import { buildApp } from "./buildApp.mjs";
-import { directivesFilteringPlugin } from "./directivesFilteringPlugin.mjs";
+import { externalModules } from "./constants.mjs";
 
 const log = debug("rwsdk:vite:config");
-
-// port(justinvdm, 09 Jun 2025):
-// https://github.com/cloudflare/workers-sdk/blob/d533f5ee7da69c205d8d5e2a5f264d2370fc612b/packages/vite-plugin-cloudflare/src/cloudflare-environment.ts#L123-L128
-export const cloudflareBuiltInModules = [
-  "cloudflare:email",
-  "cloudflare:sockets",
-  "cloudflare:workers",
-  "cloudflare:workflows",
-];
-
-export const externalModules = [
-  ...cloudflareBuiltInModules,
-  ...builtinModules,
-  ...builtinModules.map((m) => `node:${m}`),
-];
 
 export const configPlugin = ({
   silent,
