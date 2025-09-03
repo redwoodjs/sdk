@@ -1,7 +1,6 @@
 // @ts-ignore
-import { OnLoadArgs, OnResolveArgs, PluginBuild } from "esbuild";
-
-import { Alias, Environment, ResolvedConfig } from "vite";
+import { OnLoadArgs, OnResolveArgs, Plugin, PluginBuild } from "esbuild";
+import { Environment, ResolvedConfig } from "vite";
 import fsp from "node:fs/promises";
 import { hasDirective } from "./hasDirective.mjs";
 import path from "node:path";
@@ -22,25 +21,52 @@ const isObject = (value: unknown): value is Record<string, any> =>
 const externalRE = /^(https?:)?\/\//;
 const isExternalUrl = (url: string): boolean => externalRE.test(url);
 
-function createEsbuildScanPlugin({
+export const runDirectivesScan = async ({
+  rootConfig,
+  environment,
   clientFiles,
   serverFiles,
-  environment,
-  rootConfig,
 }: {
+  rootConfig: ResolvedConfig;
+  environment: Environment;
   clientFiles: Set<string>;
   serverFiles: Set<string>;
-  environment: Environment;
-  rootConfig: ResolvedConfig;
-}) {
-  const packageCache: Map<any, any> = new Map();
-  const resolveId = createIdResolver(rootConfig, {
-    scan: true,
-    asSrc: false,
-    packageCache,
-  });
+}) => {
+  const esbuild = await getViteEsbuild(rootConfig.root);
+  const input = environment.config.build.rollupOptions?.input;
+  let entries: string[];
 
-  return {
+  if (Array.isArray(input)) {
+    entries = input;
+  } else if (typeof input === "string") {
+    entries = [input];
+  } else if (isObject(input)) {
+    entries = Object.values(input);
+  } else {
+    entries = [];
+  }
+
+  if (entries.length === 0) {
+    log(
+      "No entries found for directives scan in environment '%s', skipping.",
+      environment.name,
+    );
+    return;
+  }
+
+  const absoluteEntries = entries.map((entry) =>
+    path.resolve(rootConfig.root, entry),
+  );
+
+  log(
+    "Starting directives scan for environment '%s' with entries:",
+    environment.name,
+    absoluteEntries,
+  );
+
+  const resolveId = createIdResolver(rootConfig, { scan: true });
+
+  const esbuildScanPlugin: Plugin = {
     name: "rwsdk:esbuild-scan-plugin",
     setup(build: PluginBuild) {
       // Match Vite's behavior by externalizing assets and special queries.
@@ -82,26 +108,39 @@ function createEsbuildScanPlugin({
           args.path,
           args.importer,
         );
-        if (args.path.includes("Login")) {
-          console.log(
-            "################# resolvedPath",
-            resolvedPath,
-            args.path,
-            args.importer,
-          );
-        }
 
-        if (resolvedPath) {
-          if (path.isAbsolute(resolvedPath)) {
-            return { path: resolvedPath };
+        if (resolvedPath && path.isAbsolute(resolvedPath)) {
+          const resolved = await build.resolve(resolvedPath, {
+            importer: args.importer,
+            resolveDir: args.resolveDir,
+            kind: args.kind,
+            pluginData: { rwsdkScanResolver: true },
+          });
+
+          if (resolved.errors.length === 0) {
+            return resolved;
           }
-          return { path: args.path, external: true };
         }
 
-        // If we can't resolve it, mark it as external so esbuild doesn't
-        // crash the build.
-        log("Could not resolve '%s'. Marking as external.", args.path);
-        return { external: true };
+        // Fallback to esbuild's default resolver if Vite couldn't resolve or
+        // if the path is not absolute (e.g., a builtin).
+        const resolved = await build.resolve(args.path, {
+          importer: args.importer,
+          resolveDir: args.resolveDir,
+          kind: args.kind,
+          pluginData: { rwsdkScanResolver: true },
+        });
+
+        if (resolved.errors.length > 0) {
+          log(
+            "Could not resolve '%s'. Marking as external. Errors: %s",
+            args.path,
+            resolved.errors.map((e: any) => e.text).join(", "),
+          );
+          return { external: true };
+        }
+
+        return resolved;
       });
 
       build.onLoad({ filter: /\.(m|c)?[jt]sx?$/ }, async (args: OnLoadArgs) => {
@@ -131,72 +170,18 @@ function createEsbuildScanPlugin({
       });
     },
   };
-}
-
-export async function runDirectivesScan({
-  environment,
-  clientFiles,
-  serverFiles,
-  rootConfig,
-}: {
-  environment: Environment;
-  clientFiles: Set<string>;
-  serverFiles: Set<string>;
-  rootConfig: ResolvedConfig;
-}) {
-  const esbuild = await getViteEsbuild(rootConfig.root);
-  const input = environment.config.build.rollupOptions?.input;
-  let entries: string[];
-
-  if (Array.isArray(input)) {
-    entries = input;
-  } else if (typeof input === "string") {
-    entries = [input];
-  } else if (isObject(input)) {
-    entries = Object.values(input);
-  } else {
-    entries = [];
-  }
-
-  if (entries.length === 0) {
-    log(
-      "No entries found for directives scan in environment '%s', skipping.",
-      environment.name,
-    );
-    return;
-  }
-
-  const absoluteEntries = entries.map((entry) =>
-    path.resolve(rootConfig.root, entry),
-  );
-
-  log(
-    "Starting directives scan for environment '%s' with entries:",
-    environment.name,
-    absoluteEntries,
-  );
 
   try {
-    const result = await esbuild.build({
+    await esbuild.build({
       entryPoints: absoluteEntries,
       bundle: true,
       write: false,
       platform: "node",
       format: "esm",
       logLevel: "silent",
-      metafile: true,
-      plugins: [
-        createEsbuildScanPlugin({
-          clientFiles,
-          serverFiles,
-          environment,
-          rootConfig,
-        }),
-      ],
+      plugins: [esbuildScanPlugin],
     });
-
-    return result.metafile;
   } catch (e: any) {
     throw new Error(`RWSDK directive scan failed:\n${e.message}`);
   }
-}
+};
