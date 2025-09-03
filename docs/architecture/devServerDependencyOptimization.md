@@ -14,11 +14,11 @@ This forced `optimizeDeps` into an inefficient mode. Seeing hundreds of individu
 
 The final, robust solution works *with* Vite's architecture rather than fighting it. It gives us full control over the discovery process and then communicates the results to Vite using standard, public APIs. The strategy has two main parts.
 
-### 1. A Controlled, Standalone `esbuild` Scan
+### 1. A Standalone `esbuild` Scan (Pre-Optimization)
 
-Before Vite's dev server starts, we run our own, separate `esbuild` scan.
--   **Exhaustive Discovery:** This scan starts from the application's entry points and traverses the entire dependency graph. Because we control this process, we can ensure it is exhaustive. A custom `esbuild` plugin reads the content of every resolved module and checks for `"use client"` or `"use server"` directives, populating a complete and accurate list of all directive-marked files.
--   **Configuration-Aware:** Crucially, this standalone scan is configured to use the application's final, resolved Vite configuration (including `resolve.alias`). This ensures its module resolution perfectly mimics the application's runtime behavior, making the scan both accurate and reliable.
+Before Vite's `optimizeDeps` process begins, we run our own, separate `esbuild` scan.
+-   **Exhaustive Discovery:** This scan starts from the application's entry points and traverses the entire dependency graph. It uses a custom `esbuild` plugin—internal to our scanning process—that reads the content of every resolved module and checks for `"use client"` or `"use server"` directives, populating a complete and accurate list of all directive-marked files.
+-   **Configuration-Aware:** The scanner's key feature is its use of Vite's own internal module resolver (`createIdResolver`). By passing it the application's final, resolved Vite configuration, we ensure its module resolution perfectly mimics the application's runtime behavior, making the scan both accurate and reliable.
 
 With this scan complete, we have a definitive list of all client components *before* Vite's optimizer begins its work.
 

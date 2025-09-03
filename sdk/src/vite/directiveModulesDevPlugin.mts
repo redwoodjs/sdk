@@ -1,5 +1,5 @@
 import path from "node:path";
-import { Plugin } from "vite";
+import { Environment, Plugin } from "vite";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { runDirectivesScan } from "./runDirectivesScan.mjs";
@@ -48,38 +48,10 @@ export const directiveModulesDevPlugin = ({
   return {
     name: "rwsdk:directive-modules-dev",
     enforce: "pre",
-    async configResolved(config) {
+    configResolved(config) {
       if (config.command !== "serve") {
         return;
       }
-
-      const workerEnv = config.environments["worker"];
-
-      if (workerEnv) {
-        await runDirectivesScan({
-          rootConfig: config,
-          envName: "worker",
-          clientFiles,
-          serverFiles,
-        });
-      }
-
-      // Generate the barrel content and write it to the dummy files.
-      // We can do this now because our scan is complete.
-      const clientBarrelContent = generateBarrelContent(
-        clientFiles,
-        projectRootDir,
-      );
-      const serverBarrelContent = generateBarrelContent(
-        serverFiles,
-        projectRootDir,
-      );
-
-      mkdirSync(path.dirname(CLIENT_BARREL_PATH), { recursive: true });
-      writeFileSync(CLIENT_BARREL_PATH, clientBarrelContent);
-
-      mkdirSync(path.dirname(SERVER_BARREL_PATH), { recursive: true });
-      writeFileSync(SERVER_BARREL_PATH, serverBarrelContent);
 
       for (const [envName, env] of Object.entries(config.environments)) {
         if (envName === "client" || envName === "ssr") {
@@ -90,6 +62,51 @@ export const directiveModulesDevPlugin = ({
           ];
         }
       }
+    },
+
+    configureServer(server) {
+      // context(justinvdm, 3 Sep 2025): This is a workaround for a timing issue
+      // in Vite's startup process. We need to run our directive scan after
+      // the environments are fully initialized but before the dependency
+      // optimizer starts. No public hook exists for this, so we wrap the
+      // internal _initEnvironments method to inject our logic at the right time.
+      // See the full explanation in the work log:
+      // .worklogs/justin/2025-09-03-directive-scan-timing-in-dev.md
+      const originalInit = (server as any)._initEnvironments;
+
+      (server as any)._initEnvironments = async () => {
+        await originalInit.call(server);
+
+        const workerEnv = server.config.environments[
+          "worker"
+        ] as unknown as Environment;
+
+        if (workerEnv) {
+          await runDirectivesScan({
+            rootConfig: server.config,
+            environment: workerEnv,
+            clientFiles,
+            serverFiles,
+          });
+        }
+
+        // Generate the barrel content and write it to the dummy files.
+        // We can do this now because our scan is complete.
+        const clientBarrelContent = generateBarrelContent(
+          clientFiles,
+          projectRootDir,
+        );
+        const serverBarrelContent = generateBarrelContent(
+          serverFiles,
+          projectRootDir,
+        );
+
+        mkdirSync(path.dirname(CLIENT_BARREL_PATH), { recursive: true });
+        writeFileSync(CLIENT_BARREL_PATH, clientBarrelContent);
+
+        mkdirSync(path.dirname(SERVER_BARREL_PATH), { recursive: true });
+        writeFileSync(SERVER_BARREL_PATH, serverBarrelContent);
+      };
     },
   };
 };

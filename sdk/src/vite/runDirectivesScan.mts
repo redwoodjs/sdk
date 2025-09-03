@@ -1,7 +1,7 @@
 // @ts-ignore
 import { OnLoadArgs, OnResolveArgs, PluginBuild } from "esbuild";
 
-import { Alias, ResolvedConfig } from "vite";
+import { Alias, Environment, ResolvedConfig } from "vite";
 import fsp from "node:fs/promises";
 import { hasDirective } from "./hasDirective.mjs";
 import path from "node:path";
@@ -9,6 +9,8 @@ import debug from "debug";
 import { ensureAliasArray } from "./ensureAliasArray.mjs";
 import { getViteEsbuild } from "./getViteEsbuild.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
+
+import { createIdResolver } from "vite";
 
 const log = debug("rwsdk:vite:run-directives-scan");
 
@@ -25,14 +27,16 @@ const isExternalUrl = (url: string): boolean => externalRE.test(url);
 function createEsbuildScanPlugin({
   clientFiles,
   serverFiles,
-  aliases,
-  projectRootDir,
+  environment,
+  rootConfig,
 }: {
   clientFiles: Set<string>;
   serverFiles: Set<string>;
-  aliases: Alias[];
-  projectRootDir: string;
+  environment: Environment;
+  rootConfig: ResolvedConfig;
 }) {
+  const resolveId = createIdResolver(rootConfig);
+
   return {
     name: "rwsdk:esbuild-scan-plugin",
     setup(build: PluginBuild) {
@@ -70,42 +74,26 @@ function createEsbuildScanPlugin({
           return null;
         }
 
-        // 1. First, try to resolve aliases.
-        for (const { find, replacement } of aliases) {
-          const findPattern =
-            find instanceof RegExp ? find : new RegExp(`^${find}(\\/.*)?$`);
+        const resolvedPath = await resolveId(
+          environment,
+          args.path,
+          args.importer,
+        );
 
-          if (findPattern.test(args.path)) {
-            const newPath = args.path.replace(
-              findPattern,
-              (_match: any, rest: any) => {
-                // `rest` is the captured group `(\\/.*)?` from the regex.
-                return replacement + (rest || "");
-              },
-            );
+        if (resolvedPath) {
+          const resolved = await build.resolve(resolvedPath, {
+            importer: args.importer,
+            resolveDir: args.resolveDir,
+            kind: args.kind,
+            pluginData: { rwsdkScanResolver: true },
+          });
 
-            const resolved = await build.resolve(newPath, {
-              importer: args.importer,
-              resolveDir: args.resolveDir,
-              kind: args.kind,
-              pluginData: { rwsdkScanResolver: true },
-            });
-
-            if (resolved.errors.length === 0) {
-              return resolved;
-            }
-
-            log(
-              "Could not resolve aliased path '%s' (from '%s'). Marking as external. Errors: %s",
-              newPath,
-              args.path,
-              resolved.errors.map((e: any) => e.text).join(", "),
-            );
-            return { external: true };
+          if (resolved.errors.length === 0) {
+            return resolved;
           }
         }
 
-        // 2. If no alias matches, try esbuild's default resolver.
+        // Fallback to esbuild's default resolver
         const resolved = await build.resolve(args.path, {
           importer: args.importer,
           resolveDir: args.resolveDir,
@@ -113,7 +101,6 @@ function createEsbuildScanPlugin({
           pluginData: { rwsdkScanResolver: true },
         });
 
-        // If it fails, mark as external but don't crash.
         if (resolved.errors.length > 0) {
           log(
             "Could not resolve '%s'. Marking as external. Errors: %s",
@@ -139,11 +126,11 @@ function createEsbuildScanPlugin({
           const contents = await fsp.readFile(args.path, "utf-8");
           if (hasDirective(contents, "use client")) {
             log("Discovered 'use client' in:", args.path);
-            clientFiles.add(normalizeModulePath(args.path, projectRootDir));
+            clientFiles.add(normalizeModulePath(args.path, rootConfig.root));
           }
           if (hasDirective(contents, "use server")) {
             log("Discovered 'use server' in:", args.path);
-            serverFiles.add(normalizeModulePath(args.path, projectRootDir));
+            serverFiles.add(normalizeModulePath(args.path, rootConfig.root));
           }
           return { contents, loader: "default" };
         } catch (e) {
@@ -156,19 +143,18 @@ function createEsbuildScanPlugin({
 }
 
 export async function runDirectivesScan({
-  rootConfig,
-  envName,
+  environment,
   clientFiles,
   serverFiles,
+  rootConfig,
 }: {
-  rootConfig: ResolvedConfig;
-  envName: string;
+  environment: Environment;
   clientFiles: Set<string>;
   serverFiles: Set<string>;
+  rootConfig: ResolvedConfig;
 }) {
   const esbuild = await getViteEsbuild(rootConfig.root);
-  const env = rootConfig.environments[envName];
-  const input = env.build.rollupOptions?.input;
+  const input = environment.config.build.rollupOptions?.input;
   let entries: string[];
 
   if (Array.isArray(input)) {
@@ -184,7 +170,7 @@ export async function runDirectivesScan({
   if (entries.length === 0) {
     log(
       "No entries found for directives scan in environment '%s', skipping.",
-      envName,
+      environment.name,
     );
     return;
   }
@@ -195,7 +181,7 @@ export async function runDirectivesScan({
 
   log(
     "Starting directives scan for environment '%s' with entries:",
-    envName,
+    environment.name,
     absoluteEntries,
   );
 
@@ -212,8 +198,8 @@ export async function runDirectivesScan({
         createEsbuildScanPlugin({
           clientFiles,
           serverFiles,
-          aliases: ensureAliasArray(env),
-          projectRootDir: rootConfig.root,
+          environment,
+          rootConfig,
         }),
       ],
     });
