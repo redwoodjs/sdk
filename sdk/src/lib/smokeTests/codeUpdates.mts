@@ -225,13 +225,13 @@ export async function modifyAppForRealtime(
         if (lastImportPosition > 0) {
           s.appendRight(
             lastImportPosition,
-            'import { SmokeTest } from "@/app/components/__SmokeTest.tsx";\n',
+            'import { SmokeTest } from "@/app/components/__SmokeTest";\n',
           );
           log("Added SmokeTest import");
         } else {
           // if no imports found, just prepend to the file
           s.prepend(
-            'import { SmokeTest } from "@/app/components/__SmokeTest.tsx";\n',
+            'import { SmokeTest } from "@/app/components/__SmokeTest";\n',
           );
           log("Added SmokeTest import to the beginning of the file");
         }
@@ -260,7 +260,7 @@ export async function modifyAppForRealtime(
         const match = workerContent.match(defineAppRegex);
         if (match) {
           const insertionPoint =
-            match.index + match[1].length + match[2].length;
+            match.index! + match[1].length + match[2].length;
           s.appendLeft(
             insertionPoint,
             '  render(Document, [route("/__smoke_test", SmokeTest)]),\n',
