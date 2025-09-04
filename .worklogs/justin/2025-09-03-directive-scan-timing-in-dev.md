@@ -98,16 +98,16 @@ The final, definitive implementation uses a physical "dummy file" to provide a s
 
 This is the most robust solution because it works with `esbuild`'s file-based nature while still providing our content dynamically, all triggered at the exact moment it's needed.
 
-### 8. The Definitive Fix: Plugin Ordering (`enforce: 'post'`)
+### 8. Final Strategy: Pre-Optimization Scan via `optimizer.init` Patching
 
-After extensive investigation into Vite's resolver and `esbuild`'s behavior, the final solution was discovered to be an issue of **plugin ordering**. Two distinct but related problems were solved:
+Further testing revealed that the "Just-In-Time" `onLoad` strategy, while effective for alias resolution, was executing too late in the dev server startup process. Other plugins and processes that depend on the results of our directive scan were running before the scan had completed, leading to resolution failures for server modules during the `optimizeDeps` phase.
 
-1.  **Architectural Flaw:** Our initial scanner used a simplistic, custom alias resolution logic. The switch to using Vite's `createIdResolver` was a critical architectural improvement. While this change alone did not fix the immediate bug, it made our scanner significantly more robust and compatible with the Vite ecosystem by aligning it with the same resolver that Vite's own dependency optimizer uses.
+The definitive solution is to ensure our scan runs *before* any dependency optimization begins. Since there is no public Vite hook for this, we use a targeted patch on the dependency optimizer itself.
 
-2.  **Timing/Ordering Flaw:** The direct cause of the alias resolution failure was that our `configPlugin` was running *before* other plugins (e.g., `vite-tsconfig-paths`) had a chance to add their aliases to the configuration. When our scanner ran, it was working with an incomplete set of aliases. The initial focus on the `@/*` syntax was a **red herring**; the problem was that we were missing aliases from any plugin that ran after ours.
+1.  **Intercept `optimizer.init`:** In the `configResolved` hook, we iterate through the `client` and `ssr` environments and gain access to their respective `optimizer` instances.
+2.  **Wrap the `init` Method:** We replace the optimizer's `init` method with our own `async` wrapper function.
+3.  **Run Scan and Await Completion:** Our wrapper first triggers the `runDirectivesScan` (guarded by a promise to ensure it only runs once across all optimizers). It then `await`s the completion of this scan.
+4.  **Populate Barrel Files:** Once the scan is complete, the wrapper generates the barrel content and writes it to the physical files on disk.
+5.  **Proceed with Original `init`:** Only after the scan is complete and the barrel files are ready, we call the original `init` method, allowing the `optimizeDeps` process to proceed, now with the full and correct information.
 
-The solution was to fix the ordering:
-
--   **Add `enforce: 'post'` to `configPlugin.mts`:** This Vite-specific property forces our plugin to run *after* all other plugins. This guarantees that when our `configResolved` hook executes, the configuration contains the complete, final list of aliases from all sources.
-
-This ordering change was the definitive fix for the bug. It ensured that our architecturally sound scanner—now powered by `createIdResolver`—was finally being fed the correct data.
+This approach provides the ideal timing: it waits for the server and environments to be fully initialized, runs our scan, and makes the results available *before* any other process that depends on them begins. This solves the final timing issue in a robust and predictable way.

@@ -7,7 +7,7 @@ import { runDirectivesScan } from "./runDirectivesScan.mjs";
 
 // Awaiting this promise will ensure that the worker environment's directive
 // scan is complete.
-let workerScanComplete: Promise<void>;
+let scanPromise: Promise<void> | null = null;
 
 export const VIRTUAL_CLIENT_BARREL_ID = "virtual:rwsdk:client-module-barrel";
 export const VIRTUAL_SERVER_BARREL_ID = "virtual:rwsdk:server-module-barrel";
@@ -39,8 +39,6 @@ const generateBarrelContent = (files: Set<string>, projectRootDir: string) => {
   return `${imports}\n\n${exports}`;
 };
 
-let scanPromise: Promise<void> | null = null;
-
 export const directiveModulesDevPlugin = ({
   clientFiles,
   serverFiles,
@@ -50,16 +48,13 @@ export const directiveModulesDevPlugin = ({
   serverFiles: Set<string>;
   projectRootDir: string;
 }): Plugin => {
-  const deferredServer: PromiseWithResolvers<ViteDevServer> =
-    Promise.withResolvers();
+  let server: ViteDevServer;
 
   return {
     name: "rwsdk:directive-modules-dev",
 
-    enforce: "post",
-
-    configureServer(server) {
-      deferredServer.resolve(server);
+    configureServer(_server) {
+      server = _server;
     },
 
     configResolved(config) {
@@ -73,62 +68,53 @@ export const directiveModulesDevPlugin = ({
       mkdirSync(path.dirname(SERVER_BARREL_PATH), { recursive: true });
       writeFileSync(SERVER_BARREL_PATH, "");
 
-      const esbuildScanTriggerPlugin = {
-        name: "rwsdk:esbuild-scan-trigger",
-        setup(build: any) {
-          build.onResolve(
-            { filter: /rwsdk___server_barrel|rwsdk___client_barrel/ },
-            (args: any) => {
-              return {
-                path: args.path,
-                namespace: "rwsdk-barrel",
-              };
-            },
-          );
+      // We need to patch the optimizer's init method to ensure our directive
+      // scan runs before Vite's dependency optimization process begins.
+      for (const [envName, env] of Object.entries(config.environments)) {
+        if (envName === "client" || envName === "ssr") {
+          const optimizer = (env as any).optimizer;
+          if (!optimizer) {
+            continue;
+          }
 
-          build.onLoad(
-            { filter: /.*/, namespace: "rwsdk-barrel" },
-            async (args: any) => {
-              const server = await deferredServer.promise;
-
-              if (!scanPromise) {
-                scanPromise = runDirectivesScan({
-                  rootConfig: server.config,
-                  environment: server.environments.worker,
+          const originalInit = optimizer.init;
+          optimizer.init = async function (...args: any[]) {
+            if (!scanPromise) {
+              scanPromise = runDirectivesScan({
+                rootConfig: config,
+                environment: server.environments.worker,
+                clientFiles,
+                serverFiles,
+              }).then(() => {
+                // After the scan is complete, write the barrel files.
+                const clientBarrelContent = generateBarrelContent(
                   clientFiles,
+                  projectRootDir,
+                );
+                writeFileSync(CLIENT_BARREL_PATH, clientBarrelContent);
+
+                const serverBarrelContent = generateBarrelContent(
                   serverFiles,
-                });
-              }
-              await scanPromise;
+                  projectRootDir,
+                );
+                writeFileSync(SERVER_BARREL_PATH, serverBarrelContent);
+              });
+            }
 
-              const isClient = args.path === "rwsdk___client_barrel";
-              const content = generateBarrelContent(
-                isClient ? clientFiles : serverFiles,
-                projectRootDir,
-              );
-
-              return {
-                contents: content,
-                loader: "js",
-                resolveDir: projectRootDir,
-              };
-            },
-          );
-        },
-      };
+            await scanPromise;
+            return originalInit.apply(this, args);
+          };
+        }
+      }
 
       for (const [envName, env] of Object.entries(config.environments || {})) {
         if (envName === "client" || envName === "ssr") {
-          env.optimizeDeps.include = [
-            ...(env.optimizeDeps.include || []),
+          env.optimizeDeps ??= {};
+          env.optimizeDeps.include ??= [];
+          env.optimizeDeps.include.push(
             CLIENT_BARREL_EXPORT_PATH,
             SERVER_BARREL_EXPORT_PATH,
-          ];
-          env.optimizeDeps.esbuildOptions ??= {};
-          env.optimizeDeps.esbuildOptions.plugins = [
-            ...(env.optimizeDeps.esbuildOptions.plugins || []),
-            esbuildScanTriggerPlugin,
-          ];
+          );
         }
       }
     },
