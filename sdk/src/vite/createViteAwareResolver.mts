@@ -42,8 +42,6 @@ export const mapViteResolveToEnhancedResolveOptions = (
   }
 
   const envResolveOptions = (env.resolve || {}) as typeof viteConfig.resolve;
-  console.log("###### envResolveOptions", envResolveOptions);
-  console.log("###### viteConfig.resolve", viteConfig.resolve);
 
   // Merge root config aliases with environment-specific aliases
   const mergedAlias = {
@@ -74,7 +72,5 @@ export const createViteAwareResolver = (
     viteConfig,
     envName,
   );
-  const { fileSystem: _fs, ...rest } = enhancedResolveOptions;
-  console.log("###### enhancedResolveOptions", rest);
   return resolve.create(enhancedResolveOptions);
 };

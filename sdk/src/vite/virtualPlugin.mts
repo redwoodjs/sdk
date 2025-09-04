@@ -10,7 +10,7 @@ export const virtualPlugin = (name: string, load: Plugin["load"]): Plugin => {
       if (process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE) {
         return;
       }
-      
+
       if (source === name || source.startsWith(`${name}?`)) {
         return `\0${source}`;
       }
@@ -21,7 +21,7 @@ export const virtualPlugin = (name: string, load: Plugin["load"]): Plugin => {
       if (process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE) {
         return;
       }
-      
+
       if (id === `\0${name}` || id.startsWith(`\0${name}?`)) {
         return (load as any).apply(this, [id, options]);
       }

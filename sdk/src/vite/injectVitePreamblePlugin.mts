@@ -16,7 +16,7 @@ export const injectVitePreamble = ({
     if (process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE) {
       return;
     }
-    
+
     if (this.environment.name !== "client") {
       return;
     }

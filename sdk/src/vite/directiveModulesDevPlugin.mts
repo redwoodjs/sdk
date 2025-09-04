@@ -68,14 +68,12 @@ export const directiveModulesDevPlugin = ({
 
           optimizer.init = async function (...args: any[]) {
             if (!scanPromise) {
-              console.log("################# running scan");
               scanPromise = runDirectivesScan({
                 rootConfig: server.config,
-                environment: server.environments.scan,
+                environment: server.environments.worker,
                 clientFiles,
                 serverFiles,
               }).then(() => {
-                console.log("################# scan complete");
                 // After the scan is complete, write the barrel files.
                 const clientBarrelContent = generateBarrelContent(
                   clientFiles,
