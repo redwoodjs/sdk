@@ -54,7 +54,7 @@ The key insight is that the `configureServer` hook is the earliest point at whic
 
 This approach provides the ideal timing by using the `configureServer` hook to inject our logic at the last possible moment before the dependency optimization process begins.
 
-### 7. New Investigation: Performance Issues with `createIdResolver`
+### 7. Attempt #5: Performance Issues with `createIdResolver`
 
 The `optimizer.init` patching strategy successfully solved the timing and race condition issues. However, it revealed a new, blocking problem: the `runDirectivesScan` process, now using `createIdResolver`, became extremely slow, causing a long delay in server startup.
 
@@ -64,7 +64,7 @@ The current hypothesis is that the fully initialized `worker` environment, with 
 
 To test this, the new strategy is to **run the scan in an isolated, temporary environment**. Instead of passing the live `server.environments.worker`, the `runDirectivesScan` function has been refactored to be self-contained. It now creates its own, temporary Vite `Environment` using the `worker`'s resolved config, but with a fresh, clean plugin container. If the scan is fast in this isolated context, it will confirm that some aspect of the live `worker` environment is the source of the performance problem.
 
-### 8. Final Attempt: Decoupling with `enhanced-resolve`
+### 8. Attempt #6: Decoupling with `enhanced-resolve`
 
 The investigation into using an isolated environment hit a critical roadblock: Vite bundles its distribution files in a way that makes its internal modules, including the lightweight `ScanEnvironment`, inaccessible. This is a strong signal that relying on internal APIs is not a sustainable path.
 
