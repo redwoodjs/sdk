@@ -123,7 +123,7 @@ export const runDirectivesScan = async ({
           );
 
           if (resolvedPath && path.isAbsolute(resolvedPath)) {
-            return { id: resolvedPath };
+            return { path: resolvedPath };
           }
 
           return { external: true };
