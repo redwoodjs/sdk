@@ -65,5 +65,5 @@ export const createViteAwareResolver = (
     viteConfig,
     envName,
   );
-  return create.sync(enhancedResolveOptions);
+  return create(enhancedResolveOptions);
 };

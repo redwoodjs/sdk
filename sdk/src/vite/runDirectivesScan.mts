@@ -1,6 +1,4 @@
-// @ts-ignore
-import { OnLoadArgs, OnResolveArgs, PluginBuild } from "esbuild";
-import { ResolvedConfig } from "vite";
+import { BuildOptions, ResolvedConfig } from "vite";
 import fsp from "node:fs/promises";
 import { hasDirective } from "./hasDirective.mjs";
 import path from "node:path";
@@ -8,6 +6,7 @@ import debug from "debug";
 import { getViteEsbuild } from "./getViteEsbuild.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { createViteAwareResolver } from "./createViteAwareResolver.mjs";
+import { ResolveFunctionAsync } from "enhanced-resolve";
 
 const log = debug("rwsdk:vite:run-directives-scan");
 
@@ -30,82 +29,83 @@ function createEsbuildScanPlugin({
   clientFiles: Set<string>;
   serverFiles: Set<string>;
   projectRootDir: string;
-  resolver: (context: {}, path: string, request: string) => string | false;
+  resolver: ResolveFunctionAsync;
 }) {
   return {
     name: "rwsdk:esbuild-scan-plugin",
-    setup(build: PluginBuild) {
+    setup(build: any) {
       // Match Vite's behavior by externalizing assets and special queries.
       const scriptFilter = /\.(c|m)?[jt]sx?$/;
       const specialQueryFilter = /[?&](?:url|raw|worker|sharedworker|inline)\b/;
       const hasExtensionRegex = /\.[^/]+$/;
 
-      build.onResolve({ filter: specialQueryFilter }, (args: OnResolveArgs) => {
+      build.onResolve({ filter: specialQueryFilter }, (args: any) => {
         log("Externalizing special query:", args.path);
         return { external: true };
       });
 
-      build.onResolve(
-        { filter: /.*/, namespace: "file" },
-        (args: OnResolveArgs) => {
-          if (
-            hasExtensionRegex.test(args.path) &&
-            !scriptFilter.test(args.path)
-          ) {
-            log("Externalizing non-script import:", args.path);
-            return { external: true };
-          }
-        },
-      );
+      build.onResolve({ filter: /.*/, namespace: "file" }, (args: any) => {
+        if (
+          hasExtensionRegex.test(args.path) &&
+          !scriptFilter.test(args.path)
+        ) {
+          log("Externalizing non-script import:", args.path);
+          return { external: true };
+        }
+      });
 
-      build.onResolve({ filter: /.*/ }, async (args: OnResolveArgs) => {
+      build.onResolve({ filter: /.*/ }, async (args: any) => {
         if (args.pluginData?.rwsdkScanResolver) {
           return null;
         }
 
+        // Let esbuild handle the entry points.
+        if (!args.importer) {
+          return null;
+        }
+
         try {
-          const resolvedPath = resolver(
-            {},
-            path.dirname(args.importer),
-            args.path,
+          const resolvedPath = await new Promise<string | false>(
+            (resolve, reject) => {
+              resolver(
+                {},
+                path.dirname(args.importer),
+                args.path,
+                {},
+                (err, result) => {
+                  if (err) {
+                    return reject(err);
+                  }
+                  resolve(result || false);
+                },
+              );
+            },
           );
 
           if (resolvedPath) {
-            const resolved = await build.resolve(resolvedPath, {
-              importer: args.importer,
-              resolveDir: args.resolveDir,
-              kind: args.kind,
-              pluginData: { rwsdkScanResolver: true },
-            });
-
-            if (resolved.errors.length === 0) {
-              return resolved;
-            }
+            return {
+              path: resolvedPath,
+            };
+          } else {
+            log(
+              "Resolver returned no path for '%s' from '%s', marking as external.",
+              args.path,
+              args.importer,
+            );
+            return { external: true };
           }
         } catch (e) {
-          log("Enhanced-resolve failed for '%s': %s", args.path, e);
-        }
-
-        const resolved = await build.resolve(args.path, {
-          importer: args.importer,
-          resolveDir: args.resolveDir,
-          kind: args.kind,
-          pluginData: { rwsdkScanResolver: true },
-        });
-
-        if (resolved.errors.length > 0) {
           log(
-            "Could not resolve '%s'. Marking as external. Errors: %s",
+            "Resolver failed for '%s' from '%s', marking as external. Error: %s",
             args.path,
-            resolved.errors.map((e: any) => e.text).join(", "),
+            args.importer,
+            e,
           );
           return { external: true };
         }
-
-        return resolved;
       });
 
-      build.onLoad({ filter: /\.(m|c)?[jt]sx?$/ }, async (args: OnLoadArgs) => {
+      build.onLoad({ filter: /\.(m|c)?[jt]sx?$/ }, async (args: any) => {
         if (
           !args.path.startsWith("/") ||
           args.path.includes("virtual:") ||
