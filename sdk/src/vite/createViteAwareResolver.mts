@@ -10,19 +10,19 @@ const mapAlias = (
   if (Array.isArray(alias)) {
     // Handle array format: { find: string | RegExp, replacement: string }
     for (const { find, replacement } of alias) {
-      const key =
-        find instanceof RegExp
-          ? find.source
-          : find.endsWith("$")
-            ? find
-            : `${find}/`;
-      mappedAlias[key] = replacement;
+      if (find instanceof RegExp) {
+        // For RegExp, use the source as-is
+        mappedAlias[find.source] = replacement;
+      } else {
+        // For string aliases, use them as-is without modification
+        mappedAlias[find] = replacement;
+      }
     }
   } else {
     // Handle object format: { [find: string]: replacement }
     for (const [find, replacement] of Object.entries(alias)) {
-      const key = find.endsWith("$") ? find : `${find}/`;
-      mappedAlias[key] = replacement;
+      // Use the alias key as-is without modification
+      mappedAlias[find] = replacement;
     }
   }
 
