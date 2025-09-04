@@ -122,9 +122,64 @@ This approach maintains full Vite plugin compatibility through `createIdResolver
 
 ## Follow-up Issue: `vite-tsconfig-paths` Resolution
 
-After implementing the plugin hook skipping strategy, the directive scan is working but there's an issue where `vite-tsconfig-paths`' `resolveId` hook doesn't appear to be getting called during the directive scan. This suggests that either:
-1. The plugin hook skipping strategy is too aggressive and is preventing third-party plugins from running
-2. There's something about how `createIdResolver` works that doesn't trigger all plugin hooks as expected
-3. The timing or context of the scan is different from normal Vite resolution
+After implementing the plugin hook skipping strategy, the directive scan is working but there's an issue where `vite-tsconfig-paths`' `resolveId` hook doesn't appear to be getting called during the directive scan. 
 
-This needs further investigation to ensure TypeScript path mappings are properly resolved during scanning.
+**Root Cause Discovered:**
+Investigation into Vite's source code revealed the fundamental difference between how `createIdResolver` and `optimizeDeps` resolve modules:
+
+- **`optimizeDeps` scanner**: Uses `environment.pluginContainer.resolveId()` which calls the full plugin container with ALL plugins including `vite-tsconfig-paths`
+- **`createIdResolver`**: Creates its own minimal plugin container with only `aliasPlugin` and `resolvePlugin` - it completely bypasses third-party plugins like `vite-tsconfig-paths`
+
+This explains why our directive scan fails to resolve TypeScript path mappings while `optimizeDeps` works correctly. `createIdResolver` was never designed to be a full replacement for the plugin-aware resolution that `optimizeDeps` uses.
+
+**Key Code Comparison:**
+```typescript
+// optimizeDeps scanner (scan.ts:381-385) - uses FULL plugin container
+return environment.pluginContainer.resolveId(
+  id,
+  importer && normalizePath(importer),
+  { scan: true },
+)
+
+// createIdResolver (idResolver.ts:57-78) - creates MINIMAL plugin container  
+pluginContainer = await createEnvironmentPluginContainer(
+  environment as Environment,
+  [
+    aliasPlugin({ entries: environment.config.resolve.alias }),
+    resolvePlugin({ /* basic options */ }),
+  ],
+  // ... only these 2 plugins, no vite-tsconfig-paths or other user plugins
+)
+```
+
+The `environment.pluginContainer.resolveId()` API appears to be stable (not deprecated) and could potentially be used instead of `createIdResolver` to get full plugin compatibility.
+
+## Attempt #9: Hybrid Resolution Strategy
+
+**Implementation:**
+Attempted to use `environment.pluginContainer.resolveId()` when available (dev environments) and fallback to `createIdResolver` when not (build environments).
+
+**Result:**
+This approach works perfectly in dev mode - `vite-tsconfig-paths` and other plugins are properly called through the full plugin container. However, it reveals a fundamental limitation: `BuildEnvironment` doesn't have `pluginContainer`, only `DevEnvironment` and `ScanEnvironment` do.
+
+**The Dilemma:**
+- **Dev mode**: Can use `environment.pluginContainer.resolveId()` for full plugin compatibility
+- **Build mode**: Must fallback to `createIdResolver` which bypasses plugins like `vite-tsconfig-paths`
+
+This creates an inconsistency where the directive scan behaves differently between dev and build modes. Projects using TypeScript path mappings or other plugin-based resolution will work in dev but potentially fail in builds.
+
+## Attempt #10: Manual Plugin Container Creation for Builds
+
+Analysis of Vite's source code revealed that build environments (`BuildEnvironment`) have resolved plugins available via `environment.plugins` but don't create a `pluginContainer` like dev environments do. The pattern from dev environments shows they call `resolveEnvironmentPlugins(this)` and then `createEnvironmentPluginContainer(this, this._plugins, ...)`.
+
+The approach was to manually recreate this missing piece for build environments: use the existing `pluginContainer` in dev mode, but create our own plugin container for build environments using `createEnvironmentPluginContainer` with the environment's resolved plugins.
+
+However, this strategy hit a critical roadblock when attempting to access the required internal functions. While `resolveEnvironmentPlugins` and `createEnvironmentPluginContainer` exist in Vite's bundled code, they're not exported in the public API. The only way to access them would be through importing internal chunk files like `vite/dist/node/chunks/dep-DBxKXgDP.js`, but these chunk hashes change with every Vite release, making this approach completely unsustainable.
+
+## Attempt #11: Enhanced-Resolve Plugin Integration
+
+The realization that Vite's internal APIs were inaccessible led to investigating `enhanced-resolve`'s own plugin system. Instead of trying to recreate Vite's plugin container behavior, we could leverage `enhanced-resolve`'s official plugin architecture to integrate Vite plugin resolution directly into the resolution pipeline.
+
+This approach involves creating a custom `VitePluginResolverPlugin` that hooks into `enhanced-resolve`'s resolution process. The plugin uses `enhanced-resolve`'s `tapAsync` system to intercept resolution requests and call Vite plugin `resolveId` hooks when `enhanced-resolve`'s built-in mechanisms (aliases, conditions, etc.) can't resolve a module.
+
+The strategy provides the performance benefits of `enhanced-resolve` for standard resolution while ensuring that plugin-based resolution like `vite-tsconfig-paths` still works. Since both dev and build environments have `environment.plugins` available, this approach works consistently across both modes without requiring access to Vite's internal APIs.

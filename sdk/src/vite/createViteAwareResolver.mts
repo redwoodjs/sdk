@@ -2,6 +2,58 @@ import resolve, { ResolveOptions } from "enhanced-resolve";
 import { Alias, ResolvedConfig } from "vite";
 import fs from "fs";
 
+// Enhanced-resolve plugin that wraps Vite plugin resolution
+class VitePluginResolverPlugin {
+  constructor(
+    private environment: any,
+    private source = "resolve",
+    private target = "resolved",
+  ) {}
+
+  apply(resolver: any) {
+    const target = resolver.ensureHook(this.target);
+    resolver
+      .getHook(this.source)
+      .tapAsync(
+        "VitePluginResolverPlugin",
+        async (request: any, resolveContext: any, callback: any) => {
+          const plugins = this.environment?.plugins;
+          if (!plugins) {
+            return callback();
+          }
+
+          for (const plugin of plugins) {
+            if (plugin.resolveId) {
+              try {
+                const result = await plugin.resolveId.call(
+                  { environment: this.environment },
+                  request.request,
+                  request.path,
+                  { scan: true, isEntry: false, attributes: {} },
+                );
+                if (result) {
+                  const resolvedId =
+                    typeof result === "string" ? result : result.id;
+                  if (resolvedId) {
+                    return callback(null, {
+                      ...request,
+                      path: resolvedId,
+                    });
+                  }
+                }
+              } catch (e) {
+                // Continue to next plugin
+              }
+            }
+          }
+
+          // No plugin could resolve, continue with normal resolution
+          callback();
+        },
+      );
+  }
+}
+
 const mapAlias = (
   alias: Record<string, string> | Alias[],
 ): ResolveOptions["alias"] => {
@@ -49,7 +101,7 @@ export const mapViteResolveToEnhancedResolveOptions = (
     ...(envResolveOptions.alias ? mapAlias(envResolveOptions.alias) : {}),
   };
 
-  return {
+  const baseOptions: ResolveOptions = {
     // File system is required by enhanced-resolve.
     fileSystem: fs,
     // Map Vite's resolve options to enhanced-resolve's options.
@@ -62,15 +114,29 @@ export const mapViteResolveToEnhancedResolveOptions = (
     modules: ["node_modules"],
     roots: [viteConfig.root],
   };
+
+  return baseOptions;
 };
 
 export const createViteAwareResolver = (
   viteConfig: ResolvedConfig,
   envName: string,
+  environment?: any, // Optional environment for plugin resolution
 ) => {
-  const enhancedResolveOptions = mapViteResolveToEnhancedResolveOptions(
+  const baseOptions = mapViteResolveToEnhancedResolveOptions(
     viteConfig,
     envName,
   );
+
+  // Add Vite plugin resolver if environment is provided
+  const plugins = environment
+    ? [new VitePluginResolverPlugin(environment)]
+    : [];
+
+  const enhancedResolveOptions: ResolveOptions = {
+    ...baseOptions,
+    plugins,
+  };
+
   return resolve.create(enhancedResolveOptions);
 };

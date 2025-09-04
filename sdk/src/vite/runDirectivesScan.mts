@@ -7,8 +7,8 @@ import path from "node:path";
 import debug from "debug";
 import { getViteEsbuild } from "./getViteEsbuild.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
-import { createIdResolver } from "vite";
 import { externalModules } from "./constants.mjs";
+import { createViteAwareResolver } from "./createViteAwareResolver.mjs";
 
 const log = debug("rwsdk:vite:run-directives-scan");
 
@@ -69,7 +69,36 @@ export const runDirectivesScan = async ({
       absoluteEntries,
     );
 
-    const resolveId = createIdResolver(rootConfig, { scan: true });
+    // Use enhanced-resolve with Vite plugin integration for full compatibility
+    const resolver = createViteAwareResolver(
+      rootConfig,
+      environment.name,
+      environment,
+    );
+
+    const resolveId = async (
+      id: string,
+      importer?: string,
+    ): Promise<{ id: string } | null> => {
+      return new Promise((resolve) => {
+        resolver({}, importer || rootConfig.root, id, {}, (err, result) => {
+          if (!err && result) {
+            resolve({ id: result });
+          } else {
+            if (err) {
+              // Handle specific enhanced-resolve errors gracefully
+              const errorMessage = err.message || String(err);
+              if (errorMessage.includes("Package path . is not exported")) {
+                log("Package exports error for %s, marking as external", id);
+              } else {
+                log("Resolution failed for %s: %s", id, errorMessage);
+              }
+            }
+            resolve(null);
+          }
+        });
+      });
+    };
 
     const esbuildScanPlugin: Plugin = {
       name: "rwsdk:esbuild-scan-plugin",
@@ -111,11 +140,8 @@ export const runDirectivesScan = async ({
             return { external: true };
           }
 
-          const resolvedPath = await resolveId(
-            environment,
-            args.path,
-            args.importer,
-          );
+          const resolved = await resolveId(args.path, args.importer);
+          const resolvedPath = resolved?.id;
 
           if (resolvedPath && path.isAbsolute(resolvedPath)) {
             return { path: resolvedPath };
