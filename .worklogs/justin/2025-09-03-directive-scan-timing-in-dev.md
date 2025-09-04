@@ -171,3 +171,17 @@ The problem was a breakdown in the execution: our plugin was not correctly handl
 
 **Current Status:**
 The investigation confirmed that our `baseResolver` within the plugin context is functioning correctly. The focus has now shifted to understanding why `vite-tsconfig-paths` is discarding the valid, resolved path it receives from our context resolver. This suggests an issue with how the async result is handled or a potential mismatch in the expected return format between our resolver and the plugin.
+
+## 14. Fixing the Plugin Context Return Value
+
+A close examination of the `vite-tsconfig-paths` source code provided the solution. The plugin's `resolveId` hook calls `this.resolve()` (our context resolver) and expects the return value to be an object with an `id` property, matching the standard Vite `ResolveIdResult` object: `{ id: string }`.
+
+Our implementation was incorrectly returning a `string` directly. This mismatch caused `vite-tsconfig-paths` to receive `undefined` for the `id` and discard the otherwise successful resolution.
+
+**The Fix:**
+The `resolve` function within our `pluginContext` was modified to wrap the successful result string in an object, changing the return signature from `Promise<string | null>` to `Promise<{ id: string } | null>`.
+
+**Outcome:**
+This change immediately fixed the integration. The logs now show `vite-tsconfig-paths` receiving the correctly formatted result object and successfully resolving all `@/*` aliases.
+
+This resolved the alias issue, allowing the directive scan to proceed further, but uncovered a new, unrelated error: "No matching export in '...' for import 'defineApp'". This indicates the next phase of debugging will shift from module resolution to the content and bundling of the worker entry file itself.
