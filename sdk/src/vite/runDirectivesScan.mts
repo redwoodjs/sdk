@@ -144,7 +144,13 @@ export const runDirectivesScan = async ({
           const resolvedPath = resolved?.id;
 
           if (resolvedPath && path.isAbsolute(resolvedPath)) {
-            return { path: resolvedPath };
+            // Normalize the path for esbuild compatibility
+            const normalizedPath = normalizeModulePath(
+              resolvedPath,
+              rootConfig.root,
+              { absolute: true },
+            );
+            return { path: normalizedPath };
           }
 
           return { external: true };
@@ -195,7 +201,7 @@ export const runDirectivesScan = async ({
       plugins: [esbuildScanPlugin],
     });
   } catch (e: any) {
-    throw new Error(`RWSDK directive scan failed:\n${e.message}`);
+    throw new Error(`RWSDK directive scan failed:\n${e.stack}`);
   } finally {
     // Always clear the scanning flag when done
     delete process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE;

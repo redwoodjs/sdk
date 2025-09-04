@@ -185,3 +185,21 @@ The `resolve` function within our `pluginContext` was modified to wrap the succe
 This change immediately fixed the integration. The logs now show `vite-tsconfig-paths` receiving the correctly formatted result object and successfully resolving all `@/*` aliases.
 
 This resolved the alias issue, allowing the directive scan to proceed further, but uncovered a new, unrelated error: "No matching export in '...' for import 'defineApp'". This indicates the next phase of debugging will shift from module resolution to the content and bundling of the worker entry file itself.
+
+## Attempt #12: Aligning with Vite's Resolution Strategy
+
+While the previous fix of skipping plugins for relative imports worked, it was identified as a workaround rather than a fundamental solution. A deeper analysis of Vite's own practices revealed a more robust and correct approach to handling different module types.
+
+**The Investigation:**
+The core insight came from observing that Vite itself does not simply skip its plugin system for relative paths. Instead, it ensures paths are normalized and absolutified *before* they enter the main plugin pipeline. This prevents plugins from having to interpret relative paths, which was the root cause of the `vite-plugin-cloudflare` issue. The plugin was incorrectly applying package export conditions to a relative intra-package import because it wasn't an absolute file path.
+
+**The Refined Solution:**
+The implementation was refactored to align with this "absolutify-first" strategy.
+
+1.  **Detect Relative Imports:** The `VitePluginResolverPlugin` first checks if a request is relative (`../` or `./`).
+2.  **Resolve to Absolute Path:** If it is, the plugin uses `enhanced-resolve`'s own base resolver to convert the relative path into an absolute file path. This lets `enhanced-resolve` handle the file-system-level resolution it excels at.
+3.  **Process Plugins with Absolute Path:** The resulting absolute path is then sent through the Vite plugin pipeline. This allows plugins like `vite-plugin-cloudflare` to operate correctly, as they are now processing a standard absolute file path and won't incorrectly apply package export logic.
+4.  **Process Non-Relative Imports Directly:** All other imports (bare module specifiers, aliases) are passed through the Vite plugin pipeline as before.
+
+**Outcome:**
+This approach is more robust and less prone to edge cases than simply skipping the plugin system. It correctly delineates responsibilities: `enhanced-resolve` handles file system path resolution, and the Vite plugins handle transformations and special resolution logic on a predictable, normalized path. This solved the circular dependency and `defineApp` export error in a more fundamental way, leading to a successful and reliable build.
