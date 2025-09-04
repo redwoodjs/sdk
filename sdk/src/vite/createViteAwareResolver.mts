@@ -47,7 +47,8 @@ class VitePluginResolverPlugin {
             resolve: async (id: string, importer?: string) => {
               // Use enhanced-resolve with full extension resolution capabilities
               // This allows vite-tsconfig-paths to properly resolve mapped paths
-              return new Promise<string | null>((resolve) => {
+              // Return format matches Vite's resolveId result: { id: string } | null
+              return new Promise<{ id: string } | null>((resolve) => {
                 this.baseResolver(
                   {},
                   importer || this.environment.config.root,
@@ -56,7 +57,7 @@ class VitePluginResolverPlugin {
                   (err: any, result: any) => {
                     if (!err && result) {
                       debug("Context resolve: %s -> %s", id, result);
-                      resolve(result);
+                      resolve({ id: result });
                     } else {
                       debug(
                         "Context resolve failed for %s: %s",
