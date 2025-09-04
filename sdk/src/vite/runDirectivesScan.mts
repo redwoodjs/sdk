@@ -1,6 +1,4 @@
-// @ts-ignore
-import { OnLoadArgs, OnResolveArgs, Plugin, PluginBuild } from "esbuild";
-import { Environment, ResolvedConfig } from "vite";
+import { ResolvedConfig } from "vite";
 import fsp from "node:fs/promises";
 import { hasDirective } from "./hasDirective.mjs";
 import path from "node:path";
@@ -8,9 +6,8 @@ import debug from "debug";
 import { getViteEsbuild } from "./getViteEsbuild.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { createIdResolver } from "vite";
-import { externalModules } from "./constants.mjs";
 
-const log = debug("rwsdk:vite:run-directives-scan");
+const log = debug("rwsdk:runDirectivesScan");
 
 // Copied from Vite's source code.
 // https://github.com/vitejs/vite/blob/main/packages/vite/src/shared/utils.ts
@@ -24,17 +21,28 @@ const isExternalUrl = (url: string): boolean => externalRE.test(url);
 
 export const runDirectivesScan = async ({
   rootConfig,
-  environment,
   clientFiles,
   serverFiles,
 }: {
   rootConfig: ResolvedConfig;
-  environment: Environment;
   clientFiles: Set<string>;
   serverFiles: Set<string>;
 }) => {
+  const workerEnvOptions = rootConfig.environments.worker;
+
+  if (!workerEnvOptions) {
+    throw new Error("Could not find worker environment configuration.");
+  }
+
+  const scanEnvironment = await createEnvironment(
+    "rwsdk-scan",
+    rootConfig,
+    workerEnvOptions as ResolvedEnvironmentOptions,
+  );
+  await scanEnvironment.init();
+
   const esbuild = await getViteEsbuild(rootConfig.root);
-  const input = environment.config.build.rollupOptions?.input;
+  const input = scanEnvironment.build.rollupOptions?.input;
   let entries: string[];
 
   if (Array.isArray(input)) {
@@ -50,7 +58,7 @@ export const runDirectivesScan = async ({
   if (entries.length === 0) {
     log(
       "No entries found for directives scan in environment '%s', skipping.",
-      environment.name,
+      scanEnvironment.name,
     );
     return;
   }
@@ -61,11 +69,16 @@ export const runDirectivesScan = async ({
 
   log(
     "Starting directives scan for environment '%s' with entries:",
-    environment.name,
+    scanEnvironment.name,
     absoluteEntries,
   );
 
-  const resolveId = createIdResolver(rootConfig, { scan: true });
+  const packageCache: Map<any, any> = new Map();
+  const resolveId = createIdResolver(rootConfig, {
+    scan: true,
+    asSrc: false,
+    packageCache,
+  });
 
   const esbuildScanPlugin: Plugin = {
     name: "rwsdk:esbuild-scan-plugin",
@@ -104,12 +117,8 @@ export const runDirectivesScan = async ({
           return null;
         }
 
-        if (externalModules.includes(args.path)) {
-          return { external: true };
-        }
-
         const resolvedPath = await resolveId(
-          environment,
+          scanEnvironment,
           args.path,
           args.importer,
         );

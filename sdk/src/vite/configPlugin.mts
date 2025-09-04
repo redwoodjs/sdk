@@ -1,4 +1,6 @@
-import { Plugin } from "vite";
+import { Plugin, ResolvedConfig } from "vite";
+import { DevEnvironment } from "vite/dist/node/server/environment.js";
+import { ScanEnvironment } from "vite/dist/node/optimizer/scan.js";
 import path, { resolve } from "node:path";
 import { InlineConfig } from "vite";
 import enhancedResolve from "enhanced-resolve";
@@ -9,6 +11,11 @@ import { buildApp } from "./buildApp.mjs";
 import { externalModules } from "./constants.mjs";
 
 const log = debug("rwsdk:vite:config");
+
+function createScanEnvironment(name: string, config: ResolvedConfig) {
+  // @ts-expect-error - We're creating a minimal environment for scanning.
+  return new ScanEnvironment(name, config, {});
+}
 
 export const configPlugin = ({
   silent,
@@ -167,6 +174,12 @@ export const configPlugin = ({
           },
         },
         worker: workerConfig,
+        scan: {
+          ...workerConfig,
+          dev: {
+            createEnvironment: createScanEnvironment,
+          },
+        },
       },
       server: {
         hmr: true,

@@ -48,44 +48,34 @@ export const directiveModulesDevPlugin = ({
   serverFiles: Set<string>;
   projectRootDir: string;
 }): Plugin => {
-  let server: ViteDevServer;
+  let scanPromise: Promise<void> | null = null;
 
   return {
     name: "rwsdk:directive-modules-dev",
 
-    configureServer(_server) {
-      server = _server;
-    },
-
-    configResolved(config) {
-      if (config.command !== "serve") {
-        return;
-      }
-
-      // Create dummy files to give esbuild a real path to resolve.
-      mkdirSync(path.dirname(CLIENT_BARREL_PATH), { recursive: true });
-      writeFileSync(CLIENT_BARREL_PATH, "");
-      mkdirSync(path.dirname(SERVER_BARREL_PATH), { recursive: true });
-      writeFileSync(SERVER_BARREL_PATH, "");
-
-      // We need to patch the optimizer's init method to ensure our directive
-      // scan runs before Vite's dependency optimization process begins.
-      for (const [envName, env] of Object.entries(config.environments)) {
-        if (envName === "client" || envName === "ssr") {
-          const optimizer = (env as any).optimizer;
+    configureServer(server) {
+      // context(justinvdm, 4 Sep 2025): We need to patch the optimizer's init
+      // method to ensure our directive scan runs before Vite's dependency
+      // optimization process begins.
+      for (const env of Object.values(server.environments)) {
+        if (env.name === "client" || env.name === "ssr") {
+          const optimizer = env.depsOptimizer;
           if (!optimizer) {
             continue;
           }
 
           const originalInit = optimizer.init;
+
           optimizer.init = async function (...args: any[]) {
             if (!scanPromise) {
+              console.log("################# running scan");
               scanPromise = runDirectivesScan({
-                rootConfig: config,
-                environment: server.environments.worker,
+                rootConfig: server.config,
+                environment: server.environments.scan,
                 clientFiles,
                 serverFiles,
               }).then(() => {
+                console.log("################# scan complete");
                 // After the scan is complete, write the barrel files.
                 const clientBarrelContent = generateBarrelContent(
                   clientFiles,
@@ -102,10 +92,22 @@ export const directiveModulesDevPlugin = ({
             }
 
             await scanPromise;
-            return originalInit.apply(this, args);
+            return originalInit.apply(this, args as any);
           };
         }
       }
+    },
+
+    configResolved(config) {
+      if (config.command !== "serve") {
+        return;
+      }
+
+      // Create dummy files to give esbuild a real path to resolve.
+      mkdirSync(path.dirname(CLIENT_BARREL_PATH), { recursive: true });
+      writeFileSync(CLIENT_BARREL_PATH, "");
+      mkdirSync(path.dirname(SERVER_BARREL_PATH), { recursive: true });
+      writeFileSync(SERVER_BARREL_PATH, "");
 
       for (const [envName, env] of Object.entries(config.environments || {})) {
         if (envName === "client" || envName === "ssr") {

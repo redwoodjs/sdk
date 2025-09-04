@@ -8,106 +8,58 @@ The scanner's module resolution logic was too simplistic and broke when it encou
 
 The goal therefore shifted from patching our scanner to integrating Vite's own resolution capabilities, and then solving the subsequent timing challenges that this integration revealed.
 
-## 2. Investigation: From "How" to "When"
+## 2. Investigation: Finding the Right Tool and the Right Time
 
-### 2.1. Part 1: Finding the Right Tool
+The first step was to find a way to leverage Vite's resolver. We investigated Vite's source code and found that while the internal `esbuildDepPlugin` was not exported, a `createIdResolver` function was. This provided access to Vite's powerful, alias-aware resolution logic and became the target for our integration.
 
-The first step was to find a way to leverage Vite's resolver. We investigated Vite's source code and found:
-*   Vite's internal `esbuildDepPlugin` was not exported and could not be used directly.
-*   However, Vite *does* export a `createIdResolver` function, which provides access to its powerful, alias-aware resolution logic. This became the target for our integration.
+However, simply calling `createIdResolver` was not enough. For the resolver to work correctly, it needs the fully initialized `Environment` object. This led to a deeper investigation into the Vite dev server's startup lifecycle to find the correct moment to run our scan: *after* the environments were initialized, but *before* Vite's dependency optimizer (`optimizeDeps`) started. Standard hooks like `configResolved` and `configureServer` proved to run too early.
 
-### 2.2. Part 2: Finding the Right Time
+## 3. Attempt #1: Patching Internal Lifecycle Methods
 
-Simply calling `createIdResolver` was not enough. This led to a deeper investigation into the Vite dev server's startup lifecycle, revealing a critical timing issue. For the resolver to work correctly, it needs the fully initialized `Environment` object, which contains the complete plugin container and resolved configuration.
+Since no public hook existed at the right time, the first attempts involved patching Vite's internal methods to inject our scan at the correct point in the lifecycle.
 
-Our scan, therefore, had to run *after* the environments were initialized, but *before* Vite's dependency optimizer (`optimizeDeps`) started, so that the results of our scan (the barrel files) could be included in the pre-bundling process.
+-   **`_initEnvironments`:** The first attempt was to wrap this method on the `ViteDevServer` instance. However, this failed because the `configureServer` hook (where we could get the `server` instance) runs *after* `_initEnvironments` has already been called.
+-   **`createEnvironment` and `init`:** The next attempt was to move the patch earlier, into the `config` hook, to wrap the `init` method of the `worker` environment as it was created. This also proved to be unreliable and overly complex, especially when trying to synchronize the results with the `client` and `ssr` optimizers which run in parallel.
 
-We explored using Vite's standard plugin hooks:
-*   **`configResolved`:** This hook runs too early. The `Environment` objects exist only as configuration and lack the fully initialized plugin containers needed by the resolver.
-*   **`configureServer`:** This hook also runs too early. While Vite awaits promises from this hook, it runs *before* Vite's internal `_initEnvironments()` method is called. This meant our scan would finish before the environments were truly ready.
+## 4. Attempt #2: The "Just-in-Time" Strategy
 
-## 3. The Solution: Intercepting Environment Initialization
+The fragility of patching internal methods led to a new approach: abandoning patching entirely in favor of a "Just-in-Time" scan. The idea was to run the scan only at the moment its results were first requested by an optimizer.
 
-Since no public hook exists in the small window between environment initialization and dependency scanning, the most precise solution was to intercept the internal process that bridges them.
+This was implemented by injecting a custom `esbuild` plugin into the `client` and `ssr` optimizers.
+-   An `onResolve` hook would filter for our virtual "barrel file" paths and tag them with a special namespace.
+-   An `onLoad` hook, triggered by the namespace, would then execute the directive scan (guarded by a promise to ensure it only ran once) and return the barrel content directly to `esbuild`.
 
-The chosen strategy is to wrap Vite's internal `_initEnvironments` method on the `ViteDevServer` instance.
+This was a significant improvement as it relied on more stable APIs.
 
-1.  **Use `configureServer` to get access:** The `configureServer` hook provides access to the `server` instance.
-2.  **Wrap the Internal Method:** We store a reference to the original `server._initEnvironments` method and replace it with our own `async` function.
-3.  **Enforce the Correct Order:** Our wrapper function first `await`s the original method, ensuring Vite's environments are fully initialized. Immediately after, it runs our `runDirectivesScan`.
+## 5. Attempt #3: The "Dummy File" Refinement
 
-This approach, while relying on an internal API, is a targeted and robust solution. It allows us to inject our logic at the exact moment required, ensuring our scanner uses Vite's own resolver with a fully prepared environment, and that its output is ready for the dependency optimizers. This solves both the original resolution bug and the subsequent timing issue.
+The `onLoad` strategy was further refined to be more compatible with `esbuild`'s file-based nature. Instead of a purely virtual module, we began by writing physical, empty "dummy files" to disk. The `onLoad` hook would then target these physical file paths and replace their empty content with the dynamically generated barrel content after the scan completed.
 
-## 4. Final Finding & Refined Solution
+This approach worked well for resolving aliases but ultimately revealed a deeper timing issue.
 
-Further testing revealed that the initial solution of wrapping `_initEnvironments` in the `configureServer` hook was not working. The wrapper was never being called.
+## 6. Attemp #4: Pre-Optimization Scan via `optimizer.init` Patching in `configureServer`
 
-A deeper trace of Vite's source code (`packages/vite/src/node/server/index.ts`) provided the definitive answer: the environments are created and fully initialized *before* the `configureServer` hook is ever executed. Our patch was being applied too late, to a method that had already run.
+The "Just-in-Time" approach, in all its variations, had a fundamental flaw: it executed the scan *during* the `optimizeDeps` process. Further testing revealed that other parts of the Vite ecosystem needed the results of our scan *before* optimization began. The scan was still running too late.
 
-The final, correct solution is to intercept the process even earlier, at the configuration stage. This is accomplished within a single, unified plugin (`directiveModulesDevPlugin`):
+This led to the final and correct solution, which ensures the scan runs before any optimization begins, but after all environments are ready. It revisits the patching strategy, but with a more precise target and at the correct time.
 
-1.  **Use the `config` Hook:** This hook runs very early in the startup process, giving us access to the configuration *before* the server and its environments are created.
-2.  **Patch `createEnvironment` and `init`:** We patch the creation and initialization process of the `worker` environment. Our wrapper on the `init` method allows us to run our `runDirectivesScan` at the precise moment the worker is ready.
-3.  **Signal Completion with a Promise:** After the scan finishes, our wrapper resolves a shared promise (`workerScanComplete`), which acts as a signal to other processes.
-4.  **Synchronize via an `esbuild` Plugin:** The core of the solution is addressing the parallel nature of Vite's startup. Vite initializes all environments (`worker`, `client`, `ssr`) and starts their dependency optimizers concurrently. This creates a race condition: the `client` and `ssr` optimizers start before our `worker` scan has finished populating the `clientFiles` set. To solve this, we inject a small `esbuild` plugin into the `client` and `ssr` optimizers. This plugin's `onResolve` hook intercepts our barrel files and `await`s the `workerScanComplete` promise. This effectively pauses their optimization process at the critical moment, forcing them to wait for the worker's signal before proceeding.
+The key insight is that the `configureServer` hook is the earliest point at which the `ViteDevServer` instance is available with its fully initialized environments and their `depOptimizer` instances, but *before* their `init()` methods have been called.
 
-This refined approach is surgically precise. It uses the earliest possible hook to orchestrate the scan and a targeted `esbuild` plugin to solve the synchronization problem caused by Vite's parallel startup, all within a single, maintainable plugin.
+1.  **Use `configureServer`:** This hook provides access to the live `server` instance.
+2.  **Intercept `optimizer.init`:** We iterate through the `client` and `ssr` environments on the `server` object and gain access to their respective `optimizer` instances.
+3.  **Wrap the `init` Method:** We replace each optimizer's `init` method with our own `async` wrapper.
+4.  **Run Scan and Await Completion:** The wrapper first triggers and `await`s our `runDirectivesScan` (guarded by a promise to ensure it only runs once).
+5.  **Populate Barrel Files:** Once the scan is complete, the wrapper writes the final barrel content to the physical files on disk.
+6.  **Proceed with Original `init`:** Only then is the original `init` method called, allowing `optimizeDeps` to proceed with the correct information now available.
 
-## 5. Final Strategy: A "Just-In-Time" Scan
+This approach provides the ideal timing by using the `configureServer` hook to inject our logic at the last possible moment before the dependency optimization process begins.
 
-The patching strategy, while theoretically sound, proved to be unreliable in practice. The core issue remained that interfering with Vite's internal startup lifecycle is inherently fragile.
+### 7. New Investigation: Performance Issues with `createIdResolver`
 
-The final, successful, and dramatically simpler solution is to abandon patching entirely and run the scan "Just-In-Time."
+The `optimizer.init` patching strategy successfully solved the timing and race condition issues. However, it revealed a new, blocking problem: the `runDirectivesScan` process, now using `createIdResolver`, became extremely slow, causing a long delay in server startup.
 
-The insight is that we don't need to preemptively run the scan and then pause other processes. Instead, we can wait until the `client` or `ssr` optimizer *first asks for one of our barrel files*. At that precise moment, we know the scan results are needed, and we can be reasonably certain that the dev server and its environments have been instantiated.
+This has prompted a new investigation. The performance issue does not seem to be with `createIdResolver` itself, but potentially with the `worker` environment it's being run against.
 
-The implementation is as follows:
-1.  **Store the Server Instance:** We use the standard `configureServer` hook for one simple purpose: to get and store a reference to the `ViteDevServer` instance.
-2.  **Trigger Scan on First Resolution:** We retain the custom `esbuild` plugin that is injected into the `client` and `ssr` optimizers. Its `onResolve` hook still intercepts requests for our barrel files.
-3.  **Run Scan Inside `onResolve`:** The first time this hook is triggered, it uses the stored server reference to access `server.environments.worker` and *then* runs the `runDirectivesScan`. A guard ensures the scan is only run once, with subsequent requests awaiting the result of the first scan.
-4.  **Generate Barrels and Proceed:** Once the scan promise resolves, the `onResolve` hook generates the barrel content (using the now-populated file sets) and allows the optimization to proceed.
+The current hypothesis is that the fully initialized `worker` environment, with its complete set of plugins (including our own), is causing a slowdown or recursive loop within the resolver.
 
-This approach is superior because it eliminates all fragile monkey-patching, relies on stable public APIs, and performs the expensive scan only at the precise moment it is first required. It is simpler, more robust, and more aligned with Vite's event-driven nature.
-
-## 6. Final Refinement: "Just-in-Time" Content Generation via `onLoad`
-
-The "Just-In-Time" scan was the correct strategy, but the implementation was further refined for efficiency and robustness.
-
-The previous iteration used a broad `onResolve` hook (matching `/.*/`) that executed for every module, and it wrote the barrel files to the filesystem. The final solution is more targeted and elegant.
-
-The implementation uses a pair of `esbuild` plugin hooks:
-1.  **A targeted `onResolve` hook:** This hook filters *only* for our two barrel file paths. When it finds one, its only job is to tag it with a special namespace (e.g., `"rwsdk-barrel"`). This marks the file as something to be handled by our plugin's `onLoad` hook.
-2.  **An `onLoad` hook:** This hook is configured to fire only for modules tagged with our `"rwsdk-barrel"` namespace.
-    *   The first time it's called, it triggers the `runDirectivesScan` (guarded by a promise to ensure it only runs once).
-    *   It `await`s the scan's completion.
-    *   It then generates the barrel content in memory.
-    *   Finally, it returns the content directly to `esbuild` via the `contents` property, completely bypassing the filesystem.
-
-This is the definitive solution because it is the most efficient (the hook only runs for files we care about), the most robust (it avoids filesystem race conditions), and the most semantically correct use of the `esbuild` plugin API.
-
-## 7. Final Implementation: The "Dummy File" Strategy
-
-The "Just-In-Time" content generation via `onLoad` was the correct strategy, but it was further refined to be more compatible with Vite's file-based dependency scanner.
-
-The final, definitive implementation uses a physical "dummy file" to provide a stable target for `esbuild`, and then hijacks the loading of that file to provide the dynamic content.
-
-1.  **Create Dummy Files:** In the `configResolved` hook, which runs before the optimizer, we now physically create empty placeholder files on disk for our client and server barrels. This gives `esbuild` a real, resolvable file path.
-2.  **Simplify the `esbuild` Plugin:** Because the files now physically exist, the `onResolve` hook and custom namespaces are no longer needed. Our `esbuild` plugin is simplified to a single `onLoad` hook.
-3.  **Targeted `onLoad`:** This `onLoad` hook filters directly for the absolute paths of the two dummy barrel files.
-4.  **Just-in-Time Scan and Content Injection:** The `onLoad` hook's logic remains the same. The first time it's triggered for one of the dummy files, it runs the directive scan (guarded by a promise). Once the scan completes, it generates the appropriate barrel content in memory and returns it directly to `esbuild`, effectively replacing the empty content of the dummy file.
-
-This is the most robust solution because it works with `esbuild`'s file-based nature while still providing our content dynamically, all triggered at the exact moment it's needed.
-
-### 8. Final Strategy: Pre-Optimization Scan via `optimizer.init` Patching
-
-Further testing revealed that the "Just-In-Time" `onLoad` strategy, while effective for alias resolution, was executing too late in the dev server startup process. Other plugins and processes that depend on the results of our directive scan were running before the scan had completed, leading to resolution failures for server modules during the `optimizeDeps` phase.
-
-The definitive solution is to ensure our scan runs *before* any dependency optimization begins. Since there is no public Vite hook for this, we use a targeted patch on the dependency optimizer itself.
-
-1.  **Intercept `optimizer.init`:** In the `configResolved` hook, we iterate through the `client` and `ssr` environments and gain access to their respective `optimizer` instances.
-2.  **Wrap the `init` Method:** We replace the optimizer's `init` method with our own `async` wrapper function.
-3.  **Run Scan and Await Completion:** Our wrapper first triggers the `runDirectivesScan` (guarded by a promise to ensure it only runs once across all optimizers). It then `await`s the completion of this scan.
-4.  **Populate Barrel Files:** Once the scan is complete, the wrapper generates the barrel content and writes it to the physical files on disk.
-5.  **Proceed with Original `init`:** Only after the scan is complete and the barrel files are ready, we call the original `init` method, allowing the `optimizeDeps` process to proceed, now with the full and correct information.
-
-This approach provides the ideal timing: it waits for the server and environments to be fully initialized, runs our scan, and makes the results available *before* any other process that depends on them begins. This solves the final timing issue in a robust and predictable way.
+To test this, the new strategy is to **run the scan in an isolated, temporary environment**. Instead of passing the live `server.environments.worker`, the `runDirectivesScan` function has been refactored to be self-contained. It now creates its own, temporary Vite `Environment` using the `worker`'s resolved config, but with a fresh, clean plugin container. If the scan is fast in this isolated context, it will confirm that some aspect of the live `worker` environment is the source of the performance problem.
