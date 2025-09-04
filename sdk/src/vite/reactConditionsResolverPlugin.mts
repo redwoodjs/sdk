@@ -288,6 +288,11 @@ export const reactConditionsResolverPlugin = ({
         id: string,
         importer: string | undefined,
       ): Promise<string | undefined> {
+        // Skip during directive scanning to avoid performance issues
+        if (process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE) {
+          return;
+        }
+
         if (!isBuild) {
           return;
         }

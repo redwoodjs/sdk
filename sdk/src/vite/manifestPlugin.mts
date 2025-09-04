@@ -25,6 +25,11 @@ export const manifestPlugin = ({
       }
     },
     async load(id) {
+      // Skip during directive scanning to avoid performance issues
+      if (process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE) {
+        return;
+      }
+
       if (id === resolvedVirtualModuleId) {
         if (isBuild) {
           // context(justinvdm, 28 Aug 2025): During the build, we don't have
