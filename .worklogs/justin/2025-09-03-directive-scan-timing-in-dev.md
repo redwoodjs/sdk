@@ -97,3 +97,17 @@ The final, definitive implementation uses a physical "dummy file" to provide a s
 4.  **Just-in-Time Scan and Content Injection:** The `onLoad` hook's logic remains the same. The first time it's triggered for one of the dummy files, it runs the directive scan (guarded by a promise). Once the scan completes, it generates the appropriate barrel content in memory and returns it directly to `esbuild`, effectively replacing the empty content of the dummy file.
 
 This is the most robust solution because it works with `esbuild`'s file-based nature while still providing our content dynamically, all triggered at the exact moment it's needed.
+
+### 8. The Definitive Fix: Plugin Ordering (`enforce: 'post'`)
+
+After extensive investigation into Vite's resolver and `esbuild`'s behavior, the final solution was discovered to be an issue of **plugin ordering**. Two distinct but related problems were solved:
+
+1.  **Architectural Flaw:** Our initial scanner used a simplistic, custom alias resolution logic. The switch to using Vite's `createIdResolver` was a critical architectural improvement. While this change alone did not fix the immediate bug, it made our scanner significantly more robust and compatible with the Vite ecosystem by aligning it with the same resolver that Vite's own dependency optimizer uses.
+
+2.  **Timing/Ordering Flaw:** The direct cause of the alias resolution failure was that our `configPlugin` was running *before* other plugins (e.g., `vite-tsconfig-paths`) had a chance to add their aliases to the configuration. When our scanner ran, it was working with an incomplete set of aliases. The initial focus on the `@/*` syntax was a **red herring**; the problem was that we were missing aliases from any plugin that ran after ours.
+
+The solution was to fix the ordering:
+
+-   **Add `enforce: 'post'` to `configPlugin.mts`:** This Vite-specific property forces our plugin to run *after* all other plugins. This guarantees that when our `configResolved` hook executes, the configuration contains the complete, final list of aliases from all sources.
+
+This ordering change was the definitive fix for the bug. It ensured that our architecturally sound scanner—now powered by `createIdResolver`—was finally being fed the correct data.
