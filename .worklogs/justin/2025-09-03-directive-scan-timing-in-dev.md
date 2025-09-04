@@ -145,3 +145,31 @@ The realization that Vite's internal APIs were not a viable option led back to a
 This was achieved by leveraging `enhanced-resolve`'s own robust plugin system. A custom `enhanced-resolve` plugin, the `VitePluginResolverPlugin`, was created. This plugin hooks into the `enhanced-resolve` pipeline and, if the core resolver cannot find a module, it then iterates through the Vite plugins on the current `environment` and calls their `resolveId` hooks.
 
 This approach provides the best of all worlds. It uses the fast, powerful `enhanced-resolve` library as its foundation while seamlessly integrating the dynamic, plugin-based resolution that makes Vite so flexible. Most importantly, it relies only on stable, public APIs (`environment.plugins` and the `enhanced-resolve` plugin interface), resulting in a consistent, maintainable, and robust solution that works identically across both dev and build environments.
+
+## 12. Debugging Plugin Integration Issues
+
+The implementation of the `VitePluginResolverPlugin` initially encountered several technical challenges that required investigation and refinement:
+
+**TypeError: `plugin.resolveId.call is not a function`**
+Multiple Vite plugins were failing with this error because the plugin system needed to handle different `resolveId` hook formats. Some plugins define `resolveId` as a direct function, while others use an object format with a `handler` property. The solution was to add type checking to handle both formats correctly.
+
+**JavaScript heap out of memory**
+A circular dependency was discovered when Vite plugins called `this.resolve()` within their `resolveId` hooks. Since our `VitePluginResolverPlugin` was part of the main resolver, this created an infinite loop. The fix involved creating a separate `baseResolver` instance without our plugin for the plugin context's `resolve` method.
+
+## 13. Investigating `vite-tsconfig-paths` Integration
+
+Further testing on a specific app highlighted an issue with `@/*` alias resolution. While the `VitePluginResolverPlugin` was correctly invoking plugins, aliases managed by `vite-tsconfig-paths` were failing. The investigation confirmed the precise mechanism of this plugin and how it interacts with the broader Vite ecosystem:
+
+**Confirmed Mechanism:**
+- `@/*` aliases defined in `tsconfig.json` (`"@/*": ["./src/*"]`) are handled by `vite-tsconfig-paths`, not Vite's `resolve.alias` system.
+- `vite-tsconfig-paths` reads TypeScript path configurations and uses Vite's `resolveId` hook for dynamic resolution.
+- Our `enhanced-resolve` configuration, by design, only receives Vite's static `resolve.alias` settings and does not inherently read `tsconfig.json`, making the `VitePluginResolverPlugin` essential for this integration.
+
+**The Resolution Process:**
+1. `vite-tsconfig-paths` attempts to resolve `@/app/Document` directly → fails (no extensions)
+2. `vite-tsconfig-paths` maps the alias to `/path/to/src/app/Document` and calls the plugin context's `resolve` method
+3. Our enhanced-resolve context resolver successfully finds `Document.tsx` using its extension resolution
+4. `vite-tsconfig-paths` should return this successful result to complete the resolution chain
+
+**Current Status:**
+The context resolution is working correctly - we can see in the logs that `@/app/Document` gets mapped and then resolved to `Document.tsx`. However, `vite-tsconfig-paths` appears to still be returning `undefined` instead of passing through the successful resolution. This suggests there may be an issue with how the async result from our context resolve function is being handled by the plugin, or there may be additional conditions that need to be met for the plugin to accept the resolution as valid.
