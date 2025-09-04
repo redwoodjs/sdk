@@ -66,7 +66,7 @@ export const createViteAwareResolver = (
     viteConfig,
     envName,
   );
-  const { fs: _fs, ...rest } = enhancedResolveOptions;
+  const { fileSystem: _fs, ...rest } = enhancedResolveOptions;
   console.log("###### enhancedResolveOptions", rest);
   return resolve.create(enhancedResolveOptions);
 };
