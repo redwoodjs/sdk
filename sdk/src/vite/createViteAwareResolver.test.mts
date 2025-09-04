@@ -24,7 +24,7 @@ describe("mapViteResolveToEnhancedResolveOptions", () => {
     );
 
     expect(options.alias).toEqual({
-      "@/": "/src",
+      "@": "/src",
       react$: "/custom/react",
       "^~": "/node_modules/",
     });
@@ -50,7 +50,7 @@ describe("mapViteResolveToEnhancedResolveOptions", () => {
     );
 
     expect(options.alias).toEqual({
-      "@/": "/src",
+      "@": "/src",
       react$: "/custom/react",
     });
   });
