@@ -1,10 +1,13 @@
-import path from "node:path";
-import { Plugin } from "vite";
+import path from "path";
+import { Plugin, ViteDevServer } from "vite";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
+import { CLIENT_BARREL_PATH, SERVER_BARREL_PATH } from "../lib/constants.mjs";
 import { runDirectivesScan } from "./runDirectivesScan.mjs";
-import { CLIENT_BARREL_PATH } from "../lib/constants.mjs";
-import { SERVER_BARREL_PATH } from "../lib/constants.mjs";
+
+// Awaiting this promise will ensure that the worker environment's directive
+// scan is complete.
+let scanPromise: Promise<void> | null = null;
 
 export const VIRTUAL_CLIENT_BARREL_ID = "virtual:rwsdk:client-module-barrel";
 export const VIRTUAL_SERVER_BARREL_ID = "virtual:rwsdk:server-module-barrel";
@@ -45,49 +48,73 @@ export const directiveModulesDevPlugin = ({
   serverFiles: Set<string>;
   projectRootDir: string;
 }): Plugin => {
+  let server: ViteDevServer;
+
   return {
     name: "rwsdk:directive-modules-dev",
-    enforce: "pre",
-    async configResolved(config) {
+
+    configureServer(_server) {
+      server = _server;
+    },
+
+    configResolved(config) {
       if (config.command !== "serve") {
         return;
       }
 
-      const workerEnv = config.environments["worker"];
-
-      if (workerEnv) {
-        await runDirectivesScan({
-          rootConfig: config,
-          envName: "worker",
-          clientFiles,
-          serverFiles,
-        });
-      }
-
-      // Generate the barrel content and write it to the dummy files.
-      // We can do this now because our scan is complete.
-      const clientBarrelContent = generateBarrelContent(
-        clientFiles,
-        projectRootDir,
-      );
-      const serverBarrelContent = generateBarrelContent(
-        serverFiles,
-        projectRootDir,
-      );
-
+      // Create dummy files to give esbuild a real path to resolve.
       mkdirSync(path.dirname(CLIENT_BARREL_PATH), { recursive: true });
-      writeFileSync(CLIENT_BARREL_PATH, clientBarrelContent);
-
+      writeFileSync(CLIENT_BARREL_PATH, "");
       mkdirSync(path.dirname(SERVER_BARREL_PATH), { recursive: true });
-      writeFileSync(SERVER_BARREL_PATH, serverBarrelContent);
+      writeFileSync(SERVER_BARREL_PATH, "");
 
+      // We need to patch the optimizer's init method to ensure our directive
+      // scan runs before Vite's dependency optimization process begins.
       for (const [envName, env] of Object.entries(config.environments)) {
         if (envName === "client" || envName === "ssr") {
-          env.optimizeDeps.include = [
-            ...(env.optimizeDeps.include || []),
+          const optimizer = (env as any).optimizer;
+          if (!optimizer) {
+            continue;
+          }
+
+          const originalInit = optimizer.init;
+          optimizer.init = async function (...args: any[]) {
+            if (!scanPromise) {
+              scanPromise = runDirectivesScan({
+                rootConfig: config,
+                environment: server.environments.worker,
+                clientFiles,
+                serverFiles,
+              }).then(() => {
+                // After the scan is complete, write the barrel files.
+                const clientBarrelContent = generateBarrelContent(
+                  clientFiles,
+                  projectRootDir,
+                );
+                writeFileSync(CLIENT_BARREL_PATH, clientBarrelContent);
+
+                const serverBarrelContent = generateBarrelContent(
+                  serverFiles,
+                  projectRootDir,
+                );
+                writeFileSync(SERVER_BARREL_PATH, serverBarrelContent);
+              });
+            }
+
+            await scanPromise;
+            return originalInit.apply(this, args);
+          };
+        }
+      }
+
+      for (const [envName, env] of Object.entries(config.environments || {})) {
+        if (envName === "client" || envName === "ssr") {
+          env.optimizeDeps ??= {};
+          env.optimizeDeps.include ??= [];
+          env.optimizeDeps.include.push(
             CLIENT_BARREL_EXPORT_PATH,
             SERVER_BARREL_EXPORT_PATH,
-          ];
+          );
         }
       }
     },

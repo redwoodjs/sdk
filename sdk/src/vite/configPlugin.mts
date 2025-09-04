@@ -6,7 +6,7 @@ import debug from "debug";
 
 import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import { buildApp } from "./buildApp.mjs";
-import { EXTERNAL_MODULES } from "./constants.mjs";
+import { externalModules } from "./constants.mjs";
 
 const log = debug("rwsdk:vite:config");
 
@@ -135,7 +135,7 @@ export const configPlugin = ({
           optimizeDeps: {
             noDiscovery: false,
             entries: [workerEntryPathname],
-            exclude: EXTERNAL_MODULES,
+            exclude: externalModules,
             include: ["rwsdk/__ssr", "rwsdk/__ssr_bridge"],
             esbuildOptions: {
               jsx: "automatic",

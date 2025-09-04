@@ -106,6 +106,11 @@ export const redwoodPlugin = async (
 
   return [
     devServerTimingPlugin(),
+    directiveModulesDevPlugin({
+      clientFiles,
+      serverFiles,
+      projectRootDir,
+    }),
     devServerConstantPlugin(),
     configPlugin({
       silent: options.silent ?? false,
@@ -165,11 +170,6 @@ export const redwoodPlugin = async (
     prismaPlugin({ projectRootDir }),
     linkerPlugin({ projectRootDir }),
     directivesFilteringPlugin({
-      clientFiles,
-      serverFiles,
-      projectRootDir,
-    }),
-    directiveModulesDevPlugin({
       clientFiles,
       serverFiles,
       projectRootDir,
