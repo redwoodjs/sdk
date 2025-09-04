@@ -1,13 +1,16 @@
-import { ResolvedConfig } from "vite";
+// @ts-ignore
+import { OnLoadArgs, OnResolveArgs, PluginBuild } from "esbuild";
+
+import { Alias, ResolvedConfig } from "vite";
 import fsp from "node:fs/promises";
 import { hasDirective } from "./hasDirective.mjs";
 import path from "node:path";
 import debug from "debug";
+import { ensureAliasArray } from "./ensureAliasArray.mjs";
 import { getViteEsbuild } from "./getViteEsbuild.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
-import { createIdResolver } from "vite";
 
-const log = debug("rwsdk:runDirectivesScan");
+const log = debug("rwsdk:vite:run-directives-scan");
 
 // Copied from Vite's source code.
 // https://github.com/vitejs/vite/blob/main/packages/vite/src/shared/utils.ts
@@ -19,68 +22,18 @@ const isObject = (value: unknown): value is Record<string, any> =>
 const externalRE = /^(https?:)?\/\//;
 const isExternalUrl = (url: string): boolean => externalRE.test(url);
 
-export const runDirectivesScan = async ({
-  rootConfig,
+function createEsbuildScanPlugin({
   clientFiles,
   serverFiles,
+  aliases,
+  projectRootDir,
 }: {
-  rootConfig: ResolvedConfig;
   clientFiles: Set<string>;
   serverFiles: Set<string>;
-}) => {
-  const workerEnvOptions = rootConfig.environments.worker;
-
-  if (!workerEnvOptions) {
-    throw new Error("Could not find worker environment configuration.");
-  }
-
-  const scanEnvironment = await createEnvironment(
-    "rwsdk-scan",
-    rootConfig,
-    workerEnvOptions as ResolvedEnvironmentOptions,
-  );
-  await scanEnvironment.init();
-
-  const esbuild = await getViteEsbuild(rootConfig.root);
-  const input = scanEnvironment.build.rollupOptions?.input;
-  let entries: string[];
-
-  if (Array.isArray(input)) {
-    entries = input;
-  } else if (typeof input === "string") {
-    entries = [input];
-  } else if (isObject(input)) {
-    entries = Object.values(input);
-  } else {
-    entries = [];
-  }
-
-  if (entries.length === 0) {
-    log(
-      "No entries found for directives scan in environment '%s', skipping.",
-      scanEnvironment.name,
-    );
-    return;
-  }
-
-  const absoluteEntries = entries.map((entry) =>
-    path.resolve(rootConfig.root, entry),
-  );
-
-  log(
-    "Starting directives scan for environment '%s' with entries:",
-    scanEnvironment.name,
-    absoluteEntries,
-  );
-
-  const packageCache: Map<any, any> = new Map();
-  const resolveId = createIdResolver(rootConfig, {
-    scan: true,
-    asSrc: false,
-    packageCache,
-  });
-
-  const esbuildScanPlugin: Plugin = {
+  aliases: Alias[];
+  projectRootDir: string;
+}) {
+  return {
     name: "rwsdk:esbuild-scan-plugin",
     setup(build: PluginBuild) {
       // Match Vite's behavior by externalizing assets and special queries.
@@ -117,27 +70,42 @@ export const runDirectivesScan = async ({
           return null;
         }
 
-        const resolvedPath = await resolveId(
-          scanEnvironment,
-          args.path,
-          args.importer,
-        );
+        // 1. First, try to resolve aliases.
+        for (const { find, replacement } of aliases) {
+          const findPattern =
+            find instanceof RegExp ? find : new RegExp(`^${find}(\\/.*)?$`);
 
-        if (resolvedPath && path.isAbsolute(resolvedPath)) {
-          const resolved = await build.resolve(resolvedPath, {
-            importer: args.importer,
-            resolveDir: args.resolveDir,
-            kind: args.kind,
-            pluginData: { rwsdkScanResolver: true },
-          });
+          if (findPattern.test(args.path)) {
+            const newPath = args.path.replace(
+              findPattern,
+              (_match: any, rest: any) => {
+                // `rest` is the captured group `(\\/.*)?` from the regex.
+                return replacement + (rest || "");
+              },
+            );
 
-          if (resolved.errors.length === 0) {
-            return resolved;
+            const resolved = await build.resolve(newPath, {
+              importer: args.importer,
+              resolveDir: args.resolveDir,
+              kind: args.kind,
+              pluginData: { rwsdkScanResolver: true },
+            });
+
+            if (resolved.errors.length === 0) {
+              return resolved;
+            }
+
+            log(
+              "Could not resolve aliased path '%s' (from '%s'). Marking as external. Errors: %s",
+              newPath,
+              args.path,
+              resolved.errors.map((e: any) => e.text).join(", "),
+            );
+            return { external: true };
           }
         }
 
-        // Fallback to esbuild's default resolver if Vite couldn't resolve or
-        // if the path is not absolute (e.g., a builtin).
+        // 2. If no alias matches, try esbuild's default resolver.
         const resolved = await build.resolve(args.path, {
           importer: args.importer,
           resolveDir: args.resolveDir,
@@ -145,6 +113,7 @@ export const runDirectivesScan = async ({
           pluginData: { rwsdkScanResolver: true },
         });
 
+        // If it fails, mark as external but don't crash.
         if (resolved.errors.length > 0) {
           log(
             "Could not resolve '%s'. Marking as external. Errors: %s",
@@ -170,11 +139,11 @@ export const runDirectivesScan = async ({
           const contents = await fsp.readFile(args.path, "utf-8");
           if (hasDirective(contents, "use client")) {
             log("Discovered 'use client' in:", args.path);
-            clientFiles.add(normalizeModulePath(args.path, rootConfig.root));
+            clientFiles.add(normalizeModulePath(args.path, projectRootDir));
           }
           if (hasDirective(contents, "use server")) {
             log("Discovered 'use server' in:", args.path);
-            serverFiles.add(normalizeModulePath(args.path, rootConfig.root));
+            serverFiles.add(normalizeModulePath(args.path, projectRootDir));
           }
           return { contents, loader: "default" };
         } catch (e) {
@@ -184,18 +153,73 @@ export const runDirectivesScan = async ({
       });
     },
   };
+}
+
+export async function runDirectivesScan({
+  rootConfig,
+  envName,
+  clientFiles,
+  serverFiles,
+}: {
+  rootConfig: ResolvedConfig;
+  envName: string;
+  clientFiles: Set<string>;
+  serverFiles: Set<string>;
+}) {
+  const esbuild = await getViteEsbuild(rootConfig.root);
+  const env = rootConfig.environments[envName];
+  const input = env.build.rollupOptions?.input;
+  let entries: string[];
+
+  if (Array.isArray(input)) {
+    entries = input;
+  } else if (typeof input === "string") {
+    entries = [input];
+  } else if (isObject(input)) {
+    entries = Object.values(input);
+  } else {
+    entries = [];
+  }
+
+  if (entries.length === 0) {
+    log(
+      "No entries found for directives scan in environment '%s', skipping.",
+      envName,
+    );
+    return;
+  }
+
+  const absoluteEntries = entries.map((entry) =>
+    path.resolve(rootConfig.root, entry),
+  );
+
+  log(
+    "Starting directives scan for environment '%s' with entries:",
+    envName,
+    absoluteEntries,
+  );
 
   try {
-    await esbuild.build({
+    const result = await esbuild.build({
       entryPoints: absoluteEntries,
       bundle: true,
       write: false,
       platform: "node",
       format: "esm",
       logLevel: "silent",
-      plugins: [esbuildScanPlugin],
+      metafile: true,
+      plugins: [
+        createEsbuildScanPlugin({
+          clientFiles,
+          serverFiles,
+          aliases: ensureAliasArray(env),
+          projectRootDir: rootConfig.root,
+        }),
+      ],
     });
+
+    return result.metafile;
   } catch (e: any) {
     throw new Error(`RWSDK directive scan failed:\n${e.message}`);
   }
-};
+}

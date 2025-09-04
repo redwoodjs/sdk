@@ -27,15 +27,15 @@ export async function buildApp({
   serverFiles: Set<string>;
   projectRootDir: string;
 }) {
-  const workerEnv = builder.environments.worker;
   await runDirectivesScan({
     rootConfig: builder.config,
-    environment: workerEnv,
+    envName: "worker",
     clientFiles,
     serverFiles,
   });
 
   console.log("Building worker to discover used client components...");
+  const workerEnv = builder.environments.worker;
   process.env.RWSDK_BUILD_PASS = "worker";
   await builder.build(workerEnv);
 
