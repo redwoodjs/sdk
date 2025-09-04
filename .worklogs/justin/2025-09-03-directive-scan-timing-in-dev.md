@@ -203,3 +203,19 @@ The implementation was refactored to align with this "absolutify-first" strategy
 
 **Outcome:**
 This approach is more robust and less prone to edge cases than simply skipping the plugin system. It correctly delineates responsibilities: `enhanced-resolve` handles file system path resolution, and the Vite plugins handle transformations and special resolution logic on a predictable, normalized path. This solved the circular dependency and `defineApp` export error in a more fundamental way, leading to a successful and reliable build.
+
+
+### Attempt #13: A Pragmatic Retreat to Blocking and Optimization
+
+After achieving a working directive scan, performance analysis on a large project revealed that the scan could take 5-6 seconds, blocking Vite's `optimizeDeps` process and delaying server startup.
+
+An attempt was made to run the scan in the background and intercept Vite's internal `scanProcessing` promise to avoid blocking, but this approach proved to be fraught with complexity. The core issue is that many parts of Vite's startup process depend on the results of dependency scanning, and trying to work around this adds fragility. The risk of introducing subtle race conditions was high, and the maintenance burden of tracking Vite's internal APIs was not worth the perceived performance gain.
+
+**Decision:**
+The most pragmatic solution is to accept that the directive scan is a necessary, blocking step in the startup process. Instead of hiding the work with complex machinery, the focus will shift to:
+1.  **Transparency:** Clearly inform the user that the scan is running so the delay is understandable.
+2.  **Optimization:** Make the scan itself as fast as possible to minimize the blocking time.
+
+**The New Plan:**
+1.  **Add Logging:** User-facing `console.log` messages will be added to the start and end of the `runDirectivesScan` function. This will provide clear feedback during both `dev` and `build`.
+2.  **Optimize Resolution:** The Vite-aware resolver will be optimized. It will first attempt to resolve modules using a standard `enhanced-resolve` configuration. Only if this fast path fails will it proceed to the more expensive step of iterating through the full Vite plugin chain. The assumption is that the majority of resolutions would be the same if enhance-resolve did them, or if the vite plugin chain did them.

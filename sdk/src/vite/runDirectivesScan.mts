@@ -33,6 +33,8 @@ export const runDirectivesScan = async ({
   clientFiles: Set<string>;
   serverFiles: Set<string>;
 }) => {
+  console.log("\n🔍 Scanning for 'use client' and 'use server' directives...");
+
   // Set environment variable to indicate scanning is in progress
   process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE = "true";
 
@@ -215,5 +217,6 @@ export const runDirectivesScan = async ({
   } finally {
     // Always clear the scanning flag when done
     delete process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE;
+    console.log("✅ Scan complete.");
   }
 };
