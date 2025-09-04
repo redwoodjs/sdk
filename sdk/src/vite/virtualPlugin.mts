@@ -6,12 +6,22 @@ export const virtualPlugin = (name: string, load: Plugin["load"]): Plugin => {
   return {
     name: `rwsdk:virtual-${name}`,
     resolveId(source, _importer, _options) {
+      // Skip during directive scanning to avoid performance issues
+      if (process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE) {
+        return;
+      }
+      
       if (source === name || source.startsWith(`${name}?`)) {
         return `\0${source}`;
       }
       return;
     },
     load(id, options) {
+      // Skip during directive scanning to avoid performance issues
+      if (process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE) {
+        return;
+      }
+      
       if (id === `\0${name}` || id.startsWith(`\0${name}?`)) {
         return (load as any).apply(this, [id, options]);
       }

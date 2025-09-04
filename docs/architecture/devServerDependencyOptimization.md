@@ -28,16 +28,17 @@ Instead of feeding hundreds of individual files to `optimizeDeps`, we consolidat
 
 This approach is superior because it works *with* the bundler's expectations. By providing only a single entry point (the barrel file) to the optimizer, we signal that all the modules within it are part of a single, large, interconnected dependency graph. This allows `esbuild` to create one large, efficient pre-bundled chunk instead of hundreds of small ones, which directly solves the request waterfall problem.
 
-### 3. "Just-in-Time" Generation to Solve Timing Issues
+### 3. Synchronized Execution to Solve Timing Issues
 
 The final piece of the puzzle is *how* and *when* to provide this barrel file. A critical challenge is the timing of our scan relative to the `client` and `ssr` optimizers that consume its output. Vite's dev server starts all processes in parallel, creating a race condition.
 
-Instead of trying to patch Vite's startup lifecycle, the solution is a **"Just-in-Time"** strategy that generates the barrel file at the exact moment it's first needed.
+The solution is to **synchronize the scan execution** with Vite's dependency optimization lifecycle by patching the optimizer's initialization method.
 
-1.  **Inject a Trigger Plugin:** We inject a custom `esbuild` plugin into the `optimizeDeps` configuration for the `client` and `ssr` environments. This plugin uses a pair of hooks to manage the process:
-    -   **`onResolve`:** A targeted hook filters *only* for our virtual barrel file paths (e.g., `rwsdk/__client_barrel`). Its only job is to tag these paths with a special namespace (e.g., `"rwsdk-barrel"`). This signals `esbuild` that these are not normal files and should be handled by our `onLoad` hook.
-    -   **`onLoad`:** This hook is configured to fire only for modules tagged with our `"rwsdk-barrel"` namespace.
+1.  **Patch `optimizer.init`:** During Vite's `configResolved` hook, we patch the `init` method of the `client` and `ssr` environment optimizers. This ensures our directive scan runs *before* any dependency optimization begins.
 
-2.  **Run the Scan on Demand:** The *first time* the `onLoad` hook is triggered, it has access to the now-fully-initialized `ViteDevServer` instance and its environments. It then executes our `runDirectivesScan`. A promise ensures the scan is only ever run once.
+2.  **Plugin Hook Skipping for Performance:** To address performance issues when using Vite's `createIdResolver` during scanning, we implement a plugin hook skipping strategy:
+    -   **Scanning State Tracking:** Set `process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE = "true"` during scan execution
+    -   **Early Returns:** All our plugin hooks (`resolveId`, `load`, `transform`) check for this environment variable and return early to avoid expensive operations during scanning
+    -   **Cleanup:** Always clear the environment variable in a `finally` block
 
-3.  **Generate Content In-Memory:** Once the scan is complete, the `onLoad` hook generates the appropriate barrel file content in memory and returns it directly to `esbuild` via the `contents` property. This completely bypasses the filesystem.
+3.  **Physical Barrel Files:** Once the scan completes, we write the barrel file contents to physical files on disk. This approach is simpler and more reliable than in-memory generation, and the files serve as a cache for subsequent operations.

@@ -128,6 +128,11 @@ export const createDirectiveLookupPlugin = async ({
       }
     },
     resolveId(source) {
+      // Skip during directive scanning to avoid performance issues
+      if (process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE) {
+        return;
+      }
+
       if (source !== `${config.virtualModuleName}.js`) {
         return null;
       }

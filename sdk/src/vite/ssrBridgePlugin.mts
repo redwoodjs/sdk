@@ -134,6 +134,11 @@ export const ssrBridgePlugin = ({
       }
     },
     async load(id) {
+      // Skip during directive scanning to avoid performance issues
+      if (process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE) {
+        return;
+      }
+
       if (
         id.startsWith(VIRTUAL_SSR_PREFIX) &&
         this.environment.name === "worker"
