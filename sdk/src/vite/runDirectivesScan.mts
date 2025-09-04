@@ -92,7 +92,6 @@ function createEsbuildScanPlugin({
           }
         } catch (e) {
           console.log("######", { input: args.path, output: e });
-          process.exit(1);
           log(
             "Resolver failed for '%s' from '%s', marking as external. Error: %s",
             args.path,

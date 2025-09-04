@@ -43,11 +43,17 @@ export const mapViteResolveToEnhancedResolveOptions = (
 
   const resolveOptions = (env.resolve || {}) as typeof viteConfig.resolve;
 
+  // Merge root config aliases with environment-specific aliases
+  const mergedAlias = {
+    ...(viteConfig.resolve?.alias ? mapAlias(viteConfig.resolve.alias) : {}),
+    ...(resolveOptions.alias ? mapAlias(resolveOptions.alias) : {}),
+  };
+
   return {
     // File system is required by enhanced-resolve.
     fileSystem: fs,
     // Map Vite's resolve options to enhanced-resolve's options.
-    alias: resolveOptions.alias ? mapAlias(resolveOptions.alias) : undefined,
+    alias: Object.keys(mergedAlias).length > 0 ? mergedAlias : undefined,
     conditionNames: resolveOptions.conditions,
     mainFields: resolveOptions.mainFields,
     extensions: resolveOptions.extensions,
