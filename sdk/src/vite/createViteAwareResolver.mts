@@ -35,7 +35,7 @@ class VitePluginResolverPlugin {
       .getHook(this.source)
       .tapAsync(
         "VitePluginResolverPlugin",
-        async (request: any, resolveContext: any, callback: any) => {
+        (request: any, resolveContext: any, callback: any) => {
           const plugins = this.environment?.plugins;
           if (!plugins) {
             return callback();
@@ -74,169 +74,107 @@ class VitePluginResolverPlugin {
 
           debug("Trying to resolve %s from %s", request.request, request.path);
 
-          // For relative imports, absolutify them first using enhanced-resolve's base resolution
-          // This follows Vite's pattern of normalizing paths before passing to plugins
+          // This function encapsulates the logic to process Vite plugins for a given request.
+          const runPluginProcessing = async (currentRequest: any) => {
+            for (const plugin of plugins) {
+              const resolveIdHandler = plugin.resolveId;
+              if (!resolveIdHandler) continue;
+
+              let handlerFn: Function | undefined;
+              if (typeof resolveIdHandler === "function") {
+                handlerFn = resolveIdHandler;
+              } else if (
+                typeof resolveIdHandler === "object" &&
+                typeof resolveIdHandler.handler === "function"
+              ) {
+                handlerFn = resolveIdHandler.handler;
+              }
+
+              if (!handlerFn) continue;
+
+              try {
+                const result = await handlerFn.call(
+                  pluginContext,
+                  currentRequest.request,
+                  currentRequest.path,
+                  { scan: true },
+                );
+
+                if (!result) continue;
+
+                const resolvedId =
+                  typeof result === "string" ? result : result.id;
+
+                if (resolvedId) {
+                  debug(
+                    "Plugin '%s' resolved '%s' -> '%s'",
+                    plugin.name,
+                    currentRequest.request,
+                    resolvedId,
+                  );
+                  return callback(null, {
+                    ...currentRequest,
+                    path: resolvedId,
+                  });
+                }
+              } catch (e) {
+                debug(
+                  "Plugin '%s' failed while resolving '%s': %s",
+                  plugin.name,
+                  currentRequest.request,
+                  (e as Error).message,
+                );
+              }
+            }
+            // If no plugin resolves, fall back to enhanced-resolve's default behavior
+            debug(
+              "No Vite plugin resolved '%s', falling back.",
+              currentRequest.request,
+            );
+            callback();
+          };
+
+          // For relative imports, we first resolve them to an absolute path.
+          // This aligns with Vite's behavior of normalizing paths before plugin processing.
           if (
             request.request.startsWith("../") ||
             request.request.startsWith("./")
           ) {
-            debug("Absolutifying relative import before plugin resolution: %s", request.request);
-            
-            return this.baseResolver(
+            debug(
+              "Absolutifying relative import before plugin resolution: %s",
+              request.request,
+            );
+            this.baseResolver(
               {},
               request.path,
               request.request,
               {},
               (err: any, result: any) => {
-                if (!err && result) {
-                  debug("Absolutified %s -> %s", request.request, result);
-                  // Now pass the absolute path through Vite plugins
-                  const absoluteRequest = { ...request, request: result };
-                  // Continue with plugin processing for the absolute path
-                  this.processPlugins(plugins, absoluteRequest, pluginContext, callback);
-                } else {
-                  debug("Failed to absolutify %s: %s", request.request, err?.message || "not found");
-                  callback();
+                if (err || !result) {
+                  debug(
+                    "Failed to absolutify %s: %s",
+                    request.request,
+                    err?.message || "not found",
+                  );
+                  // If we can't absolutify, we can't proceed.
+                  return callback();
                 }
-              }
+                debug("Absolutified %s -> %s", request.request, result);
+                // Now, run the Vite plugin pipeline with the newly absolutified path.
+                const absoluteRequest = { ...request, request: result };
+                runPluginProcessing(absoluteRequest).catch((e) => {
+                  debug("Error in plugin processing: %s", e.message);
+                  callback(); // Ensure we always call the callback on error
+                });
+              },
             );
+          } else {
+            // For non-relative imports, process them directly.
+            runPluginProcessing(request).catch((e) => {
+              debug("Error in plugin processing: %s", e.message);
+              callback(); // Ensure we always call the callback on error
+            });
           }
-
-          // For non-relative imports, process plugins directly
-          this.processPlugins(plugins, request, pluginContext, callback);
-        },
-      );
-  }
-
-  private async processPlugins(plugins: any[], request: any, pluginContext: any, callback: any) {
-    for (const plugin of plugins) {
-            // Handle different plugin formats - some have resolveId as a function, others as an object
-            const resolveIdHandler = plugin.resolveId;
-            if (!resolveIdHandler) continue;
-
-            try {
-              let result;
-
-              // Debug the plugin structure to understand what we're dealing with
-              debug(
-                "Plugin %s attempting to resolve %s",
-                plugin.name,
-                request.request,
-              );
-
-              // Check if it's a function or an object with handler
-              if (typeof resolveIdHandler === "function") {
-                result = await resolveIdHandler.call(
-                  pluginContext,
-                  request.request,
-                  request.path,
-                  { scan: true, isEntry: false, attributes: {} },
-                );
-              } else if (
-                resolveIdHandler &&
-                typeof resolveIdHandler === "object"
-              ) {
-                // Handle object format - check for handler property
-                debug(
-                  "Plugin %s object keys: %s",
-                  plugin.name,
-                  Object.keys(resolveIdHandler),
-                );
-
-                if (
-                  resolveIdHandler.handler &&
-                  typeof resolveIdHandler.handler === "function"
-                ) {
-                  result = await resolveIdHandler.handler.call(
-                    pluginContext,
-                    request.request,
-                    request.path,
-                    { scan: true, isEntry: false, attributes: {} },
-                  );
-                } else {
-                  // Skip plugins with unsupported resolveId object format
-                  debug(
-                    "Plugin %s has unsupported resolveId object format",
-                    plugin.name,
-                  );
-                  continue;
-                }
-              } else {
-                // Skip plugins with unsupported resolveId format
-                debug(
-                  "Plugin %s has unsupported resolveId format: %s",
-                  plugin.name,
-                  typeof resolveIdHandler,
-                );
-                continue;
-              }
-
-              if (result) {
-                debug("Plugin %s returned result:", plugin.name, result);
-                const resolvedId =
-                  typeof result === "string" ? result : result.id;
-                if (resolvedId) {
-                  debug(
-                    "Plugin %s resolved %s -> %s",
-                    plugin.name,
-                    request.request,
-                    resolvedId,
-                  );
-                  debug(
-                    "Returning to enhanced-resolve: { path: %s }",
-                    resolvedId,
-                  );
-                  return callback(null, {
-                    ...request,
-                    path: resolvedId,
-                  });
-                } else if (typeof result === "object" && result.id === null) {
-                  // Plugin explicitly returned null, skip to next plugin
-                  continue;
-                } else if (
-                  typeof result === "object" &&
-                  result.mappedId &&
-                  !result.resolved
-                ) {
-                  // Plugin (like vite-tsconfig-paths) mapped the alias but didn't resolve to a file
-                  // Update the request with the mapped path and continue resolution
-                  debug(
-                    "Plugin %s mapped %s -> %s, continuing resolution",
-                    plugin.name,
-                    request.request,
-                    result.mappedId,
-                  );
-                  request = {
-                    ...request,
-                    request: result.mappedId,
-                  };
-                  // Don't return yet, let enhanced-resolve handle extension resolution
-                }
-              }
-            } catch (e) {
-              debug(
-                "Plugin %s failed to resolve %s: %s",
-                plugin.name,
-                request.request,
-                (e as any)?.stack || (e as any)?.message || e,
-              );
-              // Continue to next plugin
-            }
-          }
-
-            // No plugin could resolve, continue with normal resolution
-            debug(
-              "No Vite plugin resolved %s, falling back to enhanced-resolve",
-              request.request,
-            );
-            callback();
-          };
-
-          // Execute the plugin processing
-          processPlugins().catch((e) => {
-            debug("Error in plugin processing: %s", e.message);
-            callback();
-          });
         },
       );
   }
