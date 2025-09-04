@@ -10,17 +10,17 @@ To handle client components that might be internal to a third-party library (and
 
 This forced `optimizeDeps` into an inefficient mode. Seeing hundreds of individual files as entry points, its underlying bundler (`esbuild`) would perform extreme code-splitting. It created a multitude of tiny, fragmented chunks to maximize code reuse between all of these "entry points" and their shared dependencies. This led directly to the in-browser request waterfall, where the browser would have to make hundreds of sequential requests to render a single page, causing noticeable lag.
 
-## The Solution: A Standalone Scan with "Just-in-Time" Barrel Generation
+## The Solution: A Standalone Scan with Barrel Generation
 
-The final, robust solution works *with* Vite's architecture rather than fighting it. It gives us full control over the discovery process and then communicates the results to Vite in a way that its optimizer is designed to handle. The strategy has three main parts.
+The solution works *with* Vite's architecture rather than fighting it. It gives us full control over the discovery process and then communicates the results to Vite in a way that its optimizer is designed to handle. The strategy has three main parts.
 
 ### 1. A Standalone `esbuild` Scan
 
-The core of the solution is our own, separate `esbuild` scan.
--   **Configuration-Aware Resolution:** The scanner's key feature is its use of Vite's own internal module resolver (`createIdResolver`). By passing it the application's final, resolved Vite configuration, we ensure its module resolution perfectly mimics the application's runtime behavior, making the scan both accurate and reliable.
--   **Exhaustive Discovery:** This scan starts from the application's entry points and traverses the entire dependency graph. It uses a custom `esbuild` plugin—internal to our scanning process—that reads the content of every resolved module and checks for `"use client"` or `"use server"` directives, populating a complete and accurate list of all directive-marked files.
+The core of the solution is our own, separate `esbuild` scan that runs before Vite's `optimizeDeps` process begins. This scan traverses the application's entire dependency graph to create a definitive list of all directive-marked modules.
 
-With this scan complete, we have a definitive list of all directive-marked files. The next challenge is how to communicate this list to Vite's optimizer.
+The scanner's most critical feature is its custom, Vite-aware module resolver, which ensures its dependency traversal perfectly mimics the application's actual runtime behavior, correctly handling complex project configurations like TypeScript path aliases.
+
+For a detailed explanation of the scanner's implementation and the rationale behind its design, see the [Directive Scanning and Module Resolution](./directiveScanningAndResolution.md) documentation.
 
 ### 2. The "Barrel File" Strategy to Unify the Dependency Graph
 
@@ -30,15 +30,14 @@ This approach is superior because it works *with* the bundler's expectations. By
 
 ### 3. Synchronized Execution to Solve Timing Issues
 
-The final piece of the puzzle is *how* and *when* to provide this barrel file. A critical challenge is the timing of our scan relative to the `client` and `ssr` optimizers that consume its output. Vite's dev server starts all processes in parallel, creating a race condition.
+The final piece of the puzzle is *how* and *when* to provide this barrel file. A critical challenge is the timing of our scan relative to the `client` and `ssr` optimizers that consume its output. Vite's dev server starts many processes in parallel, creating a potential race condition.
 
-The solution is to **synchronize the scan execution** with Vite's dependency optimization lifecycle by patching the optimizer's initialization method.
+The solution is to **synchronize the scan execution** with Vite's dependency optimization lifecycle using a hybrid blocking strategy.
 
-1.  **Patch `optimizer.init`:** During Vite's `configResolved` hook, we patch the `init` method of the `client` and `ssr` environment optimizers. This ensures our directive scan runs *before* any dependency optimization begins.
+1.  **Asynchronous Scan Start:** The scan is initiated in the `configureServer` hook but is not awaited, allowing the Vite server to start up quickly.
 
-2.  **Plugin Hook Skipping for Performance:** To address performance issues when using Vite's `createIdResolver` during scanning, we implement a plugin hook skipping strategy:
-    -   **Scanning State Tracking:** Set `process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE = "true"` during scan execution
-    -   **Early Returns:** All our plugin hooks (`resolveId`, `load`, `transform`) check for this environment variable and return early to avoid expensive operations during scanning
-    -   **Cleanup:** Always clear the environment variable in a `finally` block
+2.  **Optimizer Blocking:** A custom `esbuild` plugin is injected into `optimizeDeps`. Its `onStart` hook awaits the scan's completion, pausing the optimizer until the barrel files are ready.
 
-3.  **Physical Barrel Files:** Once the scan completes, we write the barrel file contents to physical files on disk. This approach is simpler and more reliable than in-memory generation, and the files serve as a cache for subsequent operations.
+3.  **Request Blocking:** A Vite middleware is added to block any incoming browser requests until the scan is complete. This prevents vite from processing _application_ code (Optimizer blocking point above is only for `node_modules` code), until the scan has completed.
+
+This approach balances perceived performance with correctness, ensuring that neither the optimizer nor the browser receives incomplete information. Once the scan completes, we write the barrel file contents to physical files on disk. This is simpler and more reliable than in-memory generation, and the files serve as a cache for subsequent operations.

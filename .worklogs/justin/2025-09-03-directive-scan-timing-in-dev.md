@@ -219,3 +219,20 @@ The most pragmatic solution is to accept that the directive scan is a necessary,
 **The New Plan:**
 1.  **Add Logging:** User-facing `console.log` messages will be added to the start and end of the `runDirectivesScan` function. This will provide clear feedback during both `dev` and `build`.
 2.  **Optimize Resolution:** The Vite-aware resolver will be optimized. It will first attempt to resolve modules using a standard `enhanced-resolve` configuration. Only if this fast path fails will it proceed to the more expensive step of iterating through the full Vite plugin chain. The assumption is that the majority of resolutions would be the same if enhance-resolve did them, or if the vite plugin chain did them.
+
+### Attempt #14: A Hybrid Blocking Strategy for Perceived Performance
+
+While accepting the scan as a blocking step was the correct decision for stability, further iteration revealed a way to improve the user's perceived startup time without re-introducing complexity or race conditions. The solution is a hybrid blocking approach that starts the scan asynchronously but blocks the specific Vite processes that depend on its output.
+
+This allows the Vite server itself to initialize quickly, while ensuring correctness.
+
+**The Implementation:**
+
+1.  **Asynchronous Scan Start:** In the `configureServer` hook, the directive scan is initiated, but not awaited. This allows the hook to complete and Vite's server startup to proceed without being blocked.
+
+2.  **Optimizer Blocking:** A custom `esbuild` plugin is injected into the `optimizeDeps` configuration for the `client` and `ssr` environments. This plugin's `onStart` hook awaits the scan promise, effectively pausing the dependency optimization process until the barrel files are ready. This is the critical step that prevents `optimizeDeps` from running with incomplete information.
+
+3.  **Request Middleware Blocking:** A Vite middleware is added that also awaits the scan promise. This blocks any incoming browser requests for application code from being served until the scan is complete. This prevents vite from processing _application_ code (Optimizer blocking point above is only for `node_modules` code), until the scan has completed.
+
+**Outcome:**
+This approach strikes an effective balance between performance and simplicity. The dev server feels more responsive because its initial startup is not blocked. At the same time, the two blocking mechanisms ensure that neither the dependency optimizer nor the browser receives incomplete information, preserving the stability of the previous blocking approach without the significant startup delay.

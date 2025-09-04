@@ -5,10 +5,6 @@ import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { CLIENT_BARREL_PATH, SERVER_BARREL_PATH } from "../lib/constants.mjs";
 import { runDirectivesScan } from "./runDirectivesScan.mjs";
 
-// Awaiting this promise will ensure that the worker environment's directive
-// scan is complete.
-let scanPromise: Promise<void> | null = null;
-
 export const VIRTUAL_CLIENT_BARREL_ID = "virtual:rwsdk:client-module-barrel";
 export const VIRTUAL_SERVER_BARREL_ID = "virtual:rwsdk:server-module-barrel";
 
@@ -54,46 +50,38 @@ export const directiveModulesDevPlugin = ({
     name: "rwsdk:directive-modules-dev",
 
     configureServer(server) {
-      // context(justinvdm, 4 Sep 2025): We need to patch the optimizer's init
-      // method to ensure our directive scan runs before Vite's dependency
-      // optimization process begins.
-      for (const env of Object.values(server.environments)) {
-        if (env.name === "client" || env.name === "ssr") {
-          const optimizer = env.depsOptimizer;
-          if (!optimizer) {
-            continue;
-          }
+      // Start the directive scan as soon as the server is configured.
+      // We don't await it here, allowing Vite to continue its startup.
+      scanPromise = runDirectivesScan({
+        rootConfig: server.config,
+        environment: server.environments.worker,
+        clientFiles,
+        serverFiles,
+      }).then(() => {
+        // After the scan is complete, write the barrel files.
+        const clientBarrelContent = generateBarrelContent(
+          clientFiles,
+          projectRootDir,
+        );
+        writeFileSync(CLIENT_BARREL_PATH, clientBarrelContent);
 
-          const originalInit = optimizer.init;
+        const serverBarrelContent = generateBarrelContent(
+          serverFiles,
+          projectRootDir,
+        );
+        writeFileSync(SERVER_BARREL_PATH, serverBarrelContent);
+      });
 
-          optimizer.init = async function (...args: any[]) {
-            if (!scanPromise) {
-              scanPromise = runDirectivesScan({
-                rootConfig: server.config,
-                environment: server.environments.worker,
-                clientFiles,
-                serverFiles,
-              }).then(() => {
-                // After the scan is complete, write the barrel files.
-                const clientBarrelContent = generateBarrelContent(
-                  clientFiles,
-                  projectRootDir,
-                );
-                writeFileSync(CLIENT_BARREL_PATH, clientBarrelContent);
-
-                const serverBarrelContent = generateBarrelContent(
-                  serverFiles,
-                  projectRootDir,
-                );
-                writeFileSync(SERVER_BARREL_PATH, serverBarrelContent);
-              });
-            }
-
-            await scanPromise;
-            return originalInit.apply(this, args as any);
-          };
+      // context(justinvdm, 4 Sep 2025): Add middleware to block incoming
+      // requests until the scan is complete. This gives us a single hook for
+      // preventing app code being processed by vite until the scan is complete.
+      // This improves perceived startup time by not blocking Vite's optimizer.
+      server.middlewares.use(async (_req, _res, next) => {
+        if (scanPromise) {
+          await scanPromise;
         }
-      }
+        next();
+      });
     },
 
     configResolved(config) {
@@ -108,14 +96,26 @@ export const directiveModulesDevPlugin = ({
       writeFileSync(SERVER_BARREL_PATH, "");
 
       for (const [envName, env] of Object.entries(config.environments || {})) {
-        if (envName === "client" || envName === "ssr") {
-          env.optimizeDeps ??= {};
-          env.optimizeDeps.include ??= [];
-          env.optimizeDeps.include.push(
-            CLIENT_BARREL_EXPORT_PATH,
-            SERVER_BARREL_EXPORT_PATH,
-          );
-        }
+        env.optimizeDeps ??= {};
+        env.optimizeDeps.include ??= [];
+        env.optimizeDeps.include.push(
+          CLIENT_BARREL_EXPORT_PATH,
+          SERVER_BARREL_EXPORT_PATH,
+        );
+
+        env.optimizeDeps.esbuildOptions ??= {};
+        env.optimizeDeps.esbuildOptions.plugins ??= [];
+        env.optimizeDeps.esbuildOptions.plugins.push({
+          name: "rwsdk:block-optimizer-for-scan",
+          setup(build) {
+            build.onStart(async () => {
+              // context(justinvdm, 4 Sep 2025): We await the scan promise
+              // here because we want to block the optimizer until the scan is
+              // complete.
+              await scanPromise;
+            });
+          },
+        });
       }
     },
   };

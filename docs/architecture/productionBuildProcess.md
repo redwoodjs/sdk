@@ -18,12 +18,11 @@ To resolve this, we implement a five-step process that begins with a broad disco
 
 ### Step 1: Initial Directive Scan
 
-Before any Vite environments are built, we run our own, separate `esbuild` scan on the application's `worker` entry point.
+Before any Vite environments are built, we run a standalone `esbuild` scan on the application's `worker` entry point to traverse the entire potential dependency graph and create a master list of every file that contains a `"use client"` or `"use server"` directive.
 
--   **Purpose:** To traverse the entire potential dependency graph and create a master list of every file that contains a `"use client"` or `"use server"` directive. This scan uses a custom `esbuild` plugin, internal to our scanning process, to inspect file contents.
--   **Vite Compatibility:** The scanner is built on `esbuild` but crucially uses Vite's own internal module resolver (`createIdResolver`). This ensures that its dependency traversal perfectly mimics the application's actual runtime behavior, correctly handling complex project configurations like `resolve.alias`.
+This scan uses a custom, Vite-aware module resolver that ensures its dependency traversal perfectly mimics the application's actual runtime behavior, correctly handling complex project configurations like TypeScript path aliases. This initial step provides a complete, albeit unfiltered, list of all potential directive modules.
 
-This initial step provides a complete, albeit unfiltered, list of all potential directive modules.
+For a detailed explanation of the scanner's implementation and the rationale behind its design, see the [Directive Scanning and Module Resolution](./directiveScanningAndResolution.md) documentation.
 
 ### Step 2: Worker Build (First Pass for Discovery & Tree-Shaking)
 
