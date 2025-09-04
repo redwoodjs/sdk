@@ -123,37 +123,10 @@ export const runDirectivesScan = async ({
           );
 
           if (resolvedPath && path.isAbsolute(resolvedPath)) {
-            const resolved = await build.resolve(resolvedPath, {
-              importer: args.importer,
-              resolveDir: args.resolveDir,
-              kind: args.kind,
-              pluginData: { rwsdkScanResolver: true },
-            });
-
-            if (resolved.errors.length === 0) {
-              return resolved;
-            }
+            return { id: resolvedPath };
           }
 
-          // Fallback to esbuild's default resolver if Vite couldn't resolve or
-          // if the path is not absolute (e.g., a builtin).
-          const resolved = await build.resolve(args.path, {
-            importer: args.importer,
-            resolveDir: args.resolveDir,
-            kind: args.kind,
-            pluginData: { rwsdkScanResolver: true },
-          });
-
-          if (resolved.errors.length > 0) {
-            log(
-              "Could not resolve '%s'. Marking as external. Errors: %s",
-              args.path,
-              resolved.errors.map((e: any) => e.text).join(", "),
-            );
-            return { external: true };
-          }
-
-          return resolved;
+          return { external: true };
         });
 
         build.onLoad(
