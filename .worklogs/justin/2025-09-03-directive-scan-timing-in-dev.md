@@ -156,20 +156,18 @@ Multiple Vite plugins were failing with this error because the plugin system nee
 **JavaScript heap out of memory**
 A circular dependency was discovered when Vite plugins called `this.resolve()` within their `resolveId` hooks. Since our `VitePluginResolverPlugin` was part of the main resolver, this created an infinite loop. The fix involved creating a separate `baseResolver` instance without our plugin for the plugin context's `resolve` method.
 
-## 13. Investigating `vite-tsconfig-paths` Integration
+## 13. Debugging the `vite-tsconfig-paths` Integration
 
-Further testing on a specific app highlighted an issue with `@/*` alias resolution. While the `VitePluginResolverPlugin` was correctly invoking plugins, aliases managed by `vite-tsconfig-paths` were failing. The investigation confirmed the precise mechanism of this plugin and how it interacts with the broader Vite ecosystem:
+With the `VitePluginResolverPlugin` in place, the architecture was designed to support plugins like `vite-tsconfig-paths` that perform dynamic resolution. However, testing on an application using `@/*` aliases exposed a flaw in the integration.
 
-**Confirmed Mechanism:**
-- `@/*` aliases defined in `tsconfig.json` (`"@/*": ["./src/*"]`) are handled by `vite-tsconfig-paths`, not Vite's `resolve.alias` system.
-- `vite-tsconfig-paths` reads TypeScript path configurations and uses Vite's `resolveId` hook for dynamic resolution.
-- Our `enhanced-resolve` configuration, by design, only receives Vite's static `resolve.alias` settings and does not inherently read `tsconfig.json`, making the `VitePluginResolverPlugin` essential for this integration.
+The problem was a breakdown in the execution: our plugin was not correctly handling the results (or lack thereof) from `vite-tsconfig-paths`.
 
-**The Resolution Process:**
-1. `vite-tsconfig-paths` attempts to resolve `@/app/Document` directly → fails (no extensions)
-2. `vite-tsconfig-paths` maps the alias to `/path/to/src/app/Document` and calls the plugin context's `resolve` method
-3. Our enhanced-resolve context resolver successfully finds `Document.tsx` using its extension resolution
-4. `vite-tsconfig-paths` should return this successful result to complete the resolution chain
+**The Resolution Process & Failure Point:**
+1.  `vite-tsconfig-paths` receives a request for `@/app/Document`.
+2.  It correctly maps the alias to a file path without an extension (e.g., `/path/to/src/app/Document`).
+3.  It then calls the `resolve` function provided by our plugin's context to find the actual file.
+4.  Our context resolver, powered by `enhanced-resolve`, successfully finds the file by trying different extensions (e.g., `/path/to/src/app/Document.tsx`).
+5.  **Failure Point:** Despite our resolver finding the correct file, `vite-tsconfig-paths` was not returning this successfully resolved path. It returned `undefined`, causing the overall resolution to fail.
 
 **Current Status:**
-The context resolution is working correctly - we can see in the logs that `@/app/Document` gets mapped and then resolved to `Document.tsx`. However, `vite-tsconfig-paths` appears to still be returning `undefined` instead of passing through the successful resolution. This suggests there may be an issue with how the async result from our context resolve function is being handled by the plugin, or there may be additional conditions that need to be met for the plugin to accept the resolution as valid.
+The investigation confirmed that our `baseResolver` within the plugin context is functioning correctly. The focus has now shifted to understanding why `vite-tsconfig-paths` is discarding the valid, resolved path it receives from our context resolver. This suggests an issue with how the async result is handled or a potential mismatch in the expected return format between our resolver and the plugin.
