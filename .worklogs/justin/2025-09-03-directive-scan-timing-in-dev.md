@@ -101,7 +101,7 @@ Many Vite plugins (such as `vite-tsconfig-paths`) don't add static aliases to th
 **Decision:**
 We will revert to using Vite's `createIdResolver` (Option 3) but with a new strategy to address the performance issues. The plan is to modify our own plugins to skip their hooks when they detect that a directive scan is in progress, reducing the complexity and potential for recursive loops that caused the original slowdown.
 
-## Attempt #8: Plugin Hook Skipping Strategy (Final Implementation)
+## Attempt #8: Plugin Hook Skipping Strategy
 
 **Implementation:**
 1. **Scanning State Tracking:** Use `process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE = "true"` to indicate when directive scanning is active
@@ -119,3 +119,12 @@ We will revert to using Vite's `createIdResolver` (Option 3) but with a new stra
 - `virtualPlugin` - `resolveId` and `load` hooks
 
 This approach maintains full Vite plugin compatibility through `createIdResolver` while avoiding the performance bottlenecks that occurred when our plugins were executing during the scan process. The directive scan can now use Vite's robust resolution logic without triggering expensive plugin operations.
+
+## Follow-up Issue: `vite-tsconfig-paths` Resolution
+
+After implementing the plugin hook skipping strategy, the directive scan is working but there's an issue where `vite-tsconfig-paths`' `resolveId` hook doesn't appear to be getting called during the directive scan. This suggests that either:
+1. The plugin hook skipping strategy is too aggressive and is preventing third-party plugins from running
+2. There's something about how `createIdResolver` works that doesn't trigger all plugin hooks as expected
+3. The timing or context of the scan is different from normal Vite resolution
+
+This needs further investigation to ensure TypeScript path mappings are properly resolved during scanning.
