@@ -1,6 +1,7 @@
 import resolve, { ResolveOptions } from "enhanced-resolve";
 import { Alias, ResolvedConfig } from "vite";
 import fs from "fs";
+import path from "path";
 import createDebug from "debug";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 
@@ -8,11 +9,20 @@ const debug = createDebug("rwsdk:vite:enhanced-resolve-plugin");
 
 // Enhanced-resolve plugin that wraps Vite plugin resolution
 class VitePluginResolverPlugin {
+  private enhancedResolver: any;
+
   constructor(
     private environment: any,
     private source = "resolve",
     private target = "resolved",
-  ) {}
+  ) {
+    // Create an enhanced-resolve instance for the plugin context
+    const baseOptions = mapViteResolveToEnhancedResolveOptions(
+      this.environment.config,
+      this.environment.name,
+    );
+    this.enhancedResolver = resolve.create(baseOptions);
+  }
 
   apply(resolver: any) {
     const target = resolver.ensureHook(this.target);
@@ -26,30 +36,31 @@ class VitePluginResolverPlugin {
             return callback();
           }
 
-          // Create a simple plugin context with resolve method
+          // Create a plugin context with enhanced-resolve-based resolve method
           const pluginContext = {
             environment: this.environment,
             resolve: async (id: string, importer?: string) => {
-              // Simple resolve that normalizes relative paths
-              try {
-                if (id.startsWith("./") || id.startsWith("../")) {
-                  const absolutePath = normalizeModulePath(
-                    id,
-                    importer || this.environment.config.root,
-                    { absolute: true },
-                  );
-                  return { id: absolutePath };
-                }
-                // For non-relative imports, return as-is
-                return { id };
-              } catch (e) {
-                debug(
-                  "Context resolve failed for %s: %s",
+              return new Promise<{ id: string } | null>((resolve) => {
+                this.enhancedResolver(
+                  {},
+                  importer || this.environment.config.root,
                   id,
-                  (e as Error).message,
+                  {},
+                  (err: any, result: any) => {
+                    if (!err && result) {
+                      debug("Context resolve: %s -> %s", id, result);
+                      resolve({ id: result });
+                    } else {
+                      debug(
+                        "Context resolve failed for %s: %s",
+                        id,
+                        err?.message || "not found",
+                      );
+                      resolve(null);
+                    }
+                  },
                 );
-                return null;
-              }
+              });
             },
           };
 
@@ -57,6 +68,10 @@ class VitePluginResolverPlugin {
 
           // This function encapsulates the logic to process Vite plugins for a given request.
           const runPluginProcessing = async (currentRequest: any) => {
+            debug(
+              "Available plugins:",
+              plugins.map((p: any) => p.name),
+            );
             for (const plugin of plugins) {
               const resolveIdHandler = plugin.resolveId;
               if (!resolveIdHandler) continue;
@@ -74,6 +89,11 @@ class VitePluginResolverPlugin {
               if (!handlerFn) continue;
 
               try {
+                debug(
+                  "Calling plugin '%s' for '%s'",
+                  plugin.name,
+                  currentRequest.request,
+                );
                 const result = await handlerFn.call(
                   pluginContext,
                   currentRequest.request,
@@ -81,12 +101,14 @@ class VitePluginResolverPlugin {
                   { scan: true },
                 );
 
+                debug("Plugin '%s' returned:", plugin.name, result);
+
                 if (!result) continue;
 
                 const resolvedId =
                   typeof result === "string" ? result : result.id;
 
-                if (resolvedId) {
+                if (resolvedId && resolvedId !== currentRequest.request) {
                   debug(
                     "Plugin '%s' resolved '%s' -> '%s'",
                     plugin.name,
@@ -97,6 +119,11 @@ class VitePluginResolverPlugin {
                     ...currentRequest,
                     path: resolvedId,
                   });
+                } else if (resolvedId === currentRequest.request) {
+                  debug(
+                    "Plugin '%s' returned unchanged ID, continuing to next plugin",
+                    plugin.name,
+                  );
                 }
               } catch (e) {
                 debug(
@@ -112,6 +139,28 @@ class VitePluginResolverPlugin {
               "No Vite plugin resolved '%s', falling back.",
               currentRequest.request,
             );
+
+            // For absolute paths, check if the file exists
+            if (path.isAbsolute(currentRequest.request)) {
+              try {
+                if (fs.existsSync(currentRequest.request)) {
+                  debug(
+                    "File exists, resolving to: %s",
+                    currentRequest.request,
+                  );
+                  return callback(null, {
+                    ...currentRequest,
+                    path: currentRequest.request,
+                  });
+                }
+              } catch (e) {
+                debug(
+                  "Error checking file existence: %s",
+                  (e as Error).message,
+                );
+              }
+            }
+
             callback();
           };
 
@@ -121,9 +170,11 @@ class VitePluginResolverPlugin {
             request.request.startsWith("./")
           ) {
             try {
+              // Use path.dirname to get the directory of the importer file
+              const importerDir = path.dirname(request.path);
               const absolutePath = normalizeModulePath(
                 request.request,
-                request.path,
+                importerDir,
                 { absolute: true },
               );
               debug("Absolutified %s -> %s", request.request, absolutePath);

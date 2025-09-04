@@ -140,7 +140,9 @@ export const runDirectivesScan = async ({
             return { external: true };
           }
 
+          log("onResolve called for:", args.path, "from:", args.importer);
           const resolved = await resolveId(args.path, args.importer);
+          log("Resolution result:", resolved);
           const resolvedPath = resolved?.id;
 
           if (resolvedPath && path.isAbsolute(resolvedPath)) {
@@ -150,20 +152,28 @@ export const runDirectivesScan = async ({
               rootConfig.root,
               { absolute: true },
             );
+            log("Normalized path:", normalizedPath);
             return { path: normalizedPath };
           }
 
+          log("Marking as external:", args.path, "resolved to:", resolvedPath);
           return { external: true };
         });
 
         build.onLoad(
           { filter: /\.(m|c)?[jt]sx?$/ },
           async (args: OnLoadArgs) => {
+            log("onLoad called for:", args.path);
             if (
               !args.path.startsWith("/") ||
               args.path.includes("virtual:") ||
               isExternalUrl(args.path)
             ) {
+              log("Skipping file due to filter:", args.path, {
+                startsWithSlash: args.path.startsWith("/"),
+                hasVirtual: args.path.includes("virtual:"),
+                isExternal: isExternalUrl(args.path),
+              });
               return null;
             }
 
