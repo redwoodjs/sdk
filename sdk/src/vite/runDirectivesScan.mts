@@ -107,11 +107,6 @@ export const runDirectivesScan = async ({
         );
 
         build.onResolve({ filter: /.*/ }, async (args: OnResolveArgs) => {
-          // Prevent infinite recursion.
-          if (args.pluginData?.rwsdkScanResolver) {
-            return null;
-          }
-
           if (externalModules.includes(args.path)) {
             return { external: true };
           }
