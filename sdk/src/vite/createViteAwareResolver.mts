@@ -2,34 +2,19 @@ import resolve, { ResolveOptions } from "enhanced-resolve";
 import { Alias, ResolvedConfig } from "vite";
 import fs from "fs";
 import createDebug from "debug";
+import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 
 const debug = createDebug("rwsdk:vite:enhanced-resolve-plugin");
 
 // Enhanced-resolve plugin that wraps Vite plugin resolution
 class VitePluginResolverPlugin {
-  private baseResolver: any;
-  private viteConfig: ResolvedConfig;
-  private envName: string;
-
   constructor(
     private environment: any,
-    viteConfig: ResolvedConfig,
-    envName: string,
     private source = "resolve",
     private target = "resolved",
-  ) {
-    this.viteConfig = viteConfig;
-    this.envName = envName;
-  }
+  ) {}
 
   apply(resolver: any) {
-    // Create a separate base resolver without our plugin to avoid circular calls
-    const baseOptions = mapViteResolveToEnhancedResolveOptions(
-      this.viteConfig,
-      this.envName,
-    );
-    this.baseResolver = resolve.create(baseOptions);
-
     const target = resolver.ensureHook(this.target);
     resolver
       .getHook(this.source)
@@ -41,34 +26,30 @@ class VitePluginResolverPlugin {
             return callback();
           }
 
-          // Create a proper plugin context with resolve method
+          // Create a simple plugin context with resolve method
           const pluginContext = {
             environment: this.environment,
             resolve: async (id: string, importer?: string) => {
-              // Use enhanced-resolve with full extension resolution capabilities
-              // This allows vite-tsconfig-paths to properly resolve mapped paths
-              // Return format matches Vite's resolveId result: { id: string } | null
-              return new Promise<{ id: string } | null>((resolve) => {
-                this.baseResolver(
-                  {},
-                  importer || this.environment.config.root,
+              // Simple resolve that normalizes relative paths
+              try {
+                if (id.startsWith("./") || id.startsWith("../")) {
+                  const absolutePath = normalizeModulePath(
+                    id,
+                    importer || this.environment.config.root,
+                    { absolute: true },
+                  );
+                  return { id: absolutePath };
+                }
+                // For non-relative imports, return as-is
+                return { id };
+              } catch (e) {
+                debug(
+                  "Context resolve failed for %s: %s",
                   id,
-                  {},
-                  (err: any, result: any) => {
-                    if (!err && result) {
-                      debug("Context resolve: %s -> %s", id, result);
-                      resolve({ id: result });
-                    } else {
-                      debug(
-                        "Context resolve failed for %s: %s",
-                        id,
-                        err?.message || "not found",
-                      );
-                      resolve(null);
-                    }
-                  },
+                  (e as Error).message,
                 );
-              });
+                return null;
+              }
             },
           };
 
@@ -134,45 +115,37 @@ class VitePluginResolverPlugin {
             callback();
           };
 
-          // For relative imports, we first resolve them to an absolute path.
-          // This aligns with Vite's behavior of normalizing paths before plugin processing.
+          // For relative imports, normalize them to absolute paths first
           if (
             request.request.startsWith("../") ||
             request.request.startsWith("./")
           ) {
-            debug(
-              "Absolutifying relative import before plugin resolution: %s",
-              request.request,
-            );
-            this.baseResolver(
-              {},
-              request.path,
-              request.request,
-              {},
-              (err: any, result: any) => {
-                if (err || !result) {
-                  debug(
-                    "Failed to absolutify %s: %s",
-                    request.request,
-                    err?.message || "not found",
-                  );
-                  // If we can't absolutify, we can't proceed.
-                  return callback();
-                }
-                debug("Absolutified %s -> %s", request.request, result);
-                // Now, run the Vite plugin pipeline with the newly absolutified path.
-                const absoluteRequest = { ...request, request: result };
-                runPluginProcessing(absoluteRequest).catch((e) => {
-                  debug("Error in plugin processing: %s", e.message);
-                  callback(); // Ensure we always call the callback on error
-                });
-              },
-            );
+            try {
+              const absolutePath = normalizeModulePath(
+                request.request,
+                request.path,
+                { absolute: true },
+              );
+              debug("Absolutified %s -> %s", request.request, absolutePath);
+
+              const absoluteRequest = { ...request, request: absolutePath };
+              runPluginProcessing(absoluteRequest).catch((e) => {
+                debug("Error in plugin processing: %s", e.message);
+                callback();
+              });
+            } catch (e) {
+              debug(
+                "Failed to absolutify %s: %s",
+                request.request,
+                (e as Error).message,
+              );
+              callback();
+            }
           } else {
-            // For non-relative imports, process them directly.
+            // For non-relative imports, process them directly
             runPluginProcessing(request).catch((e) => {
               debug("Error in plugin processing: %s", e.message);
-              callback(); // Ensure we always call the callback on error
+              callback();
             });
           }
         },
@@ -267,7 +240,7 @@ export const createViteAwareResolver = (
 
   // Add Vite plugin resolver if environment is provided
   const plugins = environment
-    ? [new VitePluginResolverPlugin(environment, viteConfig, envName)]
+    ? [new VitePluginResolverPlugin(environment)]
     : [];
 
   const enhancedResolveOptions: ResolveOptions = {
