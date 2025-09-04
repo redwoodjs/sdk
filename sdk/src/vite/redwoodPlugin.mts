@@ -106,12 +106,12 @@ export const redwoodPlugin = async (
 
   return [
     devServerTimingPlugin(),
+    devServerConstantPlugin(),
     directiveModulesDevPlugin({
       clientFiles,
       serverFiles,
       projectRootDir,
     }),
-    devServerConstantPlugin(),
     configPlugin({
       silent: options.silent ?? false,
       projectRootDir,

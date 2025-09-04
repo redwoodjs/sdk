@@ -50,6 +50,10 @@ export const directiveModulesDevPlugin = ({
     name: "rwsdk:directive-modules-dev",
 
     configureServer(server) {
+      if (!process.env.VITE_IS_DEV_SERVER || process.env.RWSDK_WORKER_RUN) {
+        return;
+      }
+
       // Start the directive scan as soon as the server is configured.
       // We don't await it here, allowing Vite to continue its startup.
       scanPromise = runDirectivesScan({
