@@ -12,14 +12,39 @@ import { Aside, FileTree } from '@astrojs/starlight/components';
 
 import { PackageManagers } from "starlight-package-managers";
 
+<Aside type="note" title="What You'll Accomplish">
+  By the end of this lesson, you'll have:
+    - A working database with tables to store job applications, companies, and contacts
+    - Understanding of how different pieces of data connect to each other (relationships)
+    - The ability to view and manage your database using Prisma Studio
+    - Sample data in your database so you can start building features
+    - Knowledge of how to make changes to your database structure safely using migrations
+</Aside>
+
+## Why Do We Need a Database?
+
+Right now our app can't remember anything. When you refresh the page,
+everything is gone. A database lets our app store and remember information
+permanently, like your job applications.
+
+## What is SQLite?
+
+For our job application tracker, we're using SQLite as our database. SQLite is a lightweight, file-based database that's perfect for getting started with database development.
+
+Unlike larger database systems like PostgreSQL or MySQL that run as separate servers, SQLite stores all your data in a single file on your computer. This makes it incredibly easy to set up - there's no complicated server configuration or installation process. You just create a file, and you have a working database.
+
+SQLite is production-ready and powers many applications you probably use every day. Plus, it works seamlessly with Cloudflare's infrastructure.
+
 ## Setting up our Database Tables or Models
 
-For this project, we'll use [Prisma](https://www.prisma.io/) as our ORM (Object Relational Mapper). This makes it easy to define our database and generate migrations.
+For this project, we'll use [Prisma](https://www.prisma.io/) as our ORM (Object Relational Mapper). An ORM is a tool that acts as a translator between your JavaScript code and your database - instead of writing raw SQL commands like `SELECT * FROM users`, you can write JavaScript like `db.user.findMany()`. This makes it much easier to work with databases because you can use familiar JavaScript syntax, and Prisma automatically generates the complex SQL for you. It also helps prevent common database errors and makes it simple to define your database structure and create migrations.
 
 <Aside type="note" title="What's a migration?">
-  A migration is a change to the database schema. It's a way to keep track of the changes we make to the database.
+  Think of a migration like a recipe for changing your database. When you need to add a new table, remove a column, or change how data is stored, you create a migration that contains step-by-step instructions for making those changes.
 
-  One of the great things about using Prisma is that it generates the migrations and SQL code so we don't need to. We simply update the schema, and it handles the rest.
+  Why are migrations important? Imagine you're working with a team - when someone adds a new feature that needs a database change, they create a migration file. Now everyone on the team can run that same migration to update their local database to match. Without migrations, you'd have to manually tell everyone "hey, go add this new table with these exact columns" - and that gets messy fast.
+
+  Prisma makes this process much easier. Instead of writing complex SQL commands by hand, you just update your schema file (which looks like regular code), and Prisma automatically generates the migration files with all the correct SQL. It's like having a translator that converts your simple schema changes into the technical database commands needed to make them happen.
 </Aside>
 
 I like to start by going through the [application design files](https://www.figma.com/design/nqBPIIfe0MO4W8zOfW4oae/Redwood-Reloaded-Tutorial?node-id=1-3&t=9gzbWUrBb2G3qdoa-1) and making a list of all the tables (models) and fields we need.
@@ -31,7 +56,7 @@ We need models for:
 1. Users
 2. Job Applications
 
-**The "trick" with database design is to prevent duplication.** For example, we want to store the company information for each job application. There's a chance we'll have multiple job applications for the same company. If we store the company information directly in the `Application` model, we might have duplicate entries. This could create all kinds of problems. For example, is it `RedwoodSDK`, `redwoodsdk`, `redwood-sdk`, or `RedwoodSdk`?
+**The "trick" with database design is to prevent duplication.** For example, we want to store the company information for each job application. There's a chance we'll have multiple job applications for the same company. If we store the company information directly in the `Application` model, we might have duplicate entries. This could create all kinds of problems. If something changes, every instance of the company information would need to be updated. Plus, there are also formatting issues to consider: is it `RedwoodSDK`, `redwoodsdk`, `redwood-sdk`, or `RedwoodSdk`?
 
 Instead, we can store the company information in a separate model, with a single entry for each company, and "link" it to the relevant job application.
 
@@ -229,9 +254,15 @@ model User {
 
 This looks good, but we haven't defined any of the relationships between the models (Other than the preexisting relationship between `User` and `Credential` models, defined in the starter template).
 
-## Relationships
+## What are Database Relationships?
 
-There are several different types of relationships:
+A relationship in database terms describes how data in one table connects to data in another table. Think of it like connections between people in real life - you might have relationships with your coworkers, family members, or friends. In our job application tracker, we have similar connections between our data.
+
+For example, every job application belongs to a specific company, and every company can have multiple job applications associated with it. This creates a relationship between our Application table and Company table. Without relationships, we'd have duplicate information -- we'd have to store all the company information (name, address, website) separately in every single application record.
+
+Relationships solve this problem by letting us store company information once in a Company table, and then simply reference which company each application belongs to. This keeps our data organized, prevents duplication, and makes it much easier to maintain and update information over time.
+
+There are different types of relationships depending on how the data connects. For example, one company can have many job applications (like if you apply to RedwoodSDK multiple times), but each individual application belongs to only one company. Understanding these connection patterns helps us design a database that's efficient, organized, and easy to work with.
 
 ### **One-to-one**
 A one-to-one relationship is a relationship where a record in one table is associated with exactly one record in another table.

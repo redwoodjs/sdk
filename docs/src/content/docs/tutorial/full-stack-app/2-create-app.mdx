@@ -10,6 +10,13 @@ import { FileTree, Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/compon
 
 import { PackageManagers } from "starlight-package-managers";
 
+<Aside type="note" title="What You'll Accomplish">
+  By the end of this lesson, you'll have:
+    - A working RedwoodSDK application running locally
+    - A styled login page using modern UI components
+    - All the tools needed to build our job tracker interface
+</Aside>
+
 ## Project Generation and Structure
 
 The first thing we'll do is set up our project.
@@ -51,7 +58,17 @@ If you check it out in the browser! You're up and running!
 
 ![](./images/initial-look.png)
 
-Inside, the `applywize` directory, you should have the following files and folders:
+Inside, the `applywize` directory, you should have a bunch of different files and folders.
+
+Don't worry about understanding every file right now. Here are the key ones:
+
+- `src/app/pages/` - Where we'll build our application pages
+- `prisma/schema.prisma` - Database structure
+
+<details>
+<summary>
+If you want to see the full project structure, here it is:
+</summary>
 
 <FileTree>
 - .cursor # Cursor rules
@@ -102,6 +119,7 @@ Inside, the `applywize` directory, you should have the following files and folde
 </FileTree>
 
 At first glance, this might feel a little overwhelming, but as we build out our project, it will be easy to see how all the pieces fit together.
+</details>
 
 <Aside type="note" title="Starter Projects">
   For the tutorial, we're starting with the standard starter project. When you start building your own projects, if you use a different starter template, the files and folders may vary slightly.
@@ -115,7 +133,7 @@ The first time you run `pnpm dev`, it creates the `.wrangler` directory. This di
 
 Let's start by installing [TailwindCSS](https://tailwindcss.com/) and [shadcn/ui](https://ui.shadcn.com/).
 
-**TailwindCSS** is a utility-first CSS framework that makes it easy to style your components.
+**TailwindCSS** is a utility-first CSS framework that makes it easy to style your components. This means instead of writing custom CSS files, TailwindCSS lets us style components directly in our HTML using pre-built classes like `text-red-500` or `bg-blue-100`. This makes styling faster and more consistent.
 
 **shadcn/ui** components is a library of pre-built components making it easier for us to focus on the functionality of our app, rather than the styling and building of components.
 
@@ -573,3 +591,19 @@ You can find the final code for this step on [GitHub](https://github.com/redwood
 - [TailwindCSS](https://tailwindcss.com/)
 - [shadcn/ui](https://ui.shadcn.com/)
 
+<Aside type="note" title="What You've Accomplished">
+You've successfully created your first RedwoodSDK application 🎉  and have it running locally on your development server. Your project also includes TailwindCSS for styling and shadcn/ui for UI components. You've also customized your design system with fonts and colors to match the Applywise brand.
+
+Most importantly, you have a solid foundation to build on.
+
+#### What's Coming Next?
+
+In the next lesson, we'll focus on setting up the database that will power our application. You'll learn how to:
+
+- Design database tables to store job applications, companies, and contacts
+- Understand how different pieces of data connect through relationships
+- Set up Prisma as your database toolkit and create your first database schema
+- Run migrations to create your database structure
+- Add sample data so you can start building features
+
+</Aside>
