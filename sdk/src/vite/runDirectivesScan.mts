@@ -1,14 +1,13 @@
 // @ts-ignore
 import { OnLoadArgs, OnResolveArgs, PluginBuild } from "esbuild";
-
-import { Alias, ResolvedConfig } from "vite";
+import { ResolvedConfig } from "vite";
 import fsp from "node:fs/promises";
 import { hasDirective } from "./hasDirective.mjs";
 import path from "node:path";
 import debug from "debug";
-import { ensureAliasArray } from "./ensureAliasArray.mjs";
 import { getViteEsbuild } from "./getViteEsbuild.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
+import { createViteAwareResolver } from "./createViteAwareResolver.mjs";
 
 const log = debug("rwsdk:vite:run-directives-scan");
 
@@ -25,22 +24,20 @@ const isExternalUrl = (url: string): boolean => externalRE.test(url);
 function createEsbuildScanPlugin({
   clientFiles,
   serverFiles,
-  aliases,
   projectRootDir,
+  resolver,
 }: {
   clientFiles: Set<string>;
   serverFiles: Set<string>;
-  aliases: Alias[];
   projectRootDir: string;
+  resolver: (context: {}, path: string, request: string) => string | false;
 }) {
   return {
     name: "rwsdk:esbuild-scan-plugin",
     setup(build: PluginBuild) {
       // Match Vite's behavior by externalizing assets and special queries.
-      // This prevents esbuild from trying to bundle them, which would fail.
       const scriptFilter = /\.(c|m)?[jt]sx?$/;
       const specialQueryFilter = /[?&](?:url|raw|worker|sharedworker|inline)\b/;
-      // This regex is used to identify if a path has any file extension.
       const hasExtensionRegex = /\.[^/]+$/;
 
       build.onResolve({ filter: specialQueryFilter }, (args: OnResolveArgs) => {
@@ -51,9 +48,6 @@ function createEsbuildScanPlugin({
       build.onResolve(
         { filter: /.*/, namespace: "file" },
         (args: OnResolveArgs) => {
-          // Externalize if the path has an extension AND that extension is not a
-          // script extension. Extensionless paths are assumed to be scripts and
-          // are allowed to pass through for resolution.
           if (
             hasExtensionRegex.test(args.path) &&
             !scriptFilter.test(args.path)
@@ -65,26 +59,19 @@ function createEsbuildScanPlugin({
       );
 
       build.onResolve({ filter: /.*/ }, async (args: OnResolveArgs) => {
-        // Prevent infinite recursion.
         if (args.pluginData?.rwsdkScanResolver) {
           return null;
         }
 
-        // 1. First, try to resolve aliases.
-        for (const { find, replacement } of aliases) {
-          const findPattern =
-            find instanceof RegExp ? find : new RegExp(`^${find}(\\/.*)?$`);
+        try {
+          const resolvedPath = resolver(
+            {},
+            path.dirname(args.importer),
+            args.path,
+          );
 
-          if (findPattern.test(args.path)) {
-            const newPath = args.path.replace(
-              findPattern,
-              (_match: any, rest: any) => {
-                // `rest` is the captured group `(\\/.*)?` from the regex.
-                return replacement + (rest || "");
-              },
-            );
-
-            const resolved = await build.resolve(newPath, {
+          if (resolvedPath) {
+            const resolved = await build.resolve(resolvedPath, {
               importer: args.importer,
               resolveDir: args.resolveDir,
               kind: args.kind,
@@ -94,18 +81,11 @@ function createEsbuildScanPlugin({
             if (resolved.errors.length === 0) {
               return resolved;
             }
-
-            log(
-              "Could not resolve aliased path '%s' (from '%s'). Marking as external. Errors: %s",
-              newPath,
-              args.path,
-              resolved.errors.map((e: any) => e.text).join(", "),
-            );
-            return { external: true };
           }
+        } catch (e) {
+          log("Enhanced-resolve failed for '%s': %s", args.path, e);
         }
 
-        // 2. If no alias matches, try esbuild's default resolver.
         const resolved = await build.resolve(args.path, {
           importer: args.importer,
           resolveDir: args.resolveDir,
@@ -113,7 +93,6 @@ function createEsbuildScanPlugin({
           pluginData: { rwsdkScanResolver: true },
         });
 
-        // If it fails, mark as external but don't crash.
         if (resolved.errors.length > 0) {
           log(
             "Could not resolve '%s'. Marking as external. Errors: %s",
@@ -167,8 +146,7 @@ export async function runDirectivesScan({
   serverFiles: Set<string>;
 }) {
   const esbuild = await getViteEsbuild(rootConfig.root);
-  const env = rootConfig.environments[envName];
-  const input = env.build.rollupOptions?.input;
+  const input = rootConfig.environments[envName].build.rollupOptions?.input;
   let entries: string[];
 
   if (Array.isArray(input)) {
@@ -199,6 +177,8 @@ export async function runDirectivesScan({
     absoluteEntries,
   );
 
+  const resolver = createViteAwareResolver(rootConfig, envName);
+
   try {
     const result = await esbuild.build({
       entryPoints: absoluteEntries,
@@ -212,8 +192,8 @@ export async function runDirectivesScan({
         createEsbuildScanPlugin({
           clientFiles,
           serverFiles,
-          aliases: ensureAliasArray(env),
           projectRootDir: rootConfig.root,
+          resolver,
         }),
       ],
     });

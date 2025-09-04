@@ -63,3 +63,20 @@ This has prompted a new investigation. The performance issue does not seem to be
 The current hypothesis is that the fully initialized `worker` environment, with its complete set of plugins (including our own), is causing a slowdown or recursive loop within the resolver.
 
 To test this, the new strategy is to **run the scan in an isolated, temporary environment**. Instead of passing the live `server.environments.worker`, the `runDirectivesScan` function has been refactored to be self-contained. It now creates its own, temporary Vite `Environment` using the `worker`'s resolved config, but with a fresh, clean plugin container. If the scan is fast in this isolated context, it will confirm that some aspect of the live `worker` environment is the source of the performance problem.
+
+### 8. Final Attempt: Decoupling with `enhanced-resolve`
+
+The investigation into using an isolated environment hit a critical roadblock: Vite bundles its distribution files in a way that makes its internal modules, including the lightweight `ScanEnvironment`, inaccessible. This is a strong signal that relying on internal APIs is not a sustainable path.
+
+This led to a final strategic pivot, abandoning Vite's internal resolution mechanisms in favor of a robust, decoupled approach.
+
+**Options Considered:**
+
+1.  **Create a Stubbed Environment:** We considered creating a mock `Environment` object that would satisfy the API contract for the resolver. This was rejected as it would require re-implementing significant and complex parts of Vite's internal plugin container, making it extremely brittle.
+2.  **Adopt `enhanced-resolve`:** We decided to use the `enhanced-resolve` library, the same resolver used by Webpack. This provides a powerful and stable resolver that is independent of Vite's internals.
+
+**Decision and Rationale:**
+
+The decision was made to adopt `enhanced-resolve`. This approach is more robust, as it decouples our scanning process from Vite's internal APIs, protecting it from breaking changes in future Vite versions.
+
+The plan is to replace the simplistic, custom alias resolution logic in `runDirectivesScan.mts` with a new resolver powered by `enhanced-resolve`. This will involve creating a translation layer in a separate, tested module to map the `worker` environment's `resolve` configuration from the Vite config (`alias`, `conditions`, etc.) into the format that `enhanced-resolve` expects.
