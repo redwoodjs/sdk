@@ -1,4 +1,4 @@
-import { ResolveOptions, create } from "enhanced-resolve";
+import resolve, { ResolveOptions } from "enhanced-resolve";
 import { Alias, ResolvedConfig } from "vite";
 import fs from "fs";
 
@@ -54,6 +54,7 @@ export const mapViteResolveToEnhancedResolveOptions = (
     symlinks: resolveOptions.preserveSymlinks,
     // Add default node modules resolution.
     modules: ["node_modules"],
+    roots: [viteConfig.root],
   };
 };
 
@@ -65,5 +66,7 @@ export const createViteAwareResolver = (
     viteConfig,
     envName,
   );
-  return create(enhancedResolveOptions);
+  const { fs: _fs, ...rest } = enhancedResolveOptions;
+  console.log("###### enhancedResolveOptions", rest);
+  return resolve.create(enhancedResolveOptions);
 };

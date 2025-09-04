@@ -7,6 +7,7 @@ import { getViteEsbuild } from "./getViteEsbuild.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { createViteAwareResolver } from "./createViteAwareResolver.mjs";
 import { ResolveFunctionAsync } from "enhanced-resolve";
+import { EXTERNAL_MODULES } from "./constants.mjs";
 
 const log = debug("rwsdk:vite:run-directives-scan");
 
@@ -55,13 +56,8 @@ function createEsbuildScanPlugin({
       });
 
       build.onResolve({ filter: /.*/ }, async (args: any) => {
-        if (args.pluginData?.rwsdkScanResolver) {
-          return null;
-        }
-
-        // Let esbuild handle the entry points.
-        if (!args.importer) {
-          return null;
+        if (EXTERNAL_MODULES.includes(args.path)) {
+          return { external: true };
         }
 
         try {
@@ -69,7 +65,7 @@ function createEsbuildScanPlugin({
             (resolve, reject) => {
               resolver(
                 {},
-                path.dirname(args.importer),
+                args.importer ? path.dirname(args.importer) : projectRootDir,
                 args.path,
                 {},
                 (err, result) => {
@@ -95,6 +91,8 @@ function createEsbuildScanPlugin({
             return { external: true };
           }
         } catch (e) {
+          console.log("######", { input: args.path, output: e });
+          process.exit(1);
           log(
             "Resolver failed for '%s' from '%s', marking as external. Error: %s",
             args.path,
