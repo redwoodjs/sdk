@@ -41,12 +41,14 @@ export const mapViteResolveToEnhancedResolveOptions = (
     );
   }
 
-  const resolveOptions = (env.resolve || {}) as typeof viteConfig.resolve;
+  const envResolveOptions = (env.resolve || {}) as typeof viteConfig.resolve;
+  console.log("###### envResolveOptions", envResolveOptions);
+  console.log("###### viteConfig.resolve", viteConfig.resolve);
 
   // Merge root config aliases with environment-specific aliases
   const mergedAlias = {
     ...(viteConfig.resolve?.alias ? mapAlias(viteConfig.resolve.alias) : {}),
-    ...(resolveOptions.alias ? mapAlias(resolveOptions.alias) : {}),
+    ...(envResolveOptions.alias ? mapAlias(envResolveOptions.alias) : {}),
   };
 
   return {
@@ -54,10 +56,10 @@ export const mapViteResolveToEnhancedResolveOptions = (
     fileSystem: fs,
     // Map Vite's resolve options to enhanced-resolve's options.
     alias: Object.keys(mergedAlias).length > 0 ? mergedAlias : undefined,
-    conditionNames: resolveOptions.conditions,
-    mainFields: resolveOptions.mainFields,
-    extensions: resolveOptions.extensions,
-    symlinks: resolveOptions.preserveSymlinks,
+    conditionNames: envResolveOptions.conditions,
+    mainFields: envResolveOptions.mainFields,
+    extensions: envResolveOptions.extensions,
+    symlinks: envResolveOptions.preserveSymlinks,
     // Add default node modules resolution.
     modules: ["node_modules"],
     roots: [viteConfig.root],

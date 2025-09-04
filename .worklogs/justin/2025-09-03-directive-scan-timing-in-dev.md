@@ -80,3 +80,23 @@ This led to a final strategic pivot, abandoning Vite's internal resolution mecha
 The decision was made to adopt `enhanced-resolve`. This approach is more robust, as it decouples our scanning process from Vite's internal APIs, protecting it from breaking changes in future Vite versions.
 
 The plan is to replace the simplistic, custom alias resolution logic in `runDirectivesScan.mts` with a new resolver powered by `enhanced-resolve`. This will involve creating a translation layer in a separate, tested module to map the `worker` environment's `resolve` configuration from the Vite config (`alias`, `conditions`, etc.) into the format that `enhanced-resolve` expects.
+
+### 9. Attempt #7: Plugin Compatibility Roadblock
+
+The `enhanced-resolve` implementation successfully handled basic alias resolution and was much more performant than the previous `createIdResolver` approach. However, testing revealed a critical limitation: **plugin compatibility**.
+
+**The Problem:**
+Many Vite plugins (such as `vite-tsconfig-paths`) don't add static aliases to the Vite configuration. Instead, they use Vite's `resolveId` hook to dynamically resolve modules at runtime. Our `enhanced-resolve` approach operates at the `esbuild` level and completely bypasses Vite's plugin system, meaning we miss all the dynamic resolution logic that plugins provide.
+
+**Investigation:**
+- `vite-tsconfig-paths` parses `tsconfig.json` files and uses the `resolveId` hook to resolve TypeScript path mappings
+- Our `esbuild` plugin runs independently of Vite's plugin system and has no access to `this.resolve` or other Vite plugin APIs
+- This means projects using TypeScript path mappings or other plugin-based resolution will fail to resolve modules correctly during the directive scan
+
+**Options Considered:**
+1. **Hybrid Approach:** Try Vite's resolver first, fallback to `enhanced-resolve` - Not viable because `esbuild` plugins don't have access to Vite's `this.resolve` API
+2. **Extract Plugin Logic:** Manually replicate resolution logic from key plugins - Too brittle and maintenance-heavy
+3. **Return to `createIdResolver`:** Use Vite's resolver but with better isolation to avoid performance issues
+
+**Decision:**
+We will revert to using Vite's `createIdResolver` (Option 3) but with a new strategy to address the performance issues. The plan is to modify our own plugins to skip their hooks when they detect that a directive scan is in progress, reducing the complexity and potential for recursive loops that caused the original slowdown.
