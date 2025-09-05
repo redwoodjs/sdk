@@ -72,7 +72,14 @@ class VitePluginResolverPlugin {
               "Available plugins:",
               plugins.map((p: any) => p.name),
             );
+
             for (const plugin of plugins) {
+              // Skip vite:modulepreload-polyfill during scan as it incorrectly resolves
+              // entry points to the polyfill in Vite 7
+              if (plugin.name === "vite:modulepreload-polyfill") {
+                continue;
+              }
+
               const resolveIdHandler = plugin.resolveId;
               if (!resolveIdHandler) continue;
 
@@ -94,6 +101,7 @@ class VitePluginResolverPlugin {
                   plugin.name,
                   currentRequest.request,
                 );
+
                 const result = await handlerFn.call(
                   pluginContext,
                   currentRequest.request,
@@ -115,6 +123,7 @@ class VitePluginResolverPlugin {
                     currentRequest.request,
                     resolvedId,
                   );
+
                   return callback(null, {
                     ...currentRequest,
                     path: resolvedId,
