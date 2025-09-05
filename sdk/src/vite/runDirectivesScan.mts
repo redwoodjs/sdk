@@ -8,7 +8,11 @@ import debug from "debug";
 import { getViteEsbuild } from "./getViteEsbuild.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { externalModules } from "./constants.mjs";
-import { createViteAwareResolver } from "./createViteAwareResolver.mjs";
+import {
+  createViteAwareResolver,
+  mapViteResolveToEnhancedResolveOptions,
+} from "./createViteAwareResolver.mjs";
+import resolve from "enhanced-resolve";
 
 const log = debug("rwsdk:vite:run-directives-scan");
 
@@ -72,34 +76,35 @@ export const runDirectivesScan = async ({
     );
 
     // Use enhanced-resolve with Vite plugin integration for full compatibility
-    const resolver = createViteAwareResolver(
+    const workerResolver = createViteAwareResolver(
       rootConfig,
       environment.name,
       environment,
     );
 
-    const resolveId = async (
-      id: string,
-      importer?: string,
-    ): Promise<{ id: string } | null> => {
-      return new Promise((resolve) => {
-        resolver({}, importer || rootConfig.root, id, {}, (err, result) => {
-          if (!err && result) {
-            resolve({ id: result });
-          } else {
-            if (err) {
-              // Handle specific enhanced-resolve errors gracefully
-              const errorMessage = err.message || String(err);
-              if (errorMessage.includes("Package path . is not exported")) {
-                log("Package exports error for %s, marking as external", id);
-              } else {
-                log("Resolution failed for %s: %s", id, errorMessage);
-              }
-            }
-            resolve(null);
-          }
-        });
-      });
+    // Create a client resolver with browser conditions
+    // We'll use the mapViteResolveToEnhancedResolveOptions function directly
+    // to create a resolver with browser conditions
+    const clientResolveOptions = mapViteResolveToEnhancedResolveOptions(
+      rootConfig,
+      environment.name,
+    );
+
+    // Override the conditions to use browser conditions for client resolution
+    clientResolveOptions.conditionNames = ["browser", "module"];
+
+    const clientResolver = resolve.create(clientResolveOptions);
+
+    const moduleEnvironments = new Map<string, "client" | "worker">();
+    const fileContentCache = new Map<string, string>();
+
+    const readFileWithCache = async (path: string) => {
+      if (fileContentCache.has(path)) {
+        return fileContentCache.get(path)!;
+      }
+      const contents = await fsp.readFile(path, "utf-8");
+      fileContentCache.set(path, contents);
+      return contents;
     };
 
     const esbuildScanPlugin: Plugin = {
@@ -143,7 +148,78 @@ export const runDirectivesScan = async ({
           }
 
           log("onResolve called for:", args.path, "from:", args.importer);
-          const resolved = await resolveId(args.path, args.importer);
+
+          let importerEnv = moduleEnvironments.get(args.importer);
+
+          // If we don't know the importer's environment yet, check its content
+          if (
+            !importerEnv &&
+            args.importer &&
+            /\.(m|c)?[jt]sx?$/.test(args.importer)
+          ) {
+            try {
+              const importerContents = await readFileWithCache(args.importer);
+              if (hasDirective(importerContents, "use client")) {
+                importerEnv = "client";
+                log("Pre-detected importer 'use client' in:", args.importer);
+              } else if (hasDirective(importerContents, "use server")) {
+                importerEnv = "worker";
+                log("Pre-detected importer 'use server' in:", args.importer);
+              } else {
+                importerEnv = "worker"; // Default for entry points
+              }
+              moduleEnvironments.set(args.importer, importerEnv);
+            } catch (e) {
+              importerEnv = "worker"; // Default fallback
+              log(
+                "Could not pre-read importer, using worker environment:",
+                args.importer,
+              );
+            }
+          } else if (!importerEnv) {
+            importerEnv = "worker"; // Default for entry points or non-script files
+          }
+
+          log("Importer:", args.importer, "environment:", importerEnv);
+
+          const resolver =
+            importerEnv === "client" ? clientResolver : workerResolver;
+
+          const resolved = await new Promise<{ id: string } | null>(
+            (resolve) => {
+              resolver(
+                {},
+                args.importer || rootConfig.root,
+                args.path,
+                {},
+                (err, result) => {
+                  if (!err && result) {
+                    resolve({ id: result });
+                  } else {
+                    if (err) {
+                      const errorMessage = err.message || String(err);
+                      if (
+                        errorMessage.includes("Package path . is not exported")
+                      ) {
+                        log(
+                          "Package exports error for %s, marking as external",
+                          args.path,
+                        );
+                      } else {
+                        log(
+                          "Resolution failed for %s: %s",
+                          args.path,
+                          errorMessage,
+                        );
+                      }
+                    }
+                    resolve(null);
+                  }
+                },
+              );
+            },
+          );
+
           log("Resolution result:", resolved);
           const resolvedPath = resolved?.id;
 
@@ -155,7 +231,11 @@ export const runDirectivesScan = async ({
               { absolute: true },
             );
             log("Normalized path:", normalizedPath);
-            return { path: normalizedPath };
+
+            return {
+              path: normalizedPath,
+              pluginData: { inheritedEnv: importerEnv },
+            };
           }
 
           log("Marking as external:", args.path, "resolved to:", resolvedPath);
@@ -166,6 +246,9 @@ export const runDirectivesScan = async ({
           { filter: /\.(m|c)?[jt]sx?$/ },
           async (args: OnLoadArgs) => {
             log("onLoad called for:", args.path);
+            const inheritedEnv = args.pluginData?.inheritedEnv || "worker";
+            log("Inherited environment for", args.path, "is", inheritedEnv);
+
             if (
               !args.path.startsWith("/") ||
               args.path.includes("virtual:") ||
@@ -180,7 +263,9 @@ export const runDirectivesScan = async ({
             }
 
             try {
-              const contents = await fsp.readFile(args.path, "utf-8");
+              const contents = await readFileWithCache(args.path);
+
+              // The environment is determined in onResolve. Here we just populate the output sets.
               if (hasDirective(contents, "use client")) {
                 log("Discovered 'use client' in:", args.path);
                 clientFiles.add(
@@ -193,6 +278,7 @@ export const runDirectivesScan = async ({
                   normalizeModulePath(args.path, rootConfig.root),
                 );
               }
+
               return { contents, loader: "default" };
             } catch (e) {
               log("Could not read file during scan, skipping:", args.path, e);

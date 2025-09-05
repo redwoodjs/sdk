@@ -11,18 +11,28 @@ A core requirement of the framework is to know the location of all directive-mar
 
 Vite does not provide a stable, public API hook at the precise lifecycle point required—after the server and environments are fully configured, but before dependency optimization or the build process begins. This necessitates a custom scanning solution that runs ahead of Vite's own machinery.
 
-## The Solution: A Vite-Aware `esbuild` Scanner
+## The Solution: A Context-Aware `esbuild` Scanner
 
-We implement a standalone scan using `esbuild` for its high-performance traversal of the dependency graph. The key to making this scan accurate is a custom, Vite-aware module resolver.
+We implement a standalone scan using `esbuild` for its high-performance traversal of the dependency graph. The key to making this scan accurate is a custom, Vite-aware module resolver that can adapt its behavior based on the context of the code it is traversing.
 
-The resolver is built upon `enhanced-resolve` (the same resolver used by Webpack) and extended with a custom plugin. This plugin bridges the gap between `esbuild` and Vite by integrating Vite's own plugin ecosystem into the resolution process.
+### The Challenge of Conditional Exports
 
-When resolving a module, the process is:
-1.  The `esbuild` scan requests a module.
-2.  Our custom resolver first attempts to find it using a standard `enhanced-resolve` configuration.
-3.  If that fails, our custom plugin iterates through the application's configured Vite plugins (e.g., `vite-tsconfig-paths`) and calls their `resolveId` hooks, effectively asking each plugin if it knows how to resolve the module.
+A static resolver that uses a single environment configuration for the entire scan is insufficient. Modern packages often use conditional exports in their `package.json` to provide different modules for different environments (e.g., a "browser" version vs. a "react-server" version).
 
-This approach creates a resolver that is both fast and fully compatible with the dynamic, plugin-based resolution that makes Vite powerful. It is a simplified subset of Vite's full resolution logic, tailored specifically for the directive scan.
+A static scanner starting from a server entry point would use "worker" conditions for all resolutions. When it encounters a `"use client"` directive and traverses into client-side code, it would continue to use those same server conditions, incorrectly resolving client packages to their server-side counterparts and causing build failures.
+
+### Stateful, Dynamic Resolution
+
+To solve this, the scanner's resolver is stateful. It maintains the current environment context (`'worker'` or `'client'`) as it walks the dependency graph.
+
+When resolving an import, the process is as follows:
+1.  Before resolving the import, the scanner inspects the *importing* module for a `"use client"` or `"use server"` directive.
+2.  Based on the directive (or the inherited context from the file that imported it), the scanner selects one of two `enhanced-resolve` instances:
+    *   A **worker resolver**, configured with server-side conditions (e.g., `"react-server"`, `"workerd"`).
+    *   A **client resolver**, configured with browser-side conditions (e.g., `"browser"`, `"module"`).
+3.  The selected resolver is then used to find the requested module, ensuring the correct conditional exports are used. This resolution process is still fully integrated with Vite's plugin ecosystem, allowing user-configured aliases and paths to work seamlessly in both contexts.
+
+This stateful approach allows the scan to be context-aware, dynamically switching its resolution strategy as it crosses the boundaries defined by directives. It correctly mirrors the runtime behavior of the application, resulting in a reliable and accurate scan.
 
 ## Rationale and Alternatives
 
