@@ -72,35 +72,19 @@ export const runDirectivesScan = async ({
     );
 
     // Use enhanced-resolve with Vite plugin integration for full compatibility
-    const resolver = createViteAwareResolver(
+    const workerResolver = createViteAwareResolver(
       rootConfig,
       environment.name,
       environment,
     );
 
-    const resolveId = async (
-      id: string,
-      importer?: string,
-    ): Promise<{ id: string } | null> => {
-      return new Promise((resolve) => {
-        resolver({}, importer || rootConfig.root, id, {}, (err, result) => {
-          if (!err && result) {
-            resolve({ id: result });
-          } else {
-            if (err) {
-              // Handle specific enhanced-resolve errors gracefully
-              const errorMessage = err.message || String(err);
-              if (errorMessage.includes("Package path . is not exported")) {
-                log("Package exports error for %s, marking as external", id);
-              } else {
-                log("Resolution failed for %s: %s", id, errorMessage);
-              }
-            }
-            resolve(null);
-          }
-        });
-      });
-    };
+    const clientResolver = createViteAwareResolver(
+      rootConfig,
+      "client",
+      environment,
+    );
+
+    const moduleEnvironments = new Map<string, "client" | "worker">();
 
     const esbuildScanPlugin: Plugin = {
       name: "rwsdk:esbuild-scan-plugin",
@@ -143,7 +127,48 @@ export const runDirectivesScan = async ({
           }
 
           log("onResolve called for:", args.path, "from:", args.importer);
-          const resolved = await resolveId(args.path, args.importer);
+
+          const importerEnv = moduleEnvironments.get(args.importer) || "worker";
+          log("Importer:", args.importer, "environment:", importerEnv);
+
+          const resolver =
+            importerEnv === "client" ? clientResolver : workerResolver;
+
+          const resolved = await new Promise<{ id: string } | null>(
+            (resolve) => {
+              resolver(
+                {},
+                args.importer || rootConfig.root,
+                args.path,
+                {},
+                (err, result) => {
+                  if (!err && result) {
+                    resolve({ id: result });
+                  } else {
+                    if (err) {
+                      const errorMessage = err.message || String(err);
+                      if (
+                        errorMessage.includes("Package path . is not exported")
+                      ) {
+                        log(
+                          "Package exports error for %s, marking as external",
+                          args.path,
+                        );
+                      } else {
+                        log(
+                          "Resolution failed for %s: %s",
+                          args.path,
+                          errorMessage,
+                        );
+                      }
+                    }
+                    resolve(null);
+                  }
+                },
+              );
+            },
+          );
+
           log("Resolution result:", resolved);
           const resolvedPath = resolved?.id;
 
@@ -155,7 +180,10 @@ export const runDirectivesScan = async ({
               { absolute: true },
             );
             log("Normalized path:", normalizedPath);
-            return { path: normalizedPath };
+            return {
+              path: normalizedPath,
+              pluginData: { inheritedEnv: importerEnv },
+            };
           }
 
           log("Marking as external:", args.path, "resolved to:", resolvedPath);
@@ -166,6 +194,9 @@ export const runDirectivesScan = async ({
           { filter: /\.(m|c)?[jt]sx?$/ },
           async (args: OnLoadArgs) => {
             log("onLoad called for:", args.path);
+            const inheritedEnv = args.pluginData?.inheritedEnv || "worker";
+            log("Inherited environment for", args.path, "is", inheritedEnv);
+
             if (
               !args.path.startsWith("/") ||
               args.path.includes("virtual:") ||
@@ -181,18 +212,26 @@ export const runDirectivesScan = async ({
 
             try {
               const contents = await fsp.readFile(args.path, "utf-8");
+              let currentEnv: "client" | "worker" = inheritedEnv;
+
               if (hasDirective(contents, "use client")) {
                 log("Discovered 'use client' in:", args.path);
                 clientFiles.add(
                   normalizeModulePath(args.path, rootConfig.root),
                 );
+                currentEnv = "client";
               }
               if (hasDirective(contents, "use server")) {
                 log("Discovered 'use server' in:", args.path);
                 serverFiles.add(
                   normalizeModulePath(args.path, rootConfig.root),
                 );
+                currentEnv = "worker";
               }
+
+              moduleEnvironments.set(args.path, currentEnv);
+              log("Set environment for", args.path, "to", currentEnv);
+
               return { contents, loader: "default" };
             } catch (e) {
               log("Could not read file during scan, skipping:", args.path, e);
