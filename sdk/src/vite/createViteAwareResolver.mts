@@ -72,11 +72,24 @@ class VitePluginResolverPlugin {
               "Available plugins:",
               plugins.map((p: any) => p.name),
             );
+
             for (const plugin of plugins) {
               const resolveIdHandler = plugin.resolveId;
               if (!resolveIdHandler) continue;
 
               let handlerFn: Function | undefined;
+              let shouldApplyFilter = false;
+              let filter: {
+                id?:
+                  | string
+                  | RegExp
+                  | Array<string | RegExp>
+                  | {
+                      include?: string | RegExp | Array<string | RegExp>;
+                      exclude?: string | RegExp | Array<string | RegExp>;
+                    };
+              } | null = null;
+
               if (typeof resolveIdHandler === "function") {
                 handlerFn = resolveIdHandler;
               } else if (
@@ -84,9 +97,71 @@ class VitePluginResolverPlugin {
                 typeof resolveIdHandler.handler === "function"
               ) {
                 handlerFn = resolveIdHandler.handler;
+                shouldApplyFilter = true;
+                filter = resolveIdHandler.filter;
               }
 
               if (!handlerFn) continue;
+
+              if (shouldApplyFilter && filter?.id) {
+                const idFilter = filter.id;
+                let shouldSkip = false;
+
+                if (idFilter instanceof RegExp) {
+                  shouldSkip = !idFilter.test(currentRequest.request);
+                } else if (Array.isArray(idFilter)) {
+                  // Handle array of filters - matches if ANY filter matches
+                  shouldSkip = !idFilter.some((f: string | RegExp) =>
+                    f instanceof RegExp
+                      ? f.test(currentRequest.request)
+                      : f === currentRequest.request,
+                  );
+                } else if (typeof idFilter === "string") {
+                  shouldSkip = idFilter !== currentRequest.request;
+                } else if (typeof idFilter === "object" && idFilter !== null) {
+                  // Handle include/exclude object pattern
+                  const { include, exclude } = idFilter;
+                  let matches = true;
+
+                  // Check include patterns (if any)
+                  if (include) {
+                    const includePatterns = Array.isArray(include)
+                      ? include
+                      : [include];
+                    matches = includePatterns.some(
+                      (pattern: string | RegExp) =>
+                        pattern instanceof RegExp
+                          ? pattern.test(currentRequest.request)
+                          : pattern === currentRequest.request,
+                    );
+                  }
+
+                  // Check exclude patterns (if any) - exclude overrides include
+                  if (matches && exclude) {
+                    const excludePatterns = Array.isArray(exclude)
+                      ? exclude
+                      : [exclude];
+                    const isExcluded = excludePatterns.some(
+                      (pattern: string | RegExp) =>
+                        pattern instanceof RegExp
+                          ? pattern.test(currentRequest.request)
+                          : pattern === currentRequest.request,
+                    );
+                    matches = !isExcluded;
+                  }
+
+                  shouldSkip = !matches;
+                }
+
+                if (shouldSkip) {
+                  debug(
+                    "Skipping plugin '%s' due to filter mismatch for '%s'",
+                    plugin.name,
+                    currentRequest.request,
+                  );
+                  continue;
+                }
+              }
 
               try {
                 debug(
@@ -94,6 +169,7 @@ class VitePluginResolverPlugin {
                   plugin.name,
                   currentRequest.request,
                 );
+
                 const result = await handlerFn.call(
                   pluginContext,
                   currentRequest.request,
@@ -115,6 +191,7 @@ class VitePluginResolverPlugin {
                     currentRequest.request,
                     resolvedId,
                   );
+
                   return callback(null, {
                     ...currentRequest,
                     path: resolvedId,
