@@ -22,3 +22,24 @@ The implementation will be a surgical change confined to the `esbuild` plugin wi
     *   The module's definitive environment will then be stored in the `moduleEnvironments` map for use in subsequent resolutions.
 
 This approach will create a stateful, context-aware traversal of the dependency graph, ensuring that module resolution correctly adapts when crossing directive boundaries. The existing `clientFiles` and `serverFiles` sets will continue to function as the final output of the scan.
+
+## Investigation
+
+After implementing the changes, testing revealed that the context-aware resolution isn't working as expected. The error shows that `@ai-sdk/react` is being resolved with `react-server` conditions when it should use client conditions.
+
+The test project has a `worker.tsx` entry point that imports `ChatAgent.tsx`, which contains a `"use client"` directive. However, the debug output shows no client directives are being discovered during the scan. This suggests the issue might be in the directive detection logic or the file isn't being processed by the `onLoad` hook.
+
+## Solution
+
+The root cause was a timing issue combined with incorrect resolver configuration:
+
+1. **Timing Issue**: The original implementation detected directives in `onLoad` after imports had already been resolved in `onResolve`. This meant that when `ChatAgent.tsx` (with `"use client"`) imported `@ai-sdk/react`, the imports were resolved using worker conditions before the directive was discovered.
+
+2. **Resolver Configuration**: The client resolver was incorrectly trying to use a non-existent `"client"` environment, when it should have used browser conditions (`["browser", "module"]`) instead of the worker's react-server conditions.
+
+The fix involved:
+- Moving directive detection to the `onResolve` phase by reading file contents early
+- Creating a proper client resolver with browser conditions using `mapViteResolveToEnhancedResolveOptions` and overriding `conditionNames`
+- Ensuring that when a file with `"use client"` imports other modules, those imports are resolved with the correct client environment
+
+The solution successfully resolves the SWR react-server export error and allows the dev server to start correctly.

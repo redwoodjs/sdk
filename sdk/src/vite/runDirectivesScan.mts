@@ -8,7 +8,11 @@ import debug from "debug";
 import { getViteEsbuild } from "./getViteEsbuild.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { externalModules } from "./constants.mjs";
-import { createViteAwareResolver } from "./createViteAwareResolver.mjs";
+import {
+  createViteAwareResolver,
+  mapViteResolveToEnhancedResolveOptions,
+} from "./createViteAwareResolver.mjs";
+import resolve from "enhanced-resolve";
 
 const log = debug("rwsdk:vite:run-directives-scan");
 
@@ -78,11 +82,18 @@ export const runDirectivesScan = async ({
       environment,
     );
 
-    const clientResolver = createViteAwareResolver(
+    // Create a client resolver with browser conditions
+    // We'll use the mapViteResolveToEnhancedResolveOptions function directly
+    // to create a resolver with browser conditions
+    const clientResolveOptions = mapViteResolveToEnhancedResolveOptions(
       rootConfig,
-      "client",
-      environment,
+      environment.name,
     );
+
+    // Override the conditions to use browser conditions for client resolution
+    clientResolveOptions.conditionNames = ["browser", "module"];
+
+    const clientResolver = resolve.create(clientResolveOptions);
 
     const moduleEnvironments = new Map<string, "client" | "worker">();
 
@@ -128,7 +139,40 @@ export const runDirectivesScan = async ({
 
           log("onResolve called for:", args.path, "from:", args.importer);
 
-          const importerEnv = moduleEnvironments.get(args.importer) || "worker";
+          let importerEnv = moduleEnvironments.get(args.importer);
+
+          // If we don't know the importer's environment yet, check its content
+          if (
+            !importerEnv &&
+            args.importer &&
+            /\.(m|c)?[jt]sx?$/.test(args.importer)
+          ) {
+            try {
+              const importerContents = await fsp.readFile(
+                args.importer,
+                "utf-8",
+              );
+              if (hasDirective(importerContents, "use client")) {
+                importerEnv = "client";
+                log("Pre-detected importer 'use client' in:", args.importer);
+              } else if (hasDirective(importerContents, "use server")) {
+                importerEnv = "worker";
+                log("Pre-detected importer 'use server' in:", args.importer);
+              } else {
+                importerEnv = "worker"; // Default for entry points
+              }
+              moduleEnvironments.set(args.importer, importerEnv);
+            } catch (e) {
+              importerEnv = "worker"; // Default fallback
+              log(
+                "Could not pre-read importer, using worker environment:",
+                args.importer,
+              );
+            }
+          } else if (!importerEnv) {
+            importerEnv = "worker"; // Default for entry points or non-script files
+          }
+
           log("Importer:", args.importer, "environment:", importerEnv);
 
           const resolver =
@@ -180,6 +224,7 @@ export const runDirectivesScan = async ({
               { absolute: true },
             );
             log("Normalized path:", normalizedPath);
+
             return {
               path: normalizedPath,
               pluginData: { inheritedEnv: importerEnv },
@@ -214,23 +259,41 @@ export const runDirectivesScan = async ({
               const contents = await fsp.readFile(args.path, "utf-8");
               let currentEnv: "client" | "worker" = inheritedEnv;
 
+              // Check if we already determined the environment during onResolve
+              const existingEnv = moduleEnvironments.get(args.path);
+              if (existingEnv) {
+                currentEnv = existingEnv;
+                log(
+                  "Using pre-determined environment for",
+                  args.path,
+                  ":",
+                  currentEnv,
+                );
+              } else {
+                // Fallback: check for directives now
+                if (hasDirective(contents, "use client")) {
+                  currentEnv = "client";
+                }
+                if (hasDirective(contents, "use server")) {
+                  currentEnv = "worker";
+                }
+                moduleEnvironments.set(args.path, currentEnv);
+                log("Set environment for", args.path, "to", currentEnv);
+              }
+
+              // Add to appropriate sets for final output
               if (hasDirective(contents, "use client")) {
                 log("Discovered 'use client' in:", args.path);
                 clientFiles.add(
                   normalizeModulePath(args.path, rootConfig.root),
                 );
-                currentEnv = "client";
               }
               if (hasDirective(contents, "use server")) {
                 log("Discovered 'use server' in:", args.path);
                 serverFiles.add(
                   normalizeModulePath(args.path, rootConfig.root),
                 );
-                currentEnv = "worker";
               }
-
-              moduleEnvironments.set(args.path, currentEnv);
-              log("Set environment for", args.path, "to", currentEnv);
 
               return { contents, loader: "default" };
             } catch (e) {
