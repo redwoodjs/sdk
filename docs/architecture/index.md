@@ -20,6 +20,9 @@ This collection of documents provides a high-level overview of the core architec
 - [**Dev Server Dependency Optimization**](./devServerDependencyOptimization.md)
   This document outlines the strategy and mechanisms used to optimize the development server's dependency resolution and build performance.
 
+- [**Directive Scanning and Module Resolution**](./directiveScanningAndResolution.md)
+  This document details the internal `esbuild`-based scanner used to discover `"use client"` and `"use server"` directives, and the context-aware module resolution it employs to handle conditional exports correctly.
+
 - [**React's Hoisting Behavior for `<link>`**](./reactHoisting.md)
   A brief explanation of a key React 19 feature that underpins our entire asset handling strategy. It details how React's ability to automatically move `<link>` tags to the document `<head>` allows for a clean and effective implementation of stylesheet and script preloading.
 
