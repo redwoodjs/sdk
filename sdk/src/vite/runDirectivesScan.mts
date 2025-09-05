@@ -96,6 +96,16 @@ export const runDirectivesScan = async ({
     const clientResolver = resolve.create(clientResolveOptions);
 
     const moduleEnvironments = new Map<string, "client" | "worker">();
+    const fileContentCache = new Map<string, string>();
+
+    const readFileWithCache = async (path: string) => {
+      if (fileContentCache.has(path)) {
+        return fileContentCache.get(path)!;
+      }
+      const contents = await fsp.readFile(path, "utf-8");
+      fileContentCache.set(path, contents);
+      return contents;
+    };
 
     const esbuildScanPlugin: Plugin = {
       name: "rwsdk:esbuild-scan-plugin",
@@ -148,10 +158,7 @@ export const runDirectivesScan = async ({
             /\.(m|c)?[jt]sx?$/.test(args.importer)
           ) {
             try {
-              const importerContents = await fsp.readFile(
-                args.importer,
-                "utf-8",
-              );
+              const importerContents = await readFileWithCache(args.importer);
               if (hasDirective(importerContents, "use client")) {
                 importerEnv = "client";
                 log("Pre-detected importer 'use client' in:", args.importer);
@@ -256,32 +263,9 @@ export const runDirectivesScan = async ({
             }
 
             try {
-              const contents = await fsp.readFile(args.path, "utf-8");
-              let currentEnv: "client" | "worker" = inheritedEnv;
+              const contents = await readFileWithCache(args.path);
 
-              // Check if we already determined the environment during onResolve
-              const existingEnv = moduleEnvironments.get(args.path);
-              if (existingEnv) {
-                currentEnv = existingEnv;
-                log(
-                  "Using pre-determined environment for",
-                  args.path,
-                  ":",
-                  currentEnv,
-                );
-              } else {
-                // Fallback: check for directives now
-                if (hasDirective(contents, "use client")) {
-                  currentEnv = "client";
-                }
-                if (hasDirective(contents, "use server")) {
-                  currentEnv = "worker";
-                }
-                moduleEnvironments.set(args.path, currentEnv);
-                log("Set environment for", args.path, "to", currentEnv);
-              }
-
-              // Add to appropriate sets for final output
+              // The environment is determined in onResolve. Here we just populate the output sets.
               if (hasDirective(contents, "use client")) {
                 log("Discovered 'use client' in:", args.path);
                 clientFiles.add(

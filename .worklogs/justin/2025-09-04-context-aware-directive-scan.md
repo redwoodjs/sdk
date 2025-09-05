@@ -43,3 +43,23 @@ The fix involved:
 - Ensuring that when a file with `"use client"` imports other modules, those imports are resolved with the correct client environment
 
 The solution successfully resolves the SWR react-server export error and allows the dev server to start correctly.
+
+## Refactor and Cleanup
+
+After the main fix was implemented, a cleanup pass was performed to address inefficiencies introduced during the debugging process.
+
+### Problem
+
+The directive scanner in `runDirectivesScan.mts` now worked correctly, but it had some redundancies:
+- The `onLoad` hook contained logic that was now unnecessary because the module's environment was determined earlier in the `onResolve` hook.
+- Files were potentially read from disk multiple times—once in `onResolve` to check for directives, and again in `onLoad` to provide the content to `esbuild`.
+- The logic in `onLoad` for checking directives was more complex than it needed to be.
+
+### Plan
+
+The refactoring streamlined the `esbuild` plugin for clarity and efficiency:
+
+1.  **File Cache**: A `Map` called `fileContentCache` was added to store the contents of files that have been read from disk, preventing redundant file I/O.
+2.  **Caching Helper**: A helper function, `readFileWithCache`, was created to manage reading from the cache or disk as needed.
+3.  **Refactor `onResolve`**: The `onResolve` hook was updated to use the `readFileWithCache` helper.
+4.  **Simplify `onLoad`**: The `onLoad` hook was simplified to only provide file content to `esbuild` and populate the final output sets (`clientFiles` and `serverFiles`), using the caching helper to avoid extra disk reads.
