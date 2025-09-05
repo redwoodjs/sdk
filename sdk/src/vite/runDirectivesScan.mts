@@ -246,8 +246,6 @@ export const runDirectivesScan = async ({
           { filter: /\.(m|c)?[jt]sx?$/ },
           async (args: OnLoadArgs) => {
             log("onLoad called for:", args.path);
-            const inheritedEnv = args.pluginData?.inheritedEnv || "worker";
-            log("Inherited environment for", args.path, "is", inheritedEnv);
 
             if (
               !args.path.startsWith("/") ||
@@ -264,15 +262,33 @@ export const runDirectivesScan = async ({
 
             try {
               const contents = await readFileWithCache(args.path);
+              const inheritedEnv = args.pluginData?.inheritedEnv || "worker";
+              let currentEnv: "client" | "worker" = inheritedEnv;
 
-              // The environment is determined in onResolve. Here we just populate the output sets.
-              if (hasDirective(contents, "use client")) {
+              const isClient = hasDirective(contents, "use client");
+              const isServer = hasDirective(contents, "use server");
+
+              // A file's own directive takes precedence over the inherited environment.
+              if (isClient) {
+                currentEnv = "client";
+              } else if (isServer) {
+                // `else if` handles cases where a file might have both directives.
+                // "use client" takes precedence.
+                currentEnv = "worker";
+              }
+
+              // Store the definitive environment for this module, so it can be used when it becomes an importer.
+              moduleEnvironments.set(args.path, currentEnv);
+              log("Set environment for", args.path, "to", currentEnv);
+
+              // Finally, populate the output sets if the file has a directive.
+              if (isClient) {
                 log("Discovered 'use client' in:", args.path);
                 clientFiles.add(
                   normalizeModulePath(args.path, rootConfig.root),
                 );
               }
-              if (hasDirective(contents, "use server")) {
+              if (isServer) {
                 log("Discovered 'use server' in:", args.path);
                 serverFiles.add(
                   normalizeModulePath(args.path, rootConfig.root),

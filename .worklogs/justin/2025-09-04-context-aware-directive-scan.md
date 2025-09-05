@@ -63,3 +63,16 @@ The refactoring streamlined the `esbuild` plugin for clarity and efficiency:
 2.  **Caching Helper**: A helper function, `readFileWithCache`, was created to manage reading from the cache or disk as needed.
 3.  **Refactor `onResolve`**: The `onResolve` hook was updated to use the `readFileWithCache` helper.
 4.  **Simplify `onLoad`**: The `onLoad` hook was simplified to only provide file content to `esbuild` and populate the final output sets (`clientFiles` and `serverFiles`), using the caching helper to avoid extra disk reads.
+
+### Correction: Restoring Critical `onLoad` Logic
+
+A final review revealed that the refactoring was too aggressive. The cleanup pass incorrectly removed the logic responsible for determining and storing the definitive environment of the file being loaded.
+
+While `onResolve` correctly determines the environment context based on the *importer*, `onLoad` is the necessary step to determine the context of the *current file*. This is essential for when the current file becomes an importer itself.
+
+The fix was to restore the logic within `onLoad` to:
+1.  Check the current file's content for a directive.
+2.  Allow the file's own directive to override the environment inherited from its importer.
+3.  Store this definitive environment in the `moduleEnvironments` map to ensure the correct context is propagated to its own children in subsequent `onResolve` calls.
+
+Finally, the logic was further refined to check for each directive only once within the `onLoad` hook, storing the boolean results and reusing them to avoid redundant string searches.
