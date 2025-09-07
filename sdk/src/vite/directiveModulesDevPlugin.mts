@@ -58,7 +58,7 @@ export const directiveModulesDevPlugin = ({
       // We don't await it here, allowing Vite to continue its startup.
       scanPromise = runDirectivesScan({
         rootConfig: server.config,
-        environment: server.environments.worker,
+        environments: server.environments,
         clientFiles,
         serverFiles,
       }).then(() => {

@@ -4,7 +4,7 @@ import fs from "fs";
 import path from "path";
 import createDebug from "debug";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
-
+import { Environment } from "vite";
 const debug = createDebug("rwsdk:vite:enhanced-resolve-plugin");
 
 // Enhanced-resolve plugin that wraps Vite plugin resolution
@@ -358,12 +358,11 @@ export const mapViteResolveToEnhancedResolveOptions = (
 
 export const createViteAwareResolver = (
   viteConfig: ResolvedConfig,
-  envName: string,
-  environment?: any, // Optional environment for plugin resolution
+  environment: Environment,
 ) => {
   const baseOptions = mapViteResolveToEnhancedResolveOptions(
     viteConfig,
-    envName,
+    environment.name,
   );
 
   // Add Vite plugin resolver if environment is provided

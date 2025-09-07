@@ -30,7 +30,7 @@ export async function buildApp({
   const workerEnv = builder.environments.worker;
   await runDirectivesScan({
     rootConfig: builder.config,
-    environment: workerEnv,
+    environments: builder.environments,
     clientFiles,
     serverFiles,
   });
