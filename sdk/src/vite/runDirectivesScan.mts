@@ -28,12 +28,12 @@ const isExternalUrl = (url: string): boolean => externalRE.test(url);
 
 export const runDirectivesScan = async ({
   rootConfig,
-  environment,
+  environments,
   clientFiles,
   serverFiles,
 }: {
   rootConfig: ResolvedConfig;
-  environment: Environment;
+  environments: Record<string, Environment>;
   clientFiles: Set<string>;
   serverFiles: Set<string>;
 }) => {
@@ -44,7 +44,7 @@ export const runDirectivesScan = async ({
 
   try {
     const esbuild = await getViteEsbuild(rootConfig.root);
-    const input = environment.config.build.rollupOptions?.input;
+    const input = environments.worker.config.build.rollupOptions?.input;
     let entries: string[];
 
     if (Array.isArray(input)) {
@@ -59,8 +59,7 @@ export const runDirectivesScan = async ({
 
     if (entries.length === 0) {
       log(
-        "No entries found for directives scan in environment '%s', skipping.",
-        environment.name,
+        "No entries found for directives scan in worker environment, skipping.",
       );
       return;
     }
@@ -70,30 +69,19 @@ export const runDirectivesScan = async ({
     );
 
     log(
-      "Starting directives scan for environment '%s' with entries:",
-      environment.name,
+      "Starting directives scan for worker environment with entries:",
       absoluteEntries,
     );
 
-    // Use enhanced-resolve with Vite plugin integration for full compatibility
     const workerResolver = createViteAwareResolver(
       rootConfig,
-      environment.name,
-      environment,
+      environments.worker,
     );
 
-    // Create a client resolver with browser conditions
-    // We'll use the mapViteResolveToEnhancedResolveOptions function directly
-    // to create a resolver with browser conditions
-    const clientResolveOptions = mapViteResolveToEnhancedResolveOptions(
+    const clientResolver = createViteAwareResolver(
       rootConfig,
-      environment.name,
+      environments.client,
     );
-
-    // Override the conditions to use browser conditions for client resolution
-    clientResolveOptions.conditionNames = ["browser", "module"];
-
-    const clientResolver = resolve.create(clientResolveOptions);
 
     const moduleEnvironments = new Map<string, "client" | "worker">();
     const fileContentCache = new Map<string, string>();
