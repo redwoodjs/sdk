@@ -8,3 +8,4 @@ export * from "../requestInfo/types";
 export * from "../requestInfo/worker";
 export * from "../render/renderToString";
 export * from "../render/renderToStream";
+export * from "../imports/resolveSSRValue";
