@@ -30,6 +30,8 @@ export function registerClientReference<Target extends Record<string, any>>(
       : () => null;
 
   const reference = baseRegisterClientReference({}, id, exportName);
+  (reference as any).__rwsdk_clientReferenceId = `${id}#${exportName}`;
+
   const finalDescriptors = Object.getOwnPropertyDescriptors(reference);
   const idDescriptor = finalDescriptors.$$id;
 
