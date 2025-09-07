@@ -26,24 +26,6 @@ To connect them, we introduced the concept of the **SSR Bridge**. The bridge is 
 
 A custom Vite plugin, `rwsdk:ssr-bridge`, orchestrates the process. It creates a virtual "subgraph" of SSR modules within the main `worker` environment. This allows the `worker` to effectively borrow the `ssr` environment's configuration for a specific set of modules, solving the dependency conflict without requiring separate deployments.
 
-```mermaid
-graph TD
-    subgraph Worker Environment (RSC)
-        A[App Code] --> B{import 'rwsdk/__ssr_bridge'}
-        B -- resolveId --> C[virtual:rwsdk:ssr:rwsdk/__ssr_bridge]
-        C -- load --> D{ssrBridgePlugin}
-        D -- devServer.environments.ssr.fetchModule() --> E
-        D -- returns transformed code --> F[Transformed Code w/ virtual imports]
-        F --> A
-    end
-
-    subgraph SSR Environment
-        E[Original SSR Module]
-        E -- Vite's SSR transform pipeline --> G[SSR-transformed code]
-        G --> D
-    end
-```
-
 ### How It Works: Dev vs. Production
 
 The implementation differs slightly between development and production builds.
