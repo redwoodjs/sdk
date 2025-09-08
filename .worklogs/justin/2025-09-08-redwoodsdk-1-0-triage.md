@@ -2,7 +2,11 @@
 
 ## Plan / Agenda
 
-The goal of this session is to triage tasks for the RedwoodSDK 1.0-beta and 1.0 releases. The primary lens for every decision is **perceived stability**: does this task undermine the feeling that RedwoodSDK is stable to use in dev or production? The goal is to be ruthless and pragmatic.
+**DEADLINE PRESSURE: 1.0-beta has a very short timeline. We must be RUTHLESS.**
+
+The goal of this session is to triage tasks for the RedwoodSDK 1.0-beta and 1.0 releases. The primary lens for every decision is **perceived stability**: does this task undermine the feeling that RedwoodSDK is stable to use in dev or production? 
+
+**Core principle: "Good enough" beats perfect. We don't have time or resources for comprehensive solutions. Lightweight, bare minimum fixes that solve the core problem.**
 
 ### Release Criteria
 
@@ -18,13 +22,15 @@ The goal of this session is to triage tasks for the RedwoodSDK 1.0-beta and 1.0 
     - No known rough edges that undermine perceived stability in dev/prod workflows.
     - 1.0 should feel polished and confidence-inspiring for new users.
 
-### Labels
+### Labels (Milestones)
 
-- **`1.0-beta`**: Must be fixed before Beta cut.
-- **`1.0`**: Must be fixed before the 1.0 release, but not Beta-blocking.
-- **`1.x`**: Nice-to-have, safe for minors after 1.0.
-- **`future`**: Exploratory, feature work, performance monitoring.
-- **`experimental`**: Issues around db, unbundled deps, inline entrypoints, route HMR, CSS in RSC, Vitest, perf checks — not yet stable/contracted.
+These are both labels AND milestones - they determine when work gets done:
+
+- **`1.0-beta`**: BLOCKING the beta release. Must be fixed or beta can't ship. Bare minimum fixes only.
+- **`1.0`**: Must be fixed before 1.0 release, but not beta-blocking. Good enough solutions.
+- **`1.x`**: Nice-to-have, safe for minors after 1.0. Can wait.
+- **`future`**: Exploratory, feature work, performance monitoring. Not urgent.
+- **`experimental`**: Issues around db, unbundled deps, inline entrypoints, route HMR, CSS in RSC, Vitest, perf checks — not yet stable/contracted. Can break.
 
 ### Triage Process
 We will triage across three kinds of inputs: GitHub issues, user to-do list items, and missing tasks (gap-finding). For each input, we will assign a label and provide a clear description and rationale, defaulting to `1.x` if uncertain.
@@ -1686,8 +1692,8 @@ This section lists the issues identified for creation. New issues are added here
 
 ---
 
-### 5. Create Comprehensive Stability Documentation for 1.0-beta
+### 5. Create Basic Stability Documentation for 1.0-beta
 
-- **Description:** The documentation needs clear labeling of what features are stable versus experimental before the 1.0-beta release. Users need to understand what they can rely on for production use and what might change. This should include API stability guarantees, feature maturity levels, and migration guidance for experimental features.
-- **Rationale:** Clear stability documentation is essential for a beta release. Users need confidence about what they can build on versus what's still evolving. This directly supports the perceived stability goal by setting proper expectations and preventing users from building on unstable foundations.
+- **Description:** Add a simple stability page to docs clearly marking what's stable vs experimental. Basic table format: Feature | Status (Stable/Experimental) | Notes. Cover core features only - rendering, routing, server functions, realtime. No API guarantees or complex migration guides - just clear expectations.
+- **Rationale:** Users need to know what they can depend on for a beta release. A lightweight page prevents users from building on unstable foundations without requiring extensive documentation work.
 - **Label:** `1.0-beta`
