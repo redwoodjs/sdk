@@ -66,7 +66,6 @@ This section captures the initial context provided for the triage session.
 - (empty)
 
 #### Non-deep
-- update passkey addon to not use deprecated headers api
 - check use client caching during HMR fixed
 - say hi with context in kysely discord (where tho?)
 - read https://github.com/redwoodjs/sdk/pull/605#issuecomment-3110066490
@@ -79,7 +78,6 @@ This section captures the initial context provided for the triage session.
 - upgrade react deps
 - use latest canary for react in starters
 - investigate Marius layout context issue (Context providers in layouts work for SSR but not client-side in dev - double-eval of modules causing provider/consumer mismatch. Discord thread shows workaround but core issue needs fixing)
-- investigate machinen response thing
 - rwsdk w/ vitest
 - rwsdk/db log for migrations on dev
 - Upgrade react to try fix id problem
@@ -1792,3 +1790,11 @@ This section lists the issues identified for creation. New issues are added here
 - **Description:** This change aligns the Cloudflare Vite plugin with our new dependency strategy. It involves two parts: 1) Update starters to use the latest `@cloudflare/vite-plugin` as an explicit dependency. 2) Change the SDK's `package.json` to list the plugin as a `peerDependency` only, removing it as a direct dependency.
 - **Reasoning:** This is a breaking change for architectural consistency, giving users control over this key dependency. It must be done for the 1.0-beta release.
 - **Label:** `1.0-beta`
+
+---
+
+### 10. Fix Flaky Style Smoke Tests in CI
+
+- **Description:** The smoke tests for stylesheets are currently skipped in CI due to flakiness. This creates a blind spot for potential regressions in our styling pipeline. The tests need to be investigated, fixed, and re-enabled.
+- **Reasoning:** Reliable CI is essential for a confident 1.0 release. Shipping with known flaky/skipped tests for a core feature undermines the "feels stable" contract. A "good enough" fix to get the tests passing reliably is required for 1.0.
+- **Label:** `1.0`
