@@ -47,6 +47,7 @@ This section captures the initial context provided for the triage session.
 
 - We initially formatted proposed issues with just a title, label, and rationale.
 - We decided to add a `Description` field to each proposed issue to provide necessary context for what the problem is, separate from the rationale of why it's being prioritized.
+- The issue of server instability and swallowed errors are being kept together, as the swallowed errors are a primary contributor to the instability and the poor developer experience.
 
 ## Output: Proposed Issues
 
@@ -78,8 +79,8 @@ This section lists the issues identified for creation. New issues are added here
 
 ---
 
-### 4. Establish a Process for Monitoring and Addressing Dependency CVEs
+### 4. Implement Lightweight CVE Monitoring for Critical Vulnerabilities
 
-- **Description:** The project currently lacks an automated or formal process for monitoring and addressing security vulnerabilities (CVEs) within its dependencies. This means we are not proactively identifying potential security risks that could impact users.
-- **Rationale:** To be considered production-ready, the framework must have a defined process for handling security vulnerabilities. This is a core requirement for the trust and stability promise of a 1.0 release.
+- **Description:** The project currently lacks a lightweight, automated way to monitor for critical security vulnerabilities (CVEs) within its dependencies. This means we are not proactively identifying high-impact security risks that could affect users.
+- **Rationale:** To be considered production-ready, the framework must have a basic mechanism for flagging and addressing critical security vulnerabilities. This is a core requirement for the trust and stability promise of a 1.0 release.
 - **Label:** `1.0`
