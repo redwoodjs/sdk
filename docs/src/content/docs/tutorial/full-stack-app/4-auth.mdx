@@ -857,6 +857,8 @@ As we continue to make adjustments, we want to be able to see the changes we're 
 Inside our `Login` component let's replace our `main` tag with our `AuthLayout` component.
 
 ```tsx title="src/app/pages/user/Login.tsx" {2,15} startLineNumber=37
+import { AuthLayout } from "@/app/layouts/AuthLayout";
+...
 return (
   <AuthLayout>
   <h1 className="text-4xl font-bold text-red-500">YOLO</h1>
