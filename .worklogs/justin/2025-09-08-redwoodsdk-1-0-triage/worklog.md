@@ -48,3 +48,15 @@ This section captures the initial context provided for the triage session.
 - **SSR-related Dev Server Instability:** Errors during Server-Side Rendering (SSR) are a major source of instability. These errors can cause the dev server to hang, breaking HMR and forcing a manual restart.
 - **Cryptic Error Messages:** When SSR-related crashes occur, the error output is often swallowed, resulting in blank or `undefined` errors. This provides no actionable information for debugging. More broadly, many error messages are terse and could be improved by providing suggestions and links to documentation, especially for common RSC-related issues.
 - **Lack of CVE Monitoring:** There is currently no formal process for monitoring or addressing CVEs in project dependencies.
+
+## Sources
+
+### [From Github Issues](./source-gh-issues.md)
+
+### [From Justin's Todos](./source-gh-issues.md)
+
+## Output
+
+## Discussion
+
+## Decisions
