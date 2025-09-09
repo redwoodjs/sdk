@@ -11,6 +11,10 @@ After implementing this change, a runtime error, `ReferenceError: WeakRef is not
 1.  **Initial Analysis**: The `WeakRef` object is part of the ES2021 specification and is not supported by the default Cloudflare Workers runtime, causing the reference error.
 2.  **Attempt 1 (Alias `server.edge.js` build)**: An investigation of the `react-server-dom-webpack` package revealed an `server.edge.js` build. The hypothesis was that this build would be compatible with edge environments and would not use `WeakRef`. An alias was added to the `reactConditionsResolverPlugin` to force Vite to use this build for the worker environment.
 3.  **Correction**: Further inspection showed that the `server.edge.js` build *also* contains `WeakRef`. This invalidated the aliasing approach. The alias was a short-circuit to the resolver's conditional export logic and was removed in favor of letting `enhanced-resolve` handle it.
+4.  **Attempt 2 (Compatibility Flag)**: Research uncovered that Cloudflare supports `WeakRef` via a compatibility flag. The fix was to add `"enable_weak_ref"` to the `compatibility_flags` in `wrangler.jsonc` and update the `compatibility_date`.
+    -   [GitHub Issue: `WeakRef` not supported in `workerd`](https://github.com/cloudflare/workerd/issues/3053)
+    -   [Changelog: Improved memory efficiency for WebAssembly Workers](https://developers.cloudflare.com/changelog/2025-05-08-finalization-registry/)
+5.  **Correction**: After applying the flag and updating the `compatibility_date`, a warning from `wrangler` indicated that the `enable_weak_ref` flag is now enabled by default as of `2025-05-05`. The flag was therefore removed, and the solution is to ensure the `compatibility_date` is on or after this date.
 
 ## New Plan: Upgrade Cloudflare Dependencies
 
