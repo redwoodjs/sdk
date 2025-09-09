@@ -54,7 +54,7 @@ This section lists the issues identified for creation. New issues are added here
 
 ### 7. Create Basic Stability Documentation for 1.0-beta
 
-- **Description:** Add a simple stability page to docs clearly marking what's stable vs experimental. Basic table format: Feature | Status (Stable/Experimental) | Notes. Cover core features only - rendering, routing, server functions, realtime. No API guarantees or complex migration guides - just clear expectations.
+- **Description:** Add a simple stability page to docs clearly marking what's stable vs experimental. Basic table format: Feature | Status (Stable/Experimental) | Notes. The documentation should explicitly label the Durable Object Database and Real-time features as experimental. Cover core features only - rendering, routing, server functions. No API guarantees or complex migration guides - just clear expectations.
 - **Triage Notes:** Documentation must clearly distinguish between stable and experimental features to ensure clear expectations.
 - **Label:** `1.0`
 
@@ -100,13 +100,21 @@ This section lists the issues identified for creation. New issues are added here
 
 ---
 
+### 13. Deprecate Standard Starter in Favor of Minimal Starter
+
+- **Description:** The standard starter, which includes the primary Prisma integration, is being deprecated. The minimal starter will become the default recommendation, aligning with the strategy of not having a deep, built-in Prisma integration in the SDK itself.
+- **Label:** `1.x`
+- **Triage Notes:** This is a strategic decision to focus on core SDK capabilities. This task is slated for a post-1.0 release as it has external dependencies.
+
+---
+
 ## Output: Triage of Existing Issues
 
 This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 13. Issue #677: dev mode broken when using naming files *.client.tsx in ^0.3.0
+### 14. Issue #677: dev mode broken when using naming files *.client.tsx in ^0.3.0
 
 - **Issue:** #677
 - **Label:** `bug`
@@ -114,7 +122,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 14. Issue #674: Route with renderToStream not working as expected
+### 15. Issue #674: Route with renderToStream not working as expected
 
 - **Issue:** #674
 - **Label:** `bug`, `1.0`
@@ -122,7 +130,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 15. Issue #667: Prefix params not passed down to routes
+### 16. Issue #667: Prefix params not passed down to routes
 
 - **Issue:** #667
 - **Label:** `bug`, `1.0-beta`
@@ -130,31 +138,31 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 16. Issue #656: Proposal: Expose React 19 Error Handling APIs in RedwoodSDK
+### 17. Issue #656: Proposal: Expose React 19 Error Handling APIs in RedwoodSDK
 
 - **Issue:** #656
-- **Label:** `future`
-- **Triage Notes:** This is a feature request.
+- **Label:** `1.x`
+- **Triage Notes:** This is a feature request for a fundamental capability. As it is backwards-compatible, it is suitable for a minor release.
 
 ---
 
-### 17. Issue #651: Allow specifying http method in route definition
+### 18. Issue #651: Allow specifying http method in route definition
 
 - **Issue:** #651
-- **Label:** `future`
-- **Triage Notes:** This is a feature request.
+- **Label:** `1.x`
+- **Triage Notes:** This is a feature request for a fundamental capability. As it is backwards-compatible, it is suitable for a minor release.
 
 ---
 
-### 18. Issue #641: [feature request] Client-side observer for realtime connection state
+### 19. Issue #641: [feature request] Client-side observer for realtime connection state
 
 - **Issue:** #641
 - **Label:** `future`
-- **Triage Notes:** This is a feature request.
+- **Triage Notes:** This is a feature enhancement for the real-time system, which is currently considered experimental.
 
 ---
 
-### 19. Issue #639: Docs: `bash frame="none"` prefix doesnt work
+### 20. Issue #639: Docs: `bash frame="none"` prefix doesnt work
 
 - **Issue:** #639
 - **Label:** `bug`, `1.0-beta`
@@ -162,19 +170,11 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 20. Issue #635: Client components importing Prisma enums cause cryptic WASM build errors
+### 21. Issue #635: Client components importing Prisma enums cause cryptic WASM build errors
 
 - **Issue:** #635
-- **Label:** `bug`, `1.0-beta`
-- **Triage Notes:** This bug produces a cryptic build error when using a core dependency (Prisma).
-
----
-
-### 21. Issue #632: React7.createContext is not a function
-
-- **Issue:** #632
-- **Label:** `bug`, `1.0-beta`
-- **Triage Notes:** This bug prevents the use of popular component libraries.
+- **Label:** `bug`
+- **Triage Notes:** With the standard starter (which includes Prisma) being deprecated, the priority of this issue is reduced.
 
 ---
 
