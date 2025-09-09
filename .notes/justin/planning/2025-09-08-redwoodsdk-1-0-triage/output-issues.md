@@ -172,6 +172,14 @@ This section lists the issues identified for creation. New issues are added here
 
 ---
 
+### 22. Extend Smoke Tests for Package Manager and OS Compatibility
+
+- **Description:** Expand the existing smoke tests to run against a matrix of environments. This should include multiple package managers (npm, pnpm, yarn, yarn berry) and operating systems (Linux, Windows). The goal is to proactively catch environment-specific bugs and ensure broad compatibility.
+- **Triage Notes:** This is a critical step to ensure stability across common development environments and prevent regressions related to package managers or OS-specific behavior.
+- **Label:** `1.0-beta`
+
+---
+
 ## Output: Triage of Existing Issues
 
 This section lists the triage decisions for existing GitHub issues.
@@ -439,7 +447,8 @@ This section lists the triage decisions for existing GitHub issues.
 ### 54. Issue #379: Error react-server condition must be enabled in any environment
 
 - **Issue:** #379
-- **Label:** `bug`, `1.0-beta`
+- **Label:** `1.x`
+- **Comment:** Hi there, we've created issue #22 to add smoke tests for different environments and package managers. This will help us confirm what package managers and operating systems this might be an issue for so we can see where we stand here.
 - **Triage Notes:** A newly created project failing with a configuration error is a critical bug.
 
 ---
@@ -448,6 +457,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #368
 - **Label:** `bug`, `1.0-beta`
+- **Comment:** Hi there, we've created issue #22 to add smoke tests for different environments and package managers. This will help us confirm what package managers and operating systems this might be an issue for so we can see where we stand here.
 - **Triage Notes:** This bug prevents projects from running.
 
 ---
@@ -471,15 +481,15 @@ This section lists the triage decisions for existing GitHub issues.
 ### 58. Issue #343: Support disabling `wrangler types` generation
 
 - **Issue:** #343
-- **Label:** `future`
-- **Triage Notes:** This is a feature request.
+- **Label:** `status: close`
+- **Closing Comment:** Hi there, sorry, this one dropped off my plate. As things stand now, as long as a user does not have a `dev:init` script in their package.json, or there is an environment variable `RWSDK_WORKER_RUN` or `RWSDK_DEPLOY` set to `1`, the dev init script (which generates wrangler types) will be skipped. This provides a way to opt out, even if it's not the most ergonomic. For that reason, for now, we can consider this supported. But let us know if there is anything else that's important for us to do here so that you are not blocked.
 
 ---
 
 ### 59. Issue #337: Support inlined 'use server'
 
 - **Issue:** #337
-- **Label:** `1.0`
+- **Label:** `1.x`
 - **Triage Notes:** Supporting the full React directive syntax is important for developer experience.
 
 ---
