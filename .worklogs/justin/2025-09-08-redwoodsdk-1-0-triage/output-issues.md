@@ -93,24 +93,24 @@ This section lists the triage decisions for existing GitHub issues.
 ### Issue #677: dev mode broken when using naming files *.client.tsx in ^0.3.0
 
 - **Issue:** #677
-- **Label:** `1.0-beta`
-- **Reasoning:** This bug breaks the development workflow on initial load, creating an unpredictable and unstable experience that directly impacts the perceived stability required for the beta.
+- **Label:** `bug`
+- **Reasoning:** This is a bug, but it's an edge case related to a specific file naming convention. A simple workaround exists, so it is deferred without a milestone.
 
 ---
 
 ### Issue #674: Route with renderToStream not working as expected
 
 - **Issue:** #674
-- **Label:** `1.0-beta`
-- **Reasoning:** Streaming is a core rendering feature. A bug that causes connection failures and prevents content from rendering correctly is a critical stability issue that must be addressed for the beta.
+- **Label:** `bug`, `1.0-beta`
+- **Reasoning:** Streaming is a core rendering feature that is expected to work for all users. A bug that causes connection failures is a critical, high-impact stability issue that must be addressed for the beta.
 
 ---
 
 ### Issue #667: Prefix params not passed down to routes
 
 - **Issue:** #667
-- **Label:** `1.0-beta`
-- **Reasoning:** The router's prefix functionality not passing parameters as expected is a critical bug that breaks a core routing pattern, making it a beta-blocker.
+- **Label:** `bug`, `1.0-beta`
+- **Reasoning:** The router's prefix functionality is a core feature. This bug breaks a fundamental routing pattern expected to work for a large number of users, making it a beta-blocker.
 
 ---
 
@@ -118,7 +118,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #656
 - **Label:** `1.0`
-- **Reasoning:** This is a feature enhancement for production monitoring. While valuable for a polished 1.0 release, it doesn't address a critical stability issue and can be deferred past the beta.
+- **Reasoning:** This is a feature enhancement for production monitoring. While valuable for a polished 1.0 release, it's not a bug and doesn't address a critical stability issue.
 
 ---
 
@@ -141,32 +141,32 @@ This section lists the triage decisions for existing GitHub issues.
 ### Issue #639: Docs: `bash frame="none"` prefix doesnt work
 
 - **Issue:** #639
-- **Label:** `1.0-beta`
-- **Reasoning:** Incorrect documentation for a core command creates a poor first impression and erodes user confidence. This is a simple but important fix for the beta release.
+- **Label:** `bug`, `1.0-beta`
+- **Reasoning:** Incorrect documentation for a core command affects all new users. This creates a poor first impression and erodes confidence, making it a critical fix for the beta release.
 
 ---
 
 ### Issue #635: Client components importing Prisma enums cause cryptic WASM build errors
 
 - **Issue:** #635
-- **Label:** `1.0-beta`
-- **Reasoning:** This issue causes a cryptic build error when using a core dependency (Prisma) in a common pattern. Per the triage guidelines, obscure and misleading errors are beta-blockers because they severely undermine developer confidence.
+- **Label:** `bug`, `1.0-beta`
+- **Reasoning:** This bug produces a cryptic build error when using a core dependency (Prisma) in a common pattern that will affect many users. Obscure errors are beta-blockers as they severely undermine developer confidence.
 
 ---
 
 ### Issue #632: React7.createContext is not a function
 
 - **Issue:** #632
-- **Label:** `1.0-beta`
-- **Reasoning:** This bug prevents the use of popular component libraries like Radix, which is a critical compatibility issue and a primary source of perceived instability for new users. It is a beta-blocker.
+- **Label:** `bug`, `1.0-beta`
+- **Reasoning:** This bug prevents the use of popular and widely-used component libraries, a critical compatibility issue affecting a large percentage of potential users. It is a beta-blocker.
 
 ---
 
 ### Issue #627: Support inlining client entry point in Document
 
 - **Issue:** #627
-- **Label:** `experimental`
-- **Reasoning:** Inlining the client entrypoint is considered an experimental feature. Issues related to it are not beta- or 1.0-blocking as the feature is not yet stable.
+- **Label:** `bug`, `experimental`
+- **Reasoning:** Inlining the client entrypoint is considered an experimental feature. While this is a bug, issues related to it are not beta- or 1.0-blocking as the feature is not yet stable.
 
 ---
 
@@ -174,7 +174,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #624
 - **Label:** `1.0`
-- **Reasoning:** This aligns with the goal of improving error messages to be more actionable. It's part of the broader effort to make the framework feel more polished and supportive for the 1.0 release.
+- **Reasoning:** This aligns with the goal of improving error messages to be more actionable. It's part of the broader effort to make the framework feel more polished and supportive for the 1.0 release. This is not a bug in our code, but an enhancement to the user experience.
 
 ---
 
@@ -190,7 +190,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #618
 - **Label:** `1.0`
-- **Reasoning:** This is part of the broader initiative to improve error messages. Providing clear guidance for common mistakes like a missing directive is essential for a polished 1.0 developer experience.
+- **Reasoning:** This is part of the broader initiative to improve error messages. Providing clear guidance for common mistakes like a missing directive is essential for a polished 1.0 developer experience. This is not a bug in our code, but an enhancement.
 
 ---
 
@@ -205,32 +205,32 @@ This section lists the triage decisions for existing GitHub issues.
 ### Issue #580: Fullstack tutorial: Field name difference in `ApplicationForm` vs `EditApplicationForm`
 
 - **Issue:** #580
-- **Label:** `1.0-beta`
-- **Reasoning:** Errors in the primary tutorial are a significant hurdle for new users and create a poor first impression. Fixing them is critical for the perceived stability of the beta.
+- **Label:** `bug`, `1.0-beta`
+- **Reasoning:** Errors in the primary tutorial affect every new user and create a poor first impression. Fixing them is critical for the perceived stability of the beta.
 
 ---
 
 ### Issue #579: Fullstack tutorial: Typescript error in `Edit.tsx`
 
 - **Issue:** #579
-- **Label:** `1.0-beta`
-- **Reasoning:** Errors in the primary tutorial are a significant hurdle for new users and create a poor first impression. Fixing them is critical for the perceived stability of the beta.
+- **Label:** `bug`, `1.0-beta`
+- **Reasoning:** Errors in the primary tutorial affect every new user and create a poor first impression. Fixing them is critical for the perceived stability of the beta.
 
 ---
 
 ### Issue #570: Suspense fallback not triggered during client navigation RSC payload rehydration
 
 - **Issue:** #570
-- **Label:** `1.0-beta`
-- **Reasoning:** The failure of Suspense to show fallbacks during client navigation breaks a fundamental React pattern and leads to a poor user experience, making it a critical bug for the beta.
+- **Label:** `bug`, `1.0-beta`
+- **Reasoning:** The failure of Suspense to show fallbacks during client navigation breaks a fundamental React pattern that a large percentage of users will encounter, leading to a poor user experience. This is a critical bug for the beta.
 
 ---
 
 ### Issue #569: initClient fails when loading 'new Response(await renderToStream(< />, { Document })'
 
 - **Issue:** #569
-- **Label:** `1.0-beta`
-- **Reasoning:** This bug breaks a core feature (streaming) when used in a valid pattern, and produces a cryptic error. This undermines stability and must be fixed for the beta.
+- **Label:** `bug`, `1.0-beta`
+- **Reasoning:** This bug breaks a core feature (streaming) when used in a valid, common pattern, and produces a cryptic error. This undermines stability for many users and must be fixed for the beta.
 
 ---
 
@@ -246,15 +246,15 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #566
 - **Label:** `1.0`
-- **Reasoning:** This improves error messaging for a common point of confusion, guiding users toward supported patterns and improving the overall developer experience for the 1.0 release.
+- **Reasoning:** This improves error messaging for a common point of confusion. It is not a bug, but an enhancement to guide users and improve the overall developer experience for the 1.0 release.
 
 ---
 
 ### Issue #555: automatically append "/" to end of routes.
 
 - **Issue:** #555
-- **Label:** `1.0`
-- **Reasoning:** This addresses an inconsistency in router behavior. While not a critical bug, fixing it contributes to the overall polish and predictability expected for the 1.0 release.
+- **Label:** `bug`, `1.0`
+- **Reasoning:** This is a bug that addresses an inconsistency in router behavior. While not beta-blocking, fixing it contributes to the overall polish and predictability expected for the 1.0 release for all users.
 
 ---
 
@@ -269,8 +269,8 @@ This section lists the triage decisions for existing GitHub issues.
 ### Issue #529: suggestion: use recent compatibility date in wrangler.json for the starters
 
 - **Issue:** #529
-- **Label:** `1.0-beta`
-- **Reasoning:** Using an outdated compatibility date in starters can cause immediate errors for new projects, creating a poor first impression. This is a simple but critical fix for the beta.
+- **Label:** `bug`, `1.0-beta`
+- **Reasoning:** Using an outdated compatibility date in starters causes immediate errors for all new projects. This is a critical bug that must be fixed for the beta.
 
 ---
 
@@ -286,23 +286,23 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #498
 - **Label:** `1.0`
-- **Reasoning:** Proper error handling for server functions is a core requirement for building stable applications. This is a key feature for a production-ready 1.0 release.
+- **Reasoning:** Proper error handling for server functions is a core requirement for building stable applications. This is a key feature for a production-ready 1.0 release, but not a bug in existing functionality.
 
 ---
 
 ### Issue #495: Using Cloudflare Agents
 
 - **Issue:** #495
-- **Label:** `1.0-beta`
-- **Reasoning:** Inability to use a key Cloudflare feature like Agents is a significant compatibility issue that hinders adoption. Addressing this is important for the beta to ensure the SDK works well within its target ecosystem.
+- **Label:** `bug`, `1.0-beta`
+- **Reasoning:** Inability to use a key, widely-available Cloudflare feature like Agents is a significant compatibility bug that hinders adoption. Addressing this is important for the beta to ensure the SDK works well within its target ecosystem.
 
 ---
 
 ### Issue #477: Shadcn-ui in Full Stack Tutorial
 
 - **Issue:** #477
-- **Label:** `1.0-beta`
-- **Reasoning:** This issue blocks users from completing the tutorial with a popular library (Shadcn), directly impacting both the new user experience and our third-party compatibility goals for the beta.
+- **Label:** `bug`, `1.0-beta`
+- **Reasoning:** This issue blocks all users from completing the tutorial with a popular library (Shadcn), directly impacting both the new user experience and our third-party compatibility goals for the beta.
 
 ---
 
@@ -310,31 +310,31 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #472
 - **Label:** `1.0`
-- **Reasoning:** Redirects from server actions are a fundamental web development pattern. Lacking this feature is a significant rough edge that should be addressed for the 1.0 release to be considered feature-complete for common use cases.
+- **Reasoning:** Redirects from server actions are a fundamental web development pattern. Lacking this feature is a significant rough edge that should be addressed for the 1.0 release to be considered feature-complete for common use cases. Not a bug.
 
 ---
 
 ### Issue #471: Incorrect "use client" transform for inlined functions
 
 - **Issue:** #471
-- **Label:** `1.0-beta`
-- **Reasoning:** This is a bug in the core `"use client"` transformation logic. Flaws in this critical piece of the RSC implementation can break valid application code and must be fixed for the beta.
+- **Label:** `bug`, `1.0-beta`
+- **Reasoning:** This is a bug in the core `"use client"` transformation logic. Flaws in this critical piece of the RSC implementation can break valid application code for a large number of users and must be fixed for the beta.
 
 ---
 
 ### Issue #470: Use project vite config for seed.ts
 
 - **Issue:** #470
-- **Label:** `1.0`
-- **Reasoning:** This prevents users from customizing the Vite configuration for database seeding, breaking a key development workflow for projects with specific needs. This should be fixed for a complete 1.0 experience.
+- **Label:** `bug`, `1.0`
+- **Reasoning:** This bug prevents users from customizing the Vite configuration for database seeding, breaking a key development workflow for projects with specific needs. This should be fixed for a complete 1.0 experience.
 
 ---
 
 ### Issue #468: Bug Report: Dev Server Hangs from I/O Context Issues in Cloudflare Workers
 
 - **Issue:** #468
-- **Label:** `1.0-beta`
-- **Reasoning:** A hanging dev server is a show-stopper that breaks the core development loop. This directly violates the 1.0-beta stability criteria and severely undermines developer confidence.
+- **Label:** `bug`, `1.0-beta`
+- **Reasoning:** A hanging dev server is a show-stopper bug that breaks the core development loop for all users. This directly violates the 1.0-beta stability criteria and severely undermines developer confidence.
 
 ---
 
@@ -358,15 +358,15 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #425
 - **Label:** `1.0`
-- **Reasoning:** This addresses an inconsistency in how stylesheets and scripts are referenced, which is a common source of confusion. Improving this contributes to the developer experience polish for 1.0.
+- **Reasoning:** This addresses an inconsistency in how stylesheets and scripts are referenced, which is a common source of confusion. Improving this contributes to the developer experience polish for 1.0. Not a bug.
 
 ---
 
 ### Issue #406: Docs: Missing prisma migrate dev step in "Creating the Application" section of Full Stack tutorial
 
 - **Issue:** #406
-- **Label:** `1.0-beta`
-- **Reasoning:** A missing, critical command in the main tutorial will block every new user. This must be fixed for the beta.
+- **Label:** `bug`, `1.0-beta`
+- **Reasoning:** A missing, critical command in the main tutorial is a bug that will block every new user. This must be fixed for the beta.
 
 ---
 
@@ -389,24 +389,24 @@ This section lists the triage decisions for existing GitHub issues.
 ### Issue #379: Error react-server condition must be enabled in any environment
 
 - **Issue:** #379
-- **Label:** `1.0-beta`
-- **Reasoning:** A newly created project failing with a configuration error is a critical bug. It completely blocks development and points to a fundamental issue in the project setup that must be resolved for the beta.
+- **Label:** `bug`, `1.0-beta`
+- **Reasoning:** A newly created project failing with a configuration error is a critical bug that affects all users. It completely blocks development and points to a fundamental issue in the project setup that must be resolved for the beta.
 
 ---
 
 ### Issue #368: throw new Error(`Failed to resolve ${packageName}`);
 
 - **Issue:** #368
-- **Label:** `1.0-beta`
-- **Reasoning:** This is another manifestation of the critical project setup and dependency resolution issue that prevents projects from running. It is a beta-blocker.
+- **Label:** `bug`, `1.0-beta`
+- **Reasoning:** This is another manifestation of the critical project setup and dependency resolution bug that prevents projects from running for all users. It is a beta-blocker.
 
 ---
 
 ### Issue #356: Standard starter breaks when project path has __ in it
 
 - **Issue:** #356
-- **Label:** `1.0`
-- **Reasoning:** This is an edge-case bug related to project paths. While it's a hard blocker for affected users, its narrow scope makes it a lower priority than broader stability issues, so it can be fixed for the 1.0 release.
+- **Label:** `bug`
+- **Reasoning:** This is a bug, but it's an edge case related to the project path structure. Given the low probability of users encountering this, it's deferred without a milestone.
 
 ---
 
@@ -430,7 +430,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #337
 - **Label:** `1.0`
-- **Reasoning:** Supporting the full React directive syntax, including inlined placement, is important for developer experience and consistency. This addresses a rough edge for the 1.0 release.
+- **Reasoning:** Supporting the full React directive syntax is important for developer experience and consistency. This addresses a rough edge for the 1.0 release. Not a bug.
 
 ---
 
@@ -462,23 +462,23 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #286
 - **Label:** `1.0`
-- **Reasoning:** This addresses a common source of confusion with a cryptic error message. Improving this is part of the overall error message polishing effort for 1.0.
+- **Reasoning:** This addresses a common source of confusion with a cryptic error message. Improving this is part of the overall error message polishing effort for 1.0. Not a bug.
 
 ---
 
 ### Issue #285: Investigate undefined error after export changes
 
 - **Issue:** #285
-- **Label:** `1.0-beta`
-- **Reasoning:** An `undefined` error provides no actionable information and is a significant source of developer friction. This is a critical stability issue that falls under the beta-blocking theme of eliminating swallowed errors.
+- **Label:** `bug`, `1.0-beta`
+- **Reasoning:** An `undefined` error provides no actionable information and is a significant source of developer friction. This is a critical stability bug that falls under the beta-blocking theme of eliminating swallowed errors for all users.
 
 ---
 
 ### Issue #273: Handle "h is not a function" error masking real issues
 
 - **Issue:** #273
-- **Label:** `1.0-beta`
-- **Reasoning:** This vague error masks the true cause of a problem, making debugging extremely difficult. Replacing it with a clear, actionable error is a critical stability fix for the beta.
+- **Label:** `bug`, `1.0-beta`
+- **Reasoning:** This vague error masks the true cause of a problem, making debugging extremely difficult for all users who encounter it. Replacing it with a clear, actionable error is a critical stability fix for the beta.
 
 ---
 
@@ -486,7 +486,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #271
 - **Label:** `1.0`
-- **Reasoning:** Adding smoke tests improves our ability to catch regressions and ensure long-term stability, which is an important goal for the 1.0 release.
+- **Reasoning:** Adding smoke tests improves our ability to catch regressions and ensure long-term stability, which is an important goal for the 1.0 release. Not a bug.
 
 ---
 
@@ -510,12 +510,12 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #196
 - **Label:** `1.0`
-- **Reasoning:** Establishing a clear convention for static assets in the starter templates improves developer experience and is a good polish item for 1.0.
+- **Reasoning:** Establishing a clear convention for static assets in the starter templates improves developer experience and is a good polish item for 1.0. Not a bug.
 
 ---
 
 ### Issue #141: Cron: Unable to test cron triggers using Cloudflare's `wrangler dev --test-scheduled` method
 
 - **Issue:** #141
-- **Label:** `1.0`
-- **Reasoning:** The inability to test a feature locally breaks a key development workflow. This should be addressed for the 1.0 release to ensure all documented features are usable.
+- **Label:** `bug`, `1.0`
+- **Reasoning:** The inability to test a feature locally is a bug that breaks a key development workflow. This should be addressed for the 1.0 release to ensure all documented features are usable by all users of the feature.

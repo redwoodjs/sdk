@@ -12,22 +12,20 @@ The goal of this session is to triage tasks for the RedwoodSDK 1.0-beta and 1.0 
 
 The triage process is designed to systematically evaluate tasks and produce a structured output for automated processing.
 
-#### 1. Input Sources
+#### 1. Scope and Prioritization
+- **Ruthless Prioritization**: Only issues expected to affect a large percentage or all users will be considered for `1.0-beta` and `1.0` milestones.
+- **Edge Cases**: Issues identified as edge cases or bugs affecting a small subset of users will be labeled `bug` and deferred without a milestone. They will be addressed when resources allow.
+
+#### 2. Input Sources
 The triage process will address three types of inputs from their respective source files:
 1.  **GitHub Issues**: Sourced from [`./source-gh-issues.md`](./source-gh-issues.md). These are existing issues from the repository.
 2.  **User To-Do List Items**: Sourced from [`./source-todo.md`](./source-todo.md). These are shorthand tasks from the user's notes.
 3.  **Missing Tasks**: These are gaps identified during the triage session itself (e.g., security checks, deploy smoke tests).
 
-#### 2. Triage Steps
-For each input, the following steps will be taken:
-1.  **Analyze**: The issue, to-do item, or context for a missing task will be carefully reviewed through the lens of **perceived stability**.
-2.  **Clarify**: For to-do list items, clarifying questions will be asked until the task is fully understood.
-3.  **Assign Label**: A label (`1.0-beta`, `1.0`, `1.x`, `future`, `experimental`) will be assigned. If there is uncertainty, `1.x` will be used as the default.
-
 #### 3. Output and Automation
 All triage decisions will be recorded in [`./output-issues.md`](./output-issues.md) to prepare for an automated script that will update GitHub.
-*   **For existing GitHub Issues**: Record the issue number, the assigned label, and a 1-2 sentence reason. The script will use this to apply the label to the existing issue.
-*   **For new issues** (from to-do list items or missing tasks): Propose a new issue with a title, description, the assigned label, and a reason. The script will use this to create a new issue.
+*   **For existing GitHub Issues**: Record the issue number, the assigned label(s), and a 1-2 sentence reason. The script will use this to apply the label to the existing issue.
+*   **For new issues** (from to-do list items or missing tasks): Propose a new issue with a title, description, the assigned label(s), and a reason. The script will use this to create a new issue.
 
 All general decisions, observations, and key considerations that arise during the process will be continuously recorded in the `Discussion` section of this work log.
 
@@ -42,15 +40,16 @@ All general decisions, observations, and key considerations that arise during th
 - **What "feels stable" means (1.0):**
     - All 1.0-beta criteria.
     - No critical CVEs impacting users.
-    - No known rough edges that undermine perceived stability in dev/prod workflows.
+    - No known rough edges expected to affect a large percentage of users, that undermine perceived stability in dev/prod workflows.
     - 1.0 should feel polished and confidence-inspiring for new users.
 
 ### Labels (Milestones)
 
 These are both labels AND milestones - they determine when work gets done:
 
-- **`1.0-beta`**: BLOCKING the beta release. Must be fixed or beta can't ship. Bare minimum fixes only.
-- **`1.0`**: Must be fixed before 1.0 release, but not beta-blocking. Good enough solutions.
+- **`bug`**: Identifies an issue as a defect in the code. This label is applied independently of the release milestone.
+- **`1.0-beta`**: BLOCKING the beta release. Must be fixed or beta can't ship. Bare minimum fixes only. Can only be applied to a `bug` that affects a large percentage of users.
+- **`1.0`**: Must be fixed before 1.0 release, but not beta-blocking. Good enough solutions. Can only be applied to a `bug` that affects a large percentage of users.
 - **`1.x`**: Nice-to-have, safe for minors after 1.0. Can wait.
 - **`future`**: Exploratory, feature work, performance monitoring. Not urgent.
 - **`experimental`**: Issues around db, unbundled deps, inline entrypoints, route HMR, CSS in RSC, Vitest, perf checks — not yet stable/contracted. Can break.
