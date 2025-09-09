@@ -128,16 +128,16 @@ export type AppContext = {
   user: User | null;
 };
 ```
-- On **lines 14-17**, we're setting up the types for our application's context object. Specifically, we're defining the `session` and `user` properties.
+- On **lines 13-16**, we're setting up the types for our application's context object. Specifically, we're defining the `session` and `user` properties.
   - The `Session` type is defined in `src/session/durableObject.ts`. (Imported on line 8.) It contains a `userId`, `challenge`, and `createdAt`.
-  - The `User` type comes from our `@prisma/client`. (Imported on line 10.) That's right! When Prisma generates our migration files, it also generates types.
+  - The `User` type comes from our `@generated/prisma`. (Imported on line 9.) That's right! When Prisma generates our migration files, it also generates types.
 
 ```tsx title="src/worker.tsx" startLineNumber=20
 setCommonHeaders(),
 ```
-- On **line 20** we're setting up our common headers. This is a function inside of `app/src/headers.ts`. (Imported on line 5.) It creates the Security Policies, Transport Policy, Referrer Policy, and Permissions Policy. [You can find additional documentation here.](/core/security/#-security-headers)
+- On **line 19** we're setting up our common headers. This is a function inside of `app/src/headers.ts`. (Imported on line 5.) It creates the Security Policies, Transport Policy, Referrer Policy, and Permissions Policy. [You can find additional documentation here.](/core/security/#-security-headers)
 
-```tsx title="src/worker.tsx" startLineNumber=21
+```tsx title="src/worker.tsx" startLineNumber=20
 async ({ ctx, request, headers }) => {
   await setupDb(env);
   setupSessionStore(env);
@@ -167,16 +167,16 @@ async ({ ctx, request, headers }) => {
   }
 },
 ```
-- On **lines 21-48**, we're setting up our middleware. This will run between every request and response cycle.
-  - First, we're setting up the database `setupDb(env);` We'll use this later, on line 42, to find the logged in user.
+- On **lines 20-47**, we're setting up our middleware. This will run between every request and response cycle.
+  - First, we're setting up the database `setupDb(env);` We'll use this later, on line 42-44, to find the logged in user.
   - Then, we're setting up the session store `setupSessionStore(env);`. We're using Cloudflare's Durable Objects to store our session data and loading it. `sessions.load(request)`
-  - On **lines 27-36**, we're catching unauthorized errors. If there's an error and the status code is 401, we remove the session and redirect the user to the login page.
-  - On **lines 41-47**, we check the `ctx` for the `session` object. If it has a `userId`, we connect to the database and get all the user data. The result gets saved into the `ctx.user` object.
+  - On **lines 26-35**, we're catching unauthorized errors. If there's an error and the status code is 401, we remove the session and redirect the user to the login page.
+  - On **lines 40-46**, we check the `ctx` for the `session` object. If it has a `userId`, we connect to the database and get all the user data. The result gets saved into the `ctx.user` object.
 
-```tsx title="src/worker.tsx" startLineNumber=49
+```tsx title="src/worker.tsx" startLineNumber=48
 render(Document, [
 ```
-- On **line 49**, we're setting up our document. This document is referencing our `src/app/Document.tsx` file. It contains our `html`, `head`, and `body` tags and wraps _all_ of our pages.
+- On **line 48**, we're setting up our document. This document is referencing our `src/app/Document.tsx` file. It contains our `html`, `head`, and `body` tags and wraps _all_ of our pages.
   - One of the powerful yet simple features of RedwoodSDK is that it supports per-route documents. Read more about this [on our blog](https://rwsdk.com/blog/redwoodsdk-multiple-documents).
 
 ```tsx title="src/worker.tsx" startLineNumber=49
