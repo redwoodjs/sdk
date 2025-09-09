@@ -108,13 +108,69 @@ This section lists the issues identified for creation. New issues are added here
 
 ---
 
+### 14. Fix Windows-Specific Path Issues in Directive Scanner
+
+- **Description:** The directive scanner fails on Windows due to incorrect handling of Windows' ESM URL scheme. This breaks the development workflow for users on Windows.
+- **Triage Notes:** This bug affects Windows users. While Windows-specific issues are generally de-prioritized, this breaks a core function.
+- **Label:** `bug`, `1.0`
+
+---
+
+### 15. Ensure "use client" Module Caching Works Correctly During HMR
+
+- **Description:** There are concerns that modules marked with `"use client"` are not being cached or re-evaluated correctly during Hot Module Replacement (HMR), leading to unpredictable behavior in development.
+- **Triage Notes:** HMR stability is a core requirement for a smooth developer experience.
+- **Label:** `bug`, `1.0-beta`
+
+---
+
+### 16. Add Logging for `rwsdk/db` Migrations in Development
+
+- **Description:** The experimental `rwsdk/db` package does not provide clear logging output when running database migrations during development, making it difficult to debug.
+- **Triage Notes:** This is an enhancement for an experimental feature.
+- **Label:** `experimental`
+
+---
+
+### 17. Add Performance Checks to CI
+
+- **Description:** The CI pipeline currently lacks automated performance checks to monitor for regressions.
+- **Triage Notes:** This is a `future` consideration for maintaining long-term quality.
+- **Label:** `future`
+
+---
+
+### 18. Remove Deprecated APIs Before 1.0 Release
+
+- **Description:** Several APIs, such as the `headers` export, have been deprecated. These should be removed before the 1.0 release to ensure a clean and stable API surface.
+- **Triage Notes:** Removing deprecated APIs is a necessary step for a major version release.
+- **Label:** `1.0`
+
+---
+
+### 19. Document Limitations of Passing Props to Client Components
+
+- **Description:** There are limitations on what props can be passed from Server Components to Client Components (e.g., functions are not serializable). This needs to be clearly documented to prevent user confusion.
+- **Triage Notes:** Clear documentation on this core RSC concept is required.
+- **Label:** `1.0`
+
+---
+
+### 20. Automate Client Entry Point Generation
+
+- **Description:** Users are currently required to manually create and maintain client entry points. This process could be automated to improve the developer experience.
+- **Triage Notes:** This is a developer experience enhancement for a future release.
+- **Label:** `future`
+
+---
+
 ## Output: Triage of Existing Issues
 
 This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 14. Issue #677: dev mode broken when using naming files *.client.tsx in ^0.3.0
+### 21. Issue #677: dev mode broken when using naming files *.client.tsx in ^0.3.0
 
 - **Issue:** #677
 - **Label:** `bug`
@@ -122,7 +178,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 15. Issue #674: Route with renderToStream not working as expected
+### 22. Issue #674: Route with renderToStream not working as expected
 
 - **Issue:** #674
 - **Label:** `bug`, `1.0`
@@ -130,7 +186,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 16. Issue #667: Prefix params not passed down to routes
+### 23. Issue #667: Prefix params not passed down to routes
 
 - **Issue:** #667
 - **Label:** `bug`, `1.0-beta`
@@ -138,7 +194,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 17. Issue #656: Proposal: Expose React 19 Error Handling APIs in RedwoodSDK
+### 24. Issue #656: Proposal: Expose React 19 Error Handling APIs in RedwoodSDK
 
 - **Issue:** #656
 - **Label:** `1.x`
@@ -146,7 +202,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 18. Issue #651: Allow specifying http method in route definition
+### 25. Issue #651: Allow specifying http method in route definition
 
 - **Issue:** #651
 - **Label:** `1.x`
@@ -154,7 +210,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 19. Issue #641: [feature request] Client-side observer for realtime connection state
+### 26. Issue #641: [feature request] Client-side observer for realtime connection state
 
 - **Issue:** #641
 - **Label:** `future`
@@ -162,7 +218,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 20. Issue #639: Docs: `bash frame="none"` prefix doesnt work
+### 27. Issue #639: Docs: `bash frame="none"` prefix doesnt work
 
 - **Issue:** #639
 - **Label:** `bug`, `1.0-beta`
@@ -170,7 +226,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 21. Issue #635: Client components importing Prisma enums cause cryptic WASM build errors
+### 28. Issue #635: Client components importing Prisma enums cause cryptic WASM build errors
 
 - **Issue:** #635
 - **Label:** `bug`
@@ -178,7 +234,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 22. Issue #627: Support inlining client entry point in Document
+### 29. Issue #627: Support inlining client entry point in Document
 
 - **Issue:** #627
 - **Label:** `bug`, `experimental`
@@ -186,39 +242,39 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 23. Issue #624: Suggest "use client" wrapper when `react-dom/server` imported
+### 30. Issue #624: Suggest "use client" wrapper when `react-dom/server` imported
 
 - **Issue:** #624
-- **Label:** `1.0`
+- **Label:** `1.0`, `area:error-messages`
 - **Triage Notes:** This enhancement improves error messages.
 
 ---
 
-### 24. Issue #619: Support usage with vitest (or communicate that we do not)
+### 31. Issue #619: Support usage with vitest (or communicate that we do not)
 
 - **Issue:** #619
-- **Label:** `future`
+- **Label:** `1.x`
 - **Triage Notes:** This is a feature request.
 
 ---
 
-### 25. Issue #618: Add logging for when server actions imported but do not have "use server"
+### 32. Issue #618: Add logging for when server actions imported but do not have "use server"
 
 - **Issue:** #618
-- **Label:** `1.0`
+- **Label:** `1.0`, `area:error-messages`
 - **Triage Notes:** This enhancement improves error messages for a common mistake.
 
 ---
 
-### 26. Issue #617: Support CSS modules in server components
+### 33. Issue #617: Support CSS modules in server components
 
 - **Issue:** #617
-- **Label:** `experimental`
-- **Triage Notes:** This bug affects an experimental feature.
+- **Label:** `1.x`
+- **Triage Notes:** This is a new feature.
 
 ---
 
-### 27. Issue #580: Fullstack tutorial: Field name difference in `ApplicationForm` vs `EditApplicationForm`
+### 34. Issue #580: Fullstack tutorial: Field name difference in `ApplicationForm` vs `EditApplicationForm`
 
 - **Issue:** #580
 - **Label:** `bug`, `1.0-beta`
@@ -226,7 +282,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 28. Issue #579: Fullstack tutorial: Typescript error in `Edit.tsx`
+### 35. Issue #579: Fullstack tutorial: Typescript error in `Edit.tsx`
 
 - **Issue:** #579
 - **Label:** `bug`, `1.0-beta`
@@ -234,7 +290,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 29. Issue #570: Suspense fallback not triggered during client navigation RSC payload rehydration
+### 36. Issue #570: Suspense fallback not triggered during client navigation RSC payload rehydration
 
 - **Issue:** #570
 - **Label:** `bug`, `1.0-beta`
@@ -242,7 +298,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 30. Issue #569: initClient fails when loading 'new Response(await renderToStream(< />, { Document })'
+### 37. Issue #569: initClient fails when loading 'new Response(await renderToStream(< />, { Document })'
 
 - **Issue:** #569
 - **Label:** `bug`, `1.0-beta`
@@ -250,7 +306,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 31. Issue #568: Support setting response.status from middleware
+### 38. Issue #568: Support setting response.status from middleware
 
 - **Issue:** #568
 - **Label:** `future`
@@ -258,7 +314,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 32. Issue #566: Communicate that we only support stylesheet urls
+### 39. Issue #566: Communicate that we only support stylesheet urls
 
 - **Issue:** #566
 - **Label:** `1.0`
@@ -266,7 +322,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 33. Issue #555: automatically append "/" to end of routes.
+### 40. Issue #555: automatically append "/" to end of routes.
 
 - **Issue:** #555
 - **Label:** `bug`, `1.0`
@@ -274,7 +330,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 34. Issue #552: Allow "userspace" to overwrite the Request object in RSC network requests.
+### 41. Issue #552: Allow "userspace" to overwrite the Request object in RSC network requests.
 
 - **Issue:** #552
 - **Label:** `future`
@@ -282,7 +338,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 35. Issue #529: suggestion: use recent compatibility date in wrangler.json for the starters
+### 42. Issue #529: suggestion: use recent compatibility date in wrangler.json for the starters
 
 - **Issue:** #529
 - **Label:** `bug`, `1.0-beta`
@@ -290,7 +346,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 36. Issue #500: Tutorial: Dark / light mode
+### 43. Issue #500: Tutorial: Dark / light mode
 
 - **Issue:** #500
 - **Label:** `future`
@@ -298,7 +354,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 37. Issue #498: Support handling errors thrown from action handlers
+### 44. Issue #498: Support handling errors thrown from action handlers
 
 - **Issue:** #498
 - **Label:** `1.0`
@@ -306,7 +362,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 38. Issue #495: Using Cloudflare Agents
+### 45. Issue #495: Using Cloudflare Agents
 
 - **Issue:** #495
 - **Label:** `bug`, `1.0-beta`
@@ -314,7 +370,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 39. Issue #477: Shadcn-ui in Full Stack Tutorial
+### 46. Issue #477: Shadcn-ui in Full Stack Tutorial
 
 - **Issue:** #477
 - **Label:** `bug`, `1.0-beta`
@@ -322,7 +378,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 40. Issue #472: Support redirecting in action handlers
+### 47. Issue #472: Support redirecting in action handlers
 
 - **Issue:** #472
 - **Label:** `1.0`
@@ -330,7 +386,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 41. Issue #471: Incorrect "use client" transform for inlined functions
+### 48. Issue #471: Incorrect "use client" transform for inlined functions
 
 - **Issue:** #471
 - **Label:** `bug`, `1.0-beta`
@@ -338,7 +394,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 42. Issue #470: Use project vite config for seed.ts
+### 49. Issue #470: Use project vite config for seed.ts
 
 - **Issue:** #470
 - **Label:** `bug`, `1.0`
@@ -346,7 +402,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 43. Issue #468: Bug Report: Dev Server Hangs from I/O Context Issues in Cloudflare Workers
+### 50. Issue #468: Bug Report: Dev Server Hangs from I/O Context Issues in Cloudflare Workers
 
 - **Issue:** #468
 - **Label:** `bug`, `1.0-beta`
@@ -354,7 +410,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 44. Issue #464: Surface clientId for realtime
+### 51. Issue #464: Surface clientId for realtime
 
 - **Issue:** #464
 - **Label:** `future`
@@ -362,7 +418,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 45. Issue #432: Dynamic ssr: false to skip ssr rendering for some component
+### 52. Issue #432: Dynamic ssr: false to skip ssr rendering for some component
 
 - **Issue:** #432
 - **Label:** `future`
@@ -370,7 +426,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 46. Issue #425: Support `<link href="/src/styles.css" rel="stylesheet">`
+### 53. Issue #425: Support `<link href="/src/styles.css" rel="stylesheet">`
 
 - **Issue:** #425
 - **Label:** `1.0`
@@ -378,7 +434,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 47. Issue #406: Docs: Missing prisma migrate dev step in "Creating the Application" section of Full Stack tutorial
+### 54. Issue #406: Docs: Missing prisma migrate dev step in "Creating the Application" section of Full Stack tutorial
 
 - **Issue:** #406
 - **Label:** `bug`, `1.0-beta`
@@ -386,7 +442,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 48. Issue #405: Docs: Create a guide on how to cache
+### 55. Issue #405: Docs: Create a guide on how to cache
 
 - **Issue:** #405
 - **Label:** `future`
@@ -394,7 +450,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 49. Issue #387: Support FormData in realtime
+### 56. Issue #387: Support FormData in realtime
 
 - **Issue:** #387
 - **Label:** `future`
@@ -402,7 +458,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 50. Issue #379: Error react-server condition must be enabled in any environment
+### 57. Issue #379: Error react-server condition must be enabled in any environment
 
 - **Issue:** #379
 - **Label:** `bug`, `1.0-beta`
@@ -410,7 +466,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 51. Issue #368: throw new Error(`Failed to resolve ${packageName}`);
+### 58. Issue #368: throw new Error(`Failed to resolve ${packageName}`);
 
 - **Issue:** #368
 - **Label:** `bug`, `1.0-beta`
@@ -418,7 +474,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 52. Issue #356: Standard starter breaks when project path has __ in it
+### 59. Issue #356: Standard starter breaks when project path has __ in it
 
 - **Issue:** #356
 - **Label:** `bug`
@@ -426,7 +482,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 53. Issue #350: (docs): Incorporate Deploy to Staging info from Blog post to Docs
+### 60. Issue #350: (docs): Incorporate Deploy to Staging info from Blog post to Docs
 
 - **Issue:** #350
 - **Label:** `future`
@@ -434,7 +490,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 54. Issue #343: Support disabling `wrangler types` generation
+### 61. Issue #343: Support disabling `wrangler types` generation
 
 - **Issue:** #343
 - **Label:** `future`
@@ -442,7 +498,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 55. Issue #337: Support inlined 'use server'
+### 62. Issue #337: Support inlined 'use server'
 
 - **Issue:** #337
 - **Label:** `1.0`
@@ -450,7 +506,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 56. Issue #311: Avoid repetition for routes+links
+### 63. Issue #311: Avoid repetition for routes+links
 
 - **Issue:** #311
 - **Label:** `future`
@@ -458,7 +514,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 57. Issue #291: Check if imports in inline scripts in document are possible
+### 64. Issue #291: Check if imports in inline scripts in document are possible
 
 - **Issue:** #291
 - **Label:** `future`
@@ -466,7 +522,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 58. Issue #290: Mention ctx and middleware in auth docs - why it placed there, what happens on failure with throwing
+### 65. Issue #290: Mention ctx and middleware in auth docs - why it placed there, what happens on failure with throwing
 
 - **Issue:** #290
 - **Label:** `1.x`
@@ -474,7 +530,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 59. Issue #286: Better error for case where we import { Button } but export default function Button()
+### 66. Issue #286: Better error for case where we import { Button } but export default function Button()
 
 - **Issue:** #286
 - **Label:** `1.0`
@@ -482,7 +538,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 60. Issue #285: Investigate undefined error after export changes
+### 67. Issue #285: Investigate undefined error after export changes
 
 - **Issue:** #285
 - **Label:** `bug`, `1.0-beta`
@@ -490,7 +546,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 61. Issue #273: Handle "h is not a function" error masking real issues
+### 68. Issue #273: Handle "h is not a function" error masking real issues
 
 - **Issue:** #273
 - **Label:** `bug`, `1.0-beta`
@@ -498,7 +554,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 62. Issue #271: Add smoke test script to check HTML and client response
+### 69. Issue #271: Add smoke test script to check HTML and client response
 
 - **Issue:** #271
 - **Label:** `1.0`
@@ -506,7 +562,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 63. Issue #206: Cursor Rules: Ship with a set of Cursor Rules for building with RedwoodSDK
+### 70. Issue #206: Cursor Rules: Ship with a set of Cursor Rules for building with RedwoodSDK
 
 - **Issue:** #206
 - **Label:** `future`
@@ -514,7 +570,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 64. Issue #197: prisma (seed): Add docs to explain how to seed from a CSV file given workers cannot access filesystem to read files
+### 71. Issue #197: prisma (seed): Add docs to explain how to seed from a CSV file given workers cannot access filesystem to read files
 
 - **Issue:** #197
 - **Label:** `1.0`
@@ -522,7 +578,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 65. Issue #196: starters: Consider adding `public` directory to starters (t least standard) to show where to store static assets like styles, images, fonts
+### 72. Issue #196: starters: Consider adding `public` directory to starters (t least standard) to show where to store static assets like styles, images, fonts
 
 - **Issue:** #196
 - **Label:** `1.0`
@@ -530,7 +586,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 ---
 
-### 66. Issue #141: Cron: Unable to test cron triggers using Cloudflare's `wrangler dev --test-scheduled` method
+### 73. Issue #141: Cron: Unable to test cron triggers using Cloudflare's `wrangler dev --test-scheduled` method
 
 - **Issue:** #141
 - **Label:** `bug`, `1.0`
