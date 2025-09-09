@@ -8,6 +8,24 @@ The goal of this session is to triage tasks for the RedwoodSDK 1.0-beta and 1.0 
 
 **Core principle: "Good enough" beats perfect. We don't have time or resources for comprehensive solutions. Lightweight, bare minimum fixes that solve the core problem.**
 
+### Triage Protocol
+
+The triage process will address three types of inputs:
+1.  **GitHub Issues**: Existing issues from the repository.
+2.  **User To-Do List Items**: Shorthand tasks from the user's notes.
+3.  **Missing Tasks**: Gaps identified during the triage process (e.g., security checks, deploy smoke tests).
+
+For each input, the following steps will be taken:
+
+1.  **Analyze the Input**: The issue, to-do item, or context for a missing task will be carefully reviewed.
+2.  **Handle by Type**:
+    *   **For GitHub Issues**: A label will be assigned with a 1-2 sentence reason.
+    *   **For To-Do List Items**: Clarifying questions will be asked until the task is understood, then a label and reason will be assigned.
+    *   **For Missing Tasks**: A new issue will be proposed with a title, description, label, and reason.
+3.  **Apply Stability Lens**: Every decision will be made through the lens of **perceived stability**.
+4.  **Default Label**: If there is uncertainty, the `1.x` label will be used as the default.
+5.  **Record Outcomes**: All decisions, observations, and key considerations will be continuously recorded in the `Discussion` section of this work log as they arise to maintain a clear record of the triage process.
+
 ### Release Criteria
 
 - **What "critical stability" means (1.0-beta):**
@@ -31,9 +49,6 @@ These are both labels AND milestones - they determine when work gets done:
 - **`1.x`**: Nice-to-have, safe for minors after 1.0. Can wait.
 - **`future`**: Exploratory, feature work, performance monitoring. Not urgent.
 - **`experimental`**: Issues around db, unbundled deps, inline entrypoints, route HMR, CSS in RSC, Vitest, perf checks — not yet stable/contracted. Can break.
-
-### Triage Process
-We will triage across three kinds of inputs: GitHub issues, user to-do list items, and missing tasks (gap-finding). For each input, we will assign a label and provide a clear description and rationale, defaulting to `1.x` if uncertain.
 
 ## Context
 
