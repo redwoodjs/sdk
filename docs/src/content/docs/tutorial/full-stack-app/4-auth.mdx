@@ -35,7 +35,7 @@ Let's start by taking a look at the `worker.tsx` file. This file sets up our Clo
 
 ```tsx title="src/worker.tsx" collapse={1-12}
 import { defineApp, ErrorResponse } from "rwsdk/worker";
-import { route, render, prefix } from "rwsdk/router";
+import { route, render, prefix, layout } from "rwsdk/router";
 import { Document } from "@/app/Document";
 import { Home } from "@/app/pages/Home";
 import { setCommonHeaders } from "@/app/headers";
@@ -46,6 +46,7 @@ import { db, setupDb } from "./db";
 import type { User } from "@prisma/client";
 import { env } from "cloudflare:workers";
 export { SessionDurableObject } from "./session/durableObject";
+import { AuthLayout } from "@/app/layouts/AuthLayout";
 
 export type AppContext = {
   session: Session | null;
@@ -854,28 +855,78 @@ On our wrapping `div`, I've added a few Tailwind styles.
 
 As we continue to make adjustments, we want to be able to see the changes we're making within the browser.
 
-Inside our `Login` component let's replace our `main` tag with our `AuthLayout` component.
+To wrap our `Login` component with the new `AuthLayout` component, we simply import the layout and AuthLayout, and then wrap the `user` routes with the AuthLayout:
 
-```tsx title="src/app/pages/user/Login.tsx" {2,15} startLineNumber=37
+```tsx title="src/worker.tsx" ins={2, 13, 64} collapse={3-12, 14-62}
+import { defineApp, ErrorResponse } from "rwsdk/worker";
+import { ..., layout } from "rwsdk/router";
+import { Document } from "@/app/Document";
+import { Home } from "@/app/pages/Home";
+import { setCommonHeaders } from "@/app/headers";
+import { userRoutes } from "@/app/pages/user/routes";
+import { sessions, setupSessionStore } from "./session/store";
+import { Session } from "./session/durableObject";
+import { db, setupDb } from "./db";
+import type { User } from "@prisma/client";
+import { env } from "cloudflare:workers";
+export { SessionDurableObject } from "./session/durableObject";
 import { AuthLayout } from "@/app/layouts/AuthLayout";
-...
-return (
-  <AuthLayout>
-  <h1 className="text-4xl font-bold text-red-500">YOLO</h1>
-    <input
-      type="text"
-      value={username}
-      onChange={(e) => setUsername(e.target.value)}
-      placeholder="Username"
-    />
-    <Button onClick={handlePerformPasskeyLogin} disabled={isPending}>
-      {isPending ? <>...</> : "Login with passkey"}
-    </Button>
-    {result && <div>{result}</div>}
-  </AuthLayout>
-)
+
+
+export type AppContext = {
+  session: Session | null;
+  user: User | null;
+};
+
+export default defineApp([
+  setCommonHeaders(),
+  async ({ ctx, request, headers }) => {
+    await setupDb(env);
+    setupSessionStore(env);
+
+    try {
+      ctx.session = await sessions.load(request);
+    } catch (error) {
+      if (error instanceof ErrorResponse && error.code === 401) {
+        await sessions.remove(request, headers);
+        headers.set("Location", "/user/login");
+
+        return new Response(null, {
+          status: 302,
+          headers,
+        });
+      }
+
+      throw error;
+    }
+
+    if (ctx.session?.userId) {
+      ctx.user = await db.user.findUnique({
+        where: {
+          id: ctx.session.userId,
+        },
+      });
+    }
+  },
+  render(Document, [
+    route("/", () => new Response("Hello, World!")),
+    route("/protected", [
+      ({ ctx }) => {
+        if (!ctx.user) {
+          return new Response(null, {
+            status: 302,
+            headers: { Location: "/user/login" },
+          });
+        }
+      },
+      Home,
+    ]),
+    layout(AuthLayout, [prefix("/user", userRoutes)]),
+  ]),
+]);
 ```
 
+This mean any route inside the `UserRoutes` will lbe wrapped by the new AuthLayout. 
 If we head over to the browser, we should see something like this:
 
 ![](./images/after-layout-component.png)
@@ -1176,14 +1227,12 @@ In the top, right corner, we have a link to the signup page. This is similar to 
 
 ```tsx title="src/app/pages/user/Login.tsx" {3-7} startLineNumber=48
 return (
-  <AuthLayout>
     <div className="absolute top-0 right-0 p-10">
       <a href="#" className="font-display font-bold text-black text-sm underline underline-offset-8 hover:decoration-primary">
         Register
       </a>
     </div>
     ...
-  </AuthLayout>
 )
 ---
 - We're positioning the link with `absolute` to the top right, `top-0 right-0` and adding `p-10` or `40px` of padding
@@ -1631,7 +1680,7 @@ export default defineApp([
       },
       Home,
     ]),
-    prefix("/user", userRoutes),
+    layout(AuthLayout, [prefix("/user", userRoutes)]),
     route("/legal/privacy", () => <h1>Privacy Policy</h1>),
     route("/legal/terms", () => <h1>Terms of Service</h1>),
   ]),
@@ -1671,35 +1720,19 @@ Now, if you check your work in the browser, you should see the Terms of Service 
 
 😅 Don't worry, we've already done all the heavy lifting. This will be a breeze.
 
-```tsx title="src/app/pages/user/Signup.tsx" del={4, 7} ins={1,5,8} showLineNumbers=false
-import { AuthLayout } from "@/app/layouts/AuthLayout";
-...
-return (
-  <main className="bg-bg">
-  <AuthLayout>
-  ...
-  </main>
-  </AuthLayout>
-)
----
-- Let's import our `AuthLayout` at the top of our file.
-- Then, we'll replace our `main` tag with our `AuthLayout` component.
----
-```
+Because we allready wraped our `UserRoutes` with the AuthLayout, all the pages are wrapped with the `AuthLayout` component.
 
-Right inside our `AuthLayout` component, let's add our Login link:
+Let's add our Login link to the Signup page:
 
-```tsx title="src/app/pages/user/Signup.tsx" showLineNumbers=false "/user/login" "Login" ins={1, 4-8}
+```tsx title="src/app/pages/user/Signup.tsx" showLineNumbers=false "/user/login" "Login" ins={1, 3-7}
 import { link } from "@/app/shared/links";
 ...
-<AuthLayout>
   <div className="absolute top-0 right-0 p-10">
     <a href={link('/user/login')} className="font-display font-bold text-black text-sm underline underline-offset-8 hover:decoration-primary">
       Login
     </a>
   </div>
   ...
-</AuthLayout>
 ---
 - Our Login link is using the exact same styles as the Register link on the Login page. The only difference is we changed the link to point to our `/user/login` route and the label is `Login`.
 ---
@@ -1707,8 +1740,7 @@ import { link } from "@/app/shared/links";
 
 Next, let's wrap all of our form content with a `div`:
 
-```tsx title="src/app/pages/user/Signup.tsx" startLineNumber=56 "auth-form max-w-[400px] px-10" ins={2,9}
-<AuthLayout>
+```tsx title="src/app/pages/user/Signup.tsx" startLineNumber=56 "auth-form max-w-[400px] px-10" ins={1,8}
   <div className="auth-form max-w-[400px] w-full mx-auto px-10">
     <div className="absolute top-0 right-0 p-10">
       <a href={link('/user/login')} className="font-display font-bold text-black text-sm underline underline-offset-8 hover:decoration-primary">
@@ -1717,7 +1749,6 @@ Next, let's wrap all of our form content with a `div`:
     </div>
     ...
   </div>
-</AuthLayout>
 ---
 - We're using the same styles as our login page.
 - We have a class `auth-form` that will style our `p` and `a` tags.
