@@ -31,6 +31,9 @@
     "@prisma/client": "~6.8.2",
     "@simplewebauthn/browser": "^13.1.0",
     "@simplewebauthn/server": "^13.1.1",
+    "react": "19.2.0-canary-3fb190f7-20250908",
+    "react-dom": "19.2.0-canary-3fb190f7-20250908",
+    "react-server-dom-webpack": "19.2.0-canary-3fb190f7-20250908",
     "rwsdk": "0.3.6"
   },
   "devDependencies": {

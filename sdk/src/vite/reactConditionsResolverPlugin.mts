@@ -78,25 +78,7 @@ function resolveReactImport(
         envName,
       );
   } catch {
-    process.env.VERBOSE &&
-      log(
-        "Failed to resolve %s for env=%s from project root, trying ROOT_DIR",
-        id,
-        envName,
-      );
-    try {
-      resolved = ENV_RESOLVERS[envName](ROOT_DIR, id) || undefined;
-      process.env.VERBOSE &&
-        log(
-          "Successfully resolved %s to %s for env=%s from rwsdk root",
-          id,
-          resolved,
-          envName,
-        );
-    } catch {
-      process.env.VERBOSE &&
-        log("Failed to resolve %s for env=%s", id, envName);
-    }
+    process.env.VERBOSE && log("Failed to resolve %s for env=%s", id, envName);
   }
 
   return resolved;
