@@ -24,9 +24,9 @@ import { PackageManagers } from "starlight-package-managers";
 
     This command will create a `components.json` file in the root of your project. It contains all the configuration for our shadcn/ui components.
 
-    If you want to match RedwoodSDK conventions, add the following aliases to the `components.json` file: 
-    
-    ``` json title="components.json" startLineNumber={12}
+    If you want to match RedwoodSDK conventions, add the following aliases to the `components.json` file:
+
+    ```json title="components.json" startLineNumber={13}
     ...
     "aliases": {
       "components": "@/app/components",
@@ -35,12 +35,13 @@ import { PackageManagers } from "starlight-package-managers";
       "lib": "@/app/lib",
       "hooks": "@/app/hooks"
     },
+    ...
     ```
 
     <Aside type="note" title="shadcn/ui Organization">
-    You’ll notice that in our configuration, the `lib` directory is directly inside the `app` directory. The shadcn installer may create `lib` in the `src` directory (or `@`). You'll need to manually move the folder to the `app` directory.
+    In our configuration, the `lib` directory is nested inside the `app` directory. The shadcn/ui command line tool may not honor our setup, creating another `lib` directory in the `src` (or `@`) directory. You'll need to manually move the folder to the `app` directory.
 
-    Installing components through the shadcn/ui CLI should use the correct paths. However, if you're copying and pasting code from the shadcn/ui website, you may need to update the import paths.
+    If you're copying and pasting code from the shadcn/ui website, you'll also need to update the import paths.
     </Aside>
 
 3. Now, you should be able to add components:
