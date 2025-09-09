@@ -7,7 +7,7 @@ This section lists the issues identified for creation. New issues are added here
 ### 1. Investigate and Ensure Compatibility with ShadCN Component Library
 
 - **Description:** Users experience friction when integrating the ShadCN component library. The common failure points appear to be related to stylesheet inclusion and the mass use of "use client" directives in library components, which tests the boundaries of our current implementation. This is a significant hurdle for developers migrating from other ecosystems where these libraries work out-of-the-box.
-- **Triage Notes:** Compatibility with popular component libraries is a key factor for adoption and perceived stability. This is a high-priority item for the 1.0-beta.
+- **Triage Notes:** Compatibility with popular component libraries is a key factor for adoption and perceived stability.
 - **Label:** `1.0-beta`
 
 ---
@@ -15,7 +15,7 @@ This section lists the issues identified for creation. New issues are added here
 ### 2. Investigate and Ensure Compatibility with Base UI Component Library
 
 - **Description:** Users experience friction when integrating the Base UI component library. The common failure points appear to be related to stylesheet inclusion and the mass use of "use client" directives in library components, which tests the boundaries of our current implementation. This is a significant hurdle for developers migrating from other ecosystems where these libraries work out-of-the-box.
-- **Triage Notes:** Compatibility with popular component libraries is a key factor for adoption and perceived stability. This is a high-priority item for the 1.0-beta.
+- **Triage Notes:** Compatibility with popular component libraries is a key factor for adoption and perceived stability.
 - **Label:** `1.0-beta`
 
 ---
@@ -23,7 +23,7 @@ This section lists the issues identified for creation. New issues are added here
 ### 3. Investigate and Ensure Compatibility with Chakra UI Component Library
 
 - **Description:** Users experience friction when integrating the Chakra UI component library. Similar to Radix issues, users are encountering `React2.createContext` errors (see Discord thread: https://discord.com/channels/679514959968993311/1412270477744934942). The common failure points appear to be related to stylesheet inclusion and the mass use of "use client" directives in library components, which tests the boundaries of our current implementation. This is a significant hurdle for developers migrating from other ecosystems where these libraries work out-of-the-box.
-- **Triage Notes:** Compatibility with popular component libraries is a key factor for adoption and perceived stability. This is a high-priority item for the 1.0-beta.
+- **Triage Notes:** Compatibility with popular component libraries is a key factor for adoption and perceived stability.
 - **Label:** `1.0-beta`
 
 ---
@@ -31,7 +31,7 @@ This section lists the issues identified for creation. New issues are added here
 ### 4. Address Dev Server Instability and Swallowed Errors during SSR
 
 - **Description:** When an error occurs during server-side rendering, the dev server can hang, breaking the Hot Module Replacement (HMR) loop. The associated error messages are often swallowed, appearing as `undefined` or a blank error, which gives the developer no actionable information. This forces a manual server restart and creates a highly disruptive and frustrating debugging experience.
-- **Triage Notes:** A stable dev server is critical for the development workflow. A hanging server with unhelpful errors is a high-priority bug that must be fixed for the 1.0-beta.
+- **Triage Notes:** A stable dev server is critical for the development workflow. A hanging server with unhelpful errors is a show-stopper bug.
 - **Label:** `1.0-beta`
 
 ---
@@ -39,7 +39,7 @@ This section lists the issues identified for creation. New issues are added here
 ### 5. Improve Error Messages with Actionable Suggestions and Links to Docs
 
 - **Description:** Many error messages are currently terse and lack guidance. For example, when a user encounters an error about `react-dom/server` being incompatible with RSCs, we don't suggest common causes (e.g., using server-only code in a client component) or solutions. We should systematically catch common errors, provide helpful suggestions, and link to a dedicated troubleshooting section in the documentation.
-- **Triage Notes:** Clear and actionable error messages are essential for a good developer experience. This is an important improvement for the 1.0 release.
+- **Triage Notes:** Clear and actionable error messages are essential for a good developer experience.
 - **Label:** `1.0`
 
 ---
@@ -47,7 +47,7 @@ This section lists the issues identified for creation. New issues are added here
 ### 6. Implement Lightweight CVE Monitoring for Critical Vulnerabilities
 
 - **Description:** The project currently lacks a lightweight, automated way to monitor for critical security vulnerabilities (CVEs) within its dependencies. This means we are not proactively identifying high-impact security risks that could affect users.
-- **Triage Notes:** A process for monitoring and addressing critical security vulnerabilities is a requirement for a production-ready 1.0 release.
+- **Triage Notes:** A process for monitoring and addressing critical security vulnerabilities is required for production readiness.
 - **Label:** `1.0`
 
 ---
@@ -55,23 +55,23 @@ This section lists the issues identified for creation. New issues are added here
 ### 7. Create Basic Stability Documentation for 1.0-beta
 
 - **Description:** Add a simple stability page to docs clearly marking what's stable vs experimental. Basic table format: Feature | Status (Stable/Experimental) | Notes. Cover core features only - rendering, routing, server functions, realtime. No API guarantees or complex migration guides - just clear expectations.
-- **Triage Notes:** To ensure clear expectations for the beta, the documentation must clearly distinguish between stable and experimental features. This is a requirement for the 1.0-beta.
-- **Label:** `1.0-beta`
+- **Triage Notes:** Documentation must clearly distinguish between stable and experimental features to ensure clear expectations.
+- **Label:** `1.0`
 
 ---
 
 ### 8. Fix Context Providers in Layouts - Client-Side Double Evaluation Issue
 
 - **Description:** Context providers in layout components work correctly for SSR but fail on the client-side in development. Root cause is double-evaluation of modules containing context, causing provider/consumer mismatch. Affects standard RSC patterns that should work. Only occurs in dev, not in builds/releases.
-- **Triage Notes:** This bug breaks a fundamental React pattern that developers expect to work. It is a high-priority fix for the 1.0-beta.
-- **Label:** `1.0-beta`
+- **Triage Notes:** This bug affects a subset of users who use context providers in layouts.
+- **Label:** `bug`
 
 ---
 
 ### 9. Align React Dependencies to Peer-Only Strategy
 
 - **Description:** This is a coordinated breaking change to align our React dependency strategy with a peer-dependency model. It involves three parts: 1) Update starters to use the latest React canary packages (`react`, `react-dom`, `react-server-dom-webpack`) as explicit dependencies. 2) Change the SDK's `package.json` to list these React packages as `peerDependencies` only, removing the fallback versions. 3) Modify the `reactConditionsResolverPlugin` to resolve React *only* from the user's project.
-- **Triage Notes:** This is a required breaking change to give users control over the React version and to address critical bugs in component libraries. It is a blocker for the 1.0-beta.
+- **Triage Notes:** This breaking change gives users control over React versions and addresses bugs in component libraries.
 - **Label:** `1.0-beta`
 
 ---
@@ -79,7 +79,7 @@ This section lists the issues identified for creation. New issues are added here
 ### 10. Upgrade to Vite v7
 
 - **Description:** Upgrade the ecosystem to Vite v7. This involves two parts: 1) Update the `vite` dependency in all starters to the latest v7 release. 2) Widen the `vite` `peerDependency` range in the SDK's `package.json` to be compatible with v7.
-- **Triage Notes:** This is a required breaking change to keep the framework aligned with its core tooling. It must be done for the 1.0-beta release.
+- **Triage Notes:** This breaking change keeps the framework aligned with its core tooling.
 - **Label:** `1.0-beta`
 
 ---
@@ -87,7 +87,7 @@ This section lists the issues identified for creation. New issues are added here
 ### 11. Align Cloudflare Vite Plugin to Peer-Only Strategy
 
 - **Description:** This change aligns the Cloudflare Vite plugin with our new dependency strategy. It involves two parts: 1) Update starters to use the latest `@cloudflare/vite-plugin` as an explicit dependency. 2) Change the SDK's `package.json` to list the plugin as a `peerDependency` only, removing it as a direct dependency.
-- **Triage Notes:** This is a required breaking change for architectural consistency and must be done for the 1.0-beta release.
+- **Triage Notes:** This breaking change provides architectural consistency and user control over this dependency.
 - **Label:** `1.0-beta`
 
 ---
@@ -95,7 +95,7 @@ This section lists the issues identified for creation. New issues are added here
 ### 12. Fix Flaky Style Smoke Tests in CI
 
 - **Description:** The smoke tests for stylesheets are currently skipped in CI due to flakiness. This creates a blind spot for potential regressions in our styling pipeline. The tests need to be investigated, fixed, and re-enabled.
-- **Triage Notes:** Reliable CI tests are essential for a stable 1.0 release. Fixing these flaky tests is a requirement for 1.0.
+- **Triage Notes:** Needs to be passing to hold us to the 1.0 contract.
 - **Label:** `1.0`
 
 ---
@@ -110,7 +110,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #677
 - **Label:** `bug`
-- **Triage Notes:** This bug affects a specific file naming convention and has a known workaround. It will be addressed in a future release post 1.0.
+- **Triage Notes:** This bug affects a specific file naming convention.
 
 ---
 
@@ -118,7 +118,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #674
 - **Label:** `bug`, `1.0`
-- **Triage Notes:** While `renderToStream` is a public API, it is not on the critical path for most users. This will be fixed for the 1.0 release.
+- **Triage Notes:** While `renderToStream` is a public API, it is not on the critical path for most users.
 
 ---
 
@@ -126,7 +126,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #667
 - **Label:** `bug`, `1.0-beta`
-- **Triage Notes:** This bug breaks a core routing feature and is a high-priority fix for the 1.0-beta.
+- **Triage Notes:** This bug breaks a core routing feature.
 
 ---
 
@@ -134,7 +134,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #656
 - **Label:** `future`
-- **Triage Notes:** This is a feature request. It will be considered for a future release post 1.0.
+- **Triage Notes:** This is a feature request.
 
 ---
 
@@ -142,7 +142,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #651
 - **Label:** `future`
-- **Triage Notes:** This is a feature request. It will be considered for a future release post 1.0.
+- **Triage Notes:** This is a feature request.
 
 ---
 
@@ -150,7 +150,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #641
 - **Label:** `future`
-- **Triage Notes:** This is a feature request. It will be considered for a future release post 1.0.
+- **Triage Notes:** This is a feature request.
 
 ---
 
@@ -158,7 +158,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #639
 - **Label:** `bug`, `1.0-beta`
-- **Triage Notes:** Incorrect documentation for a core command creates a poor first impression. This is a critical fix for the 1.0-beta.
+- **Triage Notes:** Incorrect documentation for a core command affects user perception.
 
 ---
 
@@ -166,7 +166,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #635
 - **Label:** `bug`, `1.0-beta`
-- **Triage Notes:** This bug produces a cryptic build error when using a core dependency (Prisma) in a common pattern. This is a high-priority fix for the 1.0-beta.
+- **Triage Notes:** This bug produces a cryptic build error when using a core dependency (Prisma).
 
 ---
 
@@ -174,7 +174,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #632
 - **Label:** `bug`, `1.0-beta`
-- **Triage Notes:** This bug prevents the use of popular component libraries, a critical compatibility issue that must be addressed for the 1.0-beta.
+- **Triage Notes:** This bug prevents the use of popular component libraries.
 
 ---
 
@@ -182,7 +182,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #627
 - **Label:** `bug`, `experimental`
-- **Triage Notes:** This bug affects an experimental feature and is not on the critical path for the 1.0 release.
+- **Triage Notes:** This bug affects an experimental feature.
 
 ---
 
@@ -190,7 +190,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #624
 - **Label:** `1.0`
-- **Triage Notes:** This is an enhancement to improve error messages, making the framework easier to use. It is slated for the 1.0 release.
+- **Triage Notes:** This enhancement improves error messages.
 
 ---
 
@@ -198,7 +198,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #619
 - **Label:** `future`
-- **Triage Notes:** This is a feature request. It will be considered for a future release post 1.0.
+- **Triage Notes:** This is a feature request.
 
 ---
 
@@ -206,7 +206,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #618
 - **Label:** `1.0`
-- **Triage Notes:** This is an enhancement to improve error messages for a common mistake. It is slated for the 1.0 release.
+- **Triage Notes:** This enhancement improves error messages for a common mistake.
 
 ---
 
@@ -214,7 +214,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #617
 - **Label:** `experimental`
-- **Triage Notes:** This bug affects an experimental feature and is not on the critical path for the 1.0 release.
+- **Triage Notes:** This bug affects an experimental feature.
 
 ---
 
@@ -222,7 +222,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #580
 - **Label:** `bug`, `1.0-beta`
-- **Triage Notes:** Errors in the primary tutorial block new users and must be fixed for the 1.0-beta.
+- **Triage Notes:** Errors in the primary tutorial block new users.
 
 ---
 
@@ -230,7 +230,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #579
 - **Label:** `bug`, `1.0-beta`
-- **Triage Notes:** Errors in the primary tutorial block new users and must be fixed for the 1.0-beta.
+- **Triage Notes:** Errors in the primary tutorial block new users.
 
 ---
 
@@ -238,7 +238,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #570
 - **Label:** `bug`, `1.0-beta`
-- **Triage Notes:** This bug breaks a fundamental React pattern and is a high-priority fix for the 1.0-beta.
+- **Triage Notes:** This bug breaks a fundamental React pattern.
 
 ---
 
@@ -246,7 +246,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #569
 - **Label:** `bug`, `1.0-beta`
-- **Triage Notes:** This bug breaks a core feature (streaming) and produces a cryptic error. It is a high-priority fix for the 1.0-beta.
+- **Triage Notes:** This bug breaks a core feature (streaming) and produces a cryptic error.
 
 ---
 
@@ -254,7 +254,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #568
 - **Label:** `future`
-- **Triage Notes:** This is a feature request. It will be considered for a future release post 1.0.
+- **Triage Notes:** This is a feature request.
 
 ---
 
@@ -262,7 +262,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #566
 - **Label:** `1.0`
-- **Triage Notes:** This is an enhancement to improve error messages for a common point of confusion. It is slated for the 1.0 release.
+- **Triage Notes:** This enhancement improves error messages for a common point of confusion.
 
 ---
 
@@ -270,7 +270,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #555
 - **Label:** `bug`, `1.0`
-- **Triage Notes:** This bug addresses an inconsistency in router behavior and is slated for the 1.0 release.
+- **Triage Notes:** This bug addresses an inconsistency in router behavior.
 
 ---
 
@@ -278,7 +278,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #552
 - **Label:** `future`
-- **Triage Notes:** This is a feature request. It will be considered for a future release post 1.0.
+- **Triage Notes:** This is a feature request.
 
 ---
 
@@ -286,7 +286,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #529
 - **Label:** `bug`, `1.0-beta`
-- **Triage Notes:** This bug breaks a core feature (streaming) and produces a cryptic error. It is a high-priority fix for the 1.0-beta.
+- **Triage Notes:** This bug breaks a core feature (streaming) and produces a cryptic error.
 
 ---
 
@@ -294,7 +294,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #500
 - **Label:** `future`
-- **Triage Notes:** This is a documentation request. It will be considered for a future release post 1.0.
+- **Triage Notes:** This is a documentation request.
 
 ---
 
@@ -302,7 +302,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #498
 - **Label:** `1.0`
-- **Triage Notes:** Proper error handling for server functions is a core requirement for building stable applications. This is a key feature for a production-ready 1.0 release.
+- **Triage Notes:** Proper error handling for server functions is a core requirement.
 
 ---
 
@@ -310,7 +310,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #495
 - **Label:** `bug`, `1.0-beta`
-- **Triage Notes:** Inability to use a key Cloudflare feature is a significant compatibility bug. This is a high-priority fix for the 1.0-beta.
+- **Triage Notes:** Inability to use a key Cloudflare feature is a significant compatibility bug.
 
 ---
 
@@ -318,7 +318,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #477
 - **Label:** `bug`, `1.0-beta`
-- **Triage Notes:** This issue blocks users from completing the tutorial with a popular library. It is a high-priority fix for the 1.0-beta.
+- **Triage Notes:** This issue blocks users from completing the tutorial with a popular library.
 
 ---
 
@@ -326,7 +326,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #472
 - **Label:** `1.0`
-- **Triage Notes:** Redirects from server actions are a fundamental web development pattern. This feature is slated for the 1.0 release.
+- **Triage Notes:** Redirects from server actions are a fundamental web development pattern.
 
 ---
 
@@ -334,7 +334,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #471
 - **Label:** `bug`, `1.0-beta`
-- **Triage Notes:** This is a bug in the core `"use client"` transformation logic. It is a high-priority fix for the 1.0-beta.
+- **Triage Notes:** This bug affects the core `"use client"` transformation logic.
 
 ---
 
@@ -342,7 +342,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #470
 - **Label:** `bug`, `1.0`
-- **Triage Notes:** This bug breaks a key development workflow and is slated for the 1.0 release.
+- **Triage Notes:** This bug breaks a key development workflow.
 
 ---
 
@@ -350,7 +350,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #468
 - **Label:** `bug`, `1.0-beta`
-- **Triage Notes:** A hanging dev server is a show-stopper bug that breaks the core development loop. This is a high-priority fix for the 1.0-beta.
+- **Triage Notes:** A hanging dev server is a show-stopper bug.
 
 ---
 
@@ -358,7 +358,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #464
 - **Label:** `future`
-- **Triage Notes:** This is a feature request. It will be considered for a future release post 1.0.
+- **Triage Notes:** This is a feature request.
 
 ---
 
@@ -366,7 +366,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #432
 - **Label:** `future`
-- **Triage Notes:** This is a feature request. It will be considered for a future release post 1.0.
+- **Triage Notes:** This is a feature request.
 
 ---
 
@@ -374,7 +374,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #425
 - **Label:** `1.0`
-- **Triage Notes:** This addresses an inconsistency in how stylesheets are referenced. It is slated for the 1.0 release.
+- **Triage Notes:** This addresses an inconsistency in how stylesheets are referenced.
 
 ---
 
@@ -382,7 +382,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #406
 - **Label:** `bug`, `1.0-beta`
-- **Triage Notes:** A missing, critical command in the main tutorial is a bug that will block every new user. This must be fixed for the 1.0-beta.
+- **Triage Notes:** A missing, critical command in the main tutorial is a bug that will block every new user.
 
 ---
 
@@ -390,7 +390,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #405
 - **Label:** `future`
-- **Triage Notes:** This is a documentation request. It will be considered for a future release post 1.0.
+- **Triage Notes:** This is a documentation request.
 
 ---
 
@@ -398,7 +398,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #387
 - **Label:** `future`
-- **Triage Notes:** This is a limitation in an experimental feature. This will be considered for a future release post 1.0.
+- **Triage Notes:** This is a limitation in an experimental feature.
 
 ---
 
@@ -406,7 +406,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #379
 - **Label:** `bug`, `1.0-beta`
-- **Triage Notes:** A newly created project failing with a configuration error is a critical bug. This is a high-priority fix for the 1.0-beta.
+- **Triage Notes:** A newly created project failing with a configuration error is a critical bug.
 
 ---
 
@@ -414,7 +414,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #368
 - **Label:** `bug`, `1.0-beta`
-- **Triage Notes:** This bug prevents projects from running and is a high-priority fix for the 1.0-beta.
+- **Triage Notes:** This bug prevents projects from running.
 
 ---
 
@@ -422,7 +422,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #356
 - **Label:** `bug`
-- **Triage Notes:** This bug affects a specific project path structure and has a known workaround. It will be addressed in a future release post 1.0.
+- **Triage Notes:** This bug affects a specific project path structure.
 
 ---
 
@@ -430,7 +430,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #350
 - **Label:** `future`
-- **Triage Notes:** This is a documentation request. It will be considered for a future release post 1.0.
+- **Triage Notes:** This is a documentation request.
 
 ---
 
@@ -438,7 +438,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #343
 - **Label:** `future`
-- **Triage Notes:** This is a feature request. It will be considered for a future release post 1.0.
+- **Triage Notes:** This is a feature request.
 
 ---
 
@@ -446,7 +446,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #337
 - **Label:** `1.0`
-- **Triage Notes:** Supporting the full React directive syntax is important for developer experience. This is slated for the 1.0 release.
+- **Triage Notes:** Supporting the full React directive syntax is important for developer experience.
 
 ---
 
@@ -454,7 +454,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #311
 - **Label:** `future`
-- **Triage Notes:** This is a developer experience enhancement. It will be considered for a future release post 1.0.
+- **Triage Notes:** This is a developer experience enhancement.
 
 ---
 
@@ -462,7 +462,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #291
 - **Label:** `future`
-- **Triage Notes:** This is an exploratory research task and will be considered for a future release post 1.0.
+- **Triage Notes:** This is an exploratory research task.
 
 ---
 
@@ -470,7 +470,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #290
 - **Label:** `1.x`
-- **Triage Notes:** This is a documentation request. It will be considered for a future release post 1.0.
+- **Triage Notes:** This is a documentation request.
 
 ---
 
@@ -478,7 +478,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #286
 - **Label:** `1.0`
-- **Triage Notes:** This addresses a common source of confusion with a cryptic error message. It is slated for the 1.0 release.
+- **Triage Notes:** This addresses a common source of confusion with a cryptic error message.
 
 ---
 
@@ -486,7 +486,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #285
 - **Label:** `bug`, `1.0-beta`
-- **Triage Notes:** An `undefined` error provides no actionable information. This is a high-priority bug to fix for the 1.0-beta.
+- **Triage Notes:** An `undefined` error provides no actionable information.
 
 ---
 
@@ -494,7 +494,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #273
 - **Label:** `bug`, `1.0-beta`
-- **Triage Notes:** This vague error masks the true cause of a problem. Replacing it with a clear, actionable error is a critical fix for the 1.0-beta.
+- **Triage Notes:** This vague error masks the true cause of a problem.
 
 ---
 
@@ -502,7 +502,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #271
 - **Label:** `1.0`
-- **Triage Notes:** Adding smoke tests improves our ability to catch regressions. This is slated for the 1.0 release.
+- **Triage Notes:** Adding smoke tests improves our ability to catch regressions.
 
 ---
 
@@ -510,7 +510,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #206
 - **Label:** `future`
-- **Triage Notes:** This is a tooling enhancement. It will be considered for a future release post 1.0.
+- **Triage Notes:** This is a tooling enhancement.
 
 ---
 
@@ -518,7 +518,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #197
 - **Label:** `1.0`
-- **Triage Notes:** This documentation is needed to unblock a common development workflow. It is slated for the 1.0 release.
+- **Triage Notes:** This documentation is needed to unblock a common development workflow.
 
 ---
 
@@ -526,7 +526,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #196
 - **Label:** `1.0`
-- **Triage Notes:** Establishing a clear convention for static assets improves the developer experience. This is slated for the 1.0 release.
+- **Triage Notes:** Establishing a clear convention for static assets improves the developer experience.
 
 ---
 
@@ -534,4 +534,4 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #141
 - **Label:** `bug`, `1.0`
-- **Triage Notes:** The inability to test a feature locally is a bug that breaks a key development workflow. This is slated for the 1.0 release.
+- **Triage Notes:** The inability to test a feature locally is a bug that breaks a key development workflow.
