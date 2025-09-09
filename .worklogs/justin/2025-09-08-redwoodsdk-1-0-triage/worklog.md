@@ -10,21 +10,26 @@ The goal of this session is to triage tasks for the RedwoodSDK 1.0-beta and 1.0 
 
 ### Triage Protocol
 
-The triage process will address three types of inputs:
-1.  **GitHub Issues**: Existing issues from the repository.
-2.  **User To-Do List Items**: Shorthand tasks from the user's notes.
-3.  **Missing Tasks**: Gaps identified during the triage process (e.g., security checks, deploy smoke tests).
+The triage process is designed to systematically evaluate tasks and produce a structured output for automated processing.
 
+#### 1. Input Sources
+The triage process will address three types of inputs from their respective source files:
+1.  **GitHub Issues**: Sourced from [`./source-gh-issues.md`](./source-gh-issues.md). These are existing issues from the repository.
+2.  **User To-Do List Items**: Sourced from [`./source-todo.md`](./source-todo.md). These are shorthand tasks from the user's notes.
+3.  **Missing Tasks**: These are gaps identified during the triage session itself (e.g., security checks, deploy smoke tests).
+
+#### 2. Triage Steps
 For each input, the following steps will be taken:
+1.  **Analyze**: The issue, to-do item, or context for a missing task will be carefully reviewed through the lens of **perceived stability**.
+2.  **Clarify**: For to-do list items, clarifying questions will be asked until the task is fully understood.
+3.  **Assign Label**: A label (`1.0-beta`, `1.0`, `1.x`, `future`, `experimental`) will be assigned. If there is uncertainty, `1.x` will be used as the default.
 
-1.  **Analyze the Input**: The issue, to-do item, or context for a missing task will be carefully reviewed.
-2.  **Handle by Type**:
-    *   **For GitHub Issues**: A label will be assigned with a 1-2 sentence reason.
-    *   **For To-Do List Items**: Clarifying questions will be asked until the task is understood, then a label and reason will be assigned.
-    *   **For Missing Tasks**: A new issue will be proposed with a title, description, label, and reason.
-3.  **Apply Stability Lens**: Every decision will be made through the lens of **perceived stability**.
-4.  **Default Label**: If there is uncertainty, the `1.x` label will be used as the default.
-5.  **Record Outcomes**: All decisions, observations, and key considerations will be continuously recorded in the `Discussion` section of this work log as they arise to maintain a clear record of the triage process.
+#### 3. Output and Automation
+All triage decisions will be recorded in [`./output-issues.md`](./output-issues.md) to prepare for an automated script that will update GitHub.
+*   **For existing GitHub Issues**: Record the issue number, the assigned label, and a 1-2 sentence reason. The script will use this to apply the label to the existing issue.
+*   **For new issues** (from to-do list items or missing tasks): Propose a new issue with a title, description, the assigned label, and a reason. The script will use this to create a new issue.
+
+All general decisions, observations, and key considerations that arise during the process will be continuously recorded in the `Discussion` section of this work log.
 
 ### Release Criteria
 
@@ -68,7 +73,7 @@ This section captures the initial context provided for the triage session.
 
 ### [From Github Issues](./source-gh-issues.md)
 
-### [From Justin's Todos](./source-gh-issues.md)
+### [From Justin's Todos](./source-todo.md)
 
 ## Output
 
