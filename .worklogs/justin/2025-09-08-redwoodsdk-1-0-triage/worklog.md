@@ -57,6 +57,8 @@ This section captures the initial context provided for the triage session.
 
 ## Output
 
+### [Output Issues](./output-issues.md)
+
 ## Discussion
 
 ## Decisions
