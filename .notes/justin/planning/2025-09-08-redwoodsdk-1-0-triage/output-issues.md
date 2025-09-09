@@ -253,7 +253,7 @@ This section lists the triage decisions for existing GitHub issues.
 ### 30. Issue #627: Support inlining client entry point in Document
 
 - **Issue:** #627
-- **Label:** `bug`, `experimental`
+- **Label:** `bug`, `1.0`
 - **Triage Notes:** This bug affects an experimental feature.
 
 ---
@@ -505,16 +505,16 @@ This section lists the triage decisions for existing GitHub issues.
 ### 61. Issue #291: Check if imports in inline scripts in document are possible
 
 - **Issue:** #291
-- **Label:** `future`
-- **Triage Notes:** This is an exploratory research task.
+- **Label:** `status: close`
+- **Closing Comment:** This is now solved. The primary way of hooking up the client entry point in the SDK is via an import in the Document. A separate issue (#30) is tracking a bug with fully inlining the script content.
 
 ---
 
 ### 62. Issue #290: Mention ctx and middleware in auth docs - why it placed there, what happens on failure with throwing
 
 - **Issue:** #290
-- **Label:** `1.x`
-- **Triage Notes:** This is a documentation request.
+- **Label:** `1.0`
+- **Triage Notes:** This documentation is important for the session API, which is stable. This should be considered part of the main documentation review (Issue #21).
 
 ---
 
@@ -522,7 +522,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #286
 - **Label:** `1.0`
-- **Triage Notes:** This addresses a common source of confusion with a cryptic error message.
+- **Triage Notes:** This addresses a common source of confusion and is part of the effort to improve error messages (Issue #5).
 
 ---
 
@@ -530,7 +530,7 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #285
 - **Label:** `bug`, `1.0-beta`
-- **Triage Notes:** An `undefined` error provides no actionable information.
+- **Triage Notes:** An `undefined` error provides no actionable information. This is related to the broader effort to improve SSR error handling (Issue #4).
 
 ---
 
@@ -538,31 +538,31 @@ This section lists the triage decisions for existing GitHub issues.
 
 - **Issue:** #273
 - **Label:** `bug`, `1.0-beta`
-- **Triage Notes:** This vague error masks the true cause of a problem.
+- **Triage Notes:** This vague error masks the true cause of a problem. This is related to the broader effort to improve SSR error handling (Issue #4).
 
 ---
 
 ### 66. Issue #271: Add smoke test script to check HTML and client response
 
 - **Issue:** #271
-- **Label:** `1.0`
-- **Triage Notes:** Adding smoke tests improves our ability to catch regressions.
+- **Label:** `status: close`
+- **Closing Comment:** This is now solved as we have smoke tests in place.
 
 ---
 
 ### 67. Issue #206: Cursor Rules: Ship with a set of Cursor Rules for building with RedwoodSDK
 
 - **Issue:** #206
-- **Label:** `future`
-- **Triage Notes:** This is a tooling enhancement.
+- **Label:** `status: close`
+- **Closing Comment:** This is now solved. We ship with a set of Cursor Rules for building with RedwoodSDK.
 
 ---
 
 ### 68. Issue #197: prisma (seed): Add docs to explain how to seed from a CSV file given workers cannot access filesystem to read files
 
 - **Issue:** #197
-- **Label:** `1.0`
-- **Triage Notes:** This documentation is needed to unblock a common development workflow.
+- **Label:** `future`
+- **Triage Notes:** This documentation is for an edge case and can be deferred.
 
 ---
 
@@ -577,5 +577,5 @@ This section lists the triage decisions for existing GitHub issues.
 ### 70. Issue #141: Cron: Unable to test cron triggers using Cloudflare's `wrangler dev --test-scheduled` method
 
 - **Issue:** #141
-- **Label:** `bug`, `1.0`
-- **Triage Notes:** The inability to test a feature locally is a bug that breaks a key development workflow.
+- **Label:** `future`
+- **Triage Notes:** The inability to test this feature is due to a limitation in the underlying Cloudflare Vite plugin. This issue tracks the feature pending upstream support.
