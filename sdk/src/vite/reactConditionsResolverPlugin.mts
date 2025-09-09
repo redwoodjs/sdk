@@ -15,7 +15,6 @@ export const ENV_REACT_IMPORTS = {
     "react-dom",
     "react/jsx-runtime",
     "react/jsx-dev-runtime",
-    "react-server-dom-webpack/server",
     "react-server-dom-webpack/server.edge",
   ],
   ssr: [
@@ -79,7 +78,25 @@ function resolveReactImport(
         envName,
       );
   } catch {
-    process.env.VERBOSE && log("Failed to resolve %s for env=%s", id, envName);
+    process.env.VERBOSE &&
+      log(
+        "Failed to resolve %s for env=%s from project root, trying ROOT_DIR",
+        id,
+        envName,
+      );
+    try {
+      resolved = ENV_RESOLVERS[envName](ROOT_DIR, id) || undefined;
+      process.env.VERBOSE &&
+        log(
+          "Successfully resolved %s to %s for env=%s from rwsdk root",
+          id,
+          resolved,
+          envName,
+        );
+    } catch {
+      process.env.VERBOSE &&
+        log("Failed to resolve %s for env=%s", id, envName);
+    }
   }
 
   return resolved;
@@ -240,22 +257,6 @@ export const reactConditionsResolverPlugin = ({
           }
 
           const aliases = ensureAliasArray(envConfig);
-
-          for (const [find, replacement] of Object.entries(
-            ALIASES[envName as keyof typeof ALIASES] ?? {},
-          )) {
-            const findRegex = new RegExp(
-              `^${find.replace(/[-\/\\^$*+?.()|[\]{}]/g, "\\$&")}$`,
-            );
-            aliases.push({ find: findRegex, replacement });
-            process.env.VERBOSE &&
-              log(
-                "Added alias for env=%s: %s -> %s",
-                envName,
-                find,
-                replacement,
-              );
-          }
 
           for (const [find, replacement] of mappings as Map<string, string>) {
             const findRegex = new RegExp(
