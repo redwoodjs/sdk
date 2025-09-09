@@ -8,12 +8,16 @@ description: A guide in my new Starlight docs site.
 
 import { Aside, FileTree } from '@astrojs/starlight/components';
 
-## Existing Authentication Code
+Our authentication has three main parts:
+1. Sessions (remembers you're logged in)
+2. Protected routes (pages that need login/authentication)
+3. Login / Sign up forms (how you sign in)
+
 Since we're using the [standard starter kit](https://github.com/redwoodjs/sdk/tree/main/starters/standard), it already has passkey authentication set up.
 
-<Aside type="note" title="Passkey Authentication">
-### What is Passkey Authentication?
+<Aside type="note" title="What is Passkey Authentication?">
 Passkey authentication is a passwordless authentication method that uses a biometric or device authentication to verify the user's identity.
+</Aside>
 
 **How it Works**:
 1. A user creates a passkey during the registration process.
@@ -23,7 +27,9 @@ Passkey authentication is a passwordless authentication method that uses a biome
 5. When the user logs in, they have to "prove" they have access to the private key.
 6. The service verifies the user's identity using the public key.
 
-### Why Passkey Authentication?
+Think of it like a mailbox system: You give the website a special mailbox (the public key), that only your unique key can open. When you want to log in, the website puts a secret message in your mailbox. Only you have the key to open it and read teh message, which proves you're the real account owner.
+
+<Aside type="note" title="Why Passkey Authentication?">
 Passkey authentication offers several key advantages:
 
 - **Enhanced Security**: Passkeys are unique, resistant to guessing, and eliminate vulnerabilities associated with traditional passwords. They use biometric authentication like fingerprints, making them much harder to compromise.
@@ -32,6 +38,20 @@ Passkey authentication offers several key advantages:
 </Aside>
 
 Let's start by taking a look at the `worker.tsx` file. This file sets up our Cloudflare worker, but it also handles all the routing, middleware, and interrupters.
+
+<Aside type="note" title="What is a Cloudflare Worker?">
+Before we look at the code, let's understand what a Cloudflare Worker is. Think of it as a mini-server that runs your application code.
+
+In traditional web development, you might have a separate server running somewhere (like on AWS or your own computer) that handles requests when someone visits your website. A Cloudflare Worker does the same job, but it runs on Cloudflare's global network instead.
+The key benefits for our tutorial:
+
+- **No server management:** You don't need to set up, configure, or maintain a separate server
+- **Automatic scaling:** Cloudflare handles traffic spikes for you
+- **Global performance:** Your code runs close to your users worldwide
+- **Built-in features:** Things like databases and file storage are integrated
+
+In our RedwoodSDK application, the `worker.tsx` file is where we define how our application responds to different requests - like when someone visits `/login` or `/signup`. It's essentially the "brain" that decides what to show users based on what page they're trying to access.
+</Aside>
 
 ```tsx title="src/worker.tsx" collapse={1-12}
 import { defineApp, ErrorResponse } from "rwsdk/worker";
@@ -101,7 +121,7 @@ export default defineApp([
 ]);
 ```
 
-Let's break it down, chunk by chunk:
+This is a large chunk of code, so let's break it down, chunk by chunk:
 
 ```tsx title="src/worker.tsx" startLineNumber=14
 export type AppContext = {
