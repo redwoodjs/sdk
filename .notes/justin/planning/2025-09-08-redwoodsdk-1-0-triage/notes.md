@@ -14,3 +14,5 @@
 - **decision** Vitest integration is not currently supported. Investigating and adding support is considered a `future` task, not for the 1.0 release.
 - **decision** The style smoke tests are flaky and have been skipped. Fixing them is slated for the `1.0` milestone.
 - **to-do** Check with the team who's handling the moving over of tutorials to use the minimal starter. This can be a 1.0 thing.
+- **observation** The "id problem" mentioned in the to-do list seems related to Radix UI compatibility and is likely a React bug. It should be resolved by the planned React dependency upgrade (Issue #9) and will be validated during ShadCN/Radix testing (Issue #1).
+- **decision** The client navigation API (`useClientNav`) should be considered experimental for the 1.0 release to allow for further refinement. This needs to be discussed with Peter.
