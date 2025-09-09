@@ -125,7 +125,6 @@
   "license": "MIT",
   "dependencies": {
     "@ast-grep/napi": "^0.38.5",
-    "@cloudflare/vite-plugin": "1.7.4",
     "@cloudflare/workers-types": "^4.20250407.0",
     "@puppeteer/browsers": "^2.8.0",
     "@types/fs-extra": "^11.0.4",
@@ -156,14 +155,15 @@
     "ts-morph": "^25.0.1",
     "unique-names-generator": "^4.7.1",
     "vibe-rules": "^0.2.31",
-    "vite-tsconfig-paths": "^5.1.4",
-    "wrangler": "^4.20.5"
+    "vite-tsconfig-paths": "^5.1.4"
   },
   "peerDependencies": {
+    "@cloudflare/vite-plugin": "^1.12.4",
     "react": "19.2.0-canary-3fb190f7-20250908",
     "react-dom": "19.2.0-canary-3fb190f7-20250908",
     "react-server-dom-webpack": "19.2.0-canary-3fb190f7-20250908",
-    "vite": "^6.2.6"
+    "vite": "^6.2.6",
+    "wrangler": "^4.35.0"
   },
   "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab",
   "devDependencies": {
