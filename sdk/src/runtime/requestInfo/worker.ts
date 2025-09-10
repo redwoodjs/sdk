@@ -5,18 +5,7 @@ type DefaultRequestInfo = RequestInfo<DefaultAppContext>;
 
 const requestInfoDeferred = Promise.withResolvers<DefaultRequestInfo>();
 
-// context(agent, 2025-09-10): In development, Vite's dependency optimization
-// can cause multiple instances of this module to be loaded. We use a global
-// singleton to ensure that all instances share the same AsyncLocalStorage,
-// preserving request context across reloads.
-const requestInfoStore: AsyncLocalStorage<Record<string, any>> =
-  import.meta.env.VITE_IS_DEV_SERVER && globalThis.__rwsdk_requestInfoStore
-    ? globalThis.__rwsdk_requestInfoStore
-    : new AsyncLocalStorage<Record<string, any>>();
-
-if (import.meta.env.VITE_IS_DEV_SERVER) {
-  globalThis.__rwsdk_requestInfoStore = requestInfoStore;
-}
+const requestInfoStore = new AsyncLocalStorage<Record<string, any>>();
 
 const requestInfoBase = {};
 
@@ -53,10 +42,6 @@ export function getRequestInfo(): RequestInfo {
   return store as RequestInfo;
 }
 
-declare global {
-  var __rwsdk_requestInfoStore: AsyncLocalStorage<Record<string, any>>;
-}
-
 export function waitForRequestInfo() {
   return requestInfoDeferred.promise;
 }
@@ -78,14 +63,10 @@ export function runWithRequestInfoOverrides<Result>(
 ): Result {
   const requestInfo = requestInfoStore.getStore();
 
-  if (!requestInfo) {
-    throw new Error("Cannot apply overrides: request context not found");
-  }
-
-  const newRequestInfo = Object.assign(
-    requestInfo,
-    overrides,
-  ) as DefaultRequestInfo;
+  const newRequestInfo = {
+    ...requestInfo,
+    ...overrides,
+  } as DefaultRequestInfo;
 
   return runWithRequestInfo(newRequestInfo, fn);
 }

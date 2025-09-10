@@ -48,3 +48,20 @@ This indicates that while the `AsyncLocalStorage` instance is now correctly shar
 The issue was traced to the `runWithRequestInfoOverrides` function. It was using object spreading (`{ ...requestInfo, ...overrides }`) to create a new `requestInfo` object. This had the unintended side effect of evaluating the getters on the `requestInfo` proxy object and creating a static, plain object that was disconnected from the `AsyncLocalStorage` context.
 
 The fix is to use `Object.assign(requestInfo, overrides)` instead. This modifies the existing `requestInfo` object in place, preserving its nature as a proxy and ensuring that the context remains consistent.
+
+## Attempt 5: Pivot to Root Cause Fix
+
+The previous attempts, while partially successful, were fundamentally flawed as they only treated the symptoms of the underlying issue. The global singleton pattern and `optimizeDeps.include` both introduce their own problems, such as being leaky abstractions or too fragile for user-configured dependencies.
+
+The correct approach is to address the root cause: Vite's dependency optimizer is unaware of the application's full dependency graph at startup. This leads to late discovery of dependencies and a disruptive re-optimization pass.
+
+The new plan is to revert all previous changes and implement a more robust solution within the `configPlugin`.
+
+### The New Plan
+
+1.  **Revert Changes:** All modifications to `sdk/src/runtime/requestInfo/worker.ts` will be reverted to their original state.
+2.  **Use `optimizeDeps.entries`:** We will leverage the `clientFiles` and `serverFiles` sets, which are available ahead of time thanks to our directive scanning.
+    -   For the `client` environment, we will filter `clientFiles` to include only application code (not in `node_modules`) and add these paths to the `optimizeDeps.entries` array.
+    -   For the `worker` environment, we will do the same with `serverFiles`.
+
+By providing Vite with a complete list of application entry points, its optimizer can build a full dependency graph from the start, preventing any subsequent, disruptive re-optimization. This is a framework-level solution that is both robust and transparent to the user.

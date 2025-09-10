@@ -29,6 +29,14 @@ export const configPlugin = ({
   config: async (_) => {
     const mode = process.env.NODE_ENV;
 
+    const appClientFiles = [...clientFiles].filter(
+      (file) => !file.includes("node_modules"),
+    );
+
+    const appServerFiles = [...serverFiles].filter(
+      (file) => !file.includes("node_modules"),
+    );
+
     const workerConfig: InlineConfig = {
       resolve: {
         conditions: [
@@ -55,7 +63,7 @@ export const configPlugin = ({
         noDiscovery: false,
         include: ["rwsdk/worker"],
         exclude: [],
-        entries: [workerEntryPathname],
+        entries: [workerEntryPathname, ...appServerFiles],
         esbuildOptions: {
           jsx: "automatic",
           jsxImportSource: "react",
@@ -110,7 +118,7 @@ export const configPlugin = ({
           optimizeDeps: {
             noDiscovery: false,
             include: ["rwsdk/client"],
-            entries: [],
+            entries: [...appClientFiles],
             esbuildOptions: {
               jsx: "automatic",
               jsxImportSource: "react",
@@ -134,7 +142,7 @@ export const configPlugin = ({
           },
           optimizeDeps: {
             noDiscovery: false,
-            entries: [workerEntryPathname],
+            entries: [workerEntryPathname, ...appServerFiles],
             exclude: externalModules,
             include: ["rwsdk/__ssr", "rwsdk/__ssr_bridge"],
             esbuildOptions: {
