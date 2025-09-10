@@ -181,18 +181,19 @@ async function installDependencies(
 
   try {
     const installCommand = {
-      pnpm: "pnpm install",
-      npm: "npm install",
-      yarn: "yarn",
-      "yarn-classic": "yarn",
+      pnpm: ["pnpm", "install"],
+      npm: ["npm", "install"],
+      yarn: ["yarn"],
+      "yarn-classic": ["yarn"],
     }[packageManager];
 
-    // Run pnpm install in the target directory
-    log(`Running ${installCommand}`);
+    // Run install command in the target directory
+    log(`Running ${installCommand.join(" ")}`);
+    const [command, ...args] = installCommand;
     const result = await $({
       cwd: targetDir,
       stdio: "pipe", // Capture output
-    })`${installCommand}`;
+    })([command, ...args]);
 
     console.log("✅ Dependencies installed successfully");
 
