@@ -177,9 +177,9 @@ export async function runDevServer(cwd?: string): Promise<{
     };
 
     // Listen to all possible output streams
-    devProcess.all?.on("data", (data) => handleOutput(data, "all"));
-    devProcess.stdout?.on("data", (data) => handleOutput(data, "stdout"));
-    devProcess.stderr?.on("data", (data) => handleOutput(data, "stderr"));
+    devProcess.all?.on("data", (data: Buffer) => handleOutput(data, "all"));
+    devProcess.stdout?.on("data", (data: Buffer) => handleOutput(data, "stdout"));
+    devProcess.stderr?.on("data", (data: Buffer) => handleOutput(data, "stderr"));
 
     // Wait for URL with timeout
     const waitForUrl = async (): Promise<string> => {
