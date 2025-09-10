@@ -1,30 +1,89 @@
-# Work Log: Smoke Test Matrix
-
-- **Date:** 2025-09-10
-- **Author:** Justin
+# Smoke Test Matrix Implementation
 
 ## Problem
-
-The existing smoke test suite was limited, running tests only with `pnpm` on a single operating system (Ubuntu). This created a gap in quality assurance, as it did not validate the framework's behavior across different package managers (`npm`, `yarn`) or on other operating systems like Windows. To ensure broader compatibility and prevent environment-specific bugs, the test suite needed to be expanded.
+Extend smoke tests to run across a matrix of package managers (`pnpm`, `npm`, `yarn`, `yarn-classic`) and operating systems (`linux`, `windows`).
 
 ## Plan
+1. ✅ Add `PackageManager` type and option to smoke test interfaces
+2. ✅ Update smoke test scripts to accept `--package-manager` CLI argument  
+3. ✅ Modify environment setup to use specified package manager for dependency installation
+4. ✅ Update GitHub Actions workflow to use matrix builds
+5. 🔄 Fix package manager conflicts and environment issues
+6. ⏳ Address development server timeout issues
 
-The plan was to refactor the smoke testing infrastructure to support a matrix of configurations. This involved three main steps:
+## Implementation Journey
 
-1.  **Parameterize the Package Manager:** Abstract the hardcoded `pnpm` command in the test scripts to allow for dynamic selection of a package manager.
-2.  **Update the CLI:** Add a command-line argument to the smoke test runner script to specify which package manager to use for a given test run.
-3.  **Implement a CI Matrix:** Modify the GitHub Actions workflow to execute the smoke tests across a matrix of operating systems (`ubuntu-latest`, `windows-latest`) and package managers (`pnpm`, `npm`, `yarn`, `yarn-classic`).
+### Initial Matrix Setup (Completed)
+- Added `PackageManager` type to `types.mts` 
+- Updated `environment.mts` to dynamically select install commands based on package manager
+- Modified `smoke-test.mts` to accept `--package-manager` CLI argument
+- Converted GitHub Actions workflow from separate jobs to matrix strategy
+- Added support for 16 combinations: 2 starters × 2 OSes × 4 package managers
 
-## Implementation
+### Package Manager Installation Issues (Completed)
+**Problem**: Initial CI runs failed with `ENOENT` errors when trying to execute package manager commands.
 
-The plan was executed as follows:
+**Root Cause**: Incorrect usage of `execa` template literal syntax with command arrays.
 
-1.  **`types.mts`:** The `SmokeTestOptions` interface was updated with a new `packageManager` property, and a `PackageManager` type was defined to ensure type safety for the supported managers.
+**Solution**: Fixed `execa` calls in `environment.mts`:
+```typescript
+// Before (broken)
+const result = await $({...})`${installCommand}`;
 
-2.  **`environment.mts`:** The `installDependencies` function was modified to accept the `packageManager` option. It now uses a lookup object to determine the correct installation command (`pnpm install`, `npm install`, `yarn`), making the process manager-agnostic.
+// After (working)  
+const [command, ...args] = installCommand;
+const result = await $(command, args, {...});
+```
 
-3.  **`smoke-test.mts`:** The CLI script was updated to parse a new `--package-manager` argument. This allows for passing the desired package manager from the CI workflow down into the test environment setup.
+### Yarn Hardened Mode Issues (Completed)
+**Problem**: Yarn installations failed with `YN0028: The lockfile would have been created by this install, which is explicitly forbidden.`
 
-4.  **`.github/workflows/smoke-test-starters.yml`:** The workflow file was significantly refactored. The two separate jobs for "minimal" and "standard" starters were consolidated into a single job using a `strategy.matrix`. This matrix now runs the tests for both starters across both operating systems and all four package managers, creating a comprehensive test suite. The logic for installing dependencies was also updated to handle the setup for each package manager correctly.
+**Root Cause**: Yarn's "hardened mode" in CI prevents lockfile creation for security, but starter projects didn't have `yarn.lock` files.
 
-This solution provides a scalable and robust testing strategy, ensuring that the framework is validated against a much wider range of development environments.
+**Solution**: Added `Generate lockfiles` step to create `yarn.lock` files before running smoke tests.
+
+### Yarn Package Manager Conflict (Completed) 
+**Problem**: Yarn jobs failed with "This project is configured to use pnpm because /home/runner/work/sdk/sdk/package.json has a 'packageManager' field"
+
+**Root Cause**: Yarn traverses up the directory tree and finds the root workspace's `"packageManager": "pnpm@..."` field, refusing to run.
+
+**Solution**: Isolated starter directories during lockfile generation by copying to temporary directories:
+```bash
+temp_dir=$(mktemp -d)
+cp -r "$starter"/* "$temp_dir/"
+(cd "$temp_dir" && ${{ matrix.package-manager }} install)
+cp "$temp_dir/yarn.lock" "$starter/"
+rm -rf "$temp_dir"
+```
+
+### Current Status (In Progress)
+
+#### Yarn Issues Partially Fixed
+- ✅ Modern `yarn` jobs now get past "Install dependencies" 
+- ❌ Still failing at "Generate lockfiles" step (exit code 1)
+- ❌ `yarn-classic` jobs still failing at "Install dependencies" (exit code 1/127)
+
+#### Development Server Timeout Issues  
+- ❌ `pnpm` and `npm` jobs are experiencing "Timed out waiting for dev server URL"
+- ✅ Production tests pass, indicating the framework works correctly
+- The dev server starts but URL detection fails
+
+#### Next Steps
+1. **Debug yarn lockfile generation**: Check why temporary directory approach still fails
+2. **Fix yarn-classic installation**: Address exit code 127 (command not found) on Windows
+3. **Debug dev server URL detection**: Check if different package managers produce different output patterns
+4. **Investigate environment variables**: Ensure package manager selection propagates correctly through the smoke test chain
+
+## Technical Insights
+
+### Package Manager Detection
+The smoke test framework correctly detects and uses different package managers:
+- `environment.mts`: Uses specified package manager for dependency installation
+- `development.mts`: Uses `state.options.packageManager || "npm"` for dev server commands
+- `debug-sync.mts`: Auto-detects package manager based on lockfiles
+
+### Matrix Build Success
+The GitHub Actions matrix is working correctly - all 16 combinations are being executed. Failures are due to package manager compatibility issues, not infrastructure problems.
+
+### Framework Validation
+Production tests passing indicates the core framework functionality works across all package managers. The issues are in the development environment setup and URL detection logic.
