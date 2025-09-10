@@ -196,6 +196,9 @@ export async function runDevServer(cwd?: string): Promise<{
     };
 
     // Listen to all possible output streams
+    log("Setting up stream listeners. Available streams: all=%s, stdout=%s, stderr=%s", 
+        !!devProcess.all, !!devProcess.stdout, !!devProcess.stderr);
+    
     devProcess.all?.on("data", (data: Buffer) => handleOutput(data, "all"));
     devProcess.stdout?.on("data", (data: Buffer) =>
       handleOutput(data, "stdout"),
@@ -203,6 +206,13 @@ export async function runDevServer(cwd?: string): Promise<{
     devProcess.stderr?.on("data", (data: Buffer) =>
       handleOutput(data, "stderr"),
     );
+    
+    // Also try listening to the raw process output
+    if (devProcess.child) {
+      log("Setting up child process stream listeners");
+      devProcess.child.stdout?.on("data", (data: Buffer) => handleOutput(data, "child.stdout"));
+      devProcess.child.stderr?.on("data", (data: Buffer) => handleOutput(data, "child.stderr"));
+    }
 
     // Wait for URL with timeout
     const waitForUrl = async (): Promise<string> => {
