@@ -190,10 +190,10 @@ async function installDependencies(
     // Run install command in the target directory
     log(`Running ${installCommand.join(" ")}`);
     const [command, ...args] = installCommand;
-    const result = await $({
+    const result = await $(command, args, {
       cwd: targetDir,
       stdio: "pipe", // Capture output
-    })([command, ...args]);
+    });
 
     console.log("✅ Dependencies installed successfully");
 
