@@ -64,7 +64,17 @@ jobs:
             for starter in starters/*; do
               if [ -d "$starter" ]; then
                 echo "Generating lockfile for $starter"
-                (cd "$starter" && ${{ matrix.package-manager }} install)
+                # Create temporary directory to isolate from root packageManager field
+                temp_dir=$(mktemp -d)
+                cp -r "$starter"/* "$temp_dir/"
+                cp "$starter"/.gitignore "$temp_dir/" 2>/dev/null || true
+                (cd "$temp_dir" && ${{ matrix.package-manager }} install)
+                # Copy lockfile back to original starter directory
+                if [ -f "$temp_dir/yarn.lock" ]; then
+                  cp "$temp_dir/yarn.lock" "$starter/"
+                fi
+                # Cleanup
+                rm -rf "$temp_dir"
               fi
             done
           fi
