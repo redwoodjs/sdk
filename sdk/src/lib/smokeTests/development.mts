@@ -139,7 +139,9 @@ export async function runDevServer(cwd?: string): Promise<{
           // Standard Vite output: "Local:   http://localhost:5173/"
           /Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
           // Alternative Vite output: "➜  Local:   http://localhost:5173/"
-          /➜\s*Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
+          /[➜→]\s*Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
+          // Unicode-safe arrow pattern
+          /[\u27A1\u2192\u279C]\s*Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
           // Direct URL pattern: "http://localhost:5173"
           /(https?:\/\/localhost:\d+)/i,
           // Port-only pattern: "localhost:5173"
