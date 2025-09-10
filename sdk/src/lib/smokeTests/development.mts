@@ -129,9 +129,10 @@ export async function runDevServer(cwd?: string): Promise<{
     let url = "";
 
     // Listen for all output to get the URL
-    devProcess.all?.on("data", (data: Buffer) => {
+    const handleOutput = (data: Buffer, source: string) => {
       const output = data.toString();
       console.log(output);
+      log("Received output from %s: %s", source, output.replace(/\n/g, "\\n"));
 
       if (!url) {
         // Multiple patterns to catch different package manager outputs
@@ -173,7 +174,12 @@ export async function runDevServer(cwd?: string): Promise<{
           log("Potential URL pattern found but not matched: %s", output.trim());
         }
       }
-    });
+    };
+
+    // Listen to all possible output streams
+    devProcess.all?.on("data", (data) => handleOutput(data, "all"));
+    devProcess.stdout?.on("data", (data) => handleOutput(data, "stdout"));
+    devProcess.stderr?.on("data", (data) => handleOutput(data, "stderr"));
 
     // Wait for URL with timeout
     const waitForUrl = async (): Promise<string> => {
