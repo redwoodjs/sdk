@@ -53,7 +53,7 @@ jobs:
           if [ "${{ matrix.package-manager }}" = "yarn" ]; then
             corepack prepare yarn@stable --activate
           elif [ "${{ matrix.package-manager }}" = "yarn-classic" ]; then
-            corepack prepare yarn@classic --activate
+            npm i -g yarn@1.22.19
           fi
           pnpm install
 
