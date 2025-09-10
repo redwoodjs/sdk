@@ -40,6 +40,7 @@ export const fetchTransport: Transport = (transportContext) => {
 
     const fetchPromise = fetch(url, {
       method: "POST",
+      redirect: "manual",
       body: args != null ? await encodeReply(args) : null,
     });
 
