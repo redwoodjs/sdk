@@ -102,7 +102,17 @@ export async function runDevServer(cwd?: string): Promise<{
       env.FORCE_COLOR = "0";
     }
 
-    const pm = state.options.packageManager || "npm";
+    // Map package manager names to actual commands
+    const getPackageManagerCommand = (pm: string) => {
+      switch (pm) {
+        case "yarn-classic":
+          return "yarn";
+        default:
+          return pm;
+      }
+    };
+    
+    const pm = getPackageManagerCommand(state.options.packageManager || "npm");
 
     // Use the provided cwd if available
     devProcess = $({
