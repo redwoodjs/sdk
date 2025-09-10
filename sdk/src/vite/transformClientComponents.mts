@@ -62,6 +62,9 @@ export async function transformClientComponents(
       // - local: "MyComponent" (the original name)
       // - exported: "CustomName" (the alias name)
       // - alias: "CustomName" (to generate MyComponent_CustomName)
+      if (!exportInfo.name) {
+        return;
+      }
       const hasAlias = exportInfo.alias && exportInfo.originalName;
       processedExports.push({
         local: exportInfo.originalName || exportInfo.name, // Use originalName if available
