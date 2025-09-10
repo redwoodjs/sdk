@@ -308,6 +308,67 @@ export { Slot, Slot_Root as Root };
 `,
     );
   });
+
+  it("handles a large number of named exports from a single module", async () => {
+    const code = `"use client";
+import * as React from "react";
+const SidebarContext = React.createContext(null);
+function SidebarProvider() { return jsx("div", {}); }
+function useSidebar() {}
+function Sidebar() { return jsx("div", {}); }
+function SidebarTrigger() { return jsx("div", {}); }
+function SidebarRail() { return jsx("div", {}); }
+function SidebarInset() { return jsx("div", {}); }
+function SidebarInput() { return jsx("div", {}); }
+function SidebarHeader() { return jsx("div", {}); }
+function SidebarFooter() { return jsx("div", {}); }
+function SidebarSeparator() { return jsx("div", {}); }
+function SidebarContent() { return jsx("div", {}); }
+function SidebarGroup() { return jsx("div", {}); }
+function SidebarGroupLabel() { return jsx("div", {}); }
+function SidebarGroupAction() { return jsx("div", {}); }
+function SidebarGroupContent() { return jsx("div", {}); }
+function SidebarMenu() { return jsx("div", {}); }
+function SidebarMenuItem() { return jsx("div", {}); }
+function SidebarMenuButton() { return jsx("div", {}); }
+function SidebarMenuAction() { return jsx("div", {}); }
+function SidebarMenuBadge() { return jsx("div", {}); }
+function SidebarMenuSkeleton() { return jsx("div", {}); }
+function SidebarMenuSub() { return jsx("div", {}); }
+function SidebarMenuSubItem() { return jsx("div", {}); }
+function SidebarMenuSubButton() { return jsx("div", {}); }
+export { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInput, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, useSidebar, };`;
+
+    expect((await transform(code)) ?? "").toEqual(
+      `import { registerClientReference } from "rwsdk/worker";
+const Sidebar = registerClientReference("/test/file.tsx", "Sidebar");
+const SidebarContent = registerClientReference("/test/file.tsx", "SidebarContent");
+const SidebarFooter = registerClientReference("/test/file.tsx", "SidebarFooter");
+const SidebarGroup = registerClientReference("/test/file.tsx", "SidebarGroup");
+const SidebarGroupAction = registerClientReference("/test/file.tsx", "SidebarGroupAction");
+const SidebarGroupContent = registerClientReference("/test/file.tsx", "SidebarGroupContent");
+const SidebarGroupLabel = registerClientReference("/test/file.tsx", "SidebarGroupLabel");
+const SidebarHeader = registerClientReference("/test/file.tsx", "SidebarHeader");
+const SidebarInput = registerClientReference("/test/file.tsx", "SidebarInput");
+const SidebarInset = registerClientReference("/test/file.tsx", "SidebarInset");
+const SidebarMenu = registerClientReference("/test/file.tsx", "SidebarMenu");
+const SidebarMenuAction = registerClientReference("/test/file.tsx", "SidebarMenuAction");
+const SidebarMenuBadge = registerClientReference("/test/file.tsx", "SidebarMenuBadge");
+const SidebarMenuButton = registerClientReference("/test/file.tsx", "SidebarMenuButton");
+const SidebarMenuItem = registerClientReference("/test/file.tsx", "SidebarMenuItem");
+const SidebarMenuSkeleton = registerClientReference("/test/file.tsx", "SidebarMenuSkeleton");
+const SidebarMenuSub = registerClientReference("/test/file.tsx", "SidebarMenuSub");
+const SidebarMenuSubButton = registerClientReference("/test/file.tsx", "SidebarMenuSubButton");
+const SidebarMenuSubItem = registerClientReference("/test/file.tsx", "SidebarMenuSubItem");
+const SidebarProvider = registerClientReference("/test/file.tsx", "SidebarProvider");
+const SidebarRail = registerClientReference("/test/file.tsx", "SidebarRail");
+const SidebarSeparator = registerClientReference("/test/file.tsx", "SidebarSeparator");
+const SidebarTrigger = registerClientReference("/test/file.tsx", "SidebarTrigger");
+const useSidebar = registerClientReference("/test/file.tsx", "useSidebar");
+export { Sidebar, SidebarContent, SidebarFooter, SidebarGroup, SidebarGroupAction, SidebarGroupContent, SidebarGroupLabel, SidebarHeader, SidebarInput, SidebarInset, SidebarMenu, SidebarMenuAction, SidebarMenuBadge, SidebarMenuButton, SidebarMenuItem, SidebarMenuSkeleton, SidebarMenuSub, SidebarMenuSubButton, SidebarMenuSubItem, SidebarProvider, SidebarRail, SidebarSeparator, SidebarTrigger, useSidebar };
+`,
+    );
+  });
 });
 
 describe("transformClientComponents logic branches (from transformClientComponents.mts)", () => {
