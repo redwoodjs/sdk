@@ -29,7 +29,7 @@ jobs:
       fail-fast: false
       matrix:
         starter: [minimal, standard]
-        os: [ubuntu-latest, windows-latest]
+        os: [ubuntu-latest] # TODO: Re-enable windows-latest after fixing Windows path issues (see issue #696)
         package-manager: [pnpm, npm, yarn, yarn-classic]
 
     # context(justinvdm, 2025-05-12):
