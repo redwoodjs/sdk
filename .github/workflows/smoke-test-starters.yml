@@ -57,6 +57,18 @@ jobs:
           fi
           pnpm install
 
+      - name: Generate lockfiles
+        shell: bash
+        run: |
+          if [ "${{ matrix.package-manager }}" = "yarn" ] || [ "${{ matrix.package-manager }}" = "yarn-classic" ]; then
+            for starter in starters/*; do
+              if [ -d "$starter" ]; then
+                echo "Generating lockfile for $starter"
+                (cd "$starter" && ${{ matrix.package-manager }} install)
+              fi
+            done
+          fi
+
       - name: Run smoke test
         shell: bash
         run: |
