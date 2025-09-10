@@ -127,11 +127,13 @@ export async function runDevServer(cwd?: string): Promise<{
 
     // Store chunks to parse the URL
     let url = "";
+    let allOutput = "";
 
     // Listen for all output to get the URL
     const handleOutput = (data: Buffer, source: string) => {
       const output = data.toString();
       console.log(output);
+      allOutput += output; // Accumulate all output
       log("Received output from %s: %s", source, output.replace(/\n/g, "\\n"));
 
       if (!url) {
@@ -154,23 +156,40 @@ export async function runDevServer(cwd?: string): Promise<{
 
         for (const pattern of patterns) {
           const match = output.match(pattern);
-          log("Testing pattern %s against output: %s", pattern.source, output.replace(/\n/g, "\\n"));
+          log(
+            "Testing pattern %s against output: %s",
+            pattern.source,
+            output.replace(/\n/g, "\\n"),
+          );
           if (match) {
             log("Pattern matched: %s, groups: %o", pattern.source, match);
             if (match[1] && match[1].startsWith("http")) {
               url = match[1];
-              log("Found development server URL with pattern %s: %s", pattern.source, url);
+              log(
+                "Found development server URL with pattern %s: %s",
+                pattern.source,
+                url,
+              );
               break;
             } else if (match[1] && /^\d+$/.test(match[1])) {
               url = `http://localhost:${match[1]}`;
-              log("Found development server URL with port pattern %s: %s", pattern.source, url);
+              log(
+                "Found development server URL with port pattern %s: %s",
+                pattern.source,
+                url,
+              );
               break;
             }
           }
         }
 
         // Log potential matches for debugging
-        if (!url && (output.includes("localhost") || output.includes("Local") || output.includes("server"))) {
+        if (
+          !url &&
+          (output.includes("localhost") ||
+            output.includes("Local") ||
+            output.includes("server"))
+        ) {
           log("Potential URL pattern found but not matched: %s", output.trim());
         }
       }
@@ -178,8 +197,12 @@ export async function runDevServer(cwd?: string): Promise<{
 
     // Listen to all possible output streams
     devProcess.all?.on("data", (data: Buffer) => handleOutput(data, "all"));
-    devProcess.stdout?.on("data", (data: Buffer) => handleOutput(data, "stdout"));
-    devProcess.stderr?.on("data", (data: Buffer) => handleOutput(data, "stderr"));
+    devProcess.stdout?.on("data", (data: Buffer) =>
+      handleOutput(data, "stdout"),
+    );
+    devProcess.stderr?.on("data", (data: Buffer) =>
+      handleOutput(data, "stderr"),
+    );
 
     // Wait for URL with timeout
     const waitForUrl = async (): Promise<string> => {
@@ -191,11 +214,39 @@ export async function runDevServer(cwd?: string): Promise<{
           return url;
         }
 
+        // Fallback: check accumulated output if stream listeners aren't working
+        if (!url && allOutput) {
+          log("Checking accumulated output for URL patterns: %s", allOutput.replace(/\n/g, "\\n"));
+          const patterns = [
+            /Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
+            /[➜→]\s*Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
+            /[\u27A1\u2192\u279C]\s*Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
+            /(https?:\/\/localhost:\d+)/i,
+            /localhost:(\d+)/i,
+          ];
+          
+          for (const pattern of patterns) {
+            const match = allOutput.match(pattern);
+            if (match) {
+              if (match[1] && match[1].startsWith("http")) {
+                url = match[1];
+                log("Found URL in accumulated output with pattern %s: %s", pattern.source, url);
+                return url;
+              } else if (match[1] && /^\d+$/.test(match[1])) {
+                url = `http://localhost:${match[1]}`;
+                log("Found URL in accumulated output with port pattern %s: %s", pattern.source, url);
+                return url;
+              }
+            }
+          }
+        }
+
         // Check if the process is still running
         if (devProcess.exitCode !== null) {
           log(
-            "ERROR: Development server process exited with code %d",
+            "ERROR: Development server process exited with code %d. Final output: %s",
             devProcess.exitCode,
+            allOutput,
           );
           throw new Error(
             `Development server process exited with code ${devProcess.exitCode}`,
@@ -205,7 +256,7 @@ export async function runDevServer(cwd?: string): Promise<{
         await setTimeout(500); // Check every 500ms
       }
 
-      log("ERROR: Timed out waiting for dev server URL");
+      log("ERROR: Timed out waiting for dev server URL. Final accumulated output: %s", allOutput);
       throw new Error("Timed out waiting for dev server URL");
     };
 
