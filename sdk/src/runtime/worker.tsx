@@ -121,6 +121,10 @@ export const defineApp = <
           const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 
           if (isRSCActionHandler) {
+            // context(justinvdm, 10 Sep 2025): Action handler functions appear
+            // to not get the up to date request info we set via async_hooks. I
+            // need to understand why this is the case still. Until then, this
+            // here is a way to remind it to use the up to date request info.
             actionResult = runWithRequestInfo(
               requestInfo,
               async () => await rscActionHandler(request),
