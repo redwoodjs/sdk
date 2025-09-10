@@ -212,8 +212,8 @@ importers:
   starters/minimal:
     dependencies:
       rwsdk:
-        specifier: 0.3.6
-        version: 0.3.6(rollup@4.50.1)(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250617.0)
+        specifier: 0.3.7
+        version: 0.3.7(rollup@4.50.1)(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250617.0)
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.7.4
@@ -255,8 +255,8 @@ importers:
         specifier: ^13.1.1
         version: 13.1.1
       rwsdk:
-        specifier: 0.3.6
-        version: 0.3.6(rollup@4.50.1)(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250617.0)
+        specifier: 0.3.7
+        version: 0.3.7(rollup@4.50.1)(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250617.0)
     devDependencies:
       '@cloudflare/vite-plugin':
         specifier: 1.7.4
@@ -3919,8 +3919,8 @@ packages:
   run-parallel@1.2.0:
     resolution: {integrity: sha512-5l4VyZR86LZ/lDxZTR6jqL8AFE2S0IFLMP26AbjsLVADxHdhB/c0GUsH+y39UfCi3dzz8OlQuPmnaJOMoDHQBA==}
 
-  rwsdk@0.3.6:
-    resolution: {integrity: sha512-0gPQxNogZ0+t5xpniM5ywtaJc0LiU+PtAvLivenx6oA3nFmiXf9KOkAbVgYBbAfYbQFiPvcSYBIaB4AqtC+LoQ==}
+  rwsdk@0.3.7:
+    resolution: {integrity: sha512-IY85e40rDAvvJMBx2DeIC3s6Hu60NRC2WU6IRt5Wc15HfhxrMyJawFxR5K3T1Ww+DUItR8aKMuCtaQxxf8vZZw==}
     hasBin: true
     peerDependencies:
       vite: ^6.2.6
@@ -7043,7 +7043,6 @@ snapshots:
     dependencies:
       graceful-fs: 4.2.11
       tapable: 2.2.3
-    optional: true
 
   entities@4.5.0: {}
 
@@ -9012,7 +9011,7 @@ snapshots:
     dependencies:
       queue-microtask: 1.2.3
 
-  rwsdk@0.3.6(rollup@4.50.1)(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250617.0):
+  rwsdk@0.3.7(rollup@4.50.1)(typescript@5.8.3)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(webpack@5.97.1)(workerd@1.20250617.0):
     dependencies:
       '@ast-grep/napi': 0.38.5
       '@cloudflare/vite-plugin': 1.7.4(rollup@4.50.1)(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250617.0)(wrangler@4.20.5(@cloudflare/workers-types@4.20250407.0))
@@ -9024,8 +9023,8 @@ snapshots:
       '@types/react-is': 19.0.0
       '@vitejs/plugin-react': 4.3.4(vite@6.3.3(@types/node@22.14.0)(jiti@2.4.2)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))
       chokidar: 3.6.0
-      debug: 4.4.0
-      enhanced-resolve: 5.18.1
+      debug: 4.4.1
+      enhanced-resolve: 5.18.3
       eventsource-parser: 3.0.0
       execa: 9.5.2
       fs-extra: 11.3.0
@@ -9035,7 +9034,7 @@ snapshots:
       kysely: 0.28.2
       kysely-do: 0.0.1-rc.1(kysely@0.28.2)
       lodash: 4.17.21
-      magic-string: 0.30.17
+      magic-string: 0.30.19
       miniflare: 4.20250617.3
       picocolors: 1.1.1
       proper-lockfile: 4.1.2
@@ -9361,8 +9360,7 @@ snapshots:
 
   tapable@2.2.1: {}
 
-  tapable@2.2.3:
-    optional: true
+  tapable@2.2.3: {}
 
   tar-fs@2.1.3:
     dependencies:
