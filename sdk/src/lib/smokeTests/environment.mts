@@ -156,7 +156,7 @@ export async function copyProjectToTempDir(
 
   // For yarn, create .yarnrc.yml to disable PnP and use node_modules
   if (packageManager === "yarn" || packageManager === "yarn-classic") {
-    const yarnrcPath = path.join(targetDir, ".yarnrc.yml");
+    const yarnrcPath = join(targetDir, ".yarnrc.yml");
     await fs.writeFile(yarnrcPath, "nodeLinker: node-modules\n");
     log("Created .yarnrc.yml to disable PnP for yarn");
   }
