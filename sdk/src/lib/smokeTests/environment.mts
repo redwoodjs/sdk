@@ -193,7 +193,7 @@ async function installDependencies(
     const result = await $({
       cwd: targetDir,
       stdio: "pipe", // Capture output
-    })([command, ...args]).pipe(process.stdout);
+    })([command, ...args]);
 
     console.log("✅ Dependencies installed successfully");
 
