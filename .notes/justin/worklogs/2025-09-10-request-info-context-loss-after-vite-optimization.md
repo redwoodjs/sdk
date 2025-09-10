@@ -65,3 +65,20 @@ The new plan is to revert all previous changes and implement a more robust solut
     -   For the `worker` environment (and not the `ssr` environment), we will do the same with `serverFiles`.
 
 By providing Vite with a complete list of application entry points for the correct environments, its optimizer can build a full dependency graph from the start, preventing any subsequent, disruptive re-optimization. This is a framework-level solution that is both robust and transparent to the user.
+
+## Attempt 6: Correcting the Timing
+
+The previous attempt was conceptually correct but failed due to a misunderstanding of Vite's lifecycle. The `clientFiles` and `serverFiles` are not available in the `config` hook because the directive scan that generates them has not yet run.
+
+The scan is initiated in the `configureServer` hook, and Vite's dependency optimizer is blocked until the scan completes via a custom `esbuild` plugin with an `onStart` hook. This `onStart` hook is the correct place to modify the Vite config.
+
+### The Corrected Plan
+
+1.  **Revert Incorrect Changes:** The changes made to `sdk/src/vite/configPlugin.mts` will be reverted.
+2.  **Programmatic Config Update:** In `sdk/src/vite/directiveModulesDevPlugin.mts`, within the `esbuild` `onStart` hook:
+    -   First, `await` the `scanPromise` to ensure the file lists are populated.
+    -   Then, access the resolved Vite config (which is available in the plugin's closure).
+    -   Filter the `clientFiles` and `serverFiles` to get application-specific code.
+    -   Dynamically push these file paths into `optimizeDeps.entries` for the `client` and `worker` environments, respectively.
+
+This ensures that we modify the configuration at the last possible moment, after we have the information we need but before the optimizer begins its work.
