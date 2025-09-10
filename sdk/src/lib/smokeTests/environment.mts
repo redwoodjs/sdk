@@ -154,6 +154,13 @@ export async function copyProjectToTempDir(
   });
   log("Project copy completed successfully");
 
+  // For yarn, create .yarnrc.yml to disable PnP and use node_modules
+  if (packageManager === "yarn" || packageManager === "yarn-classic") {
+    const yarnrcPath = path.join(targetDir, ".yarnrc.yml");
+    await fs.writeFile(yarnrcPath, "nodeLinker: node-modules\n");
+    log("Created .yarnrc.yml to disable PnP for yarn");
+  }
+
   // Install dependencies in the target directory
   await installDependencies(targetDir, packageManager);
 
