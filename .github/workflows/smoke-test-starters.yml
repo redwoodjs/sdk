@@ -71,7 +71,8 @@ jobs:
                 if [ "${{ matrix.package-manager }}" = "yarn" ]; then
                   (cd "$temp_dir" && yarn install --mode=update-lockfile)
                 else
-                  (cd "$temp_dir" && yarn install --frozen-lockfile=false)
+                  # For yarn-classic (v1), just run yarn install to generate lockfile
+                  (cd "$temp_dir" && yarn install)
                 fi
                 # Copy lockfile back to original starter directory
                 if [ -f "$temp_dir/yarn.lock" ]; then
