@@ -183,8 +183,8 @@ async function installDependencies(
     const installCommand = {
       pnpm: ["pnpm", "install"],
       npm: ["npm", "install"],
-      yarn: ["yarn"],
-      "yarn-classic": ["yarn"],
+      yarn: ["yarn", "install", "--immutable"],
+      "yarn-classic": ["yarn", "install", "--immutable"],
     }[packageManager];
 
     // Run install command in the target directory

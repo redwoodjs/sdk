@@ -102,14 +102,16 @@ export async function runDevServer(cwd?: string): Promise<{
       env.FORCE_COLOR = "0";
     }
 
+    const pm = state.options.packageManager || "npm";
+
     // Use the provided cwd if available
     devProcess = $({
-      stdio: ["inherit", "pipe", "pipe"], // Pipe stderr again to check both streams
+      all: true,
       detached: true,
       cleanup: false, // Don't auto-kill on exit
       cwd: cwd || process.cwd(), // Use provided directory or current directory
       env, // Pass the updated environment variables
-    })`npm run dev`;
+    })`${pm} run dev`;
 
     devProcess.catch((error: any) => {
       if (!isErrorExpected) {
@@ -126,8 +128,8 @@ export async function runDevServer(cwd?: string): Promise<{
     // Store chunks to parse the URL
     let url = "";
 
-    // Listen for stdout to get the URL
-    devProcess.stdout?.on("data", (data: Buffer) => {
+    // Listen for all output to get the URL
+    devProcess.all?.on("data", (data: Buffer) => {
       const output = data.toString();
       console.log(output);
 
@@ -154,22 +156,6 @@ export async function runDevServer(cwd?: string): Promise<{
           url = `http://localhost:${altMatch[1]}`;
           log("Found development server URL with alternative pattern: %s", url);
         }
-      }
-    });
-
-    // Also listen for stderr to check for URL patterns there as well
-    devProcess.stderr?.on("data", (data: Buffer) => {
-      const output = data.toString();
-      console.error(output); // Output error messages to console
-
-      // Check if we already found a URL
-      if (url) return;
-
-      // Check for localhost URLs in stderr using the same resilient patterns as stdout
-      const urlMatch = output.match(/localhost:(\d+)/i);
-      if (urlMatch && urlMatch[1]) {
-        url = `http://localhost:${urlMatch[1]}`;
-        log("Found development server URL in stderr: %s", url);
       }
     });
 
