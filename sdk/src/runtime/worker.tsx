@@ -86,6 +86,8 @@ export const defineApp = <
           response: userResponseInit,
         };
 
+        console.log("##### outerRequestInfo", outerRequestInfo);
+
         const createPageElement = (
           requestInfo: RequestInfo<any, T["ctx"]>,
           Page: React.FC<any>,
@@ -107,6 +109,7 @@ export const defineApp = <
           Page: React.FC<any>,
           onError: (error: unknown) => void,
         ) => {
+          console.log("##### render page requestInfo", requestInfo);
           if (isClientReference(requestInfo.rw.Document)) {
             if (import.meta.env.DEV) {
               console.error("Document cannot be a client component");
@@ -121,7 +124,9 @@ export const defineApp = <
           const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 
           if (isRSCActionHandler) {
+            console.log("##### before action", requestInfo.response.headers);
             actionResult = await rscActionHandler(request);
+            console.log("##### after action", requestInfo.response.headers);
           }
 
           const pageElement = createPageElement(requestInfo, Page);
