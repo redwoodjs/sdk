@@ -133,28 +133,40 @@ export async function runDevServer(cwd?: string): Promise<{
       const output = data.toString();
       console.log(output);
 
-      // Try to extract the URL from the server output with a more flexible regex
-      // Allow for variable amounts of whitespace between "Local:" and the URL
-      // And handle ANSI color codes by using a more robust pattern
-      const localMatch = output.match(/Local:.*?(http:\/\/localhost:\d+)/);
-      if (localMatch && localMatch[1] && !url) {
-        url = localMatch[1];
-        log("Found development server URL: %s", url);
-      } else if (
-        output.includes("Local:") &&
-        output.includes("http://localhost:")
-      ) {
-        // Log near-match for debugging
-        log(
-          "Found potential URL pattern but regex didn't match. Content: %s",
-          output,
-        );
+      if (!url) {
+        // Multiple patterns to catch different package manager outputs
+        const patterns = [
+          // Standard Vite output: "Local:   http://localhost:5173/"
+          /Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
+          // Alternative Vite output: "➜  Local:   http://localhost:5173/"
+          /➜\s*Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
+          // Direct URL pattern: "http://localhost:5173"
+          /(https?:\/\/localhost:\d+)/i,
+          // Port-only pattern: "localhost:5173"
+          /localhost:(\d+)/i,
+          // Server ready messages
+          /server.*ready.*localhost:(\d+)/i,
+          /dev server.*localhost:(\d+)/i,
+        ];
 
-        // Try an alternative, more general pattern that's more resilient to ANSI codes
-        const altMatch = output.match(/localhost:(\d+)/i);
-        if (altMatch && altMatch[1] && !url) {
-          url = `http://localhost:${altMatch[1]}`;
-          log("Found development server URL with alternative pattern: %s", url);
+        for (const pattern of patterns) {
+          const match = output.match(pattern);
+          if (match) {
+            if (match[1] && match[1].startsWith("http")) {
+              url = match[1];
+              log("Found development server URL with pattern %s: %s", pattern.source, url);
+              break;
+            } else if (match[1] && /^\d+$/.test(match[1])) {
+              url = `http://localhost:${match[1]}`;
+              log("Found development server URL with port pattern %s: %s", pattern.source, url);
+              break;
+            }
+          }
+        }
+
+        // Log potential matches for debugging
+        if (!url && (output.includes("localhost") || output.includes("Local") || output.includes("server"))) {
+          log("Potential URL pattern found but not matched: %s", output.trim());
         }
       }
     });

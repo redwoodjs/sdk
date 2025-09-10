@@ -68,7 +68,11 @@ jobs:
                 temp_dir=$(mktemp -d)
                 cp -r "$starter"/* "$temp_dir/"
                 cp "$starter"/.gitignore "$temp_dir/" 2>/dev/null || true
-                (cd "$temp_dir" && ${{ matrix.package-manager }} install)
+                if [ "${{ matrix.package-manager }}" = "yarn" ]; then
+                  (cd "$temp_dir" && yarn install --mode=update-lockfile)
+                else
+                  (cd "$temp_dir" && yarn install --frozen-lockfile=false)
+                fi
                 # Copy lockfile back to original starter directory
                 if [ -f "$temp_dir/yarn.lock" ]; then
                   cp "$temp_dir/yarn.lock" "$starter/"
