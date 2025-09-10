@@ -142,7 +142,7 @@ export const configPlugin = ({
           },
           optimizeDeps: {
             noDiscovery: false,
-            entries: [workerEntryPathname, ...appServerFiles],
+            entries: [workerEntryPathname],
             exclude: externalModules,
             include: ["rwsdk/__ssr", "rwsdk/__ssr_bridge"],
             esbuildOptions: {

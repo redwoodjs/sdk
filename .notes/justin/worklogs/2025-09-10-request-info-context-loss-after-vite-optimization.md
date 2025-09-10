@@ -62,6 +62,6 @@ The new plan is to revert all previous changes and implement a more robust solut
 1.  **Revert Changes:** All modifications to `sdk/src/runtime/requestInfo/worker.ts` will be reverted to their original state.
 2.  **Use `optimizeDeps.entries`:** We will leverage the `clientFiles` and `serverFiles` sets, which are available ahead of time thanks to our directive scanning.
     -   For the `client` environment, we will filter `clientFiles` to include only application code (not in `node_modules`) and add these paths to the `optimizeDeps.entries` array.
-    -   For the `worker` environment, we will do the same with `serverFiles`.
+    -   For the `worker` environment (and not the `ssr` environment), we will do the same with `serverFiles`.
 
-By providing Vite with a complete list of application entry points, its optimizer can build a full dependency graph from the start, preventing any subsequent, disruptive re-optimization. This is a framework-level solution that is both robust and transparent to the user.
+By providing Vite with a complete list of application entry points for the correct environments, its optimizer can build a full dependency graph from the start, preventing any subsequent, disruptive re-optimization. This is a framework-level solution that is both robust and transparent to the user.
