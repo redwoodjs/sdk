@@ -59,6 +59,7 @@ export const defineApp = <
         const isRSCRequest =
           url.searchParams.has("__rsc") ||
           request.headers.get("accept")?.includes("text/x-component");
+        const isAction = url.searchParams.has("__rsc_action_id");
         const userHeaders = new Headers();
 
         const rw: RwContext = {
@@ -84,6 +85,7 @@ export const defineApp = <
           ctx: {},
           rw,
           response: userResponseInit,
+          isAction,
         };
 
         const createPageElement = (
