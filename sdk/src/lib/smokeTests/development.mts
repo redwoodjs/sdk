@@ -107,10 +107,11 @@ export async function runDevServer(cwd?: string): Promise<{
     // Use the provided cwd if available
     devProcess = $({
       all: true,
-      detached: true,
+      detached: false, // Keep attached so we can access streams
       cleanup: false, // Don't auto-kill on exit
       cwd: cwd || process.cwd(), // Use provided directory or current directory
       env, // Pass the updated environment variables
+      stdio: 'pipe', // Ensure streams are piped
     })`${pm} run dev`;
 
     devProcess.catch((error: any) => {
