@@ -144,6 +144,12 @@ The context object (`ctx`) is a mutable object that is passed to each request ha
 
 Middleware runs before the request is matched to a route. You can specify multiple middleware functions, they'll be executed in the order they are defined.
 
+<Aside type="note" title="Server Actions">
+  Requests made by Server Actions also pass through the middleware pipeline. This
+  means you can rely on middleware to populate context or perform checks for your
+  actions, just as you would for page requests.
+</Aside>
+
 ```tsx title="src/worker.tsx" mark={5-10}
 import { defineApp } from "rwsdk/worker";
 import { route } from "rwsdk/router";

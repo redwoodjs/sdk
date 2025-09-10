@@ -117,12 +117,7 @@ export const defineApp = <
             });
           }
 
-          let actionResult: unknown = undefined;
-          const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
-
-          if (isRSCActionHandler) {
-            actionResult = await rscActionHandler(request);
-          }
+          const actionResult = requestInfo.rw.actionResult;
 
           const pageElement = createPageElement(requestInfo, Page);
 
@@ -195,6 +190,7 @@ export const defineApp = <
                     getRequestInfo: getRequestInfo as () => T,
                     runWithRequestInfoOverrides,
                     onError: reject,
+                    rscActionHandler,
                   }),
                 );
               } catch (e) {
