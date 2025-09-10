@@ -153,7 +153,9 @@ export async function runDevServer(cwd?: string): Promise<{
 
         for (const pattern of patterns) {
           const match = output.match(pattern);
+          log("Testing pattern %s against output: %s", pattern.source, output.replace(/\n/g, "\\n"));
           if (match) {
+            log("Pattern matched: %s, groups: %o", pattern.source, match);
             if (match[1] && match[1].startsWith("http")) {
               url = match[1];
               log("Found development server URL with pattern %s: %s", pattern.source, url);
