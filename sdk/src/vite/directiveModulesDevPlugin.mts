@@ -43,12 +43,11 @@ const generateAppBarrelContent = (
 ) => {
   return [...files]
     .filter((file) => !file.includes("node_modules"))
-    .map(
-      (file) =>
-        `import '${normalizeModulePath(file, projectRootDir, {
-          absolute: true,
-        })}';`,
-    )
+    .map((file) => {
+      const relativePath = path.relative(projectRootDir, file);
+      const posixPath = relativePath.split(path.sep).join(path.posix.sep);
+      return `import './${posixPath}';`;
+    })
     .join("\n");
 };
 
@@ -61,7 +60,9 @@ export const directiveModulesDevPlugin = ({
   serverFiles: Set<string>;
   projectRootDir: string;
 }): Plugin => {
-  const tempDir = mkdtempSync(path.join(os.tmpdir(), "rwsdk-"));
+  const tempDir = path.join(projectRootDir, ".rwsdk", "temp");
+  mkdirSync(tempDir, { recursive: true });
+
   const APP_CLIENT_BARREL_PATH = path.join(tempDir, "app-client-barrel.js");
   const APP_SERVER_BARREL_PATH = path.join(tempDir, "app-server-barrel.js");
   let scanPromise: Promise<void> | null = null;
