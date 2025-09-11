@@ -16,12 +16,12 @@ export const INTERMEDIATES_OUTPUT_DIR = resolve(
 );
 
 export const VENDOR_CLIENT_BARREL_PATH = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "__intermediate_builds/rwsdk-vendor-client-barrel.js",
+  INTERMEDIATES_OUTPUT_DIR,
+  "rwsdk-vendor-client-barrel.js",
 );
 export const VENDOR_SERVER_BARREL_PATH = path.resolve(
-  path.dirname(fileURLToPath(import.meta.url)),
-  "__intermediate_builds/rwsdk-vendor-server-barrel.js",
+  INTERMEDIATES_OUTPUT_DIR,
+  "rwsdk-vendor-server-barrel.js",
 );
 
 export const VENDOR_CLIENT_BARREL_EXPORT_PATH = "rwsdk/__vendor_client_barrel";

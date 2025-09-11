@@ -98,11 +98,15 @@ export const directiveModulesDevPlugin = ({
         return;
       }
 
-      // Create dummy files for the application barrels
       mkdirSync(path.dirname(APP_CLIENT_BARREL_PATH), { recursive: true });
       writeFileSync(APP_CLIENT_BARREL_PATH, "");
       mkdirSync(path.dirname(APP_SERVER_BARREL_PATH), { recursive: true });
       writeFileSync(APP_SERVER_BARREL_PATH, "");
+
+      mkdirSync(path.dirname(VENDOR_CLIENT_BARREL_PATH), { recursive: true });
+      writeFileSync(VENDOR_CLIENT_BARREL_PATH, "");
+      mkdirSync(path.dirname(VENDOR_SERVER_BARREL_PATH), { recursive: true });
+      writeFileSync(VENDOR_SERVER_BARREL_PATH, "");
 
       for (const [envName, env] of Object.entries(config.environments || {})) {
         env.optimizeDeps ??= {};
