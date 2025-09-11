@@ -376,3 +376,13 @@ This aligns perfectly with how Vite constructs and executes its dependency scann
 - **Finding**: The previous attempt to return `undefined` from our `onResolve` hook for application files was not sufficient. The detailed logs showed that while our plugin ran first, the `vite:dep-scan` plugin still executed later in the chain. Because it acts as the default resolver, it would still receive the file and apply its default logic, which was to incorrectly mark it as `external: true`.
 - **Hypothesis**: Returning `undefined` does not stop the plugin pipeline. To prevent the default behavior, our plugin needs to be more assertive and claim the resolution for the application file.
 - **Plan**: The final, successful solution was to modify our `onResolve` hook to explicitly return a resolution result for application files. Instead of returning `undefined`, it now returns `{ path: args.path }`. By returning a result object, our plugin definitively handles the module. And by omitting the `external` property, we are explicitly telling `esbuild` that this is internal code whose dependencies must be scanned. This preempts the `vite:dep-scan` plugin, preventing it from making the wrong decision and ensuring that the application's entire dependency graph is correctly discovered in the initial optimization pass.
+
+### Attempt 39: In-Memory Barrel Generation
+
+- **Finding**: The physical barrel files, while effective, added unnecessary complexity by writing temporary files to a `.rwsdk/temp` directory. This approach was initially chosen to overcome issues with Vite's dependency scanner, but the "Assertive Resolution" fix made this filesystem interaction redundant.
+- **Hypothesis**: With the `external: true` problem solved, we can now generate the content for both application and vendor barrels entirely in-memory, just like our earlier virtual module attempts. The `esbuild` `onLoad` hook is the perfect mechanism for this, as it allows us to provide content for a given path without that path needing to exist on disk.
+- **Plan**: Refactor the `directiveModulesDevPlugin` to generate barrel content on-the-fly.
+    1.  Remove all `writeFileSync` calls related to both application and vendor barrels.
+    2.  Remove the creation of dummy files in `configResolved`.
+    3.  In the `esbuild` plugin, add `onLoad` handlers for both the application barrel paths and the vendor barrel paths (distinguished by a namespace).
+    4.  These `onLoad` handlers now generate the barrel content directly and return it to `esbuild`, eliminating all intermediate file I/O. This results in a cleaner, more efficient, and entirely in-memory solution.
