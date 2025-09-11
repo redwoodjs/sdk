@@ -1,14 +1,22 @@
-import { readFile } from "fs/promises";
+import { readFile as fsReadFile } from "fs/promises";
 import { resolve } from "path";
 
-let pkg: Record<string, any>;
+export let _pkgCache: Record<string, any> | undefined;
 
-export const hasPkgScript = async (projectRootDir: string, script: string) => {
-  if (!pkg) {
-    pkg = JSON.parse(
-      await readFile(resolve(projectRootDir, "package.json"), "utf-8"),
+export const hasPkgScript = async (
+  projectRootDir: string,
+  script: string,
+  readFile = fsReadFile,
+) => {
+  if (!_pkgCache) {
+    _pkgCache = JSON.parse(
+      (await readFile(resolve(projectRootDir, "package.json"))) as string,
     );
   }
 
-  return pkg.scripts?.[script];
+  return _pkgCache.scripts?.[script];
+};
+
+export const _resetPkgCache = () => {
+  _pkgCache = undefined;
 };
