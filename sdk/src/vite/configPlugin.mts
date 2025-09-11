@@ -84,6 +84,12 @@ export const configPlugin = ({
       appType: "custom",
       mode,
       logLevel: silent ? "silent" : "info",
+      resolve: {
+        alias: {
+          "@": path.normalize(resolve(projectRootDir, "src")),
+          "@generated": path.normalize(resolve(projectRootDir, "generated")),
+        },
+      },
       build: {
         minify: mode !== "development",
         sourcemap: true,
