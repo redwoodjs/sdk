@@ -45,15 +45,15 @@
       "types": "./dist/runtime/ssrBridge.d.ts",
       "default": "./dist/runtime/ssrBridge.js"
     },
-    "./__client_barrel": {
-      "default": "./dist/__intermediate_builds/rwsdk-client-barrel.js"
+    "./__vendor_client_barrel": {
+      "default": "./dist/__intermediate_builds/rwsdk-vendor-client-barrel.js"
     },
-    "./__server_barrel": {
-      "default": "./dist/__intermediate_builds/rwsdk-server-barrel.js"
+    "./__vendor_server_barrel": {
+      "default": "./dist/__intermediate_builds/rwsdk-vendor-server-barrel.js"
     },
     "./router": {
       "types": "./dist/runtime/entries/router.d.ts",
-      "default": "./dist/runtime/entries/router.js"
+      "react-server": "./dist/runtime/entries/router.js"
     },
     "./auth": {
       "types": "./dist/runtime/entries/auth.d.ts",

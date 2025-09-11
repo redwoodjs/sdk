@@ -40,7 +40,7 @@ For a detailed explanation of the scanner's implementation and the rationale beh
 
 ### 2. The "Barrel File" Strategy to Inform the Optimizer
 
-Instead of feeding hundreds of individual files to `optimizeDeps`, we consolidate them into **"barrel files."** We create separate barrels for third-party dependencies and for the application's own source code.
+Instead of feeding hundreds of individual files to `optimizeDeps`, we consolidate them into **"barrel files."** We create separate barrels for third-party dependencies (which we refer to as **vendor barrels**) and for the application's own source code.
 
 This approach works *with* the bundler's expectations. By providing a small, consolidated list of entry points (the barrel files), we signal a complete and interconnected dependency graph. This allows `esbuild` to perform an efficient, comprehensive optimization pass that avoids both excessive chunking and the need for later re-optimization.
 

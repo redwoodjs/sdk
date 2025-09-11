@@ -2,13 +2,19 @@ import path from "path";
 import { Plugin } from "vite";
 import { writeFileSync, mkdirSync, promises as fs } from "node:fs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
-import { CLIENT_BARREL_PATH, SERVER_BARREL_PATH } from "../lib/constants.mjs";
+import {
+  VENDOR_CLIENT_BARREL_PATH,
+  VENDOR_SERVER_BARREL_PATH,
+} from "../lib/constants.mjs";
 import { runDirectivesScan } from "./runDirectivesScan.mjs";
 
-const CLIENT_BARREL_EXPORT_PATH = "rwsdk/__client_barrel";
-const SERVER_BARREL_EXPORT_PATH = "rwsdk/__server_barrel";
+const VENDOR_CLIENT_BARREL_EXPORT_PATH = "rwsdk/__vendor_client_barrel";
+const VENDOR_SERVER_BARREL_EXPORT_PATH = "rwsdk/__vendor_server_barrel";
 
-const generateBarrelContent = (files: Set<string>, projectRootDir: string) => {
+const generateVendorBarrelContent = (
+  files: Set<string>,
+  projectRootDir: string,
+) => {
   const imports = [...files]
     .filter((file) => file.includes("node_modules"))
     .map(
@@ -79,21 +85,6 @@ export const directiveModulesDevPlugin = ({
         clientFiles,
         serverFiles,
       }).then(() => {
-        // After the scan is complete, write the dependency barrel files.
-        mkdirSync(path.dirname(CLIENT_BARREL_PATH), { recursive: true });
-        const clientBarrelContent = generateBarrelContent(
-          clientFiles,
-          projectRootDir,
-        );
-        writeFileSync(CLIENT_BARREL_PATH, clientBarrelContent);
-
-        mkdirSync(path.dirname(SERVER_BARREL_PATH), { recursive: true });
-        const serverBarrelContent = generateBarrelContent(
-          serverFiles,
-          projectRootDir,
-        );
-        writeFileSync(SERVER_BARREL_PATH, serverBarrelContent);
-
         resolveScanPromise();
       });
 
@@ -108,13 +99,7 @@ export const directiveModulesDevPlugin = ({
         return;
       }
 
-      // Create dummy files for the dependency barrels.
-      mkdirSync(path.dirname(CLIENT_BARREL_PATH), { recursive: true });
-      writeFileSync(CLIENT_BARREL_PATH, "");
-      mkdirSync(path.dirname(SERVER_BARREL_PATH), { recursive: true });
-      writeFileSync(SERVER_BARREL_PATH, "");
-
-      // And for the application barrels
+      // Create dummy files for the application barrels
       mkdirSync(path.dirname(APP_CLIENT_BARREL_PATH), { recursive: true });
       writeFileSync(APP_CLIENT_BARREL_PATH, "");
       mkdirSync(path.dirname(APP_SERVER_BARREL_PATH), { recursive: true });
@@ -127,8 +112,8 @@ export const directiveModulesDevPlugin = ({
           env.optimizeDeps.entries ?? [],
         ));
         env.optimizeDeps.include.push(
-          CLIENT_BARREL_EXPORT_PATH,
-          SERVER_BARREL_EXPORT_PATH,
+          VENDOR_CLIENT_BARREL_EXPORT_PATH,
+          VENDOR_SERVER_BARREL_EXPORT_PATH,
         );
 
         if (envName === "client") {
@@ -159,6 +144,16 @@ export const directiveModulesDevPlugin = ({
                   namespace: "rwsdk-app-barrel-ns",
                 };
               }
+              if (
+                args.path === VENDOR_CLIENT_BARREL_PATH ||
+                args.path === VENDOR_SERVER_BARREL_PATH
+              ) {
+                await scanPromise;
+                return {
+                  path: args.path,
+                  namespace: "rwsdk-vendor-barrel-ns",
+                };
+              }
 
               // context(justinvdm, 11 Sep 2025): Prevent Vite from
               // externalizing our application files. If we don't, paths
@@ -187,6 +182,23 @@ export const directiveModulesDevPlugin = ({
                   files,
                   projectRootDir,
                   args.path,
+                );
+                return {
+                  contents: content,
+                  loader: "js",
+                };
+              },
+            );
+            build.onLoad(
+              { filter: /.*/, namespace: "rwsdk-vendor-barrel-ns" },
+              (args) => {
+                const isServerBarrel = args.path.includes(
+                  "rwsdk-vendor-server-barrel",
+                );
+                const files = isServerBarrel ? serverFiles : clientFiles;
+                const content = generateVendorBarrelContent(
+                  files,
+                  projectRootDir,
                 );
                 return {
                   contents: content,
