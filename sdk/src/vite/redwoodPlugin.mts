@@ -8,6 +8,7 @@ import { hasOwnCloudflareVitePlugin } from "./hasOwnCloudflareVitePlugin.mjs";
 import { hasOwnReactVitePlugin } from "./hasOwnReactVitePlugin.mjs";
 
 import reactPlugin from "@vitejs/plugin-react";
+import tsconfigPaths from "vite-tsconfig-paths";
 
 import { transformJsxScriptTagsPlugin } from "./transformJsxScriptTagsPlugin.mjs";
 import { directivesPlugin } from "./directivesPlugin.mjs";
@@ -125,6 +126,7 @@ export const redwoodPlugin = async (
       projectRootDir,
     }),
     reactConditionsResolverPlugin({ projectRootDir }),
+    tsconfigPaths({ root: projectRootDir }),
     shouldIncludeCloudflarePlugin
       ? cloudflare({
           viteEnvironment: { name: "worker" },
