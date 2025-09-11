@@ -1,17 +1,16 @@
 import path from "path";
-import os from "os";
 import { Plugin } from "vite";
-import { writeFileSync, mkdirSync, mkdtempSync } from "node:fs";
+import { writeFileSync, mkdirSync } from "node:fs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { CLIENT_BARREL_PATH, SERVER_BARREL_PATH } from "../lib/constants.mjs";
 import { runDirectivesScan } from "./runDirectivesScan.mjs";
-import fs from "node:fs/promises";
-
-export const VIRTUAL_CLIENT_BARREL_ID = "virtual:rwsdk:client-module-barrel";
-export const VIRTUAL_SERVER_BARREL_ID = "virtual:rwsdk:server-module-barrel";
 
 const CLIENT_BARREL_EXPORT_PATH = "rwsdk/__client_barrel";
 const SERVER_BARREL_EXPORT_PATH = "rwsdk/__server_barrel";
+
+const APP_CLIENT_BARREL_VIRTUAL_ID = "virtual:rwsdk:app-client-barrel";
+const APP_SERVER_BARREL_VIRTUAL_ID = "virtual:rwsdk:app-server-barrel";
+const VIRTUAL_BARREL_NAMESPACE = "rwsdk-virtual-barrel";
 
 const generateBarrelContent = (files: Set<string>, projectRootDir: string) => {
   const imports = [...files]
@@ -60,31 +59,47 @@ export const directiveModulesDevPlugin = ({
   serverFiles: Set<string>;
   projectRootDir: string;
 }): Plugin => {
-  const tempDir = path.join(projectRootDir, ".rwsdk", "temp");
-  mkdirSync(tempDir, { recursive: true });
-
-  const APP_CLIENT_BARREL_PATH = path.join(tempDir, "app-client-barrel.js");
-  const APP_SERVER_BARREL_PATH = path.join(tempDir, "app-server-barrel.js");
-  let scanPromise: Promise<void> | null = null;
+  const { promise: scanPromise, resolve: resolveScanPromise } =
+    Promise.withResolvers<void>();
 
   return {
     name: "rwsdk:directive-modules-dev",
 
+    resolveId(id) {
+      if (
+        id === APP_CLIENT_BARREL_VIRTUAL_ID ||
+        id === APP_SERVER_BARREL_VIRTUAL_ID
+      ) {
+        return `\0${id}`;
+      }
+      return null;
+    },
+
+    async load(id) {
+      if (id === `\0${APP_CLIENT_BARREL_VIRTUAL_ID}`) {
+        await scanPromise;
+        return generateAppBarrelContent(clientFiles, projectRootDir);
+      }
+      if (id === `\0${APP_SERVER_BARREL_VIRTUAL_ID}`) {
+        await scanPromise;
+        return generateAppBarrelContent(serverFiles, projectRootDir);
+      }
+      return null;
+    },
+
     configureServer(server) {
       if (!process.env.VITE_IS_DEV_SERVER || process.env.RWSDK_WORKER_RUN) {
+        resolveScanPromise();
         return;
       }
 
-      // Start the directive scan as soon as the server is configured.
-      // We don't await it here, allowing Vite to continue its startup.
-      scanPromise = runDirectivesScan({
+      runDirectivesScan({
         rootConfig: server.config,
         environments: server.environments,
         clientFiles,
         serverFiles,
       }).then(() => {
-        console.log("[rwsdk] Directive scan complete. Writing barrel files...");
-        // After the scan is complete, write the barrel files.
+        // After the scan is complete, write the dependency barrel files.
         const clientBarrelContent = generateBarrelContent(
           clientFiles,
           projectRootDir,
@@ -96,29 +111,11 @@ export const directiveModulesDevPlugin = ({
           projectRootDir,
         );
         writeFileSync(SERVER_BARREL_PATH, serverBarrelContent);
-
-        const appClientBarrelContent = generateAppBarrelContent(
-          clientFiles,
-          projectRootDir,
-        );
-        writeFileSync(APP_CLIENT_BARREL_PATH, appClientBarrelContent);
-
-        const appServerBarrelContent = generateAppBarrelContent(
-          serverFiles,
-          projectRootDir,
-        );
-        writeFileSync(APP_SERVER_BARREL_PATH, appServerBarrelContent);
-        console.log("[rwsdk] Barrel files written.");
+        resolveScanPromise();
       });
 
-      // context(justinvdm, 4 Sep 2025): Add middleware to block incoming
-      // requests until the scan is complete. This gives us a single hook for
-      // preventing app code being processed by vite until the scan is complete.
-      // This improves perceived startup time by not blocking Vite's optimizer.
       server.middlewares.use(async (_req, _res, next) => {
-        if (scanPromise) {
-          await scanPromise;
-        }
+        await scanPromise;
         next();
       });
     },
@@ -128,13 +125,11 @@ export const directiveModulesDevPlugin = ({
         return;
       }
 
-      // Create dummy files to give esbuild a real path to resolve.
+      // Create dummy files for the dependency barrels.
       mkdirSync(path.dirname(CLIENT_BARREL_PATH), { recursive: true });
       writeFileSync(CLIENT_BARREL_PATH, "");
       mkdirSync(path.dirname(SERVER_BARREL_PATH), { recursive: true });
       writeFileSync(SERVER_BARREL_PATH, "");
-      writeFileSync(APP_CLIENT_BARREL_PATH, "");
-      writeFileSync(APP_SERVER_BARREL_PATH, "");
 
       for (const [envName, env] of Object.entries(config.environments || {})) {
         env.optimizeDeps ??= {};
@@ -149,67 +144,15 @@ export const directiveModulesDevPlugin = ({
         );
 
         if (envName === "client") {
-          entries.push(APP_CLIENT_BARREL_PATH);
+          entries.push(APP_CLIENT_BARREL_VIRTUAL_ID);
         } else if (envName === "worker") {
-          entries.push(APP_SERVER_BARREL_PATH);
+          entries.push(APP_SERVER_BARREL_VIRTUAL_ID);
         }
-
-        env.optimizeDeps.esbuildOptions ??= {};
-        env.optimizeDeps.esbuildOptions.plugins ??= [];
-        env.optimizeDeps.esbuildOptions.plugins.push({
-          name: "rwsdk:await-app-barrels",
-          setup(build) {
-            build.onResolve({ filter: /.*/ }, async (args: any) => {
-              await scanPromise;
-              console.log("##### onResolve", envName, args.path);
-              if (
-                args.path === APP_CLIENT_BARREL_PATH ||
-                args.path === APP_SERVER_BARREL_PATH
-              ) {
-                console.log(
-                  `[rwsdk] onResolve for app barrel: [${envName}] ${args.path}. Awaiting scan...`,
-                );
-                await scanPromise;
-                console.log(
-                  `[rwsdk] onResolve scan complete for: [${envName}] ${args.path}.`,
-                );
-              }
-              return null;
-            });
-
-            build.onLoad({ filter: /.*/ }, async (args: any) => {
-              console.log("##### onLoad", envName, args.path);
-              if (args.path.includes("user/functions.ts")) {
-                console.log(
-                  `[rwsdk] Confirmed: esbuild is loading the target server file: ${args.path}`,
-                );
-              }
-
-              if (
-                args.path === APP_CLIENT_BARREL_PATH ||
-                args.path === APP_SERVER_BARREL_PATH
-              ) {
-                console.log(
-                  `[rwsdk] onLoad for app barrel: [${envName}] ${args.path}. Reading content...`,
-                );
-                const content = await fs.readFile(args.path, "utf-8");
-                console.log(
-                  `[rwsdk] onLoad content for [${envName}] ${args.path}:\n--- barrel content ---\n${content}\n--- end barrel content ---`,
-                );
-                return {
-                  contents: content,
-                  loader: "js",
-                  resolveDir: projectRootDir,
-                };
-              }
-              return null;
-            });
-          },
-        });
       }
     },
   };
 };
+
 const castArray = <T,>(value: T | T[]): T[] => {
   return Array.isArray(value) ? value : [value];
 };

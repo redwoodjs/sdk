@@ -264,3 +264,19 @@ The issue is not one of timing, plugin ordering, or file-system context alone. T
 This explains why all of our barrel file strategies have failed. We are asking the dependency scanner to do a job—deeply analyzing application code—that it is not designed or configured to do at startup. It loads our barrel file, sees no direct `node_modules` imports, and simply stops.
 
 This brings us back to the core dilemma you articulated: the only strategy that has been *proven* to work is feeding the file paths directly into `optimizeDeps.entries` before the optimizer starts. And the only way to get that list of files is with a synchronous scan that blocks the server startup, which creates a user experience problem we've been trying to solve since the beginning.
+
+## Attempt 27: The Virtual Module Strategy
+
+The investigation into Vite's `stdin` usage has led to a new, more refined strategy that mimics Vite's own internal patterns. Instead of creating physical barrel files on disk, we will create a *virtual module* to serve as the entry point for our application code.
+
+This approach is superior because it eliminates all filesystem complexities. We no longer need to worry about temporary directories, project-local files, or whether Vite/esbuild trusts files outside the project root. The entire process is self-contained within our plugin hooks.
+
+### The Plan
+
+1.  **Define Virtual ID:** A unique virtual module ID will be defined (e.g., `"virtual:rwsdk:app-server-barrel"`).
+2.  **Add to `entries`:** This virtual ID will be added to `optimizeDeps.entries`.
+3.  **Implement Virtual Plugin:** Our `esbuild` plugin will be refactored to function as a virtual module provider:
+    *   An `onResolve` hook will filter for our virtual ID and claim it by returning it with a special namespace.
+    *   An `onLoad` hook, triggered by the namespace, will `await` the scan promise, generate the barrel content with relative paths, and return it directly to `esbuild` with the `{ contents, loader, resolveDir }` format.
+
+This is the cleanest possible implementation and our most targeted test yet of whether Vite's dependency scanner can be made to deeply traverse application code at startup.
