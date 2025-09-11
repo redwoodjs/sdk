@@ -1,0 +1,108 @@
+#!/usr/bin/env bash
+
+set -euo pipefail
+
+# This script is for running smoke tests in CI.
+# It simulates a real-world installation of the SDK by packing it into a
+# tarball and installing it in a fresh starter project.
+
+# It accepts the following arguments:
+# --starter: The name of the starter to test (e.g., "minimal", "standard").
+# --package-manager: The package manager to use (e.g., "pnpm", "npm", "yarn", "yarn-classic").
+
+# --- Argument parsing ---
+STARTER=""
+PACKAGE_MANAGER=""
+
+while [[ $# -gt 0 ]]; do
+  case $1 in
+    --starter)
+      STARTER="$2"
+      shift
+      shift
+      ;;
+    --package-manager)
+      PACKAGE_MANAGER="$2"
+      shift
+      shift
+      ;;
+    *)
+      echo "Unknown parameter passed: $1"
+      exit 1
+      ;;
+  esac
+done
+
+if [[ -z "$STARTER" || -z "$PACKAGE_MANAGER" ]]; then
+  echo "❌ Missing required arguments: --starter and --package-manager"
+  exit 1
+fi
+
+echo "🚀 Starting smoke test for '$STARTER' starter with '$PACKAGE_MANAGER'"
+
+# --- Setup ---
+# Get the absolute path of the script's directory
+SCRIPT_DIR=$(cd -- "$(dirname -- "${BASH_SOURCE[0]}")" &> /dev/null && pwd)
+# The SDK root is one level up from the script's directory
+SDK_ROOT="$SCRIPT_DIR/.."
+# The monorepo root is two levels up from the script's directory
+MONOREPO_ROOT="$SDK_ROOT/.."
+STARTER_PATH="$MONOREPO_ROOT/starters/$STARTER"
+
+if [ ! -d "$STARTER_PATH" ]; then
+  echo "❌ Starter directory not found at $STARTER_PATH"
+  exit 1
+fi
+
+# Change to the SDK directory to run build and pack
+cd "$SDK_ROOT"
+
+# --- Build and Pack SDK ---
+echo -e "\n📦 Building and packing SDK..."
+pnpm build
+
+TEMP_DIR=$(mktemp -d)
+echo "  - Created temp directory: $TEMP_DIR"
+
+TARBALL_NAME=$(npm pack --pack-destination "$TEMP_DIR" | tail -n 1)
+TARBALL_PATH="$TEMP_DIR/$TARBALL_NAME"
+
+if [ ! -f "$TARBALL_PATH" ]; then
+  echo "❌ npm pack failed to create tarball"
+  exit 1
+fi
+echo "  ✅ Packed to $TARBALL_PATH"
+
+# --- Prepare Project ---
+echo -e "\n🔧 Preparing test project..."
+PROJECT_DIR="$TEMP_DIR/test-project"
+mkdir -p "$PROJECT_DIR"
+echo "  - Created test project directory: $PROJECT_DIR"
+
+echo "  - Copying starter files..."
+cp -a "$STARTER_PATH/." "$PROJECT_DIR/"
+
+echo "  - Installing SDK from tarball..."
+INSTALL_COMMAND="add"
+if [[ "$PACKAGE_MANAGER" == "npm" ]]; then
+  INSTALL_COMMAND="install"
+fi
+
+(cd "$PROJECT_DIR" && $PACKAGE_MANAGER $INSTALL_COMMAND "$TARBALL_PATH")
+
+# --- Run Smoke Tests ---
+echo -e "\n🔬 Running smoke tests..."
+ARTIFACT_DIR="$MONOREPO_ROOT/smoke-test-artifacts/$STARTER"
+mkdir -p "$ARTIFACT_DIR"
+
+# The smoke test script is run from the SDK directory
+if ! pnpm smoke-test --path="$PROJECT_DIR" --no-sync --artifact-dir="$ARTIFACT_DIR" --skip-style-tests --package-manager="$PACKAGE_MANAGER"; then
+  echo "❌ Smoke tests failed."
+  exit 1
+fi
+
+echo -e "\n✅ Smoke tests passed for '$STARTER' with '$PACKAGE_MANAGER'!"
+
+# --- Cleanup ---
+echo "  - Cleaning up temp directory..."
+rm -rf "$TEMP_DIR"
