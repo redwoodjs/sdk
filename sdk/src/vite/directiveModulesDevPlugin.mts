@@ -85,6 +85,25 @@ export const directiveModulesDevPlugin = ({
         clientFiles,
         serverFiles,
       }).then(() => {
+        // context(justinvdm, 11 Sep 2025): For vendor barrels, we write the
+        // files directly to disk after the scan. For app barrels, we use a
+        // more complex esbuild plugin to provide content in-memory. This is
+        // because app barrels require special handling to prevent Vite from
+        // marking application code as `external: true`. Vendor barrels do not
+        // have this requirement and a simpler, direct-write approach is more
+        // stable.
+        const vendorClientBarrelContent = generateVendorBarrelContent(
+          clientFiles,
+          projectRootDir,
+        );
+        writeFileSync(VENDOR_CLIENT_BARREL_PATH, vendorClientBarrelContent);
+
+        const vendorServerBarrelContent = generateVendorBarrelContent(
+          serverFiles,
+          projectRootDir,
+        );
+        writeFileSync(VENDOR_SERVER_BARREL_PATH, vendorServerBarrelContent);
+
         resolveScanPromise();
       });
 
@@ -131,31 +150,25 @@ export const directiveModulesDevPlugin = ({
         env.optimizeDeps.esbuildOptions.plugins.unshift({
           name: "rwsdk:app-barrel-blocker",
           setup(build) {
-            const barrelPaths = [
+            const appBarrelPaths = [
               APP_CLIENT_BARREL_PATH,
               APP_SERVER_BARREL_PATH,
             ];
-            const filter = new RegExp(
-              `(${barrelPaths.map((p) => p.replace(/\\/g, "\\\\")).join("|")})$`,
+            const appBarrelFilter = new RegExp(
+              `(${appBarrelPaths
+                .map((p) => p.replace(/\\/g, "\\\\"))
+                .join("|")})$`,
             );
 
             build.onResolve({ filter: /.*/ }, async (args: any) => {
-              // Handle barrel files
-              if (filter.test(args.path)) {
-                await scanPromise;
+              // Block all resolutions until the scan is complete.
+              await scanPromise;
+
+              // Handle app barrel files
+              if (appBarrelFilter.test(args.path)) {
                 return {
                   path: args.path,
                   namespace: "rwsdk-app-barrel-ns",
-                };
-              }
-              if (
-                args.path === VENDOR_CLIENT_BARREL_PATH ||
-                args.path === VENDOR_SERVER_BARREL_PATH
-              ) {
-                await scanPromise;
-                return {
-                  path: args.path,
-                  namespace: "rwsdk-vendor-barrel-ns",
                 };
               }
 
@@ -186,23 +199,6 @@ export const directiveModulesDevPlugin = ({
                   files,
                   projectRootDir,
                   args.path,
-                );
-                return {
-                  contents: content,
-                  loader: "js",
-                };
-              },
-            );
-            build.onLoad(
-              { filter: /.*/, namespace: "rwsdk-vendor-barrel-ns" },
-              (args) => {
-                const isServerBarrel = args.path.includes(
-                  "rwsdk-vendor-server-barrel",
-                );
-                const files = isServerBarrel ? serverFiles : clientFiles;
-                const content = generateVendorBarrelContent(
-                  files,
-                  projectRootDir,
                 );
                 return {
                   contents: content,
