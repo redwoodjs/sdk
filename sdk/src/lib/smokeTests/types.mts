@@ -1,5 +1,7 @@
 import { WriteStream } from "fs";
 
+export type PackageManager = "pnpm" | "npm" | "yarn" | "yarn-classic";
+
 export interface SmokeTestResult {
   status: string;
   verificationPassed: boolean;
@@ -26,6 +28,7 @@ export interface SmokeTestOptions {
   realtime?: boolean;
   skipHmr?: boolean;
   skipStyleTests?: boolean;
+  packageManager?: PackageManager;
 }
 
 export interface TestResources {

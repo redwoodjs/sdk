@@ -49,9 +49,7 @@ Now, within our `worker.tsx` file, we can add a route for our new page.
 ```tsx title="src/worker.tsx" showLineNumbers=false
 import { List } from "./app/pages/applications/List";
 ...
-prefix("/applications", [
-  route("/", List),
-])
+prefix("/applications", [route("/", List)]),
 ---
 - We'll group all of our application routes (List, New, Detail, Update) under the `/applications` prefix.
 - When the user visits `/applications`, they'll see our `List` component.
@@ -78,7 +76,7 @@ prefix("/applications", [
 ])
 ```
 
-This would get cumbersome (and annoying) if we have to do this for every.single.route we wanted to protect. Let's abstract this code into a reusable function.
+This would get cumbersome (and annoying) if we have to do this for every.single.route we wanted to protect. Let's abstract this code into a reusable function. Right below our `AppContext` type, let's add a new function:
 
 ```tsx title="src/worker.tsx" startLineNumber=20
 const isAuthenticated = ({ ctx }: { ctx: AppContext}) => {
@@ -90,33 +88,68 @@ const isAuthenticated = ({ ctx }: { ctx: AppContext}) => {
   }
 }
 ---
-We're passing in the `ctx` that we get with each request. Then, we're checking to see if the `user` exists on the context object. If it doesn't, we're returning a response that redirects the user to the login page.
+We're passing in the `ctx` that we automatically get with each request. Then, we're checking to see if the `user` exists on the context object. If it doesn't, we're returning a response that redirects the user to the login page.
 ---
 ```
 
-Then, we can update our `/applications` route to use `isAuthenticated`:
+Then, we can update our `/applications` prefix to use `isAuthenticated`:
 
 ```tsx title="src/worker.tsx" startLineNumber=75
-prefix("/applications", [
-  route("/", [isAuthenticated, List]),
-])
+prefix("/applications", [isAuthenticated, route("/", List)]),
 ```
 
-Now, we can also update our protected page route to use the `isAuthenticated` function, too:
+Now, not only is our `/applications` route protected, but any route prefixed with `/application" is protected, too.
 
-```tsx title="src/worker.tsx" startLineNumber=61
-route("/protected", [ isAuthenticated, Home ]),
-```
+<Aside type="note" title="Protected Routes">
+  The beauty of the RWSDK route syntax is that since we're using arrays, it's easy to control when the Middleware and/or Interrupters run.
 
-Actually, let's refactor this. The `protected` route was meant as an example. We don't need `/protected`, but we do want to protect our home page: `route("/", Home),`. Let's change `/protected` to `/`, and then delete `route("/", Home),`.
+  In our code, we're applying our `isAuthenticated` function to any route prefixed with `/applications`, but we could just as easily apply it to a single route:
 
-```tsx title="src/worker.tsx" showLineNumbers=false del={1-2} ins={3}
+  ```tsx title="src/worker.tsx" showLineNumbers=false
+  prefix("/applications", [route("/", [isAuthenticated, List])]),
+  ```
+</Aside>
+
+<Aside type="tip" title="Using multiple layers of Middleware">
+  You can use multiple layers of middleware, by continuing to write functions and adding them to the array. They'll run in the order they're listed. For example:
+  ```tsx title="src/worker.tsx" showLineNumbers=false
+  prefix("/applications", [
+    route("/", [isAuthenticated, isAdmin, List]),
+  ])
+  ```
+</Aside>
+
+While we're cleaning up our `worker.tsx` file, let's update the `/` and `/protected` routes:
+
+```tsx title="src/worker.tsx" del={1-2,4-11} ins={3,12} showLineNumbers=false
 route("/", () => new Response("Hello, World!")),
-route("/protected", [isAuthenticated, Home]),
+route("/protected", [
+route("/", [
+  ({ ctx }) => {
+    if (!ctx.user) {
+      return new Response(null, {
+        status: 302,
+        headers: { Location: "/user/login" },
+      });
+    }
+  },
+  isAuthenticated,
+  Home,
+]),
+---
+- First, we can delete the existing home page `/` route.
+- Then we can change the path for the `/protected` route to `/`.
+- Finally, we can remove our authentication function and use the `isAuthenticated` function instead.
+---
+```
+
+The updated code looks much cleaner:
+
+```tsx title="src/worker.tsx" startLineNumber={60}
 route("/", [isAuthenticated, Home]),
 ```
 
-I want to take this a step further, though, and show you another option. With the homepage route, you can also use the `index` function. This works very similar to the `route` function, but it already knows the path is `/`, so it only takes one argument: the response.
+I want to take this a step further and show you another option. With the homepage route, you can also use the `index` function. This works very similar to the `route` function, but it assumes the path is `/`, so it only takes one argument: the response.
 
 ```tsx title="src/worker.tsx" showLineNumbers=false del={1} ins={2}
 route("/", [isAuthenticated, Home]),
@@ -131,21 +164,12 @@ import { route, render, prefix, index } from "rwsdk/router";
 
 Test it out. 👨‍🍳 Chef's kiss! If you're logged in, you should see the "List" text. If you're not logged in, you'll be redirected to the login page.
 
-<Aside type="tip" title="Using multiple layers of Middleware">
-  You can use multiple layers of middleware, by continuing to write functions and adding them to the array. They'll run in the order they're listed. For example:
-  ```tsx
-  prefix("/applications", [
-    route("/", [isAuthenticated, isAdmin, List]),
-  ])
-  ```
-</Aside>
-
 Now, let's get some data into the database.
 
 We can do this one of two ways:
 
 ### Option 1: Create a Seed File
-[Earlier, I mentioned that sometimes I'll create multiple seed files with various purposes.](/tutorial/full-stack-app/database-setup#seed-the-database). This is a perfect opportunity to create a separate file just for adding job applications to our database.
+[Earlier, I mentioned that sometimes I'll create multiple seed files with various purposes.](/tutorial/full-stack-app/database-setup#seed-the-database). This is a perfect opportunity to create a separate file specifically for adding job applications to our database.
 
 Inside the `src/scripts` directory, create a new file called `applicationSeed.ts`.
 
@@ -201,13 +225,14 @@ Let's start with the `user` connection. If you look at the `user` table, you'll 
 
 Now, we can connect the entries, by setting `user` to an object with a `connect` key. Inside, we'll specify the `id` of the user we want to connect to.
 
-```tsx title="src/scripts/applicationSeed.ts" {7-11} startLineNumber=4
+```tsx title="src/scripts/applicationSeed.ts" ins={7-11} startLineNumber=4
 export default defineScript(async ({ env }) => {
   setupDb(env);
 
   const createApplication = async () => {
     await db.application.create({
       data: {
+        ...
         user: {
           connect: {
             id: "0f9a097c-d7bc-4ab5-8b11-6942163df348",
@@ -222,7 +247,7 @@ We want to do something similar for the `status`. If we look at the `Application
 
 We can connect the application record to the status record, by referencing an object with a `connect` key that contains an object with an `id` of `1`.
 
-```tsx title="src/scripts/applicationSeed.ts" {8-12} startLineNumber=4
+```tsx title="src/scripts/applicationSeed.ts" ins={8-12} startLineNumber=4
 export default defineScript(async ({ env }) => {
   setupDb(env);
 
@@ -240,7 +265,7 @@ export default defineScript(async ({ env }) => {
 
 The company field is a little different because we haven't created any company records yet. However, we can create _and_ connect a company record at the same time:
 
-```tsx title="src/scripts/applicationSeed.ts" {8-20} startLineNumber=4
+```tsx title="src/scripts/applicationSeed.ts" ins={8-20} startLineNumber=4
 export default defineScript(async ({ env }) => {
   setupDb(env);
 
@@ -357,7 +382,7 @@ To run the seed file, within the Terminal:
 
 If this feels hard to remember, you can create a script in your `package.json` file. Inside the `scripts` block:
 
-```json title="package.json" showLineNumbers=false
+```json title="package.json" showLineNumbers=false ins={5}
 ...
   "scripts": {
     ...
@@ -405,8 +430,8 @@ Once you've added some data, let's go back to our application and display the da
 
 On the Applications list page, let's `import` the `db` at the top of the file. Then, inside the `List` function, let's use the `findMany` function to get all the applications:
 
-```tsx title="src/app/pages/applications/List.tsx" "async" {4, 8}
-import { db } from "src/db";
+```tsx title="src/app/pages/applications/List.tsx" ins="async" ins={1,4, 8}
+import { db } from "@/db";
 
 const List = async () => {
   const applications = await db.application.findMany();
@@ -473,7 +498,7 @@ Inside our `layouts` folder, let's create a new file called `InteriorLayout.tsx`
 
 Inside, we need should use some of the same styles that we used within our `AuthLayout.tsx` file. As a quick reminder, let's take a look at the `AuthLayout.tsx` file:
 
-```tsx title="src/app/layouts/AuthLayout.tsx"
+```tsx title="src/app/layouts/AuthLayout.tsx" {3-4} startLineNumber=3
 const AuthLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="bg-bg min-h-screen min-w-screen p-12">
@@ -489,15 +514,15 @@ We don't need to set up a grid, but we can abstract the styles and reuse them wi
 
 From the `AuthLayout.tsx` file, I'm going to copy the `bg-bg min-h-screen min-w-screen p-12` styles and create a class inside our `styles.css` file, inside the `@layer components` block:
 
-```css title="src/styles.css" startLineNumber=167
+```css title="src/styles.css" startLineNumber=164
 .page-wrapper {
   @apply bg-bg min-h-screen min-w-screen p-12;
 }
 ```
 
-Then, let's do something similar with the child `div` from our `AuthLayout.tsx`. We don't need the `grid`, but we can grab everything else: `min-h-[calc(100vh-96px)] rounded-xl border-2 border-[#D6D5C5]`
+Let's head back to the `AuthLayout.tsx` file. Then, let's do something similar with the nested `div`. We don't need the `grid`, but we can grab everything else: `min-h-[calc(100vh-96px)] rounded-xl border-2 border-[#D6D5C5]`. Now, let's create new class, called `.page` right below the `.page-wrapper` class:
 
-```css title="src/styles.css" startLineNumber=250
+```css title="src/styles.css" startLineNumber=168
 .page {
   @apply min-h-[calc(100vh-96px)] rounded-xl border-2 border-[#D6D5C5];
 }
@@ -519,9 +544,9 @@ export const link = defineLinks([
 ]);
 ```
 
-Now, let's update the class list within our `AuthLayout.tsx` file:
+Now, we can update the classes within our `AuthLayout.tsx` file:
 
-```tsx title="src/app/layouts/AuthLayout.tsx" "page-wrapper" "page"
+```tsx title="src/app/layouts/AuthLayout.tsx" ins="page-wrapper" ins="page" startLineNumber=3
 const AuthLayout = ({ children }: { children: React.ReactNode }) => {
   return (
     <div className="page-wrapper">
@@ -531,31 +556,30 @@ const AuthLayout = ({ children }: { children: React.ReactNode }) => {
 
 Now, let's jump over to our `InteriorLayout.tsx` file and use these classes there as well:
 
-```tsx title="src/app/layouts/InteriorLayout.tsx" "page-wrapper" "page bg-white"
-const InteriorLayout = ({ children }: { children: React.ReactNode}) => {
+```tsx title="src/app/layouts/InteriorLayout.tsx" ins="page-wrapper" ins="page bg-white" startLineNumber=3
+import { type LayoutProps } from "rwsdk/router";
+
+const InteriorLayout = ({ children }: LayoutProps) => {
   return (
     <div className="page-wrapper">
-      <main className="page bg-white">
-        {children}
-      </main>
+      <div className="page bg-white">{children}</div>
     </div>
-  )
-}
+  );
+};
 
-export { InteriorLayout }
+export { InteriorLayout };
 ---
-You'll also notice I added a background of white with `bg-white`
+You'll notice I also added a background of white with `bg-white`
 ---
 ```
 
-To see how this looks, we need to add this to our `List.tsx`:
+To see how this looks, let's wrap our application prefix within the `worker.tsx` file:
 
-```tsx title="src/app/pages/applications/List.tsx" startLineNumber=7
-return (
-  <InteriorLayout>
-    <pre>{JSON.stringify(applications, null, 2)}</pre>
-  </InteriorLayout>
-)
+```tsx title="src/app/worker.tsx" startLineNumber=65 ins={1,3-4}
+layout(
+  InteriorLayout,
+  prefix("/applications", [isAuthenticated, route("/", List)])
+),
 ```
 
 ![](./images/applications-json-with-interior-layout.png)
@@ -581,9 +605,11 @@ const Header = () => {
     </header>
   )
 }
+
+export { Header };
 ---
 Here are the basic building blocks we need.
-- I used a semantic HTML element `header` to wrap everything.
+- **On lines 3 and 9**, I used a semantic HTML element `header` to wrap everything.
 - Then, we'll have a left and right side. On the left, we'll display the logo and the navigation. On the right, we'll display a link the user's settings, the logout button, and  the user's avatar.
 ---
 ```
@@ -595,7 +621,7 @@ Here are the basic building blocks we need.
 
 Inside the left `div`, let's add the logo and "Apply Wize" text and wrap it in a link:
 
-```tsx title="src/app/components/Header.tsx" startLineNumber=4
+```tsx title="src/app/components/Header.tsx" startLineNumber=5
 {/* left side */}
 <div>
   <a href={link("/")}>
@@ -608,12 +634,12 @@ Inside the left `div`, let's add the logo and "Apply Wize" text and wrap it in a
 - Pretty straightforward. We're using the same `logo.svg` that we used on the auth pages. It should already be in your `public/images` folder.
 - Then, we're using the `link` helper to link to home page. At the top of your file, you'll need to import the `link` helper:
 ```tsx
-import { link } from '@/app/shared/links'
+import { link } from "../shared/links"
 ```
 
 Now, let's add the navigation. For now this is only one link that goes to the dashboard page.
 
-```tsx title="src/app/components/Header.tsx" collapse={3-6} {7-11}
+```tsx title="src/app/components/Header.tsx" collapse={3-6} ins={7-11} startLineNumber=6
 {/* left side */}
 <div>
   <a href={link("/")}>
@@ -630,8 +656,9 @@ Now, let's add the navigation. For now this is only one link that goes to the da
 
 For the right side, we want another unordered list and the Avatar component:
 
-```tsx title="src/app/components/Header.tsx" startLineNumber=19
+```tsx title="src/app/components/Header.tsx" ins={3-13} del={2,14} startLineNumber=21
 {/* right side */}
+<div>
 <nav>
   <ul>
     <li><a href="#">Settings</a></li>
@@ -643,6 +670,7 @@ For the right side, we want another unordered list and the Avatar component:
     </li>
   </ul>
 </nav>
+</div>
 ```
 
 - Notice, I replaced the right side `div` with a `nav` element, keeping things nice and semantic.
@@ -650,12 +678,12 @@ For the right side, we want another unordered list and the Avatar component:
 - For the `Avatar` component, you'll need to import it at the top of your file. This is a shadcn/ui component, so it should already be part of your project.
 
 ```tsx showLineNumbers=false
-import { Avatar, AvatarFallback } from '@/app/components/ui/avatar'
+import { Avatar, AvatarFallback } from './ui/avatar'
 ```
 
 Normally, when you're using the `Avatar` component, you'll also want to use the `AvatarImage` component. This is where you define the Avatar image:
 
-```tsx title="src/app/components/Header.tsx" showLineNumbers=false "AvatarImage" {8}
+```tsx title="src/app/components/Header.tsx" showLineNumbers=false ins="AvatarImage" ins={8}
 import { Avatar, AvatarFallback, AvatarImage } from '@/app/components/ui/avatar'
 
 ...
@@ -672,7 +700,7 @@ If you want to go this route, you can download the [`avatar.png` placeholder ima
 
 The shadcn/ui Avatar component uses client side interactivity. So, you'll need to add the `use client` directive to the top of the `Avatar.tsx` file:
 
-```tsx title="src/app/components/ui/avatar.tsx" startLineNumber=1 ""use client""
+```tsx title="src/app/components/ui/avatar.tsx" startLineNumber=1 ins=""use client""
 "use client"
 
 import * as React from "react"
@@ -705,22 +733,40 @@ Now that we have all the elements, let's add some styling:
 
 We set the left and right padding to `40px` with `px-10`. We'll use this throughout our entire application. In order to maintain consistency, let's define it as a custom utility. This will make it easy to reference (and change, if necessary).
 
-```css title="src/styles.css" startLineNumber=136
---spacing-page-side: 40px;
+```css title="src/styles.css" collapse={2-17} startLineNumber=116 ins={18}
+@theme {
+  --font-display: "Poppins", sans-serif;
+  --font-body: "Inter", sans-serif;
+
+  --color-bg: #e4e3d4;
+  --color-border: #eeeef0;
+
+  --color-primary: #f7b736;
+  --color-secondary: #f1f1e8;
+  --color-destructive: #ef533f;
+
+  --color-tag-applied: #b1c7c0;
+  --color-tag-interview: #da9b7c;
+  --color-tag-new: #db9a9f;
+  --color-tag-rejected: #e4e3d4;
+  --color-tag-offer: #aae198;
+
+  --spacing-page-side: 40px;
+}
 ---
 Inside the `@theme` block, below our color definitions, we'll add a new variable called `--spacing-page-side` and set it to `40px`. Now, we can use this variable with margin or padding: `mx-page-side` or `px-page-side` respectively.
 ---
 ```
 
-Now, we can update our `header` element to use the new utility, replacing `px-10` with `px-page-side`:
+Update the `header` element to use the new utility, replacing `px-10` with `px-page-side`:
 
-```tsx title="src/app/layouts/Header.tsx" startLineNumber=6 "px-page-side"
-<header className="py-5 px-page-side h-20 flex justify-between items-center border-b-1 border-border mb-12">
+```tsx title="src/app/layouts/Header.tsx" startLineNumber=6 del="px-10" ins="px-page-side"
+<header className="py-5 px-10 px-page-side h-20 flex justify-between items-center border-b-1 border-border mb-12">
 ```
 
 On the left side `div`, we want the logo and the Dashboard link to align vertically:
 
-```tsx title="src/app/layouts/Header.tsx" startLineNumber=7 collapse={3-11} "flex items-center gap-8"
+```tsx title="src/app/layouts/Header.tsx" startLineNumber=7 collapse={3-11} ins="className="flex items-center gap-8""
 {/* left side */}
 <div className="flex items-center gap-8">
   <a href={link("/")}>
@@ -741,8 +787,11 @@ On the left side `div`, we want the logo and the Dashboard link to align vertica
 
 On the home page link, we want the logo and the "Apply Wize" text to align vertically too:
 
-```tsx title="src/app/components/Header.tsx" startLineNumber=9 "flex items-center gap-3 font-display font-bold text-3xl"
-<a href={link("/")} className="flex items-center gap-3 font-display font-bold text-3xl">
+```tsx title="src/app/components/Header.tsx" startLineNumber=9 ins={3}
+<a
+  href={link("/")}
+  className="flex items-center gap-3 font-display font-bold text-3xl"
+>
 ---
 - `flex`, `items-center`, and `gap-3` aligns the logo and text and puts `12px` of space between them.
 - `font-display` and `font-bold` are used to style the text, applying the font Poppins and making the text bold.
@@ -756,7 +805,7 @@ If you look at the logo, it overlaps with the bottom border of the header.
 
 In order to achieve this, we also need to add some styles to the `img` tag:
 
-```tsx title="src/app/components/Header.tsx" startLineNumber=10 "className="pt-5 -mb-3""
+```tsx title="src/app/components/Header.tsx" startLineNumber=10 ins="className="pt-5 -mb-3""
 <img src="/images/logo.svg" alt="Apply Wize" className="pt-5 -mb-3" />
 ---
 - `pt-5` adds `20px` of padding to the top.
@@ -766,7 +815,7 @@ In order to achieve this, we also need to add some styles to the `img` tag:
 
 For the right side `ul`, we need to add a few styles to position the links properly:
 
-```tsx title="src/app/components/Header.tsx" startLineNumber=20 "className="flex items-center gap-7"
+```tsx title="src/app/components/Header.tsx" startLineNumber=25 ins="className="flex items-center gap-7""
 {/* right side */}
 <nav>
   <ul className="flex items-center gap-7">
@@ -779,9 +828,28 @@ For the right side `ul`, we need to add a few styles to position the links prope
 
 To style our nav links, I want these styles to apply to both the left and the right side. So, let's stick these inside the `styles.css` file, inside the `@layer base` block:
 
-```css title="src/styles.css" startLineNumber=164
-nav {
-  @apply font-display font-medium text-sm;
+```css title="src/styles.css" collapse={2-18} startLineNumber=142 ins={19-21}
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+  body {
+    @apply bg-background text-foreground;
+  }
+
+  h1,
+  h2,
+  h3 {
+    @apply font-display font-bold;
+  }
+
+  input[type="text"] {
+    @apply border-border border-1 rounded-md px-3 h-9 block w-full mb-2 text-base;
+  }
+
+  nav {
+    @apply font-display font-medium text-sm;
+  }
 }
 ```
 
@@ -841,10 +909,11 @@ export { Header };
 
 Now, let's stick our `Header` component into our `InteriorLayout.tsx` file:
 
-```tsx title="src/app/layouts/InteriorLayout.tsx" {1, 7}
+```tsx title="src/app/layouts/InteriorLayout.tsx" ins={2, 8}
+import { type LayoutProps } from "rwsdk/router";
 import { Header } from "@/app/components/Header";
 
-const InteriorLayout = ({ children }: { children: React.ReactNode}) => {
+const InteriorLayout = ({ children }: LayoutProps) => {
   return (
     <div className="page-wrapper">
       <main className="page bg-white">
@@ -866,28 +935,35 @@ Moving on.
 
 At the top of our file, let's add a page heading and a button/link to add a new application:
 
-```tsx title="src/app/pages/applications/List.tsx" showLineNumbers=false
+```tsx title="src/app/pages/applications/List.tsx" ins={1,8-16,18}
 import { Button } from "@/app/components/ui/button";
-...
-return (
-  <InteriorLayout>
+import { db } from "@/db";
+
+const List = async () => {
+  const applications = await db.application.findMany();
+
+  return (
     <>
       <div>
         <h1>All Applications</h1>
         <div>
-          <Button asChild><a href="#">New Application</a></Button>
+          <Button asChild>
+            <a href="#">New Application</a>
+          </Button>
         </div>
       </div>
       <pre>{JSON.stringify(applications, null, 2)}</pre>
     </>
-  </InteriorLayout>
-)
+  );
+};
+
+export { List };
 ```
 
-- `InteriorLayout` can only have one react node, so we need to wrap everything with a React fragment (`<>`)
+- We can only return a single React component, so we need to wrap everything with a React fragment (`<>`)
 - Above our application content, I added a wrapping `div` with a `h1` heading for "All Applications".
 - Then, I have another `div` that wraps a `<Button>` component. Inside, I have a link that points to the new application page. The `Button` component is coming from shadcn/ui. It should already be part of your project, but you'll need to import it at the top of your file.
-- Since we're not triggering an event, we're _linking_ to another page, we have an `a` tag. Eventually, this will reference the `applications/new` route, but since we haven't set that up yet, I used a placeholder `#` instead.
+- Since we're not triggering an event, we're _linking_ to another page, we have an `a` tag inside the `Button` component. Eventually, this will reference the `applications/new` route, but since we haven't set that up yet, in the meantime we can use a `#` placeholder instead.
 
 <Aside type="tip" title="shadcn/ui Button">
   Admittedly, it does look a little strange having an `a` tag inside a `Button` component.
@@ -907,7 +983,7 @@ The error is happening because the Slot component from Radix UI (shadcn/ui is bu
 
 To fix this, open the `src/app/components/ui/button.tsx` file and add the `use client` directive to the top of the file:
 
-```tsx title="src/app/components/ui/button.tsx"
+```tsx title="src/app/components/ui/button.tsx" ins={1}
 "use client";
 ```
 
@@ -915,14 +991,14 @@ You may need to restart the server for this to take effect.
 
 Now, let's add some styling:
 
-```tsx title="src/app/pages/applications/List.tsx" startLineNumber=12 "px-page-side flex justify-between items-center" "page-title"
+```tsx title="src/app/pages/applications/List.tsx" startLineNumber=12 ins="className="px-page-side flex justify-between items-center"" ins="className="page-title""
 <div className="px-page-side flex justify-between items-center">
   <h1 className="page-title">All Applications</h1>
 ```
 
-- On the wrapping `div` we can use our custom `px-page-side` that adds `20px` of padding to the left and right.
-- We can align the heading and the button with`flex`, `justify-between`, and `items-center`.
-- We can use our `page-title` class to style the heading.
+- On the wrapping `div`, use the custom `px-page-side` that adds `20px` of padding to the left and right.
+- Align the heading and the button with `flex`, `justify-between`, and `items-center`.
+- Use our `page-title` class to style the heading.
 
 ![](./images/all-applications-heading-styled.png)
 
@@ -953,29 +1029,46 @@ export { ApplicationsTable }
 
 Let's go ahead and put this on our `ApplicationsList.tsx` page, so we can see the updates we're making in the browser:
 
-```tsx title="src/app/pages/applications/List.tsx" {1} "<ApplicationsTable />"
+```tsx title="src/app/pages/applications/List.tsx" collapse={2-17, 20-24} ins={1, 18}
 import { ApplicationsTable } from "@/app/components/ApplicationsTable";
-...
-return (
-  <InteriorLayout>
+import { Button } from "@/app/components/ui/button";
+import { db } from "@/db";
+
+const List = async () => {
+  const applications = await db.application.findMany();
+
+  return (
     <>
       <div className="px-page-side flex justify-between items-center">
         <h1 className="page-title">All Applications</h1>
         <div>
-          <Button asChild><a href="#">New Application</a></Button>
+          <Button asChild>
+            <a href="#">New Application</a>
+          </Button>
         </div>
       </div>
       <ApplicationsTable />
       <pre>{JSON.stringify(applications, null, 2)}</pre>
     </>
-  </InteriorLayout>
-)
+  );
+};
+
+export { List };
+
 ```
 
 We've already added the [shadcn/ui Table component](https://ui.shadcn.com/docs/components/table) to our project, so let's go back to our `ApplicationsTable.tsx` file and use it. Just to start, I'm going to copy the example code from the shadcn/ui documentation and then we can rework it for our needs:
 
 ```tsx title="src/app/components/ApplicationsTable.tsx"
-import { Table, TableBody, TableCaption, TableCell, TableHead, TableHeader, TableRow } from "./ui/table"
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./ui/table";
 
 const ApplicationsTable = () => {
   return (
@@ -998,10 +1091,10 @@ const ApplicationsTable = () => {
         </TableRow>
       </TableBody>
     </Table>
-  )
-}
+  );
+};
 
-export { ApplicationsTable }
+export { ApplicationsTable };
 ```
 
 ![](./images/shadcn-table-component.png)
@@ -1010,15 +1103,29 @@ It looks pretty good, but we need to make a few changes to make it work for our 
 
 First, we can get rid of the `TableCaption`:
 
-```tsx showLineNumbers=false
+```tsx title="src/app/components/ApplicationsTable.tsx" del={11} del="TableCaption,"
+import {
+  Table,
+  TableBody,
+  TableCaption,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "./ui/table";
+...
 <TableCaption>A list of your recent invoices.</TableCaption>
 ```
 
 Then, I'm going to change the `TableHeader` to match our design within Figma:
 
-```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=6
+```tsx title="src/app/components/ApplicationsTable.tsx" del={3-6} ins={7-13} startLineNumber=14
 <TableHeader>
   <TableRow>
+    <TableHead className="w-[100px]">Invoice</TableHead>
+    <TableHead>Status</TableHead>
+    <TableHead>Method</TableHead>
+    <TableHead className="text-right">Amount</TableHead>
     <TableHead className="w-[100px]">Status</TableHead>
     <TableHead>Date Applied</TableHead>
     <TableHead>Job Title</TableHead>
@@ -1031,20 +1138,26 @@ Then, I'm going to change the `TableHeader` to match our design within Figma:
 ```
 
 - We now have columns for status, date applied, job title, company, contact, and salary range.
-- You'll notice that the last column is empty. `<TableHead></TableHead>` Within the table body, this will be our view icon, but this column doesn't have a header.
+- You'll notice that the last column is empty. `<TableHead></TableHead>` Within the table body, this will be our view icon, so this column doesn't need a heading.
 
 For our `TableBody`, we need our application data. First, let's set up our table row, statically. Then, we'll make it dynamic.
 
-```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=17
+```tsx title="src/app/components/ApplicationsTable.tsx" del={3-6} ins={7-15} startLineNumber=25
 <TableBody>
   <TableRow>
+    <TableCell className="font-medium">INV001</TableCell>
+    <TableCell>Paid</TableCell>
+    <TableCell>Credit Card</TableCell>
+    <TableCell className="text-right">$250.00</TableCell>
     <TableCell>New</TableCell>
     <TableCell>April 15, 2025</TableCell>
     <TableCell>Software Engineer</TableCell>
     <TableCell>RedwoodJS</TableCell>
     <TableCell>John Doe</TableCell>
     <TableCell>$150,000-$250,000</TableCell>
-    <TableCell><a href="#">View</a></TableCell>
+    <TableCell>
+      <a href="#">View</a>
+    </TableCell>
   </TableRow>
 </TableBody>
 ```
@@ -1065,11 +1178,18 @@ import { Badge } from "./ui/badge"
 </TableCell>
 ```
 
+Within the the `Badge` component, we'll need to update the text color:
+
+```tsx title="src/app/components/ui/badge.tsx" startLineNumber=12 del="text-primary-foreground" ins="text-black"
+default:
+  "border-transparent bg-primary text-black text-primary-foreground [a&]:hover:bg-primary/90",
+```
+
 ![](./images/shadcn-badge.png)
 
-Let's add styles based on the application status. We've already added some custom colors to our `styles.css` file, so let's use those.
+Let's add some more styles based on the application status. We've already added some custom colors to our `styles.css` file that we can use:
 
-```css styles.css startLineNumber=229
+```css title="src/app/styles.css" startLineNumber=127
   --color-tag-applied: #b1c7c0;
   --color-tag-interview: #da9b7c;
   --color-tag-new: #db9a9f;
@@ -1077,9 +1197,9 @@ Let's add styles based on the application status. We've already added some custo
   --color-tag-offer: #aae198;
 ```
 
-Inside of our `badge.tsx` component, there's a section at the top of `variants`:
+Inside of our `badge.tsx` component, there's a section near the top called `variants`. At the following the nested `variant` object.:
 
-```tsx title="src/app/components/ui/badge.tsx" collapse={3-10} startLineNumber=10 {11-15}
+```tsx title="src/app/components/ui/badge.tsx" collapse={3-10} startLineNumber=10 ins={11-15}
 variants: {
   variant: {
     default:
@@ -1098,7 +1218,7 @@ variants: {
   },
 },
 ---
-I added a custom variant for `applied`, `interview`, `new`, `rejected`, and `offer`.
+I added a custom variant for `applied`, `interview`, `new`, `rejected`, and `offer`. Now, we can use these variants to style our badges. For example: `<Badge variant="new">New</Badge>`
 ---
 ```
 
@@ -1108,8 +1228,8 @@ While, we're here, I'm also going to add a few more classes to the default styli
 const badgeVariants = cva(
   "font-bold inline-flex items-center justify-center rounded-md rounded-full border px-2 py-0.5 text-xs font-medium w-fit whitespace-nowrap shrink-0 [&>svg]:size-3 gap-1 [&>svg]:pointer-events-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive transition-[color,box-shadow] overflow-hidden",
 ---
-- I added a font weight of `font-bold`
-- I changed the rounded corners to `rounded-full`
+- Add a font weight of `font-bold`. (Be sure to remove the `font-medium` class, otherwise the two classes will conflict.)
+- Change the rounded corners from `rounded-md` to `rounded-full`
 ---
 ```
 
@@ -1121,7 +1241,7 @@ Let's go back to our `ApplicationsTable.tsx` component and update our badge:
 
 For the contact column, let's include an avatar:
 
-```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=24
+```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=34 ins={2-4}
 <TableCell>
   <Avatar>
     <AvatarFallback>J</AvatarFallback>
@@ -1140,7 +1260,7 @@ import { Avatar, AvatarFallback } from "./ui/avatar"
 
 Let's add a few styles to fix the positioning:
 
-```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=34 "className="flex items-center gap-2""
+```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=35 ins="className="flex items-center gap-2""
 <TableCell className="flex items-center gap-2">
   <Avatar>
     <AvatarFallback>J</AvatarFallback>
@@ -1167,7 +1287,7 @@ If you're exporting the icons from Figma, make sure you're grabbing the **frame*
 ![](./images/exporting-icons-out-of-figma.png)
 </Aside>
 
-I'm going to create a new folder in the root of our our project called `other` and then a sub directory inside that called `svg-icons` and place all of the icons inside the `svg-icons` directory.
+Now, let's create a new folder in the root of our our project called `other` and then a sub directory inside that called `svg-icons` and place all of the icons inside the `svg-icons` directory.
 
 <FileTree>
 - other/
@@ -1175,9 +1295,9 @@ I'm going to create a new folder in the root of our our project called `other` a
 - src/
 </FileTree>
 
-My favorite way to implement SVG icons is through an SVG sprite. Basically, this combines all our SVG files into a single `sprite.svg` file. We can control which icon is displayed by setting the `id` attribute on the `use` element.
+My favorite way to implement SVG icons is through an SVG sprite. This combines all our SVG files into a single `sprite.svg` file. We can control which icon is displayed by setting the `id` attribute on the `use` element.
 
-You could set all of this up, manually, but I do this on every single project I build, so I've built an npm package to do all the heavy lifting. It's called [Lemon Lime SVGs](https://www.npmjs.com/package/lemon-lime-svgs).
+You could set all of this up, manually, but let's reach for an npm package to do all the heavy lifting: [Lemon Lime SVGs](https://www.npmjs.com/package/lemon-lime-svgs).
 
 ![](./images/lemon-lime-svgs.png)
 
@@ -1204,18 +1324,35 @@ This will ask a series of questions:
 - First, it will ask you what framework you're using. At it's core RedwoodSDK is React and Vite = 6
 - Next, it will ask you about file names and folder paths. It will make recommendations based on the framework you're using. Most of the defaults, work:
   - Input directory for SVG files: `./other/svg-icons` -- we've already set this directory up!
-  - Output directory for sprite: `./public/images/icons` This is the same location as the background and `logo.svg`
-  - Directory for TypeScript types: `./types`
+  - Output directory for sprite: `./public/images/icons`
+  - Directory for TypeScript types: `./types` -- _this is different than the default_
   - Sprite file name: `sprite.svg`
   - Type definition file name: `icons.d.ts`
-  - Enable verbose logging: The default is set to "no", but I usually like to turn this on and get a little extra feedback.
-  - Generate a README. The default is set to "yes", but I usually like to turn this off. The README lives inside the same directory as your sprite and tells future developers that this file was created programmatically. It also provides a list of all the SVG icons available.
+  - Enable verbose logging: The default is set to "no", but the extra feedback is helpful.
+  - Set generate a README to no. The default is set to "yes". The README lives inside the same directory as your sprite and tells future developers that this file was created programmatically. It also provides a list of all the SVG icons available.
   - The last prompt asks us if we want to add an Icon component to our project. Say `y`.
   - Then, it will ask us where we want to save our component. We need to veer from the recommendation slightly: `src/app/components/Icon.tsx`
-- These settings are saved inside your `package.json` file, in its own section called, `lemonLimeSvgs`.
-- This script will also create a new `script` command inside your `package.json` file, called `icons`. Once we add the icons to our `svg-icons` folder, we can generate the sprite using this command: `pnpm run icons`.
+- These settings are saved inside your `package.json` file, in its own section called, `lemonLimeSvgs`:
+  ```json title="package.json"
+  "lemonLimeSvgs": {
+    "inputDir": "./other/svg-icons",
+    "outputDir": "./public/images/icons",
+    "typesDir": "./types",
+    "spriteFilename": "sprite.svg",
+    "typeFilename": "icons.d.ts",
+    "verbose": true,
+    "generateReadme": false
+  }
+  ```
+- This script will also create a new `script` command inside your `package.json` file, called `icons`.
+  ```json title="package.json"
+  "icons": "lemon-lime-svgs"
+  ```
+  Once we add the icons to our `svg-icons` folder, we can generate the sprite using this command: `pnpm run icons`.
 
 Now, if you look inside your `src/app/components` directory, you'll see a new `Icon.tsx` file.
+
+![](./images/icon-component.png)
 
 ```tsx title="src/app/components/Icon.tsx"
 interface Props {
@@ -1235,7 +1372,10 @@ const Icon = ({ className, size = 24, id }: Props) => {
 export default Icon;
 ```
 
-This component takes a `className`, if you want to add additional styles to the component, a `size` (the default is set to `24px`), and the `id` of the icon you want to display. The `id` matches the file name of the original icon SVG file.
+This component takes
+- a `className`, if you want to add additional styles to the component
+- a `size` (the default is set to `24px`)
+- the `id` of the icon you want to display. The `id` matches the file name of the original icon SVG file.
 
 Before we move on, I'm going to change this to a named export to be consistent with the other components we've created:
 
@@ -1273,15 +1413,15 @@ Inside our `ApplicationsTable.tsx` file:
 
 ![](./images/view-icon-in-browser.png)
 
-<Aside type="note" title="Caching">
-Due to caching, sometimes the icon doesn't update immediately. Try opening a browser window in incognito to see if that makes a difference.
+<Aside type="caution" title="Caching">
+Sometimes due to caching, the icon doesn't update immediately. Try opening a browser window in incognito mode to see if that fixes the issue.
 </Aside>
 
 ## Making our Table Dynamic
 
 Awesome! Now, let's make it dynamic. Inside our `List.tsx` page, let's pass in all of our application data:
 
-```tsx title="src/app/pages/applications/List.tsx" startLineNumber=17 "applications={applications}"
+```tsx title="src/app/pages/applications/List.tsx" startLineNumber=18 ins="applications={applications}"
 <ApplicationsTable applications={applications} />
 ```
 
@@ -1293,19 +1433,22 @@ When you first set this up, you'll probably see an error
 
 Our component isn't expecting the `applications` data we're passing it. Inside our `ApplicationsTable` component:
 
-```tsx title="src/app/components/ApplicationsTable.tsx"
-import { Application } from "@generated/prisma/client"
-...
-const ApplicationsTable = ({ applications }: { applications: Application[] }) => {
+```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=12 ins={1} ins="applications," ins="applications: Application[];"
+import { Application } from "@generated/prisma";
+
+const ApplicationsTable = ({
+  applications,
+}: {
+  applications: Application[];
+}) => {
 ```
 
-- We'll set it up to receive the `applications` data as a prop.
-- Then, we need to set the type. Fortunate for us, Prisma generates these for us. So, we can use the `Application` type and since there's an array of them, we'll use square brackets `[]`.
-- At the top of our, file we can import the `Application` type from `@generated/prisma/client`.
+- Set up the `ApplicationsTable` component to receive the `applications` data as a prop.
+- Prisma generates types for us. So, we can import the `Application` type from `@generated/prisma`. Since we're working with  an array of applications, we'll use square brackets `Application[]`.
 
 Now, let's go down to our `TableBody`. First we want to loop over all the applications within our `applications` array and display a row in the table for each:
 
-```tsx title="src/app/components/ApplicationsTable.tsx" ins={2,21} startLineNumber=20
+```tsx title="src/app/components/ApplicationsTable.tsx" ins={2,21} startLineNumber=32
 <TableBody>
   {applications.map(application => (
   <TableRow>
@@ -1332,7 +1475,7 @@ Now, let's go down to our `TableBody`. First we want to loop over all the applic
 
 We also need to add a `key` to our `TableRow` component. This helps React identify which items have changed, been added, or been removed.
 
-```tsx title="src/app/components/ApplicationsTable.tsx" ins={2,21} startLineNumber=22 "key={application.id}"
+```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=34 ins="key={application.id}"
 <TableRow key={application.id}>
 ```
 
@@ -1340,7 +1483,7 @@ Now, we can start replacing the static content with dynamic content.
 
 For our application status and our `Badge` component, we can swap out the `new` text with `{application.status.status}`.
 
-```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=22 "{application.status.status}"
+```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=35 ins="{application.status.status}"
 <TableCell>
     <Badge variant={application.status.status}>
       {application.status.status}
@@ -1364,7 +1507,7 @@ const applications = await db.application.findMany();
 
 But, we also need it to include the `applicationStatus`, `company`, and `contact` relationships. Prisma has an easy want to do this using `include`:
 
-```tsx title="src/app/pages/applications/List.tsx" startLineNumber=6 {2-9}
+```tsx title="src/app/pages/applications/List.tsx" startLineNumber=6 ins={2-9}
 const applications = await db.application.findMany({
   include: {
     status: true,
@@ -1386,11 +1529,11 @@ You might need to temporarily comment out the `Badge` component inside the `Appl
 
 ![](./images/json-with-relationships.png)
 
-Now, if we go back to our `ApplicationsTable.tsx` file, the TypeScript error is still there. We're getting the `status` information now, but we need to make sure the type is updated to include it.
+Now, if we go back to our `ApplicationsTable.tsx` file, the TypeScript error is still there. We're getting the `status` information now, but we need to make sure the type is updated to include it as well.
 
-We're already getting the `Application` type from `@generated/prisma/client`. We need a way to also include the `ApplicationStatus`, `Company`, and `Contact` types.
+We're already getting the `Application` type from `@generated/prisma`. We need a way to also include the `ApplicationStatus`, `Company`, and `Contact` types.
 
-We could use the `&` to create a new type that has `status` and `company`. Contacts is an array, nested inside the `company` object.
+We could use a TypeScript union to create a new type that has `status`, `company`, and `contacts`. For example:
 
 ```tsx showLineNumbers=false
 type ApplicationWithRelations = (Application & {
@@ -1403,8 +1546,8 @@ type ApplicationWithRelations = (Application & {
 
 However, Prisma has a special way to do this.
 
-```tsx showLineNumbers=false
-import { Prisma } from "@generated/prisma/client"
+```tsx
+import { Prisma } from "@generated/prisma"
 ...
 export type ApplicationWithRelations = Prisma.ApplicationGetPayload<{
   include: {
@@ -1418,16 +1561,16 @@ export type ApplicationWithRelations = Prisma.ApplicationGetPayload<{
 }>
 ---
 - With `export type ApplicationWithRelations` we're creating a new type called `ApplicationWithRelations`, but you could name this whatever you want.
-- We're `export`ing the type so that we can use it in other files. I like to to put this as close to my Prisma query as possible since the type is directly related to the data I'm getting back. Then, we can use this type in other components, like the `ApplicationsTable.tsx` file.
+- We're `export`ing the type so that we can use it in other files. I like to to put this as close to my Prisma query as possible since the type is directly related to the returned data. Then, we can use this type in other components, like the `ApplicationsTable.tsx` file.
 - `Prisma` is a utility object that we're using to create a new type. This is provided by the Prisma client.
 - `ApplicationGetPayload` is a method that takes an object as an argument. The object uses the `include` property, to _include_ the data relationships.
-  - Each model has it's own `GetPayload` method. Since we're referencing the `Application` model, we're using `ApplicationGetPayload`.
+  - Each model has it's own `GetPayload` method. Since we're referencing the `Application` model, we're using `ApplicationGetPayload`. But, if we were referencing the `Company` model, we would use `CompanyGetPayload`.
 ---
 ```
 
-At first glance, this looks like more lines of code, but it's a lot easier to write. When trying to write it by hand with unions (`&`), you have to determine what the resulting shape of data is. In the second method, Prisma determines the shape of data for us and the `include` object looks similar our original Prisma call.
+At first glance, this looks like more lines of code, but it's a lot easier to write. When trying to write it by hand with unions (`&`), you have to determine what the resulting shape of data is. In the second method, Prisma determines the shape of data for us and the `include` object looks similar to our original Prisma call.
 
-For reference, this was the original Prisma query. You can see that the `include` object matches the `ApplicationGetPayload` object:
+For reference, this was the original Prisma query. You can see that the `include` object matches the `ApplicationGetPayload` object exactly:
 
 ```tsx title="src/app/pages/applications/List.tsx" showLineNumbers=false
 const applications = await db.application.findMany({
@@ -1443,18 +1586,14 @@ const applications = await db.application.findMany({
 ```
 
 <Aside type="tip" title="TypeScript">
-If this starts to feel a little overwhelming, a few things that have helped me:
-- This is a great use case for AI. It knows your database schema and query. Ask it!
-- You know what the resulting data looks like.
-    ![](./images/json-with-relationships.png)
-    This is incredibly helpful when trying to create the type definition. You can also send the data to AI and ask it to help you create the type definition.
+If this starts to feel a little overwhelming, this is a great use case for AI. It knows your database schema and query. Ask it!
 </Aside>
 
 Awesome. Let's add our `ApplicationWithRelations` at the top of our `List.tsx` file. This goes _outside_ the component definition:
 
-```tsx title="src/app/pages/applications/List.tsx" showLineNumbers=false
+```tsx title="src/app/pages/applications/List.tsx" ins={1-12} startLineNumber={4}
 import { Prisma } from "@generated/prisma/client"
-...
+
 export type ApplicationWithRelations = Prisma.ApplicationGetPayload<{
   include: {
     status: true,
@@ -1472,7 +1611,8 @@ const List = async () => {
 
 Now, we can use it in our `ApplicationsTable.tsx` file:
 
-```tsx title="src/app/components/ApplicationsTable.tsx" {1,6} startLineNumber=14
+```tsx title="src/app/components/ApplicationsTable.tsx" ins={2} ins="ApplicationWithRelations[]" startLineNumber=12 del={1}
+import { Application } from "@generated/prisma";
 import { ApplicationWithRelations } from "../pages/applications/List";
 
 const ApplicationsTable = ({
@@ -1496,23 +1636,35 @@ If you look at the `TableCell` with the `status` again, you're probably _still_ 
 
 When we pass in the `variant` prop for our `Badge` component, it's not just looking for a string, it's looking for a specific string: ``"default" | "secondary" | "destructive" | "outline" | "applied" | "interview" | "new" | "rejected" | "offer" | null | undefined``
 
-Inside our `badge` component, when we defined our `badgeVariants` for styles, it used our variant options to create a type definition. `badgeVariants` is exported from the `badge.tsx` component, making it easy to reuse and reference within our `ApplicationsTable.tsx`:
+Inside our `badge` component, when we defined our `badgeVariants` for styles, it uses the `variant` object to create a type definition. `badgeVariants` is exported from the `badge.tsx` component, making it easy to reuse and reference
 
-```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=32 ".toLowerCase()" "as VariantProps<typeof badgeVariants>['variant']}"
-<Badge variant={application.status.status.toLowerCase() as VariantProps<typeof badgeVariants>['variant']}>
+```tsx title="src/app/components/ui/badge.tsx" startLineNumber=51 "badgeVariants"
+export { Badge, badgeVariants };
+```
+
+Within our `ApplicationsTable.tsx`:
+
+```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=32 ins=".toLowerCase() as VariantProps<" ins="typeof badgeVariants" ins=">["variant"]"
+<Badge
+  variant={
+    application.status.status.toLowerCase() as VariantProps<
+      typeof badgeVariants
+    >["variant"]
+  }
+>
   {application.status.status}
 </Badge>
 ---
-- On the `application.status.status`, we can append `.toLowerCase()` to make sure the status is formatted correctly and always lowercase.
-- `typeof badgeVariants` - Gets the type of our `badgeVariants` configuration object, created with `cva()`. This includes all our variant definitions.
-- `VariantProps<...>` - This is a utility type from [class-variance-authority](https://cva.style/docs) that extracts the prop types. It creates a type that includes all possible variants as properties.
-- `['variant']` - This accesses the `variant` property type only from those props. In our case, it resolves to the union type: `"default" | "secondary" | "destructive" | "outline" | "applied" | "interview" | "new" | "rejected" | "offer" | null | undefined`
+- On the `application.status.status`, we can append `.toLowerCase()` to ensure the status is formatted correctly and always lowercase.
+- `typeof badgeVariants` - Gets the type of our `badgeVariants` from the `badge.tsx` component.
+- `VariantProps<...>` - This is a utility type from [class-variance-authority](https://cva.style/docs) library that extracts the prop types. It creates a type that includes all possible variants as properties.
+- `['variant']` - We reference the `variant` object. In our case, it resolves to the union type: `"default" | "secondary" | "destructive" | "outline" | "applied" | "interview" | "new" | "rejected" | "offer" | null | undefined`
 ---
 ```
 
 At the top of the `ApplicationsTable.tsx` file, be sure to update your imports:
 
-```tsx showLineNumbers=false "badgeVariants" {2}
+```tsx showLineNumbers=false ins="badgeVariants" ins={2}
 import { Badge, badgeVariants } from "./ui/badge";
 import { VariantProps } from "class-variance-authority";
 ```
@@ -1527,14 +1679,14 @@ Sweet! Now, all of our TypeScript errors should be taken care of.
 
 Let's keep making our data dynamic.
 
-```diff title="src/app/components/ApplicationsTable.tsx" startLineNumber=36
+```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=47 del={2} ins={3-7}
 <TableCell>
--  April 15, 2025
-+  {application.dateApplied?.toLocaleDateString('en-US', {
-+    year: 'numeric',
-+    month: 'long',
-+    day: 'numeric'
-+  })}
+  April 15, 2025
+  {application.dateApplied?.toLocaleDateString('en-US', {
+    year: 'numeric',
+    month: 'long',
+    day: 'numeric'
+  })}
 </TableCell>
 ---
 For the date, we can use the `application.dateApplied` property. Then, we can format the date using the `toLocaleDateString` JavaScript method. For more options, see MDN's [Date.prototype.toLocaleDateString](https://developer.mozilla.org/en-US/docs/Web/JavaScript/Reference/Global_Objects/Date/toLocaleDateString) documentation.
@@ -1543,51 +1695,51 @@ For the date, we can use the `application.dateApplied` property. Then, we can fo
 
 For the job title:
 
-```diff title="src/app/components/ApplicationsTable.tsx" startLineNumber=43
+```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=54 del={2} ins={3}
 <TableCell>
--  Software Engineer
-+  {application.jobTitle}
+  Software Engineer
+  {application.jobTitle}
 </TableCell>
 ```
 
 For the company name:
 
-```diff title="src/app/components/ApplicationsTable.tsx" startLineNumber=46
+```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=55 del={2} ins={3}
 <TableCell>
--  RedwoodJS
-+  {application.company.name}
+  RedwoodJS
+  {application.company.name}
 </TableCell>
 ```
 
-For the contact name, we're just going to reference the first name within our `contacts` array.
+For the contact name, we're just going to reference the first character in the first name within our `contacts` array.
 
-```diff title="src/app/components/ApplicationsTable.tsx" startLineNumber=49
+```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=56 del={3,6} ins={4,7}
 <TableCell className="flex items-center gap-2">
   <Avatar>
--    <AvatarFallback>J</AvatarFallback>
-+    <AvatarFallback>{application.company.contacts[0].firstName.charAt(0).toUpperCase()}</AvatarFallback>
+    <AvatarFallback>J</AvatarFallback>
+    <AvatarFallback>{application.company.contacts[0].firstName.charAt(0).toUpperCase()}</AvatarFallback>
   </Avatar>
--  John Doe
-+  {application.company.contacts[0].firstName} {application.company.contacts[0].lastName}
+  John Doe
+  {application.company.contacts[0].firstName} {application.company.contacts[0].lastName}
 </TableCell>
 ```
 
 For the salary range:
 
-```diff title="src/app/components/ApplicationsTable.tsx" startLineNumber=55
+```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=67 del={2} ins={3}
 <TableCell>
--  $150,000-$250,000
-+  {application.salaryMin}-{application.salaryMax}
+  $150,000-$250,000
+  {application.salaryMin}-{application.salaryMax}
 </TableCell>
 ```
 
 For the view link:
 
-```diff title="src/app/components/ApplicationsTable.tsx" startLineNumber=58
+```tsx title="src/app/components/ApplicationsTable.tsx" startLineNumber=70 del={2} ins={3}
 <TableCell>
--  <a href="#">
-+  <a href={link("/applications/:id", { id: application.id })}>
-+   <Icon id="view" />
+  <a href="#">
+  <a href={link("/applications/:id", { id: application.id })}>
+    <Icon id="view" />
   </a>
 </TableCell>
 ```
@@ -1606,22 +1758,27 @@ We need to do a little more setup to make this work.
 
 In our `worker.tsx` file, let's add our route:
 
-```tsx title="src/app/worker.tsx" startLineNumber=64 {3}
-prefix("/applications", [
-  route("/", [isAuthenticated, List]),
-  route("/:id", [isAuthenticated, () => <h1>Application</h1>]),
-]),
+```tsx title="src/app/worker.tsx" startLineNumber=65 ins={6}
+layout(
+  InteriorLayout,
+  prefix("/applications", [
+    isAuthenticated,
+    route("/", List),
+    route("/:id", () => <h1>Application</h1>),
+  ])
+),
 ---
+- The wrapping `layout` function ensures that the `InteriorLayout` component is applied to our route.
 - We can nest our `route` definition within the applications `prefix`.
 - The `:` designates that our route is dynamic and contains the `id` in the URL.
-- We included `isAuthenticated` to ensure that the route is protected.
-- Temporarily, we'll display an `<h1>` Application heading.
+- Since the `isAuthenticated` function is listed first within the array, our route is protected.
+- Temporarily, we'll display an `<h1>` with the text "Application".
 ---
 ```
 
 Now, let's jump over to `shared/links.ts` file and add `/applications/:id` to our array:
 
-```tsx title="src/app/shared/links.ts" {9} collapse={2-8} startLineNumber=3
+```tsx title="src/app/shared/links.ts" ins={9} collapse={2-8} startLineNumber=3
 export const link = defineLinks([
   "/",
   "/user/login",
@@ -1642,8 +1799,6 @@ Perfect. Everything should check out. Try clicking on the view icon in the brows
 <summary>Final `ApplicationsTable.tsx` file</summary>
 
 ```tsx title="src/app/components/ApplicationsTable.tsx"
-import { Icon } from "./Icon";
-import { Avatar, AvatarFallback } from "./ui/avatar";
 import { Badge, badgeVariants } from "./ui/badge";
 import {
   Table,
@@ -1653,7 +1808,9 @@ import {
   TableHeader,
   TableRow,
 } from "./ui/table";
-import { ApplicationWithRelations } from "../pages/applications/List";
+import { Avatar, AvatarFallback } from "./ui/avatar";
+import { Icon } from "./Icon";
+import { ApplicationWithRelations } from "@/app/pages/applications/List";
 import { VariantProps } from "class-variance-authority";
 import { link } from "../shared/links";
 
@@ -1670,19 +1827,14 @@ const ApplicationsTable = ({
           <TableHead>Date Applied</TableHead>
           <TableHead>Job Title</TableHead>
           <TableHead>Company</TableHead>
-          <TableCell className="flex items-center gap-2">
-            <Avatar>
-              <AvatarFallback>J</AvatarFallback>
-            </Avatar>
-            John Doe
-          </TableCell>
+          <TableHead>Contact</TableHead>
           <TableHead>Salary Range</TableHead>
           <TableHead></TableHead>
         </TableRow>
       </TableHeader>
       <TableBody>
         {applications.map((application) => (
-          <TableRow>
+          <TableRow key={application.id}>
             <TableCell>
               <Badge
                 variant={
@@ -1711,6 +1863,10 @@ const ApplicationsTable = ({
                     .toUpperCase()}
                 </AvatarFallback>
               </Avatar>
+              {application.company.contacts[0].firstName}{" "}
+              {application.company.contacts[0].lastName}
+            </TableCell>
+            <TableCell>
               {application.salaryMin}-{application.salaryMax}
             </TableCell>
             <TableCell>
@@ -1733,15 +1889,16 @@ export { ApplicationsTable };
 
 Now, let's go back to our `List.tsx` and tidy up a few things.
 
-On **line 42**, we can remove our `JSON.stringify` function:
+On **line 40**, we can remove our `JSON.stringify` function:
 
-```diff title="src/app/pages/applications/List.tsx" startLineNumber=27
-- <pre>{JSON.stringify(applications, null, 2)}</pre>
+```tsx title="src/app/pages/applications/List.tsx" startLineNumber=40 del={1}
+<pre>{JSON.stringify(applications, null, 2)}</pre>
 ```
 
 Below our table, let's add a couple of buttons. An "Archive" button on the left and another "New Application" button on the right:
 
-```tsx title="src/app/pages/applications/List.tsx" startLineNumber=42
+```tsx title="src/app/pages/applications/List.tsx" startLineNumber=39 ins={2-15}
+<ApplicationsTable applications={applications} />
 <div className="flex justify-between items-center">
   <Button asChild variant="secondary">
     <a href="#">
@@ -1766,7 +1923,7 @@ Below our table, let's add a couple of buttons. An "Archive" button on the left 
 
 You'll also need to import the `Icon` component at the top of the file:
 
-```tsx title="src/app/pages/applications/List.tsx" showLineNumbers=false
+```tsx title="src/app/pages/applications/List.tsx" showLineNumbers=false ins={1}
 import { Icon } from "@/app/components/Icon";
 ```
 
@@ -1776,7 +1933,7 @@ If you look at this within the browser, we're getting closer:
 
 The `Archive` button should _link_ to a filtered view of all applications that have been archived. Let's update our link:
 
-```tsx title="src/app/pages/applications/List.tsx" startLineNumber=45
+```tsx title="src/app/pages/applications/List.tsx" startLineNumber=43 ins="${link("/applications")}?status=archived"
 <a href={`${link("/applications")}?status=archived`}>
   <Icon id="archive" />
   Archive
@@ -1785,15 +1942,15 @@ The `Archive` button should _link_ to a filtered view of all applications that h
 
 Be sure to import the `link` object at the top of the file:
 
-```tsx title="src/app/pages/applications/List.tsx" showLineNumbers=false
+```tsx title="src/app/pages/applications/List.tsx" showLineNumbers=false ins={1}
 import { link } from "@/app/shared/links";
 ```
 
-This is really a filtered view of our existing `/applications` page, so we can use the existing `/applications` link. Then, we're attaching the query parameter: `?status=archived`. We don't need to do anything extra to make this link work, but we do need to adjust our List page to account for the `status` query parameter. We'll come back to this!
+This is really a filtered view of our existing `/applications` page, so we can use the existing `/applications` link. Then, we're appending the query parameter: `?status=archived`. We don't need to do anything extra to make this link work, but we do need to adjust our List page to account for the `status` query parameter. We'll come back to this!
 
 For the New Application button, let's update the `href`:
 
-```tsx title="src/app/pages/applications/List.tsx" startLineNumber=31
+```tsx title="src/app/pages/applications/List.tsx" startLineNumber=49 ins="link("/applications/new")"
 <Button asChild>
   <a href={link("/applications/new")}>
     <Icon id="plus" />
@@ -1804,30 +1961,33 @@ For the New Application button, let's update the `href`:
 
 `/applications/new` doesn't exist yet. We need to set up this page. In our `worker.tsx` file, let's add a new route:
 
-```tsx title="src/app/worker.tsx" startLineNumber=64 {3}
-prefix("/applications", [
-  route("/", [isAuthenticated, List]),
-  route("/new", [isAuthenticated, () => <h1>New Application</h1>]),
-  route("/:id", [isAuthenticated, () => <h1>Application</h1>]),
-]),
+```tsx title="src/app/worker.tsx" startLineNumber=65 ins={6}
+layout(
+      InteriorLayout,
+      prefix("/applications", [
+        isAuthenticated,
+        route("/", List),
+        route("/new", () => <h1>New Application</h1>),
+        route("/:id", () => <h1>Application</h1>),
+      ])
+    ),
 ---
 - We can nest our `route` definition within the applications `prefix`.
-- We included `isAuthenticated` to ensure that the route is protected.
-- Temporarily, we'll display an `<h1>` New Application heading.
+- Temporarily, we'll display an `<h1>` with the text "New Application".
 ---
 ```
 
 <Aside type="caution" title="Order of Routes">
-  The order of the routes within your `worker.tsx` file is important. The code will work it's way down through each array, in order, looking for a match.
+  The order of the routes within your `worker.tsx` file is important. The code will work it's way through each array, in order, looking for a match.
 
   If you list the `/applications/:id` route before the `/applications/new` route, it will match the `/applications/:id` route and display the application details page instead of the new application page.
 
-  However, if you list the `/applications/new` route before the `/applications/:id` route, it will match the `/applications/new` route and display the new application page instead of the application details page.
+  However, if you list the `/applications/new` route before the `/applications/:id` route, it will match the `/applications/new` route first and display the new application page instead of the application details page.
 </Aside>
 
 Now, let's add our link to the `links.ts` file:
 
-```tsx title="src/app/shared/links.ts" {9} collapse={2-8} startLineNumber=3
+```tsx title="src/app/shared/links.ts" ins={9} collapse={2-8} startLineNumber=3
 export const link = defineLinks([
   "/",
   "/user/login",
@@ -1847,86 +2007,10 @@ If we test this out within the browser, clicking on the "New Application" button
 
 Let's make the "New Application" button at the top, match the button at the bottom.
 
-```tsx title="src/app/pages/applications/List.tsx" collapse={14-22} {7-12, 23-28} startLineNumber=19
+```tsx title="src/app/pages/applications/List.tsx" ins={7-8} {6-11,22-27} startLineNumber=31
 return (
-  <InteriorLayout>
-    <>
-      <div className="px-page-side flex justify-between items-center">
-        <h1 className="page-title">All Applications</h1>
-        <div>
-          <Button asChild>
-            <a href={link("/applications/new")}>
-              <Icon id="plus" />
-              New Application
-            </a>
-          </Button>
-        </div>
-      </div>
-      <ApplicationsTable applications={applications} />
-      <div className="flex justify-between items-center">
-        <Button asChild variant="secondary">
-          <a href={`${link("/applications")}?status=archived`}>
-          <Icon id="archive" />
-            Archive
-          </a>
-        </Button>
-        <Button asChild>
-          <a href={link("/applications/new")}>
-            <Icon id="plus" />
-            New Application
-          </a>
-        </Button>
-      </div>
-    </>
-  </InteriorLayout>
-)
-```
-
-Now, let's adjust the spacing around our table. On **line 35**, we're using a class of `px-page-side` to add some padding to the left and right side.
-
-```tsx title="src/app/pages/applications/List.tsx" startLineNumber=32 "px-page-side"
-return (
-  <InteriorLayout>
-    <>
-      <div className="px-page-side flex justify-between items-center">
-```
-
-Let's _remove_ this from the `div` and add it to a wrapping `div`.
-
-```diff title="src/app/pages/applications/List.tsx" "px-page-side"
-<InteriorLayout>
-+  <div className="px-page-side">
--  <>
-    <div className="flex justify-between items-center">
-    ...
-    </div>
-+  </div>
-- </>
-</InteriorLayout>
----
-- You'll notice, we converted the React Fragment `<>` to a `div` and added a class of `px-page-side` to it.
-- Then, we removed `px-page-side` from nested `div` that contains our page title.
----
-```
-
-Before we preview this in the browser, let's adjust the vertical spacing.
-
-<Aside type="tip" title="Vertical Spacing">
-  Whenever I'm adjusting the vertical spacing with margins, I always use margin bottom, pushing everything down. A couple of reasons: (1) it adds consistency to my code, and (2) it's easier to troubleshoot.
-
-  Plus, there's a feature within CSS called **collapsing margins**.
-
-  > The top and bottom margins of blocks are sometimes combined (collapsed) into a single margin whose size is the largest of the individual margins (or just one of them, if they are equal), a behavior known as margin collapsing.
-
-  <cite>Reference: [Mastering margin collapsing on MDN Docs](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_box_model/Mastering_margin_collapsing)</cite>
-
-  This means that when you use a top and bottom margin, it can sometimes produce unexpected results. If you only use margin bottom, you can avoid this issue altogether.
-</Aside>
-
-```tsx title="src/app/pages/applications/List.tsx" "mb-5" "mb-8" "mb-10" collapse={4-13} startLineNumber=33 {14}
-<InteriorLayout>
-  <div className="px-page-side">
-    <div className="flex justify-between items-center mb-5">
+  <>
+    <div className="px-page-side flex justify-between items-center">
       <h1 className="page-title">All Applications</h1>
       <div>
         <Button asChild>
@@ -1937,12 +2021,107 @@ Before we preview this in the browser, let's adjust the vertical spacing.
         </Button>
       </div>
     </div>
-    <div className="mb-8"><ApplicationsTable applications={applications} /></div>
-    <div className="flex justify-between items-center mb-10">
+    <ApplicationsTable applications={applications} />
+    <div className="flex justify-between items-center">
+      <Button asChild variant="secondary">
+        <a href={`${link("/applications")}?status=archived`}>
+          <Icon id="archive" />
+          Archive
+        </a>
+      </Button>
+      <Button asChild>
+        <a href={link("/applications/new")}>
+          <Icon id="plus" />
+          New Application
+        </a>
+      </Button>
+    </div>
+  </>
+);
+```
+
+Now, let's adjust the spacing around our table. On **line 31**, we're using a class of `px-page-side` to add some padding to the left and right side.
+
+```tsx title="src/app/pages/applications/List.tsx" startLineNumber=31 del="px-page-side"
+return (
+    <>
+      <div className="px-page-side flex justify-between items-center">
+```
+
+Let's _remove_ this from the `div` and add it to a wrapping `div`.
+
+```tsx title="src/app/pages/applications/List.tsx" del={2,31} ins={3,30} collapse={4-29} startLineNumber=31
+return (
+  <>
+  <div className="px-page-side">
+    <div className="flex justify-between items-center">
+      <h1 className="page-title">All Applications</h1>
+      <div>
+        <Button asChild>
+          <a href={link("/applications/new")}>
+            <Icon id="plus" />
+            New Application
+          </a>
+        </Button>
+      </div>
+    </div>
+    <ApplicationsTable applications={applications} />
+    <div className="flex justify-between items-center">
+      <Button asChild variant="secondary">
+        <a href={`${link("/applications")}?status=archived`}>
+          <Icon id="archive" />
+          Archive
+        </a>
+      </Button>
+      <Button asChild>
+        <a href={link("/applications/new")}>
+          <Icon id="plus" />
+          New Application
+        </a>
+      </Button>
+    </div>
+  </div>
+  </>
+);
 ---
-- **On line 22**, I added `mb-5` for `20px` of margin on the bottom.
-- **On line 33**, I added `mb-8` for `32px` of margin on the bottom.
-- **On line 44**, I added `mb-10` for `40px` of margin on the bottom.
+- You'll notice, we converted the React Fragment `<>` to a `div` and added a class of `px-page-side` to it.
+---
+```
+
+Before we preview this in the browser, let's adjust the vertical spacing.
+
+<Aside type="tip" title="Vertical Spacing">
+  Whenever I'm adjusting the vertical spacing with margins, I always use margin bottom, pushing everything down. A couple of reasons: (1) it adds consistency to my code, making it easier to troubleshoot. (2) There's a "feature" within CSS called **collapsing margins**.
+
+  > The top and bottom margins of blocks are sometimes combined (collapsed) into a single margin whose size is the largest of the individual margins (or just one of them, if they are equal), a behavior known as margin collapsing.
+
+  <cite>Reference: [Mastering margin collapsing on MDN Docs](https://developer.mozilla.org/en-US/docs/Web/CSS/CSS_box_model/Mastering_margin_collapsing)</cite>
+
+  This means that when you use a top and bottom margin, it can sometimes produce unexpected results. If you only use margin bottom, you can avoid this issue altogether.
+</Aside>
+
+```tsx title="src/app/pages/applications/List.tsx" ins="mb-5" ins="mb-8" ins="mb-10" ins={14,16} collapse={4-12} startLineNumber=31
+return (
+    <div className="px-page-side">
+      <div className="flex justify-between items-center mb-5">
+        <h1 className="page-title">All Applications</h1>
+        <div>
+          <Button asChild>
+            <a href={link("/applications/new")}>
+              <Icon id="plus" />
+              New Application
+            </a>
+          </Button>
+        </div>
+      </div>
+      <div className="mb-8">
+        <ApplicationsTable applications={applications} />
+      </div>
+      <div className="flex justify-between items-center mb-10">
+---
+- **On line 33**, I added `mb-5` for `20px` of margin on the bottom.
+- **On line 44**, I added `mb-8` for `32px` of margin on the bottom.
+- **On line 47**, I added `mb-10` for `40px` of margin on the bottom.
 ---
 ```
 
@@ -1950,7 +2129,7 @@ Now, let's preview this in the browser:
 
 ![](./images/preview-applications-table.png)
 
-Before we call this done, make sure that our Archive filter is working.
+Before we call this done, let's ensure that our Archive filter is working.
 
 ### Using Query Params to Filter Applications
 
@@ -1958,23 +2137,26 @@ On every page we get an object that contains `ctx`, `request`, and `headers`. In
 
 On `List.tsx`, when we define our `List` function, let's accept `request` as a prop:
 
-```tsx title="src/app/pages/applications/List.tsx" startLineNumber=20
+```tsx title="src/app/pages/applications/List.tsx" startLineNumber=19 ins="({ request }: { request: Request })"
 const List = async ({ request }: { request: Request }) => {
 ---
-You'll notice when I type the `request`, I'm using a standard `Request` type.
+You'll notice that `request`, has a standard `Request` type.
 ---
 ```
 
 Now, at the top of our function, we can get the `status` query parameter using the `URLSearchParams` method from the standard WebAPI:
 
-```tsx title="src/app/pages/applications/List.tsx" startLineNumber=21
-const url = new URL(request.url);
-const status = url.searchParams.get("status");
+```tsx title="src/app/pages/applications/List.tsx" startLineNumber=19 ins={2-3,5}
+const List = async ({ request }: { request: Request }) => {
+  const url = new URL(request.url);
+  const status = url.searchParams.get("status");
 
-console.log({ status });
+  console.log({ status });
 ```
 
-If you run this in the browser, you should see `{ status: 'archived' }` displayed.
+If you run this in the browser, you should see `{ status: 'archived' }` displayed in the terminal.
+
+![](./images/status-archived-in-terminal.png)
 
 <Aside type="note" title="Console">
   Since this code is running on the server, when you use `console.log` it will display the result in the Terminal.
@@ -1986,29 +2168,29 @@ Now, that we've checked that our query parameter is working, we can remove our `
 
 After the `include` object, let's add a `where` object:
 
-```tsx title="src/app/pages/applications/List.tsx" {10-12} startLineNumber=24
+```tsx title="src/app/pages/applications/List.tsx" ins={10-12} startLineNumber=25
 const applications = await db.application.findMany({
   include: {
-    applicationStatus: true,
+    status: true,
     company: {
       include: {
-        contacts: true
-      }
-    }
+        contacts: true,
+      },
+    },
   },
   where: {
-    archived: status === "archived" ? true : false
-  }
+    archived: status === "archived" ? true : false,
+  },
 });
 ```
 
-The `where` clause filters the results of our query based on whether `archived` is `true` or `false`. We can se it to `true` or `false` depending on whether `status` is set to `archived` or not.
+The `where` clause filters the results of our query based on whether the `status` is `archived`.
 
 You can test this in the browser, by clicking on the **Archive** button. You should see the URL change to include `/applications?status=archived` and the entry applications table should be empty.
 
 Let's make this better by adding an empty state:
 
-```tsx title="src/app/pages/applications/List.tsx" {2,5-7} startLineNumber=52
+```tsx title="src/app/pages/applications/List.tsx" ins={2,4-8} startLineNumber=52
 <div className="mb-8">
   {applications.length > 0 ? (
     <ApplicationsTable applications={applications} />
@@ -2019,20 +2201,20 @@ Let's make this better by adding an empty state:
   )}
 </div>
 ---
-- **On line 41**, we're checking if the `applications` array has more than one item. If it does, display the `ApplicationsTable`.
+- **On line 53**, we're checking if the `applications` array has more than one item. If it does, display the `ApplicationsTable`.
 - If it doesn't, display a message that says "No applications were found."
-- I also added a few styles to our message.
+- Add a few styles to our message:
   - Centered with `text-center`
   - Reduced the text size with `text-sm`
   - Changed the text color to `text-muted-foreground`
 ---
 ```
 
-Once we click on the "Archive" button, it's easy to feel "stuck".
+Once we click on the "Archive" button, it's easy to feel "stuck". We're showing all the archived applications, but there's not an easy way to see all the active applications again.
 
 Let's change the "Archive" button so that it toggles based on the query parameter.
 
-```tsx title="src/app/pages/applications/List.tsx" {2-7, 12} startLineNumber=61
+```tsx title="src/app/pages/applications/List.tsx" ins={2-7, 12} startLineNumber=62
 <Button asChild variant="secondary">
   {status === "archived" ? (
     <a href={`${link("/applications")}`}>
