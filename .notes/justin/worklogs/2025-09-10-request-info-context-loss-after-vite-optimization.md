@@ -386,3 +386,9 @@ This aligns perfectly with how Vite constructs and executes its dependency scann
     2.  Remove the creation of dummy files in `configResolved`.
     3.  In the `esbuild` plugin, add `onLoad` handlers for both the application barrel paths and the vendor barrel paths (distinguished by a namespace).
     4.  These `onLoad` handlers now generate the barrel content directly and return it to `esbuild`, eliminating all intermediate file I/O. This results in a cleaner, more efficient, and entirely in-memory solution.
+
+### Attempt 40: Physical Barrels in OS Temp Directory
+
+While the in-memory approach was clean, a final refinement was made to revert to using physical barrel files, but created in a unique, OS-level temporary directory using `fs.mkdtempSync(path.join(os.tmpdir(), 'rwsdk-'))`.
+
+This decision was made because Vite's dependency scanner expects `optimizeDeps.entries` to contain valid file paths that exist on disk at the time of scanning. The `esbuild` plugin's `onResolve` hook still provides the necessary blocking mechanism to wait for the asynchronous directive scan to complete and populate these files. This hybrid approach proved to be the most stable, ensuring compatibility with Vite's file-based expectations while avoiding project-local temporary files and potential conflicts between multiple running instances.
