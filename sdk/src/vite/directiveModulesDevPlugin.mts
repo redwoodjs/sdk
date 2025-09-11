@@ -1,6 +1,7 @@
 import path from "path";
+import os from "os";
 import { Plugin } from "vite";
-import { writeFileSync, mkdirSync } from "node:fs";
+import { writeFileSync, mkdirSync, mkdtempSync } from "node:fs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { CLIENT_BARREL_PATH, SERVER_BARREL_PATH } from "../lib/constants.mjs";
 import { runDirectivesScan } from "./runDirectivesScan.mjs";
@@ -35,6 +36,21 @@ const generateBarrelContent = (files: Set<string>, projectRootDir: string) => {
   return `${imports}\n\n${exports}`;
 };
 
+const generateAppBarrelContent = (
+  files: Set<string>,
+  projectRootDir: string,
+) => {
+  return [...files]
+    .filter((file) => !file.includes("node_modules"))
+    .map(
+      (file) =>
+        `import '${normalizeModulePath(file, projectRootDir, {
+          absolute: true,
+        })}';`,
+    )
+    .join("\n");
+};
+
 export const directiveModulesDevPlugin = ({
   clientFiles,
   serverFiles,
@@ -44,6 +60,9 @@ export const directiveModulesDevPlugin = ({
   serverFiles: Set<string>;
   projectRootDir: string;
 }): Plugin => {
+  const tempDir = mkdtempSync(path.join(os.tmpdir(), "rwsdk-"));
+  const APP_CLIENT_BARREL_PATH = path.join(tempDir, "app-client-barrel.js");
+  const APP_SERVER_BARREL_PATH = path.join(tempDir, "app-server-barrel.js");
   let scanPromise: Promise<void> | null = null;
 
   return {
@@ -74,6 +93,18 @@ export const directiveModulesDevPlugin = ({
           projectRootDir,
         );
         writeFileSync(SERVER_BARREL_PATH, serverBarrelContent);
+
+        const appClientBarrelContent = generateAppBarrelContent(
+          clientFiles,
+          projectRootDir,
+        );
+        writeFileSync(APP_CLIENT_BARREL_PATH, appClientBarrelContent);
+
+        const appServerBarrelContent = generateAppBarrelContent(
+          serverFiles,
+          projectRootDir,
+        );
+        writeFileSync(APP_SERVER_BARREL_PATH, appServerBarrelContent);
       });
 
       // context(justinvdm, 4 Sep 2025): Add middleware to block incoming
@@ -98,14 +129,25 @@ export const directiveModulesDevPlugin = ({
       writeFileSync(CLIENT_BARREL_PATH, "");
       mkdirSync(path.dirname(SERVER_BARREL_PATH), { recursive: true });
       writeFileSync(SERVER_BARREL_PATH, "");
+      writeFileSync(APP_CLIENT_BARREL_PATH, "");
+      writeFileSync(APP_SERVER_BARREL_PATH, "");
 
       for (const [envName, env] of Object.entries(config.environments || {})) {
         env.optimizeDeps ??= {};
         env.optimizeDeps.include ??= [];
+        const entries = (env.optimizeDeps.entries = castArray(
+          env.optimizeDeps.entries ?? [],
+        ));
         env.optimizeDeps.include.push(
           CLIENT_BARREL_EXPORT_PATH,
           SERVER_BARREL_EXPORT_PATH,
         );
+
+        if (envName === "client") {
+          entries.push(APP_CLIENT_BARREL_PATH);
+        } else if (envName === "worker") {
+          entries.push(APP_SERVER_BARREL_PATH);
+        }
 
         env.optimizeDeps.esbuildOptions ??= {};
         env.optimizeDeps.esbuildOptions.plugins ??= [];
@@ -123,4 +165,8 @@ export const directiveModulesDevPlugin = ({
       }
     },
   };
+};
+
+const castArray = <T,>(value: T | T[]): T[] => {
+  return Array.isArray(value) ? value : [value];
 };

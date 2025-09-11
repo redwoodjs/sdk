@@ -82,3 +82,19 @@ The scan is initiated in the `configureServer` hook, and Vite's dependency optim
     -   Dynamically push these file paths into `optimizeDeps.entries` for the `client` and `worker` environments, respectively.
 
 This ensures that we modify the configuration at the last possible moment, after we have the information we need but before the optimizer begins its work.
+
+The next step is to investigate a new strategy that can resolve this timing conflict, allowing us to populate `optimizeDeps.entries` with the results of our scan before the optimizer starts.
+
+## Attempt 9: Application Barrel Files (Solution)
+
+This approach evolves the existing "barrel file" strategy to solve the timing issue. Instead of trying to dynamically modify `optimizeDeps.entries` after the scan, we provide static, predictable entry points to Vite from the very beginning.
+
+### The Plan
+
+1.  **Create Static Barrel Files:** We will create two new "application barrel files" in a **unique, temporary directory** for each dev server instance. Using `fs.mkdtempSync` to generate a unique subdirectory in `os.tmpdir()` ensures that multiple projects can run concurrently without conflicts, and it avoids polluting the user's project or needing to manage `.gitignore` rules.
+2.  **Add to `entries`:** Because the paths to these temp files are known before the server starts, we can safely add them to the `optimizeDeps.entries` list for the `client` and `worker` environments within the `configResolved` hook. This provides Vite with the stable entry points it needs when its optimizer first runs.
+3.  **Asynchronously Populate Barrels:** After our async `runDirectivesScan` completes (inside the `configureServer` hook), we will generate the content for these barrels.
+    -   The content will consist of simple `import` statements for every discovered application file (i.e., files *not* in `node_modules`).
+    -   This is different from the existing barrel files, which handle `node_modules` dependencies with re-exports.
+
+By importing every application file into these barrels, we ensure that Vite's optimizer can traverse the entire application dependency graph from the start, discovering and pre-bundling all third-party libraries. This prevents the late discovery of dependencies and the disruptive re-optimization that was causing the module state loss.
