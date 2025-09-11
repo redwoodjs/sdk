@@ -6,7 +6,7 @@ describe("isUsingPrisma", () => {
     const resolver = () => "/path/to/prisma/client";
     const result = isUsingPrisma({
       projectRootDir: "/test/project",
-      resolver,
+      resolver: resolver as any,
     });
     expect(result).toBe(true);
   });
@@ -15,7 +15,7 @@ describe("isUsingPrisma", () => {
     const resolver = () => false;
     const result = isUsingPrisma({
       projectRootDir: "/test/project",
-      resolver,
+      resolver: resolver as any,
     });
     expect(result).toBe(false);
   });
@@ -26,7 +26,7 @@ describe("isUsingPrisma", () => {
     };
     const result = isUsingPrisma({
       projectRootDir: "/test/project",
-      resolver,
+      resolver: resolver as any,
     });
     expect(result).toBe(false);
   });

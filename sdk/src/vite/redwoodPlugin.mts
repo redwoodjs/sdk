@@ -78,11 +78,11 @@ export const redwoodPlugin = async (
       ? resolve(projectRootDir, process.env.RWSDK_WRANGLER_CONFIG)
       : await findWranglerConfig(projectRootDir));
 
-  const workerEntryPathname = await determineWorkerEntryPathname(
+  const workerEntryPathname = await determineWorkerEntryPathname({
     projectRootDir,
     workerConfigPath,
     options,
-  );
+  });
 
   const shouldIncludeCloudflarePlugin =
     options.includeCloudflarePlugin ??

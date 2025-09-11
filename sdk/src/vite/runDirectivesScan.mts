@@ -31,7 +31,7 @@ type Resolver = (
   path: string,
   request: string,
   resolveContext: {},
-  callback: (err: Error | null, result?: string) => void,
+  callback: (err: Error | null, result?: string | false) => void,
 ) => void;
 
 export async function resolveModuleWithEnvironment({

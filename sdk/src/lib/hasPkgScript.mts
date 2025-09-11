@@ -10,11 +10,11 @@ export const hasPkgScript = async (
 ) => {
   if (!_pkgCache) {
     _pkgCache = JSON.parse(
-      (await readFile(resolve(projectRootDir, "package.json"))) as string,
+      (await readFile(resolve(projectRootDir, "package.json"))).toString(),
     );
   }
 
-  return _pkgCache.scripts?.[script];
+  return _pkgCache?.scripts?.[script];
 };
 
 export const _resetPkgCache = () => {

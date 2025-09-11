@@ -22,8 +22,10 @@ describe("validateUpgradeRequest", () => {
     });
     const result = validateUpgradeRequest(request);
     expect(result.valid).toBe(false);
-    expect(result.response?.status).toBe(400);
-    await expect(result.response?.text()).resolves.toBe("Expected WebSocket");
+    if (!result.valid) {
+      expect(result.response?.status).toBe(400);
+      await expect(result.response?.text()).resolves.toBe("Expected WebSocket");
+    }
   });
 
   it("should return invalid if Upgrade header is missing", () => {
@@ -34,7 +36,9 @@ describe("validateUpgradeRequest", () => {
     });
     const result = validateUpgradeRequest(request);
     expect(result.valid).toBe(false);
-    expect(result.response?.status).toBe(400);
+    if (!result.valid) {
+      expect(result.response?.status).toBe(400);
+    }
   });
 
   it("should return invalid if Origin header is missing", async () => {
@@ -45,8 +49,10 @@ describe("validateUpgradeRequest", () => {
     });
     const result = validateUpgradeRequest(request);
     expect(result.valid).toBe(false);
-    expect(result.response?.status).toBe(403);
-    await expect(result.response?.text()).resolves.toBe("Invalid origin");
+    if (!result.valid) {
+      expect(result.response?.status).toBe(403);
+      await expect(result.response?.text()).resolves.toBe("Invalid origin");
+    }
   });
 
   it("should return invalid if Origin does not match request URL", () => {
@@ -58,6 +64,8 @@ describe("validateUpgradeRequest", () => {
     });
     const result = validateUpgradeRequest(request);
     expect(result.valid).toBe(false);
-    expect(result.response?.status).toBe(403);
+    if (!result.valid) {
+      expect(result.response?.status).toBe(403);
+    }
   });
 });
