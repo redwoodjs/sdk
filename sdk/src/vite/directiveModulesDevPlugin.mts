@@ -5,6 +5,7 @@ import { writeFileSync, mkdirSync, mkdtempSync } from "node:fs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { CLIENT_BARREL_PATH, SERVER_BARREL_PATH } from "../lib/constants.mjs";
 import { runDirectivesScan } from "./runDirectivesScan.mjs";
+import fs from "node:fs/promises";
 
 export const VIRTUAL_CLIENT_BARREL_ID = "virtual:rwsdk:client-module-barrel";
 export const VIRTUAL_SERVER_BARREL_ID = "virtual:rwsdk:server-module-barrel";
@@ -81,6 +82,7 @@ export const directiveModulesDevPlugin = ({
         clientFiles,
         serverFiles,
       }).then(() => {
+        console.log("[rwsdk] Directive scan complete. Writing barrel files...");
         // After the scan is complete, write the barrel files.
         const clientBarrelContent = generateBarrelContent(
           clientFiles,
@@ -105,6 +107,7 @@ export const directiveModulesDevPlugin = ({
           projectRootDir,
         );
         writeFileSync(APP_SERVER_BARREL_PATH, appServerBarrelContent);
+        console.log("[rwsdk] Barrel files written.");
       });
 
       // context(justinvdm, 4 Sep 2025): Add middleware to block incoming
@@ -152,42 +155,50 @@ export const directiveModulesDevPlugin = ({
 
         env.optimizeDeps.esbuildOptions ??= {};
         env.optimizeDeps.esbuildOptions.plugins ??= [];
-        env.optimizeDeps.esbuildOptions.plugins.push(
-          {
-            name: "rwsdk:block-optimizer-for-scan",
-            setup(build) {
-              build.onStart(async () => {
-                // context(justinvdm, 4 Sep 2025): We await the scan promise
-                // here because we want to block the optimizer until the scan is
-                // complete.
+        env.optimizeDeps.esbuildOptions.plugins.unshift({
+          name: "rwsdk:await-app-barrels",
+          setup(build) {
+            build.onResolve({ filter: /.*/ }, async (args: any) => {
+              if (
+                args.path === APP_CLIENT_BARREL_PATH ||
+                args.path === APP_SERVER_BARREL_PATH
+              ) {
+                console.log(
+                  `[rwsdk] onResolve for app barrel: [${envName}] ${args.path}. Awaiting scan...`,
+                );
                 await scanPromise;
-              });
-            },
+                console.log(
+                  `[rwsdk] onResolve scan complete for: [${envName}] ${args.path}.`,
+                );
+              }
+              return null;
+            });
+
+            build.onLoad({ filter: /.*/ }, async (args: any) => {
+              if (args.path.includes("user/functions.ts")) {
+                console.log(
+                  `[rwsdk] Confirmed: esbuild is loading the target server file: ${args.path}`,
+                );
+              }
+
+              if (
+                args.path === APP_CLIENT_BARREL_PATH ||
+                args.path === APP_SERVER_BARREL_PATH
+              ) {
+                const content = await fs.readFile(args.path, "utf-8");
+                console.log(
+                  `[rwsdk] onLoad for app barrel: [${envName}] ${args.path}\n--- barrel content ---\n${content}\n--- end barrel content ---`,
+                );
+                return { contents: content, loader: "js" };
+              }
+              return null;
+            });
           },
-          {
-            name: "rwsdk:log-app-barrels",
-            setup(build) {
-              build.onResolve({ filter: /.*/ }, (args: any) => {
-                if (args.path === APP_CLIENT_BARREL_PATH) {
-                  console.log(
-                    `[rwsdk] esbuild resolving client app barrel: [${envName}] ${args.path}`,
-                  );
-                }
-                if (args.path === APP_SERVER_BARREL_PATH) {
-                  console.log(
-                    `[rwsdk] esbuild resolving server app barrel: [${envName}] ${args.path}`,
-                  );
-                }
-                return null;
-              });
-            },
-          },
-        );
+        });
       }
     },
   };
 };
-
 const castArray = <T,>(value: T | T[]): T[] => {
   return Array.isArray(value) ? value : [value];
 };

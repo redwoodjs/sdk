@@ -83,40 +83,85 @@ The scan is initiated in the `configureServer` hook, and Vite's dependency optim
 
 This ensures that we modify the configuration at the last possible moment, after we have the information we need but before the optimizer begins its work.
 
-The next step is to investigate a new strategy that can resolve this timing conflict, allowing us to populate `optimizeDeps.entries` with the results of our scan before the optimizer starts.
+## Attempt 11: Application Barrel Files (Failure)
 
-## Attempt 9: Application Barrel Files (Solution)
-
-This approach evolves the existing "barrel file" strategy to solve the timing issue. Instead of trying to dynamically modify `optimizeDeps.entries` after the scan, we provide static, predictable entry points to Vite from the very beginning.
-
-### The Plan
-
-1.  **Create Static Barrel Files:** We will create two new "application barrel files" in a **unique, temporary directory** for each dev server instance. Using `fs.mkdtempSync` to generate a unique subdirectory in `os.tmpdir()` ensures that multiple projects can run concurrently without conflicts, and it avoids polluting the user's project or needing to manage `.gitignore` rules.
-2.  **Add to `entries`:** Because the paths to these temp files are known before the server starts, we can safely add them to the `optimizeDeps.entries` list for the `client` and `worker` environments within the `configResolved` hook. This provides Vite with the stable entry points it needs when its optimizer first runs.
-3.  **Asynchronously Populate Barrels:** After our async `runDirectivesScan` completes (inside the `configureServer` hook), we will generate the content for these barrels.
-    -   The content will consist of simple `import` statements for every discovered application file (i.e., files *not* in `node_modules`).
-    -   This is different from the existing barrel files, which handle `node_modules` dependencies with re-exports.
-
-By importing every application file into these barrels, we ensure that Vite's optimizer can traverse the entire application dependency graph from the start, discovering and pre-bundling all third-party libraries. This prevents the late discovery of dependencies and the disruptive re-optimization that was causing the module state loss.
-
-## Attempt 10: Debugging the Application Barrel Strategy
-
-The application barrel file strategy did not resolve the issue. The leading hypothesis is that Vite's optimizer is not processing the temporary barrel files we're adding to `optimizeDeps.entries` as expected.
-
-To verify this, the next step is to add a custom `esbuild` plugin. This plugin's sole purpose is to log a message whenever `esbuild` (Vite's dependency optimizer) attempts to resolve the path to our application barrel files. This will give us a definitive answer as to whether the optimizer is seeing our entry points. If no logs appear, we know the issue lies in how we are providing the entry points. If logs do appear, the issue is more subtle, perhaps related to how `esbuild` processes the `import` statements within them.
+The application barrel file strategy, while successfully getting the server barrel file resolved by the `worker` optimizer, ultimately failed to solve the root problem.
 
 ### Debugging Results
 
-The logging plugin revealed a critical piece of information: only the `client` environment's barrel file is being resolved. The log for `rwsdk-app-server-barrel.js` never appears. This indicates that the `worker` environment's dependency optimizer is likely not running or is not configured with the correct entry points. The next debugging step is to add the environment name to the log message to confirm which environment is resolving the client barrel.
+Even with the application barrels in place, a Vite dependency re-optimization is still observed in the logs (seemingly for the client-side). Critically, the module-level state loss continues to occur. This suggests that either:
+a) The client-side re-optimization is somehow causing the worker's state to be wiped.
+b) Our core hypothesis that the re-optimization is the cause of the state loss is incorrect, and we have been chasing a red herring.
 
-## Attempt 11: Returning to the `config` Hook
+## Attempt 12: Confirming the Cause of State Loss
 
-The enhanced logging confirmed that only the `client` and `ssr` environments were resolving the barrel files; the `worker` environment was not. This proves that by the time the `configResolved` hook runs, it's too late to add plugins to the `worker` environment's optimizer, as it has likely already been configured.
+To move forward, we need to definitively confirm *when* and *why* the module-level state is being cleared. The new plan is to add targeted logging to a module that holds state.
 
-The solution is to return to the `config` hook, which runs earliest in the lifecycle.
+### The New Plan
 
-### The Corrected Plan (Revisited)
+1.  **Add Logging to State Module:** A `console.log` statement will be added to the top level of `starters/standard/src/session/store.ts`.
+2.  **Observe Timing:** We will run the application and observe the timing of this new log message relative to Vite's "re-optimizing" log.
+    - If the "Session store re-initialized" log appears immediately after the Vite log, it confirms that the re-optimization is directly causing the module to be reloaded and its state to be reset.
+    - If the timing does not correlate, it points to a different, unknown cause for the state loss.
 
-1.  The logic for adding our custom `esbuild` plugins will be moved from `configResolved` back to the `config` hook.
-2.  To solve the original type-safety issues of being in the `config` hook, we will manually and defensively initialize the necessary properties on the configuration object (e.g., `env.optimizeDeps ??= {}`, `env.optimizeDeps.esbuildOptions ??= {}`, etc.).
-3.  This ensures our plugins are injected into the configuration *before* any environment-specific optimizers are created, guaranteeing that all environments, including the `worker`, will use them.
+This will give us the direct evidence we need to either confirm our hypothesis or pivot to a new one.
+
+## Attempt 12 Results: Confirmation
+
+The canary log in `session/store.ts` provided the definitive proof. The `"## session store"` message appears in the console immediately following Vite's `(worker) ✨ optimized dependencies changed. reloading` message.
+
+This confirms that our core hypothesis is correct: the dependency optimization pass for the **worker environment** is the direct and sole cause of the module-level state being reset.
+
+## Attempt 13: Investigating the Barrel File Contents
+
+Although our logging shows that `esbuild` is resolving the path to the server application barrel, the worker optimization is still being triggered. This strongly suggests a timing issue: `esbuild` might be reading the barrel file *before* our asynchronous scan has had a chance to populate it with the application's `import` statements.
+
+### The New Plan
+
+To verify this, we will enhance our `esbuild` logging plugin.
+1.  In addition to the `onResolve` hook, we will add an `onLoad` hook.
+2.  This hook will trigger for our barrel file paths, read their content from the disk at that moment, and log it to the console.
+
+This will show us exactly what `esbuild` is seeing when it loads the file. If it logs empty content, we have a confirmed timing race condition. If it logs the correct `import` statements, the problem lies deeper within `esbuild`'s scanning behavior.
+
+## Attempt 13 Results: A New Clue
+
+The `onLoad` hook never fired. This is a critical discovery. It proves that the problem isn't a race condition where `esbuild` reads an empty file; the problem is that `esbuild` isn't attempting to load the file *at all*.
+
+The most likely hypothesis is that Vite's dependency optimizer performs a preliminary check on its entry points. When it sees our dummy barrel file is empty at the start of the process, it likely discards it as an invalid entry point, and therefore never asks `esbuild` to load or parse it.
+
+## Attempt 14: Delaying Barrel File Creation
+
+To solve this, we must ensure the barrel file path does not exist on the filesystem until it contains the content we want the optimizer to scan.
+
+### The New Plan
+
+1.  **Remove Dummy File Creation:** The `writeFileSync` calls that create empty "dummy" barrel files in the `configResolved` hook will be removed.
+2.  **Write Only When Ready:** The barrel files (both for dependencies and for the application) will be written to disk only once, inside the `.then()` block of the `scanPromise` in `configureServer`.
+
+This guarantees that when the optimizer, which is blocked by our `onStart` hook, is finally allowed to proceed, it will see a valid, non-empty file, forcing it to load and process the contents.
+
+## Attempt 14 Failure & Pivot
+
+Delaying the file creation did not work; it appears Vite requires the entry point files to exist on disk when the configuration is first resolved. This brings us back to the original mystery: why does Vite's optimizer ignore the entry points when they are initially empty?
+
+The `onLoad` hook still doesn't fire, suggesting the files are discarded before `esbuild` is even invoked. This could be due to a difference in how Vite handles `optimizeDeps.entries` versus `optimizeDeps.include`. The `entries` array is for application entry points, and Vite may have stricter validation for them (like checking for non-empty content). The `include` array is for forcing modules, which might follow a different, more lenient path.
+
+## Attempt 15: Using `optimizeDeps.include`
+
+The new strategy is to treat our application barrel files as if they were third-party modules and force them into the optimizer using the `include` array.
+
+### The New Plan
+
+1.  In the `configResolved` hook, the paths to `APP_CLIENT_BARREL_PATH` and `APP_SERVER_BARREL_PATH` will be pushed to the `optimizeDeps.include` array for their respective environments, instead of the `entries` array.
+
+This is a small change, but it targets a potentially different internal code path in Vite's optimizer that may be more suitable for our dynamically populated files. Our `esbuild` logging plugin remains in place to verify if this change causes the `onLoad` hook to fire.
+
+## Attempt 16: Adding Write-Time Logging
+
+To get a clearer picture of the timing, the next step is to add logging to pinpoint the exact moment we write the content to the barrel files.
+
+### The New Plan
+
+1.  A `console.log` statement will be added to the `.then()` block of the `scanPromise` in the `configureServer` hook, immediately before the `writeFileSync` calls.
+2.  By comparing the timestamp of this new "writing" log with the existing "resolving" log from our `esbuild` plugin, we can definitively determine if a race condition exists. If the resolve happens before the write, our hypothesis is confirmed.

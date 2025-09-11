@@ -86,8 +86,6 @@ export const defineApp = <
           response: userResponseInit,
         };
 
-        console.log("##### outerRequestInfo", outerRequestInfo);
-
         const createPageElement = (
           requestInfo: RequestInfo<any, T["ctx"]>,
           Page: React.FC<any>,
@@ -109,7 +107,6 @@ export const defineApp = <
           Page: React.FC<any>,
           onError: (error: unknown) => void,
         ) => {
-          console.log("##### render page requestInfo", requestInfo);
           if (isClientReference(requestInfo.rw.Document)) {
             if (import.meta.env.DEV) {
               console.error("Document cannot be a client component");
