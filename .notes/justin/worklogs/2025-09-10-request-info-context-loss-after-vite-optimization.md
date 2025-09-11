@@ -98,3 +98,25 @@ This approach evolves the existing "barrel file" strategy to solve the timing is
     -   This is different from the existing barrel files, which handle `node_modules` dependencies with re-exports.
 
 By importing every application file into these barrels, we ensure that Vite's optimizer can traverse the entire application dependency graph from the start, discovering and pre-bundling all third-party libraries. This prevents the late discovery of dependencies and the disruptive re-optimization that was causing the module state loss.
+
+## Attempt 10: Debugging the Application Barrel Strategy
+
+The application barrel file strategy did not resolve the issue. The leading hypothesis is that Vite's optimizer is not processing the temporary barrel files we're adding to `optimizeDeps.entries` as expected.
+
+To verify this, the next step is to add a custom `esbuild` plugin. This plugin's sole purpose is to log a message whenever `esbuild` (Vite's dependency optimizer) attempts to resolve the path to our application barrel files. This will give us a definitive answer as to whether the optimizer is seeing our entry points. If no logs appear, we know the issue lies in how we are providing the entry points. If logs do appear, the issue is more subtle, perhaps related to how `esbuild` processes the `import` statements within them.
+
+### Debugging Results
+
+The logging plugin revealed a critical piece of information: only the `client` environment's barrel file is being resolved. The log for `rwsdk-app-server-barrel.js` never appears. This indicates that the `worker` environment's dependency optimizer is likely not running or is not configured with the correct entry points. The next debugging step is to add the environment name to the log message to confirm which environment is resolving the client barrel.
+
+## Attempt 11: Returning to the `config` Hook
+
+The enhanced logging confirmed that only the `client` and `ssr` environments were resolving the barrel files; the `worker` environment was not. This proves that by the time the `configResolved` hook runs, it's too late to add plugins to the `worker` environment's optimizer, as it has likely already been configured.
+
+The solution is to return to the `config` hook, which runs earliest in the lifecycle.
+
+### The Corrected Plan (Revisited)
+
+1.  The logic for adding our custom `esbuild` plugins will be moved from `configResolved` back to the `config` hook.
+2.  To solve the original type-safety issues of being in the `config` hook, we will manually and defensively initialize the necessary properties on the configuration object (e.g., `env.optimizeDeps ??= {}`, `env.optimizeDeps.esbuildOptions ??= {}`, etc.).
+3.  This ensures our plugins are injected into the configuration *before* any environment-specific optimizers are created, guaranteeing that all environments, including the `worker`, will use them.

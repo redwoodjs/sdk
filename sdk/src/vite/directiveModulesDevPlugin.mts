@@ -135,6 +135,7 @@ export const directiveModulesDevPlugin = ({
       for (const [envName, env] of Object.entries(config.environments || {})) {
         env.optimizeDeps ??= {};
         env.optimizeDeps.include ??= [];
+        env.optimizeDeps.entries ??= [];
         const entries = (env.optimizeDeps.entries = castArray(
           env.optimizeDeps.entries ?? [],
         ));
@@ -151,17 +152,37 @@ export const directiveModulesDevPlugin = ({
 
         env.optimizeDeps.esbuildOptions ??= {};
         env.optimizeDeps.esbuildOptions.plugins ??= [];
-        env.optimizeDeps.esbuildOptions.plugins.push({
-          name: "rwsdk:block-optimizer-for-scan",
-          setup(build) {
-            build.onStart(async () => {
-              // context(justinvdm, 4 Sep 2025): We await the scan promise
-              // here because we want to block the optimizer until the scan is
-              // complete.
-              await scanPromise;
-            });
+        env.optimizeDeps.esbuildOptions.plugins.push(
+          {
+            name: "rwsdk:block-optimizer-for-scan",
+            setup(build) {
+              build.onStart(async () => {
+                // context(justinvdm, 4 Sep 2025): We await the scan promise
+                // here because we want to block the optimizer until the scan is
+                // complete.
+                await scanPromise;
+              });
+            },
           },
-        });
+          {
+            name: "rwsdk:log-app-barrels",
+            setup(build) {
+              build.onResolve({ filter: /.*/ }, (args: any) => {
+                if (args.path === APP_CLIENT_BARREL_PATH) {
+                  console.log(
+                    `[rwsdk] esbuild resolving client app barrel: [${envName}] ${args.path}`,
+                  );
+                }
+                if (args.path === APP_SERVER_BARREL_PATH) {
+                  console.log(
+                    `[rwsdk] esbuild resolving server app barrel: [${envName}] ${args.path}`,
+                  );
+                }
+                return null;
+              });
+            },
+          },
+        );
       }
     },
   };
