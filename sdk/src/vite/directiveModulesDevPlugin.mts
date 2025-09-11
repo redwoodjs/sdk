@@ -64,19 +64,19 @@ export const directiveModulesDevPlugin = ({
   const tempDir = mkdtempSync(path.join(os.tmpdir(), "rwsdk-"));
   const APP_CLIENT_BARREL_PATH = path.join(tempDir, "app-client-barrel.js");
   const APP_SERVER_BARREL_PATH = path.join(tempDir, "app-server-barrel.js");
-  let scanPromise: Promise<void> | null = null;
+  const { promise: scanPromise, resolve: resolveScanPromise } =
+    Promise.withResolvers<void>();
 
   return {
     name: "rwsdk:directive-modules-dev",
 
     configureServer(server) {
       if (!process.env.VITE_IS_DEV_SERVER || process.env.RWSDK_WORKER_RUN) {
+        resolveScanPromise();
         return;
       }
 
-      // Start the directive scan as soon as the server is configured.
-      // We don't await it here, allowing Vite to continue its startup.
-      scanPromise = runDirectivesScan({
+      runDirectivesScan({
         rootConfig: server.config,
         environments: server.environments,
         clientFiles,
@@ -108,6 +108,7 @@ export const directiveModulesDevPlugin = ({
         );
         writeFileSync(APP_SERVER_BARREL_PATH, appServerBarrelContent);
         console.log("[rwsdk] Barrel files written.");
+        resolveScanPromise();
       });
 
       // context(justinvdm, 4 Sep 2025): Add middleware to block incoming
