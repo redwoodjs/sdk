@@ -68,7 +68,9 @@ export const runDirectivesScan = async ({
     const absoluteEntries = entries.map((entry) => {
       const absolutePath = path.resolve(rootConfig.root, entry);
       // On Windows, convert absolute paths to file:// URLs for ESM compatibility
-      return process.platform === 'win32' ? pathToFileURL(absolutePath).href : absolutePath;
+      return process.platform === "win32"
+        ? pathToFileURL(absolutePath).href
+        : absolutePath;
     });
 
     log(
@@ -94,7 +96,9 @@ export const runDirectivesScan = async ({
         return fileContentCache.get(filePath)!;
       }
       // Convert file:// URLs back to file system paths for reading
-      const actualPath = filePath.startsWith('file://') ? fileURLToPath(filePath) : filePath;
+      const actualPath = filePath.startsWith("file://")
+        ? fileURLToPath(filePath)
+        : filePath;
       const contents = await fsp.readFile(actualPath, "utf-8");
       fileContentCache.set(filePath, contents);
       return contents;

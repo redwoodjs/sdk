@@ -1,50 +1,19 @@
-# Windows Path Fixes - 2025-09-11
+# 2025-09-11: Investigating and Fixing Windows Path Failures
 
-## Problem
-Different places in rwsdk fail on Windows due to module path issues. Two main error patterns:
+## Problem Definition
 
-1. **ESM URL Scheme Error**: Node.js ESM loader rejects Windows absolute paths that aren't proper file:// URLs
-   - Error: `Only URLs with a scheme in: file, data, and node are supported by the default ESM loader. On Windows, absolute paths must be valid file:// URLs. Received protocol 'c:'`
+The RedwoodSDK codebase exhibited two distinct path-related failures when running on the Windows operating system. The first issue was a path duplication error, where directory creation failed because paths were being constructed with a repeated drive letter (e.g., `C:\C:\...`). This was traced to an incorrect method of deriving `__dirname` in an ES module context. The second issue was a Node.js ESM loader error (`ERR_UNSUPPORTED_ESM_URL_SCHEME`), which occurs when absolute Windows paths are not formatted as valid `file://` URLs.
 
-2. **Path Duplication Error**: Directory creation fails due to duplicated drive letters
-   - Error: `ENOENT: no such file or directory, mkdir 'C:\C:\Users\...'`
-   - Occurs in `directiveModulesDevPlugin.mjs:63:13`
+## Investigation Narrative
 
-## Plan
-1. Modify GitHub workflow to run Windows smoke tests (currently skipped)
-2. Use GitHub CLI to check results and logs
-3. Identify specific locations where path handling fails
-4. Fix path normalization issues across the codebase
-5. Test fixes with Windows smoke tests
+The investigation began by enabling the Windows smoke tests, which were previously skipped in the GitHub Actions workflow. This provided a reliable environment to reproduce and diagnose the failures.
 
-## Context
-- Working on `windows` branch
-- Need to handle Windows absolute paths properly for Node.js ESM
-- Path construction logic appears to be duplicating drive letters
+The initial test run immediately failed with the path duplication error. The error message pointed to the `directiveModulesDevPlugin.mjs` file, where a `mkdirSync` operation was failing. I traced the source of the invalid path back to `sdk/src/lib/constants.mts`. The root cause was the use of `new URL(".", import.meta.url).pathname` to determine the current directory. On Windows, this results in a path with a leading slash (e.g., `/C:/...`), which, when combined with `path.resolve`, produced the duplicated drive letter. The solution was to replace this with `fileURLToPath(new URL(".", import.meta.url))`, which correctly converts the module URL to a system-appropriate file path.
 
-## Investigation Log
+After applying this fix, the path duplication error was resolved. However, a subsequent test run revealed the second issue: the ESM URL scheme error. The test logs showed that the directive scan process was now failing because the Node.js ESM loader received a standard Windows absolute path (e.g., `C:\...`) instead of the required `file:///C:/...` URL format.
 
-### Windows Smoke Tests Results
-Successfully enabled Windows smoke tests and identified the exact issue:
+An initial attempt was made to convert paths to `file://` URLs within the esbuild plugin's `onResolve` handler and then convert them back for file system operations. This approach did not resolve the issue, suggesting the problem might originate from the entry points supplied to esbuild rather than from the module resolution process within it. The investigation into the precise cause of the ESM scheme error is ongoing.
 
-**Error**: `ENOENT: no such file or directory, mkdir 'C:\C:\Users\...'`
-- Path shows duplicated drive letter: `C:\C:\`
-- Occurs in `directiveModulesDevPlugin.mjs:63:13` during `mkdirSync`
-- Affects `__intermediate_builds` directory creation
+## Current Status
 
-**Root Cause**: Path construction logic is duplicating the Windows drive letter when building absolute paths.
-
-### Progress Update
-- **Fixed**: Path duplication issue in `constants.mts`
-- Used `fileURLToPath()` instead of `.pathname`
-- Directory creation now works: `C:\C:\Users\...` → `C:\Users\...`
-
-🔍 **New Issue**: ESM URL scheme error in `runDirectivesScan.mjs:205`
-- Error: `Only URLs with a scheme in: file, data, and node are supported by the default ESM loader. On Windows, absolute paths must be valid file:// URLs. Received protocol 'c:'`
-- Need to convert Windows absolute paths to proper `file://` URLs for Node.js ESM loader
-
-### Attempt 1: Convert paths to file:// URLs in esbuild
-❌ **Failed**: Added `pathToFileURL()` conversion in `onResolve` and `fileURLToPath()` in `readFileWithCache`
-- The error still occurs, suggesting the issue might be elsewhere or the approach isn't working
-- The scan completes ("✅ Scan complete.") but then fails with the same ESM error
-- This indicates the error might be happening in a different part of the process
+The path duplication error has been successfully identified and fixed. The codebase now correctly constructs absolute paths on Windows. The primary remaining blocker is the ESM URL scheme error, which prevents the smoke tests from passing. Further work is required to ensure all paths passed to the Node.js ESM loader are correctly formatted as `file://` URLs.
