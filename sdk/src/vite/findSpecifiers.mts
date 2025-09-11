@@ -234,7 +234,10 @@ export function findExports(
               isDefault: true,
             });
             logger("Found default export: %s", name);
-          } else if (matchText.includes("export {")) {
+          } else if (
+            matchText.includes("export {") &&
+            !match.getMatch("MODULE")
+          ) {
             // Local export declaration
             const exportListMatch = matchText.match(
               /export\s*\{\s*([^}]+)\s*\}/,
