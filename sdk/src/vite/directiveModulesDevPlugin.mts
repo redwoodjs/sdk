@@ -1,6 +1,6 @@
 import path from "path";
 import { Plugin } from "vite";
-import { writeFileSync, mkdirSync } from "node:fs";
+import { writeFileSync, mkdirSync, promises as fs } from "node:fs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { CLIENT_BARREL_PATH, SERVER_BARREL_PATH } from "../lib/constants.mjs";
 import { runDirectivesScan } from "./runDirectivesScan.mjs";
@@ -34,15 +34,16 @@ const generateBarrelContent = (files: Set<string>, projectRootDir: string) => {
 
 const generateAppBarrelContent = (
   files: Set<string>,
+  projectRootDir: string,
   barrelFilePath: string,
 ) => {
-  const barrelDir = path.dirname(barrelFilePath);
   return [...files]
     .filter((file) => !file.includes("node_modules"))
     .map((file) => {
-      const relativePath = path.relative(barrelDir, file);
-      const posixPath = relativePath.split(path.sep).join(path.posix.sep);
-      return `import "${posixPath}";`;
+      const resolvedPath = normalizeModulePath(file, projectRootDir, {
+        absolute: true,
+      });
+      return `import "${resolvedPath}";`;
     })
     .join("\n");
 };
@@ -96,12 +97,14 @@ export const directiveModulesDevPlugin = ({
         // And the application barrel files
         const appClientBarrelContent = generateAppBarrelContent(
           clientFiles,
+          projectRootDir,
           APP_CLIENT_BARREL_PATH,
         );
         writeFileSync(APP_CLIENT_BARREL_PATH, appClientBarrelContent);
 
         const appServerBarrelContent = generateAppBarrelContent(
           serverFiles,
+          projectRootDir,
           APP_SERVER_BARREL_PATH,
         );
         writeFileSync(APP_SERVER_BARREL_PATH, appServerBarrelContent);
@@ -172,7 +175,27 @@ export const directiveModulesDevPlugin = ({
                 console.log(
                   `[rwsdk:blocker] scan complete for ${args.path}, proceeding.`,
                 );
-                return null;
+                return {
+                  path: args.path,
+                  namespace: "rwsdk-app-barrel-ns",
+                };
+              }
+            });
+
+            build.onLoad({ filter: /.*/ }, async (args) => {
+              console.log(
+                `[rwsdk:loader] seeing ${args.path} (namespace: ${args.namespace})`,
+              );
+              if (args.namespace === "rwsdk-app-barrel-ns") {
+                console.log(`[rwsdk:loader] loading content for ${args.path}`);
+                const content = await fs.readFile(args.path, "utf-8");
+                console.log(
+                  `[rwsdk:loader] content for ${args.path}:\n---\n${content}\n---`,
+                );
+                return {
+                  contents: content,
+                  loader: "js",
+                };
               }
             });
           },

@@ -336,3 +336,22 @@ This aligns perfectly with how Vite constructs and executes its dependency scann
 - **Problem**: Despite this, Vite still performs a re-optimization for dependencies *within* those application files (e.g., `@simplewebauthn/server` in `functions.ts`). This indicates that while the entry file itself is being scanned, its dependencies are not being correctly registered in the initial optimization pass.
 - **Hypothesis**: The root cause might be a subtle distinction in how Vite handles `optimizeDeps.entries` versus `optimizeDeps.include`. `entries` is primarily for discovery, and perhaps in our complex setup with multiple environments and async population, the discovered deep dependencies are not being promoted to the "must-bundle" list correctly. `include`, on the other hand, is a more direct command to Vite to pre-bundle a file and its dependencies, no matter what.
 - **Plan**: Modify the plugin to add the application barrel paths to `optimizeDeps.include` instead of `optimizeDeps.entries`. The blocker plugin should still function correctly, pausing the optimizer until the barrels are populated. The hope is that this will force Vite to fully process the barrels and their dependency trees during the initial optimization, preventing the subsequent re-optimization.
+
+### Attempt 34: Inspecting Barrel File Content
+
+- **Finding**: We are continuing with the `entries` approach from Attempt 32, which successfully gets the application code scanned but still results in a re-optimization.
+- **Problem**: We don't know *why* the deep dependencies are not being discovered from our barrel file. A likely culprit is a timing issue where `esbuild` reads the barrel file *before* its content has been written, even with the `onResolve` blocker.
+- **Plan**: To verify this, add an `onLoad` hook to our `esbuild` plugin. This hook will intercept the read request for our barrel files, read the content from disk itself, log the content to the console, and then pass it to `esbuild`. This will give us definitive proof of what `esbuild` is seeing and when. The `onResolve` hook will be updated to pass a namespace to `onLoad`.
+
+### Attempt 35: Broadening the `onLoad` Hook for Visibility
+
+- **Finding**: The `onLoad` hook is not being triggered for our barrel files, even when the `onResolve` hook is successfully processing them and returning a namespace.
+- **Hypothesis**: `esbuild` is deciding not to load the file for some reason after `onResolve` completes. It might be discarding it because it's an absolute path that it doesn't know how to handle, or because of some other internal logic. We lack the visibility to know for sure.
+- **Plan**: To get this visibility, modify the `onLoad` hook's filter to be broader. Remove the `namespace` constraint from the filter so it will run for *every* file `esbuild` attempts to load. Inside the hook, log the path and namespace of every file. This will definitively tell us if our barrel files are reaching the load stage, and if so, what namespace they have. The hook will be structured to only return content for files that have our specific namespace, to avoid interfering with the regular build process.
+
+### Attempt 36: Using Absolute Paths in Barrel Files
+
+- **Finding**: The `onLoad` hook confirms that our barrel files are being populated with the correct content *before* `esbuild` reads them. The content contains correct-looking relative paths (e.g., `import "../../../.../functions.ts";`). `esbuild` is then seen attempting to resolve these relative paths.
+- **Problem**: Despite the content being correct, a re-optimization is still triggered for deep dependencies.
+- **Hypothesis**: The issue may lie with `esbuild`'s ability to resolve the long, complex relative paths from the context of the temporary barrel file. While the path is technically correct, there might be an issue with the base directory (`resolveDir`) or some other context loss within the optimizer's `esbuild` instance. Using absolute paths in the barrel file imports would remove all ambiguity and should be resolvable regardless of the context.
+- **Plan**: Modify the `generateAppBarrelContent` function to generate absolute POSIX-style paths for the import statements in the application barrel files.

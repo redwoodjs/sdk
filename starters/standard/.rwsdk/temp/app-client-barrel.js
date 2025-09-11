@@ -1,1 +1,1 @@
-import "../../../../../../../../../src/app/pages/user/Login.tsx";
+import "/Users/justin/rw/worktrees/sdk_response-save/starters/standard/src/app/pages/user/Login.tsx";
