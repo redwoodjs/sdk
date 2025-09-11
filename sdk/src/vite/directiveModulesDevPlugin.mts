@@ -1,6 +1,7 @@
 import path from "path";
+import os from "os";
 import { Plugin } from "vite";
-import { writeFileSync, mkdirSync, promises as fs } from "node:fs";
+import { writeFileSync, mkdirSync, promises as fs, mkdtempSync } from "node:fs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import {
   VENDOR_CLIENT_BARREL_PATH,
@@ -65,7 +66,7 @@ export const directiveModulesDevPlugin = ({
   const { promise: scanPromise, resolve: resolveScanPromise } =
     Promise.withResolvers<void>();
 
-  const tempDir = path.join(projectRootDir, ".rwsdk", "temp");
+  const tempDir = mkdtempSync(path.join(os.tmpdir(), "rwsdk-"));
   const APP_CLIENT_BARREL_PATH = path.join(tempDir, "app-client-barrel.js");
   const APP_SERVER_BARREL_PATH = path.join(tempDir, "app-server-barrel.js");
 
