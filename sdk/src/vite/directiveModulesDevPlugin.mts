@@ -177,6 +177,7 @@ export const directiveModulesDevPlugin = ({
             });
 
             build.onLoad({ filter: /.*/ }, async (args: any) => {
+              console.log("##### onLoad", envName, args.path);
               if (args.path.includes("user/functions.ts")) {
                 console.log(
                   `[rwsdk] Confirmed: esbuild is loading the target server file: ${args.path}`,
@@ -187,11 +188,18 @@ export const directiveModulesDevPlugin = ({
                 args.path === APP_CLIENT_BARREL_PATH ||
                 args.path === APP_SERVER_BARREL_PATH
               ) {
+                console.log(
+                  `[rwsdk] onLoad for app barrel: [${envName}] ${args.path}. Reading content...`,
+                );
                 const content = await fs.readFile(args.path, "utf-8");
                 console.log(
-                  `[rwsdk] onLoad for app barrel: [${envName}] ${args.path}\n--- barrel content ---\n${content}\n--- end barrel content ---`,
+                  `[rwsdk] onLoad content for [${envName}] ${args.path}:\n--- barrel content ---\n${content}\n--- end barrel content ---`,
                 );
-                return { contents: content, loader: "js" };
+                return {
+                  contents: content,
+                  loader: "js",
+                  resolveDir: projectRootDir,
+                };
               }
               return null;
             });

@@ -194,3 +194,30 @@ The combination of the deferred promise and the `unshift` strategy has produced 
 And yet, the fundamental problem remains. Vite's logs *still* show `(worker) ✨ new dependencies optimized: @simplewebauthn/server`, and the application still crashes with the original context loss error.
 
 This leads to a new, core hypothesis: the problem is not with our blocking strategy, but with **how Vite's optimizer is interpreting our entry points**. It seems that even though `esbuild` is correctly loading the files from our barrel, the higher-level Vite dependency scanner is not performing a deep traversal of their contents during its initial pass. It only discovers the deep import (`@simplewebauthn/server`) when a request is made, which triggers the dreaded re-optimization. The question is, why?
+
+## Attempt 21: The `async config` Timing Failure
+
+The hypothesis that a synchronous scan in `async config` was the solution was tested and immediately proven incorrect by the user, who pointed out a critical flaw in the logic: `optimizeDeps` is configured and potentially initiated *before* an `async config` hook's `await` would complete. Any modifications made to `optimizeDeps.entries` after the `await` would be too late, as the optimizer process would have already started with the initial configuration. This "misses the bus" entirely and makes the synchronous approach in `config` non-viable.
+
+## Attempt 22: Forcing Content with `onLoad`
+
+The new hypothesis, based on the user's direction, is that while our `onResolve` hook is correctly blocking the optimizer, the subsequent step may be failing. It's possible that `esbuild` is not correctly reading or processing the content of our barrel files from the disk after `onResolve` completes.
+
+The next experiment is to force the issue. Instead of letting `esbuild` load the file itself, our `onLoad` hook will be responsible for:
+1.  Reading the barrel file content from disk.
+2.  Returning it directly to `esbuild` via the `{ contents: ... }` object.
+
+This bypasses `esbuild`'s own file loading mechanism and guarantees that it sees the content that our plugin provides, which should force it to traverse the `import` statements within and discover the application dependencies.
+
+## Attempt 23: The Traversal Failure
+
+The "Forcing Content with `onLoad`" strategy has yielded a critical new clue. The logs confirm that for the `worker` environment:
+1.  The `onLoad` hook for our `app-server-barrel.js` is successfully triggered.
+2.  We successfully read its content and return it to `esbuild`.
+3.  However, `esbuild` does **not** proceed to resolve or load the application files (`.../functions.ts`) that are imported from within the barrel's content.
+
+This proves that the breakdown is happening inside `esbuild`'s processing of the provided content.
+
+The new hypothesis is that `esbuild` is losing its file-system context. Because the barrel file lives in a temporary directory (`/var/folders/...`), `esbuild` may not know how to correctly resolve the absolute paths (`/Users/justin/...`) that are written inside it.
+
+The next attempt will be to provide `esbuild` with an explicit resolution directory to anchor its resolver. The `onLoad` hook can return a `resolveDir` property. By setting this to the project's root directory, we can give `esbuild` the context it needs to correctly process the barrel file's contents and traverse its imports.
