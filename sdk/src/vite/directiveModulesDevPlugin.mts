@@ -168,13 +168,7 @@ export const directiveModulesDevPlugin = ({
             build.onResolve({ filter: /.*/ }, async (args: any) => {
               // Handle barrel files
               if (filter.test(args.path)) {
-                console.log(
-                  `[rwsdk:blocker] resolving [${envName}] ${args.path}`,
-                );
                 await scanPromise;
-                console.log(
-                  `[rwsdk:blocker] scan complete for ${args.path}, proceeding.`,
-                );
                 return {
                   path: args.path,
                   namespace: "rwsdk-app-barrel-ns",
@@ -191,10 +185,6 @@ export const directiveModulesDevPlugin = ({
                   args.path.includes("/generated/")) &&
                 !args.path.includes("node_modules")
               ) {
-                console.log(
-                  `[rwsdk:force-internal] resolving ${args.path} as internal`,
-                );
-
                 // By returning a result, we claim the module and prevent vite:dep-scan
                 // from marking it as external.
                 return {
@@ -203,22 +193,16 @@ export const directiveModulesDevPlugin = ({
               }
             });
 
-            build.onLoad({ filter: /.*/ }, async (args) => {
-              console.log(
-                `[rwsdk:loader] seeing ${args.path} (namespace: ${args.namespace})`,
-              );
-              if (args.namespace === "rwsdk-app-barrel-ns") {
-                console.log(`[rwsdk:loader] loading content for ${args.path}`);
+            build.onLoad(
+              { filter: /.*/, namespace: "rwsdk-app-barrel-ns" },
+              async (args) => {
                 const content = await fs.readFile(args.path, "utf-8");
-                console.log(
-                  `[rwsdk:loader] content for ${args.path}:\n---\n${content}\n---`,
-                );
                 return {
                   contents: content,
                   loader: "js",
                 };
-              }
-            });
+              },
+            );
           },
         });
       }
