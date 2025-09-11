@@ -1,5 +1,5 @@
 import path from "path";
-import { Plugin, ViteDevServer, ResolvedConfig } from "vite";
+import { Plugin } from "vite";
 import { writeFileSync, mkdirSync } from "node:fs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { CLIENT_BARREL_PATH, SERVER_BARREL_PATH } from "../lib/constants.mjs";
@@ -36,110 +36,33 @@ const generateBarrelContent = (files: Set<string>, projectRootDir: string) => {
 };
 
 export const directiveModulesDevPlugin = ({
-  projectRootDir,
   clientFiles,
   serverFiles,
+  projectRootDir,
 }: {
-  projectRootDir: string;
   clientFiles: Set<string>;
   serverFiles: Set<string>;
+  projectRootDir: string;
 }): Plugin => {
-  let scanPromise: Promise<void> | undefined = undefined;
-  let config: ResolvedConfig;
+  let scanPromise: Promise<void> | null = null;
 
   return {
     name: "rwsdk:directive-modules-dev",
-
-    configResolved(resolvedConfig) {
-      config = resolvedConfig;
-
-      if (config.command !== "serve") {
-        return;
-      }
-
-      // Create dummy files to give esbuild a real path to resolve.
-      mkdirSync(path.dirname(CLIENT_BARREL_PATH), { recursive: true });
-      writeFileSync(CLIENT_BARREL_PATH, "");
-      mkdirSync(path.dirname(SERVER_BARREL_PATH), { recursive: true });
-      writeFileSync(SERVER_BARREL_PATH, "");
-
-      for (const env of Object.values(config.environments || {})) {
-        env.optimizeDeps ??= {};
-        env.optimizeDeps.include ??= [];
-        env.optimizeDeps.entries ??= [];
-        env.optimizeDeps.include.push(
-          CLIENT_BARREL_EXPORT_PATH,
-          SERVER_BARREL_EXPORT_PATH,
-        );
-
-        env.optimizeDeps.esbuildOptions ??= {};
-        env.optimizeDeps.esbuildOptions.plugins ??= [];
-        env.optimizeDeps.esbuildOptions.plugins.push({
-          name: "rwsdk:block-optimizer-for-scan",
-          setup(build) {
-            let entriesAdded = false;
-            build.onStart(async () => {
-              await scanPromise;
-
-              if (!entriesAdded) {
-                entriesAdded = true;
-                const appClientFiles = [...clientFiles].filter(
-                  (file) => !file.includes("node_modules"),
-                );
-                const appServerFiles = [...serverFiles].filter(
-                  (file) => !file.includes("node_modules"),
-                );
-
-                const clientEntries =
-                  (config.environments.client.optimizeDeps.entries = Array.from(
-                    new Set(
-                      Array.isArray(
-                        config.environments.client.optimizeDeps.entries,
-                      )
-                        ? config.environments.client.optimizeDeps.entries
-                        : ([] as string[]).concat(
-                            config.environments.client.optimizeDeps.entries ??
-                              [],
-                          ),
-                    ),
-                  ));
-
-                const workerEntries =
-                  (config.environments.worker.optimizeDeps.entries = Array.from(
-                    new Set(
-                      Array.isArray(
-                        config.environments.worker.optimizeDeps.entries,
-                      )
-                        ? config.environments.worker.optimizeDeps.entries
-                        : ([] as string[]).concat(
-                            config.environments.worker.optimizeDeps.entries ??
-                              [],
-                          ),
-                    ),
-                  ));
-
-                clientEntries.push(...appClientFiles);
-                workerEntries.push(...appServerFiles);
-                console.log("workerEntries", workerEntries);
-                console.log("clientEntries", clientEntries);
-              }
-            });
-          },
-        });
-      }
-    },
 
     configureServer(server) {
       if (!process.env.VITE_IS_DEV_SERVER || process.env.RWSDK_WORKER_RUN) {
         return;
       }
 
+      // Start the directive scan as soon as the server is configured.
+      // We don't await it here, allowing Vite to continue its startup.
       scanPromise = runDirectivesScan({
         rootConfig: server.config,
         environments: server.environments,
         clientFiles,
         serverFiles,
       }).then(() => {
+        // After the scan is complete, write the barrel files.
         const clientBarrelContent = generateBarrelContent(
           clientFiles,
           projectRootDir,
@@ -153,12 +76,51 @@ export const directiveModulesDevPlugin = ({
         writeFileSync(SERVER_BARREL_PATH, serverBarrelContent);
       });
 
+      // context(justinvdm, 4 Sep 2025): Add middleware to block incoming
+      // requests until the scan is complete. This gives us a single hook for
+      // preventing app code being processed by vite until the scan is complete.
+      // This improves perceived startup time by not blocking Vite's optimizer.
       server.middlewares.use(async (_req, _res, next) => {
         if (scanPromise) {
           await scanPromise;
         }
         next();
       });
+    },
+
+    configResolved(config) {
+      if (config.command !== "serve") {
+        return;
+      }
+
+      // Create dummy files to give esbuild a real path to resolve.
+      mkdirSync(path.dirname(CLIENT_BARREL_PATH), { recursive: true });
+      writeFileSync(CLIENT_BARREL_PATH, "");
+      mkdirSync(path.dirname(SERVER_BARREL_PATH), { recursive: true });
+      writeFileSync(SERVER_BARREL_PATH, "");
+
+      for (const [envName, env] of Object.entries(config.environments || {})) {
+        env.optimizeDeps ??= {};
+        env.optimizeDeps.include ??= [];
+        env.optimizeDeps.include.push(
+          CLIENT_BARREL_EXPORT_PATH,
+          SERVER_BARREL_EXPORT_PATH,
+        );
+
+        env.optimizeDeps.esbuildOptions ??= {};
+        env.optimizeDeps.esbuildOptions.plugins ??= [];
+        env.optimizeDeps.esbuildOptions.plugins.push({
+          name: "rwsdk:block-optimizer-for-scan",
+          setup(build) {
+            build.onStart(async () => {
+              // context(justinvdm, 4 Sep 2025): We await the scan promise
+              // here because we want to block the optimizer until the scan is
+              // complete.
+              await scanPromise;
+            });
+          },
+        });
+      }
     },
   };
 };
