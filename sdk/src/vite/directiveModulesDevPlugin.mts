@@ -64,19 +64,19 @@ export const directiveModulesDevPlugin = ({
   const tempDir = mkdtempSync(path.join(os.tmpdir(), "rwsdk-"));
   const APP_CLIENT_BARREL_PATH = path.join(tempDir, "app-client-barrel.js");
   const APP_SERVER_BARREL_PATH = path.join(tempDir, "app-server-barrel.js");
-  const { promise: scanPromise, resolve: resolveScanPromise } =
-    Promise.withResolvers<void>();
+  let scanPromise: Promise<void> | null = null;
 
   return {
     name: "rwsdk:directive-modules-dev",
 
     configureServer(server) {
       if (!process.env.VITE_IS_DEV_SERVER || process.env.RWSDK_WORKER_RUN) {
-        resolveScanPromise();
         return;
       }
 
-      runDirectivesScan({
+      // Start the directive scan as soon as the server is configured.
+      // We don't await it here, allowing Vite to continue its startup.
+      scanPromise = runDirectivesScan({
         rootConfig: server.config,
         environments: server.environments,
         clientFiles,
@@ -108,7 +108,6 @@ export const directiveModulesDevPlugin = ({
         );
         writeFileSync(APP_SERVER_BARREL_PATH, appServerBarrelContent);
         console.log("[rwsdk] Barrel files written.");
-        resolveScanPromise();
       });
 
       // context(justinvdm, 4 Sep 2025): Add middleware to block incoming
@@ -149,20 +148,19 @@ export const directiveModulesDevPlugin = ({
         );
 
         if (envName === "client") {
-          env.optimizeDeps.entries.push(APP_CLIENT_BARREL_PATH);
+          entries.push(APP_CLIENT_BARREL_PATH);
         } else if (envName === "worker") {
-          // env.optimizeDeps.entries.push(APP_SERVER_BARREL_PATH);
-          env.optimizeDeps.entries.push(
-            "/Users/justin/rw/worktrees/sdk_response-save/starters/standard/src/app/pages/user/functions.ts",
-          );
+          entries.push(APP_SERVER_BARREL_PATH);
         }
 
         env.optimizeDeps.esbuildOptions ??= {};
         env.optimizeDeps.esbuildOptions.plugins ??= [];
-        env.optimizeDeps.esbuildOptions.plugins.unshift({
+        env.optimizeDeps.esbuildOptions.plugins.push({
           name: "rwsdk:await-app-barrels",
           setup(build) {
             build.onResolve({ filter: /.*/ }, async (args: any) => {
+              await scanPromise;
+              console.log("##### onResolve", envName, args.path);
               if (
                 args.path === APP_CLIENT_BARREL_PATH ||
                 args.path === APP_SERVER_BARREL_PATH
