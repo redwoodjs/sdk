@@ -35,10 +35,16 @@ Successfully enabled Windows smoke tests and identified the exact issue:
 **Root Cause**: Path construction logic is duplicating the Windows drive letter when building absolute paths.
 
 ### Progress Update
-✅ **Fixed**: Path duplication issue in `constants.mts`
+- **Fixed**: Path duplication issue in `constants.mts`
 - Used `fileURLToPath()` instead of `.pathname`
 - Directory creation now works: `C:\C:\Users\...` → `C:\Users\...`
 
 🔍 **New Issue**: ESM URL scheme error in `runDirectivesScan.mjs:205`
 - Error: `Only URLs with a scheme in: file, data, and node are supported by the default ESM loader. On Windows, absolute paths must be valid file:// URLs. Received protocol 'c:'`
 - Need to convert Windows absolute paths to proper `file://` URLs for Node.js ESM loader
+
+### Attempt 1: Convert paths to file:// URLs in esbuild
+❌ **Failed**: Added `pathToFileURL()` conversion in `onResolve` and `fileURLToPath()` in `readFileWithCache`
+- The error still occurs, suggesting the issue might be elsewhere or the approach isn't working
+- The scan completes ("✅ Scan complete.") but then fails with the same ESM error
+- This indicates the error might be happening in a different part of the process

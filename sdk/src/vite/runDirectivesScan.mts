@@ -65,9 +65,11 @@ export const runDirectivesScan = async ({
       return;
     }
 
-    const absoluteEntries = entries.map((entry) =>
-      path.resolve(rootConfig.root, entry),
-    );
+    const absoluteEntries = entries.map((entry) => {
+      const absolutePath = path.resolve(rootConfig.root, entry);
+      // On Windows, convert absolute paths to file:// URLs for ESM compatibility
+      return process.platform === 'win32' ? pathToFileURL(absolutePath).href : absolutePath;
+    });
 
     log(
       "Starting directives scan for worker environment with entries:",
@@ -223,13 +225,8 @@ export const runDirectivesScan = async ({
             );
             log("Normalized path:", normalizedPath);
 
-            // On Windows, convert absolute paths to file:// URLs for ESM compatibility
-            const esbuildPath = process.platform === 'win32' && path.isAbsolute(normalizedPath)
-              ? pathToFileURL(normalizedPath).href
-              : normalizedPath;
-
             return {
-              path: esbuildPath,
+              path: normalizedPath,
               pluginData: { inheritedEnv: importerEnv },
             };
           }
