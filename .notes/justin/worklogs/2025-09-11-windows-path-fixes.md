@@ -23,4 +23,13 @@ Different places in rwsdk fail on Windows due to module path issues. Two main er
 - Path construction logic appears to be duplicating drive letters
 
 ## Investigation Log
-Starting investigation...
+
+### Windows Smoke Tests Results
+Successfully enabled Windows smoke tests and identified the exact issue:
+
+**Error**: `ENOENT: no such file or directory, mkdir 'C:\C:\Users\...'`
+- Path shows duplicated drive letter: `C:\C:\`
+- Occurs in `directiveModulesDevPlugin.mjs:63:13` during `mkdirSync`
+- Affects `__intermediate_builds` directory creation
+
+**Root Cause**: Path construction logic is duplicating the Windows drive letter when building absolute paths.
