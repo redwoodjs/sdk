@@ -9,7 +9,7 @@
   "main": "src/worker.tsx",
 
   // Compatibility settings
-  "compatibility_date": "2025-05-07",
+  "compatibility_date": "2025-08-21",
   "compatibility_flags": ["nodejs_compat"],
 
   // Assets configuration
