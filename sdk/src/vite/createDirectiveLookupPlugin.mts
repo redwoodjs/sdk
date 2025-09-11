@@ -2,6 +2,10 @@ import MagicString from "magic-string";
 import path from "path";
 import { Plugin, ViteDevServer } from "vite";
 import debug from "debug";
+import {
+  VENDOR_CLIENT_BARREL_EXPORT_PATH,
+  VENDOR_SERVER_BARREL_EXPORT_PATH,
+} from "../lib/constants.mjs";
 
 interface DirectiveLookupConfig {
   kind: "client" | "server";
@@ -194,8 +198,8 @@ export const ${config.exportName} = {
       if (file.includes("node_modules") && isDev) {
         const barrelPath =
           config.kind === "client"
-            ? "rwsdk/__vendor_client_barrel"
-            : "rwsdk/__vendor_server_barrel";
+            ? VENDOR_CLIENT_BARREL_EXPORT_PATH
+            : VENDOR_SERVER_BARREL_EXPORT_PATH;
 
         return `
   "${file}": () => import("${barrelPath}").then(m => m.default["${file}"]),

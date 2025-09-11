@@ -24,6 +24,9 @@ export const VENDOR_SERVER_BARREL_PATH = path.resolve(
   "__intermediate_builds/rwsdk-vendor-server-barrel.js",
 );
 
+export const VENDOR_CLIENT_BARREL_EXPORT_PATH = "rwsdk/__vendor_client_barrel";
+export const VENDOR_SERVER_BARREL_EXPORT_PATH = "rwsdk/__vendor_server_barrel";
+
 export const INTERMEDIATE_SSR_BRIDGE_PATH = resolve(
   INTERMEDIATES_OUTPUT_DIR,
   "ssr",

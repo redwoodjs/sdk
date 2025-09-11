@@ -5,11 +5,10 @@ import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import {
   VENDOR_CLIENT_BARREL_PATH,
   VENDOR_SERVER_BARREL_PATH,
+  VENDOR_CLIENT_BARREL_EXPORT_PATH,
+  VENDOR_SERVER_BARREL_EXPORT_PATH,
 } from "../lib/constants.mjs";
 import { runDirectivesScan } from "./runDirectivesScan.mjs";
-
-const VENDOR_CLIENT_BARREL_EXPORT_PATH = "rwsdk/__vendor_client_barrel";
-const VENDOR_SERVER_BARREL_EXPORT_PATH = "rwsdk/__vendor_server_barrel";
 
 const generateVendorBarrelContent = (
   files: Set<string>,
