@@ -25,10 +25,6 @@ function getWebAuthnConfig(request: Request) {
 }
 
 export async function startPasskeyRegistration(username: string) {
-  console.log(
-    "##### startPasskeyRegistration requestInfo.response",
-    requestInfo.response,
-  );
   const { rpName, rpID } = getWebAuthnConfig(requestInfo.request);
   const { response } = requestInfo;
 

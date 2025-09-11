@@ -121,9 +121,7 @@ export const defineApp = <
           const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
 
           if (isRSCActionHandler) {
-            console.log("##### before action", requestInfo.response.headers);
             actionResult = await rscActionHandler(request);
-            console.log("##### after action", requestInfo.response.headers);
           }
 
           const pageElement = createPageElement(requestInfo, Page);

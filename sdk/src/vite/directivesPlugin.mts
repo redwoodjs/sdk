@@ -132,24 +132,12 @@ export const directivesPlugin = ({
           build.onLoad(
             { filter: /\.(js|ts|jsx|tsx|mts|mjs|cjs)$/ },
             async (args) => {
-              console.log(
-                "##### esbuild:onLoad for env=%s, path=%s",
-                env,
-                args.path,
-              );
               process.env.VERBOSE &&
                 log(
                   "Esbuild onLoad called for environment=%s, path=%s",
                   env,
                   args.path,
                 );
-              if (env === "worker" && args.path.includes("functions.ts")) {
-                console.log(
-                  "########## Esbuild onLoad for worker functions.ts",
-                  env,
-                  args.path,
-                );
-              }
 
               const normalizedPath = normalizeModulePath(
                 args.path,
@@ -161,53 +149,53 @@ export const directivesPlugin = ({
               // the only reason we're in esbuild land for app code is for
               // dependency discovery, so we can skip transform work
               // and use heuristics instead - see below inside if block
-              //if (!args.path.includes("node_modules")) {
-              //  if (clientFiles.has(normalizedPath)) {
-              //    // context(justinvdm,2025-06-15): If this is a client file:
-              //    // * for ssr and client envs we can skip so esbuild looks at the
-              //    // original source code to discovery dependencies
-              //    // * for worker env, the transform would have just created
-              //    // references and dropped all imports, so we can just return empty code
-              //    if (env === "client" || env === "ssr") {
-              //      log(
-              //        "Esbuild onLoad skipping client module in app code for client or ssr env, path=%s",
-              //        args.path,
-              //      );
-              //      return undefined;
-              //    } else {
-              //      log(
-              //        "Esbuild onLoad returning empty code for server module in app code for worker env, path=%s to bypass esbuild dependency discovery",
-              //        args.path,
-              //      );
-              //      return {
-              //        contents: "",
-              //        loader: "js",
-              //      };
-              //    }
-              //  } else if (serverFiles.has(normalizedPath)) {
-              //    // context(justinvdm,2025-06-15): If this is a server file:
-              //    // * for worker env, we can skip so esbuild looks at the
-              //    // original source code to discovery dependencies
-              //    // * for ssr and client envs, the transform would have just created
-              //    // references and dropped all imports, so we can just return empty code
-              //    if (env === "worker") {
-              //      log(
-              //        "Esbuild onLoad skipping server module in app code for worker env, path=%s",
-              //        args.path,
-              //      );
-              //      return undefined;
-              //    } else if (env === "ssr" || env === "client") {
-              //      log(
-              //        "Esbuild onLoad returning empty code for server module in app code for ssr or client env, path=%s",
-              //        args.path,
-              //      );
-              //      return {
-              //        contents: "",
-              //        loader: "js",
-              //      };
-              //    }
-              //  }
-              //}
+              if (!args.path.includes("node_modules")) {
+                if (clientFiles.has(normalizedPath)) {
+                  // context(justinvdm,2025-06-15): If this is a client file:
+                  // * for ssr and client envs we can skip so esbuild looks at the
+                  // original source code to discovery dependencies
+                  // * for worker env, the transform would have just created
+                  // references and dropped all imports, so we can just return empty code
+                  if (env === "client" || env === "ssr") {
+                    log(
+                      "Esbuild onLoad skipping client module in app code for client or ssr env, path=%s",
+                      args.path,
+                    );
+                    return undefined;
+                  } else {
+                    log(
+                      "Esbuild onLoad returning empty code for server module in app code for worker env, path=%s to bypass esbuild dependency discovery",
+                      args.path,
+                    );
+                    return {
+                      contents: "",
+                      loader: "js",
+                    };
+                  }
+                } else if (serverFiles.has(normalizedPath)) {
+                  // context(justinvdm,2025-06-15): If this is a server file:
+                  // * for worker env, we can skip so esbuild looks at the
+                  // original source code to discovery dependencies
+                  // * for ssr and client envs, the transform would have just created
+                  // references and dropped all imports, so we can just return empty code
+                  if (env === "worker") {
+                    log(
+                      "Esbuild onLoad skipping server module in app code for worker env, path=%s",
+                      args.path,
+                    );
+                    return undefined;
+                  } else if (env === "ssr" || env === "client") {
+                    log(
+                      "Esbuild onLoad returning empty code for server module in app code for ssr or client env, path=%s",
+                      args.path,
+                    );
+                    return {
+                      contents: "",
+                      loader: "js",
+                    };
+                  }
+                }
+              }
 
               let code: string;
 
@@ -263,20 +251,10 @@ export const directivesPlugin = ({
               if (serverResult) {
                 process.env.VERBOSE &&
                   log(
-                    "Esbuild server function transformation successful for environment=%s, path=%s, code: %j",
+                    "Esbuild server function transformation successful for environment=%s, path=%s",
                     env,
                     args.path,
-                    serverResult.code,
                   );
-
-                if (args.path.includes("functions.ts") && env === "worker") {
-                  console.log(
-                    "########## Esbuild server function transformation successful for worker functions.ts, code: %j",
-                    env,
-                    args.path,
-                    serverResult.code,
-                  );
-                }
                 return {
                   contents: serverResult.code,
                   loader: getLoader(args.path),
@@ -289,15 +267,6 @@ export const directivesPlugin = ({
                   env,
                   args.path,
                 );
-
-              if (args.path.includes("functions.ts")) {
-                console.log(
-                  "########## No transformation applied for worker functions.ts",
-                  env,
-                  args.path,
-                );
-                console.log("code: %j", code);
-              }
             },
           );
         },
