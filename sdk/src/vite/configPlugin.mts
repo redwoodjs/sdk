@@ -1,40 +1,85 @@
 import { Plugin } from "vite";
 import path, { resolve } from "node:path";
-import { builtinModules } from "node:module";
 import { InlineConfig } from "vite";
 import enhancedResolve from "enhanced-resolve";
+import debug from "debug";
 
-import { SSR_BRIDGE_PATH } from "../lib/constants.mjs";
+import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
+import { buildApp } from "./buildApp.mjs";
+import { externalModules } from "./constants.mjs";
 
-// port(justinvdm, 09 Jun 2025):
-// https://github.com/cloudflare/workers-sdk/blob/d533f5ee7da69c205d8d5e2a5f264d2370fc612b/packages/vite-plugin-cloudflare/src/cloudflare-environment.ts#L123-L128
-export const cloudflareBuiltInModules = [
-  "cloudflare:email",
-  "cloudflare:sockets",
-  "cloudflare:workers",
-  "cloudflare:workflows",
-];
-
-export const externalModules = [
-  ...cloudflareBuiltInModules,
-  ...builtinModules,
-  ...builtinModules.map((m) => `node:${m}`),
-];
+const log = debug("rwsdk:vite:config");
 
 export const configPlugin = ({
   silent,
   projectRootDir,
-  clientEntryPathnames,
   workerEntryPathname,
+  clientFiles,
+  serverFiles,
+  clientEntryPoints,
 }: {
   silent: boolean;
   projectRootDir: string;
-  clientEntryPathnames: string[];
   workerEntryPathname: string;
+  clientFiles: Set<string>;
+  serverFiles: Set<string>;
+  clientEntryPoints: Set<string>;
 }): Plugin => ({
   name: "rwsdk:config",
   config: async (_) => {
     const mode = process.env.NODE_ENV;
+
+    const workerConfig: InlineConfig = {
+      resolve: {
+        conditions: [
+          "workerd",
+          "react-server",
+          "module",
+          // context(justinvdm, 11 Jun 2025): Some packages meant for cloudflare workers, yet
+          // their deps have only node import conditions, e.g. `agents` package (meant for CF),
+          // has `pkce-challenge` package as a dep, which has only node import conditions.
+          // https://github.com/crouchcd/pkce-challenge/blob/master/package.json#L17
+          //
+          // @cloudflare/vite-plugin should take care of any relevant polyfills for deps with
+          // node builtins imports that can be polyfilled though, so it is worth us including this condition here.
+          // However, it does mean we will try to run packages meant for node that cannot be run on cloudflare workers.
+          // That's the trade-off, but arguably worth it.
+          "node",
+        ],
+        noExternal: true,
+      },
+      define: {
+        "import.meta.env.RWSDK_ENV": JSON.stringify("worker"),
+      },
+      optimizeDeps: {
+        noDiscovery: false,
+        include: ["rwsdk/worker"],
+        exclude: [],
+        entries: [workerEntryPathname],
+        esbuildOptions: {
+          jsx: "automatic",
+          jsxImportSource: "react",
+          define: {
+            "process.env.NODE_ENV": JSON.stringify(mode),
+          },
+        },
+      },
+      build: {
+        outDir: resolve(projectRootDir, "dist", "worker"),
+        emitAssets: true,
+        emptyOutDir: false,
+        ssr: true,
+        rollupOptions: {
+          output: {
+            inlineDynamicImports: true,
+          },
+          input: {
+            worker: workerEntryPathname,
+          },
+        },
+      },
+    };
+
     const baseConfig: InlineConfig = {
       appType: "custom",
       mode,
@@ -56,7 +101,7 @@ export const configPlugin = ({
             outDir: resolve(projectRootDir, "dist", "client"),
             manifest: true,
             rollupOptions: {
-              input: clientEntryPathnames,
+              input: [],
             },
           },
           define: {
@@ -65,6 +110,7 @@ export const configPlugin = ({
           optimizeDeps: {
             noDiscovery: false,
             include: ["rwsdk/client"],
+            entries: [],
             esbuildOptions: {
               jsx: "automatic",
               jsxImportSource: "react",
@@ -103,84 +149,37 @@ export const configPlugin = ({
           build: {
             lib: {
               entry: {
-                [path.basename(SSR_BRIDGE_PATH, ".js")]: enhancedResolve.sync(
-                  projectRootDir,
-                  "rwsdk/__ssr_bridge",
-                ) as string,
+                [path.basename(INTERMEDIATE_SSR_BRIDGE_PATH, ".js")]:
+                  enhancedResolve.sync(
+                    projectRootDir,
+                    "rwsdk/__ssr_bridge",
+                  ) as string,
               },
               formats: ["es"],
-              fileName: () => path.basename(SSR_BRIDGE_PATH),
+              fileName: () => path.basename(INTERMEDIATE_SSR_BRIDGE_PATH),
             },
-            outDir: path.dirname(SSR_BRIDGE_PATH),
-          },
-        },
-        worker: {
-          resolve: {
-            conditions: [
-              "workerd",
-              "react-server",
-              "module",
-              // context(justinvdm, 11 Jun 2025): Some packages meant for cloudflare workers, yet
-              // their deps have only node import conditions, e.g. `agents` package (meant for CF),
-              // has `pkce-challenge` package as a dep, which has only node import conditions.
-              // https://github.com/crouchcd/pkce-challenge/blob/master/package.json#L17
-              //
-              // @cloudflare/vite-plugin should take care of any relevant polyfills for deps with
-              // node builtins imports that can be polyfilled though, so it is worth us including this condition here.
-              // However, it does mean we will try to run packages meant for node that cannot be run on cloudflare workers.
-              // That's the trade-off, but arguably worth it.
-              "node",
-            ],
-            noExternal: true,
-          },
-          define: {
-            "import.meta.env.RWSDK_ENV": JSON.stringify("worker"),
-          },
-          optimizeDeps: {
-            noDiscovery: false,
-            include: ["rwsdk/worker"],
-            exclude: [],
-            entries: [workerEntryPathname],
-            esbuildOptions: {
-              jsx: "automatic",
-              jsxImportSource: "react",
-              define: {
-                "process.env.NODE_ENV": JSON.stringify(mode),
-              },
-            },
-          },
-          build: {
-            outDir: resolve(projectRootDir, "dist", "worker"),
-            emitAssets: true,
-            ssr: true,
+            outDir: path.dirname(INTERMEDIATE_SSR_BRIDGE_PATH),
             rollupOptions: {
               output: {
                 inlineDynamicImports: true,
               },
-              input: {
-                worker: workerEntryPathname,
-              },
             },
           },
         },
+        worker: workerConfig,
       },
       server: {
         hmr: true,
       },
       builder: {
-        buildApp: async (builder) => {
-          // note(justinvdm, 27 May 2025): **Ordering is important**:
-          // * When building, client needs to be build first, so that we have a
-          //   manifest file to map to when looking at asset references in JSX
-          //   (e.g. Document.tsx)
-          // * When bundling, the RSC build imports the SSR build - this way
-          //   they each can have their own environments (e.g. with their own
-          //   import conditions), while still having all worker-run code go
-          //   through the processing done by `@cloudflare/vite-plugin`
-
-          await builder.build(builder.environments["client"]!);
-          await builder.build(builder.environments["ssr"]!);
-          await builder.build(builder.environments["worker"]!);
+        async buildApp(builder) {
+          await buildApp({
+            builder,
+            projectRootDir,
+            clientEntryPoints,
+            clientFiles,
+            serverFiles,
+          });
         },
       },
     };

@@ -28,6 +28,9 @@ import { ssrBridgePlugin } from "./ssrBridgePlugin.mjs";
 import { hasPkgScript } from "../lib/hasPkgScript.mjs";
 import { devServerTimingPlugin } from "./devServerTimingPlugin.mjs";
 import { manifestPlugin } from "./manifestPlugin.mjs";
+import { linkerPlugin } from "./linkerPlugin.mjs";
+import { directiveModulesDevPlugin } from "./directiveModulesDevPlugin.mjs";
+import { directivesFilteringPlugin } from "./directivesFilteringPlugin.mjs";
 
 export type RedwoodPluginOptions = {
   silent?: boolean;
@@ -36,7 +39,6 @@ export type RedwoodPluginOptions = {
   includeReactPlugin?: boolean;
   configPath?: string;
   entry?: {
-    client?: string | string[];
     worker?: string;
   };
 };
@@ -55,6 +57,10 @@ const determineWorkerEntryPathname = async (
   return resolve(projectRootDir, workerConfig.main ?? "src/worker.tsx");
 };
 
+const clientFiles = new Set<string>();
+const serverFiles = new Set<string>();
+const clientEntryPoints = new Set<string>();
+
 export const redwoodPlugin = async (
   options: RedwoodPluginOptions = {},
 ): Promise<InlineConfig["plugins"]> => {
@@ -71,15 +77,6 @@ export const redwoodPlugin = async (
     workerConfigPath,
     options,
   );
-
-  const clientEntryPathnames = (
-    Array.isArray(options.entry?.client)
-      ? options.entry.client
-      : [options.entry?.client ?? "src/client.tsx"]
-  ).map((entry) => resolve(projectRootDir, entry));
-
-  const clientFiles = new Set<string>();
-  const serverFiles = new Set<string>();
 
   const shouldIncludeCloudflarePlugin =
     options.includeCloudflarePlugin ??
@@ -110,11 +107,18 @@ export const redwoodPlugin = async (
   return [
     devServerTimingPlugin(),
     devServerConstantPlugin(),
+    directiveModulesDevPlugin({
+      clientFiles,
+      serverFiles,
+      projectRootDir,
+    }),
     configPlugin({
       silent: options.silent ?? false,
       projectRootDir,
-      clientEntryPathnames,
       workerEntryPathname,
+      clientFiles,
+      serverFiles,
+      clientEntryPoints,
     }),
     ssrBridgePlugin({
       clientFiles,
@@ -143,7 +147,10 @@ export const redwoodPlugin = async (
       serverFiles,
     }),
     vitePreamblePlugin(),
-    injectVitePreamble({ clientEntryPathnames }),
+    injectVitePreamble({
+      clientEntryPoints,
+      projectRootDir,
+    }),
     useClientLookupPlugin({
       projectRootDir,
       clientFiles,
@@ -153,24 +160,19 @@ export const redwoodPlugin = async (
       serverFiles,
     }),
     transformJsxScriptTagsPlugin({
-      manifestPath: resolve(
-        projectRootDir,
-        "dist",
-        "client",
-        ".vite",
-        "manifest.json",
-      ),
+      clientEntryPoints,
+      projectRootDir,
     }),
     manifestPlugin({
-      manifestPath: resolve(
-        projectRootDir,
-        "dist",
-        "client",
-        ".vite",
-        "manifest.json",
-      ),
+      projectRootDir,
     }),
     moveStaticAssetsPlugin({ rootDir: projectRootDir }),
     prismaPlugin({ projectRootDir }),
+    linkerPlugin({ projectRootDir }),
+    directivesFilteringPlugin({
+      clientFiles,
+      serverFiles,
+      projectRootDir,
+    }),
   ];
 };

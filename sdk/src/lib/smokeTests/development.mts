@@ -102,14 +102,27 @@ export async function runDevServer(cwd?: string): Promise<{
       env.FORCE_COLOR = "0";
     }
 
+    // Map package manager names to actual commands
+    const getPackageManagerCommand = (pm: string) => {
+      switch (pm) {
+        case "yarn-classic":
+          return "yarn";
+        default:
+          return pm;
+      }
+    };
+    
+    const pm = getPackageManagerCommand(state.options.packageManager || "npm");
+
     // Use the provided cwd if available
     devProcess = $({
-      stdio: ["inherit", "pipe", "pipe"], // Pipe stderr again to check both streams
-      detached: true,
+      all: true,
+      detached: false, // Keep attached so we can access streams
       cleanup: false, // Don't auto-kill on exit
       cwd: cwd || process.cwd(), // Use provided directory or current directory
       env, // Pass the updated environment variables
-    })`npm run dev`;
+      stdio: 'pipe', // Ensure streams are piped
+    })`${pm} run dev`;
 
     devProcess.catch((error: any) => {
       if (!isErrorExpected) {
@@ -125,53 +138,92 @@ export async function runDevServer(cwd?: string): Promise<{
 
     // Store chunks to parse the URL
     let url = "";
+    let allOutput = "";
 
-    // Listen for stdout to get the URL
-    devProcess.stdout?.on("data", (data: Buffer) => {
+    // Listen for all output to get the URL
+    const handleOutput = (data: Buffer, source: string) => {
       const output = data.toString();
       console.log(output);
+      allOutput += output; // Accumulate all output
+      log("Received output from %s: %s", source, output.replace(/\n/g, "\\n"));
 
-      // Try to extract the URL from the server output with a more flexible regex
-      // Allow for variable amounts of whitespace between "Local:" and the URL
-      // And handle ANSI color codes by using a more robust pattern
-      const localMatch = output.match(/Local:.*?(http:\/\/localhost:\d+)/);
-      if (localMatch && localMatch[1] && !url) {
-        url = localMatch[1];
-        log("Found development server URL: %s", url);
-      } else if (
-        output.includes("Local:") &&
-        output.includes("http://localhost:")
-      ) {
-        // Log near-match for debugging
-        log(
-          "Found potential URL pattern but regex didn't match. Content: %s",
-          output,
-        );
+      if (!url) {
+        // Multiple patterns to catch different package manager outputs
+        const patterns = [
+          // Standard Vite output: "Local:   http://localhost:5173/"
+          /Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
+          // Alternative Vite output: "➜  Local:   http://localhost:5173/"
+          /[➜→]\s*Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
+          // Unicode-safe arrow pattern
+          /[\u27A1\u2192\u279C]\s*Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
+          // Direct URL pattern: "http://localhost:5173"
+          /(https?:\/\/localhost:\d+)/i,
+          // Port-only pattern: "localhost:5173"
+          /localhost:(\d+)/i,
+          // Server ready messages
+          /server.*ready.*localhost:(\d+)/i,
+          /dev server.*localhost:(\d+)/i,
+        ];
 
-        // Try an alternative, more general pattern that's more resilient to ANSI codes
-        const altMatch = output.match(/localhost:(\d+)/i);
-        if (altMatch && altMatch[1] && !url) {
-          url = `http://localhost:${altMatch[1]}`;
-          log("Found development server URL with alternative pattern: %s", url);
+        for (const pattern of patterns) {
+          const match = output.match(pattern);
+          log(
+            "Testing pattern %s against output: %s",
+            pattern.source,
+            output.replace(/\n/g, "\\n"),
+          );
+          if (match) {
+            log("Pattern matched: %s, groups: %o", pattern.source, match);
+            if (match[1] && match[1].startsWith("http")) {
+              url = match[1];
+              log(
+                "Found development server URL with pattern %s: %s",
+                pattern.source,
+                url,
+              );
+              break;
+            } else if (match[1] && /^\d+$/.test(match[1])) {
+              url = `http://localhost:${match[1]}`;
+              log(
+                "Found development server URL with port pattern %s: %s",
+                pattern.source,
+                url,
+              );
+              break;
+            }
+          }
+        }
+
+        // Log potential matches for debugging
+        if (
+          !url &&
+          (output.includes("localhost") ||
+            output.includes("Local") ||
+            output.includes("server"))
+        ) {
+          log("Potential URL pattern found but not matched: %s", output.trim());
         }
       }
-    });
+    };
 
-    // Also listen for stderr to check for URL patterns there as well
-    devProcess.stderr?.on("data", (data: Buffer) => {
-      const output = data.toString();
-      console.error(output); // Output error messages to console
-
-      // Check if we already found a URL
-      if (url) return;
-
-      // Check for localhost URLs in stderr using the same resilient patterns as stdout
-      const urlMatch = output.match(/localhost:(\d+)/i);
-      if (urlMatch && urlMatch[1]) {
-        url = `http://localhost:${urlMatch[1]}`;
-        log("Found development server URL in stderr: %s", url);
-      }
-    });
+    // Listen to all possible output streams
+    log("Setting up stream listeners. Available streams: all=%s, stdout=%s, stderr=%s", 
+        !!devProcess.all, !!devProcess.stdout, !!devProcess.stderr);
+    
+    devProcess.all?.on("data", (data: Buffer) => handleOutput(data, "all"));
+    devProcess.stdout?.on("data", (data: Buffer) =>
+      handleOutput(data, "stdout"),
+    );
+    devProcess.stderr?.on("data", (data: Buffer) =>
+      handleOutput(data, "stderr"),
+    );
+    
+    // Also try listening to the raw process output
+    if (devProcess.child) {
+      log("Setting up child process stream listeners");
+      devProcess.child.stdout?.on("data", (data: Buffer) => handleOutput(data, "child.stdout"));
+      devProcess.child.stderr?.on("data", (data: Buffer) => handleOutput(data, "child.stderr"));
+    }
 
     // Wait for URL with timeout
     const waitForUrl = async (): Promise<string> => {
@@ -183,11 +235,39 @@ export async function runDevServer(cwd?: string): Promise<{
           return url;
         }
 
+        // Fallback: check accumulated output if stream listeners aren't working
+        if (!url && allOutput) {
+          log("Checking accumulated output for URL patterns: %s", allOutput.replace(/\n/g, "\\n"));
+          const patterns = [
+            /Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
+            /[➜→]\s*Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
+            /[\u27A1\u2192\u279C]\s*Local:\s*(?:\u001b\[\d+m)?(https?:\/\/localhost:\d+)/i,
+            /(https?:\/\/localhost:\d+)/i,
+            /localhost:(\d+)/i,
+          ];
+          
+          for (const pattern of patterns) {
+            const match = allOutput.match(pattern);
+            if (match) {
+              if (match[1] && match[1].startsWith("http")) {
+                url = match[1];
+                log("Found URL in accumulated output with pattern %s: %s", pattern.source, url);
+                return url;
+              } else if (match[1] && /^\d+$/.test(match[1])) {
+                url = `http://localhost:${match[1]}`;
+                log("Found URL in accumulated output with port pattern %s: %s", pattern.source, url);
+                return url;
+              }
+            }
+          }
+        }
+
         // Check if the process is still running
         if (devProcess.exitCode !== null) {
           log(
-            "ERROR: Development server process exited with code %d",
+            "ERROR: Development server process exited with code %d. Final output: %s",
             devProcess.exitCode,
+            allOutput,
           );
           throw new Error(
             `Development server process exited with code ${devProcess.exitCode}`,
@@ -197,7 +277,7 @@ export async function runDevServer(cwd?: string): Promise<{
         await setTimeout(500); // Check every 500ms
       }
 
-      log("ERROR: Timed out waiting for dev server URL");
+      log("ERROR: Timed out waiting for dev server URL. Final accumulated output: %s", allOutput);
       throw new Error("Timed out waiting for dev server URL");
     };
 
@@ -221,7 +301,6 @@ export async function runDevServer(cwd?: string): Promise<{
 export async function runDevTest(
   url: string,
   artifactDir: string,
-  customPath: string = "/",
   browserPath?: string,
   headless: boolean = true,
   bail: boolean = false,
@@ -230,24 +309,16 @@ export async function runDevTest(
   skipHmr: boolean = false,
   skipStyleTests: boolean = false,
 ): Promise<void> {
-  log("Starting dev server test with path: %s", customPath || "/");
+  log("Starting dev server test");
   console.log("🚀 Testing local development server");
 
   const browser = await launchBrowser(browserPath, headless);
   const page = await browser.newPage();
 
   try {
+    const testUrl = new URL("/__smoke_test", url).toString();
     // DRY: check both root and custom path
-    await checkServerUp(url, customPath, RETRIES, bail);
-
-    // Now run the tests with the custom path
-    const testUrl =
-      url +
-      (customPath === "/"
-        ? ""
-        : customPath.startsWith("/")
-          ? customPath
-          : "/" + customPath);
+    await checkServerUp(url, "/", RETRIES, bail);
 
     // Pass the target directory to checkUrl for HMR testing
     const targetDir = state.resources.targetDir;

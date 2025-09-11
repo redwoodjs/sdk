@@ -1,6 +1,6 @@
 {
   "name": "rwsdk",
-  "version": "0.2.0",
+  "version": "0.3.8",
   "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime",
   "type": "module",
   "bin": {
@@ -44,6 +44,12 @@
       "react-server": "./dist/runtime/entries/no-react-server.js",
       "types": "./dist/runtime/ssrBridge.d.ts",
       "default": "./dist/runtime/ssrBridge.js"
+    },
+    "./__vendor_client_barrel": {
+      "default": "./dist/__intermediate_builds/rwsdk-vendor-client-barrel.js"
+    },
+    "./__vendor_server_barrel": {
+      "default": "./dist/__intermediate_builds/rwsdk-vendor-server-barrel.js"
     },
     "./router": {
       "types": "./dist/runtime/entries/router.d.ts",

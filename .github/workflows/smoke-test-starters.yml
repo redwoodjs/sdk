@@ -22,10 +22,16 @@ env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
 jobs:
-  # Job for the minimal starter
-  smoke-test-minimal:
-    name: Minimal Starter
-    runs-on: ubuntu-latest
+  smoke-test:
+    name: ${{ matrix.starter }} starter - ${{ matrix.os }} - ${{ matrix.package-manager }}
+    runs-on: ${{ matrix.os }}
+    retries: 3
+    strategy:
+      fail-fast: false
+      matrix:
+        starter: [minimal, standard]
+        os: [ubuntu-latest] # TODO: Re-enable windows-latest after fixing Windows path issues (see issue #696)
+        package-manager: [pnpm, npm, yarn, yarn-classic]
 
     # context(justinvdm, 2025-05-12):
     # Only run this job for PRs from the same repository and pushes to main
@@ -42,76 +48,63 @@ jobs:
           node-version: 22
 
       - name: Install dependencies
+        shell: bash
         run: |
           corepack enable
+          if [ "${{ matrix.package-manager }}" = "yarn" ]; then
+            corepack prepare yarn@stable --activate
+          elif [ "${{ matrix.package-manager }}" = "yarn-classic" ]; then
+            npm i -g yarn@1.22.19 --force
+          fi
           pnpm install
 
-      - name: Run smoke test for minimal starter
+      - name: Generate lockfiles
+        shell: bash
+        run: |
+          if [ "${{ matrix.package-manager }}" = "yarn" ] || [ "${{ matrix.package-manager }}" = "yarn-classic" ]; then
+            for starter in starters/*; do
+              if [ -d "$starter" ]; then
+                echo "Generating lockfile for $starter"
+                # Create temporary directory to isolate from root packageManager field
+                temp_dir=$(mktemp -d)
+                cp -r "$starter"/* "$temp_dir/"
+                cp "$starter"/.gitignore "$temp_dir/" 2>/dev/null || true
+                if [ "${{ matrix.package-manager }}" = "yarn" ]; then
+                  (cd "$temp_dir" && yarn install --mode=update-lockfile)
+                else
+                  # For yarn-classic (v1), just run yarn install to generate lockfile
+                  (cd "$temp_dir" && yarn install)
+                fi
+                # Copy lockfile back to original starter directory
+                if [ -f "$temp_dir/yarn.lock" ]; then
+                  cp "$temp_dir/yarn.lock" "$starter/"
+                fi
+                # Cleanup
+                rm -rf "$temp_dir"
+              fi
+            done
+          fi
+
+      - name: Run smoke test
+        shell: bash
         run: |
           # Create artifact directory
-          mkdir -p smoke-test-artifacts/minimal
+          mkdir -p smoke-test-artifacts/${{ matrix.starter }}
 
           # Build SDK
           cd sdk
           pnpm build
 
-          # Run the minimal starter test
+          # Run the starter test
           # todo(justinvdm, 11 Aug 2025): Fix style test flakiness
-          pnpm smoke-test --url="/" --path="../starters/minimal" --artifact-dir="../smoke-test-artifacts/minimal" --sync --copy-project --skip-style-tests
+          pnpm smoke-test --path="../starters/${{ matrix.starter }}" --artifact-dir="../smoke-test-artifacts/${{ matrix.starter }}" --sync --copy-project --skip-style-tests --package-manager=${{ matrix.package-manager }}
         env:
           CHROME_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
 
-      - name: Upload minimal starter artifacts
+      - name: Upload starter artifacts
         uses: actions/upload-artifact@v4
         if: always()
         with:
-          name: smoke-test-artifacts-minimal
-          path: smoke-test-artifacts/minimal
-          retention-days: 7
-
-  # Job for the standard starter
-  smoke-test-standard:
-    name: Standard Starter
-    runs-on: ubuntu-latest
-
-    # context(justinvdm, 2025-05-12):
-    # Only run this job for PRs from the same repository and pushes to main
-    # For security, GH won't expose secrets for fork PRs
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
-
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
-        with:
-          node-version: 22
-
-      - name: Install dependencies
-        run: |
-          corepack enable
-          pnpm install
-
-      - name: Run smoke test for standard starter
-        run: |
-          # Create artifact directory
-          mkdir -p smoke-test-artifacts/standard
-
-          # Build SDK
-          cd sdk
-          pnpm build
-
-          # Run the standard starter test
-          # todo(justinvdm, 11 Aug 2025): Fix style test flakiness
-          pnpm smoke-test --url="/user/login" --path="../starters/standard" --artifact-dir="../smoke-test-artifacts/standard" --sync --copy-project --skip-style-tests
-        env:
-          CHROME_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
-
-      - name: Upload standard starter artifacts
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: smoke-test-artifacts-standard
-          path: smoke-test-artifacts/standard
+          name: smoke-test-artifacts-${{ matrix.starter }}-${{ matrix.os }}-${{ matrix.package-manager }}
+          path: smoke-test-artifacts/${{ matrix.starter }}
           retention-days: 7

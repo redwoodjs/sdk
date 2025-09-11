@@ -10,6 +10,13 @@ import { FileTree, Aside, Steps, Tabs, TabItem } from '@astrojs/starlight/compon
 
 import { PackageManagers } from "starlight-package-managers";
 
+<Aside type="note" title="What You'll Accomplish">
+  By the end of this lesson, you'll have:
+    - A working RedwoodSDK application running locally
+    - A styled login page using modern UI components
+    - All the tools needed to build our job tracker interface
+</Aside>
+
 ## Project Generation and Structure
 
 The first thing we'll do is set up our project.
@@ -41,19 +48,35 @@ The first thing we'll do is set up our project.
   </TabItem>
 </Tabs>
 
-Check it out! You're up and running!
-
-![](./images/initial-look.png)
-
-The commands you just ran created a directory called `applywize` with the RedwoodSDK standard starter project structure.
+This will create a new RWSDK project called `applywize`, inside a directory called `applywize`, using the standard starter project template, install the dependencies, and run the development server.
 
 ![](./images/terminal-install-starter.png)
 
-Inside, the `applywize` directory, you should have the following files and folders:
+The developer server will typically be running on `http://localhost:5173`.
+
+If you check it out in the browser! You're up and running!
+
+![](./images/initial-look.png)
+
+Inside, the `applywize` directory, you should have a bunch of different files and folders.
+
+Don't worry about understanding every file right now. Here are the key ones:
+
+- `src/app/pages/` - Where we'll build our application pages
+- `prisma/schema.prisma` - Database structure
+
+<details>
+<summary>
+If you want to see the full project structure, here it is:
+</summary>
 
 <FileTree>
 - .cursor # Cursor rules
+- .devcontainer # Devcontainer configuration
+- .vscode # VSCode configuration
 - .wrangler # Cloudflare configuration
+- generated
+  - prisma # generated Prisma files
 - migrations # database migrations
   - 0001_init.sql # initial migration
 - node_modules # dependencies
@@ -62,11 +85,11 @@ Inside, the `applywize` directory, you should have the following files and folde
 - src
   - app
     - pages
-      - Home.tsx # Home page
       - user
         - functions.ts # authentication functions
         - Login.tsx # Login page
         - routes.ts # authentication routes
+      - Home.tsx # Home page
       - shared
         - links.ts # list of links
     - Document.tsx # Main HTML document
@@ -86,9 +109,8 @@ Inside, the `applywize` directory, you should have the following files and folde
 - .env # environment variables
 - .env.example # example environment variables
 - .gitignore # files to ignore in git
-- .prettierrc # prettier configuration
 - package.json # lists all the dependencies and scripts
-- pnpm-lock.yaml # lock file for pnpm
+- pnpm-lock.yaml # lock file for pnpm (assuming you're using pnpm)
 - README.md # project overview
 - tsconfig.json # TypeScript configuration
 - vite.config.mts # Vite configuration
@@ -97,6 +119,7 @@ Inside, the `applywize` directory, you should have the following files and folde
 </FileTree>
 
 At first glance, this might feel a little overwhelming, but as we build out our project, it will be easy to see how all the pieces fit together.
+</details>
 
 <Aside type="note" title="Starter Projects">
   For the tutorial, we're starting with the standard starter project. When you start building your own projects, if you use a different starter template, the files and folders may vary slightly.
@@ -110,7 +133,7 @@ The first time you run `pnpm dev`, it creates the `.wrangler` directory. This di
 
 Let's start by installing [TailwindCSS](https://tailwindcss.com/) and [shadcn/ui](https://ui.shadcn.com/).
 
-**TailwindCSS** is a utility-first CSS framework that makes it easy to style your components.
+**TailwindCSS** is a utility-first CSS framework that makes it easy to style your components. This means instead of writing custom CSS files, TailwindCSS lets us style components directly in our HTML using pre-built classes like `text-red-500` or `bg-blue-100`. This makes styling faster and more consistent.
 
 **shadcn/ui** components is a library of pre-built components making it easier for us to focus on the functionality of our app, rather than the styling and building of components.
 
@@ -123,7 +146,7 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
     <PackageManagers pkg="tailwindcss @tailwindcss/vite" />
 
 2. Configure the Vite Plugin
-    ```ts ins="import tailwindcss from '@tailwindcss/vite'" ins="tailwindcss()," title="vite.config.mts" ins={6-8} {2, 11}
+    ```ts ins="import tailwindcss from '@tailwindcss/vite'" ins="tailwindcss()," title="vite.config.mts" ins={7-9} {2, 11}
     import { defineConfig } from "vite";
     import tailwindcss from '@tailwindcss/vite'
     import { redwood } from "rwsdk/vite";
@@ -143,19 +166,13 @@ Since the RedwoodSDK is based on React and Vite, we can work through the ["Using
     });
     ```
 
-    <Aside type="note" title="Environment Configuration">
-    Tailwindcss currently uses [the non-deprecated internal `createResolver()` vite API method.](https://github.com/tailwindlabs/tailwindcss/blob/main/packages/%40tailwindcss-vite/src/index.ts#L22) [The code and its docstring indicate that it relies on an `ssr` being present](https://github.com/vitejs/vite/blob/c0e3dba3108e479ab839205cfb046db327bdaf43/packages/vite/src/node/config.ts#L1498).
-
-    This isn't the case for us, since we only have a `worker` environment instead of `ssr`. To prevent builds from getting blocked on this, we stub out the ssr environment here.
-    </Aside>
-
 3. Import Tailwind CSS. (You'll need to create the `src/app/styles.css` file.)
     ```css title="src/app/styles.css"
     @import "tailwindcss";
     ```
 
 4. Import the CSS file at the top of your file and include a `link` tag in the `head` of the `Document.tsx` file.
-    ```tsx title="src/app/Document.tsx" {3}
+    ```tsx title="src/app/Document.tsx" {1,5}
     import styles from "./styles.css?url";
     ...
     <head>
@@ -204,7 +221,7 @@ return (
 
 First, let's add the fonts that we'll need for our project. We're using [Poppins](https://fonts.google.com/specimen/Poppins) and [Inter](https://fonts.google.com/specimen/Inter), both can be found on [Google Fonts](https://fonts.google.com/).
 
-From the font specimen page, click on the **"Get Font"** button.
+From the font specimen page (for both fonts), click on the **"Get Font"** button.
 
 ![](./images/google-fonts-get-fonts.png)
 
@@ -224,9 +241,8 @@ Next, select the `@import` radio button and copy the code.
 
 Paste the code at the top of our `styles.css` file. Then, remove the `<style>` tags:
 
-```css title="src/app/styles.css" {1-2}
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
+```css title="src/app/styles.css" {1}
+@import url('https://fonts.googleapis.com/css2?family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&family=Poppins:wght@500;700&display=swap');
 
 @import "tailwindcss";
 ```
@@ -239,7 +255,7 @@ Technically, you can still use `tailwind.config.js`, but it's not recommended as
 
 Below the `@import "tailwindcss";` line, add the following:
 
-```css title="src/app/styles.css" startLineNumber={6}
+```css title="src/app/styles.css" startLineNumber={5}
 @theme {
   --font-display: "Poppins", sans-serif;
   --font-body: "Inter", sans-serif;
@@ -251,15 +267,15 @@ In Tailwind, all theme variables are defined inside the `@theme` directive. Thes
 You can find more information in the [TailwindCSS Docs.](https://tailwindcss.com/docs/theme)
 </Aside>
 
-If you're unsure how the font-family is written, you can find it in the CSS class definition on the Google Fonts page. Here, Poppins and Inter are both in quotes and capitalized.
+If you're unsure how the font-family is written, you can find it in the CSS class definition on the Google Fonts page. Here, Poppins and Inter are both in quotes and capitalized: `"Poppins"` and `"Inter"`.
 
 ![](./images/google-fonts-font-family.png)
 
-Now, you can use the class `font-display` and `font-body` in your project.
+Now, you can use the classes `font-display` and `font-body` in your project.
 
 Before this will work in production, we need to update our security headers to allow `googleapis` and `fonts.gstatic`:
 
-```tsx title="src/app/headers.ts" collapse={1-26} {30}
+```tsx title="src/app/headers.ts" collapse={1-26} {29}
 import { RouteMiddleware } from "rwsdk/router";
 
 export const setCommonHeaders =
@@ -323,40 +339,9 @@ We're using three different groups of colors:
 
 Now, we can use these colors for backgrounds (`bg-bg`), borders (`border-border`), and text (`text-destructive`).
 
-<details>
-<summary>
-Full `styles.css` file
-</summary>
-
-```css title="src/app/styles.css"
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@500;700&display=swap');
-@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;700&display=swap');
-
-@import "tailwindcss";
-
-@theme {
-  --font-display: "Poppins", sans-serif;
-  --font-body: "Inter", sans-serif;
-
-  --color-bg: #e4e3d4;
-  --color-border: #eeeef0;
-
-  --color-primary: #f7b736;
-  --color-secondary: #f1f1e8;
-  --color-destructive: #ef533f;
-
-  --color-tag-applied: #b1c7c0;
-  --color-tag-interview: #da9b7c;
-  --color-tag-new: #db9a9f;
-  --color-tag-rejected: #e4e3d4;
-  --color-tag-offer: #aae198;
-}
-```
-</details>
-
 Let's test to make sure our custom colors are working. On the `Login.tsx` file, let's change the React fragment `<></>` to a `<main>` tag and add a `className` of `bg-bg`:
 
-```tsx title="src/app/pages/user/Login.tsx" collapse={4-18} startLineNumber={62} {3,19}
+```tsx title="src/app/pages/user/Login.tsx" collapse={4-17} startLineNumber={61} {3,18}
 ...
   return (
     <main className="bg-bg">
@@ -385,7 +370,7 @@ When you visit http://localhost:5173/user/login, you should see a beige backgrou
 
 ### shadcn/ui UI Components
 
-You can also use the [shadcn/ui Vite Installation instructions](https://ui.shadcn.com/docs/installation/vite).
+Now, let's install shadcn/ui. You can also use the [shadcn/ui Vite Installation instructions](https://ui.shadcn.com/docs/installation/vite) or follow along here:
 
 <Steps>
 1. Install shadcn/ui
@@ -403,7 +388,7 @@ You can also use the [shadcn/ui Vite Installation instructions](https://ui.shadc
 
     Let's modify the default paths so that it will put our components in the `src/app/components/ui` folder.
 
-    ```json title="components.json" startLineNumber={12}
+    ```json title="components.json" startLineNumber={12} ins="app/"
     ...
     "aliases": {
       "components": "@/app/components",
@@ -414,7 +399,7 @@ You can also use the [shadcn/ui Vite Installation instructions](https://ui.shadc
     },
     ```
 
-2. You should now be able to add components:
+2. Now, you should be able to add shadcn/ui components:
     <PackageManagers
       type="dlx"
       pkg="shadcn@latest"
@@ -473,7 +458,7 @@ Even though we specified the path to the `lib` directory in the `components.json
 
 We also need the date picker component, but it's not available to install using the `pnpm dlx shadcn@latest add` command, probably due to dependencies.
 
-Instead, we'll install it manually. It's built using the `<Popover />` and `<Calendar />` components and we just installed those.
+Instead, we'll install it manually. It's built on top of the `<Popover />` and `<Calendar />` components -- and we just installed those.
 
 Within the `src/app/components/ui` folder, create a new file called `datepicker.tsx`.
 
@@ -568,7 +553,7 @@ If you want to make sure everything is installed correctly, head over to the `sr
 
 Change the `<button>` tag to use a capital `B`. This will reference the `Button` component, instead of the standard HTML button. You'll also need to import the `Button` component at the top of the file.
 
-```tsx title="src/app/pages/user/Login.tsx" collapse={5-12} "Button"
+```tsx title="src/app/pages/user/Login.tsx" showLineNumbers=false collapse={5-11} ins="Button" ins={1}
 import { Button } from "@/app/components/ui/button";
 ...
 return (
@@ -606,3 +591,19 @@ You can find the final code for this step on [GitHub](https://github.com/redwood
 - [TailwindCSS](https://tailwindcss.com/)
 - [shadcn/ui](https://ui.shadcn.com/)
 
+<Aside type="note" title="What You've Accomplished">
+You've successfully created your first RedwoodSDK application 🎉  and have it running locally on your development server. Your project also includes TailwindCSS for styling and shadcn/ui for UI components. You've also customized your design system with fonts and colors to match the Applywise brand.
+
+Most importantly, you have a solid foundation to build on.
+
+#### What's Coming Next?
+
+In the next lesson, we'll focus on setting up the database that will power our application. You'll learn how to:
+
+- Design database tables to store job applications, companies, and contacts
+- Understand how different pieces of data connect through relationships
+- Set up Prisma as your database toolkit and create your first database schema
+- Run migrations to create your database structure
+- Add sample data so you can start building features
+
+</Aside>

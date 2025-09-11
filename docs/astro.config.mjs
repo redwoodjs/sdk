@@ -10,6 +10,7 @@ export default defineConfig({
     starlight({
       plugins: [starlightLlmsTxt()],
       expressiveCode: {
+        themes: ['github-dark', 'github-light'],
         shiki: {
           bundledLangs: ["bash", "ts", "tsx"],
         },
@@ -21,9 +22,18 @@ export default defineConfig({
         replacesTitle: true,
       },
       customCss: ["./src/styles/custom.css"],
-      social: {
-        github: "https://github.com/redwoodjs/sdk",
-      },
+      social: [
+        {
+          icon: "github",
+          label: "GitHub",
+          href: "https://github.com/redwoodjs/sdk",
+        },
+        {
+          icon: "discord",
+          label: "Discord",
+          href: "https://community.redwoodjs.com/",
+        },
+      ],
       sidebar: [
         {
           label: "Get Started",
@@ -135,7 +145,10 @@ export default defineConfig({
               label: "Optimize",
               collapsed: false,
               items: [
-                { label: "React Compiler", slug: "guides/optimize/react-compiler" },
+                {
+                  label: "React Compiler",
+                  slug: "guides/optimize/react-compiler",
+                },
               ],
             },
             { label: "Server Function Streams", slug: "guides/rsc-streams" },

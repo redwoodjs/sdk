@@ -8,12 +8,16 @@ description: A guide in my new Starlight docs site.
 
 import { Aside, FileTree } from '@astrojs/starlight/components';
 
-## Existing Authentication Code
+Our authentication has three main parts:
+1. Sessions (remembers you're logged in)
+2. Protected routes (pages that need login/authentication)
+3. Login / Sign up forms (how you sign in)
+
 Since we're using the [standard starter kit](https://github.com/redwoodjs/sdk/tree/main/starters/standard), it already has passkey authentication set up.
 
-<Aside type="note" title="Passkey Authentication">
-### What is Passkey Authentication?
+<Aside type="note" title="What is Passkey Authentication?">
 Passkey authentication is a passwordless authentication method that uses a biometric or device authentication to verify the user's identity.
+</Aside>
 
 **How it Works**:
 1. A user creates a passkey during the registration process.
@@ -23,7 +27,9 @@ Passkey authentication is a passwordless authentication method that uses a biome
 5. When the user logs in, they have to "prove" they have access to the private key.
 6. The service verifies the user's identity using the public key.
 
-### Why Passkey Authentication?
+Think of it like a mailbox system: You give the website a special mailbox (the public key), that only your unique key can open. When you want to log in, the website puts a secret message in your mailbox. Only you have the key to open it and read the message, which proves you're the real account owner.
+
+<Aside type="note" title="Why Passkey Authentication?">
 Passkey authentication offers several key advantages:
 
 - **Enhanced Security**: Passkeys are unique, resistant to guessing, and eliminate vulnerabilities associated with traditional passwords. They use biometric authentication like fingerprints, making them much harder to compromise.
@@ -32,6 +38,20 @@ Passkey authentication offers several key advantages:
 </Aside>
 
 Let's start by taking a look at the `worker.tsx` file. This file sets up our Cloudflare worker, but it also handles all the routing, middleware, and interrupters.
+
+<Aside type="note" title="What is a Cloudflare Worker?">
+Before we look at the code, let's understand what a Cloudflare Worker is. Think of it as a mini-server that runs your application code.
+
+In traditional web development, you might have a separate server running somewhere (like on AWS or your own computer) that handles requests when someone visits your website. A Cloudflare Worker does the same job, but it runs on Cloudflare's global network instead.
+The key benefits for our tutorial:
+
+- **No server management:** You don't need to set up, configure, or maintain a separate server
+- **Automatic scaling:** Cloudflare handles traffic spikes for you
+- **Global performance:** Your code runs close to your users worldwide
+- **Built-in features:** Things like databases and file storage are integrated
+
+In our RedwoodSDK application, the `worker.tsx` file is where we define how our application responds to different requests - like when someone visits `/login` or `/signup`. It's essentially the "brain" that decides what to show users based on what page they're trying to access.
+</Aside>
 
 ```tsx title="src/worker.tsx" collapse={1-12}
 import { defineApp, ErrorResponse } from "rwsdk/worker";
@@ -42,8 +62,7 @@ import { setCommonHeaders } from "@/app/headers";
 import { userRoutes } from "@/app/pages/user/routes";
 import { sessions, setupSessionStore } from "./session/store";
 import { Session } from "./session/durableObject";
-import { db, setupDb } from "./db";
-import type { User } from "@prisma/client";
+import { type User, db, setupDb } from "@/db";
 import { env } from "cloudflare:workers";
 export { SessionDurableObject } from "./session/durableObject";
 
@@ -100,24 +119,24 @@ export default defineApp([
 ]);
 ```
 
-Let's break it down, chunk by chunk:
+This is a large chunk of code, so let's break it down, chunk by chunk:
 
-```tsx title="src/worker.tsx" startLineNumber=14
+```tsx title="src/worker.tsx" startLineNumber=13
 export type AppContext = {
   session: Session | null;
   user: User | null;
 };
 ```
-- On **lines 14-17**, we're setting up the types for our application's context object. Specifically, we're defining the `session` and `user` properties.
+- On **lines 13-16**, we're setting up the types for our application's context object. Specifically, we're defining the `session` and `user` properties.
   - The `Session` type is defined in `src/session/durableObject.ts`. (Imported on line 8.) It contains a `userId`, `challenge`, and `createdAt`.
-  - The `User` type comes from our `@prisma/client`. (Imported on line 10.) That's right! When Prisma generates our migration files, it also generates types.
+  - The `User` type comes from our `@generated/prisma`. (Imported on line 9.)
 
-```tsx title="src/worker.tsx" startLineNumber=20
+```tsx title="src/worker.tsx" startLineNumber=19
 setCommonHeaders(),
 ```
-- On **line 20** we're setting up our common headers. This is a function inside of `app/src/headers.ts`. (Imported on line 5.) It creates the Security Policies, Transport Policy, Referrer Policy, and Permissions Policy. [You can find additional documentation here.](/core/security/#-security-headers)
+- On **line 19** we're setting up our common headers. This is a function inside of `app/src/headers.ts`. (Imported on line 5.) It creates the Security Policies, Transport Policy, Referrer Policy, and Permissions Policy. [You can find additional documentation here.](/core/security/#-security-headers)
 
-```tsx title="src/worker.tsx" startLineNumber=21
+```tsx title="src/worker.tsx" startLineNumber=20
 async ({ ctx, request, headers }) => {
   await setupDb(env);
   setupSessionStore(env);
@@ -147,45 +166,47 @@ async ({ ctx, request, headers }) => {
   }
 },
 ```
-- On **lines 21-48**, we're setting up our middleware. This will run between every request and response cycle.
-  - First, we're setting up the database `setupDb(env);` We'll use this later, on line 42, to find the logged in user.
+- On **lines 20-47**, we're setting up our middleware. This will run between every request and response cycle.
+  - First, we're setting up the database `setupDb(env);` We'll use this later, on line 42-44, to find the logged in user.
   - Then, we're setting up the session store `setupSessionStore(env);`. We're using Cloudflare's Durable Objects to store our session data and loading it. `sessions.load(request)`
-  - On **lines 27-36**, we're catching unauthorized errors. If there's an error and the status code is 401, we remove the session and redirect the user to the login page.
-  - On **lines 41-47**, we check the `ctx` for the `session` object. If it has a `userId`, we connect to the database and get all the user data. The result gets saved into the `ctx.user` object.
+  - On **lines 26-35**, we're catching unauthorized errors. If there's an error and the status code is 401, we remove the session and redirect the user to the login page.
+  - On **lines 40-46**, we check the `ctx` for the `session` object. If it has a `userId`, we connect to the database and get all the user data. The result gets saved into the `ctx.user` object.
 
-```tsx title="src/worker.tsx" startLineNumber=49
+```tsx title="src/worker.tsx" startLineNumber=48
 render(Document, [
 ```
-- On **line 49**, we're setting up our document. This document is referencing our `src/app/Document.tsx` file. It contains our `html`, `head`, and `body` tags and wraps _all_ of our pages.
+- On **line 48**, we're setting up our document. This document is referencing our `src/app/Document.tsx` file. It contains our `html`, `head`, and `body` tags and wraps _all_ of our pages.
   - One of the powerful yet simple features of RedwoodSDK is that it supports per-route documents. Read more about this [on our blog](https://rwsdk.com/blog/redwoodsdk-multiple-documents).
 
-```tsx title="src/worker.tsx" startLineNumber=49
+```tsx title="src/worker.tsx" startLineNumber=48
 render(Document, [
   route("/", () => new Response("Hello, World!")),
 ```
-- On **line 50**, we're setting up our home page route. Here, we're just returning a standard response.
+- On **line 49**, we're setting up our home page route. Here, we're just returning a standard response.
 
-The router highlights the request-response lifecycle. The first parameter is the route we're requesting and the second parameter is the response. This can be a standard response, or it can be a React component. On line 50, we're returning a standard response that says `Hello World!`.
+The router highlights the request-response lifecycle. The first parameter is the route we're requesting and the second parameter is the response. This can be a standard response, or it can be a React component. On line 49, we're returning a standard response that says `Hello World!`.
 
-We can change that to return the `Home` component by changing the second parameter:
+We can change that to return the `Home` page component by changing the second parameter:
 
-```tsx title="src/worker.tsx" startLineNumber=50
+```tsx title="src/worker.tsx" startLineNumber=49
 route("/", Home),
 ```
 
 We can also change the home page route to use the `index` method:
 
-```tsx title="src/worker.tsx" showLineNumbers={false}
+```tsx title="src/worker.tsx" showLineNumbers=false
 import { index, route, render, prefix } from "rwsdk/router";
 ...
-index([Home]);
+render(Document, [
+  index([Home]);
+...
 ```
 
 The `index` method is similar to the `route` method, but instead of taking two parameters, it only takes one, the response.
 
 If we move further down our `render` method, the next route is a protected route at `/protected`.
 
-```tsx title="src/worker.tsx" startLineNumber=51
+```tsx title="src/worker.tsx" startLineNumber=50
 route("/protected", [
   ({ ctx }) => {
     if (!ctx.user) {
@@ -199,7 +220,7 @@ route("/protected", [
 ]),
 ```
 
-Here, we're using an **interrupter** to see if the user is logged in. This is a function that takes our `ctx` object and checks to see if the `user` object exists on it. If it doesn't, we redirect the user to the login page (lines 54-57). Otherwise, we return the `Home` component (line 60).
+Here, we're using an **interrupter** to see if the user is logged in. This is a function that takes our `ctx` object and checks to see if the `user` object exists on it. If it doesn't, we redirect the user to the login page (lines 53-56). Otherwise, we return the `Home` component (line 59).
 
 <Aside type="note" title="Middleware vs Interrupters">
 #### Middleware
@@ -225,10 +246,10 @@ Interrupters will _interrupt_ the flow. Before, the server returns a response, t
 In our code, we're using middleware to attach the user session to our context object *on every request*. But, we're only checking to see if the user is logged in *on the home page*.
 </Aside>
 
-```tsx title="src/worker.tsx" startLineNumber=62
+```tsx title="src/worker.tsx" startLineNumber=61
 prefix("/user", userRoutes),
 ```
-- On **line 62**, we're prefixing all of our auth routes with `/user`. Meaning, our `login` route will be `/user/login` and our `logout` route will be `/user/logout`.
+- On **line 61**, we're prefixing all of our auth routes with `/user`. Meaning, our `login` route will be `/user/login` and our `logout` route will be `/user/logout`.
   - `login` and `logout` are defined within the `userRoutes` file, imported on line 6. One of the cool things about the RedwoodSDK router is that the response parameter can be an array. This means we can define our route information in a separate file and then import it into our `worker.tsx` file.
 
 We're co-locating the file that defines our auth routes with our auth pages.
@@ -399,6 +420,8 @@ const handlePerformPasskeyRegister = () => {
 ---
 ```
 
+Now, moving down to our `return` statement, inside:
+
 ```tsx title="src/app/pages/user/Login.tsx" startLineNumber=66
 <input
   type="text"
@@ -407,7 +430,7 @@ const handlePerformPasskeyRegister = () => {
   placeholder="Username"
 />
 ---
-- We're rendering an input field. This is tied to our `username` state (line 17).
+- We're rendering an input field. This is tied to our `username` `useState` (line 17).
 ---
 ```
 
@@ -427,7 +450,7 @@ We're intentionally using usernames instead of emails. This decision prevents en
 ---
 ```
 
-```tsx title="src/app/pages/user/Login.tsx" startLineNumber=76
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=78
 {result && <div>{result}</div>}
 ---
 - We're rendering the result message.
@@ -438,7 +461,7 @@ We're intentionally using usernames instead of emails. This decision prevents en
 
 Let's start by copying all the contents from our `Login.tsx` and pasting it into our `Signup.tsx`. Be sure that the component is still named `Signup`.
 
-```tsx title="src/app/pages/user/Signup.tsx" startLineNumber=20
+```tsx title="src/app/pages/user/Signup.tsx" startLineNumber=16
 export function Signup() {
 ```
 
@@ -604,11 +627,11 @@ And the related entry in the `Credential` table:
 
 Before we move on to the Login page, let's adjust the success conditional. If the user is able to successfully register, we want to redirect them to the Login page:
 
-```tsx title="src/app/pages/Signup.tsx" startLineNumber=30
+```tsx title="src/app/pages/Signup.tsx" startLineNumber=26
 if (!success) {
   setResult("Registration failed");
 } else {
-  window.location.href = link("/user/login");
+  window.location.href = "/user/login";
 }
 ```
 
@@ -626,7 +649,7 @@ Now, navigate to http://localhost:5173/protected. You should see a message that 
 
 Did you realize we haven't been able to access the `/protected` route before because it was protected by an interrupter?
 
-```tsx title="src/worker.tsx" startLineNumber=34 {3-7}
+```tsx title="src/worker.tsx" startLineNumber=50 {3-7}
 route("/protected", [
   ({ ctx }) => {
     if (!ctx.user) {
@@ -639,7 +662,7 @@ route("/protected", [
   Home,
 ]),
 ---
-**On line 36**, we're checking to see if the `user` object exists on the `ctx` object. If it doesn't, we redirect the user to the `/user/login` page.
+**On line 52**, we're checking to see if the `user` object exists on the `ctx` object. If it doesn't, we redirect the user to the `/user/login` page.
 ---
 ```
 
@@ -665,6 +688,10 @@ Let's create a layout component, that we can use in both places.
 ### Creating a Layout Component
 
 When we installed shadcn/ui, it added a lot of variables to the bottom of our `styles.css` file. In CSS, order matters. So, let's move our `@theme` definition to the bottom of the file, but above the `@layer base` definition so that it reads as more important and will override any shadcn/ui default values.
+
+![](./images/move-theme-definition.png)
+
+![](./images/to-above-layer-base.png)
 
 <details>
 <summary>Updated `styles.css` file</summary>
@@ -823,7 +850,9 @@ If you take a look in the browser, by changing the position of the `@theme` bloc
 
 ![](./images/button-primary-color.png)
 
-Now, let's start on our layout component. Inside our `app` directory, create a new folder called `layouts`. Then, a new file called `AuthLayout.tsx`:
+RedwoodSDK supports layouts. This is perfect for creating shared UI layouts across multiple routes, allowing you to maintain consistent page structures and avoid code duplication.
+
+Inside our `app` directory, create a new folder called `layouts`. Then, a new file called `AuthLayout.tsx`:
 
 <FileTree>
 - src
@@ -835,16 +864,16 @@ Now, let's start on our layout component. Inside our `app` directory, create a n
 Let's start by stubbing out our component:
 
 ```tsx title="src/app/layouts/AuthLayout.tsx"
-const AuthLayout = ({ children }) => {
-  return (
-    <div className="bg-bg min-h-screen min-w-screen p-12">
-      {children}
-    </div>
-  )
-}
+import { type LayoutProps } from "rwsdk/router";
 
-export { AuthLayout }
+const AuthLayout = ({ children }: LayoutProps) => {
+  return <div className="bg-bg min-h-screen min-w-screen p-12">{children}</div>;
+};
+
+export { AuthLayout };
 ---
+Our layout component types are imported from `rwsdk/router`. This includes an object containing `children` and `requestInfo`. It's worth noting that the `requestInfo` object is only passed to server components ([additional documentation](/guides/frontend/layouts/#layout-props)).
+
 On our wrapping `div`, I've added a few Tailwind styles.
 - `bg-bg` uses the custom background color we set up previously.
 - `min-h-screen` and `min-w-screen` ensures that the background color will take up the full screen.
@@ -854,25 +883,63 @@ On our wrapping `div`, I've added a few Tailwind styles.
 
 As we continue to make adjustments, we want to be able to see the changes we're making within the browser.
 
-Inside our `Login` component let's replace our `main` tag with our `AuthLayout` component.
+To wrap all our `/user` pages with the new `AuthLayout` component, let's go back to our `worker.tsx` file.
 
-```tsx title="src/app/pages/user/Login.tsx" {2,15} startLineNumber=37
-return (
-  <AuthLayout>
-  <h1 className="text-4xl font-bold text-red-500">YOLO</h1>
-    <input
-      type="text"
-      value={username}
-      onChange={(e) => setUsername(e.target.value)}
-      placeholder="Username"
-    />
-    <Button onClick={handlePerformPasskeyLogin} disabled={isPending}>
-      {isPending ? <>...</> : "Login with passkey"}
-    </Button>
-    {result && <div>{result}</div>}
-  </AuthLayout>
-)
+At the top of our file, import the `layout` function from `rwsdk/router`:
+
+```tsx title="src/worker.tsx" showLineNumbers=false ins={2} del={1} "layout"
+import { route, render, prefix } from "rwsdk/router";
+import { route, render, prefix, layout } from "rwsdk/router";
 ```
+
+Now, let's jump down to our `prefix` function:
+
+```tsx title="src/worker.tsx" startLineNumber=61
+prefix("/user", userRoutes),
+```
+
+Wrap this code with the `layout` function we just imported:
+
+```tsx title="src/worker.tsx" startLineNumber=61 "layout(AuthLayout, [" "])"
+layout(AuthLayout, [prefix("/user", userRoutes)]),
+```
+
+The first parameter is the layout component we want to wrap our routes with. The second parameter is the routes we want to wrap.
+
+We'll also need to import the `AuthLayout` component we just referenced:
+
+```tsx title="src/worker.tsx" showLineNumbers=false
+import { AuthLayout } from "@/app/layouts/AuthLayout";
+```
+
+<Aside type="note" title="Layout Function">
+You don't have to use the `prefix` function when using the `layout` function. You can simply pass in an array of routes. For example:
+
+```tsx title="src/worker.tsx" showLineNumbers=false
+layout(AuthLayout, [
+  route("/user/login", Login),
+  route("/user/signup", Signup),
+]),
+```
+
+or
+
+```tsx title="src/worker.tsx" showLineNumbers=false
+layout(AuthLayout, [route("/user/login", Login)]),
+```
+</Aside>
+
+<Aside type="note" title="Nested Layouts">
+You can also nest layouts. For example:
+
+```tsx title="src/worker.tsx" showLineNumbers=false
+layout(BaseLayout, [layout(AuthLayout, [
+  route("/user/login", Login),
+  route("/user/signup", Signup),
+])]),
+```
+</Aside>
+
 
 If we head over to the browser, we should see something like this:
 
@@ -886,12 +953,14 @@ Sweet! Let's keep going.
 
 Inside our wrapping `div`, let's set up our two column grid:
 
-```tsx title="src/app/layouts/AuthLayout.tsx" {2, 4} startLineNumber=3
-<div className="bg-bg min-h-screen min-w-screen p-12">
-  <div className="grid grid-cols-2 min-h-[calc(100vh-96px)] rounded-xl border-2 border-[#D6D5C5]">
-    {children}
-  </div>
-</div>
+```tsx title="src/app/layouts/AuthLayout.tsx" ins={3, 5} startLineNumber=4
+return (
+    <div className="bg-bg min-h-screen min-w-screen p-12">
+      <div className="grid grid-cols-2 min-h-[calc(100vh-96px)] rounded-xl border-2 border-[#D6D5C5]">
+        {children}
+      </div>
+    </div>
+  );
 ---
 - `grid` sets the display to `grid`, then we can specify that there are two columns with `grid-cols-2`
 - We want the grid to take up the full height of the screen. If we use `min-h-screen`, it will set the minimum height to `100vh`, but it will also introduce a scrollbar because we gave the wrapping `div` padding of `p-12`. There's no way to know exactly what the height of the screen is, but we can have the browser calculate it for us with `calc(100vh-96px)`. `p-12` puts `48px` of padding on the top and bottom or `96px` total. You could also use `6rem` if you want to avoid using `px` units.
@@ -901,6 +970,17 @@ Inside our wrapping `div`, let's set up our two column grid:
 ```
 
 Inside our `grid`, we need two `div`s for our two columns. Our `{children}` will go in the second column, on the right side.
+
+```tsx title="src/app/layouts/AuthLayout.tsx" startLineNumber=4 ins={4,5}
+return (
+  <div className="bg-bg min-h-screen min-w-screen p-12">
+    <div className="grid grid-cols-2 min-h-[calc(100vh-96px)] rounded-xl border-2 border-[#D6D5C5]">
+      <div></div>
+      <div>{children}</div>
+    </div>
+  </div>
+);
+```
 
 For the column on the left, we have a repeating background image. You can export this image from Figma yourself, or [grab all the image assets for this project here](https://github.com/ahaywood/applywize/tree/main/assets).
 
@@ -914,11 +994,11 @@ Inside the root of our project, create a new folder called `public`. Inside, I'm
 - src/
 </FileTree>
 
-While we're here, let's also grab the logo. I'm only going to grab the owl. We can use "Apply Wize" text and style it with CSS. This will give us a little more control over the display (horizontal or stacked) without having to use two separate images. You can export the owl as an SVG (or [download it directly](https://github.com/ahaywood/applywize/tree/main/assets)).
+While we're here, let's also grab the logo. I'm only going to grab the owl icon from Figma. We can use "Apply Wize" text and style it with CSS. This will give us a little more control over the display (horizontal or stacked) without having to use two separate images. You can export the owl as an SVG (or [download it directly](https://github.com/ahaywood/applywize/tree/main/assets)).
 
 For our left column `div`:
 
-```tsx title="src/app/layouts/AuthLayout.tsx" {3-8} startLineNumber=3
+```tsx title="src/app/layouts/AuthLayout.tsx" ins={3-8} startLineNumber=3
 <div className="bg-bg min-h-screen min-w-screen p-12">
   <div className="grid grid-cols-2 min-h-[calc(100vh-96px)] rounded-xl border-2 border-[#D6D5C5]">
     <div className="bg-[url('/images/bg.png')] bg-repeat rounded-l-xl">
@@ -933,7 +1013,7 @@ For our left column `div`:
   </div>
 </div>
 ---
-- This is the only place we're using our background image, so let's reach for an another arbitrary class, using `[]`. Since we've put our images inside the `public/images` directory, this will be available from the root and we can access it with an absolute path: `/images/bg.png`.
+- This is the only place we're using our background image, so let's reach for an another arbitrary Tailwind class, using `[]`. Since we've put our images inside the `public/images` directory, this will be available from the root and we can access it with an absolute path: `/images/bg.png`.
 - We want the background to repeat in the x and y directions with `bg-repeat`.
 - `rounded-l-xl` adds rounded corners to the left side.
 - I also used a standard `img` tag to display the logo and added the `Apply Wize` text with a wrapping `div`
@@ -950,7 +1030,7 @@ I want the content to be centered vertically and horizontally. You can do this b
 
 Inside our `styles.css` file, let's add a new utility function. Below our `@theme` definition, add:
 
-```css title="src/styles.css" showLineNumbers=false
+```css title="src/styles.css" startLineNumber=134
 @utility center {
   @apply flex items-center justify-center;
 }
@@ -961,60 +1041,54 @@ Within Tailwind v4, you can add custom utility functions with the `@utility` dir
 
 Now, we can use this on both of our columns:
 
-```tsx title="src/app/layouts/AuthLayout.tsx" "center" startLineNumber=3
-<div className="bg-bg min-h-screen min-w-screen p-12">
-  <div className="grid grid-cols-2 min-h-[calc(100vh-96px)] rounded-xl border-2 border-[#D6D5C5]">
-    <div className="center bg-[url('/images/bg.png')] bg-repeat rounded-l-xl">
-      <img src="/images/logo.svg" alt="Apply Wize" />
-      <div>
-        Apply Wize
+```tsx title="src/app/layouts/AuthLayout.tsx" "center" startLineNumber=4
+  return (
+    <div className="bg-bg min-h-screen min-w-screen p-12">
+      <div className="grid grid-cols-2 min-h-[calc(100vh-96px)] rounded-xl border-2 border-[#D6D5C5]">
+        <div className="center bg-[url('/images/bg.png')] bg-repeat rounded-l-xl">
+          <img src="/images/logo.svg" alt="Apply Wize" />
+          <div>Apply Wize</div>
+        </div>
+        <div className="center">{children}</div>
       </div>
     </div>
-    <div className="center">
-      {children}
-    </div>
-  </div>
-</div>
+  );
 ```
 
 ![](./images/center-column-content-with-utility-class.png)
 
 It's centering our content, but it's also horizontally aligning everything. Let's wrap our column content with another `div`.
 
-```tsx title="src/app/layouts/AuthLayout.tsx" {5,11,14} startLineNumber=3
-<div className="bg-bg min-h-screen min-w-screen p-12">
-  <div className="grid grid-cols-2 min-h-[calc(100vh-96px)] rounded-xl border-2 border-[#D6D5C5]">
-    <div className="center bg-[url('/images/bg.png')] bg-repeat rounded-l-xl">
-      <div className="center">
+```tsx title="src/app/layouts/AuthLayout.tsx" {5,8,11} startLineNumber=4
+return (
+  <div className="bg-bg min-h-screen min-w-screen p-12">
+    <div className="grid grid-cols-2 min-h-[calc(100vh-96px)] rounded-xl border-2 border-[#D6D5C5]">
+      <div className="center bg-[url('/images/bg.png')] bg-repeat rounded-l-xl">
         <div>
           <img src="/images/logo.svg" alt="Apply Wize" />
-          <div className="text-5xl text-white font-bold">
-            Apply Wize
-          </div>
+          <div>Apply Wize</div>
         </div>
       </div>
-    </div>
-    <div className="center">
-      <div>{children}</div>
+      <div className="center">
+        <div>{children}</div>
+      </div>
     </div>
   </div>
-</div>
+);
 ```
 
 ![](./images/wrap-column-content-with-div.png)
 
 To center the owl, we can use the `mx-auto` class. This will set the left and right margins to `auto`.
 
-```tsx title="src/app/layouts/AuthLayout.tsx" startLineNumber=7 "className="mx-auto""
+```tsx title="src/app/layouts/AuthLayout.tsx" startLineNumber=9 "className="mx-auto""
 <img src="/images/logo.svg" alt="Apply Wize" className="mx-auto" />
 ```
 
 Now, let's style the Apply Wize text.
 
-```tsx title="src/app/layouts/AuthLayout.tsx" {1} startLineNumber=8 "className="text-5xl text-white font-bold""
-<div className="text-5xl text-white font-bold">
-  Apply Wize
-</div>
+```tsx title="src/app/layouts/AuthLayout.tsx" startLineNumber=10 "className="text-5xl text-white font-bold""
+<div className="text-5xl text-white font-bold">Apply Wize</div>
 ---
 - We'll set the font size `48px` with `text-5xl`
 - The color to white with `text-white`
@@ -1026,19 +1100,20 @@ In our mock-up, we also had a quote in the bottom left corner:
 
 > “Transform the job hunt from a maze into a map.”
 
-![](./images/figma-login.png)
+<figure>
+  ![](./images/figma-login.png)
+  <figcaption>Final login page mock-up</figcaption>
+</figure>
 
 We want this to be fixed to the bottom of the left column. So, this needs to be inside our left column `div`, but outside of the `div` containing our logo.
 
-```tsx title="src/app/layouts/AuthLayout.tsx" {8} startLineNumber=5
+```tsx title="src/app/layouts/AuthLayout.tsx" {6} startLineNumber=7
 <div className="center bg-[url('/images/bg.png')] bg-repeat rounded-l-xl">
   <div>
     <img src="/images/logo.svg" alt="Apply Wize" className="mx-auto" />
-    <div className="text-5xl text-white font-bold">
-      Apply Wize
-    </div>
+    <div className="text-5xl text-white font-bold">Apply Wize</div>
   </div>
-  <div>“Transform the job hunt from a maze into a map.”</div>
+  <div>"Transform the job hunt from a maze into a map."</div>
 </div>
 ```
 
@@ -1063,7 +1138,7 @@ Our parent `div` doesn't have any positioning applied (by default it's `static`)
 
 If we add a class of `relative` to our parent `div`, then it will position our quote _relative_ to the parent container.
 
-```tsx title="src/app/layouts/AuthLayout.tsx" "relative" startLineNumber=5
+```tsx title="src/app/layouts/AuthLayout.tsx" "relative" startLineNumber=7
 <div className="relative center bg-[url('/images/bg.png')] bg-repeat rounded-l-xl">
 ```
 
@@ -1075,7 +1150,7 @@ Notice, this also allows our quote to "live" inside the container and wrap appro
 
 It's tempting to call the styling for the left side done, but with the quote it looks bottom heavy. Even though the logo is programmatically centered, it's not optically centered. We can shift it up:
 
-```tsx title="src/app/layouts/AuthLayout.tsx" {1} startLineNumber=6
+```tsx title="src/app/layouts/AuthLayout.tsx" {1} startLineNumber=8
 <div className="-top-[100px] relative">
   <img src="/images/logo.svg" alt="Apply Wize" className="mx-auto" />
   <div className="text-5xl text-white font-bold">
@@ -1096,12 +1171,11 @@ The left side is finished! 🎉
 
 Now, let's style the right side. This is easy!
 
-```tsx title="src/app/layouts/AuthLayout.tsx" {1} startLineNumber=16
+```tsx title="src/app/layouts/AuthLayout.tsx" startLineNumber=16 "bg-white rounded-r-xl" "className="w-full""
 <div className="center bg-white rounded-r-xl">
   <div className="w-full">{children}</div>
 </div>
 ---
-- We want all the content to be centered, with our custom utility `center`
 - The background should be white: `bg-white`
 - And the corners on the right should be rounded, `rounded-r-xl`
 - For the `div` that wraps `{children}`, we want it to take the full width of it's container with `w-full`
@@ -1113,43 +1187,25 @@ Now, let's style the right side. This is easy!
 
 ![](./images/authlayout-styling-complete.png)
 
-The styling for auth layout component is complete, but there's still one thing bothering me. (And maybe it's been bothering you too.)
-
-We have a TypeScript error on `{children}`. It doesn't know what the type of `children` is.
-
-![](./images/authlayout-children-typescript-error.png)
-
-This is easy enough to fix. We just need to tell what it what to expect:
-
-```tsx title="src/app/layouts/AuthLayout.tsx" ": { children: React.ReactNode }"
-const AuthLayout = ({ children }: { children: React.ReactNode }) => {
-```
-
-<Aside type="tip" title="React.ReactNode vs React.ReactElement vs JSX.Element">
-When setting the type for `children` within React, you'll see `React.ReactNode`, `React.ReactElement`, and `JSX.Element`, almost interchangeably. Which is right?
-
-[There's an article on Total TypeScript](https://www.totaltypescript.com/jsx-element-vs-react-reactnode) that's my go to reference for this:
-
-> - `JSX.Element` and `React.ReactElement` are functionally the same type. They can be used interchangeably. They represent the thing that a JSX expression creates.
-> - They can't be used to represent all the things that React can render, like strings and numbers. For that, use `React.ReactNode.`
-> - In everyday use, you should use `React.ReactNode`. You rarely need to use the more specific type of `JSX.Element`.
-</Aside>
+The styling for `AuthLayout` component is complete 🎉.
 
 <details>
 <summary>Final `src/app/layouts/AuthLayout.tsx` code </summary>
 
 ```tsx title="src/app/layouts/AuthLayout.tsx"
-const AuthLayout = ({ children }: { children: React.ReactNode }) => {
+import { type LayoutProps } from "rwsdk/router";
+
+const AuthLayout = ({ children }: LayoutProps) => {
   return (
     <div className="bg-bg min-h-screen min-w-screen p-12">
       <div className="grid grid-cols-2 min-h-[calc(100vh-96px)] rounded-xl border-2 border-[#D6D5C5]">
         <div className="relative center bg-[url('/images/bg.png')] bg-repeat rounded-l-xl">
-          <div className="-top-[100px] relative">
+          <div className="-top-[110px] relative">
             <img src="/images/logo.svg" alt="Apply Wize" className="mx-auto" />
             <div className="text-5xl text-white font-bold">Apply Wize</div>
           </div>
           <div className="text-white text-sm absolute bottom-0 left-0 right-0 p-10">
-            “Transform the job hunt from a maze into a map.”
+            "Transform the job hunt from a maze into a map."
           </div>
         </div>
         <div className="center bg-white rounded-r-xl">
@@ -1168,21 +1224,31 @@ export { AuthLayout };
 
 Now, we can jump over to our `Login` component and style it.
 
-First we can delete our `h1`, **YOLO** text. Now, let's just work from top to bottom.
+First we can delete our `h1`, **YOLO** text.
 
-In the top, right corner, we have a link to the signup page. This is similar to our the quote in our layout component, except this time we want it positioned to the top, right corner.
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=36 del={1}
+<h1 className="text-4xl font-bold text-red-500">YOLO</h1>
+```
 
-```tsx title="src/app/pages/user/Login.tsx" {3-7} startLineNumber=48
+Let's also remove the `bg-bg` class from our wrapping `main` tag.
+
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=35 del="className="bg-bg""
+<main className="bg-bg">
+```
+
+Now, let's just work from top to bottom.
+
+In the top, right corner, we have a link to the signup page. This is similar to how we styled the quote in our layout component, except this time we want it positioned to the top, right corner.
+
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=34 ins={3-7}
 return (
-  <AuthLayout>
+  <main>
     <div className="absolute top-0 right-0 p-10">
       <a href="#" className="font-display font-bold text-black text-sm underline underline-offset-8 hover:decoration-primary">
         Register
       </a>
     </div>
     ...
-  </AuthLayout>
-)
 ---
 - We're positioning the link with `absolute` to the top right, `top-0 right-0` and adding `p-10` or `40px` of padding
 - For the Register link, we want to use the font Poppins or `font-display`, make it bold `font-bold`, black `text-black`, and small `text-sm`
@@ -1200,7 +1266,7 @@ Now, we have the same positioning "problem" that we had with our quote. We need 
 
 Next up, let's wrap all of our form content with a `div` and add the text at the top of our form:
 
-```tsx title="src/app/pages/user/Login.tsx" {1-3, 16} startLineNumber=50
+```tsx title="src/app/pages/user/Login.tsx" {1-3, 15} startLineNumber=44
 <div className="max-w-[400px] w-full mx-auto px-10">
   <h1 className="text-center">Login</h1>
   <p className="py-6">Enter your username below to sign-in.</p>
@@ -1227,12 +1293,12 @@ Next up, let's wrap all of our form content with a `div` and add the text at the
 
 Let's also add some text below our form:
 
-```tsx title="src/app/pages/user/Login.tsx" startLineNumber=68 {5}
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=54 {5}
 <Button onClick={handlePerformPasskeyLogin} disabled={isPending} className="font-display w-full mb-6">
-    {isPending ? <>...</> : "Login with passkey"}
-  </Button>
-  {result && <div>{result}</div>}
-  <p>By clicking continue, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.</p>
+  {isPending ? <>...</> : "Login with passkey"}
+</Button>
+{result && <div>{result}</div>}
+<p>By clicking continue, you agree to our <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.</p>
 ```
 
 I want to add some more styling, but I want to be able to reuse these styles on our Signup page, so let's stick these updates inside our `styles.css` file.
@@ -1246,11 +1312,11 @@ I like to order my CSS:
 
 Based on this ordering, we get more specific as we move down the file.
 
-let's start by setting up `@layer` for each grouping.
+Let's start by setting up `@layer` for each grouping.
 
 At the very bottom of our `styles.css` file, we already have a `@layer base` that shadcn/ui created.
 
-```css title="src/styles.css" startLineNumber=139
+```css title="src/styles.css" ins={1,12-16} startLineNumber=138
 @layer base, components, page;
 
 @layer base {
@@ -1262,9 +1328,11 @@ At the very bottom of our `styles.css` file, we already have a `@layer base` tha
   }
 }
 
-@layer components {}
+@layer components {
+}
 
-@layer page {}
+@layer page {
+}
 ```
 
 <Aside type="tip" title="CSS Layers">
@@ -1285,7 +1353,7 @@ It will still be applied in the correct order, because we explicitly defined the
 
 For all our headings (`h1, h2, h3, etc.`), we want to use the font Poppins, `font-display`, and make it bold `font-bold`. Let's stick this inside our base layer:
 
-```css title="src/styles.css" showLineNumbers=false
+```css title="src/styles.css" showLineNumbers=false ins={3-7}
 @layer base {
   ...
   h1,
@@ -1298,7 +1366,7 @@ For all our headings (`h1, h2, h3, etc.`), we want to use the font Poppins, `fon
 
 Then, let's also add some more specific styles for our `h1` since it's a page title:
 
-```css title="src/styles.css" showLineNumbers=false
+```css title="src/styles.css" startLineNumber=155 ins={2-4}
 @layer components {
   .page-title {
     @apply text-3xl
@@ -1311,13 +1379,13 @@ Then, let's also add some more specific styles for our `h1` since it's a page ti
 
 Back in our `Login` component, let's add the class of `page-title` to our `h1`:
 
-```tsx title="src/app/pages/user/Login.tsx" "page-title" startLineNumber=46
+```tsx title="src/app/pages/user/Login.tsx" "page-title" startLineNumber=45
 <h1 className="page-title text-center">Login</h1>
 ```
 
-We have a couple of paragraphs of text, but I only want these classes to be applied to our auth forms. Let's add a class of `auth-form` to our wrapping `div`:
+We have a couple of paragraphs of text, but I only want these classes to be applied to paragraphs on our authentication pages. Let's add a class of `auth-form` to our wrapping `div`:
 
-```tsx title="src/app/pages/user/Login.tsx" "auth-form" startLineNumber=45
+```tsx title="src/app/pages/user/Login.tsx" "auth-form" startLineNumber=44
 <div className="auth-form max-w-[400px] w-full mx-auto px-10">
   <h1 className="text-center page-title">Login</h1>
   <p className="py-6">Enter your username below to sign-in.</p>
@@ -1340,12 +1408,14 @@ We have a couple of paragraphs of text, but I only want these classes to be appl
 
 In our `styles.css` file, let's target the `auth-form` class:
 
-```css title="src/styles.css" showLineNumbers=false
+```css title="src/styles.css" startLineNumber=161
 @layer page {
-  /* login page */
   .auth-form {
-    p { @apply text-sm text-zinc-500 text-center;
-      a { @apply text-zinc-500 hover:text-black underline whitespace-nowrap; }
+    p {
+      @apply text-sm text-zinc-500 text-center;
+      a {
+        @apply text-zinc-500 hover:text-black underline whitespace-nowrap;
+      }
     }
   }
 }
@@ -1362,10 +1432,9 @@ In our `styles.css` file, let's target the `auth-form` class:
 
 If we take a look in the browser, this looks great. The only thing we lack is the input field and button styles. Let's head back to our `styles.css` file:
 
-```css title="src/styles.css" showLineNumbers=false
+```css title="src/styles.css" showLineNumbers=false ins={3-5}
 @layer base {
   ...
-  /* form elements */
   input[type="text"] {
     @apply border-border border-1 rounded-md px-3 h-9 block w-full mb-2 text-base;
   }
@@ -1385,7 +1454,7 @@ If we take a look in the browser, this looks great. The only thing we lack is th
 
 For the button, we're using the shadcn/ui button component. Let's crack it open:
 
-```tsx title="src/components/ui/button.tsx" collapse={8-29} startLineNumber=9 "buttonVariants" "default:" "font-bold" del="font-medium"
+```tsx title="src/components/ui/button.tsx" collapse={8-29} startLineNumber=7 ins="font-bold" del="font-medium"
 const buttonVariants = cva(
   "font-bold inline-flex items-center justify-center gap-2 whitespace-nowrap rounded-md text-sm font-medium transition-all disabled:pointer-events-none disabled:opacity-50 [&_svg]:pointer-events-none [&_svg:not([class*='size-'])]:size-4 shrink-0 [&_svg]:shrink-0 outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] aria-invalid:ring-destructive/20 dark:aria-invalid:ring-destructive/40 aria-invalid:border-destructive",
   {
@@ -1423,21 +1492,22 @@ const buttonVariants = cva(
 ---
 ```
 
-The button text is appearing white because of the `text-primary-foreground` class. If you do a quick search within the `styles.css` file, you can find the `--primary-foreground` definition nested inside the `:root` and `.dark` blocks.
+The button text is appearing white because of the `text-primary-foreground` class. Lets' remove this class and add a `text-black` class:
 
-We can override this by adding a class of `--color-primary-foreground` within our `@theme` block:
-
-```css title="src/styles.css" showLineNumbers=false
-@theme {
-  ...
-  --color-primary-foreground: #000;
+```tsx title="src/app/components/ui/button.tsx" startLineNumber=11 ins="text-black" del="text-primary-foreground"
+variant: {
+  default: "bg-primary text-primary-foreground text-black shadow-xs hover:bg-primary/90",
 ```
 
 Let's also add a few specific classes just for login button. I don't want this to get applied by default to every button we use, so I'm going to apply these to the `Button` component on the Login page.
 
-```tsx title="src/app/pages/user/Login.tsx" startLineNumber=56 "className="font-display w-full mb-6""
-<Button onClick={handlePerformPasskeyLogin} disabled={isPending} className="font-display w-full mb-6">
-  {isPending ? <>...</> : "Login with Passkey"}
+```tsx title="src/app/pages/user/Login.tsx" startLineNumber=54 ins="className="font-display w-full mb-6""
+<Button
+  onClick={handlePerformPasskeyLogin}
+  disabled={isPending}
+  className="font-display w-full mb-6"
+>
+  {isPending ? <>...</> : "Login with passkey"}
 </Button>
 ---
 - At the end of our `Button` component, let's add classes to use the font Poppins, `font-display`, make the button span the full width of its container `w-full`, and add some spacing to the bottom with `mb-6`
@@ -1450,14 +1520,33 @@ Let's take a look at the final result within the browser:
 
 👏 Well done!
 
-But, there's one more thing. Let's move the `result` message above the form and below our text:
+But, there's one more thing. Let's move the `result` message at the bottom of the form to the top.
 
-```tsx title="src/app/pages/user/Login.tsx" startLineNumber=45 "{result && <div>{result}</div>}"
+```tsx title="src/app/pages/user/Login.tsx" collapse={6-11} del={19} ins={4} showLineNumbers=false
 <div className="auth-form max-w-[400px] w-full mx-auto px-10">
   <h1 className="page-title text-center">Login</h1>
   <p className="py-6">Enter your username below to sign-in.</p>
   {result && <div>{result}</div>}
-  ...
+
+  <input
+    type="text"
+    value={username}
+    onChange={(e) => setUsername(e.target.value)}
+    placeholder="Username"
+  />
+  <Button
+    onClick={handlePerformPasskeyLogin}
+    disabled={isPending}
+    className="font-display w-full mb-6"
+  >
+    {isPending ? <>...</> : "Login with passkey"}
+  </Button>
+  {result && <div>{result}</div>}
+  <p>
+    By clicking continue, you agree to our{" "}
+    <a href="#">Terms of Service</a> and <a href="#">Privacy Policy</a>.
+  </p>
+</div>
 ```
 
 We can also style this, using an `<Alert />` shadcn/ui component. We just need to import our component at the top and wrap our `{result}`.
@@ -1485,7 +1574,7 @@ You'll need to login (successfully or unsuccessfully) to see the alert.
 
 I know, it feels strange to see a red alert message when we were able to successfully login. But, really, if we were able to login successfully, we want to be redirected to the homepage. We can update the `passkeyLogin` function (starts on line 16):
 
-```tsx title="src/app/pages/user/Login.tsx" {14} collapse={2-10} startLineNumber=16
+```tsx title="src/app/pages/user/Login.tsx" del={14} ins={15} collapse={2-10} startLineNumber=15
 const passkeyLogin = async () => {
   // 1. Get a challenge from the worker
   const options = await startPasskeyLogin();
@@ -1499,6 +1588,7 @@ const passkeyLogin = async () => {
   if (!success) {
     setResult("Login failed");
   } else {
+    setResult("Login successful!");
     window.location.href = "/";
   }
 };
@@ -1540,7 +1630,7 @@ At first glance, this file is a little sparse.
 
 Let's add reference links for our other pages:
 
-```tsx title="src/app/shared/links.ts" {4, 6-7} startLineNumber=3
+```tsx title="src/app/shared/links.ts" ins={4, 6-7} startLineNumber=3
 export const link = defineLinks([
   "/",
   "/user/login",
@@ -1551,16 +1641,19 @@ export const link = defineLinks([
 ]);
 ```
 
-<Aside type="note" title="Protected Page Route">
+<Aside type="caution" title="Protected Page Route">
   I didn't add the `/protected` route to our `links.ts` file because it's a temporary route. We'll eventually remove it from our application.
 </Aside>
 
 Now, let's go back to our `Login` component and update our **Register** link.
 
-```tsx title="src/app/pages/user/Login.tsx" showLineNumbers=false
+```tsx title="src/app/pages/user/Login.tsx" showLineNumbers=false ins={1} ins="{link("/user/signup")}"
 import { link } from "@/app/shared/links";
 ...
-<a href={link('/user/signup')} className="font-display font-bold text-black text-sm underline underline-offset-8 hover:decoration-primary">
+<a
+  href={link("/user/signup")}
+  className="font-display font-bold text-black text-sm underline underline-offset-8 hover:decoration-primary"
+>
   Register
 </a>
 ---
@@ -1576,7 +1669,11 @@ As you type, you should see VS Code make recommendations based on the contents o
 We can make similar changes to our **Terms of Service** and **Privacy Policy** links:
 
 ```tsx title="src/app/pages/user/Login.tsx" "{link("/legal/terms")}" "link("/legal/privacy")" startLineNumber=70
-<p>By clicking continue, you agree to our <a href={link("/legal/terms")}>Terms of Service</a> and <a href={link("/legal/privacy")}>Privacy Policy</a>.</p>
+<p>
+  By clicking continue, you agree to our{" "}
+  <a href={link("/legal/terms")}>Terms of Service</a> and{" "}
+  <a href={link("/legal/privacy")}>Privacy Policy</a>.
+</p>
 ```
 
 If you check your work in the browser, the register link works great, but our Terms of Service and Privacy Policy links go to a Not Found page. Let's fix that.
@@ -1585,7 +1682,7 @@ We'll do a quick "duct tape" solution for now, but we'll eventually circle back 
 
 Within our `src/worker.tsx` file, we're exporting `defineApp`. Remember, this includes definitions for all our middleware and routes.
 
-```tsx title="src/worker.tsx" collapse={2-30} startLineNumber=19 {45-46}
+```tsx title="src/worker.tsx" collapse={2-30, 33-43} ins={45-46} showLineNumbers=false startLineNumber=19
 export default defineApp([
   setCommonHeaders(),
   async ({ ctx, request, headers }) => {
@@ -1617,7 +1714,7 @@ export default defineApp([
     }
   },
   render(Document, [
-    route("/", Home),
+    route("/", () => new Response("Hello, World!")),
     route("/protected", [
       ({ ctx }) => {
         if (!ctx.user) {
@@ -1629,21 +1726,16 @@ export default defineApp([
       },
       Home,
     ]),
-    prefix("/user", userRoutes),
+    layout(AuthLayout, prefix("/user", userRoutes)),
     route("/legal/privacy", () => <h1>Privacy Policy</h1>),
     route("/legal/terms", () => <h1>Terms of Service</h1>),
   ]),
 ]);
+
 ---
 - **On line 63**, let's add a new `route` definition to our array for our privacy policy page. The `route` function takes two parameters. The first parameter is the path or the URL. The second parameter is the response. This could be [a standard HTML response object](https://developer.mozilla.org/en-US/docs/Web/API/Response) or JSX/TSX. For our quick solution, we're inlining JSX.
 - **On line 64**, we're doing the exact same thing for our Terms page.
 ---
-```
-
-You'll also need to update the `import` statement at the top of your file:
-
-```tsx title="src/worker.tsx" "route " startLineNumber=2
-import { index, layout, prefix, route } from "rwsdk/router";
 ```
 
 Now, if you check your work in the browser, you should see the Terms of Service and Privacy Policy links working.
@@ -1667,55 +1759,64 @@ Now, if you check your work in the browser, you should see the Terms of Service 
 
 ## Styling the Signup Page
 
-😅 Don't worry, we've already done all the heavy lifting. This will be a breeze.
+😅 Don't worry, we've already done all the heavy lifting. This will be a breeze, because we already wrapped our `UserRoutes` with a `layout` function.
 
-```tsx title="src/app/pages/user/Signup.tsx" del={4, 7} ins={1,5,8} showLineNumbers=false
-import { AuthLayout } from "@/app/layouts/AuthLayout";
-...
+Let's start by removing our YOLO heading and the `bg-bg` class on our wrapping `main` tag:
+
+```tsx title="src/app/pages/user/Signup.tsx" startLineNumber=38 del={3} del="className="bg-bg""
 return (
-  <main className="bg-bg">
-  <AuthLayout>
-  ...
-  </main>
-  </AuthLayout>
-)
----
-- Let's import our `AuthLayout` at the top of our file.
-- Then, we'll replace our `main` tag with our `AuthLayout` component.
----
+    <main className="bg-bg">
+      <h1 className="text-4xl font-bold text-red-500">YOLO</h1>
 ```
 
-Right inside our `AuthLayout` component, let's add our Login link:
+Now, let's add a login link at the top of our signup page:
 
-```tsx title="src/app/pages/user/Signup.tsx" showLineNumbers=false "/user/login" "Login" ins={1, 4-8}
+```tsx title="src/app/pages/user/Signup.tsx" ins={1, 5-12} showLineNumbers=false
 import { link } from "@/app/shared/links";
 ...
-<AuthLayout>
-  <div className="absolute top-0 right-0 p-10">
-    <a href={link('/user/login')} className="font-display font-bold text-black text-sm underline underline-offset-8 hover:decoration-primary">
-      Login
-    </a>
-  </div>
+  return (
+    <main>
+      <div className="absolute top-0 right-0 p-10">
+        <a
+          href={link("/user/login")}
+          className="font-display font-bold text-black text-sm underline underline-offset-8 hover:decoration-primary"
+        >
+          Login
+        </a>
+      </div>
   ...
-</AuthLayout>
 ---
 - Our Login link is using the exact same styles as the Register link on the Login page. The only difference is we changed the link to point to our `/user/login` route and the label is `Login`.
 ---
 ```
 
-Next, let's wrap all of our form content with a `div`:
+Next, let's wrap all of our content with a `div`:
 
-```tsx title="src/app/pages/user/Signup.tsx" startLineNumber=56 "auth-form max-w-[400px] px-10" ins={2,9}
-<AuthLayout>
-  <div className="auth-form max-w-[400px] w-full mx-auto px-10">
-    <div className="absolute top-0 right-0 p-10">
-      <a href={link('/user/login')} className="font-display font-bold text-black text-sm underline underline-offset-8 hover:decoration-primary">
-        Login
-      </a>
-    </div>
-    ...
-  </div>
-</AuthLayout>
+```tsx title="src/app/pages/user/Signup.tsx" "auth-form max-w-[400px] px-10" ins={3, 22} collapse={4-21} startLineNumber=38
+return (
+    <main>
+      <div className="auth-form max-w-[400px] w-full mx-auto px-10">
+        <div className="absolute top-0 right-0 p-10">
+          <a
+            href={link("/user/login")}
+            className="font-display font-bold text-black text-sm underline underline-offset-8 hover:decoration-primary"
+          >
+            Login
+          </a>
+        </div>
+        <input
+          type="text"
+          value={username}
+          onChange={(e) => setUsername(e.target.value)}
+          placeholder="Username"
+        />
+        <Button onClick={handlePerformPasskeyRegister} disabled={isPending}>
+          {isPending ? <>...</> : "Register with passkey"}
+        </Button>
+        {result && <div>{result}</div>}
+      </div>
+    </main>
+  );
 ---
 - We're using the same styles as our login page.
 - We have a class `auth-form` that will style our `p` and `a` tags.
@@ -1725,15 +1826,22 @@ Next, let's wrap all of our form content with a `div`:
 ---
 ```
 
-We can get rid of our red YOLO heading at the top and replace it with:
-```tsx title="src/app/pages/user/Signup.tsx" startLineNumber=63
+Before our `input` tag, let's add a heading and a paragraph:
+
+```tsx title="src/app/pages/user/Signup.tsx" collapse={3-8} startLineNumber=49 ins={1-2}
 <h1 className="page-title text-center">Create an Account</h1>
 <p className="py-6">Enter a username to setup an account.</p>
+<input
+  type="text"
+  value={username}
+  onChange={(e) => setUsername(e.target.value)}
+  placeholder="Username"
+/>
 ```
 
-Let's move our `result` message to appear below our heading:
+Let's move our `result` message to appear right below our heading:
 
-```tsx title="src/app/pages/user/Signup.tsx" showLineNumbers=false ins={1-2, 6-11} del={13}
+```tsx title="src/app/pages/user/Signup.tsx" ins={1-2, 6-11} del={21} collapse={12-20}
 import { Alert, AlertTitle } from "@/app/components/ui/alert";
 import { AlertCircle } from "lucide-react";
 ...
@@ -1745,15 +1853,27 @@ import { AlertCircle } from "lucide-react";
     <AlertTitle>{result}</AlertTitle>
   </Alert>
 )}
-...
+<input
+  type="text"
+  value={username}
+  onChange={(e) => setUsername(e.target.value)}
+  placeholder="Username"
+/>
+<Button onClick={handlePerformPasskeyRegister} disabled={isPending}>
+  {isPending ? <>...</> : "Register with passkey"}
+</Button>
 {result && <div>{result}</div>}
 ```
 
 Jumping down a little bit, on our `Button` component, let's add a few classes to the end:
 
-```tsx title="src/app/pages/user/Signup.tsx" ins="className="font-display w-full mb-6"" startLineNumber=83
-<Button onClick={handlePerformPasskeyRegister} disabled={isPending} className="font-display w-full mb-6">
-  {isPending ? <>...</> : "Register with Passkey"}
+```tsx title="src/app/pages/user/Signup.tsx" ins="className="font-display w-full mb-6"" startLineNumber=65
+<Button
+  onClick={handlePerformPasskeyRegister}
+  disabled={isPending}
+  className="font-display w-full mb-6"
+>
+  {isPending ? <>...</> : "Register with passkey"}
 </Button>
 ---
 - We want to use the font Poppins, `font-display`.
@@ -1764,8 +1884,12 @@ Jumping down a little bit, on our `Button` component, let's add a few classes to
 
 Then, right below the button, we can add our legal statement:
 
-```tsx title="src/app/pages/user/Signup.tsx" startLineNumber=87
-<p>By clicking continue, you agree to our <a href={link('/legal/terms')}>Terms of Service</a> and <a href={link('/legal/privacy')}>Privacy Policy</a>.</p>
+```tsx title="src/app/pages/user/Signup.tsx" startLineNumber=72
+<p>
+  By clicking continue, you agree to our 
+  <a href={link("/legal/terms")}>Terms of Service</a> and 
+  <a href={link("/legal/privacy")}>Privacy Policy</a>.
+</p>
 ```
 
 ![](./images/final-signup-page.png)

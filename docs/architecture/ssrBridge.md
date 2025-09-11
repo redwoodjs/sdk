@@ -26,29 +26,12 @@ To connect them, we introduced the concept of the **SSR Bridge**. The bridge is 
 
 A custom Vite plugin, `rwsdk:ssr-bridge`, orchestrates the process. It creates a virtual "subgraph" of SSR modules within the main `worker` environment. This allows the `worker` to effectively borrow the `ssr` environment's configuration for a specific set of modules, solving the dependency conflict without requiring separate deployments.
 
-```mermaid
-graph TD
-    subgraph Worker Environment (RSC)
-        A[App Code] --> B{import 'rwsdk/__ssr_bridge'}
-        B -- resolveId --> C[virtual:rwsdk:ssr:rwsdk/__ssr_bridge]
-        C -- load --> D{ssrBridgePlugin}
-        D -- devServer.environments.ssr.fetchModule() --> E
-        D -- returns transformed code --> F[Transformed Code w/ virtual imports]
-        F --> A
-    end
-
-    subgraph SSR Environment
-        E[Original SSR Module]
-        E -- Vite's SSR transform pipeline --> G[SSR-transformed code]
-        G --> D
-    end
-```
-
 ### How It Works: Dev vs. Production
 
 The implementation differs slightly between development and production builds.
 
 #### In Development
+
 In development, the process is dynamic.
 1.  When the `ssrBridgePlugin` sees an import for the bridge in the `worker` environment, it returns a virtual module ID prefixed with `virtual:rwsdk:ssr:`.
 2.  Vite then asks the plugin's `load` hook how to resolve this virtual ID.
@@ -58,9 +41,11 @@ In development, the process is dynamic.
 6.  Before finishing, the plugin wraps the returned code to ensure that any *further* imports within it are also prefixed with `virtual:rwsdk:ssr:`. This keeps the entire dependency chain within the virtual SSR subgraph, ensuring all nested modules are processed correctly by the `ssr` environment.
 
 #### In Production
-In a production build, the process is simpler and based on pre-building.
-1.  First, a separate Vite build runs for the `ssr` environment, using the bridge module as its entry point. This produces a single, self-contained SSR bundle file.
-2.  Next, the main `worker` environment build runs.
-3.  When the `worker` build encounters the import for the SSR bridge, the plugin simply resolves the import path to the location of the pre-built SSR bundle from step 1.
 
-In effect, the SSR bundle is treated like a third-party library by the main `worker` build. This two-step process ensures that both environments are built with their respective configurations and then combined to run in the final Cloudflare Worker. 
+##### The Challenge: Linking Separate Bundles
+
+In a production build, the `worker` and `ssr` environments must be bundled separately to handle their unique dependency requirements (e.g., the `"react-server"` condition). This creates a complex set of build-time dependencies that must be carefully orchestrated.
+
+##### The Solution: A Multi-Phase Build
+
+The production build uses a multi-phase, sequential process to correctly bundle all environments. For a complete explanation of this architecture, see the central [Production Build Process](./productionBuildProcess.md) document. 
