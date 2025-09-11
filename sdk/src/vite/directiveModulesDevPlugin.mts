@@ -149,9 +149,12 @@ export const directiveModulesDevPlugin = ({
         );
 
         if (envName === "client") {
-          entries.push(APP_CLIENT_BARREL_PATH);
+          env.optimizeDeps.entries.push(APP_CLIENT_BARREL_PATH);
         } else if (envName === "worker") {
-          entries.push(APP_SERVER_BARREL_PATH);
+          // env.optimizeDeps.entries.push(APP_SERVER_BARREL_PATH);
+          env.optimizeDeps.entries.push(
+            "/Users/justin/rw/worktrees/sdk_response-save/starters/standard/src/app/pages/user/functions.ts",
+          );
         }
 
         env.optimizeDeps.esbuildOptions ??= {};

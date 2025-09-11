@@ -165,3 +165,32 @@ To get a clearer picture of the timing, the next step is to add logging to pinpo
 
 1.  A `console.log` statement will be added to the `.then()` block of the `scanPromise` in the `configureServer` hook, immediately before the `writeFileSync` calls.
 2.  By comparing the timestamp of this new "writing" log with the existing "resolving" log from our `esbuild` plugin, we can definitively determine if a race condition exists. If the resolve happens before the write, our hypothesis is confirmed.
+
+## Attempt 18: A Deeper Timing Paradox
+
+The latest logs presented a baffling contradiction. The `onResolve scan complete` log for the `worker` was appearing *before* the `[rwsdk] Barrel files written` log.
+
+This meant that `await scanPromise` was finishing, and the optimizer was proceeding to the `onLoad` step, *before* the barrel files had been populated with content. The optimizer was correctly blocked, but it was being unblocked too early and was therefore reading an empty file, which is functionally the same as the scan not running at all and is the direct cause of the re-optimization.
+
+The root cause was a flaw in our own logic: the `scanPromise` was resolving as soon as the `runDirectivesScan` function completed, not waiting for the subsequent `.then()` block (where the file writing happens) to finish.
+
+The solution was to revert to the deferred promise pattern (`Promise.withResolvers`), which had been incorrectly removed in a previous step. This ensures the promise is only resolved *after* the `writeFileSync` calls are complete, guaranteeing the optimizer will see a populated file.
+
+## Attempt 19: The Plugin Ordering Breakthrough
+
+Even with the deferred promise, the logs showed that our `onResolve` hook was firing *after* many other internal Vite `onResolve` logs. This was a critical insight from the user: our plugin was being added to the end of the `esbuild` plugin array with `.push()`, meaning it was running last. If another plugin resolved the path first, our blocker would never even run.
+
+The fix was to change `.push()` to `.unshift()`, ensuring our blocking plugin is the very first one in the chain. This guarantees it can intercept the barrel file paths before any other plugin.
+
+## The Current Paradox: Correct Timing, Persistent Failure
+
+The combination of the deferred promise and the `unshift` strategy has produced logs that, on the surface, look perfect.
+1.  Our `onResolve` hook fires first for the `worker` environment.
+2.  It correctly awaits the `scanPromise`.
+3.  The scan runs, completes, and writes the files.
+4.  Only then does the `scanPromise` resolve, unblocking `onResolve`.
+5.  Our test log confirms that `esbuild` then proceeds to load the application code (`user/functions.ts`) from within the barrel file.
+
+And yet, the fundamental problem remains. Vite's logs *still* show `(worker) ✨ new dependencies optimized: @simplewebauthn/server`, and the application still crashes with the original context loss error.
+
+This leads to a new, core hypothesis: the problem is not with our blocking strategy, but with **how Vite's optimizer is interpreting our entry points**. It seems that even though `esbuild` is correctly loading the files from our barrel, the higher-level Vite dependency scanner is not performing a deep traversal of their contents during its initial pass. It only discovers the deep import (`@simplewebauthn/server`) when a request is made, which triggers the dreaded re-optimization. The question is, why?
