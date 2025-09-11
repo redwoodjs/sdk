@@ -280,3 +280,59 @@ This approach is superior because it eliminates all filesystem complexities. We 
     *   An `onLoad` hook, triggered by the namespace, will `await` the scan promise, generate the barrel content with relative paths, and return it directly to `esbuild` with the `{ contents, loader, resolveDir }` format.
 
 This is the cleanest possible implementation and our most targeted test yet of whether Vite's dependency scanner can be made to deeply traverse application code at startup.
+
+## Attempt 28: The Vite Hook Timing Failure
+
+The virtual module strategy implemented with top-level Vite plugin hooks (`resolveId`, `load`) also failed. The `esbuild` logs showed that our virtual module ID was never resolved or loaded, proving that it was not being included in the dependency scanner's initial run.
+
+This reveals a critical detail about Vite's startup lifecycle:
+1.  The `optimizeDeps` scanner is one of the first things to be configured and run. It reads the `optimizeDeps.entries` from the initial config object.
+2.  The main Vite plugin hooks (`resolveId`, `load`) are not fully active in the context of the dependency scanner when it first builds its list of entries to process.
+3.  Therefore, when the scanner sees our virtual ID, it asks the plugin container for its content, but our plugin isn't ready to answer. The scanner receives no content, discards the entry, and moves on.
+
+The conclusion is that the only reliable way to hook into the dependency scan is via a plugin that is passed directly to `optimizeDeps.esbuildOptions`.
+
+## Final Attempt: The `esbuild` Virtual Module
+
+This brings us to what should be the final, correct implementation, which synthesizes all of our previous discoveries. The virtual module strategy is correct in spirit, but it must be implemented as an `esbuild` plugin, not a Vite plugin.
+
+1.  **Virtual ID in `entries`:** We will add our `"virtual:rwsdk:app-server-barrel"` ID to `optimizeDeps.entries`.
+2.  **`esbuild` Plugin:** We will use `unshift` to add a custom `esbuild` plugin to `optimizeDeps.esbuildOptions`.
+3.  **Virtual Hooks:** Inside this `esbuild` plugin, `onResolve` will claim the virtual ID and pass it to a namespace, and `onLoad` will `await` our scan and return the barrel content with relative paths and `resolveDir`.
+
+This aligns perfectly with how Vite constructs and executes its dependency scanner and should finally provide the correct, stable behavior.
+
+### Attempt 29: Fixing the `esbuild` Plugin Filters
+
+- **Finding**: The logs from the previous attempt showed two things: 1) App code (`functions.ts`) was now being processed by `esbuild`, which is progress. 2) `esbuild` failed to resolve a long relative path to `functions.ts` from multiple different `node_modules` files (`react-dom`, `rwsdk-client-barrel.js`, etc.).
+- **Hypothesis**: The issue stems from the overly broad filters (`{ filter: /.*/ }`) added to the `esbuild` plugin for debugging. The `onResolve` hook was capturing *every* import, not just our virtual module IDs, and assigning them to our custom namespace. Consequently, the `onLoad` hook was providing the application barrel content for *every* file `esbuild` tried to process, including `react-dom`. This explains why `react-dom` appeared to contain an import for `functions.ts`. When `esbuild` then tried to resolve the relative import (`./src/.../functions.ts`) from within `react-dom`, the path was incorrect, leading to the error. The `resolveDir` property was likely being ignored in this incorrect context.
+- **Plan**: Revert the `esbuild` plugin filters to their original, more specific state. The `onResolve` filter should only match the virtual module IDs (`/^virtual:rwsdk:app-.*-barrel$/`), and the `onLoad` filter should only match files within our custom namespace (`VIRTUAL_BARREL_NAMESPACE`). This will ensure our plugin only handles the initial provision of the virtual barrel content, and allows `esbuild`'s default resolver to correctly handle subsequent imports using the provided `resolveDir`.
+
+### Attempt 30: Moving `optimizeDeps` to the `config` Hook
+
+- **Finding**: After restoring the specific `esbuild` plugin filters, the logs disappeared entirely.
+- **Hypothesis**: This indicates that the `onResolve` hook for our virtual modules is not being triggered at all. The most likely reason is a timing issue: the `configResolved` hook, where we currently modify the `optimizeDeps` configuration, runs *after* Vite has already initiated the dependency scanning process for each environment. Therefore, our virtual module entries and our `esbuild` plugin are added too late to be seen by the scanner.
+- **Plan**: Move all the logic that modifies `config.environments[envName].optimizeDeps` from the `configResolved` hook to the earlier `config` hook. This should ensure that Vite is aware of our virtual entry points and the necessary `esbuild` plugin *before* it starts scanning dependencies, which should cause our `onResolve` and `onLoad` hooks to fire as expected.
+
+### Attempt 31: Re-evaluating `configResolved` with Broad Logging
+
+- **Finding**: The `config` hook did not solve the issue. The user feels strongly that `configResolved` is the correct hook and that the problem lies elsewhere.
+- **Hypothesis**: There's an unknown interaction happening during dependency scanning that we aren't seeing. The reason our virtual modules aren't being resolved might be because another plugin is interfering, or because of some other subtle behavior in Vite's optimizer.
+- **Plan**: Move the `optimizeDeps` logic back to the `configResolved` hook. To gain maximum visibility, modify the `esbuild` plugin's `onResolve` hook to use a broad filter (`/.* /`) that logs every single module resolution attempt. However, unlike previous attempts, the hook will be written defensively: it will only claim and assign a namespace to our specific virtual module IDs, allowing all other imports to proceed to the next plugin or esbuild's default resolver. This should give us the debugging information we need without re-introducing the "Could not resolve" error caused by hijacking all resolutions.
+
+### Attempt 32: Pivot back to Physical Barrel Files
+
+- **Finding**: The broad `onResolve` logging confirmed that our virtual module IDs (`virtual:rwsdk:...`) are never passed to the `esbuild` plugin, even when using the `configResolved` hook.
+- **Hypothesis**: Vite's `optimizeDeps.entries` option expects file paths or glob patterns. It likely validates entries and discards any that do not resolve to a file on disk. This makes the virtual module strategy for `entries` inviable.
+- **Plan**: Pivot back to using physical barrel files, but with a more robust blocking mechanism.
+    1.  In `configResolved`, create temporary, empty barrel files inside the project (e.g., in `.rwsdk/temp/`). Add their absolute paths to `optimizeDeps.entries`.
+    2.  In the same hook, `unshift` an `esbuild` plugin. This plugin will have an `onResolve` hook that specifically filters for our barrel file paths.
+    3.  When `onResolve` matches a barrel file, it will `await scanPromise` before returning, letting `esbuild`'s native file loader handle the read. This will pause the dependency scanner's `esbuild` instance until our async scan is complete.
+    4.  In `configureServer`, run the async scan. After it completes, write the real content to the barrel files and resolve `scanPromise`, which unblocks the optimizer.
+
+### Attempt 33: Acknowledging Progress & a New Problem
+
+- **Finding**: The physical barrel file strategy with the `esbuild` `onResolve` blocker is successfully getting our application files (like `functions.ts`) into the dependency scanner for the correct environment.
+- **Problem**: Despite this, Vite still performs a re-optimization for dependencies *within* those application files (e.g., `@simplewebauthn/server` in `functions.ts`). This indicates that while the entry file itself is being scanned, its dependencies are not being correctly registered in the initial optimization pass.
+- **Hypothesis**: The root cause might be a subtle distinction in how Vite handles `optimizeDeps.entries` versus `optimizeDeps.include`. `entries` is primarily for discovery, and perhaps in our complex setup with multiple environments and async population, the discovered deep dependencies are not being promoted to the "must-bundle" list correctly. `include`, on the other hand, is a more direct command to Vite to pre-bundle a file and its dependencies, no matter what.
+- **Plan**: Modify the plugin to add the application barrel paths to `optimizeDeps.include` instead of `optimizeDeps.entries`. The blocker plugin should still function correctly, pausing the optimizer until the barrels are populated. The hope is that this will force Vite to fully process the barrels and their dependency trees during the initial optimization, preventing the subsequent re-optimization.

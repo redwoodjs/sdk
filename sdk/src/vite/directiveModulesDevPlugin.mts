@@ -8,10 +8,6 @@ import { runDirectivesScan } from "./runDirectivesScan.mjs";
 const CLIENT_BARREL_EXPORT_PATH = "rwsdk/__client_barrel";
 const SERVER_BARREL_EXPORT_PATH = "rwsdk/__server_barrel";
 
-const APP_CLIENT_BARREL_VIRTUAL_ID = "virtual:rwsdk:app-client-barrel";
-const APP_SERVER_BARREL_VIRTUAL_ID = "virtual:rwsdk:app-server-barrel";
-const VIRTUAL_BARREL_NAMESPACE = "rwsdk-virtual-barrel";
-
 const generateBarrelContent = (files: Set<string>, projectRootDir: string) => {
   const imports = [...files]
     .filter((file) => file.includes("node_modules"))
@@ -38,14 +34,15 @@ const generateBarrelContent = (files: Set<string>, projectRootDir: string) => {
 
 const generateAppBarrelContent = (
   files: Set<string>,
-  projectRootDir: string,
+  barrelFilePath: string,
 ) => {
+  const barrelDir = path.dirname(barrelFilePath);
   return [...files]
     .filter((file) => !file.includes("node_modules"))
     .map((file) => {
-      const relativePath = path.relative(projectRootDir, file);
+      const relativePath = path.relative(barrelDir, file);
       const posixPath = relativePath.split(path.sep).join(path.posix.sep);
-      return `import './${posixPath}';`;
+      return `import "${posixPath}";`;
     })
     .join("\n");
 };
@@ -62,30 +59,12 @@ export const directiveModulesDevPlugin = ({
   const { promise: scanPromise, resolve: resolveScanPromise } =
     Promise.withResolvers<void>();
 
+  const tempDir = path.join(projectRootDir, ".rwsdk", "temp");
+  const APP_CLIENT_BARREL_PATH = path.join(tempDir, "app-client-barrel.js");
+  const APP_SERVER_BARREL_PATH = path.join(tempDir, "app-server-barrel.js");
+
   return {
     name: "rwsdk:directive-modules-dev",
-
-    resolveId(id) {
-      if (
-        id === APP_CLIENT_BARREL_VIRTUAL_ID ||
-        id === APP_SERVER_BARREL_VIRTUAL_ID
-      ) {
-        return `\0${id}`;
-      }
-      return null;
-    },
-
-    async load(id) {
-      if (id === `\0${APP_CLIENT_BARREL_VIRTUAL_ID}`) {
-        await scanPromise;
-        return generateAppBarrelContent(clientFiles, projectRootDir);
-      }
-      if (id === `\0${APP_SERVER_BARREL_VIRTUAL_ID}`) {
-        await scanPromise;
-        return generateAppBarrelContent(serverFiles, projectRootDir);
-      }
-      return null;
-    },
 
     configureServer(server) {
       if (!process.env.VITE_IS_DEV_SERVER || process.env.RWSDK_WORKER_RUN) {
@@ -100,17 +79,33 @@ export const directiveModulesDevPlugin = ({
         serverFiles,
       }).then(() => {
         // After the scan is complete, write the dependency barrel files.
+        mkdirSync(path.dirname(CLIENT_BARREL_PATH), { recursive: true });
         const clientBarrelContent = generateBarrelContent(
           clientFiles,
           projectRootDir,
         );
         writeFileSync(CLIENT_BARREL_PATH, clientBarrelContent);
 
+        mkdirSync(path.dirname(SERVER_BARREL_PATH), { recursive: true });
         const serverBarrelContent = generateBarrelContent(
           serverFiles,
           projectRootDir,
         );
         writeFileSync(SERVER_BARREL_PATH, serverBarrelContent);
+
+        // And the application barrel files
+        const appClientBarrelContent = generateAppBarrelContent(
+          clientFiles,
+          APP_CLIENT_BARREL_PATH,
+        );
+        writeFileSync(APP_CLIENT_BARREL_PATH, appClientBarrelContent);
+
+        const appServerBarrelContent = generateAppBarrelContent(
+          serverFiles,
+          APP_SERVER_BARREL_PATH,
+        );
+        writeFileSync(APP_SERVER_BARREL_PATH, appServerBarrelContent);
+
         resolveScanPromise();
       });
 
@@ -131,10 +126,15 @@ export const directiveModulesDevPlugin = ({
       mkdirSync(path.dirname(SERVER_BARREL_PATH), { recursive: true });
       writeFileSync(SERVER_BARREL_PATH, "");
 
+      // And for the application barrels
+      mkdirSync(path.dirname(APP_CLIENT_BARREL_PATH), { recursive: true });
+      writeFileSync(APP_CLIENT_BARREL_PATH, "");
+      mkdirSync(path.dirname(APP_SERVER_BARREL_PATH), { recursive: true });
+      writeFileSync(APP_SERVER_BARREL_PATH, "");
+
       for (const [envName, env] of Object.entries(config.environments || {})) {
         env.optimizeDeps ??= {};
         env.optimizeDeps.include ??= [];
-        env.optimizeDeps.entries ??= [];
         const entries = (env.optimizeDeps.entries = castArray(
           env.optimizeDeps.entries ?? [],
         ));
@@ -144,10 +144,37 @@ export const directiveModulesDevPlugin = ({
         );
 
         if (envName === "client") {
-          entries.push(APP_CLIENT_BARREL_VIRTUAL_ID);
+          entries.push(APP_CLIENT_BARREL_PATH);
         } else if (envName === "worker") {
-          entries.push(APP_SERVER_BARREL_VIRTUAL_ID);
+          entries.push(APP_SERVER_BARREL_PATH);
         }
+
+        env.optimizeDeps.esbuildOptions ??= {};
+        env.optimizeDeps.esbuildOptions.plugins ??= [];
+        env.optimizeDeps.esbuildOptions.plugins.unshift({
+          name: "rwsdk:app-barrel-blocker",
+          setup(build) {
+            const barrelPaths = [
+              APP_CLIENT_BARREL_PATH,
+              APP_SERVER_BARREL_PATH,
+            ];
+            const filter = new RegExp(
+              `(${barrelPaths.map((p) => p.replace(/\\/g, "\\\\")).join("|")})$`,
+            );
+
+            build.onResolve({ filter }, async (args) => {
+              console.log(
+                `[rwsdk:blocker] resolving ${args.path}, awaiting scan...`,
+              );
+              await scanPromise;
+              console.log(
+                `[rwsdk:blocker] scan complete for ${args.path}, proceeding.`,
+              );
+              // Return undefined to let the default resolver handle it
+              return;
+            });
+          },
+        });
       }
     },
   };
