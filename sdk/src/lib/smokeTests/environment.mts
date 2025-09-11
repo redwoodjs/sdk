@@ -14,7 +14,7 @@ import {
 import { $ } from "../../lib/$.mjs";
 import { log } from "./constants.mjs";
 import { debugSync } from "../../scripts/debug-sync.mjs";
-import { SmokeTestOptions, TestResources } from "./types.mjs";
+import { SmokeTestOptions, TestResources, PackageManager } from "./types.mjs";
 import { createSmokeTestComponents } from "./codeUpdates.mjs";
 import { createHash } from "crypto";
 
@@ -63,6 +63,7 @@ export async function setupTestEnvironment(
         options.projectDir,
         options.sync !== false, // default to true if undefined
         resourceUniqueKey, // Pass in the existing resourceUniqueKey
+        options.packageManager,
       );
 
       // Store cleanup function
@@ -95,6 +96,7 @@ export async function copyProjectToTempDir(
   projectDir: string,
   sync: boolean = true,
   resourceUniqueKey: string,
+  packageManager?: PackageManager,
 ): Promise<{
   tempDir: tmp.DirectoryResult;
   targetDir: string;
@@ -152,8 +154,15 @@ export async function copyProjectToTempDir(
   });
   log("Project copy completed successfully");
 
+  // For yarn, create .yarnrc.yml to disable PnP and use node_modules
+  if (packageManager === "yarn" || packageManager === "yarn-classic") {
+    const yarnrcPath = join(targetDir, ".yarnrc.yml");
+    await fs.writeFile(yarnrcPath, "nodeLinker: node-modules\n");
+    log("Created .yarnrc.yml to disable PnP for yarn");
+  }
+
   // Install dependencies in the target directory
-  await installDependencies(targetDir);
+  await installDependencies(targetDir, packageManager);
 
   // Sync SDK to the temp dir if requested
   if (sync) {
@@ -169,22 +178,35 @@ export async function copyProjectToTempDir(
 /**
  * Install project dependencies using pnpm
  */
-async function installDependencies(targetDir: string): Promise<void> {
-  console.log(`📦 Installing project dependencies in ${targetDir}...`);
+async function installDependencies(
+  targetDir: string,
+  packageManager: PackageManager = "pnpm",
+): Promise<void> {
+  console.log(
+    `📦 Installing project dependencies in ${targetDir} using ${packageManager}...`,
+  );
 
   try {
-    // Run pnpm install in the target directory
-    log("Running pnpm install");
-    const result = await $({
+    const installCommand = {
+      pnpm: ["pnpm", "install"],
+      npm: ["npm", "install"],
+      yarn: ["yarn", "install", "--immutable"],
+      "yarn-classic": ["yarn", "install", "--immutable"],
+    }[packageManager];
+
+    // Run install command in the target directory
+    log(`Running ${installCommand.join(" ")}`);
+    const [command, ...args] = installCommand;
+    const result = await $(command, args, {
       cwd: targetDir,
       stdio: "pipe", // Capture output
-    })`pnpm install`;
+    });
 
     console.log("✅ Dependencies installed successfully");
 
     // Log installation details at debug level
     if (result.stdout) {
-      log("pnpm install output: %s", result.stdout);
+      log(`${packageManager} install output: %s`, result.stdout);
     }
   } catch (error) {
     log("ERROR: Failed to install dependencies: %O", error);
@@ -194,7 +216,7 @@ async function installDependencies(targetDir: string): Promise<void> {
       }`,
     );
     throw new Error(
-      `Failed to install project dependencies. Please ensure the project can be installed with pnpm.`,
+      `Failed to install project dependencies. Please ensure the project can be installed with ${packageManager}.`,
     );
   }
 }

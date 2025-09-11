@@ -1,13 +1,11 @@
 import MagicString from "magic-string";
 import path from "path";
 import { Plugin, ViteDevServer } from "vite";
-import { readFile } from "fs/promises";
 import debug from "debug";
-import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
-import { stat } from "fs/promises";
-import { getSrcPaths } from "../lib/getSrcPaths.js";
-import { hasDirective } from "./hasDirective.mjs";
-import { CLIENT_BARREL_PATH, SERVER_BARREL_PATH } from "../lib/constants.mjs";
+import {
+  VENDOR_CLIENT_BARREL_EXPORT_PATH,
+  VENDOR_SERVER_BARREL_EXPORT_PATH,
+} from "../lib/constants.mjs";
 
 interface DirectiveLookupConfig {
   kind: "client" | "server";
@@ -200,8 +198,8 @@ export const ${config.exportName} = {
       if (file.includes("node_modules") && isDev) {
         const barrelPath =
           config.kind === "client"
-            ? "rwsdk/__client_barrel"
-            : "rwsdk/__server_barrel";
+            ? VENDOR_CLIENT_BARREL_EXPORT_PATH
+            : VENDOR_SERVER_BARREL_EXPORT_PATH;
 
         return `
   "${file}": () => import("${barrelPath}").then(m => m.default["${file}"]),

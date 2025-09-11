@@ -3,7 +3,7 @@ import { join } from "path";
 import { setTimeout } from "node:timers/promises";
 import debug from "debug";
 import { runSmokeTests } from "../lib/smokeTests/runSmokeTests.mjs";
-import { SmokeTestOptions } from "../lib/smokeTests/types.mjs";
+import { SmokeTestOptions, PackageManager } from "../lib/smokeTests/types.mjs";
 import { isRunningInCI } from "../lib/smokeTests/utils.mjs";
 
 // Set up debug logging
@@ -37,6 +37,7 @@ if (fileURLToPath(import.meta.url) === process.argv[1]) {
     realtime: false, // Default to false - don't just test realtime
     skipHmr: false, // Default to false - run HMR tests
     skipStyleTests: false,
+    packageManager: "pnpm", // Default to pnpm
     // sync: will be set below
   };
 
@@ -92,6 +93,7 @@ Options:
   --skip-style-tests      Skip stylesheet-related tests
   --path=PATH             Project directory to test
   --artifact-dir=DIR      Directory to store test artifacts (default: .artifacts)
+  --package-manager=MGR   Package manager to use (pnpm, npm, yarn, yarn-classic; default: pnpm)
   --keep                  Keep temporary test directory after tests complete
   --no-headless           Run browser tests with GUI (not headless)
   --sync                  Force syncing SDK code to test project
@@ -107,6 +109,12 @@ Options:
       options.projectDir = arg.substring(7);
     } else if (arg.startsWith("--artifact-dir=")) {
       options.artifactDir = arg.substring(15);
+    } else if (arg.startsWith("--package-manager=")) {
+      const pm = arg.substring(18) as PackageManager;
+      if (!["pnpm", "npm", "yarn", "yarn-classic"].includes(pm)) {
+        throw new Error(`Invalid package manager: ${pm}`);
+      }
+      options.packageManager = pm;
     } else {
       // Throw error for unknown options instead of just warning
       log("Unknown option: %s", arg);

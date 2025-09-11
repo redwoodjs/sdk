@@ -1,4 +1,6 @@
 import { resolve } from "node:path";
+import path from "node:path";
+import { fileURLToPath } from "node:url";
 
 const __dirname = new URL(".", import.meta.url).pathname;
 
@@ -13,15 +15,17 @@ export const INTERMEDIATES_OUTPUT_DIR = resolve(
   "__intermediate_builds",
 );
 
-export const CLIENT_BARREL_PATH = resolve(
+export const VENDOR_CLIENT_BARREL_PATH = path.resolve(
   INTERMEDIATES_OUTPUT_DIR,
-  "rwsdk-client-barrel.js",
+  "rwsdk-vendor-client-barrel.js",
+);
+export const VENDOR_SERVER_BARREL_PATH = path.resolve(
+  INTERMEDIATES_OUTPUT_DIR,
+  "rwsdk-vendor-server-barrel.js",
 );
 
-export const SERVER_BARREL_PATH = resolve(
-  INTERMEDIATES_OUTPUT_DIR,
-  "rwsdk-server-barrel.js",
-);
+export const VENDOR_CLIENT_BARREL_EXPORT_PATH = "rwsdk/__vendor_client_barrel";
+export const VENDOR_SERVER_BARREL_EXPORT_PATH = "rwsdk/__vendor_server_barrel";
 
 export const INTERMEDIATE_SSR_BRIDGE_PATH = resolve(
   INTERMEDIATES_OUTPUT_DIR,
