@@ -94,21 +94,6 @@ export const directiveModulesDevPlugin = ({
         );
         writeFileSync(SERVER_BARREL_PATH, serverBarrelContent);
 
-        // And the application barrel files
-        const appClientBarrelContent = generateAppBarrelContent(
-          clientFiles,
-          projectRootDir,
-          APP_CLIENT_BARREL_PATH,
-        );
-        writeFileSync(APP_CLIENT_BARREL_PATH, appClientBarrelContent);
-
-        const appServerBarrelContent = generateAppBarrelContent(
-          serverFiles,
-          projectRootDir,
-          APP_SERVER_BARREL_PATH,
-        );
-        writeFileSync(APP_SERVER_BARREL_PATH, appServerBarrelContent);
-
         resolveScanPromise();
       });
 
@@ -195,8 +180,14 @@ export const directiveModulesDevPlugin = ({
 
             build.onLoad(
               { filter: /.*/, namespace: "rwsdk-app-barrel-ns" },
-              async (args) => {
-                const content = await fs.readFile(args.path, "utf-8");
+              (args) => {
+                const isServerBarrel = args.path.includes("app-server-barrel");
+                const files = isServerBarrel ? serverFiles : clientFiles;
+                const content = generateAppBarrelContent(
+                  files,
+                  projectRootDir,
+                  args.path,
+                );
                 return {
                   contents: content,
                   loader: "js",
