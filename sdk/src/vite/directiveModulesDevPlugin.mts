@@ -1,17 +1,20 @@
 import path from "path";
-import { Plugin, ViteDevServer } from "vite";
-import { writeFileSync, mkdirSync } from "node:fs";
+import os from "os";
+import { Plugin } from "vite";
+import { writeFileSync, mkdirSync, promises as fs, mkdtempSync } from "node:fs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
-import { CLIENT_BARREL_PATH, SERVER_BARREL_PATH } from "../lib/constants.mjs";
+import {
+  VENDOR_CLIENT_BARREL_PATH,
+  VENDOR_SERVER_BARREL_PATH,
+  VENDOR_CLIENT_BARREL_EXPORT_PATH,
+  VENDOR_SERVER_BARREL_EXPORT_PATH,
+} from "../lib/constants.mjs";
 import { runDirectivesScan } from "./runDirectivesScan.mjs";
 
-export const VIRTUAL_CLIENT_BARREL_ID = "virtual:rwsdk:client-module-barrel";
-export const VIRTUAL_SERVER_BARREL_ID = "virtual:rwsdk:server-module-barrel";
-
-const CLIENT_BARREL_EXPORT_PATH = "rwsdk/__client_barrel";
-const SERVER_BARREL_EXPORT_PATH = "rwsdk/__server_barrel";
-
-const generateBarrelContent = (files: Set<string>, projectRootDir: string) => {
+const generateVendorBarrelContent = (
+  files: Set<string>,
+  projectRootDir: string,
+) => {
   const imports = [...files]
     .filter((file) => file.includes("node_modules"))
     .map(
@@ -35,6 +38,22 @@ const generateBarrelContent = (files: Set<string>, projectRootDir: string) => {
   return `${imports}\n\n${exports}`;
 };
 
+const generateAppBarrelContent = (
+  files: Set<string>,
+  projectRootDir: string,
+  barrelFilePath: string,
+) => {
+  return [...files]
+    .filter((file) => !file.includes("node_modules"))
+    .map((file) => {
+      const resolvedPath = normalizeModulePath(file, projectRootDir, {
+        absolute: true,
+      });
+      return `import "${resolvedPath}";`;
+    })
+    .join("\n");
+};
+
 export const directiveModulesDevPlugin = ({
   clientFiles,
   serverFiles,
@@ -44,46 +63,52 @@ export const directiveModulesDevPlugin = ({
   serverFiles: Set<string>;
   projectRootDir: string;
 }): Plugin => {
-  let scanPromise: Promise<void> | null = null;
+  const { promise: scanPromise, resolve: resolveScanPromise } =
+    Promise.withResolvers<void>();
+
+  const tempDir = mkdtempSync(path.join(os.tmpdir(), "rwsdk-"));
+  const APP_CLIENT_BARREL_PATH = path.join(tempDir, "app-client-barrel.js");
+  const APP_SERVER_BARREL_PATH = path.join(tempDir, "app-server-barrel.js");
 
   return {
     name: "rwsdk:directive-modules-dev",
 
     configureServer(server) {
       if (!process.env.VITE_IS_DEV_SERVER || process.env.RWSDK_WORKER_RUN) {
+        resolveScanPromise();
         return;
       }
 
-      // Start the directive scan as soon as the server is configured.
-      // We don't await it here, allowing Vite to continue its startup.
-      scanPromise = runDirectivesScan({
+      runDirectivesScan({
         rootConfig: server.config,
         environments: server.environments,
         clientFiles,
         serverFiles,
       }).then(() => {
-        // After the scan is complete, write the barrel files.
-        const clientBarrelContent = generateBarrelContent(
+        // context(justinvdm, 11 Sep 2025): For vendor barrels, we write the
+        // files directly to disk after the scan. For app barrels, we use a
+        // more complex esbuild plugin to provide content in-memory. This is
+        // because app barrels require special handling to prevent Vite from
+        // marking application code as `external: true`. Vendor barrels do not
+        // have this requirement and a simpler, direct-write approach is more
+        // stable.
+        const vendorClientBarrelContent = generateVendorBarrelContent(
           clientFiles,
           projectRootDir,
         );
-        writeFileSync(CLIENT_BARREL_PATH, clientBarrelContent);
+        writeFileSync(VENDOR_CLIENT_BARREL_PATH, vendorClientBarrelContent);
 
-        const serverBarrelContent = generateBarrelContent(
+        const vendorServerBarrelContent = generateVendorBarrelContent(
           serverFiles,
           projectRootDir,
         );
-        writeFileSync(SERVER_BARREL_PATH, serverBarrelContent);
+        writeFileSync(VENDOR_SERVER_BARREL_PATH, vendorServerBarrelContent);
+
+        resolveScanPromise();
       });
 
-      // context(justinvdm, 4 Sep 2025): Add middleware to block incoming
-      // requests until the scan is complete. This gives us a single hook for
-      // preventing app code being processed by vite until the scan is complete.
-      // This improves perceived startup time by not blocking Vite's optimizer.
       server.middlewares.use(async (_req, _res, next) => {
-        if (scanPromise) {
-          await scanPromise;
-        }
+        await scanPromise;
         next();
       });
     },
@@ -93,34 +118,101 @@ export const directiveModulesDevPlugin = ({
         return;
       }
 
-      // Create dummy files to give esbuild a real path to resolve.
-      mkdirSync(path.dirname(CLIENT_BARREL_PATH), { recursive: true });
-      writeFileSync(CLIENT_BARREL_PATH, "");
-      mkdirSync(path.dirname(SERVER_BARREL_PATH), { recursive: true });
-      writeFileSync(SERVER_BARREL_PATH, "");
+      mkdirSync(path.dirname(APP_CLIENT_BARREL_PATH), { recursive: true });
+      writeFileSync(APP_CLIENT_BARREL_PATH, "");
+      mkdirSync(path.dirname(APP_SERVER_BARREL_PATH), { recursive: true });
+      writeFileSync(APP_SERVER_BARREL_PATH, "");
+
+      mkdirSync(path.dirname(VENDOR_CLIENT_BARREL_PATH), { recursive: true });
+      writeFileSync(VENDOR_CLIENT_BARREL_PATH, "");
+      mkdirSync(path.dirname(VENDOR_SERVER_BARREL_PATH), { recursive: true });
+      writeFileSync(VENDOR_SERVER_BARREL_PATH, "");
 
       for (const [envName, env] of Object.entries(config.environments || {})) {
         env.optimizeDeps ??= {};
         env.optimizeDeps.include ??= [];
+        const entries = (env.optimizeDeps.entries = castArray(
+          env.optimizeDeps.entries ?? [],
+        ));
         env.optimizeDeps.include.push(
-          CLIENT_BARREL_EXPORT_PATH,
-          SERVER_BARREL_EXPORT_PATH,
+          VENDOR_CLIENT_BARREL_EXPORT_PATH,
+          VENDOR_SERVER_BARREL_EXPORT_PATH,
         );
+
+        if (envName === "client") {
+          entries.push(APP_CLIENT_BARREL_PATH);
+        } else if (envName === "worker") {
+          entries.push(APP_SERVER_BARREL_PATH);
+        }
 
         env.optimizeDeps.esbuildOptions ??= {};
         env.optimizeDeps.esbuildOptions.plugins ??= [];
-        env.optimizeDeps.esbuildOptions.plugins.push({
-          name: "rwsdk:block-optimizer-for-scan",
+        env.optimizeDeps.esbuildOptions.plugins.unshift({
+          name: "rwsdk:app-barrel-blocker",
           setup(build) {
-            build.onStart(async () => {
-              // context(justinvdm, 4 Sep 2025): We await the scan promise
-              // here because we want to block the optimizer until the scan is
-              // complete.
+            const appBarrelPaths = [
+              APP_CLIENT_BARREL_PATH,
+              APP_SERVER_BARREL_PATH,
+            ];
+            const appBarrelFilter = new RegExp(
+              `(${appBarrelPaths
+                .map((p) => p.replace(/\\/g, "\\\\"))
+                .join("|")})$`,
+            );
+
+            build.onResolve({ filter: /.*/ }, async (args: any) => {
+              // Block all resolutions until the scan is complete.
               await scanPromise;
+
+              // Handle app barrel files
+              if (appBarrelFilter.test(args.path)) {
+                return {
+                  path: args.path,
+                  namespace: "rwsdk-app-barrel-ns",
+                };
+              }
+
+              // context(justinvdm, 11 Sep 2025): Prevent Vite from
+              // externalizing our application files. If we don't, paths
+              // imported in our application barrel files will be marked as
+              // external, and thus not scanned for dependencies.
+              if (
+                args.path.startsWith("/") &&
+                (args.path.includes("/src/") ||
+                  args.path.includes("/generated/")) &&
+                !args.path.includes("node_modules")
+              ) {
+                // By returning a result, we claim the module and prevent vite:dep-scan
+                // from marking it as external.
+                return {
+                  path: args.path,
+                };
+              }
             });
+
+            build.onLoad(
+              { filter: /.*/, namespace: "rwsdk-app-barrel-ns" },
+              (args) => {
+                const isServerBarrel = args.path.includes("app-server-barrel");
+                const files = isServerBarrel ? serverFiles : clientFiles;
+                const content = generateAppBarrelContent(
+                  files,
+                  projectRootDir,
+                  args.path,
+                );
+                return {
+                  contents: content,
+                  loader: "js",
+                };
+              },
+            );
           },
         });
       }
     },
   };
+};
+
+const castArray = <T,>(value: T | T[]): T[] => {
+  return Array.isArray(value) ? value : [value];
 };

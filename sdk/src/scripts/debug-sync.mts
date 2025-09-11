@@ -137,7 +137,9 @@ const performFullSync = async (sdkDir: string, targetDir: string) => {
       const args = [pm.command];
 
       if (pm.name === "yarn") {
-        args.push(`file:${tarballPath}`);
+        // For modern yarn, disable PnP to avoid resolution issues with local tarballs
+        process.env.YARN_NODE_LINKER = "node-modules";
+        args.push(`rwsdk@file:${tarballPath}`);
       } else {
         args.push(tarballPath);
       }
