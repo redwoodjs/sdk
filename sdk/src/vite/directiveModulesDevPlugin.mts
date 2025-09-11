@@ -162,16 +162,18 @@ export const directiveModulesDevPlugin = ({
               `(${barrelPaths.map((p) => p.replace(/\\/g, "\\\\")).join("|")})$`,
             );
 
-            build.onResolve({ filter }, async (args) => {
-              console.log(
-                `[rwsdk:blocker] resolving ${args.path}, awaiting scan...`,
-              );
-              await scanPromise;
-              console.log(
-                `[rwsdk:blocker] scan complete for ${args.path}, proceeding.`,
-              );
-              // Return undefined to let the default resolver handle it
-              return;
+            build.onResolve({ filter: /.*/ }, async (args: any) => {
+              console.log(`##### esbuild:onResolve [${envName}]`, args.path);
+              if (filter.test(args.path)) {
+                console.log(
+                  `[rwsdk:blocker] resolving [${envName}] ${args.path}`,
+                );
+                await scanPromise;
+                console.log(
+                  `[rwsdk:blocker] scan complete for ${args.path}, proceeding.`,
+                );
+                return null;
+              }
             });
           },
         });
