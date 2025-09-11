@@ -25,7 +25,6 @@ jobs:
   smoke-test:
     name: ${{ matrix.starter }} starter - ${{ matrix.os }} - ${{ matrix.package-manager }}
     runs-on: ${{ matrix.os }}
-    retries: 3
     strategy:
       fail-fast: false
       matrix:
