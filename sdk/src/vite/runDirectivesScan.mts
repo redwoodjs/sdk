@@ -4,6 +4,7 @@ import { Environment, ResolvedConfig } from "vite";
 import fsp from "node:fs/promises";
 import { hasDirective } from "./hasDirective.mjs";
 import path from "node:path";
+import { pathToFileURL, fileURLToPath } from "node:url";
 import debug from "debug";
 import { getViteEsbuild } from "./getViteEsbuild.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
@@ -86,12 +87,14 @@ export const runDirectivesScan = async ({
     const moduleEnvironments = new Map<string, "client" | "worker">();
     const fileContentCache = new Map<string, string>();
 
-    const readFileWithCache = async (path: string) => {
-      if (fileContentCache.has(path)) {
-        return fileContentCache.get(path)!;
+    const readFileWithCache = async (filePath: string) => {
+      if (fileContentCache.has(filePath)) {
+        return fileContentCache.get(filePath)!;
       }
-      const contents = await fsp.readFile(path, "utf-8");
-      fileContentCache.set(path, contents);
+      // Convert file:// URLs back to file system paths for reading
+      const actualPath = filePath.startsWith('file://') ? fileURLToPath(filePath) : filePath;
+      const contents = await fsp.readFile(actualPath, "utf-8");
+      fileContentCache.set(filePath, contents);
       return contents;
     };
 
@@ -220,8 +223,13 @@ export const runDirectivesScan = async ({
             );
             log("Normalized path:", normalizedPath);
 
+            // On Windows, convert absolute paths to file:// URLs for ESM compatibility
+            const esbuildPath = process.platform === 'win32' && path.isAbsolute(normalizedPath)
+              ? pathToFileURL(normalizedPath).href
+              : normalizedPath;
+
             return {
-              path: normalizedPath,
+              path: esbuildPath,
               pluginData: { inheritedEnv: importerEnv },
             };
           }
