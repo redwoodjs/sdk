@@ -33,3 +33,12 @@ Successfully enabled Windows smoke tests and identified the exact issue:
 - Affects `__intermediate_builds` directory creation
 
 **Root Cause**: Path construction logic is duplicating the Windows drive letter when building absolute paths.
+
+### Progress Update
+✅ **Fixed**: Path duplication issue in `constants.mts`
+- Used `fileURLToPath()` instead of `.pathname`
+- Directory creation now works: `C:\C:\Users\...` → `C:\Users\...`
+
+🔍 **New Issue**: ESM URL scheme error in `runDirectivesScan.mjs:205`
+- Error: `Only URLs with a scheme in: file, data, and node are supported by the default ESM loader. On Windows, absolute paths must be valid file:// URLs. Received protocol 'c:'`
+- Need to convert Windows absolute paths to proper `file://` URLs for Node.js ESM loader
