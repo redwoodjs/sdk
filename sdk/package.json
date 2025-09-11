@@ -125,7 +125,7 @@
   "license": "MIT",
   "dependencies": {
     "@ast-grep/napi": "^0.38.5",
-    "@cloudflare/vite-plugin": "1.7.4",
+    "@cloudflare/vite-plugin": "1.6.0",
     "@cloudflare/workers-types": "^4.20250407.0",
     "@puppeteer/browsers": "^2.8.0",
     "@types/fs-extra": "^11.0.4",
