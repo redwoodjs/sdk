@@ -132,12 +132,24 @@ export const directivesPlugin = ({
           build.onLoad(
             { filter: /\.(js|ts|jsx|tsx|mts|mjs|cjs)$/ },
             async (args) => {
+              console.log(
+                "##### esbuild:onLoad for env=%s, path=%s",
+                env,
+                args.path,
+              );
               process.env.VERBOSE &&
                 log(
                   "Esbuild onLoad called for environment=%s, path=%s",
                   env,
                   args.path,
                 );
+              if (env === "worker" && args.path.includes("functions.ts")) {
+                console.log(
+                  "########## Esbuild onLoad for worker functions.ts",
+                  env,
+                  args.path,
+                );
+              }
 
               const normalizedPath = normalizeModulePath(
                 args.path,
@@ -251,10 +263,20 @@ export const directivesPlugin = ({
               if (serverResult) {
                 process.env.VERBOSE &&
                   log(
-                    "Esbuild server function transformation successful for environment=%s, path=%s",
+                    "Esbuild server function transformation successful for environment=%s, path=%s, code: %j",
                     env,
                     args.path,
+                    serverResult.code,
                   );
+
+                if (args.path.includes("functions.ts") && env === "worker") {
+                  console.log(
+                    "########## Esbuild server function transformation successful for worker functions.ts, code: %j",
+                    env,
+                    args.path,
+                    serverResult.code,
+                  );
+                }
                 return {
                   contents: serverResult.code,
                   loader: getLoader(args.path),
@@ -267,6 +289,15 @@ export const directivesPlugin = ({
                   env,
                   args.path,
                 );
+
+              if (args.path.includes("functions.ts")) {
+                console.log(
+                  "########## No transformation applied for worker functions.ts",
+                  env,
+                  args.path,
+                );
+                console.log("code: %j", code);
+              }
             },
           );
         },

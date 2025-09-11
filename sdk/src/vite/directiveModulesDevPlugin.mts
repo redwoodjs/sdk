@@ -166,7 +166,7 @@ export const directiveModulesDevPlugin = ({
             );
 
             build.onResolve({ filter: /.*/ }, async (args: any) => {
-              console.log(`##### esbuild:onResolve [${envName}]`, args.path);
+              // Handle barrel files
               if (filter.test(args.path)) {
                 console.log(
                   `[rwsdk:blocker] resolving [${envName}] ${args.path}`,
@@ -178,6 +178,27 @@ export const directiveModulesDevPlugin = ({
                 return {
                   path: args.path,
                   namespace: "rwsdk-app-barrel-ns",
+                };
+              }
+
+              // context(justinvdm, 11 Sep 2025): Prevent Vite from
+              // externalizing our application files. If we don't, paths
+              // imported in our application barrel files will be marked as
+              // external, and thus not scanned for dependencies.
+              if (
+                args.path.startsWith("/") &&
+                (args.path.includes("/src/") ||
+                  args.path.includes("/generated/")) &&
+                !args.path.includes("node_modules")
+              ) {
+                console.log(
+                  `[rwsdk:force-internal] resolving ${args.path} as internal`,
+                );
+
+                // By returning a result, we claim the module and prevent vite:dep-scan
+                // from marking it as external.
+                return {
+                  path: args.path,
                 };
               }
             });
