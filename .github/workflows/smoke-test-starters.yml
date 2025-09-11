@@ -99,6 +99,7 @@ jobs:
           # todo(justinvdm, 11 Aug 2025): Fix style test flakiness
           pnpm smoke-test --path="../starters/${{ matrix.starter }}" --artifact-dir="../smoke-test-artifacts/${{ matrix.starter }}" --sync --copy-project --skip-style-tests --package-manager=${{ matrix.package-manager }}
         env:
+          DEBUG: "rwsdk:*"
           CHROME_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
 
       - name: Upload starter artifacts

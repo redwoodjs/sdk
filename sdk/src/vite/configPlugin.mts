@@ -29,8 +29,17 @@ export const configPlugin = ({
   config: async (_) => {
     const mode = process.env.NODE_ENV;
 
+    const alias = {
+      "@": path.normalize(resolve(projectRootDir, "src")),
+      "@generated": path.normalize(resolve(projectRootDir, "generated")),
+    };
+
+    log("Project root directory:", projectRootDir);
+    log("Resolved aliases:", alias);
+
     const workerConfig: InlineConfig = {
       resolve: {
+        alias,
         conditions: [
           "workerd",
           "react-server",
@@ -85,10 +94,7 @@ export const configPlugin = ({
       mode,
       logLevel: silent ? "silent" : "info",
       resolve: {
-        alias: {
-          "@": path.normalize(resolve(projectRootDir, "src")),
-          "@generated": path.normalize(resolve(projectRootDir, "generated")),
-        },
+        alias,
       },
       build: {
         minify: mode !== "development",
@@ -103,6 +109,9 @@ export const configPlugin = ({
       environments: {
         client: {
           consumer: "client",
+          resolve: {
+            alias,
+          },
           build: {
             outDir: resolve(projectRootDir, "dist", "client"),
             manifest: true,
@@ -132,6 +141,7 @@ export const configPlugin = ({
         },
         ssr: {
           resolve: {
+            alias,
             conditions: ["workerd", "module", "browser"],
             noExternal: true,
           },
