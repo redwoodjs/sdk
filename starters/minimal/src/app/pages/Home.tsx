@@ -1,14 +1,16 @@
-import { RequestInfo } from "rwsdk/worker";
+// Try to import Start component, fall back if folder is deleted
+let Start: React.ComponentType | null = null;
+try {
+  Start = await import("../start/Start").then((m) => m.Start);
+} catch {
+  // Start folder deleted, use fallback
+}
 
-export function Home({ ctx }: RequestInfo) {
-  if (!import.meta.env.VITE_IS_DEV_SERVER) {
-    return <div>Hello World</div>;
+export function Home() {
+  // Show start page in dev, unless start folder was deleted
+  if (import.meta.env.DEV && Start) {
+    return <Start />;
   }
 
-  return (
-    <iframe
-      style={{ width: "100%", height: "100%", border: "none" }}
-      src="https://rwsdk.com/start"
-    />
-  );
+  return <div>Hello World</div>;
 }

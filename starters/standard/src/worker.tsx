@@ -2,6 +2,7 @@ import { defineApp, ErrorResponse } from "rwsdk/worker";
 import { route, render, prefix } from "rwsdk/router";
 import { Document } from "@/app/Document";
 import { Home } from "@/app/pages/Home";
+import { Protected } from "@/app/pages/Protected";
 import { setCommonHeaders } from "@/app/headers";
 import { userRoutes } from "@/app/pages/user/routes";
 import { sessions, setupSessionStore } from "./session/store";
@@ -46,7 +47,7 @@ export default defineApp([
     }
   },
   render(Document, [
-    route("/", () => new Response("Hello, World!")),
+    route("/", Home),
     route("/protected", [
       ({ ctx }) => {
         if (!ctx.user) {
@@ -56,7 +57,7 @@ export default defineApp([
           });
         }
       },
-      Home,
+      Protected,
     ]),
     prefix("/user", userRoutes),
   ]),
