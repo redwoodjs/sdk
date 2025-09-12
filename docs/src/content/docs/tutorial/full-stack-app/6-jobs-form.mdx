@@ -12,11 +12,11 @@ import { Aside, FileTree } from '@astrojs/starlight/components';
 
 Now, that we have a way of displaying our applications, we need a way of adding new ones.
 
-First, let's take a look at our design, in Figma, and what we're building.
+First, let's take a look at our final design in Figma, and what we're building.
 
 ![](./images/figma-new-application-form.png)
 
-In the last section, we set up the `/applications/new` route, but we haven't created the page.
+[In the last section](/tutorial/full-stack-app/jobs-list/), we set up the `/applications/new` route, but we haven't created the page.
 
 Inside the `src/app/pages/applications` folder, let's create a new file called `New.tsx`.
 
@@ -31,46 +31,41 @@ Inside the `src/app/pages/applications` folder, let's create a new file called `
 We can stub out a basic component:
 
 ```tsx title="src/app/pages/applications/New.tsx"
-import { InteriorLayout } from "@/app/layouts/InteriorLayout"
-
 const New = () => {
   return (
-    <InteriorLayout>
       <div>New</div>
-    </InteriorLayout>
   )
 }
 
 export { New }
----
-I went ahead and wrapped our component with the `InteriorLayout` component.
----
 ```
 
 In order to see the changes that we're making in the browser, we need to update our worker.
 
-```diff title="src/worker.tsx" collapse={4-7}
-import { New } from "./app/pages/applications/New";
-...
+```tsx title="src/worker.tsx" collapse={2-5} del={11} ins={12} showLineNumbers=false
 render(Document, [
-  index([ isAuthenticated, Home ]),
-  prefix("/user", userRoutes),
-  route("/legal/privacy", () => <h1>Privacy Policy</h1>),
-  route("/legal/terms", () => <h1>Terms of Service</h1>),
-  prefix("/applications", [
-    route("/", [isAuthenticated, List]),
--    route("/new", [isAuthenticated, () => <h1>New Application</h1>]),
-+    route("/new", [isAuthenticated, New]),
-    route("/:id", [isAuthenticated, () => <h1>Application</h1>]),
+    index([isAuthenticated, Home]),
+    layout(AuthLayout, prefix("/user", userRoutes)),
+    route("/legal/privacy", () => <h1>Privacy Policy</h1>),
+    route("/legal/terms", () => <h1>Terms of Service</h1>),
+    layout(
+      InteriorLayout,
+      prefix("/applications", [
+        isAuthenticated,
+        route("/", List),
+        route("/new", () => <h1>New Application</h1>),
+        route("/new", New),
+        route("/:id", () => <h1>Application</h1>),
+      ])
+    ),
   ]),
-]),
 ```
 
 Originally, we defined our `/new` route, returning an `h1` element that said "New Application". Let's change that to return our `New` component instead.
 
 Then, be sure to import the `New` component at the top of the file:
 
-```tsx title="src/worker.tsx" collapse={4-7}
+```tsx title="src/worker.tsx"  showLineNumbers=false
 import { New } from "./app/pages/applications/New";
 ```
 
@@ -80,83 +75,104 @@ Inside our `New` component, let's start building our page.
 
 At the top, we have breadcrumbs, helping the user know where they are and navigate back.
 
-Conveniently, shadcn/ui has a `Breadcrumb` component that we can use.
+Conveniently, shadcn/ui has a `Breadcrumb` component that we can use. We've already imported this component into ou project, we just need to use it.
 
-Just like the Applications Table, let's start by copying and pasting the code directly from [shadcn/ui's documentation](https://ui.shadcn.com/docs/components/breadcrumb) into our component:
+Just like the Applications Table, let's start by copying and pasting the implementation code directly from [shadcn/ui's documentation](https://ui.shadcn.com/docs/components/breadcrumb) into our component:
 
-```tsx showLineNumbers={false}
-import { Breadcrumb, BreadcrumbList, BreadcrumbItem, BreadcrumbLink, BreadcrumbPage, BreadcrumbSeparator } from "@/app/components/ui/breadcrumb"
-...
-<Breadcrumb>
-  <BreadcrumbList>
-    <BreadcrumbItem>
-      <BreadcrumbLink href="/">Home</BreadcrumbLink>
-    </BreadcrumbItem>
-    <BreadcrumbSeparator />
-    <BreadcrumbItem>
-      <BreadcrumbLink href="/components">Components</BreadcrumbLink>
-    </BreadcrumbItem>
-    <BreadcrumbSeparator />
-    <BreadcrumbItem>
-      <BreadcrumbPage>Breadcrumb</BreadcrumbPage>
-    </BreadcrumbItem>
-  </BreadcrumbList>
-</Breadcrumb>
-```
+```tsx title="src/app/pages/applications/New.tsx" ins={1-8,13-27} del={28}
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/app/components/ui/breadcrumb";
 
-Now, we an start modifying the code to fit our needs.
-
-```diff title="src/app/pages/applications/New.tsx"
-<InteriorLayout>
-    <Breadcrumb>
-      <BreadcrumbList>
-        <BreadcrumbItem>
--         <BreadcrumbLink href="/">Home</BreadcrumbLink>
-+         <BreadcrumbLink href="/applications">Applications</BreadcrumbLink>
-        </BreadcrumbItem>
--         <BreadcrumbSeparator />
--         <BreadcrumbItem>
--           <BreadcrumbLink href="/components">Components</BreadcrumbLink>
--         </BreadcrumbItem>
-        <BreadcrumbSeparator />
-        <BreadcrumbItem>
--          <BreadcrumbPage>Breadcrumb</BreadcrumbPage>
-+          <BreadcrumbPage>Add an Application</BreadcrumbPage>
-        </BreadcrumbItem>
-      </BreadcrumbList>
-    </Breadcrumb>
-</InteriorLayout>
-```
-
-- I've adjusted the first `BreadcrumbLink` to point to the Applications list page.
-- We can get rid of the second `BreadcrumbItem`.
-- For the third `BreadcrumbItem`, I've changed the label from `Breadcrumb` to `Add an Application`.
-
-At the top of the `src/app/components/ui/breadcrumb.tsx` file, we need to add a `use client` directive, otherwise our page will error out.
-
-```tsx title="src/app/components/ui/breadcrumb.tsx"
-"use client"
-```
-
-Let's wrap our breadcrumbs with a `div` and add a few classes to adjust the spacing.
-
-```tsx title="src/app/pages/applications/New.tsx" collapse={4-14} {3,15} startLineNumber=12 "mb-12 -mt-7 pl-[120px]"
-return (
-  <InteriorLayout>
-    <div className="mb-12 -mt-7 pl-[120px]">
+const New = () => {
+  return (
+    <div>
       <Breadcrumb>
         <BreadcrumbList>
           <BreadcrumbItem>
-            <BreadcrumbLink href="/applications">Applications</BreadcrumbLink>
+            <BreadcrumbLink href="/">Home</BreadcrumbLink>
           </BreadcrumbItem>
           <BreadcrumbSeparator />
           <BreadcrumbItem>
-            <BreadcrumbPage>Add an Application</BreadcrumbPage>
+            <BreadcrumbLink href="/components">Components</BreadcrumbLink>
+          </BreadcrumbItem>
+          <BreadcrumbSeparator />
+          <BreadcrumbItem>
+            <BreadcrumbPage>Breadcrumb</BreadcrumbPage>
           </BreadcrumbItem>
         </BreadcrumbList>
       </Breadcrumb>
+      New
     </div>
-  </InteriorLayout>
+  );
+};
+
+export { New };
+```
+
+Now, let's start modifying the code to fit our needs.
+
+```tsx title="src/app/pages/applications/New.tsx" ins={5-7,16} del={4,9-12,15}
+  <Breadcrumb>
+    <BreadcrumbList>
+      <BreadcrumbItem>
+        <BreadcrumbLink href="/">Home</BreadcrumbLink>
+        <BreadcrumbLink href={link('/applications')}>
+          Applications
+        </BreadcrumbLink>
+      </BreadcrumbItem>
+      <BreadcrumbSeparator />
+      <BreadcrumbItem>
+        <BreadcrumbLink href="/components">Components</BreadcrumbLink>
+      </BreadcrumbItem>
+      <BreadcrumbSeparator />
+      <BreadcrumbItem>
+        <BreadcrumbPage>Breadcrumb</BreadcrumbPage>
+        <BreadcrumbPage>Add an Application</BreadcrumbPage>
+      </BreadcrumbItem>
+    </BreadcrumbList>
+  </Breadcrumb>
+```
+
+- I've adjusted the first `BreadcrumbLink` to point to the Applications index or list page.
+- We can get rid of the `<BreadcrumbSeparator />`
+- We can get rid of the second `<BreadcrumbItem>`.
+- For the third `<BreadcrumbItem>`, I've changed the label from `Breadcrumb` to `Add an Application`.
+
+Since we're utilizing the `link` function, we'll need to import it at the top of the file:
+
+```tsx title="src/app/pages/applications/New.tsx"
+import { link } from "@/app/shared/links";
+```
+
+At the top of the `src/app/components/ui/breadcrumb.tsx` file, we need to add a `use client` directive to specify that our shadcn/ui component is a client component, otherwise our page will error out.
+
+```tsx title="src/app/components/ui/breadcrumb.tsx"
+"use client";
+```
+
+Let's add some styles to our wrapping `div`:
+
+```tsx title="src/app/pages/applications/New.tsx" collapse={3-13} startLineNumber=12 ins="mb-12 -mt-7 pl-[120px]"
+return (
+  <div className="mb-12 -mt-7 pl-[120px]">
+    <Breadcrumb>
+      <BreadcrumbList>
+        <BreadcrumbItem>
+          <BreadcrumbLink href="/applications">Applications</BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator />
+        <BreadcrumbItem>
+          <BreadcrumbPage>Add an Application</BreadcrumbPage>
+        </BreadcrumbItem>
+      </BreadcrumbList>
+    </Breadcrumb>
+  </div>
 );
 ```
 
@@ -166,38 +182,49 @@ return (
 
 Next up, let's add our page heading:
 
-```tsx title="src/app/pages/applications/New.tsx" collapse={1-13} startLineNumber=15
-<div className="mb-12 -mt-7 pl-[120px]">
-  <Breadcrumb>
-    <BreadcrumbList>
-      <BreadcrumbItem>
-        <BreadcrumbLink href="/applications">Applications</BreadcrumbLink>
-      </BreadcrumbItem>
-      <BreadcrumbSeparator />
-      <BreadcrumbItem>
-        <BreadcrumbPage>Add an Application</BreadcrumbPage>
-      </BreadcrumbItem>
-    </BreadcrumbList>
-  </Breadcrumb>
-</div>
-<div className="mx-page-side pb-6 mb-8 border-b-1 border-border">
-  <h1 className="page-title">New Application</h1>
-  <p className="page-description">Create a new application</p>
-</div>
-```
-
-- On the wrapping `div`, we have a few classes that adjusts the spacing and adds a border to the bottom.
+```tsx title="src/app/pages/applications/New.tsx" ins={1,15-19} collapse={3-13} startLineNumber=13
+<>
+  <div className="mb-12 -mt-7 pl-[120px]">
+    <Breadcrumb>
+      <BreadcrumbList>
+        <BreadcrumbItem>
+          <BreadcrumbLink href="/applications">Applications</BreadcrumbLink>
+        </BreadcrumbItem>
+        <BreadcrumbSeparator />
+        <BreadcrumbItem>
+          <BreadcrumbPage>Add an Application</BreadcrumbPage>
+        </BreadcrumbItem>
+      </BreadcrumbList>
+    </Breadcrumb>
+  </div>
+  <div className="mx-page-side pb-6 mb-8 border-b-1 border-border">
+    <h1 className="page-title">New Application</h1>
+    <p className="page-description">Create a new application</p>
+  </div>
+</>
+---
+- We can only return a single component, so we need to wrap everything with React fragment (`<></>`)
+- On the `div`, we have a few classes that adjusts the spacing and adds a border to the bottom.
   - `mx-page-side` uses our custom utility class to add `40px` of padding on the left and right.
   - `pb-6` adds `24px` of padding on the bottom.
   - `mb-8` adds `32px` of margin on the bottom.
   - `border-b-1 border-border` adds a border to the bottom of the `div`.
 - Here, we've added an `h1` that says "New Application" and has a class called `page-title`
-- Then, we have a `p` of text that says "Create a new application." I went ahead and added a class of `page-description` so that we can use this on multiple pages, but we'll need to add this class definition to the `@layer components` section of our `styles.css` file.
+- Then, we have a `p` of text that says "Create a new application." I went ahead and added a class of `page-description` so that we can use this on multiple pages.
+---
+```
 
-```css title="src/app/styles.css" startLineNumber={182}
-.page-description {
-  @apply text-zinc-500;
-}
+ We need to add a class definition for `page-description` to the `@layer components` section of our `styles.css` file.
+
+```css title="src/app/styles.css" ins={6-8} startLineNumber={165} collapse={2-5}
+@layer components {
+  .page-title {
+    @apply text-3xl;
+  }
+
+  .page-description {
+    @apply text-zinc-500;
+  }
 ---
 This sets the default color of our `page-description` to a light gray, using class provided by Tailwind.
 ---
@@ -217,7 +244,7 @@ Inside the `src/app/components` folder, let's create a new file called `Applicat
 Stubbing out our component:
 
 ```tsx title="src/app/components/ApplicationForm.tsx"
-"use client"
+"use client";
 
 const ApplicationForm = () => {
   return (
@@ -233,29 +260,63 @@ You'll notice I also placed the `use client` directive at the top of the file, c
 
 Before we start building out our Application Form, let's add it to the `New.tsx` file.
 
-```tsx title="src/app/pages/applications/New.tsx" showLineNumbers=false {7}
-import { ApplicationsForm } from "@/app/components/ApplicationsForm"
-...
-<div className="mx-page-side pb-6 mb-8 border-b-1 border-border">
-  <h1 className="page-title">New Application</h1>
-  <p className="page-description">Create a new application</p>
-</div>
-<ApplicationsForm />
+```tsx title="src/app/pages/applications/New.tsx" collapse={2-29} ins={1, 34}
+import { ApplicationForm } from "@/app/components/ApplicationForm";
+import {
+  Breadcrumb,
+  BreadcrumbList,
+  BreadcrumbItem,
+  BreadcrumbLink,
+  BreadcrumbPage,
+  BreadcrumbSeparator,
+} from "@/app/components/ui/breadcrumb";
+import { link } from "@/app/shared/links";
+
+const New = () => {
+  return (
+    <>
+      <div className="mb-12 -mt-7 pl-[120px]">
+        <Breadcrumb>
+          <BreadcrumbList>
+            <BreadcrumbItem>
+              <BreadcrumbLink href={link("/applications")}>
+                Applications
+              </BreadcrumbLink>
+            </BreadcrumbItem>
+            <BreadcrumbSeparator />
+            <BreadcrumbItem>
+              <BreadcrumbPage>Breadcrumb</BreadcrumbPage>
+            </BreadcrumbItem>
+          </BreadcrumbList>
+        </Breadcrumb>
+      </div>
+      <div className="mx-page-side pb-6 mb-8 border-b-1 border-border">
+        <h1 className="page-title">New Application</h1>
+        <p className="page-description">Create a new application</p>
+      </div>
+      <ApplicationForm />
+    </>
+  );
+};
 ```
 
 Now, let's go back to our `ApplicationForm` component and wrap our `<div>ApplicationForm</div>` with a `form` tag and add some styles:
 
-```tsx title="src/app/components/ApplicationForm.tsx" startLineNumber=5
-<form>
-  <div className="grid grid-cols-2 gap-[200px] px-page-side mb-[75px]">
-    ApplicationForm
-  </div>
-</form>
-```
-
+```tsx title="src/app/components/ApplicationForm.tsx" ins={2,6} ins="className="grid grid-cols-2 gap-[200px] px-page-side mb-[75px]""
+return (
+  <form>
+    <div className="grid grid-cols-2 gap-[200px] px-page-side mb-[75px]">
+      ApplicationForm
+    </div>
+  </form>
+);
+---
 - On our `div`, I added a class of `grid` and gave it two columns, `grid-cols-2`. I also put a `200px` gap between the two columns.
 - On the left and right side, I added `40px` of padding with our custom utility class, `px-page-side`.
 - Finally, I added `75px` of margin on the bottom with `mb-[75px]`.
+---
+```
+
 
 If you check the `/applications/new` route in the browser, you'll see our breadcrumbs and page heading:
 
@@ -263,7 +324,7 @@ If you check the `/applications/new` route in the browser, you'll see our breadc
 
 Now, let's start building out our form.
 
-```tsx title="src/app/components/ApplicationForm.tsx"
+```tsx title="src/app/components/ApplicationForm.tsx" ins={3-52} startLineNumber=5
 <form>
   <div className="grid grid-cols-2 gap-[200px] px-page-side mb-[75px]">
     {/* left side */}
@@ -322,7 +383,7 @@ Now, let's start building out our form.
 
 You'll also need to import the `Button` component from shadcn/ui at the top of the file:
 
-```tsx title="src/app/components/ApplicationForm.tsx" showLineNumbers={false}
+```tsx title="src/app/components/ApplicationForm.tsx" startLineNumber=3
 import { Button } from "./ui/button";
 ```
 
@@ -336,7 +397,7 @@ This is a big chunk of code, but it should be pretty straightforward. It's a sta
 
 One of the things that I like to do when building out my form components is to wrap each field (the label, description, and input) with a `div` that has a class of `field`. This makes it easy to control the layout and spacing of each field.
 
-You'll also notice that on each `p` tag, I added a class of `input-description`. Since there are multiple input descriptions, this will make it easier to style since we can target the class name from `styles.css`.
+You'll also notice that on each `p` tag, I added a class of `input-description`. Since there are multiple input descriptions, this will make it easier to style since we can target the class name from our `styles.css` file.
 
 If you look at this in the browser, it should look like this:
 
@@ -346,7 +407,7 @@ Now, let's add some basic styling.
 
 Inside the `style.css` file, below the `h1, h2, h3` styles, let's add some more styles for `h2`:
 
-```css title="src/app/styles.css" startLineNumber={159}
+```css title="src/app/styles.css" startLineNumber={156}
 h2 {
   @apply text-2xl font-bold;
 }
@@ -358,10 +419,11 @@ h2 {
 
 For our `.field` class, let's stick this inside the `@layer components`.
 
-```css title="src/app/styles.css" startLineNumber={190}
-.field {
-  @apply pt-8;
-}
+```css title="src/app/styles.css" startLineNumber={169} ins={2-4}
+@layer components {
+  .field {
+    @apply pt-8;
+  }
 ---
 - `pt-8` adds `32px` of padding to the top.
 ---
@@ -369,7 +431,7 @@ For our `.field` class, let's stick this inside the `@layer components`.
 
 For our `label` and `.label` classes, let's stick this inside `@layer base`:
 
-```css title="src/app/styles.css" startLineNumber={168}
+```css title="src/app/styles.css" startLineNumber={164} ins={1-4}
 label,
 .label {
   @apply text-sm font-medium block;
@@ -381,9 +443,9 @@ label,
 ---
 ```
 
-For our `textarea` and `input` classes, let's also add to this `@layer base`:
+We already have an `input` definition within our `@layer base`, so we can just add to it. But, it specifically targets the `text` type, so let's extend it to include other input types, as well as, `textarea`.
 
-```css title="src/app/styles.css" startLineNumber={164}
+```css title="src/app/styles.css" startLineNumber={160} ins={1-4}
 textarea,
 input[type="email"],
 input[type="date"],
@@ -391,21 +453,11 @@ input[type="url"],
 input[type="text"] {
   @apply border-border border-1 rounded-md px-3 h-9 block w-full mb-2 text-base;
 }
----
-- `border-border border-1` adds a `1px` border to the input.
-- `rounded-md` adds a border radius of `4px`.
-- `px-3` adds `12px` of padding on the left and right.
-- `h-9` gives the input a height of `36px`.
-- `block` sets the display to `block`.
-- `w-full` makes the input take the full width of the container.
-- `mb-2` adds `8px` of margin on the bottom.
-- `text-base` sets the font size to `16px`.
----
 ```
 
-Let's add a few more classes for our `textarea`:
+Let's add a few more classes for our `textarea`. These need to be listed below our `input` definition, so that we can override some of our `input` styles:
 
-```css title="src/app/styles.css" startLineNumber={172}
+```css title="src/app/styles.css" startLineNumber={168} ins={1-3}
 textarea {
   @apply h-[80px] py-3;
 }
@@ -426,9 +478,9 @@ For the minimum and maximum salary fields, we have to add a few custom styles in
 </figcaption>
 </figure>
 
-Let's revisit the JSX. This is what we have right now:
+Let's revisit the JSX and see what our existing code looks like:
 
-```tsx title="src/app/components/ApplicationForm.tsx" startLineNumber=28
+```tsx title="src/app/components/ApplicationForm.tsx" startLineNumber=30
 <div className="field">
   <div className="label">Salary Range</div>
   <p className="input-description">What does the pay look like?</p>
@@ -447,7 +499,7 @@ Let's revisit the JSX. This is what we have right now:
 
 We can add a class of `flex gap-4` to the `div` wrapping our inputs to get the minimum and maximum inputs aligned side by side:
 
-```tsx title="src/app/components/ApplicationForm.tsx" startLineNumber=31 "flex gap-4"
+```tsx title="src/app/components/ApplicationForm.tsx" startLineNumber=33 ins="flex gap-4"
 <div className="flex gap-4">
   <div>
     <label htmlFor="salaryMin">Min</label>
@@ -462,7 +514,7 @@ We can add a class of `flex gap-4` to the `div` wrapping our inputs to get the m
 
 For the `div` wrapping the label and input, let's add a class of `flex-1 label-inside`. This will make the minimum and maximum inputs an equal width. Then, the `label-inside` is a custom class that we can target within our CSS.
 
-```tsx title="src/app/components/ApplicationForm.tsx" startLineNumber=31 "flex-1 label-inside"
+```tsx title="src/app/components/ApplicationForm.tsx" startLineNumber=33 ins="flex-1 label-inside"
 <div className="flex gap-4">
   <div className="flex-1 label-inside">
     <label htmlFor="salaryMin">Min</label>
@@ -477,10 +529,16 @@ For the `div` wrapping the label and input, let's add a class of `flex-1 label-i
 
 In our `styles.css` file, inside the `@layer components` section, let's add the following:
 
-```css title="src/app/styles.css" startLineNumber={211}
-.label-inside {
-  @apply relative flex border border-border outline-1 outline-white rounded-md mb-2 h-9;
-}
+```css title="src/app/styles.css" collapse={2-5} ins={6-8} startLineNumber={182}
+@layer components {
+  .field {
+    @apply pt-8;
+  }
+
+  .label-inside {
+    @apply relative flex border border-border outline-1 outline-white rounded-md mb-2 h-9;
+  }
+
 ---
 - We can set the position to `relative` and the display to `flex`.
 - `border border-border` will give the `div` a border that has a color of `border`, defined in the `@theme` section.
@@ -493,12 +551,14 @@ In our `styles.css` file, inside the `@layer components` section, let's add the 
 
 We can use CSS nesting to target the `label` and `input` within the `label-inside` class.
 
-```css title="src/app/styles.css" startLineNumber={211} {3-8}
+```css title="src/app/styles.css" startLineNumber={187} ins={4-10}
 .label-inside {
   @apply relative flex border outline-1 outline-white border-border rounded-md mb-2 h-9;
+
   label {
     @apply text-sm font-medium px-3 bg-[#f4f4f5] rounded-sm center my-1 ml-1;
   }
+
   input[type="text"] {
     @apply border-none flex-1 relative top-1 outline-none focus:border-none focus:outline-none h-auto;
   }
@@ -518,17 +578,24 @@ We can use CSS nesting to target the `label` and `input` within the `label-insid
 ---
 ```
 
-The border around the wrapping `div` makes it look like the label is inside the input. But, really, it's just a `div` wrapping a `label` and an `input`. In order to maintain the illusion, we also have to remove the default border and outline from the `input`. But, it also means that we need to change the border color on the `div` when the `input` inside is focused.
+The border around the wrapping `div` makes it look like the label is inside the input. But, really, it's just a `div` wrapping a `label` and an `input`.
 
-```css title="src/app/styles.css" {9-11} startLineNumber={211} collapse={2-8}
+![](./images/min-max-text-input.png)
+
+In order to maintain the illusion, we also have to remove the default border and outline from the `input`. We also need to change the border color on the `div` when the `input` inside is focused.
+
+```css title="src/app/styles.css" ins={12-14} collapse={2-11} startLineNumber={187}
 .label-inside {
   @apply relative flex border border-border outline-1 outline-white rounded-md mb-2 h-9;
+
   label {
     @apply text-sm font-medium px-3 bg-[#f4f4f5] rounded-sm center my-1 ml-1;
   }
+
   input[type="text"] {
-    @apply border-none flex-1 relative -top-[2px] outline-none focus:border-none focus:outline-none h-auto;
+    @apply border-none flex-1 relative top-1 outline-none focus:border-none focus:outline-none h-auto;
   }
+
   &:has(input[type="text"]:focus) {
     @apply outline-2 outline-[#919191];
   }
@@ -541,7 +608,7 @@ The border around the wrapping `div` makes it look like the label is inside the 
 
 Now, let's style the `input-description`. We can add this to the `@layer components` section:
 
-```css title="src/app/styles.css" startLineNumber={224}
+```css title="src/app/styles.css" startLineNumber={203} ins={1-3}
 .input-description {
   @apply text-sm text-zinc-500 mb-2;
 }
@@ -571,7 +638,7 @@ For most of these pieces, we can use existing shadcn/ui components.
 
 I'm going to use a wrapping `div` with a class of `box` to wrap each of these sections.
 
-```tsx title="src/app/components/ApplicationForm.tsx" startLineNumber=55
+```tsx title="src/app/components/ApplicationForm.tsx" startLineNumber=55 ins={3-6}
 {/* right side */}
 <div>
   <div className="box">
@@ -583,7 +650,7 @@ I'm going to use a wrapping `div` with a class of `box` to wrap each of these se
 
 Our `DatePicker` component is a shadcn/ui component, so we'll need to import it at the top of our file:
 
-```tsx title="src/app/components/ApplicationForm.tsx" showLineNumbers={false}
+```tsx title="src/app/components/ApplicationForm.tsx" showLineNumbers={false} ins={1}
 import { DatePicker } from "./ui/datepicker";
 ```
 
@@ -595,7 +662,7 @@ We need a way of setting the `name` for our `input` element, but currently, this
 
 Open your `src/app/components/ui/DatePicker.tsx` component and add a `name` prop. This is a type of `string`.
 
-```tsx title="src/app/components/ui/datepicker.tsx" startLineNumber=16 "({ name }: { name: string })"
+```tsx title="src/app/components/ui/datepicker.tsx" startLineNumber=16 ins="({ name }: { name: string })"
 export function DatePicker({ name }: { name: string }) {
 ```
 
@@ -607,7 +674,29 @@ const [date, setDate] = React.useState<Date>()
 
 We can use that in conjunction with our `name` prop! Scroll down to the bottom of the `DatePicker` component, right after our closing `</Popover>` tag. We'll create a hidden input. We can give our `input` the `name` that we passed in as a prop and set the value to the `date` that we're saving in state.
 
-```tsx title="src/app/components/ui/datepicker.tsx" startLineNumber=42
+```tsx title="src/app/components/ui/datepicker.tsx" collapse={1-22} ins={23} startLineNumber=20
+<Popover>
+  <PopoverTrigger asChild>
+    <Button
+      variant={"outline"}
+      className={cn(
+        "w-[280px] justify-start text-left font-normal",
+        !date && "text-muted-foreground"
+      )}
+    >
+      <CalendarIcon className="mr-2 h-4 w-4" />
+      {date ? format(date, "PPP") : <span>Pick a date</span>}
+    </Button>
+  </PopoverTrigger>
+  <PopoverContent className="w-auto p-0">
+    <Calendar
+      mode="single"
+      selected={date}
+      onSelect={setDate}
+      initialFocus
+    />
+  </PopoverContent>
+</Popover>
 <input type="hidden" name={name} value={date?.toISOString()} />
 ```
 
@@ -617,10 +706,7 @@ You probably noticed, we're formatting the `date` value.
 
 Now, our component is returning two children, so we'll need to wrap our entire return statement with a React Fragment:
 
-```tsx title="src/app/components/ui/datepicker.tsx" "<>" "</>" startLineNumber=16 collapse={6-27}
-export function DatePicker({ name }: { name: string }) {
-  const [date, setDate] = React.useState<Date>()
-
+```tsx title="src/app/components/ui/datepicker.tsx" ins={2,26} collapse={3-25} startLineNumber=19
   return (
     <>
       <Popover>
@@ -653,23 +739,30 @@ export function DatePicker({ name }: { name: string }) {
 
 Moving on to the next box, we have the Application Status:
 
-```tsx title="src/app/components/ApplicationForm.tsx" startLineNumber=63
-<div className="box">
-  <label htmlFor="application-status">Application Status</label>
-  <Select name="status">
-    <SelectTrigger>
-      <SelectValue placeholder="Select a Status" />
-    </SelectTrigger>
-    <SelectContent>
-      <SelectItem value="new">New</SelectItem>
-    </SelectContent>
-  </Select>
+```tsx title="src/app/components/ApplicationForm.tsx" collapse={2-6} ins={7-17} startLineNumber=57
+<div>
+  <div className="box">
+    <label>Application submission date</label>
+    <DatePicker name="dateApplied" />
+  </div>
+
+  <div className="box">
+    <label htmlFor="application-status">Application Status</label>
+    <Select name="status">
+      <SelectTrigger>
+        <SelectValue placeholder="Select a Status" />
+      </SelectTrigger>
+      <SelectContent>
+        <SelectItem value="new">New</SelectItem>
+      </SelectContent>
+    </Select>
+  </div>
 </div>
 ```
 
 Here, we're using a shadcn/ui `Select` component. We'll need to import this at the top of our file:
 
-```tsx title="src/app/components/ApplicationForm.tsx" showLineNumbers={false}
+```tsx title="src/app/components/ApplicationForm.tsx" ins={1-7} showLineNumbers=false
 import {
   Select,
   SelectContent,
