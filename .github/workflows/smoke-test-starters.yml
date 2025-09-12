@@ -57,46 +57,10 @@ jobs:
           fi
           pnpm install
 
-      - name: Generate lockfiles
-        shell: bash
-        run: |
-          if [ "${{ matrix.package-manager }}" = "yarn" ] || [ "${{ matrix.package-manager }}" = "yarn-classic" ]; then
-            for starter in starters/*; do
-              if [ -d "$starter" ]; then
-                echo "Generating lockfile for $starter"
-                # Create temporary directory to isolate from root packageManager field
-                temp_dir=$(mktemp -d)
-                cp -r "$starter"/* "$temp_dir/"
-                cp "$starter"/.gitignore "$temp_dir/" 2>/dev/null || true
-                if [ "${{ matrix.package-manager }}" = "yarn" ]; then
-                  (cd "$temp_dir" && yarn install --mode=update-lockfile)
-                else
-                  # For yarn-classic (v1), just run yarn install to generate lockfile
-                  (cd "$temp_dir" && yarn install)
-                fi
-                # Copy lockfile back to original starter directory
-                if [ -f "$temp_dir/yarn.lock" ]; then
-                  cp "$temp_dir/yarn.lock" "$starter/"
-                fi
-                # Cleanup
-                rm -rf "$temp_dir"
-              fi
-            done
-          fi
-
       - name: Run smoke test
         shell: bash
         run: |
-          # Create artifact directory
-          mkdir -p smoke-test-artifacts/${{ matrix.starter }}
-
-          # Build SDK
-          cd sdk
-          pnpm build
-
-          # Run the starter test
-          # todo(justinvdm, 11 Aug 2025): Fix style test flakiness
-          pnpm smoke-test --path="../starters/${{ matrix.starter }}" --artifact-dir="../smoke-test-artifacts/${{ matrix.starter }}" --sync --copy-project --skip-style-tests --package-manager=${{ matrix.package-manager }}
+          ./sdk/scripts/ci-smoke-test.sh --starter "${{ matrix.starter }}" --package-manager "${{ matrix.package-manager }}"
         env:
           CHROME_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
 
