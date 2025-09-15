@@ -37,7 +37,7 @@
     "rwsdk": "1.0.0-alpha.1-test.20250911154541"
   },
   "devDependencies": {
-    "@cloudflare/vite-plugin": "1.12.4",
+    "@cloudflare/vite-plugin": "1.13.1",
     "@cloudflare/workers-types": "4.20250913.0",
     "@types/node": "22.14.0",
     "@types/react": "19.1.2",
