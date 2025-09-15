@@ -157,10 +157,10 @@ export const runDirectivesScan = async ({
       if (fileContentCache.has(path)) {
         return fileContentCache.get(path)!;
       }
-      
+
       // Convert file:// URLs to regular file paths for fs operations
-      const filePath = path.startsWith('file://') ? fileURLToPath(path) : path;
-      
+      const filePath = path.startsWith("file://") ? fileURLToPath(path) : path;
+
       const contents = await fsp.readFile(filePath, "utf-8");
       fileContentCache.set(path, contents);
       return contents;
