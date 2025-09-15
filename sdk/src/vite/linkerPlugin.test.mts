@@ -21,8 +21,8 @@ describe("linkWorkerBundle", () => {
 
   it("should replace asset placeholders with hashed paths from the manifest", () => {
     const code = `
-      const stylesheet = "rwsdk_asset:src/styles.css";
-      const logo = "rwsdk_asset:src/logo.svg";
+      const stylesheet = "rwsdk_asset:/src/styles.css";
+      const logo = "rwsdk_asset:/src/logo.svg";
     `;
     const result = linkWorkerBundle({
       code,

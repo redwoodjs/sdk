@@ -29,7 +29,9 @@ export function linkWorkerBundle({
   // 2. Replace asset placeholders with their final hashed paths.
   log("Replacing asset placeholders in final worker bundle");
   for (const [key, value] of Object.entries(manifest)) {
-    const normalizedKey = normalizeModulePath(key, projectRootDir).slice(1);
+    const normalizedKey = normalizeModulePath(key, projectRootDir, {
+      isViteStyle: false,
+    });
 
     newCode = newCode.replaceAll(
       `rwsdk_asset:${normalizedKey}`,
