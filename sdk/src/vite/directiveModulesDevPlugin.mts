@@ -21,6 +21,7 @@ export const generateVendorBarrelContent = (
       (file, i) =>
         `import * as M${i} from '${normalizeModulePath(file, projectRootDir, {
           absolute: true,
+          osify: "fileUrl",
         })}';`,
     )
     .join("\n");
@@ -48,6 +49,7 @@ export const generateAppBarrelContent = (
     .map((file) => {
       const resolvedPath = normalizeModulePath(file, projectRootDir, {
         absolute: true,
+        osify: "fileUrl",
       });
       return `import "${resolvedPath}";`;
     })
