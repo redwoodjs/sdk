@@ -66,3 +66,19 @@ Since the function hardcodes constants from Node.js built-ins that can't be mock
 - Both starter projects (minimal, standard)
 
 This will provide targeted feedback on Windows path handling without excessive CI resource usage.
+
+## CI Testing Setup
+
+Successfully configured focused Windows CI testing:
+
+1. **Modified `.github/workflows/smoke-test-starters.yml`:**
+   - Changed matrix to `os: [windows-latest]` (commented out ubuntu-latest)
+   - Reduced to single package manager: `package-manager: [pnpm]`
+   - Fixed workflow condition to allow `workflow_dispatch` events
+
+2. **Triggered focused Windows test:**
+   - Manually triggered workflow using `gh workflow run "Starter Smoke Tests" --ref windows`
+   - Test is now running (ID: 17739653340) for both minimal and standard starters
+   - Will test both the `constants.mts` and `runDirectivesScan.mts` path fixes
+
+The CI run will validate whether our targeted Windows path fixes resolve the issues identified in the September 11th investigation without the complexity of the September 15th approaches.
