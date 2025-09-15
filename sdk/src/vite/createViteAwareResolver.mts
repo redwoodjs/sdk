@@ -252,7 +252,7 @@ class VitePluginResolverPlugin {
               const absolutePath = normalizeModulePath(
                 request.request,
                 importerDir,
-                { absolute: true },
+                { absolute: true, osify: "fileUrl" },
               );
               debug("Absolutified %s -> %s", request.request, absolutePath);
 

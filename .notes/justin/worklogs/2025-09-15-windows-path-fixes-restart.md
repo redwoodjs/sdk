@@ -273,7 +273,27 @@ Found that line 221 is just the closing brace of `esbuild.build()`. The error oc
 **Potential Source Identified:**
 The `directiveModulesDevPlugin` uses `normalizeModulePath` with `absolute: true` to generate import statements for barrel files (lines 22-24 and 49-51). These paths are used in generated JavaScript code that gets processed by Node.js ESM loader. On Windows, these absolute paths might need `osify: 'fileUrl'` conversion to work with ESM loader.
 
-**Next Steps:**
-1. Check if directiveModulesDevPlugin import generation needs osify treatment
-2. Apply osify: 'fileUrl' to normalizeModulePath calls that generate import statements
-3. Test the fix
+**Applied Fix for directiveModulesDevPlugin:**
+
+1. Identified that `directiveModulesDevPlugin` generates import statements using `normalizeModulePath` with `absolute: true`
+2. Applied `osify: 'fileUrl'` to both places where import statements are generated:
+   - Vendor barrel imports (lines 22-25)
+   - App barrel imports (lines 50-53)
+3. These import statements are processed by Node.js ESM loader and need file:// URLs on Windows
+
+**Testing Results (Run 17744654905):**
+
+**Progress Indicators:**
+- Directive scanning still completes successfully ("Scan complete." appears consistently)
+- Runtime increased to 7m10s (vs 6m15s previously), showing continued forward progress
+- Error line moved to 224 (from 221), indicating our changes are affecting the compiled structure
+
+**Issue Status:**
+- Same error pattern persists: `ERR_UNSUPPORTED_ESM_URL_SCHEME: Received protocol 'c:'`
+- Error location: Now at line 224 in compiled `runDirectivesScan.mjs`
+
+**Analysis:**
+The directiveModulesDevPlugin fix was not the source of this particular error. The error is still happening within the esbuild process itself, even though directive scanning completes. This suggests there may be additional places in the esbuild plugin or process where Windows paths need conversion.
+
+**Next Investigation:**
+Need to identify other potential sources of Windows absolute paths within the esbuild scanning process that haven't been addressed yet.
