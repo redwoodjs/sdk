@@ -396,11 +396,10 @@ describe("normalizeModulePath", () => {
 
       it("Relative path stays as Vite-style on Windows", () => {
         expect(
-          normalizeModulePath(
-            "src/page.tsx",
-            "/Users/name/code/my-app",
-            { osify: true, platform: "win32" },
-          ),
+          normalizeModulePath("src/page.tsx", "/Users/name/code/my-app", {
+            osify: true,
+            platform: "win32",
+          }),
         ).toBe("/src/page.tsx");
       });
 
@@ -438,11 +437,10 @@ describe("normalizeModulePath", () => {
 
       it("Relative path stays as Vite-style with fileUrl", () => {
         expect(
-          normalizeModulePath(
-            "src/page.tsx",
-            "/Users/name/code/my-app",
-            { osify: "fileUrl", platform: "win32" },
-          ),
+          normalizeModulePath("src/page.tsx", "/Users/name/code/my-app", {
+            osify: "fileUrl",
+            platform: "win32",
+          }),
         ).toBe("/src/page.tsx");
       });
 

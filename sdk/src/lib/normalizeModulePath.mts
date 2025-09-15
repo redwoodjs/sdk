@@ -55,10 +55,10 @@ export function findCommonAncestorDepth(path1: string, path2: string): number {
 export function normalizeModulePath(
   modulePath: string,
   projectRootDir: string,
-  options: { 
-    absolute?: boolean; 
+  options: {
+    absolute?: boolean;
     isViteStyle?: boolean;
-    osify?: boolean | 'fileUrl';
+    osify?: boolean | "fileUrl";
     platform?: string; // For testing - defaults to process.platform
   } = {},
 ): string {
@@ -68,18 +68,18 @@ export function normalizeModulePath(
   // Handle empty string or current directory
   if (modulePath === "" || modulePath === ".") {
     const result = options.absolute ? projectRootDir : "/";
-    
+
     // Apply OS-specific path conversion if requested for absolute paths
     if (options.osify && options.absolute) {
       const platform = options.platform || process.platform;
       if (platform === "win32") {
-        if (options.osify === 'fileUrl') {
+        if (options.osify === "fileUrl") {
           return pathToFileURL(result).href;
         }
         return result.replace(/\//g, "\\");
       }
     }
-    
+
     return result;
   }
 
@@ -109,14 +109,15 @@ export function normalizeModulePath(
           // No common ancestor - could be external system path or Vite-style path
           // Use additional heuristics: system paths typically start with /opt, /usr, /etc, /var, etc.
           // or are completely different like /opt vs /Users
-          const isSystemPath = modulePath.startsWith('/opt/') || 
-                               modulePath.startsWith('/usr/') || 
-                               modulePath.startsWith('/etc/') || 
-                               modulePath.startsWith('/var/') ||
-                               modulePath.startsWith('/tmp/') ||
-                               modulePath.startsWith('/System/') ||
-                               modulePath.startsWith('/Library/');
-          
+          const isSystemPath =
+            modulePath.startsWith("/opt/") ||
+            modulePath.startsWith("/usr/") ||
+            modulePath.startsWith("/etc/") ||
+            modulePath.startsWith("/var/") ||
+            modulePath.startsWith("/tmp/") ||
+            modulePath.startsWith("/System/") ||
+            modulePath.startsWith("/Library/");
+
           if (isSystemPath) {
             // Treat as real absolute system path
             resolved = modulePath;
@@ -166,7 +167,7 @@ export function normalizeModulePath(
       // Apply osify to real absolute paths (not Vite-style paths like /src/...)
       // Real absolute paths are either the resolved path or explicitly requested via absolute option
       if (isRealAbsolutePath && path.isAbsolute(result)) {
-        if (options.osify === 'fileUrl') {
+        if (options.osify === "fileUrl") {
           return pathToFileURL(result).href;
         }
         // Convert forward slashes to backslashes for Windows

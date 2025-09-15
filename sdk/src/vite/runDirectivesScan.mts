@@ -128,9 +128,9 @@ export const runDirectivesScan = async ({
     const absoluteEntries = entries.map((entry) => {
       const absolutePath = path.resolve(rootConfig.root, entry);
       // On Windows, convert absolute paths to file:// URLs for ESM compatibility
-      return normalizeModulePath(absolutePath, rootConfig.root, { 
-        absolute: true, 
-        osify: 'fileUrl' 
+      return normalizeModulePath(absolutePath, rootConfig.root, {
+        absolute: true,
+        osify: "fileUrl",
       });
     });
 
@@ -255,7 +255,7 @@ export const runDirectivesScan = async ({
             const esbuildPath = normalizeModulePath(
               resolvedPath,
               rootConfig.root,
-              { absolute: true, osify: 'fileUrl' },
+              { absolute: true, osify: "fileUrl" },
             );
             log("Normalized path:", esbuildPath);
 
