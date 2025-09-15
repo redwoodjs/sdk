@@ -49,7 +49,11 @@ code {
   display: flex;
   flex-direction: column;
   justify-content: space-between;
-  align-items: center;
+  align-items: flex-start;
+
+  @media (min-width: 640px) {
+    align-items: center;
+  }
 }
 
 .hello-bar {
@@ -57,11 +61,29 @@ code {
   color: var(--color-sazerac);
   width: 100%;
   display: flex;
-  justify-content: center;
+  justify-content: flex-start;
   align-items: center;
-  height: 44px;
+  min-height: 44px;
   font-weight: bold;
-  gap: 12px;
+  gap: 8px;
+  flex-wrap: wrap;
+  padding: 8px 20px 10px;
+  box-sizing: border-box;
+
+  @media (min-width: 640px) {
+    justify-content: center;
+    padding: 4px 10px 6px;
+    gap: 4px;
+  }
+
+  /* Enable container queries */
+  container-type: inline-size;
+
+  /* This is where the Hello Bar wraps to two lines */
+  @container (min-height 65px) {
+    padding: 4px 10px;
+    gap: 12px;
+  }
 
   /* button */
   a {
@@ -97,15 +119,30 @@ code {
   }
 }
 
+main {
+  margin: 0 20px;
+}
+
 .logo {
   position: relative;
-  left: -70px;
+  left: 0;
+  max-width: 100%;
+
+  @media (min-width: 1024px) {
+    left: -70px;
+  }
 }
 
 .buttons {
   display: flex;
   gap: 26px;
-  align-items: center;
+  align-items: flex-start;
+  flex-direction: column;
+
+  @media (min-width: 640px) {
+    align-items: center;
+    flex-direction: row;
+  }
 }
 
 .cta__docs {
@@ -151,16 +188,24 @@ code {
   }
 }
 
+footer {
+  padding: 0 20px;
+}
+
 footer ul {
   list-style: none;
   padding: 0;
   margin: 0;
   display: flex;
-  flex-direction: row;
-  justify-content: center;
-  gap: 40px;
+  flex-direction: column;
+  gap: 12px;
   margin-bottom: 20px;
   font-size: 14px;
+
+  @media (min-width: 640px) {
+    flex-direction: row;
+    gap: 40px;
+  }
 
   a {
     color: var(--color-flirt);
