@@ -37,30 +37,32 @@ We can start with the basics:
 
 ```tsx title="/src/app/pages/applications/Details.tsx"
 const Details = () => {
-  return (
-    <div>Details</div>
-  )
-}
+  return <div>Details</div>;
+};
 
-export { Details }
+export { Details };
 ```
 
 Now, let's jump over to our `worker.tsx` file and update the route for our details page.
 
-```diff title="/src/worker.tsx" collapse={4-7} showLineNumbers=false
-+ import { Details } from "./app/pages/applications/Details";
-
+```tsx title="/src/worker.tsx" collapse={4-7} ins={1,15} del={14}
+import { Details } from "./app/pages/applications/Details";
+...
 render(Document, [
-  index([ isAuthenticated, Home ]),
-  prefix("/user", userRoutes),
+  index([isAuthenticated, Home]),
+  layout(AuthLayout, prefix("/user", userRoutes)),
   route("/legal/privacy", () => <h1>Privacy Policy</h1>),
   route("/legal/terms", () => <h1>Terms of Service</h1>),
-  prefix("/applications", [
-    route("/", [isAuthenticated, List]),
-    route("/new", [isAuthenticated, New]),
--    route("/:id", [isAuthenticated, () => <h1>Application</h1>]),
-+    route("/:id", [isAuthenticated, Details]),
-  ]),
+  layout(
+    InteriorLayout,
+    prefix("/applications", [
+      isAuthenticated,
+      route("/", List),
+      route("/new", New),
+      route("/:id", () => <h1>Application</h1>),
+      route("/:id", Details),
+    ])
+  ),
 ]),
 ---
 We replaced our placeholder `h1` with our `Details` component and imported it at the top of our file.
@@ -74,26 +76,6 @@ If run go to our Applications list view and click on the eye icon, next to any a
 Right now, it's pretty sparse:
 
 ![](./images/empty-application-detail-page.png)
-
-Let's go back to our `Details.tsx` file and add our `InteriorLayout`.
-
-```tsx title="/src/app/pages/applications/Details.tsx"
-return (
-  <InteriorLayout>
-    <p>Details</p>
-  </InteriorLayout>
-)
-```
-
-Be sure to import `InteriorLayout` at the top of our file:
-
-```tsx title="/src/app/pages/applications/Details.tsx"
-import { InteriorLayout } from "@/app/layouts/InteriorLayout"
-```
-
-Already, that makes a huge difference:
-
-![](./images/application-detail-with-interior-layout.png)
 
 Let's start at the top of our page and work our way down. Up first, we'll add our breadcrumbs. We already used the shadcn/ui Breadcrumb component on the New page. Let's take a second and look at the implementation there:
 
@@ -113,9 +95,9 @@ Let's start at the top of our page and work our way down. Up first, we'll add ou
 </div>
 ```
 
-It's pretty standard, but we have a wrapping `div` with styles applied for placement. Let's abstract that out into a CSS class so that we can use it on both pages. In our `styles.css` file, at the bottom of the `@layer components` section:
+It's pretty standard, but we have a wrapping `div` with styles applied for placement. Let's abstract out the `mb-12 -mt-7 pl-[120px]` styles into a CSS class so that we can use it on both pages. If we need to change it, we only have to do it in one place. In our `styles.css` file, at the bottom of the `@layer components` section:
 
-```css title="/src/styles.css" startLineNumber={236}
+```css title="/src/styles.css" startLineNumber={231} ins={1-3}
 .breadcrumbs {
   @apply mb-12 -mt-7 pl-[120px];
 }
@@ -123,7 +105,7 @@ It's pretty standard, but we have a wrapping `div` with styles applied for place
 
 Now, let's update the styles on the New page:
 
-```tsx title="/src/app/pages/applications/New.tsx" startLineNumber={19} "breadcrumbs
+```tsx title="/src/app/pages/applications/New.tsx" ins="breadcrumbs" collapse={2-12} startLineNumber={26}
 <div className="breadcrumbs">
   <Breadcrumb>
     <BreadcrumbList>
@@ -139,11 +121,12 @@ Now, let's update the styles on the New page:
 </div>
 ```
 
-Then, let's copy this code and past it into our `Details.tsx` file:
+Then, let's copy this code and paste it into our `Details.tsx` file:
 
-```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={5}
+```tsx title="/src/app/pages/applications/Details.tsx" del={1} ins={2-18} startLineNumber={2}
+return <div>Details</div>;
 return (
-  <InteriorLayout>
+  <>
     <div className="breadcrumbs">
       <Breadcrumb>
         <BreadcrumbList>
@@ -157,14 +140,13 @@ return (
         </BreadcrumbList>
       </Breadcrumb>
     </div>
-    <p>Details</p>
-  </InteriorLayout>
-)
+  </>
+);
 ```
 
 Make sure you import the `Breadcrumb` component at the top of your file:
 
-```tsx title="/src/app/pages/applications/Details.tsx"
+```tsx title="/src/app/pages/applications/Details.tsx" ins={1-8}
 import {
   Breadcrumb,
   BreadcrumbItem,
@@ -177,8 +159,9 @@ import {
 
 We need to update the breadcrumb links. The first link is for our Dashboard:
 
-```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={17}
+```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={16} del={2} ins={3}
 <BreadcrumbItem>
+  <BreadcrumbLink href="/applications">Applications</BreadcrumbLink>
   <BreadcrumbLink href="/applications">Dashboard</BreadcrumbLink>
 </BreadcrumbItem>
 ```
@@ -195,10 +178,10 @@ Everything after `applications/` is the application id.
 
 We can get all the details we need based on the `RequestInfo` object that gets passed into all pages by default.
 
-```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={3} {1} "{ params }: RequestInfo"
+```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={3} ins={1} ins="{ params }: RequestInfo"
 import { RequestInfo } from "rwsdk/worker"
 
-const Details = async ({ params }: RequestInfo) => {
+const Details = ({ params }: RequestInfo) => {
 ```
 
 <Aside type="tip" title="RequestInfo">
@@ -206,14 +189,18 @@ The `RequestInfo` object contains:
 - `request`: The incoming HTTP [Request](https://developer.mozilla.org/en-US/docs/Web/API/Request) object
 - `response`: A [ResponseInit](https://fetch.spec.whatwg.org/#responseinit) object used to configure the status and headers of the response
 - `ctx`: The app context
+- `rw`: RedwoodSDK-specific context
+- `cf`: Cloudflare's Execution Context API
 
 [You can find more information here.](/reference/sdk-worker/#requestinfo-requestinfo)
 </Aside>
 
 Let's `console.log` the `params`, right before our `return` statement:
 
-```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={6}
-console.log({ params })
+```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={11} ins={2}
+const Details = ({ params }: RequestInfo) => {
+  console.log({ params });
+  return (
 ```
 
 Since this code is running on the server, this will get logged to the terminal, _not_ the browser.
@@ -224,7 +211,7 @@ Perfect! We can get the application ID by referencing `params.id`.
 
 Now, we can remove our `console.log({ params })` and  make our database call:
 
-```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={11} {1, 4-8, 10} "async"
+```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={10} ins={1,4-8,11} ins="async" del={10}
 import { db } from "@/db"
 
 const Details = async ({ params }: RequestInfo) => {
@@ -232,8 +219,9 @@ const Details = async ({ params }: RequestInfo) => {
     where: {
       id: params.id,
     },
-  })
+  });
 
+  console.log({ params });
   console.log({ application })
 ---
 - We're using the Prisma API to find the unique application by based on its ID. Then, we're logging the result to the terminal.
@@ -247,9 +235,11 @@ If you check the terminal again, you should see the application data:
 
 Now, that we know we're getting the right application back, let's update our `<BreadcrumbPage>` to display the job title and company name.
 
-```diff title="/src/app/pages/applications/Details.tsx" startLineNumber={30}
-- <BreadcrumbPage>Add an Application</BreadcrumbPage>
-+ <BreadcrumbPage>{application?.jobTitle} at {application?.company?.name}</BreadcrumbPage>
+```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={30} ins={1} del={2-5}
+<BreadcrumbPage>Add an Application</BreadcrumbPage>
+<BreadcrumbPage>
+  {application?.jobTitle} at {application?.company?.name}
+</BreadcrumbPage>
 ```
 
 We're using the Elvis operator (`?.`) or optional chaining to ensure that we don't throw an error if the application object is `null`.
@@ -260,7 +250,7 @@ When you preview this in the browser, you might be surprised to see that the com
 
 We need to include the `company` relationship in our database call:.
 
-```tsx title="/src/app/pages/applications/Details.tsx" {5-7} startLineNumber={7}
+```tsx title="/src/app/pages/applications/Details.tsx" ins={5-7} startLineNumber={13}
 const application = await db.application.findUnique({
   where: {
     id: params.id,
@@ -273,7 +263,7 @@ const application = await db.application.findUnique({
 
 and actually, while we're here, let's go ahead and include our `status` and `contact` relationships as well. Since the `contact` relationship is through our `company` object, we need to go another level deeper:
 
-```tsx title="/src/app/pages/applications/Details.tsx"  {6-10}
+```tsx title="/src/app/pages/applications/Details.tsx"  ins={6-10} startLineNumber={13}
 const application = await db.application.findUnique({
   where: {
     id: params.id,
@@ -291,6 +281,10 @@ const application = await db.application.findUnique({
 
 We can get rid of our `console.log` statement and move down the page.
 
+```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={27} del={1}
+console.log({ application });
+```
+
 ### Building the Page Header
 
 Next, we have a page header:
@@ -299,7 +293,7 @@ Next, we have a page header:
 
 Below our bread crumbs, let's start with our JSX and then we can come back and style it.
 
-```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={50}
+```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={45}
 <header>
   <div>
     <h1>{application?.jobTitle}</h1>
@@ -356,7 +350,7 @@ Now, let's do another pass, this time adding our styles.
 
 I want the heading and the badge to appear next to each other, so I'll wrap those elements with an additional `div`.
 
-```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={50}
+```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={51} ins={2,13} ins="className="page-title" ins="<span className="text-zinc-500">" ins="</span>"
 <div>
   <div className="flex items-center gap-5 mb-1">
     <h1 className="page-title">{application?.jobTitle}</h1>
@@ -384,7 +378,7 @@ I want the heading and the badge to appear next to each other, so I'll wrap thos
 
 For the button on the right, we need to add some styles to get the icon and label to align vertically:
 
-```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={69} "className="flex items-center gap-2"""
+```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={67} ins={5}
 <Button>
   <a
     href={application?.postingUrl as string}
@@ -402,15 +396,17 @@ For the button on the right, we need to add some styles to get the icon and labe
 
 I want to add some space to the left and right side. But, this will also need to be applied to the content below our page heading. So, let's wrap, both, our page header and the placeholder `<p>Details</p>` with a `div` and add our `px-page-side` class.
 
-```tsx title="/src/app/pages/applications/Details.tsx" collapse={3-12} {1, 16} startLineNumber={49} "px-page-side"
+```tsx title="/src/app/pages/applications/Details.tsx" collapse={3-12} ins={1, 16} startLineNumber={49} ins="px-page-side"
 <div className="px-page-side">
   <header className="flex justify-between border-b-1 border-border pb-6 mb-12">
     <div>
       <div className="flex items-center gap-5 mb-1">
-        <h1 className="page-title">{application?.jobTitle}</h1>
-        <Badge variant={application?.status?.status.toLowerCase() as VariantProps<typeof badgeVariants>['variant']}>{application?.status?.status}</Badge>
+        <div className="flex items-center gap-5 mb-1">
+          <h1 className="page-title">{application?.jobTitle}</h1>
+          <Badge variant={application?.status?.status.toLowerCase() as VariantProps<typeof badgeVariants>['variant']}>{application?.status?.status}</Badge>
+        </div>
+        <p><span className="text-zinc-500">at</span> {application?.company?.name}</p>
       </div>
-      <p><span className="text-zinc-500">at</span> {application?.company?.name}</p>
     </div>
     <div>
       <Button><a href={application?.postingUrl as string} target="_blank">View Application</a></Button>
@@ -441,16 +437,16 @@ return (
 
 Now, within our CSS file, inside the `@layer components` section, let's add our new `two-column-grid` class:
 
-```css title="/src/styles.css" startLineNumber={240}
+```css title="/src/styles.css" startLineNumber={235} ins={1-3}
 .two-column-grid {
   @apply grid grid-cols-2 gap-[200px] mb-[75px]
 }
 ```
 
-Back in our `Details.tsx` file, we can use our new class:
+Back in our `Details.tsx` file, we can use our new class. At the bottom of our JSX:
 
-```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={81}
-<div className="two-column-grid">
+```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={81} ins={1-6}
+<div className="px-page-side two-column-grid">
   <p>Details</p>
   <aside>
     <p>Sidebar</p>
@@ -466,12 +462,12 @@ Notice, I also added an `aside` placeholder so that when you preview this within
 
 For the content on the left, we can replace the `<p>Details</p>` with the content from the database:
 
-```diff title="/src/app/pages/applications/Details.tsx" startLineNumber={54} {2-4}
+```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={54} del={2} ins={3-5}
 <div className="two-column-grid">
--  <p>Details</p>
-+  <div>
-+    {application?.jobDescription}
-+  </div>
+  <p>Details</p>
+  <div>
+    {application?.jobDescription}
+  </div>
   <aside>
     <p>Sidebar</p>
   </aside>
@@ -480,7 +476,7 @@ For the content on the left, we can replace the `<p>Details</p>` with the conten
 
 Now, we want to put a couple of buttons below our content. I'm going to use a couple more `divs`, one to wrap our job description and another to wrap our buttons.
 
-```tsx title="/src/app/pages/applications/Details.tsx" {2, 4-12} startLineNumber={81}
+```tsx title="/src/app/pages/applications/Details.tsx" ins={2, 4-12} startLineNumber={81}
 <div className="two-column-grid">
   <div>
     <div>{application?.jobDescription}</div>
@@ -505,7 +501,7 @@ Now, we want to put a couple of buttons below our content. I'm going to use a co
 
 Let's add some polish through CSS.
 
-```tsx title="/src/app/pages/applications/Details.tsx" collapse={13-15} startLineNumber={81} "mb-12" "flex items-center gap-5"
+```tsx title="/src/app/pages/applications/Details.tsx" collapse={13-15} startLineNumber={81} ins="mb-12" ins="flex items-center gap-5" ins="className="text-destructive"" ins="className="fill-destructive""
 <div className="two-column-grid">
   <div>
     <div className="mb-12">{application?.jobDescription}</div>
@@ -513,8 +509,8 @@ Let's add some polish through CSS.
       <Button variant="secondary">
         <Icon id="edit" size={16} /> Edit
       </Button>
-      <Button variant="link">
-        <Icon id="trash" size={16} /> Delete
+      <Button variant="link" className="text-destructive">
+        <Icon id="trash" size={16} className="fill-destructive" /> Delete
       </Button>
     </div>
   </div>
@@ -533,7 +529,7 @@ Excellent! Now, for our sidebar.
 
 We can reuse a lot of the styles that we created for our new application form. Let's start with the basic JSX:
 
-```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={93}
+```tsx title="/src/app/pages/applications/Details.tsx" ins={2-13} startLineNumber={93}
 <aside>
   <div className="box">
     <h3>Compensation</h3>
@@ -558,7 +554,7 @@ We can reuse a lot of the styles that we created for our new application form. L
 
 Let's go back through and add some more styles:
 
-```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={93} "mb-4" "flex items-center gap-6" "text-sm" "text-zinc-500" "font-bold"
+```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={93} ins="mb-4" ins="flex items-center gap-6" ins="text-sm" ins="text-zinc-500" ins="font-bold"
 <aside>
   <div className="box">
     <h3 className="mb-4">Compensation</h3>
@@ -606,18 +602,31 @@ Notice I stopped right before our `Sheet` component. We won't need it, but when 
 
 Now, let's paste our code into our `Details.tsx` file.
 
-```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={108}
-<div className="box">
-  <h3>Contacts</h3>
-  <p className="input-description">Invite your team members to collaborate.</p>
-  {contacts && (
-    <ul>
-      {contacts.map((contact) => (
-        <li key={contact.id}><ContactCard contact={contact} /></li>
-      ))}
-    </ul>
-  )}
-</div>
+```tsx title="/src/app/pages/applications/Details.tsx" collapse={2-13} ins={14-24} startLineNumber={93}
+<aside>
+  <div className="box">
+    <h3 className="mb-4">Compensation</h3>
+    <div className="flex items-center gap-6">
+      <Icon id="salary" size={32} />
+      <div className="text-sm">
+        <p className="text-zinc-500">Salary</p>
+        <p className="font-bold">
+          {application?.salaryMin} - {application?.salaryMax}
+        </p>
+      </div>
+    </div>
+  </div>
+  <div className="box">
+    <h3>Contacts</h3>
+    <p className="input-description">Invite your team members to collaborate.</p>
+    {contacts && (
+      <ul>
+        {contacts.map((contact) => (
+          <li key={contact.id}><ContactCard contact={contact} /></li>
+        ))}
+      </ul>
+    )}
+  </div>
 ```
 
 At the top of our file, import the `ContactCard` component:
@@ -632,7 +641,7 @@ On our Contact box, we have some linting errors because it cannot find our `cont
 
 We have this data, but it's nested inside our `application.company` object. We can adjust our conditional statement and the object we're mapping over to get rid of the error:
 
-```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={113} "application?.company?.contacts"
+```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={113} ins="application?.company?.contacts"
 {application?.company?.contacts && (
   <ul>
     {application?.company?.contacts.map((contact) => (
@@ -652,7 +661,7 @@ I don't want to be able to modify the contact information here.
 
 Let's change the `ContactCard` component to take a new prop: `isEditable`.
 
-```tsx title="/src/app/components/ContactCard.tsx" startLineNumber={9}
+```tsx title="/src/app/components/ContactCard.tsx" startLineNumber={9} ins={3,6}
 const ContactCard = ({
   contact,
   isEditable = true,
@@ -667,7 +676,7 @@ I made the `isEditable` prop optional and set it to `true` by default. This way,
 
 Now, I'm going to wrap our Delete button with a conditional statement that checks if `isEditable` is `true`:
 
-```tsx title="/src/app/components/ContactCard.tsx" startLineNumber={28} {1, 11}
+```tsx title="/src/app/components/ContactCard.tsx" startLineNumber={28} ins={1, 11}
 {isEditable && (
   <div className="pr-5 hidden group-hover/card:block absolute top-2 -left-[37px]">
     <button
@@ -741,17 +750,15 @@ Let's start with a bare bones component:
 
 ```tsx title="/src/app/components/DeleteApplicationButton.tsx"
 const DeleteApplicationButton = () => {
-  return (
-    <div>DeleteApplicationButton</div>
-  )
-}
+  return <div>DeleteApplicationButton</div>;
+};
 
-export { DeleteApplicationButton }
+export { DeleteApplicationButton };
 ```
 
 Then, we can replace the placeholder `<div>DeleteApplicationButton</div>` with the Dialog code from shadcn/ui:
 
-```tsx title="/src/app/components/DeleteApplicationButton.tsx"
+```tsx title="/src/app/components/DeleteApplicationButton.tsx" ins={1,3-11,15-26}
 "use client";
 
 import {
@@ -783,32 +790,32 @@ const DeleteApplicationButton = () => {
 
 export { DeleteApplicationButton }
 ---
-- You'll notice I included the `use client` directive at the top of our file, as well as our imports. If you copied the `import` statement directly [from shadcn/ui](https://ui.shadcn.com/docs/components/dialog), the path will vary slightly.
+- You'll notice I included the `use client` directive at the top of our file, as well as our imports. If you copied the `import` statement directly [from shadcn/ui](https://ui.shadcn.com/docs/components/dialog), the file paths will vary and need to be updated.
 ---
 ```
 
-Before, I forget, we also need to go into our `app/components/ui/dialog.tsx` component and add a `use client` directive to the top of our shadcn/ui component as well:
+Before, I forget, we also need to go into our `app/components/ui/dialog.tsx` shadcn/ui component and add a `use client` directive to the top of our shadcn/ui component as well:
 
-```tsx title="/src/app/components/ui/dialog.tsx"
+```tsx title="/src/app/components/ui/dialog.tsx" ins={1}
 "use client";
 ```
 
 Back inside our `DeleteApplicationButton` component, let's start customizing it, to meet our needs.
 
-Let's replace `Open` inside the `DialogTrigger` component with the `Delete` button we've already styled:
+Let's delete the `Open` text and insert the `Delete` button. You can use the `Delete` button from our `Details.tsx` file (line 89). It's already styled:
 
-```diff title="/src/app/components/DeleteApplicationButton.tsx" showLineNumbers=false
+```tsx title="/src/app/components/DeleteApplicationButton.tsx" showLineNumbers=false del={2} ins={3-5}
 <DialogTrigger>
--  Open
-+  <Button variant="link" className="text-destructive fill-current">
-+    <Icon id="trash" size={16} /> Delete
-+  </Button>
+  Open
+  <Button variant="link" className="text-destructive fill-current">
+    <Icon id="trash" size={16} /> Delete
+  </Button>
 </DialogTrigger>
 ```
 
-You'lll also need to import the `Button` and `Icon` components at the top of your file:
+You'll also need to import the `Button` and `Icon` components at the top of your file:
 
-```tsx title="/src/app/components/DeleteApplicationButton.tsx" showLineNumbers=false
+```tsx title="/src/app/components/DeleteApplicationButton.tsx" showLineNumbers=false ins={1-2}
 import { Button } from "./ui/button";
 import { Icon } from "./Icon";
 ```
@@ -824,7 +831,7 @@ Before we finish the `DeleteApplicationButton` functionality. It's get onto the 
 
 Of course, we'll also need to import the `DeleteApplicationButton` component at the top of our file:
 
-```tsx title="/src/app/pages/applications/Details.tsx" showLineNumbers=false
+```tsx title="/src/app/pages/applications/Details.tsx" showLineNumbers=false ins={1}
 import { DeleteApplicationButton } from "@/app/components/DeleteApplicationButton";
 ```
 
@@ -834,7 +841,7 @@ If you look at the DOM that's rendered in the browser, `DialogTrigger` renders a
 
 To prevent this from happening, we can use the `asChild` prop on the `DialogTrigger`.
 
-```tsx title="/src/app/components/DeleteApplicationButton.tsx" startLineNumber={18} "asChild"
+```tsx title="/src/app/components/DeleteApplicationButton.tsx" startLineNumber={18} ins="asChild"
 <DialogTrigger asChild>
   <Button variant="link" className="text-destructive fill-current">
     <Icon id="trash" size={16} /> Delete
@@ -844,13 +851,13 @@ To prevent this from happening, we can use the `asChild` prop on the `DialogTrig
 
 Inside the `DialogTitle` we can use the text: "Are you absolutely sure?"
 
-```tsx title="/src/app/components/DeleteApplicationButton.tsx" startLineNumber={25} "Are you absolutely sure?"
+```tsx title="/src/app/components/DeleteApplicationButton.tsx" startLineNumber={25} ins="Are you absolutely sure?"
 <DialogTitle>Are you absolutely sure?</DialogTitle>
 ```
 
 For the `DialogDescription`, we can use the text: "This will permanently delete the application and any related companies and contacts. This action cannot be undone."
 
-```tsx title="/src/app/components/DeleteApplicationButton.tsx" startLineNumber={25}
+```tsx title="/src/app/components/DeleteApplicationButton.tsx" startLineNumber={25} ins={2}
 <DialogDescription>
   This will permanently delete the application and any related companies and contacts. This action cannot be undone.
 </DialogDescription>
@@ -858,23 +865,32 @@ For the `DialogDescription`, we can use the text: "This will permanently delete 
 
 Below the `DialogHeader`, let's add a `DialogFooter` with two buttons: `Nevermind` and `Yes, Delete It`.
 
-```tsx title="/src/app/components/DeleteApplicationButton.tsx" startLineNumber={31}
-<DialogFooter>
-  <Button variant="secondary">Nevermind</Button>
-  <Button variant="destructive">
-    <Icon id="check" />
-    Yes, Delete It
-  </Button>
-</DialogFooter>
+```tsx title="/src/app/components/DeleteApplicationButton.tsx" collapse={2-8} ins={9-15} startLineNumber={31}
+<DialogContent>
+  <DialogHeader>
+    <DialogTitle>Are you absolutely sure?</DialogTitle>
+    <DialogDescription>
+      This will permanently delete the application and any related
+      companies and contacts. This action cannot be undone.
+    </DialogDescription>
+  </DialogHeader>
+  <DialogFooter>
+    <Button variant="secondary">Nevermind</Button>
+    <Button variant="destructive">
+      <Icon id="check" />
+      Yes, Delete It
+    </Button>
+  </DialogFooter>
+</DialogContent>
 ---
-- For the "Nevermind" button, I'm using the `secondary` variant, applying a beige background color.
-- For the "Yes, Delete It" button, I set the `variant` to `destructive`. Inside, I added an `Icon` component with an `id` of `check`.
+- For the "Nevermind" button, use the `secondary` variant, applying a beige background color.
+- For the "Yes, Delete It" button, set the `variant` to `destructive`. Inside, add an `Icon` component with an `id` of `check`.
 ---
 ```
 
 Let's go back through and add a little more styling:
 
-```tsx title="/src/app/components/DeleteApplicationButton.tsx" startLineNumber={23} "py-12 px-14" "mb-4" "text-destructive text-3xl font-bold mb-2" "fill-current"
+```tsx title="/src/app/components/DeleteApplicationButton.tsx" startLineNumber={23} ins="py-12 px-14" ins="mb-4" ins="text-destructive text-3xl font-bold mb-2" ins="fill-current"
 <DialogContent className="py-12 px-14">
   <DialogHeader className="mb-4">
     <DialogTitle className="text-destructive text-3xl font-bold mb-2">Are you absolutely sure?</DialogTitle>
@@ -904,8 +920,12 @@ Now, let's connect the delete application functionality.
 
 On our "Yes, Delete It" button, we can add an `onClick` handler that will call our `deleteApplication` function.
 
-```tsx title="/src/app/components/DeleteApplicationButton.tsx" startLineNumber={35} "onClick={(e) => handleDelete(e)}"
-<Button variant="destructive" className="fill-current" onClick={(e) => handleDelete(e)}>
+```tsx title="/src/app/components/DeleteApplicationButton.tsx" startLineNumber={35} ins={4}
+<Button
+  variant="destructive"
+  className="fill-current"
+  onClick={(e) => handleDelete(e)}
+>
   <Icon id="check" />
   Yes, Delete It
 </Button>
@@ -930,7 +950,7 @@ const handleDelete = async (e: React.MouseEvent<HTMLButtonElement>) => {
 }
 ---
 - **On line 17**, we're using the event (`e`) object to prevent the default action of the button.
-- **On line 18**, we're calling the `deleteApplication` function (we still need to write this function). This is a server function, we can use `async` / `await`. We'll save the result in a variable called `result`.
+- **On line 18**, we're calling the `deleteApplication` function (we still need to write this function). This will be a server function, we can use `async` / `await`. We'll save the result in a variable called `result`.
 - **On line 19**, we're checking to see if the result was successful. If it was, we'll display a successful toast message and redirect the user to the applications list page.
 - **On line 22**, otherwise, if we ran into an error, we'll `console.error` the result and display a toast error message.
 ---
@@ -945,10 +965,12 @@ import { deleteApplication } from "@/app/pages/applications/functions";
 
 We also need a way of knowing what application we need to delete. We can pass the `applicationId` into the `DeleteApplicationButton` component and then on to the `deleteApplication` function.
 
-```tsx title="/src/app/components/DeleteApplicationButton.tsx" showLineNumbers=false "applicationId"
-const DeleteApplicationButton = ({ applicationId }: { applicationId: string }) => {
-  const [isOpen, setIsOpen] = useState(false);
-
+```tsx title="/src/app/components/DeleteApplicationButton.tsx" ins="applicationId" startLineNumber={17}
+const DeleteApplicationButton = ({
+  applicationId,
+}: {
+  applicationId: string;
+}) => {
   const handleDelete = async (e: React.MouseEvent<HTMLButtonElement>) => {
     e.preventDefault();
     const result = await deleteApplication(applicationId);
@@ -956,7 +978,7 @@ const DeleteApplicationButton = ({ applicationId }: { applicationId: string }) =
 
 Within our `functions.ts` file, we need to create the `deleteApplication` function.
 
-```tsx title="/src/app/functions.ts" startLineNumber={97}
+```tsx title="/src/app/functions.ts" startLineNumber={96}
 export const deleteApplication = async (applicationId: string) => {
   try {
     await db.application.delete({
@@ -971,18 +993,18 @@ export const deleteApplication = async (applicationId: string) => {
   }
 }
 ---
-- **On line 97**, we're `export`ing the `deleteApplication` function so that we can use it in our `DeleteApplicationButton` component. This is an `async` function, so we can use `await` to wait for the database call to complete.
+- **On line 96**, we're `export`ing the `deleteApplication` function so that we can use it in our `DeleteApplicationButton` component. This is an `async` function, so we can use `await` to wait for the database call to complete.
 - We using a `try` / `catch` block to run the Prisma API call.
-- **On line 99**, we're running the calling the `delete` method, `where` the `id` matches the `applicationId` that we passed in.
+- **On line 98**, we're running the calling the `delete` method, `where` the `id` matches the `applicationId` that we passed in.
 - If we're successful, we'll return `success` as `true` and `error` as `null`.
-- If there are any errors, they'll be caught on **line 106**, `console.error` out. Then, we'll return `success` as `false` and include the `error` in the response.
+- If there are any errors, they'll be caught. On **line 105**, `console.error` out. Then, we'll return `success` as `false` and include the `error` in the response.
 ---
 ```
 
 Real quick, let's go back to the `Details` page and ensure we're passing the `applicationId` into the `DeleteApplicationButton` component:
 
-```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={90} "applicationId={application?.id || ""}"
-<DeleteApplicationButton applicationId={application?.id || ""} />
+```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={90} ins="applicationId={application?.id as string}"
+<DeleteApplicationButton applicationId={application?.id as string} />
 ```
 
 Let's test this out in the browser.
@@ -1009,17 +1031,21 @@ import { useState } from "react";
 
 Then, we can use the `Dialog`'s props, `open` and `onOpenChange`, to control the dialog box, referencing our state variable. (For more information, check out [the official Radix UI documentation for the Dialog component](https://www.radix-ui.com/primitives/docs/components/dialog).)
 
-```tsx title="/src/app/components/DeleteApplicationButton.tsx" startLineNumber={33}
+```tsx title="/src/app/components/DeleteApplicationButton.tsx" startLineNumber={33} ins="open={isOpen} onOpenChange={setIsOpen}"
 <Dialog open={isOpen} onOpenChange={setIsOpen}>
 ```
 
 Now, we can update the "Nevermind" button to close the dialog box, by updating the `isOpen` state:
 
-```tsx title="/src/app/components/DeleteApplicationButton.tsx" startLineNumber={34}
-<Button variant="secondary" onClick={ () => setIsOpen(false) }>Nevermind</Button>
+```tsx title="/src/app/components/DeleteApplicationButton.tsx" startLineNumber={55} ins="onClick={() => setIsOpen(false)}>"
+<Button variant="secondary" onClick={() => setIsOpen(false)}>
+  Nevermind
+</Button>
 ```
 
 If you test this in the browser, the "Nevermind" button should close the dialog box, without deleting the application. 😎
+
+![](./images/delete-job-modal.png)
 
 ## Implementing Edit Functionality
 
@@ -1043,23 +1069,27 @@ Let's take the smarter, not harder approach and start with our `New` application
 
 Inside, we need to rename our component to `Edit`
 
-```diff title="/src/app/pages/applications/Edit.tsx"
-- const New = async ({ ctx }: RequestInfo) => {
-+ const Edit = async ({ ctx }: RequestInfo) => {
+```tsx title="/src/app/pages/applications/Edit.tsx" showLineNumbers=false del={1,4} ins={2,5}
+const New = async ({ ctx }: RequestInfo) => {
+const Edit = async ({ ctx }: RequestInfo) => {
 ...
-- export { New }
-+ export { Edit }
+export { New }
+export { Edit }
 ```
 
 Within our `worker.tsx`, let's add the new route:
 
-```tsx title="/src/worker.tsx" startLineNumber={66} ins={5}
-prefix("/applications", [
-  route("/", [isAuthenticated, List]),
-  route("/new", [isAuthenticated, New]),
-  route("/:id", [isAuthenticated, Details]),
-  route("/:id/edit", [isAuthenticated, Edit]),
-]),
+```tsx title="/src/worker.tsx" ins={8} collapse={5-7} startLineNumber={67}
+layout(
+  InteriorLayout,
+  prefix("/applications", [
+    isAuthenticated,
+    route("/", List),
+    route("/new", New),
+    route("/:id", Details),
+    route("/:id/edit", Edit),
+  ])
+),
 ```
 
 Be sure to import the `Edit` component at the top of our `worker.tsx` file:
@@ -1070,7 +1100,7 @@ import { Edit } from "@/app/pages/applications/Edit";
 
 Then, let's add our new edit page to the list of routes inside our `src/app/shared/links.ts` file:
 
-```tsx title="/src/app/shared/links.ts" {3} collapse={2-10} startLineNumber={10}
+```tsx title="/src/app/shared/links.ts" ins={11} collapse={2-10} startLineNumber={3}
 export const link = defineLinks([
   "/",
   "/user/login",
@@ -1087,19 +1117,19 @@ export const link = defineLinks([
 
 Now, let's update the **Edit** button on the **Details** page so that we can easily navigate to our new page:
 
-```tsx title="/src/app/pages/applications/Details.tsx" startLineNumber={87}
+```tsx title="/src/app/pages/applications/Details.tsx" ins={2-6,8} startLineNumber={87} ins="asChild"
 <Button variant="secondary" asChild>
   <a
     href={link("/applications/:id/edit", {
-      id: application?.id || "",
+      id: application?.id as string,
     })}
   >
     <Icon id="edit" size={16} /> Edit
   </a>
 </Button>
 ---
-- I changed the `Button` component to include the `asChild` prop. This allows us to maintain the button styles, but render a link instead.
-- Inside the `Button` component, I added a link, that uses the `link` function to reference the `Edit` page. The first parameter is the route and the second parameter contains an object with the parameters we're passing in. Here, the `application?.id`
+- Update the `Button` component to include the `asChild` prop. This maintains the button styles, but renders a link instead.
+- Inside the `Button` component, add a link, that uses the `link` function to link to the `Edit` page. The first parameter is the route and the second parameter contains an object with the appropriate parameters. Here, the `application?.id`
 ---
 ```
 
@@ -1111,11 +1141,13 @@ import { link } from "@/app/shared/links"
 
 If you look at this in the browser and click on the **Edit** button, it should take you to a page that looks like the new application form. But, the URL is different.
 
+![](./images/edit-application-looks-like-new.png)
+
 ### Loading the Application from the Database
 
 Let's get our job application content from the database and pass it into the form:
 
-```tsx title="/src/app/pages/applications/Edit.tsx" startLineNumber={14}
+```tsx title="/src/app/pages/applications/Edit.tsx" ins="params," ins={2-14} startLineNumber={14}
 const Edit = async ({ params, ctx }: RequestInfo) => {
   const application = await db.application.findUnique({
     where: {
@@ -1132,16 +1164,10 @@ const Edit = async ({ params, ctx }: RequestInfo) => {
   })
 ---
 - This code is similar to what we're already doing on the `Details.tsx` page. By default, our page gets a `RequestInfo` object, which contains the `params` and `ctx`.
-- We can access the `id` in the URL through the `params` object with `params.id`.
+- We can access the `id` through the URL by referencing the `params` object with `params.id`.
 - **On lines 15-27** we're using the Prisma API to find the unique application, `where` the `id` is equal to `param.id`.
 - We're also including the `applicationStatus`, `company`, and `contacts` in the response, with `include`.
 ---
-```
-
-Be sure to import `RequestInfo` at the top of our file:
-
-```tsx title="/src/app/pages/applications/Edit.tsx" showLineNumbers=false
-import { RequestInfo } from "rwsdk/worker"
 ```
 
 If we work our way down the file, we still need to grab _all_ the application statuses to populate the dropdown menu:
@@ -1165,11 +1191,12 @@ We already have all the contact information we need through the `application` da
 
 Let's keep moving down the file. We can change our `BreadcrumbPage` to display the Job Title:
 
-```tsx title="/src/app/pages/applications/Edit.tsx" {6-14} collapse={2-5} startLineNumber={35}
+```tsx title="/src/app/pages/applications/Edit.tsx" collapse={2-5} del={13} ins={5-10,14} startLineNumber={34}
 <BreadcrumbList>
   <BreadcrumbItem>
     <BreadcrumbLink href="/applications">Applications</BreadcrumbLink>
   </BreadcrumbItem>
+  <BreadcrumbSeparator />
   <BreadcrumbItem>
     <BreadcrumbLink href={link('/applications/:id', { id: application?.id ?? '' })}>
       {application?.jobTitle} at {application?.company?.name}
@@ -1177,21 +1204,22 @@ Let's keep moving down the file. We can change our `BreadcrumbPage` to display t
   </BreadcrumbItem>
   <BreadcrumbSeparator />
   <BreadcrumbItem>
+    <BreadcrumbPage>Add an Application</BreadcrumbPage>
     <BreadcrumbPage>Edit Application</BreadcrumbPage>
   </BreadcrumbItem>
 </BreadcrumbList>
 ---
-- I injected a `BreadcrumbItem` and a `BreadcrumbSeparator` after the Applications link to include the job details page.
-- On the `BreadcrumbLink`, I used our `link` function to reference the job details page.
-- I used the content from our database to dynamically display the job title and company name.
-- Then, I changed the `BreadcrumbPage` to `Edit Application`.
+- Inject a `BreadcrumbItem` and a `BreadcrumbSeparator` after the Applications link to include the job details page.
+- On the `BreadcrumbLink`, use the `link` function to reference the job details page.
+- Use the content from our database to dynamically display the job title and company name.
+- Then, change the `BreadcrumbPage` to `Edit Application`.
 ---
 ```
 ![](./images/edit-job-application-breadcrumbs.png)
 
 Looking at the next section:
 
-```tsx title="/src/app/pages/applications/Edit.tsx" startLineNumber={46}
+```tsx title="/src/app/pages/applications/Edit.tsx" startLineNumber={52}
 <div className="mx-page-side pb-6 mb-8 border-b-1 border-border">
   <h1 className="page-title">New Application</h1>
   <p className="page-description">Create a new application</p>
@@ -1200,65 +1228,73 @@ Looking at the next section:
 
 We can change the contents of our page title and description:
 
-```tsx title="/src/app/pages/applications/Edit.tsx" startLineNumber={47} "Edit {application?.jobTitle}" "Edit your application" "Edit the details of this job application."
-<h1 className="page-title">Edit {application?.jobTitle}</h1>
-<p className="page-description">Edit the details of this job application.</p>
+```tsx title="/src/app/pages/applications/Edit.tsx" startLineNumber={52} ins="Edit {application?.jobTitle}" ins="Edit your application" ins="Edit the details of this job application."
+<div className="mx-page-side pb-6 mb-8 border-b-1 border-border">
+  <h1 className="page-title">Edit {application?.jobTitle}</h1>
+  <p className="page-description">Edit the details of this job application.</p>
+</div>
 ```
 
 For the form, I'm going to duplicate the `src/app/components/ApplicationsForm.tsx` file and name the new file `EditApplicationForm.tsx`.
 
 Inside, we need to change the name of the component to match the name of the file:
 
-```diff title="/src/app/components/EditApplicationForm.tsx" showLineNumbers=false
-- const ApplicationsForm = ({ statuses, contacts }:
-+ const EditApplicationForm = ({ statuses, contacts }:
+```tsx title="/src/app/components/EditApplicationForm.tsx" showLineNumbers=false ins={2,5} del={1,4}
+const ApplicationsForm = ({ statuses, contacts }:
+const EditApplicationForm = ({ statuses, contacts }:
 ...
-- export {ApplicationsForm}
-+ export {EditApplicationForm}
+export {ApplicationsForm}
+export {EditApplicationForm}
 ```
 
 Then, on the `Edit` page, let's swap out the `ApplicationsForm` component with our `EditApplicationForm` component:
 
-```diff title="/src/app/pages/applications/Edit.tsx" showLineNumbers=false
-- import { ApplicationsForm } from "@/app/components/ApplicationsForm"
-+ import { EditApplicationForm } from "@/app/components/EditApplicationForm"
+```tsx title="/src/app/pages/applications/Edit.tsx" showLineNumbers=false ins={2,5} del={1,4}
+import { ApplicationsForm } from "@/app/components/ApplicationsForm"
+import { EditApplicationForm } from "@/app/components/EditApplicationForm"
 ...
-- <ApplicationsForm statuses={statuses} contacts={contacts} />
-+ <EditApplicationForm statuses={statuses} contacts={contacts} />
+<ApplicationsForm statuses={statuses} contacts={contacts} />
+<EditApplicationForm statuses={statuses} contacts={contacts} />
 ```
 
 While we're here, let's modify the props that we're passing into our component. We no longer need the `contacts` prop, but we do need to pass in the application:
 
-```diff title="/src/app/pages/applications/Edit.tsx" showLineNumbers=false "contacts={contacts}" "application={application}"
-- <EditApplicationForm statuses={statuses} contacts={contacts} />
-+ <EditApplicationForm statuses={statuses} application={application} />
+```tsx title="/src/app/pages/applications/Edit.tsx" showLineNumbers=false del="contacts={contacts}" ins="application={application}" ins={2} del={1}
+<EditApplicationForm statuses={statuses} contacts={contacts} />
+<EditApplicationForm statuses={statuses} application={application as ApplicationWithRelations} />
+```
+
+Then, be sure to import the `ApplicationWithRelations` type at the top of the file:
+
+```tsx title="/src/app/pages/applications/Edit.tsx" showLineNumbers=false ins={1}
+import { ApplicationWithRelations } from "./List";
 ```
 
 Now, let's move over to our `EditApplicationForm.tsx` file and update the props, there, to match:
 
-```diff title="/src/app/components/EditApplicationForm.tsx" showLineNumbers=false
-- import { ApplicationStatus, Contact } from "@prisma/client"
-+ import { ApplicationStatus, Application } from "@prisma/client"
-+ import { ApplicationWithRelations } from "../pages/applications/List";
+```tsx title="/src/app/components/EditApplicationForm.tsx" showLineNumbers=false del={1,5-6} ins={2-3,7-13}
+import { ApplicationStatus, Contact } from "@/db";
+import { ApplicationStatus, Application } from "@/db"
+import { ApplicationWithRelations } from "../pages/applications/List";
 ...
-- const EditApplicationForm = ({ statuses, contacts }:
--   { statuses: ApplicationStatus[], contacts: Contact[] }) => {
-+ const EditApplicationForm = ({
-+   statuses,
-+   application,
-+ }: {
-+   statuses: ApplicationStatus[];
-+   application: ApplicationWithRelations;
-+ }) => {
+const EditApplicationForm = ({ statuses, contacts }:
+  { statuses: ApplicationStatus[], contacts: Contact[] }) => {
+const EditApplicationForm = ({
+  statuses,
+  application,
+}: {
+  statuses: ApplicationStatus[];
+  application: ApplicationWithRelations;
+}) => {
 ```
 
-We updated the types that we're importing from Prisma to remove `Contact` and include `Application`. Then, we made similar changes to the props that we're passing into our component.
+Update the types that we're importing from Prisma to remove `Contact` and include `Application`. Then, we made similar changes to the props that we're passing into our component.
 
-You'll notice that we imported `ApplicationWithRelations` from our `List` page. This is a type that we created to include the `company` and `contacts` details.
+Notice that we imported `ApplicationWithRelations` from our `List` page. This is a type that we created to include the `company` and `contacts` details.
 
 Now, let's work our way through the form, for each input field, we want to set a `defaultValue`, referencing the application details.
 
-```tsx title="/src/app/components/EditApplicationForm.tsx" showLineNumbers=false {"Company Name": 1} "defaultValue={application?.company?.name ?? ''}" {"Job Title": 3} "defaultValue={application?.jobTitle ?? ''}" {"Job Description": 5} "defaultValue={application?.jobDescription ?? ''}" {"Salary Min": 7} "defaultValue={application?.salaryMin ?? ''}" {"Salary Max": 9} "defaultValue={application?.salaryMax ?? ''}" {"Posting URL": 11} "defaultValue={application?.postingUrl ?? ''}"
+```tsx title="/src/app/components/EditApplicationForm.tsx" showLineNumbers=false ins={"Company Name": 1} ins="defaultValue={application?.company?.name ?? ''}" ins={"Job Title": 3} ins="defaultValue={application?.jobTitle ?? ''}" ins={"Job Description": 5} ins="defaultValue={application?.jobDescription ?? ''}" ins={"Salary Min": 7} ins="defaultValue={application?.salaryMin ?? ''}" ins={"Salary Max": 9} ins="defaultValue={application?.salaryMax ?? ''}" ins={"Posting URL": 11} ins="defaultValue={application?.postingUrl ?? ''}"
 .
 <input type="text" id="company" name="company" defaultValue={application?.company?.name ?? ''} />
 
@@ -1275,15 +1311,15 @@ Now, let's work our way through the form, for each input field, we want to set a
 
 Then, for the submit button, change the label from "Create" to "Update":
 
-```tsx title="/src/app/components/EditApplicationForm.tsx" startLineNumber={77} "Update"
+```tsx title="/src/app/components/EditApplicationForm.tsx" startLineNumber={120} ins="Update"
 <Button role="submit">
   Update
 </Button>
 ```
 
-Let's add a second button, to cancel:
+Let's add a second button, for cancelling changes:
 
-```tsx title="/src/app/components/EditApplicationForm.tsx" {5-7} startLineNumber={120} "field flex items-center gap-4" "asChild"
+```tsx title="/src/app/components/EditApplicationForm.tsx" ins={5-7} startLineNumber={119} ins="field flex items-center gap-4" ins="asChild"
 <div className="field flex items-center gap-4">
   <Button role="submit">
     Update
@@ -1293,9 +1329,9 @@ Let's add a second button, to cancel:
   </Button>
 </div>
 ---
-- On the wrapping `field` `div`, I added a few classes to align the buttons vertically and add `16px` of space between them with `flex items-center gap-4`.
-- **On line 124**, I gave the Cancel button a `variant` of `secondary` to give it a `beige` color. The `asChild` prop allows us to use the `a` tag inside.
-- **On line 125**, I used our `link` function to reference the job details page and pass in the `application?.id` as the `id` parameter.
+- On the wrapping `field` `div`, add a few classes to align the buttons vertically and add `16px` of space between them with `flex items-center gap-4`.
+- **On line 123**, give the Cancel button a `variant` of `secondary` to give it a `beige` color. The `asChild` prop allows us to use the `a` tag inside.
+- **On line 124**, use our `link` function to reference the job details page and pass in the `application?.id` as the `id` parameter.
 ---
 ```
 
@@ -1307,8 +1343,11 @@ import { link } from "../shared/links";
 
 For the Date Picker, we need to adjust the component slightly. If you try to pass in a `defaultValue`:
 
-```tsx title="/src/app/components/EditApplicationForm.tsx" showLineNumbers=false
-<DatePicker name="dateApplied" defaultValue={application?.dateApplied?.toISOString() ?? ''} />
+```tsx title="/src/app/components/EditApplicationForm.tsx" startLineNumber={139} ins="defaultValue={application?.dateApplied?.toISOString() ?? ""}"
+<DatePicker
+  name="dateApplied"
+  defaultValue={application?.dateApplied?.toISOString() ?? ""}
+/>
 ```
 
 It will show a linting error because it's not prepared to accept that prop:
@@ -1317,8 +1356,14 @@ It will show a linting error because it's not prepared to accept that prop:
 
 Within the `DatePicker` component, let's update the list of props we're passing in, to include the `defaultValue` prop:
 
-```tsx title="/src/app/components/ui/DatePicker.tsx" startLineNumber={16} "defaultValue = ''" "defaultValue?: string }"
-export function DatePicker({ name, defaultValue = '' }: { name: string, defaultValue?: string }) {
+```tsx title="/src/app/components/ui/DatePicker.tsx" startLineNumber={16} ins={3,6}
+export function DatePicker({
+  name,
+  defaultValue = "",
+}: {
+  name: string;
+  defaultValue?: string;
+}) {
 ---
 - The `defaultValue` isn't required, so we used a `?` to make it optional.
 - If the `defaultValue` isn't passed in, `defaultValue` will be an empty string.
@@ -1327,28 +1372,29 @@ export function DatePicker({ name, defaultValue = '' }: { name: string, defaultV
 
 We're already saving the selected date in a piece of state, let's set the default value of our state to `defaultValue` we passed in:
 
-```diff lang="tsx" title="/src/app/components/ui/DatePicker.tsx" showLineNumbers=false "defaultValue ? new Date(defaultValue) : new Date()"
-- const [date, setDate] = React.useState<Date>()
-+ const [date, setDate] = React.useState<Date>(defaultValue ? new Date(defaultValue) : new Date())
+```tsx lang="tsx" title="/src/app/components/ui/DatePicker.tsx" showLineNumbers=false ins={2}
+const [date, setDate] = React.useState<Date>(
+  defaultValue ? new Date(defaultValue) : new Date()
+);
 ```
 
 Excellent! Now, let's go back to our `EditApplicationForm.tsx` file and update the Application Status. Just like our standard inputs, we can pass in a `defaultValue` prop:
 
-```tsx title="/src/app/components/EditApplicationForm.tsx" startLineNumber={147}
+```tsx title="/src/app/components/EditApplicationForm.tsx" startLineNumber={147} ins={3}
 <Select
-  name="statusId"
+  name="status"
   defaultValue={application?.status?.id.toString() ?? ""}
 >
 ```
 
 For the Contacts section, we just need to adjust the contact array its referencing:
 
-```diff title="/src/app/components/EditApplicationForm.tsx" showLineNumbers=false
-- {contacts && (
-+ {application?.company?.contacts && (
+```tsx title="/src/app/components/EditApplicationForm.tsx" startLineNumber={171} del={1,4} ins={2,5}
+{contacts && (
+{application?.company?.contacts && (
   <ul>
--      {contacts.map((contact) => (
-+      {application?.company?.contacts.map((contact) => (
+    {contacts.map((contact) => (
+    {application?.company?.contacts.map((contact) => (
       <li key={contact.id}><ContactCard contact={contact} /></li>
     ))}
   </ul>
@@ -1359,7 +1405,7 @@ If you check out the page within the browser, you should see all our application
 
 ![](./images/application-edit-details.png)
 
-#### Updating the Application
+### Updating the Application
 
 Now, we just need to handle the form updates.
 
@@ -1369,7 +1415,7 @@ Instead of duplicating the `ContactForm` component, let's make it "smart" enough
 
 Inside our `EditApplicationForm` component, where we're using our `ContactForm` component, let's pass in the `companyId`:
 
-```tsx title="/src/app/components/EditApplicationForm.tsx" startLineNumber={193} "companyId={application?.company?.id ?? ''}"
+```tsx title="/src/app/components/EditApplicationForm.tsx" startLineNumber={195} ins={3}
 <ContactForm
   callback={() => setIsContactSheetOpen(false)}
   companyId={application?.company?.id ?? ""}
@@ -1378,7 +1424,7 @@ Inside our `EditApplicationForm` component, where we're using our `ContactForm` 
 
 Right away, you will see an error because our `ContactForm` isn't expecting a `companyId` prop. Let's fix that:
 
-```tsx title="/src/app/components/ContactForm.tsx" startLineNumber={6} "companyId = ""," "companyId?: string" startLineNumber={8}
+```tsx title="/src/app/components/ContactForm.tsx" startLineNumber={6} ins={3,6}
 const ContactForm = ({
   callback,
   companyId = "",
@@ -1387,15 +1433,15 @@ const ContactForm = ({
   companyId?: string;
 }) => {
 ---
-- I set the default value to an empty string: `companyId = ''`
-- I also made the `companyId` prop optional with a question mark `?`
+- Set the default value to an empty string: `companyId = ''`
+- Make the `companyId` prop optional with a question mark `?`
 - The beauty in this approach is that it won't break or change our existing implementation on the `New` job application page.
 ---
 ```
 
 Inside the `handleSubmit` function, let's `append` the `companyId` to our `formData`:
 
-```tsx title="/src/app/components/ContactForm.tsx" startLineNumber={13} {2}
+```tsx title="/src/app/components/ContactForm.tsx" startLineNumber={13} ins={2}
 const handleSubmit = async (formData: FormData) => {
   formData.append("companyId", companyId);
   const result = await createContact(formData);
@@ -1404,7 +1450,7 @@ const handleSubmit = async (formData: FormData) => {
 
 Now, let's jump over to our `createContact` function, inside our `src/app/pages/applications/functions.tsx` file and get the `companyId` from the form data:
 
-```tsx title="/src/app/pages/applications/functions.tsx" collapse={2-8} startLineNumber={55} {9}
+```tsx title="/src/app/pages/applications/functions.tsx" collapse={2-8} startLineNumber={54} ins={9}
 export const createContact = async (formData: FormData) => {
   try {
     const { ctx } = requestInfo;
@@ -1418,7 +1464,7 @@ export const createContact = async (formData: FormData) => {
 
 On our database call, we can conditionally `connect` the company, if the `companyId` exists:
 
-```tsx title="/src/app/pages/applications/actions.ts" collapse={2-11} {12-18} startLineNumber={65}
+```tsx title="/src/app/pages/applications/actions.ts" collapse={2-11} ins={12-18} startLineNumber={64}
 await db.contact.create({
   data: {
     firstName: formData.get("firstName") as string,
@@ -1440,7 +1486,7 @@ await db.contact.create({
   },
 })
 ---
-- **On line 74**, we're using a spread operator to say if the `companyId` exists, then connect the company to the contact. Otherwise, we'll use an empty object.
+- **On line 75**, we're using a spread operator to say if the `companyId` exists, then connect the company to the contact. Otherwise, we'll use an empty object.
 ---
 ```
 
@@ -1460,12 +1506,17 @@ const handleSubmit = async (formData: FormData) => {
 }
 ```
 
-We can remove line `26`, where we're appending the `contacts` to the `formData`.
+We can remove line `39`, where we're appending the `contacts` to the `formData`.
+
+```tsx title="/src/app/components/EditApplicationForm.tsx" startLineNumber={39} del={1}
+formData.append("contacts", JSON.stringify(contacts));
+```
 
 Instead of calling `createApplication`, let's call `updateApplication` instead (we still need to write this function):
 
-```tsx title="/src/app/pages/applications/actions.ts" collapse={3-7} startLineNumber={126} {2} "updateApplication"
+```tsx title="/src/app/pages/applications/actions.ts" collapse={4-8} startLineNumber={126} del={2} ins={3}
 const handleSubmit = async (formData: FormData) => {
+  const result = await createApplication(formData);
   const result = await updateApplication(formData);
   if (result.success) {
     window.location.href = `/applications`;
@@ -1477,14 +1528,14 @@ const handleSubmit = async (formData: FormData) => {
 
 Be sure to update the import statement at the top of your file:
 
-```diff title="/src/app/components/EditApplicationForm.tsx" showLineNumbers=false
-- import { createApplication } from "@/app/pages/applications/functions"
-+ import { updateApplication } from "@/app/pages/applications/functions"
+```tsx title="/src/app/components/EditApplicationForm.tsx" showLineNumbers=false del={1} ins={2}
+import { createApplication } from "@/app/pages/applications/functions"
+import { updateApplication } from "@/app/pages/applications/functions"
 ```
 
 Inside our `src/app/pages/applications/functions.ts` file, let's write the `updateApplication` function:
 
-```tsx title="/src/app/pages/applications/functions.ts" startLineNumber={122}
+```tsx title="/src/app/pages/applications/functions.ts" startLineNumber={121}
 export const updateApplication = async (formData: FormData) => {
   try {
     await db.application.update({
@@ -1505,7 +1556,7 @@ export const updateApplication = async (formData: FormData) => {
         },
         status: {
           connect: {
-            id: parseInt(formData.get("statusId") as string),
+            id: parseInt(formData.get("status") as string),
           },
         },
       }
@@ -1519,11 +1570,11 @@ export const updateApplication = async (formData: FormData) => {
 }
 ---
 - This is basic `try` / `catch` block. We `try` and run our database method an if it encounters an error, then we'll `catch` it and return an error object.
-- **On line 122** - Our database call is similar to the `createApplication` function, but instead of `create`, we're using `update`.
-- **On lines 125-127** - We're using a `where` clause to specify which application we want to update.
-- **On lines 135-139** - We're using an `update` method to update the company name (instead of `connect`)
-- **On lines 140-144** - We're using the `update` method to update the application status (instead of `connect`).
-- **On line 142** - the Application Status ID is a number, but the `statusId` on the `formData` is a `number`, so we're casting it from a string into a number with `parseInt`.
+- **On line 123** - Our database call is similar to the `createApplication` function, but instead of `create`, we're using `update`.
+- **On lines 124-126** - We're using a `where` clause to specify which application we want to update.
+- **On lines 134-138** - We're using an `update` method to update the company name (instead of `connect`)
+- **On lines 139-143** - We're using the `update` method to update the application status (instead of `connect`).
+- **On line 141** - the Application Status ID is a number, but the `statusId` on the `formData` is a `number`, so we're casting it from a string into a number with `parseInt`.
 ---
 ```
 
@@ -1533,13 +1584,15 @@ This is great, the only problem is that the application `id` does not exist in o
 
 Let's go back to our `EditApplicationForm` and add a `hidden` input field to our form:
 
-```tsx title="/src/app/components/EditApplicationForm.tsx" startLineNumber={120} "id={application?.id ?? ''}"
+```tsx title="/src/app/components/EditApplicationForm.tsx" startLineNumber={119} ins={2-7}
+<div className="field flex items-center gap-4">
 <input
   type="hidden"
   id="id"
   name="id"
   defaultValue={application?.id ?? ""}
 />
+<Button role="submit">Update</Button>
 ```
 
 <Aside type="tip" title="Hidden Input Field">
