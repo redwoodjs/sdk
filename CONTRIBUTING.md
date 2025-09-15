@@ -144,6 +144,32 @@ test("injects stylesheets for src entry point", async () => {
 
 This approach makes dependencies clear, avoids the pitfalls of global mocks, and leads to more resilient tests.
 
+### Options Objects for Function Parameters
+
+For functions that accept multiple arguments, prefer using a single options object instead of a long list of parameters. This improves readability and makes the function signature more maintainable, as new options can be added without changing the order of existing arguments.
+
+**Good Example:**
+
+```typescript
+function processData({ input, retries = 3, logger }: {
+  input: string;
+  retries?: number;
+  logger?: Logger;
+}) {
+  // ...
+}
+```
+
+**Bad Example:**
+
+```typescript
+function processData(input: string, retries: number = 3, logger?: Logger) {
+  // ...
+}
+```
+
+This convention is not a strict rule. For simple functions where the arguments are self-explanatory (e.g., `add(a, b)`), positional arguments are perfectly acceptable. Use your best judgment.
+
 ## Smoke Testing
 
 For details on how to run smoke tests, please see the [smoke testing documentation](./SMOKE-TESTING.md).

@@ -30,7 +30,7 @@ describe("matchPath", () => {
     expect(matchPath("/files/*/", "/files/document.pdf/")).toEqual({
       $0: "document.pdf",
     });
-    expect(matchPath("/data/*\/content/", "/data/archive/content/")).toEqual({
+    expect(matchPath("/data/*/content/", "/data/archive/content/")).toEqual({
       $0: "archive",
     });
     expect(matchPath("/assets/*/*/", "/assets/images/pic.png/")).toEqual({

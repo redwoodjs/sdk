@@ -173,6 +173,10 @@ export function parseJson<T>(
       }
     }
 
+    if (lastJson !== null) {
+      return lastJson;
+    }
+
     return defaultValue;
   } catch (error) {
     console.error("Error in parseJson:", error);
