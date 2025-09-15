@@ -259,9 +259,10 @@ export const runDirectivesScan = async ({
             log("Normalized path:", normalizedPath);
 
             // On Windows, convert absolute paths to file:// URLs for ESM compatibility
-            const esbuildPath = process.platform === "win32" && path.isAbsolute(normalizedPath)
-              ? pathToFileURL(normalizedPath).href
-              : normalizedPath;
+            const esbuildPath =
+              process.platform === "win32" && path.isAbsolute(normalizedPath)
+                ? pathToFileURL(normalizedPath).href
+                : normalizedPath;
 
             return {
               path: esbuildPath,
