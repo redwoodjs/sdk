@@ -181,6 +181,56 @@ This systematic approach will solve the remaining Windows path issues while main
 4. **All tests passing**: 59/59 tests pass, including both existing functionality and new osify features
 
 **Next Steps:**
-- Audit codebase for `normalizeModulePath` usage to identify where `osify` option should be applied
-- Apply targeted fixes to places that interact with OS file system (like esbuild module resolution)
-- Test the complete Windows path fix in CI
+- Audit codebase for `normalizeModulePath` usage to identify where `osify` option should be applied ✅
+- Apply targeted fixes to places that interact with OS file system (like esbuild module resolution) ✅
+- Test the complete Windows path fix in CI ✅
+
+## Systematic Fix Results (Run 17740424296)
+
+**Major Progress Achieved:**
+- **✅ Directive scanning now completes successfully!** ("✅ Scan complete." appears in logs)
+- **✅ Entry points conversion working** - esbuild can start the scan process
+- **✅ Module resolution working** - esbuild can resolve and process modules during scan
+
+**Remaining Issue:**
+- **❌ ESM URL scheme error still occurs after scan completion** at line 224 in `runDirectivesScan.mjs`
+- **Error**: `ERR_UNSUPPORTED_ESM_URL_SCHEME: Received protocol 'c:'`
+- **Location**: Error happens AFTER directive scan completes, not during the scan itself
+
+**Analysis:**
+The systematic approach has successfully fixed the core Windows path issues in:
+1. Entry points for esbuild (now using osify: 'fileUrl')
+2. Module resolution paths returned to esbuild (now using osify: 'fileUrl')
+
+However, there's still one more place where a Windows absolute path is being passed to Node.js ESM loader without proper file:// URL conversion. The error occurs at line 224, which suggests it might be in error handling or cleanup code after the scan completes.
+
+**Key Insights from CI Testing:**
+
+1. **API Design Validation**: The `osify: 'fileUrl'` option works exactly as designed - it systematically converts Windows absolute paths to file:// URLs for ESM loader compatibility.
+
+2. **Partial Success Confirms Approach**: The fact that directive scanning now completes proves our systematic approach is correct. We've successfully identified and fixed the two main places where Windows paths needed conversion:
+   - Entry points for esbuild 
+   - Module resolution paths returned from onResolve handler
+
+3. **Remaining Issue is Isolated**: The error still occurs at line 224 after scan completion, which means there's exactly one more place that needs the osify treatment. This validates that our systematic approach can find and fix all Windows path issues.
+
+4. **Error Pattern Unchanged**: The error is still `ERR_UNSUPPORTED_ESM_URL_SCHEME: Received protocol 'c:'`, which means we have the exact same type of issue - a Windows absolute path being passed to Node.js ESM loader without file:// URL conversion.
+
+**Decision**: Continue with the systematic audit approach. The success so far proves this method works, and we just need to find the remaining usage of `normalizeModulePath` or direct path handling that needs osification.
+
+**Root Cause Found!**
+
+After investigating the compiled code and stack trace, discovered the actual issue:
+
+1. **Line 224 is misleading**: It's just the error re-throw in the catch block. The real error occurs inside `esbuild.build()`.
+
+2. **Identified the source**: The error happens in the `onLoad` handler at line 291: `await readFileWithCache(args.path)`
+
+3. **The problem**: `readFileWithCache` calls `fsp.readFile(path, "utf-8")` at line 159. On Windows:
+   - `args.path` comes from esbuild as a file:// URL (e.g., `file:///C:/Users/...`)
+   - But `fs.readFile` expects a regular file path (e.g., `C:\Users\...`)
+   - This mismatch causes the ESM URL scheme error
+
+4. **The solution**: Need to convert file:// URLs back to regular file paths before passing to `fs.readFile`
+
+**Key insight**: Our osify approach works perfectly for paths going TO esbuild (entry points, resolve results), but we also need to handle paths coming FROM esbuild (in onLoad) by converting file:// URLs back to regular paths for file system operations.

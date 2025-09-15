@@ -4,6 +4,7 @@ import { Environment, ResolvedConfig } from "vite";
 import fsp from "node:fs/promises";
 import { hasDirective } from "./hasDirective.mjs";
 import path from "node:path";
+import { fileURLToPath } from "node:url";
 import debug from "debug";
 import { getViteEsbuild } from "./getViteEsbuild.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
@@ -156,7 +157,11 @@ export const runDirectivesScan = async ({
       if (fileContentCache.has(path)) {
         return fileContentCache.get(path)!;
       }
-      const contents = await fsp.readFile(path, "utf-8");
+      
+      // Convert file:// URLs to regular file paths for fs operations
+      const filePath = path.startsWith('file://') ? fileURLToPath(path) : path;
+      
+      const contents = await fsp.readFile(filePath, "utf-8");
       fileContentCache.set(path, contents);
       return contents;
     };
