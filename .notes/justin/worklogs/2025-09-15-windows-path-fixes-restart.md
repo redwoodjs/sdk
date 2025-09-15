@@ -126,3 +126,20 @@ This ensures that when esbuild tries to load resolved modules, Node.js ESM loade
 The fact that the minimal starter is running much longer than any previous attempt suggests our fix is working. Previous runs failed quickly with the ESM URL scheme error, but this one is progressing much further, indicating the directive scanning is now completing successfully on at least the minimal starter.
 
 This represents significant progress - we've likely fixed the core Windows path issue, though there may be additional issues in more complex scenarios (standard starter).
+
+## Final CI Test Results (Run 17739883338)
+
+**Status:** 🟡 Significant progress but issue persists
+
+**Key Breakthrough:**
+- **Directive scanning now completes successfully!** Both tests show "✅ Scan complete." 
+- The ESM URL scheme error now occurs AFTER the scan completes, not during it
+- This proves our `onResolve` handler fix worked - esbuild can now successfully resolve and load modules
+
+**Remaining Issue:**
+- The same `ERR_UNSUPPORTED_ESM_URL_SCHEME` error still occurs, but at a different point in the process
+- Error happens after scan completion, suggesting there's another code path that needs file:// URL conversion
+- Both minimal and standard starters still fail, but they're progressing much further
+
+**Progress Summary:**
+We've successfully fixed the core module resolution issue in the esbuild plugin. The directive scanning process can now complete on Windows, which was the main blocker. There's likely one more place where Windows paths need to be converted to file:// URLs to fully resolve the issue.
