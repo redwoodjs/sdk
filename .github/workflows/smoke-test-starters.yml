@@ -35,9 +35,9 @@ jobs:
         # package-manager: [pnpm, npm, yarn, yarn-classic] # Temporarily disabled for focused testing
 
     # context(justinvdm, 2025-05-12):
-    # Only run this job for PRs from the same repository and pushes to main
+    # Only run this job for PRs from the same repository, pushes to main, or manual dispatch
     # For security, GH won't expose secrets for fork PRs
-    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository || github.event_name == 'workflow_dispatch'
 
     steps:
       - name: Checkout repository
