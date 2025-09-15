@@ -88,7 +88,12 @@ if [[ "$PACKAGE_MANAGER" == "npm" ]]; then
   INSTALL_COMMAND="install"
 fi
 
-(cd "$PROJECT_DIR" && $PACKAGE_MANAGER $INSTALL_COMMAND "$TARBALL_PATH")
+EXEC_PACKAGE_MANAGER="$PACKAGE_MANAGER"
+if [[ "$PACKAGE_MANAGER" == "yarn-classic" ]]; then
+  EXEC_PACKAGE_MANAGER="yarn"
+fi
+
+(cd "$PROJECT_DIR" && "$EXEC_PACKAGE_MANAGER" "$INSTALL_COMMAND" "$TARBALL_PATH")
 
 # --- Run Smoke Tests ---
 echo -e "\n🔬 Running smoke tests..."
