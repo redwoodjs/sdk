@@ -82,3 +82,20 @@ Successfully configured focused Windows CI testing:
    - Will test both the `constants.mts` and `runDirectivesScan.mts` path fixes
 
 The CI run will validate whether our targeted Windows path fixes resolve the issues identified in the September 11th investigation without the complexity of the September 15th approaches.
+
+## CI Test Results
+
+**Status:** ❌ Both tests failed with the same ESM URL scheme error
+
+**Key Findings:**
+1. **Error persists:** `ERR_UNSUPPORTED_ESM_URL_SCHEME: Only URLs with a scheme in: file, data, and node are supported by the default ESM loader. On Windows, absolute paths must be valid file:// URLs. Received protocol 'c:'`
+
+2. **Our fixes were insufficient:** While we fixed the entry points in `runDirectivesScan.mts`, there are additional places where Windows paths are being passed to the ESM loader without proper file:// URL conversion.
+
+3. **Location of failure:** The error occurs within the esbuild process during directive scanning, suggesting that paths resolved by esbuild or passed to module resolution are still not properly formatted.
+
+**Root Cause Identified:**
+Found the exact issue! Line 220 is just a re-throw. The real problem is in the esbuild `onResolve` handler at line 162 in the compiled code. We're returning `normalizedPath` directly, but on Windows this is still a Windows absolute path (like `C:\...`) instead of a file:// URL. When esbuild tries to load this resolved module, Node.js ESM loader receives the Windows path and throws the ERR_UNSUPPORTED_ESM_URL_SCHEME error.
+
+**Fix Required:**
+Convert the `normalizedPath` to a file:// URL on Windows before returning it from the `onResolve` handler, similar to how we fixed the entry points.
