@@ -4,6 +4,7 @@ import { Environment, ResolvedConfig } from "vite";
 import fsp from "node:fs/promises";
 import { hasDirective } from "./hasDirective.mjs";
 import path from "node:path";
+import { pathToFileURL } from "node:url";
 import debug from "debug";
 import { getViteEsbuild } from "./getViteEsbuild.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
@@ -125,9 +126,13 @@ export const runDirectivesScan = async ({
       return;
     }
 
-    const absoluteEntries = entries.map((entry) =>
-      path.resolve(rootConfig.root, entry),
-    );
+    const absoluteEntries = entries.map((entry) => {
+      const absolutePath = path.resolve(rootConfig.root, entry);
+      // On Windows, convert absolute paths to file:// URLs for ESM compatibility
+      return process.platform === "win32"
+        ? pathToFileURL(path.normalize(absolutePath)).href
+        : absolutePath;
+    });
 
     log(
       "Starting directives scan for worker environment with entries:",
