@@ -71,11 +71,14 @@ export const linkerPlugin = ({
         "utf-8",
       );
 
-      return linkWorkerBundle({
+      const result = linkWorkerBundle({
         code,
         manifestContent,
         projectRootDir,
       });
+
+      log("Final worker chunk rendered");
+      return result;
     },
   };
 };
