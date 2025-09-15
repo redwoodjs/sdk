@@ -29,8 +29,10 @@ jobs:
       fail-fast: false
       matrix:
         starter: [minimal, standard]
-        os: [ubuntu-latest] # TODO: Re-enable windows-latest after fixing Windows path issues (see issue #696)
-        package-manager: [pnpm, npm, yarn, yarn-classic]
+        os: [windows-latest] # Focused Windows testing for path fixes
+        # os: [ubuntu-latest] # Temporarily disabled for focused Windows testing
+        package-manager: [pnpm] # Focused on single package manager for testing
+        # package-manager: [pnpm, npm, yarn, yarn-classic] # Temporarily disabled for focused testing
 
     # context(justinvdm, 2025-05-12):
     # Only run this job for PRs from the same repository and pushes to main
