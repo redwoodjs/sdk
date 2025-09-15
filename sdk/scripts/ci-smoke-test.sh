@@ -82,6 +82,9 @@ echo "  - Created test project directory: $PROJECT_DIR"
 echo "  - Copying starter files..."
 cp -a "$STARTER_PATH/." "$PROJECT_DIR/"
 
+echo "  - Configuring project to not use a frozen lockfile..."
+echo "frozen-lockfile=false" >> "$PROJECT_DIR/.npmrc"
+
 echo "  - Installing SDK from tarball..."
 INSTALL_COMMAND="add"
 EXEC_PACKAGE_MANAGER="$PACKAGE_MANAGER"
@@ -92,12 +95,7 @@ elif [[ "$PACKAGE_MANAGER" == "yarn-classic" ]]; then
   EXEC_PACKAGE_MANAGER="yarn"
 fi
 
-INSTALL_ARGS=""
-if [[ "$PACKAGE_MANAGER" == "pnpm" ]]; then
-  INSTALL_ARGS="--no-strict-peer-dependencies"
-fi
-
-(cd "$PROJECT_DIR" && "$EXEC_PACKAGE_MANAGER" "$INSTALL_COMMAND" "$TARBALL_PATH" $INSTALL_ARGS)
+(cd "$PROJECT_DIR" && "$EXEC_PACKAGE_MANAGER" "$INSTALL_COMMAND" "$TARBALL_PATH")
 
 # --- Run Smoke Tests ---
 echo -e "\n🔬 Running smoke tests..."
