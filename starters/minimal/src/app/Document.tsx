@@ -9,6 +9,18 @@ export const Document: React.FC<{ children: React.ReactNode }> = ({
       <title>@redwoodjs/starter-minimal</title>
       <link rel="modulepreload" href="/src/client.tsx" />
       <link rel="stylesheet" href={stylesUrl} />
+      <link
+        rel="icon"
+        type="image/svg+xml"
+        href="/favicon-dark.svg"
+        media="(prefers-color-scheme: dark)"
+      />
+      <link
+        rel="icon"
+        type="image/svg+xml"
+        href="/favicon-light.svg"
+        media="(prefers-color-scheme: light)"
+      />
     </head>
     <body>
       <div id="root">{children}</div>
