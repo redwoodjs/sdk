@@ -371,4 +371,122 @@ describe("normalizeModulePath", () => {
       });
     });
   });
+
+  describe("9. osify option (Windows path conversion)", () => {
+    describe("osify: true (Windows backslashes)", () => {
+      it("Converts absolute path to Windows format", () => {
+        expect(
+          normalizeModulePath(
+            "/Users/name/code/my-app/src/page.tsx",
+            "/Users/name/code/my-app",
+            { absolute: true, osify: true, platform: "win32" },
+          ),
+        ).toBe("\\Users\\name\\code\\my-app\\src\\page.tsx");
+      });
+
+      it("External absolute path to Windows format", () => {
+        expect(
+          normalizeModulePath(
+            "/opt/tools/logger.ts",
+            "/Users/name/code/my-app",
+            { osify: true, platform: "win32" },
+          ),
+        ).toBe("\\opt\\tools\\logger.ts");
+      });
+
+      it("Relative path stays as Vite-style on Windows", () => {
+        expect(
+          normalizeModulePath(
+            "src/page.tsx",
+            "/Users/name/code/my-app",
+            { osify: true, platform: "win32" },
+          ),
+        ).toBe("/src/page.tsx");
+      });
+
+      it("No effect on non-Windows platforms", () => {
+        expect(
+          normalizeModulePath(
+            "/Users/name/code/my-app/src/page.tsx",
+            "/Users/name/code/my-app",
+            { absolute: true, osify: true, platform: "linux" },
+          ),
+        ).toBe("/Users/name/code/my-app/src/page.tsx");
+      });
+    });
+
+    describe("osify: 'fileUrl' (file:// URLs)", () => {
+      it("Converts absolute path to file:// URL", () => {
+        expect(
+          normalizeModulePath(
+            "/Users/name/code/my-app/src/page.tsx",
+            "/Users/name/code/my-app",
+            { absolute: true, osify: "fileUrl", platform: "win32" },
+          ),
+        ).toBe("file:///Users/name/code/my-app/src/page.tsx");
+      });
+
+      it("External absolute path to file:// URL", () => {
+        expect(
+          normalizeModulePath(
+            "/opt/tools/logger.ts",
+            "/Users/name/code/my-app",
+            { osify: "fileUrl", platform: "win32" },
+          ),
+        ).toBe("file:///opt/tools/logger.ts");
+      });
+
+      it("Relative path stays as Vite-style with fileUrl", () => {
+        expect(
+          normalizeModulePath(
+            "src/page.tsx",
+            "/Users/name/code/my-app",
+            { osify: "fileUrl", platform: "win32" },
+          ),
+        ).toBe("/src/page.tsx");
+      });
+
+      it("No effect on non-Windows platforms with fileUrl", () => {
+        expect(
+          normalizeModulePath(
+            "/Users/name/code/my-app/src/page.tsx",
+            "/Users/name/code/my-app",
+            { absolute: true, osify: "fileUrl", platform: "darwin" },
+          ),
+        ).toBe("/Users/name/code/my-app/src/page.tsx");
+      });
+    });
+
+    describe("Edge cases with osify", () => {
+      it("Empty string with osify", () => {
+        expect(
+          normalizeModulePath("", "/Users/name/code/my-app", {
+            absolute: true,
+            osify: true,
+            platform: "win32",
+          }),
+        ).toBe("\\Users\\name\\code\\my-app");
+      });
+
+      it("Current dir with osify", () => {
+        expect(
+          normalizeModulePath(".", "/Users/name/code/my-app", {
+            absolute: true,
+            osify: true,
+            platform: "win32",
+          }),
+        ).toBe("\\Users\\name\\code\\my-app");
+      });
+
+      it("Parent dir with osify", () => {
+        expect(
+          normalizeModulePath("..", "/Users/name/code/my-app", {
+            absolute: true,
+            osify: true,
+            platform: "win32",
+          }),
+        ).toBe("\\Users\\name\\code");
+      });
+    });
+  });
 });

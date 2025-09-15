@@ -4,7 +4,6 @@ import { Environment, ResolvedConfig } from "vite";
 import fsp from "node:fs/promises";
 import { hasDirective } from "./hasDirective.mjs";
 import path from "node:path";
-import { pathToFileURL } from "node:url";
 import debug from "debug";
 import { getViteEsbuild } from "./getViteEsbuild.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
@@ -129,9 +128,10 @@ export const runDirectivesScan = async ({
     const absoluteEntries = entries.map((entry) => {
       const absolutePath = path.resolve(rootConfig.root, entry);
       // On Windows, convert absolute paths to file:// URLs for ESM compatibility
-      return process.platform === "win32"
-        ? pathToFileURL(path.normalize(absolutePath)).href
-        : absolutePath;
+      return normalizeModulePath(absolutePath, rootConfig.root, { 
+        absolute: true, 
+        osify: 'fileUrl' 
+      });
     });
 
     log(
@@ -251,18 +251,13 @@ export const runDirectivesScan = async ({
 
           if (resolvedPath && path.isAbsolute(resolvedPath)) {
             // Normalize the path for esbuild compatibility
-            const normalizedPath = normalizeModulePath(
+            // On Windows, convert to file:// URLs for ESM loader compatibility
+            const esbuildPath = normalizeModulePath(
               resolvedPath,
               rootConfig.root,
-              { absolute: true },
+              { absolute: true, osify: 'fileUrl' },
             );
-            log("Normalized path:", normalizedPath);
-
-            // On Windows, convert absolute paths to file:// URLs for ESM compatibility
-            const esbuildPath =
-              process.platform === "win32" && path.isAbsolute(normalizedPath)
-                ? pathToFileURL(normalizedPath).href
-                : normalizedPath;
+            log("Normalized path:", esbuildPath);
 
             return {
               path: esbuildPath,

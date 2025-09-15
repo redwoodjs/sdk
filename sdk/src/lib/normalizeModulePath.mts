@@ -1,4 +1,5 @@
 import * as path from "node:path";
+import { pathToFileURL } from "node:url";
 import { normalizePath as normalizePathSeparators } from "vite";
 
 /**
@@ -44,18 +45,42 @@ export function findCommonAncestorDepth(path1: string, path2: string): number {
  * With { isViteStyle: true }:
  *   /opt/tools/logger.ts                  → /opt/tools/logger.ts (resolved as Vite-style)
  *   /src/page.tsx, { absolute: true }     → /Users/justin/my-app/src/page.tsx
+ *
+ * With { osify: true } (on Windows):
+ *   /Users/justin/my-app/src/page.ts      → C:\Users\justin\my-app\src\page.ts
+ *
+ * With { osify: 'fileUrl' } (on Windows):
+ *   /Users/justin/my-app/src/page.ts      → file:///C:/Users/justin/my-app/src/page.ts
  */
 export function normalizeModulePath(
   modulePath: string,
   projectRootDir: string,
-  options: { absolute?: boolean; isViteStyle?: boolean } = {},
+  options: { 
+    absolute?: boolean; 
+    isViteStyle?: boolean;
+    osify?: boolean | 'fileUrl';
+    platform?: string; // For testing - defaults to process.platform
+  } = {},
 ): string {
   modulePath = normalizePathSeparators(modulePath);
   projectRootDir = normalizePathSeparators(path.resolve(projectRootDir));
 
   // Handle empty string or current directory
   if (modulePath === "" || modulePath === ".") {
-    return options.absolute ? projectRootDir : "/";
+    const result = options.absolute ? projectRootDir : "/";
+    
+    // Apply OS-specific path conversion if requested for absolute paths
+    if (options.osify && options.absolute) {
+      const platform = options.platform || process.platform;
+      if (platform === "win32") {
+        if (options.osify === 'fileUrl') {
+          return pathToFileURL(result).href;
+        }
+        return result.replace(/\//g, "\\");
+      }
+    }
+    
+    return result;
   }
 
   // For relative paths, resolve them first
@@ -80,12 +105,28 @@ export function normalizeModulePath(
         // Fall back to heuristics using common ancestor depth
         const commonDepth = findCommonAncestorDepth(modulePath, projectRootDir);
 
-        if (commonDepth > 0) {
-          // Paths share meaningful common ancestor - treat as real absolute path
-          resolved = modulePath;
+        if (commonDepth === 0) {
+          // No common ancestor - could be external system path or Vite-style path
+          // Use additional heuristics: system paths typically start with /opt, /usr, /etc, /var, etc.
+          // or are completely different like /opt vs /Users
+          const isSystemPath = modulePath.startsWith('/opt/') || 
+                               modulePath.startsWith('/usr/') || 
+                               modulePath.startsWith('/etc/') || 
+                               modulePath.startsWith('/var/') ||
+                               modulePath.startsWith('/tmp/') ||
+                               modulePath.startsWith('/System/') ||
+                               modulePath.startsWith('/Library/');
+          
+          if (isSystemPath) {
+            // Treat as real absolute system path
+            resolved = modulePath;
+          } else {
+            // Assume Vite-style path within project
+            resolved = path.resolve(projectRootDir, modulePath.slice(1));
+          }
         } else {
-          // No meaningful common ancestor - assume Vite-style path within project
-          resolved = path.resolve(projectRootDir, modulePath.slice(1));
+          // Paths share common ancestor - treat as real absolute path
+          resolved = modulePath;
         }
       }
     }
@@ -95,20 +136,44 @@ export function normalizeModulePath(
 
   resolved = normalizePathSeparators(resolved);
 
+  let result: string;
+  let isRealAbsolutePath = false;
+
   // If absolute option is set, always return absolute paths
   if (options.absolute) {
-    return resolved;
+    result = resolved;
+    isRealAbsolutePath = true;
+  } else {
+    // Check if the resolved path is within the project root
+    const relative = path.relative(projectRootDir, resolved);
+
+    // If the path goes outside the project root (starts with ..), return absolute
+    if (relative.startsWith("..")) {
+      result = resolved;
+      isRealAbsolutePath = true;
+    } else {
+      // Path is within project root, return as Vite-style relative path
+      const cleanRelative = relative === "." ? "" : relative;
+      result = "/" + normalizePathSeparators(cleanRelative);
+      isRealAbsolutePath = false;
+    }
   }
 
-  // Check if the resolved path is within the project root
-  const relative = path.relative(projectRootDir, resolved);
-
-  // If the path goes outside the project root (starts with ..), return absolute
-  if (relative.startsWith("..")) {
-    return resolved;
+  // Apply OS-specific path conversion if requested
+  if (options.osify) {
+    const platform = options.platform || process.platform;
+    if (platform === "win32") {
+      // Apply osify to real absolute paths (not Vite-style paths like /src/...)
+      // Real absolute paths are either the resolved path or explicitly requested via absolute option
+      if (isRealAbsolutePath && path.isAbsolute(result)) {
+        if (options.osify === 'fileUrl') {
+          return pathToFileURL(result).href;
+        }
+        // Convert forward slashes to backslashes for Windows
+        return result.replace(/\//g, "\\");
+      }
+    }
   }
 
-  // Path is within project root, return as Vite-style relative path
-  const cleanRelative = relative === "." ? "" : relative;
-  return "/" + normalizePathSeparators(cleanRelative);
+  return result;
 }

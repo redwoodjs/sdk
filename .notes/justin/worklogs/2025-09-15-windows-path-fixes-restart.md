@@ -143,3 +143,44 @@ This represents significant progress - we've likely fixed the core Windows path 
 
 **Progress Summary:**
 We've successfully fixed the core module resolution issue in the esbuild plugin. The directive scanning process can now complete on Windows, which was the main blocker. There's likely one more place where Windows paths need to be converted to file:// URLs to fully resolve the issue.
+
+## Next Steps: Systematic Path Handling Approach
+
+**Root Cause Analysis:**
+The issue stems from a fundamental distinction between:
+- **Bundler domain paths**: Should always use forward slashes (for Vite, esbuild, etc.)
+- **OS file system paths**: Need proper OS-specific paths (Windows needs `C:\...` for file operations, `file://` URLs for ESM loader)
+
+**Proposed Solution:**
+1. **Enhance `normalizeModulePath`**: Add an `osify` option that converts paths to OS-specific format when needed for file system operations
+2. **Add comprehensive tests**: Use dependency injection to test Windows behavior without requiring Windows OS
+3. **Audit codebase**: Find all usages of `normalizeModulePath` and determine which need OS-specific paths vs bundler paths
+4. **Apply targeted fixes**: Update only the places that interact with the OS file system
+
+This systematic approach will solve the remaining Windows path issues while maintaining proper separation between bundler and OS domains.
+
+## Implementation Complete: Enhanced `normalizeModulePath` with `osify` Option
+
+**Successfully implemented the systematic solution:**
+
+1. **Enhanced `normalizeModulePath` function**: Added `osify` option with two modes:
+   - `osify: true` - Converts absolute paths to Windows backslash format (`C:\path\to\file`)
+   - `osify: 'fileUrl'` - Converts absolute paths to file:// URLs (`file:///C:/path/to/file`)
+
+2. **Comprehensive test coverage**: Added 9 new tests with dependency injection for platform testing:
+   - Tests Windows path conversion without requiring Windows OS
+   - Tests file:// URL conversion for ESM loader compatibility
+   - Tests that relative/Vite-style paths remain unchanged
+   - Tests edge cases (empty string, current directory, etc.)
+
+3. **Improved path heuristics**: Enhanced the existing common ancestor heuristic with system path detection:
+   - Detects real system paths (`/opt/`, `/usr/`, `/etc/`, etc.) vs Vite-style paths (`/src/`, `/node_modules/`)
+   - Maintains backward compatibility with existing behavior
+   - Ensures proper distinction between bundler domain and OS domain paths
+
+4. **All tests passing**: 59/59 tests pass, including both existing functionality and new osify features
+
+**Next Steps:**
+- Audit codebase for `normalizeModulePath` usage to identify where `osify` option should be applied
+- Apply targeted fixes to places that interact with OS file system (like esbuild module resolution)
+- Test the complete Windows path fix in CI
