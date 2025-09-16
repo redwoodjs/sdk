@@ -161,7 +161,6 @@ export const defineApp = <
 
           let html: ReadableStream<any> = await transformRscToHtmlStream({
             stream: rscPayloadStream,
-            Document: rw.Document,
             requestInfo: requestInfo,
             onError,
           });
