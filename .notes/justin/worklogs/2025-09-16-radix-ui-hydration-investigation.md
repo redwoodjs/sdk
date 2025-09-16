@@ -337,3 +337,13 @@ The solution is to modify the signatures of our runtime rendering functions to c
 3.  **Inject State in `renderToStream` (in the `worker` environment):** This higher-level function will ultimately receive the `resumableState`. It will then be responsible for serializing this state and injecting it into the final HTML response stream that is sent to the browser.
 
 This change will repair the broken state transfer by ensuring the `resumableState` is passed from the `ssr` environment where it is created, back to the `worker` environment where the final response is assembled, and finally down to the client.
+
+## 15. Final Rationale for the `bootstrapScriptContent` Solution
+
+After a deep investigation into React's source code, the precise mechanism and rationale for the `bootstrapScriptContent` fix has been clarified. The solution is not a workaround, but the correct usage of React's server rendering API to signal the intent to hydrate.
+
+The key insight is that the `bootstrapScriptContent` option provides a **template** for the very `<script>` tag that React generates to embed the `resumableState` JSON into the HTML stream. The option's purpose is to tell React what other JavaScript code, if any, should be placed inside that same script tag along with the hydration state.
+
+-   When `bootstrapScriptContent: ' '` is provided, we are giving React the minimal valid template. We are instructing it to generate the state-bearing script tag, but telling it that we have no *additional* code to place inside that specific tag.
+
+This correctly triggers the serialization of `resumableState`—which is required to fix the `useId` hydration mismatch—without producing any redundant or unwanted client-side code. It is the most direct and precise way to enable hydration.
