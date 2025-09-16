@@ -22,4 +22,10 @@ The second phase takes the RSC payload from Phase 1 and renders it to an HTML st
 
 This is where the SSR Bridge comes in. The `worker` environment passes the RSC payload to the `ssr` environment through the bridge. The `ssr` environment, which is configured with a standard React runtime, then parses the payload. When it encounters a Client Component placeholder, it loads the component's code and renders it to HTML using a traditional server-side React DOM renderer.
 
+#### Hydration and State Synchronization
+
+For client-side hydration to work correctly—especially for hooks like `React.useId` that require a consistent state between the server and client—the server render must generate and embed a `resumableState` object into the HTML. This object contains the necessary information, like the `useId` seed, for the client to initialize itself correctly and avoid mismatches.
+
+React's server renderer (`renderToReadableStream`) is responsible for this. To activate this state generation, the renderer must be signaled that the page is intended for hydration. This is done by providing a bootstrap option, such as `bootstrapScriptContent`. This tells React to serialize the `resumableState` and embed it within a `<script>` tag in the final HTML stream. The framework ensures this option is set, enabling successful hydration.
+
 The final output is a complete HTML document, with both Server and Client Components fully rendered, which is streamed back to the browser. This approach allows the framework to correctly handle the conflicting dependency requirements of the two runtimes within a single deployment, providing the fastest possible initial page load while setting the stage for client-side hydration.
