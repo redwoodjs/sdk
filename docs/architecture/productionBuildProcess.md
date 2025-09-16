@@ -55,14 +55,6 @@ Our solution is to reuse the *exact same*, fully-resolved `worker` environment o
 
 The final output is a single, correctly transformed, and fully linked `worker.js` file, ready for deployment.
 
-#### A Note on Bundling Pre-Bundled Artifacts
-
-A unique challenge arises in this linker pass because we are asking Vite/Rollup to bundle two large, pre-compiled, and pre-minified artifacts: the intermediate `worker.js` and the `ssr_bridge.js` bundle.
-
-Normally, when Rollup processes source modules, it can safely rename variables to avoid identifier collisions. However, it loses this capability when dealing with already-bundled and minified code, as the original semantic context is gone. This leads to a situation where both bundles might contain an identical, minified top-level variable (e.g., `const l0 = ...`), causing a redeclaration error when Rollup attempts to merge them into a single scope.
-
-The solution is to ensure the `ssr` bundle is a "good citizen." We modify its build configuration to wrap the entire output in an exporting IIFE (Immediately Invoked Function Expression). This creates an explicit scope boundary, preventing its internal variables from leaking into the final worker's scope, while still producing a valid, tree-shakeable ES module that the linker pass can safely consume.
-
 ## A Deeper Dive: Generating Directive Lookup Maps
 
 A critical but complex task in the build process is the generation of the `use client` and `use server` lookup maps. These are virtual modules that provide React with a manifest of all directive components, but they present a unique challenge that exemplifies the build's circular dependencies.

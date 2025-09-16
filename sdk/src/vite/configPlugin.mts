@@ -161,30 +161,8 @@ export const configPlugin = ({
             outDir: path.dirname(INTERMEDIATE_SSR_BRIDGE_PATH),
             rollupOptions: {
               output: {
-                // context(justinvdm, 15 Sep 2025): The SSR bundle is a
-                // pre-compiled artifact. When the linker pass bundles it into
-                // the intermediate worker bundle (another pre-compiled
-                // artifact), Rollup merges their top-level scopes. Since both
-                // may have identical minified identifiers (e.g., `l0`), this
-                // causes a redeclaration error. To solve this, we wrap the SSR
-                // bundle in an exporting IIFE. This creates a scope boundary,
-                // preventing symbol collisions while producing a valid,
-                // tree-shakeable ES module. The inline plugin below removes the
-                // original `export` statement from the bundle to prevent syntax
-                // errors.
                 inlineDynamicImports: true,
-                banner: `export const { renderRscThenableToHtmlStream, ssrWebpackRequire, ssrGetModuleExport } = (function() {`,
-                footer: `return { renderRscThenableToHtmlStream, ssrWebpackRequire, ssrGetModuleExport };\n})();`,
               },
-              plugins: [
-                {
-                  name: "rwsdk:ssr-bridge-exports",
-                  renderChunk(code) {
-                    // Remove the original export statement as it's now handled by the banner/footer
-                    return code.replace(/export\s*{[^}]+};?/, "");
-                  },
-                },
-              ],
             },
           },
         },

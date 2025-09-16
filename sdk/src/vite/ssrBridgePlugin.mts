@@ -1,5 +1,4 @@
 import type { Plugin, ViteDevServer } from "vite";
-import { readFile } from "fs/promises";
 import debug from "debug";
 import { findSsrImportCallSites } from "./findSsrSpecifiers.mjs";
 import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
