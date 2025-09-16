@@ -5,7 +5,7 @@ import { normalizePath as normalizePathSeparators } from "vite";
  * Find the number of common ancestor segments between two absolute paths.
  * Returns the count of shared directory segments from the root.
  */
-export function findCommonAncestorDepth(path1: string, path2: string): number {
+function findCommonAncestorDepth(path1: string, path2: string): number {
   const segments1 = path1.split("/").filter(Boolean);
   const segments2 = path2.split("/").filter(Boolean);
 

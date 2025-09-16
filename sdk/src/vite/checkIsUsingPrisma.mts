@@ -4,15 +4,12 @@ export type PrismaCheckResult = {
   isUsingPrisma: boolean;
 };
 
-export const isUsingPrisma = ({
-  projectRootDir,
-  resolver = enhancedResolve.sync,
-}: {
-  projectRootDir: string;
-  resolver?: (path: string, request: string) => string | false;
-}) => {
+const isUsingPrisma = ({ projectRootDir }: { projectRootDir: string }) => {
   try {
-    const prismaClientPath = resolver(projectRootDir, "@prisma/client");
+    const prismaClientPath = enhancedResolve.sync(
+      projectRootDir,
+      "@prisma/client",
+    );
     if (!prismaClientPath) {
       return false;
     }
