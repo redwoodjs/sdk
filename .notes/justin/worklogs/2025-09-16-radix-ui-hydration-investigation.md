@@ -304,7 +304,7 @@ The solution is to repair this broken state transfer. This will involve modifyin
 
 ## 13. Definitive Mechanism: The `resumableState` Object
 
-A deep dive into the React DOM server source code (`packages/react-dom/src/server/ReactDOMFizzServerNode.js`) has revealed the exact mechanism React uses to synchronize `useId` across the server and client: the `resumableState` object.
+The successful hydration of `React.useId` is entirely dependent on a server-generated object called `resumableState`. A deep dive into the React DOM server source code (`packages/react-dom/src/server/ReactDOMFizzServerNode.js`) has revealed this is the exact mechanism React uses to synchronize `useId` across the server and client.
 
 ### How it Works
 
