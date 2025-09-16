@@ -347,3 +347,34 @@ The key insight is that the `bootstrapScriptContent` option provides a **templat
 -   When `bootstrapScriptContent: ' '` is provided, we are giving React the minimal valid template. We are instructing it to generate the state-bearing script tag, but telling it that we have no *additional* code to place inside that specific tag.
 
 This correctly triggers the serialization of `resumableState`—which is required to fix the `useId` hydration mismatch—without producing any redundant or unwanted client-side code. It is the most direct and precise way to enable hydration.
+
+## 16. Final Solution: The Two-Pass Render
+
+The fix using `bootstrapScriptContent` proved to be a red herring. While it was based on a correct understanding of React's `resumableState`, it failed because the underlying rendering architecture was not aligned with React's expectations for its streaming renderer.
+
+### 16.1. The Core Misalignment
+
+The investigation revealed a fundamental conflict between the framework's API philosophy and the design of React's streaming SSR.
+
+1.  **Framework Philosophy:** The user must have full and explicit control over the entire HTML document via a `Document.tsx` component. This is a core design principle to avoid "magic" and ensure transparency.
+2.  **React's Expectation:** For `useId` hydration to work, React's `renderToReadableStream` function *must* be the one to render the outer document shell (`<html>`, `<head>`, `<body>`). When it does so, it generates and injects a "preamble" into the `<head>`, which contains the critical `useId` seed (`resumableState`) needed for the client to synchronize its ID counter.
+
+When we passed our user-defined `Document` into React's renderer, we prevented React from ever generating this preamble, leading directly to the hydration mismatch.
+
+### 16.2. The Two-Pass Solution
+
+To resolve this without compromising the framework's philosophy, a two-pass rendering strategy was implemented in `renderToStream.tsx`.
+
+**Pass 1: Generate Hydration State & App Content**
+React's `renderToReadableStream` is called with *only* the core application components. This allows React to do what it needs to do: it renders the app inside a minimal `<html>` shell and, most importantly, injects the necessary preamble with `resumableState` into the `<head>`. This entire shell is buffered into an in-memory string.
+
+**Pass 2: Stitch into the User's Document**
+The preamble and the rendered app content are extracted from the in-memory string using regular expressions. The user's `Document` component is then rendered (also buffered to a string), and the extracted preamble and app content are injected into the appropriate places (`</head>` and in place of `{children}`).
+
+### 16.3. Performance Trade-off
+
+This solution successfully fixes the hydration issue while preserving the user-controlled `Document` API. However, it comes at the cost of performance, specifically Time To First Byte (TTFB).
+
+Because the entire process requires buffering two separate renders into memory before stitching them together, the browser receives no data until the server-side render of the application is fully complete. This negates the primary benefit of streaming.
+
+While the total server processing time is not significantly longer (as the application render remains the bottleneck), the delay in TTFB is a notable trade-off. For many applications, this is an acceptable price to pay for API consistency and correctness. This implementation can be revisited in the future to implement a more complex, fully-streaming stitching mechanism if the TTFB impact proves to be a significant issue for users.

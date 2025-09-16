@@ -22,10 +22,36 @@ The second phase takes the RSC payload from Phase 1 and renders it to an HTML st
 
 This is where the SSR Bridge comes in. The `worker` environment passes the RSC payload to the `ssr` environment through the bridge. The `ssr` environment, which is configured with a standard React runtime, then parses the payload. When it encounters a Client Component placeholder, it loads the component's code and renders it to HTML using a traditional server-side React DOM renderer.
 
-#### Hydration and State Synchronization
+#### The Hydration Synchronization Challenge
 
-For client-side hydration to work correctly—especially for hooks like `React.useId` that require a consistent state between the server and client—the server render must generate and embed a `resumableState` object into the HTML. This object contains the necessary information, like the `useId` seed, for the client to initialize itself correctly and avoid mismatches.
+A significant challenge in this process is ensuring correct client-side hydration, especially for hooks like `React.useId` that require a consistent state between the server and client. This synchronization relies on a `resumableState` object, which contains data like the `useId` seed, that must be generated on the server and passed to the client.
 
-React's server renderer (`renderToReadableStream`) is responsible for this. To activate this state generation, the renderer must be signaled that the page is intended for hydration. This is done by providing a bootstrap option, such as `bootstrapScriptContent`. This tells React to serialize the `resumableState` and embed it within a `<script>` tag in the final HTML stream. The framework ensures this option is set, enabling successful hydration.
+This presents a conflict between React's design and the framework's philosophy:
 
-The final output is a complete HTML document, with both Server and Client Components fully rendered, which is streamed back to the browser. This approach allows the framework to correctly handle the conflicting dependency requirements of the two runtimes within a single deployment, providing the fastest possible initial page load while setting the stage for client-side hydration.
+1.  **React's Expectation:** The `renderToReadableStream` function is designed to control the entire HTML shell. It only generates the `resumableState` when it is responsible for rendering the `<html>`, `<head>`, and `<body>` tags itself.
+2.  **Framework Philosophy:** A core principle of the framework is that the user must have full, transparent control over the document shell via a `Document.tsx` component.
+
+Simply passing the user's `Document` to React's renderer would prevent the `resumableState` from ever being generated, causing hydration to fail.
+
+#### The Two-Pass Render Solution
+
+To resolve this, the framework employs a two-pass rendering strategy that satisfies both requirements.
+
+**Pass 1: Generate Hydration State & App Content.** First, React's renderer is called with *only* the application's core content. This allows React to render the app inside a minimal `<html>` shell and, critically, inject the necessary preamble containing `resumableState` into its `<head>`.
+
+**Pass 2: Stitch into User's Document.** This initial render is buffered into an in-memory string. The preamble and the rendered app are extracted. Then, the user's `Document` component is rendered, and the extracted preamble and app content are injected into the final HTML string.
+
+The final output is a complete HTML document that respects the user's custom `Document` structure while also containing the state required for successful client-side hydration.
+
+##### Performance Trade-offs
+
+This two-pass approach successfully solves the hydration problem while preserving the framework's API philosophy, but it introduces a performance trade-off, primarily affecting Time To First Byte (TTFB).
+
+Because the process buffers the complete server render of the application before sending any response, the browser does not receive any data until the most computationally expensive part of the process is finished. This negates the primary benefit of HTTP streaming for initial page loads.
+
+This trade-off is considered acceptable for two main reasons:
+
+1.  **API Consistency:** It preserves the simple and powerful user-controlled `Document` API, which is a core design principle.
+2.  **Bottleneck Reality:** The server-side render of the application is almost always the slowest part of the process. While TTFB is delayed, the total server response time is not significantly longer than it would be with a pure streaming solution.
+
+This implementation prioritizes developer experience and architectural integrity, with the understanding that a more complex, fully-streaming stitching solution could be implemented in the future if the TTFB impact becomes a critical issue for users.

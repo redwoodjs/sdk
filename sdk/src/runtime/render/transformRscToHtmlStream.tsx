@@ -8,12 +8,10 @@ const { createFromReadableStream } = ReactServerDom;
 
 export const transformRscToHtmlStream = ({
   stream,
-  Document,
   requestInfo,
   onError,
 }: {
   stream: ReadableStream;
-  Document: React.FC<DocumentProps>;
   requestInfo: RequestInfo;
   onError: (error: unknown) => void;
 }) => {
@@ -26,7 +24,6 @@ export const transformRscToHtmlStream = ({
 
   return renderRscThenableToHtmlStream({
     thenable,
-    Document,
     requestInfo,
     shouldSSR: requestInfo.rw.ssr,
     onError,
