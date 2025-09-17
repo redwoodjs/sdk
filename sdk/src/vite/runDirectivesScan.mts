@@ -1,3 +1,5 @@
+console.log("rwsdk:vite:run-directives-scan - TOP OF FILE");
+
 // @ts-ignore
 import { OnLoadArgs, OnResolveArgs, Plugin, PluginBuild } from "esbuild";
 import { Environment, ResolvedConfig } from "vite";
