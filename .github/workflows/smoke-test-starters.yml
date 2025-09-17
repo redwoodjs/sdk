@@ -60,11 +60,21 @@ jobs:
           pnpm install
 
       - name: Run smoke test
-        shell: bash
-        run: |
-          ./sdk/scripts/ci-smoke-test.sh --starter "${{ matrix.starter }}" --package-manager "${{ matrix.package-manager }}"
+        if: matrix.package-manager != 'yarn-classic'
+        run: pnpm smoke-test --starter ${{ matrix.starter }} --pm ${{ matrix.package-manager }}
         env:
-          CHROME_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
+          DEBUG: "rwsdk:*"
+          CI: 1
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+
+      - name: Run smoke test (yarn classic)
+        if: matrix.package-manager == 'yarn-classic'
+        run: yarn smoke-test --starter ${{ matrix.starter }} --pm ${{ matrix.package-manager }}
+        env:
+          DEBUG: "rwsdk:*"
+          CI: 1
+          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
+          # context(justinvdm, 15 Sep 2025): Yarn classic does not correctly handle the `pre` and `post` lifecycle
 
       - name: Upload starter artifacts
         uses: actions/upload-artifact@v4
