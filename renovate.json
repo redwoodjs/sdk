@@ -3,6 +3,11 @@
   "extends": ["config:base"],
   "packageRules": [
     {
+      "description": "Group Cloudflare dependencies together as they are often released in tandem.",
+      "matchPackagePatterns": ["^@cloudflare/", "wrangler"],
+      "groupName": "cloudflare"
+    },
+    {
       "description": "Group all SDK internal dependencies (non-peer) into a single weekly PR.",
       "matchFilePaths": ["sdk/package.json"],
       "matchDepTypes": ["dependencies", "devDependencies"],
@@ -36,6 +41,7 @@
       "description": "Update peer dependencies in starter projects as soon as they are available.",
       "matchFilePaths": ["starters/**/package.json"],
       "matchPackagePatterns": ["@cloudflare/vite-plugin", "wrangler", "vite"],
+      "excludePackagePatterns": ["@cloudflare/workers-types"],
       "groupName": "starter-peer-dependencies",
       "schedule": ["every weekend"],
       "prPriority": 1

@@ -58,3 +58,15 @@ To confirm that our `renovate.json` configuration works as expected, we are simu
 2.  **Test Workflow**: A temporary workflow file, `.github/workflows/test-renovate-flow.yml`, has been added.
 
 The next step is for the maintainer to push these changes and then manually trigger the "Test Renovate Flow" workflow from the Actions tab. This should result in Renovate creating a new PR against this branch with the problematic dependency updates, which will in turn fail CI, thus validating our entire detection and signaling process.
+
+### Step 5: Refining the Configuration
+
+The test was successful. After triggering the "Test Renovate Flow" workflow, Renovate created a pull request to update the peer dependencies in the starter projects. As expected, the CI run for this PR failed.
+
+**Finding:**
+
+Upon investigation of the CI failure, it was discovered that the individual updates to `@cloudflare/vite-plugin`, `@cloudflare/workers-types`, and `wrangler` were causing conflicts. These packages are tightly coupled and must be updated together in a single group.
+
+**Action:**
+
+The `renovate.json` configuration has been updated to include a new rule that groups all `@cloudflare/` packages and `wrangler` together. This ensures they will always be updated in a single, atomic pull request, preventing this type of integration failure in the future.
