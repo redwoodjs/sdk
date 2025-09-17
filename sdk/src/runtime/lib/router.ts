@@ -220,36 +220,39 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
       }
 
       // --- Main flow ---
-      const globalMiddlewares = flattenedRoutes.filter(
-        (route): route is RouteMiddleware<T> => typeof route === "function",
-      );
-
-      const routeDefinitions = flattenedRoutes.filter(
-        (route): route is RouteDefinition<T> => typeof route !== "function",
-      );
-
-      // 1. Run global middlewares
-      for (const middleware of globalMiddlewares) {
-        const result = await middleware(getRequestInfo());
-        const handled = await handleMiddlewareResult(result);
-        if (handled) {
-          return handled;
+      let firstRouteDefinitionEncountered = false;
+      let actionHandled = false;
+      const handleAction = async () => {
+        if (!actionHandled && url.searchParams.has("__rsc_action_id")) {
+          getRequestInfo().rw.actionResult = await rscActionHandler(request);
+          actionHandled = true;
         }
-      }
+      };
 
-      // 2. Handle RSC actions
-      if (url.searchParams.has("__rsc_action_id")) {
-        getRequestInfo().rw.actionResult = await rscActionHandler(request);
-      }
-
-      // 3. Match and handle routes
-      for (const route of routeDefinitions) {
-        const params = matchPath<T>(route.path, path);
-        if (!params) {
+      for (const route of flattenedRoutes) {
+        if (typeof route === "function") {
+          // This is a global middleware.
+          const result = await route(getRequestInfo());
+          const handled = await handleMiddlewareResult(result);
+          if (handled) {
+            return handled; // Short-circuit
+          }
           continue;
         }
 
-        // Found a match: run route-specific middlewares, then the final component
+        // This is a RouteDefinition.
+        // The first time we see one, we handle any RSC actions.
+        if (!firstRouteDefinitionEncountered) {
+          firstRouteDefinitionEncountered = true;
+          await handleAction();
+        }
+
+        const params = matchPath<T>(route.path, path);
+        if (!params) {
+          continue; // Not a match, keep going.
+        }
+
+        // Found a match: run route-specific middlewares, then the final component, then stop.
         return await runWithRequestInfoOverrides(
           { params } as Partial<T>,
           async () => {
@@ -257,7 +260,7 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
               route.handler,
             );
 
-            // 3a. Route-specific middlewares
+            // Route-specific middlewares
             for (const mw of routeMiddlewares) {
               const result = await mw(getRequestInfo());
               const handled = await handleMiddlewareResult(result);
@@ -266,7 +269,7 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
               }
             }
 
-            // 3b. Final component/handler
+            // Final component/handler
             if (isRouteComponent(componentHandler)) {
               const requestInfo = getRequestInfo();
               const WrappedComponent = wrapWithLayouts(
@@ -300,7 +303,12 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
         );
       }
 
-      // No route matched
+      // If we've gotten this far, no route was matched.
+      // We still need to handle a possible action if the app has no route definitions at all.
+      if (!firstRouteDefinitionEncountered) {
+        await handleAction();
+      }
+
       return new Response("Not Found", { status: 404 });
     },
   };
