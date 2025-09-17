@@ -166,6 +166,16 @@ The issue might be that `file:///` URLs work for Node.js ESM loader but not for 
 
 We need to carefully analyze stack traces to identify if this error occurs in multiple places and address each one systematically.
 
+**Forward Slash Path Experiment (Run 17785369656):**
+
+Currently testing the forward slash absolute path approach:
+- Entry points: `C:\path\to\file` → `/C:/path/to/file`
+- onResolve handler: Returns `/C:/path/to/file` instead of `file:///C:/path/to/file`
+- readFileWithCache: Converts `/C:/path/to/file` back to `C:/path/to/file` for fs operations
+- File collection: Stores proper Windows paths in client/server file sets
+
+This tests whether esbuild accepts Unix-style absolute paths on Windows better than file:// URLs or native Windows paths. Results pending.
+
 ## 8. Research: Community Experience with esbuild Windows Path Issues
 
 Investigation into similar issues encountered by other developers reveals that the `ERR_UNSUPPORTED_ESM_URL_SCHEME` error is a well-documented problem in the Node.js and esbuild ecosystem on Windows.
