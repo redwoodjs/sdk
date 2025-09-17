@@ -16,5 +16,4 @@ export interface RequestInfo<Params = any, AppContext = DefaultAppContext> {
   cf: ExecutionContext;
   // context(justinvdm, 2025-08-18): Ensure headers is always available
   response: ResponseInit & { headers: Headers };
-  isAction: boolean;
 }

@@ -21,7 +21,6 @@ export type RwContext = {
   databases: Map<string, Kysely<any>>;
   scriptsToBeLoaded: Set<string>;
   pageRouteResolved: PromiseWithResolvers<void> | undefined;
-  actionResult?: unknown;
 };
 
 export type RouteMiddleware<T extends RequestInfo = RequestInfo> = (
@@ -150,7 +149,6 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
     getRequestInfo,
     onError,
     runWithRequestInfoOverrides,
-    rscActionHandler,
   }: {
     request: Request;
     renderPage: (
@@ -164,7 +162,6 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
       overrides: Partial<T>,
       fn: () => Promise<Result>,
     ) => Promise<Result>;
-    rscActionHandler: (request: Request) => Promise<unknown>;
   }) => Response | Promise<Response>;
 } {
   const flattenedRoutes = flattenRoutes<T>(routes);
@@ -176,7 +173,6 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
       getRequestInfo,
       onError,
       runWithRequestInfoOverrides,
-      rscActionHandler,
     }) {
       const url = new URL(request.url);
       let path = url.pathname;
@@ -186,8 +182,57 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
         path = path + "/";
       }
 
+      // Flow below; helpers are declared after the main flow for readability
+
+      // 1) Global middlewares: run any middleware functions encountered (Response short-circuits, element renders)
+      // 2) Route matching: skip non-matching route definitions; stop at first match
+      // 3) Route-specific middlewares: run middlewares attached to the matched route
+      // 4) Final component: render the matched route's final component (layouts apply only here)
+      for (const route of flattenedRoutes) {
+        // 1) Global middlewares (encountered before a match)
+        if (typeof route === "function") {
+          const result = await route(getRequestInfo());
+          const handled = await handleMiddlewareResult(result);
+          if (handled) {
+            return handled;
+          }
+          continue;
+        }
+
+        // 2) Route matching (skip if not matched)
+        const params = matchPath<T>(route.path, path);
+        if (!params) {
+          continue;
+        }
+
+        // Found a match: 3) route middlewares, then 4) final component, then stop
+        return await runWithRequestInfoOverrides(
+          { params } as Partial<T>,
+          async () => {
+            const { routeMiddlewares, componentHandler } = parseHandlers(
+              route.handler,
+            );
+
+            // 3) Route-specific middlewares
+            const mwHandled = await handleRouteMiddlewares(routeMiddlewares);
+            if (mwHandled) {
+              return mwHandled;
+            }
+
+            // 4) Final component (always last item)
+            return await handleRouteComponent(
+              componentHandler,
+              route.layouts || [],
+            );
+          },
+        );
+      }
+
+      // No route matched and no middleware handled the request
+      // todo(peterp, 2025-01-28): Allow the user to define their own "not found" route.
+      return new Response("Not Found", { status: 404 });
+
       // --- Helpers ---
-      // (Hoisted for readability)
       function parseHandlers(handler: RouteHandler<T>) {
         const handlers = Array.isArray(handler) ? handler : [handler];
         const routeMiddlewares = handlers.slice(
@@ -219,89 +264,57 @@ export function defineRoutes<T extends RequestInfo = RequestInfo>(
         return undefined;
       }
 
-      // --- Main flow ---
-      const globalMiddlewares = flattenedRoutes.filter(
-        (route): route is RouteMiddleware<T> => typeof route === "function",
-      );
+      // Note: We no longer have separate global pass or match-only pass;
+      // the outer single pass above handles both behaviors correctly.
 
-      const routeDefinitions = flattenedRoutes.filter(
-        (route): route is RouteDefinition<T> => typeof route !== "function",
-      );
-
-      // 1. Run global middlewares
-      for (const middleware of globalMiddlewares) {
-        const result = await middleware(getRequestInfo());
-        const handled = await handleMiddlewareResult(result);
-        if (handled) {
-          return handled;
+      async function handleRouteMiddlewares(
+        mws: RouteMiddleware<T>[],
+      ): Promise<Response | undefined> {
+        for (const mw of mws) {
+          const result = await (mw(getRequestInfo()) as Promise<
+            Response | React.JSX.Element | void
+          >);
+          const handled = await handleMiddlewareResult(result);
+          if (handled) return handled;
         }
+        return undefined;
       }
 
-      // 2. Handle RSC actions
-      if (url.searchParams.has("__rsc_action_id")) {
-        getRequestInfo().rw.actionResult = await rscActionHandler(request);
-      }
+      async function handleRouteComponent(
+        component: RouteFunction<T> | RouteComponent<T>,
+        layouts: React.FC<LayoutProps<T>>[],
+      ): Promise<Response> {
+        if (isRouteComponent(component)) {
+          const requestInfo = getRequestInfo();
+          const WrappedComponent = wrapWithLayouts(
+            wrapHandlerToThrowResponses(
+              component as RouteComponent<T>,
+            ) as React.FC,
+            layouts,
+            requestInfo,
+          );
 
-      // 3. Match and handle routes
-      for (const route of routeDefinitions) {
-        const params = matchPath<T>(route.path, path);
-        if (!params) {
-          continue;
+          if (!isClientReference(component)) {
+            // context(justinvdm, 31 Jul 2025): We now know we're dealing with a page route,
+            // so we create a deferred so that we can signal when we're done determining whether
+            // we're returning a response or a react element
+            requestInfo.rw.pageRouteResolved = Promise.withResolvers();
+          }
+
+          return await renderPage(requestInfo, WrappedComponent, onError);
         }
 
-        // Found a match: run route-specific middlewares, then the final component
-        return await runWithRequestInfoOverrides(
-          { params } as Partial<T>,
-          async () => {
-            const { routeMiddlewares, componentHandler } = parseHandlers(
-              route.handler,
-            );
+        // If the last handler is not a component, handle as middleware result (no layouts)
+        const tailResult = await (component(getRequestInfo()) as Promise<
+          Response | React.JSX.Element | void
+        >);
+        const handledTail = await handleMiddlewareResult(tailResult);
+        if (handledTail) return handledTail;
 
-            // 3a. Route-specific middlewares
-            for (const mw of routeMiddlewares) {
-              const result = await mw(getRequestInfo());
-              const handled = await handleMiddlewareResult(result);
-              if (handled) {
-                return handled;
-              }
-            }
-
-            // 3b. Final component/handler
-            if (isRouteComponent(componentHandler)) {
-              const requestInfo = getRequestInfo();
-              const WrappedComponent = wrapWithLayouts(
-                wrapHandlerToThrowResponses(
-                  componentHandler as RouteComponent<T>,
-                ) as React.FC,
-                route.layouts || [],
-                requestInfo,
-              );
-
-              if (!isClientReference(componentHandler)) {
-                requestInfo.rw.pageRouteResolved = Promise.withResolvers();
-              }
-
-              return await renderPage(requestInfo, WrappedComponent, onError);
-            }
-
-            // Handle non-component final handler (e.g., returns new Response)
-            const tailResult = await (componentHandler(
-              getRequestInfo(),
-            ) as Promise<Response | React.JSX.Element | void>);
-            const handledTail = await handleMiddlewareResult(tailResult);
-            if (handledTail) {
-              return handledTail;
-            }
-
-            return new Response("Response not returned from route handler", {
-              status: 500,
-            });
-          },
-        );
+        return new Response("Response not returned from route handler", {
+          status: 500,
+        });
       }
-
-      // No route matched
-      return new Response("Not Found", { status: 404 });
     },
   };
 }
