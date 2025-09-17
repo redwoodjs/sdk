@@ -174,7 +174,23 @@ Currently testing the forward slash absolute path approach:
 - readFileWithCache: Converts `/C:/path/to/file` back to `C:/path/to/file` for fs operations
 - File collection: Stores proper Windows paths in client/server file sets
 
-This tests whether esbuild accepts Unix-style absolute paths on Windows better than file:// URLs or native Windows paths. Results pending.
+This tests whether esbuild accepts Unix-style absolute paths on Windows better than file:// URLs or native Windows paths.
+
+**Results (Run 17785369656):**
+
+The forward slash path experiment also failed with the same error pattern:
+- Directive scanning still completes successfully ("✅ Scan complete." appears consistently)
+- Same error: `ERR_UNSUPPORTED_ESM_URL_SCHEME: Received protocol 'c:'` at line 228
+- Runtime: 7m19s (longer than previous attempts, suggesting more processing occurred)
+
+**Key Observation:**
+The logs don't show `/C:` paths in the output, suggesting either:
+1. The forward slash conversion isn't happening as expected
+2. There's another source of Windows paths we haven't identified
+3. The error is happening in a different code path than our esbuild plugin
+
+**Stack Trace Analysis:**
+The error consistently occurs at the same location (`runDirectivesScan.mjs:228`) which is the re-throw line. The actual error originates from Node.js ESM loader, suggesting a Windows absolute path is being passed somewhere outside our direct control.
 
 ## 8. Research: Community Experience with esbuild Windows Path Issues
 
