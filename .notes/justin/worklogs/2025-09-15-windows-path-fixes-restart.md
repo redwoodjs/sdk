@@ -207,6 +207,19 @@ at runDirectivesScan (runDirectivesScan.mjs:262:15)  // Re-throw line
 
 **The Solution:** We need to ensure that ANY path returned to esbuild uses the same format that works for the directive scanning itself.
 
+## 12. Targeted `fileUrl` Test and Confirmation
+
+After reverting the complex refactoring of `normalizeModulePath`, a targeted test was run using the simple `osify: 'fileUrl'` fix in `runDirectivesScan.mts`.
+
+**Results (Run 17786371173):**
+- **Scan completes, error persists**: The result is identical to our previous findings. The directive scan finishes successfully ("✅ Scan complete."), but the `ERR_UNSUPPORTED_ESM_URL_SCHEME` error occurs immediately after.
+
+**Confirmation:**
+This confirms that the `fileUrl` approach is correct for making the esbuild scanner work, but the root cause of the error lies elsewhere. The problem is not in the scanner itself, but in how the results of the scan (the lists of client and server files) are used by a subsequent process.
+
+**Next Steps:**
+We need to investigate what consumes the output of `runDirectivesScan` and where those file paths are being used. The error is likely in the code that imports or processes the files identified by the scan.
+
 ## 11. Refactoring Path Handling for Consistency
 
 A key insight is that our manual path handling in `runDirectivesScan.mts` is inconsistent. We have manual `if (isWindows)` checks that should be centralized into our `normalizeModulePath` utility.

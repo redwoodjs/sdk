@@ -317,19 +317,15 @@ export const runDirectivesScan = async ({
               // Finally, populate the output sets if the file has a directive.
               if (isClient) {
                 log("Discovered 'use client' in:", args.path);
-                clientFiles.add(
-                  normalizeModulePath(args.path, rootConfig.root, {
-                    osify: "fileUrl",
-                  }),
-                );
+                // The path here is already an absolute file path, so just add it.
+                // The barrel generation will handle os-specific conversions.
+                clientFiles.add(args.path);
               }
               if (isServer) {
                 log("Discovered 'use server' in:", args.path);
-                serverFiles.add(
-                  normalizeModulePath(args.path, rootConfig.root, {
-                    osify: "fileUrl",
-                  }),
-                );
+                // The path here is already an absolute file path, so just add it.
+                // The barrel generation will handle os-specific conversions.
+                serverFiles.add(args.path);
               }
 
               return { contents, loader: "default" };
