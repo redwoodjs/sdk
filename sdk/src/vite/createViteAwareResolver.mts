@@ -75,7 +75,11 @@ class VitePluginResolverPlugin {
             },
           };
 
-          debug(`[${resolveId}] Trying to resolve %s from %s`, request.request, request.path);
+          debug(
+            `[${resolveId}] Trying to resolve %s from %s`,
+            request.request,
+            request.path,
+          );
 
           // This function encapsulates the logic to process Vite plugins for a given request.
           const runPluginProcessing = async (currentRequest: any) => {
@@ -188,7 +192,11 @@ class VitePluginResolverPlugin {
                   { scan: true },
                 );
 
-                debug(`[${resolveId}] Plugin '%s' returned`, plugin.name, result);
+                debug(
+                  `[${resolveId}] Plugin '%s' returned`,
+                  plugin.name,
+                  result,
+                );
 
                 if (!result) continue;
 
