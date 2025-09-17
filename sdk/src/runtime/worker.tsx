@@ -59,6 +59,7 @@ export const defineApp = <
         const isRSCRequest =
           url.searchParams.has("__rsc") ||
           request.headers.get("accept")?.includes("text/x-component");
+        const isAction = url.searchParams.has("__rsc_action_id");
         const userHeaders = new Headers();
 
         const rw: RwContext = {
@@ -84,6 +85,7 @@ export const defineApp = <
           ctx: {},
           rw,
           response: userResponseInit,
+          isAction,
         };
 
         const createPageElement = (
@@ -117,12 +119,7 @@ export const defineApp = <
             });
           }
 
-          let actionResult: unknown = undefined;
-          const isRSCActionHandler = url.searchParams.has("__rsc_action_id");
-
-          if (isRSCActionHandler) {
-            actionResult = await rscActionHandler(request);
-          }
+          const actionResult = requestInfo.rw.actionResult;
 
           const pageElement = createPageElement(requestInfo, Page);
 
@@ -195,6 +192,7 @@ export const defineApp = <
                     getRequestInfo: getRequestInfo as () => T,
                     runWithRequestInfoOverrides,
                     onError: reject,
+                    rscActionHandler,
                   }),
                 );
               } catch (e) {

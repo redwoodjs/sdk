@@ -250,8 +250,6 @@ export const miniflareHMRPlugin = (givenOptions: {
         );
       }
 
-      // todo(justinvdm, 12 Dec 2024): Skip client references
-
       const modules = Array.from(
         ctx.server.environments[environment].moduleGraph.getModulesByFile(
           ctx.file,
