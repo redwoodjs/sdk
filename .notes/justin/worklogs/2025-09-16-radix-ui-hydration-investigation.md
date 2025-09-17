@@ -371,3 +371,17 @@ This approach completely eliminates the race condition by ensuring that the proc
 During debugging with extensive logging, discovered that the worker was bypassing the new `renderToStream` function entirely. The worker was calling `renderToRscStream` and `transformRscToHtmlStream` directly, which meant the two-stream coalescing logic was never executed. This explained why no logs from `renderToStream` or `assembleHtmlStreams` were appearing.
 
 Updated the worker to use `renderToStream` for HTML requests while preserving the old approach for RSC-only requests. This ensures that the hydration fix is actually applied to user requests.
+<!--  -->
+## 18. Placeholder Rendering Issue
+
+Testing revealed that the placeholder `<div id="__RWS_APP_HTML__"></div>` was being rendered as escaped text rather than actual HTML. This was because React was treating the placeholder string as text content and escaping it for safety. Fixed by using `dangerouslySetInnerHTML` in `renderDocumentToStream` to inject the placeholder as raw HTML. Also updated the placeholder name from `__RWS_APP_HTML__` to `__RWSDK_APP_HTML__` for consistency with the framework naming.
+
+## 19. RSC Payload Stream Connection Issue
+
+After fixing the placeholder rendering, the stream coalescing is working correctly - logs show the preamble injection, placeholder replacement, and React context script injection are all functioning. However, a new issue emerged: the client-side RSC payload consumption is failing with "Connection closed" errors.
+
+The error occurs in the client's `Content` component around the `streamData` state line (line 126 in `client.tsx`). The application initially renders correctly but then disappears, suggesting the RSC stream connection is being terminated prematurely. This appears to be related to how the RSC payload is being consumed after the stream coalescing changes.
+
+## 20. RSC Payload Injection Timing Fix
+
+The issue is that RSC payload injection was happening before stream coalescing, which meant the RSC stream was being consumed/teed early in the process. This corrupted the stream connection that the client expects to read from. The solution is to move RSC payload injection to the very end of the pipeline: first perform stream coalescing to get the complete HTML, then pipe that final result through the RSC payload injection. This preserves the RSC stream for client consumption while still embedding the payload in the HTML.

@@ -47,19 +47,15 @@ export const renderToStream = async (
     rscStream,
   );
 
+  // Keep the original RSC stream for payload injection later
+  let rscPayloadStream: ReadableStream | undefined;
   if (shouldInjectRSCPayload) {
-    console.log("--- DEBUG: [renderToStream] - Injecting RSC payload ---");
-    const [rscPayloadStream1, rscPayloadStream2] = rscStream.tee();
-    rscStream = rscPayloadStream1;
-
-    rscStream = rscStream.pipeThrough(
-      injectRSCPayload(rscPayloadStream2, {
-        nonce: requestInfo.rw.nonce,
-      }),
-    );
     console.log(
-      "--- DEBUG: [renderToStream] - RSC payload injection complete ---",
+      "--- DEBUG: [renderToStream] - Preparing RSC payload stream for later injection ---",
     );
+    const [rscStreamForHtml, rscStreamForPayload] = rscStream.tee();
+    rscStream = rscStreamForHtml;
+    rscPayloadStream = rscStreamForPayload;
   }
 
   console.log(
@@ -79,7 +75,7 @@ export const renderToStream = async (
   console.log(
     "--- DEBUG: [renderToStream] - About to render Document with placeholder ---",
   );
-  const placeholder = `<div id="__RWS_APP_HTML__"></div>`;
+  const placeholder = `<div id="__RWSDK_APP_HTML__"></div>`;
   console.log("--- DEBUG: [renderToStream] - Placeholder:", placeholder);
   const documentStream = await renderDocumentToStream(
     Document,
@@ -94,14 +90,31 @@ export const renderToStream = async (
   console.log(
     "--- DEBUG: [renderToStream] - About to call assembleHtmlStreams ---",
   );
-  const result = assembleHtmlStreams({
+  let result = assembleHtmlStreams({
     reactShellStream,
     documentStream,
     placeholder,
   });
   console.log(
-    "--- DEBUG: [renderToStream] - assembleHtmlStreams completed, returning result:",
+    "--- DEBUG: [renderToStream] - assembleHtmlStreams completed, got result:",
     result,
   );
+
+  // Apply RSC payload injection as the final step
+  if (shouldInjectRSCPayload && rscPayloadStream) {
+    console.log(
+      "--- DEBUG: [renderToStream] - Applying RSC payload injection to final HTML ---",
+    );
+    result = result.pipeThrough(
+      injectRSCPayload(rscPayloadStream, {
+        nonce: requestInfo.rw.nonce,
+      }),
+    );
+    console.log(
+      "--- DEBUG: [renderToStream] - RSC payload injection complete ---",
+    );
+  }
+
+  console.log("--- DEBUG: [renderToStream] - Returning final result:", result);
   return result;
 };

@@ -10,7 +10,7 @@ export const renderDocumentToStream = (
 ) => {
   return renderToReadableStream(
     <Document {...props}>
-      <>{placeholder}</>
+      <div dangerouslySetInnerHTML={{ __html: placeholder }} />
     </Document>,
   );
 };
