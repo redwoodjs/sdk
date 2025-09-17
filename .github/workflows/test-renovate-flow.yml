@@ -2,6 +2,9 @@ name: Test Renovate Flow
 
 on:
   workflow_dispatch:
+  push:
+    branches:
+      - greenkeep-now-and-ongoing
 
 jobs:
   renovate:
