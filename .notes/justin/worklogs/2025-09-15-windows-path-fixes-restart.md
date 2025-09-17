@@ -189,8 +189,23 @@ The logs don't show `/C:` paths in the output, suggesting either:
 2. There's another source of Windows paths we haven't identified
 3. The error is happening in a different code path than our esbuild plugin
 
-**Stack Trace Analysis:**
-The error consistently occurs at the same location (`runDirectivesScan.mjs:228`) which is the re-throw line. The actual error originates from Node.js ESM loader, suggesting a Windows absolute path is being passed somewhere outside our direct control.
+**Stack Trace Analysis - Key Breakthrough:**
+
+The stack trace reveals the actual issue:
+```
+at ModuleLoader.getModuleJobForImport (node:internal/modules/esm/loader:309:41)
+at async onImport.tracePromise.__proto__ (node:internal/modules/esm/loader:650:25)
+at runDirectivesScan (runDirectivesScan.mjs:262:15)  // Re-throw line
+```
+
+**Critical Insight:** The error happens INSIDE esbuild when it tries to import a module during the scanning process. The directive scanner itself works (✅ Scan complete.), but esbuild encounters a Windows absolute path when importing dependencies.
+
+**Root Cause:** esbuild is trying to import a module with a Windows path (`c:` protocol) instead of a `file://` URL. This happens after our plugin processes files, suggesting either:
+1. Our plugin returns a Windows path that esbuild then tries to import
+2. esbuild's internal resolution generates a Windows path  
+3. A scanned file imports a dependency with an unresolved Windows path
+
+**The Solution:** We need to ensure that ANY path returned to esbuild uses the same format that works for the directive scanning itself.
 
 ## 8. Research: Community Experience with esbuild Windows Path Issues
 
