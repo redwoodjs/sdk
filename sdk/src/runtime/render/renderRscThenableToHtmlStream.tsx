@@ -1,61 +1,66 @@
 import { use } from "react";
 import { renderToReadableStream } from "react-dom/server.edge";
+import { type DocumentProps } from "../lib/router.js";
 import { type RequestInfo } from "../requestInfo/types.js";
 import { Preloads } from "./preloads.js";
 import { Stylesheets } from "./stylesheets.js";
 
 export const renderRscThenableToHtmlStream = async ({
   thenable,
+  Document,
   requestInfo,
   shouldSSR,
   onError,
 }: {
   thenable: any;
+  Document: React.FC<DocumentProps>;
   requestInfo: RequestInfo;
   shouldSSR: boolean;
   onError: (error: unknown) => void;
 }) => {
-  console.log(
-    "--- DEBUG: [renderRscThenableToHtmlStream] - Starting render ---",
-  );
-  const RscApp = () => {
-    const node = (use(thenable) as { node: React.ReactNode }).node;
+  const Component = () => {
+    const RscApp = () => {
+      const node = (use(thenable) as { node: React.ReactNode }).node;
 
-    return (
-      <html>
-        <head>
+      return (
+        <>
           <Stylesheets requestInfo={requestInfo} />
           <Preloads requestInfo={requestInfo} />
-        </head>
-        <body>
           <div id="hydrate-root">{node}</div>
-        </body>
-      </html>
+        </>
+      );
+    };
+
+    // todo(justinvdm, 18 Jun 2025): We can build on this later to allow users
+    // surface context. e.g:
+    // * we assign `user: requestInfo.clientCtx` here
+    // * user populates requestInfo.clientCtx on worker side
+    // * user can import a read only `import { clientCtx } from "rwsdk/client"`
+    // on client side
+    const clientContext = {
+      rw: {
+        ssr: shouldSSR,
+      },
+    };
+
+    return (
+      <Document {...requestInfo}>
+        <script
+          nonce={requestInfo.rw.nonce}
+          dangerouslySetInnerHTML={{
+            __html: `globalThis.__RWSDK_CONTEXT = ${JSON.stringify(
+              clientContext,
+            )}`,
+          }}
+        />
+        <RscApp />
+      </Document>
     );
   };
 
-  // context(justinvdm, 18 Jun 2025): We can build on this later to allow users
-  // surface context. e.g:
-  // * we assign `user: requestInfo.clientCtx` here
-  // * user populates requestInfo.clientCtx on worker side
-  // * user can import a read only `import { clientCtx } from "rwsdk/client"`
-  // on client side
-  const clientContext = {
-    rw: {
-      ssr: shouldSSR,
-    },
-  };
-
-  const stream = await renderToReadableStream(<RscApp />, {
-    bootstrapScriptContent: `globalThis.__RWSDK_CONTEXT = ${JSON.stringify(
-      clientContext,
-    )}`,
+  return await renderToReadableStream(<Component />, {
     nonce: requestInfo.rw.nonce,
     onError(error, { componentStack }) {
-      console.error(
-        "--- DEBUG: [renderRscThenableToHtmlStream] - onError callback triggered ---",
-        { error, componentStack },
-      );
       try {
         if (!error) {
           error = new Error(
@@ -84,9 +89,4 @@ export const renderRscThenableToHtmlStream = async ({
       }
     },
   });
-
-  console.log(
-    "--- DEBUG: [renderRscThenableToHtmlStream] - Render complete, returning stream ---",
-  );
-  return stream;
 };

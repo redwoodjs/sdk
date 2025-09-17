@@ -8,15 +8,15 @@ const { createFromReadableStream } = ReactServerDom;
 
 export const transformRscToHtmlStream = ({
   stream,
+  Document,
   requestInfo,
   onError,
 }: {
   stream: ReadableStream;
+  Document: React.FC<DocumentProps>;
   requestInfo: RequestInfo;
   onError: (error: unknown) => void;
 }) => {
-  console.log("--- DEBUG: [transformRscToHtmlStream] - Starting transform ---");
-
   const thenable = createFromReadableStream(stream, {
     serverConsumerManifest: {
       moduleMap: createModuleMap(),
@@ -24,16 +24,11 @@ export const transformRscToHtmlStream = ({
     },
   });
 
-  const resultStream = renderRscThenableToHtmlStream({
+  return renderRscThenableToHtmlStream({
     thenable,
+    Document,
     requestInfo,
     shouldSSR: requestInfo.rw.ssr,
     onError,
   });
-
-  console.log(
-    "--- DEBUG: [transformRscToHtmlStream] - Transform complete, returning stream promise ---",
-  );
-
-  return resultStream;
 };
