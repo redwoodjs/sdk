@@ -25,13 +25,30 @@ export const renderToStream = async (
     onError = () => {},
   }: RenderToStreamOptions = {},
 ): Promise<ReadableStream> => {
+  console.log(
+    "--- DEBUG: [renderToStream] - ENTRY POINT - Function called ---",
+  );
+  console.log("--- DEBUG: [renderToStream] - Element:", element);
+  console.log("--- DEBUG: [renderToStream] - Document:", Document);
+  console.log(
+    "--- DEBUG: [renderToStream] - shouldInjectRSCPayload:",
+    shouldInjectRSCPayload,
+  );
+  console.log(
+    "--- DEBUG: [renderToStream] - About to call renderToRscStream ---",
+  );
   let rscStream = renderToRscStream({
     node: element,
     actionResult: null,
     onError,
   });
+  console.log(
+    "--- DEBUG: [renderToStream] - renderToRscStream completed, got stream:",
+    rscStream,
+  );
 
   if (shouldInjectRSCPayload) {
+    console.log("--- DEBUG: [renderToStream] - Injecting RSC payload ---");
     const [rscPayloadStream1, rscPayloadStream2] = rscStream.tee();
     rscStream = rscPayloadStream1;
 
@@ -40,25 +57,51 @@ export const renderToStream = async (
         nonce: requestInfo.rw.nonce,
       }),
     );
+    console.log(
+      "--- DEBUG: [renderToStream] - RSC payload injection complete ---",
+    );
   }
 
+  console.log(
+    "--- DEBUG: [renderToStream] - About to call transformRscToHtmlStream ---",
+  );
   const reactShellStream = await transformRscToHtmlStream({
     stream: rscStream,
     requestInfo,
     onError,
   });
+  console.log(
+    "--- DEBUG: [renderToStream] - transformRscToHtmlStream completed, got stream:",
+    reactShellStream,
+  );
 
   // Render the user's Document with a placeholder
+  console.log(
+    "--- DEBUG: [renderToStream] - About to render Document with placeholder ---",
+  );
   const placeholder = `<div id="__RWS_APP_HTML__"></div>`;
+  console.log("--- DEBUG: [renderToStream] - Placeholder:", placeholder);
   const documentStream = await renderDocumentToStream(
     Document,
     requestInfo,
     placeholder,
   );
+  console.log(
+    "--- DEBUG: [renderToStream] - renderDocumentToStream completed, got stream:",
+    documentStream,
+  );
 
-  return assembleHtmlStreams({
+  console.log(
+    "--- DEBUG: [renderToStream] - About to call assembleHtmlStreams ---",
+  );
+  const result = assembleHtmlStreams({
     reactShellStream,
     documentStream,
     placeholder,
   });
+  console.log(
+    "--- DEBUG: [renderToStream] - assembleHtmlStreams completed, returning result:",
+    result,
+  );
+  return result;
 };

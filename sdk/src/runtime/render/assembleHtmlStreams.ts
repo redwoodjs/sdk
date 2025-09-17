@@ -32,6 +32,7 @@ export const assembleHtmlStreams = ({
 
   return new ReadableStream({
     async start(controller) {
+      console.log("--- DEBUG: [assembleHtmlStreams] - Starting assembly ---");
       const docReader = documentStream.getReader();
       const appReader = appContentStream.getReader();
       const textEncoder = new TextEncoder();
@@ -45,11 +46,21 @@ export const assembleHtmlStreams = ({
         while (true) {
           // Read from the document stream if it's not done yet
           if (!docDone) {
+            console.log(
+              "--- DEBUG: [assembleHtmlStreams] - Reading from document stream ---",
+            );
             const { done, value } = await docReader.read();
             if (done) {
+              console.log(
+                "--- DEBUG: [assembleHtmlStreams] - Document stream finished ---",
+              );
               docDone = true;
             } else {
-              docBuffer += textDecoder.decode(value, { stream: true });
+              const decodedChunk = textDecoder.decode(value, { stream: true });
+              console.log(
+                `--- DEBUG: [assembleHtmlStreams] - Received chunk from document stream: ${decodedChunk}`,
+              );
+              docBuffer += decodedChunk;
             }
           }
 
@@ -57,12 +68,18 @@ export const assembleHtmlStreams = ({
           if (!headInjected) {
             const headEndIndex = docBuffer.indexOf("</head>");
             if (headEndIndex !== -1) {
+              console.log(
+                "--- DEBUG: [assembleHtmlStreams] - Found </head>, injecting preamble ---",
+              );
               const before = docBuffer.substring(0, headEndIndex);
               const after = docBuffer.substring(headEndIndex);
               docBuffer = after;
 
               controller.enqueue(textEncoder.encode(before));
               const preamble = await preamblePromise;
+              console.log(
+                `--- DEBUG: [assembleHtmlStreams] - Preamble received: ${preamble}`,
+              );
               controller.enqueue(textEncoder.encode(preamble));
               headInjected = true;
             }
@@ -72,6 +89,9 @@ export const assembleHtmlStreams = ({
           if (headInjected && !bodyInjected) {
             const placeholderIndex = docBuffer.indexOf(placeholder);
             if (placeholderIndex !== -1) {
+              console.log(
+                "--- DEBUG: [assembleHtmlStreams] - Found placeholder, injecting app content ---",
+              );
               const before = docBuffer.substring(0, placeholderIndex);
               const after = docBuffer.substring(
                 placeholderIndex + placeholder.length,
@@ -81,9 +101,23 @@ export const assembleHtmlStreams = ({
               controller.enqueue(textEncoder.encode(before));
 
               // Pipe the entire app content stream through
+              console.log(
+                "--- DEBUG: [assembleHtmlStreams] - Starting to pipe app content stream ---",
+              );
               while (true) {
                 const { done, value } = await appReader.read();
-                if (done) break;
+                if (done) {
+                  console.log(
+                    "--- DEBUG: [assembleHtmlStreams] - App content stream finished ---",
+                  );
+                  break;
+                }
+                const decodedChunk = textDecoder.decode(value, {
+                  stream: true,
+                });
+                console.log(
+                  `--- DEBUG: [assembleHtmlStreams] - Piping chunk from app content stream: ${decodedChunk}`,
+                );
                 controller.enqueue(value);
               }
               bodyInjected = true;
@@ -94,6 +128,9 @@ export const assembleHtmlStreams = ({
           // we can flush the remaining buffer and finish.
           if (docDone) {
             if (docBuffer.length > 0) {
+              console.log(
+                `--- DEBUG: [assembleHtmlStreams] - Flushing final buffer: ${docBuffer}`,
+              );
               controller.enqueue(textEncoder.encode(docBuffer));
             }
             break; // Exit the loop
@@ -108,11 +145,17 @@ export const assembleHtmlStreams = ({
           // If we've done all injections but are not at the end of the doc stream,
           // we can flush the buffer and then continue to pipe the rest of the doc.
           if (docBuffer.length > 0) {
+            console.log(
+              `--- DEBUG: [assembleHtmlStreams] - Flushing intermediate buffer: ${docBuffer}`,
+            );
             controller.enqueue(textEncoder.encode(docBuffer));
             docBuffer = "";
           }
         }
       } finally {
+        console.log(
+          "--- DEBUG: [assembleHtmlStreams] - Closing controller ---",
+        );
         controller.close();
       }
     },

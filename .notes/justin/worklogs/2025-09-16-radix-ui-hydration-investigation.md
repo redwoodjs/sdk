@@ -365,3 +365,9 @@ This new implementation works by:
 4.  Finally, it streams the remainder of the `documentStream`.
 
 This approach completely eliminates the race condition by ensuring that the process explicitly waits for the necessary data from the slower `reactShellStream` before continuing to process the faster `documentStream`. The updated unit tests for `assembleHtmlStreams` now all pass, confirming the correctness of this solution.
+
+## 17. Worker Integration Issue
+
+During debugging with extensive logging, discovered that the worker was bypassing the new `renderToStream` function entirely. The worker was calling `renderToRscStream` and `transformRscToHtmlStream` directly, which meant the two-stream coalescing logic was never executed. This explained why no logs from `renderToStream` or `assembleHtmlStreams` were appearing.
+
+Updated the worker to use `renderToStream` for HTML requests while preserving the old approach for RSC-only requests. This ensures that the hydration fix is actually applied to user requests.

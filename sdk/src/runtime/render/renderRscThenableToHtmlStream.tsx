@@ -15,15 +15,22 @@ export const renderRscThenableToHtmlStream = async ({
   shouldSSR: boolean;
   onError: (error: unknown) => void;
 }) => {
+  console.log(
+    "--- DEBUG: [renderRscThenableToHtmlStream] - Starting render ---",
+  );
   const RscApp = () => {
     const node = (use(thenable) as { node: React.ReactNode }).node;
 
     return (
-      <>
-        <Stylesheets requestInfo={requestInfo} />
-        <Preloads requestInfo={requestInfo} />
-        <div id="hydrate-root">{node}</div>
-      </>
+      <html>
+        <head>
+          <Stylesheets requestInfo={requestInfo} />
+          <Preloads requestInfo={requestInfo} />
+        </head>
+        <body>
+          <div id="hydrate-root">{node}</div>
+        </body>
+      </html>
     );
   };
 
@@ -39,12 +46,16 @@ export const renderRscThenableToHtmlStream = async ({
     },
   };
 
-  return await renderToReadableStream(<RscApp />, {
+  const stream = await renderToReadableStream(<RscApp />, {
     bootstrapScriptContent: `globalThis.__RWSDK_CONTEXT = ${JSON.stringify(
       clientContext,
     )}`,
     nonce: requestInfo.rw.nonce,
     onError(error, { componentStack }) {
+      console.error(
+        "--- DEBUG: [renderRscThenableToHtmlStream] - onError callback triggered ---",
+        { error, componentStack },
+      );
       try {
         if (!error) {
           error = new Error(
@@ -73,4 +84,9 @@ export const renderRscThenableToHtmlStream = async ({
       }
     },
   });
+
+  console.log(
+    "--- DEBUG: [renderRscThenableToHtmlStream] - Render complete, returning stream ---",
+  );
+  return stream;
 };

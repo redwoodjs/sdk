@@ -15,6 +15,8 @@ export const transformRscToHtmlStream = ({
   requestInfo: RequestInfo;
   onError: (error: unknown) => void;
 }) => {
+  console.log("--- DEBUG: [transformRscToHtmlStream] - Starting transform ---");
+
   const thenable = createFromReadableStream(stream, {
     serverConsumerManifest: {
       moduleMap: createModuleMap(),
@@ -22,10 +24,16 @@ export const transformRscToHtmlStream = ({
     },
   });
 
-  return renderRscThenableToHtmlStream({
+  const resultStream = renderRscThenableToHtmlStream({
     thenable,
     requestInfo,
     shouldSSR: requestInfo.rw.ssr,
     onError,
   });
+
+  console.log(
+    "--- DEBUG: [transformRscToHtmlStream] - Transform complete, returning stream promise ---",
+  );
+
+  return resultStream;
 };
