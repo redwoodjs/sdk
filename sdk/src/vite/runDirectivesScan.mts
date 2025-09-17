@@ -309,13 +309,17 @@ export const runDirectivesScan = async ({
               if (isClient) {
                 log("Discovered 'use client' in:", args.path);
                 clientFiles.add(
-                  normalizeModulePath(args.path, rootConfig.root),
+                  normalizeModulePath(args.path, rootConfig.root, {
+                    osify: "fileUrl",
+                  }),
                 );
               }
               if (isServer) {
                 log("Discovered 'use server' in:", args.path);
                 serverFiles.add(
-                  normalizeModulePath(args.path, rootConfig.root),
+                  normalizeModulePath(args.path, rootConfig.root, {
+                    osify: "fileUrl",
+                  }),
                 );
               }
 

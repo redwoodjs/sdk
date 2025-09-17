@@ -295,5 +295,19 @@ The `directiveModulesDevPlugin` uses `normalizeModulePath` with `absolute: true`
 **Analysis:**
 The directiveModulesDevPlugin fix was not the source of this particular error. The error is still happening within the esbuild process itself, even though directive scanning completes. This suggests there may be additional places in the esbuild plugin or process where Windows paths need conversion.
 
-**Next Investigation:**
-Need to identify other potential sources of Windows absolute paths within the esbuild scanning process that haven't been addressed yet.
+**Testing Results (Run 17766102357):**
+
+**Status:**
+- Directive scanning still completes successfully ("Scan complete." appears consistently)
+- Runtime decreased to 3m53s (vs 7m10s previously), suggesting the createViteAwareResolver fix didn't address the core issue
+- Same error pattern persists: `ERR_UNSUPPORTED_ESM_URL_SCHEME: Received protocol 'c:'`
+- Error location: Still at line 224 in compiled `runDirectivesScan.mjs`
+
+**Analysis:**
+The createViteAwareResolver fix was not the source of this particular error. The error is still happening within the esbuild process itself. This suggests there's a more fundamental issue with how Windows absolute paths are being handled within the esbuild scanning process that we haven't identified yet.
+
+**Current Challenge:**
+Despite multiple targeted fixes, the core ESM URL scheme error persists. The error consistently occurs after directive scanning completes, suggesting it's happening in a different part of the esbuild process that we haven't addressed.
+
+**Next Steps:**
+Need to take a different approach - perhaps examine the actual esbuild plugin configuration or look for other places where Windows paths might be passed to Node.js ESM loader without proper conversion.
