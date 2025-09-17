@@ -486,5 +486,53 @@ describe("normalizeModulePath", () => {
         ).toBe("\\Users\\name\\code");
       });
     });
+
+    it("should convert to file:// URL on Windows when osify: 'fileUrl' is true", () => {
+      const result = normalizeModulePath("C:\\Users\\test\\project\\src\\file.ts", "C:\\Users\\test\\project", {
+        platform: "win32",
+        osify: "fileUrl",
+      });
+      expect(result).toBe("file:///C:/Users/test/project/src/file.ts");
+    });
+
+    it("should not convert to file:// URL on non-Windows platforms", () => {
+      const result = normalizeModulePath("/Users/test/project/src/file.ts", "/Users/test/project", {
+        platform: "linux",
+        osify: "fileUrl",
+      });
+      expect(result).toBe("/src/file.ts");
+    });
+
+    it("should convert to unix-style path on Windows when osify: 'unix-win' is true", () => {
+      const result = normalizeModulePath("C:\\Users\\test\\project\\src\\file.ts", "C:\\Users\\test\\project", {
+        platform: "win32",
+        osify: "unix-win",
+      });
+      expect(result).toBe("/C:/Users/test/project/src/file.ts");
+    });
+
+    it("should not convert to unix-style on non-Windows platforms", () => {
+      const result = normalizeModulePath("/Users/test/project/src/file.ts", "/Users/test/project", {
+        platform: "linux",
+        osify: "unix-win",
+      });
+      expect(result).toBe("/src/file.ts");
+    });
+
+    it("should handle empty string with osify options", () => {
+      const result1 = normalizeModulePath("", "/Users/test/project", {
+        platform: "linux",
+        osify: "fileUrl",
+        absolute: true,
+      });
+      expect(result1).toBe("/Users/test/project");
+
+      const result2 = normalizeModulePath("", "C:\\Users\\test\\project", {
+        platform: "win32",
+        osify: "unix-win",
+        absolute: true,
+      });
+      expect(result2).toBe("/C:/Users/test/project");
+    });
   });
 });

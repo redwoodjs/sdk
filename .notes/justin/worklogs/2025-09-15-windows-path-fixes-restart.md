@@ -207,6 +207,17 @@ at runDirectivesScan (runDirectivesScan.mjs:262:15)  // Re-throw line
 
 **The Solution:** We need to ensure that ANY path returned to esbuild uses the same format that works for the directive scanning itself.
 
+## 11. Refactoring Path Handling for Consistency
+
+A key insight is that our manual path handling in `runDirectivesScan.mts` is inconsistent. We have manual `if (isWindows)` checks that should be centralized into our `normalizeModulePath` utility.
+
+The plan is to:
+1. **Extend `normalizeModulePath`**: Add a new `osify` option to handle the "forward slash absolute path" format (`/C:/path/to/file`) that our successful directive scanner seems to be using.
+2. **Add Tests**: Add comprehensive tests for this new option to ensure it's reliable.
+3. **Refactor `runDirectivesScan.mts`**: Remove the manual `if (isWindows)` checks and use our updated `normalizeModulePath` utility everywhere for consistency.
+
+This ensures that all paths passed to esbuild are handled in a consistent, tested, and centralized manner.
+
 ## 8. Research: Community Experience with esbuild Windows Path Issues
 
 Investigation into similar issues encountered by other developers reveals that the `ERR_UNSUPPORTED_ESM_URL_SCHEME` error is a well-documented problem in the Node.js and esbuild ecosystem on Windows.

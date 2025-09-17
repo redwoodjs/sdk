@@ -58,29 +58,20 @@ export function normalizeModulePath(
   options: {
     absolute?: boolean;
     isViteStyle?: boolean;
-    osify?: boolean | "fileUrl";
+    osify?: boolean | "fileUrl" | "unix-win";
     platform?: string; // For testing - defaults to process.platform
   } = {},
 ): string {
+  // Always normalize separators first
   modulePath = normalizePathSeparators(modulePath);
   projectRootDir = normalizePathSeparators(path.resolve(projectRootDir));
 
   // Handle empty string or current directory
-  if (modulePath === "" || modulePath === ".") {
-    const result = options.absolute ? projectRootDir : "/";
-
-    // Apply OS-specific path conversion if requested for absolute paths
-    if (options.osify && options.absolute) {
-      const platform = options.platform || process.platform;
-      if (platform === "win32") {
-        if (options.osify === "fileUrl") {
-          return pathToFileURL(result).href;
-        }
-        return result.replace(/\//g, "\\");
-      }
-    }
-
-    return result;
+  if (modulePath === "") {
+    return "";
+  }
+  if (modulePath === ".") {
+    return options.absolute ? projectRootDir : "/";
   }
 
   // For relative paths, resolve them first
@@ -164,12 +155,19 @@ export function normalizeModulePath(
   if (options.osify) {
     const platform = options.platform || process.platform;
     if (platform === "win32") {
-      // Apply osify to real absolute paths (not Vite-style paths like /src/...)
-      // Real absolute paths are either the resolved path or explicitly requested via absolute option
-      if (isRealAbsolutePath && path.isAbsolute(result)) {
+      // Only apply osify to real absolute paths, not Vite-style paths
+      if (isRealAbsolutePath && path.win32.isAbsolute(result)) {
         if (options.osify === "fileUrl") {
-          return pathToFileURL(result).href;
+          // pathToFileURL expects forward slashes
+          return pathToFileURL(result.replace(/\\/g, "/")).href;
         }
+
+        if (options.osify === "unix-win") {
+          // Convert Windows path to forward slash format: C:\path -> /C:/path
+          const unixPath = result.replace(/\\/g, "/");
+          return unixPath.startsWith("/") ? unixPath : "/" + unixPath;
+        }
+
         // Convert forward slashes to backslashes for Windows
         return result.replace(/\//g, "\\");
       }

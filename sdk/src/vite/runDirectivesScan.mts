@@ -128,19 +128,9 @@ export const runDirectivesScan = async ({
 
     const absoluteEntries = entries.map((entry) => {
       const absolutePath = path.resolve(rootConfig.root, entry);
-      
-      // Experiment: Try forward slash absolute paths for Windows esbuild compatibility
-      const isWindows = process.platform === "win32";
-      if (isWindows) {
-        // Convert Windows path to forward slash format: C:\path -> /C:/path
-        const forwardSlashPath = "/" + absolutePath.replace(/\\/g, "/");
-        return forwardSlashPath;
-      } else {
-        // On non-Windows, use normalized path
-        return normalizeModulePath(absolutePath, rootConfig.root, {
-          absolute: true,
-        });
-      }
+      return normalizeModulePath(absolutePath, rootConfig.root, {
+        osify: "unix-win",
+      });
     });
 
     log(
@@ -167,7 +157,7 @@ export const runDirectivesScan = async ({
       }
 
       let filePath = path;
-      
+
       // Convert file:// URLs to regular file paths for fs operations
       if (path.startsWith("file://")) {
         filePath = fileURLToPath(path);
@@ -272,32 +262,17 @@ export const runDirectivesScan = async ({
           const resolvedPath = resolved?.id;
 
           if (resolvedPath && path.isAbsolute(resolvedPath)) {
-            // Experiment: Try forward slash absolute paths for Windows esbuild compatibility
-            const isWindows = process.platform === "win32";
-            
-            if (isWindows) {
-              // Convert Windows path to forward slash format: C:\path -> /C:/path
-              const forwardSlashPath = "/" + resolvedPath.replace(/\\/g, "/");
-              log("Windows path converted to forward slash format:", forwardSlashPath);
-              
-              return {
-                path: forwardSlashPath,
-                pluginData: { inheritedEnv: importerEnv },
-              };
-            } else {
-              // On non-Windows, use the normalized path directly
-              const esbuildPath = normalizeModulePath(
-                resolvedPath,
-                rootConfig.root,
-                { absolute: true },
-              );
-              log("Normalized path:", esbuildPath);
+            const esbuildPath = normalizeModulePath(
+              resolvedPath,
+              rootConfig.root,
+              { osify: "unix-win" },
+            );
+            log("Normalized path for esbuild:", esbuildPath);
 
-              return {
-                path: esbuildPath,
-                pluginData: { inheritedEnv: importerEnv },
-              };
-            }
+            return {
+              path: esbuildPath,
+              pluginData: { inheritedEnv: importerEnv },
+            };
           }
 
           log("Marking as external:", args.path, "resolved to:", resolvedPath);
@@ -338,21 +313,11 @@ export const runDirectivesScan = async ({
               // Finally, populate the output sets if the file has a directive.
               if (isClient) {
                 log("Discovered 'use client' in:", args.path);
-                // Convert forward slash Windows paths back to proper paths for collection
-                let collectionPath = args.path;
-                if (process.platform === "win32" && args.path.match(/^\/[A-Za-z]:/)) {
-                  collectionPath = args.path.slice(1); // Remove leading slash: /C:/path -> C:/path
-                }
-                clientFiles.add(collectionPath);
+                clientFiles.add(args.path);
               }
               if (isServer) {
                 log("Discovered 'use server' in:", args.path);
-                // Convert forward slash Windows paths back to proper paths for collection
-                let collectionPath = args.path;
-                if (process.platform === "win32" && args.path.match(/^\/[A-Za-z]:/)) {
-                  collectionPath = args.path.slice(1); // Remove leading slash: /C:/path -> C:/path
-                }
-                serverFiles.add(collectionPath);
+                serverFiles.add(args.path);
               }
 
               return { contents, loader: "default" };
