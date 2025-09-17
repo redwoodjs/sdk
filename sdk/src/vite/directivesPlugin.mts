@@ -9,7 +9,7 @@ import type { ViteDevServer } from "vite";
 
 const log = debug("rwsdk:vite:rsc-directives-plugin");
 
-export const getLoader = (filePath: string) => {
+const getLoader = (filePath: string) => {
   const ext = path.extname(filePath).slice(1);
   switch (ext) {
     case "mjs":

@@ -7,46 +7,6 @@ import {
   VENDOR_SERVER_BARREL_EXPORT_PATH,
 } from "../lib/constants.mjs";
 
-export function generateLookupMap({
-  files,
-  isDev,
-  kind,
-  exportName,
-}: {
-  files: Set<string>;
-  isDev: boolean;
-  kind: "client" | "server";
-  exportName: string;
-}) {
-  const s = new MagicString(`
-export const ${exportName} = {
-  ${Array.from(files)
-    .map((file: string) => {
-      if (file.includes("node_modules") && isDev) {
-        const barrelPath =
-          kind === "client"
-            ? VENDOR_CLIENT_BARREL_EXPORT_PATH
-            : VENDOR_SERVER_BARREL_EXPORT_PATH;
-
-        return `
-  "${file}": () => import("${barrelPath}").then(m => m.default["${file}"]),
-`;
-      } else {
-        return `
-  "${file}": () => import("${file}"),
-`;
-      }
-    })
-    .join("")}
-};
-`);
-
-  return {
-    code: s.toString(),
-    map: s.generateMap(),
-  };
-}
-
 interface DirectiveLookupConfig {
   kind: "client" | "server";
   directive: "use client" | "use server";
@@ -231,12 +191,39 @@ export const createDirectiveLookupPlugin = async ({
         const environment = this.environment?.name || "client";
         log("Current environment: %s, isDev: %s", environment, isDev);
 
-        return generateLookupMap({
-          files,
-          isDev,
-          kind: config.kind,
-          exportName: config.exportName,
-        });
+        const s = new MagicString(`
+export const ${config.exportName} = {
+  ${Array.from(files)
+    .map((file: string) => {
+      if (file.includes("node_modules") && isDev) {
+        const barrelPath =
+          config.kind === "client"
+            ? VENDOR_CLIENT_BARREL_EXPORT_PATH
+            : VENDOR_SERVER_BARREL_EXPORT_PATH;
+
+        return `
+  "${file}": () => import("${barrelPath}").then(m => m.default["${file}"]),
+`;
+      } else {
+        return `
+  "${file}": () => import("${file}"),
+`;
+      }
+    })
+    .join("")}
+};
+`);
+
+        const code = s.toString();
+        const map = s.generateMap();
+
+        log("Generated virtual module code length: %d", code.length);
+        process.env.VERBOSE && log("Generated virtual module code: %s", code);
+
+        return {
+          code,
+          map,
+        };
       }
     },
   };

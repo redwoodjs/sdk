@@ -25,15 +25,11 @@ const hasDirective = async (filepath: string, directive: string) => {
   return sourceHasDirective(content, directive);
 };
 
-export const hasEntryAsAncestor = ({
-  module,
-  entryFile,
+const hasEntryAsAncestor = (
+  module: any,
+  entryFile: string,
   seen = new Set(),
-}: {
-  module: any;
-  entryFile: string;
-  seen?: Set<any>;
-}): boolean => {
+): boolean => {
   // Prevent infinite recursion
   if (seen.has(module)) {
     return false;
@@ -46,7 +42,7 @@ export const hasEntryAsAncestor = ({
     if (importer.file === entryFile) return true;
 
     // Recursively check importers
-    if (hasEntryAsAncestor({ module: importer, entryFile, seen })) return true;
+    if (hasEntryAsAncestor(importer, entryFile, seen)) return true;
   }
   return false;
 };

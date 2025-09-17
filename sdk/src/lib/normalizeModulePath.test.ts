@@ -1,32 +1,5 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
-import {
-  normalizeModulePath,
-  findCommonAncestorDepth,
-} from "./normalizeModulePath.mjs";
-
-describe("findCommonAncestorDepth", () => {
-  it("should return the correct depth for common paths", () => {
-    expect(findCommonAncestorDepth("/a/b/c", "/a/b/d")).toBe(2);
-  });
-
-  it("should return 0 for completely different paths", () => {
-    expect(findCommonAncestorDepth("/a/b/c", "/d/e/f")).toBe(0);
-  });
-
-  it("should handle identical paths", () => {
-    expect(findCommonAncestorDepth("/a/b/c", "/a/b/c")).toBe(3);
-  });
-
-  it("should handle paths of different lengths", () => {
-    expect(findCommonAncestorDepth("/a/b/c", "/a/b/c/d/e")).toBe(3);
-  });
-
-  it("should handle the root path", () => {
-    expect(findCommonAncestorDepth("/", "/a/b")).toBe(0);
-    expect(findCommonAncestorDepth("/a", "/")).toBe(0);
-    expect(findCommonAncestorDepth("/", "/")).toBe(0);
-  });
-});
+import { normalizeModulePath } from "./normalizeModulePath.mjs";
 
 describe("normalizeModulePath", () => {
   describe("1. Project-local paths", () => {
