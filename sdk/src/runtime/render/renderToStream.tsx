@@ -3,7 +3,7 @@ import { DocumentProps } from "../lib/router.js";
 import { renderToRscStream } from "./renderToRscStream.js";
 import { transformRscToHtmlStream } from "./transformRscToHtmlStream.js";
 import { requestInfo } from "../requestInfo/worker.js";
-import { injectRscPayload } from "rsc-html-stream/server";
+import { injectRSCPayload } from "rsc-html-stream/server";
 import { renderDocumentToStream } from "rwsdk/__ssr_bridge";
 import { TextDecoder } from "node:util";
 
