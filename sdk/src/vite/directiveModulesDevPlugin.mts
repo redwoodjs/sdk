@@ -30,8 +30,7 @@ export const generateVendorBarrelContent = (
     [...files]
       .filter((file) => file.includes("node_modules"))
       .map(
-        (file, i) =>
-          `  '${normalizeModulePath(file, projectRootDir).slice(1)}': M${i},`,
+        (file, i) => `  '${normalizeModulePath(file, projectRootDir)}': M${i},`,
       )
       .join("\n") +
     "\n};";

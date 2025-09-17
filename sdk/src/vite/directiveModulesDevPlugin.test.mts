@@ -20,8 +20,8 @@ describe("directiveModulesDevPlugin helpers", () => {
 import * as M1 from '${projectRootDir}/node_modules/lib-b/component.tsx';
 
 export default {
-  'node_modules/lib-a/index.js': M0,
-  'node_modules/lib-b/component.tsx': M1,
+  '/node_modules/lib-a/index.js': M0,
+  '/node_modules/lib-b/component.tsx': M1,
 };`;
       expect(content).toEqual(expected);
     });
