@@ -57,7 +57,7 @@ export const renderToStream = async (
 
   const preambleExtractor = new PreambleExtractor();
   // Consume the stream for its side-effect of resolving the promise
-  shellStreamForPreamble.pipeTo(preambleExtractor.writable);
+  shellStreamForPreamble.pipeTo(preambleExtractor);
   const preamblePromise = preambleExtractor.preamble;
 
   const bodyExtractor = new BodyContentExtractor();

@@ -9,7 +9,7 @@
  * consumed via `pipeTo(preambleExtractor.writable)`.
  */
 export class PreambleExtractor extends WritableStream<Uint8Array> {
-  readonly #buffer: Uint8Array = new Uint8Array();
+  #buffer: Uint8Array = new Uint8Array();
   readonly #decoder = new TextDecoder();
   readonly #preamblePromise: Promise<string>;
   #preambleResolver!: (preamble: string) => void;
