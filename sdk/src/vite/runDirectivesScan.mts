@@ -128,11 +128,18 @@ export const runDirectivesScan = async ({
 
     const absoluteEntries = entries.map((entry) => {
       const absolutePath = path.resolve(rootConfig.root, entry);
-      // On Windows, convert absolute paths to file:// URLs for ESM compatibility
-      return normalizeModulePath(absolutePath, rootConfig.root, {
-        absolute: true,
-        osify: "fileUrl",
-      });
+      
+      // Use namespace workaround for Windows to avoid ESM URL scheme issues
+      const isWindows = process.platform === "win32";
+      if (isWindows) {
+        // Return path with namespace prefix for Windows
+        return `windows-file:${absolutePath}`;
+      } else {
+        // On non-Windows, use normalized path
+        return normalizeModulePath(absolutePath, rootConfig.root, {
+          absolute: true,
+        });
+      }
     });
 
     log(
@@ -255,24 +262,73 @@ export const runDirectivesScan = async ({
           const resolvedPath = resolved?.id;
 
           if (resolvedPath && path.isAbsolute(resolvedPath)) {
-            // Normalize the path for esbuild compatibility
-            // On Windows, convert to file:// URLs for ESM loader compatibility
-            const esbuildPath = normalizeModulePath(
-              resolvedPath,
-              rootConfig.root,
-              { absolute: true, osify: "fileUrl" },
-            );
-            log("Normalized path:", esbuildPath);
+            // Use namespace workaround for Windows paths to avoid ESM URL scheme issues
+            // Instead of returning file:// URLs directly, use a custom namespace
+            const isWindows = process.platform === "win32";
+            
+            if (isWindows) {
+              // On Windows, use namespace to avoid direct file:// URL handling by esbuild
+              return {
+                path: resolvedPath,
+                namespace: "windows-file",
+                pluginData: { inheritedEnv: importerEnv },
+              };
+            } else {
+              // On non-Windows, use the normalized path directly
+              const esbuildPath = normalizeModulePath(
+                resolvedPath,
+                rootConfig.root,
+                { absolute: true },
+              );
+              log("Normalized path:", esbuildPath);
 
-            return {
-              path: esbuildPath,
-              pluginData: { inheritedEnv: importerEnv },
-            };
+              return {
+                path: esbuildPath,
+                pluginData: { inheritedEnv: importerEnv },
+              };
+            }
           }
 
           log("Marking as external:", args.path, "resolved to:", resolvedPath);
           return { external: true };
         });
+
+        // Handle Windows file namespace
+        build.onLoad(
+          { filter: /.*/, namespace: "windows-file" },
+          async (args: OnLoadArgs) => {
+            log("onLoad called for Windows file:", args.path);
+            
+            try {
+              const contents = await readFileWithCache(args.path);
+              const inheritedEnv = args.pluginData?.inheritedEnv || "worker";
+
+              const { moduleEnv, isClient, isServer } = classifyModule({
+                contents,
+                inheritedEnv,
+              });
+
+              // Store the definitive environment for this module
+              moduleEnvironments.set(args.path, moduleEnv);
+              log("Set environment for", args.path, "to", moduleEnv);
+
+              // Populate the output sets if the file has a directive
+              if (isClient) {
+                log("Discovered 'use client' in:", args.path);
+                clientFiles.add(args.path); // Use raw path, not file:// URL
+              }
+              if (isServer) {
+                log("Discovered 'use server' in:", args.path);
+                serverFiles.add(args.path); // Use raw path, not file:// URL
+              }
+
+              return { contents, loader: "default" };
+            } catch (error) {
+              log("Error reading file:", args.path, error);
+              return null;
+            }
+          },
+        );
 
         build.onLoad(
           { filter: /\.(m|c)?[jt]sx?$/ },
