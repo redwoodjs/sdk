@@ -2,11 +2,13 @@ import resolve, { ResolveOptions } from "enhanced-resolve";
 import { Alias, ResolvedConfig } from "vite";
 import fs from "fs";
 import path from "path";
-import createDebug from "debug";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { Environment } from "vite";
-const debug = createDebug("rwsdk:vite:enhanced-resolve-plugin");
+
 let resolveIdCounter = 0;
+const log = (...args: any[]) => {
+  console.log("rwsdk:vite:enhanced-resolve-plugin", ...args);
+};
 
 // Enhanced-resolve plugin that wraps Vite plugin resolution
 class VitePluginResolverPlugin {
@@ -33,7 +35,7 @@ class VitePluginResolverPlugin {
         "VitePluginResolverPlugin",
         (request: any, resolveContext: any, callback: any) => {
           const resolveId = ++resolveIdCounter;
-          debug(`[${resolveId}] VitePluginResolverPlugin`, {
+          log(`[${resolveId}] VitePluginResolverPlugin`, {
             request: request.request,
             path: request.path,
           });
@@ -55,14 +57,14 @@ class VitePluginResolverPlugin {
                   {},
                   (err: any, result: any) => {
                     if (!err && result) {
-                      debug(
+                      log(
                         `[${resolveId}] Context resolve: %s -> %s`,
                         id,
                         result,
                       );
                       resolve({ id: result });
                     } else {
-                      debug(
+                      log(
                         `[${resolveId}] Context resolve failed for %s: %s`,
                         id,
                         err?.message || "not found",
@@ -75,172 +77,70 @@ class VitePluginResolverPlugin {
             },
           };
 
-          debug(
+          log(
             `[${resolveId}] Trying to resolve %s from %s`,
             request.request,
             request.path,
           );
 
           // This function encapsulates the logic to process Vite plugins for a given request.
-          const runPluginProcessing = async (currentRequest: any) => {
-            debug(
-              `[${resolveId}] Available plugins`,
-              plugins.map((p: any) => p.name),
-            );
+          const runPluginProcessing = async () => {
+            let currentRequest = request;
 
-            for (const plugin of plugins) {
-              const resolveIdHandler = plugin.resolveId;
-              if (!resolveIdHandler) continue;
-
-              let handlerFn: Function | undefined;
-              let shouldApplyFilter = false;
-              let filter: {
-                id?:
-                  | string
-                  | RegExp
-                  | Array<string | RegExp>
-                  | {
-                      include?: string | RegExp | Array<string | RegExp>;
-                      exclude?: string | RegExp | Array<string | RegExp>;
-                    };
-              } | null = null;
-
-              if (typeof resolveIdHandler === "function") {
-                handlerFn = resolveIdHandler;
-              } else if (
-                typeof resolveIdHandler === "object" &&
-                typeof resolveIdHandler.handler === "function"
-              ) {
-                handlerFn = resolveIdHandler.handler;
-                shouldApplyFilter = true;
-                filter = resolveIdHandler.filter;
+            for (const p of plugins) {
+              if (typeof p.resolveId !== "function") {
+                continue;
               }
 
-              if (!handlerFn) continue;
-
-              if (shouldApplyFilter && filter?.id) {
-                const idFilter = filter.id;
-                let shouldSkip = false;
-
-                if (idFilter instanceof RegExp) {
-                  shouldSkip = !idFilter.test(currentRequest.request);
-                } else if (Array.isArray(idFilter)) {
-                  // Handle array of filters - matches if ANY filter matches
-                  shouldSkip = !idFilter.some((f: string | RegExp) =>
-                    f instanceof RegExp
-                      ? f.test(currentRequest.request)
-                      : f === currentRequest.request,
-                  );
-                } else if (typeof idFilter === "string") {
-                  shouldSkip = idFilter !== currentRequest.request;
-                } else if (typeof idFilter === "object" && idFilter !== null) {
-                  // Handle include/exclude object pattern
-                  const { include, exclude } = idFilter;
-                  let matches = true;
-
-                  // Check include patterns (if any)
-                  if (include) {
-                    const includePatterns = Array.isArray(include)
-                      ? include
-                      : [include];
-                    matches = includePatterns.some(
-                      (pattern: string | RegExp) =>
-                        pattern instanceof RegExp
-                          ? pattern.test(currentRequest.request)
-                          : pattern === currentRequest.request,
-                    );
-                  }
-
-                  // Check exclude patterns (if any) - exclude overrides include
-                  if (matches && exclude) {
-                    const excludePatterns = Array.isArray(exclude)
-                      ? exclude
-                      : [exclude];
-                    const isExcluded = excludePatterns.some(
-                      (pattern: string | RegExp) =>
-                        pattern instanceof RegExp
-                          ? pattern.test(currentRequest.request)
-                          : pattern === currentRequest.request,
-                    );
-                    matches = !isExcluded;
-                  }
-
-                  shouldSkip = !matches;
-                }
-
-                if (shouldSkip) {
-                  debug(
-                    `[${resolveId}] Skipping plugin '%s' for '%s'`,
-                    plugin.name,
-                    currentRequest.request,
-                  );
-                  continue;
-                }
-              }
+              const pluginName = p.name;
+              log(`[${resolveId}] Trying plugin:`, pluginName);
 
               try {
-                debug(
-                  `[${resolveId}] Calling plugin '%s' for '%s'`,
-                  plugin.name,
-                  currentRequest.request,
-                );
-
-                const result = await handlerFn.call(
+                const result = await p.resolveId.call(
                   pluginContext,
                   currentRequest.request,
                   currentRequest.path,
                   { scan: true },
                 );
 
-                debug(
-                  `[${resolveId}] Plugin '%s' returned`,
-                  plugin.name,
-                  result,
-                );
-
-                if (!result) continue;
-
-                const resolvedId =
-                  typeof result === "string" ? result : result.id;
-
-                if (resolvedId && resolvedId !== currentRequest.request) {
-                  debug(
-                    `[${resolveId}] Plugin '%s' resolved '%s' -> '%s'`,
-                    plugin.name,
-                    currentRequest.request,
-                    resolvedId,
+                if (result) {
+                  log(
+                    `[${resolveId}] Plugin ${pluginName} resolved to:`,
+                    result,
                   );
+                  let resolvedId =
+                    typeof result === "string" ? result : result.id;
 
-                  return callback(null, {
-                    ...currentRequest,
-                    path: resolvedId,
-                  });
-                } else if (resolvedId === currentRequest.request) {
-                  debug(
-                    `[${resolveId}] Plugin '%s' returned unchanged ID`,
-                    plugin.name,
-                  );
+                  if (resolvedId && resolvedId !== currentRequest.request) {
+                    log(
+                      `[${resolveId}] Plugin ${pluginName} resolved ${currentRequest.request} -> ${resolvedId}`,
+                      pluginName,
+                    );
+                    return callback(null, {
+                      ...currentRequest,
+                      path: resolvedId,
+                    });
+                  } else if (resolvedId === currentRequest.request) {
+                    log(
+                      `[${resolveId}] Plugin ${pluginName} returned unchanged ID`,
+                      pluginName,
+                    );
+                  }
+                } else {
+                  log(`[${resolveId}] Plugin ${pluginName} did not resolve.`);
                 }
-              } catch (e) {
-                debug(
-                  `[${resolveId}] Plugin '%s' failed for '%s': %s`,
-                  plugin.name,
-                  currentRequest.request,
-                  (e as Error).message,
-                );
+              } catch (e: any) {
+                log(`[${resolveId}] Plugin ${pluginName} threw an error:`, e);
+                return callback(e);
               }
             }
-            // If no plugin resolves, fall back to enhanced-resolve's default behavior
-            debug(
-              `[${resolveId}] No Vite plugin resolved '%s', falling back.`,
-              currentRequest.request,
-            );
+            log(`[${resolveId}] No plugin resolved the path, falling back.`);
 
             // For absolute paths, check if the file exists
             if (path.isAbsolute(currentRequest.request)) {
               try {
                 if (fs.existsSync(currentRequest.request)) {
-                  debug(
+                  log(
                     `[${resolveId}] File exists, resolving to: %s`,
                     currentRequest.request,
                   );
@@ -249,20 +149,22 @@ class VitePluginResolverPlugin {
                     this.environment.config.root,
                     { absolute: true, osify: "fileUrl" },
                   );
+                  log(`[${resolveId}] Osified fallback path:`, osifiedPath);
                   return callback(null, {
                     ...currentRequest,
                     path: osifiedPath,
                   });
                 }
               } catch (e) {
-                debug(
-                  `[${resolveId}] Error checking file existence: %s`,
-                  (e as Error).message,
+                log(
+                  `[${resolveId}] Error checking file existence for fallback:`,
+                  e,
                 );
               }
             }
 
-            callback();
+            log(`[${resolveId}] Fallback finished.`);
+            return callback(null, currentRequest);
           };
 
           // For relative imports, normalize them to absolute paths first
@@ -278,29 +180,22 @@ class VitePluginResolverPlugin {
                 importerDir,
                 { absolute: true, osify: "fileUrl" },
               );
-              debug(
-                `[${resolveId}] Absolutified %s -> %s`,
-                request.request,
+              log(
+                `[${resolveId}] Normalized relative import to absolute path:`,
                 absolutePath,
               );
-
-              const absoluteRequest = { ...request, request: absolutePath };
-              runPluginProcessing(absoluteRequest).catch((e) => {
-                debug(`[${resolveId}] Error in plugin processing`, e.message);
+              return runPluginProcessing().catch((e) => {
+                log(`[${resolveId}] Error in plugin processing`, e.message);
                 callback();
               });
             } catch (e) {
-              debug(
-                `[${resolveId}] Failed to absolutify %s: %s`,
-                request.request,
-                (e as Error).message,
-              );
-              callback();
+              log(`[${resolveId}] Error normalizing relative import:`, e);
+              return callback(e);
             }
           } else {
             // For non-relative imports, process them directly
-            runPluginProcessing(request).catch((e) => {
-              debug(`[${resolveId}] Error in plugin processing`, e.message);
+            return runPluginProcessing().catch((e) => {
+              log(`[${resolveId}] Error in plugin processing`, e.message);
               callback();
             });
           }
@@ -403,7 +298,7 @@ export const createViteAwareResolver = (
     plugins,
   };
 
-  debug("Creating enhanced-resolve with options:", {
+  log("Creating enhanced-resolve with options:", {
     extensions: enhancedResolveOptions.extensions,
     alias: enhancedResolveOptions.alias,
     roots: enhancedResolveOptions.roots,
