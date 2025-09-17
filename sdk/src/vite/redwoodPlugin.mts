@@ -43,16 +43,22 @@ export type RedwoodPluginOptions = {
   };
 };
 
-const determineWorkerEntryPathname = async (
-  projectRootDir: string,
-  workerConfigPath: string,
-  options: RedwoodPluginOptions,
-) => {
+export const determineWorkerEntryPathname = async ({
+  projectRootDir,
+  workerConfigPath,
+  options,
+  readConfig = unstable_readConfig,
+}: {
+  projectRootDir: string;
+  workerConfigPath: string;
+  options: RedwoodPluginOptions;
+  readConfig?: typeof unstable_readConfig;
+}) => {
   if (options.entry?.worker) {
     return resolve(projectRootDir, options.entry.worker);
   }
 
-  const workerConfig = unstable_readConfig({ config: workerConfigPath });
+  const workerConfig = readConfig({ config: workerConfigPath });
 
   return resolve(projectRootDir, workerConfig.main ?? "src/worker.tsx");
 };
@@ -72,11 +78,11 @@ export const redwoodPlugin = async (
       ? resolve(projectRootDir, process.env.RWSDK_WRANGLER_CONFIG)
       : await findWranglerConfig(projectRootDir));
 
-  const workerEntryPathname = await determineWorkerEntryPathname(
+  const workerEntryPathname = await determineWorkerEntryPathname({
     projectRootDir,
     workerConfigPath,
     options,
-  );
+  });
 
   const shouldIncludeCloudflarePlugin =
     options.includeCloudflarePlugin ??

@@ -26,6 +26,67 @@ const isObject = (value: unknown): value is Record<string, any> =>
 const externalRE = /^(https?:)?\/\//;
 const isExternalUrl = (url: string): boolean => externalRE.test(url);
 
+type Resolver = (
+  context: {},
+  path: string,
+  request: string,
+  resolveContext: {},
+  callback: (err: Error | null, result?: string | false) => void,
+) => void;
+
+export async function resolveModuleWithEnvironment({
+  path,
+  importer,
+  importerEnv,
+  clientResolver,
+  workerResolver,
+}: {
+  path: string;
+  importer?: string;
+  importerEnv: "client" | "worker";
+  clientResolver: Resolver;
+  workerResolver: Resolver;
+}) {
+  const resolver = importerEnv === "client" ? clientResolver : workerResolver;
+  return new Promise<{ id: string } | null>((resolvePromise) => {
+    resolver({}, importer || "", path, {}, (err, result) => {
+      if (!err && result) {
+        resolvePromise({ id: result });
+      } else {
+        if (err) {
+          const errorMessage = err.message || String(err);
+          if (errorMessage.includes("Package path . is not exported")) {
+            log("Package exports error for %s, marking as external", path);
+          } else {
+            log("Resolution failed for %s: %s", path, errorMessage);
+          }
+        }
+        resolvePromise(null);
+      }
+    });
+  });
+}
+
+export function classifyModule({
+  contents,
+  inheritedEnv,
+}: {
+  contents: string;
+  inheritedEnv: "client" | "worker";
+}) {
+  let moduleEnv: "client" | "worker" = inheritedEnv;
+  const isClient = hasDirective(contents, "use client");
+  const isServer = hasDirective(contents, "use server");
+
+  if (isClient) {
+    moduleEnv = "client";
+  } else if (isServer) {
+    moduleEnv = "worker";
+  }
+
+  return { moduleEnv, isClient, isServer };
+}
+
 export const runDirectivesScan = async ({
   rootConfig,
   environments,
@@ -147,15 +208,17 @@ export const runDirectivesScan = async ({
           ) {
             try {
               const importerContents = await readFileWithCache(args.importer);
-              if (hasDirective(importerContents, "use client")) {
-                importerEnv = "client";
-                log("Pre-detected importer 'use client' in:", args.importer);
-              } else if (hasDirective(importerContents, "use server")) {
-                importerEnv = "worker";
-                log("Pre-detected importer 'use server' in:", args.importer);
-              } else {
-                importerEnv = "worker"; // Default for entry points
-              }
+              const classification = classifyModule({
+                contents: importerContents,
+                inheritedEnv: "worker", // Default for entry points
+              });
+              importerEnv = classification.moduleEnv;
+              log(
+                "Pre-detected importer environment in:",
+                args.importer,
+                "as",
+                importerEnv,
+              );
               moduleEnvironments.set(args.importer, importerEnv);
             } catch (e) {
               importerEnv = "worker"; // Default fallback
@@ -170,43 +233,13 @@ export const runDirectivesScan = async ({
 
           log("Importer:", args.importer, "environment:", importerEnv);
 
-          const resolver =
-            importerEnv === "client" ? clientResolver : workerResolver;
-
-          const resolved = await new Promise<{ id: string } | null>(
-            (resolve) => {
-              resolver(
-                {},
-                args.importer || rootConfig.root,
-                args.path,
-                {},
-                (err, result) => {
-                  if (!err && result) {
-                    resolve({ id: result });
-                  } else {
-                    if (err) {
-                      const errorMessage = err.message || String(err);
-                      if (
-                        errorMessage.includes("Package path . is not exported")
-                      ) {
-                        log(
-                          "Package exports error for %s, marking as external",
-                          args.path,
-                        );
-                      } else {
-                        log(
-                          "Resolution failed for %s: %s",
-                          args.path,
-                          errorMessage,
-                        );
-                      }
-                    }
-                    resolve(null);
-                  }
-                },
-              );
-            },
-          );
+          const resolved = await resolveModuleWithEnvironment({
+            path: args.path,
+            importer: args.importer,
+            importerEnv,
+            clientResolver,
+            workerResolver,
+          });
 
           log("Resolution result:", resolved);
           const resolvedPath = resolved?.id;
@@ -251,23 +284,15 @@ export const runDirectivesScan = async ({
             try {
               const contents = await readFileWithCache(args.path);
               const inheritedEnv = args.pluginData?.inheritedEnv || "worker";
-              let currentEnv: "client" | "worker" = inheritedEnv;
 
-              const isClient = hasDirective(contents, "use client");
-              const isServer = hasDirective(contents, "use server");
-
-              // A file's own directive takes precedence over the inherited environment.
-              if (isClient) {
-                currentEnv = "client";
-              } else if (isServer) {
-                // `else if` handles cases where a file might have both directives.
-                // "use client" takes precedence.
-                currentEnv = "worker";
-              }
+              const { moduleEnv, isClient, isServer } = classifyModule({
+                contents,
+                inheritedEnv,
+              });
 
               // Store the definitive environment for this module, so it can be used when it becomes an importer.
-              moduleEnvironments.set(args.path, currentEnv);
-              log("Set environment for", args.path, "to", currentEnv);
+              moduleEnvironments.set(args.path, moduleEnv);
+              log("Set environment for", args.path, "to", moduleEnv);
 
               // Finally, populate the output sets if the file has a directive.
               if (isClient) {

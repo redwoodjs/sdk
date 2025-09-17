@@ -11,7 +11,7 @@ import {
 } from "../lib/constants.mjs";
 import { runDirectivesScan } from "./runDirectivesScan.mjs";
 
-const generateVendorBarrelContent = (
+export const generateVendorBarrelContent = (
   files: Set<string>,
   projectRootDir: string,
 ) => {
@@ -30,7 +30,8 @@ const generateVendorBarrelContent = (
     [...files]
       .filter((file) => file.includes("node_modules"))
       .map(
-        (file, i) => `  '${normalizeModulePath(file, projectRootDir)}': M${i},`,
+        (file, i) =>
+          `  '${normalizeModulePath(file, projectRootDir).slice(1)}': M${i},`,
       )
       .join("\n") +
     "\n};";
@@ -38,10 +39,9 @@ const generateVendorBarrelContent = (
   return `${imports}\n\n${exports}`;
 };
 
-const generateAppBarrelContent = (
+export const generateAppBarrelContent = (
   files: Set<string>,
   projectRootDir: string,
-  barrelFilePath: string,
 ) => {
   return [...files]
     .filter((file) => !file.includes("node_modules"))
@@ -195,11 +195,7 @@ export const directiveModulesDevPlugin = ({
               (args) => {
                 const isServerBarrel = args.path.includes("app-server-barrel");
                 const files = isServerBarrel ? serverFiles : clientFiles;
-                const content = generateAppBarrelContent(
-                  files,
-                  projectRootDir,
-                  args.path,
-                );
+                const content = generateAppBarrelContent(files, projectRootDir);
                 return {
                   contents: content,
                   loader: "js",
