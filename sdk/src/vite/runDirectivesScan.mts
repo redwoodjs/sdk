@@ -128,8 +128,10 @@ export const runDirectivesScan = async ({
 
     const absoluteEntries = entries.map((entry) => {
       const absolutePath = path.resolve(rootConfig.root, entry);
+      // On Windows, convert absolute paths to file:// URLs for ESM compatibility
       return normalizeModulePath(absolutePath, rootConfig.root, {
-        osify: "unix-win",
+        absolute: true,
+        osify: "fileUrl",
       });
     });
 
@@ -262,12 +264,14 @@ export const runDirectivesScan = async ({
           const resolvedPath = resolved?.id;
 
           if (resolvedPath && path.isAbsolute(resolvedPath)) {
+            // Normalize the path for esbuild compatibility
+            // On Windows, convert to file:// URLs for ESM loader compatibility
             const esbuildPath = normalizeModulePath(
               resolvedPath,
               rootConfig.root,
-              { osify: "unix-win" },
+              { absolute: true, osify: "fileUrl" },
             );
-            log("Normalized path for esbuild:", esbuildPath);
+            log("Normalized path:", esbuildPath);
 
             return {
               path: esbuildPath,
@@ -313,11 +317,19 @@ export const runDirectivesScan = async ({
               // Finally, populate the output sets if the file has a directive.
               if (isClient) {
                 log("Discovered 'use client' in:", args.path);
-                clientFiles.add(args.path);
+                clientFiles.add(
+                  normalizeModulePath(args.path, rootConfig.root, {
+                    osify: "fileUrl",
+                  }),
+                );
               }
               if (isServer) {
                 log("Discovered 'use server' in:", args.path);
-                serverFiles.add(args.path);
+                serverFiles.add(
+                  normalizeModulePath(args.path, rootConfig.root, {
+                    osify: "fileUrl",
+                  }),
+                );
               }
 
               return { contents, loader: "default" };
