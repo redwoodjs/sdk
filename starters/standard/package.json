@@ -44,7 +44,7 @@
     "@types/react-dom": "19.1.2",
     "prisma": "6.8.2",
     "typescript": "5.8.3",
-    "vibe-rules": "0.2.31",
+    "vibe-rules": "0.3.91",
     "vite": "7.1.5",
     "wrangler": "4.35.0"
   },
