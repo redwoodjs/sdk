@@ -150,6 +150,22 @@ Research revealed that the most effective approach for handling Windows paths in
 
 This approach is commonly used in the esbuild community to work around Windows path limitations.
 
+**Testing Results (Run 17785218655):**
+
+The namespace workaround did not resolve the issue. The same `ERR_UNSUPPORTED_ESM_URL_SCHEME: Received protocol 'c:'` error persists at line 228. However, directive scanning continues to complete successfully ("✅ Scan complete." appears consistently), indicating that the core functionality works but there's still a Windows path being passed to Node.js ESM loader somewhere in the process.
+
+The namespace approach may not be the right solution for this specific case, as the error seems to be happening outside of the esbuild plugin's direct control.
+
+## 10. Experimenting with Different Path Formats for esbuild
+
+The issue might be that `file:///` URLs work for Node.js ESM loader but not for esbuild's internal handling. Let's experiment with different path formats that esbuild might accept on Windows:
+
+1. **Forward slash absolute paths**: `/C:/path/to/file` (Unix-style on Windows)
+2. **Normalized Windows paths**: `C:\\path\\to\\file` (native Windows format)  
+3. **Raw absolute paths**: `C:/path/to/file` (Windows with forward slashes)
+
+We need to carefully analyze stack traces to identify if this error occurs in multiple places and address each one systematically.
+
 ## 8. Research: Community Experience with esbuild Windows Path Issues
 
 Investigation into similar issues encountered by other developers reveals that the `ERR_UNSUPPORTED_ESM_URL_SCHEME` error is a well-documented problem in the Node.js and esbuild ecosystem on Windows.

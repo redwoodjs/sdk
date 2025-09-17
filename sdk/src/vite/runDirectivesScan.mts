@@ -129,11 +129,12 @@ export const runDirectivesScan = async ({
     const absoluteEntries = entries.map((entry) => {
       const absolutePath = path.resolve(rootConfig.root, entry);
       
-      // Use namespace workaround for Windows to avoid ESM URL scheme issues
+      // Experiment: Try forward slash absolute paths for Windows esbuild compatibility
       const isWindows = process.platform === "win32";
       if (isWindows) {
-        // Return path with namespace prefix for Windows
-        return `windows-file:${absolutePath}`;
+        // Convert Windows path to forward slash format: C:\path -> /C:/path
+        const forwardSlashPath = "/" + absolutePath.replace(/\\/g, "/");
+        return forwardSlashPath;
       } else {
         // On non-Windows, use normalized path
         return normalizeModulePath(absolutePath, rootConfig.root, {
@@ -165,8 +166,17 @@ export const runDirectivesScan = async ({
         return fileContentCache.get(path)!;
       }
 
+      let filePath = path;
+      
       // Convert file:// URLs to regular file paths for fs operations
-      const filePath = path.startsWith("file://") ? fileURLToPath(path) : path;
+      if (path.startsWith("file://")) {
+        filePath = fileURLToPath(path);
+      }
+      // Convert forward slash Windows paths back to proper Windows paths
+      // /C:/path/to/file -> C:/path/to/file
+      else if (process.platform === "win32" && path.match(/^\/[A-Za-z]:/)) {
+        filePath = path.slice(1); // Remove leading slash
+      }
 
       const contents = await fsp.readFile(filePath, "utf-8");
       fileContentCache.set(path, contents);
@@ -262,15 +272,16 @@ export const runDirectivesScan = async ({
           const resolvedPath = resolved?.id;
 
           if (resolvedPath && path.isAbsolute(resolvedPath)) {
-            // Use namespace workaround for Windows paths to avoid ESM URL scheme issues
-            // Instead of returning file:// URLs directly, use a custom namespace
+            // Experiment: Try forward slash absolute paths for Windows esbuild compatibility
             const isWindows = process.platform === "win32";
             
             if (isWindows) {
-              // On Windows, use namespace to avoid direct file:// URL handling by esbuild
+              // Convert Windows path to forward slash format: C:\path -> /C:/path
+              const forwardSlashPath = "/" + resolvedPath.replace(/\\/g, "/");
+              log("Windows path converted to forward slash format:", forwardSlashPath);
+              
               return {
-                path: resolvedPath,
-                namespace: "windows-file",
+                path: forwardSlashPath,
                 pluginData: { inheritedEnv: importerEnv },
               };
             } else {
@@ -292,43 +303,6 @@ export const runDirectivesScan = async ({
           log("Marking as external:", args.path, "resolved to:", resolvedPath);
           return { external: true };
         });
-
-        // Handle Windows file namespace
-        build.onLoad(
-          { filter: /.*/, namespace: "windows-file" },
-          async (args: OnLoadArgs) => {
-            log("onLoad called for Windows file:", args.path);
-            
-            try {
-              const contents = await readFileWithCache(args.path);
-              const inheritedEnv = args.pluginData?.inheritedEnv || "worker";
-
-              const { moduleEnv, isClient, isServer } = classifyModule({
-                contents,
-                inheritedEnv,
-              });
-
-              // Store the definitive environment for this module
-              moduleEnvironments.set(args.path, moduleEnv);
-              log("Set environment for", args.path, "to", moduleEnv);
-
-              // Populate the output sets if the file has a directive
-              if (isClient) {
-                log("Discovered 'use client' in:", args.path);
-                clientFiles.add(args.path); // Use raw path, not file:// URL
-              }
-              if (isServer) {
-                log("Discovered 'use server' in:", args.path);
-                serverFiles.add(args.path); // Use raw path, not file:// URL
-              }
-
-              return { contents, loader: "default" };
-            } catch (error) {
-              log("Error reading file:", args.path, error);
-              return null;
-            }
-          },
-        );
 
         build.onLoad(
           { filter: /\.(m|c)?[jt]sx?$/ },
@@ -364,19 +338,21 @@ export const runDirectivesScan = async ({
               // Finally, populate the output sets if the file has a directive.
               if (isClient) {
                 log("Discovered 'use client' in:", args.path);
-                clientFiles.add(
-                  normalizeModulePath(args.path, rootConfig.root, {
-                    osify: "fileUrl",
-                  }),
-                );
+                // Convert forward slash Windows paths back to proper paths for collection
+                let collectionPath = args.path;
+                if (process.platform === "win32" && args.path.match(/^\/[A-Za-z]:/)) {
+                  collectionPath = args.path.slice(1); // Remove leading slash: /C:/path -> C:/path
+                }
+                clientFiles.add(collectionPath);
               }
               if (isServer) {
                 log("Discovered 'use server' in:", args.path);
-                serverFiles.add(
-                  normalizeModulePath(args.path, rootConfig.root, {
-                    osify: "fileUrl",
-                  }),
-                );
+                // Convert forward slash Windows paths back to proper paths for collection
+                let collectionPath = args.path;
+                if (process.platform === "win32" && args.path.match(/^\/[A-Za-z]:/)) {
+                  collectionPath = args.path.slice(1); // Remove leading slash: /C:/path -> C:/path
+                }
+                serverFiles.add(collectionPath);
               }
 
               return { contents, loader: "default" };
