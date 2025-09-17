@@ -309,5 +309,28 @@ The createViteAwareResolver fix was not the source of this particular error. The
 **Current Challenge:**
 Despite multiple targeted fixes, the core ESM URL scheme error persists. The error consistently occurs after directive scanning completes, suggesting it's happening in a different part of the esbuild process that we haven't addressed.
 
-**Next Steps:**
-Need to take a different approach - perhaps examine the actual esbuild plugin configuration or look for other places where Windows paths might be passed to Node.js ESM loader without proper conversion.
+**Testing Results (Run 17784512216):**
+
+**Status:**
+- Directive scanning still completes successfully ("Scan complete." appears consistently)
+- Runtime decreased to 2m41s, indicating the onLoad handler fix didn't address the core issue
+- Same error pattern persists: `ERR_UNSUPPORTED_ESM_URL_SCHEME: Received protocol 'c:'`
+- Error location: Still at line 224 in compiled `runDirectivesScan.mjs`
+
+**Summary of Systematic Fixes Applied:**
+1. Fixed `__dirname` derivation in constants.mts using `fileURLToPath`
+2. Applied `osify: 'fileUrl'` to entry points for esbuild
+3. Applied `osify: 'fileUrl'` to onResolve handler module resolution
+4. Implemented bidirectional conversion in `readFileWithCache` (file:// URLs to paths)
+5. Applied `osify: 'fileUrl'` to directiveModulesDevPlugin import generation
+6. Applied `osify: 'fileUrl'` to createViteAwareResolver relative import resolution
+7. Applied `osify: 'fileUrl'` to onLoad handler file collection
+
+**Current Assessment:**
+Despite comprehensive systematic fixes targeting all identifiable Windows path conversion points, the core ESM URL scheme error persists. The error consistently occurs within the esbuild process itself, suggesting a more fundamental issue that may require a different approach.
+
+**Possible Next Approaches:**
+1. Investigate esbuild's internal path handling or configuration
+2. Consider alternative approaches to the directive scanning process
+3. Examine if there are esbuild-specific Windows compatibility issues
+4. Look into whether the issue is in esbuild's dependency resolution or module loading
