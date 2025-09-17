@@ -397,3 +397,34 @@ To handle the complexity of the stream stitching process robustly, a set of dedi
 2.  **Test Coverage:** A corresponding test file, `streamExtractors.test.ts`, provides comprehensive unit tests for these utilities, covering edge cases like empty streams, content split across multiple chunks, and missing HTML tags to guarantee their reliability.
 
 3.  **Generic Stream Stitching:** The core stitching logic was refactored into a reusable `StreamStitcher` class (`sdk/src/runtime/lib/StreamStitcher.ts`), which is also fully unit-tested.
+
+## 17. Stream Stitching Implementation Issue Investigation
+
+During testing of the hydration fix, an issue was discovered where the preamble extraction appeared to be working correctly but the body content replacement was failing. To investigate this systematically, the stream stitching logic was refactored into a dedicated, testable function.
+
+### 17.1. Refactoring for Testability
+
+The complex stream processing logic in `renderToStream.tsx` was extracted into a new function `assembleHtmlStreams` in `sdk/src/runtime/render/assembleHtmlStreams.ts`. This function accepts the React shell stream and document stream as parameters, making it possible to unit test the stream stitching behavior in isolation without the full rendering pipeline.
+
+### 17.2. Test Results and Root Cause
+
+Unit tests revealed that:
+1. **Preamble extraction works correctly** - The `PreambleExtractor` successfully extracts script tags from the React shell's `<head>`.
+2. **Body content extraction works correctly** - The `BodyContentExtractor` successfully extracts content from between the React shell's `<body>` tags.
+3. **Stream replacement fails** - The `StreamStitcher` does not replace the placeholder with the extracted body content.
+
+The root cause is a fundamental issue in the `StreamStitcher` implementation. The `StreamStitcher` processes the document stream synchronously but attempts to read from the app content stream asynchronously within the transform. This creates a race condition where the document stream may be fully processed before the app content stream is ready to be consumed.
+
+### 17.3. Technical Analysis
+
+The issue occurs because:
+1. The document stream containing the placeholder is processed immediately by the `StreamStitcher`.
+2. The app content stream (from the React shell) is still being processed by the `BodyContentExtractor`.
+3. When the `StreamStitcher` encounters the placeholder, it tries to read from the app content stream, but that stream may not have any data ready yet.
+4. The `StreamStitcher` continues processing without waiting for the app content stream to be ready.
+
+This explains why the preamble injection works (it uses async string replacement) but the body content injection fails (it relies on stream replacement which has timing issues).
+
+### 17.4. Implications for Production
+
+In production, this issue would manifest as the user's `Document.tsx` structure being preserved with the correct hydration scripts in the head, but the application content would not be injected into the body. The placeholder would remain in the HTML, resulting in a broken page where the React application fails to render properly.

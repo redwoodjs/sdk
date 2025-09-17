@@ -85,12 +85,14 @@ export class BodyContentExtractor extends TransformStream<
         });
 
         if (this.#state === "before-body") {
-          const bodyStartIndex = bufferAsString.indexOf("<body>");
-          if (bodyStartIndex !== -1) {
+          const bodyStartMatch = bufferAsString.match(/<body[^>]*>/);
+          if (bodyStartMatch) {
             this.#state = "in-body";
+            const bodyStartIndex = bodyStartMatch.index!;
+            const bodyTagLength = bodyStartMatch[0].length;
             // Start of body is in this chunk, discard everything before it
             bufferAsString = bufferAsString.substring(
-              bodyStartIndex + "<body>".length,
+              bodyStartIndex + bodyTagLength,
             );
           } else {
             // Body not found yet, keep buffering
