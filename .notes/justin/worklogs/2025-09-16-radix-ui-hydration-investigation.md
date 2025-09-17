@@ -348,83 +348,20 @@ The key insight is that the `bootstrapScriptContent` option provides a **templat
 
 This correctly triggers the serialization of `resumableState`—which is required to fix the `useId` hydration mismatch—without producing any redundant or unwanted client-side code. It is the most direct and precise way to enable hydration.
 
-## 16. Final Solution: The Two-Stream Stitching Render
+## 16. Final Solution: Stream Coalescing
 
-The fix using `bootstrapScriptContent` proved to be a red herring. While it was based on a correct understanding of React's `resumableState`, it failed because the underlying rendering architecture was not aligned with React's expectations for its streaming renderer.
+Further testing revealed a critical race condition in the `StreamStitcher` implementation. The issue was that the `documentStream` (which is simple and renders quickly) would often be fully processed before the `reactShellStream` (containing the full app) had been processed by the `BodyContentExtractor`. This meant the placeholder replacement would fail because the content wasn't ready yet.
 
-### 16.1. The Core Misalignment
+The insight was that the `StreamStitcher`, as a `TransformStream`, was the wrong tool for the job as it can only operate on a single primary stream. A more robust solution was needed to correctly coordinate two independent streams.
 
-The investigation revealed a fundamental conflict between the framework's API philosophy and the design of React's streaming SSR.
+### 16.1. The Coalescing Strategy
 
-1.  **Framework Philosophy:** The user must have full and explicit control over the entire HTML document via a `Document.tsx` component. This is a core design principle to avoid "magic" and ensure transparency.
-2.  **React's Expectation:** For `useId` hydration to work, React's `renderToReadableStream` function *must* be the one to render the outer document shell (`<html>`, `<head>`, `<body>`). When it does so, it generates and injects a "preamble" into the `<head>`, which contains the critical `useId` seed (`resumableState`) needed for the client to synchronize its ID counter.
+The `StreamStitcher` was removed entirely and the `assembleHtmlStreams` function was rewritten to implement a "stream coalescing" strategy. Instead of a transform stream, the function now constructs and returns a new `ReadableStream` that manually orchestrates the merging of the two input streams.
 
-When we passed our user-defined `Document` into React's renderer, we prevented React from ever generating this preamble, leading directly to the hydration mismatch.
+This new implementation works by:
+1.  Reading from the `documentStream` and buffering its content.
+2.  Upon finding the `</head>` tag, it pauses, `awaits` the `preamblePromise` from the `PreambleExtractor`, injects the preamble content, and then continues.
+3.  Upon finding the body placeholder, it pauses again and pipes the entire `appContentStream` from the `BodyContentExtractor` into the output.
+4.  Finally, it streams the remainder of the `documentStream`.
 
-### 16.2. The Two-Stream Stitching Solution
-
-To resolve this without compromising the framework's philosophy or sacrificing performance, a fully streaming two-stream stitching strategy was implemented in `renderToStream.tsx`. Two separate render processes are executed concurrently, and their resulting streams are stitched together on the fly to create the final HTML output.
-
-**Stream 1: The React Shell.** First, React's renderer is called with *only* the application's core content. This produces a stream (`reactShellStream`) containing a minimal `<html>` shell where the `<head>` includes the critical preamble with `resumableState`.
-
-**Stream 2: The User Document.** Concurrently, the user's `Document` component is rendered into its own stream via a new SSR-bridged function, `renderDocumentToStream`.
-
-A final `stitcher` transform stream is used to combine them. It processes the user's `Document` stream, injects the preamble extracted from the React Shell stream into the `<head>`, and pipes the body of the React Shell stream into the `<body>`.
-
-The final output is a single, stitched stream that respects the user's `Document` structure, contains the state for hydration, and maintains the performance benefits of streaming from end to end.
-
-### 16.3. Performance Considerations of the Streaming Solution
-
-This two-stream stitching approach successfully solves the hydration problem while preserving the framework's API philosophy and the core benefits of streaming. However, it is important to acknowledge a minor performance trade-off inherent in the design: head-of-line blocking.
-
-**What is Head-of-Line Blocking?**
-Head-of-line blocking, in this context, means that the final HTML stream sent to the browser cannot begin until a small, initial part of the internal React Shell stream has been processed. The system must wait until it has received and parsed the entire `<head>` from the React Shell to extract the crucial preamble. Only after this is complete can the final stitched stream begin to be assembled and sent to the browser.
-
-**Why is this Acceptable?**
-This trade-off is considered acceptable for two main reasons:
-
-1.  **Minimal Buffering:** The amount of data that needs to be buffered is very small—only the content of the `<head>` tag from React's minimal shell. This results in a negligible delay to the Time To First Byte (TTFB) when compared to buffering the entire page, which was the flaw in the previous blocking implementation. The main application content within the `<body>` remains fully streamed from end to end.
-2.  **Architectural Integrity:** It is a small and necessary price to pay to preserve the simple and powerful user-controlled `Document` API, which is a core design principle. It allows the framework to achieve correctness without compromising on its developer experience goals or sacrificing the most significant performance benefits of streaming.
-
-### 16.4. Code Quality and Implementation Details
-
-To handle the complexity of the stream stitching process robustly, a set of dedicated, strongly-typed, and fully tested utilities were created as part of the implementation.
-
-1.  **Precise Stream Extraction:** A new module, `sdk/src/runtime/lib/streamExtractors.ts`, was created to house two specialized stream processors. This was a necessary step to avoid potential bugs, such as creating invalid nested `<body>` tags, by ensuring the stream manipulation was precise.
-    *   `PreambleExtractor`: A `WritableStream` that consumes a stream to extract the content from between the `<head>` tags.
-    *   `BodyContentExtractor`: A `TransformStream` that isolates and passes through *only* the content from between the `<body>` tags, discarding the tags themselves.
-
-2.  **Test Coverage:** A corresponding test file, `streamExtractors.test.ts`, provides comprehensive unit tests for these utilities, covering edge cases like empty streams, content split across multiple chunks, and missing HTML tags to guarantee their reliability.
-
-3.  **Generic Stream Stitching:** The core stitching logic was refactored into a reusable `StreamStitcher` class (`sdk/src/runtime/lib/StreamStitcher.ts`), which is also fully unit-tested.
-
-## 17. Stream Stitching Implementation Issue Investigation
-
-During testing of the hydration fix, an issue was discovered where the preamble extraction appeared to be working correctly but the body content replacement was failing. To investigate this systematically, the stream stitching logic was refactored into a dedicated, testable function.
-
-### 17.1. Refactoring for Testability
-
-The complex stream processing logic in `renderToStream.tsx` was extracted into a new function `assembleHtmlStreams` in `sdk/src/runtime/render/assembleHtmlStreams.ts`. This function accepts the React shell stream and document stream as parameters, making it possible to unit test the stream stitching behavior in isolation without the full rendering pipeline.
-
-### 17.2. Test Results and Root Cause
-
-Unit tests revealed that:
-1. **Preamble extraction works correctly** - The `PreambleExtractor` successfully extracts script tags from the React shell's `<head>`.
-2. **Body content extraction works correctly** - The `BodyContentExtractor` successfully extracts content from between the React shell's `<body>` tags.
-3. **Stream replacement fails** - The `StreamStitcher` does not replace the placeholder with the extracted body content.
-
-The root cause is a fundamental issue in the `StreamStitcher` implementation. The `StreamStitcher` processes the document stream synchronously but attempts to read from the app content stream asynchronously within the transform. This creates a race condition where the document stream may be fully processed before the app content stream is ready to be consumed.
-
-### 17.3. Technical Analysis
-
-The issue occurs because:
-1. The document stream containing the placeholder is processed immediately by the `StreamStitcher`.
-2. The app content stream (from the React shell) is still being processed by the `BodyContentExtractor`.
-3. When the `StreamStitcher` encounters the placeholder, it tries to read from the app content stream, but that stream may not have any data ready yet.
-4. The `StreamStitcher` continues processing without waiting for the app content stream to be ready.
-
-This explains why the preamble injection works (it uses async string replacement) but the body content injection fails (it relies on stream replacement which has timing issues).
-
-### 17.4. Implications for Production
-
-In production, this issue would manifest as the user's `Document.tsx` structure being preserved with the correct hydration scripts in the head, but the application content would not be injected into the body. The placeholder would remain in the HTML, resulting in a broken page where the React application fails to render properly.
+This approach completely eliminates the race condition by ensuring that the process explicitly waits for the necessary data from the slower `reactShellStream` before continuing to process the faster `documentStream`. The updated unit tests for `assembleHtmlStreams` now all pass, confirming the correctness of this solution.

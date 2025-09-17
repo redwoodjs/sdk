@@ -43,11 +43,11 @@ This is accomplished through a "two-stream stitching" process that runs in the `
 
 2.  **Stream 2: The User's Document:** Concurrently, the framework renders the user-provided `Document.tsx` component to a separate stream. This component contains the desired outer HTML structure, including the `<html>`, `<body>`, and any custom `<meta>` or `<link>` tags.
 
-3.  **Stitching:** The two streams are stitched together on the fly. This is not a simple concatenation. A set of dedicated, tested stream processing utilities (`PreambleExtractor` and `BodyContentExtractor`) are used to perform a precise surgical operation:
-    *   The preamble (the content of the `<head>`, including the crucial hydration script) is extracted from Stream 1.
-    *   The application markup (the content *between* the `<body>` tags) is also extracted from Stream 1.
-    *   The preamble is injected just before the `</head>` tag in Stream 2.
-    *   The application markup is injected at a placeholder location within the `<body>` of Stream 2.
+3.  **Coalescing:** A custom `ReadableStream` is constructed to manually coalesce the two streams, resolving the race condition inherent in simpler transform-based approaches. This new stream orchestrates the process:
+    *   It reads from the user's `Document` stream and passes chunks through directly.
+    *   When it buffers a chunk containing the `</head>` tag, it pauses, waits for the `preamble` to be extracted from the React Shell stream, injects it, and then continues processing the `Document` stream.
+    *   When it encounters the application placeholder, it again pauses and pipes the entire application content stream (extracted from the React Shell's body) into the final output.
+    *   Finally, it pipes the remainder of the user's `Document` stream through.
 
 The final, combined stream is then sent to the browser.
 
