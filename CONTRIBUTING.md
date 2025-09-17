@@ -186,76 +186,59 @@ pnpm format
 
 ## Dependency Management and Greenkeeping
 
-This document outlines the strategy for managing dependencies within the `rwsdk` monorepo. The primary goal is to maintain stability for our users by proactively testing updates to critical peer dependencies, while also keeping the SDK's internal dependencies up-to-date in a controlled manner.
+This section outlines the strategy for managing dependencies to maintain stability for users while keeping the SDK's own dependencies up-to-date.
 
 ### Guiding Principles
 
 1.  **User Stability First**: Changes to peer dependencies, which directly impact user projects, must be handled with the utmost care. We should never knowingly publish a version of the SDK that allows a broken peer dependency version range.
-2.  **Automation with Control**: We use automation to handle the routine task of updating dependencies, but maintain manual control over merging and releasing, especially for changes that affect peer dependencies.
-3.  **Clear Categorization**: We treat different types of dependencies differently, with stricter protocols for those that have a higher risk of impacting users.
+2.  **Automation with Control**: We use automation to handle routine updates, but maintain manual control over merging and releasing, especially for changes that affect peer dependencies.
+3.  **Clear Categorization**: We treat different types of dependencies with different protocols based on their potential impact.
 
 ### Dependency Categories and Update Cadence
 
-We divide our dependencies into three main categories, each with its own update schedule and process.
-
 #### 1. Peer Dependencies (`sdk/package.json`)
 
-These are the most critical dependencies, as they define the versions of packages like `wrangler` and `@cloudflare/vite-plugin` that user projects will use.
+These are the most critical dependencies (`wrangler`, `@cloudflare/vite-plugin`, etc.). Our process is designed to test the boundaries of our allowed `peerDependencies` version range.
 
 -   **Update Cadence**: "As Soon As Possible" (ASAP).
 -   **Process**:
-    1.  An automated process (e.g., Renovate on a daily schedule) will open a Pull Request to update the versions of these dependencies in our `starters/*` projects to the latest available versions that satisfy the `peerDependencies` range in `sdk/package.json`.
-    2.  This PR will trigger our full smoke test suite on CI.
-    3.  **Review the Signal**:
-        - **If CI passes**, the PR can be manually reviewed and merged.
-        - **If CI fails**, this is the signal that a peer dependency has a regression. This triggers the intervention protocol.
+    1.  **Testing New Versions**: An automated process opens a Pull Request to update the versions of these dependencies in our `starters/*` projects to the *latest available version* that still satisfies the SDK's `peerDependencies` range. This is how we define a "peer dependency update" in our context.
+    2.  **CI Signal**: This PR triggers our full smoke test suite. The CI result is the signal.
+    3.  **If CI passes**, the PR can be manually reviewed and merged. This indicates the new version is safe.
+    4.  **If CI fails**, it triggers the failure protocol below.
 
-#### Failure Protocol and Maintainer Intervention
+#### Failure Protocol for Peer Dependencies
 
-When a CI run fails for a peer dependency update, we use a specific, low-effort protocol to protect our users.
+When the smoke tests fail on a peer dependency update, it is a signal that requires manual intervention.
 
-1.  **Trigger the "Pin Dependency" Workflow**: A maintainer will navigate to the "Actions" tab in the GitHub repository and manually run the `Pin Dependency` workflow.
-2.  **Provide Inputs**: The workflow will prompt for the following information:
-    -   **Package Name**: The name of the package that failed (e.g., `wrangler`).
-    -   **Last Good Version**: The last version known to work (e.g., `4.35.0`).
-    -   **Branch Name**: The name of the branch with the failing PR.
-3.  **Automated Corrective Action**: The workflow will then automatically:
-    -   Check out the specified branch.
-    -   Revert the version of the package in all `starters/*/package.json` files to the `Last Good Version`.
-    -   Constrain the `peerDependencies` range in `sdk/package.json` to exclude the broken version. For example, if the broken version is `4.37.1`, the workflow will change a range of `^4.35.0` to `>=4.35.0 <4.37.0`.
-    -   Commit and push these changes back to the PR branch.
-4.  **Verify and Merge**: The CI will re-run on the branch. Once it passes, the PR can be merged. This prepares for a patch release of `rwsdk` that protects users from the faulty dependency.
-5.  **Investigate**: With the immediate issue contained, the root cause of the regression can be investigated without pressure.
-6.  **Lift the Restriction**: Once the dependency is fixed in a newer version, the constraint on the peer dependency range can be lifted in a future release.
+1.  **Maintainer Investigation**: The first step is always for a maintainer to investigate **why** the test is failing. The failure can have one of two root causes:
+    *   **An Issue in Our SDK**: The dependency may have introduced a breaking change that we need to adapt to. It's also possible, though we try to avoid it, that we were relying on internal APIs or implicit behavior that has changed. In this case, we need to fix our SDK code.
+    *   **A Regression in the Dependency**: The dependency may have a legitimate bug or regression.
 
-This process was successfully applied to handle recent regressions in `@cloudflare/vite-plugin` and `wrangler`.
+2.  **Corrective Action**:
+    *   If the issue is in our SDK, a fix should be implemented and pushed to the PR branch.
+    *   If the investigation determines the failure is a regression in the dependency itself and out of our control, a maintainer should trigger the **"Narrow Peer Dependency Range" workflow**.
+
+3.  **Using the "Narrow Peer Dependency Range" Workflow**:
+    *   This is a manually-triggered GitHub Action. A maintainer navigates to the "Actions" tab, selects the workflow, and provides three inputs: the `Package Name`, the `Last Good Version`, and the `Branch Name` of the failing PR.
+    *   The workflow then automatically commits a change to the PR branch that:
+        *   Reverts the dependency in the `starters/*` projects to the last known good version.
+        *   Narrows the version range in `sdk/package.json`'s `peerDependencies` to exclude the problematic version.
+    *   Once the workflow completes and CI passes on the PR, it can be merged, preparing for a patch release that protects users.
 
 #### 2. SDK Internal Dependencies (`sdk/package.json`)
 
 These are the `dependencies` and `devDependencies` used to build the SDK itself.
 
 -   **Update Cadence**: Weekly.
--   **Process**:
-    1.  An automated process will create a single, grouped Pull Request each week with all available updates for these dependencies.
-    2.  This PR will also be validated by the smoke test suite.
-    3.  After review and passing tests, it can be manually merged.
-    4.  **Security Advisories**: Updates for security vulnerabilities will be handled with an ASAP cadence, creating separate, immediate PRs.
+-   **Process**: A single, grouped Pull Request will be opened each week with all available updates. This PR must pass the smoke test suite before being manually merged. Security-related updates are handled immediately in separate PRs.
 
 #### 3. Starter Application Dependencies (`starters/*/package.json`)
 
 These are dependencies in our starter projects that are not peer dependencies of the SDK.
 
 -   **Update Cadence**: Weekly.
--   **Process**: Similar to the SDK internal dependencies, these will be handled in a single, grouped weekly PR, validated by smoke tests.
-
-### Automation with Renovate
-
-We will use Renovate to automate this strategy. Here is a conceptual overview of the configuration:
-
--   **Package Rules**: We will define rules to group dependencies based on the categories above (`peerDependencies`, `sdk-internal`, `starter-app`).
--   **Scheduling**: We will use Renovate's scheduling capabilities to define the ASAP and weekly cadences.
--   **Automerge**: Automerge will be disabled for all dependency updates to ensure manual review.
--   **PR Labels**: We will use labels to clearly identify the type and priority of each dependency update PR.
+-   **Process**: Handled in a single, grouped weekly PR, validated by smoke tests.
 
 ## Debugging changes to the sdk locally for a project
 
