@@ -86,6 +86,46 @@ describe("PreambleExtractor", () => {
     const preamble = await extractor.preamble;
     expect(preamble).toBe("preamble");
   });
+
+  it("should extract content within the head tag", async () => {
+    const extractor = new PreambleExtractor();
+    const stream = createStreamFromString(
+      '<!DOCTYPE html><html><head><script src="some-script.js"></script><link rel="stylesheet" href="styles.css">',
+    );
+    await stream.pipeTo(extractor);
+    const preamble = await extractor.preamble;
+    expect(preamble).toBe(
+      '<!DOCTYPE html><html><head><script src="some-script.js"></script><link rel="stylesheet" href="styles.css">',
+    );
+  });
+
+  it("should handle an empty head tag", async () => {
+    const extractor = new PreambleExtractor();
+    const stream = createStreamFromString("<html><head>");
+    await stream.pipeTo(extractor);
+    const preamble = await extractor.preamble;
+    expect(preamble).toBe("<html><head>");
+  });
+
+  it("should handle streams that end before the head tag is closed", async () => {
+    const extractor = new PreambleExtractor();
+    const stream = createStreamFromString("<html><head>no closing tag");
+    await stream.pipeTo(extractor);
+    const preamble = await extractor.preamble;
+    expect(preamble).toBe("");
+  });
+
+  it("should handle multiple chunks correctly", async () => {
+    const extractor = new PreambleExtractor();
+    const stream = createStreamFromString(
+      '<html><head><title>Test</title><link rel="stylesheet" href="style.css">',
+    );
+    await stream.pipeTo(extractor);
+    const preamble = await extractor.preamble;
+    expect(preamble).toBe(
+      '<html><head><title>Test</title><link rel="stylesheet" href="style.css">',
+    );
+  });
 });
 
 describe("BodyContentExtractor", () => {

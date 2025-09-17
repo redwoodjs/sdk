@@ -371,17 +371,35 @@ This approach completely eliminates the race condition by ensuring that the proc
 During debugging with extensive logging, discovered that the worker was bypassing the new `renderToStream` function entirely. The worker was calling `renderToRscStream` and `transformRscToHtmlStream` directly, which meant the two-stream coalescing logic was never executed. This explained why no logs from `renderToStream` or `assembleHtmlStreams` were appearing.
 
 Updated the worker to use `renderToStream` for HTML requests while preserving the old approach for RSC-only requests. This ensures that the hydration fix is actually applied to user requests.
-<!--  -->
+
 ## 18. Placeholder Rendering Issue
 
 Testing revealed that the placeholder `<div id="__RWS_APP_HTML__"></div>` was being rendered as escaped text rather than actual HTML. This was because React was treating the placeholder string as text content and escaping it for safety. Fixed by using `dangerouslySetInnerHTML` in `renderDocumentToStream` to inject the placeholder as raw HTML. Also updated the placeholder name from `__RWS_APP_HTML__` to `__RWSDK_APP_HTML__` for consistency with the framework naming.
 
 ## 19. RSC Payload Stream Connection Issue
 
-After fixing the placeholder rendering, the stream coalescing is working correctly - logs show the preamble injection, placeholder replacement, and React context script injection are all functioning. However, a new issue emerged: the client-side RSC payload consumption is failing with "Connection closed" errors.
+After fixing the placeholder rendering, the stream coalescing appeared to work, but a new issue emerged on the client-side. The application would initially render and then immediately disappear, accompanied by a "Connection closed" error in the browser console. The error's stack trace pointed to the client-side code responsible for consuming the RSC payload stream, suggesting that the stream was being terminated prematurely.
 
-The error occurs in the client's `Content` component around the `streamData` state line (line 126 in `client.tsx`). The application initially renders correctly but then disappears, suggesting the RSC stream connection is being terminated prematurely. This appears to be related to how the RSC payload is being consumed after the stream coalescing changes.
+The hypothesis was that the RSC payload stream was being consumed or closed during the server-side stream coalescing, leaving nothing for the client to read.
 
-## 20. RSC Payload Injection Timing Fix
+## 20. Attempted Fix: Adjusting RSC Payload Injection Timing
 
-The issue is that RSC payload injection was happening before stream coalescing, which meant the RSC stream was being consumed/teed early in the process. This corrupted the stream connection that the client expects to read from. The solution is to move RSC payload injection to the very end of the pipeline: first perform stream coalescing to get the complete HTML, then pipe that final result through the RSC payload injection. This preserves the RSC stream for client consumption while still embedding the payload in the HTML.
+To address the "Connection closed" error, the `renderToStream` function was refactored. The RSC stream was teed, with one branch used for generating the HTML shell and the other reserved for payload injection. The plan was to perform the stream coalescing first and then pipe the final, complete HTML stream through the `injectRSCPayload` utility. This was intended to preserve the RSC stream for client consumption while still embedding the payload in the final HTML output.
+
+However, upon testing, this did not resolve the underlying hydration mismatch.
+
+## 21. Verifying Stream Coalescing with Logging
+
+With the hydration issue still present, it became necessary to verify the stream coalescing logic itself. The plan was to add aggressive logging to trace the contents of each stream involved in the `assembleHtmlStreams` function to confirm whether the preamble and app body were being extracted and injected correctly.
+
+An initial attempt at this using an async helper function (`logStreamContent`) that drained the stream to log its content introduced a new bug: a `ReadableStream is currently locked to a reader` error. This was caused by a race condition where the logging function consumed a teed-off branch of the stream too aggressively, conflicting with the main processing logic. The logging approach was subsequently revised to use a non-destructive `TransformStream` that inspects chunks as they pass through without altering the stream's state.
+
+## 22. Root Cause Discovered: Flawed Preamble Extraction
+
+The corrected, non-destructive logging finally revealed the true root cause. The `PreambleExtractor` was flawed. It was designed to only extract content from *inside* the `<head>` tag of React's shell stream. However, the critical `resumableState` script required for hydration is injected by React *before* the `<html>` tag. The extractor was completely missing it, resulting in an empty preamble and a persistent hydration mismatch.
+
+The fix involves two parts:
+1.  **Modify `PreambleExtractor`**: The extractor was updated to capture *all* content from the very beginning of the stream up to the `</head>` tag. This ensures the `resumableState` script is captured regardless of its position.
+2.  **Modify `assembleHtmlStreams`**: The stream assembly logic was updated to replace the entire `<head>...</head>` section of the user's `Document` with the newly captured (and correct) preamble from React's shell.
+
+This change should finally resolve the `useId` hydration mismatch by correctly injecting the necessary state from the server into the final HTML document.
