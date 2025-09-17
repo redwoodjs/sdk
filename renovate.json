@@ -1,18 +1,18 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
-  "extends": ["config:base"],
+  "extends": ["config:recommended"],
   "packageRules": [
     {
       "description": "Group Cloudflare dependencies together as they are often released in tandem.",
-      "matchPackagePatterns": ["^@cloudflare/", "wrangler"],
+      "matchPackageNames": ["/^@cloudflare\\//", "wrangler"],
       "groupName": "cloudflare"
     },
     {
       "description": "Group all SDK internal dependencies (non-peer) into a single weekly PR.",
       "matchFilePaths": ["sdk/package.json"],
       "matchDepTypes": ["dependencies", "devDependencies"],
-      "excludePackagePatterns": [
-        "@cloudflare/vite-plugin",
+      "excludePackageNames": [
+        "/^@cloudflare\\//",
         "wrangler",
         "vite",
         "react",
@@ -26,8 +26,8 @@
       "description": "Group all starter application dependencies (non-peer) into a single weekly PR.",
       "matchFilePaths": ["starters/**/package.json"],
       "matchDepTypes": ["dependencies", "devDependencies"],
-      "excludePackagePatterns": [
-        "@cloudflare/vite-plugin",
+      "excludePackageNames": [
+        "/^@cloudflare\\//",
         "wrangler",
         "vite",
         "react",
@@ -40,15 +40,15 @@
     {
       "description": "Update peer dependencies in starter projects as soon as they are available.",
       "matchFilePaths": ["starters/**/package.json"],
-      "matchPackagePatterns": ["@cloudflare/vite-plugin", "wrangler", "vite"],
-      "excludePackagePatterns": ["@cloudflare/workers-types"],
+      "matchPackageNames": ["@cloudflare/vite-plugin", "wrangler", "vite"],
+      "excludePackageNames": ["@cloudflare/workers-types"],
       "groupName": "starter-peer-dependencies",
       "schedule": ["every weekend"],
       "prPriority": 1
     },
     {
       "description": "Group React-related packages together.",
-      "matchPackagePatterns": ["^react", "@types/react"],
+      "matchPackageNames": ["/^react/", "/^@types\\/react/"],
       "groupName": "react"
     },
     {
