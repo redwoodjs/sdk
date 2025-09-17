@@ -459,6 +459,7 @@ export function render<T extends RequestInfo = RequestInfo>(
   };
 
   const documentMiddleware: RouteMiddleware<T> = ({ rw }) => {
+    console.log("documentMiddleware ssr", options.ssr);
     rw.Document = Document;
     rw.rscPayload = options.rscPayload ?? true;
     rw.ssr = options.ssr ?? true;
