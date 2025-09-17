@@ -220,6 +220,34 @@ This confirms that the `fileUrl` approach is correct for making the esbuild scan
 **Next Steps:**
 We need to investigate what consumes the output of `runDirectivesScan` and where those file paths are being used. The error is likely in the code that imports or processes the files identified by the scan.
 
+## 13. The Root Cause: A Flawed Assumption
+
+The investigation into the consumer of the scan results (`directiveModulesDevPlugin.mts`) revealed a critical flaw in the previous fix.
+
+**The Flawed Logic:**
+1.  The `onResolve` handler in `runDirectivesScan` correctly converted Windows paths to `file:///` URLs and passed them to esbuild.
+2.  esbuild would then pass these `file:///` URLs to the `onLoad` handler as `args.path`.
+3.  My previous fix incorrectly assumed `args.path` was a clean system path and added it directly to the `clientFiles`/`serverFiles` sets.
+4.  This meant the `directiveModulesDevPlugin` was receiving `file:///` URLs, which it then tried to normalize *again*, causing the error.
+
+**The Correction:**
+The fix is to complete the "round trip" of path conversion. Inside the `onLoad` handler, we must convert the `file:///` URL from `args.path` back to a clean, absolute system path before adding it to the result sets.
+
+```typescript
+// sdk/src/vite/runDirectivesScan.mts -> onLoad handler
+
+if (isClient) {
+  // Convert the file URL from esbuild back to a clean absolute path
+  clientFiles.add(fileURLToPath(args.path));
+}
+if (isServer) {
+  // Convert the file URL from esbuild back to a clean absolute path
+  serverFiles.add(fileURLToPath(args.path));
+}
+```
+
+This ensures the downstream plugins receive the expected format (a standard system path), which they can then reliably convert to whatever format they need. This was the true root cause, and the latest CI run (17786508944) is testing this specific fix.
+
 ## 11. Refactoring Path Handling for Consistency
 
 A key insight is that our manual path handling in `runDirectivesScan.mts` is inconsistent. We have manual `if (isWindows)` checks that should be centralized into our `normalizeModulePath` utility.

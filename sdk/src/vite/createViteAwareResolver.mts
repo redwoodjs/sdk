@@ -225,9 +225,14 @@ class VitePluginResolverPlugin {
                     "File exists, resolving to: %s",
                     currentRequest.request,
                   );
+                  const osifiedPath = normalizeModulePath(
+                    currentRequest.request,
+                    this.environment.config.root,
+                    { absolute: true, osify: "fileUrl" },
+                  );
                   return callback(null, {
                     ...currentRequest,
-                    path: currentRequest.request,
+                    path: osifiedPath,
                   });
                 }
               } catch (e) {
