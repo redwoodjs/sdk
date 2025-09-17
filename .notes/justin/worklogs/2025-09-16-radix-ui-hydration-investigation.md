@@ -385,3 +385,15 @@ This trade-off is considered acceptable for two main reasons:
 
 1.  **Minimal Buffering:** The amount of data that needs to be buffered is very small—only the content of the `<head>` tag from React's minimal shell. This results in a negligible delay to the Time To First Byte (TTFB) when compared to buffering the entire page, which was the flaw in the previous blocking implementation. The main application content within the `<body>` remains fully streamed from end to end.
 2.  **Architectural Integrity:** It is a small and necessary price to pay to preserve the simple and powerful user-controlled `Document` API, which is a core design principle. It allows the framework to achieve correctness without compromising on its developer experience goals or sacrificing the most significant performance benefits of streaming.
+
+### 16.4. Code Quality and Implementation Details
+
+To handle the complexity of the stream stitching process robustly, a set of dedicated, strongly-typed, and fully tested utilities were created as part of the implementation.
+
+1.  **Precise Stream Extraction:** A new module, `sdk/src/runtime/lib/streamExtractors.ts`, was created to house two specialized stream processors. This was a necessary step to avoid potential bugs, such as creating invalid nested `<body>` tags, by ensuring the stream manipulation was precise.
+    *   `PreambleExtractor`: A `WritableStream` that consumes a stream to extract the content from between the `<head>` tags.
+    *   `BodyContentExtractor`: A `TransformStream` that isolates and passes through *only* the content from between the `<body>` tags, discarding the tags themselves.
+
+2.  **Test Coverage:** A corresponding test file, `streamExtractors.test.ts`, provides comprehensive unit tests for these utilities, covering edge cases like empty streams, content split across multiple chunks, and missing HTML tags to guarantee their reliability.
+
+3.  **Generic Stream Stitching:** The core stitching logic was refactored into a reusable `StreamStitcher` class (`sdk/src/runtime/lib/StreamStitcher.ts`), which is also fully unit-tested.
