@@ -488,34 +488,50 @@ describe("normalizeModulePath", () => {
     });
 
     it("should convert to file:// URL on Windows when osify: 'fileUrl' is true", () => {
-      const result = normalizeModulePath("C:\\Users\\test\\project\\src\\file.ts", "C:\\Users\\test\\project", {
-        platform: "win32",
-        osify: "fileUrl",
-      });
+      const result = normalizeModulePath(
+        "C:\\Users\\test\\project\\src\\file.ts",
+        "C:\\Users\\test\\project",
+        {
+          platform: "win32",
+          osify: "fileUrl",
+        },
+      );
       expect(result).toBe("file:///C:/Users/test/project/src/file.ts");
     });
 
     it("should not convert to file:// URL on non-Windows platforms", () => {
-      const result = normalizeModulePath("/Users/test/project/src/file.ts", "/Users/test/project", {
-        platform: "linux",
-        osify: "fileUrl",
-      });
+      const result = normalizeModulePath(
+        "/Users/test/project/src/file.ts",
+        "/Users/test/project",
+        {
+          platform: "linux",
+          osify: "fileUrl",
+        },
+      );
       expect(result).toBe("/src/file.ts");
     });
 
     it("should convert to unix-style path on Windows when osify: 'unix-win' is true", () => {
-      const result = normalizeModulePath("C:\\Users\\test\\project\\src\\file.ts", "C:\\Users\\test\\project", {
-        platform: "win32",
-        osify: "unix-win",
-      });
+      const result = normalizeModulePath(
+        "C:\\Users\\test\\project\\src\\file.ts",
+        "C:\\Users\\test\\project",
+        {
+          platform: "win32",
+          osify: "unix-win",
+        },
+      );
       expect(result).toBe("/C:/Users/test/project/src/file.ts");
     });
 
     it("should not convert to unix-style on non-Windows platforms", () => {
-      const result = normalizeModulePath("/Users/test/project/src/file.ts", "/Users/test/project", {
-        platform: "linux",
-        osify: "unix-win",
-      });
+      const result = normalizeModulePath(
+        "/Users/test/project/src/file.ts",
+        "/Users/test/project",
+        {
+          platform: "linux",
+          osify: "unix-win",
+        },
+      );
       expect(result).toBe("/src/file.ts");
     });
 
