@@ -248,6 +248,36 @@ if (isServer) {
 
 This ensures the downstream plugins receive the expected format (a standard system path), which they can then reliably convert to whatever format they need. This was the true root cause, and the latest CI run (17786508944) is testing this specific fix.
 
+## 14. Fixing the Absolute Path Fallback in the Resolver
+
+The CI run failed again with the exact same error. This proved the "round trip" logic, while correct, was not the only issue. The error had to be coming from another path leaking through.
+
+A systematic review of all `normalizeModulePath` usages led to the discovery of a critical bug in `createViteAwareResolver.mts`.
+
+**The Bug:**
+The resolver has a fallback mechanism. If a Vite plugin doesn't resolve an absolute path, the resolver checks if the file exists on disk. If it does, it was returning the raw, absolute Windows path (e.g., `C:\...`) directly to esbuild. This was the final leak.
+
+**The Fix:**
+The solution was to ensure this fallback path is also converted to a `file://` URL before being returned.
+
+```typescript
+// sdk/src/vite/createViteAwareResolver.mts
+
+if (fs.existsSync(currentRequest.request)) {
+  const osifiedPath = normalizeModulePath(
+    currentRequest.request,
+    this.environment.config.root,
+    { absolute: true, osify: "fileUrl" }
+  );
+  return callback(null, {
+    ...currentRequest,
+    path: osifiedPath,
+  });
+}
+```
+
+This closes the last known loophole where a raw Windows path could be passed to Node's ESM loader. The latest CI run is testing this change.
+
 ## 11. Refactoring Path Handling for Consistency
 
 A key insight is that our manual path handling in `runDirectivesScan.mts` is inconsistent. We have manual `if (isWindows)` checks that should be centralized into our `normalizeModulePath` utility.

@@ -6,6 +6,7 @@ import createDebug from "debug";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { Environment } from "vite";
 const debug = createDebug("rwsdk:vite:enhanced-resolve-plugin");
+let resolveIdCounter = 0;
 
 // Enhanced-resolve plugin that wraps Vite plugin resolution
 class VitePluginResolverPlugin {
@@ -31,6 +32,12 @@ class VitePluginResolverPlugin {
       .tapAsync(
         "VitePluginResolverPlugin",
         (request: any, resolveContext: any, callback: any) => {
+          const resolveId = ++resolveIdCounter;
+          debug(`[${resolveId}] VitePluginResolverPlugin`, {
+            request: request.request,
+            path: request.path,
+          });
+
           const plugins = this.environment?.plugins;
           if (!plugins) {
             return callback();
@@ -48,11 +55,15 @@ class VitePluginResolverPlugin {
                   {},
                   (err: any, result: any) => {
                     if (!err && result) {
-                      debug("Context resolve: %s -> %s", id, result);
+                      debug(
+                        `[${resolveId}] Context resolve: %s -> %s`,
+                        id,
+                        result,
+                      );
                       resolve({ id: result });
                     } else {
                       debug(
-                        "Context resolve failed for %s: %s",
+                        `[${resolveId}] Context resolve failed for %s: %s`,
                         id,
                         err?.message || "not found",
                       );
@@ -64,12 +75,12 @@ class VitePluginResolverPlugin {
             },
           };
 
-          debug("Trying to resolve %s from %s", request.request, request.path);
+          debug(`[${resolveId}] Trying to resolve %s from %s`, request.request, request.path);
 
           // This function encapsulates the logic to process Vite plugins for a given request.
           const runPluginProcessing = async (currentRequest: any) => {
             debug(
-              "Available plugins:",
+              `[${resolveId}] Available plugins`,
               plugins.map((p: any) => p.name),
             );
 
@@ -155,7 +166,7 @@ class VitePluginResolverPlugin {
 
                 if (shouldSkip) {
                   debug(
-                    "Skipping plugin '%s' due to filter mismatch for '%s'",
+                    `[${resolveId}] Skipping plugin '%s' for '%s'`,
                     plugin.name,
                     currentRequest.request,
                   );
@@ -165,7 +176,7 @@ class VitePluginResolverPlugin {
 
               try {
                 debug(
-                  "Calling plugin '%s' for '%s'",
+                  `[${resolveId}] Calling plugin '%s' for '%s'`,
                   plugin.name,
                   currentRequest.request,
                 );
@@ -177,7 +188,7 @@ class VitePluginResolverPlugin {
                   { scan: true },
                 );
 
-                debug("Plugin '%s' returned:", plugin.name, result);
+                debug(`[${resolveId}] Plugin '%s' returned`, plugin.name, result);
 
                 if (!result) continue;
 
@@ -186,7 +197,7 @@ class VitePluginResolverPlugin {
 
                 if (resolvedId && resolvedId !== currentRequest.request) {
                   debug(
-                    "Plugin '%s' resolved '%s' -> '%s'",
+                    `[${resolveId}] Plugin '%s' resolved '%s' -> '%s'`,
                     plugin.name,
                     currentRequest.request,
                     resolvedId,
@@ -198,13 +209,13 @@ class VitePluginResolverPlugin {
                   });
                 } else if (resolvedId === currentRequest.request) {
                   debug(
-                    "Plugin '%s' returned unchanged ID, continuing to next plugin",
+                    `[${resolveId}] Plugin '%s' returned unchanged ID`,
                     plugin.name,
                   );
                 }
               } catch (e) {
                 debug(
-                  "Plugin '%s' failed while resolving '%s': %s",
+                  `[${resolveId}] Plugin '%s' failed for '%s': %s`,
                   plugin.name,
                   currentRequest.request,
                   (e as Error).message,
@@ -213,7 +224,7 @@ class VitePluginResolverPlugin {
             }
             // If no plugin resolves, fall back to enhanced-resolve's default behavior
             debug(
-              "No Vite plugin resolved '%s', falling back.",
+              `[${resolveId}] No Vite plugin resolved '%s', falling back.`,
               currentRequest.request,
             );
 
@@ -222,7 +233,7 @@ class VitePluginResolverPlugin {
               try {
                 if (fs.existsSync(currentRequest.request)) {
                   debug(
-                    "File exists, resolving to: %s",
+                    `[${resolveId}] File exists, resolving to: %s`,
                     currentRequest.request,
                   );
                   const osifiedPath = normalizeModulePath(
@@ -237,7 +248,7 @@ class VitePluginResolverPlugin {
                 }
               } catch (e) {
                 debug(
-                  "Error checking file existence: %s",
+                  `[${resolveId}] Error checking file existence: %s`,
                   (e as Error).message,
                 );
               }
@@ -259,16 +270,20 @@ class VitePluginResolverPlugin {
                 importerDir,
                 { absolute: true, osify: "fileUrl" },
               );
-              debug("Absolutified %s -> %s", request.request, absolutePath);
+              debug(
+                `[${resolveId}] Absolutified %s -> %s`,
+                request.request,
+                absolutePath,
+              );
 
               const absoluteRequest = { ...request, request: absolutePath };
               runPluginProcessing(absoluteRequest).catch((e) => {
-                debug("Error in plugin processing: %s", e.message);
+                debug(`[${resolveId}] Error in plugin processing`, e.message);
                 callback();
               });
             } catch (e) {
               debug(
-                "Failed to absolutify %s: %s",
+                `[${resolveId}] Failed to absolutify %s: %s`,
                 request.request,
                 (e as Error).message,
               );
@@ -277,7 +292,7 @@ class VitePluginResolverPlugin {
           } else {
             // For non-relative imports, process them directly
             runPluginProcessing(request).catch((e) => {
-              debug("Error in plugin processing: %s", e.message);
+              debug(`[${resolveId}] Error in plugin processing`, e.message);
               callback();
             });
           }

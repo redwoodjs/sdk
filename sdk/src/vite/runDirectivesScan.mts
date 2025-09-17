@@ -17,6 +17,8 @@ import resolve from "enhanced-resolve";
 
 const log = debug("rwsdk:vite:run-directives-scan");
 
+let resolveIdCounter = 0;
+
 // Copied from Vite's source code.
 // https://github.com/vitejs/vite/blob/main/packages/vite/src/shared/utils.ts
 const isObject = (value: unknown): value is Record<string, any> =>
@@ -211,11 +213,17 @@ export const runDirectivesScan = async ({
         );
 
         build.onResolve({ filter: /.*/ }, async (args: OnResolveArgs) => {
+          const resolveId = ++resolveIdCounter;
+          log(`[${resolveId}] onResolve`, {
+            path: args.path,
+            importer: args.importer,
+            kind: args.kind,
+          });
+
           if (externalModules.includes(args.path)) {
+            log(`[${resolveId}] Externalized`, args.path);
             return { external: true };
           }
-
-          log("onResolve called for:", args.path, "from:", args.importer);
 
           let importerEnv = moduleEnvironments.get(args.importer);
 
@@ -250,7 +258,10 @@ export const runDirectivesScan = async ({
             importerEnv = "worker"; // Default for entry points or non-script files
           }
 
-          log("Importer:", args.importer, "environment:", importerEnv);
+          log(`[${resolveId}] Importer env`, {
+            importer: args.importer,
+            env: importerEnv,
+          });
 
           const resolved = await resolveModuleWithEnvironment({
             path: args.path,
@@ -260,7 +271,7 @@ export const runDirectivesScan = async ({
             workerResolver,
           });
 
-          log("Resolution result:", resolved);
+          log(`[${resolveId}] Resolution result`, resolved);
           const resolvedPath = resolved?.id;
 
           if (resolvedPath && path.isAbsolute(resolvedPath)) {
@@ -271,7 +282,7 @@ export const runDirectivesScan = async ({
               rootConfig.root,
               { absolute: true, osify: "fileUrl" },
             );
-            log("Normalized path:", esbuildPath);
+            log(`[${resolveId}] Normalized path`, esbuildPath);
 
             return {
               path: esbuildPath,
@@ -279,7 +290,10 @@ export const runDirectivesScan = async ({
             };
           }
 
-          log("Marking as external:", args.path, "resolved to:", resolvedPath);
+          log(`[${resolveId}] Marking as external`, {
+            path: args.path,
+            resolvedTo: resolvedPath,
+          });
           return { external: true };
         });
 
