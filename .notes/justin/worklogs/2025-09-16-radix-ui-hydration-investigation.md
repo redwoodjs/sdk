@@ -348,7 +348,7 @@ The key insight is that the `bootstrapScriptContent` option provides a **templat
 
 This correctly triggers the serialization of `resumableState`—which is required to fix the `useId` hydration mismatch—without producing any redundant or unwanted client-side code. It is the most direct and precise way to enable hydration.
 
-## 16. Final Solution: The Two-Pass Render
+## 16. Final Solution: The Two-Stream Stitching Render
 
 The fix using `bootstrapScriptContent` proved to be a red herring. While it was based on a correct understanding of React's `resumableState`, it failed because the underlying rendering architecture was not aligned with React's expectations for its streaming renderer.
 
@@ -361,20 +361,27 @@ The investigation revealed a fundamental conflict between the framework's API ph
 
 When we passed our user-defined `Document` into React's renderer, we prevented React from ever generating this preamble, leading directly to the hydration mismatch.
 
-### 16.2. The Two-Pass Solution
+### 16.2. The Two-Stream Stitching Solution
 
-To resolve this without compromising the framework's philosophy, a two-pass rendering strategy was implemented in `renderToStream.tsx`.
+To resolve this without compromising the framework's philosophy or sacrificing performance, a fully streaming two-stream stitching strategy was implemented in `renderToStream.tsx`. Two separate render processes are executed concurrently, and their resulting streams are stitched together on the fly to create the final HTML output.
 
-**Pass 1: Generate Hydration State & App Content**
-React's `renderToReadableStream` is called with *only* the core application components. This allows React to do what it needs to do: it renders the app inside a minimal `<html>` shell and, most importantly, injects the necessary preamble with `resumableState` into the `<head>`. This entire shell is buffered into an in-memory string.
+**Stream 1: The React Shell.** First, React's renderer is called with *only* the application's core content. This produces a stream (`reactShellStream`) containing a minimal `<html>` shell where the `<head>` includes the critical preamble with `resumableState`.
 
-**Pass 2: Stitch into the User's Document**
-The preamble and the rendered app content are extracted from the in-memory string using regular expressions. The user's `Document` component is then rendered (also buffered to a string), and the extracted preamble and app content are injected into the appropriate places (`</head>` and in place of `{children}`).
+**Stream 2: The User Document.** Concurrently, the user's `Document` component is rendered into its own stream via a new SSR-bridged function, `renderDocumentToStream`.
 
-### 16.3. Performance Trade-off
+A final `stitcher` transform stream is used to combine them. It processes the user's `Document` stream, injects the preamble extracted from the React Shell stream into the `<head>`, and pipes the body of the React Shell stream into the `<body>`.
 
-This solution successfully fixes the hydration issue while preserving the user-controlled `Document` API. However, it comes at the cost of performance, specifically Time To First Byte (TTFB).
+The final output is a single, stitched stream that respects the user's `Document` structure, contains the state for hydration, and maintains the performance benefits of streaming from end to end.
 
-Because the entire process requires buffering two separate renders into memory before stitching them together, the browser receives no data until the server-side render of the application is fully complete. This negates the primary benefit of streaming.
+### 16.3. Performance Considerations of the Streaming Solution
 
-While the total server processing time is not significantly longer (as the application render remains the bottleneck), the delay in TTFB is a notable trade-off. For many applications, this is an acceptable price to pay for API consistency and correctness. This implementation can be revisited in the future to implement a more complex, fully-streaming stitching mechanism if the TTFB impact proves to be a significant issue for users.
+This two-stream stitching approach successfully solves the hydration problem while preserving the framework's API philosophy and the core benefits of streaming. However, it is important to acknowledge a minor performance trade-off inherent in the design: head-of-line blocking.
+
+**What is Head-of-Line Blocking?**
+Head-of-line blocking, in this context, means that the final HTML stream sent to the browser cannot begin until a small, initial part of the internal React Shell stream has been processed. The system must wait until it has received and parsed the entire `<head>` from the React Shell to extract the crucial preamble. Only after this is complete can the final stitched stream begin to be assembled and sent to the browser.
+
+**Why is this Acceptable?**
+This trade-off is considered acceptable for two main reasons:
+
+1.  **Minimal Buffering:** The amount of data that needs to be buffered is very small—only the content of the `<head>` tag from React's minimal shell. This results in a negligible delay to the Time To First Byte (TTFB) when compared to buffering the entire page, which was the flaw in the previous blocking implementation. The main application content within the `<body>` remains fully streamed from end to end.
+2.  **Architectural Integrity:** It is a small and necessary price to pay to preserve the simple and powerful user-controlled `Document` API, which is a core design principle. It allows the framework to achieve correctness without compromising on its developer experience goals or sacrificing the most significant performance benefits of streaming.

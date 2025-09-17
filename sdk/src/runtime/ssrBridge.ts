@@ -14,4 +14,6 @@ export {
   ssrLoadModule,
   ssrGetModuleExport,
   ssrWebpackRequire,
-} from "./imports/ssr";
+} from "./imports/ssr.js";
+
+export { renderDocumentToStream } from "./render/renderDocumentToStream.js";
