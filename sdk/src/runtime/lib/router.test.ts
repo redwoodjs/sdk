@@ -99,6 +99,8 @@ describe("defineRoutes - Request Handling Behavior", () => {
         ssr: true,
         databases: new Map(),
         scriptsToBeLoaded: new Set(),
+        entryScripts: new Set(),
+        inlineScripts: new Set(),
         pageRouteResolved: undefined,
       } as RwContext,
       cf: {} as any,
