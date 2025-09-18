@@ -26,6 +26,43 @@ import type {
   TransportContext,
 } from "./types";
 
+declare global {
+  var __FLIGHT_DATA__: any[] | undefined;
+}
+
+const FLIGHT_DATA_TIMEOUT_MS = 2000; // 2 seconds
+const FLIGHT_DATA_POLL_INTERVAL_MS = 10;
+
+async function waitForFlightData() {
+  let reader: ReadableStreamDefaultReader<any> | undefined;
+  let timeoutId: ReturnType<typeof setTimeout>;
+
+  try {
+    reader = rscStream.getReader();
+
+    const dataPromise = reader.read();
+
+    const timeoutPromise = new Promise<void>((_, reject) => {
+      timeoutId = setTimeout(() => {
+        reject(
+          new Error(
+            "[RSDK] __FLIGHT_DATA__ did not receive data within timeout.",
+          ),
+        );
+      }, FLIGHT_DATA_TIMEOUT_MS);
+    });
+
+    await Promise.race([dataPromise, timeoutPromise]);
+  } catch (error) {
+    console.warn(error instanceof Error ? error.message : String(error));
+  } finally {
+    if (reader) {
+      reader.releaseLock();
+    }
+    clearTimeout(timeoutId!);
+  }
+}
+
 export const fetchTransport: Transport = (transportContext) => {
   const fetchCallServer = async <Result,>(
     id: null | string,
@@ -99,55 +136,52 @@ export const initClient = async ({
     transportCallServer = createRealtimeTransport(transportContext);
   };
 
-  globalThis.__rsc_callServer = callServer;
+  self.__rsc_callServer = callServer;
 
-  globalThis.__rw = {
+  self.__rw = {
     callServer,
     upgradeToRealtime,
   };
 
-  document.addEventListener("DOMContentLoaded", () => {
-    const rootEl = document.getElementById("hydrate-root");
+  // Wait for __FLIGHT_DATA__ to be populated by server scripts
+  await waitForFlightData();
 
-    if (!rootEl) {
-      throw new Error('no element with id "hydrate-root"');
-    }
+  const rootEl = document.getElementById("hydrate-root");
 
-    let rscPayload: any;
+  if (!rootEl) {
+    throw new Error('no element with id "hydrate-root"');
+  }
 
-    // context(justinvdm, 18 Jun 2025): We inject the RSC payload
-    // unless render(Document, [...], { rscPayload: false }) was used.
-    if ((globalThis as any).__FLIGHT_DATA) {
-      rscPayload = createFromReadableStream(rscStream, {
-        callServer,
-      });
-    }
+  const rscPayload = createFromReadableStream(rscStream, {
+    callServer,
+  });
 
-    function Content() {
-      const [streamData, setStreamData] = React.useState(rscPayload);
-      const [_isPending, startTransition] = React.useTransition();
-      transportContext.setRscPayload = (v) =>
-        startTransition(() => setStreamData(v));
-      return (
-        <>
-          {streamData
-            ? React.use<{ node: React.ReactNode }>(streamData).node
-            : null}
-        </>
+  // New component to consume the RSC stream, wrapped in Suspense
+  function RscStreamContent({ rscPayload }: { rscPayload: any }) {
+    const rscResponse = React.use(rscPayload);
+    return (rscResponse as any).node as Awaited<React.ReactNode>;
+  }
+
+  // The main App component passed to hydrateRoot, which renders existing children
+  // and then the RSC content within a Suspense boundary.
+  function App() {
+    return (
+      <React.Suspense fallback={<></>}>
+        <RscStreamContent rscPayload={rscPayload} />
+      </React.Suspense>
+    );
+  }
+
+  hydrateRoot(rootEl, <App />, {
+    onUncaughtError: (error, { componentStack }) => {
+      console.error(
+        "Uncaught error: %O\n\nComponent stack:%s",
+        error,
+        componentStack,
       );
-    }
+    },
 
-    hydrateRoot(rootEl, <Content />, {
-      onUncaughtError: (error, { componentStack }) => {
-        console.error(
-          "Uncaught error: %O\n\nComponent stack:%s",
-          error,
-          componentStack,
-        );
-      },
-
-      ...hydrateRootOptions,
-    });
+    ...hydrateRootOptions,
   });
 
   if (import.meta.hot) {
