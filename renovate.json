@@ -1,6 +1,7 @@
 {
   "$schema": "https://docs.renovatebot.com/renovate-schema.json",
   "extends": ["config:recommended"],
+  "separateMajorMinor": false,
   "packageRules": [
     {
       "description": "Group Cloudflare dependencies together as they are often released in tandem.",
@@ -37,12 +38,7 @@
     },
     {
       "description": "Update peer dependencies in starter projects as soon as they are available.",
-      "matchPackageNames": [
-        "@cloudflare/vite-plugin",
-        "wrangler",
-        "vite",
-        "!@cloudflare/workers-types"
-      ],
+      "matchPackageNames": ["@cloudflare/vite-plugin", "wrangler", "vite"],
       "groupName": "starter-peer-dependencies",
       "schedule": ["every weekend"],
       "prPriority": 1,
@@ -59,18 +55,17 @@
       "matchCurrentVersion": "!/^0/",
       "automerge": true,
       "prPriority": 2
+    },
+    {
+      "description": "Group all other dependencies (docs, root, actions) into a single weekly PR.",
+      "groupName": "repository-maintenance",
+      "schedule": ["on saturday"]
     }
   ],
   "prHeader": " chore(deps): {{{prTitle}}}",
   "prBodyNotes": "This PR updates the following dependencies:\n\n{{{table}}}",
   "automerge": false,
-  "major": {
-    "automerge": false
-  },
-  "minor": {
-    "automerge": false
-  },
-  "patch": {
-    "automerge": false
-  }
+  "major": { "automerge": false },
+  "minor": { "automerge": false },
+  "patch": { "automerge": false }
 }
