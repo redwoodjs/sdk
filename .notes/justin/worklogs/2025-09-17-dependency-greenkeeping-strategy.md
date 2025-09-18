@@ -155,4 +155,12 @@ The root cause was that the `peerDependencies` for `react`, `react-dom`, and `re
 
 **Action:**
 
-The `peerDependencies` in `sdk/package.json` have been updated from an exact version to a `>` range (e.g., `react: ">=19.2.0-canary-..."`). This allows any newer version of the React canary packages to satisfy the requirement, resolving the dependency conflict. This change was committed directly to this branch, which will trigger Renovate to rebase its PR and re-run CI.
+The `peerDependencies` in `sdk/package.json` have been updated from an exact version to a `>=... <...` range (e.g., `react: ">=19.2.0-canary-... <20.0.0"`). This allows any newer version of the React canary packages to satisfy the requirement, resolving the dependency conflict. This change was ultimately merged to `main` in a separate hotfix PR to unblock Renovate.
+
+### Step 12: Simplifying the Failure Protocol
+
+Upon reflection, the automated "Narrow Peer Dependency Range" workflow was identified as a premature optimization. The process of handling a peer dependency failure is infrequent and requires careful manual investigation. Automating this step adds unnecessary complexity and maintenance overhead for a rare event.
+
+**Decision & Action:**
+
+The automated workflow has been removed. The `CONTRIBUTING.md` guide has been updated to document a simpler, fully manual protocol for maintainers to follow when a peer dependency update fails CI. This involves manually reverting the dependency in the starter projects and constraining the peer dependency range in the `sdk/package.json` on the Renovate PR branch. This approach is more pragmatic and reduces complexity.

@@ -207,24 +207,22 @@ These are the most critical dependencies (`wrangler`, `@cloudflare/vite-plugin`,
     3.  **If CI passes**, the PR can be manually reviewed and merged. This indicates the new version is safe.
     4.  **If CI fails**, it triggers the failure protocol below.
 
-#### Failure Protocol for Peer Dependencies
+### Failure Protocol for Peer Dependencies
 
 When the smoke tests fail on a peer dependency update, it is a signal that requires manual intervention.
 
 1.  **Maintainer Investigation**: The first step is always for a maintainer to investigate **why** the test is failing. The failure can have one of two root causes:
-    *   **An Issue in Our SDK**: The dependency may have introduced a breaking change that we need to adapt to. It's also possible, though we try to avoid it, that we were relying on internal APIs or implicit behavior that has changed. In this case, we need to fix our SDK code.
+    *   **An Issue in Our SDK**: The dependency may have introduced a breaking change that we need to adapt to.
     *   **A Regression in the Dependency**: The dependency may have a legitimate bug or regression.
 
-2.  **Corrective Action**:
-    *   If the issue is in our SDK, a fix should be implemented and pushed to the PR branch.
-    *   If the investigation determines the failure is a regression in the dependency itself and out of our control, a maintainer should trigger the **"Narrow Peer Dependency Range" workflow**.
+2.  **Manual Corrective Action**:
+    *   If the issue is in our SDK, a fix should be implemented and pushed directly to the failing Renovate PR branch.
+    *   If the failure is a regression in the dependency itself, a maintainer must perform the following steps **on the Renovate PR branch**:
+        1.  **Revert Dependency in Starters**: In the `starters/*/package.json` files, revert the version of the failing dependency back to the last known good version.
+        2.  **Constrain Peer Dependency**: In `sdk/package.json`, update the `peerDependencies` entry for the package to add an upper bound that excludes the broken version (e.g., change `^1.2.3` to `>=1.2.3 <1.2.4`).
+        3.  **Commit and Push**: Commit these changes with a message explaining the reason for the constraint and push to the branch.
 
-3.  **Using the "Narrow Peer Dependency Range" Workflow**:
-    *   This is a manually-triggered GitHub Action. A maintainer navigates to the "Actions" tab, selects the workflow, and provides three inputs: the `Package Name`, the `Last Good Version`, and the `Branch Name` of the failing PR.
-    *   The workflow then automatically commits a change to the PR branch that:
-        *   Reverts the dependency in the `starters/*` projects to the last known good version.
-        *   Narrows the version range in `sdk/package.json`'s `peerDependencies` to exclude the problematic version.
-    *   Once the workflow completes and CI passes on the PR, it can be merged, preparing for a patch release that protects users.
+    *   Once CI passes on the PR, it can be merged. This prepares for a patch release of `rwsdk` that protects users from the faulty dependency.
 
 #### 2. SDK Internal Dependencies (`sdk/package.json`)
 
