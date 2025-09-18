@@ -39,14 +39,7 @@ describe("transformJsxScriptTagsCode", () => {
 
     const expected = `import { requestInfo } from "rwsdk/worker";
 
-(
-(requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
-jsx("script", {
-src: "rwsdk_asset:/src/client.tsx",
-type: "module",
-nonce: requestInfo.rw.nonce
-})
-)`;
+((requestInfo.rw.entryScripts.add("/src/client.tsx")), null)`;
 
     expect(normalizeCode(result?.code || "")).toEqual(normalizeCode(expected));
   });
@@ -69,14 +62,8 @@ nonce: requestInfo.rw.nonce
 
     const expected = `import { requestInfo } from "rwsdk/worker";
 
-(
-(requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
-jsx("script", {
-type: "module",
-children: "import('rwsdk_asset:/src/client.tsx').then(module => { console.log(module); })",
-nonce: requestInfo.rw.nonce
-})
-)`;
+((requestInfo.rw.inlineScripts.add("import('/src/client.tsx').then(module => { console.log(module); })")),
+(requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")), null)`;
 
     expect(normalizeCode(result?.code || "")).toEqual(normalizeCode(expected));
   });
@@ -96,12 +83,8 @@ nonce: requestInfo.rw.nonce
 
     const expected = `import { requestInfo } from "rwsdk/worker";
 
-(
-(requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
-jsx("script", { type: "module", children: "import('rwsdk_asset:/src/client.tsx')",
-nonce: requestInfo.rw.nonce
-})
-)`;
+((requestInfo.rw.inlineScripts.add("import('/src/client.tsx')")),
+(requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")), null)`;
 
     expect(normalizeCode(result?.code || "")).toEqual(normalizeCode(expected));
   });
@@ -131,21 +114,8 @@ nonce: requestInfo.rw.nonce
 
     const expected = `import { requestInfo } from "rwsdk/worker";
 
-(
-(requestInfo.rw.scriptsToBeLoaded.add("/src/entry.js")),
-jsx("script", {
-type: "module",
-children: \`
-          // Some comments here
-          const init = async () => {
-            await import('rwsdk_asset:/src/entry.js');
-            console.log('initialized');
-          };
-          init();
-        \`,
-nonce: requestInfo.rw.nonce
-})
-)`;
+((requestInfo.rw.inlineScripts.add("\\n          // Some comments here\\n          const init = async () => {\\n            await import('/src/entry.js');\\n            console.log('initialized');\\n          };\\n          init();\\n        ")),
+(requestInfo.rw.scriptsToBeLoaded.add("/src/entry.js")), null)`;
 
     expect(normalizeCode(result?.code || "")).toEqual(normalizeCode(expected));
   });
@@ -171,18 +141,9 @@ import('/src/entry.js');
 
     const expected = `import { requestInfo } from "rwsdk/worker";
 
-(
+((requestInfo.rw.inlineScripts.add("\\nimport('/src/client.tsx');\\nimport('/src/entry.js');\\n")),
 (requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
-(requestInfo.rw.scriptsToBeLoaded.add("/src/entry.js")),
-jsx("script", {
-type: "module",
-children: \`
-import('rwsdk_asset:/src/client.tsx');
-import('rwsdk_asset:/src/entry.js');
-\`,
-nonce: requestInfo.rw.nonce
-})
-)`;
+(requestInfo.rw.scriptsToBeLoaded.add("/src/entry.js")), null)`;
 
     expect(normalizeCode(result?.code || "")).toEqual(normalizeCode(expected));
   });
@@ -286,13 +247,8 @@ jsx("link", { rel: "modulepreload", href: "rwsdk_asset:/src/client.tsx", as: "sc
 }),
 jsx("body", {
 children: [
-jsx("div", { id: "root", children: props.children }),
-(
-(requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
-jsx("script", { children: "import(\\"rwsdk_asset:/src/client.tsx\\")",
-nonce: requestInfo.rw.nonce
-})
-)
+jsx("div", { id: "root", children: props.children }), ((requestInfo.rw.inlineScripts.add("import(\\"/src/client.tsx\\")")),
+(requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")), null)
 ]
 })
 ]
@@ -335,14 +291,7 @@ nonce: requestInfo.rw.nonce
 
     const expected = `import { requestInfo } from "rwsdk/worker";
 
-(
-(requestInfo.rw.scriptsToBeLoaded.add("/src/non-existent.js")),
-jsx("script", {
-src: "rwsdk_asset:/src/non-existent.js",
-type: "module",
-nonce: requestInfo.rw.nonce
-})
-)`;
+((requestInfo.rw.entryScripts.add("/src/non-existent.js")), null)`;
 
     expect(normalizeCode(result?.code || "")).toEqual(normalizeCode(expected));
   });
@@ -365,14 +314,7 @@ nonce: requestInfo.rw.nonce
 
     const expected = `import { requestInfo } from "rwsdk/worker";
 
-(
-(requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
-jsx("script", {
-src: "rwsdk_asset:/src/client.tsx",
-type: "module",
-nonce: requestInfo.rw.nonce
-})
-)`;
+((requestInfo.rw.entryScripts.add("/src/client.tsx")), null)`;
 
     expect(normalizeCode(result?.code || "")).toEqual(normalizeCode(expected));
   });
@@ -528,14 +470,7 @@ nonce: requestInfo.rw.nonce
 
     const expected = `import { requestInfo } from "rwsdk/worker";
 
-(
-(requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
-jsx("script", {
-src: "rwsdk_asset:/src/client.tsx",
-type: "module",
-nonce: requestInfo.rw.nonce
-})
-)`;
+((requestInfo.rw.entryScripts.add("/src/client.tsx")), null)`;
 
     expect(normalizeCode(result?.code || "")).toEqual(normalizeCode(expected));
   });
@@ -714,17 +649,7 @@ children
       columnNumber: 4
     },
     this
-  ),
-  (
-(requestInfo.rw.scriptsToBeLoaded.add("/theme-script.js")),
-/* @__PURE__ */ jsxDEV("script", { src: "rwsdk_asset:/theme-script.js",
-                          nonce: requestInfo.rw.nonce
-                    }, void 0, false, {
-      fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
-      lineNumber: 21,
-      columnNumber: 4
-    }, this)
-),
+  ), ((requestInfo.rw.entryScripts.add("/theme-script.js")), null),
   /* @__PURE__ */ jsxDEV("link", { rel: "icon", href: "/favicon.svg" }, void 0, false, {
     fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
     lineNumber: 22,
@@ -750,17 +675,8 @@ children
     fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
     lineNumber: 27,
     columnNumber: 4
-  }, this),
-  (
-(requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
-/* @__PURE__ */ jsxDEV("script", { children: "import(\\"rwsdk_asset:/src/client.tsx\\")",
-                        nonce: requestInfo.rw.nonce
-                  }, void 0, false, {
-      fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
-      lineNumber: 28,
-      columnNumber: 4
-    }, this)
-)
+  }, this), ((requestInfo.rw.inlineScripts.add("import(\\"/src/client.tsx\\")")),
+(requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")), null)
 ] }, void 0, true, {
   fileName: "/Users/justin/rw/blotter/rwsdk-guestbook/src/app/document/Document.tsx",
   lineNumber: 26,

@@ -20,6 +20,8 @@ export type RwContext = {
   layouts?: React.FC<LayoutProps<any>>[];
   databases: Map<string, Kysely<any>>;
   scriptsToBeLoaded: Set<string>;
+  entryScripts: Set<string>;
+  inlineScripts: Set<string>;
   pageRouteResolved: PromiseWithResolvers<void> | undefined;
   actionResult?: unknown;
 };

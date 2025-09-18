@@ -4,6 +4,7 @@ import { type DocumentProps } from "../lib/router.js";
 import { type RequestInfo } from "../requestInfo/types.js";
 import { Preloads } from "./preloads.js";
 import { Stylesheets } from "./stylesheets.js";
+import { getManifest } from "../lib/manifest.js";
 
 export const renderRscThenableToHtmlStream = async ({
   thenable,
@@ -58,8 +59,49 @@ export const renderRscThenableToHtmlStream = async ({
     );
   };
 
-  return await renderToReadableStream(<Component />, {
+  // Prepare bootstrap options based on detected entry scripts
+  const bootstrapOptions: {
+    nonce: string;
+    bootstrapModules?: string[];
+    bootstrapScriptContent?: string;
+  } = {
     nonce: requestInfo.rw.nonce,
+  };
+
+  // If we have external entry scripts, use bootstrapModules
+  if (requestInfo.rw.entryScripts.size > 0) {
+    const manifest = await getManifest();
+    const resolvedPaths: string[] = [];
+
+    for (const sourcePath of requestInfo.rw.entryScripts) {
+      // In development, use the source path as-is
+      if (import.meta.env.VITE_IS_DEV_SERVER) {
+        resolvedPaths.push(sourcePath);
+      } else {
+        // In production, resolve to the final hashed asset path
+        const manifestEntry = manifest[sourcePath];
+        if (manifestEntry?.file) {
+          resolvedPaths.push(`/${manifestEntry.file}`);
+        } else {
+          // Fallback to source path if not found in manifest
+          resolvedPaths.push(sourcePath);
+        }
+      }
+    }
+
+    bootstrapOptions.bootstrapModules = resolvedPaths;
+  }
+
+  // If we have inline entry scripts, use bootstrapScriptContent
+  if (requestInfo.rw.inlineScripts.size > 0) {
+    // Combine all inline scripts
+    bootstrapOptions.bootstrapScriptContent = Array.from(
+      requestInfo.rw.inlineScripts,
+    ).join("\n");
+  }
+
+  return await renderToReadableStream(<Component />, {
+    ...bootstrapOptions,
     onError(error, { componentStack }) {
       try {
         if (!error) {

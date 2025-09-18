@@ -69,6 +69,8 @@ export const defineApp = <
           ssr: true,
           databases: new Map(),
           scriptsToBeLoaded: new Set(),
+          entryScripts: new Set(),
+          inlineScripts: new Set(),
           pageRouteResolved: undefined,
         };
 
