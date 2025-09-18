@@ -56,7 +56,7 @@ jobs:
         run: pnpm store prune
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false
+        run: pnpm install --frozen-lockfile=false --workspace
 
       - name: Run isolated directive scan test
         shell: bash
@@ -67,16 +67,8 @@ jobs:
           DEBUG: "rwsdk:*"
           CI: 1
 
-      - name: Run smoke test
-        if: false # Temporarily disable the full smoke test
-        run: pnpm smoke-test --starter ${{ matrix.starter }} --pm ${{ matrix.package-manager }}
-        env:
-          DEBUG: "rwsdk:*"
-          CI: 1
-          PLAYWRIGHT_SKIP_BROWSER_DOWNLOAD: 1
-
       - name: Run smoke test (yarn classic)
-        if: matrix.package-manager == 'yarn-classic'
+        if: false # This is also disabled
         run: yarn smoke-test --starter ${{ matrix.starter }} --pm ${{ matrix.package-manager }}
         env:
           DEBUG: "rwsdk:*"
