@@ -18,3 +18,15 @@ export interface RequestInfo<Params = any, AppContext = DefaultAppContext> {
   response: ResponseInit & { headers: Headers };
   isAction: boolean;
 }
+
+declare global {
+  namespace Rwsdk {
+    interface RwContext {
+      scriptsToBeLoaded: Set<string>;
+      stylesheets: Set<string>;
+      preloads: Set<string>;
+      entryScripts: Set<string>;
+      inlineScripts: Set<string>;
+    }
+  }
+}

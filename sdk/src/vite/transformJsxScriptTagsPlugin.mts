@@ -228,6 +228,7 @@ export async function transformJsxScriptTagsCode(
           let hasSrc = false;
           let isPreload = false;
           let hrefProp: PropertyAssignment | undefined;
+          let isEntryPoint = false;
 
           for (const prop of properties) {
             if (Node.isPropertyAssignment(prop)) {
@@ -252,6 +253,7 @@ export async function transformJsxScriptTagsCode(
                   const srcValue = initializer.getLiteralValue();
 
                   if (srcValue.startsWith("/")) {
+                    isEntryPoint = true;
                     entryPoints.push(srcValue);
                     clientEntryPoints.add(srcValue);
 
@@ -289,6 +291,10 @@ export async function transformJsxScriptTagsCode(
                   manifest,
                   projectRootDir,
                 );
+
+                if (dynamicEntryPoints.length > 0) {
+                  isEntryPoint = true;
+                }
 
                 entryPoints.push(...dynamicEntryPoints);
 
@@ -371,7 +377,60 @@ export async function transformJsxScriptTagsCode(
           // During discovery phase, we only transform script tags
         }
       }
-      if (entryPoints.length > 0) {
+      if (isEntryPoint) {
+        const sideEffects = [];
+
+        const propsArg = args[1];
+
+        if (Node.isObjectLiteralExpression(propsArg)) {
+          const srcProp = propsArg.getProperty("src");
+          const childrenProp = propsArg.getProperty("children");
+
+          if (srcProp && Node.isPropertyAssignment(srcProp)) {
+            const initializer = srcProp.getInitializer();
+            if (
+              Node.isStringLiteral(initializer) ||
+              Node.isNoSubstitutionTemplateLiteral(initializer)
+            ) {
+              const srcValue = initializer.getLiteralValue();
+              sideEffects.push(
+                `(requestInfo.rw.entryScripts.add("${srcValue}"))`,
+              );
+            }
+          } else if (childrenProp && Node.isPropertyAssignment(childrenProp)) {
+            const initializer = childrenProp.getInitializer();
+            if (
+              Node.isStringLiteral(initializer) ||
+              Node.isNoSubstitutionTemplateLiteral(initializer)
+            ) {
+              const scriptContent = initializer.getLiteralValue();
+              sideEffects.push(
+                `(requestInfo.rw.inlineScripts.add(\`${scriptContent.replace(
+                  /`/g,
+                  "\\`",
+                )}\`))`,
+              );
+            }
+          }
+        }
+
+        for (const entryPoint of entryPoints) {
+          sideEffects.push(
+            `(requestInfo.rw.scriptsToBeLoaded.add("${entryPoint}"))`,
+          );
+        }
+
+        const sideEffectsStr = sideEffects.join(",\n");
+        modifications.push({
+          type: "replaceText",
+          node: callExpr,
+          text: `(${sideEffectsStr}, null)`,
+        });
+
+        if (!hasRequestInfoImport) {
+          needsRequestInfoImportRef.value = true;
+        }
+      } else if (entryPoints.length > 0) {
         log(
           "Found %d script entry points, adding to scripts to be loaded: %o",
           entryPoints.length,
