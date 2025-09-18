@@ -102,3 +102,15 @@ The `renovatebot/github-action` defaults to using the repository's main branch a
 The `test-renovate-flow.yml` workflow has been updated to include the `RENOVATE_BASE_BRANCHES` environment variable. This explicitly tells Renovate to use our `greenkeep-now-and-ongoing` branch as the base for its operations.
 
 This should be the final change needed. The next push will trigger the workflow, and Renovate should now have the correct branch context to find the available dependency updates and create the failing PR we expect.
+
+### Step 8: Granting Permissions for Security Advisories
+
+The logs also showed a warning that Renovate could not access vulnerability alerts.
+
+**Finding:**
+
+The default `GITHUB_TOKEN` provided to GitHub Actions runs with restricted permissions. It does not have access to security-related events by default.
+
+**Action:**
+
+A `permissions` block was added to the `test-renovate-flow.yml` workflow file. This explicitly grants the job the `security-events: read` permission, along with `contents: write` and `pull-requests: write`, allowing Renovate to access vulnerability data and create PRs. This will resolve the warning and enable security-related features.

@@ -9,6 +9,10 @@ on:
 jobs:
   renovate:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
+      pull-requests: write
+      security-events: read
     steps:
       - name: Checkout
         uses: actions/checkout@v4
