@@ -502,36 +502,79 @@ The subsequent failures and debugging efforts were focused on that broken archit
 
 Having reverted all changes related to stream-coalescing (as decided in Section 23), we are now operating on a clean, simple, and correct SSR foundation. Therefore, this is the first time we are able to test the `bootstrapScriptContent` hypothesis in a controlled environment, free from the noise and errors of the previous implementation. This is not a repetition, but a proper validation of the original, simpler idea.
 
-## 28. Successful Outcome and Root Cause Clarification
+## 28. Course Correction: False Positive and New Hypothesis
 
-Subsequent testing confirmed that the surgical application of `bootstrapScriptContent: ' '` was successful. The Radix UI hydration mismatch is resolved.
+Initial testing of the `bootstrapScriptContent: ' '` solution appeared successful, but this has been identified as a false positive. The success was coincidental, caused by a separate issue where the client-side entry point script (`<script>import("/src/client.tsx")</script>`) had been accidentally removed from the test application's `Document.tsx`. Without the client entry point, no hydration was occurring, and therefore no hydration mismatch errors were thrown.
 
-This confirms that the single-line change is the correct, minimal, and backwards-compatible solution. The key was applying it to a stable version of the rendering pipeline.
+With the client entry point correctly restored, the `useId` hydration mismatch error persists.
 
-The reason for the previous, confounding failures is believed to be environmental. During the initial tests, it is likely that the application was accidentally running against an incorrect version of the SDK due to a mix-up between multiple active git worktrees. With the environment correctly configured, the fix works as expected.
+### New Evidence and Hypothesis: Script Ordering
 
-## 29. Detailed Mechanism of the Fix
+Analysis of the HTML output reveals a critical detail. When `bootstrapScriptContent: ' '` is used, React **does** inject the marker script (`<script id="_R_">`). However, it injects it at the end of the `<body>`, *after* the manually placed client entry point script.
 
-Further analysis of the rendered HTML output has clarified the precise mechanism by which the `bootstrapScriptContent: ' '` option works. The key is a single "marker" script injected by React's server renderer.
+This leads to a new, more precise hypothesis: **The hydration marker script must appear in the document *before* the client entry script is executed.** The client-side React runtime needs to see the marker *before* it begins its initial render, so it can boot in the correct "hydration mode." In the current state, the client script runs first, React boots in its default mode, and the `useId` mismatch occurs before the late-arriving marker script is ever parsed.
 
-Providing the `bootstrapScriptContent` option causes React to inject a script tag, identifiable by its unique ID (`<script id="_R_">`), into the HTML head. This script does not contain a data payload. Instead, its mere presence acts as a powerful signal to the client-side React runtime.
+The challenge is now to reorder these two scripts.
 
-When the client runtime finds this marker script, it switches into "hydration mode." In this mode, the `useId` hook alters its behavior. Rather than initializing its own independent counter, it "replays" the ID generation process by walking the server-rendered DOM that already exists in the browser. This ensures it generates the exact same sequence of IDs as the server, resolving the mismatch.
+## 29. Investigation of Reordering Solutions
 
-The server-rendered HTML itself becomes the source of truth for synchronization. This elegant mechanism allows React to manage the state transfer without a separate data script and, crucially, without interfering with the user-controlled `Document.tsx` file.
+Based on the new hypothesis, three potential solutions were investigated:
 
-## 30. Pre-PR Analysis: Summary of Changes
+1.  **The React-Idiomatic Solution (Recommended):** This approach involves ceding control of the client entry point script to React. We would remove the manual `<script>` tag from `Document.tsx` and instead use the `bootstrapModules: ["/src/client.tsx"]` option in `renderToReadableStream`. React's internal logic guarantees that it will render the hydration state/marker *before* it renders the entry point script, ensuring the correct order. This is the cleanest and most robust solution, though it requires updating the `documentTransforms.md` architecture to reflect that the entry point script is now framework-managed.
 
-### Previous State and Problem
+2.  **The Build-Time AST Solution:** This would involve modifying our `transformJsxScriptTagsPlugin.mts` to find the entry script tag in the `Document.tsx` AST, remove it, and attempt to reinject it in the correct place at runtime. This is programmatically complex, brittle, and introduces significant "magic" that would be hard to maintain.
 
-When using UI libraries like Radix UI, a hydration mismatch error would occur for components that render content in portals (e.g., Dialogs, Popovers). The browser console would report that server-rendered attributes did not match the client-side render. For example, a button's `aria-controls` attribute might be `radix-_R_76_` in the server-rendered HTML, but `radix-_R_0_` during client-side hydration.
+3.  **The Runtime Stream Solution:** This would require a `TransformStream` to buffer the HTML and manually reorder the script tags on the fly. This approach is highly stateful, prone to race conditions, and mirrors the previously failed stream-coalescing architecture. It is the highest-risk option.
 
-This happened because of a desynchronization of React's `useId` hook; the server and client were generating different ID sequences. The root cause relates to our framework's `Document.tsx` architecture. By giving developers direct control over the final HTML shell, we don't use React's more managed APIs that would automatically signal that a document is hydratable. Without this explicit signal, React's server renderer was not generating the `resumableState` object, which is responsible for passing the server's `useId` counter state to the client.
+### Conclusion
 
-### Solution
+The first option is the most direct path to a reliable fix. The next step is to implement it, which will involve changing `renderRscThenableToHtmlStream.tsx` to use `bootstrapModules` and removing the manual script tag from the starter applications.
 
-The solution is to add the `bootstrapScriptContent: ' '` option to the `renderToReadableStream` call. This is a minimal but sufficient signal to React that the document is intended for hydration.
+## 31. A New Plan: Build-Time Transformation for Runtime Control
 
-This approach works for our architecture because it triggers React's state-synchronization mechanism without forcing it to take over the rendering of the main client entry script, which would conflict with our `Document.tsx` pattern. In response to this signal, React injects a single "marker" script (`<script id="_R_">`) into the HTML head.
+The "React-Idiomatic" solution of using `bootstrapModules` is the correct path, but the previous conclusion that it requires changing the user-facing `Document.tsx` API is incorrect. A more sophisticated approach can preserve our existing architecture and developer experience.
 
-This script's presence switches the client-side `useId` hook into a "replay" mode. Instead of generating new IDs, it regenerates the exact same sequence of IDs that the server did by walking the existing server-rendered DOM tree. The HTML itself becomes the source of truth for synchronization, correctly aligning the client with the server's render. This process is fully backwards-compatible and preserves the user's complete control over their `Document.tsx` file.
+The new plan is to enhance our build-time tooling to give the runtime the information it needs to correctly use React's bootstrap APIs. The user will continue to place a standard `<script>` tag in their `Document.tsx`; our tools will intercept it and handle the rest.
+
+### The Implementation Plan
+
+The plan consists of two main parts: a build-time transformation and a runtime rendering adjustment.
+
+#### **Part 1: Enhance `transformJsxScriptTagsPlugin.mts`**
+
+The core of this plan is to modify our existing Vite plugin that processes `Document.tsx` files. It will now be responsible for identifying the main client entry point script, removing it from the document's AST, and replacing it with a side-effect that passes the script's information to the runtime via the `requestInfo` object.
+
+The plugin must handle two distinct cases:
+
+**1. For inline entry scripts (e.g., `<script>import("/src/client.tsx")</script>`):**
+
+-   **Detection:** The plugin will identify a script tag whose `children` contain a dynamic `import()` of a root-relative path.
+-   **Transformation:** The original `jsx("script", ...)` call will be removed from the AST and replaced with a side-effect that populates two new sets on the `requestInfo` object:
+    -   `requestInfo.rw.inlineScripts.add("<script content>")`: Stores the full content of the inline script.
+    -   `requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")`: The existing mechanism for tracking dependencies is maintained.
+
+**2. For external entry scripts (e.g., `<script src="/src/client.tsx">`):**
+
+-   **Detection:** The plugin will identify a script tag with a root-relative `src` attribute.
+-   **Transformation:** The original `jsx("script", ...)` call will be removed and replaced with a side-effect that populates:
+    -   `requestInfo.rw.entryScripts.add("/src/client.tsx")`: Stores the path of the external script.
+    -   `requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")`: Again, the existing dependency tracking is maintained.
+
+This transformation cleanly separates the user's *intent* (including a client script) from the final *implementation* (how that script is rendered).
+
+#### **Part 2: Enhance Runtime Rendering in `renderRscThenableToHtmlStream.tsx`**
+
+The SSR rendering function will be updated to use the information gathered by the build-time plugin. It will inspect the new `requestInfo` sets and dynamically construct the options for React's `renderToReadableStream`.
+
+-   If `requestInfo.rw.entryScripts` is populated, it will pass the script paths to the `bootstrapModules` option.
+-   If `requestInfo.rw.inlineScripts` is populated, it will pass the script content to the `bootstrapScriptContent` option.
+
+This ensures we use the correct React API for the job, guaranteeing that React's hydration marker script is injected *before* the client entry point is loaded.
+
+#### **Ensuring Production Builds Work Correctly**
+
+A critical consideration is ensuring that the paths passed to `bootstrapModules` are the final, hashed asset paths in a production build, not the source paths. The current build process uses a "placeholder" system (`rwsdk_asset:...`) which is resolved in a final "linker" pass.
+
+This new approach is compatible with that system. At runtime, the `renderRscThenableToHtmlStream` function will need access to the client `manifest.json` to map the source path (e.g., `/src/client.tsx`) from `entryScripts` to its final hashed asset path (e.g., `/assets/client.a1b2c3d4.js`). We must ensure that our build process makes the manifest available to the SSR runtime environment so this mapping can occur.
+
+This plan achieves the desired outcome: it fixes the hydration bug using React's idiomatic APIs while preserving our core architectural principle of a user-controlled `Document.tsx`. The `documentTransforms.md` and `unifiedScriptDiscovery.md` documents will be updated upon successful implementation.
