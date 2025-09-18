@@ -780,3 +780,16 @@ The challenge is a classic chicken-and-egg problem:
 3.  Any attempt to extract this information at runtime (e.g., a "pre-render" or introspection step) struggles to also *remove* the original `<script>` tag from the final, streamed output in a clean way.
 
 This pushes the solution back towards a build-time transformation, but a more sophisticated one is needed that can reliably link scripts to specific component exports within a module. The path forward is not yet clear.
+
+## 41. A New Build-Time Approach to Explore
+
+A new idea for the build-time transformation has been proposed that could solve the linking problem without requiring user annotations.
+
+*   **How it would work:**
+    1.  A build-time plugin would traverse the AST of any module containing a potential `Document` component.
+    2.  For each component, it would attempt to find a stable identifier (e.g., the function or variable name). This remains the most challenging part of the implementation.
+    3.  The plugin would then extract the script info from that component's JSX and remove the original `<script>` tag.
+    4.  Finally, it would append a side-effectful call to the end of the module's code, which would populate a global map at runtime. The call would look something like this: `requestInfo.rw.documentInfo.set(<found_document_identifier>, { entryPoints: [...]})`.
+    5.  The runtime could then use the `Document` component reference to look up its associated script info in the map before rendering.
+
+This approach will be the next to investigate for script extraction once the core hydration bug is fixed.
