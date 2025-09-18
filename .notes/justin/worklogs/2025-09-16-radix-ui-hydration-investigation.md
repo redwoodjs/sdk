@@ -512,7 +512,7 @@ With the client entry point correctly restored, the `useId` hydration mismatch e
 
 Analysis of the HTML output reveals a critical detail. When `bootstrapScriptContent: ' '` is used, React **does** inject the marker script (`<script id="_R_">`). However, it injects it at the end of the `<body>`, *after* the manually placed client entry point script.
 
-This leads to a new, more precise hypothesis: **The hydration marker script must appear in the document *before* the client entry script is executed.** The client-side React runtime needs to see the marker *before* it begins its initial render, so it can boot in the correct "hydration mode." In the current state, the client script runs first, React boots in its default mode, and the `useId` mismatch occurs before the late-arriving marker script is ever parsed.
+This leads to a new, more precise hypothesis: **The hydration marker script must appear in the document *before* the client script is executed.** The client-side React runtime needs to see the marker *before* it begins its initial render, so it can boot in the correct "hydration mode." In the current state, the client script runs first, React boots in its default mode, and the `useId` mismatch occurs before the late-arriving marker script is ever parsed.
 
 The challenge is now to reorder these two scripts.
 
@@ -578,3 +578,48 @@ A critical consideration is ensuring that the paths passed to `bootstrapModules`
 This new approach is compatible with that system. At runtime, the `renderRscThenableToHtmlStream` function will need access to the client `manifest.json` to map the source path (e.g., `/src/client.tsx`) from `entryScripts` to its final hashed asset path (e.g., `/assets/client.a1b2c3d4.js`). We must ensure that our build process makes the manifest available to the SSR runtime environment so this mapping can occur.
 
 This plan achieves the desired outcome: it fixes the hydration bug using React's idiomatic APIs while preserving our core architectural principle of a user-controlled `Document.tsx`. The `documentTransforms.md` and `unifiedScriptDiscovery.md` documents will be updated upon successful implementation.
+
+## 34. Re-evaluation and the Critical Suspense Context
+
+The "Virtual Manifest Module" approach, while technically sound for resolving the race condition, was ultimately abandoned due to critical context regarding the framework's hydration strategy with React Suspense.
+
+### The Flaw in the Virtual Module Approach
+
+The virtual module solution relied on the framework taking control of the entry script and passing it to React's `bootstrapModules` option at runtime. This would have re-introduced a previously solved, critical performance issue.
+
+### The Early Hydration Problem
+
+As documented in historical pull requests ([#369](https://github.com/redwoodjs/sdk/pull/369), [#316](https://github.com/redwoodjs/sdk/pull/316)), the framework intentionally uses an inline `<script>import("/src/client.tsx")</script>` tag instead of a standard `<script type="module">`.
+
+-   **`<script type="module">` is deferred:** The browser will not execute a module script until the entire HTML document has been downloaded. In a streaming response, this means waiting for all `<Suspense>` boundaries to resolve. This delays interactivity for the parts of the UI that are visible immediately.
+-   **Inline `import()` executes immediately:** An inline script is executed as soon as it's parsed. Using `import()` allows hydration to begin the moment the initial shell is rendered, making visible components interactive long before the full stream has completed.
+
+This immediate hydration is a core architectural feature for providing a good user experience with streaming. Any solution that reverts to a deferred script-loading behavior is a regression. The virtual module approach would have caused this regression.
+
+## 35. A New Experimental Path: Understanding React's Behavior
+
+Given these constraints, we are back to the core challenge: we must trigger React's `resumableState` generation (to fix `useId`) while preserving the user-controlled, immediately-executing inline script.
+
+Before proceeding, we need to definitively understand how React's `bootstrapModules` option behaves. We will conduct two experiments to gather this information.
+
+### Experiment 1: `useId` and Script Placement Validation
+
+**Goal:**
+1.  Confirm that using `bootstrapModules` does, in fact, resolve the `useId` hydration mismatch.
+2.  Observe exactly where and how React injects the `<script>` tag and the hydration marker into the final HTML document.
+
+**Method:**
+1.  Temporarily remove the manual `<script>import("/src/client.tsx")</script>` from the test application's `Document.tsx`.
+2.  Hardcode the `bootstrapModules: ["/src/client.tsx"]` option in the framework's `renderRscThenableToHtmlStream.tsx` function.
+
+### Experiment 2: Suspense and Interactivity Validation
+
+**Goal:**
+1.  Determine if using `bootstrapModules` preserves the immediate interactivity of non-suspended client components during a streaming render.
+
+**Method:**
+1.  Create a new test page in the application.
+2.  This page will feature a simple `<Counter />` client component that renders immediately, followed by a `<SuspendedComponent />` that simulates a slow data fetch.
+3.  We will observe if the counter becomes interactive as soon as it is visible, or if its hydration is delayed until the suspended component has finished loading.
+
+The findings from these two experiments will provide the necessary data to make an informed decision on the correct architectural path forward.

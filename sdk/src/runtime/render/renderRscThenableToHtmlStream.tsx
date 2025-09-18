@@ -59,7 +59,36 @@ export const renderRscThenableToHtmlStream = async ({
     );
   };
 
-  // Prepare bootstrap options based on detected entry scripts
+  // Pre-render the Document component to populate entry script sets via side effects
+  console.log(
+    "[DEBUG] renderRscThenableToHtmlStream - Pre-rendering Document to populate script sets",
+  );
+
+  // Create a temporary render to execute the Document and populate the sets
+  const tempComponent = <Component />;
+
+  // We need to render this to a string first to execute the side effects
+  // This will populate requestInfo.rw.entryScripts and requestInfo.rw.inlineScripts
+  await renderToReadableStream(tempComponent, { nonce: requestInfo.rw.nonce });
+
+  console.log(
+    "[DEBUG] renderRscThenableToHtmlStream - After pre-render, entryScripts size:",
+    requestInfo.rw.entryScripts.size,
+  );
+  console.log(
+    "[DEBUG] renderRscThenableToHtmlStream - After pre-render, entryScripts contents:",
+    Array.from(requestInfo.rw.entryScripts),
+  );
+  console.log(
+    "[DEBUG] renderRscThenableToHtmlStream - After pre-render, inlineScripts size:",
+    requestInfo.rw.inlineScripts.size,
+  );
+  console.log(
+    "[DEBUG] renderRscThenableToHtmlStream - After pre-render, inlineScripts contents:",
+    Array.from(requestInfo.rw.inlineScripts),
+  );
+
+  // Now prepare bootstrap options based on the populated entry scripts
   const bootstrapOptions: {
     nonce: string;
     bootstrapModules?: string[];
@@ -99,6 +128,11 @@ export const renderRscThenableToHtmlStream = async ({
       requestInfo.rw.inlineScripts,
     ).join("\n");
   }
+
+  console.log(
+    "[DEBUG] renderRscThenableToHtmlStream - final bootstrapOptions:",
+    JSON.stringify(bootstrapOptions, null, 2),
+  );
 
   return await renderToReadableStream(<Component />, {
     ...bootstrapOptions,

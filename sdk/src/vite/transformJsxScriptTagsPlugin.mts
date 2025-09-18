@@ -235,6 +235,10 @@ export async function transformJsxScriptTagsCode(
       let entryScriptSideEffects: string[] = [];
 
       if (tagName === "script" || tagName === "link") {
+        console.log(
+          "[DEBUG] transformJsxScriptTagsPlugin - Processing tag:",
+          tagName,
+        );
         const propsArg = args[1];
 
         if (Node.isObjectLiteralExpression(propsArg)) {
@@ -373,9 +377,14 @@ export async function transformJsxScriptTagsCode(
             if (hasSrc && entryPoints.length > 0) {
               isEntryPointScript = true;
               entryScriptSideEffects = entryPoints.map(
-                (p) => `(requestInfo.rw.entryScripts.add("${p}"))`,
+                (p) =>
+                  `(console.log("[DEBUG] Document execution - Adding external entry script:", "${p}"), requestInfo.rw.entryScripts.add("${p}"))`,
               );
               log("Detected external entry script with src: %o", entryPoints);
+              console.log(
+                "[DEBUG] transformJsxScriptTagsPlugin - Detected external entry script:",
+                entryPoints,
+              );
             }
             // Case 2: Inline entry script (e.g., <script>import("/src/client.tsx")</script>)
             else if (hasStringLiteralChildren && entryPoints.length > 0) {
@@ -392,10 +401,17 @@ export async function transformJsxScriptTagsCode(
                   : undefined;
 
               if (scriptContent) {
+                console.log(
+                  "[DEBUG] transformJsxScriptTagsPlugin - Detected inline entry script:",
+                  entryPoints,
+                  "content:",
+                  scriptContent,
+                );
                 entryScriptSideEffects = [
-                  `(requestInfo.rw.inlineScripts.add(${JSON.stringify(scriptContent)}))`,
+                  `(console.log("[DEBUG] Document execution - Adding inline script:", ${JSON.stringify(scriptContent)}), requestInfo.rw.inlineScripts.add(${JSON.stringify(scriptContent)}))`,
                   ...entryPoints.map(
-                    (p) => `(requestInfo.rw.scriptsToBeLoaded.add("${p}"))`,
+                    (p) =>
+                      `(console.log("[DEBUG] Document execution - Adding script to be loaded:", "${p}"), requestInfo.rw.scriptsToBeLoaded.add("${p}"))`,
                   ),
                 ];
                 log(
@@ -543,10 +559,12 @@ export async function transformJsxScriptTagsCode(
     for (const mod of callExprModifications) {
       if (mod.type === "removeCallExpr") {
         // Replace the entire JSX call with just the side effects wrapped in an expression that evaluates to null
-        sourceFile.replaceText(
-          [mod.fullStart, mod.end],
-          `(${mod.sideEffects}, null)`,
+        const replacementText = `(${mod.sideEffects}, null)`;
+        console.log(
+          "[DEBUG] transformJsxScriptTagsPlugin - Replacing script with:",
+          replacementText,
         );
+        sourceFile.replaceText([mod.fullStart, mod.end], replacementText);
       } else if (mod.type === "wrapCallExpr") {
         if (mod.pureCommentText && mod.leadingTriviaText) {
           const newText = `(
@@ -591,8 +609,14 @@ ${mod.callExprText}
       }
     }
 
+    const finalCode = sourceFile.getFullText();
+    console.log(
+      "[DEBUG] transformJsxScriptTagsPlugin - Final transformed code:",
+    );
+    console.log(finalCode);
+
     return {
-      code: sourceFile.getFullText(),
+      code: finalCode,
       map: null,
     };
   }
@@ -613,10 +637,24 @@ export const transformJsxScriptTagsPlugin = ({
     name: "rwsdk:vite:transform-jsx-script-tags",
     configResolved(config) {
       isBuild = config.command === "build";
+      console.log(
+        "[DEBUG] transformJsxScriptTagsPlugin - Plugin loaded, isBuild:",
+        isBuild,
+      );
     },
     async transform(code, id) {
+      console.log(
+        "[DEBUG] transformJsxScriptTagsPlugin - transform called for:",
+        id,
+        "environment:",
+        this.environment?.name,
+      );
+
       // Skip during directive scanning to avoid performance issues
       if (process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE) {
+        console.log(
+          "[DEBUG] transformJsxScriptTagsPlugin - Skipping due to directive scan",
+        );
         return;
       }
 
@@ -635,6 +673,10 @@ export const transformJsxScriptTagsPlugin = ({
         hasJsxFunctions(code)
       ) {
         log("Transforming JSX script tags in %s", id);
+        console.log(
+          "[DEBUG] transformJsxScriptTagsPlugin - Processing file:",
+          id,
+        );
         process.env.VERBOSE && log("Code:\n%s", code);
 
         // During discovery phase, never use manifest - it doesn't exist yet
