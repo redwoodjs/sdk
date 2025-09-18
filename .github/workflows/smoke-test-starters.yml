@@ -1,41 +1,73 @@
-# This is the simplified workflow for the isolated test
 name: Starter Smoke Tests
 
 on:
   push:
     branches:
       - main
+    paths-ignore:
+      - "docs/**"
   pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - "docs/**"
   workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
 jobs:
   smoke-test:
-    name: "Smoke Test"
-    runs-on: windows-latest
+    name: ${{ matrix.starter }} starter - ${{ matrix.os }} - ${{ matrix.package-manager }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        starter: [minimal, standard]
+        os: [ubuntu-latest] # TODO: Re-enable windows-latest after fixing Windows path issues (see issue #696)
+        package-manager: [pnpm, npm, yarn, yarn-classic]
+
+    # context(justinvdm, 2025-05-12):
+    # Only run this job for PRs from the same repository and pushes to main
+    # For security, GH won't expose secrets for fork PRs
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
 
     steps:
-      - name: Checkout Repo
+      - name: Checkout repository
         uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
 
-      - name: Setup pnpm
-        uses: pnpm/action-setup@v4
-
-      - name: Setup Node
+      - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: "pnpm"
 
       - name: Install dependencies
-        run: pnpm install --frozen-lockfile=false --workspace
-
-      - name: Run isolated directive scan test
         shell: bash
         run: |
-          cd starters/minimal
-          node ../../sdk/scripts/test-directive-scan.mjs
+          corepack enable
+          if [ "${{ matrix.package-manager }}" = "yarn" ]; then
+            corepack prepare yarn@stable --activate
+          elif [ "${{ matrix.package-manager }}" = "yarn-classic" ]; then
+            npm i -g yarn@1.22.19 --force
+          fi
+          pnpm install
+
+      - name: Run smoke test
+        shell: bash
+        run: |
+          ./sdk/scripts/ci-smoke-test.sh --starter "${{ matrix.starter }}" --package-manager "${{ matrix.package-manager }}"
         env:
-          DEBUG: "rwsdk:*"
-          CI: 1
+          CHROME_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
+
+      - name: Upload starter artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: smoke-test-artifacts-${{ matrix.starter }}-${{ matrix.os }}-${{ matrix.package-manager }}
+          path: smoke-test-artifacts/${{ matrix.starter }}
+          retention-days: 7
