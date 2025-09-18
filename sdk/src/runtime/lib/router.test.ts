@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import React from "react";
 
 import { matchPath, defineRoutes, route, render, layout } from "./router";
-import type { RwContext } from "./rwContext.js";
+import type { RwContext } from "./router";
 import type { RequestInfo } from "../requestInfo/types";
 
 describe("matchPath", () => {
@@ -99,8 +99,6 @@ describe("defineRoutes - Request Handling Behavior", () => {
         ssr: true,
         databases: new Map(),
         scriptsToBeLoaded: new Set(),
-        entryScripts: new Set(),
-        inlineScripts: new Set(),
         pageRouteResolved: undefined,
       } as RwContext,
       cf: {} as any,

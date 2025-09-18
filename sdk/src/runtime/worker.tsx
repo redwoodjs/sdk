@@ -12,8 +12,7 @@ import {
 } from "./requestInfo/worker";
 import { RequestInfo, DefaultAppContext } from "./requestInfo/types";
 
-import { Route, defineRoutes } from "./lib/router";
-import { type RwContext } from "./lib/rwContext.js";
+import { Route, type RwContext, defineRoutes } from "./lib/router";
 import { generateNonce } from "./lib/utils";
 import { ssrWebpackRequire } from "./imports/worker";
 
@@ -70,8 +69,6 @@ export const defineApp = <
           ssr: true,
           databases: new Map(),
           scriptsToBeLoaded: new Set(),
-          entryScripts: new Set(),
-          inlineScripts: new Set(),
           pageRouteResolved: undefined,
         };
 

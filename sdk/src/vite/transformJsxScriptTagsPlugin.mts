@@ -148,19 +148,11 @@ interface WrapCallExprModification {
   leadingWhitespace: string;
 }
 
-interface RemoveCallExprModification {
-  type: "removeCallExpr";
-  sideEffects: string;
-  fullStart: number;
-  end: number;
-}
-
 type Modification =
   | LiteralValueModification
   | ReplaceTextModification
   | AddPropertyModification
-  | WrapCallExprModification
-  | RemoveCallExprModification;
+  | WrapCallExprModification;
 
 export async function transformJsxScriptTagsCode(
   code: string,
@@ -181,15 +173,7 @@ export async function transformJsxScriptTagsCode(
   const needsRequestInfoImportRef = { value: false };
   const entryPointsPerCallExpr = new Map<
     CallExpression,
-    {
-      callExpr: CallExpression;
-      sideEffects: string;
-      pureCommentText?: string;
-      isRemoval?: boolean;
-      fullStart?: number;
-      end?: number;
-      leadingWhitespace?: string;
-    }
+    { callExpr: CallExpression; sideEffects: string; pureCommentText?: string }
   >();
 
   let hasRequestInfoImport = false;
@@ -231,14 +215,8 @@ export async function transformJsxScriptTagsCode(
 
       const tagName = elementType.getLiteralValue();
       const entryPoints: string[] = [];
-      let isEntryPointScript = false;
-      let entryScriptSideEffects: string[] = [];
 
       if (tagName === "script" || tagName === "link") {
-        console.log(
-          "[DEBUG] transformJsxScriptTagsPlugin - Processing tag:",
-          tagName,
-        );
         const propsArg = args[1];
 
         if (Node.isObjectLiteralExpression(propsArg)) {
@@ -371,63 +349,11 @@ export async function transformJsxScriptTagsCode(
             }
           }
 
-          // Check if this is an entry point script that should be removed and handled by React's bootstrap
-          if (tagName === "script") {
-            // Case 1: External entry script (e.g., <script src="/src/client.tsx">)
-            if (hasSrc && entryPoints.length > 0) {
-              isEntryPointScript = true;
-              entryScriptSideEffects = entryPoints.map(
-                (p) =>
-                  `(console.log("[DEBUG] Document execution - Adding external entry script:", "${p}"), requestInfo.rw.entryScripts.add("${p}"))`,
-              );
-              log("Detected external entry script with src: %o", entryPoints);
-              console.log(
-                "[DEBUG] transformJsxScriptTagsPlugin - Detected external entry script:",
-                entryPoints,
-              );
-            }
-            // Case 2: Inline entry script (e.g., <script>import("/src/client.tsx")</script>)
-            else if (hasStringLiteralChildren && entryPoints.length > 0) {
-              isEntryPointScript = true;
-              const childrenProp = properties.find(
-                (prop) =>
-                  Node.isPropertyAssignment(prop) &&
-                  prop.getName() === "children",
-              );
-
-              const scriptContent =
-                childrenProp && Node.isPropertyAssignment(childrenProp)
-                  ? childrenProp.getInitializer()?.getText()?.slice(1, -1) // Remove quotes
-                  : undefined;
-
-              if (scriptContent) {
-                console.log(
-                  "[DEBUG] transformJsxScriptTagsPlugin - Detected inline entry script:",
-                  entryPoints,
-                  "content:",
-                  scriptContent,
-                );
-                entryScriptSideEffects = [
-                  `(console.log("[DEBUG] Document execution - Adding inline script:", ${JSON.stringify(scriptContent)}), requestInfo.rw.inlineScripts.add(${JSON.stringify(scriptContent)}))`,
-                  ...entryPoints.map(
-                    (p) =>
-                      `(console.log("[DEBUG] Document execution - Adding script to be loaded:", "${p}"), requestInfo.rw.scriptsToBeLoaded.add("${p}"))`,
-                  ),
-                ];
-                log(
-                  "Detected inline entry script with content: %s",
-                  scriptContent,
-                );
-              }
-            }
-          }
-
           if (
             tagName === "script" &&
             !hasNonce &&
             !hasDangerouslySetInnerHTML &&
-            (hasStringLiteralChildren || hasSrc) &&
-            !isEntryPointScript
+            (hasStringLiteralChildren || hasSrc)
           ) {
             modifications.push({
               type: "addProperty",
@@ -445,48 +371,29 @@ export async function transformJsxScriptTagsCode(
           // During discovery phase, we only transform script tags
         }
       }
-
-      // Handle entry point scripts - either remove them entirely or wrap them
       if (entryPoints.length > 0) {
         log(
-          "Found %d script entry points: %o",
+          "Found %d script entry points, adding to scripts to be loaded: %o",
           entryPoints.length,
           entryPoints,
         );
+        const sideEffects = entryPoints
+          .map((p) => `(requestInfo.rw.scriptsToBeLoaded.add("${p}"))`)
+          .join(",\n");
 
-        if (isEntryPointScript && entryScriptSideEffects.length > 0) {
-          // Entry point scripts get removed entirely and replaced with side effects
-          log("Removing entry point script and adding side effects");
+        const leadingCommentRanges = callExpr.getLeadingCommentRanges();
+        const pureComment = leadingCommentRanges.find((r) =>
+          r.getText().includes("@__PURE__"),
+        );
 
-          const sideEffects = entryScriptSideEffects.join(",\n");
+        const wrapInfo = {
+          callExpr: callExpr,
+          sideEffects: sideEffects,
+          pureCommentText: pureComment?.getText(),
+        };
 
-          // For removal, we'll use a special marker that gets replaced with null
-          entryPointsPerCallExpr.set(callExpr, {
-            callExpr: callExpr,
-            sideEffects: sideEffects,
-            isRemoval: true,
-          });
-        } else {
-          // Regular scripts get wrapped with scriptsToBeLoaded side effects
-          const sideEffects = entryPoints
-            .map((p) => `(requestInfo.rw.scriptsToBeLoaded.add("${p}"))`)
-            .join(",\n");
-
-          const leadingCommentRanges = callExpr.getLeadingCommentRanges();
-          const pureComment = leadingCommentRanges.find((r) =>
-            r.getText().includes("@__PURE__"),
-          );
-
-          const wrapInfo = {
-            callExpr: callExpr,
-            sideEffects: sideEffects,
-            pureCommentText: pureComment?.getText(),
-            isRemoval: false,
-          };
-
-          if (!entryPointsPerCallExpr.has(callExpr)) {
-            entryPointsPerCallExpr.set(callExpr, wrapInfo);
-          }
+        if (!entryPointsPerCallExpr.has(callExpr)) {
+          entryPointsPerCallExpr.set(callExpr, wrapInfo);
         }
 
         needsRequestInfoImportRef.value = true;
@@ -507,92 +414,67 @@ export async function transformJsxScriptTagsCode(
       }
     }
 
-    const callExprModifications: (
-      | WrapCallExprModification
-      | RemoveCallExprModification
-    )[] = [];
+    const wrapModifications: WrapCallExprModification[] = [];
 
     for (const [callExpr, wrapInfo] of entryPointsPerCallExpr) {
-      if (wrapInfo.isRemoval) {
-        // Entry point scripts get removed entirely
-        callExprModifications.push({
-          type: "removeCallExpr",
-          sideEffects: wrapInfo.sideEffects,
-          fullStart: callExpr.getFullStart(),
-          end: callExpr.getEnd(),
-        });
-      } else {
-        // Regular scripts get wrapped
-        const fullStart = callExpr.getFullStart();
-        const end = callExpr.getEnd();
-        const callExprText = callExpr.getText();
-        const fullText = callExpr.getFullText();
+      const fullStart = callExpr.getFullStart();
+      const end = callExpr.getEnd();
+      const callExprText = callExpr.getText();
+      const fullText = callExpr.getFullText();
 
-        const leadingWhitespace = fullText.substring(
-          0,
-          fullText.length - callExprText.length,
-        );
+      const leadingWhitespace = fullText.substring(
+        0,
+        fullText.length - callExprText.length,
+      );
 
-        let pureCommentText: string | undefined;
-        let leadingTriviaText: string | undefined;
+      let pureCommentText: string | undefined;
+      let leadingTriviaText: string | undefined;
 
-        if (wrapInfo.pureCommentText) {
-          pureCommentText = wrapInfo.pureCommentText;
-          leadingTriviaText = leadingWhitespace;
-        }
-
-        callExprModifications.push({
-          type: "wrapCallExpr",
-          sideEffects: wrapInfo.sideEffects,
-          pureCommentText: pureCommentText,
-          leadingTriviaText: leadingTriviaText,
-          fullStart: fullStart,
-          end: end,
-          callExprText: callExprText,
-          leadingWhitespace: leadingWhitespace,
-        });
+      if (wrapInfo.pureCommentText) {
+        pureCommentText = wrapInfo.pureCommentText;
+        leadingTriviaText = leadingWhitespace;
       }
+
+      wrapModifications.push({
+        type: "wrapCallExpr",
+        sideEffects: wrapInfo.sideEffects,
+        pureCommentText: pureCommentText,
+        leadingTriviaText: leadingTriviaText,
+        fullStart: fullStart,
+        end: end,
+        callExprText: callExprText,
+        leadingWhitespace: leadingWhitespace,
+      });
     }
 
-    callExprModifications.sort((a, b) => b.fullStart - a.fullStart);
+    wrapModifications.sort((a, b) => b.fullStart - a.fullStart);
 
-    for (const mod of callExprModifications) {
-      if (mod.type === "removeCallExpr") {
-        // Replace the entire JSX call with just the side effects wrapped in an expression that evaluates to null
-        const replacementText = `(${mod.sideEffects}, null)`;
-        console.log(
-          "[DEBUG] transformJsxScriptTagsPlugin - Replacing script with:",
-          replacementText,
-        );
-        sourceFile.replaceText([mod.fullStart, mod.end], replacementText);
-      } else if (mod.type === "wrapCallExpr") {
-        if (mod.pureCommentText && mod.leadingTriviaText) {
-          const newText = `(
+    for (const mod of wrapModifications) {
+      if (mod.pureCommentText && mod.leadingTriviaText) {
+        const newText = `(
 ${mod.sideEffects},
 ${mod.pureCommentText} ${mod.callExprText}
 )`;
 
-          const newLeadingTriviaText = mod.leadingTriviaText.replace(
-            mod.pureCommentText,
-            "",
-          );
+        const newLeadingTriviaText = mod.leadingTriviaText.replace(
+          mod.pureCommentText,
+          "",
+        );
 
-          sourceFile.replaceText(
-            [mod.fullStart, mod.end],
-            newLeadingTriviaText + newText,
-          );
-        } else {
-          const leadingNewlines =
-            mod.leadingWhitespace.match(/\n\s*/)?.[0] || "";
+        sourceFile.replaceText(
+          [mod.fullStart, mod.end],
+          newLeadingTriviaText + newText,
+        );
+      } else {
+        const leadingNewlines = mod.leadingWhitespace.match(/\n\s*/)?.[0] || "";
 
-          sourceFile.replaceText(
-            [mod.fullStart, mod.end],
-            `${leadingNewlines}(
+        sourceFile.replaceText(
+          [mod.fullStart, mod.end],
+          `${leadingNewlines}(
 ${mod.sideEffects},
 ${mod.callExprText}
 )`,
-          );
-        }
+        );
       }
     }
 
@@ -609,14 +491,8 @@ ${mod.callExprText}
       }
     }
 
-    const finalCode = sourceFile.getFullText();
-    console.log(
-      "[DEBUG] transformJsxScriptTagsPlugin - Final transformed code:",
-    );
-    console.log(finalCode);
-
     return {
-      code: finalCode,
+      code: sourceFile.getFullText(),
       map: null,
     };
   }
@@ -637,24 +513,10 @@ export const transformJsxScriptTagsPlugin = ({
     name: "rwsdk:vite:transform-jsx-script-tags",
     configResolved(config) {
       isBuild = config.command === "build";
-      console.log(
-        "[DEBUG] transformJsxScriptTagsPlugin - Plugin loaded, isBuild:",
-        isBuild,
-      );
     },
     async transform(code, id) {
-      console.log(
-        "[DEBUG] transformJsxScriptTagsPlugin - transform called for:",
-        id,
-        "environment:",
-        this.environment?.name,
-      );
-
       // Skip during directive scanning to avoid performance issues
       if (process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE) {
-        console.log(
-          "[DEBUG] transformJsxScriptTagsPlugin - Skipping due to directive scan",
-        );
         return;
       }
 
@@ -673,10 +535,6 @@ export const transformJsxScriptTagsPlugin = ({
         hasJsxFunctions(code)
       ) {
         log("Transforming JSX script tags in %s", id);
-        console.log(
-          "[DEBUG] transformJsxScriptTagsPlugin - Processing file:",
-          id,
-        );
         process.env.VERBOSE && log("Code:\n%s", code);
 
         // During discovery phase, never use manifest - it doesn't exist yet
