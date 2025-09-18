@@ -144,3 +144,15 @@ The `renovate.json` file we have built remains 100% valid and is the core of the
 To test this safely without merging the full configuration to `main`, we will use a "pointer" strategy. A minimal `renovate.json` will be temporarily placed on the `main` branch, which instructs the Renovate App to load its full configuration from this `greenkeep-now-and-ongoing` branch. This allows for safe, isolated testing.
 
 The temporary and now-obsolete GitHub Action workflow files will be deleted from this branch.
+
+### Step 11: Correcting React Peer Dependency Range
+
+After the Renovate App was successfully configured, it created a PR for the `starter-peer-dependencies` group. The CI for this PR failed with an `ERESOLVE` error during `npm install`.
+
+**Finding:**
+
+The root cause was that the `peerDependencies` for `react`, `react-dom`, and `react-server-dom-webpack` in `sdk/package.json` were pinned to an exact canary version. When Renovate attempted to update the starter projects to a *newer* React canary, `npm` correctly identified that this new version did not satisfy the SDK's strict, exact peer dependency requirement, and the installation failed.
+
+**Action:**
+
+The `peerDependencies` in `sdk/package.json` have been updated from an exact version to a `>` range (e.g., `react: ">=19.2.0-canary-..."`). This allows any newer version of the React canary packages to satisfy the requirement, resolving the dependency conflict. This change was committed directly to this branch, which will trigger Renovate to rebase its PR and re-run CI.
