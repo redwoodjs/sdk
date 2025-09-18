@@ -48,38 +48,14 @@ export const renderToRscStream = (app: {
   actionResult: any;
   onError?: (error: unknown) => void;
 }): ReadableStream => {
-  console.log(
-    "--- DEBUG: [renderToRscStream] - ENTRY POINT - Function called ---",
-  );
-  console.log("--- DEBUG: [renderToRscStream] - Node:", app.node);
-  console.log(
-    "--- DEBUG: [renderToRscStream] - ActionResult:",
-    app.actionResult,
-  );
-
   const { node, onError } = app;
   let { actionResult } = app;
 
   if (actionResult instanceof ReadableStream) {
-    console.log(
-      "--- DEBUG: [renderToRscStream] - ActionResult is ReadableStream, rechunking ---",
-    );
     actionResult = rechunkStream(actionResult);
   }
 
-  console.log(
-    "--- DEBUG: [renderToRscStream] - About to call baseRenderToRscStream ---",
-  );
-  const result = baseRenderToRscStream(
-    { node, actionResult },
-    createClientManifest(),
-    {
-      onError,
-    },
-  );
-  console.log(
-    "--- DEBUG: [renderToRscStream] - baseRenderToRscStream completed, returning stream:",
-    result,
-  );
-  return result;
+  return baseRenderToRscStream({ node, actionResult }, createClientManifest(), {
+    onError,
+  });
 };

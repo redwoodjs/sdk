@@ -1,18 +1,25 @@
-import { ReactElement } from "react";
-import { renderToRscStream } from "./renderToRscStream.js";
-import { transformRscToHtmlStream } from "./transformRscToHtmlStream.js";
-import { requestInfo } from "../requestInfo/worker.js";
+import { ReactElement, FC } from "react";
+import { DocumentProps } from "../lib/router";
+import { renderToRscStream } from "./renderToRscStream";
+import { transformRscToHtmlStream } from "./transformRscToHtmlStream";
+import { requestInfo } from "../requestInfo/worker";
 import { injectRSCPayload } from "rsc-html-stream/server";
 
 export interface RenderToStreamOptions {
-  injectRscPayload?: boolean;
+  Document?: FC<DocumentProps>;
+  injectRSCPayload?: boolean;
   onError?: (error: unknown) => void;
 }
+
+export const IdentityDocument: FC<DocumentProps> = ({ children }) => (
+  <>{children}</>
+);
 
 export const renderToStream = async (
   element: ReactElement,
   {
-    injectRscPayload: shouldInjectRSCPayload = false,
+    Document = IdentityDocument,
+    injectRSCPayload: shouldInjectRSCPayload = false,
     onError = () => {},
   }: RenderToStreamOptions = {},
 ): Promise<ReadableStream> => {
@@ -22,26 +29,23 @@ export const renderToStream = async (
     onError,
   });
 
-  let rscPayloadStream: ReadableStream | undefined;
   if (shouldInjectRSCPayload) {
-    const [rscStreamForHtml, rscStreamForPayload] = rscStream.tee();
-    rscStream = rscStreamForHtml;
-    rscPayloadStream = rscStreamForPayload;
-  }
+    const [rscPayloadStream1, rscPayloadStream2] = rscStream.tee();
+    rscStream = rscPayloadStream1;
 
-  const appStream = await transformRscToHtmlStream({
-    stream: rscStream,
-    requestInfo,
-    onError,
-  });
-
-  if (shouldInjectRSCPayload && rscPayloadStream) {
-    return appStream.pipeThrough(
-      injectRSCPayload(rscPayloadStream, {
+    rscStream = rscStream.pipeThrough(
+      injectRSCPayload(rscPayloadStream2, {
         nonce: requestInfo.rw.nonce,
       }),
     );
   }
 
-  return appStream;
+  const htmlStream = await transformRscToHtmlStream({
+    stream: rscStream,
+    Document,
+    requestInfo,
+    onError,
+  });
+
+  return htmlStream;
 };

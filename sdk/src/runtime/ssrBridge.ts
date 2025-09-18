@@ -8,9 +8,7 @@
 // `rwsdk/__ssr_bridge`. We have bundler logic (ssrBridgePlugin) that looks out
 // for imports to it.
 
-export { renderToRscStream } from "./render/renderToRscStream.js";
-export { transformRscToHtmlStream } from "./render/transformRscToHtmlStream.js";
-export { renderRscThenableToHtmlStream } from "./render/renderRscThenableToHtmlStream.js";
+export { renderRscThenableToHtmlStream } from "./render/renderRscThenableToHtmlStream";
 
 export {
   ssrLoadModule,

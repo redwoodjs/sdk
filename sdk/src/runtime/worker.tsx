@@ -1,5 +1,6 @@
 import React from "react";
-import { renderToStream } from "./render/renderToStream";
+import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
+import { renderToRscStream } from "./render/renderToRscStream";
 
 import { rscActionHandler } from "./register/worker";
 import { injectRSCPayload } from "rsc-html-stream/server";
@@ -124,19 +125,14 @@ export const defineApp = <
 
           const { rscPayload: shouldInjectRSCPayload } = rw;
 
-          // For RSC-only requests, we still need the old approach
+          let rscPayloadStream = renderToRscStream({
+            node: pageElement,
+            actionResult:
+              actionResult instanceof Response ? null : actionResult,
+            onError,
+          });
+
           if (isRSCRequest) {
-            const { renderToRscStream } = await import(
-              "./render/renderToRscStream"
-            );
-
-            const rscPayloadStream = renderToRscStream({
-              node: pageElement,
-              actionResult:
-                actionResult instanceof Response ? null : actionResult,
-              onError,
-            });
-
             const responseHeaders = new Headers(userResponseInit.headers);
             responseHeaders.set(
               "content-type",
@@ -150,12 +146,29 @@ export const defineApp = <
             });
           }
 
-          // For HTML requests, use the new two-stream coalescing approach
-          let html: ReadableStream<any> = await renderToStream(pageElement, {
-            Document: requestInfo.rw.Document,
-            injectRscPayload: shouldInjectRSCPayload,
+          let injectRSCPayloadStream: TransformStream<any, any> | undefined;
+
+          if (shouldInjectRSCPayload) {
+            const [rscPayloadStream1, rscPayloadStream2] =
+              rscPayloadStream.tee();
+
+            rscPayloadStream = rscPayloadStream1;
+
+            injectRSCPayloadStream = injectRSCPayload(rscPayloadStream2, {
+              nonce: rw.nonce,
+            });
+          }
+
+          let html: ReadableStream<any> = await transformRscToHtmlStream({
+            stream: rscPayloadStream,
+            Document: rw.Document,
+            requestInfo: requestInfo,
             onError,
           });
+
+          if (injectRSCPayloadStream) {
+            html = html.pipeThrough(injectRSCPayloadStream);
+          }
 
           const responseHeaders = new Headers(userResponseInit.headers);
           responseHeaders.set("content-type", "text/html; charset=utf-8");
@@ -244,5 +257,3 @@ export const DefaultDocument: React.FC<{ children: React.ReactNode }> = ({
 const isClientReference = (Component: React.FC<any>) => {
   return Object.prototype.hasOwnProperty.call(Component, "$$isClientReference");
 };
-
-console.log("##########################");
