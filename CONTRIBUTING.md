@@ -196,16 +196,29 @@ This section outlines the strategy for managing dependencies to maintain stabili
 
 ### Dependency Categories and Update Cadence
 
-#### 1. Peer Dependencies (`sdk/package.json`)
+#### 1. Peer Dependencies (`starter-peer-deps`)
 
-These are the most critical dependencies (`wrangler`, `@cloudflare/vite-plugin`, etc.). Our process is designed to test the boundaries of our allowed `peerDependencies` version range.
+-   **What**: The most critical dependencies (`wrangler`, `react`, `vite`, etc.) that are defined as `peerDependencies` in the SDK and tested in the `starters/*` projects.
+-   **When**: As Soon As Possible (ASAP). Renovate creates a PR immediately when a new version is available.
+-   **Why**: To provide an immediate early-warning signal if a new peer dependency version introduces a regression that could affect users.
 
--   **Update Cadence**: "As Soon As Possible" (ASAP).
--   **Process**:
-    1.  **Testing New Versions**: An automated process opens a Pull Request to update the versions of these dependencies in our `starters/*` projects to the *latest available version* that still satisfies the SDK's `peerDependencies` range. This is how we define a "peer dependency update" in our context.
-    2.  **CI Signal**: This PR triggers our full smoke test suite. The CI result is the signal.
-    3.  **If CI passes**, the PR can be manually reviewed and merged. This indicates the new version is safe.
-    4.  **If CI fails**, it triggers the failure protocol below.
+#### 2. SDK Internal Dependencies (`sdk-internal-deps`)
+
+-   **What**: The SDK's own `dependencies` and `devDependencies` from `sdk/package.json`.
+-   **When**: Weekly, in a single grouped pull request.
+-   **Why**: To keep the SDK's own build tooling and internal dependencies up-to-date in a predictable, non-disruptive manner.
+
+#### 3. Starter Application Dependencies (`starter-deps`)
+
+-   **What**: All non-peer dependencies in the `starters/*` projects.
+-   **When**: Weekly, in a single grouped pull request.
+-   **Why**: To ensure our starter templates remain current with their own dependencies.
+
+#### 4. Repository, Docs, and Infrastructure Dependencies (`docs-and-infra-deps`)
+
+-   **What**: A consolidated group for all remaining repository maintenance dependencies. This includes dependencies from the root `package.json`, the `docs/package.json`, GitHub Actions, Docker images, and the `.node-version` file.
+-   **When**: Weekly, in a single grouped pull request.
+-   **Why**: To bundle all miscellaneous tooling, documentation, and infrastructure updates into one convenient PR to reduce noise.
 
 ### Failure Protocol for Peer Dependencies
 
@@ -223,20 +236,6 @@ When the smoke tests fail on a peer dependency update, it is a signal that requi
         3.  **Commit and Push**: Commit these changes with a message explaining the reason for the constraint and push to the branch.
 
     *   Once CI passes on the PR, it can be merged. This prepares for a patch release of `rwsdk` that protects users from the faulty dependency.
-
-#### 2. SDK Internal Dependencies (`sdk/package.json`)
-
-These are the `dependencies` and `devDependencies` used to build the SDK itself.
-
--   **Update Cadence**: Weekly.
--   **Process**: A single, grouped Pull Request will be opened each week with all available updates. This PR must pass the smoke test suite before being manually merged. Security-related updates are handled immediately in separate PRs.
-
-#### 3. Starter Application Dependencies (`starters/*/package.json`)
-
-These are dependencies in our starter projects that are not peer dependencies of the SDK.
-
--   **Update Cadence**: Weekly.
--   **Process**: Handled in a single, grouped weekly PR, validated by smoke tests.
 
 ## Debugging changes to the sdk locally for a project
 
