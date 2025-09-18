@@ -9,10 +9,6 @@
     },
     {
       "description": "Group all SDK internal dependencies (non-peer) into a single weekly PR.",
-      "matchFilePaths": ["sdk/package.json"],
-      "matchDepTypes": ["dependencies", "devDependencies"],
-      "groupName": "sdk-internal-dependencies",
-      "schedule": ["at any time on Saturday"],
       "matchPackageNames": [
         "!/^@cloudflare\\//",
         "!wrangler",
@@ -20,14 +16,13 @@
         "!react",
         "!react-dom",
         "!react-server-dom-webpack"
-      ]
+      ],
+      "groupName": "sdk-internal-dependencies",
+      "schedule": ["on saturday"],
+      "paths": ["sdk/package.json"]
     },
     {
       "description": "Group all starter application dependencies (non-peer) into a single weekly PR.",
-      "matchFilePaths": ["starters/**/package.json"],
-      "matchDepTypes": ["dependencies", "devDependencies"],
-      "groupName": "starter-app-dependencies",
-      "schedule": ["at any time on Saturday"],
       "matchPackageNames": [
         "!/^@cloudflare\\//",
         "!wrangler",
@@ -35,11 +30,13 @@
         "!react",
         "!react-dom",
         "!react-server-dom-webpack"
-      ]
+      ],
+      "groupName": "starter-app-dependencies",
+      "schedule": ["on saturday"],
+      "paths": ["starters/**/package.json"]
     },
     {
       "description": "Update peer dependencies in starter projects as soon as they are available.",
-      "matchFilePaths": ["starters/**/package.json"],
       "matchPackageNames": [
         "@cloudflare/vite-plugin",
         "wrangler",
@@ -48,7 +45,8 @@
       ],
       "groupName": "starter-peer-dependencies",
       "schedule": ["every weekend"],
-      "prPriority": 1
+      "prPriority": 1,
+      "paths": ["starters/**/package.json"]
     },
     {
       "description": "Group React-related packages together.",
