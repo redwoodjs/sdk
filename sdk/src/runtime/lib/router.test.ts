@@ -2,7 +2,7 @@ import { describe, it, expect } from "vitest";
 import React from "react";
 
 import { matchPath, defineRoutes, route, render, layout } from "./router";
-import type { RwContext } from "./router";
+import type { RwContext } from "./rwContext.js";
 import type { RequestInfo } from "../requestInfo/types";
 
 describe("matchPath", () => {

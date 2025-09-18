@@ -12,7 +12,8 @@ import {
 } from "./requestInfo/worker";
 import { RequestInfo, DefaultAppContext } from "./requestInfo/types";
 
-import { Route, type RwContext, defineRoutes } from "./lib/router";
+import { Route, defineRoutes } from "./lib/router";
+import { type RwContext } from "./lib/rwContext.js";
 import { generateNonce } from "./lib/utils";
 import { ssrWebpackRequire } from "./imports/worker";
 

@@ -1,30 +1,14 @@
 import React from "react";
 import { isValidElementType } from "react-is";
 import { RequestInfo } from "../requestInfo/types";
-import type { Kysely } from "kysely";
+import {
+  type RwContext,
+  type DocumentProps,
+  type LayoutProps,
+} from "./rwContext.js";
 
-export type DocumentProps<T extends RequestInfo = RequestInfo> = T & {
-  children: React.ReactNode;
-};
-
-export type LayoutProps<T extends RequestInfo = RequestInfo> = {
-  children?: React.ReactNode;
-  requestInfo?: T;
-};
-
-export type RwContext = {
-  nonce: string;
-  Document: React.FC<DocumentProps<any>>;
-  rscPayload: boolean;
-  ssr: boolean;
-  layouts?: React.FC<LayoutProps<any>>[];
-  databases: Map<string, Kysely<any>>;
-  scriptsToBeLoaded: Set<string>;
-  entryScripts: Set<string>;
-  inlineScripts: Set<string>;
-  pageRouteResolved: PromiseWithResolvers<void> | undefined;
-  actionResult?: unknown;
-};
+// Re-export for backward compatibility
+export { type RwContext, type DocumentProps, type LayoutProps };
 
 export type RouteMiddleware<T extends RequestInfo = RequestInfo> = (
   requestInfo: T,
