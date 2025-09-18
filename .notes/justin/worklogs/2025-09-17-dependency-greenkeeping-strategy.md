@@ -114,3 +114,33 @@ The default `GITHUB_TOKEN` provided to GitHub Actions runs with restricted permi
 **Action:**
 
 A `permissions` block was added to the `test-renovate-flow.yml` workflow file. This explicitly grants the job the `security-events: read` permission, along with `contents: write` and `pull-requests: write`, allowing Renovate to access vulnerability data and create PRs. This will resolve the warning and enable security-related features.
+
+### Step 9: Overriding Restrictive Default Permissions
+
+Despite the explicit permissions in the job, the vulnerability warning persisted.
+
+**Finding:**
+
+It's likely that the repository or organization has a default setting that restricts the permissions granted to the `GITHUB_TOKEN`. In such cases, job-level permissions are not enough to override the restrictive default.
+
+**Action:**
+
+A top-level `permissions` block has been added to the `test-renovate-flow.yml` workflow. This ensures that the necessary permissions (`contents: write`, `pull-requests: write`, and `security-events: read`) are granted to the entire workflow, overriding any potentially restrictive defaults. This should definitively resolve the warning.
+
+### Step 10: Pivoting to the Renovate GitHub App
+
+Despite multiple attempts to configure the GitHub Action, the process remained brittle and prone to authentication issues. The core problem is that the default `GITHUB_TOKEN` is often too restrictive, and using a Personal Access Token (PAT) for a public repository adds unnecessary maintenance overhead.
+
+**Finding:**
+
+A review of standard practices for major open-source projects (like Vite, TypeScript, etc.) revealed that the overwhelming majority use the **Renovate GitHub App** from the marketplace, not a self-hosted GitHub Action. The App is free for open-source projects and handles all authentication and infrastructure concerns automatically, eliminating the problems we have faced.
+
+**Decision & Action:**
+
+The strategy has been pivoted to use the recommended Renovate GitHub App. This aligns with industry best practices and provides a more robust, zero-maintenance solution.
+
+The `renovate.json` file we have built remains 100% valid and is the core of the configuration.
+
+To test this safely without merging the full configuration to `main`, we will use a "pointer" strategy. A minimal `renovate.json` will be temporarily placed on the `main` branch, which instructs the Renovate App to load its full configuration from this `greenkeep-now-and-ongoing` branch. This allows for safe, isolated testing.
+
+The temporary and now-obsolete GitHub Action workflow files will be deleted from this branch.
