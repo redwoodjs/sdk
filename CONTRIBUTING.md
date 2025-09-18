@@ -361,3 +361,24 @@ The release workflow and underlying script (`sdk/sdk/scripts/release.sh`) follow
 5.  **Publish**: Only if all smoke tests and verification checks pass, the script publishes the `.tgz` tarball to npm. This guarantees the exact package that was tested is the one that gets published.
 6.  **Finalize Commit**: For non-prerelease versions, the script updates dependencies in the monorepo, amends the version commit with these changes, tags the commit, and pushes everything to the remote repository.
 7.  **Rollback**: If any step fails, the script reverts the version commit and cleans up all temporary files, leaving the repository in a clean state.
+
+*   **A Note on Mocking**: The term "dependency" is used in two ways. This document primarily concerns package management (e.g., `npm` packages). For guidance on writing testable code by avoiding mocks in favor of dependency injection, please see the "Dependency Injection over Mocking" section.
+
+### Using the Dependency Dashboard
+
+After a new dependency update is available, Renovate will create a Pull Request. For managing all available updates, Renovate also creates a special issue in the repository titled "Dependency Dashboard". You can find this in the "Issues" tab.
+
+This dashboard is the central place to manage the greenkeeping process. It provides:
+*   A list of all new dependency versions that have been discovered.
+*   The status of current open Pull Requests for dependency updates.
+*   A list of updates that are waiting for their scheduled time to run.
+
+#### Manually Triggering Updates
+
+Our configuration schedules most updates to run weekly to reduce noise. However, you can trigger any scheduled update immediately from the dashboard.
+
+To do this, find the update group you wish to run in the "Awaiting Schedule" section of the dashboard and click the checkbox next to it. Renovate will detect this change and create the corresponding Pull Request within a few minutes. This is particularly useful for forcing a one-time update of all dependencies to establish a new baseline or to test a specific update, such as the `starter-peer-dependencies` group.
+
+### Failure Protocol for Peer Dependencies
+
+If a peer dependency update in a starter project fails the CI smoke tests, it signifies a potential regression. The failure could be due to one of two causes:
