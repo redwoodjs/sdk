@@ -20,4 +20,6 @@ jobs:
         with:
           token: ${{ secrets.GITHUB_TOKEN }}
           configurationFile: renovate.json
-          renovate-args: --autodiscover=true --autodiscover-filter=${{ github.repository }}
+        env:
+          RENOVATE_AUTODISCOVER: "true"
+          RENOVATE_AUTODISCOVER_FILTER: ${{ github.repository }}

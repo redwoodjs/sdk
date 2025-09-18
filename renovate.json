@@ -11,37 +11,41 @@
       "description": "Group all SDK internal dependencies (non-peer) into a single weekly PR.",
       "matchFilePaths": ["sdk/package.json"],
       "matchDepTypes": ["dependencies", "devDependencies"],
-      "excludePackageNames": [
-        "/^@cloudflare\\//",
-        "wrangler",
-        "vite",
-        "react",
-        "react-dom",
-        "react-server-dom-webpack"
-      ],
       "groupName": "sdk-internal-dependencies",
-      "schedule": ["at any time on saturday"]
+      "schedule": ["at any time on Saturday"],
+      "matchPackageNames": [
+        "!/^@cloudflare\\//",
+        "!wrangler",
+        "!vite",
+        "!react",
+        "!react-dom",
+        "!react-server-dom-webpack"
+      ]
     },
     {
       "description": "Group all starter application dependencies (non-peer) into a single weekly PR.",
       "matchFilePaths": ["starters/**/package.json"],
       "matchDepTypes": ["dependencies", "devDependencies"],
-      "excludePackageNames": [
-        "/^@cloudflare\\//",
-        "wrangler",
-        "vite",
-        "react",
-        "react-dom",
-        "react-server-dom-webpack"
-      ],
       "groupName": "starter-app-dependencies",
-      "schedule": ["at any time on saturday"]
+      "schedule": ["at any time on Saturday"],
+      "matchPackageNames": [
+        "!/^@cloudflare\\//",
+        "!wrangler",
+        "!vite",
+        "!react",
+        "!react-dom",
+        "!react-server-dom-webpack"
+      ]
     },
     {
       "description": "Update peer dependencies in starter projects as soon as they are available.",
       "matchFilePaths": ["starters/**/package.json"],
-      "matchPackageNames": ["@cloudflare/vite-plugin", "wrangler", "vite"],
-      "excludePackageNames": ["@cloudflare/workers-types"],
+      "matchPackageNames": [
+        "@cloudflare/vite-plugin",
+        "wrangler",
+        "vite",
+        "!@cloudflare/workers-types"
+      ],
       "groupName": "starter-peer-dependencies",
       "schedule": ["every weekend"],
       "prPriority": 1
