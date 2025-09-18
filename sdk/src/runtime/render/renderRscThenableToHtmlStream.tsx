@@ -60,7 +60,6 @@ export const renderRscThenableToHtmlStream = async ({
 
   return await renderToReadableStream(<Component />, {
     nonce: requestInfo.rw.nonce,
-    bootstrapModules: ["/src/client.tsx"], // EXPERIMENT 1
     onError(error, { componentStack }) {
       try {
         if (!error) {

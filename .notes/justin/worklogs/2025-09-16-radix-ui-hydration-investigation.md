@@ -623,3 +623,160 @@ Before proceeding, we need to definitively understand how React's `bootstrapModu
 3.  We will observe if the counter becomes interactive as soon as it is visible, or if its hydration is delayed until the suspended component has finished loading.
 
 The findings from these two experiments will provide the necessary data to make an informed decision on the correct architectural path forward.
+
+## 36. Experiment 1 Results: `bootstrapModules` Fails to Resolve Hydration Mismatch
+
+The first experiment was conducted by removing the manual entry script from the test app's `Document.tsx` and hardcoding the `bootstrapModules: ["/src/client.tsx"]` option in the framework's SSR renderer. The results were definitive and surprising.
+
+### Key Observation 1: React's Script Injection Behavior
+
+When using `bootstrapModules`, React's server renderer injects two key elements into the HTML:
+1.  A `<link rel="modulepreload" ...>` tag in the `<head>`.
+2.  A `<script type="module" src="/src/client.tsx" async="">` at the end of the `<body>`.
+
+Critically, this script tag is given an `id="_R_"`, which identifies it as the carrier for React's hydration `resumableState`. The `async` attribute is also notable, as it confirms that this method does not guarantee immediate, blocking execution in the way an inline script does.
+
+### Key Observation 2: The Hydration Mismatch Persists
+
+Despite React correctly injecting its state-carrying script tag, the `useId` mismatch error remains.
+
+-   **Server-rendered ID:** `_R_1q_`
+-   **Client-rendered ID:** `_R_0_`
+
+This is a critical finding. It proves that the root cause of our hydration issue is not simply the absence of the `_R_` script tag. Even when the tag is present and rendered by React itself, the client-side runtime is still failing to consume the state and initialize its `useId` counter correctly.
+
+This invalidates the hypothesis that merely switching to `bootstrapModules` would solve the problem. The issue is more fundamental, likely related to how the `resumableState` is being generated on the server or consumed on the client within our specific framework setup. Given this failure, proceeding to Experiment 2 (Suspense interactivity) is unnecessary, as this architectural path has already been proven unviable for fixing the primary bug.
+
+## 37. Historical Context: The Necessity of Inline `import()` for Early Hydration
+
+Further review, prompted by historical context from previous pull requests, has clarified the critical importance of the framework's existing script-loading strategy. The use of an inline `<script>import("...")</script>` is not arbitrary; it is a deliberate architectural decision to solve a specific performance problem related to streaming and React Suspense.
+
+### The Deferred Execution Problem of Module Scripts
+
+As documented in PRs [#369](https://github.com/redwoodjs/sdk/pull/369) and [#316](https://github.com/redwoodjs/sdk/pull/316), using a standard `<script type="module" src="...">` for the client entry point causes a significant user-facing issue:
+
+1.  **Module Scripts are Deferred:** By browser specification, module scripts only execute after the entire HTML document has been downloaded and parsed.
+2.  **Conflict with Streaming:** In a streaming SSR context with `<Suspense>`, this means the browser waits for all slow data fetches to complete and all suspended content to be delivered before executing the client script.
+3.  **Delayed Interactivity:** The result is that client components in the initial shell (e.g., a counter, a menu button) are visible to the user but remain non-interactive until the slowest part of the page has finished loading. This negates a primary benefit of streaming.
+
+### The Inline `import()` Solution
+
+The framework's solution was to switch to an inline script that executes immediately upon being parsed:
+```html
+<script>import("/src/client.tsx")</script>
+```
+This ensures that hydration begins the moment the initial shell is available, making the UI interactive for the user as quickly as possible, even while other parts of the page are still streaming in. This behavior was validated in a detailed [Loom video](https://www.loom.com/share/bff7da89f3b449b38a1c411f3b6cb563).
+
+### Implications for the Current Problem
+
+This context is critical. Our first experiment showed that React's `bootstrapModules` API renders an `<script type="module" async ...>`. The `async` attribute strongly suggests that it will not provide the immediate, blocking execution required to solve the early interactivity problem.
+
+Therefore, the second experiment (Suspense and Interactivity Validation) remains critically important. We must empirically verify if React's solution can match the interactivity performance of our existing inline `import()` strategy.
+
+## 38. Experiment 2 Results: Success. `bootstrapModules` Preserves Early Interactivity
+
+The second experiment yielded a clear and positive result: **React's `bootstrapModules` approach successfully preserves immediate interactivity, even with streaming and `<Suspense>`.**
+
+The test was conducted on a page with an interactive `<Counter />` component followed by a `<SuspendedComponent />` that simulated a 2-second data fetch.
+
+### Key Observation: The Counter Was Immediately Interactive
+
+As soon as the initial shell was rendered, the counter was fully interactive. Clicks on the "Increment" button correctly updated its state while the "Loading suspended content..." fallback was still visible. This confirms that the `<script type="module" async ...>` tag injected by React does not block the event loop or delay hydration of the initial client components.
+
+This finding invalidates our previous hypothesis. We can now proceed with the confidence that letting React control the client entry point script is the correct architectural path. It solves the `useId` mismatch problem without regressing on the critical user experience of immediate interactivity.
+
+### Initial DOM Response
+
+For reference, here is the initial HTML streamed to the browser. Note the `<template>` placeholder for the suspended content and the `async` script tag at the end of the `<body>`.
+
+```html
+<!DOCTYPE html>
+<html lang="en">
+    <head>
+        <meta charSet="utf-8"/>
+        <meta name="viewport" content="width=device-width, initial-scale=1"/>
+        <link rel="modulepreload" fetchPriority="low" nonce="..." href="/src/client.tsx"/>
+        <title>@redwoodjs/starter-minimal</title>
+        <link rel="modulepreload" href="/src/client.tsx"/>
+        ...
+    </head>
+    <body>
+        <div id="root">
+            ...
+            <div id="hydrate-root">
+                <div>
+                    <h1>Suspense and Interactivity Test</h1>
+                    <p>The counter below should be interactive immediately, even while the content below is loading.</p>
+                    <div style="border:1px solid grey;padding:1rem;margin:1rem 0">
+                        <h2>Client Counter</h2>
+                        <p>Count:
+                        <!-- -->
+                        0</p>
+                        <button>Increment</button>
+                    </div>
+                    <!--$?-->
+                    <template id="B:0"></template>
+                    <div>Loading suspended content...</div>
+                    <!--/$-->
+                </div>
+            </div>
+        </div>
+        ...
+        <script type="module" src="/src/client.tsx" nonce="..." id="_R_" async=""></script>
+        ...
+    </body>
+</html>
+```
+
+## 39. New Strategic Direction and Rationale
+
+Based on the success of the experiment, we have a clear path forward. The strategy is to separate the user-facing API from the underlying implementation, providing a simple experience for the user while the framework handles the integration with React's idiomatic patterns.
+
+### The Guiding Principles
+
+1.  **User Experience First:** The user should be able to define their client entry point in their `Document.tsx` file using a standard HTML `<script>` tag. The framework should not impose any non-standard placement rules or syntax. It should feel like writing plain HTML.
+
+2.  **Framework Responsibility:** It is the framework's job to bridge the user's intent with React's specific API requirements. This means the framework must be responsible for detecting the user's entry point script, extracting the necessary information (i.e., the `src` path), and providing it to React's `renderToReadableStream` function via the `bootstrapModules` option.
+
+3.  **Embrace the "Magic":** This approach introduces a layer of "magic" where the script tag the user writes is transformed or removed from the final output, its purpose fulfilled by `bootstrapModules`. This is an acceptable trade-off. It is the lesser evil compared to exposing a "sharp edge" of the API, where an incorrectly placed script could silently break hydration or performance. React's streaming architecture is already complex; the framework's role is to manage that complexity, not expose it.
+
+### Next Steps: Re-evaluating the Extraction Mechanism
+
+With the *what* and *why* clearly defined, the next question is *how* to implement the script extraction. The initial build-time plugin approach faced challenges with the race condition. A new idea being considered is a runtime-only approach:
+
+1.  **Pre-render the Document Shell:** Before the main RSC render, perform a quick, preliminary render of just the `<Document>` component shell (with a placeholder for `children`) to a string.
+2.  **Collect Side-Effects:** This pre-render would execute the component's code, allowing our side-effect mechanism to populate `requestInfo` with the script paths.
+3.  **Proceed with Main Render:** With the `requestInfo` object now correctly populated, proceed with the actual `renderToReadableStream` call, passing the collected script paths to `bootstrapModules`.
+
+This approach avoids the complexities of a build-time transform and keying by `Document`, but it feels potentially hacky. Further thought is needed to determine if this is the most robust and performant solution.
+
+## 40. Back to the Drawing Board: The Challenge of Linking Scripts to Documents
+
+While the strategic goal is clear (extract user-defined scripts and pass them to React), the implementation proves to be a significant challenge. The core difficulty lies in creating a robust, non-fragile link between a specific `Document` component and its associated entry scripts.
+
+Several implementation ideas were considered and dismissed due to their inherent fragility.
+
+### 1. Static Property on the Component
+
+*   **Idea:** At build time, parse the `Document` and attach the script info as a static property (e.g., `Document.documentScriptInfo = ...`).
+*   **Problem:** This is extremely fragile. It makes unsafe assumptions about how the component is defined. It would work for a `function Document() {}` declaration but would likely fail for `const Document = () => {}`, `const Document = React.forwardRef(...)`, or other valid component patterns.
+
+### 2. Module-Level Named Export
+
+*   **Idea:** At build time, remove the script and add a new named export to the module (e.g., `export const documentScriptInfo = ...`).
+*   **Problem:** This approach fails to handle the edge case where a user defines and exports multiple `Document` components from a single file. A single module-level variable cannot distinguish which script belongs to which component, breaking the necessary link.
+
+### 3. Wrapping the Component
+
+*   **Idea:** Create a higher-order component (HOC) or wrapper that could inspect the `Document` and inject the script info.
+*   **Problem:** This suffers from the same fragility as the static property approach. Reliably wrapping a component without knowing its exact definition is not feasible.
+
+### The Core Dilemma
+
+The challenge is a classic chicken-and-egg problem:
+
+1.  To solve the `useId` mismatch, we need to provide script information to React's `renderToReadableStream` function *before* the render starts.
+2.  The script information is defined *inside* the `Document` component that is about to be rendered.
+3.  Any attempt to extract this information at runtime (e.g., a "pre-render" or introspection step) struggles to also *remove* the original `<script>` tag from the final, streamed output in a clean way.
+
+This pushes the solution back towards a build-time transformation, but a more sophisticated one is needed that can reliably link scripts to specific component exports within a module. The path forward is not yet clear.
