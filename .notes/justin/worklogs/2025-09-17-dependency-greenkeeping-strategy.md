@@ -88,3 +88,17 @@ Based on this, I have performed the following fixes:
 3.  **Cleaned Up Test Workflows**: The temporary test workflows have served their purpose in debugging and have now been removed.
 
 With these changes, the greenkeeping setup is complete and correct. The next push to this branch will trigger Renovate, which should now run with a valid configuration and create the expected PR.
+
+### Step 7: Forcing Renovate to Use the Correct Branch
+
+The test runs were now succeeding but still not producing the correct Pull Request. The latest logs revealed the root cause: Renovate was running against the `main` branch by default, ignoring the configuration on our working branch.
+
+**Finding:**
+
+The `renovatebot/github-action` defaults to using the repository's main branch as its base. It was finding the onboarding PR on `main` instead of using our branch's `renovate.json` to find dependency updates.
+
+**Action:**
+
+The `test-renovate-flow.yml` workflow has been updated to include the `RENOVATE_BASE_BRANCHES` environment variable. This explicitly tells Renovate to use our `greenkeep-now-and-ongoing` branch as the base for its operations.
+
+This should be the final change needed. The next push will trigger the workflow, and Renovate should now have the correct branch context to find the available dependency updates and create the failing PR we expect.

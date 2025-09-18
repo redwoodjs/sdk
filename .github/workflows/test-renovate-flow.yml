@@ -23,3 +23,4 @@ jobs:
         env:
           RENOVATE_AUTODISCOVER: "true"
           RENOVATE_AUTODISCOVER_FILTER: ${{ github.repository }}
+          RENOVATE_BASE_BRANCHES: greenkeep-now-and-ongoing
