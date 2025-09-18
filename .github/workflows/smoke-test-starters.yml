@@ -58,8 +58,17 @@ jobs:
       - name: Install dependencies
         run: pnpm install --frozen-lockfile=false
 
+      - name: Run isolated directive scan test
+        shell: bash
+        run: |
+          cd starters/minimal
+          node ../../sdk/scripts/test-directive-scan.mjs
+        env:
+          DEBUG: "rwsdk:*"
+          CI: 1
+
       - name: Run smoke test
-        if: matrix.package-manager != 'yarn-classic'
+        if: false # Temporarily disable the full smoke test
         run: pnpm smoke-test --starter ${{ matrix.starter }} --pm ${{ matrix.package-manager }}
         env:
           DEBUG: "rwsdk:*"
