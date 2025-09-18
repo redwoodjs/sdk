@@ -51,14 +51,6 @@ export function runWithRequestInfo<Result>(
   fn: () => Result,
 ): Result {
   const runWithRequestInfoFn = () => {
-    if (!nextRequestInfo.rw.entryScripts) {
-      nextRequestInfo.rw.entryScripts = new Set();
-    }
-
-    if (!nextRequestInfo.rw.inlineScripts) {
-      nextRequestInfo.rw.inlineScripts = new Set();
-    }
-
     requestInfoDeferred.resolve(nextRequestInfo);
     return fn();
   };

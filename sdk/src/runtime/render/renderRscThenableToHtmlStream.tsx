@@ -4,7 +4,6 @@ import { type DocumentProps } from "../lib/router.js";
 import { type RequestInfo } from "../requestInfo/types.js";
 import { Preloads } from "./preloads.js";
 import { Stylesheets } from "./stylesheets.js";
-import { default as clientManifest } from "virtual:rwsdk:manifest.js";
 
 export const renderRscThenableToHtmlStream = async ({
   thenable,
@@ -59,27 +58,8 @@ export const renderRscThenableToHtmlStream = async ({
     );
   };
 
-  const bootstrapOptions: Record<string, any> = {
-    nonce: requestInfo.rw.nonce,
-  };
-
-  const { entryScripts, inlineScripts } = requestInfo.rw;
-
-  if (entryScripts?.size > 0) {
-    if (process.env.VITE_IS_DEV_SERVER === "1") {
-      bootstrapOptions.bootstrapModules = Array.from(entryScripts);
-    } else {
-      bootstrapOptions.bootstrapModules = Array.from(entryScripts).map(
-        (entry) => clientManifest[entry]?.file || entry,
-      );
-    }
-  } else if (inlineScripts?.size > 0) {
-    bootstrapOptions.bootstrapScriptContent =
-      Array.from(inlineScripts).join(";");
-  }
-
   return await renderToReadableStream(<Component />, {
-    ...bootstrapOptions,
+    nonce: requestInfo.rw.nonce,
     onError(error, { componentStack }) {
       try {
         if (!error) {
