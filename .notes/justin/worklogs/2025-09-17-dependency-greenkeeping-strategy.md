@@ -77,13 +77,13 @@ After pushing the updated configuration, the Renovate PR was not updated as expe
 
 1.  **`WARN: No repositories found`**: The workflow was not correctly configured to scan the repository it was running in.
 2.  **`Unexpected input(s) 'renovate-args'`**: The workflow was using an invalid input to pass arguments to Renovate.
-3.  **Configuration Migration & Validation Errors**: The Renovate logs themselves showed a `migratedConfig` section and, in subsequent runs, persistent `Config validation errors`. The primary issues were the use of the `matchFilePaths` key, which is not valid, and an incorrect `schedule` syntax. After further iteration, it was discovered that `matchFilePaths` should be replaced with `paths` to correctly scope rules to specific directories.
+3.  **Configuration Migration & Validation Errors**: The Renovate logs themselves showed a `migratedConfig` section and, in subsequent runs, persistent `Config validation errors`. The primary issues were the use of the `matchFilePaths` key, which is not valid, and an incorrect `schedule` syntax. After further iteration, it was discovered that `matchFilePaths` should be replaced with `paths`, which also proved to be incorrect. The latest logs confirm the correct key is `matchFileNames`.
 
 **Action:**
 
 Based on this, I have performed the following fixes:
 
-1.  **Updated `renovate.json`**: The configuration has been updated to replace the invalid `matchFilePaths` keys with the correct `paths` key, and to use a valid `schedule` syntax (e.g., "on saturday"). This is the current, accepted version of the configuration.
+1.  **Updated `renovate.json`**: The configuration has been updated to replace the invalid `paths` keys with the correct `matchFileNames` key, and to use a valid `schedule` syntax (e.g., "on saturday"). This is the current, accepted version of the configuration.
 2.  **Corrected Test Workflow**: The `test-renovate-flow.yml` was fixed to pass the autodiscover flags as environment variables, which is the correct method.
 3.  **Cleaned Up Test Workflows**: The temporary test workflows have served their purpose in debugging and have now been removed.
 

@@ -19,7 +19,7 @@
       ],
       "groupName": "sdk-internal-dependencies",
       "schedule": ["on saturday"],
-      "paths": ["sdk/package.json"]
+      "matchFileNames": ["sdk/package.json"]
     },
     {
       "description": "Group all starter application dependencies (non-peer) into a single weekly PR.",
@@ -33,7 +33,7 @@
       ],
       "groupName": "starter-app-dependencies",
       "schedule": ["on saturday"],
-      "paths": ["starters/**/package.json"]
+      "matchFileNames": ["starters/**/package.json"]
     },
     {
       "description": "Update peer dependencies in starter projects as soon as they are available.",
@@ -46,7 +46,7 @@
       "groupName": "starter-peer-dependencies",
       "schedule": ["every weekend"],
       "prPriority": 1,
-      "paths": ["starters/**/package.json"]
+      "matchFileNames": ["starters/**/package.json"]
     },
     {
       "description": "Group React-related packages together.",
