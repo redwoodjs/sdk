@@ -35,14 +35,34 @@
     {
       "description": "Group all starter application dependencies into a single weekly PR.",
       "matchFileNames": ["starters/**/package.json"],
-      "excludePackageNames": ["@cloudflare/vite-plugin", "wrangler", "vite"],
+      "excludePackageNames": [
+        "@cloudflare/vite-plugin",
+        "@cloudflare/workers-types",
+        "wrangler",
+        "vite",
+        "react",
+        "react-dom",
+        "react-server-dom-webpack",
+        "@types/react",
+        "@types/react-dom"
+      ],
       "groupName": "starter-app-dependencies",
       "schedule": ["on saturday"]
     },
     {
       "description": "Update peer dependencies in starter projects as soon as they are available.",
       "matchFileNames": ["starters/**/package.json"],
-      "matchPackageNames": ["@cloudflare/vite-plugin", "wrangler", "vite"],
+      "matchPackageNames": [
+        "@cloudflare/vite-plugin",
+        "@cloudflare/workers-types",
+        "wrangler",
+        "vite",
+        "react",
+        "react-dom",
+        "react-server-dom-webpack",
+        "@types/react",
+        "@types/react-dom"
+      ],
       "groupName": "starter-peer-dependencies",
       "schedule": ["every weekend"],
       "prPriority": 1

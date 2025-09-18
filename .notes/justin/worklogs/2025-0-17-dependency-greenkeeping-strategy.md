@@ -51,3 +51,15 @@ The initial run of the Renovate App with the corrected pointer syntax revealed s
 4.  **Updated Documentation**: The `CONTRIBUTING.md` file has been updated with a section explaining how to use the Dependency Dashboard to monitor and manually trigger updates.
 
 With these changes, the configuration should now be correct and robust. The next run of Renovate should produce the correctly grouped PRs as originally intended.
+
+### Step 14: Expanding the Peer Dependency Group
+
+A review of the `sdk` and `starters` `package.json` files revealed that the `starter-peer-dependencies` group was incomplete. It was missing the critical `react` packages and their associated types.
+
+**Finding:**
+
+The initial focus was on the Cloudflare and Vite dependencies, but `react`, `react-dom`, `react-server-dom-webpack`, and their corresponding `@types/*` packages are also essential peer dependencies for the starter projects. For maximum stability, these packages and their types should be updated together with the other peer dependencies in the high-priority group.
+
+**Action:**
+
+The `default.json` configuration has been updated to expand the `starter-peer-dependencies` group. This group now includes all `react` packages and their types, as well as `@cloudflare/workers-types`. The `starter-app-dependencies` group has also been updated to exclude these packages, preventing any grouping conflicts.
