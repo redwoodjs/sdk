@@ -48,16 +48,15 @@ jobs:
         with:
           node-version: 22
 
-      - name: Install dependencies
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Clear pnpm cache
         shell: bash
-        run: |
-          corepack enable
-          if [ "${{ matrix.package-manager }}" = "yarn" ]; then
-            corepack prepare yarn@stable --activate
-          elif [ "${{ matrix.package-manager }}" = "yarn-classic" ]; then
-            npm i -g yarn@1.22.19 --force
-          fi
-          pnpm install
+        run: pnpm store prune
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile=false
 
       - name: Run smoke test
         if: matrix.package-manager != 'yarn-classic'

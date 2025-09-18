@@ -2,13 +2,12 @@ import resolve, { ResolveOptions } from "enhanced-resolve";
 import { Alias, ResolvedConfig } from "vite";
 import fs from "fs";
 import path from "path";
+import createDebug from "debug";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { Environment } from "vite";
+const debug = createDebug("rwsdk:vite:enhanced-resolve-plugin");
 
 let resolveIdCounter = 0;
-const log = (...args: any[]) => {
-  console.log("rwsdk:vite:enhanced-resolve-plugin", ...args);
-};
 
 // Enhanced-resolve plugin that wraps Vite plugin resolution
 class VitePluginResolverPlugin {
@@ -35,7 +34,7 @@ class VitePluginResolverPlugin {
         "VitePluginResolverPlugin",
         (request: any, resolveContext: any, callback: any) => {
           const resolveId = ++resolveIdCounter;
-          log(`[${resolveId}] VitePluginResolverPlugin`, {
+          debug(`[${resolveId}] VitePluginResolverPlugin`, {
             request: request.request,
             path: request.path,
           });
@@ -57,14 +56,14 @@ class VitePluginResolverPlugin {
                   {},
                   (err: any, result: any) => {
                     if (!err && result) {
-                      log(
+                      debug(
                         `[${resolveId}] Context resolve: %s -> %s`,
                         id,
                         result,
                       );
                       resolve({ id: result });
                     } else {
-                      log(
+                      debug(
                         `[${resolveId}] Context resolve failed for %s: %s`,
                         id,
                         err?.message || "not found",
@@ -77,7 +76,7 @@ class VitePluginResolverPlugin {
             },
           };
 
-          log(
+          debug(
             `[${resolveId}] Trying to resolve %s from %s`,
             request.request,
             request.path,
@@ -93,7 +92,7 @@ class VitePluginResolverPlugin {
               }
 
               const pluginName = p.name;
-              log(`[${resolveId}] Trying plugin:`, pluginName);
+              debug(`[${resolveId}] Trying plugin:`, pluginName);
 
               try {
                 const result = await p.resolveId.call(
@@ -104,7 +103,7 @@ class VitePluginResolverPlugin {
                 );
 
                 if (result) {
-                  log(
+                  debug(
                     `[${resolveId}] Plugin ${pluginName} resolved to:`,
                     result,
                   );
@@ -112,7 +111,7 @@ class VitePluginResolverPlugin {
                     typeof result === "string" ? result : result.id;
 
                   if (resolvedId && resolvedId !== currentRequest.request) {
-                    log(
+                    debug(
                       `[${resolveId}] Plugin ${pluginName} resolved ${currentRequest.request} -> ${resolvedId}`,
                       pluginName,
                     );
@@ -121,26 +120,26 @@ class VitePluginResolverPlugin {
                       path: resolvedId,
                     });
                   } else if (resolvedId === currentRequest.request) {
-                    log(
+                    debug(
                       `[${resolveId}] Plugin ${pluginName} returned unchanged ID`,
                       pluginName,
                     );
                   }
                 } else {
-                  log(`[${resolveId}] Plugin ${pluginName} did not resolve.`);
+                  debug(`[${resolveId}] Plugin ${pluginName} did not resolve.`);
                 }
               } catch (e: any) {
-                log(`[${resolveId}] Plugin ${pluginName} threw an error:`, e);
+                debug(`[${resolveId}] Plugin ${pluginName} threw an error:`, e);
                 return callback(e);
               }
             }
-            log(`[${resolveId}] No plugin resolved the path, falling back.`);
+            debug(`[${resolveId}] No plugin resolved the path, falling back.`);
 
             // For absolute paths, check if the file exists
             if (path.isAbsolute(currentRequest.request)) {
               try {
                 if (fs.existsSync(currentRequest.request)) {
-                  log(
+                  debug(
                     `[${resolveId}] File exists, resolving to: %s`,
                     currentRequest.request,
                   );
@@ -149,21 +148,21 @@ class VitePluginResolverPlugin {
                     this.environment.config.root,
                     { absolute: true, osify: "fileUrl" },
                   );
-                  log(`[${resolveId}] Osified fallback path:`, osifiedPath);
+                  debug(`[${resolveId}] Osified fallback path:`, osifiedPath);
                   return callback(null, {
                     ...currentRequest,
                     path: osifiedPath,
                   });
                 }
               } catch (e) {
-                log(
+                debug(
                   `[${resolveId}] Error checking file existence for fallback:`,
                   e,
                 );
               }
             }
 
-            log(`[${resolveId}] Fallback finished.`);
+            debug(`[${resolveId}] Fallback finished.`);
             return callback(null, currentRequest);
           };
 
@@ -180,22 +179,22 @@ class VitePluginResolverPlugin {
                 importerDir,
                 { absolute: true, osify: "fileUrl" },
               );
-              log(
+              debug(
                 `[${resolveId}] Normalized relative import to absolute path:`,
                 absolutePath,
               );
               return runPluginProcessing().catch((e) => {
-                log(`[${resolveId}] Error in plugin processing`, e.message);
+                debug(`[${resolveId}] Error in plugin processing`, e.message);
                 callback();
               });
             } catch (e) {
-              log(`[${resolveId}] Error normalizing relative import:`, e);
+              debug(`[${resolveId}] Error normalizing relative import:`, e);
               return callback(e);
             }
           } else {
             // For non-relative imports, process them directly
             return runPluginProcessing().catch((e) => {
-              log(`[${resolveId}] Error in plugin processing`, e.message);
+              debug(`[${resolveId}] Error in plugin processing`, e.message);
               callback();
             });
           }
@@ -298,7 +297,7 @@ export const createViteAwareResolver = (
     plugins,
   };
 
-  log("Creating enhanced-resolve with options:", {
+  debug("Creating enhanced-resolve with options:", {
     extensions: enhancedResolveOptions.extensions,
     alias: enhancedResolveOptions.alias,
     roots: enhancedResolveOptions.roots,

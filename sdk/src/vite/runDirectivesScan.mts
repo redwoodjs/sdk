@@ -1,5 +1,3 @@
-console.log("rwsdk:vite:run-directives-scan - TOP OF FILE");
-
 // @ts-ignore
 import { OnLoadArgs, OnResolveArgs, Plugin, PluginBuild } from "esbuild";
 import { Environment, ResolvedConfig } from "vite";
@@ -7,6 +5,7 @@ import fsp from "node:fs/promises";
 import { hasDirective } from "./hasDirective.mjs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
+import debug from "debug";
 import { getViteEsbuild } from "./getViteEsbuild.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { externalModules } from "./constants.mjs";
@@ -16,10 +15,9 @@ import {
 } from "./createViteAwareResolver.mjs";
 import resolve from "enhanced-resolve";
 
+const log = debug("rwsdk:vite:run-directives-scan");
+
 let resolveIdCounter = 0;
-const log = (...args: any[]) => {
-  console.log("rwsdk:vite:run-directives-scan", ...args);
-};
 
 // Copied from Vite's source code.
 // https://github.com/vitejs/vite/blob/main/packages/vite/src/shared/utils.ts
@@ -103,7 +101,7 @@ export const runDirectivesScan = async ({
   clientFiles: Set<string>;
   serverFiles: Set<string>;
 }) => {
-  console.log("\n🔍 Scanning for 'use client' and 'use server' directives...");
+  log("\n🔍 Scanning for 'use client' and 'use server' directives...");
 
   // Set environment variable to indicate scanning is in progress
   process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE = "true";
@@ -366,6 +364,6 @@ export const runDirectivesScan = async ({
   } finally {
     // Always clear the scanning flag when done
     delete process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE;
-    console.log("✅ Scan complete.");
+    log("✅ Scan complete.");
   }
 };
