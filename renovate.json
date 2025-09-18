@@ -1,0 +1,3 @@
+{
+  "extends": ["github>redwoodjs/sdk:greenkeep-now-and-ongoing"]
+}
