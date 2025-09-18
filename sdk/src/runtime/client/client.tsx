@@ -106,46 +106,48 @@ export const initClient = async ({
     upgradeToRealtime,
   };
 
-  const rootEl = document.getElementById("hydrate-root");
+  document.addEventListener("DOMContentLoaded", () => {
+    const rootEl = document.getElementById("hydrate-root");
 
-  if (!rootEl) {
-    throw new Error('no element with id "hydrate-root"');
-  }
+    if (!rootEl) {
+      throw new Error('no element with id "hydrate-root"');
+    }
 
-  let rscPayload: any;
+    let rscPayload: any;
 
-  // context(justinvdm, 18 Jun 2025): We inject the RSC payload
-  // unless render(Document, [...], { rscPayload: false }) was used.
-  if ((globalThis as any).__FLIGHT_DATA) {
-    rscPayload = createFromReadableStream(rscStream, {
-      callServer,
-    });
-  }
+    // context(justinvdm, 18 Jun 2025): We inject the RSC payload
+    // unless render(Document, [...], { rscPayload: false }) was used.
+    if ((globalThis as any).__FLIGHT_DATA) {
+      rscPayload = createFromReadableStream(rscStream, {
+        callServer,
+      });
+    }
 
-  function Content() {
-    const [streamData, setStreamData] = React.useState(rscPayload);
-    const [_isPending, startTransition] = React.useTransition();
-    transportContext.setRscPayload = (v) =>
-      startTransition(() => setStreamData(v));
-    return (
-      <>
-        {streamData
-          ? React.use<{ node: React.ReactNode }>(streamData).node
-          : null}
-      </>
-    );
-  }
-
-  hydrateRoot(rootEl, <Content />, {
-    onUncaughtError: (error, { componentStack }) => {
-      console.error(
-        "Uncaught error: %O\n\nComponent stack:%s",
-        error,
-        componentStack,
+    function Content() {
+      const [streamData, setStreamData] = React.useState(rscPayload);
+      const [_isPending, startTransition] = React.useTransition();
+      transportContext.setRscPayload = (v) =>
+        startTransition(() => setStreamData(v));
+      return (
+        <>
+          {streamData
+            ? React.use<{ node: React.ReactNode }>(streamData).node
+            : null}
+        </>
       );
-    },
+    }
 
-    ...hydrateRootOptions,
+    hydrateRoot(rootEl, <Content />, {
+      onUncaughtError: (error, { componentStack }) => {
+        console.error(
+          "Uncaught error: %O\n\nComponent stack:%s",
+          error,
+          componentStack,
+        );
+      },
+
+      ...hydrateRootOptions,
+    });
   });
 
   if (import.meta.hot) {

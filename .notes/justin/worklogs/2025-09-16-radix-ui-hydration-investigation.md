@@ -477,7 +477,7 @@ Based on the research, the following implementation will be carried out:
 
 A foundational principle of the framework is providing the user with transparent control over their application's final HTML structure via `Document.tsx`. The previous implementation plan (Section 25), which required removing the manual `<script>` tag from the user's `Document`, violated this principle and is therefore invalid. The `Document.tsx` file and its contents are to be treated as an inviolable part of the user-facing API.
 
-The core technical challenge remains: we must trigger React to serialize its `resumableState` (to fix `useId` hydration) without interfering with the user's `Document.tsx`.
+The core technical challenge remains: we must trigger React to serialize its `resumableState` (to fix `useId`) without interfering with the user's `Document.tsx`.
 
 The `bootstrapModules` API is not a viable solution, as it forces React to render its own script tag, creating duplication and bypassing the framework's script transformation logic. This is an unacceptable side effect.
 
@@ -792,4 +792,50 @@ A new idea for the build-time transformation has been proposed that could solve 
     4.  Finally, it would append a side-effectful call to the end of the module's code, which would populate a global map at runtime. The call would look something like this: `requestInfo.rw.documentInfo.set(<found_document_identifier>, { entryPoints: [...]})`.
     5.  The runtime could then use the `Document` component reference to look up its associated script info in the map before rendering.
 
-This approach will be the next to investigate for script extraction once the core hydration bug is fixed.
+This approach will be the next to investigate for script extraction once the core hydration bug is resolved.
+
+## 42. New Investigation Plan: Debugging the Core Hydration Mismatch
+
+With the script extraction strategy defined for later, the immediate priority is to solve the fundamental `useId` hydration mismatch. The failure of our controlled experiment (using `bootstrapModules` directly) proves the issue is not with our framework's script handling, but with a deeper interaction with React's hydration logic.
+
+The following three-step plan will be executed to diagnose the root cause.
+
+### Step 1: Understand React's Internal Hydration Mechanism
+
+The first step is to research the React source code to build a clear mental model of how `useId` seeding is *supposed* to work in a streaming SSR context. The key questions to answer are:
+1.  How and when does `renderToReadableStream` generate the `useId` seed?
+2.  How is this seed encoded and embedded into the stream, particularly in relation to the `<script id="_R_">` tag?
+3.  On the client, what specific code in `react-dom` is responsible for finding this script tag?
+4.  How does the client-side code parse the seed and initialize the internal `useId` counter before hydration begins?
+
+### Step 2: Targeted Client-Side Instrumentation
+
+Based on the findings from Step 1, we will add more targeted debugging to the client entry point (`client.tsx`) to test for a potential race condition. The instrumentation will involve:
+1.  Adding a `DOMContentLoaded` event listener to log the state of the DOM *after* the initial HTML has been fully parsed. This will confirm if the `_R_` script tag is present at that stage.
+2.  Wrapping the `hydrate()` call in a `setTimeout(..., 0)` to defer its execution slightly. If this delay resolves the mismatch, it would be a strong indicator of a race condition where our hydration logic is executing before React's internal setup is complete.
+
+### Step 3: Analysis and Next Actions
+
+The combined results will guide our next steps:
+*   If the source code review reveals a specific condition or global variable that we are not meeting, the fix will be to ensure our environment provides it.
+*   If the instrumentation points to a race condition, the fix will involve developing a more robust method to time the `hydrate()` call.
+*   If neither step yields a clear cause, it suggests a more fundamental incompatibility between our Vite/worker setup and React's expectations, which will require a different debugging path.
+
+## 43. Investigation Results: A "Too Early" Execution Problem
+
+The client-side instrumentation yielded a definitive result. By logging the execution sequence, we observed the following:
+1.  The `initClient()` function in the framework's client entry point is executed.
+2.  The `hydrateRoot()` call is made.
+3.  The `useId` mismatch error occurs.
+
+Critically, the `DOMContentLoaded` event **never fires** before the hydration error occurs.
+
+### The Smoking Gun
+
+This sequence is the smoking gun. It proves that the entire client-side application logic is executing *before* the browser has finished parsing the initial HTML document. React is being asked to hydrate a DOM that is not yet complete or stable from the browser's perspective.
+
+This explains why the `useId` seed is ignored. The `<script type="module" async>` that loads our client bundle is executed by the browser as soon as it is downloaded. However, React's internal logic for finding the `<script id="_R_">` and consuming its `resumableState` is likely designed to run at a later stage in the page lifecycle (e.g., on or after `DOMContentLoaded`). Our `initClient()` call is happening too early, triggering hydration before React's own state initialization has had a chance to complete.
+
+### Next Step: Delaying Hydration
+
+The next logical step is to explicitly delay the entire client initialization until the DOM is ready. The plan is to wrap the core logic of `initClient` inside a `DOMContentLoaded` event listener. This will ensure that `hydrateRoot` is only called after the browser guarantees the full HTML document is parsed and accessible.
