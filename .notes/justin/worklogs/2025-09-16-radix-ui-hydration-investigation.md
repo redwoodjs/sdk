@@ -509,3 +509,29 @@ Subsequent testing confirmed that the surgical application of `bootstrapScriptCo
 This confirms that the single-line change is the correct, minimal, and backwards-compatible solution. The key was applying it to a stable version of the rendering pipeline.
 
 The reason for the previous, confounding failures is believed to be environmental. During the initial tests, it is likely that the application was accidentally running against an incorrect version of the SDK due to a mix-up between multiple active git worktrees. With the environment correctly configured, the fix works as expected.
+
+## 29. Detailed Mechanism of the Fix
+
+Further analysis of the rendered HTML output has clarified the precise mechanism by which the `bootstrapScriptContent: ' '` option works. The key is a single "marker" script injected by React's server renderer.
+
+Providing the `bootstrapScriptContent` option causes React to inject a script tag, identifiable by its unique ID (`<script id="_R_">`), into the HTML head. This script does not contain a data payload. Instead, its mere presence acts as a powerful signal to the client-side React runtime.
+
+When the client runtime finds this marker script, it switches into "hydration mode." In this mode, the `useId` hook alters its behavior. Rather than initializing its own independent counter, it "replays" the ID generation process by walking the server-rendered DOM that already exists in the browser. This ensures it generates the exact same sequence of IDs as the server, resolving the mismatch.
+
+The server-rendered HTML itself becomes the source of truth for synchronization. This elegant mechanism allows React to manage the state transfer without a separate data script and, crucially, without interfering with the user-controlled `Document.tsx` file.
+
+## 30. Pre-PR Analysis: Summary of Changes
+
+### Previous State and Problem
+
+When using UI libraries like Radix UI, a hydration mismatch error would occur for components that render content in portals (e.g., Dialogs, Popovers). The browser console would report that server-rendered attributes did not match the client-side render. For example, a button's `aria-controls` attribute might be `radix-_R_76_` in the server-rendered HTML, but `radix-_R_0_` during client-side hydration.
+
+This happened because of a desynchronization of React's `useId` hook; the server and client were generating different ID sequences. The root cause relates to our framework's `Document.tsx` architecture. By giving developers direct control over the final HTML shell, we don't use React's more managed APIs that would automatically signal that a document is hydratable. Without this explicit signal, React's server renderer was not generating the `resumableState` object, which is responsible for passing the server's `useId` counter state to the client.
+
+### Solution
+
+The solution is to add the `bootstrapScriptContent: ' '` option to the `renderToReadableStream` call. This is a minimal but sufficient signal to React that the document is intended for hydration.
+
+This approach works for our architecture because it triggers React's state-synchronization mechanism without forcing it to take over the rendering of the main client entry script, which would conflict with our `Document.tsx` pattern. In response to this signal, React injects a single "marker" script (`<script id="_R_">`) into the HTML head.
+
+This script's presence switches the client-side `useId` hook into a "replay" mode. Instead of generating new IDs, it regenerates the exact same sequence of IDs that the server did by walking the existing server-rendered DOM tree. The HTML itself becomes the source of truth for synchronization, correctly aligning the client with the server's render. This process is fully backwards-compatible and preserves the user's complete control over their `Document.tsx` file.
