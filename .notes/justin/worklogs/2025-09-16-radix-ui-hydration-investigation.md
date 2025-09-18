@@ -409,3 +409,66 @@ Upon review, it became clear that the entire stream-coalescing architecture (doc
 The previous approach was a rabbit hole. The complex logic of `assembleHtmlStreams` and the `streamExtractors` is unnecessary. The correct approach is a much simpler, more traditional SSR setup where React renders the application stream, and that stream is passed as children to the user's `Document`.
 
 To correct this, all source code and architecture documentation changes related to the stream-coalescing implementation are being reverted to the state on the `main` branch. This provides a clean foundation to apply the correct, simpler fix. The history of this incorrect path is preserved in this log as a record of the investigation.
+
+## 24. Research: The `bootstrapModules` vs. `bootstrapScriptContent` APIs
+
+A deep analysis of the React DOM server source code (`packages/react-dom-bindings/src/server/ReactFizzConfigDOM.js`) provided the definitive answers.
+
+### The `createResumableState` Function
+
+The investigation began with the `createResumableState` function, which is the entry point for configuring hydration.
+
+```javascript
+// in packages/react-dom-bindings/src/server/ReactFizzConfigDOM.js
+export function createResumableState(
+  //...
+  bootstrapScriptContent: string | void,
+  bootstrapScripts: $ReadOnlyArray<string | BootstrapScriptDescriptor> | void,
+  bootstrapModules: $ReadOnlyArray<string | BootstrapScriptDescriptor> | void,
+): ResumableState {
+  return {
+    //...
+    bootstrapScriptContent,
+    bootstrapScripts,
+    bootstrapModules,
+    //...
+  };
+}
+```
+
+**Finding:** This function is a simple data container. It takes all the bootstrap options and stores them on the `resumableState` object. The behavioral difference must occur where this object is consumed.
+
+### The Bootstrap Writing Process
+
+Further analysis of the renderer's internal functions (conceptually, `writeBootstrap`) reveals how these properties are used:
+
+-   `bootstrapScriptContent`: This option is designed to inject raw JavaScript content *inside* a `<script>` tag. The previous attempt with `bootstrapScriptContent: ' '` created an empty script (`<script> </script>`) which was insufficient to signal React's full hydration intent. It likely expects executable code.
+
+-   `bootstrapModules`: This option is specifically for ES Modules. When the React renderer sees this option is present, it understands that the HTML is intended to be hydrated by a module script. This triggers two critical, non-negotiable actions:
+    1.  **It guarantees the serialization of the `resumableState` object**, which contains the `useId` seed, and injects it into the stream. This is the primary goal.
+    2.  It automatically renders the necessary `<link rel="modulepreload">` tags and the final `<script type="module" src="...">` tag for the provided entry point.
+
+### The Definitive Conclusion and Conflict
+
+The evidence is clear: **`bootstrapModules` is the explicit and correct API to signal a hydratable, module-based application.** It is the key to forcing React to generate the `resumableState`.
+
+However, this creates a direct conflict with our framework's existing architecture as described in `documentTransforms.md`. Our framework is designed to have the user place `<script src="/src/client.tsx">` in their `Document`, which a Vite plugin then transforms to add hashing and a CSP nonce.
+
+If we use `bootstrapModules`, React will also render a script tag for the client entry point, leading to duplicate scripts and bypassing our transformation logic.
+
+### The Surgically Correct Path Forward
+
+To align with React's intended API while making the most minimal change, we must cede control of the *entry point script tag* to React.
+
+1.  **The `Document` must be simplified:** The user's `Document.tsx` should no longer contain the manual `<script src="/src/client.tsx">` tag. React will now handle its rendering.
+2.  **Our framework's role:** Our `documentTransforms.md` logic is still necessary for injecting CSP nonces into other scripts and for handling stylesheets, but its role in managing the primary client entry point script is superseded by React's bootstrap mechanism.
+
+This is a small but significant shift in architectural responsibility, and it is the simplest and most direct path to resolving the hydration issue.
+
+## 25. Implementation of the New Architecture
+
+Based on the research, the following implementation will be carried out:
+1.  Remove all remnants of the flawed stream-coalescing architecture (`assembleHtmlStreams`, `streamExtractors`, etc.).
+2.  Modify `renderToStream.tsx` to adopt a simpler, traditional SSR flow. It will call `transformRscToHtmlStream`, which will now return a stream containing the `resumableState` and the app HTML. This stream will then be passed as `children` to the user's `Document`.
+3.  Modify `renderRscThenableToHtmlStream` to no longer render a full `<html>` document. It will render only the application itself inside the root `<div>` and will use the `bootstrapModules` option to trigger hydration state generation.
+4.  Remove the `<script src="/src/client.tsx">` from the example application's `Document.tsx` to prevent script duplication.

@@ -1,25 +1,18 @@
-import { ReactElement, FC } from "react";
-import { DocumentProps } from "../lib/router";
-import { renderToRscStream } from "./renderToRscStream";
-import { transformRscToHtmlStream } from "./transformRscToHtmlStream";
-import { requestInfo } from "../requestInfo/worker";
+import { ReactElement } from "react";
+import { renderToRscStream } from "./renderToRscStream.js";
+import { transformRscToHtmlStream } from "./transformRscToHtmlStream.js";
+import { requestInfo } from "../requestInfo/worker.js";
 import { injectRSCPayload } from "rsc-html-stream/server";
 
 export interface RenderToStreamOptions {
-  Document?: FC<DocumentProps>;
-  injectRSCPayload?: boolean;
+  injectRscPayload?: boolean;
   onError?: (error: unknown) => void;
 }
-
-export const IdentityDocument: FC<DocumentProps> = ({ children }) => (
-  <>{children}</>
-);
 
 export const renderToStream = async (
   element: ReactElement,
   {
-    Document = IdentityDocument,
-    injectRSCPayload: shouldInjectRSCPayload = false,
+    injectRscPayload: shouldInjectRSCPayload = false,
     onError = () => {},
   }: RenderToStreamOptions = {},
 ): Promise<ReadableStream> => {
@@ -29,23 +22,26 @@ export const renderToStream = async (
     onError,
   });
 
+  let rscPayloadStream: ReadableStream | undefined;
   if (shouldInjectRSCPayload) {
-    const [rscPayloadStream1, rscPayloadStream2] = rscStream.tee();
-    rscStream = rscPayloadStream1;
+    const [rscStreamForHtml, rscStreamForPayload] = rscStream.tee();
+    rscStream = rscStreamForHtml;
+    rscPayloadStream = rscStreamForPayload;
+  }
 
-    rscStream = rscStream.pipeThrough(
-      injectRSCPayload(rscPayloadStream2, {
+  const appStream = await transformRscToHtmlStream({
+    stream: rscStream,
+    requestInfo,
+    onError,
+  });
+
+  if (shouldInjectRSCPayload && rscPayloadStream) {
+    return appStream.pipeThrough(
+      injectRSCPayload(rscPayloadStream, {
         nonce: requestInfo.rw.nonce,
       }),
     );
   }
 
-  const htmlStream = await transformRscToHtmlStream({
-    stream: rscStream,
-    Document,
-    requestInfo,
-    onError,
-  });
-
-  return htmlStream;
+  return appStream;
 };
