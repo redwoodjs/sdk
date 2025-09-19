@@ -932,3 +932,83 @@ To definitively resolve this, I will remove the `push` overriding logic from my 
 3.  **Retain Timeout:** Keep the existing timeout as a fail-safe, should the stream genuinely fail to produce data.
 
 This approach avoids conflicts with `rsc-html-stream`'s internal mechanisms and directly waits for the data flow through the intended stream, providing a more robust and accurate synchronization point for hydration.
+
+## 55. Definitive Root Cause Analysis: The `TreeContext` Initialization Race Condition
+
+After a rigorous investigation, including detailed analysis of the React source code, the definitive root cause of the `useId` hydration mismatch has been identified. All previous hypotheses related to `bootstrap` options, the presence of an `_R_` script, or the timing of `__FLIGHT_DATA__` were red herrings that pointed to a deeper, more subtle issue.
+
+The problem is a race condition between the initialization of React's internal `TreeContext` on the client and the start of the hydration process.
+
+### The `useId` Seed is the `TreeContext`
+
+The `useId` hook's value during hydration is derived from an internal state object called a `TreeContext`. The investigation into `packages/react-reconciler/src/ReactFiberTreeContext.js` and `packages/react-reconciler/src/ReactFiberHooks.js` confirmed this.
+
+- **The Context:** The `TreeContext` consists of an `id` (a number) and an `overflow` (a string). Together, these values represent a component's position within the server-rendered tree. This is the "seed" that must be synchronized.
+- **The Hydration Logic:** The `useId` hook internally calls `getTreeId()`, which reads from the current `TreeContext`. For hydration to succeed, this context must be identical on the client to what it was on the server.
+
+### The Seed's Serialization and the Implicit Root Suspense Boundary
+
+The crucial question was how this `TreeContext` is passed from the server to the client. The answer is not in a separate script, but embedded directly within the RSC payload stream.
+
+- **Serialization:** The `TreeContext` is serialized as an internal prop, `__treeContext`, on the props of a Suspense boundary. The value is a tuple containing the `id` and `overflow` string. A conceptual example of this in the RSC JSON stream is:
+
+  ```json
+  [
+    "$",
+    "$Sreact.suspense",
+    null,
+    {
+      "fallback": "...",
+      "__treeContext": [ 3, "1" ],
+      "children": "..."
+    }
+  ]
+  ```
+
+- **The "No Suspense" Case:** As you correctly pointed out, this mechanism must work even if the user has not added a `<Suspense>` boundary. This is because **React's RSC renderer automatically wraps the entire application in an implicit, root-level Suspense boundary.** This root boundary acts as the carrier for the initial `TreeContext` for the whole application.
+
+### The Client-Side Hydration Mechanism
+
+The definitive proof of this mechanism was found in `packages/react-reconciler/src/ReactFiberHydrationContext.js`:
+
+```javascript
+function reenterHydrationStateFromDehydratedSuspenseInstance(
+  fiber: Fiber,
+  suspenseInstance: SuspenseInstance,
+  treeContext: TreeContext | null,
+): boolean {
+  // ...
+  if (treeContext !== null) {
+    restoreSuspendedTreeContext(fiber, treeContext);
+  }
+  // ...
+}
+```
+
+This code shows that when the React reconciler is hydrating a component that was suspended on the server (a `DehydratedSuspenseInstance`), it looks for a `treeContext` and, if found, uses it to call `restoreSuspendedTreeContext`. This is the function that seeds the client-side `useId` generator to match the server.
+
+### The Final, Definitive Solution
+
+This complete understanding confirms why our race condition exists and why `setTimeout(0)` is the correct fix.
+
+1.  **The Race:** Our `initClient` function synchronously calls `hydrateRoot`. This happens before the browser has had time to process the initial chunks of the RSC stream, which contain the JSON for the implicit root `Suspense` boundary and its critical `__treeContext` prop.
+2.  **The Fix:** Wrapping `hydrateRoot` in a `setTimeout(..., 0)` yields to the browser's event loop. This gives the asynchronous stream parser inside `createFromReadableStream` just enough time to process that initial chunk, create the root `Suspense` element, and allow the reconciler to find the context and call `restoreSuspendedTreeContext` *before* hydration begins.
+
+This is the "just right" moment: it resolves the race condition without waiting for the entire document (`DOMContentLoaded`), thus preserving the critical early interactivity of our streaming architecture.
+
+## 56. Course Correction: Disproving the Implicit Suspense Boundary Theory
+
+The hypothesis in the previous section, stated with undue confidence, was that an "implicit root suspense boundary" was responsible for carrying the `TreeContext` and seeding the `useId` hook. This has been definitively proven **incorrect**.
+
+### Experimental Proof
+
+Through direct instrumentation of the `react-dom-client.development.js` bundle, we have confirmed the following:
+
+1.  **With a `useId` component but no explicit `<Suspense>` boundary:** The `updateSuspenseComponent` function, which is the entry point for hydrating a Suspense boundary and restoring its `TreeContext`, is **never called**.
+2.  **With an explicit `<Suspense>` boundary:** The `updateSuspenseComponent` function **is called**.
+
+### Conclusion
+
+This experiment provides conclusive evidence that the `useId` hydration mechanism is **not** dependent on an implicit or explicit Suspense boundary at the root in a non-Suspense scenario. The previous theory was wrong. The fact that `useId` hydration *can* be fixed by delaying execution (e.g., with `DOMContentLoaded`) while the Suspense hydration path is not being used points to a different, more fundamental hydration mechanism that we have not yet identified.
+
+The investigation must return to the source code to find the true source of the initial `TreeContext` during a standard hydration.
