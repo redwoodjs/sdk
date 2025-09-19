@@ -1173,3 +1173,23 @@ Our application is calling `hydrateRoot` (step 5) before the RSC stream has been
 ### Next Step: Targeted Logging
 
 To confirm this sequence, the next step is to add logs to `mountId` and `restoreSuspendedTreeContext` in the client's `react-reconciler` bundle. This will allow us to observe the exact order of operations and prove the race condition is the root cause.
+
+## 66. Proof: The Logs Confirm the Race Condition
+
+The logging has provided conclusive, definitive proof of the refined hypothesis. The data gathered from the browser console paints a clear and unambiguous picture of the race condition.
+
+### Analysis of Log Output
+
+1.  **DOM Snapshot Confirms Readiness:** The log of `document.documentElement.innerHTML`, captured immediately before `hydrateRoot` is called, shows the complete server-rendered HTML. Critically, it contains the elements with the correct, high-counter server IDs (`id="_R_76_"` and `id="_R_76H1_"`). This proves that the DOM is fully parsed and available to the client script.
+2.  **React Internals Confirm Unseeded State:** The log from within React's `mountId` function is the smoking gun. It shows `[React Log] mountId: Hydrating with treeId -> ` followed by an empty string. This demonstrates that at the exact moment of hydration, React's internal `TreeContext` is in its default, uninitialized state.
+
+### Conclusion
+
+The logs prove the theory correct:
+
+- The server is sending the correct HTML.
+- The browser correctly parses this HTML before our client script runs.
+- Our client script initiates hydration.
+- React, finding its internal `useId` counter unseeded, generates IDs from a fresh counter, causing a mismatch with the server-rendered HTML and leading to a hydration failure.
+
+The problem is not the availability of the DOM, but the initialization of React's internal JavaScript state. Our client script is executing before whatever mechanism is responsible for seeding that state has had a chance to complete. The next phase of the investigation must focus on finding that seeding mechanism and ensuring we wait for it.

@@ -136,6 +136,11 @@ export const initClient = async ({
     );
   }
 
+  console.log(
+    "[RSDK] DOM snapshot before hydration:",
+    document.documentElement.innerHTML,
+  );
+
   hydrateRoot(rootEl, <Content />, {
     onUncaughtError: (error, { componentStack }) => {
       console.error(
