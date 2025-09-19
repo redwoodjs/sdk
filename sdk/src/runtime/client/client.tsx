@@ -30,37 +30,50 @@ declare global {
   var __FLIGHT_DATA__: any[] | undefined;
 }
 
-const FLIGHT_DATA_TIMEOUT_MS = 2000; // 2 seconds
-const FLIGHT_DATA_POLL_INTERVAL_MS = 10;
+console.debug(
+  "[RSDK] client.tsx: Initializing, self.__FLIGHT_DATA__ is",
+  self.__FLIGHT_DATA__,
+  "push method:",
+  self.__FLIGHT_DATA__?.push,
+);
+console.debug("[RSDK] client.tsx: rscStream initial state:", rscStream);
 
-async function waitForFlightData() {
-  let reader: ReadableStreamDefaultReader<any> | undefined;
+const FLIGHT_DATA_TIMEOUT_MS = 2000; // 2 seconds
+
+async function waitForFlightData(stream: ReadableStream) {
+  console.debug("[RSDK] waitForFlightData: Waiting for stream to have data...");
+
+  // rsc-html-stream initializes its own stream and manages __FLIGHT_DATA__.
+  // Instead of conflicting with it, we'll wait for the stream it produces.
+  const reader = stream.getReader();
   let timeoutId: ReturnType<typeof setTimeout>;
 
-  try {
-    reader = rscStream.getReader();
+  const readPromise = reader.read().then((result) => {
+    console.debug(
+      "[RSDK] waitForFlightData: stream emitted its first chunk.",
+      result,
+    );
+    // We've verified that the stream has started. Release the lock so the
+    // abandoned stream branch can be garbage collected.
+    clearTimeout(timeoutId);
+    reader.releaseLock();
+  });
 
-    const dataPromise = reader.read();
+  const timeoutPromise = new Promise<void>((_resolve, reject) => {
+    timeoutId = setTimeout(() => {
+      console.warn(
+        `[RSDK] waitForFlightData: Timeout triggered. Stream did not emit data within ${FLIGHT_DATA_TIMEOUT_MS}ms.`,
+      );
+      reader.releaseLock(); // Also release the lock on timeout
+      reject(
+        new Error(
+          `[RSDK] Stream did not receive data within timeout. This could mean the RSC payload was empty or not sent.`,
+        ),
+      );
+    }, FLIGHT_DATA_TIMEOUT_MS);
+  });
 
-    const timeoutPromise = new Promise<void>((_, reject) => {
-      timeoutId = setTimeout(() => {
-        reject(
-          new Error(
-            "[RSDK] __FLIGHT_DATA__ did not receive data within timeout.",
-          ),
-        );
-      }, FLIGHT_DATA_TIMEOUT_MS);
-    });
-
-    await Promise.race([dataPromise, timeoutPromise]);
-  } catch (error) {
-    console.warn(error instanceof Error ? error.message : String(error));
-  } finally {
-    if (reader) {
-      reader.releaseLock();
-    }
-    clearTimeout(timeoutId!);
-  }
+  return Promise.race([readPromise, timeoutPromise]);
 }
 
 export const fetchTransport: Transport = (transportContext) => {
@@ -143,8 +156,11 @@ export const initClient = async ({
     upgradeToRealtime,
   };
 
+  // Tee the stream so we can wait for the first chunk without consuming it for React.
+  const [streamForWaiting, streamForReact] = rscStream.tee();
+
   // Wait for __FLIGHT_DATA__ to be populated by server scripts
-  await waitForFlightData();
+  await waitForFlightData(streamForWaiting);
 
   const rootEl = document.getElementById("hydrate-root");
 
@@ -152,7 +168,7 @@ export const initClient = async ({
     throw new Error('no element with id "hydrate-root"');
   }
 
-  const rscPayload = createFromReadableStream(rscStream, {
+  const rscPayload = createFromReadableStream(streamForReact, {
     callServer,
   });
 
