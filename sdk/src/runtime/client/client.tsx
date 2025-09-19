@@ -26,47 +26,6 @@ import type {
   TransportContext,
 } from "./types";
 
-const FLIGHT_DATA_TIMEOUT_MS = 2000; // 2 seconds
-
-/**
- * The RSC payload is streamed into the document after the main client entry
- * script. This creates a race condition where React attempts to hydrate
- * before the necessary `useId` seed has been streamed in. This function
- * provides a way to wait for the first chunk of the RSC stream to arrive
- * before initiating hydration.
- */
-async function waitForFlightData(stream: ReadableStream) {
-  const reader = stream.getReader();
-  let timeoutId: ReturnType<typeof setTimeout>;
-
-  const readPromise = reader.read().then((result) => {
-    console.debug(
-      "[RSDK] waitForFlightData: stream emitted its first chunk.",
-      result,
-    );
-    // We've verified that the stream has started. Release the lock so the
-    // abandoned stream branch can be garbage collected.
-    clearTimeout(timeoutId);
-    reader.releaseLock();
-  });
-
-  const timeoutPromise = new Promise<void>((_resolve, reject) => {
-    timeoutId = setTimeout(() => {
-      console.warn(
-        `[RSDK] waitForFlightData: Timeout triggered. Stream did not emit data within ${FLIGHT_DATA_TIMEOUT_MS}ms.`,
-      );
-      reader.releaseLock(); // Also release the lock on timeout
-      reject(
-        new Error(
-          `[RSDK] Stream did not receive data within timeout. This could mean the RSC payload was empty or not sent.`,
-        ),
-      );
-    }, FLIGHT_DATA_TIMEOUT_MS);
-  });
-
-  return Promise.race([readPromise, timeoutPromise]);
-}
-
 export const fetchTransport: Transport = (transportContext) => {
   const fetchCallServer = async <Result,>(
     id: null | string,
@@ -147,21 +106,21 @@ export const initClient = async ({
     upgradeToRealtime,
   };
 
-  // Tee the stream so we can wait for the first chunk without consuming it for React.
-  const [streamForWaiting, streamForReact] = rscStream.tee();
-
-  // Wait for the RSC payload to start streaming in before we hydrate.
-  await waitForFlightData(streamForWaiting);
-
   const rootEl = document.getElementById("hydrate-root");
 
   if (!rootEl) {
     throw new Error('no element with id "hydrate-root"');
   }
 
-  const rscPayload = createFromReadableStream(streamForReact, {
-    callServer,
-  });
+  let rscPayload: any;
+
+  // context(justinvdm, 18 Jun 2025): We inject the RSC payload
+  // unless render(Document, [...], { rscPayload: false }) was used.
+  if ((globalThis as any).__FLIGHT_DATA) {
+    rscPayload = createFromReadableStream(rscStream, {
+      callServer,
+    });
+  }
 
   function Content() {
     const [streamData, setStreamData] = React.useState(rscPayload);
@@ -171,31 +130,23 @@ export const initClient = async ({
     return (
       <>
         {streamData
-          ? React.use<{ node: React.ReactNode }>(streamData as any).node
+          ? React.use<{ node: React.ReactNode }>(streamData).node
           : null}
       </>
     );
   }
 
-  // By wrapping hydrateRoot in a setTimeout, we yield to the event loop. This
-  // gives the RSC stream parser a chance to process the initial payload chunk
-  // which may contain the `TreeContext` data needed to seed the `useId`
-  // counter. This is the "just right" moment that is early enough to preserve
-  // streaming interactivity, but late enough to ensure the client's `useId`
-  // counter is correctly seeded.
-  setTimeout(() => {
-    hydrateRoot(rootEl, <Content />, {
-      onUncaughtError: (error, { componentStack }) => {
-        console.error(
-          "Uncaught error: %O\n\nComponent stack:%s",
-          error,
-          componentStack,
-        );
-      },
+  hydrateRoot(rootEl, <Content />, {
+    onUncaughtError: (error, { componentStack }) => {
+      console.error(
+        "Uncaught error: %O\n\nComponent stack:%s",
+        error,
+        componentStack,
+      );
+    },
 
-      ...hydrateRootOptions,
-    });
-  }, 0);
+    ...hydrateRootOptions,
+  });
 
   if (import.meta.hot) {
     import.meta.hot.on("rsc:update", (e: { file: string }) => {
