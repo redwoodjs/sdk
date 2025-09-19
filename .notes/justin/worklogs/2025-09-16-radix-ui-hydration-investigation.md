@@ -1255,3 +1255,58 @@ The client, on the other hand, only hydrates the inner content. It has no knowle
 The problem is now clear: we have a shared, mutable state (`treeContext`) that is not being reset between two logically separate stages of a single technical render. The solution must involve isolating these two stages. An investigation of React's server rendering APIs reveals that the `treeContext` is created once per "request" (a single `renderToReadableStream` call) and there is no public API to reset it mid-stream.
 
 Therefore, the most direct solution appears to be creating a new, separate "request" for the inner content render. This would involve an architectural change to split the current single `renderToReadableStream` call into two, allowing the inner content to be rendered with a fresh, clean `treeContext`.
+
+## 75. A New Architecture: Stream Stitching
+
+Based on the definitive root cause, the path forward is to re-architect the server render to isolate the `treeContext` of the page content from the `treeContext` of the document shell.
+
+### Investigating React APIs
+
+A deep dive into React's server rendering APIs confirms there is no built-in primitive to "nest" a render or reset the `useId` context within an existing render. APIs like `renderToReadableStream` are designed to render a complete, self-contained component tree. The Node.js-specific `renderToPipeableStream` API has a concept of a "shell" that streams before the content, which is conceptually similar to what we need, but this is not available in the Edge runtime.
+
+This leaves us to implement the context isolation manually.
+
+### The Proposed Solution: Two Renders, Stitched Together
+
+The proposed architecture is to split the single render into two distinct, independent renders and then stitch their output streams together.
+
+1.  **Render the App Stream:** First, the `<RscApp />` component will be rendered in complete isolation using its own `renderToReadableStream` call. This guarantees it receives a fresh, clean `treeContext`, starting the `useId` counter from the beginning and producing client-deterministic IDs.
+
+2.  **Render the Document Stream:** Concurrently, the `<Document>` component will be rendered using a *separate* `renderToReadableStream` call. A unique placeholder (e.g., an HTML comment) will be rendered where the app content should be.
+
+3.  **Stitch the Streams:** A utility will be created to manage the final response stream. It will pipe the document stream until it encounters the placeholder. It will then pause the document stream, pipe the *entire* app stream, and finally resume piping the remainder of the document stream.
+
+This approach is complex, but it is the most robust solution. It solves the `useId` issue at its root, preserves the fully-streaming nature of both the document and the app, and keeps `Document.tsx` as a fully-featured React component.
+
+### Next Step
+
+The next step is to implement this stream-stitching architecture within `renderRscThenableToHtmlStream.tsx`. This will involve creating the stream management utility and refactoring the existing logic to orchestrate the two parallel renders.
+
+## 76. Architectural Pivot: RSC-First Rendering
+
+Upon further reflection, the stream-stitching approach, while viable, feels less robust than an alternative that composes components rather than manipulating string-based stream outputs. A new, more idiomatic architecture is proposed.
+
+### The Core Idea: Make the Document a Server Component
+
+The fundamental change is to move the document shell (`<Document>`, stylesheets, preload links, etc.) *into* the RSC render. Instead of having an SSR render that wraps an RSC payload, we will have a single, top-level RSC render that produces a tree containing both the document shell and the page content. The nested SSR render for client components will then happen naturally as a child of this unified RSC tree.
+
+### The New Flow
+
+1.  **Orchestration in `worker.tsx`**: The `createPageElement` function will determine if a full document is needed (i.e., for an initial load). If so, it will wrap the `pageElement` in a new `assembleDocument` Server Component. If not (for an RSC action), it will use the `pageElement` as is.
+
+2.  **Unified RSC Render**: The entire element tree (either `<assembleDocument><Page/></assembleDocument>` or just `<Page/>`) is passed to `renderToRscStream`. This produces a single RSC payload that contains the entire page structure for initial loads.
+
+3.  **Simplified SSR**: The `renderRscThenableToHtmlStream` function is now greatly simplified. Its only job is to consume the RSC payload and pass the resulting tree to `renderToReadableStream`. There is no more `<Document>` wrapping logic; the document is already part of the tree it's rendering.
+
+### Why This is Better
+
+- **Solves `useId` Correctly**: By having a single, unified RSC render tree, React's `useId` context is managed consistently from a single root. There is no longer a split between an "outer" SSR context and an "inner" RSC context.
+- **More Idiomatic**: It favors component composition over imperative stream manipulation, which is more aligned with React's design principles.
+- **Simpler Code**: It removes the complex logic from `renderRscThenableToHtmlStream`, centralizing the page assembly logic in one place.
+
+### Next Step
+
+The next step is to implement this new architecture. This will involve:
+1.  Revising the `hybridRscSsrRendering.md` architecture document to reflect this new "RSC-first" approach.
+2.  Creating the `assembleDocument` utility.
+3.  Refactoring `worker.tsx` and `renderRscThenableToHtmlStream.tsx` to implement the new flow.

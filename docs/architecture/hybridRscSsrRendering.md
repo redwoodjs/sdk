@@ -1,6 +1,6 @@
-# Hybrid Rendering Pipeline for RSC and SSR
+# RSC-First Hybrid Rendering
 
-This document outlines the hybrid rendering strategy used by the framework. The primary goal is to combine the benefits of React Server Components (RSC) with traditional Server-Side Rendering (SSR) to deliver a fast, interactive, and SEO-friendly user experience for initial page loads, while enabling efficient updates for subsequent user interactions.
+This document outlines the hybrid rendering strategy used by the framework. The primary goal is to combine the benefits of React Server Components (RSC) with traditional Server-Side Rendering (SSR) to deliver a fast, interactive, and SEO-friendly user experience.
 
 ## The Challenge: Merging Two Rendering Paradigms
 
@@ -10,53 +10,45 @@ A modern web application framework must balance competing priorities:
 2.  **Rich Interactivity:** The application should feel fast and responsive after the initial load, avoiding full-page reloads for navigation and actions.
 3.  **Efficient Data Handling:** The framework should leverage the RSC model of co-locating components with their data dependencies on the server.
 
-The challenge is that these scenarios are best served by different rendering outputs. An initial load requires HTML, while subsequent interactions are most efficiently handled by a more lightweight data format that the client can use to update the UI. The architecture must seamlessly handle both cases.
+The core challenge is that an initial page load requires a full HTML document, while subsequent client-side navigations and actions are most efficiently handled by a lightweight RSC data stream. The architecture must produce the correct output for each case from a single, unified rendering pipeline.
 
-## The Solution: A Unified Pipeline with Two Outputs
+## The Solution: A Unified, RSC-First Pipeline
 
-The solution is a unified rendering pipeline that always begins with an RSC render but produces two different final outputs depending on the type of request: a full HTML document for initial loads, and a raw RSC payload stream for client interactions.
+The solution is a unified, "RSC-first" rendering pipeline. For every request, the process begins by creating a single React element tree that is rendered to an RSC stream. The structure of that tree, and what happens to the stream, depends on the type of request.
 
-The RSC payload is the fundamental unit of communication. The initial HTML document is best understood as a vehicle for delivering the *first* RSC payload to the browser, bootstrapped within a server-rendered shell.
-
-The entire process is orchestrated within the worker's `renderPage` function, which distinguishes between an initial load request and a client-driven RSC request.
+The entire process is orchestrated within the worker, which distinguishes between an initial load and a subsequent client-driven RSC request.
 
 ### Scenario 1: Initial Page Load
 
-For a user's first visit to a page, the goal is to deliver a complete HTML document. This is accomplished with a two-stage process.
+For a user's first visit to a page, the goal is to deliver a complete, server-rendered HTML document.
 
-#### Stage 1: Rendering to an RSC Payload Stream
+#### Stage 1: Assembling the Full Page in RSC
 
-The first stage is a pure RSC render.
+Unlike a traditional SSR-wrapped approach, the entire page—including the `<html>`, `<head>`, and `<body>` tags—is first assembled as a tree of Server Components.
 
-1.  **Component Tree Input:** The process begins with the matched page's root component.
-2.  **RSC Render:** This component tree is passed to React's RSC renderer (`renderToRscStream`).
-3.  **RSC Payload Output:** The output is not HTML, but a `ReadableStream` known as the "RSC Payload." This stream is a serialized representation of the component tree, including rendered server components, data, and special placeholders for client components that need to be hydrated in the browser.
+1.  **Component Tree Input:** The process begins with the matched page's root component (e.g., `<UsersPage>`).
+2.  **Document Wrapping:** This page component is then wrapped in a higher-order Server Component, `<Document>`, which provides the surrounding HTML shell, including stylesheets, preload links, and necessary bootstrap scripts.
+3.  **RSC Render:** This complete tree (`<Document><UsersPage/></Document>`) is passed to React's RSC renderer (`renderToRscStream`).
+4.  **RSC Payload Output:** The output is a `ReadableStream` containing the serialized representation of the entire page, including placeholders for any Client Components that need to be rendered in the next stage.
 
-This initial render fulfills the goals of the RSC paradigm: components are rendered on the server, close to their data sources.
+#### Stage 2: Transforming the RSC Payload to an HTML Stream
 
-#### Stage 2: Server-Side Rendering the RSC Payload to HTML
+The RSC payload, which now represents the full document, is then transformed into a standard HTML stream. This stage is responsible for server-rendering any Client Components embedded in the tree.
 
-The RSC payload is not useful to a browser on its own for an initial load; it needs to be converted into a standard HTML document. This is the second stage of the pipeline.
+1.  **Consuming the Payload:** The RSC payload stream from Stage 1 is consumed by a temporary React component using the `React.use()` hook. This reconstructs the full React component tree on the server.
+2.  **SSR Render:** This reconstructed tree is passed directly to React's traditional SSR renderer (`renderToReadableStream` from `react-dom/server.edge`). As the renderer walks the tree, it generates HTML. When it encounters a placeholder for a Client Component, it server-renders that component and its output is embedded in the HTML stream.
+3.  **HTML Stream Output:** The final output is a `ReadableStream` of the complete HTML document.
 
-1.  **Passing the Payload:** The RSC payload stream from Stage 1 is passed to a second rendering function, `transformRscToHtmlStream`.
-2.  **Consuming the Payload:** Inside this function, a temporary React component (`RscApp`) consumes the stream using the `React.use()` hook. This effectively reconstructs the React component tree on the server from the serialized RSC payload.
-3.  **SSR Render:** This reconstructed tree, which now includes the server-rendered output of client components, is wrapped in the user's custom `<Document>` component. The entire structure is then passed to React's traditional SSR renderer (`renderToReadableStream` from `react-dom/server.edge`).
-4.  **HTML Stream Output:** The output of this stage is a `ReadableStream` of the final HTML document.
-
-#### Final Assembly: Injecting the Payload for Hydration
-
-To enable client-side hydration and subsequent navigations, the final HTML document must also contain the original RSC payload.
-
-To facilitate this, the RSC payload stream from Stage 1 is `tee()`d. While one branch goes to the SSR renderer (Stage 2), the other is piped through a utility (`injectRSCPayload`) that transforms it into a series of inline `<script>` tags. These tags are streamed into the final HTML response, making the payload available to the client.
+This RSC-first approach ensures that there is a single, unified component tree. This is critical for features like React's `useId` hook, which relies on a consistent rendering path between the server and the client to avoid hydration mismatches.
 
 ### Scenario 2: Client Interactions and Navigations
 
-Once the application is hydrated on the client, all subsequent navigations and server action calls are handled much more simply. These requests are identified by the `accept: text/x-component` header or the `__rsc` search parameter.
+Once the application is hydrated on the client, all subsequent navigations and server action calls are handled more simply.
 
-In this scenario, the pipeline executes only Stage 1:
+In this scenario, the pipeline executes only Stage 1, but with a different component tree:
 
-1.  **Execute Action (if any):** If the request is for a server action, the action is executed first.
-2.  **RSC Render:** The component tree is re-rendered into a new RSC payload stream via `renderToRscStream`.
-3.  **Direct Response:** This RSC payload stream is returned directly to the client with a `Content-Type` of `text/x-component`. There is no Stage 2 SSR render to HTML.
+1.  **Component Tree Input:** The process begins with just the page component (e.g., `<UsersPage>`), *without* the `<Document>` wrapper.
+2.  **RSC Render:** This component tree is rendered into a new RSC payload stream via `renderToRscStream`.
+3.  **Direct Response:** This RSC payload stream is returned directly to the client with a `Content-Type` of `text/x-component`. There is no Stage 2 transformation to HTML.
 
-The client-side runtime receives this new payload and uses it to reconcile the DOM, updating the UI efficiently without a full page reload. This model preserves the speed and feel of a single-page application while leveraging the power of server-side rendering.
+The client-side runtime receives this new payload and uses it to update the UI, preserving the speed and feel of a single-page application.
