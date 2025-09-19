@@ -2,165 +2,58 @@
 
 Date: 2025-09-17
 
-## Problem
+## 1. Problem Definition & Goal
 
-The project currently lacks a formal strategy for managing dependencies, particularly the peer dependencies that are critical for user projects. Recent failures reported by users, linked to new versions of `@cloudflare/vite-plugin` and `wrangler`, highlight the need for a robust system to catch these issues proactively. Our goal is to establish a greenkeeping process that ensures stability for users while keeping our SDK's own dependencies up-to-date in a controlled manner.
+The project lacked a formal strategy for managing dependencies, leading to user-reported failures when new versions of critical peer dependencies like `@cloudflare/vite-plugin` and `wrangler` were released. The SDK's permissive `peerDependencies` ranges allowed these broken versions, but our CI had no mechanism to proactively detect the resulting build failures.
 
-## Plan
+The goal was to establish a robust, automated greenkeeping process using Renovate that would:
+1.  Provide an early-warning signal for regressions in critical peer dependencies.
+2.  Keep the SDK's own dependencies up-to-date in a controlled, low-noise manner.
+3.  Establish and document a clear protocol for handling failures.
 
-1.  **Define a Dependency Management Strategy**: Establish clear rules for different categories of dependencies (peer dependencies, SDK internal dependencies, starter project dependencies).
-2.  **Automate with CI**: Implement a CI workflow, likely using Renovate or Dependabot, to automate dependency updates according to the defined strategy.
-3.  **Implement a Failure Protocol**: Create a process to handle failures caused by dependency updates. When an update to a peer dependency in a starter app breaks the build or tests, the system should:
-    a.  Alert maintainers.
-    b.  Allow for a quick, maintainer-triggered action to pin the dependency in the starter to the last known good version.
-    c.  Constrain the peer dependency version range in the `sdk/package.json` to exclude the faulty version.
-    d.  This will allow for a patch release of the SDK that protects users from the broken dependency version while the root cause is investigated.
-4.  **Document the Strategy**: The new process will be documented in a new file, `docs/CONTRIBUTING-dependency-management.md`, to provide context for contributors and maintainers.
-5.  **Initial Implementation & Test**: We will start by attempting to update the peer dependencies in the starter projects to the versions that are reportedly causing issues. This will serve as the first test of our failure-handling protocol.
+## 2. Attempt #1: Initial Setup with a GitHub Actions Workflow
 
-## Execution
+The initial plan was to use the `renovatebot/github-action` to run Renovate on a schedule. A `renovate.json` configuration was created with initial grouping rules, and a temporary `test-renovate-flow.yml` workflow was added to validate the setup on a feature branch without affecting `main`.
 
-### Step 1: Analyze Current Dependencies and Reported Failures
+**Findings & Iterations:**
+This approach was plagued by a series of configuration and permission issues that were solved iteratively by inspecting the GitHub Actions logs:
+-   **Invalid Inputs**: The workflow initially used `renovate-args`, which is not a valid input. This was corrected by passing arguments as environment variables (e.g., `RENOVATE_AUTODISCOVER_FILTER`).
+-   **Invalid `renovate.json` Syntax**: The logs revealed multiple validation errors. `matchFilePaths` was corrected to `matchFileNames`, and `schedule` syntaxes were fixed.
+-   **Incorrect Branch Context**: Renovate was running against the `main` branch by default. This was fixed by setting the `RENOVATE_BASE_BRANCHES` environment variable to point to our feature branch.
+-   **Permission Errors**: A persistent `WARN: Cannot access vulnerability alerts` message was resolved by adding a top-level `permissions` block to the workflow to grant `security-events: read` access, overriding potentially restrictive repository defaults.
 
-Users have reported that `wrangler > 4.35.0` and `@cloudflare/vite-plugin > 1.12.4` cause the build to fail with the error: `Must use "outdir" when there are multiple input files`.
+While the workflow was eventually made to run, this process proved to be brittle and required deep knowledge of the GitHub Actions environment.
 
--   **`sdk/package.json` `peerDependencies`:**
-    -   `wrangler`: `^4.35.0`
-    -   `@cloudflare/vite-plugin`: `^1.12.4`
--   **`starters/minimal/package.json`:**
-    -   `wrangler`: (not specified, will be installed by user)
-    -   `@cloudflare/vite-plugin`: `1.12.4` (pinned)
--   **`starters/standard/package.json`:**
-    -   (To be inspected)
+## 3. Attempt #2: Pivoting to the Renovate GitHub App
 
-The current `peerDependencies` ranges in the SDK are permissive and allow these newer, broken versions. The starter packages need to be updated to test this failure condition within our own CI.
-
-### Step 2: Reproduce the Failure
-
-I updated the `devDependencies` in both `starters/minimal/package.json` and `starters/standard/package.json` to the following versions, which were reported to cause failures:
-
--   `@cloudflare/vite-plugin`: `1.13.2`
--   `wrangler`: `4.37.1`
-
-I then ran the smoke tests for both starter projects.
-
-**Findings:**
-
-The smoke tests for both starters failed with the exact error reported by users: `Error: Build failed with 1 error: error: Must use "outdir" when there are multiple input files`. This confirms that our smoke test suite is effective at catching this type of regression.
-
-With the failure successfully reproduced, the next step would be to push these changes to a branch and see the failing CI check. After that, a maintainer could use the newly created `Pin Dependency` GitHub Action to apply the corrective pinning.
-
-### Step 4: Validating the Renovate Workflow
-
-To confirm that our `renovate.json` configuration works as expected, we are simulating a real-world scenario on this branch.
-
-1.  **Reverted Starters**: The `starters/*` packages have been reverted to the last known good versions of the peer dependencies.
-2.  **Test Workflow**: A temporary workflow file, `.github/workflows/test-renovate-flow.yml`, has been added.
-
-The next step is for the maintainer to push these changes and then manually trigger the "Test Renovate Flow" workflow from the Actions tab. This should result in Renovate creating a new PR against this branch with the problematic dependency updates, which will in turn fail CI, thus validating our entire detection and signaling process.
-
-### Step 5: Refining the Configuration
-
-The test was successful. After triggering the "Test Renovate Flow" workflow, Renovate created a pull request to update the peer dependencies in the starter projects. As expected, the CI run for this PR failed.
-
-**Finding:**
-
-Upon investigation of the CI failure, it was discovered that the individual updates to `@cloudflare/vite-plugin`, `@cloudflare/workers-types`, and `wrangler` were causing conflicts. These packages are tightly coupled and must be updated together in a single group.
-
-**Action:**
-
-The `renovate.json` configuration has been updated to include a new rule that groups all `@cloudflare/` packages and `wrangler` together. This ensures they will always be updated in a single, atomic pull request, preventing this type of integration failure in the future.
-
-### Step 6: Configuration Iteration and Fixes
-
-After pushing the updated configuration, the Renovate PR was not updated as expected. The GitHub Actions logs for the "Test Renovate Flow" provided several key insights on multiple runs:
-
-1.  **`WARN: No repositories found`**: The workflow was not correctly configured to scan the repository it was running in.
-2.  **`Unexpected input(s) 'renovate-args'`**: The workflow was using an invalid input to pass arguments to Renovate.
-3.  **Configuration Migration & Validation Errors**: The Renovate logs themselves showed a `migratedConfig` section and, in subsequent runs, persistent `Config validation errors`. The primary issues were the use of the `matchFilePaths` key, which is not valid, and an incorrect `schedule` syntax. After further iteration, it was discovered that `matchFilePaths` should be replaced with `paths`, which also proved to be incorrect. The latest logs confirm the correct key is `matchFileNames`.
-
-**Action:**
-
-Based on this, I have performed the following fixes:
-
-1.  **Updated `renovate.json`**: The configuration has been updated to replace the invalid `paths` keys with the correct `matchFileNames` key, and to use a valid `schedule` syntax (e.g., "on saturday"). This is the current, accepted version of the configuration.
-2.  **Corrected Test Workflow**: The `test-renovate-flow.yml` was fixed to pass the autodiscover flags as environment variables, which is the correct method.
-3.  **Cleaned Up Test Workflows**: The temporary test workflows have served their purpose in debugging and have now been removed.
-
-With these changes, the greenkeeping setup is complete and correct. The next push to this branch will trigger Renovate, which should now run with a valid configuration and create the expected PR.
-
-### Step 7: Forcing Renovate to Use the Correct Branch
-
-The test runs were now succeeding but still not producing the correct Pull Request. The latest logs revealed the root cause: Renovate was running against the `main` branch by default, ignoring the configuration on our working branch.
-
-**Finding:**
-
-The `renovatebot/github-action` defaults to using the repository's main branch as its base. It was finding the onboarding PR on `main` instead of using our branch's `renovate.json` to find dependency updates.
-
-**Action:**
-
-The `test-renovate-flow.yml` workflow has been updated to include the `RENOVATE_BASE_BRANCHES` environment variable. This explicitly tells Renovate to use our `greenkeep-now-and-ongoing` branch as the base for its operations.
-
-This should be the final change needed. The next push will trigger the workflow, and Renovate should now have the correct branch context to find the available dependency updates and create the failing PR we expect.
-
-### Step 8: Granting Permissions for Security Advisories
-
-The logs also showed a warning that Renovate could not access vulnerability alerts.
-
-**Finding:**
-
-The default `GITHUB_TOKEN` provided to GitHub Actions runs with restricted permissions. It does not have access to security-related events by default.
-
-**Action:**
-
-A `permissions` block was added to the `test-renovate-flow.yml` workflow file. This explicitly grants the job the `security-events: read` permission, along with `contents: write` and `pull-requests: write`, allowing Renovate to access vulnerability data and create PRs. This will resolve the warning and enable security-related features.
-
-### Step 9: Overriding Restrictive Default Permissions
-
-Despite the explicit permissions in the job, the vulnerability warning persisted.
-
-**Finding:**
-
-It's likely that the repository or organization has a default setting that restricts the permissions granted to the `GITHUB_TOKEN`. In such cases, job-level permissions are not enough to override the restrictive default.
-
-**Action:**
-
-A top-level `permissions` block has been added to the `test-renovate-flow.yml` workflow. This ensures that the necessary permissions (`contents: write`, `pull-requests: write`, and `security-events: read`) are granted to the entire workflow, overriding any potentially restrictive defaults. This should definitively resolve the warning.
-
-### Step 10: Pivoting to the Renovate GitHub App
-
-Despite multiple attempts to configure the GitHub Action, the process remained brittle and prone to authentication issues. The core problem is that the default `GITHUB_TOKEN` is often too restrictive, and using a Personal Access Token (PAT) for a public repository adds unnecessary maintenance overhead.
-
-**Finding:**
-
-A review of standard practices for major open-source projects (like Vite, TypeScript, etc.) revealed that the overwhelming majority use the **Renovate GitHub App** from the marketplace, not a self-hosted GitHub Action. The App is free for open-source projects and handles all authentication and infrastructure concerns automatically, eliminating the problems we have faced.
+A review of best practices in other major open-source projects revealed that the Renovate GitHub App is the overwhelmingly preferred method over a self-hosted action. The app is free for open-source and handles all infrastructure, authentication, and permission concerns automatically.
 
 **Decision & Action:**
+The strategy was pivoted to use the GitHub App. To test this safely, a "pointer" configuration was temporarily added to the `main` branch, instructing the app to load its full configuration from our feature branch. This provided a robust, zero-maintenance solution and eliminated all the issues from the previous attempt. The temporary GitHub Actions workflows were deleted.
 
-The strategy has been pivoted to use the recommended Renovate GitHub App. This aligns with industry best practices and provides a more robust, zero-maintenance solution.
+## 4. Attempt #3: Solving the React Canary Downgrade Stalemate
 
-The `renovate.json` file we have built remains 100% valid and is the core of the configuration.
+With the Renovate App running correctly, it successfully identified and created PRs for most dependency groups. However, it consistently proposed to *downgrade* the React canary versions in the starter projects. This was incorrect, as the starters were already on a newer version. This downgrade caused an `ERESOLVE` failure in CI because the older version did not satisfy the SDK's `peerDependencies` range.
 
-To test this safely without merging the full configuration to `main`, we will use a "pointer" strategy. A minimal `renovate.json` will be temporarily placed on the `main` branch, which instructs the Renovate App to load its full configuration from this `greenkeep-now-and-ongoing` branch. This allows for safe, isolated testing.
+This began a series of investigations to diagnose why Renovate was selecting an old version:
 
-The temporary and now-obsolete GitHub Action workflow files will be deleted from this branch.
+-   **Hypothesis 1: Stale `peerDependencies` range.** The initial thought was that the complex, hash-based version string in the SDK's `peerDependencies` was confusing Renovate. The range was simplified (e.g., to `>=19.2.0-0`), but this had no effect, correctly proving that Renovate uses `npm` for version discovery, not our `peerDependencies`.
 
-### Step 11: Correcting React Peer Dependency Range
+-   **Hypothesis 2: Using a more stable tag in `package.json`.** The next attempt involved changing the React versions in the starters' `package.json` files from a pinned canary version to the `next` dist-tag. This was also incorrect, as the goal is to have Renovate manage the updates, not `npm`.
 
-After the Renovate App was successfully configured, it created a PR for the `starter-peer-dependencies` group. The CI for this PR failed with an `ERESOLVE` error during `npm install`.
+-   **Hypothesis 3: Using `allowedVersions` and `versioning`.** A more advanced Renovate configuration was attempted, using `allowedVersions` with a semver range and setting `"versioning": "loose"` to better handle the non-standard canary versions. This also failed to resolve the issue.
 
-**Finding:**
+**Final Finding and Solution:**
+The root cause was that Renovate's default behavior struggles to determine the "latest" version when dealing with unstable channels that use complex pre-release identifiers (e.g., `19.2.0-canary-....`).
 
-The root cause was that the `peerDependencies` for `react`, `react-dom`, and `react-server-dom-webpack` in `sdk/package.json` were pinned to an exact canary version. When Renovate attempted to update the starter projects to a *newer* React canary, `npm` correctly identified that this new version did not satisfy the SDK's strict, exact peer dependency requirement, and the installation failed.
+The correct and final solution was to give Renovate an explicit instruction. A specific rule was created for the React packages, and the `"followTag": "next"` option was added. This tells Renovate to completely ignore the `latest` tag and all other versions, and instead only track the version of React that is currently published to the `next` distribution tag on `npm`.
 
-**Action:**
+This was successful. We configured the `followTag: 'next'` rule, and the Renovate App was successful in achieving our goal: it now correctly identifies and proposes updates to the latest canary versions for all React dependencies.
 
-The `peerDependencies` in `sdk/package.json` have been updated from an exact version to a `>=... <...` range (e.g., `react: ">=19.2.0-canary-... <20.0.0"`). This allows any newer version of the React canary packages to satisfy the requirement, resolving the dependency conflict. This change was ultimately merged to `main` in a separate hotfix PR to unblock Renovate.
+## 5. Final Actions: Documentation and Simplification
 
-### Step 12: Simplifying the Failure Protocol
+With the technical implementation now stable and correct, the final steps involved cleaning up the process and documentation:
 
-Upon reflection, the automated "Narrow Peer Dependency Range" workflow was identified as a premature optimization. The process of handling a peer dependency failure is infrequent and requires careful manual investigation. Automating this step adds unnecessary complexity and maintenance overhead for a rare event.
-
-**Decision & Action:**
-
-The automated workflow has been removed. The `CONTRIBUTING.md` guide has been updated to document a simpler, fully manual protocol for maintainers to follow when a peer dependency update fails CI. This involves manually reverting the dependency in the starter projects and constraining the peer dependency range in the `sdk/package.json` on the Renovate PR branch. This approach is more pragmatic and reduces complexity.
+-   **Simplified Failure Protocol**: The initial plan included an automated workflow to pin dependencies on failure. This was identified as a premature optimization and was removed in favor of a simpler, manual protocol documented in `CONTRIBUTING.md`.
+-   **Consolidated Configuration**: The `renovate.json` file (renamed to `default.json` per Renovate preset conventions) was refined with clearer grouping rules for all categories of dependencies.
+-   **Updated Documentation**: The `CONTRIBUTING.md` file was updated to reflect the complete, final greenkeeping strategy, including the dependency categories and the manual failure protocol.

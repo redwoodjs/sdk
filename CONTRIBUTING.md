@@ -67,8 +67,6 @@ Note the extra `--` before the `-u` flag. This is necessary to pass the flag to 
 
 When writing tests, we prefer using **dependency injection** over module-level mocking (e.g., `vi.mock()`). [[memory:4223216]] This approach makes our tests more explicit, robust, and easier to maintain.
 
-For more details on our dependency management and greenkeeping strategy, please see the [Dependency Management Guide](./docs/contributing/dependency-management.md).
-
 The preferred pattern is to design functions to accept their dependencies as arguments. This allows you to pass in a controlled, "fake" version of the dependency during tests.
 
 **Example: What Not to Do**
@@ -202,6 +200,11 @@ This section outlines the strategy for managing dependencies to maintain stabili
 -   **When**: As Soon As Possible (ASAP). Renovate creates a PR immediately when a new version is available.
 -   **Why**: To provide an immediate early-warning signal if a new peer dependency version introduces a regression that could affect users.
 
+##### A Note on React Canary Versions
+The starters intentionally use `canary` versions of React. This is the official channel recommended by the React team for frameworks that implement React Server Components. Using canaries gives us access to the latest features and ensures our implementation remains compatible with the direction of React.
+
+To manage these potentially unstable versions, Renovate is specifically configured to track React's `next` distribution tag on npm. This provides a more reliable signal for the latest available canary version than tracking the `canary` tag directly, which can be more volatile.
+
 #### 2. SDK Internal Dependencies (`sdk-internal-deps`)
 
 -   **What**: The SDK's own `dependencies` and `devDependencies` from `sdk/package.json`.
@@ -219,6 +222,21 @@ This section outlines the strategy for managing dependencies to maintain stabili
 -   **What**: A consolidated group for all remaining repository maintenance dependencies. This includes dependencies from the root `package.json`, the `docs/package.json`, GitHub Actions, Docker images, and the `.node-version` file.
 -   **When**: Weekly, in a single grouped pull request.
 -   **Why**: To bundle all miscellaneous tooling, documentation, and infrastructure updates into one convenient PR to reduce noise.
+
+### Using the Dependency Dashboard
+
+After a new dependency update is available, Renovate will create a Pull Request. For managing all available updates, Renovate also creates a special issue in the repository titled "Dependency Dashboard". You can find this in the "Issues" tab.
+
+This dashboard is the central place to manage the greenkeeping process. It provides:
+*   A list of all new dependency versions that have been discovered.
+*   The status of current open Pull Requests for dependency updates.
+*   A list of updates that are waiting for their scheduled time to run.
+
+#### Manually Triggering Updates
+
+Our configuration schedules most updates to run weekly to reduce noise. However, you can trigger any scheduled update immediately from the dashboard.
+
+To do this, find the update group you wish to run in the "Awaiting Schedule" section of the dashboard and click the checkbox next to it. Renovate will detect this change and create the corresponding Pull Request within a few minutes. This is particularly useful for forcing a one-time update of all dependencies to establish a new baseline or to test a specific update, such as the `starter-peer-deps` group.
 
 ### Failure Protocol for Peer Dependencies
 
@@ -374,7 +392,7 @@ This dashboard is the central place to manage the greenkeeping process. It provi
 
 Our configuration schedules most updates to run weekly to reduce noise. However, you can trigger any scheduled update immediately from the dashboard.
 
-To do this, find the update group you wish to run in the "Awaiting Schedule" section of the dashboard and click the checkbox next to it. Renovate will detect this change and create the corresponding Pull Request within a few minutes. This is particularly useful for forcing a one-time update of all dependencies to establish a new baseline or to test a specific update, such as the `starter-peer-dependencies` group.
+To do this, find the update group you wish to run in the "Awaiting Schedule" section of the dashboard and click the checkbox next to it. Renovate will detect this change and create the corresponding Pull Request within a few minutes. This is particularly useful for forcing a one-time update of all dependencies to establish a new baseline or to test a specific update, such as the `starter-peer-deps` group.
 
 ### Failure Protocol for Peer Dependencies
 
