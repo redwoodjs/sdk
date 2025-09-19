@@ -1083,3 +1083,93 @@ This realization requires a reset. Before proceeding with more logging or code c
 2.  **Re-evaluate `useId` Problem:** With a clear, documented understanding of the rendering flow, I can re-evaluate where the `useId` state might be getting lost.
 
 This architectural deep-dive is now the priority. It will provide the solid foundation needed to form a correct hypothesis and, finally, a correct solution.
+
+## 60. Breakthrough: Server Logs Confirm Hydration Marker Generation
+
+The server-side logs have provided the definitive piece of evidence that was missing. My previous conclusion, based on inspecting the browser DOM, was incorrect.
+
+### Analysis of Server Logs
+
+The logs from `react-dom/server.edge` are conclusive:
+
+1.  The `createResumableState` function correctly receives the `bootstrapScriptContent: '/* rwsdk-hydration-trigger */'` option. The input to the renderer is correct.
+2.  The `writeBootstrap` function's internal `bootstrapChunks` confirm that React is assembling and streaming a complete hydration marker script: `<script nonce="..." id="_R_">/* rwsdk-hydration-trigger */</script>`.
+
+This proves that the `bootstrapScriptContent` option is successfully triggering the server to generate the necessary signal for hydration. The state is not missing; it is being sent.
+
+### The Real Root Cause: A Client-Side Race Condition
+
+This evidence pinpoints the true root cause as a client-side race condition. The sequence of events is now clear:
+
+1.  The server streams the initial HTML document. This includes the user-defined client entry script from `Document.tsx`.
+2.  The browser parses this and executes the entry script immediately. The `initClient` function is called.
+3.  The server, at the end of its rendering process, streams the React-generated `<script id="_R_">`.
+4.  The `initClient` function executes and calls `hydrateRoot` *before* the browser has parsed the `_R_` script.
+5.  The client-side React runtime initializes, looks for the hydration marker, doesn't find it in the DOM yet, and defaults to client-only mode, causing the `useId` mismatch.
+
+This hypothesis perfectly explains why waiting for the `DOMContentLoaded` event fixes the issue: it is a blunt but effective way to ensure the entire DOM, including the `_R_` script, is parsed before `initClient` runs.
+
+### The Next Attempt: Precisely Waiting for the Hydration Marker
+
+With this understanding, the path forward is to replace the `DOMContentLoaded` workaround with a more precise waiting mechanism. The `initClient` function will be modified to poll the DOM for the existence of the element with the ID `_R_` before calling `hydrateRoot`. This will resolve the race condition without waiting for the entire document to load, thereby preserving streaming interactivity.
+
+## 61. Attempting a Surgical Fix
+
+Based on the conclusive findings from the server logs, the current attempt is a surgical fix that directly addresses the client-side race condition.
+
+The strategy is two-fold:
+
+1.  **Server-Side:** Continue passing `bootstrapScriptContent: '/* rwsdk-hydration-trigger */'` to the SSR renderer. We have confirmed this correctly generates the `<script id="_R_">` hydration marker and streams it at the end of the document.
+2.  **Client-Side:** Implement a polling mechanism in `initClient`. This utility will wait for the `document.getElementById('_R_')` to become available before allowing the `hydrateRoot` call to proceed.
+
+This approach is minimal and avoids the complex architectural refactors previously considered. It works with React's streaming behavior by waiting for the precise signal React provides, rather than trying to re-order scripts or take control of the user's `Document`. It is expected to resolve the `useId` mismatch while preserving the early interactivity benefits of our streaming architecture.
+
+## 62. The Polling Mechanism Fails: A Deeper Mystery
+
+The surgical fix of polling for the `<script id="_R_">` element has failed. The hydration mismatch persists, and the client-side logs confirm that `getTreeId()` is still returning an empty string when `mountId` is called.
+
+This is a critical result that invalidates the previous hypothesis. It proves that the mere presence of the `_R_` script in the DOM is not sufficient to seed the client-side `useId` counter. The consumption of the hydration state must be more complex than simply observing the element's existence.
+
+### Re-evaluating the `DOMContentLoaded` Clue
+
+The fact that `DOMContentLoaded` is the only reliable fix remains the most important clue. It strongly suggests that React's hydration mechanism has a dependency that is only met once the *entire* document has been parsed. This could be related to another script, a specific DOM state, or an event that we have not yet identified.
+
+### Next Step: Source Code Investigation
+
+The investigation must go deeper into the React client-side source code. I need to find the exact code path that is responsible for consuming the server-sent hydration state. The next step is to search the React repository for where the `_R_` ID is referenced on the client. By analyzing how and when this marker is supposed to be read, I can determine what conditions are failing in our current setup and why `DOMContentLoaded` resolves them.
+
+## 64. Deep Dive into React's `useId` Hydration Internals
+
+A direct investigation into the React source code has revealed the precise internal mechanism for `useId` generation and hydration, confirming why previous attempts failed and providing a clear path for targeted logging.
+
+### `mountId` in `ReactFiberHooks.js`: The Two Paths
+
+The `mountId` function, which `useId` calls, has two distinct code paths:
+
+1.  **Hydration Path (`if (getIsHydrating())`):** This path is taken when React is hydrating server-rendered content. It constructs the ID using `'_' + identifierPrefix + 'R_' + getTreeId()`. The capital `'R'` and the reliance on `getTreeId()` are specific to this path. This explains the `_R_76_` format from the server.
+2.  **Client-Only Path (`else`):** If not hydrating (or if hydration fails and React must re-render), this path is taken. It constructs the ID using `'_' + identifierPrefix + 'r_' + globalClientIdCounter++`. The lowercase `'r'` and the simple incrementing `globalClientIdCounter` are the key identifiers. This perfectly explains the `_r_0_` format we see in the mismatched DOM.
+
+The issue is that our client-side execution is incorrectly falling into the second path.
+
+### `ReactFiberTreeContext.js`: The Source of Truth
+
+The investigation then focused on `getTreeId()`, the function that should provide the server's seed.
+
+- **The State:** `getTreeId()` reads its value from two module-level variables: `treeContextId` (default: `1`) and `treeContextOverflow` (default: `''`). These variables represent the internal `useId` counter state. Their default values explain why `getTreeId()` was returning an empty/default value in our logs.
+- **The Seeding Mechanism:** The *only* function that writes to these variables from an external source is `restoreSuspendedTreeContext(workInProgress, suspendedContext)`. This function takes a `suspendedContext` object (containing the `id` and `overflow` from the server) and sets the module-level counter variables.
+
+### The Full Picture: A Race Condition
+
+This provides a complete, end-to-end picture of the mechanism and the bug:
+
+1.  The server renders the page, calculating `useId` values based on its `TreeContext`.
+2.  The server serializes the final `TreeContext` and sends it to the client, likely within the RSC payload associated with a Suspense boundary.
+3.  On the client, the RSC stream parser should process this payload and trigger the React reconciler.
+4.  When the reconciler encounters the Suspense boundary, it should call `restoreSuspendedTreeContext` to seed the client's `useId` counter.
+5.  *Only then* should `hydrateRoot` begin, allowing `useId` (via `mountId`) to read the seeded counter and generate matching IDs.
+
+Our application is calling `hydrateRoot` (step 5) before the RSC stream has been parsed and the seed has been restored (step 4), causing the hydration mismatch.
+
+### Next Step: Targeted Logging
+
+To confirm this sequence, the next step is to add logs to `mountId` and `restoreSuspendedTreeContext` in the client's `react-reconciler` bundle. This will allow us to observe the exact order of operations and prove the race condition is the root cause.
