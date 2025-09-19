@@ -63,6 +63,7 @@
         "@types/react",
         "@types/react-dom"
       ],
+      "allowedVersions": ">=19.2.0-0 <20.0.0",
       "groupName": "starter-peer-deps",
       "schedule": ["every weekend"],
       "prPriority": 1
