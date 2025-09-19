@@ -50,13 +50,22 @@
       "schedule": ["on saturday"]
     },
     {
-      "description": "Update SDK peer dependencies in starter projects as soon as they are available.",
+      "description": "Update non-React SDK peer dependencies in starter projects as soon as they are available.",
       "matchFileNames": ["starters/**/package.json"],
       "matchPackageNames": [
         "@cloudflare/vite-plugin",
         "@cloudflare/workers-types",
         "wrangler",
-        "vite",
+        "vite"
+      ],
+      "groupName": "starter-peer-deps",
+      "schedule": ["every weekend"],
+      "prPriority": 1
+    },
+    {
+      "description": "Update React peer dependencies in starter projects, tracking pre-releases.",
+      "matchFileNames": ["starters/**/package.json"],
+      "matchPackageNames": [
         "react",
         "react-dom",
         "react-server-dom-webpack",
@@ -64,6 +73,7 @@
         "@types/react-dom"
       ],
       "allowedVersions": ">=19.2.0-0 <20.0.0",
+      "versioning": "loose",
       "groupName": "starter-peer-deps",
       "schedule": ["every weekend"],
       "prPriority": 1
