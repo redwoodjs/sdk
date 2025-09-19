@@ -1193,3 +1193,21 @@ The logs prove the theory correct:
 - React, finding its internal `useId` counter unseeded, generates IDs from a fresh counter, causing a mismatch with the server-rendered HTML and leading to a hydration failure.
 
 The problem is not the availability of the DOM, but the initialization of React's internal JavaScript state. Our client script is executing before whatever mechanism is responsible for seeding that state has had a chance to complete. The next phase of the investigation must focus on finding that seeding mechanism and ensuring we wait for it.
+
+## 72. A Paradigm Shift: The Problem is Determinism, Not State Transfer
+
+A breakthrough analysis has completely reframed the problem. The core issue is not a failure of state transfer (i.e., passing a counter from server to client), but a failure of **deterministic rendering**.
+
+### The Correct Mental Model
+
+In a standard SSR application, no state transfer is needed for `useId`. The server renders the component tree, and the `useId` hook generates a sequence of IDs (e.g., `_R_1_`, `_R_2_`). The client then hydrates the *exact same* component tree, and its `useId` hook generates the *exact same* sequence of IDs, resulting in a perfect match.
+
+### The Real Question: Why is Our Rendering Non-Deterministic?
+
+Our application breaks this model. The server is rendering IDs with a high counter value (e.g., `_R_f6_`), while the client starts from a low value (`_R_1_`).
+
+The new, and correct, hypothesis is that **unknown components are calling `useId` during the server render *before* our page component is rendered.** These hidden calls advance the global `useId` counter on the server. The client, which does not render these hidden components, starts its counter from the beginning, leading to the inevitable mismatch. The divergence happens entirely on the server, within the nested rendering pipeline.
+
+### Next Step: Identify the Source of the Divergence
+
+The investigation is no longer about finding a state transfer mechanism. It is now a hunt for the component(s) that are secretly consuming `useId`s on the server. The plan is to add detailed logging to the `mountId` function in the server-side React bundle to trace every single `useId` call back to the component that made it. This will provide a definitive list of all ID consumers and reveal the source of the non-determinism.
