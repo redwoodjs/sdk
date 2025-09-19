@@ -969,7 +969,7 @@ The crucial question was how this `TreeContext` is passed from the server to the
 
 ### The Client-Side Hydration Mechanism
 
-The definitive proof of this mechanism was found in `packages/react-reconciler/src/ReactFiberHydrationContext.js`:
+A potential lead about this mechanism was found in `packages/react-reconciler/src/ReactFiberHydrationContext.js`:
 
 ```javascript
 function reenterHydrationStateFromDehydratedSuspenseInstance(
@@ -987,7 +987,7 @@ function reenterHydrationStateFromDehydratedSuspenseInstance(
 
 This code shows that when the React reconciler is hydrating a component that was suspended on the server (a `DehydratedSuspenseInstance`), it looks for a `treeContext` and, if found, uses it to call `restoreSuspendedTreeContext`. This is the function that seeds the client-side `useId` generator to match the server.
 
-### The Final, Definitive Solution
+### Next Attempt
 
 This complete understanding confirms why our race condition exists and why `setTimeout(0)` is the correct fix.
 
