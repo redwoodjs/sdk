@@ -1061,3 +1061,25 @@ The new plan is to add logging directly to the React source code on the server-s
 2.  **Trace `writeBootstrap`:** I will add a log in `packages/react-server/src/ReactFizzServer.js` inside the `writeBootstrap` function. This is the function responsible for acting on the bootstrap options. Logging the `resumableState` here will show if the option is being correctly passed along and evaluated.
 
 This server-side instrumentation should reveal the branch in logic that I am currently missing, and show what conditions are required for React to serialize its initial hydration state.
+
+## 59. A Critical Realization: The Two-Renderer Architecture
+
+My investigation has been operating on a flawed assumption. I've been focused on the `react-dom/server` implementation, looking for `createResumableState` and trying to understand its `bootstrap` options. However, I failed to account for the hybrid nature of our framework's rendering pipeline.
+
+### The Two Renderers
+
+The core of the architecture, which I had overlooked, is that we use two distinct React renderers on the server:
+
+1.  **The RSC Renderer (`react-server-dom-webpack`):** This renderer is responsible for the first pass. It takes the component tree and serializes it into an RSC payload stream. This stream contains the component data and placeholders for client components.
+2.  **The SSR Renderer (`react-dom/server`):** This renderer takes the RSC payload stream from the first pass and renders it into a final HTML stream. This is where the `<Document>` shell is added and where client component placeholders are SSR'd into static HTML.
+
+This clarifies why my attempts to manipulate the RSC renderer might be failing. The `useId` seed required for client hydration is likely generated during the *second* phase—the SSR render—which is handled by `react-dom/server`. The key is that the `bootstrapScriptContent` option is being passed to `renderToReadableStream` from `react-dom/server.edge` in `renderRscThenableToHtmlStream.tsx`, which is the correct renderer. The mystery of why it's not working persists, but my understanding of the system is now more precise.
+
+### The New Plan: Document and Re-evaluate
+
+This realization requires a reset. Before proceeding with more logging or code changes, I need to formalize my understanding of this two-stage rendering process.
+
+1.  **Write Architecture Document:** I will create a new architecture document, `hybrid-rsc-ssr-rendering.md`, to fully explain this process. This will synthesize my verbal explanation, the "message to user" context, and a direct analysis of the code in `sdk/src/runtime/worker.tsx` and `sdk/src/runtime/render/renderRscThenableToHtmlStream.tsx`.
+2.  **Re-evaluate `useId` Problem:** With a clear, documented understanding of the rendering flow, I can re-evaluate where the `useId` state might be getting lost.
+
+This architectural deep-dive is now the priority. It will provide the solid foundation needed to form a correct hypothesis and, finally, a correct solution.
