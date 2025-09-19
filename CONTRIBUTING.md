@@ -182,6 +182,79 @@ This project uses Prettier for code formatting. To format the code, run:
 pnpm format
 ```
 
+## Dependency Management and Greenkeeping
+
+This section outlines the strategy for managing dependencies to maintain stability for users while keeping the SDK's own dependencies up-to-date.
+
+### Guiding Principles
+
+1.  **User Stability First**: Changes to peer dependencies, which directly impact user projects, must be handled with the utmost care. We should never knowingly publish a version of the SDK that allows a broken peer dependency version range.
+2.  **Automation with Control**: We use automation to handle routine updates, but maintain manual control over merging and releasing, especially for changes that affect peer dependencies.
+3.  **Clear Categorization**: We treat different types of dependencies with different protocols based on their potential impact.
+
+### Dependency Categories and Update Cadence
+
+#### 1. Peer Dependencies (`starter-peer-deps`)
+
+-   **What**: The most critical dependencies (`wrangler`, `react`, `vite`, etc.) that are defined as `peerDependencies` in the SDK and tested in the `starters/*` projects.
+-   **When**: As Soon As Possible (ASAP). Renovate creates a PR immediately when a new version is available.
+-   **Why**: To provide an immediate early-warning signal if a new peer dependency version introduces a regression that could affect users.
+
+##### A Note on React Canary Versions
+The starters intentionally use `canary` versions of React. This is the official channel recommended by the React team for frameworks that implement React Server Components. Using canaries gives us access to the latest features and ensures our implementation remains compatible with the direction of React.
+
+To manage these potentially unstable versions, Renovate is specifically configured to track React's `next` distribution tag on npm. This provides a more reliable signal for the latest available canary version than tracking the `canary` tag directly, which can be more volatile.
+
+#### 2. SDK Internal Dependencies (`sdk-internal-deps`)
+
+-   **What**: The SDK's own `dependencies` and `devDependencies` from `sdk/package.json`.
+-   **When**: Weekly, in a single grouped pull request.
+-   **Why**: To keep the SDK's own build tooling and internal dependencies up-to-date in a predictable, non-disruptive manner.
+
+#### 3. Starter Application Dependencies (`starter-deps`)
+
+-   **What**: All non-peer dependencies in the `starters/*` projects.
+-   **When**: Weekly, in a single grouped pull request.
+-   **Why**: To ensure our starter templates remain current with their own dependencies.
+
+#### 4. Repository, Docs, and Infrastructure Dependencies (`docs-and-infra-deps`)
+
+-   **What**: A consolidated group for all remaining repository maintenance dependencies. This includes dependencies from the root `package.json`, the `docs/package.json`, GitHub Actions, Docker images, and the `.node-version` file.
+-   **When**: Weekly, in a single grouped pull request.
+-   **Why**: To bundle all miscellaneous tooling, documentation, and infrastructure updates into one convenient PR to reduce noise.
+
+### Using the Dependency Dashboard
+
+After a new dependency update is available, Renovate will create a Pull Request. For managing all available updates, Renovate also creates a special issue in the repository titled "Dependency Dashboard". You can find this in the "Issues" tab.
+
+This dashboard is the central place to manage the greenkeeping process. It provides:
+*   A list of all new dependency versions that have been discovered.
+*   The status of current open Pull Requests for dependency updates.
+*   A list of updates that are waiting for their scheduled time to run.
+
+#### Manually Triggering Updates
+
+Our configuration schedules most updates to run weekly to reduce noise. However, you can trigger any scheduled update immediately from the dashboard.
+
+To do this, find the update group you wish to run in the "Awaiting Schedule" section of the dashboard and click the checkbox next to it. Renovate will detect this change and create the corresponding Pull Request within a few minutes. This is particularly useful for forcing a one-time update of all dependencies to establish a new baseline or to test a specific update, such as the `starter-peer-deps` group.
+
+### Failure Protocol for Peer Dependencies
+
+When the smoke tests fail on a peer dependency update, it is a signal that requires manual intervention.
+
+1.  **Maintainer Investigation**: The first step is always for a maintainer to investigate **why** the test is failing. The failure can have one of two root causes:
+    *   **An Issue in Our SDK**: The dependency may have introduced a breaking change that we need to adapt to.
+    *   **A Regression in the Dependency**: The dependency may have a legitimate bug or regression.
+
+2.  **Manual Corrective Action**:
+    *   If the issue is in our SDK, a fix should be implemented and pushed directly to the failing Renovate PR branch.
+    *   If the failure is a regression in the dependency itself, a maintainer must perform the following steps **on the Renovate PR branch**:
+        1.  **Revert Dependency in Starters**: In the `starters/*/package.json` files, revert the version of the failing dependency back to the last known good version.
+        2.  **Constrain Peer Dependency**: In `sdk/package.json`, update the `peerDependencies` entry for the package to add an upper bound that excludes the broken version (e.g., change `^1.2.3` to `>=1.2.3 <1.2.4`).
+        3.  **Commit and Push**: Commit these changes with a message explaining the reason for the constraint and push to the branch.
+
+    *   Once CI passes on the PR, it can be merged. This prepares for a patch release of `rwsdk` that protects users from the faulty dependency.
+
 ## Debugging changes to the sdk locally for a project
 
 The `rwsync` command provides a bridge between a local checkout of the `rwsdk` and a project that uses it, enabling a fast and efficient development workflow.
@@ -303,3 +376,24 @@ The release workflow and underlying script (`sdk/sdk/scripts/release.sh`) follow
 5.  **Publish**: Only if all smoke tests and verification checks pass, the script publishes the `.tgz` tarball to npm. This guarantees the exact package that was tested is the one that gets published.
 6.  **Finalize Commit**: For non-prerelease versions, the script updates dependencies in the monorepo, amends the version commit with these changes, tags the commit, and pushes everything to the remote repository.
 7.  **Rollback**: If any step fails, the script reverts the version commit and cleans up all temporary files, leaving the repository in a clean state.
+
+*   **A Note on Mocking**: The term "dependency" is used in two ways. This document primarily concerns package management (e.g., `npm` packages). For guidance on writing testable code by avoiding mocks in favor of dependency injection, please see the "Dependency Injection over Mocking" section.
+
+### Using the Dependency Dashboard
+
+After a new dependency update is available, Renovate will create a Pull Request. For managing all available updates, Renovate also creates a special issue in the repository titled "Dependency Dashboard". You can find this in the "Issues" tab.
+
+This dashboard is the central place to manage the greenkeeping process. It provides:
+*   A list of all new dependency versions that have been discovered.
+*   The status of current open Pull Requests for dependency updates.
+*   A list of updates that are waiting for their scheduled time to run.
+
+#### Manually Triggering Updates
+
+Our configuration schedules most updates to run weekly to reduce noise. However, you can trigger any scheduled update immediately from the dashboard.
+
+To do this, find the update group you wish to run in the "Awaiting Schedule" section of the dashboard and click the checkbox next to it. Renovate will detect this change and create the corresponding Pull Request within a few minutes. This is particularly useful for forcing a one-time update of all dependencies to establish a new baseline or to test a specific update, such as the `starter-peer-deps` group.
+
+### Failure Protocol for Peer Dependencies
+
+If a peer dependency update in a starter project fails the CI smoke tests, it signifies a potential regression. The failure could be due to one of two causes:
