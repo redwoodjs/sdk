@@ -206,7 +206,7 @@ This `useId` mismatch is a known, complex issue in the React ecosystem, particul
 
 This `useId` hydration mismatch is a well-documented and recurring issue within the broader React ecosystem, particularly for frameworks that implement complex SSR or RSC rendering strategies. The provided history confirms this is not a new problem.
 
-- **Discord Discussions (2025):** Community members in my framework's Discord have repeatedly encountered this issue, especially with UI libraries like Radix UI.
+- **Discord Discussions (2025):** Community members in our framework's Discord have repeatedly encountered this issue, especially with UI libraries like Radix UI.
 
   - Key observations include the problem only appearing in `'use client'` components and being reproducible with a minimal `useId()` test case.
   - The primary workaround has been to manually provide stable `id` props to components, though this is not always possible as some Radix components don't expose the necessary props.
@@ -217,13 +217,13 @@ This `useId` hydration mismatch is a well-documented and recurring issue within 
 - **Radix UI's History with SSR IDs:** Radix UI has a long history of tackling this problem.
   - Initial issues ([#331](https://github.com/radix-ui/primitives/issues/331), [#811](https://github.com/radix-ui/primitives/issues/811)) with their custom `IdProvider` in SSR and React's `StrictMode` led them to abandon it.
   - The definitive solution was to adopt the official `React.useId` hook, which was created by the React team to solve this exact problem ([#1006](https://github.com/radix-ui/primitives/pull/1006)).
-  - The fact that the issue has reappeared for users of my framework (and previously for Next.js users) strongly suggests that my rendering pipeline is creating an edge case that interferes with React's built-in solution.
+  - The fact that the issue has reappeared for users of our framework (and previously for Next.js users) strongly suggests that my rendering pipeline is creating an edge case that interferes with React's built-in solution.
 
-This historical context validates that the issue is not with Radix UI itself, but with the interaction between React's `useId` SSR mechanism and my framework's specific rendering architecture.
+This historical context validates that the issue is not with Radix UI itself, but with the interaction between React's `useId` SSR mechanism and our framework's specific rendering architecture.
 
 ### Conclusion
 
-The hydration error is a direct result of `React.useId` producing inconsistent values between the server-side HTML render and the client-side hydration. This is likely caused by my framework's two-phase SSR process for client components creating a different rendering context than the one on the client. The next step is to isolate and confirm this behavior.
+The hydration error is a direct result of `React.useId` producing inconsistent values between the server-side HTML render and the client-side hydration. This is likely caused by our framework's two-phase SSR process for client components creating a different rendering context than the one on the client. The next step is to isolate and confirm this behavior.
 
 ## 9. `useId` Test Results and Analysis
 
@@ -279,7 +279,7 @@ The root cause is a desynchronization of the `useId` internal counter between th
 
 3.  **The Mismatch:** When React tries to hydrate the `UseIdDemo` component, it generates an ID of `_R_0_`. This does not match the `_R_76_` in the server-rendered HTML, causing the hydration to fail.
 
-The fundamental problem is that the state of the `useId` counter from the server is not being successfully passed down and used to "seed" the counter on the client, which is a process that React's SSR tooling should handle automatically. My framework's custom SSR bridge and rendering pipeline is likely interfering with this built-in synchronization mechanism.
+The fundamental problem is that the state of the `useId` counter from the server is not being successfully passed down and used to "seed" the counter on the client, which is a process that React's SSR tooling should handle automatically. our framework's custom SSR bridge and rendering pipeline is likely interfering with this built-in synchronization mechanism.
 
 ### Next Step: Investigate React's `useId` SSR Synchronization Mechanism
 
@@ -287,7 +287,7 @@ The immediate next step is to investigate how `React.useId` is _supposed_ to wor
 
 ## 11. Definitive Root Cause: Broken `useId` State Transfer
 
-An analysis of the React source code (`packages/react-reconciler/src/ReactFiberHooks.js`) has revealed the precise mechanism behind the `useId` hydration failure. The issue is not a bug in React, but a failure in my framework's custom rendering pipeline to correctly transfer the necessary state from the server to the client.
+An analysis of the React source code (`packages/react-reconciler/src/ReactFiberHooks.js`) has revealed the precise mechanism behind the `useId` hydration failure. The issue is not a bug in React, but a failure in our framework's custom rendering pipeline to correctly transfer the necessary state from the server to the client.
 
 ### React's `useId` Hydration Mechanism
 
@@ -311,7 +311,7 @@ This reveals that React's `useId` hook relies on a server-generated "tree ID" to
 
 ### How the Framework Breaks the Mechanism
 
-The `useId` counter desynchronization is a symptom of this state transfer failing. My framework's two-phase render via the SSR Bridge is interrupting this data flow.
+The `useId` counter desynchronization is a symptom of this state transfer failing. our framework's two-phase render via the SSR Bridge is interrupting this data flow.
 
 1.  **Server Render:** The `ssr` environment correctly generates the `treeId` sequence as it renders client components to HTML.
 2.  **State Transfer Failure:** My custom pipeline, which bridges the `ssr` and `worker` environments and constructs the final HTML document, is not capturing this `treeId` state and embedding it in the page for the client to use.
@@ -319,7 +319,7 @@ The `useId` counter desynchronization is a symptom of this state transfer failin
 
 ## 12. The Solution Path
 
-The solution is to repair this broken state transfer. This will involve modifying my framework's rendering pipeline to correctly handle the state generated by React's SSR renderer.
+The solution is to repair this broken state transfer. This will involve modifying our framework's rendering pipeline to correctly handle the state generated by React's SSR renderer.
 
 ### Next Steps
 
@@ -478,7 +478,7 @@ Further analysis of the renderer's internal functions (conceptually, `writeBoots
 
 The evidence is clear: **`bootstrapModules` is the explicit and correct API to signal a hydratable, module-based application.** It is the key to forcing React to generate the `resumableState`.
 
-However, this creates a direct conflict with my framework's existing architecture as described in `documentTransforms.md`. My framework is designed to have the user place `<script src="/src/client.tsx">` in their `Document`, which a Vite plugin then transforms to add hashing and a CSP nonce.
+However, this creates a direct conflict with our framework's existing architecture as described in `documentTransforms.md`. our framework is designed to have the user place `<script src="/src/client.tsx">` in their `Document`, which a Vite plugin then transforms to add hashing and a CSP nonce.
 
 If I use `bootstrapModules`, React will also render a script tag for the client entry point, leading to duplicate scripts and bypassing my transformation logic.
 
@@ -487,7 +487,7 @@ If I use `bootstrapModules`, React will also render a script tag for the client 
 To align with React's intended API while making the most minimal change, I must cede control of the _entry point script tag_ to React.
 
 1.  **The `Document` must be simplified:** The user's `Document.tsx` should no longer contain the manual `<script src="/src/client.tsx">` tag. React will now handle its rendering.
-2.  **My framework's role:** My `documentTransforms.md` logic is still necessary for injecting CSP nonces into other scripts and for handling stylesheets, but its role in managing the primary client entry point script is superseded by React's bootstrap mechanism.
+2.  **our framework's role:** My `documentTransforms.md` logic is still necessary for injecting CSP nonces into other scripts and for handling stylesheets, but its role in managing the primary client entry point script is superseded by React's bootstrap mechanism.
 
 This is a small but significant shift in architectural responsibility, and it is the simplest and most direct path to resolving the hydration issue.
 
@@ -502,11 +502,11 @@ Based on the research, the following implementation will be carried out:
 
 ## 26. Course Correction: Prioritizing Backwards Compatibility
 
-A foundational principle of my framework is providing the user with transparent control over their application's final HTML structure via `Document.tsx`. My previous implementation plan (Section 25), which required removing the manual `<script>` tag from the user's `Document`, violated this principle and is therefore invalid. The `Document.tsx` file and its contents are to be treated as an inviolable part of the user-facing API.
+A foundational principle of our framework is providing the user with transparent control over their application's final HTML structure via `Document.tsx`. My previous implementation plan (Section 25), which required removing the manual `<script>` tag from the user's `Document`, violated this principle and is therefore invalid. The `Document.tsx` file and its contents are to be treated as an inviolable part of the user-facing API.
 
 The core technical challenge remains: I must trigger React to serialize its `resumableState` (to fix `useId`) without interfering with the user's `Document.tsx`.
 
-The `bootstrapModules` API is not a viable solution, as it forces React to render its own script tag, creating duplication and bypassing my framework's script transformation logic. This is an unacceptable side effect.
+The `bootstrapModules` API is not a viable solution, as it forces React to render its own script tag, creating duplication and bypassing our framework's script transformation logic. This is an unacceptable side effect.
 
 ### A New Surgical Experiment
 
@@ -609,7 +609,7 @@ This plan achieves the desired outcome: it fixes the hydration bug using React's
 
 ## 34. Re-evaluation and the Critical Suspense Context
 
-The "Virtual Manifest Module" approach, while technically sound for resolving the race condition, was ultimately abandoned due to critical context regarding my framework's hydration strategy with React Suspense.
+The "Virtual Manifest Module" approach, while technically sound for resolving the race condition, was ultimately abandoned due to critical context regarding our framework's hydration strategy with React Suspense.
 
 ### The Flaw in the Virtual Module Approach
 
@@ -682,7 +682,7 @@ This invalidates the hypothesis that merely switching to `bootstrapModules` woul
 
 ## 37. Historical Context: The Necessity of Inline `import()` for Early Hydration
 
-Further review, prompted by historical context from previous pull requests, has clarified the critical importance of my framework's existing script-loading strategy. The use of an inline `<script>import("...")</script>` is not arbitrary; it is a deliberate architectural decision to solve a specific performance problem related to streaming and React Suspense.
+Further review, prompted by historical context from previous pull requests, has clarified the critical importance of our framework's existing script-loading strategy. The use of an inline `<script>import("...")</script>` is not arbitrary; it is a deliberate architectural decision to solve a specific performance problem related to streaming and React Suspense.
 
 ### The Deferred Execution Problem of Module Scripts
 
@@ -694,7 +694,7 @@ As documented in PRs [#369](https://github.com/redwoodjs/sdk/pull/369) and [#316
 
 ### The Inline `import()` Solution
 
-My framework's solution was to switch to an inline script that executes immediately upon being parsed:
+our framework's solution was to switch to an inline script that executes immediately upon being parsed:
 
 ```html
 <script>
@@ -716,7 +716,7 @@ A significant breakthrough has been made. The `useId` hydration mismatch is reso
 
 ### The `_R_` Script was a Red Herring
 
-Crucially, this fix works **without** relying on React's `bootstrapModules` option. By reverting to my framework's original approach of a user-defined `<script>import("...")</script>` in `Document.tsx`, and applying the `DOMContentLoaded` wrapper, the hydration mismatch is still resolved.
+Crucially, this fix works **without** relying on React's `bootstrapModules` option. By reverting to our framework's original approach of a user-defined `<script>import("...")</script>` in `Document.tsx`, and applying the `DOMContentLoaded` wrapper, the hydration mismatch is still resolved.
 
 This is a critical finding. It proves that the root cause of the `useId` mismatch was never about the presence or absence of the `<script id="_R_">` tag. That was a red herring. The true problem was a race condition:
 
@@ -1012,3 +1012,52 @@ Through direct instrumentation of the `react-dom-client.development.js` bundle, 
 This experiment provides conclusive evidence that the `useId` hydration mechanism is **not** dependent on an implicit or explicit Suspense boundary at the root in a non-Suspense scenario. The previous theory was wrong. The fact that `useId` hydration *can* be fixed by delaying execution (e.g., with `DOMContentLoaded`) while the Suspense hydration path is not being used points to a different, more fundamental hydration mechanism that we have not yet identified.
 
 The investigation must return to the source code to find the true source of the initial `TreeContext` during a standard hydration.
+
+## 57. Analysis of Hydration Logs and a Revised Hypothesis
+
+My previous attempts to fix the hydration mismatch by waiting for the RSC stream (`__FLIGHT_DATA__`) were based on an incorrect premise. After instrumenting the React source code directly, the log output provides a much clearer picture of the root cause.
+
+### Log Findings: The Unseeded `TreeContext`
+
+The instrumentation of `react-dom-client.development.js` was conclusive:
+
+1.  **`getIsHydrating()` returns `true`:** The client-side reconciler correctly identifies that it is in hydration mode.
+2.  **`getTreeId()` returns an empty string:** This is the critical finding. When `mountId` is called during the initial hydration, the `TreeContext` that backs `getTreeId()` is in its default, uninitialized state. React knows it *should* be using a server-provided ID, but it doesn't have one.
+3.  **Client-Side ID Generation:** As a result, the client generates a fresh ID sequence starting from `_R_0_`, which inevitably mismatches the server-rendered `_R_76_`.
+
+The logs prove that the `TreeContext` is never being seeded on the client before hydration begins. My previous belief that the seed was contained within the RSC payload stream appears to be incorrect.
+
+### Revised Hypothesis: The `resumableState` Object
+
+This evidence points back to the server-side rendering process. The initial `TreeContext` for hydration is likely only sent from the server as part of a `resumableState` object. An analysis of React's source code shows this object is only created and sent when the server render is initiated with one of the `bootstrap` options (`bootstrapModules` or `bootstrapScriptContent`).
+
+Our framework's architecture intentionally avoids these options to give the user full control over their `Document.tsx` and script injection. This appears to be the source of the conflict. By not using the `bootstrap` options, I am inadvertently telling the server renderer *not* to generate and send the `resumableState`, which starves the client of the necessary `useId` seed.
+
+### The Next Attempt: A Controlled `bootstrapScriptContent` Experiment
+
+Based on this revised hypothesis, I will re-run the experiment of using `bootstrapScriptContent`. This test failed in the past, but it was likely confounded by other architectural issues that have since been reverted.
+
+This attempt will be more controlled:
+
+1.  I will add `bootstrapScriptContent` to the `renderToReadableStream` call on the server.
+2.  To mitigate the risk of the value being trimmed or ignored if it's an empty string, I will use a non-empty value, such as a comment: `'/* rwsdk-hydration-trigger */'`.
+3.  I will observe the new log output to see if this change causes the `TreeContext` to be seeded correctly (i.e., if `getTreeId()` now returns a value on the initial mount).
+
+### The Unanswered Question: `DOMContentLoaded`
+
+A significant mystery remains unresolved by this hypothesis. If the missing `resumableState` is the sole cause of the issue, why does wrapping the client-side `initClient` call in a `DOMContentLoaded` listener fix the hydration mismatch? `DOMContentLoaded` waits for the entire document to be parsed, which seems unrelated to the presence of a specific bootstrap script or `resumableState` object. This suggests there may be another mechanism at play, or a more complex interaction that I haven't yet uncovered. This question must be kept in mind as the investigation proceeds.
+
+## 58. `bootstrapScriptContent` Fails Again, Investigation Moves to Server
+
+The controlled experiment with `bootstrapScriptContent: '/* rwsdk-hydration-trigger */'` has failed. The log output is identical to the previous runs: `getTreeId()` still returns an empty string, and the hydration mismatch persists. This provides strong evidence that this option, at least in isolation, does not trigger the serialization of the `TreeContext`.
+
+### Revised Belief and Next Steps
+
+The repeated failure forces a pivot in the investigation. The fact that `DOMContentLoaded` provides a workaround strongly suggests the `useId` seed *is* being delivered asynchronously, but the exact mechanism remains hidden. It is time to follow the execution path of the `bootstrap` options on the server to understand what they do differently.
+
+The new plan is to add logging directly to the React source code on the server-side:
+
+1.  **Trace `createResumableState`:** I will add a log in `packages/react-dom-bindings/src/server/ReactFizzConfigDOM.js` inside `createResumableState` to confirm the `bootstrapScriptContent` option is being received and to inspect the initial state of the `resumableState` object.
+2.  **Trace `writeBootstrap`:** I will add a log in `packages/react-server/src/ReactFizzServer.js` inside the `writeBootstrap` function. This is the function responsible for acting on the bootstrap options. Logging the `resumableState` here will show if the option is being correctly passed along and evaluated.
+
+This server-side instrumentation should reveal the branch in logic that I am currently missing, and show what conditions are required for React to serialize its initial hydration state.

@@ -88,5 +88,6 @@ export const renderRscThenableToHtmlStream = async ({
         onError(error);
       }
     },
+    bootstrapScriptContent: "/* rwsdk-hydration-trigger */",
   });
 };
