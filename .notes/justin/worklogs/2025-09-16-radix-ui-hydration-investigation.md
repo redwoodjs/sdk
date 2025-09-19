@@ -1211,3 +1211,47 @@ The new, and correct, hypothesis is that **unknown components are calling `useId
 ### Next Step: Identify the Source of the Divergence
 
 The investigation is no longer about finding a state transfer mechanism. It is now a hunt for the component(s) that are secretly consuming `useId`s on the server. The plan is to add detailed logging to the `mountId` function in the server-side React bundle to trace every single `useId` call back to the component that made it. This will provide a definitive list of all ID consumers and reveal the source of the non-determinism.
+
+## 73. The Divergence Point: `treeContext`
+
+Logging the server-side `useId` calls has provided the final, definitive piece of the puzzle.
+
+### Analysis of Server Logs
+
+- The logs confirm that there are no "hidden" components calling `useId`. Exactly two calls are made on the server, corresponding to the two `useId` hooks in the `UseIdDemo` component. This rules out the theory of unknown ID consumers.
+- The critical discovery is the value of the `treeContext` object passed to `useId`. In the server logs, the `treeContext` is already in a highly advanced state (`{ id: 486, overflow: '' }`) *before* the first `useId` call is even made.
+
+### The Inescapable Conclusion
+
+The non-determinism is not caused by extra `useId` calls. It is caused by a divergence in the initial state of the `treeContext` itself. The client render starts with a default `treeContext`, while the server render is starting with a context that has already been advanced by some other process.
+
+The `useId` hook is deterministic; the *input* to the hook is not.
+
+### Next Step: Trace the `treeContext` Initialization
+
+The investigation must now focus on the `treeContext` object. We need to understand what process on the server is manipulating this context before our component renders. The key function to investigate is `pushTreeContext`, which is responsible for advancing the `treeContext` state. The next step is to add logging to the server-side implementation of `pushTreeContext` to build a stack trace of how and why its state is evolving during the server render.
+
+## 74. Confirmed: The Document Render is the Cause
+
+Adding logs to `pushTreeContext` has confirmed the hypothesis.
+
+### Analysis of `pushTreeContext` Logs
+
+The logs show a long series of `pushTreeContext` calls that progressively advance the `treeContext.id` from its initial value of `1` all the way up to `486`. Crucially, all of these calls occur *before* the `useId` hook in our `UseIdDemo` component is invoked.
+
+The stack traces from these logs consistently point to React's internal rendering functions (`renderChildrenArray`, `renderElement`, etc.). This is not an anomaly; it is the standard process of React traversing a component tree.
+
+### The Root Cause: A Shared `treeContext` in a Nested Render
+
+The framework's architecture involves a nested render:
+
+1.  **Outer Shell SSR:** The `renderRscThenableToHtmlStream` function initiates a single server render (`renderToReadableStream`). This render's first job is to process the `<Document>` component, which contains the `<html>`, `<head>`, and `<body>` tags. As React renders this document shell, it traverses the tree of elements, calling `pushTreeContext` at each level and advancing the `treeContext` counter.
+2.  **Inner Content SSR:** As part of that *same* render, React processes the RSC payload. When it encounters the `UseIdDemo` client component, it begins to SSR it. However, it continues to use the *same, mutated `treeContext`* that was just used to render the document shell. By the time `useId` is called inside `UseIdDemo`, the counter has already been significantly advanced.
+
+The client, on the other hand, only hydrates the inner content. It has no knowledge of the outer document render, so its `treeContext` starts from the default initial state. The mismatch is therefore inevitable and baked into the current rendering architecture.
+
+### The Path Forward: Isolating the Render Context
+
+The problem is now clear: we have a shared, mutable state (`treeContext`) that is not being reset between two logically separate stages of a single technical render. The solution must involve isolating these two stages. An investigation of React's server rendering APIs reveals that the `treeContext` is created once per "request" (a single `renderToReadableStream` call) and there is no public API to reset it mid-stream.
+
+Therefore, the most direct solution appears to be creating a new, separate "request" for the inner content render. This would involve an architectural change to split the current single `renderToReadableStream` call into two, allowing the inner content to be rendered with a fresh, clean `treeContext`.
