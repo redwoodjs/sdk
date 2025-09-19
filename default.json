@@ -63,7 +63,7 @@
       "prPriority": 1
     },
     {
-      "description": "Update React peer dependencies in starter projects, tracking pre-releases.",
+      "description": "Update React peer dependencies in starter projects, tracking the 'next' tag.",
       "matchFileNames": ["starters/**/package.json"],
       "matchPackageNames": [
         "react",
@@ -72,8 +72,7 @@
         "@types/react",
         "@types/react-dom"
       ],
-      "allowedVersions": ">=19.2.0-0 <20.0.0",
-      "versioning": "loose",
+      "followTag": "next",
       "groupName": "starter-peer-deps",
       "schedule": ["every weekend"],
       "prPriority": 1
