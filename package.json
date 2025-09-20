@@ -17,5 +17,8 @@
   "devDependencies": {
     "knip": "^5.50.5",
     "prettier": "^3.5.3"
+  },
+  "dependencies": {
+    "vitest": "^3.1.1"
   }
 }

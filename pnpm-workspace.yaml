@@ -1,5 +1,6 @@
 packages:
   - "sdk"
+  - "starters/*"
+  - "examples/*"
   - "docs"
-  - "starters/minimal"
-  - "starters/standard"
+  - "sdk/playground/*"
