@@ -1434,6 +1434,6 @@ The solution was to re-architect the server-side rendering pipeline to enforce c
     - One for the `<Document>` shell, which generates another HTML stream (`documentHtmlStream`) containing a placeholder comment.
 2.  **Stream Stitching**: A custom utility merges these two streams on the fly. It streams the document shell until it finds the placeholder, at which point it injects the application's complete HTML stream before continuing with the rest of the document.
 
-This approach guarantees that the application content is rendered in an isolated context, ensuring the `useId` sequence generated on the server is identical to the one generated on the client during hydration.
+This approach guarantees that the application content is rendered in an isolated context, ensuring the `useId` sequence generated on the server is identical to the one generated on the client during hydration, while at the same time ensuring streaming isn't blocked for both the document and app RSC renders.
 
 An important secondary benefit of this change is that the user-defined `<Document>` is now a true React Server Component. This aligns with developer expectations and unlocks the full power of the RSC paradigm (e.g., using `async/await` for data fetching, accessing server-only APIs) directly within the document shell, which was not possible before. The full details of this new architecture are captured in the updated [Hybrid Rendering documentation](<./docs/architecture/hybridRscSsrRendering.md>).
