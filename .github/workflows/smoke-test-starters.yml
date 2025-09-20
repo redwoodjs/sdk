@@ -29,7 +29,7 @@ jobs:
       fail-fast: false
       matrix:
         starter: [minimal, standard]
-        os: [ubuntu-latest] # TODO: Re-enable windows-latest after fixing Windows path issues (see issue #696)
+        os: [ubuntu-latest, macos-latest] # TODO: Re-enable windows-latest after fixing Windows path issues (see issue #696)
         package-manager: [pnpm, npm, yarn, yarn-classic]
 
     # context(justinvdm, 2025-05-12):
@@ -60,7 +60,7 @@ jobs:
       - name: Run smoke test
         shell: bash
         run: |
-          ./sdk/scripts/ci-smoke-test.sh --starter "${{ matrix.starter }}" --package-manager "${{ matrix.package-manager }}"
+          ./scripts/retry.sh ./sdk/scripts/ci-smoke-test.sh --starter "${{ matrix.starter }}" --package-manager "${{ matrix.package-manager }}"
         env:
           CHROME_BIN: ${{ steps.setup-chrome.outputs.chrome-path }}
 

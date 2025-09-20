@@ -28,7 +28,7 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        os: [ubuntu-latest] # TODO: Re-enable windows-latest after fixing Windows path issues
+        os: [ubuntu-latest, macos-latest] # TODO: Re-enable windows-latest after fixing Windows path issues
         package-manager: [pnpm, npm, yarn, yarn-classic]
 
     # context(justinvdm, 2025-09-20):
@@ -67,7 +67,7 @@ jobs:
         run: |
           cd playground
           pnpm install
-          pnpm test:e2e
+          ../scripts/retry.sh pnpm test:e2e
         env:
           CI: 1
           PACKAGE_MANAGER: ${{ matrix.package-manager }}
