@@ -4,7 +4,6 @@ import { type RequestInfo } from "../requestInfo/types.js";
 import { Preloads } from "./preloads.js";
 import { Stylesheets } from "./stylesheets.js";
 
-import { renderToRscStream } from "./renderToRscStream.js";
 import {
   renderHtmlStream,
   createThenableFromReadableStream,
@@ -51,10 +50,8 @@ export const renderDocumentHtmlStream = async ({
           )}`,
         }}
       />
-      {/*
       <Stylesheets requestInfo={requestInfo} />
       <Preloads requestInfo={requestInfo} />
-      */}
       <div
         id="hydrate-root"
         dangerouslySetInnerHTML={{ __html: "<!-- RWSDK_INJECT_APP_HTML -->" }}
@@ -62,7 +59,6 @@ export const renderDocumentHtmlStream = async ({
     </Document>
   );
 
-  // Render both streams
   const outerHtmlStream = await renderHtmlStream({
     node: documentElement,
     requestInfo,

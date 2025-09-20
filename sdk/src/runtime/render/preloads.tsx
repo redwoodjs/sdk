@@ -1,4 +1,3 @@
-import { use } from "react";
 import type { RequestInfo } from "../requestInfo/types.js";
 import { getManifest } from "../lib/manifest.js";
 import type { Manifest, ManifestChunk } from "../lib/manifest.js";
@@ -37,8 +36,12 @@ export function findScriptForModule(
   return find(id);
 }
 
-export const Preloads = ({ requestInfo }: { requestInfo: RequestInfo }) => {
-  const manifest = use(getManifest());
+export const Preloads = async ({
+  requestInfo,
+}: {
+  requestInfo: RequestInfo;
+}) => {
+  const manifest = await getManifest();
   const allScripts = new Set<string>();
 
   for (const scriptId of requestInfo.rw.scriptsToBeLoaded) {
