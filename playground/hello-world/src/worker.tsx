@@ -1,20 +1,17 @@
-import { handleRequest } from "rwsdk/worker";
-import { routes } from "rwsdk/router";
-import * as home from "@/app/pages/Home";
+import { defineApp } from "rwsdk/worker";
+import { render, route } from "rwsdk/router";
 
-const pages = {
-  home,
-};
+import { Document } from "@/app/Document";
+import { Home } from "@/app/pages/Home";
+import { setCommonHeaders } from "@/app/headers";
 
 export type AppContext = {};
 
-export default {
-  fetch: handleRequest<AppContext>({
-    routes: (route) => {
-      route("/", pages.home.Home, "home");
-    },
-    getAppContext: (ctx) => {
-      return {};
-    },
-  }),
-};
+export default defineApp([
+  setCommonHeaders(),
+  ({ ctx }) => {
+    // setup ctx here
+    ctx;
+  },
+  render(Document, [route("/", Home)]),
+]);

@@ -1,4 +1,3 @@
-import { hydrate } from "rwsdk/client";
-import { App } from "rsc-html-stream/client";
+import { initClient } from "rwsdk/client";
 
-hydrate(App);
+initClient();

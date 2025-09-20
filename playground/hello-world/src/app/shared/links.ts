@@ -1,3 +1,3 @@
-import { defineRoutes } from "rwsdk/router";
+import { defineLinks } from "rwsdk/router";
 
-export const routes = defineRoutes((route) => {});
+export const link = defineLinks(["/"]);
