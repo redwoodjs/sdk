@@ -283,3 +283,41 @@ Successfully implemented and tested the playground E2E tests on GitHub Actions C
 4. **Environment Variables**: The workflow correctly skips deployment tests using `RWSDK_PLAYGROUND_SKIP_DEPLOYMENT_TESTS=1` since Cloudflare credentials aren't available in the test environment.
 
 The playground E2E test infrastructure is now fully complete and production-ready.
+
+---
+
+## PR Description
+
+This PR introduces a `playground` directory and a robust end-to-end (E2E) testing framework. This allows us to easily add isolated projects to test various scenarios, regressions, and features.
+
+Each project within the `playground` can have its own E2E tests, which run against both a local dev server and a temporary production deployment on Cloudflare. The test harness provides a simple API for writing these tests:
+
+```typescript
+// playground/hello-world/__tests__/e2e.test.mts
+import { expect } from "vitest";
+import {
+  setupPlaygroundEnvironment,
+  testDevServer,
+  testDeployment,
+  poll,
+} from "rwsdk/e2e";
+
+// Sets up the test environment for the suite (automatic cleanup)
+setupPlaygroundEnvironment();
+
+testDevServer("renders Hello World on dev server", async ({ page, url }) => {
+  await page.goto(url);
+  await poll(async () => (await page.content()).includes("Hello World"));
+  expect(await page.content()).toContain("Hello World");
+});
+
+testDeployment("renders Hello World on deployment", async ({ page, url }) => {
+  await page.goto(url);
+  await poll(async () => (await page.content()).includes("Hello World"));
+  expect(await page.content()).toContain("Hello World");
+});
+```
+
+Similar to our smoke tests, these playground tests are executed on CI across a matrix of supported operating systems and package managers, ensuring comprehensive validation.
+
+For more details on how to write and run these tests, please see the ["End-to-End Tests (Playground)"](./CONTRIBUTING.md#end-to-end-tests-playground) section in the contributing guide.
