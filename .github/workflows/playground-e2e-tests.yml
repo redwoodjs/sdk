@@ -1,0 +1,81 @@
+name: Playground E2E Tests
+
+on:
+  push:
+    branches:
+      - main
+    paths-ignore:
+      - "docs/**"
+  pull_request:
+    branches:
+      - main
+    paths-ignore:
+      - "docs/**"
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+  CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+
+jobs:
+  playground-e2e:
+    name: Playground E2E - ${{ matrix.os }} - ${{ matrix.package-manager }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest] # TODO: Re-enable windows-latest after fixing Windows path issues
+        package-manager: [pnpm, npm, yarn, yarn-classic]
+
+    # context(justinvdm, 2025-09-20):
+    # Only run this job for PRs from the same repository and pushes to main
+    # For security, GH won't expose secrets for fork PRs
+    if: github.event_name == 'push' || github.event.pull_request.head.repo.full_name == github.repository
+
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        shell: bash
+        run: |
+          corepack enable
+          if [ "${{ matrix.package-manager }}" = "yarn" ]; then
+            corepack prepare yarn@stable --activate
+          elif [ "${{ matrix.package-manager }}" = "yarn-classic" ]; then
+            npm i -g yarn@1.22.19 --force
+          fi
+          pnpm install
+
+      - name: Build SDK
+        shell: bash
+        run: |
+          cd sdk
+          pnpm build
+
+      - name: Run playground E2E tests
+        shell: bash
+        run: |
+          pnpm test:e2e
+        env:
+          CI: 1
+          PACKAGE_MANAGER: ${{ matrix.package-manager }}
+
+      - name: Upload playground artifacts
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: playground-e2e-artifacts-${{ matrix.os }}-${{ matrix.package-manager }}
+          path: |
+            /tmp/*-e2e-test-*
+            playground/**/node_modules/.cache/wrangler
+          retention-days: 7
