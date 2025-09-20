@@ -26,7 +26,10 @@ export const renderToStream = async (
   }: RenderToStreamOptions = {},
 ): Promise<ReadableStream> => {
   let rscStream = renderToRscStream({
-    input: element,
+    input: {
+      element,
+      actionResult: undefined,
+    },
     onError,
   });
 

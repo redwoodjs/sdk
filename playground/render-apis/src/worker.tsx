@@ -176,7 +176,6 @@ export default defineApp([
     const html = await renderToString(<RenderToStringTestPage />, {
       Document,
       injectRSCPayload: true,
-      onError: (error) => console.error("Render error:", error),
     });
 
     return new Response(html, {
