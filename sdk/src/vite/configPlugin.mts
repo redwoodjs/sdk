@@ -173,8 +173,8 @@ export const configPlugin = ({
                 // original `export` statement from the bundle to prevent syntax
                 // errors.
                 inlineDynamicImports: true,
-                banner: `export const { renderRscThenableToHtmlStream, ssrWebpackRequire, ssrGetModuleExport } = (function() {`,
-                footer: `return { renderRscThenableToHtmlStream, ssrWebpackRequire, ssrGetModuleExport };\n})();`,
+                banner: `export const { renderHtmlStream, ssrWebpackRequire, ssrGetModuleExport } = (function() {`,
+                footer: `return { renderHtmlStream, ssrWebpackRequire, ssrGetModuleExport };\n})();`,
               },
               plugins: [
                 {

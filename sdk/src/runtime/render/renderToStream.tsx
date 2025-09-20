@@ -1,7 +1,6 @@
 import { ReactElement, FC } from "react";
 import { DocumentProps } from "../lib/router";
 import { renderToRscStream } from "./renderToRscStream";
-import { transformRscToHtmlStream } from "./transformRscToHtmlStream";
 import { requestInfo } from "../requestInfo/worker";
 import { injectRSCPayload } from "rsc-html-stream/server";
 
@@ -24,8 +23,7 @@ export const renderToStream = async (
   }: RenderToStreamOptions = {},
 ): Promise<ReadableStream> => {
   let rscStream = renderToRscStream({
-    node: element,
-    actionResult: null,
+    input: element,
     onError,
   });
 
@@ -40,12 +38,8 @@ export const renderToStream = async (
     );
   }
 
-  const htmlStream = await transformRscToHtmlStream({
-    stream: rscStream,
-    Document,
-    requestInfo,
-    onError,
-  });
+  // todo(justinvdm, 20 Sep 2025): Implement once idea proved out
+  const htmlStream: any = 23;
 
   return htmlStream;
 };
