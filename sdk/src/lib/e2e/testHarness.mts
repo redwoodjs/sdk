@@ -304,7 +304,9 @@ export async function cleanupDeployment(
  * Automatically registers cleanup to run after the test.
  */
 export async function createBrowser(): Promise<Browser> {
-  const browser = await launchBrowser();
+  // Check if we should run in headed mode for debugging
+  const headless = process.env.RWSDK_HEADLESS !== "false";
+  const browser = await launchBrowser(undefined, headless);
   const browserId = `browser-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
   // Register automatic cleanup
@@ -424,7 +426,9 @@ export function testDevAndDeployment(
     url: string;
   }) => Promise<void>,
 ) {
-  if (!SKIP_DEV_SERVER_TESTS) {
+  if (SKIP_DEV_SERVER_TESTS) {
+    test.skip(`${name} (dev)`, () => {});
+  } else {
     test(`${name} (dev)`, async () => {
       const devServer = await createDevServer();
       const browser = await createBrowser();
@@ -440,7 +444,9 @@ export function testDevAndDeployment(
     });
   }
 
-  if (!SKIP_DEPLOYMENT_TESTS) {
+  if (SKIP_DEPLOYMENT_TESTS) {
+    test.skip(`${name} (deployment)`, () => {});
+  } else {
     test(`${name} (deployment)`, async () => {
       const deployment = await createDeployment();
       const browser = await createBrowser();
