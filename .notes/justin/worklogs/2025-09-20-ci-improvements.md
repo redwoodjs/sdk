@@ -28,6 +28,22 @@ Created `scripts/retry.sh` with 3 retry attempts and 5-second delays between ret
 - Updated E2E test command to use: `../scripts/retry.sh pnpm test:e2e`
 
 ### Changes made
-- `scripts/retry.sh`: New retry wrapper script
+- `scripts/retry.sh`: New retry wrapper script with 3 retry attempts and 5-second delays
 - `.github/workflows/smoke-test-starters.yml`: Added macOS, wrapped command with retry
 - `.github/workflows/playground-e2e-tests.yml`: Added macOS, wrapped command with retry
+
+### Testing
+- Tested retry script locally - works correctly with both successful and failing commands
+- Script shows proper attempt counting and delay behavior
+- Fixed initial issue where script showed 5 retries instead of 3
+
+### Results
+- Both workflows now include macOS in addition to Ubuntu (2 OS × 4 package managers = 8 jobs each)
+- Playground E2E tests already had fail-fast: false (no change needed)
+- Commands are wrapped with retry logic to handle transient failures
+- Workflows will only trigger on pushes to main or pull requests (not feature branch pushes)
+
+### Matrix expansion
+- **Before**: 4 jobs per workflow (1 OS × 4 package managers)  
+- **After**: 8 jobs per workflow (2 OS × 4 package managers)
+- Total CI jobs increased from 8 to 16 across both workflows
