@@ -42,7 +42,10 @@ export default function MixedPage() {
       </div>
 
       {/* Client Component */}
-      <ClientUseIdComponent title="Client Component (Embedded in Server Page)" />
+      <ClientUseIdComponent
+        title="Client Component (Embedded in Server Page)"
+        testIdPrefix="mixed-first"
+      />
 
       {/* Another Server Component */}
       <div
@@ -72,7 +75,10 @@ export default function MixedPage() {
       </div>
 
       {/* Another Client Component */}
-      <ClientUseIdComponent title="Second Client Component" />
+      <ClientUseIdComponent
+        title="Second Client Component"
+        testIdPrefix="mixed-second"
+      />
 
       <div
         style={{

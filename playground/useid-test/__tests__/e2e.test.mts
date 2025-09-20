@@ -165,8 +165,10 @@ describe("useId Playground - Dev Server", () => {
         "mixed-server-id-2",
       ]);
       const initialClientIds = await extractUseIdValues(page, [
-        "mixed-client-id-1",
-        "mixed-client-id-2",
+        "mixed-first-client-id-1",
+        "mixed-first-client-id-2",
+        "mixed-second-client-id-1",
+        "mixed-second-client-id-2",
       ]);
 
       // Wait for hydration to complete
@@ -174,9 +176,7 @@ describe("useId Playground - Dev Server", () => {
 
       // Wait for client components to show hydration complete
       await poll(async () => {
-        const elements = await page.$$(
-          '[data-testid="mixed-hydration-status"]',
-        );
+        const elements = await page.$$('[data-testid*="-hydration-status"]');
         const statuses = await Promise.all(
           elements.map((el) =>
             page.evaluate((element: Element) => element.textContent, el),
@@ -191,8 +191,10 @@ describe("useId Playground - Dev Server", () => {
         "mixed-server-id-2",
       ]);
       const afterClientIds = await extractUseIdValues(page, [
-        "mixed-client-id-1",
-        "mixed-client-id-2",
+        "mixed-first-client-id-1",
+        "mixed-first-client-id-2",
+        "mixed-second-client-id-1",
+        "mixed-second-client-id-2",
       ]);
 
       // Server component IDs should remain stable
@@ -206,20 +208,30 @@ describe("useId Playground - Dev Server", () => {
       );
 
       // Client component IDs should remain consistent after hydration
-      expect(initialClientIds["mixed-client-id-1"]).toBeTruthy();
-      expect(initialClientIds["mixed-client-id-2"]).toBeTruthy();
-      expect(initialClientIds["mixed-client-id-1"]).toBe(
-        afterClientIds["mixed-client-id-1"],
+      expect(initialClientIds["mixed-first-client-id-1"]).toBeTruthy();
+      expect(initialClientIds["mixed-first-client-id-2"]).toBeTruthy();
+      expect(initialClientIds["mixed-second-client-id-1"]).toBeTruthy();
+      expect(initialClientIds["mixed-second-client-id-2"]).toBeTruthy();
+      expect(initialClientIds["mixed-first-client-id-1"]).toBe(
+        afterClientIds["mixed-first-client-id-1"],
       );
-      expect(initialClientIds["mixed-client-id-2"]).toBe(
-        afterClientIds["mixed-client-id-2"],
+      expect(initialClientIds["mixed-first-client-id-2"]).toBe(
+        afterClientIds["mixed-first-client-id-2"],
+      );
+      expect(initialClientIds["mixed-second-client-id-1"]).toBe(
+        afterClientIds["mixed-second-client-id-1"],
+      );
+      expect(initialClientIds["mixed-second-client-id-2"]).toBe(
+        afterClientIds["mixed-second-client-id-2"],
       );
 
       // Verify all IDs follow the expected pattern
       expect(initialServerIds["mixed-server-id-1"]).toMatch(/^_R_\w+_$/);
       expect(initialServerIds["mixed-server-id-2"]).toMatch(/^_R_\w+_$/);
-      expect(initialClientIds["mixed-client-id-1"]).toMatch(/^_R_\w+_$/);
-      expect(initialClientIds["mixed-client-id-2"]).toMatch(/^_R_\w+_$/);
+      expect(initialClientIds["mixed-first-client-id-1"]).toMatch(/^_R_\w+_$/);
+      expect(initialClientIds["mixed-first-client-id-2"]).toMatch(/^_R_\w+_$/);
+      expect(initialClientIds["mixed-second-client-id-1"]).toMatch(/^_R_\w+_$/);
+      expect(initialClientIds["mixed-second-client-id-2"]).toMatch(/^_R_\w+_$/);
     },
   );
 });
@@ -338,8 +350,10 @@ describe("useId Playground - Deployment", () => {
         "mixed-server-id-2",
       ]);
       const initialClientIds = await extractUseIdValues(page, [
-        "mixed-client-id-1",
-        "mixed-client-id-2",
+        "mixed-first-client-id-1",
+        "mixed-first-client-id-2",
+        "mixed-second-client-id-1",
+        "mixed-second-client-id-2",
       ]);
 
       // Wait for hydration to complete
@@ -347,9 +361,7 @@ describe("useId Playground - Deployment", () => {
 
       // Wait for client components to show hydration complete
       await poll(async () => {
-        const elements = await page.$$(
-          '[data-testid="mixed-hydration-status"]',
-        );
+        const elements = await page.$$('[data-testid*="-hydration-status"]');
         const statuses = await Promise.all(
           elements.map((el) =>
             page.evaluate((element: Element) => element.textContent, el),
@@ -364,8 +376,10 @@ describe("useId Playground - Deployment", () => {
         "mixed-server-id-2",
       ]);
       const afterClientIds = await extractUseIdValues(page, [
-        "mixed-client-id-1",
-        "mixed-client-id-2",
+        "mixed-first-client-id-1",
+        "mixed-first-client-id-2",
+        "mixed-second-client-id-1",
+        "mixed-second-client-id-2",
       ]);
 
       // Server component IDs should remain stable
@@ -379,20 +393,30 @@ describe("useId Playground - Deployment", () => {
       );
 
       // Client component IDs should remain consistent after hydration
-      expect(initialClientIds["mixed-client-id-1"]).toBeTruthy();
-      expect(initialClientIds["mixed-client-id-2"]).toBeTruthy();
-      expect(initialClientIds["mixed-client-id-1"]).toBe(
-        afterClientIds["mixed-client-id-1"],
+      expect(initialClientIds["mixed-first-client-id-1"]).toBeTruthy();
+      expect(initialClientIds["mixed-first-client-id-2"]).toBeTruthy();
+      expect(initialClientIds["mixed-second-client-id-1"]).toBeTruthy();
+      expect(initialClientIds["mixed-second-client-id-2"]).toBeTruthy();
+      expect(initialClientIds["mixed-first-client-id-1"]).toBe(
+        afterClientIds["mixed-first-client-id-1"],
       );
-      expect(initialClientIds["mixed-client-id-2"]).toBe(
-        afterClientIds["mixed-client-id-2"],
+      expect(initialClientIds["mixed-first-client-id-2"]).toBe(
+        afterClientIds["mixed-first-client-id-2"],
+      );
+      expect(initialClientIds["mixed-second-client-id-1"]).toBe(
+        afterClientIds["mixed-second-client-id-1"],
+      );
+      expect(initialClientIds["mixed-second-client-id-2"]).toBe(
+        afterClientIds["mixed-second-client-id-2"],
       );
 
       // Verify all IDs follow the expected pattern
       expect(initialServerIds["mixed-server-id-1"]).toMatch(/^_R_\w+_$/);
       expect(initialServerIds["mixed-server-id-2"]).toMatch(/^_R_\w+_$/);
-      expect(initialClientIds["mixed-client-id-1"]).toMatch(/^_R_\w+_$/);
-      expect(initialClientIds["mixed-client-id-2"]).toMatch(/^_R_\w+_$/);
+      expect(initialClientIds["mixed-first-client-id-1"]).toMatch(/^_R_\w+_$/);
+      expect(initialClientIds["mixed-first-client-id-2"]).toMatch(/^_R_\w+_$/);
+      expect(initialClientIds["mixed-second-client-id-1"]).toMatch(/^_R_\w+_$/);
+      expect(initialClientIds["mixed-second-client-id-2"]).toMatch(/^_R_\w+_$/);
     },
   );
 });

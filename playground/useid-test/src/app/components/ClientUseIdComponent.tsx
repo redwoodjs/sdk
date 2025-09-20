@@ -2,7 +2,13 @@
 
 import { useId, useEffect, useState } from "react";
 
-export function ClientUseIdComponent({ title }: { title: string }) {
+export function ClientUseIdComponent({
+  title,
+  testIdPrefix = "mixed",
+}: {
+  title: string;
+  testIdPrefix?: string;
+}) {
   const id1 = useId();
   const id2 = useId();
   const [hydrated, setHydrated] = useState(false);
@@ -13,7 +19,7 @@ export function ClientUseIdComponent({ title }: { title: string }) {
 
   return (
     <div
-      data-testid="mixed-client-component"
+      data-testid={`${testIdPrefix}-client-component`}
       style={{
         padding: "1rem",
         border: "2px solid #FF9800",
@@ -31,7 +37,7 @@ export function ClientUseIdComponent({ title }: { title: string }) {
       <div style={{ marginBottom: "1rem" }}>
         <div
           id={id1}
-          data-testid="mixed-client-element-1"
+          data-testid={`${testIdPrefix}-client-element-1`}
           style={{
             padding: "0.5rem",
             border: "1px solid #FFB74D",
@@ -41,13 +47,14 @@ export function ClientUseIdComponent({ title }: { title: string }) {
           }}
         >
           <p style={{ margin: 0, fontSize: "0.9rem" }}>
-            Client ID 1: <strong data-testid="mixed-client-id-1">{id1}</strong>
+            Client ID 1:{" "}
+            <strong data-testid={`${testIdPrefix}-client-id-1`}>{id1}</strong>
           </p>
         </div>
 
         <div
           id={id2}
-          data-testid="mixed-client-element-2"
+          data-testid={`${testIdPrefix}-client-element-2`}
           style={{
             padding: "0.5rem",
             border: "1px solid #FFB74D",
@@ -56,13 +63,14 @@ export function ClientUseIdComponent({ title }: { title: string }) {
           }}
         >
           <p style={{ margin: 0, fontSize: "0.9rem" }}>
-            Client ID 2: <strong data-testid="mixed-client-id-2">{id2}</strong>
+            Client ID 2:{" "}
+            <strong data-testid={`${testIdPrefix}-client-id-2`}>{id2}</strong>
           </p>
         </div>
       </div>
 
       <div
-        data-testid="mixed-hydration-status"
+        data-testid={`${testIdPrefix}-hydration-status`}
         style={{
           padding: "0.5rem",
           backgroundColor: hydrated ? "#e8f5e8" : "#fff3e0",
