@@ -110,7 +110,6 @@ const performFullSync = async (sdkDir: string, targetDir: string) => {
         try {
           const targetPackageJson = JSON.parse(originalPackageJson);
           let modified = false;
-          // Handle both old and new package names
           if (targetPackageJson.dependencies?.rwsdk) {
             delete targetPackageJson.dependencies.rwsdk;
             modified = true;
@@ -119,17 +118,9 @@ const performFullSync = async (sdkDir: string, targetDir: string) => {
             delete targetPackageJson.devDependencies.rwsdk;
             modified = true;
           }
-          if (targetPackageJson.dependencies?.["rwsdk"]) {
-            delete targetPackageJson.dependencies["rwsdk"];
-            modified = true;
-          }
-          if (targetPackageJson.devDependencies?.["rwsdk"]) {
-            delete targetPackageJson.devDependencies["rwsdk"];
-            modified = true;
-          }
           if (modified) {
             console.log(
-              "Temporarily removing SDK dependency from target package.json to prevent dependency loop with bun.",
+              "Temporarily removing rwsdk from target package.json to prevent dependency loop with bun.",
             );
             await fs.writeFile(
               packageJsonPath,
