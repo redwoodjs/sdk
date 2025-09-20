@@ -109,4 +109,20 @@ Before pausing to align on the plan, I completed the initial refactoring and set
     *   A `vitest.config.mts` was created in the `sdk` directory to run tests in the playground.
     *   A `test:e2e` script was added to the `sdk`'s `package.json`.
 
-The next step is to implement the test harness API (`testDevServer`, `testDeployment`) we've just discussed and then use it in the placeholder test file that was created.
+## Current Status
+
+**Test Harness Implementation: Complete**
+- Implemented `testDevServer` and `testDeployment` functions with automatic setup/teardown.
+- Added `poll` utility for retry/polling assertions.
+- Fixed TypeScript errors in SDK build.
+- Corrected package.json exports to point to correct dist paths.
+- Updated playground vite config to use SDK's built-in path resolution (removed vite-tsconfig-paths dependency).
+- Implemented tarball-based testing with workspace dependency replacement.
+
+**Current Issue**
+The test is timing out during the SDK rebuild phase in the sync process. The infrastructure appears to be working correctly: project copying, dependency installation, and the tarball sync process all start. However, the SDK rebuild is either taking too long or hanging.
+
+**Next Steps**
+- Investigate SDK build performance during sync.
+- Consider optimizing the rebuild process for tests.
+- Complete remaining tasks: runner script, CI integration, and documentation.

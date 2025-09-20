@@ -157,6 +157,9 @@ export async function copyProjectToTempDir(
     log("Created .yarnrc.yml to disable PnP for yarn");
   }
 
+  // Replace workspace:* dependencies with a placeholder before installing
+  await replaceWorkspaceDependencies(targetDir);
+
   // Install dependencies in the target directory
   await installDependencies(targetDir, packageManager);
 
@@ -169,6 +172,55 @@ export async function copyProjectToTempDir(
   }
 
   return { tempDir, targetDir, workerName };
+}
+
+/**
+ * Replace workspace:* dependencies with a placeholder version to allow installation
+ */
+async function replaceWorkspaceDependencies(targetDir: string): Promise<void> {
+  const packageJsonPath = join(targetDir, "package.json");
+
+  try {
+    const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
+    const packageJson = JSON.parse(packageJsonContent);
+
+    let modified = false;
+
+    // Replace workspace:* dependencies with a placeholder version
+    if (packageJson.dependencies) {
+      for (const [name, version] of Object.entries(packageJson.dependencies)) {
+        if (version === "workspace:*") {
+          packageJson.dependencies[name] = "0.0.80"; // Use latest published version as placeholder
+          modified = true;
+          log(`Replaced workspace dependency ${name} with placeholder version`);
+        }
+      }
+    }
+
+    if (packageJson.devDependencies) {
+      for (const [name, version] of Object.entries(
+        packageJson.devDependencies,
+      )) {
+        if (version === "workspace:*") {
+          packageJson.devDependencies[name] = "0.0.80"; // Use latest published version as placeholder
+          modified = true;
+          log(
+            `Replaced workspace devDependency ${name} with placeholder version`,
+          );
+        }
+      }
+    }
+
+    if (modified) {
+      await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
+      log(
+        "Updated package.json with placeholder versions for workspace dependencies",
+      );
+    }
+  } catch (error) {
+    log("Error replacing workspace dependencies: %O", error);
+    throw new Error(`Failed to replace workspace dependencies: ${error}`);
+  }
 }
 
 /**

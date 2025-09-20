@@ -1,30 +1,34 @@
-import { describe, it, expect } from "vitest";
-import { setupTestEnvironment } from "@redwoodjs/sdk/e2e/environment";
-import { runDevServer } from "@redwoodjs/sdk/e2e/dev";
-import { launchBrowser } from "@redwoodjs/sdk/e2e/browser";
+import { expect } from "vitest";
+import {
+  testDevServer,
+  testDeployment,
+  poll,
+} from "../../src/lib/e2e/testHarness.mjs";
 
-describe("minimal playground", () => {
-  it("dev server should respond with hello world", async () => {
-    const resources = await setupTestEnvironment({
-      projectDir: __dirname,
-      sync: true,
-    });
+testDevServer("renders Hello World on dev server", async ({ page, url }) => {
+  await page.goto(url);
 
-    let devServer: { url: string; stopDev: () => Promise<void> } | undefined;
-    let browser: import("puppeteer-core").Browser | undefined;
-
-    try {
-      devServer = await runDevServer("pnpm", resources.targetDir);
-
-      browser = await launchBrowser();
-      const page = await browser.newPage();
-      await page.goto(devServer.url);
-      const content = await page.content();
-      expect(content).toContain("Hello World");
-    } finally {
-      await browser?.close();
-      await devServer?.stopDev();
-      await resources.tempDirCleanup?.();
-    }
+  // Poll for the content to appear (handles any async loading)
+  await poll(async () => {
+    const content = await page.content();
+    return content.includes("Hello World");
   });
+
+  // Make the assertion
+  const content = await page.content();
+  expect(content).toContain("Hello World");
+});
+
+testDeployment("renders Hello World on deployment", async ({ page, url }) => {
+  await page.goto(url);
+
+  // Poll for the content to appear
+  await poll(async () => {
+    const content = await page.content();
+    return content.includes("Hello World");
+  });
+
+  // Make the assertion
+  const content = await page.content();
+  expect(content).toContain("Hello World");
 });

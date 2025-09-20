@@ -22,29 +22,29 @@
   },
   "exports": {
     "./vite": {
-      "default": "./dist/vite/index.mjs",
-      "types": "./dist/vite/index.d.mts"
+      "default": "./dist/src/vite/index.mjs",
+      "types": "./dist/src/vite/index.d.mts"
     },
     "./worker": {
-      "react-server": "./dist/runtime/entries/worker.js",
-      "types": "./dist/runtime/entries/worker.d.ts",
-      "default": "./dist/runtime/entries/react-server-only.js"
+      "react-server": "./dist/src/runtime/entries/worker.js",
+      "types": "./dist/src/runtime/entries/worker.d.ts",
+      "default": "./dist/src/runtime/entries/react-server-only.js"
     },
     "./client": {
-      "react-server": "./dist/runtime/entries/no-react-server.js",
-      "workerd": "./dist/runtime/entries/clientSSR.js",
-      "types": "./dist/runtime/entries/client.d.ts",
-      "default": "./dist/runtime/entries/client.js"
+      "react-server": "./dist/src/runtime/entries/no-react-server.js",
+      "workerd": "./dist/src/runtime/entries/clientSSR.js",
+      "types": "./dist/src/runtime/entries/client.d.ts",
+      "default": "./dist/src/runtime/entries/client.js"
     },
     "./__ssr": {
-      "react-server": "./dist/runtime/entries/no-react-server.js",
-      "types": "./dist/runtime/entries/ssr.d.ts",
-      "default": "./dist/runtime/entries/ssr.js"
+      "react-server": "./dist/src/runtime/entries/no-react-server.js",
+      "types": "./dist/src/runtime/entries/ssr.d.ts",
+      "default": "./dist/src/runtime/entries/ssr.js"
     },
     "./__ssr_bridge": {
-      "react-server": "./dist/runtime/entries/no-react-server.js",
-      "types": "./dist/runtime/ssrBridge.d.ts",
-      "default": "./dist/runtime/ssrBridge.js"
+      "react-server": "./dist/src/runtime/entries/no-react-server.js",
+      "types": "./dist/src/runtime/ssrBridge.d.ts",
+      "default": "./dist/src/runtime/ssrBridge.js"
     },
     "./__vendor_client_barrel": {
       "default": "./dist/__intermediate_builds/rwsdk-vendor-client-barrel.js"
@@ -53,60 +53,60 @@
       "default": "./dist/__intermediate_builds/rwsdk-vendor-server-barrel.js"
     },
     "./router": {
-      "types": "./dist/runtime/entries/router.d.ts",
-      "default": "./dist/runtime/entries/router.js"
+      "types": "./dist/src/runtime/entries/router.d.ts",
+      "default": "./dist/src/runtime/entries/router.js"
     },
     "./auth": {
-      "types": "./dist/runtime/entries/auth.d.ts",
-      "default": "./dist/runtime/entries/auth.js"
+      "types": "./dist/src/runtime/entries/auth.d.ts",
+      "default": "./dist/src/runtime/entries/auth.js"
     },
     "./db": {
-      "types": "./dist/runtime/lib/db/index.d.ts",
-      "default": "./dist/runtime/lib/db/index.js"
+      "types": "./dist/src/runtime/lib/db/index.d.ts",
+      "default": "./dist/src/runtime/lib/db/index.js"
     },
     "./debug": {
-      "types": "./dist/runtime/lib/debug.d.ts",
-      "default": "./dist/runtime/lib/debug.js"
+      "types": "./dist/src/runtime/lib/debug.d.ts",
+      "default": "./dist/src/runtime/lib/debug.js"
     },
     "./constants": {
-      "types": "./dist/runtime/constants.d.ts",
-      "default": "./dist/runtime/constants.js"
+      "types": "./dist/src/runtime/constants.d.ts",
+      "default": "./dist/src/runtime/constants.js"
     },
     "./turnstile": {
-      "types": "./dist/runtime/lib/turnstile/turnstile.d.ts",
-      "default": "./dist/runtime/lib/turnstile/turnstile.js"
+      "types": "./dist/src/runtime/lib/turnstile/turnstile.d.ts",
+      "default": "./dist/src/runtime/lib/turnstile/turnstile.js"
     },
     "./llms": {
-      "types": "./dist/llms/index.d.ts",
-      "default": "./dist/llms/index.js"
+      "types": "./dist/src/llms/index.d.ts",
+      "default": "./dist/src/llms/index.js"
     },
     "./realtime/worker": {
-      "types": "./dist/runtime/lib/realtime/worker.d.ts",
-      "default": "./dist/runtime/lib/realtime/worker.js"
+      "types": "./dist/src/runtime/lib/realtime/worker.d.ts",
+      "default": "./dist/src/runtime/lib/realtime/worker.js"
     },
     "./realtime/client": {
-      "types": "./dist/runtime/lib/realtime/client.d.ts",
-      "default": "./dist/runtime/lib/realtime/client.js"
+      "types": "./dist/src/runtime/lib/realtime/client.d.ts",
+      "default": "./dist/src/runtime/lib/realtime/client.js"
     },
     "./realtime/durableObject": {
-      "types": "./dist/runtime/lib/realtime/durableObject.d.ts",
-      "default": "./dist/runtime/lib/realtime/durableObject.js"
+      "types": "./dist/src/runtime/lib/realtime/durableObject.d.ts",
+      "default": "./dist/src/runtime/lib/realtime/durableObject.js"
     },
     "./e2e/environment": {
-      "types": "./dist/lib/e2e/environment.d.mts",
-      "default": "./dist/lib/e2e/environment.mjs"
+      "types": "./dist/src/lib/e2e/environment.d.mts",
+      "default": "./dist/src/lib/e2e/environment.mjs"
     },
     "./e2e/dev": {
-      "types": "./dist/lib/e2e/dev.d.mts",
-      "default": "./dist/lib/e2e/dev.mjs"
+      "types": "./dist/src/lib/e2e/dev.d.mts",
+      "default": "./dist/src/lib/e2e/dev.mjs"
     },
     "./e2e/browser": {
-      "types": "./dist/lib/e2e/browser.d.mts",
-      "default": "./dist/lib/e2e/browser.mjs"
+      "types": "./dist/src/lib/e2e/browser.d.mts",
+      "default": "./dist/src/lib/e2e/browser.mjs"
     },
     "./e2e/release": {
-      "types": "./dist/lib/e2e/release.d.mts",
-      "default": "./dist/lib/e2e/release.mjs"
+      "types": "./dist/src/lib/e2e/release.d.mts",
+      "default": "./dist/src/lib/e2e/release.mjs"
     }
   },
   "keywords": [

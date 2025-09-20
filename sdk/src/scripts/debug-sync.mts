@@ -110,6 +110,7 @@ const performFullSync = async (sdkDir: string, targetDir: string) => {
         try {
           const targetPackageJson = JSON.parse(originalPackageJson);
           let modified = false;
+          // Handle both old and new package names
           if (targetPackageJson.dependencies?.rwsdk) {
             delete targetPackageJson.dependencies.rwsdk;
             modified = true;
@@ -118,9 +119,17 @@ const performFullSync = async (sdkDir: string, targetDir: string) => {
             delete targetPackageJson.devDependencies.rwsdk;
             modified = true;
           }
+          if (targetPackageJson.dependencies?.["@redwoodjs/sdk"]) {
+            delete targetPackageJson.dependencies["@redwoodjs/sdk"];
+            modified = true;
+          }
+          if (targetPackageJson.devDependencies?.["@redwoodjs/sdk"]) {
+            delete targetPackageJson.devDependencies["@redwoodjs/sdk"];
+            modified = true;
+          }
           if (modified) {
             console.log(
-              "Temporarily removing rwsdk from target package.json to prevent dependency loop with bun.",
+              "Temporarily removing SDK dependency from target package.json to prevent dependency loop with bun.",
             );
             await fs.writeFile(
               packageJsonPath,
@@ -139,7 +148,7 @@ const performFullSync = async (sdkDir: string, targetDir: string) => {
       if (pm.name === "yarn") {
         // For modern yarn, disable PnP to avoid resolution issues with local tarballs
         process.env.YARN_NODE_LINKER = "node-modules";
-        args.push(`rwsdk@file:${tarballPath}`);
+        args.push(`@redwoodjs/sdk@file:${tarballPath}`);
       } else {
         args.push(tarballPath);
       }

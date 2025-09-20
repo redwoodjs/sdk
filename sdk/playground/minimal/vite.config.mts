@@ -1,7 +1,12 @@
 import { defineConfig } from "vite";
 import { rwsdk } from "@redwoodjs/sdk/vite";
-import tsconfigPaths from "vite-tsconfig-paths";
+import { cloudflare } from "@cloudflare/vite-plugin";
 
 export default defineConfig({
-  plugins: [rwsdk(), tsconfigPaths()],
+  plugins: [
+    cloudflare({
+      viteEnvironment: { name: "worker" },
+    }),
+    rwsdk(),
+  ],
 });
