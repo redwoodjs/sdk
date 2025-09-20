@@ -154,6 +154,41 @@ The playground E2E test infrastructure is now fully functional and working corre
 - Fixed SDK `bin/rw-scripts.mjs` to point to correct script location
 - Increased test timeout to 3 minutes to accommodate Chrome download
 
+**Latest Update: Per-Test-Suite Environment & Automatic Cleanup**
+
+Successfully refactored the test harness to be more efficient and user-friendly:
+
+1. **Per-Test-Suite Environment Setup**: Changed from creating a new project environment for each individual test to creating one shared environment per test suite (test file). This dramatically improves performance and reduces resource usage.
+
+2. **Tarball-Based Testing**: Implemented a new `setupTarballEnvironment()` utility that follows the release script pattern:
+   - Packs the SDK into a tarball using `npm pack`
+   - Copies the playground project to a temporary directory
+   - Replaces `workspace:*` dependencies with placeholder versions (e.g., `0.0.80`)
+   - Installs the SDK tarball, ensuring realistic installation simulation
+
+3. **Simplified Test API**: Tests now use standard vitest hooks with utility functions:
+   ```typescript
+   beforeAll(async () => {
+     await setupPlaygroundEnvironment();
+   });
+   
+   test("my test", async () => {
+     const devServer = await createDevServer();
+     const browser = await createBrowser();
+     // ... test logic
+     await browser.close();
+     await devServer.stopDev();
+   });
+   ```
+
+4. **Working Infrastructure**: The new approach successfully:
+   - Creates isolated test environments with proper tarball installation
+   - Handles workspace dependency replacement automatically
+   - Supports proper timeout configuration for long-running operations
+   - Maintains all existing functionality while being more efficient
+
+**Current Task**: Implementing automatic cleanup hooks so users don't need to manually call cleanup functions. The system will automatically register cleanup tasks and handle them via global afterEach/afterAll hooks.
+
 **Next Steps**
-- Test should now complete successfully (Chrome download + browser test)
+- Implement automatic cleanup registration system
 - Complete remaining tasks: runner script, CI integration, and documentation

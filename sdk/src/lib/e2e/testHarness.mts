@@ -1,5 +1,13 @@
-import { test, beforeEach, afterEach, expect, vi } from "vitest";
-import { setupTestEnvironment } from "./environment.mjs";
+import {
+  test,
+  beforeAll,
+  afterAll,
+  beforeEach,
+  afterEach,
+  expect,
+  vi,
+} from "vitest";
+import { setupTarballEnvironment } from "./tarball.mjs";
 import { runDevServer } from "./dev.mjs";
 import {
   runRelease,
@@ -9,31 +17,95 @@ import {
 } from "./release.mjs";
 import { launchBrowser } from "./browser.mjs";
 import type { Browser, Page } from "puppeteer-core";
-import type { TestResources } from "./types.mjs";
 import { dirname, resolve } from "path";
 
-interface DevServerContext {
-  url: string;
-  page: Page;
-  browser: Browser;
+interface PlaygroundEnvironment {
   projectDir: string;
+  cleanup: () => Promise<void>;
+}
+
+interface DevServerInstance {
+  url: string;
   stopDev: () => Promise<void>;
 }
 
-interface DeploymentContext {
+interface DeploymentInstance {
   url: string;
-  page: Page;
-  browser: Browser;
   workerName: string;
+  resourceUniqueKey: string;
 }
-
-type TestFunction<T> = (context: T) => Promise<void>;
 
 // Environment variable flags for skipping tests
 const SKIP_DEV_SERVER_TESTS =
   process.env.RWSDK_PLAYGROUND_SKIP_DEV_SERVER_TESTS === "1";
 const SKIP_DEPLOYMENT_TESTS =
   process.env.RWSDK_PLAYGROUND_SKIP_DEPLOYMENT_TESTS === "1";
+
+// Global test environment state
+let globalPlaygroundEnv: PlaygroundEnvironment | null = null;
+
+// Global cleanup registry
+interface CleanupTask {
+  id: string;
+  cleanup: () => Promise<void>;
+  type: 'devServer' | 'deployment' | 'browser';
+}
+
+const cleanupTasks: CleanupTask[] = [];
+let hooksRegistered = false;
+
+/**
+ * Registers global cleanup hooks automatically
+ */
+function ensureHooksRegistered() {
+  if (hooksRegistered) return;
+  
+  // Register global afterEach to clean up resources created during tests
+  afterEach(async () => {
+    const tasksToCleanup = [...cleanupTasks];
+    cleanupTasks.length = 0; // Clear the array
+    
+    for (const task of tasksToCleanup) {
+      try {
+        await task.cleanup();
+      } catch (error) {
+        console.warn(`Failed to cleanup ${task.type} ${task.id}:`, error);
+      }
+    }
+  });
+  
+  // Register global afterAll to clean up the playground environment
+  afterAll(async () => {
+    if (globalPlaygroundEnv) {
+      try {
+        await globalPlaygroundEnv.cleanup();
+        globalPlaygroundEnv = null;
+      } catch (error) {
+        console.warn('Failed to cleanup playground environment:', error);
+      }
+    }
+  });
+  
+  hooksRegistered = true;
+}
+
+/**
+ * Registers a cleanup task to be executed automatically
+ */
+function registerCleanupTask(task: CleanupTask) {
+  ensureHooksRegistered();
+  cleanupTasks.push(task);
+}
+
+/**
+ * Removes a cleanup task from the registry (when manually cleaned up)
+ */
+function unregisterCleanupTask(id: string) {
+  const index = cleanupTasks.findIndex(task => task.id === id);
+  if (index !== -1) {
+    cleanupTasks.splice(index, 1);
+  }
+}
 
 /**
  * Get the project directory for the current test by looking at the call stack
@@ -45,237 +117,186 @@ function getProjectDirectory(): string {
 }
 
 /**
- * High-level test wrapper for dev server tests with automatic setup/teardown
+ * Sets up a playground environment for the entire test suite.
+ * Automatically registers beforeAll and afterAll hooks.
  */
-export function testDevServer(
-  name: string,
-  testFn: TestFunction<DevServerContext>,
-) {
+export function setupPlaygroundEnvironment(sourceProjectDir?: string): void {
+  ensureHooksRegistered();
+  
+  beforeAll(async () => {
+    const projectDir = sourceProjectDir || getProjectDirectory();
+    console.log(`Setting up playground environment from ${projectDir}...`);
+
+    const tarballEnv = await setupTarballEnvironment({
+      projectDir,
+      packageManager: "pnpm",
+    });
+
+    globalPlaygroundEnv = {
+      projectDir: tarballEnv.targetDir,
+      cleanup: tarballEnv.cleanup,
+    };
+  });
+}
+
+
+/**
+ * Gets the current playground environment.
+ * Throws if no environment has been set up.
+ */
+export function getPlaygroundEnvironment(): PlaygroundEnvironment {
+  if (!globalPlaygroundEnv) {
+    throw new Error(
+      "No playground environment set up. Call setupPlaygroundEnvironment() in beforeAll()",
+    );
+  }
+  return globalPlaygroundEnv;
+}
+
+/**
+ * Creates a dev server instance using the shared playground environment.
+ * Automatically registers cleanup to run after the test.
+ */
+export async function createDevServer(): Promise<DevServerInstance> {
   if (SKIP_DEV_SERVER_TESTS) {
-    test.skip(name, () => {});
-    return;
+    throw new Error(
+      "Dev server tests are skipped via RWSDK_PLAYGROUND_SKIP_DEV_SERVER_TESTS=1",
+    );
   }
 
-  test(name, async () => {
-    let resources: TestResources | undefined;
-    let devServer: { stopDev: () => Promise<void> } | undefined;
-    let browser: Browser | undefined;
-    let testFailed = false;
-
-    try {
-      // Set up test environment with tarball installation
-      // Detect the playground project directory from the test file location
-      const projectDir = getProjectDirectory();
-      resources = await setupTestEnvironment({
-        projectDir,
-        sync: true,
-        packageManager: "pnpm",
-      });
-
-      if (!resources.targetDir) {
-        throw new Error("Failed to set up test environment");
-      }
-
-      // Start dev server
-      const devResult = await runDevServer("pnpm", resources.targetDir);
-      devServer = devResult;
-
-      // Launch browser
-      browser = await launchBrowser();
-      const page = await browser.newPage();
-
-      // Run the test
-      await testFn({
-        url: devResult.url,
-        page,
-        browser,
-        projectDir: resources.targetDir,
-        stopDev: devResult.stopDev,
-      });
-    } catch (error) {
-      testFailed = true;
-      throw error;
-    } finally {
-      // Cleanup
-      if (devServer) {
-        await devServer.stopDev();
-      }
-      if (browser) {
-        await browser.close();
-      }
-
-      // Handle temp directory cleanup
-      if (resources?.tempDirCleanup) {
-        if (testFailed) {
-          console.log(
-            `\n🔍 Keeping failed test directory for debugging: ${resources.targetDir}`,
-          );
-        } else {
-          await resources.tempDirCleanup();
-        }
-      }
-    }
+  const env = getPlaygroundEnvironment();
+  const devResult = await runDevServer("pnpm", env.projectDir);
+  
+  const serverId = `devServer-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  
+  // Register automatic cleanup
+  registerCleanupTask({
+    id: serverId,
+    type: 'devServer',
+    cleanup: devResult.stopDev,
   });
-}
-
-/**
- * High-level test wrapper for deployment tests with automatic setup/teardown
- */
-export function testDeployment(
-  name: string,
-  testFn: TestFunction<DeploymentContext>,
-) {
-  if (SKIP_DEPLOYMENT_TESTS) {
-    test.skip(name, () => {});
-    return;
-  }
-
-  test(name, async () => {
-    let resources: TestResources | undefined;
-    let browser: Browser | undefined;
-    let workerName: string | undefined;
-    let testFailed = false;
-
-    try {
-      // Set up test environment with tarball installation
-      // Detect the playground project directory from the test file location
-      const projectDir = getProjectDirectory();
-      resources = await setupTestEnvironment({
-        projectDir,
-        sync: true,
-        packageManager: "pnpm",
-      });
-
-      if (!resources.targetDir) {
-        throw new Error("Failed to set up test environment");
-      }
-
-      // Deploy to Cloudflare
-      const deployResult = await runRelease(
-        resources.targetDir,
-        resources.targetDir,
-        resources.resourceUniqueKey,
-      );
-      workerName = deployResult.workerName;
-
-      // Launch browser
-      browser = await launchBrowser();
-      const page = await browser.newPage();
-
-      // Run the test
-      await testFn({
-        url: deployResult.url,
-        page,
-        browser,
-        workerName,
-      });
-    } catch (error) {
-      testFailed = true;
-      throw error;
-    } finally {
-      // Cleanup
-      if (browser) {
-        await browser.close();
-      }
-      if (workerName && resources) {
-        // Clean up Cloudflare resources
-        if (isRelatedToTest(workerName, resources.resourceUniqueKey)) {
-          await deleteWorker(
-            workerName,
-            resources.targetDir || process.cwd(),
-            resources.resourceUniqueKey,
-          );
-        }
-        // Also clean up any D1 databases
-        await deleteD1Database(
-          resources.resourceUniqueKey,
-          resources.targetDir || process.cwd(),
-          resources.resourceUniqueKey,
-        );
-      }
-
-      // Handle temp directory cleanup
-      if (resources?.tempDirCleanup) {
-        if (testFailed) {
-          console.log(
-            `\n🔍 Keeping failed test directory for debugging: ${resources.targetDir}`,
-          );
-        } else {
-          await resources.tempDirCleanup();
-        }
-      }
-    }
-  });
-}
-
-// Add skip methods to the test functions
-testDevServer.skip = (name: string, testFn: TestFunction<DevServerContext>) => {
-  test.skip(name, () => {});
-};
-
-testDeployment.skip = (
-  name: string,
-  testFn: TestFunction<DeploymentContext>,
-) => {
-  test.skip(name, () => {});
-};
-
-/**
- * Lower-level function to create a dev server without automatic cleanup
- */
-export async function createDevServer(projectDir?: string): Promise<{
-  url: string;
-  stopDev: () => Promise<void>;
-  resources: TestResources;
-}> {
-  const resources = await setupTestEnvironment({
-    projectDir: projectDir || getProjectDirectory(),
-    sync: true,
-    packageManager: "pnpm",
-  });
-
-  if (!resources.targetDir) {
-    throw new Error("Failed to set up test environment");
-  }
-
-  const devResult = await runDevServer("pnpm", resources.targetDir);
 
   return {
     url: devResult.url,
-    stopDev: devResult.stopDev,
-    resources,
+    stopDev: async () => {
+      await devResult.stopDev();
+      unregisterCleanupTask(serverId); // Remove from auto-cleanup since manually cleaned
+    },
   };
 }
 
 /**
- * Lower-level function to create a deployment without automatic cleanup
+ * Creates a deployment instance using the shared playground environment.
+ * Automatically registers cleanup to run after the test.
  */
-export async function createDeployment(projectDir?: string): Promise<{
-  url: string;
-  workerName: string;
-  resources: TestResources;
-}> {
-  const resources = await setupTestEnvironment({
-    projectDir: projectDir || getProjectDirectory(),
-    sync: true,
-    packageManager: "pnpm",
-  });
-
-  if (!resources.targetDir) {
-    throw new Error("Failed to set up test environment");
+export async function createDeployment(): Promise<DeploymentInstance> {
+  if (SKIP_DEPLOYMENT_TESTS) {
+    throw new Error(
+      "Deployment tests are skipped via RWSDK_PLAYGROUND_SKIP_DEPLOYMENT_TESTS=1",
+    );
   }
 
+  const env = getPlaygroundEnvironment();
+  const resourceUniqueKey = Math.random().toString(36).substring(2, 15);
+
   const deployResult = await runRelease(
-    resources.targetDir,
-    resources.targetDir,
-    resources.resourceUniqueKey,
+    env.projectDir,
+    env.projectDir,
+    resourceUniqueKey,
   );
+
+  const deploymentId = `deployment-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  
+  // Register automatic cleanup
+  registerCleanupTask({
+    id: deploymentId,
+    type: 'deployment',
+    cleanup: async () => {
+      if (isRelatedToTest(deployResult.workerName, resourceUniqueKey)) {
+        await deleteWorker(
+          deployResult.workerName,
+          env.projectDir,
+          resourceUniqueKey,
+        );
+      }
+      await deleteD1Database(
+        resourceUniqueKey,
+        env.projectDir,
+        resourceUniqueKey,
+      );
+    },
+  });
 
   return {
     url: deployResult.url,
     workerName: deployResult.workerName,
-    resources,
+    resourceUniqueKey,
   };
+}
+
+/**
+ * Manually cleans up a deployment instance (deletes worker and D1 database).
+ * This is optional since cleanup happens automatically after each test.
+ */
+export async function cleanupDeployment(
+  deployment: DeploymentInstance,
+): Promise<void> {
+  const env = getPlaygroundEnvironment();
+
+  if (isRelatedToTest(deployment.workerName, deployment.resourceUniqueKey)) {
+    await deleteWorker(
+      deployment.workerName,
+      env.projectDir,
+      deployment.resourceUniqueKey,
+    );
+  }
+
+  await deleteD1Database(
+    deployment.resourceUniqueKey,
+    env.projectDir,
+    deployment.resourceUniqueKey,
+  );
+  
+  // Remove from auto-cleanup registry since manually cleaned
+  const deploymentId = cleanupTasks.find(task => 
+    task.type === 'deployment' && 
+    task.id.includes(deployment.resourceUniqueKey)
+  )?.id;
+  
+  if (deploymentId) {
+    unregisterCleanupTask(deploymentId);
+  }
+}
+
+/**
+ * Creates a browser instance for testing.
+ * Automatically registers cleanup to run after the test.
+ */
+export async function createBrowser(): Promise<Browser> {
+  const browser = await launchBrowser();
+  const browserId = `browser-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  
+  // Register automatic cleanup
+  registerCleanupTask({
+    id: browserId,
+    type: 'browser',
+    cleanup: async () => {
+      try {
+        await browser.close();
+      } catch (error) {
+        // Browser might already be closed, ignore the error
+      }
+    },
+  });
+
+  // Wrap the close method to handle cleanup registration
+  const originalClose = browser.close.bind(browser);
+  browser.close = async () => {
+    await originalClose();
+    unregisterCleanupTask(browserId); // Remove from auto-cleanup since manually closed
+  };
+
+  return browser;
 }
 
 /**
