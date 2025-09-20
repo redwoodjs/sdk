@@ -3,9 +3,11 @@ import { DocumentProps } from "../lib/router";
 import { renderToRscStream } from "./renderToRscStream";
 import { requestInfo } from "../requestInfo/worker";
 import { injectRSCPayload } from "rsc-html-stream/server";
+import { renderDocumentHtmlStream } from "./renderDocumentHtmlStream";
 
 export interface RenderToStreamOptions {
   Document?: FC<DocumentProps>;
+  shouldSSR?: boolean;
   injectRSCPayload?: boolean;
   onError?: (error: unknown) => void;
 }
@@ -17,6 +19,7 @@ export const IdentityDocument: FC<DocumentProps> = ({ children }) => (
 export const renderToStream = async (
   element: ReactElement,
   {
+    shouldSSR = true,
     Document = IdentityDocument,
     injectRSCPayload: shouldInjectRSCPayload = false,
     onError = () => {},
@@ -38,8 +41,11 @@ export const renderToStream = async (
     );
   }
 
-  // todo(justinvdm, 20 Sep 2025): Implement once idea proved out
-  const htmlStream: any = 23;
-
-  return htmlStream;
+  return renderDocumentHtmlStream({
+    rscPayloadStream: rscStream,
+    Document,
+    requestInfo,
+    shouldSSR,
+    onError,
+  });
 };
