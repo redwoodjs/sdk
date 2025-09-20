@@ -19,7 +19,7 @@ export const IdentityDocument: FC<DocumentProps> = ({ children }) => (
 export const renderToStream = async (
   element: ReactElement,
   {
-    ssr = true,
+    ssr: shouldSSR = true,
     Document = IdentityDocument,
     injectRSCPayload: shouldInjectRSCPayload = false,
     onError = () => {},
@@ -33,22 +33,27 @@ export const renderToStream = async (
     onError,
   });
 
+  let injectRSCStream;
+
   if (shouldInjectRSCPayload) {
     const [rscPayloadStream1, rscPayloadStream2] = rscStream.tee();
     rscStream = rscPayloadStream1;
-
-    rscStream = rscStream.pipeThrough(
-      injectRSCPayload(rscPayloadStream2, {
-        nonce: requestInfo.rw.nonce,
-      }),
-    );
+    injectRSCStream = injectRSCPayload(rscPayloadStream2, {
+      nonce: requestInfo.rw.nonce,
+    });
   }
 
-  return renderDocumentHtmlStream({
+  let htmlStream: ReadableStream<any> = await renderDocumentHtmlStream({
     rscPayloadStream: rscStream,
     Document,
     requestInfo,
-    shouldSSR: ssr,
+    shouldSSR,
     onError,
   });
+
+  if (injectRSCStream) {
+    htmlStream = htmlStream.pipeThrough(injectRSCStream);
+  }
+
+  return htmlStream;
 };
