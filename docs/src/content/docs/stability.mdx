@@ -3,31 +3,34 @@ title: API Stability
 description: Understanding the stability of Redwood SDK APIs.
 ---
 
-The Redwood SDK is continuously evolving, and we are committed to providing a stable and reliable foundation for your applications. To help you understand the maturity of our APIs, we use the following stability levels.
+The Redwood SDK is continuously evolving. To help you understand the maturity of our APIs, we use the following stability levels.
+
+By default, all APIs are considered **Stable** unless explicitly marked with an inline `Experimental` label in the documentation.
 
 ## Stability Levels
 
 ### Stable
 
-**Stable** APIs are considered ready for production use. We are committed to maintaining backward compatibility for stable APIs within a major version. Any breaking changes to stable APIs will only be introduced in a new major version of the SDK, following semantic versioning.
+**Stable** APIs are considered ready for production use. We are committed to maintaining backward compatibility for them within a major version, following semantic versioning.
 
 ### Experimental
 
-**Experimental** APIs are new features that are still under active development. They are introduced to allow the community to try them out and provide feedback. However, these APIs are not subject to semantic versioning. This means that breaking changes can be introduced in any minor or patch release.
+**Experimental** APIs are new or undergoing changes and should be used with caution. They are marked with an inline `Experimental` label directly in the API documentation. These APIs are not subject to semantic versioning, meaning breaking changes can be introduced in any minor or patch release.
 
-We do not recommend using experimental APIs in production unless you are prepared to handle potential breaking changes in future updates.
+## Feature Stability Overview
 
-## Feature Stability
+Here is a high-level overview of the stability of the main feature areas in the SDK:
 
-Here is a high-level overview of the stability of the main features in the Redwood SDK:
+**Stable Features**
+- Vite Plugin
+- Routing
+- Core App APIs (`defineApp`, `initClient`)
+- Authentication & Session Management
 
-| Feature                   | Status         | Notes                                                              |
-| ------------------------- | -------------- | ------------------------------------------------------------------ |
-| Vite Plugin               | Stable         | Core integration with Vite.                                        |
-| Routing                   | Stable         | `defineRoutes`, `route`, `layout`, etc.                            |
-| Rendering                 | Stable         | Server-side rendering (`renderToStream`, `renderToString`).        |
-| Server Functions          | Stable         | React Server Components and server actions.                        |
-| Authentication            | Stable         | Session management utilities.                                      |
-| Turnstile                 | Stable         | Integration with Cloudflare Turnstile.                             |
-| **Database (Durable Objects)** | **Experimental** | The `rwsdk/db` module for database access with Durable Objects. |
-| **Realtime**              | **Experimental** | Realtime features using WebSockets and Durable Objects.            |
+**Experimental Features**
+- SSR Rendering (`renderToString`, `renderToStream`)
+- Client-side Navigation (`initClientNavigation`)
+- Database (Durable Objects)
+- Realtime
+- Turnstile
+- Debugging

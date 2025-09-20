@@ -1,13 +1,9 @@
 ---
-title: Realtime
+title: Realtime <Badge text="Experimental" type="caution" />
 description: Add realtime updates to your app using WebSockets and Cloudflare Durable Objects.
 ---
 
-import { Aside, Code, LinkCard } from "@astrojs/starlight/components";
-
-<Aside type="caution" title="Experimental Feature">
-  The Realtime feature is currently experimental. The APIs may change in future releases. Please use with caution in production environments. For more information, see our [API Stability](/stability) guide.
-</Aside>
+import { Aside, Code, LinkCard, Badge } from "@astrojs/starlight/components";
 
 The SDK includes built-in support for **realtime updates** using **Cloudflare Durable Objects** and **WebSockets**. With just a few lines of setup, you can enable bidirectional communication between clients and the server — without polling.
 

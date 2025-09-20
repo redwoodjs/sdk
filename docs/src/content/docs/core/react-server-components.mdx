@@ -3,7 +3,7 @@ title: React Server Components
 description: React, Server Components, Server Actions, and Suspense
 ---
 
-import { Aside, Tabs, TabItem, LinkCard } from "@astrojs/starlight/components";
+import { Aside, Tabs, TabItem, LinkCard, Badge } from "@astrojs/starlight/components";
 
 React is used to build your user interface. By default, all components are server components. That means that the component is rendered on the server as HTML and then streamed to the client. These do not include any client-side interactivity.
 
@@ -143,3 +143,4 @@ const response = new Response(html, {
 #### Options
 * `Document`: The [document](/core/routing/#documents) component to wrap around the React Server Component `element`. If not given, will return the rendered React Server Component without any wrapping.
 * `injectRSCPayload = false`: Whether to inject the corresponding RSC payload for the React Server Component to use for client-side hydration
+```
