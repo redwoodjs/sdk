@@ -36,10 +36,8 @@ interface DeploymentInstance {
 }
 
 // Environment variable flags for skipping tests
-const SKIP_DEV_SERVER_TESTS =
-  process.env.RWSDK_PLAYGROUND_SKIP_DEV_SERVER_TESTS === "1";
-const SKIP_DEPLOYMENT_TESTS =
-  process.env.RWSDK_PLAYGROUND_SKIP_DEPLOYMENT_TESTS === "1";
+const SKIP_DEV_SERVER_TESTS = process.env.RWSDK_SKIP_DEV === "1";
+const SKIP_DEPLOYMENT_TESTS = process.env.RWSDK_SKIP_DEPLOY === "1";
 
 // Global test environment state
 let globalPlaygroundEnv: PlaygroundEnvironment | null = null;
@@ -195,9 +193,7 @@ export function getPlaygroundEnvironment(): PlaygroundEnvironment {
  */
 export async function createDevServer(): Promise<DevServerInstance> {
   if (SKIP_DEV_SERVER_TESTS) {
-    throw new Error(
-      "Dev server tests are skipped via RWSDK_PLAYGROUND_SKIP_DEV_SERVER_TESTS=1",
-    );
+    throw new Error("Dev server tests are skipped via RWSDK_SKIP_DEV=1");
   }
 
   const env = getPlaygroundEnvironment();
@@ -227,9 +223,7 @@ export async function createDevServer(): Promise<DevServerInstance> {
  */
 export async function createDeployment(): Promise<DeploymentInstance> {
   if (SKIP_DEPLOYMENT_TESTS) {
-    throw new Error(
-      "Deployment tests are skipped via RWSDK_PLAYGROUND_SKIP_DEPLOYMENT_TESTS=1",
-    );
+    throw new Error("Deployment tests are skipped via RWSDK_SKIP_DEPLOY=1");
   }
 
   const env = getPlaygroundEnvironment();
@@ -338,9 +332,9 @@ export async function createBrowser(): Promise<Browser> {
 
 /**
  * High-level test wrapper for dev server tests.
- * Automatically skips if RWSDK_PLAYGROUND_SKIP_DEV_SERVER_TESTS=1
+ * Automatically skips if RWSDK_SKIP_DEV=1
  */
-export function testDevServer(
+export function testDev(
   name: string,
   testFn: (context: {
     devServer: DevServerInstance;
@@ -370,17 +364,17 @@ export function testDevServer(
 }
 
 /**
- * Skip version of testDevServer
+ * Skip version of testDev
  */
-testDevServer.skip = (name: string, testFn?: any) => {
+testDev.skip = (name: string, testFn?: any) => {
   test.skip(name, testFn || (() => {}));
 };
 
 /**
  * High-level test wrapper for deployment tests.
- * Automatically skips if RWSDK_PLAYGROUND_SKIP_DEPLOYMENT_TESTS=1
+ * Automatically skips if RWSDK_SKIP_DEPLOY=1
  */
-export function testDeployment(
+export function testDeploy(
   name: string,
   testFn: (context: {
     deployment: DeploymentInstance;
@@ -410,10 +404,109 @@ export function testDeployment(
 }
 
 /**
- * Skip version of testDeployment
+ * Skip version of testDeploy
  */
-testDeployment.skip = (name: string, testFn?: any) => {
+testDeploy.skip = (name: string, testFn?: any) => {
   test.skip(name, testFn || (() => {}));
+};
+
+/**
+ * Unified test function that runs the same test against both dev server and deployment.
+ * Automatically skips based on environment variables.
+ */
+export function testDevAndDeployment(
+  name: string,
+  testFn: (context: {
+    devServer?: DevServerInstance;
+    deployment?: DeploymentInstance;
+    browser: Browser;
+    page: Page;
+    url: string;
+  }) => Promise<void>,
+) {
+  if (!SKIP_DEV_SERVER_TESTS) {
+    test(`${name} (dev)`, async () => {
+      const devServer = await createDevServer();
+      const browser = await createBrowser();
+      const page = await browser.newPage();
+
+      await testFn({
+        devServer,
+        browser,
+        page,
+        url: devServer.url,
+      });
+      // Automatic cleanup handled by afterEach hooks
+    });
+  }
+
+  if (!SKIP_DEPLOYMENT_TESTS) {
+    test(`${name} (deployment)`, async () => {
+      const deployment = await createDeployment();
+      const browser = await createBrowser();
+      const page = await browser.newPage();
+
+      await testFn({
+        deployment,
+        browser,
+        page,
+        url: deployment.url,
+      });
+      // Automatic cleanup handled by afterEach hooks
+    });
+  }
+}
+
+/**
+ * Skip version of testDevAndDeployment
+ */
+testDevAndDeployment.skip = (name: string, testFn?: any) => {
+  test.skip(`${name} (dev)`, testFn || (() => {}));
+  test.skip(`${name} (deployment)`, testFn || (() => {}));
+};
+
+/**
+ * Only version of testDevAndDeployment
+ */
+testDevAndDeployment.only = (
+  name: string,
+  testFn: (context: {
+    devServer?: DevServerInstance;
+    deployment?: DeploymentInstance;
+    browser: Browser;
+    page: Page;
+    url: string;
+  }) => Promise<void>,
+) => {
+  if (!SKIP_DEV_SERVER_TESTS) {
+    test.only(`${name} (dev)`, async () => {
+      const devServer = await createDevServer();
+      const browser = await createBrowser();
+      const page = await browser.newPage();
+
+      await testFn({
+        devServer,
+        browser,
+        page,
+        url: devServer.url,
+      });
+    });
+  }
+
+  if (!SKIP_DEPLOYMENT_TESTS) {
+    test.only(`${name} (deployment)`, async () => {
+      const deployment = await createDeployment();
+      const browser = await createBrowser();
+      const page = await browser.newPage();
+
+      await testFn({
+        deployment,
+        browser,
+        page,
+        url: deployment.url,
+      });
+    });
+  }
 };
 
 /**
