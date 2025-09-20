@@ -4,6 +4,7 @@ on:
   push:
     branches:
       - main
+      - e2e-test-infra
     paths-ignore:
       - "docs/**"
   pull_request:
