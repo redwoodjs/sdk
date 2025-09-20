@@ -92,25 +92,9 @@
       "types": "./dist/src/runtime/lib/realtime/durableObject.d.ts",
       "default": "./dist/src/runtime/lib/realtime/durableObject.js"
     },
-    "./e2e/environment": {
-      "types": "./dist/src/lib/e2e/environment.d.mts",
-      "default": "./dist/src/lib/e2e/environment.mjs"
-    },
-    "./e2e/dev": {
-      "types": "./dist/src/lib/e2e/dev.d.mts",
-      "default": "./dist/src/lib/e2e/dev.mjs"
-    },
-    "./e2e/browser": {
-      "types": "./dist/src/lib/e2e/browser.d.mts",
-      "default": "./dist/src/lib/e2e/browser.mjs"
-    },
-    "./e2e/release": {
-      "types": "./dist/src/lib/e2e/release.d.mts",
-      "default": "./dist/src/lib/e2e/release.mjs"
-    },
     "./e2e": {
-      "types": "./dist/src/lib/e2e/testHarness.d.mts",
-      "default": "./dist/src/lib/e2e/testHarness.mjs"
+      "types": "./dist/src/lib/e2e/index.d.mts",
+      "default": "./dist/src/lib/e2e/index.mjs"
     }
   },
   "keywords": [

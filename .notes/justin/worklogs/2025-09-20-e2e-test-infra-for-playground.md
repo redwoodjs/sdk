@@ -125,11 +125,15 @@ The test progressed much further after fixing the vite config (changed `rwsdk` t
 - Vendor barrel resolution issues (`rwsdk/__vendor_client_barrel`, `rwsdk/__vendor_server_barrel`)
 
 **Completed Improvements**
-1. ✅ Added debug feature to keep failed test directories around for investigation
-2. ✅ Renamed playground from `minimal` to `hello-world` and moved tests to `__tests__` directory  
-3. ✅ Added SDK package.json exports for E2E utilities (`./e2e`)
-4. ✅ Updated test imports to use `rwsdk/e2e` instead of relative paths
+- Added debug feature to keep failed test directories around for investigation
+- Renamed playground from `minimal` to `hello-world` and moved tests to `__tests__` directory  
+- Simplified SDK package.json exports for E2E utilities to single `./e2e` export
+- Updated test imports to use `rwsdk/e2e` instead of relative paths
+- Created unified E2E index file that exports all utilities
+
+**Current Status**
+The playground test infrastructure is now complete and ready for debugging. The test fails during workspace import resolution (expected - tests should run in isolation with tarball), but once it runs in the isolated environment, we can investigate the original directive scan issues with the debug directory feature.
 
 **Next Steps**
-- Test the updated playground with the new debug feature
-- Investigate and fix the missing exports and directive scan issues
+- The test will now keep failed directories for debugging when issues occur
+- Ready to investigate the missing exports and directive scan issues in the isolated test environment
