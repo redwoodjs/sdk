@@ -1310,3 +1310,55 @@ The next step is to implement this new architecture. This will involve:
 1.  Revising the `hybridRscSsrRendering.md` architecture document to reflect this new "RSC-first" approach.
 2.  Creating the `assembleDocument` utility.
 3.  Refactoring `worker.tsx` and `renderRscThenableToHtmlStream.tsx` to implement the new flow.
+
+## 77. The Final Hurdle: Payload Shape Mismatch
+
+After implementing the RSC-first architecture, a new error emerged: `Error: Objects are not valid as a React child (found: object with keys {node})`.
+
+### Analysis
+
+This error revealed a subtle but critical detail about the framework's own RSC payload structure. The `renderToRscStream` function was unconditionally wrapping the rendered component in an object `{ node, actionResult }`. This structure is necessary for server actions to return both UI and other data to the client.
+
+However, for an initial page load, the SSR function `renderToReadableStream` expects to receive a pure React element (or a thenable that resolves to one), not an object wrapper. When it received the `{ node, ... }` object, it correctly threw an error.
+
+### The Fix
+
+The solution was to make `renderToRscStream` aware of the context in which it's being called.
+
+1.  A new boolean flag, `isInitialLoad`, was added to `renderToRscStream`.
+2.  The function was modified to only return the raw `node` when `isInitialLoad` is true. For all other cases (client navigations and actions), it continues to return the `{ node, actionResult }` object.
+3.  The calls to this function in `worker.tsx` were updated to pass this flag, using the existing `isRSCRequest` variable to distinguish between the different render types.
+
+This change aligns the data shape with the expectations of the different rendering paths, resolving the error while preserving the necessary structure for server actions. The system is now, hopefully, fully corrected.
+
+## 78. Success: A Refined API
+
+The previous fix, while functional, introduced an inconsistency in the `renderToRscStream` function's return signature. Depending on a boolean flag, it would stream a different data shape.
+
+A final refactor was implemented to create a more robust and predictable API. The single `renderToRscStream` function was split into two distinct, explicitly named functions:
+
+1.  **`renderNodeToRscStream`**: This function takes only a `node` and is used for initial page loads. It streams the raw React element, which is the shape expected by the downstream `renderToReadableStream` (SSR) function.
+2.  **`renderActionResultToRscStream`**: This function takes both a `node` and an `actionResult` and is used for client-side navigations and server actions. It streams the `{ node, actionResult }` object, the shape expected by the client-side RSC runtime.
+
+The orchestrator in `worker.tsx` was updated to call the appropriate function based on the request type (`isRSCRequest`).
+
+This corrected design solves the problem at its root while maintaining a clean, predictable, and strongly-typed API for the core rendering utilities. With this change, the `useId` hydration mismatch is definitively resolved.
+
+## 78. Success: The Render Tree Matters
+
+The fix for the payload shape was correct, but it did not resolve the hydration mismatch on its own. A subtle but critical issue remained: the structure of the React render tree itself.
+
+### The Root Cause: The Wrapper Component
+
+The `renderRscThenableToHtmlStream` function was still using a small wrapper component to resolve the RSC `thenable`: `const Component = () => use(thenable)`.
+
+While this correctly extracted the `node` for rendering, the `Component` itself added an extra layer to the render tree during the SSR pass. This seemingly insignificant wrapper was enough to alter the tree traversal path compared to the client, causing the `useId` counters to once again diverge. The problem was not just the *data* being rendered, but the *structure* of the components rendering it.
+
+### The Solution
+
+The final, successful solution required two complementary changes to ensure the server and client render trees were identical:
+
+1.  **Explicit Payload Generation**: The `renderToRscStream` function was split into two distinct functions (`renderNodeToRscStream` and `renderActionResultToRscStream`). This ensured that for initial page loads, the RSC stream produced a `thenable` that resolved to a raw React element, not a `{node, ...}` object.
+2.  **Direct Thenable Rendering**: The `renderRscThenableToHtmlStream` function was simplified to pass this clean `thenable` *directly* to `renderToReadableStream`. React's native ability to handle a promise at the root of a tree was leveraged, allowing it to resolve the RSC payload without injecting any wrapper components.
+
+This combination of a clean payload and a direct, wrapper-less render finally achieved a perfectly deterministic render tree, eliminating the `useId` mismatch and resolving the issue at its core.
