@@ -4,9 +4,11 @@ import { type RequestInfo } from "../requestInfo/types.js";
 import { Preloads } from "./preloads.js";
 import { Stylesheets } from "./stylesheets.js";
 
-import { createThenableFromReadableStream } from "./createThenableFromReadableStream.js";
 import { renderToRscStream } from "./renderToRscStream.js";
-import { renderHtmlStream } from "rwsdk/__ssr_bridge";
+import {
+  renderHtmlStream,
+  createThenableFromReadableStream,
+} from "rwsdk/__ssr_bridge";
 
 export const renderDocumentHtmlStream = async ({
   rscPayloadStream,
@@ -21,8 +23,19 @@ export const renderDocumentHtmlStream = async ({
   shouldSSR: boolean;
   onError: (error: unknown) => void;
 }) => {
-  const Component = async () => {
-    const { node } = await createThenableFromReadableStream(rscPayloadStream);
+  const rscAppThenable = createThenableFromReadableStream(rscPayloadStream);
+
+  const Component = () => {
+    const { node } = use(rscAppThenable) as { node: React.ReactNode };
+
+    const rscAppHtml = use(
+      renderHtmlStream({
+        node,
+        requestInfo,
+        onError,
+      }),
+    );
+
     // todo(justinvdm, 18 Jun 2025): We can build on this later to allow users
     // surface context. e.g:
     // * we assign `user: requestInfo.clientCtx` here
@@ -49,7 +62,12 @@ export const renderDocumentHtmlStream = async ({
         <Stylesheets requestInfo={requestInfo} />
         <Preloads requestInfo={requestInfo} />
         */}
-        <div id="hydrate-root">{node}</div>
+        <div
+          id="hydrate-root"
+          dangerouslySetInnerHTML={{
+            __html: rscAppHtml as unknown as string,
+          }}
+        />
       </Document>
     );
   };
@@ -63,9 +81,7 @@ export const renderDocumentHtmlStream = async ({
 
   const htmlStream = await renderHtmlStream({
     node: htmlRscThenable,
-    Document,
     requestInfo,
-    shouldSSR,
     onError,
   });
 

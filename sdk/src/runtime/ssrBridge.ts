@@ -9,6 +9,7 @@
 // for imports to it.
 
 export { renderHtmlStream } from "./render/renderHtmlStream";
+export { createThenableFromReadableStream } from "./render/createThenableFromReadableStream";
 
 export {
   ssrLoadModule,

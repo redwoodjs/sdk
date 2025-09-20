@@ -8,9 +8,7 @@ export const renderHtmlStream = async ({
   onError,
 }: {
   node: React.ReactNode;
-  Document: React.FC<DocumentProps>;
   requestInfo: RequestInfo;
-  shouldSSR: boolean;
   onError: (error: unknown) => void;
 }) => {
   return await renderToReadableStream(node, {
