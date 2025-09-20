@@ -29,7 +29,7 @@ I will set up a new end-to-end testing system by building on the existing smoke 
 
 3.  **Set Up Playground:**
     *   Create an `sdk/playground` directory.
-    *   Add a `minimal` project inside it, based on `starters/minimal`.
+    *   Create a basic first project test in the playground that simply tests that "Hello World" is rendered and shown in the web page.
     *   Update `pnpm-workspace.yaml` to include playground projects.
     *   Modify the playground project's `package.json` to use `workspace:*` for the SDK dependency. This is for development convenience; the tests themselves will override this by installing from a packed tarball.
 
@@ -75,6 +75,9 @@ I will set up a new end-to-end testing system by building on the existing smoke 
 
 6.  **CI Integration:**
     *   Update the `.github/workflows/smoke-test-starters.yml` to execute the new playground test script as part of the existing test matrix (OS and package manager).
+
+7.  **Documentation:**
+    *   Update `CONTRIBUTING.md` to document how to run playground tests, how to skip different test types (dev server tests vs deployment tests), and the available test APIs (`testDevServer`, `testDeployment`, `createDevServer`, `createDeployment`, `poll` utility).
 
 ### Future Considerations
 
