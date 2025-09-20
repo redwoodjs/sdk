@@ -16,7 +16,6 @@
     "build": "tsc --build --clean && tsc",
     "release": "./scripts/release.sh",
     "test": "vitest --run",
-    "test:e2e": "vitest --config ./vitest.config.mts --run",
     "debug:sync": "tsx ./src/scripts/debug-sync.mts",
     "smoke-test": "tsx ./src/scripts/smoke-test.mts"
   },
