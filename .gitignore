@@ -187,3 +187,4 @@ smoke-test-artifacts
 # But we also don't want to commit the cursor rules to this repo
 starters/standard/.cursor/rules/*
 starters/standard/.pnpm-store
+.cursor/rules/user
