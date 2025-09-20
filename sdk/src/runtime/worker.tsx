@@ -16,6 +16,8 @@ import { Route, type RwContext, defineRoutes } from "./lib/router";
 import { generateNonce } from "./lib/utils";
 import { ssrWebpackRequire } from "./imports/worker";
 
+export * from "./requestInfo/types";
+
 declare global {
   type Env = {
     ASSETS: Fetcher;

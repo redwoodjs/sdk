@@ -61,6 +61,96 @@ pnpm test -- -u src/vite/transformJsxScriptTagsPlugin.test.mts
 
 Note the extra `--` before the `-u` flag. This is necessary to pass the flag to the underlying test runner (`vitest`) instead of `pnpm`.
 
+### End-to-End Tests (Playground)
+
+The monorepo includes a `playground` directory for end-to-end (E2E) tests. These tests run against a real, packed tarball of the SDK in an isolated environment to simulate a user's project accurately.
+
+#### Getting Started
+
+Before running deployment tests, you need to authenticate with Cloudflare. You only need to do this once for the entire monorepo.
+
+1.  **Set up Wrangler authentication**:
+    ```sh
+    pnpm setup:e2e
+    ```
+    This script will log you in to Cloudflare and ensure the authentication cache is properly set up for all playground tests to reuse.
+
+#### Running Tests
+
+To run all playground E2E tests, use the `test:e2e` script from the monorepo root:
+
+```sh
+pnpm test:e2e
+```
+
+#### Skipping Tests
+
+You can skip dev server or deployment tests using environment variables. This is useful for focusing on a specific part of the test suite.
+
+-   **Skip Dev Server Tests**:
+    ```sh
+    RWSDK_PLAYGROUND_SKIP_DEV_SERVER_TESTS=1 pnpm test:e2e
+    ```
+-   **Skip Deployment Tests**:
+    ```sh
+    RWSDK_PLAYGROUND_SKIP_DEPLOYMENT_TESTS=1 pnpm test:e2e
+    ```
+
+#### Test API
+
+The E2E test harness provides a set of high-level and low-level APIs to make writing tests simple and efficient.
+
+##### High-Level APIs
+
+These are the most common APIs you'll use. They automatically handle setting up and tearing down resources like dev servers, deployments, and browsers.
+
+-   `testDevServer(name, testFn)`: Runs a test against a local dev server.
+-   `testDeployment(name, testFn)`: Runs a test against a temporary Cloudflare deployment.
+
+Both functions also have a `.skip` method for skipping individual tests (e.g., `testDevServer.skip(...)`).
+
+**Example:**
+
+```typescript
+// playground/hello-world/__tests__/e2e.test.mts
+import { expect } from "vitest";
+import {
+  setupPlaygroundEnvironment,
+  testDevServer,
+  testDeployment,
+  poll,
+} from "rwsdk/e2e";
+
+// Sets up the test environment for the suite (automatic cleanup)
+setupPlaygroundEnvironment();
+
+testDevServer("renders Hello World on dev server", async ({ page, url }) => {
+  await page.goto(url);
+
+  await poll(async () => {
+    const content = await page.content();
+    return content.includes("Hello World");
+  });
+
+  const content = await page.content();
+  expect(content).toContain("Hello World");
+});
+
+testDeployment.skip("renders Hello World on deployment", async ({ page, url }) => {
+  // This test will be skipped
+});
+```
+
+##### Lower-Level APIs
+
+For more complex scenarios that require finer control, you can use these lower-level utilities. Note that with these, cleanup is still handled automatically after each test.
+
+-   `setupPlaygroundEnvironment()`: Sets up the isolated, tarball-based test environment for the entire test suite (file).
+-   `createDevServer()`: Starts a dev server.
+-   `createDeployment()`: Creates a new Cloudflare deployment.
+-   `createBrowser()`: Launches a Puppeteer browser instance.
+-   `poll(fn, options)`: A utility to retry an async function until it returns `true` or times out.
+
 ## Contribution Guidelines
 
 ### Dependency Injection over Mocking
@@ -196,9 +286,9 @@ This section outlines the strategy for managing dependencies to maintain stabili
 
 #### 1. Peer Dependencies (`starter-peer-deps`)
 
--   **What**: The most critical dependencies (`wrangler`, `react`, `vite`, etc.) that are defined as `peerDependencies` in the SDK and tested in the `starters/*` projects.
+-   **What**: The most critical dependencies (`wrangler`, `react`, `vite`, etc.) that are defined as `peerDependencies` in the SDK and tested in both the `starters/*` projects and `playground/*` projects.
 -   **When**: As Soon As Possible (ASAP). Renovate creates a PR immediately when a new version is available.
--   **Why**: To provide an immediate early-warning signal if a new peer dependency version introduces a regression that could affect users.
+-   **Why**: To provide an immediate early-warning signal if a new peer dependency version introduces a regression that could affect users. The playground E2E tests provide an additional validation layer beyond the starter smoke tests.
 
 ##### A Note on React Canary Versions
 The starters intentionally use `canary` versions of React. This is the official channel recommended by the React team for frameworks that implement React Server Components. Using canaries gives us access to the latest features and ensures our implementation remains compatible with the direction of React.
@@ -219,7 +309,7 @@ To manage these potentially unstable versions, Renovate is specifically configur
 
 #### 4. Repository, Docs, and Infrastructure Dependencies (`docs-and-infra-deps`)
 
--   **What**: A consolidated group for all remaining repository maintenance dependencies. This includes dependencies from the root `package.json`, the `docs/package.json`, GitHub Actions, Docker images, and the `.node-version` file.
+-   **What**: A consolidated group for all remaining repository maintenance dependencies. This includes dependencies from the root `package.json`, the `docs/package.json`, non-peer dependencies from `playground/*` projects (such as `vitest`), GitHub Actions, Docker images, and the `.node-version` file.
 -   **When**: Weekly, in a single grouped pull request.
 -   **Why**: To bundle all miscellaneous tooling, documentation, and infrastructure updates into one convenient PR to reduce noise.
 
@@ -240,7 +330,7 @@ To do this, find the update group you wish to run in the "Awaiting Schedule" sec
 
 ### Failure Protocol for Peer Dependencies
 
-When the smoke tests fail on a peer dependency update, it is a signal that requires manual intervention.
+When the smoke tests or playground E2E tests fail on a peer dependency update, it is a signal that requires manual intervention.
 
 1.  **Maintainer Investigation**: The first step is always for a maintainer to investigate **why** the test is failing. The failure can have one of two root causes:
     *   **An Issue in Our SDK**: The dependency may have introduced a breaking change that we need to adapt to.
@@ -249,7 +339,7 @@ When the smoke tests fail on a peer dependency update, it is a signal that requi
 2.  **Manual Corrective Action**:
     *   If the issue is in our SDK, a fix should be implemented and pushed directly to the failing Renovate PR branch.
     *   If the failure is a regression in the dependency itself, a maintainer must perform the following steps **on the Renovate PR branch**:
-        1.  **Revert Dependency in Starters**: In the `starters/*/package.json` files, revert the version of the failing dependency back to the last known good version.
+        1.  **Revert Dependency in Starters and Playground**: In the `starters/*/package.json` and `playground/*/package.json` files, revert the version of the failing dependency back to the last known good version.
         2.  **Constrain Peer Dependency**: In `sdk/package.json`, update the `peerDependencies` entry for the package to add an upper bound that excludes the broken version (e.g., change `^1.2.3` to `>=1.2.3 <1.2.4`).
         3.  **Commit and Push**: Commit these changes with a message explaining the reason for the constraint and push to the branch.
 

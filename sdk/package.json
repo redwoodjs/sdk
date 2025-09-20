@@ -90,6 +90,10 @@
     "./realtime/durableObject": {
       "types": "./dist/runtime/lib/realtime/durableObject.d.ts",
       "default": "./dist/runtime/lib/realtime/durableObject.js"
+    },
+    "./e2e": {
+      "types": "./dist/lib/e2e/index.d.mts",
+      "default": "./dist/lib/e2e/index.mjs"
     }
   },
   "keywords": [
