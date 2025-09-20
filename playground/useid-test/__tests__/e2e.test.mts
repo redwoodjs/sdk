@@ -1,4 +1,4 @@
-import { expect } from "vitest";
+import { describe, expect } from "vitest";
 import {
   setupPlaygroundEnvironment,
   testDevServer,
@@ -6,11 +6,11 @@ import {
   poll,
 } from "rwsdk/e2e";
 
-setupPlaygroundEnvironment();
+setupPlaygroundEnvironment(import.meta.url);
 
 // Helper function to wait for hydration to complete
 async function waitForHydration(page: any, timeout = 5000) {
-  await page.waitForTimeout(1000); // Initial wait for scripts to load
+  await new Promise((resolve) => setTimeout(resolve, 1000)); // Initial wait for scripts to load
 
   // Wait for DOMContentLoaded and any hydration indicators
   await page.evaluate(() => {
@@ -32,9 +32,19 @@ async function extractUseIdValues(page: any, testIds: string[]) {
   const values: Record<string, string> = {};
 
   for (const testId of testIds) {
-    const element = await page.locator(`[data-testid="${testId}"]`);
-    if ((await element.count()) > 0) {
-      values[testId] = await element.textContent();
+    try {
+      const element = await page.$(`[data-testid="${testId}"]`);
+      if (element) {
+        const textContent = await page.evaluate(
+          (el: Element) => el.textContent,
+          element,
+        );
+        if (textContent) {
+          values[testId] = textContent;
+        }
+      }
+    } catch {
+      // Element not found, skip
     }
   }
 
@@ -73,7 +83,7 @@ describe("useId Playground - Dev Server", () => {
       ]);
 
       // Wait a bit to ensure no hydration changes occur
-      await page.waitForTimeout(2000);
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Get IDs after potential hydration
       const afterIds = await extractUseIdValues(page, [
@@ -114,9 +124,10 @@ describe("useId Playground - Dev Server", () => {
 
       // Wait for hydration status to update
       await poll(async () => {
-        const status = await page
-          .locator('[data-testid="hydration-status"]')
-          .textContent();
+        const element = await page.$('[data-testid="hydration-status"]');
+        const status = element
+          ? await page.evaluate((el: Element) => el.textContent, element)
+          : null;
         return status?.includes("Client hydration complete") ?? false;
       });
 
@@ -163,10 +174,15 @@ describe("useId Playground - Dev Server", () => {
 
       // Wait for client components to show hydration complete
       await poll(async () => {
-        const statuses = await page
-          .locator('[data-testid="mixed-hydration-status"]')
-          .allTextContents();
-        return statuses.every((status) => status.includes("Hydrated"));
+        const elements = await page.$$(
+          '[data-testid="mixed-hydration-status"]',
+        );
+        const statuses = await Promise.all(
+          elements.map((el) =>
+            page.evaluate((element: Element) => element.textContent, el),
+          ),
+        );
+        return statuses.every((status: string) => status.includes("Hydrated"));
       });
 
       // Get IDs after hydration
@@ -240,7 +256,7 @@ describe("useId Playground - Deployment", () => {
       ]);
 
       // Wait a bit to ensure no hydration changes occur
-      await page.waitForTimeout(2000);
+      await new Promise((resolve) => setTimeout(resolve, 2000));
 
       // Get IDs after potential hydration
       const afterIds = await extractUseIdValues(page, [
@@ -281,9 +297,10 @@ describe("useId Playground - Deployment", () => {
 
       // Wait for hydration status to update
       await poll(async () => {
-        const status = await page
-          .locator('[data-testid="hydration-status"]')
-          .textContent();
+        const element = await page.$('[data-testid="hydration-status"]');
+        const status = element
+          ? await page.evaluate((el: Element) => el.textContent, element)
+          : null;
         return status?.includes("Client hydration complete") ?? false;
       });
 
@@ -330,10 +347,15 @@ describe("useId Playground - Deployment", () => {
 
       // Wait for client components to show hydration complete
       await poll(async () => {
-        const statuses = await page
-          .locator('[data-testid="mixed-hydration-status"]')
-          .allTextContents();
-        return statuses.every((status) => status.includes("Hydrated"));
+        const elements = await page.$$(
+          '[data-testid="mixed-hydration-status"]',
+        );
+        const statuses = await Promise.all(
+          elements.map((el) =>
+            page.evaluate((element: Element) => element.textContent, el),
+          ),
+        );
+        return statuses.every((status: string) => status.includes("Hydrated"));
       });
 
       // Get IDs after hydration

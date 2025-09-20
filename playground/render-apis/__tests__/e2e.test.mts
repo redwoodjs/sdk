@@ -6,7 +6,7 @@ import {
   poll,
 } from "rwsdk/e2e";
 
-setupPlaygroundEnvironment();
+setupPlaygroundEnvironment(import.meta.url);
 
 describe("Render APIs Playground - Dev Server", () => {
   testDevServer("home page renders navigation", async ({ page, url }) => {
@@ -27,6 +27,7 @@ describe("Render APIs Playground - Dev Server", () => {
 
     await poll(async () => {
       const content = await page.content();
+      console.log("####### content", content);
       return content.includes("renderToStream API Test");
     });
 
@@ -35,8 +36,8 @@ describe("Render APIs Playground - Dev Server", () => {
     expect(await page.content()).toContain("renderToStream Test Status");
 
     // Verify the test content section is present
-    const testContent = page.locator('[data-testid="render-stream-content"]');
-    expect(await testContent.count()).toBe(1);
+    const testContent = await page.$('[data-testid="render-stream-content"]');
+    expect(testContent).toBeTruthy();
   });
 
   testDevServer("renderToString API works correctly", async ({ page, url }) => {
@@ -52,8 +53,8 @@ describe("Render APIs Playground - Dev Server", () => {
     expect(await page.content()).toContain("renderToString Test Status");
 
     // Verify the test content section is present
-    const testContent = page.locator('[data-testid="render-string-content"]');
-    expect(await testContent.count()).toBe(1);
+    const testContent = await page.$('[data-testid="render-string-content"]');
+    expect(testContent).toBeTruthy();
   });
 
   testDevServer("both APIs render successfully", async ({ page, url }) => {
@@ -105,8 +106,8 @@ describe("Render APIs Playground - Deployment", () => {
       expect(await page.content()).toContain("renderToStream Test Status");
 
       // Verify the test content section is present
-      const testContent = page.locator('[data-testid="render-stream-content"]');
-      expect(await testContent.count()).toBe(1);
+      const testContent = await page.$('[data-testid="render-stream-content"]');
+      expect(testContent).toBeTruthy();
     },
   );
 
@@ -125,8 +126,8 @@ describe("Render APIs Playground - Deployment", () => {
       expect(await page.content()).toContain("renderToString Test Status");
 
       // Verify the test content section is present
-      const testContent = page.locator('[data-testid="render-string-content"]');
-      expect(await testContent.count()).toBe(1);
+      const testContent = await page.$('[data-testid="render-string-content"]');
+      expect(testContent).toBeTruthy();
     },
   );
 

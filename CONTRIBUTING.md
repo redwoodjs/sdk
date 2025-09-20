@@ -122,7 +122,7 @@ import {
 } from "rwsdk/e2e";
 
 // Sets up the test environment for the suite (automatic cleanup)
-setupPlaygroundEnvironment();
+setupPlaygroundEnvironment(import.meta.url);
 
 testDevServer("renders Hello World on dev server", async ({ page, url }) => {
   await page.goto(url);

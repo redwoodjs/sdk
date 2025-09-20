@@ -117,14 +117,51 @@ function getProjectDirectory(): string {
 }
 
 /**
+ * Derive the playground directory from import.meta.url
+ */
+function getPlaygroundDirFromImportMeta(importMetaUrl: string): string {
+  const url = new URL(importMetaUrl);
+  const testFilePath = url.pathname;
+
+  // Extract playground name from path like: /path/to/playground/PLAYGROUND_NAME/__tests__/e2e.test.mts
+  const playgroundMatch = testFilePath.match(
+    /\/playground\/([^\/]+)\/__tests__\//,
+  );
+
+  if (playgroundMatch) {
+    const playgroundName = playgroundMatch[1];
+    // Return the absolute path to the playground directory
+    const playgroundPath = testFilePath.replace(/\/__tests__\/.*$/, "");
+    return playgroundPath;
+  }
+
+  throw new Error(
+    `Could not determine playground directory from import.meta.url: ${importMetaUrl}`,
+  );
+}
+
+/**
  * Sets up a playground environment for the entire test suite.
  * Automatically registers beforeAll and afterAll hooks.
+ *
+ * @param sourceProjectDir - Explicit path to playground directory, or import.meta.url to auto-detect
  */
 export function setupPlaygroundEnvironment(sourceProjectDir?: string): void {
   ensureHooksRegistered();
 
   beforeAll(async () => {
-    const projectDir = sourceProjectDir || getProjectDirectory();
+    let projectDir: string;
+
+    if (!sourceProjectDir) {
+      projectDir = getProjectDirectory();
+    } else if (sourceProjectDir.startsWith("file://")) {
+      // This is import.meta.url, derive the playground directory
+      projectDir = getPlaygroundDirFromImportMeta(sourceProjectDir);
+    } else {
+      // This is an explicit path
+      projectDir = sourceProjectDir;
+    }
+
     console.log(`Setting up playground environment from ${projectDir}...`);
 
     const tarballEnv = await setupTarballEnvironment({

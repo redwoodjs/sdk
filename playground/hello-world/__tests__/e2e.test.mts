@@ -6,7 +6,7 @@ import {
   poll,
 } from "rwsdk/e2e";
 
-setupPlaygroundEnvironment();
+setupPlaygroundEnvironment(import.meta.url);
 
 testDevServer("renders Hello World on dev server", async ({ page, url }) => {
   await page.goto(url);
