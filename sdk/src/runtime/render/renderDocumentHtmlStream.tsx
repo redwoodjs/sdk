@@ -9,6 +9,7 @@ import {
   renderHtmlStream,
   createThenableFromReadableStream,
 } from "rwsdk/__ssr_bridge";
+import { injectHtmlAtMarker } from "../lib/injectHtmlAtMarker.js";
 
 export const renderDocumentHtmlStream = async ({
   rscPayloadStream,
@@ -23,67 +24,63 @@ export const renderDocumentHtmlStream = async ({
   shouldSSR: boolean;
   onError: (error: unknown) => void;
 }) => {
+  // Extract the app node from the RSC payload
   const rscAppThenable = createThenableFromReadableStream(rscPayloadStream);
+  const { node: appNode } = (await rscAppThenable) as { node: React.ReactNode };
 
-  const Component = () => {
-    const { node } = use(rscAppThenable) as { node: React.ReactNode };
-
-    const rscAppHtml = use(
-      renderHtmlStream({
-        node,
-        requestInfo,
-        onError,
-      }),
-    );
-
-    // todo(justinvdm, 18 Jun 2025): We can build on this later to allow users
-    // surface context. e.g:
-    // * we assign `user: requestInfo.clientCtx` here
-    // * user populates requestInfo.clientCtx on worker side
-    // * user can import a read only `import { clientCtx } from "rwsdk/client"`
-    // on client side
-    const clientContext = {
-      rw: {
-        ssr: shouldSSR,
-      },
-    };
-
-    return (
-      <Document {...requestInfo}>
-        <script
-          nonce={requestInfo.rw.nonce}
-          dangerouslySetInnerHTML={{
-            __html: `globalThis.__RWSDK_CONTEXT = ${JSON.stringify(
-              clientContext,
-            )}`,
-          }}
-        />
-        {/*
-        <Stylesheets requestInfo={requestInfo} />
-        <Preloads requestInfo={requestInfo} />
-        */}
-        <div
-          id="hydrate-root"
-          dangerouslySetInnerHTML={{
-            __html: rscAppHtml as unknown as string,
-          }}
-        />
-      </Document>
-    );
+  // todo(justinvdm, 18 Jun 2025): We can build on this later to allow users
+  // surface context. e.g:
+  // * we assign `user: requestInfo.clientCtx` here
+  // * user populates requestInfo.clientCtx on worker side
+  // * user can import a read only `import { clientCtx } from "rwsdk/client"`
+  // on client side
+  const clientContext = {
+    rw: {
+      ssr: shouldSSR,
+    },
   };
 
-  const htmlRscStream = renderToRscStream({
-    input: <Component />,
-    onError,
-  });
+  // Create the outer document with a marker for injection
+  const documentElement = (
+    <Document {...requestInfo}>
+      <script
+        nonce={requestInfo.rw.nonce}
+        dangerouslySetInnerHTML={{
+          __html: `globalThis.__RWSDK_CONTEXT = ${JSON.stringify(
+            clientContext,
+          )}`,
+        }}
+      />
+      {/*
+      <Stylesheets requestInfo={requestInfo} />
+      <Preloads requestInfo={requestInfo} />
+      */}
+      <div
+        id="hydrate-root"
+        dangerouslySetInnerHTML={{ __html: "<!-- RWSDK_INJECT_APP_HTML -->" }}
+      />
+    </Document>
+  );
 
-  const htmlRscThenable = createThenableFromReadableStream(htmlRscStream);
-
-  const htmlStream = await renderHtmlStream({
-    node: htmlRscThenable,
+  // Render both streams
+  const outerHtmlStream = await renderHtmlStream({
+    node: documentElement,
     requestInfo,
     onError,
   });
 
-  return htmlStream;
+  const appHtmlStream = await renderHtmlStream({
+    node: appNode,
+    requestInfo,
+    onError,
+  });
+
+  // Stitch the streams together
+  const stitchedStream = injectHtmlAtMarker(
+    outerHtmlStream,
+    appHtmlStream,
+    "<!-- RWSDK_INJECT_APP_HTML -->",
+  );
+
+  return stitchedStream;
 };
