@@ -43,7 +43,7 @@ function rechunkStream(
   });
 }
 
-export const renderToRscStream = (app: {
+export const renderActionResultToRscStream = (app: {
   node: React.ReactElement;
   actionResult: any;
   onError?: (error: unknown) => void;
@@ -56,6 +56,17 @@ export const renderToRscStream = (app: {
   }
 
   return baseRenderToRscStream({ node, actionResult }, createClientManifest(), {
+    onError,
+  });
+};
+
+export const renderNodeToRscStream = (app: {
+  node: React.ReactElement;
+  onError?: (error: unknown) => void;
+}): ReadableStream => {
+  const { node, onError } = app;
+
+  return baseRenderToRscStream(node, createClientManifest(), {
     onError,
   });
 };

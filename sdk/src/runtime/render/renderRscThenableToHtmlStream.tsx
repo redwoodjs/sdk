@@ -11,11 +11,7 @@ export const renderRscThenableToHtmlStream = async ({
   requestInfo: RequestInfo;
   onError: (error: unknown) => void;
 }) => {
-  const Component = () => {
-    return (use(thenable) as { node: React.ReactNode }).node;
-  };
-
-  return await renderToReadableStream(<Component />, {
+  return await renderToReadableStream(thenable, {
     nonce: requestInfo.rw.nonce,
     onError(error, { componentStack }) {
       try {

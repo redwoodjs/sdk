@@ -1,6 +1,9 @@
 import React from "react";
 import { transformRscToHtmlStream } from "./render/transformRscToHtmlStream";
-import { renderToRscStream } from "./render/renderToRscStream";
+import {
+  renderNodeToRscStream,
+  renderActionResultToRscStream,
+} from "./render/renderToRscStream";
 
 import { rscActionHandler } from "./register/worker";
 import { injectRSCPayload } from "rsc-html-stream/server";
@@ -140,14 +143,15 @@ export const defineApp = <
 
           const { rscPayload: shouldInjectRSCPayload, ssr: shouldSSR } = rw;
 
-          let rscPayloadStream = renderToRscStream({
-            node: pageElement,
-            actionResult:
-              actionResult instanceof Response ? null : actionResult,
-            onError,
-          });
+          let rscPayloadStream;
 
           if (isRSCRequest) {
+            rscPayloadStream = renderActionResultToRscStream({
+              node: pageElement,
+              actionResult:
+                actionResult instanceof Response ? null : actionResult,
+              onError,
+            });
             const responseHeaders = new Headers(userResponseInit.headers);
             responseHeaders.set(
               "content-type",
@@ -158,6 +162,11 @@ export const defineApp = <
               status: userResponseInit.status,
               statusText: userResponseInit.statusText,
               headers: responseHeaders,
+            });
+          } else {
+            rscPayloadStream = renderNodeToRscStream({
+              node: pageElement,
+              onError,
             });
           }
 
