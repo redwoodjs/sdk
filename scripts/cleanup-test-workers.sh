@@ -1,82 +1,118 @@
 #!/bin/bash
 
 # Cleanup script for test workers
-# This script attempts to delete workers with test-related names
+# Lists all workers and deletes those matching test patterns
 
-ACCOUNT_ID="1634a8e653b2ce7e0f7a23cca8cbd86a"
+set -e
+
+# Check required environment variables
+if [ -z "$CLOUDFLARE_ACCOUNT_ID" ]; then
+    echo "❌ Error: CLOUDFLARE_ACCOUNT_ID environment variable is required"
+    echo "   Set it with: export CLOUDFLARE_ACCOUNT_ID='your-account-id'"
+    exit 1
+fi
+
+if [ -z "$CLOUDFLARE_API_TOKEN" ]; then
+    echo "❌ Error: CLOUDFLARE_API_TOKEN environment variable is required"
+    echo "   Set it with: export CLOUDFLARE_API_TOKEN='your-api-token'"
+    exit 1
+fi
+
 DELETED_COUNT=0
 FAILED_COUNT=0
 
 echo "🧹 Cleaning up test workers..."
-echo "Account ID: $ACCOUNT_ID"
+echo "Account ID: $CLOUDFLARE_ACCOUNT_ID"
 echo ""
 
-# Common test worker name patterns based on the error message
-# Example: test-project-smoke-test-defeated-cat-c6cefbc2
+# Test patterns to identify test workers
 test_patterns=(
-    "test-project-smoke-test-"
-    "smoke-test-"
-    "e2e-test-"
-    "playground-test-"
-    "hello-world-"
-    "minimal-"
-    "standard-"
+    "smoke-test"
+    "e2e-test"
+    "test-project"
+    "playground"
+    "hello-world"
+    "minimal"
+    "standard"
 )
 
-# Common animal names and random suffixes used in test worker names
-animals=(
-    "defeated-cat" "happy-dog" "clever-fox" "swift-bird" "brave-lion" "wise-owl"
-    "quick-rabbit" "strong-bear" "gentle-deer" "proud-eagle" "calm-turtle"
-    "bright-fish" "wild-wolf" "kind-sheep" "fast-horse" "small-mouse"
-    "tall-giraffe" "big-elephant" "cute-panda" "red-fox" "blue-whale"
-)
+echo "📋 Fetching list of all workers..."
 
-# Common hex suffixes (8 characters)
-hex_suffixes=(
-    "c6cefbc2" "a1b2c3d4" "e5f6g7h8" "i9j0k1l2" "m3n4o5p6" "q7r8s9t0"
-    "1a2b3c4d" "5e6f7g8h" "9i0j1k2l" "3m4n5o6p" "7q8r9s0t" "1u2v3w4x"
-    "5y6z7a8b" "9c0d1e2f" "3g4h5i6j" "7k8l9m0n" "1o2p3q4r" "5s6t7u8v"
-    "9w0x1y2z" "3a4b5c6d" "7e8f9g0h" "1i2j3k4l" "5m6n7o8p" "9q0r1s2t"
-)
+# Get list of all workers
+workers_response=$(curl -s -X GET \
+  -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+  "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts")
 
-echo "Attempting to delete workers with test patterns..."
-echo "This may take a few minutes..."
+# Check if API call was successful
+if ! echo "$workers_response" | jq -e '.success' >/dev/null 2>&1; then
+    echo "❌ Failed to fetch workers list:"
+    echo "$workers_response" | jq -r '.errors[]?.message // "Unknown error"'
+    exit 1
+fi
+
+# Extract worker names
+worker_names=$(echo "$workers_response" | jq -r '.result[]?.id // empty')
+
+if [ -z "$worker_names" ]; then
+    echo "ℹ️  No workers found in account"
+    exit 0
+fi
+
+total_workers=$(echo "$worker_names" | wc -l | tr -d ' ')
+echo "📊 Found $total_workers total workers"
 echo ""
 
-# Try to delete workers with various patterns and suffixes
-for pattern in "${test_patterns[@]}"; do
-    echo "🔍 Trying pattern: $pattern*"
-    
-    for animal in "${animals[@]}"; do
-        for hex in "${hex_suffixes[@]}"; do
-            worker_name="${pattern}${animal}-${hex}"
-            
-            # Try to delete the worker
-            if CLOUDFLARE_ACCOUNT_ID="$ACCOUNT_ID" npx wrangler delete --name "$worker_name" --force >/dev/null 2>&1; then
-                echo "  ✅ Deleted: $worker_name"
-                DELETED_COUNT=$((DELETED_COUNT + 1))
-            else
-                FAILED_COUNT=$((FAILED_COUNT + 1))
-            fi
-            
-            # Show progress every 50 attempts
-            if [ $((($DELETED_COUNT + $FAILED_COUNT) % 50)) -eq 0 ]; then
-                echo "  📊 Progress: $DELETED_COUNT deleted, $FAILED_COUNT not found"
-            fi
-        done
+echo "🔍 Identifying test workers to delete..."
+
+# Find workers matching test patterns
+test_workers=()
+while IFS= read -r worker_name; do
+    for pattern in "${test_patterns[@]}"; do
+        if [[ "$worker_name" == *"$pattern"* ]]; then
+            test_workers+=("$worker_name")
+            echo "  🎯 Found test worker: $worker_name"
+            break
+        fi
     done
+done <<< "$worker_names"
+
+if [ ${#test_workers[@]} -eq 0 ]; then
+    echo "ℹ️  No test workers found matching patterns: ${test_patterns[*]}"
+    exit 0
+fi
+
+echo ""
+echo "🗑️  Deleting ${#test_workers[@]} test workers..."
+
+# Delete each test worker
+for worker_name in "${test_workers[@]}"; do
+    echo "  Deleting: $worker_name"
+    
+    delete_response=$(curl -s -X DELETE \
+      -H "Authorization: Bearer $CLOUDFLARE_API_TOKEN" \
+      "https://api.cloudflare.com/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts/$worker_name")
+    
+    if echo "$delete_response" | jq -e '.success' >/dev/null 2>&1; then
+        echo "    ✅ Deleted successfully"
+        DELETED_COUNT=$((DELETED_COUNT + 1))
+    else
+        echo "    ❌ Failed to delete:"
+        echo "$delete_response" | jq -r '.errors[]?.message // "Unknown error"' | sed 's/^/      /'
+        FAILED_COUNT=$((FAILED_COUNT + 1))
+    fi
 done
 
 echo ""
 echo "🎯 Cleanup Summary:"
 echo "  ✅ Workers deleted: $DELETED_COUNT"
-echo "  ❌ Workers not found: $FAILED_COUNT"
+echo "  ❌ Failed deletions: $FAILED_COUNT"
 echo ""
 
 if [ $DELETED_COUNT -gt 0 ]; then
     echo "✨ Successfully cleaned up $DELETED_COUNT test workers!"
+    echo "   This should help resolve the 500 worker limit issue."
 else
-    echo "ℹ️  No test workers found with the attempted patterns."
-    echo "   You may need to manually delete workers via the Cloudflare dashboard:"
-    echo "   https://dash.cloudflare.com/1634a8e653b2ce7e0f7a23cca8cbd86a/workers-and-pages"
+    echo "⚠️  No test workers were deleted."
+    echo "   You may need to manually review workers in the dashboard:"
+    echo "   https://dash.cloudflare.com/$CLOUDFLARE_ACCOUNT_ID/workers-and-pages"
 fi

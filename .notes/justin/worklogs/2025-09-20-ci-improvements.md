@@ -62,10 +62,22 @@ Need to clean up test workers with "smoke-test" in their names using Wrangler CL
 - Ran cleanup scripts but found no workers matching the attempted patterns
 - Workers may have been auto-cleaned, use different patterns, or need manual dashboard cleanup
 
-### Cleanup scripts created
-- `scripts/cleanup-test-workers.sh`: Comprehensive cleanup with many pattern variations
-- `scripts/quick-cleanup.sh`: Focused cleanup with most likely patterns
+### Cleanup scripts created (revised to use Cloudflare API)
+- `scripts/cleanup-test-workers.sh`: Lists all workers via API, deletes those matching test patterns
+- `scripts/quick-cleanup.sh`: Dry-run mode by default, shows what would be deleted
 
-### Manual cleanup guidance
-Dashboard URL: https://dash.cloudflare.com/1634a8e653b2ce7e0f7a23cca8cbd86a/workers-and-pages
-Look for workers containing: smoke-test, e2e-test, test-project, playground, hello-world, minimal, standard
+### API approach
+- Uses `curl` with Cloudflare API instead of brute-force guessing
+- Lists workers: `GET /accounts/$ACCOUNT_ID/workers/scripts`
+- Deletes workers: `DELETE /accounts/$ACCOUNT_ID/workers/scripts/<script-name>`
+- Requires environment variables: `CLOUDFLARE_ACCOUNT_ID` and `CF_API_TOKEN`
+- No hardcoded account IDs
+
+### Usage
+```bash
+export CLOUDFLARE_ACCOUNT_ID='1634a8e653b2ce7e0f7a23cca8cbd86a'
+export CF_API_TOKEN='your-token'
+./scripts/quick-cleanup.sh          # dry run
+./scripts/quick-cleanup.sh --delete # actual deletion
+./scripts/cleanup-test-workers.sh   # comprehensive cleanup
+```
