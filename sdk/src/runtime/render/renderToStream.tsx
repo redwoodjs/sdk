@@ -21,7 +21,7 @@ export const renderToStream = async (
   {
     ssr: shouldSSR = true,
     Document = IdentityDocument,
-    injectRSCPayload: shouldInjectRSCPayload = false,
+    injectRSCPayload: shouldInjectRSCPayload = true,
     onError = () => {},
   }: RenderToStreamOptions = {},
 ): Promise<ReadableStream> => {
