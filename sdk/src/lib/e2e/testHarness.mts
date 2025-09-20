@@ -300,6 +300,86 @@ export async function createBrowser(): Promise<Browser> {
 }
 
 /**
+ * High-level test wrapper for dev server tests.
+ * Automatically skips if RWSDK_PLAYGROUND_SKIP_DEV_SERVER_TESTS=1
+ */
+export function testDevServer(
+  name: string,
+  testFn: (context: {
+    devServer: DevServerInstance;
+    browser: Browser;
+    page: Page;
+    url: string;
+  }) => Promise<void>,
+) {
+  if (SKIP_DEV_SERVER_TESTS) {
+    test.skip(name, () => {});
+    return;
+  }
+
+  test(name, async () => {
+    const devServer = await createDevServer();
+    const browser = await createBrowser();
+    const page = await browser.newPage();
+
+    await testFn({
+      devServer,
+      browser,
+      page,
+      url: devServer.url,
+    });
+    // Automatic cleanup handled by afterEach hooks
+  });
+}
+
+/**
+ * Skip version of testDevServer
+ */
+testDevServer.skip = (name: string, testFn?: any) => {
+  test.skip(name, testFn || (() => {}));
+};
+
+/**
+ * High-level test wrapper for deployment tests.
+ * Automatically skips if RWSDK_PLAYGROUND_SKIP_DEPLOYMENT_TESTS=1
+ */
+export function testDeployment(
+  name: string,
+  testFn: (context: {
+    deployment: DeploymentInstance;
+    browser: Browser;
+    page: Page;
+    url: string;
+  }) => Promise<void>,
+) {
+  if (SKIP_DEPLOYMENT_TESTS) {
+    test.skip(name, () => {});
+    return;
+  }
+
+  test(name, async () => {
+    const deployment = await createDeployment();
+    const browser = await createBrowser();
+    const page = await browser.newPage();
+
+    await testFn({
+      deployment,
+      browser,
+      page,
+      url: deployment.url,
+    });
+    // Automatic cleanup handled by afterEach hooks
+  });
+}
+
+/**
+ * Skip version of testDeployment
+ */
+testDeployment.skip = (name: string, testFn?: any) => {
+  test.skip(name, testFn || (() => {}));
+};
+
+/**
  * Utility function for polling/retrying assertions
  */
 export async function poll(
