@@ -47,3 +47,25 @@ Created `scripts/retry.sh` with 3 retry attempts and 5-second delays between ret
 - **Before**: 4 jobs per workflow (1 OS × 4 package managers)  
 - **After**: 8 jobs per workflow (2 OS × 4 package managers)
 - Total CI jobs increased from 8 to 16 across both workflows
+
+## Worker Cleanup Issue
+
+Hit Cloudflare Workers limit (500 workers max) during CI runs. Error: "You have exceeded the limit of 500 Workers on your account" with test worker name like `test-project-smoke-test-defeated-cat-c6cefbc2`.
+
+Need to clean up test workers with "smoke-test" in their names using Wrangler CLI.
+
+### Cleanup attempts
+- Wrangler CLI requires specific worker names for deletion, can't list all workers easily
+- API access requires proper authentication tokens not available in local environment
+- Created cleanup script that attempts to delete workers with common test patterns
+- Test worker names follow pattern like: `test-project-smoke-test-defeated-cat-c6cefbc2`
+- Ran cleanup scripts but found no workers matching the attempted patterns
+- Workers may have been auto-cleaned, use different patterns, or need manual dashboard cleanup
+
+### Cleanup scripts created
+- `scripts/cleanup-test-workers.sh`: Comprehensive cleanup with many pattern variations
+- `scripts/quick-cleanup.sh`: Focused cleanup with most likely patterns
+
+### Manual cleanup guidance
+Dashboard URL: https://dash.cloudflare.com/1634a8e653b2ce7e0f7a23cca8cbd86a/workers-and-pages
+Look for workers containing: smoke-test, e2e-test, test-project, playground, hello-world, minimal, standard
