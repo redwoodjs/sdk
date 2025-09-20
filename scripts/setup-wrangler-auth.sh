@@ -16,7 +16,7 @@ npx wrangler login
 # This is the same hack used in ensure-deploy-env.mts
 # Use the minimal starter's wrangler config for this operation
 echo "⚙️  Forcing account selection to create cache..."
-npx wrangler d1 list --json --config starters/minimal/wrangler.jsonc > /dev/null 2>&1 || true
+npx wrangler d1 list --json --config starters/minimal/wrangler.jsonc
 
 # Verify cache was created
 CACHE_PATH="node_modules/.cache/wrangler/wrangler-account.json"
