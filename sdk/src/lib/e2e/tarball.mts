@@ -19,6 +19,63 @@ interface TarballEnvironment {
 }
 
 /**
+ * Copies wrangler cache from monorepo to temp directory for deployment tests
+ */
+async function copyWranglerCache(targetDir: string): Promise<void> {
+  try {
+    // Find the monorepo root by starting from the current working directory (SDK root)
+    // and walking up to find the monorepo root
+    let currentDir = path.resolve(process.cwd());
+    let monorepoRoot = null;
+    
+    // Walk up the directory tree to find the monorepo root
+    while (currentDir !== path.dirname(currentDir)) {
+      const nodeModulesPath = path.join(currentDir, "node_modules");
+      const packageJsonPath = path.join(currentDir, "package.json");
+      
+      if (fs.existsSync(nodeModulesPath) && fs.existsSync(packageJsonPath)) {
+        try {
+          const packageJson = JSON.parse(await fs.promises.readFile(packageJsonPath, "utf8"));
+          // Check if this looks like our monorepo root
+          if (packageJson.name === "rw-sdk-monorepo" || packageJson.private === true) {
+            monorepoRoot = currentDir;
+            break;
+          }
+        } catch {
+          // Continue searching if we can't read the package.json
+        }
+      }
+      currentDir = path.dirname(currentDir);
+    }
+    
+    if (!monorepoRoot) {
+      log(`  ⚠️ Could not find monorepo root, skipping wrangler cache copy`);
+      return;
+    }
+    
+    const sourceCachePath = path.join(monorepoRoot, "node_modules/.cache/wrangler");
+    const targetCachePath = path.join(targetDir, "node_modules/.cache/wrangler");
+    
+    if (fs.existsSync(sourceCachePath)) {
+      log(`  🔐 Copying wrangler cache from monorepo to temp directory...`);
+      
+      // Ensure the target cache directory exists
+      await fs.promises.mkdir(path.dirname(targetCachePath), { recursive: true });
+      
+      // Copy the entire wrangler cache directory
+      await $`cp -r ${sourceCachePath} ${path.dirname(targetCachePath)}`;
+      
+      log(`  ✅ Wrangler cache copied successfully`);
+    } else {
+      log(`  ⚠️ No wrangler cache found in monorepo, deployment tests may require authentication`);
+    }
+  } catch (error) {
+    log(`  ⚠️ Failed to copy wrangler cache: ${(error as Error).message}`);
+    // Don't throw - this is not a fatal error, deployment tests will just need manual auth
+  }
+}
+
+/**
  * Creates a tarball-based test environment similar to the release script approach
  */
 export async function setupTarballEnvironment({
@@ -142,6 +199,9 @@ export async function setupTarballEnvironment({
       }
       log(`  ✅ Installed package contents match the local build`);
     }
+
+    // Copy wrangler cache from monorepo to temp directory for deployment tests
+    await copyWranglerCache(targetDir);
 
     // Cleanup function
     const cleanup = async () => {
