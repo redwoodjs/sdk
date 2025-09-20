@@ -7,7 +7,7 @@ import { renderDocumentHtmlStream } from "./renderDocumentHtmlStream";
 
 export interface RenderToStreamOptions {
   Document?: FC<DocumentProps>;
-  shouldSSR?: boolean;
+  ssr?: boolean;
   injectRSCPayload?: boolean;
   onError?: (error: unknown) => void;
 }
@@ -19,7 +19,7 @@ export const IdentityDocument: FC<DocumentProps> = ({ children }) => (
 export const renderToStream = async (
   element: ReactElement,
   {
-    shouldSSR = true,
+    ssr = true,
     Document = IdentityDocument,
     injectRSCPayload: shouldInjectRSCPayload = false,
     onError = () => {},
@@ -27,7 +27,7 @@ export const renderToStream = async (
 ): Promise<ReadableStream> => {
   let rscStream = renderToRscStream({
     input: {
-      element,
+      node: element,
       actionResult: undefined,
     },
     onError,
@@ -48,7 +48,7 @@ export const renderToStream = async (
     rscPayloadStream: rscStream,
     Document,
     requestInfo,
-    shouldSSR,
+    shouldSSR: ssr,
     onError,
   });
 };

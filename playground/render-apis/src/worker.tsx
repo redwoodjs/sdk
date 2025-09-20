@@ -163,7 +163,6 @@ export default defineApp([
   route("/render-to-stream", async () => {
     const stream = await renderToStream(<RenderToStreamTestPage />, {
       Document,
-      injectRSCPayload: true,
       onError: (error) => console.error("Render error:", error),
     });
 
@@ -175,7 +174,6 @@ export default defineApp([
   route("/render-to-string", async () => {
     const html = await renderToString(<RenderToStringTestPage />, {
       Document,
-      injectRSCPayload: true,
     });
 
     return new Response(html, {
