@@ -130,10 +130,16 @@ The test progressed much further after fixing the vite config (changed `rwsdk` t
 - Simplified SDK package.json exports for E2E utilities to single `./e2e` export
 - Updated test imports to use `rwsdk/e2e` instead of relative paths
 - Created unified E2E index file that exports all utilities
+- **Moved playground directory to monorepo root** and updated all configurations:
+  - Updated `pnpm-workspace.yaml` to include `playground/*`
+  - Updated SDK's `vitest.config.mts` to look for tests in `../playground/**/__tests__/**/*.test.mts`
+  - Updated `getProjectDirectory()` function to return `../playground/hello-world`
+  - Fixed playground's `package.json` to remove duplicate rwsdk entries
+  - Updated playground's `tsconfig.json` paths to point to `../../sdk/src/*`
 
 **Current Status**
-The playground test infrastructure is now complete and ready for debugging. The test fails during workspace import resolution (expected - tests should run in isolation with tarball), but once it runs in the isolated environment, we can investigate the original directive scan issues with the debug directory feature.
+The playground test infrastructure is now fully functional and running successfully. The test is executing in the isolated environment with proper tarball installation and can now investigate the original directive scan issues with the debug directory feature.
 
 **Next Steps**
-- The test will now keep failed directories for debugging when issues occur
+- Test is now running and will keep failed directories for debugging when issues occur
 - Ready to investigate the missing exports and directive scan issues in the isolated test environment

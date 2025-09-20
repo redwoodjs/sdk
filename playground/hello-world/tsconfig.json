@@ -21,7 +21,7 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "rwsdk/*": ["../../src/*"]
+      "rwsdk/*": ["../../sdk/src/*"]
     },
     /* Enable importing .json files */
     "resolveJsonModule": true,

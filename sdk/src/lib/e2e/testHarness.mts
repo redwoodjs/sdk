@@ -39,9 +39,9 @@ const SKIP_DEPLOYMENT_TESTS =
  * Get the project directory for the current test by looking at the call stack
  */
 function getProjectDirectory(): string {
-  // For now, let's hardcode this to 'playground/minimal' since we only have one project
+  // For now, let's hardcode this to '../playground/hello-world' since we only have one project
   // TODO: Make this more dynamic when we have multiple playground projects
-  return "playground/minimal";
+  return "../playground/hello-world";
 }
 
 /**
