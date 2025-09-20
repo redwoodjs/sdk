@@ -1354,7 +1354,7 @@ The `renderRscThenableToHtmlStream` function was still using a small wrapper com
 
 While this correctly extracted the `node` for rendering, the `Component` itself added an extra layer to the render tree during the SSR pass. This seemingly insignificant wrapper was enough to alter the tree traversal path compared to the client, causing the `useId` counters to once again diverge. The problem was not just the *data* being rendered, but the *structure* of the components rendering it.
 
-### The Solution
+### The Definitive Solution
 
 The final, successful solution required two complementary changes to ensure the server and client render trees were identical:
 
@@ -1362,3 +1362,26 @@ The final, successful solution required two complementary changes to ensure the 
 2.  **Direct Thenable Rendering**: The `renderRscThenableToHtmlStream` function was simplified to pass this clean `thenable` *directly* to `renderToReadableStream`. React's native ability to handle a promise at the root of a tree was leveraged, allowing it to resolve the RSC payload without injecting any wrapper components.
 
 This combination of a clean payload and a direct, wrapper-less render finally achieved a perfectly deterministic render tree, eliminating the `useId` mismatch and resolving the issue at its core.
+
+## 79. A New Pivot: The Flaw in RSC-First Rendering
+
+While the "RSC-first" architecture seemed to solve the `useId` context pollution, it introduced a more fundamental problem that broke client-side hydration completely.
+
+### The Problem: Shipping the Document to the Client
+
+The architecture worked by wrapping the page content in an `assembleDocument` server component, and then rendering the entire thing to an RSC stream. This stream was then used for two purposes:
+
+1.  On the server, it was transformed into HTML for the initial response.
+2.  It was also injected into that HTML to be consumed by the client for hydration.
+
+This created a fatal flaw: the RSC payload sent to the client now contained the entire document structure (`<html>`, `<head>`, `<body>`, etc.). When the client-side `hydrateRoot` attempted to render this inside the `<div id="hydrate-root">`, React correctly threw errors ("HTML cannot be a child of div"), and the application failed to become interactive. The client-side application expects an RSC payload containing only the application's component tree, not the surrounding document shell.
+
+### The New Architecture: Nested RSC Renders
+
+The solution is to return to a hybrid model, but with a more sophisticated understanding of how to compose renders on the server. The new approach uses nested RSC rendering to isolate the two concerns:
+
+1.  **Inner RSC Render**: The core application (`pageElement`) is rendered to an RSC stream. This stream produces a `{ node, actionResult }` payload, which is exactly what the client expects for hydration.
+2.  **Outer SSR Render**: The `<Document>` shell is rendered to an HTML stream using the standard SSR (`renderToReadableStream`) API.
+3.  **Composition**: The key is how these are combined. The inner RSC stream is `tee`'d. One branch is injected into the HTML for the client. The other branch is passed as a `thenable` prop to the `<Document>` component during its SSR render. This allows the server to render the full HTML page, with the app content correctly placed, while ensuring the client only receives the app payload it needs.
+
+This approach provides the best of both worlds: a clean, isolated RSC payload for the client, and a fully-formed HTML document from the server, all without sharing a `useId` context between the shell and the app. The next step is to refactor the codebase to implement this model.

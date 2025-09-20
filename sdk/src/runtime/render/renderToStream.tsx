@@ -1,6 +1,6 @@
 import { ReactElement, FC } from "react";
 import { DocumentProps } from "../lib/router";
-import { renderNodeToRscStream } from "./renderToRscStream";
+import { renderToRscStream } from "./renderToRscStream";
 import { transformRscToHtmlStream } from "./transformRscToHtmlStream";
 import { requestInfo } from "../requestInfo/worker";
 import { injectRSCPayload } from "rsc-html-stream/server";
@@ -23,8 +23,9 @@ export const renderToStream = async (
     onError = () => {},
   }: RenderToStreamOptions = {},
 ): Promise<ReadableStream> => {
-  let rscStream = renderNodeToRscStream({
+  let rscStream = renderToRscStream({
     node: element,
+    actionResult: null,
     onError,
   });
 
