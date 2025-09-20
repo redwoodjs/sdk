@@ -28,7 +28,7 @@ export async function launchBrowser(
   // Get browser path if not provided
   if (!browserPath) {
     log("Getting browser executable path");
-    browserPath = await getBrowserPath();
+    browserPath = await getBrowserPath({ headless });
   }
 
   console.log(

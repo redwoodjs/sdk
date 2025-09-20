@@ -1,4 +1,3 @@
-import { use } from "react";
 import { type RequestInfo } from "../requestInfo/types.js";
 import { getManifest } from "../lib/manifest.js";
 
@@ -32,8 +31,12 @@ const findCssForModule = (
   return Array.from(css);
 };
 
-export const Stylesheets = ({ requestInfo }: { requestInfo: RequestInfo }) => {
-  const manifest = use(getManifest());
+export const Stylesheets = async ({
+  requestInfo,
+}: {
+  requestInfo: RequestInfo;
+}) => {
+  const manifest = await getManifest();
   const allStylesheets = new Set<string>();
 
   for (const scriptId of requestInfo.rw.scriptsToBeLoaded) {

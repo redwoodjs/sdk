@@ -1,0 +1,10 @@
+body {
+  min-height: 100vh;
+  padding: 0;
+}
+
+#root,
+#hydrate-root {
+  width: 100vw;
+  height: 100vh;
+}
