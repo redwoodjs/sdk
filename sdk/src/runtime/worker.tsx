@@ -15,7 +15,6 @@ import { RequestInfo, DefaultAppContext } from "./requestInfo/types";
 import { Route, type RwContext, defineRoutes } from "./lib/router";
 import { generateNonce } from "./lib/utils";
 import { ssrWebpackRequire } from "./imports/worker";
-import { assembleDocument } from "./render/assembleDocument.js";
 
 declare global {
   type Env = {
@@ -102,20 +101,6 @@ export const defineApp = <
             pageElement = <Page {...requestInfo} />;
           }
 
-          const isRSCRequest =
-            new URL(requestInfo.request.url).searchParams.has("__rsc") ||
-            requestInfo.request.headers
-              .get("accept")
-              ?.includes("text/x-component");
-
-          if (!isRSCRequest) {
-            pageElement = assembleDocument({
-              requestInfo,
-              pageElement,
-              shouldSSR: requestInfo.rw.ssr,
-            });
-          }
-
           return pageElement;
         };
 
@@ -138,7 +123,7 @@ export const defineApp = <
 
           const pageElement = createPageElement(requestInfo, Page);
 
-          const { rscPayload: shouldInjectRSCPayload, ssr: shouldSSR } = rw;
+          const { rscPayload: shouldInjectRSCPayload } = rw;
 
           let rscPayloadStream = renderToRscStream({
             node: pageElement,
@@ -176,6 +161,7 @@ export const defineApp = <
 
           let html: ReadableStream<any> = await transformRscToHtmlStream({
             stream: rscPayloadStream,
+            Document: rw.Document,
             requestInfo: requestInfo,
             onError,
           });

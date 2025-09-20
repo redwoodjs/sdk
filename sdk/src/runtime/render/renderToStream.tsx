@@ -42,6 +42,7 @@ export const renderToStream = async (
 
   const htmlStream = await transformRscToHtmlStream({
     stream: rscStream,
+    Document,
     requestInfo,
     onError,
   });
