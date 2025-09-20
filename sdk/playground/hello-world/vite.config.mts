@@ -1,5 +1,5 @@
 import { defineConfig } from "vite";
-import { rwsdk } from "@redwoodjs/sdk/vite";
+import { redwood } from "rwsdk/vite";
 import { cloudflare } from "@cloudflare/vite-plugin";
 
 export default defineConfig({
@@ -7,6 +7,6 @@ export default defineConfig({
     cloudflare({
       viteEnvironment: { name: "worker" },
     }),
-    rwsdk(),
+    redwood(),
   ],
 });

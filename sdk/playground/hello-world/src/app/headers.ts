@@ -1,4 +1,4 @@
-import { RouteMiddleware } from "@redwoodjs/sdk/router";
+import { RouteMiddleware } from "rwsdk/router";
 
 export const setCommonHeaders =
   (): RouteMiddleware =>

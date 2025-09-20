@@ -119,12 +119,12 @@ const performFullSync = async (sdkDir: string, targetDir: string) => {
             delete targetPackageJson.devDependencies.rwsdk;
             modified = true;
           }
-          if (targetPackageJson.dependencies?.["@redwoodjs/sdk"]) {
-            delete targetPackageJson.dependencies["@redwoodjs/sdk"];
+          if (targetPackageJson.dependencies?.["rwsdk"]) {
+            delete targetPackageJson.dependencies["rwsdk"];
             modified = true;
           }
-          if (targetPackageJson.devDependencies?.["@redwoodjs/sdk"]) {
-            delete targetPackageJson.devDependencies["@redwoodjs/sdk"];
+          if (targetPackageJson.devDependencies?.["rwsdk"]) {
+            delete targetPackageJson.devDependencies["rwsdk"];
             modified = true;
           }
           if (modified) {
@@ -148,7 +148,7 @@ const performFullSync = async (sdkDir: string, targetDir: string) => {
       if (pm.name === "yarn") {
         // For modern yarn, disable PnP to avoid resolution issues with local tarballs
         process.env.YARN_NODE_LINKER = "node-modules";
-        args.push(`@redwoodjs/sdk@file:${tarballPath}`);
+        args.push(`rwsdk@file:${tarballPath}`);
       } else {
         args.push(tarballPath);
       }

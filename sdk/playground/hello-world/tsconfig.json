@@ -21,7 +21,7 @@
     ],
     "paths": {
       "@/*": ["./src/*"],
-      "@redwoodjs/sdk/*": ["../../src/*"]
+      "rwsdk/*": ["../../src/*"]
     },
     /* Enable importing .json files */
     "resolveJsonModule": true,

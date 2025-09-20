@@ -1,9 +1,5 @@
 import { expect } from "vitest";
-import {
-  testDevServer,
-  testDeployment,
-  poll,
-} from "../../src/lib/e2e/testHarness.mjs";
+import { testDevServer, testDeployment, poll } from "rwsdk/e2e";
 
 testDevServer("renders Hello World on dev server", async ({ page, url }) => {
   await page.goto(url);

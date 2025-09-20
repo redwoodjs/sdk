@@ -1,5 +1,5 @@
 {
-  "name": "@redwoodjs/sdk",
+  "name": "rwsdk",
   "version": "1.0.0-alpha.6",
   "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime",
   "type": "module",
@@ -107,6 +107,10 @@
     "./e2e/release": {
       "types": "./dist/src/lib/e2e/release.d.mts",
       "default": "./dist/src/lib/e2e/release.mjs"
+    },
+    "./e2e": {
+      "types": "./dist/src/lib/e2e/testHarness.d.mts",
+      "default": "./dist/src/lib/e2e/testHarness.mjs"
     }
   },
   "keywords": [

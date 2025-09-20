@@ -1,5 +1,5 @@
 {
-  "name": "@redwoodjs/starter-minimal",
+  "name": "hello-world",
   "version": "1.0.0",
   "description": "A bare-bones RedwoodSDK starter",
   "main": "index.js",
@@ -23,7 +23,7 @@
     "test:e2e": "vitest"
   },
   "dependencies": {
-    "@redwoodjs/sdk": "workspace:*",
+    "rwsdk": "workspace:*",
     "react": "19.2.0-canary-3fb190f7-20250908",
     "react-dom": "19.2.0-canary-3fb190f7-20250908",
     "react-server-dom-webpack": "19.2.0-canary-3fb190f7-20250908",

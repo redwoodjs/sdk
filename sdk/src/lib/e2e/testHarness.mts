@@ -60,6 +60,7 @@ export function testDevServer(
     let resources: TestResources | undefined;
     let devServer: { stopDev: () => Promise<void> } | undefined;
     let browser: Browser | undefined;
+    let testFailed = false;
 
     try {
       // Set up test environment with tarball installation
@@ -91,6 +92,9 @@ export function testDevServer(
         projectDir: resources.targetDir,
         stopDev: devResult.stopDev,
       });
+    } catch (error) {
+      testFailed = true;
+      throw error;
     } finally {
       // Cleanup
       if (devServer) {
@@ -98,6 +102,17 @@ export function testDevServer(
       }
       if (browser) {
         await browser.close();
+      }
+
+      // Handle temp directory cleanup
+      if (resources?.tempDirCleanup) {
+        if (testFailed) {
+          console.log(
+            `\n🔍 Keeping failed test directory for debugging: ${resources.targetDir}`,
+          );
+        } else {
+          await resources.tempDirCleanup();
+        }
       }
     }
   });
@@ -119,6 +134,7 @@ export function testDeployment(
     let resources: TestResources | undefined;
     let browser: Browser | undefined;
     let workerName: string | undefined;
+    let testFailed = false;
 
     try {
       // Set up test environment with tarball installation
@@ -153,6 +169,9 @@ export function testDeployment(
         browser,
         workerName,
       });
+    } catch (error) {
+      testFailed = true;
+      throw error;
     } finally {
       // Cleanup
       if (browser) {
@@ -173,6 +192,17 @@ export function testDeployment(
           resources.targetDir || process.cwd(),
           resources.resourceUniqueKey,
         );
+      }
+
+      // Handle temp directory cleanup
+      if (resources?.tempDirCleanup) {
+        if (testFailed) {
+          console.log(
+            `\n🔍 Keeping failed test directory for debugging: ${resources.targetDir}`,
+          );
+        } else {
+          await resources.tempDirCleanup();
+        }
       }
     }
   });

@@ -1,5 +1,5 @@
-import { handleRequest } from "@redwoodjs/sdk/worker";
-import { routes } from "@redwoodjs/sdk/router";
+import { handleRequest } from "rwsdk/worker";
+import { routes } from "rwsdk/router";
 import * as home from "@/app/pages/Home";
 
 const pages = {

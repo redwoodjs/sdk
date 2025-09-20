@@ -102,7 +102,7 @@ Before pausing to align on the plan, I completed the initial refactoring and set
     *   The `sdk/playground` directory was created.
     *   A `minimal` project was copied from the starters.
     *   `pnpm-workspace.yaml` was updated to include `sdk/playground/*`.
-    *   The `package.json` for `sdk/playground/minimal` was modified to use a `workspace:*` dependency on `@redwoodjs/sdk`.
+    *   The `package.json` for `sdk/playground/minimal` was modified to use a `workspace:*` dependency on `rwsdk`.
 
 4.  **Test Harness Integration:**
     *   `vitest` was added as a workspace dependency.
@@ -120,9 +120,16 @@ Before pausing to align on the plan, I completed the initial refactoring and set
 - Implemented tarball-based testing with workspace dependency replacement.
 
 **Current Issue**
-The test is timing out during the SDK rebuild phase in the sync process. The infrastructure appears to be working correctly: project copying, dependency installation, and the tarball sync process all start. However, the SDK rebuild is either taking too long or hanging.
+The test progressed much further after fixing the vite config (changed `rwsdk` to `redwood` import). The dev server now starts successfully and reaches the directive scan phase, but fails with:
+- Missing `handleRequest` export from `rwsdk/worker`
+- Vendor barrel resolution issues (`rwsdk/__vendor_client_barrel`, `rwsdk/__vendor_server_barrel`)
+
+**Completed Improvements**
+1. ✅ Added debug feature to keep failed test directories around for investigation
+2. ✅ Renamed playground from `minimal` to `hello-world` and moved tests to `__tests__` directory  
+3. ✅ Added SDK package.json exports for E2E utilities (`./e2e`)
+4. ✅ Updated test imports to use `rwsdk/e2e` instead of relative paths
 
 **Next Steps**
-- Investigate SDK build performance during sync.
-- Consider optimizing the rebuild process for tests.
-- Complete remaining tasks: runner script, CI integration, and documentation.
+- Test the updated playground with the new debug feature
+- Investigate and fix the missing exports and directive scan issues

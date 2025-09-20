@@ -214,7 +214,7 @@ importers:
 
   sdk/playground/minimal:
     dependencies:
-      '@redwoodjs/sdk':
+      'rwsdk':
         specifier: workspace:*
         version: link:../..
       react:
