@@ -4,15 +4,18 @@ import { type RequestInfo } from "../requestInfo/types.js";
 
 export const renderHtmlStream = async ({
   node,
+  identifierPrefix,
   requestInfo,
   onError,
 }: {
   node: React.ReactNode;
   requestInfo: RequestInfo;
   onError: (error: unknown) => void;
+  identifierPrefix?: string;
 }) => {
   return await renderToReadableStream(node, {
     nonce: requestInfo.rw.nonce,
+    identifierPrefix,
     onError(error, { componentStack }) {
       try {
         if (!error) {

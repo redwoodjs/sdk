@@ -63,6 +63,7 @@ export const renderDocumentHtmlStream = async ({
     node: documentElement,
     requestInfo,
     onError,
+    identifierPrefix: "__RWSDK_DOCUMENT__",
   });
 
   const appHtmlStream = await renderHtmlStream({
