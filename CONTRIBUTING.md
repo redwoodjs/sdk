@@ -69,12 +69,14 @@ The monorepo includes a `playground` directory for end-to-end (E2E) tests. These
 
 Before running deployment tests, you need to authenticate with Cloudflare. You only need to do this once for the entire monorepo.
 
-1.  **Log in to Cloudflare**:
+1.  **Set up Wrangler authentication**:
     ```sh
     # From the monorepo root
-    npx wrangler login
+    pnpm setup:wrangler
+    # Or directly:
+    ./scripts/setup-wrangler-auth.sh
     ```
-    This will save your credentials in a cache that all playground tests can automatically find and reuse.
+    This script will log you in to Cloudflare and ensure the authentication cache is properly set up for all playground tests to reuse.
 
 #### Running Tests
 

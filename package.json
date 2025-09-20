@@ -8,7 +8,8 @@
     "check-starters:dev": "for starter in starters/*; do ./scripts/check-app.sh dev $starter; done",
     "check-starters:preview": "for starter in starters/*; do ./scripts/check-app.sh preview $starter; done",
     "format": "prettier --write ./sdk/src starters/*/src",
-    "test:e2e": "pnpm --filter rwsdk test:e2e"
+    "test:e2e": "pnpm --filter rwsdk test:e2e",
+    "setup:wrangler": "./scripts/setup-wrangler-auth.sh"
   },
   "engines": {
     "node": ">=18.0.0",
