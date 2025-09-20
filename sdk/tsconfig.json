@@ -36,6 +36,7 @@
     "declaration": true,
 
     "outDir": "./dist",
+    "rootDir": "./src",
 
     "paths": {
       "rwsdk/__ssr_bridge": ["./src/runtime/ssrBridge.ts"]
@@ -49,5 +50,6 @@
       "@cloudflare/workers-types"
     ]
   },
-  "exclude": ["node_modules", "dist", "playground"]
+  "include": ["src/**/*"],
+  "exclude": ["node_modules", "dist"]
 }
