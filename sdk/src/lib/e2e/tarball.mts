@@ -121,7 +121,11 @@ export async function setupTarballEnvironment({
     if (fs.existsSync(originalDistPath)) {
       const getDistChecksum = async (distPath: string) => {
         const findResult = await $({ cwd: distPath })`find . -type f`;
-        const sortedFiles = findResult.stdout.trim().split('\n').sort().join('\n');
+        const sortedFiles = findResult.stdout
+          .trim()
+          .split("\n")
+          .sort()
+          .join("\n");
         return crypto.createHash("md5").update(sortedFiles).digest("hex");
       };
 

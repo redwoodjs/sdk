@@ -48,7 +48,7 @@ let globalPlaygroundEnv: PlaygroundEnvironment | null = null;
 interface CleanupTask {
   id: string;
   cleanup: () => Promise<void>;
-  type: 'devServer' | 'deployment' | 'browser';
+  type: "devServer" | "deployment" | "browser";
 }
 
 const cleanupTasks: CleanupTask[] = [];
@@ -59,12 +59,12 @@ let hooksRegistered = false;
  */
 function ensureHooksRegistered() {
   if (hooksRegistered) return;
-  
+
   // Register global afterEach to clean up resources created during tests
   afterEach(async () => {
     const tasksToCleanup = [...cleanupTasks];
     cleanupTasks.length = 0; // Clear the array
-    
+
     for (const task of tasksToCleanup) {
       try {
         await task.cleanup();
@@ -73,7 +73,7 @@ function ensureHooksRegistered() {
       }
     }
   });
-  
+
   // Register global afterAll to clean up the playground environment
   afterAll(async () => {
     if (globalPlaygroundEnv) {
@@ -81,11 +81,11 @@ function ensureHooksRegistered() {
         await globalPlaygroundEnv.cleanup();
         globalPlaygroundEnv = null;
       } catch (error) {
-        console.warn('Failed to cleanup playground environment:', error);
+        console.warn("Failed to cleanup playground environment:", error);
       }
     }
   });
-  
+
   hooksRegistered = true;
 }
 
@@ -101,7 +101,7 @@ function registerCleanupTask(task: CleanupTask) {
  * Removes a cleanup task from the registry (when manually cleaned up)
  */
 function unregisterCleanupTask(id: string) {
-  const index = cleanupTasks.findIndex(task => task.id === id);
+  const index = cleanupTasks.findIndex((task) => task.id === id);
   if (index !== -1) {
     cleanupTasks.splice(index, 1);
   }
@@ -122,7 +122,7 @@ function getProjectDirectory(): string {
  */
 export function setupPlaygroundEnvironment(sourceProjectDir?: string): void {
   ensureHooksRegistered();
-  
+
   beforeAll(async () => {
     const projectDir = sourceProjectDir || getProjectDirectory();
     console.log(`Setting up playground environment from ${projectDir}...`);
@@ -138,7 +138,6 @@ export function setupPlaygroundEnvironment(sourceProjectDir?: string): void {
     };
   });
 }
-
 
 /**
  * Gets the current playground environment.
@@ -166,13 +165,13 @@ export async function createDevServer(): Promise<DevServerInstance> {
 
   const env = getPlaygroundEnvironment();
   const devResult = await runDevServer("pnpm", env.projectDir);
-  
+
   const serverId = `devServer-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-  
+
   // Register automatic cleanup
   registerCleanupTask({
     id: serverId,
-    type: 'devServer',
+    type: "devServer",
     cleanup: devResult.stopDev,
   });
 
@@ -206,11 +205,11 @@ export async function createDeployment(): Promise<DeploymentInstance> {
   );
 
   const deploymentId = `deployment-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-  
+
   // Register automatic cleanup
   registerCleanupTask({
     id: deploymentId,
-    type: 'deployment',
+    type: "deployment",
     cleanup: async () => {
       if (isRelatedToTest(deployResult.workerName, resourceUniqueKey)) {
         await deleteWorker(
@@ -256,13 +255,14 @@ export async function cleanupDeployment(
     env.projectDir,
     deployment.resourceUniqueKey,
   );
-  
+
   // Remove from auto-cleanup registry since manually cleaned
-  const deploymentId = cleanupTasks.find(task => 
-    task.type === 'deployment' && 
-    task.id.includes(deployment.resourceUniqueKey)
+  const deploymentId = cleanupTasks.find(
+    (task) =>
+      task.type === "deployment" &&
+      task.id.includes(deployment.resourceUniqueKey),
   )?.id;
-  
+
   if (deploymentId) {
     unregisterCleanupTask(deploymentId);
   }
@@ -275,11 +275,11 @@ export async function cleanupDeployment(
 export async function createBrowser(): Promise<Browser> {
   const browser = await launchBrowser();
   const browserId = `browser-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
-  
+
   // Register automatic cleanup
   registerCleanupTask({
     id: browserId,
-    type: 'browser',
+    type: "browser",
     cleanup: async () => {
       try {
         await browser.close();
