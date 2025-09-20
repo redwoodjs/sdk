@@ -97,9 +97,9 @@ describe("useId Playground - Dev Server", () => {
       expect(initialIds["server-id-1"]).toBe(afterIds["server-id-1"]);
       expect(initialIds["server-id-2"]).toBe(afterIds["server-id-2"]);
 
-      // Verify the IDs follow the expected server pattern (_R_)
-      expect(initialIds["server-id-1"]).toMatch(/^_R_\w+_$/);
-      expect(initialIds["server-id-2"]).toMatch(/^_R_\w+_$/);
+      // Verify the IDs follow the expected server pattern (_S_)
+      expect(initialIds["server-id-1"]).toMatch(/^_S_\w+_$/);
+      expect(initialIds["server-id-2"]).toMatch(/^_S_\w+_$/);
     },
   );
 
