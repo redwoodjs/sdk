@@ -71,10 +71,7 @@ Before running deployment tests, you need to authenticate with Cloudflare. You o
 
 1.  **Set up Wrangler authentication**:
     ```sh
-    # From the monorepo root
-    pnpm setup:wrangler
-    # Or directly:
-    ./scripts/setup-wrangler-auth.sh
+    pnpm setup:e2e
     ```
     This script will log you in to Cloudflare and ensure the authentication cache is properly set up for all playground tests to reuse.
 
