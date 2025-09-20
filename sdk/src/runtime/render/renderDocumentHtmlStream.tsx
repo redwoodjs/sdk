@@ -23,15 +23,6 @@ export const renderDocumentHtmlStream = async ({
 }) => {
   const Component = async () => {
     const { node } = await createThenableFromReadableStream(rscPayloadStream);
-
-    const rscAppHtmlStream = await renderHtmlStream({
-      node,
-      Document,
-      requestInfo,
-      shouldSSR,
-      onError,
-    });
-
     // todo(justinvdm, 18 Jun 2025): We can build on this later to allow users
     // surface context. e.g:
     // * we assign `user: requestInfo.clientCtx` here
@@ -54,12 +45,11 @@ export const renderDocumentHtmlStream = async ({
             )}`,
           }}
         />
+        {/*
         <Stylesheets requestInfo={requestInfo} />
         <Preloads requestInfo={requestInfo} />
-        <div
-          id="hydrate-root"
-          dangerouslySetInnerHTML={{ __html: rscAppHtmlStream }}
-        />
+        */}
+        <div id="hydrate-root">{node}</div>
       </Document>
     );
   };
