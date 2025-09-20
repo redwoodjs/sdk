@@ -140,6 +140,18 @@ The test progressed much further after fixing the vite config (changed `rwsdk` t
 **Current Status**
 The playground test infrastructure is now fully functional and running successfully. The test is executing in the isolated environment with proper tarball installation and can now investigate the original directive scan issues with the debug directory feature.
 
+**Monorepo Root Script Added**
+- Added `"test:e2e": "pnpm --filter rwsdk test:e2e"` to root `package.json`
+- Can now run `pnpm test:e2e` from anywhere in the monorepo
+
+**Current Status**
+The playground E2E test infrastructure is fully functional and ready for debugging. The test successfully:
+- Runs from monorepo root with `pnpm test:e2e`
+- Sets up isolated test environments with tarball installation
+- Keeps failed test directories for debugging (as shown in output)
+- Identified the specific issue: missing `dev-init.mjs` script in SDK exports
+
 **Next Steps**
-- Test is now running and will keep failed directories for debugging when issues occur
-- Ready to investigate the missing exports and directive scan issues in the isolated test environment
+- Investigate the missing `rw-scripts dev-init` script in the SDK build
+- Fix the SDK script exports to include the dev-init script
+- The debug directories are preserved for manual investigation
