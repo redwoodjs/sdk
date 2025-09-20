@@ -61,6 +61,97 @@ pnpm test -- -u src/vite/transformJsxScriptTagsPlugin.test.mts
 
 Note the extra `--` before the `-u` flag. This is necessary to pass the flag to the underlying test runner (`vitest`) instead of `pnpm`.
 
+### End-to-End Tests (Playground)
+
+The monorepo includes a `playground` directory for end-to-end (E2E) tests. These tests run against a real, packed tarball of the SDK in an isolated environment to simulate a user's project accurately.
+
+#### Getting Started
+
+Before running deployment tests, you need to authenticate with Cloudflare. You only need to do this once for the entire monorepo.
+
+1.  **Log in to Cloudflare**:
+    ```sh
+    # From the monorepo root
+    npx wrangler login
+    ```
+    This will save your credentials in a cache that all playground tests can automatically find and reuse.
+
+#### Running Tests
+
+To run all playground E2E tests, use the `test:e2e` script from the monorepo root:
+
+```sh
+pnpm test:e2e
+```
+
+#### Skipping Tests
+
+You can skip dev server or deployment tests using environment variables. This is useful for focusing on a specific part of the test suite.
+
+-   **Skip Dev Server Tests**:
+    ```sh
+    RWSDK_PLAYGROUND_SKIP_DEV_SERVER_TESTS=1 pnpm test:e2e
+    ```
+-   **Skip Deployment Tests**:
+    ```sh
+    RWSDK_PLAYGROUND_SKIP_DEPLOYMENT_TESTS=1 pnpm test:e2e
+    ```
+
+#### Test API
+
+The E2E test harness provides a set of high-level and low-level APIs to make writing tests simple and efficient.
+
+##### High-Level APIs
+
+These are the most common APIs you'll use. They automatically handle setting up and tearing down resources like dev servers, deployments, and browsers.
+
+-   `testDevServer(name, testFn)`: Runs a test against a local dev server.
+-   `testDeployment(name, testFn)`: Runs a test against a temporary Cloudflare deployment.
+
+Both functions also have a `.skip` method for skipping individual tests (e.g., `testDevServer.skip(...)`).
+
+**Example:**
+
+```typescript
+// playground/hello-world/__tests__/e2e.test.mts
+import { expect } from "vitest";
+import {
+  setupPlaygroundEnvironment,
+  testDevServer,
+  testDeployment,
+  poll,
+} from "rwsdk/e2e";
+
+// Sets up the test environment for the suite (automatic cleanup)
+setupPlaygroundEnvironment();
+
+testDevServer("renders Hello World on dev server", async ({ page, url }) => {
+  await page.goto(url);
+
+  await poll(async () => {
+    const content = await page.content();
+    return content.includes("Hello World");
+  });
+
+  const content = await page.content();
+  expect(content).toContain("Hello World");
+});
+
+testDeployment.skip("renders Hello World on deployment", async ({ page, url }) => {
+  // This test will be skipped
+});
+```
+
+##### Lower-Level APIs
+
+For more complex scenarios that require finer control, you can use these lower-level utilities. Note that with these, cleanup is still handled automatically after each test.
+
+-   `setupPlaygroundEnvironment()`: Sets up the isolated, tarball-based test environment for the entire test suite (file).
+-   `createDevServer()`: Starts a dev server.
+-   `createDeployment()`: Creates a new Cloudflare deployment.
+-   `createBrowser()`: Launches a Puppeteer browser instance.
+-   `poll(fn, options)`: A utility to retry an async function until it returns `true` or times out.
+
 ## Contribution Guidelines
 
 ### Dependency Injection over Mocking

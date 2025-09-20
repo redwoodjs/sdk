@@ -14,12 +14,17 @@
     "node": ">=18.0.0",
     "pnpm": ">=8.0.0"
   },
-  "packageManager": "pnpm@9.14.4+sha512.c8180b3fbe4e4bca02c94234717896b5529740a6cbadf19fa78254270403ea2f27d4e1d46a08a0f56c89b63dc8ebfd3ee53326da720273794e6200fcf0d184ab",
+  "packageManager": "pnpm@9.4.0",
   "devDependencies": {
-    "knip": "^5.50.5",
-    "prettier": "^3.5.3"
-  },
-  "dependencies": {
+    "@antfu/eslint-config": "^2.21.1",
+    "@manypkg/cli": "^0.21.4",
+    "@types/node": "^20.14.2",
+    "eslint": "^9.5.0",
+    "pnpm": "^9.4.0",
+    "prettier": "^3.3.2",
+    "tsx": "^4.15.7",
+    "typescript": "^5.4.5",
+    "wrangler": "^3.61.0",
     "vitest": "^3.1.1"
   }
 }

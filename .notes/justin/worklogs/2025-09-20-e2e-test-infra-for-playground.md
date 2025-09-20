@@ -139,13 +139,13 @@ The test progressed much further after fixing the vite config (changed `rwsdk` t
 
 **Current Status**
 The playground E2E test infrastructure is now fully functional and working correctly. The test successfully:
-- ✅ Runs from monorepo root with `pnpm test:e2e`
-- ✅ Sets up isolated test environments with tarball installation
-- ✅ Keeps failed test directories for debugging
-- ✅ Fixed playground APIs to match minimal starter exactly (`defineApp`, `initClient`, proper imports)
-- ✅ Fixed SDK bin script path issue (`dist/src/scripts` vs `dist/scripts`)
-- ✅ Dev servers start successfully on both test instances
-- ✅ Chrome download process initiated (test timing out during download is expected)
+- Runs from monorepo root with `pnpm test:e2e`
+- Sets up isolated test environments with tarball installation
+- Keeps failed test directories for debugging
+- Fixed playground APIs to match minimal starter exactly (`defineApp`, `initClient`, proper imports)
+- Fixed SDK bin script path issue (`dist/src/scripts` vs `dist/scripts`)
+- Dev servers start successfully on both test instances
+- Chrome download process initiated (test timing out during download is expected)
 
 **Recent Fixes**
 - Fixed playground `worker.tsx` to use `defineApp` instead of hallucinated `handleRequest` API
@@ -244,13 +244,27 @@ Successfully implemented the missing `testDevServer` and `testDeployment` wrappe
    ```
 
 4. **Verified Functionality**:
-   - ✅ Dev server tests pass and run correctly
-   - ✅ Deployment tests skip correctly with environment variable
-   - ✅ Dev server tests skip correctly with environment variable
-   - ✅ Automatic cleanup working for all resources
-   - ✅ Chrome browser reuse working efficiently
+   - Dev server tests pass and run correctly
+   - Deployment tests skip correctly with environment variable
+   - Dev server tests skip correctly with environment variable
+   - Automatic cleanup working for all resources
+   - Chrome browser reuse working efficiently
 
 The playground E2E test infrastructure is now feature-complete and ready for production use.
+
+**Monorepo Wrangler Cache Support**
+
+Added support for finding wrangler authentication cache in monorepo setups:
+
+1. **Directory Tree Search**: Implemented `findWranglerCache()` function that searches up the directory tree from the test project location to find `node_modules/.cache/wrangler/wrangler-account.json`.
+
+2. **Monorepo Compatibility**: Now when you run `npx wrangler login` from the monorepo root, all playground tests (including those running in temporary directories) can find and reuse the authentication.
+
+3. **Improved Logging**: Added better logging to show where the cache search starts and where it finds the cache file.
+
+4. **Backwards Compatible**: Still works with project-local wrangler caches, but now also supports parent directory caches.
+
+This means you can authenticate once at the monorepo level and all playground tests will automatically use that authentication, making the setup much more convenient for developers.
 
 **Next Steps**
 - Complete remaining tasks: runner script, CI integration, and documentation

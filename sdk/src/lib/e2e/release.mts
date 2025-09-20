@@ -1,4 +1,4 @@
-import { join, basename } from "path";
+import { join, basename, dirname, resolve } from "path";
 import { setTimeout } from "node:timers/promises";
 import debug from "debug";
 import { $ } from "../../lib/$.mjs";
@@ -10,6 +10,35 @@ import * as fs from "fs/promises";
 import { extractLastJson, parseJson } from "../../lib/jsonUtils.mjs";
 
 const log = debug("rwsdk:e2e:release");
+
+/**
+ * Find wrangler cache by searching up the directory tree for node_modules/.cache/wrangler
+ */
+function findWranglerCache(startDir: string): string | null {
+  let currentDir = resolve(startDir);
+  const root = resolve("/");
+
+  while (currentDir !== root) {
+    const cacheDir = join(currentDir, "node_modules/.cache/wrangler");
+    const accountCachePath = join(cacheDir, "wrangler-account.json");
+
+    if (existsSync(accountCachePath)) {
+      log("Found wrangler cache at: %s", accountCachePath);
+      return accountCachePath;
+    }
+
+    // Move up one directory
+    const parentDir = dirname(currentDir);
+    if (parentDir === currentDir) {
+      // Reached filesystem root
+      break;
+    }
+    currentDir = parentDir;
+  }
+
+  log("No wrangler cache found in directory tree starting from: %s", startDir);
+  return null;
+}
 
 // The $expect utility function from utils.mts
 interface ExpectOptions {
@@ -275,15 +304,13 @@ export async function ensureCloudflareAccountId(
   console.log("CLOUDFLARE_ACCOUNT_ID not set, checking wrangler cache...");
 
   try {
-    // Check wrangler cache in the project directory, not the current working directory
+    // Search up the directory tree for wrangler cache (supports monorepo setups)
     projectDir = projectDir || cwd || process.cwd();
-    log("Looking for wrangler cache in project directory: %s", projectDir);
-    const accountCachePath = join(
-      projectDir,
-      "node_modules/.cache/wrangler/wrangler-account.json",
-    );
+    log("Looking for wrangler cache starting from: %s", projectDir);
 
-    if (existsSync(accountCachePath)) {
+    const accountCachePath = findWranglerCache(projectDir);
+
+    if (accountCachePath) {
       try {
         const accountCache = JSON.parse(readFileSync(accountCachePath, "utf8"));
         if (accountCache.account?.id) {
@@ -293,6 +320,7 @@ export async function ensureCloudflareAccountId(
           console.log(
             `✅ Setting CLOUDFLARE_ACCOUNT_ID to ${accountId} (from wrangler cache)`,
           );
+          console.log(`   Cache location: ${accountCachePath}`);
           return;
         }
       } catch (parseError) {
@@ -300,7 +328,9 @@ export async function ensureCloudflareAccountId(
         // Continue to other methods if cache parsing fails
       }
     } else {
-      log("Wrangler account cache not found at: %s", accountCachePath);
+      console.log(
+        `⚠️ No wrangler account cache found in directory tree starting from: ${projectDir}`,
+      );
     }
 
     // If we get here, we couldn't find the account ID in the cache
