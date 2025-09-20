@@ -286,9 +286,9 @@ This section outlines the strategy for managing dependencies to maintain stabili
 
 #### 1. Peer Dependencies (`starter-peer-deps`)
 
--   **What**: The most critical dependencies (`wrangler`, `react`, `vite`, etc.) that are defined as `peerDependencies` in the SDK and tested in the `starters/*` projects.
+-   **What**: The most critical dependencies (`wrangler`, `react`, `vite`, etc.) that are defined as `peerDependencies` in the SDK and tested in both the `starters/*` projects and `playground/*` projects.
 -   **When**: As Soon As Possible (ASAP). Renovate creates a PR immediately when a new version is available.
--   **Why**: To provide an immediate early-warning signal if a new peer dependency version introduces a regression that could affect users.
+-   **Why**: To provide an immediate early-warning signal if a new peer dependency version introduces a regression that could affect users. The playground E2E tests provide an additional validation layer beyond the starter smoke tests.
 
 ##### A Note on React Canary Versions
 The starters intentionally use `canary` versions of React. This is the official channel recommended by the React team for frameworks that implement React Server Components. Using canaries gives us access to the latest features and ensures our implementation remains compatible with the direction of React.
@@ -309,7 +309,7 @@ To manage these potentially unstable versions, Renovate is specifically configur
 
 #### 4. Repository, Docs, and Infrastructure Dependencies (`docs-and-infra-deps`)
 
--   **What**: A consolidated group for all remaining repository maintenance dependencies. This includes dependencies from the root `package.json`, the `docs/package.json`, GitHub Actions, Docker images, and the `.node-version` file.
+-   **What**: A consolidated group for all remaining repository maintenance dependencies. This includes dependencies from the root `package.json`, the `docs/package.json`, non-peer dependencies from `playground/*` projects (such as `vitest`), GitHub Actions, Docker images, and the `.node-version` file.
 -   **When**: Weekly, in a single grouped pull request.
 -   **Why**: To bundle all miscellaneous tooling, documentation, and infrastructure updates into one convenient PR to reduce noise.
 
@@ -330,7 +330,7 @@ To do this, find the update group you wish to run in the "Awaiting Schedule" sec
 
 ### Failure Protocol for Peer Dependencies
 
-When the smoke tests fail on a peer dependency update, it is a signal that requires manual intervention.
+When the smoke tests or playground E2E tests fail on a peer dependency update, it is a signal that requires manual intervention.
 
 1.  **Maintainer Investigation**: The first step is always for a maintainer to investigate **why** the test is failing. The failure can have one of two root causes:
     *   **An Issue in Our SDK**: The dependency may have introduced a breaking change that we need to adapt to.
@@ -339,7 +339,7 @@ When the smoke tests fail on a peer dependency update, it is a signal that requi
 2.  **Manual Corrective Action**:
     *   If the issue is in our SDK, a fix should be implemented and pushed directly to the failing Renovate PR branch.
     *   If the failure is a regression in the dependency itself, a maintainer must perform the following steps **on the Renovate PR branch**:
-        1.  **Revert Dependency in Starters**: In the `starters/*/package.json` files, revert the version of the failing dependency back to the last known good version.
+        1.  **Revert Dependency in Starters and Playground**: In the `starters/*/package.json` and `playground/*/package.json` files, revert the version of the failing dependency back to the last known good version.
         2.  **Constrain Peer Dependency**: In `sdk/package.json`, update the `peerDependencies` entry for the package to add an upper bound that excludes the broken version (e.g., change `^1.2.3` to `>=1.2.3 <1.2.4`).
         3.  **Commit and Push**: Commit these changes with a message explaining the reason for the constraint and push to the branch.
 

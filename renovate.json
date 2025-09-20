@@ -40,8 +40,8 @@
       "schedule": ["on saturday"]
     },
     {
-      "description": "Update non-React SDK peer dependencies in starter projects as soon as they are available.",
-      "matchFileNames": ["starters/**/package.json"],
+      "description": "Update non-React SDK peer dependencies in starter and playground projects as soon as they are available.",
+      "matchFileNames": ["starters/**/package.json", "playground/**/package.json"],
       "matchPackageNames": [
         "@cloudflare/vite-plugin",
         "@cloudflare/workers-types",
@@ -53,8 +53,8 @@
       "prPriority": 1
     },
     {
-      "description": "Update React peer dependencies in starter projects, tracking the 'next' tag.",
-      "matchFileNames": ["starters/**/package.json"],
+      "description": "Update React peer dependencies in starter and playground projects, tracking the 'next' tag.",
+      "matchFileNames": ["starters/**/package.json", "playground/**/package.json"],
       "matchPackageNames": [
         "react",
         "react-dom",
@@ -77,6 +77,23 @@
       "description": "Group dependencies from the root package.json.",
       "matchFileNames": ["package.json"],
       "excludePackageNames": ["pnpm"],
+      "groupName": "docs-and-infra-deps",
+      "schedule": ["on saturday"]
+    },
+    {
+      "description": "Group playground non-peer dependencies with other infrastructure dependencies.",
+      "matchFileNames": ["playground/**/package.json"],
+      "excludePackageNames": [
+        "@cloudflare/vite-plugin",
+        "@cloudflare/workers-types",
+        "wrangler",
+        "vite",
+        "react",
+        "react-dom",
+        "react-server-dom-webpack",
+        "@types/react",
+        "@types/react-dom"
+      ],
       "groupName": "docs-and-infra-deps",
       "schedule": ["on saturday"]
     }
