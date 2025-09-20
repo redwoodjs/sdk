@@ -1385,3 +1385,55 @@ The solution is to return to a hybrid model, but with a more sophisticated under
 3.  **Composition**: The key is how these are combined. The inner RSC stream is `tee`'d. One branch is injected into the HTML for the client. The other branch is passed as a `thenable` prop to the `<Document>` component during its SSR render. This allows the server to render the full HTML page, with the app content correctly placed, while ensuring the client only receives the app payload it needs.
 
 This approach provides the best of both worlds: a clean, isolated RSC payload for the client, and a fully-formed HTML document from the server, all without sharing a `useId` context between the shell and the app. The next step is to refactor the codebase to implement this model.
+
+## 80. The `[object ReadableStream]` Error
+
+After refactoring to the nested render architecture, a new client-side hydration error appeared. The browser was attempting to hydrate the literal string `"[object ReadableStream]"` instead of the application's HTML.
+
+### Analysis
+
+The cause was a subtle issue in the new `renderDocumentHtmlStream.tsx`. The logic was rendering the inner application to a `ReadableStream` of HTML, but then passing that stream object *directly* to `dangerouslySetInnerHTML`. JavaScript's default string conversion for a stream object is `"[object ReadableStream]"`, which was being embedded as plain text in the document.
+
+An initial proposed fix was to buffer the stream to a string on the server using a `streamToString` utility before embedding it. While this would have solved the immediate error, it was rejected because it would break the end-to-end streaming architecture, re-introducing a performance bottleneck.
+
+## 81. The Solution: Manual Stream Stitching
+
+The correct solution, which preserves streaming, was to abandon rendering the app *inside* the document component. Instead, we perform two completely separate renders and manually stitch their stream outputs together.
+
+### Implementation
+
+1.  **`injectHtmlAtMarker.ts` Utility**: A new, dedicated stream processing utility was created. It takes an outer HTML stream and an inner HTML stream. It pipes the outer stream until it finds a unique placeholder comment (e.g., `<!-- RWSDK_INJECT_APP_HTML -->`), at which point it pauses, pipes the entire inner stream, and then resumes the outer stream. This is done incrementally, without buffering, preserving the streaming behavior of both.
+
+2.  **Refactored `renderDocumentHtmlStream.tsx`**: This function was completely rewritten to orchestrate the new flow:
+    - It first renders the `<Document>` shell to its own HTML stream (`outerHtmlStream`), with the placeholder comment inside the `<div id="hydrate-root">`.
+    - It then renders the application node (extracted from the initial RSC payload) to a *separate* HTML stream (`appHtmlStream`).
+    - Finally, it uses the `injectHtmlAtMarker` utility to stitch these two streams into a single, final `ReadableStream` that is returned to the worker.
+
+### Confirmation of Root Cause
+
+This solution worked perfectly, and the `useId` hydration mismatch was resolved. This provides the definitive confirmation of the root cause that has driven this entire investigation: the `useId` counter (`treeContext`) was being polluted by a shared render pass between the document shell and the application. By creating two separate, isolated renders, the application's SSR pass now begins with a clean `treeContext`, guaranteeing its `useId` sequence is deterministic and will match the client's hydration pass.
+
+## 82. Synopsis for Pull Request
+
+### Context: The Previous Rendering Architecture
+
+Previously, the framework used a single, nested rendering pass on the server to produce the initial HTML document. The user's `<Document>` component (containing the `<html>`, `<head>`, etc.) was rendered using React's standard Server-Side Rendering (SSR). As part of this same render, the framework would resolve the React Server Component (RSC) payload for the page and render its contents into the document shell.
+
+### Problem: Non-Deterministic `useId` Generation
+
+This approach created a hydration mismatch for client components that rely on `React.useId` (such as those in Radix UI). React's hydration for `useId` requires deterministic rendering—the sequence of hook calls that generate IDs must be identical on the server and the client.
+
+Our single-pass architecture broke this determinism. The server would first traverse and render the components within the `<Document>` shell, advancing React's internal `useId` counter. Only then would it proceed to render the actual application components. The client, however, only hydrates the application content within the document, starting with a fresh `useId` counter. This discrepancy meant the server was performing extra rendering work that the client was unaware of, leading to a mismatch in the final IDs (e.g., server `_R_76_` vs. client `_r_0_`). This caused React to discard the server-rendered DOM, breaking interactivity and negating the benefits of SSR.
+
+### Solution: Isolate, Render, and Stitch
+
+The solution was to re-architect the server-side rendering pipeline to enforce context isolation. The new "Nested Renders with Stream Stitching" model works as follows:
+
+1.  **Isolated Renders**: Instead of one nested render, we now perform two completely separate and concurrent renders on the server:
+    - One for the application content, which generates an HTML stream (`appHtmlStream`). This guarantees it renders in a clean context with a fresh `useId` counter.
+    - One for the `<Document>` shell, which generates another HTML stream (`documentHtmlStream`) containing a placeholder comment.
+2.  **Stream Stitching**: A custom utility merges these two streams on the fly. It streams the document shell until it finds the placeholder, at which point it injects the application's complete HTML stream before continuing with the rest of the document.
+
+This approach guarantees that the application content is rendered in an isolated context, ensuring the `useId` sequence generated on the server is identical to the one generated on the client during hydration.
+
+An important secondary benefit of this change is that the user-defined `<Document>` is now a true React Server Component. This aligns with developer expectations and unlocks the full power of the RSC paradigm (e.g., using `async/await` for data fetching, accessing server-only APIs) directly within the document shell, which was not possible before. The full details of this new architecture are captured in the updated [Hybrid Rendering documentation](<./docs/architecture/hybridRscSsrRendering.md>).
