@@ -21,11 +21,14 @@ interface TarballEnvironment {
 /**
  * Copies wrangler cache from monorepo to temp directory for deployment tests
  */
-async function copyWranglerCache(targetDir: string): Promise<void> {
+async function copyWranglerCache(
+  targetDir: string,
+  sdkRoot: string,
+): Promise<void> {
   try {
-    // Find the monorepo root by starting from the current working directory (SDK root)
+    // Find the monorepo root by starting from the SDK root directory
     // and walking up to find the monorepo root
-    let currentDir = path.resolve(process.cwd());
+    let currentDir = path.resolve(sdkRoot);
     let monorepoRoot = null;
 
     // Walk up the directory tree to find the monorepo root
@@ -147,8 +150,11 @@ export async function setupTarballEnvironment({
       JSON.stringify(packageJson, null, 2),
     );
 
-    // Get current working directory (should be SDK root)
-    const sdkRoot = process.cwd();
+    // Find SDK root directory (relative to current working directory)
+    const currentDir = process.cwd();
+    const sdkRoot = currentDir.includes("/playground")
+      ? path.join(currentDir, "../sdk")
+      : currentDir;
 
     // Pack the SDK
     log(`📦 Packing SDK from ${sdkRoot}...`);
@@ -216,7 +222,7 @@ export async function setupTarballEnvironment({
     }
 
     // Copy wrangler cache from monorepo to temp directory for deployment tests
-    await copyWranglerCache(targetDir);
+    await copyWranglerCache(targetDir, sdkRoot);
 
     // Cleanup function
     const cleanup = async () => {
