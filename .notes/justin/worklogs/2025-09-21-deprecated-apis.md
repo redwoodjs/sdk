@@ -43,3 +43,33 @@ export interface RequestInfo<Params = any, AppContext = DefaultAppContext> {
 6.  **`sdk/src/runtime/lib/router.test.ts`**: Removed the `headers` property from the `mockRequestInfo` object in the tests.
 
 After making these changes, I ran the TypeScript compiler to ensure there were no type errors.
+
+---
+
+## PR Description
+
+This change removes the deprecated `headers` property from the `RequestInfo` interface to simplify the API. All response header modifications should now be done through the `response.headers` object.
+
+### BREAKING CHANGE
+
+The `headers` property on the `RequestInfo` object has been removed. Code that previously used `requestInfo.headers` to set response headers will no longer work.
+
+### Migration Guide
+
+To update your code, replace any usage of `requestInfo.headers` with `requestInfo.response.headers`.
+
+**Before:**
+
+```typescript
+const myMiddleware = (requestInfo) => {
+  requestInfo.headers.set('X-Custom-Header', 'my-value');
+};
+```
+
+**After:**
+
+```typescript
+const myMiddleware = (requestInfo) => {
+  requestInfo.response.headers.set('X-Custom-Header', 'my-value');
+};
+```
