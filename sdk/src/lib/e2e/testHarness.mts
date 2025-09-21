@@ -199,7 +199,9 @@ export async function createDevServer(): Promise<DevServerInstance> {
   const env = getPlaygroundEnvironment();
   const devResult = await runDevServer("pnpm", env.projectDir);
 
-  const serverId = `devServer-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  const serverId = `devServer-${Date.now()}-${Math.random()
+    .toString(36)
+    .substring(2, 9)}`;
 
   // Register automatic cleanup
   registerCleanupTask({
@@ -235,7 +237,9 @@ export async function createDeployment(): Promise<DeploymentInstance> {
     resourceUniqueKey,
   );
 
-  const deploymentId = `deployment-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  const deploymentId = `deployment-${Date.now()}-${Math.random()
+    .toString(36)
+    .substring(2, 9)}`;
 
   // Register automatic cleanup
   registerCleanupTask({

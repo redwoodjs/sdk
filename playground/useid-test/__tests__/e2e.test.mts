@@ -144,7 +144,7 @@ describe("useId Playground", () => {
     },
   );
 
-  testDevAndDeploy.only(
+  testDevAndDeploy(
     "mixed page maintains server IDs and hydrates client IDs consistently",
     async ({ page, url }) => {
       await page.goto(`${url}/mixed`);
@@ -221,8 +221,8 @@ describe("useId Playground", () => {
       );
 
       // Verify all IDs follow the expected pattern
-      expect(initialServerIds["mixed-server-id-1"]).toMatch(/^_R_\w+_$/);
-      expect(initialServerIds["mixed-server-id-2"]).toMatch(/^_R_\w+_$/);
+      expect(initialServerIds["mixed-server-id-1"]).toMatch(/^_S_\w+_$/);
+      expect(initialServerIds["mixed-server-id-2"]).toMatch(/^_S_\w+_$/);
       expect(initialClientIds["mixed-first-client-id-1"]).toMatch(/^_R_\w+_$/);
       expect(initialClientIds["mixed-first-client-id-2"]).toMatch(/^_R_\w+_$/);
       expect(initialClientIds["mixed-second-client-id-1"]).toMatch(/^_R_\w+_$/);

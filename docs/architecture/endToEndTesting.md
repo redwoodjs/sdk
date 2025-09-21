@@ -53,6 +53,18 @@ Playground projects use `workspace:*` in their source `package.json` files purel
 
 However, this link is **only for the source code**. During test execution, the test runner overrides this by installing the SDK from a freshly packed tarball, ensuring that the test validates the packaged code, not the local source via a symlink. This maintains a consistent and realistic testing methodology across all end-to-end tests.
 
+### Q: Why not use a more integrated E2E testing framework like Playwright?
+
+Our choice to use a combination of `vitest`, `puppeteer-core`, and custom scripts is a pragmatic one driven by the specific needs of testing a framework rather than a web application.
+
+1.  **Flexibility and Control:** As a framework, we require fine-grained control over the entire testing process, including setting up dev servers, triggering deployments, and programmatically interacting with the browser at a low level. Our custom scripts, built on `puppeteer-core`, provide this flexibility. We started with this approach for our initial smoke tests and extended it for playground E2E tests to reuse battle-tested code.
+
+2.  **Framework-Specific Testing Scenarios:** Our testing needs go beyond typical application testing. For instance, we need to test how the framework handles file system changes (e.g., for HMR). More opinionated, all-in-one frameworks like Playwright can sometimes create limitations that make these kinds of tests difficult to implement reliably.
+
+3.  **Lightweight Test Harness:** `vitest` serves as a lightweight test harness on top of our custom infrastructure. It provides the familiar test structure (`test`, `expect`, etc.) without imposing a rigid, opinionated structure that could conflict with our need for orchestration flexibility.
+
+This stack gives us the right balance: the power of low-level browser automation where we need it, and a simple, unopinionated test runner to structure our test suites.
+
 ## Test Execution
 
 ### Running Tests Locally
