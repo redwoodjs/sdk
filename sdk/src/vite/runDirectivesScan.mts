@@ -126,7 +126,10 @@ export const runDirectivesScan = async ({
       return;
     }
 
-    const absoluteEntries = entries.map((entry) =>
+    // Filter out virtual modules since they can't be scanned by esbuild
+    const realEntries = entries.filter((entry) => !entry.includes("virtual:"));
+
+    const absoluteEntries = realEntries.map((entry) =>
       path.resolve(rootConfig.root, entry),
     );
 

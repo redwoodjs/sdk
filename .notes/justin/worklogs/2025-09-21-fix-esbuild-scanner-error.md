@@ -44,8 +44,28 @@ The framework includes a custom scanner that uses `esbuild` to find `"use client
 
 #### Problem
 
-A recent update to `vite` (from `7.1.5` to `7.1.6`) brought in a newer version of `esbuild` (from `^0.23.0` to `^0.24.0`) which contains a breaking change. The new `esbuild` version requires an `outdir` to be specified when bundling multiple entry points, even if the build is not configured to write files to disk (`write: false`). Our scanner uses multiple entry points, and this change caused it to fail.
+ recent update to `vite` (from `7.1.5` to `7.1.6`) brought in a newer version of `esbuild` (from `^0.23.0` to `^0.24.0`) which contains a breaking change. The new `esbuild` version requires an `outdir` to be specified when bundling multiple entry points, even if the build is not configured to write files to disk (`write: false`). Our scanner uses multiple entry points, and this change caused it to fail.
 
 #### Solution
 
 The `esbuild` configuration for the scanner is updated to include an `outdir`. A path to a temporary system directory is used for this purpose. Because the scanner is still configured with `write: false`, no files are actually written to the disk. This change satisfies the new requirement from `esbuild` and resolves the error.
+
+## Follow-up Issue
+
+After applying the fix, a new error appeared:
+
+```
+error: The entry point "/Users/justin/rw/worktrees/sdk_renovate-starter-peer-deps/playground/hello-world/virtual:cloudflare/worker-entry" cannot be marked as external
+```
+
+This suggests that the scanner is now encountering a virtual module (`virtual:cloudflare/worker-entry`) and trying to mark it as external, but esbuild doesn't allow virtual modules to be external. This might be related to the Cloudflare Vite plugin update in the dependency changes.
+
+Need to investigate how to handle virtual modules in the scanner's esbuild configuration.
+
+## Additional Fix
+
+The issue is that the scanner is receiving virtual modules (like `virtual:cloudflare/worker-entry`) as entry points from the Vite configuration. Virtual modules cannot be resolved to absolute file paths and cannot be marked as external in esbuild.
+
+The solution is to filter out virtual modules from the entry points before passing them to esbuild, since virtual modules don't contain actual source code that can be scanned for directives anyway.
+
+Applied fix: Added a filter to remove any entry that contains `virtual:` before processing the entries for the esbuild scan.
