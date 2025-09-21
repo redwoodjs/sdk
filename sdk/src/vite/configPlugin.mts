@@ -1,6 +1,6 @@
 import { Plugin } from "vite";
 import path, { resolve } from "node:path";
-import { InlineConfig } from "vite";
+import { InlineConfig, ViteBuilder } from "vite";
 import enhancedResolve from "enhanced-resolve";
 import debug from "debug";
 
@@ -194,7 +194,7 @@ export const configPlugin = ({
         hmr: true,
       },
       builder: {
-        async buildApp(builder) {
+        async buildApp(builder: ViteBuilder) {
           await buildApp({
             builder,
             projectRootDir,

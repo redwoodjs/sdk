@@ -53,6 +53,49 @@ The solution is to filter out virtual modules from the entry points before passi
 
 Applied fix: Added a filter to remove any entry that contains `virtual:` before processing the entries for the esbuild scan.
 
+#### Solution
+
+Three fixes were applied to resolve the compatibility issues:
+
+1. **Added `outdir` parameter**: The `esbuild` configuration now includes a path to the project's intermediate builds directory. Because the scanner is still configured with `write: false`, no files are actually written to disk. This satisfies the new requirement from `esbuild` while avoiding potential collisions between multiple projects.
+
+2. **Filter virtual modules**: Entry points containing `virtual:` are now filtered out before being passed to esbuild, since virtual modules don't contain actual source code that can be scanned for directives.
+
+3. **Fix plugin type compatibility**: Added explicit TypeScript types to plugin methods (`HotUpdateOptions` for `hotUpdate` and `ViteBuilder` for `buildApp`) to ensure compatibility between Vite versions.
+
+## CI Type Compatibility Issue
+
+After fixing the scanner issues, CI is now failing with TypeScript errors related to Vite type incompatibilities. The error shows that the SDK (compiled against Vite `7.1.5`) has incompatible types with the starters using Vite `7.1.6`.
+
+Key incompatibilities:
+- `BuilderOptions` and `ViteBuilder` types
+- `BuildEnvironment` and plugin interfaces 
+- `HotUpdateOptions` and `WebSocketServer` types
+
+This suggests that Vite `7.1.6` introduced breaking changes to its TypeScript interfaces. The SDK needs to be updated to handle these type changes or the dependency versions need to be aligned.
+
+## Investigation: Vite Type Compatibility
+
+Analyzed the CI error and identified the specific type incompatibilities:
+
+1. **HotUpdateOptions interface**: The `hotUpdate` method in `miniflareHMRPlugin.mts` was using an untyped parameter, causing conflicts between Vite versions.
+2. **ViteBuilder interface**: The `buildApp` method in `configPlugin.mts` was using an untyped parameter.
+3. **WebSocketServer interface**: The error shows that `ctx.server.ws` is missing the `[isWebSocketServer]` property in the newer version.
+
+## Type Compatibility Fixes
+
+Applied the following fixes to resolve the type incompatibilities:
+
+1. **Updated miniflareHMRPlugin.mts**:
+   - Added `HotUpdateOptions` import from Vite
+   - Explicitly typed the `hotUpdate` method parameter: `async hotUpdate(ctx: HotUpdateOptions)`
+
+2. **Updated configPlugin.mts**:
+   - Added `ViteBuilder` import from Vite  
+   - Explicitly typed the `buildApp` method parameter: `async buildApp(builder: ViteBuilder)`
+
+These changes ensure that the plugin methods use the correct TypeScript interfaces from the current Vite version, resolving the type compatibility issues between Vite 7.1.5 and 7.1.6.
+
 ## PR Description
 
 ### Description
@@ -65,16 +108,10 @@ The framework includes a custom scanner that uses `esbuild` to find `"use client
 
 #### Problem
 
-A recent update to `vite` (from `7.1.5` to `7.1.6`) brought in a newer version of `esbuild` (from `^0.23.0` to `^0.24.0`) which contains breaking changes that affected the scanner in two ways:
+A recent update to `vite` (from `7.1.5` to `7.1.6`) brought in a newer version of `esbuild` (from `^0.23.0` to `^0.24.0`) which contains breaking changes that affected the framework in three ways:
 
 1. The new `esbuild` version requires an `outdir` to be specified when bundling multiple entry points, even if the build is not configured to write files to disk (`write: false`). Our scanner uses multiple entry points, causing it to fail with "Must use 'outdir' when there are multiple input files".
 
 2. The scanner began receiving virtual modules (like `virtual:cloudflare/worker-entry`) as entry points, which cannot be marked as external in esbuild, causing "cannot be marked as external" errors.
 
-#### Solution
-
-Two fixes were applied to the scanner configuration:
-
-1. **Added `outdir` parameter**: The `esbuild` configuration now includes a path to the project's intermediate builds directory. Because the scanner is still configured with `write: false`, no files are actually written to disk. This satisfies the new requirement from `esbuild` while avoiding potential collisions between multiple projects.
-
-2. **Filter virtual modules**: Entry points containing `virtual:` are now filtered out before being passed to esbuild, since virtual modules don't contain actual source code that can be scanned for directives.
+3. TypeScript compatibility issues arose between the SDK (compiled against Vite 7.1.5) and starters using Vite 7.1.6, causing plugin interface mismatches.
