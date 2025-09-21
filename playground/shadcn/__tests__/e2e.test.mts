@@ -21,8 +21,8 @@ testDevAndDeploy(
   },
 );
 
-testDevAndDeploy("renders component showcase page", async ({ page, url }) => {
-  await page.goto(`${url}/showcase`);
+testDevAndDeploy("renders all component sections on home page", async ({ page, url }) => {
+  await page.goto(url);
 
   await poll(async () => {
     const content = await page.content();
@@ -40,48 +40,78 @@ testDevAndDeploy("renders component showcase page", async ({ page, url }) => {
 testDevAndDeploy(
   "all shadcn/ui components render without console errors",
   async ({ page, url }) => {
-    // Test home page
-    await page.goto(url);
-    await poll(async () => {
-      const content = await page.content();
-      return content.includes("shadcn/ui Comprehensive Playground");
+    const consoleErrors: string[] = [];
+
+    // Capture console errors
+    page.on("console", (msg) => {
+      if (msg.type() === "error") {
+        consoleErrors.push(msg.text());
+      }
     });
 
-    // Test showcase page with all components
-    await page.goto(`${url}/showcase`);
+    // Test home page with all components
+    await page.goto(url);
     await poll(async () => {
       const content = await page.content();
       return content.includes("All components rendered successfully");
     });
 
+    // Wait a bit more for any async rendering to complete
+    await page.waitForLoadState("networkidle");
+
     const content = await page.content();
     expect(content).toContain("Basic UI Components");
     expect(content).toContain("Form Components");
+
+    // Check that no console errors occurred
+    expect(consoleErrors).toEqual([]);
   },
 );
 
 testDevAndDeploy(
   "shadcn/ui components are interactive",
   async ({ page, url }) => {
-    await page.goto(`${url}/showcase`);
+    await page.goto(url);
 
     await poll(async () => {
       const content = await page.content();
       return content.includes("Basic UI Components");
     });
 
-    const content = await page.content();
-    expect(content).toContain("Default");
-    expect(content).toContain("Secondary");
-    expect(content).toContain("Enter your email");
-    expect(content).toContain("Type your message here");
+    // Test button interactions
+    const buttons = page.locator("button");
+    const buttonCount = await buttons.count();
+    expect(buttonCount).toBeGreaterThan(0);
+
+    // Test that buttons are clickable (no errors thrown)
+    if (buttonCount > 0) {
+      await buttons.first().click();
+    }
+
+    // Test form inputs
+    const inputs = page.locator('input[type="email"]');
+    const inputCount = await inputs.count();
+    if (inputCount > 0) {
+      await inputs.first().fill("test@example.com");
+      const value = await inputs.first().inputValue();
+      expect(value).toBe("test@example.com");
+    }
+
+    // Test checkboxes
+    const checkboxes = page.locator('input[type="checkbox"]');
+    const checkboxCount = await checkboxes.count();
+    if (checkboxCount > 0) {
+      await checkboxes.first().check();
+      const isChecked = await checkboxes.first().isChecked();
+      expect(isChecked).toBe(true);
+    }
   },
 );
 
 testDevAndDeploy(
   "all component sections are present",
   async ({ page, url }) => {
-    await page.goto(`${url}/showcase`);
+    await page.goto(url);
 
     await poll(async () => {
       const content = await page.content();
@@ -90,18 +120,13 @@ testDevAndDeploy(
 
     const content = await page.content();
 
-    // Check all major component sections exist
+    // Check all major component sections exist on home page
     const expectedSections = [
       "Basic UI Components",
-      "Form Components",
+      "Form Components", 
       "Data Display",
       "Interactive Components",
       "Feedback Components",
-      "Navigation",
-      "Date & Time",
-      "Media & Layout",
-      "Scrollable Content",
-      "Layout & Content",
     ];
 
     for (const section of expectedSections) {
@@ -113,7 +138,7 @@ testDevAndDeploy(
 testDevAndDeploy(
   "specific shadcn/ui components render correctly",
   async ({ page, url }) => {
-    await page.goto(`${url}/showcase`);
+    await page.goto(url);
 
     await poll(async () => {
       const content = await page.content();

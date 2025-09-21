@@ -3,7 +3,6 @@ import { render, route } from "rwsdk/router";
 
 import { Document } from "@/app/Document";
 import { Home } from "@/app/pages/Home";
-import { ComponentShowcase } from "@/app/pages/ComponentShowcase";
 import { setCommonHeaders } from "@/app/headers";
 
 export type AppContext = {};
@@ -14,5 +13,5 @@ export default defineApp([
     // setup ctx here
     ctx;
   },
-  render(Document, [route("/", Home), route("/showcase", ComponentShowcase)]),
+  render(Document, [route("/", Home)]),
 ]);
