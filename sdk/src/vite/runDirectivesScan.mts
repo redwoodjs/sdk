@@ -4,6 +4,7 @@ import { Environment, ResolvedConfig } from "vite";
 import fsp from "node:fs/promises";
 import { hasDirective } from "./hasDirective.mjs";
 import path from "node:path";
+import os from "node:os";
 import debug from "debug";
 import { getViteEsbuild } from "./getViteEsbuild.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
@@ -322,6 +323,7 @@ export const runDirectivesScan = async ({
       entryPoints: absoluteEntries,
       bundle: true,
       write: false,
+      outdir: path.join(os.tmpdir(), "rwsdk-directive-scan"),
       platform: "node",
       format: "esm",
       logLevel: "silent",
