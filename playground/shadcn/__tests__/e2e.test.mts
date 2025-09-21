@@ -21,21 +21,24 @@ testDevAndDeploy(
   },
 );
 
-testDevAndDeploy("renders all component sections on home page", async ({ page, url }) => {
-  await page.goto(url);
+testDevAndDeploy(
+  "renders all component sections on home page",
+  async ({ page, url }) => {
+    await page.goto(url);
 
-  await poll(async () => {
+    await poll(async () => {
+      const content = await page.content();
+      return content.includes("Basic UI Components");
+    });
+
     const content = await page.content();
-    return content.includes("Basic UI Components");
-  });
-
-  const content = await page.content();
-  expect(content).toContain("Basic UI Components");
-  expect(content).toContain("Form Components");
-  expect(content).toContain("Data Display");
-  expect(content).toContain("Interactive Components");
-  expect(content).toContain("Feedback Components");
-});
+    expect(content).toContain("Basic UI Components");
+    expect(content).toContain("Form Components");
+    expect(content).toContain("Data Display");
+    expect(content).toContain("Interactive Components");
+    expect(content).toContain("Feedback Components");
+  },
+);
 
 testDevAndDeploy(
   "all shadcn/ui components render without console errors",
@@ -123,7 +126,7 @@ testDevAndDeploy(
     // Check all major component sections exist on home page
     const expectedSections = [
       "Basic UI Components",
-      "Form Components", 
+      "Form Components",
       "Data Display",
       "Interactive Components",
       "Feedback Components",
