@@ -4,10 +4,10 @@ import { Environment, ResolvedConfig } from "vite";
 import fsp from "node:fs/promises";
 import { hasDirective } from "./hasDirective.mjs";
 import path from "node:path";
-import os from "node:os";
 import debug from "debug";
 import { getViteEsbuild } from "./getViteEsbuild.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
+import { INTERMEDIATES_OUTPUT_DIR } from "../lib/constants.mjs";
 import { externalModules } from "./constants.mjs";
 import {
   createViteAwareResolver,
@@ -326,7 +326,7 @@ export const runDirectivesScan = async ({
       entryPoints: absoluteEntries,
       bundle: true,
       write: false,
-      outdir: path.join(os.tmpdir(), "rwsdk-directive-scan"),
+      outdir: path.join(INTERMEDIATES_OUTPUT_DIR, "directive-scan"),
       platform: "node",
       format: "esm",
       logLevel: "silent",

@@ -75,6 +75,6 @@ A recent update to `vite` (from `7.1.5` to `7.1.6`) brought in a newer version o
 
 Two fixes were applied to the scanner configuration:
 
-1. **Added `outdir` parameter**: The `esbuild` configuration now includes a path to a temporary system directory. Because the scanner is still configured with `write: false`, no files are actually written to disk. This satisfies the new requirement from `esbuild`.
+1. **Added `outdir` parameter**: The `esbuild` configuration now includes a path to the project's intermediate builds directory. Because the scanner is still configured with `write: false`, no files are actually written to disk. This satisfies the new requirement from `esbuild` while avoiding potential collisions between multiple projects.
 
 2. **Filter virtual modules**: Entry points containing `virtual:` are now filtered out before being passed to esbuild, since virtual modules don't contain actual source code that can be scanned for directives.
