@@ -10,8 +10,6 @@ export interface RequestInfo<Params = any, AppContext = DefaultAppContext> {
   request: Request;
   params: Params;
   ctx: AppContext;
-  /** @deprecated: Use `response.headers` instead */
-  headers: Headers;
   rw: RwContext;
   cf: ExecutionContext;
   // context(justinvdm, 2025-08-18): Ensure headers is always available

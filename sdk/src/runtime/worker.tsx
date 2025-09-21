@@ -63,7 +63,6 @@ export const defineApp = <
           url.searchParams.has("__rsc") ||
           request.headers.get("accept")?.includes("text/x-component");
         const isAction = url.searchParams.has("__rsc_action_id");
-        const userHeaders = new Headers();
 
         const rw: RwContext = {
           Document: DefaultDocument,
@@ -82,7 +81,6 @@ export const defineApp = <
 
         const outerRequestInfo: RequestInfo<any, T["ctx"]> = {
           request,
-          headers: userHeaders,
           cf,
           params: {},
           ctx: {},
@@ -211,13 +209,6 @@ export const defineApp = <
         // context(justinvdm, 18 Mar 2025): In some cases, such as a .fetch() call to a durable object instance, or Response.redirect(),
         // we need to return a mutable response object.
         const mutableResponse = new Response(response.body, response);
-
-        // Merge user headers from the legacy headers object
-        for (const [key, value] of userHeaders.entries()) {
-          if (!response.headers.has(key)) {
-            mutableResponse.headers.set(key, value);
-          }
-        }
 
         // Merge headers from user response init (these take precedence)
         if (userResponseInit.headers) {

@@ -91,7 +91,6 @@ describe("defineRoutes - Request Handling Behavior", () => {
       request: new Request("http://localhost:3000/"),
       params: {},
       ctx: {},
-      headers: new Headers(),
       rw: {
         nonce: "test-nonce",
         Document: () => React.createElement("html"),
