@@ -53,16 +53,6 @@ The solution is to filter out virtual modules from the entry points before passi
 
 Applied fix: Added a filter to remove any entry that contains `virtual:` before processing the entries for the esbuild scan.
 
-#### Solution
-
-Three fixes were applied to resolve the compatibility issues:
-
-1. **Added `outdir` parameter**: The `esbuild` configuration now includes a path to the project's intermediate builds directory. Because the scanner is still configured with `write: false`, no files are actually written to disk. This satisfies the new requirement from `esbuild` while avoiding potential collisions between multiple projects.
-
-2. **Filter virtual modules**: Entry points containing `virtual:` are now filtered out before being passed to esbuild, since virtual modules don't contain actual source code that can be scanned for directives.
-
-3. **Fix plugin type compatibility**: Added explicit TypeScript types to plugin methods (`HotUpdateOptions` for `hotUpdate` and `ViteBuilder` for `buildApp`) to ensure compatibility between Vite versions.
-
 ## CI Type Compatibility Issue
 
 After fixing the scanner issues, CI is now failing with TypeScript errors related to Vite type incompatibilities. The error shows that the SDK (compiled against Vite `7.1.5`) has incompatible types with the starters using Vite `7.1.6`.
@@ -115,3 +105,13 @@ A recent update to `vite` (from `7.1.5` to `7.1.6`) brought in a newer version o
 2. The scanner began receiving virtual modules (like `virtual:cloudflare/worker-entry`) as entry points, which cannot be marked as external in esbuild, causing "cannot be marked as external" errors.
 
 3. TypeScript compatibility issues arose between the SDK (compiled against Vite 7.1.5) and starters using Vite 7.1.6, causing plugin interface mismatches.
+
+#### Solution
+
+Three fixes were applied to resolve the compatibility issues:
+
+1. **Added `outdir` parameter**: The `esbuild` configuration now includes a path to the project's intermediate builds directory. Because the scanner is still configured with `write: false`, no files are actually written to disk. This satisfies the new requirement from `esbuild` while avoiding potential collisions between multiple projects.
+
+2. **Filter virtual modules**: Entry points containing `virtual:` are now filtered out before being passed to esbuild, since virtual modules don't contain actual source code that can be scanned for directives.
+
+3. **Fix plugin type compatibility**: Added explicit TypeScript types to plugin methods (`HotUpdateOptions` for `hotUpdate` and `ViteBuilder` for `buildApp`) to ensure compatibility between Vite versions.
