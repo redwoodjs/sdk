@@ -5,7 +5,7 @@
 
 set -e
 
-MAX_RETRIES=3
+MAX_RETRIES=6
 RETRY_COUNT=0
 COMMAND="$@"
 
