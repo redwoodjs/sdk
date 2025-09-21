@@ -116,7 +116,7 @@ Both functions also have a `.skip` method for skipping individual tests (e.g., `
 import { expect } from "vitest";
 import {
   setupPlaygroundEnvironment,
-  testDevAndDeployment,
+  testDevAndDeploy,
   testDev,
   testDeploy,
   poll,
@@ -126,7 +126,7 @@ import {
 setupPlaygroundEnvironment(import.meta.url);
 
 // Test against both dev server and deployment
-testDevAndDeployment("renders Hello World", async ({ page, url }) => {
+testDevAndDeploy("renders Hello World", async ({ page, url }) => {
   await page.goto(url);
 
   await poll(async () => {
@@ -139,12 +139,12 @@ testDevAndDeployment("renders Hello World", async ({ page, url }) => {
 });
 
 // Skip both dev and deployment tests
-testDevAndDeployment.skip("skipped test", async ({ page, url }) => {
+testDevAndDeploy.skip("skipped test", async ({ page, url }) => {
   // This test will be skipped for both environments
 });
 
 // Run only this test (both dev and deployment)
-testDevAndDeployment.only("focused test", async ({ page, url }) => {
+testDevAndDeploy.only("focused test", async ({ page, url }) => {
   // Only this test will run
 });
 

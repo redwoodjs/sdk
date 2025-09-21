@@ -1,30 +1,23 @@
 import { describe, expect } from "vitest";
-import {
-  setupPlaygroundEnvironment,
-  testDevAndDeployment,
-  poll,
-} from "rwsdk/e2e";
+import { setupPlaygroundEnvironment, testDevAndDeploy, poll } from "rwsdk/e2e";
 
 setupPlaygroundEnvironment(import.meta.url);
 
 describe("Render APIs Playground", () => {
-  testDevAndDeployment(
-    "home page renders navigation",
-    async ({ page, url }) => {
-      await page.goto(url);
+  testDevAndDeploy("home page renders navigation", async ({ page, url }) => {
+    await page.goto(url);
 
-      await poll(async () => {
-        const content = await page.content();
-        return content.includes("Render APIs Test Playground");
-      });
+    await poll(async () => {
+      const content = await page.content();
+      return content.includes("Render APIs Test Playground");
+    });
 
-      expect(await page.content()).toContain("Render APIs Test Playground");
-      expect(await page.content()).toContain("renderToStream API Test");
-      expect(await page.content()).toContain("renderToString API Test");
-    },
-  );
+    expect(await page.content()).toContain("Render APIs Test Playground");
+    expect(await page.content()).toContain("renderToStream API Test");
+    expect(await page.content()).toContain("renderToString API Test");
+  });
 
-  testDevAndDeployment(
+  testDevAndDeploy(
     "renderToStream API works correctly",
     async ({ page, url }) => {
       await page.goto(`${url}/render-to-stream`);
@@ -44,7 +37,7 @@ describe("Render APIs Playground", () => {
     },
   );
 
-  testDevAndDeployment(
+  testDevAndDeploy(
     "renderToString API works correctly",
     async ({ page, url }) => {
       await page.goto(`${url}/render-to-string`);
@@ -64,25 +57,22 @@ describe("Render APIs Playground", () => {
     },
   );
 
-  testDevAndDeployment(
-    "both APIs render successfully",
-    async ({ page, url }) => {
-      // Test renderToStream page
-      await page.goto(`${url}/render-to-stream`);
-      await poll(async () => {
-        const content = await page.content();
-        return content.includes("renderToStream API Test");
-      });
+  testDevAndDeploy("both APIs render successfully", async ({ page, url }) => {
+    // Test renderToStream page
+    await page.goto(`${url}/render-to-stream`);
+    await poll(async () => {
+      const content = await page.content();
+      return content.includes("renderToStream API Test");
+    });
 
-      // Test renderToString page
-      await page.goto(`${url}/render-to-string`);
-      await poll(async () => {
-        const content = await page.content();
-        return content.includes("renderToString API Test");
-      });
+    // Test renderToString page
+    await page.goto(`${url}/render-to-string`);
+    await poll(async () => {
+      const content = await page.content();
+      return content.includes("renderToString API Test");
+    });
 
-      // Both APIs should render without errors
-      expect(await page.content()).toContain("renderToString API Test");
-    },
-  );
+    // Both APIs should render without errors
+    expect(await page.content()).toContain("renderToString API Test");
+  });
 });

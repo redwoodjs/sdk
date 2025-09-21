@@ -416,7 +416,7 @@ testDeploy.skip = (name: string, testFn?: any) => {
  * Unified test function that runs the same test against both dev server and deployment.
  * Automatically skips based on environment variables.
  */
-export function testDevAndDeployment(
+export function testDevAndDeploy(
   name: string,
   testFn: (context: {
     devServer?: DevServerInstance;
@@ -464,17 +464,17 @@ export function testDevAndDeployment(
 }
 
 /**
- * Skip version of testDevAndDeployment
+ * Skip version of testDevAndDeploy
  */
-testDevAndDeployment.skip = (name: string, testFn?: any) => {
+testDevAndDeploy.skip = (name: string, testFn?: any) => {
   test.skip(`${name} (dev)`, testFn || (() => {}));
   test.skip(`${name} (deployment)`, testFn || (() => {}));
 };
 
 /**
- * Only version of testDevAndDeployment
+ * Only version of testDevAndDeploy
  */
-testDevAndDeployment.only = (
+testDevAndDeploy.only = (
   name: string,
   testFn: (context: {
     devServer?: DevServerInstance;

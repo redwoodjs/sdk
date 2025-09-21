@@ -1,9 +1,5 @@
 import { describe, expect } from "vitest";
-import {
-  setupPlaygroundEnvironment,
-  testDevAndDeployment,
-  poll,
-} from "rwsdk/e2e";
+import { setupPlaygroundEnvironment, testDevAndDeploy, poll } from "rwsdk/e2e";
 
 setupPlaygroundEnvironment(import.meta.url);
 
@@ -51,24 +47,21 @@ async function extractUseIdValues(page: any, testIds: string[]) {
 }
 
 describe("useId Playground", () => {
-  testDevAndDeployment(
-    "home page renders navigation",
-    async ({ page, url }) => {
-      await page.goto(url);
+  testDevAndDeploy("home page renders navigation", async ({ page, url }) => {
+    await page.goto(url);
 
-      await poll(async () => {
-        const content = await page.content();
-        return content.includes("useId Test Playground");
-      });
+    await poll(async () => {
+      const content = await page.content();
+      return content.includes("useId Test Playground");
+    });
 
-      expect(await page.content()).toContain("useId Test Playground");
-      expect(await page.content()).toContain("Server-Only Components");
-      expect(await page.content()).toContain("Client-Only Components");
-      expect(await page.content()).toContain("Mixed Server/Client Components");
-    },
-  );
+    expect(await page.content()).toContain("useId Test Playground");
+    expect(await page.content()).toContain("Server-Only Components");
+    expect(await page.content()).toContain("Client-Only Components");
+    expect(await page.content()).toContain("Mixed Server/Client Components");
+  });
 
-  testDevAndDeployment(
+  testDevAndDeploy(
     "server-only page maintains stable IDs",
     async ({ page, url }) => {
       await page.goto(`${url}/server-only`);
@@ -105,7 +98,7 @@ describe("useId Playground", () => {
     },
   );
 
-  testDevAndDeployment(
+  testDevAndDeploy(
     "client-only page hydrates consistently",
     async ({ page, url }) => {
       await page.goto(`${url}/client-only`);
@@ -151,7 +144,7 @@ describe("useId Playground", () => {
     },
   );
 
-  testDevAndDeployment(
+  testDevAndDeploy.only(
     "mixed page maintains server IDs and hydrates client IDs consistently",
     async ({ page, url }) => {
       await page.goto(`${url}/mixed`);

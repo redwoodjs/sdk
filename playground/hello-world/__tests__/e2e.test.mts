@@ -1,13 +1,9 @@
 import { expect } from "vitest";
-import {
-  setupPlaygroundEnvironment,
-  testDevAndDeployment,
-  poll,
-} from "rwsdk/e2e";
+import { setupPlaygroundEnvironment, testDevAndDeploy, poll } from "rwsdk/e2e";
 
 setupPlaygroundEnvironment(import.meta.url);
 
-testDevAndDeployment("renders Hello World", async ({ page, url }) => {
+testDevAndDeploy("renders Hello World", async ({ page, url }) => {
   await page.goto(url);
 
   await poll(async () => {
