@@ -32,23 +32,6 @@ The fix is to provide an `outdir` to the `esbuild.build` call in `runDirectivesS
 
 I will add an `outdir` to the esbuild configuration.
 
-## PR Description
-
-### Description
-
-This PR fixes a crash in the directive scanner that occurred after a dependency update.
-
-#### Context
-
-The framework includes a custom scanner that uses `esbuild` to find `"use client"` and `"use server"` directives. To keep the scanning process consistent with Vite's behavior and to avoid introducing an extra dependency, this scanner is designed to use the same `esbuild` version that Vite itself uses.
-
-#### Problem
-
- recent update to `vite` (from `7.1.5` to `7.1.6`) brought in a newer version of `esbuild` (from `^0.23.0` to `^0.24.0`) which contains a breaking change. The new `esbuild` version requires an `outdir` to be specified when bundling multiple entry points, even if the build is not configured to write files to disk (`write: false`). Our scanner uses multiple entry points, and this change caused it to fail.
-
-#### Solution
-
-The `esbuild` configuration for the scanner is updated to include an `outdir`. A path to a temporary system directory is used for this purpose. Because the scanner is still configured with `write: false`, no files are actually written to the disk. This change satisfies the new requirement from `esbuild` and resolves the error.
 
 ## Follow-up Issue
 
@@ -69,3 +52,29 @@ The issue is that the scanner is receiving virtual modules (like `virtual:cloudf
 The solution is to filter out virtual modules from the entry points before passing them to esbuild, since virtual modules don't contain actual source code that can be scanned for directives anyway.
 
 Applied fix: Added a filter to remove any entry that contains `virtual:` before processing the entries for the esbuild scan.
+
+## PR Description
+
+### Description
+
+This PR fixes crashes in the directive scanner that occurred after dependency updates.
+
+#### Context
+
+The framework includes a custom scanner that uses `esbuild` to find `"use client"` and `"use server"` directives. To keep the scanning process consistent with Vite's behavior and to avoid introducing an extra dependency, this scanner is designed to use the same `esbuild` version that Vite itself uses.
+
+#### Problem
+
+A recent update to `vite` (from `7.1.5` to `7.1.6`) brought in a newer version of `esbuild` (from `^0.23.0` to `^0.24.0`) which contains breaking changes that affected the scanner in two ways:
+
+1. The new `esbuild` version requires an `outdir` to be specified when bundling multiple entry points, even if the build is not configured to write files to disk (`write: false`). Our scanner uses multiple entry points, causing it to fail with "Must use 'outdir' when there are multiple input files".
+
+2. The scanner began receiving virtual modules (like `virtual:cloudflare/worker-entry`) as entry points, which cannot be marked as external in esbuild, causing "cannot be marked as external" errors.
+
+#### Solution
+
+Two fixes were applied to the scanner configuration:
+
+1. **Added `outdir` parameter**: The `esbuild` configuration now includes a path to a temporary system directory. Because the scanner is still configured with `write: false`, no files are actually written to disk. This satisfies the new requirement from `esbuild`.
+
+2. **Filter virtual modules**: Entry points containing `virtual:` are now filtered out before being passed to esbuild, since virtual modules don't contain actual source code that can be scanned for directives.
