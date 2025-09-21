@@ -478,7 +478,6 @@ export async function runRelease(
           {
             reject: false, // Add reject: false to prevent uncaught promise rejections
             env: {
-              NODE_ENV: "production",
               RWSDK_RENAME_WORKER: "1",
               RWSDK_RENAME_DB: "1",
               ...process.env,
