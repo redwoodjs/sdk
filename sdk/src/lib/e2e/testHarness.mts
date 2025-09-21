@@ -241,23 +241,34 @@ export async function createDeployment(): Promise<DeploymentInstance> {
     .toString(36)
     .substring(2, 9)}`;
 
-  // Register automatic cleanup
+  // Register automatic cleanup (non-blocking for deployments)
   registerCleanupTask({
     id: deploymentId,
     type: "deployment",
     cleanup: async () => {
-      if (isRelatedToTest(deployResult.workerName, resourceUniqueKey)) {
-        await deleteWorker(
-          deployResult.workerName,
+      // Run deployment cleanup in background without blocking
+      const performCleanup = async () => {
+        if (isRelatedToTest(deployResult.workerName, resourceUniqueKey)) {
+          await deleteWorker(
+            deployResult.workerName,
+            env.projectDir,
+            resourceUniqueKey,
+          );
+        }
+        await deleteD1Database(
+          resourceUniqueKey,
           env.projectDir,
           resourceUniqueKey,
         );
-      }
-      await deleteD1Database(
-        resourceUniqueKey,
-        env.projectDir,
-        resourceUniqueKey,
-      );
+      };
+
+      // Start cleanup in background and return immediately
+      performCleanup().catch((error) => {
+        console.warn(
+          `Warning: Background deployment cleanup failed: ${(error as Error).message}`,
+        );
+      });
+      return Promise.resolve();
     },
   });
 
