@@ -86,3 +86,96 @@ This allows the badges to render properly as components while maintaining the vi
 - Removed stray closing ``` at the end
 
 The page now loads successfully without MDX parsing errors.
+
+## 7. Duplicate Title Fix
+
+**Issue**: Pages with experimental badges were showing duplicate titles (e.g., "Realtime" followed by "Realtime Experimental").
+
+**Root Cause**: Starlight automatically generates an H1 from the frontmatter `title`, and we were adding another H1 with the badge (`# Realtime <Badge>`), creating duplicate headings.
+
+**Solution**: Removed the manual H1 headings and placed the badge as the first element in the content, right after the auto-generated title. This provides clear visual indication without duplication:
+- `realtime.mdx`: Removed `# Realtime <Badge>`, kept just `<Badge>` at the top
+- `database.mdx`: Removed `# Database (D1) <Badge>`, kept just `<Badge>` at the top  
+- `database-do.mdx`: Removed `# Database (Durable Objects) <Badge>`, kept just `<Badge>` at the top
+
+All pages now display correctly with single titles and prominent experimental badges.
+
+## 9. Schema Extension Solution
+
+**Issue**: The `experimental` frontmatter field was not being recognized by Starlight, showing as `undefined` in the custom PageTitle component.
+
+**Root Cause**: Starlight's default `docsSchema()` only includes predefined fields. Custom frontmatter fields need to be explicitly defined in the content schema.
+
+**Solution**: Extended Starlight's schema in `content.config.ts`:
+```typescript
+schema: docsSchema({
+  extend: z.object({
+    experimental: z.boolean().optional(),
+  }),
+}),
+```
+
+**Result**: The experimental badges now render correctly on all experimental pages:
+- `realtime.mdx`: Shows "Realtime Experimental" 
+- `database.mdx`: Shows "Database (D1) Experimental"
+- `database-do.mdx`: Shows "Database (Durable Objects) Experimental"
+- Non-experimental pages (e.g., routing) correctly show no badges
+
+The component override system is working perfectly, providing a clean, maintainable solution for marking experimental APIs.
+
+## 8. Proper Badge Integration via Component Override
+
+**Issue**: The previous badge placement approaches (frontmatter titles, manual H1s, separate elements) didn't look quite right visually and weren't integrated properly into Starlight's title rendering.
+
+**Solution**: Implemented Starlight's component override system to customize title rendering:
+
+1. **Created custom PageTitle component** (`src/components/PageTitle.astro`):
+   - Accesses frontmatter via `Astro.locals.starlightRoute.entry.data`
+   - Conditionally renders badge when `experimental: true` is set
+   - Maintains proper styling and accessibility (id="_top")
+
+2. **Configured component override** in `astro.config.mjs`:
+   - Added `components: { PageTitle: './src/components/PageTitle.astro' }`
+   - Overrides Starlight's default title rendering
+
+3. **Updated frontmatter approach**:
+   - Added `experimental: true` field to experimental pages
+   - Removed manual badge elements from content
+   - Clean separation of metadata and content
+
+**Result**: Badges now render seamlessly integrated into the page titles, looking natural and professional without duplication or visual inconsistencies. The approach is maintainable and follows Starlight's recommended patterns.
+
+## 10. Missing Import Fix
+
+**Issue**: `authentication.mdx` was throwing a runtime error: "importedCodeStandardWorker is not defined"
+
+**Root Cause**: The file was using `importedCodeStandardWorker` in a code block but missing the import statement.
+
+**Solution**: Added the missing import:
+```typescript
+import importedCodeStandardWorker from "../../../../../starters/standard/src/worker.tsx?raw";
+```
+
+**Result**: Authentication page now loads successfully without runtime errors.
+
+## 11. Improved Badge Placement for Turnstile
+
+**Issue**: The experimental badge for Turnstile was placed inline with the Cloudflare documentation link, making it less contextually clear.
+
+**Solution**: Moved the experimental badge to a more appropriate location:
+- **Removed** badge from inline text: `[Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/) <Badge...>`
+- **Added** badge to section heading: `## Optional: Bot Protection with Turnstile <Badge text="Experimental" type="caution" />`
+
+**Result**: The experimental badge now clearly indicates that the entire Turnstile feature is experimental, rather than just the documentation link.
+
+## 12. Individual API Method Badge Placement
+
+**Issue**: The experimental badge for `renderToStream()` and `renderToString()` was placed on a combined heading, making it unclear which specific methods were experimental.
+
+**Solution**: Moved experimental badges to individual API method signatures:
+- **Changed** from: `### renderToStream() and renderToString() <Badge...>`
+- **To**: Individual badges on each method:
+  - `#### renderToStream(element[, options]): Promise<ReadableStream> <Badge text="Experimental" type="caution" />`
+  - `#### renderToString(element[, options]): Promise<string> <Badge text="Experimental" type="caution" />`
+
+**Result**: Each API method is now clearly marked as experimental at the point of reference, providing better granular information to developers.

@@ -13,14 +13,13 @@ import {
 } from "@astrojs/starlight/components";
 import importedCodeStandardAuthFunctions from "../../../../../starters/standard/src/app/pages/user/functions.ts?raw";
 import importedCodeStandardLogin from "../../../../../starters/standard/src/app/pages/user/Login.tsx?raw";
-
-import Passkey from "@/components/Passkey.astro";
+import importedCodeStandardWorker from "../../../../../starters/standard/src/worker.tsx?raw";
 
 ## Email & Password
 
 RedwoodSDK's built-in authentication uses sessions, which are stored in a
 
-We've baked authentication right into the [**standard starter**](https://github.com/redwoodjs/sdk/tree/main/starters/standard), giving you everything you need to handle users, sessions, and logins out of the box. The standard starter uses **passkeys ([WebAuthn](https://webauthn.guide/))** for passwordless authentication (keys can be shared on multiple devices), **session persistence via [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/)**, and **bot protection with [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/) <Badge text="Experimental" type="caution" />**. The database layer is powered by **[Cloudflare D1](https://developers.cloudflare.com/d1/)** and **[Prisma](https://www.prisma.io/)**.
+We've baked authentication right into the [**standard starter**](https://github.com/redwoodjs/sdk/tree/main/starters/standard), giving you everything you need to handle users, sessions, and logins out of the box. The standard starter uses **passkeys ([WebAuthn](https://webauthn.guide/))** for passwordless authentication (keys can be shared on multiple devices), **session persistence via [Cloudflare Durable Objects](https://developers.cloudflare.com/durable-objects/)**, and **bot protection with [Cloudflare Turnstile](https://developers.cloudflare.com/turnstile/)**. The database layer is powered by **[Cloudflare D1](https://developers.cloudflare.com/d1/)** and **[Prisma](https://www.prisma.io/)**.
 
 ## Setup
 
@@ -91,7 +90,7 @@ npx wrangler secret put AUTH_SECRET_KEY
 
 Never use the same secret key for development and production environments, and avoid committing your secret keys to version control.
 
-## Optional: Bot Protection with Turnstile
+## Optional: Bot Protection with Turnstile <Badge text="Experimental" type="caution" />
 
 You can optionally enable bot protection for user registration using Cloudflare Turnstile. To enable this:
 

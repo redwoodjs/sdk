@@ -106,9 +106,9 @@ RedwoodSDK also provides a way to render your React Server Components imperative
 To render your component tree to a [`ReadableStream`](https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream)
 
 
-### `renderToStream()` and `renderToString()` <Badge text="Experimental" type="caution" />
+### `renderToStream()` and `renderToString()`
 
-#### `renderToStream(element[, options]): Promise<ReadableStream>`
+#### `renderToStream(element[, options]): Promise<ReadableStream>` <Badge text="Experimental" type="caution" />
 
 Takes in a React Server Component (can be a client component or server component), and returns a stream that decodes to html.
 
@@ -125,7 +125,7 @@ const response = new Response(stream, {
 * `injectRSCPayload = false`: Whether to inject the corresponding RSC payload for the React Server Component to use for client-side hydration
 * `onError`: A callback function called with the relevant error as the only paramter if any errors happen during rendering
 
-#### `renderToString(element[, options]): Promise<string>`
+#### `renderToString(element[, options]): Promise<string>` <Badge text="Experimental" type="caution" />
 
 Takes in a React Server Component (can be a client component or server component), and returns an html string.
 
