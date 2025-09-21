@@ -95,7 +95,10 @@ export async function runDevServer(
 
     // Start dev server with stdout pipe to capture URL
     // Create environment variables object
-    const env = { ...process.env };
+    const env: Record<string, string> = {
+      ...process.env,
+      NODE_ENV: "development",
+    };
 
     // Disable colors when running in CI mode to make URL parsing more reliable
     if (inCIMode) {

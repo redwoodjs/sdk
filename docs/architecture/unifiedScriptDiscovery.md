@@ -8,15 +8,33 @@ This set is populated from two different sources at two different times, allowin
 
 **A) Static Entry Points from the `Document`**
 
-During the build, a simple Vite plugin scans `Document.tsx` files. When it finds a `<script>` tag that looks like a client entry point (e.g., `<script src="/src/client.tsx">`), it injects a tiny, stateless piece of code. This code runs on the server during the `Document` render and performs a side effect: it adds the entry point's path to our `scriptsToBeLoaded` set.
+A core architectural challenge is balancing the need for React to control the client entry script for hydration purposes against our philosophy of having the user explicitly declare that script in their `Document.tsx`. Our build-time transformation is the bridge that resolves this conflict.
+
+During the build, our `transformJsxScriptTagsPlugin` scans `Document.tsx` files. When it finds a `<script>` tag that acts as the main client entry point (either via a `src` attribute or an inline `import()`), it removes the script tag from the AST and replaces it with a server-side side-effect. This side-effect populates one of two new sets on the `requestInfo` object: `entryScripts` for external scripts or `inlineScripts` for inline ones.
+
+For example, a script tag is transformed at build time like this:
 
 ```diff
 - jsx("script", { src: "/src/client.tsx" })
 + (
++   (requestInfo.rw.entryScripts.add("/src/client.tsx")),
 +   (requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
-+   jsx("script", { src: "/src/client.tsx" })
++   null
 + )
 ```
+
+And a similar transformation is applied for inline scripts:
+
+```diff
+- jsx("script", { children: "import('/src/client.tsx')" })
++ (
++   (requestInfo.rw.inlineScripts.add("import('/src/client.tsx')")),
++   (requestInfo.rw.scriptsToBeLoaded.add("/src/client.tsx")),
++   null
++ )
+```
+
+This process allows the runtime to delegate the rendering of the entry script to React, which is critical for solving hydration issues, while still discovering the entry point at build time. The entry point is also added to the `scriptsToBeLoaded` set for dependency tracking.
 
 **B) Dynamic Components from the RSC Stream**
 

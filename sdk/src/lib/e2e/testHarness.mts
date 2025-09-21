@@ -36,10 +36,8 @@ interface DeploymentInstance {
 }
 
 // Environment variable flags for skipping tests
-const SKIP_DEV_SERVER_TESTS =
-  process.env.RWSDK_PLAYGROUND_SKIP_DEV_SERVER_TESTS === "1";
-const SKIP_DEPLOYMENT_TESTS =
-  process.env.RWSDK_PLAYGROUND_SKIP_DEPLOYMENT_TESTS === "1";
+const SKIP_DEV_SERVER_TESTS = process.env.RWSDK_SKIP_DEV === "1";
+const SKIP_DEPLOYMENT_TESTS = process.env.RWSDK_SKIP_DEPLOY === "1";
 
 // Global test environment state
 let globalPlaygroundEnv: PlaygroundEnvironment | null = null;
@@ -117,14 +115,51 @@ function getProjectDirectory(): string {
 }
 
 /**
+ * Derive the playground directory from import.meta.url
+ */
+function getPlaygroundDirFromImportMeta(importMetaUrl: string): string {
+  const url = new URL(importMetaUrl);
+  const testFilePath = url.pathname;
+
+  // Extract playground name from path like: /path/to/playground/PLAYGROUND_NAME/__tests__/e2e.test.mts
+  const playgroundMatch = testFilePath.match(
+    /\/playground\/([^\/]+)\/__tests__\//,
+  );
+
+  if (playgroundMatch) {
+    const playgroundName = playgroundMatch[1];
+    // Return the absolute path to the playground directory
+    const playgroundPath = testFilePath.replace(/\/__tests__\/.*$/, "");
+    return playgroundPath;
+  }
+
+  throw new Error(
+    `Could not determine playground directory from import.meta.url: ${importMetaUrl}`,
+  );
+}
+
+/**
  * Sets up a playground environment for the entire test suite.
  * Automatically registers beforeAll and afterAll hooks.
+ *
+ * @param sourceProjectDir - Explicit path to playground directory, or import.meta.url to auto-detect
  */
 export function setupPlaygroundEnvironment(sourceProjectDir?: string): void {
   ensureHooksRegistered();
 
   beforeAll(async () => {
-    const projectDir = sourceProjectDir || getProjectDirectory();
+    let projectDir: string;
+
+    if (!sourceProjectDir) {
+      projectDir = getProjectDirectory();
+    } else if (sourceProjectDir.startsWith("file://")) {
+      // This is import.meta.url, derive the playground directory
+      projectDir = getPlaygroundDirFromImportMeta(sourceProjectDir);
+    } else {
+      // This is an explicit path
+      projectDir = sourceProjectDir;
+    }
+
     console.log(`Setting up playground environment from ${projectDir}...`);
 
     const tarballEnv = await setupTarballEnvironment({
@@ -158,15 +193,15 @@ export function getPlaygroundEnvironment(): PlaygroundEnvironment {
  */
 export async function createDevServer(): Promise<DevServerInstance> {
   if (SKIP_DEV_SERVER_TESTS) {
-    throw new Error(
-      "Dev server tests are skipped via RWSDK_PLAYGROUND_SKIP_DEV_SERVER_TESTS=1",
-    );
+    throw new Error("Dev server tests are skipped via RWSDK_SKIP_DEV=1");
   }
 
   const env = getPlaygroundEnvironment();
   const devResult = await runDevServer("pnpm", env.projectDir);
 
-  const serverId = `devServer-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  const serverId = `devServer-${Date.now()}-${Math.random()
+    .toString(36)
+    .substring(2, 9)}`;
 
   // Register automatic cleanup
   registerCleanupTask({
@@ -190,9 +225,7 @@ export async function createDevServer(): Promise<DevServerInstance> {
  */
 export async function createDeployment(): Promise<DeploymentInstance> {
   if (SKIP_DEPLOYMENT_TESTS) {
-    throw new Error(
-      "Deployment tests are skipped via RWSDK_PLAYGROUND_SKIP_DEPLOYMENT_TESTS=1",
-    );
+    throw new Error("Deployment tests are skipped via RWSDK_SKIP_DEPLOY=1");
   }
 
   const env = getPlaygroundEnvironment();
@@ -204,25 +237,38 @@ export async function createDeployment(): Promise<DeploymentInstance> {
     resourceUniqueKey,
   );
 
-  const deploymentId = `deployment-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+  const deploymentId = `deployment-${Date.now()}-${Math.random()
+    .toString(36)
+    .substring(2, 9)}`;
 
-  // Register automatic cleanup
+  // Register automatic cleanup (non-blocking for deployments)
   registerCleanupTask({
     id: deploymentId,
     type: "deployment",
     cleanup: async () => {
-      if (isRelatedToTest(deployResult.workerName, resourceUniqueKey)) {
-        await deleteWorker(
-          deployResult.workerName,
+      // Run deployment cleanup in background without blocking
+      const performCleanup = async () => {
+        if (isRelatedToTest(deployResult.workerName, resourceUniqueKey)) {
+          await deleteWorker(
+            deployResult.workerName,
+            env.projectDir,
+            resourceUniqueKey,
+          );
+        }
+        await deleteD1Database(
+          resourceUniqueKey,
           env.projectDir,
           resourceUniqueKey,
         );
-      }
-      await deleteD1Database(
-        resourceUniqueKey,
-        env.projectDir,
-        resourceUniqueKey,
-      );
+      };
+
+      // Start cleanup in background and return immediately
+      performCleanup().catch((error) => {
+        console.warn(
+          `Warning: Background deployment cleanup failed: ${(error as Error).message}`,
+        );
+      });
+      return Promise.resolve();
     },
   });
 
@@ -273,7 +319,9 @@ export async function cleanupDeployment(
  * Automatically registers cleanup to run after the test.
  */
 export async function createBrowser(): Promise<Browser> {
-  const browser = await launchBrowser();
+  // Check if we should run in headed mode for debugging
+  const headless = process.env.RWSDK_HEADLESS !== "false";
+  const browser = await launchBrowser(undefined, headless);
   const browserId = `browser-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
 
   // Register automatic cleanup
@@ -301,9 +349,9 @@ export async function createBrowser(): Promise<Browser> {
 
 /**
  * High-level test wrapper for dev server tests.
- * Automatically skips if RWSDK_PLAYGROUND_SKIP_DEV_SERVER_TESTS=1
+ * Automatically skips if RWSDK_SKIP_DEV=1
  */
-export function testDevServer(
+export function testDev(
   name: string,
   testFn: (context: {
     devServer: DevServerInstance;
@@ -333,17 +381,17 @@ export function testDevServer(
 }
 
 /**
- * Skip version of testDevServer
+ * Skip version of testDev
  */
-testDevServer.skip = (name: string, testFn?: any) => {
+testDev.skip = (name: string, testFn?: any) => {
   test.skip(name, testFn || (() => {}));
 };
 
 /**
  * High-level test wrapper for deployment tests.
- * Automatically skips if RWSDK_PLAYGROUND_SKIP_DEPLOYMENT_TESTS=1
+ * Automatically skips if RWSDK_SKIP_DEPLOY=1
  */
-export function testDeployment(
+export function testDeploy(
   name: string,
   testFn: (context: {
     deployment: DeploymentInstance;
@@ -373,10 +421,113 @@ export function testDeployment(
 }
 
 /**
- * Skip version of testDeployment
+ * Skip version of testDeploy
  */
-testDeployment.skip = (name: string, testFn?: any) => {
+testDeploy.skip = (name: string, testFn?: any) => {
   test.skip(name, testFn || (() => {}));
+};
+
+/**
+ * Unified test function that runs the same test against both dev server and deployment.
+ * Automatically skips based on environment variables.
+ */
+export function testDevAndDeploy(
+  name: string,
+  testFn: (context: {
+    devServer?: DevServerInstance;
+    deployment?: DeploymentInstance;
+    browser: Browser;
+    page: Page;
+    url: string;
+  }) => Promise<void>,
+) {
+  if (SKIP_DEV_SERVER_TESTS) {
+    test.skip(`${name} (dev)`, () => {});
+  } else {
+    test(`${name} (dev)`, async () => {
+      const devServer = await createDevServer();
+      const browser = await createBrowser();
+      const page = await browser.newPage();
+
+      await testFn({
+        devServer,
+        browser,
+        page,
+        url: devServer.url,
+      });
+      // Automatic cleanup handled by afterEach hooks
+    });
+  }
+
+  if (SKIP_DEPLOYMENT_TESTS) {
+    test.skip(`${name} (deployment)`, () => {});
+  } else {
+    test(`${name} (deployment)`, async () => {
+      const deployment = await createDeployment();
+      const browser = await createBrowser();
+      const page = await browser.newPage();
+
+      await testFn({
+        deployment,
+        browser,
+        page,
+        url: deployment.url,
+      });
+      // Automatic cleanup handled by afterEach hooks
+    });
+  }
+}
+
+/**
+ * Skip version of testDevAndDeploy
+ */
+testDevAndDeploy.skip = (name: string, testFn?: any) => {
+  test.skip(`${name} (dev)`, testFn || (() => {}));
+  test.skip(`${name} (deployment)`, testFn || (() => {}));
+};
+
+/**
+ * Only version of testDevAndDeploy
+ */
+testDevAndDeploy.only = (
+  name: string,
+  testFn: (context: {
+    devServer?: DevServerInstance;
+    deployment?: DeploymentInstance;
+    browser: Browser;
+    page: Page;
+    url: string;
+  }) => Promise<void>,
+) => {
+  if (!SKIP_DEV_SERVER_TESTS) {
+    test.only(`${name} (dev)`, async () => {
+      const devServer = await createDevServer();
+      const browser = await createBrowser();
+      const page = await browser.newPage();
+
+      await testFn({
+        devServer,
+        browser,
+        page,
+        url: devServer.url,
+      });
+    });
+  }
+
+  if (!SKIP_DEPLOYMENT_TESTS) {
+    test.only(`${name} (deployment)`, async () => {
+      const deployment = await createDeployment();
+      const browser = await createBrowser();
+      const page = await browser.newPage();
+
+      await testFn({
+        deployment,
+        browser,
+        page,
+        url: deployment.url,
+      });
+    });
+  }
 };
 
 /**

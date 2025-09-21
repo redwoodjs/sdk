@@ -89,11 +89,11 @@ You can skip dev server or deployment tests using environment variables. This is
 
 -   **Skip Dev Server Tests**:
     ```sh
-    RWSDK_PLAYGROUND_SKIP_DEV_SERVER_TESTS=1 pnpm test:e2e
+    RWSDK_SKIP_DEV=1 pnpm test:e2e
     ```
 -   **Skip Deployment Tests**:
     ```sh
-    RWSDK_PLAYGROUND_SKIP_DEPLOYMENT_TESTS=1 pnpm test:e2e
+    RWSDK_SKIP_DEPLOY=1 pnpm test:e2e
     ```
 
 #### Test API
@@ -116,15 +116,17 @@ Both functions also have a `.skip` method for skipping individual tests (e.g., `
 import { expect } from "vitest";
 import {
   setupPlaygroundEnvironment,
-  testDevServer,
-  testDeployment,
+  testDevAndDeploy,
+  testDev,
+  testDeploy,
   poll,
 } from "rwsdk/e2e";
 
 // Sets up the test environment for the suite (automatic cleanup)
-setupPlaygroundEnvironment();
+setupPlaygroundEnvironment(import.meta.url);
 
-testDevServer("renders Hello World on dev server", async ({ page, url }) => {
+// Test against both dev server and deployment
+testDevAndDeploy("renders Hello World", async ({ page, url }) => {
   await page.goto(url);
 
   await poll(async () => {
@@ -136,8 +138,23 @@ testDevServer("renders Hello World on dev server", async ({ page, url }) => {
   expect(content).toContain("Hello World");
 });
 
-testDeployment.skip("renders Hello World on deployment", async ({ page, url }) => {
-  // This test will be skipped
+// Skip both dev and deployment tests
+testDevAndDeploy.skip("skipped test", async ({ page, url }) => {
+  // This test will be skipped for both environments
+});
+
+// Run only this test (both dev and deployment)
+testDevAndDeploy.only("focused test", async ({ page, url }) => {
+  // Only this test will run
+});
+
+// You can still use individual test functions if needed
+testDev("dev-only test", async ({ page, url }) => {
+  // This only runs against dev server
+});
+
+testDeploy("deployment-only test", async ({ page, url }) => {
+  // This only runs against deployment
 });
 ```
 

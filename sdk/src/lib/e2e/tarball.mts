@@ -14,7 +14,6 @@ interface SetupTarballOptions {
 interface TarballEnvironment {
   targetDir: string;
   cleanup: () => Promise<void>;
-  tempDir: string;
   tarballPath: string;
 }
 
@@ -104,8 +103,7 @@ export async function setupTarballEnvironment({
   const randomId = crypto.randomBytes(4).toString("hex");
   const projectName = path.basename(projectDir);
   const tempDirName = `${projectName}-e2e-test-${randomId}`;
-  const tempDir = path.join(os.tmpdir(), tempDirName);
-  const targetDir = path.join(tempDir, projectName);
+  const targetDir = path.join(os.tmpdir(), tempDirName);
 
   log(`📁 Creating temp directory: ${targetDir}`);
 
@@ -232,8 +230,8 @@ export async function setupTarballEnvironment({
           await fs.promises.unlink(tarballPath);
         }
         // Remove temp directory
-        if (fs.existsSync(tempDir)) {
-          await fs.promises.rm(tempDir, { recursive: true, force: true });
+        if (fs.existsSync(targetDir)) {
+          await fs.promises.rm(targetDir, { recursive: true, force: true });
         }
       } catch (error) {
         console.warn(
@@ -245,14 +243,13 @@ export async function setupTarballEnvironment({
     return {
       targetDir,
       cleanup,
-      tempDir,
       tarballPath,
     };
   } catch (error) {
     // Cleanup on error
     try {
-      if (fs.existsSync(tempDir)) {
-        await fs.promises.rm(tempDir, { recursive: true, force: true });
+      if (fs.existsSync(targetDir)) {
+        await fs.promises.rm(targetDir, { recursive: true, force: true });
       }
     } catch (cleanupError) {
       console.warn(

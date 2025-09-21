@@ -40,8 +40,8 @@ I will set up a new end-to-end testing system by building on the existing smoke 
     *   **Example Usage:**
         ```typescript
         // Tests can be skipped via environment variables
-        // RWSDK_PLAYGROUND_SKIP_DEV_SERVER_TESTS=1
-        // RWSDK_PLAYGROUND_SKIP_DEPLOYMENT_TESTS=1
+        // RWSDK_SKIP_DEV=1
+        // RWSDK_SKIP_DEPLOY=1
 
         testDevServer('it does something for dev', async ({ page, url, projectDir }) => {
           // do some expectation with url or puppeteer page
@@ -225,8 +225,8 @@ The playground E2E test infrastructure is now complete and ready for use. The re
 Successfully implemented the missing `testDevServer` and `testDeployment` wrapper functions that provide:
 
 1. **Automatic Environment Variable Skipping**:
-   - `RWSDK_PLAYGROUND_SKIP_DEV_SERVER_TESTS=1` automatically skips all dev server tests
-   - `RWSDK_PLAYGROUND_SKIP_DEPLOYMENT_TESTS=1` automatically skips all deployment tests
+   - `RWSDK_SKIP_DEV=1` automatically skips all dev server tests
+   - `RWSDK_SKIP_DEPLOY=1` automatically skips all deployment tests
 
 2. **Manual Skip Support**:
    - `testDevServer.skip()` for programmatic skipping
@@ -280,7 +280,7 @@ Successfully implemented and tested the playground E2E tests on GitHub Actions C
 
 3. **Proper Integration**: The workflow follows the same pattern as existing smoke tests, includes proper security checks for fork PRs, and handles artifact uploads.
 
-4. **Environment Variables**: The workflow correctly skips deployment tests using `RWSDK_PLAYGROUND_SKIP_DEPLOYMENT_TESTS=1` since Cloudflare credentials aren't available in the test environment.
+4. **Environment Variables**: The workflow correctly skips deployment tests using `RWSDK_SKIP_DEPLOY=1` since Cloudflare credentials aren't available in the test environment.
 
 The playground E2E test infrastructure is now fully complete and production-ready.
 
