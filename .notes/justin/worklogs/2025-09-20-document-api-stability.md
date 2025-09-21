@@ -56,3 +56,33 @@ This is the final, revised list of public APIs based on user feedback, along wit
 | **`rwsdk/realtime/*`** | (all exports)             | **Experimental** | Yes (`core/realtime.mdx`)                           |
 | **`rwsdk/debug`**      | `debug()`                 | **Experimental** | No                                                  |
 | **`rwsdk/constants`**  | `IS_DEV`                  | Internal       | No                                                  |
+
+## 5. Badge Rendering Fix
+
+**Issue**: Badges in page titles were rendering as plain text instead of HTML components.
+
+**Root Cause**: JSX components (`<Badge>`) were placed in frontmatter `title` fields, which are YAML metadata and don't support JSX rendering.
+
+**Solution**: Moved badges from frontmatter titles to H1 headings in the content:
+- `database.mdx`: `title: Database (D1) <Badge...>` → `# Database (D1) <Badge...>`
+- `database-do.mdx`: `title: Database (Durable Objects) <Badge...>` → `# Database (Durable Objects) <Badge...>`  
+- `realtime.mdx`: `title: Realtime <Badge...>` → `# Realtime <Badge...>`
+
+This allows the badges to render properly as components while maintaining the visual hierarchy.
+
+## 6. MDX Parsing Error Fix
+
+**Issue**: MDX error in `core/react-server-components.mdx` - "Plugin 'Code caption' caused an error in its 'preprocessCode' hook. Error message: Expected a valid non-empty non-negative number[], but got [-1]"
+
+**Root Cause**: Multiple syntax issues in the MDX file:
+1. `---` lines inside code blocks (lines 53-56 and 80-82) breaking the MDX parser
+2. Missing experimental badges for `renderToStream()` and `renderToString()`
+3. Incomplete code block at the end of the file
+
+**Solution**: 
+- Moved explanatory text outside of code blocks
+- Added experimental badge to the combined `renderToStream()` and `renderToString()` section
+- Fixed malformed code block syntax
+- Removed stray closing ``` at the end
+
+The page now loads successfully without MDX parsing errors.

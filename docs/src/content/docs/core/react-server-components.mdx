@@ -49,12 +49,9 @@ export async function TodoPage({ ctx }) {
     </div>
   );
 }
-
----
-The `TodoPage` component is a server component. It it rendered by a route, so it receives the `ctx` object. We pass this to the `Todos` component, which is also a server component,
-and renders the todos.
----
 ```
+
+The `TodoPage` component is a server component. It is rendered by a route, so it receives the `ctx` object. We pass this to the `Todos` component, which is also a server component, and renders the todos.
 
 <Aside type="tip" title="Suspense">
   When a server component is async, you'll be able to wrap it in a `Suspense`
@@ -76,11 +73,9 @@ export async function addTodo(formData: FormData) {
   const title = formData.get("title");
   await db.todo.create({ data: { title, userId: ctx.user.id } });
 }
-
----
-The `addTodo` function is a server function. It is executed on the server when the form is submitted from a client side component. The form data is sent to the server and the function is executed. The result is sent back to the client, parsed by React, and the view is updated with the new todo.
----
 ```
+
+The `addTodo` function is a server function. It is executed on the server when the form is submitted from a client side component. The form data is sent to the server and the function is executed. The result is sent back to the client, parsed by React, and the view is updated with the new todo.
 
 ```tsx title="@/pages/todos/AddTodo.tsx" mark={1, 3}
 "use client";
@@ -111,7 +106,9 @@ RedwoodSDK also provides a way to render your React Server Components imperative
 To render your component tree to a [`ReadableStream`](https://developer.mozilla.org/en-US/docs/Web/API/ReadableStream)
 
 
-### `renderToStream(element[, options]): Promise<ReadableStream>`
+### `renderToStream()` and `renderToString()` <Badge text="Experimental" type="caution" />
+
+#### `renderToStream(element[, options]): Promise<ReadableStream>`
 
 Takes in a React Server Component (can be a client component or server component), and returns a stream that decodes to html.
 
@@ -128,7 +125,7 @@ const response = new Response(stream, {
 * `injectRSCPayload = false`: Whether to inject the corresponding RSC payload for the React Server Component to use for client-side hydration
 * `onError`: A callback function called with the relevant error as the only paramter if any errors happen during rendering
 
-### `renderToString(element[, options]): Promise<string>`
+#### `renderToString(element[, options]): Promise<string>`
 
 Takes in a React Server Component (can be a client component or server component), and returns an html string.
 
@@ -143,4 +140,3 @@ const response = new Response(html, {
 #### Options
 * `Document`: The [document](/core/routing/#documents) component to wrap around the React Server Component `element`. If not given, will return the rendered React Server Component without any wrapping.
 * `injectRSCPayload = false`: Whether to inject the corresponding RSC payload for the React Server Component to use for client-side hydration
-```
