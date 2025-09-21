@@ -179,3 +179,16 @@ import importedCodeStandardWorker from "../../../../../starters/standard/src/wor
   - `#### renderToString(element[, options]): Promise<string> <Badge text="Experimental" type="caution" />`
 
 **Result**: Each API method is now clearly marked as experimental at the point of reference, providing better granular information to developers.
+
+## 13. Missing Import Fix for Compatibility Page
+
+**Issue**: `compatibility.mdx` was throwing a runtime error: "Expected component Aside to be defined: you likely forgot to import, pass, or provide it."
+
+**Root Cause**: The file was using the `<Aside>` component but missing the import statement.
+
+**Solution**: Added the missing import:
+```typescript
+import { Aside } from "@astrojs/starlight/components";
+```
+
+**Result**: Compatibility page now loads successfully without runtime errors.
