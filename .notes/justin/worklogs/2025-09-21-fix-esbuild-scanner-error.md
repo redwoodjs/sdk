@@ -104,7 +104,7 @@ The framework includes a custom scanner that uses `esbuild` to find `"use client
 
 #### Problem
 
-A recent update to `vite` (from `7.1.5` to `7.1.6`) brought in a newer version of `esbuild` (from `^0.23.0` to `^0.24.0`) which contains breaking changes that affected the framework in four ways:
+A recent update to `vite` (from `7.1.5` to `7.1.6`) brought in a newer version of `esbuild` (from `^0.23.0` to `^0.24.0`) which contains breaking changes that affected the framework in five ways:
 
 1. The new `esbuild` version requires an `outdir` to be specified when bundling multiple entry points, even if the build is not configured to write files to disk (`write: false`). Our scanner uses multiple entry points, causing it to fail with "Must use 'outdir' when there are multiple input files".
 
@@ -114,9 +114,11 @@ A recent update to `vite` (from `7.1.5` to `7.1.6`) brought in a newer version o
 
 4. The CI `check-starters` workflow was using workspace linking, which caused stale dependency issues and did not accurately reflect a real user installation.
 
+5. The `Document` components in starters and playground examples were incorrectly typed, causing TypeScript errors when the tarball-based type checking was implemented.
+
 #### Solution
 
-Four fixes were applied to resolve the compatibility issues:
+Five fixes were applied to resolve the compatibility issues:
 
 1. **Added `outdir` parameter**: The `esbuild` configuration now includes a path to the project's intermediate builds directory. Because the scanner is still configured with `write: false`, no files are actually written to disk. This satisfies the new requirement from `esbuild` while avoiding potential collisions between multiple projects.
 
@@ -125,3 +127,26 @@ Four fixes were applied to resolve the compatibility issues:
 3. **Fix plugin type compatibility**: Added explicit TypeScript types to plugin methods (`HotUpdateOptions` for `hotUpdate` and `ViteBuilder` for `buildApp`) to ensure compatibility between Vite versions.
 
 4. **Replaced CI starter checks with tarball-based type checking**: The unreliable `check-starters.yml` workflow, which used workspace linking and caused version conflicts, has been removed. Instead, `npm run check` is now integrated directly into the E2E and smoke test environments. This ensures that type checking is performed in a clean, isolated environment that accurately reflects a real user installation, preventing issues with stale or mismatched dependencies.
+
+5. **Fixed Document component types**: Updated all `Document` components in starters and playground examples to use the correct `DocumentProps` type instead of the generic `{ children: React.ReactNode }` type. This ensures compatibility with the framework's rendering system, which passes `RequestInfo` properties to the Document component.
+
+## Document Component Type Fix
+
+After implementing the tarball-based type checking, a new issue was discovered: the `Document` components in all starters and playground examples were incorrectly typed as `React.FC<{ children: React.ReactNode }>`, but the SDK's `render` function expects them to be `React.FC<DocumentProps>`.
+
+The `DocumentProps` type extends `RequestInfo` and includes additional properties beyond just `children`. When the framework renders the document, it passes all `RequestInfo` properties to the Document component via `<Document {...requestInfo}>`.
+
+This type mismatch was causing TypeScript errors in the tarball environment, where different versions of React types were being resolved, making the `ReactNode` types incompatible.
+
+### Fix Applied
+
+Updated all Document components to use the correct type:
+- Added `import type { DocumentProps } from "rwsdk/worker"`
+- Changed type from `React.FC<{ children: React.ReactNode }>` to `React.FC<DocumentProps>`
+
+Files updated:
+- `starters/minimal/src/app/Document.tsx`
+- `starters/standard/src/app/Document.tsx`
+- `playground/hello-world/src/app/Document.tsx`
+- `playground/render-apis/src/app/Document.tsx`
+- `playground/useid-test/src/app/Document.tsx`

@@ -1,6 +1,6 @@
-export const Document: React.FC<{ children: React.ReactNode }> = ({
-  children,
-}) => (
+import type { DocumentProps } from "rwsdk/worker";
+
+export const Document: React.FC<DocumentProps> = ({ children }) => (
   <html lang="en">
     <head>
       <meta charSet="utf-8" />
