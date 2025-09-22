@@ -1,10 +1,10 @@
 import { RequestInfo } from "rwsdk/worker";
 import { ClientButton, clientObject } from "../lib/client-utils";
-import { PackageButton, packageObject } from "ui-lib";
+//import { PackageButton, packageObject } from "ui-lib";
 
 export function Home({ ctx }: RequestInfo) {
   const localMessage = clientObject.format("World");
-  const packageMessage = packageObject.format("World");
+  //const packageMessage = packageObject.format("World");
 
   return (
     <div>
@@ -15,9 +15,11 @@ export function Home({ ctx }: RequestInfo) {
 
       <hr />
 
+      {/*
       <h2>From Package Module:</h2>
       <p data-testid="package-message">{packageMessage}</p>
       <PackageButton />
+      */}
     </div>
   );
 }
