@@ -10,9 +10,13 @@
 export function hasDirective(code: string, directive: string): boolean {
   const lines = code.slice(0, 512).split("\n"); // Check first ~512 chars
   let inMultiLineComment = false;
+  let foundUseClient = false;
+  let foundTargetDirective = false;
 
   const doubleQuoteDirective = `"${directive}"`;
   const singleQuoteDirective = `'${directive}'`;
+  const doubleQuoteUseClient = `"use client"`;
+  const singleQuoteUseClient = `'use client'`;
 
   for (const line of lines) {
     const trimmedLine = line.trim();
@@ -44,10 +48,23 @@ export function hasDirective(code: string, directive: string): boolean {
       : trimmedLine;
 
     if (
+      trimmedLine.startsWith(doubleQuoteUseClient) ||
+      trimmedLine.startsWith(singleQuoteUseClient)
+    ) {
+      foundUseClient = true;
+      if (directive === "use client") {
+        return true;
+      }
+    }
+
+    if (
       trimmedLine.startsWith(doubleQuoteDirective) ||
       trimmedLine.startsWith(singleQuoteDirective)
     ) {
-      return true;
+      foundTargetDirective = true;
+      if (directive !== "use server") {
+        return true;
+      }
     }
 
     // Any other string literal is part of a valid directive prologue.
@@ -61,5 +78,10 @@ export function hasDirective(code: string, directive: string): boolean {
     break;
   }
 
-  return false;
+  // If looking for 'use server' and 'use client' was found, return false (client takes priority)
+  if (directive === "use server" && foundUseClient) {
+    return false;
+  }
+
+  return foundTargetDirective;
 }
