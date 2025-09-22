@@ -22,7 +22,7 @@ const createSdkTarball = async (): Promise<{
   tarballPath: string;
   cleanupTarball: () => Promise<void>;
 }> => {
-  const packResult = await $({ cwd: ROOT_DIR })`npm pack`;
+  const packResult = await $({ cwd: ROOT_DIR, stdio: "pipe" })`npm pack`;
   const tarballName = packResult.stdout?.trim()!;
   const tarballPath = path.join(ROOT_DIR, tarballName);
 
