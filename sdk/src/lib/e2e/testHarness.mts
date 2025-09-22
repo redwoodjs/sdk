@@ -34,6 +34,7 @@ interface DeploymentInstance {
   url: string;
   workerName: string;
   resourceUniqueKey: string;
+  projectDir: string;
 }
 
 // Environment variable flags for skipping tests
@@ -284,6 +285,7 @@ export async function createDeployment(): Promise<DeploymentInstance> {
     url: deployResult.url,
     workerName: deployResult.workerName,
     resourceUniqueKey,
+    projectDir: env.projectDir,
   };
 }
 

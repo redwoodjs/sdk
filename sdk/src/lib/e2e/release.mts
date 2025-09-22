@@ -691,6 +691,22 @@ export async function deleteD1Database(
   cwd: string,
   resourceUniqueKey: string,
 ): Promise<void> {
+  // Check wrangler.jsonc to see if a database is configured
+  const wranglerConfigPath = resolve(cwd, "wrangler.jsonc");
+  try {
+    const configContent = await fs.readFile(wranglerConfigPath, "utf-8");
+    const config = parseJsonc(configContent);
+    if (!config.d1_databases || config.d1_databases.length === 0) {
+      log("No D1 databases configured in wrangler.jsonc, skipping deletion.");
+      return;
+    }
+  } catch (error) {
+    log(
+      `Could not read or parse wrangler.jsonc at ${wranglerConfigPath}, proceeding with deletion attempt anyway.`,
+      error,
+    );
+  }
+
   console.log(`Cleaning up: Deleting D1 database ${name}...`);
   try {
     // First check if the database exists
