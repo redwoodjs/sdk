@@ -65,7 +65,7 @@ export async function setupTestEnvironment(
           sync: options.sync !== false, // default to true if undefined
           resourceUniqueKey,
           packageManager: options.packageManager,
-          testType: "smoke",
+          tarballPath: options.tarballPath,
         },
       );
 
@@ -98,7 +98,6 @@ export async function copyProjectToTempDir(
     resourceUniqueKey: string;
     packageManager?: PackageManager;
     tarballPath?: string;
-    testType?: "smoke" | "tarball";
   },
 ): Promise<{
   tempDir: tmp.DirectoryResult;
@@ -110,7 +109,6 @@ export async function copyProjectToTempDir(
     resourceUniqueKey,
     packageManager,
     tarballPath,
-    testType = "smoke",
   } = options;
   log("Creating temporary directory for project");
   // Create a temporary directory
@@ -118,8 +116,7 @@ export async function copyProjectToTempDir(
 
   // Create unique project directory name
   const originalDirName = basename(projectDir);
-  const testSuffix = testType === "tarball" ? "tarball-test" : "smoke-test";
-  const workerName = `${originalDirName}-${testSuffix}-${resourceUniqueKey}`;
+  const workerName = `${originalDirName}-tarball-test-${resourceUniqueKey}`;
   const targetDir = resolve(tempDir.path, workerName);
 
   console.log(`Copying project from ${projectDir} to ${targetDir}`);
@@ -165,13 +162,10 @@ export async function copyProjectToTempDir(
   });
   log("Project copy completed successfully");
 
-  // Tarball-specific configuration
-  if (testType === "tarball") {
-    // Configure temp project to not use frozen lockfile
-    log("⚙️  Configuring temp project to not use frozen lockfile...");
-    const npmrcPath = join(targetDir, ".npmrc");
-    await fs.writeFile(npmrcPath, "frozen-lockfile=false\n");
-  }
+  // Configure temp project to not use frozen lockfile
+  log("⚙️  Configuring temp project to not use frozen lockfile...");
+  const npmrcPath = join(targetDir, ".npmrc");
+  await fs.writeFile(npmrcPath, "frozen-lockfile=false\n");
 
   // For yarn, create .yarnrc.yml to disable PnP and use node_modules
   if (packageManager === "yarn" || packageManager === "yarn-classic") {
@@ -180,32 +174,25 @@ export async function copyProjectToTempDir(
     log("Created .yarnrc.yml to disable PnP for yarn");
   }
 
-  // Replace workspace:* dependencies with a placeholder before installing
-  await replaceWorkspaceDependencies(targetDir);
+  // Replace workspace:* dependencies with tarball before installing
+  if (tarballPath) {
+    await replaceWorkspaceDependenciesWithTarball(targetDir, tarballPath);
+  }
 
   // Install dependencies in the target directory
-  if (testType === "tarball" && tarballPath) {
-    await installTarballDependencies(targetDir, packageManager, tarballPath);
-  } else {
-    await installDependencies(targetDir, packageManager);
-  }
-
-  // Sync SDK to the temp dir if requested (only for smoke tests)
-  if (sync && testType === "smoke") {
-    console.log(
-      `🔄 Syncing SDK to ${targetDir} after installing dependencies...`,
-    );
-    await debugSync({ targetDir });
-  }
+  await installDependencies(targetDir, packageManager);
 
   // Return the environment details
   return { tempDir, targetDir, workerName };
 }
 
 /**
- * Replace workspace:* dependencies with a placeholder version to allow installation
+ * Replace workspace:* dependencies with tarball path
  */
-async function replaceWorkspaceDependencies(targetDir: string): Promise<void> {
+async function replaceWorkspaceDependenciesWithTarball(
+  targetDir: string,
+  tarballPath: string,
+): Promise<void> {
   const packageJsonPath = join(targetDir, "package.json");
 
   try {
@@ -214,13 +201,13 @@ async function replaceWorkspaceDependencies(targetDir: string): Promise<void> {
 
     let modified = false;
 
-    // Replace workspace:* dependencies with a placeholder version
+    // Replace workspace:* dependencies with tarball path
     if (packageJson.dependencies) {
       for (const [name, version] of Object.entries(packageJson.dependencies)) {
         if (version === "workspace:*") {
-          packageJson.dependencies[name] = "0.0.80"; // Use latest published version as placeholder
+          packageJson.dependencies[name] = `file:${tarballPath}`;
           modified = true;
-          log(`Replaced workspace dependency ${name} with placeholder version`);
+          log(`Replaced workspace dependency ${name} with tarball path`);
         }
       }
     }
@@ -230,58 +217,21 @@ async function replaceWorkspaceDependencies(targetDir: string): Promise<void> {
         packageJson.devDependencies,
       )) {
         if (version === "workspace:*") {
-          packageJson.devDependencies[name] = "0.0.80"; // Use latest published version as placeholder
+          packageJson.devDependencies[name] = `file:${tarballPath}`;
           modified = true;
-          log(
-            `Replaced workspace devDependency ${name} with placeholder version`,
-          );
+          log(`Replaced workspace devDependency ${name} with tarball path`);
         }
       }
     }
 
     if (modified) {
       await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
-      log(
-        "Updated package.json with placeholder versions for workspace dependencies",
-      );
+      log("Updated package.json with tarball paths for workspace dependencies");
     }
   } catch (error) {
-    log("Error replacing workspace dependencies: %O", error);
-    throw new Error(`Failed to replace workspace dependencies: ${error}`);
-  }
-}
-
-/**
- * Install tarball dependencies
- */
-async function installTarballDependencies(
-  targetDir: string,
-  packageManager: PackageManager = "pnpm",
-  tarballPath: string,
-): Promise<void> {
-  console.log(
-    `📦 Installing tarball dependencies in ${targetDir} using ${packageManager}...`,
-  );
-
-  try {
-    if (packageManager === "pnpm") {
-      await $({ cwd: targetDir })`pnpm add ${tarballPath}`;
-    } else if (packageManager === "npm") {
-      await $({ cwd: targetDir })`npm install`;
-    } else if (packageManager === "yarn") {
-      await $({ cwd: targetDir })`yarn add ${tarballPath}`;
-    }
-
-    console.log("✅ Tarball dependencies installed successfully");
-  } catch (error) {
-    log("ERROR: Failed to install tarball dependencies: %O", error);
-    console.error(
-      `❌ Failed to install tarball dependencies: ${
-        error instanceof Error ? error.message : String(error)
-      }`,
-    );
+    log("Error replacing workspace dependencies with tarball: %O", error);
     throw new Error(
-      `Failed to install tarball dependencies. Please ensure the tarball is valid.`,
+      `Failed to replace workspace dependencies with tarball: ${error}`,
     );
   }
 }

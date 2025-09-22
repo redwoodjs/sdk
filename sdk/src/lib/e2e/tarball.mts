@@ -141,7 +141,6 @@ export async function setupTarballEnvironment({
       resourceUniqueKey,
       packageManager,
       tarballPath,
-      testType: "tarball",
     });
 
     // Verify installation
