@@ -239,6 +239,9 @@ async function installDependencies(
     const result = await $(command, args, {
       cwd: targetDir,
       stdio: "pipe", // Capture output
+      env: {
+        YARN_ENABLE_HARDENED_MODE: "0",
+      },
     });
 
     console.log("✅ Dependencies installed successfully");
