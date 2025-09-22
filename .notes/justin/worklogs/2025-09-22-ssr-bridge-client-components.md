@@ -35,3 +35,31 @@ This approach connects the two environments at the module level, ensuring the SS
 4.  **Update Tests:**
     -   Modify the tests in `transformClientComponents.test.mts` to reflect the new output of the transformation.
     -   If possible, add a test case to verify that the SSR runtime correctly renders the bridged component. This might require an end-to-end test.
+
+## Validation via Playground Example
+
+To confirm the SSR bridging works in a real-world scenario, particularly with third-party packages, a new playground example will be created.
+
+### Plan
+
+1.  **Create a New Playground:**
+    -   Set up a new playground named `ssr-client-component-from-pkg`.
+    -   This playground will serve as the testbed for the feature.
+
+2.  **Simulate a Third-Party Package:**
+    -   Inside the playground, create a `packages/ui-lib` directory to act as a local, vended package.
+    -   `ui-lib` will have its own `package.json` and an `index.tsx` file.
+    -   The `index.tsx` file will export a simple React component marked with the `"use client"` directive.
+
+3.  **Integrate the Local Package:**
+    -   In the playground's main `package.json`, add a dependency to the local package using the `file:` protocol: `"ui-lib": "file:./packages/ui-lib"`. This ensures it's treated as a `node_modules` dependency.
+    -   In one of the playground's pages (e.g., `Home.tsx`), import and render the client component from `ui-lib`.
+
+4.  **Add End-to-End Tests:**
+    -   Create an `e2e.test.mts` file for the new playground.
+    -   The test will:
+        -   Start the development server for the playground.
+        -   Navigate to the page that uses the component from `ui-lib`.
+        -   Assert that the server-rendered HTML contains the content of the client component.
+        -   Check the browser's console for any hydration errors.
+        -   Verify that the component is interactive on the client.
