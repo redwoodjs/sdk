@@ -7,9 +7,12 @@
  * It handles comments, whitespace, and any valid directive prologue
  * (e.g., "use strict").
  */
-export function hasDirective(code: string): "use client" | "use server" | null {
+export function hasDirective(code: string, directive: string): boolean {
   const lines = code.slice(0, 512).split("\n"); // Check first ~512 chars
   let inMultiLineComment = false;
+
+  const doubleQuoteDirective = `"${directive}"`;
+  const singleQuoteDirective = `'${directive}'`;
 
   for (const line of lines) {
     const trimmedLine = line.trim();
@@ -36,22 +39,15 @@ export function hasDirective(code: string): "use client" | "use server" | null {
       continue;
     }
 
-    if (
-      trimmedLine === '"use client"' ||
-      trimmedLine === "'use client'" ||
-      trimmedLine === '"use client";' ||
-      trimmedLine === "'use client';"
-    ) {
-      return "use client";
-    }
+    const cleanedLine = trimmedLine.endsWith(";")
+      ? trimmedLine.slice(0, -1)
+      : trimmedLine;
 
     if (
-      trimmedLine === '"use server"' ||
-      trimmedLine === "'use server'" ||
-      trimmedLine === '"use server";' ||
-      trimmedLine === "'use server';"
+      trimmedLine.startsWith(doubleQuoteDirective) ||
+      trimmedLine.startsWith(singleQuoteDirective)
     ) {
-      return "use server";
+      return true;
     }
 
     // Any other string literal is part of a valid directive prologue.
@@ -65,5 +61,5 @@ export function hasDirective(code: string): "use client" | "use server" | null {
     break;
   }
 
-  return null;
+  return false;
 }
