@@ -609,7 +609,7 @@ export async function deleteWorker(
     return;
   }
 
-  const command = `npx wrangler delete ${workerName} --yes --force`;
+  const command = `npx wrangler delete ${workerName} --force`;
   console.log(`Running command: ${command}`);
 
   try {
