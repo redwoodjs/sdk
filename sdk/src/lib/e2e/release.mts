@@ -609,34 +609,51 @@ export async function deleteWorker(
     return;
   }
 
-  const command = `npx wrangler delete ${workerName} --force`;
-  console.log(`Running command: ${command}`);
+  const accountId = process.env.CLOUDFLARE_ACCOUNT_ID;
+  const apiToken = process.env.CLOUDFLARE_API_TOKEN;
+
+  if (!accountId || !apiToken) {
+    console.error(
+      "❌ CLOUDFLARE_ACCOUNT_ID and CLOUDFLARE_API_TOKEN env vars must be set to delete worker",
+    );
+    return;
+  }
+
+  const url = `https://api.cloudflare.com/client/v4/accounts/${accountId}/workers/scripts/${workerName}`;
+  console.log(`Running API call: DELETE ${url}`);
 
   try {
-    const { stdout, stderr } = await execaCommand(command, {
-      cwd: projectDir,
-      env: {
-        ...process.env,
-        CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN,
-        CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID,
+    const response = await fetch(url, {
+      method: "DELETE",
+      headers: {
+        Authorization: `Bearer ${apiToken}`,
+        "Content-Type": "application/json",
       },
     });
 
-    console.log(`'wrangler delete' stdout:\n${stdout}`);
-    if (stderr) {
-      console.error(`'wrangler delete' stderr:\n${stderr}`);
+    if (!response.ok) {
+      const errorText = await response.text();
+      throw new Error(
+        `Cloudflare API request failed with status ${response.status}: ${errorText}`,
+      );
     }
+
+    const responseData = (await response.json()) as {
+      success: boolean;
+      errors: unknown[];
+    };
+
+    if (!responseData.success) {
+      throw new Error(
+        `Cloudflare API returned an error: ${JSON.stringify(responseData.errors)}`,
+      );
+    }
+
     console.log(`✅ Successfully deleted worker "${workerName}"`);
   } catch (error) {
     console.error(`❌ Failed to delete worker "${workerName}"`);
     if (error instanceof Error) {
       console.error(`Error message: ${error.message}`);
-      if ("stdout" in error) {
-        console.error(`Stdout: ${(error as any).stdout}`);
-      }
-      if ("stderr" in error) {
-        console.error(`Stderr: ${(error as any).stderr}`);
-      }
     } else {
       console.error("An unknown error occurred:", error);
     }
