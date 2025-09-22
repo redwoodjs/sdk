@@ -116,11 +116,13 @@ A recent update to `vite` (from `7.1.5` to `7.1.6`) brought in a newer version o
 
 5. The `Document` components in starters and playground examples were incorrectly typed, causing TypeScript errors when the tarball-based type checking was implemented.
 
+6. The tarball installation process was failing in CI because `npm install` was not correctly installing dependencies in the temporary test environments due to broken `pnpm` symlinks.
+
 #### Solution
 
-Five fixes were applied to resolve the compatibility issues:
+Six fixes were applied to resolve the compatibility issues:
 
-1. **Added `outdir` parameter**: The `esbuild` configuration now includes a path to the project's intermediate builds directory. Because the scanner is still configured with `write: false`, no files are actually written to disk. This satisfies the new requirement from `esbuild` while avoiding potential collisions between multiple projects.
+1.  **Added `outdir` parameter**: The `esbuild` configuration now includes a path to the project's intermediate builds directory. Because the scanner is still configured with `write: false`, no files are actually written to disk. This satisfies the new requirement from `esbuild` while avoiding potential collisions between multiple projects.
 
 2. **Filter virtual modules**: Entry points containing `virtual:` are now filtered out before being passed to esbuild, since virtual modules don't contain actual source code that can be scanned for directives.
 
@@ -129,6 +131,8 @@ Five fixes were applied to resolve the compatibility issues:
 4. **Replaced CI starter checks with tarball-based type checking**: The unreliable `check-starters.yml` workflow, which used workspace linking and caused version conflicts, has been removed. Instead, `npm run check` is now integrated directly into the E2E and smoke test environments. This ensures that type checking is performed in a clean, isolated environment that accurately reflects a real user installation, preventing issues with stale or mismatched dependencies.
 
 5. **Fixed Document component types**: Updated all `Document` components in starters and playground examples to use the correct `DocumentProps` type instead of the generic `{ children: React.ReactNode }` type. This ensures compatibility with the framework's rendering system, which passes `RequestInfo` properties to the Document component.
+
+6. **Ensured clean npm installation in tests**: The tarball installation process in the E2E and smoke tests now removes any existing `node_modules` and lock files before running `npm install`. This prevents issues with broken `pnpm` symlinks and ensures a clean, reliable installation in the temporary test environments.
 
 ## Document Component Type Fix
 
@@ -150,3 +154,13 @@ Files updated:
 - `playground/hello-world/src/app/Document.tsx`
 - `playground/render-apis/src/app/Document.tsx`
 - `playground/useid-test/src/app/Document.tsx`
+
+## Broken Symlinks in Tarball Installation
+
+After fixing the Document component types, the CI tests were still failing with `Cannot find module` errors for `typescript`.
+
+An investigation revealed that the issue was caused by broken symbolic links in the `node_modules` directory of the temporary test environments. The monorepo uses `pnpm`, which creates symlinked `node_modules`. The E2E test setup was copying these directories, including the now-broken symlinks, into the temporary test environment.
+
+When `npm install` was run in the temporary directory, it failed to correctly resolve dependencies due to the presence of these broken symlinks.
+
+The fix, confirmed by manual testing, is to remove the existing `node_modules` directory and any lock files (`pnpm-lock.yaml`, `yarn.lock`, `package-lock.json`) from the temporary directory before running `npm install`. This ensures a clean, fresh installation without interference from the pre-existing broken symlinks.

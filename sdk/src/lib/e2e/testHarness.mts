@@ -166,7 +166,7 @@ export function setupPlaygroundEnvironment(sourceProjectDir?: string): void {
 
     const tarballEnv = await setupTarballEnvironment({
       projectDir,
-      packageManager: "pnpm",
+      packageManager: "npm",
     });
 
     console.log(`\n🔍 Running type check in ${projectDir}...`);

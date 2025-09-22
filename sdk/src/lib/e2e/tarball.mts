@@ -166,6 +166,14 @@ export async function setupTarballEnvironment({
     if (packageManager === "pnpm") {
       await $({ cwd: targetDir })`pnpm add ${tarballPath}`;
     } else if (packageManager === "npm") {
+      // Remove any existing lock files to ensure clean npm installation
+      await $({
+        cwd: targetDir,
+      })`rm -f pnpm-lock.yaml yarn.lock package-lock.json`;
+      // Remove existing node_modules to ensure clean installation
+      await $({ cwd: targetDir })`rm -rf node_modules`;
+      // Install all dependencies first, then add the tarball
+      await $({ cwd: targetDir })`npm install`;
       await $({ cwd: targetDir })`npm install ${tarballPath}`;
     } else if (packageManager === "yarn") {
       await $({ cwd: targetDir })`yarn add ${tarballPath}`;
