@@ -1,7 +1,7 @@
 {
-  "name": "hello-world",
+  "name": "chakra-ui-playground",
   "version": "1.0.0",
-  "description": "A bare-bones RedwoodSDK starter",
+  "description": "A comprehensive Chakra UI playground for RedwoodSDK",
   "main": "index.js",
   "type": "module",
   "keywords": [],
@@ -19,13 +19,17 @@
     "release": "rw-scripts ensure-deploy-env && npm run clean && npm run build && RWSDK_DEPLOY=1 wrangler deploy",
     "generate": "rw-scripts ensure-env && wrangler types",
     "check": "npm run generate && npm run types",
-    "types": "tsc"
+    "types": "tsc",
+    "test": "vitest run --config ../vitest.config.mts"
   },
   "dependencies": {
     "rwsdk": "workspace:*",
     "react": "19.2.0-canary-3fb190f7-20250908",
     "react-dom": "19.2.0-canary-3fb190f7-20250908",
-    "react-server-dom-webpack": "19.2.0-canary-3fb190f7-20250908"
+    "react-server-dom-webpack": "19.2.0-canary-3fb190f7-20250908",
+    "@chakra-ui/react": "^3.2.0",
+    "@emotion/react": "^11.13.3",
+    "@emotion/styled": "^11.13.0"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.12.4",

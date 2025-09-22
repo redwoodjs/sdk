@@ -70,3 +70,16 @@ With 8 major component categories and dozens of individual components, organizat
 
 ### Challenge 3: Test Infrastructure
 The e2e testing setup initially had path resolution issues when trying to locate the SDK for tarball creation. The test harness was looking for the SDK in the wrong directory path.
+
+## Investigation: `createContext` Error
+
+The dev server fails to start, throwing a `[vite] Internal server error: React2.createContext is not a function`.
+
+This error is consistent with a user report found on Discord, which suggests a problem with how Chakra UI's dependencies are handled by Vite's dependency optimizer.
+
+**Context from User Report:**
+- **Discord Link:** <https://discord.com/channels/679514959968993311/1373685754957660283/1412270477744934942>
+- **Core Issue:** The user report suggests that `@emotion/react`, a peer dependency of Chakra UI, is being incorrectly included in the RSC (React Server Components) bundle instead of the SSR (Server-Side Rendering) bundle.
+- **Hypothesis:** Since `createContext` does not exist in the RSC version of React, the mis-bundling of a library that calls it (`@emotion/react`) leads to the runtime error.
+
+The next step is to investigate Vite's dependency optimization process to understand why `@emotion/react` is being bundled incorrectly and find a way to direct it to the correct (SSR) bundle.
