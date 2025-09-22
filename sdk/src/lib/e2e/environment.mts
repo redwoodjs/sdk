@@ -239,6 +239,10 @@ async function installDependencies(
     const result = await $(command, args, {
       cwd: targetDir,
       stdio: "pipe", // Capture output
+      env: {
+        // We need to disable hardenened mode for yarn to install the local tarball
+        YARN_ENABLE_HARDENED_MODE: "0",
+      },
     });
 
     console.log("✅ Dependencies installed successfully");
