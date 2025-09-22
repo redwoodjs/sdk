@@ -12,8 +12,31 @@ import {
 } from "unique-names-generator";
 import { SmokeTestOptions, TestResources, PackageManager } from "./types.mjs";
 import { createHash } from "crypto";
+import { $ } from "../../lib/$.mjs";
+import { ROOT_DIR } from "../constants.mjs";
+import path from "node:path";
 
 const log = debug("rwsdk:e2e:environment");
+
+const createSdkTarball = async (): Promise<{
+  tarballPath: string;
+  cleanupTarball: () => Promise<void>;
+}> => {
+  const packResult = await $({ cwd: ROOT_DIR })`npm pack`;
+  const tarballName = packResult.stdout?.trim()!;
+  const tarballPath = path.join(ROOT_DIR, tarballName);
+
+  log(`📦 Created tarball: ${tarballPath}`);
+
+  const cleanupTarball = async () => {
+    if (fs.existsSync(tarballPath)) {
+      log(`🧹 Cleaning up tarball: ${tarballPath}`);
+      await fs.promises.rm(tarballPath, { force: true });
+    }
+  };
+
+  return { tarballPath, cleanupTarball };
+};
 
 /**
  * Sets up the test environment, preparing any resources needed for testing
@@ -93,137 +116,89 @@ export async function copyProjectToTempDir(
   targetDir: string;
   workerName: string;
 }> {
-  log("Creating temporary directory for project");
-  // Create a temporary directory
-  const tempDir = await tmp.dir({ unsafeCleanup: true });
-
-  // Create unique project directory name
-  const originalDirName = basename(projectDir);
-  const workerName = `${originalDirName}-tarball-test-${resourceUniqueKey}`;
-  const targetDir = resolve(tempDir.path, workerName);
-
-  console.log(`Copying project from ${projectDir} to ${targetDir}`);
-
-  // Read project's .gitignore if it exists
-  let ig = ignore();
-  const gitignorePath = join(projectDir, ".gitignore");
-
-  if (await pathExists(gitignorePath)) {
-    log("Found .gitignore file at %s", gitignorePath);
-    const gitignoreContent = await fs.promises.readFile(gitignorePath, "utf-8");
-    ig = ig.add(gitignoreContent);
-  } else {
-    log("No .gitignore found, using default ignore patterns");
-    // Add default ignores if no .gitignore exists
-    ig = ig.add(
-      [
-        "node_modules",
-        ".git",
-        "dist",
-        "build",
-        ".DS_Store",
-        "coverage",
-        ".cache",
-        ".wrangler",
-        ".env",
-      ].join("\n"),
-    );
-  }
-
-  // Copy the project directory, respecting .gitignore
-  log("Starting copy process with ignored patterns");
-  await copy(projectDir, targetDir, {
-    filter: (src) => {
-      // Get path relative to project directory
-      const relativePath = relative(projectDir, src);
-      if (!relativePath) return true; // Include the root directory
-
-      // Check against ignore patterns
-      const result = !ig.ignores(relativePath);
-      return result;
-    },
-  });
-  log("Project copy completed successfully");
-
-  // Configure temp project to not use frozen lockfile
-  log("⚙️  Configuring temp project to not use frozen lockfile...");
-  const npmrcPath = join(targetDir, ".npmrc");
-  await fs.promises.writeFile(npmrcPath, "frozen-lockfile=false\n");
-
-  // For yarn, create .yarnrc.yml to disable PnP and use node_modules
-  if (packageManager === "yarn" || packageManager === "yarn-classic") {
-    const yarnrcPath = join(targetDir, ".yarnrc.yml");
-    await fs.promises.writeFile(yarnrcPath, "nodeLinker: node-modules\n");
-    log("Created .yarnrc.yml to disable PnP for yarn");
-  }
-
-  // Replace workspace:* dependencies with a placeholder version to allow installation
-  await replaceWorkspaceDependencies(targetDir);
-
-  // Install dependencies in the target directory
-  await installDependencies(targetDir, packageManager);
-
-  // Return the environment details
-  return { tempDir, targetDir, workerName };
-}
-
-/**
- * Replace workspace:* dependencies with a placeholder version to allow installation
- */
-async function replaceWorkspaceDependencies(targetDir: string): Promise<void> {
-  const packageJsonPath = join(targetDir, "package.json");
-
+  const { tarballPath, cleanupTarball } = await createSdkTarball();
   try {
-    const packageJsonContent = await fs.readFile(packageJsonPath, "utf-8");
-    const packageJson = JSON.parse(packageJsonContent);
+    log("Creating temporary directory for project");
+    // Create a temporary directory
+    const tempDir = await tmp.dir({ unsafeCleanup: true });
 
-    let modified = false;
+    // Create unique project directory name
+    const originalDirName = basename(projectDir);
+    const workerName = `${originalDirName}-test-${resourceUniqueKey}`;
+    const targetDir = resolve(tempDir.path, workerName);
 
-    // Replace workspace:* dependencies with a placeholder version to allow installation
-    if (packageJson.dependencies) {
-      for (const [name, version] of Object.entries(packageJson.dependencies)) {
-        if (version === "workspace:*") {
-          packageJson.dependencies[name] = "0.0.80"; // Use latest published version as placeholder
-          modified = true;
-          log(`Replaced workspace dependency ${name} with placeholder version`);
-        }
-      }
-    }
+    console.log(`Copying project from ${projectDir} to ${targetDir}`);
 
-    if (packageJson.devDependencies) {
-      for (const [name, version] of Object.entries(
-        packageJson.devDependencies,
-      )) {
-        if (version === "workspace:*") {
-          packageJson.devDependencies[name] = "0.0.80"; // Use latest published version as placeholder
-          modified = true;
-          log(
-            `Replaced workspace devDependency ${name} with placeholder version`,
-          );
-        }
-      }
-    }
+    // Read project's .gitignore if it exists
+    let ig = ignore();
+    const gitignorePath = join(projectDir, ".gitignore");
 
-    if (modified) {
-      await fs.promises.writeFile(
-        packageJsonPath,
-        JSON.stringify(packageJson, null, 2),
+    if (await pathExists(gitignorePath)) {
+      log("Found .gitignore file at %s", gitignorePath);
+      const gitignoreContent = await fs.promises.readFile(
+        gitignorePath,
+        "utf-8",
       );
-      log(
-        "Updated package.json with placeholder versions for workspace dependencies",
+      ig = ig.add(gitignoreContent);
+    } else {
+      log("No .gitignore found, using default ignore patterns");
+      // Add default ignores if no .gitignore exists
+      ig = ig.add(
+        [
+          "node_modules",
+          ".git",
+          "dist",
+          "build",
+          ".DS_Store",
+          "coverage",
+          ".cache",
+          ".wrangler",
+          ".env",
+        ].join("\n"),
       );
     }
-  } catch (error) {
-    log("Error replacing workspace dependencies with placeholder: %O", error);
-    throw new Error(
-      `Failed to replace workspace dependencies with placeholder: ${error}`,
-    );
+
+    // Copy the project directory, respecting .gitignore
+    log("Starting copy process with ignored patterns");
+    await copy(projectDir, targetDir, {
+      filter: (src) => {
+        // Get path relative to project directory
+        const relativePath = relative(projectDir, src);
+        if (!relativePath) return true; // Include the root directory
+
+        // Check against ignore patterns
+        const result = !ig.ignores(relativePath);
+        return result;
+      },
+    });
+    log("Project copy completed successfully");
+
+    // Configure temp project to not use frozen lockfile
+    log("⚙️  Configuring temp project to not use frozen lockfile...");
+    const npmrcPath = join(targetDir, ".npmrc");
+    await fs.promises.writeFile(npmrcPath, "frozen-lockfile=false\n");
+
+    // For yarn, create .yarnrc.yml to disable PnP and use node_modules
+    if (packageManager === "yarn" || packageManager === "yarn-classic") {
+      const yarnrcPath = join(targetDir, ".yarnrc.yml");
+      await fs.promises.writeFile(yarnrcPath, "nodeLinker: node-modules\n");
+      log("Created .yarnrc.yml to disable PnP for yarn");
+    }
+
+    await $(`npm pkg set dependencies.rwsdk=file:${tarballPath}`);
+   
+    // Install dependencies in the target directory
+    await installDependencies(targetDir, packageManager);
+
+    // Return the environment details
+    return { tempDir, targetDir, workerName };
+  } finally {
+    await cleanupTarball();
   }
 }
 
 /**
- * Install project dependencies using pnpm
- */
+ * 
 async function installDependencies(
   targetDir: string,
   packageManager: PackageManager = "pnpm",

@@ -20,25 +20,7 @@ interface SetupTarballOptions {
 interface TarballEnvironment {
   targetDir: string;
   cleanup: () => Promise<void>;
-  tarballPath: string;
 }
-
-const createSdkTarball = async () => {
-  const packResult = await $({ cwd: ROOT_DIR })`npm pack`;
-  const tarballName = packResult.stdout.trim();
-  const tarballPath = path.join(ROOT_DIR, tarballName);
-
-  log(`📦 Created tarball: ${tarballPath}`);
-
-  const cleanupTarball = async () => {
-    if (fs.existsSync(tarballPath)) {
-      log(`🧹 Cleaning up tarball: ${tarballPath}`);
-      await fs.promises.rm(tarballPath, { force: true });
-    }
-  };
-
-  return { tarballPath, cleanupTarball };
-};
 
 /**
  * Copies wrangler cache from monorepo to temp directory for deployment tests
@@ -139,7 +121,6 @@ export async function setupTarballEnvironment({
     .substring(0, 8);
 
   const resourceUniqueKey = `${uniqueNameSuffix}-${hash}`;
-  const tarball = await createSdkTarball();
 
   try {
     const { tempDir, targetDir } = await copyProjectToTempDir(
@@ -165,16 +146,13 @@ export async function setupTarballEnvironment({
 
     return {
       targetDir,
-      tarballPath: tarball.tarballPath,
       cleanup: async () => {
         log(`🧹 Cleaning up tarball environment: ${tempDir.path}`);
         await tempDir.cleanup();
-        await tarball.cleanupTarball();
       },
     };
   } catch (error) {
     // Cleanup tarball on error
-    await tarball.cleanupTarball();
     throw error;
   }
 }
