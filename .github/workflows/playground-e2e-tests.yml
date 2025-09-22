@@ -12,6 +12,27 @@ on:
     paths-ignore:
       - "docs/**"
   workflow_dispatch:
+    inputs:
+      os:
+        description: "OS to run on (e.g., ubuntu-latest, macos-latest)"
+        required: true
+        type: choice
+        default: "all"
+        options:
+          - all
+          - ubuntu-latest
+          - macos-latest
+      package-manager:
+        description: "Package manager to use (e.g., pnpm, npm)"
+        required: true
+        type: choice
+        default: "all"
+        options:
+          - all
+          - pnpm
+          - npm
+          - yarn
+          - yarn-classic
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -22,14 +43,41 @@ env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
 jobs:
+  setup-matrix:
+    runs-on: ubuntu-latest
+    outputs:
+      matrix: ${{ steps.set-matrix.outputs.matrix }}
+    steps:
+      - id: set-matrix
+        run: |
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"}]}' >> $GITHUB_OUTPUT
+          elif [ "${{ github.event_name }}" == "workflow_dispatch" ]; then
+            OS_INPUT=${{ github.event.inputs.os }}
+            PM_INPUT=${{ github.event.inputs.package-manager }}
+
+            [ "$OS_INPUT" == "all" ] && OS_LIST='ubuntu-latest macos-latest' || OS_LIST=$OS_INPUT
+            [ "$PM_INPUT" == "all" ] && PM_LIST='pnpm npm yarn yarn-classic' || PM_LIST=$PM_INPUT
+
+            MATRIX="{\"include\":[]}"
+            for o in $OS_LIST; do
+              for p in $PM_LIST; do
+                MATRIX=$(echo $MATRIX | jq ".include += [{\"os\":\"$o\",\"package-manager\":\"$p\"}]")
+              done
+            done
+            echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
+          else
+            echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"},{"os":"ubuntu-latest","package-manager":"npm"},{"os":"ubuntu-latest","package-manager":"yarn"},{"os":"ubuntu-latest","package-manager":"yarn-classic"},{"os":"macos-latest","package-manager":"pnpm"},{"os":"macos-latest","package-manager":"npm"},{"os":"macos-latest","package-manager":"yarn"},{"os":"macos-latest","package-manager":"yarn-classic"}]}' >> $GITHUB_OUTPUT
+          fi
+
   playground-e2e:
+    needs: setup-matrix
     name: Playground E2E - ${{ matrix.os }} - ${{ matrix.package-manager }}
     runs-on: ${{ matrix.os }}
     strategy:
       fail-fast: false
-      matrix:
-        os: [ubuntu-latest, macos-latest] # TODO: Re-enable windows-latest after fixing Windows path issues
-        package-manager: [pnpm, npm, yarn, yarn-classic]
+      matrix: ${{ fromJson(needs.setup-matrix.outputs.matrix) }}
+    timeout-minutes: 60
 
     # context(justinvdm, 2025-09-20):
     # Only run this job for PRs from the same repository and pushes to main
