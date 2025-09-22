@@ -7,6 +7,7 @@ import {
   expect,
   vi,
 } from "vitest";
+import { basename } from "path";
 import { setupTarballEnvironment } from "./tarball.mjs";
 import { runDevServer } from "./dev.mjs";
 import {
@@ -229,7 +230,14 @@ export async function createDeployment(): Promise<DeploymentInstance> {
   }
 
   const env = getPlaygroundEnvironment();
-  const resourceUniqueKey = Math.random().toString(36).substring(2, 15);
+
+  // Extract the unique key from the project directory name instead of generating a new one
+  // The directory name format is: {projectName}-e2e-test-{randomId}
+  const dirName = basename(env.projectDir);
+  const match = dirName.match(/-e2e-test-([a-f0-9]+)$/);
+  const resourceUniqueKey = match
+    ? match[1]
+    : Math.random().toString(36).substring(2, 15);
 
   const deployResult = await runRelease(
     env.projectDir,
