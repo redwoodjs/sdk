@@ -61,6 +61,40 @@ pnpm test -- -u src/vite/transformJsxScriptTagsPlugin.test.mts
 
 Note the extra `--` before the `-u` flag. This is necessary to pass the flag to the underlying test runner (`vitest`) instead of `pnpm`.
 
+### Testing Strategy
+
+This project employs a multi-layered testing strategy to ensure code quality and stability. Tests are divided into three main categories, and our CI/CD pipeline runs different test suites depending on the context to balance development velocity with release confidence.
+
+#### Overview of Testing Layers
+
+1.  **Unit Tests**: These are the foundation of our testing pyramid. They verify the correctness of individual functions, modules, and components in isolation. They are fast, focused, and should cover as much of the core logic as possible.
+2.  **Smoke Tests**: These tests verify the critical user paths and core functionalities of our starter applications (`minimal` and `standard`). A smoke test ensures that a user can successfully install the SDK, start the dev server, build a production version, and see the application render correctly. They are designed to catch major regressions in the end-to-end user experience.
+3.  **End-to-End (E2E) Tests**: Running in the `playground`, these tests cover more nuanced, real-world user scenarios. They validate compatibility with other libraries (like UI frameworks), test specific features in a realistic application context, and confirm compatibility across different environments.
+
+#### CI/CD Testing Pipeline
+
+Our GitHub Actions workflows are configured to provide two different levels of testing:
+
+*   **On Pull Requests**: To provide fast feedback, we run a lightweight but representative subset of our test suite. This includes all **unit tests**, plus a minimal configuration of our **smoke tests** and **E2E tests** (running on Ubuntu with pnpm). This quick sanity check is designed to catch most common regressions without the long wait times of the full test matrix.
+*   **On Pushes to `main`**: Before any code is considered for a release, it must pass the full, comprehensive test suite. This includes all **unit tests**, and the complete matrix for **smoke tests** and **E2E tests**, covering all supported operating systems (Ubuntu, macOS) and package managers (pnpm, npm, yarn, yarn-classic). A failure in any part of this matrix will block a release, ensuring that the `main` branch is always stable.
+
+All tests can also be run manually on any branch using the `workflow_dispatch` trigger in GitHub Actions, giving contributors the power to run the full suite on their changes when needed.
+
+### Smoke Testing
+
+Smoke tests check that the critical paths of the SDK work for a new project. They perform a full lifecycle test: installing dependencies, running the dev server, and creating a production build. For both dev and production environments, they verify that server and client components render correctly and that actions work as expected.
+
+#### Running Smoke Tests Locally
+
+To run smoke tests for a starter project, you can use the `ci-smoke-test.sh` script. This is the same script that runs in our CI environment.
+
+```sh
+# Run smoke test for the 'minimal' starter with pnpm
+./sdk/scripts/ci-smoke-test.sh --starter "minimal" --package-manager "pnpm"
+```
+
+The script will create a temporary directory, copy the starter, install dependencies using the specified package manager, and run a series of automated checks using Puppeteer. If the test fails, artifacts (including screenshots and logs) will be saved to a `smoke-test-artifacts` directory in the monorepo root.
+
 ### End-to-End Tests (Playground)
 
 The monorepo includes a `playground` directory for end-to-end (E2E) tests. These tests run against a real, packed tarball of the SDK in an isolated environment to simulate a user's project accurately.
@@ -276,10 +310,6 @@ function processData(input: string, retries: number = 3, logger?: Logger) {
 ```
 
 This convention is not a strict rule. For simple functions where the arguments are self-explanatory (e.g., `add(a, b)`), positional arguments are perfectly acceptable. Use your best judgment.
-
-## Smoke Testing
-
-For details on how to run smoke tests, please see the [smoke testing documentation](./SMOKE-TESTING.md).
 
 ## Formatting
 
