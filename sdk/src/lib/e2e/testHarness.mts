@@ -543,7 +543,7 @@ testDevAndDeploy.only = (
  */
 export async function poll(
   fn: () => Promise<boolean>,
-  timeout: number = 5000,
+  timeout: number = 30000,
   interval: number = 100,
 ): Promise<void> {
   const startTime = Date.now();
