@@ -38,28 +38,29 @@ This approach connects the two environments at the module level, ensuring the SS
 
 ## Validation via Playground Example
 
-To confirm the SSR bridging works in a real-world scenario, particularly with third-party packages, a new playground example will be created.
+To confirm the SSR bridging works for all exports from a "use client" module (not just components), a playground example will be set up to test two scenarios: a local client module and a client module from a package.
+
+The core of the test is to import a non-component export (e.g., an object with methods) from a "use client" module into a Server Component and execute it during the server render.
 
 ### Plan
 
-1.  **Create a New Playground:**
-    -   Set up a new playground named `ssr-client-component-from-pkg`.
-    -   This playground will serve as the testbed for the feature.
+1.  **Set up a "use client" Module (In-App):**
+    -   Create a file at `src/app/lib/client-utils.ts`.
+    -   This file will contain the `"use client"` directive.
+    -   It will export a simple object with a method, e.g., `export const clientObject = { format: (name) => ... }`.
+    -   It will also export a React component, `<ClientButton>`, to ensure components still work.
 
-2.  **Simulate a Third-Party Package:**
-    -   Inside the playground, create a `packages/ui-lib` directory to act as a local, vended package.
-    -   `ui-lib` will have its own `package.json` and an `index.tsx` file.
-    -   The `index.tsx` file will export a simple React component marked with the `"use client"` directive.
+2.  **Set up a "use client" Module (Package):**
+    -   Re-create the `packages/ui-lib` directory to act as a local package.
+    -   Its `index.tsx` will contain `"use client"` and export both a component (`<PackageButton>`) and a utility object (`packageObject`).
+    -   Add `"ui-lib": "file:./packages/ui-lib"` back to the playground's `package.json`.
 
-3.  **Integrate the Local Package:**
-    -   In the playground's main `package.json`, add a dependency to the local package using the `file:` protocol: `"ui-lib": "file:./packages/ui-lib"`. This ensures it's treated as a `node_modules` dependency.
-    -   In one of the playground's pages (e.g., `Home.tsx`), import and render the client component from `ui-lib`.
+3.  **Integrate and Test in a Server Component:**
+    -   Modify `Home.tsx` (a Server Component) to import from both the local `client-utils.ts` and the `ui-lib` package.
+    -   On the server, call the methods from both `clientObject` and `packageObject` and render their string output directly into the page.
+    -   Render both `<ClientButton>` and `<PackageButton>` to ensure they are interactive.
 
 4.  **Add End-to-End Tests:**
-    -   Create an `e2e.test.mts` file for the new playground.
-    -   The test will:
-        -   Start the development server for the playground.
-        -   Navigate to the page that uses the component from `ui-lib`.
-        -   Assert that the server-rendered HTML contains the content of the client component.
-        -   Check the browser's console for any hydration errors.
-        -   Verify that the component is interactive on the client.
+    -   Update `e2e.test.mts` with two test suites.
+    -   **Test 1 (Active):** Verify the local module case. Assert that the server-rendered HTML contains the string output from `clientObject.format()`. Assert that `<ClientButton>` is rendered and interactive.
+    -   **Test 2 (Skipped):** Verify the package module case. This test will be marked as `.skip` for now. It will contain assertions for the output of `packageObject.format()` and the interactivity of `<PackageButton>`.

@@ -2,16 +2,16 @@
 
 import React, { useState } from "react";
 
-export const packageObject = {
-  format: (name: string) => `Hello, ${name} from a package util!`,
+export const clientObject = {
+  format: (name: string) => `Hello, ${name} from a client util!`,
 };
 
-export const PackageButton = () => {
+export const ClientButton = () => {
   const [count, setCount] = useState(0);
 
   return (
     <button onClick={() => setCount(count + 1)}>
-      Package Button (Clicks: {count})
+      App Button (Clicks: {count})
     </button>
   );
 };
