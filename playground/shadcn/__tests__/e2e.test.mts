@@ -130,6 +130,7 @@ testDevAndDeploy(
       "Data Display",
       "Interactive Components",
       "Feedback Components",
+      "Date & Time",
     ];
 
     for (const section of expectedSections) {
