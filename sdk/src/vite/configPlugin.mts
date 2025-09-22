@@ -140,10 +140,13 @@ export const configPlugin = ({
           },
           build: {
             lib: {
-              entry: enhancedResolve.sync(
-                projectRootDir,
-                "rwsdk/__ssr_bridge",
-              ) as string,
+              entry: {
+                [path.basename(INTERMEDIATE_SSR_BRIDGE_PATH, ".js")]:
+                  enhancedResolve.sync(
+                    projectRootDir,
+                    "rwsdk/__ssr_bridge",
+                  ) as string,
+              },
               formats: ["es"],
               fileName: () => path.basename(INTERMEDIATE_SSR_BRIDGE_PATH),
             },

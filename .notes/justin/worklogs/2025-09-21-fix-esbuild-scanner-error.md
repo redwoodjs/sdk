@@ -184,3 +184,25 @@ The solution was to stop fighting the plugin and instead adapt our build orchest
     ```
 
 This approach resolves the conflict by allowing the Cloudflare plugin to control the build process as intended, while our orchestrator hooks into the process to execute the necessary multi-pass logic. This ensures the final `worker.js` is a single, correctly transformed bundle that meets the requirements of both Rollup and the Cloudflare runtime.
+
+## SSR Build Failure and Reversion
+
+The previous fix, which involved letting the Cloudflare plugin manage the worker build, was successful. However, a follow-up build failure occurred:
+
+```
+[vite]: Rollup failed to resolve import ".../ssr_bridge.js" from ".../index.js".
+```
+
+### Investigation
+
+This error indicated that the linker pass could not find the `ssr_bridge.js` artifact. The root cause was an unnecessary change I had made to the SSR build configuration in `sdk/src/vite/configPlugin.mts`.
+
+In an earlier attempt to fix the `inlineDynamicImports` error, I had changed both the `worker` and `ssr` build inputs from an object to a string. While the `worker` build change was the source of the conflict with the Cloudflare plugin, the change to the `ssr` build was an incorrect overreach. The `ssr` environment is not processed by the Cloudflare plugin and did not have the same issue.
+
+My incorrect modification to the SSR config's `lib.entry` caused the `ssr_bridge.js` to be bundled in a way that the linker pass could no longer resolve.
+
+### Solution
+
+The fix was to revert the `ssr` build configuration in `sdk/src/vite/configPlugin.mts` to its original state, which uses an object for `lib.entry` to correctly name the output chunk. The `worker` build changes were kept, as they were the correct fix for the Cloudflare plugin conflict.
+
+This reversion ensures the SSR artifact is produced correctly, allowing the linker pass to resolve it and complete the build.
