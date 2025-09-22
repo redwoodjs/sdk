@@ -130,23 +130,6 @@ The explicit `npm run check` calls were removed from the E2E and smoke test infr
 
 Running the type check separately was problematic because it would run before the necessary types had been generated. Relying on the `generate` script's built-in type check ensures that types are checked at the correct point in the process, resolving the CI failures.
 
-## PR Description
-
-### Manual Changes and Fixes
-
-This PR includes manual changes to address issues that arose from the automated dependency updates.
-
-#### Problem
-
-The update to Vite from version `7.1.5` to `7.1.6` introduced a breaking change via an internal update to its `esbuild` dependency (from `^0.23.0` to `^0.24.0`).
-
-This new version of `esbuild` changed its API behavior, making it an error to use `write: false` with multiple entry points and `bundle: true` without specifying an `outdir`. This directly impacted our custom directive scanner, causing the build to fail. A follow-up issue also arose where the scanner attempted to process virtual modules from Vite's config, which `esbuild` cannot handle.
-
-#### Solution
-
-1.  **Updated Directive Scanner**: The scanner's `esbuild` configuration was updated to be compatible with the new API. This involved adding a temporary `outdir` to the configuration and filtering out virtual modules from the entry points before the scan.
-2.  **Switched to Tarball-Based Testing**: The investigation revealed that the existing E2E test setup, which relied on workspace linking, was running against stale dependencies from `node_modules` that were installed before the dependency upgrade. This meant the CI was not testing against the new versions and their updated types, hiding the build failures. The test environments for both smoke and E2E tests were switched to use a tarball-based installation. This ensures tests run in a clean, isolated environment with the correct, newly-updated dependencies, accurately reflecting a real user installation and validating the build fixes.
-
 ## `vite-plugin-cloudflare` Build Process Conflict
 
 After fixing the scanner and type issues, a series of build failures pointed to a deep incompatibility between our multi-pass build process and recent changes in `@cloudflare/vite-plugin` (v1.13.3) and Vite/Rollup.
@@ -238,3 +221,53 @@ The solution was to make the directive scanner's entry point explicit, decouplin
 3.  **Cleaned up `configPlugin.mts`**: With the scanner's entry point now handled explicitly, the conditional `rollupOptions` were no longer needed and were removed.
 
 This way, the directive scanner always has the correct entry point, both in development and production, resolving the final issue.
+
+## PR Description
+
+### Manual Changes and Fixes
+
+This PR includes manual changes to address issues that arose from automated dependency updates.
+
+#### Vite Upgrade (`7.1.5` -> `7.1.6`) and Directive Scanner Failures
+
+**Problem**
+
+We have a custom directive scanner that discovers `"use client"` and `"use server"` files. To minimize user dependencies and ensure consistent behavior, this scanner relies on the `esbuild` binary that ships with Vite.
+
+The upgrade to Vite `7.1.6` introduced a breaking change via its internal `esbuild` dependency, which was updated from `^0.23.0` to `^0.24.0`. The new `esbuild` version changed its API behavior, making it an error to use `write: false` with `bundle: true` for multiple entry points without specifying an `outdir`. This caused our directive scanner to fail. A follow-up issue also occurred where the scanner failed on virtual modules provided by Vite's config.
+
+**Solution**
+
+The scanner's `esbuild` configuration was updated to be compatible with the new API. This involved two changes:
+1.  Adding a temporary `outdir` to the configuration. Since `write: false` is still set, no files are written to disk.
+2.  Adding a filter to ignore virtual modules (e.g., `virtual:cloudflare/worker-entry`) before passing entry points to `esbuild`.
+
+---
+
+#### `@cloudflare/vite-plugin` (`1.12.4` -> `1.13.3`) and Build Process Conflict
+
+**Problem**
+
+Our production build is a multi-pass process orchestrated by `buildApp.mts`. It first builds an intermediate worker bundle, then "links" it with an SSR bridge to produce the final single-file artifact. This process must work in harmony with the Cloudflare plugin.
+
+The updated `@cloudflare/vite-plugin` now requires the main worker entry chunk to be named `index`. This requires a Rollup input config like `{ index: '...' }`. However, to create a single-file worker bundle, we need `inlineDynamicImports: true`, and a recent Rollup update requires this option to be used with a simple string input, not an object. This created a deadlock, preventing a successful build.
+
+**Solution**
+
+The solution was to adapt our build process to cooperate with the plugin:
+1.  The manual `rollupOptions` for the worker build were removed from our `configPlugin.mts`, allowing the `@cloudflare/vite-plugin` to take control and generate a valid intermediate build with an `index.js` chunk.
+2.  The "linker" pass in `buildApp.mts` was updated to hook into the plugin-generated configuration. It now modifies the existing config, re-pointing the `input` to the intermediate `index.js` artifact from the first pass.
+
+This resolves the conflict by letting the plugin manage the build while still allowing our orchestrator to perform its essential multi-pass logic.
+
+---
+
+#### Dev Server Directive Scan Regression
+
+**Problem**
+
+The fix for the production build involved removing the manual `rollupOptions` from the worker's Vite configuration, allowing the Cloudflare plugin to manage the build. This change, while correct for production, had an unintended side-effect on the development server. The dev server failed because the directive scanner, which runs on startup, no longer had an entry point. It relied on the `rollupOptions` that had been removed, and it was executing before the full Vite configuration for the worker environment was resolved.
+
+**Solution**
+
+The dependency on the implicit Vite configuration was removed. The `runDirectivesScan` function was updated to accept an explicit `entries` parameter. This entry point is now passed directly from the main `redwoodPlugin` (for the `dev` command) and the `buildApp` function (for the `build` command), ensuring the scanner always has the correct starting point.
