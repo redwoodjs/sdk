@@ -110,3 +110,20 @@ The fix works! Worker cleanup now succeeds because:
 - Resource unique key: `cd110389` (extracted from directory name)
 - `isRelatedToTest()` returns `true`
 - Worker deletion proceeds successfully
+
+### Verification Test
+Ran the test again after removing debug logging and re-adding the e2e export. The cleanup works as expected:
+
+```
+Cleaning up: Deleting worker hello-world-e2e-test-6ab557a2...
+Running command: npx wrangler delete hello-world-e2e-test-6ab557a2
+```
+
+## Summary
+**Problem:** E2E tests were not deleting deployed workers after completion, leading to accumulation of test workers in Cloudflare.
+
+**Root Cause:** The `resourceUniqueKey` used for cleanup was generated independently from the unique ID used in the worker directory name, causing a mismatch that prevented the `isRelatedToTest` check from passing.
+
+**Solution:** Modified `createDeployment()` in `testHarness.mts` to extract the unique key from the project directory name using regex pattern `/-e2e-test-([a-f0-9]+)$/` instead of generating a new random key.
+
+**Result:** Workers are now properly cleaned up after E2E tests complete, preventing accumulation of test workers in Cloudflare.
