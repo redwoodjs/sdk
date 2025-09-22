@@ -149,3 +149,31 @@ The problem was that the `resourceUniqueKey` used for the cleanup check was gene
 The fix is to ensure the `resourceUniqueKey` is derived from the same source as the unique ID in the worker's name. The worker's name is based on the temporary directory created for the test, which has a name format like `{projectName}-e2e-test-{randomId}`.
 
 The solution modifies the `createDeployment()` function in the E2E test harness. Instead of generating a new random `resourceUniqueKey`, it now extracts the `{randomId}` from the test's temporary directory path. This ensures that the key used for the cleanup check matches the one in the worker's name => allows the worker to be correctly identified and deleted after the test.
+
+### New Information from User
+The user provided the `scripts/cleanup-test-workers.sh` script, which directly interacts with the Cloudflare API to list and delete workers. This script uses the endpoint `/client/v4/accounts/$CLOUDFLARE_ACCOUNT_ID/workers/scripts` for listing and deleting.
+
+This is the correct approach to listing and deleting workers, which I was previously struggling to find using `wrangler` CLI commands.
+
+## Updated Plan
+1. Make `scripts/cleanup-test-workers.sh` executable.
+2. List existing workers using `scripts/cleanup-test-workers.sh` (as a dry run without actual deletion) to get a baseline.
+3. Run a deployment test.
+4. List workers again using `scripts/cleanup-test-workers.sh` to verify cleanup.
+5. Debug the cleanup mechanism based on the comparison of worker lists.
+6. Implement any necessary fixes.
+7. Use `scripts/cleanup-test-workers.sh` to clean up lingering workers if the fix is confirmed.
+
+## Re-investigation (September 22, 2025)
+
+### Problem Confirmed
+Despite the previous fix, workers are still accumulating in Cloudflare, leading to limits being reached. This contradicts earlier local test results and indicates a persistent issue in the CI environment.
+
+### Plan
+1. Obtain Cloudflare API token from the user to directly interact with the Cloudflare API.
+2. List existing workers in Cloudflare before running a test.
+3. Run a deployment test.
+4. List workers again after the test to verify if cleanup is successful. This will help determine if `wrangler delete` is successful in the CI environment or if other factors are at play.
+5. Debug cleanup mechanism, potentially adding further logging if direct API calls reveal issues.
+6. Implement and test additional fixes as needed.
+7. Clean up any lingering workers if the fix is confirmed.

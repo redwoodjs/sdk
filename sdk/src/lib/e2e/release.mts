@@ -586,59 +586,59 @@ export function isRelatedToTest(
  * Delete the worker using wrangler
  */
 export async function deleteWorker(
-  name: string,
-  cwd: string,
+  workerName: string,
+  projectDir: string,
   resourceUniqueKey: string,
-): Promise<void> {
-  console.log(`Cleaning up: Deleting worker ${name}...`);
+) {
+  console.log(`Cleaning up: Deleting worker ${workerName}...`);
 
-  // Safety check: if we have a resourceUniqueKey, verify this worker name contains it
-  if (resourceUniqueKey && !isRelatedToTest(name, resourceUniqueKey)) {
-    log(
-      `Worker ${name} does not contain unique key ${resourceUniqueKey}, not deleting for safety`,
+  // We are extra careful here to not delete workers that are not related to
+  // the current test run. We check if the worker name contains the resource
+  // unique key, and if the project directory also contains the resource unique
+  // key.
+  if (!isRelatedToTest(workerName, resourceUniqueKey)) {
+    console.warn(
+      `⚠️ Worker name "${workerName}" does not contain resource unique key "${resourceUniqueKey}". Skipping delete.`,
     );
-    console.log(
-      `⚠️ Worker ${name} does not seem to be created by this test, skipping deletion for safety`,
+    return;
+  }
+  if (!isRelatedToTest(projectDir, resourceUniqueKey)) {
+    console.warn(
+      `⚠️ Project dir "${projectDir}" does not contain resource unique key "${resourceUniqueKey}". Skipping delete.`,
     );
     return;
   }
 
+  const command = `npx wrangler delete ${workerName}`;
+  console.log(`Running command: ${command}`);
+
   try {
-    // Use our $expect utility to handle any confirmation prompts
-    log("Running wrangler delete command with interactive prompts");
-    await $expect(
-      `npx wrangler delete ${name}`,
-      [
-        {
-          expect: "Are you sure you want to delete",
-          send: "y\r",
-        },
-      ],
-      {
-        cwd,
+    const { stdout, stderr } = await execaCommand(command, {
+      cwd: projectDir,
+      env: {
+        ...process.env,
+        CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID,
+        CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN,
       },
-    );
-    console.log(`✅ Worker ${name} deleted successfully`);
+    });
+
+    console.log(`'wrangler delete' stdout:\n${stdout}`);
+    if (stderr) {
+      console.error(`'wrangler delete' stderr:\n${stderr}`);
+    }
+    console.log(`✅ Successfully deleted worker "${workerName}"`);
   } catch (error) {
-    console.error(`Failed to delete worker ${name}: ${error}`);
-    // Retry with force flag if the first attempt failed
-    try {
-      console.log("Retrying with force flag...");
-      await $expect(
-        `npx wrangler delete ${name} --yes --force`,
-        [
-          {
-            expect: "Are you sure you want to delete",
-            send: "y\r",
-          },
-        ],
-        {
-          cwd,
-        },
-      );
-      console.log(`✅ Worker ${name} force deleted successfully`);
-    } catch (retryError) {
-      console.error(`Failed to force delete worker ${name}: ${retryError}`);
+    console.error(`❌ Failed to delete worker "${workerName}"`);
+    if (error instanceof Error) {
+      console.error(`Error message: ${error.message}`);
+      if ("stdout" in error) {
+        console.error(`Stdout: ${(error as any).stdout}`);
+      }
+      if ("stderr" in error) {
+        console.error(`Stderr: ${(error as any).stderr}`);
+      }
+    } else {
+      console.error("An unknown error occurred:", error);
     }
   }
 }
