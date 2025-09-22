@@ -356,6 +356,78 @@ export async function createBrowser(): Promise<Browser> {
 }
 
 /**
+ * Executes a test function with a retry mechanism for specific error codes.
+ * @param name - The name of the test, used for logging.
+ * @param attemptFn - A function that executes one attempt of the test.
+ *                     It should set up resources, run the test logic, and
+ *                     return a cleanup function. The cleanup function will be
+ *                     called automatically on failure.
+ */
+export async function runTestWithRetries(
+  name: string,
+  attemptFn: () => Promise<{ cleanup: () => Promise<void> }>,
+) {
+  const MAX_RETRIES_PER_CODE = 6;
+  const retryCounts: Record<string, number> = {};
+  let attempt = 0;
+
+  while (true) {
+    attempt++;
+    let cleanup: (() => Promise<void>) | undefined;
+
+    try {
+      const res = await attemptFn();
+      cleanup = res.cleanup;
+
+      if (attempt > 1) {
+        console.log(
+          `[runTestWithRetries] Test "${name}" succeeded on attempt ${attempt}.`,
+        );
+      }
+      // On success, we don't run cleanup here. It will be handled by afterEach.
+      return; // Success
+    } catch (e: any) {
+      // On failure, run the cleanup from the failed attempt.
+      // The cleanup function is attached to the error object on failure.
+      const errorCleanup = e.cleanup;
+      if (typeof errorCleanup === "function") {
+        await errorCleanup().catch((err: any) =>
+          console.warn(
+            `[runTestWithRetries] Cleanup failed for "${name}" during retry:`,
+            err,
+          ),
+        );
+      }
+
+      const errorCode = e?.code;
+      if (typeof errorCode === "string" && errorCode) {
+        const count = (retryCounts[errorCode] || 0) + 1;
+        retryCounts[errorCode] = count;
+
+        if (count <= MAX_RETRIES_PER_CODE) {
+          console.log(
+            `[runTestWithRetries] Attempt ${attempt} for "${name}" failed with code ${errorCode}. Retrying (failure ${count}/${MAX_RETRIES_PER_CODE} for this code)...`,
+          );
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+          continue; // Next attempt
+        } else {
+          console.error(
+            `[runTestWithRetries] Test "${name}" failed with code ${errorCode} after ${MAX_RETRIES_PER_CODE} retries for this code.`,
+          );
+          throw e; // Give up
+        }
+      } else {
+        console.error(
+          `[runTestWithRetries] Test "${name}" failed on attempt ${attempt} with a non-retryable error:`,
+          e,
+        );
+        throw e;
+      }
+    }
+  }
+}
+
+/**
  * High-level test wrapper for dev server tests.
  * Automatically skips if RWSDK_SKIP_DEV=1
  */
@@ -374,17 +446,31 @@ export function testDev(
   }
 
   test(name, async () => {
-    const devServer = await createDevServer();
-    const browser = await createBrowser();
-    const page = await browser.newPage();
+    await runTestWithRetries(name, async () => {
+      const devServer = await createDevServer();
+      const browser = await createBrowser();
+      const page = await browser.newPage();
 
-    await testFn({
-      devServer,
-      browser,
-      page,
-      url: devServer.url,
+      const cleanup = async () => {
+        await browser.close();
+        await devServer.stopDev();
+      };
+
+      try {
+        await testFn({
+          devServer,
+          browser,
+          page,
+          url: devServer.url,
+        });
+
+        return { cleanup };
+      } catch (error) {
+        // Ensure cleanup is available to the retry wrapper even if testFn fails.
+        // We re-throw the error to be handled by runTestWithRetries.
+        throw Object.assign(error as Error, { cleanup });
+      }
     });
-    // Automatic cleanup handled by afterEach hooks
   });
 }
 
@@ -393,6 +479,49 @@ export function testDev(
  */
 testDev.skip = (name: string, testFn?: any) => {
   test.skip(name, testFn || (() => {}));
+};
+
+testDev.only = (
+  name: string,
+  testFn: (context: {
+    devServer: DevServerInstance;
+    browser: Browser;
+    page: Page;
+    url: string;
+  }) => Promise<void>,
+) => {
+  if (SKIP_DEV_SERVER_TESTS) {
+    test.skip(name, () => {});
+    return;
+  }
+
+  test.only(name, async () => {
+    await runTestWithRetries(name, async () => {
+      const devServer = await createDevServer();
+      const browser = await createBrowser();
+      const page = await browser.newPage();
+
+      const cleanup = async () => {
+        await browser.close();
+        await devServer.stopDev();
+      };
+
+      try {
+        await testFn({
+          devServer,
+          browser,
+          page,
+          url: devServer.url,
+        });
+
+        return { cleanup };
+      } catch (error) {
+        // Ensure cleanup is available to the retry wrapper even if testFn fails.
+        // We re-throw the error to be handled by runTestWithRetries.
+        throw Object.assign(error as Error, { cleanup });
+      }
+    });
+  });
 };
 
 /**
@@ -414,17 +543,30 @@ export function testDeploy(
   }
 
   test(name, async () => {
-    const deployment = await createDeployment();
-    const browser = await createBrowser();
-    const page = await browser.newPage();
+    await runTestWithRetries(name, async () => {
+      const deployment = await createDeployment();
+      const browser = await createBrowser();
+      const page = await browser.newPage();
 
-    await testFn({
-      deployment,
-      browser,
-      page,
-      url: deployment.url,
+      const cleanup = async () => {
+        // We don't await this because we want to let it run in the background
+        // The afterEach hook for deployments already does this.
+        cleanupDeployment(deployment);
+        await browser.close();
+      };
+
+      try {
+        await testFn({
+          deployment,
+          browser,
+          page,
+          url: deployment.url,
+        });
+        return { cleanup };
+      } catch (error) {
+        throw Object.assign(error as Error, { cleanup });
+      }
     });
-    // Automatic cleanup handled by afterEach hooks
   });
 }
 
@@ -433,6 +575,48 @@ export function testDeploy(
  */
 testDeploy.skip = (name: string, testFn?: any) => {
   test.skip(name, testFn || (() => {}));
+};
+
+testDeploy.only = (
+  name: string,
+  testFn: (context: {
+    deployment: DeploymentInstance;
+    browser: Browser;
+    page: Page;
+    url: string;
+  }) => Promise<void>,
+) => {
+  if (SKIP_DEPLOYMENT_TESTS) {
+    test.skip(name, () => {});
+    return;
+  }
+
+  test.only(name, async () => {
+    await runTestWithRetries(name, async () => {
+      const deployment = await createDeployment();
+      const browser = await createBrowser();
+      const page = await browser.newPage();
+
+      const cleanup = async () => {
+        // We don't await this because we want to let it run in the background
+        // The afterEach hook for deployments already does this.
+        cleanupDeployment(deployment);
+        await browser.close();
+      };
+
+      try {
+        await testFn({
+          deployment,
+          browser,
+          page,
+          url: deployment.url,
+        });
+        return { cleanup };
+      } catch (error) {
+        throw Object.assign(error as Error, { cleanup });
+      }
+    });
+  });
 };
 
 /**
@@ -449,54 +633,17 @@ export function testDevAndDeploy(
     url: string;
   }) => Promise<void>,
 ) {
-  if (SKIP_DEV_SERVER_TESTS) {
-    test.skip(`${name} (dev)`, () => {});
-  } else {
-    test(`${name} (dev)`, async () => {
-      const devServer = await createDevServer();
-      const browser = await createBrowser();
-      const page = await browser.newPage();
-
-      await testFn({
-        devServer,
-        browser,
-        page,
-        url: devServer.url,
-      });
-      // Automatic cleanup handled by afterEach hooks
-    });
-  }
-
-  if (SKIP_DEPLOYMENT_TESTS) {
-    test.skip(`${name} (deployment)`, () => {});
-  } else {
-    test(`${name} (deployment)`, async () => {
-      const deployment = await createDeployment();
-      const browser = await createBrowser();
-      const page = await browser.newPage();
-
-      await testFn({
-        deployment,
-        browser,
-        page,
-        url: deployment.url,
-      });
-      // Automatic cleanup handled by afterEach hooks
-    });
-  }
+  testDev(`${name} (dev)`, testFn);
+  testDeploy(`${name} (deployment)`, testFn);
 }
 
 /**
  * Skip version of testDevAndDeploy
  */
 testDevAndDeploy.skip = (name: string, testFn?: any) => {
-  test.skip(`${name} (dev)`, testFn || (() => {}));
-  test.skip(`${name} (deployment)`, testFn || (() => {}));
+  test.skip(name, testFn || (() => {}));
 };
 
-/**
- * Only version of testDevAndDeploy
- */
 testDevAndDeploy.only = (
   name: string,
   testFn: (context: {
@@ -507,35 +654,8 @@ testDevAndDeploy.only = (
     url: string;
   }) => Promise<void>,
 ) => {
-  if (!SKIP_DEV_SERVER_TESTS) {
-    test.only(`${name} (dev)`, async () => {
-      const devServer = await createDevServer();
-      const browser = await createBrowser();
-      const page = await browser.newPage();
-
-      await testFn({
-        devServer,
-        browser,
-        page,
-        url: devServer.url,
-      });
-    });
-  }
-
-  if (!SKIP_DEPLOYMENT_TESTS) {
-    test.only(`${name} (deployment)`, async () => {
-      const deployment = await createDeployment();
-      const browser = await createBrowser();
-      const page = await browser.newPage();
-
-      await testFn({
-        deployment,
-        browser,
-        page,
-        url: deployment.url,
-      });
-    });
-  }
+  testDev.only(`${name} (dev)`, testFn);
+  testDeploy.only(`${name} (deployment)`, testFn);
 };
 
 /**
