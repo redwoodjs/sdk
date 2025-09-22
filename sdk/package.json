@@ -1,6 +1,6 @@
 {
   "name": "rwsdk",
-  "version": "1.0.0-alpha.7",
+  "version": "1.0.0-alpha.8",
   "description": "Build fast, server-driven webapps on Cloudflare with SSR, RSC, and realtime",
   "type": "module",
   "bin": {
@@ -59,6 +59,10 @@
       "types": "./dist/runtime/entries/auth.d.ts",
       "default": "./dist/runtime/entries/auth.js"
     },
+    "./e2e": {
+      "types": "./dist/lib/e2e/index.d.mts",
+      "default": "./dist/lib/e2e/index.mjs"
+    },
     "./db": {
       "types": "./dist/runtime/lib/db/index.d.ts",
       "default": "./dist/runtime/lib/db/index.js"
@@ -90,10 +94,6 @@
     "./realtime/durableObject": {
       "types": "./dist/runtime/lib/realtime/durableObject.d.ts",
       "default": "./dist/runtime/lib/realtime/durableObject.js"
-    },
-    "./e2e": {
-      "types": "./dist/lib/e2e/index.d.mts",
-      "default": "./dist/lib/e2e/index.mjs"
     }
   },
   "keywords": [
