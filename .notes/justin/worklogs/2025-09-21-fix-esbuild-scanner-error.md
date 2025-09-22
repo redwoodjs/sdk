@@ -146,3 +146,45 @@ This new version of `esbuild` changed its API behavior, making it an error to us
 
 1.  **Updated Directive Scanner**: The scanner's `esbuild` configuration was updated to be compatible with the new API. This involved adding a temporary `outdir` to the configuration and filtering out virtual modules from the entry points before the scan.
 2.  **Switched to Tarball-Based Testing**: The investigation revealed that the existing E2E test setup, which relied on workspace linking, was running against stale dependencies from `node_modules` that were installed before the dependency upgrade. This meant the CI was not testing against the new versions and their updated types, hiding the build failures. The test environments for both smoke and E2E tests were switched to use a tarball-based installation. This ensures tests run in a clean, isolated environment with the correct, newly-updated dependencies, accurately reflecting a real user installation and validating the build fixes.
+
+## `inlineDynamicImports` with multiple inputs error
+
+After fixing the previous issues, a new CI error appeared during the build process:
+
+```
+Invalid value for option "output.inlineDynamicImports" - multiple inputs are not supported when "output.inlineDynamicImports" is true.
+```
+
+### Investigation
+
+This error comes from Rollup, which is used by Vite for bundling. It indicates that the `inlineDynamicImports` option is being used with more than one entry point, which is not supported.
+
+I checked the Vite configuration in `sdk/src/vite/configPlugin.mts`. Both the `worker` and `ssr` build configurations use `inlineDynamicImports: true`. Their inputs were defined as an object with a single key, for example:
+
+```typescript
+// worker config
+input: {
+  worker: workerEntryPathname,
+},
+```
+
+and for the SSR build:
+
+```typescript
+// ssr config
+lib: {
+  entry: {
+    'ssr_bridge': 'path/to/bridge.js'
+  }
+}
+```
+
+It seems that a recent update to Vite/Rollup now considers an object with a single entry as "multiple inputs" in the context of `inlineDynamicImports`.
+
+### Solution
+
+To fix this, I changed the `input` (for the worker build) and `lib.entry` (for the SSR build) to be a single string path instead of an object.
+
+For the worker build, I also added `entryFileNames: 'worker.js'` to the output options to preserve the output file name.
+
+For the SSR library build, changing to a string entry is sufficient as `fileName` is already configured to produce the correct output file name.
