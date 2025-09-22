@@ -9,6 +9,7 @@ alwaysApply: true
   - Runtime code is situated at `<repo_dir>/sdk/src/runtime/`
   - Code for the vite plugin is situated at `<repo_dir>/sdk/src/vite/`
 - When importing from `.mts` source files, use the `.mjs` extension in the import path. TypeScript will handle the resolution. **Note** the real file extensions on disk will be `.mts` - it is only for TypeScript's benefit that the import specifiers are `.mjs` in imports, even though the file extensions of the actual files are in fact `.mts`.
+- Playground examples are self-contained, runnable projects located in the playground/ directory, designed to demonstrate and test RedwoodSDK features. Each example, modeled after playground/hello-world, must include an __tests__ directory with end-to-end tests. These tests are executed from the monorepo root; refer to the "End-to-End Tests (Playground)" section in CONTRIBUTING.md for detailed instructions and API documentation. For context on using the framework to build playgroud examples refer to our docs in docs/src/content/docs. Run the tests from monorepo root, `e.g: pnpm test:e2e -- playground/hello-world/__tests__/e2e.test.mts`
 - For context on contribution guidelines and dev workflow commands, refer to CONTRIBUTING.md in the repo root. 
 - In tests, avoid mocking (e.g. `vi.mock()`), prefer depending injection, see CONTRIBUTING.md for more context
 - For context on how the system works, refer to the architecture documentation located in the `docs/architecture` directory.
