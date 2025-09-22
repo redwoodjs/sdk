@@ -148,6 +148,4 @@ The problem was that the `resourceUniqueKey` used for the cleanup check was gene
 
 The fix is to ensure the `resourceUniqueKey` is derived from the same source as the unique ID in the worker's name. The worker's name is based on the temporary directory created for the test, which has a name format like `{projectName}-e2e-test-{randomId}`.
 
-The solution modifies the `createDeployment()` function in the E2E test harness (`sdk/src/lib/e2e/testHarness.mts`). Instead of generating a new random `resourceUniqueKey`, it now extracts the `{randomId}` from the test's temporary directory path. This ensures that the key used for the cleanup check matches the one in the worker's name, allowing the worker to be correctly identified and deleted after the test.
-
-This change aligns the identification key with the deployed worker's name, fixing the cleanup process without removing the safety check.
+The solution modifies the `createDeployment()` function in the E2E test harness. Instead of generating a new random `resourceUniqueKey`, it now extracts the `{randomId}` from the test's temporary directory path. This ensures that the key used for the cleanup check matches the one in the worker's name => allows the worker to be correctly identified and deleted after the test.
