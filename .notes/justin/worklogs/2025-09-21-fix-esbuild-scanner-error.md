@@ -136,26 +136,11 @@ Seven fixes were applied to resolve the compatibility issues:
 
 7. **Ensured clean and correct package manager installation in tests**: The tarball installation process in the E2E and smoke tests now infers the package manager from the `PACKAGE_MANAGER` environment variable. It also removes any existing `node_modules` and lock files before running the installation. This prevents issues with broken `pnpm` symlinks and ensures a clean, reliable installation that respects the CI test matrix.
 
-## Document Component Type Fix
+## Document Component Type Investigation
 
-After implementing the tarball-based type checking, a new issue was discovered: the `Document` components in all starters and playground examples were incorrectly typed as `React.FC<{ children: React.ReactNode }>`, but the SDK's `render` function expects them to be `React.FC<DocumentProps>`.
+Initially attempted to fix Document component type issues by changing from `React.FC<{ children: React.ReactNode }>` to `DocumentProps`. However, this approach was incorrect - the Document components should maintain their simple signature as they are user-controlled templates that only need to render children.
 
-The `DocumentProps` type extends `RequestInfo` and includes additional properties beyond just `children`. When the framework renders the document, it passes all `RequestInfo` properties to the Document component via `<Document {...requestInfo}>`.
-
-This type mismatch was causing TypeScript errors in the tarball environment, where different versions of React types were being resolved, making the `ReactNode` types incompatible.
-
-### Fix Applied
-
-Updated all Document components to use the correct type:
-- Added `import type { DocumentProps } from "rwsdk/worker"`
-- Changed type from `React.FC<{ children: React.ReactNode }>` to `React.FC<DocumentProps>`
-
-Files updated:
-- `starters/minimal/src/app/Document.tsx`
-- `starters/standard/src/app/Document.tsx`
-- `playground/hello-world/src/app/Document.tsx`
-- `playground/render-apis/src/app/Document.tsx`
-- `playground/useid-test/src/app/Document.tsx`
+The Document component changes were reverted to maintain the original, correct type signature across all starters and playground examples.
 
 ## Broken Symlinks in Tarball Installation
 
