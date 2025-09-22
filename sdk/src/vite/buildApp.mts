@@ -20,16 +20,16 @@ export async function buildApp({
   clientFiles,
   serverFiles,
   projectRootDir,
+  workerEntryPathname,
 }: {
   builder: ViteBuilder;
   clientEntryPoints: Set<string>;
   clientFiles: Set<string>;
   serverFiles: Set<string>;
   projectRootDir: string;
+  workerEntryPathname: string;
 }) {
   const workerEnv = builder.environments.worker;
-  const workerEntryPathname = workerEnv.config.build.rollupOptions
-    ?.input as string;
   await runDirectivesScan({
     rootConfig: builder.config,
     environments: builder.environments,
