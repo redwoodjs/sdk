@@ -166,3 +166,19 @@ An investigation revealed that the issue was caused by broken symbolic links in 
 When `npm install` was run in the temporary directory, it failed to correctly resolve dependencies due to the presence of these broken symlinks.
 
 The fix, confirmed by manual testing, is to remove the existing `node_modules` directory and any lock files (`pnpm-lock.yaml`, `yarn.lock`, `package-lock.json`) from the temporary directory before running `npm install`. This ensures a clean, fresh installation without interference from the pre-existing broken symlinks.
+
+## Code Deduplication and Refactoring
+
+Identified significant code duplication between smoke tests and tarball setup for copying projects to temporary directories. Both were implementing similar logic for:
+- Copying project files while excluding `node_modules`
+- Respecting `.gitignore` patterns
+- Installing dependencies
+- Replacing workspace dependencies
+
+Refactored to create a shared `copyProjectToTempDir` function in `environment.mts` that handles both use cases:
+- Extended the function to support both 'smoke' and 'tarball' test types
+- Added tarball-specific configuration (frozen lockfile settings)
+- Added `installTarballDependencies` function for tarball installation
+- Simplified `setupTarballEnvironment` to use the shared function
+
+This eliminates code duplication and ensures both smoke tests and E2E tests use the same reliable file copying and dependency installation logic, including proper `.gitignore` respect and cross-platform compatibility via `fs-extra`.
