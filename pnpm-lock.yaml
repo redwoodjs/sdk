@@ -285,17 +285,17 @@ importers:
         specifier: ^22.8.1
         version: 22.15.0
       react:
-        specifier: 19.2.0-canary-3fb190f7-20250908 <20.0.0
-        version: 19.2.0-canary-3fb190f7-20250908
+        specifier: '>=19.2.0-canary-3fb190f7-20250908 <20.0.0'
+        version: 19.2.0-canary-d415fd3e-20250919
       react-dom:
-        specifier: 19.2.0-canary-3fb190f7-20250908 <20.0.0
-        version: 19.2.0-canary-3fb190f7-20250908(react@19.2.0-canary-3fb190f7-20250908)
+        specifier: '>=19.2.0-canary-3fb190f7-20250908 <20.0.0'
+        version: 19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919)
       react-is:
         specifier: ^19.0.0
         version: 19.0.0
       react-server-dom-webpack:
         specifier: '>=19.2.0-canary-3fb190f7-20250908 <20.0.0'
-        version: 19.2.0-canary-3fb190f7-20250908(react-dom@19.2.0-canary-3fb190f7-20250908(react@19.2.0-canary-3fb190f7-20250908))(react@19.2.0-canary-3fb190f7-20250908)(webpack@5.97.1)
+        version: 19.2.0-canary-3fb190f7-20250908(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1)
       rsc-html-stream:
         specifier: ^0.0.6
         version: 0.0.6
@@ -4822,11 +4822,6 @@ packages:
     resolution: {integrity: sha512-y3bGgqKj3QBdxLbLkomlohkvsA8gdAiUQlSBJnBhfn+BPxg4bc62d8TcBW15wavDfgexCgccckhcZvywyQYPOw==}
     hasBin: true
 
-  react-dom@19.2.0-canary-3fb190f7-20250908:
-    resolution: {integrity: sha512-5uOdo4Zx6ogTJh+pFlF1QzFTVkMTRTXZbJ3m5Uio22QNOg/hv+ElksmMSo21oq208Sn2TpiobdDtB/NkxMJ1dg==}
-    peerDependencies:
-      react: 19.2.0-canary-3fb190f7-20250908
-
   react-dom@19.2.0-canary-d415fd3e-20250919:
     resolution: {integrity: sha512-x6oMy2coDRpRxmci7mbUm8a3SbuMFKAq+4RsnkcdTx9O+9CZh/av8lOSwoNQq83to4exCR5wxBZYeBr7jloZbA==}
     peerDependencies:
@@ -4854,10 +4849,6 @@ packages:
       react: 19.2.0-canary-d415fd3e-20250919
       react-dom: 19.2.0-canary-d415fd3e-20250919
       webpack: ^5.59.0
-
-  react@19.2.0-canary-3fb190f7-20250908:
-    resolution: {integrity: sha512-2WQ3EC+CK5OQhHSTAOy3NcfzuSNAVmT4wWLdIpYLzxSBWoGcUS7rXdcPmMis7iy4sKt5STkGr431DU2drAZ90w==}
-    engines: {node: '>=0.10.0'}
 
   react@19.2.0-canary-d415fd3e-20250919:
     resolution: {integrity: sha512-gNQ6vJjVZ73TiwaX9tRjGj5039lEQuGlkkncdLkA4XLsIyttTY8bmDEq1JtcQdybxsM7/WE1hgT8Xi/nk2LBrw==}
@@ -5056,9 +5047,6 @@ packages:
 
   sax@1.4.1:
     resolution: {integrity: sha512-+aWOz7yVScEGoKNd4PA10LZ8sk0A/z5+nXQG5giUO5rprX9jgYsTdov9qCchZiPIZezbZH+jRut8nPodFAX4Jg==}
-
-  scheduler@0.27.0-canary-3fb190f7-20250908:
-    resolution: {integrity: sha512-cZnNmE8FnfR/sp6AEITkcCNP1f0zumIrMFoHA4ESUihPIdSwRN7RVlNTcE35Hu/u+9DyOWh+w2C+D+ieYZ7DNg==}
 
   scheduler@0.27.0-canary-d415fd3e-20250919:
     resolution: {integrity: sha512-0lNnfpCOaj3cae33jshLBYVKRkLY6ga5JGrSVQX9M+q5Lkoor8PTFNTLNW4s7WlDui78ntyJrOrjirwoBaCWvw==}
@@ -11071,11 +11059,6 @@ snapshots:
       minimist: 1.2.8
       strip-json-comments: 2.0.1
 
-  react-dom@19.2.0-canary-3fb190f7-20250908(react@19.2.0-canary-3fb190f7-20250908):
-    dependencies:
-      react: 19.2.0-canary-3fb190f7-20250908
-      scheduler: 0.27.0-canary-3fb190f7-20250908
-
   react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919):
     dependencies:
       react: 19.2.0-canary-d415fd3e-20250919
@@ -11085,12 +11068,12 @@ snapshots:
 
   react-refresh@0.14.2: {}
 
-  react-server-dom-webpack@19.2.0-canary-3fb190f7-20250908(react-dom@19.2.0-canary-3fb190f7-20250908(react@19.2.0-canary-3fb190f7-20250908))(react@19.2.0-canary-3fb190f7-20250908)(webpack@5.97.1):
+  react-server-dom-webpack@19.2.0-canary-3fb190f7-20250908(react-dom@19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919))(react@19.2.0-canary-d415fd3e-20250919)(webpack@5.97.1):
     dependencies:
       acorn-loose: 8.4.0
       neo-async: 2.6.2
-      react: 19.2.0-canary-3fb190f7-20250908
-      react-dom: 19.2.0-canary-3fb190f7-20250908(react@19.2.0-canary-3fb190f7-20250908)
+      react: 19.2.0-canary-d415fd3e-20250919
+      react-dom: 19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919)
       webpack: 5.97.1
       webpack-sources: 3.3.3
 
@@ -11102,8 +11085,6 @@ snapshots:
       react-dom: 19.2.0-canary-d415fd3e-20250919(react@19.2.0-canary-d415fd3e-20250919)
       webpack: 5.97.1
       webpack-sources: 3.3.3
-
-  react@19.2.0-canary-3fb190f7-20250908: {}
 
   react@19.2.0-canary-d415fd3e-20250919: {}
 
@@ -11441,8 +11422,6 @@ snapshots:
   safe-buffer@5.2.1: {}
 
   sax@1.4.1: {}
-
-  scheduler@0.27.0-canary-3fb190f7-20250908: {}
 
   scheduler@0.27.0-canary-d415fd3e-20250919: {}
 
