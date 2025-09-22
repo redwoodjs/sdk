@@ -35,8 +35,7 @@
     "@types/react-dom": "19.1.2",
     "typescript": "5.8.3",
     "vite": "7.1.5",
-    "wrangler": "4.35.0",
-    "@playwright/test": "1.42.0"
+    "wrangler": "4.35.0"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
