@@ -15,6 +15,7 @@ import { createHash } from "crypto";
 import { $ } from "../../lib/$.mjs";
 import { ROOT_DIR } from "../constants.mjs";
 import path from "node:path";
+import { cpSync, mkdirSync, rmSync, writeFileSync } from "node:fs";
 
 const log = debug("rwsdk:e2e:environment");
 
@@ -203,6 +204,11 @@ export async function copyProjectToTempDir(
 
     // Install dependencies in the target directory
     await installDependencies(targetDir, packageManager);
+
+    await fs.promises.appendFile(
+      path.join(projectDir, ".npmrc"),
+      "frozen-lockfile=false",
+    );
 
     // Return the environment details
     return { tempDir, targetDir, workerName };
