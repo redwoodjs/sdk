@@ -206,3 +206,35 @@ My incorrect modification to the SSR config's `lib.entry` caused the `ssr_bridge
 The fix was to revert the `ssr` build configuration in `sdk/src/vite/configPlugin.mts` to its original state, which uses an object for `lib.entry` to correctly name the output chunk. The `worker` build changes were kept, as they were the correct fix for the Cloudflare plugin conflict.
 
 This reversion ensures the SSR artifact is produced correctly, allowing the linker pass to resolve it and complete the build.
+
+## Directive Scan Failure in Dev Mode and Final Fix
+
+After resolving the build-time conflicts, a new issue appeared when running the dev server (`npm run dev`):
+
+```
+Error: (ssr) No module found for '/src/app/pages/user/Login.tsx' in module lookup for "use client" directive
+```
+
+### Investigation
+
+The debug logs for the directive scanner revealed the root cause:
+
+```
+rwsdk:vite:run-directives-scan Starting directives scan for worker environment with entries: []
+```
+
+The scanner was running with no entry points. This was a regression caused by the fix for the production build. To allow the `@cloudflare/vite-plugin` to control the `build`, I had removed the `rollupOptions.input` from the worker's configuration in `sdk/src/vite/configPlugin.mts`. However, the directive scanner, which runs as part of the `dev` command, relied on this configuration to find its starting point.
+
+Further investigation revealed that the `config` hook in our Vite plugin was not being reliably called for the `worker` environment before the directive scan was initiated. The configuration was not yet fully resolved at the point the scanner needed it.
+
+### Solution
+
+The solution was to make the directive scanner's entry point explicit, decoupling it from the Vite environment configuration.
+
+1.  **Modified `runDirectivesScan`**: The function was updated to accept an `entries` array as a direct parameter.
+2.  **Updated Call Sites**:
+    *   In `sdk/src/vite/buildApp.mts` (for production builds), the worker entry point is read from the now-resolved config and passed to the scanner.
+    *   In `sdk/src/vite/directiveModulesDevPlugin.mts` (for the dev server), the `workerEntryPathname` is now passed through from the main `redwoodPlugin` and then to the scanner.
+3.  **Cleaned up `configPlugin.mts`**: With the scanner's entry point now handled explicitly, the conditional `rollupOptions` were no longer needed and were removed.
+
+This way, the directive scanner always has the correct entry point, both in development and production, resolving the final issue.

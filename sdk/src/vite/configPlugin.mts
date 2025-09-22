@@ -8,8 +8,6 @@ import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import { buildApp } from "./buildApp.mjs";
 import { externalModules } from "./constants.mjs";
 
-const log = debug("rwsdk:vite:config");
-
 export const configPlugin = ({
   silent,
   projectRootDir,
@@ -26,7 +24,7 @@ export const configPlugin = ({
   clientEntryPoints: Set<string>;
 }): Plugin => ({
   name: "rwsdk:config",
-  config: async (_) => {
+  config: async (_, { command }) => {
     const mode = process.env.NODE_ENV;
 
     const workerConfig: InlineConfig = {

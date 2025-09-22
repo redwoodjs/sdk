@@ -117,6 +117,7 @@ export const redwoodPlugin = async (
       clientFiles,
       serverFiles,
       projectRootDir,
+      workerEntryPathname,
     }),
     configPlugin({
       silent: options.silent ?? false,

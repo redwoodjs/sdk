@@ -28,11 +28,14 @@ export async function buildApp({
   projectRootDir: string;
 }) {
   const workerEnv = builder.environments.worker;
+  const workerEntryPathname = workerEnv.config.build.rollupOptions
+    ?.input as string;
   await runDirectivesScan({
     rootConfig: builder.config,
     environments: builder.environments,
     clientFiles,
     serverFiles,
+    entries: [workerEntryPathname],
   });
 
   console.log("Building worker to discover used client components...");
