@@ -9,7 +9,7 @@ testDevAndDeploy(
     await page.goto(url);
 
     // 1. Check for server-rendered content
-    const heading = await page.locator("h1").textContent();
+    const heading = await page.locator("h1").innerText();
     expect(heading).toBe("SSR Client Component from Package");
 
     // 2. Check that the button is rendered with initial state
