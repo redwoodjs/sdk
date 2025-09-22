@@ -609,7 +609,7 @@ export async function deleteWorker(
     return;
   }
 
-  const command = `npx wrangler delete ${workerName}`;
+  const command = `npx wrangler delete ${workerName} --yes --force`;
   console.log(`Running command: ${command}`);
 
   try {
@@ -617,8 +617,8 @@ export async function deleteWorker(
       cwd: projectDir,
       env: {
         ...process.env,
-        CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID,
         CLOUDFLARE_API_TOKEN: process.env.CLOUDFLARE_API_TOKEN,
+        CLOUDFLARE_ACCOUNT_ID: process.env.CLOUDFLARE_ACCOUNT_ID,
       },
     });
 
