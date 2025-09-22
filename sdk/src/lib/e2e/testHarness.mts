@@ -441,7 +441,7 @@ export function testDev(
   }) => Promise<void>,
 ) {
   if (SKIP_DEV_SERVER_TESTS) {
-    test.skip(name, () => {});
+    test.skip(name, testFn);
     return;
   }
 
@@ -538,7 +538,7 @@ export function testDeploy(
   }) => Promise<void>,
 ) {
   if (SKIP_DEPLOYMENT_TESTS) {
-    test.skip(name, () => {});
+    test.skip(name, testFn);
     return;
   }
 
@@ -551,7 +551,7 @@ export function testDeploy(
       const cleanup = async () => {
         // We don't await this because we want to let it run in the background
         // The afterEach hook for deployments already does this.
-        cleanupDeployment(deployment);
+        await cleanupDeployment(deployment);
         await browser.close();
       };
 
@@ -600,7 +600,7 @@ testDeploy.only = (
       const cleanup = async () => {
         // We don't await this because we want to let it run in the background
         // The afterEach hook for deployments already does this.
-        cleanupDeployment(deployment);
+        await cleanupDeployment(deployment);
         await browser.close();
       };
 
