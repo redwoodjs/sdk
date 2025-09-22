@@ -246,6 +246,21 @@ export async function createDeployment(): Promise<DeploymentInstance> {
     resourceUniqueKey,
   );
 
+  // Poll the URL to ensure it's live before proceeding
+  await poll(
+    async () => {
+      try {
+        const response = await fetch(deployResult.url);
+        // We consider any response (even 4xx or 5xx) as success,
+        // as it means the worker is routable.
+        return response.status > 0;
+      } catch (e) {
+        return false;
+      }
+    },
+    60000, // 60-second timeout for warm-up
+  );
+
   const deploymentId = `deployment-${Date.now()}-${Math.random()
     .toString(36)
     .substring(2, 9)}`;
@@ -665,7 +680,7 @@ testDevAndDeploy.only = (
  */
 export async function poll(
   fn: () => Promise<boolean>,
-  timeout: number = 30000,
+  timeout: number = 2 * 60 * 1000, // 2 minutes
   interval: number = 100,
 ): Promise<void> {
   const startTime = Date.now();
