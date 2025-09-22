@@ -147,44 +147,40 @@ This new version of `esbuild` changed its API behavior, making it an error to us
 1.  **Updated Directive Scanner**: The scanner's `esbuild` configuration was updated to be compatible with the new API. This involved adding a temporary `outdir` to the configuration and filtering out virtual modules from the entry points before the scan.
 2.  **Switched to Tarball-Based Testing**: The investigation revealed that the existing E2E test setup, which relied on workspace linking, was running against stale dependencies from `node_modules` that were installed before the dependency upgrade. This meant the CI was not testing against the new versions and their updated types, hiding the build failures. The test environments for both smoke and E2E tests were switched to use a tarball-based installation. This ensures tests run in a clean, isolated environment with the correct, newly-updated dependencies, accurately reflecting a real user installation and validating the build fixes.
 
-## `inlineDynamicImports` with multiple inputs error
+## `vite-plugin-cloudflare` Build Process Conflict
 
-After fixing the previous issues, a new CI error appeared during the build process:
+After fixing the scanner and type issues, a series of build failures pointed to a deep incompatibility between our multi-pass build process and recent changes in `@cloudflare/vite-plugin` (v1.13.3) and Vite/Rollup.
 
-```
-Invalid value for option "output.inlineDynamicImports" - multiple inputs are not supported when "output.inlineDynamicImports" is true.
-```
+### Problem
+
+The core issue stemmed from two conflicting requirements:
+
+1.  **Cloudflare Plugin Requirement**: The updated `@cloudflare/vite-plugin` asserts that the main entry chunk for a worker build *must* be named `index`. To achieve this, Rollup's `input` option must be an object with an `index` key (e.g., `{ index: '...' }`).
+2.  **Rollup Requirement**: A recent Vite/Rollup update prohibits the use of `output.inlineDynamicImports: true` (which is essential for creating a single-file worker bundle) when the `input` option is an object. Rollup now requires a simple string input for this option.
+
+This created a deadlock: our build process needed to produce a single file, which required `inlineDynamicImports: true`, but the Cloudflare plugin's requirement for an `index` chunk forced an input configuration that Rollup rejected.
 
 ### Investigation
 
-This error comes from Rollup, which is used by Vite for bundling. It indicates that the `inlineDynamicImports` option is being used with more than one entry point, which is not supported.
+Analysis of the `@cloudflare/vite-plugin` playground examples revealed that the plugin is designed to manage the entire worker build configuration implicitly when a simple setup is detected. Our highly customized, multi-pass build in `buildApp.mts`, which manually configured Rollup options, was interfering with the plugin's intended operation.
 
-I checked the Vite configuration in `sdk/src/vite/configPlugin.mts`. Both the `worker` and `ssr` build configurations use `inlineDynamicImports: true`. Their inputs were defined as an object with a single key, for example:
-
-```typescript
-// worker config
-input: {
-  worker: workerEntryPathname,
-},
-```
-
-and for the SSR build:
-
-```typescript
-// ssr config
-lib: {
-  entry: {
-    'ssr_bridge': 'path/to/bridge.js'
-  }
-}
-```
-
-It seems that a recent update to Vite/Rollup now considers an object with a single entry as "multiple inputs" in the context of `inlineDynamicImports`.
+The architecture (`docs/architecture/productionBuildProcess.md`) confirms a two-pass worker build is essential: a "discovery" pass to produce an intermediate bundle and a "linker" pass to produce the final, single-file artifact. The solution needed to respect this architecture while yielding control of the Rollup configuration to the Cloudflare plugin.
 
 ### Solution
 
-To fix this, I changed the `input` (for the worker build) and `lib.entry` (for the SSR build) to be a single string path instead of an object.
+The solution was to stop fighting the plugin and instead adapt our build orchestrator (`buildApp.mts`) to work with it:
 
-For the worker build, I also added `entryFileNames: 'worker.js'` to the output options to preserve the output file name.
+1.  **Remove Manual Rollup Config**: In `sdk/src/vite/configPlugin.mts`, all manual `rollupOptions` for the worker build were removed. This allows the `@cloudflare/vite-plugin` to inject its own, correct configuration for generating a single-file worker bundle with an `index` chunk.
 
-For the SSR library build, changing to a string entry is sufficient as `fileName` is already configured to produce the correct output file name.
+2.  **Adapt the Linker Pass**: The linker pass in `buildApp.mts` was updated. Instead of defining its own `rollupOptions`, it now modifies the *existing* configuration that the plugin created. It re-points the `index` entry to the intermediate worker artifact from the first pass (`dist/worker/index.js`).
+
+    ```typescript
+    // in buildApp.mts, during the linker pass
+    const workerConfig = workerEnv.config;
+    workerConfig.build!.emptyOutDir = false;
+    workerConfig.build!.rollupOptions!.input = {
+      index: resolve(projectRootDir, "dist", "worker", "index.js"),
+    };
+    ```
+
+This approach resolves the conflict by allowing the Cloudflare plugin to control the build process as intended, while our orchestrator hooks into the process to execute the necessary multi-pass logic. This ensures the final `worker.js` is a single, correctly transformed bundle that meets the requirements of both Rollup and the Cloudflare runtime.

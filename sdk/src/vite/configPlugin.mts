@@ -69,13 +69,6 @@ export const configPlugin = ({
         emitAssets: true,
         emptyOutDir: false,
         ssr: true,
-        rollupOptions: {
-          output: {
-            inlineDynamicImports: true,
-            entryFileNames: "worker.js",
-          },
-          input: workerEntryPathname,
-        },
       },
     };
 
