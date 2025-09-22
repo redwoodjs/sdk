@@ -38,7 +38,38 @@ env:
   CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
 
 jobs:
+  check-ci-status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+      - name: Check status of all workflows on main
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          # The release is triggered from main, so HEAD is the commit we want to check
+          COMMIT_SHA=$(git rev-parse HEAD)
+          echo "Checking CI status for commit: $COMMIT_SHA on branch main"
+
+          # Give workflows a moment to start
+          sleep 15
+
+          # List all check runs for the commit, filter out successful/skipped ones, and see if any are left
+          FAILED_OR_PENDING_RUNS=$(gh run list --commit "$COMMIT_SHA" --json status,conclusion,name --jq '.[] | select(.status != "completed" or (.conclusion != "success" and .conclusion != "skipped"))')
+
+          if [ -n "$FAILED_OR_PENDING_RUNS" ]; then
+            echo "::error::One or more CI checks have failed or are still in progress for commit $COMMIT_SHA on the main branch. Cannot proceed with release."
+            echo "Unsuccessful or pending runs:"
+            echo "$FAILED_OR_PENDING_RUNS"
+            exit 1
+          else
+            echo "All CI checks passed for commit $COMMIT_SHA on the main branch."
+          fi
+
   release:
+    needs: check-ci-status
     runs-on: ubuntu-latest
 
     steps:

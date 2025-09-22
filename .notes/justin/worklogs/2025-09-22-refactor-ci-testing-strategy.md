@@ -53,3 +53,29 @@ We will adjust the `playground-e2e-tests.yml` and `smoke-test-starters.yml` work
 ### 4. Implement Release Gate
 
 To enforce the release-gating strategy, the `release.yml` workflow will be modified. A new job will be added at the beginning of the release process to verify that the last runs of the `smoke-test-starters.yml` and `playground-e2e-tests.yml` workflows on the `main` branch were successful. If either of these checks fails, the release process will be halted immediately.
+
+---
+
+## Implementation Summary
+
+I have now implemented the plan outlined above. Here is a summary of the changes:
+
+### CI Workflows (`smoke-test-starters.yml` & `playground-e2e-tests.yml`)
+
+-   **Dynamic Matrix**: Both workflows were updated to use a `setup-matrix` job. This job outputs a different test matrix depending on the GitHub event. For `pull_request` events, it generates a single-job matrix for a quick sanity check. For `push` events to `main` or default `workflow_dispatch` runs, it generates the full matrix.
+-   **Granular Manual Runs**: The `workflow_dispatch` trigger in both workflows was enhanced with `inputs` of `type: choice`. This allows developers to manually trigger a run for any specific combination of OS, package manager, and (for smoke tests) starter project. The `setup-matrix` job was updated with logic to parse these inputs and construct a custom matrix.
+-   **Job Timeouts**: A `timeout-minutes: 60` was added to each test job to prevent indefinite hangs.
+-   **Success Artifacts**: A final step was added to both workflows to upload a uniquely named success artifact for each job (e.g., `smoke-tests-success-minimal-ubuntu-latest-pnpm`). This step only runs on successful pushes to the `main` branch and provides the mechanism for the release gate.
+
+### Release Gate (`release.yml`)
+
+-   The release workflow was modified to act as a true release gate.
+-   Two new jobs, `check-ci-status` and `check-e2e-status`, were added at the beginning of the workflow.
+-   These jobs use a `matrix` strategy to iterate through every possible test combination. Each matrix job uses the `dawidd6/action-download-artifact@v3` action to attempt to download the corresponding success artifact from the latest commit on the `main` branch.
+-   If any test in the matrix failed on `main`, its success artifact will not exist. The download action will fail, which in turn fails the check job.
+-   The `release` job was made dependent on the success of both `check-ci-status` and `check-e2e-status`, ensuring that a release cannot proceed unless the entire test suite was green on `main`.
+
+### Documentation (`CONTRIBUTING.md` & `README.md`)
+
+-   **`CONTRIBUTING.md`**: This file was significantly updated. A "Testing Strategy" section was added to explain the different test layers and the new CI pipeline. The "Smoke Testing" section, which had been accidentally removed, was restored from Git history with clear instructions for running tests locally.
+-   **`README.md`**: A "CI Status" section was added. It contains a Markdown table with a matrix of GitHub Actions status badges, providing a live dashboard of the test suite's health on the `main` branch for public visibility.

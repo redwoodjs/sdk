@@ -129,10 +129,3 @@ jobs:
             /tmp/*-e2e-test-*
             playground/**/node_modules/.cache/wrangler
           retention-days: 7
-
-      - name: Upload success artifact
-        if: success() && github.event_name == 'push' && github.ref == 'refs/heads/main'
-        uses: actions/upload-artifact@v4
-        with:
-          name: playground-e2e-success-${{ matrix.os }}-${{ matrix.package-manager }}
-          retention-days: 1
