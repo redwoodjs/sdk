@@ -19,6 +19,7 @@ import {
 import { launchBrowser } from "./browser.mjs";
 import type { Browser, Page } from "puppeteer-core";
 import { dirname, resolve } from "path";
+import { $ } from "execa";
 
 interface PlaygroundEnvironment {
   projectDir: string;
@@ -166,7 +167,8 @@ export function setupPlaygroundEnvironment(sourceProjectDir?: string): void {
 
     const tarballEnv = await setupTarballEnvironment({
       projectDir,
-      packageManager: "pnpm",
+      packageManager:
+        (process.env.PACKAGE_MANAGER as "pnpm" | "npm" | "yarn") || "pnpm",
     });
 
     globalPlaygroundEnv = {

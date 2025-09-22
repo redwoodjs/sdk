@@ -177,7 +177,9 @@ describe("useId Playground", () => {
             page.evaluate((element: Element) => element.textContent, el),
           ),
         );
-        return statuses.every((status: string) => status.includes("Hydrated"));
+        return statuses.every(
+          (status: string | null) => status?.includes("Hydrated") ?? false,
+        );
       });
 
       // Get IDs after hydration

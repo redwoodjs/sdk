@@ -6,11 +6,15 @@ on:
       - main
     paths-ignore:
       - "docs/**"
+      - ".notes/**"
+      - "*.md"
   pull_request:
     branches:
       - main
     paths-ignore:
       - "docs/**"
+      - ".notes/**"
+      - "*.md"
   workflow_dispatch:
     inputs:
       starter:
