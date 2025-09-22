@@ -32,7 +32,9 @@ export function Interactive() {
 
       <div id="onclick-action-container">
         <h3>onClick Action</h3>
-        <button onClick={handleOnClick}>Execute onClick Action</button>
+        <button onClick={handleOnClick} data-testid="onclick-action-button">
+          Execute onClick Action
+        </button>
         <p data-testid="onclick-result">{onClickResult}</p>
       </div>
     </div>

@@ -13,40 +13,49 @@ testDevAndDeploy("RSC Kitchen Sink", async ({ page, url }) => {
   });
 
   // Check server component render
-  const h1 = await page.textContent("h1[data-testid='h1']");
+  const h1 = await page.$eval("h1[data-testid='h1']", (el) => el.textContent);
   expect(h1).toBe("RSC Kitchen Sink");
 
   // Check client component render
-  const clientComponentHeader = await page.textContent("h2");
+  const clientComponentHeader = await page.$eval("h2", (el) => el.textContent);
   expect(clientComponentHeader).toBe("Client Component");
 
   // Test form action
   const formResultSelector = "[data-testid='form-result']";
-  let formResult = await page.textContent(formResultSelector);
+  let formResult = await page.$eval(formResultSelector, (el) => el.textContent);
   expect(formResult).toBe("");
 
-  await page.fill("input[name='text']", "Hello from test");
+  await page.type("input[name='text']", "Hello from test");
   await page.click("button[type='submit']");
 
   await poll(async () => {
-    const result = await page.textContent(formResultSelector);
+    const result = await page.$eval(formResultSelector, (el) => el.textContent);
     return result === "Message from form action: Hello from test";
   });
-  formResult = await page.textContent(formResultSelector);
+  formResult = await page.$eval(formResultSelector, (el) => el.textContent);
   expect(formResult).toBe("Message from form action: Hello from test");
 
   // Test onClick action
   const onClickResultSelector = "[data-testid='onclick-result']";
-  let onClickResult = await page.textContent(onClickResultSelector);
+  let onClickResult = await page.$eval(
+    onClickResultSelector,
+    (el) => el.textContent,
+  );
   expect(onClickResult).toBe("");
 
   await page.click("button:has-text('Execute onClick Action')");
 
   await poll(async () => {
-    const result = await page.textContent(onClickResultSelector);
+    const result = await page.$eval(
+      onClickResultSelector,
+      (el) => el.textContent,
+    );
     return result?.startsWith("Message from onClick action at");
   });
 
-  onClickResult = await page.textContent(onClickResultSelector);
+  onClickResult = await page.$eval(
+    onClickResultSelector,
+    (el) => el.textContent,
+  );
   expect(onClickResult).toMatch(/Message from onClick action at/);
 });
