@@ -39,6 +39,7 @@ env:
 
 jobs:
   check-ci-status:
+    if: github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -70,6 +71,7 @@ jobs:
 
   release:
     needs: check-ci-status
+    if: needs.check-ci-status.result == 'success' || needs.check-ci-status.result == 'skipped'
     runs-on: ubuntu-latest
 
     steps:
