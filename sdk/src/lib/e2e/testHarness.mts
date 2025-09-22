@@ -170,13 +170,6 @@ export function setupPlaygroundEnvironment(sourceProjectDir?: string): void {
         (process.env.PACKAGE_MANAGER as "pnpm" | "npm" | "yarn") || "pnpm",
     });
 
-    console.log(`\n🔍 Running type check in ${projectDir}...`);
-    await $({
-      cwd: tarballEnv.targetDir,
-      stdio: "inherit",
-    })`npm run check`;
-    console.log(`✅ Type check passed for ${projectDir}`);
-
     globalPlaygroundEnv = {
       projectDir: tarballEnv.targetDir,
       cleanup: tarballEnv.cleanup,

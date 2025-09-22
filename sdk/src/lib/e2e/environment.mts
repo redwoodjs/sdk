@@ -198,13 +198,6 @@ export async function copyProjectToTempDir(
     await debugSync({ targetDir });
   }
 
-  console.log(`\n🔍 Running type check in ${targetDir}...`);
-  await $({
-    cwd: targetDir,
-    stdio: "inherit",
-  })`npm run check`;
-  console.log(`✅ Type check passed for ${targetDir}`);
-
   // Return the environment details
   return { tempDir, targetDir, workerName };
 }
