@@ -28,21 +28,28 @@ All detailed testing documentation will be centralized within `CONTRIBUTING.md`,
 
 ### 3. CI Workflow Modifications
 
-We will adjust the `playground-e2e-tests.yml` and `smoke-test-starters.yml` workflows to execute different test matrices based on the trigger. Generous timeouts and retry attempts will be used in both scenarios to mitigate flakiness.
+We will adjust the `playground-e2e-tests.yml` and `smoke-test-starters.yml` workflows with the following changes:
 
-*   **On Pull Requests (Fast Feedback):**
-    *   **Goal:** Provide a quick sanity check to catch most regressions.
-    *   **Tests:** A subset of smoke and E2E tests.
-    *   **Matrix:** A single configuration:
-        *   **Starter:** `minimal`
-        *   **OS:** `ubuntu-latest`
-        *   **Package Manager:** `pnpm`
-*   **On Pushes to `main` (Release Gate):**
-    *   **Goal:** Ensure full test coverage and block releases if any part of the matrix fails.
-    *   **Tests:** The complete smoke and E2E test suites.
-    *   **Matrix:** The full combination:
-        *   **Starters:** `minimal` and `standard`
-        *   **OS:** `ubuntu-latest`, `macos-latest`
-        *   **Package Managers:** `pnpm`, `npm`, `yarn`, `yarn-classic`
-*   **On-Demand Runs:**
-    *   The `workflow_dispatch` trigger will be retained, allowing manual runs of any test suite on any branch.
+*   **Job Timeouts:** Each test job will be configured with a 60-minute timeout to prevent stuck runners while allowing ample time for completion.
+*   **Dynamic Matrix:** The workflows will execute different test matrices based on the trigger.
+*   **Granular On-Demand Runs:** The `workflow_dispatch` trigger will be enhanced with inputs, allowing a contributor to manually run a test for a specific OS, package manager, and starter combination.
+
+#### On Pull Requests (Fast Feedback)
+*   **Goal:** Provide a quick sanity check to catch most regressions.
+*   **Tests:** A subset of smoke and E2E tests.
+*   **Matrix:** A single configuration:
+    *   **Starter:** `minimal`
+    *   **OS:** `ubuntu-latest`
+    *   **Package Manager:** `pnpm`
+
+#### On Pushes to `main` (Release Gate Foundation)
+*   **Goal:** Ensure full test coverage to validate the stability of the `main` branch.
+*   **Tests:** The complete smoke and E2E test suites.
+*   **Matrix:** The full combination:
+    *   **Starters:** `minimal` and `standard`
+    *   **OS:** `ubuntu-latest`, `macos-latest`
+    *   **Package Managers:** `pnpm`, `npm`, `yarn`, `yarn-classic`
+
+### 4. Implement Release Gate
+
+To enforce the release-gating strategy, the `release.yml` workflow will be modified. A new job will be added at the beginning of the release process to verify that the last runs of the `smoke-test-starters.yml` and `playground-e2e-tests.yml` workflows on the `main` branch were successful. If either of these checks fails, the release process will be halted immediately.
