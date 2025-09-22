@@ -64,3 +64,20 @@ The core of the test is to import a non-component export (e.g., an object with m
     -   Update `e2e.test.mts` with two test suites.
     -   **Test 1 (Active):** Verify the local module case. Assert that the server-rendered HTML contains the string output from `clientObject.format()`. Assert that `<ClientButton>` is rendered and interactive.
     -   **Test 2 (Skipped):** Verify the package module case. This test will be marked as `.skip` for now. It will contain assertions for the output of `packageObject.format()` and the interactivity of `<PackageButton>`.
+
+### E2E Test Debugging Notes
+
+#### The `$$id` Redefinition Error
+
+While running the e2e tests, a recurring error crashed the Vite dev server: `TypeError: Cannot redefine property: $$id`. This error originated from within the `registerClientReference` function.
+
+**Discovery:**
+Thanks to the `unifiedScriptDiscovery.md` architecture document, the cause became clear. The `$$id` property is a special identifier used by React's server renderer to locate client components. Our `registerClientReference` function intercepts the *getter* for this property to track which client components are being used on a page. The "Cannot redefine property" error occurs when `Object.defineProperties` is called on an object that *already has this getter defined*, which is not allowed for non-configurable properties.
+
+**Root Cause:**
+This pointed to a double-transformation problem in the Vite build pipeline. A "use client" module was being processed twice:
+1.  First, during the initial RSC pass in the `worker` environment, our `transformClientComponents` plugin would correctly turn it into a client reference proxy with the `$$id` getter.
+2.  Second, when the SSR renderer requested the component's source via the SSR Bridge (`virtual:rwsdk:ssr:...`), the source code was passed from the `ssr` environment back to the `worker` environment. The `worker` environment's plugin chain would then incorrectly process this *already-proxied* module a second time, triggering the error.
+
+**Solution:**
+The fix was to add a guard at the top of the `transformClientComponents` function. This guard checks if the module ID starts with the `virtual:rwsdk:ssr:` prefix. If it does, the transformation is skipped, preventing the double-processing and resolving the `$$id` redefinition error.
