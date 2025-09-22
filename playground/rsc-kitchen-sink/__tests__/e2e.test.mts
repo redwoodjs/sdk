@@ -43,7 +43,7 @@ testDevAndDeploy("RSC Kitchen Sink", async ({ page, url }) => {
   );
   expect(onClickResult).toBe("");
 
-  await page.click("button:has-text('Execute onClick Action')");
+  await page.click("button[data-testid='onclick-action-button']");
 
   await poll(async () => {
     const result = await page.$eval(
