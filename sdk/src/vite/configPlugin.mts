@@ -2,7 +2,6 @@ import { Plugin } from "vite";
 import path, { resolve } from "node:path";
 import { InlineConfig, ViteBuilder } from "vite";
 import enhancedResolve from "enhanced-resolve";
-import debug from "debug";
 
 import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import { buildApp } from "./buildApp.mjs";
@@ -191,6 +190,7 @@ export const configPlugin = ({
             clientEntryPoints,
             clientFiles,
             serverFiles,
+            workerEntryPathname,
           });
         },
       },
