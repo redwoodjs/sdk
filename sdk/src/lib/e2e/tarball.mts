@@ -8,6 +8,7 @@ import {
   animals,
 } from "unique-names-generator";
 import { createHash } from "crypto";
+import { ROOT_DIR } from "../constants.mjs";
 
 const log = (message: string) => console.log(message);
 
@@ -21,6 +22,23 @@ interface TarballEnvironment {
   cleanup: () => Promise<void>;
   tarballPath: string;
 }
+
+const createSdkTarball = async () => {
+  const packResult = await $({ cwd: ROOT_DIR })`npm pack`;
+  const tarballName = packResult.stdout.trim();
+  const tarballPath = path.join(ROOT_DIR, tarballName);
+
+  log(`📦 Created tarball: ${tarballPath}`);
+
+  const cleanupTarball = async () => {
+    if (fs.existsSync(tarballPath)) {
+      log(`🧹 Cleaning up tarball: ${tarballPath}`);
+      await fs.promises.rm(tarballPath, { force: true });
+    }
+  };
+
+  return { tarballPath, cleanupTarball };
+};
 
 /**
  * Copies wrangler cache from monorepo to temp directory for deployment tests
@@ -106,18 +124,6 @@ export async function setupTarballEnvironment({
 }: SetupTarballOptions): Promise<TarballEnvironment> {
   log(`🚀 Setting up tarball environment for ${projectDir}`);
 
-  // Find SDK root directory (relative to current working directory)
-  const currentDir = process.cwd();
-  const sdkRoot = currentDir.includes("/playground")
-    ? path.join(currentDir, "../sdk")
-    : currentDir;
-
-  // Pack the SDK
-  log(`📦 Packing SDK from ${sdkRoot}...`);
-  const packResult = await $({ cwd: sdkRoot })`npm pack`;
-  const tarballName = packResult.stdout.trim();
-  const tarballPath = path.join(sdkRoot, tarballName);
-
   // Generate a resource unique key for this test run
   const uniqueNameSuffix = uniqueNamesGenerator({
     dictionaries: [adjectives, animals],
@@ -133,15 +139,14 @@ export async function setupTarballEnvironment({
     .substring(0, 8);
 
   const resourceUniqueKey = `${uniqueNameSuffix}-${hash}`;
+  const tarball = await createSdkTarball();
 
   try {
-    // Use the shared copyProjectToTempDir function
-    const { tempDir, targetDir } = await copyProjectToTempDir(projectDir, {
-      sync: false, // Don't sync for tarball tests
+    const { tempDir, targetDir } = await copyProjectToTempDir(
+      projectDir,
       resourceUniqueKey,
       packageManager,
-      tarballPath,
-    });
+    );
 
     // Verify installation
     const sdkPackageJson = JSON.parse(
@@ -153,22 +158,23 @@ export async function setupTarballEnvironment({
     log(`✅ Installed rwsdk version: ${sdkPackageJson.version}`);
 
     // Copy wrangler cache to improve deployment performance
+    const sdkRoot = ROOT_DIR;
     await copyWranglerCache(targetDir, sdkRoot);
 
     log(`✅ Tarball environment setup complete`);
 
     return {
       targetDir,
-      tarballPath,
+      tarballPath: tarball.tarballPath,
       cleanup: async () => {
         log(`🧹 Cleaning up tarball environment: ${tempDir.path}`);
         await tempDir.cleanup();
-        await fs.promises.rm(tarballPath, { force: true });
+        await tarball.cleanupTarball();
       },
     };
   } catch (error) {
     // Cleanup tarball on error
-    await fs.promises.rm(tarballPath, { force: true });
+    await tarball.cleanupTarball();
     throw error;
   }
 }

@@ -1,8 +1,7 @@
 import { join } from "path";
-import { setTimeout } from "node:timers/promises";
 import debug from "debug";
-import { mkdirp, pathExists, copy } from "fs-extra";
-import * as fs from "fs/promises";
+import { pathExists, copy } from "fs-extra";
+import * as fs from "node:fs";
 import tmp from "tmp-promise";
 import ignore from "ignore";
 import { relative, basename, resolve } from "path";
@@ -11,8 +10,6 @@ import {
   adjectives,
   animals,
 } from "unique-names-generator";
-import { $ } from "../../lib/$.mjs";
-import { debugSync } from "../../scripts/debug-sync.mjs";
 import { SmokeTestOptions, TestResources, PackageManager } from "./types.mjs";
 import { createHash } from "crypto";
 
@@ -61,12 +58,8 @@ export async function setupTestEnvironment(
       log("Project directory specified: %s", options.projectDir);
       const { tempDir, targetDir, workerName } = await copyProjectToTempDir(
         options.projectDir,
-        {
-          sync: options.sync !== false, // default to true if undefined
-          resourceUniqueKey,
-          packageManager: options.packageManager,
-          tarballPath: options.tarballPath,
-        },
+        resourceUniqueKey, // Pass in the existing resourceUniqueKey
+        options.packageManager,
       );
 
       // Store cleanup function
@@ -93,23 +86,13 @@ export async function setupTestEnvironment(
  */
 export async function copyProjectToTempDir(
   projectDir: string,
-  options: {
-    sync?: boolean;
-    resourceUniqueKey: string;
-    packageManager?: PackageManager;
-    tarballPath?: string;
-  },
+  resourceUniqueKey: string,
+  packageManager?: PackageManager,
 ): Promise<{
   tempDir: tmp.DirectoryResult;
   targetDir: string;
   workerName: string;
 }> {
-  const {
-    sync = true,
-    resourceUniqueKey,
-    packageManager,
-    tarballPath,
-  } = options;
   log("Creating temporary directory for project");
   // Create a temporary directory
   const tempDir = await tmp.dir({ unsafeCleanup: true });
@@ -127,7 +110,7 @@ export async function copyProjectToTempDir(
 
   if (await pathExists(gitignorePath)) {
     log("Found .gitignore file at %s", gitignorePath);
-    const gitignoreContent = await fs.readFile(gitignorePath, "utf-8");
+    const gitignoreContent = await fs.promises.readFile(gitignorePath, "utf-8");
     ig = ig.add(gitignoreContent);
   } else {
     log("No .gitignore found, using default ignore patterns");
@@ -165,19 +148,17 @@ export async function copyProjectToTempDir(
   // Configure temp project to not use frozen lockfile
   log("⚙️  Configuring temp project to not use frozen lockfile...");
   const npmrcPath = join(targetDir, ".npmrc");
-  await fs.writeFile(npmrcPath, "frozen-lockfile=false\n");
+  await fs.promises.writeFile(npmrcPath, "frozen-lockfile=false\n");
 
   // For yarn, create .yarnrc.yml to disable PnP and use node_modules
   if (packageManager === "yarn" || packageManager === "yarn-classic") {
     const yarnrcPath = join(targetDir, ".yarnrc.yml");
-    await fs.writeFile(yarnrcPath, "nodeLinker: node-modules\n");
+    await fs.promises.writeFile(yarnrcPath, "nodeLinker: node-modules\n");
     log("Created .yarnrc.yml to disable PnP for yarn");
   }
 
-  // Replace workspace:* dependencies with tarball before installing
-  if (tarballPath) {
-    await replaceWorkspaceDependenciesWithTarball(targetDir, tarballPath);
-  }
+  // Replace workspace:* dependencies with a placeholder version to allow installation
+  await replaceWorkspaceDependencies(targetDir);
 
   // Install dependencies in the target directory
   await installDependencies(targetDir, packageManager);
@@ -187,12 +168,9 @@ export async function copyProjectToTempDir(
 }
 
 /**
- * Replace workspace:* dependencies with tarball path
+ * Replace workspace:* dependencies with a placeholder version to allow installation
  */
-async function replaceWorkspaceDependenciesWithTarball(
-  targetDir: string,
-  tarballPath: string,
-): Promise<void> {
+async function replaceWorkspaceDependencies(targetDir: string): Promise<void> {
   const packageJsonPath = join(targetDir, "package.json");
 
   try {
@@ -201,13 +179,13 @@ async function replaceWorkspaceDependenciesWithTarball(
 
     let modified = false;
 
-    // Replace workspace:* dependencies with tarball path
+    // Replace workspace:* dependencies with a placeholder version to allow installation
     if (packageJson.dependencies) {
       for (const [name, version] of Object.entries(packageJson.dependencies)) {
         if (version === "workspace:*") {
-          packageJson.dependencies[name] = `file:${tarballPath}`;
+          packageJson.dependencies[name] = "0.0.80"; // Use latest published version as placeholder
           modified = true;
-          log(`Replaced workspace dependency ${name} with tarball path`);
+          log(`Replaced workspace dependency ${name} with placeholder version`);
         }
       }
     }
@@ -217,21 +195,28 @@ async function replaceWorkspaceDependenciesWithTarball(
         packageJson.devDependencies,
       )) {
         if (version === "workspace:*") {
-          packageJson.devDependencies[name] = `file:${tarballPath}`;
+          packageJson.devDependencies[name] = "0.0.80"; // Use latest published version as placeholder
           modified = true;
-          log(`Replaced workspace devDependency ${name} with tarball path`);
+          log(
+            `Replaced workspace devDependency ${name} with placeholder version`,
+          );
         }
       }
     }
 
     if (modified) {
-      await fs.writeFile(packageJsonPath, JSON.stringify(packageJson, null, 2));
-      log("Updated package.json with tarball paths for workspace dependencies");
+      await fs.promises.writeFile(
+        packageJsonPath,
+        JSON.stringify(packageJson, null, 2),
+      );
+      log(
+        "Updated package.json with placeholder versions for workspace dependencies",
+      );
     }
   } catch (error) {
-    log("Error replacing workspace dependencies with tarball: %O", error);
+    log("Error replacing workspace dependencies with placeholder: %O", error);
     throw new Error(
-      `Failed to replace workspace dependencies with tarball: ${error}`,
+      `Failed to replace workspace dependencies with placeholder: ${error}`,
     );
   }
 }
