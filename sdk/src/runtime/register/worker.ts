@@ -19,17 +19,13 @@ export function registerServerReference(
   return baseRegisterServerReference(action, id, name);
 }
 
-export function registerClientReference<Target extends Record<string, any>>(
+export function registerClientReference<Target extends Record<string, unknown>>(
+  ssrModule: Target,
   id: string,
   exportName: string,
-  value: any,
 ) {
-  const wrappedValue =
-    (value && typeof value === "function") || typeof value === "object"
-      ? value
-      : () => null;
-
-  const reference = baseRegisterClientReference({}, id, exportName);
+  const target = ssrModule[exportName] ?? {};
+  const reference = baseRegisterClientReference(target, id, exportName);
   (reference as any).__rwsdk_clientReferenceId = `${id}#${exportName}`;
 
   const finalDescriptors = Object.getOwnPropertyDescriptors(reference);
@@ -50,7 +46,7 @@ export function registerClientReference<Target extends Record<string, any>>(
   finalDescriptors.$$async = { value: true };
   finalDescriptors.$$isClientReference = { value: true };
 
-  return Object.defineProperties(wrappedValue, finalDescriptors);
+  return Object.defineProperties(target, finalDescriptors);
 }
 
 export async function __smokeTestActionHandler(
