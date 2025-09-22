@@ -172,9 +172,8 @@ export async function setupTarballEnvironment({
       })`rm -f pnpm-lock.yaml yarn.lock package-lock.json`;
       // Remove existing node_modules to ensure clean installation
       await $({ cwd: targetDir })`rm -rf node_modules`;
-      // Install all dependencies first, then add the tarball
+      // Install all dependencies from package.json, which includes the rwsdk tarball
       await $({ cwd: targetDir })`npm install`;
-      await $({ cwd: targetDir })`npm install ${tarballPath}`;
     } else if (packageManager === "yarn") {
       await $({ cwd: targetDir })`yarn add ${tarballPath}`;
     } else {

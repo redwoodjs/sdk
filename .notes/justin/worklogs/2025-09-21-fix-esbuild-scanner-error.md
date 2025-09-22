@@ -120,19 +120,21 @@ A recent update to `vite` (from `7.1.5` to `7.1.6`) brought in a newer version o
 
 #### Solution
 
-Six fixes were applied to resolve the compatibility issues:
+Seven fixes were applied to resolve the compatibility issues:
 
 1.  **Added `outdir` parameter**: The `esbuild` configuration now includes a path to the project's intermediate builds directory. Because the scanner is still configured with `write: false`, no files are actually written to disk. This satisfies the new requirement from `esbuild` while avoiding potential collisions between multiple projects.
 
 2. **Filter virtual modules**: Entry points containing `virtual:` are now filtered out before being passed to esbuild, since virtual modules don't contain actual source code that can be scanned for directives.
 
-3. **Fix plugin type compatibility**: Added explicit TypeScript types to plugin methods (`HotUpdateOptions` for `hotUpdate` and `ViteBuilder` for `buildApp`) to ensure compatibility between Vite versions.
+3. **Suppress Cloudflare plugin type error**: A TypeScript error related to the `@cloudflare/vite-plugin` was suppressed with `// @ts-ignore`. This is a targeted fix to resolve the immediate build issue without requiring a broad refactoring of plugin types.
 
-4. **Replaced CI starter checks with tarball-based type checking**: The unreliable `check-starters.yml` workflow, which used workspace linking and caused version conflicts, has been removed. Instead, `npm run check` is now integrated directly into the E2E and smoke test environments. This ensures that type checking is performed in a clean, isolated environment that accurately reflects a real user installation, preventing issues with stale or mismatched dependencies.
+4. **Fixed `hotUpdate` plugin hook**: Corrected the usage of the logger in the `hotUpdate` hook in `miniflareHMRPlugin.mts` to align with the updated Vite plugin API, resolving a build error.
 
-5. **Fixed Document component types**: Updated all `Document` components in starters and playground examples to use the correct `DocumentProps` type instead of the generic `{ children: React.ReactNode }` type. This ensures compatibility with the framework's rendering system, which passes `RequestInfo` properties to the Document component.
+5. **Replaced CI starter checks with tarball-based type checking**: The unreliable `check-starters.yml` workflow, which used workspace linking and caused version conflicts, has been removed. Instead, `npm run check` is now integrated directly into the E2E and smoke test environments. This ensures that type checking is performed in a clean, isolated environment that accurately reflects a real user installation, preventing issues with stale or mismatched dependencies.
 
-6. **Ensured clean npm installation in tests**: The tarball installation process in the E2E and smoke tests now removes any existing `node_modules` and lock files before running `npm install`. This prevents issues with broken `pnpm` symlinks and ensures a clean, reliable installation in the temporary test environments.
+6. **Fixed Document component types**: Updated all `Document` components in starters and playground examples to use the correct `DocumentProps` type instead of the generic `{ children: React.ReactNode }` type. This ensures compatibility with the framework's rendering system, which passes `RequestInfo` properties to the Document component.
+
+7. **Ensured clean and correct package manager installation in tests**: The tarball installation process in the E2E and smoke tests now infers the package manager from the `PACKAGE_MANAGER` environment variable. It also removes any existing `node_modules` and lock files before running the installation. This prevents issues with broken `pnpm` symlinks and ensures a clean, reliable installation that respects the CI test matrix.
 
 ## Document Component Type Fix
 
