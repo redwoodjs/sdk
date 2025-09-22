@@ -127,3 +127,27 @@ Running command: npx wrangler delete hello-world-e2e-test-6ab557a2
 **Solution:** Modified `createDeployment()` in `testHarness.mts` to extract the unique key from the project directory name using regex pattern `/-e2e-test-([a-f0-9]+)$/` instead of generating a new random key.
 
 **Result:** Workers are now properly cleaned up after E2E tests complete, preventing accumulation of test workers in Cloudflare.
+
+---
+
+# PR Description
+
+## fix(e2e): ensure test workers are deleted after tests
+
+### Problem
+
+End-to-end tests that deploy Cloudflare workers were not cleaning up (deleting) those workers after the tests completed. This resulted in an accumulation of test workers in the Cloudflare account.
+
+### Root Cause
+
+The cleanup mechanism includes a safety check to ensure it only deletes workers related to the specific test run. It does this by comparing a `resourceUniqueKey` with the worker's name.
+
+The problem was that the `resourceUniqueKey` used for the cleanup check was generated randomly and separately from the unique ID embedded in the deployed worker's name. Because these two identifiers never matched, the safety check would fail, and the worker deletion would be skipped.
+
+### Solution
+
+The fix is to ensure the `resourceUniqueKey` is derived from the same source as the unique ID in the worker's name. The worker's name is based on the temporary directory created for the test, which has a name format like `{projectName}-e2e-test-{randomId}`.
+
+The solution modifies the `createDeployment()` function in the E2E test harness (`sdk/src/lib/e2e/testHarness.mts`). Instead of generating a new random `resourceUniqueKey`, it now extracts the `{randomId}` from the test's temporary directory path. This ensures that the key used for the cleanup check matches the one in the worker's name, allowing the worker to be correctly identified and deleted after the test.
+
+This change aligns the identification key with the deployed worker's name, fixing the cleanup process without removing the safety check.
