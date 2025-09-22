@@ -1,7 +1,14 @@
 import { describe, it, expect } from "vitest";
 import React from "react";
 
-import { matchPath, defineRoutes, route, render, layout } from "./router";
+import {
+  matchPath,
+  defineRoutes,
+  route,
+  render,
+  layout,
+  prefix,
+} from "./router";
 import type { RwContext } from "./router";
 import type { RequestInfo } from "../requestInfo/types";
 
@@ -269,6 +276,112 @@ describe("defineRoutes - Request Handling Behavior", () => {
 
       expect(executionOrder).toEqual(["middleware1", "middleware2"]);
       expect(await response.text()).toBe("Rendered: Element");
+    });
+  });
+
+  describe("Prefix Handling", () => {
+    it("should only run middleware within the specified prefix", async () => {
+      const executionOrder: string[] = [];
+
+      const prefixedMiddleware = () => {
+        executionOrder.push("prefixedMiddleware");
+      };
+
+      const PageComponent = () => {
+        executionOrder.push("PageComponent");
+        return React.createElement("div", {}, "Page");
+      };
+
+      const AdminPageComponent = () => {
+        executionOrder.push("AdminPageComponent");
+        return React.createElement("div", {}, "Admin Page");
+      };
+
+      const router = defineRoutes([
+        ...prefix("/admin", [
+          prefixedMiddleware,
+          route("/", AdminPageComponent),
+        ]),
+        route("/", PageComponent),
+      ]);
+
+      const deps = createMockDependencies();
+
+      // Test 1: Request to a path outside the prefix
+      deps.mockRequestInfo.request = new Request("http://localhost:3000/");
+      const request1 = new Request("http://localhost:3000/");
+      await router.handle({
+        request: request1,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(executionOrder).toEqual(["PageComponent"]);
+
+      // Reset execution order
+      executionOrder.length = 0;
+
+      // Test 2: Request to a path inside the prefix
+      deps.mockRequestInfo.request = new Request(
+        "http://localhost:3000/admin/",
+      );
+      const request2 = new Request("http://localhost:3000/admin/");
+      await router.handle({
+        request: request2,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(executionOrder).toEqual([
+        "prefixedMiddleware",
+        "AdminPageComponent",
+      ]);
+    });
+
+    it("should short-circuit from a prefixed middleware", async () => {
+      const executionOrder: string[] = [];
+
+      const prefixedMiddleware = () => {
+        executionOrder.push("prefixedMiddleware");
+        return new Response("From prefixed middleware");
+      };
+
+      const AdminPageComponent = () => {
+        executionOrder.push("AdminPageComponent");
+        return React.createElement("div", {}, "Admin Page");
+      };
+
+      const router = defineRoutes([
+        ...prefix("/admin", [
+          prefixedMiddleware,
+          route("/", AdminPageComponent),
+        ]),
+      ]);
+
+      const deps = createMockDependencies();
+
+      // Request to a path inside the prefix
+      deps.mockRequestInfo.request = new Request(
+        "http://localhost:3000/admin/",
+      );
+      const request = new Request("http://localhost:3000/admin/");
+      const response = await router.handle({
+        request,
+        renderPage: deps.mockRenderPage,
+        getRequestInfo: deps.getRequestInfo,
+        onError: deps.onError,
+        runWithRequestInfoOverrides: deps.mockRunWithRequestInfoOverrides,
+        rscActionHandler: deps.mockRscActionHandler,
+      });
+
+      expect(executionOrder).toEqual(["prefixedMiddleware"]);
+      expect(await response.text()).toBe("From prefixed middleware");
     });
   });
 
