@@ -106,4 +106,30 @@ This query-based approach is superior because it automatically scales. If we add
 ### 3. Documentation (`CONTRIBUTING.md` & `README.md`)
 
 -   **`CONTRIBUTING.md`**: This file was updated to be the single source of truth for contributors. It now contains a detailed "Testing Strategy" section explaining the different test layers (Unit, Smoke, E2E) and the new CI pipeline. The restored "Smoke Testing" section provides clear, actionable instructions for running tests locally.
--   **`README.md`**: A "CI Status" section was added, containing a Markdown table with a matrix of GitHub Actions status badges. This provides a live, public-facing dashboard of the test suite's health on the `main` branch.
+-   **`README.md`**: A "CI Status" section was added, containing a Markdown table with a matrix of GitHub Actions status badges, providing a live, public-facing dashboard of the test suite's health on the `main` branch.
+
+---
+
+## Pull Request Description
+
+### Problem
+
+Running the full test matrix (all OS and package manager combinations for both smoke and E2E tests) on every pull request resulted in a slow and often flaky CI feedback loop.
+
+### Approach
+
+This change refactors the CI strategy to run a smaller suite of tests on pull requests and the full suite on the `main` branch.
+
+1.  **Differentiated CI Pipeline**:
+    *   **On Pull Requests**: A minimal subset of smoke and E2E tests runs (Ubuntu with pnpm).
+    *   **On `main`**: The full test matrix runs on every push.
+
+2.  **Release Gate**:
+    *   The `release` workflow is now gated. It begins with a job that uses the GitHub CLI to query all CI runs associated with the latest commit on `main`.
+    *   If any check has failed or is in progress, the release is blocked.
+
+3.  **Manual Test Execution**:
+    *   The `smoke-test-starters` and `playground-e2e-tests` workflows now have `workflow_dispatch` inputs. These can be used to manually run tests for specific configurations, since the full matrix no longer runs on pull requests.
+
+4.  **CI Dashboard**:
+    *   The `README.md` now includes a "CI Status" section with a matrix of status badges for the test jobs that run on the `main` branch.
