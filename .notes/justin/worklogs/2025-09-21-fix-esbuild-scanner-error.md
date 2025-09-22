@@ -271,3 +271,20 @@ The fix for the production build involved removing the manual `rollupOptions` fr
 **Solution**
 
 The dependency on the implicit Vite configuration was removed. The `runDirectivesScan` function was updated to accept an explicit `entries` parameter. This entry point is now passed directly from the main `redwoodPlugin` (for the `dev` command) and the `buildApp` function (for the `build` command), ensuring the scanner always has the correct starting point.
+
+---
+
+#### CI Infrastructure Changes: Switching to Tarball-Based Testing
+
+**Problem**
+
+The investigation into the build failures revealed that the existing CI setup, which relied on workspace linking, was running tests against stale dependencies from the monorepo's `node_modules`. This meant the CI was not testing against the newly upgraded package versions, which hid the build and type errors.
+
+**Solution**
+
+To ensure the CI accurately validates the project against the upgraded dependencies, the test environments for both smoke tests and E2E tests were switched to use a tarball-based installation. This process involves:
+1.  Packing the SDK into a tarball.
+2.  Copying the test project (e.g., a starter or playground app) to a clean, temporary directory.
+3.  Installing dependencies in the isolated environment using the SDK tarball.
+
+This approach guarantees that tests run in a clean environment with the correct, newly-updated dependencies, accurately simulating a real user installation. As part of this change, the redundant `check-starters.yml` workflow was removed, as its type-checking coverage is now handled more reliably by the playground E2E tests.
