@@ -86,6 +86,12 @@ Applied the following fixes to resolve the type incompatibilities:
 
 These changes ensure that the plugin methods use the correct TypeScript interfaces from the current Vite version, resolving the type compatibility issues between Vite 7.1.5 and 7.1.6.
 
+## Replaced CI Starter Checks
+
+The `check-starters.yml` workflow was removed because it used workspace linking which caused version conflicts and did not accurately reflect a real user installation. 
+
+To replace this, `npm run check` is now integrated into the E2E and smoke test environments, ensuring that type checking is performed in a clean, isolated tarball-based environment that better simulates a real user installation.
+
 ## PR Description
 
 ### Description
@@ -98,7 +104,7 @@ The framework includes a custom scanner that uses `esbuild` to find `"use client
 
 #### Problem
 
-A recent update to `vite` (from `7.1.5` to `7.1.6`) brought in a newer version of `esbuild` (from `^0.23.0` to `^0.24.0`) which contains breaking changes that affected the framework in three ways:
+A recent update to `vite` (from `7.1.5` to `7.1.6`) brought in a newer version of `esbuild` (from `^0.23.0` to `^0.24.0`) which contains breaking changes that affected the framework in four ways:
 
 1. The new `esbuild` version requires an `outdir` to be specified when bundling multiple entry points, even if the build is not configured to write files to disk (`write: false`). Our scanner uses multiple entry points, causing it to fail with "Must use 'outdir' when there are multiple input files".
 
@@ -106,12 +112,16 @@ A recent update to `vite` (from `7.1.5` to `7.1.6`) brought in a newer version o
 
 3. TypeScript compatibility issues arose between the SDK (compiled against Vite 7.1.5) and starters using Vite 7.1.6, causing plugin interface mismatches.
 
+4. The CI `check-starters` workflow was using workspace linking, which caused stale dependency issues and did not accurately reflect a real user installation.
+
 #### Solution
 
-Three fixes were applied to resolve the compatibility issues:
+Four fixes were applied to resolve the compatibility issues:
 
 1. **Added `outdir` parameter**: The `esbuild` configuration now includes a path to the project's intermediate builds directory. Because the scanner is still configured with `write: false`, no files are actually written to disk. This satisfies the new requirement from `esbuild` while avoiding potential collisions between multiple projects.
 
 2. **Filter virtual modules**: Entry points containing `virtual:` are now filtered out before being passed to esbuild, since virtual modules don't contain actual source code that can be scanned for directives.
 
 3. **Fix plugin type compatibility**: Added explicit TypeScript types to plugin methods (`HotUpdateOptions` for `hotUpdate` and `ViteBuilder` for `buildApp`) to ensure compatibility between Vite versions.
+
+4. **Replaced CI starter checks with tarball-based type checking**: The unreliable `check-starters.yml` workflow, which used workspace linking and caused version conflicts, has been removed. Instead, `npm run check` is now integrated directly into the E2E and smoke test environments. This ensures that type checking is performed in a clean, isolated environment that accurately reflects a real user installation, preventing issues with stale or mismatched dependencies.

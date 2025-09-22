@@ -19,6 +19,7 @@ import {
 import { launchBrowser } from "./browser.mjs";
 import type { Browser, Page } from "puppeteer-core";
 import { dirname, resolve } from "path";
+import { $ } from "execa";
 
 interface PlaygroundEnvironment {
   projectDir: string;
@@ -167,6 +168,13 @@ export function setupPlaygroundEnvironment(sourceProjectDir?: string): void {
       projectDir,
       packageManager: "pnpm",
     });
+
+    console.log(`\n🔍 Running type check in ${projectDir}...`);
+    await $({
+      cwd: tarballEnv.targetDir,
+      stdio: "inherit",
+    })`npm run check`;
+    console.log(`✅ Type check passed for ${projectDir}`);
 
     globalPlaygroundEnv = {
       projectDir: tarballEnv.targetDir,
