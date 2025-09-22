@@ -92,50 +92,6 @@ The `check-starters.yml` workflow was removed because it used workspace linking 
 
 To replace this, `npm run check` is now integrated into the E2E and smoke test environments, ensuring that type checking is performed in a clean, isolated tarball-based environment that better simulates a real user installation.
 
-## PR Description
-
-### Description
-
-This PR fixes crashes in the directive scanner that occurred after dependency updates.
-
-#### Context
-
-The framework includes a custom scanner that uses `esbuild` to find `"use client"` and `"use server"` directives. To keep the scanning process consistent with Vite's behavior and to avoid introducing an extra dependency, this scanner is designed to use the same `esbuild` version that Vite itself uses.
-
-#### Problem
-
-A recent update to `vite` (from `7.1.5` to `7.1.6`) brought in a newer version of `esbuild` (from `^0.23.0` to `^0.24.0`) which contains breaking changes that affected the framework in five ways:
-
-1. The new `esbuild` version requires an `outdir` to be specified when bundling multiple entry points, even if the build is not configured to write files to disk (`write: false`). Our scanner uses multiple entry points, causing it to fail with "Must use 'outdir' when there are multiple input files".
-
-2. The scanner began receiving virtual modules (like `virtual:cloudflare/worker-entry`) as entry points, which cannot be marked as external in esbuild, causing "cannot be marked as external" errors.
-
-3. TypeScript compatibility issues arose between the SDK (compiled against Vite 7.1.5) and starters using Vite 7.1.6, causing plugin interface mismatches.
-
-4. The CI `check-starters` workflow was using workspace linking, which caused stale dependency issues and did not accurately reflect a real user installation.
-
-5. The `Document` components in starters and playground examples were incorrectly typed, causing TypeScript errors when the tarball-based type checking was implemented.
-
-6. The tarball installation process was failing in CI because `npm install` was not correctly installing dependencies in the temporary test environments due to broken `pnpm` symlinks.
-
-#### Solution
-
-Seven fixes were applied to resolve the compatibility issues:
-
-1.  **Added `outdir` parameter**: The `esbuild` configuration now includes a path to the project's intermediate builds directory. Because the scanner is still configured with `write: false`, no files are actually written to disk. This satisfies the new requirement from `esbuild` while avoiding potential collisions between multiple projects.
-
-2. **Filter virtual modules**: Entry points containing `virtual:` are now filtered out before being passed to esbuild, since virtual modules don't contain actual source code that can be scanned for directives.
-
-3. **Suppress Cloudflare plugin type error**: A TypeScript error related to the `@cloudflare/vite-plugin` was suppressed with `// @ts-ignore`. This is a targeted fix to resolve the immediate build issue without requiring a broad refactoring of plugin types.
-
-4. **Fixed `hotUpdate` plugin hook**: Corrected the usage of the logger in the `hotUpdate` hook in `miniflareHMRPlugin.mts` to align with the updated Vite plugin API, resolving a build error.
-
-5. **Replaced CI starter checks with tarball-based type checking**: The unreliable `check-starters.yml` workflow, which used workspace linking and caused version conflicts, has been removed. Instead, `npm run check` is now integrated directly into the E2E and smoke test environments. This ensures that type checking is performed in a clean, isolated environment that accurately reflects a real user installation, preventing issues with stale or mismatched dependencies.
-
-6. **Fixed Document component types**: Updated all `Document` components in starters and playground examples to use the correct `DocumentProps` type instead of the generic `{ children: React.ReactNode }` type. This ensures compatibility with the framework's rendering system, which passes `RequestInfo` properties to the Document component.
-
-7. **Ensured clean and correct package manager installation in tests**: The tarball installation process in the E2E and smoke tests now infers the package manager from the `PACKAGE_MANAGER` environment variable. It also removes any existing `node_modules` and lock files before running the installation. This prevents issues with broken `pnpm` symlinks and ensures a clean, reliable installation that respects the CI test matrix.
-
 ## Document Component Type Investigation
 
 Initially attempted to fix Document component type issues by changing from `React.FC<{ children: React.ReactNode }>` to `DocumentProps`. However, this approach was incorrect - the Document components should maintain their simple signature as they are user-controlled templates that only need to render children.
@@ -167,3 +123,26 @@ Refactored to create a shared `copyProjectToTempDir` function in `environment.mt
 - Simplified `setupTarballEnvironment` to use the shared function
 
 This eliminates code duplication and ensures both smoke tests and E2E tests use the same reliable file copying and dependency installation logic, including proper `.gitignore` respect and cross-platform compatibility via `fs-extra`.
+
+## Redundant Type Checks
+
+The explicit `npm run check` calls were removed from the E2E and smoke test infrastructure. It was discovered that these checks were redundant. The `npm run generate` command, which is a necessary step in both testing setups to generate application types, already includes a type-checking step.
+
+Running the type check separately was problematic because it would run before the necessary types had been generated. Relying on the `generate` script's built-in type check ensures that types are checked at the correct point in the process, resolving the CI failures.
+
+## PR Description
+
+### Manual Changes and Fixes
+
+This PR includes manual changes to address issues that arose from the automated dependency updates.
+
+#### Problem
+
+The update to Vite from version `7.1.5` to `7.1.6` introduced a breaking change via an internal update to its `esbuild` dependency (from `^0.23.0` to `^0.24.0`).
+
+This new version of `esbuild` changed its API behavior, making it an error to use `write: false` with multiple entry points and `bundle: true` without specifying an `outdir`. This directly impacted our custom directive scanner, causing the build to fail. A follow-up issue also arose where the scanner attempted to process virtual modules from Vite's config, which `esbuild` cannot handle.
+
+#### Solution
+
+1.  **Updated Directive Scanner**: The scanner's `esbuild` configuration was updated to be compatible with the new API. This involved adding a temporary `outdir` to the configuration and filtering out virtual modules from the entry points before the scan.
+2.  **Switched to Tarball-Based Testing**: The investigation revealed that the existing E2E test setup, which relied on workspace linking, was running against stale dependencies from `node_modules` that were installed before the dependency upgrade. This meant the CI was not testing against the new versions and their updated types, hiding the build failures. The test environments for both smoke and E2E tests were switched to use a tarball-based installation. This ensures tests run in a clean, isolated environment with the correct, newly-updated dependencies, accurately reflecting a real user installation and validating the build fixes.
