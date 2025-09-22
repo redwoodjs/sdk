@@ -48,3 +48,67 @@ With the directive scanning fixed, a new error surfaced during server-side rende
 ```
 [vite] Internal server error: __vite_ssr_import_0__.fieldAnatomy.extendWith is not a function....
 ```
+
+After resolving the directive scanning issue, a new error emerged: `TypeError: __vite_ssr_import_0__.fieldAnatomy.extendWith is not a function`.
+
+### Deeper Analysis
+
+The root cause of this issue stems from how RedwoodSDK handles modules marked with `"use client"`. The current implementation transforms the entire module into a set of client reference proxies. This is problematic for libraries like Chakra UI, which export not just components, but also other objects (like the `fieldAnatomy` object from `@ark-ui/react`) from these client modules.
+
+Other server-side code in the library then imports and attempts to use these non-component exports. Because the entire module has been replaced with proxies, these objects are no longer available on the server, leading to the error.
+
+Attempting to selectively transform only the component exports while preserving the non-component exports is not a viable solution. It would be complex and fragile, as those non-component objects might contain references to the components, creating a tangled dependency graph that's difficult to manage correctly.
+
+### A Path Forward: Bridging Client Components for SSR
+
+The problem is that when a `"use client"` module is encountered in the `worker` environment, its contents are completely replaced with a client reference proxy. This is correct for the RSC rendering pass, but it leaves the subsequent SSR pass without the actual component code needed to generate the initial HTML.
+
+The proposed solution is to modify the client component transformation step:
+
+1.  When transforming a client component for the `worker` environment, not only generate the client reference proxy, but also inject an import to an SSR-processed version of that same component. This import will use the SSR Bridge virtual module prefix (e.g., `import SSRComponent from 'virtual:rwsdk:ssr:/path/to/component'`).
+2.  The `registerClientReference` function will be updated to accept this imported SSR component as a new first argument.
+3.  The runtime can then store this SSR component alongside the client reference. When the SSR pass occurs, it can retrieve and render the actual component implementation instead of the proxy.
+
+This approach elegantly bridges the gap between the two environments, ensuring the SSR renderer has access to the necessary code while keeping the RSC module graph clean.
+
+### Transformation Example
+
+Here is an example of how the transformation would be applied.
+
+**Before Transformation (`/path/to/component.tsx`):**
+```typescript
+"use client";
+
+export function MyComponent() {
+  // component implementation
+}
+
+export const AnotherComponent = () => {
+  // another component implementation
+};
+
+export { AnotherComponent as RenamedComponent };
+
+export default function DefaultComponent() {
+  // default export implementation
+}
+```
+
+**After Transformation (in the `worker` RSC environment):**
+```typescript
+// 1. Import the SSR version of the component module via the bridge
+import SSRModule from 'virtual:rwsdk:ssr:/path/to/component.tsx';
+
+// 2. Import the client reference factory
+import { registerClientReference } from "rwsdk/worker";
+
+// 3. Create client reference proxies for each export, passing in the SSR module
+const MyComponent = registerClientReference(SSRModule, "/path/to/component.tsx", "MyComponent");
+const AnotherComponent = registerClientReference(SSRModule, "/path/to/component.tsx", "AnotherComponent");
+const RenamedComponent = registerClientReference(SSRModule, "/path/to/component.tsx", "RenamedComponent");
+const DefaultComponent = registerClientReference(SSRModule, "/path/to/component.tsx", "default");
+
+// 4. Re-export the proxies with the same names
+export { MyComponent, AnotherComponent, RenamedComponent };
+export default DefaultComponent;
+```
