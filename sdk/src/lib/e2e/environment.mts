@@ -1,6 +1,6 @@
 import { join } from "path";
 import debug from "debug";
-import { pathExists, copy } from "fs-extra";
+import { pathExists, copy, existsSync } from "fs-extra";
 import * as fs from "node:fs";
 import tmp from "tmp-promise";
 import ignore from "ignore";
@@ -36,6 +36,20 @@ const createSdkTarball = async (): Promise<{
   };
 
   return { tarballPath, cleanupTarball };
+};
+
+const setTarballDependency = async (
+  targetDir: string,
+  tarballPath: string,
+): Promise<void> => {
+  const filePath = join(targetDir, "package.json");
+  const packageJson = await fs.promises.readFile(filePath, "utf-8");
+  const packageJsonContent = JSON.parse(packageJson);
+  packageJsonContent.dependencies.rwsdk = `file:${tarballPath}`;
+  await fs.promises.writeFile(
+    filePath,
+    JSON.stringify(packageJsonContent, null, 2),
+  );
 };
 
 /**
@@ -185,8 +199,8 @@ export async function copyProjectToTempDir(
       log("Created .yarnrc.yml to disable PnP for yarn");
     }
 
-    await $(`npm pkg set dependencies.rwsdk=file:${tarballPath}`);
-   
+    await setTarballDependency(targetDir, tarballPath);
+
     // Install dependencies in the target directory
     await installDependencies(targetDir, packageManager);
 
@@ -197,8 +211,6 @@ export async function copyProjectToTempDir(
   }
 }
 
-/**
- * 
 async function installDependencies(
   targetDir: string,
   packageManager: PackageManager = "pnpm",
