@@ -64,12 +64,10 @@ export function Home({ ctx }: RequestInfo) {
   return (
     <div className="container mx-auto p-6 space-y-8">
       <div className="text-center space-y-4">
-        <h1 className="text-4xl font-bold">
-          shadcn/ui Comprehensive Playground
-        </h1>
+        <h1 className="text-4xl font-bold">shadcn/ui Playground</h1>
         <p className="text-lg text-muted-foreground">
-          A complete showcase of all shadcn/ui components working with React
-          Server Components
+          A showcase of shadcn/ui components working with React Server
+          Components
         </p>
         <Badge variant="secondary" className="text-sm">
           47 Components • React Server Components • Tailwind CSS

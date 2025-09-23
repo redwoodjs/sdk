@@ -112,7 +112,29 @@ export async function getBrowserPath(
     // Add better error handling for the install step
     try {
       console.log("Downloading Chrome (this may take a few minutes)...");
-      await install(installOptions);
+
+      const attempts = 10;
+      let installError: unknown;
+
+      for (let i = 0; i < attempts; i++) {
+        try {
+          await install(installOptions);
+          installError = null; // Reset error on success
+          break; // Exit loop on success
+        } catch (e) {
+          installError = e;
+          console.log(
+            `Attempt ${i + 1}/${attempts} failed. Retrying in 1 second...`,
+          );
+          // Wait for 1 second before retrying
+          await new Promise((resolve) => setTimeout(resolve, 1000));
+        }
+      }
+
+      if (installError) {
+        throw installError;
+      }
+
       console.log("✅ Chrome installation completed successfully");
 
       // Now compute the path for the installed browser

@@ -34,6 +34,9 @@ test_patterns=(
     "hello-world"
     "minimal"
     "standard"
+    "render-apis-tarball-test"
+    "render-apis-test"
+    "useid-test-test"
 )
 
 echo "📋 Fetching list of all workers..."
