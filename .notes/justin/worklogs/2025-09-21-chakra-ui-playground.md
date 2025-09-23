@@ -191,3 +191,45 @@ const DefaultComponent = registerClientReference(SSRModule, "/path/to/component.
 export { MyComponent, AnotherComponent, RenamedComponent };
 export default DefaultComponent;
 ```
+
+### New Issue: `TypeError: object null is not iterable`
+
+After implementing the SSR Bridge solution, the previous error was resolved, but a new one appeared: `TypeError: object null is not iterable (cannot read property undefined)`.
+
+This error originates from Chakra UI's `code-block-adapter-context.ts` file, which is attempting to destructure the result of a call to `createContext`.
+
+**Investigation:**
+
+1.  **`create-context.ts` is a Client Module:** The `createContext` utility function is correctly defined in a file with the `"use client"` directive. It uses client-only APIs from React.
+2.  **`code-block-adapter-context.ts` is a Server Module:** The file that *imports and calls* `createContext` does **not** have the `"use client"` directive.
+
+This reveals a fundamental architectural violation of React Server Components. A Server Component (`code-block-adapter-context.ts`) is attempting to directly execute a function that depends on client-only APIs. This is not allowed in the RSC model and is the root cause of the error. The SSR Bridge correctly makes the module's code available to the server environment, but it cannot change the rules of that environment. The code is executing where it shouldn't be.
+
+This appears to be an oversight in Chakra UI's implementation. For the code to be RSC-compliant, any module that creates or consumes a React context must be explicitly marked as a client module. The fact that they claim RSC compatibility suggests this is a bug on their end.
+
+**Update & New Plan:**
+
+Simplifying the playground did not resolve the issue. Because Vite's dependency optimizer scans the entire import graph, the problematic `code-block` modules are still processed on the server, even when not actively rendered. This confirms the issue is at the library level.
+
+A survey of the Chakra UI codebase reveals that the lack of `"use client"` on `code-block` context files is an exception, not the rule. Most other components that use `createContext` are correctly marked. This strongly points to an oversight or bug in Chakra UI.
+
+Rather than relying on a brittle patch or waiting for an upstream fix, the plan is to make our framework more resilient to such issues. We will implement a manual override system in our Vite plugin.
+
+**New Path Forward: Manual Directive Overrides**
+
+1.  **Introduce a Plugin Option:** Add a new configuration option to the RedwoodSDK Vite plugin, tentatively named `forceClientPaths`.
+2.  **Support Globs:** This option will accept an array of glob patterns. Any module whose path matches one of these globs will be treated as a Client Component, regardless of whether it has a `"use client"` directive.
+3.  **Update Directive Logic:** The core directive scanning logic will be updated. After checking a file's content for a directive, it will check the file's path against the `forceClientPaths` globs. If there's a match, it will be handled as a client module.
+4.  **Implement in Playground:** We will use this new option in the `chakra-ui` playground's `vite.config.mts` to correctly mark the problematic `code-block` context files as client components, unblocking our progress.
+
+This approach provides a robust and flexible escape hatch for handling non-compliant third-party libraries.
+
+**Implementation Refinement:**
+
+Instead of passing the `forceClientPaths` glob patterns down through the various plugins and scanning functions, a simpler approach will be taken:
+
+1.  **Pre-populate Sets:** In the main `redwoodPlugin.mts` file, we will use the `glob` package to immediately find all files matching the `forceClientPaths` and a new `forceServerPaths` option.
+2.  **Add to Sets:** The absolute paths of these files will be directly added to the `clientFiles` and `serverFiles` sets before any plugins are run.
+3.  **Simplify Logic:** This removes the need to pass the glob patterns around. The rest of the system, including the directive scan, will respect the pre-populated sets without any changes.
+
+This refactoring centralizes the override logic, simplifies the codebase, and is a more direct way of achieving the goal.

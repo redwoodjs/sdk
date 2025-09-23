@@ -6,8 +6,8 @@ import {
   VStack,
   HStack,
   Badge,
-  Code,
-  Kbd,
+  // Code,
+  // Kbd,
 } from "@chakra-ui/react";
 
 export function SimpleComponents() {
@@ -84,7 +84,7 @@ export function SimpleComponents() {
       </Box>
 
       {/* Code and Kbd */}
-      <Box>
+      {/* <Box>
         <Heading as="h3" size="md" mb={4} data-testid="code-heading">
           Code & Keyboard
         </Heading>
@@ -110,7 +110,7 @@ export function SimpleComponents() {
 }`}
           </Code>
         </VStack>
-      </Box>
+      </Box> */}
 
       {/* Layout */}
       <Box>
