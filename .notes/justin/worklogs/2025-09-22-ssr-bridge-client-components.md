@@ -268,3 +268,29 @@ This removes the need to check for the `isEsbuild` context and results in a more
 **New Plan:**
 1.  Revert the logic in `transformClientComponents.mts` to only depend on `isDev` and `isNodeModule`.
 2.  Update the tests in `transformClientComponents.test.mts` to match this reverted, simpler logic.
+
+---
+
+## Pivot: End-to-End Validation with a Local Package
+
+**Rationale:**
+Unit tests for the transform function are passing, but the ultimate goal is to support complex, real-world scenarios, particularly those involving component libraries like Chakra UI. The most effective way to validate this is to pivot back to end-to-end testing using a local package that simulates a `node_modules` dependency.
+
+**The Three Core Scenarios:**
+The e2e test must validate three distinct import patterns between server and client modules:
+1.  **App -> App:** A server module in the application source (`src/app/...`) imports a non-component export from a client module also in the application source.
+2.  **App -> Package:** A server module in the application source imports a non-component export from a client module within a package (`packages/ui-lib`).
+3.  **Package -> Package:** A server module within a package imports a non-component export from a client module within that same package.
+
+**Plan:**
+1.  **Create a New Playground:** Set up a new `playground/ssr-inter-module-imports` directory.
+2.  **Create a Local `ui-lib` Package:**
+    -   Inside the playground, create `packages/ui-lib`.
+    -   It will contain a `client.tsx` module (`"use client"`) that exports a client component and a utility function.
+    -   It will also contain a `server.tsx` module (a server component) that consumes the utility function from its own package's client module (testing Scenario 3).
+3.  **Set up the Playground App:**
+    -   Create a local client utility module in `src/app/lib` (for Scenario 1).
+    -   Update the `Home.tsx` page to import and use utilities from the local client module (Scenario 1) and the `ui-lib` client module (Scenario 2). It will also render the server component from `ui-lib` (which validates Scenario 3).
+4.  **Update E2E Test:**
+    -   Write assertions to confirm that the server-rendered HTML contains the correct output from all three utility functions.
+    -   Add assertions to ensure all client components are interactive.

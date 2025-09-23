@@ -1,0 +1,47 @@
+{
+  "name": "hello-world",
+  "version": "1.0.0",
+  "description": "A bare-bones RedwoodSDK starter",
+  "main": "index.js",
+  "type": "module",
+  "keywords": [],
+  "author": "",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "build": "rwsdk build",
+    "dev": "rwsdk dev",
+    "dev:init": "rw-scripts dev-init",
+    "preview": "rwsdk preview",
+    "worker:run": "rw-scripts worker-run",
+    "clean": "npm run clean:vite",
+    "clean:vite": "rm -rf ./node_modules/.vite",
+    "release": "rw-scripts ensure-deploy-env && npm run clean && npm run build && RWSDK_DEPLOY=1 wrangler deploy",
+    "generate": "rw-scripts ensure-env && wrangler types",
+    "check": "npm run generate && npm run types",
+    "types": "tsc"
+  },
+  "dependencies": {
+    "react": "19.0.0-rc-f994737d14-20240522",
+    "react-dom": "19.0.0-rc-f994737d14-20240522",
+    "rwsdk": "workspace:*",
+    "ui-lib": "file:./packages/ui-lib"
+  },
+  "devDependencies": {
+    "@cloudflare/vite-plugin": "1.12.4",
+    "@cloudflare/workers-types": "4.20250913.0",
+    "@types/node": "22.14.0",
+    "@types/react": "^18.2.0",
+    "@types/react-dom": "19.1.2",
+    "typescript": "5.8.3",
+    "vite": "7.1.5",
+    "wrangler": "4.35.0"
+  },
+  "pnpm": {
+    "onlyBuiltDependencies": [
+      "esbuild",
+      "sharp",
+      "workerd"
+    ]
+  }
+}
