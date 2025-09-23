@@ -418,7 +418,7 @@ describe("transformClientComponents (dev server node_modules)", () => {
 export const MyComponent = () => {};`;
 
     expect((await transformDev(code, id)) ?? "").toEqual(
-      `import VENDOR_BARREL from "rwsdk/__vendor_client_barrel";
+      `import VENDOR_BARREL from "virtual:rwsdk:ssr:rwsdk/__vendor_client_barrel";
 const SSRModule = VENDOR_BARREL["/test/node_modules/my-lib/component.js"];
 import { registerClientReference } from "rwsdk/worker";
 const MyComponent = registerClientReference(SSRModule, "/test/node_modules/my-lib/component.js", "MyComponent");
