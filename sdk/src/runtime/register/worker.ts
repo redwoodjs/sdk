@@ -3,6 +3,7 @@ import {
   registerClientReference as baseRegisterClientReference,
   decodeReply,
 } from "react-server-dom-webpack/server.edge";
+import { isValidElementType } from "react-is";
 import { getServerModuleExport } from "../imports/worker.js";
 import { requestInfo } from "../requestInfo/worker.js";
 
@@ -26,25 +27,34 @@ export function registerClientReference<Target extends Record<string, unknown>>(
 ) {
   const target = ssrModule[exportName] ?? {};
 
-  // Create a proxy to intercept property access without mutating the original object.
-  return new Proxy(target, {
-    get(target, prop, receiver) {
-      // Intercept access to $$id to track script loading.
-      if (prop === "$$id") {
-        requestInfo.rw.scriptsToBeLoaded.add(id);
-        // Return the original $$id value from the target.
-        return Reflect.get(target, prop, receiver);
-      }
+  if (isValidElementType(target)) {
+    // This is the original logic from 'main'.
+    // For React components, we create a serializable reference for the RSC pass.
+    const reference = baseRegisterClientReference({}, id, exportName);
+    const finalDescriptors = Object.getOwnPropertyDescriptors(reference);
+    const idDescriptor = finalDescriptors.$$id;
 
-      // Handle properties that signal this is a client reference.
-      if (prop === "$$async" || prop === "$$isClientReference") {
-        return true;
-      }
+    if (idDescriptor) {
+      const originalValue = idDescriptor.value;
+      // Create a new accessor descriptor, NOT by spreading the old one.
+      finalDescriptors.$$id = {
+        enumerable: idDescriptor.enumerable,
+        configurable: idDescriptor.configurable,
+        get() {
+          requestInfo.rw.scriptsToBeLoaded.add(id);
+          return originalValue;
+        },
+      };
+    }
 
-      // Forward all other property access to the original target.
-      return Reflect.get(target, prop, receiver);
-    },
-  });
+    finalDescriptors.$$async = { value: true };
+    finalDescriptors.$$isClientReference = { value: true };
+
+    return Object.defineProperties(() => null, finalDescriptors);
+  }
+
+  // For non-components, return the target object directly for use in SSR.
+  return target;
 }
 
 export async function __smokeTestActionHandler(

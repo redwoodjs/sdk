@@ -102,3 +102,78 @@ The new approach is to use a `Proxy` to create a transparent wrapper around the 
         -   Simply forward the access to the original `target` using `Reflect.get`.
 
 This strategy is much cleaner. It preserves the integrity of the original component/object from the SSR module while still allowing us to spy on the `$$id` access for script discovery. The proxy is completely transparent for all other property accesses.
+
+### Final Approach: Combining the Reference with the Target
+
+**Problem:**
+The Proxy approach was flawed. It returned a proxy that wrapped the original component, but it *discarded* the special client reference object created by `baseRegisterClientReference`. React's renderer didn't recognize the proxy as a valid client reference, leading it to try and render the component's code during the RSC pass, which resulted in "Invalid hook call" errors.
+
+**Solution:**
+The correct solution is to merge the properties of the React client reference onto the target component/object from the SSR module. This gives React the special `$$` properties it needs, while still providing the actual implementation for the SSR pass.
+
+1.  **Get the Target:** Get the actual export (`target`) from the `ssrModule`.
+2.  **Create the Reference:** Call `baseRegisterClientReference(target, id, exportName)` to create the proxy-like object that React expects (`reference`).
+3.  **Get Descriptors:** Use `Object.getOwnPropertyDescriptors(reference)` to get all the special properties (`$$id`, `$$async`, etc.) from the reference object.
+4.  **Intercept `$$id`:** Find the descriptor for `$$id`. Create a new getter function for it that first performs our side effect (`requestInfo.rw.scriptsToBeLoaded.add(id)`) and then returns the original value. This re-implements our script discovery mechanism.
+5.  **Apply to Target:** Use `Object.defineProperties(target, finalDescriptors)` to apply the (modified) special properties from the reference directly onto the `target`.
+
+This returns the original `target` object, now enhanced with the properties that identify it as a client reference to the RSC renderer, and with our script-discovery hook attached. This should be the correct and final implementation.
+
+### The Definitive Approach: A Proxy that Merges Two Worlds
+
+**Problem:**
+The "Combining the Reference with the Target" approach had a major flaw: it mutated the `target` object by adding properties to it. This is unsafe and can lead to unexpected side effects, especially if the `target` is a shared module export. The "Invalid hook call" error was a symptom of this incorrect handling.
+
+**Solution: The Hybrid Proxy**
+This final approach uses a Proxy to create a virtual object that combines the `target` and the `reference` without mutating either. It's the cleanest and most correct solution.
+
+1.  **Get the Target:** Get the actual export (`target`) from the `ssrModule`.
+2.  **Create the Reference:** Call `baseRegisterClientReference(target, id, exportName)` to get the special object (`reference`) that React's renderer needs.
+3.  **Return a Proxy:** The function will return `new Proxy(target, handler)`.
+4.  **Implement the `get` Trap:** The proxy's `get` trap will act as a smart switch:
+    -   If the requested property `prop` starts with `$$`:
+        -   If `prop` is `$$id`, first perform the script discovery side effect: `requestInfo.rw.scriptsToBeLoaded.add(id)`.
+        -   Then, for any `$$` property, retrieve and return the value from the `reference` object (`Reflect.get(reference, prop)`). This ensures React's renderer gets the special properties it expects.
+    -   For any other property, retrieve and return the value from the `target` object (`Reflect.get(target, prop)`). This ensures the rest of the application interacts with the real component/object.
+
+This provides the perfect abstraction. The returned object behaves like the real SSR component for all normal interactions but presents the necessary client reference interface to the React RSC renderer, all without any mutation.
+
+### Final Approach (Take 2): Conditional Registration
+
+**Problem:**
+The hybrid proxy, while clever, was still trying to merge two concepts (a client reference and a real object) that have different requirements. The "Invalid hook call" error persisted, indicating that even with the proxy, React was not correctly interpreting the object as a client reference placeholder during the RSC render.
+
+**Solution: Treat Components and Non-Components Differently**
+The definitive solution is to handle React components and other exports from a "use client" module with completely separate logic.
+
+1.  **Dependency:** Add the `react-is` package to the SDK to reliably identify React component types at runtime.
+
+2.  **Conditional Logic in `registerClientReference`:**
+    -   Get the `target` export from the `ssrModule`.
+    -   Use `react-is` (e.g., `isValidElementType`) to check if `target` is a React component.
+    -   **If it IS a component:**
+        -   Create the client reference by calling `baseRegisterClientReference(target, id, exportName)`.
+        -   Return this `reference` directly. This is the special object React expects for components, and we will *not* add our script-discovery hook for now to simplify and isolate the problem.
+    -   **If it is NOT a component (e.g., a utility object):**
+        -   Return the `target` object directly, without creating a client reference. This allows it to be used as a normal object on the server during the SSR pass.
+
+This approach is much simpler. It avoids proxies and property merging entirely, instead giving the React renderer exactly what it expects for components, and giving the server runtime exactly what it expects for everything else.
+
+### Final Approach (Take 3): Conditional Logic with Original Implementation
+
+**Rationale:**
+The previous approach of calling `baseRegisterClientReference(target, ...)` for components and returning `target` for non-components was a step in the right direction. However, by passing the actual `target` to `baseRegisterClientReference`, we were creating a reference that React would try to render on the server, leading to "Invalid hook call" errors. The key insight is that for the RSC pass, React should *never* receive the actual component implementation, only an empty placeholder that it can serialize.
+
+**Solution:**
+This approach combines the new conditional logic with the original, battle-tested implementation from the `main` branch.
+
+1.  **Conditional Logic:** Use `react-is` to check if the `target` is a `isValidElementType`.
+2.  **If it IS a component:**
+    -   Call `baseRegisterClientReference({}, id, exportName)`. Note the empty object (`{}`). This creates the placeholder reference that the RSC renderer expects.
+    -   Take the descriptors from this reference.
+    -   Intercept the `$$id` getter. The descriptor for `$$id` from React is a *data descriptor* (`{value, writable, ...}`). To add a getter, we must convert it to an *accessor descriptor*. This involves creating a new descriptor object that only contains `enumerable`, `configurable`, and our custom `get` function. Spreading the original descriptor would illegally combine `value` and `get`.
+    -   Use `Object.defineProperties` to apply these special properties to an empty function `() => null`. This becomes the final client reference proxy.
+3.  **If it is NOT a component:**
+    -   Return the `target` object directly. It can be used as a plain object during the SSR pass.
+
+This should be the correct and final logic. It ensures components are treated as serializable references by the RSC renderer, while allowing non-components to be used directly on the server.
