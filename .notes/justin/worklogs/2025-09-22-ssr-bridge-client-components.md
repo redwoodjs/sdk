@@ -208,11 +208,11 @@ In our hybrid RSC/SSR rendering model, modules marked with `"use client"` presen
 
 The `worker` environment, responsible for both RSC and SSR, would transform a `"use client"` module into a set of client reference proxies. This is correct for the RSC pass, but it created a problem for any other server-side code. If any logic in the `worker` needed to import a non-component export (e.g., a utility function, a constant, or a library-specific object) from that same client module, it couldn't. The actual implementation was completely replaced by the proxy, making the export inaccessible to any server-side logic.
 
-This limited the utility of client modules, forcing a strict separation where server-side code could not consume any utilities or objects defined alongside client components.
+This limited the utility of client modules and was a significant blocker for complex component libraries like Chakra UI, which co-locate components and utility objects in the same client modules.
 
 ### Solution
 
-This change introduces a mechanism to bridge this gap, allowing non-component exports from `"use client"` modules to be correctly resolved and used within the `worker` environment.
+This change introduces a mechanism to bridge this gap, allowing non-component exports from `"use client"` modules to be correctly resolved and used within the `worker` environment during the SSR pass.
 
 The solution has two main parts:
 
@@ -224,7 +224,7 @@ The solution has two main parts:
 
 This allows any server-side code to import `MyUtil` from a client module and use it on the server, while still treating `<MyComponent>` from that same module as a client reference for the RSC phase.
 
-A new architecture document, `docs/architecture/directiveTransforms.md`, has been added to explain this transformation process for both `"use client"` and `"use server"` modules in detail. Unit tests for the transformation have also been verified.
+The solution was validated with a new `import-from-use-client` playground that tests app-to-app, app-to-package, and package-to-package imports, and was also confirmed to resolve the integration issues with Chakra UI.
 
 ---
 
