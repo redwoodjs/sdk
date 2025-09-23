@@ -12,6 +12,7 @@ export async function resolveForcedPaths({
     await glob(patterns, {
       cwd: projectRootDir,
       absolute: true,
+      realpath: true,
     })
   ).map((filepath: string) => normalizeModulePath(filepath, projectRootDir));
 }

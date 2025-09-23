@@ -81,7 +81,6 @@ export const redwoodPlugin = async (
       patterns: options.forceClientPaths,
       projectRootDir,
     });
-    console.log("###################", clientPaths);
     for (const p of clientPaths) {
       clientFiles.add(p);
     }

@@ -233,3 +233,26 @@ Instead of passing the `forceClientPaths` glob patterns down through the various
 3.  **Simplify Logic:** This removes the need to pass the glob patterns around. The rest of the system, including the directive scan, will respect the pre-populated sets without any changes.
 
 This refactoring centralizes the override logic, simplifies the codebase, and is a more direct way of achieving the goal.
+
+### New Issue: `Cannot read properties of undefined` in Barrel File
+
+After implementing the manual override, a new error surfaced: `Cannot read properties of undefined` when trying to access a module from the vendor barrel file.
+
+**Investigation:**
+
+A deep dive into Vite's bundled output revealed that the barrel file (`rwsdk_vendor_client_barrel_default`) was `undefined` at the point in time it was being accessed by other modules. The two paths (the one used for the key in the barrel and the one used for the lookup) were confirmed to be identical.
+
+This is a classic **Temporal Dead Zone** issue caused by a circular dependency in the module graph. Module A requires the barrel during its initialization, but the barrel (Module B) requires Module A (or one of its dependencies), creating a deadlock where neither can be fully defined before the other needs it.
+
+The initial idea to use dynamic `import()` was rejected because it breaks the static analysis required by esbuild for dependency scanning and code splitting.
+
+**New Path Forward: A Lazy-Loading Barrel Helper**
+
+To solve this while respecting the static import constraint, we will change the structure of the barrel file itself.
+
+1.  **Generate a Helper Function:** The `generateVendorBarrelContent` function will be modified. Instead of exporting a large, static object, it will export a default function, e.g., `getModule(moduleId)`.
+2.  **Use Static Imports:** Inside the barrel file, all modules will still be imported statically using `import * as M...`.
+3.  **Implement Lazy Lookup:** The `getModule` function will contain a `switch` statement that maps the string `moduleId` to the correct, already-imported module object (`M0`, `M1`, etc.).
+4.  **Update Consumers:** The places where the barrel file is used, such as `transformClientComponents.mts` and `createDirectiveLookupPlugin.mts`, will be updated. Instead of performing a direct property access on the barrel object, they will now generate code that calls the `getModule` helper function.
+
+This approach breaks the circular dependency at initialization time. All modules are loaded statically, satisfying esbuild, but the "linking" of a module ID to its corresponding module object is deferred until runtime via the `getModule` function call, safely avoiding the temporal dead zone.
