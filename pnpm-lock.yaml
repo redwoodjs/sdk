@@ -127,14 +127,11 @@ importers:
   playground/import-from-use-client:
     dependencies:
       react:
-        specifier: 19.2.0-canary-3fb190f7-20250908
-        version: 19.2.0-canary-3fb190f7-20250908
+        specifier: 19.0.0-rc-f994737d14-20240522
+        version: 19.0.0-rc-f994737d14-20240522
       react-dom:
-        specifier: 19.2.0-canary-3fb190f7-20250908
-        version: 19.2.0-canary-3fb190f7-20250908(react@19.2.0-canary-3fb190f7-20250908)
-      react-server-dom-webpack:
-        specifier: 19.2.0-canary-3fb190f7-20250908
-        version: 19.2.0-canary-3fb190f7-20250908(react-dom@19.2.0-canary-3fb190f7-20250908(react@19.2.0-canary-3fb190f7-20250908))(react@19.2.0-canary-3fb190f7-20250908)(webpack@5.97.1)
+        specifier: 19.0.0-rc-f994737d14-20240522
+        version: 19.0.0-rc-f994737d14-20240522(react@19.0.0-rc-f994737d14-20240522)
       rwsdk:
         specifier: workspace:*
         version: link:../../sdk
@@ -152,11 +149,11 @@ importers:
         specifier: 22.14.0
         version: 22.14.0
       '@types/react':
-        specifier: 19.1.2
-        version: 19.1.2
+        specifier: ^18.2.0
+        version: 18.3.24
       '@types/react-dom':
         specifier: 19.1.2
-        version: 19.1.2(@types/react@19.1.2)
+        version: 19.1.2(@types/react@18.3.24)
       typescript:
         specifier: 5.8.3
         version: 5.8.3
@@ -197,46 +194,6 @@ importers:
       '@types/react-dom':
         specifier: 19.1.2
         version: 19.1.2(@types/react@19.1.2)
-      typescript:
-        specifier: 5.8.3
-        version: 5.8.3
-      vite:
-        specifier: 7.1.5
-        version: 7.1.5(@types/node@22.14.0)(jiti@2.4.2)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0)
-      wrangler:
-        specifier: 4.35.0
-        version: 4.35.0(@cloudflare/workers-types@4.20250913.0)
-
-  playground/ssr-inter-module-imports:
-    dependencies:
-      react:
-        specifier: 19.0.0-rc-f994737d14-20240522
-        version: 19.0.0-rc-f994737d14-20240522
-      react-dom:
-        specifier: 19.0.0-rc-f994737d14-20240522
-        version: 19.0.0-rc-f994737d14-20240522(react@19.0.0-rc-f994737d14-20240522)
-      rwsdk:
-        specifier: workspace:*
-        version: link:../../sdk
-      ui-lib:
-        specifier: file:./packages/ui-lib
-        version: file:playground/ssr-inter-module-imports/packages/ui-lib
-    devDependencies:
-      '@cloudflare/vite-plugin':
-        specifier: 1.12.4
-        version: 1.12.4(vite@7.1.5(@types/node@22.14.0)(jiti@2.4.2)(terser@5.44.0)(tsx@4.19.4)(yaml@2.7.0))(workerd@1.20250906.0)(wrangler@4.35.0(@cloudflare/workers-types@4.20250913.0))
-      '@cloudflare/workers-types':
-        specifier: 4.20250913.0
-        version: 4.20250913.0
-      '@types/node':
-        specifier: 22.14.0
-        version: 22.14.0
-      '@types/react':
-        specifier: ^18.2.0
-        version: 18.3.24
-      '@types/react-dom':
-        specifier: 19.1.2
-        version: 19.1.2(@types/react@18.3.24)
       typescript:
         specifier: 5.8.3
         version: 5.8.3
@@ -5546,9 +5503,6 @@ packages:
 
   ui-lib@file:playground/import-from-use-client/packages/ui-lib:
     resolution: {directory: playground/import-from-use-client/packages/ui-lib, type: directory}
-
-  ui-lib@file:playground/ssr-inter-module-imports/packages/ui-lib:
-    resolution: {directory: playground/ssr-inter-module-imports/packages/ui-lib, type: directory}
 
   uint8arrays@3.0.0:
     resolution: {integrity: sha512-HRCx0q6O9Bfbp+HHSfQQKD7wU70+lydKVt4EghkdOvlK/NlrF90z+eXV34mUd48rNvVJXwkrMSPpCATkct8fJA==}
@@ -11877,8 +11831,6 @@ snapshots:
   uhyphen@0.2.0: {}
 
   ui-lib@file:playground/import-from-use-client/packages/ui-lib: {}
-
-  ui-lib@file:playground/ssr-inter-module-imports/packages/ui-lib: {}
 
   uint8arrays@3.0.0:
     dependencies:
