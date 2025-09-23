@@ -201,7 +201,9 @@ export async function createDevServer(): Promise<DevServerInstance> {
   }
 
   const env = getPlaygroundEnvironment();
-  const devResult = await runDevServer("pnpm", env.projectDir);
+  const packageManager =
+    (process.env.PACKAGE_MANAGER as "pnpm" | "npm" | "yarn") || "pnpm";
+  const devResult = await runDevServer(packageManager, env.projectDir);
 
   const serverId = `devServer-${Date.now()}-${Math.random()
     .toString(36)
