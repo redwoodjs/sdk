@@ -23,10 +23,11 @@
     "test": "vitest run --config ../vitest.config.mts"
   },
   "dependencies": {
-    "rwsdk": "workspace:*",
+    "@chakra-ui/react": "^3.27.0",
     "react": "19.2.0-canary-d415fd3e-20250919",
     "react-dom": "19.2.0-canary-d415fd3e-20250919",
-    "react-server-dom-webpack": "19.2.0-canary-d415fd3e-20250919"
+    "react-server-dom-webpack": "19.2.0-canary-d415fd3e-20250919",
+    "rwsdk": "workspace:*"
   },
   "devDependencies": {
     "@cloudflare/vite-plugin": "1.13.3",
