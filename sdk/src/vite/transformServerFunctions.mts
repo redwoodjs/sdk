@@ -138,9 +138,9 @@ export const transformServerFunctions = (
   code: string,
   normalizedId: string,
   environment: "client" | "worker" | "ssr",
-  serverFiles: Set<string>,
+  serverFiles?: Set<string>,
 ): TransformResult | undefined => {
-  if (!serverFiles.has(normalizedId) && !hasDirective(code, "use server")) {
+  if (!hasDirective(code, "use server")) {
     return;
   }
 

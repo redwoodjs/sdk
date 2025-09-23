@@ -120,32 +120,17 @@ export * from './utils';
     for (const [key, CODE] of Object.entries(TEST_CASES)) {
       describe(key, () => {
         it(`CLIENT`, () => {
-          const result = transformServerFunctions(
-            CODE,
-            "/test.tsx",
-            "client",
-            new Set(),
-          );
+          const result = transformServerFunctions(CODE, "/test.tsx", "client");
           expect(result?.code).toMatchSnapshot();
         });
 
         it(`WORKER`, () => {
-          const result = transformServerFunctions(
-            CODE,
-            "/test.tsx",
-            "worker",
-            new Set(),
-          );
+          const result = transformServerFunctions(CODE, "/test.tsx", "worker");
           expect(result?.code).toMatchSnapshot();
         });
 
         it(`SSR`, () => {
-          const result = transformServerFunctions(
-            CODE,
-            "/test.tsx",
-            "ssr",
-            new Set(),
-          );
+          const result = transformServerFunctions(CODE, "/test.tsx", "ssr");
           expect(result?.code).toMatchSnapshot();
         });
       });

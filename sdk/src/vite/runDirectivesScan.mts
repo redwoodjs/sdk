@@ -338,15 +338,5 @@ export const runDirectivesScan = async ({
     // Always clear the scanning flag when done
     delete process.env.RWSDK_DIRECTIVE_SCAN_ACTIVE;
     console.log("✅ Scan complete.");
-    process.env.VERBOSE &&
-      console.log(
-        "Client files:",
-        JSON.stringify(Array.from(clientFiles), null, 2),
-      );
-    process.env.VERBOSE &&
-      console.log(
-        "Server files:",
-        JSON.stringify(Array.from(serverFiles), null, 2),
-      );
   }
 };
