@@ -16,30 +16,6 @@ export interface DebugSyncOptions {
   watch?: string | boolean;
 }
 
-const getPackageManagerInfo = (targetDir: string) => {
-  if (existsSync(path.join(targetDir, "bun.lock"))) {
-    return { name: "bun", lockFile: "bun.lock", command: "add" };
-  }
-  const pnpmResult = {
-    name: "pnpm",
-    lockFile: "pnpm-lock.yaml",
-    command: "add",
-  };
-  if (existsSync(path.join(targetDir, "yarn.lock"))) {
-    return { name: "yarn", lockFile: "yarn.lock", command: "add" };
-  }
-  if (
-    existsSync(path.join(targetDir, "pnpm-lock.yaml")) ||
-    existsSync(path.join(targetDir, "node_modules", ".pnpm"))
-  ) {
-    return pnpmResult;
-  }
-  if (existsSync(path.join(targetDir, "package-lock.json"))) {
-    return { name: "npm", lockFile: "package-lock.json", command: "install" };
-  }
-  return pnpmResult;
-};
-
 const cleanupViteEntries = async (targetDir: string) => {
   const nodeModulesDir = path.join(targetDir, "node_modules");
   if (!existsSync(nodeModulesDir)) {
@@ -68,103 +44,6 @@ const cleanupViteEntries = async (targetDir: string) => {
     }
   } catch (error) {
     console.log(`Failed to cleanup vite cache entries: ${error}`);
-  }
-};
-
-const performFullSync = async (sdkDir: string, targetDir: string) => {
-  let tarballPath = "";
-  let tarballName = "";
-
-  // Clean up vite cache
-  await cleanupViteEntries(targetDir);
-
-  try {
-    console.log("📦 Packing SDK...");
-    const packResult = await $({ cwd: sdkDir })`npm pack --json`;
-    const json = JSON.parse(packResult.stdout || "[]");
-    const packInfo = Array.isArray(json) ? json[0] : undefined;
-    tarballName = (packInfo && (packInfo.filename || packInfo.name)) || "";
-    if (!tarballName) {
-      console.error("❌ Failed to get tarball name from npm pack.");
-      return;
-    }
-    tarballPath = path.resolve(sdkDir, tarballName);
-
-    console.log(`💿 Installing ${tarballName} in ${targetDir}...`);
-
-    const pm = getPackageManagerInfo(targetDir);
-    const packageJsonPath = path.join(targetDir, "package.json");
-    const lockfilePath = path.join(targetDir, pm.lockFile);
-
-    const originalPackageJson = await fs
-      .readFile(packageJsonPath, "utf-8")
-      .catch(() => null);
-    const originalLockfile = await fs
-      .readFile(lockfilePath, "utf-8")
-      .catch(() => null);
-
-    try {
-      // For bun, we need to remove the existing dependency from package.json
-      // before adding the tarball to avoid a dependency loop error.
-      if (pm.name === "bun" && originalPackageJson) {
-        try {
-          const targetPackageJson = JSON.parse(originalPackageJson);
-          let modified = false;
-          if (targetPackageJson.dependencies?.rwsdk) {
-            delete targetPackageJson.dependencies.rwsdk;
-            modified = true;
-          }
-          if (targetPackageJson.devDependencies?.rwsdk) {
-            delete targetPackageJson.devDependencies.rwsdk;
-            modified = true;
-          }
-          if (modified) {
-            console.log(
-              "Temporarily removing rwsdk from target package.json to prevent dependency loop with bun.",
-            );
-            await fs.writeFile(
-              packageJsonPath,
-              JSON.stringify(targetPackageJson, null, 2),
-            );
-          }
-        } catch (e) {
-          console.warn(
-            "Could not modify target package.json, proceeding anyway.",
-          );
-        }
-      }
-      const cmd = pm.name;
-      const args = [pm.command];
-
-      if (pm.name === "yarn") {
-        // For modern yarn, disable PnP to avoid resolution issues with local tarballs
-        process.env.YARN_NODE_LINKER = "node-modules";
-        args.push(`rwsdk@file:${tarballPath}`);
-      } else {
-        args.push(tarballPath);
-      }
-
-      await $(cmd, args, {
-        cwd: targetDir,
-        stdio: "inherit",
-      });
-    } finally {
-      if (originalPackageJson) {
-        console.log("Restoring package.json...");
-        await fs.writeFile(packageJsonPath, originalPackageJson);
-      }
-      if (originalLockfile) {
-        console.log(`Restoring ${pm.lockFile}...`);
-        await fs.writeFile(lockfilePath, originalLockfile);
-      }
-    }
-  } finally {
-    if (tarballPath) {
-      console.log("Removing tarball...");
-      await fs.unlink(tarballPath).catch(() => {
-        // ignore if deletion fails
-      });
-    }
   }
 };
 
@@ -223,20 +102,45 @@ const syncFilesWithRsyncOrFs = async (
   }
 };
 
-const performFastSync = async (sdkDir: string, targetDir: string) => {
-  console.log("⚡️ No dependency changes, performing fast sync...");
+const findUp = async (
+  names: string[],
+  startDir: string,
+): Promise<string | undefined> => {
+  let dir = startDir;
+  while (dir !== path.dirname(dir)) {
+    for (const name of names) {
+      const filePath = path.join(dir, name);
+      if (existsSync(filePath)) {
+        return dir;
+      }
+    }
+    dir = path.dirname(dir);
+  }
+  return undefined;
+};
 
-  // Clean up vite cache
-  await cleanupViteEntries(targetDir);
+const getMonorepoRoot = async (startDir: string) => {
+  try {
+    // `pnpm root` is the most reliable way to find the workspace root node_modules
+    const { stdout } = await $({
+      cwd: startDir,
+    })`pnpm root`;
+    // pnpm root returns the node_modules path, so we go up one level
+    return path.resolve(stdout, "..");
+  } catch (e) {
+    console.warn(
+      `Could not determine pnpm root from ${startDir}. Falling back to file search.`,
+    );
+    const root = await findUp(["pnpm-workspace.yaml"], startDir);
+    if (root) {
+      return root;
+    }
+  }
 
-  const nodeModulesPkgDir = path.join(targetDir, "node_modules", "rwsdk");
-
-  // Copy directories/files declared in package.json#files (plus package.json)
-  const filesToSync =
-    JSON.parse(await fs.readFile(path.join(sdkDir, "package.json"), "utf-8"))
-      .files || [];
-
-  await syncFilesWithRsyncOrFs(sdkDir, nodeModulesPkgDir, filesToSync);
+  console.warn(
+    "Could not find pnpm monorepo root. Using parent directory of target as fallback.",
+  );
+  return path.resolve(startDir, "..");
 };
 
 const areDependenciesEqual = (
@@ -247,46 +151,138 @@ const areDependenciesEqual = (
   return JSON.stringify(deps1 ?? {}) === JSON.stringify(deps2 ?? {});
 };
 
+const performFullSync = async (
+  sdkDir: string,
+  targetDir: string,
+  monorepoRoot: string,
+) => {
+  console.log("📦 Performing full sync with tarball...");
+  let tarballPath = "";
+
+  const projectName = path.basename(targetDir);
+  const rwsyncDir = path.join(
+    monorepoRoot,
+    "node_modules",
+    `.rwsync_${projectName}`,
+  );
+
+  try {
+    // 1. Pack the SDK
+    const packResult = await $({ cwd: sdkDir })`npm pack --json`;
+    const json = JSON.parse(packResult.stdout || "[]");
+    const packInfo = Array.isArray(json) ? json[0] : undefined;
+    const tarballName =
+      (packInfo && (packInfo.filename || packInfo.name)) || "";
+    if (!tarballName) {
+      throw new Error("Failed to get tarball name from npm pack.");
+    }
+    tarballPath = path.resolve(sdkDir, tarballName);
+
+    // 2. Prepare isolated install directory
+    console.log(`Preparing isolated install directory at ${rwsyncDir}`);
+    await fs.rm(rwsyncDir, { recursive: true, force: true });
+    await fs.mkdir(rwsyncDir, { recursive: true });
+    await fs.writeFile(
+      path.join(rwsyncDir, "package.json"),
+      JSON.stringify({ name: `rwsync-env-${projectName}` }, null, 2),
+    );
+
+    // 3. Perform isolated install
+    console.log(`Installing ${tarballName} in isolation...`);
+    await $("pnpm", ["add", tarballPath], {
+      cwd: rwsyncDir,
+      stdio: "inherit",
+    });
+
+    // 4. Create symlink
+    const symlinkSource = path.join(rwsyncDir, "node_modules", "rwsdk");
+    const symlinkTarget = path.join(targetDir, "node_modules", "rwsdk");
+
+    console.log(`Symlinking ${symlinkTarget} -> ${symlinkSource}`);
+    await fs.rm(symlinkTarget, { recursive: true, force: true });
+    await fs.mkdir(path.dirname(symlinkTarget), { recursive: true });
+    await fs.symlink(symlinkSource, symlinkTarget, "dir");
+  } finally {
+    if (tarballPath) {
+      console.log("Removing tarball...");
+      await fs.unlink(tarballPath).catch(() => {});
+    }
+  }
+};
+
+const performFastSync = async (
+  sdkDir: string,
+  targetDir: string,
+  monorepoRoot: string,
+) => {
+  console.log("⚡️ Performing fast sync with rsync...");
+
+  const projectName = path.basename(targetDir);
+  const rwsyncDir = path.join(
+    monorepoRoot,
+    "node_modules",
+    `.rwsync_${projectName}`,
+  );
+  const syncDestDir = path.join(rwsyncDir, "node_modules", "rwsdk");
+
+  // Copy directories/files declared in package.json#files (plus package.json)
+  const filesToSync =
+    JSON.parse(await fs.readFile(path.join(sdkDir, "package.json"), "utf-8"))
+      .files || [];
+
+  await syncFilesWithRsyncOrFs(sdkDir, syncDestDir, filesToSync);
+};
+
 const performSync = async (sdkDir: string, targetDir: string) => {
   console.log("🏗️  Rebuilding SDK...");
   await $`pnpm build`;
 
-  const forceFullSync = Boolean(process.env.RWSDK_FORCE_FULL_SYNC);
+  // Clean up vite cache in the target project
+  await cleanupViteEntries(targetDir);
 
-  if (forceFullSync) {
-    console.log("🏃 Force full sync mode is enabled.");
-    await performFullSync(sdkDir, targetDir);
-    console.log("✅ Done syncing");
-    return;
-  }
+  const monorepoRoot = await getMonorepoRoot(targetDir);
+  const projectName = path.basename(targetDir);
 
-  const sdkPackageJsonPath = path.join(sdkDir, "package.json");
   const installedSdkPackageJsonPath = path.join(
-    targetDir,
-    "node_modules/rwsdk/package.json",
+    monorepoRoot,
+    "node_modules",
+    `.rwsync_${projectName}`,
+    "node_modules",
+    "rwsdk",
+    "package.json",
   );
 
-  let packageJsonChanged = true;
-
-  if (existsSync(installedSdkPackageJsonPath)) {
-    const sdkPackageJsonContent = await fs.readFile(
-      sdkPackageJsonPath,
-      "utf-8",
+  let needsFullSync = false;
+  if (!existsSync(installedSdkPackageJsonPath)) {
+    console.log("No previous sync found, performing full sync.");
+    needsFullSync = true;
+  } else {
+    const sdkPackageJson = JSON.parse(
+      await fs.readFile(path.join(sdkDir, "package.json"), "utf-8"),
     );
-    const installedSdkPackageJsonContent = await fs.readFile(
-      installedSdkPackageJsonPath,
-      "utf-8",
+    const installedSdkPackageJson = JSON.parse(
+      await fs.readFile(installedSdkPackageJsonPath, "utf-8"),
     );
 
-    packageJsonChanged =
-      sdkPackageJsonContent !== installedSdkPackageJsonContent;
+    if (
+      !areDependenciesEqual(
+        sdkPackageJson.dependencies,
+        installedSdkPackageJson.dependencies,
+      ) ||
+      !areDependenciesEqual(
+        sdkPackageJson.devDependencies,
+        installedSdkPackageJson.devDependencies,
+      )
+    ) {
+      console.log("Dependency changes detected, performing full sync.");
+      needsFullSync = true;
+    }
   }
 
-  if (packageJsonChanged) {
-    console.log("📦 package.json changed, performing full sync...");
-    await performFullSync(sdkDir, targetDir);
+  if (needsFullSync) {
+    await performFullSync(sdkDir, targetDir, monorepoRoot);
   } else {
-    await performFastSync(sdkDir, targetDir);
+    await performFastSync(sdkDir, targetDir, monorepoRoot);
   }
 
   console.log("✅ Done syncing");
