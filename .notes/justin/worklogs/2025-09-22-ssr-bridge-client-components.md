@@ -424,3 +424,20 @@ Despite this, the `packageClientUtil` object is still being transformed into a c
 
 **Conclusion:**
 There are two separate transformation pipelines for client components: one for application source files and another for `node_modules` dependencies. The pipeline for dependencies is outdated and does not include the new SSR Bridge logic. The next step is to locate and update this second pipeline.
+
+---
+
+### Resolution: Stale SDK Dependencies
+
+**Investigation and Resolution:**
+The root cause of the uneven transformation was a stale dependency issue within `pnpm`'s content-addressable store. Despite rebuilding the SDK locally, the symlinks in the playground's `node_modules` were still pointing to an old, cached version of the `rwsdk` package. This caused the old transformation logic to run for the `ui-lib` package, while the application code correctly used the latest logic from the new build.
+
+The fix involved manually purging the stale SDK from the monorepo's `.pnpm` store and forcing a clean install:
+1.  All `rwsdk` directories were deleted from the `.pnpm` directory to remove any cached versions.
+2.  A fresh tarball of the SDK was created using `npm pack` inside the `sdk/` directory.
+3.  This tarball was then installed directly into the `import-from-use-client` playground using `pnpm add <path-to-tarball>`.
+
+This process ensured that the playground's `node_modules` contained a fresh, non-symlinked copy of the latest SDK build.
+
+**Outcome:**
+With the stale dependency issue resolved, the end-to-end tests now pass. All three import scenarios are working correctly. Both the application button and the package button are interactive, and messages from both client utility objects are rendered on the server as expected. This validates that the SSR Bridge and the updated `registerClientReference` function correctly handle non-component exports from `"use client"` modules, both in application code and in package dependencies.
