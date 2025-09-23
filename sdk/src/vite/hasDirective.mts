@@ -18,9 +18,6 @@ export function hasDirective(code: string, directive: string): boolean {
   const doubleQuoteUseClient = `"use client"`;
   const singleQuoteUseClient = `'use client'`;
 
-  const doubleQuoteDirective = `"${directive}"`;
-  const singleQuoteDirective = `'${directive}'`;
-
   for (const line of lines) {
     const trimmedLine = line.trim();
 
