@@ -2,6 +2,7 @@ import MagicString from "magic-string";
 import debug from "debug";
 import { hasDirective } from "./hasDirective.mjs";
 import { findExports, type ExportInfo } from "./findSpecifiers.mjs";
+import { VENDOR_CLIENT_BARREL_EXPORT_PATH } from "../lib/constants.mjs";
 
 interface TransformContext {
   environmentName: string;
@@ -125,8 +126,9 @@ export async function transformClientComponents(
   // Generate completely new code for worker/client environments
   const s = new MagicString("");
 
-  // Add import declaration
+  s.append('import { ssrLoadModule } from "rwsdk/__ssr_bridge";\n');
   s.append('import { registerClientReference } from "rwsdk/worker";\n');
+  s.append(`const SSRModule = await ssrLoadModule("${normalizedId}");\n`);
 
   // Compute unique computed local names first
   const computedLocalNames = new Map(
@@ -136,7 +138,7 @@ export async function transformClientComponents(
   // Add registerClientReference assignments for unique names
   for (const [computedLocalName, correspondingInfo] of computedLocalNames) {
     s.append(
-      `const ${computedLocalName} = registerClientReference("${normalizedId}", "${correspondingInfo.exported}");\n`,
+      `const ${computedLocalName} = registerClientReference(SSRModule, "${normalizedId}", "${correspondingInfo.exported}");\n`,
     );
   }
 
@@ -159,7 +161,7 @@ export async function transformClientComponents(
       defaultExportInfo.exported,
     );
     s.append(
-      `export default registerClientReference("${normalizedId}", "${defaultExportInfo.exported}");\n`,
+      `export default registerClientReference(SSRModule, "${normalizedId}", "${defaultExportInfo.exported}");\n`,
     );
   }
 

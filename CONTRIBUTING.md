@@ -121,14 +121,14 @@ To run a specific test file, pass its path to the `test:e2e` script. The path ca
 
 ```sh
 # Run tests for a single playground project from the monorepo root
-pnpm test:e2e -- hello-world/__tests__/e2e.test.mts
+pnpm test:e2e hello-world/__tests__/e2e.test.mts
 ```
 
 You can also specify a package manager or enable debug logging using environment variables:
 
 ```sh
 # Run tests for hello-world with Yarn and enable debug logging for the e2e environment
-PACKAGE_MANAGER="yarn" DEBUG='rwsdk:e2e:environment' pnpm test:e2e -- hello-world/__tests__/e2e.test.mts
+PACKAGE_MANAGER="yarn" DEBUG='rwsdk:e2e:environment' pnpm test:e2e hello-world/__tests__/e2e.test.mts
 ```
 
 #### Skipping Tests
