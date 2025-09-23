@@ -5040,7 +5040,7 @@ packages:
       wrangler: ^4.35.0
 
   rwsdk@file:sdk/rwsdk-1.0.0-alpha.8.tgz:
-    resolution: {integrity: sha512-CwOevOwjXKDY234hV5frEgWSaCTPRV4gyfeYrPXgE/gY+/uqVyvQ4lVjFrnij5IHTkkaPUUSQiZ6RlnTEsbTDQ==, tarball: file:sdk/rwsdk-1.0.0-alpha.8.tgz}
+    resolution: {integrity: sha512-paQLUZgVrT10dO9yK5LKrEWSUPgkEK8w4pWwhNdx3iiSb9xfWVxMwCWyx1+vToDoSsTxccyQoWx+avwoAqJC4A==, tarball: file:sdk/rwsdk-1.0.0-alpha.8.tgz}
     version: 1.0.0-alpha.8
     hasBin: true
     peerDependencies:
