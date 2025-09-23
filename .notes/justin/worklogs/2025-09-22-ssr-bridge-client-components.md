@@ -354,3 +354,41 @@ The package should be a simple, pre-compiled ESM module using plain JavaScript.
     -   Rename all `.mtsx` and `.mts` files in `ui-lib` to `.mjs`.
     -   Manually transpile the JSX content in the component files to standard `React.createElement` calls.
     -   Correct the application's client utility file (`src/app/lib/client-utils.ts`) to be a `.mjs` file with transpiled content as well, to ensure consistency.
+
+---
+
+### `esbuild` Resolution Error for Virtual SSR Modules
+
+**Problem:**
+After implementing the barrel file import for `node_modules` in the dev server, the `e2e` tests fail during Vite's dependency optimization (`optimizeDeps`). The `esbuild` process within the `worker` environment cannot resolve the virtual import:
+
+```
+[ERROR] Could not resolve "virtual:rwsdk:ssr:rwsdk/__vendor_client_barrel"
+```
+
+This happens because the `worker`'s optimizer has no knowledge of the `virtual:rwsdk:ssr:` prefix, which is handled by the `ssrBridgePlugin`. The `optimizeDeps` scan runs before the `ssrBridgePlugin`'s `load` and `resolveId` hooks are fully engaged for these paths.
+
+**Plan:**
+The solution is to instruct the `worker` environment's `optimizeDeps` process to treat these virtual modules as external. This will prevent `esbuild` from trying to resolve them directly. The resolution will be deferred to runtime, where the `ssrBridgePlugin` can correctly intercept the virtual IDs, bridge them to the `ssr` environment, and load the processed modules.
+
+This will be implemented by modifying the `rwsdk-ssr-external` esbuild plugin within `ssrBridgePlugin.mts` to mark any import path starting with `virtual:rwsdk:ssr:` as `external: true`.
+
+---
+
+### React Render Error: Prod/Dev Mismatch
+
+**Finding:**
+With the `esbuild` resolution error fixed, the tests now fail with a new error originating from within React's server rendering logic:
+
+```
+TypeError: Cannot read properties of undefined (reading 'stack')
+```
+
+And a related warning:
+
+```
+Attempted to render <async (requestInfo2) => ...> without development properties. This is not supported. It can happen if:
+- The element is created with a production version of React but rendered in development.
+```
+
+The component being rendered appears to be related to middleware. This suggests that the SSR Bridge is now functioning, but it may be causing a mismatch in how React's development and production builds are being resolved or bundled between the `worker` and `ssr` environments.
