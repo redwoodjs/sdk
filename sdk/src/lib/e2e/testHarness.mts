@@ -315,6 +315,9 @@ export async function createDeployment(): Promise<DeploymentInstance> {
 export async function cleanupDeployment(
   deployment: DeploymentInstance,
 ): Promise<void> {
+  console.log(
+    `🧹 Cleaning up deployment: ${deployment.workerName} (${deployment.resourceUniqueKey})`,
+  );
   const env = getPlaygroundEnvironment();
 
   if (isRelatedToTest(deployment.workerName, deployment.resourceUniqueKey)) {
