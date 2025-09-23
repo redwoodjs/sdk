@@ -19,7 +19,7 @@ The solution is to transform the module's code differently for each of Vite's th
 
 #### The `worker` Environment Transformation
 
-This is the most complex case, as the `worker` environment handles both the RSC and SSR passes. The transformation replaces the module's contents with proxies that can satisfy both contexts.
+This is the most complex case, as the `worker` environment handles both the RSC and SSR passes. The transformation replaces the module's contents with code that loads the SSR version of the module and creates proxies that can satisfy both contexts.
 
 **Before Transformation (`src/components/Form.tsx`):**
 ```tsx
@@ -41,12 +41,12 @@ export function Form() {
 
 **After Transformation (in `worker` environment):**
 ```tsx
-// 1. Import the SSR version of the module via the SSR Bridge.
-// This makes the *actual* implementation available for the SSR pass.
-import * as SSRModule from "virtual:rwsdk:ssr:/src/components/Form.tsx";
-
-// 2. Import the factory function that creates client references.
+// 1. Import helpers from the SSR Bridge and the worker runtime.
+import { ssrLoadModule } from "rwsdk/__ssr_bridge";
 import { registerClientReference } from "rwsdk/worker";
+
+// 2. Asynchronously load the SSR version of the module via the bridge.
+const SSRModule = await ssrLoadModule("/src/components/Form.tsx");
 
 // 3. Create proxies for each export.
 // The runtime function will decide what to do with them.
