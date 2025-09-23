@@ -4,7 +4,7 @@ import { setupPlaygroundEnvironment, testDevAndDeploy, poll } from "rwsdk/e2e";
 setupPlaygroundEnvironment(import.meta.url);
 
 // Helper function to wait for hydration to complete
-async function waitForHydration(page: any, timeout = 5000) {
+async function waitForHydration(page: any) {
   await new Promise((resolve) => setTimeout(resolve, 1000)); // Initial wait for scripts to load
 
   // Wait for DOMContentLoaded and any hydration indicators

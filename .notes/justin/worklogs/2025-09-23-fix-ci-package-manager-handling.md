@@ -22,3 +22,10 @@ The goal was to resolve the Yarn lockfile error and unify the local and CI test 
 4.  **Simplify CI Workflows**: With the package manager logic centralized in the test script, I removed the redundant setup steps from the CI configuration files (`.github/workflows/playground-e2e-tests.yml` and `.github/workflows/smoke-test-starters.yml`). The workflows are now simpler, only responsible for enabling `corepack` and installing the monorepo's dependencies.
 
 This set of changes ensures that the test environment is configured consistently, whether running locally or in CI, and that our tests accurately reflect real-world usage of different package managers, including Yarn's PnP mode.
+
+## Addendum: Local Testing Improvements
+
+While testing the package manager fixes, a couple of additional improvements were made:
+
+1.  **Test Timeout Adjustment**: The `setupPlaygroundEnvironment` function in the E2E test harness (`sdk/src/lib/e2e/testHarness.mts`) occasionally timed out, especially when using Yarn, which can be slow to install dependencies. The timeout was increased to 10 minutes to provide a larger buffer and prevent premature test failures.
+2.  **Documentation for Running Specific Tests**: It was discovered that the correct way to run a single playground E2E test is by passing a path relative to the `playground/` directory. The `CONTRIBUTING.md` file has been updated to document the correct command (`pnpm test:e2e -- <path_to_test>`) and how to use environment variables like `PACKAGE_MANAGER` and `DEBUG` for more targeted testing.
