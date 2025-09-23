@@ -1,8 +1,8 @@
-import { AppButton, appClientUtil } from "../lib/client-utils";
+import { AppButton, appClientUtil } from "../lib/client-utils.js";
 import { PackageButton, packageClientUtil } from "ui-lib/client";
 import { PackageServerComponent } from "ui-lib/server";
 
-const Home = () => {
+export const Home = () => {
   const messageFromAppClientUtil = appClientUtil.format("Home Page");
   const messageFromPackageClientUtil = packageClientUtil.format("Home Page");
 
@@ -26,5 +26,3 @@ const Home = () => {
     </div>
   );
 };
-
-export default Home;
