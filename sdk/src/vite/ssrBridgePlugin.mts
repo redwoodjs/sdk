@@ -61,7 +61,10 @@ export const ssrBridgePlugin = ({
                   args,
                 );
 
-              if (args.path === "rwsdk/__ssr_bridge") {
+              if (
+                args.path === "rwsdk/__ssr_bridge" ||
+                args.path.startsWith(VIRTUAL_SSR_PREFIX)
+              ) {
                 log("Marking as external: %s", args.path);
                 return {
                   path: args.path,

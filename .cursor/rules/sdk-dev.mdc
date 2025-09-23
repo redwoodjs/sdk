@@ -18,3 +18,4 @@ alwaysApply: true
   - Make sure the document is understandable without prior context
   - Keep a coherent narrative - start with the challenge(s) so that the user has context on the _why_'s that informed the solution, before explaining the solution.
   - Keep it high level - do not mention identifiers in the code unless it is accompanied by a simplified code example for conceptual understanding of their purpose
+- Playground end-to-end tests use Puppeteer for browser automation. Use Puppeteer's API (`page.$eval`, `page.click`, `page.waitForSelector`, etc.) for all test interactions and assertions, not Playwright APIs (`page.locator`, `page.getByRole`, etc.).
