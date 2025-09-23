@@ -214,7 +214,7 @@ export const configPlugin = ({
 
     await runDirectivesScan({
       rootConfig: config,
-      environments: config.environments,
+      environments: config.environments as any,
       clientFiles,
       serverFiles,
       mdxTransform,
