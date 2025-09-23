@@ -256,3 +256,19 @@ To solve this while respecting the static import constraint, we will change the 
 4.  **Update Consumers:** The places where the barrel file is used, such as `transformClientComponents.mts` and `createDirectiveLookupPlugin.mts`, will be updated. Instead of performing a direct property access on the barrel object, they will now generate code that calls the `getModule` helper function.
 
 This approach breaks the circular dependency at initialization time. All modules are loaded statically, satisfying esbuild, but the "linking" of a module ID to its corresponding module object is deferred until runtime via the `getModule` function call, safely avoiding the temporal dead zone.
+
+**Attempt 2: Failed**
+
+The "lazy-loading barrel helper" approach failed for the same reason: the barrel module `rwsdk_vendor_client_barrel_default` was still undefined when the `getModule` function was called. The root cause is the module execution order determined by Vite/Rollup.
+
+**New Path Forward: Forcing Module Execution Order**
+
+The core issue is that Vite is executing the modules that depend on our barrel file *before* it executes the barrel file itself. To fix this, we must give Vite a strong signal to load the barrel file first.
+
+The plan is to inject a side-effect import of the barrel file at the top of every transformed client component.
+
+1.  **Inject Side-Effect Import:** The `transformClientComponents.mts` plugin will be modified. For any module identified as a client component (either by directive or by our manual override), it will prepend `import "rwsdk/__vendor_client_barrel";` to the top of the transformed code.
+2.  **Signal Bundler Priority:** This tells Vite/Rollup that before any client component code can run, the vendor barrel module must be fully loaded and executed.
+3.  **Resolve TDZ:** This ensures that `rwsdk_vendor_client_barrel_default` is always defined and populated before any code attempts to access it, thus resolving the temporal dead zone.
+
+This approach directly manipulates the module graph to enforce the correct execution order, which should finally resolve the issue.
