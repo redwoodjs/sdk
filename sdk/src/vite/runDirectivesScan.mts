@@ -10,7 +10,7 @@ import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
 import { INTERMEDIATES_OUTPUT_DIR } from "../lib/constants.mjs";
 import { externalModules } from "./constants.mjs";
 import { createViteAwareResolver } from "./createViteAwareResolver.mjs";
-import resolve from "enhanced-resolve";
+import { viteAwareLoad } from "./viteAwareLoad.mjs";
 
 const log = debug("rwsdk:vite:run-directives-scan");
 
@@ -85,18 +85,22 @@ export function classifyModule({
   return { moduleEnv, isClient, isServer };
 }
 
+export type EsbuildLoader = "js" | "jsx" | "ts" | "tsx" | "default";
+
 export const runDirectivesScan = async ({
   rootConfig,
   environments,
   clientFiles,
   serverFiles,
   entries: initialEntries,
+  mdxTransform,
 }: {
   rootConfig: ResolvedConfig;
   environments: Record<string, Environment>;
   clientFiles: Set<string>;
   serverFiles: Set<string>;
-  entries: string[];
+  entries?: string[];
+  mdxTransform?: (code: string, id: string) => Promise<any>;
 }) => {
   console.log("\n🔍 Scanning for 'use client' and 'use server' directives...");
 
@@ -165,7 +169,7 @@ export const runDirectivesScan = async ({
       setup(build: PluginBuild) {
         // Match Vite's behavior by externalizing assets and special queries.
         // This prevents esbuild from trying to bundle them, which would fail.
-        const scriptFilter = /\.(c|m)?[jt]sx?$/;
+        const scriptFilter = /\.(c|m)?[jt]sx?$|\.mdx$/;
         const specialQueryFilter =
           /[?&](?:url|raw|worker|sharedworker|inline)\b/;
         // This regex is used to identify if a path has any file extension.
@@ -268,7 +272,7 @@ export const runDirectivesScan = async ({
         });
 
         build.onLoad(
-          { filter: /\.(m|c)?[jt]sx?$/ },
+          { filter: /\.(m|c)?[jt]sx?$|\.mdx$/ },
           async (args: OnLoadArgs) => {
             log("onLoad called for:", args.path);
 
@@ -286,21 +290,22 @@ export const runDirectivesScan = async ({
             }
 
             try {
-              const contents = await readFileWithCache(args.path);
+              const originalContents = await readFileWithCache(args.path);
               const inheritedEnv = args.pluginData?.inheritedEnv || "worker";
 
+              // Use the original, untransformed content for directive classification
               const { moduleEnv, isClient, isServer } = classifyModule({
-                contents,
+                contents: originalContents,
                 inheritedEnv,
               });
 
-              // Store the definitive environment for this module, so it can be used when it becomes an importer.
+              // Store the definitive environment for this module
               moduleEnvironments.set(args.path, moduleEnv);
               log("Set environment for", args.path, "to", moduleEnv);
 
-              // Finally, populate the output sets if the file has a directive.
+              // Populate the output sets if the file has a directive
               if (isClient) {
-                log("Discovered 'use client' in:", args.path);
+                log("Discovered 'use client' in:", args.gpath);
                 clientFiles.add(
                   normalizeModulePath(args.path, rootConfig.root),
                 );
@@ -312,7 +317,45 @@ export const runDirectivesScan = async ({
                 );
               }
 
-              return { contents, loader: "default" };
+              let code: string;
+              let loader: EsbuildLoader;
+
+              // For standard script files, we can use a simple path.
+              // For other files (like .mdx), we need to run them through
+              // the Vite plugin pipeline to get transform them into something
+              // esbuild can understand.
+              if (args.path.endsWith(".mdx")) {
+                if (mdxTransform) {
+                  const result = await mdxTransform(
+                    originalContents,
+                    args.path,
+                  );
+                  code = typeof result === "string" ? result : result.code;
+                  loader = "tsx";
+                } else {
+                  // If no MDX transform is available, we can't process the file.
+                  // Skip it to avoid errors, but log a warning.
+                  log(
+                    "Skipping MDX file as no MDX transform was found:",
+                    args.path,
+                  );
+                  return null;
+                }
+              } else if (/\.(m|c)?tsx$/.test(args.path)) {
+                code = originalContents;
+                loader = "tsx";
+              } else if (/\.(m|c)?ts$/.test(args.path)) {
+                code = originalContents;
+                loader = "ts";
+              } else if (/\.(m|c)?jsx$/.test(args.path)) {
+                code = originalContents;
+                loader = "jsx";
+              } else {
+                code = originalContents;
+                loader = "js";
+              }
+
+              return { contents: code, loader };
             } catch (e) {
               log("Could not read file during scan, skipping:", args.path, e);
               return null;

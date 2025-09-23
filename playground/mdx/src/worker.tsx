@@ -2,7 +2,7 @@ import { defineApp } from "rwsdk/worker";
 import { render, route } from "rwsdk/router";
 
 import { Document } from "@/app/Document";
-import { Home } from "@/app/pages/Home";
+import Home from "@/app/pages/Home.mdx";
 import { setCommonHeaders } from "@/app/headers";
 
 export type AppContext = {};

@@ -6,6 +6,7 @@ import enhancedResolve from "enhanced-resolve";
 import { INTERMEDIATE_SSR_BRIDGE_PATH } from "../lib/constants.mjs";
 import { buildApp } from "./buildApp.mjs";
 import { externalModules } from "./constants.mjs";
+import { runDirectivesScan } from "./runDirectivesScan.mjs";
 
 export const configPlugin = ({
   silent,
@@ -197,5 +198,26 @@ export const configPlugin = ({
     };
 
     return baseConfig;
+  },
+  async configResolved(config) {
+    const mdxPlugin = config.plugins.find(
+      (plugin) => plugin.name === "vite-plugin-mdx",
+    );
+
+    let mdxTransform: any = null;
+    if (mdxPlugin && mdxPlugin.transform) {
+      mdxTransform =
+        typeof mdxPlugin.transform === "function"
+          ? mdxPlugin.transform
+          : mdxPlugin.transform.handler;
+    }
+
+    await runDirectivesScan({
+      rootConfig: config,
+      environments: config.environments,
+      clientFiles,
+      serverFiles,
+      mdxTransform,
+    });
   },
 });
