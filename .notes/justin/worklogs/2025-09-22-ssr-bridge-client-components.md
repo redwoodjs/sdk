@@ -392,3 +392,19 @@ Attempted to render <async (requestInfo2) => ...> without development properties
 ```
 
 The component being rendered appears to be related to middleware. This suggests that the SSR Bridge is now functioning, but it may be causing a mismatch in how React's development and production builds are being resolved or bundled between the `worker` and `ssr` environments.
+
+---
+
+### TypeError: `format` is not a function
+
+**Resolution of Previous Error:**
+The React prod/dev mismatch was caused by dependency issues in the `import-from-use-client` playground. The `react-server-dom-webpack` package was missing, and other React-related dependencies were not aligned with the versions used across the monorepo. Adding the missing dependency and synchronizing all `react` and `@types/react` versions in `dependencies` and `devDependencies` resolved the issue.
+
+**New Finding:**
+After fixing the dependencies, a new, more specific error has appeared:
+
+```
+TypeError: __vite_ssr_import_2__.packageClientUtil.format is not a function
+```
+
+This error occurs when the `PackageServerComponent` attempts to call `packageClientUtil.format`. It indicates that while the `ui-lib/client.mjs` module is being imported across the SSR Bridge, its exports are not being correctly resolved. The `packageClientUtil` object is either not being found on the imported module (`__vite_ssr_import_2__`) or the module itself is not what's expected, pointing to a potential issue in how the `ssr` environment processes and returns the module's contents to the `worker`u`V
