@@ -11,7 +11,7 @@ A module marked with `"use client"` has a dual responsibility in our hybrid rend
 1.  **During the RSC Pass:** The module's implementation must be completely hidden from the server. The renderer should only see a serializable "Client Reference"—a placeholder that tells the browser which component to download and hydrate.
 2.  **During the SSR Pass:** The module's *actual* implementation is needed so it can be rendered into the initial HTML, providing content to users before JavaScript loads. This is critical for both performance and SEO.
 
-Furthermore, a "use client" module might export more than just React components. It could export utility functions, constants, or objects that are needed by Server Components during the SSR pass. The transformation must accommodate this, allowing server-side code to import and use these non-component exports seamlessly, as if they were regular server-side modules.
+Furthermore, a "use client" module might export more than just React components. It could export utility functions, constants, or objects that are needed by other server-side code running in the `worker` environment. The transformation must accommodate this, allowing any server code to import and use these non-component exports seamlessly.
 
 ### The Solution: Environment-Specific Transformations
 
@@ -56,7 +56,7 @@ export const Form = registerClientReference(SSRModule, "/src/components/Form.tsx
 
 At runtime, the `registerClientReference` function inspects each export from the `SSRModule`.
 -   If an export is a **React component**, it returns a serializable Client Reference placeholder for the RSC pass.
--   If an export is a **non-component** (like `FormUtils`), it returns the *actual object* from `SSRModule`, making it directly usable by server-side code during the SSR pass.
+-   If an export is a **non-component** (like `FormUtils`), it returns the *actual object* from `SSRModule`, making it directly usable by any other code running in the `worker` environment.
 
 #### The `ssr` and `client` Environment Transformations
 

@@ -195,3 +195,33 @@ With the implementation now stable, the final step is to create the architecture
 
 2.  **Update `transformClientComponents.test.mts`:**
     -   Review and confirm that all test cases in `sdk/src/vite/transformClientComponents.test.mts` match the final transformation logic.
+
+---
+
+## PR Description
+
+**Title:** `feat(ssr): Support non-component imports from "use client" modules`
+
+### Problem
+
+In our hybrid RSC/SSR rendering model, modules marked with `"use client"` presented a challenge for non-component exports.
+
+The `worker` environment, responsible for both RSC and SSR, would transform a `"use client"` module into a set of client reference proxies. This is correct for the RSC pass, but it created a problem for any other server-side code. If any logic in the `worker` needed to import a non-component export (e.g., a utility function, a constant, or a library-specific object) from that same client module, it couldn't. The actual implementation was completely replaced by the proxy, making the export inaccessible to any server-side logic.
+
+This limited the utility of client modules, forcing a strict separation where server-side code could not consume any utilities or objects defined alongside client components.
+
+### Solution
+
+This change introduces a mechanism to bridge this gap, allowing non-component exports from `"use client"` modules to be correctly resolved and used within the `worker` environment.
+
+The solution has two main parts:
+
+1.  **Build-Time Transformation:** The `transformClientComponents` plugin now injects a virtual import for the `ssr`-processed version of the client module (e.g., `import * as SSRModule from "virtual:rwsdk:ssr:/path/to/component"`). This makes the module's *actual* implementation available to the `worker` runtime via the SSR Bridge.
+
+2.  **Runtime Conditional Logic:** The `registerClientReference` function in the worker runtime has been updated. It now accepts the imported `SSRModule` and inspects each export.
+    *   If an export is identified as a **React component** (using `react-is`), it returns a standard, serializable client reference placeholder, which is what the RSC renderer expects.
+    *   If an export is a **non-component**, it returns the *actual export* from the `SSRModule` directly.
+
+This allows any server-side code to import `MyUtil` from a client module and use it on the server, while still treating `<MyComponent>` from that same module as a client reference for the RSC phase.
+
+A new architecture document, `docs/architecture/directiveTransforms.md`, has been added to explain this transformation process for both `"use client"` and `"use server"` modules in detail. Unit tests for the transformation have also been verified.
