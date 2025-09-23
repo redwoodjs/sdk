@@ -3,7 +3,6 @@ import {
   registerClientReference as baseRegisterClientReference,
   decodeReply,
 } from "react-server-dom-webpack/server.edge";
-import { isValidElementType } from "react-is";
 import { getServerModuleExport } from "../imports/worker.js";
 import { requestInfo } from "../requestInfo/worker.js";
 
@@ -20,41 +19,38 @@ export function registerServerReference(
   return baseRegisterServerReference(action, id, name);
 }
 
-export function registerClientReference<Target extends Record<string, unknown>>(
-  ssrModule: Target,
+export function registerClientReference<Target extends Record<string, any>>(
   id: string,
   exportName: string,
+  value: any,
 ) {
-  const target = ssrModule[exportName] ?? {};
+  const wrappedValue =
+    (value && typeof value === "function") || typeof value === "object"
+      ? value
+      : () => null;
 
-  if (isValidElementType(target)) {
-    // This is the original logic from 'main'.
-    // For React components, we create a serializable reference for the RSC pass.
-    const reference = baseRegisterClientReference({}, id, exportName);
-    const finalDescriptors = Object.getOwnPropertyDescriptors(reference);
-    const idDescriptor = finalDescriptors.$$id;
+  const reference = baseRegisterClientReference({}, id, exportName);
+  (reference as any).__rwsdk_clientReferenceId = `${id}#${exportName}`;
 
-    if (idDescriptor) {
-      const originalValue = idDescriptor.value;
-      // Create a new accessor descriptor, NOT by spreading the old one.
-      finalDescriptors.$$id = {
-        enumerable: idDescriptor.enumerable,
-        configurable: idDescriptor.configurable,
-        get() {
-          requestInfo.rw.scriptsToBeLoaded.add(id);
-          return originalValue;
-        },
-      };
-    }
+  const finalDescriptors = Object.getOwnPropertyDescriptors(reference);
+  const idDescriptor = finalDescriptors.$$id;
 
-    finalDescriptors.$$async = { value: true };
-    finalDescriptors.$$isClientReference = { value: true };
-
-    return Object.defineProperties(() => null, finalDescriptors);
+  if (idDescriptor && idDescriptor.hasOwnProperty("value")) {
+    const originalValue = idDescriptor.value;
+    finalDescriptors.$$id = {
+      configurable: idDescriptor.configurable,
+      enumerable: idDescriptor.enumerable,
+      get() {
+        requestInfo.rw.scriptsToBeLoaded.add(id);
+        return originalValue;
+      },
+    };
   }
 
-  // For non-components, return the target object directly for use in SSR.
-  return target;
+  finalDescriptors.$$async = { value: true };
+  finalDescriptors.$$isClientReference = { value: true };
+
+  return Object.defineProperties(wrappedValue, finalDescriptors);
 }
 
 export async function __smokeTestActionHandler(
