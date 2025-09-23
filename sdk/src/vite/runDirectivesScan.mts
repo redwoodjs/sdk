@@ -7,11 +7,9 @@ import path from "node:path";
 import debug from "debug";
 import { getViteEsbuild } from "./getViteEsbuild.mjs";
 import { normalizeModulePath } from "../lib/normalizeModulePath.mjs";
+import { INTERMEDIATES_OUTPUT_DIR } from "../lib/constants.mjs";
 import { externalModules } from "./constants.mjs";
-import {
-  createViteAwareResolver,
-  mapViteResolveToEnhancedResolveOptions,
-} from "./createViteAwareResolver.mjs";
+import { createViteAwareResolver } from "./createViteAwareResolver.mjs";
 import resolve from "enhanced-resolve";
 
 const log = debug("rwsdk:vite:run-directives-scan");
@@ -92,11 +90,13 @@ export const runDirectivesScan = async ({
   environments,
   clientFiles,
   serverFiles,
+  entries: initialEntries,
 }: {
   rootConfig: ResolvedConfig;
   environments: Record<string, Environment>;
   clientFiles: Set<string>;
   serverFiles: Set<string>;
+  entries: string[];
 }) => {
   console.log("\n🔍 Scanning for 'use client' and 'use server' directives...");
 
@@ -105,7 +105,8 @@ export const runDirectivesScan = async ({
 
   try {
     const esbuild = await getViteEsbuild(rootConfig.root);
-    const input = environments.worker.config.build.rollupOptions?.input;
+    const input =
+      initialEntries ?? environments.worker.config.build.rollupOptions?.input;
     let entries: string[];
 
     if (Array.isArray(input)) {
@@ -125,7 +126,10 @@ export const runDirectivesScan = async ({
       return;
     }
 
-    const absoluteEntries = entries.map((entry) =>
+    // Filter out virtual modules since they can't be scanned by esbuild
+    const realEntries = entries.filter((entry) => !entry.includes("virtual:"));
+
+    const absoluteEntries = realEntries.map((entry) =>
       path.resolve(rootConfig.root, entry),
     );
 
@@ -322,6 +326,7 @@ export const runDirectivesScan = async ({
       entryPoints: absoluteEntries,
       bundle: true,
       write: false,
+      outdir: path.join(INTERMEDIATES_OUTPUT_DIR, "directive-scan"),
       platform: "node",
       format: "esm",
       logLevel: "silent",

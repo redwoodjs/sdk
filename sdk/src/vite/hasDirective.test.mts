@@ -115,4 +115,10 @@ describe("hasDirective", () => {
     /* comment 2 */`;
     expect(hasDirective(code, "use client")).toBe(false);
   });
+
+  it("should prioritize 'use client' over 'use server'", () => {
+    const code = `'use client';\n'use server';\nconsole.log('hello');`;
+    expect(hasDirective(code, "use client")).toBe(true);
+    expect(hasDirective(code, "use server")).toBe(false);
+  });
 });

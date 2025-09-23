@@ -20,12 +20,14 @@ export async function buildApp({
   clientFiles,
   serverFiles,
   projectRootDir,
+  workerEntryPathname,
 }: {
   builder: ViteBuilder;
   clientEntryPoints: Set<string>;
   clientFiles: Set<string>;
   serverFiles: Set<string>;
   projectRootDir: string;
+  workerEntryPathname: string;
 }) {
   const workerEnv = builder.environments.worker;
   await runDirectivesScan({
@@ -33,6 +35,7 @@ export async function buildApp({
     environments: builder.environments,
     clientFiles,
     serverFiles,
+    entries: [workerEntryPathname],
   });
 
   console.log("Building worker to discover used client components...");
@@ -70,11 +73,15 @@ export async function buildApp({
   // Re-configure the worker environment for the linking pass
   const workerConfig = workerEnv.config;
   workerConfig.build!.emptyOutDir = false;
+
+  // context(justinvdm, 22 Sep 2025): This is a workaround to satisfy the
+  // Cloudflare plugin's expectation of an entry chunk named `index`. The plugin
+  // now manages the worker build, so we no longer set rollup options
+  // directly. Instead, we re-point the original entry to the intermediate
+  // worker bundle from the first pass. This allows the linker pass to re-use
+  // the same plugin-driven configuration while bundling the final worker.
   workerConfig.build!.rollupOptions!.input = {
-    worker: resolve(projectRootDir, "dist", "worker", "worker.js"),
-  };
-  workerConfig.build!.rollupOptions!.output! = {
-    entryFileNames: "worker.js",
+    index: resolve(projectRootDir, "dist", "worker", "index.js"),
   };
 
   await builder.build(workerEnv);
