@@ -58,7 +58,7 @@ jobs:
           sleep 15
 
           # List all check runs for the commit, filter out successful/skipped ones, and see if any are left
-          FAILED_OR_PENDING_RUNS=$(gh run list --commit "$COMMIT_SHA" --json status,conclusion,name --jq '.[] | select(.status != "completed" or (.conclusion != "success" and .conclusion != "skipped"))')
+          FAILED_OR_PENDING_RUNS=$(gh run list --commit "$COMMIT_SHA" --json status,conclusion,name --jq '.[] | select(.name != "Release" and (.status != "completed" or (.conclusion != "success" and .conclusion != "skipped")))')
 
           if [ -n "$FAILED_OR_PENDING_RUNS" ]; then
             echo "::error::One or more CI checks have failed or are still in progress for commit $COMMIT_SHA on the main branch. Cannot proceed with release."
