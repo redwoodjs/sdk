@@ -403,26 +403,21 @@ describe("transformClientComponents logic branches (from transformClientComponen
 });
 
 describe("transformClientComponents (dev server node_modules)", () => {
-  async function transformDev(
-    code: string,
-    id: string,
-    isEsbuild: boolean = false,
-  ) {
+  async function transformDev(code: string, id: string) {
     process.env.VITE_IS_DEV_SERVER = "1";
     const result = await transformClientComponents(code, id, {
       environmentName: "worker",
-      isEsbuild,
     });
     delete (process.env as any).VITE_IS_DEV_SERVER;
     return result?.code;
   }
 
-  it("uses barrel file import for node_modules files in dev (esbuild context)", async () => {
+  it("uses barrel file import for node_modules files in dev", async () => {
     const id = "/test/node_modules/my-lib/component.js";
     const code = `"use client";
 export const MyComponent = () => {};`;
 
-    expect((await transformDev(code, id, true)) ?? "").toEqual(
+    expect((await transformDev(code, id)) ?? "").toEqual(
       `import VENDOR_BARREL from "rwsdk/__vendor_client_barrel";
 const SSRModule = VENDOR_BARREL["/test/node_modules/my-lib/component.js"];
 import { registerClientReference } from "rwsdk/worker";
@@ -432,26 +427,12 @@ export { MyComponent };
     );
   });
 
-  it("uses virtual module import for node_modules files in dev (vite context)", async () => {
-    const id = "/test/node_modules/my-lib/component.js";
-    const code = `"use client";
-export const MyComponent = () => {};`;
-
-    expect((await transformDev(code, id, false)) ?? "").toEqual(
-      `import * as SSRModule from "virtual:rwsdk:ssr:/test/node_modules/my-lib/component.js";
-import { registerClientReference } from "rwsdk/worker";
-const MyComponent = registerClientReference(SSRModule, "/test/node_modules/my-lib/component.js", "MyComponent");
-export { MyComponent };
-`,
-    );
-  });
-
-  it("uses virtual module import for app source files in dev (esbuild context)", async () => {
+  it("uses virtual module import for app source files in dev", async () => {
     const id = "/test/app/component.tsx";
     const code = `"use client";
 export const MyComponent = () => {};`;
 
-    expect((await transformDev(code, id, true)) ?? "").toEqual(
+    expect((await transformDev(code, id)) ?? "").toEqual(
       `import * as SSRModule from "virtual:rwsdk:ssr:/test/app/component.tsx";
 import { registerClientReference } from "rwsdk/worker";
 const MyComponent = registerClientReference(SSRModule, "/test/app/component.tsx", "MyComponent");

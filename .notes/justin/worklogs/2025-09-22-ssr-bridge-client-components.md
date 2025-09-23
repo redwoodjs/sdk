@@ -248,4 +248,23 @@ The `transformClientComponents` function receives a context object that includes
     -   If the context matches (i.e., a vendor module being processed for `optimizeDeps`), the transform will generate an import from the **vendor barrel file**. This provides `esbuild` with a single, resolvable entry point.
     -   In all other cases (app code, or vendor modules being processed by a regular dev server request), the transform will generate the standard `virtual:rwsdk:ssr:` import. The Vite dev server can resolve this correctly and more efficiently via the `ssrBridgePlugin`.
 
-This change aligns the client component transformation with the dev server's dependency optimization strategy, ensuring that SSR versions of vendor modules are resolved correctly without impacting the efficiency of the main dev server.
+This change aligns the client component transformation with the dev server's dependency optimization strategy, ensuring that SSR versions of vendor modules are resolved correctly via the pre-built barrel file.
+
+---
+
+### Course Correction: Simplifying the Dev Server Logic
+
+**Thought Process:**
+After further consideration, the previous approach of differentiating between the `esbuild` (`optimizeDeps`) context and the regular Vite dev server context was an over-complication. The core issue is simpler: `node_modules` dependencies in a development environment have a specific set of requirements for pre-bundling that application code does not.
+
+The refined, simpler logic should be:
+-   **Production:** All `"use client"` modules, regardless of location, are transformed to use the `virtual:rwsdk:ssr:` import. This is consistent and works with the production build process.
+-   **Development:**
+    -   App Code: `"use client"` modules within the application's source are transformed to use the `virtual:rwsdk:ssr:` import. The Vite dev server can handle this efficiently on the fly.
+    -   Vendor Code: `"use client"` modules within `node_modules` are transformed to import their SSR counterpart from the pre-built **vendor barrel file**. This is the most robust way to ensure they are correctly handled by Vite's `optimizeDeps` process at startup.
+
+This removes the need to check for the `isEsbuild` context and results in a more stable rule set.
+
+**New Plan:**
+1.  Revert the logic in `transformClientComponents.mts` to only depend on `isDev` and `isNodeModule`.
+2.  Update the tests in `transformClientComponents.test.mts` to match this reverted, simpler logic.
