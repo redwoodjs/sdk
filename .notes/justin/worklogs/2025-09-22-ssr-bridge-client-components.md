@@ -441,3 +441,18 @@ This process ensured that the playground's `node_modules` contained a fresh, non
 
 **Outcome:**
 With the stale dependency issue resolved, the end-to-end tests now pass. All three import scenarios are working correctly. Both the application button and the package button are interactive, and messages from both client utility objects are rendered on the server as expected. This validates that the SSR Bridge and the updated `registerClientReference` function correctly handle non-component exports from `"use client"` modules, both in application code and in package dependencies.
+
+---
+
+### Validation with Chakra UI
+
+**Resolution of TDZ and Other Errors:**
+The set of errors encountered while testing with the Chakra UI playground, including the Temporal Dead Zone (TDZ) issue with the vendor barrel file, were ultimately traced back to the same root cause as the previous playground: stale SDK dependencies.
+
+The `pnpm` symlinking mechanism was causing the Chakra playground to use a cached, outdated version of the `rwsdk`, which did not include the latest fixes. The complex build errors were red herrings stemming from this environmental issue.
+
+**Solution:**
+The solution was identical to the one used for the `import-from-use-client` playground. Creating a fresh tarball of the SDK (`npm pack`) and installing it directly into the Chakra UI playground's `node_modules` resolved all remaining issues.
+
+**Conclusion:**
+With a clean SDK installation, the Chakra UI playground now works correctly. This confirms that the new SSR bridging mechanism is robust and correctly handles complex, real-world component libraries. The feature is now considered validated for the dev server environment.
