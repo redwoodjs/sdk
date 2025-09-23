@@ -36,7 +36,7 @@ on:
           - pnpm
           - npm
           - yarn
-          # - yarn-classic  # todo(justinvdm, 23-09-23): Re-enable once esbuild issue is resolved
+          - yarn-classic
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -61,7 +61,7 @@ jobs:
             PM_INPUT=${{ github.event.inputs.package-manager }}
 
             [ "$OS_INPUT" == "all" ] && OS_LIST='ubuntu-latest macos-latest' || OS_LIST=$OS_INPUT
-            [ "$PM_INPUT" == "all" ] && PM_LIST='pnpm npm yarn' || PM_LIST=$PM_INPUT
+            [ "$PM_INPUT" == "all" ] && PM_LIST='pnpm npm yarn yarn-classic' || PM_LIST=$PM_INPUT
 
             MATRIX="{\"include\":[]}"
             for o in $OS_LIST; do
@@ -71,7 +71,7 @@ jobs:
             done
             echo "matrix=$MATRIX" >> $GITHUB_OUTPUT
           else
-            echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"},{"os":"ubuntu-latest","package-manager":"npm"},{"os":"ubuntu-latest","package-manager":"yarn"},{"os":"macos-latest","package-manager":"pnpm"},{"os":"macos-latest","package-manager":"npm"},{"os":"macos-latest","package-manager":"yarn"}]}' >> $GITHUB_OUTPUT
+            echo 'matrix={"include":[{"os":"ubuntu-latest","package-manager":"pnpm"},{"os":"ubuntu-latest","package-manager":"npm"},{"os":"ubuntu-latest","package-manager":"yarn"},{"os":"ubuntu-latest","package-manager":"yarn-classic"},{"os":"macos-latest","package-manager":"pnpm"},{"os":"macos-latest","package-manager":"npm"},{"os":"macos-latest","package-manager":"yarn"},{"os":"macos-latest","package-manager":"yarn-classic"}]}' >> $GITHUB_OUTPUT
           fi
 
   playground-e2e:
