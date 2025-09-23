@@ -1,0 +1,24 @@
+
+# 2025-09-23: Standardize Package Manager Handling in E2E Tests
+
+## Problem
+
+The end-to-end and smoke tests were failing when run with modern Yarn (`yarn@berry`). The CI logs showed a `YN0028` error, which indicates that the installation process tried to modify the `yarn.lock` file, a behavior that is disallowed by default in CI environments to ensure reproducible builds.
+
+Additionally, the local testing setup was inconsistent with the CI environment. The GitHub Actions workflows contained logic to switch between different package managers (`pnpm`, `npm`, `yarn`, `yarn-classic`), but this logic was absent from the local test scripts. This meant that running tests locally did not accurately replicate the CI environment, particularly for different versions of Yarn.
+
+Finally, our Yarn Berry test configuration was forcing the use of `node_modules` via the `nodeLinker` setting, which prevented us from testing our framework's compatibility with Yarn's native Plug'n'Play (PnP) feature.
+
+## Attempt
+
+The goal was to resolve the Yarn lockfile error and unify the local and CI test environments so that they behave identically.
+
+1.  **Allow Lockfile Changes for Yarn Berry**: To fix the `YN0028` error, I updated the test environment setup script (`sdk/src/lib/e2e/environment.mts`) to create a `.yarnrc.yml` file in the temporary test project directory. This file now includes `enableImmutableInstalls: false`, which instructs modern Yarn to permit changes to the lockfile during dependency installation.
+
+2.  **Enable Yarn PnP Testing**: I removed the `nodeLinker: node-modules` line from the generated `.yarnrc.yml` file. This change ensures that when tests run with Yarn Berry, they use the default Plug'n'Play linker, allowing us to validate our framework's compatibility with this feature.
+
+3.  **Centralize Package Manager Setup**: To align the local and CI environments, I moved the package manager setup logic from the GitHub Actions workflows directly into the `installDependencies` function within `sdk/src/lib/e2e/environment.mts`. The script now uses `corepack` to prepare and activate the correct Yarn version (`yarn@stable` or `yarn@1.22.19`) within the temporary test directory before running the install command.
+
+4.  **Simplify CI Workflows**: With the package manager logic centralized in the test script, I removed the redundant setup steps from the CI configuration files (`.github/workflows/playground-e2e-tests.yml` and `.github/workflows/smoke-test-starters.yml`). The workflows are now simpler, only responsible for enabling `corepack` and installing the monorepo's dependencies.
+
+This set of changes ensures that the test environment is configured consistently, whether running locally or in CI, and that our tests accurately reflect real-world usage of different package managers, including Yarn's PnP mode.

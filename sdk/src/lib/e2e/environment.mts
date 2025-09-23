@@ -240,6 +240,25 @@ async function installDependencies(
     ]);
     log("Cleanup complete.");
 
+    if (packageManager.startsWith("yarn")) {
+      log(`Enabling corepack...`);
+      await $("corepack", ["enable"], { cwd: targetDir, stdio: "pipe" });
+
+      if (packageManager === "yarn") {
+        log(`Preparing yarn@stable with corepack...`);
+        await $("corepack", ["prepare", "yarn@stable", "--activate"], {
+          cwd: targetDir,
+          stdio: "pipe",
+        });
+      } else if (packageManager === "yarn-classic") {
+        log(`Preparing yarn@1.22.19 with corepack...`);
+        await $("corepack", ["prepare", "yarn@1.22.19", "--activate"], {
+          cwd: targetDir,
+          stdio: "pipe",
+        });
+      }
+    }
+
     const installCommand = {
       pnpm: ["pnpm", "install"],
       npm: ["npm", "install"],
