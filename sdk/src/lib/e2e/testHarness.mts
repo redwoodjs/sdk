@@ -20,6 +20,9 @@ import { launchBrowser } from "./browser.mjs";
 import type { Browser, Page } from "puppeteer-core";
 
 const SETUP_PLAYGROUND_ENV_TIMEOUT = 10 * 60 * 1000;
+const PUPPETEER_TIMEOUT = process.env.RWSDK_PUPPETEER_TIMEOUT
+  ? parseInt(process.env.RWSDK_PUPPETEER_TIMEOUT, 10)
+  : 60 * 1000; // 60 seconds
 
 interface PlaygroundEnvironment {
   projectDir: string;
@@ -474,6 +477,7 @@ export function testDev(
       const devServer = await createDevServer();
       const browser = await createBrowser();
       const page = await browser.newPage();
+      page.setDefaultTimeout(PUPPETEER_TIMEOUT);
 
       const cleanup = async () => {
         await browser.close();
@@ -524,6 +528,7 @@ testDev.only = (
       const devServer = await createDevServer();
       const browser = await createBrowser();
       const page = await browser.newPage();
+      page.setDefaultTimeout(PUPPETEER_TIMEOUT);
 
       const cleanup = async () => {
         await browser.close();
@@ -571,6 +576,7 @@ export function testDeploy(
       const deployment = await createDeployment();
       const browser = await createBrowser();
       const page = await browser.newPage();
+      page.setDefaultTimeout(PUPPETEER_TIMEOUT);
 
       const cleanup = async () => {
         // We don't await this because we want to let it run in the background
@@ -620,6 +626,7 @@ testDeploy.only = (
       const deployment = await createDeployment();
       const browser = await createBrowser();
       const page = await browser.newPage();
+      page.setDefaultTimeout(PUPPETEER_TIMEOUT);
 
       const cleanup = async () => {
         // We don't await this because we want to let it run in the background
