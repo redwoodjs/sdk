@@ -23,7 +23,10 @@ export async function transformClientComponents(
   normalizedId: string,
   ctx: TransformContext,
 ): Promise<TransformResult | undefined> {
-  if (!hasDirective(code, "use client")) {
+  if (
+    !ctx.clientFiles?.has(normalizedId) &&
+    !hasDirective(code, "use client")
+  ) {
     return;
   }
 
