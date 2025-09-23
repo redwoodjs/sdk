@@ -177,3 +177,21 @@ This approach combines the new conditional logic with the original, battle-teste
     -   Return the `target` object directly. It can be used as a plain object during the SSR pass.
 
 This should be the correct and final logic. It ensures components are treated as serializable references by the RSC renderer, while allowing non-components to be used directly on the server.
+
+---
+
+## Documentation and Test Cleanup
+
+With the implementation now stable, the final step is to create the architecture document explaining the transformation process and to ensure the unit tests are aligned.
+
+### Plan
+
+1.  **Create New Architecture Document (`directiveTransforms.md`):**
+    -   Create a new document at `docs/architecture/directiveTransforms.md`.
+    -   Structure the document using the established "Challenge/Solution" narrative format.
+    -   Explain the dual requirements for both `"use client"` and `"use server"` modules in our hybrid environment.
+    -   Detail the transformation logic for each Vite environment (`worker`, `ssr`, `client`), including commented code examples.
+    -   Specifically explain how the SSR Bridge allows server-side code to import and use non-component exports from client modules during the SSR pass.
+
+2.  **Update `transformClientComponents.test.mts`:**
+    -   Review and confirm that all test cases in `sdk/src/vite/transformClientComponents.test.mts` match the final transformation logic.
