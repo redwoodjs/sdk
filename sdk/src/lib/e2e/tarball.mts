@@ -129,15 +129,6 @@ export async function setupTarballEnvironment({
       packageManager,
     );
 
-    // Verify installation
-    const sdkPackageJson = JSON.parse(
-      await fs.promises.readFile(
-        path.join(targetDir, "node_modules/rwsdk/package.json"),
-        "utf8",
-      ),
-    );
-    log(`✅ Installed rwsdk version: ${sdkPackageJson.version}`);
-
     // Copy wrangler cache to improve deployment performance
     const sdkRoot = ROOT_DIR;
     await copyWranglerCache(targetDir, sdkRoot);
