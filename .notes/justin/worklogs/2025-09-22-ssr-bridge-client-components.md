@@ -317,3 +317,40 @@ To make the e2e test for our local `ui-lib` package more robust and realistic, i
     -   For the `./server` export, the `react-server` condition will point to the actual `server.tsx` module, and the `default` condition will point to `react-server-only.ts`.
 
 This will ensure that any incorrect bundling or module resolution in our build system will cause an immediate and clear failure during the e2e test, making the test a much stronger validation of our system's correctness.
+
+---
+
+### Convert `ui-lib` to a Proper ESM Package
+
+**Problem:**
+The local `ui-lib` package was created with `.ts` and `.tsx` files, but it lacks a `"type": "module"` entry in its `package.json` and uses incorrect file extensions in its `exports` map. This will cause resolution failures in a native ESM environment. It also lacks type definition files, which is not realistic for a library.
+
+**Plan:**
+1.  **Rename Source Files:**
+    -   Rename `client.tsx` to `client.mtsx`.
+    -   Rename `server.tsx` to `server.mtsx`.
+    -   Rename `no-react-server.ts` to `no-react-server.mts`.
+    -   Rename `react-server-only.ts` to `react-server-only.mts`.
+2.  **Update `package.json`:**
+    -   Add `"type": "module"` to the root of the JSON object.
+    -   Update the paths in the `exports` map to reflect the new `.mtsx`/`.mts` extensions.
+3.  **Create Type Definitions:**
+    -   Create `client.d.ts` to provide types for the exports of `client.mtsx`.
+    -   Create `server.d.ts` to provide types for the exports of `server.mtsx`.
+
+---
+
+### Course Correction: Simplify `ui-lib` to Plain JS, Remove Conditionals
+
+**Rationale:**
+The goal of this e2e test is to validate the core SSR Bridge mechanism for importing from client modules in various scenarios. Adding `react-server` conditional exports to the local `ui-lib` package, while realistic for a production library, is an unnecessary complication for this specific test and was interfering with the experiment.
+
+The package should be a simple, pre-compiled ESM module using plain JavaScript.
+
+**Revised Plan:**
+1.  **Remove Conditional Exports:** The `exports` map in `packages/ui-lib/package.json` will be reverted to a simple mapping without `react-server` conditions.
+2.  **Delete Unused Files:** The `no-react-server.mts` and `react-server-only.mts` files are no longer needed and will be deleted.
+3.  **Convert to Plain JavaScript:**
+    -   Rename all `.mtsx` and `.mts` files in `ui-lib` to `.mjs`.
+    -   Manually transpile the JSX content in the component files to standard `React.createElement` calls.
+    -   Correct the application's client utility file (`src/app/lib/client-utils.ts`) to be a `.mjs` file with transpiled content as well, to ensure consistency.

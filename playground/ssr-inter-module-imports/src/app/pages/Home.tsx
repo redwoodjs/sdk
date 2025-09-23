@@ -1,5 +1,5 @@
-import { AppButton, appClientUtil } from "../lib/client-utils.mjs";
-import { PackageButton, packageClientUtil } from "ui-lib/client.mjs";
+import { AppButton, appClientUtil } from "../lib/client-utils";
+import { PackageButton, packageClientUtil } from "ui-lib/client";
 import { PackageServerComponent } from "ui-lib/server";
 
 const Home = () => {

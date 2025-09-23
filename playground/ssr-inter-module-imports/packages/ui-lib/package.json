@@ -1,16 +1,11 @@
 {
   "name": "ui-lib",
   "version": "1.0.0",
+  "type": "module",
   "main": "index.js",
   "types": "index.d.ts",
   "exports": {
-    "./client": {
-      "react-server": "./no-react-server.ts",
-      "default": "./client.tsx"
-    },
-    "./server": {
-      "react-server": "./server.tsx",
-      "default": "./react-server-only.ts"
-    }
+    "./client": "./client.mjs",
+    "./server": "./server.mjs"
   }
 }
