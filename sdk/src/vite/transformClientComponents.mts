@@ -2,6 +2,7 @@ import MagicString from "magic-string";
 import debug from "debug";
 import { hasDirective } from "./hasDirective.mjs";
 import { findExports, type ExportInfo } from "./findSpecifiers.mjs";
+import { VENDOR_CLIENT_BARREL_EXPORT_PATH } from "../lib/constants.mjs";
 
 interface TransformContext {
   environmentName: string;
@@ -125,6 +126,25 @@ export async function transformClientComponents(
   // Generate completely new code for worker/client environments
   const s = new MagicString("");
 
+  const isDev = process.env.VITE_IS_DEV_SERVER === "1";
+  const isNodeModule = normalizedId.includes("node_modules");
+
+  // During the dev server's optimizeDeps phase, esbuild is running, and it
+  // cannot resolve our virtual modules. In that specific context, we must
+  // import from the pre-built vendor barrel file.
+  if (isDev && isNodeModule && ctx.isEsbuild) {
+    s.append(
+      `import VENDOR_BARREL from "${VENDOR_CLIENT_BARREL_EXPORT_PATH}";\n`,
+    );
+    s.append(`const SSRModule = VENDOR_BARREL["${normalizedId}"];\n`);
+  } else {
+    // In all other cases (prod build, or a regular dev server request),
+    // we use the virtual module and let Vite's plugin ecosystem handle it.
+    s.append(
+      `import * as SSRModule from "virtual:rwsdk:ssr:${normalizedId}";\n`,
+    );
+  }
+
   // Add import declaration
   s.append('import { registerClientReference } from "rwsdk/worker";\n');
 
@@ -136,7 +156,7 @@ export async function transformClientComponents(
   // Add registerClientReference assignments for unique names
   for (const [computedLocalName, correspondingInfo] of computedLocalNames) {
     s.append(
-      `const ${computedLocalName} = registerClientReference("${normalizedId}", "${correspondingInfo.exported}");\n`,
+      `const ${computedLocalName} = registerClientReference(SSRModule, "${normalizedId}", "${correspondingInfo.exported}");\n`,
     );
   }
 
@@ -159,7 +179,7 @@ export async function transformClientComponents(
       defaultExportInfo.exported,
     );
     s.append(
-      `export default registerClientReference("${normalizedId}", "${defaultExportInfo.exported}");\n`,
+      `export default registerClientReference(SSRModule, "${normalizedId}", "${defaultExportInfo.exported}");\n`,
     );
   }
 
